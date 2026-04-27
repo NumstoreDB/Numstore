@@ -1,38 +1,28 @@
 .PHONY: all build comprehensive \
         test run-tests run-tests-no-asan \
-        nstypes-tests nspager-tests smartfiles-tests nsusecase-tests \
+        comprehensive-tests \
         package package-deb package-rpm package-tar package-zip \
         package-python package-java package-all \
-        homebrew-formula install clean format tidy
+        install clean format tidy
 
-NPROC  = $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
+NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
 target ?= debug
 
 all: build
 
 ######################################################## Main Build Target
 
-dockcross/dockcross-%:
-	@mkdir -p $(DOCKER_DIR)
-	docker run --rm dockcross/$* > $@
-	@chmod +x $@
-
-ifdef platform
-build: $(DOCKER_DIR)/dockcross-$(platform)
-	./$< bash -c 'make build target=$(target)'
-else
 build:
 	/usr/bin/cmake --preset $(target)
 	/usr/bin/cmake --build --preset $(target) -j$(NPROC)
 	@if [ "$(target)" = "debug" ]; then cp build/debug/compile_commands.json .; fi
-endif
 
 comprehensive:
 	@python3 -c \
 	  "import json; [print(p['name']) for p in json.load(open('CMakePresets.json'))['configurePresets'] if not p.get('hidden')]" \
 	| xargs -I{} $(MAKE) build target={}
 
-######################################################## Running tests
+######################################################## Tests
 
 test:
 	$(MAKE) build target=$(target)
@@ -63,7 +53,7 @@ else
 		--show-mismatched-frees=yes \
 		--show-reachable=yes \
 		--num-callers=40 -- \
-		build/$(target)/apps/test 
+		build/$(target)/apps/test
 endif
 
 comprehensive-tests:
@@ -115,7 +105,7 @@ install:
 	$(MAKE) build target=package-release
 	cmake --install build/package-release --prefix /usr/local
 
-######################################################## Maintenence
+######################################################## Maintenance
 
 clean:
 	rm -rf build
@@ -133,4 +123,4 @@ tidy:
 		echo "Error: compile_commands.json not found. Running build first..."; \
 		$(MAKE) build target=$(target); \
 	fi
-	/opt/homebrew/opt/llvm/bin/clang-tidy -p . $(shell find lib -name '*.c' -o -name '*.h') \
+	/opt/homebrew/opt/llvm/bin/clang-tidy -p . $(shell find lib -name '*.c' -o -name '*.h')
