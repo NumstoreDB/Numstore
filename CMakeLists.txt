@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
 
 file(STRINGS "${CMAKE_SOURCE_DIR}/version.txt" NS_VERSION LIMIT_COUNT 1)
+
 project(smartfiles
     VERSION     "${NS_VERSION}"
     DESCRIPTION "Custom database engine for contiguous byte streams"
     LANGUAGES   C
 )
-
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
