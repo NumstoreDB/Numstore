@@ -22,11 +22,6 @@ Lots of programming has been built on top of the standard file. All programming 
 
 Written in C with no dependencies. Developed in POSIX - Windows builds compile but are not integrated into CI/CD yet (good first contribution).
 
-## A note on CLAUDE 
-
-Yes, I use ai to write some code. But you fundamentally cannot write a database engine from scratch using AI. It's impossible. Try it. If you're skeptical, fine. I get it,
-but read through my code, make up your own mind if you think I AI generated my code. 
-
 ## Quick Start
 
 ### Build the release mode:
@@ -43,6 +38,7 @@ $ sudo cmake --install ./build/release
 ### Write a quick sample app to test that it works
 ```c
 #include "smfile.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -165,6 +161,40 @@ All the public headers are in `include` all the source code is in `lib`. I pulle
 - `testing` has some test specific code 
 - `txns` has the transaction table, and anything that revolves around transactions 
 - `wal` contains write ahead log code
+
+## AI Usage
+
+I use AI as a development tool - the same way I use language servers and IDE's. Example prompts that I'd use:
+
+1. Add 5 more edge condition test cases to this unit test...
+    - Mundane code is great, but be careful not to overcrowd tests with AI generated 
+      test cases
+2. Find bugs in this algorithm that I may have overlooked...
+    - I like to use it as a code review - it's a second pair of eyes that checks that 
+      my code might contain a bug. Finding a bug is completely harmless if an AI does it
+      _fixing that bug_? Not so much. 
+3. Write a python script that formats my code such that every file has 
+   1 space between pragma once and the first line of code 
+    - Prompts that I _could_ do if I wanted to, but aren't worth my time / brain power 
+      and don't effect the content of the code base. I use it a lot for ci / cd tooling 
+      and format files
+
+Prompts that I do _not_ ask AI:
+
+1. Implement this feature for me...
+    - I might ask it this as scratch work, but never do I let AI write major code 
+      with major feedback and improvement by me
+2. Delete this code and fix it for me...
+    - In general, AI cannot delete any code I've written 
+3. Read this paper and implement this algorithm... 
+    - I might ask it to do this to get a rough sketch of an idea, but I'm the final 
+      straw for any algorithm to go into the code base.
+
+In general, I trust AI for (1) ideation and idea black-boarding (2) code reviews / a second pair of eyes (3) a mundane code generator. If I have an algorithm in mind, a straight forward way of implementing it, I just want to save my fingers from RSI - I'll ask it to sketch it out and I refactor it 3-5 times.
+
+The inclusion of a CLAUDE.md is preventative - although I don't encourage AI code to be put in this codebase, _if I do have AI code, I want it to be good_. It comes from [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills)
+
+In general, you can't really write a database engine from scratch using AI. It's impossible. Try it. If you're skeptical, fine. I get it, but read through my code, make up your own mind if you think I AI generated my code. 
 
 ## Contributing
 
