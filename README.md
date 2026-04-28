@@ -4,38 +4,38 @@
 
 # Smart Files
 
-The concept of a file has had the same definition for the past 50 years. Smart Files is a new API that gets past the hurdles of old school linear, non-transactional system files.
+Files have had the same definition for 50 years: an array of bytes that grows, shrinks, and seeks. Every programming language builds on top of this model. Smart Files extends it with two fixes to longstanding problems, plus two new capabilities.
 
-Lots of programming has been built on top of the standard file. All programming languages use files. Files are arrays of bytes. They grow, they shrink, and they seek. But the standard file has two fundamental problems:
+**Standard files have two fundamental problems:**
 
-**The short comings of standard files:**
+1. **No crash safety.** `fwrite` does not guarantee bytes hit disk. A crash mid-write leaves your file in an unknown state with no path to recovery.
+2. **No inner mutations.** There is no standard way to insert or remove bytes in the middle of a file without rewriting everything that follows.
 
-1. **Not transactional.** A call to `fwrite` does not guarantee that many bytes actually landed on disk. A crash mid-write leaves your file in an unknown state with no way to recover.
-2. **No first-class inner mutations.** There is no standard way to insert or remove a chunk of bytes in the middle of a file without rewriting everything after it.
+**Smart Files solves both, and adds two more features:**
 
-**Smart files fixes both, and adds two more features:**
-
-1. **Transactions.** Smart files log modifications in a write ahead log so that every mutation commits fully or rolls back - a crash mid-write leaves nothing corrupt.
+1. **Transactions.** Modifications go through a write-ahead log — every write commits fully or rolls back cleanly. A crash mid-write leaves nothing corrupt.
 2. **Inner mutations.** Insert or remove bytes anywhere in the stream in O(log N) time.
-3. **Stride access.** Read, write, and remove at regular "strided" intervals without manual offset arithmetic.
-4. **Multiple named arrays.** Store more than one named byte stream per file - no separate file handles, no embedded database.
+3. **Stride access.** Read, write, and remove at regular intervals without manual offset arithmetic.
+4. **Multiple named streams.** Store more than one named byte stream per file — no separate file handles, no embedded database.
 
-Written in C with no dependencies. Developed in POSIX - Windows builds compile but are not integrated into CI/CD yet (good first contribution).
+Written in C with no dependencies. Developed on POSIX - built (but maybe not optimized yet) for windows. 
+
+---
 
 ## Quick Start
 
-### Build the release mode:
 ```bash
-$ git clone https://github.com/lincketheo/smartfiles.git 
-$ cd smartfiles
-$ git submodule update --init 
-$ cmake --preset release
-$ cmake --build --preset release
-$ ./build/release/samples/sample1_simple # Run a sample 
-$ sudo cmake --install ./build/release
+git clone https://github.com/lincketheo/smartfiles.git
+cd smartfiles
+git submodule update --init
+cmake --preset release
+cmake --build --preset release
+./build/release/samples/sample1_simple   # run a sample
+sudo cmake --install ./build/release
 ```
 
-### Write a quick sample app to test that it works
+### Write a sample app
+
 ```c
 #include "smfile.h"
 
@@ -54,151 +54,137 @@ void print_array(const char* prefix, uint32_t* arr, int len)
 
 int main()
 {
-  // The NULL second parameter is the stream name, feel free to name it any
-  // const char* name - NULL is the default
+  // NULL second parameter is the stream name. NULL selects the default stream.
+  // Pass any const char* to name it.
   smfile_t* f = smfile_open("example");
 
-  // We'll write a really big array
   uint32_t data[200000];
   for (int i = 0; i < 200000; ++i) {
     data[i] = i;
   }
 
-  // Write data to the file (length is in bytes)
+  // Write the array at byte offset 0
   smfile_pinsert(f, NULL, data, 0, sizeof(data));
 
-  // Push data into offset 10 (offset is in bytes)
+  // Insert another chunk at byte offset 40 (element index 10)
   smfile_pinsert(f, NULL, data, 10 * sizeof(uint32_t), 200000);
 
-  // We'll read a bunch of data in - strided by skipping every 2nd element
+  // Read every 2nd uint32_t starting at offset 0
   uint32_t read_data[200];
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
-  print_array("Expect: [0, 2, 4, 6, ...], ", read_data, 20);
+  print_array("Expect: [0, 2, 4, 6, ...]", read_data, 20);
 
-  // Next we'll remove every 3rd element (it copies what it removed to read_data)
+  // Remove every 3rd element; the removed values are copied into read_data
   smfile_premove(f, NULL, read_data, sizeof(uint32_t), 0, 3, 200);
-  print_array("Expect: [0, 3, 6, 9, ...], ", read_data, 20);
+  print_array("Expect: [0, 3, 6, 9, ...]", read_data, 20);
 
-  // We'll do the same read as before, it should look different now
+  // Same strided read — the stream has changed shape after the removal
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
-  print_array("Expect: [1, 4, 7, 0, ...], ", read_data, 20); // Notice the 0 because we wrote an array at index 10
+  print_array("Expect: [1, 4, 7, 0, ...]", read_data, 20);
 
-  // Next we'll overwrite every 2nd element
+  // Overwrite every 2nd element with values from data
   smfile_pwrite(f, NULL, data, sizeof(uint32_t), 0, 2, 200);
 
-  // One last read, it should be identical to data (0...20)
+  // Final read — even-indexed slots now hold a clean sequence
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
   print_array("Expect: [0, 1, 2, 3, ...]", read_data, 20);
 
   smfile_close(f);
-
   return 0;
 }
 ```
 
-### Compile it:
-```
-$ gcc main.c -o main -lsmartfiles -L/usr/local/lib
-$ ./main
+### Compile and run
+
+```bash
+gcc main.c -o main -lsmartfiles -L/usr/local/lib
+./main
 ```
 
-You should see:
+Expected output:
+
 ```
-Expect: [0, 2, 4, 6, ...], 
-     0 2 4 6 8 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 
-Expect: [0, 3, 6, 9, ...], 
-     0 3 6 9 2 5 8 11 14 17 20 23 26 29 32 35 38 41 44 47 
-Expect: [1, 4, 7, 0, ...], 
-     1 4 7 0 3 6 9 12 15 18 21 24 27 30 33 36 39 42 45 48 
+Expect: [0, 2, 4, 6, ...]
+     0 2 4 6 8 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28
+Expect: [0, 3, 6, 9, ...]
+     0 3 6 9 2 5 8 11 14 17 20 23 26 29 32 35 38 41 44 47
+Expect: [1, 4, 7, 0, ...]
+     1 4 7 0 3 6 9 12 15 18 21 24 27 30 33 36 39 42 45 48
 Expect: [0, 1, 2, 3, ...]
-     0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 
+     0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
 ```
 
-### Explanation
+### What's happening step by step
 
-In this example we work with a stream of 200,000 `uint32_t` values (integers 0–199,999) and demonstrate the four core stride operations.
+**Step 1 — insert at position 0.**
+We write the full 200,000-element array at byte offset 0. The stream now holds `[0, 1, 2, 3, ...]`.
 
-**Step 1 — insert at position 0**
+**Step 2 — insert in the middle.**
+We insert another 200,000-byte chunk at byte offset 40 (element index 10). Everything from index 10 onwards shifts right. At the join you get `[0, 1, ..., 9, 0, 1, 2, ..., 9, 10, 11, ...]`.
 
-We write the full 200,000-element array at byte offset 0. The file now contains `[0, 1, 2, 3, ...]`.
+**Step 3 — strided read (stride=2).**
+`smfile_pread` reads every 2nd `uint32_t` from offset 0, returning `[0, 2, 4, 6, 8, 0, 2, ...]`. The `0` at index 5 is where the inserted block begins.
 
-**Step 2 — insert in the middle**
+**Step 4 — strided remove (stride=3).**
+`smfile_premove` pulls every 3rd `uint32_t` and copies the removed values into `read_data`. The gaps close up; remaining elements shift down.
 
-We insert another 200,000-byte chunk at byte offset 40 (element index 10). This pushes everything from index 10 onwards to the right — the file now has `[0, 1, ..., 9, 0, 1, 2, ..., 9, 10, 11, ...]` at the join.
+**Step 5 — strided read again (stride=2).**
+Same read as step 3, but the stream is shorter now. After the removal the sequence starts `[1, 4, 7, 0, ...]`.
 
-**Step 3 — strided read (stride=2)**
+**Step 6 — strided write (stride=2).**
+`smfile_pwrite` overwrites every 2nd element with values from `data` (0, 1, 2, 3, ...).
 
-`smfile_pread` reads every 2nd `uint32_t` starting at offset 0. The result is `[0, 2, 4, 6, 8, 0, 2, ...]` — notice the `0` appearing at index 5 where the inserted block begins.
+**Step 7 — final read.**
+The last strided read returns `[0, 1, 2, 3, ...]` — the even-indexed slots hold the clean sequence written in step 6.
 
-**Step 4 — strided remove (stride=3)**
+---
 
-`smfile_premove` pulls out every 3rd `uint32_t` and copies what it removed into `read_data`. The removed values are `[0, 3, 6, 9, ...]` — the gaps left behind close up, shifting the remaining elements down.
+## Project Structure
 
-**Step 5 — strided read again (stride=2)**
+Public headers are in `include/`. Source code is in `lib/`. The `thirdparty/c_specx` directory holds reusable C utilities I've extracted for use across projects — all my own code, no external dependencies.
 
-The same read as step 3, but the stream has changed shape after the removal. Elements have shifted so the sequence now starts `[1, 4, 7, 0, ...]` — the `0` is still visible from the mid-stream insert.
+`lib/` is organized by function:
 
-**Step 6 — strided write (stride=2)**
+- `algorithms` — rope algorithms and database traversal
+- `aries` — rollback and crash recovery logic
+- `dpgt` — dirty page table
+- `lockt` — lock table
+- `os_pager` — single-file pager that reads pages from disk
+- `pager` — buffer pool initialization, page reads, and WAL entry writes
+- `pages` — page type definitions
+- `testing` — test-specific utilities
+- `txns` — transaction table and transaction logic
+- `wal` — write-ahead log
 
-`smfile_pwrite` overwrites every 2nd element with values from `data` (0, 1, 2, 3, ...). This fills the even-indexed slots with a clean sequence.
+---
 
-**Step 7 — final read**
+## How I Use AI
 
-The last strided read returns `[0, 1, 2, 3, ...]` — the overwrite in step 6 restored a clean sequence at every even position.
+I use AI the way I use a language server: as a tool, not a co-author.
 
-## Project Structure:
+**Things I ask AI to do:**
 
-All the public headers are in `include` all the source code is in `lib`. I pulled off c_specx as core software that I could reuse for other c applications inside thirdparty/c_specx, but that's all my own code - no dependencies.
+- Add edge-case test scenarios to an existing unit test (I review every one before committing)
+- Review an algorithm I've written and flag anything that looks wrong
+- Write formatting scripts, CI/CD glue, and other boilerplate I could write myself but would rather not
 
-`lib` is roughly ordered by function
-- `algorithms` contains the rope algorithms and database traversal algorithms
-- `aries` contains all the logic for rollback, and crash recovery 
-- `dpgt` is the dirty page table logic 
-- `lockt` is the lock table 
-- `os_pager` is a single file pager which simply reads pages from a file
-- `pager` is a really important module - it contains all the pager logic for initializing a buffer pool, and reading pages and writing WAL entries 
-- `pages` contains all the different  types of pages that Smart Files uses 
-- `testing` has some test specific code 
-- `txns` has the transaction table, and anything that revolves around transactions 
-- `wal` contains write ahead log code
+**Things I don't ask AI to do:**
 
-## AI Usage
+- Implement features
+- Delete or replace code I've written
+- Read a paper and implement the algorithm
 
-I use AI as a development tool - the same way I use language servers and IDE's. Example prompts that I'd use:
+In practice, AI is useful for ideation, code review, and generating mundane code I'll immediately refactor. For any algorithm going into this codebase, I write it, and I own it.
 
-1. Add 5 more edge condition test cases to this unit test...
-    - Mundane code is great, but be careful not to overcrowd tests with AI generated 
-      test cases
-2. Find bugs in this algorithm that I may have overlooked...
-    - I like to use it as a code review - it's a second pair of eyes that checks that 
-      my code might contain a bug. Finding a bug is completely harmless if an AI does it
-      _fixing that bug_? Not so much. 
-3. Write a python script that formats my code such that every file has 
-   1 space between pragma once and the first line of code 
-    - Prompts that I _could_ do if I wanted to, but aren't worth my time / brain power 
-      and don't effect the content of the code base. I use it a lot for ci / cd tooling 
-      and format files
+The `CLAUDE.md` file is there because if AI-assisted code ever does land here, I want it to follow consistent standards. It was inspired by [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills).
 
-Prompts that I do _not_ ask AI:
+If you're skeptical that a database engine can be written without leaning on AI — fair. Read through the code and make up your own mind.
 
-1. Implement this feature for me...
-    - I might ask it this as scratch work, but never do I let AI write major code 
-      with major feedback and improvement by me
-2. Delete this code and fix it for me...
-    - In general, AI cannot delete any code I've written 
-3. Read this paper and implement this algorithm... 
-    - I might ask it to do this to get a rough sketch of an idea, but I'm the final 
-      straw for any algorithm to go into the code base.
-
-In general, I trust AI for (1) ideation and idea black-boarding (2) code reviews / a second pair of eyes (3) a mundane code generator. If I have an algorithm in mind, a straight forward way of implementing it, I just want to save my fingers from RSI - I'll ask it to sketch it out and I refactor it 3-5 times.
-
-The inclusion of a CLAUDE.md is preventative - although I don't encourage AI code to be put in this codebase, _if I do have AI code, I want it to be good_. It comes from [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills)
-
-In general, you can't really write a database engine from scratch using AI. It's impossible. Try it. If you're skeptical, fine. I get it, but read through my code, make up your own mind if you think I AI generated my code. 
+---
 
 ## Contributing
 
-File a ticket on GitHub for bugs, feature requests, or questions. Pull requests welcome - see [CONTRIBUTING.md](CONTRIBUTING.md).
+File a ticket on GitHub for bugs, feature requests, or questions. Pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Windows CI/CD support is an open and approachable first contribution.
 
 ## License
 
