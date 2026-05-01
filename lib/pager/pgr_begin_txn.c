@@ -16,33 +16,23 @@
 #include "lockt/lock_table.h"
 #include "lockt/lt_lock.h"
 #include "pager.h"
+#include "txns/txn_table.h"
 
-/*
- * Begin a new transaction.
- *
- * Assigns a monotonically increasing TID from the pager's counter, writes a
- * BEGIN record to the WAL (this is what sets min_lsn and last_lsn), and
- * inserts the transaction into the active transaction table (ATT).
- *
- * The BEGIN record must hit the WAL before any page updates are made so that
- * ARIES analysis can discover the transaction and reconstruct its state from
- * scratch if needed.
- */
+#include <stdatomic.h>
+
 err_t
 pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
 
-  // Generate a new transaction ID
-  const txid tid = p->next_tid++;
+  txid tid = atomic_fetch_add (&p->next_tid, 1);
 
   slsn l = 0;
 
   l = oswal_append_begin_log (p->ww, tid, e);
   if (l < 0)
     {
-      // Ok to error here - other than maybe a failed wal
-      // but wal should handle that
+      // WAL append failed - we just wasted a transaction id - not a big deal
       return error_trace (e);
     }
 
@@ -58,8 +48,10 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   // Create a new transaction entry
   txnt_insert_txn (p->tnxt, tx);
 
+  // TODO - this should be removed when we get the right pattern for concurrency down
   if (lockt_lock (p->lt, lock_db (), LM_X, tx, e))
     {
+      txnt_remove_txn (NULL, p->tnxt, tx);
       return error_trace (e);
     }
 

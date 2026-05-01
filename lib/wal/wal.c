@@ -26,13 +26,6 @@
 
 #include <string.h>
 
-static bool
-wal_is_recoverable_impl (const struct os_wal *self)
-{
-  (void)self;
-  return true;
-}
-
 static err_t
 wal_close_impl (struct os_wal *self, error *e)
 {
@@ -118,7 +111,6 @@ wal_crash_impl (struct os_wal *self, error *e)
 }
 
 static const struct os_wal_vtable wal_vtable = {
-  .is_recoverable = wal_is_recoverable_impl,
   .close = wal_close_impl,
   .reset = wal_reset_impl,
   .delete_and_reopen = wal_delete_and_reopen_impl,

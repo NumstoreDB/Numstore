@@ -16,43 +16,42 @@
 #include "pages/page.h"
 
 err_t
-pgr_flush (const struct pager *p, struct page_frame *mp, error *e)
+pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
 {
-  DBG_ASSERT (pager, p);
-
   ASSERT (mp->flags & PW_PRESENT);
   ASSERT (!(mp->flags & PW_X));
-  // ASSERT (mp->flags & PW_DIRTY);
 
   // Only need to write it out if it's dirty
   if (mp->flags & PW_DIRTY)
     {
-      // WAL-before-page: flush WAL up to this page's LSN
-      // before writing the page
       if (!(p->flags & PGR_ISRESTARTING) && p->ww)
         {
+          // WAL invariant: always flush page to wal before
+          // it's flushed to disk
+          // Remember:
+          //    page_lsn = latest log page that modified this page
           const lsn plsn = page_get_page_lsn (&mp->page);
           if (oswal_flush_to (p->ww, plsn, e))
             {
-              goto failed;
+              goto theend;
             }
         }
 
       // Set page checksum before flushing
       page_set_checksum (&mp->page, page_compute_checksum (&mp->page));
 
+      // Write the page to the database
       if (ospgr_write (p->fp, mp->page.raw, mp->page.pg, e))
         {
-          goto failed;
+          goto theend;
         }
 
-      mp->flags &= ~PW_DIRTY;
-
       dpgt_remove_expect (p->dpt, mp->page.pg);
+
+      // Not dirty any more
+      mp->flags &= ~PW_DIRTY;
     }
 
-  return SUCCESS;
-
-failed:
+theend:
   return error_trace (e);
 }

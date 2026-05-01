@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/concurrency/spx_latch.h"
+#include "c_specx/dev/assert.h"
 #include "c_specx_dev.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
@@ -19,92 +21,90 @@
 #include "pages/data_list.h"
 #include "pages/page.h"
 
-/*
- * Fetch a page in shared (read) mode.
- *
- * First checks whether the page is already in the buffer pool via the hash
- * table.  A hit simply increments the pin count.  On a miss, the clock
- * algorithm finds a free slot (evicting an unpinned page if necessary), reads
- * the page from disk, validates it against [flags], and inserts it into the
- * hash table.
- *
- * The returned page_h is in PHM_S mode.  To modify the page, call
- * pgr_make_writable() afterwards, or use pgr_get_writable() directly.
- *
- * Passing PG_PERMISSIVE in [flags] skips page-type and checksum validation,
- * which is required when reading a page whose type is not yet known (e.g.,
- * newly allocated pages that have not been initialized yet).
- */
 err_t
-pgr_get (page_h *dest, const int flags, const pgno pg, struct pager *p, error *e)
+pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 {
-  struct page_frame *pgr = NULL;
-  hdata_idx data;
-  switch (ht_get_idx (&p->pgno_to_value, &data, pg))
+  struct page_frame *pgr = NULL; // Read frame
+  hdata_idx data;                // The data to retrieve
+  i32 clock;                     // Location of the new page
+
+  latch_lock (&p->l);
+  hta_res res = ht_get_idx (&p->pgno_to_value, &data, pg);
+
+  switch (res)
     {
+    // This page exists in memory
     case HTAR_SUCCESS:
       {
         pgr = &p->pages[data.value];
+
+        latch_lock (&pgr->ctrl);
+        spx_lock_s (&pgr->data); // This won't be released here
+        latch_unlock (&p->l);
+
         pgr->pin++;
-        break;
+
+        latch_unlock (&pgr->ctrl);
+
+        dest->pgr = pgr;
+        dest->pgw = NULL;
+        dest->mode = PHM_S;
+
+        return SUCCESS;
       }
     case HTAR_DOESNT_EXIST:
       {
-        const i32 clock = pgr_reserve_at_clock_thread_unsafe (p, e);
+        // Otherwise, we'll scan for an open spot
+        latch_unlock (&p->l);
+
+        clock = pgr_reserve_and_ctrl_lock (p, e);
         if (clock < 0)
-          {
-            goto failed;
-          }
-
-        pgr = &p->pages[clock];
-        if (ospgr_read (p->fp, pgr->page.raw, pg, e))
-          {
-            goto failed;
-          }
-
-        if (page_validate_for_db (&pgr->page, flags, e))
           {
             return error_trace (e);
           }
 
-        pgr->pin = 1;
-        pgr->flags = PW_ACCESS | PW_PRESENT;
-        pgr->wsibling = -1;
-        pgr->page.pg = pg;
-        ht_insert_expect_idx (&p->pgno_to_value,
-                              (hdata_idx){ .key = pg, .value = clock });
-        break;
+        // ctrl is locked
+        pgr = &p->pages[clock];
+
+        if (ospgr_read (p->fp, pgr->page.raw, pg, e))
+          {
+            latch_unlock (&pgr->ctrl);
+            return error_trace (e);
+          }
+
+        // Might remove this
+        if (page_validate_for_db (&pgr->page, flags, e))
+          {
+            latch_unlock (&pgr->ctrl);
+            return error_trace (e);
+          }
+
+        pgr->pin = 1;                        // Singular owner
+        pgr->flags = PW_ACCESS | PW_PRESENT; // Accessed and present
+        pgr->wsibling = -1;                  // No sibling
+        pgr->page.pg = pg;                   // Set the page number
+
+        // Insert this entry into the hash table
+        ht_insert_expect_idx (
+            &p->pgno_to_value,
+            (hdata_idx){
+                .key = pg,
+                .value = clock,
+            });
+
+        spx_lock_s (&pgr->data); // This doesn't unlock here
+        latch_unlock (&pgr->ctrl);
+
+        // Set the page data
+        dest->pgr = pgr;
+        dest->pgw = NULL;
+        dest->mode = PHM_S;
+
+        return SUCCESS;
       }
     }
 
-  dest->pgr = pgr;
-  dest->pgw = NULL;
-  dest->mode = PHM_S;
-
-failed:
-  return error_trace (e);
-}
-
-err_t
-pgr_get_writable (
-    page_h *dest,
-    struct txn *tx,
-    const int flags,
-    const pgno pg,
-    struct pager *p,
-    error *e)
-{
-  if (pgr_get (dest, flags, pg, p, e))
-    {
-      return error_trace (e);
-    }
-
-  if (pgr_make_writable (p, tx, dest, e))
-    {
-      pgr_cancel (p, dest);
-    }
-
-  return error_trace (e);
+  UNREACHABLE ();
 }
 
 #ifndef NTEST
@@ -142,8 +142,7 @@ TEST (pgr_get_invalid_checksum)
   ospgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &pf.e);
 
   // This one will fail
-  test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e), ERR_CORRUPT,
-                    &pf.e);
+  test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e), ERR_CORRUPT, &pf.e);
 
   pgr_fixture_teardown (&pf);
 }

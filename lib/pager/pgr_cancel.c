@@ -52,14 +52,3 @@ pgr_cancel (const struct pager *p, page_h *h)
   h->pgr = NULL;
   h->mode = PHM_NONE;
 }
-
-void
-pgr_cancel_if_exists (struct pager *p, page_h *h)
-{
-  if (h->mode == PHM_NONE)
-    {
-      return;
-    }
-
-  pgr_cancel (p, h);
-}

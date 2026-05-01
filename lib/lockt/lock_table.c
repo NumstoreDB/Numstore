@@ -349,6 +349,7 @@ TEST (lock_table_exclusivity)
 
   i_rm_rf ("testdb", &e);
 
+  // Why doesnt this fail?
   struct lockt lt;
   lockt_init (&lt, &e);
   struct pager *p = pgr_open_single_file ("testdb", &e);

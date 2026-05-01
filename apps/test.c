@@ -241,6 +241,7 @@ main (const int argc, char **argv)
   // pager.c
   REGISTER (smartfiles, pager_fill_ht);
   REGISTER (smartfiles, wal_int);
+  REGISTER (smartfiles, pgr_reserve_and_ctrl_lock_st);
 
   // pgr_close.c
   REGISTER (smartfiles, pgr_close_success);
@@ -256,7 +257,7 @@ main (const int argc, char **argv)
 
   // pgr_new.c
   REGISTER (smartfiles, pgr_new_get_save);
-  REGISTER (smartfiles, pgr_new_multiple_fsm);
+  REGISTER (smartfiles, repro);
 
   // pgr_open.c
   REGISTER (smartfiles, pager_open);

@@ -12,44 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/concurrency/spx_latch.h"
 #include "pager.h"
 #include "pages/page.h"
-
-err_t
-pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e)
-{
-  if (h->mode != PHM_NONE)
-    {
-      return pgr_release (p, h, flags, e);
-    }
-  return SUCCESS;
-}
-
-void
-pgr_unfix (struct pager *p, page_h *h, int flags)
-{
-  ASSERT (h->mode == PHM_X || h->mode == PHM_S);
-  ASSERT (h->pgr->flags & PW_PRESENT);
-
-  // Need to save this page
-  if (h->mode == PHM_X)
-    {
-      spgno page_lsn = 0;
-
-      // Can only save valid pages
-      ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL));
-
-      memcpy (&h->pgr->page.raw, h->pgw->page.raw, PAGE_SIZE);
-      h->pgw->flags = 0; // Release pgw
-      h->pgr->wsibling = -1;
-      h->pgw = NULL;
-      h->mode = PHM_S;
-    }
-
-  h->pgr->pin--;
-  h->pgr = NULL;
-  h->mode = PHM_NONE;
-}
 
 err_t
 pgr_release_with_log (
@@ -60,21 +25,22 @@ pgr_release_with_log (
     error *e)
 {
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
+
+  latch_lock (&h->pgr->ctrl);
+
   ASSERT (h->pgr->flags & PW_PRESENT);
 
-  // Need to save this page
   if (h->mode == PHM_X)
     {
-      spgno page_lsn = 0;
+      spgno page_lsn;
 
       // Can only save valid pages
       ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e));
 
       // Append WAL information
-      if (h->tx)
+      if (h->tx) // If you pass tx == NULL - there's no WAL logging - used mid ARIES
         {
-          // If no record was supplied, append a
-          // physical record
+          // If no record was supplied, append a physical record
           if (record == NULL)
             {
               page_lsn = oswal_append_update_log (
@@ -108,8 +74,7 @@ pgr_release_with_log (
           h->tx->data.undo_next_lsn = page_lsn;
         }
 
-      // Add page to DPT if this is the first update (RecLSN
-      // = LSN of first update)
+      // Add page to DPT if this is the first update (RecLSN = LSN of first update)
       if (!dpgt_exists (p->dpt, page_h_pgno (h)))
         {
           if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e))
@@ -118,48 +83,29 @@ pgr_release_with_log (
             }
           h->pgr->flags |= PW_DIRTY;
         }
+
+      memcpy (&h->pgr->page.raw, h->pgw->page.raw, PAGE_SIZE);
+      h->pgw->flags = 0;
+      h->pgr->wsibling = -1;
+
+      latch_unlock (&h->pgw->ctrl);
+
+      h->pgw = NULL;
+      h->mode = PHM_S;
+
+      spx_unlock_x (&h->pgr->data);
     }
-
-  pgr_unfix (p, h, flags);
-
-  return SUCCESS;
-}
-
-err_t
-pgr_release (struct pager *p, page_h *h, const int flags, error *e)
-{
-  const err_t ret = pgr_release_with_log (p, h, flags, NULL, e);
-  return ret;
-}
-
-err_t
-pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
-{
-  struct page_frame *pgr = h->pgr;
-
-  if (pgr_release (p, h, flags, e))
+  else
     {
-      return e->cause_code;
+      // Unlock from s mode
+      spx_unlock_s (&h->pgr->data);
     }
-  if (pgr_flush (p, pgr, e))
-    {
-      return e->cause_code;
-    }
-  return SUCCESS;
-}
 
-err_t
-pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
-{
-  struct page_frame *pgr = h->pgr;
+  h->pgr->pin--;
+  latch_unlock (&h->pgr->ctrl);
 
-  if (pgr_release (p, h, flags, e))
-    {
-      return e->cause_code;
-    }
-  if (pgr_evict (p, pgr, e))
-    {
-      return e->cause_code;
-    }
+  h->pgr = NULL;
+  h->mode = PHM_NONE;
+
   return SUCCESS;
 }

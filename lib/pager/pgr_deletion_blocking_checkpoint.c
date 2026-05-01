@@ -25,57 +25,27 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 {
   ASSERT (p->ww);
 
+  // This is what makes the checkpoint blocking
+  // it will wait for all open transactions to complete
   if (lockt_lock (p->lt, lock_db (), LM_X, NULL, e))
     {
       return error_trace (e);
     }
 
-  // Flush all pages
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
+  // The main checkpoint stuff
+  if (pgr_flush_all_pages (p, e) < 0)
     {
-      struct page_frame *mp = &p->pages[i];
-      /**
-       * Because we have a global database lock,
-       * there should be no running transactions
-       * so all pages should be finalized
-       */
-      ASSERT (!(mp->flags & PW_X));
-
-      if (mp->flags & PW_PRESENT)
-        {
-          pgr_flush (p, mp, e); // Ignore error
-        }
-    }
-
-  if (e->cause_code)
-    {
-      goto failed;
+      goto theend;
     }
 
   // Delete the WAL and replace it with a fresh one
-  {
-    struct os_wal *new_ww = oswal_delete_and_reopen (p->ww, e);
-    if (new_ww == NULL)
-      {
-        goto failed;
-      }
-
-    p->ww = new_ww;
-  }
-
-  if (lockt_unlock (p->lt, lock_db (), LM_X, e))
+  if (pgr_refresh_wal (p, e) < 0)
     {
-      goto failed;
+      goto theend;
     }
 
-  return SUCCESS;
+theend:
 
-failed:
-
-  if (lockt_unlock (p->lt, lock_db (), LM_X, e))
-    {
-      goto failed;
-    }
-
-  return error_trace (e);
+  // Unlock the database lock
+  return lockt_unlock (p->lt, lock_db (), LM_X, e);
 }

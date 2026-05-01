@@ -31,37 +31,35 @@
 err_t
 pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
-  struct wal_rec_hdr_read *log_rec = NULL;
-  struct wal_clr_write clr;
-  page_h ph = page_h_create ();
+  struct wal_rec_hdr_read *log_rec = NULL;   // Next record to read
+  struct wal_clr_write clr;                  // Next record to write
+  page_h ph = page_h_create ();              // The page handle used for all undo's
+  lsn undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
+  slsn prev_lsn;                             // The lsn of the previously written log
+  txid tid = tx->tid;                        // The transaction id
 
-  lsn undo_nxt_lsn = tx->data.undo_next_lsn;
-  slsn clr_lsn = undo_nxt_lsn;
-  txid tid = tx->tid;
-
-  if (pgr_flush_wall (p, e))
+  // First ensure the wal is flushed so that any undoable log is readable
+  if (oswal_flush_to (p->ww, undo_nxt_lsn, e))
     {
       goto failed;
     }
 
-  // WHILE SaveSN < UndoNxt DO:
   while (save_lsn < undo_nxt_lsn)
     {
-      // LogRec := Log_Read(UndoNxt)
+      // Read the next undo log entry
       if ((log_rec = oswal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL)
         {
           return error_trace (e);
         }
 
+      // Early Done  - this is a corrupt sequence of logs written - we expect a BEGIN
       if (log_rec->type == WL_EOF)
         {
           return error_causef (e, ERR_CORRUPT, "Transaction does not have a valid top level log");
         }
 
-      // SELECT (LogRec.Type)
       switch (log_rec->type)
         {
-          // WHEN('update') DO;
         case WL_UPDATE:
           {
             if (wrh_is_undoable (log_rec))
@@ -75,7 +73,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
                 wrh_undo (log_rec, &ph);
 
                 // Append a clr log
-                clr_lsn = oswal_append_clr_log (
+                prev_lsn = oswal_append_clr_log (
                     p->ww,
                     (struct wal_clr_write){
                         .type = WCLR_PHYSICAL,
@@ -88,16 +86,16 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
                         },
                     },
                     e);
-                if (clr_lsn < 0)
+                if (prev_lsn < 0)
                   {
                     goto failed;
                   }
 
                 // Set the last page lsn
-                page_set_page_lsn (page_h_w (&ph), clr_lsn);
+                page_set_page_lsn (page_h_w (&ph), prev_lsn);
 
                 // Set the update lsn
-                tx->data.last_lsn = clr_lsn;
+                tx->data.last_lsn = prev_lsn;
 
                 pgr_unfix (p, &ph, PG_PERMISSIVE);
               }
@@ -106,7 +104,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 
             if (undo_nxt_lsn == 0)
               {
-                slsn l = oswal_append_end_log (p->ww, tx->tid, clr_lsn, e);
+                slsn l = oswal_append_end_log (p->ww, tx->tid, prev_lsn, e);
                 if (l < 0)
                   {
                     goto failed;

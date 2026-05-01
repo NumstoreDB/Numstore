@@ -23,9 +23,6 @@ struct os_wal;
 
 struct os_wal_vtable
 {
-  // Is this WAL implementation capable of crash recovery?
-  bool (*is_recoverable) (const struct os_wal *self);
-
   // Lifecycle
   err_t (*close) (struct os_wal *self, error *e);
   err_t (*reset) (struct os_wal *self, error *e);
@@ -61,12 +58,6 @@ struct os_wal
 {
   const struct os_wal_vtable *vtable;
 };
-
-HEADER_FUNC bool
-oswal_is_recoverable (const struct os_wal *w)
-{
-  return w->vtable->is_recoverable (w);
-}
 
 HEADER_FUNC err_t
 oswal_close (struct os_wal *w, error *e)
