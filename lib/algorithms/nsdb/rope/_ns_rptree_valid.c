@@ -40,8 +40,13 @@ frame_eq (const struct hnode *left, const struct hnode *right)
 }
 
 static err_t
-rptree_valid_recursive (struct nsdb *db, const pgno pg, bool isroot, const b_size exp_size,
-                        struct rptree_valid_ctx *ctx, error *e)
+rptree_valid_recursive (
+    struct pager *p,
+    const pgno pg,
+    bool isroot,
+    const b_size exp_size,
+    struct rptree_valid_ctx *ctx,
+    error *e)
 {
   // Check if this page was double counted
   struct frame key = {
@@ -69,7 +74,7 @@ rptree_valid_recursive (struct nsdb *db, const pgno pg, bool isroot, const b_siz
 
   // Validate this page
   page_h pivot = page_h_create ();
-  if (pgr_get (&pivot, PG_DATA_LIST | PG_VAR_PAGE, pg, db->p, e))
+  if (pgr_get (&pivot, PG_DATA_LIST | PG_VAR_PAGE, pg, p, e))
     {
       goto failed;
     }
@@ -95,7 +100,7 @@ rptree_valid_recursive (struct nsdb *db, const pgno pg, bool isroot, const b_siz
     {
     case PG_DATA_LIST:
       {
-        if (pgr_release (db->p, &pivot, PG_DATA_LIST, e))
+        if (pgr_release (p, &pivot, PG_DATA_LIST, e))
           {
             goto failed;
           }
@@ -106,7 +111,7 @@ rptree_valid_recursive (struct nsdb *db, const pgno pg, bool isroot, const b_siz
         struct in_pair nodes[IN_MAX_KEYS];
         const struct in_data data = in_get_data (page_h_ro (&pivot), nodes);
 
-        if (pgr_release (db->p, &pivot, PG_DATA_LIST, e))
+        if (pgr_release (p, &pivot, PG_DATA_LIST, e))
           {
             goto failed;
           }
@@ -114,8 +119,9 @@ rptree_valid_recursive (struct nsdb *db, const pgno pg, bool isroot, const b_siz
         // Validate each child
         for (u32 i = 0; i < data.len; ++i)
           {
-            if (rptree_valid_recursive (db, data.nodes[i].pg, false,
-                                        data.nodes[i].key, ctx, e))
+            if (rptree_valid_recursive (
+                    p, data.nodes[i].pg, false,
+                    data.nodes[i].key, ctx, e))
               {
                 goto failed;
               }
@@ -130,12 +136,12 @@ rptree_valid_recursive (struct nsdb *db, const pgno pg, bool isroot, const b_siz
     }
 
 failed:
-  pgr_cancel_if_exists (db->p, &pivot);
+  pgr_cancel_if_exists (p, &pivot);
   return error_trace (e);
 }
 
 err_t
-_ns_rptree_valid (struct nsdb *db, const pgno rpt_root, const b_size nbytes, error *e)
+_ns_rptree_valid (struct pager *db, const pgno rpt_root, const b_size nbytes, error *e)
 {
   struct rptree_valid_ctx ctx;
   slab_alloc_init (&ctx.pg_alloc, sizeof (struct frame), 512);

@@ -258,6 +258,8 @@ main (const int argc, char **argv)
   // pgr_new.c
   REGISTER (smartfiles, pgr_new_get_save);
   REGISTER (smartfiles, repro);
+  REGISTER (smartfiles, _ns_find_var_page);
+  REGISTER (smartfiles, _ns_var_get_or_create);
 
   // pgr_open.c
   REGISTER (smartfiles, pager_open);

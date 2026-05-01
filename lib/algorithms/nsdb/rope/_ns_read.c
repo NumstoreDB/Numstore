@@ -76,7 +76,7 @@ _ns_read_forward (const struct _ns_read_params params, error *e)
   b_size bnext = params.size; // bytes remaining in the current read/skip window
 
   struct _ns_seek_params seek = {
-    .db = params.db,
+    .p = params.p,
     .tx = params.tx,
     .root = params.root,
     .bofst = params.bofst,
@@ -134,12 +134,12 @@ _ns_read_forward (const struct _ns_read_params params, error *e)
                   break;
                 }
 
-              if (pgr_get (&next, PG_DATA_LIST, npg, params.db->p, e))
+              if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e))
                 {
                   goto failed;
                 }
 
-              if (pgr_release (params.db->p, &cur, PG_DATA_LIST, e))
+              if (pgr_release (params.p, &cur, PG_DATA_LIST, e))
                 {
                   goto failed;
                 }
@@ -214,7 +214,7 @@ _ns_read_forward (const struct _ns_read_params params, error *e)
     }
 
   // Release the final page.
-  WRAP (pgr_release (params.db->p, &cur, page_get_type (curp), e));
+  WRAP (pgr_release (params.p, &cur, page_get_type (curp), e));
 
   // Verify that we always stopped on a complete element boundary.
   if (total_bread % params.size != 0)
@@ -229,8 +229,8 @@ _ns_read_forward (const struct _ns_read_params params, error *e)
   return total_bread / params.size;
 
 failed:
-  pgr_cancel_if_exists (params.db->p, &cur);
-  pgr_cancel_if_exists (params.db->p, &next);
+  pgr_cancel_if_exists (params.p, &cur);
+  pgr_cancel_if_exists (params.p, &next);
   return error_trace (e);
 }
 

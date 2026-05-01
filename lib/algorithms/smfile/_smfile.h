@@ -14,14 +14,13 @@
 
 #pragma once
 
-#include "algorithms/nsdb.h"
 #include "c_specx.h"
 #include "pager.h"
 #include "variable.h"
 
 struct smfile_root
 {
-  struct nsdb db;     // The database resources
+  struct pager *p;    // The database resources
   struct string path; // Path to the database
   int count;          // When this reaches 0 - close the root
   error e;
@@ -40,6 +39,8 @@ struct smfile
 };
 
 #define DEFAULT_VARIABLE "."
+
+struct smfile *_smfile_remove_and_open (const char *name, error *e);
 
 // Auto Transactions
 err_t _smfile_auto_begin_txn (struct smfile *sm, error *e);

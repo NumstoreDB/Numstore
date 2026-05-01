@@ -27,7 +27,7 @@ pgr_delete_single_file (const char *dbname, error *e)
 {
   char fname[PATH_MAX];
   char walname[PATH_MAX];
-  snprintf (fname, sizeof fname, "%s.db", dbname);
+  snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
   i_remove_quiet (fname, e);

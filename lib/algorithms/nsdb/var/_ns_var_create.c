@@ -31,7 +31,7 @@ _ns_var_create (const struct _ns_var_create_params params, error *e)
   page_h cur = page_h_create ();
   struct _ns_find_var_page_params fparams = {
     .tx = params.tx,
-    .db = params.db,
+    .p = params.p,
     .alloc = NULL,
 
     .vname = params.vname,
@@ -55,7 +55,7 @@ _ns_var_create (const struct _ns_var_create_params params, error *e)
   };
 
   struct _ns_write_var_page_params write_params = {
-    .db = params.db,
+    .p = params.p,
     .tx = params.tx,
 
     .vp = &cur,
@@ -69,7 +69,7 @@ _ns_var_create (const struct _ns_var_create_params params, error *e)
 
   pgno ret = page_h_pgno (&cur);
 
-  if ((pgr_release (params.db->p, &cur, PG_VAR_PAGE, e)))
+  if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e)))
     {
       goto failed;
     }
@@ -78,7 +78,7 @@ _ns_var_create (const struct _ns_var_create_params params, error *e)
 
 failed:
 
-  pgr_cancel_if_exists (params.db->p, &cur);
+  pgr_cancel_if_exists (params.p, &cur);
 
   return error_trace (e);
 }

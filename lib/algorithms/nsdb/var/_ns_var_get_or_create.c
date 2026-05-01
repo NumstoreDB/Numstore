@@ -13,14 +13,17 @@
 /// limitations under the License.
 
 #include "algorithms/nsdb/var/algorithms.h"
+#include "algorithms/smfile/_smfile.h"
 #include "c_specx/dev/error.h"
+#include "c_specx/memory/chunk_alloc.h"
+#include "pager.h"
 
 err_t
 _ns_var_get_or_create (struct _ns_var_get_or_create_params *params, error *e)
 {
   // Try to get the variable
   struct _ns_var_get_params gparams = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .vname = params->vname,
     .alloc = params->alloc,
@@ -37,7 +40,7 @@ _ns_var_get_or_create (struct _ns_var_get_or_create_params *params, error *e)
 
       // Create the variable
       struct _ns_var_create_params cparams = {
-        .db = params->db,
+        .p = params->p,
         .tx = params->tx,
         .vname = params->vname,
       };
@@ -62,3 +65,29 @@ _ns_var_get_or_create (struct _ns_var_get_or_create_params *params, error *e)
 failed:
   return error_trace (e);
 }
+
+#ifndef NTEST
+TEST (_ns_var_get_or_create)
+{
+  error e = error_create ();
+  struct smfile *sf = _smfile_remove_and_open ("test", &e);
+
+  pgr_begin_txn (&sf->tx, sf->root->p, &sf->e);
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+
+  struct _ns_var_get_or_create_params params = {
+    .p = sf->root->p,
+    .tx = &sf->tx,
+    .vname = strfcstr ("foobar"),
+    .alloc = &alloc,
+  };
+
+  _ns_var_get_or_create (&params, &sf->e);
+  chunk_alloc_free_all (&alloc);
+
+  pgr_commit (sf->root->p, &sf->tx, &e);
+
+  smfile_close (sf);
+}
+#endif

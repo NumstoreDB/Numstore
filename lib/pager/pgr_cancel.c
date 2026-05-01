@@ -45,6 +45,11 @@ pgr_cancel (const struct pager *p, page_h *h)
       h->pgr->wsibling = -1;
       h->pgw = NULL;
       h->mode = PHM_S;
+      spx_unlock_x (&h->pgr->data);
+    }
+  else
+    {
+      spx_unlock_s (&h->pgr->data);
     }
 
   // Decrement pin

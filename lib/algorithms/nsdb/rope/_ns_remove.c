@@ -73,7 +73,7 @@ struct remove_state
   struct node_updates *output;
 
   // Pager / transaction context
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   // Remove progress
@@ -116,7 +116,7 @@ advance_writer (struct remove_state *s, error *e)
     {
       const pgno npg = in_get_next (page_h_ro (&s->writer));
 
-      if (pgr_release (s->db->p, &s->writer, PG_DATA_LIST, e))
+      if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e))
         {
           goto failed;
         }
@@ -124,7 +124,7 @@ advance_writer (struct remove_state *s, error *e)
       if (npg != PGNO_NULL)
         {
           if (pgr_get_writable (&s->writer, s->tx, PG_DATA_LIST, npg,
-                                s->db->p, e))
+                                s->p, e))
             {
               goto failed;
             }
@@ -132,7 +132,7 @@ advance_writer (struct remove_state *s, error *e)
     }
   else
     {
-      if (pgr_release (s->db->p, &s->writer, PG_DATA_LIST, e))
+      if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e))
         {
           goto failed;
         }
@@ -173,7 +173,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
       if (npg != PGNO_NULL)
         {
           if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg,
-                                s->db->p, e))
+                                s->p, e))
             {
               goto failed;
             }
@@ -193,7 +193,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
       if (npg != PGNO_NULL)
         {
           if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg,
-                                s->db->p, e))
+                                s->p, e))
             {
               goto failed;
             }
@@ -206,13 +206,13 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
 
       if (npg != PGNO_NULL)
         {
-          if (pgr_get_writable (&next, s->tx, PG_DATA_LIST, npg, s->db->p, e))
+          if (pgr_get_writable (&next, s->tx, PG_DATA_LIST, npg, s->p, e))
             {
               goto failed;
             }
         }
 
-      if (pgr_delete_and_release (s->db->p, s->tx, &s->reader, e))
+      if (pgr_delete_and_release (s->p, s->tx, &s->reader, e))
         {
           goto failed;
         }
@@ -241,7 +241,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (s->db->p, &next);
+  pgr_cancel_if_exists (s->p, &next);
   return error_trace (e);
 }
 
@@ -298,7 +298,7 @@ _ns_remove (struct _ns_remove_params *params, error *e)
     .bnext = params->size,
     .phase = REMOVING,
     .output = NULL,
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
   };
 
@@ -310,7 +310,7 @@ _ns_remove (struct _ns_remove_params *params, error *e)
   struct root_update root = { 0 };
 
   struct _ns_seek_params seek = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .root = params->root,
     .bofst = params->bofst,
@@ -331,7 +331,7 @@ _ns_remove (struct _ns_remove_params *params, error *e)
   s.writer = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  if (pgr_make_writable (params->db->p, params->tx, &s.writer, e))
+  if (pgr_make_writable (params->p, params->tx, &s.writer, e))
     {
       goto failed;
     }
@@ -495,13 +495,13 @@ drain:
                   if (npg != PGNO_NULL)
                     {
                       if (pgr_get_writable (&next, params->tx, PG_DATA_LIST,
-                                            npg, params->db->p, e))
+                                            npg, params->p, e))
                         {
                           goto failed;
                         }
                     }
 
-                  if (pgr_delete_and_release (params->db->p, params->tx,
+                  if (pgr_delete_and_release (params->p, params->tx,
                                               &s.reader, e))
                     {
                       goto failed;
@@ -565,7 +565,7 @@ drain:
   next = page_h_xfer_ownership (&s.reader);
 
   struct _ns_balance_and_release_params bparams = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .output = &tip_out,
     .root = &root,
@@ -585,7 +585,7 @@ drain:
     }
 
   struct _ns_rebalance_params rebalance = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .root = params->root,
     .pstack = seek.pstack,
@@ -619,10 +619,10 @@ drain:
   return (sb_size)(s.total_removed / params->size);
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &s.writer);
-  pgr_cancel_if_exists (params->db->p, &next);
-  pgr_cancel_if_exists (params->db->p, &s.reader);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &s.writer);
+  pgr_cancel_if_exists (params->p, &next);
+  pgr_cancel_if_exists (params->p, &s.reader);
 
   if (rb_nupd2)
     {
@@ -635,7 +635,7 @@ failed:
 
   for (u32 i = 0; i < seek.sp; ++i)
     {
-      pgr_cancel_if_exists (params->db->p, &seek.pstack[i].pg);
+      pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
     }
 
   return error_trace (e);

@@ -47,7 +47,7 @@ _ns_seek (struct _ns_seek_params *a, error *e)
   a->lidx = 0;
 
   // Fetch the starting node
-  if (pgr_get (&a->pg, PG_DATA_LIST | PG_INNER_NODE, a->root, a->db->p, e))
+  if (pgr_get (&a->pg, PG_DATA_LIST | PG_INNER_NODE, a->root, a->p, e))
     {
       goto failed;
     }
@@ -75,7 +75,7 @@ _ns_seek (struct _ns_seek_params *a, error *e)
 
             // Fetch that next page
             const pgno npg = in_get_leaf (page_h_ro (&a->pg), a->lidx);
-            if (pgr_get (&next, PG_DATA_LIST | PG_INNER_NODE, npg, a->db->p, e))
+            if (pgr_get (&next, PG_DATA_LIST | PG_INNER_NODE, npg, a->p, e))
               {
                 goto failed;
               }
@@ -90,7 +90,7 @@ _ns_seek (struct _ns_seek_params *a, error *e)
               }
             else
               {
-                if (pgr_release (a->db->p, &a->pg, PG_INNER_NODE, e))
+                if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e))
                   {
                     goto failed;
                   }
@@ -117,11 +117,11 @@ _ns_seek (struct _ns_seek_params *a, error *e)
 
 failed:
   // Release used pages
-  pgr_cancel_if_exists (a->db->p, &a->pg);
-  pgr_cancel_if_exists (a->db->p, &next);
+  pgr_cancel_if_exists (a->p, &a->pg);
+  pgr_cancel_if_exists (a->p, &next);
   for (u32 i = 0; i < a->sp; ++i)
     {
-      pgr_cancel_if_exists (a->db->p, &a->pstack[i].pg);
+      pgr_cancel_if_exists (a->p, &a->pstack[i].pg);
     }
   a->sp = 0;
   return error_trace (e);

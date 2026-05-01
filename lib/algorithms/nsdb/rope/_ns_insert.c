@@ -51,7 +51,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
   b_size total_written = 0;
 
   struct _ns_seek_params seek = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .root = params->root,
     .bofst = params->bofst,
@@ -61,7 +61,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
 
   if (params->root == PGNO_NULL)
     {
-      if (pgr_new (&cur, params->db->p, params->tx, PG_DATA_LIST, e))
+      if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e))
         {
           goto failed;
         }
@@ -78,7 +78,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
       cur = page_h_xfer_ownership (&seek.pg);
       lidx = seek.lidx;
 
-      if (pgr_make_writable (params->db->p, params->tx, &cur, e))
+      if (pgr_make_writable (params->p, params->tx, &cur, e))
         {
           goto failed;
         }
@@ -102,7 +102,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
         {
           ASSERT (lidx == DL_DATA_SIZE);
 
-          if (pgr_new (&next, params->db->p, params->tx, PG_DATA_LIST, e))
+          if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e))
             {
               goto failed;
             }
@@ -115,7 +115,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
               goto failed;
             }
 
-          if (pgr_release (params->db->p, &cur, PG_DATA_LIST, e))
+          if (pgr_release (params->p, &cur, PG_DATA_LIST, e))
             {
               goto failed;
             }
@@ -163,7 +163,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
         {
           ASSERT (lidx == DL_DATA_SIZE);
 
-          if (pgr_new (&next, params->db->p, params->tx, PG_DATA_LIST, e))
+          if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e))
             {
               goto failed;
             }
@@ -176,7 +176,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
               goto failed;
             }
 
-          if (pgr_release (params->db->p, &cur, PG_DATA_LIST, e))
+          if (pgr_release (params->p, &cur, PG_DATA_LIST, e))
             {
               goto failed;
             }
@@ -188,7 +188,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
 
   if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur)))
     {
-      if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->db->p, e))
+      if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e))
         {
           goto failed;
         }
@@ -197,7 +197,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
     }
 
   struct _ns_balance_and_release_params bparams = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .output = &tip_out,
     .root = &root,
@@ -217,7 +217,7 @@ _ns_insert (struct _ns_insert_params *params, error *e)
     }
 
   struct _ns_rebalance_params rebalance = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .root = params->root,
     .pstack = seek.pstack,
@@ -251,9 +251,9 @@ _ns_insert (struct _ns_insert_params *params, error *e)
   return (sb_size)total_written;
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &cur);
-  pgr_cancel_if_exists (params->db->p, &next);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &cur);
+  pgr_cancel_if_exists (params->p, &next);
 
   if (output)
     {
@@ -266,7 +266,7 @@ failed:
 
   for (u32 i = 0; i < seek.sp; ++i)
     {
-      pgr_cancel_if_exists (params->db->p, &seek.pstack[i].pg);
+      pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
     }
 
   return error_trace (e);

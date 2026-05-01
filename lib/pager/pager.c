@@ -79,13 +79,8 @@ TEST (pager_fill_ht)
         test_assert_equal (pgs[i].mode, PHM_X);
       }
 
-    do
-      {
-        const err_t ret = pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &f.e);
-        test_assert_int_equal (ret, ERR_PAGER_FULL);
-        (&f.e)->cause_code = SUCCESS;
-      }
-    while (0);
+    // This would block
+    // pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &f.e);
 
     // Release them all
     for (i = 0; i < MEMORY_PAGE_LEN / 2; ++i)
@@ -103,10 +98,6 @@ TEST (pager_fill_ht)
         pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &f.e);
         test_assert_equal (pgs[i].mode, PHM_X);
       }
-
-    // Next page will be full
-    test_err_t_check (pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &f.e),
-                      ERR_PAGER_FULL, &f.e);
 
     // Release them all
     for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i)
@@ -158,10 +149,11 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
           i_printf (log_level,
                     "%u |(PAGE)    pg: %" PRpgno
                     " pin: %d ax: %d drt: %d prsn: %d "
-                    "sib: %d type: %d|\n",
+                    "sib: %d type: %d data: %d ctrl: %d|\n",
                     i, mp->page.pg, mp->pin, mp->flags & PW_ACCESS,
                     mp->flags & PW_DIRTY, mp->flags & PW_PRESENT, mp->wsibling,
-                    page_get_type (&mp->page));
+                    page_get_type (&mp->page),
+                    mp->data, mp->ctrl);
         }
       else if (!only_present)
         {

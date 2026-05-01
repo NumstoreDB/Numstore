@@ -15,15 +15,15 @@
 #pragma once
 
 #include "algorithms/node_updates.h"
-#include "algorithms/nsdb.h"
 #include "c_specx.h"
+#include "pager.h"
 #include "pager/page_h.h"
 
 ////////////////////////////////////////////////////////////
 // Validation
 
 /// Validates the structural integrity of an R+Tree's repeat-index tree
-err_t _ns_rptree_valid (struct nsdb *db, pgno rpt_root, b_size nbytes, error *e);
+err_t _ns_rptree_valid (struct pager *p, pgno rpt_root, b_size nbytes, error *e);
 
 ////////////////////////////////////////////////////////////
 // R+Tree Algorithms
@@ -40,7 +40,7 @@ err_t _ns_rptree_valid (struct nsdb *db, pgno rpt_root, b_size nbytes, error *e)
  */
 struct _ns_insert_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
 
   struct stream *src; ///< Source stream to read inserted bytes from
   struct txn *tx;     ///< Transaction to attach this mutation to
@@ -54,7 +54,7 @@ struct _ns_insert_params
 /// Parameters for _ns_write() — in-place overwrite of elements in an R+Tree
 struct _ns_write_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
 
   struct stream *src; ///< Source stream to read replacement bytes from
   struct txn *tx;     ///< Transaction to attach this mutation to
@@ -69,7 +69,7 @@ struct _ns_write_params
 /// Parameters for _ns_read() — element retrieval from an R+Tree into a stream
 struct _ns_read_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
 
   struct stream *dest; ///< Destination stream to push read bytes into
   struct txn *tx;      ///< Transaction to attach this read to
@@ -84,7 +84,7 @@ struct _ns_read_params
 /// Parameters for _ns_remove() — element deletion and optional capture from an R+Tree
 struct _ns_remove_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
 
   struct stream *dest; ///< Optional stream to capture removed bytes before deletion (NULL to discard)
   struct txn *tx;      ///< Transaction to attach this mutation to
@@ -137,7 +137,7 @@ struct seek_v
  */
 struct _ns_seek_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
   struct txn *tx;  ///< Transaction to attach this traversal to
 
   pgno root;       ///< Root page of the tree to seek into
@@ -167,7 +167,7 @@ struct root_update
 /// Parameters for _ns_balance_and_release()
 struct _ns_balance_and_release_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
   struct txn *tx;  ///< Transaction to attach mutations to
 
   struct three_in_pair *output; ///< Receives the resulting (prev, cur, next) in_pairs for nupd accounting
@@ -195,7 +195,7 @@ err_t _ns_balance_and_release (struct _ns_balance_and_release_params params, err
 /// Parameters for the main bottom-up rebalance pass after an insert or remove
 struct _ns_rebalance_params
 {
-  struct nsdb *db; ///< The database
+  struct pager *p; ///< The database
   struct txn *tx;  ///< Transaction to attach mutations to
 
   pgno root; ///< Root page of the tree being rebalanced

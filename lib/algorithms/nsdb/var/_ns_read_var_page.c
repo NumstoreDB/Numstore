@@ -37,10 +37,10 @@ _ns_read_var_page_advance (struct _ns_read_var_page_params *params, error *e)
       goto failed;
     }
 
-  WRAP (pgr_get_writable (&next, params->tx, PG_VAR_TAIL, npg, params->db->p,
+  WRAP (pgr_get_writable (&next, params->tx, PG_VAR_TAIL, npg, params->p,
                           e));
 
-  if ((pgr_release (params->db->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
+  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
     {
       goto failed;
     }
@@ -137,11 +137,11 @@ _ns_read_var_page (struct _ns_read_var_page_params *params, error *e)
   // Reset back to head page
   if (page_h_pgno (params->vp) != start)
     {
-      if ((pgr_release (params->db->p, params->vp, PG_VAR_TAIL, e)))
+      if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e)))
         {
           goto failed;
         }
-      if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->db->p, e)))
+      if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)))
         {
           goto failed;
         }

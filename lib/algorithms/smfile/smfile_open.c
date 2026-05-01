@@ -12,7 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "algorithms/nsdb.h"
 #include "algorithms/nsdb/var/algorithms.h"
 #include "algorithms/smfile/_smfile.h"
 #include "c_specx.h"
@@ -48,8 +47,8 @@ _smfile_open (const char *path, error *e)
       }
 
     // db
-    ret->db.p = pgr_open_single_file (path, e);
-    if (ret->db.p == NULL)
+    ret->p = pgr_open_single_file (path, e);
+    if (ret->p == NULL)
       {
         goto failed;
       }
@@ -57,16 +56,16 @@ _smfile_open (const char *path, error *e)
 
   // BEGIN TXN
   struct txn tx;
-  if (pgr_begin_txn (&tx, ret->db.p, e))
+  if (pgr_begin_txn (&tx, ret->p, e))
     {
       goto failed;
     }
 
   // Upfront initialization
-  if (pgr_isnew (ret->db.p))
+  if (pgr_isnew (ret->p))
     {
       // Create a new variable hash page
-      if (pgr_new (&hp, ret->db.p, &tx, PG_VAR_HASH_PAGE, e))
+      if (pgr_new (&hp, ret->p, &tx, PG_VAR_HASH_PAGE, e))
         {
           goto failed;
         }
@@ -75,14 +74,14 @@ _smfile_open (const char *path, error *e)
       // it's good enough but might need to change
       ASSERT (page_h_pgno (&hp) == VHASH_PGNO);
 
-      if (pgr_release (ret->db.p, &hp, PG_VAR_HASH_PAGE, e))
+      if (pgr_release (ret->p, &hp, PG_VAR_HASH_PAGE, e))
         {
           goto failed;
         }
 
       // Create the default variable
       struct _ns_var_create_params params = {
-        .db = &ret->db,
+        .p = ret->p,
         .tx = &tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
       };
@@ -93,7 +92,7 @@ _smfile_open (const char *path, error *e)
     }
 
   // COMMIT
-  if (pgr_commit (ret->db.p, &tx, e))
+  if (pgr_commit (ret->p, &tx, e))
     {
       goto failed;
     }

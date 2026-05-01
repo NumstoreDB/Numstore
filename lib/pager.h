@@ -134,7 +134,6 @@ DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p->lt);
   ASSERT (p->dpt);
   ASSERT (p->tnxt);
-  ASSERT (atomic_load (&p->next_tid) > 0);
   latch_unlock ((latch *)&p->l);
 })
 

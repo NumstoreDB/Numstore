@@ -20,6 +20,16 @@
 
 // smfile
 
+struct smfile *
+_smfile_remove_and_open (const char *name, error *e)
+{
+  if (pgr_delete_single_file ("test", e))
+    {
+      return NULL;
+    }
+  return smfile_open (name);
+}
+
 int
 smfile_perror (smfile_t *ns, const char *prefix)
 {
@@ -61,7 +71,7 @@ err_t
 _smfile_root_close (struct smfile_root *root, error *e)
 {
   ASSERT (root->count == 0);
-  err_t err = pgr_close (root->db.p, e);
+  err_t err = pgr_close (root->p, e);
   i_free ((void *)root->path.data);
   i_free (root);
   return err;
@@ -130,7 +140,7 @@ _smfile_auto_begin_txn (struct smfile *sm, error *e)
 {
   if (sm->atx == NULL)
     {
-      WRAP (pgr_begin_txn (&sm->tx, sm->root->db.p, e));
+      WRAP (pgr_begin_txn (&sm->tx, sm->root->p, e));
       sm->is_auto_txn = 1;
       sm->atx = &sm->tx;
     }
@@ -144,7 +154,7 @@ _smfile_auto_commit (struct smfile *sm, error *e)
   if (sm->is_auto_txn)
     {
       ASSERT (sm->atx);
-      WRAP (pgr_commit (sm->root->db.p, sm->atx, e));
+      WRAP (pgr_commit (sm->root->p, sm->atx, e));
       sm->atx = NULL;
     }
   return SUCCESS;
@@ -153,7 +163,7 @@ _smfile_auto_commit (struct smfile *sm, error *e)
 void
 _smfile_auto_rollback (struct smfile *sm)
 {
-  if (pgr_rollback (sm->root->db.p, sm->atx, 0, &sm->e))
+  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e))
     {
       panic ("Failed to rollback");
     }

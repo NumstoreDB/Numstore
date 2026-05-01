@@ -167,7 +167,7 @@ rb_right_to_left (struct _ns_rebalance_params *params, error *e)
   if (nupd_done_left (params->input))
     {
       const struct _ns_balance_and_release_params bparams = {
-        .db = params->db,
+        .p = params->p,
         .tx = params->tx,
 
         .output = &tip_out,
@@ -193,8 +193,8 @@ rb_right_to_left (struct _ns_rebalance_params *params, error *e)
   UNREACHABLE ();
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &next);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &next);
   return error_trace (e);
 }
 
@@ -210,7 +210,7 @@ rb_left_to_right (struct _ns_rebalance_params *params, error *e)
   if (nupd_done_right (params->input))
     {
       const struct _ns_balance_and_release_params bparams = {
-        .db = params->db,
+        .p = params->p,
         .tx = params->tx,
 
         .output = &tip_out,
@@ -239,7 +239,7 @@ rb_left_to_right (struct _ns_rebalance_params *params, error *e)
     {
       // Rebalance
       const struct _ns_balance_and_release_params bparams = {
-        .db = params->db,
+        .p = params->p,
         .tx = params->tx,
 
         .output = &tip_out,
@@ -261,14 +261,14 @@ rb_left_to_right (struct _ns_rebalance_params *params, error *e)
       // Fetch pivot
       const pgno pivot = nupd_pivot_pg (params->output);
       if (pgr_get_writable (&params->cur, params->tx, PG_INNER_NODE, pivot,
-                            params->db->p, e))
+                            params->p, e))
         {
           goto failed;
         }
     }
   else
     {
-      if (pgr_release_if_exists (params->db->p, &prev, PG_INNER_NODE, e))
+      if (pgr_release_if_exists (params->p, &prev, PG_INNER_NODE, e))
         {
           goto failed;
         }
@@ -285,7 +285,7 @@ rb_left_to_right (struct _ns_rebalance_params *params, error *e)
   if (npg != PGNO_NULL && params->limit.mode == PHM_NONE)
     {
       if (pgr_get_writable (&params->limit, params->tx, PG_INNER_NODE, npg,
-                            params->db->p, e))
+                            params->p, e))
         {
           goto failed;
         }
@@ -294,8 +294,8 @@ rb_left_to_right (struct _ns_rebalance_params *params, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &next);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &next);
   return error_trace (e);
 }
 
@@ -342,17 +342,17 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
               // cur -> limit
               // cur -> new -> limit
               // new -> limit
-              if (pgr_maybe_make_writable (params->db->p, params->tx, &params->limit, e))
+              if (pgr_maybe_make_writable (params->p, params->tx, &params->limit, e))
                 {
                   goto failed;
                 }
-              if (pgr_new (&next, params->db->p, params->tx, PG_INNER_NODE, e))
+              if (pgr_new (&next, params->p, params->tx, PG_INNER_NODE, e))
                 {
                   goto failed;
                 }
               in_link (page_h_w (&params->cur), page_h_w (&next));
               in_link (page_h_w (&next), page_h_w_or_null (&params->limit));
-              if (pgr_release (params->db->p, &params->cur, PG_INNER_NODE, e))
+              if (pgr_release (params->p, &params->cur, PG_INNER_NODE, e))
                 {
                   goto failed;
                 }
@@ -410,7 +410,7 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
               // -> next
               if (params->limit.mode == PHM_NONE)
                 {
-                  if (pgr_new (&params->limit, params->db->p, params->tx,
+                  if (pgr_new (&params->limit, params->p, params->tx,
                                PG_INNER_NODE, e))
                     {
                       goto failed;
@@ -424,7 +424,7 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
               else
                 {
                   // X(limit)
-                  if (pgr_maybe_make_writable (params->db->p, params->tx,
+                  if (pgr_maybe_make_writable (params->p, params->tx,
                                                &params->limit, e))
                     {
                       goto failed;
@@ -446,7 +446,7 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
                   goto failed;
                 }
 
-              if (pgr_release (params->db->p, &params->cur, PG_INNER_NODE, e))
+              if (pgr_release (params->p, &params->cur, PG_INNER_NODE, e))
                 {
                   goto failed;
                 }
@@ -463,7 +463,7 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
               if (npg != PGNO_NULL && params->limit.mode == PHM_NONE)
                 {
                   if (pgr_get_writable (&params->limit, params->tx,
-                                        PG_INNER_NODE, npg, params->db->p, e))
+                                        PG_INNER_NODE, npg, params->p, e))
                     {
                       goto failed;
                     }
@@ -498,13 +498,13 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
                   if (nnpg != PGNO_NULL)
                     {
                       if (pgr_get_writable (&next_next, params->tx,
-                                            PG_INNER_NODE, nnpg, params->db->p,
+                                            PG_INNER_NODE, nnpg, params->p,
                                             e))
                         {
                           goto failed;
                         }
                     }
-                  if (pgr_delete_and_release (params->db->p, params->tx,
+                  if (pgr_delete_and_release (params->p, params->tx,
                                               &params->limit, e))
                     {
                       goto failed;
@@ -525,8 +525,8 @@ rb_execute_right (struct _ns_rebalance_params *params, error *e)
     }
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &next);
-  pgr_cancel_if_exists (params->db->p, &next_next);
+  pgr_cancel_if_exists (params->p, &next);
+  pgr_cancel_if_exists (params->p, &next_next);
   return error_trace (e);
 }
 
@@ -571,18 +571,18 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
               // limit <- cur
               // limit <- new <- cur
               // limit <- new
-              if (pgr_maybe_make_writable (params->db->p, params->tx,
+              if (pgr_maybe_make_writable (params->p, params->tx,
                                            &params->limit, e))
                 {
                   goto failed;
                 }
-              if (pgr_new (&prev, params->db->p, params->tx, PG_INNER_NODE, e))
+              if (pgr_new (&prev, params->p, params->tx, PG_INNER_NODE, e))
                 {
                   goto failed;
                 }
               in_link (page_h_w_or_null (&params->limit), page_h_w (&prev));
               in_link (page_h_w (&prev), page_h_w (&params->cur));
-              if (pgr_release (params->db->p, &params->cur, PG_INNER_NODE, e))
+              if (pgr_release (params->p, &params->cur, PG_INNER_NODE, e))
                 {
                   goto failed;
                 }
@@ -640,7 +640,7 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
               // prev <- limit
               if (params->limit.mode == PHM_NONE)
                 {
-                  if (pgr_new (&params->limit, params->db->p, params->tx,
+                  if (pgr_new (&params->limit, params->p, params->tx,
                                PG_INNER_NODE, e))
                     {
                       goto failed;
@@ -653,7 +653,7 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
               // prev <- limit
               else
                 {
-                  if (pgr_maybe_make_writable (params->db->p, params->tx,
+                  if (pgr_maybe_make_writable (params->p, params->tx,
                                                &params->limit, e))
                     {
                       goto failed;
@@ -672,7 +672,7 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
                   goto failed;
                 }
 
-              if (pgr_release (params->db->p, &params->cur, PG_INNER_NODE, e))
+              if (pgr_release (params->p, &params->cur, PG_INNER_NODE, e))
                 {
                   goto failed;
                 }
@@ -689,7 +689,7 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
               if (ppg != PGNO_NULL && params->limit.mode == PHM_NONE)
                 {
                   if (pgr_get_writable (&params->limit, params->tx,
-                                        PG_INNER_NODE, ppg, params->db->p, e))
+                                        PG_INNER_NODE, ppg, params->p, e))
                     {
                       goto failed;
                     }
@@ -724,13 +724,13 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
                   if (pppg != PGNO_NULL)
                     {
                       if (pgr_get_writable (&prev_prev, params->tx,
-                                            PG_INNER_NODE, pppg, params->db->p,
+                                            PG_INNER_NODE, pppg, params->p,
                                             e))
                         {
                           goto failed;
                         }
                     }
-                  if (pgr_delete_and_release (params->db->p, params->tx,
+                  if (pgr_delete_and_release (params->p, params->tx,
                                               &params->limit, e))
                     {
                       goto failed;
@@ -751,8 +751,8 @@ rb_execute_left (struct _ns_rebalance_params *params, error *e)
     }
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &prev_prev);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &prev_prev);
   return error_trace (e);
 }
 
@@ -768,7 +768,7 @@ _ns_pop_stack (struct _ns_rebalance_params *params, error *e)
 
   if (params->cur.mode != PHM_NONE)
     {
-      if (pgr_release (params->db->p, &params->cur,
+      if (pgr_release (params->p, &params->cur,
                        PG_INNER_NODE | PG_DATA_LIST, e))
         {
           goto failed;
@@ -781,7 +781,7 @@ _ns_pop_stack (struct _ns_rebalance_params *params, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &v.pg);
+  pgr_cancel_if_exists (params->p, &v.pg);
   return error_trace (e);
 }
 
@@ -851,7 +851,7 @@ _ns_rebalance_apply_to_pivot (struct _ns_rebalance_params *params, error *e)
           struct three_in_pair tip_out;
 
           const struct _ns_balance_and_release_params bparams = {
-            .db = params->db,
+            .p = params->p,
             .tx = params->tx,
 
             .output = &tip_out,
@@ -884,7 +884,7 @@ _ns_rebalance_apply_to_pivot (struct _ns_rebalance_params *params, error *e)
       if (next_pg != PGNO_NULL)
         {
           if (pgr_get (&params->limit, PG_INNER_NODE,
-                       in_get_next (page_h_ro (&params->cur)), params->db->p,
+                       in_get_next (page_h_ro (&params->cur)), params->p,
                        e))
             {
               goto failed;
@@ -899,7 +899,7 @@ _ns_rebalance_apply_to_pivot (struct _ns_rebalance_params *params, error *e)
   if (prev_pg != PGNO_NULL)
     {
       if (pgr_get (&params->limit, PG_INNER_NODE,
-                   in_get_prev (page_h_ro (&params->cur)), params->db->p, e))
+                   in_get_prev (page_h_ro (&params->cur)), params->p, e))
         {
           goto failed;
         }
@@ -908,8 +908,8 @@ _ns_rebalance_apply_to_pivot (struct _ns_rebalance_params *params, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &next);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &next);
   return error_trace (e);
 }
 
@@ -925,7 +925,7 @@ _ns_rebalance_move_up_stack (struct _ns_rebalance_params *params, error *e)
             {
               goto failed;
             }
-          if (in_delete_chain (&params->cur, params->tx, params->db->p, e))
+          if (in_delete_chain (&params->cur, params->tx, params->p, e))
             {
               goto failed;
             }
@@ -940,7 +940,7 @@ _ns_rebalance_move_up_stack (struct _ns_rebalance_params *params, error *e)
     {
       if (params->sp == 0)
         {
-          if (pgr_new (&params->cur, params->db->p, params->tx, PG_INNER_NODE,
+          if (pgr_new (&params->cur, params->p, params->tx, PG_INNER_NODE,
                        e))
             {
               goto failed;
@@ -955,7 +955,7 @@ _ns_rebalance_move_up_stack (struct _ns_rebalance_params *params, error *e)
             {
               goto failed;
             }
-          if (pgr_make_writable (params->db->p, params->tx, &params->cur, e))
+          if (pgr_make_writable (params->p, params->tx, &params->cur, e))
             {
               goto failed;
             }
@@ -1056,7 +1056,7 @@ _ns_rebalance (struct _ns_rebalance_params *params, error *e)
     }
 
 failed:
-  pgr_cancel_if_exists (params->db->p, &params->cur);
-  pgr_cancel_if_exists (params->db->p, &params->limit);
+  pgr_cancel_if_exists (params->p, &params->cur);
+  pgr_cancel_if_exists (params->p, &params->limit);
   return error_trace (e);
 }
