@@ -31,6 +31,11 @@
 #define PATH_MAX 260
 #endif
 
+/**
+ * TODO:
+ *  - Lock the file on open to ensure that
+ *    this is thread safe
+ */
 struct pager *
 pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
 {
@@ -42,33 +47,41 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
       goto failed;
     }
 
+  // Initialize "easy" things
   ret->fp = fp;
   ret->ww = ww;
   ret->lt = lt;
+  ret->iown_fp = false;
+  ret->iown_ww = false;
+  ret->iown_lt = false;
+  atomic_store (&ret->flags, ospgr_get_npages (ret->fp) == 0 ? PGR_ISNEW : 0);
+  atomic_store (&ret->clock, 0);
+  ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
+  latch_init (&ret->l);
 
-  // Initialize the dirty page table
+  // Open the Dirty page table
   ret->dpt = dpgt_open (e);
   if (ret->dpt == NULL)
     {
       goto failed;
     }
 
-  // Initialize the hash table from pgno -> table index
-  ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
+  // Open the transaction table
+  ret->tnxt = txnt_open (e);
+  if (ret->tnxt == NULL)
+    {
+      goto failed;
+    }
 
-  // Simple variables
-  ret->clock = 0;
-  ret->next_tid = 1;
+  // Initialize (but don't start) the checkpoint task
   if (periodic_task_init (&ret->checkpoint_task, e))
     {
       goto failed;
     }
 
-  // Check if we need to create a new database or not
-  if (ospgr_get_npages (ret->fp) == 0)
+  if (atomic_load (&ret->flags) & PGR_ISNEW)
     {
       i_log_info ("Creating a new database\n");
-      ret->flags = PGR_ISNEW;
 
       // Reset any data in the file pager
       if (ospgr_reset (ret->fp, e))
@@ -82,55 +95,25 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
           goto failed;
         }
 
-      // Open a new transaction table
-      ret->tnxt = txnt_open (e);
-      if (ret->tnxt == NULL)
-        {
-          goto failed;
-        }
-
       // Start transactions at 1
-      ret->next_tid = 1;
+      atomic_store (&ret->next_tid, 1);
     }
   else
     {
-      ret->flags = 0;
-
-      // Open the transaction table
-      ret->tnxt = txnt_open (e);
-      if (ret->tnxt == NULL)
+      // Run ARIES recovery
+      struct aries_ctx ctx;
+      if (aries_ctx_create (&ctx, e))
         {
           goto failed;
         }
 
-      if (oswal_is_recoverable (ret->ww))
+      if (pgr_restart (ret, &ctx, e))
         {
-          // Run ARIES recovery
-          struct aries_ctx ctx;
-          if (aries_ctx_create (&ctx, e))
-            {
-              goto failed;
-            }
-
-          if (pgr_restart (ret, &ctx, e))
-            {
-              goto failed;
-            }
-
-          i_log_info ("recovery complete\n");
-
-          // Advance next_tid past the highest TID seen during recovery so
-          // we never reuse a TID from a previous run.
-          ret->next_tid = ctx.max_tid + 1;
+          goto failed;
         }
-      else
-        {
-          // WAL is non-recoverable trust the database
-          // file is already consistent.  TID counter starts at 1 since
-          // there is no WAL to scan for the previous high-water mark.
-          i_log_info ("WAL not recoverable — skipping ARIES recovery\n");
-          ret->next_tid = 1;
-        }
+
+      // Start transactions one past maximum txid
+      atomic_store (&ret->next_tid, ctx.max_tid + 1);
     }
 
   return ret;
@@ -150,7 +133,7 @@ failed:
         }
       i_free (ret);
     }
-  /* Close the I/O objects — pgr_open owns them. */
+
   if (ww)
     {
       oswal_close (ww, e);
@@ -159,6 +142,7 @@ failed:
     {
       ospgr_close (fp, e);
     }
+
   return NULL;
 }
 
@@ -210,22 +194,12 @@ pgr_open_single_file (const char *dbname, error *e)
       oswal_close (ww, e);
       i_free (lt);
       lockt_destroy (lt);
+      return NULL;
     }
-
-  /*
-   * Capture whether this is a new database before handing off to pgr_open,
-   * so that we can clean up the directory on failure.
-   */
-  bool is_new = (ospgr_get_npages (fp) == 0);
 
   struct pager *p = pgr_open (fp, ww, lt, e);
   if (p == NULL)
     {
-      /* fp and ww already closed by pgr_open on failure. */
-      if (is_new)
-        {
-          i_rm_rf (dbname, e);
-        }
       return NULL;
     }
 

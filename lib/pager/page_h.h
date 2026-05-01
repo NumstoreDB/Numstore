@@ -15,6 +15,7 @@
 #pragma once
 
 #include "c_specx.h"
+#include "c_specx/concurrency/spx_latch.h"
 #include "pages/page.h"
 #include "pages/page_delegate.h"
 
@@ -43,6 +44,9 @@ struct page_frame
   u32 pin;
   u32 flags;
   i32 wsibling; // index of the paired write frame, or -1
+
+  sx_latch data;
+  latch ctrl;
 };
 
 /*

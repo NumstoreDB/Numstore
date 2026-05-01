@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/concurrency/spx_latch.h"
 #include "pager.h"
 
 err_t
@@ -19,9 +20,8 @@ pgr_make_writable (struct pager *p, struct txn *tx, page_h *h, error *e)
 {
   DBG_ASSERT (pager, p);
   ASSERT (h->mode == PHM_S);
-  ASSERT (h->pgr->wsibling == -1);
 
-  const i32 clock = pgr_reserve_at_clock_thread_unsafe (p, e);
+  i32 clock = pgr_reserve_and_ctrl_lock (p, e);
   if (clock < 0)
     {
       goto theend;
@@ -30,14 +30,17 @@ pgr_make_writable (struct pager *p, struct txn *tx, page_h *h, error *e)
   struct page_frame *pgw = &p->pages[clock];
 
   // Initialize pgw
+
   pgw->pin = 1;
   pgw->wsibling = -1;
   pgw->flags = PW_PRESENT | PW_X;
   memcpy (pgw->page.raw, h->pgr->page.raw, PAGE_SIZE);
   pgw->page.pg = h->pgr->page.pg;
 
-  // Modify pgr
   h->pgr->wsibling = clock;
+
+  spx_upgrade_s_x (&h->pgr->data);
+  latch_unlock (&h->pgr->ctrl);
 
   // Set h
   h->pgw = pgw;
@@ -46,15 +49,4 @@ pgr_make_writable (struct pager *p, struct txn *tx, page_h *h, error *e)
 
 theend:
   return error_trace (e);
-}
-
-err_t
-pgr_maybe_make_writable (struct pager *p, struct txn *tx, page_h *cur,
-                         error *e)
-{
-  if (cur->mode == PHM_S)
-    {
-      return pgr_make_writable (p, tx, cur, e);
-    }
-  return SUCCESS;
 }

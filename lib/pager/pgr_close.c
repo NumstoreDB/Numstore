@@ -16,38 +16,34 @@
 #include "lockt/lock_table.h"
 #include "pager.h"
 
-/*
- * Shut down the pager and release all resources.
- *
- * Steps:
- *   1. Checkpoint — flush all non-write-locked dirty pages to disk.
- *   2. Join the background checkpoint thread if it is running: signal it to
- *      stop, post the wake semaphore so it wakes up, then wait for cp_done.
- *   3. Evict every present frame (walks the full pool via clock).
- *   4. Free all subsystems: WAL, transaction table, file pager, DPT, and
- *      the pager struct itself.
+/**
+ * TODO:
+ *   - Different close method for different pager / wal / lock table passed in
  */
 err_t
 pgr_close (struct pager *p, error *e)
 {
-  // TODO - (2) checkpoint
-  pgr_checkpoint (p, e);
-
   DBG_ASSERT (pager, p);
 
+  // Good idea to run a checkpoint before closing
+  pgr_deletion_blocking_checkpoint (p, e);
+
+  // Latch the entire pager on close - this never releases
+  latch_lock (&p->l);
+
+  // Stop the checkpoint task if it's running
   periodic_task_stop (&p->checkpoint_task, e);
 
   // Evict all pages
   for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
     {
-      struct page_frame *mp = &p->pages[p->clock];
+      struct page_frame *mp = &p->pages[0];
 
       if (mp->flags & PW_PRESENT)
         {
-          pgr_evict (p, mp, e);
+          // Ignore error
+          pgr_evict_unsafe (p, mp, e);
         }
-
-      p->clock = (p->clock + 1) % MEMORY_PAGE_LEN;
     }
 
   // Free resources
@@ -64,6 +60,7 @@ pgr_close (struct pager *p, error *e)
       lockt_destroy (p->lt);
       i_free (p->lt);
     }
+
   txnt_close (p->tnxt);
   dpgt_close (p->dpt);
 
@@ -84,3 +81,23 @@ TEST (pgr_close_success)
   test_fail_if (pgr_delete_single_file ("foodir", &e));
 }
 #endif
+
+err_t
+pgr_crash (struct pager *p, error *e)
+{
+  latch_lock (&p->l);
+
+  periodic_task_stop (&p->checkpoint_task, e);
+
+  oswal_crash (p->ww, e);
+  ospgr_crash (p->fp, e);
+
+  txnt_crash (p->tnxt);
+  dpgt_crash (p->dpt);
+  lockt_destroy (p->lt);
+  i_free (p->lt);
+
+  i_free (p);
+
+  return error_trace (e);
+}

@@ -30,11 +30,16 @@
 struct file_pager
 {
   struct os_pager base;
-  pgno npages;
+  _Atomic pgno npages;
   i_file f;
+
+  latch l;
 };
 
 DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
+
+////////////////////////////////////////////////////////////
+/// Interface assignment
 
 static err_t
 fp_close_impl (struct os_pager *self, error *e)
@@ -95,6 +100,19 @@ static const struct os_pager_vtable fp_vtable = {
   .crash_fn = fp_crash_impl,
 };
 
+struct os_pager *
+fpgr_open_os (const char *dbname, error *e)
+{
+  return (struct os_pager *)fpgr_open (dbname, e);
+}
+
+////////////////////////////////////////////////////////////
+/// Regular functions
+
+/**
+ * TODO:
+ *   - Lock the file on new file pager creation
+ */
 struct file_pager *
 fpgr_open (const char *dbname, error *e)
 {
@@ -105,18 +123,23 @@ fpgr_open (const char *dbname, error *e)
     }
 
   dest->base.vtable = &fp_vtable;
+  latch_init (&dest->l);
 
+  // Open the database in read write mode
   if (i_open_rw (&dest->f, dbname, e))
     {
       goto failed;
     }
 
-  const i64 size = i_file_size (&dest->f, e);
+  i64 size = i_file_size (&dest->f, e);
+
+  // Failed
   if (size < 0)
     {
       goto fp_failed;
     }
 
+  // Corrupt database - not a multiple of PAGE_SIZE
   if (size % PAGE_SIZE != 0)
     {
       error_causef (e, ERR_CORRUPT,
@@ -126,7 +149,7 @@ fpgr_open (const char *dbname, error *e)
       goto fp_failed;
     }
 
-  dest->npages = size / PAGE_SIZE;
+  atomic_store (&dest->npages, size / PAGE_SIZE);
 
   DBG_ASSERT (file_pager, dest);
 
@@ -138,12 +161,6 @@ fp_failed:
 
 failed:
   return NULL;
-}
-
-struct os_pager *
-fpgr_open_os (const char *dbname, error *e)
-{
-  return (struct os_pager *)fpgr_open (dbname, e);
 }
 
 #ifndef NTEST
@@ -169,13 +186,13 @@ TEST (fpgr_open)
   // happy path: file exactly header size, zero pages
   test_fail_if (i_truncate (&fp, 0, &e));
   pager = fpgr_open ("test.db", &e);
-  test_assert_int_equal ((int)pager->npages, 0);
+  test_assert_int_equal ((int)atomic_load (&pager->npages), 0);
   test_fail_if (fpgr_close (pager, &e));
 
   // happy path: file exactly header size, more pages
   test_fail_if (i_truncate (&fp, 3 * PAGE_SIZE, &e));
   pager = fpgr_open ("test.db", &e);
-  test_assert_equal (pager->npages, 3);
+  test_assert_equal (atomic_load (&pager->npages), 3);
   test_fail_if (fpgr_close (pager, &e));
 
   // There were 2 refs to file - close it here too
@@ -188,6 +205,7 @@ err_t
 fpgr_close (struct file_pager *f, error *e)
 {
   DBG_ASSERT (file_pager, f);
+  latch_lock (&f->l); // Never release this
   i_close (&f->f, e);
   i_free (f);
   return error_trace (e);
@@ -197,8 +215,16 @@ err_t
 fpgr_reset (struct file_pager *f, error *e)
 {
   DBG_ASSERT (file_pager, f);
-  WRAP (i_truncate (&f->f, 0, e));
-  f->npages = 0;
+
+  latch_lock (&f->l);
+  if (i_truncate (&f->f, 0, e))
+    {
+      latch_unlock (&f->l);
+      return error_trace (e);
+    }
+  atomic_store (&f->npages, 0);
+  latch_unlock (&f->l);
+
   return error_trace (e);
 }
 
@@ -206,26 +232,31 @@ p_size
 fpgr_get_npages (const struct file_pager *fp)
 {
   DBG_ASSERT (file_pager, fp);
-  return fp->npages;
+  return atomic_load (&fp->npages);
 }
 
 err_t
-fpgr_extend (struct file_pager *p, const pgno dest, error *e)
+fpgr_extend (struct file_pager *p, pgno dest, error *e)
 {
   DBG_ASSERT (file_pager, p);
   ASSERT (dest);
 
-  if (dest < p->npages)
+  latch_lock (&p->l);
+
+  if (dest < atomic_load (&p->npages))
     {
+      latch_unlock (&p->l);
       return SUCCESS;
     }
 
   if (i_truncate (&p->f, PAGE_SIZE * (dest), e))
     {
+      latch_unlock (&p->l);
       goto failed;
     }
 
-  p->npages = dest;
+  atomic_store (&p->npages, dest);
+  latch_unlock (&p->l);
 
   return SUCCESS;
 
@@ -246,17 +277,17 @@ TEST (fpgr_new)
 
   // Create a new page
   test_fail_if (fpgr_extend (pager, 1, &e));
-  test_assert_int_equal (pager->npages, 1);
-  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * pager->npages);
+  test_assert_int_equal (atomic_load (&pager->npages), 1);
+  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * atomic_load (&pager->npages));
 
   // Add two more pages and do the same thing
   test_fail_if (fpgr_extend (pager, 2, &e));
-  test_assert_int_equal (pager->npages, 2);
-  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * pager->npages);
+  test_assert_int_equal (atomic_load (&pager->npages), 2);
+  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * atomic_load (&pager->npages));
 
   test_fail_if (fpgr_extend (pager, 3, &e));
-  test_assert_int_equal (pager->npages, 3);
-  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * pager->npages);
+  test_assert_int_equal (atomic_load (&pager->npages), 3);
+  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * atomic_load (&pager->npages));
 
   test_fail_if (fpgr_close (pager, &e));
 
@@ -267,16 +298,20 @@ TEST (fpgr_new)
 #endif
 
 err_t
-fpgr_read (struct file_pager *p, u8 *dest, const pgno pg, error *e)
+fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
 {
-  DBG_ASSERT (file_pager, p);
   ASSERT (dest);
 
-  if (pg >= p->npages)
+  latch_lock (&p->l);
+
+  DBG_ASSERT (file_pager, p);
+
+  if (pg >= atomic_load (&p->npages))
     {
-      return error_causef (
+      error_causef (
           e, ERR_PG_OUT_OF_RANGE,
-          "page %" PRpgno " out of range (npages=%" PRpgno ")", pg, p->npages);
+          "page %" PRpgno " out of range (npages=%" PRpgno ")", pg, atomic_load (&p->npages));
+      goto theend;
     }
 
   // Read all from file
@@ -284,33 +319,42 @@ fpgr_read (struct file_pager *p, u8 *dest, const pgno pg, error *e)
 
   if (nread == 0)
     {
-      return error_causef (e, ERR_CORRUPT,
-                           "pread returned 0 bytes at page %" PRpgno, pg);
+      error_causef (e, ERR_CORRUPT, "pread returned 0 bytes at page %" PRpgno, pg);
+      goto theend;
     }
 
   if (nread < 0)
     {
-      return error_trace (e);
+      goto theend;
     }
 
-  return SUCCESS;
+theend:
+
+  latch_unlock (&p->l);
+
+  return error_trace (e);
+  ;
 }
 
 err_t
 fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
 {
-  DBG_ASSERT (file_pager, p);
   ASSERT (src);
-  ASSERT (pg < p->npages);
+
+  latch_lock (&p->l);
+
+  DBG_ASSERT (file_pager, p);
+  ASSERT (pg < atomic_load (&p->npages));
 
   if (i_pwrite_all (&p->f, src, PAGE_SIZE, pg * PAGE_SIZE, e))
     {
-      goto failed;
+      goto theend;
     }
 
-  return SUCCESS;
+theend:
 
-failed:
+  latch_unlock (&p->l);
+
   return error_trace (e);
 }
 
@@ -363,6 +407,7 @@ err_t
 fpgr_crash (struct file_pager *p, error *e)
 {
   DBG_ASSERT (file_pager, p);
+  latch_lock (&p->l);
   i_close (&p->f, e);
   i_free (p);
   return error_trace (e);
