@@ -35,7 +35,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   struct wal_clr_write clr;                  // Next record to write
   page_h ph = page_h_create ();              // The page handle used for all undo's
   lsn undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
-  slsn prev_lsn;                             // The lsn of the previously written log
+  slsn prev_lsn = undo_nxt_lsn;              // The lsn of the previously written log
   txid tid = tx->tid;                        // The transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable

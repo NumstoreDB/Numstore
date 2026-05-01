@@ -32,7 +32,7 @@ pgr_release_with_log (
 
   if (h->mode == PHM_X)
     {
-      spgno page_lsn;
+      spgno page_lsn = 0;
 
       // Can only save valid pages
       ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e));
