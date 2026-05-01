@@ -50,7 +50,7 @@
 - Negative byte offsets are interpreted relative to end of file
 - Explicit-width types used throughout for deterministic on-disk layout
 
-[unreleased]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...HEAD
+[v1.0.1-Unreleased]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...HEAD
 [v1.0.0]: https://github.com/lincketheo/smartfiles/compare/v0.0.3...v1.0.0
 [v0.0.3]: https://github.com/lincketheo/smartfiles/compare/v0.0.2...v0.0.3
 [v0.0.2]: https://github.com/lincketheo/smartfiles/compare/v0.0.1...v0.0.2
