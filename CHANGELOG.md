@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Files are now not suffixed by ".db" - they are exactly as you specify in open
 
-## [0.0.3] - 2026-04-20
+## [v0.0.3] - 2026-04-20
 
 ### Added
 
@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Explicit-width types used throughout for deterministic on-disk layout
 
 [unreleased]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/lincketheo/smartfiles/compare/v0.0.3...v1.0.0
-[0.0.3]: https://github.com/lincketheo/smartfiles/compare/v0.0.2...v0.0.3
-[0.0.2]: https://github.com/lincketheo/smartfiles/compare/v0.0.1...v0.0.2
-[0.0.1]: https://github.com/lincketheo/smartfiles/compare/releases/tag/v0.0.1
+[v1.0.0]: https://github.com/lincketheo/smartfiles/compare/v0.0.3...v1.0.0
+[v0.0.3]: https://github.com/lincketheo/smartfiles/compare/v0.0.2...v0.0.3
+[v0.0.2]: https://github.com/lincketheo/smartfiles/compare/v0.0.1...v0.0.2
+[v0.0.1]: https://github.com/lincketheo/smartfiles/compare/releases/tag/v0.0.1
