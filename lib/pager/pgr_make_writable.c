@@ -40,7 +40,7 @@ pgr_make_writable (struct pager *p, struct txn *tx, page_h *h, error *e)
   h->pgr->wsibling = clock;
 
   spx_upgrade_s_x (&h->pgr->data);
-  latch_unlock (&h->pgr->ctrl);
+  latch_unlock (&pgw->ctrl);
 
   // Set h
   h->pgw = pgw;

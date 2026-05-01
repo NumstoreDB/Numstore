@@ -68,7 +68,7 @@ _smfile_premove (
   // GET VARIABLE
   {
     gparams = (struct _ns_var_get_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .tx = db->atx,
       .vname = vname,
       .alloc = &temp,
@@ -103,7 +103,7 @@ _smfile_premove (
   // REMOVE
   {
     rparams = (struct _ns_remove_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .dest = output,
       .tx = db->atx,
       .root = gparams.dest.rpt_root,
@@ -119,7 +119,7 @@ _smfile_premove (
   // UPDATE VARIABLE
   {
     uparams = (struct _ns_var_update_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .tx = db->atx,
       .retr = (struct var_retrieval){
           .type = VR_PG,

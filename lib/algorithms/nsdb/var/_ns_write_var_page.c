@@ -30,14 +30,14 @@ _ns_write_var_page_advance (struct _ns_write_var_page_params *params, error *e)
 {
   page_h next = page_h_create ();
 
-  if (pgr_new (&next, params->db->p, params->tx, PG_VAR_TAIL, e))
+  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e))
     {
       goto failed;
     }
 
   dlgtovlink (page_h_w (params->vp), page_h_w (&next));
 
-  if ((pgr_release (params->db->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
+  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
     {
       goto failed;
     }
@@ -102,11 +102,11 @@ _ns_write_var_page (struct _ns_write_var_page_params *params, error *e)
   // Reset back to head page
   if (page_h_pgno (params->vp) != start)
     {
-      if ((pgr_release (params->db->p, params->vp, PG_VAR_TAIL, e)))
+      if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e)))
         {
           goto theend;
         }
-      if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->db->p, e)))
+      if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)))
         {
           goto theend;
         }
@@ -114,12 +114,12 @@ _ns_write_var_page (struct _ns_write_var_page_params *params, error *e)
   else
     {
       pgno pg = page_h_pgno (params->vp);
-      if (pgr_release (params->db->p, params->vp, PG_VAR_PAGE, e))
+      if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e))
         {
           goto theend;
         }
 
-      if (pgr_get (params->vp, PG_VAR_PAGE, pg, params->db->p, e))
+      if (pgr_get (params->vp, PG_VAR_PAGE, pg, params->p, e))
         {
           goto theend;
         }

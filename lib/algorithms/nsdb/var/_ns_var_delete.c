@@ -47,7 +47,7 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
   page_h ovnext = page_h_create ();
 
   struct _ns_find_var_page_params fparams = {
-    .db = params.db,
+    .p = params.p,
     .tx = params.tx,
 
     .vname = params.vname,
@@ -65,7 +65,7 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
     }
 
   struct _ns_remove_params rparams = {
-    .db = params.db,
+    .p = params.p,
     .dest = NULL,
     .tx = params.tx,
     .root = fparams.dvar->rpt_root,
@@ -87,7 +87,7 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
       // Previous is the root hash page
     case PG_VAR_HASH_PAGE:
       {
-        if (pgr_make_writable (params.db->p, params.tx, &prev, e))
+        if (pgr_make_writable (params.p, params.tx, &prev, e))
           {
             goto failed;
           }
@@ -95,7 +95,7 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
         vh_set_hash_value (page_h_w (&prev), fparams.hpos,
                            vp_get_next (page_h_ro (&cur)));
 
-        if (pgr_release (params.db->p, &prev, PG_VAR_HASH_PAGE, e))
+        if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e))
           {
             goto failed;
           }
@@ -106,14 +106,14 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
       // Otherwise, we just need to link prev->cur
     case PG_VAR_PAGE:
       {
-        if (pgr_make_writable (params.db->p, params.tx, &prev, e))
+        if (pgr_make_writable (params.p, params.tx, &prev, e))
           {
             goto failed;
           }
 
         vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
-        if (pgr_release (params.db->p, &prev, PG_VAR_PAGE, e))
+        if (pgr_release (params.p, &prev, PG_VAR_PAGE, e))
           {
             goto failed;
           }
@@ -132,13 +132,13 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
       pgno npg = vp_get_ovnext (page_h_ro (&cur));
       if (npg != PGNO_NULL)
         {
-          if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.db->p, e))
+          if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e))
             {
               goto failed;
             }
         }
 
-      if (pgr_delete_and_release (params.db->p, params.tx, &cur, e))
+      if (pgr_delete_and_release (params.p, params.tx, &cur, e))
         {
           goto failed;
         }
@@ -149,9 +149,9 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
   return error_trace (e);
 
 failed:
-  pgr_cancel_if_exists (params.db->p, &prev);
-  pgr_cancel_if_exists (params.db->p, &cur);
-  pgr_cancel_if_exists (params.db->p, &ovnext);
+  pgr_cancel_if_exists (params.p, &prev);
+  pgr_cancel_if_exists (params.p, &cur);
+  pgr_cancel_if_exists (params.p, &ovnext);
 
   return error_trace (e);
 }

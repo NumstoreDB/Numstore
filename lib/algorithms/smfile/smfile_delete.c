@@ -39,7 +39,7 @@ _smfile_delete (struct smfile *db, const char *vname, error *e)
 
     // DELETE
     struct _ns_var_delete_params params = {
-      .db = &db->root->db,
+      .p = db->root->p,
       .tx = db->atx,
       .vname = strfcstr (vname),
     };

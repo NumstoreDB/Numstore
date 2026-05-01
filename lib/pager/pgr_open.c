@@ -95,8 +95,8 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
           goto failed;
         }
 
-      // Start transactions at 1
-      atomic_store (&ret->next_tid, 1);
+      // Start transactions at 0
+      atomic_store (&ret->next_tid, 0);
     }
   else
     {
@@ -165,7 +165,7 @@ pgr_open_single_file (const char *dbname, error *e)
 {
   char fname[PATH_MAX];
   char walname[PATH_MAX];
-  snprintf (fname, sizeof fname, "%s.db", dbname);
+  snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
   struct os_pager *fp = fpgr_open_os (fname, e);
@@ -231,11 +231,9 @@ TEST (pgr_open_basic)
 {
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
-  test_fail_if (i_rm_rf ("testdb", &e));
-  test_fail_if (i_mkdir ("testdb", &e));
 
   i_file fp = { 0 };
-  i_open_rw (&fp, "testdb.db", &e);
+  i_open_rw (&fp, "testdb", &e);
 
   // File is shorter than page size
   test_fail_if (i_truncate (&fp, PAGE_SIZE - 1, &e));

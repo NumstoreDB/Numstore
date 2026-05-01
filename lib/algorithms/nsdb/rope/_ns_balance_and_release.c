@@ -447,7 +447,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
 
   // Upgrade cur to writable - so far there's no garuntees that cur
   // is already writable on entry
-  WRAP (pgr_maybe_make_writable (params.db->p, params.tx, params.cur, e));
+  WRAP (pgr_maybe_make_writable (params.p, params.tx, params.cur, e));
 
   const p_size csize = dlgt_get_len (page_h_ro (params.cur));
 
@@ -459,7 +459,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
       // If next is present - try balancing with next
       if (params.next->mode != PHM_NONE)
         {
-          WRAP (pgr_maybe_make_writable (params.db->p, params.tx, params.next,
+          WRAP (pgr_maybe_make_writable (params.p, params.tx, params.next,
                                          e));
           dlgt_balance_with_next (params.cur, params.next);
           *params.output = three_in_pair_from (NULL, params.cur, params.next);
@@ -468,7 +468,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
       // If prev is present - try balancing with prev
       else if (params.prev->mode != PHM_NONE)
         {
-          WRAP (pgr_maybe_make_writable (params.db->p, params.tx, params.prev,
+          WRAP (pgr_maybe_make_writable (params.p, params.tx, params.prev,
                                          e));
           dlgt_balance_with_prev (params.prev, params.cur);
           *params.output = three_in_pair_from (params.prev, params.cur, NULL);
@@ -479,7 +479,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
         {
           WRAP (pgr_get_writable (
               params.next, params.tx, PG_INNER_NODE | PG_DATA_LIST,
-              dlgt_get_next (page_h_ro (params.cur)), params.db->p, e));
+              dlgt_get_next (page_h_ro (params.cur)), params.p, e));
           dlgt_balance_with_next (params.cur, params.next);
           *params.output = three_in_pair_from (NULL, params.cur, params.next);
         }
@@ -489,7 +489,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
         {
           WRAP (pgr_get_writable (
               params.prev, params.tx, PG_INNER_NODE | PG_DATA_LIST,
-              dlgt_get_prev (page_h_ro (params.cur)), params.db->p, e));
+              dlgt_get_prev (page_h_ro (params.cur)), params.p, e));
           dlgt_balance_with_prev (params.prev, params.cur);
           *params.output = three_in_pair_from (params.prev, params.cur, NULL);
         }
@@ -528,7 +528,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
                 {
                   WRAP (pgr_get_writable (params.prev, params.tx,
                                           PG_INNER_NODE | PG_DATA_LIST,
-                                          prev_pg, params.db->p, e));
+                                          prev_pg, params.p, e));
                 }
             }
 
@@ -540,7 +540,7 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
                 {
                   WRAP (pgr_get_writable (
                       params.next, params.tx, PG_INNER_NODE | PG_DATA_LIST,
-                      dlgt_get_next (page_h_ro (params.cur)), params.db->p,
+                      dlgt_get_next (page_h_ro (params.cur)), params.p,
                       e));
                 }
             }
@@ -571,13 +571,13 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
           params.root->root = PGNO_NULL;
         }
 
-      WRAP (pgr_delete_and_release (params.db->p, params.tx, params.cur, e));
+      WRAP (pgr_delete_and_release (params.p, params.tx, params.cur, e));
     }
 
   // One final common cleanup
-  WRAP (pgr_release_if_exists (params.db->p, params.prev, PG_DATA_LIST | PG_INNER_NODE, e));
-  WRAP (pgr_release_if_exists (params.db->p, params.cur, PG_DATA_LIST | PG_INNER_NODE, e));
-  WRAP (pgr_release_if_exists (params.db->p, params.next, PG_DATA_LIST | PG_INNER_NODE, e));
+  WRAP (pgr_release_if_exists (params.p, params.prev, PG_DATA_LIST | PG_INNER_NODE, e));
+  WRAP (pgr_release_if_exists (params.p, params.cur, PG_DATA_LIST | PG_INNER_NODE, e));
+  WRAP (pgr_release_if_exists (params.p, params.next, PG_DATA_LIST | PG_INNER_NODE, e));
 
   return SUCCESS;
 }

@@ -70,7 +70,7 @@ _smfile_pwrite (
   // GET OR CREATE VARIABLE
   {
     gparams = (struct _ns_var_get_or_create_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .tx = db->atx,
       .vname = vname,
       .alloc = &temp,
@@ -95,7 +95,7 @@ _smfile_pwrite (
     stream_ibuf_init (&_input, &ctx, src, size * write_nelem);
 
     wparams = (struct _ns_write_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .src = &_input,
       .tx = db->atx,
       .root = gparams.dest.rpt_root,
@@ -117,7 +117,7 @@ _smfile_pwrite (
         stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
 
         iparams = (struct _ns_insert_params){
-          .db = &db->root->db,
+          .p = db->root->p,
           .src = &_input,
           .tx = db->atx,
           .root = wparams.root,
@@ -132,7 +132,7 @@ _smfile_pwrite (
       // UPDATE VARIABLE
       {
         uparams = (struct _ns_var_update_params){
-          .db = &db->root->db,
+          .p = db->root->p,
           .tx = db->atx,
           .retr = (struct var_retrieval){
               .type = VR_PG,

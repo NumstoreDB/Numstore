@@ -13,9 +13,15 @@
 /// limitations under the License.
 
 #include "algorithms/nsdb/var/algorithms.h"
+#include "algorithms/smfile/_smfile.h"
 #include "c_specx.h"
+#include "c_specx/dev/error.h"
+#include "c_specx/intf/os/file_system.h"
+#include "c_specx/memory/chunk_alloc.h"
 #include "pager.h"
+#include "pager/page_fixture.h"
 #include "pager/page_h.h"
+#include "pages/page.h"
 #include "pages/var_hash_page.h"
 #include "pages/var_page.h"
 #include "smfile.h"
@@ -82,7 +88,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
   // Fetch the root node
   params->hpos = vh_get_hash_pos (params->vname);
 
-  if (pgr_get (&prev, PG_VAR_HASH_PAGE, VHASH_PGNO, params->db->p, e))
+  if (pgr_get (&prev, PG_VAR_HASH_PAGE, VHASH_PGNO, params->p, e))
     {
       goto failed;
     }
@@ -100,13 +106,13 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
           }
         case FP_CREATE:
           {
-            if (pgr_make_writable (params->db->p, params->tx, &prev, e))
+            if (pgr_make_writable (params->p, params->tx, &prev, e))
               {
                 goto failed;
               }
 
             // Create a new variable page
-            if (pgr_new (&cur, params->db->p, params->tx, PG_VAR_PAGE, e))
+            if (pgr_new (&cur, params->p, params->tx, PG_VAR_PAGE, e))
               {
                 goto failed;
               }
@@ -122,7 +128,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
   else
     {
       // Fetch start hash chain
-      if (pgr_get (&cur, PG_VAR_PAGE, head, params->db->p, e))
+      if (pgr_get (&cur, PG_VAR_PAGE, head, params->p, e))
         {
           goto failed;
         }
@@ -132,7 +138,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
         {
           // Check if this var page matches
           struct _ns_read_var_page_params get_params = {
-            .db = params->db,
+            .p = params->p,
             .tx = params->tx,
             .vp = &cur,
             .alloc = &temp,
@@ -179,7 +185,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
                     case FP_CREATE:
                       {
                         // Create the next page
-                        if (pgr_new (&npg, params->db->p, params->tx,
+                        if (pgr_new (&npg, params->p, params->tx,
                                      PG_VAR_PAGE, e))
                           {
                             goto failed;
@@ -187,7 +193,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
 
                         // cur.next = npg
                         {
-                          if (pgr_make_writable (params->db->p, params->tx,
+                          if (pgr_make_writable (params->p, params->tx,
                                                  &cur, e))
                             {
                               goto failed;
@@ -199,7 +205,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
                         // Advance
                         {
                           // free(prev)
-                          if ((pgr_release_if_exists (params->db->p, &prev,
+                          if ((pgr_release_if_exists (params->p, &prev,
                                                       PG_VAR_PAGE, e)))
                             {
                               goto failed;
@@ -225,7 +231,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
               else
                 {
                   // free(prev)
-                  if ((pgr_release (params->db->p, &prev, PG_VAR_PAGE, e)))
+                  if ((pgr_release (params->p, &prev, PG_VAR_PAGE, e)))
                     {
                       goto failed;
                     }
@@ -234,7 +240,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
                   prev = page_h_xfer_ownership (&cur);
 
                   // cur = cur->next
-                  if ((pgr_get (&cur, PG_VAR_PAGE, next, params->db->p, e)))
+                  if ((pgr_get (&cur, PG_VAR_PAGE, next, params->p, e)))
                     {
                       goto failed;
                     }
@@ -250,24 +256,25 @@ foundit:
     {
       params->dvar->vname.data = chunk_alloc_move_mem (
           params->alloc,
-          params->dvar->vname.data,
-          params->dvar->vname.len,
+          params->vname.data,
+          params->vname.len,
           e);
 
       if (params->dvar->vname.data == NULL)
         {
           goto failed;
         }
+      params->dvar->vname.len = params->vname.len;
     }
 
   chunk_alloc_free_all (&temp);
 
   // Transfer nodes to params
-  if (xfer_or_release (params->db->p, params->prev, &prev, e))
+  if (xfer_or_release (params->p, params->prev, &prev, e))
     {
       goto failed;
     }
-  if (xfer_or_release (params->db->p, params->cur, &cur, e))
+  if (xfer_or_release (params->p, params->cur, &cur, e))
     {
       goto failed;
     }
@@ -277,9 +284,50 @@ foundit:
 failed:
   chunk_alloc_free_all (&temp);
 
-  pgr_cancel_if_exists (params->db->p, &prev);
-  pgr_cancel_if_exists (params->db->p, &cur);
-  pgr_cancel_if_exists (params->db->p, &npg);
+  pgr_cancel_if_exists (params->p, &prev);
+  pgr_cancel_if_exists (params->p, &cur);
+  pgr_cancel_if_exists (params->p, &npg);
 
   return error_trace (e);
 }
+
+#ifndef NTEST
+TEST (_ns_find_var_page)
+{
+  error e = error_create ();
+  i_remove_quiet ("test", &e);
+  pgr_delete_single_file ("test", &e);
+  struct smfile *sf = smfile_open ("test");
+
+  struct txn tx;
+  pgr_begin_txn (&tx, sf->root->p, &sf->e);
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+  struct variable var;
+  page_h prev = page_h_create ();
+  page_h cur = page_h_create ();
+
+  struct _ns_find_var_page_params params = {
+    .p = sf->root->p,
+    .tx = &tx,
+    .alloc = &alloc,
+    .vname = strfcstr ("foobar"),
+    .dvar = &var,
+    .mode = FP_CREATE,
+    .hpos = 0,
+    .prev = &prev,
+    .cur = &cur,
+  };
+
+  _ns_find_var_page (&params, &sf->e);
+
+  chunk_alloc_free_all (&alloc);
+
+  pgr_unfix (sf->root->p, &prev, PG_PERMISSIVE);
+  pgr_unfix (sf->root->p, &cur, PG_PERMISSIVE);
+
+  pgr_commit (sf->root->p, &tx, &e);
+
+  smfile_close (sf);
+}
+#endif

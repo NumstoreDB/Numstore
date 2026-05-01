@@ -28,7 +28,7 @@ _ns_update_by_id (struct _ns_var_update_params params, error *e)
 {
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.db->p, e))
+  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e))
     {
       goto failed;
     }
@@ -36,7 +36,7 @@ _ns_update_by_id (struct _ns_var_update_params params, error *e)
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 
-  if (pgr_release (params.db->p, &cur, PG_VAR_PAGE, e))
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e))
     {
       goto failed;
     }
@@ -66,7 +66,7 @@ _ns_update_by_name (struct _ns_var_update_params params, error *e)
   page_h cur = page_h_create ();
 
   struct _ns_find_var_page_params fparams = {
-    .db = params.db,
+    .p = params.p,
     .tx = params.tx,
 
     .vname = params.retr.vname,
@@ -83,7 +83,7 @@ _ns_update_by_name (struct _ns_var_update_params params, error *e)
       goto failed;
     }
 
-  if (pgr_make_writable (params.db->p, params.tx, &cur, e))
+  if (pgr_make_writable (params.p, params.tx, &cur, e))
     {
       goto failed;
     }
@@ -91,7 +91,7 @@ _ns_update_by_name (struct _ns_var_update_params params, error *e)
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 
-  if (pgr_release (params.db->p, &cur, PG_VAR_PAGE, e))
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e))
     {
       goto failed;
     }
@@ -99,7 +99,7 @@ _ns_update_by_name (struct _ns_var_update_params params, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (params.db->p, &cur);
+  pgr_cancel_if_exists (params.p, &cur);
   return error_trace (e);
 }
 

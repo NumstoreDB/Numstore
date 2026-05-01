@@ -23,7 +23,7 @@ _ns_var_get (struct _ns_var_get_params *params, error *e)
 
   // Find variable first
   struct _ns_find_var_page_params fparams = {
-    .db = params->db,
+    .p = params->p,
     .tx = params->tx,
     .alloc = params->alloc,
 
@@ -40,7 +40,7 @@ _ns_var_get (struct _ns_var_get_params *params, error *e)
       goto theend;
     }
 
-  if (pgr_release (params->db->p, &cur, PG_VAR_PAGE, e))
+  if (pgr_release (params->p, &cur, PG_VAR_PAGE, e))
     {
       goto theend;
     }

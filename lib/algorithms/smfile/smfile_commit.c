@@ -26,7 +26,7 @@ _smfile_commit (smfile_t *smf, error *e)
                            "Can't commit transaction, not a part of an existing transaction");
     }
 
-  WRAP (pgr_commit (smf->root->db.p, smf->atx, e));
+  WRAP (pgr_commit (smf->root->p, smf->atx, e));
   smf->atx = NULL;
 
   return SUCCESS;

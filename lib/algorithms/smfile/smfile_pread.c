@@ -67,7 +67,7 @@ _smfile_pread (
   // GET VARIABLE
   {
     gparams = (struct _ns_var_get_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .tx = db->atx,
       .vname = vname,
       .alloc = &temp,
@@ -102,7 +102,7 @@ _smfile_pread (
   // READ
   {
     rparams = (struct _ns_read_params){
-      .db = &db->root->db,
+      .p = db->root->p,
       .dest = output,
       .tx = db->atx,
       .root = gparams.dest.rpt_root,

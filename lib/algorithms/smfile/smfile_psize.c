@@ -40,7 +40,7 @@ _smfile_psize (
 
   // GET OR CREATE VARIABLE
   struct _ns_var_get_params gparams = {
-    .db = &db->root->db,
+    .p = db->root->p,
     .tx = db->atx,
     .vname = vname,
     .alloc = &temp,

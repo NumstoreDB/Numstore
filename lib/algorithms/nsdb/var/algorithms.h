@@ -25,8 +25,8 @@
 ////////////////////////////////////////////////////////////
 // Validation
 
-err_t _ns_valid (struct nsdb *db, error *e);
-err_t _ns_variable_valid (struct nsdb *db, pgno var_root, error *e);
+err_t _ns_valid (struct pager *p, error *e);
+err_t _ns_variable_valid (struct pager *p, pgno var_root, error *e);
 
 struct var_retrieval
 {
@@ -48,7 +48,7 @@ struct var_retrieval
 
 struct _ns_var_get_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   struct string vname;
@@ -61,7 +61,7 @@ err_t _ns_var_get (struct _ns_var_get_params *params, error *e);
 
 struct _ns_read_var_page_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   page_h *vp;                // The currently loaded variable page
@@ -76,7 +76,7 @@ err_t _ns_read_var_page (struct _ns_read_var_page_params *params, error *e);
 
 struct _ns_var_get_or_create_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   struct string vname;
@@ -92,7 +92,7 @@ err_t _ns_var_get_or_create (struct _ns_var_get_or_create_params *params, error 
 
 struct _ns_var_create_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   struct string vname;
@@ -105,7 +105,7 @@ spgno _ns_var_create (struct _ns_var_create_params params, error *e);
 
 struct _ns_var_update_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   struct var_retrieval retr;
@@ -122,7 +122,7 @@ err_t _ns_var_update (struct _ns_var_update_params params, error *e);
 
 struct _ns_var_delete_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
 
   struct string vname;
@@ -132,7 +132,7 @@ err_t _ns_var_delete (struct _ns_var_delete_params params, error *e);
 
 struct _ns_write_var_page_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
   page_h *vp;                 // The currently loaded variable page
   const struct variable *var; // The variable to write
@@ -152,7 +152,7 @@ err_t _ns_write_var_page (struct _ns_write_var_page_params *params, error *e);
  */
 struct _ns_find_var_page_params
 {
-  struct nsdb *db;
+  struct pager *p;
   struct txn *tx;
   struct chunk_alloc *alloc;
 

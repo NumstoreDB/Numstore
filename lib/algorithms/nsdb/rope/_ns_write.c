@@ -85,7 +85,7 @@ _ns_write_forward (const struct _ns_write_params params, error *e)
   const b_size max_bwrite = params.size * params.nelem;
   b_size bnext = params.size;
   struct _ns_seek_params seek = {
-    .db = params.db,
+    .p = params.p,
     .tx = params.tx,
     .root = params.root,
     .bofst = params.bofst,
@@ -113,7 +113,7 @@ _ns_write_forward (const struct _ns_write_params params, error *e)
       cur = page_h_xfer_ownership (&seek.pg);
       lidx = seek.lidx;
 
-      if (pgr_make_writable (params.db->p, params.tx, &cur, e))
+      if (pgr_make_writable (params.p, params.tx, &cur, e))
         {
           goto failed;
         }
@@ -144,7 +144,7 @@ _ns_write_forward (const struct _ns_write_params params, error *e)
 
               if (npg != PGNO_NULL)
                 {
-                  WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.db->p, e));
+                  WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.p, e));
                 }
 
               // Reached EOF
@@ -154,7 +154,7 @@ _ns_write_forward (const struct _ns_write_params params, error *e)
                   goto done;
                 }
 
-              WRAP (pgr_release (params.db->p, &cur, PG_DATA_LIST, e));
+              WRAP (pgr_release (params.p, &cur, PG_DATA_LIST, e));
 
               lidx = 0;
               cur = page_h_xfer_ownership (&next);
@@ -260,7 +260,7 @@ _ns_write_forward (const struct _ns_write_params params, error *e)
 done:
 
   // Release current page
-  WRAP (pgr_release (params.db->p, &cur, PG_DATA_LIST, e));
+  WRAP (pgr_release (params.p, &cur, PG_DATA_LIST, e));
 
   // Validate we write complete elements
   if (total_bwrite % params.size != 0)
@@ -276,8 +276,8 @@ done:
   return total_bwrite / params.size;
 
 failed:
-  pgr_cancel_if_exists (params.db->p, &cur);
-  pgr_cancel_if_exists (params.db->p, &next);
+  pgr_cancel_if_exists (params.p, &cur);
+  pgr_cancel_if_exists (params.p, &next);
   return error_trace (e);
 }
 
