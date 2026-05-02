@@ -48,12 +48,5 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   // Create a new transaction entry
   txnt_insert_txn (p->tnxt, tx);
 
-  // TODO - this should be removed when we get the right pattern for concurrency down
-  if (lockt_lock (p->lt, lock_db (), LM_X, tx, e))
-    {
-      txnt_remove_txn (NULL, p->tnxt, tx);
-      return error_trace (e);
-    }
-
   return SUCCESS;
 }

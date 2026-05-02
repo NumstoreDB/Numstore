@@ -39,16 +39,15 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
         pgr = &p->pages[data.value];
 
         latch_lock (&pgr->ctrl);
-        spx_lock_s (&pgr->data); // This won't be released here
         latch_unlock (&p->l);
-
         pgr->pin++;
-
         latch_unlock (&pgr->ctrl);
 
         dest->pgr = pgr;
         dest->pgw = NULL;
         dest->mode = PHM_S;
+
+        spx_lock_s (&pgr->data);
 
         return SUCCESS;
       }

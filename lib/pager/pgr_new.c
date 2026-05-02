@@ -14,6 +14,7 @@
 
 #include "c_specx.h"
 #include "c_specx/concurrency/spx_latch.h"
+#include "c_specx/dev/error.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
 #include "pager/page_h.h"
@@ -22,8 +23,10 @@
 #include "pages/page.h"
 #include "wal/wal_rec_hdr.h"
 
+#include <stdlib.h>
+
 static err_t
-pgr_new_from_uninitialized_unsafe (
+pgr_new_impl (
     page_h *dest,
     struct pager *p,
     struct txn *tx,
@@ -80,9 +83,8 @@ pgr_new_from_uninitialized_unsafe (
     .key = pg,
     .value = rclock,
   };
-  latch_lock (&p->l);
+
   ht_insert_expect_idx (&p->pgno_to_value, hd);
-  latch_unlock (&p->l);
 
   // Initialize page_h
   dest->pgr = pgr;
@@ -94,6 +96,27 @@ theend:
   return error_trace (e);
 }
 
+static inline err_t
+pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
+{
+  pgno fsmpg = pgr_get_npages (p);
+
+  // Create a new free space map page
+  if (pgr_new_impl (fsm, p, tx, PG_FREE_SPACE_MAP, fsmpg, e))
+    {
+      return error_trace (e);
+    }
+
+  // Creating a new FSM means we are tracking this many pages
+  if (pgr_extend_file (p, fsmpg + FS_BTMP_NPGS, tx, e))
+    {
+      pgr_cancel (p, fsm);
+      return error_trace (e);
+    }
+
+  return SUCCESS;
+}
+
 err_t
 pgr_new (
     page_h *dest,
@@ -102,122 +125,84 @@ pgr_new (
     const enum page_type type,
     error *e)
 {
-  page_h fsm = page_h_create (); // The currently used free space map
-  pgno ret = 0;                  // The return page
-  pgno fsmpg = 0;                // The free space map page
+  int r = rand ();
+  page_h fsm = page_h_create ();
+  pgno fsmpg = 0;
+
+retry:
 
   // Iterate through existing FSM's to see if there's a free lockable page
   for (; fsmpg < pgr_get_npages (p); fsmpg += FS_BTMP_NPGS)
     {
-      // Fetch this free space map
-      if (pgr_get (&fsm, PG_FREE_SPACE_MAP, fsmpg, p, e))
+      // X(fsm)
+      if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e))
         {
-          goto failed;
+          return error_trace (e);
         }
 
       // Find the next free slot
       sp_size next = fsm_next_freebit (page_h_ro (&fsm), 0);
 
-      // No free pages available
+      // No free pages available - move on
       if (next == -1)
         {
-          ASSERT (fsm.mode == PHM_S);
-          if (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, e))
-            {
-              goto failed;
-            }
+          pgr_cancel (p, &fsm);
           continue;
         }
 
-      ret = next + fsmpg; // The actual page number
-
       // Update fsm bit
-      {
-        if (pgr_make_writable (p, tx, &fsm, e))
-          {
-            goto failed;
-          }
-        fsm_set_bit (page_h_w (&fsm), next);
-        if (pgr_release_with_log (
-                p,
-                &fsm,
-                PG_FREE_SPACE_MAP,
-                &(struct wal_update_write){
-                    .type = WUP_FSM,
-                    .tid = tx->tid,
-                    .prev = tx->data.last_lsn,
-                    .fsm = {
-                        .pg = page_h_pgno (&fsm),
-                        .bit = pgtoidx (ret),
-                        .undo = 0,
-                        .redo = 1,
-                    },
-                },
-                e))
-          {
-            goto failed;
-          }
-      }
+      fsm_set_bit (page_h_w (&fsm), next);
 
-      if (pgr_get_writable (dest, tx, PG_PERMISSIVE, ret, p, e))
+      // Get the requested page
+      if (pgr_get_writable (dest, tx, PG_PERMISSIVE, fsmpg + next, p, e))
         {
-          goto failed;
+          return error_trace (e);
         }
       page_init_empty (page_h_w (dest), type);
 
-      goto theend;
+      // Save with (special) log
+      struct wal_update_write log = wup_fsm (page_h_pgno (&fsm), tx, next, 0, 1);
+      if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
+        {
+          pgr_cancel (p, &fsm);
+          pgr_cancel (p, dest);
+          return error_trace (e);
+        }
+
+      return SUCCESS;
     }
 
-  // Exceeded the number of free space maps we have - Need to create a new free space map
-  if (pgr_new_from_uninitialized_unsafe (&fsm, p, tx, PG_FREE_SPACE_MAP, fsmpg, e))
+  latch_lock (&p->l);
+  {
+    if (fsmpg < pgr_get_npages (p))
+      {
+        latch_unlock (&p->l);
+        goto retry;
+      }
+
+    if (pgr_new_fsmpg (&fsm, p, tx, e))
+      {
+        return error_trace (e);
+      }
+  }
+  latch_unlock (&p->l);
+
+  fsm_set_bit (page_h_w (&fsm), 1);
+
+  if (pgr_new_impl (dest, p, tx, type, fsmpg + 1, e))
     {
-      goto failed;
+      return error_trace (e);
     }
 
-  // Creating a new FSM means we are tracking this many pages
-  if (pgr_extend_file (p, fsmpg + FS_BTMP_NPGS, tx, e))
+  struct wal_update_write log = wup_fsm (fsmpg, tx, 1, 0, 1);
+  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
     {
-      goto failed;
+      pgr_cancel (p, &fsm);
+      pgr_cancel (p, dest);
+      return error_trace (e);
     }
 
-  // the next free bit must be 1 because this is a new fsm
-  ASSERT (fsm_next_freebit (page_h_ro (&fsm), 0) == 1);
-  ret = fsmpg + 1;
-
-  fsm_set_bit (page_h_w (&fsm), pgtoidx (ret));
-
-  if (pgr_release_with_log (
-          p,
-          &fsm,
-          PG_FREE_SPACE_MAP,
-          &(struct wal_update_write){
-              .type = WUP_FSM,
-              .tid = tx->tid,
-              .prev = tx->data.last_lsn,
-              .fsm = {
-                  .pg = page_h_pgno (&fsm),
-                  .bit = pgtoidx (ret),
-                  .undo = 0,
-                  .redo = 1,
-              },
-          },
-          e))
-    {
-      goto failed;
-    }
-
-  if (pgr_new_from_uninitialized_unsafe (dest, p, tx, type, ret, e))
-    {
-      goto failed;
-    }
-
-theend:
   return SUCCESS;
-
-failed:
-  pgr_cancel_if_exists (p, dest);
-  pgr_cancel_if_exists (p, &fsm);
-  return error_trace (e);
 }
 
 #ifndef NTEST

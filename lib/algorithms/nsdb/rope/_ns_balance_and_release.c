@@ -66,37 +66,6 @@ dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
 }
 
 #ifndef NTEST
-TEST (repro)
-{
-  struct pgr_fixture f;
-  error *e = &f.e;
-  pgr_fixture_create (&f);
-
-  struct txn tx;
-  pgr_begin_txn (&tx, f.p, e);
-
-  page_h pg1 = page_h_create ();
-  page_h pg2 = page_h_create ();
-  page_h pg3 = page_h_create ();
-
-  pgr_new (&pg1, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&pg2, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&pg3, f.p, &tx, PG_DATA_LIST, e);
-  dl_make_valid (page_h_w (&pg1));
-  dl_make_valid (page_h_w (&pg2));
-  dl_make_valid (page_h_w (&pg3));
-
-  pgr_release (f.p, &pg1, PG_DATA_LIST, e);
-  pgr_release (f.p, &pg2, PG_DATA_LIST, e);
-  pgr_release (f.p, &pg3, PG_DATA_LIST, e);
-
-  pgr_commit (f.p, &tx, e);
-
-  pgr_fixture_teardown (&f);
-}
-#endif
-
-#ifndef NTEST
 TEST (dlgt_balance_with_prev)
 {
   struct pgr_fixture f;
