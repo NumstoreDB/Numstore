@@ -72,8 +72,7 @@ pgr_new_impl (
   page_init_empty (&pgw->page, type);
   pgw->page.pg = pg;
 
-  spx_lock_s (&pgr->data);
-  spx_upgrade_s_x (&pgr->data);
+  spx_lock_x (&pgr->data);
 
   latch_unlock (&pgr->ctrl);
   latch_unlock (&pgw->ctrl);
@@ -83,6 +82,8 @@ pgr_new_impl (
     .key = pg,
     .value = rclock,
   };
+
+  bool locked = p->l;
 
   ht_insert_expect_idx (&p->pgno_to_value, hd);
 
@@ -126,6 +127,7 @@ pgr_new (
     error *e)
 {
   int r = rand ();
+  i_log_info ("a %d\n", r);
   page_h fsm = page_h_create ();
   pgno fsmpg = 0;
 
@@ -134,11 +136,13 @@ retry:
   // Iterate through existing FSM's to see if there's a free lockable page
   for (; fsmpg < pgr_get_npages (p); fsmpg += FS_BTMP_NPGS)
     {
+      i_log_info ("trying to get fsm %d\n", r);
       // X(fsm)
       if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e))
         {
           return error_trace (e);
         }
+      i_log_info ("got fsm %d\n", r);
 
       // Find the next free slot
       sp_size next = fsm_next_freebit (page_h_ro (&fsm), 0);
@@ -154,20 +158,24 @@ retry:
       fsm_set_bit (page_h_w (&fsm), next);
 
       // Get the requested page
+      i_log_info ("Getting page: %ld %d\n", fsmpg + next, r);
       if (pgr_get_writable (dest, tx, PG_PERMISSIVE, fsmpg + next, p, e))
         {
           return error_trace (e);
         }
+      i_log_info ("Got Page: %ld %d\n", fsmpg + next, r);
       page_init_empty (page_h_w (dest), type);
 
       // Save with (special) log
       struct wal_update_write log = wup_fsm (page_h_pgno (&fsm), tx, next, 0, 1);
+      i_log_info ("Releasing fsm %d\n", r);
       if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
         {
           pgr_cancel (p, &fsm);
           pgr_cancel (p, dest);
           return error_trace (e);
         }
+      i_log_info ("Released fsm %d\n", r);
 
       return SUCCESS;
     }
@@ -177,9 +185,11 @@ retry:
     if (fsmpg < pgr_get_npages (p))
       {
         latch_unlock (&p->l);
+        i_log_info ("Retrying %d\n", r);
         goto retry;
       }
 
+    i_log_info ("Creating new fsmpg %d\n", r);
     if (pgr_new_fsmpg (&fsm, p, tx, e))
       {
         return error_trace (e);
@@ -189,10 +199,12 @@ retry:
 
   fsm_set_bit (page_h_w (&fsm), 1);
 
+  i_log_info ("New impl %d\n", r);
   if (pgr_new_impl (dest, p, tx, type, fsmpg + 1, e))
     {
       return error_trace (e);
     }
+  i_log_info ("New impl done %d\n", r);
 
   struct wal_update_write log = wup_fsm (fsmpg, tx, 1, 0, 1);
   if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
@@ -201,6 +213,7 @@ retry:
       pgr_cancel (p, dest);
       return error_trace (e);
     }
+  i_log_info ("Released %d\n", r);
 
   return SUCCESS;
 }

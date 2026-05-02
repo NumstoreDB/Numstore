@@ -184,8 +184,8 @@ err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
 /// Primary API
 
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
+err_t pgr_get_writable (page_h *dest, struct txn *tx, int flags, pgno pg, struct pager *p, error *e);
 err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
-err_t pgr_make_writable (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_release_with_log (struct pager *p, page_h *h, int flags, struct wal_update_write *record, error *e);
 void pgr_cancel (const struct pager *p, page_h *h);
@@ -194,39 +194,23 @@ void pgr_cancel (const struct pager *p, page_h *h);
 /// Short Hands
 
 HEADER_FUNC err_t
-pgr_get_writable (
+pgr_get_maybe_writable (
     page_h *dest,
     struct txn *tx,
-    const int flags,
-    const pgno pg,
+    int flags,
+    pgno pg,
     struct pager *p,
+    bool writable,
     error *e)
 {
-  if (pgr_get (dest, flags, pg, p, e))
+  if (writable)
     {
-      return error_trace (e);
+      return pgr_get (dest, flags, pg, p, e);
     }
-
-  if (pgr_make_writable (p, tx, dest, e))
+  else
     {
-      pgr_cancel (p, dest);
+      return pgr_get_writable (dest, tx, flags, pg, p, e);
     }
-
-  return error_trace (e);
-}
-
-HEADER_FUNC err_t
-pgr_maybe_make_writable (
-    struct pager *p,
-    struct txn *tx,
-    page_h *cur,
-    error *e)
-{
-  if (cur->mode == PHM_S)
-    {
-      return pgr_make_writable (p, tx, cur, e);
-    }
-  return SUCCESS;
 }
 
 HEADER_FUNC err_t
