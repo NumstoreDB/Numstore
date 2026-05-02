@@ -30,8 +30,6 @@ pgr_isnew (const struct pager *p)
 p_size
 pgr_get_npages (struct pager *p)
 {
-  DBG_ASSERT (pager, p);
-
   return ospgr_get_npages (p->fp);
 }
 

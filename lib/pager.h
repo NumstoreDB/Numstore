@@ -128,13 +128,11 @@ struct pager
 DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p);
 
-  latch_lock ((latch *)&p->l);
   ASSERT (p->fp);
   ASSERT (p->ww);
   ASSERT (p->lt);
   ASSERT (p->dpt);
   ASSERT (p->tnxt);
-  latch_unlock ((latch *)&p->l);
 })
 
 ////////////////////////////////////////////////////////////

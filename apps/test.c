@@ -178,7 +178,6 @@ main (const int argc, char **argv)
       return 0;
     }
 
-  // node_updates.c
   REGISTER (smartfiles, nupd_init);
   REGISTER (smartfiles, nupd_append_right);
   REGISTER (smartfiles, nupd_append_left);
@@ -192,28 +191,14 @@ main (const int argc, char **argv)
   REGISTER (smartfiles, nupd_done_consuming_right);
   REGISTER (smartfiles, nupd_done_left);
   REGISTER (smartfiles, nupd_done_right);
-
-  // _ns_balance_and_release.c
   REGISTER (smartfiles, dlgt_balance_with_prev);
   REGISTER (smartfiles, dlgt_balance_with_next);
-
-  // aries_fuzzy_checkpoint.c
-  // REGISTER (smartfiles, aries_fuzzy_checkpoint_basic_recovery);
-  // REGISTER (smartfiles, aries_fuzzy_checkpoint_with_active_transactions);
-  // REGISTER (smartfiles, aries_fuzzy_checkpoint_multiple_checkpoints);
-  // REGISTER (smartfiles, aries_fuzzy_checkpoint_with_post_checkpoint_activity);
-
-  // aries_no_checkpoint_crash.c
-  // REGISTER (smartfiles, aries_crash);
-  // REGISTER (smartfiles, aries_crash_1);
-
-  // pgr_rollback.c
+  REGISTER (smartfiles, _ns_find_var_page);
+  REGISTER (smartfiles, _ns_var_get_or_create);
   REGISTER (smartfiles, aries_rollback_basic);
   REGISTER (smartfiles, aries_rollback_multiple_updates);
   REGISTER (smartfiles, aries_rollback_with_crash_recovery);
   REGISTER (smartfiles, aries_rollback_clr_not_undone);
-
-  // dirty_page_table_tests.c
   REGISTER (smartfiles, dpgt_open);
   REGISTER (smartfiles, dpgt_merge_into);
   REGISTER (smartfiles, dpgt_min_rec_lsn);
@@ -223,49 +208,22 @@ main (const int argc, char **argv)
   REGISTER (smartfiles, dpgt_remove);
   REGISTER (smartfiles, dpgt_serialize);
   REGISTER (smartfiles, dpgt_equal);
-
-  // dpgt_concurrency_tests.c
   REGISTER (smartfiles, dpgt_concurrent);
-
-  // lock_table.c
-  // REGISTER (smartfiles, lock_table_exclusivity);
-
-  // file_pager.c
+  REGISTER (smartfiles, lock_table_exclusivity);
   REGISTER (smartfiles, fpgr_open);
   REGISTER (smartfiles, fpgr_new);
   REGISTER (smartfiles, fpgr_read_write);
-
-  // page_fixture.c
   REGISTER (smartfiles, build_page_tree);
-
-  // pager.c
   REGISTER (smartfiles, pager_fill_ht);
   REGISTER (smartfiles, wal_int);
-  REGISTER (smartfiles, pgr_reserve_and_ctrl_lock_st);
-
-  // pgr_close.c
   REGISTER (smartfiles, pgr_close_success);
-
-  // pgr_delete.c
   REGISTER (smartfiles, pgr_delete);
-
-  // pgr_get.c
   REGISTER (smartfiles, pgr_get_invalid_checksum);
-
-  // pgr_mt_test.c
-  // REGISTER (smartfiles, pager_mt);
-
-  // pgr_new.c
+  REGISTER (smartfiles, pager_mt);
   REGISTER (smartfiles, pgr_new_get_save);
-  REGISTER (smartfiles, repro);
-  REGISTER (smartfiles, _ns_find_var_page);
-  REGISTER (smartfiles, _ns_var_get_or_create);
-
-  // pgr_open.c
   REGISTER (smartfiles, pager_open);
   REGISTER (smartfiles, pgr_open_basic);
-
-  // data_list.c
+  REGISTER (smartfiles, pgr_reserve_and_ctrl_lock_st);
   REGISTER (smartfiles, dl_validate);
   REGISTER (smartfiles, dl_set_get);
   REGISTER (smartfiles, dl_read);
@@ -276,8 +234,6 @@ main (const int argc, char **argv)
   REGISTER (smartfiles, dl_move_left);
   REGISTER (smartfiles, dl_shift_right);
   REGISTER (smartfiles, dl_move_right);
-
-  // inner_node.c
   REGISTER (smartfiles, in_validate_for_db);
   REGISTER (smartfiles, in_set_get_simple);
   REGISTER (smartfiles, in_push_end);
@@ -298,22 +254,13 @@ main (const int argc, char **argv)
   REGISTER (smartfiles, in_cut_left_all_at_once);
   REGISTER (smartfiles, in_cut_left_from_empty);
   REGISTER (smartfiles, in_cut_left_to_one);
-
-  // page.c
   REGISTER (smartfiles, page_set_get_simple);
-
-  // var_page.c
   REGISTER (smartfiles, vp_init_empty);
   REGISTER (smartfiles, vp_validate);
-
-  // var_tail.c
   REGISTER (smartfiles, vt_init_empty);
   REGISTER (smartfiles, vt_validate);
-
-  // txn.c
+  REGISTER (smartfiles, smfile_data_writer);
   REGISTER (smartfiles, txn_basic);
-
-  // txn_table.c
   REGISTER (smartfiles, txnt_open);
   REGISTER (smartfiles, txnt_merge_into);
   REGISTER (smartfiles, txnt_max_u_undo_lsn);
@@ -324,16 +271,117 @@ main (const int argc, char **argv)
   REGISTER (smartfiles, txnt_remove);
   REGISTER (smartfiles, txnt_serialize);
   REGISTER (smartfiles, txnt_equal_ignore_state);
-
-  // txnt_concurrency_tests.c
   REGISTER (smartfiles, txnt_concurrent);
-
-  // wal_tests.c
   // REGISTER (smartfiles, wal_multi_threaded);
   REGISTER (smartfiles, wal);
   REGISTER (smartfiles, wal_single_entry);
-
-  REGISTER (smartfiles, smfile_data_writer);
+  REGISTER (smartfiles, gr_lock_basic_sanity);
+  REGISTER (smartfiles, gr_lock_is_is_compatible);
+  REGISTER (smartfiles, gr_lock_is_x_blocks);
+  REGISTER (smartfiles, gr_lock_high_pressure_random);
+  REGISTER (smartfiles, latch);
+  REGISTER (smartfiles, checksum_execute_simple);
+  REGISTER (smartfiles, checksum_execute_deterministic);
+  REGISTER (smartfiles, checksum_execute_incremental);
+  REGISTER (smartfiles, file_basename);
+  REGISTER (smartfiles, fnv1a_hash_empty);
+  REGISTER (smartfiles, fnv1a_hash_single_char);
+  REGISTER (smartfiles, fnv1a_hash_known_value);
+  REGISTER (smartfiles, fnv1a_hash_deterministic);
+  REGISTER (smartfiles, parse_i32_expect);
+  REGISTER (smartfiles, parse_f32_expect);
+  REGISTER (smartfiles, py_mod_f32);
+  REGISTER (smartfiles, py_mod_i32);
+  REGISTER (smartfiles, randu32);
+  REGISTER (smartfiles, randu32r);
+  REGISTER (smartfiles, randi32r);
+  REGISTER (smartfiles, randu64r);
+  REGISTER (smartfiles, randi64r);
+  REGISTER (smartfiles, block_insert_read);
+  REGISTER (smartfiles, block_insert_remove_read);
+  REGISTER (smartfiles, block_insert_write_read);
+  REGISTER (smartfiles, block_random);
+  REGISTER (smartfiles, cbuffer_isempty);
+  REGISTER (smartfiles, cbuffer_len);
+  REGISTER (smartfiles, cbuffer_avail);
+  REGISTER (smartfiles, cbuffer_get_next_data_bytes);
+  REGISTER (smartfiles, cbuffer_get_nbytes);
+  REGISTER (smartfiles, cbuffer_fakewrite);
+  REGISTER (smartfiles, cbuffer_fakeread);
+  REGISTER (smartfiles, cbuffer_read);
+  REGISTER (smartfiles, cbuffer_copy);
+  REGISTER (smartfiles, cbuffer_write);
+  REGISTER (smartfiles, cbuffer_cbuffer_move);
+  REGISTER (smartfiles, cbuffer_cbuffer_copy);
+  REGISTER (smartfiles, cbuffer_get_no_check);
+  REGISTER (smartfiles, cbuffer_get);
+  REGISTER (smartfiles, cbuffer_peek_back);
+  REGISTER (smartfiles, cbuffer_peek_front);
+  REGISTER (smartfiles, cbuffer_push_back);
+  REGISTER (smartfiles, cbuffer_push_front);
+  REGISTER (smartfiles, cbuffer_pop_back);
+  REGISTER (smartfiles, cbuffer_pop_front);
+  REGISTER (smartfiles, dblb_create_basic);
+  REGISTER (smartfiles, dblb_append_single);
+  REGISTER (smartfiles, dblb_append_multiple);
+  REGISTER (smartfiles, dblb_append_triggers_realloc);
+  REGISTER (smartfiles, dblb_append_alloc_basic);
+  REGISTER (smartfiles, dblb_append_alloc_sequential);
+  REGISTER (smartfiles, dblb_append_alloc_triggers_realloc);
+  REGISTER (smartfiles, dblb_different_element_sizes);
+  REGISTER (smartfiles, dblb_struct_elements);
+  REGISTER (smartfiles, dblb_free_resets);
+  REGISTER (smartfiles, dblb_large_append);
+  REGISTER (smartfiles, ext_array_insert_read);
+  REGISTER (smartfiles, ext_array_write);
+  REGISTER (smartfiles, ext_array_remove);
+  REGISTER (smartfiles, ext_array_random);
+  REGISTER (smartfiles, htable);
+  REGISTER (smartfiles, llist);
+  REGISTER (smartfiles, stride_resolve);
+  REGISTER (smartfiles, strings_all_unique);
+  REGISTER (smartfiles, string_contains);
+  REGISTER (smartfiles, i_realloc_basic);
+  REGISTER (smartfiles, i_realloc_right);
+  REGISTER (smartfiles, i_realloc_left);
+  REGISTER (smartfiles, i_crealloc_right);
+  REGISTER (smartfiles, i_crealloc_left);
+  REGISTER (smartfiles, lalloc_edge_cases);
+  REGISTER (smartfiles, slab_alloc_simple);
+  REGISTER (smartfiles, slab_alloc_cap_one);
+  REGISTER (smartfiles, slab_alloc_no_duplicates);
+  REGISTER (smartfiles, slab_alloc_free_all_realloc);
+  REGISTER (smartfiles, slab_alloc_interleaved_patterns);
+  REGISTER (smartfiles, slab_alloc_free_head_slab);
+  REGISTER (smartfiles, slab_alloc_free_middle_slab);
+  REGISTER (smartfiles, slab_alloc_minimum_size);
+  REGISTER (smartfiles, slab_alloc_stress_random);
+  REGISTER (smartfiles, f16_to_f32_normals_and_specials);
+  REGISTER (smartfiles, f16_to_f32_nan_is_nan);
+  REGISTER (smartfiles, f16_to_f32_smallest_subnormal_correct_value);
+  REGISTER (smartfiles, parse_i32_boundary_values);
+  REGISTER (smartfiles, parse_i64_boundary_values);
+  REGISTER (smartfiles, ext_array_capacity_doubles_on_growth);
+  REGISTER (smartfiles, ext_array_remove_all_produces_empty);
+  REGISTER (smartfiles, llist_append_maintaififo_order);
+  REGISTER (smartfiles, llist_find_returnode_and_index);
+  REGISTER (smartfiles, llist_remove_from_head_middle_tail);
+  REGISTER (smartfiles, llist_remove_absent_node_is_noop);
+  REGISTER (smartfiles, checksum_known_crc32c_vector);
+  REGISTER (smartfiles, checksum_distinct_bytes_differ);
+  REGISTER (smartfiles, serializer_write_at_capacity_then_overflow);
+  REGISTER (smartfiles, serializer_incremental_write_overflow);
+  REGISTER (smartfiles, stride_constructors_resolve_correctly);
+  REGISTER (smartfiles, string_ordering_operators);
+  REGISTER (smartfiles, line_length_newline_found);
+  REGISTER (smartfiles, string_equal_cases);
+  REGISTER (smartfiles, strings_are_disjoint_cases);
+  REGISTER (smartfiles, string_plus_concatenates);
+  REGISTER (smartfiles, cbuffer_discard_all_resets_state);
+  REGISTER (smartfiles, cbuffer_read_write_wraparound);
+  REGISTER (smartfiles, cbuffer_cbuffer_move_transfers_bytes);
+  REGISTER (smartfiles, ht_insert_idx_regression_trigger_swap);
+  REGISTER (smartfiles, robin_hood_ht);
 
   struct suite all_suites[] = {
     { "smartfiles", smartfiles_tests, (u32)smartfiles_count },
