@@ -46,10 +46,19 @@ _ns_seek (struct _ns_seek_params *a, error *e)
   a->sp = 0;
   a->lidx = 0;
 
-  // Fetch the starting node
-  if (pgr_get (&a->pg, PG_DATA_LIST | PG_INNER_NODE, a->root, a->p, e))
+  if (a->save_stack)
     {
-      goto failed;
+      if (pgr_get_writable (&a->pg, a->tx, PG_DATA_LIST | PG_INNER_NODE, a->root, a->p, e))
+        {
+          goto failed;
+        }
+    }
+  else
+    {
+      if (pgr_get (&a->pg, PG_DATA_LIST | PG_INNER_NODE, a->root, a->p, e))
+        {
+          goto failed;
+        }
     }
 
   while (true)

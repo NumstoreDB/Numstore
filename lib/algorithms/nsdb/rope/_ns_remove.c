@@ -331,13 +331,7 @@ _ns_remove (struct _ns_remove_params *params, error *e)
   s.writer = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  if (pgr_make_writable (params->p, params->tx, &s.writer, e))
-    {
-      goto failed;
-    }
-
-  s.output = nupd_init (page_h_pgno (&s.writer),
-                        dl_used (page_h_ro (&s.writer)), e);
+  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
   if (s.output == NULL)
     {
       goto failed;
@@ -447,9 +441,10 @@ _ns_remove (struct _ns_remove_params *params, error *e)
                 UNREACHABLE ();
               }
 
-            dl_dl_memmove_permissive (page_h_w (&s.writer),
-                                      page_h_ro (remove_creader (&s)),
-                                      s.write_idx, s.read_idx, next_amount);
+            dl_dl_memmove_permissive (
+                page_h_w (&s.writer),
+                page_h_ro (remove_creader (&s)),
+                s.write_idx, s.read_idx, next_amount);
 
             s.write_idx += next_amount;
             s.read_idx += next_amount;

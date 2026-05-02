@@ -114,7 +114,6 @@ TEST (pager_mt)
   struct thread_ctx ctx[] = {
     { .p = pf.p, .begin = &begin },
     { .p = pf.p, .begin = &begin },
-    /**
     { .p = pf.p, .begin = &begin },
     { .p = pf.p, .begin = &begin },
     { .p = pf.p, .begin = &begin },
@@ -123,7 +122,6 @@ TEST (pager_mt)
     { .p = pf.p, .begin = &begin },
     { .p = pf.p, .begin = &begin },
     { .p = pf.p, .begin = &begin },
-    */
   };
 
   i_thread threads[arrlen (ctx)];

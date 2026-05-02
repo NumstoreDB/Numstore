@@ -77,11 +77,6 @@ _ns_insert (struct _ns_insert_params *params, error *e)
 
       cur = page_h_xfer_ownership (&seek.pg);
       lidx = seek.lidx;
-
-      if (pgr_make_writable (params->p, params->tx, &cur, e))
-        {
-          goto failed;
-        }
     }
 
   pgno last = dl_get_next (page_h_ro (&cur));

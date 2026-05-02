@@ -28,7 +28,9 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
   hdata_idx data;                // The data to retrieve
   i32 clock;                     // Location of the new page
 
+  i_log_info ("e\n");
   latch_lock (&p->l);
+  i_log_info ("f\n");
   hta_res res = ht_get_idx (&p->pgno_to_value, &data, pg);
 
   switch (res)
@@ -38,16 +40,21 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
       {
         pgr = &p->pages[data.value];
 
+        i_log_info ("g\n");
         latch_lock (&pgr->ctrl);
+        i_log_info ("h\n");
         latch_unlock (&p->l);
+        i_log_info ("i\n");
         pgr->pin++;
         latch_unlock (&pgr->ctrl);
+        i_log_info ("j\n");
 
         dest->pgr = pgr;
         dest->pgw = NULL;
         dest->mode = PHM_S;
 
         spx_lock_s (&pgr->data);
+        i_log_info ("k\n");
 
         return SUCCESS;
       }
@@ -90,8 +97,6 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
                 .key = pg,
                 .value = clock,
             });
-
-        spx_lock_s (&pgr->data); // This doesn't unlock here
         latch_unlock (&pgr->ctrl);
 
         // Set the page data
@@ -99,6 +104,7 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
         dest->pgw = NULL;
         dest->mode = PHM_S;
 
+        spx_lock_s (&pgr->data);
         return SUCCESS;
       }
     }

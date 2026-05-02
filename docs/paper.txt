@@ -2,9 +2,7 @@ An Introduction to Rope+Trees
 
 - Introduction
 
-A Rope+Tree is a tree data structure optimized for array data. 
-More generally, a Rope+Tree is a B+Tree (REF) but instead of storing inner node values pointing to index locations on the lowest layer, 
-Rope+Tree's store the count of elements of their child nodes. 
+A Rope+Tree is a tree data structure optimized for array data. More generally, a Rope+Tree is a B+Tree (REF) but instead of storing inner node values pointing to index locations on the lowest layer, Rope+Tree's store the count of elements of their child nodes. 
 
 - Motivation
 
