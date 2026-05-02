@@ -12,9 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx/concurrency/spx_latch.h"
-#include "c_specx/dev/assert.h"
-#include "c_specx_dev.h"
+#include "c_specx.h"
+
 #include "pager.h"
 #include "pager/page_fixture.h"
 #include "pager/page_h.h"
