@@ -46,8 +46,10 @@ _ns_seek (struct _ns_seek_params *a, error *e)
   a->sp = 0;
   a->lidx = 0;
 
-  // Fetch the starting node
-  if (pgr_get (&a->pg, PG_DATA_LIST | PG_INNER_NODE, a->root, a->p, e))
+  if (pgr_get_maybe_writable (
+          &a->pg, a->tx,
+          PG_DATA_LIST | PG_INNER_NODE,
+          a->root, a->p, a->save_stack, e))
     {
       goto failed;
     }
@@ -75,7 +77,10 @@ _ns_seek (struct _ns_seek_params *a, error *e)
 
             // Fetch that next page
             const pgno npg = in_get_leaf (page_h_ro (&a->pg), a->lidx);
-            if (pgr_get (&next, PG_DATA_LIST | PG_INNER_NODE, npg, a->p, e))
+            if (pgr_get_maybe_writable (
+                    &next, a->tx,
+                    PG_DATA_LIST | PG_INNER_NODE,
+                    npg, a->p, a->save_stack, e))
               {
                 goto failed;
               }

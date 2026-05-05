@@ -32,7 +32,7 @@ struct os_wal_vtable
    * Ownership of self is transferred; the returned pointer must be used
    * from this point on (may differ from self).
    */
-  struct os_wal *(*delete_and_reopen) (struct os_wal *self, error *e);
+  err_t (*delete_and_reopen) (struct os_wal *self, error *e);
 
   // Flushing
   err_t (*flush_to) (struct os_wal *self, lsn l, error *e);
@@ -71,7 +71,7 @@ oswal_reset (struct os_wal *w, error *e)
   return w->vtable->reset (w, e);
 }
 
-HEADER_FUNC struct os_wal *
+HEADER_FUNC err_t
 oswal_delete_and_reopen (struct os_wal *w, error *e)
 {
   return w->vtable->delete_and_reopen (w, e);

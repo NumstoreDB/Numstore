@@ -357,7 +357,6 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
     }
 
   walis_mark_end_log (w->istream);
-  i_log_wal_rec_hdr_read (LOG_TRACE, dest);
 
   return SUCCESS;
 }

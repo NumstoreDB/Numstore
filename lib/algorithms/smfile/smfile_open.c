@@ -15,9 +15,6 @@
 #include "algorithms/nsdb/var/algorithms.h"
 #include "algorithms/smfile/_smfile.h"
 #include "c_specx.h"
-#include "c_specx/dev/error.h"
-#include "c_specx/intf/os/memory.h"
-#include "c_specx/memory/chunk_alloc.h"
 #include "pager.h"
 #include "pager/page_h.h"
 #include "smfile.h"
@@ -70,8 +67,10 @@ _smfile_open (const char *path, error *e)
           goto failed;
         }
 
-      // Next page should be valid - this is a weak contract - but assumes the structure of the pager,
-      // it's good enough but might need to change
+      // Next page should be valid
+      //   this is a weak contract
+      //   but assumes the structure of the pager,
+      //   it's good enough but might need to change
       ASSERT (page_h_pgno (&hp) == VHASH_PGNO);
 
       if (pgr_release (ret->p, &hp, PG_VAR_HASH_PAGE, e))

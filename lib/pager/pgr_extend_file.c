@@ -43,7 +43,11 @@
  *   5. Actually extend the file on disk.
  */
 err_t
-pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
+pgr_extend_file (
+    const struct pager *p,
+    const pgno npages,
+    struct txn *tx,
+    error *e)
 {
   // Do a Nested Top Action
 

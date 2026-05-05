@@ -87,9 +87,9 @@ enum
 struct pager
 {
   // Resources
-  struct os_pager *fp; // OS pager abstraction (e.g. file_pager)
-  struct os_wal *ww;   // Write-ahead log abstraction
-  struct lockt *lt;    // Lock table
+  struct os_pager *const fp; // OS pager abstraction (e.g. file_pager)
+  struct os_wal *const ww;   // Write-ahead log abstraction
+  struct lockt *lt;          // Lock table
 
   bool iown_fp;
   bool iown_ww;
@@ -97,6 +97,7 @@ struct pager
 
   _Atomic int flags;
   _Atomic u32 clock;
+  latch pgrnew_lock; // Lock used to synchronize pager new operations
 
   /**
    * A hash table of pgno -> index within the buffer pool
@@ -107,11 +108,10 @@ struct pager
    */
   hash_table_idx pgno_to_value;
   hentry_idx _hdata[MEMORY_PAGE_LEN];
+  latch htable_lock; // Synchronizes access to the hash table across "get"
 
-  latch l;
-
-  struct dpg_table *dpt;
-  struct txn_table *tnxt;
+  struct dpg_table *const dpt;
+  struct txn_table *const tnxt;
   struct periodic_task checkpoint_task;
   _Atomic txid next_tid;
 
@@ -127,14 +127,11 @@ struct pager
 
 DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p);
-
-  latch_lock ((latch *)&p->l);
   ASSERT (p->fp);
   ASSERT (p->ww);
   ASSERT (p->lt);
   ASSERT (p->dpt);
   ASSERT (p->tnxt);
-  latch_unlock ((latch *)&p->l);
 })
 
 ////////////////////////////////////////////////////////////
@@ -164,7 +161,7 @@ void i_log_page_table (int log_level, bool only_present, struct pager *p);
 err_t pgr_begin_txn (struct txn *tx, struct pager *p, error *e);
 err_t pgr_commit (struct pager *p, struct txn *tx, error *e);
 err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e);
-err_t pgr_flush_wall (const struct pager *p, error *e);
+err_t pgr_flush_wall (struct pager *p, error *e);
 
 ////////////////////////////////////////////////////////////
 /// Inner Utils
@@ -186,8 +183,8 @@ err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
 /// Primary API
 
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
+err_t pgr_get_writable (page_h *dest, struct txn *tx, int flags, pgno pg, struct pager *p, error *e);
 err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
-err_t pgr_make_writable (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_release_with_log (struct pager *p, page_h *h, int flags, struct wal_update_write *record, error *e);
 void pgr_cancel (const struct pager *p, page_h *h);
@@ -196,39 +193,23 @@ void pgr_cancel (const struct pager *p, page_h *h);
 /// Short Hands
 
 HEADER_FUNC err_t
-pgr_get_writable (
+pgr_get_maybe_writable (
     page_h *dest,
     struct txn *tx,
-    const int flags,
-    const pgno pg,
+    int flags,
+    pgno pg,
     struct pager *p,
+    bool writable,
     error *e)
 {
-  if (pgr_get (dest, flags, pg, p, e))
+  if (!writable)
     {
-      return error_trace (e);
+      return pgr_get (dest, flags, pg, p, e);
     }
-
-  if (pgr_make_writable (p, tx, dest, e))
+  else
     {
-      pgr_cancel (p, dest);
+      return pgr_get_writable (dest, tx, flags, pg, p, e);
     }
-
-  return error_trace (e);
-}
-
-HEADER_FUNC err_t
-pgr_maybe_make_writable (
-    struct pager *p,
-    struct txn *tx,
-    page_h *cur,
-    error *e)
-{
-  if (cur->mode == PHM_S)
-    {
-      return pgr_make_writable (p, tx, cur, e);
-    }
-  return SUCCESS;
 }
 
 HEADER_FUNC err_t
@@ -340,4 +321,12 @@ pgr_cancel_if_exists (struct pager *p, page_h *h)
     }
 
   pgr_cancel (p, h);
+}
+
+HEADER_FUNC err_t
+pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e)
+{
+  pgno pg = page_h_pgno (_pg);
+  pgr_release (p, _pg, flags, e);
+  return pgr_get_writable (_pg, tx, flags, pg, p, e);
 }
