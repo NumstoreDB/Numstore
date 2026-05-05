@@ -13,9 +13,11 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "c_specx/core/random.h"
 #include "c_specx_dev.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
+#include "pages/data_list.h"
 #include "txns/txn.h"
 
 #ifndef NTEST
@@ -29,6 +31,7 @@ struct thread_ctx
   pgno b;
   pgno c;
   pgno d;
+  bool success;
   err_t ret;
 };
 
@@ -45,6 +48,12 @@ simple_pager_ops (void *_ctx)
   page_h c = page_h_create ();
   page_h d = page_h_create ();
 
+  // Create some random data
+  decl_rand_buffer (abytes, u8, DL_DATA_SIZE);
+  decl_rand_buffer (bbytes, u8, DL_DATA_SIZE);
+  decl_rand_buffer (cbytes, u8, DL_DATA_SIZE);
+  decl_rand_buffer (dbytes, u8, DL_DATA_SIZE);
+
   i_semaphore_wait (ctx->begin);
 
   pgr_begin_txn (&tx, p, &e);
@@ -55,17 +64,18 @@ simple_pager_ops (void *_ctx)
   pgr_new (&c, p, &tx, PG_DATA_LIST, &e);
   pgr_new (&d, p, &tx, PG_DATA_LIST, &e);
 
-  // Make them valid
-  dl_make_valid (page_h_w (&a));
-  dl_make_valid (page_h_w (&b));
-  dl_make_valid (page_h_w (&c));
-  dl_make_valid (page_h_w (&d));
+  dl_memset (page_h_w (&a), abytes, DL_DATA_SIZE);
+  dl_memset (page_h_w (&b), bbytes, DL_DATA_SIZE);
+  dl_memset (page_h_w (&c), cbytes, DL_DATA_SIZE);
+  dl_memset (page_h_w (&d), dbytes, DL_DATA_SIZE);
 
   // Get their page numbers
   pgno ap = page_h_pgno (&a);
   pgno bp = page_h_pgno (&b);
   pgno cp = page_h_pgno (&c);
   pgno dp = page_h_pgno (&d);
+
+  i_log_info ("%ld %ld %ld %ld\n", ap, bp, cp, dp);
 
   // Release all of them
   pgr_release (p, &a, PG_DATA_LIST, &e);
@@ -75,9 +85,15 @@ simple_pager_ops (void *_ctx)
 
   // Get them
   pgr_get (&a, PG_DATA_LIST, ap, p, &e);
-  pgr_get (&b, PG_DATA_LIST, ap, p, &e);
-  pgr_get (&c, PG_DATA_LIST, ap, p, &e);
-  pgr_get (&d, PG_DATA_LIST, ap, p, &e);
+  pgr_get (&b, PG_DATA_LIST, bp, p, &e);
+  pgr_get (&c, PG_DATA_LIST, cp, p, &e);
+  pgr_get (&d, PG_DATA_LIST, dp, p, &e);
+
+  // Check data
+  ctx->success = memcmp (dl_get_data (page_h_ro (&a)), abytes, DL_DATA_SIZE) == 0;
+  ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&b)), bbytes, DL_DATA_SIZE) == 0;
+  ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&c)), cbytes, DL_DATA_SIZE) == 0;
+  ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&d)), dbytes, DL_DATA_SIZE) == 0;
 
   // Release them all
   pgr_release (p, &a, PG_DATA_LIST, &e);
@@ -112,16 +128,21 @@ TEST (pager_mt)
   i_semaphore begin;
 
   struct thread_ctx ctx[] = {
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
-    { .p = pf.p, .begin = &begin },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
+    { .p = pf.p, .begin = &begin, .success = false },
   };
 
   i_thread threads[arrlen (ctx)];
@@ -153,6 +174,8 @@ TEST (pager_mt)
   // Check results
   for (u32 i = 0; i < arrlen (threads); ++i)
     {
+      test_assert (ctx[i].success);
+
       test_assert_int_equal (ctx[i].ret, SUCCESS);
       hdata_pg data = {
         .key = ctx[i].a,

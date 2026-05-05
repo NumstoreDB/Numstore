@@ -112,6 +112,12 @@ _ns_write_forward (const struct _ns_write_params params, error *e)
       // Transition from Seeked -> inserting
       cur = page_h_xfer_ownership (&seek.pg);
       lidx = seek.lidx;
+
+      // Upgrade to X lock
+      if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e))
+        {
+          goto failed;
+        }
     }
 
   page *curp = page_h_w (&cur);

@@ -31,9 +31,5 @@ pgr_do_checkpoint (void *ctx)
 err_t
 pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
 {
-  latch_lock (&p->l);
-  err_t ret = periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e);
-  latch_unlock (&p->l);
-
-  return ret;
+  return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e);
 }

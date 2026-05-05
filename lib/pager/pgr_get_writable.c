@@ -13,7 +13,6 @@
 /// limitations under the License.
 
 #include "c_specx.h"
-
 #include "pager.h"
 #include "pager/page_fixture.h"
 #include "pager/page_h.h"
@@ -35,7 +34,7 @@ pgr_get_writable (
   i32 rclock;                    // Location of the new page
   i32 wclock;                    // Write page location
 
-  latch_lock (&p->l);
+  latch_lock (&p->htable_lock);
   hta_res res = ht_get_idx (&p->pgno_to_value, &data, pg);
 
   switch (res)
@@ -46,8 +45,10 @@ pgr_get_writable (
         pgr = &p->pages[data.value];
 
         latch_lock (&pgr->ctrl);
-        latch_unlock (&p->l);
+        latch_unlock (&p->htable_lock);
+
         pgr->pin++;
+
         latch_unlock (&pgr->ctrl);
 
         dest->pgr = pgr;
@@ -55,6 +56,8 @@ pgr_get_writable (
         dest->mode = PHM_S;
 
         spx_lock_x (&pgr->data);
+
+        // Make a copy in a new slot
 
         wclock = pgr_reserve_and_ctrl_lock (p, e);
         if (wclock < 0)
@@ -64,19 +67,18 @@ pgr_get_writable (
 
         pgw = &p->pages[wclock];
 
-        // Initialize pgw
-
         pgw->pin = 1;
         pgw->wsibling = -1;
         pgw->flags = PW_PRESENT | PW_X;
         memcpy (pgw->page.raw, dest->pgr->page.raw, PAGE_SIZE);
         pgw->page.pg = dest->pgr->page.pg;
 
+        latch_unlock (&pgw->ctrl);
+
+        // Set this page as the sibling of the read page
         latch_lock (&dest->pgr->ctrl);
         dest->pgr->wsibling = wclock;
         latch_unlock (&dest->pgr->ctrl);
-
-        latch_unlock (&pgw->ctrl);
 
         // Set h
         dest->pgw = pgw;
@@ -88,6 +90,9 @@ pgr_get_writable (
 
     case HTAR_DOESNT_EXIST:
       {
+        latch_unlock (&p->htable_lock);
+
+        // Grab both r and w slots in once
         rclock = pgr_reserve_and_ctrl_lock (p, e);
         if (rclock < 0)
           {
@@ -107,10 +112,6 @@ pgr_get_writable (
         pgr = &p->pages[data.value];
         pgw = &p->pages[wclock];
 
-        latch_lock (&pgr->ctrl);
-        latch_lock (&pgw->ctrl);
-        latch_unlock (&p->l);
-
         pgr->pin = 1;
         pgr->flags = PW_ACCESS | PW_PRESENT;
         pgr->wsibling = wclock;
@@ -122,6 +123,7 @@ pgr_get_writable (
             latch_unlock (&pgw->ctrl);
             return error_trace (e);
           }
+
         if (page_validate_for_db (&pgr->page, flags, e))
           {
             latch_unlock (&pgr->ctrl);
