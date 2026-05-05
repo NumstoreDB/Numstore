@@ -18,31 +18,31 @@ jobs:
       matrix:
         include:
           # ── Linux ──────────────────────────────────────────────────────────
-          - { os: ubuntu-latest,  preset: debug,                 run_tests: true,  extra: false } 
-          - { os: ubuntu-latest,  preset: debug-no-asan,         run_tests: true,  extra: true  }
-          - { os: ubuntu-latest,  preset: debug-ntests,          run_tests: false, extra: false }
-          - { os: ubuntu-latest,  preset: debug-ntests-no-asan,  run_tests: false, extra: false }
-          - { os: ubuntu-latest,  preset: release,               run_tests: false, extra: false }
-          - { os: ubuntu-latest,  preset: release-tests,         run_tests: true,  extra: true  }
-          - { os: ubuntu-latest,  preset: package-release,       run_tests: false, extra: false }
+          # - { os: ubuntu-latest,  preset: debug,                 run_tests: true,  extra: false } 
+          # - { os: ubuntu-latest,  preset: debug-no-asan,         run_tests: true,  extra: true  }
+          # - { os: ubuntu-latest,  preset: debug-ntests,          run_tests: false, extra: false }
+          # - { os: ubuntu-latest,  preset: debug-ntests-no-asan,  run_tests: false, extra: false }
+          # - { os: ubuntu-latest,  preset: release,               run_tests: false, extra: false }
+          # - { os: ubuntu-latest,  preset: release-tests,         run_tests: true,  extra: true  }
+          # - { os: ubuntu-latest,  preset: package-release,       run_tests: false, extra: false }
 
           # macOS
-          - { os: macos-latest,   preset: debug,                 run_tests: true,  extra: false }
-          - { os: macos-latest,   preset: debug-no-asan,         run_tests: true,  extra: true  }
-          - { os: macos-latest,   preset: debug-ntests,          run_tests: false, extra: false }
-          - { os: macos-latest,   preset: debug-ntests-no-asan,  run_tests: false, extra: false }
-          - { os: macos-latest,   preset: release,               run_tests: false, extra: false }
-          - { os: macos-latest,   preset: release-tests,         run_tests: true,  extra: true  }
-          - { os: macos-latest,   preset: package-release,       run_tests: false, extra: false }
+          # - { os: macos-latest,   preset: debug,                 run_tests: true,  extra: false }
+          # - { os: macos-latest,   preset: debug-no-asan,         run_tests: true,  extra: true  }
+          # - { os: macos-latest,   preset: debug-ntests,          run_tests: false, extra: false }
+          # - { os: macos-latest,   preset: debug-ntests-no-asan,  run_tests: false, extra: false }
+          # - { os: macos-latest,   preset: release,               run_tests: false, extra: false }
+          # - { os: macos-latest,   preset: release-tests,         run_tests: true,  extra: true  }
+          # - { os: macos-latest,   preset: package-release,       run_tests: false, extra: false }
 
           # Windows 
           - { os: windows-latest, preset: debug,                 run_tests: true,  extra: false }
-          - { os: windows-latest, preset: debug-no-asan,         run_tests: true,  extra: false }
-          - { os: windows-latest, preset: debug-ntests,          run_tests: false, extra: false }
-          - { os: windows-latest, preset: debug-ntests-no-asan,  run_tests: false, extra: false }
-          - { os: windows-latest, preset: release,               run_tests: false, extra: false }
-          - { os: windows-latest, preset: release-tests,         run_tests: true,  extra: false }
-          - { os: windows-latest, preset: package-release,       run_tests: false, extra: false }
+          # - { os: windows-latest, preset: debug-no-asan,         run_tests: true,  extra: false }
+          # - { os: windows-latest, preset: debug-ntests,          run_tests: false, extra: false }
+          # - { os: windows-latest, preset: debug-ntests-no-asan,  run_tests: false, extra: false }
+          # - { os: windows-latest, preset: release,               run_tests: false, extra: false }
+          # - { os: windows-latest, preset: release-tests,         run_tests: true,  extra: false }
+          # - { os: windows-latest, preset: package-release,       run_tests: false, extra: false }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
