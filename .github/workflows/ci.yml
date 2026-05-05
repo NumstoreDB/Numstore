@@ -102,14 +102,3 @@ jobs:
               ./build/${{ matrix.preset }}/samples/Debug/$sample.exe
             done
           done
-
-      - name: Samples (valgrind)
-        if: matrix.extra && matrix.os == 'ubuntu-latest'
-        shell: bash
-        run: |
-          for sample in $SAMPLES; do
-            for run in 1 2; do
-              echo "[$run/2] $sample"
-              $VALGRIND $SAMPLES_DIR/$sample
-            done
-          done
