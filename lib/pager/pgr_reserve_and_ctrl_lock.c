@@ -17,12 +17,13 @@
 #include "compile_config.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
+#include <stdatomic.h>
 
 static inline u32
 pgr_spin_clock (struct pager *p)
 {
   ASSERT (MEMORY_PAGE_LEN % 2 == 0); // For overflow and faster modulo
-  return atomic_fetch_add_explicit (&p->clock, 1, memory_order_relaxed) & (MEMORY_PAGE_LEN - 1);
+  return atomic_fetch_add (&p->clock, 1) & (MEMORY_PAGE_LEN - 1);
 }
 
 i32
