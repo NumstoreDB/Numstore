@@ -75,8 +75,6 @@ simple_pager_ops (void *_ctx)
   pgno cp = page_h_pgno (&c);
   pgno dp = page_h_pgno (&d);
 
-  i_log_info ("%ld %ld %ld %ld\n", ap, bp, cp, dp);
-
   // Release all of them
   pgr_release (p, &a, PG_DATA_LIST, &e);
   pgr_release (p, &b, PG_DATA_LIST, &e);
