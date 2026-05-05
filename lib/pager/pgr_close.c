@@ -28,9 +28,6 @@ pgr_close (struct pager *p, error *e)
   // Good idea to run a checkpoint before closing
   pgr_deletion_blocking_checkpoint (p, e);
 
-  // Latch the entire pager on close - this never releases
-  latch_lock (&p->l);
-
   // Stop the checkpoint task if it's running
   periodic_task_stop (&p->checkpoint_task, e);
 
@@ -85,8 +82,6 @@ TEST (pgr_close_success)
 err_t
 pgr_crash (struct pager *p, error *e)
 {
-  latch_lock (&p->l);
-
   periodic_task_stop (&p->checkpoint_task, e);
 
   oswal_crash (p->ww, e);

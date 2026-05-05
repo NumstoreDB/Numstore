@@ -75,7 +75,7 @@ theend:
 }
 
 err_t
-_ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
+_ns_find_var_page (struct _ns_find_var_page_params *pms, error *e)
 {
   page_h prev = page_h_create ();
   page_h cur = page_h_create ();
@@ -86,39 +86,35 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
   chunk_alloc_create_default (&temp);
 
   // Fetch the root node
-  params->hpos = vh_get_hash_pos (params->vname);
+  pms->hpos = vh_get_hash_pos (pms->vname);
+  bool writable = pms->mode == FP_CREATE;
 
-  if (pgr_get (&prev, PG_VAR_HASH_PAGE, VHASH_PGNO, params->p, e))
+  if (pgr_get_maybe_writable (&prev, pms->tx, PG_VAR_HASH_PAGE, VHASH_PGNO, pms->p, writable, e))
     {
       goto failed;
     }
-  pgno head = vh_get_hash_value (page_h_ro (&prev), params->hpos);
+  pgno head = vh_get_hash_value (page_h_ro (&prev), pms->hpos);
 
   // Hash Chain Doesn't Exist
   if (head == PGNO_NULL)
     {
-      switch (params->mode)
+      switch (pms->mode)
         {
         case FP_FIND:
           {
-            err_var_doesnt_exist (params->vname, e);
+            err_var_doesnt_exist (pms->vname, e);
             goto failed;
           }
         case FP_CREATE:
           {
-            if (pgr_make_writable (params->p, params->tx, &prev, e))
-              {
-                goto failed;
-              }
-
             // Create a new variable page
-            if (pgr_new (&cur, params->p, params->tx, PG_VAR_PAGE, e))
+            if (pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e))
               {
                 goto failed;
               }
 
             // vhp[pos] = new page
-            vh_set_hash_value (page_h_w (&prev), params->hpos, page_h_pgno (&cur));
+            vh_set_hash_value (page_h_w (&prev), pms->hpos, page_h_pgno (&cur));
             goto foundit;
           }
         }
@@ -128,7 +124,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
   else
     {
       // Fetch start hash chain
-      if (pgr_get (&cur, PG_VAR_PAGE, head, params->p, e))
+      if (pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e))
         {
           goto failed;
         }
@@ -138,13 +134,13 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
         {
           // Check if this var page matches
           struct _ns_read_var_page_params get_params = {
-            .p = params->p,
-            .tx = params->tx,
+            .p = pms->p,
+            .tx = pms->tx,
             .vp = &cur,
             .alloc = &temp,
-            .dest = params->dvar,
+            .dest = pms->dvar,
             .matches = false,
-            .check = &params->vname,
+            .check = &pms->vname,
           };
           if (_ns_read_var_page (&get_params, e))
             {
@@ -154,11 +150,11 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
           // Found it
           if (get_params.matches)
             {
-              switch (params->mode)
+              switch (pms->mode)
                 {
                 case FP_CREATE:
                   {
-                    err_var_already_exists (params->vname, e);
+                    err_var_already_exists (pms->vname, e);
                     goto failed;
                   }
                 case FP_FIND:
@@ -180,32 +176,24 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
               // Doesn't exist
               if (next == PGNO_NULL)
                 {
-                  switch (params->mode)
+                  switch (pms->mode)
                     {
                     case FP_CREATE:
                       {
                         // Create the next page
-                        if (pgr_new (&npg, params->p, params->tx,
+                        if (pgr_new (&npg, pms->p, pms->tx,
                                      PG_VAR_PAGE, e))
                           {
                             goto failed;
                           }
 
                         // cur.next = npg
-                        {
-                          if (pgr_make_writable (params->p, params->tx,
-                                                 &cur, e))
-                            {
-                              goto failed;
-                            }
-
-                          vp_set_next (page_h_w (&cur), page_h_pgno (&npg));
-                        }
+                        vp_set_next (page_h_w (&cur), page_h_pgno (&npg));
 
                         // Advance
                         {
                           // free(prev)
-                          if ((pgr_release_if_exists (params->p, &prev,
+                          if ((pgr_release_if_exists (pms->p, &prev,
                                                       PG_VAR_PAGE, e)))
                             {
                               goto failed;
@@ -221,7 +209,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
                       }
                     case FP_FIND:
                       {
-                        err_var_doesnt_exist (params->vname, e);
+                        err_var_doesnt_exist (pms->vname, e);
                         goto failed;
                       }
                     }
@@ -231,7 +219,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
               else
                 {
                   // free(prev)
-                  if ((pgr_release (params->p, &prev, PG_VAR_PAGE, e)))
+                  if ((pgr_release (pms->p, &prev, PG_VAR_PAGE, e)))
                     {
                       goto failed;
                     }
@@ -240,7 +228,7 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
                   prev = page_h_xfer_ownership (&cur);
 
                   // cur = cur->next
-                  if ((pgr_get (&cur, PG_VAR_PAGE, next, params->p, e)))
+                  if ((pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e)))
                     {
                       goto failed;
                     }
@@ -252,29 +240,29 @@ _ns_find_var_page (struct _ns_find_var_page_params *params, error *e)
 foundit:
 
   // Transfer stuff to alloc
-  if (params->dvar && params->alloc)
+  if (pms->dvar && pms->alloc)
     {
-      params->dvar->vname.data = chunk_alloc_move_mem (
-          params->alloc,
-          params->vname.data,
-          params->vname.len,
+      pms->dvar->vname.data = chunk_alloc_move_mem (
+          pms->alloc,
+          pms->vname.data,
+          pms->vname.len,
           e);
 
-      if (params->dvar->vname.data == NULL)
+      if (pms->dvar->vname.data == NULL)
         {
           goto failed;
         }
-      params->dvar->vname.len = params->vname.len;
+      pms->dvar->vname.len = pms->vname.len;
     }
 
   chunk_alloc_free_all (&temp);
 
   // Transfer nodes to params
-  if (xfer_or_release (params->p, params->prev, &prev, e))
+  if (xfer_or_release (pms->p, pms->prev, &prev, e))
     {
       goto failed;
     }
-  if (xfer_or_release (params->p, params->cur, &cur, e))
+  if (xfer_or_release (pms->p, pms->cur, &cur, e))
     {
       goto failed;
     }
@@ -284,9 +272,9 @@ foundit:
 failed:
   chunk_alloc_free_all (&temp);
 
-  pgr_cancel_if_exists (params->p, &prev);
-  pgr_cancel_if_exists (params->p, &cur);
-  pgr_cancel_if_exists (params->p, &npg);
+  pgr_cancel_if_exists (pms->p, &prev);
+  pgr_cancel_if_exists (pms->p, &cur);
+  pgr_cancel_if_exists (pms->p, &npg);
 
   return error_trace (e);
 }

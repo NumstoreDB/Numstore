@@ -16,6 +16,7 @@
 
 #include "c_specx.h"
 #include "c_specx/dev/error.h"
+#include "compile_config.h"
 #include "lockt/lock_table.h"
 #include "pager/page_fixture.h"
 
@@ -30,16 +31,13 @@ pgr_isnew (const struct pager *p)
 p_size
 pgr_get_npages (struct pager *p)
 {
-  DBG_ASSERT (pager, p);
-
   return ospgr_get_npages (p->fp);
 }
 
 err_t
-pgr_flush_wall (const struct pager *p, error *e)
+pgr_flush_wall (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
-
   return oswal_flush_all (p->ww, e);
 }
 
@@ -47,13 +45,8 @@ void
 pgr_attach_lock_table (struct pager *p, struct lockt *lt)
 {
   DBG_ASSERT (pager, p);
-
-  latch_lock (&p->l);
-
   ASSERT (p->lt == NULL);
   p->lt = lt;
-
-  latch_unlock (&p->l);
 }
 
 #ifndef NTEST
@@ -139,8 +132,6 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
 
   i_log (log_level, "Page Table:\n");
 
-  latch_lock (&p->l);
-
   for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
     {
       const struct page_frame *mp = &p->pages[i];
@@ -162,27 +153,12 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
     }
   i_log_dpgt (log_level, p->dpt);
   i_log_txnt (log_level, p->tnxt);
-
-  latch_unlock (&p->l);
 }
 
 err_t
 pgr_refresh_wal (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
-
-  latch_lock (&p->l);
-
-  struct os_wal *new_ww = oswal_delete_and_reopen (p->ww, e);
-  if (new_ww == NULL)
-    {
-      goto theend;
-    }
-
-  p->ww = new_ww;
-
-theend:
-  latch_unlock (&p->l);
-
+  oswal_delete_and_reopen (p->ww, e);
   return error_trace (e);
 }

@@ -347,15 +347,10 @@ TEST (lock_table_exclusivity)
 {
   error e = error_create ();
 
-  i_rm_rf ("testdb", &e);
-
   // Why doesnt this fail?
-  struct lockt lt;
-  lockt_init (&lt, &e);
   struct pager *p = pgr_open_single_file ("testdb", &e);
-  pgr_attach_lock_table (p, &lt);
   struct test_case c = {
-    .lt = &lt,
+    .lt = p->lt,
     .counter = 0,
     .key1 = {
         .type = LOCK_DB,
@@ -377,7 +372,6 @@ TEST (lock_table_exclusivity)
   test_assert_int_equal (c.counter, 100 * arrlen (threads));
 
   pgr_close (p, &e);
-  lockt_destroy (&lt);
 }
 
 #endif

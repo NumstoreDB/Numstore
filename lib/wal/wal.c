@@ -15,6 +15,7 @@
 #include "wal/wal.h"
 
 #include "c_specx.h"
+#include "c_specx/dev/error.h"
 #include "c_specx/ds/string.h"
 #include "c_specx/intf/logging.h"
 #include "c_specx_dev.h"
@@ -38,10 +39,10 @@ wal_reset_impl (struct os_wal *self, error *e)
   return wal_reset ((struct wal *)self, e);
 }
 
-static struct os_wal *
+static err_t
 wal_delete_and_reopen_impl (struct os_wal *self, error *e)
 {
-  return (struct os_wal *)wal_delete_and_reopen ((struct wal *)self, e);
+  return wal_delete_and_reopen ((struct wal *)self, e);
 }
 
 static err_t
@@ -127,21 +128,15 @@ static const struct os_wal_vtable wal_vtable = {
   .crash_fn = wal_crash_impl,
 };
 
-static struct wal *
-wal_open_internal (const char *fname, bool copy_fname, error *e)
+static err_t
+wal_init (struct wal *dest, const char *fname, bool copy_fname, error *e)
 {
-  struct wal *dest = i_malloc (1, sizeof *dest, e);
-  if (dest == NULL)
-    {
-      return NULL;
-    }
   if (copy_fname)
     {
       dest->iown_fname = true;
       if (string_copy (&dest->fname, strfcstr (fname), e))
         {
-          i_free (dest);
-          return NULL;
+          return error_trace (e);
         }
     }
   else
@@ -158,19 +153,35 @@ wal_open_internal (const char *fname, bool copy_fname, error *e)
   dest->ostream = walos_open (dest->fname.data, e);
   if (dest->ostream == NULL)
     {
-      i_free (dest);
-      return NULL;
+      return error_trace (e);
     }
 
   dest->istream = walis_open (dest->fname.data, e);
   if (dest->istream == NULL)
     {
       walos_close (dest->ostream, e);
-      i_free (dest);
-      return NULL;
+      return error_trace (e);
     }
 
   DBG_ASSERT (wal, dest);
+
+  return error_trace (e);
+}
+
+static struct wal *
+wal_open_internal (const char *fname, bool copy_fname, error *e)
+{
+  struct wal *dest = i_malloc (1, sizeof *dest, e);
+  if (dest == NULL)
+    {
+      return NULL;
+    }
+
+  if (wal_init (dest, fname, copy_fname, e))
+    {
+      i_free (dest);
+      return NULL;
+    }
 
   return dest;
 }
@@ -212,8 +223,8 @@ wal_reset (struct wal *w, error *e)
   return error_trace (e);
 }
 
-err_t
-wal_close (struct wal *w, error *e)
+static inline err_t
+wal_destroy (struct wal *w, error *e)
 {
   wal_flush_all (w, e);
   walos_close (w->ostream, e);
@@ -223,29 +234,38 @@ wal_close (struct wal *w, error *e)
     {
       i_free ((void *)w->fname.data);
     }
-
-  i_free (w);
-
   return error_trace (e);
 }
 
-struct wal *
+err_t
+wal_close (struct wal *w, error *e)
+{
+  wal_destroy (w, e);
+  i_free (w);
+  return error_trace (e);
+}
+
+err_t
 wal_delete_and_reopen (struct wal *w, error *e)
 {
+  latch_lock (&w->latch);
+
   struct string fname = w->fname;
   w->fname.data = NULL;
 
-  if (wal_close (w, e))
+  if (wal_destroy (w, e))
     {
-      return NULL;
+      latch_unlock (&w->latch);
+      return error_trace (e);
     }
 
   if (i_remove_quiet (fname.data, e))
     {
-      return NULL;
+      latch_unlock (&w->latch);
+      return error_trace (e);
     }
 
-  return wal_open_internal (fname.data, false, e);
+  return wal_init (w, fname.data, false, e);
 }
 
 err_t

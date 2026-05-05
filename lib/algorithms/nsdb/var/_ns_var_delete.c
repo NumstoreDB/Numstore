@@ -40,7 +40,7 @@
  *      deleted in sequence.
  */
 err_t
-_ns_var_delete (const struct _ns_var_delete_params params, error *e)
+_ns_var_delete (struct _ns_var_delete_params params, error *e)
 {
   page_h prev = page_h_create ();
   page_h cur = page_h_create ();
@@ -87,13 +87,7 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
       // Previous is the root hash page
     case PG_VAR_HASH_PAGE:
       {
-        if (pgr_make_writable (params.p, params.tx, &prev, e))
-          {
-            goto failed;
-          }
-
-        vh_set_hash_value (page_h_w (&prev), fparams.hpos,
-                           vp_get_next (page_h_ro (&cur)));
+        vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
 
         if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e))
           {
@@ -106,11 +100,6 @@ _ns_var_delete (const struct _ns_var_delete_params params, error *e)
       // Otherwise, we just need to link prev->cur
     case PG_VAR_PAGE:
       {
-        if (pgr_make_writable (params.p, params.tx, &prev, e))
-          {
-            goto failed;
-          }
-
         vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
         if (pgr_release (params.p, &prev, PG_VAR_PAGE, e))

@@ -14,6 +14,7 @@
 
 #include "c_specx/concurrency/spx_latch.h"
 #include "c_specx/dev/assert.h"
+#include "c_specx/ds/ht_models.h"
 #include "c_specx_dev.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
@@ -27,9 +28,10 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
   struct page_frame *pgr = NULL; // Read frame
   hdata_idx data;                // The data to retrieve
   i32 clock;                     // Location of the new page
+  hta_res res;
 
-  latch_lock (&p->l);
-  hta_res res = ht_get_idx (&p->pgno_to_value, &data, pg);
+  latch_lock (&p->htable_lock);
+  res = ht_get_idx (&p->pgno_to_value, &data, pg);
 
   switch (res)
     {
@@ -39,8 +41,7 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
         pgr = &p->pages[data.value];
 
         latch_lock (&pgr->ctrl);
-        spx_lock_s (&pgr->data); // This won't be released here
-        latch_unlock (&p->l);
+        latch_unlock (&p->htable_lock);
 
         pgr->pin++;
 
@@ -50,20 +51,21 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
         dest->pgw = NULL;
         dest->mode = PHM_S;
 
+        spx_lock_s (&pgr->data);
+
         return SUCCESS;
       }
     case HTAR_DOESNT_EXIST:
       {
-        // Otherwise, we'll scan for an open spot
-        latch_unlock (&p->l);
+        latch_unlock (&p->htable_lock);
 
+        // Otherwise, we'll scan for an open spot
         clock = pgr_reserve_and_ctrl_lock (p, e);
         if (clock < 0)
           {
             return error_trace (e);
           }
 
-        // ctrl is locked
         pgr = &p->pages[clock];
 
         if (ospgr_read (p->fp, pgr->page.raw, pg, e))
@@ -92,13 +94,14 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
                 .value = clock,
             });
 
-        spx_lock_s (&pgr->data); // This doesn't unlock here
         latch_unlock (&pgr->ctrl);
 
         // Set the page data
         dest->pgr = pgr;
         dest->pgw = NULL;
         dest->mode = PHM_S;
+
+        spx_lock_s (&pgr->data);
 
         return SUCCESS;
       }

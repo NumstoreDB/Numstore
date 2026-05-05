@@ -58,7 +58,7 @@ struct wal *wal_open (const char *fname, error *e);
 struct os_wal *wal_open_os (const char *fname, error *e);
 err_t wal_reset (struct wal *dest, error *e);
 err_t wal_close (struct wal *w, error *e);
-struct wal *wal_delete_and_reopen (struct wal *w, error *e);
+err_t wal_delete_and_reopen (struct wal *w, error *e);
 
 /**
  * Flushes the wal to a certain lsn
