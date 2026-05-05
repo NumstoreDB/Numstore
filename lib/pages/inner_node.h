@@ -94,6 +94,7 @@ in_get_backwards_keys_imut (const page *in)
 {
   const p_size n = in_get_len (in);
   const p_size nbytes = n * sizeof (b_size);
+  i_log_info ("%d %d\n", nbytes, PAGE_SIZE);
   ASSERT (nbytes <= PAGE_SIZE);
   if (nbytes > PAGE_SIZE)
     UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
