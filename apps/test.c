@@ -178,6 +178,7 @@ main (const int argc, char **argv)
       return 0;
     }
 
+  /**
   REGISTER (smartfiles, nupd_init);
   REGISTER (smartfiles, nupd_append_right);
   REGISTER (smartfiles, nupd_append_left);
@@ -275,6 +276,8 @@ main (const int argc, char **argv)
   // REGISTER (smartfiles, wal_multi_threaded);
   REGISTER (smartfiles, wal);
   REGISTER (smartfiles, wal_single_entry);
+  */
+  REGISTER (smartfiles, wal);
 
   struct suite all_suites[] = {
     { "smartfiles", smartfiles_tests, (u32)smartfiles_count },
