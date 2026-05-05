@@ -15,4 +15,4 @@ def find_tests(root):
             print(f"  REGISTER (smartfiles, {t});")
 
 if __name__ == "__main__":
-    find_tests(sys.argv[1] if len(sys.argv) > 1 else ".")
+    find_tests("lib")
