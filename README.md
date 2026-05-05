@@ -13,10 +13,10 @@ Files have had the same definition for 50 years: an array of bytes that grows, s
 
 **Smart Files solves both, and adds two more features:**
 
-1. **Transactions.** Modifications go through a write-ahead log — every write commits fully or rolls back cleanly. A crash mid-write leaves nothing corrupt.
+1. **Transactions.** Modifications go through a write-ahead log - every write commits fully or rolls back cleanly. A crash mid-write leaves nothing corrupt.
 2. **Inner mutations.** Insert or remove bytes anywhere in the stream in O(log N) time.
 3. **Stride access.** Read, write, and remove at regular intervals without manual offset arithmetic.
-4. **Multiple named streams.** Store more than one named byte stream per file — no separate file handles, no embedded database.
+4. **Multiple named streams.** Store more than one named byte stream per file - no separate file handles, no embedded database.
 
 Written in C with no dependencies. Developed on POSIX - built (but maybe not optimized yet) for windows. 
 
@@ -78,14 +78,14 @@ int main()
   smfile_premove(f, NULL, read_data, sizeof(uint32_t), 0, 3, 200);
   print_array("Expect: [0, 3, 6, 9, ...]", read_data, 20);
 
-  // Same strided read — the stream has changed shape after the removal
+  // Same strided read - the stream has changed shape after the removal
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
   print_array("Expect: [1, 4, 7, 0, ...]", read_data, 20);
 
   // Overwrite every 2nd element with values from data
   smfile_pwrite(f, NULL, data, sizeof(uint32_t), 0, 2, 200);
 
-  // Final read — even-indexed slots now hold a clean sequence
+  // Final read - even-indexed slots now hold a clean sequence
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
   print_array("Expect: [0, 1, 2, 3, ...]", read_data, 20);
 
@@ -116,45 +116,45 @@ Expect: [0, 1, 2, 3, ...]
 
 ### What's happening step by step
 
-**Step 1 — insert at position 0.**
+**Step 1 - insert at position 0.**
 We write the full 200,000-element array at byte offset 0. The stream now holds `[0, 1, 2, 3, ...]`.
 
-**Step 2 — insert in the middle.**
+**Step 2 - insert in the middle.**
 We insert another 200,000-byte chunk at byte offset 40 (element index 10). Everything from index 10 onwards shifts right. At the join you get `[0, 1, ..., 9, 0, 1, 2, ..., 9, 10, 11, ...]`.
 
-**Step 3 — strided read (stride=2).**
+**Step 3 - strided read (stride=2).**
 `smfile_pread` reads every 2nd `uint32_t` from offset 0, returning `[0, 2, 4, 6, 8, 0, 2, ...]`. The `0` at index 5 is where the inserted block begins.
 
-**Step 4 — strided remove (stride=3).**
+**Step 4 - strided remove (stride=3).**
 `smfile_premove` pulls every 3rd `uint32_t` and copies the removed values into `read_data`. The gaps close up; remaining elements shift down.
 
-**Step 5 — strided read again (stride=2).**
+**Step 5 - strided read again (stride=2).**
 Same read as step 3, but the stream is shorter now. After the removal the sequence starts `[1, 4, 7, 0, ...]`.
 
-**Step 6 — strided write (stride=2).**
+**Step 6 - strided write (stride=2).**
 `smfile_pwrite` overwrites every 2nd element with values from `data` (0, 1, 2, 3, ...).
 
-**Step 7 — final read.**
-The last strided read returns `[0, 1, 2, 3, ...]` — the even-indexed slots hold the clean sequence written in step 6.
+**Step 7 - final read.**
+The last strided read returns `[0, 1, 2, 3, ...]` - the even-indexed slots hold the clean sequence written in step 6.
 
 ---
 
 ## Project Structure
 
-Public headers are in `include/`. Source code is in `lib/`. The `thirdparty/c_specx` directory holds reusable C utilities I've extracted for use across projects — all my own code, no external dependencies.
+Public headers are in `include/`. Source code is in `lib/`. The `thirdparty/c_specx` directory holds reusable C utilities I've extracted for use across projects - all my own code, no external dependencies.
 
 `lib/` is organized by function:
 
-- `algorithms` — rope algorithms and database traversal
-- `aries` — rollback and crash recovery logic
-- `dpgt` — dirty page table
-- `lockt` — lock table
-- `os_pager` — single-file pager that reads pages from disk
-- `pager` — buffer pool initialization, page reads, and WAL entry writes
-- `pages` — page type definitions
-- `testing` — test-specific utilities
-- `txns` — transaction table and transaction logic
-- `wal` — write-ahead log
+- `algorithms` - rope algorithms and database traversal
+- `aries` - rollback and crash recovery logic
+- `dpgt` - dirty page table
+- `lockt` - lock table
+- `os_pager` - single-file pager that reads pages from disk
+- `pager` - buffer pool initialization, page reads, and WAL entry writes
+- `pages` - page type definitions
+- `testing` - test-specific utilities
+- `txns` - transaction table and transaction logic
+- `wal` - write-ahead log
 
 ---
 
@@ -178,13 +178,13 @@ In practice, AI is useful for ideation, code review, and generating mundane code
 
 The `CLAUDE.md` file is there because if AI-assisted code ever does land here, I want it to follow consistent standards. It was inspired by [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills).
 
-If you're skeptical that a database engine can be written without leaning on AI — fair. Read through the code and make up your own mind.
+If you're skeptical that a database engine can be written without leaning on AI - fair. Read through the code and make up your own mind.
 
 ---
 
 ## Contributing
 
-File a ticket on GitHub for bugs, feature requests, or questions. Pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Windows CI/CD support is an open and approachable first contribution.
+File a ticket on GitHub for bugs, feature requests, or questions. Pull requests are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Windows CI/CD support is an open and approachable first contribution.
 
 ## License
 
