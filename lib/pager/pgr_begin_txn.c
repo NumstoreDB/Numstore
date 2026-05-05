@@ -30,6 +30,7 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   slsn l = 0;
 
   l = oswal_append_begin_log (p->ww, tid, e);
+
   if (l < 0)
     {
       // WAL append failed - we just wasted a transaction id - not a big deal

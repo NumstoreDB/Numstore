@@ -84,12 +84,10 @@ _smfile_open (const char *path, error *e)
         .tx = &tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
       };
-      i_log_info ("there\n");
       if (_ns_var_create (params, e))
         {
           goto failed;
         }
-      i_log_info ("boo\n");
     }
 
   // COMMIT

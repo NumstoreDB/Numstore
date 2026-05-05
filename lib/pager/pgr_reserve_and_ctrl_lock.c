@@ -17,6 +17,7 @@
 #include "compile_config.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
+
 #include <stdatomic.h>
 
 static inline u32

@@ -27,7 +27,6 @@ pgr_release_with_log (
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
-  i_log_info ("Releasing\n");
   if (h->mode == PHM_X)
     {
       spgno page_lsn = 0;
@@ -85,42 +84,32 @@ pgr_release_with_log (
       memcpy (&h->pgr->page.raw, h->pgw->page.raw, PAGE_SIZE);
 
       // Update pgw
-      i_log_info ("1\n");
       latch_lock (&h->pgw->ctrl);
-      i_log_info ("2\n");
       h->pgw->flags = 0;
       h->pgw->pin = 0;
       latch_unlock (&h->pgw->ctrl);
-      i_log_info ("3\n");
 
       h->pgw = NULL;
 
       // Update pgr
       latch_lock (&h->pgr->ctrl);
-      i_log_info ("4\n");
       h->pgr->pin--;
       h->pgr->wsibling = -1;
       latch_unlock (&h->pgr->ctrl);
-      i_log_info ("5\n");
 
       h->mode = PHM_S;
 
       spx_unlock_x (&h->pgr->data);
-      i_log_info ("6\n");
     }
   else
     {
       // Update pgr
-      i_log_info ("7\n");
       latch_lock (&h->pgr->ctrl);
-      i_log_info ("8\n");
       h->pgr->pin--;
       latch_unlock (&h->pgr->ctrl);
-      i_log_info ("9\n");
 
       // Unlock from s mode
       spx_unlock_s (&h->pgr->data);
-      i_log_info ("0\n");
     }
 
   h->pgr = NULL;

@@ -48,8 +48,8 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
     }
 
   // Initialize "easy" things
-  ret->fp = fp;
-  ret->ww = ww;
+  *(struct os_pager **)&ret->fp = fp;
+  *(struct os_wal **)&ret->ww = ww;
   ret->lt = lt;
   ret->iown_fp = false;
   ret->iown_ww = false;
@@ -57,17 +57,18 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
   atomic_store (&ret->flags, ospgr_get_npages (ret->fp) == 0 ? PGR_ISNEW : 0);
   atomic_store (&ret->clock, 0);
   ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
-  latch_init (&ret->l);
+  latch_init (&ret->htable_lock);
+  latch_init (&ret->pgrnew_lock);
 
   // Open the Dirty page table
-  ret->dpt = dpgt_open (e);
+  *(struct dpg_table **)&ret->dpt = dpgt_open (e);
   if (ret->dpt == NULL)
     {
       goto failed;
     }
 
   // Open the transaction table
-  ret->tnxt = txnt_open (e);
+  *(struct txn_table **)&ret->tnxt = txnt_open (e);
   if (ret->tnxt == NULL)
     {
       goto failed;

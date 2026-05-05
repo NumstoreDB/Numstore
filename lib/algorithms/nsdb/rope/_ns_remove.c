@@ -123,8 +123,7 @@ advance_writer (struct remove_state *s, error *e)
 
       if (npg != PGNO_NULL)
         {
-          if (pgr_get_writable (&s->writer, s->tx, PG_DATA_LIST, npg,
-                                s->p, e))
+          if (pgr_get_writable (&s->writer, s->tx, PG_DATA_LIST, npg, s->p, e))
             {
               goto failed;
             }
@@ -172,8 +171,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
 
       if (npg != PGNO_NULL)
         {
-          if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg,
-                                s->p, e))
+          if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e))
             {
               goto failed;
             }
@@ -192,8 +190,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
 
       if (npg != PGNO_NULL)
         {
-          if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg,
-                                s->p, e))
+          if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e))
             {
               goto failed;
             }
@@ -220,8 +217,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
       dlgt_link (page_h_w (&s->writer), page_h_w_or_null (&next));
       page_h_xfer_ownership_ptr (&s->reader, &next);
 
-      if (nupd_append_2nd_right (s->output, pgh_unravel (&s->writer), rpg, 0,
-                                 e))
+      if (nupd_append_2nd_right (s->output, pgh_unravel (&s->writer), rpg, 0, e))
         {
           goto failed;
         }
@@ -340,9 +336,10 @@ _ns_remove (struct _ns_remove_params *params, error *e)
   s.read_idx = s.write_idx;
 
   // Phase 1: Remove / Skip
-
+  int k = 0;
   while (s.max_remove == 0 || s.total_removed < s.max_remove)
     {
+      k++;
       const page *sro = page_h_ro (remove_creader (&s));
       p_size rlen = dl_used (sro);
 
@@ -372,9 +369,10 @@ _ns_remove (struct _ns_remove_params *params, error *e)
 
             if (params->dest)
               {
-                i32 written
-                    = stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1,
-                                     next_amount, params->dest, e);
+                i32 written = stream_bwrite (
+                    (u8 *)dl_get_data (sro) + s.read_idx, 1,
+                    next_amount, params->dest, e);
+
                 if (written < 0)
                   {
                     goto failed;
@@ -489,8 +487,7 @@ drain:
 
                   if (npg != PGNO_NULL)
                     {
-                      if (pgr_get_writable (&next, params->tx, PG_DATA_LIST,
-                                            npg, params->p, e))
+                      if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e))
                         {
                           goto failed;
                         }
