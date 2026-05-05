@@ -97,7 +97,7 @@ struct pager
 
   _Atomic int flags;
   _Atomic u32 clock;
-  latch pgrnew_lock;
+  latch pgrnew_lock; // Lock used to synchronize pager new operations
 
   /**
    * A hash table of pgno -> index within the buffer pool
@@ -108,7 +108,7 @@ struct pager
    */
   hash_table_idx pgno_to_value;
   hentry_idx _hdata[MEMORY_PAGE_LEN];
-  latch htable_lock;
+  latch htable_lock; // Synchronizes access to the hash table across "get"
 
   struct dpg_table *const dpt;
   struct txn_table *const tnxt;
@@ -127,7 +127,6 @@ struct pager
 
 DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p);
-
   ASSERT (p->fp);
   ASSERT (p->ww);
   ASSERT (p->lt);
