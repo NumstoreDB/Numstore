@@ -96,13 +96,11 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
   // Create or link
   if (b.prev)
     {
-      WRAP (pgr_maybe_make_writable (b.pager, b.txn, b.prev, e));
       dlgt_link (page_h_w (b.prev), page_h_w (dest));
     }
 
   if (b.next)
     {
-      WRAP (pgr_maybe_make_writable (b.pager, b.txn, b.next, e));
       dlgt_link (page_h_w (dest), page_h_w (b.next));
     }
 
@@ -146,13 +144,11 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
   // Create or link
   if (b.prev)
     {
-      WRAP (pgr_maybe_make_writable (b.pager, b.txn, b.prev, e));
       dlgt_link (page_h_w (b.prev), page_h_w (dest));
     }
 
   if (b.next)
     {
-      WRAP (pgr_maybe_make_writable (b.pager, b.txn, b.next, e));
       dlgt_link (page_h_w (dest), page_h_w (b.next));
     }
 
@@ -171,8 +167,7 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
       rand_bytes (&data[b.data.blen], (b.dclen - b.data.blen));
     }
 
-  dl_set_data (page_h_w (dest),
-               (struct dl_data){ .data = data, .blen = b.dclen });
+  dl_set_data (page_h_w (dest), (struct dl_data){ .data = data, .blen = b.dclen });
 
   return 0;
 }

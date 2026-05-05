@@ -83,11 +83,6 @@ _ns_update_by_name (struct _ns_var_update_params params, error *e)
       goto failed;
     }
 
-  if (pgr_make_writable (params.p, params.tx, &cur, e))
-    {
-      goto failed;
-    }
-
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 

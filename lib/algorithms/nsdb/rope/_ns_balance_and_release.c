@@ -66,37 +66,6 @@ dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
 }
 
 #ifndef NTEST
-TEST (repro)
-{
-  struct pgr_fixture f;
-  error *e = &f.e;
-  pgr_fixture_create (&f);
-
-  struct txn tx;
-  pgr_begin_txn (&tx, f.p, e);
-
-  page_h pg1 = page_h_create ();
-  page_h pg2 = page_h_create ();
-  page_h pg3 = page_h_create ();
-
-  pgr_new (&pg1, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&pg2, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&pg3, f.p, &tx, PG_DATA_LIST, e);
-  dl_make_valid (page_h_w (&pg1));
-  dl_make_valid (page_h_w (&pg2));
-  dl_make_valid (page_h_w (&pg3));
-
-  pgr_release (f.p, &pg1, PG_DATA_LIST, e);
-  pgr_release (f.p, &pg2, PG_DATA_LIST, e);
-  pgr_release (f.p, &pg3, PG_DATA_LIST, e);
-
-  pgr_commit (f.p, &tx, e);
-
-  pgr_fixture_teardown (&f);
-}
-#endif
-
-#ifndef NTEST
 TEST (dlgt_balance_with_prev)
 {
   struct pgr_fixture f;
@@ -447,8 +416,6 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
 
   // Upgrade cur to writable - so far there's no garuntees that cur
   // is already writable on entry
-  WRAP (pgr_maybe_make_writable (params.p, params.tx, params.cur, e));
-
   const p_size csize = dlgt_get_len (page_h_ro (params.cur));
 
   *params.output = three_in_pair_from (NULL, params.cur, NULL);
@@ -459,8 +426,6 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
       // If next is present - try balancing with next
       if (params.next->mode != PHM_NONE)
         {
-          WRAP (pgr_maybe_make_writable (params.p, params.tx, params.next,
-                                         e));
           dlgt_balance_with_next (params.cur, params.next);
           *params.output = three_in_pair_from (NULL, params.cur, params.next);
         }
@@ -468,8 +433,6 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
       // If prev is present - try balancing with prev
       else if (params.prev->mode != PHM_NONE)
         {
-          WRAP (pgr_maybe_make_writable (params.p, params.tx, params.prev,
-                                         e));
           dlgt_balance_with_prev (params.prev, params.cur);
           *params.output = three_in_pair_from (params.prev, params.cur, NULL);
         }
@@ -478,7 +441,8 @@ _ns_balance_and_release (const struct _ns_balance_and_release_params params,
       else if (dlgt_get_next (page_h_ro (params.cur)) != PGNO_NULL)
         {
           WRAP (pgr_get_writable (
-              params.next, params.tx, PG_INNER_NODE | PG_DATA_LIST,
+              params.next, params.tx,
+              PG_INNER_NODE | PG_DATA_LIST,
               dlgt_get_next (page_h_ro (params.cur)), params.p, e));
           dlgt_balance_with_next (params.cur, params.next);
           *params.output = three_in_pair_from (NULL, params.cur, params.next);

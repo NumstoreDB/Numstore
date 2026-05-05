@@ -196,6 +196,7 @@ run_wal_test (const struct wal_test_params *p)
   error e = error_create ();
 
   i_remove_quiet (p->fname, &e);
+  i_log_info ("D\n");
   struct wal *ww = wal_open (p->fname, &e);
   /**
    * Write all the input logs
@@ -204,6 +205,7 @@ run_wal_test (const struct wal_test_params *p)
     slsn l = -1;
     for (u32 i = 0; i < p->batch1_len; i++)
       {
+        i_log_info ("E\n");
         struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch1[i]);
         slsn nextl = wal_append_log (ww, &out, &e);
         test_assert (nextl >= 0);
@@ -225,12 +227,15 @@ run_wal_test (const struct wal_test_params *p)
         struct wal_rec_hdr_read *next = NULL;
         if (i == 0)
           {
+            i_log_info ("F\n");
             next = wal_read_entry (ww, 0, &e);
           }
         else
           {
+            i_log_info ("G\n");
             next = wal_read_next (ww, &read_lsn, &e);
           }
+        i_log_info ("H\n");
         test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
       }
   }
@@ -242,6 +247,7 @@ run_wal_test (const struct wal_test_params *p)
     slsn l = 0;
     for (u32 i = 0; i < p->batch2_len; i++)
       {
+        i_log_info ("G\n");
         struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch2[i]);
         l = wal_append_log (ww, &out, &e);
       }
@@ -258,10 +264,12 @@ run_wal_test (const struct wal_test_params *p)
         struct wal_rec_hdr_read *next = NULL;
         if (i == 0)
           {
+            i_log_info ("H\n");
             next = wal_read_entry (ww, 0, &e);
           }
         else
           {
+            i_log_info ("I\n");
             next = wal_read_next (ww, &read_lsn, &e);
           }
         test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
@@ -269,6 +277,7 @@ run_wal_test (const struct wal_test_params *p)
 
     for (u32 i = 0; i < p->batch2_len; i++)
       {
+        i_log_info ("J\n");
         lsn read_lsn;
         struct wal_rec_hdr_read *next = wal_read_next (ww, &read_lsn, &e);
         test_assert (wal_rec_hdr_read_equal (next, &p->batch2[i]));
@@ -291,26 +300,38 @@ TEST (wal)
     { .type = WL_BEGIN, .begin = { .tid = 1 } },
     { .type = WL_COMMIT, .commit = { .tid = 3, .prev = 20 } },
     { .type = WL_END, .end = { .tid = 4, .prev = 30 } },
-    { .type = WL_UPDATE,
-      .update = { .type = WUP_PHYSICAL,
-                  .tid = 5,
-                  .prev = 40,
-                  .phys = { .pg = 111 } } },
-    { .type = WL_CLR,
-      .clr = { .type = WCLR_PHYSICAL,
-               .tid = 6,
-               .prev = 50,
-               .undo_next = 42,
-               .phys = { .pg = 222 } } },
+    {
+        .type = WL_UPDATE,
+        .update = {
+            .type = WUP_PHYSICAL,
+            .tid = 5,
+            .prev = 40,
+            .phys = { .pg = 111 },
+        },
+    },
+    {
+        .type = WL_CLR,
+        .clr = {
+            .type = WCLR_PHYSICAL,
+            .tid = 6,
+            .prev = 50,
+            .undo_next = 42,
+            .phys = { .pg = 222 },
+        },
+    },
   };
 
   struct wal_rec_hdr_read batch2_full[] = {
     { .type = WL_BEGIN, .begin = { .tid = 2 } },
-    { .type = WL_UPDATE,
-      .update = { .type = WUP_PHYSICAL,
-                  .tid = 6,
-                  .prev = 41,
-                  .phys = { .pg = 112 } } },
+    {
+        .type = WL_UPDATE,
+        .update = {
+            .type = WUP_PHYSICAL,
+            .tid = 6,
+            .prev = 41,
+            .phys = { .pg = 112 },
+        },
+    },
   };
 
   struct wal_rec_hdr_read batch1_begin_only[] = {
@@ -325,17 +346,25 @@ TEST (wal)
     { .type = WL_BEGIN, .begin = { .tid = 1 } },
     { .type = WL_COMMIT, .commit = { .tid = 3, .prev = 20 } },
     { .type = WL_END, .end = { .tid = 4, .prev = 30 } },
-    { .type = WL_UPDATE,
-      .update = { .type = WUP_PHYSICAL,
-                  .tid = 5,
-                  .prev = 40,
-                  .phys = { .pg = 111 } } },
-    { .type = WL_CLR,
-      .clr = { .type = WCLR_PHYSICAL,
-               .tid = 6,
-               .prev = 50,
-               .undo_next = 42,
-               .phys = { .pg = 222 } } },
+    {
+        .type = WL_UPDATE,
+        .update = {
+            .type = WUP_PHYSICAL,
+            .tid = 5,
+            .prev = 40,
+            .phys = { .pg = 111 },
+        },
+    },
+    {
+        .type = WL_CLR,
+        .clr = {
+            .type = WCLR_PHYSICAL,
+            .tid = 6,
+            .prev = 50,
+            .undo_next = 42,
+            .phys = { .pg = 222 },
+        },
+    },
   };
 
   struct wal_test_params cases[] = {
@@ -368,12 +397,17 @@ TEST (wal)
       {
         const struct wal_test_params *c = &cases[i];
 
+        i_log_info ("A\n");
         wal_test_fill_batch (c->batch1, c->batch1_len, &a, &e);
+        i_log_info ("B\n");
         wal_test_fill_batch (c->batch2, c->batch2_len, &a, &e);
 
+        i_log_info ("C\n");
         run_wal_test (c);
 
+        i_log_info ("D\n");
         wal_test_free_batch (c->batch1, c->batch1_len);
+        i_log_info ("E\n");
         wal_test_free_batch (c->batch2, c->batch2_len);
       }
     }

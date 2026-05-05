@@ -32,7 +32,9 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   i_log_info ("Starting Analysis phase\n");
 
   lsn read_lsn = 0;
+
   struct wal_rec_hdr_read *log_rec = oswal_read_next (p->ww, &read_lsn, e);
+
   if (log_rec == NULL)
     {
       goto failed;
@@ -133,6 +135,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
         }
 
       log_rec = oswal_read_next (p->ww, &read_lsn, e);
+
       if (log_rec == NULL)
         {
           goto failed;
@@ -154,6 +157,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
         {
           // Append an end log
           const slsn l = oswal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+
           if (l < 0)
             {
               goto failed;

@@ -17,6 +17,7 @@
 #include "compile_config.h"
 #include "dpgt/dirty_page_table.h"
 #include "pager/page_h.h"
+#include "pages/fsm_page.h"
 #include "txns/txn_table.h"
 
 ////////////////////////////////////////////////////////////
@@ -300,3 +301,24 @@ void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 #ifndef NTEST
 bool wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right);
 #endif
+
+////////////////////////////////////////////////////////////
+/// Shorthands
+
+HEADER_FUNC struct wal_update_write
+wup_fsm (pgno fsmpg, struct txn *tx, p_size bit, u8 undo, u8 redo)
+{
+  ASSERT (fsmpg % FS_BTMP_NPGS == 0);
+
+  return (struct wal_update_write){
+    .type = WUP_FSM,
+    .tid = tx->tid,
+    .prev = tx->data.last_lsn,
+    .fsm = {
+        .pg = fsmpg,
+        .bit = bit,
+        .undo = undo,
+        .redo = redo,
+    },
+  };
+}
