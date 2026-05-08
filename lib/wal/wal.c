@@ -129,20 +129,11 @@ static const struct os_wal_vtable wal_vtable = {
 };
 
 static err_t
-wal_init (struct wal *dest, const char *fname, bool copy_fname, error *e)
+wal_init (struct wal *dest, const char *fname, error *e)
 {
-  if (copy_fname)
+  if (string_copy (&dest->fname, strfcstr (fname), e))
     {
-      dest->iown_fname = true;
-      if (string_copy (&dest->fname, strfcstr (fname), e))
-        {
-          return error_trace (e);
-        }
-    }
-  else
-    {
-      dest->iown_fname = false;
-      dest->fname = strfcstr (fname);
+      return error_trace (e);
     }
 
   dest->base.vtable = &wal_vtable;
@@ -169,7 +160,7 @@ wal_init (struct wal *dest, const char *fname, bool copy_fname, error *e)
 }
 
 static struct wal *
-wal_open_internal (const char *fname, bool copy_fname, error *e)
+wal_open_internal (const char *fname, error *e)
 {
   struct wal *dest = i_malloc (1, sizeof *dest, e);
   if (dest == NULL)
@@ -177,7 +168,7 @@ wal_open_internal (const char *fname, bool copy_fname, error *e)
       return NULL;
     }
 
-  if (wal_init (dest, fname, copy_fname, e))
+  if (wal_init (dest, fname, e))
     {
       i_free (dest);
       return NULL;
@@ -189,7 +180,7 @@ wal_open_internal (const char *fname, bool copy_fname, error *e)
 struct wal *
 wal_open (const char *fname, error *e)
 {
-  return wal_open_internal (fname, true, e);
+  return wal_open_internal (fname, e);
 }
 
 struct os_wal *
@@ -250,7 +241,10 @@ wal_delete_and_reopen (struct wal *w, error *e)
 {
   latch_lock (&w->latch);
 
+  // Copy fname to pass in
   struct string fname = w->fname;
+
+  // Set to NULL so we don't free it
   w->fname.data = NULL;
 
   if (wal_destroy (w, e))
@@ -265,7 +259,7 @@ wal_delete_and_reopen (struct wal *w, error *e)
       return error_trace (e);
     }
 
-  return wal_init (w, fname.data, false, e);
+  return wal_init (w, fname.data, e);
 }
 
 err_t
