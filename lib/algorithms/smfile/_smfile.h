@@ -41,6 +41,7 @@ struct smfile
 #define DEFAULT_VARIABLE "."
 
 struct smfile *_smfile_remove_and_open (const char *name, error *e);
+int _smfile_crash (smfile_t *ns);
 
 // Auto Transactions
 err_t _smfile_auto_begin_txn (struct smfile *sm, error *e);
@@ -48,6 +49,7 @@ err_t _smfile_auto_commit (struct smfile *sm, error *e);
 void _smfile_auto_rollback (struct smfile *sm);
 
 err_t _smfile_root_close (struct smfile_root *root, error *e);
+err_t _smfile_root_crash (struct smfile_root *root, error *e);
 struct smfile *_smfile_root_load (struct smfile_root *root, error *e);
 void _smfile_root_release (struct smfile_root *root, struct smfile *sm);
 

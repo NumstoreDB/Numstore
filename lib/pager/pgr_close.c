@@ -26,7 +26,7 @@ pgr_close (struct pager *p, error *e)
   DBG_ASSERT (pager, p);
 
   // Good idea to run a checkpoint before closing
-  pgr_deletion_blocking_checkpoint (p, e);
+  // pgr_deletion_blocking_checkpoint (p, e);
 
   // Stop the checkpoint task if it's running
   periodic_task_stop (&p->checkpoint_task, e);

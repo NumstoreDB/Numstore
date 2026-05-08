@@ -77,6 +77,16 @@ _smfile_root_close (struct smfile_root *root, error *e)
   return err;
 }
 
+err_t
+_smfile_root_crash (struct smfile_root *root, error *e)
+{
+  ASSERT (root->count == 0);
+  err_t err = pgr_crash (root->p, e);
+  i_free ((void *)root->path.data);
+  i_free (root);
+  return err;
+}
+
 struct smfile *
 _smfile_root_load (struct smfile_root *ns, error *e)
 {
