@@ -196,7 +196,6 @@ run_wal_test (const struct wal_test_params *p)
   error e = error_create ();
 
   i_remove_quiet (p->fname, &e);
-  i_log_info ("D\n");
   struct wal *ww = wal_open (p->fname, &e);
   /**
    * Write all the input logs
@@ -205,7 +204,6 @@ run_wal_test (const struct wal_test_params *p)
     slsn l = -1;
     for (u32 i = 0; i < p->batch1_len; i++)
       {
-        i_log_info ("E\n");
         struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch1[i]);
         slsn nextl = wal_append_log (ww, &out, &e);
         test_assert (nextl >= 0);
@@ -227,15 +225,12 @@ run_wal_test (const struct wal_test_params *p)
         struct wal_rec_hdr_read *next = NULL;
         if (i == 0)
           {
-            i_log_info ("F\n");
             next = wal_read_entry (ww, 0, &e);
           }
         else
           {
-            i_log_info ("G\n");
             next = wal_read_next (ww, &read_lsn, &e);
           }
-        i_log_info ("H\n");
         test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
       }
   }
@@ -247,7 +242,6 @@ run_wal_test (const struct wal_test_params *p)
     slsn l = 0;
     for (u32 i = 0; i < p->batch2_len; i++)
       {
-        i_log_info ("G\n");
         struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch2[i]);
         l = wal_append_log (ww, &out, &e);
       }
@@ -264,12 +258,10 @@ run_wal_test (const struct wal_test_params *p)
         struct wal_rec_hdr_read *next = NULL;
         if (i == 0)
           {
-            i_log_info ("H\n");
             next = wal_read_entry (ww, 0, &e);
           }
         else
           {
-            i_log_info ("I\n");
             next = wal_read_next (ww, &read_lsn, &e);
           }
         test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
@@ -277,7 +269,6 @@ run_wal_test (const struct wal_test_params *p)
 
     for (u32 i = 0; i < p->batch2_len; i++)
       {
-        i_log_info ("J\n");
         lsn read_lsn;
         struct wal_rec_hdr_read *next = wal_read_next (ww, &read_lsn, &e);
         test_assert (wal_rec_hdr_read_equal (next, &p->batch2[i]));
@@ -397,17 +388,12 @@ TEST (wal)
       {
         const struct wal_test_params *c = &cases[i];
 
-        i_log_info ("A\n");
         wal_test_fill_batch (c->batch1, c->batch1_len, &a, &e);
-        i_log_info ("B\n");
         wal_test_fill_batch (c->batch2, c->batch2_len, &a, &e);
 
-        i_log_info ("C\n");
         run_wal_test (c);
 
-        i_log_info ("D\n");
         wal_test_free_batch (c->batch1, c->batch1_len);
-        i_log_info ("E\n");
         wal_test_free_batch (c->batch2, c->batch2_len);
       }
     }

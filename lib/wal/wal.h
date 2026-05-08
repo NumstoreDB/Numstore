@@ -32,7 +32,6 @@ struct wal
 
   // The file that's open
   struct string fname;
-  bool iown_fname;
 
   // Input and / or output streams
   struct wal_ostream *ostream;

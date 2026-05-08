@@ -285,7 +285,7 @@ wal_crash (struct wal *w, error *e)
 
   walos_close (w->ostream, e);
   walis_close (w->istream, e);
-  if (w->iown_fname && w->fname.data)
+  if (w->fname.data)
     {
       i_free ((void *)w->fname.data);
     }
