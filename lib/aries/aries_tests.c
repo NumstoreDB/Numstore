@@ -49,7 +49,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "AAABBAACCAAAAA";
-    char actual[strlen (expected)];
+    char actual[sizeof ("AAABBAACCAAAAA")];
     sb_size n = smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -76,7 +76,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "AAAAAAAAAA";
-    char actual[strlen (expected)];
+    char actual[sizeof ("AAAAAAAAAA")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -102,7 +102,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "HELLO";
-    char actual[strlen (expected)];
+    char actual[sizeof ("HELLO")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -137,7 +137,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "ONETWOTHREE";
-    char actual[strlen (expected)];
+    char actual[sizeof ("ONETWOTHREE")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -163,7 +163,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "STABLE";
-    char actual[strlen (expected)];
+    char actual[sizeof ("STABLE")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -190,7 +190,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    char actual[strlen (expected)];
+    char actual[sizeof ("ABCDEFGHIJKLMNOPQRSTUVWXYZ")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -216,7 +216,7 @@ TEST (aries_crash)
     /* AAAA -> AABBAA -> CCAABBAA */
     smf = smfile_open ("testdb");
     const char *expected = "CCAABBAA";
-    char actual[strlen (expected)];
+    char actual[sizeof ("CCAABBAA")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -244,7 +244,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "ABCDEFGH";
-    char actual[strlen (expected)];
+    char actual[sizeof ("ABCDEFGH")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -272,7 +272,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     const char *expected = "HELLO WORLD";
-    char actual[strlen (expected)];
+    char actual[sizeof ("HELLO WORLD")];
     smfile_read (smf, actual, 0, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
@@ -333,4 +333,5 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 }
+
 #endif
