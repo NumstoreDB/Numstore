@@ -14,6 +14,7 @@
 
 #include "c_specx/concurrency/periodic_task.h"
 #include "lockt/lock_table.h"
+#include "os_pager/file_pager.h"
 #include "pager.h"
 
 /**
@@ -44,19 +45,10 @@ pgr_close (struct pager *p, error *e)
     }
 
   // Free resources
-  if (p->iown_ww)
-    {
-      oswal_close (p->ww, e);
-    }
-  if (p->iown_fp)
-    {
-      ospgr_close (p->fp, e);
-    }
-  if (p->iown_lt)
-    {
-      lockt_destroy (p->lt);
-      i_free (p->lt);
-    }
+  wal_close (p->ww, e);
+  fpgr_close (p->fp, e);
+  lockt_destroy (p->lt);
+  i_free (p->lt);
 
   txnt_close (p->tnxt);
   dpgt_close (p->dpt);
@@ -84,8 +76,8 @@ pgr_crash (struct pager *p, error *e)
 {
   periodic_task_stop (&p->checkpoint_task, e);
 
-  oswal_crash (p->ww, e);
-  ospgr_crash (p->fp, e);
+  wal_crash (p->ww, e);
+  fpgr_crash (p->fp, e);
 
   txnt_crash (p->tnxt);
   dpgt_crash (p->dpt);

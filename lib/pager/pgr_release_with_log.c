@@ -40,7 +40,7 @@ pgr_release_with_log (
           // If no record was supplied, append a physical record
           if (record == NULL)
             {
-              page_lsn = oswal_append_update_log (
+              page_lsn = wal_append_update_log (
                   p->ww,
                   (struct wal_update_write){
                       .tid = h->tx->tid,
@@ -56,7 +56,7 @@ pgr_release_with_log (
             }
           else
             {
-              page_lsn = oswal_append_update_log (p->ww, *record, e);
+              page_lsn = wal_append_update_log (p->ww, *record, e);
             }
 
           if (page_lsn < 0)

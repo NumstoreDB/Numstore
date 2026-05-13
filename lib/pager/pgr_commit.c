@@ -14,7 +14,6 @@
 
 #include "lockt/lock_table.h"
 #include "pager.h"
-#include "wal/os_wal.h"
 
 err_t
 pgr_commit (struct pager *p, struct txn *tx, error *e)
@@ -31,7 +30,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
     }
 
   // COMMIT
-  slsn l = oswal_append_commit_log (p->ww, tx->tid, tx->data.last_lsn, e);
+  slsn l = wal_append_commit_log (p->ww, tx->tid, tx->data.last_lsn, e);
   if (l < 0)
     {
       // Failure here is fine
@@ -40,7 +39,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
     }
 
   // FLUSH
-  if (oswal_flush_to (p->ww, l, e))
+  if (wal_flush_to (p->ww, l, e))
     {
       // We have a commit log appended to the WAL.
       // It may or may not be written to disk.
@@ -52,7 +51,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
     }
 
   // END
-  l = oswal_append_end_log (p->ww, tx->tid, l, e);
+  l = wal_append_end_log (p->ww, tx->tid, l, e);
   if (l < 0)
     {
       // Failing to append an end log isn't a big deal,

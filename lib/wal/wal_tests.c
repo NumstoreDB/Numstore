@@ -197,6 +197,7 @@ run_wal_test (const struct wal_test_params *p)
 
   i_remove_quiet (p->fname, &e);
   struct wal *ww = wal_open (p->fname, &e);
+  wal_write_start_lsn (ww, 0, &e);
   /**
    * Write all the input logs
    */
@@ -225,7 +226,7 @@ run_wal_test (const struct wal_test_params *p)
         struct wal_rec_hdr_read *next = NULL;
         if (i == 0)
           {
-            next = wal_read_entry (ww, 0, &e);
+            next = wal_read_first (ww, &e);
           }
         else
           {
@@ -258,7 +259,7 @@ run_wal_test (const struct wal_test_params *p)
         struct wal_rec_hdr_read *next = NULL;
         if (i == 0)
           {
-            next = wal_read_entry (ww, 0, &e);
+            next = wal_read_first (ww, &e);
           }
         else
           {
@@ -434,6 +435,8 @@ TEST (wal_single_entry)
 
         i_remove_quiet ("test_single_entry.wal", &e);
         struct wal *ww = wal_open ("test_single_entry.wal", &e);
+        wal_write_start_lsn (ww, 0, &e);
+
         // WRITE
         struct wal_rec_hdr_write out = wrhw_from_wrhr (c);
         const slsn l = wal_append_log (ww, &out, &e);
@@ -442,7 +445,7 @@ TEST (wal_single_entry)
         wal_flush_all (ww, &e);
 
         // READ
-        struct wal_rec_hdr_read *next = wal_read_entry (ww, 0, &e);
+        struct wal_rec_hdr_read *next = wal_read_first (ww, &e);
         test_assert (wal_rec_hdr_read_equal (next, c));
 
         wal_close (ww, &e);

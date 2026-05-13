@@ -14,10 +14,13 @@
 
 #include "pager.h"
 
+#include "aries/aries.h"
 #include "c_specx.h"
+#include "c_specx/core/checksums.h"
 #include "c_specx/dev/error.h"
 #include "compile_config.h"
 #include "lockt/lock_table.h"
+#include "os_pager/file_pager.h"
 #include "pager/page_fixture.h"
 
 bool
@@ -31,14 +34,14 @@ pgr_isnew (const struct pager *p)
 p_size
 pgr_get_npages (struct pager *p)
 {
-  return ospgr_get_npages (p->fp);
+  return fpgr_get_npages (p->fp);
 }
 
 err_t
 pgr_flush_wall (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
-  return oswal_flush_all (p->ww, e);
+  return wal_flush_all (p->ww, e);
 }
 
 void
@@ -47,6 +50,120 @@ pgr_attach_lock_table (struct pager *p, struct lockt *lt)
   DBG_ASSERT (pager, p);
   ASSERT (p->lt == NULL);
   p->lt = lt;
+}
+
+err_t
+pgr_read_header (struct pager *p, error *e)
+{
+  if (fpgr_read_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e))
+    {
+      return error_trace (e);
+    }
+
+  lsn lsn0;
+  u32 lsn0csm;
+  u32 lsn0csm_actual = checksum_init ();
+
+  lsn lsn1;
+  u32 lsn1csm;
+  u32 lsn1csm_actual = checksum_init ();
+
+  memcpy (&lsn0, p->_header + LSN0_OFST, sizeof (lsn));
+  memcpy (&lsn0csm, p->_header + LSN0_CSM_OFST, sizeof (u32));
+
+  memcpy (&lsn1, p->_header + LSN1_OFST, sizeof (lsn));
+  memcpy (&lsn1csm, p->_header + LSN1_CSM_OFST, sizeof (u32));
+
+  checksum_execute (&lsn0csm_actual, (void *)&lsn0, sizeof (lsn));
+  checksum_execute (&lsn1csm_actual, (void *)&lsn1, sizeof (lsn));
+
+  p->header = (struct pager_header){
+    .lsn0 = lsn0,
+    .lsn0csm = lsn0csm,
+    .lsn0valid = lsn0csm == lsn0csm_actual,
+    .lsn1 = lsn1,
+    .lsn1csm = lsn1csm,
+    .lsn1valid = lsn1csm == lsn1csm_actual,
+  };
+
+  return SUCCESS;
+}
+
+err_t
+pgr_write_header (struct pager *p, error *e)
+{
+  p->header.lsn0csm = checksum_init ();
+  p->header.lsn1csm = checksum_init ();
+
+  checksum_execute (&p->header.lsn0csm, (void *)&p->header.lsn0, sizeof (lsn));
+  checksum_execute (&p->header.lsn1csm, (void *)&p->header.lsn1, sizeof (lsn));
+
+  memcpy (p->_header + LSN0_OFST, &p->header.lsn0, sizeof (lsn));
+  memcpy (p->_header + LSN0_CSM_OFST, &p->header.lsn0csm, sizeof (u32));
+  memcpy (p->_header + LSN1_OFST, &p->header.lsn1, sizeof (lsn));
+  memcpy (p->_header + LSN1_CSM_OFST, &p->header.lsn1csm, sizeof (u32));
+
+  return fpgr_write_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e);
+}
+
+err_t
+pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
+{
+  p->header.lsn0 = lsn0;
+  p->header.lsn0csm = checksum_init ();
+  checksum_execute (&p->header.lsn0csm, (void *)&lsn0, sizeof (lsn));
+
+  memcpy (p->_header + LSN0_OFST, &p->header.lsn0, sizeof (lsn));
+  memcpy (p->_header + LSN0_CSM_OFST, &p->header.lsn0csm, sizeof (u32));
+
+  return fpgr_write_header (p->fp, p->_header, LSN0_OFST, sizeof (lsn) + sizeof (u32), e);
+}
+
+err_t
+pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
+{
+  p->header.lsn1 = lsn1;
+  p->header.lsn1csm = checksum_init ();
+  checksum_execute (&p->header.lsn1csm, (void *)&lsn1, sizeof (lsn));
+
+  memcpy (p->_header + LSN1_OFST, &p->header.lsn1, sizeof (lsn));
+  memcpy (p->_header + LSN1_CSM_OFST, &p->header.lsn1csm, sizeof (u32));
+
+  return fpgr_write_header (p->fp, p->_header, LSN1_OFST, sizeof (lsn) + sizeof (u32), e);
+}
+
+err_t
+pgr_write_next_lsn (struct pager *p, lsn l, error *e)
+{
+  if (p->header.lsn0 > p->header.lsn1)
+    {
+      return pgr_write_lsn1 (p, l, e);
+    }
+  else
+    {
+      return pgr_write_lsn0 (p, l, e);
+    }
+}
+
+err_t
+pgr_recover (struct pager *p, error *e)
+{
+  // Run ARIES recovery
+  struct aries_ctx ctx;
+  if (aries_ctx_create (&ctx, e))
+    {
+      return error_trace (e);
+    }
+
+  if (pgr_restart (p, &ctx, e))
+    {
+      return error_trace (e);
+    }
+
+  // Start transactions one past maximum txid
+  atomic_store (&p->next_tid, ctx.max_tid + 1);
+
+  return SUCCESS;
 }
 
 #ifndef NTEST
@@ -159,6 +276,6 @@ err_t
 pgr_refresh_wal (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
-  oswal_delete_and_reopen (p->ww, e);
+  wal_delete_and_reopen (p->ww, e);
   return error_trace (e);
 }

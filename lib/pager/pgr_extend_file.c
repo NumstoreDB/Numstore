@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "os_pager/file_pager.h"
 #include "pager.h"
 
 /*
@@ -55,14 +56,14 @@ pgr_extend_file (
   const lsn undo_next = tx->data.last_lsn;
 
   // 2. Logging the redo and undp information
-  slsn top_lsn = oswal_append_update_log (
+  slsn top_lsn = wal_append_update_log (
       p->ww,
       (struct wal_update_write){
           .type = WUP_FEXT,
           .tid = tx->tid,
           .prev = tx->data.last_lsn,
           .fext = {
-              .undo = ospgr_get_npages (p->fp),
+              .undo = fpgr_get_npages (p->fp),
               .redo = npages,
           },
       },
@@ -70,7 +71,7 @@ pgr_extend_file (
 
   // 3. Writing a dummy CLR whose UNL points to the log record whose
   // position was remembered in 1
-  top_lsn = oswal_append_clr_log (
+  top_lsn = wal_append_clr_log (
       p->ww,
       (struct wal_clr_write){
           .type = WCLR_DUMMY,
@@ -85,7 +86,7 @@ pgr_extend_file (
   tx->data.undo_next_lsn = top_lsn;
 
   // 5. Physically extend the file; if this fails the WAL records are already durable
-  if (ospgr_extend (p->fp, npages, e))
+  if (fpgr_extend (p->fp, npages, e))
     {
       return error_trace (e);
     }

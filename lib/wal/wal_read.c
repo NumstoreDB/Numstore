@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "c_specx/dev/error.h"
 #include "c_specx_dev.h"
 #include "dpgt/dirty_page_table.h"
 #include "txns/txn_table.h"
@@ -51,8 +52,7 @@ wal_read_full (
     if (toread > 0)
       {
         bool iseof;
-        WRAP (walis_read_all (w->istream, &iseof, NULL, checksum, head, toread,
-                              e));
+        WRAP (walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e));
         if (iseof)
           {
             return WL_EOF;
@@ -61,8 +61,7 @@ wal_read_full (
 
     head += toread;
     bool iseof;
-    WRAP (walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32),
-                          e));
+    WRAP (walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e));
     if (iseof)
       {
         return WL_EOF;
@@ -80,13 +79,11 @@ wal_read_full (
 }
 
 static err_t
-wal_read_physical_update (struct wal *w, u32 *checksum,
-                          struct wal_rec_hdr_read *r, error *e)
+wal_read_physical_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
 {
   ASSERT (r->type == WL_UPDATE);
   u8 buf[WL_UPDATE_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->update.type, buf,
-                                 WL_UPDATE_LEN, e);
+  const int ret = wal_read_full (w, checksum, r->type, r->update.type, buf, WL_UPDATE_LEN, e);
   WRAP (ret);
   if (ret == WL_EOF)
     {
@@ -99,8 +96,7 @@ wal_read_physical_update (struct wal *w, u32 *checksum,
 }
 
 static err_t
-wal_read_fsm_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r,
-                     error *e)
+wal_read_fsm_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
 {
   ASSERT (r->type == WL_UPDATE);
   u8 buf[WL_FSM_UPDATE_LEN];
@@ -117,8 +113,7 @@ wal_read_fsm_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r,
 }
 
 static err_t
-wal_read_file_extend_update (struct wal *w, u32 *checksum,
-                             struct wal_rec_hdr_read *r, error *e)
+wal_read_file_extend_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
 {
   ASSERT (r->type == WL_UPDATE);
   u8 buf[WL_FILE_EXT_LEN];
@@ -256,8 +251,7 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
 
   walis_mark_start_log (w->istream);
 
-  WRAP (
-      walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+  WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
   if (iseof)
     {
       dest->type = WL_EOF;
@@ -379,13 +373,25 @@ wal_read_next (struct wal *w, lsn *rlsn, error *e)
 }
 
 struct wal_rec_hdr_read *
+wal_read_first (struct wal *w, error *e)
+{
+  return wal_read_entry (w, sizeof (lsn), e);
+}
+
+struct wal_rec_hdr_read *
 wal_read_entry (struct wal *w, const lsn id, error *e)
 {
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
 
   ASSERT (w->istream);
-  if (walis_seek (w->istream, id, e))
+  if (id < w->start_lsn)
+    {
+      error_causef (e, ERR_CORRUPT, "Tried to read previous deleted log");
+      latch_unlock (&w->latch);
+      return NULL;
+    }
+  if (walis_seek (w->istream, id - w->start_lsn, e))
     {
       latch_unlock (&w->latch);
       return NULL;

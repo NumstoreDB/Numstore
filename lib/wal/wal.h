@@ -16,20 +16,15 @@
 
 #include "dpgt/dirty_page_table.h"
 #include "txns/txn_table.h"
-#include "wal/os_wal.h"
 #include "wal/wal_rec_hdr.h"
 
-/*
- * Concrete WAL backed by a single append-only OS file.
- *
- * The os_wal base must be the first member so that a struct wal * can be
- * freely cast to struct os_wal * and back, as required by the vtable
- * dispatch pattern.
- */
+enum wal_flags
+{
+  WAL_ISNEW = (1 << 0),
+};
+
 struct wal
 {
-  struct os_wal base; /* MUST be first */
-
   // The file that's open
   struct string fname;
 
@@ -41,6 +36,9 @@ struct wal
   struct wal_rec_hdr_read rhdr;
   struct wal_rec_hdr_write whdr;
 
+  int flags;
+  lsn start_lsn;
+
   latch latch;
 };
 
@@ -48,16 +46,14 @@ DEFINE_DBG_ASSERT (struct wal, wal, w, { ASSERT (w); })
 
 // Lifecycle
 struct wal *wal_open (const char *fname, error *e);
-
-/*
- * Abstract-type constructor — returns the embedded os_wal base pointer.
- * Equivalent to (struct os_wal *)wal_open(fname, e) but keeps the cast
- * in one place.
- */
-struct os_wal *wal_open_os (const char *fname, error *e);
-err_t wal_reset (struct wal *dest, error *e);
 err_t wal_close (struct wal *w, error *e);
 err_t wal_delete_and_reopen (struct wal *w, error *e);
+err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e);
+
+// Getters
+bool wal_isnew (const struct wal *w);
+lsn wal_start_lsn (struct wal *w);
+lsn wal_size (struct wal *w);
 
 /**
  * Flushes the wal to a certain lsn
@@ -79,6 +75,7 @@ err_t wal_flush_all (const struct wal *w, error *e);
  * high cache miss rates
  */
 struct wal_rec_hdr_read *wal_read_next (struct wal *w, lsn *read_lsn, error *e);
+struct wal_rec_hdr_read *wal_read_first (struct wal *w, error *e);
 struct wal_rec_hdr_read *wal_read_entry (struct wal *w, lsn id, error *e);
 
 slsn wal_write_locked (struct wal *w, error *e);
@@ -86,10 +83,7 @@ slsn wal_append_begin_log (struct wal *w, txid tid, error *e);
 slsn wal_append_commit_log (struct wal *w, txid tid, lsn prev, error *e);
 slsn wal_append_end_log (struct wal *w, txid tid, lsn prev, error *e);
 slsn wal_append_ckpt_begin (struct wal *w, error *e);
-slsn wal_append_update_log (
-    struct wal *w,
-    struct wal_update_write update,
-    error *e);
+slsn wal_append_update_log (struct wal *w, struct wal_update_write update, error *e);
 slsn wal_append_clr_log (struct wal *w, struct wal_clr_write clr, error *e);
 
 /**

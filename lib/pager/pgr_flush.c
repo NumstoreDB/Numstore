@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "os_pager/file_pager.h"
 #include "pager.h"
 #include "pages/page.h"
 
@@ -31,7 +32,7 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
           // Remember:
           //    page_lsn = latest log page that modified this page
           const lsn plsn = page_get_page_lsn (&mp->page);
-          if (oswal_flush_to (p->ww, plsn, e))
+          if (wal_flush_to (p->ww, plsn, e))
             {
               goto theend;
             }
@@ -41,7 +42,7 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
       page_set_checksum (&mp->page, page_compute_checksum (&mp->page));
 
       // Write the page to the database
-      if (ospgr_write (p->fp, mp->page.raw, mp->page.pg, e))
+      if (fpgr_write (p->fp, mp->page.raw, mp->page.pg, e))
         {
           goto theend;
         }
