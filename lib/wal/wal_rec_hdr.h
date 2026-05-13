@@ -282,7 +282,6 @@ slsn wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
 bool wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
-void i_log_wal_rec_hdr_read (int log_level, struct wal_rec_hdr_read *r);
 void i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
 void wrh_undo (struct wal_rec_hdr_read *h, page_h *ph);
 void wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);

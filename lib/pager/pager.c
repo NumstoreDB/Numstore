@@ -129,7 +129,7 @@ pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
   memcpy (p->_header + LSN1_OFST, &p->header.lsn1, sizeof (lsn));
   memcpy (p->_header + LSN1_CSM_OFST, &p->header.lsn1csm, sizeof (u32));
 
-  return fpgr_write_header (p->fp, p->_header, LSN1_OFST, sizeof (lsn) + sizeof (u32), e);
+  return fpgr_write_header (p->fp, p->_header + LSN1_OFST, LSN1_OFST, sizeof (lsn) + sizeof (u32), e);
 }
 
 err_t
@@ -247,8 +247,6 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
 {
   DBG_ASSERT (pager, p);
 
-  i_log (log_level, "Page Table:\n");
-
   for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
     {
       const struct page_frame *mp = &p->pages[i];
@@ -268,8 +266,6 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
           i_printf (log_level, "%u | |\n", i);
         }
     }
-  i_log_dpgt (log_level, p->dpt);
-  i_log_txnt (log_level, p->tnxt);
 }
 
 err_t
