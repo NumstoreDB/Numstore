@@ -42,7 +42,7 @@ simple_page_print (const char *fname)
 {
   error e = error_create ();
 
-  struct file_pager *fp = fpgr_open (fname, &e);
+  struct file_pager *fp = fpgr_open (fname, 0, &e);
 
   for (u32 i = 0; i < fpgr_get_npages (fp); ++i)
     {

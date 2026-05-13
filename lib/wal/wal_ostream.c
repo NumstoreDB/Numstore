@@ -15,6 +15,8 @@
 #include "wal/wal_ostream.h"
 
 #include "c_specx.h"
+#include "c_specx/concurrency/latch.h"
+#include "c_specx/dev/error.h"
 #include "c_specx/intf/logging.h"
 #include "smfile.h"
 
@@ -301,7 +303,28 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
 }
 
 lsn
-walos_get_next_lsn (const struct wal_ostream *w)
+walos_get_next_lsn (struct wal_ostream *w)
 {
-  return w->flushed_lsn + cbuffer_len (w->buffer);
+  latch_lock (&w->l);
+  lsn ret = w->flushed_lsn + cbuffer_len (w->buffer);
+  latch_unlock (&w->l);
+  return ret;
+}
+
+slsn
+walos_truncate (struct wal_ostream *w, error *e)
+{
+  latch_lock (&w->l);
+  if (i_truncate (&w->fd, 0, e))
+    {
+      goto theend;
+    }
+  if (i_seek (&w->fd, 0, I_SEEK_SET, e))
+    {
+      goto theend;
+    }
+
+theend:
+  latch_unlock (&w->l);
+  return error_trace (e);
 }
