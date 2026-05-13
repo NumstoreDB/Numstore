@@ -126,8 +126,7 @@ walis_seek (struct wal_istream *w, const lsn pos, error *e)
 }
 
 err_t
-walis_read_all (struct wal_istream *w, bool *iseof, lsn *rlsn, u32 *checksum,
-                void *data, const u32 len, error *e)
+walis_read_all (struct wal_istream *w, bool *iseof, lsn *rlsn, u32 *checksum, void *data, const u32 len, error *e)
 {
   latch_lock (&w->latch);
 

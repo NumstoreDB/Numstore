@@ -15,10 +15,11 @@
 #include "aries/aries.h"
 #include "c_specx.h"
 #include "c_specx/concurrency/periodic_task.h"
+#include "c_specx/dev/error.h"
+#include "c_specx/intf/os/compiler.h"
 #include "c_specx/intf/os/memory.h"
 #include "lockt/lock_table.h"
 #include "os_pager/file_pager.h"
-#include "os_pager/os_pager.h"
 #include "pager.h"
 #include "pager/page_h.h"
 #include "pages/fsm_page.h"
@@ -31,14 +32,60 @@
 #define PATH_MAX 260
 #endif
 
-/**
- * TODO:
- *  - Lock the file on open to ensure that
- *    this is thread safe
+/*
+ * pgr_open_single_file — standard file-backed entry point.
+ *
+ * Creates [dbname] if it does not exist, constructs a file_pager and a
+ * file-backed WAL, then delegates to pgr_open().  Directory cleanup on
+ * first-open failure is handled here because only this function knows the
+ * path.
+ *
+ * NEW DATABASE (file is empty):
+ *   Sets PGR_ISNEW so the caller can distinguish new databases from existing.
+ *
+ * EXISTING DATABASE:
+ *   Runs the three-phase ARIES restart via pgr_open().
  */
 struct pager *
-pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
+pgr_open_single_file (const char *dbname, error *e)
 {
+  // TODO length check
+
+  char fname[PATH_MAX];
+  char walname[PATH_MAX];
+  snprintf (fname, sizeof fname, "%s", dbname);
+  snprintf (walname, sizeof walname, "%s.wal", dbname);
+
+  // File pager
+  struct file_pager *fp = fpgr_open (fname, PAGE_HEADER_LEN, e);
+  if (fp == NULL)
+    {
+      return NULL;
+    }
+
+  struct wal *ww = wal_open (walname, e);
+  if (ww == NULL)
+    {
+      fpgr_close (fp, e);
+      return NULL;
+    }
+
+  struct lockt *lt = i_malloc (1, sizeof *lt, e);
+  if (lt == NULL)
+    {
+      fpgr_close (fp, e);
+      wal_close (ww, e);
+      return NULL;
+    }
+  if (lockt_init (lt, e))
+    {
+      fpgr_close (fp, e);
+      wal_close (ww, e);
+      i_free (lt);
+      lockt_destroy (lt);
+      return NULL;
+    }
+
   page_h root = page_h_create ();
   struct pager *ret = NULL;
 
@@ -48,13 +95,10 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
     }
 
   // Initialize "easy" things
-  *(struct os_pager **)&ret->fp = fp;
-  *(struct os_wal **)&ret->ww = ww;
+  *(struct file_pager **)&ret->fp = fp;
+  *(struct wal **)&ret->ww = ww;
   ret->lt = lt;
-  ret->iown_fp = false;
-  ret->iown_ww = false;
-  ret->iown_lt = false;
-  atomic_store (&ret->flags, ospgr_get_npages (ret->fp) == 0 ? PGR_ISNEW : 0);
+  atomic_store (&ret->flags, fpgr_isnew (ret->fp));
   atomic_store (&ret->clock, 0);
   ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
   latch_init (&ret->htable_lock);
@@ -80,41 +124,104 @@ pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e)
       goto failed;
     }
 
+  atomic_store (&ret->next_tid, 0);
+
   if (atomic_load (&ret->flags) & PGR_ISNEW)
     {
-      i_log_info ("Creating a new database\n");
-
       // Reset any data in the file pager
-      if (ospgr_reset (ret->fp, e))
+      if (fpgr_reset (ret->fp, e))
         {
           goto failed;
         }
 
-      // Reset the wal
-      if (oswal_reset (ret->ww, e))
+      // Write out the starting header
+      memset (&ret->header, 0, sizeof (ret->header));
+      if (pgr_write_header (ret, e))
         {
           goto failed;
         }
 
-      // Start transactions at 0
-      atomic_store (&ret->next_tid, 0);
+      if (wal_delete_and_reopen (ret->ww, e))
+        {
+          goto failed;
+        }
+
+      if (wal_write_start_lsn (ret->ww, 0, e))
+        {
+          goto failed;
+        }
     }
   else
     {
-      // Run ARIES recovery
-      struct aries_ctx ctx;
-      if (aries_ctx_create (&ctx, e))
+      if (pgr_read_header (ret, e))
         {
           goto failed;
         }
 
-      if (pgr_restart (ret, &ctx, e))
+      if (!ret->header.lsn0valid && !ret->header.lsn1valid)
         {
+          error_causef (e, ERR_CORRUPT, "Invalid wal headers");
           goto failed;
         }
 
-      // Start transactions one past maximum txid
-      atomic_store (&ret->next_tid, ctx.max_tid + 1);
+      if (wal_isnew (ww))
+        {
+          if (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e))
+            {
+              goto failed;
+            }
+        }
+      else
+        {
+          lsn start_lsn = wal_start_lsn (ret->ww);
+          lsn next_start_lsn = start_lsn + wal_size (ret->ww);
+
+          if (ret->header.lsn0valid && ret->header.lsn1valid)
+            {
+              if (start_lsn == MAX (ret->header.lsn0, ret->header.lsn1))
+                {
+                  WRAP_GOTO (pgr_recover (ret, e), failed);
+                }
+              else if (start_lsn == MIN (ret->header.lsn0, ret->header.lsn1))
+                {
+                  WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
+                  WRAP_GOTO (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e), failed);
+                }
+              else
+                {
+                  error_causef (e, ERR_CORRUPT, "Existing WAL doesn't match database");
+                  goto failed;
+                }
+            }
+          else
+            {
+              if (ret->header.lsn0valid)
+                {
+                  if (ret->header.lsn0 != wal_start_lsn (ret->ww))
+                    {
+                      error_causef (e, ERR_CORRUPT, "Invalid header lsn");
+                      goto failed;
+                    }
+                  WRAP_GOTO (pgr_write_lsn1 (ret, start_lsn, e), failed);
+                }
+              else if (ret->header.lsn1valid)
+                {
+                  if (ret->header.lsn1 != wal_start_lsn (ret->ww))
+                    {
+                      error_causef (e, ERR_CORRUPT, "Invalid header lsn");
+                      goto failed;
+                    }
+                  WRAP_GOTO (pgr_write_lsn0 (ret, start_lsn, e), failed);
+                }
+              else
+                {
+                  UNREACHABLE ();
+                }
+
+              WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
+              WRAP_GOTO (wal_write_start_lsn (ret->ww, next_start_lsn, e), failed);
+            }
+        }
     }
 
   return ret;
@@ -137,78 +244,14 @@ failed:
 
   if (ww)
     {
-      oswal_close (ww, e);
+      wal_close (ww, e);
     }
   if (fp)
     {
-      ospgr_close (fp, e);
+      fpgr_close (fp, e);
     }
 
   return NULL;
-}
-
-/*
- * pgr_open_single_file — standard file-backed entry point.
- *
- * Creates [dbname] if it does not exist, constructs a file_pager and a
- * file-backed WAL, then delegates to pgr_open().  Directory cleanup on
- * first-open failure is handled here because only this function knows the
- * path.
- *
- * NEW DATABASE (file is empty):
- *   Sets PGR_ISNEW so the caller can distinguish new databases from existing.
- *
- * EXISTING DATABASE:
- *   Runs the three-phase ARIES restart via pgr_open().
- */
-struct pager *
-pgr_open_single_file (const char *dbname, error *e)
-{
-  char fname[PATH_MAX];
-  char walname[PATH_MAX];
-  snprintf (fname, sizeof fname, "%s", dbname);
-  snprintf (walname, sizeof walname, "%s.wal", dbname);
-
-  struct os_pager *fp = fpgr_open_os (fname, e);
-  if (fp == NULL)
-    {
-      return NULL;
-    }
-
-  struct os_wal *ww = wal_open_os (walname, e);
-  if (ww == NULL)
-    {
-      ospgr_close (fp, e);
-      return NULL;
-    }
-
-  struct lockt *lt = i_malloc (1, sizeof *lt, e);
-  if (lt == NULL)
-    {
-      ospgr_close (fp, e);
-      oswal_close (ww, e);
-      return NULL;
-    }
-  if (lockt_init (lt, e))
-    {
-      ospgr_close (fp, e);
-      oswal_close (ww, e);
-      i_free (lt);
-      lockt_destroy (lt);
-      return NULL;
-    }
-
-  struct pager *p = pgr_open (fp, ww, lt, e);
-  if (p == NULL)
-    {
-      return NULL;
-    }
-
-  p->iown_ww = true;
-  p->iown_fp = true;
-  p->iown_lt = true;
-
-  return p;
 }
 
 #ifndef NTEST

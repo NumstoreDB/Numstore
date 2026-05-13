@@ -16,6 +16,7 @@
 #include "c_specx/dev/assert.h"
 #include "c_specx/ds/ht_models.h"
 #include "c_specx_dev.h"
+#include "os_pager/file_pager.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
 #include "pager/page_h.h"
@@ -68,7 +69,7 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 
         pgr = &p->pages[clock];
 
-        if (ospgr_read (p->fp, pgr->page.raw, pg, e))
+        if (fpgr_read (p->fp, pgr->page.raw, pg, e))
           {
             latch_unlock (&pgr->ctrl);
             return error_trace (e);
@@ -142,7 +143,7 @@ TEST (pgr_get_invalid_checksum)
   pgr_release_with_evict (pf.p, &pg, PG_DATA_LIST, &pf.e);
 
   // Force a invalid write
-  ospgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &pf.e);
+  fpgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &pf.e);
 
   // This one will fail
   test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e), ERR_CORRUPT, &pf.e);

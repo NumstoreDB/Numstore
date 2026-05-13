@@ -15,96 +15,27 @@
 #include "os_pager/file_pager.h"
 
 #include "c_specx.h"
+#include "c_specx/intf/os/file_system.h"
 #include "compile_config.h"
 #include "errors.h"
 
 #include <string.h>
 
-/*
- * Concrete page-I/O implementation backed by a single OS file.
- *
- * The os_pager base must be the first member so that a struct file_pager *
- * can be freely cast to struct os_pager * and back, as required by the
- * vtable dispatch pattern.
- */
+enum file_pager_flags
+{
+  FP_ISNEW = (1 << 0),
+};
+
 struct file_pager
 {
-  struct os_pager base;
   _Atomic pgno npages;
   i_file f;
-
+  u32 header_len;
+  int flags;
   latch l;
 };
 
 DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
-
-////////////////////////////////////////////////////////////
-/// Interface assignment
-
-static err_t
-fp_close_impl (struct os_pager *self, error *e)
-{
-  struct file_pager *fp = (struct file_pager *)self;
-  return fpgr_close (fp, e);
-}
-
-static err_t
-fp_reset_impl (struct os_pager *self, error *e)
-{
-  struct file_pager *fp = (struct file_pager *)self;
-  return fpgr_reset (fp, e);
-}
-
-static p_size
-fp_get_npages_impl (const struct os_pager *self)
-{
-  const struct file_pager *fp = (const struct file_pager *)self;
-  return fpgr_get_npages (fp);
-}
-
-static err_t
-fp_extend_impl (struct os_pager *self, const pgno dest, error *e)
-{
-  struct file_pager *fp = (struct file_pager *)self;
-  return fpgr_extend (fp, dest, e);
-}
-
-static err_t
-fp_read_impl (struct os_pager *self, u8 *dest, const pgno pg, error *e)
-{
-  struct file_pager *fp = (struct file_pager *)self;
-  return fpgr_read (fp, dest, pg, e);
-}
-
-static err_t
-fp_write_impl (struct os_pager *self, const u8 *src, const pgno pg, error *e)
-{
-  struct file_pager *fp = (struct file_pager *)self;
-  return fpgr_write (fp, src, pg, e);
-}
-
-static err_t
-fp_crash_impl (struct os_pager *self, error *e)
-{
-  struct file_pager *fp = (struct file_pager *)self;
-  return fpgr_crash (fp, e);
-}
-
-static const struct os_pager_vtable fp_vtable = {
-  .close = fp_close_impl,
-  .reset = fp_reset_impl,
-  .get_npages = fp_get_npages_impl,
-  .extend = fp_extend_impl,
-  .read = fp_read_impl,
-  .write = fp_write_impl,
-  .crash_fn = fp_crash_impl,
-};
-
-struct os_pager *
-fpgr_open_os (const char *dbname, error *e)
-{
-  return (struct os_pager *)fpgr_open (dbname, e);
-}
 
 ////////////////////////////////////////////////////////////
 /// Regular functions
@@ -114,7 +45,7 @@ fpgr_open_os (const char *dbname, error *e)
  *   - Lock the file on new file pager creation
  */
 struct file_pager *
-fpgr_open (const char *dbname, error *e)
+fpgr_open (const char *dbname, u32 header_len, error *e)
 {
   struct file_pager *dest = i_malloc (1, sizeof *dest, e);
   if (dest == NULL)
@@ -122,8 +53,8 @@ fpgr_open (const char *dbname, error *e)
       return NULL;
     }
 
-  dest->base.vtable = &fp_vtable;
   latch_init (&dest->l);
+  dest->flags = 0;
 
   // Open the database in read write mode
   if (i_open_rw (&dest->f, dbname, e))
@@ -139,17 +70,31 @@ fpgr_open (const char *dbname, error *e)
       goto fp_failed;
     }
 
-  // Corrupt database - not a multiple of PAGE_SIZE
-  if (size % PAGE_SIZE != 0)
+  // No header
+  if (size == 0 || size == header_len)
     {
-      error_causef (e, ERR_CORRUPT,
-                    "file size %" PRId64
-                    " is not a multiple of PAGE_SIZE (%" PRp_size ")",
-                    size, PAGE_SIZE);
+      dest->flags |= FP_ISNEW;
+      if (i_truncate (&dest->f, header_len, e))
+        {
+          goto fp_failed;
+        }
+      size = header_len;
+    }
+  else if (size < header_len)
+    {
+      error_causef (e, ERR_CORRUPT, "Invalid file pager header\n");
       goto fp_failed;
     }
 
-  atomic_store (&dest->npages, size / PAGE_SIZE);
+  // Corrupt database - not a multiple of PAGE_SIZE
+  if ((size - header_len) % PAGE_SIZE != 0)
+    {
+      error_causef (e, ERR_CORRUPT, "File pager does not contain contiguous pagers\n");
+      goto fp_failed;
+    }
+
+  atomic_store (&dest->npages, (size - header_len) / PAGE_SIZE);
+  dest->header_len = header_len;
 
   DBG_ASSERT (file_pager, dest);
 
@@ -175,23 +120,23 @@ TEST (fpgr_open)
 
   // edge case: file shorter than header
   test_fail_if (i_truncate (&fp, PAGE_SIZE - 1, &e));
-  struct file_pager *pager = fpgr_open ("test.db", &e);
+  struct file_pager *pager = fpgr_open ("test.db", 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // edge case: file size = half a page
   test_fail_if (i_truncate (&fp, PAGE_SIZE / 2, &e));
-  pager = fpgr_open ("test.db", &e);
+  pager = fpgr_open ("test.db", 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // happy path: file exactly header size, zero pages
   test_fail_if (i_truncate (&fp, 0, &e));
-  pager = fpgr_open ("test.db", &e);
+  pager = fpgr_open ("test.db", 0, &e);
   test_assert_int_equal ((int)atomic_load (&pager->npages), 0);
   test_fail_if (fpgr_close (pager, &e));
 
   // happy path: file exactly header size, more pages
   test_fail_if (i_truncate (&fp, 3 * PAGE_SIZE, &e));
-  pager = fpgr_open ("test.db", &e);
+  pager = fpgr_open ("test.db", 0, &e);
   test_assert_equal (atomic_load (&pager->npages), 3);
   test_fail_if (fpgr_close (pager, &e));
 
@@ -217,7 +162,7 @@ fpgr_reset (struct file_pager *f, error *e)
   DBG_ASSERT (file_pager, f);
 
   latch_lock (&f->l);
-  if (i_truncate (&f->f, 0, e))
+  if (i_truncate (&f->f, f->header_len, e))
     {
       latch_unlock (&f->l);
       return error_trace (e);
@@ -226,6 +171,12 @@ fpgr_reset (struct file_pager *f, error *e)
   latch_unlock (&f->l);
 
   return error_trace (e);
+}
+
+bool
+fpgr_isnew (struct file_pager *f)
+{
+  return f->flags & FP_ISNEW;
 }
 
 p_size
@@ -249,7 +200,7 @@ fpgr_extend (struct file_pager *p, pgno dest, error *e)
       return SUCCESS;
     }
 
-  if (i_truncate (&p->f, PAGE_SIZE * (dest), e))
+  if (i_truncate (&p->f, p->header_len + PAGE_SIZE * (dest), e))
     {
       latch_unlock (&p->l);
       goto failed;
@@ -273,7 +224,7 @@ TEST (fpgr_new)
 
   test_fail_if (i_truncate (&fp, 0, &e));
 
-  struct file_pager *pager = fpgr_open ("test.db", &e);
+  struct file_pager *pager = fpgr_open ("test.db", 0, &e);
 
   // Create a new page
   test_fail_if (fpgr_extend (pager, 1, &e));
@@ -315,7 +266,7 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
     }
 
   // Read all from file
-  const i64 nread = i_pread_all (&p->f, dest, PAGE_SIZE, pg * PAGE_SIZE, e);
+  const i64 nread = i_pread_all (&p->f, dest, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e);
 
   if (nread == 0)
     {
@@ -333,7 +284,6 @@ theend:
   latch_unlock (&p->l);
 
   return error_trace (e);
-  ;
 }
 
 err_t
@@ -347,6 +297,56 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   ASSERT (pg < atomic_load (&p->npages));
 
   if (i_pwrite_all (&p->f, src, PAGE_SIZE, pg * PAGE_SIZE, e))
+    {
+      goto theend;
+    }
+
+theend:
+
+  latch_unlock (&p->l);
+
+  return error_trace (e);
+}
+
+err_t
+fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e)
+{
+  ASSERT (src);
+  ASSERT (ofst + size <= p->header_len);
+
+  latch_lock (&p->l);
+
+  DBG_ASSERT (file_pager, p);
+
+  if (i_pwrite_all (&p->f, src, size, ofst, e))
+    {
+      goto theend;
+    }
+
+  if (i_fsync (&p->f, e))
+    {
+      goto theend;
+    }
+
+theend:
+
+  latch_unlock (&p->l);
+
+  return error_trace (e);
+}
+
+err_t
+fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
+{
+  ASSERT (dest);
+  ASSERT (ofst + size <= p->header_len);
+
+  latch_lock (&p->l);
+
+  DBG_ASSERT (file_pager, p);
+
+  // Read all from file
+  if (i_pread_all_expect (&p->f, dest, size, ofst, e))
     {
       goto theend;
     }
@@ -373,7 +373,7 @@ TEST (fpgr_read_write)
   test_fail_if (i_truncate (&fp, 0, &e));
 
   // Open a new pager
-  struct file_pager *pager = fpgr_open ("test.db", &e);
+  struct file_pager *pager = fpgr_open ("test.db", 0, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
   // happy path: new page, write, then read back
   test_fail_if (fpgr_extend (pager, 2, &e));

@@ -18,6 +18,7 @@
 #include "c_specx/dev/error.h"
 #include "c_specx/ds/string.h"
 #include "c_specx/intf/logging.h"
+#include "c_specx/intf/os/file_system.h"
 #include "c_specx_dev.h"
 #include "dpgt/dirty_page_table.h"
 #include "txns/txn_table.h"
@@ -28,135 +29,78 @@
 #include <string.h>
 
 static err_t
-wal_close_impl (struct os_wal *self, error *e)
+wal_init (struct wal *dest, error *e)
 {
-  return wal_close ((struct wal *)self, e);
-}
-
-static err_t
-wal_reset_impl (struct os_wal *self, error *e)
-{
-  return wal_reset ((struct wal *)self, e);
-}
-
-static err_t
-wal_delete_and_reopen_impl (struct os_wal *self, error *e)
-{
-  return wal_delete_and_reopen ((struct wal *)self, e);
-}
-
-static err_t
-wal_flush_to_impl (struct os_wal *self, const lsn l, error *e)
-{
-  return wal_flush_to ((struct wal *)self, l, e);
-}
-
-static err_t
-wal_flush_all_impl (struct os_wal *self, error *e)
-{
-  return wal_flush_all ((struct wal *)self, e);
-}
-
-static struct wal_rec_hdr_read *
-wal_read_next_impl (struct os_wal *self, lsn *read_lsn, error *e)
-{
-  return wal_read_next ((struct wal *)self, read_lsn, e);
-}
-
-static struct wal_rec_hdr_read *
-wal_read_entry_impl (struct os_wal *self, const lsn id, error *e)
-{
-  return wal_read_entry ((struct wal *)self, id, e);
-}
-
-static slsn
-wal_append_begin_log_impl (struct os_wal *self, const txid tid, error *e)
-{
-  return wal_append_begin_log ((struct wal *)self, tid, e);
-}
-
-static slsn
-wal_append_commit_log_impl (struct os_wal *self, const txid tid, const lsn prev, error *e)
-{
-  return wal_append_commit_log ((struct wal *)self, tid, prev, e);
-}
-
-static slsn
-wal_append_end_log_impl (struct os_wal *self, const txid tid, const lsn prev, error *e)
-{
-  return wal_append_end_log ((struct wal *)self, tid, prev, e);
-}
-
-static slsn
-wal_append_update_log_impl (struct os_wal *self, const struct wal_update_write update, error *e)
-{
-  return wal_append_update_log ((struct wal *)self, update, e);
-}
-
-static slsn
-wal_append_clr_log_impl (struct os_wal *self, const struct wal_clr_write clr, error *e)
-{
-  return wal_append_clr_log ((struct wal *)self, clr, e);
-}
-
-static slsn
-wal_append_log_impl (struct os_wal *self, struct wal_rec_hdr_write *hdr, error *e)
-{
-  return wal_append_log ((struct wal *)self, hdr, e);
-}
-
-static err_t
-wal_crash_impl (struct os_wal *self, error *e)
-{
-  return wal_crash ((struct wal *)self, e);
-}
-
-static const struct os_wal_vtable wal_vtable = {
-  .close = wal_close_impl,
-  .reset = wal_reset_impl,
-  .delete_and_reopen = wal_delete_and_reopen_impl,
-  .flush_to = wal_flush_to_impl,
-  .flush_all = wal_flush_all_impl,
-  .read_next = wal_read_next_impl,
-  .read_entry = wal_read_entry_impl,
-  .append_begin_log = wal_append_begin_log_impl,
-  .append_commit_log = wal_append_commit_log_impl,
-  .append_end_log = wal_append_end_log_impl,
-  .append_update_log = wal_append_update_log_impl,
-  .append_clr_log = wal_append_clr_log_impl,
-  .append_log = wal_append_log_impl,
-  .crash_fn = wal_crash_impl,
-};
-
-static err_t
-wal_init (struct wal *dest, const char *fname, error *e)
-{
-  if (string_copy (&dest->fname, strfcstr (fname), e))
-    {
-      return error_trace (e);
-    }
-
-  dest->base.vtable = &wal_vtable;
   dest->ostream = NULL;
   dest->istream = NULL;
+  dest->flags = 0;
   latch_init (&dest->latch);
 
   dest->ostream = walos_open (dest->fname.data, e);
   if (dest->ostream == NULL)
     {
+      i_free ((char *)dest->fname.data);
       return error_trace (e);
     }
 
   dest->istream = walis_open (dest->fname.data, e);
   if (dest->istream == NULL)
     {
+      i_free ((char *)dest->fname.data);
       walos_close (dest->ostream, e);
       return error_trace (e);
+    }
+
+  // Read the start lsn
+  bool iseof;
+  u32 checksum;
+  lsn start_lsn;
+
+  walis_mark_start_log (dest->istream);
+
+  if (walis_read_all (dest->istream, &iseof, NULL, &checksum, &start_lsn, sizeof (start_lsn), e))
+    {
+      i_free ((char *)dest->fname.data);
+      walos_close (dest->ostream, e);
+      walis_close (dest->istream, e);
+      return error_trace (e);
+    }
+
+  walis_mark_end_log (dest->istream);
+
+  if (iseof)
+    {
+      dest->flags |= WAL_ISNEW;
+
+      // Truncate the output wal
+      if (walos_truncate (dest->ostream, e))
+        {
+          i_free ((char *)dest->fname.data);
+          walos_close (dest->ostream, e);
+          walis_close (dest->istream, e);
+          return error_trace (e);
+        }
     }
 
   DBG_ASSERT (wal, dest);
 
   return error_trace (e);
+}
+
+err_t
+wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
+{
+  ASSERT (w->flags & WAL_ISNEW);
+
+  WRAP (walos_write_all (w->ostream, NULL, &start_lsn, sizeof (start_lsn), e));
+
+  w->start_lsn = start_lsn;
+  w->flags &= ~WAL_ISNEW;
+
+  // Seek the reader to the start too
+  WRAP (walis_seek (w->istream, sizeof (start_lsn), e));
+
+  return SUCCESS;
 }
 
 static struct wal *
@@ -168,8 +112,15 @@ wal_open_internal (const char *fname, error *e)
       return NULL;
     }
 
-  if (wal_init (dest, fname, e))
+  if (string_copy (&dest->fname, strfcstr (fname), e))
     {
+      i_free (dest);
+      return NULL;
+    }
+
+  if (wal_init (dest, e))
+    {
+      i_free ((char *)dest->fname.data);
       i_free (dest);
       return NULL;
     }
@@ -181,37 +132,6 @@ struct wal *
 wal_open (const char *fname, error *e)
 {
   return wal_open_internal (fname, e);
-}
-
-struct os_wal *
-wal_open_os (const char *fname, error *e)
-{
-  return (struct os_wal *)wal_open (fname, e);
-}
-
-err_t
-wal_reset (struct wal *w, error *e)
-{
-  wal_flush_all (w, e);
-  walos_close (w->ostream, e);
-  walis_close (w->istream, e);
-
-  i_remove_quiet (w->fname.data, e);
-
-  w->ostream = walos_open (w->fname.data, e);
-  if (w->ostream == NULL)
-    {
-      return e->cause_code;
-    }
-
-  w->istream = walis_open (w->fname.data, e);
-  if (w->istream == NULL)
-    {
-      walos_close (w->ostream, e);
-      return e->cause_code;
-    }
-
-  return error_trace (e);
 }
 
 static inline err_t
@@ -259,7 +179,27 @@ wal_delete_and_reopen (struct wal *w, error *e)
       return error_trace (e);
     }
 
-  return wal_init (w, fname.data, e);
+  w->fname = fname;
+
+  return wal_init (w, e);
+}
+
+bool
+wal_isnew (const struct wal *w)
+{
+  return w->flags & WAL_ISNEW;
+}
+
+lsn
+wal_start_lsn (struct wal *w)
+{
+  return w->start_lsn;
+}
+
+lsn
+wal_size (struct wal *w)
+{
+  return walos_get_next_lsn (w->ostream);
 }
 
 err_t

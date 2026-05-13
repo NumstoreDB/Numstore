@@ -32,7 +32,7 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
   lsn read_lsn = ctx->redo_lsn;
 
   // Read the redo lsn log
-  struct wal_rec_hdr_read *log_rec = oswal_read_entry (p->ww, read_lsn, e);
+  struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, read_lsn, e);
   if (log_rec == NULL)
     {
       goto failed;
@@ -92,7 +92,7 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
         }
 
       // Read next log record
-      log_rec = oswal_read_next (p->ww, &read_lsn, e);
+      log_rec = wal_read_next (p->ww, &read_lsn, e);
       if (log_rec == NULL)
         {
           goto failed;

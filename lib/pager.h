@@ -17,10 +17,9 @@
 #include "c_specx/concurrency/periodic_task.h"
 #include "errors.h"
 #include "lockt/lock_table.h"
-#include "os_pager/os_pager.h"
 #include "pager/page_h.h"
 #include "txns/txn.h"
-#include "wal/os_wal.h"
+#include "wal/wal.h"
 #include "wal/wal_rec_hdr.h"
 
 /**
@@ -84,16 +83,45 @@ enum
 #undef VTYPE
 #undef SUFFIX
 
+/**
+ * WAL recover semantics.
+ *
+ * There are two checksummed wal lsn's stored in the header.
+ *
+ * On application load, they are both set to 0
+ *
+ * On checkpoint, the sequence is:
+ *  1. ok
+ */
+#define PAGE_HEADER_LEN sizeof (u32) +     /* checksum(lsn0) */ \
+                            sizeof (lsn) + /* lsn0 */           \
+                            sizeof (u32) + /* checksum(lsn1) */ \
+                            sizeof (lsn)   /* lsn1 */
+
+struct pager_header
+{
+  lsn lsn0;
+  u32 lsn0csm;
+  bool lsn0valid;
+  lsn lsn1;
+  u32 lsn1csm;
+  bool lsn1valid;
+};
+
+#define LSN0_OFST 0
+#define LSN0_CSM_OFST (LSN0_OFST + sizeof (lsn))
+#define LSN1_OFST (LSN0_CSM_OFST + sizeof (u32))
+#define LSN1_CSM_OFST (LSN1_OFST + sizeof (lsn))
+
 struct pager
 {
-  // Resources
-  struct os_pager *const fp; // OS pager abstraction (e.g. file_pager)
-  struct os_wal *const ww;   // Write-ahead log abstraction
-  struct lockt *lt;          // Lock table
+  struct pager_header header;
+  u8 _header[PAGE_HEADER_LEN];
 
-  bool iown_fp;
-  bool iown_ww;
-  bool iown_lt;
+  // Resources
+  struct file_pager *const fp; // File pager - just reads and writes pages
+  struct wal *const ww;        // Write-ahead log abstraction
+  struct lockt *lt;            // Lock table
 
   _Atomic int flags;
   _Atomic u32 clock;
@@ -143,7 +171,6 @@ err_t pgr_delete_single_file (const char *dbname, error *e);
 ////////////////////////////////////////////////////////////
 /// Lifecycle
 
-struct pager *pgr_open (struct os_pager *fp, struct os_wal *ww, struct lockt *lt, error *e);
 err_t pgr_close (struct pager *p, error *e);
 void pgr_attach_lock_table (struct pager *p, struct lockt *lt);
 err_t pgr_crash (struct pager *p, error *e);
@@ -154,6 +181,13 @@ err_t pgr_crash (struct pager *p, error *e);
 p_size pgr_get_npages (struct pager *p);
 bool pgr_isnew (const struct pager *p);
 void i_log_page_table (int log_level, bool only_present, struct pager *p);
+err_t pgr_read_header (struct pager *p, error *e);
+err_t pgr_write_header (struct pager *p, error *e);
+err_t pgr_write_next_lsn (struct pager *p, lsn lsn, error *e);
+err_t pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e);
+err_t pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e);
+
+err_t pgr_recover (struct pager *p, error *e);
 
 ////////////////////////////////////////////////////////////
 /// Transaction Control

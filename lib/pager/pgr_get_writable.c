@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "os_pager/file_pager.h"
 #include "pager.h"
 #include "pager/page_fixture.h"
 #include "pager/page_h.h"
@@ -117,7 +118,7 @@ pgr_get_writable (
         pgr->wsibling = wclock;
         pgr->page.pg = pg;
 
-        if (ospgr_read (p->fp, pgr->page.raw, pg, e))
+        if (fpgr_read (p->fp, pgr->page.raw, pg, e))
           {
             latch_unlock (&pgr->ctrl);
             latch_unlock (&pgw->ctrl);

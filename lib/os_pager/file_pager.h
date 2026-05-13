@@ -29,27 +29,22 @@
  */
 
 #include "c_specx_dev.h"
-#include "os_pager/os_pager.h"
 #include "smfile.h"
 
 struct file_pager;
 
 /* Concrete-type constructor — returns struct file_pager *. */
-struct file_pager *fpgr_open (const char *dbname, error *e);
-
-/*
- * Abstract-type constructor — returns the embedded os_pager base pointer.
- * Equivalent to (struct os_pager *)fpgr_open(dbname, e) but keeps the
- * cast in one place.
- */
-struct os_pager *fpgr_open_os (const char *dbname, error *e);
+struct file_pager *fpgr_open (const char *dbname, u32 header_len, error *e);
 
 err_t fpgr_close (struct file_pager *f, error *e);
 err_t fpgr_reset (struct file_pager *f, error *e);
+bool fpgr_isnew (struct file_pager *f);
 
 p_size fpgr_get_npages (const struct file_pager *fp);
 err_t fpgr_extend (struct file_pager *p, pgno pgno, error *e);
 err_t fpgr_read (struct file_pager *p, u8 *dest, pgno pgno, error *e);
 err_t fpgr_write (struct file_pager *p, const u8 *src, pgno pgno, error *e);
+err_t fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e);
+err_t fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e);
 
 err_t fpgr_crash (struct file_pager *p, error *e);

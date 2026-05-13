@@ -33,7 +33,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
   lsn read_lsn = 0;
 
-  struct wal_rec_hdr_read *log_rec = oswal_read_next (p->ww, &read_lsn, e);
+  struct wal_rec_hdr_read *log_rec = wal_read_next (p->ww, &read_lsn, e);
 
   if (log_rec == NULL)
     {
@@ -134,7 +134,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
           }
         }
 
-      log_rec = oswal_read_next (p->ww, &read_lsn, e);
+      log_rec = wal_read_next (p->ww, &read_lsn, e);
 
       if (log_rec == NULL)
         {
@@ -156,7 +156,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
       if (nothing_to_do || committed)
         {
           // Append an end log
-          const slsn l = oswal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+          const slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
 
           if (l < 0)
             {

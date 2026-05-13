@@ -39,7 +39,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   txid tid = tx->tid;                        // The transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
-  if (oswal_flush_to (p->ww, undo_nxt_lsn, e))
+  if (wal_flush_to (p->ww, undo_nxt_lsn, e))
     {
       goto failed;
     }
@@ -47,7 +47,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   while (save_lsn < undo_nxt_lsn)
     {
       // Read the next undo log entry
-      if ((log_rec = oswal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL)
+      if ((log_rec = wal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL)
         {
           return error_trace (e);
         }
@@ -73,7 +73,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
                 wrh_undo (log_rec, &ph);
 
                 // Append a clr log
-                prev_lsn = oswal_append_clr_log (
+                prev_lsn = wal_append_clr_log (
                     p->ww,
                     (struct wal_clr_write){
                         .type = WCLR_PHYSICAL,
@@ -104,7 +104,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 
             if (undo_nxt_lsn == 0)
               {
-                slsn l = oswal_append_end_log (p->ww, tx->tid, prev_lsn, e);
+                slsn l = wal_append_end_log (p->ww, tx->tid, prev_lsn, e);
                 if (l < 0)
                   {
                     goto failed;
@@ -145,7 +145,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 theend:
   lockt_unlock_tx (p->lt, tx);
 
-  if (oswal_flush_to (p->ww, undo_nxt_lsn, e))
+  if (wal_flush_to (p->ww, undo_nxt_lsn, e))
     {
       goto failed;
     }

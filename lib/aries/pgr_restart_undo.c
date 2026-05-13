@@ -36,7 +36,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
           break;
         }
 
-      struct wal_rec_hdr_read *log_rec = oswal_read_entry (p->ww, undo_lsn, e);
+      struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, undo_lsn, e);
       if (log_rec == NULL)
         {
           goto failed;
@@ -60,7 +60,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
                 wrh_undo (log_rec, &ph);
 
                 // Append a clr log
-                slsn l = oswal_append_clr_log (
+                slsn l = wal_append_clr_log (
                     p->ww,
                     (struct wal_clr_write){
                         .type = WCLR_PHYSICAL,
@@ -93,7 +93,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
 
             if (log_rec->update.prev == 0)
               {
-                slsn l = oswal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+                slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
                 if (l < 0)
                   {
                     goto failed;
@@ -117,7 +117,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
             struct txn *tx;
             txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
-            slsn l = oswal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+            slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
             if (l < 0)
               {
                 goto failed;
