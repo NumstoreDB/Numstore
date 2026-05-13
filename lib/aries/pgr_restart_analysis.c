@@ -40,9 +40,6 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
       goto failed;
     }
 
-  // Keep track of this as we go
-  ctx->redo_lsn = 0;
-
   while (log_rec->type != WL_EOF)
     {
       stxid tid = wrh_get_tid (log_rec);
@@ -167,7 +164,14 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
         }
     }
 
-  ctx->redo_lsn = dpgt_get_size (ctx->dpt) > 0 ? dpgt_min_rec_lsn (ctx->dpt) : 0;
+  if (dpgt_get_size (ctx->dpt) == 0)
+    {
+      ctx->redo_lsn = LSN_NULL;
+    }
+  else
+    {
+      ctx->redo_lsn = dpgt_min_rec_lsn (ctx->dpt);
+    }
 
   i_log_info ("Analysis phase: %d txns were removed\n", before - txnt_get_size (ctx->txt));
   i_log_info ("Done with Analysis. RedoLSN = %" PRlsn "\n", ctx->redo_lsn);

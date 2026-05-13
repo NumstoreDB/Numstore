@@ -204,7 +204,7 @@ wal_write_locked (struct wal *w, error *e)
   ASSERT (w->ostream);
   ASSERT (!(w->flags & WAL_ISNEW));
 
-  const lsn ret = walos_get_next_lsn (w->ostream);
+  const lsn ret = walos_get_next_lsn (w->ostream) + w->start_lsn;
 
   switch (w->whdr.type)
     {
