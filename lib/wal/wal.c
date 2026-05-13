@@ -231,8 +231,9 @@ wal_flush_to (const struct wal *w, const lsn l, error *e)
     {
       return error_causef (
           e, ERR_CORRUPT,
-          "Tried to flush to previous deleted log %ld %ld",
-          l, w->start_lsn);
+          "Tried to flush to previous deleted log %" PRlsn " %" PRlsn,
+          l,
+          w->start_lsn);
     }
 
   return walos_flush_to (w->ostream, l - w->start_lsn, e);
