@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <inttypes.h>
 
 // =============================================================================
 // Types
@@ -43,6 +43,7 @@ typedef uint8_t pgh;     // Page header
 typedef uint8_t wlh;     // Wal Header
 
 #define PGNO_NULL U64_MAX
+#define LSN_NULL U64_MAX
 #define WLH_NULL U8_MAX
 
 #define PRt_size PRIu32

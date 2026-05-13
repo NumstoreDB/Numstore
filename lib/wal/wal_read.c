@@ -252,6 +252,10 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
   walis_mark_start_log (w->istream);
 
   WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+  if (rlsn)
+    {
+      *rlsn += w->start_lsn;
+    }
   if (iseof)
     {
       dest->type = WL_EOF;
@@ -267,6 +271,10 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
         dest->type = t;
         dest->update.type = -1;
         WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+        if (rlsn)
+          {
+            *rlsn += w->start_lsn;
+          }
         if (iseof)
           {
             dest->type = WL_EOF;
@@ -297,8 +305,11 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
       {
         dest->type = t;
         dest->clr.type = -1;
-        WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t,
-                              sizeof (t), e));
+        WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+        if (rlsn)
+          {
+            *rlsn += w->start_lsn;
+          }
         if (iseof)
           {
             dest->type = WL_EOF;
@@ -387,10 +398,14 @@ wal_read_entry (struct wal *w, const lsn id, error *e)
   ASSERT (w->istream);
   if (id < w->start_lsn)
     {
-      error_causef (e, ERR_CORRUPT, "Tried to read previous deleted log");
+      error_causef (
+          e, ERR_CORRUPT,
+          "Tried to read previous deleted log %ld %ld",
+          id, w->start_lsn);
       latch_unlock (&w->latch);
       return NULL;
     }
+
   if (walis_seek (w->istream, id - w->start_lsn, e))
     {
       latch_unlock (&w->latch);

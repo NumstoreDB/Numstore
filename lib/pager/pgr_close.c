@@ -14,8 +14,10 @@
 
 #include "c_specx/concurrency/periodic_task.h"
 #include "lockt/lock_table.h"
+#include "lockt/lt_lock.h"
 #include "os_pager/file_pager.h"
 #include "pager.h"
+#include "wal/wal.h"
 
 /**
  * TODO:
@@ -26,26 +28,15 @@ pgr_close (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
 
-  // Good idea to run a checkpoint before closing
-  // pgr_deletion_blocking_checkpoint (p, e);
-
   // Stop the checkpoint task if it's running
   periodic_task_stop (&p->checkpoint_task, e);
 
-  // Evict all pages
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
-    {
-      struct page_frame *mp = &p->pages[0];
+  lockt_lock (p->lt, lock_db (), LM_X, NULL, e);          // Never released
+  lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww); // Next wal start
+  pgr_write_next_lsn (p, end_lsn, e);                     // Write next wal start
+  pgr_evict_all_pages (p, e);                             // Evict all pages
+  wal_close_and_delete (p->ww, e);                        // Close (and delete) wal
 
-      if (mp->flags & PW_PRESENT)
-        {
-          // Ignore error
-          pgr_evict_unsafe (p, mp, e);
-        }
-    }
-
-  // Free resources
-  wal_close (p->ww, e);
   fpgr_close (p->fp, e);
   lockt_destroy (p->lt);
   i_free (p->lt);

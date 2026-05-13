@@ -74,13 +74,13 @@ pgr_open_single_file (const char *dbname, error *e)
   if (lt == NULL)
     {
       fpgr_close (fp, e);
-      wal_close (ww, e);
+      wal_close_and_delete (ww, e);
       return NULL;
     }
   if (lockt_init (lt, e))
     {
       fpgr_close (fp, e);
-      wal_close (ww, e);
+      wal_close_and_delete (ww, e);
       i_free (lt);
       lockt_destroy (lt);
       return NULL;
@@ -244,7 +244,7 @@ failed:
 
   if (ww)
     {
-      wal_close (ww, e);
+      wal_close_and_delete (ww, e);
     }
   if (fp)
     {

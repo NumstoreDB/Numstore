@@ -47,6 +47,7 @@ DEFINE_DBG_ASSERT (struct wal, wal, w, { ASSERT (w); })
 // Lifecycle
 struct wal *wal_open (const char *fname, error *e);
 err_t wal_close (struct wal *w, error *e);
+err_t wal_close_and_delete (struct wal *w, error *e);
 err_t wal_delete_and_reopen (struct wal *w, error *e);
 err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e);
 

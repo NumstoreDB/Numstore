@@ -261,7 +261,8 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
     {
       error_causef (
           e, ERR_PG_OUT_OF_RANGE,
-          "page %" PRpgno " out of range (npages=%" PRpgno ")", pg, atomic_load (&p->npages));
+          "page %" PRpgno " out of range (npages=%" PRpgno ")",
+          pg, atomic_load (&p->npages));
       goto theend;
     }
 
@@ -296,7 +297,7 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (i_pwrite_all (&p->f, src, PAGE_SIZE, pg * PAGE_SIZE, e))
+  if (i_pwrite_all (&p->f, src, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e))
     {
       goto theend;
     }

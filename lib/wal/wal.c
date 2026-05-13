@@ -81,6 +81,10 @@ wal_init (struct wal *dest, error *e)
           return error_trace (e);
         }
     }
+  else
+    {
+      dest->start_lsn = start_lsn;
+    }
 
   DBG_ASSERT (wal, dest);
 
@@ -157,6 +161,21 @@ wal_close (struct wal *w, error *e)
 }
 
 err_t
+wal_close_and_delete (struct wal *w, error *e)
+{
+  struct string fname = w->fname;
+  w->fname.data = NULL;
+
+  wal_destroy (w, e);
+  i_free (w);
+
+  i_remove_quiet (fname.data, e);
+  i_free ((char *)fname.data);
+
+  return error_trace (e);
+}
+
+err_t
 wal_delete_and_reopen (struct wal *w, error *e)
 {
   latch_lock (&w->latch);
@@ -207,7 +226,16 @@ wal_flush_to (const struct wal *w, const lsn l, error *e)
 {
   DBG_ASSERT (wal, w);
   ASSERT (w->ostream);
-  return walos_flush_to (w->ostream, l, e);
+
+  if (l < w->start_lsn)
+    {
+      return error_causef (
+          e, ERR_CORRUPT,
+          "Tried to flush to previous deleted log %ld %ld",
+          l, w->start_lsn);
+    }
+
+  return walos_flush_to (w->ostream, l - w->start_lsn, e);
 }
 
 err_t

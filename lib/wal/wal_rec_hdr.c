@@ -635,232 +635,16 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
 }
 #endif
 
-static void
-i_log_pysical_update (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "TID: %" PRtxid "\n", r->update.tid);
-  i_printf (log_level, "PREV: %" PRpgno "\n", r->update.prev);
-  i_printf (log_level, "PG: %" PRpgno "\n", r->update.phys.pg);
-  page temp;
-
-  i_printf (log_level, "UNDO: ");
-  for (int i = 0; i < 10; ++i)
-    {
-      i_printf (log_level, "%X ", r->update.phys.undo[i]);
-    }
-  i_printf (log_level, "... ");
-  for (u32 i = PAGE_SIZE - 10; i < PAGE_SIZE; ++i)
-    {
-      i_printf (log_level, "%X ", r->update.phys.undo[i]);
-    }
-  i_printf (log_level, "\n");
-  memcpy (temp.raw, r->update.phys.undo, PAGE_SIZE);
-  temp.pg = r->update.phys.pg;
-  i_log_page (log_level, &temp);
-
-  i_printf (log_level, "REDO: ");
-  for (u32 i = 0; i < 10; ++i)
-    {
-      i_printf (log_level, "%X ", r->update.phys.redo[i]);
-    }
-  i_printf (log_level, "... ");
-  for (u32 i = PAGE_SIZE - 10; i < PAGE_SIZE; ++i)
-    {
-      i_printf (log_level, "%X ", r->update.phys.redo[i]);
-    }
-  i_printf (log_level, "\n");
-  memcpy (temp.raw, r->update.phys.redo, PAGE_SIZE);
-  temp.pg = r->update.phys.pg;
-  i_log_page (log_level, &temp);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_fsm_update (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "TID: %" PRtxid "\n", r->update.tid);
-  i_printf (log_level, "PREV: %" PRpgno "\n", r->update.prev);
-  i_printf (log_level, "PG: %" PRpgno "\n", r->update.fsm.pg);
-  i_printf (log_level, "UNDO: %d\n", r->update.fsm.undo);
-  i_printf (log_level, "REDO: %d\n", r->update.fsm.redo);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_file_extend_update (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "TID: %" PRtxid "\n", r->update.tid);
-  i_printf (log_level, "PREV: %" PRpgno "\n", r->update.prev);
-  i_printf (log_level, "UNDO: %" PRpgno "\n", r->update.fext.undo);
-  i_printf (log_level, "REDO: %" PRpgno "\n", r->update.fext.redo);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_physical_clr (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "TID: %" PRtxid "\n", r->clr.tid);
-  i_printf (log_level, "PREV: %" PRpgno "\n", r->clr.prev);
-  i_printf (log_level, "PG: %" PRpgno "\n", r->clr.phys.pg);
-  i_printf (log_level, "UNDO_NEXT: %" PRpgno "\n", r->clr.undo_next);
-  i_printf (log_level, "REDO: ");
-  for (u32 i = 0; i < 10; ++i)
-    {
-      i_printf (log_level, "%X ", r->clr.phys.redo[i]);
-    }
-  i_printf (log_level, "... ");
-  for (u32 i = PAGE_SIZE - 10; i < PAGE_SIZE; ++i)
-    {
-      i_printf (log_level, "%X ", r->clr.phys.redo[i]);
-    }
-  i_printf (log_level, "\n");
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_fsm_clr (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "TID: %" PRtxid "\n", r->clr.tid);
-  i_printf (log_level, "PREV: %" PRpgno "\n", r->clr.prev);
-  i_printf (log_level, "PG: %" PRpgno "\n", r->clr.fsm.pg);
-  i_printf (log_level, "UNDO_NEXT: %" PRpgno "\n", r->clr.undo_next);
-  i_printf (log_level, "REDO: %d\n", r->clr.fsm.redo);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_dummy_clr (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "TID: %" PRtxid "\n", r->clr.tid);
-  i_printf (log_level, "PREV: %" PRpgno "\n", r->clr.prev);
-  i_printf (log_level, "UNDO_NEXT: %" PRpgno "\n", r->clr.undo_next);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_begin (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "HEADER: %d\n", r->type);
-  i_printf (log_level, "TID: %" PRtxid "\n", r->begin.tid);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_commit (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "HEADER: %d\n", r->type);
-  i_printf (log_level, "TID: %" PRtxid "\n", r->commit.tid);
-  i_printf (log_level, "PREV: %" PRlsn "\n", r->commit.prev);
-  i_log (log_level, "------------------------------------\n");
-}
-
-static void
-i_log_end (const int log_level, const struct wal_rec_hdr_read *r)
-{
-  i_log (log_level, "------------------ %s:\n",
-         wal_rec_hdr_type_tostr (r->type));
-  i_printf (log_level, "HEADER: %d\n", r->type);
-  i_printf (log_level, "TID: %" PRtxid "\n", r->end.tid);
-  i_printf (log_level, "PREV: %" PRlsn "\n", r->end.prev);
-  i_log (log_level, "------------------------------------\n");
-}
-
 void
-i_log_wal_rec_hdr_read (const int log_level, struct wal_rec_hdr_read *r)
+i_print_wal_rec_hdr_read_light (
+    const int log_level,
+    const struct wal_rec_hdr_read *r,
+    const lsn l)
 {
-  switch (r->type)
-    {
-    case WL_UPDATE:
-      {
-        switch (r->update.type)
-          {
-          case WUP_PHYSICAL:
-            {
-              i_log_pysical_update (log_level, r);
-              break;
-            }
-          case WUP_FSM:
-            {
-              i_log_fsm_update (log_level, r);
-              break;
-            }
-          case WUP_FEXT:
-            {
-              i_log_file_extend_update (log_level, r);
-              break;
-            }
-          }
-        break;
-      }
+  char fields[128];
+  const char *name = "?";
+  const lsn *prev = NULL;
 
-    case WL_CLR:
-      {
-        switch (r->clr.type)
-          {
-          case WCLR_PHYSICAL:
-            {
-              i_log_physical_clr (log_level, r);
-              break;
-            }
-          case WCLR_FSM:
-            {
-              i_log_fsm_clr (log_level, r);
-              break;
-            }
-          case WCLR_DUMMY:
-            {
-              i_log_dummy_clr (log_level, r);
-              break;
-            }
-          }
-        break;
-      }
-
-    case WL_BEGIN:
-      {
-        i_log_begin (log_level, r);
-        break;
-      }
-
-    case WL_COMMIT:
-      {
-        i_log_commit (log_level, r);
-        break;
-      }
-    case WL_END:
-      {
-        i_log_end (log_level, r);
-        break;
-      }
-
-    case WL_EOF:
-      {
-        i_log (log_level, "WL_EOF\n");
-        break;
-      }
-    }
-}
-
-void
-i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_read *r,
-                                const lsn l)
-{
   switch (r->type)
     {
     case WL_UPDATE:
@@ -868,39 +652,33 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
         {
         case WUP_PHYSICAL:
           {
-            i_printf (log_level,
-                      "%15" PRlsn "  UPDATE PHYS  "
-                      "[ txid = %8" PRtxid ", pg   = %8" PRpgno
-                      "                   "
-                      "                   "
-                      "   ] --> %" PRlsn "\n",
-                      l, r->update.tid, r->update.phys.pg, r->update.prev);
+            name = "UPDATE PHYS";
+            snprintf (fields, sizeof fields,
+                      "txid = %8" PRtxid ", pg   = %8" PRpgno,
+                      r->update.tid, r->update.phys.pg);
+            prev = &r->update.prev;
             break;
           }
-
         case WUP_FSM:
           {
-            i_printf (log_level,
-                      "%15" PRlsn "  UPDATE FSM   "
-                      "[ txid = %8" PRtxid ", pg   = %8" PRpgno
-                      ", undo = 0x%02x, redo = "
-                      "0x%02x               ] "
-                      "--> %" PRlsn "\n",
-                      l, r->update.tid, r->update.fsm.pg,
+            name = "UPDATE FSM";
+            snprintf (fields, sizeof fields,
+                      "txid = %8" PRtxid ", pg   = %8" PRpgno
+                      ", undo = 0x%02x, redo = 0x%02x",
+                      r->update.tid, r->update.fsm.pg,
                       (unsigned)r->update.fsm.undo,
-                      (unsigned)r->update.fsm.redo, r->update.prev);
+                      (unsigned)r->update.fsm.redo);
+            prev = &r->update.prev;
             break;
           }
-
         case WUP_FEXT:
           {
-            i_printf (log_level,
-                      "%15" PRlsn "  UPDATE FEXT  "
-                      "[ txid = %8" PRtxid ", undo_pgs = %8" PRpgno
-                      ", redo_pgs = %8" PRpgno "                ] --> "
-                      "%" PRlsn "\n",
-                      l, r->update.tid, r->update.fext.undo,
-                      r->update.fext.redo, r->update.prev);
+            name = "UPDATE FEXT";
+            snprintf (fields, sizeof fields,
+                      "txid = %8" PRtxid ", undo_pgs = %8" PRpgno
+                      ", redo_pgs = %8" PRpgno,
+                      r->update.tid, r->update.fext.undo, r->update.fext.redo);
+            prev = &r->update.prev;
             break;
           }
         }
@@ -911,36 +689,32 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
         {
         case WCLR_PHYSICAL:
           {
-            i_printf (log_level,
-                      "%15" PRlsn "  CLR PHYS     "
-                      "[ txid = %8" PRtxid ", pg   = %8" PRpgno
-                      ", undoNxt = %15" PRlsn "              ] --> "
-                      "%" PRlsn "\n",
-                      l, r->clr.tid, r->clr.phys.pg, r->clr.undo_next,
-                      r->clr.prev);
+            name = "CLR PHYS";
+            snprintf (fields, sizeof fields,
+                      "txid = %8" PRtxid ", pg   = %8" PRpgno
+                      ", undoNxt = %15" PRlsn,
+                      r->clr.tid, r->clr.phys.pg, r->clr.undo_next);
+            prev = &r->clr.prev;
             break;
           }
-
         case WCLR_FSM:
           {
-            i_printf (log_level,
-                      "%15" PRlsn "  CLR FSM      "
-                      "[ txid = %8" PRtxid ", pg   = %8" PRpgno
-                      ", redo = 0x%02x, undoNxt "
-                      "= %15" PRlsn " ] --> %" PRlsn "\n",
-                      l, r->clr.tid, r->clr.fsm.pg, (unsigned)r->clr.fsm.redo,
-                      r->clr.undo_next, r->clr.prev);
+            name = "CLR FSM";
+            snprintf (fields, sizeof fields,
+                      "txid = %8" PRtxid ", pg   = %8" PRpgno
+                      ", redo = 0x%02x, undoNxt = %15" PRlsn,
+                      r->clr.tid, r->clr.fsm.pg,
+                      (unsigned)r->clr.fsm.redo, r->clr.undo_next);
+            prev = &r->clr.prev;
             break;
           }
-
         case WCLR_DUMMY:
           {
-            i_printf (log_level,
-                      "%15" PRlsn "  CLR DUMMY    "
-                      "[ txid = %8" PRtxid ", undoNxt = %15" PRlsn
-                      "                         "
-                      "      ] --> %" PRlsn "\n",
-                      l, r->clr.tid, r->clr.undo_next, r->clr.prev);
+            name = "CLR DUMMY";
+            snprintf (fields, sizeof fields,
+                      "txid = %8" PRtxid ", undoNxt = %15" PRlsn,
+                      r->clr.tid, r->clr.undo_next);
+            prev = &r->clr.prev;
             break;
           }
         }
@@ -948,39 +722,49 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
 
     case WL_BEGIN:
       {
-        i_printf (log_level,
-                  "%15" PRlsn "  BEGIN        "
-                  "[ txid = %8" PRtxid "                                   "
-                  "                       ]\n",
-                  l, r->begin.tid);
+        name = "BEGIN";
+        snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->begin.tid);
         break;
       }
 
     case WL_COMMIT:
       {
-        i_printf (log_level,
-                  "%15" PRlsn "  COMMIT       "
-                  "[ txid = %8" PRtxid "                                      "
-                  "                    ] --> %" PRlsn "\n",
-                  l, r->commit.tid, r->commit.prev);
+        name = "COMMIT";
+        snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->commit.tid);
+        prev = &r->commit.prev;
         break;
       }
 
     case WL_END:
       {
-        i_printf (log_level,
-                  "%15" PRlsn "  END          "
-                  "[ txid = %8" PRtxid "                                      "
-                  "                    ] --> %" PRlsn "\n",
-                  l, r->end.tid, r->end.prev);
+        name = "END";
+        snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->end.tid);
+        prev = &r->end.prev;
         break;
       }
 
     case WL_EOF:
       {
         i_printf (log_level, "%15" PRlsn "  WL_EOF\n", l);
-        break;
+        return;
       }
+    }
+
+  /* Widths set in one place:
+       11 = strlen("UPDATE FEXT")  -- widest type name
+       72 = widest fields line     -- "CLR FSM" case
+     Bump them if a new record type pushes past these. */
+  if (prev)
+    {
+      i_printf (log_level,
+                "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
+                l, name, fields, *prev);
+    }
+  else
+    {
+      i_printf (log_level,
+                "%15" PRlsn "  %-11s  [ %-72s ]\n",
+                l, name, fields);
     }
 }
 

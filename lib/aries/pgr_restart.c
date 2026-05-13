@@ -41,16 +41,20 @@ pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
       goto theend;
     }
 
-  // REDO
-  if (pgr_restart_redo (p, ctx, e))
+  if (ctx->redo_lsn != LSN_NULL)
     {
-      goto theend;
-    }
 
-  // UNDO
-  if (pgr_restart_undo (p, ctx, e))
-    {
-      goto theend;
+      // REDO
+      if (pgr_restart_redo (p, ctx, e))
+        {
+          goto theend;
+        }
+
+      // UNDO
+      if (pgr_restart_undo (p, ctx, e))
+        {
+          goto theend;
+        }
     }
 
   // This is a good time to do a checkpoint
