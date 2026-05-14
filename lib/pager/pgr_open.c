@@ -22,13 +22,7 @@
 #include "wal/wal.h"
 #include "wal/wal_ostream.h"
 
-#if PLATFORM_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#define NAME_MAX MAX_PATH
-#else
-#include <limits.h>
-#endif
+#define NAME_MAX 200
 
 /*
  * pgr_open_single_file — standard file-backed entry point.
