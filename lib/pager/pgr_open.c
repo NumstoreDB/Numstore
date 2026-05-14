@@ -14,10 +14,6 @@
 
 #include "aries/aries.h"
 #include "c_specx.h"
-#include "c_specx/concurrency/periodic_task.h"
-#include "c_specx/dev/error.h"
-#include "c_specx/intf/os/compiler.h"
-#include "c_specx/intf/os/memory.h"
 #include "lockt/lock_table.h"
 #include "os_pager/file_pager.h"
 #include "pager.h"
@@ -26,10 +22,12 @@
 #include "wal/wal.h"
 #include "wal/wal_ostream.h"
 
+#if PLATFORM_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#define NAME_MAX MAX_PATH
+#else
 #include <limits.h>
-
-#ifndef NAME_MAX
-#define NAME_MAX 260
 #endif
 
 /*
