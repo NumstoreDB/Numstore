@@ -40,19 +40,17 @@ DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
 ////////////////////////////////////////////////////////////
 /// Regular functions
 
-/**
- * TODO:
- *   - Lock the file on new file pager creation
- */
 struct file_pager *
 fpgr_open (const char *dbname, u32 header_len, error *e)
 {
+  // Allocate space for the pager
   struct file_pager *dest = i_malloc (1, sizeof *dest, e);
   if (dest == NULL)
     {
       return NULL;
     }
 
+  // Basic initialization
   latch_init (&dest->l);
   dest->flags = 0;
 
@@ -62,6 +60,7 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
       goto failed;
     }
 
+  // We'll use the size for checking if it's new or not
   i64 size = i_file_size (&dest->f, e);
 
   // Failed
@@ -70,16 +69,24 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
       goto fp_failed;
     }
 
-  // No header
+  // No header or a newly created file (just a header)
   if (size == 0 || size == header_len)
     {
       dest->flags |= FP_ISNEW;
-      if (i_truncate (&dest->f, header_len, e))
+
+      // extend the file to the header length
+      if (size == 0)
         {
-          goto fp_failed;
+          if (i_truncate (&dest->f, header_len, e))
+            {
+              goto fp_failed;
+            }
         }
+
       size = header_len;
     }
+
+  // This file has a header that is less than the length of the file
   else if (size < header_len)
     {
       error_causef (e, ERR_CORRUPT, "Invalid file pager header\n");
