@@ -18,6 +18,7 @@
 #include "c_specx/dev/error.h"
 #include "c_specx/intf/os/compiler.h"
 #include "c_specx/intf/os/memory.h"
+#include "linux/limits.h"
 #include "lockt/lock_table.h"
 #include "os_pager/file_pager.h"
 #include "pager.h"
@@ -28,8 +29,8 @@
 
 #include <limits.h>
 
-#ifndef PATH_MAX
-#define PATH_MAX 260
+#ifndef NAME_MAX
+#define NAME_MAX 260
 #endif
 
 /*
@@ -49,10 +50,18 @@
 struct pager *
 pgr_open_single_file (const char *dbname, error *e)
 {
-  // TODO length check
+  u32 len = strlen (dbname);
+  if (len > (NAME_MAX - 4))
+    {
+      error_causef (
+          e, ERR_INVALID_ARGUMENT,
+          "DBName is too big. Supported max: %d actual len: %d",
+          NAME_MAX - 4, len);
+      return NULL;
+    }
 
-  char fname[PATH_MAX];
-  char walname[PATH_MAX];
+  char fname[NAME_MAX - 4];
+  char walname[NAME_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
@@ -259,13 +268,35 @@ TEST (pager_open)
 {
   error e = error_create ();
 
-  // Green path
+  TEST_CASE ("green path")
   {
     test_fail_if (pgr_delete_single_file ("testdb", &e));
 
     struct pager *p = pgr_open_single_file ("testdb", &e);
 
     pgr_close (p, &e);
+  }
+
+  TEST_CASE ("dbname is too long")
+  {
+    char *name = i_malloc (NAME_MAX, 1, &e);
+    for (int i = 0; i < NAME_MAX; ++i)
+      {
+        name[i] = 'c';
+      }
+    name[NAME_MAX - 3] = '\0';
+
+    struct pager *p = pgr_open_single_file (name, &e);
+    test_assert (p == NULL);
+    test_err_t_check (e.cause_code, ERR_INVALID_ARGUMENT, &e);
+    e.cause_code = SUCCESS;
+
+    name[NAME_MAX - 4] = '\0';
+    p = pgr_open_single_file (name, &e);
+    test_assert (p != NULL);
+
+    pgr_close (p, &e);
+    i_free (name);
   }
 }
 #endif
