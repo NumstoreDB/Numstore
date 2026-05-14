@@ -287,6 +287,10 @@ TEST (pager_open)
     test_assert (p != NULL);
 
     pgr_close (p, &e);
+
+    // Delete the obtuse name
+    pgr_delete_single_file (name, &e);
+
     i_free (name);
   }
 }
