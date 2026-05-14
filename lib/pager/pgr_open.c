@@ -18,7 +18,6 @@
 #include "c_specx/dev/error.h"
 #include "c_specx/intf/os/compiler.h"
 #include "c_specx/intf/os/memory.h"
-#include "linux/limits.h"
 #include "lockt/lock_table.h"
 #include "os_pager/file_pager.h"
 #include "pager.h"

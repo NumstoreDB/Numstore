@@ -52,9 +52,9 @@ wal_init (struct wal *dest, error *e)
     }
 
   // Read the start lsn
-  bool iseof;
-  u32 checksum;
-  lsn start_lsn;
+  bool iseof = false;
+  u32 checksum = checksum_init ();
+  lsn start_lsn = 0;
 
   walis_mark_start_log (dest->istream);
 
