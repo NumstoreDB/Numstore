@@ -400,7 +400,7 @@ wal_read_entry (struct wal *w, const lsn id, error *e)
     {
       error_causef (
           e, ERR_CORRUPT,
-          "Tried to read previous deleted log %ld %ld",
+          "Tried to read previous deleted log %" PRlsn " %" PRlsn,
           id, w->start_lsn);
       latch_unlock (&w->latch);
       return NULL;
