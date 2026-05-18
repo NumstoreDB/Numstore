@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx/dev/error.h"
-#include "pager.h"
-#include "pager/page_h.h"
-#include "pages/page.h"
+#include "c_specx.h"
+#include "numstore/page_h.h"
+#include "numstore/pager.h"
+#include "numstore/pages/page.h"
 #include "smfile.h"
 
 #include <stdio.h>

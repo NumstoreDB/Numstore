@@ -173,45 +173,6 @@ class BannerCommentRule(Rule):
 
         return new_lines, [], []
 
-class HeaderSectionSpacingRule(Rule):
-    name = "header_section_spacing"
-    _COPYRIGHT_RE = re.compile(r"^\s*///")
-    _PRAGMA_RE = re.compile(r"^\s*(?://\s*)?#\s*pragma\s+once")
-
-    def apply(self, path, lines):
-        # Find end of copyright block
-        copyright_end = 0
-        for i, line in enumerate(lines):
-            if self._COPYRIGHT_RE.match(line):
-                copyright_end = i + 1
-            elif copyright_end and line.strip():
-                break
-
-        # Find pragma once near the top
-        pragma_idx = None
-        for i, line in enumerate(lines):
-            if self._PRAGMA_RE.match(line):
-                pragma_idx = i
-                break
-
-        # Headers must have pragma once
-        if pragma_idx is None:
-            if path.suffix == ".h":
-                return lines, [], [f"  missing #pragma once"]
-            return lines, [], []
-
-        # Find first non-blank line after pragma
-        rest_start = pragma_idx + 1
-        while rest_start < len(lines) and lines[rest_start].strip() == "":
-            rest_start += 1
-
-        new_lines = lines[:copyright_end]
-        new_lines += ["\n"]                  # 1 blank line after license
-        new_lines += [lines[pragma_idx]]
-        new_lines += ["\n"]                  # 1 blank line after pragma
-        new_lines += lines[rest_start:]
-        return new_lines, [], []
-
 class CollapseBlankLinesRule(Rule):
     name = "collapse_blank_lines"
 
@@ -227,11 +188,10 @@ class CollapseBlankLinesRule(Rule):
         return new_lines, [], []
 
 RULES: list[Rule] = [
-    CopyrightRule(),
+    CopyrightRule(), # Add copywrite to everything
     AngleBracketIncludeRule(),
     IncludeOrderRule(),
     BannerCommentRule(),
-    HeaderSectionSpacingRule(),
     CollapseBlankLinesRule(),
 ]
 

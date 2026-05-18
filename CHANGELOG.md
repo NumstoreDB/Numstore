@@ -1,12 +1,25 @@
 # Changelog
 
-## [v1.0.1-Unreleased]
+## [v1.1.0-Unreleased]
 
 ### Changed
 
+- Organized libraries into three seperate components: c_specx, smartfiles and numstore
+
 ### Removed 
 
+- submodule dependency on c_specx (added as its own dedicated library)
+
 ### Added
+
+- numstore - a typed smartfiles - which constricts the variables to typed values
+- `struct` - A Product type
+- `union`  - A Summation type
+- `sarray` - A strict array type
+- Compilers for all new types
+- `type_ref`        - A compound type_accessor to create a new type
+- `type_accessor`   - A typed version of byte_accessor
+- `subtype`         - Sub type of an existing type
 
 ## [v1.0.0] - 2026-05-01
 
@@ -50,7 +63,7 @@
 - Negative byte offsets are interpreted relative to end of file
 - Explicit-width types used throughout for deterministic on-disk layout
 
-[v1.0.1-Unreleased]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...HEAD
+[v1.1.0-Unreleased]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...HEAD
 [v1.0.0]: https://github.com/lincketheo/smartfiles/compare/v0.0.3...v1.0.0
 [v0.0.3]: https://github.com/lincketheo/smartfiles/compare/v0.0.2...v0.0.3
 [v0.0.2]: https://github.com/lincketheo/smartfiles/compare/v0.0.1...v0.0.2

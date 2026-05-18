@@ -1,3 +1,103 @@
-BasedOnStyle: GNU
-ColumnLimit: 0
+BasedOnStyle: Google
 
+ColumnLimit: 100
+IndentWidth: 2
+ContinuationIndentWidth: 4
+UseTab: Never
+
+# ---------------------------------------------------------------------------
+# Function signatures: one line if it fits, else return type on its own line
+# and every parameter on its own line. No in-between states.
+# ---------------------------------------------------------------------------
+AlignAfterOpenBracket: AlwaysBreak
+BinPackParameters: false
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+#BreakAfterReturnType: Automatic     # clang-format 19+; older: AlwaysBreakAfterReturnType: None
+PenaltyReturnTypeOnItsOwnLine: 1    # makes "wrap params => also wrap return type" the cheap choice
+SpaceBeforeParens: Always
+
+# ---------------------------------------------------------------------------
+# Braces: GNU style when multi-line, but keep "{ }" on one line if the whole
+# body fits. Applies to functions, blocks, ifs, loops, cases, enums.
+# ---------------------------------------------------------------------------
+AllowShortFunctionsOnASingleLine: All
+AllowShortBlocksOnASingleLine: Always
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+
+# ---------------------------------------------------------------------------
+# Always brace control statements. Single-statement if/else/for/while/do all
+# get { } inserted. Switches already require braces around the body, so they
+# are unaffected; case labels are governed by AllowShortCaseLabels above.
+# Requires clang-format 15+. Do NOT also set RemoveBracesLLVM.
+# ---------------------------------------------------------------------------
+#InsertBraces: true
+
+# ---------------------------------------------------------------------------
+# Preprocessor: indent the body of nested #if / #ifdef / #ifndef blocks.
+# "AfterHash" keeps the # in column 0 and indents what follows it:
+#   #if FOO
+#   #  if BAR
+#   #    define BAZ 1
+#   #  endif
+#   #endif
+# Use "BeforeHash" instead if you prefer the whole directive indented.
+# ---------------------------------------------------------------------------
+IndentPPDirectives: AfterHash
+PPIndentWidth: 2
+
+# ---------------------------------------------------------------------------
+# Includes: sort, regroup into categories, and float the "main" header
+# (foo.h in foo.c) to the very top. IncludeIsMainRegex's default already
+# matches the source file's basename plus optional -test/_test/-unittest
+# suffixes; tighten the regex below if you want exact-match only.
+# ---------------------------------------------------------------------------
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeIsMainRegex: '([-_](test|unittest))?$'
+IncludeCategories:
+  - Regex:    '^"'              # local "..." headers
+    Priority: 1
+  - Regex:    '^<sys/'          # POSIX system headers
+    Priority: 2
+  - Regex:    '^<.*\.h>'        # C standard headers (<stdio.h>, ...)
+    Priority: 3
+  - Regex:    '^<.*>'           # everything else in angle brackets
+    Priority: 4
+
+# ---------------------------------------------------------------------------
+# Whitespace cleanup
+# ---------------------------------------------------------------------------
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInCStyleCastParentheses: false
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpacesBeforeTrailingComments: 1
+DerivePointerAlignment: false
+PointerAlignment: Right             
+Cpp11BracedListStyle: true
+
+# ---------------------------------------------------------------------------
+# Alignment of repetitive constructs
+# ---------------------------------------------------------------------------
+AlignConsecutiveMacros: Consecutive
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignTrailingComments: true
+AlignEscapedNewlines: Left
+AlignOperands: Align
+
+# ---------------------------------------------------------------------------
+# Line breaks within expressions and comments
+# ---------------------------------------------------------------------------
+BreakBeforeBinaryOperators: NonAssignment
+BreakStringLiterals: true
+ReflowComments: true

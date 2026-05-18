@@ -1,1 +1,0 @@
-add_subdirectory(c_specx EXCLUDE_FROM_ALL)
