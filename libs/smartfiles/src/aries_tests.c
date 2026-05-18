@@ -14,8 +14,8 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/aries.h"
-#include "numstore/pager.h"
+#include "nscore/aries.h"
+#include "nscore/pager.h"
 #include "smfile.h"
 
 #ifndef NTEST

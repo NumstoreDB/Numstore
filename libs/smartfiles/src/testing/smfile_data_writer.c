@@ -14,7 +14,7 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/pager.h"
+#include "nscore/pager.h"
 #include "smfile.h"
 #include "testing/smfile_test_fixture.h"
 

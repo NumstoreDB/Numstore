@@ -15,8 +15,8 @@
 #pragma once
 
 #include "c_specx.h"
-#include "numstore/pager.h"
-#include "numstore/variables.h"
+#include "nscore/pager.h"
+#include "nscore/variables.h"
 
 struct smfile_root {
   struct pager *p;     // The database resources

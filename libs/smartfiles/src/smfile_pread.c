@@ -14,10 +14,10 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/rope.h"
-#include "numstore/txn.h"
-#include "numstore/var.h"
-#include "numstore/variables.h"
+#include "nscore/rope.h"
+#include "nscore/txn.h"
+#include "nscore/var.h"
+#include "nscore/variables.h"
 #include "smfile.h"
 
 static sb_size _smfile_pread (

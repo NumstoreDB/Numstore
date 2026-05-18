@@ -13,9 +13,9 @@
 /// limitations under the License.
 
 #include "c_specx.h"
-#include "numstore/page_h.h"
-#include "numstore/pager.h"
-#include "numstore/pages/page.h"
+#include "nscore/page_h.h"
+#include "nscore/pager.h"
+#include "nscore/pages/page.h"
 #include "smfile.h"
 
 #include <stdio.h>
