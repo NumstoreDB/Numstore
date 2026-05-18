@@ -113,6 +113,7 @@ clean:
 	rm -f compile_commands.json
 
 format:
+	python3 scripts/add_copywrite.py
 	clang-format -i $(shell find libs \( -name '*.c' -o -name '*.h' \))
 
 tidy:
