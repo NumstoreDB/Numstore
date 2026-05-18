@@ -14,9 +14,9 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/lock_table.h"
-#include "numstore/lt_lock.h"
-#include "numstore/pager.h"
+#include "nscore/lock_table.h"
+#include "nscore/lt_lock.h"
+#include "nscore/pager.h"
 #include "smfile.h"
 
 static err_t _smfile_begin (smfile_t *smf, error *e) {

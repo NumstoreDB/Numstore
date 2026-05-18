@@ -14,9 +14,9 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/rope.h"
-#include "numstore/txn.h"
-#include "numstore/var.h"
+#include "nscore/rope.h"
+#include "nscore/txn.h"
+#include "nscore/var.h"
 #include "smfile.h"
 
 static sb_size _smfile_pinsert (

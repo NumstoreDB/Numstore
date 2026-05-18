@@ -14,10 +14,10 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/page_h.h"
-#include "numstore/pager.h"
-#include "numstore/types.h"
-#include "numstore/var.h"
+#include "nscore/page_h.h"
+#include "nscore/pager.h"
+#include "nscore/types.h"
+#include "nscore/var.h"
 #include "smfile.h"
 
 static struct smfile *_smfile_open (const char *path, error *e) {
@@ -41,35 +41,29 @@ static struct smfile *_smfile_open (const char *path, error *e) {
     if (ret->p == NULL) { goto failed; }
   }
 
-  // BEGIN TXN
-  struct txn tx;
-  if (pgr_begin_txn (&tx, ret->p, e)) { goto failed; }
-
   // Upfront initialization
   if (pgr_isnew (ret->p)) {
-    // Create a new variable hash page
-    if (pgr_new (&hp, ret->p, &tx, PG_VAR_HASH_PAGE, e)) { goto failed; }
-
-    // Next page should be valid
-    //   this is a weak contract
-    //   but assumes the structure of the pager,
-    //   it's good enough but might need to change
-    ASSERT (page_h_pgno (&hp) == VHASH_PGNO);
-
-    if (pgr_release (ret->p, &hp, PG_VAR_HASH_PAGE, e)) { goto failed; }
+    // Initialize the upfront hash page
+    if (ns_init_var_hash_map (ret->p, e)) { goto failed; }
 
     // Create the default variable
-    struct ns_var_create_params params = {
-        .p     = ret->p,
-        .tx    = &tx,
-        .vname = strfcstr (DEFAULT_VARIABLE),
-        .type  = &(struct type){.type = T_PRIM, .p = U8},
-    };
-    if (ns_var_create (params, e)) { goto failed; }
-  }
+    {
+      // BEGIN TXN
+      struct txn tx;
+      if (pgr_begin_txn (&tx, ret->p, e)) { goto failed; }
 
-  // COMMIT
-  if (pgr_commit (ret->p, &tx, e)) { goto failed; }
+      struct ns_var_create_params params = {
+          .p     = ret->p,
+          .tx    = &tx,
+          .vname = strfcstr (DEFAULT_VARIABLE),
+          .type  = &(struct type){.type = T_PRIM, .p = U8},
+      };
+      if (ns_var_create (params, e)) { goto failed; }
+
+      // COMMIT
+      if (pgr_commit (ret->p, &tx, e)) { goto failed; }
+    }
+  }
 
   // Load the default context
   struct smfile *sret = _smfile_root_load (ret, e);

@@ -14,8 +14,8 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
-#include "numstore/errors.h"
-#include "numstore/var.h"
+#include "nscore/errors.h"
+#include "nscore/var.h"
 #include "smfile.h"
 
 smfile_t *smfile_new_context (smfile_t *ns) {
