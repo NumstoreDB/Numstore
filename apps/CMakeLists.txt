@@ -11,10 +11,10 @@ foreach(APP_SRC ${NS_APP_SOURCES})
 
     ######### Create and link the binary with all
     add_executable(${APP_NAME} ${APP_SRC})
-    target_link_libraries(${APP_NAME} PRIVATE c_specx numstore smartfiles)
+    target_link_libraries(${APP_NAME} PRIVATE c_specx nscore smartfiles)
     target_include_directories(${APP_NAME}
         PRIVATE "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
-        PRIVATE "${CMAKE_SOURCE_DIR}/libs/numstore/include"
+        PRIVATE "${CMAKE_SOURCE_DIR}/libs/nscore/include"
         PRIVATE "${CMAKE_SOURCE_DIR}/libs/smartfiles/include"
     )
 

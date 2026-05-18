@@ -13,10 +13,10 @@ add_library(smartfiles STATIC ${SMFILE_SOURCES})
 target_include_directories(smartfiles
     PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/numstore/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/nscore/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/c_specx/include"
 )
-target_link_libraries(smartfiles PUBLIC c_specx numstore) 
+target_link_libraries(smartfiles PUBLIC c_specx nscore) 
 
 ################### INSTALL
 set_target_properties(smartfiles PROPERTIES

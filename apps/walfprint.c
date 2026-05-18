@@ -13,8 +13,8 @@
 /// limitations under the License.
 
 #include "c_specx.h"
-#include "numstore/wal.h"
-#include "numstore/wal_rec_hdr.h"
+#include "nscore/wal.h"
+#include "nscore/wal_rec_hdr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
