@@ -1,0 +1,90 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#include "_smfile.h"
+#include "c_specx.h"
+#include "numstore/page_h.h"
+#include "numstore/pager.h"
+#include "numstore/types.h"
+#include "numstore/var.h"
+#include "smfile.h"
+
+static struct smfile *_smfile_open (const char *path, error *e) {
+  struct smfile_root *ret = i_malloc (1, sizeof *ret, e);
+  page_h              hp  = page_h_create ();
+
+  if (ret == NULL) { return NULL; }
+
+  // Initialize inner values
+  {
+    ret->e     = error_create ();
+    ret->count = 0;
+
+    // path
+    ret->path.len  = strlen (path);
+    ret->path.data = i_malloc (ret->path.len, 1, e);
+    if (ret->path.data == NULL) { goto failed; }
+
+    // db
+    ret->p = pgr_open_single_file (path, e);
+    if (ret->p == NULL) { goto failed; }
+  }
+
+  // BEGIN TXN
+  struct txn tx;
+  if (pgr_begin_txn (&tx, ret->p, e)) { goto failed; }
+
+  // Upfront initialization
+  if (pgr_isnew (ret->p)) {
+    // Create a new variable hash page
+    if (pgr_new (&hp, ret->p, &tx, PG_VAR_HASH_PAGE, e)) { goto failed; }
+
+    // Next page should be valid
+    //   this is a weak contract
+    //   but assumes the structure of the pager,
+    //   it's good enough but might need to change
+    ASSERT (page_h_pgno (&hp) == VHASH_PGNO);
+
+    if (pgr_release (ret->p, &hp, PG_VAR_HASH_PAGE, e)) { goto failed; }
+
+    // Create the default variable
+    struct ns_var_create_params params = {
+        .p     = ret->p,
+        .tx    = &tx,
+        .vname = strfcstr (DEFAULT_VARIABLE),
+        .type  = &(struct type){.type = T_PRIM, .p = U8},
+    };
+    if (ns_var_create (params, e)) { goto failed; }
+  }
+
+  // COMMIT
+  if (pgr_commit (ret->p, &tx, e)) { goto failed; }
+
+  // Load the default context
+  struct smfile *sret = _smfile_root_load (ret, e);
+
+  return sret;
+
+failed:
+  // TODO just delete the file
+  i_free (ret);
+  return NULL;
+}
+
+smfile_t *smfile_open (const char *path) {
+  error          e   = error_create ();
+  struct smfile *ret = _smfile_open (path, &e);
+  if (ret == NULL) { return NULL; }
+  return ret;
+}

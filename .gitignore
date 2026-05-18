@@ -55,3 +55,4 @@ bindings/java/jnumstore/build/
 build/doxygen/
 docs/api/
 testdb/
+_build/

@@ -12,10 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx/core/math.h"
-#include "c_specx/intf/logging.h"
-#include "pager.h"
-#include "pages/page.h"
+#include "c_specx.h"
+#include "numstore/pager.h"
+#include "numstore/pages/page.h"
 #include "smfile.h"
 
 #include <stdio.h>

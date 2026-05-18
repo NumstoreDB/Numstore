@@ -12,10 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx/dev/error.h"
-#include "c_specx/intf/logging.h"
-#include "wal/wal.h"
-#include "wal/wal_rec_hdr.h"
+#include "c_specx.h"
+#include "numstore/wal.h"
+#include "numstore/wal_rec_hdr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
