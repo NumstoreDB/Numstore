@@ -113,10 +113,7 @@ clean:
 	rm -f compile_commands.json
 
 format:
-	./scripts/format.py lib
-	./scripts/format.py apps
-	./scripts/format.py samples
-	clang-format -i $(shell find lib \( -name '*.c' -o -name '*.h' \))
+	clang-format -i $(shell find libs \( -name '*.c' -o -name '*.h' \))
 
 tidy:
 	@if [ ! -f compile_commands.json ]; then \
