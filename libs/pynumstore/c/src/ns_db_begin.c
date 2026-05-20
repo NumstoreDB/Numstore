@@ -4,7 +4,6 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <string.h>
 
 /*

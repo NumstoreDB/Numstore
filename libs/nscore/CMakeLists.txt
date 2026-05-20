@@ -12,8 +12,9 @@ file(GLOB_RECURSE NS_SOURCES  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src
 add_library(nscore STATIC ${NS_SOURCES})
 target_include_directories(nscore
     PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/src"       
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
             "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
+            "${CMAKE_SOURCE_DIR}/libs/smartfiles/include"
 )
 target_link_libraries(nscore PRIVATE c_specx)
 
