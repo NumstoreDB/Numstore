@@ -261,16 +261,16 @@ HEADER_FUNC err_t pgr_release_if_exists (struct pager *p, page_h *h, int flags, 
 HEADER_FUNC err_t pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e) {
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e)) { return e->cause_code; }
-  if (pgr_flush_unsafe (p, pgr, e)) { return e->cause_code; }
+  if (pgr_release (p, h, flags, e)) { return error_trace (e); }
+  if (pgr_flush_unsafe (p, pgr, e)) { return error_trace (e); }
   return SUCCESS;
 }
 
 HEADER_FUNC err_t pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e) {
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e)) { return e->cause_code; }
-  if (pgr_evict_unsafe (p, pgr, e)) { return e->cause_code; }
+  if (pgr_release (p, h, flags, e)) { return error_trace (e); }
+  if (pgr_evict_unsafe (p, pgr, e)) { return error_trace (e); }
   return SUCCESS;
 }
 

@@ -26,7 +26,8 @@
  * Returns ERR_DUPLICATE_VARIABLE if a variable with this name already exists.
  */
 spgno ns_var_create (const struct ns_var_create_params params, error *e) {
-  page_h                         cur     = page_h_create ();
+  page_h cur = page_h_create ();
+
   struct ns_find_var_page_params fparams = {
       .tx    = params.tx,
       .p     = params.p,

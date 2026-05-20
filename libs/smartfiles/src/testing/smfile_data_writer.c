@@ -14,6 +14,7 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/pager.h"
 #include "smfile.h"
 #include "testing/smfile_test_fixture.h"
@@ -55,7 +56,7 @@ static const struct data_writer_functions smfile_functions = {
 struct data_writer *smfile_data_writer_open (const char *path) {
   smfile_t *smf = smfile_open (path);
   if (smf == NULL) { return NULL; }
-  struct data_writer *writer = i_malloc (1, sizeof *writer, &smf->e);
+  struct data_writer *writer = i_malloc (1, sizeof *writer, &((struct nshandle *)smf)->e);
   if (writer == NULL) {
     smfile_close (smf);
     return NULL;

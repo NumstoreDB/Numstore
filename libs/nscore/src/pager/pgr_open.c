@@ -172,7 +172,7 @@ struct pager *pgr_open_single_file (const char *dbname, error *e) {
   return ret;
 
 failed:
-  ASSERT (e->cause_code);
+  ASSERT (error_trace (e));
   if (ret) {
     pgr_cancel_if_exists (ret, &root);
     if (ret->dpt) { dpgt_close (ret->dpt); }

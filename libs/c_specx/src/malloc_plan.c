@@ -36,7 +36,7 @@ void *malloc_plan_memcpy (struct malloc_plan *plan, const void *data, const u32 
 err_t malloc_plan_alloc (struct malloc_plan *plan, error *e) {
   ASSERT (plan->mode == MP_PLANNING);
   plan->buffer = i_malloc (plan->size, 1, e);
-  if (plan->buffer == NULL) { return e->cause_code; }
+  if (plan->buffer == NULL) { return error_trace (e); }
   plan->mode = MP_ALLOCING;
 
   return SUCCESS;
