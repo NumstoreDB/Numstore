@@ -12,28 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/pager.h"
-#include "smfile.h"
 
-static err_t _smfile_commit (smfile_t *smf, error *e) {
-  if (smf->atx == NULL) {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Can't commit transaction, not a part of an existing transaction");
-  }
-
-  WRAP (pgr_commit (smf->root->p, smf->atx, e));
-  smf->atx = NULL;
-
+static err_t _nsh_close (struct nshandle *n, error *e) {
+  struct nshandle_root *root = n->root;
+  nsh_root_release (root, n);
+  if (root->count == 0) { return nsh_root_close (root, &root->e); }
   return SUCCESS;
 }
 
-int smfile_commit (smfile_t *smf) {
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _smfile_commit (smf, &smf->e);
-}
+int nsh_close (struct nshandle *ns) { return _nsh_close (ns, &ns->e); }

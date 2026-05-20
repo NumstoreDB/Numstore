@@ -12,17 +12,28 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/pager.h"
 #include "smfile.h"
 
-static err_t __smfile_crash (struct smfile *n, error *e) {
-  struct smfile_root *root = n->root;
-  _smfile_root_release (root, n);
-  ASSERT (root->count == 0);
-  return _smfile_root_crash (root, &root->e);
+static err_t _nsh_rollback (struct nshandle *smf, error *e) {
+  if (smf->atx == NULL) {
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Can't rollback transaction, not a part of an existing transaction");
+  }
+
+  WRAP (pgr_rollback (smf->root->p, smf->atx, 0, &smf->e));
+  smf->atx = NULL;
+
   return SUCCESS;
 }
 
-int _smfile_crash (smfile_t *ns) { return __smfile_crash (ns, &ns->e); }
+int nsh_rollback (struct nshandle *smf) {
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  return _nsh_rollback (smf, &smf->e);
+}

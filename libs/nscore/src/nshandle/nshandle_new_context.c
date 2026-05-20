@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_smfile.h"
 #include "c_specx.h"
 #include "nscore/errors.h"
+#include "nscore/nshandle.h"
 #include "nscore/var.h"
 #include "smfile.h"
 
-smfile_t *smfile_new_context (smfile_t *ns) {
+struct nshandle *nsh_new_context (struct nshandle *ns) {
   ns->e.cause_code = SUCCESS;
   ns->e.cmlen      = 0;
-  return _smfile_root_load (ns->root, &ns->e);
+  return nsh_root_load (ns->root, &ns->e);
 }

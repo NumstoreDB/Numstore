@@ -14,20 +14,21 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
 #include "smfile.h"
 
 static sb_size _smfile_premove (
-    struct smfile *db,
-    const char    *name,
-    void          *dest,
-    const t_size   size,
-    const sb_size  bofst,
-    const sb_size  stride,
-    b_size         nelem,
-    error         *e) {
+    struct nshandle *db,
+    const char      *name,
+    void            *dest,
+    const t_size     size,
+    const sb_size    bofst,
+    const sb_size    stride,
+    b_size           nelem,
+    error           *e) {
   sb_size                     ret;                             // Return value
   b_size                      ofst;                            // Resolved offset
   struct stream               _output;                         // Output stream if present
@@ -52,7 +53,7 @@ static sb_size _smfile_premove (
   chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
-  WRAP_GOTO (_smfile_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
   // GET VARIABLE
   {
@@ -121,13 +122,13 @@ static sb_size _smfile_premove (
 commit:
 
   // COMMIT
-  WRAP_GOTO (_smfile_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
 
-  _smfile_auto_rollback (db);
+  nsh_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
@@ -135,14 +136,17 @@ failed:
 }
 
 sb_size smfile_premove (
-    smfile_t   *smf,
+    smfile_t   *_smf,
     const char *name,
     void       *dest,
     t_size      size,
     sb_size     bofst,
     sb_size     stride,
     b_size      nelem) {
+  struct nshandle *smf = (struct nshandle *)_smf;
+
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
+
   return _smfile_premove (smf, name, dest, size, bofst, stride, nelem, &smf->e);
 }

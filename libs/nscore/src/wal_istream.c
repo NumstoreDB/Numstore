@@ -172,5 +172,5 @@ err_t walis_crash (struct wal_istream *w, error *e) {
   DBG_ASSERT (wal_istream, w);
   i_close (&w->fd, e);
   i_free (w);
-  return e->cause_code;
+  return error_trace (e);
 }

@@ -12,34 +12,28 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_smfile.h"
 #include "c_specx.h"
-#include "nscore/lock_table.h"
-#include "nscore/lt_lock.h"
+#include "nscore/nshandle.h"
 #include "nscore/pager.h"
 #include "smfile.h"
 
-static err_t _smfile_begin (smfile_t *smf, error *e) {
-  if (smf->atx) {
+static err_t _nsh_commit (struct nshandle *smf, error *e) {
+  if (smf->atx == NULL) {
     return error_causef (
         e,
         ERR_INVALID_ARGUMENT,
-        "Can't start another transaction, already a part of an existing "
-        "transaction: %" PRtxid ". Either commit or rollback first",
-        smf->atx->tid);
+        "Can't commit transaction, not a part of an existing transaction");
   }
 
-  WRAP (pgr_begin_txn (&smf->tx, smf->root->p, &smf->e));
-
-  smf->is_auto_txn = 0;
-  smf->atx         = &smf->tx;
+  WRAP (pgr_commit (smf->root->p, smf->atx, e));
+  smf->atx = NULL;
 
   return SUCCESS;
 }
 
-int smfile_begin (smfile_t *smf) {
+int nsh_commit (struct nshandle *smf) {
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _smfile_begin (smf, &smf->e);
+  return _nsh_commit (smf, &smf->e);
 }

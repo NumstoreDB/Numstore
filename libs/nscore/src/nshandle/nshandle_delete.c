@@ -12,29 +12,19 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_smfile.h"
 #include "c_specx.h"
 #include "nscore/errors.h"
+#include "nscore/nshandle.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
-static err_t _smfile_delete (struct smfile *db, const char *vname, error *e) {
+static err_t _nsh_delete (struct nshandle *db, const char *vname, error *e) {
   struct txn auto_txn;
 
   // BEGIN TXN
-  WRAP_GOTO (_smfile_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
   struct string vnamestr = strfcstr (vname);
   {
-    // Cannot delete the default variable
-    if (string_equal (vnamestr, strfcstr (DEFAULT_VARIABLE))) {
-      return error_causef (
-          e,
-          ERR_INVALID_ARGUMENT,
-          "Cannot delete default variable: %s",
-          DEFAULT_VARIABLE);
-    }
-
     // DELETE
     struct ns_var_delete_params params = {
         .p     = db->root->p,
@@ -52,21 +42,21 @@ static err_t _smfile_delete (struct smfile *db, const char *vname, error *e) {
 
   commit:
     // COMMIT
-    if (_smfile_auto_commit (db, e)) { goto failed_rollback; }
+    if (nsh_auto_commit (db, e)) { goto failed_rollback; }
   }
 
   return SUCCESS;
 
 failed_rollback:
 
-  _smfile_auto_rollback (db);
+  nsh_auto_rollback (db);
 
 failed:
   return error_trace (e);
 }
 
-int smfile_delete (smfile_t *ns, const char *vname) {
+int nsh_delete (struct nshandle *ns, const char *vname) {
   ns->e.cause_code = SUCCESS;
   ns->e.cmlen      = 0;
-  return _smfile_delete (ns, vname, &ns->e);
+  return _nsh_delete (ns, vname, &ns->e);
 }

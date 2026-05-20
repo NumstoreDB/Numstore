@@ -44,6 +44,7 @@ include(cmake/Packaging.cmake)
 ################### Inner Projects
 add_subdirectory(libs/c_specx)
 add_subdirectory(libs/nscore)
+#add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
 add_subdirectory(apps)
 add_subdirectory(samples)

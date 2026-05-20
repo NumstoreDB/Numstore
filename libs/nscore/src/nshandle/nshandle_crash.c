@@ -12,16 +12,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/pager.h"
 #include "smfile.h"
 
-static err_t _smfile_close (struct smfile *n, error *e) {
-  struct smfile_root *root = n->root;
-  _smfile_root_release (root, n);
-  if (root->count == 0) { return _smfile_root_close (root, &root->e); }
+static err_t __nsh_crash (struct nshandle *n, error *e) {
+  struct nshandle_root *root = n->root;
+  nsh_root_release (root, n);
+  ASSERT (root->count == 0);
+  return nsh_root_crash (root, &root->e);
   return SUCCESS;
 }
 
-int smfile_close (smfile_t *ns) { return _smfile_close (ns, &ns->e); }
+int nsh_crash (struct nshandle *ns) { return __nsh_crash (ns, &ns->e); }
