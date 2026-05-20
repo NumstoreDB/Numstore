@@ -28,7 +28,7 @@ err_t pserv_open (
   ps->cap     = 101;
 
   ps->fds = i_malloc (ps->cap, sizeof *ps->fds, e);
-  if (!ps->fds) return error_trace (e);
+  if (!ps->fds) { return error_trace (e); }
 
   ps->conns = i_malloc (ps->cap, sizeof (struct connection *), e);
   if (!ps->conns) {
@@ -52,17 +52,17 @@ err_t pserv_open (
 }
 
 static err_t grow_if_needed (struct polling_server *s, error *e) {
-  if (s->len < s->cap) return SUCCESS;
+  if (s->len < s->cap) { return SUCCESS; }
 
   const u32 new_cap = s->cap * 2;
 
   i_pollfd *fds = i_realloc_right (s->fds, s->cap, new_cap, sizeof (i_pollfd), e);
-  if (!fds) return error_trace (e);
+  if (!fds) { return error_trace (e); }
   s->fds = fds;
 
   struct connection **conns =
       i_realloc_right (s->conns, s->cap, new_cap, sizeof (struct connection *), e);
-  if (!conns) return error_trace (e);
+  if (!conns) { return error_trace (e); }
 
   s->conns = conns;
   s->cap   = new_cap;
@@ -74,7 +74,7 @@ static err_t pserv_execute_conns (const struct polling_server *s, error *e) {
     struct connection *conn = s->conns[i];
     ASSERT (conn);
 
-    if (s->actions.conn_func (s->ctx, conn, e)) return error_trace (e);
+    if (s->actions.conn_func (s->ctx, conn, e)) { return error_trace (e); }
 
     s->fds[i].events = 0;
 
@@ -85,15 +85,15 @@ static err_t pserv_execute_conns (const struct polling_server *s, error *e) {
     bool done_writing = conn->tx_sent == conn->tx_cap;
     latch_unlock (&conn->l);
 
-    if (reading && !done_reading) s->fds[i].events |= POLLIN;
-    if (writing && !done_writing) s->fds[i].events |= POLLOUT;
+    if (reading && !done_reading) { s->fds[i].events |= POLLIN; }
+    if (writing && !done_writing) { s->fds[i].events |= POLLOUT; }
   }
   return SUCCESS;
 }
 
 static err_t handle_accept (struct polling_server *s, error *e) {
   struct connection *conn = s->actions.conn_alloc (s->ctx, e);
-  if (!conn) return error_trace (e);
+  if (!conn) { return error_trace (e); }
 
   memset (conn, 0, sizeof *conn);
   latch_init (&conn->l);
@@ -151,7 +151,7 @@ static err_t handle_read (struct connection *conn, error *e) {
       conn->rx_cap - conn->rx_len,
       e);
 
-  if (n < 0) goto theend;
+  if (n < 0) { goto theend; }
 
   if (n == 0) {
     error_causef (e, ERR_IO, "recv: peer closed connection");
@@ -174,36 +174,37 @@ static err_t handle_write (struct connection *conn, error *e) {
       (const char *)conn->tx_buf + conn->tx_sent,
       conn->tx_cap - conn->tx_sent,
       e);
-  if (n > 0) conn->tx_sent += (u32)n;
+  if (n > 0) { conn->tx_sent += (u32)n; }
 
   latch_unlock (&conn->l);
   return SUCCESS;
 }
 
 int pserv_execute (struct polling_server *ps, error *e) {
-  if (pserv_execute_conns (ps, e)) return error_trace (e);
+  if (pserv_execute_conns (ps, e)) { return error_trace (e); }
 
   const int ret = i_poll (ps->fds, ps->len, 1000, e);
-  if (ret < 0) return error_trace (e);
-  if (ret == 0) return ps->running;
+  if (ret < 0) { return error_trace (e); }
+  if (ret == 0) { return ps->running; }
 
   for (int i = (int)ps->len - 1; i >= 0; i--) {
     const int ev = ps->fds[i].revents;
-    if (!ev) continue;
+    if (!ev) { continue; }
 
     if (i == 0) {
       ASSERT (ev & POLLIN);
-      if (handle_accept (ps, e)) return error_trace (e);
+      if (handle_accept (ps, e)) { return error_trace (e); }
     } else if (ev & (POLLERR | POLLHUP)) {
       printf ("[-] fd %d hangup/error (0x%x)\n", i, ev);
-      if (remove_client (ps, (u32)i, e)) return error_trace (e);
+      if (remove_client (ps, (u32)i, e)) { return error_trace (e); }
     } else {
       struct connection *conn = ps->conns[i];
       ASSERT (conn);
 
       if (ev & POLLIN) {
-        if (handle_read (conn, e))
-          if (remove_client (ps, (u32)i, e)) return error_trace (e);
+        if (handle_read (conn, e)) {
+          if (remove_client (ps, (u32)i, e)) { return error_trace (e); }
+        }
       } else if (ev & POLLOUT) {
         handle_write (conn, e);
       }

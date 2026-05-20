@@ -50,7 +50,7 @@ DEFINE_DBG_ASSERT (page, data_list, d, { ASSERT (d); })
 #define DL_BLEN_OFST ((p_size)(DL_PREV_OFST + sizeof (pgno)))
 #define DL_DATA_OFST ((p_size)(DL_BLEN_OFST + sizeof (p_size)))
 
-_Static_assert(
+_Static_assert (
     PAGE_SIZE > DL_DATA_OFST + 10,
     "Data List: PAGE_SIZE must be > DL_DATA_OFST "
     "plus at least 10 extra bytes of data");

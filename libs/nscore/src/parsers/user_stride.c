@@ -18,7 +18,7 @@
 
 // Parse optional ':' NUMBER (step)
 static err_t parse_step (struct parser *base, struct user_stride *s, error *e) {
-  if (!parser_match (base, TT_COLON)) return SUCCESS;
+  if (!parser_match (base, TT_COLON)) { return SUCCESS; }
 
   s->present |= COLON_PRESENT;
   parser_advance (base);

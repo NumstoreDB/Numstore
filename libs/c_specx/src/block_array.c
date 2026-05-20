@@ -333,9 +333,9 @@ i64 block_array_remove (
     } else {
       u32 next = state.next;
       next     = MIN (next,
-                  r->cap_per_node - wbidx); // Writable
+                      r->cap_per_node - wbidx); // Writable
       next     = MIN (next,
-                  rcur->len - rbidx); // Readable
+                      rcur->len - rbidx); // Readable
 
       if (next > 0) { memmove (&wcur->data[wbidx], &rcur->data[rbidx], next); }
 
@@ -382,7 +382,7 @@ i64 block_array_remove (
       // except without state
       u32 next = r->cap_per_node - wbidx; // Writable
       next     = MIN (next,
-                  rcur->len - rbidx); // Readable
+                      rcur->len - rbidx); // Readable
 
       if (next > 0) { memmove (&wcur->data[wbidx], &rcur->data[rbidx], next); }
 
@@ -654,9 +654,9 @@ TEST (block_insert_read) {
     i64 nread   = block_array_read (
         b,
         (struct stride){
-              .start  = 1,
-              .stride = 1,
-              .nelems = 6,
+            .start  = 1,
+            .stride = 1,
+            .nelems = 6,
         },
         sizeof (u32),
         dest);
@@ -691,9 +691,9 @@ TEST (block_insert_read) {
       i64 nread     = block_array_read (
           b,
           (struct stride){
-                  .start  = 0,
-                  .stride = 1,
-                  .nelems = nelems,
+              .start  = 0,
+              .stride = 1,
+              .nelems = nelems,
           },
           sizeof (u32),
           dest);
@@ -834,9 +834,9 @@ TEST (block_insert_write_read) {
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 1,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 1,
         },
         sizeof (u32),
         patch);
@@ -871,9 +871,9 @@ TEST (block_insert_write_read) {
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 0,
-                  .stride = 1,
-                  .nelems = 4,
+            .start  = 0,
+            .stride = 1,
+            .nelems = 4,
         },
         sizeof (u32),
         patch);
@@ -908,9 +908,9 @@ TEST (block_insert_write_read) {
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 0,
-                  .stride = 2,
-                  .nelems = 3,
+            .start  = 0,
+            .stride = 2,
+            .nelems = 3,
         },
         sizeof (u32),
         patch);
@@ -945,9 +945,9 @@ TEST (block_insert_write_read) {
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 1,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 1,
         },
         sizeof (u32),
         patch);

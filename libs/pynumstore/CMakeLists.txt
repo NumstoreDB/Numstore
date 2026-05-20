@@ -2,10 +2,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(pynumstore_build)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 ################### Dependencies
-set(Python_FIND_VIRTUALENV STANDARD)
+set(Python_FIND_VIRTUALENV ONLY)
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
 
 # Get numpy includes
@@ -23,9 +21,9 @@ Python_add_library(cpynumstore STATIC ${NSPY_SOURCES})
 target_include_directories(cpynumstore
     PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/c/src"
-            "${CMAKE_SOURCE_DIR}/libs/nscore/include"
-            "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
-            "${CMAKE_SOURCE_DIR}/libs/numstore/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../nscore/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../c_specx/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../numstore/include"
             "${NumPy_INCLUDE_DIRS}"
 )
 target_link_libraries(cpynumstore PUBLIC c_specx nscore numstore) 

@@ -31,7 +31,7 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
   // Just created a new connection
   if (conn->rx_cap == 0 && conn->tx_cap == 0) {
     conn->rx_buf = i_malloc (4, 1, e);
-    if (!conn->rx_buf) return error_trace (e);
+    if (!conn->rx_buf) { return error_trace (e); }
     conn->rx_cap = 4;
     conn->rx_len = 0;
     return SUCCESS;
@@ -45,7 +45,7 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
   }
 
   // Haven't finished receiving yet
-  if (conn->rx_len < conn->rx_cap) return SUCCESS;
+  if (conn->rx_len < conn->rx_cap) { return SUCCESS; }
 
   // Just finished receiving prefix — extend rx buf
   if (conn->rx_cap == 4) {
@@ -56,7 +56,7 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
     }
     const u32 total = 4 + msg_len;
     void     *buf   = i_realloc_right (conn->rx_buf, conn->rx_cap, total, 1, e);
-    if (!buf) return error_trace (e);
+    if (!buf) { return error_trace (e); }
     conn->rx_buf = buf;
     conn->rx_cap = total;
     return SUCCESS;
@@ -73,7 +73,7 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
     const u32                  frame_len = msg_len + 4;
 
     conn->tx_buf = i_malloc (frame_len, 1, e);
-    if (!conn->tx_buf) return error_trace (e);
+    if (!conn->tx_buf) { return error_trace (e); }
 
     set_prefix (conn->tx_buf, msg_len);
 
@@ -93,7 +93,7 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
 
     const u32 old_rx_cap = frame_len - plen - slen;
     void     *buf        = i_realloc_right (conn->rx_buf, old_rx_cap, 4, 1, e);
-    if (!buf) return error_trace (e);
+    if (!buf) { return error_trace (e); }
     conn->rx_buf = buf;
     conn->rx_cap = 4;
     conn->rx_len = 0;
