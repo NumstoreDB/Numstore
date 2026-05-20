@@ -80,7 +80,7 @@ typedef uint8_t wlh;     // WAL header
 #define PRwlh     PRIu8
 
 // Magic constants
-#define SMF_END INT64_MAX
+#define NS_IGNORE INT64_MAX
 
 typedef struct nsdb nsdb_t;
 
@@ -105,35 +105,44 @@ int nsdb_create (nsdb_t *ns, const char *name, const char *type);
 int nsdb_delete (nsdb_t *ns, const char *name);
 
 // Primary API
-sb_size nsdb_size (nsdb_t *ns, const char *vname);
+sb_size nsdb_len (nsdb_t *ns, const char *vname);
+
+// In array notation [a:b:c] 
+#define STOP_PRESENT  (1 << 0) // [:c]
+#define STEP_PRESENT  (1 << 1) // [:b:]
+#define START_PRESENT (1 << 2) // [a:]
+#define COLON_PRESENT (1 << 3) // [:]
 
 sb_size nsdb_insert (
-    nsdb_t     *ns,
-    const char *name,
-    const void *src,
-    sb_size     ofst,
+    nsdb_t     *ns, 
+    const char *name, 
+    const void *src, 
+    sb_size     ofst, 
     b_size      slen);
 
 sb_size nsdb_write (
     nsdb_t     *ns,
     const char *name,
     const void *src,
-    b_size      ofst,
-    sb_size     stride,
-    b_size      nelem);
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags);
 
 sb_size nsdb_read (
     nsdb_t     *ns,
     const char *name,
     void       *dest,
-    sb_size     ofst,
-    sb_size     stride,
-    b_size      nelem);
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags);
 
 sb_size nsdb_remove (
     nsdb_t     *ns,
     const char *name,
     void       *dest,
-    sb_size     ofst,
-    sb_size     stride,
-    b_size      nelem);
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags);

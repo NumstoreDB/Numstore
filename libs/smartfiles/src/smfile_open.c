@@ -19,7 +19,6 @@
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
 smfile_t *smfile_open (const char *path) {
   struct nshandle *ret = nsh_open (path);
