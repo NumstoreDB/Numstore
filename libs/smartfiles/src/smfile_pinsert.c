@@ -14,18 +14,19 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
 #include "smfile.h"
 
 static sb_size _smfile_pinsert (
-    struct smfile *db,
-    const char    *name,
-    const void    *src,
-    const b_size   slen,
-    sb_size        bofst,
-    error         *e) {
+    struct nshandle *db,
+    const char      *name,
+    const void      *src,
+    const b_size     slen,
+    sb_size          bofst,
+    error           *e) {
   sb_size                            ret;                             // Return value
   b_size                             ofst;                            // Resolved offset
   struct stream                      _input;                          // Input stream
@@ -43,7 +44,7 @@ static sb_size _smfile_pinsert (
   stream_ibuf_init (&_input, &ctx, src, slen);
 
   // BEGIN TXN
-  WRAP_GOTO (_smfile_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
   // GET OR CREATE VARIABLE
   {
@@ -90,13 +91,13 @@ static sb_size _smfile_pinsert (
   }
 
   // COMMIT
-  WRAP_GOTO (_smfile_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
 
-  _smfile_auto_rollback (db);
+  nsh_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
@@ -104,8 +105,11 @@ failed:
 }
 
 sb_size
-smfile_pinsert (smfile_t *smf, const char *name, const void *src, sb_size bofst, b_size slen) {
+smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen) {
+  struct nshandle *smf = (struct nshandle *)_smf;
+
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
+
   return _smfile_pinsert (smf, name, src, slen, bofst, &smf->e);
 }

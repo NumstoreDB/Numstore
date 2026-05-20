@@ -120,11 +120,11 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e) {
     }
 
     // MIN(available to write to, available to read from)
-    u16 next = MIN (head.len - lwritten, tlen - vwritten);
+    u16 next = MIN (head.len - lwritten, tlen - twritten);
     ASSERT (next > 0);
 
     // Do the write and increment pointers
-    memcpy (&head.head[lwritten], &dtype_serialized[vwritten], next);
+    memcpy (&head.head[lwritten], &dtype_serialized[twritten], next);
     twritten += next;
     lwritten += next;
   }

@@ -38,7 +38,7 @@ static err_t ns_update_by_id (struct ns_var_update_params params, error *e) {
   goto failed;
 
 failed:
-  if (e->cause_code) {
+  if (error_trace (e)) {
     return error_trace (e);
   } else {
     return SUCCESS;

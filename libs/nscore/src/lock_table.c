@@ -67,7 +67,7 @@ err_t lockt_init (struct lockt *t, error *e) {
   slab_alloc_init (&t->lock_alloc, sizeof (struct lockt_frame), 1000);
 
   t->table = htable_create (1000, e);
-  if (t->table == NULL) { return e->cause_code; }
+  if (t->table == NULL) { return error_trace (e); }
 
   latch_init (&t->l);
 

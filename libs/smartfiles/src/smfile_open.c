@@ -14,71 +14,40 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
 #include "smfile.h"
 
-static struct smfile *_smfile_open (const char *path, error *e) {
-  struct smfile_root *ret = i_malloc (1, sizeof *ret, e);
-  page_h              hp  = page_h_create ();
+smfile_t *smfile_open (const char *path) {
+  struct nshandle *ret = nsh_open (path);
 
   if (ret == NULL) { return NULL; }
 
-  // Initialize inner values
-  {
-    ret->e     = error_create ();
-    ret->count = 0;
+  // Create the default variable
+  if (pgr_isnew (ret->root->p)) {
+    // BEGIN TXN
+    struct txn tx;
+    if (pgr_begin_txn (&tx, ret->root->p, &ret->e)) { goto failed; }
 
-    // path
-    ret->path.len  = strlen (path);
-    ret->path.data = i_malloc (ret->path.len, 1, e);
-    if (ret->path.data == NULL) { goto failed; }
+    struct ns_var_create_params params = {
+        .p     = ret->root->p,
+        .tx    = &tx,
+        .vname = strfcstr (DEFAULT_VARIABLE),
+        .type  = &(struct type){.type = T_PRIM, .p = U8},
+    };
+    if (ns_var_create (params, &ret->e)) { goto failed; }
 
-    // db
-    ret->p = pgr_open_single_file (path, e);
-    if (ret->p == NULL) { goto failed; }
+    // COMMIT
+    if (pgr_commit (ret->root->p, &tx, &ret->e)) { goto failed; }
   }
 
-  // Upfront initialization
-  if (pgr_isnew (ret->p)) {
-    // Initialize the upfront hash page
-    if (ns_init_var_hash_map (ret->p, e)) { goto failed; }
-
-    // Create the default variable
-    {
-      // BEGIN TXN
-      struct txn tx;
-      if (pgr_begin_txn (&tx, ret->p, e)) { goto failed; }
-
-      struct ns_var_create_params params = {
-          .p     = ret->p,
-          .tx    = &tx,
-          .vname = strfcstr (DEFAULT_VARIABLE),
-          .type  = &(struct type){.type = T_PRIM, .p = U8},
-      };
-      if (ns_var_create (params, e)) { goto failed; }
-
-      // COMMIT
-      if (pgr_commit (ret->p, &tx, e)) { goto failed; }
-    }
-  }
-
-  // Load the default context
-  struct smfile *sret = _smfile_root_load (ret, e);
-
-  return sret;
+  return (smfile_t *)ret;
 
 failed:
-  // TODO just delete the file
-  i_free (ret);
-  return NULL;
-}
+  nsh_close (ret);
 
-smfile_t *smfile_open (const char *path) {
-  error          e   = error_create ();
-  struct smfile *ret = _smfile_open (path, &e);
-  if (ret == NULL) { return NULL; }
-  return ret;
+  return NULL;
 }

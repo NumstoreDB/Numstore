@@ -14,19 +14,20 @@
 
 #include "_smfile.h"
 #include "c_specx.h"
+#include "nscore/nshandle.h"
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
 #include "smfile.h"
 
-static sb_size _smfile_psize (struct smfile *db, const char *name, error *e) {
+static sb_size _smfile_psize (struct nshandle *db, const char *name, error *e) {
   struct chunk_alloc temp;
   chunk_alloc_create_default (&temp);
   struct string vname = vname_or_default (name);
   b_size        ret;
 
   // BEGIN TXN
-  if (_smfile_auto_begin_txn (db, e) < 0) { goto failed; }
+  if (nsh_auto_begin_txn (db, e) < 0) { goto failed; }
 
   // GET OR CREATE VARIABLE
   struct ns_var_get_params gparams = {
@@ -40,7 +41,7 @@ static sb_size _smfile_psize (struct smfile *db, const char *name, error *e) {
   ret = gparams.dest.nbytes;
 
   // COMMIT
-  if (_smfile_auto_commit (db, e) < 0) { goto failed_rollback; }
+  if (nsh_auto_commit (db, e) < 0) { goto failed_rollback; }
 
   chunk_alloc_free_all (&temp);
 
@@ -48,15 +49,18 @@ static sb_size _smfile_psize (struct smfile *db, const char *name, error *e) {
 
 failed_rollback:
 
-  _smfile_auto_rollback (db);
+  nsh_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
   return error_trace (e);
 }
 
-sb_size smfile_psize (smfile_t *smf, const char *name) {
+sb_size smfile_psize (smfile_t *_smf, const char *name) {
+  struct nshandle *smf = (struct nshandle *)_smf;
+
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
+
   return _smfile_psize (smf, name, &smf->e);
 }

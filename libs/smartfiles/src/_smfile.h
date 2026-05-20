@@ -18,38 +18,9 @@
 #include "nscore/pager.h"
 #include "nscore/variables.h"
 
-struct smfile_root {
-  struct pager *p;     // The database resources
-  struct string path;  // Path to the database
-  int           count; // When this reaches 0 - close the root
-  error         e;
-};
-
-struct smfile {
-  // Shared root file
-  struct smfile_root *root;
-
-  int         is_auto_txn; // If atx is an auto transaction
-  struct txn *atx;         // Active transaction
-  struct txn  tx;          // Transaction storage
-
-  error e;
-};
-
 #define DEFAULT_VARIABLE "."
 
-struct smfile *_smfile_remove_and_open (const char *name, error *e);
-int            _smfile_crash (smfile_t *ns);
-
-// Auto Transactions
-err_t _smfile_auto_begin_txn (struct smfile *sm, error *e);
-err_t _smfile_auto_commit (struct smfile *sm, error *e);
-void  _smfile_auto_rollback (struct smfile *sm);
-
-err_t          _smfile_root_close (struct smfile_root *root, error *e);
-err_t          _smfile_root_crash (struct smfile_root *root, error *e);
-struct smfile *_smfile_root_load (struct smfile_root *root, error *e);
-void           _smfile_root_release (struct smfile_root *root, struct smfile *sm);
+int _smfile_crash (smfile_t *ns);
 
 HEADER_FUNC struct string vname_or_default (const char *name) {
   if (name != NULL) {
