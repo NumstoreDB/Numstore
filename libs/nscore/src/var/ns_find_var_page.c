@@ -187,12 +187,15 @@ err_t ns_find_var_page (struct ns_find_var_page_params *pms, error *e) {
 
 foundit:
 
-  // Transfer stuff to alloc
   if (pms->dvar && pms->alloc) {
+    // Transfer variable name and type to persistent allocator
     pms->dvar->vname.data = chunk_alloc_move_mem (pms->alloc, pms->vname.data, pms->vname.len, e);
+    pms->dvar->vname.len  = pms->vname.len;
+    pms->dvar->dtype      = type_movemem (pms->dvar->dtype, pms->alloc, e);
 
+    // Error check
     if (pms->dvar->vname.data == NULL) { goto failed; }
-    pms->dvar->vname.len = pms->vname.len;
+    if (pms->dvar->dtype == NULL) { goto failed; }
   }
 
   chunk_alloc_free_all (&temp);

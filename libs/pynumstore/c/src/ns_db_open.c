@@ -12,9 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#pragma once
+#include "nscore/compiler.h"
+#include "pynumstore.h"
 
-#define PY_SSIZE_T_CLEAN
+// Numpy options
 #define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
 #define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
 #define NO_IMPORT_ARRAY
@@ -26,9 +27,12 @@
 #include <numpy/arrayobject.h>
 #include <string.h>
 
-typedef struct txn txn_t;
+PyObject *ns_db_open (PyObject *Py_UNUSED (m), PyObject *arg) {
+  if (!PyUnicode_Check (arg)) {
+    PyErr_SetString (PyExc_TypeError, "path must be str");
+    return NULL;
+  }
 
-PyObject *numstore_type_to_dtype (const struct type *t);
-
-/** Method table appended to the module by numstore_module.c. */
-extern PyMethodDef ns_dtype_methods[];
+  /* TODO: smfile_t *smf = smfile_open(PyUnicode_AsUTF8(arg)); */
+  return PyCapsule_New ((void *)(1), "numstore.db", NULL);
+}

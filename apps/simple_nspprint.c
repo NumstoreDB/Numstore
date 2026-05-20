@@ -12,12 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
-
-
-
-
 #include "c_specx.h"
 #include "nscore/file_pager.h"
 #include "nscore/pager.h"
@@ -27,44 +21,33 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void
-_simple_page_print (struct file_pager *p, const pgno pg, error *e)
-{
+static void _simple_page_print (struct file_pager *p, const pgno pg, error *e) {
   page raw;
   raw.pg = pg;
 
-  if (fpgr_read (p, raw.raw, pg, e))
-    {
-      error_log_consume (e);
-      return;
-    }
+  if (fpgr_read (p, raw.raw, pg, e)) {
+    error_log_consume (e);
+    return;
+  }
 
   i_log_page (LOG_INFO, &raw);
 }
 
-static void
-simple_page_print (const char *fname)
-{
+static void simple_page_print (const char *fname) {
   error e = error_create ();
 
   struct file_pager *fp = fpgr_open (fname, 0, &e);
 
-  for (u32 i = 0; i < fpgr_get_npages (fp); ++i)
-    {
-      _simple_page_print (fp, i, &e);
-    }
+  for (u32 i = 0; i < fpgr_get_npages (fp); ++i) { _simple_page_print (fp, i, &e); }
 
   fpgr_close (fp, &e);
 }
 
-int
-main (const int argc, char **argv)
-{
-  if (argc != 2)
-    {
-      printf ("USAGE: simple_nspprint FNAME\n");
-      return -1;
-    }
+int main (const int argc, char **argv) {
+  if (argc != 2) {
+    printf ("USAGE: simple_nspprint FNAME\n");
+    return -1;
+  }
 
   char *fname = argv[1];
 

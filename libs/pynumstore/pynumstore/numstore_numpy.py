@@ -26,7 +26,6 @@ _PRIMITIVES: dict[tuple[str, int], str] = {
     ("c", 8): "cf64", ("c", 16): "cf128", ("c", 32): "cf256",
 }
 
-
 def numpy_to_numstore(dtype) -> str:
     """Convert a numpy dtype to a numstore type string.
 
@@ -46,9 +45,8 @@ def _convert(dtype: np.dtype) -> str:
 
     # Structured: distinguish struct vs union by offsets.
     if dtype.names is not None:
+        assert dtype.fields is not None 
         offsets = [dtype.fields[n][1] for n in dtype.names]
-        # Union: 2+ fields all overlapping at offset 0.
-        # Single-field "union" is indistinguishable from struct; treat as struct.
         is_union = len(dtype.names) > 1 and all(o == 0 for o in offsets)
         keyword = "union" if is_union else "struct"
         parts = [f"{n} {_convert(dtype.fields[n][0])}" for n in dtype.names]

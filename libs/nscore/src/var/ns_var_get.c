@@ -26,7 +26,7 @@ err_t ns_var_get (struct ns_var_get_params *params, error *e) {
       .alloc = params->alloc,
 
       .vname = params->vname,
-      .dvar  = &params->dest,
+      .dvar  = &params->dest, // Dest
       .mode  = FP_FIND,
 
       .prev = NULL,
