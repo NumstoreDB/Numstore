@@ -13,8 +13,8 @@ add_library(numstore STATIC ${NS_SOURCES})
 target_include_directories(numstore
     PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/nscore/include"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/c_specx/include"
+            "${CMAKE_SOURCE_DIR}/libs/nscore/include"
+            "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
 )
 target_link_libraries(numstore PUBLIC c_specx nscore) 
 

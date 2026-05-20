@@ -40,11 +40,13 @@ include(cmake/Options.cmake)
 include(cmake/CompilerFlags.cmake)
 include(cmake/Sanitizers.cmake)
 include(cmake/Packaging.cmake)
+include(cmake/Python.cmake)
 
 ################### Inner Projects
 add_subdirectory(libs/c_specx)
 add_subdirectory(libs/nscore)
 #add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
+add_python_subdirectory(pynumstore_wheel libs/pynumstore)
 add_subdirectory(apps)
 add_subdirectory(samples)

@@ -1,0 +1,23 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.8.0",
+    "numpy" 
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pynumstore"
+version = "0.1.0"
+description = "Python interface for the numerical database"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy"
+]
+
+
+[tool.scikit-build]
+cmake.version = ">=3.18"
+ninja.version = ">=1.5"
+
+wheel.packages = ["pynumstore"]
+build-dir = "build/{wheel_tag}"
