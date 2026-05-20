@@ -12,10 +12,18 @@ all: build
 
 ######################################################## Main Build Target
 
+compile_commands.json: build/wheel/compile_commands.json build/debug/compile_commands.json
+	jq -s 'add' build/debug/compile_commands.json build/wheel/compile_commands.json > compile_commands.json
+
+build/wheel/compile_commands.json:
+	/usr/bin/cmake -S libs/pynumstore -B build/wheel -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 
+
+build/debug/compile_commands.json:
+	/usr/bin/cmake . -B build/debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
 build:
 	/usr/bin/cmake --preset $(target)
 	/usr/bin/cmake --build --preset $(target) -j$(NPROC)
-	@if [ "$(target)" = "debug" ]; then cp build/debug/compile_commands.json .; fi
 
 comprehensive:
 	@python3 -c \
