@@ -8,15 +8,12 @@
 NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
 target ?= debug
 
-all: build
+all: build compile_commands.json
 
 ######################################################## Main Build Target
 
-compile_commands.json: build/wheel/compile_commands.json build/debug/compile_commands.json
-	jq -s 'add' build/debug/compile_commands.json build/wheel/compile_commands.json > compile_commands.json
-
-build/wheel/compile_commands.json:
-	/usr/bin/cmake -S libs/pynumstore -B build/wheel -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 
+compile_commands.json: build/debug/compile_commands.json
+	cp build/debug/compile_commands.json .
 
 build/debug/compile_commands.json:
 	/usr/bin/cmake . -B build/debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -122,7 +119,7 @@ clean:
 
 format:
 	python3 scripts/add_copywrite.py
-	~/.venv/bin/clang-format -i $(shell find libs \( -name '*.c' -o -name '*.h' \))
+	~/.venv/bin/clang-format -i $(shell find apps samples libs \( -name '*.c' -o -name '*.h' \))
 
 tidy:
 	@if [ ! -f compile_commands.json ]; then \

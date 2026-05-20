@@ -12,12 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
-
-
-
-
 #include "smfile.h"
 
 #include <stdint.h>
@@ -31,9 +25,7 @@
  * e.g. they either happen or they don't. If you specify begin / commit
  * you can group various opperations together.
  */
-int
-main (void)
-{
+int main (void) {
   sb_size n;
 
   smfile_cleanup ("sample2_txn");
@@ -53,10 +45,7 @@ main (void)
     uint8_t footer[8];
 
     memset (header, 1, sizeof (header));
-    for (int i = 0; i < 64; ++i)
-      {
-        body[i] = (uint8_t)i;
-      }
+    for (int i = 0; i < 64; ++i) { body[i] = (uint8_t)i; }
     memset (footer, 99, sizeof (footer));
 
     // Three inserts in a row
@@ -84,10 +73,7 @@ main (void)
     n = smfile_read (smf, verify, 68, 12);
 
     printf ("bytes [68..79] after rollback:\n");
-    for (sb_size i = 0; i < n; ++i)
-      {
-        printf ("  [%" PRId64 "] = %d\n", 68 + i, verify[i]);
-      }
+    for (sb_size i = 0; i < n; ++i) { printf ("  [%" PRId64 "] = %d\n", 68 + i, verify[i]); }
   }
 
   // A committed transaction
@@ -114,10 +100,7 @@ main (void)
     n = smfile_read (smf, tail, 80, 4);
 
     printf ("bytes [80..83]: ");
-    for (sb_size i = 0; i < n; ++i)
-      {
-        printf ("%d ", tail[i]);
-      }
+    for (sb_size i = 0; i < n; ++i) { printf ("%d ", tail[i]); }
     printf ("\n");
   }
 

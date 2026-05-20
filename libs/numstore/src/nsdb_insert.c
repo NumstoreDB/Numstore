@@ -13,13 +13,8 @@
 /// limitations under the License.
 
 #include "_numstore.h"
-#include "c_specx.h"
 #include "nscore/nshandle.h"
-#include "nscore/rope.h"
-#include "nscore/txn.h"
-#include "nscore/types.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
 static sb_size _nsdb_insert (
     struct nshandle *db,
@@ -28,15 +23,15 @@ static sb_size _nsdb_insert (
     sb_size          _ofst,
     const b_size     slen,
     error           *e) {
-  sb_size                            ret;                     // Return value
-  b_size                             bofst;                   // Resolved offset
-  struct stream                      _input;                  // Input stream
-  struct stream_ibuf_ctx             ctx;                     // Context for input stream
-  struct chunk_alloc                 temp;                    // Allocator for get operation
-  struct ns_var_get_or_create_params gparams;                 // Get or create operation
-  struct ns_insert_params            iparams;                 // Insert operation
-  struct ns_var_update_params        uparams;                 // Update operation
-  struct string                      vname = strfcstr (name); // Variable name
+  sb_size                     ret;                     // Return value
+  b_size                      bofst;                   // Resolved offset
+  struct stream               _input;                  // Input stream
+  struct stream_ibuf_ctx      ctx;                     // Context for input stream
+  struct chunk_alloc          temp;                    // Allocator for get operation
+  struct ns_var_get_params    gparams;                 // Get or create operation
+  struct ns_insert_params     iparams;                 // Insert operation
+  struct ns_var_update_params uparams;                 // Update operation
+  struct string               vname = strfcstr (name); // Variable name
 
   chunk_alloc_create_default (&temp);
 
@@ -46,16 +41,22 @@ static sb_size _nsdb_insert (
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
-  // GET OR CREATE VARIABLE
+  // GET VARIABLE
   {
-    gparams = (struct ns_var_get_or_create_params){
+    gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
         .vname = vname,
-        .type  = &(struct type){.type = T_PRIM, .p = U8},
         .alloc = &temp,
     };
-    WRAP_GOTO (ns_var_get_or_create (&gparams, e), failed_rollback);
+    err_t err = ns_var_get (&gparams, e);
+    if (err == ERR_VARIABLE_NE) {
+      ret           = 0;
+      e->cause_code = SUCCESS;
+      e->cmlen      = 0;
+      goto commit;
+    }
+    WRAP_GOTO (err, failed_rollback);
   }
 
   // Resolve sizes
@@ -91,6 +92,8 @@ static sb_size _nsdb_insert (
     };
     WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
+
+commit:
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);

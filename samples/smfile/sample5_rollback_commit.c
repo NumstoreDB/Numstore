@@ -12,12 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
-
-
-
-
 /// sample5_durability.c
 ///
 /// This sample demonstrates WAL (Write-Ahead Logging) durability guarantees.
@@ -49,10 +43,11 @@
 #include <string.h>
 
 #ifdef _WIN32
-#include "windows.h"
+#  include "windows.h"
 #else
-#include <sys/wait.h>
-#include <unistd.h>
+#  include <sys/wait.h>
+
+#  include <unistd.h>
 #endif
 
 #define PATH "sample5_durability"
@@ -69,12 +64,12 @@ static void phase5_rollback (smfile_t *smf);
 
 typedef void (*phase_fn) (smfile_t *);
 static phase_fn phases[] = {
-  NULL,
-  phase1_populate,
-  phase2_commit_clean,
-  phase3_commit_then_crash,
-  phase4_no_commit_crash,
-  phase5_rollback,
+    NULL,
+    phase1_populate,
+    phase2_commit_clean,
+    phase3_commit_then_crash,
+    phase4_no_commit_crash,
+    phase5_rollback,
 };
 
 // ---------------------------------------------------------------------------
@@ -86,9 +81,7 @@ static phase_fn phases[] = {
 // The parent simply waits for the child to finish before continuing.
 // ---------------------------------------------------------------------------
 
-static void
-run_phase (int phase_num, int crash, const char *exe)
-{
+static void run_phase (int phase_num, int crash, const char *exe) {
   char arg[32];
   snprintf (arg, sizeof (arg), "%d", phase_num);
 
@@ -97,30 +90,27 @@ run_phase (int phase_num, int crash, const char *exe)
   // number argument and let the child handle it in main().
   char cmd[512];
   snprintf (cmd, sizeof (cmd), "\"%s\" %s", exe, arg);
-  STARTUPINFOA si = { sizeof (si) };
+  STARTUPINFOA        si = {sizeof (si)};
   PROCESS_INFORMATION pi;
-  if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-    {
-      fprintf (stderr, "CreateProcess failed: %lu\n", GetLastError ());
-      exit (1);
-    }
+  if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    fprintf (stderr, "CreateProcess failed: %lu\n", GetLastError ());
+    exit (1);
+  }
   WaitForSingleObject (pi.hProcess, INFINITE);
   CloseHandle (pi.hProcess);
   CloseHandle (pi.hThread);
   (void)crash;
 #else
   pid_t pid = fork ();
-  if (pid == 0)
-    {
-      smfile_t *smf = smfile_open (PATH);
-      phases[phase_num](smf);
-      if (crash)
-        {
-          _Exit (1); // Simulate crash: no smfile_close(), no WAL flush
-        }
-      smfile_close (smf);
-      _Exit (0);
+  if (pid == 0) {
+    smfile_t *smf = smfile_open (PATH);
+    phases[phase_num](smf);
+    if (crash) {
+      _Exit (1); // Simulate crash: no smfile_close(), no WAL flush
     }
+    smfile_close (smf);
+    _Exit (0);
+  }
   waitpid (pid, NULL, 0);
   (void)exe;
 #endif
@@ -136,9 +126,7 @@ run_phase (int phase_num, int crash, const char *exe)
 //   after:  A A A A A A A A A A
 // ---------------------------------------------------------------------------
 
-static void
-phase1_populate (smfile_t *smf)
-{
+static void phase1_populate (smfile_t *smf) {
   smfile_begin (smf);
   smfile_insert (smf, "AAAAAAAAAA", 0, 10);
   smfile_commit (smf);
@@ -154,9 +142,7 @@ phase1_populate (smfile_t *smf)
 //   after:  A A A B B A A A A A
 // ---------------------------------------------------------------------------
 
-static void
-phase2_commit_clean (smfile_t *smf)
-{
+static void phase2_commit_clean (smfile_t *smf) {
   smfile_begin (smf);
   smfile_insert (smf, "BB", 3, 2);
   smfile_commit (smf);
@@ -173,9 +159,7 @@ phase2_commit_clean (smfile_t *smf)
 //   after:  A A A B B A A C C A   (WAL replay restores CC on next open)
 // ---------------------------------------------------------------------------
 
-static void
-phase3_commit_then_crash (smfile_t *smf)
-{
+static void phase3_commit_then_crash (smfile_t *smf) {
   smfile_begin (smf);
   smfile_insert (smf, "CC", 7, 2);
   smfile_commit (smf);
@@ -193,9 +177,7 @@ phase3_commit_then_crash (smfile_t *smf)
 //   after:  A A A B B A A C C A A A A A   (no change — DD discarded)
 // ---------------------------------------------------------------------------
 
-static void
-phase4_no_commit_crash (smfile_t *smf)
-{
+static void phase4_no_commit_crash (smfile_t *smf) {
   smfile_begin (smf);
   smfile_insert (smf, "DD", 11, 2);
   // No smfile_commit() — _Exit() called by run_phase
@@ -212,9 +194,7 @@ phase4_no_commit_crash (smfile_t *smf)
 //   after:  A A A B B A A C C A A A A A   (no change — EE rolled back)
 // ---------------------------------------------------------------------------
 
-static void
-phase5_rollback (smfile_t *smf)
-{
+static void phase5_rollback (smfile_t *smf) {
   smfile_begin (smf);
   smfile_insert (smf, "EE", 5, 2);
   smfile_rollback (smf);
@@ -228,12 +208,10 @@ phase5_rollback (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem,
-            const char *expected)
-{
-  char buf[64];
+check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected) {
+  char    buf[64];
   sb_size n = smfile_read (smf, buf, bofst, nelem);
-  buf[n] = '\0';
+  buf[n]    = '\0';
   printf ("%s\n", label);
   printf ("  expected: \"%s\"\n", expected);
   printf ("  actual:   \"%s\"\n\n", buf);
@@ -243,22 +221,18 @@ check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem,
 // Main — orchestrate phases, then verify
 // ---------------------------------------------------------------------------
 
-int
-main (int argc, char *argv[])
-{
+int main (int argc, char *argv[]) {
 #ifdef _WIN32
   // Windows child: re-execed with a phase number, run that phase and exit.
-  if (argc == 2)
-    {
-      int phase_num = atoi (argv[1]);
-      int crash = (phase_num == 3 || phase_num == 4);
-      smfile_t *smf = smfile_open (PATH);
-      phases[phase_num](smf);
-      if (crash)
-        exit (1);
-      smfile_close (smf);
-      return 0;
-    }
+  if (argc == 2) {
+    int       phase_num = atoi (argv[1]);
+    int       crash     = (phase_num == 3 || phase_num == 4);
+    smfile_t *smf       = smfile_open (PATH);
+    phases[phase_num](smf);
+    if (crash) { exit (1); }
+    smfile_close (smf);
+    return 0;
+  }
 #endif
   (void)argc;
   (void)argv;

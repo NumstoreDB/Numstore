@@ -12,12 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
-
-
-
-
 #include "c_specx.h"
 #include "nscore/wal.h"
 #include "nscore/wal_rec_hdr.h"
@@ -25,50 +19,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void
-walf_print (const char *fname)
-{
+static void walf_print (const char *fname) {
   error e = error_create ();
 
   struct wal *wf = wal_open (fname, &e);
 
-  if (wf == NULL)
-    {
+  if (wf == NULL) {
+    error_log_consume (&e);
+    return;
+  }
+
+  while (true) {
+    lsn                      rlsn;
+    struct wal_rec_hdr_read *out = wal_read_next (wf, &rlsn, &e);
+
+    if (out == NULL) {
       error_log_consume (&e);
-      return;
+      goto theend;
     }
 
-  while (true)
-    {
-      lsn rlsn;
-      struct wal_rec_hdr_read *out = wal_read_next (wf, &rlsn, &e);
+    i_print_wal_rec_hdr_read_light (LOG_INFO, out, rlsn);
 
-      if (out == NULL)
-        {
-          error_log_consume (&e);
-          goto theend;
-        }
-
-      i_print_wal_rec_hdr_read_light (LOG_INFO, out, rlsn);
-
-      if (out->type == WL_EOF)
-        {
-          break;
-        }
-    }
+    if (out->type == WL_EOF) { break; }
+  }
 
 theend:
   wal_close (wf, &e);
 }
 
-int
-main (const int argc, char **argv)
-{
-  if (argc != 2)
-    {
-      printf ("USAGE: walfprint FNAME\n");
-      return -1;
-    }
+int main (const int argc, char **argv) {
+  if (argc != 2) {
+    printf ("USAGE: walfprint FNAME\n");
+    return -1;
+  }
 
   char *fname = argv[1];
 
