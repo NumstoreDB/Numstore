@@ -91,9 +91,9 @@ parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, err
 
   out->type = TR_STRUCT;
   out->st   = (struct struct_tr){
-        .len   = list.len,
-        .keys  = list.keys,
-        .types = list.types,
+      .len   = list.len,
+      .keys  = list.keys,
+      .types = list.types,
   };
 
   return SUCCESS;

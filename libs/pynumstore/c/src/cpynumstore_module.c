@@ -46,7 +46,7 @@ static smfile_txn_t *_unwrap_txn (PyObject *txn_or_none) {
 /*
  * db_open(path: str) -> capsule
  */
-static PyObject *pynsdb_open (PyObject *Py_UNUSED (m), PyObject *arg) {
+static PyObject *ns_db_open (PyObject *Py_UNUSED (m), PyObject *arg) {
   if (!PyUnicode_Check (arg)) {
     PyErr_SetString (PyExc_TypeError, "path must be str");
     return NULL;
@@ -58,7 +58,7 @@ static PyObject *pynsdb_open (PyObject *Py_UNUSED (m), PyObject *arg) {
 /*
  * db_close(db: capsule) -> None
  */
-static PyObject *pynsdb_close (PyObject *Py_UNUSED (m), PyObject *arg) {
+static PyObject *ns_db_close (PyObject *Py_UNUSED (m), PyObject *arg) {
   if (!_unwrap_db (arg)) { return NULL; }
   /* TODO: smfile_close(smf); */
   Py_RETURN_NONE;
@@ -71,7 +71,7 @@ static PyObject *pynsdb_close (PyObject *Py_UNUSED (m), PyObject *arg) {
 /*
  * db_begin(db: capsule) -> capsule
  */
-static PyObject *pynsdb_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
+static PyObject *ns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
   if (!_unwrap_db (arg)) { return NULL; }
   /* TODO: smfile_txn_t *txn = smfile_begin(smf); */
   return PyCapsule_New (FAKE_PTR, TXN_CAPSULE, NULL);
@@ -203,23 +203,69 @@ static PyObject *ns_var_delete (PyObject *Py_UNUSED (m), PyObject *args) {
 /* ------------------------------------------------------------------ */
 
 static PyMethodDef ns_methods[] = {
-    {"db_open", pynsdb_open, METH_O, "db_open(path) -> capsule"},
-    {"db_close", pynsdb_close, METH_O, "db_close(db) -> None"},
-    {"db_begin", pynsdb_begin, METH_O, "db_begin(db) -> capsule"},
-    {"txn_commit", ns_txn_commit, METH_O, "txn_commit(txn) -> None"},
-    {"txn_rollback", ns_txn_rollback, METH_O, "txn_rollback(txn) -> None"},
-    {"var_read", ns_var_read, METH_VARARGS, "var_read(db, txn_or_none, var_id, key) -> bytes"},
-    {"var_insert",
-     ns_var_insert,
-     METH_VARARGS,
-     "var_insert(db, txn_or_none, var_id, key, data) -> None"},
-    {"var_write",
-     ns_var_write,
-     METH_VARARGS,
-     "var_write(db, txn_or_none, var_id, key, data) -> None"},
-    {"var_len", ns_var_len, METH_VARARGS, "var_len(db, txn_or_none, var_id) -> int"},
-    {"var_delete", ns_var_delete, METH_VARARGS, "var_delete(db, txn_or_none, var_id, key) -> None"},
-    {NULL, NULL, 0, NULL}};
+    {
+        "db_open",
+        ns_db_open,
+        METH_O,
+        "db_open(path) -> capsule",
+    },
+    {
+        "db_close",
+        ns_db_close,
+        METH_O,
+        "db_close(db) -> None",
+    },
+    {
+        "db_begin",
+        ns_db_begin,
+        METH_O,
+        "db_begin(db) -> capsule",
+    },
+    {
+        "txn_commit",
+        ns_txn_commit,
+        METH_O,
+        "txn_commit(txn) -> None",
+    },
+    {
+        "txn_rollback",
+        ns_txn_rollback,
+        METH_O,
+        "txn_rollback(txn) -> None",
+    },
+    {
+        "var_read",
+        ns_var_read,
+        METH_VARARGS,
+        "var_read(db, txn_or_none, var_id, key) -> bytes",
+    },
+    {
+        "var_insert",
+        ns_var_insert,
+        METH_VARARGS,
+        "var_insert(db, txn_or_none, var_id, key, data) -> None",
+    },
+    {
+        "var_write",
+        ns_var_write,
+        METH_VARARGS,
+        "var_write(db, txn_or_none, var_id, key, data) -> None",
+    },
+    {
+        "var_len",
+        ns_var_len,
+        METH_VARARGS,
+        "var_len(db, txn_or_none, var_id) -> int",
+    },
+    {
+        "var_delete",
+        ns_var_delete,
+        METH_VARARGS,
+        "var_delete(db, txn_or_none, var_id, key) -> None",
+    },
+
+    {NULL, NULL, 0, NULL},
+};
 
 static PyModuleDef numstore_moduledef = {
     .m_base    = PyModuleDef_HEAD_INIT,

@@ -97,7 +97,7 @@ failed:
 #ifndef NTEST
 TEST (fpgr_open) {
   error e = error_create ();
-  _Static_assert(PAGE_SIZE > 2, "PAGE_SIZE should be > 2 for file_pager test");
+  _Static_assert (PAGE_SIZE > 2, "PAGE_SIZE should be > 2 for file_pager test");
 
   i_file fp = {0};
   i_open_rw (&fp, "test.db", &e);

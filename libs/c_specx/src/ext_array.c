@@ -196,9 +196,9 @@ TEST (ext_array_insert_read) {
     const i64 n       = ext_array_read (
         &a,
         (struct stride){
-                  .start  = 0,
-                  .stride = 1,
-                  .nelems = 5,
+            .start  = 0,
+            .stride = 1,
+            .nelems = 5,
         },
         sizeof (u32),
         dest,
@@ -272,9 +272,9 @@ TEST (ext_array_insert_read) {
     const i64 n       = ext_array_read (
         &a,
         (struct stride){
-                  .start  = 0,
-                  .stride = 2,
-                  .nelems = 3,
+            .start  = 0,
+            .stride = 2,
+            .nelems = 3,
         },
         sizeof (u32),
         dest,
@@ -297,9 +297,9 @@ TEST (ext_array_insert_read) {
     const i64 n        = ext_array_read (
         &a,
         (struct stride){
-                   .start  = 1,
-                   .stride = 1,
-                   .nelems = 10,
+            .start  = 1,
+            .stride = 1,
+            .nelems = 10,
         },
         sizeof (u32),
         dest,
@@ -324,9 +324,9 @@ TEST (ext_array_write) {
     const i64 n       = ext_array_write (
         &a,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 1,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 1,
         },
         sizeof (u32),
         patch,
@@ -358,9 +358,9 @@ TEST (ext_array_write) {
     const i64 n       = ext_array_write (
         &a,
         (struct stride){
-                  .start  = 0,
-                  .stride = 2,
-                  .nelems = 3,
+            .start  = 0,
+            .stride = 2,
+            .nelems = 3,
         },
         sizeof (u32),
         patch,
@@ -396,9 +396,9 @@ TEST (ext_array_write) {
     const i64 n       = ext_array_write (
         &a,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 3,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 3,
         },
         sizeof (u32),
         patch,
@@ -421,9 +421,9 @@ TEST (ext_array_remove) {
     const i64 n       = ext_array_remove (
         &a,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 1,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 1,
         },
         sizeof (u32),
         &removed,
@@ -533,9 +533,9 @@ TEST (ext_array_remove) {
     const i64 n          = ext_array_remove (
         &a,
         (struct stride){
-                     .start  = 0,
-                     .stride = 2,
-                     .nelems = 3,
+            .start  = 0,
+            .stride = 2,
+            .nelems = 3,
         },
         sizeof (u32),
         removed,

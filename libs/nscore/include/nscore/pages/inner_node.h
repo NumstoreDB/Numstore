@@ -47,14 +47,14 @@ struct in_data {
 #define IN_NLEN_OFST ((p_size)(IN_PREV_OFST + sizeof (pgno)))
 #define IN_LEAF_OFST ((p_size)(IN_NLEN_OFST + sizeof (p_size)))
 
-_Static_assert(
+_Static_assert (
     PAGE_SIZE > IN_LEAF_OFST + 5 * sizeof (b_size) + 6 * sizeof (pgno),
     "Inner Node: PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys");
 
 #define IN_MAX_KEYS (p_size) ((PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
 #define IN_MIN_KEYS (IN_MAX_KEYS / 2)
 
-_Static_assert(IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
+_Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
 
 void   in_init_empty (page *in);
 err_t  in_validate_for_db (const page *in, error *e);
@@ -83,7 +83,9 @@ HEADER_FUNC const void *in_get_backwards_keys_imut (const page *in) {
   const p_size n      = in_get_len (in);
   const p_size nbytes = n * sizeof (b_size);
   ASSERT (nbytes <= PAGE_SIZE);
-  if (nbytes > PAGE_SIZE) UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
+  if (nbytes > PAGE_SIZE) {
+    UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
+  }
 
   if (nbytes == 0) { return NULL; }
 

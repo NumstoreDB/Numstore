@@ -19,7 +19,7 @@
 float f16_to_f32 (const u16 h) {
   const u32 sign = (u32)(h >> 15) & 1u;
   u32       exp  = (u32)(h >> 10) & 0x1Fu;
-  u32       mant = (u32)(h)&0x3FFu;
+  u32       mant = (u32)(h) & 0x3FFu;
   u32       f;
 
   if (exp == 0) {

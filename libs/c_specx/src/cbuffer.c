@@ -1163,7 +1163,7 @@ bool cbuffer_push_front (const void *src, const u32 size, struct cbuffer *b) {
   }
 
   b->tail = new_tail;
-  if (b->head == b->tail) b->isfull = true;
+  if (b->head == b->tail) { b->isfull = true; }
 
   return true;
 }

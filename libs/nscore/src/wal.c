@@ -109,9 +109,7 @@ static struct wal *wal_open_internal (const char *fname, error *e) {
   return dest;
 }
 
-struct wal *wal_open (const char *fname, error *e) {
-  return wal_open_internal (fname, e);
-}
+struct wal *wal_open (const char *fname, error *e) { return wal_open_internal (fname, e); }
 
 static inline err_t wal_destroy (struct wal *w, error *e) {
   wal_flush_all (w, e);
