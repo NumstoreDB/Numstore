@@ -14,45 +14,6 @@
 
 #pragma once
 
-#include "c_specx.h"
-#include "nscore/pager.h"
-#include "nscore/variables.h"
+#include "numstore.h"
 
-struct nsdb_root {
-  struct pager *p;     // The database resources
-  struct string path;  // Path to the database
-  int           count; // When this reaches 0 - close the root
-  error         e;
-};
-
-struct nsdb {
-  // Shared root file
-  struct nsdb_root *root;
-
-  int         is_auto_txn; // If atx is an auto transaction
-  struct txn *atx;         // Active transaction
-  struct txn  tx;          // Transaction storage
-
-  error e;
-};
-
-struct nsdb *_nsdb_remove_and_open (const char *name, error *e);
-int          _nsdb_crash (struct nsdb *ns);
-
-// Auto Transactions
-err_t _nsdb_auto_begin_txn (struct nsdb *sm, error *e);
-err_t _nsdb_auto_commit (struct nsdb *sm, error *e);
-void  _nsdb_auto_rollback (struct nsdb *sm);
-
-err_t        _nsdb_root_close (struct nsdb_root *root, error *e);
-err_t        _nsdb_root_crash (struct nsdb_root *root, error *e);
-struct nsdb *_nsdb_root_load (struct nsdb_root *root, error *e);
-void         _nsdb_root_release (struct nsdb_root *root, struct nsdb *sm);
-
-HEADER_FUNC struct string vname_or_default (const char *name) {
-  if (name != NULL) {
-    return strfcstr (name);
-  } else {
-    return strfcstr (DEFAULT_VARIABLE);
-  }
-}
+int _nsdb_crash (nsdb_t *ns);
