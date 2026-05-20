@@ -66,8 +66,12 @@ IncludeCategories:
     Priority: 2
   - Regex:    '^<.*\.h>'        # C standard headers (<stdio.h>, ...)
     Priority: 3
-  - Regex:    '^<.*>'           # everything else in angle brackets
+  - Regex:    '^<Python\.h>|numpy' # Python ecosystem headers
     Priority: 4
+  - Regex:    '^<.*>'           # everything else in angle brackets (C++ libs, etc.)
+    Priority: 5
+
+InsertBraces: true
 
 # ---------------------------------------------------------------------------
 # Whitespace cleanup

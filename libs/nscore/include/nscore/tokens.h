@@ -129,18 +129,18 @@ HEADER_FUNC bool tt_is_opcode (enum token_t ttype) {
   (struct token) {            \
     .type = TT_IDENTIFIER,    \
     .str  = {                 \
-         .data = _data,       \
-         .len  = _len,        \
-    },                       \
+        .data = _data,        \
+        .len  = _len,         \
+    },                        \
   }
 
 #define tt_string(_data, _len) \
   (struct token) {             \
     .type = TT_STRING,         \
     .str  = {                  \
-         .data = _data,        \
-         .len  = _len,         \
-    },                        \
+        .data = _data,         \
+        .len  = _len,          \
+    },                         \
   }
 
 #define tt_prim(val) \

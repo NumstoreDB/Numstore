@@ -122,7 +122,7 @@ clean:
 
 format:
 	python3 scripts/add_copywrite.py
-	clang-format -i $(shell find libs \( -name '*.c' -o -name '*.h' \))
+	~/.venv/bin/clang-format -i $(shell find libs \( -name '*.c' -o -name '*.h' \))
 
 tidy:
 	@if [ ! -f compile_commands.json ]; then \

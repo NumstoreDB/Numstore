@@ -45,7 +45,7 @@ err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, er
   ASSERT (dest);
 
   thread_trampoline_args *args = HeapAlloc (GetProcessHeap (), 0, sizeof *args);
-  if (!args) return error_causef (e, ERR_NOMEM, "thread_create: HeapAlloc failed");
+  if (!args) { return error_causef (e, ERR_NOMEM, "thread_create: HeapAlloc failed"); }
 
   args->func = func;
   args->arg  = context;

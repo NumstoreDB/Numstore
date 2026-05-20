@@ -93,10 +93,10 @@ static struct type *mk_sarray (u16 rank, u32 *dims, struct type *sub) {
  * Returns a new reference. */
 static PyObject *ref_dtype (const char *spec) {
   PyObject *np = PyImport_ImportModule ("numpy");
-  if (np == NULL) return NULL;
+  if (np == NULL) { return NULL; }
   PyObject *fn = PyObject_GetAttrString (np, "dtype");
   Py_DECREF (np);
-  if (fn == NULL) return NULL;
+  if (fn == NULL) { return NULL; }
   PyObject *s = PyUnicode_FromString (spec);
   if (s == NULL) {
     Py_DECREF (fn);
@@ -111,7 +111,7 @@ static PyObject *ref_dtype (const char *spec) {
 /* Compare a dtype object to a reference built by evaluating a Python expr. */
 static int dtype_equals_expr (PyObject *dt, const char *expr) {
   PyObject *globals = PyDict_New ();
-  if (!globals) return -1;
+  if (!globals) { return -1; }
   PyObject *np = PyImport_ImportModule ("numpy");
   if (!np) {
     Py_DECREF (globals);
@@ -121,7 +121,7 @@ static int dtype_equals_expr (PyObject *dt, const char *expr) {
   Py_DECREF (np);
   PyObject *expected = PyRun_String (expr, Py_eval_input, globals, globals);
   Py_DECREF (globals);
-  if (!expected) return -1;
+  if (!expected) { return -1; }
   int eq = PyObject_RichCompareBool (dt, expected, Py_EQ);
   Py_DECREF (expected);
   return eq;
@@ -437,7 +437,7 @@ int main (void) {
   Py_Initialize ();
   if (do_import_numpy () < 0) {
     fprintf (stderr, "failed to import numpy\n");
-    if (PyErr_Occurred ()) PyErr_Print ();
+    if (PyErr_Occurred ()) { PyErr_Print (); }
     Py_Finalize ();
     return 1;
   }

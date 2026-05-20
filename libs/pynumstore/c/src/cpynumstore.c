@@ -34,7 +34,7 @@ static smfile_t *_unwrap_db (PyObject *db) {
  * is None (caller should treat NULL-without-error as "no transaction").
  */
 static smfile_txn_t *_unwrap_txn (PyObject *txn_or_none) {
-  if (txn_or_none == Py_None) return NULL;
+  if (txn_or_none == Py_None) { return NULL; }
   smfile_txn_t *p = (smfile_txn_t *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
   return p; /* NULL + error set on mismatch */
 }
@@ -59,7 +59,7 @@ static PyObject *pynsdb_open (PyObject *Py_UNUSED (m), PyObject *arg) {
  * db_close(db: capsule) -> None
  */
 static PyObject *pynsdb_close (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!_unwrap_db (arg)) return NULL;
+  if (!_unwrap_db (arg)) { return NULL; }
   /* TODO: smfile_close(smf); */
   Py_RETURN_NONE;
 }
@@ -72,7 +72,7 @@ static PyObject *pynsdb_close (PyObject *Py_UNUSED (m), PyObject *arg) {
  * db_begin(db: capsule) -> capsule
  */
 static PyObject *pynsdb_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!_unwrap_db (arg)) return NULL;
+  if (!_unwrap_db (arg)) { return NULL; }
   /* TODO: smfile_txn_t *txn = smfile_begin(smf); */
   return PyCapsule_New (FAKE_PTR, TXN_CAPSULE, NULL);
 }
@@ -81,7 +81,7 @@ static PyObject *pynsdb_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
  * txn_commit(txn: capsule) -> None
  */
 static PyObject *ns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) return NULL;
+  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
   /* TODO: smfile_commit(txn); */
   Py_RETURN_NONE;
 }
@@ -90,7 +90,7 @@ static PyObject *ns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
  * txn_rollback(txn: capsule) -> None
  */
 static PyObject *ns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) return NULL;
+  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
   /* TODO: smfile_rollback(txn); */
   Py_RETURN_NONE;
 }
@@ -108,11 +108,11 @@ static PyObject *ns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
 static PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db, *txn_or_none;
   long long var_id, key;
-  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) return NULL;
+  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
   smfile_t *smf = _unwrap_db (db);
-  if (!smf) return NULL;
+  if (!smf) { return NULL; }
   smfile_txn_t *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) return NULL;
+  if (!txn && PyErr_Occurred ()) { return NULL; }
   /* TODO: smfile_read(smf, txn, var_id, key, &buf, &len); */
   static const char zeros[8] = {0};
   return PyBytes_FromStringAndSize (zeros, sizeof zeros);
@@ -127,7 +127,7 @@ static PyObject *ns_var_insert (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db, *txn_or_none;
   long long var_id, key;
   Py_buffer data;
-  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) return NULL;
+  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
   smfile_t *smf = _unwrap_db (db);
   if (!smf) {
     PyBuffer_Release (&data);
@@ -152,7 +152,7 @@ static PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db, *txn_or_none;
   long long var_id, key;
   Py_buffer data;
-  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) return NULL;
+  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
   smfile_t *smf = _unwrap_db (db);
   if (!smf) {
     PyBuffer_Release (&data);
@@ -174,11 +174,11 @@ static PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
 static PyObject *ns_var_len (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db, *txn_or_none;
   long long var_id;
-  if (!PyArg_ParseTuple (args, "OOL", &db, &txn_or_none, &var_id)) return NULL;
+  if (!PyArg_ParseTuple (args, "OOL", &db, &txn_or_none, &var_id)) { return NULL; }
   smfile_t *smf = _unwrap_db (db);
-  if (!smf) return NULL;
+  if (!smf) { return NULL; }
   smfile_txn_t *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) return NULL;
+  if (!txn && PyErr_Occurred ()) { return NULL; }
   /* TODO: return PyLong_FromSsize_t(smfile_len(smf, txn, var_id)); */
   return PyLong_FromLong (16);
 }
@@ -189,11 +189,11 @@ static PyObject *ns_var_len (PyObject *Py_UNUSED (m), PyObject *args) {
 static PyObject *ns_var_delete (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db, *txn_or_none;
   long long var_id, key;
-  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) return NULL;
+  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
   smfile_t *smf = _unwrap_db (db);
-  if (!smf) return NULL;
+  if (!smf) { return NULL; }
   smfile_txn_t *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) return NULL;
+  if (!txn && PyErr_Occurred ()) { return NULL; }
   /* TODO: smfile_remove(smf, txn, var_id, key); */
   Py_RETURN_NONE;
 }
@@ -233,7 +233,7 @@ PyMODINIT_FUNC PyInit__numstore (void) {
   import_array (); /* initialise NumPy C-API; returns NULL on failure */
 
   PyObject *m = PyModule_Create (&numstore_moduledef);
-  if (!m) return NULL;
+  if (!m) { return NULL; }
 
   /* Register dtype serialisation helpers from numstore_dtype.c */
   for (PyMethodDef *def = ns_dtype_methods; def->ml_name; def++) {

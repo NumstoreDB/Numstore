@@ -100,7 +100,7 @@ static void tab_link (struct type_accessor_builder *builder, struct type_accesso
 }
 
 static err_t tab_flush_range (struct type_accessor_builder *builder, error *e) {
-  if (!builder->in_range) return SUCCESS;
+  if (!builder->in_range) { return SUCCESS; }
 
   struct type_accessor *ta = tab_alloc (builder, e);
   if (!ta) { return error_trace (e); }

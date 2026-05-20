@@ -26,13 +26,15 @@
 err_t i_socket_create (i_socket *s, error *e) {
   ASSERT (s);
   s->fd = socket (AF_INET, SOCK_STREAM, 0);
-  if (s->fd == I_INVALID_SOCKET) return error_causef (e, ERR_IO, "socket: %s", strerror (errno));
+  if (s->fd == I_INVALID_SOCKET) {
+    return error_causef (e, ERR_IO, "socket: %s", strerror (errno));
+  }
   return SUCCESS;
 }
 
 err_t i_socket_close (i_socket *s, error *e) {
   ASSERT (s);
-  if (close (s->fd) < 0) return error_causef (e, ERR_IO, "close: %s", strerror (errno));
+  if (close (s->fd) < 0) { return error_causef (e, ERR_IO, "close: %s", strerror (errno)); }
   s->fd = I_INVALID_SOCKET;
   return SUCCESS;
 }
@@ -40,8 +42,9 @@ err_t i_socket_close (i_socket *s, error *e) {
 err_t i_socket_set_reuseaddr (i_socket *s, error *e) {
   ASSERT (s);
   const int opt = 1;
-  if (setsockopt (s->fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt)) < 0)
+  if (setsockopt (s->fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt)) < 0) {
     return error_causef (e, ERR_IO, "setsockopt: %s", strerror (errno));
+  }
   return SUCCESS;
 }
 
@@ -53,11 +56,13 @@ err_t i_socket_connect (i_socket *s, const char *host, u16 port, error *e) {
   addr.sin_family         = AF_INET;
   addr.sin_port           = htons (port);
 
-  if (inet_pton (AF_INET, host, &addr.sin_addr) <= 0)
+  if (inet_pton (AF_INET, host, &addr.sin_addr) <= 0) {
     return error_causef (e, ERR_IO, "inet_pton: invalid address '%s'", host);
+  }
 
-  if (connect (s->fd, (struct sockaddr *)&addr, sizeof (addr)) < 0)
+  if (connect (s->fd, (struct sockaddr *)&addr, sizeof (addr)) < 0) {
     return error_causef (e, ERR_IO, "connect: %s", strerror (errno));
+  }
 
   return SUCCESS;
 }
@@ -68,15 +73,17 @@ err_t i_socket_bind (i_socket *s, const int port, error *e) {
       .sin_family      = AF_INET,
       .sin_port        = htons ((uint16_t)port),
       .sin_addr.s_addr = INADDR_ANY};
-  if (bind (s->fd, (struct sockaddr *)&addr, sizeof (addr)) < 0)
+  if (bind (s->fd, (struct sockaddr *)&addr, sizeof (addr)) < 0) {
     return error_causef (e, ERR_IO, "bind: %s", strerror (errno));
+  }
   return SUCCESS;
 }
 
 err_t i_socket_listen (i_socket *s, error *e) {
   ASSERT (s);
-  if (listen (s->fd, SOMAXCONN) < 0)
+  if (listen (s->fd, SOMAXCONN) < 0) {
     return error_causef (e, ERR_IO, "listen: %s", strerror (errno));
+  }
   return SUCCESS;
 }
 
@@ -94,10 +101,12 @@ err_t i_socket_accept (
   socklen_t          peer_len = sizeof (peer);
 
   dest->fd = accept (s->fd, (struct sockaddr *)&peer, &peer_len);
-  if (dest->fd == I_INVALID_SOCKET) return error_causef (e, ERR_IO, "accept: %s", strerror (errno));
+  if (dest->fd == I_INVALID_SOCKET) {
+    return error_causef (e, ERR_IO, "accept: %s", strerror (errno));
+  }
 
-  if (ip_out) inet_ntop (AF_INET, &peer.sin_addr, ip_out, (socklen_t)ip_out_len);
-  if (port_out) *port_out = ntohs (peer.sin_port);
+  if (ip_out) { inet_ntop (AF_INET, &peer.sin_addr, ip_out, (socklen_t)ip_out_len); }
+  if (port_out) { *port_out = ntohs (peer.sin_port); }
 
   return SUCCESS;
 }
@@ -107,7 +116,7 @@ i64 i_socket_recv (i_socket *s, void *buf, const u32 len, error *e) {
   ASSERT (buf);
 
   const ssize_t n = read (s->fd, buf, len);
-  if (n < 0) return error_causef (e, ERR_IO, "recv: %s", strerror (errno));
+  if (n < 0) { return error_causef (e, ERR_IO, "recv: %s", strerror (errno)); }
   return (i64)n;
 }
 
@@ -116,14 +125,14 @@ i64 i_socket_send (i_socket *s, const void *buf, const u32 len, error *e) {
   ASSERT (buf);
 
   const ssize_t n = write (s->fd, buf, len);
-  if (n < 0) return error_causef (e, ERR_IO, "send: %s", strerror (errno));
+  if (n < 0) { return error_causef (e, ERR_IO, "send: %s", strerror (errno)); }
   return (i64)n;
 }
 
 int i_poll (i_pollfd *fds, const u32 nfds, const int timeout_ms, error *e) {
   const int ret = poll (fds, (nfds_t)nfds, timeout_ms);
   if (ret < 0) {
-    if (errno == EINTR) return 0;
+    if (errno == EINTR) { return 0; }
     return error_causef (e, ERR_IO, "poll: %s", strerror (errno));
   }
   return ret;

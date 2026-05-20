@@ -287,7 +287,7 @@ TEST (dlgt_balance_with_next) {
   // [+++10+++****|_____________]
   // [++++++++++++|___10____]
   TEST_CASE ("No Delete") {
-    _Static_assert(DL_DATA_SIZE > 10, "This test needs DL_DATA_SIZE > 10");
+    _Static_assert (DL_DATA_SIZE > 10, "This test needs DL_DATA_SIZE > 10");
     dl_memset (page_h_w (cur), _cur, 10);
     dl_memset (page_h_w (next), _next, DL_DATA_SIZE - 10);
 

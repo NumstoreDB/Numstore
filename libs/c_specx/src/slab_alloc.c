@@ -541,7 +541,7 @@ TEST (slab_alloc_stress_random) {
           break;
         }
       }
-      if (pool[idx] != NULL) continue;
+      if (pool[idx] != NULL) { continue; }
 
       pool[idx] = slab_alloc_alloc (&alloc, &e);
       test_assert (pool[idx] != NULL);
@@ -557,7 +557,7 @@ TEST (slab_alloc_stress_random) {
           break;
         }
       }
-      if (pool[idx] == NULL) continue;
+      if (pool[idx] == NULL) { continue; }
 
       test_item_verify (pool[idx], values[idx]);
       slab_alloc_free (&alloc, pool[idx]);

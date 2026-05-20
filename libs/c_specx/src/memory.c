@@ -51,7 +51,7 @@ static void *nomem_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
 }
 
 TEST (i_malloc_injection) {
-  void *(*prev) (i_vmem * v, u32 nelem, u32 size, error * e) = default_vmem.i_malloc;
+  void *(*prev) (i_vmem *v, u32 nelem, u32 size, error *e) = default_vmem.i_malloc;
 
   default_vmem.i_malloc = nomem_malloc;
 

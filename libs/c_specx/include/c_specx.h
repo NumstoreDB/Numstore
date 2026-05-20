@@ -148,7 +148,7 @@
 ////////////////////////////////////////////////////////////
 // NORETURN
 #if PLATFORM_WINDOWS
-#  define NORETURN __declspec(noreturn)
+#  define NORETURN __declspec (noreturn)
 #elif PLATFORM_POSIX
 #  define NORETURN __attribute__ ((noreturn))
 #endif
@@ -329,12 +329,12 @@ const char *file_basename (const char *path);
 #define FPREFIX_ARGS file_basename (__FILE__), __LINE__, __func__
 
 // Container of struct elements using offset
-#define container_of(ptr, type, member) ((type *)((char *)(ptr)-offsetof (type, member)))
+#define container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof (type, member)))
 
-#define is_alpha(c)              (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
-#define is_num(c)                ((c) >= '0' && (c) <= '9')
-#define is_alpha_num(c)          (is_alpha (c) || is_num (c))
-#define is_friendly_punc(c)      (c == '.' || c == '/' || c == '-')
+#define is_alpha(c)         (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
+#define is_num(c)           ((c) >= '0' && (c) <= '9')
+#define is_alpha_num(c)     (is_alpha (c) || is_num (c))
+#define is_friendly_punc(c) (c == '.' || c == '/' || c == '-')
 #define is_alpha_num_generous(c) (is_alpha (c) || is_num (c) || is_friendly_punc (c))
 
 #define arrlen(a) (sizeof (a) / sizeof (*a))
@@ -346,8 +346,7 @@ const char *file_basename (const char *path);
 #define TOSTRING(x)  STRINGIFY (x)
 
 #define case_ENUM_RETURN_STRING(en) \
-  case en:                          \
-    return #en
+  case en: return #en
 
 #define CJOIN2(val) val, val
 #define CJOIN3(val) val, val, val
@@ -412,7 +411,7 @@ typedef struct {
 #if defined(_WIN32)
   CRITICAL_SECTION m;
 #else
-  pthread_mutex_t  m;
+  pthread_mutex_t m;
 #endif
 } i_mutex;
 err_t i_mutex_create (i_mutex *m, error *e);
@@ -425,9 +424,9 @@ typedef struct {
 #if defined(_WIN32)
   HANDLE handle;
 #else
-  pthread_mutex_t  mutex;
-  pthread_cond_t   cond;
-  unsigned int     count;
+  pthread_mutex_t mutex;
+  pthread_cond_t  cond;
+  unsigned int    count;
 #endif
 } i_semaphore;
 err_t i_semaphore_create (i_semaphore *s, unsigned int value, error *e);
@@ -458,7 +457,7 @@ typedef struct {
   HANDLE handle;
   DWORD  id;
 #else
-  pthread_t        thread;
+  pthread_t thread;
 #endif
 } i_thread;
 err_t i_thread_create (i_thread *t, void *(*start_routine) (void *), void *arg, error *e);
@@ -470,7 +469,7 @@ typedef struct {
 #if defined(_WIN32)
   CONDITION_VARIABLE cond;
 #else
-  pthread_cond_t   cond;
+  pthread_cond_t cond;
 #endif
 } i_cond;
 err_t i_cond_create (i_cond *c, error *e);
@@ -571,8 +570,7 @@ struct cbytes {
 #define bytes_from(buffer) \
   (struct bytes) { .head = buffer, .len = sizeof (buffer) }
 
-#define bytes_null() \
-  (struct bytes) { .head = NULL, .len = 0 }
+#define bytes_null() (struct bytes){.head = NULL, .len = 0}
 
 ////////////////////////////////////////////////////////////
 // FILE_SYSTEM
@@ -1071,9 +1069,9 @@ void i_log_flush (void);
 #if PLATFORM_WINDOWS
 #  define spin_pause() YieldProcessor ()
 #elif defined(__x86_64__) || defined(__i386__)
-#  define spin_pause() __asm__ volatile("pause" ::: "memory")
+#  define spin_pause() __asm__ volatile ("pause" ::: "memory")
 #elif defined(__aarch64__) || defined(__arm__)
-#  define spin_pause() __asm__ volatile("yield" ::: "memory")
+#  define spin_pause() __asm__ volatile ("yield" ::: "memory")
 #else
 #  define spin_pause() atomic_signal_fence (memory_order_seq_cst)
 #endif
@@ -1329,14 +1327,14 @@ void *chunk_malloc (
     struct chunk_alloc *ca,   // Target allocator
     u32                 req,  // Requested alignment in bytes
     u32                 size, // Number of bytes to allocate
-    error              *e);                // The error object
+    error              *e);   // The error object
 
 /// Allocates zero-initialized memory from the chunk allocator
 void *chunk_calloc (
     struct chunk_alloc *ca,   // Target allocator
     u32                 req,  // Requested alignment in bytes
     u32                 size, // Number of bytes to allocate
-    error              *e);                // The error object
+    error              *e);   // The error object
 
 /// Copies memory from an external pointer into the chunk allocator and returns
 /// a pointer to the copy
@@ -1344,7 +1342,7 @@ void *chunk_alloc_move_mem (
     struct chunk_alloc *ca,   // Target allocator
     const void         *ptr,  // Source data to copy
     u32                 size, // Number of bytes to copy
-    error              *e);                // The error object
+    error              *e);   // The error object
 
 ////////////////////////////////////////////////////////////
 // MEMORY / SERIALIZER
@@ -1689,7 +1687,7 @@ typedef err_t (*insert_func) (
     u32         ofst, // Byte offset at which to insert
     const void *src,  // Source data to insert
     u32         slen, // Number of bytes to insert
-    error      *e);        // The error object
+    error      *e);   // The error object
 
 /// Function pointer type for reading elements from a strided range
 typedef i64 (*read_func) (
@@ -1697,7 +1695,7 @@ typedef i64 (*read_func) (
     struct stride str,  // Stride descriptor defining start, step, and element count
     u32           size, // Size of each element in bytes
     void         *dest, // Destination buffer to receive the data
-    error        *e);          // The error object
+    error        *e);   // The error object
 
 /// Function pointer type for writing elements into a strided range
 typedef i64 (*write_func) (
@@ -1705,7 +1703,7 @@ typedef i64 (*write_func) (
     struct stride str,  // Stride descriptor defining start, step, and element count
     u32           size, // Size of each element in bytes
     const void   *src,  // Source data to write
-    error        *e);          // The error object
+    error        *e);   // The error object
 
 /// Function pointer type for removing elements from a strided range
 typedef i64 (*remove_func) (
@@ -2250,21 +2248,21 @@ err_t dblb_create (
     struct dbl_buffer *dest,        // Buffer to initialize
     u32                size,        // Size of each element in bytes
     u32                initial_cap, // Initial element capacity to allocate
-    error             *e);                      // The error object
+    error             *e);          // The error object
 
 /// Appends elements to the buffer, doubling capacity if necessary
 err_t dblb_append (
     struct dbl_buffer *d,     // Target buffer
     const void        *data,  // Source elements to append
     u32                nelem, // Number of elements to append
-    error             *e);                // The error object
+    error             *e);    // The error object
 
 /// Ensures the buffer has room for at least nelem additional elements,
 /// reallocating if necessary
 err_t dblb_ensure_space (
     struct dbl_buffer *d,     // Target buffer
     u32                nelem, // Number of additional elements to reserve space for
-    error             *e);                // The error object
+    error             *e);    // The error object
 
 /// Reserves space for nelem elements at the end of the buffer and returns a
 /// pointer to that region
@@ -2274,7 +2272,7 @@ err_t dblb_ensure_space (
 void *dblb_append_alloc (
     struct dbl_buffer *d,     // Target buffer
     u32                nelem, // Number of elements to reserve
-    error             *e);                // The error object
+    error             *e);    // The error object
 
 /// Frees all memory owned by the buffer
 void dblb_free (struct dbl_buffer *d); // Target buffer
@@ -2382,7 +2380,7 @@ typedef i32 (*stream_pull_fn) (
     void          *buf,  // Destination buffer to receive the data
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to pull
-    error         *e);           // The error object
+    error         *e);   // The error object
 
 /// Function pointer type for pushing bytes from a caller buffer into a stream
 typedef i32 (*stream_push_fn) (
@@ -2391,7 +2389,7 @@ typedef i32 (*stream_push_fn) (
     const void    *buf,  // Source buffer containing the data to push
     u32            size, // Size of each element in bytes
     u32            n,    // Number of elements to push
-    error         *e);           // The error object
+    error         *e);   // The error object
 
 /// Function pointer type for releasing any resources held by a stream
 /// implementation
@@ -2413,9 +2411,9 @@ struct stream {
 
 /// Initializes a stream with a given vtable and context
 void stream_init (
-    struct stream           *s,   // Stream to initialize
-    const struct stream_ops *ops, // Vtable to attach
-    void                    *ctx);                   // Opaque context to attach
+    struct stream           *s,    // Stream to initialize
+    const struct stream_ops *ops,  // Vtable to attach
+    void                    *ctx); // Opaque context to attach
 
 /// Calls the stream's close function and releases any implementation resources
 void stream_close (const struct stream *s); // Stream to close
@@ -2438,7 +2436,7 @@ i32 stream_read (
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to transfer
     struct stream *src,  // Source stream to pull from
-    error         *e);           // The error object
+    error         *e);   // The error object
 
 /// Pulls up to n elements of size bytes from src into a raw buffer
 ///
@@ -2450,7 +2448,7 @@ i32 stream_bread (
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to pull
     struct stream *src,  // Source stream to pull from
-    error         *e);           // The error object
+    error         *e);   // The error object
 
 /// Pushes n elements of size bytes from a raw buffer into dest
 ///
@@ -2460,7 +2458,7 @@ i32 stream_bwrite (
     u32            size, // Size of each element in bytes
     u32            n,    // Number of elements to push
     struct stream *dest, // Destination stream to push into
-    error         *e);           // The error object
+    error         *e);   // The error object
 
 ////////////////////////////////////////////////////////////
 /// Special Streams
@@ -2481,17 +2479,17 @@ struct stream_obuf_ctx {
 
 /// Initializes a read-only stream that pulls from a fixed const byte buffer
 void stream_ibuf_init (
-    struct stream          *s,   // Stream to initialize
-    struct stream_ibuf_ctx *ctx, // Context to initialize and attach
-    const void             *buf, // Source buffer to read from
-    u32                     size);                   // Number of bytes in buf
+    struct stream          *s,     // Stream to initialize
+    struct stream_ibuf_ctx *ctx,   // Context to initialize and attach
+    const void             *buf,   // Source buffer to read from
+    u32                     size); // Number of bytes in buf
 
 /// Initializes a write-only stream that pushes into a fixed mutable byte buffer
 void stream_obuf_init (
-    struct stream          *s,   // Stream to initialize
-    struct stream_obuf_ctx *ctx, // Context to initialize and attach
-    void                   *buf, // Destination buffer to write into
-    u32                     cap);                    // Capacity of buf in bytes
+    struct stream          *s,    // Stream to initialize
+    struct stream_obuf_ctx *ctx,  // Context to initialize and attach
+    void                   *buf,  // Destination buffer to write into
+    u32                     cap); // Capacity of buf in bytes
 
 /// Initializes a null sink stream that discards all bytes written to it
 void stream_sink_init (struct stream *s); // Stream to initialize
@@ -2510,11 +2508,11 @@ struct stream_opsink_ctx {
 /// Initializes a stream that applies op to each complete element of size bytes
 /// pushed into it
 void stream_opsink_init (
-    struct stream            *s,   // Stream to initialize
-    struct stream_opsink_ctx *ctx, // Context to initialize and attach
-    byte_op                   op,  // Callback to invoke on each element
-    void                     *buf, // Staging buffer of at least size bytes
-    u32                       size);                     // Size of each element in bytes
+    struct stream            *s,     // Stream to initialize
+    struct stream_opsink_ctx *ctx,   // Context to initialize and attach
+    byte_op                   op,    // Callback to invoke on each element
+    void                     *buf,   // Staging buffer of at least size bytes
+    u32                       size); // Size of each element in bytes
 
 /// Context for a stream that forwards to an underlying stream up to a byte
 /// limit
@@ -2527,10 +2525,10 @@ struct stream_limit_ctx {
 /// Initializes a stream that forwards at most limit bytes from src before
 /// marking itself done
 void stream_limit_init (
-    struct stream           *s,   // Stream to initialize
-    struct stream_limit_ctx *ctx, // Context to initialize and attach
-    struct stream           *src, // Underlying stream to wrap
-    u64                      limit);                   // Maximum number of bytes to forward
+    struct stream           *s,      // Stream to initialize
+    struct stream_limit_ctx *ctx,    // Context to initialize and attach
+    struct stream           *src,    // Underlying stream to wrap
+    u64                      limit); // Maximum number of bytes to forward
 
 ////////////////////////////////////////////////////////////
 // MEMORY / BYTE_ACCESSOR
@@ -2903,21 +2901,21 @@ HEADER_FUNC bool test_mark_match (const char *pat, const char *str) {
 ////////////////////////////////////////////////////////////
 /// Test Wrappers
 
-#  define TEST(name)                                                          \
-    static void test_##name (void);                                           \
-    bool        wrapper_test_##name (void);                                   \
-    bool        wrapper_test_##name (void) {                                  \
-             i_log_info ("========================= TEST CASE: %s\n", #name); \
-             int prev = test_ret;                                             \
-             test_ret = 0;                                                    \
-             test_##name ();                                                  \
-             if (!test_ret) {                                                 \
-               i_log_passed ("%s\n", #name);                                  \
-               test_ret = prev;                                               \
-               return true;                                                   \
+#  define TEST(name)                                                   \
+    static void test_##name (void);                                    \
+    bool        wrapper_test_##name (void);                            \
+    bool        wrapper_test_##name (void) {                           \
+      i_log_info ("========================= TEST CASE: %s\n", #name); \
+      int prev = test_ret;                                             \
+      test_ret = 0;                                                    \
+      test_##name ();                                                  \
+      if (!test_ret) {                                                 \
+        i_log_passed ("%s\n", #name);                                  \
+        test_ret = prev;                                               \
+        return true;                                                   \
       }                                                                \
-             return false;                                                    \
-    }                                                                         \
+      return false;                                                    \
+    }                                                                  \
     static void test_##name (void)
 
 #  define TEST_CASE(fmt, ...)                                                                \

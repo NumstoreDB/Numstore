@@ -48,7 +48,7 @@
 #define VH_HASH_OFST PG_COMMN_END
 #define VH_HASH_LEN  ((PAGE_SIZE - VH_HASH_OFST) / sizeof (pgno))
 
-_Static_assert(
+_Static_assert (
     PAGE_SIZE > VH_HASH_OFST + 10 * sizeof (pgno),
     "Root Page: PAGE_SIZE must be > RN_HASH_OFST plus at least 10 "
     "extra hashes");

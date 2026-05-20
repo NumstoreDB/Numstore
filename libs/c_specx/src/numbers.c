@@ -188,7 +188,7 @@ err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
 
   ASSERT (i == len); // no extra characters
 
-  if (neg) acc = -acc;
+  if (neg) { acc = -acc; }
   *dest = acc;
   return SUCCESS;
 

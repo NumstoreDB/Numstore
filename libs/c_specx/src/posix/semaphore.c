@@ -20,8 +20,9 @@
 #include <time.h>
 
 err_t i_semaphore_create (i_semaphore *s, const unsigned int value, error *e) {
-  if (pthread_mutex_init (&s->mutex, NULL) != 0)
+  if (pthread_mutex_init (&s->mutex, NULL) != 0) {
     return error_causef (e, ERR_IO, "pthread_mutex_init: %s", strerror (errno));
+  }
 
   if (pthread_cond_init (&s->cond, NULL) != 0) {
     pthread_mutex_destroy (&s->mutex);
@@ -49,7 +50,7 @@ void i_semaphore_post (i_semaphore *s) {
 void i_semaphore_wait (i_semaphore *s) {
   ASSERT (s);
   pthread_mutex_lock (&s->mutex);
-  while (s->count == 0) pthread_cond_wait (&s->cond, &s->mutex);
+  while (s->count == 0) { pthread_cond_wait (&s->cond, &s->mutex); }
   s->count--;
   pthread_mutex_unlock (&s->mutex);
 }
@@ -58,7 +59,7 @@ bool i_semaphore_try_wait (i_semaphore *s) {
   ASSERT (s);
   pthread_mutex_lock (&s->mutex);
   bool acquired = s->count > 0;
-  if (acquired) s->count--;
+  if (acquired) { s->count--; }
   pthread_mutex_unlock (&s->mutex);
   return acquired;
 }

@@ -167,8 +167,8 @@ err_t i_socket_accept (
     return error_causef (e, ERR_IO, "accept: %s", WSA_ERR (buf));
   }
 
-  if (ip_out) inet_ntop (AF_INET, &peer.sin_addr, ip_out, (socklen_t)ip_out_len);
-  if (port_out) *port_out = ntohs (peer.sin_port);
+  if (ip_out) { inet_ntop (AF_INET, &peer.sin_addr, ip_out, (socklen_t)ip_out_len); }
+  if (port_out) { *port_out = ntohs (peer.sin_port); }
 
   return SUCCESS;
 }
