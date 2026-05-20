@@ -12,10 +12,20 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "cpynumstore.h"
+#include "nscore/compiler.h"
+#include "pynumstore.h"
+
+// Numpy options
+#define NO_IMPORT_ARRAY
+
+#include "c_specx.h"
+#include "nscore/types.h"
 
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <string.h>
+
+static PyObject *ns_type_to_dtype (const struct type *t);
 
 static PyObject *build_complex_struct (int component_typenum) {
   PyArray_Descr *comp = PyArray_DescrFromType (component_typenum);
@@ -88,38 +98,37 @@ static PyObject *primitive_to_dtype (enum prim_t p) {
     case CU128: return build_complex_struct (NPY_UINT64);
     default: PyErr_Format (PyExc_ValueError, "unknown numstore primitive: %d", (int)p); return NULL;
   }
+
   PyArray_Descr *d = PyArray_DescrFromType (typenum);
   if (d == NULL) { return NULL; }
-  /* Validate that the platform actually supports this dtype at the
-   * expected size (e.g. f128 / cf256 are 8/16 bytes on Windows). */
+
   return (PyObject *)d;
 }
 
-/* --- struct -------------------------------------------------------------- */
-
 static PyObject *struct_to_dtype (const struct struct_t *st) {
-  if (st->len == 0) {
-    PyErr_SetString (PyExc_ValueError, "struct must have at least one field");
-    return NULL;
-  }
+  ASSERT (st->len > 0);
 
+  // fields = [None, None, .... ]
   PyObject *fields = PyList_New (st->len);
   if (fields == NULL) { return NULL; }
 
   for (u16 i = 0; i < st->len; i++) {
+    // name = st.name
     PyObject *name = PyUnicode_FromStringAndSize (st->keys[i].data, (Py_ssize_t)st->keys[i].len);
     if (name == NULL) {
       Py_DECREF (fields);
       return NULL;
     }
 
-    PyObject *sub = numstore_type_to_dtype (st->types[i]);
+    // sub = topy(st.type)
+    PyObject *sub = ns_type_to_dtype (st->types[i]);
     if (sub == NULL) {
       Py_DECREF (name);
       Py_DECREF (fields);
       return NULL;
     }
 
+    // tup = (name, sub)
     PyObject *tup = PyTuple_New (2);
     if (tup == NULL) {
       Py_DECREF (name);
@@ -127,28 +136,30 @@ static PyObject *struct_to_dtype (const struct struct_t *st) {
       Py_DECREF (fields);
       return NULL;
     }
-    PyTuple_SET_ITEM (tup, 0, name);  /* steals */
-    PyTuple_SET_ITEM (tup, 1, sub);   /* steals */
-    PyList_SET_ITEM (fields, i, tup); /* steals */
+    PyTuple_SET_ITEM (tup, 0, name);
+    PyTuple_SET_ITEM (tup, 1, sub);
+
+    // fields[i] = tup
+    PyList_SET_ITEM (fields, i, tup);
   }
 
+  // out = np.dtype(fields)
   PyArray_Descr *out = NULL;
   if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED) {
     Py_DECREF (fields);
     return NULL;
   }
   Py_DECREF (fields);
+
   return (PyObject *)out;
 }
 
-/* --- union --------------------------------------------------------------- */
-
 static PyObject *union_to_dtype (const struct union_t *un) {
-  if (un->len == 0) {
-    PyErr_SetString (PyExc_ValueError, "union must have at least one field");
-    return NULL;
-  }
+  ASSERT (un->len > 0);
 
+  // names = [None, None, ...]
+  // formats = [None, None, ...]
+  // offsets = [None, None, ...]
   PyObject *names   = PyList_New (un->len);
   PyObject *formats = PyList_New (un->len);
   PyObject *offsets = PyList_New (un->len);
@@ -161,9 +172,13 @@ static PyObject *union_to_dtype (const struct union_t *un) {
 
   Py_ssize_t max_size = 0;
   for (u16 i = 0; i < un->len; i++) {
+    // name = un.name
+    // sub = un.name
+    // offset = 0
     PyObject *name = PyUnicode_FromStringAndSize (un->keys[i].data, (Py_ssize_t)un->keys[i].len);
-    PyObject *sub  = name ? numstore_type_to_dtype (un->types[i]) : NULL;
+    PyObject *sub  = name ? ns_type_to_dtype (un->types[i]) : NULL;
     PyObject *off  = sub ? PyLong_FromLong (0) : NULL;
+
     if (off == NULL) {
       Py_XDECREF (name);
       Py_XDECREF (sub);
@@ -173,13 +188,21 @@ static PyObject *union_to_dtype (const struct union_t *un) {
       Py_DECREF (offsets);
       return NULL;
     }
-    Py_ssize_t isize = PyDataType_ELSIZE ((PyArray_Descr *)sub);
+
+    // max_size = max(max_size, sizeof(sub))
+    Py_ssize_t isize = PyDataType_ELSIZE (((PyArray_Descr *)sub));
     if (isize > max_size) { max_size = isize; }
+
+    // names[i] = name
+    // formats[i] = sub
+    // offsets[i] = off
     PyList_SET_ITEM (names, i, name);
     PyList_SET_ITEM (formats, i, sub);
     PyList_SET_ITEM (offsets, i, off);
   }
 
+  // itemsize = long(max_size)
+  // spec = {}
   PyObject *itemsize = PyLong_FromSsize_t (max_size);
   PyObject *spec     = itemsize ? PyDict_New () : NULL;
   if (spec == NULL) {
@@ -189,11 +212,14 @@ static PyObject *union_to_dtype (const struct union_t *un) {
     Py_DECREF (offsets);
     return NULL;
   }
-  /* PyDict_SetItemString does NOT steal references. */
-  int rc =
-      (PyDict_SetItemString (spec, "names", names) | PyDict_SetItemString (spec, "formats", formats)
-       | PyDict_SetItemString (spec, "offsets", offsets)
-       | PyDict_SetItemString (spec, "itemsize", itemsize));
+
+  // spec["formats"] = formats
+  // spec["offsets"] = offsets
+  // spec["itemsize"] = itemsize
+  int rc = PyDict_SetItemString (spec, "names", names);
+  rc     = rc | PyDict_SetItemString (spec, "formats", formats);
+  rc     = rc | PyDict_SetItemString (spec, "offsets", offsets);
+  rc     = rc | PyDict_SetItemString (spec, "itemsize", itemsize);
   Py_DECREF (names);
   Py_DECREF (formats);
   Py_DECREF (offsets);
@@ -203,26 +229,25 @@ static PyObject *union_to_dtype (const struct union_t *un) {
     return NULL;
   }
 
+  // out = np.dtype(spec)
   PyArray_Descr *out = NULL;
   if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) {
     Py_DECREF (spec);
     return NULL;
   }
   Py_DECREF (spec);
+
   return (PyObject *)out;
 }
 
-/* --- strict array -------------------------------------------------------- */
-
 static PyObject *sarray_to_dtype (const struct sarray_t *sa) {
-  if (sa->rank == 0) {
-    PyErr_SetString (PyExc_ValueError, "strict array must have rank >= 1");
-    return NULL;
-  }
+  ASSERT (sa->rank > 0);
 
-  PyObject *sub = numstore_type_to_dtype (sa->t);
+  // sub = topy(sa->t)
+  PyObject *sub = ns_type_to_dtype (sa->t);
   if (sub == NULL) { return NULL; }
 
+  // shape = (sa->dims[0], sa->dims[1]...)
   PyObject *shape = PyTuple_New (sa->rank);
   if (shape == NULL) {
     Py_DECREF (sub);
@@ -238,41 +263,65 @@ static PyObject *sarray_to_dtype (const struct sarray_t *sa) {
     PyTuple_SET_ITEM (shape, i, d);
   }
 
+  // spec = (sub, shape)
   PyObject *spec = PyTuple_New (2);
   if (spec == NULL) {
     Py_DECREF (shape);
     Py_DECREF (sub);
     return NULL;
   }
-  PyTuple_SET_ITEM (spec, 0, sub);   /* steals */
-  PyTuple_SET_ITEM (spec, 1, shape); /* steals */
+  // Steals
+  PyTuple_SET_ITEM (spec, 0, sub);
+  PyTuple_SET_ITEM (spec, 1, shape);
 
+  // out = np.dtype(spec)
   PyArray_Descr *out = NULL;
   if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) {
     Py_DECREF (spec);
     return NULL;
   }
   Py_DECREF (spec);
+
   return (PyObject *)out;
 }
 
-PyObject *numstore_type_to_dtype (const struct type *t) {
-  if (t == NULL) {
-    PyErr_SetString (PyExc_ValueError, "numstore_type_to_dtype: null type");
-    return NULL;
-  }
+static PyObject *ns_type_to_dtype (const struct type *t) {
+  ASSERT (t);
+
   switch (t->type) {
     case T_PRIM: return primitive_to_dtype (t->p);
     case T_STRUCT: return struct_to_dtype (&t->st);
     case T_UNION: return union_to_dtype (&t->un);
     case T_SARRAY: return sarray_to_dtype (&t->sa);
-    default:
-      PyErr_Format (PyExc_ValueError, "numstore_type_to_dtype: unknown type kind %d", (int)t->type);
-      return NULL;
+    default: {
+      UNREACHABLE ();
+    }
   }
 }
 
+PyObject *ns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg) {
+  const char *src = PyUnicode_AsUTF8 (arg);
+  if (!src) { return NULL; }
+
+  struct type        t;
+  struct chunk_alloc temp;
+  chunk_alloc_create_default (&temp);
+  error e = error_create ();
+
+  if (compile_type (&t, src, &temp, &e)) {
+    PyErr_Format (PyExc_ValueError, "Error: %.*s", e.cmlen, e.cause_msg);
+    chunk_alloc_free_all (&temp);
+    return NULL;
+  }
+
+  PyObject *ret = ns_type_to_dtype (&t);
+  chunk_alloc_free_all (&temp);
+
+  return ret;
+}
+
 #ifndef NTEST
+
 static inline struct type *mk_prim (enum prim_t p) {
   struct type *t = calloc (1, sizeof (*t));
   t->type        = T_PRIM;
@@ -353,7 +402,6 @@ static int dtype_equals_expr (PyObject *dt, const char *expr) {
 
 TEST (numstore_to_dtype) {
   Py_Initialize ();
-  test_assert (import_array1 (-1) == 0);
 
   TEST_CASE ("primitive_simple") {
     struct {
@@ -380,7 +428,7 @@ TEST (numstore_to_dtype) {
     for (size_t i = 0; i < sizeof (cases) / sizeof (cases[0]); i++) {
       struct type t = {.type = T_PRIM};
       t.p           = cases[i].p;
-      PyObject *dt  = numstore_type_to_dtype (&t);
+      PyObject *dt  = ns_type_to_dtype (&t);
       test_assert (dt);
 
       PyObject *ref = ref_dtype (cases[i].expected);
@@ -413,7 +461,7 @@ TEST (numstore_to_dtype) {
     for (size_t i = 0; i < sizeof (cases) / sizeof (cases[0]); i++) {
       struct type t = {.type = T_PRIM};
       t.p           = cases[i].p;
-      PyObject *dt  = numstore_type_to_dtype (&t);
+      PyObject *dt  = ns_type_to_dtype (&t);
 
       test_assert (dt);
       int eq = dtype_equals_expr (dt, cases[i].expr);
@@ -429,7 +477,7 @@ TEST (numstore_to_dtype) {
     struct type  *types[2] = {mk_prim (I32), mk_prim (F64)};
     struct type  *t        = strfcstruct (2, keys, types);
 
-    PyObject *dt = numstore_type_to_dtype (t);
+    PyObject *dt = ns_type_to_dtype (t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype([('foo','i4'),('bar','f8')])");
@@ -451,7 +499,7 @@ TEST (numstore_to_dtype) {
     struct type  *outer_types[2] = {mk_prim (I32), inner};
     struct type  *outer          = strfcstruct (2, outer_keys, outer_types);
 
-    PyObject *dt = numstore_type_to_dtype (outer);
+    PyObject *dt = ns_type_to_dtype (outer);
     test_assert (dt);
 
     int eq = dtype_equals_expr (
@@ -475,7 +523,7 @@ TEST (numstore_to_dtype) {
     struct type  *types[2] = {mk_prim (I32), mk_prim (F32)};
     struct type  *t        = mk_union (2, keys, types);
 
-    PyObject *dt = numstore_type_to_dtype (t);
+    PyObject *dt = ns_type_to_dtype (t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (
@@ -497,7 +545,7 @@ TEST (numstore_to_dtype) {
     struct type  *types[2] = {mk_prim (U8), mk_prim (I64)};
     struct type  *t        = mk_union (2, keys, types);
 
-    PyObject *dt = numstore_type_to_dtype (t);
+    PyObject *dt = ns_type_to_dtype (t);
     test_assert (dt);
 
     PyArray_Descr *d = (PyArray_Descr *)dt;
@@ -516,7 +564,7 @@ TEST (numstore_to_dtype) {
     struct type *sub     = mk_prim (I32);
     struct type *t       = mk_sarray (1, dims, sub);
 
-    PyObject *dt = numstore_type_to_dtype (t);
+    PyObject *dt = ns_type_to_dtype (t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype(('i4', (10,)))");
@@ -534,7 +582,7 @@ TEST (numstore_to_dtype) {
     struct type *sub     = mk_prim (F64);
     struct type *t       = mk_sarray (2, dims, sub);
 
-    PyObject *dt = numstore_type_to_dtype (t);
+    PyObject *dt = ns_type_to_dtype (t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype(('f8', (20,30)))");
@@ -563,7 +611,7 @@ TEST (numstore_to_dtype) {
     u32          outer_dims[2] = {20, 30};
     struct type *outer         = mk_sarray (2, outer_dims, st);
 
-    PyObject *dt = numstore_type_to_dtype (outer);
+    PyObject *dt = ns_type_to_dtype (outer);
     test_assert (dt);
 
     const char *expr =
@@ -587,7 +635,7 @@ TEST (numstore_to_dtype) {
   }
 
   TEST_CASE ("null_input") {
-    PyObject *dt = numstore_type_to_dtype (NULL);
+    PyObject *dt = ns_type_to_dtype (NULL);
     test_assert (dt == NULL);
 
     int has_err = PyErr_Occurred () != NULL;
@@ -599,7 +647,7 @@ TEST (numstore_to_dtype) {
   TEST_CASE ("unknown_kind") {
     struct type t = {.type = (enum type_t)99};
 
-    PyObject *dt = numstore_type_to_dtype (&t);
+    PyObject *dt = ns_type_to_dtype (&t);
     test_assert (dt == NULL);
 
     int has_err = PyErr_Occurred () != NULL;
@@ -612,7 +660,7 @@ TEST (numstore_to_dtype) {
     struct type t = {.type = T_PRIM};
     t.p           = (enum prim_t)99;
 
-    PyObject *dt = numstore_type_to_dtype (&t);
+    PyObject *dt = ns_type_to_dtype (&t);
     test_assert (dt == NULL);
 
     int has_err = PyErr_Occurred () != NULL;
@@ -631,7 +679,7 @@ TEST (numstore_to_dtype) {
     struct type  *types[2] = {xs, mk_prim (F64)};
     struct type  *t        = strfcstruct (2, keys, types);
 
-    PyObject *dt = numstore_type_to_dtype (t);
+    PyObject *dt = ns_type_to_dtype (t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype([('xs', 'i4', (10,)), ('y','f8')])");

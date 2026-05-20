@@ -1,36 +1,29 @@
-################### Root
-cmake_minimum_required(VERSION 3.18)
-project(pynumstore_build)
-
 ################### Dependencies
-set(Python_FIND_VIRTUALENV ONLY)
-find_package(Python COMPONENTS Interpreter Development REQUIRED)
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
-# Get numpy includes
 execute_process(
   COMMAND "${Python_EXECUTABLE}" -c "import numpy as np; print(np.get_include())"
   OUTPUT_VARIABLE NumPy_INCLUDE_DIRS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-################### C Library
-file(GLOB_RECURSE NSPY_SOURCES  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/c/src/*.c")
+################### Extension Module
+file(GLOB_RECURSE NSPY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/c/src/*.c")
 
-################### THE MAIN LIBRARY
-Python_add_library(cpynumstore STATIC ${NSPY_SOURCES})
-target_include_directories(cpynumstore
-    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/c/src"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../nscore/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../c_specx/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../numstore/include"
-            "${NumPy_INCLUDE_DIRS}"
+Python_add_library(_numstore MODULE ${NSPY_SOURCES})
+target_include_directories(_numstore SYSTEM PRIVATE "${NumPy_INCLUDE_DIRS}")
+
+
+target_include_directories(_numstore
+    PUBLIC          "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
+    PRIVATE         "${CMAKE_CURRENT_SOURCE_DIR}/c/src"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/../nscore/include"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/../c_specx/include"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/../numstore/include"
+    SYSTEM PRIVATE  "${NumPy_INCLUDE_DIRS}"
 )
-target_link_libraries(cpynumstore PUBLIC c_specx nscore numstore) 
 
-################### INSTALL
-install(TARGETS cpynumstore DESTINATION pynumstore)
-install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/pynumstore/
-        DESTINATION pynumstore
-        FILES_MATCHING PATTERN "*.py")
+target_link_libraries(_numstore PRIVATE c_specx nscore numstore)
 
+################### Install
+install(TARGETS _numstore DESTINATION pynumstore)

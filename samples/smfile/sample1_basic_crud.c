@@ -12,12 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
-
-
-
-
 #include "smfile.h"
 
 #include <stdint.h>
@@ -34,14 +28,10 @@
  * 3. Write (overwrite data in the middle of the array)
  * 4. Remove (remove chunks of data from the middle of an array)
  */
-int
-main (void)
-{
+int main (void) {
   // Open a new data file
   smfile_t *smf = smfile_open ("sample1_crud");
-  if(smf == NULL) {
-    return -1;
-  }
+  if (smf == NULL) { return -1; }
 
   // Remove all data from the file
   smfile_remove (
@@ -69,27 +59,27 @@ main (void)
       strlen (adverb));
 
   // Read the entire array
-  char buf[64];
+  char    buf[64];
   sb_size n = smfile_read (smf, buf, 0, SMF_END);
-  buf[n] = '\0';
+  buf[n]    = '\0';
   printf ("after insert:  \"%s\"\n", buf);
 
   // Writing in the middle is a first class operation
   smfile_write (smf, "cat", 16, 3);
 
   // Read the entire array
-  n = smfile_read (smf, buf, 0, SMF_END);
+  n      = smfile_read (smf, buf, 0, SMF_END);
   buf[n] = '\0';
   printf ("after write:   \"%s\"\n", buf);
 
   // Removing in the middle of the array is first class
   char evicted[8];
-  n = smfile_remove (smf, evicted, 34, 7);
+  n          = smfile_remove (smf, evicted, 34, 7);
   evicted[n] = '\0';
   printf ("removed:       \"%s\"\n", evicted);
 
   // Read the result
-  n = smfile_read (smf, buf, 0, SMF_END);
+  n      = smfile_read (smf, buf, 0, SMF_END);
   buf[n] = '\0';
   printf ("after remove:  \"%s\"\n", buf);
 

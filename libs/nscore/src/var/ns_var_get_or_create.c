@@ -24,6 +24,7 @@ err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e
       .tx    = params->tx,
       .vname = params->vname,
       .alloc = params->alloc,
+      // Result = dest
   };
 
   error_silence (e);
@@ -45,7 +46,18 @@ err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e
 
     // Try again
     if (ns_var_get (&gparams, e)) { goto failed; }
+
   } else if (err < 0) {
+    goto failed;
+  }
+
+  if (!type_equal (params->type, gparams.dest.dtype)) {
+    error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Trying to create variable: %.*s but variable already exists and types are different",
+        params->vname.len,
+        params->vname.data);
     goto failed;
   }
 

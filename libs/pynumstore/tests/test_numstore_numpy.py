@@ -3,10 +3,10 @@
 import numpy as np
 import pytest
 
-from numstore_numpy import numpy_to_numstore
+from pynumstore import numpy_to_numstore
 
 
-# --- Primitives -------------------------------------------------------------
+# Primitives 
 
 @pytest.mark.parametrize(("np_str", "expected"), [
     ("u1", "u8"),  ("u2", "u16"), ("u4", "u32"), ("u8", "u64"),
@@ -24,8 +24,10 @@ def test_f128_if_supported():
         d = np.dtype(np.longdouble)
     except TypeError:
         pytest.skip("longdouble not available")
+
     if d.itemsize != 16:
         pytest.skip(f"longdouble is {d.itemsize} bytes on this platform")
+
     assert numpy_to_numstore(d) == "f128"
 
 
@@ -34,12 +36,14 @@ def test_cf256_if_supported():
         d = np.dtype(np.clongdouble)
     except TypeError:
         pytest.skip("clongdouble not available")
+
     if d.itemsize != 32:
         pytest.skip(f"clongdouble is {d.itemsize} bytes on this platform")
+
     assert numpy_to_numstore(d) == "cf256"
 
 
-# --- Input acceptance -------------------------------------------------------
+# Input acceptance 
 
 def test_accepts_string_input():
     assert numpy_to_numstore("i4") == "i32"
@@ -55,7 +59,7 @@ def test_byte_order_ignored():
     assert numpy_to_numstore(np.dtype("<i4")) == "i32"
 
 
-# --- Structs ----------------------------------------------------------------
+# Structs 
 
 def test_simple_struct():
     d = np.dtype([("foo", "i4"), ("bar", "f8")])
@@ -78,7 +82,7 @@ def test_single_field_struct():
     assert numpy_to_numstore(d) == "struct { only i32 }"
 
 
-# --- Unions -----------------------------------------------------------------
+# Unions 
 
 def test_simple_union():
     d = np.dtype({
@@ -100,7 +104,7 @@ def test_union_of_struct_and_prim():
     assert numpy_to_numstore(d) == "union { x i32, y struct { a u32, b f32 } }"
 
 
-# --- Arrays -----------------------------------------------------------------
+# Arrays 
 
 def test_simple_array():
     assert numpy_to_numstore(np.dtype(("i4", (10,)))) == "[10] i32"
@@ -120,7 +124,7 @@ def test_struct_with_array_field():
     assert numpy_to_numstore(d) == "struct { xs [10] i32, y f64 }"
 
 
-# --- Full example from the spec --------------------------------------------
+# Full example from the spec 
 
 def test_spec_example():
     # [20][30] struct { a union { i f32, b i64 }, c [10] f64 }
@@ -138,7 +142,7 @@ def test_spec_example():
     )
 
 
-# --- Rejections -------------------------------------------------------------
+# Rejections 
 
 @pytest.mark.parametrize("np_str", [
     "O",       # object
