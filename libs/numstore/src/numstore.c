@@ -124,8 +124,6 @@ err_t _nsdb_auto_commit (struct nsdb *sm, error *e) {
 }
 
 void _nsdb_auto_rollback (struct nsdb *sm) {
-  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e)) {
-    panic ("Failed to rollback");
-  }
+  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e)) { panic ("Failed to rollback"); }
   sm->atx = NULL;
 }
