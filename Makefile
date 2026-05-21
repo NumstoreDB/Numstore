@@ -12,20 +12,22 @@ all: build compile_commands.json
 
 ######################################################## Main Build Target
 
-compile_commands.json: build/debug/compile_commands.json
-	cp build/debug/compile_commands.json .
-
-build/debug/compile_commands.json:
+compile_commands.json: 
 	/usr/bin/cmake . -B build/debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	cp build/debug/compile_commands.json .
 
 build:
 	/usr/bin/cmake --preset $(target)
 	/usr/bin/cmake --build --preset $(target) -j$(NPROC)
 
 comprehensive:
-	@python3 -c \
-	  "import json; [print(p['name']) for p in json.load(open('CMakePresets.json'))['configurePresets'] if not p.get('hidden')]" \
-	| xargs -I{} $(MAKE) build target={}
+	$(MAKE) build target=debug
+	$(MAKE) build target=debug-no-asan
+	$(MAKE) build target=debug-ntests
+	$(MAKE) build target=debug-ntests-no-asan
+	$(MAKE) build target=debug-release
+	$(MAKE) build target=debug-release-tests
+	$(MAKE) build target=debug-package-release
 
 ######################################################## Tests
 

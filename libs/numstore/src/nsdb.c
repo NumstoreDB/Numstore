@@ -16,7 +16,6 @@
 #include "c_specx.h"
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
-#include "smfile.h"
 
 // smfile
 
