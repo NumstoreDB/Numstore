@@ -97,15 +97,15 @@ static PyMethodDef numstore_methods[] = {
 
 static PyModuleDef numstore_module = {
     .m_base    = PyModuleDef_HEAD_INIT,
-    .m_name    = "_numstore",
+    .m_name    = "_pynumstore",
     .m_doc     = "Thin C wrapper around smfile operations for the numstore package.",
     .m_size    = -1,
     .m_methods = numstore_methods,
 };
 
-PyMODINIT_FUNC PyInit__numstore (void);
+PyMODINIT_FUNC PyInit__pynumstore (void);
 
-PyMODINIT_FUNC PyInit__numstore (void) {
+PyMODINIT_FUNC PyInit__pynumstore (void) {
   import_array ();
   return PyModule_Create (&numstore_module);
 }
