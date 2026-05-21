@@ -13,16 +13,13 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "c_specx.h"
-#include "nscore/compiler.h"
-#include "nscore/types.h"
 #include "pynumstore.h"
 
+#include <Python.h>
 #include <string.h>
 
-PyObject *ns_db_close (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!_unwrap_db (arg)) { return NULL; }
-
-  /* TODO: smfile_close(smf); */
+PyObject *pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
+  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
+  /* TODO: smfile_commit(txn); */
   Py_RETURN_NONE;
 }

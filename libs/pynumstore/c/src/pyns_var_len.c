@@ -13,42 +13,24 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-// Numpy options
-#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
-#define NO_IMPORT_ARRAY
-
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <string.h>
 
-PyObject *ns_var_insert (PyObject *Py_UNUSED (m), PyObject *args) {
+PyObject *pyns_var_len (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db;
   PyObject *txn_or_none;
 
-  long long var_id, key;
-  Py_buffer data;
-  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
+  long long var_id;
+  if (!PyArg_ParseTuple (args, "OOL", &db, &txn_or_none, &var_id)) { return NULL; }
 
   struct nshandle *smf = _unwrap_db (db);
-  if (!smf) {
-    PyBuffer_Release (&data);
-    return NULL;
-  }
+  if (!smf) { return NULL; }
 
   struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) {
-    PyBuffer_Release (&data);
-    return NULL;
-  }
+  if (!txn && PyErr_Occurred ()) { return NULL; }
 
-  /* TODO: smfile_insert(smf, txn, var_id, key, data.buf, data.len); */
-  PyBuffer_Release (&data);
-  Py_RETURN_NONE;
+  /* TODO: return PyLong_FromSsize_t(smfile_len(smf, txn, var_id)); */
+  return PyLong_FromLong (16);
 }

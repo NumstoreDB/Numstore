@@ -12,27 +12,30 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/compiler.h"
+#include "_pynumstore.h"
+#include "c_specx.h"
+#include "nscore/nshandle.h"
+#include "nscore/rope.h"
+#include "nscore/types.h"
 #include "pynumstore.h"
 
-// Numpy options
-#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
-#define NO_IMPORT_ARRAY
-
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <string.h>
 
-PyObject *ns_db_open (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!PyUnicode_Check (arg)) {
-    PyErr_SetString (PyExc_TypeError, "path must be str");
-    return NULL;
-  }
+PyObject *pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
+  PyObject *db;
+  PyObject *txn_or_none;
 
-  /* TODO: smfile_t *smf = smfile_open(PyUnicode_AsUTF8(arg)); */
-  return PyCapsule_New ((void *)(1), "numstore.db", NULL);
+  long long var_id, key;
+  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
+
+  struct nshandle *smf = _unwrap_db (db);
+  if (!smf) { return NULL; }
+
+  struct txn *txn = _unwrap_txn (txn_or_none);
+  if (!txn && PyErr_Occurred ()) { return NULL; }
+
+  /* TODO: smfile_read(smf, txn, var_id, key, &buf, &len); */
+  static const char zeros[8] = {0};
+  return PyBytes_FromStringAndSize (zeros, sizeof zeros);
 }

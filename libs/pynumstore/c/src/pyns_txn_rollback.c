@@ -13,23 +13,14 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-// Numpy options
-#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
-#define NO_IMPORT_ARRAY
-
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <string.h>
 
-PyObject *ns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
   if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
-  /* TODO: smfile_commit(txn); */
+
+  /* TODO: smfile_rollback(txn); */
   Py_RETURN_NONE;
 }
