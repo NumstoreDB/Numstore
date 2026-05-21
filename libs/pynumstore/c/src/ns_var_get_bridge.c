@@ -16,6 +16,14 @@
 #include "nscore/var.h"
 
 err_t pybr_ns_var_get (
+    struct pager    *p,
+    struct txn      *tx,
+    const char      *vname_str,
+    u32              vname_len,
+    struct variable *dest,
+    error           *e);
+
+err_t pybr_ns_var_get (
     struct pager *p,
     struct txn   *tx,
     const char   *vname_str,

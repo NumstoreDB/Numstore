@@ -19,12 +19,12 @@
 #include <string.h>
 
 PyObject *ns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
-  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!ns) { return NULL; }
+  struct ns_txn_wrap *w = (struct ns_txn_wrap *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
+  if (!w || !w->ns) { return NULL; }
 
-  int rc = nsdb_commit (ns);
-  nsdb_close (ns);
-  PyCapsule_SetPointer (arg, NULL);
+  int    rc = nsdb_commit (w->ns);
+  nsdb_close (w->ns);
+  w->ns     = NULL;
   if (rc < 0) {
     PyErr_SetString (PyExc_RuntimeError, "nsdb_commit failed");
     return NULL;

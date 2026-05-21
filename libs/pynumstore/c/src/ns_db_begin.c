@@ -20,5 +20,14 @@ PyObject *ns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
     return NULL;
   }
 
-  return PyCapsule_New ((void *)ctx, TXN_CAPSULE, _txn_destructor);
+  struct ns_txn_wrap *w = malloc (sizeof (struct ns_txn_wrap));
+  if (!w) {
+    nsdb_rollback (ctx);
+    nsdb_close (ctx);
+    PyErr_NoMemory ();
+    return NULL;
+  }
+  w->ns = ctx;
+
+  return PyCapsule_New ((void *)w, TXN_CAPSULE, _txn_destructor);
 }
