@@ -13,35 +13,32 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-// Numpy options
-#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
-#define NO_IMPORT_ARRAY
-
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <string.h>
 
-PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
+PyObject *pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db;
   PyObject *txn_or_none;
 
   long long var_id, key;
-  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
+  Py_buffer data;
+  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
 
   struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  if (!smf) {
+    PyBuffer_Release (&data);
+    return NULL;
+  }
 
   struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  if (!txn && PyErr_Occurred ()) {
+    PyBuffer_Release (&data);
+    return NULL;
+  }
 
-  /* TODO: smfile_read(smf, txn, var_id, key, &buf, &len); */
-  static const char zeros[8] = {0};
-  return PyBytes_FromStringAndSize (zeros, sizeof zeros);
+  /* TODO: smfile_insert(smf, txn, var_id, key, data.buf, data.len); */
+  PyBuffer_Release (&data);
+  Py_RETURN_NONE;
 }

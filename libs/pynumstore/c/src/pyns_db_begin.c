@@ -13,24 +13,17 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-// Numpy options
-#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
-#define NPY_NO_DEPRECATED_API  NPY_1_7_API_VERSION
-#define NO_IMPORT_ARRAY
-
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <string.h>
 
-PyObject *ns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
+/*
+ * db_begin(db: capsule) -> capsule
+ */
+PyObject *pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
+  if (!_unwrap_db (arg)) { return NULL; }
 
-  /* TODO: smfile_rollback(txn); */
-  Py_RETURN_NONE;
+  /* TODO: smfile_txn_t *txn = smfile_begin(smf); */
+  return PyCapsule_New ((void *)(1), TXN_CAPSULE, NULL);
 }
