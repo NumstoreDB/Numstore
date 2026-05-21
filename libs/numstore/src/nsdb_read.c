@@ -20,7 +20,6 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 #include "nscore/variables.h"
-#include "smfile.h"
 
 static sb_size
 _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e) {
@@ -44,10 +43,10 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .alloc = &temp,
+      .p     = db->root->p,
+      .tx    = db->atx,
+      .vname = vname,
+      .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
     if (err == ERR_VARIABLE_NE) {
@@ -83,14 +82,14 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
   // READ
   {
     rparams = (struct ns_read_params){
-        .p      = db->root->p,
-        .dest   = output,
-        .tx     = db->atx,
-        .root   = gparams.dest.rpt_root,
-        .size   = tsize,
-        .bofst  = tsize * stride.start,
-        .stride = stride.stride,
-        .nelem  = stride.nelems,
+      .p      = db->root->p,
+      .dest   = output,
+      .tx     = db->atx,
+      .root   = gparams.dest.rpt_root,
+      .size   = tsize,
+      .bofst  = tsize * stride.start,
+      .stride = stride.stride,
+      .nelem  = stride.nelems,
     };
     ret = ns_read (rparams, e);
     WRAP_GOTO (ret, failed_rollback);
@@ -113,18 +112,18 @@ failed:
 }
 
 sb_size nsdb_read (
-    nsdb_t     *_smf,
-    const char *name,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags) {
+  nsdb_t     *_smf,
+  const char *name,
+  void       *dest,
+  sb_size     start,
+  sb_size     step,
+  sb_size     stop,
+  int         flags) {
   struct user_stride stride = {
-      .start   = start,
-      .step    = step,
-      .stop    = stop,
-      .present = flags,
+    .start   = start,
+    .step    = step,
+    .stop    = stop,
+    .present = flags,
   };
   struct nshandle *smf = (struct nshandle *)_smf;
 

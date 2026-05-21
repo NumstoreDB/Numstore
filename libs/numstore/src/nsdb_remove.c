@@ -18,14 +18,13 @@
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
 static sb_size _nsdb_premove (
-    struct nshandle   *db,
-    const char        *name,
-    void              *dest,
-    struct user_stride ustr,
-    error             *e) {
+  struct nshandle   *db,
+  const char        *name,
+  void              *dest,
+  struct user_stride ustr,
+  error             *e) {
   sb_size                     ret;                     // Return value
   b_size                      ofst;                    // Resolved offset
   t_size                      tsize;                   // Size of  the variable
@@ -48,10 +47,10 @@ static sb_size _nsdb_premove (
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .alloc = &temp,
+      .p     = db->root->p,
+      .tx    = db->atx,
+      .vname = vname,
+      .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
     if (err == ERR_VARIABLE_NE) {
@@ -86,14 +85,14 @@ static sb_size _nsdb_premove (
   // REMOVE
   {
     rparams = (struct ns_remove_params){
-        .p      = db->root->p,
-        .dest   = output,
-        .tx     = db->atx,
-        .root   = gparams.dest.rpt_root,
-        .size   = tsize,
-        .bofst  = tsize * stride.start,
-        .stride = stride.stride,
-        .nelem  = stride.nelems,
+      .p      = db->root->p,
+      .dest   = output,
+      .tx     = db->atx,
+      .root   = gparams.dest.rpt_root,
+      .size   = tsize,
+      .bofst  = tsize * stride.start,
+      .stride = stride.stride,
+      .nelem  = stride.nelems,
     };
     ret = ns_remove (&rparams, e);
     WRAP_GOTO (ret, failed_rollback);
@@ -102,15 +101,15 @@ static sb_size _nsdb_premove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->root->p,
-        .tx = db->atx,
-        .retr =
-            (struct var_retrieval){
-                .type = VR_PG,
-                .root = gparams.dest.var_root,
-            },
-        .newpg  = rparams.root,
-        .nbytes = gparams.dest.nbytes - ret * tsize,
+      .p  = db->root->p,
+      .tx = db->atx,
+      .retr =
+      (struct var_retrieval){
+        .type = VR_PG,
+        .root = gparams.dest.var_root,
+      },
+      .newpg  = rparams.root,
+      .nbytes = gparams.dest.nbytes - ret * tsize,
     };
     WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
@@ -132,18 +131,18 @@ failed:
 }
 
 sb_size nsdb_remove (
-    nsdb_t     *_smf,
-    const char *name,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags) {
+  nsdb_t     *_smf,
+  const char *name,
+  void       *dest,
+  sb_size     start,
+  sb_size     step,
+  sb_size     stop,
+  int         flags) {
   struct user_stride stride = {
-      .start   = start,
-      .step    = step,
-      .stop    = stop,
-      .present = flags,
+    .start   = start,
+    .step    = step,
+    .stop    = stop,
+    .present = flags,
   };
   struct nshandle *smf = (struct nshandle *)_smf;
 

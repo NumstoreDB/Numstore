@@ -18,7 +18,6 @@
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
 static sb_size _nsdb_len (struct nshandle *db, const char *name, error *e) {
   struct chunk_alloc temp;
@@ -34,10 +33,10 @@ static sb_size _nsdb_len (struct nshandle *db, const char *name, error *e) {
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .alloc = &temp,
+      .p     = db->root->p,
+      .tx    = db->atx,
+      .vname = vname,
+      .alloc = &temp,
     };
     if (ns_var_get (&gparams, e)) { goto failed; }
   }
