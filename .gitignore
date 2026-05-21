@@ -15,6 +15,7 @@ compile_commands.json
 history.txt
 .idea
 build
+build_test
 build_coverage
 create
 dlread
