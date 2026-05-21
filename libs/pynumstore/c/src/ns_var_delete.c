@@ -13,18 +13,12 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
+#include <stdio.h>
 #include <string.h>
 
-/*
- * var_delete(db, txn_or_none, var_id: int, key: int) -> None
- */
 PyObject *ns_var_delete (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db;
   PyObject *txn_or_none;
@@ -32,12 +26,19 @@ PyObject *ns_var_delete (PyObject *Py_UNUSED (m), PyObject *args) {
   long long var_id, key;
   if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  nsdb_t *handle = _resolve_handle (db, txn_or_none);
+  if (!handle) { return NULL; }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  char buf[32];
+  snprintf (buf, sizeof (buf), "%lld", var_id);
 
-  /* TODO: smfile_remove(smf, txn, var_id, key); */
+  sb_size rc = nsdb_remove (
+      handle, buf, NULL, (sb_size)key, 1, (sb_size)key + 1, START_PRESENT | STOP_PRESENT | STEP_PRESENT);
+
+  if (rc < 0) {
+    PyErr_SetString (PyExc_RuntimeError, nsdb_strerror (handle));
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }

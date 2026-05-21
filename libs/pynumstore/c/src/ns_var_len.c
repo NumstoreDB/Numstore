@@ -13,13 +13,10 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
+#include <stdio.h>
 #include <string.h>
 
 PyObject *ns_var_len (PyObject *Py_UNUSED (m), PyObject *args) {
@@ -29,12 +26,17 @@ PyObject *ns_var_len (PyObject *Py_UNUSED (m), PyObject *args) {
   long long var_id;
   if (!PyArg_ParseTuple (args, "OOL", &db, &txn_or_none, &var_id)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  nsdb_t *handle = _resolve_handle (db, txn_or_none);
+  if (!handle) { return NULL; }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  char buf[32];
+  snprintf (buf, sizeof (buf), "%lld", var_id);
 
-  /* TODO: return PyLong_FromSsize_t(smfile_len(smf, txn, var_id)); */
-  return PyLong_FromLong (16);
+  sb_size len = nsdb_len (handle, buf);
+  if (len < 0) {
+    PyErr_SetString (PyExc_RuntimeError, nsdb_strerror (handle));
+    return NULL;
+  }
+
+  return PyLong_FromSsize_t ((Py_ssize_t)len);
 }

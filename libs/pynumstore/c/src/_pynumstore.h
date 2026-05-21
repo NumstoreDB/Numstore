@@ -13,17 +13,56 @@
 /// limitations under the License.
 
 #include "pynumstore.h"
+#include "numstore.h"
+
+#include <stdlib.h>
 
 static const char DB_CAPSULE[]  = "numstore.db";
 static const char TXN_CAPSULE[] = "numstore.txn";
 
-HEADER_FUNC struct nshandle *_unwrap_db (PyObject *db) {
-  struct nshandle *p = (struct nshandle *)PyCapsule_GetPointer (db, DB_CAPSULE);
-  return p;
+struct ns_db_wrap {
+  nsdb_t *ns;
+};
+
+struct ns_txn_wrap {
+  nsdb_t *ns;
+};
+
+HEADER_FUNC void _db_destructor (PyObject *cap) {
+  struct ns_db_wrap *w = (struct ns_db_wrap *)PyCapsule_GetPointer (cap, DB_CAPSULE);
+  if (w) {
+    if (w->ns) { nsdb_close (w->ns); }
+    free (w);
+  }
 }
 
-HEADER_FUNC struct txn *_unwrap_txn (PyObject *txn_or_none) {
+HEADER_FUNC void _txn_destructor (PyObject *cap) {
+  struct ns_txn_wrap *w = (struct ns_txn_wrap *)PyCapsule_GetPointer (cap, TXN_CAPSULE);
+  if (w) {
+    if (w->ns) {
+      nsdb_rollback (w->ns);
+      nsdb_close (w->ns);
+    }
+    free (w);
+  }
+}
+
+HEADER_FUNC nsdb_t *_unwrap_db (PyObject *db) {
+  struct ns_db_wrap *w = (struct ns_db_wrap *)PyCapsule_GetPointer (db, DB_CAPSULE);
+  if (!w) { return NULL; }
+  return w->ns;
+}
+
+HEADER_FUNC nsdb_t *_unwrap_txn (PyObject *txn_or_none) {
   if (txn_or_none == Py_None) { return NULL; }
-  struct txn *p = (struct txn *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
-  return p;
+  struct ns_txn_wrap *w = (struct ns_txn_wrap *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
+  if (!w) { return NULL; }
+  return w->ns;
+}
+
+HEADER_FUNC nsdb_t *_resolve_handle (PyObject *db, PyObject *txn_or_none) {
+  if (txn_or_none != Py_None) {
+    return _unwrap_txn (txn_or_none);
+  }
+  return _unwrap_db (db);
 }

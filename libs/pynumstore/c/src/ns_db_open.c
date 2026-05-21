@@ -12,11 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/compiler.h"
+#include "_pynumstore.h"
 #include "pynumstore.h"
-
-#include "c_specx.h"
-#include "nscore/types.h"
 
 #include <Python.h>
 #include <string.h>
@@ -27,6 +24,19 @@ PyObject *ns_db_open (PyObject *Py_UNUSED (m), PyObject *arg) {
     return NULL;
   }
 
-  /* TODO: smfile_t *smf = smfile_open(PyUnicode_AsUTF8(arg)); */
-  return PyCapsule_New ((void *)(1), "numstore.db", NULL);
+  nsdb_t *ns = nsdb_open (PyUnicode_AsUTF8 (arg));
+  if (!ns) {
+    PyErr_SetString (PyExc_RuntimeError, "nsdb_open failed");
+    return NULL;
+  }
+
+  struct ns_db_wrap *w = malloc (sizeof (struct ns_db_wrap));
+  if (!w) {
+    nsdb_close (ns);
+    PyErr_NoMemory ();
+    return NULL;
+  }
+  w->ns = ns;
+
+  return PyCapsule_New ((void *)w, DB_CAPSULE, _db_destructor);
 }

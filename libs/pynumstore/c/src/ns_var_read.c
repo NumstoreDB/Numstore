@@ -13,14 +13,24 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
 #include "c_specx.h"
+#include "nscore/nshandle.h"
+#include "nscore/rope.h"
 #include "nscore/types.h"
 
 #include <Python.h>
+#include <stdio.h>
 #include <string.h>
+
+err_t pybr_ns_var_get (
+    struct pager    *p,
+    struct txn      *tx,
+    const char      *vname_str,
+    u32              vname_len,
+    struct variable *dest,
+    error           *e);
 
 PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db;
@@ -29,13 +39,82 @@ PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
   long long var_id, key;
   if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  nsdb_t *handle = _resolve_handle (db, txn_or_none);
+  if (!handle) { return NULL; }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  struct nshandle *ns = (struct nshandle *)handle;
 
-  /* TODO: smfile_read(smf, txn, var_id, key, &buf, &len); */
-  static const char zeros[8] = {0};
-  return PyBytes_FromStringAndSize (zeros, sizeof zeros);
+  char buf[32];
+  snprintf (buf, sizeof (buf), "%lld", var_id);
+
+  error e = error_create ();
+
+  if (nsh_auto_begin_txn (ns, &e) < 0) {
+    PyErr_Format (PyExc_RuntimeError, "%.*s", e.cmlen, e.cause_msg);
+    return NULL;
+  }
+
+  struct variable dest;
+  if (pybr_ns_var_get (ns->root->p, ns->atx, buf, (u32)strlen (buf), &dest, &e) < 0) {
+    nsh_auto_rollback (ns);
+    PyErr_Format (PyExc_RuntimeError, "%.*s", e.cmlen, e.cause_msg);
+    return NULL;
+  }
+
+  u32 tsize = type_byte_size (dest.dtype);
+
+  PyObject *ret = PyBytes_FromStringAndSize (NULL, (Py_ssize_t)tsize);
+  if (!ret) {
+    nsh_auto_rollback (ns);
+    return NULL;
+  }
+
+  struct user_stride ustr = {
+      .start   = key,
+      .step    = 1,
+      .stop    = key + 1,
+      .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT,
+  };
+
+  u64 total_elems = (tsize > 0) ? (dest.nbytes / tsize) : 0;
+
+  struct stride stride;
+  if (stride_resolve (&stride, ustr, total_elems, &e) < 0) {
+    nsh_auto_rollback (ns);
+    Py_DECREF (ret);
+    PyErr_Format (PyExc_RuntimeError, "%.*s", e.cmlen, e.cause_msg);
+    return NULL;
+  }
+
+  struct stream          output;
+  struct stream_obuf_ctx ctx;
+  stream_obuf_init (&output, &ctx, PyBytes_AS_STRING (ret), tsize);
+
+  struct ns_read_params rparams = {
+      .p      = ns->root->p,
+      .dest   = &output,
+      .tx     = ns->atx,
+      .root   = dest.rpt_root,
+      .size   = tsize,
+      .bofst  = tsize * stride.start,
+      .stride = (sb_size)stride.stride,
+      .nelem  = stride.nelems,
+  };
+
+  sb_size nread = ns_read (rparams, &e);
+
+  if (nread < 0) {
+    nsh_auto_rollback (ns);
+    Py_DECREF (ret);
+    PyErr_Format (PyExc_RuntimeError, "%.*s", e.cmlen, e.cause_msg);
+    return NULL;
+  }
+
+  if (nsh_auto_commit (ns, &e) < 0) {
+    Py_DECREF (ret);
+    PyErr_Format (PyExc_RuntimeError, "%.*s", e.cmlen, e.cause_msg);
+    return NULL;
+  }
+
+  return ret;
 }

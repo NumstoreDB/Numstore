@@ -12,19 +12,23 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_pynumstore.h"
-#include "pynumstore.h"
+#include "c_specx.h"
+#include "nscore/var.h"
 
-#include <Python.h>
-#include <string.h>
-
-PyObject *ns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
-  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!ns) { return NULL; }
-
-  nsdb_rollback (ns);
-  nsdb_close (ns);
-  PyCapsule_SetPointer (arg, NULL);
-
-  Py_RETURN_NONE;
+err_t pybr_ns_var_get (
+    struct pager *p,
+    struct txn   *tx,
+    const char   *vname_str,
+    u32           vname_len,
+    struct variable *dest,
+    error           *e) {
+  struct ns_var_get_params gparams = {
+      .p     = p,
+      .tx    = tx,
+      .vname = {.data = vname_str, .len = vname_len},
+      .alloc = NULL,
+  };
+  err_t rc   = ns_var_get (&gparams, e);
+  *dest = gparams.dest;
+  return rc;
 }

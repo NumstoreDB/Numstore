@@ -13,13 +13,10 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
 
-#include "c_specx.h"
-#include "nscore/types.h"
-
 #include <Python.h>
+#include <stdio.h>
 #include <string.h>
 
 PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
@@ -30,19 +27,23 @@ PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
   Py_buffer data;
   if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) {
+  nsdb_t *handle = _resolve_handle (db, txn_or_none);
+  if (!handle) {
     PyBuffer_Release (&data);
     return NULL;
   }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) {
-    PyBuffer_Release (&data);
-    return NULL;
-  }
+  char buf[32];
+  snprintf (buf, sizeof (buf), "%lld", var_id);
 
-  /* TODO: smfile_write(smf, txn, var_id, key, data.buf, data.len); */
+  sb_size rc = nsdb_write (
+      handle, buf, data.buf, (sb_size)key, 1, (sb_size)key + 1, START_PRESENT | STOP_PRESENT | STEP_PRESENT);
   PyBuffer_Release (&data);
+
+  if (rc < 0) {
+    PyErr_SetString (PyExc_RuntimeError, nsdb_strerror (handle));
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }

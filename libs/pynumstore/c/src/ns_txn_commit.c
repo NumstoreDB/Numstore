@@ -13,17 +13,22 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
 #include "pynumstore.h"
-
-#include "c_specx.h"
-#include "nscore/types.h"
 
 #include <Python.h>
 #include <string.h>
 
 PyObject *ns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
-  /* TODO: smfile_commit(txn); */
+  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
+  if (!ns) { return NULL; }
+
+  int rc = nsdb_commit (ns);
+  nsdb_close (ns);
+  PyCapsule_SetPointer (arg, NULL);
+  if (rc < 0) {
+    PyErr_SetString (PyExc_RuntimeError, "nsdb_commit failed");
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }

@@ -51,4 +51,4 @@ PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args);
 PyObject *ns_var_insert (PyObject *Py_UNUSED (m), PyObject *args);
 PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args);
 PyObject *ns_var_len (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *ns_var_delete (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pynumstore_var_delete (PyObject *Py_UNUSED (m), PyObject *args);

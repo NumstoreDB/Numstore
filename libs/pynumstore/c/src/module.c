@@ -86,7 +86,7 @@ static PyMethodDef numstore_methods[] = {
     },
     {
         "var_delete",
-        ns_var_delete,
+        pynumstore_var_delete,
         METH_VARARGS,
         "var_delete(db, txn_or_none, var_id, key) -> None",
     },

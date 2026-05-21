@@ -13,16 +13,21 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "c_specx.h"
-#include "nscore/compiler.h"
-#include "nscore/types.h"
 #include "pynumstore.h"
 
+#include <Python.h>
 #include <string.h>
 
 PyObject *ns_db_close (PyObject *Py_UNUSED (m), PyObject *arg) {
-  if (!_unwrap_db (arg)) { return NULL; }
+  struct ns_db_wrap *w = (struct ns_db_wrap *)PyCapsule_GetPointer (arg, DB_CAPSULE);
+  if (!w || !w->ns) { return NULL; }
 
-  /* TODO: smfile_close(smf); */
+  int rc = nsdb_close (w->ns);
+  w->ns  = NULL;
+  if (rc < 0) {
+    PyErr_SetString (PyExc_RuntimeError, "nsdb_close failed");
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }
