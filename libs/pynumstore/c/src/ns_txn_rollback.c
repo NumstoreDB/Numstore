@@ -18,7 +18,7 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *ns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
   struct ns_txn_wrap *w = (struct ns_txn_wrap *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
   if (!w || !w->ns) { return NULL; }
 

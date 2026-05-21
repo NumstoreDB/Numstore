@@ -32,7 +32,7 @@ err_t pybr_ns_var_get (
     struct variable *dest,
     error           *e);
 
-PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
+PyObject *pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db;
   PyObject *txn_or_none;
 

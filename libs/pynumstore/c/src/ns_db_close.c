@@ -18,7 +18,7 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *ns_db_close (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *pyns_db_close (PyObject *Py_UNUSED (m), PyObject *arg) {
   struct ns_db_wrap *w = (struct ns_db_wrap *)PyCapsule_GetPointer (arg, DB_CAPSULE);
   if (!w || !w->ns) { return NULL; }
 

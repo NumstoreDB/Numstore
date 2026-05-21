@@ -4,7 +4,7 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *ns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
   nsdb_t *db = _unwrap_db (arg);
   if (!db) { return NULL; }
 

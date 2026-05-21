@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
+PyObject *pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
   PyObject *db;
   PyObject *txn_or_none;
 

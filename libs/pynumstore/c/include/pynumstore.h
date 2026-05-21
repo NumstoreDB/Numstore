@@ -35,20 +35,20 @@
 //    Multiple Python Object
 
 // Utils
-PyObject *ns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg);
 
 // Lifecycle
-PyObject *ns_db_open (PyObject *Py_UNUSED (m), PyObject *arg);
-PyObject *ns_db_close (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_db_close (PyObject *Py_UNUSED (m), PyObject *arg);
 
 // Transactions
-PyObject *ns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg);
-PyObject *ns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg);
-PyObject *ns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg);
 
 // Main Methods
-PyObject *ns_var_read (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *ns_var_insert (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *ns_var_write (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *ns_var_len (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *pynumstore_var_delete (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_len (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args);

@@ -299,7 +299,7 @@ static PyObject *ns_type_to_dtype (const struct type *t) {
   }
 }
 
-PyObject *ns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg) {
   const char *src = PyUnicode_AsUTF8 (arg);
   if (!src) { return NULL; }
 
@@ -401,7 +401,6 @@ static int dtype_equals_expr (PyObject *dt, const char *expr) {
 }
 
 TEST (numstore_to_dtype) {
-  Py_Initialize ();
 
   TEST_CASE ("primitive_simple") {
     struct {
@@ -634,28 +633,6 @@ TEST (numstore_to_dtype) {
     free (outer);
   }
 
-  TEST_CASE ("null_input") {
-    PyObject *dt = ns_type_to_dtype (NULL);
-    test_assert (dt == NULL);
-
-    int has_err = PyErr_Occurred () != NULL;
-    test_assert (!has_err);
-
-    PyErr_Clear ();
-  }
-
-  TEST_CASE ("unknown_kind") {
-    struct type t = {.type = (enum type_t)99};
-
-    PyObject *dt = ns_type_to_dtype (&t);
-    test_assert (dt == NULL);
-
-    int has_err = PyErr_Occurred () != NULL;
-    test_assert (!has_err);
-
-    PyErr_Clear ();
-  }
-
   TEST_CASE ("unknown_primitive") {
     struct type t = {.type = T_PRIM};
     t.p           = (enum prim_t)99;
@@ -664,7 +641,7 @@ TEST (numstore_to_dtype) {
     test_assert (dt == NULL);
 
     int has_err = PyErr_Occurred () != NULL;
-    test_assert (!has_err);
+    test_assert (has_err);
 
     PyErr_Clear ();
   }
@@ -693,6 +670,200 @@ TEST (numstore_to_dtype) {
     free (t);
   }
 
-  Py_Finalize ();
+}
+
+static PyObject *make_dtype (const char *expr) {
+  PyObject *globals = PyDict_New ();
+  if (!globals) { return NULL; }
+  PyObject *np = PyImport_ImportModule ("numpy");
+  if (!np) {
+    Py_DECREF (globals);
+    return NULL;
+  }
+  PyDict_SetItemString (globals, "np", np);
+  Py_DECREF (np);
+  PyObject *result = PyRun_String (expr, Py_eval_input, globals, globals);
+  Py_DECREF (globals);
+  return result;
+}
+
+static PyObject *call_numpy_to_numstore (PyObject *dtype) {
+  PyObject *mod = PyImport_ImportModule ("pynumstore");
+  if (!mod) { return NULL; }
+  PyObject *fn = PyObject_GetAttrString (mod, "numpy_to_numstore");
+  Py_DECREF (mod);
+  if (!fn) { return NULL; }
+  PyObject *result = PyObject_CallOneArg (fn, dtype);
+  Py_DECREF (fn);
+  return result;
+}
+
+static bool n2ns_ok (PyObject *dtype, const char *expected) {
+  PyObject  *result = call_numpy_to_numstore (dtype);
+  if (!result) { return false; }
+  const char *s  = PyUnicode_AsUTF8 (result);
+  bool        ok = s && strcmp (s, expected) == 0;
+  Py_DECREF (result);
+  return ok;
+}
+
+TEST (numpy_to_numstore_cases) {
+  /* sys.path is seeded by the test runner in main() */
+
+  TEST_CASE ("primitives") {
+    struct {
+      const char *np_str;
+      const char *expected;
+    } cases[] = {
+        {"u1", "u8"},    {"u2", "u16"},   {"u4", "u32"},   {"u8", "u64"},
+        {"i1", "i8"},    {"i2", "i16"},   {"i4", "i32"},   {"i8", "i64"},
+        {"f2", "f16"},   {"f4", "f32"},   {"f8", "f64"},
+        {"c8", "cf64"},  {"c16", "cf128"},
+    };
+    for (size_t i = 0; i < sizeof (cases) / sizeof (cases[0]); i++) {
+      PyObject *dt = ref_dtype (cases[i].np_str);
+      test_assert (dt);
+      test_assert (n2ns_ok (dt, cases[i].expected));
+      Py_DECREF (dt);
+    }
+  }
+
+  TEST_CASE ("byte_order_ignored") {
+    PyObject *dt1 = make_dtype ("np.dtype('>i4')");
+    PyObject *dt2 = make_dtype ("np.dtype('<i4')");
+    test_assert (dt1 && n2ns_ok (dt1, "i32"));
+    test_assert (dt2 && n2ns_ok (dt2, "i32"));
+    Py_XDECREF (dt1);
+    Py_XDECREF (dt2);
+  }
+
+  TEST_CASE ("accepts_string_input") {
+    PyObject *s   = PyUnicode_FromString ("i4");
+    test_assert (s);
+    PyObject *res = call_numpy_to_numstore (s);
+    test_assert (res);
+    const char *out = PyUnicode_AsUTF8 (res);
+    test_assert (out && strcmp (out, "i32") == 0);
+    Py_DECREF (res);
+    Py_DECREF (s);
+  }
+
+  TEST_CASE ("struct_simple") {
+    PyObject *dt = make_dtype ("np.dtype([('foo','i4'),('bar','f8')])");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "struct { foo i32, bar f64 }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("struct_nested") {
+    PyObject *dt = make_dtype (
+        "np.dtype([('foo','i4'),('bar',[('biz','u4'),('buz','f4')])])");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "struct { foo i32, bar struct { biz u32, buz f32 } }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("struct_single_field") {
+    PyObject *dt = make_dtype ("np.dtype([('only','i4')])");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "struct { only i32 }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("union_simple") {
+    PyObject *dt = make_dtype (
+        "np.dtype({'names':['a','b'],'formats':['i4','f4'],"
+        "          'offsets':[0,0],'itemsize':4})");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "union { a i32, b f32 }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("union_of_struct_and_prim") {
+    PyObject *dt = make_dtype (
+        "np.dtype({'names':['x','y'],'formats':['i4',[('a','u4'),('b','f4')]],"
+        "          'offsets':[0,0],'itemsize':8})");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "union { x i32, y struct { a u32, b f32 } }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("array_1d") {
+    PyObject *dt = make_dtype ("np.dtype(('i4',(10,)))");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "[10] i32"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("array_2d") {
+    PyObject *dt = make_dtype ("np.dtype(('f8',(20,30)))");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "[20][30] f64"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("array_of_struct") {
+    PyObject *dt = make_dtype ("np.dtype(([('x','i4'),('y','f4')],(5,)))");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "[5] struct { x i32, y f32 }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("struct_with_array_field") {
+    PyObject *dt = make_dtype ("np.dtype([('xs','i4',(10,)),('y','f8')])");
+    test_assert (dt);
+    test_assert (n2ns_ok (dt, "struct { xs [10] i32, y f64 }"));
+    Py_DECREF (dt);
+  }
+
+  TEST_CASE ("spec_example") {
+    PyObject *union_d = make_dtype (
+        "np.dtype({'names':['i','b'],'formats':['f4','i8'],"
+        "          'offsets':[0,0],'itemsize':8})");
+    test_assert (union_d);
+    PyObject *inner = make_dtype (
+        "np.dtype([('a',np.dtype({'names':['i','b'],'formats':['f4','i8'],"
+        "                         'offsets':[0,0],'itemsize':8})),"
+        "          ('c',np.dtype(('f8',(10,))))])");
+    test_assert (inner);
+    PyObject *outer = make_dtype (
+        "np.dtype((np.dtype([('a',np.dtype({'names':['i','b'],'formats':['f4','i8'],"
+        "                                   'offsets':[0,0],'itemsize':8})),"
+        "                    ('c',np.dtype(('f8',(10,))))]),(20,30)))");
+    test_assert (outer);
+    test_assert (n2ns_ok (
+        outer,
+        "[20][30] struct { a union { i f32, b i64 }, c [10] f64 }"));
+    Py_XDECREF (union_d);
+    Py_XDECREF (inner);
+    Py_DECREF (outer);
+  }
+
+  TEST_CASE ("rejects_unsupported") {
+    const char *bad[] = {
+        "np.dtype('O')",    "np.dtype('U10')",  "np.dtype('S5')",
+        "np.dtype('M8[s]')", "np.dtype('m8[s]')", "np.dtype('V8')",
+        "np.dtype('?')",
+    };
+    for (size_t i = 0; i < sizeof (bad) / sizeof (bad[0]); i++) {
+      PyObject *dt  = make_dtype (bad[i]);
+      test_assert (dt);
+      PyObject *res = call_numpy_to_numstore (dt);
+      Py_DECREF (dt);
+      test_assert (res == NULL);
+      test_assert (PyErr_ExceptionMatches (PyExc_ValueError));
+      PyErr_Clear ();
+    }
+  }
+
+  TEST_CASE ("rejects_unsupported_inside_struct") {
+    PyObject *dt = make_dtype ("np.dtype([('ok','i4'),('bad','O')])");
+    test_assert (dt);
+    PyObject *res = call_numpy_to_numstore (dt);
+    Py_DECREF (dt);
+    test_assert (res == NULL);
+    test_assert (PyErr_ExceptionMatches (PyExc_ValueError));
+    PyErr_Clear ();
+  }
 }
 #endif

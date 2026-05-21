@@ -12,23 +12,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_pynumstore.h"
-#include "pynumstore.h"
+// This translation unit owns the numpy API table for the test binary.
+// All other TUs use NO_IMPORT_ARRAY.
+#define PY_SSIZE_T_CLEAN
+#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
+#define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 
 #include <Python.h>
-#include <string.h>
+#include <numpy/arrayobject.h>
 
-PyObject *pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
-  struct ns_txn_wrap *w = (struct ns_txn_wrap *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!w || !w->ns) { return NULL; }
+int pynumstore_import_numpy (void);
 
-  int    rc = nsdb_commit (w->ns);
-  nsdb_close (w->ns);
-  w->ns     = NULL;
-  if (rc < 0) {
-    PyErr_SetString (PyExc_RuntimeError, "nsdb_commit failed");
-    return NULL;
-  }
-
-  Py_RETURN_NONE;
+int pynumstore_import_numpy (void) {
+  return _import_array ();
 }

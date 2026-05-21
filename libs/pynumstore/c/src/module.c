@@ -20,7 +20,7 @@ static PyMethodDef numstore_methods[] = {
     // Utils
     {
         "ns_compile_type",
-        ns_compile_type,
+        pyns_compile_type,
         METH_O,
         "ns_compile_type(str) -> np.dtype",
     },
@@ -28,13 +28,13 @@ static PyMethodDef numstore_methods[] = {
     // Lifecycle
     {
         "db_open",
-        ns_db_open,
+        pyns_db_open,
         METH_O,
         "db_open(path) -> capsule",
     },
     {
         "db_close",
-        ns_db_close,
+        pyns_db_close,
         METH_O,
         "db_close(db) -> None",
     },
@@ -42,19 +42,19 @@ static PyMethodDef numstore_methods[] = {
     // Transactions
     {
         "db_begin",
-        ns_db_begin,
+        pyns_db_begin,
         METH_O,
         "db_begin(db) -> capsule",
     },
     {
         "txn_commit",
-        ns_txn_commit,
+        pyns_txn_commit,
         METH_O,
         "txn_commit(txn) -> None",
     },
     {
         "txn_rollback",
-        ns_txn_rollback,
+        pyns_txn_rollback,
         METH_O,
         "txn_rollback(txn) -> None",
     },
@@ -62,31 +62,31 @@ static PyMethodDef numstore_methods[] = {
     // Main Methods
     {
         "var_read",
-        ns_var_read,
+        pyns_var_read,
         METH_VARARGS,
         "var_read(db, txn_or_none, var_id, key) -> bytes",
     },
     {
         "var_insert",
-        ns_var_insert,
+        pyns_var_insert,
         METH_VARARGS,
         "var_insert(db, txn_or_none, var_id, key, data) -> None",
     },
     {
         "var_write",
-        ns_var_write,
+        pyns_var_write,
         METH_VARARGS,
         "var_write(db, txn_or_none, var_id, key, data) -> None",
     },
     {
         "var_len",
-        ns_var_len,
+        pyns_var_len,
         METH_VARARGS,
         "var_len(db, txn_or_none, var_id) -> int",
     },
     {
         "var_delete",
-        pynumstore_var_delete,
+        pyns_var_delete,
         METH_VARARGS,
         "var_delete(db, txn_or_none, var_id, key) -> None",
     },

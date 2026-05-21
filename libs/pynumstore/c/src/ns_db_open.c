@@ -18,7 +18,7 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *ns_db_open (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg) {
   if (!PyUnicode_Check (arg)) {
     PyErr_SetString (PyExc_TypeError, "path must be str");
     return NULL;
