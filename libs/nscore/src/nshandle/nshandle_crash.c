@@ -13,9 +13,9 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "nscore/compile_config.h"
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
-#include "smfile.h"
 
 static err_t __nsh_crash (struct nshandle *n, error *e) {
   struct nshandle_root *root = n->root;

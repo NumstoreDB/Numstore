@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "smfile.h"
+#include "nscore/compile_config.h"
 
 struct wal_page_diff {
   p_size bit_start;

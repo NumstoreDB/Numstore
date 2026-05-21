@@ -13,12 +13,12 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "nscore/compile_config.h"
 #include "nscore/nshandle.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
 static struct nshandle *_nsh_open (const char *path, error *e) {
   struct nshandle_root *ret = i_malloc (1, sizeof *ret, e);
