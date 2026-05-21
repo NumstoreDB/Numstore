@@ -13,13 +13,13 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "nscore/compile_config.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 #include "nscore/pages/var_hash_page.h"
 #include "nscore/pages/var_page.h"
 #include "nscore/var.h"
-#include "smfile.h"
 
 /*
  * Delete a variable and reclaim all its storage.

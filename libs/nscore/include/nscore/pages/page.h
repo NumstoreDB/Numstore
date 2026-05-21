@@ -16,7 +16,6 @@
 
 #include "c_specx.h"
 #include "nscore/compile_config.h"
-#include "smfile.h"
 
 #include <string.h>
 

@@ -29,7 +29,7 @@
  */
 
 #include "c_specx.h"
-#include "smfile.h"
+#include "nscore/compile_config.h"
 
 struct file_pager;
 

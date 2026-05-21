@@ -15,7 +15,7 @@
 #pragma once
 
 #include "c_specx.h"
-#include "smfile.h"
+#include "nscore/compile_config.h"
 
 struct lt_lock {
   enum lt_lock_type {

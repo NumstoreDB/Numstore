@@ -15,8 +15,8 @@
 #pragma once
 
 #include "c_specx.h"
+#include "nscore/compile_config.h"
 #include "nscore/lt_lock.h"
-#include "smfile.h"
 
 struct txn_data {
   // In the ARIES paper:

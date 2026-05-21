@@ -1,7 +1,7 @@
 import os
 
-ROOT = "libs"  
-OLD, NEW = "->error_trace (e)", "->e.cause_code "
+ROOT = "libs/nscore"  
+OLD, NEW = "\"compile_config.h\"", "\"nscore/compile_config.h\""
 
 for dirpath, _, files in os.walk(ROOT):
     for name in files:

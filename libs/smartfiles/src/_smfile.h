@@ -17,6 +17,7 @@
 #include "c_specx.h"
 #include "nscore/pager.h"
 #include "nscore/variables.h"
+#include "smfile.h"
 
 #define DEFAULT_VARIABLE "."
 
