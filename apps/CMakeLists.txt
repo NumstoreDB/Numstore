@@ -1,6 +1,5 @@
 if(NOT ENABLE_NTEST)
-  #add_subdirectory(testing/swarm_test)
-  add_subdirectory(testing/unit_test)
+  add_subdirectory(testing)
 endif()
 
 #################### Simple Tools

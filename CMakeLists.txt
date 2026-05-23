@@ -6,6 +6,9 @@ project(numstore
     DESCRIPTION "Custom database engine for arrays"
     LANGUAGES   C
 )
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -47,6 +50,7 @@ add_subdirectory(libs/c_specx)
 add_subdirectory(libs/nscore)
 add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
+add_subdirectory(libs/nstesting)
 #add_subdirectory(libs/pynumstore)
 add_subdirectory(apps)
 add_subdirectory(samples)

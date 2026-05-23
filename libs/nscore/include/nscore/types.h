@@ -82,13 +82,21 @@ struct type
   };
 };
 
-err_t        type_validate (const struct type *t, error *e);
-i32          type_snprintf (char *str, u32 size, struct type *t);
-char        *type_tostr (struct type *t);
-u32          type_byte_size (const struct type *t);
+err_t type_validate (const struct type *t, error *e);
+i32   type_snprintf (char *str, u32 size, struct type *t);
+char *type_tostr (struct type *t);
+u32   type_byte_size (const struct type *t);
+
+// String generation
+u32  type_get_string_size (const struct type *t);
+void type_generate_string (char *dest, const struct type *t);
+
+// Serialization
 u32          type_get_serial_size (const struct type *t);
 void         type_serialize (struct serializer *dest, const struct type *src);
 struct type *type_deserialize (struct deserializer *src, struct chunk_alloc *alloc, error *e);
+
+// Random
 struct type *type_random (struct chunk_alloc *alloc, u32 depth, error *e);
 bool         type_equal (const struct type *left, const struct type *right);
 err_t        i_log_type (struct type *t, error *e);

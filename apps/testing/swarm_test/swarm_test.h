@@ -36,6 +36,8 @@ enum action_type
   AT_LEN,
 };
 
+const char *action_type_tostr (enum action_type type);
+
 // Opaque swarm test
 struct swarm_test;
 

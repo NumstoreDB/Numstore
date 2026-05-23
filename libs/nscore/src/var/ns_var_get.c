@@ -37,9 +37,28 @@ ns_var_get (struct ns_var_get_params *params, error *e)
 
   if (ns_find_var_page (&fparams, e)) { goto theend; }
 
+  // Read the variable here
+  struct ns_read_var_page_params rparams = {
+      .p  = params->p,
+      .tx = params->tx,
+
+      .vp    = &cur,
+      .alloc = params->alloc,
+
+      .matches = true,
+      .check   = NULL,
+
+      .dest = &params->dest,
+
+      .save_vname = false,
+      .save_type  = true,
+  };
+  if (ns_read_var_page (&rparams, e)) { goto theend; }
+
   if (pgr_release (params->p, &cur, PG_VAR_PAGE, e)) { goto theend; }
 
 theend:
+  pgr_cancel_if_exists (params->p, &cur);
 
   return error_trace (e);
 }

@@ -139,6 +139,233 @@ type_byte_size (const struct type *t)
 }
 
 u32
+type_get_string_size (const struct type *t)
+{
+  DBG_ASSERT (valid_type, t);
+
+  switch (t->type)
+  {
+    case T_PRIM:
+    {
+      // Room for largest primitive name (e.g., "cf128") + 1 null terminator
+      return sizeof ("cf128");
+    }
+
+    case T_STRUCT:
+    case T_UNION:
+    {
+      // "struct { }" or "union { }"
+      u32 base_len = (t->type == T_STRUCT) ? sizeof ("struct { }") : sizeof ("union { }");
+      u32 sublen   = 0;
+
+      // Accessing st or un identically since they share identical structural layouts
+      u16 len = t->st.len;
+      for (u16 i = 0; i < len; ++i)
+      {
+        // Size of the key text + " " + string length of subtype
+        sublen += t->st.keys[i].len + 1 + type_get_string_size (t->st.types[i]);
+
+        if (i < len - 1) { sublen += sizeof (", ") - 1; }
+      }
+      return base_len + sublen;
+    }
+
+    case T_SARRAY:
+    {
+      u32 sublen = 0;
+      // Calculate brackets layout string overhead "[10][200]..."
+      for (u32 i = 0; i < t->sa.rank; ++i)
+      {
+        // Accounts for digits up to 4 billion + brackets '[' and ']'
+        sublen += sizeof ("[4294967295]") - 1;
+      }
+      // Add a single space separation " TYPE"
+      return sublen + 1 + type_get_string_size (t->sa.t);
+    }
+
+    default:
+    {
+      UNREACHABLE ();
+      return 0;
+    }
+  }
+}
+
+static char *
+type_generate_string_rec (char *dest, const struct type *t)
+{
+  switch (t->type)
+  {
+    case T_PRIM:
+    {
+      int written = sprintf (dest, "%s", prim_to_str (t->p));
+      return dest + written;
+    }
+
+    case T_STRUCT:
+    case T_UNION:
+    {
+      char *p = dest;
+      p += sprintf (p, "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
+
+      u16 len = t->st.len;
+      for (u16 i = 0; i < len; ++i)
+      {
+        // Print the identifier field name
+        p += sprintf (p, "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
+        // Recursively build out nested field subtype definitions
+        p = type_generate_string_rec (p, t->st.types[i]);
+
+        if (i < len - 1) { p += sprintf (p, ", "); }
+      }
+      p += sprintf (p, " }");
+      return p;
+    }
+
+    case T_SARRAY:
+    {
+      char *p = dest;
+      // Format dimensions array prefixes first: [10][200]
+      for (u16 i = 0; i < t->sa.rank; ++i) { p += sprintf (p, "[%u]", t->sa.dims[i]); }
+      p += sprintf (p, " ");
+      // Recurse to append underlying element type definition at the tail
+      p = type_generate_string_rec (p, t->sa.t);
+      return p;
+    }
+
+    default:
+    {
+      UNREACHABLE ();
+      return dest;
+    }
+  }
+}
+
+// Public interface function entry point
+void
+type_generate_string (char *dest, const struct type *t)
+{
+  DBG_ASSERT (valid_type, t);
+  if (dest) { type_generate_string_rec (dest, t); }
+}
+
+#ifndef NTEST
+TEST (type_generate_string)
+{
+  TEST_CASE ("primitive")
+  {
+    struct type t            = {.type = T_PRIM, .p = CF128};
+    const char *expected     = "cf128";
+    u32         expected_len = (u32)strlen (expected);
+
+    char buf[64];
+    type_generate_string (buf, &t);
+
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+  }
+
+  TEST_CASE ("sarray")
+  {
+    struct type element      = {.type = T_PRIM, .p = I32};
+    u32         dims[3]      = {5, 20, 100};
+    struct type t            = {.type = T_SARRAY, .sa = {.rank = 3, .dims = dims, .t = &element}};
+    const char *expected     = "[5][20][100] i32";
+    u32         expected_len = (u32)strlen (expected);
+
+    char buf[64];
+    type_generate_string (buf, &t);
+
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+  }
+
+  TEST_CASE ("struct")
+  {
+    struct string keys[2]  = {{.data = "x", .len = 1}, {.data = "y", .len = 1}};
+    struct type   f1       = {.type = T_PRIM, .p = F32};
+    struct type   f2       = {.type = T_PRIM, .p = F32};
+    struct type  *types[2] = {&f1, &f2};
+
+    struct type t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
+    const char *expected     = "struct { x f32, y f32 }";
+    u32         expected_len = (u32)strlen (expected);
+
+    char buf[64];
+    type_generate_string (buf, &t);
+
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+  }
+
+  TEST_CASE ("union")
+  {
+    struct string keys[2]  = {{.data = "as_int", .len = 6}, {.data = "as_ptr", .len = 6}};
+    struct type   f1       = {.type = T_PRIM, .p = I64};
+    struct type   f2       = {.type = T_PRIM, .p = U64};
+    struct type  *types[2] = {&f1, &f2};
+
+    struct type t = {
+        .type = T_UNION,
+        .un   = {.len = 2, .keys = keys, .types = types} // Using .un overlay explicitly
+    };
+    const char *expected     = "union { as_int i64, as_ptr u64 }";
+    u32         expected_len = (u32)strlen (expected);
+
+    char buf[128];
+    type_generate_string (buf, &t);
+
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+  }
+
+  TEST_CASE ("complex_nested")
+  {
+    // Sub-component A: union { raw u8, state i32 }
+    struct string un_keys[2]  = {{.data = "raw", .len = 3}, {.data = "state", .len = 5}};
+    struct type   prim_u8     = {.type = T_PRIM, .p = U8};
+    struct type   prim_i32    = {.type = T_PRIM, .p = I32};
+    struct type  *un_types[2] = {&prim_u8, &prim_i32};
+    struct type   inner_union = {
+        .type = T_UNION,
+        .un   = {.len = 2, .keys = un_keys, .types = un_types}
+    };
+
+    // Sub-component B: [5] cf32
+    struct type prim_cf32         = {.type = T_PRIM, .p = CF32};
+    u32         inner_arr_dims[1] = {5};
+    struct type inner_array       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = inner_arr_dims, .t = &prim_cf32}
+    };
+
+    // Parent Struct: struct { payload <union>, tags <array> }
+    struct string st_keys[2]    = {{.data = "payload", .len = 7}, {.data = "tags", .len = 4}};
+    struct type  *st_types[2]   = {&inner_union, &inner_array};
+    struct type   parent_struct = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = st_keys, .types = st_types}
+    };
+
+    // Root Array: [2] <struct>
+    u32         root_dims[1] = {2};
+    struct type root_type    = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
+    };
+
+    const char *expected     = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
+    u32         expected_len = (u32)strlen (expected);
+
+    // Verify type_get_string_size returns enough space for safe serialization
+    u32 calculated_size = type_get_string_size (&root_type);
+    test_assert_int_equal (calculated_size >= expected_len + 1, 1);
+
+    char buf[256];
+    type_generate_string (buf, &root_type);
+
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+  }
+}
+#endif
+
+u32
 type_get_serial_size (const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
@@ -267,7 +494,7 @@ type_random (struct chunk_alloc *alloc, u32 depth, error *e)
   static const enum type_t weighted[] =
       {T_PRIM, T_PRIM, T_PRIM, T_PRIM, T_STRUCT, T_UNION, T_SARRAY};
 
-  dest->type = weighted[randu32r (0, arrlen (weighted))];
+  dest->type = weighted[randu32r (0, arrlen (weighted) - 1)];
 
   switch (dest->type)
   {

@@ -26,12 +26,29 @@ struct variable
   b_size        nbytes;
 };
 
-void variable_free (struct variable *v);
-
-bool variable_equal (const struct variable *left, const struct variable *right);
-
+void  variable_free (struct variable *v);
+bool  variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
-
+void  var_random_name (char *buffer, int length);
+err_t rand_varname (
+    struct string      *dest,
+    struct chunk_alloc *alloc,
+    const u32           minlen,
+    const u32           maxlen,
+    error              *e
+);
+err_t rand_varname_same_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct chunk_alloc *alloc,
+    error              *e
+);
+err_t rand_varname_different_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct chunk_alloc *alloc,
+    error              *e
+);
 struct variable *variable_malloc_copy (struct variable *v, struct malloc_plan *plan);
 
 HEADER_FUNC b_size

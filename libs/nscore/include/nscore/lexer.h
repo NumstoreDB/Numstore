@@ -23,7 +23,7 @@ struct lexer
   u32         start;
   u32         current;
 
-  struct token tokens[256];
+  struct token tokens[4096];
   u32          ntokens;
 };
 

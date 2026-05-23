@@ -16,6 +16,8 @@
 
 #include "_numstore.h"
 #include "fake_database.h"
+#include "nscore/types.h"
+#include "nscore/variables.h"
 #include "numstore.h"
 
 #include <assert.h>
@@ -46,6 +48,28 @@ struct swarm_test
 
 ///////////////////////////////////////////////////////////
 /// Utils
+
+const char *
+action_type_tostr (enum action_type type)
+{
+  switch (type)
+  {
+    case_ENUM_RETURN_STRING (BEGIN_TXN);
+    case_ENUM_RETURN_STRING (COMMIT_TXN);
+    case_ENUM_RETURN_STRING (ROLLBACK_TXN);
+    case_ENUM_RETURN_STRING (CRASH_AND_REOPEN);
+    case_ENUM_RETURN_STRING (CLOSE_AND_REOPEN);
+    case_ENUM_RETURN_STRING (INSERT);
+    case_ENUM_RETURN_STRING (REMOVE);
+    case_ENUM_RETURN_STRING (READ);
+    case_ENUM_RETURN_STRING (WRITE);
+    case_ENUM_RETURN_STRING (CREATE);
+    case_ENUM_RETURN_STRING (SWITCH);
+    case_ENUM_RETURN_STRING (DELETE);
+    case AT_LEN: UNREACHABLE ();
+    default: UNREACHABLE ();
+  }
+}
 
 static void
 swmt_assert (int result)
@@ -98,20 +122,20 @@ swmt_random_slice (int total, int *ofst, int *stride, int *len)
 {
   assert (total > 0);
 
-  *ofst         = rand () % total;
+  *ofst         = randu32r (0, total);
   int remaining = total - *ofst;
-  *stride       = (rand () % remaining) + 1;
+  *stride       = randu32r (1, remaining);
 
   int max_len = (remaining + *stride - 1) / *stride;
-  *len        = (rand () % max_len) + 1;
+  *len        = randu32r (1, max_len);
 }
 
 static struct stride
 to_block_stride (int ofst, int stride, int len, u32 es)
 {
   return (struct stride){
-      .start  = (u64)ofst * (u64)es,
-      .stride = (u64)stride * (u64)es,
+      .start  = (u64)ofst,
+      .stride = (u64)stride,
       .nelems = (u64)len,
   };
 }
@@ -124,15 +148,15 @@ to_block_stride (int ofst, int stride, int len, u32 es)
  * integer in [1, 2^N) and interpreting each bit as inclusion.
  */
 static void
-swmt_set_random_enabled (struct swarm_test *test)
+swmt_set_random_enabled (struct swarm_test *meta)
 {
   int mask = rand () % ((1 << AT_LEN) - 1) + 1;
-  for (int i = 0; i < AT_LEN; ++i) { test->enabled[i] = (mask >> i) & 1; }
+  for (int i = 0; i < AT_LEN; ++i) { meta->enabled[i] = (mask >> i) & 1; }
 }
 
 static void
-swmt_full_validation (struct swarm_test *test)
-{ nsdb_validate (test->db); }
+swmt_full_validation (struct swarm_test *meta)
+{ nsdb_validate (meta->db); }
 
 /**
  * Recompute which actions can actually fire right now.
@@ -143,54 +167,75 @@ swmt_full_validation (struct swarm_test *test)
  * them transactional semantics for free.
  */
 static void
-swmt_set_allowed (struct swarm_test *test)
+swmt_set_allowed (struct swarm_test *meta)
 {
-  assert (test);
-  assert (test->db);
-  assert (test->dbname);
+  assert (meta);
+  assert (meta->db);
+  assert (meta->dbname);
 
-  memset (test->allowed, 0, sizeof (test->allowed));
+  memset (meta->allowed, 0, sizeof (meta->allowed));
 
-  struct fake_database *db    = active_db (test);
+  struct fake_database *db    = active_db (meta);
   int                   nvars = fake_db_var_count (db);
 
   /* CRASH is always permissible if swarm-enabled */
-  test->allowed[CRASH_AND_REOPEN] = test->enabled[CRASH_AND_REOPEN];
+  meta->allowed[CRASH_AND_REOPEN] = meta->enabled[CRASH_AND_REOPEN];
 
   /* CREATE: only constrained by capacity */
-  if (nvars < FAKE_DB_MAX_VARS) { test->allowed[CREATE] = test->enabled[CREATE]; }
+  if (nvars < FAKE_DB_MAX_VARS) { meta->allowed[CREATE] = meta->enabled[CREATE]; }
 
   /* Txn-state-dependent ops */
-  if (!test->in_txn)
+  if (!meta->in_txn)
   {
-    test->allowed[BEGIN_TXN]        = test->enabled[BEGIN_TXN];
-    test->allowed[CLOSE_AND_REOPEN] = test->enabled[CLOSE_AND_REOPEN];
+    meta->allowed[BEGIN_TXN]        = meta->enabled[BEGIN_TXN];
+    meta->allowed[CLOSE_AND_REOPEN] = meta->enabled[CLOSE_AND_REOPEN];
   }
   else
   {
-    test->allowed[COMMIT_TXN]   = test->enabled[COMMIT_TXN];
-    test->allowed[ROLLBACK_TXN] = test->enabled[ROLLBACK_TXN];
+    meta->allowed[COMMIT_TXN]   = meta->enabled[COMMIT_TXN];
+    meta->allowed[ROLLBACK_TXN] = meta->enabled[ROLLBACK_TXN];
   }
 
   /* Variable-dependent ops */
-  struct fake_var *cur = current_var (test);
+  struct fake_var *cur = current_var (meta);
   if (cur)
   {
-    test->allowed[INSERT] = test->enabled[INSERT];
+    meta->allowed[INSERT] = meta->enabled[INSERT];
     if (current_var_len (cur) > 0)
     {
-      test->allowed[REMOVE] = test->enabled[REMOVE];
-      test->allowed[READ]   = test->enabled[READ];
-      test->allowed[WRITE]  = test->enabled[WRITE];
+      meta->allowed[REMOVE] = meta->enabled[REMOVE];
+      meta->allowed[READ]   = meta->enabled[READ];
+      meta->allowed[WRITE]  = meta->enabled[WRITE];
     }
   }
 
   /* Need at least two vars to switch or to safely delete */
   if (nvars > 1)
   {
-    test->allowed[DELETE] = test->enabled[DELETE];
-    test->allowed[SWITCH] = test->enabled[SWITCH];
+    meta->allowed[DELETE] = meta->enabled[DELETE];
+    meta->allowed[SWITCH] = meta->enabled[SWITCH];
   }
+}
+
+static char *
+random_name (int low, int high)
+{
+  // Bound the high length below your validator's 4096 threshold if needed
+  if (low <= 0) { low = 1; }
+  if (high >= 4096) { high = 4095; }
+  int   length = low + (rand () % (high - low + 1));
+  char *buffer = malloc ((length + 1) * sizeof (char));
+  var_random_name (buffer, length);
+  return buffer;
+}
+
+static char *
+type_str (const struct type *t)
+{
+  u32   len    = type_get_string_size (t);
+  char *buffer = malloc ((len + 1) * sizeof (char));
+  type_generate_string (buffer, t);
+  return buffer;
 }
 
 ///////////////////////////////////////////////////////////
@@ -246,6 +291,12 @@ swmt_close (struct swarm_test *meta)
 void
 swmt_step (struct swarm_test *meta)
 {
+  meta->allowed[CRASH_AND_REOPEN] = 0;
+  meta->allowed[CLOSE_AND_REOPEN] = 0;
+  meta->allowed[ROLLBACK_TXN]     = 0;
+  meta->allowed[COMMIT_TXN]       = 0;
+  meta->allowed[BEGIN_TXN]        = 0;
+
   /* Count allowed actions */
   int len = 0;
   for (int i = 0; i < AT_LEN; ++i) { len += meta->allowed[i]; }
@@ -277,6 +328,7 @@ swmt_step (struct swarm_test *meta)
 
   enum action_type action = (enum action_type)index;
 
+  i_log_info ("Taking Action: %s\n", action_type_tostr (action));
   switch (action)
   {
     case BEGIN_TXN: swmt_begin_txn (meta); break;
@@ -404,7 +456,7 @@ swmt_insert (struct swarm_test *meta)
   for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
 
   /* DB side */
-  swmt_assert (nsdb_insert (meta->db, v->name, data, ofst, len) == 0);
+  swmt_assert (nsdb_insert (meta->db, v->name, data, ofst, len) == len);
 
   /* Reference side */
   swmt_assert (
@@ -430,11 +482,11 @@ swmt_remove (struct swarm_test *meta)
 
   /* DB side */
   swmt_assert (
-      nsdb_remove (meta->db, v->name, db_buf, ofst, stride, ofst + len * stride, 0xFF) == 0
+      nsdb_remove (meta->db, v->name, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
   /* Reference side */
-  struct stride str = to_block_stride (ofst, stride, len, v->elem_size);
+  struct stride str = (struct stride){.start = ofst, .stride = stride, .nelems = len};
   i64           got = block_array_remove (v->data, str, v->elem_size, ref_buf, NULL);
   swmt_assert (got == (i64)len);
 
@@ -459,7 +511,9 @@ swmt_read (struct swarm_test *meta)
   uint8_t *ref_buf = calloc (1, buf_sz);
   swmt_assert (db_buf && ref_buf);
 
-  swmt_assert (nsdb_read (meta->db, v->name, db_buf, ofst, stride, ofst + len * stride, 0xFF) == 0);
+  swmt_assert (
+      nsdb_read (meta->db, v->name, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+  );
 
   struct stride str = to_block_stride (ofst, stride, len, v->elem_size);
   u64           got = block_array_read (v->data, str, v->elem_size, ref_buf);
@@ -485,7 +539,9 @@ swmt_write (struct swarm_test *meta)
   swmt_assert (data != NULL);
   for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
 
-  swmt_assert (nsdb_write (meta->db, v->name, data, ofst, stride, ofst + len * stride, 0xFF) == 0);
+  swmt_assert (
+      nsdb_write (meta->db, v->name, data, ofst, stride, ofst + len * stride, 0xFF) == len
+  );
 
   struct stride str = to_block_stride (ofst, stride, len, v->elem_size);
   u64           got = block_array_write (v->data, str, v->elem_size, data);
@@ -501,11 +557,15 @@ swmt_create (struct swarm_test *meta)
 
   for (;;)
   {
+    struct chunk_alloc temp;
+    chunk_alloc_create_default (&temp);
+
     char        *name    = random_name (1, 100);
-    struct type *type    = random_type ();
+    struct type *type    = type_random (&temp, randu32r (1, 2), NULL);
     char        *typestr = type_str (type);
     u32          esize   = (u32)type_byte_size (type);
-    type_free (type);
+
+    // i_log_error("%s\n", typestr);
 
     if (fake_db_find (db, name) != NULL)
     {
@@ -578,5 +638,3 @@ swmt_delete (struct swarm_test *meta)
   meta->cur_name = NULL;
   fixup_cur_name (meta);
 }
-
-

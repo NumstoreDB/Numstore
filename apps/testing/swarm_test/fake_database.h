@@ -34,11 +34,11 @@ struct fake_database
 
 // Lifecycle
 struct fake_database *fake_db_create (void);
-void fake_db_free (struct fake_database *db);
+void                  fake_db_free (struct fake_database *db);
 struct fake_database *fake_db_clone (const struct fake_database *src);
 
 // Main Api
-int fake_db_var_count (const struct fake_database *db);
+int              fake_db_var_count (const struct fake_database *db);
 struct fake_var *fake_db_var_at (struct fake_database *db, int idx);
 struct fake_var *fake_db_find (struct fake_database *db, const char *name);
 int fake_db_add_var (struct fake_database *db, char *name, char *typestr, u32 elem_size);

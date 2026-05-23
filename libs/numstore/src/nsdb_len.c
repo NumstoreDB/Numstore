@@ -78,6 +78,8 @@ nsdb_len (nsdb_t *_smf, const char *name)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
 
+  i_log_debug ("LEN: %s\n", name);
+
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 

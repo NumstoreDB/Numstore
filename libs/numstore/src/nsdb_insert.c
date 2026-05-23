@@ -68,6 +68,28 @@ _nsdb_insert (
   stream_ibuf_init (&_input, &ctx, src, slen * tsize);
   bofst = var_resolve_index (&gparams.dest, tsize * _ofst);
 
+  i_log_debug (
+      "INSERT - %s"
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
+      " Requested: "
+      " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64 " nbytes (bytes): %" PRId64
+      " Granted: "
+      " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
+      " granted (bytes): %" PRIu64 "\n",
+      name,
+      tsize,
+      gparams.dest.nbytes / tsize,
+      gparams.dest.nbytes,
+      _ofst,
+      _ofst * tsize,
+      slen,
+      slen * tsize,
+      bofst / tsize,
+      bofst,
+      slen,
+      slen * tsize
+  );
+
   // INSERT
   {
     iparams = (struct ns_insert_params){
@@ -78,7 +100,7 @@ _nsdb_insert (
         .bofst = bofst,
     };
     ret = ns_insert (&iparams, e);
-    WRAP_GOTO (ret, failed_rollback);
+    if (ret != (sb_size)(slen * tsize)) { goto failed_rollback; }
   }
 
   // UPDATE VARIABLE
@@ -102,7 +124,8 @@ commit:
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
-  return ret;
+  ASSERT (ret % tsize == 0);
+  return ret / tsize;
 
 failed_rollback:
 

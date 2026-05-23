@@ -72,6 +72,9 @@ struct ns_read_var_page_params
 
   bool                 matches;
   const struct string *check;
+
+  bool save_vname;
+  bool save_type;
 };
 err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e);
 
