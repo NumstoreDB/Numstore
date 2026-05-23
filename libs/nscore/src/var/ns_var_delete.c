@@ -46,12 +46,14 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   page_h cur    = page_h_create ();
   page_h ovnext = page_h_create ();
 
+  struct variable var;
+
   struct ns_find_var_page_params fparams = {
       .p  = params.p,
       .tx = params.tx,
 
       .vname = params.vname,
-      .dvar  = NULL,
+      .dvar  = &var,
       .mode  = FP_FIND,
 
       .hpos = PGNO_NULL,
@@ -60,6 +62,8 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   };
 
   if (ns_find_var_page (&fparams, e)) { goto failed; }
+  pgr_upgrade (&prev, params.tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, params.p, e);
+  pgr_upgrade (&cur, params.tx, PG_VAR_PAGE, params.p, e);
 
   struct ns_remove_params rparams = {
       .p      = params.p,

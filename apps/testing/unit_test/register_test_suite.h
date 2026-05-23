@@ -18,9 +18,11 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 256);
+TEST_SUITE (smartfiles, 260);
 
-HEADER_FUNC void register_tests(void) {
+HEADER_FUNC void
+register_tests (void)
+{
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);
@@ -265,6 +267,7 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, txnt_concurrent);
   REGISTER (smartfiles, ta_subtype);
   REGISTER (smartfiles, type_accessor_builder);
+  REGISTER (smartfiles, type_generate_string);
   REGISTER (smartfiles, type_malloc_copy);
   REGISTER (smartfiles, union_t_snprintf);
   REGISTER (smartfiles, union_t_byte_size);
@@ -272,9 +275,12 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, union_t_serialize);
   REGISTER (smartfiles, union_t_deserialize_green_path);
   REGISTER (smartfiles, union_t_deserialize_red_path);
-  REGISTER (smartfiles, ns_write_var_page);
+  REGISTER (smartfiles, ns_find_var_page);
+  REGISTER (smartfiles, rand_varname_same_hash);
+  REGISTER (smartfiles, rand_varname_different_hash);
   REGISTER (smartfiles, wal);
   REGISTER (smartfiles, wal_single_entry);
+  REGISTER (smartfiles, mem_vhmap);
   REGISTER (smartfiles, aries_crash);
   REGISTER (smartfiles, smfile_data_writer);
 }

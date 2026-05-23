@@ -15,6 +15,7 @@
 #include "c_specx.h"
 #include "nscore/errors.h"
 #include "nscore/types.h"
+#include "nscore/variables.h"
 
 #include <string.h>
 
@@ -607,7 +608,7 @@ union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, error 
 
   for (u16 i = 0; i < un->len; ++i)
   {
-    WRAP (rand_str (&un->keys[i], alloc, 5, 11, e));
+    WRAP (rand_varname (&un->keys[i], alloc, 5, 11, e));
     un->types[i] = type_random (alloc, depth - 1, e);
     if (un->types[i] == NULL) { return error_trace (e); }
   }

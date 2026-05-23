@@ -82,6 +82,33 @@ _nsdb_pwrite (
     stream_ibuf_init (&_input, &ctx, src, stride.nelems * tsize);
   }
 
+  i_log_debug (
+      "WRITE - %s"
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
+      " Requested: "
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
+      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
+      " Granted: "
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
+      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
+      name,
+      tsize,
+      len,
+      gparams.dest.nbytes,
+      ustr.present & START_PRESENT ? ustr.start : 0,
+      ustr.present & STEP_PRESENT ? ustr.step : 0,
+      ustr.present & STOP_PRESENT ? ustr.stop : 0,
+      ustr.present & START_PRESENT ? tsize * ustr.start : 0,
+      ustr.present & STEP_PRESENT ? tsize * ustr.step : 0,
+      ustr.present & STOP_PRESENT ? tsize * ustr.stop : 0,
+      stride.start,
+      stride.stride,
+      stride.nelems,
+      tsize * stride.start,
+      tsize * stride.stride,
+      tsize * stride.nelems
+  );
+
   // WRITE
   {
     wparams = (struct ns_write_params){

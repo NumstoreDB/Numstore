@@ -12,39 +12,20 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "swarm_test.h"
-
-#include <signal.h>
-
-static volatile sig_atomic_t keep_running = 1;
-
-static void
-handle_sigint (int sig)
-{
-  (void)sig;
-  keep_running = 0;
-}
+#include "_numstore.h"
+#include "nscore/compiler.h"
+#include "nscore/nshandle.h"
+#include "nscore/var.h"
 
 int
-main (void)
+nsdb_delete (nsdb_t *_smf, const char *name)
 {
-  int start_enabled[AT_LEN];
-  for (int i = 0; i < AT_LEN; ++i) { start_enabled[i] = 1; }
+  struct nshandle *smf = (struct nshandle *)_smf;
 
-  struct swarm_test *meta = swmt_open (0.1f, 0.1f, start_enabled, "test", 10000);
+  i_log_debug ("DELETE: %s\n", name);
 
-  struct sigaction sa;
-  sa.sa_handler = handle_sigint;
-  sigemptyset (&sa.sa_mask);
-  sa.sa_flags = 0;
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
 
-  if (sigaction (SIGINT, &sa, NULL) == -1)
-  {
-    swmt_close (meta);
-    return 0;
-  }
-
-  while (keep_running) { swmt_step (meta); }
-
-  swmt_close (meta);
+  return nsh_delete (smf, name);
 }

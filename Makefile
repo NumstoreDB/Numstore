@@ -121,7 +121,11 @@ clean:
 
 format:
 	python3 scripts/add_copywrite.py
-	~/.venv/bin/clang-format -i $(shell find apps samples libs \( -name '*.c' -o -name '*.h' \))
+	find apps samples libs \
+		-name '.git' -prune -o \
+		-name 'build' -prune -o \
+		\( -name '*.c' -o -name '*.h' \) -print0 \
+		| xargs -0 -P $(shell nproc) -n 20 ~/.venv/bin/clang-format -i
 
 tidy:
 	@if [ ! -f compile_commands.json ]; then \

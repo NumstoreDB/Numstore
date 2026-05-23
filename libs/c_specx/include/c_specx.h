@@ -328,7 +328,7 @@ const char *file_basename (const char *path);
 #define is_alpha(c)         (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_')
 #define is_num(c)           ((c) >= '0' && (c) <= '9')
 #define is_alpha_num(c)     (is_alpha (c) || is_num (c))
-#define is_friendly_punc(c) (c == '.' || c == '/' || c == '-')
+#define is_friendly_punc(c) (c == '.' || c == '/' || c == '-' || c == '_')
 #define is_alpha_num_generous(c) (is_alpha (c) || is_num (c) || is_friendly_punc (c))
 
 #define arrlen(a) (sizeof (a) / sizeof (*a))

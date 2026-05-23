@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
-"""Add or normalize the copyright header on C/H files."""
-
 import os
-import re
-import argparse
 from pathlib import Path
 
-FILE_EXTENSIONS = (".c", ".h")
 IGNORE_BASENAMES = {"testing.h", "assert.h"}
 SKIP_DIRS = {"build", "node_modules"}
 
@@ -25,70 +20,26 @@ COPYRIGHT_HEADER = """\
 /// See the License for the specific language governing permissions and
 /// limitations under the License."""
 
-_LINE_COMMENT_RE = re.compile(r"^\s*//")
-_COPYRIGHT_RE = re.compile(r"copyright|license|licenced|spdx", re.IGNORECASE)
-
-RULE_NAME = "copyright"
-
-
-def transform(path: Path, lines: list[str]) -> tuple[list[str], list[str], list[str]]:
-    """Returns (new_lines, warnings, errors)."""
-    start = 0
-    while start < len(lines) and lines[start].strip() == "":
-        start += 1
-
-    end = start
-    if end < len(lines):
-        if lines[end].strip().startswith("/*"):
-            while end < len(lines) and "*/" not in lines[end]:
-                end += 1
-            end += 1
-        elif _LINE_COMMENT_RE.match(lines[end]):
-            while end < len(lines) and _LINE_COMMENT_RE.match(lines[end]):
-                end += 1
-
-    existing = "".join(lines[start:end])
-    rest = lines[end:] if (existing.strip() and _COPYRIGHT_RE.search(existing)) else lines[start:]
-    new_lines = (COPYRIGHT_HEADER + "\n\n").splitlines(keepends=True) + rest
-    return new_lines, [], []
-
-
-def process_file(path: Path) -> bool:
+def process_file(path: Path):
     if path.name in IGNORE_BASENAMES:
-        return False
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        lines = f.readlines()
+        return
 
-    new_lines, warnings, errors = transform(path, lines)
-    for w in warnings:
-        print(f"WARN  [{RULE_NAME}] {path}: {w}")
-    for e in errors:
-        print(f"ERROR [{RULE_NAME}] {path}: {e}")
-    if new_lines != lines:
-        with open(path, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-        print(f"MODIFIED [{RULE_NAME}] {path}")
-    return bool(errors)
+    content = path.read_text(errors="replace")
 
+    # If the file already has the license, do absolutely nothing
+    if "Licensed under the Apache License" in content:
+        return
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("directory", nargs="?", default=".")
-    args = parser.parse_args()
+    # Prepend header and update file
+    path.write_text(f"{COPYRIGHT_HEADER}\n\n{content}", encoding="utf-8")
+    print(f"Modified {path}")
 
-    had_errors = False
-    for root, _, files in os.walk(args.directory):
-        parts = Path(root).parts
-        if any(p.startswith(".") or p in SKIP_DIRS for p in parts):
-            continue
+if __name__ == '__main__':
+    # Walk the directory tree smoothly using pathlib
+    for root, dirs, files in os.walk("."):
+        # Prune hidden or skipped directories out of the walk in-place
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
+        
         for fname in sorted(files):
-            if fname.endswith(FILE_EXTENSIONS):
-                if process_file(Path(root) / fname):
-                    had_errors = True
-
-    if had_errors:
-        raise SystemExit(1)
-
-
-if __name__ == "__main__":
-    main()
+            if fname.endswith((".c", ".h")):
+                process_file(Path(root) / fname)

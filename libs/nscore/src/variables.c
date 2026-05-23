@@ -15,6 +15,7 @@
 #include "nscore/variables.h"
 
 #include "c_specx.h"
+#include "nscore/pages/var_hash_page.h"
 #include "nscore/types.h"
 
 bool
@@ -39,7 +40,18 @@ validate_vname (struct string vname, error *e)
     return error_causef (e, ERR_INVALID_ARGUMENT, "variable name exceeds 4096 chars");
   }
 
-  for (u32 i = 0; i < vname.len; ++i)
+  if (!is_alpha (vname.data[0]))
+  {
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "variable name '%.*s' must start with a letter",
+        vname.len,
+        vname.data
+    );
+  }
+
+  for (u32 i = 1; i < vname.len; ++i)
   {
     char c = vname.data[i];
     if (!is_alpha_num_generous (c))
@@ -57,6 +69,204 @@ validate_vname (struct string vname, error *e)
 
   return SUCCESS;
 }
+
+// Pool 1: Valid first characters (Letters and underscore)
+const char alpha_pool[] =
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "_";
+
+// Pool 2: Valid remaining characters (Letters, digits, underscore, dot, slash, hyphen)
+const char generous_pool[] =
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789"
+    "_";
+
+void
+var_random_name (char *buffer, int length)
+{
+  if (length <= 0) { return; }
+
+  int alpha_size    = sizeof (alpha_pool) - 1;
+  int generous_size = sizeof (generous_pool) - 1;
+
+  // First char must strictly be an alpha or underscore
+  buffer[0] = alpha_pool[randu32 () % alpha_size];
+
+  // Remaining chars can use the generous pool
+  for (int i = 1; i < length - 1; i++) { buffer[i] = generous_pool[randu32 () % generous_size]; }
+  buffer[length - 1] = '\0';
+}
+
+err_t
+rand_varname (
+    struct string      *dest,
+    struct chunk_alloc *alloc,
+    const u32           minlen,
+    const u32           maxlen,
+    error              *e
+)
+{
+  ASSERT (dest);
+  ASSERT (alloc);
+  ASSERT (minlen > 0);
+  ASSERT (minlen <= maxlen);
+
+  u32   len    = randu32r (minlen, maxlen);
+  char *buffer = chunk_malloc (alloc, len, 1, e);
+  if (buffer == NULL) { return error_trace (e); }
+  var_random_name (buffer, len);
+
+  dest->data = buffer;
+  dest->len  = len;
+
+  return SUCCESS;
+}
+
+err_t
+rand_varname_same_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct chunk_alloc *alloc,
+    error              *e
+)
+{
+  ASSERT (name1);
+  ASSERT (name2);
+  ASSERT (alloc);
+
+  char temp[20];
+
+  while (true)
+  {
+    // Random sizes
+    u32 len1 = randu32r (5, 10);
+    u32 len2 = randu32r (5, 10);
+
+    // Random names
+    var_random_name (temp, len1);
+    var_random_name (temp + len1, len2);
+
+    // Assign them
+    name1->data = temp;
+    name2->data = temp + len1;
+    name1->len  = len1;
+    name2->len  = len2;
+
+    // Get hash positions
+    p_size hpos1 = vh_get_hash_pos (*name1);
+    p_size hpos2 = vh_get_hash_pos (*name2);
+
+    // Check if they are good
+    if (hpos1 == hpos2)
+    {
+      // commit strings - copy them to dest
+      char *data = chunk_malloc (alloc, len1 + len2, 1, e);
+      if (data == NULL) { goto failed; }
+      memcpy (data, name1->data, len1);
+      memcpy (data + len1, name2->data, len2);
+      name1->data = data;
+      name2->data = data + len1;
+      break;
+    }
+  }
+
+  return SUCCESS;
+
+failed:
+  return error_trace (e);
+}
+
+err_t
+rand_varname_different_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct chunk_alloc *alloc,
+    error              *e
+)
+{
+  ASSERT (name1);
+  ASSERT (name2);
+  ASSERT (alloc);
+
+  char temp[20];
+
+  while (true)
+  {
+    // Random sizes
+    u32 len1 = randu32r (5, 10);
+    u32 len2 = randu32r (5, 10);
+
+    // Random names
+    var_random_name (temp, len1);
+    var_random_name (temp + len1, len2);
+
+    // Assign them
+    name1->data = temp;
+    name2->data = temp + len1;
+    name1->len  = len1;
+    name2->len  = len2;
+
+    // Get hash positions
+    p_size hpos1 = vh_get_hash_pos (*name1);
+    p_size hpos2 = vh_get_hash_pos (*name2);
+
+    // Check if they are good
+    if (hpos1 != hpos2)
+    {
+      // commit strings - copy them to dest
+      char *data = chunk_malloc (alloc, len1 + len2, 1, e);
+      if (data == NULL) { goto failed; }
+      memcpy (data, name1->data, len1);
+      memcpy (data + len1, name2->data, len2);
+      name1->data = data;
+      name2->data = data + len1;
+      break;
+    }
+  }
+
+  return SUCCESS;
+
+failed:
+  return error_trace (e);
+}
+
+#ifndef NTEST
+TEST (rand_varname_same_hash)
+{
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+  error e = error_create ();
+
+  for (int i = 0; i < 10; ++i)
+  {
+    struct string name1;
+    struct string name2;
+    rand_varname_same_hash (&name1, &name2, &alloc, &e);
+    test_assert_int_equal (vh_get_hash_pos (name1), vh_get_hash_pos (name2));
+  }
+
+  chunk_alloc_free_all (&alloc);
+}
+
+TEST (rand_varname_different_hash)
+{
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+  error e = error_create ();
+
+  for (int i = 0; i < 10; ++i)
+  {
+    struct string name1;
+    struct string name2;
+    rand_varname_different_hash (&name1, &name2, &alloc, &e);
+    test_assert (vh_get_hash_pos (name1) != vh_get_hash_pos (name2));
+  }
+
+  chunk_alloc_free_all (&alloc);
+}
+#endif
 
 void
 variable_free (struct variable *v)

@@ -1,128 +1,92 @@
+# Base style rules
 BasedOnStyle: Google
-
 ColumnLimit: 100
 IndentWidth: 2
 ContinuationIndentWidth: 4
 UseTab: Never
 
-# ---------------------------------------------------------------------------
-# Function signatures: Break return type on definitions, but keep them on 
-# a single line for forward declarations. Wrap parameters if too long.
-# ---------------------------------------------------------------------------
-# BlockIndent breaks long parameters across lines naturally and places the 
-# closing paren on its own line, preventing giant un-wrapped nested blocks.
-AlignAfterOpenBracket: BlockIndent
-BinPackParameters: false
-BinPackArguments: false
-AllowAllParametersOfDeclarationOnNextLine: false
-AllowAllArgumentsOnNextLine: false
+# Function parameters & arguments layout
+AlignAfterOpenBracket: BlockIndent                  # Wrap long arguments onto new lines, indented as a block
+BinPackParameters: false                            # Put each wrapped parameter on its own line
+BinPackArguments: false                             # Put each wrapped argument on its own line
+AllowAllParametersOfDeclarationOnNextLine: false   # Prevent dumping all parameters onto a single next line
+AllowAllArgumentsOnNextLine: false                  # Prevent dumping all arguments onto a single next line
 
-# Forces the return type down ONLY on definitions (implementations)
-# AllDefinitions ensures function names remain at column 0 without wrapping indents
-AlwaysBreakAfterReturnType: AllDefinitions   # Older clang-format versions
-BreakAfterReturnType: AllDefinitions         # Clang-format 19+ 
+# Break return type on definitions, keep on declarations
+AlwaysBreakAfterReturnType: AllDefinitions          # Break return type to next line on definitions (older Clang)
+BreakAfterReturnType: AllDefinitions                # Break return type to next line on definitions (Clang 19+)
 PenaltyReturnTypeOnItsOwnLine: 1
-SpaceBeforeParens: Always
-
+SpaceBeforeParens: Always                           # Put a space before control statement parentheses
 IndentWrappedFunctionNames: false
 
-# ---------------------------------------------------------------------------
-# Braces: GNU/Custom style logic. Put braces on the next line when multi-line, 
-# but allow short inline structures to stay compact if they fit.
-# ---------------------------------------------------------------------------
+# Brace placement rules
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: true
-  AfterControlStatement: Always  # Forces 'if', 'else', 'switch', 'for', 'while' braces to next line
-  AfterEnum: true
-  AfterFunction: true            # Forces function implementation braces to next line
-  AfterStruct: true
-  BeforeElse: true               # Formats as } \n else instead of } else
-  BeforeWhile: true              # Formats as } \n while instead of } while
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
+  AfterCaseLabel: true                              # Brace after case label goes on next line
+  AfterControlStatement: Always                     # Braces for if/else/switch/for/while go on next line
+  AfterEnum: true                                   # Enum opening brace goes on next line
+  AfterFunction: true                               # Function body opening brace goes on next line
+  AfterStruct: true                                 # Struct opening brace goes on next line
+  BeforeElse: true                                  # Formats as } \n else
+  BeforeWhile: true                                 # Formats as } \n while
+  SplitEmptyFunction: false                         # Keep empty functions compact
+  SplitEmptyRecord: false                           # Keep empty structs/classes compact
+  SplitEmptyNamespace: false                        # Keep empty namespaces compact
 
-AllowShortFunctionsOnASingleLine: None
-AllowShortBlocksOnASingleLine: Always
-AllowShortIfStatementsOnASingleLine: AllIfsAndElse
-AllowShortLoopsOnASingleLine: true
-AllowShortCaseLabelsOnASingleLine: true
-AllowShortEnumsOnASingleLine: true
+# Inline short code blocks
+AllowShortFunctionsOnASingleLine: None              # Never squeeze functions onto one line
+AllowShortBlocksOnASingleLine: Always               # Allow single-line short blocks
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse # Allow one-line simple if/else statements
+AllowShortLoopsOnASingleLine: true                 # Allow one-line simple loops
+AllowShortCaseLabelsOnASingleLine: true             # Allow one-line simple case labels
+AllowShortEnumsOnASingleLine: true                  # Allow one-line simple enums
 
-# ---------------------------------------------------------------------------
-# Always brace control statements. Single-statement if/else/for/while/do all
-# get { } inserted. Switches already require braces around the body, so they
-# are unaffected; case labels are governed by AllowShortCaseLabels above.
-# Requires clang-format 15+. Do NOT also set RemoveBracesLLVM.
-# ---------------------------------------------------------------------------
-#InsertBraces: true
+# Auto-insert braces for control statements
+InsertBraces: true                                  # Add missing braces to single-line if/else/for/while
 
-# ---------------------------------------------------------------------------
-# Preprocessor: indent the body of nested #if / #ifdef / #ifndef blocks.
-# "AfterHash" keeps the # in column 0 and indents what follows it:
-#   #if FOO
-#   #  if BAR
-#   #     define BAZ 1
-#   #  endif
-#   #endif
-# Use "BeforeHash" instead if you prefer the whole directive indented.
-# ---------------------------------------------------------------------------
-IndentPPDirectives: AfterHash
-PPIndentWidth: 2
+# Preprocessor directives indentation
+IndentPPDirectives: AfterHash                       # Indent nested macros after the '#' symbol
+PPIndentWidth: 2                                    # Indentation spacing for nested macros
 
-# ---------------------------------------------------------------------------
-# Includes: sort, regroup into categories, and float the "main" header
-# (foo.h in foo.c) to the very top. IncludeIsMainRegex's default already
-# matches the source file's basename plus optional -test/_test/-unittest
-# suffixes; tighten the regex below if you want exact-match only.
-# ---------------------------------------------------------------------------
+# Include files organization
 SortIncludes: CaseSensitive
-IncludeBlocks: Regroup
-IncludeIsMainRegex: '([-_](test|unittest))?$'
+IncludeBlocks: Regroup                               # Group and sort includes dynamically
+IncludeIsMainRegex: '([-_](test|unittest))?$'       # Identifies test files to pair with main headers
 IncludeCategories:
-  - Regex:    '^"'              # local "..." headers
+  - Regex: '^"'                                     # Group 1: Local headers
     Priority: 1
-  - Regex:    '^<sys/'          # POSIX system headers
+  - Regex: '^<sys/'                                 # Group 2: POSIX system headers
     Priority: 2
-  - Regex:    '^<.*\.h>'        # C standard headers (<stdio.h>, ...)
+  - Regex: '^<.*\.h>'                               # Group 3: C standard headers
     Priority: 3
-  - Regex:    '^<Python\.h>|numpy' # Python ecosystem headers
+  - Regex: '^<Python\.h>|numpy'                     # Group 4: Python headers
     Priority: 4
-  - Regex:    '^<.*>'           # everything else in angle brackets (C++ libs, etc.)
+  - Regex: '^<.*>'                                  # Group 5: C++ standard & all other headers
     Priority: 5
 
-InsertBraces: true
-
-# ---------------------------------------------------------------------------
 # Whitespace cleanup
-# ---------------------------------------------------------------------------
-MaxEmptyLinesToKeep: 1
-KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1                              # Never allow more than one consecutive empty line
+KeepEmptyLinesAtTheStartOfBlocks: false            # Remove empty lines right after an opening brace
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpacesInCStyleCastParentheses: false
 SpaceAfterCStyleCast: false
-SpaceBeforeAssignmentOperators: true
-SpacesBeforeTrailingComments: 1
-DerivePointerAlignment: false
-PointerAlignment: Right             
-Cpp11BracedListStyle: true
+SpaceBeforeAssignmentOperators: true                # Put spaces around '=' signs
+SpacesBeforeTrailingComments: 1                    # One space before an inline comment
+DerivePointerAlignment: false                       # Force fixed pointer layout
+PointerAlignment: Right                             # Bind pointer asterisk to the variable name (e.g., int *var)
+Cpp11BracedListStyle: true                          # Use modern C++ initialization spacing
 
-# ---------------------------------------------------------------------------
-# Alignment of repetitive constructs
-# ---------------------------------------------------------------------------
-AlignConsecutiveMacros: Consecutive
-AlignConsecutiveAssignments: Consecutive
-AlignConsecutiveDeclarations: Consecutive
-AlignConsecutiveBitFields: Consecutive
-AlignTrailingComments: true
-AlignEscapedNewlines: Left
-AlignOperands: Align
+# Consecutive block alignment
+AlignConsecutiveMacros: Consecutive                # Vertically align backslashes/values in adjacent macros
+AlignConsecutiveAssignments: Consecutive           # Vertically align '=' signs in adjacent lines
+AlignConsecutiveDeclarations: Consecutive          # Vertically align variable names in adjacent declarations
+AlignConsecutiveBitFields: Consecutive             # Vertically align bitfield colons
+AlignTrailingComments: true                         # Vertically align inline comments on adjacent lines
+AlignEscapedNewlines: Left                          # Align macro line-break backslashes to the left
+AlignOperands: Align                                # Align operands when expressions wrap lines
 
-# ---------------------------------------------------------------------------
-# Line breaks within expressions and comments
-# ---------------------------------------------------------------------------
-BreakBeforeBinaryOperators: NonAssignment
-BreakStringLiterals: true
-ReflowComments: true
+# Line wraps inside expressions
+BreakBeforeBinaryOperators: NonAssignment           # Wrap lines before operators (except assignment)
+BreakStringLiterals: true                           # Automatically split long string literals across lines
+ReflowComments: true                                # Automatically wrap long comments to stay under column limit

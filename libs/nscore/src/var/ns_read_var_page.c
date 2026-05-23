@@ -65,9 +65,9 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   // Save for the end to reset var page
   pgno start = page_h_pgno (params->vp);
 
-  // Temporary allocator for type string before we deserialize it onto alloc
-  struct chunk_alloc type_temp;
-  chunk_alloc_create_default (&type_temp);
+  // Temporary allocator
+  struct chunk_alloc temp;
+  chunk_alloc_create_default (&temp);
 
   // Initialize the simple stuff
   u16    vlen     = vp_get_vlen (page_h_ro (params->vp));
@@ -87,9 +87,26 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
 
   // Allocate variable name
-  vstr = chunk_malloc (params->alloc, 1, vlen, e);
-  tstr = chunk_malloc (&type_temp, 1, tlen, e);
-  if (vstr == NULL || tstr == NULL) { goto failed; }
+  if (params->save_vname)
+  {
+    vstr = chunk_malloc (params->alloc, 1, vlen, e);
+    if (vstr == NULL) { goto failed; }
+  }
+  else
+  {
+    vstr = chunk_malloc (&temp, 1, vlen, e);
+    if (vstr == NULL) { goto failed; }
+  }
+
+  if (params->save_type)
+  {
+    tstr = chunk_malloc (&temp, 1, tlen, e);
+    if (tstr == NULL) { goto failed; }
+  }
+  else
+  {
+    tstr = NULL; // We don't event touch this
+  }
 
   // Read the variable name
   u16 rread = 0;
@@ -125,28 +142,31 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
     }
   }
 
-  // Read the type bytes
-  rread = 0;
-  while (rread < tlen)
+  if (params->save_type)
   {
-    // We exhausted this page - move forward one
-    if (lread == head.len)
+    // Read the type bytes
+    rread = 0;
+    while (rread < tlen)
     {
-      // Advance forward one node and reset local and head
-      if (ns_read_var_page_advance (params, e)) { goto failed; }
-      lread = 0;
-      head  = dlgt_get_bytes_imut (page_h_ro (params->vp));
+      // We exhausted this page - move forward one
+      if (lread == head.len)
+      {
+        // Advance forward one node and reset local and head
+        if (ns_read_var_page_advance (params, e)) { goto failed; }
+        lread = 0;
+        head  = dlgt_get_bytes_imut (page_h_ro (params->vp));
+      }
+
+      // MIN(available in this node, available to be read left)
+      u16 avail = head.len - lread;
+      u16 left  = tlen - rread;
+      u16 next  = MIN (avail, left);
+
+      // Do the read
+      memcpy (&tstr[rread], &head.head[lread], next);
+      rread += next;
+      lread += next;
     }
-
-    // MIN(available in this node, available to be read left)
-    u16 avail = head.len - lread;
-    u16 left  = tlen - rread;
-    u16 next  = MIN (avail, left);
-
-    // Do the read
-    memcpy (&tstr[rread], &head.head[lread], next);
-    rread += next;
-    lread += next;
   }
 
   // We just finished reading everything - expect us to be done
@@ -168,28 +188,27 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
     if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) { goto failed; }
   }
 
-  struct deserializer d     = dsrlizr_create (tstr, tlen);
-  struct type        *dtype = type_deserialize (&d, params->alloc, e);
-  if (dtype == NULL) { goto failed; }
+  params->dest->rpt_root = rpt_root;
+  params->dest->nbytes   = nbytes;
+  params->dest->var_root = var_root;
 
-  // Assign stuff
-  if (params->dest)
+  if (params->save_type)
   {
-    *params->dest = (struct variable){
-        .vname    = (struct string){.data = vstr, .len = vlen},
-        .dtype    = dtype,
-        .rpt_root = rpt_root,
-        .nbytes   = nbytes,
-        .var_root = var_root,
-    };
+    struct deserializer d     = dsrlizr_create (tstr, tlen);
+    struct type        *dtype = type_deserialize (&d, params->alloc, e);
+    if (dtype == NULL) { goto failed; }
+    params->dest->dtype = dtype;
   }
+
+  if (params->save_vname) { params->dest->vname = (struct string){.data = NULL, .len = 0}; }
+
   params->matches = true;
 
 theend:
-  chunk_alloc_free_all (&type_temp);
+  chunk_alloc_free_all (&temp);
   return SUCCESS;
 
 failed:
-  chunk_alloc_free_all (&type_temp);
+  chunk_alloc_free_all (&temp);
   return error_trace (e);
 }

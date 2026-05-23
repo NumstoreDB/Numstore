@@ -16,7 +16,9 @@
 #include "nscore/compile_config.h"
 #include "nscore/page_delegate.h"
 #include "nscore/page_fixture.h"
+#include "nscore/page_h.h"
 #include "nscore/pager.h"
+#include "nscore/pages/page.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
 
@@ -171,29 +173,3 @@ failed:
   chunk_alloc_free_all (&temp);
   return error_trace (e);
 }
-
-#ifndef NTEST
-TEST (ns_write_var_page)
-{
-  struct pgr_fixture f;
-  pgr_fixture_create (&f);
-  ns_init_var_hash_map (f.p, &f.e);
-
-  struct variable    dvar; // The destination variable
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
-  struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
-
-  struct ns_find_var_page_params fparams = {
-      .p     = f.p,
-      .tx    = &tx,
-      .alloc = &temp,
-      .vname = strfcstr ("foo"),
-      .dvar  = &dvar,
-      .mode  = FP_CREATE,
-  };
-
-  ns_find_var_page (&fparams, &f.e);
-}
-#endif

@@ -12,20 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#pragma once
+#include "numstore.h"
 
-#include "nscore/tokens.h"
-
-struct lexer
-{
-  const char *src;
-  u32         src_len;
-  u32         start;
-  u32         current;
-
-  struct token tokens[4096];
-  u32          ntokens;
-};
-
-// Lexer API
-err_t lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e);
+int
+nsdb_validate (nsdb_t *ns)
+{ return 0; }

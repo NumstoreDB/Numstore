@@ -48,6 +48,7 @@ target_link_libraries(unit_test
             nscore 
             smartfiles 
             numstore
+            nstesting
 )
 
 target_include_directories(unit_test

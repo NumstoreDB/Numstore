@@ -32,9 +32,10 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
   error_silence (e);
   err_t err = ns_var_get (&gparams, e);
   error_unsilence (e);
+
+  // Variable doesn't exist - so create it
   if (err == ERR_VARIABLE_NE)
   {
-    // Doesn't exist - reset and create it
     e->cause_code = SUCCESS;
     e->cmlen      = 0;
 

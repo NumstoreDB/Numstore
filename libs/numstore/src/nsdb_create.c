@@ -65,6 +65,8 @@ nsdb_create (nsdb_t *_smf, const char *name, const char *type)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
 
+  i_log_debug ("CREATE: %s %s\n", name, type);
+
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 

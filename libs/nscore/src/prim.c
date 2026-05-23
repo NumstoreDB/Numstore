@@ -65,35 +65,35 @@ prim_to_str (enum prim_t p)
   DBG_ASSERT (prim_t, &p);
   switch (p)
   {
-    case U8: return "U8";
-    case U16: return "U16";
-    case U32: return "U32";
-    case U64: return "U64";
+    case U8: return "u8";
+    case U16: return "u16";
+    case U32: return "u32";
+    case U64: return "u64";
 
-    case I8: return "I8";
-    case I16: return "I16";
-    case I32: return "I32";
-    case I64: return "I64";
+    case I8: return "i8";
+    case I16: return "i16";
+    case I32: return "i32";
+    case I64: return "i64";
 
-    case F16: return "F16";
-    case F32: return "F32";
-    case F64: return "F64";
-    case F128: return "F128";
+    case F16: return "f16";
+    case F32: return "f32";
+    case F64: return "f64";
+    case F128: return "f128";
 
-    case CF32: return "CF32";
-    case CF64: return "CF64";
-    case CF128: return "CF128";
-    case CF256: return "CF256";
+    case CF32: return "cf32";
+    case CF64: return "cf64";
+    case CF128: return "cf128";
+    case CF256: return "cf256";
 
-    case CI16: return "CI16";
-    case CI32: return "CI32";
-    case CI64: return "CI64";
-    case CI128: return "CI128";
+    case CI16: return "ci16";
+    case CI32: return "ci32";
+    case CI64: return "ci64";
+    case CI128: return "ci128";
 
-    case CU16: return "CU16";
-    case CU32: return "CU32";
-    case CU64: return "CU64";
-    case CU128: return "CU128";
+    case CU16: return "cu16";
+    case CU32: return "cu32";
+    case CU64: return "cu64";
+    case CU128: return "cu128";
   }
   UNREACHABLE ();
   return "";
