@@ -20,17 +20,23 @@ int  test_ret = 0;
 char test_marks[test_marks_max][test_mark_len];
 int  test_marks_count = 0;
 
-static int example_func (void) {
-  if (1) {
+static int
+example_func (void)
+{
+  if (1)
+  {
     TEST_MARK ("imhit:here");
     TEST_MARK ("imhit:there");
-  } else {
+  }
+  else
+  {
     TEST_MARK ("imnothit:here");
   }
   return 0;
 }
 
-TEST (test_mark_works) {
+TEST (test_mark_works)
+{
   test_reset_marks ();
   example_func ();
   test_assert_mark_hit ("imhit:*");
@@ -40,8 +46,10 @@ TEST (test_mark_works) {
   test_assert_mark_not_hit ("imnothit:here");
 }
 
-TEST (test_mark_match) {
-  TEST_CASE ("basics") {
+TEST (test_mark_match)
+{
+  TEST_CASE ("basics")
+  {
     // exact match
     test_assert (test_mark_match ("foo", "foo"));
     test_fail_if (test_mark_match ("foo", "fo"));
@@ -54,7 +62,8 @@ TEST (test_mark_match) {
     test_fail_if (test_mark_match ("x", ""));
   }
 
-  TEST_CASE ("wildcard") {
+  TEST_CASE ("wildcard")
+  {
     // bare '*' matches anything including empty
     test_assert (test_mark_match ("*", ""));
     test_assert (test_mark_match ("*", "anything"));
@@ -85,7 +94,8 @@ TEST (test_mark_match) {
     test_fail_if (test_mark_match ("a*b*c", "axxbyy"));
   }
 
-  TEST_CASE ("via_assert") {
+  TEST_CASE ("via_assert")
+  {
     test_reset_marks ();
     TEST_MARK ("parser:enter");
     TEST_MARK ("parser:utf8:decoded");

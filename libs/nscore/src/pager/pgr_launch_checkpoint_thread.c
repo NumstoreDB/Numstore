@@ -15,13 +15,15 @@
 #include "c_specx.h"
 #include "nscore/pager.h"
 
-static void pgr_do_checkpoint (void *ctx) {
+static void
+pgr_do_checkpoint (void *ctx)
+{
   struct pager *p = ctx;
   error         e = error_create ();
   i_log_info ("Executing checkpoint\n");
   if (pgr_deletion_blocking_checkpoint (p, &e)) { error_log_consume (&e); }
 }
 
-err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e) {
-  return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e);
-}
+err_t
+pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
+{ return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e); }

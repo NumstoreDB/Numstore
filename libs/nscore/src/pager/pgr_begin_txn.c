@@ -20,7 +20,9 @@
 
 #include <stdatomic.h>
 
-err_t pgr_begin_txn (struct txn *tx, struct pager *p, error *e) {
+err_t
+pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
+{
   DBG_ASSERT (pager, p);
 
   txid tid = atomic_fetch_add (&p->next_tid, 1);
@@ -29,7 +31,8 @@ err_t pgr_begin_txn (struct txn *tx, struct pager *p, error *e) {
 
   l = wal_append_begin_log (p->ww, tid, e);
 
-  if (l < 0) {
+  if (l < 0)
+  {
     // WAL append failed - we just wasted a transaction id - not a big deal
     return error_trace (e);
   }
@@ -43,7 +46,8 @@ err_t pgr_begin_txn (struct txn *tx, struct pager *p, error *e) {
           .last_lsn      = l,
           .undo_next_lsn = 0,
           .state         = TX_RUNNING,
-      });
+      }
+  );
 
   // Create a new transaction entry
   txnt_insert_txn (p->tnxt, tx);

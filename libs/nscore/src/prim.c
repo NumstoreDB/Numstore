@@ -26,9 +26,12 @@ DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
   ASSERT (prim_t_validate (s, &e) == SUCCESS);
 })
 
-err_t prim_t_validate (const enum prim_t *t, error *e) {
+err_t
+prim_t_validate (const enum prim_t *t, error *e)
+{
   ASSERT (t);
-  if (!(*t <= CU128 && *t >= U8)) {
+  if (!(*t <= CU128 && *t >= U8))
+  {
     return error_causef (e, ERR_INTERP, "invalid prim type %d (valid range %d..%d)", *t, U8, CU128);
   }
 
@@ -36,7 +39,8 @@ err_t prim_t_validate (const enum prim_t *t, error *e) {
 }
 
 #ifndef NTEST
-TEST (prim_t_validate) {
+TEST (prim_t_validate)
+{
   error err = error_create ();
 
   // 1.1 happy path – legal value
@@ -55,9 +59,12 @@ TEST (prim_t_validate) {
 }
 #endif
 
-const char *prim_to_str (enum prim_t p) {
+const char *
+prim_to_str (enum prim_t p)
+{
   DBG_ASSERT (prim_t, &p);
-  switch (p) {
+  switch (p)
+  {
     case U8: return "U8";
     case U16: return "U16";
     case U32: return "U32";
@@ -92,7 +99,9 @@ const char *prim_to_str (enum prim_t p) {
   return "";
 }
 
-i32 prim_t_snprintf (char *str, u32 size, const enum prim_t *p) {
+i32
+prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
+{
   DBG_ASSERT (prim_t, p);
 
   char       *out   = str;
@@ -109,7 +118,8 @@ i32 prim_t_snprintf (char *str, u32 size, const enum prim_t *p) {
 }
 
 #ifndef NTEST
-TEST (prim_t_snprintf) {
+TEST (prim_t_snprintf)
+{
   enum prim_t p = F64;
   char        buf[32];
   const char *expect = "F64";
@@ -121,10 +131,13 @@ TEST (prim_t_snprintf) {
 }
 #endif
 
-u32 prim_t_byte_size (const enum prim_t *t) {
+u32
+prim_t_byte_size (const enum prim_t *t)
+{
   DBG_ASSERT (prim_t, t);
 
-  switch (*t) {
+  switch (*t)
+  {
     case U8:
     case I8: return 1;
 
@@ -160,7 +173,9 @@ u32 prim_t_byte_size (const enum prim_t *t) {
   return 0;
 }
 
-void prim_t_serialize (struct serializer *dest, const enum prim_t *src) {
+void
+prim_t_serialize (struct serializer *dest, const enum prim_t *src)
+{
   DBG_ASSERT (prim_t, src);
   bool ret;
 
@@ -170,7 +185,8 @@ void prim_t_serialize (struct serializer *dest, const enum prim_t *src) {
   ASSERT (ret);
 }
 #ifndef NTEST
-TEST (prim_t_byte_size) {
+TEST (prim_t_byte_size)
+{
   enum prim_t p1 = U8;
   enum prim_t p2 = CF128;
   enum prim_t p3 = CF256;
@@ -181,7 +197,8 @@ TEST (prim_t_byte_size) {
 }
 
 #  ifndef NTEST
-TEST (prim_t_serialize) {
+TEST (prim_t_serialize)
+{
   enum prim_t       p = I16;
   u8                out[4];
   struct serializer s = srlizr_create (out, sizeof out);
@@ -194,7 +211,9 @@ TEST (prim_t_serialize) {
 #  endif
 #endif
 
-err_t prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e) {
+err_t
+prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
+{
   ASSERT (dest);
 
   u8   p;
@@ -213,7 +232,8 @@ err_t prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
 }
 
 #ifndef NTEST
-TEST (prim_t_deserialize) {
+TEST (prim_t_deserialize)
+{
   // 5.1 green path
   u8                  data[] = {(u8)CI32};
   struct deserializer d      = dsrlizr_create (data, sizeof data);
@@ -231,19 +251,25 @@ TEST (prim_t_deserialize) {
 }
 #endif
 
-enum prim_t prim_t_random (void) { return (enum prim_t)randu32r (U8, CU128); }
+enum prim_t
+prim_t_random (void)
+{ return (enum prim_t)randu32r (U8, CU128); }
 
 #ifndef NTEST
-TEST (prim_t_random) {
+TEST (prim_t_random)
+{
   error err = error_create ();
-  for (u32 i = 0; i < 1000; ++i) {
+  for (u32 i = 0; i < 1000; ++i)
+  {
     enum prim_t p = prim_t_random ();
     test_assert_int_equal (prim_t_validate (&p, &err), SUCCESS);
   }
 }
 #endif
 
-enum prim_t strtoprim (const char *text, u32 len) {
+enum prim_t
+strtoprim (const char *text, u32 len)
+{
   struct string str = {.data = (char *)text, .len = len};
 
   if (string_equal (str, strfcstr ("u8"))) { return U8; }

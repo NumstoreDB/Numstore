@@ -19,12 +19,15 @@
 #include "nscore/txn.h"
 #include "nscore/var.h"
 
-static sb_size _nsdb_pwrite (
-  struct nshandle   *db,
-  const char        *name,
-  const void        *src,
-  struct user_stride ustr,
-  error             *e) {
+static sb_size
+_nsdb_pwrite (
+    struct nshandle   *db,
+    const char        *name,
+    const void        *src,
+    struct user_stride ustr,
+    error             *e
+)
+{
   sb_size                  ret;                     // Return value
   t_size                   tsize;                   // Size of  the variable
   b_size                   len;                     // Length of the variable
@@ -45,13 +48,14 @@ static sb_size _nsdb_pwrite (
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-      .p     = db->root->p,
-      .tx    = db->atx,
-      .vname = vname,
-      .alloc = &temp,
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = vname,
+        .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE) {
+    if (err == ERR_VARIABLE_NE)
+    {
       ret           = 0;
       e->cause_code = SUCCESS;
       e->cmlen      = 0;
@@ -65,7 +69,8 @@ static sb_size _nsdb_pwrite (
     tsize = type_byte_size (gparams.dest.dtype);
     len   = gparams.dest.nbytes;
 
-    if (len % tsize != 0) {
+    if (len % tsize != 0)
+    {
       error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
       goto failed_rollback;
     }
@@ -80,14 +85,14 @@ static sb_size _nsdb_pwrite (
   // WRITE
   {
     wparams = (struct ns_write_params){
-      .p      = db->root->p,
-      .src    = &_input,
-      .tx     = db->atx,
-      .root   = gparams.dest.rpt_root,
-      .size   = tsize,
-      .bofst  = tsize * stride.start,
-      .stride = stride.stride,
-      .nelem  = stride.nelems,
+        .p      = db->root->p,
+        .src    = &_input,
+        .tx     = db->atx,
+        .root   = gparams.dest.rpt_root,
+        .size   = tsize,
+        .bofst  = tsize * stride.start,
+        .stride = stride.stride,
+        .nelem  = stride.nelems,
     };
     ret = ns_write (wparams, e);
     WRAP_GOTO (ret, failed_rollback);
@@ -109,19 +114,22 @@ failed:
   return error_trace (e);
 }
 
-sb_size nsdb_write (
-  nsdb_t     *_smf,
-  const char *name,
-  const void *src,
-  sb_size     start,
-  sb_size     step,
-  sb_size     stop,
-  int         flags) {
+sb_size
+nsdb_write (
+    nsdb_t     *_smf,
+    const char *name,
+    const void *src,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+)
+{
   struct user_stride stride = {
-    .start   = start,
-    .step    = step,
-    .stop    = stop,
-    .present = flags,
+      .start   = start,
+      .step    = step,
+      .stop    = stop,
+      .present = flags,
   };
   struct nshandle *smf = (struct nshandle *)_smf;
 

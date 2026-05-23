@@ -26,33 +26,42 @@
 ////////////////////////////////////////////////////////////
 // INITIALIZATION
 
-void page_init_empty (page *p, const enum page_type type) {
+void
+page_init_empty (page *p, const enum page_type type)
+{
   page_set_type (p, type);
   page_set_page_lsn (p, PGNO_NULL);
   page_set_checksum (p, 0);
 
-  switch (type) {
-    case PG_DATA_LIST: {
+  switch (type)
+  {
+    case PG_DATA_LIST:
+    {
       dl_init_empty (p);
       return;
     }
-    case PG_INNER_NODE: {
+    case PG_INNER_NODE:
+    {
       in_init_empty (p);
       return;
     }
-    case PG_FREE_SPACE_MAP: {
+    case PG_FREE_SPACE_MAP:
+    {
       fsm_init_empty (p);
       return;
     }
-    case PG_VAR_PAGE: {
+    case PG_VAR_PAGE:
+    {
       vp_init_empty (p);
       return;
     }
-    case PG_VAR_TAIL: {
+    case PG_VAR_TAIL:
+    {
       vt_init_empty (p);
       return;
     }
-    case PG_VAR_HASH_PAGE: {
+    case PG_VAR_HASH_PAGE:
+    {
       vh_init_empty (p);
       return;
     }
@@ -60,51 +69,64 @@ void page_init_empty (page *p, const enum page_type type) {
   UNREACHABLE ();
 }
 
-err_t page_validate_for_db (const page *p, const int flags, error *e) {
+err_t
+page_validate_for_db (const page *p, const int flags, error *e)
+{
   ASSERT (p);
 
   if (flags & PG_PERMISSIVE) { return SUCCESS; }
 
   const pgh header = page_get_type (p);
 
-  if (!(header & flags)) {
+  if (!(header & flags))
+  {
     return error_causef (e, ERR_CORRUPT, "expected page type %d, got %d", flags, header);
   }
 
-  if (!(flags & PG_SKIP_CHECKSUM)) {
+  if (!(flags & PG_SKIP_CHECKSUM))
+  {
     const u32 actual_checksum   = page_get_checksum (p);
     const u32 expected_checksum = page_compute_checksum (p);
 
-    if (actual_checksum != expected_checksum) {
+    if (actual_checksum != expected_checksum)
+    {
       return error_causef (
           e,
           ERR_CORRUPT,
           "Corrupt page. Expected checksum: "
           "%d Actual Checksum: %d",
           expected_checksum,
-          actual_checksum);
+          actual_checksum
+      );
     }
   }
 
   if (header == PG_TRASH) { return SUCCESS; }
 
-  switch ((enum page_type)header) {
-    case PG_DATA_LIST: {
+  switch ((enum page_type)header)
+  {
+    case PG_DATA_LIST:
+    {
       return dl_validate_for_db (p, e);
     }
-    case PG_INNER_NODE: {
+    case PG_INNER_NODE:
+    {
       return in_validate_for_db (p, e);
     }
-    case PG_FREE_SPACE_MAP: {
+    case PG_FREE_SPACE_MAP:
+    {
       return fsm_validate_for_db (p, e);
     }
-    case PG_VAR_PAGE: {
+    case PG_VAR_PAGE:
+    {
       return vp_validate_for_db (p, e);
     }
-    case PG_VAR_TAIL: {
+    case PG_VAR_TAIL:
+    {
       return vt_validate_for_db (p, e);
     }
-    case PG_VAR_HASH_PAGE: {
+    case PG_VAR_HASH_PAGE:
+    {
       return vh_validate_for_db (p, e);
     }
   }
@@ -116,12 +138,14 @@ err_t page_validate_for_db (const page *p, const int flags, error *e) {
 // SETTERS
 
 #ifndef NTEST
-TEST (page_set_get_simple) {
+TEST (page_set_get_simple)
+{
   page p, q;
   rand_bytes (p.raw, PAGE_SIZE);
   rand_bytes (q.raw, PAGE_SIZE);
 
-  TEST_CASE ("Initialization: each page type") {
+  TEST_CASE ("Initialization: each page type")
+  {
     page_init_empty (&p, PG_DATA_LIST);
     test_assert_int_equal (page_get_type (&p), PG_DATA_LIST);
 
@@ -132,7 +156,8 @@ TEST (page_set_get_simple) {
     test_assert_int_equal (page_get_type (&p), PG_FREE_SPACE_MAP);
   }
 
-  TEST_CASE ("Setters / Getters: checksum + page_lsn + type") {
+  TEST_CASE ("Setters / Getters: checksum + page_lsn + type")
+  {
     page_init_empty (&p, PG_DATA_LIST);
 
     page_set_checksum (&p, 0xDEADBEEF);
@@ -145,7 +170,8 @@ TEST (page_set_get_simple) {
     test_assert_int_equal (page_get_type (&p), PG_INNER_NODE);
   }
 
-  TEST_CASE ("page_memcpy roundtrip") {
+  TEST_CASE ("page_memcpy roundtrip")
+  {
     const struct bytes src = {.head = q.raw, .len = PAGE_SIZE};
     page_memcpy (&p, src);
     test_assert_memequal (p.raw, q.raw, PAGE_SIZE);
@@ -153,29 +179,38 @@ TEST (page_set_get_simple) {
 }
 #endif
 
-void i_log_page (const int log_level, const page *p) {
-  switch ((enum page_type)page_get_type (p)) {
-    case PG_DATA_LIST: {
+void
+i_log_page (const int log_level, const page *p)
+{
+  switch ((enum page_type)page_get_type (p))
+  {
+    case PG_DATA_LIST:
+    {
       i_log_dl (log_level, p);
       return;
     }
-    case PG_INNER_NODE: {
+    case PG_INNER_NODE:
+    {
       i_log_in (log_level, p);
       return;
     }
-    case PG_FREE_SPACE_MAP: {
+    case PG_FREE_SPACE_MAP:
+    {
       i_log_fsm (log_level, p);
       return;
     }
-    case PG_VAR_PAGE: {
+    case PG_VAR_PAGE:
+    {
       i_log_vp (log_level, p);
       return;
     }
-    case PG_VAR_TAIL: {
+    case PG_VAR_TAIL:
+    {
       i_log_vt (log_level, p);
       return;
     }
-    case PG_VAR_HASH_PAGE: {
+    case PG_VAR_HASH_PAGE:
+    {
       i_log_vh (log_level, p);
       return;
     }

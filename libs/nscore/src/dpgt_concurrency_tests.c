@@ -15,18 +15,22 @@
 #include "nscore/dirty_page_table.h"
 
 #ifndef NTEST
-struct dpgt_thread_ctx {
+struct dpgt_thread_ctx
+{
   struct dpg_table *table;
   volatile int      counter;
   pgno              start_pg;
   int               count;
 };
 
-static void *dpgt_insert_thread (void *arg) {
+static void *
+dpgt_insert_thread (void *arg)
+{
   struct dpgt_thread_ctx *ctx = arg;
   error                   e   = error_create ();
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     const pgno pg      = ctx->start_pg + i;
     const lsn  rec_lsn = ctx->start_pg + i;
 
@@ -35,23 +39,30 @@ static void *dpgt_insert_thread (void *arg) {
   return NULL;
 }
 
-static void *dpgt_reader_thread (void *arg) {
+static void *
+dpgt_reader_thread (void *arg)
+{
   struct dpgt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     lsn rec_lsn;
     if (dpgt_get (&rec_lsn, ctx->table, ctx->start_pg + i)) { ctx->counter += 1; }
   }
   return NULL;
 }
 
-static void *dpgt_updater_thread (void *arg) {
+static void *
+dpgt_updater_thread (void *arg)
+{
   struct dpgt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     const pgno pg = ctx->start_pg + i;
 
-    if (dpgt_exists (ctx->table, pg)) {
+    if (dpgt_exists (ctx->table, pg))
+    {
       dpgt_update (ctx->table, pg, ctx->start_pg + i + 1000);
       ctx->counter += 1;
     }
@@ -60,10 +71,13 @@ static void *dpgt_updater_thread (void *arg) {
   return NULL;
 }
 
-static void *dpgt_remove_thread (void *arg) {
+static void *
+dpgt_remove_thread (void *arg)
+{
   struct dpgt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     bool removed;
     dpgt_remove (&removed, ctx->table, ctx->start_pg + i);
 
@@ -73,8 +87,10 @@ static void *dpgt_remove_thread (void *arg) {
   return NULL;
 }
 
-TEST (dpgt_concurrent) {
-  TEST_CASE ("concurrent inserts") {
+TEST (dpgt_concurrent)
+{
+  TEST_CASE ("concurrent inserts")
+  {
     error                  e    = error_create ();
     struct dpg_table      *t    = dpgt_open (&e);
     struct dpgt_thread_ctx ctx1 = {
@@ -113,7 +129,8 @@ TEST (dpgt_concurrent) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("concurrent readers") {
+  TEST_CASE ("concurrent readers")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     // Pre-populate
@@ -153,7 +170,8 @@ TEST (dpgt_concurrent) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("concurrent updates") {
+  TEST_CASE ("concurrent updates")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     // Pre-populate
@@ -191,7 +209,8 @@ TEST (dpgt_concurrent) {
     test_assert_equal (total_updates, 300);
 
     // Verify updates
-    for (pgno pg = 0; pg < 300; pg++) {
+    for (pgno pg = 0; pg < 300; pg++)
+    {
       lsn rec_lsn;
       test_assert (dpgt_get (&rec_lsn, t, pg));
       test_assert_equal (rec_lsn, pg + 1000);
@@ -200,7 +219,8 @@ TEST (dpgt_concurrent) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("concurrent removes") {
+  TEST_CASE ("concurrent removes")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     // Pre-populate
@@ -242,7 +262,8 @@ TEST (dpgt_concurrent) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("concurrent insert and read") {
+  TEST_CASE ("concurrent insert and read")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     // Pre-populate half so readers have something to find

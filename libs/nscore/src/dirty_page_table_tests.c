@@ -15,24 +15,30 @@
 #include "nscore/dirty_page_table.h"
 
 #ifndef NTEST
-TEST (dpgt_open) {
-  TEST_CASE ("basic") {
+TEST (dpgt_open)
+{
+  TEST_CASE ("basic")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_close (t);
   }
 
-  TEST_CASE ("open multiple") {
+  TEST_CASE ("open multiple")
+  {
     error e = error_create ();
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
       struct dpg_table *t = dpgt_open (&e);
       dpgt_close (t);
     }
   }
 }
 
-TEST (dpgt_merge_into) {
-  TEST_CASE ("empty to empty") {
+TEST (dpgt_merge_into)
+{
+  TEST_CASE ("empty to empty")
+  {
     error             e      = error_create ();
     struct dpg_table *src    = dpgt_open (&e);
     struct dpg_table *dest   = dpgt_open (&e);
@@ -43,7 +49,8 @@ TEST (dpgt_merge_into) {
     dpgt_close (src);
   }
 
-  TEST_CASE ("data") {
+  TEST_CASE ("data")
+  {
     error             e    = error_create ();
     struct dpg_table *dest = dpgt_open (&e);
     struct dpg_table *src  = dpgt_open (&e);
@@ -63,7 +70,8 @@ TEST (dpgt_merge_into) {
     dpgt_close (src);
   }
 
-  TEST_CASE ("dest gets new rec_lsn on collision") {
+  TEST_CASE ("dest gets new rec_lsn on collision")
+  {
     error             e    = error_create ();
     struct dpg_table *dest = dpgt_open (&e);
     struct dpg_table *src  = dpgt_open (&e);
@@ -83,8 +91,10 @@ TEST (dpgt_merge_into) {
   }
 }
 
-TEST (dpgt_min_rec_lsn) {
-  TEST_CASE ("single entry") {
+TEST (dpgt_min_rec_lsn)
+{
+  TEST_CASE ("single entry")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 1, 50, &e);
@@ -95,7 +105,8 @@ TEST (dpgt_min_rec_lsn) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("multiple entries") {
+  TEST_CASE ("multiple entries")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 1, 100, &e);
@@ -110,8 +121,10 @@ TEST (dpgt_min_rec_lsn) {
   }
 }
 
-TEST (dpgt_exists) {
-  TEST_CASE ("nonexistent returns false") {
+TEST (dpgt_exists)
+{
+  TEST_CASE ("nonexistent returns false")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     test_assert (!dpgt_exists (t, 9999));
@@ -119,7 +132,8 @@ TEST (dpgt_exists) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("exists after add") {
+  TEST_CASE ("exists after add")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     test_assert (!dpgt_exists (t, 1100));
@@ -130,8 +144,10 @@ TEST (dpgt_exists) {
   }
 }
 
-TEST (dpgt_add) {
-  TEST_CASE ("new entry") {
+TEST (dpgt_add)
+{
+  TEST_CASE ("new entry")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 900, 100, &e);
@@ -144,12 +160,14 @@ TEST (dpgt_add) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("multiple entries different pages") {
+  TEST_CASE ("multiple entries different pages")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     for (pgno pg = 1; pg <= 5; pg++) { dpgt_add (t, pg, pg * 10, &e); }
 
-    for (pgno pg = 1; pg <= 5; pg++) {
+    for (pgno pg = 1; pg <= 5; pg++)
+    {
       lsn  rec_lsn;
       bool found = dpgt_get (&rec_lsn, t, pg);
       test_assert (found);
@@ -160,8 +178,10 @@ TEST (dpgt_add) {
   }
 }
 
-TEST (dpgt_get) {
-  TEST_CASE ("nonexistent returns false") {
+TEST (dpgt_get)
+{
+  TEST_CASE ("nonexistent returns false")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     lsn               rec_lsn;
@@ -171,7 +191,8 @@ TEST (dpgt_get) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("get rec_lsn") {
+  TEST_CASE ("get rec_lsn")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 100, 50, &e);
@@ -184,7 +205,8 @@ TEST (dpgt_get) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("update rec_lsn") {
+  TEST_CASE ("update rec_lsn")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 600, 100, &e);
@@ -199,7 +221,8 @@ TEST (dpgt_get) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("multiple pages independent") {
+  TEST_CASE ("multiple pages independent")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 1, 10, &e);
@@ -221,8 +244,10 @@ TEST (dpgt_get) {
   }
 }
 
-TEST (dpgt_remove) {
-  TEST_CASE ("remove existing") {
+TEST (dpgt_remove)
+{
+  TEST_CASE ("remove existing")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 400, 100, &e);
@@ -238,7 +263,8 @@ TEST (dpgt_remove) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("remove nonexistent") {
+  TEST_CASE ("remove nonexistent")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     bool              removed;
@@ -248,7 +274,8 @@ TEST (dpgt_remove) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("double remove") {
+  TEST_CASE ("double remove")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 100, 50, &e);
@@ -263,7 +290,8 @@ TEST (dpgt_remove) {
     dpgt_close (t);
   }
 
-  TEST_CASE ("get fails after remove") {
+  TEST_CASE ("get fails after remove")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     dpgt_add (t, 200, 50, &e);
@@ -280,8 +308,10 @@ TEST (dpgt_remove) {
   }
 }
 
-TEST (dpgt_serialize) {
-  TEST_CASE ("serialize deserialize empty") {
+TEST (dpgt_serialize)
+{
+  TEST_CASE ("serialize deserialize empty")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     u8                buffer[4096];
@@ -295,7 +325,8 @@ TEST (dpgt_serialize) {
     dpgt_close (t2);
   }
 
-  TEST_CASE ("serialize deserialize with data") {
+  TEST_CASE ("serialize deserialize with data")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     for (pgno pg = 1; pg <= 10; pg++) { dpgt_add (t, pg, pg * 100, &e); }
@@ -305,7 +336,8 @@ TEST (dpgt_serialize) {
     test_assert (size > 0);
 
     struct dpg_table *t2 = dpgt_deserialize (buffer, size, &e);
-    for (pgno pg = 1; pg <= 10; pg++) {
+    for (pgno pg = 1; pg <= 10; pg++)
+    {
       lsn  rec_lsn;
       bool found = dpgt_get (&rec_lsn, t2, pg);
       test_assert (found);
@@ -316,7 +348,8 @@ TEST (dpgt_serialize) {
     dpgt_close (t2);
   }
 
-  TEST_CASE ("round trip preserves size") {
+  TEST_CASE ("round trip preserves size")
+  {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
     for (pgno pg = 0; pg < 50; pg++) { dpgt_add (t, pg, pg * 7, &e); }
@@ -333,8 +366,10 @@ TEST (dpgt_serialize) {
   }
 }
 
-TEST (dpgt_equal) {
-  TEST_CASE ("empty tables") {
+TEST (dpgt_equal)
+{
+  TEST_CASE ("empty tables")
+  {
     error             e  = error_create ();
     struct dpg_table *t1 = dpgt_open (&e);
     struct dpg_table *t2 = dpgt_open (&e);
@@ -344,11 +379,13 @@ TEST (dpgt_equal) {
     dpgt_close (t2);
   }
 
-  TEST_CASE ("same content") {
+  TEST_CASE ("same content")
+  {
     error             e  = error_create ();
     struct dpg_table *t1 = dpgt_open (&e);
     struct dpg_table *t2 = dpgt_open (&e);
-    for (pgno pg = 1; pg <= 5; pg++) {
+    for (pgno pg = 1; pg <= 5; pg++)
+    {
       dpgt_add (t1, pg, pg * 10, &e);
       dpgt_add (t2, pg, pg * 10, &e);
     }
@@ -359,7 +396,8 @@ TEST (dpgt_equal) {
     dpgt_close (t2);
   }
 
-  TEST_CASE ("different rec_lsn") {
+  TEST_CASE ("different rec_lsn")
+  {
     error             e  = error_create ();
     struct dpg_table *t1 = dpgt_open (&e);
     struct dpg_table *t2 = dpgt_open (&e);
@@ -372,7 +410,8 @@ TEST (dpgt_equal) {
     dpgt_close (t2);
   }
 
-  TEST_CASE ("different sizes") {
+  TEST_CASE ("different sizes")
+  {
     error             e  = error_create ();
     struct dpg_table *t1 = dpgt_open (&e);
     struct dpg_table *t2 = dpgt_open (&e);
@@ -386,7 +425,8 @@ TEST (dpgt_equal) {
     dpgt_close (t2);
   }
 
-  TEST_CASE ("different pages same rec_lsn") {
+  TEST_CASE ("different pages same rec_lsn")
+  {
     error             e  = error_create ();
     struct dpg_table *t1 = dpgt_open (&e);
     struct dpg_table *t2 = dpgt_open (&e);

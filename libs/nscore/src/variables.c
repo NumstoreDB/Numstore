@@ -17,7 +17,9 @@
 #include "c_specx.h"
 #include "nscore/types.h"
 
-bool variable_equal (const struct variable *left, const struct variable *right) {
+bool
+variable_equal (const struct variable *left, const struct variable *right)
+{
   if (!string_equal (left->vname, right->vname)) { return false; }
   if (!type_equal (left->dtype, right->dtype)) { return false; }
   if (left->var_root != right->var_root) { return false; }
@@ -27,30 +29,38 @@ bool variable_equal (const struct variable *left, const struct variable *right) 
   return true;
 }
 
-err_t validate_vname (struct string vname, error *e) {
+err_t
+validate_vname (struct string vname, error *e)
+{
   if (vname.len == 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "variable name is empty"); }
 
-  if (vname.len >= 4096) {
+  if (vname.len >= 4096)
+  {
     return error_causef (e, ERR_INVALID_ARGUMENT, "variable name exceeds 4096 chars");
   }
 
-  for (u32 i = 0; i < vname.len; ++i) {
+  for (u32 i = 0; i < vname.len; ++i)
+  {
     char c = vname.data[i];
-    if (!is_alpha_num_generous (c)) {
+    if (!is_alpha_num_generous (c))
+    {
       return error_causef (
           e,
           ERR_INVALID_ARGUMENT,
           "variable name '%.*s' contains "
           "invalid characters",
           vname.len,
-          vname.data);
+          vname.data
+      );
     }
   }
 
   return SUCCESS;
 }
 
-void variable_free (struct variable *v) {
+void
+variable_free (struct variable *v)
+{
   type_free (v->dtype);
   v->dtype = NULL;
 
@@ -62,7 +72,9 @@ void variable_free (struct variable *v) {
   v->var_root   = PGNO_NULL;
 }
 
-struct variable *variable_malloc_copy (struct variable *v, struct malloc_plan *plan) {
+struct variable *
+variable_malloc_copy (struct variable *v, struct malloc_plan *plan)
+{
   bool active = plan->mode == MP_ALLOCING;
 
   struct variable *ret = malloc_plan_memcpy (plan, v, sizeof (struct variable));

@@ -19,12 +19,16 @@
 
 #include <stdatomic.h>
 
-static inline u32 pgr_spin_clock (struct pager *p) {
+static inline u32
+pgr_spin_clock (struct pager *p)
+{
   ASSERT (MEMORY_PAGE_LEN % 2 == 0); // For overflow and faster modulo
   return atomic_fetch_add (&p->clock, 1) & (MEMORY_PAGE_LEN - 1);
 }
 
-i32 pgr_reserve_and_ctrl_lock (struct pager *p, error *e) {
+i32
+pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
+{
   DBG_ASSERT (pager, p);
 
   struct page_frame *mp             = NULL; // The working page frame
@@ -34,10 +38,12 @@ i32 pgr_reserve_and_ctrl_lock (struct pager *p, error *e) {
   /**
    * Loop forever - this is highly concurrent
    */
-  for (;; clock = pgr_spin_clock (p)) {
+  for (;; clock = pgr_spin_clock (p))
+  {
     mp = &p->pages[clock];
 
-    if (!latch_trylock (&mp->ctrl)) {
+    if (!latch_trylock (&mp->ctrl))
+    {
       // If we can't lock - don't spin - just move on and find a new slot
       continue;
     }
@@ -46,25 +52,30 @@ i32 pgr_reserve_and_ctrl_lock (struct pager *p, error *e) {
     if (!(mp->flags & PW_PRESENT)) { goto found_spot; }
 
     // Pinned, skip it
-    if (mp->pin > 0) {
+    if (mp->pin > 0)
+    {
       latch_unlock (&mp->ctrl);
       continue;
     }
 
     // Access bit is on - set off and continue
-    if (mp->flags & PW_ACCESS) {
+    if (mp->flags & PW_ACCESS)
+    {
       mp->flags &= ~PW_ACCESS;
 
       latch_unlock (&mp->ctrl);
       continue;
     }
 
-    if (ready_to_evict) {
+    if (ready_to_evict)
+    {
       // Found a spot - but it's not being used - safe to evict it
       if (pgr_evict_unsafe (p, mp, e) < 0) { return error_trace (e); }
 
       goto found_spot;
-    } else {
+    }
+    else
+    {
       // The first round - don't evict anything
       latch_unlock (&mp->ctrl);
       ready_to_evict = true;
@@ -76,8 +87,10 @@ found_spot:
 }
 
 #ifndef NTEST
-TEST (pgr_reserve_and_ctrl_lock_st) {
-  TEST_CASE ("single threaded clock iterator test") {
+TEST (pgr_reserve_and_ctrl_lock_st)
+{
+  TEST_CASE ("single threaded clock iterator test")
+  {
     struct pgr_fixture pgr;
     pgr_fixture_create (&pgr);
 

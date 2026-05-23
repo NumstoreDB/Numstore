@@ -17,7 +17,8 @@
 #include "c_specx.h"
 #include "nscore/types.h"
 
-struct variable {
+struct variable
+{
   struct string vname;
   struct type  *dtype;
   pgno          var_root;
@@ -33,7 +34,9 @@ err_t validate_vname (struct string vname, error *e);
 
 struct variable *variable_malloc_copy (struct variable *v, struct malloc_plan *plan);
 
-HEADER_FUNC b_size var_resolve_index (struct variable *v, sb_size bofst) {
+HEADER_FUNC b_size
+var_resolve_index (struct variable *v, sb_size bofst)
+{
   // Translate negative
   if (bofst < 0) { bofst = v->nbytes + bofst; }
 
@@ -49,7 +52,9 @@ HEADER_FUNC b_size var_resolve_index (struct variable *v, sb_size bofst) {
   return bofst;
 }
 
-HEADER_FUNC b_size var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size) {
+HEADER_FUNC b_size
+var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
+{
   b_size remainder = (v->nbytes - bofst) / size;
   if (nelem > remainder) { nelem = remainder; }
   return nelem;

@@ -18,7 +18,9 @@
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
 
-struct nshandle *nsh_new_context (struct nshandle *ns) {
+struct nshandle *
+nsh_new_context (struct nshandle *ns)
+{
   ns->e.cause_code = SUCCESS;
   ns->e.cmlen      = 0;
   return nsh_root_load (ns->root, &ns->e);

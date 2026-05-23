@@ -16,7 +16,9 @@
 
 #include <string.h>
 
-err_t parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e) {
+err_t
+parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e)
+{
   ASSERT (data);
   ASSERT (len > 0);
   ASSERT (dest);
@@ -24,7 +26,8 @@ err_t parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e) {
   u32  i   = 0;
   bool neg = false;
 
-  if (data[i] == '+' || data[i] == '-') {
+  if (data[i] == '+' || data[i] == '-')
+  {
     neg = (data[i] == '-');
     i++;
     ASSERT (i < len);
@@ -32,7 +35,8 @@ err_t parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e) {
 
   i64 acc = 0;
 
-  for (; i < len; i++) {
+  for (; i < len; i++)
+  {
     const char c = data[i];
     ASSERT (is_num (c));
 
@@ -43,7 +47,8 @@ err_t parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e) {
     if (!safe_sub_i64 (&acc, acc, digit)) { goto failed; }
   }
 
-  if (!neg) {
+  if (!neg)
+  {
     if (acc == I64_MIN) { goto failed; }
     acc = -acc;
   }
@@ -55,7 +60,9 @@ failed:
   return error_causef (e, ERR_ARITH, "i64 overflow");
 }
 
-err_t parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e) {
+err_t
+parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e)
+{
   ASSERT (data);
   ASSERT (len > 0);
   ASSERT (dest);
@@ -63,7 +70,8 @@ err_t parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e) {
   u32  i   = 0;
   bool neg = false;
 
-  if (data[i] == '+' || data[i] == '-') {
+  if (data[i] == '+' || data[i] == '-')
+  {
     neg = (data[i] == '-');
     i++;
     ASSERT (i < len); // We expect string to be valid
@@ -71,7 +79,8 @@ err_t parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e) {
 
   i32 acc = 0;
 
-  for (; i < len; i++) {
+  for (; i < len; i++)
+  {
     const char c = data[i];
     ASSERT (is_num (c));
 
@@ -82,7 +91,8 @@ err_t parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e) {
     if (!safe_sub_i32 (&acc, acc, digit)) { goto failed; }
   }
 
-  if (!neg) {
+  if (!neg)
+  {
     if (acc == I32_MIN) { goto failed; }
     acc = -acc;
   }
@@ -95,7 +105,8 @@ failed:
 }
 
 #ifndef NTEST
-TEST (parse_i32_expect) {
+TEST (parse_i32_expect)
+{
   i32   out = -1;
   error e   = error_create ();
 
@@ -110,7 +121,9 @@ TEST (parse_i32_expect) {
 }
 #endif
 
-err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
+err_t
+parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
+{
   ASSERT (s);
   ASSERT (dest);
   ASSERT (len > 0);
@@ -118,7 +131,8 @@ err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
   u32  i   = 0;
   bool neg = false;
 
-  if (s[i] == '+' || s[i] == '-') {
+  if (s[i] == '+' || s[i] == '-')
+  {
     neg = (s[i] == '-');
     i++;
     ASSERT (i < len);
@@ -127,7 +141,8 @@ err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
   // Integer part
   f32  acc       = 0.0f;
   bool saw_digit = false;
-  while (i < len && s[i] >= '0' && s[i] <= '9') {
+  while (i < len && s[i] >= '0' && s[i] <= '9')
+  {
     const f32 d = (f32)(s[i] - '0');
     if (!safe_mul_f32 (&acc, acc, 10.0f)) { goto failed; }
     if (!safe_add_f32 (&acc, acc, d)) { goto failed; }
@@ -136,11 +151,13 @@ err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
   }
 
   // Fractional part
-  if (i < len && s[i] == '.') {
+  if (i < len && s[i] == '.')
+  {
     i++;
     ASSERT (i < len); // cannot end with '.'
     f32 frac = 0.0f, scale = 1.0f;
-    while (i < len && s[i] >= '0' && s[i] <= '9') {
+    while (i < len && s[i] >= '0' && s[i] <= '9')
+    {
       const f32 d = (f32)(s[i] - '0');
       if (!safe_mul_f32 (&frac, frac, 10.0f)) { goto failed; }
       if (!safe_add_f32 (&frac, frac, d)) { goto failed; }
@@ -156,18 +173,21 @@ err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
   ASSERT (saw_digit);
 
   // Exponent part
-  if (i < len && (s[i] == 'e' || s[i] == 'E')) {
+  if (i < len && (s[i] == 'e' || s[i] == 'E'))
+  {
     i++;
     ASSERT (i < len); // must have exponent digits
     bool exp_neg = false;
-    if (s[i] == '+' || s[i] == '-') {
+    if (s[i] == '+' || s[i] == '-')
+    {
       exp_neg = (s[i] == '-');
       i++;
       ASSERT (i < len);
     }
     u32  exp     = 0;
     bool saw_exp = false;
-    while (i < len && s[i] >= '0' && s[i] <= '9') {
+    while (i < len && s[i] >= '0' && s[i] <= '9')
+    {
       const u32 d = (u32)(s[i] - '0');
       ASSERT (exp <= (UINT32_MAX - d) / 10);
       exp = exp * 10 + d;
@@ -177,10 +197,14 @@ err_t parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e) {
     ASSERT (saw_exp);
 
     // Apply exponent
-    for (u32 k = 0; k < exp; k++) {
-      if (exp_neg) {
+    for (u32 k = 0; k < exp; k++)
+    {
+      if (exp_neg)
+      {
         if (!safe_div_f32 (&acc, acc, 10.0f)) { goto failed; }
-      } else {
+      }
+      else
+      {
         if (!safe_mul_f32 (&acc, acc, 10.0f)) { goto failed; }
       }
     }
@@ -199,7 +223,8 @@ failed:
 #define EPSILON 1e-6f
 
 #ifndef NTEST
-TEST (parse_f32_expect) {
+TEST (parse_f32_expect)
+{
   f32   out = NAN;
   error e   = error_create ();
 
@@ -219,7 +244,9 @@ TEST (parse_f32_expect) {
 }
 #endif
 
-float py_mod_f32 (const float num, const float denom) {
+float
+py_mod_f32 (const float num, const float denom)
+{
   if (denom == 0.0f) { return INFINITY; }
 
   float rem = num - denom * (int)(num / denom);
@@ -230,7 +257,8 @@ float py_mod_f32 (const float num, const float denom) {
 }
 
 #ifndef NTEST
-TEST (py_mod_f32) {
+TEST (py_mod_f32)
+{
   // +num , +denom  (generic)
   test_assert (py_mod_f32 (5.5f, 2.0f) == 1.5f);
 
@@ -254,14 +282,17 @@ TEST (py_mod_f32) {
 }
 #endif
 
-i32 py_mod_i32 (const i32 num, const i32 denom) {
+i32
+py_mod_i32 (const i32 num, const i32 denom)
+{
   i32 r = num % denom;
   if ((r != 0) && ((r < 0) != (denom < 0))) { r += denom; }
   return r;
 }
 
 #ifndef NTEST
-TEST (py_mod_i32) {
+TEST (py_mod_i32)
+{
   // +num , +denom
   test_assert (py_mod_i32 (5, 3) == 2);
 

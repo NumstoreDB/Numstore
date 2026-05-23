@@ -93,7 +93,8 @@ err_t nupd_append_2nd_right (
     b_size               size1,
     pgno                 pg2,
     b_size               size2,
-    error               *e);
+    error               *e
+);
 
 /**
  * @brief Appends two entries to the left side of the update list
@@ -111,7 +112,8 @@ err_t nupd_append_2nd_left (
     b_size               size1,
     pgno                 pg2,
     b_size               size2,
-    error               *e);
+    error               *e
+);
 
 /**
  * @brief Appends the three pages from a balance output to the right side of the

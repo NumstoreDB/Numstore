@@ -18,7 +18,8 @@
 
 #ifndef NTEST
 #  include <stdatomic.h>
-struct txnt_thread_ctx {
+struct txnt_thread_ctx
+{
   struct txn_table *table;
   struct txn       *txn_bank; // Pre-allocated transactions
   _Atomic int       counter;
@@ -26,11 +27,14 @@ struct txnt_thread_ctx {
   int               count;
 };
 
-static void *txnt_insert_thread (void *arg) {
+static void *
+txnt_insert_thread (void *arg)
+{
   struct txnt_thread_ctx *ctx = arg;
   error                   e   = error_create ();
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     txn_init (
         &ctx->txn_bank[i],
         ctx->start_tid + i,
@@ -38,7 +42,8 @@ static void *txnt_insert_thread (void *arg) {
             .last_lsn      = ctx->start_tid + i,
             .undo_next_lsn = ctx->start_tid + i - 1,
             .state         = TX_RUNNING,
-        });
+        }
+    );
 
     txnt_insert_txn (ctx->table, &ctx->txn_bank[i]);
 
@@ -48,12 +53,16 @@ static void *txnt_insert_thread (void *arg) {
   return NULL;
 }
 
-static void *txnt_reader_thread (void *arg) {
+static void *
+txnt_reader_thread (void *arg)
+{
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     struct txn *retrieved;
-    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i)) {
+    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i))
+    {
       atomic_fetch_add (&ctx->counter, 1);
     }
   }
@@ -61,12 +70,16 @@ static void *txnt_reader_thread (void *arg) {
   return NULL;
 }
 
-static void *txnt_updater_thread (void *arg) {
+static void *
+txnt_updater_thread (void *arg)
+{
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     struct txn *retrieved;
-    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i)) {
+    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i))
+    {
       struct txn_data new_data = retrieved->data;
       new_data.last_lsn        = ctx->start_tid + i + 1000;
       txn_update_data (retrieved, new_data);
@@ -77,12 +90,16 @@ static void *txnt_updater_thread (void *arg) {
   return NULL;
 }
 
-static void *txnt_state_transition_thread (void *arg) {
+static void *
+txnt_state_transition_thread (void *arg)
+{
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++) {
+  for (int i = 0; i < ctx->count; i++)
+  {
     struct txn *retrieved;
-    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i)) {
+    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i))
+    {
       // TX_RUNNING -> TX_CANDIDATE_FOR_UNDO
       struct txn_data new_data = retrieved->data;
       new_data.state           = TX_CANDIDATE_FOR_UNDO;
@@ -100,8 +117,10 @@ static void *txnt_state_transition_thread (void *arg) {
   return NULL;
 }
 
-TEST (txnt_concurrent) {
-  TEST_CASE ("txnt_concurrent_inserts") {
+TEST (txnt_concurrent)
+{
+  TEST_CASE ("txnt_concurrent_inserts")
+  {
     error             e = error_create ();
     struct txn_table *t = txnt_open (&e);
     struct txn        txn_bank1[100], txn_bank2[100], txn_bank3[100];
@@ -145,12 +164,14 @@ TEST (txnt_concurrent) {
     txnt_close (t);
   }
 
-  TEST_CASE ("txnt_concurrent_readers") {
+  TEST_CASE ("txnt_concurrent_readers")
+  {
     error             e = error_create ();
     struct txn_table *t = txnt_open (&e);
     // Pre-populate
     struct txn txns[200];
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 200; i++)
+    {
       txn_init (
           &txns[i],
           i,
@@ -158,7 +179,8 @@ TEST (txnt_concurrent) {
               .last_lsn      = i,
               .undo_next_lsn = i - 1,
               .state         = TX_RUNNING,
-          });
+          }
+      );
       txnt_insert_txn (t, &txns[i]);
     }
 
@@ -196,7 +218,8 @@ TEST (txnt_concurrent) {
     txnt_close (t);
   }
 
-  TEST_CASE ("txnt_update_undo_next") {
+  TEST_CASE ("txnt_update_undo_next")
+  {
     error             e = error_create ();
     struct txn_table *t = txnt_open (&e);
     struct txn        tx;
@@ -207,7 +230,8 @@ TEST (txnt_concurrent) {
             .last_lsn      = 100,
             .undo_next_lsn = 80,
             .state         = TX_RUNNING,
-        });
+        }
+    );
 
     txnt_insert_txn (t, &tx);
 
@@ -226,7 +250,8 @@ TEST (txnt_concurrent) {
     txnt_close (t);
   }
 
-  TEST_CASE ("txnt_update_state") {
+  TEST_CASE ("txnt_update_state")
+  {
     error             e = error_create ();
     struct txn_table *t = txnt_open (&e);
     struct txn        tx;
@@ -237,7 +262,8 @@ TEST (txnt_concurrent) {
             .last_lsn      = 100,
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
-        });
+        }
+    );
 
     txnt_insert_txn (t, &tx);
 
@@ -256,12 +282,14 @@ TEST (txnt_concurrent) {
     txnt_close (t);
   }
 
-  TEST_CASE ("txnt_concurrent_updates") {
+  TEST_CASE ("txnt_concurrent_updates")
+  {
     error             e = error_create ();
     struct txn_table *t = txnt_open (&e);
     // Pre-populate
     struct txn txns[300];
-    for (int i = 0; i < 300; i++) {
+    for (int i = 0; i < 300; i++)
+    {
       txn_init (
           &txns[i],
           i,
@@ -269,7 +297,8 @@ TEST (txnt_concurrent) {
               .last_lsn      = i,
               .undo_next_lsn = i - 1,
               .state         = TX_RUNNING,
-          });
+          }
+      );
       txnt_insert_txn (t, &txns[i]);
     }
 
@@ -305,7 +334,8 @@ TEST (txnt_concurrent) {
     test_assert_equal (total_updates, 300);
 
     // Verify updates
-    for (txid tid = 0; tid < 300; tid++) {
+    for (txid tid = 0; tid < 300; tid++)
+    {
       struct txn *retrieved;
       test_assert (txnt_get (&retrieved, t, tid));
       test_assert_equal (retrieved->data.last_lsn, tid + 1000);
@@ -314,12 +344,14 @@ TEST (txnt_concurrent) {
     txnt_close (t);
   }
 
-  TEST_CASE ("txnt_concurrent_state_transitions") {
+  TEST_CASE ("txnt_concurrent_state_transitions")
+  {
     error             e = error_create ();
     struct txn_table *t = txnt_open (&e);
     // Pre-populate with running transactions
     struct txn txns[150];
-    for (int i = 0; i < 150; i++) {
+    for (int i = 0; i < 150; i++)
+    {
       txn_init (
           &txns[i],
           i,
@@ -327,7 +359,8 @@ TEST (txnt_concurrent) {
               .last_lsn      = i,
               .undo_next_lsn = i - 1,
               .state         = TX_RUNNING,
-          });
+          }
+      );
       txnt_insert_txn (t, &txns[i]);
     }
 
@@ -363,7 +396,8 @@ TEST (txnt_concurrent) {
     test_assert_equal (total_transitions, 150);
 
     // Verify all are committed
-    for (txid tid = 0; tid < 150; tid++) {
+    for (txid tid = 0; tid < 150; tid++)
+    {
       struct txn *retrieved;
       test_assert (txnt_get (&retrieved, t, tid));
       test_assert_equal (retrieved->data.state, TX_COMMITTED);

@@ -22,7 +22,9 @@ DEFINE_DBG_ASSERT (struct dbl_buffer, dbl_buffer, d, {
   ASSERT (d->nelem <= d->nelem_cap);
 })
 
-err_t dblb_create (struct dbl_buffer *dest, const u32 size, const u32 initial_cap, error *e) {
+err_t
+dblb_create (struct dbl_buffer *dest, const u32 size, const u32 initial_cap, error *e)
+{
   ASSERT (initial_cap > 0);
   ASSERT (size > 0);
 
@@ -41,7 +43,9 @@ err_t dblb_create (struct dbl_buffer *dest, const u32 size, const u32 initial_ca
   return SUCCESS;
 }
 
-err_t dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e) {
+err_t
+dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
+{
   DBG_ASSERT (dbl_buffer, d);
 
   void *head = dblb_append_alloc (d, nelem, e);
@@ -52,8 +56,11 @@ err_t dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, erro
   return SUCCESS;
 }
 
-err_t dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e) {
-  if (nelem >= d->nelem_cap) {
+err_t
+dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e)
+{
+  if (nelem >= d->nelem_cap)
+  {
     void *newdata = i_realloc_right (d->data, d->nelem_cap, 2 * nelem, d->size, e);
     if (newdata == NULL) { return error_trace (e); }
     d->data      = newdata;
@@ -62,7 +69,9 @@ err_t dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e) {
   return error_trace (e);
 }
 
-void *dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e) {
+void *
+dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e)
+{
   DBG_ASSERT (dbl_buffer, d);
 
   const u32 newnelem_cap = d->nelem + nelem;
@@ -75,7 +84,9 @@ void *dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e) {
   return ret;
 }
 
-void dblb_free (struct dbl_buffer *d) {
+void
+dblb_free (struct dbl_buffer *d)
+{
   DBG_ASSERT (dbl_buffer, d);
 
   i_free (d->data);
@@ -84,7 +95,8 @@ void dblb_free (struct dbl_buffer *d) {
 }
 
 #ifndef NTEST
-TEST (dblb_create_basic) {
+TEST (dblb_create_basic)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -99,7 +111,8 @@ TEST (dblb_create_basic) {
   dblb_free (&db);
 }
 
-TEST (dblb_append_single) {
+TEST (dblb_append_single)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -119,7 +132,8 @@ TEST (dblb_append_single) {
   dblb_free (&db);
 }
 
-TEST (dblb_append_multiple) {
+TEST (dblb_append_multiple)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -140,7 +154,8 @@ TEST (dblb_append_multiple) {
   dblb_free (&db);
 }
 
-TEST (dblb_append_triggers_realloc) {
+TEST (dblb_append_triggers_realloc)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -176,7 +191,8 @@ TEST (dblb_append_triggers_realloc) {
   dblb_free (&db);
 }
 
-TEST (dblb_append_alloc_basic) {
+TEST (dblb_append_alloc_basic)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -200,7 +216,8 @@ TEST (dblb_append_alloc_basic) {
   dblb_free (&db);
 }
 
-TEST (dblb_append_alloc_sequential) {
+TEST (dblb_append_alloc_sequential)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -230,7 +247,8 @@ TEST (dblb_append_alloc_sequential) {
   dblb_free (&db);
 }
 
-TEST (dblb_append_alloc_triggers_realloc) {
+TEST (dblb_append_alloc_triggers_realloc)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -249,7 +267,8 @@ TEST (dblb_append_alloc_triggers_realloc) {
   dblb_free (&db);
 }
 
-TEST (dblb_different_element_sizes) {
+TEST (dblb_different_element_sizes)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -268,11 +287,13 @@ TEST (dblb_different_element_sizes) {
   dblb_free (&db);
 }
 
-TEST (dblb_struct_elements) {
+TEST (dblb_struct_elements)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
-  struct test_struct {
+  struct test_struct
+  {
     u32 id;
     u32 value;
   };
@@ -294,7 +315,8 @@ TEST (dblb_struct_elements) {
   dblb_free (&db);
 }
 
-TEST (dblb_free_resets) {
+TEST (dblb_free_resets)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -309,7 +331,8 @@ TEST (dblb_free_resets) {
   test_assert_int_equal (db.nelem_cap, 0);
 }
 
-TEST (dblb_large_append) {
+TEST (dblb_large_append)
+{
   struct dbl_buffer db;
   error             e = error_create ();
 

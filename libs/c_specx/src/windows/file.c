@@ -23,7 +23,9 @@
 ////////////////////////////////////////////////////////////
 // Helpers
 
-static char *win32_strerror (DWORD err, char *buf, DWORD buflen) {
+static char *
+win32_strerror (DWORD err, char *buf, DWORD buflen)
+{
   FormatMessageA (
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
       NULL,
@@ -31,14 +33,17 @@ static char *win32_strerror (DWORD err, char *buf, DWORD buflen) {
       0,
       buf,
       buflen,
-      NULL);
+      NULL
+  );
   return buf;
 }
 
 #define WIN_ERR_BUF     256
 #define WIN_ERRMSG(buf) win32_strerror (GetLastError (), buf, sizeof (buf))
 
-static OVERLAPPED make_overlapped (u64 offset) {
+static OVERLAPPED
+make_overlapped (u64 offset)
+{
   OVERLAPPED ov = {0};
   ov.Offset     = (DWORD)(offset & 0xFFFFFFFFULL);
   ov.OffsetHigh = (DWORD)(offset >> 32);
@@ -46,7 +51,9 @@ static OVERLAPPED make_overlapped (u64 offset) {
 }
 
 #ifndef NDEBUG
-static bool handle_is_open (HANDLE h) { return h != NULL && h != INVALID_HANDLE_VALUE; }
+static bool
+handle_is_open (HANDLE h)
+{ return h != NULL && h != INVALID_HANDLE_VALUE; }
 #endif
 
 DEFINE_DBG_ASSERT (i_file, i_file, fp, {
@@ -57,10 +64,13 @@ DEFINE_DBG_ASSERT (i_file, i_file, fp, {
 ////////////////////////////////////////////////////////////
 // File vtable — Win32 implementations
 
-static err_t win32_close (i_file *fp, error *e) {
+static err_t
+win32_close (i_file *fp, error *e)
+{
   DBG_ASSERT (i_file, fp);
 
-  if (unlikely (!CloseHandle (fp->handle))) {
+  if (unlikely (!CloseHandle (fp->handle)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "close: %s", WIN_ERRMSG (buf));
   }
@@ -69,10 +79,13 @@ static err_t win32_close (i_file *fp, error *e) {
   return SUCCESS;
 }
 
-static err_t win32_fsync (const i_file *fp, error *e) {
+static err_t
+win32_fsync (const i_file *fp, error *e)
+{
   DBG_ASSERT (i_file, fp);
 
-  if (unlikely (!FlushFileBuffers (fp->handle))) {
+  if (unlikely (!FlushFileBuffers (fp->handle)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "fsync: %s", WIN_ERRMSG (buf));
   }
@@ -80,12 +93,15 @@ static err_t win32_fsync (const i_file *fp, error *e) {
   return SUCCESS;
 }
 
-static i64 win32_file_size (const i_file *fp, error *e) {
+static i64
+win32_file_size (const i_file *fp, error *e)
+{
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER size;
 
-  if (unlikely (!GetFileSizeEx (fp->handle, &size))) {
+  if (unlikely (!GetFileSizeEx (fp->handle, &size)))
+  {
     char buf[WIN_ERR_BUF];
     error_causef (e, ERR_IO, "file_size: %s", WIN_ERRMSG (buf));
     return error_trace (e);
@@ -98,7 +114,8 @@ static i64 win32_file_size (const i_file *fp, error *e) {
 // Positional Read / Write
 
 static i64
-win32_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e) {
+win32_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
   ASSERT (n > 0);
@@ -106,7 +123,8 @@ win32_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, e
   OVERLAPPED ov    = make_overlapped (offset);
   DWORD      nread = 0;
 
-  if (unlikely (!ReadFile (fp->handle, dest, (DWORD)n, &nread, &ov))) {
+  if (unlikely (!ReadFile (fp->handle, dest, (DWORD)n, &nread, &ov)))
+  {
     DWORD err = GetLastError ();
 
     if (likely (err == ERROR_HANDLE_EOF)) { return 0; }
@@ -119,7 +137,9 @@ win32_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, e
   return (i64)nread;
 }
 
-static i64 win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e) {
+static i64
+win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
   ASSERT (n > 0);
@@ -127,12 +147,14 @@ static i64 win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64
   u8 *_dest = (u8 *)dest;
   u64 nread = 0;
 
-  while (nread < n) {
+  while (nread < n)
+  {
     OVERLAPPED ov    = make_overlapped (offset + nread);
     DWORD      chunk = 0;
     DWORD      want  = (DWORD)((n - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nread));
 
-    if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, &ov))) {
+    if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, &ov)))
+    {
       DWORD err = GetLastError ();
 
       if (likely (err == ERROR_HANDLE_EOF)) { return (i64)nread; }
@@ -143,7 +165,8 @@ static i64 win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64
       return error_causef (e, ERR_IO, "pread: %s", buf);
     }
 
-    if (chunk == 0) {
+    if (chunk == 0)
+    {
       return (i64)nread; // EOF
     }
     nread += chunk;
@@ -154,7 +177,8 @@ static i64 win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64
 }
 
 static i64
-win32_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e) {
+win32_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (n > 0);
@@ -162,7 +186,8 @@ win32_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 off
   OVERLAPPED ov       = make_overlapped (offset);
   DWORD      nwritten = 0;
 
-  if (unlikely (!WriteFile (fp->handle, src, (DWORD)n, &nwritten, &ov))) {
+  if (unlikely (!WriteFile (fp->handle, src, (DWORD)n, &nwritten, &ov)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "pwrite: %s", WIN_ERRMSG (buf));
   }
@@ -171,7 +196,8 @@ win32_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 off
 }
 
 static err_t
-win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e) {
+win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (n > 0);
@@ -179,12 +205,14 @@ win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offs
   const u8 *_src   = (const u8 *)src;
   u64       nwrite = 0;
 
-  while (nwrite < n) {
+  while (nwrite < n)
+  {
     OVERLAPPED ov    = make_overlapped (offset + nwrite);
     DWORD      chunk = 0;
     DWORD      want  = (DWORD)((n - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nwrite));
 
-    if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, &ov))) {
+    if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, &ov)))
+    {
       char buf[WIN_ERR_BUF];
       return error_causef (e, ERR_IO, "pwrite: %s", WIN_ERRMSG (buf));
     }
@@ -199,39 +227,48 @@ win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offs
 // IO Vec (no scatter-gather on Windows for regular files — loop per buffer)
 
 static i64
-win32_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, error *e) {
+win32_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (iovcnt > 0 && iovcnt <= 2);
 
   i64 total = 0;
-  for (int i = 0; i < iovcnt; i++) {
+  for (int i = 0; i < iovcnt; i++)
+  {
     DWORD nwritten = 0;
-    if (unlikely (!WriteFile (fp->handle, src[i].head, (DWORD)src[i].len, &nwritten, NULL))) {
+    if (unlikely (!WriteFile (fp->handle, src[i].head, (DWORD)src[i].len, &nwritten, NULL)))
+    {
       char buf[WIN_ERR_BUF];
       return error_causef (e, ERR_IO, "writev: %s", WIN_ERRMSG (buf));
     }
 
     total += nwritten;
-    if ((u64)nwritten < src[i].len) {
+    if ((u64)nwritten < src[i].len)
+    {
       break; // partial
     }
   }
   return total;
 }
 
-static err_t win32_writev_all (const i_file *fp, struct bytes *iov, const int iovcnt, error *e) {
+static err_t
+win32_writev_all (const i_file *fp, struct bytes *iov, const int iovcnt, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
   ASSERT (iovcnt > 0 && iovcnt <= 2);
 
-  for (int i = 0; i < iovcnt; i++) {
+  for (int i = 0; i < iovcnt; i++)
+  {
     u8 *src    = (u8 *)iov[i].head;
     u64 remain = iov[i].len;
-    while (remain > 0) {
+    while (remain > 0)
+    {
       DWORD want     = (DWORD)(remain > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : remain);
       DWORD nwritten = 0;
-      if (unlikely (!WriteFile (fp->handle, src, want, &nwritten, NULL))) {
+      if (unlikely (!WriteFile (fp->handle, src, want, &nwritten, NULL)))
+      {
         char buf[WIN_ERR_BUF];
         return error_causef (e, ERR_IO, "writev: %s", WIN_ERRMSG (buf));
       }
@@ -243,15 +280,18 @@ static err_t win32_writev_all (const i_file *fp, struct bytes *iov, const int io
 }
 
 static i64
-win32_readv_some (const i_file *fp, const struct bytes *iov, const int iovcnt, error *e) {
+win32_readv_some (const i_file *fp, const struct bytes *iov, const int iovcnt, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
   ASSERT (iovcnt > 0 && iovcnt <= 2);
 
   i64 total = 0;
-  for (int i = 0; i < iovcnt; i++) {
+  for (int i = 0; i < iovcnt; i++)
+  {
     DWORD nread = 0;
-    if (unlikely (!ReadFile (fp->handle, iov[i].head, (DWORD)iov[i].len, &nread, NULL))) {
+    if (unlikely (!ReadFile (fp->handle, iov[i].head, (DWORD)iov[i].len, &nread, NULL)))
+    {
       DWORD err = GetLastError ();
       if (likely (err == ERROR_HANDLE_EOF)) { break; }
       char buf[WIN_ERR_BUF];
@@ -259,26 +299,32 @@ win32_readv_some (const i_file *fp, const struct bytes *iov, const int iovcnt, e
       return error_causef (e, ERR_IO, "readv: %s", buf);
     }
     total += nread;
-    if ((u64)nread < iov[i].len) {
+    if ((u64)nread < iov[i].len)
+    {
       break; // partial / EOF
     }
   }
   return total;
 }
 
-static i64 win32_readv_all (const i_file *fp, struct bytes *iov, const int iovcnt, error *e) {
+static i64
+win32_readv_all (const i_file *fp, struct bytes *iov, const int iovcnt, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
   ASSERT (iovcnt > 0 && iovcnt <= 2);
 
   i64 total = 0;
-  for (int i = 0; i < iovcnt; i++) {
+  for (int i = 0; i < iovcnt; i++)
+  {
     u8 *dst    = (u8 *)iov[i].head;
     u64 remain = iov[i].len;
-    while (remain > 0) {
+    while (remain > 0)
+    {
       DWORD want  = (DWORD)(remain > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : remain);
       DWORD nread = 0;
-      if (unlikely (!ReadFile (fp->handle, dst, want, &nread, NULL))) {
+      if (unlikely (!ReadFile (fp->handle, dst, want, &nread, NULL)))
+      {
         DWORD err = GetLastError ();
         if (likely (err == ERROR_HANDLE_EOF)) { goto done; }
         char buf[WIN_ERR_BUF];
@@ -298,13 +344,16 @@ done:
 ////////////////////////////////////////////////////////////
 // Stream Read / Write
 
-static i64 win32_read_some (const i_file *fp, void *dest, const u64 nbytes, error *e) {
+static i64
+win32_read_some (const i_file *fp, void *dest, const u64 nbytes, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
   ASSERT (nbytes > 0);
 
   DWORD nread = 0;
-  if (unlikely (!ReadFile (fp->handle, dest, (DWORD)nbytes, &nread, NULL))) {
+  if (unlikely (!ReadFile (fp->handle, dest, (DWORD)nbytes, &nread, NULL)))
+  {
     DWORD err = GetLastError ();
     if (likely (err == ERROR_HANDLE_EOF)) { return 0; }
     char buf[WIN_ERR_BUF];
@@ -314,7 +363,9 @@ static i64 win32_read_some (const i_file *fp, void *dest, const u64 nbytes, erro
   return (i64)nread;
 }
 
-static i64 win32_read_all (const i_file *fp, void *dest, const u64 nbytes, error *e) {
+static i64
+win32_read_all (const i_file *fp, void *dest, const u64 nbytes, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
   ASSERT (nbytes > 0);
@@ -322,11 +373,13 @@ static i64 win32_read_all (const i_file *fp, void *dest, const u64 nbytes, error
   u8 *_dest = (u8 *)dest;
   u64 nread = 0;
 
-  while (nread < nbytes) {
+  while (nread < nbytes)
+  {
     DWORD chunk = 0;
     DWORD want  = (DWORD)((nbytes - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (nbytes - nread));
 
-    if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, NULL))) {
+    if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, NULL)))
+    {
       DWORD err = GetLastError ();
       if (likely (err == ERROR_HANDLE_EOF)) { return (i64)nread; }
       char buf[WIN_ERR_BUF];
@@ -334,7 +387,8 @@ static i64 win32_read_all (const i_file *fp, void *dest, const u64 nbytes, error
       return error_causef (e, ERR_IO, "read: %s", buf);
     }
 
-    if (chunk == 0) {
+    if (chunk == 0)
+    {
       return (i64)nread; // EOF
     }
     nread += chunk;
@@ -344,20 +398,25 @@ static i64 win32_read_all (const i_file *fp, void *dest, const u64 nbytes, error
   return (i64)nread;
 }
 
-static i64 win32_write_some (const i_file *fp, const void *src, const u64 nbytes, error *e) {
+static i64
+win32_write_some (const i_file *fp, const void *src, const u64 nbytes, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (nbytes > 0);
 
   DWORD nwritten = 0;
-  if (unlikely (!WriteFile (fp->handle, src, (DWORD)nbytes, &nwritten, NULL))) {
+  if (unlikely (!WriteFile (fp->handle, src, (DWORD)nbytes, &nwritten, NULL)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "write: %s", WIN_ERRMSG (buf));
   }
   return (i64)nwritten;
 }
 
-static err_t win32_write_all (const i_file *fp, const void *src, const u64 nbytes, error *e) {
+static err_t
+win32_write_all (const i_file *fp, const void *src, const u64 nbytes, error *e)
+{
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (nbytes > 0);
@@ -365,11 +424,13 @@ static err_t win32_write_all (const i_file *fp, const void *src, const u64 nbyte
   const u8 *_src   = (const u8 *)src;
   u64       nwrite = 0;
 
-  while (nwrite < nbytes) {
+  while (nwrite < nbytes)
+  {
     DWORD chunk = 0;
     DWORD want  = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (nbytes - nwrite));
 
-    if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, NULL))) {
+    if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, NULL)))
+    {
       char buf[WIN_ERR_BUF];
       return error_causef (e, ERR_IO, "write: %s", WIN_ERRMSG (buf));
     }
@@ -384,17 +445,21 @@ static err_t win32_write_all (const i_file *fp, const void *src, const u64 nbyte
 ////////////////////////////////////////////////////////////
 // Other file ops
 
-static err_t win32_truncate (const i_file *fp, const u64 bytes, error *e) {
+static err_t
+win32_truncate (const i_file *fp, const u64 bytes, error *e)
+{
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER li;
   li.QuadPart = (LONGLONG)bytes;
-  if (unlikely (!SetFilePointerEx (fp->handle, li, NULL, FILE_BEGIN))) {
+  if (unlikely (!SetFilePointerEx (fp->handle, li, NULL, FILE_BEGIN)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "truncate (seek): %s", WIN_ERRMSG (buf));
   }
 
-  if (unlikely (!SetEndOfFile (fp->handle))) {
+  if (unlikely (!SetEndOfFile (fp->handle)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "truncate: %s", WIN_ERRMSG (buf));
   }
@@ -402,18 +467,22 @@ static err_t win32_truncate (const i_file *fp, const u64 bytes, error *e) {
   return SUCCESS;
 }
 
-static err_t win32_fallocate (i_file *fp, const u64 bytes, error *e) {
+static err_t
+win32_fallocate (i_file *fp, const u64 bytes, error *e)
+{
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER li;
   li.QuadPart = (LONGLONG)bytes;
 
-  if (unlikely (!SetFilePointerEx (fp->handle, li, NULL, FILE_BEGIN))) {
+  if (unlikely (!SetFilePointerEx (fp->handle, li, NULL, FILE_BEGIN)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "fallocate (seek): %s", WIN_ERRMSG (buf));
   }
 
-  if (unlikely (!SetEndOfFile (fp->handle))) {
+  if (unlikely (!SetEndOfFile (fp->handle)))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "fallocate: %s", WIN_ERRMSG (buf));
   }
@@ -421,24 +490,31 @@ static err_t win32_fallocate (i_file *fp, const u64 bytes, error *e) {
   return SUCCESS;
 }
 
-static i64 win32_seek (const i_file *fp, const u64 offset, const seek_t whence, error *e) {
+static i64
+win32_seek (const i_file *fp, const u64 offset, const seek_t whence, error *e)
+{
   DBG_ASSERT (i_file, fp);
 
   DWORD method;
-  switch (whence) {
-    case I_SEEK_SET: {
+  switch (whence)
+  {
+    case I_SEEK_SET:
+    {
       method = FILE_BEGIN;
       break;
     }
-    case I_SEEK_CUR: {
+    case I_SEEK_CUR:
+    {
       method = FILE_CURRENT;
       break;
     }
-    case I_SEEK_END: {
+    case I_SEEK_END:
+    {
       method = FILE_END;
       break;
     }
-    default: {
+    default:
+    {
       UNREACHABLE ();
     }
   }
@@ -446,7 +522,8 @@ static i64 win32_seek (const i_file *fp, const u64 offset, const seek_t whence, 
   LARGE_INTEGER li, result;
   li.QuadPart = (LONGLONG)offset;
 
-  if (unlikely (!SetFilePointerEx (fp->handle, li, &result, method))) {
+  if (unlikely (!SetFilePointerEx (fp->handle, li, &result, method)))
+  {
     char buf[WIN_ERR_BUF];
     error_causef (e, ERR_IO, "seek: %s", WIN_ERRMSG (buf));
     return error_trace (e);
@@ -459,7 +536,9 @@ static i64 win32_seek (const i_file *fp, const u64 offset, const seek_t whence, 
 // File system vtable — Win32 implementations
 // vfs parameter unused; Win32 FS operations are stateless.
 
-static err_t win32_open_rw (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) {
+static err_t
+win32_open_rw (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+{
   (void)vfs;
   HANDLE h = CreateFileA (
       fname,
@@ -468,9 +547,11 @@ static err_t win32_open_rw (i_file_system_vtable *vfs, i_file *dest, const char 
       NULL,
       OPEN_ALWAYS,
       FILE_ATTRIBUTE_NORMAL,
-      NULL);
+      NULL
+  );
 
-  if (unlikely (h == INVALID_HANDLE_VALUE)) {
+  if (unlikely (h == INVALID_HANDLE_VALUE))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "open_rw %s: %s", fname, WIN_ERRMSG (buf));
   }
@@ -485,7 +566,9 @@ static err_t win32_open_rw (i_file_system_vtable *vfs, i_file *dest, const char 
   return SUCCESS;
 }
 
-static err_t win32_open_r (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) {
+static err_t
+win32_open_r (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+{
   (void)vfs;
   HANDLE h = CreateFileA (
       fname,
@@ -494,9 +577,11 @@ static err_t win32_open_r (i_file_system_vtable *vfs, i_file *dest, const char *
       NULL,
       OPEN_ALWAYS,
       FILE_ATTRIBUTE_NORMAL,
-      NULL);
+      NULL
+  );
 
-  if (unlikely (h == INVALID_HANDLE_VALUE)) {
+  if (unlikely (h == INVALID_HANDLE_VALUE))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "open_r %s: %s", fname, WIN_ERRMSG (buf));
   }
@@ -511,7 +596,9 @@ static err_t win32_open_r (i_file_system_vtable *vfs, i_file *dest, const char *
   return SUCCESS;
 }
 
-static err_t win32_open_w (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) {
+static err_t
+win32_open_w (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+{
   (void)vfs;
   HANDLE h = CreateFileA (
       fname,
@@ -520,9 +607,11 @@ static err_t win32_open_w (i_file_system_vtable *vfs, i_file *dest, const char *
       NULL,
       OPEN_ALWAYS,
       FILE_ATTRIBUTE_NORMAL,
-      NULL);
+      NULL
+  );
 
-  if (unlikely (h == INVALID_HANDLE_VALUE)) {
+  if (unlikely (h == INVALID_HANDLE_VALUE))
+  {
     char buf[WIN_ERR_BUF];
     return error_causef (e, ERR_IO, "open_w %s: %s", fname, WIN_ERRMSG (buf));
   }
@@ -537,11 +626,15 @@ static err_t win32_open_w (i_file_system_vtable *vfs, i_file *dest, const char *
   return SUCCESS;
 }
 
-static err_t win32_remove_quiet (i_file_system_vtable *vfs, const char *fname, error *e) {
+static err_t
+win32_remove_quiet (i_file_system_vtable *vfs, const char *fname, error *e)
+{
   (void)vfs;
-  if (unlikely (!DeleteFileA (fname))) {
+  if (unlikely (!DeleteFileA (fname)))
+  {
     DWORD err = GetLastError ();
-    if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND) {
+    if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND)
+    {
       char buf[WIN_ERR_BUF];
       win32_strerror (err, buf, sizeof (buf));
       error_causef (e, ERR_IO, "remove: %s", buf);
@@ -551,9 +644,12 @@ static err_t win32_remove_quiet (i_file_system_vtable *vfs, const char *fname, e
   return SUCCESS;
 }
 
-static err_t win32_unlink (i_file_system_vtable *vfs, const char *name, error *e) {
+static err_t
+win32_unlink (i_file_system_vtable *vfs, const char *name, error *e)
+{
   (void)vfs;
-  if (unlikely (!DeleteFileA (name))) {
+  if (unlikely (!DeleteFileA (name)))
+  {
     char buf[WIN_ERR_BUF];
     error_causef (e, ERR_IO, "unlink: %s", WIN_ERRMSG (buf));
     return error_trace (e);
@@ -561,9 +657,12 @@ static err_t win32_unlink (i_file_system_vtable *vfs, const char *name, error *e
   return SUCCESS;
 }
 
-static err_t win32_mkdir (i_file_system_vtable *vfs, const char *name, error *e) {
+static err_t
+win32_mkdir (i_file_system_vtable *vfs, const char *name, error *e)
+{
   (void)vfs;
-  if (unlikely (!CreateDirectoryA (name, NULL))) {
+  if (unlikely (!CreateDirectoryA (name, NULL)))
+  {
     char buf[WIN_ERR_BUF];
     error_causef (e, ERR_IO, "mkdir: %s", WIN_ERRMSG (buf));
     return error_trace (e);
@@ -571,12 +670,15 @@ static err_t win32_mkdir (i_file_system_vtable *vfs, const char *name, error *e)
   return SUCCESS;
 }
 
-static err_t win32_mkdir_quiet (i_file_system_vtable *vfs, const char *name, error *e) {
+static err_t
+win32_mkdir_quiet (i_file_system_vtable *vfs, const char *name, error *e)
+{
   (void)vfs;
   if (CreateDirectoryA (name, NULL)) { return SUCCESS; }
 
   DWORD err = GetLastError ();
-  if (unlikely (err != ERROR_ALREADY_EXISTS)) {
+  if (unlikely (err != ERROR_ALREADY_EXISTS))
+  {
     char buf[WIN_ERR_BUF];
     win32_strerror (err, buf, sizeof (buf));
     error_causef (e, ERR_IO, "mkdir: %s", buf);
@@ -584,13 +686,15 @@ static err_t win32_mkdir_quiet (i_file_system_vtable *vfs, const char *name, err
   }
 
   DWORD attrs = GetFileAttributesA (name);
-  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES)) {
+  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES))
+  {
     char buf[WIN_ERR_BUF];
     error_causef (e, ERR_IO, "mkdir_quiet (stat): %s", WIN_ERRMSG (buf));
     return error_trace (e);
   }
 
-  if (unlikely (!(attrs & FILE_ATTRIBUTE_DIRECTORY))) {
+  if (unlikely (!(attrs & FILE_ATTRIBUTE_DIRECTORY)))
+  {
     error_causef (e, ERR_IO, "mkdir_quiet: %s exists but is not a directory", name);
     return error_trace (e);
   }
@@ -598,7 +702,9 @@ static err_t win32_mkdir_quiet (i_file_system_vtable *vfs, const char *name, err
   return SUCCESS;
 }
 
-static err_t win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e) {
+static err_t
+win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
+{
   (void)vfs;
 
   char pattern[MAX_PATH];
@@ -607,7 +713,8 @@ static err_t win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
   WIN32_FIND_DATAA fd;
   HANDLE           hFind = FindFirstFileA (pattern, &fd);
 
-  if (unlikely (hFind == INVALID_HANDLE_VALUE)) {
+  if (unlikely (hFind == INVALID_HANDLE_VALUE))
+  {
     DWORD err = GetLastError ();
     if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) { return SUCCESS; }
     char buf[WIN_ERR_BUF];
@@ -616,13 +723,16 @@ static err_t win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
     return error_trace (e);
   }
 
-  do {
+  do
+  {
     if (strcmp (fd.cFileName, ".") == 0 || strcmp (fd.cFileName, "..") == 0) { continue; }
     char child[MAX_PATH];
     snprintf (child, sizeof (child), "%s\\%s", path, fd.cFileName);
-    if (unlikely (!DeleteFileA (child))) {
+    if (unlikely (!DeleteFileA (child)))
+    {
       DWORD err = GetLastError ();
-      if (err != ERROR_FILE_NOT_FOUND) {
+      if (err != ERROR_FILE_NOT_FOUND)
+      {
         FindClose (hFind);
         char buf[WIN_ERR_BUF];
         win32_strerror (err, buf, sizeof (buf));
@@ -630,13 +740,16 @@ static err_t win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
         return error_trace (e);
       }
     }
-  } while (FindNextFileA (hFind, &fd));
+  }
+  while (FindNextFileA (hFind, &fd));
 
   FindClose (hFind);
 
-  if (unlikely (!RemoveDirectoryA (path))) {
+  if (unlikely (!RemoveDirectoryA (path)))
+  {
     DWORD err = GetLastError ();
-    if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND) {
+    if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND)
+    {
       char buf[WIN_ERR_BUF];
       win32_strerror (err, buf, sizeof (buf));
       error_causef (e, ERR_IO, "rmdir %s: %s", path, buf);
@@ -647,9 +760,12 @@ static err_t win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
   return SUCCESS;
 }
 
-static err_t win32_access_rw (i_file_system_vtable *vfs, const char *fname, error *e) {
+static err_t
+win32_access_rw (i_file_system_vtable *vfs, const char *fname, error *e)
+{
   (void)vfs;
-  if (unlikely (GetFileAttributesA (fname) == INVALID_FILE_ATTRIBUTES)) {
+  if (unlikely (GetFileAttributesA (fname) == INVALID_FILE_ATTRIBUTES))
+  {
     char buf[WIN_ERR_BUF];
     error_causef (e, ERR_IO, "access: %s", WIN_ERRMSG (buf));
     return error_trace (e);
@@ -657,12 +773,16 @@ static err_t win32_access_rw (i_file_system_vtable *vfs, const char *fname, erro
   return SUCCESS;
 }
 
-static bool win32_exists_rw (i_file_system_vtable *vfs, const char *fname) {
+static bool
+win32_exists_rw (i_file_system_vtable *vfs, const char *fname)
+{
   (void)vfs;
   return GetFileAttributesA (fname) != INVALID_FILE_ATTRIBUTES;
 }
 
-static err_t win32_touch (i_file_system_vtable *vfs, const char *fname, error *e) {
+static err_t
+win32_touch (i_file_system_vtable *vfs, const char *fname, error *e)
+{
   ASSERT (fname);
   i_file fd = {0};
   WRAP (vfs->i_open_rw (vfs, &fd, fname, e));
@@ -670,14 +790,18 @@ static err_t win32_touch (i_file_system_vtable *vfs, const char *fname, error *e
   return SUCCESS;
 }
 
-static err_t win32_dir_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e) {
+static err_t
+win32_dir_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e)
+{
   (void)vfs;
   DWORD attrs = GetFileAttributesA (fname);
 
-  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES)) {
+  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES))
+  {
     DWORD err = GetLastError ();
 
-    if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) {
+    if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND)
+    {
       *dest = false;
       return SUCCESS;
     }
@@ -692,14 +816,17 @@ static err_t win32_dir_exists (i_file_system_vtable *vfs, const char *fname, boo
 }
 
 static err_t
-win32_file_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e) {
+win32_file_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e)
+{
   (void)vfs;
   DWORD attrs = GetFileAttributesA (fname);
 
-  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES)) {
+  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES))
+  {
     DWORD err = GetLastError ();
 
-    if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND) {
+    if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND)
+    {
       *dest = false;
       return SUCCESS;
     }

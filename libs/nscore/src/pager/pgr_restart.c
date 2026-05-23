@@ -30,14 +30,17 @@
  * being replayed).  Runs the three phases in order and frees the aries_ctx
  * on completion, whether or not an error occurred.
  */
-err_t pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e) {
+err_t
+pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
+{
   err_t ret = SUCCESS;
   p->flags |= PGR_ISRESTARTING;
 
   // ANALYSIS
   if (pgr_restart_analysis (p, ctx, e)) { goto theend; }
 
-  if (ctx->redo_lsn != LSN_NULL) {
+  if (ctx->redo_lsn != LSN_NULL)
+  {
     // REDO
     if (pgr_restart_redo (p, ctx, e)) { goto theend; }
 

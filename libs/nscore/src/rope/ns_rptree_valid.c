@@ -18,39 +18,49 @@
 #include "nscore/pages/inner_node.h"
 #include "nscore/rope.h"
 
-struct frame {
+struct frame
+{
   pgno         pg;
   struct hnode node;
 };
 
-struct rptree_valid_ctx {
+struct rptree_valid_ctx
+{
   struct slab_alloc pg_alloc;
   struct htable    *table;
 };
 
-static bool frame_eq (const struct hnode *left, const struct hnode *right) {
+static bool
+frame_eq (const struct hnode *left, const struct hnode *right)
+{
   const struct frame *_left  = container_of (left, struct frame, node);
   const struct frame *_right = container_of (right, struct frame, node);
   return _left->pg == _right->pg;
 }
 
-static err_t rptree_valid_recursive (
+static err_t
+rptree_valid_recursive (
     struct pager            *p,
     const pgno               pg,
     bool                     isroot,
     const b_size             exp_size,
     struct rptree_valid_ctx *ctx,
-    error                   *e) {
+    error                   *e
+)
+{
   // Check if this page was double counted
   struct frame key = {
       .pg = pg,
   };
   hnode_init (&key.node, (u32)pg);
   struct hnode **dup = htable_lookup (ctx->table, &key.node, frame_eq);
-  if (dup != NULL) {
+  if (dup != NULL)
+  {
     error_causef (e, ERR_CORRUPT, "Page: %" PRpgno " was double counted", pg);
     goto failed;
-  } else {
+  }
+  else
+  {
     struct frame *f = slab_alloc_alloc (&ctx->pg_alloc, e);
     if (f == NULL) { goto failed; }
     f->pg = pg;
@@ -63,44 +73,53 @@ static err_t rptree_valid_recursive (
   if (pgr_get (&pivot, PG_DATA_LIST | PG_VAR_PAGE, pg, p, e)) { goto failed; }
 
   // Check that root matches
-  if (isroot != dlgt_is_root (page_h_ro (&pivot))) {
+  if (isroot != dlgt_is_root (page_h_ro (&pivot)))
+  {
     error_causef (e, ERR_CORRUPT, "page %" PRpgno " should be non-root", pg);
     goto failed;
   }
 
   // Check that size matches
-  if (dlgt_get_size (page_h_ro (&pivot)) != exp_size) {
+  if (dlgt_get_size (page_h_ro (&pivot)) != exp_size)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "page %" PRpgno ": expected %" PRb_size " bytes, got %" PRb_size,
         pg,
         exp_size,
-        in_get_size (page_h_ro (&pivot)));
+        in_get_size (page_h_ro (&pivot))
+    );
     goto failed;
   }
 
-  switch (page_h_type (&pivot)) {
-    case PG_DATA_LIST: {
+  switch (page_h_type (&pivot))
+  {
+    case PG_DATA_LIST:
+    {
       if (pgr_release (p, &pivot, PG_DATA_LIST, e)) { goto failed; }
       return error_trace (e);
     }
-    case PG_VAR_PAGE: {
+    case PG_VAR_PAGE:
+    {
       struct in_pair       nodes[IN_MAX_KEYS];
       const struct in_data data = in_get_data (page_h_ro (&pivot), nodes);
 
       if (pgr_release (p, &pivot, PG_DATA_LIST, e)) { goto failed; }
 
       // Validate each child
-      for (u32 i = 0; i < data.len; ++i) {
-        if (rptree_valid_recursive (p, data.nodes[i].pg, false, data.nodes[i].key, ctx, e)) {
+      for (u32 i = 0; i < data.len; ++i)
+      {
+        if (rptree_valid_recursive (p, data.nodes[i].pg, false, data.nodes[i].key, ctx, e))
+        {
           goto failed;
         }
       }
 
       return error_trace (e);
     }
-    default: {
+    default:
+    {
       UNREACHABLE ();
     }
   }
@@ -110,7 +129,9 @@ failed:
   return error_trace (e);
 }
 
-err_t ns_rptree_valid (struct pager *db, const pgno rpt_root, const b_size nbytes, error *e) {
+err_t
+ns_rptree_valid (struct pager *db, const pgno rpt_root, const b_size nbytes, error *e)
+{
   struct rptree_valid_ctx ctx;
   slab_alloc_init (&ctx.pg_alloc, sizeof (struct frame), 512);
 

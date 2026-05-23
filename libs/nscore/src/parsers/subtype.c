@@ -16,7 +16,8 @@
 
 #include "nscore/parsers/multi_user_stride.h"
 
-struct sub_type_parser {
+struct sub_type_parser
+{
   struct parser      *base;
   struct subtype     *dest;
   struct chunk_alloc  temp;
@@ -24,8 +25,11 @@ struct sub_type_parser {
 };
 
 // sub_type   ::= IDENT stride* ('.' IDENT stride*)*
-static err_t parse_sub_type_inner (struct sub_type_parser *parser, error *e) {
-  if (!parser_match (parser->base, TT_IDENTIFIER)) {
+static err_t
+parse_sub_type_inner (struct sub_type_parser *parser, error *e)
+{
+  if (!parser_match (parser->base, TT_IDENTIFIER))
+  {
     return error_causef (e, ERR_SYNTAX, "Expected variable name at position %u", parser->base->pos);
   }
 
@@ -36,27 +40,33 @@ static err_t parse_sub_type_inner (struct sub_type_parser *parser, error *e) {
   // Type accessors
   struct type_accessor_builder tab;
   tab_create (&tab, &parser->temp, parser->persistent);
-  while (true) {
+  while (true)
+  {
     // Stride
-    if (parser_match (parser->base, TT_LEFT_BRACKET)) {
+    if (parser_match (parser->base, TT_LEFT_BRACKET))
+    {
       struct multi_user_stride stride;
       WRAP (parse_multi_user_stride (parser->base, &stride, parser->persistent, e));
-      for (u32 i = 0; i < stride.len; ++i) {
+      for (u32 i = 0; i < stride.len; ++i)
+      {
         WRAP (tab_accept_stride (&tab, stride.strides[i], e));
       }
     }
 
     // Dot
-    else if (parser_match (parser->base, TT_DOT)) {
+    else if (parser_match (parser->base, TT_DOT))
+    {
       parser_advance (parser->base);
-      if (!parser_match (parser->base, TT_IDENTIFIER)) {
+      if (!parser_match (parser->base, TT_IDENTIFIER))
+      {
         return error_causef (
             e,
             ERR_SYNTAX,
             "Expected "
             "identifier at "
             "position %u",
-            parser->base->pos);
+            parser->base->pos
+        );
       }
 
       tok                  = parser_advance (parser->base);
@@ -68,7 +78,8 @@ static err_t parse_sub_type_inner (struct sub_type_parser *parser, error *e) {
     }
 
     // Done
-    else {
+    else
+    {
       break;
     }
   }
@@ -79,7 +90,9 @@ static err_t parse_sub_type_inner (struct sub_type_parser *parser, error *e) {
   return subtype_create (parser->dest, vname, ta, e);
 }
 
-err_t parse_subtype (struct parser *p, struct subtype *dest, struct chunk_alloc *dalloc, error *e) {
+err_t
+parse_subtype (struct parser *p, struct subtype *dest, struct chunk_alloc *dalloc, error *e)
+{
   struct sub_type_parser parser = {
       .base       = p,
       .dest       = dest,

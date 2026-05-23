@@ -21,11 +21,14 @@
 ////////////////////////////////////////////////////////////
 // Mutex
 
-struct i_mutex_s {
+struct i_mutex_s
+{
   pthread_mutex_t mutex;
 };
 
-err_t i_mutex_create (i_mutex *dest, error *e) {
+err_t
+i_mutex_create (i_mutex *dest, error *e)
+{
   errno = 0;
 #ifndef NDEBUG
   pthread_mutexattr_t attr;
@@ -46,21 +49,27 @@ err_t i_mutex_create (i_mutex *dest, error *e) {
   if (pthread_mutex_init (&dest->m, NULL))
 #endif
   {
-    switch (errno) {
-      case EAGAIN: {
+    switch (errno)
+    {
+      case EAGAIN:
+      {
         return error_causef (e, ERR_IO, "mutex_init: %s", strerror (errno));
       }
-      case ENOMEM: {
+      case ENOMEM:
+      {
         return error_causef (e, ERR_NOMEM, "mutex_init: %s", strerror (errno));
       }
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "mutex_init: insufficient "
             "permissions: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
@@ -69,61 +78,81 @@ err_t i_mutex_create (i_mutex *dest, error *e) {
   return SUCCESS;
 }
 
-void i_mutex_free (i_mutex *m) {
+void
+i_mutex_free (i_mutex *m)
+{
   ASSERT (m);
 
   errno = 0;
-  if (pthread_mutex_destroy (&m->m)) {
-    switch (errno) {
-      case EBUSY: {
+  if (pthread_mutex_destroy (&m->m))
+  {
+    switch (errno)
+    {
+      case EBUSY:
+      {
         i_log_error (
             "mutex_destroy: still "
             "locked: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "mutex_destroy: "
             "invalid: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
   }
 }
 
-void i_mutex_lock (i_mutex *m) {
+void
+i_mutex_lock (i_mutex *m)
+{
   ASSERT (m);
 
   errno = 0;
-  if (pthread_mutex_lock (&m->m)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_mutex_lock (&m->m))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "mutex_lock: "
             "invalid: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EAGAIN: {
+      case EAGAIN:
+      {
         i_log_error (
             "mutex_lock: recursive "
             "lock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EDEADLK: {
+      case EDEADLK:
+      {
         i_log_error (
             "mutex_lock: "
             "deadlock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         i_log_error ("mutex_lock: %s\n", strerror (errno));
         UNREACHABLE ();
       }
@@ -131,37 +160,49 @@ void i_mutex_lock (i_mutex *m) {
   }
 }
 
-bool i_mutex_try_lock (i_mutex *m) {
+bool
+i_mutex_try_lock (i_mutex *m)
+{
   ASSERT (m);
 
   errno = 0;
-  if (pthread_mutex_trylock (&m->m)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_mutex_trylock (&m->m))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "mutex_lock: "
             "invalid: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EAGAIN: {
+      case EAGAIN:
+      {
         i_log_error (
             "mutex_lock: recursive "
             "lock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EDEADLK: {
+      case EDEADLK:
+      {
         i_log_error (
             "mutex_lock: "
             "deadlock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EBUSY: {
+      case EBUSY:
+      {
         return false;
       }
-      default: {
+      default:
+      {
         i_log_error ("mutex_lock: %s\n", strerror (errno));
         UNREACHABLE ();
       }
@@ -170,34 +211,45 @@ bool i_mutex_try_lock (i_mutex *m) {
   return true;
 }
 
-void i_mutex_unlock (i_mutex *m) {
+void
+i_mutex_unlock (i_mutex *m)
+{
   ASSERT (m);
 
   errno = 0;
-  if (pthread_mutex_unlock (&m->m)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_mutex_unlock (&m->m))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "mutex_unlock: "
             "invalid: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EAGAIN: {
+      case EAGAIN:
+      {
         i_log_error (
             "mutex_unlock: recursive "
             "lock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "mutex_unlock: "
             "not owner: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         i_log_error ("mutex_unlock: %s\n", strerror (errno));
         UNREACHABLE ();
       }

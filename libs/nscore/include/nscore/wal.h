@@ -18,11 +18,13 @@
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
 
-enum wal_flags {
+enum wal_flags
+{
   WAL_ISNEW = (1 << 0),
 };
 
-struct wal {
+struct wal
+{
   // The file that's open
   struct string fname;
 

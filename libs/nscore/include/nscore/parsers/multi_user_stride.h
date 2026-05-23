@@ -29,4 +29,5 @@ err_t parse_multi_user_stride (
     struct parser            *parser,
     struct multi_user_stride *dest,
     struct chunk_alloc       *dalloc,
-    error                    *e);
+    error                    *e
+);

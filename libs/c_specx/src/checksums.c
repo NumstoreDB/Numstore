@@ -17,8 +17,11 @@
 static u32 _crc32c_tbl[256];
 static int _crc32c_inited = 0;
 
-static void _crc32c_init (void) {
-  for (u32 i = 0; i < 256; ++i) {
+static void
+_crc32c_init (void)
+{
+  for (u32 i = 0; i < 256; ++i)
+  {
     u32 c = i;
     for (int k = 0; k < 8; ++k) { c = (c >> 1) ^ (0x82F63B78u & -((int)(c & 1))); }
     _crc32c_tbl[i] = c;
@@ -26,9 +29,13 @@ static void _crc32c_init (void) {
   _crc32c_inited = 1;
 }
 
-u32 checksum_init (void) { return 0; }
+u32
+checksum_init (void)
+{ return 0; }
 
-void checksum_execute (u32 *state, const u8 *data, const u32 len) {
+void
+checksum_execute (u32 *state, const u8 *data, const u32 len)
+{
   ASSERT (state);
   ASSERT (data);
   ASSERT (len > 0);
@@ -41,7 +48,8 @@ void checksum_execute (u32 *state, const u8 *data, const u32 len) {
 }
 
 #ifndef NTEST
-TEST (checksum_execute_simple) {
+TEST (checksum_execute_simple)
+{
   const u8 data[] = {1, 2, 3, 4};
   u32      state  = checksum_init ();
   checksum_execute (&state, data, 4);
@@ -51,7 +59,8 @@ TEST (checksum_execute_simple) {
   test_assert (state != 0);
 }
 
-TEST (checksum_execute_deterministic) {
+TEST (checksum_execute_deterministic)
+{
   const u8 data[] = {5, 10, 15, 20};
   u32      state1 = checksum_init ();
   u32      state2 = checksum_init ();
@@ -62,7 +71,8 @@ TEST (checksum_execute_deterministic) {
   test_assert_equal (state1, state2);
 }
 
-TEST (checksum_execute_incremental) {
+TEST (checksum_execute_incremental)
+{
   const u8 data[] = {1, 2, 3, 4, 5, 6};
 
   // All at once

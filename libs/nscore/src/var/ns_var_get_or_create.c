@@ -17,7 +17,9 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 
-err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e) {
+err_t
+ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
+{
   // Try to get the variable
   struct ns_var_get_params gparams = {
       .p     = params->p,
@@ -30,7 +32,8 @@ err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e
   error_silence (e);
   err_t err = ns_var_get (&gparams, e);
   error_unsilence (e);
-  if (err == ERR_VARIABLE_NE) {
+  if (err == ERR_VARIABLE_NE)
+  {
     // Doesn't exist - reset and create it
     e->cause_code = SUCCESS;
     e->cmlen      = 0;
@@ -46,18 +49,18 @@ err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e
 
     // Try again
     if (ns_var_get (&gparams, e)) { goto failed; }
-
-  } else if (err < 0) {
-    goto failed;
   }
+  else if (err < 0) { goto failed; }
 
-  if (!type_equal (params->type, gparams.dest.dtype)) {
+  if (!type_equal (params->type, gparams.dest.dtype))
+  {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
         "Trying to create variable: %.*s but variable already exists and types are different",
         params->vname.len,
-        params->vname.data);
+        params->vname.data
+    );
     goto failed;
   }
 

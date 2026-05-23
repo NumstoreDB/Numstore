@@ -20,7 +20,8 @@
 #include "nscore/var.h"
 #include "smfile.h"
 
-static sb_size _smfile_pwrite (
+static sb_size
+_smfile_pwrite (
     struct nshandle *db,
     const char      *name,
     const void      *src,
@@ -28,7 +29,9 @@ static sb_size _smfile_pwrite (
     const sb_size    bofst,
     const sb_size    stride,
     const b_size     nelem,
-    error           *e) {
+    error           *e
+)
+{
   sb_size                            ret;          // Return value
   sb_size                            inserted;     // Number of bytes inserted
   b_size                             ofst;         // Resolved offset
@@ -44,10 +47,12 @@ static sb_size _smfile_pwrite (
   struct string                      vname = vname_or_default (name); // Variable name
 
   // Parameter validation
-  if (stride < 0) {
+  if (stride < 0)
+  {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
-  if (stride == 0) {
+  if (stride == 0)
+  {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
   }
   if (size == 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0"); }
@@ -75,7 +80,8 @@ static sb_size _smfile_pwrite (
     ofst         = var_resolve_index (&gparams.dest, bofst);
     write_nelem  = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
     insert_nelem = nelem - write_nelem;
-    if (insert_nelem > 0 && stride != 1) {
+    if (insert_nelem > 0 && stride != 1)
+    {
       error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
       goto failed_rollback;
     }
@@ -101,7 +107,8 @@ static sb_size _smfile_pwrite (
   }
 
   // INSERT REMAINDER
-  if (insert_nelem > 0) {
+  if (insert_nelem > 0)
+  {
     // INSERT
     {
       stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
@@ -150,14 +157,17 @@ failed:
   return error_trace (e);
 }
 
-sb_size smfile_pwrite (
+sb_size
+smfile_pwrite (
     smfile_t   *_smf,
     const char *name,
     const void *src,
     t_size      size,
     b_size      bofst,
     sb_size     stride,
-    b_size      nelem) {
+    b_size      nelem
+)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

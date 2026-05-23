@@ -22,7 +22,9 @@
 /**
  * This example shows how to write data to different named "variables" inside a single file.
  */
-int main (void) {
+int
+main (void)
+{
   smfile_cleanup ("sample4_named");
   smfile_t *smf = smfile_open ("sample4_named");
 

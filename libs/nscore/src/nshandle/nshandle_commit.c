@@ -17,12 +17,16 @@
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 
-static err_t _nsh_commit (struct nshandle *smf, error *e) {
-  if (smf->atx == NULL) {
+static err_t
+_nsh_commit (struct nshandle *smf, error *e)
+{
+  if (smf->atx == NULL)
+  {
     return error_causef (
         e,
         ERR_INVALID_ARGUMENT,
-        "Can't commit transaction, not a part of an existing transaction");
+        "Can't commit transaction, not a part of an existing transaction"
+    );
   }
 
   WRAP (pgr_commit (smf->root->p, smf->atx, e));
@@ -31,7 +35,9 @@ static err_t _nsh_commit (struct nshandle *smf, error *e) {
   return SUCCESS;
 }
 
-int nsh_commit (struct nshandle *smf) {
+int
+nsh_commit (struct nshandle *smf)
+{
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 

@@ -17,8 +17,10 @@
 #include "c_specx.h"
 #include "nscore/compile_config.h"
 
-struct lt_lock {
-  enum lt_lock_type {
+struct lt_lock
+{
+  enum lt_lock_type
+  {
     LOCK_DB, // The whole database
 
     LOCK_ROOT, // The root page
@@ -50,43 +52,44 @@ void i_print_lt_lock (int log_level, struct lt_lock l);
 bool get_parent (struct lt_lock *parent, struct lt_lock lock);
 
 HEADER_FUNC struct lt_lock
-lock_create (const enum lt_lock_type type, const union lt_lock_data data) {
-  return (struct lt_lock){.type = type, .data = data};
-}
+lock_create (const enum lt_lock_type type, const union lt_lock_data data)
+{ return (struct lt_lock){.type = type, .data = data}; }
 
-HEADER_FUNC struct lt_lock lock_db (void) { return lock_create (LOCK_DB, (union lt_lock_data){0}); }
+HEADER_FUNC struct lt_lock
+lock_db (void)
+{ return lock_create (LOCK_DB, (union lt_lock_data){0}); }
 
-HEADER_FUNC struct lt_lock lock_root (void) {
-  return lock_create (LOCK_ROOT, (union lt_lock_data){0});
-}
+HEADER_FUNC struct lt_lock
+lock_root (void)
+{ return lock_create (LOCK_ROOT, (union lt_lock_data){0}); }
 
-HEADER_FUNC struct lt_lock lock_vhp (void) {
-  return lock_create (LOCK_VHP, (union lt_lock_data){0});
-}
+HEADER_FUNC struct lt_lock
+lock_vhp (void)
+{ return lock_create (LOCK_VHP, (union lt_lock_data){0}); }
 
-HEADER_FUNC struct lt_lock lock_vhp_pos (const pgno vhp_pos) {
-  return lock_create (LOCK_VHP_POS, (union lt_lock_data){.vhp_pos = vhp_pos});
-}
+HEADER_FUNC struct lt_lock
+lock_vhp_pos (const pgno vhp_pos)
+{ return lock_create (LOCK_VHP_POS, (union lt_lock_data){.vhp_pos = vhp_pos}); }
 
-HEADER_FUNC struct lt_lock lock_var (const pgno var_root) {
-  return lock_create (LOCK_VAR, (union lt_lock_data){.var_root = var_root});
-}
+HEADER_FUNC struct lt_lock
+lock_var (const pgno var_root)
+{ return lock_create (LOCK_VAR, (union lt_lock_data){.var_root = var_root}); }
 
-HEADER_FUNC struct lt_lock lock_var_next (const pgno var_root) {
-  return lock_create (LOCK_VAR_NEXT, (union lt_lock_data){.var_root = var_root});
-}
+HEADER_FUNC struct lt_lock
+lock_var_next (const pgno var_root)
+{ return lock_create (LOCK_VAR_NEXT, (union lt_lock_data){.var_root = var_root}); }
 
-HEADER_FUNC struct lt_lock lock_var_root (const pgno var_root) {
-  return lock_create (LOCK_VAR_ROOT, (union lt_lock_data){.var_root = var_root});
-}
+HEADER_FUNC struct lt_lock
+lock_var_root (const pgno var_root)
+{ return lock_create (LOCK_VAR_ROOT, (union lt_lock_data){.var_root = var_root}); }
 
-HEADER_FUNC struct lt_lock lock_var_nbytes (const pgno var_root) {
-  return lock_create (LOCK_VAR_NBYTES, (union lt_lock_data){.var_root = var_root});
-}
+HEADER_FUNC struct lt_lock
+lock_var_nbytes (const pgno var_root)
+{ return lock_create (LOCK_VAR_NBYTES, (union lt_lock_data){.var_root = var_root}); }
 
-HEADER_FUNC struct lt_lock lock_rptree (const pgno rptree_root) {
-  return lock_create (LOCK_RPTREE, (union lt_lock_data){.rptree_root = rptree_root});
-}
+HEADER_FUNC struct lt_lock
+lock_rptree (const pgno rptree_root)
+{ return lock_create (LOCK_RPTREE, (union lt_lock_data){.rptree_root = rptree_root}); }
 
 #define LT_LOCK_FOR_EACH(X) \
   X (LOCK_DB)               \

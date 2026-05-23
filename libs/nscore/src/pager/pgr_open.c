@@ -38,15 +38,19 @@
  * EXISTING DATABASE:
  *   Runs the three-phase ARIES restart via pgr_open().
  */
-struct pager *pgr_open_single_file (const char *dbname, error *e) {
+struct pager *
+pgr_open_single_file (const char *dbname, error *e)
+{
   u32 len = strlen (dbname);
-  if (len > (NAME_MAX - 4)) {
+  if (len > (NAME_MAX - 4))
+  {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
         "DBName is too big. Supported max: %d actual len: %d",
         NAME_MAX - 4,
-        len);
+        len
+    );
     return NULL;
   }
 
@@ -60,18 +64,21 @@ struct pager *pgr_open_single_file (const char *dbname, error *e) {
   if (fp == NULL) { return NULL; }
 
   struct wal *ww = wal_open (walname, e);
-  if (ww == NULL) {
+  if (ww == NULL)
+  {
     fpgr_close (fp, e);
     return NULL;
   }
 
   struct lockt *lt = i_malloc (1, sizeof *lt, e);
-  if (lt == NULL) {
+  if (lt == NULL)
+  {
     fpgr_close (fp, e);
     wal_close_and_delete (ww, e);
     return NULL;
   }
-  if (lockt_init (lt, e)) {
+  if (lockt_init (lt, e))
+  {
     fpgr_close (fp, e);
     wal_close_and_delete (ww, e);
     i_free (lt);
@@ -107,7 +114,8 @@ struct pager *pgr_open_single_file (const char *dbname, error *e) {
 
   atomic_store (&ret->next_tid, 0);
 
-  if (atomic_load (&ret->flags) & PGR_ISNEW) {
+  if (atomic_load (&ret->flags) & PGR_ISNEW)
+  {
     // Reset any data in the file pager
     if (fpgr_reset (ret->fp, e)) { goto failed; }
 
@@ -118,48 +126,71 @@ struct pager *pgr_open_single_file (const char *dbname, error *e) {
     if (wal_delete_and_reopen (ret->ww, e)) { goto failed; }
 
     if (wal_write_start_lsn (ret->ww, 0, e)) { goto failed; }
-  } else {
+  }
+  else
+  {
     if (pgr_read_header (ret, e)) { goto failed; }
 
-    if (!ret->header.lsn0valid && !ret->header.lsn1valid) {
+    if (!ret->header.lsn0valid && !ret->header.lsn1valid)
+    {
       error_causef (e, ERR_CORRUPT, "Invalid wal headers");
       goto failed;
     }
 
-    if (wal_isnew (ww)) {
-      if (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e)) {
+    if (wal_isnew (ww))
+    {
+      if (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e))
+      {
         goto failed;
       }
-    } else {
+    }
+    else
+    {
       lsn start_lsn      = wal_start_lsn (ret->ww);
       lsn next_start_lsn = start_lsn + wal_size (ret->ww);
 
-      if (ret->header.lsn0valid && ret->header.lsn1valid) {
-        if (start_lsn == MAX (ret->header.lsn0, ret->header.lsn1)) {
+      if (ret->header.lsn0valid && ret->header.lsn1valid)
+      {
+        if (start_lsn == MAX (ret->header.lsn0, ret->header.lsn1))
+        {
           WRAP_GOTO (pgr_recover (ret, e), failed);
-        } else if (start_lsn == MIN (ret->header.lsn0, ret->header.lsn1)) {
+        }
+        else if (start_lsn == MIN (ret->header.lsn0, ret->header.lsn1))
+        {
           WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
           WRAP_GOTO (
               wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e),
-              failed);
-        } else {
+              failed
+          );
+        }
+        else
+        {
           error_causef (e, ERR_CORRUPT, "Existing WAL doesn't match database");
           goto failed;
         }
-      } else {
-        if (ret->header.lsn0valid) {
-          if (ret->header.lsn0 != wal_start_lsn (ret->ww)) {
+      }
+      else
+      {
+        if (ret->header.lsn0valid)
+        {
+          if (ret->header.lsn0 != wal_start_lsn (ret->ww))
+          {
             error_causef (e, ERR_CORRUPT, "Invalid header lsn");
             goto failed;
           }
           WRAP_GOTO (pgr_write_lsn1 (ret, start_lsn, e), failed);
-        } else if (ret->header.lsn1valid) {
-          if (ret->header.lsn1 != wal_start_lsn (ret->ww)) {
+        }
+        else if (ret->header.lsn1valid)
+        {
+          if (ret->header.lsn1 != wal_start_lsn (ret->ww))
+          {
             error_causef (e, ERR_CORRUPT, "Invalid header lsn");
             goto failed;
           }
           WRAP_GOTO (pgr_write_lsn0 (ret, start_lsn, e), failed);
-        } else {
+        }
+        else
+        {
           UNREACHABLE ();
         }
 
@@ -173,7 +204,8 @@ struct pager *pgr_open_single_file (const char *dbname, error *e) {
 
 failed:
   ASSERT (error_trace (e));
-  if (ret) {
+  if (ret)
+  {
     pgr_cancel_if_exists (ret, &root);
     if (ret->dpt) { dpgt_close (ret->dpt); }
     if (ret->tnxt) { txnt_close (ret->tnxt); }
@@ -187,10 +219,12 @@ failed:
 }
 
 #ifndef NTEST
-TEST (pager_open) {
+TEST (pager_open)
+{
   error e = error_create ();
 
-  TEST_CASE ("green path") {
+  TEST_CASE ("green path")
+  {
     test_fail_if (pgr_delete_single_file ("testdb", &e));
 
     struct pager *p = pgr_open_single_file ("testdb", &e);
@@ -198,7 +232,8 @@ TEST (pager_open) {
     pgr_close (p, &e);
   }
 
-  TEST_CASE ("dbname is too long") {
+  TEST_CASE ("dbname is too long")
+  {
     char *name = i_malloc (NAME_MAX, 1, &e);
     for (int i = 0; i < NAME_MAX; ++i) { name[i] = 'c'; }
     name[NAME_MAX - 3] = '\0';
@@ -223,7 +258,8 @@ TEST (pager_open) {
 #endif
 
 #ifndef NTEST
-TEST (pgr_open_basic) {
+TEST (pgr_open_basic)
+{
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 

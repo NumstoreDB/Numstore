@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////
 // RW Lock
 
-err_t i_rwlock_create (i_rwlock *dest, error *e) {
+err_t
+i_rwlock_create (i_rwlock *dest, error *e)
+{
   errno = 0;
 #ifndef NDEBUG
   pthread_rwlockattr_t attr;
@@ -38,29 +40,37 @@ err_t i_rwlock_create (i_rwlock *dest, error *e) {
   if (pthread_rwlock_init (&dest->lock, NULL))
 #endif
   {
-    switch (errno) {
-      case EAGAIN: {
+    switch (errno)
+    {
+      case EAGAIN:
+      {
         return error_causef (e, ERR_IO, "rwlock_init: %s", strerror (errno));
       }
-      case ENOMEM: {
+      case ENOMEM:
+      {
         return error_causef (e, ERR_NOMEM, "rwlock_init: %s", strerror (errno));
       }
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "rwlock_init: "
             "insufficient "
             "permissions: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "rwlock_init: invalid "
             "attributes: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
@@ -68,52 +78,70 @@ err_t i_rwlock_create (i_rwlock *dest, error *e) {
   return SUCCESS;
 }
 
-void i_rwlock_free (i_rwlock *m) {
+void
+i_rwlock_free (i_rwlock *m)
+{
   ASSERT (m);
   errno = 0;
-  if (pthread_rwlock_destroy (&m->lock)) {
-    switch (errno) {
-      case EBUSY: {
+  if (pthread_rwlock_destroy (&m->lock))
+  {
+    switch (errno)
+    {
+      case EBUSY:
+      {
         i_log_error (
             "rwlock_destroy: still "
             "locked: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "rwlock_destroy: "
             "invalid: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
   }
 }
 
-void i_rwlock_rdlock (i_rwlock *m) {
+void
+i_rwlock_rdlock (i_rwlock *m)
+{
   ASSERT (m);
   errno = 0;
-  if (pthread_rwlock_rdlock (&m->lock)) {
-    switch (errno) {
-      case EBUSY: {
+  if (pthread_rwlock_rdlock (&m->lock))
+  {
+    switch (errno)
+    {
+      case EBUSY:
+      {
         i_log_error (
             "rwlock_rdlock: already "
             "locked for reading: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EDEADLK: {
+      case EDEADLK:
+      {
         i_log_error (
             "rwlock_rdlock: "
             "deadlock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         i_log_error ("rwlock_rdlock: %s\n", strerror (errno));
         UNREACHABLE ();
       }
@@ -121,19 +149,26 @@ void i_rwlock_rdlock (i_rwlock *m) {
   }
 }
 
-void i_rwlock_wrlock (i_rwlock *m) {
+void
+i_rwlock_wrlock (i_rwlock *m)
+{
   ASSERT (m);
   errno = 0;
-  if (pthread_rwlock_wrlock (&m->lock)) {
-    switch (errno) {
-      case EDEADLK: {
+  if (pthread_rwlock_wrlock (&m->lock))
+  {
+    switch (errno)
+    {
+      case EDEADLK:
+      {
         i_log_error (
             "rwlock_wrlock: "
             "deadlock: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         i_log_error ("rwlock_wrlock: %s\n", strerror (errno));
         UNREACHABLE ();
       }
@@ -141,18 +176,27 @@ void i_rwlock_wrlock (i_rwlock *m) {
   }
 }
 
-bool i_rwlock_try_rdlock (i_rwlock *m) {
+bool
+i_rwlock_try_rdlock (i_rwlock *m)
+{
   ASSERT (m);
   errno            = 0;
   const int result = pthread_rwlock_tryrdlock (&m->lock);
 
-  if (result == 0) {
+  if (result == 0)
+  {
     return true; // Lock acquired
-  } else if (result == EBUSY) {
+  }
+  else if (result == EBUSY)
+  {
     return false; // Lock not available, but not an error
-  } else {
-    switch (errno) {
-      default: {
+  }
+  else
+  {
+    switch (errno)
+    {
+      default:
+      {
         i_log_error ("rwlock_try_rdlock: %s\n", strerror (errno));
         UNREACHABLE ();
       }
@@ -160,18 +204,27 @@ bool i_rwlock_try_rdlock (i_rwlock *m) {
   }
 }
 
-bool i_rwlock_try_wrlock (i_rwlock *m) {
+bool
+i_rwlock_try_wrlock (i_rwlock *m)
+{
   ASSERT (m);
   errno            = 0;
   const int result = pthread_rwlock_trywrlock (&m->lock);
 
-  if (result == 0) {
+  if (result == 0)
+  {
     return true; // Lock acquired
-  } else if (result == EBUSY) {
+  }
+  else if (result == EBUSY)
+  {
     return false; // Lock not available, but not an error
-  } else {
-    switch (errno) {
-      default: {
+  }
+  else
+  {
+    switch (errno)
+    {
+      default:
+      {
         i_log_error ("rwlock_try_wrlock: %s\n", strerror (errno));
         UNREACHABLE ();
       }
@@ -179,26 +232,35 @@ bool i_rwlock_try_wrlock (i_rwlock *m) {
   }
 }
 
-void i_rwlock_unlock (i_rwlock *m) {
+void
+i_rwlock_unlock (i_rwlock *m)
+{
   ASSERT (m);
   errno = 0;
-  if (pthread_rwlock_unlock (&m->lock)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_rwlock_unlock (&m->lock))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "rwlock_unlock: "
             "invalid: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "rwlock_unlock: "
             "not owner: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         i_log_error ("rwlock_unlock: %s\n", strerror (errno));
         UNREACHABLE ();
       }

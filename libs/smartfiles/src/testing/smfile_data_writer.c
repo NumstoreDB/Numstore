@@ -19,19 +19,25 @@
 #include "smfile.h"
 #include "testing/smfile_test_fixture.h"
 
-static err_t smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e) {
-  return smfile_pinsert (ctx, "testing", src, ofst, slen);
-}
+static err_t
+smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
+{ return smfile_pinsert (ctx, "testing", src, ofst, slen); }
 
-static i64 smfile_read_func (void *ctx, struct stride str, u32 size, void *dest, error *e) {
+static i64
+smfile_read_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
+{
   return smfile_pread (ctx, "testing", dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
-static i64 smfile_write_func (void *ctx, struct stride str, u32 size, const void *src, error *e) {
+static i64
+smfile_write_func (void *ctx, struct stride str, u32 size, const void *src, error *e)
+{
   return smfile_pwrite (ctx, "testing", src, size, str.start * size, str.stride * size, str.nelems);
 }
 
-static i64 smfile_remove_func (void *ctx, struct stride str, u32 size, void *dest, error *e) {
+static i64
+smfile_remove_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
+{
   return smfile_premove (
       ctx,
       "testing",
@@ -39,10 +45,13 @@ static i64 smfile_remove_func (void *ctx, struct stride str, u32 size, void *des
       size,
       str.start * size,
       str.stride * size,
-      str.nelems);
+      str.nelems
+  );
 }
 
-static i64 smfile_get_len_func (void *ctx, error *e) { return smfile_psize (ctx, "testing"); }
+static i64
+smfile_get_len_func (void *ctx, error *e)
+{ return smfile_psize (ctx, "testing"); }
 
 static const struct data_writer_functions smfile_functions = {
     .insert = smfile_insert_func,
@@ -53,11 +62,14 @@ static const struct data_writer_functions smfile_functions = {
 };
 
 // Data writer fixture
-struct data_writer *smfile_data_writer_open (const char *path) {
+struct data_writer *
+smfile_data_writer_open (const char *path)
+{
   smfile_t *smf = smfile_open (path);
   if (smf == NULL) { return NULL; }
   struct data_writer *writer = i_malloc (1, sizeof *writer, &((struct nshandle *)smf)->e);
-  if (writer == NULL) {
+  if (writer == NULL)
+  {
     smfile_close (smf);
     return NULL;
   }
@@ -66,14 +78,17 @@ struct data_writer *smfile_data_writer_open (const char *path) {
   return writer;
 }
 
-int smfile_data_writer_close (struct data_writer *w) {
+int
+smfile_data_writer_close (struct data_writer *w)
+{
   int ret = smfile_close (w->ctx);
   i_free (w);
   return ret;
 }
 
 #ifndef NTEST
-TEST (smfile_data_writer) {
+TEST (smfile_data_writer)
+{
   error e = error_create ();
 
   const u32 niters[] = {
@@ -82,7 +97,8 @@ TEST (smfile_data_writer) {
       // 10000,
   };
 
-  for (u32 i = 0; i < arrlen (niters); ++i) {
+  for (u32 i = 0; i < arrlen (niters); ++i)
+  {
     i_log_info ("smfile data validator test: %d\n", i);
 
     struct ext_array ext_arr_1 = ext_array_create ();

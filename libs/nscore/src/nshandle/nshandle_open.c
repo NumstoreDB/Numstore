@@ -20,7 +20,9 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 
-static struct nshandle *_nsh_open (const char *path, error *e) {
+static struct nshandle *
+_nsh_open (const char *path, error *e)
+{
   struct nshandle_root *ret = i_malloc (1, sizeof *ret, e);
   page_h                hp  = page_h_create ();
 
@@ -42,7 +44,8 @@ static struct nshandle *_nsh_open (const char *path, error *e) {
   }
 
   // Upfront initialization
-  if (pgr_isnew (ret->p)) {
+  if (pgr_isnew (ret->p))
+  {
     // Initialize the upfront hash page
     if (ns_init_var_hash_map (ret->p, e)) { goto failed; }
   }
@@ -58,7 +61,9 @@ failed:
   return NULL;
 }
 
-struct nshandle *nsh_open (const char *path) {
+struct nshandle *
+nsh_open (const char *path)
+{
   error            e   = error_create ();
   struct nshandle *ret = _nsh_open (path, &e);
   if (ret == NULL) { return NULL; }

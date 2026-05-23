@@ -71,7 +71,7 @@ theend:
   return NULL;
 }
 
-TEST (wal_multi_threaded)
+TEST_DISABLED (wal_multi_threaded)
 {
   error e = error_create ();
   struct wal *ww = wal_open ("test.wal", &e);
@@ -142,7 +142,8 @@ TEST (wal_multi_threaded)
 }
 */
 
-struct wal_test_params {
+struct wal_test_params
+{
   const char              *fname;
   struct wal_rec_hdr_read *batch1;
   u32                      batch1_len;
@@ -151,32 +152,42 @@ struct wal_test_params {
 };
 
 static void
-wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len, struct alloc *a, error *e) {
-  for (u32 i = 0; i < len; i++) {
+wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len, struct alloc *a, error *e)
+{
+  for (u32 i = 0; i < len; i++)
+  {
     struct wal_rec_hdr_read *r = &batch[i];
 
-    switch (r->type) {
-      case WL_UPDATE: {
+    switch (r->type)
+    {
+      case WL_UPDATE:
+      {
         rand_bytes (r->update.phys.undo, PAGE_SIZE);
         rand_bytes (r->update.phys.redo, PAGE_SIZE);
         break;
       }
-      case WL_CLR: {
+      case WL_CLR:
+      {
         rand_bytes (r->clr.phys.redo, PAGE_SIZE);
         break;
       }
-      default: {
+      default:
+      {
         break;
       }
     }
   }
 }
 
-static void wal_test_free_batch (const struct wal_rec_hdr_read *batch, const u32 len) {
+static void
+wal_test_free_batch (const struct wal_rec_hdr_read *batch, const u32 len)
+{
   for (u32 i = 0; i < len; i++) { const struct wal_rec_hdr_read *r = &batch[i]; }
 }
 
-static void run_wal_test (const struct wal_test_params *p) {
+static void
+run_wal_test (const struct wal_test_params *p)
+{
   error e = error_create ();
 
   i_remove_quiet (p->fname, &e);
@@ -187,7 +198,8 @@ static void run_wal_test (const struct wal_test_params *p) {
    */
   {
     slsn l = -1;
-    for (u32 i = 0; i < p->batch1_len; i++) {
+    for (u32 i = 0; i < p->batch1_len; i++)
+    {
       struct wal_rec_hdr_write out   = wrhw_from_wrhr (&p->batch1[i]);
       slsn                     nextl = wal_append_log (ww, &out, &e);
       test_assert (nextl >= 0);
@@ -203,12 +215,13 @@ static void run_wal_test (const struct wal_test_params *p) {
    * first batch written ones
    */
   {
-    for (u32 i = 0; i < p->batch1_len; i++) {
+    for (u32 i = 0; i < p->batch1_len; i++)
+    {
       lsn                      read_lsn;
       struct wal_rec_hdr_read *next = NULL;
-      if (i == 0) {
-        next = wal_read_first (ww, &e);
-      } else {
+      if (i == 0) { next = wal_read_first (ww, &e); }
+      else
+      {
         next = wal_read_next (ww, &read_lsn, &e);
       }
       test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
@@ -220,7 +233,8 @@ static void run_wal_test (const struct wal_test_params *p) {
    */
   {
     slsn l = 0;
-    for (u32 i = 0; i < p->batch2_len; i++) {
+    for (u32 i = 0; i < p->batch2_len; i++)
+    {
       struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch2[i]);
       l                            = wal_append_log (ww, &out, &e);
     }
@@ -231,18 +245,20 @@ static void run_wal_test (const struct wal_test_params *p) {
    * Read from the start and confirm all the logs
    */
   {
-    for (u32 i = 0; i < p->batch1_len; i++) {
+    for (u32 i = 0; i < p->batch1_len; i++)
+    {
       lsn                      read_lsn;
       struct wal_rec_hdr_read *next = NULL;
-      if (i == 0) {
-        next = wal_read_first (ww, &e);
-      } else {
+      if (i == 0) { next = wal_read_first (ww, &e); }
+      else
+      {
         next = wal_read_next (ww, &read_lsn, &e);
       }
       test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
     }
 
-    for (u32 i = 0; i < p->batch2_len; i++) {
+    for (u32 i = 0; i < p->batch2_len; i++)
+    {
       lsn                      read_lsn;
       struct wal_rec_hdr_read *next = wal_read_next (ww, &read_lsn, &e);
       test_assert (wal_rec_hdr_read_equal (next, &p->batch2[i]));
@@ -255,7 +271,8 @@ static void run_wal_test (const struct wal_test_params *p) {
 ////////////////////////////////////////////////////////////
 // WAL test cases
 
-TEST (wal) {
+TEST (wal)
+{
   error        e = error_create ();
   struct alloc a = {.type = AT_CHNK_ALLOC};
   chunk_alloc_create_default (&a._calloc);
@@ -276,28 +293,26 @@ TEST (wal) {
       },
       {
           .type = WL_CLR,
-          .clr =
-              {
-                  .type      = WCLR_PHYSICAL,
-                  .tid       = 6,
-                  .prev      = 50,
-                  .undo_next = 42,
-                  .phys      = {.pg = 222},
-              },
+          .clr  = {
+              .type      = WCLR_PHYSICAL,
+              .tid       = 6,
+              .prev      = 50,
+              .undo_next = 42,
+              .phys      = {.pg = 222},
+          },
       },
   };
 
   struct wal_rec_hdr_read batch2_full[] = {
       {.type = WL_BEGIN, .begin = {.tid = 2}},
       {
-          .type = WL_UPDATE,
-          .update =
-              {
-                  .type = WUP_PHYSICAL,
-                  .tid  = 6,
-                  .prev = 41,
-                  .phys = {.pg = 112},
-              },
+          .type   = WL_UPDATE,
+          .update = {
+              .type = WUP_PHYSICAL,
+              .tid  = 6,
+              .prev = 41,
+              .phys = {.pg = 112},
+          },
       },
   };
 
@@ -325,14 +340,13 @@ TEST (wal) {
       },
       {
           .type = WL_CLR,
-          .clr =
-              {
-                  .type      = WCLR_PHYSICAL,
-                  .tid       = 6,
-                  .prev      = 50,
-                  .undo_next = 42,
-                  .phys      = {.pg = 222},
-              },
+          .clr  = {
+              .type      = WCLR_PHYSICAL,
+              .tid       = 6,
+              .prev      = 50,
+              .undo_next = 42,
+              .phys      = {.pg = 222},
+          },
       },
   };
 
@@ -360,8 +374,10 @@ TEST (wal) {
       },
   };
 
-  for (u32 i = 0; i < arrlen (cases); i++) {
-    TEST_CASE ("Wal: %d", i) {
+  for (u32 i = 0; i < arrlen (cases); i++)
+  {
+    TEST_CASE ("Wal: %d", i)
+    {
       const struct wal_test_params *c = &cases[i];
 
       wal_test_fill_batch (c->batch1, c->batch1_len, &a, &e);
@@ -377,7 +393,8 @@ TEST (wal) {
   chunk_alloc_free_all (&a._calloc);
 }
 
-TEST (wal_single_entry) {
+TEST (wal_single_entry)
+{
   error        e = error_create ();
   struct alloc a = {.type = AT_CHNK_ALLOC};
   chunk_alloc_create_default (&a._calloc);
@@ -392,8 +409,10 @@ TEST (wal_single_entry) {
        .clr  = {.type = WCLR_PHYSICAL, .tid = 5, .prev = 40, .undo_next = 42, .phys = {.pg = 222}}},
   };
 
-  for (u32 i = 0; i < arrlen (cases); i++) {
-    TEST_CASE ("wal_single_entry: %d", i) {
+  for (u32 i = 0; i < arrlen (cases); i++)
+  {
+    TEST_CASE ("wal_single_entry: %d", i)
+    {
       struct wal_rec_hdr_read *c = &cases[i];
 
       wal_test_fill_batch (c, 1, &a, &e);

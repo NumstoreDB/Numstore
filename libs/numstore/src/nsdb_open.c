@@ -20,7 +20,9 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 
-nsdb_t *nsdb_open (const char *path) {
+nsdb_t *
+nsdb_open (const char *path)
+{
   struct nshandle *ret = nsh_open (path);
 
   if (ret == NULL) { return NULL; }

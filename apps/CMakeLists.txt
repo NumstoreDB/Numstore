@@ -1,13 +1,18 @@
-# Gather base sources
-file(GLOB_RECURSE NS_APP_SOURCES  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
+if(NOT ENABLE_NTEST)
+  #add_subdirectory(testing/swarm_test)
+  add_subdirectory(testing/unit_test)
+endif()
 
-foreach(APP_SRC ${NS_APP_SOURCES})
+#################### Simple Tools
+## Anything in this top level directory 
+## just gets compiled and linked to all the libraries
+file(
+  GLOB NS_SIMPLE_APP_SOURCES 
+  CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
+)
+
+foreach(APP_SRC ${NS_SIMPLE_APP_SOURCES})
     get_filename_component(APP_NAME ${APP_SRC} NAME_WE)
-
-    ######### Skip Tests
-    if(ENABLE_NTEST AND APP_NAME STREQUAL "test")
-        continue()
-    endif()
 
     ######### Create and link the binary with all
     add_executable(${APP_NAME} ${APP_SRC})

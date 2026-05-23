@@ -20,16 +20,19 @@
 ////////////////////////////////////////////////////////////
 /// TYPE ACCESSOR
 
-struct type_accessor {
+struct type_accessor
+{
   enum ta_type type;
 
   union {
-    struct select_ta {
+    struct select_ta
+    {
       struct string         key;
       struct type_accessor *sub_ta;
     } select;
 
-    struct range_ta {
+    struct range_ta
+    {
       struct user_stride   *dim_accessors;
       u32                   dlen;
       struct type_accessor *sub_ta;
@@ -48,33 +51,35 @@ struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
     struct type          *reftype,
     struct chunk_alloc   *dalloc,
-    error                *e);
+    error                *e
+);
 
 ////////////////////////////////////////////////////////////
 /// BUILDER
 
-struct rb_llnode {
+struct rb_llnode
+{
   struct user_stride stride;
   struct llnode      link;
 };
 
-struct range_builder {
+struct range_builder
+{
   struct llnode      *head;
   u32                 len;
   struct chunk_alloc *temp;
   struct chunk_alloc *persistent;
 };
 
-void rb_create (
-    struct range_builder *dest,
-    struct chunk_alloc   *temp,
-    struct chunk_alloc   *persistent);
+void
+rb_create (struct range_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent);
 
 err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e);
 
 err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e);
 
-struct type_accessor_builder {
+struct type_accessor_builder
+{
   struct type_accessor  ret;
   struct type_accessor *head;
   struct type_accessor *tail;
@@ -87,14 +92,13 @@ struct type_accessor_builder {
 void tab_create (
     struct type_accessor_builder *dest,
     struct chunk_alloc           *temp,
-    struct chunk_alloc           *persistent);
+    struct chunk_alloc           *persistent
+);
 
 err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e);
 
-err_t tab_accept_stride (
-    struct type_accessor_builder *builder,
-    struct user_stride            stride,
-    error                        *e);
+err_t
+tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e);
 
 err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
 

@@ -20,24 +20,31 @@
 
 ////////////////////////////////////////////////////////////
 // MEMORY
-static void *def_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e) {
+static void *
+def_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
+{
   (void)v;
 
   ASSERT (nelem > 0);
   ASSERT (size > 0);
 
   u32 bytes;
-  if (!safe_mul_u32 (&bytes, nelem, size)) {
+  if (!safe_mul_u32 (&bytes, nelem, size))
+  {
     error_causef (e, ERR_NOMEM, "malloc %d*%d: overflow", nelem, size);
     return NULL;
   }
 
   errno     = 0;
   void *ret = malloc ((size_t)bytes);
-  if (ret == NULL) {
-    if (errno == ENOMEM) {
+  if (ret == NULL)
+  {
+    if (errno == ENOMEM)
+    {
       error_causef (e, ERR_NOMEM, "malloc %d*%d: %s", nelem, size, strerror (errno));
-    } else {
+    }
+    else
+    {
       error_causef (e, ERR_NOMEM, "malloc: %s", strerror (errno));
     }
   }
@@ -45,12 +52,15 @@ static void *def_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e) {
 }
 
 #ifndef NTEST
-static void *nomem_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e) {
+static void *
+nomem_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
+{
   error_causef (e, ERR_NOMEM, "No memory");
   return NULL;
 }
 
-TEST (i_malloc_injection) {
+TEST (i_malloc_injection)
+{
   void *(*prev) (i_vmem *v, u32 nelem, u32 size, error *e) = default_vmem.i_malloc;
 
   default_vmem.i_malloc = nomem_malloc;
@@ -68,14 +78,17 @@ TEST (i_malloc_injection) {
 }
 #endif
 
-static void *def_calloc (i_vmem *v, const u32 nelem, const u32 size, error *e) {
+static void *
+def_calloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
+{
   (void)v;
 
   ASSERT (nelem > 0);
   ASSERT (size > 0);
 
   u32 bytes = 0;
-  if (!safe_mul_u32 (&bytes, nelem, size)) {
+  if (!safe_mul_u32 (&bytes, nelem, size))
+  {
     error_causef (e, ERR_NOMEM, "malloc %d*%d: overflow", nelem, size);
     return NULL;
   }
@@ -84,17 +97,23 @@ static void *def_calloc (i_vmem *v, const u32 nelem, const u32 size, error *e) {
 
   errno     = 0;
   void *ret = calloc ((size_t)nelem, (size_t)size);
-  if (ret == NULL) {
-    if (errno == ENOMEM) {
+  if (ret == NULL)
+  {
+    if (errno == ENOMEM)
+    {
       error_causef (e, ERR_NOMEM, "calloc %d*%d: %s", nelem, size, strerror (errno));
-    } else {
+    }
+    else
+    {
       error_causef (e, ERR_NOMEM, "calloc: %s", strerror (errno));
     }
   }
   return ret;
 }
 
-static void *i_realloc (void *ptr, const u32 nelem, const u32 size, error *e) {
+static void *
+i_realloc (void *ptr, const u32 nelem, const u32 size, error *e)
+{
   ASSERT (nelem > 0);
   ASSERT (size > 0);
 
@@ -102,7 +121,8 @@ static void *i_realloc (void *ptr, const u32 nelem, const u32 size, error *e) {
   {
     bool ok = safe_mul_u32 (&bytes, nelem, size);
     ASSERT (ok);
-    if (!ok) {
+    if (!ok)
+    {
       error_causef (e, ERR_NOMEM, "realloc %u*%u: overflow", nelem, size);
       return NULL;
     }
@@ -110,7 +130,8 @@ static void *i_realloc (void *ptr, const u32 nelem, const u32 size, error *e) {
 
   errno     = 0;
   void *ret = realloc (ptr, (size_t)bytes);
-  if (ret == NULL) {
+  if (ret == NULL)
+  {
     error_causef (e, ERR_NOMEM, "realloc %u bytes: %s", bytes, strerror (errno));
     return NULL;
   }
@@ -118,7 +139,8 @@ static void *i_realloc (void *ptr, const u32 nelem, const u32 size, error *e) {
 }
 
 #ifndef NTEST
-TEST (i_realloc_basic) {
+TEST (i_realloc_basic)
+{
   error e = error_create ();
   u32  *a = i_realloc (NULL, 10, sizeof *a, &e); // behaves like malloc
   for (u32 i = 0; i < 10; i++) { a[i] = i; }
@@ -132,13 +154,16 @@ TEST (i_realloc_basic) {
 // =======================================================
 // RIGHT REALLOC (no shifting) — caller passes old_nelem
 // =======================================================
-static void *def_realloc_right (
+static void *
+def_realloc_right (
     i_vmem   *v,
     void     *ptr,
     const u32 old_nelem,
     const u32 new_nelem,
     const u32 size,
-    error    *e) {
+    error    *e
+)
+{
   (void)v;
 
   ASSERT (size > 0);
@@ -149,7 +174,8 @@ static void *def_realloc_right (
 }
 
 #ifndef NTEST
-TEST (i_realloc_right) {
+TEST (i_realloc_right)
+{
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
   for (u32 i = 0; i < 10; i++) { a[i] = i; }
@@ -165,13 +191,16 @@ TEST (i_realloc_right) {
 #endif
 
 // LEFT REALLOC (grow prepends space; shrink drops left)
-static void *def_realloc_left (
+static void *
+def_realloc_left (
     i_vmem   *v,
     void     *ptr,
     const u32 old_nelem,
     const u32 new_nelem,
     const u32 size,
-    error    *e) {
+    error    *e
+)
+{
   (void)v;
 
   ASSERT (size > 0);
@@ -186,7 +215,8 @@ static void *def_realloc_left (
     ASSERT (ok_old);
     bool ok_new = safe_mul_u32 (&new_bytes32, new_nelem, size);
     ASSERT (ok_new);
-    if (!ok_old || !ok_new) {
+    if (!ok_old || !ok_new)
+    {
       error_causef (e, ERR_NOMEM, "realloc_left: overflow");
       return NULL;
     }
@@ -197,13 +227,16 @@ static void *def_realloc_left (
 
   if (ptr == NULL) { return i_realloc (NULL, new_nelem, size, e); }
 
-  if (new_bytes < old_bytes) {
+  if (new_bytes < old_bytes)
+  {
     // keep the last new_bytes bytes; move them to start
     const size_t keep  = new_bytes;
     const size_t shift = old_bytes - keep;
     memmove (ptr, (char *)ptr + shift, keep);
     return i_realloc (ptr, new_nelem, size, e);
-  } else {
+  }
+  else
+  {
     // prepend = new space on the left
     const size_t prepend = new_bytes - old_bytes;
 
@@ -216,7 +249,8 @@ static void *def_realloc_left (
 }
 
 #ifndef NTEST
-TEST (i_realloc_left) {
+TEST (i_realloc_left)
+{
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
   for (u32 i = 0; i < 10; i++) { a[i] = i; }
@@ -227,7 +261,8 @@ TEST (i_realloc_left) {
 
   // shrink-left: keep the *last* 10 elements moved to start
   a = i_realloc_left (a, 20, 10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) {
+  for (u32 i = 0; i < 10; i++)
+  {
     test_assert (a[i] == i); // after previous state, kept tail
                              // [10..19] which were [0..9]
   }
@@ -235,13 +270,16 @@ TEST (i_realloc_left) {
 }
 #endif
 
-static void *def_crealloc_right (
+static void *
+def_crealloc_right (
     i_vmem   *v,
     void     *ptr,
     const u32 old_nelem,
     const u32 new_nelem,
     const u32 size,
-    error    *e) {
+    error    *e
+)
+{
   (void)v;
   ASSERT (size > 0);
 
@@ -255,7 +293,8 @@ static void *def_crealloc_right (
     ASSERT (ok_old);
     bool ok_new = safe_mul_u32 (&new_bytes32, new_nelem, size);
     ASSERT (ok_new);
-    if (!ok_old || !ok_new) {
+    if (!ok_old || !ok_new)
+    {
       error_causef (e, ERR_NOMEM, "crealloc_right: overflow");
       return NULL;
     }
@@ -272,7 +311,8 @@ static void *def_crealloc_right (
 }
 
 #ifndef NTEST
-TEST (i_crealloc_right) {
+TEST (i_crealloc_right)
+{
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
   for (u32 i = 0; i < 10; i++) { a[i] = i; }
@@ -288,13 +328,16 @@ TEST (i_crealloc_right) {
 }
 #endif
 
-static void *def_crealloc_left (
+static void *
+def_crealloc_left (
     i_vmem   *v,
     void     *ptr,
     const u32 old_nelem,
     const u32 new_nelem,
     const u32 size,
-    error    *e) {
+    error    *e
+)
+{
   (void)v;
 
   ASSERT (size > 0);
@@ -309,7 +352,8 @@ static void *def_crealloc_left (
     ASSERT (ok_old);
     bool ok_new = safe_mul_u32 (&new_bytes32, new_nelem, size);
     ASSERT (ok_new);
-    if (!ok_old || !ok_new) {
+    if (!ok_old || !ok_new)
+    {
       error_causef (e, ERR_NOMEM, "crealloc_left: overflow");
       return NULL;
     }
@@ -318,18 +362,22 @@ static void *def_crealloc_left (
   const size_t old_bytes = (size_t)old_bytes32;
   const size_t new_bytes = (size_t)new_bytes32;
 
-  if (ptr == NULL) {
+  if (ptr == NULL)
+  {
     void *ret = i_realloc (NULL, new_nelem, size, e);
     if (ret != NULL) { memset (ret, 0, new_bytes); }
     return ret;
   }
 
-  if (new_bytes < old_bytes) {
+  if (new_bytes < old_bytes)
+  {
     const size_t keep  = new_bytes;
     const size_t shift = old_bytes - keep;
     memmove (ptr, (char *)ptr + shift, keep);
     return i_realloc (ptr, new_nelem, size, e);
-  } else {
+  }
+  else
+  {
     const size_t prepend = new_bytes - old_bytes;
 
     void *ret = i_realloc (ptr, new_nelem, size, e);
@@ -342,7 +390,8 @@ static void *def_crealloc_left (
 }
 
 #ifndef NTEST
-TEST (i_crealloc_left) {
+TEST (i_crealloc_left)
+{
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
   for (u32 i = 0; i < 10; i++) { a[i] = i; }
@@ -359,7 +408,9 @@ TEST (i_crealloc_left) {
 }
 #endif
 
-static void def_free (i_vmem *v, void *ptr) {
+static void
+def_free (i_vmem *v, void *ptr)
+{
   (void)v;
   ASSERT (ptr);
   free (ptr);

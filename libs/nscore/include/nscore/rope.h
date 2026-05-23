@@ -38,7 +38,8 @@ err_t ns_rptree_valid (struct pager *p, pgno rpt_root, b_size nbytes, error *e);
  * [root] is updated in place if the tree root changes (e.g. because the root
  * was split into a new level).
  */
-struct ns_insert_params {
+struct ns_insert_params
+{
   struct pager *p; ///< The database
 
   struct stream *src; ///< Source stream to read inserted bytes from
@@ -51,7 +52,8 @@ struct ns_insert_params {
 };
 
 /// Parameters for ns_write() — in-place overwrite of elements in an R+Tree
-struct ns_write_params {
+struct ns_write_params
+{
   struct pager *p; ///< The database
 
   struct stream *src; ///< Source stream to read replacement bytes from
@@ -66,7 +68,8 @@ struct ns_write_params {
 };
 
 /// Parameters for ns_read() — element retrieval from an R+Tree into a stream
-struct ns_read_params {
+struct ns_read_params
+{
   struct pager *p; ///< The database
 
   struct stream *dest; ///< Destination stream to push read bytes into
@@ -82,7 +85,8 @@ struct ns_read_params {
 
 /// Parameters for ns_remove() — element deletion and optional capture from an
 /// R+Tree
-struct ns_remove_params {
+struct ns_remove_params
+{
   struct pager *p; ///< The database
 
   struct stream *dest; ///< Optional stream to capture removed bytes before
@@ -117,7 +121,8 @@ sb_size ns_remove (struct ns_remove_params *params, error *e);
 
 /// A single entry in the seek stack, identifying a page and a local index
 /// within it
-struct seek_v {
+struct seek_v
+{
   page_h pg;   ///< Handle to the page (held in read mode)
   p_size lidx; ///< Local byte index within the page
 };
@@ -139,7 +144,8 @@ struct seek_v {
  * children per node can index far more data than any practical storage device
  * before depth 20, so this bound is effectively unreachable.
  */
-struct ns_seek_params {
+struct ns_seek_params
+{
   struct pager *p;  ///< The database
   struct txn   *tx; ///< Transaction to attach this traversal to
 
@@ -164,13 +170,15 @@ err_t ns_seek (struct ns_seek_params *a, error *e);
 
 /// Carries an updated root page number and a flag indicating whether it is the
 /// tree root
-struct root_update {
+struct root_update
+{
   pgno root;   ///< The (possibly new) root page number
   bool isroot; ///< True if this page is now the tree root
 };
 
 /// Parameters for ns_balance_and_release()
-struct ns_balance_and_release_params {
+struct ns_balance_and_release_params
+{
   struct pager *p;  ///< The database
   struct txn   *tx; ///< Transaction to attach mutations to
 
@@ -198,7 +206,8 @@ struct ns_balance_and_release_params {
 err_t ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
 
 /// Parameters for the main bottom-up rebalance pass after an insert or remove
-struct ns_rebalance_params {
+struct ns_rebalance_params
+{
   struct pager *p;  ///< The database
   struct txn   *tx; ///< Transaction to attach mutations to
 

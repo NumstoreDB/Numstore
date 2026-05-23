@@ -23,7 +23,9 @@
 #include "nscore/parsers/type_ref.h"
 #include "nscore/parsers/user_stride.h"
 
-err_t compile_type (struct type *dest, const char *text, struct chunk_alloc *dalloc, error *e) {
+err_t
+compile_type (struct type *dest, const char *text, struct chunk_alloc *dalloc, error *e)
+{
   struct lexer lex;
   WRAP (lex_tokens (text, strlen (text), &lex, e));
 
@@ -32,11 +34,9 @@ err_t compile_type (struct type *dest, const char *text, struct chunk_alloc *dal
   return parse_type (&parser, dest, dalloc, e);
 }
 
-err_t compile_subtype (
-    struct subtype     *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e) {
+err_t
+compile_subtype (struct subtype *dest, const char *text, struct chunk_alloc *dalloc, error *e)
+{
   struct lexer lex;
   WRAP (lex_tokens (text, strlen (text), &lex, e));
 
@@ -45,11 +45,14 @@ err_t compile_subtype (
   return parse_subtype (&parser, dest, dalloc, e);
 }
 
-err_t compile_multi_user_stride (
+err_t
+compile_multi_user_stride (
     struct multi_user_stride *dest,
     const char               *text,
     struct chunk_alloc       *dalloc,
-    error                    *e) {
+    error                    *e
+)
+{
   struct lexer lex;
   WRAP (lex_tokens (text, strlen (text), &lex, e));
 
@@ -58,7 +61,9 @@ err_t compile_multi_user_stride (
   return parse_multi_user_stride (&parser, dest, dalloc, e);
 }
 
-err_t compile_user_stride (struct user_stride *dest, const char *text, error *e) {
+err_t
+compile_user_stride (struct user_stride *dest, const char *text, error *e)
+{
   struct lexer lex;
   WRAP (lex_tokens (text, strlen (text), &lex, e));
 
@@ -67,11 +72,9 @@ err_t compile_user_stride (struct user_stride *dest, const char *text, error *e)
   return parse_user_stride (&parser, dest, e);
 }
 
-err_t compile_type_ref (
-    struct type_ref    *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e) {
+err_t
+compile_type_ref (struct type_ref *dest, const char *text, struct chunk_alloc *dalloc, error *e)
+{
   struct lexer lex;
   WRAP (lex_tokens (text, strlen (text), &lex, e));
 
@@ -81,15 +84,18 @@ err_t compile_type_ref (
 }
 
 #ifndef NTEST
-TEST (compile_user_stride_basic) {
+TEST (compile_user_stride_basic)
+{
   error              err    = error_create ();
   struct user_stride stride = {0};
-  TEST_CASE ("empty stride []") {
+  TEST_CASE ("empty stride []")
+  {
     test_assert_int_equal (compile_user_stride (&stride, "[]", &err), ERR_SYNTAX);
     err.cause_code = SUCCESS;
   }
 
-  TEST_CASE ("single integer [5]") {
+  TEST_CASE ("single integer [5]")
+  {
     stride = (struct user_stride){0};
     test_assert_int_equal (compile_user_stride (&stride, "[5]", &err), SUCCESS);
     test_assert_int_equal (stride.start, 5);
@@ -98,64 +104,76 @@ TEST (compile_user_stride_basic) {
     test_assert_int_equal (stride.present & STEP_PRESENT, 0);
   }
 
-  TEST_CASE ("step cannot be zero") {
+  TEST_CASE ("step cannot be zero")
+  {
     stride = (struct user_stride){0};
     test_assert_int_equal (compile_user_stride (&stride, "[::0]", &err), ERR_SYNTAX);
     err.cause_code = SUCCESS;
   }
 }
 
-TEST (compile_type_primitives) {
+TEST (compile_type_primitives)
+{
   error              err = error_create ();
   struct chunk_alloc arena;
   chunk_alloc_create_default (&arena);
   struct type t;
-  TEST_CASE ("i8") {
+  TEST_CASE ("i8")
+  {
     test_assert_int_equal (compile_type (&t, "i8", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, I8);
   }
-  TEST_CASE ("i16") {
+  TEST_CASE ("i16")
+  {
     test_assert_int_equal (compile_type (&t, "i16", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, I16);
   }
-  TEST_CASE ("i32") {
+  TEST_CASE ("i32")
+  {
     test_assert_int_equal (compile_type (&t, "i32", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, I32);
   }
-  TEST_CASE ("i64") {
+  TEST_CASE ("i64")
+  {
     test_assert_int_equal (compile_type (&t, "i64", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, I64);
   }
-  TEST_CASE ("u8") {
+  TEST_CASE ("u8")
+  {
     test_assert_int_equal (compile_type (&t, "u8", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, U8);
   }
-  TEST_CASE ("u16") {
+  TEST_CASE ("u16")
+  {
     test_assert_int_equal (compile_type (&t, "u16", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, U16);
   }
-  TEST_CASE ("u32") {
+  TEST_CASE ("u32")
+  {
     test_assert_int_equal (compile_type (&t, "u32", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, U32);
   }
-  TEST_CASE ("u64") {
+  TEST_CASE ("u64")
+  {
     test_assert_int_equal (compile_type (&t, "u64", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, U64);
   }
-  TEST_CASE ("f32") {
+  TEST_CASE ("f32")
+  {
     test_assert_int_equal (compile_type (&t, "f32", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, F32);
   }
-  TEST_CASE ("f64") {
+  TEST_CASE ("f64")
+  {
     test_assert_int_equal (compile_type (&t, "f64", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_PRIM);
     test_assert_int_equal (t.p, F64);
@@ -163,12 +181,14 @@ TEST (compile_type_primitives) {
   chunk_alloc_free_all (&arena);
 }
 
-TEST (compile_type_sarray) {
+TEST (compile_type_sarray)
+{
   error              err = error_create ();
   struct chunk_alloc arena;
   chunk_alloc_create_default (&arena);
   struct type t;
-  TEST_CASE ("[10]i32") {
+  TEST_CASE ("[10]i32")
+  {
     test_assert_int_equal (compile_type (&t, "[10]i32", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_SARRAY);
     test_assert_int_equal (t.sa.rank, 1);
@@ -176,7 +196,8 @@ TEST (compile_type_sarray) {
     test_assert_int_equal (t.sa.t->type, T_PRIM);
     test_assert_int_equal (t.sa.t->p, I32);
   }
-  TEST_CASE ("[5][10]f64") {
+  TEST_CASE ("[5][10]f64")
+  {
     test_assert_int_equal (compile_type (&t, "[5][10]f64", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_SARRAY);
     test_assert_int_equal (t.sa.rank, 2);
@@ -185,7 +206,8 @@ TEST (compile_type_sarray) {
     test_assert_int_equal (t.sa.t->type, T_PRIM);
     test_assert_int_equal (t.sa.t->p, F64);
   }
-  TEST_CASE ("[2][3][4]u8") {
+  TEST_CASE ("[2][3][4]u8")
+  {
     test_assert_int_equal (compile_type (&t, "[2][3][4]u8", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_SARRAY);
     test_assert_int_equal (t.sa.rank, 3);
@@ -196,12 +218,14 @@ TEST (compile_type_sarray) {
   chunk_alloc_free_all (&arena);
 }
 
-TEST (compile_type_struct) {
+TEST (compile_type_struct)
+{
   error              err = error_create ();
   struct chunk_alloc arena;
   chunk_alloc_create_default (&arena);
   struct type t;
-  TEST_CASE ("struct { x i32 y f64 }") {
+  TEST_CASE ("struct { x i32 y f64 }")
+  {
     test_assert_int_equal (compile_type (&t, "struct { x i32, y f64 }", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_STRUCT);
     test_assert_int_equal (t.st.len, 2);
@@ -212,10 +236,12 @@ TEST (compile_type_struct) {
     test_assert_int_equal (t.st.types[1]->type, T_PRIM);
     test_assert_int_equal (t.st.types[1]->p, F64);
   }
-  TEST_CASE ("nested struct { a struct { b i32 } }") {
+  TEST_CASE ("nested struct { a struct { b i32 } }")
+  {
     test_assert_int_equal (
         compile_type (&t, "struct { a struct { b i32 } }", &arena, &err),
-        SUCCESS);
+        SUCCESS
+    );
     test_assert_int_equal (t.type, T_STRUCT);
     test_assert_int_equal (t.st.len, 1);
     test_assert (string_equal (t.st.keys[0], strfcstr ("a")));
@@ -225,12 +251,14 @@ TEST (compile_type_struct) {
   chunk_alloc_free_all (&arena);
 }
 
-TEST (compile_type_union) {
+TEST (compile_type_union)
+{
   error              err = error_create ();
   struct chunk_alloc arena;
   chunk_alloc_create_default (&arena);
   struct type t;
-  TEST_CASE ("union { a i32, b f64 }") {
+  TEST_CASE ("union { a i32, b f64 }")
+  {
     test_assert_int_equal (compile_type (&t, "union { a i32, b f64 }", &arena, &err), SUCCESS);
     test_assert_int_equal (t.type, T_UNION);
     test_assert_int_equal (t.un.len, 2);
@@ -244,15 +272,18 @@ TEST (compile_type_union) {
   chunk_alloc_free_all (&arena);
 }
 
-TEST (compile_type_complex) {
+TEST (compile_type_complex)
+{
   error              err = error_create ();
   struct chunk_alloc arena;
   chunk_alloc_create_default (&arena);
   struct type t;
-  TEST_CASE ("[10]struct { x i32, y [5]f64 }") {
+  TEST_CASE ("[10]struct { x i32, y [5]f64 }")
+  {
     test_assert_int_equal (
         compile_type (&t, "[10]struct { x i32, y [5]f64 }", &arena, &err),
-        SUCCESS);
+        SUCCESS
+    );
     test_assert_int_equal (t.type, T_SARRAY);
     test_assert_int_equal (t.sa.rank, 1);
     test_assert_int_equal (t.sa.dims[0], 10);

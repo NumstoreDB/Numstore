@@ -21,7 +21,9 @@
 /*
  * db_begin(db: capsule) -> capsule
  */
-PyObject *pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *
+pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg)
+{
   if (!_unwrap_db (arg)) { return NULL; }
 
   /* TODO: smfile_txn_t *txn = smfile_begin(smf); */

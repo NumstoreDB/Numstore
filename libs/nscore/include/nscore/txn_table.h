@@ -146,7 +146,8 @@ err_t txnt_merge_into (
     struct txn_table  *src,      // The table to merge from
     struct dbl_buffer *txn_dest, // Nullable
     struct slab_alloc *alloc,    // Nullable
-    error             *e);
+    error             *e
+);
 
 // INSERT
 void txnt_insert_txn (struct txn_table *t, struct txn *tx);

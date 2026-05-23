@@ -19,15 +19,20 @@
 
 #ifndef NTEST
 
-void inner_node_init_for_testing (page *in, const pgno *pgs, const b_size *keys, const p_size len) {
+void
+inner_node_init_for_testing (page *in, const pgno *pgs, const b_size *keys, const p_size len)
+{
   page_init_empty (in, PG_INNER_NODE);
   in_set_len (in, 0);
 
   for (p_size i = 0; i < len; ++i) { in_push_end (in, keys[i], pgs[i]); }
 }
 
-void in_print (const page *in) {
-  for (p_size i = 0; i < in_get_len (in); ++i) {
+void
+in_print (const page *in)
+{
+  for (p_size i = 0; i < in_get_len (in); ++i)
+  {
     const pgno   pg  = in_get_leaf (in, i);
     const b_size key = in_get_key (in, i);
     printf ("(%" PRpgno " %" PRb_size "), ", pg, key);
@@ -35,8 +40,11 @@ void in_print (const page *in) {
   printf ("\n");
 }
 
-void in_print_as_arrays (const pgno *pgs, const b_size *keys, const p_size len) {
-  for (p_size i = 0; i < len; ++i) {
+void
+in_print_as_arrays (const pgno *pgs, const b_size *keys, const p_size len)
+{
+  for (p_size i = 0; i < len; ++i)
+  {
     const pgno   pg  = pgs[i];
     const b_size key = keys[i];
     printf ("(%" PRpgno " %" PRb_size "), ", pg, key);
@@ -44,18 +52,23 @@ void in_print_as_arrays (const pgno *pgs, const b_size *keys, const p_size len) 
   printf ("\n");
 }
 
-void test_assert_inner_node_equal (
+void
+test_assert_inner_node_equal (
     const page   *actual,
     const pgno   *e_pgs,
     const b_size *e_keys,
-    const p_size  len) {
+    const p_size  len
+)
+{
   test_assert_int_equal (len, in_get_len (actual));
 
-  for (p_size i = 0; i < len; ++i) {
+  for (p_size i = 0; i < len; ++i)
+  {
     const pgno   pg  = in_get_leaf (actual, i);
     const b_size key = in_get_key (actual, i);
 
-    if (pg != e_pgs[i] || e_keys[i] != key) {
+    if (pg != e_pgs[i] || e_keys[i] != key)
+    {
       i_log_failure ("Inner Nodes were not equal:\n");
       i_log_failure ("Expected:\n");
       in_print_as_arrays (e_pgs, e_keys, len);

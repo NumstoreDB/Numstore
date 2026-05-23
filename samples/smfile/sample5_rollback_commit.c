@@ -81,7 +81,9 @@ static phase_fn phases[] = {
 // The parent simply waits for the child to finish before continuing.
 // ---------------------------------------------------------------------------
 
-static void run_phase (int phase_num, int crash, const char *exe) {
+static void
+run_phase (int phase_num, int crash, const char *exe)
+{
   char arg[32];
   snprintf (arg, sizeof (arg), "%d", phase_num);
 
@@ -92,7 +94,8 @@ static void run_phase (int phase_num, int crash, const char *exe) {
   snprintf (cmd, sizeof (cmd), "\"%s\" %s", exe, arg);
   STARTUPINFOA        si = {sizeof (si)};
   PROCESS_INFORMATION pi;
-  if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+  if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+  {
     fprintf (stderr, "CreateProcess failed: %lu\n", GetLastError ());
     exit (1);
   }
@@ -102,10 +105,12 @@ static void run_phase (int phase_num, int crash, const char *exe) {
   (void)crash;
 #else
   pid_t pid = fork ();
-  if (pid == 0) {
+  if (pid == 0)
+  {
     smfile_t *smf = smfile_open (PATH);
     phases[phase_num](smf);
-    if (crash) {
+    if (crash)
+    {
       _Exit (1); // Simulate crash: no smfile_close(), no WAL flush
     }
     smfile_close (smf);
@@ -126,7 +131,9 @@ static void run_phase (int phase_num, int crash, const char *exe) {
 //   after:  A A A A A A A A A A
 // ---------------------------------------------------------------------------
 
-static void phase1_populate (smfile_t *smf) {
+static void
+phase1_populate (smfile_t *smf)
+{
   smfile_begin (smf);
   smfile_insert (smf, "AAAAAAAAAA", 0, 10);
   smfile_commit (smf);
@@ -142,7 +149,9 @@ static void phase1_populate (smfile_t *smf) {
 //   after:  A A A B B A A A A A
 // ---------------------------------------------------------------------------
 
-static void phase2_commit_clean (smfile_t *smf) {
+static void
+phase2_commit_clean (smfile_t *smf)
+{
   smfile_begin (smf);
   smfile_insert (smf, "BB", 3, 2);
   smfile_commit (smf);
@@ -159,7 +168,9 @@ static void phase2_commit_clean (smfile_t *smf) {
 //   after:  A A A B B A A C C A   (WAL replay restores CC on next open)
 // ---------------------------------------------------------------------------
 
-static void phase3_commit_then_crash (smfile_t *smf) {
+static void
+phase3_commit_then_crash (smfile_t *smf)
+{
   smfile_begin (smf);
   smfile_insert (smf, "CC", 7, 2);
   smfile_commit (smf);
@@ -177,7 +188,9 @@ static void phase3_commit_then_crash (smfile_t *smf) {
 //   after:  A A A B B A A C C A A A A A   (no change — DD discarded)
 // ---------------------------------------------------------------------------
 
-static void phase4_no_commit_crash (smfile_t *smf) {
+static void
+phase4_no_commit_crash (smfile_t *smf)
+{
   smfile_begin (smf);
   smfile_insert (smf, "DD", 11, 2);
   // No smfile_commit() — _Exit() called by run_phase
@@ -194,7 +207,9 @@ static void phase4_no_commit_crash (smfile_t *smf) {
 //   after:  A A A B B A A C C A A A A A   (no change — EE rolled back)
 // ---------------------------------------------------------------------------
 
-static void phase5_rollback (smfile_t *smf) {
+static void
+phase5_rollback (smfile_t *smf)
+{
   smfile_begin (smf);
   smfile_insert (smf, "EE", 5, 2);
   smfile_rollback (smf);
@@ -208,7 +223,8 @@ static void phase5_rollback (smfile_t *smf) {
 // ---------------------------------------------------------------------------
 
 static void
-check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected) {
+check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected)
+{
   char    buf[64];
   sb_size n = smfile_read (smf, buf, bofst, nelem);
   buf[n]    = '\0';
@@ -221,10 +237,13 @@ check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const 
 // Main — orchestrate phases, then verify
 // ---------------------------------------------------------------------------
 
-int main (int argc, char *argv[]) {
+int
+main (int argc, char *argv[])
+{
 #ifdef _WIN32
   // Windows child: re-execed with a phase number, run that phase and exit.
-  if (argc == 2) {
+  if (argc == 2)
+  {
     int       phase_num = atoi (argv[1]);
     int       crash     = (phase_num == 3 || phase_num == 4);
     smfile_t *smf       = smfile_open (PATH);

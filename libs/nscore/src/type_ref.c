@@ -18,19 +18,25 @@
 #include "nscore/type_accessor.h"
 #include "nscore/types.h"
 
-bool type_ref_equal (const struct type_ref left, const struct type_ref right) {
+bool
+type_ref_equal (const struct type_ref left, const struct type_ref right)
+{
   if (left.type != right.type) { return false; }
 
-  switch (left.type) {
-    case TR_TAKE: {
+  switch (left.type)
+  {
+    case TR_TAKE:
+    {
       return string_equal (left.tk.vname, right.tk.vname)
              && type_accessor_equal (left.tk.ta, right.tk.ta);
     }
 
-    case TR_STRUCT: {
+    case TR_STRUCT:
+    {
       if (left.st.len != right.st.len) { return false; }
 
-      for (u16 i = 0; i < left.st.len; i++) {
+      for (u16 i = 0; i < left.st.len; i++)
+      {
         if (!string_equal (left.st.keys[i], right.st.keys[i])) { return false; }
 
         if (!type_ref_equal (left.st.types[i], right.st.types[i])) { return false; }
@@ -44,16 +50,20 @@ bool type_ref_equal (const struct type_ref left, const struct type_ref right) {
 }
 
 struct type *
-tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *alloc, error *e) {
+tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *alloc, error *e)
+{
   struct chunk_alloc temp;
 
-  switch (tr->type) {
-    case TR_TAKE: {
+  switch (tr->type)
+  {
+    case TR_TAKE:
+    {
       struct type_accessor *ta = &tr->tk.ta;
       return ta_subtype (reftype, ta, alloc, e);
     }
 
-    case TR_STRUCT: {
+    case TR_STRUCT:
+    {
       u16              len   = tr->st.len;
       struct string   *keys  = tr->st.keys;
       struct type_ref *types = tr->st.types;
@@ -69,7 +79,8 @@ tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *all
 
         kvlb_create (&builder, &temp, alloc);
 
-        for (u16 i = 0; i < len; ++i) {
+        for (u16 i = 0; i < len; ++i)
+        {
           // The field name
           if (kvlb_accept_key (&builder, keys[i], e)) { goto temp_failed; }
 

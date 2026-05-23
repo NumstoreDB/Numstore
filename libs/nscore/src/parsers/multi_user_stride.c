@@ -16,7 +16,8 @@
 
 #include "c_specx.h"
 
-struct multi_user_stride_parser {
+struct multi_user_stride_parser
+{
   struct parser      *base;
   struct mus_builder  builder;
   struct chunk_alloc  temp;
@@ -24,13 +25,16 @@ struct multi_user_stride_parser {
 };
 
 // Parse optional ':' NUMBER (step)
-static err_t parse_step (struct multi_user_stride_parser *parser, struct user_stride *s, error *e) {
+static err_t
+parse_step (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+{
   if (!parser_match (parser->base, TT_COLON)) { return SUCCESS; }
 
   s->present |= COLON_PRESENT;
   parser_advance (parser->base);
 
-  if (parser_match (parser->base, TT_INTEGER)) {
+  if (parser_match (parser->base, TT_INTEGER))
+  {
     struct token *tok = parser_advance (parser->base);
     s->step           = (sb_size)tok->integer;
     s->present |= STEP_PRESENT;
@@ -40,8 +44,11 @@ static err_t parse_step (struct multi_user_stride_parser *parser, struct user_st
 }
 
 // Parse optional NUMBER ':' NUMBER (stop + step)
-static err_t parse_stop (struct multi_user_stride_parser *parser, struct user_stride *s, error *e) {
-  if (parser_match (parser->base, TT_INTEGER)) {
+static err_t
+parse_stop (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+{
+  if (parser_match (parser->base, TT_INTEGER))
+  {
     struct token *tok = parser_advance (parser->base);
     s->stop           = (sb_size)tok->integer;
     s->present |= STOP_PRESENT;
@@ -51,11 +58,14 @@ static err_t parse_stop (struct multi_user_stride_parser *parser, struct user_st
 }
 
 // entry ::= NUMBER | NUMBER? ':' NUMBER? | NUMBER? ':' NUMBER? ':' NUMBER?
-static err_t parse_entry (struct multi_user_stride_parser *parser, error *e) {
+static err_t
+parse_entry (struct multi_user_stride_parser *parser, error *e)
+{
   struct user_stride s = {0};
 
   // Optional start integer
-  if (parser_match (parser->base, TT_INTEGER)) {
+  if (parser_match (parser->base, TT_INTEGER))
+  {
     struct token *tok = parser_advance (parser->base);
     s.start           = (sb_size)tok->integer;
     s.present |= START_PRESENT;
@@ -70,7 +80,8 @@ static err_t parse_entry (struct multi_user_stride_parser *parser, error *e) {
   }
 
   // No leading number — must be ':'
-  if (parser_match (parser->base, TT_COLON)) {
+  if (parser_match (parser->base, TT_COLON))
+  {
     s.present |= COLON_PRESENT;
     parser_advance (parser->base);
     WRAP (parse_stop (parser, &s, e));
@@ -81,13 +92,16 @@ static err_t parse_entry (struct multi_user_stride_parser *parser, error *e) {
 }
 
 // stride ::= '[' entry ( ',' entry )* ']'
-static err_t parse_multi_user_stride_inner (struct multi_user_stride_parser *parser, error *e) {
+static err_t
+parse_multi_user_stride_inner (struct multi_user_stride_parser *parser, error *e)
+{
   // Check for empty: []
   if (parser_match (parser->base, TT_RIGHT_BRACKET)) { return SUCCESS; }
 
   WRAP (parse_entry (parser, e));
 
-  while (parser_match (parser->base, TT_COMMA)) {
+  while (parser_match (parser->base, TT_COMMA))
+  {
     parser_advance (parser->base);
     WRAP (parse_entry (parser, e));
   }
@@ -95,11 +109,14 @@ static err_t parse_multi_user_stride_inner (struct multi_user_stride_parser *par
   return SUCCESS;
 }
 
-err_t parse_multi_user_stride (
+err_t
+parse_multi_user_stride (
     struct parser            *parser,
     struct multi_user_stride *dest,
     struct chunk_alloc       *alloc,
-    error                    *e) {
+    error                    *e
+)
+{
   struct multi_user_stride_parser p = {
       .base       = parser,
       .persistent = alloc,

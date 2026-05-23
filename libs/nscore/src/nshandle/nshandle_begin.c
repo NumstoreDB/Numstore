@@ -18,14 +18,18 @@
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 
-static err_t _nsh_begin (struct nshandle *smf, error *e) {
-  if (smf->atx) {
+static err_t
+_nsh_begin (struct nshandle *smf, error *e)
+{
+  if (smf->atx)
+  {
     return error_causef (
         e,
         ERR_INVALID_ARGUMENT,
         "Can't start another transaction, already a part of an existing "
         "transaction: %" PRtxid ". Either commit or rollback first",
-        smf->atx->tid);
+        smf->atx->tid
+    );
   }
 
   WRAP (pgr_begin_txn (&smf->tx, smf->root->p, &smf->e));
@@ -36,7 +40,9 @@ static err_t _nsh_begin (struct nshandle *smf, error *e) {
   return SUCCESS;
 }
 
-int nsh_begin (struct nshandle *smf) {
+int
+nsh_begin (struct nshandle *smf)
+{
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 

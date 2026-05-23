@@ -17,7 +17,8 @@
 #include "c_specx.h"
 #include "nscore/compile_config.h"
 
-struct wal_ostream {
+struct wal_ostream
+{
   i_file fd;
   latch  l;
   lsn    flushed_lsn;

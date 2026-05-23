@@ -16,13 +16,17 @@
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 
-err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e) {
+err_t
+pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
+{
   ASSERT (mp->flags & PW_PRESENT);
   ASSERT (!(mp->flags & PW_X));
 
   // Only need to write it out if it's dirty
-  if (mp->flags & PW_DIRTY) {
-    if (!(p->flags & PGR_ISRESTARTING) && p->ww) {
+  if (mp->flags & PW_DIRTY)
+  {
+    if (!(p->flags & PGR_ISRESTARTING) && p->ww)
+    {
       // WAL invariant: always flush page to wal before
       // it's flushed to disk
       // Remember:

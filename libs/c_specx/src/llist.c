@@ -14,25 +14,29 @@
 
 #include "c_specx.h"
 
-struct int_node {
+struct int_node
+{
   int           value;
   struct llnode node;
 };
 
 #ifndef NTEST
-TEST (llist) {
+TEST (llist)
+{
   struct int_node nodes[10];
   nodes[0].value = 0;
   llnode_init (&nodes[0].node);
 
   struct llnode *head = &nodes[0].node;
 
-  for (u32 i = 1; i < 10; ++i) {
+  for (u32 i = 1; i < 10; ++i)
+  {
     nodes[i].value = i;
     list_push (&head, &nodes[i].node);
   }
 
-  for (u32 i = 10; i > 0; --i) {
+  for (u32 i = 10; i > 0; --i)
+  {
     struct llnode         *ret  = list_pop (&head);
     const struct int_node *node = container_of (ret, struct int_node, node);
     test_assert_int_equal (node->value, i - 1);

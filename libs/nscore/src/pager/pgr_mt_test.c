@@ -20,7 +20,8 @@
 
 #ifndef NTEST
 
-struct thread_ctx {
+struct thread_ctx
+{
   struct wal   *w;
   struct pager *p;
   i_semaphore  *begin;
@@ -32,7 +33,9 @@ struct thread_ctx {
   err_t         ret;
 };
 
-static void *simple_pager_ops (void *_ctx) {
+static void *
+simple_pager_ops (void *_ctx)
+{
   struct thread_ctx *ctx = _ctx;
   struct pager      *p   = ctx->p;
   struct txn         tx;
@@ -113,7 +116,8 @@ static void *simple_pager_ops (void *_ctx) {
 #  undef VTYPE
 #  undef SUFFIX
 
-TEST (pager_mt) {
+TEST (pager_mt)
+{
   struct pgr_fixture pf;
   pgr_fixture_create (&pf);
 
@@ -142,7 +146,8 @@ TEST (pager_mt) {
   i_semaphore_create (&begin, arrlen (threads), &pf.e);
 
   // Create all threads
-  for (u32 i = 0; i < arrlen (threads); ++i) {
+  for (u32 i = 0; i < arrlen (threads); ++i)
+  {
     i_thread_create (&threads[i], simple_pager_ops, &ctx[i], &pf.e);
   }
 
@@ -157,7 +162,8 @@ TEST (pager_mt) {
   ht_init_pg (&unique_set, _hdata, arrlen (_hdata));
 
   // Check results
-  for (u32 i = 0; i < arrlen (threads); ++i) {
+  for (u32 i = 0; i < arrlen (threads); ++i)
+  {
     test_assert (ctx[i].success);
 
     test_assert_int_equal (ctx[i].ret, SUCCESS);

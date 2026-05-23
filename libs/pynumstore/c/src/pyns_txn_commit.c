@@ -18,7 +18,9 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *
+pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg)
+{
   if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
   /* TODO: smfile_commit(txn); */
   Py_RETURN_NONE;

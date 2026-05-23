@@ -25,7 +25,9 @@
 ////////////////////////////////////////////////////////////
 // ROLLBACK (Figure 8)
 
-err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e) {
+err_t
+pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
+{
   struct wal_rec_hdr_read *log_rec = NULL;                  // Next record to read
   struct wal_clr_write     clr;                             // Next record to write
   page_h                   ph           = page_h_create (); // The page handle used for all undo's
@@ -36,19 +38,24 @@ err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e) {
   // First ensure the wal is flushed so that any undoable log is readable
   if (wal_flush_to (p->ww, undo_nxt_lsn, e)) { goto failed; }
 
-  while (save_lsn < undo_nxt_lsn) {
+  while (save_lsn < undo_nxt_lsn)
+  {
     // Read the next undo log entry
     if ((log_rec = wal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL) { return error_trace (e); }
 
     // Early Done  - this is a corrupt sequence of logs written - we expect a
     // BEGIN
-    if (log_rec->type == WL_EOF) {
+    if (log_rec->type == WL_EOF)
+    {
       return error_causef (e, ERR_CORRUPT, "Transaction does not have a valid top level log");
     }
 
-    switch (log_rec->type) {
-      case WL_UPDATE: {
-        if (wrh_is_undoable (log_rec)) {
+    switch (log_rec->type)
+    {
+      case WL_UPDATE:
+      {
+        if (wrh_is_undoable (log_rec))
+        {
           pgno pg = wrh_get_affected_pg (log_rec);
           if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) { goto failed; }
 
@@ -68,7 +75,8 @@ err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e) {
                           .redo = log_rec->update.phys.undo,
                       },
               },
-              e);
+              e
+          );
           if (prev_lsn < 0) { goto failed; }
 
           // Set the last page lsn
@@ -82,7 +90,8 @@ err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e) {
 
         undo_nxt_lsn = log_rec->update.prev;
 
-        if (undo_nxt_lsn == 0) {
+        if (undo_nxt_lsn == 0)
+        {
           slsn l = wal_append_end_log (p->ww, tx->tid, prev_lsn, e);
           if (l < 0) { goto failed; }
           // We'll break next
@@ -90,25 +99,30 @@ err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e) {
         break;
       }
 
-      case WL_CLR: {
+      case WL_CLR:
+      {
         undo_nxt_lsn = log_rec->clr.undo_next;
         break;
       }
 
-      case WL_BEGIN: {
+      case WL_BEGIN:
+      {
         undo_nxt_lsn = 0; // Done
         break;
       }
       case WL_COMMIT:
-      case WL_END: {
+      case WL_END:
+      {
         return error_causef (
             e,
             ERR_CORRUPT,
             "unexpected log record during rollback (lsn=%" PRlsn ")",
-            undo_nxt_lsn);
+            undo_nxt_lsn
+        );
       }
 
-      case WL_EOF: {
+      case WL_EOF:
+      {
         goto theend;
       }
     }
@@ -119,7 +133,8 @@ err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e) {
 theend:
   lockt_unlock_tx (p->lt, tx);
 
-  if (undo_nxt_lsn > 0) {
+  if (undo_nxt_lsn > 0)
+  {
     if (wal_flush_to (p->ww, undo_nxt_lsn, e)) { goto failed; }
   }
 
@@ -133,7 +148,8 @@ failed:
 }
 
 #ifndef NTEST
-TEST (aries_rollback_basic) {
+TEST (aries_rollback_basic)
+{
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
@@ -146,7 +162,8 @@ TEST (aries_rollback_basic) {
   {
     pgr_begin_txn (&tx, p, &e);
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 3; ++i)
+    {
       page_h dl_page = page_h_create ();
       test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &e));
       dl_make_valid (page_h_w (&dl_page));
@@ -160,10 +177,11 @@ TEST (aries_rollback_basic) {
   {
     test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &e));
 
-    for (p_size i = 0; i < FS_BTMP_NPGS; ++i) {
-      if (i < 4) {
-        test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1);
-      } else {
+    for (p_size i = 0; i < FS_BTMP_NPGS; ++i)
+    {
+      if (i < 4) { test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1); }
+      else
+      {
         test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
       }
     }
@@ -172,11 +190,14 @@ TEST (aries_rollback_basic) {
   }
 
   // Rollback the transaction
-  { pgr_rollback (p, &tx, 0, &e); }
+  {
+    pgr_rollback (p, &tx, 0, &e);
+  }
 
   // Verify pages are trash after rollback
   {
-    for (int i = 1; i < 3; ++i) {
+    for (int i = 1; i < 3; ++i)
+    {
       pgr_get (&pg, PG_TRASH, i, p, &e);
       pgr_release (p, &pg, PG_TRASH, &e);
     }
@@ -186,10 +207,11 @@ TEST (aries_rollback_basic) {
   {
     test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &e));
 
-    for (p_size i = 0; i < FS_BTMP_NPGS; ++i) {
-      if (i < 1) {
-        test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1);
-      } else {
+    for (p_size i = 0; i < FS_BTMP_NPGS; ++i)
+    {
+      if (i < 1) { test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1); }
+      else
+      {
         test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
       }
     }
@@ -200,7 +222,8 @@ TEST (aries_rollback_basic) {
   pgr_close (p, &e);
 }
 
-TEST (aries_rollback_multiple_updates) {
+TEST (aries_rollback_multiple_updates)
+{
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
@@ -262,7 +285,8 @@ TEST (aries_rollback_multiple_updates) {
   pgr_close (p, &e);
 }
 
-TEST (aries_rollback_with_crash_recovery) {
+TEST (aries_rollback_with_crash_recovery)
+{
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
@@ -282,7 +306,8 @@ TEST (aries_rollback_with_crash_recovery) {
     memset (committed_data, 0xAA, DL_DATA_SIZE);
     dl_set_data (
         page_h_w (&dl_page),
-        (struct dl_data){.data = committed_data, .blen = DL_DATA_SIZE});
+        (struct dl_data){.data = committed_data, .blen = DL_DATA_SIZE}
+    );
 
     pgno1 = page_h_ro (&dl_page)->pg;
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
@@ -298,7 +323,8 @@ TEST (aries_rollback_with_crash_recovery) {
     memset (uncommitted_data, 0xBB, DL_DATA_SIZE);
     dl_set_data (
         page_h_w (&dl_page),
-        (struct dl_data){.data = uncommitted_data, .blen = DL_DATA_SIZE});
+        (struct dl_data){.data = uncommitted_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_flush_wall (p, &e);
@@ -317,7 +343,8 @@ TEST (aries_rollback_with_crash_recovery) {
   pgr_close (p, &e);
 }
 
-TEST (aries_rollback_clr_not_undone) {
+TEST (aries_rollback_clr_not_undone)
+{
   error e = error_create ();
 
   test_fail_if (pgr_delete_single_file ("testdb", &e));

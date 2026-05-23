@@ -94,15 +94,13 @@ int     nsdb_close (nsdb_t *ns);
 const char *nsdb_strerror (nsdb_t *ns);
 int         nsdb_perror (nsdb_t *ns, const char *prefix);
 int         nsdb_delete (nsdb_t *ns, const char *vname);
+int         nsdb_create (nsdb_t *ns, const char *name, const char *type);
+int         nsdb_validate(nsdb_t *ns);
 
 // Transaction Support
 int nsdb_begin (nsdb_t *ns);
 int nsdb_commit (nsdb_t *ns);
 int nsdb_rollback (nsdb_t *ns);
-
-// Variable API
-int nsdb_create (nsdb_t *ns, const char *name, const char *type);
-int nsdb_delete (nsdb_t *ns, const char *name);
 
 // Primary API
 sb_size nsdb_len (nsdb_t *ns, const char *vname);

@@ -20,13 +20,16 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 
-smfile_t *smfile_open (const char *path) {
+smfile_t *
+smfile_open (const char *path)
+{
   struct nshandle *ret = nsh_open (path);
 
   if (ret == NULL) { return NULL; }
 
   // Create the default variable
-  if (pgr_isnew (ret->root->p)) {
+  if (pgr_isnew (ret->root->p))
+  {
     // BEGIN TXN
     struct txn tx;
     if (pgr_begin_txn (&tx, ret->root->p, &ret->e)) { goto failed; }

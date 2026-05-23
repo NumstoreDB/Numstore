@@ -19,14 +19,17 @@
 #include "nscore/pager.h"
 #include "nscore/txn.h"
 
-struct lockt_frame {
+struct lockt_frame
+{
   struct lt_lock key;
   struct gr_lock lock;
   struct hnode   node;
   int            refcount;
 };
 
-static err_t lockt_frame_init (struct lockt_frame *dest, const struct lt_lock key, error *e) {
+static err_t
+lockt_frame_init (struct lockt_frame *dest, const struct lt_lock key, error *e)
+{
   WRAP (gr_lock_init (&dest->lock, e));
 
   dest->key      = key;
@@ -36,26 +39,37 @@ static err_t lockt_frame_init (struct lockt_frame *dest, const struct lt_lock ke
   return SUCCESS;
 }
 
-static void lockt_frame_destroy (struct lockt_frame *dest) { gr_lock_destroy (&dest->lock); }
+static void
+lockt_frame_destroy (struct lockt_frame *dest)
+{ gr_lock_destroy (&dest->lock); }
 
-static void lockt_frame_init_key (struct lockt_frame *dest, const struct lt_lock key) {
+static void
+lockt_frame_init_key (struct lockt_frame *dest, const struct lt_lock key)
+{
   dest->key = key;
   hnode_init (&dest->node, lt_lock_key (key));
 }
 
-static bool lockt_frame_eq (const struct hnode *left, const struct hnode *right) {
+static bool
+lockt_frame_eq (const struct hnode *left, const struct hnode *right)
+{
   const struct lockt_frame *_left  = container_of (left, struct lockt_frame, node);
   const struct lockt_frame *_right = container_of (right, struct lockt_frame, node);
   return lt_lock_equal (_left->key, _right->key);
 }
 
-static void frame_ref (struct lockt_frame *frame) { frame->refcount++; }
+static void
+frame_ref (struct lockt_frame *frame)
+{ frame->refcount++; }
 
-static void frame_unref (struct lockt *t, struct lockt_frame *frame) {
+static void
+frame_unref (struct lockt *t, struct lockt_frame *frame)
+{
   ASSERT (frame->refcount > 0);
   frame->refcount--;
 
-  if (frame->refcount == 0) {
+  if (frame->refcount == 0)
+  {
     struct hnode **found = htable_lookup (t->table, &frame->node, lockt_frame_eq);
     htable_delete (t->table, found);
     lockt_frame_destroy (frame);
@@ -63,7 +77,9 @@ static void frame_unref (struct lockt *t, struct lockt_frame *frame) {
   }
 }
 
-err_t lockt_init (struct lockt *t, error *e) {
+err_t
+lockt_init (struct lockt *t, error *e)
+{
   slab_alloc_init (&t->lock_alloc, sizeof (struct lockt_frame), 1000);
 
   t->table = htable_create (1000, e);
@@ -74,17 +90,22 @@ err_t lockt_init (struct lockt *t, error *e) {
   return SUCCESS;
 }
 
-void lockt_destroy (struct lockt *t) {
+void
+lockt_destroy (struct lockt *t)
+{
   slab_alloc_destroy (&t->lock_alloc);
   htable_free (t->table);
 }
 
-static err_t lockt_lock_once (
+static err_t
+lockt_lock_once (
     struct lockt        *t,
     const struct lt_lock lock,
     const enum lock_mode mode,
     struct txn          *tx,
-    error               *e) {
+    error               *e
+)
+{
   /**
   // Fast path: if this transaction already holds this lock, skip.
   if (tx && txn_haslock (tx, lock))
@@ -103,18 +124,23 @@ static err_t lockt_lock_once (
   // Result pointer
   struct lockt_frame *frame;
 
-  if (node != NULL) {
+  if (node != NULL)
+  {
     // Existing frame
     frame = container_of (*node, struct lockt_frame, node);
-  } else {
+  }
+  else
+  {
     // Allocate and insert a new frame
     frame = slab_alloc_alloc (&t->lock_alloc, e);
-    if (e->cause_code != SUCCESS) {
+    if (e->cause_code != SUCCESS)
+    {
       latch_unlock (&t->l);
       return error_trace (e);
     }
 
-    if (lockt_frame_init (frame, lock, e) != SUCCESS) {
+    if (lockt_frame_init (frame, lock, e) != SUCCESS)
+    {
       slab_alloc_free (&t->lock_alloc, frame);
       latch_unlock (&t->l);
       return error_trace (e);
@@ -126,8 +152,10 @@ static err_t lockt_lock_once (
   frame_ref (frame);
 
   // Record in the transaction while we still hold the latch.
-  if (tx) {
-    if (txn_newlock (tx, lock, mode, e) != SUCCESS) {
+  if (tx)
+  {
+    if (txn_newlock (tx, lock, mode, e) != SUCCESS)
+    {
       frame_unref (t, frame);
       latch_unlock (&t->l);
       return error_trace (e);
@@ -137,7 +165,8 @@ static err_t lockt_lock_once (
   latch_unlock (&t->l);
 
   // Call the lock function - this is the big stuff
-  if (gr_lock (&frame->lock, mode, e) != SUCCESS) {
+  if (gr_lock (&frame->lock, mode, e) != SUCCESS)
+  {
     latch_lock (&t->l);
     frame_unref (t, frame);
     latch_unlock (&t->l);
@@ -147,15 +176,19 @@ static err_t lockt_lock_once (
   return SUCCESS;
 }
 
-err_t lockt_lock (
+err_t
+lockt_lock (
     struct lockt        *t,
     const struct lt_lock lock,
     const enum lock_mode mode,
     struct txn          *tx,
-    error               *e) {
+    error               *e
+)
+{
   // Fetch and lock the parent lock first if there is one
   struct lt_lock parent;
-  if (get_parent (&parent, lock)) {
+  if (get_parent (&parent, lock))
+  {
     const enum lock_mode pmode = get_parent_mode (mode);
     // TODO - error handling here for failed locks
     WRAP (lockt_lock (t, parent, pmode, tx, e));
@@ -165,7 +198,8 @@ err_t lockt_lock (
 }
 
 static void
-lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode) {
+lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode)
+{
   latch_lock (&t->l);
   {
     // Search for the node
@@ -184,17 +218,16 @@ lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_m
   latch_unlock (&t->l);
 }
 
-err_t lockt_unlock (
-    struct lockt        *t,
-    const struct lt_lock lock,
-    const enum lock_mode mode,
-    error               *e) {
+err_t
+lockt_unlock (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode, error *e)
+{
   // Unlock the child first (bottom-up).
   lockt_unlock_once (t, lock, mode);
 
   // Then unlock the parent.
   struct lt_lock parent;
-  if (get_parent (&parent, lock)) {
+  if (get_parent (&parent, lock))
+  {
     const enum lock_mode pmode = get_parent_mode (mode);
     WRAP (lockt_unlock (t, parent, pmode, e));
   }
@@ -202,11 +235,14 @@ err_t lockt_unlock (
   return SUCCESS;
 }
 
-struct unlock_ctx {
+struct unlock_ctx
+{
   struct lockt *t;
 };
 
-static void unlock_single_lock (const struct lt_lock lock, const enum lock_mode mode, void *ctx) {
+static void
+unlock_single_lock (const struct lt_lock lock, const enum lock_mode mode, void *ctx)
+{
   const struct unlock_ctx *c = ctx;
   struct lockt            *t = c->t;
 
@@ -222,7 +258,9 @@ static void unlock_single_lock (const struct lt_lock lock, const enum lock_mode 
   frame_unref (t, frame);
 }
 
-void lockt_unlock_tx (struct lockt *t, struct txn *tx) {
+void
+lockt_unlock_tx (struct lockt *t, struct txn *tx)
+{
   ASSERT (t);
   ASSERT (tx);
 
@@ -235,13 +273,17 @@ void lockt_unlock_tx (struct lockt *t, struct txn *tx) {
   txn_close (tx);
 }
 
-static void i_log_lockt_frame_hnode (struct hnode *node, void *ctx) {
+static void
+i_log_lockt_frame_hnode (struct hnode *node, void *ctx)
+{
   const int                *log_level = ctx;
   const struct lockt_frame *frame     = container_of (node, struct lockt_frame, node);
   i_print_lt_lock (*log_level, frame->key);
 }
 
-void i_log_lockt (int log_level, const struct lockt *t) {
+void
+i_log_lockt (int log_level, const struct lockt *t)
+{
   i_log (log_level, "================== LOCK TABLE START ==================\n");
   htable_foreach (t->table, i_log_lockt_frame_hnode, &log_level);
   i_log (log_level, "================== LOCK TABLE END ==================\n");
@@ -249,18 +291,22 @@ void i_log_lockt (int log_level, const struct lockt *t) {
 
 #ifndef NTEST
 
-struct test_case {
+struct test_case
+{
   struct lockt  *lt;
   int            counter;
   struct lt_lock key1;
   struct pager  *p;
 };
 
-static void *writer_thread_locks_type1_x (void *args) {
+static void *
+writer_thread_locks_type1_x (void *args)
+{
   struct test_case *c = args;
   error             e = error_create ();
 
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 100; i++)
+  {
     struct txn tx;
     if (unlikely (pgr_begin_txn (&tx, c->p, &e) < SUCCESS)) { panic ("Test Failed"); }
 
@@ -278,7 +324,8 @@ static void *writer_thread_locks_type1_x (void *args) {
   return NULL;
 }
 
-TEST (lock_table_exclusivity) {
+TEST (lock_table_exclusivity)
+{
   error e = error_create ();
 
   // Why doesnt this fail?
@@ -295,7 +342,8 @@ TEST (lock_table_exclusivity) {
   };
 
   i_thread threads[20];
-  for (u32 i = 0; i < arrlen (threads); ++i) {
+  for (u32 i = 0; i < arrlen (threads); ++i)
+  {
     i_thread_create (&threads[i], writer_thread_locks_type1_x, &c, &e);
   }
   for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i], &e); }

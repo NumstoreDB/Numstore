@@ -17,7 +17,9 @@
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 
-static err_t __nsh_crash (struct nshandle *n, error *e) {
+static err_t
+__nsh_crash (struct nshandle *n, error *e)
+{
   struct nshandle_root *root = n->root;
   nsh_root_release (root, n);
   ASSERT (root->count == 0);
@@ -25,4 +27,6 @@ static err_t __nsh_crash (struct nshandle *n, error *e) {
   return SUCCESS;
 }
 
-int nsh_crash (struct nshandle *ns) { return __nsh_crash (ns, &ns->e); }
+int
+nsh_crash (struct nshandle *ns)
+{ return __nsh_crash (ns, &ns->e); }

@@ -53,14 +53,21 @@
   case CU64:    \
   case CU128
 
-HEADER_FUNC bool prim_is_int (enum prim_t p) { return p >= U8 && p <= I64; }
+HEADER_FUNC bool
+prim_is_int (enum prim_t p)
+{ return p >= U8 && p <= I64; }
 
-HEADER_FUNC bool prim_is_float (enum prim_t p) { return p >= F16 && p <= F128; }
+HEADER_FUNC bool
+prim_is_float (enum prim_t p)
+{ return p >= F16 && p <= F128; }
 
-HEADER_FUNC bool prim_is_complex (enum prim_t p) { return p >= CF32 && p <= CU128; }
+HEADER_FUNC bool
+prim_is_complex (enum prim_t p)
+{ return p >= CF32 && p <= CU128; }
 
 #define PRIM_FOR_EACH(func, ...) \
-  do {                           \
+  do                             \
+  {                              \
     func (U8, __VA_ARGS__);      \
     func (U8, __VA_ARGS__);      \
     func (U16, __VA_ARGS__);     \
@@ -86,10 +93,12 @@ HEADER_FUNC bool prim_is_complex (enum prim_t p) { return p >= CF32 && p <= CU12
     func (CU32, __VA_ARGS__);    \
     func (CU64, __VA_ARGS__);    \
     func (CU128, __VA_ARGS__);   \
-  } while (0)
+  }                              \
+  while (0)
 
 #define PRIM_FOR_EACH_LITERAL(func, ...) \
-  do {                                   \
+  do                                     \
+  {                                      \
     func ("u8", __VA_ARGS__);            \
     func ("u8", __VA_ARGS__);            \
     func ("u16", __VA_ARGS__);           \
@@ -115,4 +124,5 @@ HEADER_FUNC bool prim_is_complex (enum prim_t p) { return p >= CF32 && p <= CU12
     func ("cu32", __VA_ARGS__);          \
     func ("cu64", __VA_ARGS__);          \
     func ("cu128", __VA_ARGS__);         \
-  } while (0)
+  }                                      \
+  while (0)

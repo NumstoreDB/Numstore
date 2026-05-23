@@ -39,7 +39,9 @@
  *      Then all PG_VAR_PAGE/PG_VAR_TAIL overflow pages chained from cur are
  *      deleted in sequence.
  */
-err_t ns_var_delete (struct ns_var_delete_params params, error *e) {
+err_t
+ns_var_delete (struct ns_var_delete_params params, error *e)
+{
   page_h prev   = page_h_create ();
   page_h cur    = page_h_create ();
   page_h ovnext = page_h_create ();
@@ -74,9 +76,11 @@ err_t ns_var_delete (struct ns_var_delete_params params, error *e) {
 
   ASSERT (rparams.root == PGNO_NULL);
 
-  switch (page_h_type (&prev)) {
+  switch (page_h_type (&prev))
+  {
       // Previous is the root hash page
-    case PG_VAR_HASH_PAGE: {
+    case PG_VAR_HASH_PAGE:
+    {
       vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
 
       if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e)) { goto failed; }
@@ -85,22 +89,26 @@ err_t ns_var_delete (struct ns_var_delete_params params, error *e) {
     }
 
       // Otherwise, we just need to link prev->cur
-    case PG_VAR_PAGE: {
+    case PG_VAR_PAGE:
+    {
       vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
       if (pgr_release (params.p, &prev, PG_VAR_PAGE, e)) { goto failed; }
 
       break;
     }
-    default: {
+    default:
+    {
       UNREACHABLE ();
     }
   }
 
   // Delete all overflow pages
-  while (cur.mode != PHM_NONE) {
+  while (cur.mode != PHM_NONE)
+  {
     pgno npg = vp_get_ovnext (page_h_ro (&cur));
-    if (npg != PGNO_NULL) {
+    if (npg != PGNO_NULL)
+    {
       if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e)) { goto failed; }
     }
 

@@ -20,11 +20,13 @@
 
 #include <string.h>
 
-enum file_pager_flags {
+enum file_pager_flags
+{
   FP_ISNEW = (1 << 0),
 };
 
-struct file_pager {
+struct file_pager
+{
   _Atomic pgno npages;
   i_file       f;
   u32          header_len;
@@ -37,7 +39,9 @@ DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
 ////////////////////////////////////////////////////////////
 /// Regular functions
 
-struct file_pager *fpgr_open (const char *dbname, u32 header_len, error *e) {
+struct file_pager *
+fpgr_open (const char *dbname, u32 header_len, error *e)
+{
   // Allocate space for the pager
   struct file_pager *dest = i_malloc (1, sizeof *dest, e);
   if (dest == NULL) { return NULL; }
@@ -56,11 +60,13 @@ struct file_pager *fpgr_open (const char *dbname, u32 header_len, error *e) {
   if (size < 0) { goto fp_failed; }
 
   // No header or a newly created file (just a header)
-  if (size == 0 || size == header_len) {
+  if (size == 0 || size == header_len)
+  {
     dest->flags |= FP_ISNEW;
 
     // extend the file to the header length
-    if (size == 0) {
+    if (size == 0)
+    {
       if (i_truncate (&dest->f, header_len, e)) { goto fp_failed; }
     }
 
@@ -68,13 +74,15 @@ struct file_pager *fpgr_open (const char *dbname, u32 header_len, error *e) {
   }
 
   // This file has a header that is less than the length of the file
-  else if (size < header_len) {
+  else if (size < header_len)
+  {
     error_causef (e, ERR_CORRUPT, "Invalid file pager header\n");
     goto fp_failed;
   }
 
   // Corrupt database - not a multiple of PAGE_SIZE
-  if ((size - header_len) % PAGE_SIZE != 0) {
+  if ((size - header_len) % PAGE_SIZE != 0)
+  {
     error_causef (e, ERR_CORRUPT, "File pager does not contain contiguous pagers\n");
     goto fp_failed;
   }
@@ -95,7 +103,8 @@ failed:
 }
 
 #ifndef NTEST
-TEST (fpgr_open) {
+TEST (fpgr_open)
+{
   error e = error_create ();
   _Static_assert (PAGE_SIZE > 2, "PAGE_SIZE should be > 2 for file_pager test");
 
@@ -130,7 +139,9 @@ TEST (fpgr_open) {
 }
 #endif
 
-err_t fpgr_close (struct file_pager *f, error *e) {
+err_t
+fpgr_close (struct file_pager *f, error *e)
+{
   DBG_ASSERT (file_pager, f);
   latch_lock (&f->l); // Never release this
   i_close (&f->f, e);
@@ -138,11 +149,14 @@ err_t fpgr_close (struct file_pager *f, error *e) {
   return error_trace (e);
 }
 
-err_t fpgr_reset (struct file_pager *f, error *e) {
+err_t
+fpgr_reset (struct file_pager *f, error *e)
+{
   DBG_ASSERT (file_pager, f);
 
   latch_lock (&f->l);
-  if (i_truncate (&f->f, f->header_len, e)) {
+  if (i_truncate (&f->f, f->header_len, e))
+  {
     latch_unlock (&f->l);
     return error_trace (e);
   }
@@ -152,25 +166,33 @@ err_t fpgr_reset (struct file_pager *f, error *e) {
   return error_trace (e);
 }
 
-bool fpgr_isnew (struct file_pager *f) { return f->flags & FP_ISNEW; }
+bool
+fpgr_isnew (struct file_pager *f)
+{ return f->flags & FP_ISNEW; }
 
-p_size fpgr_get_npages (const struct file_pager *fp) {
+p_size
+fpgr_get_npages (const struct file_pager *fp)
+{
   DBG_ASSERT (file_pager, fp);
   return atomic_load (&fp->npages);
 }
 
-err_t fpgr_extend (struct file_pager *p, pgno dest, error *e) {
+err_t
+fpgr_extend (struct file_pager *p, pgno dest, error *e)
+{
   DBG_ASSERT (file_pager, p);
   ASSERT (dest);
 
   latch_lock (&p->l);
 
-  if (dest < atomic_load (&p->npages)) {
+  if (dest < atomic_load (&p->npages))
+  {
     latch_unlock (&p->l);
     return SUCCESS;
   }
 
-  if (i_truncate (&p->f, p->header_len + PAGE_SIZE * (dest), e)) {
+  if (i_truncate (&p->f, p->header_len + PAGE_SIZE * (dest), e))
+  {
     latch_unlock (&p->l);
     goto failed;
   }
@@ -185,7 +207,8 @@ failed:
 }
 
 #ifndef NTEST
-TEST (fpgr_new) {
+TEST (fpgr_new)
+{
   i_file fp = {0};
   error  e  = error_create ();
   test_fail_if (i_open_rw (&fp, "test.db", &e));
@@ -216,27 +239,32 @@ TEST (fpgr_new) {
 }
 #endif
 
-err_t fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e) {
+err_t
+fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
+{
   ASSERT (dest);
 
   latch_lock (&p->l);
 
   DBG_ASSERT (file_pager, p);
 
-  if (pg >= atomic_load (&p->npages)) {
+  if (pg >= atomic_load (&p->npages))
+  {
     error_causef (
         e,
         ERR_PG_OUT_OF_RANGE,
         "page %" PRpgno " out of range (npages=%" PRpgno ")",
         pg,
-        atomic_load (&p->npages));
+        atomic_load (&p->npages)
+    );
     goto theend;
   }
 
   // Read all from file
   const i64 nread = i_pread_all (&p->f, dest, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e);
 
-  if (nread == 0) {
+  if (nread == 0)
+  {
     error_causef (e, ERR_CORRUPT, "pread returned 0 bytes at page %" PRpgno, pg);
     goto theend;
   }
@@ -250,7 +278,9 @@ theend:
   return error_trace (e);
 }
 
-err_t fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e) {
+err_t
+fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
+{
   ASSERT (src);
 
   latch_lock (&p->l);
@@ -267,7 +297,9 @@ theend:
   return error_trace (e);
 }
 
-err_t fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e) {
+err_t
+fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e)
+{
   ASSERT (src);
   ASSERT (ofst + size <= p->header_len);
 
@@ -286,7 +318,9 @@ theend:
   return error_trace (e);
 }
 
-err_t fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e) {
+err_t
+fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
+{
   ASSERT (dest);
   ASSERT (ofst + size <= p->header_len);
 
@@ -305,7 +339,8 @@ theend:
 }
 
 #ifndef NTEST
-TEST (fpgr_read_write) {
+TEST (fpgr_read_write)
+{
   // The raw page bytes
   u8 _page[PAGE_SIZE];
 
@@ -342,7 +377,9 @@ TEST (fpgr_read_write) {
 }
 #endif
 
-err_t fpgr_crash (struct file_pager *p, error *e) {
+err_t
+fpgr_crash (struct file_pager *p, error *e)
+{
   DBG_ASSERT (file_pager, p);
   latch_lock (&p->l);
   i_close (&p->f, e);

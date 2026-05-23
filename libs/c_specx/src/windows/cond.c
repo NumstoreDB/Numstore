@@ -21,46 +21,61 @@
 // InitializeConditionVariable is a no-op stub and there is no
 // destroy. We keep create/free for API symmetry.
 
-err_t i_cond_create (i_cond *c, error *e) {
+err_t
+i_cond_create (i_cond *c, error *e)
+{
   ASSERT (c);
   (void)e;
   InitializeConditionVariable (&c->cond);
   return SUCCESS;
 }
 
-void i_cond_free (i_cond *c) {
+void
+i_cond_free (i_cond *c)
+{
   ASSERT (c);
   // No-op: CONDITION_VARIABLE has no destroy function.
 }
 
-void i_cond_wait (i_cond *c, i_mutex *m) {
+void
+i_cond_wait (i_cond *c, i_mutex *m)
+{
   ASSERT (c);
   ASSERT (m);
 
-  if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE)) {
+  if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE))
+  {
     i_log_error ("cond_wait: SleepConditionVariableCS failed: %lu\n", GetLastError ());
     UNREACHABLE ();
   }
 }
 
-void i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec) {
+void
+i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
+{
   ASSERT (c);
   ASSERT (m);
-  if (!SleepConditionVariableCS (&c->cond, &m->m, (DWORD)msec)) {
+  if (!SleepConditionVariableCS (&c->cond, &m->m, (DWORD)msec))
+  {
     DWORD err = GetLastError ();
-    if (err != ERROR_TIMEOUT) {
+    if (err != ERROR_TIMEOUT)
+    {
       i_log_error ("cond_timed_wait: SleepConditionVariableCS failed: %lu\n", err);
       UNREACHABLE ();
     }
   }
 }
 
-void i_cond_signal (i_cond *c) {
+void
+i_cond_signal (i_cond *c)
+{
   ASSERT (c);
   WakeConditionVariable (&c->cond);
 }
 
-void i_cond_broadcast (i_cond *c) {
+void
+i_cond_broadcast (i_cond *c)
+{
   ASSERT (c);
   WakeAllConditionVariable (&c->cond);
 }

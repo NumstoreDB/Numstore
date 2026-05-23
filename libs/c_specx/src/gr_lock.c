@@ -30,7 +30,9 @@ static const bool compatible[LM_COUNT][LM_COUNT] = {
 
 static const char *mode_names[LM_COUNT] = {"IS", "IX", "S", "SIX", "X"};
 
-err_t gr_lock_init (struct gr_lock *l, error *e) {
+err_t
+gr_lock_init (struct gr_lock *l, error *e)
+{
   const err_t result = i_mutex_create (&l->mutex, e);
   if (result != SUCCESS) { return result; }
 
@@ -40,13 +42,16 @@ err_t gr_lock_init (struct gr_lock *l, error *e) {
   return SUCCESS;
 }
 
-void gr_lock_destroy (struct gr_lock *l) {
+void
+gr_lock_destroy (struct gr_lock *l)
+{
   i_mutex_free (&l->mutex);
 
   // Note: This assumes no threads are still waiting
   // TODO - (6) Caller must ensure all threads have released locks
 
-  while (l->head) {
+  while (l->head)
+  {
     struct gr_lock_waiter *w = l->head;
     l->head                  = w->next;
     i_cond_free (&w->cond);
@@ -73,21 +78,28 @@ void gr_lock_destroy (struct gr_lock *l) {
  * IX > 1 -> IX + IS = GOOD
  * - Compatible
  */
-static bool is_compatible (const struct gr_lock *l, const enum lock_mode mode) {
-  for (int i = 0; i < LM_COUNT; i++) {
+static bool
+is_compatible (const struct gr_lock *l, const enum lock_mode mode)
+{
+  for (int i = 0; i < LM_COUNT; i++)
+  {
     if (l->holder_counts[i] > 0 && !compatible[mode][i]) { return false; }
   }
   return true;
 }
 
-static void wake_waiters (struct gr_lock *l) {
-  for (struct gr_lock_waiter *w = l->head; w; w = w->next) {
+static void
+wake_waiters (struct gr_lock *l)
+{
+  for (struct gr_lock_waiter *w = l->head; w; w = w->next)
+  {
     if (is_compatible (l, w->mode)) { i_cond_signal (&w->cond); }
   }
 }
 
 static err_t
-gr_lock_waiter_init (struct gr_lock_waiter *dest, const enum lock_mode mode, error *e) {
+gr_lock_waiter_init (struct gr_lock_waiter *dest, const enum lock_mode mode, error *e)
+{
   dest->mode = mode;
   dest->prev = NULL;
   dest->next = NULL;
@@ -97,11 +109,13 @@ gr_lock_waiter_init (struct gr_lock_waiter *dest, const enum lock_mode mode, err
   return SUCCESS;
 }
 
-static void gr_lock_waiter_append_unsafe (struct gr_lock *l, struct gr_lock_waiter *w) {
+static void
+gr_lock_waiter_append_unsafe (struct gr_lock *l, struct gr_lock_waiter *w)
+{
   // Append on the front
-  if (l->head == NULL) {
-    l->head = w;
-  } else {
+  if (l->head == NULL) { l->head = w; }
+  else
+  {
     // Search for the end
     struct gr_lock_waiter *head = l->head;
     while (head->next != NULL) { head = head->next; }
@@ -112,10 +126,12 @@ static void gr_lock_waiter_append_unsafe (struct gr_lock *l, struct gr_lock_wait
   }
 }
 
-static void gr_lock_waiter_remove_unsafe (struct gr_lock *l, const struct gr_lock_waiter *w) {
-  if (w->prev != NULL) {
-    w->prev->next = w->next;
-  } else {
+static void
+gr_lock_waiter_remove_unsafe (struct gr_lock *l, const struct gr_lock_waiter *w)
+{
+  if (w->prev != NULL) { w->prev->next = w->next; }
+  else
+  {
     ASSERT (l->head == w);
     l->head = w->next;
   }
@@ -123,12 +139,15 @@ static void gr_lock_waiter_remove_unsafe (struct gr_lock *l, const struct gr_loc
   if (w->next != NULL) { w->next->prev = w->prev; }
 }
 
-err_t gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e) {
+err_t
+gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
+{
   i_mutex_lock (&l->mutex);
 
   // Is compatible - add this lock mode to the lock group
   // and move on
-  if (is_compatible (l, mode)) {
+  if (is_compatible (l, mode))
+  {
     l->holder_counts[mode]++;
     i_mutex_unlock (&l->mutex);
     return SUCCESS;
@@ -136,7 +155,8 @@ err_t gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e) {
 
   // Create a new waiter
   struct gr_lock_waiter waiter;
-  if (gr_lock_waiter_init (&waiter, mode, e)) {
+  if (gr_lock_waiter_init (&waiter, mode, e))
+  {
     i_mutex_unlock (&l->mutex);
     return error_trace (e);
   }
@@ -160,12 +180,15 @@ err_t gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e) {
   return SUCCESS;
 }
 
-bool gr_trylock (struct gr_lock *l, const enum lock_mode mode) {
+bool
+gr_trylock (struct gr_lock *l, const enum lock_mode mode)
+{
   ASSERT (l);
 
   if (!i_mutex_try_lock (&l->mutex)) { return false; }
 
-  if (!is_compatible (l, mode)) {
+  if (!is_compatible (l, mode))
+  {
     i_mutex_unlock (&l->mutex);
     return false;
   }
@@ -176,7 +199,9 @@ bool gr_trylock (struct gr_lock *l, const enum lock_mode mode) {
   return true;
 }
 
-void gr_unlock (struct gr_lock *l, const enum lock_mode mode) {
+void
+gr_unlock (struct gr_lock *l, const enum lock_mode mode)
+{
   i_mutex_lock (&l->mutex);
 
   ASSERT (l->holder_counts[mode] > 0);
@@ -189,23 +214,31 @@ void gr_unlock (struct gr_lock *l, const enum lock_mode mode) {
   i_mutex_unlock (&l->mutex);
 }
 
-const char *gr_lock_mode_name (const enum lock_mode mode) {
+const char *
+gr_lock_mode_name (const enum lock_mode mode)
+{
   if (mode >= 0 && mode < LM_COUNT) { return mode_names[mode]; }
   return "INVALID";
 }
 
-enum lock_mode get_parent_mode (const enum lock_mode child_mode) {
-  switch (child_mode) {
+enum lock_mode
+get_parent_mode (const enum lock_mode child_mode)
+{
+  switch (child_mode)
+  {
     case LM_IS:
-    case LM_S: {
+    case LM_S:
+    {
       return LM_IS;
     }
     case LM_IX:
     case LM_SIX:
-    case LM_X: {
+    case LM_X:
+    {
       return LM_IX;
     }
-    case LM_COUNT: {
+    case LM_COUNT:
+    {
       UNREACHABLE ();
     }
   }
@@ -219,7 +252,8 @@ enum lock_mode get_parent_mode (const enum lock_mode child_mode) {
 
 /* --- Test Infrastructure --- */
 
-struct lock_test_ctx {
+struct lock_test_ctx
+{
   struct gr_lock *lock;
 
   // Coordination Primitives
@@ -237,7 +271,9 @@ struct lock_test_ctx {
   enum lock_mode mode2;
 };
 
-static void test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock) {
+static void
+test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock)
+{
   memset (ctx, 0, sizeof (*ctx));
   ctx->lock = lock;
   i_mutex_create (&ctx->gate_mtx, NULL);
@@ -245,14 +281,18 @@ static void test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock) {
   ctx->gate_open = false;
 }
 
-static void test_ctx_destroy (struct lock_test_ctx *ctx) {
+static void
+test_ctx_destroy (struct lock_test_ctx *ctx)
+{
   i_mutex_free (&ctx->gate_mtx);
   i_cond_free (&ctx->gate_cv);
 }
 
 /* --- Deterministic Thread Routines --- */
 
-static void *thread_hold_and_signal (void *arg) {
+static void *
+thread_hold_and_signal (void *arg)
+{
   struct lock_test_ctx *ctx = arg;
   error                 e   = error_create ();
 
@@ -273,7 +313,9 @@ static void *thread_hold_and_signal (void *arg) {
   return NULL;
 }
 
-static void *thread_wait_and_try (void *arg) {
+static void *
+thread_wait_and_try (void *arg)
+{
   struct lock_test_ctx *ctx = arg;
   error                 e   = error_create ();
 
@@ -295,12 +337,15 @@ static void *thread_wait_and_try (void *arg) {
 
 /* --- Randomized Stress Test Routine --- */
 
-static void *random_stress_worker (void *arg) {
+static void *
+random_stress_worker (void *arg)
+{
   struct lock_test_ctx *ctx  = arg;
   error                 e    = error_create ();
   uint32_t              seed = (uint32_t)(uintptr_t)arg;
 
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 1000; i++)
+  {
     // Fast thread-local random
     seed                = seed * 1103515245 + 12345;
     enum lock_mode mode = (seed % LM_COUNT);
@@ -308,7 +353,8 @@ static void *random_stress_worker (void *arg) {
     gr_lock (ctx->lock, mode, &e);
 
     // If Exclusive or Shared-Intent-Exclusive, verify atomicity
-    if (mode == LM_X || mode == LM_SIX) {
+    if (mode == LM_X || mode == LM_SIX)
+    {
       int val = atomic_load (&ctx->counter);
       atomic_store (&ctx->counter, val + 1);
     }
@@ -323,12 +369,14 @@ static void *random_stress_worker (void *arg) {
 
 /* --- Tests --- */
 
-TEST (gr_lock_basic_sanity) {
+TEST (gr_lock_basic_sanity)
+{
   struct gr_lock lock;
   error          e = error_create ();
   gr_lock_init (&lock, &e);
 
-  for (int mode = 0; mode < LM_COUNT; mode++) {
+  for (int mode = 0; mode < LM_COUNT; mode++)
+  {
     gr_lock (&lock, mode, &e);
     test_assert_equal (lock.holder_counts[mode], 1);
     gr_unlock (&lock, mode);
@@ -338,7 +386,8 @@ TEST (gr_lock_basic_sanity) {
 }
 
 // Example of a Compatibility Test (Compatible)
-TEST (gr_lock_is_is_compatible) {
+TEST (gr_lock_is_is_compatible)
+{
   struct gr_lock lock;
   error          e = error_create ();
   gr_lock_init (&lock, &e);
@@ -361,7 +410,8 @@ TEST (gr_lock_is_is_compatible) {
 }
 
 // Example of a Blocking Test (Incompatible)
-TEST (gr_lock_is_x_blocks) {
+TEST (gr_lock_is_x_blocks)
+{
   struct gr_lock lock;
   error          e = error_create ();
   gr_lock_init (&lock, &e);
@@ -389,7 +439,8 @@ TEST (gr_lock_is_x_blocks) {
   gr_lock_destroy (&lock);
 }
 
-TEST (gr_lock_high_pressure_random) {
+TEST (gr_lock_high_pressure_random)
+{
   struct gr_lock lock;
   error          e = error_create ();
   gr_lock_init (&lock, &e);

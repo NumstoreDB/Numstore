@@ -51,23 +51,28 @@
 _Static_assert (
     PAGE_SIZE > VH_HASH_OFST + 10 * sizeof (pgno),
     "Root Page: PAGE_SIZE must be > RN_HASH_OFST plus at least 10 "
-    "extra hashes");
+    "extra hashes"
+);
 
 // Initialization
 void vh_init_empty (page *p);
 
 // Getters
-HEADER_FUNC p_size vh_get_hash_pos (const struct string vname) {
-  return (p_size)fnv1a_hash (vname) % (VH_HASH_LEN);
-}
+HEADER_FUNC p_size
+vh_get_hash_pos (const struct string vname)
+{ return (p_size)fnv1a_hash (vname) % (VH_HASH_LEN); }
 
-HEADER_FUNC pgno vh_get_hash_value (const page *p, const p_size pos) {
+HEADER_FUNC pgno
+vh_get_hash_value (const page *p, const p_size pos)
+{
   ASSERT (pos < VH_HASH_LEN);
   PAGE_SIMPLE_GET_IMPL (p, pgno, VH_HASH_OFST + pos * sizeof (pgno));
 }
 
 // Setters
-HEADER_FUNC void vh_set_hash_value (page *p, const p_size pos, const pgno value) {
+HEADER_FUNC void
+vh_set_hash_value (page *p, const p_size pos, const pgno value)
+{
   ASSERT (pos < VH_HASH_LEN);
   PAGE_SIMPLE_SET_IMPL (p, value, VH_HASH_OFST + pos * sizeof (pgno));
 }

@@ -20,13 +20,16 @@
 #include "nscore/var.h"
 #include "smfile.h"
 
-static sb_size _smfile_pinsert (
+static sb_size
+_smfile_pinsert (
     struct nshandle *db,
     const char      *name,
     const void      *src,
     const b_size     slen,
     sb_size          bofst,
-    error           *e) {
+    error           *e
+)
+{
   sb_size                            ret;                             // Return value
   b_size                             ofst;                            // Resolved offset
   struct stream                      _input;                          // Input stream
@@ -59,7 +62,9 @@ static sb_size _smfile_pinsert (
   }
 
   // Resolve sizes
-  { ofst = var_resolve_index (&gparams.dest, bofst); }
+  {
+    ofst = var_resolve_index (&gparams.dest, bofst);
+  }
 
   // INSERT
   {
@@ -105,7 +110,8 @@ failed:
 }
 
 sb_size
-smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen) {
+smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

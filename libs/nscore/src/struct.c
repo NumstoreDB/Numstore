@@ -24,20 +24,23 @@ DEFINE_DBG_ASSERT (struct struct_t, unchecked_struct_t, s, {
   ASSERT (s->types);
 })
 
-static err_t struct_t_type_err (const char *msg, error *e) {
-  return error_causef (e, ERR_INTERP, "Struct: %s", msg);
-}
+static err_t
+struct_t_type_err (const char *msg, error *e)
+{ return error_causef (e, ERR_INTERP, "Struct: %s", msg); }
 
-static err_t struct_t_type_deser (const char *msg, error *e) {
-  return error_causef (e, ERR_CORRUPT, "Struct: %s", msg);
-}
+static err_t
+struct_t_type_deser (const char *msg, error *e)
+{ return error_causef (e, ERR_CORRUPT, "Struct: %s", msg); }
 
-static err_t struct_t_validate_shallow (const struct struct_t *s, error *e) {
+static err_t
+struct_t_validate_shallow (const struct struct_t *s, error *e)
+{
   DBG_ASSERT (unchecked_struct_t, s);
 
   if (s->len == 0) { return struct_t_type_err ("Keys length must be > 0", e); }
 
-  for (u32 i = 0; i < s->len; ++i) {
+  for (u32 i = 0; i < s->len; ++i)
+  {
     if (s->keys[i].len == 0) { return struct_t_type_err ("Key length must be > 0", e); }
     ASSERT (s->keys[i].data);
   }
@@ -52,15 +55,14 @@ DEFINE_DBG_ASSERT (struct struct_t, valid_struct_t, s, {
   ASSERT (struct_t_validate_shallow (s, &e) == SUCCESS);
 })
 
-err_t struct_t_create (
-    struct struct_t    *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e) {
+err_t
+struct_t_create (struct struct_t *dest, struct kvt_list list, struct chunk_alloc *dalloc, error *e)
+{
   if (list.len == 0) { return struct_t_type_err ("struct must have greater than 0 keys", e); }
 
   // Copy stuff over
-  if (dalloc) {
+  if (dalloc)
+  {
     dest->len  = list.len;
     dest->keys = chunk_alloc_move_mem (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL) { return error_trace (e); }
@@ -70,7 +72,8 @@ err_t struct_t_create (
   }
 
   // Don't copy
-  else {
+  else
+  {
     dest->len   = list.len;
     dest->keys  = list.keys;
     dest->types = list.types;
@@ -79,17 +82,26 @@ err_t struct_t_create (
   return SUCCESS;
 }
 
-err_t struct_t_validate (const struct struct_t *s, error *e) {
+err_t
+struct_t_validate (const struct struct_t *s, error *e)
+{
   WRAP (struct_t_validate_shallow (s, e));
-  { return false; }
-  for (u32 i = 0; i < s->len; ++i) {
+  {
+    return false;
+  }
+  for (u32 i = 0; i < s->len; ++i)
+  {
     WRAP (type_validate (s->types[i], e));
-    { return false; }
+    {
+      return false;
+    }
   }
   return true;
 }
 
-i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st) {
+i32
+struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
+{
   DBG_ASSERT (valid_struct_t, st);
 
   char *out   = str;
@@ -100,25 +112,28 @@ i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st) {
   n = snprintf (out, avail, "struct { ");
   if (n < 0) { return n; }
   len += n;
-  if (out) {
+  if (out)
+  {
     out += n;
-    if ((u32)n < avail) {
-      avail -= n;
-    } else {
+    if ((u32)n < avail) { avail -= n; }
+    else
+    {
       avail = 0;
     }
   }
 
-  for (u32 i = 0; i < st->len; ++i) {
+  for (u32 i = 0; i < st->len; ++i)
+  {
     struct string key = st->keys[i];
     n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
     if (n < 0) { return n; }
     len += n;
-    if (out) {
+    if (out)
+    {
       out += n;
-      if ((u32)n < avail) {
-        avail -= n;
-      } else {
+      if ((u32)n < avail) { avail -= n; }
+      else
+      {
         avail = 0;
       }
     }
@@ -126,24 +141,27 @@ i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st) {
     n = type_snprintf (out, avail, st->types[i]);
     if (n < 0) { return n; }
     len += n;
-    if (out) {
+    if (out)
+    {
       out += n;
-      if ((u32)n < avail) {
-        avail -= n;
-      } else {
+      if ((u32)n < avail) { avail -= n; }
+      else
+      {
         avail = 0;
       }
     }
 
-    if (i + 1 < st->len) {
+    if (i + 1 < st->len)
+    {
       n = snprintf (out, avail, ", ");
       if (n < 0) { return n; }
       len += n;
-      if (out) {
+      if (out)
+      {
         out += n;
-        if ((u32)n < avail) {
-          avail -= n;
-        } else {
+        if ((u32)n < avail) { avail -= n; }
+        else
+        {
           avail = 0;
         }
       }
@@ -158,7 +176,8 @@ i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st) {
 }
 
 #ifndef NTEST
-TEST (struct_t_snprintf) {
+TEST (struct_t_snprintf)
+{
   struct struct_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -209,7 +228,9 @@ TEST (struct_t_snprintf) {
 }
 #endif
 
-u32 struct_t_byte_size (const struct struct_t *t) {
+u32
+struct_t_byte_size (const struct struct_t *t)
+{
   DBG_ASSERT (valid_struct_t, t);
   u32 ret = 0;
 
@@ -220,7 +241,8 @@ u32 struct_t_byte_size (const struct struct_t *t) {
 }
 
 #ifndef NTEST
-TEST (struct_t_byte_size) {
+TEST (struct_t_byte_size)
+{
   struct struct_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -267,7 +289,9 @@ TEST (struct_t_byte_size) {
 }
 #endif
 
-u32 struct_t_get_serial_size (const struct struct_t *t) {
+u32
+struct_t_get_serial_size (const struct struct_t *t)
+{
   DBG_ASSERT (valid_struct_t, t);
   u32 ret = 0;
 
@@ -275,7 +299,8 @@ u32 struct_t_get_serial_size (const struct struct_t *t) {
   ret += sizeof (u16);
   ret += t->len * sizeof (u16);
 
-  for (u32 i = 0; i < t->len; ++i) {
+  for (u32 i = 0; i < t->len; ++i)
+  {
     ret += t->keys[i].len;
     ret += type_get_serial_size (t->types[i]);
   }
@@ -284,7 +309,8 @@ u32 struct_t_get_serial_size (const struct struct_t *t) {
 }
 
 #ifndef NTEST
-TEST (struct_t_get_serial_size) {
+TEST (struct_t_get_serial_size)
+{
   struct struct_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -331,7 +357,9 @@ TEST (struct_t_get_serial_size) {
 }
 #endif
 
-void struct_t_serialize (struct serializer *dest, const struct struct_t *src) {
+void
+struct_t_serialize (struct serializer *dest, const struct struct_t *src)
+{
   DBG_ASSERT (valid_struct_t, src);
   bool ret;
 
@@ -339,7 +367,8 @@ void struct_t_serialize (struct serializer *dest, const struct struct_t *src) {
   ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));
   ASSERT (ret);
 
-  for (u32 i = 0; i < src->len; ++i) {
+  for (u32 i = 0; i < src->len; ++i)
+  {
     // (KLEN
     struct string next = src->keys[i];
     ret                = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
@@ -355,7 +384,8 @@ void struct_t_serialize (struct serializer *dest, const struct struct_t *src) {
 }
 
 #ifndef NTEST
-TEST (struct_t_serialize) {
+TEST (struct_t_serialize)
+{
   struct struct_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -420,11 +450,14 @@ TEST (struct_t_serialize) {
 }
 #endif
 
-err_t struct_t_deserialize (
+err_t
+struct_t_deserialize (
     struct struct_t     *dest,
     struct deserializer *src,
     struct chunk_alloc  *a,
-    error               *e) {
+    error               *e
+)
+{
   ASSERT (dest);
 
   struct chunk_alloc temp;
@@ -437,7 +470,8 @@ err_t struct_t_deserialize (
   u16 len;
   if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src)) { goto early_termination; }
 
-  for (u32 i = 0; i < len; ++i) {
+  for (u32 i = 0; i < len; ++i)
+  {
     // Read the string key length
     u16 klen;
     if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src)) { goto early_termination; }
@@ -473,7 +507,8 @@ early_termination:
 }
 
 #ifndef NTEST
-TEST (struct_t_deserialize_green_path) {
+TEST (struct_t_deserialize_green_path)
+{
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
                 (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
                 0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
@@ -528,7 +563,8 @@ TEST (struct_t_deserialize_green_path) {
 #endif
 
 #ifndef NTEST
-TEST (struct_t_deserialize_red_path) {
+TEST (struct_t_deserialize_red_path)
+{
   u8 data[] = {
       0,
       0, // Total length (4)
@@ -563,7 +599,8 @@ TEST (struct_t_deserialize_red_path) {
       'b',
       'i',
       (u8)T_PRIM,
-      (u8)CF128};
+      (u8)CF128
+  };
   u16 len = 4;
   u16 l0  = 3;
   u16 l2  = 3;
@@ -588,7 +625,9 @@ TEST (struct_t_deserialize_red_path) {
 }
 #endif
 
-err_t struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth, error *e) {
+err_t
+struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth, error *e)
+{
   ASSERT (st);
 
   st->len = (u16)randu32r (1, 5);
@@ -599,7 +638,8 @@ err_t struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth
   st->types = (struct type **)chunk_malloc (alloc, st->len, sizeof (struct type *), e);
   if (!st->types) { return error_trace (e); }
 
-  for (u16 i = 0; i < st->len; ++i) {
+  for (u16 i = 0; i < st->len; ++i)
+  {
     WRAP (rand_str (&st->keys[i], alloc, 5, 11, e));
     st->types[i] = type_random (alloc, depth - 1, e);
     if (st->types[i] == NULL) { return error_trace (e); }
@@ -608,10 +648,13 @@ err_t struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth
   return SUCCESS;
 }
 
-bool struct_t_equal (const struct struct_t *left, const struct struct_t *right) {
+bool
+struct_t_equal (const struct struct_t *left, const struct struct_t *right)
+{
   if (left->len != right->len) { return false; }
 
-  for (u32 i = 0; i < left->len; ++i) {
+  for (u32 i = 0; i < left->len; ++i)
+  {
     if (!string_equal (left->keys[i], right->keys[i])) { return false; }
     if (!type_equal (left->types[i], right->types[i])) { return false; }
   }
@@ -620,10 +663,13 @@ bool struct_t_equal (const struct struct_t *left, const struct struct_t *right) 
 }
 
 struct type *
-struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key, error *e) {
+struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key, error *e)
+{
   t_size roffset = 0;
-  for (u32 i = 0; i < t->len; ++i) {
-    if (string_equal (t->keys[i], key)) {
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    if (string_equal (t->keys[i], key))
+    {
       if (offset) { *offset = roffset; }
       return t->types[i];
     }

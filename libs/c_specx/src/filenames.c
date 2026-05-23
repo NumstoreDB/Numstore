@@ -16,7 +16,9 @@
 
 #include <string.h>
 
-const char *file_basename (const char *path) {
+const char *
+file_basename (const char *path)
+{
   const char *p1 = strrchr (path, '/');
   const char *p2 = strrchr (path, '\\');
   const char *p  = p1 > p2 ? p1 : p2;
@@ -24,7 +26,8 @@ const char *file_basename (const char *path) {
 }
 
 #ifndef NTEST
-TEST (file_basename) {
+TEST (file_basename)
+{
   test_assert (strcmp (file_basename ("foo/bar"), "bar") == 0);
   test_assert (strcmp (file_basename ("/foo/bar/baz.c"), "baz.c") == 0);
   test_assert (strcmp (file_basename ("/foo/bar/"), "") == 0);

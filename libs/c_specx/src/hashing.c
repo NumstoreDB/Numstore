@@ -14,10 +14,13 @@
 
 #include "c_specx.h"
 
-u32 fnv1a_hash (const struct string s) {
+u32
+fnv1a_hash (const struct string s)
+{
   u32         hash = 2166136261u;
   const char *str  = s.data;
-  for (u32 i = 0; i < s.len; ++i) {
+  for (u32 i = 0; i < s.len; ++i)
+  {
     hash ^= (u8)*str++;
     hash *= 16777619u;
   }
@@ -25,14 +28,16 @@ u32 fnv1a_hash (const struct string s) {
 }
 
 #ifndef NTEST
-TEST (fnv1a_hash_empty) {
+TEST (fnv1a_hash_empty)
+{
   const struct string empty = {.data = "", .len = 0};
   const u32           hash  = fnv1a_hash (empty);
   // Empty string should return FNV offset basis
   test_assert_equal (hash, 2166136261u);
 }
 
-TEST (fnv1a_hash_single_char) {
+TEST (fnv1a_hash_single_char)
+{
   const struct string s    = {.data = "a", .len = 1};
   const u32           hash = fnv1a_hash (s);
   // "a" should hash to (2166136261 ^ 'a') * 16777619
@@ -40,14 +45,16 @@ TEST (fnv1a_hash_single_char) {
   test_assert_equal (hash, expected);
 }
 
-TEST (fnv1a_hash_known_value) {
+TEST (fnv1a_hash_known_value)
+{
   const struct string s    = {.data = "hello", .len = 5};
   const u32           hash = fnv1a_hash (s);
   // Known FNV-1a hash for "hello"
   test_assert_equal (hash, 1335831723u);
 }
 
-TEST (fnv1a_hash_deterministic) {
+TEST (fnv1a_hash_deterministic)
+{
   const struct string s     = {.data = "test", .len = 4};
   const u32           hash1 = fnv1a_hash (s);
   const u32           hash2 = fnv1a_hash (s);

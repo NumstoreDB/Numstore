@@ -21,19 +21,23 @@
 ////////////////////////////////////////////////////////////
 /// Type Ref
 
-struct type_ref {
-  enum type_ref_t {
+struct type_ref
+{
+  enum type_ref_t
+  {
     TR_TAKE,
     TR_STRUCT,
   } type;
 
   union {
-    struct take_tr {
+    struct take_tr
+    {
       struct string        vname;
       struct type_accessor ta;
     } tk;
 
-    struct struct_tr {
+    struct struct_tr
+    {
       u16              len;
       struct string   *keys;
       struct type_ref *types;
@@ -47,19 +51,22 @@ tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *all
 ////////////////////////////////////////////////////////////
 /// KVT List
 
-struct kvt_ref_list {
+struct kvt_ref_list
+{
   u16              len;
   struct string   *keys;
   struct type_ref *types;
 };
 
-struct kv_ref_llnode {
+struct kv_ref_llnode
+{
   struct string   key;
   struct type_ref value;
   struct llnode   link;
 };
 
-struct kvt_ref_list_builder {
+struct kvt_ref_list_builder
+{
   struct llnode *head;
 
   u16 klen;
@@ -72,7 +79,8 @@ struct kvt_ref_list_builder {
 void kvrlb_create (
     struct kvt_ref_list_builder *dest,
     struct chunk_alloc          *temp,
-    struct chunk_alloc          *persistent);
+    struct chunk_alloc          *persistent
+);
 
 err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
 

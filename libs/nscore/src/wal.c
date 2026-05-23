@@ -23,20 +23,24 @@
 
 #include <string.h>
 
-static err_t wal_init (struct wal *dest, error *e) {
+static err_t
+wal_init (struct wal *dest, error *e)
+{
   dest->ostream = NULL;
   dest->istream = NULL;
   dest->flags   = 0;
   latch_init (&dest->latch);
 
   dest->ostream = walos_open (dest->fname.data, e);
-  if (dest->ostream == NULL) {
+  if (dest->ostream == NULL)
+  {
     i_free ((char *)dest->fname.data);
     return error_trace (e);
   }
 
   dest->istream = walis_open (dest->fname.data, e);
-  if (dest->istream == NULL) {
+  if (dest->istream == NULL)
+  {
     i_free ((char *)dest->fname.data);
     walos_close (dest->ostream, e);
     return error_trace (e);
@@ -49,7 +53,8 @@ static err_t wal_init (struct wal *dest, error *e) {
 
   walis_mark_start_log (dest->istream);
 
-  if (walis_read_all (dest->istream, &iseof, NULL, &checksum, &start_lsn, sizeof (start_lsn), e)) {
+  if (walis_read_all (dest->istream, &iseof, NULL, &checksum, &start_lsn, sizeof (start_lsn), e))
+  {
     i_free ((char *)dest->fname.data);
     walos_close (dest->ostream, e);
     walis_close (dest->istream, e);
@@ -58,17 +63,21 @@ static err_t wal_init (struct wal *dest, error *e) {
 
   walis_mark_end_log (dest->istream);
 
-  if (iseof) {
+  if (iseof)
+  {
     dest->flags |= WAL_ISNEW;
 
     // Truncate the output wal
-    if (walos_truncate (dest->ostream, e)) {
+    if (walos_truncate (dest->ostream, e))
+    {
       i_free ((char *)dest->fname.data);
       walos_close (dest->ostream, e);
       walis_close (dest->istream, e);
       return error_trace (e);
     }
-  } else {
+  }
+  else
+  {
     dest->start_lsn = start_lsn;
   }
 
@@ -77,7 +86,9 @@ static err_t wal_init (struct wal *dest, error *e) {
   return error_trace (e);
 }
 
-err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e) {
+err_t
+wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
+{
   ASSERT (w->flags & WAL_ISNEW);
 
   WRAP (walos_write_all (w->ostream, NULL, &start_lsn, sizeof (start_lsn), e));
@@ -91,16 +102,20 @@ err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e) {
   return SUCCESS;
 }
 
-static struct wal *wal_open_internal (const char *fname, error *e) {
+static struct wal *
+wal_open_internal (const char *fname, error *e)
+{
   struct wal *dest = i_malloc (1, sizeof *dest, e);
   if (dest == NULL) { return NULL; }
 
-  if (string_copy (&dest->fname, strfcstr (fname), e)) {
+  if (string_copy (&dest->fname, strfcstr (fname), e))
+  {
     i_free (dest);
     return NULL;
   }
 
-  if (wal_init (dest, e)) {
+  if (wal_init (dest, e))
+  {
     i_free ((char *)dest->fname.data);
     i_free (dest);
     return NULL;
@@ -109,9 +124,13 @@ static struct wal *wal_open_internal (const char *fname, error *e) {
   return dest;
 }
 
-struct wal *wal_open (const char *fname, error *e) { return wal_open_internal (fname, e); }
+struct wal *
+wal_open (const char *fname, error *e)
+{ return wal_open_internal (fname, e); }
 
-static inline err_t wal_destroy (struct wal *w, error *e) {
+static inline err_t
+wal_destroy (struct wal *w, error *e)
+{
   wal_flush_all (w, e);
   walos_close (w->ostream, e);
   walis_close (w->istream, e);
@@ -120,13 +139,17 @@ static inline err_t wal_destroy (struct wal *w, error *e) {
   return error_trace (e);
 }
 
-err_t wal_close (struct wal *w, error *e) {
+err_t
+wal_close (struct wal *w, error *e)
+{
   wal_destroy (w, e);
   i_free (w);
   return error_trace (e);
 }
 
-err_t wal_close_and_delete (struct wal *w, error *e) {
+err_t
+wal_close_and_delete (struct wal *w, error *e)
+{
   struct string fname = w->fname;
   w->fname.data       = NULL;
 
@@ -139,7 +162,9 @@ err_t wal_close_and_delete (struct wal *w, error *e) {
   return error_trace (e);
 }
 
-err_t wal_delete_and_reopen (struct wal *w, error *e) {
+err_t
+wal_delete_and_reopen (struct wal *w, error *e)
+{
   latch_lock (&w->latch);
 
   // Copy fname to pass in
@@ -148,12 +173,14 @@ err_t wal_delete_and_reopen (struct wal *w, error *e) {
   // Set to NULL so we don't free it
   w->fname.data = NULL;
 
-  if (wal_destroy (w, e)) {
+  if (wal_destroy (w, e))
+  {
     latch_unlock (&w->latch);
     return error_trace (e);
   }
 
-  if (i_remove_quiet (fname.data, e)) {
+  if (i_remove_quiet (fname.data, e))
+  {
     latch_unlock (&w->latch);
     return error_trace (e);
   }
@@ -163,35 +190,49 @@ err_t wal_delete_and_reopen (struct wal *w, error *e) {
   return wal_init (w, e);
 }
 
-bool wal_isnew (const struct wal *w) { return w->flags & WAL_ISNEW; }
+bool
+wal_isnew (const struct wal *w)
+{ return w->flags & WAL_ISNEW; }
 
-lsn wal_start_lsn (struct wal *w) { return w->start_lsn; }
+lsn
+wal_start_lsn (struct wal *w)
+{ return w->start_lsn; }
 
-lsn wal_size (struct wal *w) { return walos_get_next_lsn (w->ostream); }
+lsn
+wal_size (struct wal *w)
+{ return walos_get_next_lsn (w->ostream); }
 
-err_t wal_flush_to (const struct wal *w, const lsn l, error *e) {
+err_t
+wal_flush_to (const struct wal *w, const lsn l, error *e)
+{
   DBG_ASSERT (wal, w);
   ASSERT (w->ostream);
 
-  if (l < w->start_lsn) {
+  if (l < w->start_lsn)
+  {
     return error_causef (
         e,
         ERR_CORRUPT,
         "Tried to flush to previous deleted log %" PRlsn " %" PRlsn,
         l,
-        w->start_lsn);
+        w->start_lsn
+    );
   }
 
   return walos_flush_to (w->ostream, l - w->start_lsn, e);
 }
 
-err_t wal_flush_all (const struct wal *w, error *e) {
+err_t
+wal_flush_all (const struct wal *w, error *e)
+{
   DBG_ASSERT (wal, w);
   ASSERT (w->ostream);
   return walos_flush_all (w->ostream, e);
 }
 
-err_t wal_crash (struct wal *w, error *e) {
+err_t
+wal_crash (struct wal *w, error *e)
+{
   DBG_ASSERT (wal, w);
 
   walos_close (w->ostream, e);

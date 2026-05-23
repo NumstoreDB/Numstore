@@ -18,7 +18,9 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
+PyObject *
+pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
+{
   PyObject *db;
   PyObject *txn_or_none;
 
@@ -27,13 +29,15 @@ PyObject *pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args) {
   if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
 
   struct nshandle *smf = _unwrap_db (db);
-  if (!smf) {
+  if (!smf)
+  {
     PyBuffer_Release (&data);
     return NULL;
   }
 
   struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) {
+  if (!txn && PyErr_Occurred ())
+  {
     PyBuffer_Release (&data);
     return NULL;
   }

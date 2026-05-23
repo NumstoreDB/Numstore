@@ -28,7 +28,8 @@
  * The latch protects rec_lsn and pg for concurrent access.  hnode embeds
  * the hash-table intrusion pointer; pg also doubles as the hash key.
  */
-struct dpg_entry {
+struct dpg_entry
+{
   lsn          rec_lsn;
   pgno         pg;
   struct hnode node;
@@ -37,27 +38,32 @@ struct dpg_entry {
 
 #define DPGT_SERIAL_UNIT (sizeof (pgno) + sizeof (lsn))
 
-static void dpge_key_init (struct dpg_entry *dest, const pgno pg) {
+static void
+dpge_key_init (struct dpg_entry *dest, const pgno pg)
+{
   dest->pg = pg;
   latch_init (&dest->l);
   hnode_init (&dest->node, pg);
 }
 
-static void dpge_init (struct dpg_entry *dest, const pgno pg, const lsn rec_lsn) {
+static void
+dpge_init (struct dpg_entry *dest, const pgno pg, const lsn rec_lsn)
+{
   dest->pg      = pg;
   dest->rec_lsn = rec_lsn;
   latch_init (&dest->l);
   hnode_init (&dest->node, pg);
 }
 
-static bool dpge_equals (const struct hnode *left, const struct hnode *right) {
+static bool
+dpge_equals (const struct hnode *left, const struct hnode *right)
+{
   // Might have passed the exact same ref as exists in the htable
-  if (left == right) {
-    return true;
-  }
+  if (left == right) { return true; }
 
   // Otherwise, passed a key with just relevant information
-  else {
+  else
+  {
     struct dpg_entry *_left  = container_of (left, struct dpg_entry, node);
     struct dpg_entry *_right = container_of (right, struct dpg_entry, node);
 
@@ -76,7 +82,9 @@ static bool dpge_equals (const struct hnode *left, const struct hnode *right) {
 DEFINE_DBG_ASSERT (struct dpg_table, dirty_pg_table, d, { ASSERT (d); })
 
 // Lifecycle
-struct dpg_table *dpgt_open (error *e) {
+struct dpg_table *
+dpgt_open (error *e)
+{
   struct dpg_table *dest = i_malloc (1, sizeof *dest, e);
   if (dest == NULL) { goto failed; }
   slab_alloc_init (&dest->alloc, sizeof (struct dpg_entry), 1000);
@@ -94,7 +102,9 @@ failed:
   return NULL;
 }
 
-void dpgt_close (struct dpg_table *t) {
+void
+dpgt_close (struct dpg_table *t)
+{
   DBG_ASSERT (dirty_pg_table, t);
   latch_lock (&t->l);
   slab_alloc_destroy (&t->alloc);
@@ -103,7 +113,9 @@ void dpgt_close (struct dpg_table *t) {
   i_free (t);
 }
 
-static void i_log_dpge_in_dpgt (struct hnode *node, void *_log_level) {
+static void
+i_log_dpge_in_dpgt (struct hnode *node, void *_log_level)
+{
   const int *log_level = _log_level;
 
   struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
@@ -113,7 +125,9 @@ static void i_log_dpge_in_dpgt (struct hnode *node, void *_log_level) {
   latch_unlock (&entry->l);
 }
 
-void i_log_dpgt (int log_level, struct dpg_table *dpt) {
+void
+i_log_dpgt (int log_level, struct dpg_table *dpt)
+{
   latch_lock (&dpt->l);
 
   i_log (log_level, "================ Dirty Page Table START ================\n");
@@ -123,12 +137,15 @@ void i_log_dpgt (int log_level, struct dpg_table *dpt) {
   latch_unlock (&dpt->l);
 }
 
-struct merge_ctx {
+struct merge_ctx
+{
   struct dpg_table *dest;
   error            *e;
 };
 
-static void merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx) {
+static void
+merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx)
+{
   const struct merge_ctx *ctx = vctx;
 
   if (ctx->e->cause_code) { return; }
@@ -136,7 +153,9 @@ static void merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx) {
   if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e)) { return; }
 }
 
-err_t dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e) {
+err_t
+dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e)
+{
   struct merge_ctx ctx = {
       .dest = dest,
       .e    = e,
@@ -149,13 +168,17 @@ err_t dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e) 
   return ctx.e->cause_code;
 }
 
-static void dpge_max (pgno pg, const lsn rec_lsn, void *ctx) {
+static void
+dpge_max (pgno pg, const lsn rec_lsn, void *ctx)
+{
   lsn *min = ctx;
 
   if (rec_lsn < *min) { *min = rec_lsn; }
 }
 
-lsn dpgt_min_rec_lsn (struct dpg_table *d) {
+lsn
+dpgt_min_rec_lsn (struct dpg_table *d)
+{
   ASSERT (dpgt_get_size (d) > 0);
   lsn min = (lsn)-1;
 
@@ -166,12 +189,15 @@ lsn dpgt_min_rec_lsn (struct dpg_table *d) {
   return min;
 }
 
-struct foreach_ctx {
+struct foreach_ctx
+{
   void (*action) (pgno pg, lsn rec_lsn, void *ctx);
   void *ctx;
 };
 
-static void hnode_foreach (struct hnode *node, void *ctx) {
+static void
+hnode_foreach (struct hnode *node, void *ctx)
+{
   const struct foreach_ctx *_ctx  = ctx;
   struct dpg_entry         *entry = container_of (node, struct dpg_entry, node);
 
@@ -185,10 +211,13 @@ static void hnode_foreach (struct hnode *node, void *ctx) {
   _ctx->action (pg, l, _ctx->ctx);
 }
 
-void dpgt_foreach (
+void
+dpgt_foreach (
     const struct dpg_table *t,
     void (*action) (pgno pg, lsn rec_lsn, void *ctx),
-    void *ctx) {
+    void *ctx
+)
+{
   struct foreach_ctx _ctx = {
       .action = action,
       .ctx    = ctx,
@@ -196,9 +225,13 @@ void dpgt_foreach (
   htable_foreach (t->t, hnode_foreach, &_ctx);
 }
 
-u32 dpgt_get_size (const struct dpg_table *d) { return htable_size (d->t); }
+u32
+dpgt_get_size (const struct dpg_table *d)
+{ return htable_size (d->t); }
 
-bool dpgt_exists (const struct dpg_table *t, const pgno pg) {
+bool
+dpgt_exists (const struct dpg_table *t, const pgno pg)
+{
   struct dpg_entry entry;
   dpge_key_init (&entry, pg);
 
@@ -207,7 +240,9 @@ bool dpgt_exists (const struct dpg_table *t, const pgno pg) {
   return ret != NULL;
 }
 
-err_t dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e) {
+err_t
+dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e)
+{
   DBG_ASSERT (dirty_pg_table, t);
 
   latch_lock (&t->l);
@@ -224,12 +259,16 @@ theend:
   return error_trace (e);
 }
 
-err_t dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e) {
+err_t
+dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e)
+{
   if (!dpgt_exists (t, pg)) { return dpgt_add (t, pg, rec_lsn, e); }
   return SUCCESS;
 }
 
-bool dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg) {
+bool
+dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg)
+{
   DBG_ASSERT (dirty_pg_table, t);
 
   struct dpg_entry key;
@@ -245,7 +284,9 @@ bool dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg) {
   return node != NULL;
 }
 
-void dpgt_get_expect (lsn *dest, struct dpg_table *t, const pgno pg) {
+void
+dpgt_get_expect (lsn *dest, struct dpg_table *t, const pgno pg)
+{
   DBG_ASSERT (dirty_pg_table, t);
 
   struct dpg_entry key;
@@ -261,7 +302,9 @@ void dpgt_get_expect (lsn *dest, struct dpg_table *t, const pgno pg) {
   latch_unlock (&t->l);
 }
 
-void dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg) {
+void
+dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg)
+{
   DBG_ASSERT (dirty_pg_table, t);
 
   struct dpg_entry key;
@@ -271,7 +314,8 @@ void dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg) {
 
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
 
-  if (node == NULL) {
+  if (node == NULL)
+  {
     *exists = false;
     goto theend;
   }
@@ -284,7 +328,9 @@ theend:
   latch_unlock (&t->l);
 }
 
-void dpgt_remove_expect (struct dpg_table *t, const pgno pg) {
+void
+dpgt_remove_expect (struct dpg_table *t, const pgno pg)
+{
   DBG_ASSERT (dirty_pg_table, t);
 
   struct dpg_entry key;
@@ -299,7 +345,9 @@ void dpgt_remove_expect (struct dpg_table *t, const pgno pg) {
   latch_unlock (&t->l);
 }
 
-void dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn) {
+void
+dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn)
+{
   struct dpg_entry key;
   dpge_key_init (&key, pg);
 
@@ -319,15 +367,18 @@ void dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn) {
   latch_unlock (&t->l);
 }
 
-u32 dpgt_get_serialize_size (const struct dpg_table *t) {
-  return htable_size (t->t) * DPGT_SERIAL_UNIT;
-}
+u32
+dpgt_get_serialize_size (const struct dpg_table *t)
+{ return htable_size (t->t) * DPGT_SERIAL_UNIT; }
 
-struct dpge_serialize_ctx {
+struct dpge_serialize_ctx
+{
   struct serializer s;
 };
 
-static void hnode_foreach_serialize (struct hnode *node, void *ctx) {
+static void
+hnode_foreach_serialize (struct hnode *node, void *ctx)
+{
   struct dpge_serialize_ctx *_ctx = ctx;
 
   struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
@@ -346,7 +397,9 @@ static void hnode_foreach_serialize (struct hnode *node, void *ctx) {
   srlizr_write_expect (&_ctx->s, &rec_lsn, sizeof (rec_lsn));
 }
 
-u32 dpgt_serialize (u8 *dest, const u32 dlen, const struct dpg_table *t) {
+u32
+dpgt_serialize (u8 *dest, const u32 dlen, const struct dpg_table *t)
+{
   struct dpge_serialize_ctx ctx = {
       .s = srlizr_create (dest, dlen),
   };
@@ -356,7 +409,9 @@ u32 dpgt_serialize (u8 *dest, const u32 dlen, const struct dpg_table *t) {
   return ctx.s.dlen;
 }
 
-struct dpg_table *dpgt_deserialize (const u8 *src, const u32 slen, error *e) {
+struct dpg_table *
+dpgt_deserialize (const u8 *src, const u32 slen, error *e)
+{
   struct dpg_table *dest = dpgt_open (e);
   if (dest == NULL) { goto failed; }
 
@@ -367,7 +422,8 @@ struct dpg_table *dpgt_deserialize (const u8 *src, const u32 slen, error *e) {
   ASSERT (slen % DPGT_SERIAL_UNIT == 0);
   const u32 tlen = slen / DPGT_SERIAL_UNIT;
 
-  for (u32 i = 0; i < tlen; ++i) {
+  for (u32 i = 0; i < tlen; ++i)
+  {
     pgno pg      = 0;
     lsn  rec_lsn = 0;
 
@@ -385,17 +441,22 @@ failed:
   return NULL;
 }
 
-u32 dpgtlen_from_serialized (const u32 slen) {
+u32
+dpgtlen_from_serialized (const u32 slen)
+{
   ASSERT (slen % DPGT_SERIAL_UNIT == 0);
   return slen / DPGT_SERIAL_UNIT;
 }
 
-struct dpgt_eq_ctx {
+struct dpgt_eq_ctx
+{
   struct dpg_table *other;
   bool              ret;
 };
 
-static void dpgt_eq_foreach (struct hnode *node, void *_ctx) {
+static void
+dpgt_eq_foreach (struct hnode *node, void *_ctx)
+{
   struct dpgt_eq_ctx *ctx = _ctx;
   if (ctx->ret == false) { return; }
 
@@ -408,7 +469,8 @@ static void dpgt_eq_foreach (struct hnode *node, void *_ctx) {
 
     struct hnode **other_node = htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
 
-    if (other_node == NULL) {
+    if (other_node == NULL)
+    {
       ctx->ret = false;
       goto theend;
     }
@@ -427,7 +489,9 @@ theend:
   latch_unlock (&entry->l);
 }
 
-bool dpgt_equal (struct dpg_table *left, struct dpg_table *right) {
+bool
+dpgt_equal (struct dpg_table *left, struct dpg_table *right)
+{
   bool ret = false;
 
   latch_lock (&left->l);
@@ -449,13 +513,16 @@ theend:
   return ret;
 }
 
-err_t dpgt_rand_populate (struct dpg_table *t, error *e) {
+err_t
+dpgt_rand_populate (struct dpg_table *t, error *e)
+{
   const u32 len = htable_size (t->t);
 
   pgno pg = 0;
   lsn  l  = 0;
 
-  for (u32 i = 0; i < 100 - len; ++i, pg += randu32r (1, 100), l += randu32r (1, 100)) {
+  for (u32 i = 0; i < 100 - len; ++i, pg += randu32r (1, 100), l += randu32r (1, 100))
+  {
     if (dpgt_add (t, pg, l, e)) { goto theend; }
   }
 
@@ -463,7 +530,9 @@ theend:
   return error_trace (e);
 }
 
-void dpgt_crash (struct dpg_table *t) {
+void
+dpgt_crash (struct dpg_table *t)
+{
   DBG_ASSERT (dirty_pg_table, t);
   htable_free (t->t);
   slab_alloc_destroy (&t->alloc);

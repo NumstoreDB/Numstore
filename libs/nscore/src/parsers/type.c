@@ -14,7 +14,8 @@
 
 #include "nscore/parsers/type.h"
 
-struct type_parser {
+struct type_parser
+{
   struct parser      *base;
   struct type        *dest;
   struct chunk_alloc  temp;
@@ -24,13 +25,17 @@ struct type_parser {
 static err_t parse_type_inner (struct type_parser *parser, struct type *out, error *e);
 
 // primitive_type ::= PRIM
-static err_t parse_primitive_type (struct type_parser *parser, struct type *out, error *e) {
-  if (!parser_match (parser->base, TT_PRIM)) {
+static err_t
+parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
+{
+  if (!parser_match (parser->base, TT_PRIM))
+  {
     return error_causef (
         e,
         ERR_SYNTAX,
         "Expected primitive type at position %u",
-        parser->base->pos);
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -41,23 +46,28 @@ static err_t parse_primitive_type (struct type_parser *parser, struct type *out,
 }
 
 // sarray_type ::= '[' INTEGER ']'+ type
-static err_t parse_sarray_type (struct type_parser *parser, struct type *out, error *e) {
+static err_t
+parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
+{
   err_t err;
 
   struct sarray_builder builder;
   sab_create (&builder, &parser->temp, parser->persistent);
 
   // Parse all [N] brackets
-  while (parser_match (parser->base, TT_LEFT_BRACKET)) {
+  while (parser_match (parser->base, TT_LEFT_BRACKET))
+  {
     WRAP (parser_expect (parser->base, TT_LEFT_BRACKET, e));
 
-    if (!parser_match (parser->base, TT_INTEGER)) {
+    if (!parser_match (parser->base, TT_INTEGER))
+    {
       return error_causef (
           e,
           ERR_SYNTAX,
           "Expected array size at position "
           "%u",
-          parser->base->pos);
+          parser->base->pos
+      );
     }
 
     struct token *tok = parser_advance (parser->base);
@@ -77,9 +87,12 @@ static err_t parse_sarray_type (struct type_parser *parser, struct type *out, er
 }
 
 // field           ::= IDENTIFIER type
-static err_t parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error *e) {
+static err_t
+parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error *e)
+{
   // IDENT
-  if (!parser_match (parser->base, TT_IDENTIFIER)) {
+  if (!parser_match (parser->base, TT_IDENTIFIER))
+  {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
   }
 
@@ -90,7 +103,8 @@ static err_t parse_field (struct kvt_list_builder *builder, struct type_parser *
           .data = (char *)tok->str.data,
           .len  = tok->str.len,
       },
-      e));
+      e
+  ));
 
   // Type
   struct type *inner = chunk_malloc (parser->persistent, 1, sizeof *inner, e);
@@ -102,7 +116,9 @@ static err_t parse_field (struct kvt_list_builder *builder, struct type_parser *
 }
 
 // struct_type     ::= 'struct' '{' IDENT type (',' IDENT type)* '}'
-static err_t parse_struct_type (struct type_parser *parser, struct type *out, error *e) {
+static err_t
+parse_struct_type (struct type_parser *parser, struct type *out, error *e)
+{
   err_t err;
 
   // 'struct'
@@ -116,7 +132,8 @@ static err_t parse_struct_type (struct type_parser *parser, struct type *out, er
 
   WRAP (parse_field (&builder, parser, e));
 
-  while (parser_match (parser->base, TT_COMMA)) {
+  while (parser_match (parser->base, TT_COMMA))
+  {
     parser_advance (parser->base);
     WRAP (parse_field (&builder, parser, e));
   }
@@ -133,7 +150,9 @@ static err_t parse_struct_type (struct type_parser *parser, struct type *out, er
 }
 
 // union_type     ::= 'union' '{' IDENT type (',' IDENT type)* '}'
-static err_t parse_union_type (struct type_parser *parser, struct type *out, error *e) {
+static err_t
+parse_union_type (struct type_parser *parser, struct type *out, error *e)
+{
   err_t err;
 
   // 'union'
@@ -147,7 +166,8 @@ static err_t parse_union_type (struct type_parser *parser, struct type *out, err
 
   WRAP (parse_field (&builder, parser, e));
 
-  while (parser_match (parser->base, TT_COMMA)) {
+  while (parser_match (parser->base, TT_COMMA))
+  {
     parser_advance (parser->base);
     WRAP (parse_field (&builder, parser, e));
   }
@@ -164,35 +184,46 @@ static err_t parse_union_type (struct type_parser *parser, struct type *out, err
 }
 
 // type ::= struct_type | union_type | sarray_type | primitive_type
-static err_t parse_type_inner (struct type_parser *parser, struct type *out, error *e) {
+static err_t
+parse_type_inner (struct type_parser *parser, struct type *out, error *e)
+{
   struct token *tok = parser_peek (parser->base);
 
-  switch (tok->type) {
-    case TT_STRUCT: {
+  switch (tok->type)
+  {
+    case TT_STRUCT:
+    {
       return parse_struct_type (parser, out, e);
     }
-    case TT_UNION: {
+    case TT_UNION:
+    {
       return parse_union_type (parser, out, e);
     }
-    case TT_LEFT_BRACKET: {
+    case TT_LEFT_BRACKET:
+    {
       return parse_sarray_type (parser, out, e);
     }
-    case TT_PRIM: {
+    case TT_PRIM:
+    {
       return parse_primitive_type (parser, out, e);
     }
-    default: {
+    default:
+    {
       return error_causef (
           e,
           ERR_SYNTAX,
           "Expected type at position %u, got token "
           "type %s",
           parser->base->pos,
-          tt_tostr (tok->type));
+          tt_tostr (tok->type)
+      );
     }
   }
 }
 
-err_t parse_type (struct parser *p, struct type *dest, struct chunk_alloc *dalloc, error *e) {
+err_t
+parse_type (struct parser *p, struct type *dest, struct chunk_alloc *dalloc, error *e)
+{
   struct type_parser parser = {
       .base       = p,
       .dest       = dest,

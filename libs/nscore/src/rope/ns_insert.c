@@ -31,7 +31,9 @@
  * When nelem is 0, bytes are consumed from src until it is exhausted.
  * params->root is updated in place if the root changes.
  */
-sb_size ns_insert (struct ns_insert_params *params, error *e) {
+sb_size
+ns_insert (struct ns_insert_params *params, error *e)
+{
   page_h prev = page_h_create ();
   page_h cur  = page_h_create ();
   page_h next = page_h_create ();
@@ -57,11 +59,14 @@ sb_size ns_insert (struct ns_insert_params *params, error *e) {
       .sp         = 0,
   };
 
-  if (params->root == PGNO_NULL) {
+  if (params->root == PGNO_NULL)
+  {
     if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e)) { goto failed; }
 
     params->root = page_h_pgno (&cur);
-  } else {
+  }
+  else
+  {
     if (ns_seek (&seek, e)) { goto failed; }
 
     cur  = page_h_xfer_ownership (&seek.pg);
@@ -75,10 +80,12 @@ sb_size ns_insert (struct ns_insert_params *params, error *e) {
 
   const b_size total_to_write = params->size * params->nelem;
 
-  while (params->nelem == 0 || total_written < total_to_write) {
+  while (params->nelem == 0 || total_written < total_to_write)
+  {
     p_size avail = dl_avail (page_h_ro (&cur));
 
-    if (avail == 0) {
+    if (avail == 0)
+    {
       ASSERT (lidx == DL_DATA_SIZE);
 
       if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) { goto failed; }
@@ -96,9 +103,9 @@ sb_size ns_insert (struct ns_insert_params *params, error *e) {
     }
 
     p_size next_amount;
-    if (params->nelem == 0) {
-      next_amount = avail;
-    } else {
+    if (params->nelem == 0) { next_amount = avail; }
+    else
+    {
       next_amount = MIN (avail, (p_size)(total_to_write - total_written));
     }
 
@@ -112,13 +119,15 @@ sb_size ns_insert (struct ns_insert_params *params, error *e) {
     total_written += (b_size)written;
   }
 
-  while (tbw < tbl) {
+  while (tbw < tbl)
+  {
     p_size written = dl_append (page_h_w (&cur), temp_buf + tbw, tbl - tbw);
 
     lidx += written;
     tbw += written;
 
-    if (lidx == DL_DATA_SIZE && tbw < tbl) {
+    if (lidx == DL_DATA_SIZE && tbw < tbl)
+    {
       ASSERT (lidx == DL_DATA_SIZE);
 
       if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) { goto failed; }
@@ -135,7 +144,8 @@ sb_size ns_insert (struct ns_insert_params *params, error *e) {
     }
   }
 
-  if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur))) {
+  if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur)))
+  {
     if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e)) { goto failed; }
 
     dlgt_link (page_h_w (&cur), page_h_w (&next));

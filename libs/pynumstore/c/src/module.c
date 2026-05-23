@@ -105,7 +105,9 @@ static PyModuleDef numstore_module = {
 
 PyMODINIT_FUNC PyInit__pynumstore (void);
 
-PyMODINIT_FUNC PyInit__pynumstore (void) {
+PyMODINIT_FUNC
+PyInit__pynumstore (void)
+{
   import_array ();
   return PyModule_Create (&numstore_module);
 }

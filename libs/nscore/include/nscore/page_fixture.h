@@ -23,7 +23,8 @@
 ////////////////////////////////////////////////////////////
 /// PAGE FIXTURE
 
-struct pgr_fixture {
+struct pgr_fixture
+{
   error              e;
   struct pager      *p;
   struct chunk_alloc alloc;
@@ -35,7 +36,8 @@ err_t pgr_fixture_teardown (struct pgr_fixture *f);
 ////////////////////////////////////////////////////////////
 /// FAKE DB BUILDING
 
-struct in_page_builder {
+struct in_page_builder
+{
   struct pager *pager;
   struct txn   *txn;
 
@@ -48,7 +50,8 @@ struct in_page_builder {
   u32 dclen; // desired len of [children] (fills the rest with random)
 };
 
-struct dl_page_builder {
+struct dl_page_builder
+{
   struct pager *pager;
   struct txn   *txn;
 
@@ -67,13 +70,15 @@ err_t build_fake_data_list (page_h *dest, struct dl_page_builder b, error *e);
 ////////////////////////////////////////////////////////////
 /// DECLARATIVE API
 
-struct page_desc {
+struct page_desc
+{
   enum page_type type;
   page_h         out;
   b_size         size;
 
   union {
-    struct {
+    struct
+    {
       struct page_desc *children;
       u32               clen;
       u32               dclen;
@@ -83,7 +88,8 @@ struct page_desc {
   };
 };
 
-struct page_tree_builder {
+struct page_tree_builder
+{
   struct pager    *pager;
   struct page_desc root;
   struct txn      *txn;

@@ -42,7 +42,8 @@ err_t walis_read_all (
     u32   *checksum,           // NULLABLE If passed, aggregates the checksum on [data]
     void  *dest,               // The data to read into
     u32    len,                // Length of the data to read
-    error *e);
+    error *e
+);
 
 /**
  * Because the reader can read sections of a log, and not

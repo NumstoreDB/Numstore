@@ -14,30 +14,39 @@
 
 #include "nscore/tokens.h"
 
-bool token_equal (const struct token *left, const struct token *right) {
+bool
+token_equal (const struct token *left, const struct token *right)
+{
   if (left->type != right->type) { return false; }
 
-  switch (left->type) {
+  switch (left->type)
+  {
       // Other
     case TT_STRING:
-    case TT_IDENTIFIER: {
+    case TT_IDENTIFIER:
+    {
       return string_equal (
           (struct string){left->str.len, (char *)left->str.data},
-          (struct string){left->str.len, (char *)right->str.data});
+          (struct string){left->str.len, (char *)right->str.data}
+      );
     }
 
       // Tokens that start with a number or +/-
     case TT_INTEGER: return left->integer == right->integer;
     case TT_FLOAT: return left->floating == right->floating;
 
-    default: {
+    default:
+    {
       return true;
     }
   }
 }
 
-const char *tt_tostr (enum token_t t) {
-  switch (t) {
+const char *
+tt_tostr (enum token_t t)
+{
+  switch (t)
+  {
     // Arithmetic Operators
     case_ENUM_RETURN_STRING (TT_PLUS);
     case_ENUM_RETURN_STRING (TT_MINUS);

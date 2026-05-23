@@ -30,20 +30,25 @@
  * changes — the WAL-before-page invariant is never violated because
  * no WAL record is written for cancelled mutations.
  */
-void pgr_cancel (const struct pager *p, page_h *h) {
+void
+pgr_cancel (const struct pager *p, page_h *h)
+{
   DBG_ASSERT (pager, p);
 
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
   // Cancel write page
-  if (h->mode == PHM_X) {
+  if (h->mode == PHM_X)
+  {
     h->pgw->flags    = 0;
     h->pgr->wsibling = -1;
     h->pgw           = NULL;
     h->mode          = PHM_S;
     spx_unlock_x (&h->pgr->data);
-  } else {
+  }
+  else
+  {
     spx_unlock_s (&h->pgr->data);
   }
 

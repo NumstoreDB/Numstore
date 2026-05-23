@@ -22,24 +22,31 @@
 ////////////////////////////////////////////////////////////
 // UNDO (Figure 12)
 
-err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e) {
+err_t
+pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
+{
   i_log_info ("Starting Undo phase.\n");
 
-  while (true) {
+  while (true)
+  {
     slsn undo_lsn = txnt_max_u_undo_lsn (ctx->txt);
     if (undo_lsn < 0) { break; }
 
     struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, undo_lsn, e);
     if (log_rec == NULL) { goto failed; }
 
-    switch (log_rec->type) {
-      case WL_UPDATE: {
+    switch (log_rec->type)
+    {
+      case WL_UPDATE:
+      {
         struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->update.tid);
 
-        if (wrh_is_undoable (log_rec)) {
+        if (wrh_is_undoable (log_rec))
+        {
           page_h ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e)) {
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e))
+          {
             goto failed;
           }
 
@@ -59,7 +66,8 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e) {
                           .redo = log_rec->update.phys.undo,
                       },
               },
-              e);
+              e
+          );
           if (l < 0) { goto failed; }
 
           // Set the page lsn
@@ -75,7 +83,8 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e) {
         // Update undo next page
         tx->data.undo_next_lsn = log_rec->update.prev;
 
-        if (log_rec->update.prev == 0) {
+        if (log_rec->update.prev == 0)
+        {
           slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
           if (l < 0) { goto failed; }
           txnt_remove_txn_expect (ctx->txt, tx);
@@ -84,14 +93,16 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e) {
         break;
       }
 
-      case WL_CLR: {
+      case WL_CLR:
+      {
         struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->clr.tid);
         tx->data.undo_next_lsn = log_rec->clr.undo_next;
         break;
       }
 
-      case WL_BEGIN: {
+      case WL_BEGIN:
+      {
         struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
@@ -103,7 +114,8 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e) {
       }
       case WL_COMMIT:
       case WL_EOF:
-      case WL_END: {
+      case WL_END:
+      {
         UNREACHABLE ();
       }
     }

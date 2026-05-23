@@ -19,29 +19,38 @@
 #include "nscore/subtype.h"
 #include "nscore/types.h"
 
-static bool range_ta_equal (const struct range_ta *left, const struct range_ta *right) {
+static bool
+range_ta_equal (const struct range_ta *left, const struct range_ta *right)
+{
   // Quick check that rank is the same
   if (left->dlen != right->dlen) { return false; }
 
   // Iterate through each supplied accessor
-  for (u32 i = 0; i < left->dlen; ++i) {
+  for (u32 i = 0; i < left->dlen; ++i)
+  {
     if (!user_stride_equal (&left->dim_accessors[i], &right->dim_accessors[i])) { return false; }
   }
   return type_accessor_equal (*left->sub_ta, *right->sub_ta);
 }
 
-bool type_accessor_equal (const struct type_accessor left, const struct type_accessor right) {
+bool
+type_accessor_equal (const struct type_accessor left, const struct type_accessor right)
+{
   if (left.type != right.type) { return false; }
 
-  switch (left.type) {
-    case TA_TAKE: {
+  switch (left.type)
+  {
+    case TA_TAKE:
+    {
       return true;
     }
-    case TA_SELECT: {
+    case TA_SELECT:
+    {
       if (!string_equal (left.select.key, right.select.key)) { return false; }
       return type_accessor_equal (*left.select.sub_ta, *right.select.sub_ta);
     }
-    case TA_RANGE: {
+    case TA_RANGE:
+    {
       return range_ta_equal (&left.range, &right.range);
     }
   }
@@ -49,31 +58,40 @@ bool type_accessor_equal (const struct type_accessor left, const struct type_acc
   return false;
 }
 
-static struct type *ta_select_struct (
+static struct type *
+ta_select_struct (
     struct type          *reftype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
-    error                *e) {
+    error                *e
+)
+{
   struct type *subtype = struct_t_resolve_key (NULL, &reftype->st, ta->select.key, e);
   if (subtype == NULL) { return NULL; }
   return ta_subtype (subtype, ta->select.sub_ta, alloc, e);
 }
 
-static struct type *ta_select_union (
+static struct type *
+ta_select_union (
     struct type          *reftype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
-    error                *e) {
+    error                *e
+)
+{
   struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key, e);
   if (subtype == NULL) { return NULL; }
   return ta_subtype (subtype, ta->select.sub_ta, alloc, e);
 }
 
-static struct type *ta_select_sarray (
+static struct type *
+ta_select_sarray (
     struct type          *reftype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
-    error                *e) {
+    error                *e
+)
+{
   struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
   if (ret == NULL) { goto failed; }
 
@@ -82,7 +100,8 @@ static struct type *ta_select_sarray (
   chunk_alloc_create_default (&temp);
   sab_create (&builder, &temp, alloc);
 
-  for (u32 i = 0; i < reftype->sa.rank; ++i) {
+  for (u32 i = 0; i < reftype->sa.rank; ++i)
+  {
     if (sab_accept_dim (&builder, reftype->sa.dims[i], e)) { goto fail_chunk_alloc; }
   }
 
@@ -103,11 +122,14 @@ failed:
   return NULL;
 }
 
-static struct type *ta_range_sarray (
+static struct type *
+ta_range_sarray (
     struct type          *reftype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
-    error                *e) {
+    error                *e
+)
+{
   struct sarray_builder builder;
   struct chunk_alloc    temp;
   chunk_alloc_create_default (&temp);
@@ -115,19 +137,25 @@ static struct type *ta_range_sarray (
 
   bool isarray = false;
 
-  for (u32 i = 0; i < reftype->sa.rank; ++i) {
-    if (i >= ta->range.dlen) {
+  for (u32 i = 0; i < reftype->sa.rank; ++i)
+  {
+    if (i >= ta->range.dlen)
+    {
       isarray = true;
       struct stride str;
       if (stride_resolve (&str, USER_STRIDE_ALL, reftype->sa.dims[i], e)) { goto fail_chunk_alloc; }
       if (sab_accept_dim (&builder, str.nelems, e)) { goto fail_chunk_alloc; }
-    } else {
+    }
+    else
+    {
       isarray = isarray || ta->range.dim_accessors[i].present & COLON_PRESENT;
       struct stride str;
-      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e)) {
+      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e))
+      {
         goto fail_chunk_alloc;
       }
-      if (ta->range.dim_accessors[i].present & COLON_PRESENT) {
+      if (ta->range.dim_accessors[i].present & COLON_PRESENT)
+      {
         if (sab_accept_dim (&builder, str.nelems, e)) { goto fail_chunk_alloc; }
       }
     }
@@ -137,7 +165,8 @@ static struct type *ta_range_sarray (
   struct type *t   = ta_subtype (reftype->sa.t, ta->range.sub_ta, alloc, e);
   if (t == NULL) { goto fail_chunk_alloc; }
 
-  if (isarray) {
+  if (isarray)
+  {
     if (sab_accept_type (&builder, t, e)) { goto fail_chunk_alloc; }
 
     ret = chunk_malloc (alloc, 1, sizeof *ret, e);
@@ -145,7 +174,9 @@ static struct type *ta_range_sarray (
 
     ret->type = T_SARRAY;
     if (sab_build (&ret->sa, &builder, e)) { goto fail_chunk_alloc; }
-  } else {
+  }
+  else
+  {
     ret = t;
   }
 
@@ -158,47 +189,62 @@ fail_chunk_alloc:
 }
 
 struct type *
-ta_subtype (struct type *reftype, struct type_accessor *ta, struct chunk_alloc *alloc, error *e) {
-  switch (ta->type) {
-    case TA_TAKE: {
+ta_subtype (struct type *reftype, struct type_accessor *ta, struct chunk_alloc *alloc, error *e)
+{
+  switch (ta->type)
+  {
+    case TA_TAKE:
+    {
       // Just copy the type over
       return reftype;
     }
-    case TA_SELECT: {
-      switch (reftype->type) {
-        case T_STRUCT: {
+    case TA_SELECT:
+    {
+      switch (reftype->type)
+      {
+        case T_STRUCT:
+        {
           return ta_select_struct (reftype, ta, alloc, e);
         }
-        case T_UNION: {
+        case T_UNION:
+        {
           return ta_select_union (reftype, ta, alloc, e);
         }
-        case T_SARRAY: {
+        case T_SARRAY:
+        {
           return ta_select_sarray (reftype, ta, alloc, e);
         }
-        case T_PRIM: {
+        case T_PRIM:
+        {
           error_causef (
               e,
               ERR_INVALID_ARGUMENT,
               "type is not "
-              "selectable");
+              "selectable"
+          );
           return NULL;
         }
       }
       UNREACHABLE ();
     }
-    case TA_RANGE: {
-      switch (reftype->type) {
-        case T_SARRAY: {
+    case TA_RANGE:
+    {
+      switch (reftype->type)
+      {
+        case T_SARRAY:
+        {
           return ta_range_sarray (reftype, ta, alloc, e);
         }
         case T_STRUCT:
         case T_UNION:
-        case T_PRIM: {
+        case T_PRIM:
+        {
           error_causef (
               e,
               ERR_INVALID_ARGUMENT,
               "type is not "
-              "rangeable");
+              "rangeable"
+          );
           return NULL;
         }
       }
@@ -212,7 +258,8 @@ ta_subtype (struct type *reftype, struct type_accessor *ta, struct chunk_alloc *
 #ifndef NTEST
 
 static void
-test_ta_subtype_case (const char *typestr, const char *accessor, const char *expected_type) {
+test_ta_subtype_case (const char *typestr, const char *accessor, const char *expected_type)
+{
   error              e = error_create ();
   struct chunk_alloc alloc;
   chunk_alloc_create_default (&alloc);
@@ -231,8 +278,10 @@ test_ta_subtype_case (const char *typestr, const char *accessor, const char *exp
   chunk_alloc_free_all (&alloc);
 }
 
-TEST (ta_subtype) {
-  struct test_entry {
+TEST (ta_subtype)
+{
+  struct test_entry
+  {
     const char *typestr;
     const char *accessor;
     const char *expected_type;
@@ -315,10 +364,10 @@ TEST (ta_subtype) {
       {"struct { a i32, b f64, c [10] i8 }", "a.c[3]", "i8"},
   };
 
-  for (u32 i = 0; i < arrlen (entries); ++i) {
-    TEST_CASE ("%s %s %s", entries[i].typestr, entries[i].accessor, entries[i].expected_type) {
-      test_ta_subtype_case (entries[i].typestr, entries[i].accessor, entries[i].expected_type);
-    }
+  for (u32 i = 0; i < arrlen (entries); ++i)
+  {
+    TEST_CASE ("%s %s %s", entries[i].typestr, entries[i].accessor, entries[i].expected_type)
+    { test_ta_subtype_case (entries[i].typestr, entries[i].accessor, entries[i].expected_type); }
   }
 }
 #endif

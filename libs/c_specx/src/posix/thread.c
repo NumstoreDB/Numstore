@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////
 // Condition Variable
 
-err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, error *e) {
+err_t
+i_thread_create (i_thread *dest, void *(*func) (void *), void *context, error *e)
+{
   ASSERT (dest);
 
 #ifndef NDEBUG
@@ -47,26 +49,33 @@ err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, er
   if (pthread_create (&dest->thread, NULL, func, context))
 #endif
   {
-    switch (errno) {
-      case EAGAIN: {
+    switch (errno)
+    {
+      case EAGAIN:
+      {
         return error_causef (e, ERR_IO, "pthread_create: %s", strerror (errno));
       }
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "pthread_create: invalid "
             "attributes: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "pthread_create: "
             "insufficient "
             "permissions: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
@@ -75,35 +84,46 @@ err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, er
   return SUCCESS;
 }
 
-err_t i_thread_join (i_thread *t, error *e) {
+err_t
+i_thread_join (i_thread *t, error *e)
+{
   ASSERT (t);
 
   const int r = pthread_join (t->thread, NULL);
 
-  if (r != 0) {
-    switch (r) {
-      case EDEADLK: {
+  if (r != 0)
+  {
+    switch (r)
+    {
+      case EDEADLK:
+      {
         i_log_error (
             "pthread_join: "
             "deadlock: %s\n",
-            strerror (r));
+            strerror (r)
+        );
         UNREACHABLE ();
       }
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "pthread_join: not "
             "joinable: %s\n",
-            strerror (r));
+            strerror (r)
+        );
         UNREACHABLE ();
       }
-      case ESRCH: {
+      case ESRCH:
+      {
         i_log_error (
             "pthread_join: no such "
             "thread: %s\n",
-            strerror (r));
+            strerror (r)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
@@ -112,27 +132,36 @@ err_t i_thread_join (i_thread *t, error *e) {
   return SUCCESS;
 }
 
-void i_thread_cancel (i_thread *t) {
+void
+i_thread_cancel (i_thread *t)
+{
   ASSERT (t);
 
   const int r = pthread_cancel (t->thread);
-  if (r != 0) {
-    switch (r) {
-      case ESRCH: {
+  if (r != 0)
+  {
+    switch (r)
+    {
+      case ESRCH:
+      {
         i_log_error (
             "pthread_cancel: no such "
             "thread: %s\n",
-            strerror (r));
+            strerror (r)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
   }
 }
 
-u64 get_available_threads (void) {
+u64
+get_available_threads (void)
+{
   const long ret = sysconf (_SC_NPROCESSORS_ONLN);
   ASSERT (ret > 0);
   return (u64)ret;

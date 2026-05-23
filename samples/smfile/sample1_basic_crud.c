@@ -28,7 +28,9 @@
  * 3. Write (overwrite data in the middle of the array)
  * 4. Remove (remove chunks of data from the middle of an array)
  */
-int main (void) {
+int
+main (void)
+{
   // Open a new data file
   smfile_t *smf = smfile_open ("sample1_crud");
   if (smf == NULL) { return -1; }
@@ -56,7 +58,8 @@ int main (void) {
       smf,
       adverb,
       34, // Inserting in the middle is a first class operation
-      strlen (adverb));
+      strlen (adverb)
+  );
 
   // Read the entire array
   char    buf[64];

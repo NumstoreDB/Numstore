@@ -19,21 +19,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void walf_print (const char *fname) {
+static void
+walf_print (const char *fname)
+{
   error e = error_create ();
 
   struct wal *wf = wal_open (fname, &e);
 
-  if (wf == NULL) {
+  if (wf == NULL)
+  {
     error_log_consume (&e);
     return;
   }
 
-  while (true) {
+  while (true)
+  {
     lsn                      rlsn;
     struct wal_rec_hdr_read *out = wal_read_next (wf, &rlsn, &e);
 
-    if (out == NULL) {
+    if (out == NULL)
+    {
       error_log_consume (&e);
       goto theend;
     }
@@ -47,8 +52,11 @@ theend:
   wal_close (wf, &e);
 }
 
-int main (const int argc, char **argv) {
-  if (argc != 2) {
+int
+main (const int argc, char **argv)
+{
+  if (argc != 2)
+  {
     printf ("USAGE: walfprint FNAME\n");
     return -1;
   }

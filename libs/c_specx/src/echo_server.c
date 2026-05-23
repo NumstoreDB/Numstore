@@ -16,20 +16,27 @@
 
 #include <string.h>
 
-static u32 decode_prefix (const u8 *p) {
+static u32
+decode_prefix (const u8 *p)
+{
   u32 val;
   memcpy (&val, p, sizeof (u32));
   return i_ntohl (val);
 }
 
-static void set_prefix (void *dest, const u32 src) {
+static void
+set_prefix (void *dest, const u32 src)
+{
   const u32 val = i_htonl (src);
   memcpy (dest, &val, sizeof (u32));
 }
 
-err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
+err_t
+echo_conn_func (const void *echo_ctx, struct connection *conn, error *e)
+{
   // Just created a new connection
-  if (conn->rx_cap == 0 && conn->tx_cap == 0) {
+  if (conn->rx_cap == 0 && conn->tx_cap == 0)
+  {
     conn->rx_buf = i_malloc (4, 1, e);
     if (!conn->rx_buf) { return error_trace (e); }
     conn->rx_cap = 4;
@@ -38,7 +45,8 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
   }
 
   // Finished sending tx
-  if (conn->tx_cap > 0 && conn->tx_sent == conn->tx_cap) {
+  if (conn->tx_cap > 0 && conn->tx_sent == conn->tx_cap)
+  {
     conn->tx_cap  = 0;
     conn->tx_sent = 0;
     return SUCCESS;
@@ -48,9 +56,11 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
   if (conn->rx_len < conn->rx_cap) { return SUCCESS; }
 
   // Just finished receiving prefix — extend rx buf
-  if (conn->rx_cap == 4) {
+  if (conn->rx_cap == 4)
+  {
     const u32 msg_len = decode_prefix (conn->rx_buf);
-    if (msg_len == 0) {
+    if (msg_len == 0)
+    {
       conn->rx_len = 0;
       return SUCCESS;
     }
@@ -101,12 +111,16 @@ err_t echo_conn_func (const void *echo_ctx, struct connection *conn, error *e) {
   }
 }
 
-struct connection *echo_conn_alloc (const void *ctx, error *e) {
+struct connection *
+echo_conn_alloc (const void *ctx, error *e)
+{
   (void)ctx;
   return i_malloc (1, sizeof (struct connection), e);
 }
 
-void echo_conn_free (const void *ctx, struct connection *conn) {
+void
+echo_conn_free (const void *ctx, struct connection *conn)
+{
   (void)ctx;
   i_free (conn);
 }

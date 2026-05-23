@@ -16,21 +16,28 @@
 
 #include <string.h>
 
-float f16_to_f32 (const u16 h) {
+float
+f16_to_f32 (const u16 h)
+{
   const u32 sign = (u32)(h >> 15) & 1u;
   u32       exp  = (u32)(h >> 10) & 0x1Fu;
   u32       mant = (u32)(h) & 0x3FFu;
   u32       f;
 
-  if (exp == 0) {
-    if (mant == 0) {
+  if (exp == 0)
+  {
+    if (mant == 0)
+    {
       // Signed Zero
       f = (sign << 31);
-    } else {
+    }
+    else
+    {
       // Subnormal f16 becomes a Normal f32
       // Shift mantissa until the first set bit is at position 10
       u32 e = 0;
-      while (!(mant & 0x400u)) {
+      while (!(mant & 0x400u))
+      {
         mant <<= 1;
         e++;
       }
@@ -39,10 +46,14 @@ float f16_to_f32 (const u16 h) {
       // New exponent = bias offset (112) + 1 - shifts
       f = (sign << 31) | ((113 - e) << 23) | (mant << 13);
     }
-  } else if (exp == 31) {
+  }
+  else if (exp == 31)
+  {
     // Inf or NaN
     f = (sign << 31) | 0x7F800000u | (mant << 13);
-  } else {
+  }
+  else
+  {
     // Normal numbers
     f = (sign << 31) | ((exp + 112) << 23) | (mant << 13);
   }
