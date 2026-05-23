@@ -22,11 +22,13 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
   ASSERT (t->table);
 })
 
-static bool default_equals (const struct hnode *left, const struct hnode *right) {
-  return left->hcode == right->hcode;
-}
+static bool
+default_equals (const struct hnode *left, const struct hnode *right)
+{ return left->hcode == right->hcode; }
 
-struct htable *htable_create (const u32 n, error *e) {
+struct htable *
+htable_create (const u32 n, error *e)
+{
   struct htable *ret = i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
 
   if (ret == NULL) { return ret; }
@@ -42,13 +44,17 @@ struct htable *htable_create (const u32 n, error *e) {
   return ret;
 }
 
-void htable_free (struct htable *t) {
+void
+htable_free (struct htable *t)
+{
   DBG_ASSERT (htable, t);
 
   i_free (t);
 }
 
-void htable_insert (struct htable *t, struct hnode *node) {
+void
+htable_insert (struct htable *t, struct hnode *node)
+{
   latch_lock (&t->latch);
 
   DBG_ASSERT (htable, t);
@@ -62,10 +68,13 @@ void htable_insert (struct htable *t, struct hnode *node) {
   latch_unlock (&t->latch);
 }
 
-struct hnode **htable_lookup (
+struct hnode **
+htable_lookup (
     struct htable      *t,
     const struct hnode *key,
-    bool (*eq) (const struct hnode *, const struct hnode *)) {
+    bool (*eq) (const struct hnode *, const struct hnode *)
+)
+{
   if (eq == NULL) { eq = default_equals; }
 
   latch_lock (&t->latch);
@@ -76,8 +85,10 @@ struct hnode **htable_lookup (
 
   struct hnode **from = &t->table[pos];
 
-  for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next) {
-    if (cur->hcode == key->hcode && eq (cur, key)) {
+  for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next)
+  {
+    if (cur->hcode == key->hcode && eq (cur, key))
+    {
       latch_unlock (&t->latch);
       return from;
     }
@@ -87,7 +98,9 @@ struct hnode **htable_lookup (
   return NULL;
 }
 
-struct hnode *htable_delete (struct htable *t, struct hnode **from) {
+struct hnode *
+htable_delete (struct htable *t, struct hnode **from)
+{
   latch_lock (&t->latch);
 
   DBG_ASSERT (htable, t);
@@ -101,7 +114,9 @@ struct hnode *htable_delete (struct htable *t, struct hnode **from) {
   return node;
 }
 
-struct hnode **htable_random (struct htable *t) {
+struct hnode **
+htable_random (struct htable *t)
+{
   const u32 target_idx = randu32r (0, t->size - 1);
   u32       idx        = 0;
 
@@ -109,11 +124,14 @@ struct hnode **htable_random (struct htable *t) {
 
   DBG_ASSERT (htable, t);
 
-  for (u32 pos = 0; pos < t->cap; ++pos) {
+  for (u32 pos = 0; pos < t->cap; ++pos)
+  {
     struct hnode **from = &t->table[pos];
 
-    for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next) {
-      if (idx == target_idx) {
+    for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next)
+    {
+      if (idx == target_idx)
+      {
         latch_unlock (&t->latch);
         return from;
       }
@@ -125,15 +143,16 @@ struct hnode **htable_random (struct htable *t) {
   return NULL;
 }
 
-void htable_foreach (
-    const struct htable *t,
-    void (*action) (struct hnode *v, void *ctx),
-    void *ctx) {
+void
+htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx)
+{
   latch_lock (&((struct htable *)t)->latch);
 
-  for (u32 i = 0; i < t->cap; ++i) {
+  for (u32 i = 0; i < t->cap; ++i)
+  {
     struct hnode *cur = t->table[i];
-    while (cur) {
+    while (cur)
+    {
       struct hnode *next = cur->next;
       action (cur, ctx);
       cur = next;
@@ -144,26 +163,31 @@ void htable_foreach (
 }
 
 #ifndef NTEST
-struct hdata {
+struct hdata
+{
   struct hnode node;
   int          data;
   int          value;
 };
 
-static bool hdata_eq (const struct hnode *left, const struct hnode *right) {
+static bool
+hdata_eq (const struct hnode *left, const struct hnode *right)
+{
   const struct hdata *_left  = container_of (left, struct hdata, node);
   const struct hdata *_right = container_of (right, struct hdata, node);
 
   return _left->data == _right->data;
 }
 
-TEST (htable) {
+TEST (htable)
+{
   error          e = error_create ();
   struct htable *t = htable_create (100, &e);
   struct hdata   data[1000];
 
   int k = 0;
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 1000; ++i)
+  {
     k += randu32r (1, 10000);
     data[i].data       = k;
     data[i].value      = randu32 ();
@@ -175,7 +199,8 @@ TEST (htable) {
 
   for (int i = 0; i < 1000; ++i) { struct hnode **node = htable_random (t); }
 
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 1000; ++i)
+  {
     struct hdata key;
     key.data       = data[i].data;
     key.node.hcode = data[i].node.hcode;

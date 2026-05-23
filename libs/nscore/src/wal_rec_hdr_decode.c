@@ -19,7 +19,9 @@
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
 
-void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN]) {
+void
+walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN])
+{
   ASSERT (r->type == WL_UPDATE);
 
   u32 head = 2 * sizeof (wlh);
@@ -44,7 +46,9 @@ void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UP
   memcpy (r->update.phys.redo, buf + head, PAGE_SIZE);
 }
 
-void walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN]) {
+void
+walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN])
+{
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FSM);
 
@@ -74,7 +78,9 @@ void walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPD
   memcpy (&r->update.fsm.redo, buf + head, sizeof (r->update.fsm.redo));
 }
 
-void walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN]) {
+void
+walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN])
+{
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FEXT);
 
@@ -96,7 +102,9 @@ void walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL
   memcpy (&r->update.fext.redo, buf + head, sizeof (r->update.fext.redo));
 }
 
-void walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN]) {
+void
+walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN])
+{
   ASSERT (r->type == WL_CLR);
   ASSERT (r->clr.type == WCLR_PHYSICAL);
 
@@ -122,7 +130,9 @@ void walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_L
   memcpy (r->clr.phys.redo, buf + head, PAGE_SIZE);
 }
 
-void walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN]) {
+void
+walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN])
+{
   ASSERT (r->type == WL_CLR);
   ASSERT (r->clr.type == WCLR_FSM);
 
@@ -152,7 +162,9 @@ void walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LE
   memcpy (&r->clr.fsm.redo, buf + head, sizeof (r->clr.fsm.redo));
 }
 
-void walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN]) {
+void
+walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN])
+{
   ASSERT (r->type == WL_CLR);
   ASSERT (r->clr.type == WCLR_DUMMY);
 
@@ -171,7 +183,9 @@ void walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CL
   head += sizeof (r->clr.undo_next);
 }
 
-void walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN]) {
+void
+walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN])
+{
   ASSERT (r->type == WL_BEGIN);
 
   u32 head = sizeof (wlh);
@@ -180,7 +194,9 @@ void walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN]) 
   memcpy (&r->begin.tid, buf + head, sizeof (r->begin.tid));
 }
 
-void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]) {
+void
+walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN])
+{
   ASSERT (r->type == WL_COMMIT);
 
   u32 head = sizeof (wlh);
@@ -193,7 +209,9 @@ void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]
   memcpy (&r->commit.prev, buf + head, sizeof (r->commit.prev));
 }
 
-void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]) {
+void
+walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN])
+{
   ASSERT (r->type == WL_END);
 
   u32 head = sizeof (wlh);

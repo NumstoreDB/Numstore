@@ -28,7 +28,9 @@
 ////////////////////////////////////////////////////////////
 // Helpers
 
-static char *wsa_strerror (int code, char *buf, int buflen) {
+static char *
+wsa_strerror (int code, char *buf, int buflen)
+{
   FormatMessageA (
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
       NULL,
@@ -36,7 +38,8 @@ static char *wsa_strerror (int code, char *buf, int buflen) {
       0,
       buf,
       (DWORD)buflen,
-      NULL);
+      NULL
+  );
   return buf;
 }
 
@@ -73,19 +76,25 @@ wsa_init (void)
 ////////////////////////////////////////////////////////////
 // Socket
 
-err_t i_socket_create (i_socket *s, error *e) {
+err_t
+i_socket_create (i_socket *s, error *e)
+{
   ASSERT (s);
   s->fd = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (s->fd == INVALID_SOCKET) {
+  if (s->fd == INVALID_SOCKET)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "socket: %s", WSA_ERR (buf));
   }
   return SUCCESS;
 }
 
-err_t i_socket_close (i_socket *s, error *e) {
+err_t
+i_socket_close (i_socket *s, error *e)
+{
   ASSERT (s);
-  if (closesocket (s->fd) == SOCKET_ERROR) {
+  if (closesocket (s->fd) == SOCKET_ERROR)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "closesocket: %s", WSA_ERR (buf));
   }
@@ -93,18 +102,23 @@ err_t i_socket_close (i_socket *s, error *e) {
   return SUCCESS;
 }
 
-err_t i_socket_set_reuseaddr (i_socket *s, error *e) {
+err_t
+i_socket_set_reuseaddr (i_socket *s, error *e)
+{
   ASSERT (s);
   int opt = 1;
   if (setsockopt (s->fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt, sizeof (opt))
-      == SOCKET_ERROR) {
+      == SOCKET_ERROR)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "setsockopt: %s", WSA_ERR (buf));
   }
   return SUCCESS;
 }
 
-err_t i_socket_connect (i_socket *s, const char *host, u16 port, error *e) {
+err_t
+i_socket_connect (i_socket *s, const char *host, u16 port, error *e)
+{
   ASSERT (s);
   ASSERT (host);
 
@@ -112,12 +126,14 @@ err_t i_socket_connect (i_socket *s, const char *host, u16 port, error *e) {
   addr.sin_family         = AF_INET;
   addr.sin_port           = htons (port);
 
-  if (inet_pton (AF_INET, host, &addr.sin_addr) <= 0) {
+  if (inet_pton (AF_INET, host, &addr.sin_addr) <= 0)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "inet_pton: invalid address '%s' (%s)", host, WSA_ERR (buf));
   }
 
-  if (connect (s->fd, (struct sockaddr *)&addr, sizeof (addr)) == SOCKET_ERROR) {
+  if (connect (s->fd, (struct sockaddr *)&addr, sizeof (addr)) == SOCKET_ERROR)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "connect: %s", WSA_ERR (buf));
   }
@@ -125,36 +141,38 @@ err_t i_socket_connect (i_socket *s, const char *host, u16 port, error *e) {
   return SUCCESS;
 }
 
-err_t i_socket_bind (i_socket *s, int port, error *e) {
+err_t
+i_socket_bind (i_socket *s, int port, error *e)
+{
   ASSERT (s);
   struct sockaddr_in addr = {0};
   addr.sin_family         = AF_INET;
   addr.sin_port           = htons ((u_short)port);
   addr.sin_addr.s_addr    = INADDR_ANY;
 
-  if (bind (s->fd, (struct sockaddr *)&addr, sizeof (addr)) == SOCKET_ERROR) {
+  if (bind (s->fd, (struct sockaddr *)&addr, sizeof (addr)) == SOCKET_ERROR)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "bind: %s", WSA_ERR (buf));
   }
   return SUCCESS;
 }
 
-err_t i_socket_listen (i_socket *s, error *e) {
+err_t
+i_socket_listen (i_socket *s, error *e)
+{
   ASSERT (s);
-  if (listen (s->fd, SOMAXCONN) == SOCKET_ERROR) {
+  if (listen (s->fd, SOMAXCONN) == SOCKET_ERROR)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "listen: %s", WSA_ERR (buf));
   }
   return SUCCESS;
 }
 
-err_t i_socket_accept (
-    i_socket *s,
-    i_socket *dest,
-    char     *ip_out,
-    int       ip_out_len,
-    int      *port_out,
-    error    *e) {
+err_t
+i_socket_accept (i_socket *s, i_socket *dest, char *ip_out, int ip_out_len, int *port_out, error *e)
+{
   ASSERT (s);
   ASSERT (dest);
 
@@ -162,7 +180,8 @@ err_t i_socket_accept (
   int                peer_len = sizeof (peer);
 
   dest->fd = accept (s->fd, (struct sockaddr *)&peer, &peer_len);
-  if (dest->fd == INVALID_SOCKET) {
+  if (dest->fd == INVALID_SOCKET)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "accept: %s", WSA_ERR (buf));
   }
@@ -173,40 +192,57 @@ err_t i_socket_accept (
   return SUCCESS;
 }
 
-i64 i_socket_recv (i_socket *s, void *buf, u32 len, error *e) {
+i64
+i_socket_recv (i_socket *s, void *buf, u32 len, error *e)
+{
   ASSERT (s);
   ASSERT (buf);
 
   int n = recv (s->fd, (char *)buf, (int)len, 0);
-  if (n == SOCKET_ERROR) {
+  if (n == SOCKET_ERROR)
+  {
     char ebuf[WSA_BUF];
     return error_causef (e, ERR_IO, "recv: %s", WSA_ERR (ebuf));
   }
   return (i64)n;
 }
 
-i64 i_socket_send (i_socket *s, const void *buf, u32 len, error *e) {
+i64
+i_socket_send (i_socket *s, const void *buf, u32 len, error *e)
+{
   ASSERT (s);
   ASSERT (buf);
 
   int n = send (s->fd, (const char *)buf, (int)len, 0);
-  if (n == SOCKET_ERROR) {
+  if (n == SOCKET_ERROR)
+  {
     char ebuf[WSA_BUF];
     return error_causef (e, ERR_IO, "send: %s", WSA_ERR (ebuf));
   }
   return (i64)n;
 }
 
-int i_poll (i_pollfd *fds, u32 nfds, int timeout_ms, error *e) {
+int
+i_poll (i_pollfd *fds, u32 nfds, int timeout_ms, error *e)
+{
   int ret = WSAPoll (fds, (ULONG)nfds, timeout_ms);
-  if (ret == SOCKET_ERROR) {
+  if (ret == SOCKET_ERROR)
+  {
     char buf[WSA_BUF];
     return error_causef (e, ERR_IO, "WSAPoll: %s", WSA_ERR (buf));
   }
   return ret;
 }
 
-u32 i_htonl (u32 host) { return htonl (host); }
-u32 i_ntohl (u32 net) { return ntohl (net); }
-u16 i_htons (u16 host) { return htons (host); }
-u16 i_ntohs (u16 net) { return ntohs (net); }
+u32
+i_htonl (u32 host)
+{ return htonl (host); }
+u32
+i_ntohl (u32 net)
+{ return ntohl (net); }
+u16
+i_htons (u16 host)
+{ return htons (host); }
+u16
+i_ntohs (u16 net)
+{ return ntohs (net); }

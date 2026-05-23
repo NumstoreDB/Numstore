@@ -23,10 +23,12 @@
 
 int _smfile_crash (smfile_t *ns);
 
-HEADER_FUNC struct string vname_or_default (const char *name) {
-  if (name != NULL) {
-    return strfcstr (name);
-  } else {
+HEADER_FUNC struct string
+vname_or_default (const char *name)
+{
+  if (name != NULL) { return strfcstr (name); }
+  else
+  {
     return strfcstr (DEFAULT_VARIABLE);
   }
 }

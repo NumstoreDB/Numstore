@@ -23,8 +23,10 @@
 ////////////////////////////////////////////////////////////
 /// Update Logs
 
-struct wal_update_read {
-  enum wal_update_type {
+struct wal_update_read
+{
+  enum wal_update_type
+  {
     WUP_PHYSICAL = 1,
     WUP_FSM      = 2,
     WUP_FEXT     = 3,
@@ -34,34 +36,39 @@ struct wal_update_read {
   lsn  prev; // Previous lsn
 
   union {
-    struct physical_read_update {
+    struct physical_read_update
+    {
       pgno pg;
       u8   undo[PAGE_SIZE];
       u8   redo[PAGE_SIZE];
     } phys;
 
-    struct fsm_update {
+    struct fsm_update
+    {
       pgno   pg;
       p_size bit;
       u8     undo;
       u8     redo;
     } fsm;
 
-    struct file_ext {
+    struct file_ext
+    {
       pgno undo;
       pgno redo;
     } fext;
   };
 };
 
-struct wal_update_write {
+struct wal_update_write
+{
   enum wal_update_type type;
 
   txid tid;
   lsn  prev;
 
   union {
-    struct physical_write_update {
+    struct physical_write_update
+    {
       pgno pg;
       u8  *undo;
       u8  *redo;
@@ -76,22 +83,27 @@ struct wal_update_write {
 ////////////////////////////////////////////////////////////
 /// Other Records
 
-struct wal_begin {
+struct wal_begin
+{
   txid tid;
 };
 
-struct wal_commit {
-  txid tid;
-  lsn  prev;
-};
-
-struct wal_end {
+struct wal_commit
+{
   txid tid;
   lsn  prev;
 };
 
-struct wal_clr_read {
-  enum wal_clr_type {
+struct wal_end
+{
+  txid tid;
+  lsn  prev;
+};
+
+struct wal_clr_read
+{
+  enum wal_clr_type
+  {
     WCLR_PHYSICAL = 1,
     WCLR_FSM      = 2,
     WCLR_DUMMY    = 3,
@@ -103,12 +115,14 @@ struct wal_clr_read {
   lsn  undo_next;
 
   union {
-    struct physical_read_clr {
+    struct physical_read_clr
+    {
       pgno pg;
       u8   redo[PAGE_SIZE];
     } phys;
 
-    struct fsm_clr {
+    struct fsm_clr
+    {
       pgno   pg;
       p_size bit;
       u8     redo;
@@ -116,7 +130,8 @@ struct wal_clr_read {
   };
 };
 
-struct wal_clr_write {
+struct wal_clr_write
+{
   enum wal_clr_type type;
 
   txid tid;
@@ -124,7 +139,8 @@ struct wal_clr_write {
   lsn  undo_next;
 
   union {
-    struct physical_write_clr {
+    struct physical_write_clr
+    {
       pgno pg;
       u8  *redo;
     } phys;
@@ -133,7 +149,8 @@ struct wal_clr_write {
   };
 };
 
-enum wal_rec_hdr_type {
+enum wal_rec_hdr_type
+{
   WL_BEGIN  = 1,
   WL_COMMIT = 2,
   WL_END    = 3,
@@ -142,7 +159,8 @@ enum wal_rec_hdr_type {
   WL_EOF    = 6,
 };
 
-struct wal_rec_hdr_read {
+struct wal_rec_hdr_read
+{
   enum wal_rec_hdr_type type;
 
   union {
@@ -154,7 +172,8 @@ struct wal_rec_hdr_read {
   };
 };
 
-struct wal_rec_hdr_write {
+struct wal_rec_hdr_write
+{
   enum wal_rec_hdr_type type;
 
   union {
@@ -171,14 +190,14 @@ const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry
-#define WL_BEGIN_LEN              \
+#define WL_BEGIN_LEN \
   (sizeof (wlh) +  /* header */   \
    sizeof (txid) + /* txid */     \
    sizeof (u32)    /* checksum */ \
   )
 
 // Size of COMMIT entry
-#define WL_COMMIT_LEN             \
+#define WL_COMMIT_LEN \
   (sizeof (wlh) +  /* header */   \
    sizeof (txid) + /* txid */     \
    sizeof (lsn) +  /* prev */     \
@@ -186,7 +205,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of END entry
-#define WL_END_LEN                \
+#define WL_END_LEN \
   (sizeof (wlh) +  /* header */   \
    sizeof (txid) + /* txid */     \
    sizeof (lsn) +  /* prev */     \
@@ -194,7 +213,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of physical UPDATE entry
-#define WL_UPDATE_LEN                \
+#define WL_UPDATE_LEN \
   (2 * sizeof (wlh) + /* header */   \
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
@@ -205,7 +224,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of FSM UPDATE entry
-#define WL_FSM_UPDATE_LEN            \
+#define WL_FSM_UPDATE_LEN \
   (2 * sizeof (wlh) + /* header */   \
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
@@ -217,7 +236,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of FILE EXTENT UPDATE entry
-#define WL_FILE_EXT_LEN              \
+#define WL_FILE_EXT_LEN \
   (2 * sizeof (wlh) + /* header */   \
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
@@ -227,7 +246,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of physical CLR entry
-#define WL_CLR_LEN                    \
+#define WL_CLR_LEN \
   (2 * sizeof (wlh) + /* header */    \
    sizeof (txid) +    /* txid */      \
    sizeof (lsn) +     /* prev */      \
@@ -238,7 +257,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of FSM CLR entry
-#define WL_FSM_CLR_LEN                \
+#define WL_FSM_CLR_LEN \
   (2 * sizeof (wlh) + /* header */    \
    sizeof (txid) +    /* txid */      \
    sizeof (lsn) +     /* prev */      \
@@ -274,28 +293,27 @@ void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]
 void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 
 #ifndef NTEST
-bool wal_rec_hdr_read_equal (
-    const struct wal_rec_hdr_read *left,
-    const struct wal_rec_hdr_read *right);
+bool
+wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right);
 #endif
 
 ////////////////////////////////////////////////////////////
 /// Shorthands
 
 HEADER_FUNC struct wal_update_write
-wup_fsm (pgno fsmpg, struct txn *tx, p_size bit, u8 undo, u8 redo) {
+wup_fsm (pgno fsmpg, struct txn *tx, p_size bit, u8 undo, u8 redo)
+{
   ASSERT (fsmpg % FS_BTMP_NPGS == 0);
 
   return (struct wal_update_write){
       .type = WUP_FSM,
       .tid  = tx->tid,
       .prev = tx->data.last_lsn,
-      .fsm =
-          {
-              .pg   = fsmpg,
-              .bit  = bit,
-              .undo = undo,
-              .redo = redo,
-          },
+      .fsm  = {
+          .pg   = fsmpg,
+          .bit  = bit,
+          .undo = undo,
+          .redo = redo,
+      },
   };
 }

@@ -21,26 +21,36 @@
 #include "nscore/lock_table.h"
 #include "nscore/page_fixture.h"
 
-bool pgr_isnew (const struct pager *p) {
+bool
+pgr_isnew (const struct pager *p)
+{
   DBG_ASSERT (pager, p);
 
   return atomic_load (&p->flags) & PGR_ISNEW;
 }
 
-p_size pgr_get_npages (struct pager *p) { return fpgr_get_npages (p->fp); }
+p_size
+pgr_get_npages (struct pager *p)
+{ return fpgr_get_npages (p->fp); }
 
-err_t pgr_flush_wall (struct pager *p, error *e) {
+err_t
+pgr_flush_wall (struct pager *p, error *e)
+{
   DBG_ASSERT (pager, p);
   return wal_flush_all (p->ww, e);
 }
 
-void pgr_attach_lock_table (struct pager *p, struct lockt *lt) {
+void
+pgr_attach_lock_table (struct pager *p, struct lockt *lt)
+{
   DBG_ASSERT (pager, p);
   ASSERT (p->lt == NULL);
   p->lt = lt;
 }
 
-err_t pgr_read_header (struct pager *p, error *e) {
+err_t
+pgr_read_header (struct pager *p, error *e)
+{
   if (fpgr_read_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e)) { return error_trace (e); }
 
   lsn lsn0;
@@ -72,7 +82,9 @@ err_t pgr_read_header (struct pager *p, error *e) {
   return SUCCESS;
 }
 
-err_t pgr_write_header (struct pager *p, error *e) {
+err_t
+pgr_write_header (struct pager *p, error *e)
+{
   p->header.lsn0csm = checksum_init ();
   p->header.lsn1csm = checksum_init ();
 
@@ -87,7 +99,9 @@ err_t pgr_write_header (struct pager *p, error *e) {
   return fpgr_write_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e);
 }
 
-err_t pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e) {
+err_t
+pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
+{
   p->header.lsn0    = lsn0;
   p->header.lsn0csm = checksum_init ();
   checksum_execute (&p->header.lsn0csm, (void *)&lsn0, sizeof (lsn));
@@ -98,7 +112,9 @@ err_t pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e) {
   return fpgr_write_header (p->fp, p->_header, LSN0_OFST, sizeof (lsn) + sizeof (u32), e);
 }
 
-err_t pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e) {
+err_t
+pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
+{
   p->header.lsn1    = lsn1;
   p->header.lsn1csm = checksum_init ();
   checksum_execute (&p->header.lsn1csm, (void *)&lsn1, sizeof (lsn));
@@ -111,18 +127,23 @@ err_t pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e) {
       p->_header + LSN1_OFST,
       LSN1_OFST,
       sizeof (lsn) + sizeof (u32),
-      e);
+      e
+  );
 }
 
-err_t pgr_write_next_lsn (struct pager *p, lsn l, error *e) {
-  if (p->header.lsn0 > p->header.lsn1) {
-    return pgr_write_lsn1 (p, l, e);
-  } else {
+err_t
+pgr_write_next_lsn (struct pager *p, lsn l, error *e)
+{
+  if (p->header.lsn0 > p->header.lsn1) { return pgr_write_lsn1 (p, l, e); }
+  else
+  {
     return pgr_write_lsn0 (p, l, e);
   }
 }
 
-err_t pgr_recover (struct pager *p, error *e) {
+err_t
+pgr_recover (struct pager *p, error *e)
+{
   // Run ARIES recovery
   struct aries_ctx ctx;
   if (aries_ctx_create (&ctx, e)) { return error_trace (e); }
@@ -137,7 +158,8 @@ err_t pgr_recover (struct pager *p, error *e) {
 
 #ifndef NTEST
 
-TEST (pager_fill_ht) {
+TEST (pager_fill_ht)
+{
   struct pgr_fixture f;
   pgr_fixture_create (&f);
 
@@ -150,7 +172,8 @@ TEST (pager_fill_ht) {
   {
     // Fill up - there is already one page in the pool, the root
     u32 i = 0;
-    for (; i < MEMORY_PAGE_LEN / 2; ++i) {
+    for (; i < MEMORY_PAGE_LEN / 2; ++i)
+    {
       pgs[i] = page_h_create ();
       pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &f.e);
       test_assert_equal (pgs[i].mode, PHM_X);
@@ -160,7 +183,8 @@ TEST (pager_fill_ht) {
     // pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &f.e);
 
     // Release them all
-    for (i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
+    for (i = 0; i < MEMORY_PAGE_LEN / 2; ++i)
+    {
       dl_set_used (page_h_w (&pgs[i]), DL_DATA_SIZE);
       pgr_release (f.p, &pgs[i], PG_DATA_LIST, &f.e);
     }
@@ -169,13 +193,15 @@ TEST (pager_fill_ht) {
   // Repeat above
   {
     // Fill half way up - good
-    for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
+    for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i)
+    {
       pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &f.e);
       test_assert_equal (pgs[i].mode, PHM_X);
     }
 
     // Release them all
-    for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
+    for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i)
+    {
       dl_set_used (page_h_w (&pgs[i]), DL_DATA_SIZE);
       pgr_release (f.p, &pgs[i], PG_DATA_LIST, &f.e);
     }
@@ -186,7 +212,8 @@ TEST (pager_fill_ht) {
   pgr_fixture_teardown (&f);
 }
 
-TEST (wal_int) {
+TEST (wal_int)
+{
   struct pgr_fixture f;
   page_h             h = page_h_create ();
   pgr_fixture_create (&f);
@@ -205,12 +232,16 @@ TEST (wal_int) {
 }
 #endif
 
-void i_log_page_table (const int log_level, bool only_present, struct pager *p) {
+void
+i_log_page_table (const int log_level, bool only_present, struct pager *p)
+{
   DBG_ASSERT (pager, p);
 
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
+  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
+  {
     const struct page_frame *mp = &p->pages[i];
-    if (mp->flags & PW_PRESENT) {
+    if (mp->flags & PW_PRESENT)
+    {
       i_printf (
           log_level,
           "%u |(PAGE)    pg: %" PRpgno
@@ -225,14 +256,16 @@ void i_log_page_table (const int log_level, bool only_present, struct pager *p) 
           mp->wsibling,
           page_get_type (&mp->page),
           mp->data,
-          mp->ctrl);
-    } else if (!only_present) {
-      i_printf (log_level, "%u | |\n", i);
+          mp->ctrl
+      );
     }
+    else if (!only_present) { i_printf (log_level, "%u | |\n", i); }
   }
 }
 
-err_t pgr_refresh_wal (struct pager *p, error *e) {
+err_t
+pgr_refresh_wal (struct pager *p, error *e)
+{
   DBG_ASSERT (pager, p);
   wal_delete_and_reopen (p->ww, e);
   return error_trace (e);

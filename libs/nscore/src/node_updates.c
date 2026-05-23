@@ -21,12 +21,14 @@
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)
 
-struct in_pair_slab {
+struct in_pair_slab
+{
   struct in_pair_slab *next;
   struct in_pair       data[NUPD_LENGTH];
 };
 
-struct node_updates {
+struct node_updates
+{
   struct slab_alloc *alloc;
 
   struct in_pair pivot;
@@ -65,13 +67,17 @@ DEFINE_DBG_ASSERT (struct node_updates, node_updates, n, {
 // Slab navigation helpers
 ////////////////////////////////////////////////////////////
 
-static struct in_pair_slab *slab_at (struct in_pair_slab *head, const u32 slab_idx) {
+static struct in_pair_slab *
+slab_at (struct in_pair_slab *head, const u32 slab_idx)
+{
   struct in_pair_slab *cur = head;
   for (u32 i = 0; i < slab_idx && cur != NULL; ++i) { cur = cur->next; }
   return cur;
 }
 
-static struct in_pair *nupd_get_right (struct node_updates *s, const u32 idx) {
+static struct in_pair *
+nupd_get_right (struct node_updates *s, const u32 idx)
+{
   const u32            slab_idx  = idx / NUPD_LENGTH;
   const u32            local_idx = idx % NUPD_LENGTH;
   struct in_pair_slab *slab      = slab_at (&s->right, slab_idx);
@@ -79,7 +85,9 @@ static struct in_pair *nupd_get_right (struct node_updates *s, const u32 idx) {
   return &slab->data[local_idx];
 }
 
-static struct in_pair *nupd_get_left (struct node_updates *s, const u32 idx) {
+static struct in_pair *
+nupd_get_left (struct node_updates *s, const u32 idx)
+{
   const u32            slab_idx  = idx / NUPD_LENGTH;
   const u32            local_idx = idx % NUPD_LENGTH;
   struct in_pair_slab *slab      = slab_at (&s->left, slab_idx);
@@ -88,13 +96,16 @@ static struct in_pair *nupd_get_left (struct node_updates *s, const u32 idx) {
 }
 
 static struct in_pair *
-nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error *e) {
+nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error *e)
+{
   const u32 slab_idx  = s->rlen / NUPD_LENGTH;
   const u32 local_idx = s->rlen % NUPD_LENGTH;
 
   struct in_pair_slab *slab = &s->right;
-  for (u32 i = 0; i < slab_idx; ++i) {
-    if (slab->next == NULL) {
+  for (u32 i = 0; i < slab_idx; ++i)
+  {
+    if (slab->next == NULL)
+    {
       slab->next = i_malloc (1, sizeof *slab->next, e);
       if (slab->next == NULL) { return NULL; }
       memset (slab->next, 0, sizeof *slab->next);
@@ -108,13 +119,16 @@ nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error
 }
 
 static struct in_pair *
-nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error *e) {
+nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error *e)
+{
   const u32 slab_idx  = s->llen / NUPD_LENGTH;
   const u32 local_idx = s->llen % NUPD_LENGTH;
 
   struct in_pair_slab *slab = &s->left;
-  for (u32 i = 0; i < slab_idx; ++i) {
-    if (slab->next == NULL) {
+  for (u32 i = 0; i < slab_idx; ++i)
+  {
+    if (slab->next == NULL)
+    {
       slab->next = i_malloc (1, sizeof *slab->next, e);
       if (slab->next == NULL) { return NULL; }
       memset (slab->next, 0, sizeof *slab->next);
@@ -127,17 +141,22 @@ nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error 
   return &slab->data[local_idx];
 }
 
-static void slab_free_chain (const struct in_pair_slab *head) {
+static void
+slab_free_chain (const struct in_pair_slab *head)
+{
   // head is embedded, only free ->next chain
   struct in_pair_slab *cur = head->next;
-  while (cur != NULL) {
+  while (cur != NULL)
+  {
     struct in_pair_slab *next = cur->next;
     i_free (cur);
     cur = next;
   }
 }
 
-struct node_updates *nupd_init (const pgno pg, const b_size size, error *e) {
+struct node_updates *
+nupd_init (const pgno pg, const b_size size, error *e)
+{
   struct node_updates *ret = i_calloc (1, sizeof *ret, e);
   if (ret == NULL) { return NULL; }
 
@@ -146,7 +165,9 @@ struct node_updates *nupd_init (const pgno pg, const b_size size, error *e) {
   return ret;
 }
 
-void nupd_reset (struct node_updates *ret, const pgno pg, const b_size size) {
+void
+nupd_reset (struct node_updates *ret, const pgno pg, const b_size size)
+{
   // Free any allocated slabs first
   slab_free_chain (&ret->right);
   slab_free_chain (&ret->left);
@@ -159,20 +180,26 @@ void nupd_reset (struct node_updates *ret, const pgno pg, const b_size size) {
   ret->prev = &ret->pivot;
 }
 
-void nupd_free (struct node_updates *n) {
+void
+nupd_free (struct node_updates *n)
+{
   if (n == NULL) { return; }
   slab_free_chain (&n->right);
   slab_free_chain (&n->left);
   i_free (n);
 }
 
-pgno nupd_pivot_pg (const struct node_updates *n) { return n->pivot.pg; }
+pgno
+nupd_pivot_pg (const struct node_updates *n)
+{ return n->pivot.pg; }
 
 #ifndef NTEST
-TEST (nupd_init) {
+TEST (nupd_init)
+{
   error e = error_create ();
 
-  TEST_CASE ("Initialize with page and size") {
+  TEST_CASE ("Initialize with page and size")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (n->pivot.pg, 100);
@@ -187,7 +214,8 @@ TEST (nupd_init) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Initialize with zero values") {
+  TEST_CASE ("Initialize with zero values")
+  {
     struct node_updates *n = nupd_init (0, 0, &e);
 
     test_assert_equal (n->pivot.pg, 0);
@@ -196,7 +224,8 @@ TEST (nupd_init) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Initialize with large values") {
+  TEST_CASE ("Initialize with large values")
+  {
     struct node_updates *n = nupd_init (999999, 65536, &e);
 
     test_assert_equal (n->pivot.pg, 999999);
@@ -209,7 +238,8 @@ TEST (nupd_init) {
 #endif
 
 static struct in_pair *
-nupd_append_right (struct node_updates *s, const pgno pg, const b_size size, error *e) {
+nupd_append_right (struct node_updates *s, const pgno pg, const b_size size, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs == 0);
   ASSERT (s->lobs == 0);
@@ -218,10 +248,13 @@ nupd_append_right (struct node_updates *s, const pgno pg, const b_size size, err
 
   struct in_pair *ret;
 
-  if (s->rlen == 0 && pg == s->pivot.pg) {
+  if (s->rlen == 0 && pg == s->pivot.pg)
+  {
     ret          = &s->pivot;
     s->pivot.key = size;
-  } else {
+  }
+  else
+  {
     ret = nupd_push_right (s, pg, size, e);
   }
 
@@ -229,10 +262,12 @@ nupd_append_right (struct node_updates *s, const pgno pg, const b_size size, err
 }
 
 #ifndef NTEST
-TEST (nupd_append_right) {
+TEST (nupd_append_right)
+{
   error e = error_create ();
 
-  TEST_CASE ("Append single right entry") {
+  TEST_CASE ("Append single right entry")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct in_pair *ret = nupd_append_right (n, 200, 1024, &e);
@@ -245,7 +280,8 @@ TEST (nupd_append_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append to pivot when page matches") {
+  TEST_CASE ("Append to pivot when page matches")
+  {
     struct node_updates  *n   = nupd_init (100, 512, &e);
     const struct in_pair *ret = nupd_append_right (n, 100, 1024, &e);
 
@@ -257,7 +293,8 @@ TEST (nupd_append_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append multiple entries") {
+  TEST_CASE ("Append multiple entries")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_append_right (n, 200, 1024, &e);
@@ -275,7 +312,8 @@ TEST (nupd_append_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append after pivot update") {
+  TEST_CASE ("Append after pivot update")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_append_right (n, 100, 1024, &e); // Updates pivot
@@ -288,7 +326,8 @@ TEST (nupd_append_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append beyond single slab") {
+  TEST_CASE ("Append beyond single slab")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     for (u32 i = 0; i < NUPD_LENGTH + 5; ++i) { nupd_append_right (n, 200 + i, 1000 + i, &e); }
@@ -304,7 +343,8 @@ TEST (nupd_append_right) {
 #endif
 
 static struct in_pair *
-nupd_append_left (struct node_updates *s, const pgno pg, const b_size size, error *e) {
+nupd_append_left (struct node_updates *s, const pgno pg, const b_size size, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs == 0);
   ASSERT (s->lobs == 0);
@@ -313,10 +353,13 @@ nupd_append_left (struct node_updates *s, const pgno pg, const b_size size, erro
 
   struct in_pair *ret;
 
-  if (s->llen == 0 && pg == s->pivot.pg) {
+  if (s->llen == 0 && pg == s->pivot.pg)
+  {
     ret          = &s->pivot;
     s->pivot.key = size;
-  } else {
+  }
+  else
+  {
     ret = nupd_push_left (s, pg, size, e);
   }
 
@@ -324,10 +367,12 @@ nupd_append_left (struct node_updates *s, const pgno pg, const b_size size, erro
 }
 
 #ifndef NTEST
-TEST (nupd_append_left) {
+TEST (nupd_append_left)
+{
   error e = error_create ();
 
-  TEST_CASE ("Append single left entry") {
+  TEST_CASE ("Append single left entry")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct in_pair *ret = nupd_append_left (n, 50, 256, &e);
@@ -340,7 +385,8 @@ TEST (nupd_append_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append to pivot when page matches") {
+  TEST_CASE ("Append to pivot when page matches")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct in_pair *ret = nupd_append_left (n, 100, 768, &e);
@@ -353,7 +399,8 @@ TEST (nupd_append_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append multiple entries") {
+  TEST_CASE ("Append multiple entries")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_append_left (n, 90, 256, &e);
@@ -368,7 +415,8 @@ TEST (nupd_append_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append after pivot update") {
+  TEST_CASE ("Append after pivot update")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_append_left (n, 100, 256, &e); // Updates pivot
@@ -381,7 +429,8 @@ TEST (nupd_append_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append beyond single slab") {
+  TEST_CASE ("Append beyond single slab")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     for (u32 i = 0; i < NUPD_LENGTH + 5; ++i) { nupd_append_left (n, 50 + i, 100 + i, &e); }
@@ -394,38 +443,51 @@ TEST (nupd_append_left) {
 }
 #endif
 
-err_t nupd_commit_1st_right (struct node_updates *s, const pgno pg, const b_size size, error *e) {
-  if (s->prev != NULL) {
+err_t
+nupd_commit_1st_right (struct node_updates *s, const pgno pg, const b_size size, error *e)
+{
+  if (s->prev != NULL)
+  {
     ASSERT (s->prev->pg == pg);
     s->prev->key = size;
     s->prev      = NULL;
-  } else {
+  }
+  else
+  {
     if (nupd_append_right (s, pg, size, e) == NULL) { return error_trace (e); }
   }
   return SUCCESS;
 }
 
-err_t nupd_commit_1st_left (struct node_updates *s, const pgno pg, const b_size size, error *e) {
-  if (s->prev != NULL) {
+err_t
+nupd_commit_1st_left (struct node_updates *s, const pgno pg, const b_size size, error *e)
+{
+  if (s->prev != NULL)
+  {
     ASSERT (s->prev->pg == pg);
     s->prev->key = size;
     s->prev      = NULL;
-  } else {
+  }
+  else
+  {
     if (nupd_append_left (s, pg, size, e) == NULL) { return error_trace (e); }
   }
   return SUCCESS;
 }
 
-err_t nupd_append_2nd_right (
+err_t
+nupd_append_2nd_right (
     struct node_updates *s,
     const pgno           pg1,
     const b_size         size1,
     const pgno           pg2,
     const b_size         size2,
-    error               *e) {
-  if (s->prev != NULL) {
-    ASSERT (s->prev->pg == pg1);
-  } else {
+    error               *e
+)
+{
+  if (s->prev != NULL) { ASSERT (s->prev->pg == pg1); }
+  else
+  {
     s->prev = nupd_append_right (s, pg1, size1, e);
     if (s->prev == NULL) { return error_trace (e); }
   }
@@ -433,16 +495,19 @@ err_t nupd_append_2nd_right (
   return SUCCESS;
 }
 
-err_t nupd_append_2nd_left (
+err_t
+nupd_append_2nd_left (
     struct node_updates *s,
     const pgno           pg1,
     const b_size         size1,
     const pgno           pg2,
     const b_size         size2,
-    error               *e) {
-  if (s->prev != NULL) {
-    ASSERT (s->prev->pg == pg1);
-  } else {
+    error               *e
+)
+{
+  if (s->prev != NULL) { ASSERT (s->prev->pg == pg1); }
+  else
+  {
     s->prev = nupd_append_left (s, pg1, size1, e);
     if (s->prev == NULL) { return error_trace (e); }
   }
@@ -450,45 +515,56 @@ err_t nupd_append_2nd_left (
   return SUCCESS;
 }
 
-err_t nupd_append_tip_right (struct node_updates *s, const struct three_in_pair output, error *e) {
+err_t
+nupd_append_tip_right (struct node_updates *s, const struct three_in_pair output, error *e)
+{
   const err_t rc = nupd_commit_1st_right (s, output.cur.pg, output.cur.key, e);
   if (rc != SUCCESS) { return rc; }
 
-  if (!in_pair_is_empty (output.prev)) {
+  if (!in_pair_is_empty (output.prev))
+  {
     // Search right array backwards
-    for (u32 i = s->rlen; i > 0; --i) {
+    for (u32 i = s->rlen; i > 0; --i)
+    {
       struct in_pair *p = nupd_get_right (s, i - 1);
-      if (p->pg == output.prev.pg) {
+      if (p->pg == output.prev.pg)
+      {
         p->key = output.prev.key;
         goto regular;
       }
     }
 
     // Check pivot
-    if (s->pivot.pg == output.prev.pg) {
+    if (s->pivot.pg == output.prev.pg)
+    {
       s->pivot.key = output.prev.key;
       goto regular;
     }
 
     // Search left array
-    for (u32 i = 0; i < s->llen; ++i) {
+    for (u32 i = 0; i < s->llen; ++i)
+    {
       struct in_pair *p = nupd_get_left (s, i);
-      if (p->pg == output.prev.pg) {
+      if (p->pg == output.prev.pg)
+      {
         p->key = output.prev.key;
         goto regular;
       }
     }
 
     // Not found, append to left
-    if (nupd_append_left (s, output.prev.pg, output.prev.key, e) == NULL) {
+    if (nupd_append_left (s, output.prev.pg, output.prev.key, e) == NULL)
+    {
       return error_trace (e);
     }
   }
 
 regular:
 
-  if (!in_pair_is_empty (output.next)) {
-    if (nupd_append_right (s, output.next.pg, output.next.key, e) == NULL) {
+  if (!in_pair_is_empty (output.next))
+  {
+    if (nupd_append_right (s, output.next.pg, output.next.key, e) == NULL)
+    {
       return error_trace (e);
     }
   }
@@ -497,10 +573,12 @@ regular:
 }
 
 #ifndef NTEST
-TEST (nupd_append_tip_right) {
+TEST (nupd_append_tip_right)
+{
   error e = error_create ();
 
-  TEST_CASE ("Append with only current") {
+  TEST_CASE ("Append with only current")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct three_in_pair tip = {
@@ -520,13 +598,15 @@ TEST (nupd_append_tip_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append with current and next") {
+  TEST_CASE ("Append with current and next")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct three_in_pair tip = {
         .prev = in_pair_empty,
         .cur  = {.pg = 200, .key = 1024},
-        .next = {.pg = 300, .key = 2048}};
+        .next = {.pg = 300, .key = 2048}
+    };
 
     nupd_commit_1st_right (n, 100, 512, &e);
     nupd_append_tip_right (n, tip, &e);
@@ -539,13 +619,15 @@ TEST (nupd_append_tip_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append with all three pairs") {
+  TEST_CASE ("Append with all three pairs")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct three_in_pair tip = {
         .prev = {.pg = 150, .key = 768},
         .cur  = {.pg = 200, .key = 1024},
-        .next = {.pg = 300, .key = 2048}};
+        .next = {.pg = 300, .key = 2048}
+    };
 
     nupd_commit_1st_right (n, 100, 512, &e);
     nupd_append_tip_right (n, tip, &e);
@@ -559,7 +641,8 @@ TEST (nupd_append_tip_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Update existing prev in right array") {
+  TEST_CASE ("Update existing prev in right array")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_right (n, 100, 512, &e);
@@ -581,7 +664,8 @@ TEST (nupd_append_tip_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Update pivot as prev") {
+  TEST_CASE ("Update pivot as prev")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     const struct three_in_pair tip = {
@@ -600,7 +684,8 @@ TEST (nupd_append_tip_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append prev when not found") {
+  TEST_CASE ("Append prev when not found")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_right (n, 100, 512, &e);
@@ -623,45 +708,56 @@ TEST (nupd_append_tip_right) {
 }
 #endif
 
-err_t nupd_append_tip_left (struct node_updates *s, const struct three_in_pair output, error *e) {
+err_t
+nupd_append_tip_left (struct node_updates *s, const struct three_in_pair output, error *e)
+{
   const err_t rc = nupd_commit_1st_left (s, output.cur.pg, output.cur.key, e);
   if (rc != SUCCESS) { return rc; }
 
-  if (!in_pair_is_empty (output.next)) {
+  if (!in_pair_is_empty (output.next))
+  {
     // Search left array backwards
-    for (u32 i = s->llen; i > 0; --i) {
+    for (u32 i = s->llen; i > 0; --i)
+    {
       struct in_pair *p = nupd_get_left (s, i - 1);
-      if (p->pg == output.next.pg) {
+      if (p->pg == output.next.pg)
+      {
         p->key = output.next.key;
         goto regular;
       }
     }
 
     // Check pivot
-    if (s->pivot.pg == output.next.pg) {
+    if (s->pivot.pg == output.next.pg)
+    {
       s->pivot.key = output.next.key;
       goto regular;
     }
 
     // Search right array
-    for (u32 i = 0; i < s->rlen; ++i) {
+    for (u32 i = 0; i < s->rlen; ++i)
+    {
       struct in_pair *p = nupd_get_right (s, i);
-      if (p->pg == output.next.pg) {
+      if (p->pg == output.next.pg)
+      {
         p->key = output.next.key;
         goto regular;
       }
     }
 
     // Not found, append to right
-    if (nupd_append_right (s, output.next.pg, output.next.key, e) == NULL) {
+    if (nupd_append_right (s, output.next.pg, output.next.key, e) == NULL)
+    {
       return error_trace (e);
     }
   }
 
 regular:
 
-  if (!in_pair_is_empty (output.prev)) {
-    if (nupd_append_left (s, output.prev.pg, output.prev.key, e) == NULL) {
+  if (!in_pair_is_empty (output.prev))
+  {
+    if (nupd_append_left (s, output.prev.pg, output.prev.key, e) == NULL)
+    {
       return error_trace (e);
     }
   }
@@ -670,10 +766,12 @@ regular:
 }
 
 #ifndef NTEST
-TEST (nupd_append_tip_left) {
+TEST (nupd_append_tip_left)
+{
   error e = error_create ();
 
-  TEST_CASE ("Append with only current") {
+  TEST_CASE ("Append with only current")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_left (n, 100, 512, &e);
@@ -694,7 +792,8 @@ TEST (nupd_append_tip_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append with current and prev") {
+  TEST_CASE ("Append with current and prev")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_left (n, 100, 512, &e);
@@ -715,7 +814,8 @@ TEST (nupd_append_tip_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Append with all three pairs") {
+  TEST_CASE ("Append with all three pairs")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_left (n, 100, 512, &e);
@@ -723,7 +823,8 @@ TEST (nupd_append_tip_left) {
     const struct three_in_pair tip = {
         .next = {.pg = 75, .key = 384},
         .cur  = {.pg = 50, .key = 256},
-        .prev = {.pg = 25, .key = 128}};
+        .prev = {.pg = 25, .key = 128}
+    };
 
     nupd_append_tip_left (n, tip, &e);
 
@@ -736,7 +837,8 @@ TEST (nupd_append_tip_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Update existing next in left array") {
+  TEST_CASE ("Update existing next in left array")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_left (n, 100, 512, &e);
@@ -757,7 +859,8 @@ TEST (nupd_append_tip_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Update pivot as next") {
+  TEST_CASE ("Update pivot as next")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     nupd_commit_1st_left (n, 100, 512, &e);
@@ -780,12 +883,14 @@ TEST (nupd_append_tip_left) {
 #endif
 
 static err_t
-nupd_observe_right (struct node_updates *s, const pgno pg, const b_size key, error *e) {
+nupd_observe_right (struct node_updates *s, const pgno pg, const b_size key, error *e)
+{
   DBG_ASSERT (node_updates, s);
 
   if (s->robs == 0 && s->pivot.pg == pg) { return SUCCESS; }
 
-  while (s->robs < s->rlen) {
+  while (s->robs < s->rlen)
+  {
     if (nupd_get_right (s, s->robs)->pg == pg) { return SUCCESS; }
     s->robs++;
   }
@@ -797,12 +902,15 @@ nupd_observe_right (struct node_updates *s, const pgno pg, const b_size key, err
   return SUCCESS;
 }
 
-static err_t nupd_observe_left (struct node_updates *s, const pgno pg, const b_size key, error *e) {
+static err_t
+nupd_observe_left (struct node_updates *s, const pgno pg, const b_size key, error *e)
+{
   DBG_ASSERT (node_updates, s);
 
   if (s->lobs == 0 && s->pivot.pg == pg) { return SUCCESS; }
 
-  while (s->lobs < s->llen) {
+  while (s->lobs < s->llen)
+  {
     if (nupd_get_left (s, s->lobs)->pg == pg) { return SUCCESS; }
     s->lobs++;
   }
@@ -814,7 +922,9 @@ static err_t nupd_observe_left (struct node_updates *s, const pgno pg, const b_s
   return SUCCESS;
 }
 
-err_t nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx, error *e) {
+err_t
+nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs == 0);
   ASSERT (s->lobs == 0);
@@ -824,29 +934,30 @@ err_t nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx,
 
   err_t rc = nupd_observe_right_from (s, pg, lidx, e);
   if (rc != SUCCESS) { return rc; }
-  if (lidx > 0) {
+  if (lidx > 0)
+  {
     rc = nupd_observe_left_from (s, pg, lidx, e);
     if (rc != SUCCESS) { return rc; }
   }
   return SUCCESS;
 }
 
-err_t nupd_observe_right_from (
-    struct node_updates *s,
-    const page_h        *pg,
-    const p_size         lidx,
-    error               *e) {
+err_t
+nupd_observe_right_from (struct node_updates *s, const page_h *pg, const p_size lidx, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs <= s->rlen);
 
-  if (pg->mode == PHM_NONE) {
+  if (pg->mode == PHM_NONE)
+  {
     s->robs = s->rlen;
     return SUCCESS;
   }
 
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
 
-  for (p_size i = lidx; i < in_get_len (page_h_ro (pg)) && i < IN_MAX_KEYS; ++i) {
+  for (p_size i = lidx; i < in_get_len (page_h_ro (pg)) && i < IN_MAX_KEYS; ++i)
+  {
     const pgno   p  = in_get_leaf (page_h_ro (pg), i);
     const b_size b  = in_get_key (page_h_ro (pg), i);
     const err_t  rc = nupd_observe_right (s, p, b, e);
@@ -856,22 +967,22 @@ err_t nupd_observe_right_from (
   return SUCCESS;
 }
 
-err_t nupd_observe_left_from (
-    struct node_updates *s,
-    const page_h        *pg,
-    const p_size         lidx,
-    error               *e) {
+err_t
+nupd_observe_left_from (struct node_updates *s, const page_h *pg, const p_size lidx, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->lobs <= s->llen);
 
-  if (pg->mode == PHM_NONE) {
+  if (pg->mode == PHM_NONE)
+  {
     s->lobs = s->llen;
     return SUCCESS;
   }
 
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
 
-  for (p_size i = lidx; i > 0; --i) {
+  for (p_size i = lidx; i > 0; --i)
+  {
     const pgno   p  = in_get_leaf (page_h_ro (pg), i - 1);
     const b_size b  = in_get_key (page_h_ro (pg), i - 1);
     const err_t  rc = nupd_observe_left (s, p, b, e);
@@ -881,18 +992,22 @@ err_t nupd_observe_left_from (
   return SUCCESS;
 }
 
-err_t nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e) {
+err_t
+nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs <= s->rlen);
 
-  if (pg->mode == PHM_NONE) {
+  if (pg->mode == PHM_NONE)
+  {
     s->robs = s->rlen;
     return SUCCESS;
   }
 
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
 
-  for (p_size i = 0; i < in_get_len (page_h_ro (pg)) && i < IN_MAX_KEYS; ++i) {
+  for (p_size i = 0; i < in_get_len (page_h_ro (pg)) && i < IN_MAX_KEYS; ++i)
+  {
     const pgno   p  = in_get_leaf (page_h_ro (pg), i);
     const b_size b  = in_get_key (page_h_ro (pg), i);
     const err_t  rc = nupd_observe_right (s, p, b, e);
@@ -902,18 +1017,22 @@ err_t nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e
   return SUCCESS;
 }
 
-err_t nupd_observe_all_left (struct node_updates *s, const page_h *pg, error *e) {
+err_t
+nupd_observe_all_left (struct node_updates *s, const page_h *pg, error *e)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->lobs <= s->llen);
 
-  if (pg->mode == PHM_NONE) {
+  if (pg->mode == PHM_NONE)
+  {
     s->lobs = s->llen;
     return SUCCESS;
   }
 
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
 
-  for (p_size i = in_get_len (page_h_ro (pg)); i > 0; --i) {
+  for (p_size i = in_get_len (page_h_ro (pg)); i > 0; --i)
+  {
     const pgno   p  = in_get_leaf (page_h_ro (pg), i - 1);
     const b_size b  = in_get_key (page_h_ro (pg), i - 1);
     const err_t  rc = nupd_observe_left (s, p, b, e);
@@ -923,7 +1042,9 @@ err_t nupd_observe_all_left (struct node_updates *s, const page_h *pg, error *e)
   return SUCCESS;
 }
 
-struct in_pair nupd_consume_right (struct node_updates *s) {
+struct in_pair
+nupd_consume_right (struct node_updates *s)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->rcons < s->robs);
 
@@ -931,10 +1052,12 @@ struct in_pair nupd_consume_right (struct node_updates *s) {
 }
 
 #ifndef NTEST
-TEST (nupd_consume_right) {
+TEST (nupd_consume_right)
+{
   error e = error_create ();
 
-  TEST_CASE ("Consume single entry") {
+  TEST_CASE ("Consume single entry")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     n->robs = 1;
@@ -948,7 +1071,8 @@ TEST (nupd_consume_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Consume multiple entries in order") {
+  TEST_CASE ("Consume multiple entries in order")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     nupd_append_right (n, 300, 2048, &e);
@@ -970,13 +1094,15 @@ TEST (nupd_consume_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Consume across slab boundary") {
+  TEST_CASE ("Consume across slab boundary")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     for (u32 i = 0; i < NUPD_LENGTH + 2; ++i) { nupd_append_right (n, 200 + i, 1000 + i, &e); }
     n->robs = NUPD_LENGTH + 2;
 
-    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i) {
+    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i)
+    {
       const struct in_pair p = nupd_consume_right (n);
       test_assert_equal (p.pg, 200 + i);
       test_assert_equal (p.key, 1000 + i);
@@ -987,7 +1113,9 @@ TEST (nupd_consume_right) {
 }
 #endif
 
-struct in_pair nupd_consume_left (struct node_updates *s) {
+struct in_pair
+nupd_consume_left (struct node_updates *s)
+{
   DBG_ASSERT (node_updates, s);
   ASSERT (s->lcons < s->lobs);
 
@@ -995,9 +1123,11 @@ struct in_pair nupd_consume_left (struct node_updates *s) {
 }
 
 #ifndef NTEST
-TEST (nupd_consume_left) {
+TEST (nupd_consume_left)
+{
   error e = error_create ();
-  TEST_CASE ("Consume single entry") {
+  TEST_CASE ("Consume single entry")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     n->lobs = 1;
@@ -1011,7 +1141,8 @@ TEST (nupd_consume_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Consume multiple entries in order") {
+  TEST_CASE ("Consume multiple entries in order")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 90, 512, &e);
     nupd_append_left (n, 80, 256, &e);
@@ -1033,13 +1164,15 @@ TEST (nupd_consume_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("Consume across slab boundary") {
+  TEST_CASE ("Consume across slab boundary")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     for (u32 i = 0; i < NUPD_LENGTH + 2; ++i) { nupd_append_left (n, 50 + i, 100 + i, &e); }
     n->lobs = NUPD_LENGTH + 2;
 
-    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i) {
+    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i)
+    {
       const struct in_pair p = nupd_consume_left (n);
       test_assert_equal (p.pg, 50 + i);
       test_assert_equal (p.key, 100 + i);
@@ -1050,12 +1183,16 @@ TEST (nupd_consume_left) {
 }
 #endif
 
-bool nupd_done_observing_left (const struct node_updates *s) { return s->lobs >= s->llen; }
+bool
+nupd_done_observing_left (const struct node_updates *s)
+{ return s->lobs >= s->llen; }
 
 #ifndef NTEST
-TEST (nupd_done_observing_left) {
+TEST (nupd_done_observing_left)
+{
   error e = error_create ();
-  TEST_CASE ("True when no left entries") {
+  TEST_CASE ("True when no left entries")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (nupd_done_observing_left (n), 1);
@@ -1063,7 +1200,8 @@ TEST (nupd_done_observing_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when left entries not observed") {
+  TEST_CASE ("False when left entries not observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
 
@@ -1072,7 +1210,8 @@ TEST (nupd_done_observing_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("True when all left entries observed") {
+  TEST_CASE ("True when all left entries observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     nupd_append_left (n, 25, 128, &e);
@@ -1083,7 +1222,8 @@ TEST (nupd_done_observing_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when partially observed") {
+  TEST_CASE ("False when partially observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     nupd_append_left (n, 25, 128, &e);
@@ -1096,12 +1236,16 @@ TEST (nupd_done_observing_left) {
 }
 #endif
 
-bool nupd_done_observing_right (const struct node_updates *s) { return s->robs >= s->rlen; }
+bool
+nupd_done_observing_right (const struct node_updates *s)
+{ return s->robs >= s->rlen; }
 
 #ifndef NTEST
-TEST (nupd_done_observing_right) {
+TEST (nupd_done_observing_right)
+{
   error e = error_create ();
-  TEST_CASE ("True when no right entries") {
+  TEST_CASE ("True when no right entries")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (nupd_done_observing_right (n), 1);
@@ -1109,7 +1253,8 @@ TEST (nupd_done_observing_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when right entries not observed") {
+  TEST_CASE ("False when right entries not observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
 
@@ -1118,7 +1263,8 @@ TEST (nupd_done_observing_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("True when all right entries observed") {
+  TEST_CASE ("True when all right entries observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     nupd_append_right (n, 300, 2048, &e);
@@ -1131,12 +1277,16 @@ TEST (nupd_done_observing_right) {
 }
 #endif
 
-bool nupd_done_consuming_left (const struct node_updates *s) { return s->lcons == s->lobs; }
+bool
+nupd_done_consuming_left (const struct node_updates *s)
+{ return s->lcons == s->lobs; }
 
 #ifndef NTEST
-TEST (nupd_done_consuming_left) {
+TEST (nupd_done_consuming_left)
+{
   error e = error_create ();
-  TEST_CASE ("True when nothing to consume") {
+  TEST_CASE ("True when nothing to consume")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (nupd_done_consuming_left (n), 1);
@@ -1144,7 +1294,8 @@ TEST (nupd_done_consuming_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when observed but not consumed") {
+  TEST_CASE ("False when observed but not consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     n->lobs = 1;
@@ -1154,7 +1305,8 @@ TEST (nupd_done_consuming_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("True when fully consumed") {
+  TEST_CASE ("True when fully consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     n->lobs  = 1;
@@ -1167,12 +1319,16 @@ TEST (nupd_done_consuming_left) {
 }
 #endif
 
-bool nupd_done_consuming_right (const struct node_updates *s) { return s->rcons == s->robs; }
+bool
+nupd_done_consuming_right (const struct node_updates *s)
+{ return s->rcons == s->robs; }
 
 #ifndef NTEST
-TEST (nupd_done_consuming_right) {
+TEST (nupd_done_consuming_right)
+{
   error e = error_create ();
-  TEST_CASE ("True when nothing to consume") {
+  TEST_CASE ("True when nothing to consume")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (nupd_done_consuming_right (n), 1);
@@ -1180,7 +1336,8 @@ TEST (nupd_done_consuming_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when observed but not consumed") {
+  TEST_CASE ("False when observed but not consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     n->robs = 1;
@@ -1190,7 +1347,8 @@ TEST (nupd_done_consuming_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("True when fully consumed") {
+  TEST_CASE ("True when fully consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     n->robs  = 1;
@@ -1203,14 +1361,16 @@ TEST (nupd_done_consuming_right) {
 }
 #endif
 
-bool nupd_done_left (struct node_updates *s) {
-  return nupd_done_observing_left (s) && nupd_done_consuming_left (s);
-}
+bool
+nupd_done_left (struct node_updates *s)
+{ return nupd_done_observing_left (s) && nupd_done_consuming_left (s); }
 
 #ifndef NTEST
-TEST (nupd_done_left) {
+TEST (nupd_done_left)
+{
   error e = error_create ();
-  TEST_CASE ("True for empty node") {
+  TEST_CASE ("True for empty node")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (nupd_done_left (n), 1);
@@ -1218,7 +1378,8 @@ TEST (nupd_done_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when not observed") {
+  TEST_CASE ("False when not observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
 
@@ -1227,7 +1388,8 @@ TEST (nupd_done_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when observed but not consumed") {
+  TEST_CASE ("False when observed but not consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     n->lobs = 1;
@@ -1237,7 +1399,8 @@ TEST (nupd_done_left) {
     nupd_free (n);
   }
 
-  TEST_CASE ("True when observed and consumed") {
+  TEST_CASE ("True when observed and consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_left (n, 50, 256, &e);
     n->lobs  = 1;
@@ -1250,14 +1413,16 @@ TEST (nupd_done_left) {
 }
 #endif
 
-bool nupd_done_right (struct node_updates *s) {
-  return nupd_done_observing_right (s) && nupd_done_consuming_right (s);
-}
+bool
+nupd_done_right (struct node_updates *s)
+{ return nupd_done_observing_right (s) && nupd_done_consuming_right (s); }
 
 #ifndef NTEST
-TEST (nupd_done_right) {
+TEST (nupd_done_right)
+{
   error e = error_create ();
-  TEST_CASE ("True for empty node") {
+  TEST_CASE ("True for empty node")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
 
     test_assert_equal (nupd_done_right (n), 1);
@@ -1265,7 +1430,8 @@ TEST (nupd_done_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when not observed") {
+  TEST_CASE ("False when not observed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
 
@@ -1274,7 +1440,8 @@ TEST (nupd_done_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("False when observed but not consumed") {
+  TEST_CASE ("False when observed but not consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     n->robs = 1;
@@ -1284,7 +1451,8 @@ TEST (nupd_done_right) {
     nupd_free (n);
   }
 
-  TEST_CASE ("True when observed and consumed") {
+  TEST_CASE ("True when observed and consumed")
+  {
     struct node_updates *n = nupd_init (100, 512, &e);
     nupd_append_right (n, 200, 1024, &e);
     n->robs  = 1;
@@ -1297,7 +1465,9 @@ TEST (nupd_done_right) {
 }
 #endif
 
-p_size nupd_append_maximally_left (struct node_updates *n, const page_h *pg, const p_size lidx) {
+p_size
+nupd_append_maximally_left (struct node_updates *n, const page_h *pg, const p_size lidx)
+{
   DBG_ASSERT (node_updates, n);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
   ASSERT (in_get_len (page_h_ro (pg)) == IN_MAX_KEYS);
@@ -1305,9 +1475,11 @@ p_size nupd_append_maximally_left (struct node_updates *n, const page_h *pg, con
   p_size ret = 0;
   p_size i   = lidx;
 
-  while (i > 0 && n->lcons < n->lobs) {
+  while (i > 0 && n->lcons < n->lobs)
+  {
     const struct in_pair next = nupd_consume_left (n);
-    if (next.key > 0) {
+    if (next.key > 0)
+    {
       in_set_key_leaf (page_h_w (pg), i - 1, next.key, next.pg);
       i--;
       ret++;
@@ -1317,7 +1489,9 @@ p_size nupd_append_maximally_left (struct node_updates *n, const page_h *pg, con
   return ret;
 }
 
-p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, const p_size lidx) {
+p_size
+nupd_append_maximally_right (struct node_updates *n, const page_h *pg, const p_size lidx)
+{
   DBG_ASSERT (node_updates, n);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
   ASSERT (in_get_len (page_h_ro (pg)) == IN_MAX_KEYS);
@@ -1325,9 +1499,11 @@ p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, co
   p_size ret = 0;
   p_size i   = lidx;
 
-  while (i < IN_MAX_KEYS && n->rcons < n->robs) {
+  while (i < IN_MAX_KEYS && n->rcons < n->robs)
+  {
     const struct in_pair next = nupd_consume_right (n);
-    if (next.key > 0) {
+    if (next.key > 0)
+    {
       in_set_key_leaf (page_h_w (pg), i, next.key, next.pg);
       i++;
       ret++;
@@ -1337,7 +1513,9 @@ p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, co
   return ret;
 }
 
-p_size nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg) {
+p_size
+nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg)
+{
   DBG_ASSERT (node_updates, n);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
   ASSERT (in_get_len (page_h_ro (pg)) == IN_MAX_KEYS);
@@ -1345,7 +1523,8 @@ p_size nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg
   // Append Pivot to the end
   // [-------------------+]
   p_size len = 0;
-  if (n->pivot.key > 0) {
+  if (n->pivot.key > 0)
+  {
     in_set_key_leaf (page_h_w (pg), IN_MAX_KEYS - (++len), n->pivot.key, n->pivot.pg);
   }
 
@@ -1356,7 +1535,8 @@ p_size nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg
   ASSERT (len <= IN_MAX_KEYS);
 
   // Haven't finish - apply right remaining pages
-  if (len < IN_MAX_KEYS) {
+  if (len < IN_MAX_KEYS)
+  {
     // Shift left (memcpy x1)
     // [++++++++++++++------]
     in_cut_left (page_h_w (pg), IN_MAX_KEYS - len);
@@ -1369,7 +1549,9 @@ p_size nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg
   return len;
 }
 
-p_size nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg) {
+p_size
+nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg)
+{
   DBG_ASSERT (node_updates, n);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
   ASSERT (in_get_len (page_h_ro (pg)) == IN_MAX_KEYS);
@@ -1390,7 +1572,8 @@ p_size nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg
   ASSERT (len <= IN_MAX_KEYS);
 
   // Haven't finish - apply right remaining pages
-  if (len < IN_MAX_KEYS) {
+  if (len < IN_MAX_KEYS)
+  {
     // Shift right (memcpy x1)
     // [------++++++++++++++]
     // ^

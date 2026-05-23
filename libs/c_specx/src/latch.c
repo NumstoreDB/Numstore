@@ -15,16 +15,20 @@
 #include "c_specx.h"
 
 #ifndef NTEST
-struct data {
+struct data
+{
   const u32 iters;
   int       value;
   latch     l;
 };
 
-static void *data_thread (void *_data) {
+static void *
+data_thread (void *_data)
+{
   struct data *d = _data;
 
-  for (u32 i = 0; i < d->iters; ++i) {
+  for (u32 i = 0; i < d->iters; ++i)
+  {
     latch_lock (&d->l);
     d->value += 1;
     latch_unlock (&d->l);
@@ -33,7 +37,8 @@ static void *data_thread (void *_data) {
   return NULL;
 }
 
-TEST (latch) {
+TEST (latch)
+{
   error e = error_create ();
 
   struct data d = {

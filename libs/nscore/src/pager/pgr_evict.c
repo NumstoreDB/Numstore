@@ -22,7 +22,9 @@
  * reused.  The frame must be unpinned (pin == 0) and must not be a write
  * frame (PW_X).
  */
-err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e) {
+err_t
+pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e)
+{
   ASSERT ((mp->flags & PW_PRESENT));
   ASSERT (!(mp->flags & PW_X));
   ASSERT (mp->pin == 0);

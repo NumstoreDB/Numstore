@@ -22,7 +22,9 @@
 
 #include <string.h>
 
-slsn wal_append_begin_log (struct wal *w, const txid tid, error *e) {
+slsn
+wal_append_begin_log (struct wal *w, const txid tid, error *e)
+{
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
   w->whdr.type      = WL_BEGIN;
@@ -32,7 +34,9 @@ slsn wal_append_begin_log (struct wal *w, const txid tid, error *e) {
   return result;
 }
 
-slsn wal_append_commit_log (struct wal *w, const txid tid, const lsn prev, error *e) {
+slsn
+wal_append_commit_log (struct wal *w, const txid tid, const lsn prev, error *e)
+{
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
   w->whdr.type      = WL_COMMIT;
@@ -42,7 +46,9 @@ slsn wal_append_commit_log (struct wal *w, const txid tid, const lsn prev, error
   return result;
 }
 
-slsn wal_append_end_log (struct wal *w, const txid tid, const lsn prev, error *e) {
+slsn
+wal_append_end_log (struct wal *w, const txid tid, const lsn prev, error *e)
+{
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
   w->whdr.type      = WL_END;
@@ -52,7 +58,9 @@ slsn wal_append_end_log (struct wal *w, const txid tid, const lsn prev, error *e
   return result;
 }
 
-slsn wal_append_update_log (struct wal *w, const struct wal_update_write update, error *e) {
+slsn
+wal_append_update_log (struct wal *w, const struct wal_update_write update, error *e)
+{
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
   w->whdr.type      = WL_UPDATE;
@@ -62,7 +70,9 @@ slsn wal_append_update_log (struct wal *w, const struct wal_update_write update,
   return result;
 }
 
-slsn wal_append_clr_log (struct wal *w, const struct wal_clr_write clr, error *e) {
+slsn
+wal_append_clr_log (struct wal *w, const struct wal_clr_write clr, error *e)
+{
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
   w->whdr.type      = WL_CLR;
@@ -72,21 +82,29 @@ slsn wal_append_clr_log (struct wal *w, const struct wal_clr_write clr, error *e
   return result;
 }
 
-slsn wal_append_log (struct wal *w, const struct wal_rec_hdr_write *whdr, error *e) {
-  switch (whdr->type) {
-    case WL_BEGIN: {
+slsn
+wal_append_log (struct wal *w, const struct wal_rec_hdr_write *whdr, error *e)
+{
+  switch (whdr->type)
+  {
+    case WL_BEGIN:
+    {
       return wal_append_begin_log (w, whdr->begin.tid, e);
     }
-    case WL_COMMIT: {
+    case WL_COMMIT:
+    {
       return wal_append_commit_log (w, whdr->commit.tid, whdr->commit.prev, e);
     }
-    case WL_END: {
+    case WL_END:
+    {
       return wal_append_end_log (w, whdr->end.tid, whdr->end.prev, e);
     }
-    case WL_UPDATE: {
+    case WL_UPDATE:
+    {
       return wal_append_update_log (w, whdr->update, e);
     }
-    case WL_CLR: {
+    case WL_CLR:
+    {
       return wal_append_clr_log (w, whdr->clr, e);
     }
     case WL_EOF: UNREACHABLE ();

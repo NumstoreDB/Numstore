@@ -20,8 +20,10 @@
 ////////////////////////////////////////////////////////////
 /// Type
 
-struct type {
-  enum type_t {
+struct type
+{
+  enum type_t
+  {
     T_PRIM   = 0,
     T_STRUCT = 1,
     T_UNION  = 2,
@@ -29,7 +31,8 @@ struct type {
   } type;
 
   union {
-    enum prim_t {
+    enum prim_t
+    {
       U8    = 0,
       U16   = 1,
       U32   = 2,
@@ -56,19 +59,22 @@ struct type {
       CU128 = 23,
     } p;
 
-    struct struct_t {
+    struct struct_t
+    {
       u16            len;
       struct string *keys;
       struct type  **types;
     } st;
 
-    struct union_t {
+    struct union_t
+    {
       u16            len;
       struct string *keys;
       struct type  **types;
     } un;
 
-    struct sarray_t {
+    struct sarray_t
+    {
       u16          rank;
       u32         *dims;
       struct type *t;
@@ -95,19 +101,22 @@ void         type_free (struct type *t);
 ////////////////////////////////////////////////////////////
 /// KVT List
 
-struct kvt_list {
+struct kvt_list
+{
   u16            len;
   struct string *keys;
   struct type  **types;
 };
 
-struct kv_llnode {
+struct kv_llnode
+{
   struct string key;
   struct type  *value;
   struct llnode link;
 };
 
-struct kvt_list_builder {
+struct kvt_list_builder
+{
   struct llnode *head;
 
   u16 klen;
@@ -120,7 +129,8 @@ struct kvt_list_builder {
 void kvlb_create (
     struct kvt_list_builder *dest,
     struct chunk_alloc      *temp,
-    struct chunk_alloc      *persistent);
+    struct chunk_alloc      *persistent
+);
 
 err_t kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
 
@@ -131,11 +141,8 @@ err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
 ////////////////////////////////////////////////////////////
 /// Struct
 
-err_t struct_t_create (
-    struct struct_t    *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e);
+err_t
+struct_t_create (struct struct_t *dest, struct kvt_list list, struct chunk_alloc *dalloc, error *e);
 
 err_t struct_t_validate (const struct struct_t *t, error *e);
 
@@ -151,7 +158,8 @@ err_t struct_t_deserialize (
     struct struct_t     *dest,
     struct deserializer *src,
     struct chunk_alloc  *a,
-    error               *e);
+    error               *e
+);
 
 err_t struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth, error *e);
 
@@ -181,11 +189,8 @@ enum prim_t strtoprim (const char *text, u32 len);
 ////////////////////////////////////////////////////////////
 /// Union
 
-err_t union_t_create (
-    struct union_t     *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e);
+err_t
+union_t_create (struct union_t *dest, struct kvt_list list, struct chunk_alloc *dalloc, error *e);
 
 err_t union_t_validate (const struct union_t *t, error *e);
 
@@ -201,7 +206,8 @@ err_t union_t_deserialize (
     struct union_t      *dest,
     struct deserializer *src,
     struct chunk_alloc  *a,
-    error               *e);
+    error               *e
+);
 
 err_t union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, error *e);
 
@@ -226,18 +232,21 @@ err_t sarray_t_deserialize (
     struct sarray_t     *persistent,
     struct deserializer *src,
     struct chunk_alloc  *a,
-    error               *e);
+    error               *e
+);
 
 err_t sarray_t_random (struct sarray_t *sa, struct chunk_alloc *temp, u32 depth, error *e);
 
 bool sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right);
 
-struct dim_llnode {
+struct dim_llnode
+{
   u32           dim;
   struct llnode link;
 };
 
-struct sarray_builder {
+struct sarray_builder
+{
   struct llnode *head;
   struct type   *type;
 
@@ -245,10 +254,8 @@ struct sarray_builder {
   struct chunk_alloc *persistent;
 };
 
-void sab_create (
-    struct sarray_builder *dest,
-    struct chunk_alloc    *temp,
-    struct chunk_alloc    *persistent);
+void
+sab_create (struct sarray_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent);
 
 err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
 

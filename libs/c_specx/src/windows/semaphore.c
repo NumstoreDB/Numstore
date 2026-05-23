@@ -22,10 +22,13 @@
 // Backed by a Win32 semaphore HANDLE. LONG_MAX as the maximum
 // count is effectively unbounded for smartfile's usage.
 
-err_t i_semaphore_create (i_semaphore *s, unsigned int value, error *e) {
+err_t
+i_semaphore_create (i_semaphore *s, unsigned int value, error *e)
+{
   ASSERT (s);
   s->handle = CreateSemaphoreA (NULL, (LONG)value, LONG_MAX, NULL);
-  if (!s->handle) {
+  if (!s->handle)
+  {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -34,37 +37,48 @@ err_t i_semaphore_create (i_semaphore *s, unsigned int value, error *e) {
         0,
         buf,
         sizeof (buf),
-        NULL);
+        NULL
+    );
     return error_causef (e, ERR_IO, "CreateSemaphore: %s", buf);
   }
   return SUCCESS;
 }
 
-void i_semaphore_free (i_semaphore *s) {
+void
+i_semaphore_free (i_semaphore *s)
+{
   ASSERT (s);
   ASSERT (s->handle);
   CloseHandle (s->handle);
   s->handle = NULL;
 }
 
-void i_semaphore_post (i_semaphore *s) {
+void
+i_semaphore_post (i_semaphore *s)
+{
   ASSERT (s);
-  if (!ReleaseSemaphore (s->handle, 1, NULL)) {
+  if (!ReleaseSemaphore (s->handle, 1, NULL))
+  {
     i_log_error ("semaphore_post: ReleaseSemaphore failed: %lu\n", GetLastError ());
     UNREACHABLE ();
   }
 }
 
-void i_semaphore_wait (i_semaphore *s) {
+void
+i_semaphore_wait (i_semaphore *s)
+{
   ASSERT (s);
   DWORD ret = WaitForSingleObject (s->handle, INFINITE);
-  if (ret != WAIT_OBJECT_0) {
+  if (ret != WAIT_OBJECT_0)
+  {
     i_log_error ("semaphore_wait: WaitForSingleObject failed: %lu\n", GetLastError ());
     UNREACHABLE ();
   }
 }
 
-bool i_semaphore_try_wait (i_semaphore *s) {
+bool
+i_semaphore_try_wait (i_semaphore *s)
+{
   ASSERT (s);
   DWORD ret = WaitForSingleObject (s->handle, 0);
   if (ret == WAIT_OBJECT_0) { return true; }
@@ -73,7 +87,9 @@ bool i_semaphore_try_wait (i_semaphore *s) {
   UNREACHABLE ();
 }
 
-bool i_semaphore_timed_wait (i_semaphore *s, long msec) {
+bool
+i_semaphore_timed_wait (i_semaphore *s, long msec)
+{
   ASSERT (s);
   DWORD ret = WaitForSingleObject (s->handle, (DWORD)msec);
   if (ret == WAIT_OBJECT_0) { return true; }

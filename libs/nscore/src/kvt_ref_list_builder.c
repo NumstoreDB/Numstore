@@ -22,10 +22,13 @@ DEFINE_DBG_ASSERT (struct kvt_ref_list_builder, kvt_ref_list_builder, s, {
   ASSERT (s->tlen <= 10);
 })
 
-void kvrlb_create (
+void
+kvrlb_create (
     struct kvt_ref_list_builder *dest,
     struct chunk_alloc          *temp,
-    struct chunk_alloc          *persistent) {
+    struct chunk_alloc          *persistent
+)
+{
   *dest = (struct kvt_ref_list_builder){
       .head       = NULL,
       .klen       = 0,
@@ -36,19 +39,25 @@ void kvrlb_create (
   DBG_ASSERT (kvt_ref_list_builder, dest);
 }
 
-static bool kvrlb_has_key_been_used (const struct kvt_ref_list_builder *ub, struct string key) {
-  for (struct llnode *it = ub->head; it; it = it->next) {
+static bool
+kvrlb_has_key_been_used (const struct kvt_ref_list_builder *ub, struct string key)
+{
+  for (struct llnode *it = ub->head; it; it = it->next)
+  {
     struct kv_ref_llnode *kn = container_of (it, struct kv_ref_llnode, link);
     if (string_equal (kn->key, key)) { return true; }
   }
   return false;
 }
 
-err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e) {
+err_t
+kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
+{
   DBG_ASSERT (kvt_ref_list_builder, ub);
 
   // Check for duplicate keys
-  if (kvrlb_has_key_been_used (ub, key)) {
+  if (kvrlb_has_key_been_used (ub, key))
+  {
     return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
   }
 
@@ -59,9 +68,9 @@ err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, erro
   // Find where to insert this new key in the linked list
   struct llnode        *slot = llnode_get_n (ub->head, ub->klen);
   struct kv_ref_llnode *node;
-  if (slot) {
-    node = container_of (slot, struct kv_ref_llnode, link);
-  } else {
+  if (slot) { node = container_of (slot, struct kv_ref_llnode, link); }
+  else
+  {
     // Allocate new node onto temp
     node = chunk_malloc (ub->temp, 1, sizeof *node, e);
     if (!node) { return error_trace (e); }
@@ -69,11 +78,10 @@ err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, erro
     node->value = (struct type_ref){0};
 
     // Set the head if it doesn't exist
-    if (!ub->head) {
-      ub->head = &node->link;
-    }
+    if (!ub->head) { ub->head = &node->link; }
     // Otherwise, append to the list
-    else {
+    else
+    {
       list_append (&ub->head, &node->link);
     }
   }
@@ -85,21 +93,23 @@ err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, erro
   return SUCCESS;
 }
 
-err_t kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e) {
+err_t
+kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e)
+{
   DBG_ASSERT (kvt_ref_list_builder, ub);
 
   struct llnode        *slot = llnode_get_n (ub->head, ub->tlen);
   struct kv_ref_llnode *node;
-  if (slot) {
-    node = container_of (slot, struct kv_ref_llnode, link);
-  } else {
+  if (slot) { node = container_of (slot, struct kv_ref_llnode, link); }
+  else
+  {
     node = chunk_malloc (ub->temp, 1, sizeof *node, e);
     if (!node) { return error_trace (e); }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head) {
-      ub->head = &node->link;
-    } else {
+    if (!ub->head) { ub->head = &node->link; }
+    else
+    {
       list_append (&ub->head, &node->link);
     }
   }
@@ -109,7 +119,9 @@ err_t kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, err
   return SUCCESS;
 }
 
-err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *e) {
+err_t
+kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *e)
+{
   ASSERT (dest);
 
   if (ub->klen == 0) { return error_causef (e, ERR_INTERP, "no keys"); }
@@ -124,7 +136,8 @@ err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, e
   if (!types) { return error_trace (e); }
 
   size_t i = 0;
-  for (struct llnode *it = ub->head; it; it = it->next) {
+  for (struct llnode *it = ub->head; it; it = it->next)
+  {
     struct kv_ref_llnode *kn = container_of (it, struct kv_ref_llnode, link);
     keys[i]                  = kn->key;
     types[i]                 = kn->value;

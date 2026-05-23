@@ -22,7 +22,8 @@
 #include "nscore/variables.h"
 
 static sb_size
-_nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e) {
+_nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e)
+{
   sb_size                  ret;                     // Return value
   t_size                   tsize;                   // Size of  the variable
   b_size                   len;                     // Length of the variable
@@ -43,13 +44,14 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-      .p     = db->root->p,
-      .tx    = db->atx,
-      .vname = vname,
-      .alloc = &temp,
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = vname,
+        .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE) {
+    if (err == ERR_VARIABLE_NE)
+    {
       ret           = 0;
       e->cause_code = SUCCESS;
       e->cmlen      = 0;
@@ -63,7 +65,8 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
     tsize = type_byte_size (gparams.dest.dtype);
     len   = gparams.dest.nbytes;
 
-    if (len % tsize != 0) {
+    if (len % tsize != 0)
+    {
       error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
       goto failed_rollback;
     }
@@ -73,7 +76,8 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
     if (stride_resolve (&stride, ustr, len, e)) { goto failed_rollback; }
 
     // Initialize the output buffer
-    if (dest) {
+    if (dest)
+    {
       stream_obuf_init (&_output, &ctx, dest, stride.nelems * tsize);
       output = &_output;
     }
@@ -82,14 +86,14 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
   // READ
   {
     rparams = (struct ns_read_params){
-      .p      = db->root->p,
-      .dest   = output,
-      .tx     = db->atx,
-      .root   = gparams.dest.rpt_root,
-      .size   = tsize,
-      .bofst  = tsize * stride.start,
-      .stride = stride.stride,
-      .nelem  = stride.nelems,
+        .p      = db->root->p,
+        .dest   = output,
+        .tx     = db->atx,
+        .root   = gparams.dest.rpt_root,
+        .size   = tsize,
+        .bofst  = tsize * stride.start,
+        .stride = stride.stride,
+        .nelem  = stride.nelems,
     };
     ret = ns_read (rparams, e);
     WRAP_GOTO (ret, failed_rollback);
@@ -111,19 +115,22 @@ failed:
   return error_trace (e);
 }
 
-sb_size nsdb_read (
-  nsdb_t     *_smf,
-  const char *name,
-  void       *dest,
-  sb_size     start,
-  sb_size     step,
-  sb_size     stop,
-  int         flags) {
+sb_size
+nsdb_read (
+    nsdb_t     *_smf,
+    const char *name,
+    void       *dest,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+)
+{
   struct user_stride stride = {
-    .start   = start,
-    .step    = step,
-    .stop    = stop,
-    .present = flags,
+      .start   = start,
+      .step    = step,
+      .stop    = stop,
+      .present = flags,
   };
   struct nshandle *smf = (struct nshandle *)_smf;
 

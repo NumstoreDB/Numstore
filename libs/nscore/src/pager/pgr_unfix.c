@@ -16,7 +16,9 @@
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 
-void pgr_unfix (struct pager *p, page_h *h, int flags) {
+void
+pgr_unfix (struct pager *p, page_h *h, int flags)
+{
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
 
   latch_lock (&h->pgr->ctrl);
@@ -24,7 +26,8 @@ void pgr_unfix (struct pager *p, page_h *h, int flags) {
   ASSERT (h->pgr->flags & PW_PRESENT);
 
   // Need to save this page
-  if (h->mode == PHM_X) {
+  if (h->mode == PHM_X)
+  {
     spgno page_lsn = 0;
 
     // Can only save valid pages
@@ -45,7 +48,9 @@ void pgr_unfix (struct pager *p, page_h *h, int flags) {
 
     // Unlock read page data
     spx_unlock_x (&h->pgr->data);
-  } else {
+  }
+  else
+  {
     // Unlock read page data
     spx_unlock_s (&h->pgr->data);
   }

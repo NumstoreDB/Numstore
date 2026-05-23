@@ -17,10 +17,9 @@
 
 DEFINE_DBG_ASSERT (struct sarray_builder, sarray_builder, s, { ASSERT (s); })
 
-void sab_create (
-    struct sarray_builder *dest,
-    struct chunk_alloc    *temp,
-    struct chunk_alloc    *persistent) {
+void
+sab_create (struct sarray_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent)
+{
   *dest = (struct sarray_builder){
       .head       = NULL,
       .type       = NULL,
@@ -31,7 +30,9 @@ void sab_create (
   DBG_ASSERT (sarray_builder, dest);
 }
 
-err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e) {
+err_t
+sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
+{
   DBG_ASSERT (sarray_builder, eb);
 
   if (dim <= 0) { return error_causef (e, ERR_SYNTAX, "sarray dimension must be > 0"); }
@@ -40,15 +41,15 @@ err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e) {
   struct llnode     *slot = llnode_get_n (eb->head, idx);
   struct dim_llnode *node;
 
-  if (slot) {
-    node = container_of (slot, struct dim_llnode, link);
-  } else {
+  if (slot) { node = container_of (slot, struct dim_llnode, link); }
+  else
+  {
     node = chunk_malloc (eb->temp, 1, sizeof *node, e);
     if (!node) { return error_trace (e); }
     llnode_init (&node->link);
-    if (!eb->head) {
-      eb->head = &node->link;
-    } else {
+    if (!eb->head) { eb->head = &node->link; }
+    else
+    {
       list_append (&eb->head, &node->link);
     }
   }
@@ -57,7 +58,9 @@ err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e) {
   return SUCCESS;
 }
 
-err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e) {
+err_t
+sab_accept_type (struct sarray_builder *eb, struct type *t, error *e)
+{
   DBG_ASSERT (sarray_builder, eb);
 
   if (eb->type) { return error_causef (e, ERR_INTERP, "type already set"); }
@@ -67,7 +70,9 @@ err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e) {
   return error_trace (e);
 }
 
-err_t sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e) {
+err_t
+sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
+{
   DBG_ASSERT (sarray_builder, eb);
   ASSERT (persistent);
 
@@ -85,7 +90,8 @@ err_t sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *
   *t = *eb->type;
 
   u16 i = 0;
-  for (struct llnode *it = eb->head; it; it = it->next) {
+  for (struct llnode *it = eb->head; it; it = it->next)
+  {
     struct dim_llnode *dn = container_of (it, struct dim_llnode, link);
     dims[i++]             = dn->dim;
   }
@@ -98,7 +104,8 @@ err_t sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *
 }
 
 #ifndef NTEST
-TEST (sarray_builder) {
+TEST (sarray_builder)
+{
   error err = error_create ();
 
   // provide two fixed-size allocators for nodes + dims array

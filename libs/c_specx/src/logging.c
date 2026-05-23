@@ -19,7 +19,9 @@
 
 ////////////////////////////////////////////////////////////
 // LOGGING
-void i_log_internal (const char *prefix, const char *color, const char *fmt, ...) {
+void
+i_log_internal (const char *prefix, const char *color, const char *fmt, ...)
+{
   va_list args;
   va_start (args, fmt);
   fprintf (stderr, "%s[%-8.8s]: ", color, prefix);
@@ -28,4 +30,6 @@ void i_log_internal (const char *prefix, const char *color, const char *fmt, ...
   va_end (args);
 }
 
-void i_log_flush (void) { fflush (stderr); }
+void
+i_log_flush (void)
+{ fflush (stderr); }

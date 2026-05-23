@@ -18,7 +18,9 @@
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 
-err_t pgr_deletion_blocking_checkpoint (struct pager *p, error *e) {
+err_t
+pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
+{
   ASSERT (p->ww);
 
   // This is what makes the checkpoint blocking

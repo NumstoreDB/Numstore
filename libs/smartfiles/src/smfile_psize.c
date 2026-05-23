@@ -20,7 +20,9 @@
 #include "nscore/var.h"
 #include "smfile.h"
 
-static sb_size _smfile_psize (struct nshandle *db, const char *name, error *e) {
+static sb_size
+_smfile_psize (struct nshandle *db, const char *name, error *e)
+{
   struct chunk_alloc temp;
   chunk_alloc_create_default (&temp);
   struct string vname = vname_or_default (name);
@@ -56,7 +58,9 @@ failed:
   return error_trace (e);
 }
 
-sb_size smfile_psize (smfile_t *_smf, const char *name) {
+sb_size
+smfile_psize (smfile_t *_smf, const char *name)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

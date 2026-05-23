@@ -22,10 +22,13 @@ DEFINE_DBG_ASSERT (struct kvt_list_builder, kvt_list_builder, s, {
   ASSERT (s->tlen <= 10);
 })
 
-void kvlb_create (
+void
+kvlb_create (
     struct kvt_list_builder *dest,
     struct chunk_alloc      *temp,
-    struct chunk_alloc      *persistent) {
+    struct chunk_alloc      *persistent
+)
+{
   *dest = (struct kvt_list_builder){
       .head       = NULL,
       .klen       = 0,
@@ -36,19 +39,25 @@ void kvlb_create (
   DBG_ASSERT (kvt_list_builder, dest);
 }
 
-static bool kvlb_has_key_been_used (const struct kvt_list_builder *ub, struct string key) {
-  for (struct llnode *it = ub->head; it; it = it->next) {
+static bool
+kvlb_has_key_been_used (const struct kvt_list_builder *ub, struct string key)
+{
+  for (struct llnode *it = ub->head; it; it = it->next)
+  {
     struct kv_llnode *kn = container_of (it, struct kv_llnode, link);
     if (string_equal (kn->key, key)) { return true; }
   }
   return false;
 }
 
-err_t kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e) {
+err_t
+kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
+{
   DBG_ASSERT (kvt_list_builder, ub);
 
   // Check for duplicate keys
-  if (kvlb_has_key_been_used (ub, key)) {
+  if (kvlb_has_key_been_used (ub, key))
+  {
     return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
   }
 
@@ -60,9 +69,9 @@ err_t kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   struct llnode    *slot = llnode_get_n (ub->head, ub->klen);
   struct kv_llnode *node;
 
-  if (slot) {
-    node = container_of (slot, struct kv_llnode, link);
-  } else {
+  if (slot) { node = container_of (slot, struct kv_llnode, link); }
+  else
+  {
     // Allocate new node onto temp
     node = chunk_malloc (ub->temp, 1, sizeof *node, e);
     if (!node) { return error_trace (e); }
@@ -70,12 +79,11 @@ err_t kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
     node->value = NULL;
 
     // Set the head if it doesn't exist
-    if (!ub->head) {
-      ub->head = &node->link;
-    }
+    if (!ub->head) { ub->head = &node->link; }
 
     // Otherwise, append to the list
-    else {
+    else
+    {
       list_append (&ub->head, &node->link);
     }
   }
@@ -87,21 +95,23 @@ err_t kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   return SUCCESS;
 }
 
-err_t kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e) {
+err_t
+kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e)
+{
   DBG_ASSERT (kvt_list_builder, ub);
 
   struct llnode    *slot = llnode_get_n (ub->head, ub->tlen);
   struct kv_llnode *node;
-  if (slot) {
-    node = container_of (slot, struct kv_llnode, link);
-  } else {
+  if (slot) { node = container_of (slot, struct kv_llnode, link); }
+  else
+  {
     node = chunk_malloc (ub->temp, 1, sizeof *node, e);
     if (!node) { return error_trace (e); }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head) {
-      ub->head = &node->link;
-    } else {
+    if (!ub->head) { ub->head = &node->link; }
+    else
+    {
       list_append (&ub->head, &node->link);
     }
   }
@@ -111,7 +121,9 @@ err_t kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e) {
   return SUCCESS;
 }
 
-err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e) {
+err_t
+kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
+{
   ASSERT (dest);
 
   if (ub->klen == 0) { return error_causef (e, ERR_INTERP, "no keys"); }
@@ -124,7 +136,8 @@ err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e) 
   if (!types) { return error_trace (e); }
 
   size_t i = 0;
-  for (struct llnode *it = ub->head; it; it = it->next) {
+  for (struct llnode *it = ub->head; it; it = it->next)
+  {
     struct kv_llnode *kn = container_of (it, struct kv_llnode, link);
     keys[i]              = kn->key;
     types[i]             = kn->value;
@@ -139,7 +152,8 @@ err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e) 
 }
 
 #ifndef NTEST
-TEST (kvt_list_builder) {
+TEST (kvt_list_builder)
+{
   error err = error_create ();
 
   struct chunk_alloc persistent;

@@ -17,7 +17,8 @@
 #include "nscore/lt_lock.h"
 #include "nscore/txn.h"
 
-struct lockt {
+struct lockt
+{
   struct slab_alloc lock_alloc; // Allocate gr locks
   struct htable    *table;      // The table of locks
   latch             l;          // Latch for modifications
@@ -26,12 +27,8 @@ struct lockt {
 err_t lockt_init (struct lockt *t, error *e);
 void  lockt_destroy (struct lockt *t);
 
-err_t lockt_lock (
-    struct lockt  *t,
-    struct lt_lock lock,
-    enum lock_mode mode,
-    struct txn    *tx,
-    error         *e);
+err_t
+lockt_lock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, struct txn *tx, error *e);
 
 err_t lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, error *e);
 

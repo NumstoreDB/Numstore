@@ -16,7 +16,8 @@
 
 #include "nscore/compile_config.h"
 
-struct wal_page_diff {
+struct wal_page_diff
+{
   p_size bit_start;
   void  *undo;
   void  *redo;

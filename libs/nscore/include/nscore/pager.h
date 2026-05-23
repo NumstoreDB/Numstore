@@ -57,7 +57,8 @@
  * Flags to help the buffer manager know
  * which pages are occupied, accessed or writable
  */
-enum {
+enum
+{
   PW_ACCESS  = 1u << 0, // meaningless for X pages
   PW_DIRTY   = 1u << 1, // meaningless for X pages
   PW_PRESENT = 1u << 2,
@@ -67,7 +68,8 @@ enum {
 /**
  * Pager property flags
  */
-enum {
+enum
+{
   PGR_ISNEW        = 1u << 0, // This is a pager on a new database file
   PGR_ISRESTARTING = 1u << 1, // Pager is currently restarting
 };
@@ -97,7 +99,8 @@ enum {
       sizeof (u32) + /* checksum(lsn1) */ \
       sizeof (lsn)   /* lsn1 */
 
-struct pager_header {
+struct pager_header
+{
   lsn  lsn0;
   u32  lsn0csm;
   bool lsn0valid;
@@ -111,7 +114,8 @@ struct pager_header {
 #define LSN1_OFST     (LSN0_CSM_OFST + sizeof (u32))
 #define LSN1_CSM_OFST (LSN1_OFST + sizeof (lsn))
 
-struct pager {
+struct pager
+{
   struct pager_header header;
   u8                  _header[PAGE_HEADER_LEN];
 
@@ -214,13 +218,8 @@ err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
 /// Primary API
 
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
-err_t pgr_get_writable (
-    page_h       *dest,
-    struct txn   *tx,
-    int           flags,
-    pgno          pg,
-    struct pager *p,
-    error        *e);
+err_t
+pgr_get_writable (page_h *dest, struct txn *tx, int flags, pgno pg, struct pager *p, error *e);
 err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
 err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_release_with_log (
@@ -228,37 +227,45 @@ err_t pgr_release_with_log (
     page_h                  *h,
     int                      flags,
     struct wal_update_write *record,
-    error                   *e);
+    error                   *e
+);
 void pgr_cancel (const struct pager *p, page_h *h);
 
 ////////////////////////////////////////////////////////////
 /// Short Hands
 
-HEADER_FUNC err_t pgr_get_maybe_writable (
+HEADER_FUNC err_t
+pgr_get_maybe_writable (
     page_h       *dest,
     struct txn   *tx,
     int           flags,
     pgno          pg,
     struct pager *p,
     bool          writable,
-    error        *e) {
-  if (!writable) {
-    return pgr_get (dest, flags, pg, p, e);
-  } else {
+    error        *e
+)
+{
+  if (!writable) { return pgr_get (dest, flags, pg, p, e); }
+  else
+  {
     return pgr_get_writable (dest, tx, flags, pg, p, e);
   }
 }
 
-HEADER_FUNC err_t pgr_release (struct pager *p, page_h *h, const int flags, error *e) {
-  return pgr_release_with_log (p, h, flags, NULL, e);
-}
+HEADER_FUNC err_t
+pgr_release (struct pager *p, page_h *h, const int flags, error *e)
+{ return pgr_release_with_log (p, h, flags, NULL, e); }
 
-HEADER_FUNC err_t pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e) {
+HEADER_FUNC err_t
+pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e)
+{
   if (h->mode != PHM_NONE) { return pgr_release (p, h, flags, e); }
   return SUCCESS;
 }
 
-HEADER_FUNC err_t pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e) {
+HEADER_FUNC err_t
+pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
+{
   struct page_frame *pgr = h->pgr;
 
   if (pgr_release (p, h, flags, e)) { return error_trace (e); }
@@ -266,7 +273,9 @@ HEADER_FUNC err_t pgr_release_with_flush (struct pager *p, page_h *h, const int 
   return SUCCESS;
 }
 
-HEADER_FUNC err_t pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e) {
+HEADER_FUNC err_t
+pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
+{
   struct page_frame *pgr = h->pgr;
 
   if (pgr_release (p, h, flags, e)) { return error_trace (e); }
@@ -274,8 +283,11 @@ HEADER_FUNC err_t pgr_release_with_evict (struct pager *p, page_h *h, const int 
   return SUCCESS;
 }
 
-HEADER_FUNC err_t pgr_flush_all_pages (struct pager *p, error *e) {
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
+HEADER_FUNC err_t
+pgr_flush_all_pages (struct pager *p, error *e)
+{
+  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
+  {
     struct page_frame *mp = &p->pages[i];
 
     // A page is Flushable if:
@@ -291,7 +303,8 @@ HEADER_FUNC err_t pgr_flush_all_pages (struct pager *p, error *e) {
 
     latch_lock (&mp->ctrl);
 
-    if (mp->flags & PW_PRESENT && !(mp->flags & PW_X)) {
+    if (mp->flags & PW_PRESENT && !(mp->flags & PW_X))
+    {
       pgr_flush_unsafe (p, mp, e); // Ignore error
     }
 
@@ -301,13 +314,17 @@ HEADER_FUNC err_t pgr_flush_all_pages (struct pager *p, error *e) {
   return error_trace (e);
 }
 
-HEADER_FUNC err_t pgr_evict_all_pages (struct pager *p, error *e) {
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
+HEADER_FUNC err_t
+pgr_evict_all_pages (struct pager *p, error *e)
+{
+  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
+  {
     struct page_frame *mp = &p->pages[i];
 
     latch_lock (&mp->ctrl);
 
-    if (mp->flags & PW_PRESENT) {
+    if (mp->flags & PW_PRESENT)
+    {
       ASSERT (!(mp->flags & PW_X)); // All pages should be in a read state
       pgr_evict_unsafe (p, mp, e);  // Ignore error
     }
@@ -318,13 +335,17 @@ HEADER_FUNC err_t pgr_evict_all_pages (struct pager *p, error *e) {
   return error_trace (e);
 }
 
-HEADER_FUNC void pgr_cancel_if_exists (struct pager *p, page_h *h) {
+HEADER_FUNC void
+pgr_cancel_if_exists (struct pager *p, page_h *h)
+{
   if (h->mode == PHM_NONE) { return; }
 
   pgr_cancel (p, h);
 }
 
-HEADER_FUNC err_t pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e) {
+HEADER_FUNC err_t
+pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e)
+{
   pgno pg = page_h_pgno (_pg);
   pgr_release (p, _pg, flags, e);
   return pgr_get_writable (_pg, tx, flags, pg, p, e);

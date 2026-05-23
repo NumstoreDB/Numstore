@@ -18,7 +18,9 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *pyns_db_close (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *
+pyns_db_close (PyObject *Py_UNUSED (m), PyObject *arg)
+{
   if (!_unwrap_db (arg)) { return NULL; }
 
   /* TODO: smfile_close(smf); */

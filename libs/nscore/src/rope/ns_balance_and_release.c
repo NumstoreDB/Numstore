@@ -31,7 +31,9 @@
  *
  * If we need to delete a node, it's always [cur]
  */
-static void dlgt_balance_with_prev (const page_h *prev, const page_h *cur) {
+static void
+dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
+{
   ASSERT (prev->mode == PHM_X);
   ASSERT (cur->mode == PHM_X);
   ASSERT (dlgt_valid_neighbors (page_h_ro (prev), page_h_ro (cur)));
@@ -47,7 +49,8 @@ static void dlgt_balance_with_prev (const page_h *prev, const page_h *cur) {
   if (cur_len >= maxlen / 2) { return; }
 
   // There's enough data to balaance max / 2 for each node
-  if (prev_len + cur_len >= maxlen) {
+  if (prev_len + cur_len >= maxlen)
+  {
     dlgt_move_right (page_h_w (prev), page_h_w (cur), maxlen / 2 - cur_len);
     return;
   }
@@ -57,7 +60,8 @@ static void dlgt_balance_with_prev (const page_h *prev, const page_h *cur) {
 }
 
 #ifndef NTEST
-TEST (dlgt_balance_with_prev) {
+TEST (dlgt_balance_with_prev)
+{
   struct pgr_fixture f;
   error             *e = &f.e;
   pgr_fixture_create (&f);
@@ -115,7 +119,8 @@ TEST (dlgt_balance_with_prev) {
 
   pgr_release (f.p, &builder.root.out, PG_INNER_NODE, e);
 
-  TEST_CASE ("Both Full no change") {
+  TEST_CASE ("Both Full no change")
+  {
     dlgt_balance_with_prev (prev, cur);
     test_assert_equal (dl_used (page_h_ro (prev)), DL_DATA_SIZE);
     test_assert_equal (dl_used (page_h_ro (cur)), DL_DATA_SIZE);
@@ -129,7 +134,8 @@ TEST (dlgt_balance_with_prev) {
   // AFTER
   // [++++++++++++|_____________]
   // [****++++++++|_____________]
-  TEST_CASE ("No Delete") {
+  TEST_CASE ("No Delete")
+  {
     dl_memset (page_h_w (prev), _prev, DL_DATA_SIZE - 10);
     dl_memset (page_h_w (cur), _cur, 10);
 
@@ -138,15 +144,18 @@ TEST (dlgt_balance_with_prev) {
     test_assert_equal (dl_used (page_h_ro (cur)), DL_DATA_SIZE / 2);
 
     u32 i = 0;
-    for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i) {
+    for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (prev), i), _prev[i]);
     }
     i = 0;
-    for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i) {
+    for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (cur), i), _prev[DL_DATA_SIZE / 2 + DL_REM + i]);
     }
     const u32 k = i;
-    for (; i < DL_DATA_SIZE / 2; ++i) {
+    for (; i < DL_DATA_SIZE / 2; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (cur), i), _cur[i - k]);
     }
   }
@@ -157,7 +166,8 @@ TEST (dlgt_balance_with_prev) {
   // AFTER
   // [++++++++++++|++++***9***_]
   // [____________|_____________]
-  TEST_CASE ("Delete") {
+  TEST_CASE ("Delete")
+  {
     dl_memset (page_h_w (prev), _prev, DL_DATA_SIZE - 10);
     dl_memset (page_h_w (cur), _cur, 9);
 
@@ -167,7 +177,8 @@ TEST (dlgt_balance_with_prev) {
 
     u32 i = 0;
     // next data
-    for (; i < DL_DATA_SIZE - 10; ++i) {
+    for (; i < DL_DATA_SIZE - 10; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (prev), i), _prev[i]);
     }
     const u32 k = i;
@@ -191,7 +202,9 @@ TEST (dlgt_balance_with_prev) {
  * tail of cur (borrow).  If they fit together, all of cur is moved into
  * next, leaving cur empty (merge).
  */
-static void dlgt_balance_with_next (const page_h *cur, const page_h *next) {
+static void
+dlgt_balance_with_next (const page_h *cur, const page_h *next)
+{
   ASSERT (cur->mode == PHM_X);
   ASSERT (next->mode == PHM_X);
   ASSERT (dlgt_valid_neighbors (page_h_ro (cur), page_h_ro (next)));
@@ -205,7 +218,8 @@ static void dlgt_balance_with_next (const page_h *cur, const page_h *next) {
 
   if (cur_len >= maxlen / 2) { return; }
 
-  if (next_len + cur_len >= maxlen) {
+  if (next_len + cur_len >= maxlen)
+  {
     dlgt_move_left (page_h_w (cur), page_h_w (next), maxlen / 2 - cur_len);
     return;
   }
@@ -214,7 +228,8 @@ static void dlgt_balance_with_next (const page_h *cur, const page_h *next) {
 }
 
 #ifndef NTEST
-TEST (dlgt_balance_with_next) {
+TEST (dlgt_balance_with_next)
+{
   struct pgr_fixture f;
   error             *e = &f.e;
   pgr_fixture_create (&f);
@@ -272,7 +287,8 @@ TEST (dlgt_balance_with_next) {
 
   pgr_release (f.p, &builder.root.out, PG_INNER_NODE, e);
 
-  TEST_CASE ("Both Full no change") {
+  TEST_CASE ("Both Full no change")
+  {
     dlgt_balance_with_next (cur, next);
     test_assert_equal (dl_used (page_h_ro (cur)), DL_DATA_SIZE);
     test_assert_equal (dl_used (page_h_ro (next)), DL_DATA_SIZE);
@@ -286,7 +302,8 @@ TEST (dlgt_balance_with_next) {
   // AFTER
   // [+++10+++****|_____________]
   // [++++++++++++|___10____]
-  TEST_CASE ("No Delete") {
+  TEST_CASE ("No Delete")
+  {
     _Static_assert (DL_DATA_SIZE > 10, "This test needs DL_DATA_SIZE > 10");
     dl_memset (page_h_w (cur), _cur, 10);
     dl_memset (page_h_w (next), _next, DL_DATA_SIZE - 10);
@@ -297,11 +314,13 @@ TEST (dlgt_balance_with_next) {
 
     u32 i = 0;
     for (; i < 10; ++i) { test_assert_equal (dl_get_byte (page_h_ro (cur), i), _cur[i]); }
-    for (; i < DL_DATA_SIZE / 2; ++i) {
+    for (; i < DL_DATA_SIZE / 2; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (cur), i), _next[i - 10]);
     }
     i = 0;
-    for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i) {
+    for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i + DL_DATA_SIZE / 2 - 10]);
     }
   }
@@ -312,7 +331,8 @@ TEST (dlgt_balance_with_next) {
   // AFTER
   // [+++10+++****|_____________]
   // [++++++++++++|___10____]
-  TEST_CASE ("Delete") {
+  TEST_CASE ("Delete")
+  {
     dl_memset (page_h_w (cur), _cur, 9);
     dl_memset (page_h_w (next), _next, DL_DATA_SIZE - 10);
 
@@ -324,7 +344,8 @@ TEST (dlgt_balance_with_next) {
     for (; i < 9; ++i) { test_assert_equal (dl_get_byte (page_h_ro (next), i), _cur[i]); }
 
     // next data
-    for (; i < DL_DATA_SIZE - 1; ++i) {
+    for (; i < DL_DATA_SIZE - 1; ++i)
+    {
       test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i - 9]);
     }
   }
@@ -339,7 +360,8 @@ TEST (dlgt_balance_with_next) {
 #endif
 
 static struct three_in_pair
-three_in_pair_from (const page_h *prev, const page_h *cur, const page_h *next) {
+three_in_pair_from (const page_h *prev, const page_h *cur, const page_h *next)
+{
   ASSERT (prev == NULL || prev->mode != PHM_NONE);
   ASSERT (cur == NULL || cur->mode != PHM_NONE);
   ASSERT (next == NULL || next->mode != PHM_NONE);
@@ -358,13 +380,17 @@ three_in_pair_from (const page_h *prev, const page_h *cur, const page_h *next) {
 }
 
 // TODO - graceful error handling and clean up of partial pages
-err_t ns_balance_and_release (const struct ns_balance_and_release_params params, error *e) {
+err_t
+ns_balance_and_release (const struct ns_balance_and_release_params params, error *e)
+{
   ASSERT (
       params.prev->mode == PHM_NONE
-      || dlgt_valid_neighbors (page_h_ro (params.prev), page_h_ro (params.cur)));
+      || dlgt_valid_neighbors (page_h_ro (params.prev), page_h_ro (params.cur))
+  );
   ASSERT (
       params.next->mode == PHM_NONE
-      || dlgt_valid_neighbors (page_h_ro (params.cur), page_h_ro (params.next)));
+      || dlgt_valid_neighbors (page_h_ro (params.cur), page_h_ro (params.next))
+  );
   ASSERT (params.output);
 
   // Upgrade cur to writable - so far there's no garuntees that cur
@@ -374,89 +400,109 @@ err_t ns_balance_and_release (const struct ns_balance_and_release_params params,
   *params.output = three_in_pair_from (NULL, params.cur, NULL);
 
   // Cur needs balancing because it is less than maxlen / 2
-  if (csize > 0 && csize < dlgt_get_max_len (page_h_ro (params.cur)) / 2) {
+  if (csize > 0 && csize < dlgt_get_max_len (page_h_ro (params.cur)) / 2)
+  {
     // If next is present - try balancing with next
-    if (params.next->mode != PHM_NONE) {
+    if (params.next->mode != PHM_NONE)
+    {
       dlgt_balance_with_next (params.cur, params.next);
       *params.output = three_in_pair_from (NULL, params.cur, params.next);
     }
 
     // If prev is present - try balancing with prev
-    else if (params.prev->mode != PHM_NONE) {
+    else if (params.prev->mode != PHM_NONE)
+    {
       dlgt_balance_with_prev (params.prev, params.cur);
       *params.output = three_in_pair_from (params.prev, params.cur, NULL);
     }
 
     // Loop back to next - load next and try again (if next even exists)
-    else if (dlgt_get_next (page_h_ro (params.cur)) != PGNO_NULL) {
+    else if (dlgt_get_next (page_h_ro (params.cur)) != PGNO_NULL)
+    {
       WRAP (pgr_get_writable (
           params.next,
           params.tx,
           PG_INNER_NODE | PG_DATA_LIST,
           dlgt_get_next (page_h_ro (params.cur)),
           params.p,
-          e));
+          e
+      ));
       dlgt_balance_with_next (params.cur, params.next);
       *params.output = three_in_pair_from (NULL, params.cur, params.next);
     }
 
     // Loop back to start - load prev and try again (if prev even exists)
-    else if (dlgt_get_prev (page_h_ro (params.cur)) != PGNO_NULL) {
+    else if (dlgt_get_prev (page_h_ro (params.cur)) != PGNO_NULL)
+    {
       WRAP (pgr_get_writable (
           params.prev,
           params.tx,
           PG_INNER_NODE | PG_DATA_LIST,
           dlgt_get_prev (page_h_ro (params.cur)),
           params.p,
-          e));
+          e
+      ));
       dlgt_balance_with_prev (params.prev, params.cur);
       *params.output = three_in_pair_from (params.prev, params.cur, NULL);
-    } else {
+    }
+    else
+    {
       // This balance was performed on a root  node
       ASSERT (dlgt_is_root (page_h_ro (params.cur)));
     }
-  } else {
+  }
+  else
+  {
     // there's no need to balance
   }
 
   // Assume cur is not a root; override below if it is
   params.root->isroot = false;
-  if (dlgt_is_root (page_h_ro (params.cur))) {
+  if (dlgt_is_root (page_h_ro (params.cur)))
+  {
     params.root->isroot = true;
     params.root->root   = page_h_pgno (params.cur);
   }
 
   // Need to delete cur
-  if (dlgt_get_len (page_h_ro (params.cur)) == 0) {
+  if (dlgt_get_len (page_h_ro (params.cur)) == 0)
+  {
     i_log_trace ("balance: deleting page %" PRpgno "\n", page_h_pgno (cur));
 
     // Fetch prev and next for link re writing
-    if (!params.root->isroot) {
+    if (!params.root->isroot)
+    {
       // Load prev sibling if the caller did not already pin it
-      if (params.prev->mode == PHM_NONE) {
+      if (params.prev->mode == PHM_NONE)
+      {
         const pgno prev_pg = dlgt_get_prev (page_h_ro (params.cur));
-        if (prev_pg != PGNO_NULL) {
+        if (prev_pg != PGNO_NULL)
+        {
           WRAP (pgr_get_writable (
               params.prev,
               params.tx,
               PG_INNER_NODE | PG_DATA_LIST,
               prev_pg,
               params.p,
-              e));
+              e
+          ));
         }
       }
 
       // Load next sibling if the caller did not already pin it
-      if (params.next->mode == PHM_NONE) {
+      if (params.next->mode == PHM_NONE)
+      {
         const pgno next_pg = dlgt_get_next (page_h_ro (params.cur));
-        if (next_pg != PGNO_NULL) {
+        if (next_pg != PGNO_NULL)
+        {
           WRAP (pgr_get_writable (
               params.next,
               params.tx,
               PG_INNER_NODE | PG_DATA_LIST,
               dlgt_get_next (page_h_ro (params.cur)),
               params.p,
-              e));
+              e
+          ));
         }
       }
 
@@ -464,17 +510,21 @@ err_t ns_balance_and_release (const struct ns_balance_and_release_params params,
       dlgt_link (page_h_w_or_null (params.prev), page_h_w_or_null (params.next));
 
       // We might have turned prev / next into a new root by deleting cur
-      if (params.prev->mode != PHM_NONE && dlgt_is_root (page_h_ro (params.prev))) {
+      if (params.prev->mode != PHM_NONE && dlgt_is_root (page_h_ro (params.prev)))
+      {
         params.root->root   = page_h_pgno (params.prev);
         params.root->isroot = true;
-      } else if (params.next->mode != PHM_NONE && dlgt_is_root (page_h_ro (params.next))) {
+      }
+      else if (params.next->mode != PHM_NONE && dlgt_is_root (page_h_ro (params.next)))
+      {
         params.root->root   = page_h_pgno (params.next);
         params.root->isroot = true;
       }
     }
 
     // Otherwise cur is still root but we will delete it so now it's NULL
-    else {
+    else
+    {
       // balance performed on root and deleted
       params.root->root = PGNO_NULL;
     }

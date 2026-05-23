@@ -23,13 +23,16 @@
 
 #include <stdlib.h>
 
-static err_t pgr_new_impl (
+static err_t
+pgr_new_impl (
     page_h              *dest,
     struct pager        *p,
     struct txn          *tx,
     const enum page_type type,
     const pgno           pg,
-    error               *e) {
+    error               *e
+)
+{
   DBG_ASSERT (pager, p);
   DBG_ASSERT (page_h, dest);
   ASSERT (dest->mode == PHM_NONE);
@@ -42,7 +45,8 @@ static err_t pgr_new_impl (
   if (rclock < 0) { goto theend; }
 
   i32 wclock = pgr_reserve_and_ctrl_lock (p, e);
-  if (wclock < 0) {
+  if (wclock < 0)
+  {
     latch_unlock (&p->pages[rclock].ctrl);
     goto theend;
   }
@@ -87,14 +91,17 @@ theend:
   return error_trace (e);
 }
 
-static inline err_t pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e) {
+static inline err_t
+pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
+{
   pgno fsmpg = pgr_get_npages (p);
 
   // Create a new free space map page
   if (pgr_new_impl (fsm, p, tx, PG_FREE_SPACE_MAP, fsmpg, e)) { return error_trace (e); }
 
   // Creating a new FSM means we are tracking this many pages
-  if (pgr_extend_file (p, fsmpg + FS_BTMP_NPGS, tx, e)) {
+  if (pgr_extend_file (p, fsmpg + FS_BTMP_NPGS, tx, e))
+  {
     pgr_cancel (p, fsm);
     return error_trace (e);
   }
@@ -102,7 +109,9 @@ static inline err_t pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx,
   return SUCCESS;
 }
 
-err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e) {
+err_t
+pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e)
+{
   int    r     = rand ();
   page_h fsm   = page_h_create ();
   pgno   fsmpg = 0;
@@ -110,7 +119,8 @@ err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_ty
 retry:
 
   // Iterate through existing FSM's to see if there's a free lockable page
-  for (; fsmpg < pgr_get_npages (p); fsmpg += FS_BTMP_NPGS) {
+  for (; fsmpg < pgr_get_npages (p); fsmpg += FS_BTMP_NPGS)
+  {
     // X(fsm)
     if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e)) { return error_trace (e); }
 
@@ -118,7 +128,8 @@ retry:
     sp_size next = fsm_next_freebit (page_h_ro (&fsm), 0);
 
     // No free pages available - move on
-    if (next == -1) {
+    if (next == -1)
+    {
       pgr_cancel (p, &fsm);
       continue;
     }
@@ -128,7 +139,8 @@ retry:
 
     // Save with (special) log
     struct wal_update_write log = wup_fsm (page_h_pgno (&fsm), tx, next, 0, 1);
-    if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) {
+    if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
+    {
       pgr_cancel (p, &fsm);
       return error_trace (e);
     }
@@ -143,7 +155,8 @@ retry:
   // Used to serialize threads into this function
   latch_lock (&p->pgrnew_lock);
   {
-    if (fsmpg < pgr_get_npages (p)) {
+    if (fsmpg < pgr_get_npages (p))
+    {
       latch_unlock (&p->pgrnew_lock);
       goto retry;
     }
@@ -157,7 +170,8 @@ retry:
   if (pgr_new_impl (dest, p, tx, type, fsmpg + 1, e)) { return error_trace (e); }
 
   struct wal_update_write log = wup_fsm (fsmpg, tx, 1, 0, 1);
-  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) {
+  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
+  {
     pgr_cancel (p, &fsm);
     pgr_cancel (p, dest);
     return error_trace (e);
@@ -167,7 +181,8 @@ retry:
 }
 
 #ifndef NTEST
-TEST (pgr_new_get_save) {
+TEST (pgr_new_get_save)
+{
   struct pgr_fixture f;
   page_h             h = page_h_create ();
   pgr_fixture_create (&f);

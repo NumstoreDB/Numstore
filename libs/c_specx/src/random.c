@@ -21,25 +21,45 @@
 #  include "intrin.h"
 #endif
 
-void rand_seed (void) { srand (time (NULL)); }
+void
+rand_seed (void)
+{ srand (time (NULL)); }
 
-void rand_seed_with (const u32 seed) { srand (seed); }
+void
+rand_seed_with (const u32 seed)
+{ srand (seed); }
 
-u8 randu8 (void) { return (u8)rand (); }
+u8
+randu8 (void)
+{ return (u8)rand (); }
 
-i8 randi8 (void) { return randi8r (I8_MIN, I8_MAX); }
+i8
+randi8 (void)
+{ return randi8r (I8_MIN, I8_MAX); }
 
-u8 randu8r (const u8 lower, const u8 upper) { return (u8)randu32r ((u32)lower, (u32)upper); }
+u8
+randu8r (const u8 lower, const u8 upper)
+{ return (u8)randu32r ((u32)lower, (u32)upper); }
 
-i8 randi8r (const i8 lower, const i8 upper) { return (i8)randi32r ((i32)lower, (i32)upper); }
+i8
+randi8r (const i8 lower, const i8 upper)
+{ return (i8)randi32r ((i32)lower, (i32)upper); }
 
-u16 randu16 (void) { return (u16)randu32 (); }
+u16
+randu16 (void)
+{ return (u16)randu32 (); }
 
-i16 randi16 (void) { return randi16r (I16_MIN, I16_MAX); }
+i16
+randi16 (void)
+{ return randi16r (I16_MIN, I16_MAX); }
 
-u16 randu16r (const u16 lower, const u16 upper) { return (u16)randu32r ((u32)lower, (u32)upper); }
+u16
+randu16r (const u16 lower, const u16 upper)
+{ return (u16)randu32r ((u32)lower, (u32)upper); }
 
-i16 randi16r (const i16 lower, const i16 upper) {
+i16
+randi16r (const i16 lower, const i16 upper)
+{
   ASSERT (upper >= lower);
 
   if (upper == lower) { return lower; }
@@ -47,21 +67,29 @@ i16 randi16r (const i16 lower, const i16 upper) {
   return (i16)randi32r ((i32)lower, (i32)upper);
 }
 
-u32 randu32 (void) { return (u32)rand (); }
+u32
+randu32 (void)
+{ return (u32)rand (); }
 
 #ifndef NTEST
-TEST (randu32) {
+TEST (randu32)
+{
   srand (0);
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 1000; ++i)
+  {
     const u32 v = randu32 ();
     test_assert (v <= (u32)RAND_MAX);
   }
 }
 #endif
 
-i32 randi32 (void) { return randi32r (I32_MIN, I32_MAX); }
+i32
+randi32 (void)
+{ return randi32r (I32_MIN, I32_MAX); }
 
-u32 randu32r (const u32 lower, const u32 upper) {
+u32
+randu32r (const u32 lower, const u32 upper)
+{
   ASSERT (upper >= lower);
 
   if (upper == lower) { return lower; }
@@ -70,7 +98,8 @@ u32 randu32r (const u32 lower, const u32 upper) {
 }
 
 #ifndef NTEST
-TEST (randu32r) {
+TEST (randu32r)
+{
   srand (1);
 
   // lower == upper
@@ -82,7 +111,8 @@ TEST (randu32r) {
   {
     bool saw_lo = false;
     bool saw_hi = false;
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 1000; ++i)
+    {
       const u32 v = randu32r (10, 11);
       test_assert (v == 10u || v == 11u);
       if (v == 10u) { saw_lo = true; }
@@ -93,13 +123,15 @@ TEST (randu32r) {
   }
 
   // full 32-bit range
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 10; ++i)
+  {
     const u32 v = randu32r (0u, U32_MAX);
     test_assert (v <= U32_MAX);
   }
 
   // random ranges
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 10; ++i)
+  {
     const u32 lo = (u32)(rand () % 10000);
     const u32 hi = lo + (u32)(rand () % 10000);
     const u32 v  = randu32r (lo, hi);
@@ -109,7 +141,9 @@ TEST (randu32r) {
 }
 #endif
 
-i32 randi32r (const i32 lower, const i32 upper) {
+i32
+randi32r (const i32 lower, const i32 upper)
+{
   ASSERT (upper >= lower);
 
   if (upper == lower) { return lower; }
@@ -120,24 +154,28 @@ i32 randi32r (const i32 lower, const i32 upper) {
 }
 
 #ifndef NTEST
-TEST (randi32r) {
+TEST (randi32r)
+{
   rand_seed_with (4);
   test_assert_int_equal (randi32r (7, 7), 7);
   test_assert_int_equal (randi32r (I32_MIN, I32_MIN), I32_MIN);
   test_assert_int_equal (randi32r (I32_MAX, I32_MAX), I32_MAX);
 
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i)
+  {
     const i32 v = randi32r (-10, -9);
     test_assert (v == -10 || v == -9);
   }
 
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i)
+  {
     const i32 v = randi32r (I32_MIN, I32_MAX);
     test_assert (v >= I32_MIN);
     test_assert (v <= I32_MAX);
   }
 
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i)
+  {
     const i32 lo = (i32)(rand () % 10000) - 5000;
     const i32 hi = lo + (i32)(rand () % 10000);
     const i32 v  = randi32r (lo, hi);
@@ -147,11 +185,14 @@ TEST (randi32r) {
 }
 #endif
 
-u64 randu64 (void) {
+u64
+randu64 (void)
+{
   const u64 base     = (u64)RAND_MAX + 1u;
   u64       r        = (u64)rand ();
   u64       capacity = base;
-  while (capacity <= (U64_MAX / base)) {
+  while (capacity <= (U64_MAX / base))
+  {
     r = r * base + (u64)rand ();
     capacity *= base;
   }
@@ -159,9 +200,13 @@ u64 randu64 (void) {
   return r;
 }
 
-i64 randi64 (void) { return randi64r (I64_MIN, I64_MAX); }
+i64
+randi64 (void)
+{ return randi64r (I64_MIN, I64_MAX); }
 
-u64 randu64r (const u64 lower, const u64 upper) {
+u64
+randu64r (const u64 lower, const u64 upper)
+{
   ASSERT (upper >= lower);
 
   if (upper == lower) { return lower; }
@@ -181,27 +226,32 @@ u64 randu64r (const u64 lower, const u64 upper) {
 }
 
 #ifndef NTEST
-TEST (randu64r) {
+TEST (randu64r)
+{
   srand (3);
   test_assert_type_equal (
       randu64r (1234567890123ull, 1234567890123ull),
       1234567890123ull,
       u64,
-      PRIu64);
+      PRIu64
+  );
   test_assert_type_equal (randu64r (0ull, 0ull), 0ull, u64, PRIu64);
   test_assert_type_equal (randu64r (U64_MAX, U64_MAX), U64_MAX, u64, PRIu64);
 
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i)
+  {
     const u64 v = randu64r (1000ull, 1001ull);
     test_assert (v == 1000ull || v == 1001ull);
   }
 
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i)
+  {
     const u64 v = randu64r (0ull, U64_MAX);
     test_assert (v <= U64_MAX);
   }
 
-  for (int i = 0; i < 50; ++i) {
+  for (int i = 0; i < 50; ++i)
+  {
     const u64 lo = ((u64)randu32 () << 16);
     const u64 hi = lo + (u64)(randu32 () % 100000);
     const u64 v  = randu64r (lo, hi);
@@ -211,7 +261,9 @@ TEST (randu64r) {
 }
 #endif
 
-i64 randi64r (const i64 lower, const i64 upper) {
+i64
+randi64r (const i64 lower, const i64 upper)
+{
   ASSERT (upper >= lower);
 
   if (upper == lower) { return lower; }
@@ -231,13 +283,15 @@ i64 randi64r (const i64 lower, const i64 upper) {
 }
 
 #ifndef NTEST
-TEST (randi64r) {
+TEST (randi64r)
+{
   srand (11);
   test_assert_type_equal (randi64r (7, 7), 7, i64, PRId64);
   test_assert_type_equal (randi64r (I64_MIN, I64_MIN), I64_MIN, i64, PRId64);
   test_assert_type_equal (randi64r (I64_MAX, I64_MAX), I64_MAX, i64, PRId64);
 
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 10; ++i)
+  {
     const i64 lo = (i64)(rand () % 100000) - 50000;
     const i64 hi = lo + (i64)(rand () % 100000);
     const i64 v  = randi64r (lo, hi);
@@ -246,12 +300,15 @@ TEST (randi64r) {
 }
 #endif
 
-err_t rand_str (
+err_t
+rand_str (
     struct string      *dest,
     struct chunk_alloc *alloc,
     const u32           minlen,
     const u32           maxlen,
-    error              *e) {
+    error              *e
+)
+{
   ASSERT (dest);
   ASSERT (maxlen >= minlen);
 
@@ -259,13 +316,13 @@ err_t rand_str (
   char     *data = (char *)chunk_malloc (alloc, len, sizeof *data, e);
   if (!data) { return error_trace (e); }
 
-  for (u32 i = 0; i < len; ++i) {
+  for (u32 i = 0; i < len; ++i)
+  {
     const int r = randu32r (0, 61);
-    if (r < 10) {
-      data[i] = '0' + r;
-    } else if (r < 36) {
-      data[i] = 'A' + (r - 10);
-    } else {
+    if (r < 10) { data[i] = '0' + r; }
+    else if (r < 36) { data[i] = 'A' + (r - 10); }
+    else
+    {
       data[i] = 'a' + (r - 36);
     }
   }
@@ -276,7 +333,9 @@ err_t rand_str (
   return SUCCESS;
 }
 
-void rand_bytes (void *dest, const u32 len) {
+void
+rand_bytes (void *dest, const u32 len)
+{
   ASSERT (dest);
   ASSERT (len > 0);
 
@@ -284,8 +343,11 @@ void rand_bytes (void *dest, const u32 len) {
   for (u32 i = 0; i < len; ++i) { p[i] = (u8)(rand () & 0xFF); }
 }
 
-void shuffle_u32 (u32 *array, const u32 len) {
-  for (int i = (int)len - 1; i > 0; i--) {
+void
+shuffle_u32 (u32 *array, const u32 len)
+{
+  for (int i = (int)len - 1; i > 0; i--)
+  {
     const u32 j = randu32r (0, (u32)i);
 
     const u32 temp = array[i];

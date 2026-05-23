@@ -25,12 +25,15 @@
  * next overflow page in the chain.  Used when a variable's serialised name
  * and type data spans more than one page.
  */
-static err_t ns_read_var_page_advance (struct ns_read_var_page_params *params, error *e) {
+static err_t
+ns_read_var_page_advance (struct ns_read_var_page_params *params, error *e)
+{
   page_h next = page_h_create ();
 
   pgno npg = dlgt_get_ovnext (page_h_ro (params->vp));
 
-  if (npg == PGNO_NULL) {
+  if (npg == PGNO_NULL)
+  {
     error_causef (e, ERR_CORRUPT, "var page missing overflow pointer");
     goto failed;
   }
@@ -47,7 +50,9 @@ failed:
   return error_trace (e);
 }
 
-err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
+err_t
+ns_read_var_page (struct ns_read_var_page_params *params, error *e)
+{
   ASSERT (params->vp->mode != PHM_NONE);
   ASSERT (params->tx);
   ASSERT (page_h_type (params->vp) == PG_VAR_PAGE);
@@ -72,8 +77,10 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
   pgno   var_root = page_h_pgno (params->vp);
 
   // Quick check on the length
-  if (params->check) {
-    if (vlen != params->check->len) {
+  if (params->check)
+  {
+    if (vlen != params->check->len)
+    {
       params->matches = false;
       goto theend;
     }
@@ -87,9 +94,11 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
   // Read the variable name
   u16 rread = 0;
   head      = dlgt_get_bytes_imut (page_h_ro (params->vp));
-  while (rread < vlen) {
+  while (rread < vlen)
+  {
     // We exhausted this page - move forward one
-    if (lread == head.len) {
+    if (lread == head.len)
+    {
       if (ns_read_var_page_advance (params, e)) { goto failed; }
 
       lread = 0;
@@ -107,8 +116,10 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
   }
 
   // Quick termination on string data
-  if (params->check) {
-    if (memcmp (params->check->data, vstr, vlen) != 0) {
+  if (params->check)
+  {
+    if (memcmp (params->check->data, vstr, vlen) != 0)
+    {
       params->matches = false;
       goto theend;
     }
@@ -116,9 +127,11 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
 
   // Read the type bytes
   rread = 0;
-  while (rread < tlen) {
+  while (rread < tlen)
+  {
     // We exhausted this page - move forward one
-    if (lread == head.len) {
+    if (lread == head.len)
+    {
       // Advance forward one node and reset local and head
       if (ns_read_var_page_advance (params, e)) { goto failed; }
       lread = 0;
@@ -137,17 +150,20 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
   }
 
   // We just finished reading everything - expect us to be done
-  if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL) {
+  if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "var page read complete but overflow "
-        "pointer is non-null");
+        "pointer is non-null"
+    );
     goto failed;
   }
 
   // Reset back to head page
-  if (page_h_pgno (params->vp) != start) {
+  if (page_h_pgno (params->vp) != start)
+  {
     if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) { goto failed; }
     if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) { goto failed; }
   }
@@ -157,7 +173,8 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e) {
   if (dtype == NULL) { goto failed; }
 
   // Assign stuff
-  if (params->dest) {
+  if (params->dest)
+  {
     *params->dest = (struct variable){
         .vname    = (struct string){.data = vstr, .len = vlen},
         .dtype    = dtype,

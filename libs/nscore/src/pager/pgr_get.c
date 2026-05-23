@@ -20,7 +20,9 @@
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/page.h"
 
-err_t pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e) {
+err_t
+pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
+{
   struct page_frame *pgr = NULL; // Read frame
   hdata_idx          data;       // The data to retrieve
   i32                clock;      // Location of the new page
@@ -29,9 +31,11 @@ err_t pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e) {
   latch_lock (&p->htable_lock);
   res = ht_get_idx (&p->pgno_to_value, &data, pg);
 
-  switch (res) {
+  switch (res)
+  {
     // This page exists in memory
-    case HTAR_SUCCESS: {
+    case HTAR_SUCCESS:
+    {
       pgr = &p->pages[data.value];
 
       latch_lock (&pgr->ctrl);
@@ -49,7 +53,8 @@ err_t pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e) {
 
       return SUCCESS;
     }
-    case HTAR_DOESNT_EXIST: {
+    case HTAR_DOESNT_EXIST:
+    {
       latch_unlock (&p->htable_lock);
 
       // Otherwise, we'll scan for an open spot
@@ -58,13 +63,15 @@ err_t pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e) {
 
       pgr = &p->pages[clock];
 
-      if (fpgr_read (p->fp, pgr->page.raw, pg, e)) {
+      if (fpgr_read (p->fp, pgr->page.raw, pg, e))
+      {
         latch_unlock (&pgr->ctrl);
         return error_trace (e);
       }
 
       // Might remove this
-      if (page_validate_for_db (&pgr->page, flags, e)) {
+      if (page_validate_for_db (&pgr->page, flags, e))
+      {
         latch_unlock (&pgr->ctrl);
         return error_trace (e);
       }
@@ -80,7 +87,8 @@ err_t pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e) {
           (hdata_idx){
               .key   = pg,
               .value = clock,
-          });
+          }
+      );
 
       latch_unlock (&pgr->ctrl);
 
@@ -99,7 +107,8 @@ err_t pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e) {
 }
 
 #ifndef NTEST
-TEST (pgr_get_invalid_checksum) {
+TEST (pgr_get_invalid_checksum)
+{
   page_h             pg = page_h_create ();
   error              e  = error_create ();
   struct pgr_fixture pf;
@@ -119,7 +128,8 @@ TEST (pgr_get_invalid_checksum) {
   pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e);
   test_assert_int_equal (
       page_get_checksum (page_h_ro (&pg)),
-      page_compute_checksum (page_h_ro (&pg)));
+      page_compute_checksum (page_h_ro (&pg))
+  );
 
   // Force checksum to be different
   page fake_page;

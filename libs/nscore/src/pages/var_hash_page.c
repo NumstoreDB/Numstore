@@ -18,16 +18,21 @@
 
 DEFINE_DBG_ASSERT (page, vh_page, d, { ASSERT (d); })
 
-void vh_init_empty (page *p) {
+void
+vh_init_empty (page *p)
+{
   ASSERT (page_get_type (p) == PG_VAR_HASH_PAGE);
   for (p_size i = 0; i < VH_HASH_LEN; ++i) { vh_set_hash_value (p, i, PGNO_NULL); }
 }
 
 // Validation
-err_t vh_validate_for_db (const page *p, error *e) {
+err_t
+vh_validate_for_db (const page *p, error *e)
+{
   DBG_ASSERT (vh_page, p);
 
-  if (page_get_type (p) != PG_VAR_HASH_PAGE) {
+  if (page_get_type (p) != PG_VAR_HASH_PAGE)
+  {
     return error_causef (e, ERR_CORRUPT, "wrong page type for var hash page");
   }
 
@@ -35,14 +40,18 @@ err_t vh_validate_for_db (const page *p, error *e) {
 }
 
 // Utils
-void i_log_vh (const int level, const page *vh) {
+void
+i_log_vh (const int level, const page *vh)
+{
   i_log (level, "=== VAR HASH TABLE PAGE START ===\n");
 
   bool empty = true;
 
-  for (p_size i = 0; i < VH_HASH_LEN; ++i) {
+  for (p_size i = 0; i < VH_HASH_LEN; ++i)
+  {
     const pgno p = vh_get_hash_value (vh, i);
-    if (p != PGNO_NULL) {
+    if (p != PGNO_NULL)
+    {
       empty = false;
       i_printf (level, "[%" PRp_size "]: %" PRpgno "\n", i, p);
     }

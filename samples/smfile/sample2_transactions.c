@@ -25,7 +25,9 @@
  * e.g. they either happen or they don't. If you specify begin / commit
  * you can group various opperations together.
  */
-int main (void) {
+int
+main (void)
+{
   sb_size n;
 
   smfile_cleanup ("sample2_txn");

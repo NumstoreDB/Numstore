@@ -25,7 +25,9 @@
 ////////////////////////////////////////////////////////////
 // ANALYSIS (Figure 10)
 
-err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e) {
+err_t
+pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
+{
   i_log_info ("Starting Analysis phase\n");
 
   lsn read_lsn = 0;
@@ -34,18 +36,21 @@ err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e) {
 
   if (log_rec == NULL) { goto failed; }
 
-  while (log_rec->type != WL_EOF) {
+  while (log_rec->type != WL_EOF)
+  {
     stxid       tid = wrh_get_tid (log_rec);
     struct txn *tx  = NULL;
 
-    if (tid >= 0) {
+    if (tid >= 0)
+    {
       if (tid > (stxid)ctx->max_tid) { ctx->max_tid = tid; }
 
       slsn prev_lsn = wrh_get_prev_lsn (log_rec);
       ASSERT (prev_lsn >= 0);
 
       // Get or create the transaction associated with this log record
-      if (!txnt_get (&tx, ctx->txt, tid)) {
+      if (!txnt_get (&tx, ctx->txt, tid))
+      {
         // Allocate
         tx = aries_ctx_txn_alloc (ctx, e);
         if (tx == NULL) { goto failed; }
@@ -57,47 +62,61 @@ err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e) {
                 .state         = TX_CANDIDATE_FOR_UNDO,
                 .last_lsn      = read_lsn,
                 .undo_next_lsn = prev_lsn,
-            });
+            }
+        );
 
         // Insert this transaction
         txnt_insert_txn_if_not_exists (ctx->txt, tx);
-      } else {
+      }
+      else
+      {
         txn_update (tx, TX_CANDIDATE_FOR_UNDO, read_lsn, prev_lsn);
       }
     }
 
-    switch (log_rec->type) {
+    switch (log_rec->type)
+    {
       case WL_UPDATE:
-      case WL_CLR: {
+      case WL_CLR:
+      {
         tx->data.last_lsn = read_lsn;
 
-        if (log_rec->type == WL_UPDATE) {
+        if (log_rec->type == WL_UPDATE)
+        {
           if (wrh_is_undoable (log_rec)) { tx->data.undo_next_lsn = read_lsn; }
-        } else {
+        }
+        else
+        {
           tx->data.undo_next_lsn = log_rec->clr.undo_next;
         }
 
-        if (wrh_is_redoable (log_rec)) {
-          if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e)) {
+        if (wrh_is_redoable (log_rec))
+        {
+          if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e))
+          {
             goto failed;
           }
         }
 
         break;
       }
-      case WL_COMMIT: {
+      case WL_COMMIT:
+      {
         tx->data.last_lsn = read_lsn;
         tx->data.state    = TX_COMMITTED;
         break;
       }
-      case WL_BEGIN: {
+      case WL_BEGIN:
+      {
         break;
       }
-      case WL_END: {
+      case WL_END:
+      {
         txnt_remove_txn_expect (ctx->txt, tx);
         break;
       }
-      case WL_EOF: {
+      case WL_EOF:
+      {
         UNREACHABLE ();
       }
     }
@@ -111,13 +130,15 @@ err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e) {
   i_log_info ("Analysis phase, txns in table: %d\n", before);
 
   // Append end logs and remove rolled back and committed txns
-  for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i) {
+  for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i)
+  {
     struct txn *tx = ((struct txn **)ctx->txn_ptrs.data)[i];
 
     bool nothing_to_do = tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
     bool committed     = tx->data.state == TX_COMMITTED;
 
-    if (nothing_to_do || committed) {
+    if (nothing_to_do || committed)
+    {
       // Append an end log
       const slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
 
@@ -127,9 +148,9 @@ err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e) {
     }
   }
 
-  if (dpgt_get_size (ctx->dpt) == 0) {
-    ctx->redo_lsn = LSN_NULL;
-  } else {
+  if (dpgt_get_size (ctx->dpt) == 0) { ctx->redo_lsn = LSN_NULL; }
+  else
+  {
     ctx->redo_lsn = dpgt_min_rec_lsn (ctx->dpt);
   }
 

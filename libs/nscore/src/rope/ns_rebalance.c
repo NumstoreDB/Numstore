@@ -79,36 +79,44 @@
  * been collapsed into a single new root below it.  All the now-obsolete
  * sibling pages must be freed so their slots return to the FSM.
  */
-static err_t in_delete_chain (page_h *cur, struct txn *tx, struct pager *p, error *e) {
+static err_t
+in_delete_chain (page_h *cur, struct txn *tx, struct pager *p, error *e)
+{
   page_h next_next = page_h_create ();
   page_h next      = page_h_create ();
   page_h prev      = page_h_create ();
   page_h prev_prev = page_h_create ();
 
   pgno npg = in_get_next (page_h_ro (cur));
-  if (npg != PGNO_NULL) {
+  if (npg != PGNO_NULL)
+  {
     if (pgr_get_writable (&next, tx, PG_INNER_NODE, npg, p, e)) { goto failed; }
   }
 
   pgno ppg = in_get_prev (page_h_ro (cur));
-  if (ppg != PGNO_NULL) {
+  if (ppg != PGNO_NULL)
+  {
     if (pgr_get_writable (&prev, tx, PG_INNER_NODE, ppg, p, e)) { goto failed; }
   }
 
   if (pgr_delete_and_release (p, tx, cur, e)) { goto failed; }
 
-  while (next.mode != PHM_NONE) {
+  while (next.mode != PHM_NONE)
+  {
     npg = in_get_next (page_h_ro (&next));
-    if (npg != PGNO_NULL) {
+    if (npg != PGNO_NULL)
+    {
       if (pgr_get_writable (&next_next, tx, PG_INNER_NODE, npg, p, e)) { goto failed; }
     }
     if (pgr_delete_and_release (p, tx, &next, e)) { goto failed; }
     page_h_xfer_ownership_ptr (&next, &next_next);
   }
 
-  while (prev.mode != PHM_NONE) {
+  while (prev.mode != PHM_NONE)
+  {
     ppg = in_get_prev (page_h_ro (&prev));
-    if (ppg != PGNO_NULL) {
+    if (ppg != PGNO_NULL)
+    {
       if (pgr_get_writable (&prev_prev, tx, PG_INNER_NODE, ppg, p, e)) { goto failed; }
     }
     if (pgr_delete_and_release (p, tx, &prev, e)) { goto failed; }
@@ -127,13 +135,16 @@ failed:
   return error_trace (e);
 }
 
-static err_t rb_right_to_left (struct ns_rebalance_params *pms, error *e) {
+static err_t
+rb_right_to_left (struct ns_rebalance_params *pms, error *e)
+{
   struct root_update   root;
   struct three_in_pair tip_out;
   page_h               prev = page_h_create ();
   page_h               next = page_h_xfer_ownership (&pms->limit);
 
-  if (nupd_done_left (pms->input)) {
+  if (nupd_done_left (pms->input))
+  {
     const struct ns_balance_and_release_params bparams = {
         .p  = pms->p,
         .tx = pms->tx,
@@ -160,14 +171,17 @@ failed:
   return error_trace (e);
 }
 
-static err_t rb_left_to_right (struct ns_rebalance_params *pms, error *e) {
+static err_t
+rb_left_to_right (struct ns_rebalance_params *pms, error *e)
+{
   struct root_update   root;
   struct three_in_pair tip_out;
   page_h               prev = page_h_xfer_ownership (&pms->limit);
   page_h               next = page_h_create ();
 
   // Fully done
-  if (nupd_done_right (pms->input)) {
+  if (nupd_done_right (pms->input))
+  {
     const struct ns_balance_and_release_params bparams = {
         .p  = pms->p,
         .tx = pms->tx,
@@ -188,7 +202,8 @@ static err_t rb_left_to_right (struct ns_rebalance_params *pms, error *e) {
   }
 
   // If cur == pivot, we don't need to rebalance - we can just start left
-  if (page_h_pgno (&pms->cur) != nupd_pivot_pg (pms->output)) {
+  if (page_h_pgno (&pms->cur) != nupd_pivot_pg (pms->output))
+  {
     // Rebalance
     const struct ns_balance_and_release_params bparams = {
         .p  = pms->p,
@@ -207,7 +222,9 @@ static err_t rb_left_to_right (struct ns_rebalance_params *pms, error *e) {
     // Fetch pivot
     const pgno pivot = nupd_pivot_pg (pms->output);
     if (pgr_get_writable (&pms->cur, pms->tx, PG_INNER_NODE, pivot, pms->p, e)) { goto failed; }
-  } else {
+  }
+  else
+  {
     if (pgr_release_if_exists (pms->p, &prev, PG_INNER_NODE, e)) { goto failed; }
   }
 
@@ -219,7 +236,8 @@ static err_t rb_left_to_right (struct ns_rebalance_params *pms, error *e) {
   in_set_len (page_h_w (&pms->cur), IN_MAX_KEYS);
 
   const pgno npg = in_get_next (page_h_ro (&pms->cur));
-  if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE) {
+  if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE)
+  {
     if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e)) { goto failed; }
   }
 
@@ -231,18 +249,22 @@ failed:
   return error_trace (e);
 }
 
-static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
+static err_t
+rb_execute_right (struct ns_rebalance_params *pms, error *e)
+{
   page_h next      = page_h_create ();
   page_h next_next = page_h_create ();
 
-  while (true) {
+  while (true)
+  {
     // [+++++++++++_______]
     // ^
     // lidx
     // [a, b, c] p [d, e, f, g, h, i]
     // ^     ^        ^
     // rcons  rlen     robs
-    if (nupd_done_observing_right (pms->input)) {
+    if (nupd_done_observing_right (pms->input))
+    {
       pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
@@ -254,14 +276,17 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
       // rcons didn't reach robs. That can
       // only happen if we filled up current
       // node
-      if (!nupd_done_right (pms->input)) {
+      if (!nupd_done_right (pms->input))
+      {
         ASSERT (pms->lidx == IN_MAX_KEYS);
 
         if (nupd_commit_1st_right (
                 pms->output,
                 page_h_pgno (&pms->cur),
                 in_get_size (page_h_ro (&pms->cur)),
-                e)) {
+                e
+            ))
+        {
           goto failed;
         }
 
@@ -279,7 +304,9 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
         pms->lidx = 0;
 
         continue;
-      } else {
+      }
+      else
+      {
         // [++++++++----------]
         // ^
         // lidx
@@ -295,7 +322,8 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
     // [a, b, c] p [d, e, f, g, h, i]
     // ^     ^        ^
     // rcons  robs     rlen
-    else {
+    else
+    {
       if (nupd_observe_all_right (pms->input, &pms->limit, e)) { goto failed; }
       pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
@@ -305,7 +333,8 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
       // [a, b, c] p [d, e, f, g, h, i]
       // ^        ^  ^
       // rcons    robs rlen
-      if (!nupd_done_right (pms->input) && pms->lidx > IN_MAX_KEYS / 2) {
+      if (!nupd_done_right (pms->input) && pms->lidx > IN_MAX_KEYS / 2)
+      {
         // Shift right (limit
         // is effectively
         // "empty" because it
@@ -315,7 +344,8 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
         // NULL cur
         // -> limit limit limit
         // -> next
-        if (pms->limit.mode == PHM_NONE) {
+        if (pms->limit.mode == PHM_NONE)
+        {
           if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e)) { goto failed; }
           in_link (page_h_w (&pms->cur), page_h_w (&pms->limit));
         }
@@ -336,7 +366,9 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
                 pms->output,
                 page_h_pgno (&pms->cur),
                 in_get_size (page_h_ro (&pms->cur)),
-                e)) {
+                e
+            ))
+        {
           goto failed;
         }
 
@@ -351,8 +383,10 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
 
         // Shift right
         const pgno npg = in_get_next (page_h_ro (&pms->cur));
-        if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE) {
-          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e)) {
+        if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE)
+        {
+          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e))
+          {
             goto failed;
           }
         }
@@ -372,16 +406,20 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
       // ^  ^
       // rlen robs
       // rcons
-      else {
+      else
+      {
         ASSERT (nupd_done_consuming_right (pms->input));
         ASSERT (nupd_done_right (pms->input) || pms->limit.mode != PHM_NONE);
 
-        if (pms->limit.mode != PHM_NONE) {
+        if (pms->limit.mode != PHM_NONE)
+        {
           const pgno npg = page_h_pgno (&pms->limit);
 
           const pgno nnpg = in_get_next (page_h_ro (&pms->limit));
-          if (nnpg != PGNO_NULL) {
-            if (pgr_get_writable (&next_next, pms->tx, PG_INNER_NODE, nnpg, pms->p, e)) {
+          if (nnpg != PGNO_NULL)
+          {
+            if (pgr_get_writable (&next_next, pms->tx, PG_INNER_NODE, nnpg, pms->p, e))
+            {
               goto failed;
             }
           }
@@ -389,7 +427,8 @@ static err_t rb_execute_right (struct ns_rebalance_params *pms, error *e) {
           in_link (page_h_w (&pms->cur), page_h_w_or_null (&next_next));
           page_h_xfer_ownership_ptr (&pms->limit, &next_next);
 
-          if (nupd_append_2nd_right (pms->output, pgh_unravel (&pms->cur), npg, 0, e)) {
+          if (nupd_append_2nd_right (pms->output, pgh_unravel (&pms->cur), npg, 0, e))
+          {
             goto failed;
           }
         }
@@ -403,18 +442,22 @@ failed:
   return error_trace (e);
 }
 
-static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
+static err_t
+rb_execute_left (struct ns_rebalance_params *pms, error *e)
+{
   page_h prev      = page_h_create ();
   page_h prev_prev = page_h_create ();
 
-  while (true) {
+  while (true)
+  {
     // [_______+++++++++++]
     // ^
     // lidx
     // [a, b, c, d, e, f] p [g, h, i]
     // ^        ^     ^
     // lobs     llen   lcons
-    if (nupd_done_observing_left (pms->input)) {
+    if (nupd_done_observing_left (pms->input))
+    {
       pms->lidx -= nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
@@ -426,13 +469,16 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
       // lcons didn't reach lobs. That can
       // only happen if we filled up current
       // node
-      if (!nupd_done_left (pms->input)) {
+      if (!nupd_done_left (pms->input))
+      {
         ASSERT (pms->lidx == 0);
         if (nupd_commit_1st_left (
                 pms->output,
                 page_h_pgno (&pms->cur),
                 in_get_size (page_h_ro (&pms->cur)),
-                e)) {
+                e
+            ))
+        {
           goto failed;
         }
 
@@ -449,7 +495,9 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
         pms->lidx = IN_MAX_KEYS;
 
         continue;
-      } else {
+      }
+      else
+      {
         // [----------++++++++]
         // ^
         // lidx
@@ -466,7 +514,8 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
     // [a, b, c, d, e, f] p [g, h, i]
     // ^        ^     ^
     // llen     lobs  lcons
-    else {
+    else
+    {
       if (nupd_observe_all_left (pms->input, &pms->limit, e)) { goto failed; }
       pms->lidx -= nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
 
@@ -476,7 +525,8 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
       // [a, b, c, d, e, f] p [g, h, i]
       // ^  ^        ^
       // llen lobs   lcons
-      if (!nupd_done_left (pms->input) && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2) {
+      if (!nupd_done_left (pms->input) && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2)
+      {
         // Shift left (limit is
         // effectively "empty"
         // because it was
@@ -486,7 +536,8 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
         // limit -> cur
         // limit
         // prev <- limit
-        if (pms->limit.mode == PHM_NONE) {
+        if (pms->limit.mode == PHM_NONE)
+        {
           if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e)) { goto failed; }
           in_link (page_h_w (&pms->limit), page_h_w (&pms->cur));
         }
@@ -504,7 +555,9 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
                 pms->output,
                 page_h_pgno (&pms->cur),
                 in_get_size (page_h_ro (&pms->cur)),
-                e)) {
+                e
+            ))
+        {
           goto failed;
         }
 
@@ -519,8 +572,10 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
 
         // Shift left
         const pgno ppg = in_get_prev (page_h_ro (&pms->cur));
-        if (ppg != PGNO_NULL && pms->limit.mode == PHM_NONE) {
-          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, ppg, pms->p, e)) {
+        if (ppg != PGNO_NULL && pms->limit.mode == PHM_NONE)
+        {
+          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, ppg, pms->p, e))
+          {
             goto failed;
           }
         }
@@ -540,16 +595,20 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
       // ^  ^
       // lobs llen
       // lcons
-      else {
+      else
+      {
         ASSERT (nupd_done_consuming_left (pms->input));
         ASSERT (nupd_done_left (pms->input) || pms->limit.mode != PHM_NONE);
 
-        if (pms->limit.mode != PHM_NONE) {
+        if (pms->limit.mode != PHM_NONE)
+        {
           const pgno ppg = page_h_pgno (&pms->limit);
 
           const pgno pppg = in_get_prev (page_h_ro (&pms->limit));
-          if (pppg != PGNO_NULL) {
-            if (pgr_get_writable (&prev_prev, pms->tx, PG_INNER_NODE, pppg, pms->p, e)) {
+          if (pppg != PGNO_NULL)
+          {
+            if (pgr_get_writable (&prev_prev, pms->tx, PG_INNER_NODE, pppg, pms->p, e))
+            {
               goto failed;
             }
           }
@@ -557,7 +616,8 @@ static err_t rb_execute_left (struct ns_rebalance_params *pms, error *e) {
           in_link (page_h_w_or_null (&prev_prev), page_h_w (&pms->cur));
           page_h_xfer_ownership_ptr (&pms->limit, &prev_prev);
 
-          if (nupd_append_2nd_left (pms->output, pgh_unravel (&pms->cur), ppg, 0, e)) {
+          if (nupd_append_2nd_left (pms->output, pgh_unravel (&pms->cur), ppg, 0, e))
+          {
             goto failed;
           }
         }
@@ -571,7 +631,9 @@ failed:
   return error_trace (e);
 }
 
-static err_t ns_pop_stack (struct ns_rebalance_params *pms, error *e) {
+static err_t
+ns_pop_stack (struct ns_rebalance_params *pms, error *e)
+{
   struct seek_v *ref = &pms->pstack[--(pms->sp)];
 
   struct seek_v v = {
@@ -579,7 +641,8 @@ static err_t ns_pop_stack (struct ns_rebalance_params *pms, error *e) {
       .lidx = ref->lidx,
   };
 
-  if (pms->cur.mode != PHM_NONE) {
+  if (pms->cur.mode != PHM_NONE)
+  {
     if (pgr_release (pms->p, &pms->cur, PG_INNER_NODE | PG_DATA_LIST, e)) { goto failed; }
   }
 
@@ -595,7 +658,9 @@ failed:
 
 static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e);
 
-static err_t ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e) {
+static err_t
+ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
+{
   page_h prev = page_h_create ();
   page_h next = page_h_create ();
 
@@ -637,7 +702,8 @@ static err_t ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error
   // Continue in left mode
   pms->lidx = IN_MAX_KEYS - nupd_append_maximally_right_then_left (pms->input, &pms->cur);
 
-  if (nupd_done_left (pms->input)) {
+  if (nupd_done_left (pms->input))
+  {
     // [++++++++++++++++++__]
     // ^
     // lidx
@@ -645,7 +711,8 @@ static err_t ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error
     pms->lidx = IN_MAX_KEYS - pms->lidx;
 
     // DONE EARLY
-    if (nupd_done_right (pms->input)) {
+    if (nupd_done_right (pms->input))
+    {
       struct three_in_pair tip_out;
 
       const struct ns_balance_and_release_params bparams = {
@@ -673,8 +740,10 @@ static err_t ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error
 
     // Right mode in read mode
     const pgno next_pg = in_get_next (page_h_ro (&pms->cur));
-    if (next_pg != PGNO_NULL) {
-      if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, next_pg, pms->p, e)) {
+    if (next_pg != PGNO_NULL)
+    {
+      if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, next_pg, pms->p, e))
+      {
         goto failed;
       }
     }
@@ -684,8 +753,10 @@ static err_t ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error
 
   // Left mode
   const pgno prev_pg = in_get_prev (page_h_ro (&pms->cur));
-  if (prev_pg != PGNO_NULL) {
-    if (pgr_get (&pms->limit, PG_INNER_NODE, in_get_prev (page_h_ro (&pms->cur)), pms->p, e)) {
+  if (prev_pg != PGNO_NULL)
+  {
+    if (pgr_get (&pms->limit, PG_INNER_NODE, in_get_prev (page_h_ro (&pms->cur)), pms->p, e))
+    {
       goto failed;
     }
   }
@@ -698,10 +769,14 @@ failed:
   return error_trace (e);
 }
 
-static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e) {
-  if (pms->layer_root.isroot) {
+static err_t
+ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
+{
+  if (pms->layer_root.isroot)
+  {
     // Delete all the next layers above
-    while (pms->sp != 0) {
+    while (pms->sp != 0)
+    {
       if (ns_pop_stack (pms, e)) { goto failed; }
       if (in_delete_chain (&pms->cur, pms->tx, pms->p, e)) { goto failed; }
     }
@@ -710,13 +785,18 @@ static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error 
     pms->root = pms->layer_root.root;
 
     return SUCCESS;
-  } else {
-    if (pms->sp == 0) {
+  }
+  else
+  {
+    if (pms->sp == 0)
+    {
       if (pgr_new (&pms->cur, pms->p, pms->tx, PG_INNER_NODE, e)) { goto failed; }
 
       pms->root = page_h_pgno (&pms->cur);
       pms->lidx = 0;
-    } else {
+    }
+    else
+    {
       if (ns_pop_stack (pms, e)) { goto failed; }
     }
 
@@ -726,10 +806,13 @@ static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error 
     pms->output                 = input;
     pms->input                  = output;
 
-    if (pms->output == NULL) {
+    if (pms->output == NULL)
+    {
       pms->output = nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e);
       if (pms->output == NULL) { goto failed; }
-    } else {
+    }
+    else
+    {
       nupd_reset (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)));
     }
 
@@ -757,12 +840,15 @@ failed:
  * When the layer_root is set (the current level is the tree root), the loop
  * exits and any obsolete levels above are deleted by the move_up function.
  */
-err_t ns_rebalance (struct ns_rebalance_params *pms, error *e) {
+err_t
+ns_rebalance (struct ns_rebalance_params *pms, error *e)
+{
   pms->cur   = page_h_create ();
   pms->limit = page_h_create ();
   pms->lidx  = 0;
 
-  while (true) {
+  while (true)
+  {
     if (ns_rebalance_move_up_stack (pms, e)) { goto failed; }
 
     // Pop up the stack once
@@ -771,13 +857,15 @@ err_t ns_rebalance (struct ns_rebalance_params *pms, error *e) {
     bool done = true;
 
     // Execute left
-    if (!nupd_done_left (pms->input)) {
+    if (!nupd_done_left (pms->input))
+    {
       done = false;
       if (rb_execute_left (pms, e)) { goto failed; }
     }
 
     // Execute right
-    if (!nupd_done_right (pms->input)) {
+    if (!nupd_done_right (pms->input))
+    {
       done = false;
       if (rb_execute_right (pms, e)) { goto failed; }
     }

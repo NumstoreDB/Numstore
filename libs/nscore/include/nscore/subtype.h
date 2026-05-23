@@ -18,7 +18,8 @@
 #include "nscore/type_accessor.h"
 #include "nscore/types.h"
 
-struct subtype {
+struct subtype
+{
   struct string        vname;
   struct type_accessor ta;
 };
@@ -31,4 +32,5 @@ struct type *subtype_get_type (
     struct type          *stype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
-    error                *e);
+    error                *e
+);

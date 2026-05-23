@@ -18,14 +18,16 @@
 #include "nscore/pager.h"
 #include "nscore/variables.h"
 
-struct nshandle_root {
+struct nshandle_root
+{
   struct pager *p;     // The database resources
   struct string path;  // Path to the database
   int           count; // When this reaches 0 - close the root
   error         e;
 };
 
-struct nshandle {
+struct nshandle
+{
   struct nshandle_root *root;
   int                   is_auto_txn; // If atx is an auto transaction
   struct txn           *atx;         // Active transaction

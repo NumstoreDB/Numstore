@@ -16,13 +16,18 @@
 
 #include <string.h>
 
-void *malloc_plan_memcpy (struct malloc_plan *plan, const void *data, const u32 len) {
-  switch (plan->mode) {
-    case MP_PLANNING: {
+void *
+malloc_plan_memcpy (struct malloc_plan *plan, const void *data, const u32 len)
+{
+  switch (plan->mode)
+  {
+    case MP_PLANNING:
+    {
       plan->size += len;
       return NULL;
     }
-    case MP_ALLOCING: {
+    case MP_ALLOCING:
+    {
       ASSERT (plan->blen + len <= plan->size);
       void *ret = malloc_plan_head (plan);
       memcpy ((u8 *)plan->buffer + plan->blen, data, len);
@@ -33,7 +38,9 @@ void *malloc_plan_memcpy (struct malloc_plan *plan, const void *data, const u32 
   UNREACHABLE ();
 }
 
-err_t malloc_plan_alloc (struct malloc_plan *plan, error *e) {
+err_t
+malloc_plan_alloc (struct malloc_plan *plan, error *e)
+{
   ASSERT (plan->mode == MP_PLANNING);
   plan->buffer = i_malloc (plan->size, 1, e);
   if (plan->buffer == NULL) { return error_trace (e); }

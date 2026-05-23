@@ -21,39 +21,48 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
+typedef struct
+{
   u32 *pgnos;
   u32  pglen;
   u32  pgcap;
   int  flag;
 } pp_params;
 
-static void _page_print (struct pager *p, const pgno pg, const pp_params params, error *e) {
+static void
+_page_print (struct pager *p, const pgno pg, const pp_params params, error *e)
+{
   page_h cur = page_h_create ();
 
-  if (pgr_get (&cur, PG_PERMISSIVE, pg, p, e)) {
+  if (pgr_get (&cur, PG_PERMISSIVE, pg, p, e))
+  {
     error_log_consume (e);
     return;
   }
 
   if (params.flag & page_h_type (&cur)) { i_log_page (LOG_INFO, page_h_ro (&cur)); }
 
-  if (pgr_release (p, &cur, PG_PERMISSIVE, e)) {
+  if (pgr_release (p, &cur, PG_PERMISSIVE, e))
+  {
     error_log_consume (e);
     abort ();
   }
 }
 
-static void page_print (const char *fname, const pp_params params) {
+static void
+page_print (const char *fname, const pp_params params)
+{
   error e = error_create ();
 
   struct pager *p = pgr_open_single_file (fname, &e);
-  if (p == NULL) {
+  if (p == NULL)
+  {
     error_log_consume (&e);
     return;
   }
 
-  for (u32 i = 0; i < pgr_get_npages (p); ++i) {
+  for (u32 i = 0; i < pgr_get_npages (p); ++i)
+  {
     bool contains;
     arr_contains (params.pgnos, params.pglen, i, contains);
     if (params.pglen == 0 || contains) { _page_print (p, i, params, &e); }
@@ -62,7 +71,9 @@ static void page_print (const char *fname, const pp_params params) {
   pgr_close (p, &e);
 }
 
-static int parse_params (const int argc, char *argv[], pp_params *params) {
+static int
+parse_params (const int argc, char *argv[], pp_params *params)
+{
   // Initialize
   params->pgnos = NULL;
   params->pglen = 0;
@@ -71,32 +82,36 @@ static int parse_params (const int argc, char *argv[], pp_params *params) {
   u32 capacity = 0;
 
   // Skip program name (argv[0])
-  for (int i = 2; i < argc; i++) {
+  for (int i = 2; i < argc; i++)
+  {
     char *arg = argv[i];
 
     // Check for flags
-    if (strcmp (arg, "IN") == 0) {
-      params->flag |= PG_INNER_NODE;
-    } else if (strcmp (arg, "DL") == 0) {
-      params->flag |= PG_DATA_LIST;
-    } else {
+    if (strcmp (arg, "IN") == 0) { params->flag |= PG_INNER_NODE; }
+    else if (strcmp (arg, "DL") == 0) { params->flag |= PG_DATA_LIST; }
+    else
+    {
       char     *endptr;
       const u64 val = strtoul (arg, &endptr, 10);
 
-      if (*endptr != '\0') {
+      if (*endptr != '\0')
+      {
         fprintf (
             stderr,
             "Invalid "
             "argument: %s\n",
-            arg);
+            arg
+        );
         free (params->pgnos);
         return -1;
       }
 
-      if (params->pglen >= capacity) {
+      if (params->pglen >= capacity)
+      {
         capacity       = capacity == 0 ? 4 : capacity * 2;
         u32 *new_pgnos = realloc (params->pgnos, capacity * sizeof (u32));
-        if (!new_pgnos) {
+        if (!new_pgnos)
+        {
           free (params->pgnos);
           return -1;
         }
@@ -112,9 +127,12 @@ static int parse_params (const int argc, char *argv[], pp_params *params) {
   return 0;
 }
 
-int main (const int argc, char **argv) {
+int
+main (const int argc, char **argv)
+{
   pp_params params;
-  if (argc == 1 || parse_params (argc, argv, &params)) {
+  if (argc == 1 || parse_params (argc, argv, &params))
+  {
     printf ("USAGE: nspprint FNAME [PGNO,...] [DL|IN]\n");
     return -1;
   }

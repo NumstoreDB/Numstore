@@ -17,7 +17,9 @@
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
 
-static err_t _nsh_delete (struct nshandle *db, const char *vname, error *e) {
+static err_t
+_nsh_delete (struct nshandle *db, const char *vname, error *e)
+{
   struct txn auto_txn;
 
   // BEGIN TXN
@@ -32,7 +34,8 @@ static err_t _nsh_delete (struct nshandle *db, const char *vname, error *e) {
         .vname = strfcstr (vname),
     };
     err_t err = ns_var_delete (params, e);
-    if (err == ERR_VARIABLE_NE) {
+    if (err == ERR_VARIABLE_NE)
+    {
       // It's ok if it doesn't exist
       e->cause_code = 0;
       e->cmlen      = 0;
@@ -55,7 +58,9 @@ failed:
   return error_trace (e);
 }
 
-int nsh_delete (struct nshandle *ns, const char *vname) {
+int
+nsh_delete (struct nshandle *ns, const char *vname)
+{
   ns->e.cause_code = SUCCESS;
   ns->e.cmlen      = 0;
   return _nsh_delete (ns, vname, &ns->e);

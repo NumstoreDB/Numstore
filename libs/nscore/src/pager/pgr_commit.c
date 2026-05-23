@@ -15,10 +15,13 @@
 #include "nscore/lock_table.h"
 #include "nscore/pager.h"
 
-err_t pgr_commit (struct pager *p, struct txn *tx, error *e) {
+err_t
+pgr_commit (struct pager *p, struct txn *tx, error *e)
+{
   DBG_ASSERT (pager, p);
 
-  if (tx->data.state != TX_RUNNING) {
+  if (tx->data.state != TX_RUNNING)
+  {
     error_causef (e, ERR_DUPLICATE_COMMIT, "txn already committed");
 
     // Failure here is fine
@@ -28,14 +31,16 @@ err_t pgr_commit (struct pager *p, struct txn *tx, error *e) {
 
   // COMMIT
   slsn l = wal_append_commit_log (p->ww, tx->tid, tx->data.last_lsn, e);
-  if (l < 0) {
+  if (l < 0)
+  {
     // Failure here is fine
 
     goto theend;
   }
 
   // FLUSH
-  if (wal_flush_to (p->ww, l, e)) {
+  if (wal_flush_to (p->ww, l, e))
+  {
     // We have a commit log appended to the WAL.
     // It may or may not be written to disk.
     // If it is written to disk, then good, next recovery,
@@ -47,7 +52,8 @@ err_t pgr_commit (struct pager *p, struct txn *tx, error *e) {
 
   // END
   l = wal_append_end_log (p->ww, tx->tid, l, e);
-  if (l < 0) {
+  if (l < 0)
+  {
     // Failing to append an end log isn't a big deal,
     // we'll append it during the next pgr_recovery
 

@@ -14,7 +14,9 @@
 
 #include "c_specx.h"
 
-err_t periodic_task_init (struct periodic_task *t, error *e) {
+err_t
+periodic_task_init (struct periodic_task *t, error *e)
+{
   t->stop           = false;
   t->wake_requested = false;
   t->done           = false;
@@ -35,12 +37,16 @@ theend:
   return error_trace (e);
 }
 
-static void *periodic_task_thread (void *_ctx) {
+static void *
+periodic_task_thread (void *_ctx)
+{
   struct periodic_task *t = _ctx;
 
-  while (true) {
+  while (true)
+  {
     i_mutex_lock (&t->mutex);
-    while (!t->wake_requested && !t->stop) {
+    while (!t->wake_requested && !t->stop)
+    {
       i_cond_timed_wait (&t->wake_cond, &t->mutex, t->msec);
     }
     t->wake_requested = false;
@@ -60,12 +66,9 @@ static void *periodic_task_thread (void *_ctx) {
   return NULL;
 }
 
-err_t periodic_task_start (
-    struct periodic_task *t,
-    u64                   msec,
-    periodic_task_fn      fn,
-    void                 *ctx,
-    error                *e) {
+err_t
+periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e)
+{
   t->msec = msec;
   t->fn   = fn;
   t->ctx  = ctx;
@@ -77,7 +80,9 @@ err_t periodic_task_start (
   return SUCCESS;
 }
 
-err_t periodic_task_stop (struct periodic_task *t, error *e) {
+err_t
+periodic_task_stop (struct periodic_task *t, error *e)
+{
   if (!t->running) { return SUCCESS; }
 
   i_mutex_lock (&t->mutex);
@@ -98,7 +103,9 @@ err_t periodic_task_stop (struct periodic_task *t, error *e) {
   return error_trace (e);
 }
 
-void periodic_task_wake (struct periodic_task *t) {
+void
+periodic_task_wake (struct periodic_task *t)
+{
   i_mutex_lock (&t->mutex);
   t->wake_requested = true;
   i_cond_signal (&t->wake_cond);

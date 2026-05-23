@@ -25,10 +25,13 @@
 // QueryPerformanceFrequency returns ticks/sec and is fixed
 // at boot — safe to query once per timer.
 
-err_t i_timer_create (i_timer *timer, error *e) {
+err_t
+i_timer_create (i_timer *timer, error *e)
+{
   ASSERT (timer);
 
-  if (!QueryPerformanceFrequency (&timer->frequency)) {
+  if (!QueryPerformanceFrequency (&timer->frequency))
+  {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -37,11 +40,13 @@ err_t i_timer_create (i_timer *timer, error *e) {
         0,
         buf,
         sizeof (buf),
-        NULL);
+        NULL
+    );
     return error_causef (e, ERR_IO, "QueryPerformanceFrequency: %s", buf);
   }
 
-  if (!QueryPerformanceCounter (&timer->start)) {
+  if (!QueryPerformanceCounter (&timer->start))
+  {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -50,19 +55,24 @@ err_t i_timer_create (i_timer *timer, error *e) {
         0,
         buf,
         sizeof (buf),
-        NULL);
+        NULL
+    );
     return error_causef (e, ERR_IO, "QueryPerformanceCounter: %s", buf);
   }
 
   return SUCCESS;
 }
 
-void i_timer_free (i_timer *timer) {
+void
+i_timer_free (i_timer *timer)
+{
   ASSERT (timer);
   // No cleanup needed.
 }
 
-u64 i_timer_now_ns (i_timer *timer) {
+u64
+i_timer_now_ns (i_timer *timer)
+{
   ASSERT (timer);
 
   LARGE_INTEGER now;
@@ -82,11 +92,17 @@ u64 i_timer_now_ns (i_timer *timer) {
   return (u64)(sec * 1000000000LL + (rem * 1000000000LL) / freq);
 }
 
-u64 i_timer_now_us (i_timer *timer) { return i_timer_now_ns (timer) / 1000ULL; }
+u64
+i_timer_now_us (i_timer *timer)
+{ return i_timer_now_ns (timer) / 1000ULL; }
 
-u64 i_timer_now_ms (i_timer *timer) { return i_timer_now_ns (timer) / 1000000ULL; }
+u64
+i_timer_now_ms (i_timer *timer)
+{ return i_timer_now_ns (timer) / 1000000ULL; }
 
-f64 i_timer_now_s (i_timer *timer) {
+f64
+i_timer_now_s (i_timer *timer)
+{
   ASSERT (timer);
 
   LARGE_INTEGER now;
@@ -96,7 +112,9 @@ f64 i_timer_now_s (i_timer *timer) {
   return (f64)elapsed / (f64)timer->frequency.QuadPart;
 }
 
-void i_sleep_us (u64 us) {
+void
+i_sleep_us (u64 us)
+{
   // Sleep() takes milliseconds; round up to avoid sleeping too short.
   DWORD ms = (DWORD)((us + 999ULL) / 1000ULL);
   Sleep (ms);

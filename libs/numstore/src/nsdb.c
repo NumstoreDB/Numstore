@@ -19,15 +19,33 @@
 
 // smfile
 
-int nsdb_perror (nsdb_t *ns, const char *prefix) {
-  return nsh_perror ((struct nshandle *)ns, prefix);
-}
-const char *nsdb_strerror (nsdb_t *ns) { return nsh_strerror ((struct nshandle *)ns); }
-int         nsdb_cleanup (const char *path) { return nsh_cleanup (path); }
-nsdb_t *nsdb_new_context (nsdb_t *n) { return (nsdb_t *)nsh_new_context ((struct nshandle *)n); }
-int nsdb_delete (nsdb_t *n, const char *vname) { return nsh_delete ((struct nshandle *)n, vname); }
-int nsdb_close (nsdb_t *ns) { return nsh_close ((struct nshandle *)ns); }
-int _nsdb_crash (nsdb_t *ns) { return nsh_crash ((struct nshandle *)ns); }
-int nsdb_begin (nsdb_t *_smf) { return nsh_begin ((struct nshandle *)_smf); }
-int nsdb_commit (nsdb_t *_smf) { return nsh_commit ((struct nshandle *)_smf); }
-int nsdb_rollback (nsdb_t *smf) { return nsh_rollback ((struct nshandle *)smf); }
+int
+nsdb_perror (nsdb_t *ns, const char *prefix)
+{ return nsh_perror ((struct nshandle *)ns, prefix); }
+const char *
+nsdb_strerror (nsdb_t *ns)
+{ return nsh_strerror ((struct nshandle *)ns); }
+int
+nsdb_cleanup (const char *path)
+{ return nsh_cleanup (path); }
+nsdb_t *
+nsdb_new_context (nsdb_t *n)
+{ return (nsdb_t *)nsh_new_context ((struct nshandle *)n); }
+int
+nsdb_delete (nsdb_t *n, const char *vname)
+{ return nsh_delete ((struct nshandle *)n, vname); }
+int
+nsdb_close (nsdb_t *ns)
+{ return nsh_close ((struct nshandle *)ns); }
+int
+_nsdb_crash (nsdb_t *ns)
+{ return nsh_crash ((struct nshandle *)ns); }
+int
+nsdb_begin (nsdb_t *_smf)
+{ return nsh_begin ((struct nshandle *)_smf); }
+int
+nsdb_commit (nsdb_t *_smf)
+{ return nsh_commit ((struct nshandle *)_smf); }
+int
+nsdb_rollback (nsdb_t *smf)
+{ return nsh_rollback ((struct nshandle *)smf); }

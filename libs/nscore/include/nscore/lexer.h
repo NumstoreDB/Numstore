@@ -16,7 +16,8 @@
 
 #include "nscore/tokens.h"
 
-struct lexer {
+struct lexer
+{
   const char *src;
   u32         src_len;
   u32         start;

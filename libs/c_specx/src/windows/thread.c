@@ -24,12 +24,15 @@
 // trampoline allocated on the heap so the args outlive the
 // CreateThread call.
 
-typedef struct {
+typedef struct
+{
   void *(*func) (void *);
   void *arg;
 } thread_trampoline_args;
 
-static DWORD WINAPI thread_trampoline (LPVOID param) {
+static DWORD WINAPI
+thread_trampoline (LPVOID param)
+{
   thread_trampoline_args *args = (thread_trampoline_args *)param;
   void *(*func) (void *)       = args->func;
   void *arg                    = args->arg;
@@ -41,7 +44,9 @@ static DWORD WINAPI thread_trampoline (LPVOID param) {
 ////////////////////////////////////////////////////////////
 // Thread
 
-err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, error *e) {
+err_t
+i_thread_create (i_thread *dest, void *(*func) (void *), void *context, error *e)
+{
   ASSERT (dest);
 
   thread_trampoline_args *args = HeapAlloc (GetProcessHeap (), 0, sizeof *args);
@@ -51,7 +56,8 @@ err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, er
   args->arg  = context;
 
   dest->handle = CreateThread (NULL, 0, thread_trampoline, args, 0, &dest->id);
-  if (!dest->handle) {
+  if (!dest->handle)
+  {
     HeapFree (GetProcessHeap (), 0, args);
     char buf[256];
     FormatMessageA (
@@ -61,19 +67,23 @@ err_t i_thread_create (i_thread *dest, void *(*func) (void *), void *context, er
         0,
         buf,
         sizeof (buf),
-        NULL);
+        NULL
+    );
     return error_causef (e, ERR_IO, "CreateThread: %s", buf);
   }
 
   return SUCCESS;
 }
 
-err_t i_thread_join (i_thread *t, error *e) {
+err_t
+i_thread_join (i_thread *t, error *e)
+{
   ASSERT (t);
   ASSERT (t->handle);
 
   DWORD ret = WaitForSingleObject (t->handle, INFINITE);
-  if (ret != WAIT_OBJECT_0) {
+  if (ret != WAIT_OBJECT_0)
+  {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -82,7 +92,8 @@ err_t i_thread_join (i_thread *t, error *e) {
         0,
         buf,
         sizeof (buf),
-        NULL);
+        NULL
+    );
     return error_causef (e, ERR_IO, "thread_join: %s", buf);
   }
 
@@ -91,7 +102,9 @@ err_t i_thread_join (i_thread *t, error *e) {
   return SUCCESS;
 }
 
-void i_thread_cancel (i_thread *t) {
+void
+i_thread_cancel (i_thread *t)
+{
   ASSERT (t);
   ASSERT (t->handle);
 
@@ -100,7 +113,8 @@ void i_thread_cancel (i_thread *t) {
   // equivalent to pthread_cancel with deferred cancellation disabled.
   // smartfile uses cancel only for WAL background flush threads that
   // hold no locks at cancel points, so this is safe in practice.
-  if (!TerminateThread (t->handle, 0)) {
+  if (!TerminateThread (t->handle, 0))
+  {
     i_log_error ("thread_cancel: TerminateThread failed: %lu\n", GetLastError ());
     UNREACHABLE ();
   }
@@ -109,7 +123,9 @@ void i_thread_cancel (i_thread *t) {
   t->handle = NULL;
 }
 
-u64 get_available_threads (void) {
+u64
+get_available_threads (void)
+{
   SYSTEM_INFO si;
   GetSystemInfo (&si);
   ASSERT (si.dwNumberOfProcessors > 0);

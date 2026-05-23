@@ -21,7 +21,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e) {
+static void
+dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e)
+{
   fprintf (stderr, "============================= %" PRpgno "\n", page_h_pgno (cur));
   fprintf (stderr, "DATA_LIST\n");
   fprintf (stderr, "next: %" PRpgno "\n", dl_get_next (page_h_ro (cur)));
@@ -32,10 +34,13 @@ static void dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur,
   const p_size read = dl_read (page_h_ro (cur), output, 0, DL_DATA_SIZE);
 
   size_t total = 0;
-  while (total < read) {
+  while (total < read)
+  {
     const size_t written = fwrite (output + total, 1, read - total, out);
-    if (written == 0) {
-      if (ferror (out)) {
+    if (written == 0)
+    {
+      if (ferror (out))
+      {
         perror ("fwrite");
         break;
       }
@@ -47,24 +52,30 @@ static void dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur,
   fprintf (stderr, "Wrote: %zu\n", total);
 }
 
-static void dl_contents (FILE *out, const char *fname, const pgno pg) {
+static void
+dl_contents (FILE *out, const char *fname, const pgno pg)
+{
   error  e    = error_create ();
   page_h next = page_h_create ();
 
   struct pager *p = pgr_open_single_file (fname, &e);
-  if (p == NULL) {
+  if (p == NULL)
+  {
     error_log_consume (&e);
     return;
   }
 
   page_h cur = page_h_create ();
-  if (pgr_get (&cur, PG_DATA_LIST | PG_INNER_NODE, pg, p, &e)) {
+  if (pgr_get (&cur, PG_DATA_LIST | PG_INNER_NODE, pg, p, &e))
+  {
     error_log_consume (&e);
     return;
   }
 
-  while (true) {
-    if (cur.mode == PHM_NONE) {
+  while (true)
+  {
+    if (cur.mode == PHM_NONE)
+    {
       pgr_close (p, &e);
       return;
     }
@@ -74,13 +85,16 @@ static void dl_contents (FILE *out, const char *fname, const pgno pg) {
     const pgno           npg  = dlgt_get_next (page_h_ro (&cur));
     const enum page_type type = page_get_type (page_h_ro (&cur));
 
-    if (pgr_release (p, &cur, type, &e)) {
+    if (pgr_release (p, &cur, type, &e))
+    {
       error_log_consume (&e);
       return;
     }
 
-    if (npg != PGNO_NULL) {
-      if (pgr_get (&next, type, npg, p, &e)) {
+    if (npg != PGNO_NULL)
+    {
+      if (pgr_get (&next, type, npg, p, &e))
+      {
         error_log_consume (&e);
         return;
       }
@@ -88,8 +102,11 @@ static void dl_contents (FILE *out, const char *fname, const pgno pg) {
   }
 }
 
-int main (const int argc, char **argv) {
-  if (argc != 3) {
+int
+main (const int argc, char **argv)
+{
+  if (argc != 3)
+  {
     printf ("USAGE: dlread FNAME PGNO\n");
     return -1;
   }

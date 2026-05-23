@@ -53,12 +53,14 @@ DEFINE_DBG_ASSERT (page, data_list, d, { ASSERT (d); })
 _Static_assert (
     PAGE_SIZE > DL_DATA_OFST + 10,
     "Data List: PAGE_SIZE must be > DL_DATA_OFST "
-    "plus at least 10 extra bytes of data");
+    "plus at least 10 extra bytes of data"
+);
 
 #define DL_DATA_SIZE ((p_size)(PAGE_SIZE - DL_DATA_OFST))
 #define DL_REM       (DL_DATA_SIZE % 2)
 
-struct dl_data {
+struct dl_data
+{
   void *data;
   u32   blen;
 };
@@ -86,26 +88,40 @@ void   dl_make_valid (page *d);
 ////////////////////////////////////////////////////////////
 // GETTERS
 
-HEADER_FUNC pgno dl_get_next (const page *d) { PAGE_SIMPLE_GET_IMPL (d, pgno, DL_NEXT_OFST); }
+HEADER_FUNC pgno
+dl_get_next (const page *d)
+{ PAGE_SIMPLE_GET_IMPL (d, pgno, DL_NEXT_OFST); }
 
-HEADER_FUNC pgno dl_get_prev (const page *d) { PAGE_SIMPLE_GET_IMPL (d, pgno, DL_PREV_OFST); }
+HEADER_FUNC pgno
+dl_get_prev (const page *d)
+{ PAGE_SIMPLE_GET_IMPL (d, pgno, DL_PREV_OFST); }
 
-HEADER_FUNC void *dl_get_data (const page *d) { return (void *)&d->raw[DL_DATA_OFST]; }
+HEADER_FUNC void *
+dl_get_data (const page *d)
+{ return (void *)&d->raw[DL_DATA_OFST]; }
 
-HEADER_FUNC p_size dl_used (const page *d) { PAGE_SIMPLE_GET_IMPL (d, p_size, DL_BLEN_OFST); }
+HEADER_FUNC p_size
+dl_used (const page *d)
+{ PAGE_SIMPLE_GET_IMPL (d, p_size, DL_BLEN_OFST); }
 
-HEADER_FUNC void *dl_avail_data (const page *d) {
-  return (u8 *)&d->raw[DL_DATA_OFST] + dl_used (d);
-}
+HEADER_FUNC void *
+dl_avail_data (const page *d)
+{ return (u8 *)&d->raw[DL_DATA_OFST] + dl_used (d); }
 
-HEADER_FUNC u8 dl_get_byte (const page *d, const p_size i) {
+HEADER_FUNC u8
+dl_get_byte (const page *d, const p_size i)
+{
   ASSERT (i < dl_used (d));
   return ((u8 *)dl_get_data (d))[i];
 }
 
-HEADER_FUNC p_size dl_avail (const page *d) { return DL_DATA_SIZE - dl_used (d); }
+HEADER_FUNC p_size
+dl_avail (const page *d)
+{ return DL_DATA_SIZE - dl_used (d); }
 
-HEADER_FUNC bool dl_is_root (const page *p) {
+HEADER_FUNC bool
+dl_is_root (const page *p)
+{
   DBG_ASSERT (data_list, p);
   return dl_get_next (p) == PGNO_NULL && dl_get_prev (p) == PGNO_NULL;
 }
@@ -116,44 +132,54 @@ HEADER_FUNC bool dl_is_root (const page *p) {
 ////////////////////////////////////////////////////////////
 // SETTERS
 
-HEADER_FUNC void dl_set_next (page *d, const pgno next) {
-  PAGE_SIMPLE_SET_IMPL (d, next, DL_NEXT_OFST);
-}
+HEADER_FUNC void
+dl_set_next (page *d, const pgno next)
+{ PAGE_SIMPLE_SET_IMPL (d, next, DL_NEXT_OFST); }
 
-HEADER_FUNC void dl_set_prev (page *d, const pgno prev) {
-  PAGE_SIMPLE_SET_IMPL (d, prev, DL_PREV_OFST);
-}
+HEADER_FUNC void
+dl_set_prev (page *d, const pgno prev)
+{ PAGE_SIMPLE_SET_IMPL (d, prev, DL_PREV_OFST); }
 
-HEADER_FUNC void dl_set_byte (const page *d, const p_size i, const u8 byte) {
+HEADER_FUNC void
+dl_set_byte (const page *d, const p_size i, const u8 byte)
+{
   ASSERT (i < dl_used (d));
   ((u8 *)dl_get_data (d))[i] = byte;
 }
 
-HEADER_FUNC void dl_set_used (page *d, const p_size used) {
+HEADER_FUNC void
+dl_set_used (page *d, const p_size used)
+{
   ASSERT (used <= DL_DATA_SIZE);
   PAGE_SIMPLE_SET_IMPL (d, used, DL_BLEN_OFST);
 }
 
-HEADER_FUNC void dl_init_empty (page *d) {
+HEADER_FUNC void
+dl_init_empty (page *d)
+{
   ASSERT (page_get_type (d) == PG_DATA_LIST);
   dl_set_next (d, PGNO_NULL);
   dl_set_prev (d, PGNO_NULL);
   dl_set_used (d, 0);
 }
 
-HEADER_FUNC void dl_dl_memmove_permissive (
+HEADER_FUNC void
+dl_dl_memmove_permissive (
     page        *dest,
     const page  *src,
     const p_size didx,
     const p_size sidx,
-    const p_size nbytes) {
+    const p_size nbytes
+)
+{
   ASSERT (dest);
   ASSERT (src);
 
   ASSERT (sidx < DL_DATA_SIZE);
   ASSERT (sidx + nbytes <= DL_DATA_SIZE);
 
-  if (dest->pg == src->pg) {
+  if (dest->pg == src->pg)
+  {
     ASSERT (sidx >= didx); // Nothing to do on same ptr
     if (didx == sidx) { return; }
   }

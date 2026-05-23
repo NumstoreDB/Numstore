@@ -16,7 +16,8 @@
 
 #include "nscore/parsers/subtype.h"
 
-struct type_ref_parser {
+struct type_ref_parser
+{
   struct parser      *base;
   struct type_ref    *dest;
   struct chunk_alloc  temp;
@@ -26,7 +27,9 @@ struct type_ref_parser {
 static err_t parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, error *e);
 
 // take_type_ref ::= subtype
-static err_t parse_take_type_ref (struct type_ref_parser *parser, struct type_ref *out, error *e) {
+static err_t
+parse_take_type_ref (struct type_ref_parser *parser, struct type_ref *out, error *e)
+{
   struct subtype st;
   WRAP (parse_subtype (parser->base, &st, parser->persistent, e));
 
@@ -39,9 +42,11 @@ static err_t parse_take_type_ref (struct type_ref_parser *parser, struct type_re
 
 // field_ref       ::= IDENTIFIER type_ref
 static err_t
-parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *parser, error *e) {
+parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *parser, error *e)
+{
   // IDENT
-  if (!parser_match (parser->base, TT_IDENTIFIER)) {
+  if (!parser_match (parser->base, TT_IDENTIFIER))
+  {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
   }
 
@@ -52,7 +57,8 @@ parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *p
           .data = (char *)tok->str.data,
           .len  = tok->str.len,
       },
-      e));
+      e
+  ));
 
   // Type ref
   struct type_ref inner;
@@ -64,7 +70,8 @@ parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *p
 
 // struct_type_ref ::= 'struct' '{' IDENT type_ref (',' IDENT type_ref)* '}'
 static err_t
-parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, error *e) {
+parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, error *e)
+{
   err_t err;
 
   // 'struct'
@@ -78,7 +85,8 @@ parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, err
 
   WRAP (parse_field_ref (&builder, parser, e));
 
-  while (parser_match (parser->base, TT_COMMA)) {
+  while (parser_match (parser->base, TT_COMMA))
+  {
     parser_advance (parser->base);
     WRAP (parse_field_ref (&builder, parser, e));
   }
@@ -100,17 +108,23 @@ parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, err
 }
 
 // type_ref ::= struct_type_ref | take_type_ref
-static err_t parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, error *e) {
+static err_t
+parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, error *e)
+{
   struct token *tok = parser_peek (parser->base);
 
-  switch (tok->type) {
-    case TT_STRUCT: {
+  switch (tok->type)
+  {
+    case TT_STRUCT:
+    {
       return parse_struct_type_ref (parser, out, e);
     }
-    case TT_IDENTIFIER: {
+    case TT_IDENTIFIER:
+    {
       return parse_take_type_ref (parser, out, e);
     }
-    default: {
+    default:
+    {
       return error_causef (
           e,
           ERR_SYNTAX,
@@ -118,16 +132,15 @@ static err_t parse_type_ref_inner (struct type_ref_parser *parser, struct type_r
           "at "
           "position %u, got token type %s",
           parser->base->pos,
-          tt_tostr (tok->type));
+          tt_tostr (tok->type)
+      );
     }
   }
 }
 
-err_t parse_type_ref (
-    struct parser      *p,
-    struct type_ref    *dest,
-    struct chunk_alloc *dalloc,
-    error              *e) {
+err_t
+parse_type_ref (struct parser *p, struct type_ref *dest, struct chunk_alloc *dalloc, error *e)
+{
   struct type_ref_parser parser = {
       .base       = p,
       .dest       = dest,

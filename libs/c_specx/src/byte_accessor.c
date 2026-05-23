@@ -14,22 +14,29 @@
 
 #include "c_specx.h"
 
-static u32 ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc) {
-  switch (acc->type) {
-    case TA_TAKE: {
+static u32
+ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
+{
+  switch (acc->type)
+  {
+    case TA_TAKE:
+    {
       memcpy (dest, src, acc->src_size);
       return acc->src_size;
     }
-    case TA_SELECT: {
+    case TA_SELECT:
+    {
       return ba_memcpy_from_recursive (dest, src + acc->select.bofst, acc->select.sub_ba);
     }
-    case TA_RANGE: {
+    case TA_RANGE:
+    {
       u32 elem_size = acc->range.sub_ba->src_size;
       u32 pos       = acc->range.stride.start;
       u32 written   = 0;
       u32 i         = 0;
 
-      while (i < acc->range.stride.nelems) {
+      while (i < acc->range.stride.nelems)
+      {
         written +=
             ba_memcpy_from_recursive (dest + written, src + pos * elem_size, acc->range.sub_ba);
 
@@ -43,12 +50,13 @@ static u32 ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_access
   UNREACHABLE ();
 }
 
-u32 ba_memcpy_from (u8 *dest, const u8 *src, struct byte_accessor *acc) {
-  return ba_memcpy_from_recursive (dest, src, acc);
-}
+u32
+ba_memcpy_from (u8 *dest, const u8 *src, struct byte_accessor *acc)
+{ return ba_memcpy_from_recursive (dest, src, acc); }
 
 #ifndef NTEST
-TEST (ba_memcpy_from_basic) {
+TEST (ba_memcpy_from_basic)
+{
   // struct { a int, b struct { b char, c [5]u16 } }
   u8 src[64];
   u8 dest[64];
@@ -73,21 +81,20 @@ TEST (ba_memcpy_from_basic) {
 
   memcpy (src, test_data, sizeof (test_data));
 
-  TEST_CASE ("[.a]") {
+  TEST_CASE ("[.a]")
+  {
     struct byte_accessor acc = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 4,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .select    = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
 
     u32 moved = ba_memcpy_from (dest, src, &acc);
@@ -99,21 +106,20 @@ TEST (ba_memcpy_from_basic) {
     test_assert_int_equal (dest[3], 12);
   }
 
-  TEST_CASE ("[.b]") {
+  TEST_CASE ("[.b]")
+  {
     struct byte_accessor acc = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 1,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 1,
-                        .dest_size = 1,
-                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 1,
+                .dest_size = 1,
             },
+        },
     };
 
     u32 moved = ba_memcpy_from (dest, src, &acc);
@@ -122,36 +128,33 @@ TEST (ba_memcpy_from_basic) {
     test_assert_int_equal (dest[0], 0xAB);
   }
 
-  TEST_CASE ("[.b, .a]") {
+  TEST_CASE ("[.b, .a]")
+  {
     struct byte_accessor dotb = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 1,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 1,
-                        .dest_size = 1,
-                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 1,
+                .dest_size = 1,
             },
+        },
     };
     struct byte_accessor dota = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 4,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .select    = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
 
     u32 moved = ba_memcpy_from (dest, src, &dotb);
@@ -166,36 +169,33 @@ TEST (ba_memcpy_from_basic) {
     test_assert_int_equal (dest[4], 12);
   }
 
-  TEST_CASE ("[.a, .b]") {
+  TEST_CASE ("[.a, .b]")
+  {
     struct byte_accessor dota = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 4,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .select    = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
     struct byte_accessor dotb = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 1,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 1,
-                        .dest_size = 1,
-                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 1,
+                .dest_size = 1,
             },
+        },
     };
 
     u32 moved = ba_memcpy_from (dest, src, &dota);
@@ -210,48 +210,43 @@ TEST (ba_memcpy_from_basic) {
     test_assert_int_equal (dest[4], 0xAB);
   }
 
-  TEST_CASE ("[.b.c[1:1:4]]") {
+  TEST_CASE ("[.b.c[1:1:4]]")
+  {
     // SELECT(4, SELECT(1, RANGE(start=1, stride=1, nelems=4,
     // TAKE(2)))) Gathers c[1], c[2], c[3] → 6 bytes
     struct byte_accessor acc = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 6,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_SELECT,
-                        .src_size  = 11,
-                        .dest_size = 6,
-                        .select =
-                            {
-                                .bofst = 1,
-                                .sub_ba =
-                                    &(struct byte_accessor){
-                                        .type      = TA_RANGE,
-                                        .src_size  = 10,
-                                        .dest_size = 8,
-                                        .range =
-                                            {
-                                                .sub_ba =
-                                                    &(struct byte_accessor){
-                                                        .type      = TA_TAKE,
-                                                        .src_size  = 2,
-                                                        .dest_size = 2,
-                                                    },
-                                                .stride =
-                                                    (struct stride){
-                                                        .start  = 1,
-                                                        .stride = 1,
-                                                        .nelems = 3,
-                                                    },
-                                            },
-                                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_SELECT,
+                .src_size  = 11,
+                .dest_size = 6,
+                .select    = {
+                    .bofst  = 1,
+                    .sub_ba = &(struct byte_accessor){
+                        .type      = TA_RANGE,
+                        .src_size  = 10,
+                        .dest_size = 8,
+                        .range     = {
+                            .sub_ba =
+                                &(struct byte_accessor){
+                                    .type      = TA_TAKE,
+                                    .src_size  = 2,
+                                    .dest_size = 2,
+                                },
+                            .stride = (struct stride){
+                                .start  = 1,
+                                .stride = 1,
+                                .nelems = 3,
                             },
+                        },
                     },
+                },
             },
+        },
     };
 
     u32 moved = ba_memcpy_from (dest, src, &acc);
@@ -265,48 +260,43 @@ TEST (ba_memcpy_from_basic) {
     test_assert_int_equal (dest[5], 0);
   }
 
-  TEST_CASE ("[.b.c[0:2:5]]") {
+  TEST_CASE ("[.b.c[0:2:5]]")
+  {
     // SELECT(4, SELECT(1, RANGE(start=0, stride=2, nelems=5,
     // TAKE(2)))) Gathers c[0], c[2], c[4] → 6 bytes
     struct byte_accessor acc = {
         .type      = TA_SELECT,
         .src_size  = 15,
         .dest_size = 6,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_SELECT,
-                        .src_size  = 11,
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_SELECT,
+                .src_size  = 11,
+                .dest_size = 6,
+                .select    = {
+                    .bofst  = 1,
+                    .sub_ba = &(struct byte_accessor){
+                        .type      = TA_RANGE,
+                        .src_size  = 10,
                         .dest_size = 6,
-                        .select =
-                            {
-                                .bofst = 1,
-                                .sub_ba =
-                                    &(struct byte_accessor){
-                                        .type      = TA_RANGE,
-                                        .src_size  = 10,
-                                        .dest_size = 6,
-                                        .range =
-                                            {
-                                                .sub_ba =
-                                                    &(struct byte_accessor){
-                                                        .type      = TA_TAKE,
-                                                        .src_size  = 2,
-                                                        .dest_size = 2,
-                                                    },
-                                                .stride =
-                                                    (struct stride){
-                                                        .start  = 0,
-                                                        .stride = 2,
-                                                        .nelems = 3,
-                                                    },
-                                            },
-                                    },
+                        .range     = {
+                            .sub_ba =
+                                &(struct byte_accessor){
+                                    .type      = TA_TAKE,
+                                    .src_size  = 2,
+                                    .dest_size = 2,
+                                },
+                            .stride = (struct stride){
+                                .start  = 0,
+                                .stride = 2,
+                                .nelems = 3,
                             },
+                        },
                     },
+                },
             },
+        },
     };
 
     u32 moved = ba_memcpy_from (dest, src, &acc);
@@ -320,7 +310,8 @@ TEST (ba_memcpy_from_basic) {
     test_assert_int_equal (dest[5], 0);
   }
 
-  TEST_CASE ("[.a, .a]") {
+  TEST_CASE ("[.a, .a]")
+  {
     u8 seq[4] = {0, 1, 2, 3};
     memcpy (src, seq, 4);
 
@@ -347,21 +338,28 @@ TEST (ba_memcpy_from_basic) {
 }
 #endif
 
-static u32 ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc) {
-  switch (acc->type) {
-    case TA_TAKE: {
+static u32
+ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
+{
+  switch (acc->type)
+  {
+    case TA_TAKE:
+    {
       memcpy (dest, src, acc->src_size);
       return acc->src_size;
     }
-    case TA_SELECT: {
+    case TA_SELECT:
+    {
       return ba_memcpy_to_recursive (dest + acc->select.bofst, src, acc->select.sub_ba);
     }
-    case TA_RANGE: {
+    case TA_RANGE:
+    {
       u32 elem_size = acc->range.sub_ba->src_size;
       u32 pos       = acc->range.stride.start;
       u32 read      = 0;
 
-      while (pos < acc->range.stride.nelems) {
+      while (pos < acc->range.stride.nelems)
+      {
         read += ba_memcpy_to_recursive (dest + pos * elem_size, src + read, acc->range.sub_ba);
         pos += acc->range.stride.stride;
       }
@@ -372,17 +370,19 @@ static u32 ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor
   UNREACHABLE ();
 }
 
-u32 ba_memcpy_to (u8 *dest, const u8 *src, struct byte_accessor *acc) {
-  return ba_memcpy_to_recursive (dest, src, acc);
-}
+u32
+ba_memcpy_to (u8 *dest, const u8 *src, struct byte_accessor *acc)
+{ return ba_memcpy_to_recursive (dest, src, acc); }
 
 #ifndef NTEST
-TEST (ba_memcpy_to_basic) {
+TEST (ba_memcpy_to_basic)
+{
   // struct { a int, b struct { b char, c [5]u16 } }
   u8 src[64];
   u8 dest[64];
 
-  TEST_CASE ("[.a]") {
+  TEST_CASE ("[.a]")
+  {
     u8 test_data[] = {78, 56, 34, 12};
     memcpy (src, test_data, sizeof (test_data));
 
@@ -390,16 +390,14 @@ TEST (ba_memcpy_to_basic) {
         .type      = TA_SELECT,
         .src_size  = 4,
         .dest_size = 4,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .select    = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
 
     ba_memcpy_to (dest, src, &acc);
@@ -410,7 +408,8 @@ TEST (ba_memcpy_to_basic) {
     test_assert_int_equal (dest[3], 12);
   }
 
-  TEST_CASE ("[.b]") {
+  TEST_CASE ("[.b]")
+  {
     u8 test_data[] = {0xAB};
     memcpy (src, test_data, sizeof (test_data));
 
@@ -418,16 +417,14 @@ TEST (ba_memcpy_to_basic) {
         .type      = TA_SELECT,
         .src_size  = 1,
         .dest_size = 1,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 1,
-                        .dest_size = 1,
-                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 1,
+                .dest_size = 1,
             },
+        },
     };
 
     ba_memcpy_to (dest, src, &acc);
@@ -435,7 +432,8 @@ TEST (ba_memcpy_to_basic) {
     test_assert_int_equal (dest[4], 0xAB);
   }
 
-  TEST_CASE ("[.b, .a]") {
+  TEST_CASE ("[.b, .a]")
+  {
     u8 test_data[] = {
         0xAB, // .b
         78,
@@ -449,31 +447,27 @@ TEST (ba_memcpy_to_basic) {
         .type      = TA_SELECT,
         .src_size  = 1,
         .dest_size = 1,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 1,
-                        .dest_size = 1,
-                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 1,
+                .dest_size = 1,
             },
+        },
     };
     struct byte_accessor dota = {
         .type      = TA_SELECT,
         .src_size  = 4,
         .dest_size = 4,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .select    = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
 
     u32 moved = ba_memcpy_to (dest, src, &dotb); // 0xAB → dest[4]
@@ -489,7 +483,8 @@ TEST (ba_memcpy_to_basic) {
     test_assert_int_equal (dest[4], 0xAB);
   }
 
-  TEST_CASE ("[.a, .b]") {
+  TEST_CASE ("[.a, .b]")
+  {
     u8 test_data[] = {
         78,
         56,
@@ -503,31 +498,27 @@ TEST (ba_memcpy_to_basic) {
         .type      = TA_SELECT,
         .src_size  = 4,
         .dest_size = 4,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .select    = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
     struct byte_accessor dotb = {
         .type      = TA_SELECT,
         .src_size  = 1,
         .dest_size = 1,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 1,
-                        .dest_size = 1,
-                    },
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 1,
+                .dest_size = 1,
             },
+        },
     };
 
     u32 moved = ba_memcpy_to (dest, src, &dota);
@@ -542,7 +533,8 @@ TEST (ba_memcpy_to_basic) {
     test_assert_int_equal (dest[4], 0xAB);
   }
 
-  TEST_CASE ("[.b.c[1:1:4]]") {
+  TEST_CASE ("[.b.c[1:1:4]]")
+  {
     u8 test_data[] = {
         2,
         0, // c[1] = 2
@@ -559,41 +551,35 @@ TEST (ba_memcpy_to_basic) {
         .type      = TA_SELECT,
         .src_size  = 6,
         .dest_size = 6,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_SELECT,
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_SELECT,
+                .src_size  = 6,
+                .dest_size = 6,
+                .select    = {
+                    .bofst  = 1,
+                    .sub_ba = &(struct byte_accessor){
+                        .type      = TA_RANGE,
                         .src_size  = 6,
                         .dest_size = 6,
-                        .select =
-                            {
-                                .bofst = 1,
-                                .sub_ba =
-                                    &(struct byte_accessor){
-                                        .type      = TA_RANGE,
-                                        .src_size  = 6,
-                                        .dest_size = 6,
-                                        .range =
-                                            {
-                                                .sub_ba =
-                                                    &(struct byte_accessor){
-                                                        .type      = TA_TAKE,
-                                                        .src_size  = 2,
-                                                        .dest_size = 2,
-                                                    },
-                                                .stride =
-                                                    (struct stride){
-                                                        .start  = 1,
-                                                        .stride = 1,
-                                                        .nelems = 4,
-                                                    },
-                                            },
-                                    },
+                        .range     = {
+                            .sub_ba =
+                                &(struct byte_accessor){
+                                    .type      = TA_TAKE,
+                                    .src_size  = 2,
+                                    .dest_size = 2,
+                                },
+                            .stride = (struct stride){
+                                .start  = 1,
+                                .stride = 1,
+                                .nelems = 4,
                             },
+                        },
                     },
+                },
             },
+        },
     };
 
     u32 moved = ba_memcpy_to (dest, src, &acc);
@@ -607,7 +593,8 @@ TEST (ba_memcpy_to_basic) {
     test_assert_int_equal (dest[12], 0);
   }
 
-  TEST_CASE ("[.b.c[0:2:5]]") {
+  TEST_CASE ("[.b.c[0:2:5]]")
+  {
     // Compact src: c[0], c[2], c[4] in linear order
     u8 test_data[] = {
         1,
@@ -626,41 +613,35 @@ TEST (ba_memcpy_to_basic) {
         .type      = TA_SELECT,
         .src_size  = 6,
         .dest_size = 6,
-        .select =
-            {
-                .bofst = 4,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_SELECT,
+        .select    = {
+            .bofst  = 4,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_SELECT,
+                .src_size  = 6,
+                .dest_size = 6,
+                .select    = {
+                    .bofst  = 1,
+                    .sub_ba = &(struct byte_accessor){
+                        .type      = TA_RANGE,
                         .src_size  = 6,
                         .dest_size = 6,
-                        .select =
-                            {
-                                .bofst = 1,
-                                .sub_ba =
-                                    &(struct byte_accessor){
-                                        .type      = TA_RANGE,
-                                        .src_size  = 6,
-                                        .dest_size = 6,
-                                        .range =
-                                            {
-                                                .sub_ba =
-                                                    &(struct byte_accessor){
-                                                        .type      = TA_TAKE,
-                                                        .src_size  = 2,
-                                                        .dest_size = 2,
-                                                    },
-                                                .stride =
-                                                    (struct stride){
-                                                        .start  = 0,
-                                                        .stride = 2,
-                                                        .nelems = 5,
-                                                    },
-                                            },
-                                    },
+                        .range     = {
+                            .sub_ba =
+                                &(struct byte_accessor){
+                                    .type      = TA_TAKE,
+                                    .src_size  = 2,
+                                    .dest_size = 2,
+                                },
+                            .stride = (struct stride){
+                                .start  = 0,
+                                .stride = 2,
+                                .nelems = 5,
                             },
+                        },
                     },
+                },
             },
+        },
     };
 
     u32 moved = ba_memcpy_to (dest, src, &acc);
@@ -674,22 +655,21 @@ TEST (ba_memcpy_to_basic) {
     test_assert_int_equal (dest[14], 0);
   }
 
-  TEST_CASE ("[.a, .a]") {
+  TEST_CASE ("[.a, .a]")
+  {
     u8 test_data[] = {4, 5, 6, 7};
     memcpy (src, test_data, sizeof (test_data));
 
     struct byte_accessor dota = {
-        .type = TA_SELECT,
-        .select =
-            {
-                .bofst = 0,
-                .sub_ba =
-                    &(struct byte_accessor){
-                        .type      = TA_TAKE,
-                        .src_size  = 4,
-                        .dest_size = 4,
-                    },
+        .type   = TA_SELECT,
+        .select = {
+            .bofst  = 0,
+            .sub_ba = &(struct byte_accessor){
+                .type      = TA_TAKE,
+                .src_size  = 4,
+                .dest_size = 4,
             },
+        },
     };
 
     u32 moved = ba_memcpy_to (dest, src, &dota);

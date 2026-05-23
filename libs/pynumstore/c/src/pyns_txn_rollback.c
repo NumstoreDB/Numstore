@@ -18,7 +18,9 @@
 #include <Python.h>
 #include <string.h>
 
-PyObject *pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg) {
+PyObject *
+pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg)
+{
   if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
 
   /* TODO: smfile_rollback(txn); */

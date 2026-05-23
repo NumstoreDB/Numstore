@@ -26,7 +26,9 @@ DEFINE_DBG_ASSERT (error, error, e, {
   if (e->cause_code != SUCCESS) { ASSERT (e->cmlen > 0); }
 })
 
-error error_create (void) {
+error
+error_create (void)
+{
   const error ret = {
       .cause_code = SUCCESS,
       .cmlen      = 0,
@@ -37,11 +39,17 @@ error error_create (void) {
   return ret;
 }
 
-void error_silence (error *e) { e->disable_log = true; }
+void
+error_silence (error *e)
+{ e->disable_log = true; }
 
-void error_unsilence (error *e) { e->disable_log = false; }
+void
+error_unsilence (error *e)
+{ e->disable_log = false; }
 
-err_t error_causef (error *e, const err_t c, const char *fmt, ...) {
+err_t
+error_causef (error *e, const err_t c, const char *fmt, ...)
+{
   if (e == NULL) { return c; }
 
   ASSERT (fmt);
@@ -56,11 +64,13 @@ err_t error_causef (error *e, const err_t c, const char *fmt, ...) {
   cmlen     = MIN (cmlen, 255);
   va_end (ap_copy);
 
-  if (e->cause_code != SUCCESS) {
+  if (e->cause_code != SUCCESS)
+  {
     if (!e->disable_log) { i_log_error ("TRACE: %s\n", tmpbuf); }
   }
 
-  if (e->cause_code == SUCCESS) {
+  if (e->cause_code == SUCCESS)
+  {
     memcpy (e->cause_msg, tmpbuf, cmlen);
     e->cause_code       = c;
     e->cause_msg[cmlen] = '\0';
@@ -74,12 +84,16 @@ err_t error_causef (error *e, const err_t c, const char *fmt, ...) {
   return c;
 }
 
-err_t error_change_causef_from (error *e, const err_t from, const err_t to, const char *fmt, ...) {
+err_t
+error_change_causef_from (error *e, const err_t from, const err_t to, const char *fmt, ...)
+{
   ASSERT (fmt);
 
-  if (e) {
+  if (e)
+  {
     DBG_ASSERT (error, e);
-    if (e->cause_code == from) {
+    if (e->cause_code == from)
+    {
       ASSERT (e->cause_code == from);
       e->cause_code = to;
 
@@ -102,9 +116,12 @@ err_t error_change_causef_from (error *e, const err_t from, const err_t to, cons
   return error_trace (e);
 }
 
-err_t error_change_causef (error *e, const err_t c, const char *fmt, ...) {
+err_t
+error_change_causef (error *e, const err_t c, const char *fmt, ...)
+{
   ASSERT (fmt);
-  if (e) {
+  if (e)
+  {
     DBG_ASSERT (error, e);
     ASSERT (e->cause_code != SUCCESS); // Can only go from good -> cause
     e->cause_code = c;
@@ -127,7 +144,9 @@ err_t error_change_causef (error *e, const err_t c, const char *fmt, ...) {
   return c;
 }
 
-void error_log_consume (error *e) {
+void
+error_log_consume (error *e)
+{
   DBG_ASSERT (error, e);
   ASSERT (e->cause_code != SUCCESS);
   i_log_error ("%.*s\n", e->cmlen, e->cause_msg);
@@ -135,12 +154,15 @@ void error_log_consume (error *e) {
   e->cause_code = SUCCESS;
 }
 
-bool error_equal (const error *left, const error *right) {
+bool
+error_equal (const error *left, const error *right)
+{
   DBG_ASSERT (error, left);
   DBG_ASSERT (error, right);
   if (left->cause_code != right->cause_code) { return false; }
 
-  if (left->cause_code) {
+  if (left->cause_code)
+  {
     if (left->cmlen != right->cmlen) { return false; }
     if (strncmp (left->cause_msg, right->cause_msg, left->cmlen) != 0) { return false; }
   }
@@ -149,13 +171,17 @@ bool error_equal (const error *left, const error *right) {
 }
 
 // Consuming errors (these both reset the error)
-void err_t_perror (FILE *output, error *e) {
+void
+err_t_perror (FILE *output, error *e)
+{
   fprintf (output, "%.*s", e->cmlen, e->cause_msg);
   e->cause_code = SUCCESS;
   e->cmlen      = 0;
 }
 
-void error_fatal (const char *fmt, ...) {
+void
+error_fatal (const char *fmt, ...)
+{
   ASSERT (fmt);
   // Print into cause message
   // (255 because of null terminator)

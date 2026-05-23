@@ -20,7 +20,8 @@
 #include "nscore/var.h"
 #include "smfile.h"
 
-static sb_size _smfile_premove (
+static sb_size
+_smfile_premove (
     struct nshandle *db,
     const char      *name,
     void            *dest,
@@ -28,7 +29,9 @@ static sb_size _smfile_premove (
     const sb_size    bofst,
     const sb_size    stride,
     b_size           nelem,
-    error           *e) {
+    error           *e
+)
+{
   sb_size                     ret;                             // Return value
   b_size                      ofst;                            // Resolved offset
   struct stream               _output;                         // Output stream if present
@@ -41,10 +44,12 @@ static sb_size _smfile_premove (
   struct string               vname = vname_or_default (name); // Variable name
 
   // Parameter validation
-  if (stride < 0) {
+  if (stride < 0)
+  {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
-  if (stride == 0) {
+  if (stride == 0)
+  {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
   }
   if (size == 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0"); }
@@ -64,7 +69,8 @@ static sb_size _smfile_premove (
         .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE) {
+    if (err == ERR_VARIABLE_NE)
+    {
       ret           = 0;
       e->cause_code = SUCCESS;
       e->cmlen      = 0;
@@ -77,11 +83,13 @@ static sb_size _smfile_premove (
   {
     ofst  = var_resolve_index (&gparams.dest, bofst);
     nelem = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
-    if (nelem == 0) {
+    if (nelem == 0)
+    {
       ret = 0;
       goto commit;
     }
-    if (dest) {
+    if (dest)
+    {
       stream_obuf_init (&_output, &ctx, dest, size * nelem);
       output = &_output;
     }
@@ -135,14 +143,17 @@ failed:
   return error_trace (e);
 }
 
-sb_size smfile_premove (
+sb_size
+smfile_premove (
     smfile_t   *_smf,
     const char *name,
     void       *dest,
     t_size      size,
     sb_size     bofst,
     sb_size     stride,
-    b_size      nelem) {
+    b_size      nelem
+)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

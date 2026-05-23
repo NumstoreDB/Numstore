@@ -30,7 +30,9 @@
  * This example just inserts everything into the "floats" data source.
  * See sample4 for more usage
  */
-int main (void) {
+int
+main (void)
+{
   smfile_t *smf = smfile_open ("sample4_stride");
 
   // Remove all the data (this might error - that's ok - just says there's no dataset with that

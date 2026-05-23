@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////
 // Condition Variable
 
-err_t i_cond_create (i_cond *c, error *e) {
+err_t
+i_cond_create (i_cond *c, error *e)
+{
   ASSERT (c);
 
 #ifndef NDEBUG
@@ -41,37 +43,46 @@ err_t i_cond_create (i_cond *c, error *e) {
   if (pthread_cond_init (&c->cond, NULL))
 #endif
   {
-    switch (errno) {
-      case EAGAIN: {
+    switch (errno)
+    {
+      case EAGAIN:
+      {
         return error_causef (e, ERR_IO, "pthread_cond_init: %s", strerror (errno));
       }
 
-      case ENOMEM: {
+      case ENOMEM:
+      {
         return error_causef (e, ERR_NOMEM, "pthread_cond_init: %s", strerror (errno));
       }
 
-      case EBUSY: {
+      case EBUSY:
+      {
         i_log_error (
             "cond_create: cond "
             "already initialized: "
             "%s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "cond_create: invalid "
             "attributes or cond: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      default: {
+      default:
+      {
         i_log_error (
             "cond_create: unknown "
             "error: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
     }
@@ -80,74 +91,96 @@ err_t i_cond_create (i_cond *c, error *e) {
   return SUCCESS;
 }
 
-void i_cond_free (i_cond *c) {
+void
+i_cond_free (i_cond *c)
+{
   ASSERT (c);
 
   errno = 0;
-  if (pthread_cond_destroy (&c->cond)) {
-    switch (errno) {
-      case EBUSY: {
+  if (pthread_cond_destroy (&c->cond))
+  {
+    switch (errno)
+    {
+      case EBUSY:
+      {
         i_log_error (
             "cond_free: cond has "
             "active waiters: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      case EINVAL: {
+      case EINVAL:
+      {
         i_log_error (
             "cond_free: invalid or "
             "uninitialized cond: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      default: {
+      default:
+      {
         i_log_error (
             "cond_free: unknown "
             "error: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
     }
   }
 }
 
-void i_cond_wait (i_cond *c, i_mutex *m) {
+void
+i_cond_wait (i_cond *c, i_mutex *m)
+{
   ASSERT (c);
   ASSERT (m);
 
   errno = 0;
-  if (pthread_cond_wait (&c->cond, &m->m)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_cond_wait (&c->cond, &m->m))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "cond_wait: invalid cond "
             "or mutex: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "cond_wait: mutex not "
             "owned by thread: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      default: {
+      default:
+      {
         i_log_error (
             "cond_wait: unknown "
             "error: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
     }
   }
 }
 
-void i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec) {
+void
+i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
+{
   ASSERT (c);
   ASSERT (m);
 
@@ -155,85 +188,110 @@ void i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec) {
   clock_gettime (CLOCK_REALTIME, &ts);
   ts.tv_sec += msec / 1000;
   ts.tv_nsec += (msec % 1000) * 1000000LL;
-  if (ts.tv_nsec >= 1000000000LL) {
+  if (ts.tv_nsec >= 1000000000LL)
+  {
     ts.tv_sec += 1;
     ts.tv_nsec -= 1000000000LL;
   }
 
   errno   = 0;
   int ret = pthread_cond_timedwait (&c->cond, &m->m, &ts);
-  if (ret && ret != ETIMEDOUT) {
-    switch (ret) {
-      case EINVAL: {
+  if (ret && ret != ETIMEDOUT)
+  {
+    switch (ret)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "cond_timed_wait: invalid cond, "
             "mutex, or abstime: %s\n",
-            strerror (ret));
+            strerror (ret)
+        );
         UNREACHABLE ();
       }
-      case EPERM: {
+      case EPERM:
+      {
         i_log_error (
             "cond_timed_wait: mutex not "
             "owned by thread: %s\n",
-            strerror (ret));
+            strerror (ret)
+        );
         UNREACHABLE ();
       }
-      default: {
+      default:
+      {
         i_log_error (
             "cond_timed_wait: unknown "
             "error: %s\n",
-            strerror (ret));
+            strerror (ret)
+        );
         UNREACHABLE ();
       }
     }
   }
 }
 
-void i_cond_signal (i_cond *c) {
+void
+i_cond_signal (i_cond *c)
+{
   ASSERT (c);
 
   errno = 0;
-  if (pthread_cond_signal (&c->cond)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_cond_signal (&c->cond))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "cond_signal: invalid or "
             "uninitialized cond: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      default: {
+      default:
+      {
         i_log_error (
             "cond_signal: unknown "
             "error: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
     }
   }
 }
 
-void i_cond_broadcast (i_cond *c) {
+void
+i_cond_broadcast (i_cond *c)
+{
   ASSERT (c);
 
   errno = 0;
-  if (pthread_cond_broadcast (&c->cond)) {
-    switch (errno) {
-      case EINVAL: {
+  if (pthread_cond_broadcast (&c->cond))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
         i_log_error (
             "cond_broadcast: invalid "
             "or uninitialized cond: "
             "%s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
 
-      default: {
+      default:
+      {
         i_log_error (
             "cond_broadcast: unknown "
             "error: %s\n",
-            strerror (errno));
+            strerror (errno)
+        );
         UNREACHABLE ();
       }
     }

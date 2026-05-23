@@ -39,18 +39,21 @@ DEFINE_DBG_ASSERT (struct dl_page_builder, dl_page_builder, in, {
   ASSERT (in);
   ASSERT (in->dclen <= DL_DATA_SIZE);
   ASSERT (in->data.blen <= in->dclen);
-  if (in->data.blen == 0) {
-    ASSERT (in->data.data == NULL);
-  } else {
+  if (in->data.blen == 0) { ASSERT (in->data.data == NULL); }
+  else
+  {
     ASSERT (in->data.data != NULL);
   }
 })
 
-err_t pgr_fixture_create (struct pgr_fixture *dest) {
+err_t
+pgr_fixture_create (struct pgr_fixture *dest)
+{
   ASSERT (dest);
   dest->e = error_create ();
 
-  if (unlikely (pgr_delete_single_file ("testdb", &dest->e) < SUCCESS)) {
+  if (unlikely (pgr_delete_single_file ("testdb", &dest->e) < SUCCESS))
+  {
     return error_trace (&dest->e);
   }
 
@@ -68,14 +71,18 @@ err_t pgr_fixture_create (struct pgr_fixture *dest) {
   return dest->e.cause_code;
 }
 
-err_t pgr_fixture_teardown (struct pgr_fixture *f) {
+err_t
+pgr_fixture_teardown (struct pgr_fixture *f)
+{
   pgr_close (f->p, &f->e);
   chunk_alloc_free_all (&f->alloc);
 
   return f->e.cause_code;
 }
 
-err_t build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e) {
+err_t
+build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
+{
   DBG_ASSERT (in_page_builder, &b);
 
   WRAP (pgr_new (dest, b.pager, b.txn, PG_INNER_NODE, e));
@@ -89,15 +96,18 @@ err_t build_fake_inner_node (page_h *dest, const struct in_page_builder b, error
   struct in_pair data[IN_MAX_KEYS];
 
   // Copy explicit children
-  if (b.children.nodes) {
+  if (b.children.nodes)
+  {
     memcpy (data, b.children.nodes, b.children.len * sizeof (struct in_pair));
   }
 
   static pgno pg = 99999;
 
   // Fill rest with random
-  if (b.children.len < b.dclen) {
-    for (u32 i = b.children.len; i < b.dclen; ++i) {
+  if (b.children.len < b.dclen)
+  {
+    for (u32 i = b.children.len; i < b.dclen; ++i)
+    {
       // Can't duplicate nodes - I'm assuming
       // user supplied nodes will be < 99999
       data[i].pg  = pg++;
@@ -110,7 +120,9 @@ err_t build_fake_inner_node (page_h *dest, const struct in_page_builder b, error
   return 0;
 }
 
-err_t build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e) {
+err_t
+build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
+{
   DBG_ASSERT (dl_page_builder, &b);
 
   WRAP (pgr_new (dest, b.pager, b.txn, PG_DATA_LIST, e));
@@ -140,19 +152,23 @@ err_t build_fake_data_list (page_h *dest, const struct dl_page_builder b, error 
 static err_t
 build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e);
 
-err_t build_page_tree (struct page_tree_builder *builder, error *e) {
-  return build_page_desc (&builder->root, builder->pager, builder->txn, e);
-}
+err_t
+build_page_tree (struct page_tree_builder *builder, error *e)
+{ return build_page_desc (&builder->root, builder->pager, builder->txn, e); }
 
 static err_t
-build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e) {
-  switch (desc->type) {
-    case PG_INNER_NODE: {
+build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e)
+{
+  switch (desc->type)
+  {
+    case PG_INNER_NODE:
+    {
       // Build children nodes first
       const page_h  *prev = NULL;
       struct in_pair children[IN_MAX_KEYS];
 
-      for (u32 i = 0; i < desc->inner.clen; i++) {
+      for (u32 i = 0; i < desc->inner.clen; i++)
+      {
         page_h *cur = &desc->inner.children[i].out;
         ASSERT (cur->mode == PHM_NONE);
 
@@ -179,7 +195,8 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
                   .nodes = children,
                   .len   = desc->inner.clen,
               },
-          .dclen = desc->inner.dclen};
+          .dclen = desc->inner.dclen
+      };
 
       WRAP (build_fake_inner_node (&desc->out, builder, e));
       desc->size = in_get_size (page_h_ro (&desc->out));
@@ -187,7 +204,8 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
       return SUCCESS;
     }
 
-    case PG_DATA_LIST: {
+    case PG_DATA_LIST:
+    {
       // Build data list page
       const struct dl_page_builder builder = {
           .pager = pager,
@@ -201,7 +219,8 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
       return build_fake_data_list (&desc->out, builder, e);
     }
 
-    default: {
+    default:
+    {
       UNREACHABLE ();
     }
   }
@@ -209,21 +228,25 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
   return 0;
 }
 
-static err_t page_desc_release_all (struct page_desc *b, struct pager *p, error *e) {
+static err_t
+page_desc_release_all (struct page_desc *b, struct pager *p, error *e)
+{
   pgr_release (p, &b->out, b->type, e);
 
-  if (b->type == PG_INNER_NODE) {
+  if (b->type == PG_INNER_NODE)
+  {
     for (u32 i = 0; i < b->inner.clen; ++i) { page_desc_release_all (&b->inner.children[i], p, e); }
   }
 
   return error_trace (e);
 }
 
-err_t page_tree_builder_release_all (struct page_tree_builder *b, error *e) {
-  return page_desc_release_all (&b->root, b->pager, e);
-}
+err_t
+page_tree_builder_release_all (struct page_tree_builder *b, error *e)
+{ return page_desc_release_all (&b->root, b->pager, e); }
 
-TEST (build_page_tree) {
+TEST (build_page_tree)
+{
   struct pgr_fixture f;
   pgr_fixture_create (&f);
 

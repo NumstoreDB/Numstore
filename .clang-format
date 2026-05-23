@@ -6,23 +6,44 @@ ContinuationIndentWidth: 4
 UseTab: Never
 
 # ---------------------------------------------------------------------------
-# Function signatures: one line if it fits, else return type on its own line
-# and every parameter on its own line. No in-between states.
+# Function signatures: Break return type on definitions, but keep them on 
+# a single line for forward declarations. Wrap parameters if too long.
 # ---------------------------------------------------------------------------
-AlignAfterOpenBracket: AlwaysBreak
+# BlockIndent breaks long parameters across lines naturally and places the 
+# closing paren on its own line, preventing giant un-wrapped nested blocks.
+AlignAfterOpenBracket: BlockIndent
 BinPackParameters: false
 BinPackArguments: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllArgumentsOnNextLine: false
-#BreakAfterReturnType: Automatic     # clang-format 19+; older: AlwaysBreakAfterReturnType: None
-PenaltyReturnTypeOnItsOwnLine: 1    # makes "wrap params => also wrap return type" the cheap choice
+
+# Forces the return type down ONLY on definitions (implementations)
+# AllDefinitions ensures function names remain at column 0 without wrapping indents
+AlwaysBreakAfterReturnType: AllDefinitions   # Older clang-format versions
+BreakAfterReturnType: AllDefinitions         # Clang-format 19+ 
+PenaltyReturnTypeOnItsOwnLine: 1
 SpaceBeforeParens: Always
 
+IndentWrappedFunctionNames: false
+
 # ---------------------------------------------------------------------------
-# Braces: GNU style when multi-line, but keep "{ }" on one line if the whole
-# body fits. Applies to functions, blocks, ifs, loops, cases, enums.
+# Braces: GNU/Custom style logic. Put braces on the next line when multi-line, 
+# but allow short inline structures to stay compact if they fit.
 # ---------------------------------------------------------------------------
-AllowShortFunctionsOnASingleLine: All
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterControlStatement: Always  # Forces 'if', 'else', 'switch', 'for', 'while' braces to next line
+  AfterEnum: true
+  AfterFunction: true            # Forces function implementation braces to next line
+  AfterStruct: true
+  BeforeElse: true               # Formats as } \n else instead of } else
+  BeforeWhile: true              # Formats as } \n while instead of } while
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: Always
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLoopsOnASingleLine: true
@@ -42,7 +63,7 @@ AllowShortEnumsOnASingleLine: true
 # "AfterHash" keeps the # in column 0 and indents what follows it:
 #   #if FOO
 #   #  if BAR
-#   #    define BAZ 1
+#   #     define BAZ 1
 #   #  endif
 #   #endif
 # Use "BeforeHash" instead if you prefer the whole directive indented.

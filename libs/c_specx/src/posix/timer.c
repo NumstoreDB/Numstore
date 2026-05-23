@@ -22,22 +22,29 @@
 // TIMING
 
 // Timer API - handle-based monotonic timer
-err_t i_timer_create (i_timer *timer, error *e) {
+err_t
+i_timer_create (i_timer *timer, error *e)
+{
   ASSERT (timer);
 
-  if (clock_gettime (CLOCK_MONOTONIC, &timer->start) != 0) {
+  if (clock_gettime (CLOCK_MONOTONIC, &timer->start) != 0)
+  {
     return error_causef (e, ERR_IO, "clock_gettime: %s", strerror (errno));
   }
 
   return SUCCESS;
 }
 
-void i_timer_free (i_timer *timer) {
+void
+i_timer_free (i_timer *timer)
+{
   ASSERT (timer);
   // No cleanup needed for POSIX timers
 }
 
-u64 i_timer_now_ns (i_timer *timer) {
+u64
+i_timer_now_ns (i_timer *timer)
+{
   ASSERT (timer);
 
   struct timespec now;
@@ -50,13 +57,21 @@ u64 i_timer_now_ns (i_timer *timer) {
   return (u64)(sec_diff * 1000000000LL + nsec_diff);
 }
 
-u64 i_timer_now_us (i_timer *timer) { return i_timer_now_ns (timer) / 1000ULL; }
+u64
+i_timer_now_us (i_timer *timer)
+{ return i_timer_now_ns (timer) / 1000ULL; }
 
-u64 i_timer_now_ms (i_timer *timer) { return i_timer_now_ns (timer) / 1000000ULL; }
+u64
+i_timer_now_ms (i_timer *timer)
+{ return i_timer_now_ns (timer) / 1000000ULL; }
 
-f64 i_timer_now_s (i_timer *timer) { return (f64)i_timer_now_ns (timer) / 1000000000.0; }
+f64
+i_timer_now_s (i_timer *timer)
+{ return (f64)i_timer_now_ns (timer) / 1000000000.0; }
 
-void i_sleep_us (const u64 us) {
+void
+i_sleep_us (const u64 us)
+{
   const struct timespec ts = {
       .tv_sec  = (time_t)(us / 1000000ULL),
       .tv_nsec = (long)((us % 1000000ULL) * 1000ULL),

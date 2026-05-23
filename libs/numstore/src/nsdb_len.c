@@ -19,7 +19,9 @@
 #include "nscore/txn.h"
 #include "nscore/var.h"
 
-static sb_size _nsdb_len (struct nshandle *db, const char *name, error *e) {
+static sb_size
+_nsdb_len (struct nshandle *db, const char *name, error *e)
+{
   struct chunk_alloc temp;
   chunk_alloc_create_default (&temp);
   struct string            vname = strfcstr (name);
@@ -33,10 +35,10 @@ static sb_size _nsdb_len (struct nshandle *db, const char *name, error *e) {
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_params){
-      .p     = db->root->p,
-      .tx    = db->atx,
-      .vname = vname,
-      .alloc = &temp,
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = vname,
+        .alloc = &temp,
     };
     if (ns_var_get (&gparams, e)) { goto failed; }
   }
@@ -46,7 +48,8 @@ static sb_size _nsdb_len (struct nshandle *db, const char *name, error *e) {
     tsize = type_byte_size (gparams.dest.dtype);
     len   = gparams.dest.nbytes;
 
-    if (len % tsize != 0) {
+    if (len % tsize != 0)
+    {
       error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
       goto failed_rollback;
     }
@@ -70,7 +73,9 @@ failed:
   return error_trace (e);
 }
 
-sb_size nsdb_len (nsdb_t *_smf, const char *name) {
+sb_size
+nsdb_len (nsdb_t *_smf, const char *name)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

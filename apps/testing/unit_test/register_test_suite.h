@@ -12,155 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+// AUTO GENERATED USING CMAKE - DO NOT MODIFY
+
+#pragma once
+
 #include "c_specx.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+TEST_SUITE (smartfiles, 256);
 
-#define CLI_MAX_FILTERS 32
-#define CLI_MAX_SUITES  16
-#define streq(a, b)     (strcmp (a, b) == 0)
-
-////////////////////////////////////////////////////////////
-/// SUITES
-
-TEST_SUITE (smartfiles, 2048);
-
-////////////////////////////////////////////////////////////
-/// SUITE STRUCT
-
-struct suite {
-  const char *name;
-  test       *tests;
-  u32         len;
-};
-
-////////////////////////////////////////////////////////////
-/// CLI
-
-struct test_cli {
-  char *filters[CLI_MAX_FILTERS];
-  int   flen;
-  char *suites[CLI_MAX_SUITES];
-  int   slen;
-  bool  help_printed;
-};
-
-static void test_print_help (const char *prog) {
-  fprintf (stderr, "Usage: %s [TYPE] [--suite NAME]... [filter...]\n", prog);
-  fprintf (stderr, "\nSuites:\n");
-  fprintf (stderr, "  --suite NAME     Run only tests in NAME (repeatable)\n");
-  fprintf (stderr, "  Available:       core, intf, smartfiles, paging\n");
-  fprintf (stderr, "\nFilters:\n");
-  fprintf (stderr, "  [filter...]      Run tests whose names contain any filter\n");
-  fprintf (stderr, "  If omitted, all tests of the selected type/suite run.\n");
-  fprintf (stderr, "\nFlags:\n");
-  fprintf (stderr, "  --help, -h       Show this message\n");
-  fprintf (stderr, "\nExamples:\n");
-  fprintf (stderr, "  %s\n", prog);
-  fprintf (stderr, "  %s HEAVY\n", prog);
-  fprintf (stderr, "  %s --suite core --suite intf\n", prog);
-  fprintf (stderr, "  %s HEAVY --suite paging wal\n", prog);
-}
-
-static int test_parse_cli_params (char **argv, const int argc, struct test_cli *p) {
-  p->flen         = 0;
-  p->slen         = 0;
-  p->help_printed = false;
-
-  for (int i = 1; i < argc; i++) {
-    char *arg = argv[i];
-
-    if (streq (arg, "--help") || streq (arg, "-h")) {
-      test_print_help (argv[0]);
-      p->help_printed = true;
-      return 0;
-    }
-
-    if (streq (arg, "--suite")) {
-      if (i + 1 >= argc) {
-        fprintf (stderr, "Error: --suite requires a value\n");
-        test_print_help (argv[0]);
-        return -1;
-      }
-      if (p->slen >= CLI_MAX_SUITES) {
-        fprintf (stderr, "Error: too many --suite args (max %d)\n", CLI_MAX_SUITES);
-        return -1;
-      }
-      p->suites[p->slen++] = argv[++i];
-      continue;
-    }
-
-    bool matched = false;
-
-    if (!matched) {
-      if (p->flen >= CLI_MAX_FILTERS) {
-        fprintf (stderr, "Error: too many filters (max %d)\n", CLI_MAX_FILTERS);
-        return -1;
-      }
-      p->filters[p->flen++] = arg;
-    }
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////
-/// RUNNER
-
-static bool should_run (const test *t, const char *suite_name, const struct test_cli *p) {
-  if (p->slen > 0) {
-    bool matched = false;
-    for (int i = 0; i < p->slen; i++) {
-      if (streq (p->suites[i], suite_name)) {
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) { return false; }
-  }
-
-  if (p->flen == 0) { return true; }
-
-  const struct string tn = strfcstr (t->test_name);
-  for (int i = 0; i < p->flen; i++) {
-    const struct string f = strfcstr (p->filters[i]);
-    if (string_contains (tn, f)) { return true; }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////
-/// MAIN
-
-int main (const int argc, char **argv) {
-  struct test_cli p;
-  if (test_parse_cli_params (argv, argc, &p)) { return -1; }
-
-  if (p.help_printed) { return 0; }
-
-  REGISTER (smartfiles, nupd_init);
-  REGISTER (smartfiles, nupd_append_right);
-  REGISTER (smartfiles, nupd_append_left);
-  REGISTER (smartfiles, nupd_append_tip_right);
-  REGISTER (smartfiles, nupd_append_tip_left);
-  REGISTER (smartfiles, nupd_consume_right);
-  REGISTER (smartfiles, nupd_consume_left);
-  REGISTER (smartfiles, nupd_done_observing_left);
-  REGISTER (smartfiles, nupd_done_observing_right);
-  REGISTER (smartfiles, nupd_done_consuming_left);
-  REGISTER (smartfiles, nupd_done_consuming_right);
-  REGISTER (smartfiles, nupd_done_left);
-  REGISTER (smartfiles, nupd_done_right);
-  REGISTER (smartfiles, dlgt_balance_with_prev);
-  REGISTER (smartfiles, dlgt_balance_with_next);
-  REGISTER (smartfiles, aries_crash);
-  REGISTER (smartfiles, aries_rollback_basic);
-  REGISTER (smartfiles, aries_rollback_multiple_updates);
-  REGISTER (smartfiles, aries_rollback_with_crash_recovery);
-  REGISTER (smartfiles, aries_rollback_clr_not_undone);
+HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);
@@ -279,6 +139,20 @@ int main (const int argc, char **argv) {
   REGISTER (smartfiles, compile_type_struct);
   REGISTER (smartfiles, compile_type_union);
   REGISTER (smartfiles, compile_type_complex);
+  REGISTER (smartfiles, dpgt_open);
+  REGISTER (smartfiles, dpgt_merge_into);
+  REGISTER (smartfiles, dpgt_min_rec_lsn);
+  REGISTER (smartfiles, dpgt_exists);
+  REGISTER (smartfiles, dpgt_add);
+  REGISTER (smartfiles, dpgt_get);
+  REGISTER (smartfiles, dpgt_remove);
+  REGISTER (smartfiles, dpgt_serialize);
+  REGISTER (smartfiles, dpgt_equal);
+  REGISTER (smartfiles, dpgt_concurrent);
+  REGISTER (smartfiles, fpgr_open);
+  REGISTER (smartfiles, fpgr_new);
+  REGISTER (smartfiles, fpgr_read_write);
+  REGISTER (smartfiles, kvt_list_builder);
   REGISTER (smartfiles, lexer_two_char_tokens);
   REGISTER (smartfiles, lexer_single_char_operators);
   REGISTER (smartfiles, lexer_strings);
@@ -292,20 +166,20 @@ int main (const int argc, char **argv) {
   REGISTER (smartfiles, lexer_errors);
   REGISTER (smartfiles, lexer_empty_string);
   REGISTER (smartfiles, lexer_numbers_in_sequence);
-  REGISTER (smartfiles, dpgt_open);
-  REGISTER (smartfiles, dpgt_merge_into);
-  REGISTER (smartfiles, dpgt_min_rec_lsn);
-  REGISTER (smartfiles, dpgt_exists);
-  REGISTER (smartfiles, dpgt_add);
-  REGISTER (smartfiles, dpgt_get);
-  REGISTER (smartfiles, dpgt_remove);
-  REGISTER (smartfiles, dpgt_serialize);
-  REGISTER (smartfiles, dpgt_equal);
-  REGISTER (smartfiles, dpgt_concurrent);
   REGISTER (smartfiles, lock_table_exclusivity);
-  REGISTER (smartfiles, fpgr_open);
-  REGISTER (smartfiles, fpgr_new);
-  REGISTER (smartfiles, fpgr_read_write);
+  REGISTER (smartfiles, nupd_init);
+  REGISTER (smartfiles, nupd_append_right);
+  REGISTER (smartfiles, nupd_append_left);
+  REGISTER (smartfiles, nupd_append_tip_right);
+  REGISTER (smartfiles, nupd_append_tip_left);
+  REGISTER (smartfiles, nupd_consume_right);
+  REGISTER (smartfiles, nupd_consume_left);
+  REGISTER (smartfiles, nupd_done_observing_left);
+  REGISTER (smartfiles, nupd_done_observing_right);
+  REGISTER (smartfiles, nupd_done_consuming_left);
+  REGISTER (smartfiles, nupd_done_consuming_right);
+  REGISTER (smartfiles, nupd_done_left);
+  REGISTER (smartfiles, nupd_done_right);
   REGISTER (smartfiles, build_page_tree);
   REGISTER (smartfiles, pager_fill_ht);
   REGISTER (smartfiles, wal_int);
@@ -317,6 +191,10 @@ int main (const int argc, char **argv) {
   REGISTER (smartfiles, pager_open);
   REGISTER (smartfiles, pgr_open_basic);
   REGISTER (smartfiles, pgr_reserve_and_ctrl_lock_st);
+  REGISTER (smartfiles, aries_rollback_basic);
+  REGISTER (smartfiles, aries_rollback_multiple_updates);
+  REGISTER (smartfiles, aries_rollback_with_crash_recovery);
+  REGISTER (smartfiles, aries_rollback_clr_not_undone);
   REGISTER (smartfiles, dl_validate);
   REGISTER (smartfiles, dl_set_get);
   REGISTER (smartfiles, dl_read);
@@ -352,26 +230,14 @@ int main (const int argc, char **argv) {
   REGISTER (smartfiles, vp_validate);
   REGISTER (smartfiles, vt_init_empty);
   REGISTER (smartfiles, vt_validate);
-  REGISTER (smartfiles, smfile_data_writer);
-  REGISTER (smartfiles, txn_basic);
-  REGISTER (smartfiles, txnt_open);
-  REGISTER (smartfiles, txnt_merge_into);
-  REGISTER (smartfiles, txnt_max_u_undo_lsn);
-  REGISTER (smartfiles, txnt_min_lsn);
-  REGISTER (smartfiles, txnt_exists);
-  REGISTER (smartfiles, txnt_insert);
-  REGISTER (smartfiles, txnt_get);
-  REGISTER (smartfiles, txnt_remove);
-  REGISTER (smartfiles, txnt_serialize);
-  REGISTER (smartfiles, txnt_equal_ignore_state);
-  REGISTER (smartfiles, txnt_concurrent);
-  REGISTER (smartfiles, kvt_list_builder);
   REGISTER (smartfiles, prim_t_validate);
   REGISTER (smartfiles, prim_t_snprintf);
   REGISTER (smartfiles, prim_t_byte_size);
   REGISTER (smartfiles, prim_t_serialize);
   REGISTER (smartfiles, prim_t_deserialize);
   REGISTER (smartfiles, prim_t_random);
+  REGISTER (smartfiles, dlgt_balance_with_prev);
+  REGISTER (smartfiles, dlgt_balance_with_next);
   REGISTER (smartfiles, sarray_t_snprintf);
   REGISTER (smartfiles, sarray_t_byte_size);
   REGISTER (smartfiles, sarray_t_get_serial_size);
@@ -385,6 +251,18 @@ int main (const int argc, char **argv) {
   REGISTER (smartfiles, struct_t_serialize);
   REGISTER (smartfiles, struct_t_deserialize_green_path);
   REGISTER (smartfiles, struct_t_deserialize_red_path);
+  REGISTER (smartfiles, txn_basic);
+  REGISTER (smartfiles, txnt_open);
+  REGISTER (smartfiles, txnt_merge_into);
+  REGISTER (smartfiles, txnt_max_u_undo_lsn);
+  REGISTER (smartfiles, txnt_min_lsn);
+  REGISTER (smartfiles, txnt_exists);
+  REGISTER (smartfiles, txnt_insert);
+  REGISTER (smartfiles, txnt_get);
+  REGISTER (smartfiles, txnt_remove);
+  REGISTER (smartfiles, txnt_serialize);
+  REGISTER (smartfiles, txnt_equal_ignore_state);
+  REGISTER (smartfiles, txnt_concurrent);
   REGISTER (smartfiles, ta_subtype);
   REGISTER (smartfiles, type_accessor_builder);
   REGISTER (smartfiles, type_malloc_copy);
@@ -394,49 +272,9 @@ int main (const int argc, char **argv) {
   REGISTER (smartfiles, union_t_serialize);
   REGISTER (smartfiles, union_t_deserialize_green_path);
   REGISTER (smartfiles, union_t_deserialize_red_path);
-  // REGISTER (smartfiles, wal_multi_threaded);
+  REGISTER (smartfiles, ns_write_var_page);
   REGISTER (smartfiles, wal);
   REGISTER (smartfiles, wal_single_entry);
-
-  struct suite all_suites[] = {
-      {"smartfiles", smartfiles_tests, (u32)smartfiles_count},
-  };
-
-  error e = error_create ();
-
-  i_timer timer;
-  if (i_timer_create (&timer, &e) != SUCCESS) { return -1; }
-
-  struct dbl_buffer f;
-  if (dblb_create (&f, sizeof (char *), 1, &e)) { return -1; }
-
-  for (u32 s = 0; s < arrlen (all_suites); s++) {
-    const struct suite *suite = &all_suites[s];
-    for (u32 i = 0; i < suite->len; i++) {
-      test *t = &suite->tests[i];
-      if (!should_run (t, suite->name, &p)) { continue; }
-
-      if (!t->test ()) {
-        char **n = &t->test_name;
-        if (dblb_append (&f, n, 1, &e)) {
-          dblb_free (&f);
-          return -1;
-        }
-      }
-    }
-  }
-
-  printf ("Time: %llu ms\n", (unsigned long long)i_timer_now_ms (&timer));
-  i_timer_free (&timer);
-
-  char **fl = f.data;
-  if (f.nelem > 0) {
-    i_log_failure ("FAILED TESTS:\n");
-    for (u32 i = 0; i < f.nelem; i++) { i_log_failure ("  %s\n", fl[i]); }
-  } else {
-    i_log_passed ("ALL TESTS PASSED\n");
-  }
-
-  dblb_free (&f);
-  return test_ret;
+  REGISTER (smartfiles, aries_crash);
+  REGISTER (smartfiles, smfile_data_writer);
 }

@@ -36,7 +36,9 @@
  * The pgno-to-FSM mapping: FSM page for pgno is at (pgno / FS_BTMP_NPGS) *
  * FS_BTMP_NPGS, and the bit index within that FSM page is pgno % FS_BTMP_NPGS.
  */
-err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e) {
+err_t
+pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
+{
   DBG_ASSERT (pager, p);
   page_h fsm = page_h_create ();
 
@@ -74,7 +76,9 @@ err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error 
                       .redo = 0,
                   },
           },
-          e)) {
+          e
+      ))
+  {
     goto failed;
   }
 
@@ -87,7 +91,8 @@ failed:
 }
 
 #ifndef NTEST
-TEST (pgr_delete) {
+TEST (pgr_delete)
+{
   struct pgr_fixture f;
   error             *e = &f.e;
   pgr_fixture_create (&f);

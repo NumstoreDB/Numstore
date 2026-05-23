@@ -24,8 +24,5 @@
 // take_type_ref   ::= subtype
 // field_ref       ::= IDENTIFIER type_ref
 
-err_t parse_type_ref (
-    struct parser      *p,
-    struct type_ref    *dest,
-    struct chunk_alloc *dalloc,
-    error              *e);
+err_t
+parse_type_ref (struct parser *p, struct type_ref *dest, struct chunk_alloc *dalloc, error *e);

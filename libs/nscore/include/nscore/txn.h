@@ -18,13 +18,15 @@
 #include "nscore/compile_config.h"
 #include "nscore/lt_lock.h"
 
-struct txn_data {
+struct txn_data
+{
   // In the ARIES paper:
   // - P (prepared / in doubt) - Transaction has
   // completed it's prepare phase in two phase
   // commit but hasn't yet received a commit / abort decision
   // - U (unprepared) - Transaction is active and hasn't prepared yet
-  enum tx_state {
+  enum tx_state
+  {
     // Not in the original ARIES paper,
     // using this for a placeholder during
     // normal execution, generally, it's just
@@ -74,13 +76,15 @@ struct txn_data {
   lsn undo_next_lsn;
 };
 
-struct txn_lock {
+struct txn_lock
+{
   struct lt_lock   lock;
   enum lock_mode   mode;
   struct txn_lock *next;
 };
 
-struct txn {
+struct txn
+{
   txid              tid;        // Transaction id
   struct txn_data   data;       // The transaction data
   struct hnode      node;       // The node that indicates where this txn is in the att

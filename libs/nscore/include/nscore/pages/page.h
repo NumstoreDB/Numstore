@@ -42,7 +42,8 @@
  * newly allocated pages that have not yet been written.  Any attempt to
  * validate a PG_TRASH frame will fail unless PG_PERMISSIVE is supplied.
  */
-enum page_type {
+enum page_type
+{
   // Common page types
   PG_FREE_SPACE_MAP = (1 << 0), // A free space map page
 
@@ -68,7 +69,8 @@ enum page_type {
 
 #define PG_CKSM_DATA_LEN (PAGE_SIZE - PG_CKSM_OFST)
 
-typedef struct {
+typedef struct
+{
   u8   raw[PAGE_SIZE];
   pgno pg;
 } page;
@@ -85,28 +87,36 @@ err_t page_validate_for_db (const page *p, int page_types, error *e);
 /////// Utility Macros
 
 #define PAGE_SIMPLE_GET_IMPL(v, type, ofst)         \
-  do {                                              \
+  do                                                \
+  {                                                 \
     ASSERT ((ofst) + sizeof (type) < PAGE_SIZE);    \
     type ret;                                       \
     memcpy (&(ret), &(v)->raw[ofst], sizeof (ret)); \
     return ret;                                     \
-  } while (0)
+  }                                                 \
+  while (0)
 
 #define PAGE_SIMPLE_SET_IMPL(v, val, ofst)          \
-  do {                                              \
+  do                                                \
+  {                                                 \
     ASSERT ((ofst) + sizeof (val) < PAGE_SIZE);     \
     memcpy (&(v)->raw[ofst], &(val), sizeof (val)); \
-  } while (0)
+  }                                                 \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // GETTERS
 
-HEADER_FUNC u32 page_get_checksum (const page *p) {
+HEADER_FUNC u32
+page_get_checksum (const page *p)
+{
   DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_GET_IMPL (p, u32, PG_CKSM_OFST);
 }
 
-HEADER_FUNC u32 page_compute_checksum (const page *p) {
+HEADER_FUNC u32
+page_compute_checksum (const page *p)
+{
   DBG_ASSERT (page_base, p);
   const void *data     = &p->raw[4];
   u32         checksum = checksum_init ();
@@ -114,9 +124,13 @@ HEADER_FUNC u32 page_compute_checksum (const page *p) {
   return checksum;
 }
 
-HEADER_FUNC pgh page_get_type (const page *p) { PAGE_SIMPLE_GET_IMPL (p, pgh, PG_HEDR_OFST); }
+HEADER_FUNC pgh
+page_get_type (const page *p)
+{ PAGE_SIMPLE_GET_IMPL (p, pgh, PG_HEDR_OFST); }
 
-HEADER_FUNC lsn page_get_page_lsn (const page *p) {
+HEADER_FUNC lsn
+page_get_page_lsn (const page *p)
+{
   DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_GET_IMPL (p, lsn, PG_PLSN_OFST);
 }
@@ -124,23 +138,31 @@ HEADER_FUNC lsn page_get_page_lsn (const page *p) {
 ////////////////////////////////////////////////////////////
 // SETTERS
 
-HEADER_FUNC void page_set_checksum (page *p, const u32 checksum) {
+HEADER_FUNC void
+page_set_checksum (page *p, const u32 checksum)
+{
   DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_SET_IMPL (p, checksum, PG_CKSM_OFST);
 }
 
-HEADER_FUNC void page_set_type (page *p, const enum page_type t) {
+HEADER_FUNC void
+page_set_type (page *p, const enum page_type t)
+{
   DBG_ASSERT (page_base, p);
   const pgh _type = t;
   PAGE_SIMPLE_SET_IMPL (p, _type, PG_HEDR_OFST);
 }
 
-HEADER_FUNC void page_set_page_lsn (page *p, const lsn page_lsn) {
+HEADER_FUNC void
+page_set_page_lsn (page *p, const lsn page_lsn)
+{
   DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_SET_IMPL (p, page_lsn, PG_PLSN_OFST);
 }
 
-HEADER_FUNC void page_memcpy (page *dest, const struct bytes src) {
+HEADER_FUNC void
+page_memcpy (page *dest, const struct bytes src)
+{
   DBG_ASSERT (page_base, dest);
   ASSERT (src.len == PAGE_SIZE);
   memcpy (dest->raw, src.head, src.len);

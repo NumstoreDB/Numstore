@@ -22,7 +22,9 @@
 
 #include <string.h>
 
-static err_t wal_write_begin (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+static err_t
+wal_write_begin (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (r->type == WL_BEGIN);
 
   ASSERT (w->ostream);
@@ -36,7 +38,9 @@ static err_t wal_write_begin (const struct wal *w, const struct wal_rec_hdr_writ
   return SUCCESS;
 }
 
-static err_t wal_write_commit (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+static err_t
+wal_write_commit (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (r->type == WL_COMMIT);
 
   ASSERT (w->ostream);
@@ -51,7 +55,9 @@ static err_t wal_write_commit (const struct wal *w, const struct wal_rec_hdr_wri
   return SUCCESS;
 }
 
-static err_t wal_write_end (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+static err_t
+wal_write_end (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (r->type == WL_END);
 
   ASSERT (w->ostream);
@@ -67,7 +73,8 @@ static err_t wal_write_end (const struct wal *w, const struct wal_rec_hdr_write 
 }
 
 static err_t
-wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (w->ostream);
 
   u32       checksum = checksum_init ();
@@ -86,7 +93,8 @@ wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *
 }
 
 static err_t
-wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (w->ostream);
 
   u32       checksum = checksum_init ();
@@ -106,7 +114,8 @@ wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, er
 }
 
 static err_t
-wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (w->ostream);
 
   u32       checksum = checksum_init ();
@@ -124,7 +133,8 @@ wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_writ
 }
 
 static err_t
-wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (r->type == WL_CLR);
 
   ASSERT (w->ostream);
@@ -144,7 +154,9 @@ wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, 
   return SUCCESS;
 }
 
-static err_t wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+static err_t
+wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (r->type == WL_CLR);
 
   ASSERT (w->ostream);
@@ -166,7 +178,8 @@ static err_t wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_wr
 }
 
 static err_t
-wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e) {
+wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
   ASSERT (r->type == WL_CLR);
 
   ASSERT (w->ostream);
@@ -184,60 +197,77 @@ wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, err
   return SUCCESS;
 }
 
-slsn wal_write_locked (struct wal *w, error *e) {
+slsn
+wal_write_locked (struct wal *w, error *e)
+{
   ASSERT (w->ostream);
   ASSERT (!(w->flags & WAL_ISNEW));
 
   const lsn ret = walos_get_next_lsn (w->ostream) + w->start_lsn;
 
-  switch (w->whdr.type) {
-    case WL_BEGIN: {
+  switch (w->whdr.type)
+  {
+    case WL_BEGIN:
+    {
       WRAP (wal_write_begin (w, &w->whdr, e));
       break;
     }
-    case WL_COMMIT: {
+    case WL_COMMIT:
+    {
       WRAP (wal_write_commit (w, &w->whdr, e));
       break;
     }
-    case WL_END: {
+    case WL_END:
+    {
       WRAP (wal_write_end (w, &w->whdr, e));
       break;
     }
-    case WL_UPDATE: {
-      switch (w->whdr.update.type) {
-        case WUP_PHYSICAL: {
+    case WL_UPDATE:
+    {
+      switch (w->whdr.update.type)
+      {
+        case WUP_PHYSICAL:
+        {
           WRAP (wal_write_physical_update (w, &w->whdr, e));
           break;
         }
-        case WUP_FSM: {
+        case WUP_FSM:
+        {
           WRAP (wal_write_fsm_update (w, &w->whdr, e));
           break;
         }
-        case WUP_FEXT: {
+        case WUP_FEXT:
+        {
           WRAP (wal_write_file_extend_update (w, &w->whdr, e));
           break;
         }
       }
       break;
     }
-    case WL_CLR: {
-      switch (w->whdr.clr.type) {
-        case WCLR_PHYSICAL: {
+    case WL_CLR:
+    {
+      switch (w->whdr.clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
           WRAP (wal_write_physical_clr (w, &w->whdr, e));
           break;
         }
-        case WCLR_FSM: {
+        case WCLR_FSM:
+        {
           WRAP (wal_write_fsm_clr (w, &w->whdr, e));
           break;
         }
-        case WCLR_DUMMY: {
+        case WCLR_DUMMY:
+        {
           WRAP (wal_write_dummy_clr (w, &w->whdr, e));
           break;
         }
       }
       break;
     }
-    case WL_EOF: {
+    case WL_EOF:
+    {
       UNREACHABLE ();
     }
   }

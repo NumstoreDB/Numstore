@@ -23,7 +23,9 @@
 ////////////////////////////////////////////////////////////
 // REDO (FIGURE 11)
 
-err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e) {
+err_t
+pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
+{
   i_log_info ("Starting Redo phase\n");
 
   lsn read_lsn = ctx->redo_lsn;
@@ -34,11 +36,15 @@ err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e) {
 
   u32 nredone = 0;
 
-  while (log_rec->type != WL_EOF) {
-    switch (log_rec->type) {
+  while (log_rec->type != WL_EOF)
+  {
+    switch (log_rec->type)
+    {
       case WL_UPDATE:
-      case WL_CLR: {
-        if (wrh_is_redoable (log_rec)) {
+      case WL_CLR:
+      {
+        if (wrh_is_redoable (log_rec))
+        {
           lsn  rec_lsn;
           pgno pg = wrh_get_affected_pg (log_rec);
 
@@ -50,11 +56,14 @@ err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e) {
           if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) { goto failed; }
 
           pgno page_lsn = page_get_page_lsn (page_h_ro (&ph));
-          if (page_lsn < read_lsn) {
+          if (page_lsn < read_lsn)
+          {
             wrh_redo (log_rec, &ph);
             nredone++;
             page_set_page_lsn (page_h_w (&ph), read_lsn);
-          } else {
+          }
+          else
+          {
             dpgt_update (ctx->dpt, pg, page_lsn + 1);
           }
 
@@ -62,7 +71,8 @@ err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e) {
         }
         break;
       }
-      default: {
+      default:
+      {
         // Do nothing
         break;
       }

@@ -16,45 +16,54 @@
 
 #include <string.h>
 
-static err_t dvalidtr_light_validate (const struct dvalidtr *d, error *e) {
+static err_t
+dvalidtr_light_validate (const struct dvalidtr *d, error *e)
+{
   const i64 sut_len = d->sut.functions.getlen (d->sut.ctx, e);
   if (sut_len < 0) { return error_trace (e); }
 
   const i64 ref_len = d->ref.functions.getlen (d->ref.ctx, e);
   if (ref_len < 0) { return error_trace (e); }
 
-  if (sut_len != ref_len) {
+  if (sut_len != ref_len)
+  {
     return error_causef (
         e,
         ERR_CORRUPT,
         "length mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (delta=%" PRIu64 ")",
         ref_len,
         sut_len,
-        (i64)sut_len - (i64)ref_len);
+        (i64)sut_len - (i64)ref_len
+    );
   }
 
   return SUCCESS;
 }
 
-static err_t dvalidtr_read (
+static err_t
+dvalidtr_read (
     const struct dvalidtr *d,
     const struct stride    str,
     const u32              size,
     void                  *_dest,
-    error                 *e) {
+    error                 *e
+)
+{
   void *ref  = i_malloc (str.nelems, size, e);
   void *dest = _dest;
 
   if (ref == NULL) { goto theend; }
 
-  if (_dest == NULL) {
+  if (_dest == NULL)
+  {
     dest = i_malloc (str.nelems, size, e);
     if (dest == NULL) { goto theend; }
   }
 
   // Read from the ref
   const i64 ref_read = d->ref.functions.read (d->ref.ctx, str, size, ref, e);
-  if (ref_read < 0) {
+  if (ref_read < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -62,13 +71,15 @@ static err_t dvalidtr_read (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
   // Read from the system under test
   const i64 sut_read = d->sut.functions.read (d->sut.ctx, str, size, dest, e);
-  if (sut_read < 0) {
+  if (sut_read < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -76,11 +87,13 @@ static err_t dvalidtr_read (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (ref_read != sut_read) {
+  if (ref_read != sut_read)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -91,11 +104,13 @@ static err_t dvalidtr_read (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (memcmp (dest, ref, (u64)sut_read * size) != 0) {
+  if (memcmp (dest, ref, (u64)sut_read * size) != 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -105,7 +120,8 @@ static err_t dvalidtr_read (
         str.stride,
         str.nelems,
         size,
-        sut_read);
+        sut_read
+    );
     goto theend;
   }
 
@@ -116,9 +132,11 @@ theend:
 }
 
 static err_t
-dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32 slen, error *e) {
+dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32 slen, error *e)
+{
   u8 *src = (u8 *)_src;
-  if (_src == NULL) {
+  if (_src == NULL)
+  {
     src = i_malloc (slen, 1, e);
     if (src == NULL) { goto theend; }
     ptr_range (src, slen);
@@ -126,37 +144,43 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
 
   // Insert into ref
   const i64 ref_written = d->ref.functions.insert (d->ref.ctx, ofst, src, slen, e);
-  if (ref_written < 0) {
+  if (ref_written < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "insert into ref failed at byte offset "
         "%u (slen=%u)",
         ofst,
-        slen);
+        slen
+    );
     goto theend;
   }
 
   // Insert into system under test
   const i64 sut_written = d->sut.functions.insert (d->sut.ctx, ofst, src, slen, e);
-  if (sut_written < 0) {
+  if (sut_written < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "insert into sut failed at byte offset "
         "%u (slen=%u)",
         ofst,
-        slen);
+        slen
+    );
     goto theend;
   }
 
-  if (ref_written != sut_written) {
+  if (ref_written != sut_written)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "insert count mismatch: ref=%" PRIu64 " sut=%" PRIu64,
         ref_written,
-        sut_written);
+        sut_written
+    );
     goto theend;
   }
 
@@ -171,30 +195,36 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
       },
       1,
       NULL,
-      e);
-  if (sut_read < 0) {
+      e
+  );
+  if (sut_read < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "read-back after insert failed (byte "
         "offset=%u, slen=%u)",
         ofst,
-        slen);
+        slen
+    );
     goto theend;
   }
 
-  if (dvalidtr_light_validate (d, e)) {
+  if (dvalidtr_light_validate (d, e))
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "length check failed after insert at "
         "byte offset %u (slen=%u)",
         ofst,
-        slen);
+        slen
+    );
     goto theend;
   }
 
-  if (d->isvalid) {
+  if (d->isvalid)
+  {
     if (d->isvalid (d->sut.ctx, e)) { goto theend; }
   }
 
@@ -203,21 +233,26 @@ theend:
   return error_trace (e);
 }
 
-static err_t dvalidtr_write (
+static err_t
+dvalidtr_write (
     struct dvalidtr    *d,
     const struct stride str,
     const u32           size,
     const void         *_src,
-    error              *e) {
+    error              *e
+)
+{
   u8 *src = (u8 *)_src;
-  if (_src == NULL) {
+  if (_src == NULL)
+  {
     src = i_malloc (str.nelems, size, e);
     if (src == NULL) { goto theend; }
     ptr_range (src, str.nelems * size);
   }
 
   const i64 sut_written = d->sut.functions.write (d->sut.ctx, str, size, src, e);
-  if (sut_written < 0) {
+  if (sut_written < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -225,12 +260,14 @@ static err_t dvalidtr_write (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
   const i64 ref_written = d->ref.functions.write (d->ref.ctx, str, size, src, e);
-  if (ref_written < 0) {
+  if (ref_written < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -238,11 +275,13 @@ static err_t dvalidtr_write (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (ref_written != sut_written) {
+  if (ref_written != sut_written)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -253,12 +292,14 @@ static err_t dvalidtr_write (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
   // Read back what we just wrote
-  if (dvalidtr_read (d, str, size, NULL, e)) {
+  if (dvalidtr_read (d, str, size, NULL, e))
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -267,11 +308,13 @@ static err_t dvalidtr_write (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (d->isvalid) {
+  if (d->isvalid)
+  {
     if (d->isvalid (d->sut.ctx, e)) { goto theend; }
   }
 
@@ -280,25 +323,24 @@ theend:
   return error_trace (e);
 }
 
-static err_t dvalidtr_remove (
-    struct dvalidtr    *d,
-    const struct stride str,
-    const u32           size,
-    void               *_dest,
-    error              *e) {
+static err_t
+dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, void *_dest, error *e)
+{
   void *ref  = i_malloc (str.nelems, size, e);
   void *dest = _dest;
 
   if (ref == NULL) { goto theend; }
 
-  if (_dest == NULL) {
+  if (_dest == NULL)
+  {
     dest = i_malloc (str.nelems, size, e);
     if (dest == NULL) { goto theend; }
   }
 
   // Remove from the ref
   const i64 ref_read = d->ref.functions.remove (d->ref.ctx, str, size, ref, e);
-  if (ref_read < 0) {
+  if (ref_read < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -306,13 +348,15 @@ static err_t dvalidtr_remove (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
   // Remove from the system under test
   const i64 sut_read = d->sut.functions.remove (d->sut.ctx, str, size, dest, e);
-  if (sut_read < 0) {
+  if (sut_read < 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -320,11 +364,13 @@ static err_t dvalidtr_remove (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (ref_read != sut_read) {
+  if (ref_read != sut_read)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -335,11 +381,13 @@ static err_t dvalidtr_remove (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (memcmp (dest, ref, (u64)sut_read * size) != 0) {
+  if (memcmp (dest, ref, (u64)sut_read * size) != 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -349,11 +397,13 @@ static err_t dvalidtr_remove (
         str.stride,
         str.nelems,
         size,
-        sut_read);
+        sut_read
+    );
     goto theend;
   }
 
-  if (dvalidtr_light_validate (d, e)) {
+  if (dvalidtr_light_validate (d, e))
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -362,11 +412,13 @@ static err_t dvalidtr_remove (
         str.start,
         str.stride,
         str.nelems,
-        size);
+        size
+    );
     goto theend;
   }
 
-  if (d->isvalid) {
+  if (d->isvalid)
+  {
     if (d->isvalid (d->sut.ctx, e)) { goto theend; }
   }
 
@@ -376,11 +428,13 @@ theend:
   return error_trace (e);
 }
 
-static err_t dvalidtr_getlen (const struct dvalidtr *d, error *e) {
-  return d->ref.functions.getlen (d->ref.ctx, e);
-}
+static err_t
+dvalidtr_getlen (const struct dvalidtr *d, error *e)
+{ return d->ref.functions.getlen (d->ref.ctx, e); }
 
-static err_t dvalidtr_validate (struct dvalidtr *d, error *e) {
+static err_t
+dvalidtr_validate (struct dvalidtr *d, error *e)
+{
   if (dvalidtr_light_validate (d, e)) { return error_trace (e); }
 
   const i64 len = d->ref.functions.getlen (d->ref.ctx, e);
@@ -395,7 +449,9 @@ static err_t dvalidtr_validate (struct dvalidtr *d, error *e) {
           },
           1,
           NULL,
-          e)) {
+          e
+      ))
+  {
     error_causef (e, ERR_CORRUPT, "full read validation failed (len=%" PRIu64 ")", len);
     return error_trace (e);
   }
@@ -403,18 +459,23 @@ static err_t dvalidtr_validate (struct dvalidtr *d, error *e) {
   return SUCCESS;
 }
 
-err_t dvalidtr_random_test (
+err_t
+dvalidtr_random_test (
     struct dvalidtr *d,
     const u32        size,
     const u32        niters,
     const u64        max_insert,
-    error           *e) {
-  for (u32 k = 0; k < niters; ++k) {
+    error           *e
+)
+{
+  for (u32 k = 0; k < niters; ++k)
+  {
     i64 len = dvalidtr_getlen (d, e);
     if (len < 0) { return error_trace (e); }
     len /= size;
 
-    enum {
+    enum
+    {
       C_INSERT,
       C_READ,
       C_REMOVE,
@@ -434,9 +495,12 @@ err_t dvalidtr_random_test (
         .nelems = nelems,
     };
 
-    switch (choice) {
-      case C_INSERT: {
-        if (dvalidtr_insert (d, start * size, NULL, ninsert * size, e)) {
+    switch (choice)
+    {
+      case C_INSERT:
+      {
+        if (dvalidtr_insert (d, start * size, NULL, ninsert * size, e))
+        {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -457,12 +521,15 @@ err_t dvalidtr_random_test (
               len,
               start,
               ninsert,
-              size);
+              size
+          );
         }
         break;
       }
-      case C_READ: {
-        if (dvalidtr_read (d, str, size, NULL, e)) {
+      case C_READ:
+      {
+        if (dvalidtr_read (d, str, size, NULL, e))
+        {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -486,12 +553,15 @@ err_t dvalidtr_random_test (
               start,
               stride,
               nelems,
-              size);
+              size
+          );
         }
         break;
       }
-      case C_REMOVE: {
-        if (dvalidtr_remove (d, str, size, NULL, e)) {
+      case C_REMOVE:
+      {
+        if (dvalidtr_remove (d, str, size, NULL, e))
+        {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -516,12 +586,15 @@ err_t dvalidtr_random_test (
               start,
               stride,
               nelems,
-              size);
+              size
+          );
         }
         break;
       }
-      case C_WRITE: {
-        if (dvalidtr_write (d, str, size, NULL, e)) {
+      case C_WRITE:
+      {
+        if (dvalidtr_write (d, str, size, NULL, e))
+        {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -546,14 +619,16 @@ err_t dvalidtr_random_test (
               start,
               stride,
               nelems,
-              size);
+              size
+          );
         }
         break;
       }
     }
   }
 
-  if (dvalidtr_validate (d, e)) {
+  if (dvalidtr_validate (d, e))
+  {
     return error_causef (e, ERR_CORRUPT, "random test failed to validate data at the end");
   }
 

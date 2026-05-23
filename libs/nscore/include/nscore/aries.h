@@ -20,7 +20,8 @@
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
 
-struct aries_ctx {
+struct aries_ctx
+{
   /**
    * At the end of the analysis phase,
    * this is the minimum recovery lsn

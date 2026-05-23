@@ -20,14 +20,20 @@
 // OFFSETS and _Static_asserts
 #define FL_NEXT_OFST PG_COMMN_END
 
-HEADER_FUNC void frlst_set_next (page *p, pgno pg) { PAGE_SIMPLE_SET_IMPL (p, pg, TS_NEXT_OFST); }
+HEADER_FUNC void
+frlst_set_next (page *p, pgno pg)
+{ PAGE_SIMPLE_SET_IMPL (p, pg, TS_NEXT_OFST); }
 
-HEADER_FUNC void frlst_init_empty (page *frlst) {
+HEADER_FUNC void
+frlst_init_empty (page *frlst)
+{
   ASSERT (page_get_type (frlst) == PG_TOMBSTONE);
   frlst_set_next (frlst, PGNO_NULL);
 }
 
-HEADER_FUNC pgno frlst_get_next (const page *p) { PAGE_SIMPLE_GET_IMPL (p, pgno, TS_NEXT_OFST); }
+HEADER_FUNC pgno
+frlst_get_next (const page *p)
+{ PAGE_SIMPLE_GET_IMPL (p, pgno, TS_NEXT_OFST); }
 
 // Validation
 err_t frlst_validate_for_db (const page *hl, error *e);

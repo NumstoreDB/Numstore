@@ -29,7 +29,9 @@
 // on the same i_rwlock instance from different threads calling
 // unlock simultaneously.
 
-err_t i_rwlock_create (i_rwlock *dest, error *e) {
+err_t
+i_rwlock_create (i_rwlock *dest, error *e)
+{
   ASSERT (dest);
   (void)e;
   InitializeSRWLock (&dest->lock);
@@ -37,43 +39,59 @@ err_t i_rwlock_create (i_rwlock *dest, error *e) {
   return SUCCESS;
 }
 
-void i_rwlock_free (i_rwlock *m) {
+void
+i_rwlock_free (i_rwlock *m)
+{
   ASSERT (m);
   // No destroy for SRWLOCK — no-op.
   // Asserting not held is not possible without extra tracking.
 }
 
-void i_rwlock_rdlock (i_rwlock *m) {
+void
+i_rwlock_rdlock (i_rwlock *m)
+{
   ASSERT (m);
   AcquireSRWLockShared (&m->lock);
 }
 
-void i_rwlock_wrlock (i_rwlock *m) {
+void
+i_rwlock_wrlock (i_rwlock *m)
+{
   ASSERT (m);
   AcquireSRWLockExclusive (&m->lock);
   m->write_locked = true;
 }
 
-bool i_rwlock_try_rdlock (i_rwlock *m) {
+bool
+i_rwlock_try_rdlock (i_rwlock *m)
+{
   ASSERT (m);
   return TryAcquireSRWLockShared (&m->lock) != 0;
 }
 
-bool i_rwlock_try_wrlock (i_rwlock *m) {
+bool
+i_rwlock_try_wrlock (i_rwlock *m)
+{
   ASSERT (m);
-  if (TryAcquireSRWLockExclusive (&m->lock)) {
+  if (TryAcquireSRWLockExclusive (&m->lock))
+  {
     m->write_locked = true;
     return true;
   }
   return false;
 }
 
-void i_rwlock_unlock (i_rwlock *m) {
+void
+i_rwlock_unlock (i_rwlock *m)
+{
   ASSERT (m);
-  if (m->write_locked) {
+  if (m->write_locked)
+  {
     m->write_locked = false;
     ReleaseSRWLockExclusive (&m->lock);
-  } else {
+  }
+  else
+  {
     ReleaseSRWLockShared (&m->lock);
   }
 }

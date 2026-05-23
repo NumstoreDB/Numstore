@@ -19,29 +19,37 @@
 
 // nsh
 
-struct nshandle *nsh_remove_and_open (const char *name, error *e) {
+struct nshandle *
+nsh_remove_and_open (const char *name, error *e)
+{
   if (pgr_delete_single_file ("test", e)) { return NULL; }
   return nsh_open (name);
 }
 
-int nsh_perror (struct nshandle *ns, const char *prefix) {
+int
+nsh_perror (struct nshandle *ns, const char *prefix)
+{
   const char *err = nsh_strerror (ns);
-  if (err) {
-    return fprintf (stderr, "%s: %s\n", prefix, nsh_strerror (ns));
-  } else {
+  if (err) { return fprintf (stderr, "%s: %s\n", prefix, nsh_strerror (ns)); }
+  else
+  {
     return fprintf (stderr, "%s: success\n", prefix);
   }
 }
 
-const char *nsh_strerror (struct nshandle *ns) {
-  if (ns->e.cause_code < 0) {
-    return ns->e.cause_msg;
-  } else {
+const char *
+nsh_strerror (struct nshandle *ns)
+{
+  if (ns->e.cause_code < 0) { return ns->e.cause_msg; }
+  else
+  {
     return NULL;
   }
 }
 
-int nsh_cleanup (const char *path) {
+int
+nsh_cleanup (const char *path)
+{
   error e = error_create ();
   pgr_delete_single_file (path, &e);
   return error_trace (&e);
@@ -49,7 +57,9 @@ int nsh_cleanup (const char *path) {
 
 // nshandle_root
 
-err_t nsh_root_close (struct nshandle_root *root, error *e) {
+err_t
+nsh_root_close (struct nshandle_root *root, error *e)
+{
   ASSERT (root->count == 0);
   err_t err = pgr_close (root->p, e);
   i_free ((void *)root->path.data);
@@ -57,7 +67,9 @@ err_t nsh_root_close (struct nshandle_root *root, error *e) {
   return err;
 }
 
-err_t nsh_root_crash (struct nshandle_root *root, error *e) {
+err_t
+nsh_root_crash (struct nshandle_root *root, error *e)
+{
   ASSERT (root->count == 0);
   err_t err = pgr_crash (root->p, e);
   i_free ((void *)root->path.data);
@@ -65,7 +77,9 @@ err_t nsh_root_crash (struct nshandle_root *root, error *e) {
   return err;
 }
 
-struct nshandle *nsh_root_load (struct nshandle_root *ns, error *e) {
+struct nshandle *
+nsh_root_load (struct nshandle_root *ns, error *e)
+{
   struct nshandle *ret = i_malloc (1, sizeof *ret, e);
   if (ret == NULL) { return NULL; }
 
@@ -78,15 +92,20 @@ struct nshandle *nsh_root_load (struct nshandle_root *ns, error *e) {
   return ret;
 }
 
-void nsh_root_release (struct nshandle_root *root, struct nshandle *sm) {
+void
+nsh_root_release (struct nshandle_root *root, struct nshandle *sm)
+{
   ASSERT (root->count > 0);
   i_free (sm);
   root->count -= 1;
 }
 
 // Transactional Support
-err_t nsh_auto_begin_txn (struct nshandle *sm, error *e) {
-  if (sm->atx == NULL) {
+err_t
+nsh_auto_begin_txn (struct nshandle *sm, error *e)
+{
+  if (sm->atx == NULL)
+  {
     WRAP (pgr_begin_txn (&sm->tx, sm->root->p, e));
     sm->is_auto_txn = 1;
     sm->atx         = &sm->tx;
@@ -95,8 +114,11 @@ err_t nsh_auto_begin_txn (struct nshandle *sm, error *e) {
   return SUCCESS;
 }
 
-err_t nsh_auto_commit (struct nshandle *sm, error *e) {
-  if (sm->is_auto_txn) {
+err_t
+nsh_auto_commit (struct nshandle *sm, error *e)
+{
+  if (sm->is_auto_txn)
+  {
     ASSERT (sm->atx);
     WRAP (pgr_commit (sm->root->p, sm->atx, e));
     sm->atx = NULL;
@@ -104,7 +126,9 @@ err_t nsh_auto_commit (struct nshandle *sm, error *e) {
   return SUCCESS;
 }
 
-void nsh_auto_rollback (struct nshandle *sm) {
+void
+nsh_auto_rollback (struct nshandle *sm)
+{
   if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e)) { panic ("Failed to rollback"); }
   sm->atx = NULL;
 }

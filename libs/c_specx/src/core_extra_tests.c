@@ -21,7 +21,8 @@
 
 // Parameterised table for paths the current code handles CORRECTLY:
 // zero, negative-zero, normals, infinity, and NaN.
-static const struct {
+static const struct
+{
   const char *name;
   u16         h16;
   u32         expected_f32_bits;
@@ -48,9 +49,12 @@ static const struct {
     {"smallest normal (2^-14)", 0x0400u, 0x38800000u},
 };
 
-TEST (f16_to_f32_normals_and_specials) {
-  for (u32 i = 0; i < arrlen (f16_f32_cases); ++i) {
-    TEST_CASE ("%s", f16_f32_cases[i].name) {
+TEST (f16_to_f32_normals_and_specials)
+{
+  for (u32 i = 0; i < arrlen (f16_f32_cases); ++i)
+  {
+    TEST_CASE ("%s", f16_f32_cases[i].name)
+    {
       float result = f16_to_f32 (f16_f32_cases[i].h16);
       u32   bits;
       memcpy (&bits, &result, sizeof bits);
@@ -59,13 +63,15 @@ TEST (f16_to_f32_normals_and_specials) {
   }
 }
 
-TEST (f16_to_f32_nan_is_nan) {
+TEST (f16_to_f32_nan_is_nan)
+{
   // sign=0, exp=31, mant=0x200 — arbitrary non-zero mantissa → NaN
   const float result = f16_to_f32 (0x7E00u);
   test_assert (isnan (result));
 }
 
-TEST (f16_to_f32_smallest_subnormal_correct_value) {
+TEST (f16_to_f32_smallest_subnormal_correct_value)
+{
   const float result        = f16_to_f32 (0x0001u);
   const u32   expected_bits = 0x33800000u;
   u32         result_bits;
@@ -73,7 +79,8 @@ TEST (f16_to_f32_smallest_subnormal_correct_value) {
   test_assert_type_equal (result_bits, expected_bits, u32, PRIu32);
 }
 
-static const struct {
+static const struct
+{
   const char *name;
   const char *input;
   u32         ilen;
@@ -95,25 +102,32 @@ static const struct {
     {"I32_MIN-1 overflows", "-2147483649", 11, 0, ERR_ARITH},
 };
 
-TEST (parse_i32_boundary_values) {
+TEST (parse_i32_boundary_values)
+{
   error e   = error_create ();
   i32   out = 0;
 
-  for (u32 i = 0; i < arrlen (parse_i32_cases); ++i) {
-    TEST_CASE ("%s", parse_i32_cases[i].name) {
+  for (u32 i = 0; i < arrlen (parse_i32_cases); ++i)
+  {
+    TEST_CASE ("%s", parse_i32_cases[i].name)
+    {
       const err_t ret =
           parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
       test_assert_int_equal (ret, parse_i32_cases[i].expected_ret);
-      if (ret == SUCCESS) {
+      if (ret == SUCCESS)
+      {
         test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
-      } else {
+      }
+      else
+      {
         e.cause_code = SUCCESS; // reset for next iteration
       }
     }
   }
 }
 
-static const struct {
+static const struct
+{
   const char *name;
   const char *input;
   u32         ilen;
@@ -133,18 +147,24 @@ static const struct {
     {"I64_MIN-1 overflows", "-9223372036854775809", 20, 0, ERR_ARITH},
 };
 
-TEST (parse_i64_boundary_values) {
+TEST (parse_i64_boundary_values)
+{
   error e   = error_create ();
   i64   out = 0;
 
-  for (u32 i = 0; i < arrlen (parse_i64_cases); ++i) {
-    TEST_CASE ("%s", parse_i64_cases[i].name) {
+  for (u32 i = 0; i < arrlen (parse_i64_cases); ++i)
+  {
+    TEST_CASE ("%s", parse_i64_cases[i].name)
+    {
       const err_t ret =
           parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
       test_assert_int_equal (ret, parse_i64_cases[i].expected_ret);
-      if (ret == SUCCESS) {
+      if (ret == SUCCESS)
+      {
         test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
-      } else {
+      }
+      else
+      {
         e.cause_code = SUCCESS;
       }
     }
@@ -153,7 +173,8 @@ TEST (parse_i64_boundary_values) {
 
 // Verify that inserting past the current cap triggers a realloc and that
 // capacity at least doubles (catching regressions to the doubling formula).
-TEST (ext_array_capacity_doubles_on_growth) {
+TEST (ext_array_capacity_doubles_on_growth)
+{
   error            e = error_create ();
   struct ext_array a = ext_array_create ();
 
@@ -165,7 +186,8 @@ TEST (ext_array_capacity_doubles_on_growth) {
 
   // Fill to capacity.
   const u32 orig_cap = a.cap;
-  for (u32 i = a.len; i < orig_cap; ++i) {
+  for (u32 i = a.len; i < orig_cap; ++i)
+  {
     u8 b = (u8)(i & 0xFF);
     ext_array_insert (&a, a.len, &b, 1, &e);
     test_assert_int_equal (e.cause_code, SUCCESS);
@@ -182,7 +204,8 @@ TEST (ext_array_capacity_doubles_on_growth) {
 }
 
 // Removing every element via stride must leave an empty array.
-TEST (ext_array_remove_all_produces_empty) {
+TEST (ext_array_remove_all_produces_empty)
+{
   error            e = error_create ();
   struct ext_array a = ext_array_create ();
 
@@ -201,22 +224,27 @@ TEST (ext_array_remove_all_produces_empty) {
   ext_array_free (&a);
 }
 
-struct llt_node {
+struct llt_node
+{
   int           value;
   struct llnode link;
 };
 
-static bool llt_eq (const struct llnode *a, const struct llnode *b) {
+static bool
+llt_eq (const struct llnode *a, const struct llnode *b)
+{
   return container_of (a, struct llt_node, link)->value
          == container_of (b, struct llt_node, link)->value;
 }
 
 // list_append must produce FIFO order (oldest-first on pop).
-TEST (llist_append_maintaififo_order) {
+TEST (llist_append_maintaififo_order)
+{
   struct llt_node nodes[5];
   struct llnode  *head = NULL;
 
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 5; ++i)
+  {
     nodes[i].value = i;
     llnode_init (&nodes[i].link);
     list_append (&head, &nodes[i].link);
@@ -224,7 +252,8 @@ TEST (llist_append_maintaififo_order) {
 
   test_assert_int_equal ((int)list_length (head), 5);
 
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 5; ++i)
+  {
     struct llnode *n = list_pop (&head);
     test_assert (n != NULL);
     test_assert_int_equal (container_of (n, struct llt_node, link)->value, i);
@@ -233,17 +262,20 @@ TEST (llist_append_maintaififo_order) {
 }
 
 // list_find must return the correct node and its 0-based index.
-TEST (llist_find_returnode_and_index) {
+TEST (llist_find_returnode_and_index)
+{
   struct llt_node nodes[3];
   struct llnode  *head = NULL;
 
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < 3; ++i)
+  {
     nodes[i].value = i * 10; // 0, 10, 20
     llnode_init (&nodes[i].link);
     list_append (&head, &nodes[i].link);
   }
 
-  TEST_CASE ("find middle element (value 10, index 1)") {
+  TEST_CASE ("find middle element (value 10, index 1)")
+  {
     struct llt_node key = {.value = 10};
     llnode_init (&key.link);
     u32                  idx   = 0;
@@ -253,7 +285,8 @@ TEST (llist_find_returnode_and_index) {
     test_assert_equal (found, &nodes[1].link);
   }
 
-  TEST_CASE ("find absent element returns NULL") {
+  TEST_CASE ("find absent element returns NULL")
+  {
     struct llt_node key = {.value = 99};
     llnode_init (&key.link);
     u32                  idx   = 0;
@@ -263,30 +296,35 @@ TEST (llist_find_returnode_and_index) {
 }
 
 // list_remove must correctly excise nodes from head, middle, and tail.
-TEST (llist_remove_from_head_middle_tail) {
+TEST (llist_remove_from_head_middle_tail)
+{
   struct llt_node nodes[4];
   struct llnode  *head = NULL;
 
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < 4; ++i)
+  {
     nodes[i].value = i;
     llnode_init (&nodes[i].link);
     list_append (&head, &nodes[i].link);
   }
   // list: 0 -> 1 -> 2 -> 3
 
-  TEST_CASE ("remove middle (value=1)") {
+  TEST_CASE ("remove middle (value=1)")
+  {
     list_remove (&head, &nodes[1].link);
     test_assert_int_equal ((int)list_length (head), 3);
     test_assert_equal (nodes[1].link.next, NULL);
   }
 
-  TEST_CASE ("remove head (value=0)") {
+  TEST_CASE ("remove head (value=0)")
+  {
     list_remove (&head, &nodes[0].link);
     test_assert_int_equal ((int)list_length (head), 2);
     test_assert_equal (head, &nodes[2].link); // new head
   }
 
-  TEST_CASE ("remove tail (value=3)") {
+  TEST_CASE ("remove tail (value=3)")
+  {
     list_remove (&head, &nodes[3].link);
     test_assert_int_equal ((int)list_length (head), 1);
     test_assert_equal (head, &nodes[2].link);
@@ -295,7 +333,8 @@ TEST (llist_remove_from_head_middle_tail) {
 }
 
 // Removing a node that was never inserted must leave the list unchanged.
-TEST (llist_remove_absent_node_is_noop) {
+TEST (llist_remove_absent_node_is_noop)
+{
   struct llt_node a        = {.value = 1};
   struct llt_node b        = {.value = 2};
   struct llt_node outsider = {.value = 99};
@@ -316,7 +355,8 @@ TEST (llist_remove_absent_node_is_noop) {
 // Well-known CRC32C (Castagnoli) check value for the ASCII string "123456789"
 // is 0xE3069283. A wrong polynomial or table would produce a different value,
 // but would still pass the existing "non-zero" and "deterministic" tests.
-TEST (checksum_known_crc32c_vector) {
+TEST (checksum_known_crc32c_vector)
+{
   const u8 data[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
   u32      state  = checksum_init ();
   checksum_execute (&state, data, sizeof data);
@@ -324,7 +364,8 @@ TEST (checksum_known_crc32c_vector) {
 }
 
 // Two distinct single-byte inputs must produce different checksums.
-TEST (checksum_distinct_bytes_differ) {
+TEST (checksum_distinct_bytes_differ)
+{
   const u8 a[] = {0x00};
   const u8 b[] = {0x01};
   u32      sa  = checksum_init ();
@@ -336,7 +377,8 @@ TEST (checksum_distinct_bytes_differ) {
 
 // Writing exactly dcap bytes must succeed; one additional byte must return
 // false.
-TEST (serializer_write_at_capacity_then_overflow) {
+TEST (serializer_write_at_capacity_then_overflow)
+{
   u8                buf[8];
   struct serializer s = srlizr_create (buf, sizeof buf);
 
@@ -354,7 +396,8 @@ TEST (serializer_write_at_capacity_then_overflow) {
 }
 
 // Multiple partial writes that together exceed dcap: last write must fail.
-TEST (serializer_incremental_write_overflow) {
+TEST (serializer_incremental_write_overflow)
+{
   u8                buf[6];
   struct serializer s = srlizr_create (buf, sizeof buf);
 
@@ -372,61 +415,70 @@ TEST (serializer_incremental_write_overflow) {
   test_assert_memequal (buf, expected, 6);
 }
 
-TEST (stride_constructors_resolve_correctly) {
+TEST (stride_constructors_resolve_correctly)
+{
   struct stride r;
   error         e = error_create ();
   const u64     N = 10;
 
-  TEST_CASE ("ustride() = [::] — all elements") {
+  TEST_CASE ("ustride() = [::] — all elements")
+  {
     stride_resolve (&r, ustride (), N, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 10);
   }
 
-  TEST_CASE ("ustride0(3) = [3:] — from index 3 to end") {
+  TEST_CASE ("ustride0(3) = [3:] — from index 3 to end")
+  {
     stride_resolve (&r, ustride0 (3), N, &e);
     test_assert_int_equal (r.start, 3);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 7);
   }
 
-  TEST_CASE ("ustride2(6) = [:6] — first 6 elements") {
+  TEST_CASE ("ustride2(6) = [:6] — first 6 elements")
+  {
     stride_resolve (&r, ustride2 (6), N, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 6);
   }
 
-  TEST_CASE ("ustride1(3) = [::3] — every 3rd, indices 0,3,6,9") {
+  TEST_CASE ("ustride1(3) = [::3] — every 3rd, indices 0,3,6,9")
+  {
     stride_resolve (&r, ustride1 (3), N, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 3);
     test_assert_int_equal (r.nelems, 4);
   }
 
-  TEST_CASE ("ustride01(2,3) = [2::3] — from 2, step 3, indices 2,5,8") {
+  TEST_CASE ("ustride01(2,3) = [2::3] — from 2, step 3, indices 2,5,8")
+  {
     stride_resolve (&r, ustride01 (2, 3), N, &e);
     test_assert_int_equal (r.start, 2);
     test_assert_int_equal (r.stride, 3);
     test_assert_int_equal (r.nelems, 3);
   }
 
-  TEST_CASE ("ustride12(2,8) = [::2] stop 8 — indices 0,2,4,6") {
+  TEST_CASE ("ustride12(2,8) = [::2] stop 8 — indices 0,2,4,6")
+  {
     stride_resolve (&r, ustride12 (2, 8), N, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 2);
     test_assert_int_equal (r.nelems, 4);
   }
 
-  TEST_CASE ("ustride012(1,2,7) = [1:7:2] — indices 1,3,5") {
+  TEST_CASE ("ustride012(1,2,7) = [1:7:2] — indices 1,3,5")
+  {
     stride_resolve (&r, ustride012 (1, 2, 7), N, &e);
     test_assert_int_equal (r.start, 1);
     test_assert_int_equal (r.stride, 2);
     test_assert_int_equal (r.nelems, 3);
   }
 
-  TEST_CASE ("usfrms round-trip: stride → user_stride → stride is identity") {
+  TEST_CASE ("usfrms round-trip: stride → user_stride → stride is identity")
+  {
     // Build a concrete stride and convert it back; resolution must agree.
     const struct stride      orig = {.start = 2, .stride = 3, .nelems = 3};
     const struct user_stride us   = usfrms (orig);
@@ -438,34 +490,40 @@ TEST (stride_constructors_resolve_correctly) {
   }
 }
 
-TEST (string_ordering_operators) {
+TEST (string_ordering_operators)
+{
   const struct string abc  = {.data = "abc", .len = 3};
   const struct string abd  = {.data = "abd", .len = 3};
   const struct string ab   = {.data = "ab", .len = 2};
   const struct string xyz1 = {.data = "xyz", .len = 3};
   const struct string xyz2 = {.data = "xyz", .len = 3};
 
-  TEST_CASE ("'abc' < 'abd': less, not greater") {
+  TEST_CASE ("'abc' < 'abd': less, not greater")
+  {
     test_assert (string_less_string (abc, abd));
     test_assert (!string_greater_string (abc, abd));
   }
 
-  TEST_CASE ("shorter prefix is less than its extension") {
+  TEST_CASE ("shorter prefix is less than its extension")
+  {
     test_assert (string_less_string (ab, abc));
     test_assert (string_greater_string (abc, ab));
   }
 
-  TEST_CASE ("equal strings: not less, not greater") {
+  TEST_CASE ("equal strings: not less, not greater")
+  {
     test_assert (!string_less_string (xyz1, xyz2));
     test_assert (!string_greater_string (xyz1, xyz2));
   }
 
-  TEST_CASE ("less_equal and greater_equal hold for equal pair") {
+  TEST_CASE ("less_equal and greater_equal hold for equal pair")
+  {
     test_assert (string_less_equal_string (xyz1, xyz2));
     test_assert (string_greater_equal_string (xyz1, xyz2));
   }
 
-  TEST_CASE ("less_equal / greater_equal are consistent with strict versions") {
+  TEST_CASE ("less_equal / greater_equal are consistent with strict versions")
+  {
     test_assert (string_less_equal_string (abc, abd));
     test_assert (!string_greater_equal_string (abc, abd));
     test_assert (string_greater_equal_string (abd, abc));
@@ -473,89 +531,105 @@ TEST (string_ordering_operators) {
   }
 }
 
-TEST (line_length_newline_found) {
-  TEST_CASE ("newline at position 0") {
+TEST (line_length_newline_found)
+{
+  TEST_CASE ("newline at position 0")
+  {
     const char buf[] = "\nhello";
     test_assert_type_equal (line_length (buf, sizeof (buf) - 1), (u64)0, u64, PRIu64);
   }
 
-  TEST_CASE ("newline in the middle") {
+  TEST_CASE ("newline in the middle")
+  {
     const char buf[] = "hello\nworld";
     test_assert_type_equal (line_length (buf, sizeof (buf) - 1), (u64)5, u64, PRIu64);
   }
 
-  TEST_CASE ("newline at the last allowed position") {
+  TEST_CASE ("newline at the last allowed position")
+  {
     const char buf[] = "abc\n";
     // max = 4, newline is at index 3
     test_assert_type_equal (line_length (buf, 4), (u64)3, u64, PRIu64);
   }
 
-  TEST_CASE ("no newline within max: returns max") {
+  TEST_CASE ("no newline within max: returns max")
+  {
     const char buf[] = "hello";
     test_assert_type_equal (line_length (buf, 5), (u64)5, u64, PRIu64);
   }
 
-  TEST_CASE ("max=1 and the single byte is not a newline: returns 1") {
+  TEST_CASE ("max=1 and the single byte is not a newline: returns 1")
+  {
     const char buf[] = "x";
     test_assert_type_equal (line_length (buf, 1), (u64)1, u64, PRIu64);
   }
 
-  TEST_CASE ("max=1 and the single byte is a newline: returns 0") {
+  TEST_CASE ("max=1 and the single byte is a newline: returns 0")
+  {
     const char buf[] = "\n";
     test_assert_type_equal (line_length (buf, 1), (u64)0, u64, PRIu64);
   }
 
-  TEST_CASE ("newline beyond max is invisible") {
+  TEST_CASE ("newline beyond max is invisible")
+  {
     // The buffer is "hello\n" but we only scan the first 5 bytes.
     const char buf[] = "hello\n";
     test_assert_type_equal (line_length (buf, 5), (u64)5, u64, PRIu64);
   }
 }
 
-TEST (string_equal_cases) {
-  TEST_CASE ("identical strings are equal") {
+TEST (string_equal_cases)
+{
+  TEST_CASE ("identical strings are equal")
+  {
     const struct string a = {.data = "abc", .len = 3};
     const struct string b = {.data = "abc", .len = 3};
     test_assert (string_equal (a, b));
   }
 
-  TEST_CASE ("same content different length: not equal") {
+  TEST_CASE ("same content different length: not equal")
+  {
     const struct string a = {.data = "abc", .len = 3};
     const struct string b = {.data = "abcd", .len = 4};
     test_assert (!string_equal (a, b));
   }
 
-  TEST_CASE ("same length different content: not equal") {
+  TEST_CASE ("same length different content: not equal")
+  {
     const struct string a = {.data = "abc", .len = 3};
     const struct string b = {.data = "abd", .len = 3};
     test_assert (!string_equal (a, b));
   }
 
-  TEST_CASE ("single-char strings: equal") {
+  TEST_CASE ("single-char strings: equal")
+  {
     const struct string a = {.data = "z", .len = 1};
     const struct string b = {.data = "z", .len = 1};
     test_assert (string_equal (a, b));
   }
 
-  TEST_CASE ("single-char strings: not equal") {
+  TEST_CASE ("single-char strings: not equal")
+  {
     const struct string a = {.data = "a", .len = 1};
     const struct string b = {.data = "b", .len = 1};
     test_assert (!string_equal (a, b));
   }
 }
 
-TEST (strings_are_disjoint_cases) {
-  TEST_CASE ("both arrays empty: disjoint (returns NULL)") {
-    test_assert (strings_are_disjoint (NULL, 0, NULL, 0) == NULL);
-  }
+TEST (strings_are_disjoint_cases)
+{
+  TEST_CASE ("both arrays empty: disjoint (returns NULL)")
+  { test_assert (strings_are_disjoint (NULL, 0, NULL, 0) == NULL); }
 
-  TEST_CASE ("left empty: disjoint") {
+  TEST_CASE ("left empty: disjoint")
+  {
     char                d[]     = "a";
     const struct string right[] = {{.len = 1, .data = d}};
     test_assert (strings_are_disjoint (NULL, 0, right, 1) == NULL);
   }
 
-  TEST_CASE ("no shared element: returns NULL") {
+  TEST_CASE ("no shared element: returns NULL")
+  {
     char                da[]    = "foo";
     char                db[]    = "bar";
     const struct string left[]  = {{.len = 3, .data = da}};
@@ -563,7 +637,8 @@ TEST (strings_are_disjoint_cases) {
     test_assert (strings_are_disjoint (left, 1, right, 1) == NULL);
   }
 
-  TEST_CASE ("shared element: returns pointer into left") {
+  TEST_CASE ("shared element: returns pointer into left")
+  {
     char                 da[]    = "foo";
     char                 db[]    = "baz";
     char                 dc[]    = "foo"; // duplicate of da
@@ -574,7 +649,8 @@ TEST (strings_are_disjoint_cases) {
     test_assert (string_equal (*hit, (struct string){.len = 3, .data = "foo"}));
   }
 
-  TEST_CASE ("shared element found in second left position") {
+  TEST_CASE ("shared element found in second left position")
+  {
     char                 da[]    = "alpha";
     char                 db[]    = "beta";
     char                 dc[]    = "beta";
@@ -585,7 +661,8 @@ TEST (strings_are_disjoint_cases) {
     test_assert (string_equal (*hit, (struct string){.len = 4, .data = "beta"}));
   }
 
-  TEST_CASE ("multiple right candidates, none match: returns NULL") {
+  TEST_CASE ("multiple right candidates, none match: returns NULL")
+  {
     char                da[]    = "x";
     char                db[]    = "y";
     char                dc[]    = "z";
@@ -595,8 +672,10 @@ TEST (strings_are_disjoint_cases) {
   }
 }
 
-TEST (string_plus_concatenates) {
-  TEST_CASE ("basic concatenation") {
+TEST (string_plus_concatenates)
+{
+  TEST_CASE ("basic concatenation")
+  {
     u8            arena[64];
     struct lalloc alloc = lalloc_create_from (arena);
     error         e     = error_create ();
@@ -610,7 +689,8 @@ TEST (string_plus_concatenates) {
     test_assert (memcmp (result.data, "Hello world", 11) == 0);
   }
 
-  TEST_CASE ("concatenate two single-char strings") {
+  TEST_CASE ("concatenate two single-char strings")
+  {
     u8            arena[16];
     struct lalloc alloc = lalloc_create_from (arena);
     error         e     = error_create ();
@@ -625,7 +705,8 @@ TEST (string_plus_concatenates) {
     test_assert (result.data[1] == 'B');
   }
 
-  TEST_CASE ("concatenate three strings via two calls") {
+  TEST_CASE ("concatenate three strings via two calls")
+  {
     u8            arena[128];
     struct lalloc alloc = lalloc_create_from (arena);
     error         e     = error_create ();
@@ -642,8 +723,10 @@ TEST (string_plus_concatenates) {
   }
 }
 
-TEST (cbuffer_discard_all_resets_state) {
-  TEST_CASE ("discard non-empty buffer produces empty buffer at position zero") {
+TEST (cbuffer_discard_all_resets_state)
+{
+  TEST_CASE ("discard non-empty buffer produces empty buffer at position zero")
+  {
     u8             buf[4];
     struct cbuffer b = cbuffer_create (buf, 4);
 
@@ -659,7 +742,8 @@ TEST (cbuffer_discard_all_resets_state) {
     test_assert_int_equal ((int)b.isfull, (int)false);
   }
 
-  TEST_CASE ("discard full buffer also clears isfull flag") {
+  TEST_CASE ("discard full buffer also clears isfull flag")
+  {
     u8             buf[2];
     struct cbuffer b = cbuffer_create (buf, 2);
 
@@ -676,11 +760,13 @@ TEST (cbuffer_discard_all_resets_state) {
   }
 }
 
-TEST (cbuffer_read_write_wraparound) {
+TEST (cbuffer_read_write_wraparound)
+{
   // Scenario: fill buffer, partially drain it, then write again so that
   // the data physically wraps around the end of the backing array.  Read
   // must reassemble the correct byte sequence regardless.
-  TEST_CASE ("write wraps around, read yields original bytes in order") {
+  TEST_CASE ("write wraps around, read yields original bytes in order")
+  {
     u8             buf[4];
     struct cbuffer b = cbuffer_create (buf, 4);
 
@@ -712,7 +798,8 @@ TEST (cbuffer_read_write_wraparound) {
     test_assert_int_equal (result[3], 0xFF);
   }
 
-  TEST_CASE ("copy does not advance tail") {
+  TEST_CASE ("copy does not advance tail")
+  {
     u8             buf[4];
     struct cbuffer b = cbuffer_create (buf, 4);
 
@@ -732,8 +819,10 @@ TEST (cbuffer_read_write_wraparound) {
   }
 }
 
-TEST (cbuffer_cbuffer_move_transfers_bytes) {
-  TEST_CASE ("move all bytes from src to dst") {
+TEST (cbuffer_cbuffer_move_transfers_bytes)
+{
+  TEST_CASE ("move all bytes from src to dst")
+  {
     u8             sbuf[4], dbuf[8];
     struct cbuffer src = cbuffer_create (sbuf, 4);
     struct cbuffer dst = cbuffer_create (dbuf, 8);
@@ -751,7 +840,8 @@ TEST (cbuffer_cbuffer_move_transfers_bytes) {
     test_assert (memcmp (out, data, 4) == 0);
   }
 
-  TEST_CASE ("move is limited by available src bytes") {
+  TEST_CASE ("move is limited by available src bytes")
+  {
     u8             sbuf[4], dbuf[8];
     struct cbuffer src = cbuffer_create (sbuf, 4);
     struct cbuffer dst = cbuffer_create (dbuf, 8);

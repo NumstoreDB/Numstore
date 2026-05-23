@@ -17,7 +17,8 @@
 #include "nscore/pages/data_list.h"
 #include "nscore/rope.h"
 
-enum write_state {
+enum write_state
+{
   ACTIVE,
   SKIPPING,
 };
@@ -30,13 +31,16 @@ enum write_state {
  * and — in ACTIVE state only — bytes remaining before the global write
  * limit (max_bwrite).  Skip-window bytes do not count toward max_bwrite.
  */
-static t_size ns_write_next_amount (
+static t_size
+ns_write_next_amount (
     const page            *curp,
     const t_size           lidx,
     const b_size           bnext,
     const b_size           max_bwrite,
     const b_size           total_bwrite,
-    const enum write_state state) {
+    const enum write_state state
+)
+{
   // Available in the current page
   p_size next_amount = dl_used (curp) - lidx;
 
@@ -44,7 +48,8 @@ static t_size ns_write_next_amount (
   next_amount = MIN (next_amount, bnext);
 
   // Available globally to write
-  if (max_bwrite > 0 && state == ACTIVE) {
+  if (max_bwrite > 0 && state == ACTIVE)
+  {
     next_amount = MIN (next_amount, max_bwrite - total_bwrite);
   }
 
@@ -69,7 +74,9 @@ static t_size ns_write_next_amount (
  * Returns the number of complete elements written, not bytes.  Returns 0
  * immediately if root == PGNO_NULL (empty tree).
  */
-static sb_size ns_write_forward (const struct ns_write_params params, error *e) {
+static sb_size
+ns_write_forward (const struct ns_write_params params, error *e)
+{
   ASSERT (params.stride > 0);
 
   page_h       cur          = page_h_create ();
@@ -91,12 +98,11 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
   enum write_state state = ACTIVE;
 
   // Nothing to do
-  if (params.root == PGNO_NULL) {
-    return 0;
-  }
+  if (params.root == PGNO_NULL) { return 0; }
 
   // Otherwise seek
-  else {
+  else
+  {
     if (ns_seek (&seek, e)) { goto failed; }
 
     // Transition from Seeked -> inserting
@@ -109,27 +115,33 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
 
   page *curp = page_h_w (&cur);
 
-  enum {
+  enum
+  {
     HIT_MAX_WRITE,
     SRC_DONE_WRITING,
     DATA_EXHAUSTED,
   } termination = HIT_MAX_WRITE;
 
-  while (max_bwrite == 0 || total_bwrite < max_bwrite) {
+  while (max_bwrite == 0 || total_bwrite < max_bwrite)
+  {
     p_size next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
 
-    if (next_amount == 0) {
+    if (next_amount == 0)
+    {
       // Reached end of current page, advance
       // to next
-      if (lidx >= dl_used (curp)) {
+      if (lidx >= dl_used (curp))
+      {
         const pgno npg = dlgt_get_next (curp);
 
-        if (npg != PGNO_NULL) {
+        if (npg != PGNO_NULL)
+        {
           WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.p, e));
         }
 
         // Reached EOF
-        else {
+        else
+        {
           termination = DATA_EXHAUSTED;
           goto done;
         }
@@ -146,14 +158,18 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
         ASSERT (next_amount > 0);
       }
 
-      else {
+      else
+      {
         UNREACHABLE ();
       }
     }
 
-    switch (state) {
-      case ACTIVE: {
-        if (next_amount > 0) {
+    switch (state)
+    {
+      case ACTIVE:
+      {
+        if (next_amount > 0)
+        {
           // Pull bytes from caller's source stream and
           // stamp them into the page
           const sp_size write =
@@ -166,7 +182,8 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
           bnext -= write;
         }
 
-        if (bnext == 0) {
+        if (bnext == 0)
+        {
           // Finished writing one element; transition to
           // skip (stride-1) elements
           bnext = (params.stride - 1) * params.size;
@@ -175,7 +192,8 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
           // TODO - (5)
           // Optimize
           // stride = 1: skip window is zero, stay ACTIVE
-          if (bnext == 0) {
+          if (bnext == 0)
+          {
             bnext = params.size;
             state = ACTIVE;
           }
@@ -183,8 +201,10 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
         break;
       }
 
-      case SKIPPING: {
-        if (next_amount > 0) {
+      case SKIPPING:
+      {
+        if (next_amount > 0)
+        {
           // Advance lidx without writing; NULL src means
           // leave bytes untouched
           const p_size write = dl_write (curp, NULL, lidx, next_amount);
@@ -192,7 +212,8 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
           bnext -= write;
         }
 
-        if (bnext == 0) {
+        if (bnext == 0)
+        {
           // Skip window exhausted; start writing the
           // next element
           bnext = params.size;
@@ -201,13 +222,15 @@ static sb_size ns_write_forward (const struct ns_write_params params, error *e) 
         break;
       }
 
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }
 
     // Caller's source exhausted before we hit the byte limit
-    if (stream_isdone (params.src)) {
+    if (stream_isdone (params.src))
+    {
       termination = SRC_DONE_WRITING;
       break;
     }
@@ -219,7 +242,8 @@ done:
   WRAP (pgr_release (params.p, &cur, PG_DATA_LIST, e));
 
   // Validate we write complete elements
-  if (total_bwrite % params.size != 0) {
+  if (total_bwrite % params.size != 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -227,7 +251,8 @@ done:
         " bytes, not a multiple of element size "
         "%" PRt_size,
         total_bwrite,
-        params.size);
+        params.size
+    );
     goto failed;
   }
 
@@ -239,17 +264,20 @@ failed:
   return error_trace (e);
 }
 
-static sb_size ns_write_backward (const struct ns_write_params params, error *e) {
+static sb_size
+ns_write_backward (const struct ns_write_params params, error *e)
+{
   panic ("TODO - (12)");
   return 0;
 }
 
-sb_size ns_write (const struct ns_write_params params, error *e) {
-  if (params.stride > 0) {
-    return ns_write_forward (params, e);
-  } else if (params.stride < 0) {
-    return ns_write_backward (params, e);
-  } else {
+sb_size
+ns_write (const struct ns_write_params params, error *e)
+{
+  if (params.stride > 0) { return ns_write_forward (params, e); }
+  else if (params.stride < 0) { return ns_write_backward (params, e); }
+  else
+  {
     return error_causef (e, ERR_INVALID_ARGUMENT, "write stride is 0");
   }
 }

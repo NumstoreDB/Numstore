@@ -29,24 +29,29 @@ DEFINE_DBG_ASSERT (struct sarray_t, valid_sarray_t, s, {
   ASSERT (sarray_t_validate (s, &e) == SUCCESS);
 })
 
-static err_t sarray_t_type_err (const char *msg, error *e) {
-  return error_causef (e, ERR_INTERP, "Strict Array: %s", msg);
-}
+static err_t
+sarray_t_type_err (const char *msg, error *e)
+{ return error_causef (e, ERR_INTERP, "Strict Array: %s", msg); }
 
-static err_t sarray_t_type_deser (const char *msg, error *e) {
-  return error_causef (e, ERR_CORRUPT, "Strict Array: %s", msg);
-}
+static err_t
+sarray_t_type_deser (const char *msg, error *e)
+{ return error_causef (e, ERR_CORRUPT, "Strict Array: %s", msg); }
 
-static err_t sarray_t_validate_shallow (const struct sarray_t *t, error *e) {
+static err_t
+sarray_t_validate_shallow (const struct sarray_t *t, error *e)
+{
   DBG_ASSERT (unchecked_sarray_t, t);
   if (t->rank == 0) { return sarray_t_type_err ("Rank must be > 0", e); }
-  for (u32 i = 0; i < t->rank; ++i) {
+  for (u32 i = 0; i < t->rank; ++i)
+  {
     if (t->dims[i] == 0) { return sarray_t_type_err ("dimensions cannot be 0", e); }
   }
   return SUCCESS;
 }
 
-err_t sarray_t_validate (const struct sarray_t *t, error *e) {
+err_t
+sarray_t_validate (const struct sarray_t *t, error *e)
+{
   DBG_ASSERT (unchecked_sarray_t, t);
 
   WRAP (sarray_t_validate_shallow (t, e));
@@ -55,7 +60,9 @@ err_t sarray_t_validate (const struct sarray_t *t, error *e) {
   return SUCCESS;
 }
 
-i32 sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p) {
+i32
+sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
+{
   DBG_ASSERT (valid_sarray_t, p);
 
   char *out   = str;
@@ -63,15 +70,17 @@ i32 sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p) {
   int   len   = 0;
   int   n;
 
-  for (u16 i = 0; i < p->rank; ++i) {
+  for (u16 i = 0; i < p->rank; ++i)
+  {
     n = snprintf (out, avail, "[%u]", p->dims[i]);
     if (n < 0) { return n; }
     len += n;
-    if (out) {
+    if (out)
+    {
       out += n;
-      if ((u32)n < avail) {
-        avail -= n;
-      } else {
+      if ((u32)n < avail) { avail -= n; }
+      else
+      {
         avail = 0;
       }
     }
@@ -85,15 +94,15 @@ i32 sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p) {
 }
 
 #ifndef NTEST
-TEST (sarray_t_snprintf) {
+TEST (sarray_t_snprintf)
+{
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t =
-          &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
-          },
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
   };
 
   char        buffer[200];
@@ -107,7 +116,9 @@ TEST (sarray_t_snprintf) {
 }
 #endif
 
-u32 sarray_t_byte_size (const struct sarray_t *t) {
+u32
+sarray_t_byte_size (const struct sarray_t *t)
+{
   DBG_ASSERT (valid_sarray_t, t);
   u32 ret = 1;
 
@@ -118,21 +129,23 @@ u32 sarray_t_byte_size (const struct sarray_t *t) {
 }
 
 #ifndef NTEST
-TEST (sarray_t_byte_size) {
+TEST (sarray_t_byte_size)
+{
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t =
-          &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
-          },
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
   };
   test_assert_int_equal (sarray_t_byte_size (&s), 10 * 11 * 12 * 4);
 }
 #endif
 
-u32 sarray_t_get_serial_size (const struct sarray_t *t) {
+u32
+sarray_t_get_serial_size (const struct sarray_t *t)
+{
   DBG_ASSERT (valid_sarray_t, t);
   u32 ret = 0;
 
@@ -145,21 +158,23 @@ u32 sarray_t_get_serial_size (const struct sarray_t *t) {
 }
 
 #ifndef NTEST
-TEST (sarray_t_get_serial_size) {
+TEST (sarray_t_get_serial_size)
+{
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t =
-          &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
-          },
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
   };
   test_assert_int_equal (sarray_t_get_serial_size (&s), 3 * 4 + 2 + 2);
 }
 #endif
 
-void sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src) {
+void
+sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
+{
   DBG_ASSERT (valid_sarray_t, src);
   bool ret;
 
@@ -167,7 +182,8 @@ void sarray_t_serialize (struct serializer *persistent, const struct sarray_t *s
   ret = srlizr_write (persistent, (const u8 *)&src->rank, sizeof (u16));
   ASSERT (ret);
 
-  for (u32 i = 0; i < src->rank; ++i) {
+  for (u32 i = 0; i < src->rank; ++i)
+  {
     // DIMi
     ret = srlizr_write (persistent, (const u8 *)&src->dims[i], sizeof (u32));
     ASSERT (ret);
@@ -178,15 +194,15 @@ void sarray_t_serialize (struct serializer *persistent, const struct sarray_t *s
 }
 
 #ifndef NTEST
-TEST (sarray_t_serialize) {
+TEST (sarray_t_serialize)
+{
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t =
-          &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
-          },
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
   };
 
   u8  act[200];
@@ -208,11 +224,14 @@ TEST (sarray_t_serialize) {
 }
 #endif
 
-err_t sarray_t_deserialize (
+err_t
+sarray_t_deserialize (
     struct sarray_t     *persistent,
     struct deserializer *src,
     struct chunk_alloc  *a,
-    error               *e) {
+    error               *e
+)
+{
   ASSERT (persistent);
 
   struct sarray_t sa = {0};
@@ -230,7 +249,8 @@ err_t sarray_t_deserialize (
   if (t == NULL) { return error_trace (e); }
   sa.t = t;
 
-  for (u32 i = 0; i < sa.rank; ++i) {
+  for (u32 i = 0; i < sa.rank; ++i)
+  {
     u32 dim;
 
     // DIMi
@@ -252,7 +272,8 @@ early_terimination:
 }
 
 #ifndef NTEST
-TEST (sarray_t_deserialize_green_path) {
+TEST (sarray_t_deserialize_green_path)
+{
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
   u16 len    = 3;
   u32 d0     = 10;
@@ -286,7 +307,8 @@ TEST (sarray_t_deserialize_green_path) {
 #endif
 
 #ifndef NTEST
-TEST (sarray_t_deserialize_red_path) {
+TEST (sarray_t_deserialize_red_path)
+{
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
   u16 len    = 3;
   u32 d0     = 10;
@@ -311,7 +333,9 @@ TEST (sarray_t_deserialize_red_path) {
 }
 #endif
 
-err_t sarray_t_random (struct sarray_t *sa, struct chunk_alloc *temp, u32 depth, error *e) {
+err_t
+sarray_t_random (struct sarray_t *sa, struct chunk_alloc *temp, u32 depth, error *e)
+{
   ASSERT (sa);
 
   sa->rank = (u16)randu32r (1, 4);
@@ -330,10 +354,13 @@ err_t sarray_t_random (struct sarray_t *sa, struct chunk_alloc *temp, u32 depth,
   return SUCCESS;
 }
 
-bool sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right) {
+bool
+sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right)
+{
   if (left->rank != right->rank) { return false; }
 
-  for (u32 i = 0; i < left->rank; ++i) {
+  for (u32 i = 0; i < left->rank; ++i)
+  {
     if (left->dims[i] != right->dims[i]) { return false; }
   }
 

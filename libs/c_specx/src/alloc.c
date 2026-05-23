@@ -14,45 +14,63 @@
 
 #include "c_specx.h"
 
-void *alloc_alloc (struct alloc *a, const u32 nelem, const u32 size, error *e) {
-  switch (a->type) {
-    case AT_LALLOC: {
+void *
+alloc_alloc (struct alloc *a, const u32 nelem, const u32 size, error *e)
+{
+  switch (a->type)
+  {
+    case AT_LALLOC:
+    {
       return lmalloc (&a->_lalloc, nelem, size, e);
     }
-    case AT_CHNK_ALLOC: {
+    case AT_CHNK_ALLOC:
+    {
       return chunk_malloc (&a->_calloc, nelem, size, e);
     }
-    case AT_MALLOC: {
+    case AT_MALLOC:
+    {
       return i_malloc (nelem, size, e);
     }
   }
   UNREACHABLE ();
 }
 
-void *alloc_calloc (struct alloc *a, const u32 size, const u32 nelem, error *e) {
-  switch (a->type) {
-    case AT_LALLOC: {
+void *
+alloc_calloc (struct alloc *a, const u32 size, const u32 nelem, error *e)
+{
+  switch (a->type)
+  {
+    case AT_LALLOC:
+    {
       return lcalloc (&a->_lalloc, nelem, size, e);
     }
-    case AT_CHNK_ALLOC: {
+    case AT_CHNK_ALLOC:
+    {
       return chunk_calloc (&a->_calloc, nelem, size, e);
     }
-    case AT_MALLOC: {
+    case AT_MALLOC:
+    {
       return i_calloc (nelem, size, e);
     }
   }
   UNREACHABLE ();
 }
 
-void alloc_free (const struct alloc *a, void *data) {
-  switch (a->type) {
-    case AT_LALLOC: {
+void
+alloc_free (const struct alloc *a, void *data)
+{
+  switch (a->type)
+  {
+    case AT_LALLOC:
+    {
       UNREACHABLE ();
     }
-    case AT_CHNK_ALLOC: {
+    case AT_CHNK_ALLOC:
+    {
       UNREACHABLE ();
     }
-    case AT_MALLOC: {
+    case AT_MALLOC:
+    {
       i_free (data);
     }
   }

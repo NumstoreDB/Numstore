@@ -23,10 +23,13 @@
  * Used when the caller already holds the variable page's pgno from an
  * earlier _find_var_page() call, avoiding a second hash-chain traversal.
  */
-static err_t ns_update_by_id (struct ns_var_update_params params, error *e) {
+static err_t
+ns_update_by_id (struct ns_var_update_params params, error *e)
+{
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e)) {
+  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e))
+  {
     goto failed;
   }
 
@@ -38,9 +41,9 @@ static err_t ns_update_by_id (struct ns_var_update_params params, error *e) {
   goto failed;
 
 failed:
-  if (error_trace (e)) {
-    return error_trace (e);
-  } else {
+  if (error_trace (e)) { return error_trace (e); }
+  else
+  {
     return SUCCESS;
   }
 }
@@ -51,7 +54,9 @@ failed:
  * Walks the hash chain via _find_var_page() in FP_FIND mode, then upgrades
  * the page to writable and stamps the new root pgno and byte count.
  */
-static err_t ns_update_by_name (struct ns_var_update_params params, error *e) {
+static err_t
+ns_update_by_name (struct ns_var_update_params params, error *e)
+{
   page_h cur = page_h_create ();
 
   struct ns_find_var_page_params fparams = {
@@ -81,12 +86,17 @@ failed:
   return error_trace (e);
 }
 
-err_t ns_var_update (struct ns_var_update_params params, error *e) {
-  switch (params.retr.type) {
-    case VR_NAME: {
+err_t
+ns_var_update (struct ns_var_update_params params, error *e)
+{
+  switch (params.retr.type)
+  {
+    case VR_NAME:
+    {
       return ns_update_by_name (params, e);
     }
-    case VR_PG: {
+    case VR_PG:
+    {
       return ns_update_by_id (params, e);
     }
   }

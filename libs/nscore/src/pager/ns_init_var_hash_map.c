@@ -15,7 +15,9 @@
 #include "nscore/page_h.h"
 #include "nscore/var.h"
 
-err_t ns_init_var_hash_map (struct pager *p, error *e) {
+err_t
+ns_init_var_hash_map (struct pager *p, error *e)
+{
   page_h hp = page_h_create ();
 
   // BEGIN TXN
@@ -23,7 +25,8 @@ err_t ns_init_var_hash_map (struct pager *p, error *e) {
   if (pgr_begin_txn (&tx, p, e)) { goto failed; }
 
   // Upfront initialization
-  if (pgr_isnew (p)) {
+  if (pgr_isnew (p))
+  {
     // Create a new variable hash page
     if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e)) { goto failed; }
 

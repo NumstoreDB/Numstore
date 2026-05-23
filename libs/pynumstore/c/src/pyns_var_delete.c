@@ -21,7 +21,9 @@
 /*
  * var_delete(db, txn_or_none, var_id: int, key: int) -> None
  */
-PyObject *pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args) {
+PyObject *
+pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args)
+{
   PyObject *db;
   PyObject *txn_or_none;
 

@@ -17,7 +17,9 @@
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
 
-static int _nsdb_create (struct nshandle *db, const char *name, const char *type, error *e) {
+static int
+_nsdb_create (struct nshandle *db, const char *name, const char *type, error *e)
+{
   struct chunk_alloc                 temp;    // Allocator for get operation
   struct ns_var_get_or_create_params gparams; // Get or create operation
 
@@ -58,7 +60,9 @@ failed:
   return error_trace (e);
 }
 
-int nsdb_create (nsdb_t *_smf, const char *name, const char *type) {
+int
+nsdb_create (nsdb_t *_smf, const char *name, const char *type)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

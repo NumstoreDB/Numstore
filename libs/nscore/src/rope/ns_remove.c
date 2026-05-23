@@ -53,12 +53,14 @@
  * ns_balance_and_release() and ns_rebalance() to fix up the leaf level
  * and propagate size decrements up the inner-node tree.
  */
-enum remove_phase {
+enum remove_phase
+{
   REMOVING,
   SKIPPING,
 };
 
-struct remove_state {
+struct remove_state
+{
   // Pages
   page_h writer;
   page_h reader;
@@ -82,7 +84,9 @@ struct remove_state {
   enum remove_phase phase;
 };
 
-static page_h *remove_creader (struct remove_state *s) {
+static page_h *
+remove_creader (struct remove_state *s)
+{
   if (s->reader.mode == PHM_NONE) { return &s->writer; }
   return &s->reader;
 }
@@ -94,21 +98,27 @@ static page_h *remove_creader (struct remove_state *s) {
  * output, releases the page, then advances writer to the next page in the
  * chain (or to the current reader page if one is open).
  */
-static err_t advance_writer (struct remove_state *s, error *e) {
+static err_t
+advance_writer (struct remove_state *s, error *e)
+{
   ASSERT (s->write_idx > DL_DATA_SIZE / 2);
 
   in_set_len (page_h_w (&s->writer), s->write_idx);
   if (nupd_commit_1st_right (s->output, pgh_unravel (&s->writer), e)) { goto failed; }
 
-  if (s->reader.mode == PHM_NONE) {
+  if (s->reader.mode == PHM_NONE)
+  {
     const pgno npg = in_get_next (page_h_ro (&s->writer));
 
     if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e)) { goto failed; }
 
-    if (npg != PGNO_NULL) {
+    if (npg != PGNO_NULL)
+    {
       if (pgr_get_writable (&s->writer, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
     }
-  } else {
+  }
+  else
+  {
     if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e)) { goto failed; }
     page_h_xfer_ownership_ptr (&s->writer, &s->reader);
   }
@@ -134,31 +144,41 @@ failed:
  *
  * Sets *iseof=true and finalizes write_idx when the chain has no successor.
  */
-static err_t advance_reader (struct remove_state *s, bool *iseof, error *e) {
+static err_t
+advance_reader (struct remove_state *s, bool *iseof, error *e)
+{
   page_h next = page_h_create ();
   *iseof      = false;
 
-  if (s->reader.mode == PHM_NONE) {
+  if (s->reader.mode == PHM_NONE)
+  {
     const pgno npg = dlgt_get_next (page_h_ro (&s->writer));
 
-    if (npg != PGNO_NULL) {
+    if (npg != PGNO_NULL)
+    {
       if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
     }
-  } else if (s->write_idx > DL_DATA_SIZE / 2) {
+  }
+  else if (s->write_idx > DL_DATA_SIZE / 2)
+  {
     if (advance_writer (s, e)) { goto failed; }
 
     ASSERT (page_h_pgno (&s->writer) == page_h_pgno (remove_creader (s)));
 
     const pgno npg = dlgt_get_next (page_h_ro (&s->writer));
 
-    if (npg != PGNO_NULL) {
+    if (npg != PGNO_NULL)
+    {
       if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
     }
-  } else {
+  }
+  else
+  {
     const pgno rpg = page_h_pgno (&s->reader);
     const pgno npg = in_get_next (page_h_ro (&s->reader));
 
-    if (npg != PGNO_NULL) {
+    if (npg != PGNO_NULL)
+    {
       if (pgr_get_writable (&next, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
     }
 
@@ -170,11 +190,14 @@ static err_t advance_reader (struct remove_state *s, bool *iseof, error *e) {
     if (nupd_append_2nd_right (s->output, pgh_unravel (&s->writer), rpg, 0, e)) { goto failed; }
   }
 
-  if (s->reader.mode == PHM_NONE) {
+  if (s->reader.mode == PHM_NONE)
+  {
     in_set_len (page_h_w (&s->writer), s->write_idx);
     s->read_idx = s->write_idx;
     *iseof      = true;
-  } else {
+  }
+  else
+  {
     s->read_idx = 0;
   }
 
@@ -185,7 +208,9 @@ failed:
   return error_trace (e);
 }
 
-static p_size removing_next (const struct remove_state *s, const page *sro) {
+static p_size
+removing_next (const struct remove_state *s, const page *sro)
+{
   p_size next = s->bnext;
   next        = MIN (next, dl_used (sro) - s->read_idx);
 
@@ -194,14 +219,18 @@ static p_size removing_next (const struct remove_state *s, const page *sro) {
   return next;
 }
 
-static p_size skipping_next (const struct remove_state *s, const page *sro) {
+static p_size
+skipping_next (const struct remove_state *s, const page *sro)
+{
   p_size next = s->bnext;
   next        = MIN (next, DL_DATA_SIZE - s->write_idx);
   next        = MIN (next, dl_used (sro) - s->read_idx);
   return next;
 }
 
-static p_size drain_reader_next (const struct remove_state *s, const page *sro) {
+static p_size
+drain_reader_next (const struct remove_state *s, const page *sro)
+{
   p_size next = DL_DATA_SIZE - s->write_idx;
   next        = MIN (next, dl_used (sro) - s->read_idx);
   return next;
@@ -216,7 +245,9 @@ static p_size drain_reader_next (const struct remove_state *s, const page *sro) 
  *
  * params->root is updated in place if the root changes.
  */
-sb_size ns_remove (struct ns_remove_params *params, error *e) {
+sb_size
+ns_remove (struct ns_remove_params *params, error *e)
+{
   struct remove_state s = {
       .writer        = page_h_create (),
       .reader        = page_h_create (),
@@ -261,16 +292,20 @@ sb_size ns_remove (struct ns_remove_params *params, error *e) {
 
   // Phase 1: Remove / Skip
   int k = 0;
-  while (s.max_remove == 0 || s.total_removed < s.max_remove) {
+  while (s.max_remove == 0 || s.total_removed < s.max_remove)
+  {
     k++;
     const page *sro  = page_h_ro (remove_creader (&s));
     p_size      rlen = dl_used (sro);
 
-    switch (s.phase) {
-      case REMOVING: {
+    switch (s.phase)
+    {
+      case REMOVING:
+      {
         p_size next_amount = removing_next (&s, sro);
 
-        if (next_amount == 0) {
+        if (next_amount == 0)
+        {
           ASSERT (s.read_idx == rlen);
 
           bool iseof;
@@ -281,7 +316,8 @@ sb_size ns_remove (struct ns_remove_params *params, error *e) {
           continue;
         }
 
-        if (params->dest) {
+        if (params->dest)
+        {
           i32 written =
               stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1, next_amount, params->dest, e);
 
@@ -293,11 +329,12 @@ sb_size ns_remove (struct ns_remove_params *params, error *e) {
         s.total_removed += next_amount;
         s.bnext -= next_amount;
 
-        if (s.bnext == 0) {
+        if (s.bnext == 0)
+        {
           s.bnext = params->size * (params->stride - 1);
-          if (s.bnext > 0) {
-            s.phase = SKIPPING;
-          } else {
+          if (s.bnext > 0) { s.phase = SKIPPING; }
+          else
+          {
             s.bnext = params->size;
           }
         }
@@ -307,18 +344,23 @@ sb_size ns_remove (struct ns_remove_params *params, error *e) {
         break;
       }
 
-      case SKIPPING: {
+      case SKIPPING:
+      {
         p_size next_amount = skipping_next (&s, sro);
 
-        if (next_amount == 0) {
-          if (s.read_idx == rlen) {
+        if (next_amount == 0)
+        {
+          if (s.read_idx == rlen)
+          {
             bool iseof;
             if (advance_reader (&s, &iseof, e)) { goto failed; }
 
             if (iseof) { goto drain; }
 
             continue;
-          } else if (s.write_idx == DL_DATA_SIZE) {
+          }
+          else if (s.write_idx == DL_DATA_SIZE)
+          {
             if (advance_writer (&s, e)) { goto failed; }
 
             continue;
@@ -332,13 +374,15 @@ sb_size ns_remove (struct ns_remove_params *params, error *e) {
             page_h_ro (remove_creader (&s)),
             s.write_idx,
             s.read_idx,
-            next_amount);
+            next_amount
+        );
 
         s.write_idx += next_amount;
         s.read_idx += next_amount;
         s.bnext -= next_amount;
 
-        if (s.bnext == 0) {
+        if (s.bnext == 0)
+        {
           s.bnext = params->size;
           s.phase = REMOVING;
         }
@@ -353,22 +397,28 @@ sb_size ns_remove (struct ns_remove_params *params, error *e) {
 drain:
   // Phase 2: Drain remaining reader pages into writer
 
-  while (true) {
+  while (true)
+  {
     const page *sro  = page_h_ro (remove_creader (&s));
     p_size      rlen = dl_used (sro);
 
     p_size next_amount = drain_reader_next (&s, sro);
 
-    if (next_amount == 0) {
-      if (s.read_idx == rlen) {
+    if (next_amount == 0)
+    {
+      if (s.read_idx == rlen)
+      {
         dl_set_used (page_h_w (&s.writer), s.write_idx);
 
-        if (s.reader.mode != PHM_NONE) {
+        if (s.reader.mode != PHM_NONE)
+        {
           pgno rpg = page_h_pgno (&s.reader);
           pgno npg = in_get_next (page_h_ro (&s.reader));
 
-          if (npg != PGNO_NULL) {
-            if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e)) {
+          if (npg != PGNO_NULL)
+          {
+            if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e))
+            {
               goto failed;
             }
           }
@@ -384,13 +434,19 @@ drain:
           if (s.reader.mode == PHM_NONE) { break; }
 
           continue;
-        } else {
+        }
+        else
+        {
           break;
         }
-      } else if (s.write_idx >= DL_DATA_SIZE) {
+      }
+      else if (s.write_idx >= DL_DATA_SIZE)
+      {
         if (advance_writer (&s, e)) { goto failed; }
         continue;
-      } else {
+      }
+      else
+      {
         UNREACHABLE ();
       }
     }
@@ -400,7 +456,8 @@ drain:
         page_h_ro (remove_creader (&s)),
         s.write_idx,
         s.read_idx,
-        next_amount);
+        next_amount
+    );
 
     s.write_idx += next_amount;
     s.read_idx += next_amount;
@@ -408,13 +465,15 @@ drain:
 
   // Phase 3: Validate, balance, rebalance
 
-  if (s.total_removed % params->size != 0) {
+  if (s.total_removed % params->size != 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
         "removed %" PRb_size " bytes, not a multiple of element size %" PRb_size,
         s.total_removed,
-        params->size);
+        params->size
+    );
     goto failed;
   }
 

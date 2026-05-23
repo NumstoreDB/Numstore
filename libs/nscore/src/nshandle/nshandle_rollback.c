@@ -17,12 +17,16 @@
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 
-static err_t _nsh_rollback (struct nshandle *smf, error *e) {
-  if (smf->atx == NULL) {
+static err_t
+_nsh_rollback (struct nshandle *smf, error *e)
+{
+  if (smf->atx == NULL)
+  {
     return error_causef (
         e,
         ERR_INVALID_ARGUMENT,
-        "Can't rollback transaction, not a part of an existing transaction");
+        "Can't rollback transaction, not a part of an existing transaction"
+    );
   }
 
   WRAP (pgr_rollback (smf->root->p, smf->atx, 0, &smf->e));
@@ -31,7 +35,9 @@ static err_t _nsh_rollback (struct nshandle *smf, error *e) {
   return SUCCESS;
 }
 
-int nsh_rollback (struct nshandle *smf) {
+int
+nsh_rollback (struct nshandle *smf)
+{
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 

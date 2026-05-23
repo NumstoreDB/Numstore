@@ -17,17 +17,18 @@
 #include "nscore/type_accessor.h"
 #include "nscore/types.h"
 
-bool user_stride_equal (const struct user_stride *left, const struct user_stride *right) {
+bool
+user_stride_equal (const struct user_stride *left, const struct user_stride *right)
+{
   return left->start == right->start && left->step == right->step && left->stop == right->stop
          && left->present == right->present;
 }
 
 DEFINE_DBG_ASSERT (struct range_builder, range_builder, s, { ASSERT (s); })
 
-void rb_create (
-    struct range_builder *dest,
-    struct chunk_alloc   *temp,
-    struct chunk_alloc   *persistent) {
+void
+rb_create (struct range_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent)
+{
   *dest = (struct range_builder){
       .head       = NULL,
       .len        = 0,
@@ -37,7 +38,9 @@ void rb_create (
   DBG_ASSERT (range_builder, dest);
 }
 
-err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e) {
+err_t
+rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e)
+{
   DBG_ASSERT (range_builder, rb);
 
   struct rb_llnode *node = chunk_malloc (rb->temp, 1, sizeof *node, e);
@@ -46,9 +49,9 @@ err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, err
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!rb->head) {
-    rb->head = &node->link;
-  } else {
+  if (!rb->head) { rb->head = &node->link; }
+  else
+  {
     list_append (&rb->head, &node->link);
   }
 
@@ -56,7 +59,9 @@ err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, err
   return SUCCESS;
 }
 
-err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e) {
+err_t
+rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
+{
   DBG_ASSERT (range_builder, rb);
 
   if (rb->len == 0) { return error_causef (e, ERR_INTERP, "range: no dimensions"); }
@@ -65,7 +70,8 @@ err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e) {
   if (!dims) { return error_trace (e); }
 
   u32 i = 0;
-  for (struct llnode *it = rb->head; it; it = it->next) {
+  for (struct llnode *it = rb->head; it; it = it->next)
+  {
     struct rb_llnode *rn = container_of (it, struct rb_llnode, link);
     dims[i]              = rn->stride;
     i++;
@@ -79,27 +85,30 @@ err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e) {
 
 DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, { ASSERT (s); })
 
-static struct type_accessor *tab_alloc (struct type_accessor_builder *builder, error *e) {
+static struct type_accessor *
+tab_alloc (struct type_accessor_builder *builder, error *e)
+{
   if (builder->head == NULL) { return &builder->ret; }
 
   struct type_accessor *ta = chunk_malloc (builder->persistent, 1, sizeof *ta, e);
   return ta;
 }
 
-static void tab_link (struct type_accessor_builder *builder, struct type_accessor *ta) {
-  if (!builder->head) {
-    builder->head = ta;
-  } else {
-    if (builder->tail->type == TA_SELECT) {
-      builder->tail->select.sub_ta = ta;
-    } else if (builder->tail->type == TA_RANGE) {
-      builder->tail->range.sub_ta = ta;
-    }
+static void
+tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
+{
+  if (!builder->head) { builder->head = ta; }
+  else
+  {
+    if (builder->tail->type == TA_SELECT) { builder->tail->select.sub_ta = ta; }
+    else if (builder->tail->type == TA_RANGE) { builder->tail->range.sub_ta = ta; }
   }
   builder->tail = ta;
 }
 
-static err_t tab_flush_range (struct type_accessor_builder *builder, error *e) {
+static err_t
+tab_flush_range (struct type_accessor_builder *builder, error *e)
+{
   if (!builder->in_range) { return SUCCESS; }
 
   struct type_accessor *ta = tab_alloc (builder, e);
@@ -116,17 +125,23 @@ static err_t tab_flush_range (struct type_accessor_builder *builder, error *e) {
   return SUCCESS;
 }
 
-static void tab_ensure_range (struct type_accessor_builder *builder) {
-  if (!builder->in_range) {
+static void
+tab_ensure_range (struct type_accessor_builder *builder)
+{
+  if (!builder->in_range)
+  {
     rb_create (&builder->rb, builder->temp, builder->persistent);
     builder->in_range = true;
   }
 }
 
-void tab_create (
+void
+tab_create (
     struct type_accessor_builder *dest,
     struct chunk_alloc           *temp,
-    struct chunk_alloc           *persistent) {
+    struct chunk_alloc           *persistent
+)
+{
   *dest = (struct type_accessor_builder){
       .head       = NULL,
       .tail       = NULL,
@@ -138,7 +153,9 @@ void tab_create (
   DBG_ASSERT (type_accessor_builder, dest);
 }
 
-err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e) {
+err_t
+tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e)
+{
   DBG_ASSERT (type_accessor_builder, builder);
 
   WRAP (tab_flush_range (builder, e));
@@ -158,16 +175,17 @@ err_t tab_accept_select (struct type_accessor_builder *builder, struct string ke
   return SUCCESS;
 }
 
-err_t tab_accept_stride (
-    struct type_accessor_builder *builder,
-    struct user_stride            stride,
-    error                        *e) {
+err_t
+tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e)
+{
   DBG_ASSERT (type_accessor_builder, builder);
   tab_ensure_range (builder);
   return rb_accept_stride (&builder->rb, stride, e);
 }
 
-err_t tab_accept_take (struct type_accessor_builder *builder, error *e) {
+err_t
+tab_accept_take (struct type_accessor_builder *builder, error *e)
+{
   DBG_ASSERT (type_accessor_builder, builder);
 
   WRAP (tab_flush_range (builder, e));
@@ -182,7 +200,9 @@ err_t tab_accept_take (struct type_accessor_builder *builder, error *e) {
   return SUCCESS;
 }
 
-err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e) {
+err_t
+tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e)
+{
   DBG_ASSERT (type_accessor_builder, builder);
 
   WRAP (tab_accept_take (builder, e));
@@ -192,7 +212,8 @@ err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *build
 }
 
 #ifndef NTEST
-TEST (type_accessor_builder) {
+TEST (type_accessor_builder)
+{
   error e = error_create ();
 
   struct chunk_alloc arena;

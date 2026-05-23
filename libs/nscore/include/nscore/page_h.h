@@ -35,7 +35,8 @@
  * PW_DIRTY is set when the read frame's content has been superseded by an
  * in-progress write and cleared once the page is flushed to disk.
  */
-struct page_frame {
+struct page_frame
+{
   page page;
 
   // Locked by the pager lock
@@ -69,20 +70,24 @@ struct page_frame {
  * before the owning function returns.  Ownership can be transferred with
  * page_h_xfer_ownership / page_h_xfer_ownership_ptr.
  */
-typedef struct {
-  enum {
+typedef struct
+{
+  enum
+  {
     PHM_NONE,
     PHM_S,
     PHM_X,
   } mode;
 
   // Read context stuff
-  struct {
+  struct
+  {
     struct page_frame *pgr;
   };
 
   // Write context stuff
-  struct {
+  struct
+  {
     struct page_frame *pgw;
     struct txn        *tx;
   };
@@ -91,20 +96,24 @@ typedef struct {
 DEFINE_DBG_ASSERT (page_h, page_h, h, {
   ASSERT (h);
 
-  switch (h->mode) {
-    case PHM_S: {
+  switch (h->mode)
+  {
+    case PHM_S:
+    {
       ASSERT (h->pgr);
       ASSERT (h->pgw == NULL);
       // ASSERT (h->pgr->wsibling == -1);
       break;
     }
-    case PHM_X: {
+    case PHM_X:
+    {
       ASSERT (h->pgr);
       ASSERT (h->pgw);
       ASSERT (h->pgr->wsibling >= 0);
       break;
     }
-    case PHM_NONE: {
+    case PHM_NONE:
+    {
       ASSERT (h->pgr == NULL);
       ASSERT (h->pgw == NULL);
       break;
@@ -113,12 +122,16 @@ DEFINE_DBG_ASSERT (page_h, page_h, h, {
 })
 
 #define page_h_create() \
-  (page_h) { .mode = PHM_NONE, .pgr = NULL, .pgw = NULL, }
+  (page_h)              \
+  { .mode = PHM_NONE, .pgr = NULL, .pgw = NULL, }
 
-HEADER_FUNC void page_h_xfer_ownership_ptr (page_h *dest, page_h *src) {
+HEADER_FUNC void
+page_h_xfer_ownership_ptr (page_h *dest, page_h *src)
+{
   DBG_ASSERT (page_h, dest);
   DBG_ASSERT (page_h, src);
-  if (dest->mode != PHM_NONE) {
+  if (dest->mode != PHM_NONE)
+  {
     ASSERT (dest->mode == PHM_NONE);
     UNREACHABLE ();
   }
@@ -128,7 +141,9 @@ HEADER_FUNC void page_h_xfer_ownership_ptr (page_h *dest, page_h *src) {
   src->pgw  = NULL;
 }
 
-HEADER_FUNC page_h page_h_xfer_ownership (page_h *h) {
+HEADER_FUNC page_h
+page_h_xfer_ownership (page_h *h)
+{
   DBG_ASSERT (page_h, h);
   const page_h ret = *h;
   h->mode          = PHM_NONE;
@@ -137,86 +152,102 @@ HEADER_FUNC page_h page_h_xfer_ownership (page_h *h) {
   return ret;
 }
 
-HEADER_FUNC const page *page_h_r (const page_h *h) {
+HEADER_FUNC const page *
+page_h_r (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
-  if (h->mode != PHM_S) {
+  if (h->mode != PHM_S)
+  {
     ASSERT (h->mode == PHM_S);
     UNREACHABLE ();
   }
   return &h->pgr->page;
 }
 
-HEADER_FUNC page *page_h_w (const page_h *h) {
+HEADER_FUNC page *
+page_h_w (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
-  if (h->mode != PHM_X) {
+  if (h->mode != PHM_X)
+  {
     ASSERT (h->mode == PHM_X);
     UNREACHABLE ();
   }
   return &h->pgw->page;
 }
 
-HEADER_FUNC page *page_h_w_or_null (const page_h *h) {
+HEADER_FUNC page *
+page_h_w_or_null (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
   if (h->mode == PHM_NONE) { return NULL; }
-  if (h->mode != PHM_X) {
+  if (h->mode != PHM_X)
+  {
     ASSERT (h->mode == PHM_X);
     UNREACHABLE ();
   }
   return &h->pgw->page;
 }
 
-HEADER_FUNC const page *page_h_ro (const page_h *h) {
+HEADER_FUNC const page *
+page_h_ro (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_X) {
-    return &h->pgw->page;
-  } else if (h->mode == PHM_S) {
-    return &h->pgr->page;
-  }
+  if (h->mode == PHM_X) { return &h->pgw->page; }
+  else if (h->mode == PHM_S) { return &h->pgr->page; }
 
   ASSERT (h->mode != PHM_NONE);
   UNREACHABLE ();
 }
 
-HEADER_FUNC const page *page_h_ro_or_null (const page_h *h) {
+HEADER_FUNC const page *
+page_h_ro_or_null (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
   if (h->mode == PHM_NONE) { return NULL; }
   return page_h_ro (h);
 }
 
-HEADER_FUNC pgno page_h_pgno (const page_h *h) {
+HEADER_FUNC pgno
+page_h_pgno (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
   const page *p = NULL;
-  if (h->mode == PHM_X) {
-    p = &h->pgw->page;
-  } else if (h->mode == PHM_S) {
-    p = &h->pgr->page;
-  } else {
+  if (h->mode == PHM_X) { p = &h->pgw->page; }
+  else if (h->mode == PHM_S) { p = &h->pgr->page; }
+  else
+  {
     ASSERT (h->mode != PHM_NONE);
     UNREACHABLE ();
   }
   return p->pg;
 }
 
-HEADER_FUNC pgno page_h_pgno_or_null (const page_h *h) {
+HEADER_FUNC pgno
+page_h_pgno_or_null (const page_h *h)
+{
   if (h->mode == PHM_NONE) { return PGNO_NULL; }
   return page_h_pgno (h);
 }
 
-HEADER_FUNC enum page_type page_h_type (const page_h *h) {
+HEADER_FUNC enum page_type
+page_h_type (const page_h *h)
+{
   DBG_ASSERT (page_h, h);
   const page *p = NULL;
-  if (h->mode == PHM_X) {
-    p = &h->pgw->page;
-  } else if (h->mode == PHM_S) {
-    p = &h->pgr->page;
-  } else {
+  if (h->mode == PHM_X) { p = &h->pgw->page; }
+  else if (h->mode == PHM_S) { p = &h->pgr->page; }
+  else
+  {
     ASSERT (h->mode != PHM_NONE);
     UNREACHABLE ();
   }
   return page_get_type (p);
 }
 
-HEADER_FUNC struct in_pair in_pair_from_pgh (const page_h *pg) {
+HEADER_FUNC struct in_pair
+in_pair_from_pgh (const page_h *pg)
+{
   if (pg->mode == PHM_NONE) { return in_pair_empty; }
   return (struct in_pair){
       .pg  = page_h_pgno (pg),

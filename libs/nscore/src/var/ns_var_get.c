@@ -16,7 +16,9 @@
 #include "nscore/pager.h"
 #include "nscore/var.h"
 
-err_t ns_var_get (struct ns_var_get_params *params, error *e) {
+err_t
+ns_var_get (struct ns_var_get_params *params, error *e)
+{
   page_h cur = page_h_create ();
 
   // Find variable first

@@ -43,7 +43,9 @@
  *
  *   5. Actually extend the file on disk.
  */
-err_t pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e) {
+err_t
+pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
+{
   // Do a Nested Top Action
 
   // 1. Ascertain the position of the current tx's last log record
@@ -62,7 +64,8 @@ err_t pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx,
                   .redo = npages,
               },
       },
-      e);
+      e
+  );
 
   // 3. Writing a dummy CLR whose UNL points to the log record whose
   // position was remembered in 1
@@ -74,7 +77,8 @@ err_t pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx,
           .prev      = tx->data.last_lsn,
           .undo_next = undo_next,
       },
-      e);
+      e
+  );
 
   // 4. Anchor both LSN fields to the CLR so the undo chain jumps over the FEXT
   tx->data.last_lsn      = top_lsn;

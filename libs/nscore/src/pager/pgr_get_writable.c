@@ -20,13 +20,16 @@
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/page.h"
 
-err_t pgr_get_writable (
+err_t
+pgr_get_writable (
     page_h       *dest,
     struct txn   *tx,
     const int     flags,
     const pgno    pg,
     struct pager *p,
-    error        *e) {
+    error        *e
+)
+{
   struct page_frame *pgr = NULL; // Read frame
   struct page_frame *pgw = NULL; // Write frame
   hdata_idx          data;       // The data to retrieve
@@ -36,9 +39,11 @@ err_t pgr_get_writable (
   latch_lock (&p->htable_lock);
   hta_res res = ht_get_idx (&p->pgno_to_value, &data, pg);
 
-  switch (res) {
+  switch (res)
+  {
     // This page exists in memory
-    case HTAR_SUCCESS: {
+    case HTAR_SUCCESS:
+    {
       pgr = &p->pages[data.value];
 
       latch_lock (&pgr->ctrl);
@@ -82,7 +87,8 @@ err_t pgr_get_writable (
       return SUCCESS;
     }
 
-    case HTAR_DOESNT_EXIST: {
+    case HTAR_DOESNT_EXIST:
+    {
       latch_unlock (&p->htable_lock);
 
       // Grab both r and w slots in once
@@ -90,7 +96,8 @@ err_t pgr_get_writable (
       if (rclock < 0) { return error_trace (e); }
 
       wclock = pgr_reserve_and_ctrl_lock (p, e);
-      if (wclock < 0) {
+      if (wclock < 0)
+      {
         latch_unlock (&p->pages[rclock].ctrl);
         return error_trace (e);
       }
@@ -106,13 +113,15 @@ err_t pgr_get_writable (
       pgr->wsibling = wclock;
       pgr->page.pg  = pg;
 
-      if (fpgr_read (p->fp, pgr->page.raw, pg, e)) {
+      if (fpgr_read (p->fp, pgr->page.raw, pg, e))
+      {
         latch_unlock (&pgr->ctrl);
         latch_unlock (&pgw->ctrl);
         return error_trace (e);
       }
 
-      if (page_validate_for_db (&pgr->page, flags, e)) {
+      if (page_validate_for_db (&pgr->page, flags, e))
+      {
         latch_unlock (&pgr->ctrl);
         latch_unlock (&pgw->ctrl);
         return error_trace (e);

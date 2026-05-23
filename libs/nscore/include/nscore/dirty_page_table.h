@@ -17,7 +17,8 @@
 #include "c_specx.h"
 #include "nscore/compile_config.h"
 
-struct dpg_table {
+struct dpg_table
+{
   struct htable    *t;     // Hash table pg -> entry
   struct slab_alloc alloc; // Allocator for dpgt frames
   latch             l;
@@ -48,4 +49,5 @@ void              dpgt_crash (struct dpg_table *t);
 void dpgt_foreach (
     const struct dpg_table *t,
     void (*action) (pgno pg, lsn rec_lsn, void *ctx),
-    void *ctx);
+    void *ctx
+);

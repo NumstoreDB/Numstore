@@ -20,7 +20,9 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 
-static err_t ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e) {
+static err_t
+ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
+{
   page_h next = page_h_create ();
 
   // Create a tail page
@@ -51,7 +53,9 @@ failed:
  * On return, params->vp is re-wound to the original head page (the caller
  * still holds the page in write mode from before the call).
  */
-err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e) {
+err_t
+ns_write_var_page (struct ns_write_var_page_params *params, error *e)
+{
   ASSERT (params->vp->mode == PHM_X);
   ASSERT (page_h_type (params->vp) == PG_VAR_PAGE);
   ASSERT (params->tx);
@@ -64,10 +68,13 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e) {
   u16 tlen             = type_get_serial_size (params->var->dtype);
   u8 *dtype_serialized = chunk_malloc (&temp, tlen, 1, e);
 
-  if (dtype_serialized == NULL) {
+  if (dtype_serialized == NULL)
+  {
     // Allocation failed
     return error_trace (e);
-  } else {
+  }
+  else
+  {
     // Serialize type
     struct serializer srlzr = srlizr_create (dtype_serialized, tlen);
     type_serialize (&srlzr, params->var->dtype);
@@ -92,9 +99,11 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e) {
 
   // First, write the variable name
   p_size lwritten = 0; // Local number of bytes written so far - resets on every new page
-  while (vwritten < params->var->vname.len) {
+  while (vwritten < params->var->vname.len)
+  {
     // Advance forward one new node and reset local written and head
-    if (lwritten == head.len) {
+    if (lwritten == head.len)
+    {
       if (ns_write_var_page_advance (params, e)) { goto failed; }
       lwritten = 0;
       head     = dlgt_get_bytes (page_h_w (params->vp));
@@ -111,9 +120,11 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e) {
   }
 
   // Then, write the type (pretty much the same algorithm)
-  while (twritten < tlen) {
+  while (twritten < tlen)
+  {
     // Advance forward one new node and reset local written and head
-    if (lwritten == head.len) {
+    if (lwritten == head.len)
+    {
       if (ns_write_var_page_advance (params, e)) { goto failed; }
       lwritten = 0;
       head     = dlgt_get_bytes (page_h_w (params->vp));
@@ -137,13 +148,16 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e) {
    * This might be an extra call that I could end up
    * removing - it's kind of bad practice
    */
-  if (page_h_pgno (params->vp) != start) {
+  if (page_h_pgno (params->vp) != start)
+  {
     // Release the tail (must be a tail because we're not at the starting page)
     if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) { goto theend; }
 
     // Get the starting node
     if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) { goto theend; }
-  } else {
+  }
+  else
+  {
     // Release and get the page in read mode
     if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e)) { goto theend; }
     if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)) { goto theend; }
@@ -159,7 +173,8 @@ failed:
 }
 
 #ifndef NTEST
-TEST (ns_write_var_page) {
+TEST (ns_write_var_page)
+{
   struct pgr_fixture f;
   pgr_fixture_create (&f);
   ns_init_var_hash_map (f.p, &f.e);

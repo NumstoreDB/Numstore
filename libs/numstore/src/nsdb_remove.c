@@ -19,12 +19,9 @@
 #include "nscore/txn.h"
 #include "nscore/var.h"
 
-static sb_size _nsdb_premove (
-  struct nshandle   *db,
-  const char        *name,
-  void              *dest,
-  struct user_stride ustr,
-  error             *e) {
+static sb_size
+_nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e)
+{
   sb_size                     ret;                     // Return value
   b_size                      ofst;                    // Resolved offset
   t_size                      tsize;                   // Size of  the variable
@@ -47,13 +44,14 @@ static sb_size _nsdb_premove (
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-      .p     = db->root->p,
-      .tx    = db->atx,
-      .vname = vname,
-      .alloc = &temp,
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = vname,
+        .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE) {
+    if (err == ERR_VARIABLE_NE)
+    {
       ret           = 0;
       e->cause_code = SUCCESS;
       e->cmlen      = 0;
@@ -67,7 +65,8 @@ static sb_size _nsdb_premove (
     tsize = type_byte_size (gparams.dest.dtype);
     len   = gparams.dest.nbytes;
 
-    if (len % tsize != 0) {
+    if (len % tsize != 0)
+    {
       error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
       goto failed_rollback;
     }
@@ -76,7 +75,8 @@ static sb_size _nsdb_premove (
 
     if (stride_resolve (&stride, ustr, len, e)) { goto failed_rollback; }
 
-    if (dest) {
+    if (dest)
+    {
       stream_obuf_init (&_output, &ctx, dest, stride.nelems * len);
       output = &_output;
     }
@@ -85,14 +85,14 @@ static sb_size _nsdb_premove (
   // REMOVE
   {
     rparams = (struct ns_remove_params){
-      .p      = db->root->p,
-      .dest   = output,
-      .tx     = db->atx,
-      .root   = gparams.dest.rpt_root,
-      .size   = tsize,
-      .bofst  = tsize * stride.start,
-      .stride = stride.stride,
-      .nelem  = stride.nelems,
+        .p      = db->root->p,
+        .dest   = output,
+        .tx     = db->atx,
+        .root   = gparams.dest.rpt_root,
+        .size   = tsize,
+        .bofst  = tsize * stride.start,
+        .stride = stride.stride,
+        .nelem  = stride.nelems,
     };
     ret = ns_remove (&rparams, e);
     WRAP_GOTO (ret, failed_rollback);
@@ -101,15 +101,15 @@ static sb_size _nsdb_premove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-      .p  = db->root->p,
-      .tx = db->atx,
-      .retr =
-      (struct var_retrieval){
-        .type = VR_PG,
-        .root = gparams.dest.var_root,
-      },
-      .newpg  = rparams.root,
-      .nbytes = gparams.dest.nbytes - ret * tsize,
+        .p  = db->root->p,
+        .tx = db->atx,
+        .retr =
+            (struct var_retrieval){
+                .type = VR_PG,
+                .root = gparams.dest.var_root,
+            },
+        .newpg  = rparams.root,
+        .nbytes = gparams.dest.nbytes - ret * tsize,
     };
     WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
@@ -130,19 +130,22 @@ failed:
   return error_trace (e);
 }
 
-sb_size nsdb_remove (
-  nsdb_t     *_smf,
-  const char *name,
-  void       *dest,
-  sb_size     start,
-  sb_size     step,
-  sb_size     stop,
-  int         flags) {
+sb_size
+nsdb_remove (
+    nsdb_t     *_smf,
+    const char *name,
+    void       *dest,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+)
+{
   struct user_stride stride = {
-    .start   = start,
-    .step    = step,
-    .stop    = stop,
-    .present = flags,
+      .start   = start,
+      .step    = step,
+      .stop    = stop,
+      .present = flags,
   };
   struct nshandle *smf = (struct nshandle *)_smf;
 

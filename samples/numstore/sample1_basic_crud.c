@@ -19,7 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct example {
+struct example
+{
   union {
     int32_t  a;
     uint64_t b;
@@ -38,7 +39,9 @@ struct example {
  * 3. Write (overwrite data in the middle of the array)
  * 4. Remove (remove chunks of data from the middle of an array)
  */
-int main (void) {
+int
+main (void)
+{
   // Open a new data file
   nsdb_cleanup ("sample1_crud");
   nsdb_t *ns = nsdb_open ("sample1_crud");

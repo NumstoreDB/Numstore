@@ -20,8 +20,10 @@
 
 #ifndef NTEST
 
-TEST (aries_crash) {
-  TEST_CASE ("sample5_bug") {
+TEST (aries_crash)
+{
+  TEST_CASE ("sample5_bug")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -54,7 +56,8 @@ TEST (aries_crash) {
   /*
    * 1. Uncommitted work after a crash must be discarded.
    */
-  TEST_CASE ("crash_before_commit_discards_uncommitted") {
+  TEST_CASE ("crash_before_commit_discards_uncommitted")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -81,7 +84,8 @@ TEST (aries_crash) {
    * 2. Committed txn followed by uncommitted txn in the same session.
    *    Recovery must keep the first, throw away the second.
    */
-  TEST_CASE ("crash_keeps_committed_drops_followon_uncommitted") {
+  TEST_CASE ("crash_keeps_committed_drops_followon_uncommitted")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -106,7 +110,8 @@ TEST (aries_crash) {
    * 3. Multiple crash/reopen cycles. Each session commits, then crashes;
    *    every committed write must survive across all of them.
    */
-  TEST_CASE ("repeated_crash_recover_cycles_preserve_all_commits") {
+  TEST_CASE ("repeated_crash_recover_cycles_preserve_all_commits")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
 
@@ -140,7 +145,8 @@ TEST (aries_crash) {
    * 4. Crash with no commits at all in the new session.
    *    File must look exactly as it did at the previous clean close.
    */
-  TEST_CASE ("crash_with_no_new_commits_is_a_noop") {
+  TEST_CASE ("crash_with_no_new_commits_is_a_noop")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -165,12 +171,14 @@ TEST (aries_crash) {
    * 5. Many tiny committed transactions, then crash.
    *    Stresses WAL replay across a long redo chain.
    */
-  TEST_CASE ("many_small_commits_then_crash") {
+  TEST_CASE ("many_small_commits_then_crash")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
 
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 26; i++)
+    {
       char c = (char)('A' + i);
       smfile_begin (smf);
       smfile_insert (smf, &c, i, 1);
@@ -190,7 +198,8 @@ TEST (aries_crash) {
    * 6. Several inserts inside a single transaction, then commit, then crash.
    *    Either ALL of them survive or NONE of them — atomicity check.
    */
-  TEST_CASE ("multi_insert_single_txn_is_atomic_through_crash") {
+  TEST_CASE ("multi_insert_single_txn_is_atomic_through_crash")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -215,7 +224,8 @@ TEST (aries_crash) {
    * 7. Append at the exact end-of-file boundary, then crash.
    *    Catches off-by-ones where offset == length is treated as out-of-range.
    */
-  TEST_CASE ("append_at_end_offset_then_crash") {
+  TEST_CASE ("append_at_end_offset_then_crash")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -242,7 +252,8 @@ TEST (aries_crash) {
    * 8. Insert at offset 0 into a non-empty file shifts everything right.
    *    Recovery must preserve the shift.
    */
-  TEST_CASE ("insert_at_zero_shifts_existing_through_crash") {
+  TEST_CASE ("insert_at_zero_shifts_existing_through_crash")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
@@ -269,8 +280,12 @@ TEST (aries_crash) {
    * 9. Single insert larger than one page — exercises multi-page redo.
    *    Adjust BIG_SIZE to comfortably exceed your page size.
    */
-  TEST_CASE ("large_page_spanning_insert_then_crash") {
-    enum { BIG_SIZE = 16384 };
+  TEST_CASE ("large_page_spanning_insert_then_crash")
+  {
+    enum
+    {
+      BIG_SIZE = 16384
+    };
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
 
@@ -297,7 +312,8 @@ TEST (aries_crash) {
    *     Read from the tail end of the file after recovery, where partial
    *     reads / overruns are most likely to misbehave.
    */
-  TEST_CASE ("tail_read_after_recovery") {
+  TEST_CASE ("tail_read_after_recovery")
+  {
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");

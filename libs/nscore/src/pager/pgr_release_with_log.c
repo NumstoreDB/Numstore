@@ -16,16 +16,20 @@
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 
-err_t pgr_release_with_log (
+err_t
+pgr_release_with_log (
     struct pager            *p,
     page_h                  *h,
     int                      flags,
     struct wal_update_write *record,
-    error                   *e) {
+    error                   *e
+)
+{
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
-  if (h->mode == PHM_X) {
+  if (h->mode == PHM_X)
+  {
     spgno page_lsn = 0;
 
     // Can only save valid pages
@@ -36,7 +40,8 @@ err_t pgr_release_with_log (
                // ARIES
     {
       // If no record was supplied, append a physical record
-      if (record == NULL) {
+      if (record == NULL)
+      {
         page_lsn = wal_append_update_log (
             p->ww,
             (struct wal_update_write){
@@ -50,8 +55,11 @@ err_t pgr_release_with_log (
                         .redo = h->pgw->page.raw,
                     },
             },
-            e);
-      } else {
+            e
+        );
+      }
+      else
+      {
         page_lsn = wal_append_update_log (p->ww, *record, e);
       }
 
@@ -66,7 +74,8 @@ err_t pgr_release_with_log (
 
     // Add page to DPT if this is the first update (RecLSN = LSN of first
     // update)
-    if (!dpgt_exists (p->dpt, page_h_pgno (h))) {
+    if (!dpgt_exists (p->dpt, page_h_pgno (h)))
+    {
       if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e)) { return error_trace (e); }
       h->pgr->flags |= PW_DIRTY;
     }
@@ -90,7 +99,9 @@ err_t pgr_release_with_log (
     h->mode = PHM_S;
 
     spx_unlock_x (&h->pgr->data);
-  } else {
+  }
+  else
+  {
     // Update pgr
     latch_lock (&h->pgr->ctrl);
     h->pgr->pin--;

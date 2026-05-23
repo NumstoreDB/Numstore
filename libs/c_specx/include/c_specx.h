@@ -116,8 +116,8 @@
 // Verify
 #if (                                                                                  \
     PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC + PLATFORM_IOS \
-    + PLATFORM_BSD + PLATFORM_EMSCRIPTEN)                                              \
-    > 1
+    + PLATFORM_BSD + PLATFORM_EMSCRIPTEN                                               \
+) > 1
 #  warning "Multiple platforms detected - check your build configuration"
 #endif
 
@@ -187,22 +187,16 @@
 
 #define HEADER_FUNC static inline MAYBE_UNUSED
 
-HEADER_FUNC const char *platformstr (void) {
-  if (PLATFORM_WINDOWS) {
-    return "Windows";
-  } else if (PLATFORM_LINUX) {
-    return "Linux";
-  } else if (PLATFORM_ANDROID) {
-    return "Android";
-  } else if (PLATFORM_MAC) {
-    return "macOS";
-  } else if (PLATFORM_IOS) {
-    return "iOS";
-  } else if (PLATFORM_BSD) {
-    return "BSD";
-  } else if (PLATFORM_EMSCRIPTEN) {
-    return "Emscripten/WebAssembly";
-  }
+HEADER_FUNC const char *
+platformstr (void)
+{
+  if (PLATFORM_WINDOWS) { return "Windows"; }
+  else if (PLATFORM_LINUX) { return "Linux"; }
+  else if (PLATFORM_ANDROID) { return "Android"; }
+  else if (PLATFORM_MAC) { return "macOS"; }
+  else if (PLATFORM_IOS) { return "iOS"; }
+  else if (PLATFORM_BSD) { return "BSD"; }
+  else if (PLATFORM_EMSCRIPTEN) { return "Emscripten/WebAssembly"; }
 
   return 0;
 }
@@ -363,7 +357,8 @@ const char *file_basename (const char *path);
 
 typedef int err_t;
 
-typedef struct {
+typedef struct
+{
   err_t cause_code;    // Machine-readable error code. @c SUCCESS when no error is
                        // pending.
   char cause_msg[256]; // Null-terminated human-readable description of the
@@ -387,8 +382,8 @@ void  error_unsilence (error *e);
 void  err_t_perror (FILE *output, error *e);
 err_t error_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (3, 4);
 err_t error_change_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (3, 4);
-err_t error_change_causef_from (error *e, err_t from, err_t to, const char *fmt, ...)
-    PRINTF_ATTR (4, 5);
+err_t
+error_change_causef_from (error *e, err_t from, err_t to, const char *fmt, ...) PRINTF_ATTR (4, 5);
 void          error_log_consume (error *e);
 bool          error_equal (const error *left, const error *right);
 NORETURN void error_fatal (const char *fmt, ...);
@@ -396,18 +391,23 @@ NORETURN void error_fatal (const char *fmt, ...);
   (e)->cause_code < 0 ? error_causef (e, (e)->cause_code, FPREFIX_STR, FPREFIX_ARGS) \
                       : (e)->cause_code
 #define WRAP(expr)                                               \
-  do {                                                           \
+  do                                                             \
+  {                                                              \
     if (unlikely ((expr) < SUCCESS)) { return error_trace (e); } \
-  } while (0)
+  }                                                              \
+  while (0)
 #define WRAP_GOTO(expr, label)                       \
-  do {                                               \
+  do                                                 \
+  {                                                  \
     if (unlikely ((expr) < SUCCESS)) { goto label; } \
-  } while (0)
+  }                                                  \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // THREADING
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   CRITICAL_SECTION m;
 #else
@@ -420,7 +420,8 @@ void  i_mutex_lock (i_mutex *m);
 bool  i_mutex_try_lock (i_mutex *m);
 void  i_mutex_unlock (i_mutex *m);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   HANDLE handle;
 #else
@@ -436,7 +437,8 @@ void  i_semaphore_wait (i_semaphore *s);
 bool  i_semaphore_try_wait (i_semaphore *s);
 bool  i_semaphore_timed_wait (i_semaphore *s, long nsec);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   SRWLOCK lock;
   bool    write_locked;
@@ -452,7 +454,8 @@ void  i_rwlock_unlock (i_rwlock *rw);
 bool  i_rwlock_try_rdlock (i_rwlock *rw);
 bool  i_rwlock_try_wrlock (i_rwlock *rw);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   HANDLE handle;
   DWORD  id;
@@ -465,7 +468,8 @@ err_t i_thread_join (i_thread *t, error *e);
 void  i_thread_cancel (i_thread *t);
 u64   get_available_threads (void);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   CONDITION_VARIABLE cond;
 #else
@@ -485,22 +489,26 @@ void  i_cond_broadcast (i_cond *c);
 typedef struct i_timer i_timer;
 
 #if PLATFORM_WINDOWS
-struct i_timer {
+struct i_timer
+{
   LARGE_INTEGER frequency;
   LARGE_INTEGER start;
 };
 #elif PLATFORM_IOS
-struct i_timer {
+struct i_timer
+{
   u64 start;
   u64 numer;
   u64 denom;
 };
 #elif PLATFORM_EMSCRIPTEN
-struct i_timer {
+struct i_timer
+{
   f64 start;
 };
 #else // POSIX (Linux, Android, BSD)
-struct i_timer {
+struct i_timer
+{
   struct timespec start;
 };
 #endif
@@ -528,7 +536,8 @@ typedef struct pollfd i_pollfd;
 #  define I_INVALID_SOCKET (-1)
 #endif
 
-typedef struct {
+typedef struct
+{
   i_sock_fd fd;
 } i_socket;
 
@@ -543,7 +552,8 @@ err_t i_socket_accept (
     char     *ip_out,
     int       ip_out_len,
     int      *port_out,
-    error    *e);
+    error    *e
+);
 err_t i_socket_set_reuseaddr (i_socket *s, error *e);
 i64   i_socket_recv (i_socket *s, void *buf, u32 len, error *e);
 i64   i_socket_send (i_socket *s, const void *buf, u32 len, error *e);
@@ -557,18 +567,21 @@ u16 i_ntohs (u16 net);
 ////////////////////////////////////////////////////////////
 // BYTES
 
-struct bytes {
+struct bytes
+{
   u8 *head;
   u32 len;
 };
 
-struct cbytes {
+struct cbytes
+{
   const u8 *head;
   u32       len;
 };
 
 #define bytes_from(buffer) \
-  (struct bytes) { .head = buffer, .len = sizeof (buffer) }
+  (struct bytes)           \
+  { .head = buffer, .len = sizeof (buffer) }
 
 #define bytes_null() (struct bytes){.head = NULL, .len = 0}
 
@@ -579,13 +592,15 @@ typedef struct i_file_vtable        i_file_vtable;
 typedef struct i_file_system_vtable i_file_system_vtable;
 typedef struct i_file               i_file;
 
-typedef enum {
+typedef enum
+{
   I_SEEK_END,
   I_SEEK_CUR,
   I_SEEK_SET,
 } seek_t;
 
-struct i_file_vtable {
+struct i_file_vtable
+{
   ////////////////////////////////////////////////////////////
   // Properties
   err_t (*i_close) (i_file *fp, error *e);
@@ -618,7 +633,8 @@ struct i_file_vtable {
   i64 (*i_seek) (const i_file *fp, u64 offset, seek_t whence, error *e);
 };
 
-struct i_file_system_vtable {
+struct i_file_system_vtable
+{
   ////////////////////////////////////////////////////////////
   // Open
   err_t (*i_open_rw) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e);
@@ -642,7 +658,8 @@ struct i_file_system_vtable {
   err_t (*i_file_exists) (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e);
 };
 
-struct i_file {
+struct i_file
+{
 #if PLATFORM_WINDOWS
   HANDLE handle;
 #else
@@ -658,149 +675,162 @@ extern struct i_file_system_vtable default_fsvtable;
 ////////////////////////////////////////////////////////////
 // Open / Close
 
-HEADER_FUNC err_t i_open_rw (i_file *dest, const char *fname, error *e) {
-  return default_fsvtable.i_open_rw (&default_fsvtable, dest, fname, e);
-}
-HEADER_FUNC err_t i_open_r (i_file *dest, const char *fname, error *e) {
-  return default_fsvtable.i_open_r (&default_fsvtable, dest, fname, e);
-}
-HEADER_FUNC err_t i_open_w (i_file *dest, const char *fname, error *e) {
-  return default_fsvtable.i_open_w (&default_fsvtable, dest, fname, e);
-}
-HEADER_FUNC err_t i_close (i_file *fp, error *e) { return fp->fvtable->i_close (fp, e); }
-HEADER_FUNC err_t i_eof (i_file *fp, error *e) { return fp->fvtable->i_eof (fp, e); }
-HEADER_FUNC err_t i_fsync (const i_file *fp, error *e) { return fp->fvtable->i_fsync (fp, e); }
+HEADER_FUNC err_t
+i_open_rw (i_file *dest, const char *fname, error *e)
+{ return default_fsvtable.i_open_rw (&default_fsvtable, dest, fname, e); }
+HEADER_FUNC err_t
+i_open_r (i_file *dest, const char *fname, error *e)
+{ return default_fsvtable.i_open_r (&default_fsvtable, dest, fname, e); }
+HEADER_FUNC err_t
+i_open_w (i_file *dest, const char *fname, error *e)
+{ return default_fsvtable.i_open_w (&default_fsvtable, dest, fname, e); }
+HEADER_FUNC err_t
+i_close (i_file *fp, error *e)
+{ return fp->fvtable->i_close (fp, e); }
+HEADER_FUNC err_t
+i_eof (i_file *fp, error *e)
+{ return fp->fvtable->i_eof (fp, e); }
+HEADER_FUNC err_t
+i_fsync (const i_file *fp, error *e)
+{ return fp->fvtable->i_fsync (fp, e); }
 
 ////////////////////////////////////////////////////////////
 // Positional Read / Write
 
-HEADER_FUNC i64 i_pread_some (const i_file *fp, void *dest, u64 n, u64 offset, error *e) {
-  return fp->fvtable->i_pread_some (fp, dest, n, offset, e);
-}
-HEADER_FUNC i64 i_pread_all (const i_file *fp, void *dest, u64 n, u64 offset, error *e) {
-  return fp->fvtable->i_pread_all (fp, dest, n, offset, e);
-}
+HEADER_FUNC i64
+i_pread_some (const i_file *fp, void *dest, u64 n, u64 offset, error *e)
+{ return fp->fvtable->i_pread_some (fp, dest, n, offset, e); }
+HEADER_FUNC i64
+i_pread_all (const i_file *fp, void *dest, u64 n, u64 offset, error *e)
+{ return fp->fvtable->i_pread_all (fp, dest, n, offset, e); }
 
-HEADER_FUNC i64 i_pwrite_some (const i_file *fp, const void *src, u64 n, u64 offset, error *e) {
-  return fp->fvtable->i_pwrite_some (fp, src, n, offset, e);
-}
-HEADER_FUNC err_t i_pwrite_all (const i_file *fp, const void *src, u64 n, u64 offset, error *e) {
-  return fp->fvtable->i_pwrite_all (fp, src, n, offset, e);
-}
+HEADER_FUNC i64
+i_pwrite_some (const i_file *fp, const void *src, u64 n, u64 offset, error *e)
+{ return fp->fvtable->i_pwrite_some (fp, src, n, offset, e); }
+HEADER_FUNC err_t
+i_pwrite_all (const i_file *fp, const void *src, u64 n, u64 offset, error *e)
+{ return fp->fvtable->i_pwrite_all (fp, src, n, offset, e); }
 
 ////////////////////////////////////////////////////////////
 // IO Vec
 
-HEADER_FUNC i64 i_writev_some (const i_file *fp, const struct bytes *arrs, int iovcnt, error *e) {
-  return fp->fvtable->i_writev_some (fp, arrs, iovcnt, e);
-}
-HEADER_FUNC err_t i_writev_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e) {
-  return fp->fvtable->i_writev_all (fp, arrs, iovcnt, e);
-}
-HEADER_FUNC i64 i_readv_some (const i_file *fp, const struct bytes *arrs, int iovcnt, error *e) {
-  return fp->fvtable->i_readv_some (fp, arrs, iovcnt, e);
-}
-HEADER_FUNC i64 i_readv_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e) {
-  return fp->fvtable->i_readv_all (fp, arrs, iovcnt, e);
-}
+HEADER_FUNC i64
+i_writev_some (const i_file *fp, const struct bytes *arrs, int iovcnt, error *e)
+{ return fp->fvtable->i_writev_some (fp, arrs, iovcnt, e); }
+HEADER_FUNC err_t
+i_writev_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e)
+{ return fp->fvtable->i_writev_all (fp, arrs, iovcnt, e); }
+HEADER_FUNC i64
+i_readv_some (const i_file *fp, const struct bytes *arrs, int iovcnt, error *e)
+{ return fp->fvtable->i_readv_some (fp, arrs, iovcnt, e); }
+HEADER_FUNC i64
+i_readv_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e)
+{ return fp->fvtable->i_readv_all (fp, arrs, iovcnt, e); }
 
 ////////////////////////////////////////////////////////////
 // Stream Read / Write
 
-HEADER_FUNC i64 i_read_some (const i_file *fp, void *dest, u64 nbytes, error *e) {
-  return fp->fvtable->i_read_some (fp, dest, nbytes, e);
-}
-HEADER_FUNC i64 i_read_all (const i_file *fp, void *dest, u64 nbytes, error *e) {
-  return fp->fvtable->i_read_all (fp, dest, nbytes, e);
-}
-HEADER_FUNC i64 i_write_some (const i_file *fp, const void *src, u64 nbytes, error *e) {
-  return fp->fvtable->i_write_some (fp, src, nbytes, e);
-}
-HEADER_FUNC err_t i_write_all (const i_file *fp, const void *src, u64 nbytes, error *e) {
-  return fp->fvtable->i_write_all (fp, src, nbytes, e);
-}
+HEADER_FUNC i64
+i_read_some (const i_file *fp, void *dest, u64 nbytes, error *e)
+{ return fp->fvtable->i_read_some (fp, dest, nbytes, e); }
+HEADER_FUNC i64
+i_read_all (const i_file *fp, void *dest, u64 nbytes, error *e)
+{ return fp->fvtable->i_read_all (fp, dest, nbytes, e); }
+HEADER_FUNC i64
+i_write_some (const i_file *fp, const void *src, u64 nbytes, error *e)
+{ return fp->fvtable->i_write_some (fp, src, nbytes, e); }
+HEADER_FUNC err_t
+i_write_all (const i_file *fp, const void *src, u64 nbytes, error *e)
+{ return fp->fvtable->i_write_all (fp, src, nbytes, e); }
 
 ////////////////////////////////////////////////////////////
 // Others
 
-HEADER_FUNC err_t i_truncate (const i_file *fp, u64 bytes, error *e) {
-  return fp->fvtable->i_truncate (fp, bytes, e);
-}
-HEADER_FUNC err_t i_fallocate (i_file *fp, u64 bytes, error *e) {
-  return fp->fvtable->i_fallocate (fp, bytes, e);
-}
-HEADER_FUNC i64 i_file_size (const i_file *fp, error *e) {
-  return fp->fvtable->i_file_size (fp, e);
-}
-HEADER_FUNC i64 i_seek (const i_file *fp, u64 offset, seek_t whence, error *e) {
-  return fp->fvtable->i_seek (fp, offset, whence, e);
-}
-HEADER_FUNC err_t i_remove_quiet (const char *fname, error *e) {
-  return default_fsvtable.i_remove_quiet (&default_fsvtable, fname, e);
-}
-HEADER_FUNC err_t i_unlink (const char *name, error *e) {
-  return default_fsvtable.i_unlink (&default_fsvtable, name, e);
-}
-HEADER_FUNC err_t i_mkdir (const char *name, error *e) {
-  return default_fsvtable.i_mkdir (&default_fsvtable, name, e);
-}
-HEADER_FUNC err_t i_mkdir_quiet (const char *name, error *e) {
-  return default_fsvtable.i_mkdir_quiet (&default_fsvtable, name, e);
-}
-HEADER_FUNC err_t i_rm_rf (const char *path, error *e) {
-  return default_fsvtable.i_rm_rf (&default_fsvtable, path, e);
-}
+HEADER_FUNC err_t
+i_truncate (const i_file *fp, u64 bytes, error *e)
+{ return fp->fvtable->i_truncate (fp, bytes, e); }
+HEADER_FUNC err_t
+i_fallocate (i_file *fp, u64 bytes, error *e)
+{ return fp->fvtable->i_fallocate (fp, bytes, e); }
+HEADER_FUNC i64
+i_file_size (const i_file *fp, error *e)
+{ return fp->fvtable->i_file_size (fp, e); }
+HEADER_FUNC i64
+i_seek (const i_file *fp, u64 offset, seek_t whence, error *e)
+{ return fp->fvtable->i_seek (fp, offset, whence, e); }
+HEADER_FUNC err_t
+i_remove_quiet (const char *fname, error *e)
+{ return default_fsvtable.i_remove_quiet (&default_fsvtable, fname, e); }
+HEADER_FUNC err_t
+i_unlink (const char *name, error *e)
+{ return default_fsvtable.i_unlink (&default_fsvtable, name, e); }
+HEADER_FUNC err_t
+i_mkdir (const char *name, error *e)
+{ return default_fsvtable.i_mkdir (&default_fsvtable, name, e); }
+HEADER_FUNC err_t
+i_mkdir_quiet (const char *name, error *e)
+{ return default_fsvtable.i_mkdir_quiet (&default_fsvtable, name, e); }
+HEADER_FUNC err_t
+i_rm_rf (const char *path, error *e)
+{ return default_fsvtable.i_rm_rf (&default_fsvtable, path, e); }
 
 ////////////////////////////////////////////////////////////
 // Wrappers
 
-HEADER_FUNC err_t i_access_rw (const char *fname, error *e) {
-  return default_fsvtable.i_access_rw (&default_fsvtable, fname, e);
-}
-HEADER_FUNC bool i_exists_rw (const char *fname) {
-  return default_fsvtable.i_exists_rw (&default_fsvtable, fname);
-}
-HEADER_FUNC err_t i_touch (const char *fname, error *e) {
-  return default_fsvtable.i_touch (&default_fsvtable, fname, e);
-}
-HEADER_FUNC err_t i_dir_exists (const char *fname, bool *dest, error *e) {
-  return default_fsvtable.i_dir_exists (&default_fsvtable, fname, dest, e);
-}
-HEADER_FUNC err_t i_file_exists (const char *fname, bool *dest, error *e) {
-  return default_fsvtable.i_file_exists (&default_fsvtable, fname, dest, e);
-}
+HEADER_FUNC err_t
+i_access_rw (const char *fname, error *e)
+{ return default_fsvtable.i_access_rw (&default_fsvtable, fname, e); }
+HEADER_FUNC bool
+i_exists_rw (const char *fname)
+{ return default_fsvtable.i_exists_rw (&default_fsvtable, fname); }
+HEADER_FUNC err_t
+i_touch (const char *fname, error *e)
+{ return default_fsvtable.i_touch (&default_fsvtable, fname, e); }
+HEADER_FUNC err_t
+i_dir_exists (const char *fname, bool *dest, error *e)
+{ return default_fsvtable.i_dir_exists (&default_fsvtable, fname, dest, e); }
+HEADER_FUNC err_t
+i_file_exists (const char *fname, bool *dest, error *e)
+{ return default_fsvtable.i_file_exists (&default_fsvtable, fname, dest, e); }
 
 ////////////////////////////////////////////////////////////
 // Helpers
 
 HEADER_FUNC err_t
-i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error *e) {
+i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+{
   const i64 ret = i_pread_all (fp, dest, n, offset, e);
   WRAP (ret);
 
-  if (unlikely ((u64)ret != n)) {
+  if (unlikely ((u64)ret != n))
+  {
     return error_causef (
         e,
         ERR_CORRUPT,
         "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
         ret,
-        (i64)n);
+        (i64)n
+    );
   }
 
   return SUCCESS;
 }
 
-HEADER_FUNC i64 i_read_all_expect (i_file *fp, void *dest, const u64 nbytes, error *e) {
+HEADER_FUNC i64
+i_read_all_expect (i_file *fp, void *dest, const u64 nbytes, error *e)
+{
   const i64 ret = i_read_all (fp, dest, nbytes, e);
   WRAP (ret);
 
-  if (unlikely ((u64)ret != nbytes)) {
+  if (unlikely ((u64)ret != nbytes))
+  {
     return error_causef (
         e,
         ERR_CORRUPT,
         "read: short read (got %" PRId64 " of %" PRId64 " bytes)",
         ret,
-        (i64)nbytes);
+        (i64)nbytes
+    );
   }
 
   return SUCCESS;
@@ -811,7 +841,8 @@ HEADER_FUNC i64 i_read_all_expect (i_file *fp, void *dest, const u64 nbytes, err
 
 typedef struct i_vmem i_vmem;
 
-struct i_vmem {
+struct i_vmem
+{
   void *(*i_malloc) (i_vmem *v, u32 nelem, u32 size, error *e);
   void *(*i_calloc) (i_vmem *v, u32 nelem, u32 size, error *e);
   void *(*i_realloc_right) (i_vmem *v, void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e);
@@ -823,29 +854,33 @@ struct i_vmem {
 
 extern struct i_vmem default_vmem;
 
-HEADER_FUNC void *i_malloc (u32 nelem, u32 size, error *e) {
-  return default_vmem.i_malloc (&default_vmem, nelem, size, e);
-}
-HEADER_FUNC void *i_calloc (u32 nelem, u32 size, error *e) {
-  return default_vmem.i_calloc (&default_vmem, nelem, size, e);
-}
-HEADER_FUNC void *i_realloc_right (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e) {
-  return default_vmem.i_realloc_right (&default_vmem, ptr, old_nelem, nelem, size, e);
-}
-HEADER_FUNC void *i_realloc_left (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e) {
-  return default_vmem.i_realloc_left (&default_vmem, ptr, old_nelem, nelem, size, e);
-}
-HEADER_FUNC void *i_crealloc_right (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e) {
-  return default_vmem.i_crealloc_right (&default_vmem, ptr, old_nelem, nelem, size, e);
-}
-HEADER_FUNC void *i_crealloc_left (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e) {
-  return default_vmem.i_crealloc_left (&default_vmem, ptr, old_nelem, nelem, size, e);
-}
-HEADER_FUNC void i_free (void *ptr) { default_vmem.i_free (&default_vmem, ptr); }
+HEADER_FUNC void *
+i_malloc (u32 nelem, u32 size, error *e)
+{ return default_vmem.i_malloc (&default_vmem, nelem, size, e); }
+HEADER_FUNC void *
+i_calloc (u32 nelem, u32 size, error *e)
+{ return default_vmem.i_calloc (&default_vmem, nelem, size, e); }
+HEADER_FUNC void *
+i_realloc_right (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
+{ return default_vmem.i_realloc_right (&default_vmem, ptr, old_nelem, nelem, size, e); }
+HEADER_FUNC void *
+i_realloc_left (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
+{ return default_vmem.i_realloc_left (&default_vmem, ptr, old_nelem, nelem, size, e); }
+HEADER_FUNC void *
+i_crealloc_right (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
+{ return default_vmem.i_crealloc_right (&default_vmem, ptr, old_nelem, nelem, size, e); }
+HEADER_FUNC void *
+i_crealloc_left (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
+{ return default_vmem.i_crealloc_left (&default_vmem, ptr, old_nelem, nelem, size, e); }
+HEADER_FUNC void
+i_free (void *ptr)
+{ default_vmem.i_free (&default_vmem, ptr); }
 #define i_cfree(ptr)           \
-  do {                         \
+  do                           \
+  {                            \
     if (ptr) { i_free (ptr); } \
-  } while (0)
+  }                            \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // INTF / LOGGING
@@ -899,8 +934,8 @@ HEADER_FUNC void i_free (void *ptr) { default_vmem.i_free (&default_vmem, ptr); 
 #define LOG_DEBUG 4
 #define LOG_TRACE 5
 
-void i_log_internal (const char *prefix, const char *color, const char *fmt, ...)
-    PRINTF_ATTR (3, 4);
+void
+i_log_internal (const char *prefix, const char *color, const char *fmt, ...) PRINTF_ATTR (3, 4);
 
 void i_log_flush (void);
 
@@ -963,56 +998,55 @@ void i_log_flush (void);
 #endif
 
 // Programatically choose the log level
-#define i_log(lvl, ...)              \
-  do {                               \
-    if ((lvl) == LOG_TRACE) {        \
-      i_log_trace (__VA_ARGS__);     \
-    } else if ((lvl) == LOG_DEBUG) { \
-      i_log_debug (__VA_ARGS__);     \
-    } else if ((lvl) == LOG_INFO) {  \
-      i_log_info (__VA_ARGS__);      \
-    } else if ((lvl) == LOG_WARN) {  \
-      i_log_warn (__VA_ARGS__);      \
-    } else if ((lvl) == LOG_ERROR) { \
-      i_log_error (__VA_ARGS__);     \
-    } else if ((lvl) == LOG_NONE) {  \
-    } else {                         \
-      UNREACHABLE ();                \
-    }                                \
-  } while (0)
+#define i_log(lvl, ...)                                         \
+  do                                                            \
+  {                                                             \
+    if ((lvl) == LOG_TRACE) { i_log_trace (__VA_ARGS__); }      \
+    else if ((lvl) == LOG_DEBUG) { i_log_debug (__VA_ARGS__); } \
+    else if ((lvl) == LOG_INFO) { i_log_info (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_WARN) { i_log_warn (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_ERROR) { i_log_error (__VA_ARGS__); } \
+    else if ((lvl) == LOG_NONE) {}                              \
+    else                                                        \
+    {                                                           \
+      UNREACHABLE ();                                           \
+    }                                                           \
+  }                                                             \
+  while (0)
 
 // Print instead of log at a certain logging level
-#define i_printf(lvl, ...)           \
-  do {                               \
-    if ((lvl) == LOG_TRACE) {        \
-      i_printf_trace (__VA_ARGS__);  \
-    } else if ((lvl) == LOG_DEBUG) { \
-      i_printf_debug (__VA_ARGS__);  \
-    } else if ((lvl) == LOG_INFO) {  \
-      i_printf_info (__VA_ARGS__);   \
-    } else if ((lvl) == LOG_WARN) {  \
-      i_printf_warn (__VA_ARGS__);   \
-    } else if ((lvl) == LOG_ERROR) { \
-      i_printf_error (__VA_ARGS__);  \
-    } else if ((lvl) == LOG_NONE) {  \
-    } else {                         \
-      UNREACHABLE ();                \
-    }                                \
-  } while (0)
+#define i_printf(lvl, ...)                                         \
+  do                                                               \
+  {                                                                \
+    if ((lvl) == LOG_TRACE) { i_printf_trace (__VA_ARGS__); }      \
+    else if ((lvl) == LOG_DEBUG) { i_printf_debug (__VA_ARGS__); } \
+    else if ((lvl) == LOG_INFO) { i_printf_info (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_WARN) { i_printf_warn (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_ERROR) { i_printf_error (__VA_ARGS__); } \
+    else if ((lvl) == LOG_NONE) {}                                 \
+    else                                                           \
+    {                                                              \
+      UNREACHABLE ();                                              \
+    }                                                              \
+  }                                                                \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // ASSERT
 
 #define crash()             \
-  do {                      \
+  do                        \
+  {                         \
     *(volatile int *)0 = 1; \
     UNREACHABLE_HINT ();    \
-  } while (0)
+  }                         \
+  while (0)
 
 #define UNIMPLEMENTED() UNREACHABLE ()
 
 #define UNREACHABLE() \
-  do { crash (); } while (0)
+  do { crash (); }    \
+  while (0)
 
 #ifndef NDEBUG
 
@@ -1020,23 +1054,28 @@ void i_log_flush (void);
 /// PANIC
 
 #  define panic(msg)                    \
-    do {                                \
+    do                                  \
+    {                                   \
       i_log_error ("PANIC! %s\n", msg); \
       i_log_flush ();                   \
       crash ();                         \
-    } while (0)
+    }                                   \
+    while (0)
 
 ////////////////////////////////////////////////////////////
 /// ASSERT
 
 #  define ASSERT(expr)                                                                   \
-    do {                                                                                 \
-      if (!(expr)) {                                                                     \
+    do                                                                                   \
+    {                                                                                    \
+      if (!(expr))                                                                       \
+      {                                                                                  \
         i_log_assert ("%s failed at %s:%d (%s)\n", #expr, __FILE__, __LINE__, __func__); \
         i_log_flush ();                                                                  \
         crash ();                                                                        \
       }                                                                                  \
-    } while (0)
+    }                                                                                    \
+    while (0)
 
 #  define DEFINE_DBG_ASSERT(type, name, var, body) \
     HEADER_FUNC void name##_assert__ (const type *var) body
@@ -1053,8 +1092,9 @@ void i_log_flush (void);
 #  define panic(msg) NOT_FOR_PRODUCTION ()
 #  define ASSERT(expr)
 
-#  define DEFINE_DBG_ASSERT(type, name, var, body) \
-    HEADER_FUNC void name##_assert (const type *var) { (void)var; }
+#  define DEFINE_DBG_ASSERT(type, name, var, body)   \
+    HEADER_FUNC void name##_assert (const type *var) \
+    { (void)var; }
 
 #  define DBG_ASSERT(name, expr) ((void)0)
 #endif
@@ -1078,12 +1118,16 @@ void i_log_flush (void);
 
 typedef _Atomic (int) latch;
 
-HEADER_FUNC void latch_init (latch *l) { *l = 0; }
+HEADER_FUNC void
+latch_init (latch *l)
+{ *l = 0; }
 
 /**
  * Returns true if the latch was locked, false otherwise
  */
-HEADER_FUNC bool latch_trylock (latch *l) {
+HEADER_FUNC bool
+latch_trylock (latch *l)
+{
   int val = 0;
 
   // Fast path - it's likely that the lock will succeed if
@@ -1093,13 +1137,17 @@ HEADER_FUNC bool latch_trylock (latch *l) {
           &val,
           1,
           memory_order_acquire,
-          memory_order_relaxed))) {
+          memory_order_relaxed
+      )))
+  {
     return true;
   }
   return false;
 }
 
-HEADER_FUNC void latch_lock (latch *l) {
+HEADER_FUNC void
+latch_lock (latch *l)
+{
   int val = 0;
 
   // Fast path - it's likely that the lock will succeed if
@@ -1109,12 +1157,16 @@ HEADER_FUNC void latch_lock (latch *l) {
           &val,
           1,
           memory_order_acquire,
-          memory_order_relaxed))) {
+          memory_order_relaxed
+      )))
+  {
     return;
   }
 
-  do {
-    do {
+  do
+  {
+    do
+    {
       // let the CPU breath
       spin_pause ();
 
@@ -1131,10 +1183,13 @@ HEADER_FUNC void latch_lock (latch *l) {
       &val,
       1,
       memory_order_acquire,
-      memory_order_relaxed));
+      memory_order_relaxed
+  ));
 }
 
-HEADER_FUNC void latch_unlock (latch *l) { atomic_store_explicit (l, 0, memory_order_release); }
+HEADER_FUNC void
+latch_unlock (latch *l)
+{ atomic_store_explicit (l, 0, memory_order_release); }
 
 ////////////////////////////////////////////////////////////
 // CONCURRENCY / SPX_LATCH
@@ -1147,9 +1202,13 @@ typedef _Atomic (unsigned int) sx_latch;
 #define SLOCKED(val) (val & S_MASK)
 #define XLOCKED(val) (val & X)
 
-HEADER_FUNC void spx_latch_init (sx_latch *l) { *l = 0; }
+HEADER_FUNC void
+spx_latch_init (sx_latch *l)
+{ *l = 0; }
 
-HEADER_FUNC bool spx_trylock_s (sx_latch *l) {
+HEADER_FUNC bool
+spx_trylock_s (sx_latch *l)
+{
   u32 val = atomic_load_explicit (l, memory_order_relaxed);
 
   if (unlikely (XLOCKED (val))) { return false; }
@@ -1159,15 +1218,20 @@ HEADER_FUNC bool spx_trylock_s (sx_latch *l) {
       &val,
       val + 1,
       memory_order_acquire,
-      memory_order_relaxed);
+      memory_order_relaxed
+  );
 }
 
-HEADER_FUNC void spx_lock_s (sx_latch *l) {
+HEADER_FUNC void
+spx_lock_s (sx_latch *l)
+{
   u32 val = atomic_load_explicit (l, memory_order_relaxed);
 
-  while (true) {
+  while (true)
+  {
     // Wait for X to clear before attempting the CAS.
-    while (unlikely (XLOCKED (val))) {
+    while (unlikely (XLOCKED (val)))
+    {
       spin_pause ();
       val = atomic_load_explicit (l, memory_order_relaxed);
     }
@@ -1177,61 +1241,77 @@ HEADER_FUNC void spx_lock_s (sx_latch *l) {
             &val,
             val + 1,
             memory_order_acquire,
-            memory_order_relaxed))) {
+            memory_order_relaxed
+        )))
+    {
       return;
     }
   }
 }
 
-HEADER_FUNC void spx_unlock_s (sx_latch *l) {
-  atomic_fetch_sub_explicit (l, 1, memory_order_release);
-}
+HEADER_FUNC void
+spx_unlock_s (sx_latch *l)
+{ atomic_fetch_sub_explicit (l, 1, memory_order_release); }
 
-HEADER_FUNC bool spx_trylock_x (sx_latch *l) {
+HEADER_FUNC bool
+spx_trylock_x (sx_latch *l)
+{
   u32 expected = 0;
   return atomic_compare_exchange_strong_explicit (
       l,
       &expected,
       X,
       memory_order_acquire,
-      memory_order_relaxed);
+      memory_order_relaxed
+  );
 }
 
-HEADER_FUNC void spx_lock_x (sx_latch *l) {
+HEADER_FUNC void
+spx_lock_x (sx_latch *l)
+{
   u32 val = atomic_load_explicit (l, memory_order_relaxed);
   // Phase 1: claim the X bit.  This blocks new S acquirers
   // (spx_lock_s spins while XLOCKED is set) but does not yet
   // wait for in-flight readers.
-  while (true) {
-    if (likely (!XLOCKED (val))) {
+  while (true)
+  {
+    if (likely (!XLOCKED (val)))
+    {
       if (atomic_compare_exchange_weak_explicit (
               l,
               &val,
               val | X,
               memory_order_acquire,
-              memory_order_relaxed)) {
+              memory_order_relaxed
+          ))
+      {
         break;
       }
       // CAS failed; val is refreshed, retry without spinning.
       continue;
     }
     // Another writer holds X.  Wait for them to release.
-    do {
+    do
+    {
       spin_pause ();
       val = atomic_load_explicit (l, memory_order_relaxed);
-    } while (XLOCKED (val));
+    }
+    while (XLOCKED (val));
   }
   // Phase 2: drain remaining readers.  No new readers can arrive
   // because XLOCKED is now true.
   while (SLOCKED (atomic_load_explicit (l, memory_order_acquire))) { spin_pause (); }
 }
 
-HEADER_FUNC void spx_unlock_x (sx_latch *l) { atomic_store_explicit (l, 0, memory_order_release); }
+HEADER_FUNC void
+spx_unlock_x (sx_latch *l)
+{ atomic_store_explicit (l, 0, memory_order_release); }
 
 ////////////////////////////////////////////////////////////
 // MEMORY / LALLOC
 
-struct lalloc {
+struct lalloc
+{
   latch latch;
   u32   used;
   u32   limit;
@@ -1247,7 +1327,9 @@ void         *lmalloc (struct lalloc *a, u32 req, u32 size, error *e);
 void         *lcalloc (struct lalloc *a, u32 req, u32 size, error *e);
 void          lalloc_reset (struct lalloc *a);
 
-HEADER_FUNC void *lmalloc_expect (struct lalloc *a, const u32 req, const u32 size) {
+HEADER_FUNC void *
+lmalloc_expect (struct lalloc *a, const u32 req, const u32 size)
+{
   void *ret = lmalloc (a, req, size, NULL);
   ASSERT (ret);
   return ret;
@@ -1258,7 +1340,8 @@ HEADER_FUNC void *lmalloc_expect (struct lalloc *a, const u32 req, const u32 siz
 
 struct slab;
 
-struct slab_alloc {
+struct slab_alloc
+{
   struct slab *head;
   struct slab *current; // Cache slab with free space (hot path)
   latch        l;
@@ -1276,14 +1359,16 @@ void  slab_alloc_free (struct slab_alloc *alloc, void *ptr);
 // MEMORY / CHUNK_ALLOC
 
 /// A single chunk of memory in a chunk allocator chain
-struct chunk {
+struct chunk
+{
   struct lalloc alloc;  // Base allocator interface for this chunk
   struct chunk *next;   // Next chunk in the linked list, or NULL if tail
   u8            data[]; // Flexible array of chunk-owned bytes
 };
 
 /// Configuration settings for a chunk allocator
-struct chunk_alloc_settings {
+struct chunk_alloc_settings
+{
   u32 max_alloc_size;      // Maximum size of a single allocation in bytes (0 =
                            // unlimited)
   u32 max_total_size;      // Maximum total memory across all chunks in bytes (0 =
@@ -1298,7 +1383,8 @@ struct chunk_alloc_settings {
 };
 
 /// A chunk-based arena allocator
-struct chunk_alloc {
+struct chunk_alloc
+{
   latch                       latch;           // Synchronization latch guarding this allocator
   struct chunk_alloc_settings settings;        // Configuration settings
   struct chunk               *head;            // Head of the chunk linked list
@@ -1309,8 +1395,9 @@ struct chunk_alloc {
 
 /// Initializes a chunk allocator with the given settings
 void chunk_alloc_create (
-    struct chunk_alloc         *dest,      // Allocator to initialize
-    struct chunk_alloc_settings settings); // Settings to apply
+    struct chunk_alloc         *dest, // Allocator to initialize
+    struct chunk_alloc_settings settings
+); // Settings to apply
 
 /// Initializes a chunk allocator with default settings
 void chunk_alloc_create_default (struct chunk_alloc *dest); // Allocator to initialize
@@ -1327,14 +1414,16 @@ void *chunk_malloc (
     struct chunk_alloc *ca,   // Target allocator
     u32                 req,  // Requested alignment in bytes
     u32                 size, // Number of bytes to allocate
-    error              *e);   // The error object
+    error              *e
+); // The error object
 
 /// Allocates zero-initialized memory from the chunk allocator
 void *chunk_calloc (
     struct chunk_alloc *ca,   // Target allocator
     u32                 req,  // Requested alignment in bytes
     u32                 size, // Number of bytes to allocate
-    error              *e);   // The error object
+    error              *e
+); // The error object
 
 /// Copies memory from an external pointer into the chunk allocator and returns
 /// a pointer to the copy
@@ -1342,7 +1431,8 @@ void *chunk_alloc_move_mem (
     struct chunk_alloc *ca,   // Target allocator
     const void         *ptr,  // Source data to copy
     u32                 size, // Number of bytes to copy
-    error              *e);   // The error object
+    error              *e
+); // The error object
 
 ////////////////////////////////////////////////////////////
 // MEMORY / SERIALIZER
@@ -1353,7 +1443,8 @@ void *chunk_alloc_move_mem (
 ///
 /// Unless required by applicable law or agreed to in writing, software
 
-struct serializer {
+struct serializer
+{
   latch     latch;
   u8       *data;
   u32       dlen;
@@ -1364,10 +1455,12 @@ struct serializer srlizr_create (u8 *data, u32 dcap);
 
 bool srlizr_write (struct serializer *dest, const void *src, u32 len);
 #define srlizr_write_expect(dest, src, len)   \
-  do {                                        \
+  do                                          \
+  {                                           \
     bool ret = srlizr_write (dest, src, len); \
     ASSERT (ret);                             \
-  } while (0)
+  }                                           \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // MEMORY / DESERIALIZER
@@ -1378,7 +1471,8 @@ bool srlizr_write (struct serializer *dest, const void *src, u32 len);
 ///
 /// Unless required by applicable law or agreed to in writing, software
 
-struct deserializer {
+struct deserializer
+{
   latch     latch;
   const u8 *data;
   u32       head;
@@ -1389,23 +1483,32 @@ struct deserializer dsrlizr_create (const u8 *data, u32 dlen);
 
 bool dsrlizr_read (void *dest, u32 dlen, struct deserializer *src);
 #define dsrlizr_read_expect(dest, dlen, src)   \
-  do {                                         \
+  do                                           \
+  {                                            \
     bool ret = dsrlizr_read (dest, dlen, src); \
     ASSERT (ret);                              \
-  } while (0)
+  }                                            \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // MEMORY / MALLOC_PLAN
 
-struct malloc_plan {
+struct malloc_plan
+{
   u32   size;
   u32   blen;
   void *buffer;
 
-  enum { MP_PLANNING, MP_ALLOCING } mode;
+  enum
+  {
+    MP_PLANNING,
+    MP_ALLOCING
+  } mode;
 };
 
-HEADER_FUNC struct malloc_plan malloc_plan_create (void) {
+HEADER_FUNC struct malloc_plan
+malloc_plan_create (void)
+{
   return (struct malloc_plan){
       .size   = 0,
       .blen   = 0,
@@ -1414,12 +1517,17 @@ HEADER_FUNC struct malloc_plan malloc_plan_create (void) {
   };
 }
 
-HEADER_FUNC void *malloc_plan_head (const struct malloc_plan *plan) {
-  switch (plan->mode) {
-    case MP_PLANNING: {
+HEADER_FUNC void *
+malloc_plan_head (const struct malloc_plan *plan)
+{
+  switch (plan->mode)
+  {
+    case MP_PLANNING:
+    {
       return NULL;
     }
-    case MP_ALLOCING: {
+    case MP_ALLOCING:
+    {
       return (u8 *)plan->buffer + plan->blen;
     }
   }
@@ -1435,8 +1543,10 @@ err_t malloc_plan_alloc (struct malloc_plan *plan, error *e);
 ////////////////////////////////////////////////////////////
 // MEMORY / ALLOC
 
-struct alloc {
-  enum {
+struct alloc
+{
+  enum
+  {
     AT_LALLOC,
     AT_CHNK_ALLOC,
     AT_MALLOC,
@@ -1455,35 +1565,46 @@ void  alloc_free (const struct alloc *a, void *data);
 ////////////////////////////////////////////////////////////
 // DS / LLIST
 
-struct llnode {
+struct llnode
+{
   struct llnode *next;
 };
 
-HEADER_FUNC void llnode_init (struct llnode *n) { n->next = NULL; }
+HEADER_FUNC void
+llnode_init (struct llnode *n)
+{ n->next = NULL; }
 
-HEADER_FUNC u32 list_length (const struct llnode *head) {
+HEADER_FUNC u32
+list_length (const struct llnode *head)
+{
   u32 len = 0;
   for (const struct llnode *cur = head; cur; cur = cur->next) { len++; }
   return len;
 }
 
-HEADER_FUNC void list_push (struct llnode **head, struct llnode *n) {
+HEADER_FUNC void
+list_push (struct llnode **head, struct llnode *n)
+{
   n->next = *head;
   *head   = n;
 }
 
-HEADER_FUNC void list_append (struct llnode **head, struct llnode *n) {
+HEADER_FUNC void
+list_append (struct llnode **head, struct llnode *n)
+{
   n->next = NULL;
-  if (!*head) {
-    *head = n;
-  } else {
+  if (!*head) { *head = n; }
+  else
+  {
     struct llnode *cur = *head;
     while (cur->next) { cur = cur->next; }
     cur->next = n;
   }
 }
 
-HEADER_FUNC struct llnode *list_pop (struct llnode **head) {
+HEADER_FUNC struct llnode *
+list_pop (struct llnode **head)
+{
   if (!*head) { return NULL; }
 
   struct llnode *n = *head;
@@ -1493,28 +1614,37 @@ HEADER_FUNC struct llnode *list_pop (struct llnode **head) {
   return n;
 }
 
-HEADER_FUNC struct llnode *list_find (
+HEADER_FUNC struct llnode *
+list_find (
     u32                 *didx,
     struct llnode       *head,
     const struct llnode *node,
-    bool (*eq) (const struct llnode *left, const struct llnode *right)) {
+    bool (*eq) (const struct llnode *left, const struct llnode *right)
+)
+{
   *didx = 0;
-  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1) {
+  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1)
+  {
     if (eq (iter, node)) { return iter; }
   }
   return NULL;
 }
 
-HEADER_FUNC void list_remove (struct llnode **head, struct llnode *n) {
+HEADER_FUNC void
+list_remove (struct llnode **head, struct llnode *n)
+{
   struct llnode **cur = head;
   while (*cur && *cur != n) { cur = &(*cur)->next; }
-  if (*cur) {
+  if (*cur)
+  {
     *cur    = n->next;
     n->next = NULL;
   }
 }
 
-HEADER_FUNC struct llnode *llnode_get_n (struct llnode *head, const u32 index) {
+HEADER_FUNC struct llnode *
+llnode_get_n (struct llnode *head, const u32 index)
+{
   struct llnode *cur = head;
   for (u32 i = 0; cur && i < index; ++i) { cur = cur->next; }
   return cur;
@@ -1527,7 +1657,8 @@ HEADER_FUNC struct llnode *llnode_get_n (struct llnode *head, const u32 index) {
 // DS / STRING
 
 /// A length-prefixed, non-owning string view
-struct string {
+struct string
+{
   u32         len;  // Number of bytes in data (not necessarily null-terminated)
   const char *data; // Pointer to the string bytes
 };
@@ -1562,14 +1693,16 @@ err_t string_copy (struct string *dest, struct string src, error *e);
 // DS / STRIDE
 
 /// A resolved, internal stride descriptor for tree operations
-struct stride {
+struct stride
+{
   u64 start;  // Byte offset at which to begin
   u64 stride; // Bytes to advance between successive elements
   u64 nelems; // Number of elements to access
 };
 
 /// A user-facing stride descriptor using signed, Python-style slice semantics
-struct user_stride {
+struct user_stride
+{
   i64 start;   // Start index (negative values index from the end)
   i64 step;    // Step between elements (negative not yet supported)
   i64 stop;    // Exclusive stop index (negative values index from the end)
@@ -1591,14 +1724,18 @@ err_t stride_resolve (struct stride *dest, struct user_stride src, u64 arrlen, e
 ////////////////////////////////////////////////////////////
 /// Small Constructors
 
-HEADER_FUNC struct user_stride ustride_single (const i64 start) {
+HEADER_FUNC struct user_stride
+ustride_single (const i64 start)
+{
   return (struct user_stride){
       .start   = start,
       .present = START_PRESENT,
   };
 }
 
-HEADER_FUNC struct user_stride ustride012 (const i64 start, const i64 step, const i64 stop) {
+HEADER_FUNC struct user_stride
+ustride012 (const i64 start, const i64 step, const i64 stop)
+{
   return (struct user_stride){
       .start   = start,
       .step    = step,
@@ -1607,7 +1744,9 @@ HEADER_FUNC struct user_stride ustride012 (const i64 start, const i64 step, cons
   };
 }
 
-HEADER_FUNC struct user_stride ustride01 (const i64 start, const i64 step) {
+HEADER_FUNC struct user_stride
+ustride01 (const i64 start, const i64 step)
+{
   return (struct user_stride){
       .start   = start,
       .step    = step,
@@ -1615,14 +1754,18 @@ HEADER_FUNC struct user_stride ustride01 (const i64 start, const i64 step) {
   };
 }
 
-HEADER_FUNC struct user_stride ustride0 (const i64 start) {
+HEADER_FUNC struct user_stride
+ustride0 (const i64 start)
+{
   return (struct user_stride){
       .start   = start,
       .present = START_PRESENT | COLON_PRESENT,
   };
 }
 
-HEADER_FUNC struct user_stride ustride12 (const i64 step, const i64 stop) {
+HEADER_FUNC struct user_stride
+ustride12 (const i64 step, const i64 stop)
+{
   return (struct user_stride){
       .step    = step,
       .stop    = stop,
@@ -1630,50 +1773,57 @@ HEADER_FUNC struct user_stride ustride12 (const i64 step, const i64 stop) {
   };
 }
 
-HEADER_FUNC struct user_stride ustride1 (const i64 step) {
+HEADER_FUNC struct user_stride
+ustride1 (const i64 step)
+{
   return (struct user_stride){
       .step    = step,
       .present = STEP_PRESENT | START_PRESENT | COLON_PRESENT,
   };
 }
 
-HEADER_FUNC struct user_stride ustride2 (const i64 stop) {
+HEADER_FUNC struct user_stride
+ustride2 (const i64 stop)
+{
   return (struct user_stride){
       .stop    = stop,
       .present = STOP_PRESENT | COLON_PRESENT,
   };
 }
 
-HEADER_FUNC struct user_stride ustride (void) {
+HEADER_FUNC struct user_stride
+ustride (void)
+{
   return (struct user_stride){
       .present = COLON_PRESENT,
   };
 }
 
-HEADER_FUNC struct user_stride usfrms (const struct stride str) {
-  return ustride012 (str.start, str.stride, str.start + str.stride * str.nelems);
-}
+HEADER_FUNC struct user_stride
+usfrms (const struct stride str)
+{ return ustride012 (str.start, str.stride, str.start + str.stride * str.nelems); }
 
-struct multi_user_stride {
+struct multi_user_stride
+{
   struct user_stride *strides;
   u32                 len;
 };
 
-struct mus_llnode {
+struct mus_llnode
+{
   struct user_stride stride;
   struct llnode      link;
 };
 
-struct mus_builder {
+struct mus_builder
+{
   struct llnode      *head;
   struct chunk_alloc *temp;
   struct chunk_alloc *persistent;
 };
 
-void musb_create (
-    struct mus_builder *dest,
-    struct chunk_alloc *temp,
-    struct chunk_alloc *persistent);
+void
+musb_create (struct mus_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent);
 
 err_t musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
 err_t musb_build (struct multi_user_stride *persistent, const struct mus_builder *eb, error *e);
@@ -1687,7 +1837,8 @@ typedef err_t (*insert_func) (
     u32         ofst, // Byte offset at which to insert
     const void *src,  // Source data to insert
     u32         slen, // Number of bytes to insert
-    error      *e);   // The error object
+    error      *e
+); // The error object
 
 /// Function pointer type for reading elements from a strided range
 typedef i64 (*read_func) (
@@ -1695,7 +1846,8 @@ typedef i64 (*read_func) (
     struct stride str,  // Stride descriptor defining start, step, and element count
     u32           size, // Size of each element in bytes
     void         *dest, // Destination buffer to receive the data
-    error        *e);   // The error object
+    error        *e
+); // The error object
 
 /// Function pointer type for writing elements into a strided range
 typedef i64 (*write_func) (
@@ -1703,7 +1855,8 @@ typedef i64 (*write_func) (
     struct stride str,  // Stride descriptor defining start, step, and element count
     u32           size, // Size of each element in bytes
     const void   *src,  // Source data to write
-    error        *e);   // The error object
+    error        *e
+); // The error object
 
 /// Function pointer type for removing elements from a strided range
 typedef i64 (*remove_func) (
@@ -1712,16 +1865,19 @@ typedef i64 (*remove_func) (
     u32           size, // Size of each element in bytes
     void         *dest, // Optional destination buffer to capture removed data (NULL to
                         // discard)
-    error *e);          // The error object
+    error *e
+); // The error object
 
 /// Function pointer type for querying the total number of bytes in the data
 /// source
 typedef i64 (*get_len_func) (
     void  *ctx, // Caller-provided context pointer
-    error *e);  // The error object
+    error *e
+); // The error object
 
 /// The full set of function pointers that back a data_writer
-struct data_writer_functions {
+struct data_writer_functions
+{
   insert_func  insert; // Insert bytes at an offset
   read_func    read;   // Read elements from a strided range
   write_func   write;  // Overwrite elements in a strided range
@@ -1730,7 +1886,8 @@ struct data_writer_functions {
 };
 
 /// A virtual data source/sink pairing a function table with its context
-struct data_writer {
+struct data_writer
+{
   struct data_writer_functions functions; // Vtable of data operations
   void                        *ctx;       // Opaque context passed to every function call
 };
@@ -1739,14 +1896,16 @@ struct data_writer {
 // DS / HT_MODELS
 
 // Hash table insert result
-typedef enum {
+typedef enum
+{
   HTIR_SUCCESS,
   HTIR_EXISTS,
   HTIR_FULL,
 } hti_res;
 
 // Hash table access result
-typedef enum {
+typedef enum
+{
   HTAR_SUCCESS,
   HTAR_DOESNT_EXIST,
 } hta_res;
@@ -1760,7 +1919,8 @@ typedef enum {
  * data array that is sized [cap_per_node] of it's parent and it has a
  * length that is how full it is
  */
-struct block {
+struct block
+{
   struct block *next;
   struct block *prev;
   u32           len;
@@ -1773,7 +1933,8 @@ struct block {
  * represent byte data. Each block has capacity [cap_per_node] and
  * links to their neighbors
  */
-struct block_array {
+struct block_array
+{
   struct slab_alloc block_alloc; // Allocates blocks
   u32               cap_per_node;
   struct block     *head;
@@ -1822,7 +1983,8 @@ void block_array_data_writer (struct data_writer *dest, struct block_array *arr)
 ///
 /// Initialize with cbuffer_create() or cbuffer_create_with(). All fields are
 /// managed internally - do not modify them directly.
-struct cbuffer {
+struct cbuffer
+{
   u8  *data;   // Pointer to the caller-supplied backing array
   u32  cap;    // Total capacity of the backing array in bytes
   u32  head;   // Write cursor - next byte is written here
@@ -1864,13 +2026,14 @@ struct cbuffer cbuffer_create_with (void *data, u32 cap, u32 len);
 /// @brief Returns the number of bytes currently in the buffer.
 /// @param b  The cbuffer (must not be NULL)
 /// @return   Number of bytes available to read
-HEADER_FUNC u32 cbuffer_len (const struct cbuffer *b) {
+HEADER_FUNC u32
+cbuffer_len (const struct cbuffer *b)
+{
   u32 len;
-  if (b->isfull) {
-    len = b->cap;
-  } else if (b->head >= b->tail) {
-    len = b->head - b->tail;
-  } else {
+  if (b->isfull) { len = b->cap; }
+  else if (b->head >= b->tail) { len = b->head - b->tail; }
+  else
+  {
     len = b->cap - (b->tail - b->head);
   }
   return len;
@@ -1886,7 +2049,9 @@ DEFINE_DBG_ASSERT (struct cbuffer, cbuffer, b, {
 
 /// @brief Returns true if the buffer contains no data.
 /// @param b  The cbuffer (must not be NULL)
-HEADER_FUNC bool cbuffer_isempty (const struct cbuffer *b) {
+HEADER_FUNC bool
+cbuffer_isempty (const struct cbuffer *b)
+{
   DBG_ASSERT (cbuffer, b);
   return (!b->isfull && b->head == b->tail);
 }
@@ -1896,7 +2061,9 @@ HEADER_FUNC bool cbuffer_isempty (const struct cbuffer *b) {
 /// @param b     The cbuffer
 /// @param size  Element size in bytes - must evenly divide the current length
 /// @return      Number of whole elements present
-HEADER_FUNC u32 cbuffer_slen (const struct cbuffer *b, const u32 size) {
+HEADER_FUNC u32
+cbuffer_slen (const struct cbuffer *b, const u32 size)
+{
   const u32 len = cbuffer_len (b);
   ASSERT (len % size == 0);
   return len / size;
@@ -1905,7 +2072,9 @@ HEADER_FUNC u32 cbuffer_slen (const struct cbuffer *b, const u32 size) {
 /// @brief Returns the number of bytes available for writing.
 /// @param b  The cbuffer (must not be NULL)
 /// @return   Bytes of free space remaining
-HEADER_FUNC u32 cbuffer_avail (const struct cbuffer *b) {
+HEADER_FUNC u32
+cbuffer_avail (const struct cbuffer *b)
+{
   DBG_ASSERT (cbuffer, b);
   const u32 len = cbuffer_len (b);
   ASSERT (b->cap >= len);
@@ -1917,7 +2086,9 @@ HEADER_FUNC u32 cbuffer_avail (const struct cbuffer *b) {
 /// @param b     The cbuffer (must not be NULL)
 /// @param size  Element size in bytes - must evenly divide the current length
 /// @return      Number of whole elements that fit in the remaining space
-HEADER_FUNC u32 cbuffer_savail (const struct cbuffer *b, const u32 size) {
+HEADER_FUNC u32
+cbuffer_savail (const struct cbuffer *b, const u32 size)
+{
   DBG_ASSERT (cbuffer, b);
   const u32 len = cbuffer_len (b);
   ASSERT (b->cap >= len);
@@ -2004,18 +2175,22 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
 /// @brief Reads exactly @p n elements - ASSERTs if the buffer does not have
 /// enough data.
 #define cbuffer_read_expect(dest, size, n, b)     \
-  do {                                            \
+  do                                              \
+  {                                               \
     u32 __read = cbuffer_read (dest, size, n, b); \
     ASSERT (__read == n);                         \
-  } while (0)
+  }                                               \
+  while (0)
 
 /// @brief Writes exactly @p n elements - ASSERTs if the buffer does not have
 /// enough space.
 #define cbuffer_write_expect(src, size, n, b)        \
-  do {                                               \
+  do                                                 \
+  {                                                  \
     u32 __written = cbuffer_write (src, size, n, b); \
     ASSERT (__written == n);                         \
-  } while (0)
+  }                                                  \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // CBuffer to CBuffer
@@ -2171,71 +2346,88 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
 
 /// @brief cbuffer_push_back() that ASSERTs on failure.
 #define cbuffer_push_back_expect(src, size, b)     \
-  do {                                             \
+  do                                               \
+  {                                                \
     bool __ret = cbuffer_push_back (src, size, b); \
     ASSERT (__ret);                                \
-  } while (0)
+  }                                                \
+  while (0)
 
 /// @brief cbuffer_push_front() that ASSERTs on failure.
 #define cbuffer_push_front_expect(src, size, b)     \
-  do {                                              \
+  do                                                \
+  {                                                 \
     bool __ret = cbuffer_push_front (src, size, b); \
     ASSERT (__ret);                                 \
-  } while (0)
+  }                                                 \
+  while (0)
 
 /// @brief cbuffer_pop_back() that ASSERTs on failure.
 #define cbuffer_pop_back_expect(dest, size, b)     \
-  do {                                             \
+  do                                               \
+  {                                                \
     bool __ret = cbuffer_pop_back (dest, size, b); \
     ASSERT (__ret);                                \
-  } while (0)
+  }                                                \
+  while (0)
 
 /// @brief cbuffer_pop_front() that ASSERTs on failure.
 #define cbuffer_pop_front_expect(dest, size, b)     \
-  do {                                              \
+  do                                                \
+  {                                                 \
     bool __ret = cbuffer_pop_front (dest, size, b); \
     ASSERT (__ret);                                 \
-  } while (0)
+  }                                                 \
+  while (0)
 
 /// @brief cbuffer_peek_back() that ASSERTs on failure.
 #define cbuffer_peek_back_expect(dest, size, b)     \
-  do {                                              \
+  do                                                \
+  {                                                 \
     bool __ret = cbuffer_peek_back (dest, size, b); \
     ASSERT (__ret);                                 \
-  } while (0)
+  }                                                 \
+  while (0)
 
 /// @brief cbuffer_peek_front() that ASSERTs on failure.
 #define cbuffer_peek_front_expect(dest, size, b)     \
-  do {                                               \
+  do                                                 \
+  {                                                  \
     bool __ret = cbuffer_peek_front (dest, size, b); \
     ASSERT (__ret);                                  \
-  } while (0)
+  }                                                  \
+  while (0)
 
 /// @brief Pushes a single byte value to the back - ASSERTs on failure.
 /// @param src  Byte value to push (not a pointer)
 /// @param b    The cbuffer
 #define cbuffer_pushb_back_expect(src, b)         \
-  do {                                            \
+  do                                              \
+  {                                               \
     u8   _src  = src;                             \
     bool __ret = cbuffer_push_back (&_src, 1, b); \
     ASSERT (__ret);                               \
-  } while (0)
+  }                                               \
+  while (0)
 
 /// @brief Pushes a single byte value to the front - ASSERTs on failure.
 /// @param src  Byte value to push (not a pointer)
 /// @param b    The cbuffer
 #define cbuffer_pushb_front_expect(src, b)         \
-  do {                                             \
+  do                                               \
+  {                                                \
     u8   _src  = src;                              \
     bool __ret = cbuffer_push_front (&_src, 1, b); \
     ASSERT (__ret);                                \
-  } while (0)
+  }                                                \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // DS / DBL_BUFFER
 
 /// A heap-allocated buffer that doubles in capacity when exhausted
-struct dbl_buffer {
+struct dbl_buffer
+{
   latch latch;     // Synchronization latch guarding this buffer
   void *data;      // Pointer to the underlying heap allocation
   u32   size;      // Size of each element in bytes
@@ -2248,21 +2440,24 @@ err_t dblb_create (
     struct dbl_buffer *dest,        // Buffer to initialize
     u32                size,        // Size of each element in bytes
     u32                initial_cap, // Initial element capacity to allocate
-    error             *e);          // The error object
+    error             *e
+); // The error object
 
 /// Appends elements to the buffer, doubling capacity if necessary
 err_t dblb_append (
     struct dbl_buffer *d,     // Target buffer
     const void        *data,  // Source elements to append
     u32                nelem, // Number of elements to append
-    error             *e);    // The error object
+    error             *e
+); // The error object
 
 /// Ensures the buffer has room for at least nelem additional elements,
 /// reallocating if necessary
 err_t dblb_ensure_space (
     struct dbl_buffer *d,     // Target buffer
     u32                nelem, // Number of additional elements to reserve space for
-    error             *e);    // The error object
+    error             *e
+); // The error object
 
 /// Reserves space for nelem elements at the end of the buffer and returns a
 /// pointer to that region
@@ -2272,7 +2467,8 @@ err_t dblb_ensure_space (
 void *dblb_append_alloc (
     struct dbl_buffer *d,     // Target buffer
     u32                nelem, // Number of elements to reserve
-    error             *e);    // The error object
+    error             *e
+); // The error object
 
 /// Frees all memory owned by the buffer
 void dblb_free (struct dbl_buffer *d); // Target buffer
@@ -2280,7 +2476,8 @@ void dblb_free (struct dbl_buffer *d); // Target buffer
 ////////////////////////////////////////////////////////////
 // DS / EXT_ARRAY
 
-struct ext_array {
+struct ext_array
+{
   u8 *data;
   u32 len;
   u32 cap;
@@ -2291,12 +2488,8 @@ void             ext_array_free (struct ext_array *r);
 
 i64 ext_array_insert (struct ext_array *r, u32 ofst, const void *src, u32 slen, error *e);
 i64 ext_array_read (const struct ext_array *r, struct stride str, u32 size, void *dest, error *e);
-i64 ext_array_write (
-    const struct ext_array *r,
-    struct stride           str,
-    u32                     size,
-    const void             *src,
-    error                  *e);
+i64
+ext_array_write (const struct ext_array *r, struct stride str, u32 size, const void *src, error *e);
 i64 ext_array_remove (struct ext_array *r, struct stride str, u32 size, void *dest, error *e);
 u64 ext_array_get_len (const struct ext_array *r);
 
@@ -2305,17 +2498,21 @@ void ext_array_data_writer (struct data_writer *dest, struct ext_array *arr);
 ////////////////////////////////////////////////////////////
 // DS / HASH_TABLE
 
-struct hnode {
+struct hnode
+{
   struct hnode *next;
   u32           hcode;
 };
 
-HEADER_FUNC void hnode_init (struct hnode *dest, const u32 hcode) {
+HEADER_FUNC void
+hnode_init (struct hnode *dest, const u32 hcode)
+{
   dest->hcode = hcode;
   dest->next  = NULL;
 }
 
-struct htable {
+struct htable
+{
   u32           cap;
   u32           size;
   latch         latch;
@@ -2329,18 +2526,19 @@ void           htable_insert (struct htable *t, struct hnode *node);
 struct hnode **htable_lookup (
     struct htable      *t,
     const struct hnode *key,
-    bool (*eq) (const struct hnode *, const struct hnode *));
+    bool (*eq) (const struct hnode *, const struct hnode *)
+);
 struct hnode  *htable_delete (struct htable *t, struct hnode **from);
 struct hnode **htable_random (struct htable *t);
 
 // Simple getters
-HEADER_FUNC u32 htable_size (const struct htable *t) { return t->size; }
+HEADER_FUNC u32
+htable_size (const struct htable *t)
+{ return t->size; }
 
 // Iterator
-void htable_foreach (
-    const struct htable *t,
-    void (*action) (struct hnode *v, void *ctx),
-    void *ctx);
+void
+htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx);
 
 ////////////////////////////////////////////////////////////
 // DS / STREAM
@@ -2380,7 +2578,8 @@ typedef i32 (*stream_pull_fn) (
     void          *buf,  // Destination buffer to receive the data
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to pull
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Function pointer type for pushing bytes from a caller buffer into a stream
 typedef i32 (*stream_push_fn) (
@@ -2389,21 +2588,24 @@ typedef i32 (*stream_push_fn) (
     const void    *buf,  // Source buffer containing the data to push
     u32            size, // Size of each element in bytes
     u32            n,    // Number of elements to push
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Function pointer type for releasing any resources held by a stream
 /// implementation
 typedef void (*stream_close_fn) (void *ctx); // Implementation-defined context
 
 /// Vtable of operations backing a stream
-struct stream_ops {
+struct stream_ops
+{
   stream_pull_fn  pull;  // Pull bytes out of the stream (may be NULL for write-only streams)
   stream_push_fn  push;  // Push bytes into the stream (may be NULL for read-only streams)
   stream_close_fn close; // Release resources held by the stream (may be NULL)
 };
 
 /// A polymorphic byte-oriented I/O stream
-struct stream {
+struct stream
+{
   const struct stream_ops *ops;  // Vtable of stream operations
   void                    *ctx;  // Opaque context passed to every vtable call
   atomic_int               done; // Non-zero once the stream has no more data to produce or accept
@@ -2411,9 +2613,10 @@ struct stream {
 
 /// Initializes a stream with a given vtable and context
 void stream_init (
-    struct stream           *s,    // Stream to initialize
-    const struct stream_ops *ops,  // Vtable to attach
-    void                    *ctx); // Opaque context to attach
+    struct stream           *s,   // Stream to initialize
+    const struct stream_ops *ops, // Vtable to attach
+    void                    *ctx
+); // Opaque context to attach
 
 /// Calls the stream's close function and releases any implementation resources
 void stream_close (const struct stream *s); // Stream to close
@@ -2436,7 +2639,8 @@ i32 stream_read (
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to transfer
     struct stream *src,  // Source stream to pull from
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Pulls up to n elements of size bytes from src into a raw buffer
 ///
@@ -2448,7 +2652,8 @@ i32 stream_bread (
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to pull
     struct stream *src,  // Source stream to pull from
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Pushes n elements of size bytes from a raw buffer into dest
 ///
@@ -2458,20 +2663,23 @@ i32 stream_bwrite (
     u32            size, // Size of each element in bytes
     u32            n,    // Number of elements to push
     struct stream *dest, // Destination stream to push into
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 ////////////////////////////////////////////////////////////
 /// Special Streams
 
 /// Context for a read-only stream backed by a fixed const byte buffer
-struct stream_ibuf_ctx {
+struct stream_ibuf_ctx
+{
   const u8 *buf;  // Pointer to the source buffer
   u32       size; // Total number of bytes in buf
   u32       pos;  // Current read position in bytes
 };
 
 /// Context for a write-only stream that writes into a fixed mutable byte buffer
-struct stream_obuf_ctx {
+struct stream_obuf_ctx
+{
   u8 *buf; // Pointer to the destination buffer
   u32 cap; // Total capacity of buf in bytes
   u32 pos; // Current write position in bytes
@@ -2479,17 +2687,19 @@ struct stream_obuf_ctx {
 
 /// Initializes a read-only stream that pulls from a fixed const byte buffer
 void stream_ibuf_init (
-    struct stream          *s,     // Stream to initialize
-    struct stream_ibuf_ctx *ctx,   // Context to initialize and attach
-    const void             *buf,   // Source buffer to read from
-    u32                     size); // Number of bytes in buf
+    struct stream          *s,   // Stream to initialize
+    struct stream_ibuf_ctx *ctx, // Context to initialize and attach
+    const void             *buf, // Source buffer to read from
+    u32                     size
+); // Number of bytes in buf
 
 /// Initializes a write-only stream that pushes into a fixed mutable byte buffer
 void stream_obuf_init (
-    struct stream          *s,    // Stream to initialize
-    struct stream_obuf_ctx *ctx,  // Context to initialize and attach
-    void                   *buf,  // Destination buffer to write into
-    u32                     cap); // Capacity of buf in bytes
+    struct stream          *s,   // Stream to initialize
+    struct stream_obuf_ctx *ctx, // Context to initialize and attach
+    void                   *buf, // Destination buffer to write into
+    u32                     cap
+); // Capacity of buf in bytes
 
 /// Initializes a null sink stream that discards all bytes written to it
 void stream_sink_init (struct stream *s); // Stream to initialize
@@ -2498,7 +2708,8 @@ void stream_sink_init (struct stream *s); // Stream to initialize
 typedef void (*byte_op) (void *buffer); // Pointer to the element being processed
 
 /// Context for a stream that applies a callback to each element pushed into it
-struct stream_opsink_ctx {
+struct stream_opsink_ctx
+{
   byte_op op;   // Callback invoked on each complete element
   void   *buf;  // Staging buffer used to accumulate one element before invoking op
   u32     size; // Size of each element in bytes
@@ -2508,15 +2719,17 @@ struct stream_opsink_ctx {
 /// Initializes a stream that applies op to each complete element of size bytes
 /// pushed into it
 void stream_opsink_init (
-    struct stream            *s,     // Stream to initialize
-    struct stream_opsink_ctx *ctx,   // Context to initialize and attach
-    byte_op                   op,    // Callback to invoke on each element
-    void                     *buf,   // Staging buffer of at least size bytes
-    u32                       size); // Size of each element in bytes
+    struct stream            *s,   // Stream to initialize
+    struct stream_opsink_ctx *ctx, // Context to initialize and attach
+    byte_op                   op,  // Callback to invoke on each element
+    void                     *buf, // Staging buffer of at least size bytes
+    u32                       size
+); // Size of each element in bytes
 
 /// Context for a stream that forwards to an underlying stream up to a byte
 /// limit
-struct stream_limit_ctx {
+struct stream_limit_ctx
+{
   struct stream *underlying; // The stream being wrapped
   u64            limit;      // Maximum number of bytes to forward
   u64            consumed;   // Number of bytes forwarded so far
@@ -2525,16 +2738,19 @@ struct stream_limit_ctx {
 /// Initializes a stream that forwards at most limit bytes from src before
 /// marking itself done
 void stream_limit_init (
-    struct stream           *s,      // Stream to initialize
-    struct stream_limit_ctx *ctx,    // Context to initialize and attach
-    struct stream           *src,    // Underlying stream to wrap
-    u64                      limit); // Maximum number of bytes to forward
+    struct stream           *s,   // Stream to initialize
+    struct stream_limit_ctx *ctx, // Context to initialize and attach
+    struct stream           *src, // Underlying stream to wrap
+    u64                      limit
+); // Maximum number of bytes to forward
 
 ////////////////////////////////////////////////////////////
 // MEMORY / BYTE_ACCESSOR
 
-struct byte_accessor {
-  enum ta_type {
+struct byte_accessor
+{
+  enum ta_type
+  {
     TA_TAKE,
     TA_SELECT,
     TA_RANGE,
@@ -2544,12 +2760,14 @@ struct byte_accessor {
   u32 dest_size; // total size this ba puts into dest
 
   union {
-    struct select_ba {
+    struct select_ba
+    {
       u32                   bofst;  // Offset in bytes
       struct byte_accessor *sub_ba; // Next accessor
     } select;
 
-    struct range_ba {
+    struct range_ba
+    {
       struct stride         stride; // Stride on src
       struct byte_accessor *sub_ba; // For each stride, the next ba
     } range;
@@ -2781,31 +2999,41 @@ void shuffle_u32 (u32 *array, u32 len);
 #define i_fabs_32(f)      fabsf (f)
 
 #define arr_range(arr)                                     \
-  do {                                                     \
+  do                                                       \
+  {                                                        \
     for (u32 i = 0; i < arrlen (arr); ++i) { arr[i] = i; } \
-  } while (0)
+  }                                                        \
+  while (0)
 
 #define ptr_range(arr, size)                            \
-  do {                                                  \
+  do                                                    \
+  {                                                     \
     for (u32 _i = 0; _i < size; ++_i) { arr[_i] = _i; } \
-  } while (0)
+  }                                                     \
+  while (0)
 
 #define u32_arr_rand(arr)                                           \
-  do {                                                              \
+  do                                                                \
+  {                                                                 \
     for (u32 i = 0; i < arrlen (arr); ++i) { arr[i] = randu32 (); } \
-  } while (0)
+  }                                                                 \
+  while (0)
 
-#define arr_contains(arr, len, val, ret)     \
-  do {                                       \
-    ret = false;                             \
-    for (u32 ___i = 0; ___i < len; ++___i) { \
-      if (arr[___i] == val) {                \
-        ret = arr[___i];                     \
-        ret = true;                          \
-        break;                               \
-      }                                      \
-    }                                        \
-  } while (0)
+#define arr_contains(arr, len, val, ret)   \
+  do                                       \
+  {                                        \
+    ret = false;                           \
+    for (u32 ___i = 0; ___i < len; ++___i) \
+    {                                      \
+      if (arr[___i] == val)                \
+      {                                    \
+        ret = arr[___i];                   \
+        ret = true;                        \
+        break;                             \
+      }                                    \
+    }                                      \
+  }                                        \
+  while (0)
 
 float f16_to_f32 (u16 h);
 
@@ -2822,7 +3050,8 @@ float f16_to_f32 (u16 h);
 
 // Returns if the test passed or not
 typedef bool (*test_func) (void);
-typedef struct {
+typedef struct
+{
   test_func test;
   char     *test_name;
 } test;
@@ -2837,24 +3066,30 @@ extern int test_ret; // Global (thread unsafe) return code for tests
 // REGISTER (core, foo);
 // REGISTER (core, bar);
 #  define TEST_SUITE(name, max)    \
-    enum { name##_max = (max) };   \
+    enum                           \
+    {                              \
+      name##_max = (max)           \
+    };                             \
     test name##_tests[name##_max]; \
     int  name##_count = 0
 
 #  define REGISTER(suite, name)                \
-    do {                                       \
+    do                                         \
+    {                                          \
       extern bool wrapper_test_##name (void);  \
       ASSERT (suite##_count < suite##_max);    \
       suite##_tests[suite##_count++] = (test){ \
           .test      = wrapper_test_##name,    \
           .test_name = #name,                  \
       };                                       \
-    } while (0)
+    }                                          \
+    while (0)
 
 ////////////////////////////////////////////////////////////
 /// Test Marker
 
-enum {
+enum
+{
   test_marks_max = 256,
   test_mark_len  = 128,
 };
@@ -2863,13 +3098,18 @@ extern char test_marks[test_marks_max][test_mark_len];
 extern int  test_marks_count;
 
 // Match a test marker string
-HEADER_FUNC bool test_mark_match (const char *pat, const char *str) {
-  while (*pat) {
-    if (*pat == '*') {
+HEADER_FUNC bool
+test_mark_match (const char *pat, const char *str)
+{
+  while (*pat)
+  {
+    if (*pat == '*')
+    {
       pat++;
       if (!*pat) { return true; }
 
-      while (*str) {
+      while (*str)
+      {
         if (test_mark_match (pat, str)) { return true; }
         str++;
       }
@@ -2883,20 +3123,24 @@ HEADER_FUNC bool test_mark_match (const char *pat, const char *str) {
 }
 
 #  define TEST_MARK(label)                               \
-    do {                                                 \
+    do                                                   \
+    {                                                    \
       ASSERT (test_marks_count < test_marks_max);        \
       const char *_src = (label);                        \
       char       *_dst = test_marks[test_marks_count++]; \
       int         _i   = 0;                              \
-      while (_i < test_mark_len - 1 && _src[_i]) {       \
+      while (_i < test_mark_len - 1 && _src[_i])         \
+      {                                                  \
         _dst[_i] = _src[_i];                             \
         _i++;                                            \
       }                                                  \
       _dst[_i] = '\0';                                   \
-    } while (0)
+    }                                                    \
+    while (0)
 
-#  define test_reset_marks() \
-    do { test_marks_count = 0; } while (0)
+#  define test_reset_marks()     \
+    do { test_marks_count = 0; } \
+    while (0)
 
 ////////////////////////////////////////////////////////////
 /// Test Wrappers
@@ -2904,12 +3148,14 @@ HEADER_FUNC bool test_mark_match (const char *pat, const char *str) {
 #  define TEST(name)                                                   \
     static void test_##name (void);                                    \
     bool        wrapper_test_##name (void);                            \
-    bool        wrapper_test_##name (void) {                           \
+    bool        wrapper_test_##name (void)                             \
+    {                                                                  \
       i_log_info ("========================= TEST CASE: %s\n", #name); \
       int prev = test_ret;                                             \
       test_ret = 0;                                                    \
       test_##name ();                                                  \
-      if (!test_ret) {                                                 \
+      if (!test_ret)                                                   \
+      {                                                                \
         i_log_passed ("%s\n", #name);                                  \
         test_ret = prev;                                               \
         return true;                                                   \
@@ -2930,80 +3176,102 @@ HEADER_FUNC bool test_mark_match (const char *pat, const char *str) {
 /// Test Runtime Methods
 
 #  define fail_test(fmt, ...)                                     \
-    do {                                                          \
+    do                                                            \
+    {                                                             \
       i_log_failure (FPREFIX_STR fmt, FPREFIX_ARGS, __VA_ARGS__); \
       test_ret = -1;                                              \
       return;                                                     \
-    } while (0)
+    }                                                             \
+    while (0)
 
 #  define test_assert_equal(left, right)                                  \
-    do {                                                                  \
+    do                                                                    \
+    {                                                                     \
       if ((left) != (right)) { fail_test ("%s != %s\n", #left, #right); } \
-    } while (0)
+    }                                                                     \
+    while (0)
 
 #  define test_assert_int_equal(left, right) test_assert_type_equal (left, right, i32, PRId32)
 
 #  define test_assert_type_equal(left, right, type, fmt) \
-    do {                                                 \
+    do                                                   \
+    {                                                    \
       type _left  = left;                                \
       type _right = right;                               \
-      if ((_left) != (_right)) {                         \
+      if ((_left) != (_right))                           \
+      {                                                  \
         fail_test (                                      \
             "Expression: %s != %s values: "              \
             "(%" fmt ") != (%" fmt ")\n",                \
             #left,                                       \
             #right,                                      \
             _left,                                       \
-            _right);                                     \
+            _right                                       \
+        );                                               \
       }                                                  \
-    } while (0)
+    }                                                    \
+    while (0)
 
 #  define test_assert_ptr_equal(left, right) test_assert_equal ((void *)left, (void *)right)
 
 #  define test_assert(expr)                                 \
-    do {                                                    \
+    do                                                      \
+    {                                                       \
       if (!(expr)) { fail_test ("Expected: %s\n", #expr); } \
-    } while (0)
+    }                                                       \
+    while (0)
 
 #  define test_fail_if(expr)                               \
-    do {                                                   \
+    do                                                     \
+    {                                                      \
       if (expr) { fail_test ("Unexpected: %s\n", #expr); } \
-    } while (0)
+    }                                                      \
+    while (0)
 
 #  define test_err_t_check(expr, exp, ename) \
-    do {                                     \
+    do                                       \
+    {                                        \
       err_t __ret = (err_t)expr;             \
       test_assert_int_equal (__ret, exp);    \
       (ename)->cause_code = SUCCESS;         \
-    } while (0)
+    }                                        \
+    while (0)
 
 #  define test_assert_memequal(a, b, size) test_assert_int_equal (memcmp (a, b, size), 0)
 
 #  define test_assert_mark_hit(pattern)                                 \
-    do {                                                                \
+    do                                                                  \
+    {                                                                   \
       const char *_pat = (pattern);                                     \
       bool        _hit = false;                                         \
-      for (int _i = 0; _i < test_marks_count; _i++) {                   \
-        if (test_mark_match (_pat, test_marks[_i])) {                   \
+      for (int _i = 0; _i < test_marks_count; _i++)                     \
+      {                                                                 \
+        if (test_mark_match (_pat, test_marks[_i]))                     \
+        {                                                               \
           _hit = true;                                                  \
           break;                                                        \
         }                                                               \
       }                                                                 \
       if (!_hit) { fail_test ("No mark matched pattern: %s\n", _pat); } \
-    } while (0)
+    }                                                                   \
+    while (0)
 
 #  define test_assert_mark_not_hit(pattern)                         \
-    do {                                                            \
+    do                                                              \
+    {                                                               \
       const char *_pat = (pattern);                                 \
       bool        _hit = false;                                     \
-      for (int _i = 0; _i < test_marks_count; _i++) {               \
-        if (test_mark_match (_pat, test_marks[_i])) {               \
+      for (int _i = 0; _i < test_marks_count; _i++)                 \
+      {                                                             \
+        if (test_mark_match (_pat, test_marks[_i]))                 \
+        {                                                           \
           _hit = true;                                              \
           break;                                                    \
         }                                                           \
       }                                                             \
       if (_hit) { fail_test ("Mark matched pattern: %s\n", _pat); } \
-    } while (0)
+    }                                                               \
+    while (0)
 
 #else // NTEST
 
@@ -3038,7 +3306,8 @@ HEADER_FUNC bool test_mark_match (const char *pat, const char *str) {
  *    ref - The reference writer. This is assumed correct
  *    sut - System under test. This is what we're testing.
  */
-struct dvalidtr {
+struct dvalidtr
+{
   struct data_writer ref;
   struct data_writer sut;
   isvalid_func       isvalid;
@@ -3062,7 +3331,15 @@ err_t dvalidtr_random_test (struct dvalidtr *d, u32 size, u32 niters, u64 max_in
 ////////////////////////////////////////////////////////////
 // CONCURRENCY / GR_LOCK
 
-enum lock_mode { LM_IS = 0, LM_IX = 1, LM_S = 2, LM_SIX = 3, LM_X = 4, LM_COUNT = 5 };
+enum lock_mode
+{
+  LM_IS    = 0,
+  LM_IX    = 1,
+  LM_S     = 2,
+  LM_SIX   = 3,
+  LM_X     = 4,
+  LM_COUNT = 5
+};
 
 /**
  * lock waiters are allocated on the stack - so a waiter only exists
@@ -3083,14 +3360,16 @@ enum lock_mode { LM_IS = 0, LM_IX = 1, LM_S = 2, LM_SIX = 3, LM_X = 4, LM_COUNT 
  * tied to one lock unlock flow, which is probably what I'll do, but for now,
  * locks have loose priority until it becomes a performance problem
  */
-struct gr_lock_waiter {
+struct gr_lock_waiter
+{
   enum lock_mode         mode;
   i_cond                 cond;
   struct gr_lock_waiter *prev;
   struct gr_lock_waiter *next;
 };
 
-struct gr_lock {
+struct gr_lock
+{
   i_mutex                mutex;
   int                    holder_counts[LM_COUNT];
   struct gr_lock_waiter *head;
@@ -3112,7 +3391,8 @@ enum lock_mode get_parent_mode (enum lock_mode child_mode);
 
 typedef void (*periodic_task_fn) (void *ctx);
 
-struct periodic_task {
+struct periodic_task
+{
   i_thread         thread;
   i_mutex          mutex;
   i_cond           wake_cond;
@@ -3128,12 +3408,8 @@ struct periodic_task {
 
 err_t periodic_task_init (struct periodic_task *t, error *e);
 
-err_t periodic_task_start (
-    struct periodic_task *t,
-    u64                   msec,
-    periodic_task_fn      fn,
-    void                 *ctx,
-    error                *e);
+err_t
+periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e);
 
 err_t periodic_task_stop (struct periodic_task *t, error *e);
 void  periodic_task_wake (struct periodic_task *t);
@@ -3141,7 +3417,8 @@ void  periodic_task_wake (struct periodic_task *t);
 ////////////////////////////////////////////////////////////
 // NET / CLIENT
 
-struct client {
+struct client
+{
   i_socket sock;
 };
 
@@ -3160,7 +3437,8 @@ err_t client_disconnect (struct client *c, error *e);
 ////////////////////////////////////////////////////////////
 // NET / POLLING_SERVER
 
-struct connection {
+struct connection
+{
   void    *rx_buf;
   u32      rx_cap;
   u32      rx_len;
@@ -3171,13 +3449,15 @@ struct connection {
   latch    l;
 };
 
-struct conn_actions {
+struct conn_actions
+{
   struct connection *(*conn_alloc) (void *ctx, error *e);
   err_t (*conn_func) (void *ctx, struct connection *conn, error *e);
   void (*conn_free) (void *ctx, struct connection *conn);
 };
 
-struct polling_server {
+struct polling_server
+{
   i_pollfd           *fds;
   struct connection **conns;
   u32                 len;
@@ -3188,12 +3468,8 @@ struct polling_server {
   i_socket            server;
 };
 
-err_t pserv_open (
-    struct polling_server *ps,
-    int                    port,
-    struct conn_actions    actions,
-    void                  *ctx,
-    error                 *e);
+err_t
+pserv_open (struct polling_server *ps, int port, struct conn_actions actions, void *ctx, error *e);
 
 int pserv_execute (struct polling_server *ps, error *e);
 
@@ -3202,7 +3478,8 @@ err_t pserv_close (struct polling_server *ps, error *e);
 ////////////////////////////////////////////////////////////
 // NET / ECHO_SERVER
 
-struct echo_context {
+struct echo_context
+{
   const char *prefix;
   const char *suffix;
 };
@@ -3246,24 +3523,29 @@ void               echo_conn_free (const void *ctx, struct connection *conn);
 #define HT_COUNT         RH__XCAT (ht_count_, SUFFIX)
 #define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
 
-typedef struct {
+typedef struct
+{
   KTYPE key; // Hash key
   VTYPE value;
 } HDATA_T;
 
-typedef struct {
+typedef struct
+{
   HDATA_T data;    // The data we store
   KTYPE   dib;     // Distance from initial bucket
   bool    present; // Exists or not
 } HENWRAP_T;
 
-typedef struct {
+typedef struct
+{
   u32        cap;
   HENWRAP_T *elems;
   latch      l;
 } HASH_TABLE_T;
 
-HEADER_FUNC void HT_INIT (HASH_TABLE_T *dest, HENWRAP_T *arr, const u32 nelem) {
+HEADER_FUNC void
+HT_INIT (HASH_TABLE_T *dest, HENWRAP_T *arr, const u32 nelem)
+{
   ASSERT (dest);
   ASSERT (arr);
 
@@ -3273,7 +3555,9 @@ HEADER_FUNC void HT_INIT (HASH_TABLE_T *dest, HENWRAP_T *arr, const u32 nelem) {
   latch_init (&dest->l);
 }
 
-HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, HDATA_T data) {
+HEADER_FUNC hti_res
+HT_INSERT (HASH_TABLE_T *ht, HDATA_T data)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
@@ -3282,12 +3566,14 @@ HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, HDATA_T data) {
 
   latch_lock (&ht->l);
 
-  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn) {
+  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn)
+  {
     // Mapped index after probing
     KTYPE _i = (data.key + dibn) % (KTYPE)ht->cap;
 
     // If not present, insert
-    if (!ht->elems[_i].present) {
+    if (!ht->elems[_i].present)
+    {
       ht->elems[_i].data    = data;
       ht->elems[_i].dib     = dibn;
       ht->elems[_i].present = true;
@@ -3296,7 +3582,8 @@ HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, HDATA_T data) {
     }
 
     // Swap (lt means dib != dibn, therefore key != key)
-    if (ht->elems[_i].dib < dibn) {
+    if (ht->elems[_i].dib < dibn)
+    {
       HDATA_T temp_data = ht->elems[_i].data;
       KTYPE   temp_dib  = ht->elems[_i].dib;
 
@@ -3308,7 +3595,8 @@ HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, HDATA_T data) {
     }
 
     // Compare keys for duplicates
-    if (ht->elems[_i].data.key == data.key) {
+    if (ht->elems[_i].data.key == data.key)
+    {
       ret = HTIR_EXISTS;
       goto theend;
     }
@@ -3319,12 +3607,16 @@ theend:
   return ret;
 }
 
-HEADER_FUNC void HT_INSERT_EXPECT (HASH_TABLE_T *ht, HDATA_T data) {
+HEADER_FUNC void
+HT_INSERT_EXPECT (HASH_TABLE_T *ht, HDATA_T data)
+{
   const hti_res ret = HT_INSERT (ht, data);
   ASSERT (ret == HTIR_SUCCESS);
 }
 
-HEADER_FUNC hta_res HT_GET (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
+HEADER_FUNC hta_res
+HT_GET (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
@@ -3334,25 +3626,30 @@ HEADER_FUNC hta_res HT_GET (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
 
   latch_lock (&ht->l);
 
-  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn) {
+  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn)
+  {
     // Mapped index after probing
     KTYPE _i = (key + i) % (KTYPE)ht->cap;
 
     // If not present, return
-    if (!ht->elems[_i].present) {
+    if (!ht->elems[_i].present)
+    {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Short cut - DIB invariant is broken
-    if (ht->elems[_i].dib < dibn) {
+    if (ht->elems[_i].dib < dibn)
+    {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Check for key
-    if (ht->elems[_i].data.key == key) {
-      if (dest) {
+    if (ht->elems[_i].data.key == key)
+    {
+      if (dest)
+      {
         *dest = (HDATA_T){
             .value = ht->elems[_i].data.value,
             .key   = ht->elems[_i].data.key,
@@ -3368,12 +3665,16 @@ theend:
   return ret;
 }
 
-HEADER_FUNC void HT_GET_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
+HEADER_FUNC void
+HT_GET_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
+{
   const hta_res ret = HT_GET (ht, dest, key);
   ASSERT (ret == HTAR_SUCCESS);
 }
 
-HEADER_FUNC hta_res HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
+HEADER_FUNC hta_res
+HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
@@ -3384,37 +3685,43 @@ HEADER_FUNC hta_res HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
 
   latch_lock (&ht->l);
 
-  for (i = 0; i < (KTYPE)ht->cap; ++i, ++dibn) {
+  for (i = 0; i < (KTYPE)ht->cap; ++i, ++dibn)
+  {
     // Mapped index after probing
     KTYPE _i = (key + i) % (KTYPE)ht->cap;
 
     // If not present, return
-    if (!ht->elems[_i].present) {
+    if (!ht->elems[_i].present)
+    {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Short cut - DIB invariant is broken
-    if (ht->elems[_i].dib < dibn) {
+    if (ht->elems[_i].dib < dibn)
+    {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Check for key
-    if (ht->elems[_i].data.key == key) {
+    if (ht->elems[_i].data.key == key)
+    {
       if (dest) { *dest = ht->elems[_i].data; }
       break;
     }
   }
 
   // Shift all full elements to the left
-  for (; i < (KTYPE)ht->cap; ++i) {
+  for (; i < (KTYPE)ht->cap; ++i)
+  {
     // Mapped index after probing
     KTYPE hole = (key + i) % (KTYPE)ht->cap;
     KTYPE next = (key + i + 1) % (KTYPE)ht->cap;
 
     // Right value is empty, set this to empty and return
-    if (!ht->elems[next].present || ht->elems[next].dib == 0) {
+    if (!ht->elems[next].present || ht->elems[next].dib == 0)
+    {
       ht->elems[hole].present = false;
       ret                     = HTAR_SUCCESS;
       goto theend;
@@ -3432,7 +3739,9 @@ theend:
   return ret;
 }
 
-HEADER_FUNC u32 HT_COUNT (HASH_TABLE_T *ht) {
+HEADER_FUNC u32
+HT_COUNT (HASH_TABLE_T *ht)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
@@ -3440,7 +3749,8 @@ HEADER_FUNC u32 HT_COUNT (HASH_TABLE_T *ht) {
 
   latch_lock (&ht->l);
 
-  for (u32 i = 0; i < ht->cap; ++i) {
+  for (u32 i = 0; i < ht->cap; ++i)
+  {
     if (ht->elems[i].present) { ret++; }
   }
 
@@ -3449,7 +3759,9 @@ HEADER_FUNC u32 HT_COUNT (HASH_TABLE_T *ht) {
   return ret;
 }
 
-HEADER_FUNC void HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
+HEADER_FUNC void
+HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
+{
   const hta_res ret = HT_DELETE (ht, dest, key);
   ASSERT (ret == HTAR_SUCCESS);
 }
@@ -3502,19 +3814,23 @@ HEADER_FUNC void HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key) {
 #define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
 #define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
 
-typedef struct {
+typedef struct
+{
   VTYPE value;   // The value we store
   u32   hash;    // Hash of the value
   u32   dib;     // Distance from initial bucket
   bool  present; // Exists or not
 } HENWRAP_T;
 
-typedef struct {
+typedef struct
+{
   u32        cap;
   HENWRAP_T *elems;
 } HASH_TABLE_T;
 
-HEADER_FUNC void HT_INIT (HASH_TABLE_T *dest, HENWRAP_T *arr, u32 nelem) {
+HEADER_FUNC void
+HT_INIT (HASH_TABLE_T *dest, HENWRAP_T *arr, u32 nelem)
+{
   ASSERT (dest);
   ASSERT (arr);
 
@@ -3523,19 +3839,23 @@ HEADER_FUNC void HT_INIT (HASH_TABLE_T *dest, HENWRAP_T *arr, u32 nelem) {
   dest->cap   = nelem;
 }
 
-HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, VTYPE value) {
+HEADER_FUNC hti_res
+HT_INSERT (HASH_TABLE_T *ht, VTYPE value)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
   u32 hash = HASH_FUNC (value);
   u32 dibn = 0; // Current distance from initial bucket
 
-  for (u32 i = 0; i < ht->cap; ++i, ++dibn) {
+  for (u32 i = 0; i < ht->cap; ++i, ++dibn)
+  {
     // Mapped index after probing
     u32 _i = (hash + dibn) % ht->cap;
 
     // If not present, insert
-    if (!ht->elems[_i].present) {
+    if (!ht->elems[_i].present)
+    {
       ht->elems[_i].value   = value;
       ht->elems[_i].hash    = hash;
       ht->elems[_i].dib     = dibn;
@@ -3545,7 +3865,8 @@ HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, VTYPE value) {
 
     // Swap (lt means dib != dibn, therefore different
     // values)
-    if (ht->elems[_i].dib < dibn) {
+    if (ht->elems[_i].dib < dibn)
+    {
       VTYPE temp_value = ht->elems[_i].value;
       u32   temp_hash  = ht->elems[_i].hash;
       u32   temp_dib   = ht->elems[_i].dib;
@@ -3566,19 +3887,24 @@ HEADER_FUNC hti_res HT_INSERT (HASH_TABLE_T *ht, VTYPE value) {
   return HTIR_FULL;
 }
 
-HEADER_FUNC void HT_INSERT_EXPECT (HASH_TABLE_T *ht, VTYPE value) {
+HEADER_FUNC void
+HT_INSERT_EXPECT (HASH_TABLE_T *ht, VTYPE value)
+{
   hti_res ret = HT_INSERT (ht, value);
   ASSERT (ret == HTIR_SUCCESS);
 }
 
-HEADER_FUNC hta_res HT_GET (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
+HEADER_FUNC hta_res
+HT_GET (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
   u32 hash = HASH_FUNC (value);
   u32 dibn = 0;
 
-  for (u32 i = 0; i < ht->cap; ++i, ++dibn) {
+  for (u32 i = 0; i < ht->cap; ++i, ++dibn)
+  {
     // Mapped index after probing
     u32 _i = (hash + i) % ht->cap;
 
@@ -3589,7 +3915,8 @@ HEADER_FUNC hta_res HT_GET (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
     if (ht->elems[_i].dib < dibn) { return HTAR_DOESNT_EXIST; }
 
     // Check for value match
-    if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value)) {
+    if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value))
+    {
       if (dest) { *dest = ht->elems[_i].value; }
       return HTAR_SUCCESS;
     }
@@ -3598,12 +3925,16 @@ HEADER_FUNC hta_res HT_GET (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
   return HTAR_DOESNT_EXIST;
 }
 
-HEADER_FUNC void HT_GET_EXPECT (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
+HEADER_FUNC void
+HT_GET_EXPECT (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
+{
   hta_res ret = HT_GET (ht, dest, value);
   ASSERT (ret == HTAR_SUCCESS);
 }
 
-HEADER_FUNC hta_res HT_DELETE (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
+HEADER_FUNC hta_res
+HT_DELETE (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
+{
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
@@ -3611,7 +3942,8 @@ HEADER_FUNC hta_res HT_DELETE (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
   u32 dibn = 0;
   u32 i    = 0;
 
-  for (i = 0; i < ht->cap; ++i, ++dibn) {
+  for (i = 0; i < ht->cap; ++i, ++dibn)
+  {
     // Mapped index after probing
     u32 _i = (hash + i) % ht->cap;
 
@@ -3622,20 +3954,23 @@ HEADER_FUNC hta_res HT_DELETE (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
     if (ht->elems[_i].dib < dibn) { return HTAR_DOESNT_EXIST; }
 
     // Check for value match
-    if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value)) {
+    if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value))
+    {
       if (dest) { *dest = ht->elems[_i].value; }
       break;
     }
   }
 
   // Shift all full elements to the left
-  for (; i < ht->cap; ++i) {
+  for (; i < ht->cap; ++i)
+  {
     // Mapped index after probing
     u32 hole = (hash + i) % ht->cap;
     u32 next = (hash + i + 1) % ht->cap;
 
     // Right value is empty, set this to empty and return
-    if (!ht->elems[next].present || ht->elems[next].dib == 0) {
+    if (!ht->elems[next].present || ht->elems[next].dib == 0)
+    {
       ht->elems[hole].present = false;
       return HTAR_SUCCESS;
     }
@@ -3651,7 +3986,9 @@ HEADER_FUNC hta_res HT_DELETE (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
   return HTAR_DOESNT_EXIST;
 }
 
-HEADER_FUNC void HT_DELETE_EXPECT (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value) {
+HEADER_FUNC void
+HT_DELETE_EXPECT (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
+{
   hta_res ret = HT_DELETE (ht, dest, value);
   ASSERT (ret == HTAR_SUCCESS);
 }

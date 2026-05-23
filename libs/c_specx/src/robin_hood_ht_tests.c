@@ -21,14 +21,16 @@
 
 #ifndef NTEST
 #  define TEST_TABLE_LEN 1000
-TEST (ht_insert_idx_regression_trigger_swap) {
+TEST (ht_insert_idx_regression_trigger_swap)
+{
   // Although this used to work, it would skip over
   // the skipped value
   hash_table_idx ht;
   hentry_idx     entries[TEST_TABLE_LEN];
   ht_init_idx (&ht, entries, TEST_TABLE_LEN);
 
-  for (u32 i = 0; i < TEST_TABLE_LEN; ++i) {
+  for (u32 i = 0; i < TEST_TABLE_LEN; ++i)
+  {
     test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = i, .value = i}), HTIR_SUCCESS);
   }
 
@@ -38,16 +40,19 @@ TEST (ht_insert_idx_regression_trigger_swap) {
 
   test_assert_int_equal (
       ht_insert_idx (&ht, (hdata_idx){.key = TEST_TABLE_LEN, .value = 0}),
-      HTIR_SUCCESS);
+      HTIR_SUCCESS
+  );
   test_assert_int_equal (
       ht_insert_idx (&ht, (hdata_idx){.key = TEST_TABLE_LEN + 1, .value = 1}),
-      HTIR_SUCCESS);
+      HTIR_SUCCESS
+  );
 
   test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 0, .value = 0}), HTIR_SUCCESS);
 
   bool has_bug = false;
 
-  if (has_bug) {
+  if (has_bug)
+  {
     test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
     test_assert_int_equal (ht.elems[0].dib, 0);
     test_assert_int_equal (ht.elems[0].present, 1);
@@ -62,7 +67,9 @@ TEST (ht_insert_idx_regression_trigger_swap) {
 
     // Everything else is really unpredictable because the
     // +i just screws up everything
-  } else {
+  }
+  else
+  {
     test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
     test_assert_int_equal (ht.elems[0].dib, 0);
     test_assert_int_equal (ht.elems[0].present, 1);
@@ -75,7 +82,8 @@ TEST (ht_insert_idx_regression_trigger_swap) {
     test_assert_int_equal (ht.elems[2].dib, 1);
     test_assert_int_equal (ht.elems[2].present, 1);
 
-    for (u32 i = 3; i < TEST_TABLE_LEN; ++i) {
+    for (u32 i = 3; i < TEST_TABLE_LEN; ++i)
+    {
       test_assert_int_equal (ht.elems[i].data.key, i);
       test_assert_int_equal (ht.elems[i].dib, 0);
       test_assert_int_equal (ht.elems[i].present, 1);
@@ -85,7 +93,8 @@ TEST (ht_insert_idx_regression_trigger_swap) {
 #endif
 
 #ifndef NTEST
-TEST (robin_hood_ht) {
+TEST (robin_hood_ht)
+{
   hash_table_idx ht;
   hentry_idx     entries[TEST_TABLE_LEN];
   ht_init_idx (&ht, entries, TEST_TABLE_LEN);
@@ -93,62 +102,68 @@ TEST (robin_hood_ht) {
 
   test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 5}), HTIR_SUCCESS);
 
-  TEST_CASE ("Duplicate insert") {
+  TEST_CASE ("Duplicate insert")
+  {
     test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 99}), HTIR_EXISTS);
   }
 
-  TEST_CASE ("Get normal") {
+  TEST_CASE ("Get normal")
+  {
     test_assert_int_equal (ht_get_idx (&ht, &out, 10u), HTAR_SUCCESS);
     test_assert_int_equal (out.value, 5);
   }
 
-  TEST_CASE ("Miss look up") {
-    test_assert_int_equal (ht_get_idx (&ht, &out, 123u), HTAR_DOESNT_EXIST);
-  }
+  TEST_CASE ("Miss look up")
+  { test_assert_int_equal (ht_get_idx (&ht, &out, 123u), HTAR_DOESNT_EXIST); }
 
-  TEST_CASE ("Delete normal") {
+  TEST_CASE ("Delete normal")
+  {
     test_assert_int_equal (ht_delete_idx (&ht, NULL, 10u), HTAR_SUCCESS);
     test_assert_int_equal (ht_get_idx (&ht, &out, 10u), HTAR_DOESNT_EXIST);
   }
 
-  TEST_CASE ("Delete doesn't exist") {
-    test_assert_int_equal (ht_delete_idx (&ht, NULL, 10u), HTAR_DOESNT_EXIST);
-  }
+  TEST_CASE ("Delete doesn't exist")
+  { test_assert_int_equal (ht_delete_idx (&ht, NULL, 10u), HTAR_DOESNT_EXIST); }
 
-  TEST_CASE ("Linear probing") {
+  TEST_CASE ("Linear probing")
+  {
     test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 10}), HTIR_SUCCESS);
     test_assert_int_equal (
         ht_insert_idx (&ht, (hdata_idx){.key = 110u, .value = 11}),
-        HTIR_SUCCESS);
+        HTIR_SUCCESS
+    );
     test_assert_int_equal (
         ht_insert_idx (&ht, (hdata_idx){.key = 210u, .value = 21}),
-        HTIR_SUCCESS);
+        HTIR_SUCCESS
+    );
   }
 
-  TEST_CASE ("Delete and create a hole") {
-    test_assert_int_equal (ht_delete_idx (&ht, NULL, 10u), HTAR_SUCCESS);
-  }
+  TEST_CASE ("Delete and create a hole")
+  { test_assert_int_equal (ht_delete_idx (&ht, NULL, 10u), HTAR_SUCCESS); }
 
-  TEST_CASE ("Fetch the rest") {
+  TEST_CASE ("Fetch the rest")
+  {
     test_assert_int_equal (ht_get_idx (&ht, &out, 110u), HTAR_SUCCESS);
     test_assert_int_equal (out.value, 11);
     test_assert_int_equal (ht_get_idx (&ht, &out, 210u), HTAR_SUCCESS);
     test_assert_int_equal (out.value, 21);
   }
 
-  TEST_CASE ("Optional dest") {
-    test_assert_int_equal (ht_get_idx (&ht, NULL, 110u), HTAR_SUCCESS);
-  }
+  TEST_CASE ("Optional dest")
+  { test_assert_int_equal (ht_get_idx (&ht, NULL, 110u), HTAR_SUCCESS); }
 
-  TEST_CASE ("Full table") {
+  TEST_CASE ("Full table")
+  {
     hash_table_idx tiny;
     hentry_idx     _tiny[4];
     ht_init_idx (&tiny, _tiny, 4);
 
-    for (u32 k = 0; k < 4; ++k) {
+    for (u32 k = 0; k < 4; ++k)
+    {
       test_assert_int_equal (
           ht_insert_idx (&tiny, (hdata_idx){.key = k, .value = k}),
-          HTIR_SUCCESS);
+          HTIR_SUCCESS
+      );
     }
 
     test_assert_int_equal (ht_insert_idx (&tiny, (hdata_idx){.key = 99u, .value = 99}), HTIR_FULL);

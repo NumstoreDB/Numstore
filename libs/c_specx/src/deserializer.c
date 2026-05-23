@@ -23,7 +23,9 @@ DEFINE_DBG_ASSERT (struct deserializer, deserializer, s, {
   ASSERT (s->head <= s->dlen);
 })
 
-struct deserializer dsrlizr_create (const u8 *data, const u32 dlen) {
+struct deserializer
+dsrlizr_create (const u8 *data, const u32 dlen)
+{
   struct deserializer ret = (struct deserializer){
       .data = data,
       .head = 0,
@@ -33,12 +35,15 @@ struct deserializer dsrlizr_create (const u8 *data, const u32 dlen) {
   return ret;
 }
 
-bool dsrlizr_read (void *dest, const u32 dlen, struct deserializer *src) {
+bool
+dsrlizr_read (void *dest, const u32 dlen, struct deserializer *src)
+{
   latch_lock (&src->latch);
 
   DBG_ASSERT (deserializer, src);
 
-  if (src->head + dlen > src->dlen) {
+  if (src->head + dlen > src->dlen)
+  {
     latch_unlock (&src->latch);
     return false;
   }

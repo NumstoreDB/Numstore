@@ -22,8 +22,13 @@ struct data_writer *smfile_data_writer_open (const char *path);
 int                 smfile_data_writer_close (struct data_writer *w);
 
 // Specialty fixture for smfile
-typedef sb_size (
-    *pinsert_func) (void *ctx, const char *name, const void *src, sb_size bofst, b_size slen);
+typedef sb_size (*pinsert_func) (
+    void       *ctx,
+    const char *name,
+    const void *src,
+    sb_size     bofst,
+    b_size      slen
+);
 typedef sb_size (*pwrite_func) (
     void       *ctx,
     const char *name,
@@ -31,7 +36,8 @@ typedef sb_size (*pwrite_func) (
     t_size      size,
     b_size      bofst,
     sb_size     stride,
-    b_size      nelem);
+    b_size      nelem
+);
 typedef sb_size (*pread_func) (
     void       *ctx,
     const char *name,
@@ -39,7 +45,8 @@ typedef sb_size (*pread_func) (
     t_size      size,
     sb_size     bofst,
     sb_size     stride,
-    b_size      nelem);
+    b_size      nelem
+);
 typedef sb_size (*premove_func) (
     void       *ctx,
     const char *name,
@@ -47,7 +54,8 @@ typedef sb_size (*premove_func) (
     t_size      size,
     sb_size     bofst,
     sb_size     stride,
-    b_size      nelem);
+    b_size      nelem
+);
 typedef int (*delete_func) (void *ctx, const char *name);
 typedef sb_size (*psize_func) (void *ctx, const char *name);
 typedef int (*crash_func) (void *ctx);
@@ -56,7 +64,8 @@ typedef int (*commit_func) (void *ctx);
 typedef int (*rollback_func) (void *ctx);
 
 /// The full set of function pointers that back a data_writer
-struct smfile_test_fixture_functions {
+struct smfile_test_fixture_functions
+{
   pinsert_func pinsert;
   pwrite_func  pwrite;
   pread_func   pread;
@@ -70,7 +79,8 @@ struct smfile_test_fixture_functions {
 };
 
 /// A virtual data source/sink pairing a function table with its context
-struct smfile_test_fixture {
+struct smfile_test_fixture
+{
   void                                *ctx;       ///< Opaque context passed to every function call
   struct smfile_test_fixture_functions functions; ///< Vtable of data operations
 };

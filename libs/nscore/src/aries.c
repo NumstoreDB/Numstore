@@ -18,7 +18,9 @@
 #include "nscore/txn.h"
 #include "nscore/txn_table.h"
 
-err_t aries_ctx_create (struct aries_ctx *dest, error *e) {
+err_t
+aries_ctx_create (struct aries_ctx *dest, error *e)
+{
   dest->max_tid = 0;
   slab_alloc_init (&dest->alloc, sizeof (struct txn), 1000);
 
@@ -42,7 +44,9 @@ failed:
   return error_trace (e);
 }
 
-void aries_ctx_free (struct aries_ctx *ctx) {
+void
+aries_ctx_free (struct aries_ctx *ctx)
+{
   ASSERT (ctx);
   slab_alloc_destroy (&ctx->alloc);
   txnt_close (ctx->txt);
@@ -50,11 +54,14 @@ void aries_ctx_free (struct aries_ctx *ctx) {
   dblb_free (&ctx->txn_ptrs);
 }
 
-struct txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e) {
+struct txn *
+aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
+{
   struct txn *tx = slab_alloc_alloc (&ctx->alloc, e);
   if (tx == NULL) { return NULL; }
 
-  if (dblb_append (&ctx->txn_ptrs, &tx, 1, e)) {
+  if (dblb_append (&ctx->txn_ptrs, &tx, 1, e))
+  {
     slab_alloc_free (&ctx->alloc, tx);
     return NULL;
   }

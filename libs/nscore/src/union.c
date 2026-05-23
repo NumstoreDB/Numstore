@@ -24,20 +24,23 @@ DEFINE_DBG_ASSERT (struct union_t, unchecked_union_t, s, {
   ASSERT (s->types);
 })
 
-static err_t union_t_type_err (const char *msg, error *e) {
-  return error_causef (e, ERR_INTERP, "Union: %s", msg);
-}
+static err_t
+union_t_type_err (const char *msg, error *e)
+{ return error_causef (e, ERR_INTERP, "Union: %s", msg); }
 
-static err_t union_t_type_deser (const char *msg, error *e) {
-  return error_causef (e, ERR_CORRUPT, "Union: %s", msg);
-}
+static err_t
+union_t_type_deser (const char *msg, error *e)
+{ return error_causef (e, ERR_CORRUPT, "Union: %s", msg); }
 
-static err_t union_t_validate_shallow (const struct union_t *s, error *e) {
+static err_t
+union_t_validate_shallow (const struct union_t *s, error *e)
+{
   DBG_ASSERT (unchecked_union_t, s);
 
   if (s->len == 0) { return union_t_type_err ("Keys length must be > 0", e); }
 
-  for (u32 i = 0; i < s->len; ++i) {
+  for (u32 i = 0; i < s->len; ++i)
+  {
     if (s->keys[i].len == 0) { return union_t_type_err ("Key length must be > 0", e); }
     ASSERT (s->keys[i].data);
   }
@@ -52,15 +55,14 @@ DEFINE_DBG_ASSERT (struct union_t, valid_union_t, s, {
   ASSERT (union_t_validate_shallow (s, &e) == SUCCESS);
 })
 
-err_t union_t_create (
-    struct union_t     *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e) {
+err_t
+union_t_create (struct union_t *dest, struct kvt_list list, struct chunk_alloc *dalloc, error *e)
+{
   if (list.len == 0) { return union_t_type_err ("union must have greater than 0 keys", e); }
 
   // Copy stuff over
-  if (dalloc) {
+  if (dalloc)
+  {
     dest->len  = list.len;
     dest->keys = chunk_alloc_move_mem (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL) { return error_trace (e); }
@@ -70,7 +72,8 @@ err_t union_t_create (
   }
 
   // Don't copy
-  else {
+  else
+  {
     dest->len   = list.len;
     dest->keys  = list.keys;
     dest->types = list.types;
@@ -79,17 +82,26 @@ err_t union_t_create (
   return SUCCESS;
 }
 
-err_t union_t_validate (const struct union_t *s, error *e) {
+err_t
+union_t_validate (const struct union_t *s, error *e)
+{
   WRAP (union_t_validate_shallow (s, e));
-  { return false; }
-  for (u32 i = 0; i < s->len; ++i) {
+  {
+    return false;
+  }
+  for (u32 i = 0; i < s->len; ++i)
+  {
     WRAP (type_validate (s->types[i], e));
-    { return false; }
+    {
+      return false;
+    }
   }
   return true;
 }
 
-i32 union_t_snprintf (char *str, u32 size, const struct union_t *st) {
+i32
+union_t_snprintf (char *str, u32 size, const struct union_t *st)
+{
   DBG_ASSERT (valid_union_t, st);
 
   char *out   = str;
@@ -100,25 +112,28 @@ i32 union_t_snprintf (char *str, u32 size, const struct union_t *st) {
   n = snprintf (out, avail, "union { ");
   if (n < 0) { return n; }
   len += n;
-  if (out) {
+  if (out)
+  {
     out += n;
-    if ((u32)n < avail) {
-      avail -= n;
-    } else {
+    if ((u32)n < avail) { avail -= n; }
+    else
+    {
       avail = 0;
     }
   }
 
-  for (u32 i = 0; i < st->len; ++i) {
+  for (u32 i = 0; i < st->len; ++i)
+  {
     struct string key = st->keys[i];
     n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
     if (n < 0) { return n; }
     len += n;
-    if (out) {
+    if (out)
+    {
       out += n;
-      if ((u32)n < avail) {
-        avail -= n;
-      } else {
+      if ((u32)n < avail) { avail -= n; }
+      else
+      {
         avail = 0;
       }
     }
@@ -126,24 +141,27 @@ i32 union_t_snprintf (char *str, u32 size, const struct union_t *st) {
     n = type_snprintf (out, avail, st->types[i]);
     if (n < 0) { return n; }
     len += n;
-    if (out) {
+    if (out)
+    {
       out += n;
-      if ((u32)n < avail) {
-        avail -= n;
-      } else {
+      if ((u32)n < avail) { avail -= n; }
+      else
+      {
         avail = 0;
       }
     }
 
-    if (i + 1 < st->len) {
+    if (i + 1 < st->len)
+    {
       n = snprintf (out, avail, ", ");
       if (n < 0) { return n; }
       len += n;
-      if (out) {
+      if (out)
+      {
         out += n;
-        if ((u32)n < avail) {
-          avail -= n;
-        } else {
+        if ((u32)n < avail) { avail -= n; }
+        else
+        {
           avail = 0;
         }
       }
@@ -158,7 +176,8 @@ i32 union_t_snprintf (char *str, u32 size, const struct union_t *st) {
 }
 
 #ifndef NTEST
-TEST (union_t_snprintf) {
+TEST (union_t_snprintf)
+{
   struct union_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -209,11 +228,14 @@ TEST (union_t_snprintf) {
 }
 #endif
 
-u32 union_t_byte_size (const struct union_t *t) {
+u32
+union_t_byte_size (const struct union_t *t)
+{
   DBG_ASSERT (valid_union_t, t);
   u32 ret = 0;
 
-  for (u32 i = 0; i < t->len; ++i) {
+  for (u32 i = 0; i < t->len; ++i)
+  {
     u32 next = type_byte_size (t->types[i]);
     if (next > ret) { ret = next; }
   }
@@ -222,7 +244,8 @@ u32 union_t_byte_size (const struct union_t *t) {
 }
 
 #ifndef NTEST
-TEST (union_t_byte_size) {
+TEST (union_t_byte_size)
+{
   struct union_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -269,7 +292,9 @@ TEST (union_t_byte_size) {
 }
 #endif
 
-u32 union_t_get_serial_size (const struct union_t *t) {
+u32
+union_t_get_serial_size (const struct union_t *t)
+{
   DBG_ASSERT (valid_union_t, t);
   u32 ret = 0;
 
@@ -277,7 +302,8 @@ u32 union_t_get_serial_size (const struct union_t *t) {
   ret += sizeof (u16);
   ret += t->len * sizeof (u16);
 
-  for (u32 i = 0; i < t->len; ++i) {
+  for (u32 i = 0; i < t->len; ++i)
+  {
     ret += t->keys[i].len;
     ret += type_get_serial_size (t->types[i]);
   }
@@ -286,7 +312,8 @@ u32 union_t_get_serial_size (const struct union_t *t) {
 }
 
 #ifndef NTEST
-TEST (union_t_get_serial_size) {
+TEST (union_t_get_serial_size)
+{
   struct union_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -333,7 +360,9 @@ TEST (union_t_get_serial_size) {
 }
 #endif
 
-void union_t_serialize (struct serializer *dest, const struct union_t *src) {
+void
+union_t_serialize (struct serializer *dest, const struct union_t *src)
+{
   DBG_ASSERT (valid_union_t, src);
   bool ret;
 
@@ -341,7 +370,8 @@ void union_t_serialize (struct serializer *dest, const struct union_t *src) {
   ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));
   ASSERT (ret);
 
-  for (u32 i = 0; i < src->len; ++i) {
+  for (u32 i = 0; i < src->len; ++i)
+  {
     // (KLEN
     struct string next = src->keys[i];
     ret                = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
@@ -357,7 +387,8 @@ void union_t_serialize (struct serializer *dest, const struct union_t *src) {
 }
 
 #ifndef NTEST
-TEST (union_t_serialize) {
+TEST (union_t_serialize)
+{
   struct union_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -422,11 +453,14 @@ TEST (union_t_serialize) {
 }
 #endif
 
-err_t union_t_deserialize (
+err_t
+union_t_deserialize (
     struct union_t      *dest,
     struct deserializer *src,
     struct chunk_alloc  *a,
-    error               *e) {
+    error               *e
+)
+{
   ASSERT (dest);
 
   struct chunk_alloc temp;
@@ -438,7 +472,8 @@ err_t union_t_deserialize (
   u16 len;
   if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src)) { goto early_termination; }
 
-  for (u32 i = 0; i < len; ++i) {
+  for (u32 i = 0; i < len; ++i)
+  {
     u16 klen;
     if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src)) { goto early_termination; }
 
@@ -471,7 +506,8 @@ early_termination:
 }
 
 #ifndef NTEST
-TEST (union_t_deserialize_green_path) {
+TEST (union_t_deserialize_green_path)
+{
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
                 (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
                 0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
@@ -526,7 +562,8 @@ TEST (union_t_deserialize_green_path) {
 #endif
 
 #ifndef NTEST
-TEST (union_t_deserialize_red_path) {
+TEST (union_t_deserialize_red_path)
+{
   u8  data[] = {0,   0,   0,   0,   'f',        'o',        'o',    (u8)T_PRIM, (u8)U32,
                 0,   0,   'f', 'o', 'o',        (u8)T_PRIM, (u8)U8, 0,          0,
                 'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,      0,          'b',
@@ -555,7 +592,9 @@ TEST (union_t_deserialize_red_path) {
 }
 #endif
 
-err_t union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, error *e) {
+err_t
+union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, error *e)
+{
   ASSERT (un);
 
   un->len = (u16)randu32r (1, 5);
@@ -566,7 +605,8 @@ err_t union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, 
   un->types = (struct type **)chunk_malloc (alloc, un->len, sizeof (struct type *), e);
   if (!un->types) { return error_trace (e); }
 
-  for (u16 i = 0; i < un->len; ++i) {
+  for (u16 i = 0; i < un->len; ++i)
+  {
     WRAP (rand_str (&un->keys[i], alloc, 5, 11, e));
     un->types[i] = type_random (alloc, depth - 1, e);
     if (un->types[i] == NULL) { return error_trace (e); }
@@ -575,10 +615,13 @@ err_t union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, 
   return SUCCESS;
 }
 
-bool union_t_equal (const struct union_t *left, const struct union_t *right) {
+bool
+union_t_equal (const struct union_t *left, const struct union_t *right)
+{
   if (left->len != right->len) { return false; }
 
-  for (u32 i = 0; i < left->len; ++i) {
+  for (u32 i = 0; i < left->len; ++i)
+  {
     if (!string_equal (left->keys[i], right->keys[i])) { return false; }
     if (!type_equal (left->types[i], right->types[i])) { return false; }
   }
@@ -586,8 +629,11 @@ bool union_t_equal (const struct union_t *left, const struct union_t *right) {
   return true;
 }
 
-struct type *union_t_resolve_key (struct union_t *t, struct string key, error *e) {
-  for (u32 i = 0; i < t->len; ++i) {
+struct type *
+union_t_resolve_key (struct union_t *t, struct string key, error *e)
+{
+  for (u32 i = 0; i < t->len; ++i)
+  {
     if (string_equal (t->keys[i], key)) { return t->types[i]; }
   }
 

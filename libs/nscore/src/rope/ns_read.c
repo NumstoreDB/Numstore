@@ -17,7 +17,8 @@
 #include "nscore/pages/data_list.h"
 #include "nscore/rope.h"
 
-enum read_state {
+enum read_state
+{
   ACTIVE,
   SKIPPING,
 };
@@ -34,13 +35,16 @@ enum read_state {
  * Skip-window bytes never count toward max_bread, so stride gaps are not
  * subject to the element count limit.
  */
-static t_size ns_read_next_amount (
+static t_size
+ns_read_next_amount (
     const page           *curp,
     const t_size          lidx,
     const b_size          bnext,
     const b_size          max_bread,
     const b_size          total_bread,
-    const enum read_state state) {
+    const enum read_state state
+)
+{
   // Bytes available from the current page position.
   p_size next_amount = dl_used (curp) - lidx;
 
@@ -50,7 +54,8 @@ static t_size ns_read_next_amount (
 
   // Capped by the global read limit (only in ACTIVE state; skip bytes do
   // not count toward max_bread).
-  if (max_bread > 0 && state == ACTIVE) {
+  if (max_bread > 0 && state == ACTIVE)
+  {
     next_amount = MIN (next_amount, max_bread - total_bread);
   }
 
@@ -59,7 +64,9 @@ static t_size ns_read_next_amount (
 
 // TODO - (4) tighten up the while loop to loop inside a page - rather than one
 // read per loop
-static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
+static sb_size
+ns_read_forward (const struct ns_read_params params, error *e)
+{
   ASSERT (params.stride > 0);
 
   page_h       cur         = page_h_create ();
@@ -90,21 +97,26 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
 
   const page *curp = page_h_ro (&cur);
 
-  enum {
+  enum
+  {
     HIT_MAX_READ,
     DEST_DONE_READING,
     DATA_EXHAUSTED,
   } termination = HIT_MAX_READ;
 
-  while (max_bread == 0 || total_bread < max_bread) {
+  while (max_bread == 0 || total_bread < max_bread)
+  {
     t_size next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
-    if (next_amount == 0) {
+    if (next_amount == 0)
+    {
       ASSERT (lidx <= dl_used (curp));
-      if (lidx == dl_used (curp)) {
+      if (lidx == dl_used (curp))
+      {
         const pgno npg = dlgt_get_next (curp);
 
-        if (npg == PGNO_NULL) {
+        if (npg == PGNO_NULL)
+        {
           // No
           // more
           // nodes
@@ -126,13 +138,17 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
         next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
         ASSERT (next_amount > 0);
-      } else {
+      }
+      else
+      {
         UNREACHABLE ();
       }
     }
 
-    switch (state) {
-      case ACTIVE: {
+    switch (state)
+    {
+      case ACTIVE:
+      {
         const sp_size read =
             stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
@@ -142,14 +158,16 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
         total_bread += (b_size)read;
         bnext -= (b_size)read;
 
-        if (bnext == 0) {
+        if (bnext == 0)
+        {
           bnext = (b_size)(params.stride - 1) * params.size;
           state = SKIPPING;
 
           // TODO - (5)
           // Optimize
           // stride = 1
-          if (bnext == 0) {
+          if (bnext == 0)
+          {
             bnext = params.size;
             state = ACTIVE;
           }
@@ -157,12 +175,14 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
         break;
       }
 
-      case SKIPPING: {
+      case SKIPPING:
+      {
         const p_size read = dl_read (curp, NULL, lidx, next_amount);
         lidx += read;
         bnext -= read;
 
-        if (bnext == 0) {
+        if (bnext == 0)
+        {
           bnext = params.size;
           state = ACTIVE;
         }
@@ -170,7 +190,8 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
       }
     }
 
-    if (stream_isdone (params.dest)) {
+    if (stream_isdone (params.dest))
+    {
       termination = DEST_DONE_READING;
       break;
     }
@@ -180,7 +201,8 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
   WRAP (pgr_release (params.p, &cur, page_get_type (curp), e));
 
   // Verify that we always stopped on a complete element boundary.
-  if (total_bread % params.size != 0) {
+  if (total_bread % params.size != 0)
+  {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -188,7 +210,8 @@ static sb_size ns_read_forward (const struct ns_read_params params, error *e) {
         " bytes, not a multiple of element size "
         "%" PRt_size,
         total_bread,
-        params.size);
+        params.size
+    );
     goto failed;
   }
 
@@ -200,12 +223,16 @@ failed:
   return error_trace (e);
 }
 
-static sb_size ns_read_backward (const struct ns_read_params params, error *e) {
+static sb_size
+ns_read_backward (const struct ns_read_params params, error *e)
+{
   panic ("TODO - (12)");
   return 0;
 }
 
-sb_size ns_read (const struct ns_read_params params, error *e) {
+sb_size
+ns_read (const struct ns_read_params params, error *e)
+{
   if (params.stride > 0) { return ns_read_forward (params, e); }
 
   if (params.stride < 0) { return ns_read_backward (params, e); }

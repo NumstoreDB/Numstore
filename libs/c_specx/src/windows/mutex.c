@@ -25,14 +25,18 @@
 // re-entry and unlock-without-lock.
 
 #ifndef NDEBUG
-static DWORD cs_owner (i_mutex *m) {
+static DWORD
+cs_owner (i_mutex *m)
+{
   // OwningThread is documented as a HANDLE but is actually the
   // thread ID cast to a HANDLE on all shipping Windows versions.
   return (DWORD)(uintptr_t)((CRITICAL_SECTION *)&m->m)->OwningThread;
 }
 #endif
 
-err_t i_mutex_create (i_mutex *dest, error *e) {
+err_t
+i_mutex_create (i_mutex *dest, error *e)
+{
   ASSERT (dest);
   (void)e;
   // dwSpinCount=0: no spinning, go straight to kernel wait.
@@ -41,11 +45,14 @@ err_t i_mutex_create (i_mutex *dest, error *e) {
   return SUCCESS;
 }
 
-void i_mutex_free (i_mutex *m) {
+void
+i_mutex_free (i_mutex *m)
+{
   ASSERT (m);
 #ifndef NDEBUG
   DWORD owner = cs_owner (m);
-  if (owner != 0) {
+  if (owner != 0)
+  {
     i_log_error ("mutex_destroy: still locked by thread %lu\n", owner);
     UNREACHABLE ();
   }
@@ -53,11 +60,14 @@ void i_mutex_free (i_mutex *m) {
   DeleteCriticalSection (&m->m);
 }
 
-void i_mutex_lock (i_mutex *m) {
+void
+i_mutex_lock (i_mutex *m)
+{
   ASSERT (m);
 #ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
-  if (cs_owner (m) == tid) {
+  if (cs_owner (m) == tid)
+  {
     i_log_error ("mutex_lock: deadlock — thread %lu already owns mutex\n", tid);
     UNREACHABLE ();
   }
@@ -65,11 +75,14 @@ void i_mutex_lock (i_mutex *m) {
   EnterCriticalSection (&m->m);
 }
 
-bool i_mutex_try_lock (i_mutex *m) {
+bool
+i_mutex_try_lock (i_mutex *m)
+{
   ASSERT (m);
 #ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
-  if (cs_owner (m) == tid) {
+  if (cs_owner (m) == tid)
+  {
     i_log_error ("mutex_try_lock: thread %lu already owns mutex\n", tid);
     UNREACHABLE ();
   }
@@ -77,11 +90,14 @@ bool i_mutex_try_lock (i_mutex *m) {
   return TryEnterCriticalSection (&m->m) != 0;
 }
 
-void i_mutex_unlock (i_mutex *m) {
+void
+i_mutex_unlock (i_mutex *m)
+{
   ASSERT (m);
 #ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
-  if (cs_owner (m) != tid) {
+  if (cs_owner (m) != tid)
+  {
     i_log_error ("mutex_unlock: thread %lu does not own mutex\n", tid);
     UNREACHABLE ();
   }

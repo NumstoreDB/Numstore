@@ -38,7 +38,9 @@
  * meaning seeks past EOF land at the end of the last page rather than
  * producing an error.  This is intentional: inserts after EOF are valid.
  */
-err_t ns_seek (struct ns_seek_params *a, error *e) {
+err_t
+ns_seek (struct ns_seek_params *a, error *e)
+{
   page_h next = page_h_create ();
   a->pg       = page_h_create ();
   a->sp       = 0;
@@ -51,15 +53,21 @@ err_t ns_seek (struct ns_seek_params *a, error *e) {
           a->root,
           a->p,
           a->save_stack,
-          e)) {
+          e
+      ))
+  {
     goto failed;
   }
 
-  while (true) {
-    switch (page_h_type (&a->pg)) {
-      case PG_INNER_NODE: {
+  while (true)
+  {
+    switch (page_h_type (&a->pg))
+    {
+      case PG_INNER_NODE:
+      {
         // Stack overflow
-        if (a->sp == 20) {
+        if (a->sp == 20)
+        {
           error_causef (e, ERR_RPTREE_PAGE_STACK_OVERFLOW, "page stack overflow (depth 20)");
           goto failed;
         }
@@ -79,17 +87,22 @@ err_t ns_seek (struct ns_seek_params *a, error *e) {
                 npg,
                 a->p,
                 a->save_stack,
-                e)) {
+                e
+            ))
+        {
           goto failed;
         }
 
         // Append a->pg to the stack
-        if (a->save_stack) {
+        if (a->save_stack)
+        {
           a->pstack[(a->sp)++] = (struct seek_v){
               .pg   = page_h_xfer_ownership (&a->pg),
               .lidx = a->lidx,
           };
-        } else {
+        }
+        else
+        {
           if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e)) { goto failed; }
         }
 
@@ -98,13 +111,15 @@ err_t ns_seek (struct ns_seek_params *a, error *e) {
         break;
       }
 
-      case PG_DATA_LIST: {
+      case PG_DATA_LIST:
+      {
         const p_size used = dl_used (page_h_ro (&a->pg));
         a->lidx           = MIN (a->bofst, used);
         return SUCCESS;
       }
 
-      default: {
+      default:
+      {
         UNREACHABLE ();
       }
     }

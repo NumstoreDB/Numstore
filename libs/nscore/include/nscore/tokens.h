@@ -17,7 +17,8 @@
 #include "c_specx.h"
 #include "nscore/types.h"
 
-enum token_t {
+enum token_t
+{
   TT_PLUS = 1,
   TT_MINUS,
   TT_SLASH,
@@ -82,11 +83,13 @@ enum token_t {
   TT_EOF,
 };
 
-struct token {
+struct token
+{
   enum token_t type;
 
   union {
-    struct {
+    struct
+    {
       const char *data;
       u32         len;
     } str;
@@ -104,12 +107,17 @@ struct token {
   case TT_DELETE:   \
   case TT_INSERT
 
-HEADER_FUNC bool tt_is_opcode (enum token_t ttype) {
-  switch (ttype) {
-    case case_OPCODE: {
+HEADER_FUNC bool
+tt_is_opcode (enum token_t ttype)
+{
+  switch (ttype)
+  {
+    case case_OPCODE:
+    {
       return true;
     }
-    default: {
+    default:
+    {
       return false;
     }
   }
@@ -117,16 +125,20 @@ HEADER_FUNC bool tt_is_opcode (enum token_t ttype) {
 
 // Shorthands
 #define quick_tok(_type) \
-  (struct token) { .type = _type }
+  (struct token)         \
+  { .type = _type }
 
 #define tt_integer(val) \
-  (struct token) { .type = TT_INTEGER, .integer = val }
+  (struct token)        \
+  { .type = TT_INTEGER, .integer = val }
 
 #define tt_float(val) \
-  (struct token) { .type = TT_FLOAT, .floating = val }
+  (struct token)      \
+  { .type = TT_FLOAT, .floating = val }
 
 #define tt_ident(_data, _len) \
-  (struct token) {            \
+  (struct token)              \
+  {                           \
     .type = TT_IDENTIFIER,    \
     .str  = {                 \
         .data = _data,        \
@@ -135,7 +147,8 @@ HEADER_FUNC bool tt_is_opcode (enum token_t ttype) {
   }
 
 #define tt_string(_data, _len) \
-  (struct token) {             \
+  (struct token)               \
+  {                            \
     .type = TT_STRING,         \
     .str  = {                  \
         .data = _data,         \
@@ -144,13 +157,16 @@ HEADER_FUNC bool tt_is_opcode (enum token_t ttype) {
   }
 
 #define tt_prim(val) \
-  (struct token) { .type = TT_PRIM, .prim = val }
+  (struct token)     \
+  { .type = TT_PRIM, .prim = val }
 
 #define tt_opcode(op, _s) \
-  (struct token) { .type = op, .stmt = _s }
+  (struct token)          \
+  { .type = op, .stmt = _s }
 
 #define tt_err(_e) \
-  (struct token) { .type = TT_ERROR, .e = _e }
+  (struct token)   \
+  { .type = TT_ERROR, .e = _e }
 
 #define MAX_TOK_T_LEN 16
 

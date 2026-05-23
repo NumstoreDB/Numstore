@@ -17,13 +17,16 @@
 #include "nscore/parsers/parser.h"
 
 // Parse optional ':' NUMBER (step)
-static err_t parse_step (struct parser *base, struct user_stride *s, error *e) {
+static err_t
+parse_step (struct parser *base, struct user_stride *s, error *e)
+{
   if (!parser_match (base, TT_COLON)) { return SUCCESS; }
 
   s->present |= COLON_PRESENT;
   parser_advance (base);
 
-  if (parser_match (base, TT_INTEGER)) {
+  if (parser_match (base, TT_INTEGER))
+  {
     struct token *tok = parser_advance (base);
     s->step           = (sb_size)tok->integer;
     s->present |= STEP_PRESENT;
@@ -33,8 +36,11 @@ static err_t parse_step (struct parser *base, struct user_stride *s, error *e) {
 }
 
 // Parse optional NUMBER ':' NUMBER (stop + step)
-static err_t parse_stop (struct parser *base, struct user_stride *s, error *e) {
-  if (parser_match (base, TT_INTEGER)) {
+static err_t
+parse_stop (struct parser *base, struct user_stride *s, error *e)
+{
+  if (parser_match (base, TT_INTEGER))
+  {
     struct token *tok = parser_advance (base);
     s->stop           = (sb_size)tok->integer;
     s->present |= STOP_PRESENT;
@@ -44,17 +50,21 @@ static err_t parse_stop (struct parser *base, struct user_stride *s, error *e) {
 }
 
 // entry ::= [ NUMBER | NUMBER? ':' NUMBER? | NUMBER? ':' NUMBER? ':' NUMBER? ]
-err_t parse_user_stride (struct parser *parser, struct user_stride *dest, error *e) {
+err_t
+parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
+{
   struct user_stride s = {0};
 
   WRAP (parser_expect (parser, TT_LEFT_BRACKET, e));
 
-  if (parser_match (parser, TT_INTEGER)) {
+  if (parser_match (parser, TT_INTEGER))
+  {
     struct token *tok = parser_advance (parser);
     s.start           = (sb_size)tok->integer;
     s.present |= START_PRESENT;
 
-    if (!parser_match (parser, TT_COLON)) {
+    if (!parser_match (parser, TT_COLON))
+    {
       // Bare integer — single index
       *dest = s;
       return SUCCESS;
@@ -68,7 +78,8 @@ err_t parse_user_stride (struct parser *parser, struct user_stride *dest, error 
   }
 
   // No leading integer — must start with ':'
-  if (parser_match (parser, TT_COLON)) {
+  if (parser_match (parser, TT_COLON))
+  {
     s.present |= COLON_PRESENT;
     parser_advance (parser);
     WRAP (parser_expect (parser, TT_RIGHT_BRACKET, e));

@@ -16,13 +16,16 @@
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
 
-static sb_size _nsdb_insert (
+static sb_size
+_nsdb_insert (
     struct nshandle *db,
     const char      *name,
     const void      *src,
     sb_size          _ofst,
     const b_size     slen,
-    error           *e) {
+    error           *e
+)
+{
   sb_size                     ret;                     // Return value
   b_size                      bofst;                   // Resolved offset
   struct stream               _input;                  // Input stream
@@ -50,7 +53,8 @@ static sb_size _nsdb_insert (
         .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE) {
+    if (err == ERR_VARIABLE_NE)
+    {
       ret           = 0;
       e->cause_code = SUCCESS;
       e->cmlen      = 0;
@@ -109,7 +113,9 @@ failed:
   return error_trace (e);
 }
 
-sb_size nsdb_insert (nsdb_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen) {
+sb_size
+nsdb_insert (nsdb_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen)
+{
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;

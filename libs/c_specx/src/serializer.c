@@ -23,7 +23,9 @@ DEFINE_DBG_ASSERT (struct serializer, serializer, s, {
   ASSERT (s->dlen <= s->dcap);
 })
 
-struct serializer srlizr_create (u8 *data, const u32 dcap) {
+struct serializer
+srlizr_create (u8 *data, const u32 dcap)
+{
   struct serializer ret = (struct serializer){
       .data = data,
       .dlen = 0,
@@ -33,12 +35,15 @@ struct serializer srlizr_create (u8 *data, const u32 dcap) {
   return ret;
 }
 
-bool srlizr_write (struct serializer *dest, const void *src, const u32 len) {
+bool
+srlizr_write (struct serializer *dest, const void *src, const u32 len)
+{
   latch_lock (&dest->latch);
 
   DBG_ASSERT (serializer, dest);
 
-  if (dest->dlen + len > dest->dcap) {
+  if (dest->dlen + len > dest->dcap)
+  {
     latch_unlock (&dest->latch);
     return false;
   }

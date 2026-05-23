@@ -23,7 +23,9 @@
  * TODO:
  *   - Different close method for different pager / wal / lock table passed in
  */
-err_t pgr_close (struct pager *p, error *e) {
+err_t
+pgr_close (struct pager *p, error *e)
+{
   DBG_ASSERT (pager, p);
 
   // Stop the checkpoint task if it's running
@@ -48,7 +50,8 @@ err_t pgr_close (struct pager *p, error *e) {
 }
 
 #ifndef NTEST
-TEST (pgr_close_success) {
+TEST (pgr_close_success)
+{
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
@@ -59,7 +62,9 @@ TEST (pgr_close_success) {
 }
 #endif
 
-err_t pgr_crash (struct pager *p, error *e) {
+err_t
+pgr_crash (struct pager *p, error *e)
+{
   periodic_task_stop (&p->checkpoint_task, e);
 
   wal_crash (p->ww, e);
