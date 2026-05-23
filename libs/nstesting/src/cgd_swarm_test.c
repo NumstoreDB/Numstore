@@ -111,14 +111,12 @@ cgd_swmt_set_allowed (struct cgd_swarm_test *meta)
 }
 
 static char *
-random_name (int low, int high)
+random_name (u32 low, u32 high)
 {
-  // Bound the high length below your validator's 4096 threshold if needed
-  if (low <= 0) { low = 1; }
-  if (high >= 4096) { high = 4095; }
-  int   length = low + (rand () % (high - low + 1));
-  char *buffer = malloc ((length + 1) * sizeof (char));
+  u32   length = randu32r (low, high);
+  char *buffer = malloc (length * sizeof (char));
   var_random_name (buffer, length);
+
   return buffer;
 }
 
@@ -327,16 +325,17 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     struct chunk_alloc temp;
     chunk_alloc_create_default (&temp);
 
-    char        *name    = random_name (1, 100);
+    char        *name    = random_name (2, 100);
     struct type *type    = type_random (&temp, randu32r (1, 2), NULL);
     char        *typestr = type_str (type);
-    u32          esize   = (u32)type_byte_size (type);
+    t_size       esize   = type_byte_size (type);
 
     // Already exists - try again
     if (mem_vhmap_get_var (db, strfcstr (name)) != NULL)
     {
       free (name);
       free (typestr);
+      chunk_alloc_free_all (&temp);
       continue;
     }
 
@@ -356,6 +355,11 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
 
     /* First variable becomes the current one */
     if (meta->cur == NULL) { meta->cur = mem_vhmap_get_var (db, var.vname); }
+
+    free (name);
+    free (typestr);
+    chunk_alloc_free_all (&temp);
+
     return;
   }
 }

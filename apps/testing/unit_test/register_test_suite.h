@@ -18,7 +18,7 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 260);
+TEST_SUITE (smartfiles, 261);
 
 HEADER_FUNC void
 register_tests (void)
@@ -276,6 +276,7 @@ register_tests (void)
   REGISTER (smartfiles, union_t_deserialize_green_path);
   REGISTER (smartfiles, union_t_deserialize_red_path);
   REGISTER (smartfiles, ns_find_var_page);
+  REGISTER (smartfiles, ns_var_get_or_create);
   REGISTER (smartfiles, rand_varname_same_hash);
   REGISTER (smartfiles, rand_varname_different_hash);
   REGISTER (smartfiles, wal);

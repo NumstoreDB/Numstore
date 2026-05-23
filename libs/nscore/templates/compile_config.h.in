@@ -34,8 +34,6 @@
 
 #define PAGE_SIZE       @NS_PAGE_SIZE@
 #define MEMORY_PAGE_LEN @NS_MEMORY_PAGE_LEN@
-#define MAX_VSTR        @NS_MAX_VSTR@
-#define MAX_TSTR        @NS_MAX_TSTR@
 #define WAL_BUFFER_CAP  @NS_WAL_BUFFER_CAP@
 
 ////////////////////////////////////////////////////////////

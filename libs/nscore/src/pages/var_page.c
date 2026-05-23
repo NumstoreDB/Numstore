@@ -155,8 +155,6 @@ vp_validate_for_db (const page *p, error *e)
   {
     return error_causef (e, ERR_CORRUPT, "overflow required but next pointer is null");
   }
-  if (vp_get_vlen (p) > MAX_VSTR) { return error_causef (e, ERR_CORRUPT, "vstring overflow"); }
-  if (vp_get_tlen (p) > MAX_TSTR) { return error_causef (e, ERR_CORRUPT, "tstring overflow"); }
   return SUCCESS;
 }
 
@@ -205,16 +203,6 @@ TEST (vp_validate)
     vp_set_vlen (&sut, 1);
     vp_set_tlen (&sut, 1);
     test_err_t_check (vp_validate_for_db (&sut, &e), SUCCESS, &e);
-  }
-
-  TEST_CASE ("v string overflow")
-  {
-    page_init_empty (&sut, PG_VAR_PAGE);
-    vp_set_vlen (&sut, MAX_VSTR + 1);
-    vp_set_tlen (&sut, 10);
-    test_err_t_check (vp_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
-    e.cause_code = SUCCESS;
-    e.cmlen      = 0;
   }
 
   TEST_CASE ("Valid overflow with next pointer")

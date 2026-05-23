@@ -13,6 +13,8 @@
 /// limitations under the License.
 
 #include "c_specx.h"
+#include "nscore/compile_config.h"
+#include "nscore/page_fixture.h"
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
@@ -67,6 +69,166 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
 
   params->dest = gparams.dest;
 
+  return SUCCESS;
+
 failed:
   return error_trace (e);
 }
+
+#ifndef NTEST
+TEST (ns_var_get_or_create)
+{
+  TEST_CASE ("check types is correct")
+  {
+    struct pgr_fixture f;
+    pgr_fixture_create (&f);
+    ns_init_var_hash_map (f.p, &f.e);
+    struct txn         tx;
+    struct chunk_alloc alloc;
+    chunk_alloc_create_default (&alloc);
+
+    // Create
+    {
+      pgr_begin_txn (&tx, f.p, &f.e);
+
+      struct ns_var_get_or_create_params params = {
+          .p  = f.p,
+          .tx = &tx,
+
+          .vname = strfcstr ("foo"),
+          .type  = &(struct type){.type = T_PRIM, .p = U32},
+          .alloc = &alloc,
+      };
+
+      // Do it twice, both times succeed because it checks types
+      test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+      test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+
+      pgr_commit (f.p, &tx, &f.e);
+    }
+
+    chunk_alloc_free_all (&alloc);
+    pgr_fixture_teardown (&f);
+  }
+
+  TEST_CASE ("errors on different type")
+  {
+    struct pgr_fixture f;
+    pgr_fixture_create (&f);
+    ns_init_var_hash_map (f.p, &f.e);
+    struct txn         tx;
+    struct chunk_alloc alloc;
+    chunk_alloc_create_default (&alloc);
+
+    // Create
+    {
+      pgr_begin_txn (&tx, f.p, &f.e);
+
+      struct ns_var_get_or_create_params params = {
+          .p  = f.p,
+          .tx = &tx,
+
+          .vname = strfcstr ("foo"),
+          .type  = &(struct type){.type = T_PRIM, .p = U32},
+          .alloc = &alloc,
+      };
+
+      test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+
+      // Should fail if you pass a different type
+      params.type = &(struct type){.type = T_PRIM, .p = I32};
+      test_err_t_check (ns_var_get_or_create (&params, &f.e), ERR_INVALID_ARGUMENT, &f.e);
+
+      pgr_commit (f.p, &tx, &f.e);
+    }
+
+    chunk_alloc_free_all (&alloc);
+    pgr_fixture_teardown (&f);
+  }
+
+  TEST_CASE ("Big variable short type")
+  {
+    struct pgr_fixture f;
+    pgr_fixture_create (&f);
+    ns_init_var_hash_map (f.p, &f.e);
+
+    for (u32 i = 0; i < 100; ++i)
+    {
+      struct txn         tx;
+      struct chunk_alloc alloc;
+      chunk_alloc_create_default (&alloc);
+
+      // Long variable name
+      {
+        pgr_begin_txn (&tx, f.p, &f.e);
+
+        char *name = i_malloc (PAGE_SIZE * 10, 1, &f.e);
+        for (u32 k = 0; k < PAGE_SIZE * 10 - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
+        name[PAGE_SIZE * 10 - 1] = '\0';
+
+        struct ns_var_get_or_create_params params = {
+            .p  = f.p,
+            .tx = &tx,
+
+            .vname = strfcstr (name),
+            .type  = &(struct type){.type = T_PRIM, .p = U32},
+            .alloc = &alloc,
+        };
+
+        // Do it twice, both times succeed because it checks types
+        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+
+        i_free (name);
+
+        pgr_commit (f.p, &tx, &f.e);
+      }
+
+      chunk_alloc_free_all (&alloc);
+    }
+
+    pgr_fixture_teardown (&f);
+  }
+
+  TEST_CASE ("Big type short variable name")
+  {
+    struct pgr_fixture f;
+    pgr_fixture_create (&f);
+    ns_init_var_hash_map (f.p, &f.e);
+    struct txn tx;
+
+    for (int i = 0; i < 100; ++i)
+    {
+      struct chunk_alloc alloc;
+      chunk_alloc_create_default (&alloc);
+
+      // Long variable name
+      {
+        pgr_begin_txn (&tx, f.p, &f.e);
+
+        struct type *t = type_random (&alloc, 10, &f.e);
+        i_log_type (t, &f.e);
+
+        struct ns_var_get_or_create_params params = {
+            .p  = f.p,
+            .tx = &tx,
+
+            .vname = strfcstr ("foo"),
+            .type  = t,
+            .alloc = &alloc,
+        };
+
+        // Do it twice, both times succeed because it checks types
+        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+
+        pgr_commit (f.p, &tx, &f.e);
+      }
+
+      chunk_alloc_free_all (&alloc);
+    }
+
+    pgr_fixture_teardown (&f);
+  }
+}
+#endif

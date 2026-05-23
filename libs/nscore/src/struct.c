@@ -219,7 +219,7 @@ TEST (struct_t_snprintf)
   };
 
   char        buffer[200];
-  const char *expected = "struct { foo U32, fo U8, baro U16, bazbi CF128 }";
+  const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
   u32         len      = strlen (expected);
 
   int i = struct_t_snprintf (buffer, 200, &st);
