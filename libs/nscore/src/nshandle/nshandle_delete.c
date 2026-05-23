@@ -36,19 +36,16 @@ _nsh_delete (struct nshandle *db, const char *vname, error *e)
     err_t err = ns_var_delete (params, e);
     if (err == ERR_VARIABLE_NE)
     {
-      // It's ok if it doesn't exist
-      e->cause_code = 0;
-      e->cmlen      = 0;
+      // It's ok - just return the error
       goto commit;
     }
     WRAP_GOTO (err, failed_rollback);
-
-  commit:
-    // COMMIT
-    if (nsh_auto_commit (db, e)) { goto failed_rollback; }
   }
 
-  return SUCCESS;
+commit:
+
+  if (nsh_auto_commit (db, e)) { goto failed_rollback; }
+  return error_trace (e);
 
 failed_rollback:
 

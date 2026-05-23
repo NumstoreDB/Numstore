@@ -53,50 +53,48 @@ match (struct lexer *lex, char expected)
   return true;
 }
 
-static void
-add_token (struct lexer *lex, enum token_t type)
+static err_t
+add_token (struct lexer *lex, enum token_t type, error *e)
 {
-  ASSERT (lex->ntokens < arrlen (lex->tokens));
-
-  lex->tokens[lex->ntokens++] = (struct token){
+  struct token next = {
       .type       = type,
       .text_start = &lex->src[lex->start],
       .text_len   = lex->current - lex->start
   };
+
+  return dblb_append (&lex->_tokens, &next, 1, e);
 }
 
-static void
-add_token_int (struct lexer *lex, i32 value)
+static err_t
+add_token_int (struct lexer *lex, i32 value, error *e)
 {
-  ASSERT (lex->ntokens < arrlen (lex->tokens));
-
-  lex->tokens[lex->ntokens++] = (struct token){
+  struct token next = {
       .type       = TT_INTEGER,
       .integer    = value,
       .text_start = &lex->src[lex->start],
       .text_len   = lex->current - lex->start
   };
+
+  return dblb_append (&lex->_tokens, &next, 1, e);
 }
 
-static void
-add_token_float (struct lexer *lex, f32 value)
+static err_t
+add_token_float (struct lexer *lex, f32 value, error *e)
 {
-  ASSERT (lex->ntokens < arrlen (lex->tokens));
-
-  lex->tokens[lex->ntokens++] = (struct token){
+  struct token next = (struct token){
       .type       = TT_FLOAT,
       .floating   = value,
       .text_start = &lex->src[lex->start],
       .text_len   = lex->current - lex->start
   };
+
+  return dblb_append (&lex->_tokens, &next, 1, e);
 }
 
-static void
-add_token_str (struct lexer *lex, enum token_t type, const char *data, u32 len)
+static err_t
+add_token_str (struct lexer *lex, enum token_t type, const char *data, u32 len, error *e)
 {
-  ASSERT (lex->ntokens < arrlen (lex->tokens));
-
-  lex->tokens[lex->ntokens++] = (struct token){
+  struct token next = (struct token){
       .type = type,
       .str =
           {
@@ -106,19 +104,21 @@ add_token_str (struct lexer *lex, enum token_t type, const char *data, u32 len)
       .text_start = &lex->src[lex->start],
       .text_len   = lex->current - lex->start
   };
+
+  return dblb_append (&lex->_tokens, &next, 1, e);
 }
 
-static void
-add_token_prim (struct lexer *lex, enum prim_t prim)
+static err_t
+add_token_prim (struct lexer *lex, enum prim_t prim, error *e)
 {
-  ASSERT (lex->ntokens < arrlen (lex->tokens));
-
-  lex->tokens[lex->ntokens++] = (struct token){
+  struct token next = (struct token){
       .type       = TT_PRIM,
       .prim       = prim,
       .text_start = &lex->src[lex->start],
       .text_len   = lex->current - lex->start
   };
+
+  return dblb_append (&lex->_tokens, &next, 1, e);
 }
 
 static enum token_t
@@ -161,9 +161,13 @@ scan_string (struct lexer *lex, error *e)
 
   advance (lex); // Closing quote
 
-  add_token_str (lex, TT_STRING, &lex->src[lex->start + 1], (lex->current - lex->start) - 2);
-
-  return SUCCESS;
+  return add_token_str (
+      lex,
+      TT_STRING,
+      &lex->src[lex->start + 1],
+      (lex->current - lex->start) - 2,
+      e
+  );
 }
 
 static err_t
@@ -187,13 +191,13 @@ scan_number (struct lexer *lex, error *e)
   {
     f32 value;
     WRAP (parse_f32_expect (&value, text, len, e));
-    add_token_float (lex, value);
+    return add_token_float (lex, value, e);
   }
   else
   {
     i32 value;
     WRAP (parse_i32_expect (&value, text, len, e));
-    add_token_int (lex, value);
+    return add_token_int (lex, value, e);
   }
 
   return SUCCESS;
@@ -209,22 +213,16 @@ scan_identifier (struct lexer *lex, error *e)
 
   // Check for primitive types first
   enum prim_t prim = strtoprim (text, len);
-  if (prim != (enum prim_t) - 1)
-  {
-    add_token_prim (lex, prim);
-    return SUCCESS;
-  }
+  if (prim != (enum prim_t) - 1) { return add_token_prim (lex, prim, e); }
 
   // Check for keywords
   enum token_t type = check_keyword (text, len);
 
-  if (type == TT_IDENTIFIER) { add_token_str (lex, TT_IDENTIFIER, text, len); }
+  if (type == TT_IDENTIFIER) { return add_token_str (lex, TT_IDENTIFIER, text, len, e); }
   else
   {
-    add_token (lex, type);
+    return add_token (lex, type, e);
   }
-
-  return SUCCESS;
 }
 
 static err_t
@@ -243,92 +241,75 @@ scan_token (struct lexer *lex, error *e)
     }
     case '+':
     {
-      add_token (lex, TT_PLUS);
-      return SUCCESS;
+      return add_token (lex, TT_PLUS, e);
     }
     case '-':
     {
-      add_token (lex, TT_MINUS);
-      return SUCCESS;
+      return add_token (lex, TT_MINUS, e);
     }
     case '/':
     {
-      add_token (lex, TT_SLASH);
-      return SUCCESS;
+      return add_token (lex, TT_SLASH, e);
     }
     case '*':
     {
-      add_token (lex, TT_STAR);
-      return SUCCESS;
+      return add_token (lex, TT_STAR, e);
     }
     case '~':
     {
-      add_token (lex, TT_NOT);
-      return SUCCESS;
+      return add_token (lex, TT_NOT, e);
     }
     case '^':
     {
-      add_token (lex, TT_CARET);
-      return SUCCESS;
+      return add_token (lex, TT_CARET, e);
     }
     case '%':
     {
-      add_token (lex, TT_PERCENT);
-      return SUCCESS;
+      return add_token (lex, TT_PERCENT, e);
     }
     case ';':
     {
-      add_token (lex, TT_SEMICOLON);
-      return SUCCESS;
+      return add_token (lex, TT_SEMICOLON, e);
     }
     case ':':
     {
-      add_token (lex, TT_COLON);
-      return SUCCESS;
+      return add_token (lex, TT_COLON, e);
     }
     case '[':
     {
-      add_token (lex, TT_LEFT_BRACKET);
-      return SUCCESS;
+      return add_token (lex, TT_LEFT_BRACKET, e);
     }
     case ']':
     {
-      add_token (lex, TT_RIGHT_BRACKET);
-      return SUCCESS;
+      return add_token (lex, TT_RIGHT_BRACKET, e);
     }
     case '{':
     {
-      add_token (lex, TT_LEFT_BRACE);
-      return SUCCESS;
+      return add_token (lex, TT_LEFT_BRACE, e);
     }
     case '}':
     {
-      add_token (lex, TT_RIGHT_BRACE);
-      return SUCCESS;
+      return add_token (lex, TT_RIGHT_BRACE, e);
     }
     case '(':
     {
-      add_token (lex, TT_LEFT_PAREN);
-      return SUCCESS;
+      return add_token (lex, TT_LEFT_PAREN, e);
     }
     case ')':
     {
-      add_token (lex, TT_RIGHT_PAREN);
-      return SUCCESS;
+      return add_token (lex, TT_RIGHT_PAREN, e);
     }
     case ',':
     {
-      add_token (lex, TT_COMMA);
-      return SUCCESS;
+      return add_token (lex, TT_COMMA, e);
     }
     case '.':
     {
-      add_token (lex, TT_DOT);
-      return SUCCESS;
+      return add_token (lex, TT_DOT, e);
     }
     case '!':
     {
-      add_token (lex, match (lex, '=') ? TT_BANG_EQUAL : TT_BANG);
+      add_token (lex, match (lex, '=') ? TT_BANG_EQUAL : TT_BANG, e);
       return SUCCESS;
     }
     case '=':
@@ -344,28 +325,23 @@ scan_token (struct lexer *lex, error *e)
             lex->start
         );
       }
-      add_token (lex, TT_EQUAL_EQUAL);
-      return SUCCESS;
+      return add_token (lex, TT_EQUAL_EQUAL, e);
     }
     case '>':
     {
-      add_token (lex, match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER);
-      return SUCCESS;
+      return add_token (lex, match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER, e);
     }
     case '<':
     {
-      add_token (lex, match (lex, '=') ? TT_LESS_EQUAL : TT_LESS);
-      return SUCCESS;
+      return add_token (lex, match (lex, '=') ? TT_LESS_EQUAL : TT_LESS, e);
     }
     case '|':
     {
-      add_token (lex, match (lex, '|') ? TT_PIPE_PIPE : TT_PIPE);
-      return SUCCESS;
+      return add_token (lex, match (lex, '|') ? TT_PIPE_PIPE : TT_PIPE, e);
     }
     case '&':
     {
-      add_token (lex, match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND);
-      return SUCCESS;
+      return add_token (lex, match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND, e);
     }
     case '"':
     {
@@ -397,18 +373,29 @@ lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e)
   lex->src_len = src_len;
   lex->start   = 0;
   lex->current = 0;
-  lex->ntokens = 0;
+  WRAP (dblb_create (&lex->_tokens, sizeof (struct token), 256, e));
 
   while (!is_at_end (lex))
   {
     lex->start = lex->current;
-    WRAP (scan_token (lex, e));
+    if (scan_token (lex, e)) { goto failed; }
   }
 
-  add_token (lex, TT_EOF);
+  if (add_token (lex, TT_EOF, e)) { goto failed; }
+
+  lex->ntokens = lex->_tokens.nelem;
+  lex->tokens  = lex->_tokens.data;
 
   return SUCCESS;
+
+failed:
+  dblb_free (&lex->_tokens);
+  return error_trace (e);
 }
+
+void
+lex_free (struct lexer *lex)
+{ dblb_free (&lex->_tokens); }
 
 #ifndef NTEST
 
@@ -451,6 +438,8 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
     }
     test_assert (token_equal (left, right));
   }
+
+  lex_free (&lex);
 }
 
 TEST (lexer_two_char_tokens)

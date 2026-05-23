@@ -106,7 +106,7 @@ TEST (sarray_t_snprintf)
   };
 
   char        buffer[200];
-  const char *expected = "[10][11][12]U32";
+  const char *expected = "[10][11][12]u32";
   u32         len      = strlen (expected);
 
   int i = sarray_t_snprintf (buffer, 200, &s);

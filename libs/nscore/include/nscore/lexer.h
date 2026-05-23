@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "c_specx.h"
 #include "nscore/tokens.h"
 
 struct lexer
@@ -23,9 +24,12 @@ struct lexer
   u32         start;
   u32         current;
 
-  struct token tokens[4096];
-  u32          ntokens;
+  struct token *tokens;
+
+  u32               ntokens;
+  struct dbl_buffer _tokens;
 };
 
 // Lexer API
 err_t lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e);
+void  lex_free (struct lexer *lex);

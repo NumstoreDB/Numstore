@@ -122,7 +122,7 @@ TEST (prim_t_snprintf)
 {
   enum prim_t p = F64;
   char        buf[32];
-  const char *expect = "F64";
+  const char *expect = "f64";
   u32         elen   = strlen (expect);
 
   int n = prim_t_snprintf (buf, sizeof buf, &p);

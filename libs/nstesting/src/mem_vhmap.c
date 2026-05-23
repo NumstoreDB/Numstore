@@ -127,8 +127,12 @@ mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
 
     chunk_alloc_create_default (&frame->alloc);
 
-    frame->var.vname.data =
-        chunk_alloc_move_mem (&frame->alloc, var->vname.data, var->vname.len, e);
+    frame->var.vname.data = chunk_alloc_move_mem (
+        &frame->alloc,
+        var->vname.data,
+        var->vname.len + 1, // TODO - this is awful - remove +1
+        e
+    );
     frame->var.vname.len = var->vname.len;
     frame->var.dtype     = type_movemem (var->dtype, &frame->alloc, e);
     frame->var.var_root  = var->var_root;
@@ -179,6 +183,8 @@ mem_vhmap_remove_var (struct mem_vhmap *db, struct string name)
 
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
   ASSERT (found);
+  struct var_frame *frame = container_of (*found, struct var_frame, node);
+  chunk_alloc_free_all (&frame->alloc);
   htable_delete (db->vhasht, found);
 }
 

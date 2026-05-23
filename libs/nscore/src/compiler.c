@@ -31,7 +31,9 @@ compile_type (struct type *dest, const char *text, struct chunk_alloc *dalloc, e
 
   struct parser parser = parser_init (lex.tokens, lex.ntokens);
 
-  return parse_type (&parser, dest, dalloc, e);
+  err_t ret = parse_type (&parser, dest, dalloc, e);
+  lex_free (&lex);
+  return ret;
 }
 
 err_t
@@ -42,7 +44,9 @@ compile_subtype (struct subtype *dest, const char *text, struct chunk_alloc *dal
 
   struct parser parser = parser_init (lex.tokens, lex.ntokens);
 
-  return parse_subtype (&parser, dest, dalloc, e);
+  err_t ret = parse_subtype (&parser, dest, dalloc, e);
+  lex_free (&lex);
+  return ret;
 }
 
 err_t
@@ -58,7 +62,9 @@ compile_multi_user_stride (
 
   struct parser parser = parser_init (lex.tokens, lex.ntokens);
 
-  return parse_multi_user_stride (&parser, dest, dalloc, e);
+  err_t ret = parse_multi_user_stride (&parser, dest, dalloc, e);
+  lex_free (&lex);
+  return ret;
 }
 
 err_t
@@ -69,7 +75,9 @@ compile_user_stride (struct user_stride *dest, const char *text, error *e)
 
   struct parser parser = parser_init (lex.tokens, lex.ntokens);
 
-  return parse_user_stride (&parser, dest, e);
+  err_t ret = parse_user_stride (&parser, dest, e);
+  lex_free (&lex);
+  return ret;
 }
 
 err_t
@@ -80,7 +88,11 @@ compile_type_ref (struct type_ref *dest, const char *text, struct chunk_alloc *d
 
   struct parser parser = parser_init (lex.tokens, lex.ntokens);
 
-  return parse_type_ref (&parser, dest, dalloc, e);
+  err_t ret = parse_type_ref (&parser, dest, dalloc, e);
+
+  lex_free (&lex);
+
+  return ret;
 }
 
 #ifndef NTEST
