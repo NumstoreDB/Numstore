@@ -15,7 +15,7 @@
 #pragma once
 
 // smartfiles
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pages/page.h"
 
 ////////////////////////////////////////////////////////////

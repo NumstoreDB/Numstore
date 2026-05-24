@@ -14,7 +14,7 @@
 
 #include "nscore/aries.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/txn.h"
 #include "nscore/txn_table.h"
 

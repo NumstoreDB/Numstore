@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/errors.h"
 #include "nscore/lock_table.h"
 #include "nscore/page_h.h"
@@ -78,7 +78,7 @@ enum
 #define KTYPE  pgno
 #define VTYPE  u32
 #define SUFFIX idx
-#include "c_specx.h"
+#include <c_specx.h>
 #undef KTYPE
 #undef VTYPE
 #undef SUFFIX

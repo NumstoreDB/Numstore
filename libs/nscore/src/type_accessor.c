@@ -14,7 +14,7 @@
 
 #include "nscore/type_accessor.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/compiler.h"
 #include "nscore/subtype.h"
 #include "nscore/types.h"

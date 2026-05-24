@@ -14,7 +14,7 @@
 
 #include "nscore/wal_rec_hdr.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/dirty_page_table.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/page.h"

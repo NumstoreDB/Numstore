@@ -14,7 +14,7 @@
 
 #include "nscore/txn.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/lt_lock.h"
 
 void txn_key_init (struct txn *dest, txid tid);

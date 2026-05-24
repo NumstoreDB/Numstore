@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/compile_config.h"
 #include "nscore/lt_lock.h"
 

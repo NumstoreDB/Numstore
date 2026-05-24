@@ -14,7 +14,7 @@
 
 #include "nscore/lock_table.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
 #include "nscore/txn.h"

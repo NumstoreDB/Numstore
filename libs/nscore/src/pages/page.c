@@ -15,7 +15,7 @@
 // smartfiles
 #include "nscore/pages/page.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/inner_node.h"

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/page_h.h"
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/inner_node.h"

@@ -20,7 +20,7 @@
 // Numpy options
 #define NO_IMPORT_ARRAY
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/types.h"
 
 #include <Python.h>

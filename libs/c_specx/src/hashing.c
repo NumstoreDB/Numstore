@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx.h"
+#include <c_specx/hashing.h>
 
 u32
 fnv1a_hash (const struct string s)

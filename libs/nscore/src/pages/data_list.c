@@ -14,7 +14,7 @@
 
 #include "nscore/pages/data_list.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/compile_config.h"
 #include "nscore/pages/page.h"
 

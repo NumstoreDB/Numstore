@@ -14,7 +14,7 @@
 
 #include "nscore/prim.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/errors.h"
 #include "nscore/types.h"
 

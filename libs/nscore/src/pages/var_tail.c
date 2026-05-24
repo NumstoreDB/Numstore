@@ -14,7 +14,7 @@
 
 #include "nscore/pages/var_tail.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pages/page.h"
 
 DEFINE_DBG_ASSERT (page, vt_page, v, { ASSERT (v); })

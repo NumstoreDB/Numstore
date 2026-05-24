@@ -19,7 +19,7 @@
 #define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
 #define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/types.h"
 
 #include <Python.h>

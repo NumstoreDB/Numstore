@@ -14,7 +14,7 @@
 
 #include "nscore/node_updates.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pages/inner_node.h"
 #include "nscore/pages/page.h"
 

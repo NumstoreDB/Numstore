@@ -14,7 +14,7 @@
 
 #include "nscore/page_fixture.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/page_delegate.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"

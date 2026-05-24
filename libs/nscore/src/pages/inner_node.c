@@ -14,14 +14,14 @@
 
 #include "nscore/pages/inner_node.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "inner_node_testing.h"
 #include "nscore/pages/page.h"
 
 #define VTYPE  int
 #define KTYPE  pgno
 #define SUFFIX pgno
-#include "c_specx.h"
+#include <c_specx.h>
 #undef VTYPE
 #undef KTYPE
 #undef SUFFIX
