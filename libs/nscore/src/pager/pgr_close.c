@@ -20,10 +20,6 @@
 
 #include <c_specx.h>
 
-/**
- * TODO:
- *   - Different close method for different pager / wal / lock table passed in
- */
 err_t
 pgr_close (struct pager *p, error *e)
 {
@@ -33,10 +29,24 @@ pgr_close (struct pager *p, error *e)
   periodic_task_stop (&p->checkpoint_task, e);
 
   lockt_lock (p->lt, lock_db (), LM_X, NULL, e);          // Never released
-  lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww); // Next wal start
-  pgr_write_next_lsn (p, end_lsn, e);                     // Write next wal start
-  pgr_evict_all_pages (p, e);                             // Evict all pages
-  wal_close_and_delete (p->ww, e);                        // Close (and delete) wal
+
+  // Similar to a checkpoint
+  {
+    // Evict all pages- so the database is consistent
+    pgr_evict_all_pages (p, e);                             
+
+    // Flush the WAL 
+    wal_flush_all(p->ww, e);
+
+    // Get the end_lsn
+    lsn end_lsn = wal_start_lsn(p->ww) + wal_size(p->ww);
+
+    // Write the next min lsn slot
+    pgr_write_next_lsn(p, end_lsn, e);
+
+    // Delete the WAL 
+    wal_close_and_delete(p->ww, e);
+  }
 
   fpgr_close (p->fp, e);
   lockt_destroy (p->lt);
