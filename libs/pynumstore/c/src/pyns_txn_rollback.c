@@ -16,13 +16,18 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
 
 PyObject *
 pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
+  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
+  if (!ns) { return NULL; }
 
-  /* TODO: smfile_rollback(txn); */
+  if (nsdb_rollback (ns) < 0)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }

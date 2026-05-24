@@ -16,12 +16,18 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
 
 PyObject *
 pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  if (!PyCapsule_GetPointer (arg, TXN_CAPSULE)) { return NULL; }
-  /* TODO: smfile_commit(txn); */
+  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
+  if (!ns) { return NULL; }
+
+  if (nsdb_commit (ns) < 0)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }

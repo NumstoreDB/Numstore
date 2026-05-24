@@ -27,7 +27,7 @@
 #include <numpy/arrayobject.h>
 #include <string.h>
 
-static PyObject *pyns_type_to_dtype (const struct type *t);
+PyObject *pyns_type_to_dtype (const struct type *t);
 
 static PyObject *
 build_complex_struct (int component_typenum)
@@ -319,7 +319,7 @@ sarray_to_dtype (const struct sarray_t *sa)
   return (PyObject *)out;
 }
 
-static PyObject *
+PyObject *
 pyns_type_to_dtype (const struct type *t)
 {
   ASSERT (t);

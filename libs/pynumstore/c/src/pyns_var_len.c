@@ -16,23 +16,25 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
 
 PyObject *
 pyns_var_len (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject *db;
-  PyObject *txn_or_none;
+  PyObject   *db;
+  PyObject   *txn_or_none;
+  const char *name;
 
-  long long var_id;
-  if (!PyArg_ParseTuple (args, "OOL", &db, &txn_or_none, &var_id)) { return NULL; }
+  if (!PyArg_ParseTuple (args, "OOs", &db, &txn_or_none, &name)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  nsdb_t *ns = _active_ns (db, txn_or_none);
+  if (!ns) { return NULL; }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  sb_size len = nsdb_len (ns, name);
+  if (len < 0)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
 
-  /* TODO: return PyLong_FromSsize_t(smfile_len(smf, txn, var_id)); */
-  return PyLong_FromLong (16);
+  return PyLong_FromSsize_t ((Py_ssize_t)len);
 }

@@ -16,16 +16,20 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
 
-/*
- * db_begin(db: capsule) -> capsule
- */
 PyObject *
 pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  if (!_unwrap_db (arg)) { return NULL; }
+  nsdb_t *ns = _unwrap_db (arg);
+  if (!ns) { return NULL; }
 
-  /* TODO: smfile_txn_t *txn = smfile_begin(smf); */
-  return PyCapsule_New ((void *)(1), TXN_CAPSULE, NULL);
+  if (nsdb_begin (ns) < 0)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
+
+  // The transaction capsule wraps the same nsdb_t * with no destructor —
+  // the db capsule's destructor owns the lifetime.
+  return PyCapsule_New ((void *)ns, TXN_CAPSULE, NULL);
 }

@@ -12,37 +12,58 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#define NO_IMPORT_ARRAY
 #include "_pynumstore.h"
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
+#include <numpy/arrayobject.h>
 
+// var_insert(db, txn_or_none, name: str, ofst: int, data: NDArray) -> None
+//
+// Inserts len(data) elements from data into the variable at element offset ofst.
 PyObject *
 pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject *db;
-  PyObject *txn_or_none;
+  PyObject   *db;
+  PyObject   *txn_or_none;
+  const char *name;
+  PyObject   *ofst_obj;
+  PyObject   *data_obj;
 
-  long long var_id, key;
-  Py_buffer data;
-  if (!PyArg_ParseTuple (args, "OOLLy*", &db, &txn_or_none, &var_id, &key, &data)) { return NULL; }
-
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf)
+  if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &ofst_obj, &data_obj))
   {
-    PyBuffer_Release (&data);
     return NULL;
   }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ())
+  if (!PyLong_Check (ofst_obj))
   {
-    PyBuffer_Release (&data);
+    PyErr_SetString (PyExc_TypeError, "offset must be int");
     return NULL;
   }
 
-  /* TODO: smfile_insert(smf, txn, var_id, key, data.buf, data.len); */
-  PyBuffer_Release (&data);
+  long long ofst = PyLong_AsLongLong (ofst_obj);
+  if (ofst == -1 && PyErr_Occurred ()) { return NULL; }
+
+  if (!PyArray_Check (data_obj))
+  {
+    PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
+    return NULL;
+  }
+
+  PyArrayObject *arr     = (PyArrayObject *)data_obj;
+  void          *buf     = PyArray_DATA (arr);
+  npy_intp       nelems  = PyArray_SIZE (arr);
+
+  nsdb_t *ns = _active_ns (db, txn_or_none);
+  if (!ns) { return NULL; }
+
+  sb_size inserted = nsdb_insert (ns, name, buf, (sb_size)ofst, (b_size)nelems);
+  if (inserted < 0)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
+
   Py_RETURN_NONE;
 }

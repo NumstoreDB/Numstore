@@ -38,7 +38,7 @@
 ////////////////////////////////////////////////////////////
 // CPU
 
-#define NS_CPU_COUNT 8
+#define NS_CPU_COUNT 4
 
 ////////////////////////////////////////////////////////////
 // Data Type Sizes
@@ -142,3 +142,7 @@ sb_size nsdb_remove (
     sb_size     step,
     sb_size     stop,
     int         flags);
+
+// Returns a heap-allocated type string for the named variable (caller must free).
+// Returns NULL if the variable does not exist or on error.
+char *nsdb_type_str (nsdb_t *ns, const char *vname);

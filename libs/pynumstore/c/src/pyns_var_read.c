@@ -12,32 +12,137 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#define NO_IMPORT_ARRAY
 #include "_pynumstore.h"
-#include "nscore/nshandle.h"
-#include "nscore/rope.h"
-#include "nscore/types.h"
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <c_specx.h>
-#include <string.h>
+#include <numpy/arrayobject.h>
+#include <stdlib.h>
 
+// var_read(db, txn_or_none, name: str, key: int|range) -> NDArray
 PyObject *
 pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject *db;
-  PyObject *txn_or_none;
+  PyObject   *db;
+  PyObject   *txn_or_none;
+  const char *name;
+  PyObject   *key_obj;
 
-  long long var_id, key;
-  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
+  if (!PyArg_ParseTuple (args, "OOsO", &db, &txn_or_none, &name, &key_obj)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  nsdb_t *ns = _active_ns (db, txn_or_none);
+  if (!ns) { return NULL; }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  // Determine key range
+  long long start, step, stop;
+  int       flags;
 
-  /* TODO: smfile_read(smf, txn, var_id, key, &buf, &len); */
-  static const char zeros[8] = {0};
-  return PyBytes_FromStringAndSize (zeros, sizeof zeros);
+  if (PyLong_Check (key_obj))
+  {
+    start = PyLong_AsLongLong (key_obj);
+    if (start == -1 && PyErr_Occurred ()) { return NULL; }
+    step  = 1;
+    stop  = start + 1;
+    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
+  }
+  else
+  {
+    PyObject *r_start = PyObject_GetAttrString (key_obj, "start");
+    PyObject *r_stop  = PyObject_GetAttrString (key_obj, "stop");
+    PyObject *r_step  = PyObject_GetAttrString (key_obj, "step");
+    if (!r_start || !r_stop || !r_step)
+    {
+      Py_XDECREF (r_start);
+      Py_XDECREF (r_stop);
+      Py_XDECREF (r_step);
+      return NULL;
+    }
+    start = PyLong_AsLongLong (r_start);
+    stop  = PyLong_AsLongLong (r_stop);
+    step  = PyLong_AsLongLong (r_step);
+    Py_DECREF (r_start);
+    Py_DECREF (r_stop);
+    Py_DECREF (r_step);
+    if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) { return NULL; }
+    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
+  }
+
+  if (step <= 0)
+  {
+    PyErr_SetString (PyExc_ValueError, "key step must be positive");
+    return NULL;
+  }
+
+  // Get variable dtype
+  char *type_str = nsdb_type_str (ns, name);
+  if (!type_str)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
+
+  PyObject *type_str_py = PyUnicode_FromString (type_str);
+  free (type_str);
+  if (!type_str_py) { return NULL; }
+
+  PyObject *dtype_obj = pyns_compile_type (NULL, type_str_py);
+  Py_DECREF (type_str_py);
+  if (!dtype_obj) { return NULL; }
+
+  PyArray_Descr *dtype = (PyArray_Descr *)dtype_obj;
+  npy_intp       tsize = (npy_intp)PyDataType_ELSIZE (dtype);
+
+  // Compute maximum element count from key range
+  npy_intp nelems_max;
+  if (stop <= start) { nelems_max = 0; }
+  else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
+
+  // Allocate temporary buffer for the read
+  void *buf = NULL;
+  if (nelems_max > 0)
+  {
+    buf = malloc ((size_t)(nelems_max * tsize));
+    if (!buf)
+    {
+      Py_DECREF (dtype_obj);
+      PyErr_NoMemory ();
+      return NULL;
+    }
+  }
+
+  sb_size bytes_read =
+      nsdb_read (ns, name, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+
+  if (bytes_read < 0)
+  {
+    free (buf);
+    Py_DECREF (dtype_obj);
+    _pyns_set_error (ns);
+    return NULL;
+  }
+
+  // nsdb_read returns element count (not bytes)
+  npy_intp nelems_actual = (npy_intp)bytes_read;
+  npy_intp dims[1]       = { nelems_actual };
+
+  // PyArray_NewFromDescr takes a new reference to dtype; we keep our own and
+  // explicitly decref after the call so it is always released exactly once.
+  Py_INCREF (dtype_obj);
+  PyObject *arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
+  Py_DECREF (dtype_obj);
+
+  if (!arr)
+  {
+    free (buf);
+    return NULL;
+  }
+
+  if (nelems_actual > 0)
+  {
+    memcpy (PyArray_DATA ((PyArrayObject *)arr), buf, (size_t)(nelems_actual * tsize));
+  }
+
+  free (buf);
+  return arr;
 }
