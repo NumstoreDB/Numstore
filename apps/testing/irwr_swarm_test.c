@@ -35,7 +35,7 @@ main (void)
   struct irwr_swarm_test *meta =
       irwr_swmt_open (start_enabled, "test", 100000, "testvar", "u32", sizeof (u32));
 
-#ifdef _WIN32
+#if PLATFORM_WINDOWS 
   // Windows / ISO C fallback
   if (signal (SIGINT, handle_sigint) == SIG_ERR)
   {
