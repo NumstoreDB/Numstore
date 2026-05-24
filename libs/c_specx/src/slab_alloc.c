@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx/slab_alloc.h>
+#include <c_specx.h>
 
 struct slab
 {

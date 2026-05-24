@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx/checksums.h>
+#include <c_specx.h>
 
 static u32 _crc32c_tbl[256];
 static int _crc32c_inited = 0;
