@@ -69,13 +69,16 @@ _nsdb_insert (
   bofst = var_resolve_index (&gparams.dest, tsize * _ofst);
 
   i_log_debug (
-      "INSERT - %s"
+      "INSERT (txn = %" PRtxid
+      ")"
+      " - %s"
       " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
       " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64 " nbytes (bytes): %" PRId64
       " Granted: "
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
+      db->atx->tid,
       name,
       tsize,
       gparams.dest.nbytes / tsize,

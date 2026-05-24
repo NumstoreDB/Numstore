@@ -23,6 +23,7 @@ pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg)
   nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
   if (!ns) { return NULL; }
 
+  // ROLLBACK
   if (nsdb_rollback (ns) < 0)
   {
     _pyns_set_error (ns);

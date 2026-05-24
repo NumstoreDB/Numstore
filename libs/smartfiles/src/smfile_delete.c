@@ -15,16 +15,19 @@
 #include "nscore/errors.h"
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
+#include "smfile.h"
 
 #include <c_specx.h>
 
 static err_t
-_nsh_delete (struct nshandle *db, const char *vname, error *e)
+_smfile_delete (struct nshandle *db, const char *vname, error *e)
 {
   struct txn auto_txn;
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+
+  i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", db->atx->tid, vname);
 
   struct string vnamestr = strfcstr (vname);
   {
@@ -57,9 +60,12 @@ failed:
 }
 
 int
-nsh_delete (struct nshandle *ns, const char *vname)
+smfile_delete (smfile_t *_smf, const char *vname)
 {
-  ns->e.cause_code = SUCCESS;
-  ns->e.cmlen      = 0;
-  return _nsh_delete (ns, vname, &ns->e);
+  struct nshandle *smf = (struct nshandle *)_smf;
+
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  return _smfile_delete (smf, vname, &smf->e);
 }

@@ -51,24 +51,8 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
             goto failed;
           }
 
-          wrh_undo (log_rec, &ph);
-
-          // Append a clr log
-          slsn l = wal_append_clr_log (
-              p->ww,
-              (struct wal_clr_write){
-                  .type      = WCLR_PHYSICAL,
-                  .tid       = log_rec->update.tid,
-                  .prev      = tx->data.last_lsn,
-                  .undo_next = log_rec->update.prev,
-                  .phys =
-                      {
-                          .pg   = log_rec->update.phys.pg,
-                          .redo = log_rec->update.phys.undo,
-                      },
-              },
-              e
-          );
+          // Undo and Append a clr log
+          slsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
           if (l < 0) { goto failed; }
 
           // Set the page lsn

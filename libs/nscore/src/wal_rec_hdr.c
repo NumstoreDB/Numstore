@@ -764,8 +764,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
   }
 }
 
-void
-wrh_undo (struct wal_rec_hdr_read *h, page_h *ph)
+struct wal_clr_write
+wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
 {
   switch (h->type)
   {
@@ -788,7 +788,16 @@ wrh_undo (struct wal_rec_hdr_read *h, page_h *ph)
         case WUP_PHYSICAL:
         {
           memcpy (page_h_w (ph), h->update.phys.undo, PAGE_SIZE);
-          return;
+          return (struct wal_clr_write){
+              .type      = WCLR_PHYSICAL,
+              .tid       = h->update.tid,
+              .prev      = tx->data.last_lsn,
+              .undo_next = h->update.prev,
+              .phys      = {
+                  .pg   = wrh_get_affected_pg (h),
+                  .redo = h->update.phys.undo,
+              },
+          };
         }
         case WUP_FSM:
         {
@@ -797,7 +806,17 @@ wrh_undo (struct wal_rec_hdr_read *h, page_h *ph)
           {
             fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
           }
-          return;
+          return (struct wal_clr_write){
+              .type      = WCLR_FSM,
+              .tid       = h->update.tid,
+              .prev      = tx->data.last_lsn,
+              .undo_next = h->update.prev,
+              .fsm       = {
+                  .pg   = page_h_pgno (ph),
+                  .bit  = h->update.fsm.bit,
+                  .redo = h->update.fsm.undo,
+              },
+          };
         }
         case WUP_FEXT:
         {

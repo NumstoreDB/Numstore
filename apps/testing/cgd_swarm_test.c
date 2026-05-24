@@ -16,6 +16,7 @@
 
 #include <signal.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 static volatile sig_atomic_t keep_running = 1;
 
@@ -33,6 +34,7 @@ main (void)
   for (int i = 0; i < CDS_AT_LEN; ++i) { start_enabled[i] = 1; }
 
   struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
+  srand (100);
 
 #if PLATFORM_WINDOWS
   // Windows / ISO C fallback

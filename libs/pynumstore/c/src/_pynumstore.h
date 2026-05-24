@@ -30,9 +30,7 @@ _nspy_release_db (PyObject *obj)
 
 HEADER_FUNC nsdb_t *
 _unwrap_db (PyObject *db)
-{
-  return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE);
-}
+{ return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE); }
 
 // Returns nsdb_t * from txn capsule, or NULL (without setting error) if None.
 HEADER_FUNC nsdb_t *
@@ -46,10 +44,7 @@ _unwrap_txn (PyObject *txn_or_none)
 HEADER_FUNC nsdb_t *
 _active_ns (PyObject *db, PyObject *txn_or_none)
 {
-  if (txn_or_none != Py_None)
-  {
-    return (nsdb_t *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
-  }
+  if (txn_or_none != Py_None) { return (nsdb_t *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE); }
   return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE);
 }
 
@@ -59,5 +54,8 @@ _pyns_set_error (nsdb_t *ns)
 {
   const char *err = nsdb_strerror (ns);
   if (err) { PyErr_SetString (PyExc_RuntimeError, err); }
-  else { PyErr_SetString (PyExc_RuntimeError, "numstore operation failed"); }
+  else
+  {
+    PyErr_SetString (PyExc_RuntimeError, "numstore operation failed");
+  }
 }

@@ -37,7 +37,10 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   txid                     tid          = tx->tid;      // The transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
-  if (wal_flush_to (p->ww, undo_nxt_lsn, e)) { goto failed; }
+  if (undo_nxt_lsn > 0)
+  {
+    if (wal_flush_to (p->ww, undo_nxt_lsn, e)) { goto failed; }
+  }
 
   while (save_lsn < undo_nxt_lsn)
   {
@@ -60,24 +63,8 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
           pgno pg = wrh_get_affected_pg (log_rec);
           if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) { goto failed; }
 
-          wrh_undo (log_rec, &ph);
-
-          // Append a clr log
-          prev_lsn = wal_append_clr_log (
-              p->ww,
-              (struct wal_clr_write){
-                  .type      = WCLR_PHYSICAL,
-                  .tid       = log_rec->update.tid,
-                  .prev      = tx->data.last_lsn,
-                  .undo_next = log_rec->update.prev,
-                  .phys =
-                      {
-                          .pg   = pg,
-                          .redo = log_rec->update.phys.undo,
-                      },
-              },
-              e
-          );
+          // Undo and append a clr log
+          prev_lsn = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
           if (prev_lsn < 0) { goto failed; }
 
           // Set the last page lsn
@@ -404,5 +391,4 @@ TEST (aries_rollback_clr_not_undone)
 
   pgr_close (p, &e);
 }
-
 #endif

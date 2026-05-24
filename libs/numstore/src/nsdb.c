@@ -40,10 +40,20 @@ _nsdb_crash (nsdb_t *ns)
 { return nsh_crash ((struct nshandle *)ns); }
 int
 nsdb_begin (nsdb_t *_smf)
-{ return nsh_begin ((struct nshandle *)_smf); }
+{
+  int ret = nsh_begin ((struct nshandle *)_smf);
+  if (ret == 0) { i_log_debug ("BEGIN TXN: %" PRtxid "\n", ((struct nshandle *)_smf)->atx->tid); }
+  return ret;
+}
 int
 nsdb_commit (nsdb_t *_smf)
-{ return nsh_commit ((struct nshandle *)_smf); }
+{
+  i_log_debug ("COMMIT: %" PRtxid "\n", ((struct nshandle *)_smf)->atx->tid);
+  return nsh_commit ((struct nshandle *)_smf);
+}
 int
 nsdb_rollback (nsdb_t *smf)
-{ return nsh_rollback ((struct nshandle *)smf); }
+{
+  i_log_debug ("ROLLBACK: %" PRtxid "\n", ((struct nshandle *)smf)->atx->tid);
+  return nsh_rollback ((struct nshandle *)smf);
+}

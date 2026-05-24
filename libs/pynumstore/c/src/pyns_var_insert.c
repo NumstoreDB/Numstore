@@ -51,9 +51,9 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  PyArrayObject *arr     = (PyArrayObject *)data_obj;
-  void          *buf     = PyArray_DATA (arr);
-  npy_intp       nelems  = PyArray_SIZE (arr);
+  PyArrayObject *arr    = (PyArrayObject *)data_obj;
+  void          *buf    = PyArray_DATA (arr);
+  npy_intp       nelems = PyArray_SIZE (arr);
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
   if (!ns) { return NULL; }

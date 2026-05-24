@@ -278,8 +278,8 @@ bool  wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool  wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno  wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
 void  i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
-void  wrh_undo (struct wal_rec_hdr_read *h, page_h *ph);
-void  wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
+struct wal_clr_write wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
+void                 wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
 
 // DECODE
 void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN]);

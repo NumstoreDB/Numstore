@@ -15,6 +15,7 @@
 #include "cgd_swarm_test.h"
 
 #include "_numstore.h"
+#include "c_specx/error.h"
 #include "mem_vhmap.h"
 #include "nscore/compile_config.h"
 #include "nscore/types.h"
@@ -198,11 +199,11 @@ void
 cgd_swmt_step (struct cgd_swarm_test *meta)
 {
   // Temporary
-  meta->allowed[CDS_CRASH_AND_REOPEN] = 0;
-  meta->allowed[CDS_CLOSE_AND_REOPEN] = 0;
-  meta->allowed[CDS_ROLLBACK_TXN]     = 0;
-  meta->allowed[CDS_COMMIT_TXN]       = 0;
-  meta->allowed[CDS_BEGIN_TXN]        = 0;
+  // meta->allowed[CDS_CRASH_AND_REOPEN] = 0;
+  // meta->allowed[CDS_CLOSE_AND_REOPEN] = 0;
+  // meta->allowed[CDS_ROLLBACK_TXN]     = 0;
+  // meta->allowed[CDS_COMMIT_TXN]       = 0;
+  // meta->allowed[CDS_BEGIN_TXN]        = 0;
 
   /* Count allowed actions */
   int len = 0;
@@ -262,7 +263,8 @@ cgd_swmt_begin_txn (struct cgd_swarm_test *meta)
 
   cgd_swmt_assert (nsdb_begin (meta->db) == 0);
 
-  meta->working = mem_vhmap_clone (meta->committed, NULL);
+  error e       = error_create ();
+  meta->working = mem_vhmap_clone (meta->committed, &e);
   cgd_swmt_assert (meta->working != NULL);
   meta->in_txn = 1;
 }
@@ -355,8 +357,9 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     struct chunk_alloc temp;
     chunk_alloc_create_default (&temp);
 
+    error        e       = error_create ();
     char        *name    = random_name ();
-    struct type *type    = type_random (&temp, get_random_type_depth (), NULL);
+    struct type *type    = type_random (&temp, get_random_type_depth (), &e);
     char        *typestr = type_str (type);
 
     // Already exists - try again
@@ -380,7 +383,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     cgd_swmt_assert (nsdb_create (meta->db, name, typestr) == 0);
 
     /* Reference side -- takes ownership of name & typestr */
-    cgd_swmt_assert (mem_vhmap_add_var (db, &var, NULL) == 0);
+    cgd_swmt_assert (mem_vhmap_add_var (db, &var, &e) == 0);
 
     /* First variable becomes the current one */
     if (meta->cur == NULL) { meta->cur = mem_vhmap_get_var (db, var.vname); }

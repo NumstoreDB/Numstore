@@ -33,6 +33,8 @@ _nsdb_len (struct nshandle *db, const char *name, error *e)
   // BEGIN TXN
   if (nsh_auto_begin_txn (db, e) < 0) { goto failed; }
 
+  i_log_debug ("LEN (txn = %" PRtxid "): %s\n", db->atx->tid, name);
+
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_params){
@@ -41,7 +43,7 @@ _nsdb_len (struct nshandle *db, const char *name, error *e)
         .vname = vname,
         .alloc = &temp,
     };
-    if (ns_var_get (&gparams, e)) { goto failed; }
+    if (ns_var_get (&gparams, e)) { goto failed_rollback; }
   }
 
   // Resolve length
@@ -78,8 +80,6 @@ sb_size
 nsdb_len (nsdb_t *_smf, const char *name)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
-
-  i_log_debug ("LEN: %s\n", name);
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;

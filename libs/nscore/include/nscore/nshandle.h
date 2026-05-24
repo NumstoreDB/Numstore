@@ -53,7 +53,6 @@ struct nshandle *nsh_open (const char *path);
 int              nsh_cleanup (const char *path);
 struct nshandle *nsh_new_context (struct nshandle *ns);
 int              nsh_close (struct nshandle *ns);
-int              nsh_delete (struct nshandle *ns, const char *vname);
 
 err_t            nsh_root_close (struct nshandle_root *root, error *e);
 err_t            nsh_root_crash (struct nshandle_root *root, error *e);

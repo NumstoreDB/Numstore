@@ -33,6 +33,8 @@ _nsdb_create (struct nshandle *db, const char *name, const char *type, error *e)
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
+  i_log_debug ("CREATE (txn = %" PRtxid "): %s %s\n", db->atx->tid, name, type);
+
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_or_create_params){
@@ -64,8 +66,6 @@ int
 nsdb_create (nsdb_t *_smf, const char *name, const char *type)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
-
-  i_log_debug ("CREATE: %s %s\n", name, type);
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;

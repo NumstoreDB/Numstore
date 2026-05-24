@@ -12,20 +12,60 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_numstore.h"
-#include "nscore/compiler.h"
+#include "nscore/errors.h"
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
+#include "numstore.h"
+
+#include <c_specx.h>
+
+static err_t
+_nsdb_delete (struct nshandle *db, const char *vname, error *e)
+{
+  struct txn auto_txn;
+
+  // BEGIN TXN
+  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+
+  i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", db->atx->tid, vname);
+
+  struct string vnamestr = strfcstr (vname);
+  {
+    // DELETE
+    struct ns_var_delete_params params = {
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = strfcstr (vname),
+    };
+    err_t err = ns_var_delete (params, e);
+    if (err == ERR_VARIABLE_NE)
+    {
+      // It's ok - just return the error
+      goto commit;
+    }
+    if (err < SUCCESS) { goto failed_rollback; }
+  }
+
+commit:
+
+  if (nsh_auto_commit (db, e)) { goto failed_rollback; }
+  return error_trace (e);
+
+failed_rollback:
+
+  nsh_auto_rollback (db);
+
+failed:
+  return error_trace (e);
+}
 
 int
-nsdb_delete (nsdb_t *_smf, const char *name)
+nsdb_delete (nsdb_t *_smf, const char *vname)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
-
-  i_log_debug ("DELETE: %s\n", name);
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return nsh_delete (smf, name);
+  return _nsdb_delete (smf, vname, &smf->e);
 }

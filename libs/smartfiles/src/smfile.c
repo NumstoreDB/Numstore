@@ -59,10 +59,6 @@ smfile_new_context (smfile_t *n)
 { return (smfile_t *)nsh_new_context ((struct nshandle *)n); }
 
 int
-smfile_delete (smfile_t *n, const char *vname)
-{ return nsh_delete ((struct nshandle *)n, vname); }
-
-int
 smfile_close (smfile_t *ns)
 { return nsh_close ((struct nshandle *)ns); }
 int

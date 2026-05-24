@@ -23,7 +23,7 @@ _nsdb_type_str (struct nshandle *db, const char *name, error *e)
 {
   struct chunk_alloc       temp;
   struct ns_var_get_params gparams;
-  char                    *ret  = NULL;
+  char                    *ret   = NULL;
   struct string            vname = strfcstr (name);
 
   chunk_alloc_create_default (&temp);
