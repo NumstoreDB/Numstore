@@ -31,7 +31,7 @@ main (void)
   int start_enabled[IRWR_AT_LEN];
   for (int i = 0; i < IRWR_AT_LEN; ++i) { start_enabled[i] = 1; }
 
-  struct irwr_swarm_test *meta = irwr_swmt_open (start_enabled, "test", 100000);
+  struct irwr_swarm_test *meta = irwr_swmt_open (start_enabled, "test", 100000, "testvar", "u32", sizeof (u32));
 
   struct sigaction sa;
   sa.sa_handler = handle_sigint;

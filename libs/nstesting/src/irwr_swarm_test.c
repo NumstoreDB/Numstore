@@ -47,7 +47,7 @@ irwr_swmt_random_slice (int total, int *ofst, int *stride, int *len)
 {
   assert (total > 0);
 
-  *ofst         = randu32r (0, total);
+  *ofst         = randu32r (0, total - 1);
   int remaining = total - *ofst;
   *stride       = randu32r (1, remaining);
 
@@ -56,7 +56,7 @@ irwr_swmt_random_slice (int total, int *ofst, int *stride, int *len)
 }
 
 static struct stride
-to_block_stride (int ofst, int stride, int len, u32 es)
+to_block_stride (int ofst, int stride, int len)
 {
   return (struct stride){
       .start  = (u64)ofst,
@@ -127,7 +127,14 @@ irwr_swmt_set_allowed (struct irwr_swarm_test *meta)
 /// Main Api
 
 struct irwr_swarm_test *
-irwr_swmt_open (int start_enabled[IRWR_AT_LEN], const char *dbname, int max_insert_len)
+irwr_swmt_open (
+    int         start_enabled[IRWR_AT_LEN],
+    const char *dbname,
+    int         max_insert_len,
+    const char *varname,
+    const char *vartype,
+    u32         esize
+)
 {
   struct irwr_swarm_test *ret = malloc (sizeof *ret);
   irwr_swmt_assert (ret != NULL);
@@ -140,6 +147,9 @@ irwr_swmt_open (int start_enabled[IRWR_AT_LEN], const char *dbname, int max_inse
       .db             = nsdb_open (dbname),
       .in_txn         = 0,
       .dbname         = dbname,
+      .varname        = varname,
+      .vartype        = vartype,
+      .esize          = esize,
       .max_insert_len = max_insert_len,
       .len            = 0,
   };
@@ -150,7 +160,7 @@ irwr_swmt_open (int start_enabled[IRWR_AT_LEN], const char *dbname, int max_inse
   memcpy (ret->enabled, start_enabled, IRWR_AT_LEN * sizeof (int));
   irwr_swmt_set_allowed (ret);
 
-  irwr_swmt_assert (nsdb_create (ret->db, "testvar", "u32") == 0);
+  irwr_swmt_assert (nsdb_create (ret->db, varname, vartype) == 0);
 
   return ret;
 }
@@ -271,6 +281,7 @@ irwr_swmt_rollback_txn (struct irwr_swarm_test *meta)
   block_array_free (meta->working);
   meta->working = NULL;
   meta->in_txn  = 0;
+  meta->len     = block_array_getlen (meta->committed) / (u64)meta->esize;
 }
 
 /**
@@ -291,6 +302,7 @@ irwr_swmt_crash_and_reopen (struct irwr_swarm_test *meta)
     meta->working = NULL;
   }
   meta->in_txn = 0;
+  meta->len    = block_array_getlen (meta->committed) / (u64)meta->esize;
 }
 
 void
@@ -309,17 +321,17 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   int len  = (rand () % meta->max_insert_len) + 1;
   int ofst = rand () % (meta->len + 1);
 
-  int      blen = len * sizeof (u32);
+  int      blen = len * (int)meta->esize;
   uint8_t *data = malloc ((size_t)blen);
   irwr_swmt_assert (data != NULL);
   for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
 
   /* DB side */
-  irwr_swmt_assert (nsdb_insert (meta->db, "testvar", data, ofst, len) == len);
+  irwr_swmt_assert (nsdb_insert (meta->db, meta->varname, data, ofst, len) == len);
 
   /* Reference side */
   irwr_swmt_assert (
-      block_array_insert (active_db (meta), (u32)(ofst * (int)sizeof (u32)), data, (u32)blen, NULL)
+      block_array_insert (active_db (meta), (u32)(ofst * (int)meta->esize), data, (u32)blen, NULL)
       == 0
   );
 
@@ -334,19 +346,19 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
   int ofst, stride, len;
   irwr_swmt_random_slice (meta->len, &ofst, &stride, &len);
 
-  size_t   buf_sz  = (size_t)len * (size_t)sizeof (u32);
+  size_t   buf_sz  = (size_t)len * (size_t)meta->esize;
   uint8_t *db_buf  = calloc (1, buf_sz);
   uint8_t *ref_buf = calloc (1, buf_sz);
   irwr_swmt_assert (db_buf && ref_buf);
 
   /* DB side */
   irwr_swmt_assert (
-      nsdb_remove (meta->db, "testvar", db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_remove (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
   /* Reference side */
-  struct stride str = (struct stride){.start = ofst, .stride = stride, .nelems = len};
-  i64           got = block_array_remove (active_db (meta), str, sizeof (u32), ref_buf, NULL);
+  struct stride str = to_block_stride (ofst, stride, len);
+  i64           got = block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
   irwr_swmt_assert (got == (i64)len);
 
   /* Cross-check */
@@ -364,17 +376,17 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   int ofst, stride, len;
   irwr_swmt_random_slice (meta->len, &ofst, &stride, &len);
 
-  size_t   buf_sz  = (size_t)len * (size_t)sizeof (u32);
+  size_t   buf_sz  = (size_t)len * (size_t)meta->esize;
   uint8_t *db_buf  = calloc (1, buf_sz);
   uint8_t *ref_buf = calloc (1, buf_sz);
   irwr_swmt_assert (db_buf && ref_buf);
 
   irwr_swmt_assert (
-      nsdb_read (meta->db, "testvar", db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_read (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
-  struct stride str = to_block_stride (ofst, stride, len, sizeof (u32));
-  u64           got = block_array_read (active_db (meta), str, sizeof (u32), ref_buf);
+  struct stride str = to_block_stride (ofst, stride, len);
+  u64           got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
   irwr_swmt_assert (got == (u64)len);
 
   irwr_swmt_assert (memcmp (db_buf, ref_buf, buf_sz) == 0);
@@ -389,17 +401,17 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   int ofst, stride, len;
   irwr_swmt_random_slice (meta->len, &ofst, &stride, &len);
 
-  int      blen = len * (int)sizeof (u32);
+  int      blen = len * (int)meta->esize;
   uint8_t *data = malloc ((size_t)blen);
   irwr_swmt_assert (data != NULL);
   for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
 
   irwr_swmt_assert (
-      nsdb_write (meta->db, "testvar", data, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_write (meta->db, meta->varname, data, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
-  struct stride str = to_block_stride (ofst, stride, len, sizeof (u32));
-  u64           got = block_array_write (active_db (meta), str, sizeof (u32), data);
+  struct stride str = to_block_stride (ofst, stride, len);
+  u64           got = block_array_write (active_db (meta), str, meta->esize, data);
   irwr_swmt_assert (got == (u64)len);
 
   free (data);

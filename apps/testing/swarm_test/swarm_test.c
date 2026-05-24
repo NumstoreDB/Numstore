@@ -122,7 +122,7 @@ swmt_random_slice (int total, int *ofst, int *stride, int *len)
 {
   assert (total > 0);
 
-  *ofst         = randu32r (0, total);
+  *ofst         = randu32r (0, total - 1);
   int remaining = total - *ofst;
   *stride       = randu32r (1, remaining);
 
@@ -131,7 +131,7 @@ swmt_random_slice (int total, int *ofst, int *stride, int *len)
 }
 
 static struct stride
-to_block_stride (int ofst, int stride, int len, u32 es)
+to_block_stride (int ofst, int stride, int len)
 {
   return (struct stride){
       .start  = (u64)ofst,
@@ -515,7 +515,7 @@ swmt_read (struct swarm_test *meta)
       nsdb_read (meta->db, v->name, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
-  struct stride str = to_block_stride (ofst, stride, len, v->elem_size);
+  struct stride str = to_block_stride (ofst, stride, len);
   u64           got = block_array_read (v->data, str, v->elem_size, ref_buf);
   swmt_assert (got == (u64)len);
 
@@ -543,7 +543,7 @@ swmt_write (struct swarm_test *meta)
       nsdb_write (meta->db, v->name, data, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
-  struct stride str = to_block_stride (ofst, stride, len, v->elem_size);
+  struct stride str = to_block_stride (ofst, stride, len);
   u64           got = block_array_write (v->data, str, v->elem_size, data);
   swmt_assert (got == (u64)len);
 
