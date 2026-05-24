@@ -27,7 +27,7 @@
  * No data inserting in this test
  */
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "mem_vhmap.h"
 #include "numstore.h"
 
