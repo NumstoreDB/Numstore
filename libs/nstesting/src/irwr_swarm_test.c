@@ -171,8 +171,8 @@ irwr_swmt_close (struct irwr_swarm_test *meta)
   if (meta->in_txn) { irwr_swmt_commit_txn (meta); }
   irwr_swmt_assert (nsdb_close (meta->db) == 0);
 
-  block_array_free (meta->committed);
-  block_array_free (meta->working);
+  if (meta->committed) { block_array_free (meta->committed); }
+  if (meta->working) { block_array_free (meta->working); }
   free (meta);
 }
 
