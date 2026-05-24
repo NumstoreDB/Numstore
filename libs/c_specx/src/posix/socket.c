@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "sys/poll.h"
 
 #include <sys/socket.h>
 
 #include <arpa/inet.h>
+#include <c_specx.h>
 #include <errno.h>
 #include <netinet/in.h>
 #include <string.h>

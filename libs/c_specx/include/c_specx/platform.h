@@ -116,8 +116,8 @@
 // Verify
 #if (                                                                                  \
     PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC + PLATFORM_IOS \
-    + PLATFORM_BSD + PLATFORM_EMSCRIPTEN)                                              \
-    > 1
+    + PLATFORM_BSD + PLATFORM_EMSCRIPTEN                                               \
+) > 1
 #  warning "Multiple platforms detected - check your build configuration"
 #endif
 
@@ -187,22 +187,16 @@
 
 #define HEADER_FUNC static inline MAYBE_UNUSED
 
-HEADER_FUNC const char *platformstr (void) {
-  if (PLATFORM_WINDOWS) {
-    return "Windows";
-  } else if (PLATFORM_LINUX) {
-    return "Linux";
-  } else if (PLATFORM_ANDROID) {
-    return "Android";
-  } else if (PLATFORM_MAC) {
-    return "macOS";
-  } else if (PLATFORM_IOS) {
-    return "iOS";
-  } else if (PLATFORM_BSD) {
-    return "BSD";
-  } else if (PLATFORM_EMSCRIPTEN) {
-    return "Emscripten/WebAssembly";
-  }
+HEADER_FUNC const char *
+platformstr (void)
+{
+  if (PLATFORM_WINDOWS) { return "Windows"; }
+  else if (PLATFORM_LINUX) { return "Linux"; }
+  else if (PLATFORM_ANDROID) { return "Android"; }
+  else if (PLATFORM_MAC) { return "macOS"; }
+  else if (PLATFORM_IOS) { return "iOS"; }
+  else if (PLATFORM_BSD) { return "BSD"; }
+  else if (PLATFORM_EMSCRIPTEN) { return "Emscripten/WebAssembly"; }
 
   return 0;
 }

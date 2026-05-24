@@ -15,9 +15,9 @@
 #ifndef C_SPECX_DATA_WRITER_H
 #define C_SPECX_DATA_WRITER_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 #include <c_specx/stride.h>
 
 ////////////////////////////////////////////////////////////
@@ -29,7 +29,8 @@ typedef err_t (*insert_func) (
     u32         ofst, // Byte offset at which to insert
     const void *src,  // Source data to insert
     u32         slen, // Number of bytes to insert
-    error      *e);   // The error object
+    error      *e
+); // The error object
 
 /// Function pointer type for reading elements from a strided range
 typedef i64 (*read_func) (
@@ -37,7 +38,8 @@ typedef i64 (*read_func) (
     struct stride str,  // Stride descriptor defining start, step, and element count
     u32           size, // Size of each element in bytes
     void         *dest, // Destination buffer to receive the data
-    error        *e);   // The error object
+    error        *e
+); // The error object
 
 /// Function pointer type for writing elements into a strided range
 typedef i64 (*write_func) (
@@ -45,7 +47,8 @@ typedef i64 (*write_func) (
     struct stride str,  // Stride descriptor defining start, step, and element count
     u32           size, // Size of each element in bytes
     const void   *src,  // Source data to write
-    error        *e);   // The error object
+    error        *e
+); // The error object
 
 /// Function pointer type for removing elements from a strided range
 typedef i64 (*remove_func) (
@@ -54,16 +57,19 @@ typedef i64 (*remove_func) (
     u32           size, // Size of each element in bytes
     void         *dest, // Optional destination buffer to capture removed data (NULL to
                         // discard)
-    error *e);          // The error object
+    error *e
+); // The error object
 
 /// Function pointer type for querying the total number of bytes in the data
 /// source
 typedef i64 (*get_len_func) (
     void  *ctx, // Caller-provided context pointer
-    error *e);  // The error object
+    error *e
+); // The error object
 
 /// The full set of function pointers that back a data_writer
-struct data_writer_functions {
+struct data_writer_functions
+{
   insert_func  insert; // Insert bytes at an offset
   read_func    read;   // Read elements from a strided range
   write_func   write;  // Overwrite elements in a strided range
@@ -72,7 +78,8 @@ struct data_writer_functions {
 };
 
 /// A virtual data source/sink pairing a function table with its context
-struct data_writer {
+struct data_writer
+{
   struct data_writer_functions functions; // Vtable of data operations
   void                        *ctx;       // Opaque context passed to every function call
 };

@@ -15,15 +15,16 @@
 #ifndef C_SPECX_CLIENT_H
 #define C_SPECX_CLIENT_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
+#include <c_specx/platform.h>
 #include <c_specx/socket.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // NET / CLIENT
 
-struct client {
+struct client
+{
   i_socket sock;
 };
 

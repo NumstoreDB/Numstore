@@ -15,24 +15,26 @@
 #ifndef C_SPECX_CHUNK_ALLOC_H
 #define C_SPECX_CHUNK_ALLOC_H
 
+#include <c_specx/error.h>
+#include <c_specx/lalloc.h>
+#include <c_specx/latch.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
-#include <c_specx/latch.h>
-#include <c_specx/lalloc.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / CHUNK_ALLOC
 
 /// A single chunk of memory in a chunk allocator chain
-struct chunk {
+struct chunk
+{
   struct lalloc alloc;  // Base allocator interface for this chunk
   struct chunk *next;   // Next chunk in the linked list, or NULL if tail
   u8            data[]; // Flexible array of chunk-owned bytes
 };
 
 /// Configuration settings for a chunk allocator
-struct chunk_alloc_settings {
+struct chunk_alloc_settings
+{
   u32 max_alloc_size;      // Maximum size of a single allocation in bytes (0 =
                            // unlimited)
   u32 max_total_size;      // Maximum total memory across all chunks in bytes (0 =
@@ -47,7 +49,8 @@ struct chunk_alloc_settings {
 };
 
 /// A chunk-based arena allocator
-struct chunk_alloc {
+struct chunk_alloc
+{
   latch                       latch;           // Synchronization latch guarding this allocator
   struct chunk_alloc_settings settings;        // Configuration settings
   struct chunk               *head;            // Head of the chunk linked list
@@ -58,8 +61,9 @@ struct chunk_alloc {
 
 /// Initializes a chunk allocator with the given settings
 void chunk_alloc_create (
-    struct chunk_alloc         *dest,      // Allocator to initialize
-    struct chunk_alloc_settings settings); // Settings to apply
+    struct chunk_alloc         *dest, // Allocator to initialize
+    struct chunk_alloc_settings settings
+); // Settings to apply
 
 /// Initializes a chunk allocator with default settings
 void chunk_alloc_create_default (struct chunk_alloc *dest); // Allocator to initialize
@@ -76,14 +80,16 @@ void *chunk_malloc (
     struct chunk_alloc *ca,   // Target allocator
     u32                 req,  // Requested alignment in bytes
     u32                 size, // Number of bytes to allocate
-    error              *e);   // The error object
+    error              *e
+); // The error object
 
 /// Allocates zero-initialized memory from the chunk allocator
 void *chunk_calloc (
     struct chunk_alloc *ca,   // Target allocator
     u32                 req,  // Requested alignment in bytes
     u32                 size, // Number of bytes to allocate
-    error              *e);   // The error object
+    error              *e
+); // The error object
 
 /// Copies memory from an external pointer into the chunk allocator and returns
 /// a pointer to the copy
@@ -91,6 +97,7 @@ void *chunk_alloc_move_mem (
     struct chunk_alloc *ca,   // Target allocator
     const void         *ptr,  // Source data to copy
     u32                 size, // Number of bytes to copy
-    error              *e);   // The error object
+    error              *e
+); // The error object
 
 #endif // C_SPECX_CHUNK_ALLOC_H

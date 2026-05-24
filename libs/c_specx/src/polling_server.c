@@ -13,7 +13,6 @@
 /// limitations under the License.
 
 #include <c_specx.h>
-
 #include <stdio.h>
 #include <string.h>
 

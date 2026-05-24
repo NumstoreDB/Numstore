@@ -13,7 +13,6 @@
 /// limitations under the License.
 
 #include <c_specx.h>
-
 #include <string.h>
 
 DEFINE_DBG_ASSERT (struct lalloc, lalloc, l, {

@@ -14,13 +14,14 @@
 
 #pragma once
 
-#include <c_specx.h>
 #include "nscore/errors.h"
 #include "nscore/lock_table.h"
 #include "nscore/page_h.h"
 #include "nscore/txn.h"
 #include "nscore/wal.h"
 #include "nscore/wal_rec_hdr.h"
+
+#include <c_specx.h>
 
 /**
  * Database structure:

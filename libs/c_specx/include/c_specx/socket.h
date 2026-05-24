@@ -15,9 +15,9 @@
 #ifndef C_SPECX_SOCKET_H
 #define C_SPECX_SOCKET_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 
 ////////////////////////////////////////////////////////////
 // SOCKET
@@ -32,7 +32,8 @@ typedef struct pollfd i_pollfd;
 #  define I_INVALID_SOCKET (-1)
 #endif
 
-typedef struct {
+typedef struct
+{
   i_sock_fd fd;
 } i_socket;
 
@@ -47,7 +48,8 @@ err_t i_socket_accept (
     char     *ip_out,
     int       ip_out_len,
     int      *port_out,
-    error    *e);
+    error    *e
+);
 err_t i_socket_set_reuseaddr (i_socket *s, error *e);
 i64   i_socket_recv (i_socket *s, void *buf, u32 len, error *e);
 i64   i_socket_send (i_socket *s, const void *buf, u32 len, error *e);

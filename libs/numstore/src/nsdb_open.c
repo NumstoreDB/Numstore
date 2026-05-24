@@ -13,12 +13,13 @@
 /// limitations under the License.
 
 #include "_numstore.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
+
+#include <c_specx.h>
 
 nsdb_t *
 nsdb_open (const char *path)

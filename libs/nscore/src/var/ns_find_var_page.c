@@ -12,7 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "nscore/compile_config.h"
 #include "nscore/errors.h"
 #include "nscore/page_fixture.h"
@@ -24,6 +23,8 @@
 #include "nscore/types.h"
 #include "nscore/var.h"
 #include "nscore/variables.h"
+
+#include <c_specx.h>
 
 static err_t
 err_var_doesnt_exist (const struct string vname, error *e)

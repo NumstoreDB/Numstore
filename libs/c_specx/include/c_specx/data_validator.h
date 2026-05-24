@@ -15,10 +15,10 @@
 #ifndef C_SPECX_DATA_VALIDATOR_H
 #define C_SPECX_DATA_VALIDATOR_H
 
+#include <c_specx/data_writer.h>
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
-#include <c_specx/data_writer.h>
 
 ////////////////////////////////////////////////////////////
 // DEV / DATA_VALIDATOR
@@ -29,7 +29,8 @@
  *    ref - The reference writer. This is assumed correct
  *    sut - System under test. This is what we're testing.
  */
-struct dvalidtr {
+struct dvalidtr
+{
   struct data_writer ref;
   struct data_writer sut;
   isvalid_func       isvalid;

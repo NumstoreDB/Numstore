@@ -13,13 +13,14 @@
 /// limitations under the License.
 
 #include "_smfile.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
 #include "nscore/variables.h"
 #include "smfile.h"
+
+#include <c_specx.h>
 
 static sb_size
 _smfile_pread (

@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "nscore/lock_table.h"
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
 #include "nscore/txn_table.h"
 
+#include <c_specx.h>
 #include <stdatomic.h>
 
 err_t

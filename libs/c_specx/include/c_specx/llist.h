@@ -21,35 +21,46 @@
 ////////////////////////////////////////////////////////////
 // DS / LLIST
 
-struct llnode {
+struct llnode
+{
   struct llnode *next;
 };
 
-HEADER_FUNC void llnode_init (struct llnode *n) { n->next = NULL; }
+HEADER_FUNC void
+llnode_init (struct llnode *n)
+{ n->next = NULL; }
 
-HEADER_FUNC u32 list_length (const struct llnode *head) {
+HEADER_FUNC u32
+list_length (const struct llnode *head)
+{
   u32 len = 0;
   for (const struct llnode *cur = head; cur; cur = cur->next) { len++; }
   return len;
 }
 
-HEADER_FUNC void list_push (struct llnode **head, struct llnode *n) {
+HEADER_FUNC void
+list_push (struct llnode **head, struct llnode *n)
+{
   n->next = *head;
   *head   = n;
 }
 
-HEADER_FUNC void list_append (struct llnode **head, struct llnode *n) {
+HEADER_FUNC void
+list_append (struct llnode **head, struct llnode *n)
+{
   n->next = NULL;
-  if (!*head) {
-    *head = n;
-  } else {
+  if (!*head) { *head = n; }
+  else
+  {
     struct llnode *cur = *head;
     while (cur->next) { cur = cur->next; }
     cur->next = n;
   }
 }
 
-HEADER_FUNC struct llnode *list_pop (struct llnode **head) {
+HEADER_FUNC struct llnode *
+list_pop (struct llnode **head)
+{
   if (!*head) { return NULL; }
 
   struct llnode *n = *head;
@@ -59,28 +70,37 @@ HEADER_FUNC struct llnode *list_pop (struct llnode **head) {
   return n;
 }
 
-HEADER_FUNC struct llnode *list_find (
+HEADER_FUNC struct llnode *
+list_find (
     u32                 *didx,
     struct llnode       *head,
     const struct llnode *node,
-    bool (*eq) (const struct llnode *left, const struct llnode *right)) {
+    bool (*eq) (const struct llnode *left, const struct llnode *right)
+)
+{
   *didx = 0;
-  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1) {
+  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1)
+  {
     if (eq (iter, node)) { return iter; }
   }
   return NULL;
 }
 
-HEADER_FUNC void list_remove (struct llnode **head, struct llnode *n) {
+HEADER_FUNC void
+list_remove (struct llnode **head, struct llnode *n)
+{
   struct llnode **cur = head;
   while (*cur && *cur != n) { cur = &(*cur)->next; }
-  if (*cur) {
+  if (*cur)
+  {
     *cur    = n->next;
     n->next = NULL;
   }
 }
 
-HEADER_FUNC struct llnode *llnode_get_n (struct llnode *head, const u32 index) {
+HEADER_FUNC struct llnode *
+llnode_get_n (struct llnode *head, const u32 index)
+{
   struct llnode *cur = head;
   for (u32 i = 0; cur && i < index; ++i) { cur = cur->next; }
   return cur;

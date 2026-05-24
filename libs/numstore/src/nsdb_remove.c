@@ -13,11 +13,12 @@
 /// limitations under the License.
 
 #include "_numstore.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/rope.h"
 #include "nscore/txn.h"
 #include "nscore/var.h"
+
+#include <c_specx.h>
 
 static sb_size
 _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e)

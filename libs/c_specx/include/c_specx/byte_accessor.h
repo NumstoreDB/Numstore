@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////
 // MEMORY / BYTE_ACCESSOR
 
-struct byte_accessor {
-  enum ta_type {
+struct byte_accessor
+{
+  enum ta_type
+  {
     TA_TAKE,
     TA_SELECT,
     TA_RANGE,
@@ -33,12 +35,14 @@ struct byte_accessor {
   u32 dest_size; // total size this ba puts into dest
 
   union {
-    struct select_ba {
+    struct select_ba
+    {
       u32                   bofst;  // Offset in bytes
       struct byte_accessor *sub_ba; // Next accessor
     } select;
 
-    struct range_ba {
+    struct range_ba
+    {
       struct stride         stride; // Stride on src
       struct byte_accessor *sub_ba; // For each stride, the next ba
     } range;

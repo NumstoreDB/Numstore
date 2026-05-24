@@ -14,10 +14,11 @@
 
 #pragma once
 
-#include <c_specx.h>
 #include "nscore/node_updates.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
+
+#include <c_specx.h>
 
 ////////////////////////////////////////////////////////////
 // Validation

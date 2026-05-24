@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "nscore/errors.h"
 #include "nscore/types.h"
 #include "nscore/variables.h"
 
+#include <c_specx.h>
 #include <string.h>
 
 DEFINE_DBG_ASSERT (struct union_t, unchecked_union_t, s, {

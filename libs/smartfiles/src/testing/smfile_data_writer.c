@@ -13,11 +13,12 @@
 /// limitations under the License.
 
 #include "_smfile.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 #include "smfile.h"
 #include "testing/smfile_test_fixture.h"
+
+#include <c_specx.h>
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)

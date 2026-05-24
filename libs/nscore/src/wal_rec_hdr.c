@@ -14,11 +14,12 @@
 
 #include "nscore/wal_rec_hdr.h"
 
-#include <c_specx.h>
 #include "nscore/dirty_page_table.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/page.h"
 #include "nscore/txn_table.h"
+
+#include <c_specx.h>
 
 void
 wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc)

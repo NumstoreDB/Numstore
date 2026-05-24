@@ -15,17 +15,19 @@
 #ifndef C_SPECX_ALLOC_H
 #define C_SPECX_ALLOC_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
+#include <c_specx/chunk_alloc.h>
 #include <c_specx/error.h>
 #include <c_specx/lalloc.h>
-#include <c_specx/chunk_alloc.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / ALLOC
 
-struct alloc {
-  enum {
+struct alloc
+{
+  enum
+  {
     AT_LALLOC,
     AT_CHNK_ALLOC,
     AT_MALLOC,

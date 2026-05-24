@@ -15,16 +15,17 @@
 #ifndef C_SPECX_LALLOC_H
 #define C_SPECX_LALLOC_H
 
+#include <c_specx/error.h>
+#include <c_specx/latch.h>
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
-#include <c_specx/logging.h>
-#include <c_specx/latch.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / LALLOC
 
-struct lalloc {
+struct lalloc
+{
   latch latch;
   u32   used;
   u32   limit;
@@ -40,7 +41,9 @@ void         *lmalloc (struct lalloc *a, u32 req, u32 size, error *e);
 void         *lcalloc (struct lalloc *a, u32 req, u32 size, error *e);
 void          lalloc_reset (struct lalloc *a);
 
-HEADER_FUNC void *lmalloc_expect (struct lalloc *a, const u32 req, const u32 size) {
+HEADER_FUNC void *
+lmalloc_expect (struct lalloc *a, const u32 req, const u32 size)
+{
   void *ret = lmalloc (a, req, size, NULL);
   ASSERT (ret);
   return ret;

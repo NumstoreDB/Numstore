@@ -15,9 +15,9 @@
 #ifndef C_SPECX_STREAM_H
 #define C_SPECX_STREAM_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 
 ////////////////////////////////////////////////////////////
 // DS / STREAM
@@ -57,7 +57,8 @@ typedef i32 (*stream_pull_fn) (
     void          *buf,  // Destination buffer to receive the data
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to pull
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Function pointer type for pushing bytes from a caller buffer into a stream
 typedef i32 (*stream_push_fn) (
@@ -66,21 +67,24 @@ typedef i32 (*stream_push_fn) (
     const void    *buf,  // Source buffer containing the data to push
     u32            size, // Size of each element in bytes
     u32            n,    // Number of elements to push
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Function pointer type for releasing any resources held by a stream
 /// implementation
 typedef void (*stream_close_fn) (void *ctx); // Implementation-defined context
 
 /// Vtable of operations backing a stream
-struct stream_ops {
+struct stream_ops
+{
   stream_pull_fn  pull;  // Pull bytes out of the stream (may be NULL for write-only streams)
   stream_push_fn  push;  // Push bytes into the stream (may be NULL for read-only streams)
   stream_close_fn close; // Release resources held by the stream (may be NULL)
 };
 
 /// A polymorphic byte-oriented I/O stream
-struct stream {
+struct stream
+{
   const struct stream_ops *ops;  // Vtable of stream operations
   void                    *ctx;  // Opaque context passed to every vtable call
   atomic_int               done; // Non-zero once the stream has no more data to produce or accept
@@ -90,7 +94,8 @@ struct stream {
 void stream_init (
     struct stream           *s,   // Stream to initialize
     const struct stream_ops *ops, // Vtable to attach
-    void                    *ctx);// Opaque context to attach
+    void                    *ctx
+); // Opaque context to attach
 
 /// Calls the stream's close function and releases any implementation resources
 void stream_close (const struct stream *s); // Stream to close
@@ -109,7 +114,8 @@ i32 stream_read (
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to transfer
     struct stream *src,  // Source stream to pull from
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Pulls up to n elements of size bytes from src into a raw buffer
 i32 stream_bread (
@@ -117,7 +123,8 @@ i32 stream_bread (
     u32            size, // Size of each element in bytes
     u32            n,    // Maximum number of elements to pull
     struct stream *src,  // Source stream to pull from
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 /// Pushes n elements of size bytes from a raw buffer into dest
 i32 stream_bwrite (
@@ -125,20 +132,23 @@ i32 stream_bwrite (
     u32            size, // Size of each element in bytes
     u32            n,    // Number of elements to push
     struct stream *dest, // Destination stream to push into
-    error         *e);   // The error object
+    error         *e
+); // The error object
 
 ////////////////////////////////////////////////////////////
 /// Special Streams
 
 /// Context for a read-only stream backed by a fixed const byte buffer
-struct stream_ibuf_ctx {
+struct stream_ibuf_ctx
+{
   const u8 *buf;  // Pointer to the source buffer
   u32       size; // Total number of bytes in buf
   u32       pos;  // Current read position in bytes
 };
 
 /// Context for a write-only stream that writes into a fixed mutable byte buffer
-struct stream_obuf_ctx {
+struct stream_obuf_ctx
+{
   u8 *buf; // Pointer to the destination buffer
   u32 cap; // Total capacity of buf in bytes
   u32 pos; // Current write position in bytes
@@ -149,14 +159,16 @@ void stream_ibuf_init (
     struct stream          *s,   // Stream to initialize
     struct stream_ibuf_ctx *ctx, // Context to initialize and attach
     const void             *buf, // Source buffer to read from
-    u32                     size);// Number of bytes in buf
+    u32                     size
+); // Number of bytes in buf
 
 /// Initializes a write-only stream that pushes into a fixed mutable byte buffer
 void stream_obuf_init (
     struct stream          *s,   // Stream to initialize
     struct stream_obuf_ctx *ctx, // Context to initialize and attach
     void                   *buf, // Destination buffer to write into
-    u32                     cap);// Capacity of buf in bytes
+    u32                     cap
+); // Capacity of buf in bytes
 
 /// Initializes a null sink stream that discards all bytes written to it
 void stream_sink_init (struct stream *s); // Stream to initialize
@@ -165,7 +177,8 @@ void stream_sink_init (struct stream *s); // Stream to initialize
 typedef void (*byte_op) (void *buffer); // Pointer to the element being processed
 
 /// Context for a stream that applies a callback to each element pushed into it
-struct stream_opsink_ctx {
+struct stream_opsink_ctx
+{
   byte_op op;   // Callback invoked on each complete element
   void   *buf;  // Staging buffer used to accumulate one element before invoking op
   u32     size; // Size of each element in bytes
@@ -179,11 +192,13 @@ void stream_opsink_init (
     struct stream_opsink_ctx *ctx, // Context to initialize and attach
     byte_op                   op,  // Callback to invoke on each element
     void                     *buf, // Staging buffer of at least size bytes
-    u32                       size);// Size of each element in bytes
+    u32                       size
+); // Size of each element in bytes
 
 /// Context for a stream that forwards to an underlying stream up to a byte
 /// limit
-struct stream_limit_ctx {
+struct stream_limit_ctx
+{
   struct stream *underlying; // The stream being wrapped
   u64            limit;      // Maximum number of bytes to forward
   u64            consumed;   // Number of bytes forwarded so far
@@ -195,6 +210,7 @@ void stream_limit_init (
     struct stream           *s,   // Stream to initialize
     struct stream_limit_ctx *ctx, // Context to initialize and attach
     struct stream           *src, // Underlying stream to wrap
-    u64                      limit);// Maximum number of bytes to forward
+    u64                      limit
+); // Maximum number of bytes to forward
 
 #endif // C_SPECX_STREAM_H

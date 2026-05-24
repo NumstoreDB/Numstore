@@ -15,12 +15,12 @@
 #ifndef C_SPECX_BLOCK_ARRAY_H
 #define C_SPECX_BLOCK_ARRAY_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
-#include <c_specx/slab_alloc.h>
-#include <c_specx/stride.h>
 #include <c_specx/data_writer.h>
+#include <c_specx/error.h>
+#include <c_specx/platform.h>
+#include <c_specx/slab_alloc.h>
+#include <c_specx/stdtypes.h>
+#include <c_specx/stride.h>
 
 ////////////////////////////////////////////////////////////
 // DS / BLOCK_ARRAY
@@ -31,7 +31,8 @@
  * data array that is sized [cap_per_node] of it's parent and it has a
  * length that is how full it is
  */
-struct block {
+struct block
+{
   struct block *next;
   struct block *prev;
   u32           len;
@@ -44,7 +45,8 @@ struct block {
  * represent byte data. Each block has capacity [cap_per_node] and
  * links to their neighbors
  */
-struct block_array {
+struct block_array
+{
   struct slab_alloc block_alloc; // Allocates blocks
   u32               cap_per_node;
   struct block     *head;

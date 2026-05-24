@@ -14,9 +14,10 @@
 
 #pragma once
 
-#include <c_specx.h>
 #include "nscore/parsers/parser.h"
 #include "nscore/type_ref.h"
+
+#include <c_specx.h>
 
 // type_ref        ::= struct_type_ref
 // | take_type_ref

@@ -14,8 +14,9 @@
 
 #include "nscore/wal_ostream.h"
 
-#include <c_specx.h>
 #include "nscore/compile_config.h"
+
+#include <c_specx.h>
 
 DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, { ASSERT (w); })
 

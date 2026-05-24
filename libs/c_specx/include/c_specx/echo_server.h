@@ -15,15 +15,16 @@
 #ifndef C_SPECX_ECHO_SERVER_H
 #define C_SPECX_ECHO_SERVER_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
+#include <c_specx/platform.h>
 #include <c_specx/polling_server.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // NET / ECHO_SERVER
 
-struct echo_context {
+struct echo_context
+{
   const char *prefix;
   const char *suffix;
 };

@@ -17,11 +17,11 @@
 // It does NOT have a traditional include guard - it is designed to be included
 // multiple times with different macro definitions.
 
+#include <c_specx/ht_models.h>
+#include <c_specx/latch.h>
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/logging.h>
-#include <c_specx/latch.h>
-#include <c_specx/ht_models.h>
 
 ////////////////////////////////////////////////////////////
 // Robin Hood Hash Table templates

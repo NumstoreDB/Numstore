@@ -15,12 +15,12 @@
 #ifndef C_SPECX_CBUFFER_H
 #define C_SPECX_CBUFFER_H
 
+#include <c_specx/bytes.h>
+#include <c_specx/error.h>
+#include <c_specx/file_system.h>
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
-#include <c_specx/logging.h>
-#include <c_specx/bytes.h>
-#include <c_specx/file_system.h>
 
 ////////////////////////////////////////////////////////////
 // DS / CBUFFER
@@ -41,7 +41,8 @@
 ///
 /// Initialize with cbuffer_create() or cbuffer_create_with(). All fields are
 /// managed internally - do not modify them directly.
-struct cbuffer {
+struct cbuffer
+{
   u8  *data;   // Pointer to the caller-supplied backing array
   u32  cap;    // Total capacity of the backing array in bytes
   u32  head;   // Write cursor - next byte is written here
@@ -212,15 +213,15 @@ u32 cbuffer_cbuffer_copy (struct cbuffer *dest, u32 size, u32 n, const struct cb
 ////////////////////////////////////////////////////////////
 // IO Read / Write
 
-i32 cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, u32 len, error *e);
+i32   cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 err_t cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, u32 len, error *e);
-void cbuffer_write_to_file_2 (struct cbuffer *b, u32 nwritten);
-i32 cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
+void  cbuffer_write_to_file_2 (struct cbuffer *b, u32 nwritten);
+i32   cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
 
-i32 cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, u32 len, error *e);
+i32   cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, u32 len, error *e);
 err_t cbuffer_read_from_file_1_expect (i_file *src, const struct cbuffer *b, u32 len, error *e);
-void cbuffer_read_from_file_2 (struct cbuffer *b, u32 nread);
-i32 cbuffer_read_from_file (i_file *src, struct cbuffer *b, u32 len, error *e);
+void  cbuffer_read_from_file_2 (struct cbuffer *b, u32 nread);
+i32   cbuffer_read_from_file (i_file *src, struct cbuffer *b, u32 len, error *e);
 
 ////////////////////////////////////////////////////////////
 // Single Element Read / Write

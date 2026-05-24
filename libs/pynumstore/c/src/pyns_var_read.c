@@ -13,13 +13,13 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/rope.h"
 #include "nscore/types.h"
 #include "pynumstore.h"
 
 #include <Python.h>
+#include <c_specx.h>
 #include <string.h>
 
 PyObject *

@@ -21,18 +21,21 @@
 ////////////////////////////////////////////////////////////
 // BYTES
 
-struct bytes {
+struct bytes
+{
   u8 *head;
   u32 len;
 };
 
-struct cbytes {
+struct cbytes
+{
   const u8 *head;
   u32       len;
 };
 
 #define bytes_from(buffer) \
-  (struct bytes) { .head = buffer, .len = sizeof (buffer) }
+  (struct bytes)           \
+  { .head = buffer, .len = sizeof (buffer) }
 
 #define bytes_null() (struct bytes){.head = NULL, .len = 0}
 

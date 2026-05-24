@@ -16,8 +16,8 @@
 #define C_SPECX_MATH_H
 
 #include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/random.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // CORE / MATH

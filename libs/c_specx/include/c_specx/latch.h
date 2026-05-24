@@ -15,9 +15,9 @@
 #ifndef C_SPECX_LATCH_H
 #define C_SPECX_LATCH_H
 
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/logging.h>
 
 ////////////////////////////////////////////////////////////
 // CONCURRENCY / LATCH
@@ -38,12 +38,16 @@
 
 typedef _Atomic (int) latch;
 
-HEADER_FUNC void latch_init (latch *l) { *l = 0; }
+HEADER_FUNC void
+latch_init (latch *l)
+{ *l = 0; }
 
 /**
  * Returns true if the latch was locked, false otherwise
  */
-HEADER_FUNC bool latch_trylock (latch *l) {
+HEADER_FUNC bool
+latch_trylock (latch *l)
+{
   int val = 0;
 
   // Fast path - it's likely that the lock will succeed if
@@ -53,13 +57,17 @@ HEADER_FUNC bool latch_trylock (latch *l) {
           &val,
           1,
           memory_order_acquire,
-          memory_order_relaxed))) {
+          memory_order_relaxed
+      )))
+  {
     return true;
   }
   return false;
 }
 
-HEADER_FUNC void latch_lock (latch *l) {
+HEADER_FUNC void
+latch_lock (latch *l)
+{
   int val = 0;
 
   // Fast path - it's likely that the lock will succeed if
@@ -69,12 +77,16 @@ HEADER_FUNC void latch_lock (latch *l) {
           &val,
           1,
           memory_order_acquire,
-          memory_order_relaxed))) {
+          memory_order_relaxed
+      )))
+  {
     return;
   }
 
-  do {
-    do {
+  do
+  {
+    do
+    {
       // let the CPU breath
       spin_pause ();
 
@@ -91,9 +103,12 @@ HEADER_FUNC void latch_lock (latch *l) {
       &val,
       1,
       memory_order_acquire,
-      memory_order_relaxed));
+      memory_order_relaxed
+  ));
 }
 
-HEADER_FUNC void latch_unlock (latch *l) { atomic_store_explicit (l, 0, memory_order_release); }
+HEADER_FUNC void
+latch_unlock (latch *l)
+{ atomic_store_explicit (l, 0, memory_order_release); }
 
 #endif // C_SPECX_LATCH_H
