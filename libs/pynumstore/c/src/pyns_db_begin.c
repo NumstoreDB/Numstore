@@ -13,7 +13,6 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "pynumstore.h"
 
 #include <Python.h>
 
@@ -23,13 +22,12 @@ pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg)
   nsdb_t *ns = _unwrap_db (arg);
   if (!ns) { return NULL; }
 
+  // BEGIN TXN
   if (nsdb_begin (ns) < 0)
   {
     _pyns_set_error (ns);
     return NULL;
   }
 
-  // The transaction capsule wraps the same nsdb_t * with no destructor —
-  // the db capsule's destructor owns the lifetime.
   return PyCapsule_New ((void *)ns, TXN_CAPSULE, NULL);
 }

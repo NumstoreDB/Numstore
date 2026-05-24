@@ -98,7 +98,10 @@ pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
   // Compute maximum element count
   npy_intp nelems_max;
   if (stop <= start) { nelems_max = 0; }
-  else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
+  else
+  {
+    nelems_max = (npy_intp)((stop - start + step - 1) / step);
+  }
 
   // Allocate capture buffer
   void *buf = NULL;
@@ -126,7 +129,7 @@ pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
 
   // nsdb_remove returns element count (not bytes)
   npy_intp nelems_actual = (npy_intp)bytes_removed;
-  npy_intp dims[1]       = { nelems_actual };
+  npy_intp dims[1]       = {nelems_actual};
 
   Py_INCREF (dtype_obj);
   PyObject *arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);

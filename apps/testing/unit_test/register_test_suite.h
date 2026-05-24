@@ -18,9 +18,11 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 262);
+TEST_SUITE (smartfiles, 269);
 
-HEADER_FUNC void register_tests(void) {
+HEADER_FUNC void
+register_tests (void)
+{
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);
@@ -281,6 +283,13 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, wal);
   REGISTER (smartfiles, wal_single_entry);
   REGISTER (smartfiles, mem_vhmap);
+  REGISTER (smartfiles, cgd_test_create_delete_rollback_delete);
+  REGISTER (smartfiles, cgd_test_create_crash_close_delete);
+  REGISTER (smartfiles, nsdb_create_txn_tests);
+  REGISTER (smartfiles, nsdb_delete_txn_tests);
+  REGISTER (smartfiles, nsdb_insert_txn_tests);
+  REGISTER (smartfiles, nsdb_write_txn_tests);
+  REGISTER (smartfiles, nsdb_remove_txn_tests);
   REGISTER (smartfiles, aries_crash);
   REGISTER (smartfiles, smfile_data_writer);
 }

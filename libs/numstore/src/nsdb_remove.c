@@ -84,7 +84,9 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
   }
 
   i_log_debug (
-      "REMOVE - %s"
+      "REMOVE (txn = %" PRtxid
+      ")"
+      " - %s"
       " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
       " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
@@ -92,6 +94,7 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
       " Granted: "
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
+      db->atx->tid,
       name,
       tsize,
       len,

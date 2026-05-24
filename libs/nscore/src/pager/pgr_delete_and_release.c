@@ -61,27 +61,8 @@ pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
   // undo)
   if (pgr_release_with_log (p, h, PG_PERMISSIVE, NULL, e)) { goto failed; }
 
-  // Log the FSM change compactly: undo=1 (was allocated), redo=0 (now free)
-  if (pgr_release_with_log (
-          p,
-          &fsm,
-          PG_FREE_SPACE_MAP,
-          &(struct wal_update_write){
-              .type = WUP_FSM,
-              .tid  = tx->tid,
-              .prev = tx->data.last_lsn,
-              .fsm =
-                  {
-                      .pg   = pg,
-                      .undo = 1,
-                      .redo = 0,
-                  },
-          },
-          e
-      ))
-  {
-    goto failed;
-  }
+  struct wal_update_write log = wup_fsm (fsmpg, tx, pgtoidx (pg), 1, 0);
+  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) { goto failed; }
 
   return SUCCESS;
 

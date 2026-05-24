@@ -96,7 +96,10 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
   // Compute maximum element count from key range
   npy_intp nelems_max;
   if (stop <= start) { nelems_max = 0; }
-  else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
+  else
+  {
+    nelems_max = (npy_intp)((stop - start + step - 1) / step);
+  }
 
   // Allocate temporary buffer for the read
   void *buf = NULL;
@@ -124,7 +127,7 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
 
   // nsdb_read returns element count (not bytes)
   npy_intp nelems_actual = (npy_intp)bytes_read;
-  npy_intp dims[1]       = { nelems_actual };
+  npy_intp dims[1]       = {nelems_actual};
 
   // PyArray_NewFromDescr takes a new reference to dtype; we keep our own and
   // explicitly decref after the call so it is always released exactly once.
