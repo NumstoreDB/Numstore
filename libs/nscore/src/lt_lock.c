@@ -14,7 +14,7 @@
 
 #include "nscore/lt_lock.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 
 #include <string.h>
 

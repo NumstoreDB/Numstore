@@ -14,7 +14,7 @@
 
 #include "nscore/pager.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/aries.h"
 #include "nscore/compile_config.h"
 #include "nscore/file_pager.h"

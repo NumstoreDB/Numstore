@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/node_updates.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"

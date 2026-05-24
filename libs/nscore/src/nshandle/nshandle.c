@@ -14,7 +14,7 @@
 
 #include "nscore/nshandle.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pager.h"
 
 // nsh

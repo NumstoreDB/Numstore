@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 
 TEST_SUITE (smartfiles, 261);
 

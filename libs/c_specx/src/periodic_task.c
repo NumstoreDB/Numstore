@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx.h"
+#include <c_specx/periodic_task.h>
 
 err_t
 periodic_task_init (struct periodic_task *t, error *e)

@@ -14,7 +14,7 @@
 
 #include "nscore/wal.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/dirty_page_table.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal_istream.h"

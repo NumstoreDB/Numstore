@@ -14,7 +14,7 @@
 
 #include "nscore/pages/fsm_page.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pages/page.h"
 
 void

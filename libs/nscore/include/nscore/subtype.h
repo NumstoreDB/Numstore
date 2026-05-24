@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/type_accessor.h"
 #include "nscore/types.h"
 

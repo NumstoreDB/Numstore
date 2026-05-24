@@ -14,7 +14,7 @@
 
 #include "nscore/dirty_page_table.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/compile_config.h"
 
 /*

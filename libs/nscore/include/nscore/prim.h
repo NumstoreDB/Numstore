@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/types.h"
 
 #define PRIM_INT \

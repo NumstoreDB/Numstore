@@ -14,7 +14,7 @@
 
 #include "nscore/variables.h"
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/pages/var_hash_page.h"
 #include "nscore/types.h"
 

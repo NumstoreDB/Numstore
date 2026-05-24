@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx.h"
+#include <c_specx.h>
 #include "nscore/errors.h"
 #include "nscore/nshandle.h"
 #include "nscore/var.h"

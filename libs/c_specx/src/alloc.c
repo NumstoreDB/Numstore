@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx.h"
+#include <c_specx/alloc.h>
 
 void *
 alloc_alloc (struct alloc *a, const u32 nelem, const u32 size, error *e)
