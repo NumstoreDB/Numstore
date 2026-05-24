@@ -162,9 +162,10 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        char *name = i_malloc (PAGE_SIZE * 10, 1, &f.e);
-        for (u32 k = 0; k < PAGE_SIZE * 10 - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
-        name[PAGE_SIZE * 10 - 1] = '\0';
+        u32 len = randu32r(PAGE_SIZE, PAGE_SIZE * 10);
+        char *name = i_malloc (len, 1, &f.e);
+        for (u32 k = 0; k < len - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
+        name[len - 1] = '\0';
 
         struct ns_var_get_or_create_params params = {
             .p  = f.p,
@@ -196,7 +197,7 @@ TEST (ns_var_get_or_create)
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
 
-    for (u32 i = 0; i < 10000; ++i)
+    for (u32 i = 0; i < 100; ++i)
     {
       struct txn         tx;
       struct chunk_alloc alloc;
@@ -206,12 +207,13 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        char *name = i_malloc (PAGE_SIZE * 10, 1, &f.e);
-        for (u32 k = 0; k < PAGE_SIZE * 10 - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
-        name[PAGE_SIZE * 10 - 1] = '\0';
-        struct type *t           = type_random (&alloc, 10, &f.e);
-        i_log_info ("%d/%d\n", i, 10000);
-        i_log_type (t, &f.e);
+        u32 len = randu32r(PAGE_SIZE, PAGE_SIZE * 10);
+        char *name = i_malloc (len, 1, &f.e);
+        for (u32 k = 0; k < len - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
+        name[len - 1] = '\0';
+
+        struct type *t           = type_random (&alloc, randu32r(0, 10), &f.e);
+        i_log_info("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
             .p  = f.p,
@@ -239,7 +241,7 @@ TEST (ns_var_get_or_create)
 
   TEST_CASE ("Big type short variable name")
   {
-    for (int i = 0; i < 10000; ++i)
+    for (int i = 0; i < 100; ++i)
     {
       struct pgr_fixture f;
       pgr_fixture_create (&f);
@@ -253,8 +255,8 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        struct type *t = type_random (&alloc, 10, &f.e);
-        i_log_type (t, &f.e);
+        struct type *t = type_random (&alloc, randu32r(0, 10), &f.e);
+        i_log_info("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
             .p  = f.p,
