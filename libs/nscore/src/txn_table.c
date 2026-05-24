@@ -81,7 +81,7 @@ TEST (txnt_open)
 #endif
 
 #ifndef NLOG
-static const char *
+static MAYBE_UNUSED const char *
 txn_state_to_str (const int state)
 {
   switch (state)
