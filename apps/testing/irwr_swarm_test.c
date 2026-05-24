@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "cgd_swarm_test.h"
+#include "irwr_swarm_test.h"
 
 #include <signal.h>
 
@@ -28,10 +28,10 @@ handle_sigint (int sig)
 int
 main (void)
 {
-  int start_enabled[CDS_AT_LEN];
-  for (int i = 0; i < CDS_AT_LEN; ++i) { start_enabled[i] = 1; }
+  int start_enabled[IRWR_AT_LEN];
+  for (int i = 0; i < IRWR_AT_LEN; ++i) { start_enabled[i] = 1; }
 
-  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
+  struct irwr_swarm_test *meta = irwr_swmt_open (start_enabled, "test", 100000);
 
   struct sigaction sa;
   sa.sa_handler = handle_sigint;
@@ -40,11 +40,11 @@ main (void)
 
   if (sigaction (SIGINT, &sa, NULL) == -1)
   {
-    cgd_swmt_close (meta);
+    irwr_swmt_close (meta);
     return 0;
   }
 
-  while (keep_running) { cgd_swmt_step (meta); }
+  while (keep_running) { irwr_swmt_step (meta); }
 
-  cgd_swmt_close (meta);
+  irwr_swmt_close (meta);
 }
