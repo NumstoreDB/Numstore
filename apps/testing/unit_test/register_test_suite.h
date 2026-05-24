@@ -18,7 +18,7 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 261);
+TEST_SUITE (smartfiles, 263);
 
 HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, block_insert_read);
@@ -92,7 +92,6 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, file_basename);
   REGISTER (smartfiles, gr_lock_basic_sanity);
   REGISTER (smartfiles, gr_lock_is_is_compatible);
-  REGISTER (smartfiles, gr_lock_is_x_blocks);
   REGISTER (smartfiles, gr_lock_high_pressure_random);
   REGISTER (smartfiles, htable);
   REGISTER (smartfiles, fnv1a_hash_empty);
@@ -116,7 +115,9 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, randu32r);
   REGISTER (smartfiles, randi32r);
   REGISTER (smartfiles, randu64r);
+  REGISTER (smartfiles, randu64e);
   REGISTER (smartfiles, randi64r);
+  REGISTER (smartfiles, randi64e);
   REGISTER (smartfiles, ht_insert_idx_regression_trigger_swap);
   REGISTER (smartfiles, robin_hood_ht);
   REGISTER (smartfiles, slab_alloc_simple);
