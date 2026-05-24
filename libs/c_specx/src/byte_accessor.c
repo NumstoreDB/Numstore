@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx/byte_accessor.h>
+#include <c_specx.h>
 
 static u32
 ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)

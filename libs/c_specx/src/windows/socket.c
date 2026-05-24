@@ -20,7 +20,7 @@
 #  pragma comment(lib, "ws2_32.lib")
 #endif
 
-#include <c_specx/socket.h>
+#include <c_specx.h>
 
 #include <stdio.h>
 #include <stdlib.h>

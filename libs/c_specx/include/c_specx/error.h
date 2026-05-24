@@ -17,6 +17,7 @@
 
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
+#include <c_specx/utils.h>
 
 ////////////////////////////////////////////////////////////
 // ERROR
