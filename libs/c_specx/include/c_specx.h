@@ -12,7 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#pragma once
+#ifndef C_SPECX_H
+#define C_SPECX_H
 
 #include <c_specx/alloc.h>
 #include <c_specx/block_array.h>
@@ -61,39 +62,41 @@
 #include <c_specx/time.h>
 #include <c_specx/utils.h>
 
+#endif
+
 ////////////////////////////////////////////////////////////
 // Robin Hood Hash Table
 // Key-Value variant: define KTYPE, VTYPE, SUFFIX before re-including
 
 #ifdef KTYPE
 
-#  include <string.h>
+#include <string.h>
 
-#  ifndef KTYPE
-#    define KTYPE int
-#  endif
-#  ifndef VTYPE
-#    define VTYPE int
-#  endif
-#  ifndef SUFFIX
-#    define SUFFIX int
-#  endif
+#ifndef KTYPE
+#  define KTYPE int
+#endif
+#ifndef VTYPE
+#  define VTYPE int
+#endif
+#ifndef SUFFIX
+#  define SUFFIX int
+#endif
 
-#  define HDATA_T      RH__XCAT (hdata_, SUFFIX)
-#  define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
-#  define HTIR_T       RH__XCAT (htir_res_, SUFFIX)
-#  define HT_T         RH__XCAT (ht_, SUFFIX)
-#  define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
+#define HDATA_T      RH__XCAT (hdata_, SUFFIX)
+#define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
+#define HTIR_T       RH__XCAT (htir_res_, SUFFIX)
+#define HT_T         RH__XCAT (ht_, SUFFIX)
+#define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
 
 // Functions
-#  define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
-#  define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
-#  define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
-#  define HT_GET           RH__XCAT (ht_get_, SUFFIX)
-#  define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
-#  define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
-#  define HT_COUNT         RH__XCAT (ht_count_, SUFFIX)
-#  define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
+#define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
+#define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
+#define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
+#define HT_GET           RH__XCAT (ht_get_, SUFFIX)
+#define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
+#define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
+#define HT_COUNT         RH__XCAT (ht_count_, SUFFIX)
+#define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
 
 typedef struct
 {
@@ -338,19 +341,19 @@ HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
   ASSERT (ret == HTAR_SUCCESS);
 }
 
-#  undef HDATA_T
-#  undef HENWRAP_T
-#  undef HTIR_T
-#  undef HT_T
-#  undef HASH_TABLE_T
-#  undef HT_INIT
-#  undef HT_INSERT
-#  undef HT_INSERT_EXPECT
-#  undef HT_GET
-#  undef HT_GET_EXPECT
-#  undef HT_DELETE
-#  undef HT_COUNT
-#  undef HT_DELETE_EXPECT
+#undef HDATA_T
+#undef HENWRAP_T
+#undef HTIR_T
+#undef HT_T
+#undef HASH_TABLE_T
+#undef HT_INIT
+#undef HT_INSERT
+#undef HT_INSERT_EXPECT
+#undef HT_GET
+#undef HT_GET_EXPECT
+#undef HT_DELETE
+#undef HT_COUNT
+#undef HT_DELETE_EXPECT
 
 #endif // KTYPE
 
@@ -360,31 +363,31 @@ HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
 ////////////////////////////////////////////////////////////
 #ifdef HASH_FUNC
 
-#  include <string.h>
+#include <string.h>
 
-#  ifndef VTYPE
-#    define VTYPE int
-#  endif
-#  ifndef SUFFIX
-#    define SUFFIX int
-#  endif
-#  ifndef HASH_FUNC
-#    define HASH_FUNC(v) ((u32)(v))
-#  endif
-#  ifndef CMP_FUNC
-#    define CMP_FUNC(a, b) ((a) == (b))
-#  endif
+#ifndef VTYPE
+#  define VTYPE int
+#endif
+#ifndef SUFFIX
+#  define SUFFIX int
+#endif
+#ifndef HASH_FUNC
+#  define HASH_FUNC(v) ((u32)(v))
+#endif
+#ifndef CMP_FUNC
+#  define CMP_FUNC(a, b) ((a) == (b))
+#endif
 
-#  define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
-#  define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
+#define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
+#define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
 
-#  define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
-#  define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
-#  define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
-#  define HT_GET           RH__XCAT (ht_get_, SUFFIX)
-#  define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
-#  define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
-#  define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
+#define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
+#define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
+#define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
+#define HT_GET           RH__XCAT (ht_get_, SUFFIX)
+#define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
+#define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
+#define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
 
 typedef struct
 {
@@ -565,18 +568,18 @@ HT_DELETE_EXPECT (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
   ASSERT (ret == HTAR_SUCCESS);
 }
 
-#  undef HENWRAP_T
-#  undef HASH_TABLE_T
-#  undef HT_INIT
-#  undef HT_INSERT
-#  undef HT_INSERT_EXPECT
-#  undef HT_GET
-#  undef HT_GET_EXPECT
-#  undef HT_DELETE
-#  undef HT_DELETE_EXPECT
-#  undef VTYPE
-#  undef SUFFIX
-#  undef HASH_FUNC
-#  undef CMP_FUNC
+#undef HENWRAP_T
+#undef HASH_TABLE_T
+#undef HT_INIT
+#undef HT_INSERT
+#undef HT_INSERT_EXPECT
+#undef HT_GET
+#undef HT_GET_EXPECT
+#undef HT_DELETE
+#undef HT_DELETE_EXPECT
+#undef VTYPE
+#undef SUFFIX
+#undef HASH_FUNC
+#undef CMP_FUNC
 
 #endif // HASH_FUNC
