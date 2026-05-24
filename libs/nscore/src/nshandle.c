@@ -118,6 +118,9 @@ nsh_auto_begin_txn (struct nshandle *sm, error *e)
     WRAP (pgr_begin_txn (&sm->tx, sm->root->p, e));
     sm->is_auto_txn = 1;
     sm->atx         = &sm->tx;
+
+    // Lock the database - this is to be removed as concurrency support gets better
+    if (lockt_lock (sm->root->p->lt, lock_db (), LM_X, &sm->tx, e)) { return error_trace (e); }
   }
 
   return SUCCESS;

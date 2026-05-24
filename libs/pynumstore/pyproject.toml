@@ -11,7 +11,17 @@ dependencies = ["numpy"]
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
-ninja.version = ">=1.5"
-wheel.packages = ["pynumstore"]
-build-dir = "build/{wheel_tag}"
 cmake.source-dir = "../.."
+wheel.packages = ["pynumstore"]
+cmake.args = [
+    "-DENABLE_NDEBUG:BOOL=ON",
+    "-DENABLE_NTEST:BOOL=ON",
+    "-DENABLE_NLOG:BOOL=ON",
+    "-DENABLE_GPROF:BOOL=OFF",
+    "-DENABLE_PORTABLE:BOOL=OFF",
+    "-DENABLE_STRIP:BOOL=ON",
+    "-DENABLE_ASAN:BOOL=OFF"
+]
+
+[tool.setuptools.package-data]
+pynumstore = ["_pynumstore.pyi", "py.typed"]
