@@ -28,12 +28,9 @@ class Transaction:
 # None means no explicit transaction (auto-commit behaviour).
 Txn = Transaction | None
 
-# A primitive scalar compatible with a variable's dtype.
-Scalar = int | float | complex | bool | np.generic
-
 # One element's worth of data — a primitive scalar, or an NDArray matching
 # the element shape for multi-dimensional variable types.
-Element = Scalar | npt.NDArray
+Element = int | float | complex | bool | npt.NDArray
 
 
 # ---------------------------------------------------------------------------
