@@ -82,7 +82,7 @@ jobs:
 
       - name: Test
         if: matrix.run_tests && !matrix.extra && matrix.os == 'windows-latest'
-        run: ./build/${{ matrix.preset }}/apps/Debug/unit_test.exe
+        run: ./build/${{ matrix.preset }}/bin/Debug/unit_test.exe
 
       - name: Test (leaks)
         if: matrix.extra && matrix.os == 'macos-latest'
