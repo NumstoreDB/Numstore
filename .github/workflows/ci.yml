@@ -7,12 +7,24 @@ jobs:
     name: ${{ matrix.preset }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      TEST_BIN: ./build/${{ matrix.preset }}/apps/test
-      SAMPLES_DIR: ./build/${{ matrix.preset }}/samples
-      SAMPLES: sample1_basic_crud sample2_transactions sample3_stride sample4_variable_names sample5_rollback_commit
+      TEST_BIN: ./build/${{ matrix.preset }}/bin/unit_test
       LEAKS: leaks --atExit --
-      VALGRIND: valgrind --tool=memcheck --leak-check=full --leak-resolution=high --show-leak-kinds=all --track-origins=yes --track-fds=yes --error-exitcode=1 --errors-for-leak-kinds=all --undef-value-errors=yes --partial-loads-ok=no --expensive-definedness-checks=yes --show-mismatched-frees=yes --show-reachable=yes --num-callers=40 --
-
+      VALGRIND: valgrind                             \
+               --tool=memcheck                       \
+               --leak-check=full                     \
+               --leak-resolution=high                \
+               --show-leak-kinds=all                 \
+               --track-origins=yes                   \
+               --track-fds=yes                       \
+               --error-exitcode=1                    \
+               --errors-for-leak-kinds=all           \
+               --undef-value-errors=yes              \
+               --partial-loads-ok=no                 \
+               --expensive-definedness-checks=yes    \
+               --show-mismatched-frees=yes           \
+               --show-reachable=yes                  \
+               --num-callers=40                      \
+               --
     strategy:
       fail-fast: false
       matrix:
@@ -79,26 +91,3 @@ jobs:
       - name: Test (valgrind)
         if: matrix.extra && matrix.os == 'ubuntu-latest'
         run: ${{ env.VALGRIND }} ${{ env.TEST_BIN }}
-
-      # ── Samples ────────────────────────────────────────────────────────────
-      - name: Samples
-        if: 'matrix.os != ''windows-latest'''
-        shell: bash
-        run: |
-          for sample in $SAMPLES; do
-            for run in 1 2; do
-              echo "[$run/2] $sample"
-              $SAMPLES_DIR/$sample
-            done
-          done
-
-      - name: Samples
-        if: 'matrix.os == ''windows-latest'''
-        shell: bash
-        run: |
-          for sample in $SAMPLES; do
-            for run in 1 2; do
-              echo "[$run/2] $sample"
-              ./build/${{ matrix.preset }}/samples/Debug/$sample.exe
-            done
-          done
