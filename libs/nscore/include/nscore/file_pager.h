@@ -28,8 +28,9 @@
  * may use fpgr_open() which returns struct file_pager *.
  */
 
-#include <c_specx.h>
 #include "nscore/compile_config.h"
+
+#include <c_specx.h>
 
 struct file_pager;
 

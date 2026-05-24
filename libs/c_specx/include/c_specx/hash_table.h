@@ -15,15 +15,16 @@
 #ifndef C_SPECX_HASH_TABLE_H
 #define C_SPECX_HASH_TABLE_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
 #include <c_specx/latch.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // DS / HASH_TABLE
 
-struct hnode {
+struct hnode
+{
   struct hnode *next;
   u32           hcode;
 };
@@ -35,7 +36,8 @@ hnode_init (struct hnode *dest, const u32 hcode)
   dest->next  = NULL;
 }
 
-struct htable {
+struct htable
+{
   u32           cap;
   u32           size;
   latch         latch;

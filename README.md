@@ -2,7 +2,11 @@
   <img src="docs/logo.png" alt="NumStore Logo" width="200"/>
 </p>
 
-# Smart Files
+# Numstore
+
+## Smart Files 
+
+Smart files is a sub project of numstore 
 
 Files have had the same definition for 50 years: an array of bytes that grows, shrinks, and seeks. Every programming language builds on top of this model. Smart Files extends it with two fixes to longstanding problems, plus two new capabilities.
 

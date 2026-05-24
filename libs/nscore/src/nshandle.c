@@ -14,8 +14,9 @@
 
 #include "nscore/nshandle.h"
 
-#include <c_specx.h>
 #include "nscore/pager.h"
+
+#include <c_specx.h>
 
 struct nshandle *
 nsh_remove_and_open (const char *name, error *e)

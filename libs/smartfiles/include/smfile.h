@@ -38,7 +38,7 @@
 ////////////////////////////////////////////////////////////
 // CPU
 
-#define NS_CPU_COUNT 4
+#define NS_CPU_COUNT 8
 
 ////////////////////////////////////////////////////////////
 // Data Type Sizes
@@ -225,12 +225,8 @@ sb_size smfile_psize (smfile_t *smf, const char *vname);
  * @param slen The length in bytes of [src]
  * @return < 0 on error, 0 on success
  */
-sb_size smfile_pinsert (
-    smfile_t *smf,
-    const char *name,
-    const void *src,
-    sb_size bofst,
-    b_size slen);
+sb_size
+smfile_pinsert (smfile_t *smf, const char *name, const void *src, sb_size bofst, b_size slen);
 
 /**
  * @brief [Power] Write elements into a named variable within a smart file,
@@ -247,13 +243,14 @@ sb_size smfile_pinsert (
  * @return The number of elements written, or < 0 on error
  */
 sb_size smfile_pwrite (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
     const void *src,
-    t_size size,
-    b_size bofst,
-    sb_size stride,
-    b_size nelem);
+    t_size      size,
+    b_size      bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 /**
  * @brief [Power] Read elements from a named variable within a smart file,
@@ -270,13 +267,14 @@ sb_size smfile_pwrite (
  * @return The number of elements read, or < 0 on error
  */
 sb_size smfile_pread (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
-    void *dest,
-    t_size size,
-    sb_size bofst,
-    sb_size stride,
-    b_size nelem);
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 /**
  * @brief [Power] Remove elements from a named variable within a smart file,
@@ -294,13 +292,14 @@ sb_size smfile_pread (
  * @return The number of elements removed, or < 0 on error
  */
 sb_size smfile_premove (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
-    void *dest,
-    t_size size,
-    sb_size bofst,
-    sb_size stride,
-    b_size nelem);
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 // =============================================================================
 // Transactions

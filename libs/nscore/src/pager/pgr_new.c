@@ -12,7 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "nscore/page_fixture.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
@@ -21,6 +20,7 @@
 #include "nscore/pages/page.h"
 #include "nscore/wal_rec_hdr.h"
 
+#include <c_specx.h>
 #include <stdlib.h>
 
 static err_t

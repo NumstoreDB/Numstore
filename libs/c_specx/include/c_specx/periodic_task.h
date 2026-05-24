@@ -15,9 +15,9 @@
 #ifndef C_SPECX_PERIODIC_TASK_H
 #define C_SPECX_PERIODIC_TASK_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 #include <c_specx/threading.h>
 
 ////////////////////////////////////////////////////////////
@@ -25,7 +25,8 @@
 
 typedef void (*periodic_task_fn) (void *ctx);
 
-struct periodic_task {
+struct periodic_task
+{
   i_thread         thread;
   i_mutex          mutex;
   i_cond           wake_cond;

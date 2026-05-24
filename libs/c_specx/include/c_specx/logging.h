@@ -15,10 +15,10 @@
 #ifndef C_SPECX_LOGGING_H
 #define C_SPECX_LOGGING_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
 #include <c_specx/file_system.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // INTF / LOGGING
@@ -72,8 +72,8 @@
 #define LOG_DEBUG 4
 #define LOG_TRACE 5
 
-void i_log_internal (const char *prefix, const char *color, const char *fmt, ...)
-    PRINTF_ATTR (3, 4);
+void
+i_log_internal (const char *prefix, const char *color, const char *fmt, ...) PRINTF_ATTR (3, 4);
 
 void i_log_flush (void);
 
@@ -136,56 +136,55 @@ void i_log_flush (void);
 #endif
 
 // Programatically choose the log level
-#define i_log(lvl, ...)              \
-  do {                               \
-    if ((lvl) == LOG_TRACE) {        \
-      i_log_trace (__VA_ARGS__);     \
-    } else if ((lvl) == LOG_DEBUG) { \
-      i_log_debug (__VA_ARGS__);     \
-    } else if ((lvl) == LOG_INFO) {  \
-      i_log_info (__VA_ARGS__);      \
-    } else if ((lvl) == LOG_WARN) {  \
-      i_log_warn (__VA_ARGS__);      \
-    } else if ((lvl) == LOG_ERROR) { \
-      i_log_error (__VA_ARGS__);     \
-    } else if ((lvl) == LOG_NONE) {  \
-    } else {                         \
-      UNREACHABLE ();                \
-    }                                \
-  } while (0)
+#define i_log(lvl, ...)                                         \
+  do                                                            \
+  {                                                             \
+    if ((lvl) == LOG_TRACE) { i_log_trace (__VA_ARGS__); }      \
+    else if ((lvl) == LOG_DEBUG) { i_log_debug (__VA_ARGS__); } \
+    else if ((lvl) == LOG_INFO) { i_log_info (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_WARN) { i_log_warn (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_ERROR) { i_log_error (__VA_ARGS__); } \
+    else if ((lvl) == LOG_NONE) {}                              \
+    else                                                        \
+    {                                                           \
+      UNREACHABLE ();                                           \
+    }                                                           \
+  }                                                             \
+  while (0)
 
 // Print instead of log at a certain logging level
-#define i_printf(lvl, ...)           \
-  do {                               \
-    if ((lvl) == LOG_TRACE) {        \
-      i_printf_trace (__VA_ARGS__);  \
-    } else if ((lvl) == LOG_DEBUG) { \
-      i_printf_debug (__VA_ARGS__);  \
-    } else if ((lvl) == LOG_INFO) {  \
-      i_printf_info (__VA_ARGS__);   \
-    } else if ((lvl) == LOG_WARN) {  \
-      i_printf_warn (__VA_ARGS__);   \
-    } else if ((lvl) == LOG_ERROR) { \
-      i_printf_error (__VA_ARGS__);  \
-    } else if ((lvl) == LOG_NONE) {  \
-    } else {                         \
-      UNREACHABLE ();                \
-    }                                \
-  } while (0)
+#define i_printf(lvl, ...)                                         \
+  do                                                               \
+  {                                                                \
+    if ((lvl) == LOG_TRACE) { i_printf_trace (__VA_ARGS__); }      \
+    else if ((lvl) == LOG_DEBUG) { i_printf_debug (__VA_ARGS__); } \
+    else if ((lvl) == LOG_INFO) { i_printf_info (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_WARN) { i_printf_warn (__VA_ARGS__); }   \
+    else if ((lvl) == LOG_ERROR) { i_printf_error (__VA_ARGS__); } \
+    else if ((lvl) == LOG_NONE) {}                                 \
+    else                                                           \
+    {                                                              \
+      UNREACHABLE ();                                              \
+    }                                                              \
+  }                                                                \
+  while (0)
 
 ////////////////////////////////////////////////////////////
 // ASSERT
 
 #define crash()             \
-  do {                      \
+  do                        \
+  {                         \
     *(volatile int *)0 = 1; \
     UNREACHABLE_HINT ();    \
-  } while (0)
+  }                         \
+  while (0)
 
 #define UNIMPLEMENTED() UNREACHABLE ()
 
 #define UNREACHABLE() \
-  do { crash (); } while (0)
+  do { crash (); }    \
+  while (0)
 
 #ifndef NDEBUG
 
@@ -193,23 +192,28 @@ void i_log_flush (void);
 /// PANIC
 
 #  define panic(msg)                    \
-    do {                                \
+    do                                  \
+    {                                   \
       i_log_error ("PANIC! %s\n", msg); \
       i_log_flush ();                   \
       crash ();                         \
-    } while (0)
+    }                                   \
+    while (0)
 
 ////////////////////////////////////////////////////////////
 /// ASSERT
 
 #  define ASSERT(expr)                                                                   \
-    do {                                                                                 \
-      if (!(expr)) {                                                                     \
+    do                                                                                   \
+    {                                                                                    \
+      if (!(expr))                                                                       \
+      {                                                                                  \
         i_log_assert ("%s failed at %s:%d (%s)\n", #expr, __FILE__, __LINE__, __func__); \
         i_log_flush ();                                                                  \
         crash ();                                                                        \
       }                                                                                  \
-    } while (0)
+    }                                                                                    \
+    while (0)
 
 #  define DEFINE_DBG_ASSERT(type, name, var, body) \
     HEADER_FUNC void name##_assert__ (const type *var) body
@@ -226,8 +230,9 @@ void i_log_flush (void);
 #  define panic(msg) NOT_FOR_PRODUCTION ()
 #  define ASSERT(expr)
 
-#  define DEFINE_DBG_ASSERT(type, name, var, body) \
-    HEADER_FUNC void name##_assert (const type *var) { (void)var; }
+#  define DEFINE_DBG_ASSERT(type, name, var, body)   \
+    HEADER_FUNC void name##_assert (const type *var) \
+    { (void)var; }
 
 #  define DBG_ASSERT(name, expr) ((void)0)
 #endif

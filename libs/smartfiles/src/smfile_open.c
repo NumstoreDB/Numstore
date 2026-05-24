@@ -13,12 +13,13 @@
 /// limitations under the License.
 
 #include "_smfile.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
+
+#include <c_specx.h>
 
 smfile_t *
 smfile_open (const char *path)

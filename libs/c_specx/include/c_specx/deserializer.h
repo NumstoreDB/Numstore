@@ -15,15 +15,16 @@
 #ifndef C_SPECX_DESERIALIZER_H
 #define C_SPECX_DESERIALIZER_H
 
+#include <c_specx/latch.h>
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/logging.h>
-#include <c_specx/latch.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / DESERIALIZER
 
-struct deserializer {
+struct deserializer
+{
   latch     latch;
   const u8 *data;
   u32       head;
@@ -34,9 +35,11 @@ struct deserializer dsrlizr_create (const u8 *data, u32 dlen);
 
 bool dsrlizr_read (void *dest, u32 dlen, struct deserializer *src);
 #define dsrlizr_read_expect(dest, dlen, src)   \
-  do {                                         \
+  do                                           \
+  {                                            \
     bool ret = dsrlizr_read (dest, dlen, src); \
     ASSERT (ret);                              \
-  } while (0)
+  }                                            \
+  while (0)
 
 #endif // C_SPECX_DESERIALIZER_H

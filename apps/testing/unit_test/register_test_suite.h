@@ -18,9 +18,11 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 263);
+TEST_SUITE (smartfiles, 262);
 
-HEADER_FUNC void register_tests(void) {
+HEADER_FUNC void
+register_tests (void)
+{
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);

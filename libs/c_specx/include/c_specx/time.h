@@ -15,9 +15,9 @@
 #ifndef C_SPECX_TIME_H
 #define C_SPECX_TIME_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 
 ////////////////////////////////////////////////////////////
 // TIME
@@ -25,22 +25,26 @@
 typedef struct i_timer i_timer;
 
 #if PLATFORM_WINDOWS
-struct i_timer {
+struct i_timer
+{
   LARGE_INTEGER frequency;
   LARGE_INTEGER start;
 };
 #elif PLATFORM_IOS
-struct i_timer {
+struct i_timer
+{
   u64 start;
   u64 numer;
   u64 denom;
 };
 #elif PLATFORM_EMSCRIPTEN
-struct i_timer {
+struct i_timer
+{
   f64 start;
 };
 #else // POSIX (Linux, Android, BSD)
-struct i_timer {
+struct i_timer
+{
   struct timespec start;
 };
 #endif

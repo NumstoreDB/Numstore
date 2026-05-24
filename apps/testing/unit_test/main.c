@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "register_test_suite.h"
 
+#include <c_specx.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

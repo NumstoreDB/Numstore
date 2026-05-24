@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include <c_specx.h>
 #include "nscore/compile_config.h"
+
+#include <c_specx.h>
 
 struct wal_ostream
 {

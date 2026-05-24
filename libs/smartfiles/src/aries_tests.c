@@ -13,10 +13,11 @@
 /// limitations under the License.
 
 #include "_smfile.h"
-#include <c_specx.h>
 #include "nscore/aries.h"
 #include "nscore/pager.h"
 #include "smfile.h"
+
+#include <c_specx.h>
 
 #ifndef NTEST
 

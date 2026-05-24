@@ -15,15 +15,16 @@
 #ifndef C_SPECX_SERIALIZER_H
 #define C_SPECX_SERIALIZER_H
 
+#include <c_specx/latch.h>
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/logging.h>
-#include <c_specx/latch.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / SERIALIZER
 
-struct serializer {
+struct serializer
+{
   latch     latch;
   u8       *data;
   u32       dlen;
@@ -34,9 +35,11 @@ struct serializer srlizr_create (u8 *data, u32 dcap);
 
 bool srlizr_write (struct serializer *dest, const void *src, u32 len);
 #define srlizr_write_expect(dest, src, len)   \
-  do {                                        \
+  do                                          \
+  {                                           \
     bool ret = srlizr_write (dest, src, len); \
     ASSERT (ret);                             \
-  } while (0)
+  }                                           \
+  while (0)
 
 #endif // C_SPECX_SERIALIZER_H

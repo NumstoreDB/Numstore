@@ -15,15 +15,16 @@
 #ifndef C_SPECX_GR_LOCK_H
 #define C_SPECX_GR_LOCK_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 #include <c_specx/threading.h>
 
 ////////////////////////////////////////////////////////////
 // CONCURRENCY / GR_LOCK
 
-enum lock_mode {
+enum lock_mode
+{
   LM_IS    = 0,
   LM_IX    = 1,
   LM_S     = 2,
@@ -51,14 +52,16 @@ enum lock_mode {
  * tied to one lock unlock flow, which is probably what I'll do, but for now,
  * locks have loose priority until it becomes a performance problem
  */
-struct gr_lock_waiter {
+struct gr_lock_waiter
+{
   enum lock_mode         mode;
   i_cond                 cond;
   struct gr_lock_waiter *prev;
   struct gr_lock_waiter *next;
 };
 
-struct gr_lock {
+struct gr_lock
+{
   i_mutex                mutex;
   int                    holder_counts[LM_COUNT];
   struct gr_lock_waiter *head;

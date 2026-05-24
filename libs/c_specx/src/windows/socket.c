@@ -21,7 +21,6 @@
 #endif
 
 #include <c_specx.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 

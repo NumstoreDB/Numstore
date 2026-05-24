@@ -15,10 +15,10 @@
 #ifndef C_SPECX_TESTING_H
 #define C_SPECX_TESTING_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
 #include <c_specx/logging.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // DEV / TESTING

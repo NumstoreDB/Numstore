@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <c_specx.h>
 #include "nscore/page_delegate.h"
 #include "nscore/pages/page.h"
 
+#include <c_specx.h>
 #include <string.h>
 
 /*

@@ -24,7 +24,8 @@
 
 typedef int err_t;
 
-typedef struct {
+typedef struct
+{
   err_t cause_code;    // Machine-readable error code. @c SUCCESS when no error is
                        // pending.
   char cause_msg[256]; // Null-terminated human-readable description of the
@@ -48,8 +49,8 @@ void  error_unsilence (error *e);
 void  err_t_perror (FILE *output, error *e);
 err_t error_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (3, 4);
 err_t error_change_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (3, 4);
-err_t error_change_causef_from (error *e, err_t from, err_t to, const char *fmt, ...)
-    PRINTF_ATTR (4, 5);
+err_t
+error_change_causef_from (error *e, err_t from, err_t to, const char *fmt, ...) PRINTF_ATTR (4, 5);
 void          error_log_consume (error *e);
 bool          error_equal (const error *left, const error *right);
 NORETURN void error_fatal (const char *fmt, ...);
@@ -57,12 +58,16 @@ NORETURN void error_fatal (const char *fmt, ...);
   (e)->cause_code < 0 ? error_causef (e, (e)->cause_code, FPREFIX_STR, FPREFIX_ARGS) \
                       : (e)->cause_code
 #define WRAP(expr)                                               \
-  do {                                                           \
+  do                                                             \
+  {                                                              \
     if (unlikely ((expr) < SUCCESS)) { return error_trace (e); } \
-  } while (0)
+  }                                                              \
+  while (0)
 #define WRAP_GOTO(expr, label)                       \
-  do {                                               \
+  do                                                 \
+  {                                                  \
     if (unlikely ((expr) < SUCCESS)) { goto label; } \
-  } while (0)
+  }                                                  \
+  while (0)
 
 #endif // C_SPECX_ERROR_H

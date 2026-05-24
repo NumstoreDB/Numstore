@@ -12,11 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "nscore/lock_table.h"
 #include "nscore/lt_lock.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
+
+#include <c_specx.h>
 
 err_t
 pgr_deletion_blocking_checkpoint (struct pager *p, error *e)

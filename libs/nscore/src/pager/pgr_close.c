@@ -12,12 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 #include "nscore/file_pager.h"
 #include "nscore/lock_table.h"
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
 #include "nscore/wal.h"
+
+#include <c_specx.h>
 
 /**
  * TODO:

@@ -15,16 +15,17 @@
 #ifndef C_SPECX_POLLING_SERVER_H
 #define C_SPECX_POLLING_SERVER_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
-#include <c_specx/socket.h>
 #include <c_specx/latch.h>
+#include <c_specx/platform.h>
+#include <c_specx/socket.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // NET / POLLING_SERVER
 
-struct connection {
+struct connection
+{
   void    *rx_buf;
   u32      rx_cap;
   u32      rx_len;
@@ -35,13 +36,15 @@ struct connection {
   latch    l;
 };
 
-struct conn_actions {
+struct conn_actions
+{
   struct connection *(*conn_alloc) (void *ctx, error *e);
   err_t (*conn_func) (void *ctx, struct connection *conn, error *e);
   void (*conn_free) (void *ctx, struct connection *conn);
 };
 
-struct polling_server {
+struct polling_server
+{
   i_pollfd           *fds;
   struct connection **conns;
   u32                 len;

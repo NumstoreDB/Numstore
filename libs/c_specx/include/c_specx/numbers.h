@@ -15,9 +15,9 @@
 #ifndef C_SPECX_NUMBERS_H
 #define C_SPECX_NUMBERS_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 
 ////////////////////////////////////////////////////////////
 // CORE / NUMBERS

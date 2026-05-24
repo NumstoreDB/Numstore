@@ -13,8 +13,9 @@
 /// limitations under the License.
 
 #define WIN32_LEAN_AND_MEAN
-#include <c_specx.h>
 #include "windows.h"
+
+#include <c_specx.h>
 
 ////////////////////////////////////////////////////////////
 // Semaphore

@@ -15,23 +15,30 @@
 #ifndef C_SPECX_MALLOC_PLAN_H
 #define C_SPECX_MALLOC_PLAN_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
 #include <c_specx/logging.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / MALLOC_PLAN
 
-struct malloc_plan {
+struct malloc_plan
+{
   u32   size;
   u32   blen;
   void *buffer;
 
-  enum { MP_PLANNING, MP_ALLOCING } mode;
+  enum
+  {
+    MP_PLANNING,
+    MP_ALLOCING
+  } mode;
 };
 
-HEADER_FUNC struct malloc_plan malloc_plan_create (void) {
+HEADER_FUNC struct malloc_plan
+malloc_plan_create (void)
+{
   return (struct malloc_plan){
       .size   = 0,
       .blen   = 0,
@@ -40,12 +47,17 @@ HEADER_FUNC struct malloc_plan malloc_plan_create (void) {
   };
 }
 
-HEADER_FUNC void *malloc_plan_head (const struct malloc_plan *plan) {
-  switch (plan->mode) {
-    case MP_PLANNING: {
+HEADER_FUNC void *
+malloc_plan_head (const struct malloc_plan *plan)
+{
+  switch (plan->mode)
+  {
+    case MP_PLANNING:
+    {
       return NULL;
     }
-    case MP_ALLOCING: {
+    case MP_ALLOCING:
+    {
       return (u8 *)plan->buffer + plan->blen;
     }
   }

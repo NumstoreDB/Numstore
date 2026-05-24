@@ -12,148 +12,54 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef C_SPECX_H
-#define C_SPECX_H
+#pragma once
 
-// Platform detection, compiler attributes, system includes
-#include <c_specx/platform.h>
-
-// Primitive type aliases (u8, u32, i64, f32, etc.)
-#include <c_specx/stdtypes.h>
-
-// Simple utility macros (FPREFIX, container_of, arrlen, MIN, MAX, etc.)
-#include <c_specx/utils.h>
-
-// Error type, error codes, WRAP macros
-#include <c_specx/error.h>
-
-// Threading primitives (i_mutex, i_semaphore, i_rwlock, i_thread, i_cond)
-#include <c_specx/threading.h>
-
-// Timer and sleep utilities
-#include <c_specx/time.h>
-
-// Socket types and operations
-#include <c_specx/socket.h>
-
-// Byte buffer view types (struct bytes, struct cbytes)
-#include <c_specx/bytes.h>
-
-// File system vtable and I/O helpers
-#include <c_specx/file_system.h>
-
-// Virtual memory vtable (i_vmem)
-#include <c_specx/memory.h>
-
-// Logging macros, color codes, ASSERT, UNREACHABLE, panic
-#include <c_specx/logging.h>
-
-// Spinlock latch (latch type, latch_lock/unlock/trylock)
-#include <c_specx/latch.h>
-
-// Shared/exclusive spinlock (sx_latch)
-#include <c_specx/spx_latch.h>
-
-// Linear bump allocator (struct lalloc)
-#include <c_specx/lalloc.h>
-
-// Slab allocator (struct slab_alloc)
-#include <c_specx/slab_alloc.h>
-
-// Chunk-based arena allocator (struct chunk_alloc)
-#include <c_specx/chunk_alloc.h>
-
-// Serializer (struct serializer)
-#include <c_specx/serializer.h>
-
-// Deserializer (struct deserializer)
-#include <c_specx/deserializer.h>
-
-// Malloc plan (struct malloc_plan)
-#include <c_specx/malloc_plan.h>
-
-// Generic allocator wrapper (struct alloc)
 #include <c_specx/alloc.h>
-
-// Intrusive linked list (struct llnode)
-#include <c_specx/llist.h>
-
-// Length-prefixed string view (struct string)
-#include <c_specx/string.h>
-
-// Stride descriptors (struct stride, struct user_stride, struct multi_user_stride)
-#include <c_specx/stride.h>
-
-// Data writer vtable (struct data_writer)
-#include <c_specx/data_writer.h>
-
-// Hash table result enums (hti_res, hta_res)
-#include <c_specx/ht_models.h>
-
-// Block array (struct block_array)
 #include <c_specx/block_array.h>
-
-// Circular buffer (struct cbuffer)
-#include <c_specx/cbuffer.h>
-
-// Doubling buffer (struct dbl_buffer)
-#include <c_specx/dbl_buffer.h>
-
-// Extensible array (struct ext_array)
-#include <c_specx/ext_array.h>
-
-// Chained hash table (struct htable, struct hnode)
-#include <c_specx/hash_table.h>
-
-// Polymorphic byte-oriented I/O stream (struct stream)
-#include <c_specx/stream.h>
-
-// Byte accessor (struct byte_accessor)
-#include <c_specx/byte_accessor.h>
-
-// Safe arithmetic macros (safe_add_u32, safe_sub_u64, etc.)
 #include <c_specx/bounds.h>
-
-// CRC / checksum utilities
+#include <c_specx/byte_accessor.h>
+#include <c_specx/bytes.h>
+#include <c_specx/cbuffer.h>
 #include <c_specx/checksums.h>
-
-// FNV-1a hashing
-#include <c_specx/hashing.h>
-
-// Max capture placeholder
-#include <c_specx/max_capture.h>
-
-// Number parsing utilities
-#include <c_specx/numbers.h>
-
-// Random number generation
-#include <c_specx/random.h>
-
-// Math helpers and array utilities
-#include <c_specx/math.h>
-
-// Unit test framework macros
-#include <c_specx/testing.h>
-
-// Data validator (testing utility)
-#include <c_specx/data_validator.h>
-
-// Granular lock (struct gr_lock)
-#include <c_specx/gr_lock.h>
-
-// Periodic background task (struct periodic_task)
-#include <c_specx/periodic_task.h>
-
-// TCP client (struct client)
+#include <c_specx/chunk_alloc.h>
 #include <c_specx/client.h>
-
-// Polling server (struct polling_server)
-#include <c_specx/polling_server.h>
-
-// Echo server
+#include <c_specx/data_validator.h>
+#include <c_specx/data_writer.h>
+#include <c_specx/dbl_buffer.h>
+#include <c_specx/deserializer.h>
 #include <c_specx/echo_server.h>
-
-#endif // C_SPECX_H
+#include <c_specx/error.h>
+#include <c_specx/ext_array.h>
+#include <c_specx/file_system.h>
+#include <c_specx/gr_lock.h>
+#include <c_specx/hash_table.h>
+#include <c_specx/hashing.h>
+#include <c_specx/ht_models.h>
+#include <c_specx/lalloc.h>
+#include <c_specx/latch.h>
+#include <c_specx/llist.h>
+#include <c_specx/logging.h>
+#include <c_specx/malloc_plan.h>
+#include <c_specx/math.h>
+#include <c_specx/max_capture.h>
+#include <c_specx/memory.h>
+#include <c_specx/numbers.h>
+#include <c_specx/periodic_task.h>
+#include <c_specx/platform.h>
+#include <c_specx/polling_server.h>
+#include <c_specx/random.h>
+#include <c_specx/serializer.h>
+#include <c_specx/slab_alloc.h>
+#include <c_specx/socket.h>
+#include <c_specx/spx_latch.h>
+#include <c_specx/stdtypes.h>
+#include <c_specx/stream.h>
+#include <c_specx/stride.h>
+#include <c_specx/string.h>
+#include <c_specx/testing.h>
+#include <c_specx/threading.h>
+#include <c_specx/time.h>
+#include <c_specx/utils.h>
 
 ////////////////////////////////////////////////////////////
 // Robin Hood Hash Table
@@ -161,33 +67,33 @@
 
 #ifdef KTYPE
 
-#include <string.h>
+#  include <string.h>
 
-#ifndef KTYPE
-#  define KTYPE int
-#endif
-#ifndef VTYPE
-#  define VTYPE int
-#endif
-#ifndef SUFFIX
-#  define SUFFIX int
-#endif
+#  ifndef KTYPE
+#    define KTYPE int
+#  endif
+#  ifndef VTYPE
+#    define VTYPE int
+#  endif
+#  ifndef SUFFIX
+#    define SUFFIX int
+#  endif
 
-#define HDATA_T      RH__XCAT (hdata_, SUFFIX)
-#define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
-#define HTIR_T       RH__XCAT (htir_res_, SUFFIX)
-#define HT_T         RH__XCAT (ht_, SUFFIX)
-#define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
+#  define HDATA_T      RH__XCAT (hdata_, SUFFIX)
+#  define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
+#  define HTIR_T       RH__XCAT (htir_res_, SUFFIX)
+#  define HT_T         RH__XCAT (ht_, SUFFIX)
+#  define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
 
 // Functions
-#define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
-#define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
-#define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
-#define HT_GET           RH__XCAT (ht_get_, SUFFIX)
-#define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
-#define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
-#define HT_COUNT         RH__XCAT (ht_count_, SUFFIX)
-#define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
+#  define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
+#  define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
+#  define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
+#  define HT_GET           RH__XCAT (ht_get_, SUFFIX)
+#  define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
+#  define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
+#  define HT_COUNT         RH__XCAT (ht_count_, SUFFIX)
+#  define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
 
 typedef struct
 {
@@ -432,19 +338,19 @@ HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
   ASSERT (ret == HTAR_SUCCESS);
 }
 
-#undef HDATA_T
-#undef HENWRAP_T
-#undef HTIR_T
-#undef HT_T
-#undef HASH_TABLE_T
-#undef HT_INIT
-#undef HT_INSERT
-#undef HT_INSERT_EXPECT
-#undef HT_GET
-#undef HT_GET_EXPECT
-#undef HT_DELETE
-#undef HT_COUNT
-#undef HT_DELETE_EXPECT
+#  undef HDATA_T
+#  undef HENWRAP_T
+#  undef HTIR_T
+#  undef HT_T
+#  undef HASH_TABLE_T
+#  undef HT_INIT
+#  undef HT_INSERT
+#  undef HT_INSERT_EXPECT
+#  undef HT_GET
+#  undef HT_GET_EXPECT
+#  undef HT_DELETE
+#  undef HT_COUNT
+#  undef HT_DELETE_EXPECT
 
 #endif // KTYPE
 
@@ -454,31 +360,31 @@ HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
 ////////////////////////////////////////////////////////////
 #ifdef HASH_FUNC
 
-#include <string.h>
+#  include <string.h>
 
-#ifndef VTYPE
-#  define VTYPE int
-#endif
-#ifndef SUFFIX
-#  define SUFFIX int
-#endif
-#ifndef HASH_FUNC
-#  define HASH_FUNC(v) ((u32)(v))
-#endif
-#ifndef CMP_FUNC
-#  define CMP_FUNC(a, b) ((a) == (b))
-#endif
+#  ifndef VTYPE
+#    define VTYPE int
+#  endif
+#  ifndef SUFFIX
+#    define SUFFIX int
+#  endif
+#  ifndef HASH_FUNC
+#    define HASH_FUNC(v) ((u32)(v))
+#  endif
+#  ifndef CMP_FUNC
+#    define CMP_FUNC(a, b) ((a) == (b))
+#  endif
 
-#define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
-#define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
+#  define HENWRAP_T    RH__XCAT (hentry_, SUFFIX)
+#  define HASH_TABLE_T RH__XCAT (hash_table_, SUFFIX)
 
-#define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
-#define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
-#define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
-#define HT_GET           RH__XCAT (ht_get_, SUFFIX)
-#define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
-#define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
-#define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
+#  define HT_INIT          RH__XCAT (ht_init_, SUFFIX)
+#  define HT_INSERT        RH__XCAT (ht_insert_, SUFFIX)
+#  define HT_INSERT_EXPECT RH__XCAT (ht_insert_expect_, SUFFIX)
+#  define HT_GET           RH__XCAT (ht_get_, SUFFIX)
+#  define HT_GET_EXPECT    RH__XCAT (ht_get_expect_, SUFFIX)
+#  define HT_DELETE        RH__XCAT (ht_delete_, SUFFIX)
+#  define HT_DELETE_EXPECT RH__XCAT (ht_delete_expect_, SUFFIX)
 
 typedef struct
 {
@@ -659,18 +565,18 @@ HT_DELETE_EXPECT (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
   ASSERT (ret == HTAR_SUCCESS);
 }
 
-#undef HENWRAP_T
-#undef HASH_TABLE_T
-#undef HT_INIT
-#undef HT_INSERT
-#undef HT_INSERT_EXPECT
-#undef HT_GET
-#undef HT_GET_EXPECT
-#undef HT_DELETE
-#undef HT_DELETE_EXPECT
-#undef VTYPE
-#undef SUFFIX
-#undef HASH_FUNC
-#undef CMP_FUNC
+#  undef HENWRAP_T
+#  undef HASH_TABLE_T
+#  undef HT_INIT
+#  undef HT_INSERT
+#  undef HT_INSERT_EXPECT
+#  undef HT_GET
+#  undef HT_GET_EXPECT
+#  undef HT_DELETE
+#  undef HT_DELETE_EXPECT
+#  undef VTYPE
+#  undef SUFFIX
+#  undef HASH_FUNC
+#  undef CMP_FUNC
 
 #endif // HASH_FUNC

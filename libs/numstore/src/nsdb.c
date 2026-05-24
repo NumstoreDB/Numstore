@@ -13,9 +13,10 @@
 /// limitations under the License.
 
 #include "_numstore.h"
-#include <c_specx.h>
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
+
+#include <c_specx.h>
 
 // smfile
 

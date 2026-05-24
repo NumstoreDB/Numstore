@@ -12,11 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include <sys/stat.h>
 #include <sys/uio.h>
 
+#include <c_specx.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>

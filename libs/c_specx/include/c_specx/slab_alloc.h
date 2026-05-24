@@ -15,17 +15,18 @@
 #ifndef C_SPECX_SLAB_ALLOC_H
 #define C_SPECX_SLAB_ALLOC_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
 #include <c_specx/latch.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // MEMORY / SLAB_ALLOC
 
 struct slab;
 
-struct slab_alloc {
+struct slab_alloc
+{
   struct slab *head;
   struct slab *current; // Cache slab with free space (hot path)
   latch        l;

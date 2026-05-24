@@ -27,9 +27,10 @@
  * No data inserting in this test
  */
 
-#include <c_specx.h>
 #include "mem_vhmap.h"
 #include "numstore.h"
+
+#include <c_specx.h>
 
 // Actions you can take in a database
 enum action_type

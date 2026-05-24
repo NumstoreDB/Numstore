@@ -14,9 +14,10 @@
 
 #include "nscore/node_updates.h"
 
-#include <c_specx.h>
 #include "nscore/pages/inner_node.h"
 #include "nscore/pages/page.h"
+
+#include <c_specx.h>
 
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)

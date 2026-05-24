@@ -15,16 +15,17 @@
 #ifndef C_SPECX_EXT_ARRAY_H
 #define C_SPECX_EXT_ARRAY_H
 
+#include <c_specx/data_writer.h>
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 #include <c_specx/stride.h>
-#include <c_specx/data_writer.h>
 
 ////////////////////////////////////////////////////////////
 // DS / EXT_ARRAY
 
-struct ext_array {
+struct ext_array
+{
   u8 *data;
   u32 len;
   u32 cap;

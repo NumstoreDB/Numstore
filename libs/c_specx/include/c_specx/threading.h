@@ -15,14 +15,15 @@
 #ifndef C_SPECX_THREADING_H
 #define C_SPECX_THREADING_H
 
+#include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
-#include <c_specx/error.h>
 
 ////////////////////////////////////////////////////////////
 // THREADING
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   CRITICAL_SECTION m;
 #else
@@ -35,7 +36,8 @@ void  i_mutex_lock (i_mutex *m);
 bool  i_mutex_try_lock (i_mutex *m);
 void  i_mutex_unlock (i_mutex *m);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   HANDLE handle;
 #else
@@ -51,7 +53,8 @@ void  i_semaphore_wait (i_semaphore *s);
 bool  i_semaphore_try_wait (i_semaphore *s);
 bool  i_semaphore_timed_wait (i_semaphore *s, long nsec);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   SRWLOCK lock;
   bool    write_locked;
@@ -67,7 +70,8 @@ void  i_rwlock_unlock (i_rwlock *rw);
 bool  i_rwlock_try_rdlock (i_rwlock *rw);
 bool  i_rwlock_try_wrlock (i_rwlock *rw);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   HANDLE handle;
   DWORD  id;
@@ -80,7 +84,8 @@ err_t i_thread_join (i_thread *t, error *e);
 void  i_thread_cancel (i_thread *t);
 u64   get_available_threads (void);
 
-typedef struct {
+typedef struct
+{
 #if defined(_WIN32)
   CONDITION_VARIABLE cond;
 #else

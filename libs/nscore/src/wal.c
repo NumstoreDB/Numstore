@@ -14,13 +14,13 @@
 
 #include "nscore/wal.h"
 
-#include <c_specx.h>
 #include "nscore/dirty_page_table.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal_istream.h"
 #include "nscore/wal_ostream.h"
 #include "nscore/wal_rec_hdr.h"
 
+#include <c_specx.h>
 #include <string.h>
 
 static err_t

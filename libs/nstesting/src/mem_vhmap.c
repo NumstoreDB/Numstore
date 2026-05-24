@@ -14,10 +14,11 @@
 
 #include "mem_vhmap.h"
 
-#include <c_specx.h>
 #include "nscore/errors.h"
 #include "nscore/types.h"
 #include "nscore/variables.h"
+
+#include <c_specx.h>
 
 struct var_frame
 {

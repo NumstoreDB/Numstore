@@ -15,16 +15,17 @@
 #ifndef C_SPECX_STRING_H
 #define C_SPECX_STRING_H
 
-#include <c_specx/platform.h>
-#include <c_specx/stdtypes.h>
 #include <c_specx/error.h>
 #include <c_specx/lalloc.h>
+#include <c_specx/platform.h>
+#include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
 // DS / STRING
 
 /// A length-prefixed, non-owning string view
-struct string {
+struct string
+{
   u32         len;  // Number of bytes in data (not necessarily null-terminated)
   const char *data; // Pointer to the string bytes
 };

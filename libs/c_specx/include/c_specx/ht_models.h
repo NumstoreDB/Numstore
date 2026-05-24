@@ -19,14 +19,16 @@
 // DS / HT_MODELS
 
 // Hash table insert result
-typedef enum {
+typedef enum
+{
   HTIR_SUCCESS,
   HTIR_EXISTS,
   HTIR_FULL,
 } hti_res;
 
 // Hash table access result
-typedef enum {
+typedef enum
+{
   HTAR_SUCCESS,
   HTAR_DOESNT_EXIST,
 } hta_res;
