@@ -31,7 +31,7 @@ main (void)
   int start_enabled[CDS_AT_LEN];
   for (int i = 0; i < CDS_AT_LEN; ++i) { start_enabled[i] = 1; }
 
-  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test", 10000);
+  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
 
   struct sigaction sa;
   sa.sa_handler = handle_sigint;

@@ -65,17 +65,12 @@ struct cgd_swarm_test
   nsdb_t     *db;
   int         in_txn;
   const char *dbname;
-  int         max_insert_len;
 };
 
 // Main API
-struct cgd_swarm_test *cgd_swmt_open (
-    int         start_enabled[CDS_AT_LEN], // Starting enabled options
-    const char *dbname,
-    int         max_insert_len
-);
-void cgd_swmt_close (struct cgd_swarm_test *meta);
-void cgd_swmt_step (struct cgd_swarm_test *meta);
+struct cgd_swarm_test *cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname);
+void                   cgd_swmt_close (struct cgd_swarm_test *meta);
+void                   cgd_swmt_step (struct cgd_swarm_test *meta);
 
 // Concrete Actions
 void cgd_swmt_begin_txn (struct cgd_swarm_test *meta);

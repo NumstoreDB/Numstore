@@ -16,6 +16,7 @@
 
 #include "_numstore.h"
 #include "mem_vhmap.h"
+#include "nscore/compile_config.h"
 #include "nscore/types.h"
 #include "nscore/variables.h"
 #include "numstore.h"
@@ -110,14 +111,37 @@ cgd_swmt_set_allowed (struct cgd_swarm_test *meta)
   }
 }
 
-static char *
-random_name (u32 low, u32 high)
+static u32
+get_random_name_len (void)
 {
-  u32   length = randu32r (low, high);
+  // Roll a percentage threshold between 1 and 100
+  u32 roll = randu32r (1, 100);
+
+  if (roll <= 90) { return (size_t)randu32r (2, 10); }
+
+  if (roll <= 95) { return (size_t)randu32r (10, PAGE_SIZE); }
+
+  return (size_t)randu32r (PAGE_SIZE, 10 * PAGE_SIZE);
+}
+
+static char *
+random_name (void)
+{
+  u32   length = get_random_name_len ();
   char *buffer = malloc (length * sizeof (char));
   var_random_name (buffer, length);
 
   return buffer;
+}
+
+static u32
+get_random_type_depth (void)
+{
+  u32 roll = randu32r (1, 100);
+
+  if (roll <= 95) { return randu32r (1, 3); }
+
+  return randu32r (3, 10);
 }
 
 static char *
@@ -133,7 +157,7 @@ type_str (const struct type *t)
 /// Main Api
 
 struct cgd_swarm_test *
-cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, int max_insert_len)
+cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname)
 {
   struct cgd_swarm_test *ret = malloc (sizeof *ret);
   cgd_swmt_assert (ret != NULL);
@@ -141,13 +165,12 @@ cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, int max_insert
   cgd_swmt_assert (nsdb_cleanup (dbname) == 0);
 
   *ret = (struct cgd_swarm_test){
-      .committed      = mem_vhmap_create (NULL),
-      .working        = NULL,
-      .cur            = NULL,
-      .db             = nsdb_open (dbname),
-      .in_txn         = 0,
-      .dbname         = dbname,
-      .max_insert_len = max_insert_len,
+      .committed = mem_vhmap_create (NULL),
+      .working   = NULL,
+      .cur       = NULL,
+      .db        = nsdb_open (dbname),
+      .in_txn    = 0,
+      .dbname    = dbname,
   };
 
   cgd_swmt_assert (ret->committed != NULL);
@@ -325,8 +348,8 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     struct chunk_alloc temp;
     chunk_alloc_create_default (&temp);
 
-    char        *name    = random_name (2, PAGE_SIZE * 2);
-    struct type *type    = type_random (&temp, randu32r (1, 10), NULL);
+    char        *name    = random_name ();
+    struct type *type    = type_random (&temp, get_random_type_depth (), NULL);
     char        *typestr = type_str (type);
     t_size       esize   = type_byte_size (type);
 
