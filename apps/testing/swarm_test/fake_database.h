@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx.h"
+#include <c_specx.h>
 
 #define FAKE_DB_MAX_VARS 64
 
