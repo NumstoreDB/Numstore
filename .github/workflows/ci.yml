@@ -9,7 +9,8 @@ jobs:
     env:
       TEST_BIN: ./build/${{ matrix.preset }}/bin/unit_test
       LEAKS: leaks --atExit --
-      VALGRIND: valgrind                             \
+      VALGRIND: |
+        valgrind                                     \
                --tool=memcheck                       \
                --leak-check=full                     \
                --leak-resolution=high                \
