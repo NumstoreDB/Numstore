@@ -69,9 +69,6 @@ xfer_or_release (struct pager *p, page_h *dest, page_h *src, error *e)
   if (dest) { page_h_xfer_ownership_ptr (dest, src); }
   else
   {
-    printf ("%d\n", page_h_type (src));
-    printf ("%d\n", PG_VAR_HASH_PAGE);
-    printf ("%d\n", PG_VAR_PAGE);
     if (pgr_release (p, src, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e)) { goto theend; }
   }
 
@@ -231,7 +228,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
         else
         {
           // free(prev)
-          if ((pgr_release (pms->p, &prev, PG_VAR_PAGE, e))) { goto failed; }
+          if ((pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e))) { goto failed; }
 
           // prev = cur
           prev = page_h_xfer_ownership (&cur);
@@ -261,6 +258,7 @@ foundit:
   chunk_alloc_free_all (&temp);
 
   // Transfer nodes to params
+  if (page_h_type (&prev) == PG_VAR_TAIL) { panic ("HERE"); }
   if (xfer_or_release (pms->p, pms->prev, &prev, e)) { goto failed; }
   if (xfer_or_release (pms->p, pms->cur, &cur, e)) { goto failed; }
 

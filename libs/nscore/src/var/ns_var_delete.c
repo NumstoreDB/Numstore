@@ -14,6 +14,7 @@
 
 #include "c_specx.h"
 #include "nscore/compile_config.h"
+#include "nscore/page_delegate.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
@@ -110,7 +111,7 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   // Delete all overflow pages
   while (cur.mode != PHM_NONE)
   {
-    pgno npg = vp_get_ovnext (page_h_ro (&cur));
+    pgno npg = dlgt_get_ovnext (page_h_ro (&cur));
     if (npg != PGNO_NULL)
     {
       if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e)) { goto failed; }

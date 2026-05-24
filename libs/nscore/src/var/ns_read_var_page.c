@@ -16,6 +16,7 @@
 #include "nscore/compile_config.h"
 #include "nscore/page_delegate.h"
 #include "nscore/page_h.h"
+#include "nscore/pager.h"
 #include "nscore/pages/var_page.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
@@ -63,7 +64,8 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   u8           *tstr = NULL;
 
   // Save for the end to reset var page
-  pgno start = page_h_pgno (params->vp);
+  pgno start    = page_h_pgno (params->vp);
+  bool writable = params->vp->mode == PHM_X;
 
   // Temporary allocator
   struct chunk_alloc temp;
@@ -167,25 +169,18 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
       rread += next;
       lread += next;
     }
-  }
 
-  // We just finished reading everything - expect us to be done
-  if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL)
-  {
-    error_causef (
-        e,
-        ERR_CORRUPT,
-        "var page read complete but overflow "
-        "pointer is non-null"
-    );
-    goto failed;
-  }
-
-  // Reset back to head page
-  if (page_h_pgno (params->vp) != start)
-  {
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) { goto failed; }
-    if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) { goto failed; }
+    // We just finished reading everything - expect us to be done
+    if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL)
+    {
+      error_causef (
+          e,
+          ERR_CORRUPT,
+          "var page read complete but overflow "
+          "pointer is non-null"
+      );
+      goto failed;
+    }
   }
 
   params->dest->rpt_root = rpt_root;
@@ -205,6 +200,24 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   params->matches = true;
 
 theend:
+  // Reset back to head page
+  if (page_h_pgno (params->vp) != start)
+  {
+    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) { goto failed; }
+    if ((pgr_get_maybe_writable (
+            params->vp,
+            params->tx,
+            PG_VAR_PAGE,
+            start,
+            params->p,
+            writable,
+            e
+        )))
+    {
+      goto failed;
+    }
+  }
+
   chunk_alloc_free_all (&temp);
   return SUCCESS;
 

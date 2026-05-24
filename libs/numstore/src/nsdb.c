@@ -32,9 +32,6 @@ nsdb_t *
 nsdb_new_context (nsdb_t *n)
 { return (nsdb_t *)nsh_new_context ((struct nshandle *)n); }
 int
-nsdb_delete (nsdb_t *n, const char *vname)
-{ return nsh_delete ((struct nshandle *)n, vname); }
-int
 nsdb_close (nsdb_t *ns)
 { return nsh_close ((struct nshandle *)ns); }
 int

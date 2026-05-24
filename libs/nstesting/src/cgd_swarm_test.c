@@ -325,8 +325,8 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     struct chunk_alloc temp;
     chunk_alloc_create_default (&temp);
 
-    char        *name    = random_name (2, 100);
-    struct type *type    = type_random (&temp, randu32r (1, 2), NULL);
+    char        *name    = random_name (2, PAGE_SIZE * 2);
+    struct type *type    = type_random (&temp, randu32r (1, 10), NULL);
     char        *typestr = type_str (type);
     t_size       esize   = type_byte_size (type);
 
