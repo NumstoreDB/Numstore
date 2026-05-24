@@ -15,6 +15,7 @@
 #include "irwr_swarm_test.h"
 
 #include <signal.h>
+#include <stddef.h>
 
 static volatile sig_atomic_t keep_running = 1;
 
@@ -34,6 +35,15 @@ main (void)
   struct irwr_swarm_test *meta =
       irwr_swmt_open (start_enabled, "test", 100000, "testvar", "u32", sizeof (u32));
 
+#ifdef _WIN32
+  // Windows / ISO C fallback
+  if (signal (SIGINT, handle_sigint) == SIG_ERR)
+  {
+    irwr_swmt_close (meta);
+    return 0;
+  }
+#else
+  // POSIX robust signal handling (macOS and Linux)
   struct sigaction sa;
   sa.sa_handler = handle_sigint;
   sigemptyset (&sa.sa_mask);
@@ -44,8 +54,10 @@ main (void)
     irwr_swmt_close (meta);
     return 0;
   }
+#endif
 
   while (keep_running) { irwr_swmt_step (meta); }
 
   irwr_swmt_close (meta);
+  return 0;
 }
