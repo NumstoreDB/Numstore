@@ -45,10 +45,11 @@ active_db (struct cgd_swarm_test *meta)
 { return meta->in_txn ? meta->working : meta->committed; }
 
 static void
-fixup_cur_name (struct cgd_swarm_test *meta)
+rebind_cur (struct cgd_swarm_test *meta, const char *preferred_name)
 {
   struct mem_vhmap *db = active_db (meta);
-  if (meta->cur) { return; }
+  meta->cur = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
+  if (!meta->cur && mem_vhmap_count (db) > 0) { meta->cur = mem_vhmap_random (db); }
 }
 
 /**
@@ -114,14 +115,13 @@ cgd_swmt_set_allowed (struct cgd_swarm_test *meta)
 static u32
 get_random_name_len (void)
 {
-  // Roll a percentage threshold between 1 and 100
   u32 roll = randu32r (1, 100);
 
-  if (roll <= 90) { return (size_t)randu32r (2, 10); }
+  if (roll <= 90) { return randu32r (2, 10); }
 
-  if (roll <= 95) { return (size_t)randu32r (10, PAGE_SIZE); }
+  if (roll <= 95) { return randu32r (10, PAGE_SIZE); }
 
-  return (size_t)randu32r (PAGE_SIZE, 10 * PAGE_SIZE);
+  return randu32r (PAGE_SIZE, 10 * PAGE_SIZE);
 }
 
 static char *
@@ -279,12 +279,14 @@ cgd_swmt_commit_txn (struct cgd_swarm_test *meta)
 
   cgd_swmt_assert (nsdb_commit (meta->db) == 0);
 
+  char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
   mem_vhmap_free (meta->committed);
   meta->committed = meta->working;
   meta->working   = NULL;
   meta->in_txn    = 0;
 
-  fixup_cur_name (meta);
+  rebind_cur (meta, saved);
+  free (saved);
 }
 
 /**
@@ -298,11 +300,13 @@ cgd_swmt_rollback_txn (struct cgd_swarm_test *meta)
 
   cgd_swmt_assert (nsdb_rollback (meta->db) == 0);
 
+  char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
   mem_vhmap_free (meta->working);
   meta->working = NULL;
   meta->in_txn  = 0;
 
-  fixup_cur_name (meta);
+  rebind_cur (meta, saved);
+  free (saved);
 }
 
 /**
@@ -312,6 +316,8 @@ cgd_swmt_rollback_txn (struct cgd_swarm_test *meta)
 void
 cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta)
 {
+  char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
+
   cgd_swmt_assert (_nsdb_crash (meta->db) == 0);
 
   meta->db = nsdb_open (meta->dbname);
@@ -324,7 +330,8 @@ cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta)
   }
   meta->in_txn = 0;
 
-  fixup_cur_name (meta);
+  rebind_cur (meta, saved);
+  free (saved);
 }
 
 void
@@ -351,7 +358,6 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     char        *name    = random_name ();
     struct type *type    = type_random (&temp, get_random_type_depth (), NULL);
     char        *typestr = type_str (type);
-    t_size       esize   = type_byte_size (type);
 
     // Already exists - try again
     if (mem_vhmap_get_var (db, strfcstr (name)) != NULL)
