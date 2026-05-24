@@ -39,7 +39,7 @@ _nsh_delete (struct nshandle *db, const char *vname, error *e)
       // It's ok - just return the error
       goto commit;
     }
-    WRAP_GOTO (err, failed_rollback);
+    if (err < SUCCESS) { goto failed_rollback; }
   }
 
 commit:

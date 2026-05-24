@@ -491,8 +491,7 @@ type_random (struct chunk_alloc *alloc, u32 depth, error *e)
     return dest;
   }
 
-  static const enum type_t weighted[] =
-      {T_PRIM, T_PRIM, T_PRIM, T_PRIM, T_STRUCT, T_UNION, T_SARRAY};
+  static const enum type_t weighted[] = {T_PRIM, T_STRUCT, T_UNION, T_SARRAY};
 
   dest->type = weighted[randu32r (0, arrlen (weighted) - 1)];
 
@@ -506,19 +505,19 @@ type_random (struct chunk_alloc *alloc, u32 depth, error *e)
 
     case T_STRUCT:
     {
-      if (struct_t_random (&dest->st, alloc, depth - 1, e)) { return NULL; }
+      if (struct_t_random (&dest->st, alloc, depth, e)) { return NULL; }
       return dest;
     }
 
     case T_UNION:
     {
-      if (union_t_random (&dest->un, alloc, depth - 1, e)) { return NULL; }
+      if (union_t_random (&dest->un, alloc, depth, e)) { return NULL; }
       return dest;
     }
 
     case T_SARRAY:
     {
-      if (sarray_t_random (&dest->sa, alloc, depth - 1, e)) { return NULL; }
+      if (sarray_t_random (&dest->sa, alloc, depth, e)) { return NULL; }
       return dest;
     }
 

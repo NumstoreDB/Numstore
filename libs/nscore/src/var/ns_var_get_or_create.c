@@ -190,15 +190,62 @@ TEST (ns_var_get_or_create)
     pgr_fixture_teardown (&f);
   }
 
-  TEST_CASE ("Big type short variable name")
+  TEST_CASE ("Big variable big type")
   {
     struct pgr_fixture f;
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
-    struct txn tx;
 
-    for (int i = 0; i < 100; ++i)
+    for (u32 i = 0; i < 10000; ++i)
     {
+      struct txn         tx;
+      struct chunk_alloc alloc;
+      chunk_alloc_create_default (&alloc);
+
+      // Long variable name
+      {
+        pgr_begin_txn (&tx, f.p, &f.e);
+
+        char *name = i_malloc (PAGE_SIZE * 10, 1, &f.e);
+        for (u32 k = 0; k < PAGE_SIZE * 10 - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
+        name[PAGE_SIZE * 10 - 1] = '\0';
+        struct type *t           = type_random (&alloc, 10, &f.e);
+        i_log_info ("%d/%d\n", i, 10000);
+        i_log_type (t, &f.e);
+
+        struct ns_var_get_or_create_params params = {
+            .p  = f.p,
+            .tx = &tx,
+
+            .vname = strfcstr (name),
+            .type  = t,
+            .alloc = &alloc,
+        };
+
+        // Do it twice, both times succeed because it checks types
+        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+
+        i_free (name);
+
+        pgr_commit (f.p, &tx, &f.e);
+      }
+
+      chunk_alloc_free_all (&alloc);
+    }
+
+    pgr_fixture_teardown (&f);
+  }
+
+  TEST_CASE ("Big type short variable name")
+  {
+    for (int i = 0; i < 10000; ++i)
+    {
+      struct pgr_fixture f;
+      pgr_fixture_create (&f);
+      ns_init_var_hash_map (f.p, &f.e);
+      struct txn tx;
+
       struct chunk_alloc alloc;
       chunk_alloc_create_default (&alloc);
 
@@ -226,9 +273,8 @@ TEST (ns_var_get_or_create)
       }
 
       chunk_alloc_free_all (&alloc);
+      pgr_fixture_teardown (&f);
     }
-
-    pgr_fixture_teardown (&f);
   }
 }
 #endif
