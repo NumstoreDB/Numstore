@@ -214,7 +214,7 @@ union_to_dtype (const struct union_t *un)
     }
 
     // max_size = max(max_size, sizeof(sub))
-    Py_ssize_t isize = PyDataType_ELSIZE(((PyArray_Descr*)sub));
+    Py_ssize_t isize = PyDataType_ELSIZE (((PyArray_Descr *)sub));
     if (isize > max_size) { max_size = isize; }
 
     // names[i] = name

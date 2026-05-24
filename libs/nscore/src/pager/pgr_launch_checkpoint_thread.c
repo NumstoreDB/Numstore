@@ -21,7 +21,7 @@ pgr_do_checkpoint (void *ctx)
 {
   struct pager *p = ctx;
   error         e = error_create ();
-  i_log_error("Executing checkpoint\n");
+  i_log_error ("Executing checkpoint\n");
   if (pgr_deletion_blocking_checkpoint (p, &e)) { error_log_consume (&e); }
 }
 

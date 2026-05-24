@@ -193,10 +193,10 @@ i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
     ts.tv_nsec -= 1000000000LL;
   }
 
-  errno   = 0;
-  printf("COND START\n");
+  errno = 0;
+  printf ("COND START\n");
   int ret = pthread_cond_timedwait (&c->cond, &m->m, &ts);
-  printf("COND END\n");
+  printf ("COND END\n");
   if (ret && ret != ETIMEDOUT)
   {
     switch (ret)
