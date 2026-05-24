@@ -192,47 +192,52 @@ type_get_string_size (const struct type *t)
 }
 
 static char *
-type_generate_string_rec (char *dest, const struct type *t)
+type_generate_string_rec (char *dest, char *end, const struct type *t)
 {
   switch (t->type)
   {
     case T_PRIM:
     {
-      int written = sprintf (dest, "%s", prim_to_str (t->p));
-      return dest + written;
+      int n = snprintf (dest, (size_t)(end - dest), "%s", prim_to_str (t->p));
+      return dest + (n > 0 ? n : 0);
     }
-
     case T_STRUCT:
     case T_UNION:
     {
       char *p = dest;
-      p += sprintf (p, "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
+      int n = snprintf (p, (size_t)(end - p), "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
+      p += (n > 0 ? n : 0);
 
       u16 len = t->st.len;
       for (u16 i = 0; i < len; ++i)
       {
-        // Print the identifier field name
-        p += sprintf (p, "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
-        // Recursively build out nested field subtype definitions
-        p = type_generate_string_rec (p, t->st.types[i]);
+        n = snprintf (p, (size_t)(end - p), "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
+        p += (n > 0 ? n : 0);
 
-        if (i < len - 1) { p += sprintf (p, ", "); }
+        p = type_generate_string_rec (p, end, t->st.types[i]);
+
+        if (i < len - 1)
+        {
+          n = snprintf (p, (size_t)(end - p), ", ");
+          p += (n > 0 ? n : 0);
+        }
       }
-      p += sprintf (p, " }");
+      n = snprintf (p, (size_t)(end - p), " }");
+      p += (n > 0 ? n : 0);
       return p;
     }
-
     case T_SARRAY:
     {
       char *p = dest;
-      // Format dimensions array prefixes first: [10][200]
-      for (u16 i = 0; i < t->sa.rank; ++i) { p += sprintf (p, "[%u]", t->sa.dims[i]); }
-      p += sprintf (p, " ");
-      // Recurse to append underlying element type definition at the tail
-      p = type_generate_string_rec (p, t->sa.t);
-      return p;
+      for (u16 i = 0; i < t->sa.rank; ++i)
+      {
+        int n = snprintf (p, (size_t)(end - p), "[%u]", t->sa.dims[i]);
+        p += (n > 0 ? n : 0);
+      }
+      int n = snprintf (p, (size_t)(end - p), " ");
+      p += (n > 0 ? n : 0);
+      return type_generate_string_rec (p, end, t->sa.t);
     }
-
     default:
     {
       UNREACHABLE ();
@@ -246,7 +251,7 @@ void
 type_generate_string (char *dest, const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
-  if (dest) { type_generate_string_rec (dest, t); }
+  if (dest) { type_generate_string_rec (dest, dest + type_get_string_size (t), t); }
 }
 
 #ifndef NTEST
