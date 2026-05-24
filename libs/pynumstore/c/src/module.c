@@ -59,12 +59,32 @@ static PyMethodDef numstore_methods[] = {
         "txn_rollback(txn) -> None",
     },
 
+    // Variable management
+    {
+        "var_create",
+        pyns_var_create,
+        METH_VARARGS,
+        "var_create(db, txn_or_none, name, type_str) -> None",
+    },
+    {
+        "var_delete",
+        pyns_var_delete,
+        METH_VARARGS,
+        "var_delete(db, txn_or_none, name) -> None",
+    },
+    {
+        "var_len",
+        pyns_var_len,
+        METH_VARARGS,
+        "var_len(db, txn_or_none, var) -> int",
+    },
+
     // Main Methods
     {
         "var_read",
         pyns_var_read,
         METH_VARARGS,
-        "var_read(db, txn_or_none, var, key) -> bytes",
+        "var_read(db, txn_or_none, var, key) -> NDArray",
     },
     {
         "var_insert",
@@ -79,16 +99,10 @@ static PyMethodDef numstore_methods[] = {
         "var_write(db, txn_or_none, var, key, data) -> None",
     },
     {
-        "var_len",
-        pyns_var_len,
-        METH_VARARGS,
-        "var_len(db, txn_or_none, var) -> int",
-    },
-    {
         "var_remove",
         pyns_var_remove,
         METH_VARARGS,
-        "var_remove(db, txn_or_none, var, key) -> None",
+        "var_remove(db, txn_or_none, var, key) -> NDArray",
     },
 
     // End

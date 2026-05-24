@@ -17,24 +17,25 @@
 
 #include <Python.h>
 
+// var_create(db, txn_or_none, name: str, type_str: str) -> None
 PyObject *
-pyns_var_len (PyObject *Py_UNUSED (m), PyObject *args)
+pyns_var_create (PyObject *Py_UNUSED (m), PyObject *args)
 {
   PyObject   *db;
   PyObject   *txn_or_none;
   const char *name;
+  const char *type_str;
 
-  if (!PyArg_ParseTuple (args, "OOs", &db, &txn_or_none, &name)) { return NULL; }
+  if (!PyArg_ParseTuple (args, "OOss", &db, &txn_or_none, &name, &type_str)) { return NULL; }
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
   if (!ns) { return NULL; }
 
-  sb_size len = nsdb_len (ns, name);
-  if (len < 0)
+  if (nsdb_create (ns, name, type_str) < 0)
   {
     _pyns_set_error (ns);
     return NULL;
   }
 
-  return PyLong_FromSsize_t ((Py_ssize_t)len);
+  Py_RETURN_NONE;
 }

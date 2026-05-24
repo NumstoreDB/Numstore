@@ -28,17 +28,36 @@ _nspy_release_db (PyObject *obj)
   nsdb_close (ns);
 }
 
-HEADER_FUNC struct nshandle *
+HEADER_FUNC nsdb_t *
 _unwrap_db (PyObject *db)
 {
-  struct nshandle *p = (struct nshandle *)PyCapsule_GetPointer (db, DB_CAPSULE);
-  return p;
+  return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE);
 }
 
-HEADER_FUNC struct txn *
+// Returns nsdb_t * from txn capsule, or NULL (without setting error) if None.
+HEADER_FUNC nsdb_t *
 _unwrap_txn (PyObject *txn_or_none)
 {
   if (txn_or_none == Py_None) { return NULL; }
-  struct txn *p = (struct txn *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
-  return p;
+  return (nsdb_t *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
+}
+
+// Returns the active nsdb_t *: from txn if present, otherwise from db.
+HEADER_FUNC nsdb_t *
+_active_ns (PyObject *db, PyObject *txn_or_none)
+{
+  if (txn_or_none != Py_None)
+  {
+    return (nsdb_t *)PyCapsule_GetPointer (txn_or_none, TXN_CAPSULE);
+  }
+  return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE);
+}
+
+// Sets a Python RuntimeError from the nsdb error string.
+HEADER_FUNC void
+_pyns_set_error (nsdb_t *ns)
+{
+  const char *err = nsdb_strerror (ns);
+  if (err) { PyErr_SetString (PyExc_RuntimeError, err); }
+  else { PyErr_SetString (PyExc_RuntimeError, "numstore operation failed"); }
 }

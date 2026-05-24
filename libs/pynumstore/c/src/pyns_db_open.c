@@ -16,7 +16,6 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
 
 PyObject *
 pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg)
@@ -27,6 +26,15 @@ pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg)
     return NULL;
   }
 
-  /* TODO: smfile_t *smf = smfile_open(PyUnicode_AsUTF8(arg)); */
-  return PyCapsule_New ((void *)(1), "numstore.db", NULL);
+  const char *path = PyUnicode_AsUTF8 (arg);
+  if (!path) { return NULL; }
+
+  nsdb_t *ns = nsdb_open (path);
+  if (!ns)
+  {
+    PyErr_SetString (PyExc_RuntimeError, "Failed to open numstore database");
+    return NULL;
+  }
+
+  return PyCapsule_New ((void *)ns, DB_CAPSULE, _nspy_release_db);
 }

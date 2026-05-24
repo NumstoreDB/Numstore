@@ -36,6 +36,7 @@
 
 // Utils
 PyObject *pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg);
+PyObject *pyns_type_to_dtype (const struct type *t);
 
 // Lifecycle
 PyObject *pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg);
@@ -46,10 +47,13 @@ PyObject *pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg);
 PyObject *pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg);
 PyObject *pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg);
 
+// Variable management
+PyObject *pyns_var_create (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args);
+PyObject *pyns_var_len (PyObject *Py_UNUSED (m), PyObject *args);
+
 // Main Methods
 PyObject *pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args);
 PyObject *pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args);
 PyObject *pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *pyns_var_len (PyObject *Py_UNUSED (m), PyObject *args);
 PyObject *pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args);
-PyObject *pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args);

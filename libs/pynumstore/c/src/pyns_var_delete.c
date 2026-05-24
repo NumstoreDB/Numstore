@@ -16,26 +16,24 @@
 #include "pynumstore.h"
 
 #include <Python.h>
-#include <string.h>
 
-/*
- * var_delete(db, txn_or_none, var_id: int, key: int) -> None
- */
 PyObject *
 pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject *db;
-  PyObject *txn_or_none;
+  PyObject   *db;
+  PyObject   *txn_or_none;
+  const char *name;
 
-  long long var_id, key;
-  if (!PyArg_ParseTuple (args, "OOLL", &db, &txn_or_none, &var_id, &key)) { return NULL; }
+  if (!PyArg_ParseTuple (args, "OOs", &db, &txn_or_none, &name)) { return NULL; }
 
-  struct nshandle *smf = _unwrap_db (db);
-  if (!smf) { return NULL; }
+  nsdb_t *ns = _active_ns (db, txn_or_none);
+  if (!ns) { return NULL; }
 
-  struct txn *txn = _unwrap_txn (txn_or_none);
-  if (!txn && PyErr_Occurred ()) { return NULL; }
+  if (nsdb_delete (ns, name) < 0)
+  {
+    _pyns_set_error (ns);
+    return NULL;
+  }
 
-  /* TODO: smfile_remove(smf, txn, var_id, key); */
   Py_RETURN_NONE;
 }

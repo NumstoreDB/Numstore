@@ -20,9 +20,11 @@
 #include <numpy/arrayobject.h>
 #include <stdlib.h>
 
-// var_read(db, txn_or_none, name: str, key: int|range) -> NDArray
+// var_remove(db, txn_or_none, name: str, key: int|range) -> NDArray
+//
+// Removes and returns the elements at key, shifting remaining elements left.
 PyObject *
-pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
+pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
 {
   PyObject   *db;
   PyObject   *txn_or_none;
@@ -74,7 +76,7 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  // Get variable dtype
+  // Get variable dtype to allocate the capture buffer
   char *type_str = nsdb_type_str (ns, name);
   if (!type_str)
   {
@@ -93,12 +95,12 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
   PyArray_Descr *dtype = (PyArray_Descr *)dtype_obj;
   npy_intp       tsize = (npy_intp)PyDataType_ELSIZE (dtype);
 
-  // Compute maximum element count from key range
+  // Compute maximum element count
   npy_intp nelems_max;
   if (stop <= start) { nelems_max = 0; }
   else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
 
-  // Allocate temporary buffer for the read
+  // Allocate capture buffer
   void *buf = NULL;
   if (nelems_max > 0)
   {
@@ -111,10 +113,10 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
     }
   }
 
-  sb_size bytes_read =
-      nsdb_read (ns, name, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+  sb_size bytes_removed =
+      nsdb_remove (ns, name, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
 
-  if (bytes_read < 0)
+  if (bytes_removed < 0)
   {
     free (buf);
     Py_DECREF (dtype_obj);
@@ -122,12 +124,10 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  // nsdb_read returns element count (not bytes)
-  npy_intp nelems_actual = (npy_intp)bytes_read;
+  // nsdb_remove returns element count (not bytes)
+  npy_intp nelems_actual = (npy_intp)bytes_removed;
   npy_intp dims[1]       = { nelems_actual };
 
-  // PyArray_NewFromDescr takes a new reference to dtype; we keep our own and
-  // explicitly decref after the call so it is always released exactly once.
   Py_INCREF (dtype_obj);
   PyObject *arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
   Py_DECREF (dtype_obj);
