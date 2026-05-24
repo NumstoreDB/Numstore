@@ -46,13 +46,22 @@ struct irwr_swarm_test
   nsdb_t     *db;
   int         in_txn;
   const char *dbname;
+  const char *varname;
+  const char *vartype;
+  u32         esize;
   int         max_insert_len;
   b_size      len;
 };
 
 // Main API
-struct irwr_swarm_test *
-irwr_swmt_open (int start_enabled[IRWR_AT_LEN], const char *dbname, int max_insert_len);
+struct irwr_swarm_test *irwr_swmt_open (
+    int         start_enabled[IRWR_AT_LEN],
+    const char *dbname,
+    int         max_insert_len,
+    const char *varname,
+    const char *vartype,
+    u32         esize
+);
 void irwr_swmt_close (struct irwr_swarm_test *meta);
 void irwr_swmt_step (struct irwr_swarm_test *meta);
 

@@ -119,13 +119,15 @@ _nsdb_insert (
     WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
 
+  ASSERT (ret % tsize == 0);
+  ret /= tsize;
+
 commit:
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
-  ASSERT (ret % tsize == 0);
-  return ret / tsize;
+  return ret;
 
 failed_rollback:
 

@@ -104,7 +104,7 @@ static bool
 vframe_eq (const struct hnode *left, const struct hnode *right)
 {
   struct var_frame *_left  = container_of (left, struct var_frame, node);
-  struct var_frame *_right = container_of (left, struct var_frame, node);
+  struct var_frame *_right = container_of (right, struct var_frame, node);
   return string_equal (_left->var.vname, _right->var.vname);
 }
 

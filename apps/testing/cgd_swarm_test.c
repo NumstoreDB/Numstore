@@ -15,6 +15,7 @@
 #include "cgd_swarm_test.h"
 
 #include <signal.h>
+#include <stddef.h>
 
 static volatile sig_atomic_t keep_running = 1;
 
@@ -33,6 +34,15 @@ main (void)
 
   struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
 
+#if PLATFORM_WINDOWS
+  // Windows / ISO C fallback
+  if (signal (SIGINT, handle_sigint) == SIG_ERR)
+  {
+    cgd_swmt_close (meta);
+    return 0;
+  }
+#else
+  // POSIX robust signal handling (macOS and Linux)
   struct sigaction sa;
   sa.sa_handler = handle_sigint;
   sigemptyset (&sa.sa_mask);
@@ -43,8 +53,10 @@ main (void)
     cgd_swmt_close (meta);
     return 0;
   }
+#endif
 
   while (keep_running) { cgd_swmt_step (meta); }
 
   cgd_swmt_close (meta);
+  return 0;
 }

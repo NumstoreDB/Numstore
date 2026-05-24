@@ -29,23 +29,31 @@ void rand_seed_with (u32 seed);
 
 u8 randu8 (void);
 i8 randi8 (void);
-u8 randu8r (u8 lower, u8 upper);
-i8 randi8r (i8 lower, i8 upper);
+u8 randu8r (u8 lower, u8 upper); // [lower, upper]
+u8 randu8e (u8 lower, u8 upper); // [lower, upper)
+i8 randi8r (i8 lower, i8 upper); // [lower, upper]
+i8 randi8e (i8 lower, i8 upper); // [lower, upper)
 
 u16 randu16 (void);
 i16 randi16 (void);
-u16 randu16r (u16 lower, u16 upper);
-i16 randi16r (i16 lower, i16 upper);
+u16 randu16r (u16 lower, u16 upper); // [lower, upper]
+u16 randu16e (u16 lower, u16 upper); // [lower, upper)
+i16 randi16r (i16 lower, i16 upper); // [lower, upper]
+i16 randi16e (i16 lower, i16 upper); // [lower, upper)
 
 u32 randu32 (void);
 i32 randi32 (void);
-u32 randu32r (u32 lower, u32 upper);
-i32 randi32r (i32 lower, i32 upper);
+u32 randu32r (u32 lower, u32 upper); // [lower, upper]
+u32 randu32e (u32 lower, u32 upper); // [lower, upper)
+i32 randi32r (i32 lower, i32 upper); // [lower, upper]
+i32 randi32e (i32 lower, i32 upper); // [lower, upper)
 
 u64 randu64 (void);
 i64 randi64 (void);
-u64 randu64r (u64 lower, u64 upper);
-i64 randi64r (i64 lower, i64 upper);
+u64 randu64r (u64 lower, u64 upper); // [lower, upper]
+u64 randu64e (u64 lower, u64 upper); // [lower, upper)
+i64 randi64r (i64 lower, i64 upper); // [lower, upper]
+i64 randi64e (i64 lower, i64 upper); // [lower, upper)
 
 err_t rand_str (struct string *dest, struct chunk_alloc *alloc, u32 minlen, u32 maxlen, error *e);
 
