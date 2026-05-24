@@ -64,31 +64,31 @@ static PyMethodDef numstore_methods[] = {
         "var_read",
         pyns_var_read,
         METH_VARARGS,
-        "var_read(db, txn_or_none, var_id, key) -> bytes",
+        "var_read(db, txn_or_none, var, key) -> bytes",
     },
     {
         "var_insert",
         pyns_var_insert,
         METH_VARARGS,
-        "var_insert(db, txn_or_none, var_id, key, data) -> None",
+        "var_insert(db, txn_or_none, var, ofst, data) -> None",
     },
     {
         "var_write",
         pyns_var_write,
         METH_VARARGS,
-        "var_write(db, txn_or_none, var_id, key, data) -> None",
+        "var_write(db, txn_or_none, var, key, data) -> None",
     },
     {
         "var_len",
         pyns_var_len,
         METH_VARARGS,
-        "var_len(db, txn_or_none, var_id) -> int",
+        "var_len(db, txn_or_none, var) -> int",
     },
     {
-        "var_delete",
-        pyns_var_delete,
+        "var_remove",
+        pyns_var_remove,
         METH_VARARGS,
-        "var_delete(db, txn_or_none, var_id, key) -> None",
+        "var_remove(db, txn_or_none, var, key) -> None",
     },
 
     // End
