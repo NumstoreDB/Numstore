@@ -38,6 +38,9 @@ _nsh_begin (struct nshandle *smf, error *e)
   smf->is_auto_txn = 0;
   smf->atx         = &smf->tx;
 
+  // Lock the database - this is to be removed as concurrency support gets better
+  if (lockt_lock (smf->root->p->lt, lock_db (), LM_X, &smf->tx, e)) { return error_trace (e); }
+
   return SUCCESS;
 }
 

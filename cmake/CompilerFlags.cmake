@@ -1,11 +1,22 @@
 if(MSVC)
     add_compile_options(
-      /W3                       # Include all warnings
-      /wd4100                   # Unreferenced formal parameter
-      /wd4101                   # Unused local variable
-      /wd4244                   # Convert - possible loss of data
-      /wd4267                   # Convert from size_t to type
-      /experimental:c11atomics  # Support C11 atomic operations
+      # Include all warnings
+      /W3                       
+      
+      # Unreferenced formal parameter
+      /wd4100                   
+      
+      # Unused local variable
+      /wd4101                   
+      
+      # Convert - possible loss of data
+      /wd4244                   
+      
+      # Convert from size_t to type
+      /wd4267                   
+      
+      # Support C11 atomic operations
+      /experimental:c11atomics  
     )
 
     # For debug build:
@@ -14,24 +25,51 @@ if(MSVC)
     add_compile_options("$<$<CONFIG:Debug>:/Od;/Zi>")
 else()
     add_compile_options(
-        -Wall                         # Enable standard warnings
-        -Wextra                       # Enable even more warnings
-        -Werror                       # Treat all warnings as errors
-        -Wshadow                      # Warn when a variable shadows another
-        -Wsign-compare                # Warn on signed/unsigned comparisons
-        -Wstrict-prototypes           # Force function prototypes in C
-        -Wmissing-prototypes          # Warn if global function lacks prototype
-        -Wmissing-declarations        # Warn if global function lacks declaration
-        -pedantic-errors              # Strict ISO C/C++ compliance
-        -Wno-unused-parameter         # Silence "unused parameter" warnings
-        -Wno-unused-variable          # Silence "unused variable" warnings
-        -Wno-unused-but-set-variable # Silence "assigned but never used" warnings
+        # Enable standard warnings
+        -Wall                         
+
+        # Enable even more warnings
+        -Wextra                       
+
+        # Treat all warnings as errors
+        -Werror                       
+
+        # Warn when a variable shadows another
+        -Wshadow                      
+
+        # Warn on signed/unsigned comparisons
+        -Wsign-compare                
+
+        # Force function prototypes in C
+        -Wstrict-prototypes           
+
+        # Warn if global function lacks prototype
+        -Wmissing-prototypes          
+
+        # Warn if global function lacks declaration
+        -Wmissing-declarations        
+
+        # Strict ISO C/C++ compliance
+        -pedantic-errors              
+
+        # Silence "unused parameter" warnings
+        -Wno-unused-parameter         
+
+        # Silence "unused variable" warnings
+        -Wno-unused-variable          
+
+        # Silence "assigned but never used" warnings
+        -Wno-unused-but-set-variable 
     )
 
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         add_compile_options(
-          -Wno-gnu-zero-variadic-macro-arguments # I use __VA_ARGS__ a lot in TEST and LOG - I might be able to refactor this but for now disable it
-          -Wno-static-in-inline                  # Silence Clang warnings on static inline functions
+          # I use __VA_ARGS__ a lot in TEST and LOG 
+          # - I might be able to refactor this but for now disable it
+          -Wno-gnu-zero-variadic-macro-arguments 
+
+          # Silence Clang warnings on static inline functions
+          -Wno-static-in-inline                  
         )
     endif()
 

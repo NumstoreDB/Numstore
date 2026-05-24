@@ -45,8 +45,10 @@ periodic_task_thread (void *_ctx)
   while (true)
   {
     i_mutex_lock (&t->mutex);
-    while (!t->wake_requested && !t->stop)
+    // TODO - spurrious wakeups
+    if(!t->wake_requested && !t->stop)
     {
+      printf("%d %d\n", t->wake_requested, t->stop);
       i_cond_timed_wait (&t->wake_cond, &t->mutex, t->msec);
     }
     t->wake_requested = false;

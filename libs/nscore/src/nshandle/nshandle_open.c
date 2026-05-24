@@ -51,6 +51,11 @@ _nsh_open (const char *path, error *e)
     if (ns_init_var_hash_map (ret->p, e)) { goto failed; }
   }
 
+  // Launch the checkpoint writer thread
+  if(pgr_launch_checkpoint_thread(ret->p, 5000, e)) {
+    goto failed;
+  }
+
   // Load the default context
   struct nshandle *sret = nsh_root_load (ret, e);
 

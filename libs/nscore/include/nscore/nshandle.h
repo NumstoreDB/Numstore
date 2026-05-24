@@ -19,6 +19,14 @@
 
 #include <c_specx.h>
 
+/**
+ * A handle puts instance semantics to numstore 
+ * Opening up a database and 
+ * keeping track of it over time
+ *
+ * It has a root and instances you 
+ * can branch off
+ */
 struct nshandle_root
 {
   struct pager *p;     // The database resources
