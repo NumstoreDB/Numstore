@@ -48,7 +48,7 @@ static void
 rebind_cur (struct cgd_swarm_test *meta, const char *preferred_name)
 {
   struct mem_vhmap *db = active_db (meta);
-  meta->cur = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
+  meta->cur            = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
   if (!meta->cur && mem_vhmap_count (db) > 0) { meta->cur = mem_vhmap_random (db); }
 }
 

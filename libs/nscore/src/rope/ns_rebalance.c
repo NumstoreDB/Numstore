@@ -755,7 +755,14 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
   const pgno prev_pg = in_get_prev (page_h_ro (&pms->cur));
   if (prev_pg != PGNO_NULL)
   {
-    if (pgr_get (&pms->limit, PG_INNER_NODE, in_get_prev (page_h_ro (&pms->cur)), pms->p, e))
+    if (pgr_get_writable (
+            &pms->limit,
+            pms->tx,
+            PG_INNER_NODE,
+            in_get_prev (page_h_ro (&pms->cur)),
+            pms->p,
+            e
+        ))
     {
       goto failed;
     }

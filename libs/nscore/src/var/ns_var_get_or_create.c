@@ -162,7 +162,7 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        u32 len = randu32r(PAGE_SIZE, PAGE_SIZE * 10);
+        u32   len  = randu32r (PAGE_SIZE, PAGE_SIZE * 10);
         char *name = i_malloc (len, 1, &f.e);
         for (u32 k = 0; k < len - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
         name[len - 1] = '\0';
@@ -207,13 +207,13 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        u32 len = randu32r(PAGE_SIZE, PAGE_SIZE * 10);
+        u32   len  = randu32r (PAGE_SIZE, PAGE_SIZE * 10);
         char *name = i_malloc (len, 1, &f.e);
         for (u32 k = 0; k < len - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
         name[len - 1] = '\0';
 
-        struct type *t           = type_random (&alloc, randu32r(0, 10), &f.e);
-        i_log_info("%d/%d\n", i, 100);
+        struct type *t = type_random (&alloc, randu32r (0, 10), &f.e);
+        i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
             .p  = f.p,
@@ -255,8 +255,8 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        struct type *t = type_random (&alloc, randu32r(0, 10), &f.e);
-        i_log_info("%d/%d\n", i, 100);
+        struct type *t = type_random (&alloc, randu32r (0, 10), &f.e);
+        i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
             .p  = f.p,
