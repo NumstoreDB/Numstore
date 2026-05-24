@@ -41,9 +41,23 @@ u8
 randu8r (const u8 lower, const u8 upper)
 { return (u8)randu32r ((u32)lower, (u32)upper); }
 
+u8
+randu8e (const u8 lower, const u8 upper)
+{
+  ASSERT (upper > lower);
+  return randu8r (lower, upper - 1);
+}
+
 i8
 randi8r (const i8 lower, const i8 upper)
 { return (i8)randi32r ((i32)lower, (i32)upper); }
+
+i8
+randi8e (const i8 lower, const i8 upper)
+{
+  ASSERT (upper > lower);
+  return randi8r (lower, upper - 1);
+}
 
 u16
 randu16 (void)
@@ -57,6 +71,13 @@ u16
 randu16r (const u16 lower, const u16 upper)
 { return (u16)randu32r ((u32)lower, (u32)upper); }
 
+u16
+randu16e (const u16 lower, const u16 upper)
+{
+  ASSERT (upper > lower);
+  return randu16r (lower, upper - 1);
+}
+
 i16
 randi16r (const i16 lower, const i16 upper)
 {
@@ -65,6 +86,13 @@ randi16r (const i16 lower, const i16 upper)
   if (upper == lower) { return lower; }
 
   return (i16)randi32r ((i32)lower, (i32)upper);
+}
+
+i16
+randi16e (const i16 lower, const i16 upper)
+{
+  ASSERT (upper > lower);
+  return randi16r (lower, upper - 1);
 }
 
 u32
@@ -148,9 +176,22 @@ randi32r (const i32 lower, const i32 upper)
 
   if (upper == lower) { return lower; }
 
-  const u64 range = (u64)((int64_t)upper - (int64_t)lower + 1);
-  const u64 r     = randu64r (0, range - 1);
-  return lower + (i32)r;
+  const u64 range = (u64)((i64)upper - (i64)lower) + 1u;
+  return (i32)((u32)lower + (u32)randu64r (0, range - 1));
+}
+
+u32
+randu32e (const u32 lower, const u32 upper)
+{
+  ASSERT (upper > lower);
+  return randu32r (lower, upper - 1);
+}
+
+i32
+randi32e (const i32 lower, const i32 upper)
+{
+  ASSERT (upper > lower);
+  return randi32r (lower, upper - 1);
 }
 
 #ifndef NTEST
@@ -211,18 +252,48 @@ randu64r (const u64 lower, const u64 upper)
 
   if (upper == lower) { return lower; }
 
+  // Full 64-bit range: upper - lower + 1 would overflow u64
+  if (lower == 0 && upper == U64_MAX) { return randu64 (); }
+
+  const u64 range = upper - lower + 1u;
+
 #ifdef _MSC_VER
-  u64 range    = upper - lower + 1u;
-  u64 rand_val = randu64 ();
-  u64 high_bits;
-  _umul128 (rand_val, range, &high_bits);
-  return lower + high_bits;
+  u64 x = randu64 ();
+  u64 hi;
+  u64 lo = _umul128 (x, range, &hi);
+  if (lo < range)
+  {
+    const u64 t = (-range) % range;
+    while (lo < t)
+    {
+      x  = randu64 ();
+      lo = _umul128 (x, range, &hi);
+    }
+  }
+  return lower + hi;
 #else
-  const __uint128_t range = (__uint128_t)upper - (__uint128_t)lower + 1u;
-  const __uint128_t prod  = (__uint128_t)randu64 () * range;
-  const u64         r     = (u64)(prod >> 64);
-  return lower + r;
+  u64         x = randu64 ();
+  __uint128_t m = (__uint128_t)x * range;
+  u64         l = (u64)m;
+  if (l < range)
+  {
+    const u64 t = (-range) % range;
+    while (l < t)
+    {
+      x = randu64 ();
+      m = (__uint128_t)x * range;
+      l = (u64)m;
+    }
+  }
+  return lower + (u64)(m >> 64);
 #endif
+}
+
+u64
+randu64e (const u64 lower, const u64 upper)
+{
+  ASSERT (upper > lower);
+  return randu64r (lower, upper - 1);
 }
 
 #ifndef NTEST
@@ -238,12 +309,22 @@ TEST (randu64r)
   test_assert_type_equal (randu64r (0ull, 0ull), 0ull, u64, PRIu64);
   test_assert_type_equal (randu64r (U64_MAX, U64_MAX), U64_MAX, u64, PRIu64);
 
-  for (int i = 0; i < 100; ++i)
+  // Both endpoints reachable
   {
-    const u64 v = randu64r (1000ull, 1001ull);
-    test_assert (v == 1000ull || v == 1001ull);
+    bool saw_lo = false;
+    bool saw_hi = false;
+    for (int i = 0; i < 1000; ++i)
+    {
+      const u64 v = randu64r (1000ull, 1001ull);
+      test_assert (v == 1000ull || v == 1001ull);
+      if (v == 1000ull) { saw_lo = true; }
+      if (v == 1001ull) { saw_hi = true; }
+    }
+    test_assert (saw_lo);
+    test_assert (saw_hi);
   }
 
+  // Full range
   for (int i = 0; i < 100; ++i)
   {
     const u64 v = randu64r (0ull, U64_MAX);
@@ -259,6 +340,34 @@ TEST (randu64r)
     test_assert (v <= hi);
   }
 }
+
+TEST (randu64e)
+{
+  srand (7);
+
+  // Both endpoints of the exclusive range reachable
+  {
+    bool saw_lo = false;
+    bool saw_hi = false;
+    for (int i = 0; i < 1000; ++i)
+    {
+      const u64 v = randu64e (10ull, 12ull);
+      test_assert (v == 10ull || v == 11ull);
+      if (v == 10ull) { saw_lo = true; }
+      if (v == 11ull) { saw_hi = true; }
+    }
+    test_assert (saw_lo);
+    test_assert (saw_hi);
+  }
+
+  for (int i = 0; i < 50; ++i)
+  {
+    const u64 lo = (u64)(randu32 () % 1000);
+    const u64 hi = lo + (u64)(randu32 () % 1000) + 1u;
+    const u64 v  = randu64e (lo, hi);
+    test_assert (v >= lo && v < hi);
+  }
+}
 #endif
 
 i64
@@ -268,18 +377,18 @@ randi64r (const i64 lower, const i64 upper)
 
   if (upper == lower) { return lower; }
 
-#ifdef _MSC_VER
-  u64 range_u  = (u64)((u64)upper - (u64)lower + 1u);
-  u64 rand_val = randu64 ();
-  u64 high_bits;
-  _umul128 (rand_val, range_u, &high_bits);
-  return lower + (i64)high_bits;
-#else
-  const __uint128_t range = (__uint128_t)((__int128_t)upper - (__int128_t)lower + 1);
-  const __uint128_t prod  = (__uint128_t)randu64 () * range;
-  const i64         r     = (i64)(prod >> 64);
-  return lower + r;
-#endif
+  // range via u64 subtraction. Overflows to 0 only for lower=I64_MIN, upper=I64_MAX.
+  const u64 range = (u64)upper - (u64)lower + 1u;
+  if (range == 0) { return (i64)randu64 (); }
+
+  return (i64)((u64)lower + randu64r (0, range - 1));
+}
+
+i64
+randi64e (const i64 lower, const i64 upper)
+{
+  ASSERT (upper > lower);
+  return randi64r (lower, upper - 1);
 }
 
 #ifndef NTEST
@@ -290,12 +399,46 @@ TEST (randi64r)
   test_assert_type_equal (randi64r (I64_MIN, I64_MIN), I64_MIN, i64, PRId64);
   test_assert_type_equal (randi64r (I64_MAX, I64_MAX), I64_MAX, i64, PRId64);
 
+  // Full i64 range
+  for (int i = 0; i < 100; ++i)
+  {
+    const i64 v = randi64r (I64_MIN, I64_MAX);
+    test_assert (v >= I64_MIN && v <= I64_MAX);
+  }
+
   for (int i = 0; i < 10; ++i)
   {
     const i64 lo = (i64)(rand () % 100000) - 50000;
     const i64 hi = lo + (i64)(rand () % 100000);
     const i64 v  = randi64r (lo, hi);
     test_assert (v >= lo && v <= hi);
+  }
+}
+
+TEST (randi64e)
+{
+  srand (13);
+
+  {
+    bool saw_lo = false;
+    bool saw_hi = false;
+    for (int i = 0; i < 1000; ++i)
+    {
+      const i64 v = randi64e (-5, -3);
+      test_assert (v == -5 || v == -4);
+      if (v == -5) { saw_lo = true; }
+      if (v == -4) { saw_hi = true; }
+    }
+    test_assert (saw_lo);
+    test_assert (saw_hi);
+  }
+
+  for (int i = 0; i < 50; ++i)
+  {
+    const i64 lo = (i64)(rand () % 1000) - 500;
+    const i64 hi = lo + (i64)(rand () % 1000) + 1;
+    const i64 v  = randi64e (lo, hi);
+    test_assert (v >= lo && v < hi);
   }
 }
 #endif
