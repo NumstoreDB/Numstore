@@ -1933,3 +1933,192 @@ def test_txn_rollback_leaves_no_trace_multi_var(db_path, seed):
             npt.assert_array_equal(db["x"][i], np.array([expected], dtype=np.int32))
         for i, expected in enumerate(committed_y):
             npt.assert_array_equal(db["y"][i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 53. Randomized: remove from arbitrary positions, track reference list
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1900, 1901, 1902, 1903, 1904])
+def test_remove_arbitrary_positions(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(15, 50)
+    reference = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in reference:
+            v.append(np.array([val], dtype=np.int32))
+
+        n_removes = rng.randint(3, n // 2)
+        for _ in range(n_removes):
+            pos = rng.randint(0, len(reference) - 1)
+            expected = reference.pop(pos)
+            result = v.remove(pos)
+            npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 54. Read after write in same txn — visibility within open transaction
+# ---------------------------------------------------------------------------
+
+def test_write_visible_within_same_txn(db_path):
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+        with db.begin_txn() as txn:
+            v = txn["a"]
+            v.append(np.array([5], dtype=np.int32))
+            v.append(np.array([10], dtype=np.int32))
+            # reads within the same txn should see the uncommitted appends
+            assert len(v) == 2
+            npt.assert_array_equal(v[0], np.array([5], dtype=np.int32))
+            npt.assert_array_equal(v[1], np.array([10], dtype=np.int32))
+
+
+def test_write_and_overwrite_within_same_txn(db_path):
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+        with db.begin_txn() as txn:
+            v = txn["a"]
+            v.append(np.array([1], dtype=np.int32))
+            v[0] = np.array([99], dtype=np.int32)
+            npt.assert_array_equal(v[0], np.array([99], dtype=np.int32))
+
+
+def test_insert_remove_within_same_txn(db_path):
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+        with db.begin_txn() as txn:
+            v = txn["a"]
+            for i in range(5):
+                v.append(np.array([i], dtype=np.int32))
+            v.remove(2)
+            assert len(v) == 4
+
+
+# ---------------------------------------------------------------------------
+# 55. Stress: randomly mix insert and remove rapidly, verify at end
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [2000, 2001, 2002])
+def test_rapid_insert_remove_stress(db_path, seed):
+    rng = random.Random(seed)
+    reference = []
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+
+        for _ in range(200):
+            # bias toward growing so reference doesn't deplete
+            op = rng.choices(["insert", "remove"], weights=[6, 4])[0]
+
+            if op == "insert" or len(reference) == 0:
+                pos = rng.randint(0, len(reference))
+                val = rng.randint(0, 99999)
+                reference.insert(pos, val)
+                v.insert(pos, np.array([val], dtype=np.int32))
+            else:
+                pos = rng.randint(0, len(reference) - 1)
+                reference.pop(pos)
+                v.remove(pos)
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 56. Verify Variable.name attribute
+# ---------------------------------------------------------------------------
+
+def test_variable_name_attribute(db_path):
+    with Database(db_path) as db:
+        v = db.create("sensor_42", dtype="f32")
+        assert v.name == "sensor_42"
+
+
+def test_txn_variable_name_attribute(db_path):
+    with Database(db_path) as db:
+        db.create("v", dtype="i32")
+        with db.begin_txn() as txn:
+            v = txn["v"]
+            assert v.name == "v"
+
+
+# ---------------------------------------------------------------------------
+# 57. Randomized: multiple sequential inserts at end == appends
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [2100, 2101, 2102])
+def test_insert_at_len_matches_append(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(10, 40)
+    values = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v_ins = db.create("ins", dtype="i32")
+        v_app = db.create("app", dtype="i32")
+
+        for val in values:
+            v_ins.insert(len(v_ins), np.array([val], dtype=np.int32))
+            v_app.append(np.array([val], dtype=np.int32))
+
+        assert len(v_ins) == len(v_app)
+        for i in range(n):
+            npt.assert_array_equal(v_ins[i], v_app[i])
+
+
+# ---------------------------------------------------------------------------
+# 58. DB.var(create=True) with numpy dtype object
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nptype,dtype_str", [
+    (np.int32, "i32"),
+    (np.float32, "f32"),
+    (np.float64, "f64"),
+])
+def test_create_with_numpy_dtype(db_path, nptype, dtype_str):
+    with Database(db_path) as db:
+        v = db.var("v", dtype=np.dtype(nptype), create=True)
+        v.append(np.array([1], dtype=nptype))
+        assert len(v) == 1
+
+
+# ---------------------------------------------------------------------------
+# 59. Randomized: f64 precision — values survive write+read to 15 sig figs
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [2200, 2201, 2202])
+def test_f64_precision(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 20)
+    values = [rng.uniform(-1e15, 1e15) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("f", dtype="f64")
+        for val in values:
+            v.append(np.array([val], dtype=np.float64))
+        for i, expected in enumerate(values):
+            npt.assert_array_almost_equal(
+                v[i], np.array([expected], dtype=np.float64), decimal=8
+            )
+
+
+# ---------------------------------------------------------------------------
+# 60. Stress: append 5000 elements, read back spot-checks
+# ---------------------------------------------------------------------------
+
+def test_stress_5000_append(db_path):
+    n = 5000
+    step = 100  # spot-check every 100th element
+    with Database(db_path) as db:
+        v = db.create("big", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        assert len(v) == n
+        for i in range(0, n, step):
+            npt.assert_array_equal(v[i], np.array([i], dtype=np.int32))
