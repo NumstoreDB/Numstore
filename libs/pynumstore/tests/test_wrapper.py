@@ -533,3 +533,138 @@ def test_repr_variable(db_path):
     with Database(db_path) as db:
         v = db.create("myvar", dtype="f32")
         assert "myvar" in repr(v)
+
+
+# ---------------------------------------------------------------------------
+# 11. Randomized — append N, read back all, values match reference list
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [0, 1, 42, 99, 777])
+def test_random_append_and_read_i32(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(10, 100)
+    values = [rng.randint(-(2**30), 2**30) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+        assert len(v) == n
+        for i, expected in enumerate(values):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [0, 7, 13, 55, 200])
+def test_random_append_and_read_f64(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(10, 80)
+    values = [rng.uniform(-1e9, 1e9) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="f64")
+        for val in values:
+            v.append(np.array([val], dtype=np.float64))
+        for i, expected in enumerate(values):
+            npt.assert_array_almost_equal(
+                v[i], np.array([expected], dtype=np.float64), decimal=6
+            )
+
+
+@pytest.mark.parametrize("seed", [3, 17, 88])
+def test_random_write_overwrites_correctly(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(10, 50)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        original = [rng.randint(0, 1000) for _ in range(n)]
+        for val in original:
+            v.append(np.array([val], dtype=np.int32))
+
+        # overwrite a random subset
+        overwrite_indices = rng.sample(range(n), k=n // 3)
+        new_vals = {}
+        for idx in overwrite_indices:
+            new_val = rng.randint(-9999, -1)
+            v[idx] = np.array([new_val], dtype=np.int32)
+            new_vals[idx] = new_val
+
+        for i in range(n):
+            expected = new_vals.get(i, original[i])
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [5, 22, 101])
+def test_random_insert_then_read(db_path, seed):
+    """Build a list via random inserts at random positions; compare to Python reference."""
+    rng = random.Random(seed)
+    n = rng.randint(5, 30)
+    reference = []
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for _ in range(n):
+            pos = rng.randint(0, len(reference))
+            val = rng.randint(0, 10000)
+            reference.insert(pos, val)
+            v.insert(pos, np.array([val], dtype=np.int32))
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [6, 33, 200])
+def test_random_remove_and_len(db_path, seed):
+    """Append N elements, then remove one at a time from random positions."""
+    rng = random.Random(seed)
+    n = rng.randint(10, 40)
+    reference = list(range(n))
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in reference:
+            v.append(np.array([val], dtype=np.int32))
+
+        rounds = rng.randint(3, n // 2)
+        for _ in range(rounds):
+            pos = rng.randint(0, len(reference) - 1)
+            reference.pop(pos)
+            v.remove(pos)
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [9, 44, 300])
+def test_random_mixed_ops(db_path, seed):
+    """Randomly interleave appends, writes, and removes against a Python list."""
+    rng = random.Random(seed)
+    reference = []
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+
+        for _ in range(60):
+            op = rng.choice(["append", "write", "remove"])
+
+            if op == "append" or len(reference) == 0:
+                val = rng.randint(0, 9999)
+                reference.append(val)
+                v.append(np.array([val], dtype=np.int32))
+
+            elif op == "write":
+                idx = rng.randint(0, len(reference) - 1)
+                val = rng.randint(-9999, -1)
+                reference[idx] = val
+                v[idx] = np.array([val], dtype=np.int32)
+
+            elif op == "remove" and len(reference) > 1:
+                idx = rng.randint(0, len(reference) - 1)
+                reference.pop(idx)
+                v.remove(idx)
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
