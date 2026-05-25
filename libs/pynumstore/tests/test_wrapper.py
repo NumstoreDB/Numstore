@@ -1750,3 +1750,186 @@ def test_sequential_txns_read_previous_commit(db_path, seed):
             # each new txn should see everything committed so far
             with db.begin_txn() as verify_txn:
                 assert len(verify_txn["log"]) == len(cumulative)
+
+
+# ---------------------------------------------------------------------------
+# 46. Append then remove all, then re-append — variable reusable
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1400, 1401])
+def test_drain_and_refill(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 20)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        first_batch = [rng.randint(0, 999) for _ in range(n)]
+        for val in first_batch:
+            v.append(np.array([val], dtype=np.int32))
+        for _ in range(n):
+            v.remove(0)
+        assert len(v) == 0
+
+        second_batch = [rng.randint(1000, 1999) for _ in range(n)]
+        for val in second_batch:
+            v.append(np.array([val], dtype=np.int32))
+        assert len(v) == n
+        for i, expected in enumerate(second_batch):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 47. Write entire range then read back — bulk write correctness
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1500, 1501, 1502])
+def test_bulk_write_then_read(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(10, 40)
+    original = [rng.randint(0, 999) for _ in range(n)]
+    new_vals = [rng.randint(10000, 19999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in original:
+            v.append(np.array([val], dtype=np.int32))
+
+        replacement = np.array([[val] for val in new_vals], dtype=np.int32)
+        v[0:n] = replacement
+
+        assert len(v) == n
+        for i, expected in enumerate(new_vals):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 48. Randomized: insert at middle, verify neighbours shift correctly
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1600, 1601, 1602, 1603])
+def test_insert_middle_neighbours(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(6, 20)
+    pos = rng.randint(1, n - 1)
+    reference = list(range(n))
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in reference:
+            v.append(np.array([val], dtype=np.int32))
+
+        new_val = 99999
+        reference.insert(pos, new_val)
+        v.insert(pos, np.array([new_val], dtype=np.int32))
+
+        assert len(v) == len(reference)
+        # check full array matches reference
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 49. Repeated commit of empty txn — no crash
+# ---------------------------------------------------------------------------
+
+def test_empty_txn_commit(db_path):
+    with Database(db_path) as db:
+        for _ in range(5):
+            with db.begin_txn() as txn:
+                pass  # nothing done, should commit cleanly
+
+
+# ---------------------------------------------------------------------------
+# 50. u64 boundary — max value roundtrip
+# ---------------------------------------------------------------------------
+
+def test_u64_max_roundtrip(db_path):
+    u64_max = np.uint64(2**64 - 1)
+    with Database(db_path) as db:
+        v = db.create("u", dtype="u64")
+        v.append(np.array([u64_max], dtype=np.uint64))
+        npt.assert_array_equal(v[0], np.array([u64_max], dtype=np.uint64))
+
+
+def test_i64_min_max_roundtrip(db_path):
+    i64_min = np.int64(-(2**63))
+    i64_max = np.int64(2**63 - 1)
+    with Database(db_path) as db:
+        v = db.create("i", dtype="i64")
+        v.append(np.array([i64_min], dtype=np.int64))
+        v.append(np.array([i64_max], dtype=np.int64))
+        v.append(np.array([0], dtype=np.int64))
+        npt.assert_array_equal(v[0], np.array([i64_min], dtype=np.int64))
+        npt.assert_array_equal(v[1], np.array([i64_max], dtype=np.int64))
+        npt.assert_array_equal(v[2], np.array([0], dtype=np.int64))
+
+
+# ---------------------------------------------------------------------------
+# 51. Randomized: insert then verify that non-inserted elements are unchanged
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1700, 1701, 1702])
+def test_insert_does_not_corrupt_other_elements(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(8, 25)
+    pos = rng.randint(0, n)
+    original = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in original:
+            v.append(np.array([val], dtype=np.int32))
+
+        insert_val = 77777
+        v.insert(pos, np.array([insert_val], dtype=np.int32))
+
+        # elements before pos unchanged
+        for i in range(pos):
+            npt.assert_array_equal(v[i], np.array([original[i]], dtype=np.int32))
+        # the inserted element
+        npt.assert_array_equal(v[pos], np.array([insert_val], dtype=np.int32))
+        # elements after pos shifted by 1
+        for i in range(pos, n):
+            npt.assert_array_equal(v[i + 1], np.array([original[i]], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 52. Randomized: txn rollback leaves no trace across multiple variables
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1800, 1801])
+def test_txn_rollback_leaves_no_trace_multi_var(db_path, seed):
+    rng = random.Random(seed)
+    n_committed = rng.randint(3, 10)
+
+    with Database(db_path) as db:
+        db.create("x", dtype="i32")
+        db.create("y", dtype="i32")
+
+        # commit some data first
+        committed_x, committed_y = [], []
+        for _ in range(n_committed):
+            vx = rng.randint(0, 999)
+            vy = rng.randint(0, 999)
+            with db.begin_txn() as txn:
+                txn["x"].append(np.array([vx], dtype=np.int32))
+                txn["y"].append(np.array([vy], dtype=np.int32))
+            committed_x.append(vx)
+            committed_y.append(vy)
+
+        # now do a txn that rolls back
+        try:
+            with db.begin_txn() as txn:
+                txn["x"].append(np.array([88888], dtype=np.int32))
+                txn["y"].append(np.array([99999], dtype=np.int32))
+                raise RuntimeError("force rollback")
+        except RuntimeError:
+            pass
+
+        # state must match committed-only data
+        assert len(db["x"]) == n_committed
+        assert len(db["y"]) == n_committed
+        for i, expected in enumerate(committed_x):
+            npt.assert_array_equal(db["x"][i], np.array([expected], dtype=np.int32))
+        for i, expected in enumerate(committed_y):
+            npt.assert_array_equal(db["y"][i], np.array([expected], dtype=np.int32))
