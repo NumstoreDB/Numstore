@@ -978,3 +978,152 @@ def test_large_sequential_remove(db_path):
         for _ in range(n):
             v.remove(0)
         assert len(v) == 0
+
+
+# ---------------------------------------------------------------------------
+# 17. Randomized transaction — commit vs rollback correctness
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1, 2, 3, 4, 5])
+def test_random_txn_commit_rollback(db_path, seed):
+    """Alternate committing and rolling back; committed state must persist."""
+    rng = random.Random(seed)
+    committed = []
+
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+
+        for round_idx in range(20):
+            do_commit = rng.choice([True, False])
+            batch = [rng.randint(0, 9999) for _ in range(rng.randint(1, 5))]
+
+            with db.begin_txn() as txn:
+                for val in batch:
+                    txn["a"].append(np.array([val], dtype=np.int32))
+                if not do_commit:
+                    raise Exception("intentional rollback")  # triggers rollback
+
+            if do_commit:
+                committed.extend(batch)
+
+        assert len(db["a"]) == len(committed)
+        for i, expected in enumerate(committed):
+            npt.assert_array_equal(db["a"][i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [10, 20, 30])
+def test_random_txn_commit_then_verify(db_path, seed):
+    """Each txn appends a random batch; all committed batches must be visible."""
+    rng = random.Random(seed)
+    all_vals = []
+
+    with Database(db_path) as db:
+        db.create("log", dtype="i32")
+        for _ in range(10):
+            batch = [rng.randint(1, 1000) for _ in range(rng.randint(1, 8))]
+            with db.begin_txn() as txn:
+                for val in batch:
+                    txn["log"].append(np.array([val], dtype=np.int32))
+            all_vals.extend(batch)
+
+        assert len(db["log"]) == len(all_vals)
+        for i, expected in enumerate(all_vals):
+            npt.assert_array_equal(db["log"][i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 18. Variable.remove — returned values match what was stored
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [77, 88, 99])
+def test_remove_returns_correct_value(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 30)
+    values = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+
+        # remove each element from front and check returned value
+        for expected in values:
+            result = v.remove(0)
+            npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
+
+        assert len(v) == 0
+
+
+@pytest.mark.parametrize("seed", [111, 222, 333])
+def test_remove_from_back_returns_correct_value(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 25)
+    values = [rng.randint(-9999, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+
+        for expected in reversed(values):
+            result = v.remove(len(v) - 1)
+            npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
+
+        assert len(v) == 0
+
+
+# ---------------------------------------------------------------------------
+# 19. Insert order integrity — insert many at position 0 (reverse order)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [50, 51, 52])
+def test_insert_all_at_zero_reverses(db_path, seed):
+    """Inserting each element at position 0 yields reversed order."""
+    rng = random.Random(seed)
+    n = rng.randint(5, 25)
+    values = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.insert(0, np.array([val], dtype=np.int32))
+
+        assert len(v) == n
+        for i, expected in enumerate(reversed(values)):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 20. Randomized numpy dtype — u8 / u16 / u32 boundary values
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("dtype,nptype,lo,hi", [
+    ("u8",  np.uint8,  0, 255),
+    ("u16", np.uint16, 0, 65535),
+    ("u32", np.uint32, 0, 2**32 - 1),
+])
+def test_random_boundary_unsigned(db_path, dtype, nptype, lo, hi):
+    rng = random.Random(42)
+    vals = [lo, hi] + [rng.randint(lo, hi) for _ in range(18)]
+    with Database(db_path) as db:
+        v = db.create("v", dtype=dtype)
+        for val in vals:
+            v.append(np.array([val], dtype=nptype))
+        for i, expected in enumerate(vals):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=nptype))
+
+
+@pytest.mark.parametrize("dtype,nptype,lo,hi", [
+    ("i8",  np.int8,  -128, 127),
+    ("i16", np.int16, -32768, 32767),
+    ("i32", np.int32, -(2**31), 2**31 - 1),
+])
+def test_random_boundary_signed(db_path, dtype, nptype, lo, hi):
+    rng = random.Random(42)
+    vals = [lo, hi, 0] + [rng.randint(lo, hi) for _ in range(17)]
+    with Database(db_path) as db:
+        v = db.create("v", dtype=dtype)
+        for val in vals:
+            v.append(np.array([val], dtype=nptype))
+        for i, expected in enumerate(vals):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=nptype))
