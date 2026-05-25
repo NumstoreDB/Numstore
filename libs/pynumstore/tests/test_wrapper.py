@@ -668,3 +668,148 @@ def test_random_mixed_ops(db_path, seed):
         assert len(v) == len(reference)
         for i, expected in enumerate(reference):
             npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 12. Transaction isolation and data visibility
+# ---------------------------------------------------------------------------
+
+def test_txn_writes_visible_after_commit(db_path):
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+        with db.begin_txn() as txn:
+            txn["a"].append(np.array([1], dtype=np.int32))
+            txn["a"].append(np.array([2], dtype=np.int32))
+        assert len(db["a"]) == 2
+
+
+def test_txn_multiple_vars_in_one_txn(db_path):
+    with Database(db_path) as db:
+        db.create("x", dtype="i32")
+        db.create("y", dtype="f32")
+        with db.begin_txn() as txn:
+            txn["x"].append(np.array([10], dtype=np.int32))
+            txn["y"].append(np.array([3.14], dtype=np.float32))
+        assert len(db["x"]) == 1
+        assert len(db["y"]) == 1
+
+
+def test_txn_delete_var(db_path):
+    with Database(db_path) as db:
+        db.create("tmp", dtype="i32")
+        with db.begin_txn() as txn:
+            txn.delete("tmp")
+        # no error means delete succeeded
+
+
+def test_txn_create_and_populate(db_path):
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            v = txn.create("fresh", dtype="i32")
+            v.append(np.array([42], dtype=np.int32))
+        assert len(db["fresh"]) == 1
+        npt.assert_array_equal(db["fresh"][0], np.array([42], dtype=np.int32))
+
+
+def test_txn_commit_then_rollback_second(db_path):
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+        txn = db.begin_txn()
+        txn["a"].append(np.array([1], dtype=np.int32))
+        txn.commit()
+        assert len(db["a"]) == 1
+
+        txn2 = db.begin_txn()
+        txn2["a"].append(np.array([2], dtype=np.int32))
+        txn2.rollback()
+        assert len(db["a"]) == 1  # second append was discarded
+
+
+def test_txn_repr_is_str(db_path):
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            r = repr(txn)
+            assert isinstance(r, str) and len(r) > 0
+
+
+# ---------------------------------------------------------------------------
+# 13. Dtype coverage — roundtrip each supported primitive
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("dtype,nptype,val", [
+    ("u8",  np.uint8,   200),
+    ("u16", np.uint16,  60000),
+    ("u32", np.uint32,  4000000000),
+    ("u64", np.uint64,  18000000000000000000),
+    ("i8",  np.int8,    -100),
+    ("i16", np.int16,   -30000),
+    ("i32", np.int32,   -2000000000),
+    ("i64", np.int64,   -9000000000000000000),
+    ("f32", np.float32, 1.5),
+    ("f64", np.float64, 1.23456789012345),
+])
+def test_dtype_roundtrip(db_path, dtype, nptype, val):
+    with Database(db_path) as db:
+        v = db.create("v", dtype=dtype)
+        v.append(np.array([val], dtype=nptype))
+        result = v[0]
+        npt.assert_array_equal(result, np.array([val], dtype=nptype))
+
+
+# ---------------------------------------------------------------------------
+# 14. Slice semantics — start/stop/step edge cases
+# ---------------------------------------------------------------------------
+
+def test_slice_step_2(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(10):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[0:10:2]
+        assert len(result) == 5
+
+
+def test_slice_negative_stop(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[0:-1]  # all but last
+        assert len(result) == 4
+
+
+def test_slice_beyond_end_clamps(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(3):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[0:1000]
+        assert len(result) == 3
+
+
+def test_slice_start_equals_stop(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[2:2]
+        assert len(result) == 0
+
+
+def test_slice_last_element(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i * 10], dtype=np.int32))
+        result = v[-1:]
+        assert len(result) == 1
+
+
+def test_slice_all_elements(db_path):
+    n = 20
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[:]
+        assert len(result) == n
