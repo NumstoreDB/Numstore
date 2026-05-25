@@ -875,7 +875,7 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
       {
         case WUP_PHYSICAL:
         {
-          memcpy (page_h_w (ph), h->update.phys.redo, PAGE_SIZE);
+          memcpy (page_h_w (ph)->raw, h->update.phys.redo, PAGE_SIZE);
           return;
         }
         case WUP_FSM:
@@ -900,7 +900,7 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
       {
         case WCLR_PHYSICAL:
         {
-          memcpy (page_h_w (ph), h->clr.phys.redo, PAGE_SIZE);
+          memcpy (page_h_w (ph)->raw, h->clr.phys.redo, PAGE_SIZE);
           return;
         }
         case WCLR_FSM:

@@ -16,6 +16,7 @@
 
 #include <signal.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 static volatile sig_atomic_t keep_running = 1;
 
@@ -29,6 +30,7 @@ handle_sigint (int sig)
 int
 main (void)
 {
+  srand (10000);
   int start_enabled[IRWR_AT_LEN];
   for (int i = 0; i < IRWR_AT_LEN; ++i) { start_enabled[i] = 1; }
 

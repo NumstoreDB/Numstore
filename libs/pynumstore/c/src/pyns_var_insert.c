@@ -19,9 +19,6 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 
-// var_insert(db, txn_or_none, name: str, ofst: int, data: NDArray) -> None
-//
-// Inserts len(data) elements from data into the variable at element offset ofst.
 PyObject *
 pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
 {

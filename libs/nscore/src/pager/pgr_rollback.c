@@ -119,7 +119,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   }
 
 theend:
-  lockt_unlock_tx (p->lt, tx);
+  i_mutex_unlock (&p->serial_lock);
 
   if (undo_nxt_lsn > 0)
   {

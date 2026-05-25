@@ -18,7 +18,7 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 269);
+TEST_SUITE (smartfiles, 270);
 
 HEADER_FUNC void
 register_tests (void)
@@ -285,6 +285,7 @@ register_tests (void)
   REGISTER (smartfiles, mem_vhmap);
   REGISTER (smartfiles, cgd_test_create_delete_rollback_delete);
   REGISTER (smartfiles, cgd_test_create_crash_close_delete);
+  REGISTER (smartfiles, irwr_rollback_invalid_wal_header);
   REGISTER (smartfiles, nsdb_create_txn_tests);
   REGISTER (smartfiles, nsdb_delete_txn_tests);
   REGISTER (smartfiles, nsdb_insert_txn_tests);

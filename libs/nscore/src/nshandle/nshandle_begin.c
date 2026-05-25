@@ -39,9 +39,6 @@ _nsh_begin (struct nshandle *smf, error *e)
   smf->atx         = &smf->tx;
   printf ("%" PRtxid "\n", smf->atx->tid);
 
-  // Lock the database - this is to be removed as concurrency support gets better
-  if (lockt_lock (smf->root->p->lt, lock_db (), LM_X, &smf->tx, e)) { return error_trace (e); }
-
   return SUCCESS;
 }
 
