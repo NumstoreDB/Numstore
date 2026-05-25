@@ -434,3 +434,102 @@ def test_txn_repr(db_path):
     with Database(db_path) as db:
         with db.begin_txn() as txn:
             assert "Transaction" in repr(txn)
+
+
+# ---------------------------------------------------------------------------
+# 9. Multiple named variables coexist independently
+# ---------------------------------------------------------------------------
+
+def test_multiple_vars_independent_len(db_path):
+    with Database(db_path) as db:
+        a = db.create("a", dtype="i32")
+        b = db.create("b", dtype="i32")
+        a.append(np.array([1], dtype=np.int32))
+        a.append(np.array([2], dtype=np.int32))
+        b.append(np.array([9], dtype=np.int32))
+        assert len(a) == 2
+        assert len(b) == 1
+
+
+def test_multiple_vars_independent_data(db_path):
+    with Database(db_path) as db:
+        a = db.create("a", dtype="i32")
+        b = db.create("b", dtype="i32")
+        a.append(np.array([111], dtype=np.int32))
+        b.append(np.array([222], dtype=np.int32))
+        npt.assert_array_equal(a[0], np.array([111], dtype=np.int32))
+        npt.assert_array_equal(b[0], np.array([222], dtype=np.int32))
+
+
+def test_delete_one_var_leaves_other(db_path):
+    with Database(db_path) as db:
+        a = db.create("a", dtype="i32")
+        b = db.create("b", dtype="i32")
+        b.append(np.array([5], dtype=np.int32))
+        db.delete("a")
+        npt.assert_array_equal(b[0], np.array([5], dtype=np.int32))
+
+
+def test_different_dtypes(db_path):
+    with Database(db_path) as db:
+        fi = db.create("ints", dtype="i32")
+        ff = db.create("floats", dtype="f64")
+        fi.append(np.array([7], dtype=np.int32))
+        ff.append(np.array([3.14], dtype=np.float64))
+        npt.assert_array_equal(fi[0], np.array([7], dtype=np.int32))
+        npt.assert_array_almost_equal(ff[0], np.array([3.14], dtype=np.float64))
+
+
+# ---------------------------------------------------------------------------
+# 10. Edge cases — boundary indices, empty operations
+# ---------------------------------------------------------------------------
+
+def test_len_after_multiple_appends(db_path):
+    n = 50
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        assert len(v) == n
+
+
+def test_insert_at_end_same_as_append(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([1], dtype=np.int32))
+        v.append(np.array([2], dtype=np.int32))
+        # insert at end == append
+        v.insert(len(v), np.array([3], dtype=np.int32))
+        assert len(v) == 3
+        npt.assert_array_equal(v[2], np.array([3], dtype=np.int32))
+
+
+def test_write_then_read_roundtrip_i32(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([0], dtype=np.int32))
+        v[0] = np.array([-2147483648], dtype=np.int32)  # INT32_MIN
+        npt.assert_array_equal(v[0], np.array([-2147483648], dtype=np.int32))
+
+
+def test_write_then_read_roundtrip_f64(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="f64")
+        v.append(np.array([0.0], dtype=np.float64))
+        val = np.float64(1.23456789012345)
+        v[0] = np.array([val], dtype=np.float64)
+        npt.assert_array_almost_equal(v[0], np.array([val], dtype=np.float64), decimal=12)
+
+
+def test_slice_on_single_element_var(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([42], dtype=np.int32))
+        result = v[0:1]
+        assert len(result) == 1
+
+
+def test_repr_variable(db_path):
+    with Database(db_path) as db:
+        v = db.create("myvar", dtype="f32")
+        assert "myvar" in repr(v)
