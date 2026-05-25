@@ -1603,3 +1603,150 @@ def test_slice_equals_sequential_reads(db_path, seed):
             npt.assert_array_equal(
                 slice_result[local_i], v[global_i]
             )
+
+
+# ---------------------------------------------------------------------------
+# 41. Mixed dtype variables in one transaction
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1001, 1002])
+def test_txn_mixed_dtype_vars(db_path, seed):
+    rng = random.Random(seed)
+    int_vals = [rng.randint(-1000, 1000) for _ in range(5)]
+    float_vals = [rng.uniform(-100.0, 100.0) for _ in range(5)]
+
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            vi = txn.create("ints", dtype="i32")
+            vf = txn.create("floats", dtype="f32")
+            for v in int_vals:
+                vi.append(np.array([v], dtype=np.int32))
+            for v in float_vals:
+                vf.append(np.array([v], dtype=np.float32))
+
+        vi2 = db["ints"]
+        vf2 = db["floats"]
+        for i, expected in enumerate(int_vals):
+            npt.assert_array_equal(vi2[i], np.array([expected], dtype=np.int32))
+        for i, expected in enumerate(float_vals):
+            npt.assert_array_almost_equal(
+                vf2[i], np.array([expected], dtype=np.float32), decimal=4
+            )
+
+
+# ---------------------------------------------------------------------------
+# 42. Append large arrays as elements (multi-element dtype row)
+# ---------------------------------------------------------------------------
+
+def test_append_multi_element_rows(db_path):
+    """Each element is a row of 4 floats; check shape and first/last row."""
+    with Database(db_path) as db:
+        v = db.create("mat", dtype="f32[4]")
+        row0 = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+        row1 = np.array([5.0, 6.0, 7.0, 8.0], dtype=np.float32)
+        v.append(row0)
+        v.append(row1)
+        assert len(v) == 2
+        r0 = v[0]
+        r1 = v[1]
+        npt.assert_array_almost_equal(r0, row0, decimal=5)
+        npt.assert_array_almost_equal(r1, row1, decimal=5)
+
+
+def test_write_multi_element_row(db_path):
+    with Database(db_path) as db:
+        v = db.create("mat", dtype="f32[3]")
+        v.append(np.array([0.0, 0.0, 0.0], dtype=np.float32))
+        new_row = np.array([1.1, 2.2, 3.3], dtype=np.float32)
+        v[0] = new_row
+        npt.assert_array_almost_equal(v[0], new_row, decimal=5)
+
+
+def test_remove_multi_element_row(db_path):
+    with Database(db_path) as db:
+        v = db.create("mat", dtype="f32[2]")
+        v.append(np.array([10.0, 20.0], dtype=np.float32))
+        v.append(np.array([30.0, 40.0], dtype=np.float32))
+        result = v.remove(0)
+        npt.assert_array_almost_equal(result, np.array([10.0, 20.0], dtype=np.float32), decimal=5)
+        assert len(v) == 1
+        npt.assert_array_almost_equal(v[0], np.array([30.0, 40.0], dtype=np.float32), decimal=5)
+
+
+# ---------------------------------------------------------------------------
+# 43. Randomized multi-element rows — insert/read/remove
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1100, 1101, 1102])
+def test_random_row_insert_read(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 20)
+    row_len = rng.choice([2, 3, 4, 8])
+    rows = [np.array([rng.uniform(-10, 10) for _ in range(row_len)], dtype=np.float32)
+            for _ in range(n)]
+
+    dtype_str = f"f32[{row_len}]"
+    with Database(db_path) as db:
+        v = db.create("rows", dtype=dtype_str)
+        for row in rows:
+            v.append(row)
+        assert len(v) == n
+        for i, expected in enumerate(rows):
+            npt.assert_array_almost_equal(v[i], expected, decimal=4)
+
+
+# ---------------------------------------------------------------------------
+# 44. Delete variable, then re-create with same name
+# ---------------------------------------------------------------------------
+
+def test_delete_and_recreate_variable(db_path):
+    with Database(db_path) as db:
+        v = db.create("x", dtype="i32")
+        v.append(np.array([1], dtype=np.int32))
+        db.delete("x")
+        v2 = db.create("x", dtype="i32")
+        assert len(v2) == 0
+        v2.append(np.array([99], dtype=np.int32))
+        npt.assert_array_equal(v2[0], np.array([99], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [1200, 1201])
+def test_delete_recreate_random(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(3, 15)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        db.delete("r")
+
+        new_vals = [rng.randint(10000, 19999) for _ in range(n)]
+        v2 = db.create("r", dtype="i32")
+        for val in new_vals:
+            v2.append(np.array([val], dtype=np.int32))
+        for i, expected in enumerate(new_vals):
+            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 45. Sequential txns — each reads what the previous committed
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [1300, 1301, 1302])
+def test_sequential_txns_read_previous_commit(db_path, seed):
+    rng = random.Random(seed)
+    cumulative = []
+
+    with Database(db_path) as db:
+        db.create("log", dtype="i32")
+
+        for _ in range(8):
+            val = rng.randint(0, 9999)
+            with db.begin_txn() as txn:
+                txn["log"].append(np.array([val], dtype=np.int32))
+            cumulative.append(val)
+
+            # each new txn should see everything committed so far
+            with db.begin_txn() as verify_txn:
+                assert len(verify_txn["log"]) == len(cumulative)
