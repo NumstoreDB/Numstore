@@ -121,9 +121,10 @@ struct pager
   u8                  _header[PAGE_HEADER_LEN];
 
   // Resources
-  struct file_pager *const fp; // File pager - just reads and writes pages
-  struct wal *const        ww; // Write-ahead log abstraction
-  struct lockt            *lt; // Lock table
+  struct file_pager *const fp;          // File pager - just reads and writes pages
+  struct wal *const        ww;          // Write-ahead log abstraction
+  struct lockt            *lt;          // Lock table
+  i_mutex                  serial_lock; // To be deleted in concurrency work
 
   _Atomic int flags;
   _Atomic u32 clock;

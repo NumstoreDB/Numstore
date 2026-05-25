@@ -20,41 +20,6 @@
 
 DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, { ASSERT (w); })
 
-static void *
-walos_flush_thread (void *ctx)
-{
-  struct wal_ostream *w = ctx;
-
-  i_mutex_lock (&w->write_lock);
-  while (true)
-  {
-    while (!w->flush_pending && !w->shutdown) { i_cond_wait (&w->write_cond, &w->write_lock); }
-
-    if (w->shutdown) { break; }
-
-    const u32 towrite = cbuffer_len (w->other);
-    i_mutex_unlock (&w->write_lock);
-
-    // I/O outside the lock
-    error e = error_create ();
-    if (cbuffer_write_to_file_1_expect (&w->fd, w->other, towrite, &e))
-    {
-      panic ("Wal write failed");
-    }
-    cbuffer_write_to_file_2 (w->other, towrite);
-
-    if (i_fsync (&w->fd, &e)) { panic ("Wal fsync failed"); }
-
-    i_mutex_lock (&w->write_lock);
-    w->flushed_lsn += towrite;
-    w->flush_pending = false;
-    i_cond_broadcast (&w->write_done_cond);
-  }
-
-  i_mutex_unlock (&w->write_lock);
-  return NULL;
-}
-
 ////////////////////////////////////////////////////////////
 /// Lifecycle
 
@@ -70,33 +35,12 @@ walos_open (const char *fname, error *e)
   if (len < 0) { goto err_close; }
 
   latch_init (&ret->l);
-
-  ret->buffer1 = cbuffer_create (ret->_buffer1, sizeof (ret->_buffer1));
-  ret->buffer2 = cbuffer_create (ret->_buffer2, sizeof (ret->_buffer2));
-  ret->buffer  = &ret->buffer1;
-  ret->other   = &ret->buffer2;
-
-  ret->flushed_lsn   = len;
-  ret->flush_pending = false;
-  ret->shutdown      = false;
-
-  if (i_mutex_create (&ret->write_lock, e)) { goto err_close; }
-
-  if (i_cond_create (&ret->write_cond, e)) { goto err_mutex; }
-
-  if (i_cond_create (&ret->write_done_cond, e)) { goto err_cond1; }
-
-  if (i_thread_create (&ret->writer_thread, walos_flush_thread, ret, e)) { goto err_cond2; }
+  ret->buffer      = cbuffer_create (ret->_buffer, sizeof (ret->_buffer));
+  ret->flushed_lsn = len;
 
   DBG_ASSERT (wal_ostream, ret);
   return ret;
 
-err_cond2:
-  i_cond_free (&ret->write_done_cond);
-err_cond1:
-  i_cond_free (&ret->write_cond);
-err_mutex:
-  i_mutex_free (&ret->write_lock);
 err_close:
   i_close (&ret->fd, e);
 err_free:
@@ -104,37 +48,11 @@ err_free:
   return NULL;
 }
 
-/// Shutdown the writer thread. Caller must not access w->write_lock after
-/// this.
-static void
-walos_shutdown_thread (struct wal_ostream *w, error *e)
-{
-  i_mutex_lock (&w->write_lock);
-  w->shutdown = true;
-  i_cond_signal (&w->write_cond);
-  i_mutex_unlock (&w->write_lock);
-
-  i_thread_join (&w->writer_thread, e);
-
-  i_mutex_free (&w->write_lock);
-  i_cond_free (&w->write_cond);
-  i_cond_free (&w->write_done_cond);
-}
-
 err_t
 walos_close (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
-
-  // Flush everything, then tear down
   walos_flush_all (w, e);
-
-  // Wait for in-flight flush to land before shutting down
-  i_mutex_lock (&w->write_lock);
-  while (w->flush_pending) { i_cond_wait (&w->write_done_cond, &w->write_lock); }
-  i_mutex_unlock (&w->write_lock);
-
-  walos_shutdown_thread (w, e);
   i_close (&w->fd, e);
   i_free (w);
   return error_trace (e);
@@ -144,62 +62,38 @@ err_t
 walos_crash (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
-
-  walos_shutdown_thread (w, e);
   i_close (&w->fd, e);
   i_free (w);
   return error_trace (e);
 }
 
+////////////////////////////////////////////////////////////
+/// Flush
+
 static err_t
-walos_flush_impl (struct wal_ostream *w, const lsn l, bool wait, error *e)
+walos_flush_impl (struct wal_ostream *w, error *e)
 {
-  i_mutex_lock (&w->write_lock);
+  const u32 towrite = cbuffer_len (&w->buffer);
+  if (towrite == 0) { return SUCCESS; }
 
-  // Wait for previous flush to release `other`
-  while (w->flush_pending) { i_cond_wait (&w->write_done_cond, &w->write_lock); }
-
-  // State is consistent here: other is empty, flushed_lsn is current
-  if (l <= w->flushed_lsn)
+  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e))
   {
-    i_mutex_unlock (&w->write_lock);
-    return SUCCESS;
+    panic ("Wal write failed");
   }
+  cbuffer_write_to_file_2 (&w->buffer, towrite);
 
-  ASSERT (l <= w->flushed_lsn + cbuffer_len (w->buffer));
+  if (i_fsync (&w->fd, e)) { panic ("Wal fsync failed"); }
 
-  if (cbuffer_len (w->buffer) > 0)
-  {
-    struct cbuffer *temp = w->buffer;
-    w->buffer            = w->other;
-    w->other             = temp;
-    w->flush_pending     = true;
-    i_cond_signal (&w->write_cond);
-
-    if (wait)
-    {
-      while (w->flush_pending) { i_cond_wait (&w->write_done_cond, &w->write_lock); }
-    }
-  }
-
-  i_mutex_unlock (&w->write_lock);
-  return error_trace (e);
+  w->flushed_lsn += towrite;
+  return SUCCESS;
 }
 
 err_t
 walos_flush_to (struct wal_ostream *w, const lsn l, error *e)
 {
   latch_lock (&w->l);
-
-  // Already durable
-  if (l <= w->flushed_lsn)
-  {
-    latch_unlock (&w->l);
-    return SUCCESS;
-  }
-
-  const err_t ret = walos_flush_impl (w, l, true, e);
-
+  err_t ret = SUCCESS;
+  if (l > w->flushed_lsn) { ret = walos_flush_impl (w, e); }
   latch_unlock (&w->l);
   return ret;
 }
@@ -208,11 +102,9 @@ err_t
 walos_flush_all (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
-
   latch_lock (&w->l);
-  const err_t ret = walos_flush_impl (w, w->flushed_lsn + cbuffer_len (w->buffer), true, e);
+  const err_t ret = walos_flush_impl (w, e);
   latch_unlock (&w->l);
-
   return ret;
 }
 
@@ -233,22 +125,19 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
 
   while (written < len)
   {
-    if (cbuffer_avail (w->buffer) == 0)
+    if (cbuffer_avail (&w->buffer) == 0)
     {
-      // Active buffer full; swap to the other buffer and wake
-      // the flush thread
-      if (walos_flush_impl (w, w->flushed_lsn + cbuffer_len (w->buffer), false, e))
+      if (walos_flush_impl (w, e))
       {
         latch_unlock (&w->l);
         return error_trace (e);
       }
     }
 
-    // Copy as much as the buffer can accept in one shot
-    const u32 towrite = MIN (len - written, cbuffer_avail (w->buffer));
+    const u32 towrite = MIN (len - written, cbuffer_avail (&w->buffer));
     if (towrite > 0)
     {
-      cbuffer_write_expect (src + written, 1, towrite, w->buffer);
+      cbuffer_write_expect (src + written, 1, towrite, &w->buffer);
       written += towrite;
     }
   }
@@ -261,7 +150,7 @@ lsn
 walos_get_next_lsn (struct wal_ostream *w)
 {
   latch_lock (&w->l);
-  lsn ret = w->flushed_lsn + cbuffer_len (w->buffer);
+  lsn ret = w->flushed_lsn + cbuffer_len (&w->buffer);
   latch_unlock (&w->l);
   return ret;
 }

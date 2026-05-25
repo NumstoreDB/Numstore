@@ -181,9 +181,9 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
 {
   meta->allowed[IRWR_CRASH_AND_REOPEN] = 0;
   meta->allowed[IRWR_CLOSE_AND_REOPEN] = 0;
-  meta->allowed[IRWR_ROLLBACK_TXN]     = 0;
-  meta->allowed[IRWR_COMMIT_TXN]       = 0;
-  meta->allowed[IRWR_BEGIN_TXN]        = 0;
+  // meta->allowed[IRWR_ROLLBACK_TXN]     = 0;
+  // meta->allowed[IRWR_COMMIT_TXN]       = 0;
+  // meta->allowed[IRWR_BEGIN_TXN]        = 0;
 
   /* Count allowed actions */
   int len = 0;
@@ -244,7 +244,7 @@ irwr_swmt_begin_txn (struct irwr_swarm_test *meta)
 
   irwr_swmt_assert (nsdb_begin (meta->db) == 0);
 
-  meta->working = block_array_create (512, NULL);
+  meta->working = block_array_clone (meta->committed, NULL);
   irwr_swmt_assert (meta->working != NULL);
   meta->in_txn = 1;
 }

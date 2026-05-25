@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/error.h"
 #include "nscore/page_fixture.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
@@ -98,6 +99,11 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
 
   // Create a new free space map page
   if (pgr_new_impl (fsm, p, tx, PG_FREE_SPACE_MAP, fsmpg, e)) { return error_trace (e); }
+
+  // Create one upfront physical log from nothing to valid fsm page
+  // just release with physical log and get again
+  if (pgr_release (p, fsm, PG_FREE_SPACE_MAP, e)) { return error_trace (e); }
+  if (pgr_get_writable (fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e)) { return error_trace (e); }
 
   // Creating a new FSM means we are tracking this many pages
   if (pgr_extend_file (p, fsmpg + FS_BTMP_NPGS, tx, e))

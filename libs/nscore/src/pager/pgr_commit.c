@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/threading.h"
 #include "nscore/lock_table.h"
 #include "nscore/pager.h"
 
@@ -63,7 +64,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
   // Remove the transaction from the txn table
   txnt_remove_txn_expect (p->tnxt, tx);
 
-  lockt_unlock_tx (p->lt, tx);
+  i_mutex_unlock (&p->serial_lock);
   tx->data.state = TX_DONE;
 
 theend:

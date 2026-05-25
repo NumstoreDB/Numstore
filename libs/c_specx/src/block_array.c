@@ -32,6 +32,36 @@ block_array_create (const u32 cap_per_node, error *e)
   return ret;
 }
 
+struct block_array *
+block_array_clone (const struct block_array *src, error *e)
+{
+  struct block_array *dst = block_array_create (src->cap_per_node, e);
+  if (!dst) { return NULL; }
+
+  u64 total_bytes = block_array_getlen (src);
+  if (total_bytes == 0) { return dst; }
+
+  void *buf = malloc ((size_t)total_bytes);
+  if (!buf)
+  {
+    block_array_free (dst);
+    return NULL;
+  }
+
+  block_array_read (src, (struct stride){.start = 0, .stride = 1, .nelems = total_bytes}, 1, buf);
+
+  err_t err = block_array_insert (dst, 0, buf, (u32)total_bytes, e);
+  free (buf);
+
+  if (err != 0)
+  {
+    block_array_free (dst);
+    return NULL;
+  }
+
+  return dst;
+}
+
 void
 block_array_free (struct block_array *r)
 {

@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/threading.h"
 #include "nscore/aries.h"
 #include "nscore/file_pager.h"
 #include "nscore/lock_table.h"
@@ -87,8 +88,9 @@ pgr_open_single_file (const char *dbname, error *e)
     return NULL;
   }
 
-  page_h        root = page_h_create ();
-  struct pager *ret  = NULL;
+  bool          mutex_init = false;
+  page_h        root       = page_h_create ();
+  struct pager *ret        = NULL;
 
   if ((ret = i_calloc (1, sizeof *ret, e)) == NULL) { goto failed; }
 
@@ -96,6 +98,8 @@ pgr_open_single_file (const char *dbname, error *e)
   *(struct file_pager **)&ret->fp = fp;
   *(struct wal **)&ret->ww        = ww;
   ret->lt                         = lt;
+  if (i_mutex_create (&ret->serial_lock, e)) { goto failed; }
+  mutex_init = true;
   atomic_store (&ret->flags, fpgr_isnew (ret->fp));
   atomic_store (&ret->clock, 0);
   ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
@@ -207,6 +211,7 @@ failed:
   ASSERT (error_trace (e));
   if (ret)
   {
+    if (mutex_init) { i_mutex_free (&ret->serial_lock); }
     pgr_cancel_if_exists (ret, &root);
     if (ret->dpt) { dpgt_close (ret->dpt); }
     if (ret->tnxt) { txnt_close (ret->tnxt); }
@@ -215,6 +220,7 @@ failed:
 
   if (ww) { wal_close_and_delete (ww, e); }
   if (fp) { fpgr_close (fp, e); }
+  if (lt) { lockt_destroy (lt); }
 
   return NULL;
 }

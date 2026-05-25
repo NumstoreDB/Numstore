@@ -57,6 +57,7 @@ struct block_array
 };
 
 struct block_array *block_array_create (u32 cap_per_node, error *e);
+struct block_array *block_array_clone (const struct block_array *r, error *e);
 void                block_array_free (struct block_array *r);
 
 err_t block_array_insert (struct block_array *r, u32 ofst, const void *src, u32 slen, error *e);

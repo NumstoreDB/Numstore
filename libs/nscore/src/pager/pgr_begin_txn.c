@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/threading.h"
 #include "nscore/lock_table.h"
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
@@ -24,6 +25,8 @@ err_t
 pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
+
+  i_mutex_lock (&p->serial_lock);
 
   txid tid = atomic_fetch_add (&p->next_tid, 1);
 

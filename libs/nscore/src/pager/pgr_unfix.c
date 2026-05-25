@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "c_specx/error.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 
@@ -33,6 +34,8 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
 
     // Can only save valid pages
     ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL));
+
+    h->pgr->flags |= PW_DIRTY;
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, PAGE_SIZE);
 

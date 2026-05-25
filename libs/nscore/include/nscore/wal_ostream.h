@@ -24,22 +24,8 @@ struct wal_ostream
   latch  l;
   lsn    flushed_lsn;
 
-  // Background writer thread
-  bool     flush_pending;
-  bool     shutdown;
-  i_thread writer_thread;
-  i_cond   write_cond;
-  i_cond   write_done_cond;
-  i_mutex  write_lock;
-
-  struct cbuffer *buffer;
-  struct cbuffer *other;
-
-  struct cbuffer buffer1;
-  u8             _buffer1[WAL_BUFFER_CAP];
-
-  struct cbuffer buffer2;
-  u8             _buffer2[WAL_BUFFER_CAP];
+  struct cbuffer buffer;
+  u8             _buffer[WAL_BUFFER_CAP];
 };
 
 // Lifecycle

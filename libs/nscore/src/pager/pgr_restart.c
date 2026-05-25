@@ -14,6 +14,7 @@
 
 #include "nscore/aries.h"
 #include "nscore/compile_config.h"
+#include "nscore/dirty_page_table.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
@@ -53,6 +54,7 @@ pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
   // pgr_deletion_blocking_checkpoint (p, e);
 
 theend:
+  dpgt_merge_into (p->dpt, ctx->dpt, e);
   aries_ctx_free (ctx);
   p->flags &= ~PGR_ISRESTARTING;
 

@@ -56,6 +56,9 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
           page_h ph = page_h_create ();
           if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) { goto failed; }
 
+          // ph.pgr->flags |= PW_DIRTY;
+          // ph.pgw->flags |= PW_DIRTY;
+
           pgno page_lsn = page_get_page_lsn (page_h_ro (&ph));
           if (page_lsn < read_lsn)
           {
