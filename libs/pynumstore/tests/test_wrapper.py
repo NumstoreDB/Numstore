@@ -156,5 +156,117 @@ def test_empty_variable_len(db_path):
 
 
 # ---------------------------------------------------------------------------
-# Commit 1 — lifecycle, create/delete, insert/append (tests 1-23 above)
+# 5. Variable.__getitem__ — read (int and slice)
 # ---------------------------------------------------------------------------
+
+def test_read_single_int_key(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([42], dtype=np.int32))
+        npt.assert_array_equal(v[0], np.array([42], dtype=np.int32))
+
+
+def test_read_slice_returns_ndarray(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="f32")
+        for i in range(5):
+            v.append(np.array([float(i)], dtype=np.float32))
+        result = v[1:4]
+        assert isinstance(result, np.ndarray)
+
+
+def test_read_slice_values(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="f64")
+        data = [10.0, 20.0, 30.0, 40.0, 50.0]
+        for val in data:
+            v.append(np.array([val], dtype=np.float64))
+        result = v[0:5]
+        assert len(result) == 5
+
+
+def test_read_full_slice(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(8):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[:]
+        assert isinstance(result, np.ndarray)
+        assert len(result) == 8
+
+
+def test_read_empty_slice(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([1], dtype=np.int32))
+        result = v[0:0]
+        assert len(result) == 0
+
+
+def test_read_strided_slice(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(6):
+            v.append(np.array([i * 10], dtype=np.int32))
+        result = v[0:6:2]  # elements 0, 2, 4
+        assert len(result) == 3
+
+
+def test_read_invalid_key_type_raises(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="f32")
+        v.append(np.array([1.0], dtype=np.float32))
+        with pytest.raises(TypeError):
+            _ = v["bad"]
+
+
+# ---------------------------------------------------------------------------
+# 6. Variable.__setitem__ — write (overwrite)
+# ---------------------------------------------------------------------------
+
+def test_write_single_element(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([1], dtype=np.int32))
+        v[0] = np.array([99], dtype=np.int32)
+        npt.assert_array_equal(v[0], np.array([99], dtype=np.int32))
+
+
+def test_write_does_not_change_len(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        v[2] = np.array([999], dtype=np.int32)
+        assert len(v) == 5
+
+
+def test_write_slice(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(4):
+            v.append(np.array([i], dtype=np.int32))
+        replacement = np.array([[10], [20], [30], [40]], dtype=np.int32)
+        v[0:4] = replacement
+        npt.assert_array_equal(v[0], np.array([10], dtype=np.int32))
+        npt.assert_array_equal(v[3], np.array([40], dtype=np.int32))
+
+
+def test_write_invalid_key_type_raises(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="f32")
+        v.append(np.array([1.0], dtype=np.float32))
+        with pytest.raises(TypeError):
+            v["bad"] = np.array([2.0], dtype=np.float32)
+
+
+def test_write_preserves_neighbours(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        v[2] = np.array([999], dtype=np.int32)
+        npt.assert_array_equal(v[0], np.array([0], dtype=np.int32))
+        npt.assert_array_equal(v[1], np.array([1], dtype=np.int32))
+        npt.assert_array_equal(v[3], np.array([3], dtype=np.int32))
+        npt.assert_array_equal(v[4], np.array([4], dtype=np.int32))
