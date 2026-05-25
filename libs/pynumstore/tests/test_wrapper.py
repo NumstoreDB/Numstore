@@ -270,3 +270,167 @@ def test_write_preserves_neighbours(db_path):
         npt.assert_array_equal(v[1], np.array([1], dtype=np.int32))
         npt.assert_array_equal(v[3], np.array([3], dtype=np.int32))
         npt.assert_array_equal(v[4], np.array([4], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 7. Variable.remove / __delitem__ — remove and shift left
+# ---------------------------------------------------------------------------
+
+def test_remove_single_decrements_len(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(4):
+            v.append(np.array([i], dtype=np.int32))
+        v.remove(0)
+        assert len(v) == 3
+
+
+def test_remove_single_returns_value(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        v.append(np.array([77], dtype=np.int32))
+        result = v.remove(0)
+        npt.assert_array_equal(result, np.array([77], dtype=np.int32))
+
+
+def test_remove_shifts_left(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in [10, 20, 30]:
+            v.append(np.array([i], dtype=np.int32))
+        v.remove(1)  # remove 20
+        npt.assert_array_equal(v[0], np.array([10], dtype=np.int32))
+        npt.assert_array_equal(v[1], np.array([30], dtype=np.int32))
+
+
+def test_delitem_single(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(3):
+            v.append(np.array([i], dtype=np.int32))
+        del v[1]
+        assert len(v) == 2
+
+
+def test_delitem_slice(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(6):
+            v.append(np.array([i], dtype=np.int32))
+        del v[2:5]
+        assert len(v) == 3
+
+
+def test_remove_from_tail(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="f32")
+        for i in range(5):
+            v.append(np.array([float(i)], dtype=np.float32))
+        last = len(v) - 1
+        result = v.remove(last)
+        assert len(v) == 4
+        npt.assert_array_equal(result, np.array([4.0], dtype=np.float32))
+
+
+def test_remove_first_then_read_remaining(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in [1, 2, 3, 4]:
+            v.append(np.array([i], dtype=np.int32))
+        v.remove(0)
+        npt.assert_array_equal(v[0], np.array([2], dtype=np.int32))
+        npt.assert_array_equal(v[1], np.array([3], dtype=np.int32))
+        npt.assert_array_equal(v[2], np.array([4], dtype=np.int32))
+
+
+def test_remove_range_returns_ndarray(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        result = v.remove(slice(1, 4))
+        assert isinstance(result, np.ndarray)
+
+
+# ---------------------------------------------------------------------------
+# 8. Transaction basics
+# ---------------------------------------------------------------------------
+
+def test_begin_txn_returns_transaction(db_path):
+    with Database(db_path) as db:
+        txn = db.begin_txn()
+        assert isinstance(txn, Transaction)
+        txn.rollback()
+
+
+def test_txn_context_manager_commits(db_path):
+    with Database(db_path) as db:
+        db.create("x", dtype="i32")
+        with db.begin_txn() as txn:
+            txn["x"].append(np.array([123], dtype=np.int32))
+        # after commit, data should be visible
+        assert len(db["x"]) == 1
+
+
+def test_txn_context_manager_rollback_on_exception(db_path):
+    with Database(db_path) as db:
+        db.create("x", dtype="i32")
+        try:
+            with db.begin_txn() as txn:
+                txn["x"].append(np.array([42], dtype=np.int32))
+                raise RuntimeError("forced")
+        except RuntimeError:
+            pass
+        assert len(db["x"]) == 0
+
+
+def test_txn_getitem_returns_variable(db_path):
+    with Database(db_path) as db:
+        db.create("y", dtype="f32")
+        with db.begin_txn() as txn:
+            v = txn["y"]
+            assert isinstance(v, Variable)
+            assert v.name == "y"
+
+
+def test_txn_getitem_non_string_raises(db_path):
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            with pytest.raises(TypeError):
+                _ = txn[0]
+            txn.rollback()
+
+
+def test_txn_var_method(db_path):
+    with Database(db_path) as db:
+        db.create("z", dtype="i64")
+        with db.begin_txn() as txn:
+            v = txn.var("z")
+            assert isinstance(v, Variable)
+
+
+def test_txn_create_variable(db_path):
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            v = txn.create("newvar", dtype="f64")
+            assert isinstance(v, Variable)
+
+
+def test_txn_commit_and_rollback_explicit(db_path):
+    with Database(db_path) as db:
+        db.create("a", dtype="i32")
+        txn = db.begin_txn()
+        txn["a"].append(np.array([1], dtype=np.int32))
+        txn.commit()
+        assert len(db["a"]) == 1
+
+        txn2 = db.begin_txn()
+        txn2["a"].append(np.array([2], dtype=np.int32))
+        txn2.rollback()
+        assert len(db["a"]) == 1  # rollback undid the second append
+
+
+def test_txn_repr(db_path):
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            assert "Transaction" in repr(txn)
