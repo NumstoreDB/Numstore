@@ -813,3 +813,168 @@ def test_slice_all_elements(db_path):
             v.append(np.array([i], dtype=np.int32))
         result = v[:]
         assert len(result) == n
+
+
+# ---------------------------------------------------------------------------
+# 15. Large-batch randomized — multiple variables, interleaved txns
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [11, 22, 33, 55, 99])
+def test_random_two_vars_interleaved(db_path, seed):
+    """Independently track two variables and compare after random ops."""
+    rng = random.Random(seed)
+    ref_a, ref_b = [], []
+
+    with Database(db_path) as db:
+        a = db.create("a", dtype="i32")
+        b = db.create("b", dtype="i32")
+
+        for _ in range(80):
+            target = rng.choice(["a", "b"])
+            ref = ref_a if target == "a" else ref_b
+            v = a if target == "a" else b
+
+            op = rng.choice(["append", "write", "remove"])
+            if op == "append" or len(ref) == 0:
+                val = rng.randint(0, 9999)
+                ref.append(val)
+                v.append(np.array([val], dtype=np.int32))
+            elif op == "write":
+                idx = rng.randint(0, len(ref) - 1)
+                val = rng.randint(-9999, -1)
+                ref[idx] = val
+                v[idx] = np.array([val], dtype=np.int32)
+            elif op == "remove" and len(ref) > 1:
+                idx = rng.randint(0, len(ref) - 1)
+                ref.pop(idx)
+                v.remove(idx)
+
+        assert len(a) == len(ref_a)
+        assert len(b) == len(ref_b)
+        for i, expected in enumerate(ref_a):
+            npt.assert_array_equal(a[i], np.array([expected], dtype=np.int32))
+        for i, expected in enumerate(ref_b):
+            npt.assert_array_equal(b[i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [7, 14, 28])
+def test_random_insert_remove_alternating(db_path, seed):
+    """Insert N items, remove N/2, check remainder matches reference."""
+    rng = random.Random(seed)
+    n = rng.randint(20, 60)
+    reference = []
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+
+        # insert phase
+        for _ in range(n):
+            pos = rng.randint(0, len(reference))
+            val = rng.randint(1, 99999)
+            reference.insert(pos, val)
+            v.insert(pos, np.array([val], dtype=np.int32))
+
+        # remove phase
+        remove_count = n // 2
+        for _ in range(remove_count):
+            pos = rng.randint(0, len(reference) - 1)
+            reference.pop(pos)
+            v.remove(pos)
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+@pytest.mark.parametrize("seed", [4, 8, 16])
+def test_random_write_after_insert(db_path, seed):
+    """Insert random elements, then randomly overwrite half, verify all."""
+    rng = random.Random(seed)
+    n = rng.randint(15, 50)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i64")
+        reference = [rng.randint(-(2**60), 2**60) for _ in range(n)]
+        for val in reference:
+            v.append(np.array([val], dtype=np.int64))
+
+        # overwrite random half
+        for idx in rng.sample(range(n), k=n // 2):
+            new_val = rng.randint(-(2**60), 2**60)
+            reference[idx] = new_val
+            v[idx] = np.array([new_val], dtype=np.int64)
+
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int64))
+
+
+@pytest.mark.parametrize("seed", [100, 200, 400])
+def test_random_mixed_ops_f32(db_path, seed):
+    """Mixed ops on f32 variable; check final state matches Python list."""
+    rng = random.Random(seed)
+    reference = []
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="f32")
+
+        for _ in range(50):
+            op = rng.choice(["append", "write", "remove"])
+            if op == "append" or len(reference) == 0:
+                val = rng.uniform(-1000.0, 1000.0)
+                reference.append(np.float32(val))
+                v.append(np.array([val], dtype=np.float32))
+            elif op == "write":
+                idx = rng.randint(0, len(reference) - 1)
+                val = rng.uniform(-1000.0, 1000.0)
+                reference[idx] = np.float32(val)
+                v[idx] = np.array([val], dtype=np.float32)
+            elif op == "remove" and len(reference) > 1:
+                idx = rng.randint(0, len(reference) - 1)
+                reference.pop(idx)
+                v.remove(idx)
+
+        assert len(v) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_almost_equal(
+                v[i], np.array([expected], dtype=np.float32), decimal=4
+            )
+
+
+# ---------------------------------------------------------------------------
+# 16. Stress — large N append/read
+# ---------------------------------------------------------------------------
+
+def test_large_append_and_read_i32(db_path):
+    n = 1000
+    data = list(range(n))
+    with Database(db_path) as db:
+        v = db.create("big", dtype="i32")
+        for val in data:
+            v.append(np.array([val], dtype=np.int32))
+        assert len(v) == n
+        # spot-check first, middle, last
+        npt.assert_array_equal(v[0], np.array([0], dtype=np.int32))
+        npt.assert_array_equal(v[n // 2], np.array([n // 2], dtype=np.int32))
+        npt.assert_array_equal(v[n - 1], np.array([n - 1], dtype=np.int32))
+
+
+def test_large_append_then_bulk_read(db_path):
+    n = 500
+    with Database(db_path) as db:
+        v = db.create("big", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        result = v[:]
+        assert len(result) == n
+
+
+def test_large_sequential_remove(db_path):
+    n = 100
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        # remove all from front one by one
+        for _ in range(n):
+            v.remove(0)
+        assert len(v) == 0
