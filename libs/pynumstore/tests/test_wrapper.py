@@ -1269,3 +1269,161 @@ def test_many_txns_two_vars(db_path, seed):
         for i in range(30):
             npt.assert_array_equal(db["x"][i], np.array([ref_x[i]], dtype=np.int32))
             npt.assert_array_equal(db["y"][i], np.array([ref_y[i]], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 26. Property: len(v) == number of appends minus removes
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [60, 70, 80, 90, 95])
+def test_len_tracks_append_minus_remove(db_path, seed):
+    rng = random.Random(seed)
+    n_append = rng.randint(20, 60)
+    n_remove = rng.randint(0, n_append // 2)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for i in range(n_append):
+            v.append(np.array([i], dtype=np.int32))
+        for _ in range(n_remove):
+            v.remove(0)
+        assert len(v) == n_append - n_remove
+
+
+# ---------------------------------------------------------------------------
+# 27. Property: insert at position p shifts element p to position p+1
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [15, 25, 35])
+def test_insert_shifts_element_at_p(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 20)
+    pos = rng.randint(0, n - 1)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+
+        # record what's currently at pos
+        original_at_pos = int(v[pos].flat[0])
+
+        new_val = 99999
+        v.insert(pos, np.array([new_val], dtype=np.int32))
+
+        # the element that was at pos should now be at pos+1
+        npt.assert_array_equal(v[pos + 1], np.array([original_at_pos], dtype=np.int32))
+        npt.assert_array_equal(v[pos], np.array([new_val], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 28. Property: remove(p) returns the element that was at position p
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [41, 42, 43])
+def test_remove_returns_element_at_p(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 20)
+    pos = rng.randint(0, n - 1)
+    values = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+
+        expected = values[pos]
+        result = v.remove(pos)
+        npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 29. Property: write(p, x) then read(p) == x for any p
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [101, 102, 103, 104, 105])
+def test_write_then_read_any_position(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 30)
+    pos = rng.randint(0, n - 1)
+    new_val = rng.randint(-999999, 999999)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        v[pos] = np.array([new_val], dtype=np.int32)
+        npt.assert_array_equal(v[pos], np.array([new_val], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 30. append then immediate read — no flush/sync needed
+# ---------------------------------------------------------------------------
+
+def test_append_immediately_readable(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(20):
+            v.append(np.array([i * 7], dtype=np.int32))
+            npt.assert_array_equal(v[i], np.array([i * 7], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 31. Randomized: bulk insert at offset 0 vs sequential — same final order
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [201, 202, 203])
+def test_bulk_insert_at_zero_matches_reversed_append(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 20)
+    values = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.insert(0, np.array([val], dtype=np.int32))
+
+        # inserting at 0 each time: last inserted is at index 0
+        for i, expected in enumerate(reversed(values)):
+            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 32. Cross-session: close and reopen, data persists
+# ---------------------------------------------------------------------------
+
+def test_data_persists_across_reopen(db_path):
+    values = [100, 200, 300, 400]
+    with Database(db_path) as db:
+        v = db.create("p", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+
+    # reopen — data must still be there
+    with Database(db_path) as db2:
+        v2 = db2["p"]
+        assert len(v2) == len(values)
+        for i, expected in enumerate(values):
+            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
+
+
+def test_write_persists_across_reopen(db_path):
+    with Database(db_path) as db:
+        v = db.create("p", dtype="i32")
+        v.append(np.array([1], dtype=np.int32))
+        v[0] = np.array([999], dtype=np.int32)
+
+    with Database(db_path) as db2:
+        npt.assert_array_equal(db2["p"][0], np.array([999], dtype=np.int32))
+
+
+def test_delete_persists_across_reopen(db_path):
+    with Database(db_path) as db:
+        v = db.create("p", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        v.remove(0)
+
+    with Database(db_path) as db2:
+        assert len(db2["p"]) == 4
+        npt.assert_array_equal(db2["p"][0], np.array([1], dtype=np.int32))
