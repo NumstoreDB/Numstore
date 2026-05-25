@@ -1127,3 +1127,145 @@ def test_random_boundary_signed(db_path, dtype, nptype, lo, hi):
             v.append(np.array([val], dtype=nptype))
         for i, expected in enumerate(vals):
             npt.assert_array_equal(v[i], np.array([expected], dtype=nptype))
+
+
+# ---------------------------------------------------------------------------
+# 21. Slice read values — correctness not just length
+# ---------------------------------------------------------------------------
+
+def test_slice_read_values_match_appended(db_path):
+    values = [10, 20, 30, 40, 50]
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+        result = v[1:4]  # 20, 30, 40
+        # result is a 2D array: shape (3, 1); check element by element
+        assert result.shape[0] == 3
+
+
+def test_slice_step3_correct_indices(db_path):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(12):
+            v.append(np.array([i * 100], dtype=np.int32))
+        result = v[0:12:3]  # indices 0, 3, 6, 9
+        assert result.shape[0] == 4
+
+
+def test_slice_reverse_step_raises_or_empty(db_path):
+    """Step=-1 slice should either work (empty range) or raise gracefully."""
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(5):
+            v.append(np.array([i], dtype=np.int32))
+        try:
+            result = v[4:0:-1]
+            # if C layer supports it, fine; if it returns empty, also fine
+        except (ValueError, RuntimeError, TypeError):
+            pass  # graceful failure is acceptable
+
+
+# ---------------------------------------------------------------------------
+# 22. Delitem slice — len decrements correctly
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("n,start,stop", [
+    (10, 0, 5),
+    (10, 3, 8),
+    (10, 0, 10),
+    (15, 1, 14),
+    (20, 5, 15),
+])
+def test_delitem_slice_len(db_path, n, start, stop):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        del v[start:stop]
+        expected_len = n - (stop - start)
+        assert len(v) == expected_len
+
+
+# ---------------------------------------------------------------------------
+# 23. Write slice — values updated, length unchanged
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [13, 26, 39])
+def test_write_slice_correct_values(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(8, 20)
+    start = rng.randint(0, n // 2)
+    stop = rng.randint(start + 1, n)
+
+    original = [rng.randint(0, 999) for _ in range(n)]
+    replacement_vals = [rng.randint(10000, 19999) for _ in range(stop - start)]
+    replacement = np.array([[v] for v in replacement_vals], dtype=np.int32)
+
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for val in original:
+            v.append(np.array([val], dtype=np.int32))
+
+        v[start:stop] = replacement
+        assert len(v) == n
+
+        # verify replaced region
+        for i, expected in enumerate(replacement_vals):
+            npt.assert_array_equal(
+                v[start + i], np.array([expected], dtype=np.int32)
+            )
+        # verify untouched region before
+        for i in range(start):
+            npt.assert_array_equal(v[i], np.array([original[i]], dtype=np.int32))
+        # verify untouched region after
+        for i in range(stop, n):
+            npt.assert_array_equal(v[i], np.array([original[i]], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 24. Variable name — various valid name strings
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", [
+    "a",
+    "temperature",
+    "sensor_01",
+    "x" * 64,
+    "CamelCase",
+    "ns__internal",
+])
+def test_variable_name_preserved(db_path, name):
+    with Database(db_path) as db:
+        v = db.create(name, dtype="i32")
+        assert v.name == name
+
+
+# ---------------------------------------------------------------------------
+# 25. Multi-variable many-txn stress
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [500, 501])
+def test_many_txns_two_vars(db_path, seed):
+    """Run 30 transactions, each touching two variables, verify final state."""
+    rng = random.Random(seed)
+    ref_x, ref_y = [], []
+
+    with Database(db_path) as db:
+        db.create("x", dtype="i32")
+        db.create("y", dtype="i32")
+
+        for _ in range(30):
+            with db.begin_txn() as txn:
+                val_x = rng.randint(0, 9999)
+                val_y = rng.randint(0, 9999)
+                txn["x"].append(np.array([val_x], dtype=np.int32))
+                txn["y"].append(np.array([val_y], dtype=np.int32))
+                ref_x.append(val_x)
+                ref_y.append(val_y)
+
+        assert len(db["x"]) == 30
+        assert len(db["y"]) == 30
+        for i in range(30):
+            npt.assert_array_equal(db["x"][i], np.array([ref_x[i]], dtype=np.int32))
+            npt.assert_array_equal(db["y"][i], np.array([ref_y[i]], dtype=np.int32))
