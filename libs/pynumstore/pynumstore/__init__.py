@@ -4,6 +4,10 @@ from .numstore_numpy import numpy_to_numstore
 from ._pynumstore import *
 from ._pynumstore import var_create as _c_var_create
 
+from ._var import Variable
+from ._txn import Transaction
+from ._db import Database
+
 
 @contextmanager
 def open_db(path):
@@ -47,3 +51,23 @@ def var_newvar(db, txn, var, data):
     """
     var_create(db, txn, var, numpy_to_numstore(data.dtype))
     var_insert(db, txn, var, 0, data)
+
+
+def open(path: str) -> Database:
+    """Open (or create) a numstore database; returns a ``Database`` context manager."""
+    return Database(path)
+
+
+__all__ = [
+    # OOP wrappers
+    "Database",
+    "Transaction",
+    "Variable",
+    "open",
+    # low-level helpers (re-exported from C extension)
+    "open_db",
+    "transaction",
+    "var_create",
+    "var_newvar",
+    "numpy_to_numstore",
+]
