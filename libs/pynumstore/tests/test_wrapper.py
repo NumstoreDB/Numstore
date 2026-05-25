@@ -1427,3 +1427,179 @@ def test_delete_persists_across_reopen(db_path):
     with Database(db_path) as db2:
         assert len(db2["p"]) == 4
         npt.assert_array_equal(db2["p"][0], np.array([1], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 33. Randomized persistence — random ops, reopen, verify
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [301, 302, 303])
+def test_random_ops_persist_across_reopen(db_path, seed):
+    rng = random.Random(seed)
+    reference = []
+
+    with Database(db_path) as db:
+        db.create("r", dtype="i32")
+        v = db["r"]
+        for _ in range(40):
+            op = rng.choice(["append", "write", "remove"])
+            if op == "append" or len(reference) == 0:
+                val = rng.randint(0, 9999)
+                reference.append(val)
+                v.append(np.array([val], dtype=np.int32))
+            elif op == "write":
+                idx = rng.randint(0, len(reference) - 1)
+                val = rng.randint(-9999, -1)
+                reference[idx] = val
+                v[idx] = np.array([val], dtype=np.int32)
+            elif op == "remove" and len(reference) > 1:
+                idx = rng.randint(0, len(reference) - 1)
+                reference.pop(idx)
+                v.remove(idx)
+
+    # reopen and verify
+    with Database(db_path) as db2:
+        v2 = db2["r"]
+        assert len(v2) == len(reference)
+        for i, expected in enumerate(reference):
+            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 34. txn.create + populate within same txn, verify after commit
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [400, 401, 402])
+def test_txn_create_then_populate_random(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 25)
+    values = [rng.randint(0, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        with db.begin_txn() as txn:
+            v = txn.create("fresh", dtype="i32")
+            for val in values:
+                v.append(np.array([val], dtype=np.int32))
+
+        # verify after commit
+        v2 = db["fresh"]
+        assert len(v2) == n
+        for i, expected in enumerate(values):
+            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 35. Monotonic len: after N appends, len == N at every step
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("n", [1, 5, 20, 100])
+def test_len_monotonic_during_appends(db_path, n):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+            assert len(v) == i + 1
+
+
+# ---------------------------------------------------------------------------
+# 36. Monotonic len: after N removes, len decrements at every step
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("n", [5, 20, 50])
+def test_len_monotonic_during_removes(db_path, n):
+    with Database(db_path) as db:
+        v = db.create("a", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        for remaining in range(n - 1, -1, -1):
+            v.remove(0)
+            assert len(v) == remaining
+
+
+# ---------------------------------------------------------------------------
+# 37. Idempotent read — reading same index twice gives same result
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [700, 701, 702])
+def test_read_same_index_twice(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(5, 30)
+    idx = rng.randint(0, n - 1)
+    values = [rng.randint(-9999, 9999) for _ in range(n)]
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+        r1 = v[idx]
+        r2 = v[idx]
+        npt.assert_array_equal(r1, r2)
+
+
+# ---------------------------------------------------------------------------
+# 38. Write is idempotent — writing same value twice reads back correctly
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [800, 801, 802])
+def test_write_same_value_twice(db_path, seed):
+    rng = random.Random(seed)
+    n = rng.randint(3, 20)
+    idx = rng.randint(0, n - 1)
+    val = rng.randint(-9999, 9999)
+
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for i in range(n):
+            v.append(np.array([i], dtype=np.int32))
+        v[idx] = np.array([val], dtype=np.int32)
+        v[idx] = np.array([val], dtype=np.int32)  # second write, same value
+        npt.assert_array_equal(v[idx], np.array([val], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 39. Stress — many variables created, each populated, verified
+# ---------------------------------------------------------------------------
+
+def test_many_variables_created_and_verified(db_path):
+    n_vars = 20
+    n_elems = 10
+    with Database(db_path) as db:
+        variables = {}
+        for k in range(n_vars):
+            name = f"var_{k:03d}"
+            v = db.create(name, dtype="i32")
+            vals = list(range(k * n_elems, (k + 1) * n_elems))
+            for val in vals:
+                v.append(np.array([val], dtype=np.int32))
+            variables[name] = vals
+
+        for name, expected_vals in variables.items():
+            v = db[name]
+            assert len(v) == n_elems
+            for i, expected in enumerate(expected_vals):
+                npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
+
+
+# ---------------------------------------------------------------------------
+# 40. Randomized: verify slice read == sequential int reads
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("seed", [900, 901, 902, 903])
+def test_slice_equals_sequential_reads(db_path, seed):
+    """v[a:b] must contain the same data as [v[i] for i in range(a, b)]."""
+    rng = random.Random(seed)
+    n = rng.randint(10, 40)
+    start = rng.randint(0, n // 2)
+    stop = rng.randint(start + 1, n)
+
+    values = [rng.randint(0, 9999) for _ in range(n)]
+    with Database(db_path) as db:
+        v = db.create("r", dtype="i32")
+        for val in values:
+            v.append(np.array([val], dtype=np.int32))
+
+        slice_result = v[start:stop]
+        for local_i, global_i in enumerate(range(start, stop)):
+            npt.assert_array_equal(
+                slice_result[local_i], v[global_i]
+            )
