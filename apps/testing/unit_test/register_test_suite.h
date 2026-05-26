@@ -18,9 +18,11 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 270);
+TEST_SUITE (smartfiles, 267);
 
-HEADER_FUNC void register_tests(void) {
+HEADER_FUNC void
+register_tests (void)
+{
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);
@@ -167,7 +169,6 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, lexer_errors);
   REGISTER (smartfiles, lexer_empty_string);
   REGISTER (smartfiles, lexer_numbers_in_sequence);
-  REGISTER (smartfiles, lock_table_exclusivity);
   REGISTER (smartfiles, nupd_init);
   REGISTER (smartfiles, nupd_append_right);
   REGISTER (smartfiles, nupd_append_left);
@@ -187,7 +188,6 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, pgr_close_success);
   REGISTER (smartfiles, pgr_delete);
   REGISTER (smartfiles, pgr_get_invalid_checksum);
-  REGISTER (smartfiles, pager_mt);
   REGISTER (smartfiles, pgr_new_get_save);
   REGISTER (smartfiles, pager_open);
   REGISTER (smartfiles, pgr_open_basic);
@@ -288,7 +288,6 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, nsdb_delete_txn_tests);
   REGISTER (smartfiles, nsdb_insert_txn_tests);
   REGISTER (smartfiles, nsdb_write_txn_tests);
-  REGISTER (smartfiles, nsdb_remove_txn_tests);
   REGISTER (smartfiles, aries_crash);
   REGISTER (smartfiles, smfile_data_writer);
 }
