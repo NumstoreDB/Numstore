@@ -40,6 +40,9 @@ _nsdb_delete (struct nshandle *db, const char *vname, error *e)
     err_t err = ns_var_delete (params, e);
     if (err == ERR_VARIABLE_NE)
     {
+      // Reset the error
+      e->cause_code = SUCCESS;
+      e->cmlen      = 0;
       // It's ok - just return the error
       goto commit;
     }

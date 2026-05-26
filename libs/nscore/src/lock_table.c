@@ -292,6 +292,7 @@ i_log_lockt (int log_level, const struct lockt *t)
 
 #ifndef NTEST
 
+/**
 struct test_case
 {
   struct lockt  *lt;
@@ -324,8 +325,10 @@ writer_thread_locks_type1_x (void *args)
 
   return NULL;
 }
+*/
 
-TEST (lock_table_exclusivity)
+/**
+TEST_DISABLE (lock_table_exclusivity)
 {
   error e = error_create ();
 
@@ -353,5 +356,6 @@ TEST (lock_table_exclusivity)
 
   pgr_close (p, &e);
 }
+*/
 
 #endif

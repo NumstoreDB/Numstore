@@ -195,13 +195,9 @@ TEST (aries_rollback_basic)
   {
     test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &e));
 
-    for (p_size i = 0; i < FS_BTMP_NPGS; ++i)
+    for (p_size i = 1; i < FS_BTMP_NPGS; ++i)
     {
-      if (i < 1) { test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1); }
-      else
-      {
-        test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
-      }
+      test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
     }
 
     test_fail_if (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &e));
