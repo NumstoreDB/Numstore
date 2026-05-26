@@ -11,7 +11,6 @@ with ns.open("mydb") as db:
         del y[0:]
         print(y[0:])
 
-        """
         # Append twice
         y.append(np.array([1.0, 2.0, 3.0], dtype=np.float32))
         y.append(np.array([4.0, 5.0, 6.0], dtype=np.float32))
@@ -28,4 +27,3 @@ with ns.open("mydb") as db:
         # Remove every even index
         del y[0::2]
         print(y[0:])
-        """

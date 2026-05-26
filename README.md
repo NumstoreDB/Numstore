@@ -41,7 +41,7 @@ This compiles the C extension and installs the package in editable mode. CMake a
 **2. Run a sample**
 
 ```bash
-python samples/pynumstore/sample1.py
+python samples/pynumstore/basic_operations.py
 ```
 
 All PyNumstore samples live in `samples/pynumstore/`.
