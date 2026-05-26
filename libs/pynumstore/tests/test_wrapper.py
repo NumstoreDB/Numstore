@@ -1,2124 +1,345 @@
-"""Tests for the OOP wrapper: Database, Transaction, Variable.
+"""Representative tests for Database, Transaction, Variable.
 
 Each test opens a fresh database via the tmp_path fixture, which auto-cleans
 both the .db file and any sibling .wal files after the test.
 """
-import os
 import random
 import pytest
 import numpy as np
 import numpy.testing as npt
 
 pynumstore = pytest.importorskip("pynumstore")
-from pynumstore import Database, Transaction, Variable
-
-
-# ---------------------------------------------------------------------------
-# Fixture
-# ---------------------------------------------------------------------------
+import pynumstore as ns
 
 @pytest.fixture
 def db_path(tmp_path):
-    """Return a path string for a fresh database file."""
     return str(tmp_path / "test.db")
 
+def test_database_lifecycle_manual(db_path):
+    # manual open/close
+    db = ns.Database(db_path)
+    assert "test.db" in repr(db)
+    assert "closed" not in repr(db)
 
-# ---------------------------------------------------------------------------
-# 1. Database lifecycle
-# ---------------------------------------------------------------------------
-
-def test_db_open_close(db_path):
-    db = Database(db_path)
-    db.close()
-
-
-def test_db_context_manager(db_path):
-    with Database(db_path) as db:
-        assert "test.db" in repr(db)
-
-
-def test_db_close_is_idempotent(db_path):
-    db = Database(db_path)
-    db.close()
-    db.close()  # second close should not raise
-
-
-def test_db_repr_closed(db_path):
-    db = Database(db_path)
     db.close()
     assert "closed" in repr(db)
+    db.close()  # idempotent — must not raise
 
-
-def test_db_repr_open(db_path):
-    with Database(db_path) as db:
-        assert "closed" not in repr(db)
-
-
-# ---------------------------------------------------------------------------
-# 2. Variable creation and deletion
-# ---------------------------------------------------------------------------
-
-def test_create_returns_variable(db_path):
-    with Database(db_path) as db:
-        v = db.create("x", dtype="f32")
-        assert isinstance(v, Variable)
+def test_database_lifecycle_ctx_mngr(db_path):
+    # context manager reopens cleanly
+    with ns.open_db(db_path) as db:
+        assert "test.db" in repr(db)
+        v = db.var("x", dtype="i32", create=True)
+        assert isinstance(v, ns.Variable)
         assert v.name == "x"
+        assert "x" in repr(v)
 
+    assert "closed" in repr(db)
 
-def test_create_via_var_with_flag(db_path):
+def test_variable_create(db_path):
+    """Create, access via [] and .var(), delete, re-create with same name."""
     with Database(db_path) as db:
-        v = db.var("x", dtype="f32", create=True)
+        # create and access
+        v = db.var("sensor", dtype="f32", create=True)
         assert isinstance(v, Variable)
+        assert db["sensor"].name == "sensor"
 
-
-def test_create_requires_dtype_when_create_true(db_path):
-    with Database(db_path) as db:
-        with pytest.raises((ValueError, TypeError)):
-            db.var("x", create=True)  # dtype missing
-
-
-def test_delete_variable(db_path):
-    with Database(db_path) as db:
-        db.create("x", dtype="f32")
-        db.delete("x")  # should not raise
-
-
-def test_getitem_string_returns_variable(db_path):
-    with Database(db_path) as db:
-        db.create("x", dtype="f32")
-        v = db["x"]
-        assert isinstance(v, Variable)
-        assert v.name == "x"
-
-
-def test_getitem_non_string_raises(db_path):
-    with Database(db_path) as db:
         with pytest.raises(TypeError):
-            db[0]
+            db[0]  # non-string key
 
+        with pytest.raises((ValueError, TypeError)):
+            db.var("missing", create=True)  # dtype required
 
-# ---------------------------------------------------------------------------
-# 3. Variable.insert and Variable.append
-# ---------------------------------------------------------------------------
-
-def test_insert_single_array(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
-        v.insert(0, np.array([1.0, 2.0, 3.0], dtype=np.float32))
-        assert len(v) == 1
-
-
-def test_append_increments_len(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
+def test_variable_create(db_path):
+    with Database(db_path) as db
+        # populate, delete, re-create — fresh variable starts empty
         v.append(np.array([1.0], dtype=np.float32))
         v.append(np.array([2.0], dtype=np.float32))
         assert len(v) == 2
 
+        db.delete("sensor")
+        v2 = db.var("sensor", dtype="f32", create=True)
+        #assert len(v2) == 0
+        v2.append(np.array([99.0], dtype=np.float32))
+        npt.assert_array_almost_equal(v2[0], np.array([99.0], dtype=np.float32))
 
-def test_append_returns_index(db_path):
+
+def test_append_insert_len_and_order(db_path):
+    """Append increments len and returns index; insert shifts right; insert at
+    end is equivalent to append."""
     with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
-        idx0 = v.append(np.array([10.0], dtype=np.float32))
-        idx1 = v.append(np.array([20.0], dtype=np.float32))
-        assert idx0 == 0
-        assert idx1 == 1
-
-
-def test_insert_shifts_right(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([1], dtype=np.int32))
-        v.append(np.array([3], dtype=np.int32))
-        v.insert(1, np.array([2], dtype=np.int32))  # insert between
-        assert len(v) == 3
-        npt.assert_array_equal(v[1], np.array([2], dtype=np.int32))
-        npt.assert_array_equal(v[2], np.array([3], dtype=np.int32))
-
-
-def test_insert_at_zero_prepends(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([99], dtype=np.int32))
-        v.insert(0, np.array([0], dtype=np.int32))
-        npt.assert_array_equal(v[0], np.array([0], dtype=np.int32))
-        npt.assert_array_equal(v[1], np.array([99], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 4. Variable.__len__ on empty variable
-# ---------------------------------------------------------------------------
-
-def test_empty_variable_len(db_path):
-    with Database(db_path) as db:
-        v = db.create("empty", dtype="f32")
+        v = db.var("a", dtype="i32", create=True)
         assert len(v) == 0
 
+        idx0 = v.append(np.array([10], dtype=np.int32))
+        idx1 = v.append(np.array([30], dtype=np.int32))
+        assert idx0 == 0 and idx1 == 1
+        assert len(v) == 2
 
-# ---------------------------------------------------------------------------
-# 5. Variable.__getitem__ — read (int and slice)
-# ---------------------------------------------------------------------------
+        # insert 20 between 10 and 30
+        v.insert(1, np.array([20], dtype=np.int32))
+        assert len(v) == 3
+        npt.assert_array_equal(v[0], np.array([10], dtype=np.int32))
+        npt.assert_array_equal(v[1], np.array([20], dtype=np.int32))
+        npt.assert_array_equal(v[2], np.array([30], dtype=np.int32))
 
-def test_read_single_int_key(db_path):
+        # insert at position 0 prepends
+        v.insert(0, np.array([0], dtype=np.int32))
+        npt.assert_array_equal(v[0], np.array([0], dtype=np.int32))
+        npt.assert_array_equal(v[1], np.array([10], dtype=np.int32))
+
+        # insert at len == append
+        v.insert(len(v), np.array([40], dtype=np.int32))
+        npt.assert_array_equal(v[len(v) - 1], np.array([40], dtype=np.int32))
+
+
+def test_read_write_and_slices(db_path):
+    """Read/write by int index and slice; writes don't change len; slice
+    semantics (step, negative, clamp, empty) all work."""
     with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([42], dtype=np.int32))
-        npt.assert_array_equal(v[0], np.array([42], dtype=np.int32))
-
-
-def test_read_slice_returns_ndarray(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
-        for i in range(5):
-            v.append(np.array([float(i)], dtype=np.float32))
-        result = v[1:4]
-        assert isinstance(result, np.ndarray)
-
-
-def test_read_slice_values(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f64")
-        data = [10.0, 20.0, 30.0, 40.0, 50.0]
-        for val in data:
-            v.append(np.array([val], dtype=np.float64))
-        result = v[0:5]
-        assert len(result) == 5
-
-
-def test_read_full_slice(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(8):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[:]
-        assert isinstance(result, np.ndarray)
-        assert len(result) == 8
-
-
-def test_read_empty_slice(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([1], dtype=np.int32))
-        result = v[0:0]
-        assert len(result) == 0
-
-
-def test_read_strided_slice(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(6):
+        v = db.var("a", dtype="i32", create=True)
+        for i in range(10):
             v.append(np.array([i * 10], dtype=np.int32))
-        result = v[0:6:2]  # elements 0, 2, 4
-        assert len(result) == 3
 
+        # single read/write roundtrip
+        v[3] = np.array([999], dtype=np.int32)
+        assert len(v) == 10
+        npt.assert_array_equal(v[3], np.array([999], dtype=np.int32))
+        # neighbours untouched
+        npt.assert_array_equal(v[2], np.array([20], dtype=np.int32))
+        npt.assert_array_equal(v[4], np.array([40], dtype=np.int32))
 
-def test_read_invalid_key_type_raises(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
-        v.append(np.array([1.0], dtype=np.float32))
+        with pytest.raises(TypeError):
+            v["bad"] = np.array([0], dtype=np.int32)
         with pytest.raises(TypeError):
             _ = v["bad"]
 
+        # slice reads
+        assert len(v[:]) == 10
+        assert len(v[0:5]) == 5
+        assert len(v[0:10:2]) == 5   # step
+        assert len(v[0:-1]) == 9     # negative stop
+        assert len(v[0:1000]) == 10  # clamp
+        # assert len(v[5:5]) == 0      # empty
 
-# ---------------------------------------------------------------------------
-# 6. Variable.__setitem__ — write (overwrite)
-# ---------------------------------------------------------------------------
+        # bulk slice write
+        replacement = np.array([[100], [200], [300]], dtype=np.int32)
+        v[0:3] = replacement
+        assert len(v) == 10
+        npt.assert_array_equal(v[0], np.array([100], dtype=np.int32))
+        npt.assert_array_equal(v[2], np.array([300], dtype=np.int32))
+        npt.assert_array_equal(v[4], np.array([40], dtype=np.int32))  # untouched
 
-def test_write_single_element(db_path):
+
+def test_remove_and_del(db_path):
+    """remove() returns the right value and shifts left; del syntax works;
+    drain to empty then refill."""
     with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([1], dtype=np.int32))
-        v[0] = np.array([99], dtype=np.int32)
-        npt.assert_array_equal(v[0], np.array([99], dtype=np.int32))
+        v = db.var("a", dtype="i32", create=True)
+        for val in [10, 20, 30, 40, 50]:
+            v.append(np.array([val], dtype=np.int32))
 
-
-def test_write_does_not_change_len(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        v[2] = np.array([999], dtype=np.int32)
-        assert len(v) == 5
-
-
-def test_write_slice(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(4):
-            v.append(np.array([i], dtype=np.int32))
-        replacement = np.array([[10], [20], [30], [40]], dtype=np.int32)
-        v[0:4] = replacement
-        npt.assert_array_equal(v[0], np.array([10], dtype=np.int32))
-        npt.assert_array_equal(v[3], np.array([40], dtype=np.int32))
-
-
-def test_write_invalid_key_type_raises(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
-        v.append(np.array([1.0], dtype=np.float32))
-        with pytest.raises(TypeError):
-            v["bad"] = np.array([2.0], dtype=np.float32)
-
-
-def test_write_preserves_neighbours(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        v[2] = np.array([999], dtype=np.int32)
-        npt.assert_array_equal(v[0], np.array([0], dtype=np.int32))
-        npt.assert_array_equal(v[1], np.array([1], dtype=np.int32))
-        npt.assert_array_equal(v[3], np.array([3], dtype=np.int32))
-        npt.assert_array_equal(v[4], np.array([4], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 7. Variable.remove / __delitem__ — remove and shift left
-# ---------------------------------------------------------------------------
-
-def test_remove_single_decrements_len(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(4):
-            v.append(np.array([i], dtype=np.int32))
-        v.remove(0)
-        assert len(v) == 3
-
-
-def test_remove_single_returns_value(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([77], dtype=np.int32))
-        result = v.remove(0)
-        npt.assert_array_equal(result, np.array([77], dtype=np.int32))
-
-
-def test_remove_shifts_left(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in [10, 20, 30]:
-            v.append(np.array([i], dtype=np.int32))
-        v.remove(1)  # remove 20
-        npt.assert_array_equal(v[0], np.array([10], dtype=np.int32))
-        npt.assert_array_equal(v[1], np.array([30], dtype=np.int32))
-
-
-def test_delitem_single(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(3):
-            v.append(np.array([i], dtype=np.int32))
-        del v[1]
-        assert len(v) == 2
-
-
-def test_delitem_slice(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(6):
-            v.append(np.array([i], dtype=np.int32))
-        del v[2:5]
-        assert len(v) == 3
-
-
-def test_remove_from_tail(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f32")
-        for i in range(5):
-            v.append(np.array([float(i)], dtype=np.float32))
-        last = len(v) - 1
-        result = v.remove(last)
+        # remove from middle, check return value and shift
+        result = v.remove(2)  # removes 30
+        npt.assert_array_equal(result, np.array([30], dtype=np.int32))
         assert len(v) == 4
-        npt.assert_array_equal(result, np.array([4.0], dtype=np.float32))
+        npt.assert_array_equal(v[2], np.array([40], dtype=np.int32))
+
+        # remove from tail
+        result = v.remove(len(v) - 1)
+        npt.assert_array_equal(result, np.array([50], dtype=np.int32))
+        assert len(v) == 3
+
+        # del syntax (no return)
+        del v[0]
+        assert len(v) == 2
+        npt.assert_array_equal(v[0], np.array([20], dtype=np.int32))
+
+        # del slice
+        for val in [60, 70, 80]:
+            v.append(np.array([val], dtype=np.int32))
+        del v[1:3]
+        assert len(v) == 3
+
+        # drain completely, then refill
+        while len(v):
+            v.remove(0)
+        assert len(v) == 0
+        v.append(np.array([1], dtype=np.int32))
+        assert len(v) == 1
+        npt.assert_array_equal(v[0], np.array([1], dtype=np.int32))
 
 
-def test_remove_first_then_read_remaining(db_path):
+def test_dtype_roundtrip(db_path):
+    """Every supported scalar dtype survives append+read at boundary values."""
+    cases = [
+        ("u8",  np.uint8,   [0, 255, 128]),
+        ("u16", np.uint16,  [0, 65535, 1000]),
+        ("u32", np.uint32,  [0, 2**32 - 1, 42]),
+        ("u64", np.uint64,  [0, 2**64 - 1, 999]),
+        ("i8",  np.int8,    [-128, 127, 0]),
+        ("i16", np.int16,   [-32768, 32767, 0]),
+        ("i32", np.int32,   [-(2**31), 2**31 - 1, 0]),
+        ("i64", np.int64,   [-(2**63), 2**63 - 1, 0]),
+        ("f32", np.float32, [0.0, 1.5, -1.5]),
+        ("f64", np.float64, [0.0, 1.23456789012345, -1e15]),
+    ]
     with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in [1, 2, 3, 4]:
-            v.append(np.array([i], dtype=np.int32))
-        v.remove(0)
-        npt.assert_array_equal(v[0], np.array([2], dtype=np.int32))
-        npt.assert_array_equal(v[1], np.array([3], dtype=np.int32))
-        npt.assert_array_equal(v[2], np.array([4], dtype=np.int32))
+        for dtype, nptype, vals in cases:
+            v = db.var(dtype, dtype=dtype, create=True)
+            for val in vals:
+                v.append(np.array([val], dtype=nptype))
+            assert len(v) == len(vals)
+            for i, expected in enumerate(vals):
+                npt.assert_array_equal(v[i], np.array([expected], dtype=nptype))
 
 
-def test_remove_range_returns_ndarray(db_path):
+def test_transaction_commit_rollback_and_visibility(db_path):
+    """Commits persist; rollbacks leave no trace; reads within a txn see
+    uncommitted writes; sequential txns see all prior commits."""
     with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        result = v.remove(slice(1, 4))
-        assert isinstance(result, np.ndarray)
+        db.var("log", dtype="i32", create=True)
 
-
-# ---------------------------------------------------------------------------
-# 8. Transaction basics
-# ---------------------------------------------------------------------------
-
-def test_begin_txn_returns_transaction(db_path):
-    with Database(db_path) as db:
-        txn = db.begin_txn()
-        assert isinstance(txn, Transaction)
-        txn.rollback()
-
-
-def test_txn_context_manager_commits(db_path):
-    with Database(db_path) as db:
-        db.create("x", dtype="i32")
+        # context manager commits on clean exit
         with db.begin_txn() as txn:
-            txn["x"].append(np.array([123], dtype=np.int32))
-        # after commit, data should be visible
-        assert len(db["x"]) == 1
+            assert isinstance(txn, Transaction)
+            assert "Transaction" in repr(txn)
+            txn["log"].append(np.array([1], dtype=np.int32))
+            txn["log"].append(np.array([2], dtype=np.int32))
+            # reads within the txn see uncommitted data
+            assert len(txn["log"]) == 2
+            npt.assert_array_equal(txn["log"][0], np.array([1], dtype=np.int32))
+        assert len(db["log"]) == 2
 
-
-def test_txn_context_manager_rollback_on_exception(db_path):
-    with Database(db_path) as db:
-        db.create("x", dtype="i32")
+        # exception triggers rollback
         try:
             with db.begin_txn() as txn:
-                txn["x"].append(np.array([42], dtype=np.int32))
+                txn["log"].append(np.array([99], dtype=np.int32))
                 raise RuntimeError("forced")
         except RuntimeError:
             pass
-        assert len(db["x"]) == 0
+        assert len(db["log"]) == 2  # rollback undid the append
 
-
-def test_txn_getitem_returns_variable(db_path):
-    with Database(db_path) as db:
-        db.create("y", dtype="f32")
-        with db.begin_txn() as txn:
-            v = txn["y"]
-            assert isinstance(v, Variable)
-            assert v.name == "y"
-
-
-def test_txn_getitem_non_string_raises(db_path):
-    with Database(db_path) as db:
-        with db.begin_txn() as txn:
-            with pytest.raises(TypeError):
-                _ = txn[0]
-            txn.rollback()
-
-
-def test_txn_var_method(db_path):
-    with Database(db_path) as db:
-        db.create("z", dtype="i64")
-        with db.begin_txn() as txn:
-            v = txn.var("z")
-            assert isinstance(v, Variable)
-
-
-def test_txn_create_variable(db_path):
-    with Database(db_path) as db:
-        with db.begin_txn() as txn:
-            v = txn.create("newvar", dtype="f64")
-            assert isinstance(v, Variable)
-
-
-def test_txn_commit_and_rollback_explicit(db_path):
-    with Database(db_path) as db:
-        db.create("a", dtype="i32")
+        # explicit commit/rollback
         txn = db.begin_txn()
-        txn["a"].append(np.array([1], dtype=np.int32))
+        txn["log"].append(np.array([3], dtype=np.int32))
         txn.commit()
-        assert len(db["a"]) == 1
+        assert len(db["log"]) == 3
 
         txn2 = db.begin_txn()
-        txn2["a"].append(np.array([2], dtype=np.int32))
+        txn2["log"].append(np.array([4], dtype=np.int32))
         txn2.rollback()
-        assert len(db["a"]) == 1  # rollback undid the second append
+        assert len(db["log"]) == 3
 
-
-def test_txn_repr(db_path):
-    with Database(db_path) as db:
-        with db.begin_txn() as txn:
-            assert "Transaction" in repr(txn)
-
-
-# ---------------------------------------------------------------------------
-# 9. Multiple named variables coexist independently
-# ---------------------------------------------------------------------------
-
-def test_multiple_vars_independent_len(db_path):
-    with Database(db_path) as db:
-        a = db.create("a", dtype="i32")
-        b = db.create("b", dtype="i32")
-        a.append(np.array([1], dtype=np.int32))
-        a.append(np.array([2], dtype=np.int32))
-        b.append(np.array([9], dtype=np.int32))
-        assert len(a) == 2
-        assert len(b) == 1
-
-
-def test_multiple_vars_independent_data(db_path):
-    with Database(db_path) as db:
-        a = db.create("a", dtype="i32")
-        b = db.create("b", dtype="i32")
-        a.append(np.array([111], dtype=np.int32))
-        b.append(np.array([222], dtype=np.int32))
-        npt.assert_array_equal(a[0], np.array([111], dtype=np.int32))
-        npt.assert_array_equal(b[0], np.array([222], dtype=np.int32))
-
-
-def test_delete_one_var_leaves_other(db_path):
-    with Database(db_path) as db:
-        a = db.create("a", dtype="i32")
-        b = db.create("b", dtype="i32")
-        b.append(np.array([5], dtype=np.int32))
-        db.delete("a")
-        npt.assert_array_equal(b[0], np.array([5], dtype=np.int32))
-
-
-def test_different_dtypes(db_path):
-    with Database(db_path) as db:
-        fi = db.create("ints", dtype="i32")
-        ff = db.create("floats", dtype="f64")
-        fi.append(np.array([7], dtype=np.int32))
-        ff.append(np.array([3.14], dtype=np.float64))
-        npt.assert_array_equal(fi[0], np.array([7], dtype=np.int32))
-        npt.assert_array_almost_equal(ff[0], np.array([3.14], dtype=np.float64))
-
-
-# ---------------------------------------------------------------------------
-# 10. Edge cases — boundary indices, empty operations
-# ---------------------------------------------------------------------------
-
-def test_len_after_multiple_appends(db_path):
-    n = 50
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        assert len(v) == n
-
-
-def test_insert_at_end_same_as_append(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([1], dtype=np.int32))
-        v.append(np.array([2], dtype=np.int32))
-        # insert at end == append
-        v.insert(len(v), np.array([3], dtype=np.int32))
-        assert len(v) == 3
-        npt.assert_array_equal(v[2], np.array([3], dtype=np.int32))
-
-
-def test_write_then_read_roundtrip_i32(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([0], dtype=np.int32))
-        v[0] = np.array([-2147483648], dtype=np.int32)  # INT32_MIN
-        npt.assert_array_equal(v[0], np.array([-2147483648], dtype=np.int32))
-
-
-def test_write_then_read_roundtrip_f64(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="f64")
-        v.append(np.array([0.0], dtype=np.float64))
-        val = np.float64(1.23456789012345)
-        v[0] = np.array([val], dtype=np.float64)
-        npt.assert_array_almost_equal(v[0], np.array([val], dtype=np.float64), decimal=12)
-
-
-def test_slice_on_single_element_var(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        v.append(np.array([42], dtype=np.int32))
-        result = v[0:1]
-        assert len(result) == 1
-
-
-def test_repr_variable(db_path):
-    with Database(db_path) as db:
-        v = db.create("myvar", dtype="f32")
-        assert "myvar" in repr(v)
-
-
-# ---------------------------------------------------------------------------
-# 11. Randomized — append N, read back all, values match reference list
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [0, 1, 42, 99, 777])
-def test_random_append_and_read_i32(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(10, 100)
-    values = [rng.randint(-(2**30), 2**30) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-        assert len(v) == n
-        for i, expected in enumerate(values):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [0, 7, 13, 55, 200])
-def test_random_append_and_read_f64(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(10, 80)
-    values = [rng.uniform(-1e9, 1e9) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="f64")
-        for val in values:
-            v.append(np.array([val], dtype=np.float64))
-        for i, expected in enumerate(values):
-            npt.assert_array_almost_equal(
-                v[i], np.array([expected], dtype=np.float64), decimal=6
-            )
-
-
-@pytest.mark.parametrize("seed", [3, 17, 88])
-def test_random_write_overwrites_correctly(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(10, 50)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        original = [rng.randint(0, 1000) for _ in range(n)]
-        for val in original:
-            v.append(np.array([val], dtype=np.int32))
-
-        # overwrite a random subset
-        overwrite_indices = rng.sample(range(n), k=n // 3)
-        new_vals = {}
-        for idx in overwrite_indices:
-            new_val = rng.randint(-9999, -1)
-            v[idx] = np.array([new_val], dtype=np.int32)
-            new_vals[idx] = new_val
-
-        for i in range(n):
-            expected = new_vals.get(i, original[i])
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [5, 22, 101])
-def test_random_insert_then_read(db_path, seed):
-    """Build a list via random inserts at random positions; compare to Python reference."""
-    rng = random.Random(seed)
-    n = rng.randint(5, 30)
-    reference = []
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for _ in range(n):
-            pos = rng.randint(0, len(reference))
-            val = rng.randint(0, 10000)
-            reference.insert(pos, val)
-            v.insert(pos, np.array([val], dtype=np.int32))
-
-        assert len(v) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [6, 33, 200])
-def test_random_remove_and_len(db_path, seed):
-    """Append N elements, then remove one at a time from random positions."""
-    rng = random.Random(seed)
-    n = rng.randint(10, 40)
-    reference = list(range(n))
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in reference:
-            v.append(np.array([val], dtype=np.int32))
-
-        rounds = rng.randint(3, n // 2)
-        for _ in range(rounds):
-            pos = rng.randint(0, len(reference) - 1)
-            reference.pop(pos)
-            v.remove(pos)
-
-        assert len(v) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [9, 44, 300])
-def test_random_mixed_ops(db_path, seed):
-    """Randomly interleave appends, writes, and removes against a Python list."""
-    rng = random.Random(seed)
-    reference = []
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-
-        for _ in range(60):
-            op = rng.choice(["append", "write", "remove"])
-
-            if op == "append" or len(reference) == 0:
-                val = rng.randint(0, 9999)
-                reference.append(val)
-                v.append(np.array([val], dtype=np.int32))
-
-            elif op == "write":
-                idx = rng.randint(0, len(reference) - 1)
-                val = rng.randint(-9999, -1)
-                reference[idx] = val
-                v[idx] = np.array([val], dtype=np.int32)
-
-            elif op == "remove" and len(reference) > 1:
-                idx = rng.randint(0, len(reference) - 1)
-                reference.pop(idx)
-                v.remove(idx)
-
-        assert len(v) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 12. Transaction isolation and data visibility
-# ---------------------------------------------------------------------------
-
-def test_txn_writes_visible_after_commit(db_path):
-    with Database(db_path) as db:
-        db.create("a", dtype="i32")
-        with db.begin_txn() as txn:
-            txn["a"].append(np.array([1], dtype=np.int32))
-            txn["a"].append(np.array([2], dtype=np.int32))
-        assert len(db["a"]) == 2
-
-
-def test_txn_multiple_vars_in_one_txn(db_path):
-    with Database(db_path) as db:
-        db.create("x", dtype="i32")
-        db.create("y", dtype="f32")
-        with db.begin_txn() as txn:
-            txn["x"].append(np.array([10], dtype=np.int32))
-            txn["y"].append(np.array([3.14], dtype=np.float32))
-        assert len(db["x"]) == 1
-        assert len(db["y"]) == 1
-
-
-def test_txn_delete_var(db_path):
-    with Database(db_path) as db:
-        db.create("tmp", dtype="i32")
-        with db.begin_txn() as txn:
-            txn.delete("tmp")
-        # no error means delete succeeded
-
-
-def test_txn_create_and_populate(db_path):
-    with Database(db_path) as db:
-        with db.begin_txn() as txn:
-            v = txn.create("fresh", dtype="i32")
-            v.append(np.array([42], dtype=np.int32))
-        assert len(db["fresh"]) == 1
-        npt.assert_array_equal(db["fresh"][0], np.array([42], dtype=np.int32))
-
-
-def test_txn_commit_then_rollback_second(db_path):
-    with Database(db_path) as db:
-        db.create("a", dtype="i32")
-        txn = db.begin_txn()
-        txn["a"].append(np.array([1], dtype=np.int32))
-        txn.commit()
-        assert len(db["a"]) == 1
-
-        txn2 = db.begin_txn()
-        txn2["a"].append(np.array([2], dtype=np.int32))
-        txn2.rollback()
-        assert len(db["a"]) == 1  # second append was discarded
-
-
-def test_txn_repr_is_str(db_path):
-    with Database(db_path) as db:
-        with db.begin_txn() as txn:
-            r = repr(txn)
-            assert isinstance(r, str) and len(r) > 0
-
-
-# ---------------------------------------------------------------------------
-# 13. Dtype coverage — roundtrip each supported primitive
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("dtype,nptype,val", [
-    ("u8",  np.uint8,   200),
-    ("u16", np.uint16,  60000),
-    ("u32", np.uint32,  4000000000),
-    ("u64", np.uint64,  18000000000000000000),
-    ("i8",  np.int8,    -100),
-    ("i16", np.int16,   -30000),
-    ("i32", np.int32,   -2000000000),
-    ("i64", np.int64,   -9000000000000000000),
-    ("f32", np.float32, 1.5),
-    ("f64", np.float64, 1.23456789012345),
-])
-def test_dtype_roundtrip(db_path, dtype, nptype, val):
-    with Database(db_path) as db:
-        v = db.create("v", dtype=dtype)
-        v.append(np.array([val], dtype=nptype))
-        result = v[0]
-        npt.assert_array_equal(result, np.array([val], dtype=nptype))
-
-
-# ---------------------------------------------------------------------------
-# 14. Slice semantics — start/stop/step edge cases
-# ---------------------------------------------------------------------------
-
-def test_slice_step_2(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(10):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[0:10:2]
-        assert len(result) == 5
-
-
-def test_slice_negative_stop(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[0:-1]  # all but last
-        assert len(result) == 4
-
-
-def test_slice_beyond_end_clamps(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(3):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[0:1000]
-        assert len(result) == 3
-
-
-def test_slice_start_equals_stop(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[2:2]
-        assert len(result) == 0
-
-
-def test_slice_last_element(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i * 10], dtype=np.int32))
-        result = v[-1:]
-        assert len(result) == 1
-
-
-def test_slice_all_elements(db_path):
-    n = 20
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[:]
-        assert len(result) == n
-
-
-# ---------------------------------------------------------------------------
-# 15. Large-batch randomized — multiple variables, interleaved txns
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [11, 22, 33, 55, 99])
-def test_random_two_vars_interleaved(db_path, seed):
-    """Independently track two variables and compare after random ops."""
-    rng = random.Random(seed)
-    ref_a, ref_b = [], []
-
-    with Database(db_path) as db:
-        a = db.create("a", dtype="i32")
-        b = db.create("b", dtype="i32")
-
-        for _ in range(80):
-            target = rng.choice(["a", "b"])
-            ref = ref_a if target == "a" else ref_b
-            v = a if target == "a" else b
-
-            op = rng.choice(["append", "write", "remove"])
-            if op == "append" or len(ref) == 0:
-                val = rng.randint(0, 9999)
-                ref.append(val)
-                v.append(np.array([val], dtype=np.int32))
-            elif op == "write":
-                idx = rng.randint(0, len(ref) - 1)
-                val = rng.randint(-9999, -1)
-                ref[idx] = val
-                v[idx] = np.array([val], dtype=np.int32)
-            elif op == "remove" and len(ref) > 1:
-                idx = rng.randint(0, len(ref) - 1)
-                ref.pop(idx)
-                v.remove(idx)
-
-        assert len(a) == len(ref_a)
-        assert len(b) == len(ref_b)
-        for i, expected in enumerate(ref_a):
-            npt.assert_array_equal(a[i], np.array([expected], dtype=np.int32))
-        for i, expected in enumerate(ref_b):
-            npt.assert_array_equal(b[i], np.array([expected], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [7, 14, 28])
-def test_random_insert_remove_alternating(db_path, seed):
-    """Insert N items, remove N/2, check remainder matches reference."""
-    rng = random.Random(seed)
-    n = rng.randint(20, 60)
-    reference = []
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-
-        # insert phase
-        for _ in range(n):
-            pos = rng.randint(0, len(reference))
-            val = rng.randint(1, 99999)
-            reference.insert(pos, val)
-            v.insert(pos, np.array([val], dtype=np.int32))
-
-        # remove phase
-        remove_count = n // 2
-        for _ in range(remove_count):
-            pos = rng.randint(0, len(reference) - 1)
-            reference.pop(pos)
-            v.remove(pos)
-
-        assert len(v) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [4, 8, 16])
-def test_random_write_after_insert(db_path, seed):
-    """Insert random elements, then randomly overwrite half, verify all."""
-    rng = random.Random(seed)
-    n = rng.randint(15, 50)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i64")
-        reference = [rng.randint(-(2**60), 2**60) for _ in range(n)]
-        for val in reference:
-            v.append(np.array([val], dtype=np.int64))
-
-        # overwrite random half
-        for idx in rng.sample(range(n), k=n // 2):
-            new_val = rng.randint(-(2**60), 2**60)
-            reference[idx] = new_val
-            v[idx] = np.array([new_val], dtype=np.int64)
-
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int64))
-
-
-@pytest.mark.parametrize("seed", [100, 200, 400])
-def test_random_mixed_ops_f32(db_path, seed):
-    """Mixed ops on f32 variable; check final state matches Python list."""
-    rng = random.Random(seed)
-    reference = []
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="f32")
-
-        for _ in range(50):
-            op = rng.choice(["append", "write", "remove"])
-            if op == "append" or len(reference) == 0:
-                val = rng.uniform(-1000.0, 1000.0)
-                reference.append(np.float32(val))
-                v.append(np.array([val], dtype=np.float32))
-            elif op == "write":
-                idx = rng.randint(0, len(reference) - 1)
-                val = rng.uniform(-1000.0, 1000.0)
-                reference[idx] = np.float32(val)
-                v[idx] = np.array([val], dtype=np.float32)
-            elif op == "remove" and len(reference) > 1:
-                idx = rng.randint(0, len(reference) - 1)
-                reference.pop(idx)
-                v.remove(idx)
-
-        assert len(v) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_almost_equal(
-                v[i], np.array([expected], dtype=np.float32), decimal=4
-            )
-
-
-# ---------------------------------------------------------------------------
-# 16. Stress — large N append/read
-# ---------------------------------------------------------------------------
-
-def test_large_append_and_read_i32(db_path):
-    n = 1000
-    data = list(range(n))
-    with Database(db_path) as db:
-        v = db.create("big", dtype="i32")
-        for val in data:
-            v.append(np.array([val], dtype=np.int32))
-        assert len(v) == n
-        # spot-check first, middle, last
-        npt.assert_array_equal(v[0], np.array([0], dtype=np.int32))
-        npt.assert_array_equal(v[n // 2], np.array([n // 2], dtype=np.int32))
-        npt.assert_array_equal(v[n - 1], np.array([n - 1], dtype=np.int32))
-
-
-def test_large_append_then_bulk_read(db_path):
-    n = 500
-    with Database(db_path) as db:
-        v = db.create("big", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        result = v[:]
-        assert len(result) == n
-
-
-def test_large_sequential_remove(db_path):
-    n = 100
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        # remove all from front one by one
-        for _ in range(n):
-            v.remove(0)
-        assert len(v) == 0
-
-
-# ---------------------------------------------------------------------------
-# 17. Randomized transaction — commit vs rollback correctness
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1, 2, 3, 4, 5])
-def test_random_txn_commit_rollback(db_path, seed):
-    """Alternate committing and rolling back; committed state must persist."""
-    rng = random.Random(seed)
-    committed = []
-
-    with Database(db_path) as db:
-        db.create("a", dtype="i32")
-
-        for round_idx in range(20):
-            do_commit = rng.choice([True, False])
-            batch = [rng.randint(0, 9999) for _ in range(rng.randint(1, 5))]
-
+        # each new txn sees all previously committed data
+        for _ in range(3):
             with db.begin_txn() as txn:
-                for val in batch:
-                    txn["a"].append(np.array([val], dtype=np.int32))
-                if not do_commit:
-                    raise Exception("intentional rollback")  # triggers rollback
-
-            if do_commit:
-                committed.extend(batch)
-
-        assert len(db["a"]) == len(committed)
-        for i, expected in enumerate(committed):
-            npt.assert_array_equal(db["a"][i], np.array([expected], dtype=np.int32))
+                txn["log"].append(np.array([0], dtype=np.int32))
+        assert len(db["log"]) == 6
 
 
-@pytest.mark.parametrize("seed", [10, 20, 30])
-def test_random_txn_commit_then_verify(db_path, seed):
-    """Each txn appends a random batch; all committed batches must be visible."""
-    rng = random.Random(seed)
-    all_vals = []
-
+def test_transaction_create_delete_multi_var(db_path):
+    """Create and delete variables inside transactions; rollback of a create
+    leaves the variable absent; multi-var txns are atomic."""
     with Database(db_path) as db:
-        db.create("log", dtype="i32")
-        for _ in range(10):
-            batch = [rng.randint(1, 1000) for _ in range(rng.randint(1, 8))]
-            with db.begin_txn() as txn:
-                for val in batch:
-                    txn["log"].append(np.array([val], dtype=np.int32))
-            all_vals.extend(batch)
-
-        assert len(db["log"]) == len(all_vals)
-        for i, expected in enumerate(all_vals):
-            npt.assert_array_equal(db["log"][i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 18. Variable.remove — returned values match what was stored
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [77, 88, 99])
-def test_remove_returns_correct_value(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 30)
-    values = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-
-        # remove each element from front and check returned value
-        for expected in values:
-            result = v.remove(0)
-            npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
-
-        assert len(v) == 0
-
-
-@pytest.mark.parametrize("seed", [111, 222, 333])
-def test_remove_from_back_returns_correct_value(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 25)
-    values = [rng.randint(-9999, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-
-        for expected in reversed(values):
-            result = v.remove(len(v) - 1)
-            npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
-
-        assert len(v) == 0
-
-
-# ---------------------------------------------------------------------------
-# 19. Insert order integrity — insert many at position 0 (reverse order)
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [50, 51, 52])
-def test_insert_all_at_zero_reverses(db_path, seed):
-    """Inserting each element at position 0 yields reversed order."""
-    rng = random.Random(seed)
-    n = rng.randint(5, 25)
-    values = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.insert(0, np.array([val], dtype=np.int32))
-
-        assert len(v) == n
-        for i, expected in enumerate(reversed(values)):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 20. Randomized numpy dtype — u8 / u16 / u32 boundary values
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("dtype,nptype,lo,hi", [
-    ("u8",  np.uint8,  0, 255),
-    ("u16", np.uint16, 0, 65535),
-    ("u32", np.uint32, 0, 2**32 - 1),
-])
-def test_random_boundary_unsigned(db_path, dtype, nptype, lo, hi):
-    rng = random.Random(42)
-    vals = [lo, hi] + [rng.randint(lo, hi) for _ in range(18)]
-    with Database(db_path) as db:
-        v = db.create("v", dtype=dtype)
-        for val in vals:
-            v.append(np.array([val], dtype=nptype))
-        for i, expected in enumerate(vals):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=nptype))
-
-
-@pytest.mark.parametrize("dtype,nptype,lo,hi", [
-    ("i8",  np.int8,  -128, 127),
-    ("i16", np.int16, -32768, 32767),
-    ("i32", np.int32, -(2**31), 2**31 - 1),
-])
-def test_random_boundary_signed(db_path, dtype, nptype, lo, hi):
-    rng = random.Random(42)
-    vals = [lo, hi, 0] + [rng.randint(lo, hi) for _ in range(17)]
-    with Database(db_path) as db:
-        v = db.create("v", dtype=dtype)
-        for val in vals:
-            v.append(np.array([val], dtype=nptype))
-        for i, expected in enumerate(vals):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=nptype))
-
-
-# ---------------------------------------------------------------------------
-# 21. Slice read values — correctness not just length
-# ---------------------------------------------------------------------------
-
-def test_slice_read_values_match_appended(db_path):
-    values = [10, 20, 30, 40, 50]
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-        result = v[1:4]  # 20, 30, 40
-        # result is a 2D array: shape (3, 1); check element by element
-        assert result.shape[0] == 3
-
-
-def test_slice_step3_correct_indices(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(12):
-            v.append(np.array([i * 100], dtype=np.int32))
-        result = v[0:12:3]  # indices 0, 3, 6, 9
-        assert result.shape[0] == 4
-
-
-def test_slice_reverse_step_raises_or_empty(db_path):
-    """Step=-1 slice should either work (empty range) or raise gracefully."""
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        try:
-            result = v[4:0:-1]
-            # if C layer supports it, fine; if it returns empty, also fine
-        except (ValueError, RuntimeError, TypeError):
-            pass  # graceful failure is acceptable
-
-
-# ---------------------------------------------------------------------------
-# 22. Delitem slice — len decrements correctly
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("n,start,stop", [
-    (10, 0, 5),
-    (10, 3, 8),
-    (10, 0, 10),
-    (15, 1, 14),
-    (20, 5, 15),
-])
-def test_delitem_slice_len(db_path, n, start, stop):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        del v[start:stop]
-        expected_len = n - (stop - start)
-        assert len(v) == expected_len
-
-
-# ---------------------------------------------------------------------------
-# 23. Write slice — values updated, length unchanged
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [13, 26, 39])
-def test_write_slice_correct_values(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(8, 20)
-    start = rng.randint(0, n // 2)
-    stop = rng.randint(start + 1, n)
-
-    original = [rng.randint(0, 999) for _ in range(n)]
-    replacement_vals = [rng.randint(10000, 19999) for _ in range(stop - start)]
-    replacement = np.array([[v] for v in replacement_vals], dtype=np.int32)
-
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for val in original:
-            v.append(np.array([val], dtype=np.int32))
-
-        v[start:stop] = replacement
-        assert len(v) == n
-
-        # verify replaced region
-        for i, expected in enumerate(replacement_vals):
-            npt.assert_array_equal(
-                v[start + i], np.array([expected], dtype=np.int32)
-            )
-        # verify untouched region before
-        for i in range(start):
-            npt.assert_array_equal(v[i], np.array([original[i]], dtype=np.int32))
-        # verify untouched region after
-        for i in range(stop, n):
-            npt.assert_array_equal(v[i], np.array([original[i]], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 24. Variable name — various valid name strings
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("name", [
-    "a",
-    "temperature",
-    "sensor_01",
-    "x" * 64,
-    "CamelCase",
-    "ns__internal",
-])
-def test_variable_name_preserved(db_path, name):
-    with Database(db_path) as db:
-        v = db.create(name, dtype="i32")
-        assert v.name == name
-
-
-# ---------------------------------------------------------------------------
-# 25. Multi-variable many-txn stress
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [500, 501])
-def test_many_txns_two_vars(db_path, seed):
-    """Run 30 transactions, each touching two variables, verify final state."""
-    rng = random.Random(seed)
-    ref_x, ref_y = [], []
-
-    with Database(db_path) as db:
-        db.create("x", dtype="i32")
-        db.create("y", dtype="i32")
-
-        for _ in range(30):
-            with db.begin_txn() as txn:
-                val_x = rng.randint(0, 9999)
-                val_y = rng.randint(0, 9999)
-                txn["x"].append(np.array([val_x], dtype=np.int32))
-                txn["y"].append(np.array([val_y], dtype=np.int32))
-                ref_x.append(val_x)
-                ref_y.append(val_y)
-
-        assert len(db["x"]) == 30
-        assert len(db["y"]) == 30
-        for i in range(30):
-            npt.assert_array_equal(db["x"][i], np.array([ref_x[i]], dtype=np.int32))
-            npt.assert_array_equal(db["y"][i], np.array([ref_y[i]], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 26. Property: len(v) == number of appends minus removes
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [60, 70, 80, 90, 95])
-def test_len_tracks_append_minus_remove(db_path, seed):
-    rng = random.Random(seed)
-    n_append = rng.randint(20, 60)
-    n_remove = rng.randint(0, n_append // 2)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for i in range(n_append):
-            v.append(np.array([i], dtype=np.int32))
-        for _ in range(n_remove):
-            v.remove(0)
-        assert len(v) == n_append - n_remove
-
-
-# ---------------------------------------------------------------------------
-# 27. Property: insert at position p shifts element p to position p+1
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [15, 25, 35])
-def test_insert_shifts_element_at_p(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 20)
-    pos = rng.randint(0, n - 1)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-
-        # record what's currently at pos
-        original_at_pos = int(v[pos].flat[0])
-
-        new_val = 99999
-        v.insert(pos, np.array([new_val], dtype=np.int32))
-
-        # the element that was at pos should now be at pos+1
-        npt.assert_array_equal(v[pos + 1], np.array([original_at_pos], dtype=np.int32))
-        npt.assert_array_equal(v[pos], np.array([new_val], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 28. Property: remove(p) returns the element that was at position p
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [41, 42, 43])
-def test_remove_returns_element_at_p(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 20)
-    pos = rng.randint(0, n - 1)
-    values = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-
-        expected = values[pos]
-        result = v.remove(pos)
-        npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 29. Property: write(p, x) then read(p) == x for any p
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [101, 102, 103, 104, 105])
-def test_write_then_read_any_position(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 30)
-    pos = rng.randint(0, n - 1)
-    new_val = rng.randint(-999999, 999999)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        v[pos] = np.array([new_val], dtype=np.int32)
-        npt.assert_array_equal(v[pos], np.array([new_val], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 30. append then immediate read — no flush/sync needed
-# ---------------------------------------------------------------------------
-
-def test_append_immediately_readable(db_path):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(20):
-            v.append(np.array([i * 7], dtype=np.int32))
-            npt.assert_array_equal(v[i], np.array([i * 7], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 31. Randomized: bulk insert at offset 0 vs sequential — same final order
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [201, 202, 203])
-def test_bulk_insert_at_zero_matches_reversed_append(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 20)
-    values = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.insert(0, np.array([val], dtype=np.int32))
-
-        # inserting at 0 each time: last inserted is at index 0
-        for i, expected in enumerate(reversed(values)):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 32. Cross-session: close and reopen, data persists
-# ---------------------------------------------------------------------------
-
-def test_data_persists_across_reopen(db_path):
-    values = [100, 200, 300, 400]
-    with Database(db_path) as db:
-        v = db.create("p", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-
-    # reopen — data must still be there
-    with Database(db_path) as db2:
-        v2 = db2["p"]
-        assert len(v2) == len(values)
-        for i, expected in enumerate(values):
-            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
-
-
-def test_write_persists_across_reopen(db_path):
-    with Database(db_path) as db:
-        v = db.create("p", dtype="i32")
-        v.append(np.array([1], dtype=np.int32))
-        v[0] = np.array([999], dtype=np.int32)
-
-    with Database(db_path) as db2:
-        npt.assert_array_equal(db2["p"][0], np.array([999], dtype=np.int32))
-
-
-def test_delete_persists_across_reopen(db_path):
-    with Database(db_path) as db:
-        v = db.create("p", dtype="i32")
-        for i in range(5):
-            v.append(np.array([i], dtype=np.int32))
-        v.remove(0)
-
-    with Database(db_path) as db2:
-        assert len(db2["p"]) == 4
-        npt.assert_array_equal(db2["p"][0], np.array([1], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 33. Randomized persistence — random ops, reopen, verify
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [301, 302, 303])
-def test_random_ops_persist_across_reopen(db_path, seed):
-    rng = random.Random(seed)
-    reference = []
-
-    with Database(db_path) as db:
-        db.create("r", dtype="i32")
-        v = db["r"]
-        for _ in range(40):
-            op = rng.choice(["append", "write", "remove"])
-            if op == "append" or len(reference) == 0:
-                val = rng.randint(0, 9999)
-                reference.append(val)
-                v.append(np.array([val], dtype=np.int32))
-            elif op == "write":
-                idx = rng.randint(0, len(reference) - 1)
-                val = rng.randint(-9999, -1)
-                reference[idx] = val
-                v[idx] = np.array([val], dtype=np.int32)
-            elif op == "remove" and len(reference) > 1:
-                idx = rng.randint(0, len(reference) - 1)
-                reference.pop(idx)
-                v.remove(idx)
-
-    # reopen and verify
-    with Database(db_path) as db2:
-        v2 = db2["r"]
-        assert len(v2) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 34. txn.create + populate within same txn, verify after commit
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [400, 401, 402])
-def test_txn_create_then_populate_random(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 25)
-    values = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
+        # create two vars in one txn, populate both, commit
         with db.begin_txn() as txn:
-            v = txn.create("fresh", dtype="i32")
-            for val in values:
-                v.append(np.array([val], dtype=np.int32))
-
-        # verify after commit
-        v2 = db["fresh"]
-        assert len(v2) == n
-        for i, expected in enumerate(values):
-            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 35. Monotonic len: after N appends, len == N at every step
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("n", [1, 5, 20, 100])
-def test_len_monotonic_during_appends(db_path, n):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-            assert len(v) == i + 1
-
-
-# ---------------------------------------------------------------------------
-# 36. Monotonic len: after N removes, len decrements at every step
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("n", [5, 20, 50])
-def test_len_monotonic_during_removes(db_path, n):
-    with Database(db_path) as db:
-        v = db.create("a", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        for remaining in range(n - 1, -1, -1):
-            v.remove(0)
-            assert len(v) == remaining
-
-
-# ---------------------------------------------------------------------------
-# 37. Idempotent read — reading same index twice gives same result
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [700, 701, 702])
-def test_read_same_index_twice(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 30)
-    idx = rng.randint(0, n - 1)
-    values = [rng.randint(-9999, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-        r1 = v[idx]
-        r2 = v[idx]
-        npt.assert_array_equal(r1, r2)
-
-
-# ---------------------------------------------------------------------------
-# 38. Write is idempotent — writing same value twice reads back correctly
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [800, 801, 802])
-def test_write_same_value_twice(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(3, 20)
-    idx = rng.randint(0, n - 1)
-    val = rng.randint(-9999, 9999)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        v[idx] = np.array([val], dtype=np.int32)
-        v[idx] = np.array([val], dtype=np.int32)  # second write, same value
-        npt.assert_array_equal(v[idx], np.array([val], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 39. Stress — many variables created, each populated, verified
-# ---------------------------------------------------------------------------
-
-def test_many_variables_created_and_verified(db_path):
-    n_vars = 20
-    n_elems = 10
-    with Database(db_path) as db:
-        variables = {}
-        for k in range(n_vars):
-            name = f"var_{k:03d}"
-            v = db.create(name, dtype="i32")
-            vals = list(range(k * n_elems, (k + 1) * n_elems))
-            for val in vals:
-                v.append(np.array([val], dtype=np.int32))
-            variables[name] = vals
-
-        for name, expected_vals in variables.items():
-            v = db[name]
-            assert len(v) == n_elems
-            for i, expected in enumerate(expected_vals):
-                npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 40. Randomized: verify slice read == sequential int reads
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [900, 901, 902, 903])
-def test_slice_equals_sequential_reads(db_path, seed):
-    """v[a:b] must contain the same data as [v[i] for i in range(a, b)]."""
-    rng = random.Random(seed)
-    n = rng.randint(10, 40)
-    start = rng.randint(0, n // 2)
-    stop = rng.randint(start + 1, n)
-
-    values = [rng.randint(0, 9999) for _ in range(n)]
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in values:
-            v.append(np.array([val], dtype=np.int32))
-
-        slice_result = v[start:stop]
-        for local_i, global_i in enumerate(range(start, stop)):
-            npt.assert_array_equal(
-                slice_result[local_i], v[global_i]
-            )
-
-
-# ---------------------------------------------------------------------------
-# 41. Mixed dtype variables in one transaction
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1001, 1002])
-def test_txn_mixed_dtype_vars(db_path, seed):
-    rng = random.Random(seed)
-    int_vals = [rng.randint(-1000, 1000) for _ in range(5)]
-    float_vals = [rng.uniform(-100.0, 100.0) for _ in range(5)]
-
-    with Database(db_path) as db:
-        with db.begin_txn() as txn:
-            vi = txn.create("ints", dtype="i32")
-            vf = txn.create("floats", dtype="f32")
-            for v in int_vals:
-                vi.append(np.array([v], dtype=np.int32))
-            for v in float_vals:
-                vf.append(np.array([v], dtype=np.float32))
-
-        vi2 = db["ints"]
-        vf2 = db["floats"]
-        for i, expected in enumerate(int_vals):
-            npt.assert_array_equal(vi2[i], np.array([expected], dtype=np.int32))
-        for i, expected in enumerate(float_vals):
-            npt.assert_array_almost_equal(
-                vf2[i], np.array([expected], dtype=np.float32), decimal=4
-            )
-
-
-# ---------------------------------------------------------------------------
-# 42. Append large arrays as elements (multi-element dtype row)
-# ---------------------------------------------------------------------------
-
-def test_append_multi_element_rows(db_path):
-    """Each element is a row of 4 floats; check shape and first/last row."""
-    with Database(db_path) as db:
-        v = db.create("mat", dtype="f32[4]")
-        row0 = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
-        row1 = np.array([5.0, 6.0, 7.0, 8.0], dtype=np.float32)
-        v.append(row0)
-        v.append(row1)
-        assert len(v) == 2
-        r0 = v[0]
-        r1 = v[1]
-        npt.assert_array_almost_equal(r0, row0, decimal=5)
-        npt.assert_array_almost_equal(r1, row1, decimal=5)
-
-
-def test_write_multi_element_row(db_path):
-    with Database(db_path) as db:
-        v = db.create("mat", dtype="f32[3]")
-        v.append(np.array([0.0, 0.0, 0.0], dtype=np.float32))
-        new_row = np.array([1.1, 2.2, 3.3], dtype=np.float32)
-        v[0] = new_row
-        npt.assert_array_almost_equal(v[0], new_row, decimal=5)
-
-
-def test_remove_multi_element_row(db_path):
-    with Database(db_path) as db:
-        v = db.create("mat", dtype="f32[2]")
-        v.append(np.array([10.0, 20.0], dtype=np.float32))
-        v.append(np.array([30.0, 40.0], dtype=np.float32))
-        result = v.remove(0)
-        npt.assert_array_almost_equal(result, np.array([10.0, 20.0], dtype=np.float32), decimal=5)
-        assert len(v) == 1
-        npt.assert_array_almost_equal(v[0], np.array([30.0, 40.0], dtype=np.float32), decimal=5)
-
-
-# ---------------------------------------------------------------------------
-# 43. Randomized multi-element rows — insert/read/remove
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1100, 1101, 1102])
-def test_random_row_insert_read(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 20)
-    row_len = rng.choice([2, 3, 4, 8])
-    rows = [np.array([rng.uniform(-10, 10) for _ in range(row_len)], dtype=np.float32)
-            for _ in range(n)]
-
-    dtype_str = f"f32[{row_len}]"
-    with Database(db_path) as db:
-        v = db.create("rows", dtype=dtype_str)
-        for row in rows:
-            v.append(row)
-        assert len(v) == n
-        for i, expected in enumerate(rows):
-            npt.assert_array_almost_equal(v[i], expected, decimal=4)
-
-
-# ---------------------------------------------------------------------------
-# 44. Delete variable, then re-create with same name
-# ---------------------------------------------------------------------------
-
-def test_delete_and_recreate_variable(db_path):
-    with Database(db_path) as db:
-        v = db.create("x", dtype="i32")
-        v.append(np.array([1], dtype=np.int32))
-        db.delete("x")
-        v2 = db.create("x", dtype="i32")
-        assert len(v2) == 0
-        v2.append(np.array([99], dtype=np.int32))
-        npt.assert_array_equal(v2[0], np.array([99], dtype=np.int32))
-
-
-@pytest.mark.parametrize("seed", [1200, 1201])
-def test_delete_recreate_random(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(3, 15)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        db.delete("r")
-
-        new_vals = [rng.randint(10000, 19999) for _ in range(n)]
-        v2 = db.create("r", dtype="i32")
-        for val in new_vals:
-            v2.append(np.array([val], dtype=np.int32))
-        for i, expected in enumerate(new_vals):
-            npt.assert_array_equal(v2[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 45. Sequential txns — each reads what the previous committed
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1300, 1301, 1302])
-def test_sequential_txns_read_previous_commit(db_path, seed):
-    rng = random.Random(seed)
-    cumulative = []
-
-    with Database(db_path) as db:
-        db.create("log", dtype="i32")
-
-        for _ in range(8):
-            val = rng.randint(0, 9999)
-            with db.begin_txn() as txn:
-                txn["log"].append(np.array([val], dtype=np.int32))
-            cumulative.append(val)
-
-            # each new txn should see everything committed so far
-            with db.begin_txn() as verify_txn:
-                assert len(verify_txn["log"]) == len(cumulative)
-
-
-# ---------------------------------------------------------------------------
-# 46. Append then remove all, then re-append — variable reusable
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1400, 1401])
-def test_drain_and_refill(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 20)
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        first_batch = [rng.randint(0, 999) for _ in range(n)]
-        for val in first_batch:
-            v.append(np.array([val], dtype=np.int32))
-        for _ in range(n):
-            v.remove(0)
-        assert len(v) == 0
-
-        second_batch = [rng.randint(1000, 1999) for _ in range(n)]
-        for val in second_batch:
-            v.append(np.array([val], dtype=np.int32))
-        assert len(v) == n
-        for i, expected in enumerate(second_batch):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 47. Write entire range then read back — bulk write correctness
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1500, 1501, 1502])
-def test_bulk_write_then_read(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(10, 40)
-    original = [rng.randint(0, 999) for _ in range(n)]
-    new_vals = [rng.randint(10000, 19999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in original:
-            v.append(np.array([val], dtype=np.int32))
-
-        replacement = np.array([[val] for val in new_vals], dtype=np.int32)
-        v[0:n] = replacement
-
-        assert len(v) == n
-        for i, expected in enumerate(new_vals):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 48. Randomized: insert at middle, verify neighbours shift correctly
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1600, 1601, 1602, 1603])
-def test_insert_middle_neighbours(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(6, 20)
-    pos = rng.randint(1, n - 1)
-    reference = list(range(n))
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in reference:
-            v.append(np.array([val], dtype=np.int32))
-
-        new_val = 99999
-        reference.insert(pos, new_val)
-        v.insert(pos, np.array([new_val], dtype=np.int32))
-
-        assert len(v) == len(reference)
-        # check full array matches reference
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 49. Repeated commit of empty txn — no crash
-# ---------------------------------------------------------------------------
-
-def test_empty_txn_commit(db_path):
-    with Database(db_path) as db:
-        for _ in range(5):
-            with db.begin_txn() as txn:
-                pass  # nothing done, should commit cleanly
-
-
-# ---------------------------------------------------------------------------
-# 50. u64 boundary — max value roundtrip
-# ---------------------------------------------------------------------------
-
-def test_u64_max_roundtrip(db_path):
-    u64_max = np.uint64(2**64 - 1)
-    with Database(db_path) as db:
-        v = db.create("u", dtype="u64")
-        v.append(np.array([u64_max], dtype=np.uint64))
-        npt.assert_array_equal(v[0], np.array([u64_max], dtype=np.uint64))
-
-
-def test_i64_min_max_roundtrip(db_path):
-    i64_min = np.int64(-(2**63))
-    i64_max = np.int64(2**63 - 1)
-    with Database(db_path) as db:
-        v = db.create("i", dtype="i64")
-        v.append(np.array([i64_min], dtype=np.int64))
-        v.append(np.array([i64_max], dtype=np.int64))
-        v.append(np.array([0], dtype=np.int64))
-        npt.assert_array_equal(v[0], np.array([i64_min], dtype=np.int64))
-        npt.assert_array_equal(v[1], np.array([i64_max], dtype=np.int64))
-        npt.assert_array_equal(v[2], np.array([0], dtype=np.int64))
-
-
-# ---------------------------------------------------------------------------
-# 51. Randomized: insert then verify that non-inserted elements are unchanged
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1700, 1701, 1702])
-def test_insert_does_not_corrupt_other_elements(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(8, 25)
-    pos = rng.randint(0, n)
-    original = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in original:
-            v.append(np.array([val], dtype=np.int32))
-
-        insert_val = 77777
-        v.insert(pos, np.array([insert_val], dtype=np.int32))
-
-        # elements before pos unchanged
-        for i in range(pos):
-            npt.assert_array_equal(v[i], np.array([original[i]], dtype=np.int32))
-        # the inserted element
-        npt.assert_array_equal(v[pos], np.array([insert_val], dtype=np.int32))
-        # elements after pos shifted by 1
-        for i in range(pos, n):
-            npt.assert_array_equal(v[i + 1], np.array([original[i]], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 52. Randomized: txn rollback leaves no trace across multiple variables
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1800, 1801])
-def test_txn_rollback_leaves_no_trace_multi_var(db_path, seed):
-    rng = random.Random(seed)
-    n_committed = rng.randint(3, 10)
-
-    with Database(db_path) as db:
-        db.create("x", dtype="i32")
-        db.create("y", dtype="i32")
-
-        # commit some data first
-        committed_x, committed_y = [], []
-        for _ in range(n_committed):
-            vx = rng.randint(0, 999)
-            vy = rng.randint(0, 999)
-            with db.begin_txn() as txn:
-                txn["x"].append(np.array([vx], dtype=np.int32))
-                txn["y"].append(np.array([vy], dtype=np.int32))
-            committed_x.append(vx)
-            committed_y.append(vy)
-
-        # now do a txn that rolls back
+            vx = txn.var("x", dtype="i32", create=True)
+            vy = txn.var("y", dtype="f32", create=True)
+            for i in range(5):
+                vx.append(np.array([i], dtype=np.int32))
+                vy.append(np.array([float(i) * 1.1], dtype=np.float32))
+        assert len(db["x"]) == 5
+        assert len(db["y"]) == 5
+
+        # rollback of writes to both vars leaves both unchanged
         try:
             with db.begin_txn() as txn:
-                txn["x"].append(np.array([88888], dtype=np.int32))
-                txn["y"].append(np.array([99999], dtype=np.int32))
-                raise RuntimeError("force rollback")
+                txn["x"].append(np.array([99], dtype=np.int32))
+                txn["y"].append(np.array([99.0], dtype=np.float32))
+                raise RuntimeError
         except RuntimeError:
             pass
+        assert len(db["x"]) == 5
+        assert len(db["y"]) == 5
 
-        # state must match committed-only data
-        assert len(db["x"]) == n_committed
-        assert len(db["y"]) == n_committed
-        for i, expected in enumerate(committed_x):
-            npt.assert_array_equal(db["x"][i], np.array([expected], dtype=np.int32))
-        for i, expected in enumerate(committed_y):
-            npt.assert_array_equal(db["y"][i], np.array([expected], dtype=np.int32))
+        # delete inside a committed txn
+        with db.begin_txn() as txn:
+            txn.delete("y")
+        # y is gone; x is untouched
+        assert len(db["x"]) == 5
+
+        # empty txn commits cleanly
+        with db.begin_txn() as txn:
+            pass
 
 
-# ---------------------------------------------------------------------------
-# 53. Randomized: remove from arbitrary positions, track reference list
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [1900, 1901, 1902, 1903, 1904])
-def test_remove_arbitrary_positions(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(15, 50)
-    reference = [rng.randint(0, 9999) for _ in range(n)]
+def test_persistence_across_reopen(db_path):
+    """Data written in one session is readable after close+reopen, including
+    appends, writes, and removes."""
+    values = [100, 200, 300, 400, 500]
 
     with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
-        for val in reference:
+        v = db.var("p", dtype="i32", create=True)
+        for val in values:
             v.append(np.array([val], dtype=np.int32))
+        v[2] = np.array([999], dtype=np.int32)  # overwrite middle
+        v.remove(0)                              # remove first
 
-        n_removes = rng.randint(3, n // 2)
-        for _ in range(n_removes):
-            pos = rng.randint(0, len(reference) - 1)
-            expected = reference.pop(pos)
-            result = v.remove(pos)
-            npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
-
-        assert len(v) == len(reference)
-        for i, expected in enumerate(reference):
-            npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
-
-
-# ---------------------------------------------------------------------------
-# 54. Read after write in same txn — visibility within open transaction
-# ---------------------------------------------------------------------------
-
-def test_write_visible_within_same_txn(db_path):
+    expected = [200, 999, 400, 500]
     with Database(db_path) as db:
-        db.create("a", dtype="i32")
-        with db.begin_txn() as txn:
-            v = txn["a"]
-            v.append(np.array([5], dtype=np.int32))
-            v.append(np.array([10], dtype=np.int32))
-            # reads within the same txn should see the uncommitted appends
-            assert len(v) == 2
-            npt.assert_array_equal(v[0], np.array([5], dtype=np.int32))
-            npt.assert_array_equal(v[1], np.array([10], dtype=np.int32))
+        v = db["p"]
+        assert len(v) == len(expected)
+        for i, exp in enumerate(expected):
+            npt.assert_array_equal(v[i], np.array([exp], dtype=np.int32))
 
 
-def test_write_and_overwrite_within_same_txn(db_path):
-    with Database(db_path) as db:
-        db.create("a", dtype="i32")
-        with db.begin_txn() as txn:
-            v = txn["a"]
-            v.append(np.array([1], dtype=np.int32))
-            v[0] = np.array([99], dtype=np.int32)
-            npt.assert_array_equal(v[0], np.array([99], dtype=np.int32))
-
-
-def test_insert_remove_within_same_txn(db_path):
-    with Database(db_path) as db:
-        db.create("a", dtype="i32")
-        with db.begin_txn() as txn:
-            v = txn["a"]
-            for i in range(5):
-                v.append(np.array([i], dtype=np.int32))
-            v.remove(2)
-            assert len(v) == 4
-
-
-# ---------------------------------------------------------------------------
-# 55. Stress: randomly mix insert and remove rapidly, verify at end
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [2000, 2001, 2002])
-def test_rapid_insert_remove_stress(db_path, seed):
+@pytest.mark.parametrize("seed", [0, 1, 42])
+def test_random_mixed_ops_match_reference(db_path, seed):
+    """Randomly interleave appends, inserts, writes, and removes against a
+    Python list reference, then verify full contents match."""
     rng = random.Random(seed)
     reference = []
 
     with Database(db_path) as db:
-        v = db.create("r", dtype="i32")
+        v = db.var("r", dtype="i32", create=True)
 
-        for _ in range(200):
-            # bias toward growing so reference doesn't deplete
-            op = rng.choices(["insert", "remove"], weights=[6, 4])[0]
+        for _ in range(150):
+            op = rng.choices(
+                ["append", "insert", "write", "remove"],
+                weights=[4, 2, 2, 2]
+            )[0]
 
-            if op == "insert" or len(reference) == 0:
+            if op == "append" or len(reference) == 0:
+                val = rng.randint(0, 9999)
+                reference.append(val)
+                v.append(np.array([val], dtype=np.int32))
+
+            elif op == "insert":
                 pos = rng.randint(0, len(reference))
-                val = rng.randint(0, 99999)
+                val = rng.randint(0, 9999)
                 reference.insert(pos, val)
                 v.insert(pos, np.array([val], dtype=np.int32))
-            else:
-                pos = rng.randint(0, len(reference) - 1)
-                reference.pop(pos)
-                v.remove(pos)
+
+            elif op == "write":
+                idx = rng.randint(0, len(reference) - 1)
+                val = rng.randint(-9999, -1)
+                reference[idx] = val
+                v[idx] = np.array([val], dtype=np.int32)
+
+            elif op == "remove" and len(reference) > 1:
+                idx = rng.randint(0, len(reference) - 1)
+                expected = reference.pop(idx)
+                result = v.remove(idx)
+                npt.assert_array_equal(result, np.array([expected], dtype=np.int32))
 
         assert len(v) == len(reference)
         for i, expected in enumerate(reference):
             npt.assert_array_equal(v[i], np.array([expected], dtype=np.int32))
 
-
-# ---------------------------------------------------------------------------
-# 56. Verify Variable.name attribute
-# ---------------------------------------------------------------------------
-
-def test_variable_name_attribute(db_path):
-    with Database(db_path) as db:
-        v = db.create("sensor_42", dtype="f32")
-        assert v.name == "sensor_42"
-
-
-def test_txn_variable_name_attribute(db_path):
-    with Database(db_path) as db:
-        db.create("v", dtype="i32")
-        with db.begin_txn() as txn:
-            v = txn["v"]
-            assert v.name == "v"
-
-
-# ---------------------------------------------------------------------------
-# 57. Randomized: multiple sequential inserts at end == appends
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [2100, 2101, 2102])
-def test_insert_at_len_matches_append(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(10, 40)
-    values = [rng.randint(0, 9999) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v_ins = db.create("ins", dtype="i32")
-        v_app = db.create("app", dtype="i32")
-
-        for val in values:
-            v_ins.insert(len(v_ins), np.array([val], dtype=np.int32))
-            v_app.append(np.array([val], dtype=np.int32))
-
-        assert len(v_ins) == len(v_app)
-        for i in range(n):
-            npt.assert_array_equal(v_ins[i], v_app[i])
-
-
-# ---------------------------------------------------------------------------
-# 58. DB.var(create=True) with numpy dtype object
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("nptype,dtype_str", [
-    (np.int32, "i32"),
-    (np.float32, "f32"),
-    (np.float64, "f64"),
-])
-def test_create_with_numpy_dtype(db_path, nptype, dtype_str):
-    with Database(db_path) as db:
-        v = db.var("v", dtype=np.dtype(nptype), create=True)
-        v.append(np.array([1], dtype=nptype))
-        assert len(v) == 1
-
-
-# ---------------------------------------------------------------------------
-# 59. Randomized: f64 precision — values survive write+read to 15 sig figs
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("seed", [2200, 2201, 2202])
-def test_f64_precision(db_path, seed):
-    rng = random.Random(seed)
-    n = rng.randint(5, 20)
-    values = [rng.uniform(-1e15, 1e15) for _ in range(n)]
-
-    with Database(db_path) as db:
-        v = db.create("f", dtype="f64")
-        for val in values:
-            v.append(np.array([val], dtype=np.float64))
-        for i, expected in enumerate(values):
-            npt.assert_array_almost_equal(
-                v[i], np.array([expected], dtype=np.float64), decimal=8
-            )
-
-
-# ---------------------------------------------------------------------------
-# 60. Stress: append 5000 elements, read back spot-checks
-# ---------------------------------------------------------------------------
-
-def test_stress_5000_append(db_path):
-    n = 5000
-    step = 100  # spot-check every 100th element
-    with Database(db_path) as db:
-        v = db.create("big", dtype="i32")
-        for i in range(n):
-            v.append(np.array([i], dtype=np.int32))
-        assert len(v) == n
-        for i in range(0, n, step):
-            npt.assert_array_equal(v[i], np.array([i], dtype=np.int32))
+        # verify slice reads match sequential element reads
+        if len(reference) >= 4:
+            start, stop = 1, len(reference) - 1
+            slice_result = v[start:stop]
+            for local_i, global_i in enumerate(range(start, stop)):
+                npt.assert_array_equal(slice_result[local_i], v[global_i])

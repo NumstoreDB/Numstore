@@ -83,6 +83,7 @@ i_mutex_free (i_mutex *m)
   ASSERT (m);
 
   errno = 0;
+
   if (pthread_mutex_destroy (&m->m))
   {
     switch (errno)
