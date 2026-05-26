@@ -5,11 +5,6 @@ find_package(Python
   REQUIRED
 )
 
-# Force release python lib on Windows debug builds
-if(WIN32 AND Python_LIBRARIES MATCHES "_d\\.lib")
-    string(REPLACE "_d.lib" ".lib" Python_LIBRARIES "${Python_LIBRARIES}")
-endif()
-
 execute_process(COMMAND 
   "${Python_EXECUTABLE}" -c "import numpy as np; print(np.get_include())"
   OUTPUT_VARIABLE NumPy_INCLUDE_DIRS

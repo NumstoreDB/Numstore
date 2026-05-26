@@ -4,28 +4,58 @@
 
 # Numstore
 
-Numstore is a database for bytes. There are three main artifacts to numstore:
+**A database for bytes** 
 
-1. Smart Files 
-    - A "smart" file with transaction support, named sections and rollback capabilities
-2. Numstore 
-    - Smart files with a rich type system laid on top of it to call itself a database for arrays
-3. Pynumstore
-    - A Python wrapper of numstore 
+---
 
-In this README, I'll walk you through Smart Files and Pynumstore. More docs are to come.
+## Overview
+
+Numstore is organized into three layered components:
+
+| Component | Description |
+|---|---|
+| **Smart Files** | A crash-safe file abstraction with transaction support, named sections, and O(log N) inner mutations |
+| **Numstore** | Smart Files with a rich type system - a full database for typed arrays |
+| **PyNumstore** | A Python wrapper around Numstore |
+
+---
 
 ## PyNumstore
 
-# numstore — Basic Usage
+PyNumstore is not published to PyPI (yet). The package is self-contained under `libs/pynumstore` and uses [scikit-build-core](https://scikit-build-core.readthedocs.io/) - the C extension is compiled automatically as part of the install step.
 
-## Opening a Database
+> Note: Pynumstore is experimental - expect bugs around wrapping python and c - the core logic is found in numstore / nscore
+
+### Quick Start
+
+**1. Install**
+
+```bash
+pip install -e libs/pynumstore
+```
+
+This compiles the C extension and installs the package in editable mode. CMake and a C compiler must be available on your `PATH`.
+
+---
+
+**2. Run a sample**
+
+```bash
+python samples/pynumstore/sample1.py
+```
+
+All PyNumstore samples live in `samples/pynumstore/`.
+
+---
+
+### Opening a Database
 
 Use `ns.open()` as a context manager (recommended), or `Database(path)` for manual lifecycle management.
 
 ```python
 import numstore as ns
 
+# Recommended: context manager
 with ns.open("mydb") as db:
     ...
 
@@ -36,7 +66,7 @@ db.close()
 
 ---
 
-## Variables
+### Variables
 
 A **Variable** is a named, typed array stream. Access one through `db["name"]`, or create it with `db.var()`.
 
@@ -52,11 +82,11 @@ with ns.open("mydb") as db:
     db.delete("temperature")
 ```
 
-Dtype may be a numstore string (`"f32"`, `"f64"`, `"i32"`, …) or any NumPy dtype.
+Dtype may be a Numstore string (`"f32"`, `"f64"`, `"i32"`, …) or any NumPy dtype.
 
 ---
 
-## Reading and Writing
+### Reading and Writing
 
 ```python
 with ns.open("mydb") as db:
@@ -71,7 +101,7 @@ with ns.open("mydb") as db:
 
 ---
 
-## Appending and Inserting
+### Appending and Inserting
 
 ```python
 with ns.open("mydb") as db:
@@ -83,7 +113,7 @@ with ns.open("mydb") as db:
 
 ---
 
-## Removing Elements
+### Removing Elements
 
 ```python
 with ns.open("mydb") as db:
@@ -96,9 +126,9 @@ with ns.open("mydb") as db:
 
 ---
 
-## Transactions
+### Transactions
 
-`txn["name"]` works just like `db["name"]` — it returns a Variable whose reads and writes are all part of that transaction. The context manager commits on clean exit and rolls back on any exception.
+`txn["name"]` works just like `db["name"]` - it returns a Variable whose reads and writes are all part of that transaction. The context manager commits on clean exit and rolls back on any exception.
 
 ```python
 with ns.open("mydb") as db:
@@ -132,7 +162,7 @@ except Exception:
 
 ---
 
-## Quick Reference
+### Quick Reference
 
 | Operation | Database | Transaction |
 |---|---|---|
@@ -147,31 +177,35 @@ except Exception:
 | Insert | `db["x"].insert(i, val)` | `txn["x"].insert(i, val)` |
 | Remove | `db["x"].remove(i)` | `txn["x"].remove(i)` |
 | Length | `len(db["x"])` | `len(txn["x"])` |
-| Commit / rollback | — | `txn.commit()` / `txn.rollback()` |
-
-## Smart Files 
-
-Smart files is a sub project of numstore 
-
-Files have had the same definition for 50 years: an array of bytes that grows, shrinks, and seeks. Every programming language builds on top of this model. Smart Files extends it with two fixes to longstanding problems, plus two new capabilities.
-
-**Standard files have two fundamental problems:**
-
-1. **No crash safety.** `fwrite` does not guarantee bytes hit disk. A crash mid-write leaves your file in an unknown state with no path to recovery.
-2. **No inner mutations.** There is no standard way to insert or remove bytes in the middle of a file without rewriting everything that follows.
-
-**Smart Files solves both, and adds two more features:**
-
-1. **Transactions.** Modifications go through a write-ahead log - every write commits fully or rolls back cleanly. A crash mid-write leaves nothing corrupt.
-2. **Inner mutations.** Insert or remove bytes anywhere in the stream in O(log N) time.
-3. **Stride access.** Read, write, and remove at regular intervals without manual offset arithmetic.
-4. **Multiple named streams.** Store more than one named byte stream per file - no separate file handles, no embedded database.
-
-Written in C with no dependencies. Developed on POSIX - built (but maybe not optimized yet) for windows. 
+| Commit / Rollback | - | `txn.commit()` / `txn.rollback()` |
 
 ---
 
-## Quick Start
+---
+
+## Smart Files
+
+Smart Files is the storage layer underlying Numstore. Files have had the same definition for 50 years: an array of bytes that grows, shrinks, and seeks. Smart Files extends that model with crash safety, inner mutations, and more.
+
+### Motivation
+
+Standard files have two fundamental problems:
+
+1. **No crash safety.** `fwrite` does not guarantee bytes hit disk. A crash mid-write leaves the file in an unknown state with no path to recovery.
+2. **No inner mutations.** There is no standard way to insert or remove bytes in the middle of a file without rewriting everything that follows.
+
+### What Smart Files Adds
+
+1. **Transactions** - Modifications go through a write-ahead log. Every write commits fully or rolls back cleanly; a crash mid-write leaves nothing corrupt.
+2. **Inner mutations** - Insert or remove bytes anywhere in the stream in O(log N) time.
+3. **Stride access** - Read, write, and remove at regular intervals without manual offset arithmetic.
+4. **Multiple named streams** - Store more than one named byte stream per file - no separate file handles, no embedded database.
+
+Written in C with no dependencies. Developed on POSIX; built (but not yet optimized) for Windows.
+
+---
+
+### Quick Start
 
 ```bash
 git clone https://github.com/lincketheo/smartfiles.git
@@ -183,11 +217,12 @@ cmake --build --preset release
 sudo cmake --install ./build/release
 ```
 
-### Write a sample app
+---
+
+### Sample Application
 
 ```c
 #include "smfile.h"
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -203,7 +238,7 @@ void print_array(const char* prefix, uint32_t* arr, int len)
 
 int main()
 {
-  // NULL second parameter is the stream name. NULL selects the default stream.
+  // NULL second parameter selects the default stream.
   // Pass any const char* to name it.
   smfile_t* f = smfile_open("example");
 
@@ -223,11 +258,11 @@ int main()
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
   print_array("Expect: [0, 2, 4, 6, ...]", read_data, 20);
 
-  // Remove every 3rd element; the removed values are copied into read_data
+  // Remove every 3rd element; removed values are copied into read_data
   smfile_premove(f, NULL, read_data, sizeof(uint32_t), 0, 3, 200);
   print_array("Expect: [0, 3, 6, 9, ...]", read_data, 20);
 
-  // Same strided read - the stream has changed shape after the removal
+  // Same strided read - stream has changed shape after removal
   smfile_pread(f, NULL, read_data, sizeof(uint32_t), 0, 2, 200);
   print_array("Expect: [1, 4, 7, 0, ...]", read_data, 20);
 
@@ -243,14 +278,14 @@ int main()
 }
 ```
 
-### Compile and run
+**Compile and run:**
 
 ```bash
 gcc main.c -o main -lsmartfiles -L/usr/local/lib
 ./main
 ```
 
-Expected output:
+**Expected output:**
 
 ```
 Expect: [0, 2, 4, 6, ...]
@@ -263,47 +298,51 @@ Expect: [0, 1, 2, 3, ...]
      0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
 ```
 
-### What's happening step by step
+---
 
-**Step 1 - insert at position 0.**
-We write the full 200,000-element array at byte offset 0. The stream now holds `[0, 1, 2, 3, ...]`.
+### Step-by-Step Walkthrough
 
-**Step 2 - insert in the middle.**
-We insert another 200,000-byte chunk at byte offset 40 (element index 10). Everything from index 10 onwards shifts right. At the join you get `[0, 1, ..., 9, 0, 1, 2, ..., 9, 10, 11, ...]`.
+**Step 1 - Insert at position 0.**
+Write the full 200,000-element array at byte offset 0. The stream now holds `[0, 1, 2, 3, ...]`.
 
-**Step 3 - strided read (stride=2).**
-`smfile_pread` reads every 2nd `uint32_t` from offset 0, returning `[0, 2, 4, 6, 8, 0, 2, ...]`. The `0` at index 5 is where the inserted block begins.
+**Step 2 - Insert in the middle.**
+Insert another 200,000-byte chunk at byte offset 40 (element index 10). Everything from index 10 onwards shifts right, producing `[0, 1, …, 9, 0, 1, 2, …, 9, 10, 11, …]` at the join.
 
-**Step 4 - strided remove (stride=3).**
-`smfile_premove` pulls every 3rd `uint32_t` and copies the removed values into `read_data`. The gaps close up; remaining elements shift down.
+**Step 3 - Strided read (stride = 2).**
+`smfile_pread` reads every 2nd `uint32_t` from offset 0, returning `[0, 2, 4, 6, 8, 0, 2, …]`. The `0` at index 5 marks where the inserted block begins.
 
-**Step 5 - strided read again (stride=2).**
-Same read as step 3, but the stream is shorter now. After the removal the sequence starts `[1, 4, 7, 0, ...]`.
+**Step 4 - Strided remove (stride = 3).**
+`smfile_premove` pulls every 3rd `uint32_t` and copies the removed values into `read_data`. Gaps close; remaining elements shift down.
 
-**Step 6 - strided write (stride=2).**
-`smfile_pwrite` overwrites every 2nd element with values from `data` (0, 1, 2, 3, ...).
+**Step 5 - Strided read again (stride = 2).**
+Same read as Step 3, but the stream is shorter. After removal the sequence starts `[1, 4, 7, 0, …]`.
 
-**Step 7 - final read.**
-The last strided read returns `[0, 1, 2, 3, ...]` - the even-indexed slots hold the clean sequence written in step 6.
+**Step 6 - Strided write (stride = 2).**
+`smfile_pwrite` overwrites every 2nd element with values from `data` (0, 1, 2, 3, …).
+
+**Step 7 - Final read.**
+The last strided read returns `[0, 1, 2, 3, …]` - even-indexed slots hold the clean sequence written in Step 6.
 
 ---
 
 ## Project Structure
 
-Public headers are in `include/`. Source code is in `lib/`. The `thirdparty/c_specx` directory holds reusable C utilities I've extracted for use across projects - all my own code, no external dependencies.
+Public headers live in `include/`. Source code lives in `lib/`. The `thirdparty/c_specx` directory holds reusable C utilities shared across projects - all original code, no external dependencies.
 
-`lib/` is organized by function:
+`lib/` is organized by subsystem:
 
-- `algorithms` - rope algorithms and database traversal
-- `aries` - rollback and crash recovery logic
-- `dpgt` - dirty page table
-- `lockt` - lock table
-- `os_pager` - single-file pager that reads pages from disk
-- `pager` - buffer pool initialization, page reads, and WAL entry writes
-- `pages` - page type definitions
-- `testing` - test-specific utilities
-- `txns` - transaction table and transaction logic
-- `wal` - write-ahead log
+| Directory | Responsibility |
+|---|---|
+| `algorithms` | Rope algorithms and database traversal |
+| `aries` | Rollback and crash recovery logic |
+| `dpgt` | Dirty page table |
+| `lockt` | Lock table |
+| `os_pager` | Single-file pager for reading pages from disk |
+| `pager` | Buffer pool initialization, page reads, and WAL entry writes |
+| `pages` | Page type definitions |
+| `testing` | Test-specific utilities |
+| `txns` | Transaction table and transaction logic |
+| `wal` | Write-ahead log |
 
 ---
 
@@ -312,20 +351,18 @@ Public headers are in `include/`. Source code is in `lib/`. The `thirdparty/c_sp
 I use AI the way I use a language server: as a tool, not a co-author.
 
 **Things I ask AI to do:**
-
-- Add edge-case test scenarios to an existing unit test (I review every one before committing)
+- Add edge-case test scenarios to existing unit tests (reviewed before committing)
 - Review an algorithm I've written and flag anything that looks wrong
 - Write formatting scripts, CI/CD glue, and other boilerplate I could write myself but would rather not
 
 **Things I don't ask AI to do:**
-
 - Implement features
 - Delete or replace code I've written
 - Read a paper and implement the algorithm
 
-In practice, AI is useful for ideation, code review, and generating mundane code I'll immediately refactor. For any algorithm going into this codebase, I write it, and I own it.
+In practice, AI is useful for ideation, code review, and generating mundane code I'll immediately refactor. Every algorithm in this codebase was written by me.
 
-The `CLAUDE.md` file is there because if AI-assisted code ever does land here, I want it to follow consistent standards. It was inspired by [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills).
+The `CLAUDE.md` file ensures that if AI-assisted code ever does land here, it follows consistent standards. It was inspired by [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills).
 
 If you're skeptical that a database engine can be written without leaning on AI - fair. Read through the code and make up your own mind.
 
@@ -334,6 +371,8 @@ If you're skeptical that a database engine can be written without leaning on AI 
 ## Contributing
 
 File a ticket on GitHub for bugs, feature requests, or questions. Pull requests are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Windows CI/CD support is an open and approachable first contribution.
+
+---
 
 ## License
 
