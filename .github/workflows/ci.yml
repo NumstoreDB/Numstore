@@ -65,12 +65,30 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
+      - uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: '3.11'
+
       - name: Install Valgrind
         if: matrix.extra && matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y valgrind
 
-      - name: Configure
-        run: cmake --preset ${{ matrix.preset }} ${{ matrix.extra && '-DENABLE_PORTABLE=ON' || '' }}
+      - name: Configure (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cmake --preset ${{ matrix.preset }} \
+            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}" \
+            ${{ matrix.extra && '-DENABLE_PORTABLE=ON' || '' }}
+
+      - name: Configure (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $pypath = "${{ steps.setup-python.outputs.python-path }}" -replace '\\', '/'
+          cmake --preset ${{ matrix.preset }} `
+            -DPython_EXECUTABLE="$pypath" `
+            ${{ matrix.extra && '-DENABLE_PORTABLE=ON' || '' }}
 
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
