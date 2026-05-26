@@ -70,6 +70,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Python deps 
+        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
+
       - name: Install Valgrind
         if: matrix.extra && matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y valgrind
