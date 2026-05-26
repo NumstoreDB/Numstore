@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" alt="NumStore Logo" width="200"/>
+  <img src="docs/_static/logo.png" alt="NumStore Logo" width="200"/>
 </p>
 
 # Numstore
@@ -8,27 +8,66 @@
 
 ---
 
-## Overview
+1.0 Synopsis
+============
 
-Numstore is organized into three layered components:
+1.1 System requirements
+-----------------------
 
-| Component | Description |
-|---|---|
-| **Smart Files** | A crash-safe file abstraction with transaction support, named sections, and O(log N) inner mutations |
-| **Numstore** | Smart Files with a rich type system - a full database for typed arrays |
-| **PyNumstore** | A Python wrapper around Numstore |
+* C compiler supporting the C11 standard 
+* CMake
+* Python 3
 
----
+1.2 Linux, Mac, Windows
+-----------------------
 
-## PyNumstore
+```
+cd <path>/numstore
+cmake --preset debug
+```
 
-PyNumstore is not published to PyPI (yet). The package is self-contained under `libs/pynumstore` and uses [scikit-build-core](https://scikit-build-core.readthedocs.io/) - the C extension is compiled automatically as part of the install step.
+
+2.0 Build!
+==========
+
+Numstore is built with CMake:
+```
+cmake --build --preset debug
+```
+
+You can see the options of various presets in `CMakePresets.json`
+as well as build your own custom presets using flags found in ./cmake/Options.cmake
+
+Here are some other cmake presets:
+
+* `--preset debug` Debug build - logging enabled - asserts enabled - symbols included - portable - not stripped - address sanitizer compiled in
+* `--preset debug-no-asan` Same as `debug` but without address sanitizer (useful for running against valgrind)
+* `--preset debug-ntests` Debug build without any tests compiled in
+* `--preset debug-ntests-no-asan` Same as `debug-ntests` without an address sanitizer
+* `--preset release` Release build - logging disabled, no asserts, no tests, optimized for your machine, no address sanitizer
+* `--preset release-tests` Same as `release` but with tests compiled in (to ensure unit tests pass with / without asserts)
+* `--preset package-release` Portable binary with stripped symbols.
+
+There's an upfront `Makefile` that has common targets that I run a lot - but in general - this is just a tool 
+to help me reduce keystrokes - new developers should use `cmake` as much as possible - while using `make` if there 
+are any common workflows
+
+3.0 Run!
+========
+
+3.1 Pynumstore 
+--------------
+
+pynumstore is the python wrapper around numstore that interacts heavily with numpy arrays. 
+pynumstore is not published to PyPI (yet). The package is self-contained under `libs/pynumstore` 
+and uses [scikit-build-core](https://scikit-build-core.readthedocs.io/) 
+- the C extension is compiled automatically as part of the install step.
 
 > Note: Pynumstore is experimental - expect bugs around wrapping python and c - the core logic is found in numstore / nscore
 
-### Quick Start
+### 3.1.0 Quick Start
 
-**1. Install**
+**3.1.0.0. Install**
 
 ```bash
 pip install -e libs/pynumstore
@@ -38,7 +77,7 @@ This compiles the C extension and installs the package in editable mode. CMake a
 
 ---
 
-**2. Run a sample**
+**3.1.0.1. Run a sample**
 
 ```bash
 python samples/pynumstore/basic_operations.py
@@ -48,7 +87,7 @@ All PyNumstore samples live in `samples/pynumstore/`.
 
 ---
 
-### Opening a Database
+### 3.1.1 Opening a Database
 
 Use `ns.open()` as a context manager (recommended), or `Database(path)` for manual lifecycle management.
 
@@ -66,7 +105,7 @@ db.close()
 
 ---
 
-### Variables
+### 3.1.2 Variables
 
 A **Variable** is a named, typed array stream. Access one through `db["name"]`, or create it with `db.var()`.
 
@@ -86,7 +125,7 @@ Dtype may be a Numstore string (`"f32"`, `"f64"`, `"i32"`, …) or any NumPy dty
 
 ---
 
-### Reading and Writing
+### 3.1.3 Reading and Writing
 
 ```python
 with ns.open("mydb") as db:
@@ -101,7 +140,7 @@ with ns.open("mydb") as db:
 
 ---
 
-### Appending and Inserting
+### 3.1.4 Appending and Inserting
 
 ```python
 with ns.open("mydb") as db:
@@ -113,7 +152,7 @@ with ns.open("mydb") as db:
 
 ---
 
-### Removing Elements
+### 3.1.5 Removing Elements
 
 ```python
 with ns.open("mydb") as db:
@@ -126,7 +165,7 @@ with ns.open("mydb") as db:
 
 ---
 
-### Transactions
+### 3.1.6 Transactions
 
 `txn["name"]` works just like `db["name"]` - it returns a Variable whose reads and writes are all part of that transaction. The context manager commits on clean exit and rolls back on any exception.
 
@@ -162,39 +201,21 @@ except Exception:
 
 ---
 
-### Quick Reference
+3.2 Smartfiles
+--------------
 
-| Operation | Database | Transaction |
-|---|---|---|
-| Get variable | `db["x"]` | `txn["x"]` |
-| Create variable | `db.var("x", dtype=…, create=True)` | `txn.var("x", dtype=…, create=True)` |
-| Delete variable | `db.delete("x")` | `txn.delete("x")` |
-| Read element | `db["x"][i]` | `txn["x"][i]` |
-| Read slice | `db["x"][i:j]` | `txn["x"][i:j]` |
-| Write element | `db["x"][i] = val` | `txn["x"][i] = val` |
-| Write slice | `db["x"][i:j] = arr` | `txn["x"][i:j] = arr` |
-| Append | `db["x"].append(val)` | `txn["x"].append(val)` |
-| Insert | `db["x"].insert(i, val)` | `txn["x"].insert(i, val)` |
-| Remove | `db["x"].remove(i)` | `txn["x"].remove(i)` |
-| Length | `len(db["x"])` | `len(txn["x"])` |
-| Commit / Rollback | - | `txn.commit()` / `txn.rollback()` |
+Smart Files is a storage wrapper around Numstore. Files have had the same definition for 
+50 years: an array of bytes that grows, shrinks, and seeks. Smart Files extends that model 
+with crash safety, inner mutations, and more.
 
----
-
----
-
-## Smart Files
-
-Smart Files is the storage layer underlying Numstore. Files have had the same definition for 50 years: an array of bytes that grows, shrinks, and seeks. Smart Files extends that model with crash safety, inner mutations, and more.
-
-### Motivation
+### 3.2.0 Motivation
 
 Standard files have two fundamental problems:
 
 1. **No crash safety.** `fwrite` does not guarantee bytes hit disk. A crash mid-write leaves the file in an unknown state with no path to recovery.
 2. **No inner mutations.** There is no standard way to insert or remove bytes in the middle of a file without rewriting everything that follows.
 
-### What Smart Files Adds
+### 3.2.1 What Smart Files Adds
 
 1. **Transactions** - Modifications go through a write-ahead log. Every write commits fully or rolls back cleanly; a crash mid-write leaves nothing corrupt.
 2. **Inner mutations** - Insert or remove bytes anywhere in the stream in O(log N) time.
@@ -205,7 +226,7 @@ Written in C with no dependencies. Developed on POSIX; built (but not yet optimi
 
 ---
 
-### Quick Start
+### 3.2.3 Quick Start
 
 ```bash
 git clone https://github.com/lincketheo/smartfiles.git
@@ -219,7 +240,7 @@ sudo cmake --install ./build/release
 
 ---
 
-### Sample Application
+### 3.2.4 Sample Application
 
 ```c
 #include "smfile.h"
@@ -300,7 +321,7 @@ Expect: [0, 1, 2, 3, ...]
 
 ---
 
-### Step-by-Step Walkthrough
+### 3.2.5 Step-by-Step Walkthrough
 
 **Step 1 - Insert at position 0.**
 Write the full 200,000-element array at byte offset 0. The stream now holds `[0, 1, 2, 3, ...]`.
@@ -323,32 +344,88 @@ Same read as Step 3, but the stream is shorter. After removal the sequence start
 **Step 7 - Final read.**
 The last strided read returns `[0, 1, 2, 3, …]` - even-indexed slots hold the clean sequence written in Step 6.
 
----
 
-## Project Structure
+4.0 Configure your build
+========================
 
-Public headers live in `include/`. Source code lives in `lib/`. The `thirdparty/c_specx` directory holds reusable C utilities shared across projects - all original code, no external dependencies.
+Numstore has compile time configuration of various application specific attributes 
+such as page size, number of bits for a page number etc
 
-`lib/` is organized by subsystem:
+You can see them all in `cmake/Config.cmake`
 
-| Directory | Responsibility |
-|---|---|
-| `algorithms` | Rope algorithms and database traversal |
-| `aries` | Rollback and crash recovery logic |
-| `dpgt` | Dirty page table |
-| `lockt` | Lock table |
-| `os_pager` | Single-file pager for reading pages from disk |
-| `pager` | Buffer pool initialization, page reads, and WAL entry writes |
-| `pages` | Page type definitions |
-| `testing` | Test-specific utilities |
-| `txns` | Transaction table and transaction logic |
-| `wal` | Write-ahead log |
+These are common configuration options:
+* `-DNS_PAGE_SIZE=4096` - 
+* `-DNS_MEMORY_PAGE_LEN=4096` - Number of pages to fit inside the pager buffer pool
+* `-DNS_WAL_BUFFER_CAP=1048576` - The size of the internal in memory WAL
 
----
+These should rarely be changed:
+* `-DTSIZE_BITS=32` - Number of bits needed to represent the size of a data type
+* `-DPSIZE_BITS=32` - Number of bits needed to represent the size of an index into a page
+* `-DBSIZE_BITS=64` - Number of bits needed to represent the size of an index into an array
+* `-DPGNO_BITS=64` - Number of bits needed to represent the size of a page number
+* `-DTXID_BITS=32` - Number of bits needed to represent the size of a transaction id
+* `-DLSN_BITS=64` - Number of bits needed to represent the size of log sequence number
+* `-DPGH_BITS=8` - Number of bits needed to represent the size of a page header
+* `-DWLH_BITS=8` - Number of bits needed to represent the size of a log header
 
-## How I Use AI
 
-I use AI the way I use a language server: as a tool, not a co-author.
+5.0 Project Layout
+==================
+
+* `apps`: All applications in this directory are built and linked with all libraries built in this project 
+          making it easy to create on the fly applications for simple utilities on the database 
+* `samples`: A list of samples for easy developer onboarding
+* `libs`: Each directory inside this is a library
+* `scripts`: Simple scripts for auto code generation or formatting or ci / cd. Mostly python 
+* `cmake`: CMake Utilities and includes
+* `docs`: Documentation for numstore
+
+6.0 Summary of all Libraries 
+============================
+
+The application contains various targets:
+
+* `libnumstore`     - The numstore library is a wrapper over nscore that adds convinience one time operations over arrays
+* `libnscore`       - This is the core of numstore - and all headers are exposed - all heavy weight algorithms live here
+* `lib_pynumstore`  - The python wrapper over libnumstore
+* `lib_smartfiles`  - The smart files library is a simple api over a file like object with inner mutations 
+                      kind of like numstore but every type is a uint8_t
+* `libc_specx`      - Core common logic
+* `libnstesting`    - Testing scaffolding 
+
+The submodule repository `qtrepotools` contains useful scripts for
+developers and release engineers. Consider adding qtrepotools/bin
+to your `PATH` environment variable to access them.
+
+
+7.0 Documentation
+=================
+
+After configuring and compiling Qt, building the documentation is possible by running
+
+```
+cmake --build . --target docs
+```
+
+After having built the documentation, you need to install it with the following
+command:
+
+```
+cmake --build . --target install_docs
+```
+
+The documentation is installed in the path specified with the
+configure argument `-docdir`.
+
+Information about Qt's documentation is located in qtbase/doc/README
+
+Note: Building the documentation is only tested on desktop platforms.
+
+8.0 AI Usage Policy
+===================
+
+I use AI the way I use a language server: as a tool, not a co-author. AI usage is fine 
+but not for heavy tasks
 
 **Things I ask AI to do:**
 - Add edge-case test scenarios to existing unit tests (reviewed before committing)
@@ -360,20 +437,20 @@ I use AI the way I use a language server: as a tool, not a co-author.
 - Delete or replace code I've written
 - Read a paper and implement the algorithm
 
-In practice, AI is useful for ideation, code review, and generating mundane code I'll immediately refactor. Every algorithm in this codebase was written by me.
+In practice, AI is useful for ideation, code review, and generating mundane code I'll immediately refactor. 
+Every algorithm in this codebase was written by me.
 
-The `CLAUDE.md` file ensures that if AI-assisted code ever does land here, it follows consistent standards. It was inspired by [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills).
+The `CLAUDE.md` file ensures that if AI-assisted code ever does land here, it follows consistent standards. 
+It was inspired by [Karpathy Inspired Claude Code](https://github.com/forrestchang/andrej-karpathy-skills).
 
-If you're skeptical that a database engine can be written without leaning on AI - fair. Read through the code and make up your own mind.
+9.0 Contributing
+================
 
----
+File a ticket on GitHub for bugs, feature requests, or questions. 
+Pull requests are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. 
+Windows CI/CD support is an open and approachable first contribution.
 
-## Contributing
-
-File a ticket on GitHub for bugs, feature requests, or questions. Pull requests are welcome - see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Windows CI/CD support is an open and approachable first contribution.
-
----
-
-## License
+10.0 License
+============
 
 Apache 2.0. See [LICENSE](LICENSE).
