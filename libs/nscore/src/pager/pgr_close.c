@@ -61,6 +61,7 @@ pgr_close (struct pager *p, error *e)
   fpgr_close (p->fp, e);
   lockt_destroy (p->lt);
   i_free (p->lt);
+  i_mutex_unlock (&p->serial_lock);
   i_mutex_free (&p->serial_lock);
 
   txnt_close (p->tnxt);
