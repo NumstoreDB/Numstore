@@ -20,5 +20,5 @@ with ns.open("mydb") as db:
                 np.array([0, 1, 0], dtype=np.int32)
         )
 
-    print(db["timestamps"][0:])
-    print(db["labels"][0:])
+    print("timestamps: ", db["timestamps"][0:])
+    print("labels: ", db["labels"][0:])
