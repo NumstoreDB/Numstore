@@ -1,5 +1,5 @@
 import numpy as np
-import pynumstore as ns
+import numstore as ns
 
 # Basic Operations
 with ns.open("mydb") as db:
