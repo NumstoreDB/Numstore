@@ -1,9 +1,9 @@
 import numpy as np
-import pynumstore as ns
+import numstore as ns
 
 # Overwriting existing entries
 with ns.open("mydb") as db:
-    v = db.var("signal", dtype="f32", create=True)
+    v = db.get_or_create("signal", dtype="f32")
     del v[0:]
 
     v.append(np.array([0.0, 0.0, 0.0], dtype=np.float32))
