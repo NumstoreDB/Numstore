@@ -2,7 +2,6 @@
 find_package(Python 
   COMPONENTS Interpreter 
              Development.Module 
-             Development.Embed 
   REQUIRED
 )
 

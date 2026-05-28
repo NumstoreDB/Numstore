@@ -23,5 +23,8 @@ cmake.args = [
     "-DENABLE_ASAN:BOOL=OFF"
 ]
 
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+
 [tool.setuptools.package-data]
 numstore = ["_numstore.pyi", "py.typed"]
