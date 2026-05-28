@@ -1,18 +1,3 @@
-"""Convert numpy dtype objects to numstore type strings.
-
-Numstore type system:
-  - Primitives:  u8/u16/u32/u64, i8/i16/i32/i64, f16/f32/f64/f128,
-                 ci16/ci32/ci64/ci128, cu16/cu32/cu64/cu128,
-                 cf32/cf64/cf128/cf256
-  - Struct:      struct { <name> <subtype>, ... }
-  - Union:       union  { <name> <subtype>, ... }
-  - Strict array: [d1][d2]... <subtype>
-
-Endianness is platform-dependent; byte order on the numpy dtype is ignored.
-Numpy has no native equivalent for cf32/ci*/cu*, so this direction never
-emits those primitives -- the same shapes appear as structured dtypes.
-"""
-
 from __future__ import annotations
 
 import numpy as np
@@ -26,7 +11,7 @@ _PRIMITIVES: dict[tuple[str, int], str] = {
     ("c", 8): "cf64", ("c", 16): "cf128", ("c", 32): "cf256",
 }
 
-def numpy_to_numstore(dtype) -> str:
+def np_to_ns(dtype) -> str:
     """Convert a numpy dtype to a numstore type string.
 
     Raises ValueError if the dtype has no numstore equivalent.

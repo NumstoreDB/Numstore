@@ -20,7 +20,8 @@ cmake.args = [
     "-DENABLE_GPROF:BOOL=OFF",
     "-DENABLE_PORTABLE:BOOL=OFF",
     "-DENABLE_STRIP:BOOL=ON",
-    "-DENABLE_ASAN:BOOL=OFF"
+    "-DENABLE_ASAN:BOOL=OFF",
+    "-DBUILD_BINDINGS=ON"
 ]
 
 [tool.cibuildwheel]
