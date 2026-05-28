@@ -72,7 +72,7 @@ class _NamespaceMixin:
         try:
             var_len(self._db, self._txn, name)
             return True
-        except KeyError:
+        except RuntimeError:
             return False
 
     def __contains__(self, name: str) -> bool:

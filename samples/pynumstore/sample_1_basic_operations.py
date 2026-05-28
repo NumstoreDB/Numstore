@@ -5,7 +5,7 @@ import numstore as ns
 with ns.open("mydb") as db:
     with db.begin_txn() as txn:
 
-        y = txn.var("y", dtype="f32", create=True)
+        y = txn.get_or_create("y", dtype="f32")
 
         # Start with a fresh dataset if y already existed
         del y[0:]
