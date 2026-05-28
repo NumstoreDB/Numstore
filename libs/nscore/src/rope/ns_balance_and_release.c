@@ -44,10 +44,16 @@ dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
   const p_size maxlen   = dlgt_get_max_len (page_h_ro (prev));
 
   // Already valid
-  if (cur_len == 0) { return; }
+  if (cur_len == 0)
+  {
+    return;
+  }
 
   // Also valid
-  if (cur_len >= maxlen / 2) { return; }
+  if (cur_len >= maxlen / 2)
+  {
+    return;
+  }
 
   // There's enough data to balaance max / 2 for each node
   if (prev_len + cur_len >= maxlen)
@@ -152,7 +158,10 @@ TEST (dlgt_balance_with_prev)
     i = 0;
     for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i)
     {
-      test_assert_equal (dl_get_byte (page_h_ro (cur), i), _prev[DL_DATA_SIZE / 2 + DL_REM + i]);
+      test_assert_equal (
+          dl_get_byte (page_h_ro (cur), i),
+          _prev[DL_DATA_SIZE / 2 + DL_REM + i]
+      );
     }
     const u32 k = i;
     for (; i < DL_DATA_SIZE / 2; ++i)
@@ -183,7 +192,10 @@ TEST (dlgt_balance_with_prev)
       test_assert_equal (dl_get_byte (page_h_ro (prev), i), _prev[i]);
     }
     const u32 k = i;
-    for (; i < 9; ++i) { test_assert_equal (dl_get_byte (page_h_ro (prev), i), _cur[i - k]); }
+    for (; i < 9; ++i)
+    {
+      test_assert_equal (dl_get_byte (page_h_ro (prev), i), _cur[i - k]);
+    }
   }
 
   pgr_release (f.p, prev, PG_DATA_LIST, e);
@@ -215,9 +227,15 @@ dlgt_balance_with_next (const page_h *cur, const page_h *next)
   const p_size maxlen   = dlgt_get_max_len (page_h_ro (next));
 
   // Already valid
-  if (cur_len == 0) { return; }
+  if (cur_len == 0)
+  {
+    return;
+  }
 
-  if (cur_len >= maxlen / 2) { return; }
+  if (cur_len >= maxlen / 2)
+  {
+    return;
+  }
 
   if (next_len + cur_len >= maxlen)
   {
@@ -314,7 +332,10 @@ TEST (dlgt_balance_with_next)
     test_assert_equal (dl_used (page_h_ro (next)), DL_DATA_SIZE / 2 + DL_REM);
 
     u32 i = 0;
-    for (; i < 10; ++i) { test_assert_equal (dl_get_byte (page_h_ro (cur), i), _cur[i]); }
+    for (; i < 10; ++i)
+    {
+      test_assert_equal (dl_get_byte (page_h_ro (cur), i), _cur[i]);
+    }
     for (; i < DL_DATA_SIZE / 2; ++i)
     {
       test_assert_equal (dl_get_byte (page_h_ro (cur), i), _next[i - 10]);
@@ -322,7 +343,10 @@ TEST (dlgt_balance_with_next)
     i = 0;
     for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i)
     {
-      test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i + DL_DATA_SIZE / 2 - 10]);
+      test_assert_equal (
+          dl_get_byte (page_h_ro (next), i),
+          _next[i + DL_DATA_SIZE / 2 - 10]
+      );
     }
   }
 
@@ -342,7 +366,10 @@ TEST (dlgt_balance_with_next)
     test_assert_equal (dl_used (page_h_ro (next)), DL_DATA_SIZE - 1);
 
     u32 i = 0;
-    for (; i < 9; ++i) { test_assert_equal (dl_get_byte (page_h_ro (next), i), _cur[i]); }
+    for (; i < 9; ++i)
+    {
+      test_assert_equal (dl_get_byte (page_h_ro (next), i), _cur[i]);
+    }
 
     // next data
     for (; i < DL_DATA_SIZE - 1; ++i)
@@ -373,16 +400,28 @@ three_in_pair_from (const page_h *prev, const page_h *cur, const page_h *next)
       .next = in_pair_empty,
   };
 
-  if (prev) { ret.prev = in_pair_from_pgh (prev); }
-  if (cur) { ret.cur = in_pair_from_pgh (cur); }
-  if (next) { ret.next = in_pair_from_pgh (next); }
+  if (prev)
+  {
+    ret.prev = in_pair_from_pgh (prev);
+  }
+  if (cur)
+  {
+    ret.cur = in_pair_from_pgh (cur);
+  }
+  if (next)
+  {
+    ret.next = in_pair_from_pgh (next);
+  }
 
   return ret;
 }
 
 // TODO - graceful error handling and clean up of partial pages
 err_t
-ns_balance_and_release (const struct ns_balance_and_release_params params, error *e)
+ns_balance_and_release (
+    const struct ns_balance_and_release_params params,
+    error                                     *e
+)
 {
   ASSERT (
       params.prev->mode == PHM_NONE
@@ -508,15 +547,22 @@ ns_balance_and_release (const struct ns_balance_and_release_params params, error
       }
 
       // Bridge the gap: prev->next = next, next->prev = prev
-      dlgt_link (page_h_w_or_null (params.prev), page_h_w_or_null (params.next));
+      dlgt_link (
+          page_h_w_or_null (params.prev),
+          page_h_w_or_null (params.next)
+      );
 
       // We might have turned prev / next into a new root by deleting cur
-      if (params.prev->mode != PHM_NONE && dlgt_is_root (page_h_ro (params.prev)))
+      if (params.prev->mode != PHM_NONE
+          && dlgt_is_root (page_h_ro (params.prev)))
       {
         params.root->root   = page_h_pgno (params.prev);
         params.root->isroot = true;
       }
-      else if (params.next->mode != PHM_NONE && dlgt_is_root (page_h_ro (params.next)))
+      else if (
+          params.next->mode != PHM_NONE
+          && dlgt_is_root (page_h_ro (params.next))
+      )
       {
         params.root->root   = page_h_pgno (params.next);
         params.root->isroot = true;
@@ -534,9 +580,24 @@ ns_balance_and_release (const struct ns_balance_and_release_params params, error
   }
 
   // One final common cleanup
-  WRAP (pgr_release_if_exists (params.p, params.prev, PG_DATA_LIST | PG_INNER_NODE, e));
-  WRAP (pgr_release_if_exists (params.p, params.cur, PG_DATA_LIST | PG_INNER_NODE, e));
-  WRAP (pgr_release_if_exists (params.p, params.next, PG_DATA_LIST | PG_INNER_NODE, e));
+  WRAP (pgr_release_if_exists (
+      params.p,
+      params.prev,
+      PG_DATA_LIST | PG_INNER_NODE,
+      e
+  ));
+  WRAP (pgr_release_if_exists (
+      params.p,
+      params.cur,
+      PG_DATA_LIST | PG_INNER_NODE,
+      e
+  ));
+  WRAP (pgr_release_if_exists (
+      params.p,
+      params.next,
+      PG_DATA_LIST | PG_INNER_NODE,
+      e
+  ));
 
   return SUCCESS;
 }

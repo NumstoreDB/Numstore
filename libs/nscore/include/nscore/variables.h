@@ -27,8 +27,8 @@ struct variable
   b_size        nbytes;
 };
 
-void  variable_free (struct variable *v);
-bool  variable_equal (const struct variable *left, const struct variable *right);
+void variable_free (struct variable *v);
+bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
 void  var_random_name (char *buffer, int length);
 err_t rand_varname (
@@ -50,19 +50,27 @@ err_t rand_varname_different_hash (
     struct chunk_alloc *alloc,
     error              *e
 );
-struct variable *variable_malloc_copy (struct variable *v, struct malloc_plan *plan);
+struct variable *
+variable_malloc_copy (struct variable *v, struct malloc_plan *plan);
 
 HEADER_FUNC b_size
 var_resolve_index (struct variable *v, sb_size bofst)
 {
   // Translate negative
-  if (bofst < 0) { bofst = v->nbytes + bofst; }
+  if (bofst < 0)
+  {
+    bofst = v->nbytes + bofst;
+  }
 
   // was so negative it's still negative after conversion
-  if (bofst < 0) { bofst = 0; }
+  if (bofst < 0)
+  {
+    bofst = 0;
+  }
 
   // Translate indexes past nybtes
-  if ((b_size)bofst > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
+  if ((b_size)bofst
+      > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
   {
     bofst = v->nbytes;
   }
@@ -74,6 +82,9 @@ HEADER_FUNC b_size
 var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
 {
   b_size remainder = (v->nbytes - bofst) / size;
-  if (nelem > remainder) { nelem = remainder; }
+  if (nelem > remainder)
+  {
+    nelem = remainder;
+  }
   return nelem;
 }

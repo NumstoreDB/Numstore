@@ -46,10 +46,12 @@ struct ns_insert_params
   struct stream *src; ///< Source stream to read inserted bytes from
   struct txn    *tx;  ///< Transaction to attach this mutation to
 
-  pgno   root;  ///< Root page of the target tree (updated in place if root changes)
+  pgno
+      root; ///< Root page of the target tree (updated in place if root changes)
   b_size size;  ///< Element size in bytes
   b_size bofst; ///< Byte offset at which to begin inserting
-  b_size nelem; ///< Number of elements to insert (0 = consume src until exhausted)
+  b_size
+      nelem; ///< Number of elements to insert (0 = consume src until exhausted)
 };
 
 /// Parameters for ns_write() — in-place overwrite of elements in an R+Tree
@@ -94,7 +96,8 @@ struct ns_remove_params
                        ///< deletion (NULL to discard)
   struct txn *tx;      ///< Transaction to attach this mutation to
 
-  pgno    root;   ///< Root page of the target tree (updated in place if root changes)
+  pgno
+      root; ///< Root page of the target tree (updated in place if root changes)
   b_size  size;   ///< Size of each element in bytes
   b_size  bofst;  ///< Byte offset at which to begin removing
   sb_size stride; ///< Bytes to advance between successive element removals (1 =
@@ -150,17 +153,17 @@ struct ns_seek_params
   struct pager *p;  ///< The database
   struct txn   *tx; ///< Transaction to attach this traversal to
 
-  pgno   root;       ///< Root page of the tree to seek into
-  b_size bofst;      ///< Byte offset to locate
-  bool   save_stack; ///< If true, inner nodes are retained in pstack rather than
-                     ///< released
+  pgno   root;     ///< Root page of the tree to seek into
+  b_size bofst;    ///< Byte offset to locate
+  bool save_stack; ///< If true, inner nodes are retained in pstack rather than
+                   ///< released
 
   // Outputs (don't need to initialize these)
   struct seek_v pstack[20]; ///< Inner nodes visited during descent (valid if
                             ///< save_stack is true)
   u32    sp;                ///< Number of valid entries in pstack
-  page_h pg;                ///< Resulting data-list page, held in read mode (PHM_S)
-  p_size lidx;              ///< Byte offset within pg where bofst lands
+  page_h pg;   ///< Resulting data-list page, held in read mode (PHM_S)
+  p_size lidx; ///< Byte offset within pg where bofst lands
 };
 
 /// Traverses the R+Tree to the data-list page containing bofst
@@ -185,10 +188,11 @@ struct ns_balance_and_release_params
 
   struct three_in_pair *output; ///< Receives the resulting (prev, cur, next)
                                 ///< in_pairs for nupd accounting
-  struct root_update *root;     ///< Updated with the new root if a merge reduces tree height
-  page_h             *prev;     ///< Left sibling page (may be absent but must be non-NULL)
-  page_h             *cur;      ///< The leaf page to balance (must be loaded)
-  page_h             *next;     ///< Right sibling page (may be absent but must be non-NULL)
+  struct root_update
+         *root; ///< Updated with the new root if a merge reduces tree height
+  page_h *prev; ///< Left sibling page (may be absent but must be non-NULL)
+  page_h *cur;  ///< The leaf page to balance (must be loaded)
+  page_h *next; ///< Right sibling page (may be absent but must be non-NULL)
 };
 
 /*
@@ -204,7 +208,8 @@ struct ns_balance_and_release_params
  * On success, prev, cur, and next are all released.  The caller obtains the
  * resulting (prev, cur, next) in_pairs via params.output for nupd accounting.
  */
-err_t ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
+err_t
+ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
 
 /// Parameters for the main bottom-up rebalance pass after an insert or remove
 struct ns_rebalance_params
@@ -214,11 +219,12 @@ struct ns_rebalance_params
 
   pgno root; ///< Root page of the tree being rebalanced
 
-  struct seek_v       *pstack;     ///< Stack of inner-node pages saved during the preceding seek
-  u32                  sp;         ///< Number of valid entries in pstack
-  struct node_updates *input;      ///< Update set fed into this rebalance layer
-                                   ///< (swaps with output each iteration)
-  struct node_updates *output;     ///< Update set produced by this rebalance layer
+  struct seek_v
+      *pstack; ///< Stack of inner-node pages saved during the preceding seek
+  u32  sp;     ///< Number of valid entries in pstack
+  struct node_updates *input;  ///< Update set fed into this rebalance layer
+                               ///< (swaps with output each iteration)
+  struct node_updates *output; ///< Update set produced by this rebalance layer
   struct root_update   layer_root; ///< Carries the root update if this layer
                                    ///< collapses to a new root
 

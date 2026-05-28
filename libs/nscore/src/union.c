@@ -27,26 +27,39 @@ DEFINE_DBG_ASSERT (struct union_t, unchecked_union_t, s, {
 
 static err_t
 union_t_type_err (const char *msg, error *e)
-{ return error_causef (e, ERR_INTERP, "Union: %s", msg); }
+{
+  return error_causef (e, ERR_INTERP, "Union: %s", msg);
+}
 
 static err_t
 union_t_type_deser (const char *msg, error *e)
-{ return error_causef (e, ERR_CORRUPT, "Union: %s", msg); }
+{
+  return error_causef (e, ERR_CORRUPT, "Union: %s", msg);
+}
 
 static err_t
 union_t_validate_shallow (const struct union_t *s, error *e)
 {
   DBG_ASSERT (unchecked_union_t, s);
 
-  if (s->len == 0) { return union_t_type_err ("Keys length must be > 0", e); }
+  if (s->len == 0)
+  {
+    return union_t_type_err ("Keys length must be > 0", e);
+  }
 
   for (u32 i = 0; i < s->len; ++i)
   {
-    if (s->keys[i].len == 0) { return union_t_type_err ("Key length must be > 0", e); }
+    if (s->keys[i].len == 0)
+    {
+      return union_t_type_err ("Key length must be > 0", e);
+    }
     ASSERT (s->keys[i].data);
   }
 
-  if (!strings_all_unique (s->keys, s->len)) { return union_t_type_err ("Duplicate keys", e); }
+  if (!strings_all_unique (s->keys, s->len))
+  {
+    return union_t_type_err ("Duplicate keys", e);
+  }
 
   return SUCCESS;
 }
@@ -57,19 +70,43 @@ DEFINE_DBG_ASSERT (struct union_t, valid_union_t, s, {
 })
 
 err_t
-union_t_create (struct union_t *dest, struct kvt_list list, struct chunk_alloc *dalloc, error *e)
+union_t_create (
+    struct union_t     *dest,
+    struct kvt_list     list,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
 {
-  if (list.len == 0) { return union_t_type_err ("union must have greater than 0 keys", e); }
+  if (list.len == 0)
+  {
+    return union_t_type_err ("union must have greater than 0 keys", e);
+  }
 
   // Copy stuff over
   if (dalloc)
   {
     dest->len  = list.len;
-    dest->keys = chunk_alloc_move_mem (dalloc, list.keys, list.len * sizeof *dest->keys, e);
-    if (dest->keys == NULL) { return error_trace (e); }
+    dest->keys = chunk_alloc_move_mem (
+        dalloc,
+        list.keys,
+        list.len * sizeof *dest->keys,
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
 
-    dest->types = chunk_alloc_move_mem (dalloc, list.types, list.len * sizeof (struct type *), e);
-    if (dest->keys == NULL) { return error_trace (e); }
+    dest->types = chunk_alloc_move_mem (
+        dalloc,
+        list.types,
+        list.len * sizeof (struct type *),
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
   }
 
   // Don't copy
@@ -111,12 +148,18 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
   int   n;
 
   n = snprintf (out, avail, "union { ");
-  if (n < 0) { return n; }
+  if (n < 0)
+  {
+    return n;
+  }
   len += n;
   if (out)
   {
     out += n;
-    if ((u32)n < avail) { avail -= n; }
+    if ((u32)n < avail)
+    {
+      avail -= n;
+    }
     else
     {
       avail = 0;
@@ -127,12 +170,18 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
   {
     struct string key = st->keys[i];
     n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
-    if (n < 0) { return n; }
+    if (n < 0)
+    {
+      return n;
+    }
     len += n;
     if (out)
     {
       out += n;
-      if ((u32)n < avail) { avail -= n; }
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
       else
       {
         avail = 0;
@@ -140,12 +189,18 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
     }
 
     n = type_snprintf (out, avail, st->types[i]);
-    if (n < 0) { return n; }
+    if (n < 0)
+    {
+      return n;
+    }
     len += n;
     if (out)
     {
       out += n;
-      if ((u32)n < avail) { avail -= n; }
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
       else
       {
         avail = 0;
@@ -155,12 +210,18 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
     if (i + 1 < st->len)
     {
       n = snprintf (out, avail, ", ");
-      if (n < 0) { return n; }
+      if (n < 0)
+      {
+        return n;
+      }
       len += n;
       if (out)
       {
         out += n;
-        if ((u32)n < avail) { avail -= n; }
+        if ((u32)n < avail)
+        {
+          avail -= n;
+        }
         else
         {
           avail = 0;
@@ -170,7 +231,10 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
   }
 
   n = snprintf (out, avail, " }");
-  if (n < 0) { return n; }
+  if (n < 0)
+  {
+    return n;
+  }
   len += n;
 
   return len;
@@ -238,7 +302,10 @@ union_t_byte_size (const struct union_t *t)
   for (u32 i = 0; i < t->len; ++i)
   {
     u32 next = type_byte_size (t->types[i]);
-    if (next > ret) { ret = next; }
+    if (next > ret)
+    {
+      ret = next;
+    }
   }
 
   return ret;
@@ -375,7 +442,7 @@ union_t_serialize (struct serializer *dest, const struct union_t *src)
   {
     // (KLEN
     struct string next = src->keys[i];
-    ret                = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
+    ret = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
     ASSERT (ret);
 
     // KEY)
@@ -471,31 +538,58 @@ union_t_deserialize (
 
   // LEN
   u16 len;
-  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src)) { goto early_termination; }
+  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src))
+  {
+    goto early_termination;
+  }
 
   for (u32 i = 0; i < len; ++i)
   {
     u16 klen;
-    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src)) { goto early_termination; }
+    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src))
+    {
+      goto early_termination;
+    }
 
     struct string key = {
         .len  = klen,
         .data = chunk_malloc (a, klen, 1, e),
     };
-    if (key.data == NULL) { goto theend; }
+    if (key.data == NULL)
+    {
+      goto theend;
+    }
 
-    if (!dsrlizr_read ((u8 *)key.data, key.len, src)) { goto early_termination; }
+    if (!dsrlizr_read ((u8 *)key.data, key.len, src))
+    {
+      goto early_termination;
+    }
 
     struct type *t = type_deserialize (src, a, e);
-    if (t == NULL) { goto theend; }
+    if (t == NULL)
+    {
+      goto theend;
+    }
 
-    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS)) { goto theend; }
-    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS)) { goto theend; }
+    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS))
+    {
+      goto theend;
+    }
+    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS))
+    {
+      goto theend;
+    }
   }
 
   struct kvt_list list;
-  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS)) { goto theend; }
-  if (unlikely ((union_t_create (dest, list, NULL, e)) < SUCCESS)) { goto theend; }
+  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS))
+  {
+    goto theend;
+  }
+  if (unlikely ((union_t_create (dest, list, NULL, e)) < SUCCESS))
+  {
+    goto theend;
+  }
 
 theend:
   chunk_alloc_free_all (&temp);
@@ -565,10 +659,11 @@ TEST (union_t_deserialize_green_path)
 #ifndef NTEST
 TEST (union_t_deserialize_red_path)
 {
-  u8  data[] = {0,   0,   0,   0,   'f',        'o',        'o',    (u8)T_PRIM, (u8)U32,
-                0,   0,   'f', 'o', 'o',        (u8)T_PRIM, (u8)U8, 0,          0,
-                'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,      0,          'b',
-                'a', 'z', 'b', 'i', (u8)T_PRIM, (u8)CF128};
+  u8  data[] = {0,          0,          0,       0,          'f',      'o', 'o',
+                (u8)T_PRIM, (u8)U32,    0,       0,          'f',      'o', 'o',
+                (u8)T_PRIM, (u8)U8,     0,       0,          'b',      'a', 'r',
+                'o',        (u8)T_PRIM, (u8)U16, 0,          0,        'b', 'a',
+                'z',        'b',        'i',     (u8)T_PRIM, (u8)CF128};
   u16 len    = 4;
   u16 l0     = 3;
   u16 l2     = 3;
@@ -594,23 +689,39 @@ TEST (union_t_deserialize_red_path)
 #endif
 
 err_t
-union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, error *e)
+union_t_random (
+    struct union_t     *un,
+    struct chunk_alloc *alloc,
+    u32                 depth,
+    error              *e
+)
 {
   ASSERT (un);
 
   un->len = (u16)randu32r (1, 5);
 
-  un->keys = (struct string *)chunk_malloc (alloc, un->len, sizeof (struct string), e);
-  if (!un->keys) { return error_trace (e); }
+  un->keys =
+      (struct string *)chunk_malloc (alloc, un->len, sizeof (struct string), e);
+  if (!un->keys)
+  {
+    return error_trace (e);
+  }
 
-  un->types = (struct type **)chunk_malloc (alloc, un->len, sizeof (struct type *), e);
-  if (!un->types) { return error_trace (e); }
+  un->types =
+      (struct type **)chunk_malloc (alloc, un->len, sizeof (struct type *), e);
+  if (!un->types)
+  {
+    return error_trace (e);
+  }
 
   for (u16 i = 0; i < un->len; ++i)
   {
     WRAP (rand_varname (&un->keys[i], alloc, 5, 11, e));
     un->types[i] = type_random (alloc, depth - 1, e);
-    if (un->types[i] == NULL) { return error_trace (e); }
+    if (un->types[i] == NULL)
+    {
+      return error_trace (e);
+    }
   }
 
   return SUCCESS;
@@ -619,12 +730,21 @@ union_t_random (struct union_t *un, struct chunk_alloc *alloc, u32 depth, error 
 bool
 union_t_equal (const struct union_t *left, const struct union_t *right)
 {
-  if (left->len != right->len) { return false; }
+  if (left->len != right->len)
+  {
+    return false;
+  }
 
   for (u32 i = 0; i < left->len; ++i)
   {
-    if (!string_equal (left->keys[i], right->keys[i])) { return false; }
-    if (!type_equal (left->types[i], right->types[i])) { return false; }
+    if (!string_equal (left->keys[i], right->keys[i]))
+    {
+      return false;
+    }
+    if (!type_equal (left->types[i], right->types[i]))
+    {
+      return false;
+    }
   }
 
   return true;
@@ -635,7 +755,10 @@ union_t_resolve_key (struct union_t *t, struct string key, error *e)
 {
   for (u32 i = 0; i < t->len; ++i)
   {
-    if (string_equal (t->keys[i], key)) { return t->types[i]; }
+    if (string_equal (t->keys[i], key))
+    {
+      return t->types[i];
+    }
   }
 
   return NULL;

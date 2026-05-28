@@ -278,7 +278,10 @@ HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
     // Check for key
     if (ht->elems[_i].data.key == key)
     {
-      if (dest) { *dest = ht->elems[_i].data; }
+      if (dest)
+      {
+        *dest = ht->elems[_i].data;
+      }
       break;
     }
   }
@@ -322,7 +325,10 @@ HT_COUNT (HASH_TABLE_T *ht)
 
   for (u32 i = 0; i < ht->cap; ++i)
   {
-    if (ht->elems[i].present) { ret++; }
+    if (ht->elems[i].present)
+    {
+      ret++;
+    }
   }
 
   latch_unlock (&ht->l);
@@ -452,7 +458,10 @@ HT_INSERT (HASH_TABLE_T *ht, VTYPE value)
     }
 
     // Compare values for duplicates
-    if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value)) { return HTIR_EXISTS; }
+    if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value))
+    {
+      return HTIR_EXISTS;
+    }
   }
 
   return HTIR_FULL;
@@ -480,15 +489,24 @@ HT_GET (const HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
     u32 _i = (hash + i) % ht->cap;
 
     // If not present, return
-    if (!ht->elems[_i].present) { return HTAR_DOESNT_EXIST; }
+    if (!ht->elems[_i].present)
+    {
+      return HTAR_DOESNT_EXIST;
+    }
 
     // Short cut - DIB invariant is broken
-    if (ht->elems[_i].dib < dibn) { return HTAR_DOESNT_EXIST; }
+    if (ht->elems[_i].dib < dibn)
+    {
+      return HTAR_DOESNT_EXIST;
+    }
 
     // Check for value match
     if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value))
     {
-      if (dest) { *dest = ht->elems[_i].value; }
+      if (dest)
+      {
+        *dest = ht->elems[_i].value;
+      }
       return HTAR_SUCCESS;
     }
   }
@@ -519,15 +537,24 @@ HT_DELETE (HASH_TABLE_T *ht, VTYPE *dest, VTYPE value)
     u32 _i = (hash + i) % ht->cap;
 
     // If not present, return
-    if (!ht->elems[_i].present) { return HTAR_DOESNT_EXIST; }
+    if (!ht->elems[_i].present)
+    {
+      return HTAR_DOESNT_EXIST;
+    }
 
     // Short cut - DIB invariant is broken
-    if (ht->elems[_i].dib < dibn) { return HTAR_DOESNT_EXIST; }
+    if (ht->elems[_i].dib < dibn)
+    {
+      return HTAR_DOESNT_EXIST;
+    }
 
     // Check for value match
     if (ht->elems[_i].hash == hash && CMP_FUNC (ht->elems[_i].value, value))
     {
-      if (dest) { *dest = ht->elems[_i].value; }
+      if (dest)
+      {
+        *dest = ht->elems[_i].value;
+      }
       break;
     }
   }

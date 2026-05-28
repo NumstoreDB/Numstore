@@ -33,7 +33,9 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
     spgno page_lsn = 0;
 
     // Can only save valid pages
-    ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL));
+    ASSERT (
+        !page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL)
+    );
 
     h->pgr->flags |= PW_DIRTY;
 

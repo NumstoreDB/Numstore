@@ -49,9 +49,15 @@ TEST (latch)
 
   i_thread threads[10];
 
-  for (u32 i = 0; i < 10; ++i) { i_thread_create (&threads[i], data_thread, &d, &e); }
+  for (u32 i = 0; i < 10; ++i)
+  {
+    i_thread_create (&threads[i], data_thread, &d, &e);
+  }
 
-  for (u32 i = 0; i < 10; ++i) { i_thread_join (&threads[i], &e); }
+  for (u32 i = 0; i < 10; ++i)
+  {
+    i_thread_join (&threads[i], &e);
+  }
 
   test_assert_int_equal (d.value, 10 * 1000);
 }

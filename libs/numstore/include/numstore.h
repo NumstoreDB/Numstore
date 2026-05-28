@@ -14,111 +14,71 @@
 
 // AUTO GENERATED USING CMAKE - DO NOT MODIFY
 
-// clang-format off
 #pragma once
 
-#include <stdint.h>
+#include "numstore/compile_config.h"
+
 #include <inttypes.h>
+#include <stdint.h>
 
-////////////////////////////////////////////////////////////
-// VERSION
+//////////////////////////////////////////////////
+/// Types
 
-#define NS_VERSION_MAJOR 1
-#define NS_VERSION_MINOR 1
-#define NS_VERSION_PATCH 0
-#define NS_VERSION_STRING "1.1.0"
-
-////////////////////////////////////////////////////////////
-// TUNING
-
-#define PAGE_SIZE       4096
-#define MEMORY_PAGE_LEN 4096
-#define WAL_BUFFER_CAP  1048576
-
-////////////////////////////////////////////////////////////
-// CPU
-
-#define NS_CPU_COUNT 8
-
-////////////////////////////////////////////////////////////
-// Data Type Sizes
-
-typedef uint32_t t_size; // Represents the size of a single type in bytes
-typedef int32_t st_size; // Signed t_size
-typedef uint32_t p_size; // To index inside a page
-typedef int32_t sp_size; // Signed p_size
-typedef uint64_t b_size; // Bytes size to index into a contiguous rope bytes
-typedef int64_t sb_size; // Signed b_size
-typedef uint64_t pgno;   // Page number
-typedef int64_t spgno;   // Signed page number
-typedef uint64_t txid;   // Transaction id
-typedef int64_t stxid;   // Signed transaction id
-typedef int64_t slsn;    // Wall index (often called LSN)
-typedef uint64_t lsn;    // Wall index (often called LSN)
-typedef uint8_t pgh;     // Page header
-typedef uint8_t wlh;     // WAL header
-
-#define PGNO_NULL U64_MAX
-#define LSN_NULL  U64_MAX
-#define WLH_NULL  U8_MAX
-
-#define PRt_size  PRIu32
-#define PRst_size PRId32
-#define PRp_size  PRIu32
-#define PRsp_size PRId32
-#define PRb_size  PRIu64
-#define PRsb_size PRId64
-#define PRpgno    PRIu64
-#define PRspgno   PRId64
-#define PRtxid    PRIu64
-#define PRstxid   PRId64
-#define PRlsn     PRIu64
-#define PRslsn    PRId64
-#define PRpgh     PRIu8
-#define PRwlh     PRIu8
-
-// Magic constants
-#define NS_IGNORE INT64_MAX
-
-typedef struct nsdb nsdb_t;
+typedef struct nsdb     nsdb_t;
 typedef struct nsdb_var nsdb_var_t;
 
-// Lifecycle
-nsdb_t *nsdb_open (const char *path);
-int     nsdb_cleanup (const char *path);
-nsdb_t *nsdb_new_context (nsdb_t *ns);
-int     nsdb_close (nsdb_t *ns);
-
-// Simple api
-const char *nsdb_strerror (nsdb_t *ns);
-int         nsdb_perror (nsdb_t *ns, const char *prefix);
-int         nsdb_delete (nsdb_t *ns, const char *vname);
-int         nsdb_create (nsdb_t *ns, const char *name, const char *type);
-int         nsdb_validate(nsdb_t *ns);
-
-// Transaction Support
-int nsdb_begin (nsdb_t *ns);
-int nsdb_commit (nsdb_t *ns);
-int nsdb_rollback (nsdb_t *ns);
-
-// Primary API
-sb_size nsdb_len (nsdb_t *ns, const char *vname);
-
-// In array notation [a:b:c] 
+// In array notation [a:b:c]
 #define STOP_PRESENT  (1 << 0) // [:c]
 #define STEP_PRESENT  (1 << 1) // [:b:]
 #define START_PRESENT (1 << 2) // [a:]
 #define COLON_PRESENT (1 << 3) // [:]
-                              
-nsdb_var_t* nsdb_get(nsdb_t* db, const char* name);
-void nsdb_free(nsdb_var_t* var);
+
+//////////////////////////////////////////////////
+/// Lifecycle and db tools
+
+nsdb_t *nsdb_open (const char *path);
+int     nsdb_cleanup (const char *path);
+nsdb_t *nsdb_new_context (nsdb_t *ns);
+int     nsdb_close (nsdb_t *ns);
+int     nsdb_validate (nsdb_t *ns);
+
+//////////////////////////////////////////////////
+/// Error management
+
+const char *nsdb_strerror (nsdb_t *ns);
+int         nsdb_perror (nsdb_t *ns, const char *prefix);
+
+//////////////////////////////////////////////////
+/// Variable API
+
+int     nsdb_delete (nsdb_t *ns, const char *vname);
+int     nsdb_create (nsdb_t *ns, const char *name, const char *type);
+sb_size nsdb_len (nsdb_t *ns, const char *vname);
+
+//////////////////////////////////////////////////
+/// Transactions
+
+int nsdb_begin (nsdb_t *ns);
+int nsdb_commit (nsdb_t *ns);
+int nsdb_rollback (nsdb_t *ns);
+
+//////////////////////////////////////////////////
+/// Fetch a variable reference handle
+
+nsdb_var_t *nsdb_get (nsdb_t *db, const char *name);
+int         nsdb_get_if_exists (nsdb_t *db, nsdb_var_t **var, const char *name);
+void        nsdb_free (nsdb_var_t *var);
+
+//////////////////////////////////////////////////
+/// Core Array Operations
 
 sb_size nsdb_insert (
-    nsdb_t     *ns, 
-    nsdb_var_t *var, 
-    const void *src, 
-    sb_size     ofst, 
-    b_size      slen);
+    nsdb_t     *ns,
+    nsdb_var_t *var,
+    const void *src,
+    sb_size     ofst,
+    b_size      slen
+);
 
 sb_size nsdb_write (
     nsdb_t     *ns,
@@ -127,7 +87,8 @@ sb_size nsdb_write (
     sb_size     start,
     sb_size     step,
     sb_size     stop,
-    int         flags);
+    int         flags
+);
 
 sb_size nsdb_read (
     nsdb_t     *ns,
@@ -136,7 +97,8 @@ sb_size nsdb_read (
     sb_size     start,
     sb_size     step,
     sb_size     stop,
-    int         flags);
+    int         flags
+);
 
 sb_size nsdb_remove (
     nsdb_t     *ns,
@@ -145,9 +107,46 @@ sb_size nsdb_remove (
     sb_size     start,
     sb_size     step,
     sb_size     stop,
-    int         flags);
+    int         flags
+);
 
-sb_size nsdb_vinsert (nsdb_t *ns, const char *name, const void *src, sb_size ofst, b_size slen);
-sb_size nsdb_vwrite (nsdb_t *ns, const char *name, const void *src, sb_size start, sb_size step, sb_size stop, int flags);
-sb_size nsdb_vread (nsdb_t *ns, const char *name, void *dest, sb_size start, sb_size step, sb_size stop, int flags);
-sb_size nsdb_vremove (nsdb_t *ns, const char *name, void *dest, sb_size start, sb_size step, sb_size stop, int flags);
+//////////////////////////////////////////////////
+/// Do the same operations on just a variable name
+
+sb_size nsdb_vinsert (
+    nsdb_t     *ns,
+    const char *name,
+    const void *src,
+    sb_size     ofst,
+    b_size      slen
+);
+
+sb_size nsdb_vwrite (
+    nsdb_t     *ns,
+    const char *name,
+    const void *src,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+);
+
+sb_size nsdb_vread (
+    nsdb_t     *ns,
+    const char *name,
+    void       *dest,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+);
+
+sb_size nsdb_vremove (
+    nsdb_t     *ns,
+    const char *name,
+    void       *dest,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+);

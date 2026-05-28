@@ -45,7 +45,10 @@ i_cond_wait (i_cond *c, i_mutex *m)
 
   if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE))
   {
-    i_log_error ("cond_wait: SleepConditionVariableCS failed: %lu\n", GetLastError ());
+    i_log_error (
+        "cond_wait: SleepConditionVariableCS failed: %lu\n",
+        GetLastError ()
+    );
     UNREACHABLE ();
   }
 }
@@ -60,7 +63,10 @@ i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
     DWORD err = GetLastError ();
     if (err != ERROR_TIMEOUT)
     {
-      i_log_error ("cond_timed_wait: SleepConditionVariableCS failed: %lu\n", err);
+      i_log_error (
+          "cond_timed_wait: SleepConditionVariableCS failed: %lu\n",
+          err
+      );
       UNREACHABLE ();
     }
   }

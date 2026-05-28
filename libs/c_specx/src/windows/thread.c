@@ -46,12 +46,20 @@ thread_trampoline (LPVOID param)
 // Thread
 
 err_t
-i_thread_create (i_thread *dest, void *(*func) (void *), void *context, error *e)
+i_thread_create (
+    i_thread *dest,
+    void *(*func) (void *),
+    void  *context,
+    error *e
+)
 {
   ASSERT (dest);
 
   thread_trampoline_args *args = HeapAlloc (GetProcessHeap (), 0, sizeof *args);
-  if (!args) { return error_causef (e, ERR_NOMEM, "thread_create: HeapAlloc failed"); }
+  if (!args)
+  {
+    return error_causef (e, ERR_NOMEM, "thread_create: HeapAlloc failed");
+  }
 
   args->func = func;
   args->arg  = context;
@@ -116,7 +124,10 @@ i_thread_cancel (i_thread *t)
   // hold no locks at cancel points, so this is safe in practice.
   if (!TerminateThread (t->handle, 0))
   {
-    i_log_error ("thread_cancel: TerminateThread failed: %lu\n", GetLastError ());
+    i_log_error (
+        "thread_cancel: TerminateThread failed: %lu\n",
+        GetLastError ()
+    );
     UNREACHABLE ();
   }
 

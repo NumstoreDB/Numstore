@@ -13,9 +13,9 @@
 /// limitations under the License.
 
 // NOTE: This header is a re-includable template. It must be included after
-// defining KTYPE (for the first template variant) or HASH_FUNC (for the second).
-// It does NOT have a traditional include guard - it is designed to be included
-// multiple times with different macro definitions.
+// defining KTYPE (for the first template variant) or HASH_FUNC (for the
+// second). It does NOT have a traditional include guard - it is designed to be
+// included multiple times with different macro definitions.
 
 #include <c_specx/ht_models.h>
 #include <c_specx/latch.h>

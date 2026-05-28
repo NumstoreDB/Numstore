@@ -23,7 +23,11 @@
 #include <string.h>
 
 static err_t
-wal_write_begin (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_begin (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_BEGIN);
 
@@ -32,14 +36,20 @@ wal_write_begin (const struct wal *w, const struct wal_rec_hdr_write *r, error *
   u32       checksum = checksum_init ();
   const wlh t        = r->type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_commit (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_commit (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_COMMIT);
 
@@ -48,8 +58,12 @@ wal_write_commit (const struct wal *w, const struct wal_rec_hdr_write *r, error 
   u32       checksum = checksum_init ();
   const wlh t        = r->type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->commit.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->commit.prev, sizeof (lsn), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->commit.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->commit.prev, sizeof (lsn), e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
@@ -73,7 +87,11 @@ wal_write_end (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
 }
 
 static err_t
-wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_physical_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (w->ostream);
 
@@ -82,18 +100,36 @@ wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *
   const wlh ut       = (wlh)r->update.type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.phys.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, r->update.phys.undo, PAGE_SIZE, e));
-  WRAP (walos_write_all (w->ostream, &checksum, r->update.phys.redo, PAGE_SIZE, e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.phys.pg,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, r->update.phys.undo, PAGE_SIZE, e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, r->update.phys.redo, PAGE_SIZE, e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_fsm_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (w->ostream);
 
@@ -102,19 +138,51 @@ wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, er
   const wlh ut       = (wlh)r->update.type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.bit, sizeof (p_size), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.undo, sizeof (u8), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.redo, sizeof (u8), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.pg,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.bit,
+      sizeof (p_size),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.undo,
+      sizeof (u8),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.redo,
+      sizeof (u8),
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_file_extend_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (w->ostream);
 
@@ -123,17 +191,37 @@ wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_writ
   const wlh ut       = (wlh)r->update.type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fext.undo, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fext.redo, sizeof (pgno), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fext.undo,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fext.redo,
+      sizeof (pgno),
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_physical_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_CLR);
 
@@ -146,16 +234,30 @@ wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, 
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.phys.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.undo_next, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, r->clr.phys.redo, PAGE_SIZE, e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.phys.pg, sizeof (pgno), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, r->clr.phys.redo, PAGE_SIZE, e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_fsm_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_CLR);
 
@@ -168,17 +270,37 @@ wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.fsm.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.undo_next, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.fsm.bit, sizeof (p_size), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.fsm.redo, sizeof (u8), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.fsm.pg, sizeof (pgno), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.fsm.bit,
+      sizeof (p_size),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.fsm.redo, sizeof (u8), e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_dummy_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_CLR);
 
@@ -191,7 +313,13 @@ wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, err
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.undo_next, sizeof (lsn), e));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;

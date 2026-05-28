@@ -40,7 +40,9 @@ irwr_swmt_assert (int result)
 
 static struct block_array *
 active_db (struct irwr_swarm_test *meta)
-{ return meta->in_txn ? meta->working : meta->committed; }
+{
+  return meta->in_txn ? meta->working : meta->committed;
+}
 
 static void
 irwr_swmt_random_slice (int total, int *ofst, int *stride, int *len)
@@ -76,7 +78,10 @@ static void
 irwr_swmt_set_random_enabled (struct irwr_swarm_test *meta)
 {
   int mask = rand () % ((1 << IRWR_AT_LEN) - 1) + 1;
-  for (int i = 0; i < IRWR_AT_LEN; ++i) { meta->enabled[i] = (mask >> i) & 1; }
+  for (int i = 0; i < IRWR_AT_LEN; ++i)
+  {
+    meta->enabled[i] = (mask >> i) & 1;
+  }
 }
 
 /**
@@ -168,11 +173,20 @@ irwr_swmt_open (
 void
 irwr_swmt_close (struct irwr_swarm_test *meta)
 {
-  if (meta->in_txn) { irwr_swmt_commit_txn (meta); }
+  if (meta->in_txn)
+  {
+    irwr_swmt_commit_txn (meta);
+  }
   irwr_swmt_assert (nsdb_close (meta->db) == 0);
 
-  if (meta->committed) { block_array_free (meta->committed); }
-  if (meta->working) { block_array_free (meta->working); }
+  if (meta->committed)
+  {
+    block_array_free (meta->committed);
+  }
+  if (meta->working)
+  {
+    block_array_free (meta->working);
+  }
   free (meta);
 }
 
@@ -187,7 +201,10 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
 
   /* Count allowed actions */
   int len = 0;
-  for (int i = 0; i < IRWR_AT_LEN; ++i) { len += meta->allowed[i]; }
+  for (int i = 0; i < IRWR_AT_LEN; ++i)
+  {
+    len += meta->allowed[i];
+  }
 
   /* If the irwr_swarm has masked everything off, re-roll and try again next
    * step rather than divide by zero. */
@@ -206,7 +223,10 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
   {
     if (meta->allowed[index])
     {
-      if (choice == next) { break; }
+      if (choice == next)
+      {
+        break;
+      }
       else
       {
         choice++;
@@ -324,14 +344,25 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   int      blen = len * (int)meta->esize;
   uint8_t *data = malloc ((size_t)blen);
   irwr_swmt_assert (data != NULL);
-  for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
+  for (int i = 0; i < blen; ++i)
+  {
+    data[i] = (uint8_t)rand ();
+  }
 
   /* DB side */
-  irwr_swmt_assert (nsdb_vinsert (meta->db, meta->varname, data, ofst, len) == len);
+  irwr_swmt_assert (
+      nsdb_vinsert (meta->db, meta->varname, data, ofst, len) == len
+  );
 
   /* Reference side */
   irwr_swmt_assert (
-      block_array_insert (active_db (meta), (u32)(ofst * (int)meta->esize), data, (u32)blen, NULL)
+      block_array_insert (
+          active_db (meta),
+          (u32)(ofst * (int)meta->esize),
+          data,
+          (u32)blen,
+          NULL
+      )
       == 0
   );
 
@@ -353,12 +384,22 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
 
   /* DB side */
   irwr_swmt_assert (
-      nsdb_vremove (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_vremove (
+          meta->db,
+          meta->varname,
+          db_buf,
+          ofst,
+          stride,
+          ofst + len * stride,
+          0xFF
+      )
+      == len
   );
 
   /* Reference side */
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got = block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
+  i64           got =
+      block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
   irwr_swmt_assert (got == (i64)len);
 
   /* Cross-check */
@@ -382,11 +423,20 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   irwr_swmt_assert (db_buf && ref_buf);
 
   irwr_swmt_assert (
-      nsdb_vread (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_vread (
+          meta->db,
+          meta->varname,
+          db_buf,
+          ofst,
+          stride,
+          ofst + len * stride,
+          0xFF
+      )
+      == len
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64           got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
+  u64 got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
   irwr_swmt_assert (got == (u64)len);
 
   irwr_swmt_assert (memcmp (db_buf, ref_buf, buf_sz) == 0);
@@ -404,14 +454,26 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   int      blen = len * (int)meta->esize;
   uint8_t *data = malloc ((size_t)blen);
   irwr_swmt_assert (data != NULL);
-  for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
+  for (int i = 0; i < blen; ++i)
+  {
+    data[i] = (uint8_t)rand ();
+  }
 
   irwr_swmt_assert (
-      nsdb_vwrite (meta->db, meta->varname, data, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_vwrite (
+          meta->db,
+          meta->varname,
+          data,
+          ofst,
+          stride,
+          ofst + len * stride,
+          0xFF
+      )
+      == len
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64           got = block_array_write (active_db (meta), str, meta->esize, data);
+  u64 got = block_array_write (active_db (meta), str, meta->esize, data);
   irwr_swmt_assert (got == (u64)len);
 
   free (data);

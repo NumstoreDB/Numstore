@@ -17,7 +17,10 @@
 bool
 token_equal (const struct token *left, const struct token *right)
 {
-  if (left->type != right->type) { return false; }
+  if (left->type != right->type)
+  {
+    return false;
+  }
 
   switch (left->type)
   {

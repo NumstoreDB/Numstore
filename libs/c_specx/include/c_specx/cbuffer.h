@@ -58,11 +58,13 @@ struct cbuffer
 
 /// @brief Creates a cbuffer over an existing array, treating it as full.
 /// @param data  Pointer to the backing array (already filled)
-#define cbuffer_create_full_from(data) cbuffer_create_with (data, sizeof data, sizeof data)
+#define cbuffer_create_full_from(data) \
+  cbuffer_create_with (data, sizeof data, sizeof data)
 
 /// @brief Creates a cbuffer from a C string, treating the string bytes as data.
 /// @param cstr  Null-terminated string to wrap (length is strlen(cstr))
-#define cbuffer_create_from_cstr(cstr) cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
+#define cbuffer_create_from_cstr(cstr) \
+  cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
 
 /// @brief Creates an empty cbuffer over a caller-supplied array.
 /// @param data  Pointer to the backing array
@@ -88,8 +90,14 @@ HEADER_FUNC u32
 cbuffer_len (const struct cbuffer *b)
 {
   u32 len;
-  if (b->isfull) { len = b->cap; }
-  else if (b->head >= b->tail) { len = b->head - b->tail; }
+  if (b->isfull)
+  {
+    len = b->cap;
+  }
+  else if (b->head >= b->tail)
+  {
+    len = b->head - b->tail;
+  }
   else
   {
     len = b->cap - (b->tail - b->head);
@@ -101,7 +109,10 @@ DEFINE_DBG_ASSERT (struct cbuffer, cbuffer, b, {
   ASSERT (b);
   ASSERT (b->cap > 0);
   ASSERT (b->data);
-  if (b->isfull) { ASSERT (b->tail == b->head); }
+  if (b->isfull)
+  {
+    ASSERT (b->tail == b->head);
+  }
   ASSERT (cbuffer_len (b) <= b->cap);
 })
 
@@ -204,24 +215,56 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
 ////////////////////////////////////////////////////////////
 // CBuffer to CBuffer
 
-u32 cbuffer_cbuffer_move (struct cbuffer *dest, u32 size, u32 n, struct cbuffer *src);
-u32 cbuffer_cbuffer_copy (struct cbuffer *dest, u32 size, u32 n, const struct cbuffer *src);
+u32 cbuffer_cbuffer_move (
+    struct cbuffer *dest,
+    u32             size,
+    u32             n,
+    struct cbuffer *src
+);
+u32 cbuffer_cbuffer_copy (
+    struct cbuffer       *dest,
+    u32                   size,
+    u32                   n,
+    const struct cbuffer *src
+);
 
-#define cbuffer_cbuffer_move_max(dest, src) cbuffer_cbuffer_move (dest, 1, cbuffer_len (src), src)
-#define cbuffer_cbuffer_copy_max(dest, src) cbuffer_cbuffer_copy (dest, 1, cbuffer_len (src), src)
+#define cbuffer_cbuffer_move_max(dest, src) \
+  cbuffer_cbuffer_move (dest, 1, cbuffer_len (src), src)
+#define cbuffer_cbuffer_copy_max(dest, src) \
+  cbuffer_cbuffer_copy (dest, 1, cbuffer_len (src), src)
 
 ////////////////////////////////////////////////////////////
 // IO Read / Write
 
-i32   cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, u32 len, error *e);
-err_t cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, u32 len, error *e);
-void  cbuffer_write_to_file_2 (struct cbuffer *b, u32 nwritten);
-i32   cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
+i32 cbuffer_write_to_file_1 (
+    i_file               *dest,
+    const struct cbuffer *b,
+    u32                   len,
+    error                *e
+);
+err_t cbuffer_write_to_file_1_expect (
+    i_file               *dest,
+    const struct cbuffer *b,
+    u32                   len,
+    error                *e
+);
+void cbuffer_write_to_file_2 (struct cbuffer *b, u32 nwritten);
+i32  cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
 
-i32   cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, u32 len, error *e);
-err_t cbuffer_read_from_file_1_expect (i_file *src, const struct cbuffer *b, u32 len, error *e);
-void  cbuffer_read_from_file_2 (struct cbuffer *b, u32 nread);
-i32   cbuffer_read_from_file (i_file *src, struct cbuffer *b, u32 len, error *e);
+i32 cbuffer_read_from_file_1 (
+    i_file               *src,
+    const struct cbuffer *b,
+    u32                   len,
+    error                *e
+);
+err_t cbuffer_read_from_file_1_expect (
+    i_file               *src,
+    const struct cbuffer *b,
+    u32                   len,
+    error                *e
+);
+void cbuffer_read_from_file_2 (struct cbuffer *b, u32 nread);
+i32  cbuffer_read_from_file (i_file *src, struct cbuffer *b, u32 len, error *e);
 
 ////////////////////////////////////////////////////////////
 // Single Element Read / Write

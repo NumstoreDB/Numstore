@@ -46,12 +46,22 @@ i_cond_create (i_cond *c, error *e)
     {
       case EAGAIN:
       {
-        return error_causef (e, ERR_IO, "pthread_cond_init: %s", strerror (errno));
+        return error_causef (
+            e,
+            ERR_IO,
+            "pthread_cond_init: %s",
+            strerror (errno)
+        );
       }
 
       case ENOMEM:
       {
-        return error_causef (e, ERR_NOMEM, "pthread_cond_init: %s", strerror (errno));
+        return error_causef (
+            e,
+            ERR_NOMEM,
+            "pthread_cond_init: %s",
+            strerror (errno)
+        );
       }
 
       case EBUSY:

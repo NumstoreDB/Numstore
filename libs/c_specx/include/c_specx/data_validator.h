@@ -49,6 +49,12 @@ struct dvalidtr
  * @param e An error object to handle errors
  * @return Error result
  */
-err_t dvalidtr_random_test (struct dvalidtr *d, u32 size, u32 niters, u64 max_insert, error *e);
+err_t dvalidtr_random_test (
+    struct dvalidtr *d,
+    u32              size,
+    u32              niters,
+    u64              max_insert,
+    error           *e
+);
 
 #endif // C_SPECX_DATA_VALIDATOR_H

@@ -24,7 +24,9 @@ struct in_pair
 
 #define in_pair_from(_pg, _key) \
   (struct in_pair)              \
-  { .pg = (_pg), .key = (_key), }
+  {                             \
+    .pg = (_pg), .key = (_key), \
+  }
 
 #define in_pair_is_empty(o) (o.pg == PGNO_NULL)
 
@@ -37,7 +39,9 @@ struct three_in_pair
 
 #define in_pair_empty \
   (struct in_pair)    \
-  { .pg = PGNO_NULL }
+  {                   \
+    .pg = PGNO_NULL   \
+  }
 
 DEFINE_DBG_ASSERT (page, inner_node, i, { ASSERT (i); })
 
@@ -57,7 +61,8 @@ _Static_assert (
     "Inner Node: PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys"
 );
 
-#define IN_MAX_KEYS (p_size) ((PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
+#define IN_MAX_KEYS \
+  (p_size) ((PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
 #define IN_MIN_KEYS (IN_MAX_KEYS / 2)
 
 _Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
@@ -71,21 +76,27 @@ void   in_push_right_permissive (page *in, p_size amnt);
 void   in_push_left_permissive (page *in, p_size len);
 void   in_push_all_left (page *in);
 void   in_cut_left (page *in, p_size end);
-void   in_data_from_arrays (const struct in_data *dest, const pgno *pgs, const b_size *keys);
-void   in_set_data (page *p, struct in_data data);
+void   in_data_from_arrays (
+    const struct in_data *dest,
+    const pgno           *pgs,
+    const b_size         *keys
+);
+void           in_set_data (page *p, struct in_data data);
 struct in_data in_get_data (const page *p, struct in_pair nodes[IN_MAX_KEYS]);
 void           in_move_left (page *dest, page *src, p_size len);
 void           in_move_right (page *src, page *dest, p_size len);
-void           in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
-void           i_log_in (int level, const page *in);
-void           in_make_valid (page *in);
+void in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
+void i_log_in (int level, const page *in);
+void in_make_valid (page *in);
 
 ////////////////////////////////////////////////////////////
 // GETTERS
 
 HEADER_FUNC p_size
 in_get_len (const page *in)
-{ PAGE_SIMPLE_GET_IMPL (in, p_size, IN_NLEN_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (in, p_size, IN_NLEN_OFST);
+}
 
 HEADER_FUNC const void *
 in_get_backwards_keys_imut (const page *in)
@@ -98,7 +109,10 @@ in_get_backwards_keys_imut (const page *in)
     UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
   }
 
-  if (nbytes == 0) { return NULL; }
+  if (nbytes == 0)
+  {
+    return NULL;
+  }
 
   return &in->raw[PAGE_SIZE - nbytes];
 }
@@ -125,14 +139,19 @@ in_get_size (const page *in)
   b_size ret = 0;
   // TODO - (17) this could be cached
 
-  for (p_size i = 0; i < in_get_len (in); ++i) { ret += in_get_key (in, i); }
+  for (p_size i = 0; i < in_get_len (in); ++i)
+  {
+    ret += in_get_key (in, i);
+  }
 
   return ret;
 }
 
 HEADER_FUNC p_size
 in_get_avail (const page *in)
-{ return IN_MAX_KEYS - in_get_len (in); }
+{
+  return IN_MAX_KEYS - in_get_len (in);
+}
 
 HEADER_FUNC void *
 in_get_backwards_keys_mut (page *in)
@@ -154,11 +173,15 @@ in_get_backwards_keys_mut_limit (page *in)
 
 HEADER_FUNC void *
 in_get_leafs_mut (page *in)
-{ return &in->raw[IN_LEAF_OFST]; }
+{
+  return &in->raw[IN_LEAF_OFST];
+}
 
 HEADER_FUNC const void *
 in_get_leafs_imut (const page *in)
-{ return &in->raw[IN_LEAF_OFST]; }
+{
+  return &in->raw[IN_LEAF_OFST];
+}
 
 #define in_get_right_most_key(in) in_get_key (in, in_get_len (in) - 1)
 
@@ -178,11 +201,15 @@ in_get_leaf (const page *in, const p_size idx)
 
 HEADER_FUNC pgno
 in_get_next (const page *in)
-{ PAGE_SIMPLE_GET_IMPL (in, pgno, IN_NEXT_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (in, pgno, IN_NEXT_OFST);
+}
 
 HEADER_FUNC pgno
 in_get_prev (const page *in)
-{ PAGE_SIMPLE_GET_IMPL (in, pgno, IN_PREV_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (in, pgno, IN_PREV_OFST);
+}
 
 HEADER_FUNC bool
 in_is_root (const page *in)
@@ -206,7 +233,9 @@ in_is_root (const page *in)
 
 HEADER_FUNC void
 in_set_len (page *in, const p_size len)
-{ PAGE_SIMPLE_SET_IMPL (in, len, IN_NLEN_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (in, len, IN_NLEN_OFST);
+}
 
 HEADER_FUNC void
 in_set_leaf (page *in, const p_size idx, const pgno pg)
@@ -263,7 +292,12 @@ in_set_key_ignore_len (page *in, const p_size idx, const b_size key)
 }
 
 HEADER_FUNC void
-in_set_key_leaf_ignore_len (page *in, const p_size idx, const b_size key, const pgno pg)
+in_set_key_leaf_ignore_len (
+    page        *in,
+    const p_size idx,
+    const b_size key,
+    const pgno   pg
+)
 {
   in_set_key_ignore_len (in, idx, key);
   in_set_leaf_ignore_len (in, idx, pg);
@@ -271,17 +305,27 @@ in_set_key_leaf_ignore_len (page *in, const p_size idx, const b_size key, const 
 
 HEADER_FUNC void
 in_set_prev (page *in, const pgno prev)
-{ PAGE_SIMPLE_SET_IMPL (in, prev, IN_PREV_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (in, prev, IN_PREV_OFST);
+}
 
 HEADER_FUNC void
 in_set_next (page *in, const pgno next)
-{ PAGE_SIMPLE_SET_IMPL (in, next, IN_NEXT_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (in, next, IN_NEXT_OFST);
+}
 
 HEADER_FUNC void
 in_link (page *left, page *right)
 {
   const pgno lpg = left ? left->pg : PGNO_NULL;
   const pgno rpg = right ? right->pg : PGNO_NULL;
-  if (left) { in_set_next (left, rpg); }
-  if (right) { in_set_prev (right, lpg); }
+  if (left)
+  {
+    in_set_next (left, rpg);
+  }
+  if (right)
+  {
+    in_set_prev (right, lpg);
+  }
 }

@@ -31,18 +31,21 @@ _smfile_pinsert (
     error           *e
 )
 {
-  sb_size                            ret;                             // Return value
-  b_size                             ofst;                            // Resolved offset
-  struct stream                      _input;                          // Input stream
-  struct stream_ibuf_ctx             ctx;                             // Context for input stream
-  struct chunk_alloc                 temp;                            // Allocator for get operation
-  struct ns_var_get_or_create_params gparams;                         // Get or create operation
-  struct ns_insert_params            iparams;                         // Insert operation
-  struct ns_var_update_params        uparams;                         // Update operation
-  struct string                      vname = vname_or_default (name); // Variable name
+  sb_size                            ret;        // Return value
+  b_size                             ofst;       // Resolved offset
+  struct stream                      _input;     // Input stream
+  struct stream_ibuf_ctx             ctx;        // Context for input stream
+  struct chunk_alloc                 temp;       // Allocator for get operation
+  struct ns_var_get_or_create_params gparams;    // Get or create operation
+  struct ns_insert_params            iparams;    // Insert operation
+  struct ns_var_update_params        uparams;    // Update operation
+  struct string vname = vname_or_default (name); // Variable name
 
   // Parameter validation
-  if (slen == 0) { return 0; }
+  if (slen == 0)
+  {
+    return 0;
+  }
 
   chunk_alloc_create_default (&temp);
   stream_ibuf_init (&_input, &ctx, src, slen);
@@ -111,7 +114,13 @@ failed:
 }
 
 sb_size
-smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen)
+smfile_pinsert (
+    smfile_t   *_smf,
+    const char *name,
+    const void *src,
+    sb_size     bofst,
+    b_size      slen
+)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
 

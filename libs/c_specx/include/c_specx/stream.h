@@ -77,17 +77,20 @@ typedef void (*stream_close_fn) (void *ctx); // Implementation-defined context
 /// Vtable of operations backing a stream
 struct stream_ops
 {
-  stream_pull_fn  pull;  // Pull bytes out of the stream (may be NULL for write-only streams)
-  stream_push_fn  push;  // Push bytes into the stream (may be NULL for read-only streams)
+  stream_pull_fn
+      pull; // Pull bytes out of the stream (may be NULL for write-only streams)
+  stream_push_fn
+      push; // Push bytes into the stream (may be NULL for read-only streams)
   stream_close_fn close; // Release resources held by the stream (may be NULL)
 };
 
 /// A polymorphic byte-oriented I/O stream
 struct stream
 {
-  const struct stream_ops *ops;  // Vtable of stream operations
-  void                    *ctx;  // Opaque context passed to every vtable call
-  atomic_int               done; // Non-zero once the stream has no more data to produce or accept
+  const struct stream_ops *ops; // Vtable of stream operations
+  void                    *ctx; // Opaque context passed to every vtable call
+  atomic_int
+      done; // Non-zero once the stream has no more data to produce or accept
 };
 
 /// Initializes a stream with a given vtable and context
@@ -174,15 +177,17 @@ void stream_obuf_init (
 void stream_sink_init (struct stream *s); // Stream to initialize
 
 /// Callback type invoked on each element pushed into an opsink stream
-typedef void (*byte_op) (void *buffer); // Pointer to the element being processed
+typedef void (*byte_op) (
+    void *buffer
+); // Pointer to the element being processed
 
 /// Context for a stream that applies a callback to each element pushed into it
 struct stream_opsink_ctx
 {
-  byte_op op;   // Callback invoked on each complete element
-  void   *buf;  // Staging buffer used to accumulate one element before invoking op
-  u32     size; // Size of each element in bytes
-  u32     pos;  // Current write position within the staging buffer
+  byte_op op; // Callback invoked on each complete element
+  void *buf; // Staging buffer used to accumulate one element before invoking op
+  u32   size; // Size of each element in bytes
+  u32   pos;  // Current write position within the staging buffer
 };
 
 /// Initializes a stream that applies op to each complete element of size bytes

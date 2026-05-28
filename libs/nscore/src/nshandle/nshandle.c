@@ -23,7 +23,10 @@
 struct nshandle *
 nsh_remove_and_open (const char *name, error *e)
 {
-  if (pgr_delete_single_file ("test", e)) { return NULL; }
+  if (pgr_delete_single_file ("test", e))
+  {
+    return NULL;
+  }
   return nsh_open (name);
 }
 
@@ -31,7 +34,10 @@ int
 nsh_perror (struct nshandle *ns, const char *prefix)
 {
   const char *err = nsh_strerror (ns);
-  if (err) { return fprintf (stderr, "%s: %s\n", prefix, nsh_strerror (ns)); }
+  if (err)
+  {
+    return fprintf (stderr, "%s: %s\n", prefix, nsh_strerror (ns));
+  }
   else
   {
     return fprintf (stderr, "%s: success\n", prefix);
@@ -41,7 +47,10 @@ nsh_perror (struct nshandle *ns, const char *prefix)
 const char *
 nsh_strerror (struct nshandle *ns)
 {
-  if (ns->e.cause_code < 0) { return ns->e.cause_msg; }
+  if (ns->e.cause_code < 0)
+  {
+    return ns->e.cause_msg;
+  }
   else
   {
     return NULL;
@@ -82,7 +91,10 @@ struct nshandle *
 nsh_root_load (struct nshandle_root *ns, error *e)
 {
   struct nshandle *ret = i_malloc (1, sizeof *ret, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   ret->root        = ns;
   ret->is_auto_txn = 0;
@@ -130,6 +142,9 @@ nsh_auto_commit (struct nshandle *sm, error *e)
 void
 nsh_auto_rollback (struct nshandle *sm)
 {
-  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e)) { panic ("Failed to rollback"); }
+  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e))
+  {
+    panic ("Failed to rollback");
+  }
   sm->atx = NULL;
 }

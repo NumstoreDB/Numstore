@@ -31,10 +31,16 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
   while (true)
   {
     slsn undo_lsn = txnt_max_u_undo_lsn (ctx->txt);
-    if (undo_lsn < 0) { break; }
+    if (undo_lsn < 0)
+    {
+      break;
+    }
 
     struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, undo_lsn, e);
-    if (log_rec == NULL) { goto failed; }
+    if (log_rec == NULL)
+    {
+      goto failed;
+    }
 
     switch (log_rec->type)
     {
@@ -46,14 +52,24 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         if (wrh_is_undoable (log_rec))
         {
           page_h ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e))
+          if (pgr_get_writable (
+                  &ph,
+                  NULL,
+                  PG_PERMISSIVE,
+                  log_rec->update.phys.pg,
+                  p,
+                  e
+              ))
           {
             goto failed;
           }
 
           // Undo and Append a clr log
           slsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
-          if (l < 0) { goto failed; }
+          if (l < 0)
+          {
+            goto failed;
+          }
 
           // Set the page lsn
           page_set_page_lsn (page_h_w (&ph), l);
@@ -71,7 +87,10 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         if (log_rec->update.prev == 0)
         {
           slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-          if (l < 0) { goto failed; }
+          if (l < 0)
+          {
+            goto failed;
+          }
           txnt_remove_txn_expect (ctx->txt, tx);
           txn_update_state (tx, TX_DONE);
         }
@@ -92,7 +111,10 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
         slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-        if (l < 0) { goto failed; }
+        if (l < 0)
+        {
+          goto failed;
+        }
         txnt_remove_txn_expect (ctx->txt, tx);
         txn_update_state (tx, TX_DONE);
         break;

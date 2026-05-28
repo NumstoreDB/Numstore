@@ -42,7 +42,9 @@ lockt_frame_init (struct lockt_frame *dest, const struct lt_lock key, error *e)
 
 static void
 lockt_frame_destroy (struct lockt_frame *dest)
-{ gr_lock_destroy (&dest->lock); }
+{
+  gr_lock_destroy (&dest->lock);
+}
 
 static void
 lockt_frame_init_key (struct lockt_frame *dest, const struct lt_lock key)
@@ -54,14 +56,18 @@ lockt_frame_init_key (struct lockt_frame *dest, const struct lt_lock key)
 static bool
 lockt_frame_eq (const struct hnode *left, const struct hnode *right)
 {
-  const struct lockt_frame *_left  = container_of (left, struct lockt_frame, node);
-  const struct lockt_frame *_right = container_of (right, struct lockt_frame, node);
+  const struct lockt_frame *_left =
+      container_of (left, struct lockt_frame, node);
+  const struct lockt_frame *_right =
+      container_of (right, struct lockt_frame, node);
   return lt_lock_equal (_left->key, _right->key);
 }
 
 static void
 frame_ref (struct lockt_frame *frame)
-{ frame->refcount++; }
+{
+  frame->refcount++;
+}
 
 static void
 frame_unref (struct lockt *t, struct lockt_frame *frame)
@@ -71,7 +77,8 @@ frame_unref (struct lockt *t, struct lockt_frame *frame)
 
   if (frame->refcount == 0)
   {
-    struct hnode **found = htable_lookup (t->table, &frame->node, lockt_frame_eq);
+    struct hnode **found =
+        htable_lookup (t->table, &frame->node, lockt_frame_eq);
     htable_delete (t->table, found);
     lockt_frame_destroy (frame);
     slab_alloc_free (&t->lock_alloc, frame);
@@ -84,7 +91,10 @@ lockt_init (struct lockt *t, error *e)
   slab_alloc_init (&t->lock_alloc, sizeof (struct lockt_frame), 1000);
 
   t->table = htable_create (1000, e);
-  if (t->table == NULL) { return error_trace (e); }
+  if (t->table == NULL)
+  {
+    return error_trace (e);
+  }
 
   latch_init (&t->l);
 
@@ -199,7 +209,11 @@ lockt_lock (
 }
 
 static void
-lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode)
+lockt_unlock_once (
+    struct lockt        *t,
+    const struct lt_lock lock,
+    const enum lock_mode mode
+)
 {
   latch_lock (&t->l);
   {
@@ -220,7 +234,12 @@ lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_m
 }
 
 err_t
-lockt_unlock (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode, error *e)
+lockt_unlock (
+    struct lockt        *t,
+    const struct lt_lock lock,
+    const enum lock_mode mode,
+    error               *e
+)
 {
   // Unlock the child first (bottom-up).
   lockt_unlock_once (t, lock, mode);
@@ -242,7 +261,11 @@ struct unlock_ctx
 };
 
 static void
-unlock_single_lock (const struct lt_lock lock, const enum lock_mode mode, void *ctx)
+unlock_single_lock (
+    const struct lt_lock lock,
+    const enum lock_mode mode,
+    void                *ctx
+)
 {
   const struct unlock_ctx *c = ctx;
   struct lockt            *t = c->t;
@@ -278,7 +301,8 @@ static void
 i_log_lockt_frame_hnode (struct hnode *node, void *ctx)
 {
   const int                *log_level = ctx;
-  const struct lockt_frame *frame     = container_of (node, struct lockt_frame, node);
+  const struct lockt_frame *frame =
+      container_of (node, struct lockt_frame, node);
   i_print_lt_lock (*log_level, frame->key);
 }
 
@@ -310,9 +334,11 @@ writer_thread_locks_type1_x (void *args)
   for (int i = 0; i < 100; i++)
   {
     struct txn tx;
-    if (unlikely (pgr_begin_txn (&tx, c->p, &e) < SUCCESS)) { panic ("Test Failed"); }
+    if (unlikely (pgr_begin_txn (&tx, c->p, &e) < SUCCESS)) { panic ("Test
+Failed"); }
 
-    if (unlikely (lockt_lock (c->lt, c->key1, LM_X, &tx, &e) < SUCCESS)) { panic ("Test Failed"); }
+    if (unlikely (lockt_lock (c->lt, c->key1, LM_X, &tx, &e) < SUCCESS)) { panic
+("Test Failed"); }
 
     {
       int counter = c->counter;
@@ -350,7 +376,8 @@ TEST_DISABLE (lock_table_exclusivity)
   {
     i_thread_create (&threads[i], writer_thread_locks_type1_x, &c, &e);
   }
-  for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i], &e); }
+  for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i], &e);
+}
 
   test_assert_int_equal (c.counter, 100 * arrlen (threads));
 

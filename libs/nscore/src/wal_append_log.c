@@ -59,7 +59,11 @@ wal_append_end_log (struct wal *w, const txid tid, const lsn prev, error *e)
 }
 
 slsn
-wal_append_update_log (struct wal *w, const struct wal_update_write update, error *e)
+wal_append_update_log (
+    struct wal                   *w,
+    const struct wal_update_write update,
+    error                        *e
+)
 {
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);

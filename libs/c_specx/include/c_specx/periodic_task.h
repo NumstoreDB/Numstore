@@ -42,8 +42,13 @@ struct periodic_task
 
 err_t periodic_task_init (struct periodic_task *t, error *e);
 
-err_t
-periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e);
+err_t periodic_task_start (
+    struct periodic_task *t,
+    u64                   msec,
+    periodic_task_fn      fn,
+    void                 *ctx,
+    error                *e
+);
 
 err_t periodic_task_stop (struct periodic_task *t, error *e);
 void  periodic_task_wake (struct periodic_task *t);

@@ -18,9 +18,11 @@
 
 #include "c_specx.h"
 
-TEST_SUITE (smartfiles, 267);
+TEST_SUITE (smartfiles, 269);
 
-HEADER_FUNC void register_tests(void) {
+HEADER_FUNC void
+register_tests (void)
+{
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);
@@ -282,10 +284,12 @@ HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, cgd_test_create_delete_rollback_delete);
   REGISTER (smartfiles, cgd_test_create_crash_close_delete);
   REGISTER (smartfiles, irwr_rollback_invalid_wal_header);
-  REGISTER (smartfiles, nsdb_create_txn_tests);
-  REGISTER (smartfiles, nsdb_delete_txn_tests);
-  REGISTER (smartfiles, nsdb_insert_txn_tests);
-  REGISTER (smartfiles, nsdb_write_txn_tests);
+  REGISTER (smartfiles, python_binding_transaction_error);
+  REGISTER (smartfiles, nsdb_create_txn);
+  REGISTER (smartfiles, nsdb_delete_txn);
+  REGISTER (smartfiles, nsdb_insert_txn);
+  REGISTER (smartfiles, nsdb_write_txn);
+  REGISTER (smartfiles, nsdb_get_if_exists);
   REGISTER (smartfiles, aries_crash);
   REGISTER (smartfiles, smfile_data_writer);
 }

@@ -127,15 +127,21 @@ tt_is_opcode (enum token_t ttype)
 // Shorthands
 #define quick_tok(_type) \
   (struct token)         \
-  { .type = _type }
+  {                      \
+    .type = _type        \
+  }
 
-#define tt_integer(val) \
-  (struct token)        \
-  { .type = TT_INTEGER, .integer = val }
+#define tt_integer(val)                \
+  (struct token)                       \
+  {                                    \
+    .type = TT_INTEGER, .integer = val \
+  }
 
-#define tt_float(val) \
-  (struct token)      \
-  { .type = TT_FLOAT, .floating = val }
+#define tt_float(val)                 \
+  (struct token)                      \
+  {                                   \
+    .type = TT_FLOAT, .floating = val \
+  }
 
 #define tt_ident(_data, _len) \
   (struct token)              \
@@ -157,17 +163,23 @@ tt_is_opcode (enum token_t ttype)
     },                         \
   }
 
-#define tt_prim(val) \
-  (struct token)     \
-  { .type = TT_PRIM, .prim = val }
+#define tt_prim(val)             \
+  (struct token)                 \
+  {                              \
+    .type = TT_PRIM, .prim = val \
+  }
 
-#define tt_opcode(op, _s) \
-  (struct token)          \
-  { .type = op, .stmt = _s }
+#define tt_opcode(op, _s)  \
+  (struct token)           \
+  {                        \
+    .type = op, .stmt = _s \
+  }
 
-#define tt_err(_e) \
-  (struct token)   \
-  { .type = TT_ERROR, .e = _e }
+#define tt_err(_e)            \
+  (struct token)              \
+  {                           \
+    .type = TT_ERROR, .e = _e \
+  }
 
 #define MAX_TOK_T_LEN 16
 

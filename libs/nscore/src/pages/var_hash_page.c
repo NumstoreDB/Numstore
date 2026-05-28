@@ -22,7 +22,10 @@ void
 vh_init_empty (page *p)
 {
   ASSERT (page_get_type (p) == PG_VAR_HASH_PAGE);
-  for (p_size i = 0; i < VH_HASH_LEN; ++i) { vh_set_hash_value (p, i, PGNO_NULL); }
+  for (p_size i = 0; i < VH_HASH_LEN; ++i)
+  {
+    vh_set_hash_value (p, i, PGNO_NULL);
+  }
 }
 
 // Validation
@@ -57,7 +60,10 @@ i_log_vh (const int level, const page *vh)
     }
   }
 
-  if (empty) { i_printf (level, "Empty\n"); }
+  if (empty)
+  {
+    i_printf (level, "Empty\n");
+  }
 
   i_log (level, "=== VAR HASH TABLE PAGE END ===\n");
 }

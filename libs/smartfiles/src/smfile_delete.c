@@ -43,12 +43,18 @@ _smfile_delete (struct nshandle *db, const char *vname, error *e)
       // It's ok - just return the error
       goto commit;
     }
-    if (err < SUCCESS) { goto failed_rollback; }
+    if (err < SUCCESS)
+    {
+      goto failed_rollback;
+    }
   }
 
 commit:
 
-  if (nsh_auto_commit (db, e)) { goto failed_rollback; }
+  if (nsh_auto_commit (db, e))
+  {
+    goto failed_rollback;
+  }
   return error_trace (e);
 
 failed_rollback:

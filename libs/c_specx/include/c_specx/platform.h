@@ -93,8 +93,8 @@
 
 ////////////////////////////////////////////////////////////
 // BSD
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) \
-    || defined(__bsdi__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) \
+    || defined(__DragonFly__) || defined(__bsdi__)
 #  undef PLATFORM_BSD
 #  undef PLATFORM_UNIX
 #  undef PLATFORM_POSIX
@@ -114,18 +114,19 @@
 
 ////////////////////////////////////////////////////////////
 // Verify
-#if (                                                                                  \
-    PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC + PLATFORM_IOS \
-    + PLATFORM_BSD + PLATFORM_EMSCRIPTEN                                               \
+#if (                                                                   \
+    PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC \
+    + PLATFORM_IOS + PLATFORM_BSD + PLATFORM_EMSCRIPTEN                 \
 ) > 1
 #  warning "Multiple platforms detected - check your build configuration"
 #endif
 
 ////////////////////////////////////////////////////////////
 // Utils
-#define PLATFORM_APPLE   (PLATFORM_MAC || PLATFORM_IOS)
-#define PLATFORM_MOBILE  (PLATFORM_ANDROID || PLATFORM_IOS)
-#define PLATFORM_DESKTOP (PLATFORM_WINDOWS || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_BSD)
+#define PLATFORM_APPLE  (PLATFORM_MAC || PLATFORM_IOS)
+#define PLATFORM_MOBILE (PLATFORM_ANDROID || PLATFORM_IOS)
+#define PLATFORM_DESKTOP \
+  (PLATFORM_WINDOWS || PLATFORM_LINUX || PLATFORM_MAC || PLATFORM_BSD)
 
 ////////////////////////////////////////////////////////////
 // Branch Prediction
@@ -158,7 +159,8 @@
 #if PLATFORM_WINDOWS
 #  define PRINTF_ATTR(fmt_pos, va_pos)
 #else
-#  define PRINTF_ATTR(fmt_pos, va_pos) __attribute__ ((format (printf, fmt_pos, va_pos)))
+#  define PRINTF_ATTR(fmt_pos, va_pos) \
+    __attribute__ ((format (printf, fmt_pos, va_pos)))
 #endif
 
 ////////////////////////////////////////////////////////////
@@ -190,13 +192,34 @@
 HEADER_FUNC const char *
 platformstr (void)
 {
-  if (PLATFORM_WINDOWS) { return "Windows"; }
-  else if (PLATFORM_LINUX) { return "Linux"; }
-  else if (PLATFORM_ANDROID) { return "Android"; }
-  else if (PLATFORM_MAC) { return "macOS"; }
-  else if (PLATFORM_IOS) { return "iOS"; }
-  else if (PLATFORM_BSD) { return "BSD"; }
-  else if (PLATFORM_EMSCRIPTEN) { return "Emscripten/WebAssembly"; }
+  if (PLATFORM_WINDOWS)
+  {
+    return "Windows";
+  }
+  else if (PLATFORM_LINUX)
+  {
+    return "Linux";
+  }
+  else if (PLATFORM_ANDROID)
+  {
+    return "Android";
+  }
+  else if (PLATFORM_MAC)
+  {
+    return "macOS";
+  }
+  else if (PLATFORM_IOS)
+  {
+    return "iOS";
+  }
+  else if (PLATFORM_BSD)
+  {
+    return "BSD";
+  }
+  else if (PLATFORM_EMSCRIPTEN)
+  {
+    return "Emscripten/WebAssembly";
+  }
 
   return 0;
 }

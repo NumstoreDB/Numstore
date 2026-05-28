@@ -30,7 +30,12 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
 {
   if (!parser_match (parser->base, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected variable name at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected variable name at position %u",
+        parser->base->pos
+    );
   }
 
   // VNAME
@@ -46,7 +51,9 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
     if (parser_match (parser->base, TT_LEFT_BRACKET))
     {
       struct multi_user_stride stride;
-      WRAP (parse_multi_user_stride (parser->base, &stride, parser->persistent, e));
+      WRAP (
+          parse_multi_user_stride (parser->base, &stride, parser->persistent, e)
+      );
       for (u32 i = 0; i < stride.len; ++i)
       {
         WRAP (tab_accept_stride (&tab, stride.strides[i], e));
@@ -91,7 +98,12 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
 }
 
 err_t
-parse_subtype (struct parser *p, struct subtype *dest, struct chunk_alloc *dalloc, error *e)
+parse_subtype (
+    struct parser      *p,
+    struct subtype     *dest,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
 {
   struct sub_type_parser parser = {
       .base       = p,

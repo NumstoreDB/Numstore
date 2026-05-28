@@ -25,8 +25,10 @@ typedef union {
   struct in_data in;
 } in_dl_data;
 
-#define dlgt_move_all_right(src, dest) dlgt_move_right (src, dest, dlgt_get_len (src))
-#define dlgt_move_all_left(dest, src)  dlgt_move_left (dest, src, dlgt_get_len (src))
+#define dlgt_move_all_right(src, dest) \
+  dlgt_move_right (src, dest, dlgt_get_len (src))
+#define dlgt_move_all_left(dest, src) \
+  dlgt_move_left (dest, src, dlgt_get_len (src))
 
 HEADER_FUNC pgno
 dlgt_get_next (const page *p)
@@ -234,7 +236,9 @@ dlgt_get_max_len (const page *p)
 
 HEADER_FUNC bool
 dlgt_is_root (const page *p)
-{ return dlgt_get_prev (p) == PGNO_NULL && dlgt_get_next (p) == PGNO_NULL; }
+{
+  return dlgt_get_prev (p) == PGNO_NULL && dlgt_get_next (p) == PGNO_NULL;
+}
 
 HEADER_FUNC bool
 dlgt_is_full (const page *p)
@@ -372,13 +376,25 @@ dlgt_link (page *left, page *right)
   pgno _left  = PGNO_NULL;
   pgno _right = PGNO_NULL;
 
-  if (left) { _left = left->pg; }
+  if (left)
+  {
+    _left = left->pg;
+  }
 
-  if (right) { _right = right->pg; }
+  if (right)
+  {
+    _right = right->pg;
+  }
 
-  if (left) { dlgt_set_next (left, _right); }
+  if (left)
+  {
+    dlgt_set_next (left, _right);
+  }
 
-  if (right) { dlgt_set_prev (right, _left); }
+  if (right)
+  {
+    dlgt_set_prev (right, _left);
+  }
 }
 
 HEADER_FUNC void
@@ -387,7 +403,10 @@ dlgtovlink (page *left, const page *right)
   ASSERT (left);
   pgno _right = PGNO_NULL;
 
-  if (right) { _right = right->pg; }
+  if (right)
+  {
+    _right = right->pg;
+  }
 
   dlgtset_ovnext (left, _right);
 }
@@ -398,15 +417,27 @@ dlgt_valid_neighbors (const page *left, const page *right)
   pgno lpg = PGNO_NULL;
   pgno rpg = PGNO_NULL;
 
-  if (left) { lpg = left->pg; }
+  if (left)
+  {
+    lpg = left->pg;
+  }
 
-  if (right) { rpg = right->pg; }
+  if (right)
+  {
+    rpg = right->pg;
+  }
 
   bool ret = true;
 
-  if (left) { ret = ret && dlgt_get_next (left) == rpg; }
+  if (left)
+  {
+    ret = ret && dlgt_get_next (left) == rpg;
+  }
 
-  if (right) { ret = ret && lpg == dlgt_get_prev (right); }
+  if (right)
+  {
+    ret = ret && lpg == dlgt_get_prev (right);
+  }
 
   return ret;
 }

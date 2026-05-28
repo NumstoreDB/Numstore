@@ -52,17 +52,26 @@ pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
   // Bit index within that FSM page's bitmap
   const p_size idx = page_h_pgno (h) % FS_BTMP_NPGS;
 
-  if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e)) { goto failed; }
+  if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e))
+  {
+    goto failed;
+  }
 
   // Mark the page as free in the bitmap before logging
   fsm_clr_bit (page_h_w (&fsm), idx);
 
   // Log the freed page with a physical record (NULL = full page image as
   // undo)
-  if (pgr_release_with_log (p, h, PG_PERMISSIVE, NULL, e)) { goto failed; }
+  if (pgr_release_with_log (p, h, PG_PERMISSIVE, NULL, e))
+  {
+    goto failed;
+  }
 
   struct wal_update_write log = wup_fsm (fsmpg, tx, pgtoidx (pg), 1, 0);
-  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) { goto failed; }
+  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e))
+  {
+    goto failed;
+  }
 
   return SUCCESS;
 

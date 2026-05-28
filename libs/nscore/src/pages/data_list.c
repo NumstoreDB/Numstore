@@ -212,12 +212,18 @@ dl_read (const page *d, u8 *dest, const p_size offset, const p_size nbytes)
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen) { return 0; }
+  if (offset == dlen)
+  {
+    return 0;
+  }
 
   const p_size avail  = dlen - offset;
   const p_size toread = MIN (avail, nbytes);
 
-  if (toread > 0 && dest) { memcpy (dest, base + offset, toread); }
+  if (toread > 0 && dest)
+  {
+    memcpy (dest, base + offset, toread);
+  }
 
   return toread;
 }
@@ -291,7 +297,12 @@ TEST (dl_read)
 #endif
 
 p_size
-dl_read_into_cbuffer (const page *d, struct cbuffer *dest, const p_size offset, const p_size b)
+dl_read_into_cbuffer (
+    const page     *d,
+    struct cbuffer *dest,
+    const p_size    offset,
+    const p_size    b
+)
 {
   ASSERT (b > 0);
 
@@ -300,18 +311,29 @@ dl_read_into_cbuffer (const page *d, struct cbuffer *dest, const p_size offset, 
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen) { return 0; }
+  if (offset == dlen)
+  {
+    return 0;
+  }
 
   const p_size avail  = dlen - offset;
   p_size       toread = MIN (avail, b);
 
-  if (toread > 0 && dest) { toread = cbuffer_write (base + offset, 1, toread, dest); }
+  if (toread > 0 && dest)
+  {
+    toread = cbuffer_write (base + offset, 1, toread, dest);
+  }
 
   return toread;
 }
 
 p_size
-dl_read_out_into_cbuffer (page *d, struct cbuffer *dest, const p_size offset, const p_size b)
+dl_read_out_into_cbuffer (
+    page           *d,
+    struct cbuffer *dest,
+    const p_size    offset,
+    const p_size    b
+)
 {
   ASSERT (b > 0);
 
@@ -320,12 +342,18 @@ dl_read_out_into_cbuffer (page *d, struct cbuffer *dest, const p_size offset, co
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen) { return 0; }
+  if (offset == dlen)
+  {
+    return 0;
+  }
 
   const p_size avail  = dlen - offset;
   p_size       toread = MIN (avail, b);
 
-  if (toread > 0 && dest) { toread = cbuffer_write (base + offset, 1, toread, dest); }
+  if (toread > 0 && dest)
+  {
+    toread = cbuffer_write (base + offset, 1, toread, dest);
+  }
 
   // [ ++++++++++ __________ ++++++ ]
   //            ^           ^
@@ -339,7 +367,12 @@ dl_read_out_into_cbuffer (page *d, struct cbuffer *dest, const p_size offset, co
 }
 
 void
-dl_read_expect (const page *d, u8 *dest, const p_size offset, const p_size nbytes)
+dl_read_expect (
+    const page  *d,
+    u8          *dest,
+    const p_size offset,
+    const p_size nbytes
+)
 {
   const p_size read = dl_read (d, dest, offset, nbytes);
   ASSERT (read == nbytes);
@@ -355,7 +388,10 @@ dl_read_out_from (page *d, u8 *dest, const p_size offset)
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen) { return 0; }
+  if (offset == dlen)
+  {
+    return 0;
+  }
 
   const u8 *head = dl_get_data (d);
 
@@ -398,13 +434,19 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, DL_DATA_SIZE / 2);
     test_assert_int_equal (dl_used (&dl), 0);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2; ++i) { test_assert_int_equal (dest[i], somedata[i]); }
+    for (p_size i = 0; i < DL_DATA_SIZE / 2; ++i)
+    {
+      test_assert_int_equal (dest[i], somedata[i]);
+    }
     dl_set_used (&dl, 0);
   }
 
   TEST_CASE ("Read some from middle")
   {
-    _Static_assert (DL_DATA_SIZE / 2 > 1, "DL_DATA_SIZE is too small. Increase page size");
+    _Static_assert (
+        DL_DATA_SIZE / 2 > 1,
+        "DL_DATA_SIZE is too small. Increase page size"
+    );
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, 1);
@@ -415,13 +457,19 @@ TEST (dl_read_out_from)
     {
       test_assert_int_equal (dest[i], somedata[i + 1]);
     }
-    for (p_size i = 0; i < 1; ++i) { test_assert_int_equal (dl_get_byte (&dl, i), i); }
+    for (p_size i = 0; i < 1; ++i)
+    {
+      test_assert_int_equal (dl_get_byte (&dl, i), i);
+    }
     dl_set_used (&dl, 0);
   }
 
   TEST_CASE ("Read some later in the middle")
   {
-    _Static_assert (DL_DATA_SIZE / 2 > 10, "DL_DATA_SIZE is too small. Increase page size");
+    _Static_assert (
+        DL_DATA_SIZE / 2 > 10,
+        "DL_DATA_SIZE is too small. Increase page size"
+    );
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, 10);
@@ -432,13 +480,19 @@ TEST (dl_read_out_from)
     {
       test_assert_int_equal (dest[i], somedata[i + 10]);
     }
-    for (p_size i = 0; i < 10; ++i) { test_assert_int_equal (dl_get_byte (&dl, i), i); }
+    for (p_size i = 0; i < 10; ++i)
+    {
+      test_assert_int_equal (dl_get_byte (&dl, i), i);
+    }
     dl_set_used (&dl, 0);
   }
 
   TEST_CASE ("Read some from the end")
   {
-    _Static_assert (DL_DATA_SIZE / 2 > 10, "DL_DATA_SIZE is too small. Increase page size");
+    _Static_assert (
+        DL_DATA_SIZE / 2 > 10,
+        "DL_DATA_SIZE is too small. Increase page size"
+    );
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, DL_DATA_SIZE / 2);
@@ -454,7 +508,10 @@ TEST (dl_read_out_from)
 
   TEST_CASE ("Read full middle")
   {
-    _Static_assert (DL_DATA_SIZE > 1, "DL_DATA_SIZE is too small. Increase page size");
+    _Static_assert (
+        DL_DATA_SIZE > 1,
+        "DL_DATA_SIZE is too small. Increase page size"
+    );
 
     dl_append (&dl, alldata, DL_DATA_SIZE);
     p_size ret = dl_read_out_from (&dl, dest, 1);
@@ -465,13 +522,19 @@ TEST (dl_read_out_from)
     {
       test_assert_int_equal (dest[i], alldata[i + 1]);
     }
-    for (p_size i = 0; i < 1; ++i) { test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]); }
+    for (p_size i = 0; i < 1; ++i)
+    {
+      test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]);
+    }
     dl_set_used (&dl, 0);
   }
 
   TEST_CASE ("Read full later middle")
   {
-    _Static_assert (DL_DATA_SIZE > 10, "DL_DATA_SIZE is too small. Increase page size");
+    _Static_assert (
+        DL_DATA_SIZE > 10,
+        "DL_DATA_SIZE is too small. Increase page size"
+    );
 
     dl_append (&dl, alldata, DL_DATA_SIZE);
     p_size ret = dl_read_out_from (&dl, dest, 10);
@@ -482,7 +545,10 @@ TEST (dl_read_out_from)
     {
       test_assert_int_equal (dest[i], alldata[i + 10]);
     }
-    for (p_size i = 0; i < 10; ++i) { test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]); }
+    for (p_size i = 0; i < 10; ++i)
+    {
+      test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]);
+    }
     dl_set_used (&dl, 0);
   }
 
@@ -610,7 +676,12 @@ TEST (dl_append)
 #endif
 
 p_size
-dl_write (const page *d, const u8 *src, const p_size offset, const p_size nbytes)
+dl_write (
+    const page  *d,
+    const u8    *src,
+    const p_size offset,
+    const p_size nbytes
+)
 {
   DBG_ASSERT (data_list, d);
   ASSERT (nbytes > 0);
@@ -620,12 +691,18 @@ dl_write (const page *d, const u8 *src, const p_size offset, const p_size nbytes
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen) { return 0; }
+  if (offset == dlen)
+  {
+    return 0;
+  }
 
   const p_size avail  = dlen - offset;
   const p_size toread = MIN (avail, nbytes);
 
-  if (toread > 0 && src) { memcpy (base + offset, src, toread); }
+  if (toread > 0 && src)
+  {
+    memcpy (base + offset, src, toread);
+  }
 
   DBG_ASSERT (data_list, d);
   return toread;
@@ -671,7 +748,11 @@ TEST (dl_write)
     const p_size off = 32;
     const p_size got = dl_write (&p, newdata, off, sizeof newdata);
     test_assert_int_equal (got, sizeof newdata);
-    test_assert_memequal ((u8 *)dl_get_data (&p) + off, newdata, sizeof newdata);
+    test_assert_memequal (
+        (u8 *)dl_get_data (&p) + off,
+        newdata,
+        sizeof newdata
+    );
   }
 
   TEST_CASE ("overwrite near end, clipped")
@@ -698,7 +779,12 @@ TEST (dl_write)
 #endif
 
 p_size
-dl_write_from_buffer (const page *d, struct cbuffer *src, const p_size offset, const p_size nbytes)
+dl_write_from_buffer (
+    const page     *d,
+    struct cbuffer *src,
+    const p_size    offset,
+    const p_size    nbytes
+)
 {
   ASSERT (nbytes > 0);
 
@@ -707,12 +793,18 @@ dl_write_from_buffer (const page *d, struct cbuffer *src, const p_size offset, c
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen) { return 0; }
+  if (offset == dlen)
+  {
+    return 0;
+  }
 
   const p_size avail  = dlen - offset;
   p_size       toread = MIN (avail, nbytes);
 
-  if (toread > 0 && src) { toread = cbuffer_read (base + offset, 1, toread, src); }
+  if (toread > 0 && src)
+  {
+    toread = cbuffer_read (base + offset, 1, toread, src);
+  }
 
   return toread;
 }
@@ -976,7 +1068,10 @@ dl_move_right (page *src, page *dest, const p_size len)
   ASSERT (len <= dl_avail (dest));
 
   const p_size actual = MIN (len, dl_used (src));
-  if (actual == 0) { return; }
+  if (actual == 0)
+  {
+    return;
+  }
 
   const p_size ofst = dl_used (src) - actual;
 
@@ -1021,7 +1116,11 @@ TEST (dl_move_right)
     test_assert_int_equal (dl_used (&dest), dest_before + 16);
 
     // the 16 bytes moved should equal the last 16 of srcbuf
-    test_assert_memequal (dl_get_data (&dest), srcbuf + (sizeof srcbuf - 16), 16);
+    test_assert_memequal (
+        dl_get_data (&dest),
+        srcbuf + (sizeof srcbuf - 16),
+        16
+    );
   }
 
   TEST_CASE ("request more than src has → only available moves")
@@ -1075,12 +1174,18 @@ i_log_dl (const int level, const page *d)
   i_log (level, "=== DATA LIST PAGE START ===\n");
 
   i_printf (level, "PGNO: %" PRpgno "\n", d->pg);
-  if (dl_get_next (d) == PGNO_NULL) { i_printf (level, "NEXT: NULL\n"); }
+  if (dl_get_next (d) == PGNO_NULL)
+  {
+    i_printf (level, "NEXT: NULL\n");
+  }
   else
   {
     i_printf (level, "NEXT: %" PRpgno "\n", dl_get_next (d));
   }
-  if (dl_get_prev (d) == PGNO_NULL) { i_printf (level, "PREV: NULL\n"); }
+  if (dl_get_prev (d) == PGNO_NULL)
+  {
+    i_printf (level, "PREV: NULL\n");
+  }
   else
   {
     i_printf (level, "PREV: %" PRpgno "\n", dl_get_prev (d));
@@ -1092,4 +1197,6 @@ i_log_dl (const int level, const page *d)
 
 void
 dl_make_valid (page *d)
-{ dl_set_used (d, DL_DATA_SIZE); }
+{
+  dl_set_used (d, DL_DATA_SIZE);
+}

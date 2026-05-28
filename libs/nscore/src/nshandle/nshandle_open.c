@@ -27,7 +27,10 @@ _nsh_open (const char *path, error *e)
   struct nshandle_root *ret = i_malloc (1, sizeof *ret, e);
   page_h                hp  = page_h_create ();
 
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   // Initialize inner values
   {
@@ -37,22 +40,34 @@ _nsh_open (const char *path, error *e)
     // path
     ret->path.len  = strlen (path);
     ret->path.data = i_malloc (ret->path.len, 1, e);
-    if (ret->path.data == NULL) { goto failed; }
+    if (ret->path.data == NULL)
+    {
+      goto failed;
+    }
 
     // db
     ret->p = pgr_open_single_file (path, e);
-    if (ret->p == NULL) { goto failed; }
+    if (ret->p == NULL)
+    {
+      goto failed;
+    }
   }
 
   // Upfront initialization
   if (pgr_isnew (ret->p))
   {
     // Initialize the upfront hash page
-    if (ns_init_var_hash_map (ret->p, e)) { goto failed; }
+    if (ns_init_var_hash_map (ret->p, e))
+    {
+      goto failed;
+    }
   }
 
   // Launch the checkpoint writer thread
-  if (pgr_launch_checkpoint_thread (ret->p, 5000, e)) { goto failed; }
+  if (pgr_launch_checkpoint_thread (ret->p, 5000, e))
+  {
+    goto failed;
+  }
 
   // Load the default context
   struct nshandle *sret = nsh_root_load (ret, e);
@@ -70,6 +85,9 @@ nsh_open (const char *path)
 {
   error            e   = error_create ();
   struct nshandle *ret = _nsh_open (path, &e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
   return ret;
 }

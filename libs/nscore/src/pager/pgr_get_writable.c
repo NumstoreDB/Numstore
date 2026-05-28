@@ -63,7 +63,10 @@ pgr_get_writable (
       // Make a copy in a new slot
 
       wclock = pgr_reserve_and_ctrl_lock (p, e);
-      if (wclock < 0) { return error_trace (e); }
+      if (wclock < 0)
+      {
+        return error_trace (e);
+      }
 
       pgw = &p->pages[wclock];
 
@@ -94,7 +97,10 @@ pgr_get_writable (
 
       // Grab both r and w slots in once
       rclock = pgr_reserve_and_ctrl_lock (p, e);
-      if (rclock < 0) { return error_trace (e); }
+      if (rclock < 0)
+      {
+        return error_trace (e);
+      }
 
       wclock = pgr_reserve_and_ctrl_lock (p, e);
       if (wclock < 0)

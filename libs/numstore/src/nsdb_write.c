@@ -81,7 +81,10 @@ _nsdb_pwrite (
 
     len /= tsize;
 
-    if (stride_resolve (&stride, ustr, len, e)) { goto failed_rollback; }
+    if (stride_resolve (&stride, ustr, len, e))
+    {
+      goto failed_rollback;
+    }
 
     stream_ibuf_init (&_input, &ctx, src, stride.nelems * tsize);
   }
@@ -90,13 +93,16 @@ _nsdb_pwrite (
       "WRITE (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size
+      " curlen (bytes): %" PRb_size
       " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
-      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
+      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
+      " stop (bytes): %" PRId64
       " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
-      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
+      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
+      " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
       strfmt (&var->var.vname),
       tsize,

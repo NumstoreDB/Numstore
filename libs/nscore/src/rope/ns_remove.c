@@ -88,7 +88,10 @@ struct remove_state
 static page_h *
 remove_creader (struct remove_state *s)
 {
-  if (s->reader.mode == PHM_NONE) { return &s->writer; }
+  if (s->reader.mode == PHM_NONE)
+  {
+    return &s->writer;
+  }
   return &s->reader;
 }
 
@@ -105,22 +108,34 @@ advance_writer (struct remove_state *s, error *e)
   ASSERT (s->write_idx > DL_DATA_SIZE / 2);
 
   in_set_len (page_h_w (&s->writer), s->write_idx);
-  if (nupd_commit_1st_right (s->output, pgh_unravel (&s->writer), e)) { goto failed; }
+  if (nupd_commit_1st_right (s->output, pgh_unravel (&s->writer), e))
+  {
+    goto failed;
+  }
 
   if (s->reader.mode == PHM_NONE)
   {
     const pgno npg = in_get_next (page_h_ro (&s->writer));
 
-    if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e)) { goto failed; }
+    if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e))
+    {
+      goto failed;
+    }
 
     if (npg != PGNO_NULL)
     {
-      if (pgr_get_writable (&s->writer, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
+      if (pgr_get_writable (&s->writer, s->tx, PG_DATA_LIST, npg, s->p, e))
+      {
+        goto failed;
+      }
     }
   }
   else
   {
-    if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e)) { goto failed; }
+    if (pgr_release (s->p, &s->writer, PG_DATA_LIST, e))
+    {
+      goto failed;
+    }
     page_h_xfer_ownership_ptr (&s->writer, &s->reader);
   }
 
@@ -157,12 +172,18 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
 
     if (npg != PGNO_NULL)
     {
-      if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
+      if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e))
+      {
+        goto failed;
+      }
     }
   }
   else if (s->write_idx > DL_DATA_SIZE / 2)
   {
-    if (advance_writer (s, e)) { goto failed; }
+    if (advance_writer (s, e))
+    {
+      goto failed;
+    }
 
     ASSERT (page_h_pgno (&s->writer) == page_h_pgno (remove_creader (s)));
 
@@ -170,7 +191,10 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
 
     if (npg != PGNO_NULL)
     {
-      if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
+      if (pgr_get_writable (&s->reader, s->tx, PG_DATA_LIST, npg, s->p, e))
+      {
+        goto failed;
+      }
     }
   }
   else
@@ -180,15 +204,24 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
 
     if (npg != PGNO_NULL)
     {
-      if (pgr_get_writable (&next, s->tx, PG_DATA_LIST, npg, s->p, e)) { goto failed; }
+      if (pgr_get_writable (&next, s->tx, PG_DATA_LIST, npg, s->p, e))
+      {
+        goto failed;
+      }
     }
 
-    if (pgr_delete_and_release (s->p, s->tx, &s->reader, e)) { goto failed; }
+    if (pgr_delete_and_release (s->p, s->tx, &s->reader, e))
+    {
+      goto failed;
+    }
 
     dlgt_link (page_h_w (&s->writer), page_h_w_or_null (&next));
     page_h_xfer_ownership_ptr (&s->reader, &next);
 
-    if (nupd_append_2nd_right (s->output, pgh_unravel (&s->writer), rpg, 0, e)) { goto failed; }
+    if (nupd_append_2nd_right (s->output, pgh_unravel (&s->writer), rpg, 0, e))
+    {
+      goto failed;
+    }
   }
 
   if (s->reader.mode == PHM_NONE)
@@ -215,7 +248,10 @@ removing_next (const struct remove_state *s, const page *sro)
   p_size next = s->bnext;
   next        = MIN (next, dl_used (sro) - s->read_idx);
 
-  if (s->max_remove > 0) { next = MIN (next, s->max_remove - s->total_removed); }
+  if (s->max_remove > 0)
+  {
+    next = MIN (next, s->max_remove - s->total_removed);
+  }
 
   return next;
 }
@@ -279,15 +315,25 @@ ns_remove (struct ns_remove_params *params, error *e)
       .sp         = 0,
   };
 
-  if (params->root == PGNO_NULL) { return 0; }
+  if (params->root == PGNO_NULL)
+  {
+    return 0;
+  }
 
-  if (ns_seek (&seek, e)) { goto failed; }
+  if (ns_seek (&seek, e))
+  {
+    goto failed;
+  }
 
   s.writer    = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
-  if (s.output == NULL) { goto failed; }
+  s.output =
+      nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
+  if (s.output == NULL)
+  {
+    goto failed;
+  }
 
   s.read_idx = s.write_idx;
 
@@ -310,19 +356,33 @@ ns_remove (struct ns_remove_params *params, error *e)
           ASSERT (s.read_idx == rlen);
 
           bool iseof;
-          if (advance_reader (&s, &iseof, e)) { goto failed; }
+          if (advance_reader (&s, &iseof, e))
+          {
+            goto failed;
+          }
 
-          if (iseof) { goto drain; }
+          if (iseof)
+          {
+            goto drain;
+          }
 
           continue;
         }
 
         if (params->dest)
         {
-          i32 written =
-              stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1, next_amount, params->dest, e);
+          i32 written = stream_bwrite (
+              (u8 *)dl_get_data (sro) + s.read_idx,
+              1,
+              next_amount,
+              params->dest,
+              e
+          );
 
-          if (written < 0) { goto failed; }
+          if (written < 0)
+          {
+            goto failed;
+          }
           ASSERT ((p_size)written == next_amount);
         }
 
@@ -333,14 +393,20 @@ ns_remove (struct ns_remove_params *params, error *e)
         if (s.bnext == 0)
         {
           s.bnext = params->size * (params->stride - 1);
-          if (s.bnext > 0) { s.phase = SKIPPING; }
+          if (s.bnext > 0)
+          {
+            s.phase = SKIPPING;
+          }
           else
           {
             s.bnext = params->size;
           }
         }
 
-        if (s.max_remove > 0 && s.total_removed == s.max_remove) { goto drain; }
+        if (s.max_remove > 0 && s.total_removed == s.max_remove)
+        {
+          goto drain;
+        }
 
         break;
       }
@@ -354,15 +420,24 @@ ns_remove (struct ns_remove_params *params, error *e)
           if (s.read_idx == rlen)
           {
             bool iseof;
-            if (advance_reader (&s, &iseof, e)) { goto failed; }
+            if (advance_reader (&s, &iseof, e))
+            {
+              goto failed;
+            }
 
-            if (iseof) { goto drain; }
+            if (iseof)
+            {
+              goto drain;
+            }
 
             continue;
           }
           else if (s.write_idx == DL_DATA_SIZE)
           {
-            if (advance_writer (&s, e)) { goto failed; }
+            if (advance_writer (&s, e))
+            {
+              goto failed;
+            }
 
             continue;
           }
@@ -392,7 +467,10 @@ ns_remove (struct ns_remove_params *params, error *e)
       }
     }
 
-    if (params->dest && stream_isdone (params->dest)) { goto drain; }
+    if (params->dest && stream_isdone (params->dest))
+    {
+      goto drain;
+    }
   }
 
 drain:
@@ -418,21 +496,43 @@ drain:
 
           if (npg != PGNO_NULL)
           {
-            if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e))
+            if (pgr_get_writable (
+                    &next,
+                    params->tx,
+                    PG_DATA_LIST,
+                    npg,
+                    params->p,
+                    e
+                ))
             {
               goto failed;
             }
           }
 
-          if (pgr_delete_and_release (params->p, params->tx, &s.reader, e)) { goto failed; }
+          if (pgr_delete_and_release (params->p, params->tx, &s.reader, e))
+          {
+            goto failed;
+          }
 
           dlgt_link (page_h_w (&s.writer), page_h_w_or_null (&next));
           page_h_xfer_ownership_ptr (&s.reader, &next);
 
-          if (nupd_append_2nd_right (s.output, pgh_unravel (&s.writer), rpg, 0, e)) { goto failed; }
+          if (nupd_append_2nd_right (
+                  s.output,
+                  pgh_unravel (&s.writer),
+                  rpg,
+                  0,
+                  e
+              ))
+          {
+            goto failed;
+          }
           s.read_idx = 0;
 
-          if (s.reader.mode == PHM_NONE) { break; }
+          if (s.reader.mode == PHM_NONE)
+          {
+            break;
+          }
 
           continue;
         }
@@ -443,7 +543,10 @@ drain:
       }
       else if (s.write_idx >= DL_DATA_SIZE)
       {
-        if (advance_writer (&s, e)) { goto failed; }
+        if (advance_writer (&s, e))
+        {
+          goto failed;
+        }
         continue;
       }
       else
@@ -471,7 +574,8 @@ drain:
     error_causef (
         e,
         ERR_CORRUPT,
-        "removed %" PRb_size " bytes, not a multiple of element size %" PRb_size,
+        "removed %" PRb_size
+        " bytes, not a multiple of element size %" PRb_size,
         s.total_removed,
         params->size
     );
@@ -490,9 +594,15 @@ drain:
       .next   = &next,
   };
 
-  if (ns_balance_and_release (bparams, e)) { goto failed; }
+  if (ns_balance_and_release (bparams, e))
+  {
+    goto failed;
+  }
 
-  if (nupd_append_tip_right (s.output, tip_out, e)) { goto failed; }
+  if (nupd_append_tip_right (s.output, tip_out, e))
+  {
+    goto failed;
+  }
 
   struct ns_rebalance_params rebalance = {
       .p          = params->p,
@@ -510,10 +620,19 @@ drain:
 
   err_t ret = ns_rebalance (&rebalance, e);
 
-  if (rebalance.output) { nupd_free (rebalance.output); }
-  if (rebalance.input) { nupd_free (rebalance.input); }
+  if (rebalance.output)
+  {
+    nupd_free (rebalance.output);
+  }
+  if (rebalance.input)
+  {
+    nupd_free (rebalance.input);
+  }
 
-  if (ret) { goto failed; }
+  if (ret)
+  {
+    goto failed;
+  }
 
   params->root = rebalance.root;
 
@@ -525,10 +644,19 @@ failed:
   pgr_cancel_if_exists (params->p, &next);
   pgr_cancel_if_exists (params->p, &s.reader);
 
-  if (rb_nupd2) { nupd_free (rb_nupd2); }
-  if (s.output) { nupd_free (s.output); }
+  if (rb_nupd2)
+  {
+    nupd_free (rb_nupd2);
+  }
+  if (s.output)
+  {
+    nupd_free (s.output);
+  }
 
-  for (u32 i = 0; i < seek.sp; ++i) { pgr_cancel_if_exists (params->p, &seek.pstack[i].pg); }
+  for (u32 i = 0; i < seek.sp; ++i)
+  {
+    pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
+  }
 
   return error_trace (e);
 }

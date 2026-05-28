@@ -69,7 +69,11 @@ ns_seek (struct ns_seek_params *a, error *e)
         // Stack overflow
         if (a->sp == 20)
         {
-          error_causef (e, ERR_RPTREE_PAGE_STACK_OVERFLOW, "page stack overflow (depth 20)");
+          error_causef (
+              e,
+              ERR_RPTREE_PAGE_STACK_OVERFLOW,
+              "page stack overflow (depth 20)"
+          );
           goto failed;
         }
 
@@ -104,7 +108,10 @@ ns_seek (struct ns_seek_params *a, error *e)
         }
         else
         {
-          if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e)) { goto failed; }
+          if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e))
+          {
+            goto failed;
+          }
         }
 
         // Trade a->pg
@@ -130,7 +137,10 @@ failed:
   // Release used pages
   pgr_cancel_if_exists (a->p, &a->pg);
   pgr_cancel_if_exists (a->p, &next);
-  for (u32 i = 0; i < a->sp; ++i) { pgr_cancel_if_exists (a->p, &a->pstack[i].pg); }
+  for (u32 i = 0; i < a->sp; ++i)
+  {
+    pgr_cancel_if_exists (a->p, &a->pstack[i].pg);
+  }
   a->sp = 0;
   return error_trace (e);
 }

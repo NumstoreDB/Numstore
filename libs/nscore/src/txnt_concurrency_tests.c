@@ -149,9 +149,18 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (&t1, txnt_insert_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t2, txnt_insert_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t3, txnt_insert_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (&t1, txnt_insert_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t2, txnt_insert_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t3, txnt_insert_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -160,7 +169,10 @@ TEST (txnt_concurrent)
     int total_inserts = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_inserts, 300);
 
-    for (txid tid = 0; tid < 300; tid++) { test_assert (txn_exists (t, tid)); }
+    for (txid tid = 0; tid < 300; tid++)
+    {
+      test_assert (txn_exists (t, tid));
+    }
 
     txnt_close (t);
   }
@@ -205,9 +217,18 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (&t1, txnt_reader_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t2, txnt_reader_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t3, txnt_reader_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (&t1, txnt_reader_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t2, txnt_reader_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t3, txnt_reader_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -323,9 +344,18 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (&t1, txnt_updater_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t2, txnt_updater_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t3, txnt_updater_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (&t1, txnt_updater_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t2, txnt_updater_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t3, txnt_updater_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -385,9 +415,18 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (&t1, txnt_state_transition_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t2, txnt_state_transition_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (&t3, txnt_state_transition_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (&t1, txnt_state_transition_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t2, txnt_state_transition_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (&t3, txnt_state_transition_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);

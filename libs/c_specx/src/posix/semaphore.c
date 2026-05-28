@@ -59,7 +59,10 @@ i_semaphore_wait (i_semaphore *s)
 {
   ASSERT (s);
   pthread_mutex_lock (&s->mutex);
-  while (s->count == 0) { pthread_cond_wait (&s->cond, &s->mutex); }
+  while (s->count == 0)
+  {
+    pthread_cond_wait (&s->cond, &s->mutex);
+  }
   s->count--;
   pthread_mutex_unlock (&s->mutex);
 }
@@ -70,7 +73,10 @@ i_semaphore_try_wait (i_semaphore *s)
   ASSERT (s);
   pthread_mutex_lock (&s->mutex);
   bool acquired = s->count > 0;
-  if (acquired) { s->count--; }
+  if (acquired)
+  {
+    s->count--;
+  }
   pthread_mutex_unlock (&s->mutex);
   return acquired;
 }

@@ -30,4 +30,6 @@ __nsh_crash (struct nshandle *n, error *e)
 
 int
 nsh_crash (struct nshandle *ns)
-{ return __nsh_crash (ns, &ns->e); }
+{
+  return __nsh_crash (ns, &ns->e);
+}

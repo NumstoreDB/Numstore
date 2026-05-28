@@ -45,7 +45,12 @@
  *   5. Actually extend the file on disk.
  */
 err_t
-pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
+pgr_extend_file (
+    const struct pager *p,
+    const pgno          npages,
+    struct txn         *tx,
+    error              *e
+)
 {
   // Do a Nested Top Action
 
@@ -87,7 +92,10 @@ pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error
 
   // 5. Physically extend the file; if this fails the WAL records are already
   // durable
-  if (fpgr_extend (p->fp, npages, e)) { return error_trace (e); }
+  if (fpgr_extend (p->fp, npages, e))
+  {
+    return error_trace (e);
+  }
 
   return error_trace (e);
 }

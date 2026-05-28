@@ -32,14 +32,20 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
       // Remember:
       //    page_lsn = latest log page that modified this page
       const lsn plsn = page_get_page_lsn (&mp->page);
-      if (wal_flush_to (p->ww, plsn, e)) { goto theend; }
+      if (wal_flush_to (p->ww, plsn, e))
+      {
+        goto theend;
+      }
     }
 
     // Set page checksum before flushing
     page_set_checksum (&mp->page, page_compute_checksum (&mp->page));
 
     // Write the page to the database
-    if (fpgr_write (p->fp, mp->page.raw, mp->page.pg, e)) { goto theend; }
+    if (fpgr_write (p->fp, mp->page.raw, mp->page.pg, e))
+    {
+      goto theend;
+    }
 
     dpgt_remove_expect (p->dpt, mp->page.pg);
 

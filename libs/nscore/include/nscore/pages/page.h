@@ -52,9 +52,10 @@ enum page_type
   PG_INNER_NODE = (1 << 3), // r+tree Inner node
 
   // Variable page types
-  PG_VAR_HASH_PAGE = (1 << 4), // A Hash Table for variable names - links to a linked list
-  PG_VAR_PAGE      = (1 << 5), // A Single link in the hash table linked list
-  PG_VAR_TAIL      = (1 << 6), // Overflow to a VAR_PAGE
+  PG_VAR_HASH_PAGE =
+      (1 << 4), // A Hash Table for variable names - links to a linked list
+  PG_VAR_PAGE = (1 << 5), // A Single link in the hash table linked list
+  PG_VAR_TAIL = (1 << 6), // Overflow to a VAR_PAGE
 };
 
 #define PG_PERMISSIVE    (1 << 7)
@@ -126,7 +127,9 @@ page_compute_checksum (const page *p)
 
 HEADER_FUNC pgh
 page_get_type (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, pgh, PG_HEDR_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, pgh, PG_HEDR_OFST);
+}
 
 HEADER_FUNC lsn
 page_get_page_lsn (const page *p)

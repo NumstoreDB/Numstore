@@ -52,9 +52,9 @@ err_t dblb_append (
 /// Ensures the buffer has room for at least nelem additional elements,
 /// reallocating if necessary
 err_t dblb_ensure_space (
-    struct dbl_buffer *d,     // Target buffer
-    u32                nelem, // Number of additional elements to reserve space for
-    error             *e
+    struct dbl_buffer *d, // Target buffer
+    u32    nelem,         // Number of additional elements to reserve space for
+    error *e
 ); // The error object
 
 /// Reserves space for nelem elements at the end of the buffer and returns a

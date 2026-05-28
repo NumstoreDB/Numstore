@@ -22,7 +22,9 @@
 
 HEADER_FUNC void
 frlst_set_next (page *p, pgno pg)
-{ PAGE_SIMPLE_SET_IMPL (p, pg, TS_NEXT_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, pg, TS_NEXT_OFST);
+}
 
 HEADER_FUNC void
 frlst_init_empty (page *frlst)
@@ -33,7 +35,9 @@ frlst_init_empty (page *frlst)
 
 HEADER_FUNC pgno
 frlst_get_next (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, pgno, TS_NEXT_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, pgno, TS_NEXT_OFST);
+}
 
 // Validation
 err_t frlst_validate_for_db (const page *hl, error *e);

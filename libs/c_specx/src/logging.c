@@ -31,4 +31,6 @@ i_log_internal (const char *prefix, const char *color, const char *fmt, ...)
 
 void
 i_log_flush (void)
-{ fflush (stderr); }
+{
+  fflush (stderr);
+}

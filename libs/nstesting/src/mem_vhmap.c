@@ -32,7 +32,10 @@ struct mem_vhmap *
 mem_vhmap_create (error *e)
 {
   struct mem_vhmap *ret = i_malloc (1, sizeof *ret, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   ret->vhasht = htable_create (256, e);
   if (ret->vhasht == NULL)
@@ -73,7 +76,10 @@ static void
 move_data (struct hnode *node, void *ctx)
 {
   struct copy_ctx *_ctx = ctx;
-  if (_ctx->e->cause_code < 0) { return; }
+  if (_ctx->e->cause_code < 0)
+  {
+    return;
+  }
 
   struct var_frame *frame = container_of (node, struct var_frame, node);
   mem_vhmap_add_var (_ctx->dest, &frame->var, _ctx->e);
@@ -83,7 +89,10 @@ struct mem_vhmap *
 mem_vhmap_clone (const struct mem_vhmap *src, error *e)
 {
   struct mem_vhmap *ret = mem_vhmap_create (e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   struct copy_ctx ctx = {
       .dest = ret,
@@ -120,11 +129,17 @@ mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
   };
   hnode_init (&key.node, fnv1a_hash (var->vname));
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
-  if (found) { return error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists"); }
+  if (found)
+  {
+    return error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
+  }
   else
   {
     struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
-    if (frame == NULL) { return error_trace (e); }
+    if (frame == NULL)
+    {
+      return error_trace (e);
+    }
 
     chunk_alloc_create_default (&frame->alloc);
 
@@ -165,7 +180,10 @@ mem_vhmap_get_var (struct mem_vhmap *db, struct string name)
   hnode_init (&key.node, fnv1a_hash (name));
 
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
-  if (found) { return &container_of (*found, struct var_frame, node)->var; }
+  if (found)
+  {
+    return &container_of (*found, struct var_frame, node)->var;
+  }
   else
   {
     return NULL;
@@ -191,7 +209,9 @@ mem_vhmap_remove_var (struct mem_vhmap *db, struct string name)
 
 u32
 mem_vhmap_count (struct mem_vhmap *db)
-{ return htable_size (db->vhasht); }
+{
+  return htable_size (db->vhasht);
+}
 
 struct rand_ctx
 {
@@ -206,9 +226,15 @@ random_iter (struct hnode *node, void *_ctx)
   struct rand_ctx *ctx = _ctx;
 
   // Already done
-  if (ctx->dest) { return; }
+  if (ctx->dest)
+  {
+    return;
+  }
 
-  if (ctx->index == ctx->target) { ctx->dest = &container_of (node, struct var_frame, node)->var; }
+  if (ctx->index == ctx->target)
+  {
+    ctx->dest = &container_of (node, struct var_frame, node)->var;
+  }
 
   ctx->index++;
 }
@@ -270,7 +296,9 @@ TEST (mem_vhmap)
   }
 
   TEST_CASE ("get on unknown name returns NULL")
-  { ASSERT (mem_vhmap_get_var (v, strfcstr ("__no_such_var__")) == NULL); }
+  {
+    ASSERT (mem_vhmap_get_var (v, strfcstr ("__no_such_var__")) == NULL);
+  }
 
   TEST_CASE ("remove makes the var unretrievable; others unaffected")
   {
@@ -315,8 +343,12 @@ TEST (mem_vhmap)
     }
 
     mem_vhmap_remove_var (c, strfcstr ("cv_0"));
-    ASSERT (mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL); // removed in clone
-    ASSERT (mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL); // original intact
+    ASSERT (
+        mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL
+    ); // removed in clone
+    ASSERT (
+        mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL
+    ); // original intact
 
     mem_vhmap_free (c);
   }

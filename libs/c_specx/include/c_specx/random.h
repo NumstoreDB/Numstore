@@ -55,7 +55,13 @@ u64 randu64e (u64 lower, u64 upper); // [lower, upper)
 i64 randi64r (i64 lower, i64 upper); // [lower, upper]
 i64 randi64e (i64 lower, i64 upper); // [lower, upper)
 
-err_t rand_str (struct string *dest, struct chunk_alloc *alloc, u32 minlen, u32 maxlen, error *e);
+err_t rand_str (
+    struct string      *dest,
+    struct chunk_alloc *alloc,
+    u32                 minlen,
+    u32                 maxlen,
+    error              *e
+);
 
 void rand_bytes (void *dest, u32 len);
 #define decl_rand_buffer(name, type, len) \

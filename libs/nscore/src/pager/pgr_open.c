@@ -63,7 +63,10 @@ pgr_open_single_file (const char *dbname, error *e)
 
   // File pager
   struct file_pager *fp = fpgr_open (fname, PAGE_HEADER_LEN, e);
-  if (fp == NULL) { return NULL; }
+  if (fp == NULL)
+  {
+    return NULL;
+  }
 
   struct wal *ww = wal_open (walname, e);
   if (ww == NULL)
@@ -92,13 +95,19 @@ pgr_open_single_file (const char *dbname, error *e)
   page_h        root       = page_h_create ();
   struct pager *ret        = NULL;
 
-  if ((ret = i_calloc (1, sizeof *ret, e)) == NULL) { goto failed; }
+  if ((ret = i_calloc (1, sizeof *ret, e)) == NULL)
+  {
+    goto failed;
+  }
 
   // Initialize "easy" things
   *(struct file_pager **)&ret->fp = fp;
   *(struct wal **)&ret->ww        = ww;
   ret->lt                         = lt;
-  if (i_mutex_create (&ret->serial_lock, e)) { goto failed; }
+  if (i_mutex_create (&ret->serial_lock, e))
+  {
+    goto failed;
+  }
   mutex_init = true;
   atomic_store (&ret->flags, fpgr_isnew (ret->fp));
   atomic_store (&ret->clock, 0);
@@ -108,33 +117,57 @@ pgr_open_single_file (const char *dbname, error *e)
 
   // Open the Dirty page table
   *(struct dpg_table **)&ret->dpt = dpgt_open (e);
-  if (ret->dpt == NULL) { goto failed; }
+  if (ret->dpt == NULL)
+  {
+    goto failed;
+  }
 
   // Open the transaction table
   *(struct txn_table **)&ret->tnxt = txnt_open (e);
-  if (ret->tnxt == NULL) { goto failed; }
+  if (ret->tnxt == NULL)
+  {
+    goto failed;
+  }
 
   // Initialize (but don't start) the checkpoint task
-  if (periodic_task_init (&ret->checkpoint_task, e)) { goto failed; }
+  if (periodic_task_init (&ret->checkpoint_task, e))
+  {
+    goto failed;
+  }
 
   atomic_store (&ret->next_tid, 0);
 
   if (atomic_load (&ret->flags) & PGR_ISNEW)
   {
     // Reset any data in the file pager
-    if (fpgr_reset (ret->fp, e)) { goto failed; }
+    if (fpgr_reset (ret->fp, e))
+    {
+      goto failed;
+    }
 
     // Write out the starting header
     memset (&ret->header, 0, sizeof (ret->header));
-    if (pgr_write_header (ret, e)) { goto failed; }
+    if (pgr_write_header (ret, e))
+    {
+      goto failed;
+    }
 
-    if (wal_delete_and_reopen (ret->ww, e)) { goto failed; }
+    if (wal_delete_and_reopen (ret->ww, e))
+    {
+      goto failed;
+    }
 
-    if (wal_write_start_lsn (ret->ww, 0, e)) { goto failed; }
+    if (wal_write_start_lsn (ret->ww, 0, e))
+    {
+      goto failed;
+    }
   }
   else
   {
-    if (pgr_read_header (ret, e)) { goto failed; }
+    if (pgr_read_header (ret, e))
+    {
+      goto failed;
+    }
 
     if (!ret->header.lsn0valid && !ret->header.lsn1valid)
     {
@@ -144,7 +177,11 @@ pgr_open_single_file (const char *dbname, error *e)
 
     if (wal_isnew (ww))
     {
-      if (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e))
+      if (wal_write_start_lsn (
+              ret->ww,
+              MAX (ret->header.lsn0, ret->header.lsn1),
+              e
+          ))
       {
         goto failed;
       }
@@ -164,7 +201,11 @@ pgr_open_single_file (const char *dbname, error *e)
         {
           WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
           WRAP_GOTO (
-              wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e),
+              wal_write_start_lsn (
+                  ret->ww,
+                  MAX (ret->header.lsn0, ret->header.lsn1),
+                  e
+              ),
               failed
           );
         }
@@ -211,16 +252,34 @@ failed:
   ASSERT (error_trace (e));
   if (ret)
   {
-    if (mutex_init) { i_mutex_free (&ret->serial_lock); }
+    if (mutex_init)
+    {
+      i_mutex_free (&ret->serial_lock);
+    }
     pgr_cancel_if_exists (ret, &root);
-    if (ret->dpt) { dpgt_close (ret->dpt); }
-    if (ret->tnxt) { txnt_close (ret->tnxt); }
+    if (ret->dpt)
+    {
+      dpgt_close (ret->dpt);
+    }
+    if (ret->tnxt)
+    {
+      txnt_close (ret->tnxt);
+    }
     i_free (ret);
   }
 
-  if (ww) { wal_close_and_delete (ww, e); }
-  if (fp) { fpgr_close (fp, e); }
-  if (lt) { lockt_destroy (lt); }
+  if (ww)
+  {
+    wal_close_and_delete (ww, e);
+  }
+  if (fp)
+  {
+    fpgr_close (fp, e);
+  }
+  if (lt)
+  {
+    lockt_destroy (lt);
+  }
 
   return NULL;
 }
@@ -242,7 +301,10 @@ TEST (pager_open)
   TEST_CASE ("dbname is too long")
   {
     char *name = i_malloc (NAME_MAX, 1, &e);
-    for (int i = 0; i < NAME_MAX; ++i) { name[i] = 'c'; }
+    for (int i = 0; i < NAME_MAX; ++i)
+    {
+      name[i] = 'c';
+    }
     name[NAME_MAX - 3] = '\0';
 
     struct pager *p = pgr_open_single_file (name, &e);

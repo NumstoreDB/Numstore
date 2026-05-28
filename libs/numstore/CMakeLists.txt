@@ -1,7 +1,7 @@
 ################### Auto Generation
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/templates/numstore.h.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/numstore.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/templates/compile_config.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/numstore/compile_config.h"
     @ONLY
 )
 

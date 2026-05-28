@@ -107,6 +107,12 @@ static PyMethodDef numstore_methods[] = {
         METH_VARARGS,
         "var_remove(db, txn_or_none, var, key) -> NDArray",
     },
+    {
+      "var_exists",
+      pyns_var_exists,
+      METH_VARARGS,
+      "var_exists(db, txn_or_none, var) -> bool",
+    },
 
     // End
     {NULL, NULL, 0, NULL},

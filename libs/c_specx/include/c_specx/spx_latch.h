@@ -32,14 +32,19 @@ typedef _Atomic (unsigned int) sx_latch;
 
 HEADER_FUNC void
 spx_latch_init (sx_latch *l)
-{ *l = 0; }
+{
+  *l = 0;
+}
 
 HEADER_FUNC bool
 spx_trylock_s (sx_latch *l)
 {
   u32 val = atomic_load_explicit (l, memory_order_relaxed);
 
-  if (unlikely (XLOCKED (val))) { return false; }
+  if (unlikely (XLOCKED (val)))
+  {
+    return false;
+  }
 
   return atomic_compare_exchange_strong_explicit (
       l,
@@ -79,7 +84,9 @@ spx_lock_s (sx_latch *l)
 
 HEADER_FUNC void
 spx_unlock_s (sx_latch *l)
-{ atomic_fetch_sub_explicit (l, 1, memory_order_release); }
+{
+  atomic_fetch_sub_explicit (l, 1, memory_order_release);
+}
 
 HEADER_FUNC bool
 spx_trylock_x (sx_latch *l)
@@ -128,11 +135,16 @@ spx_lock_x (sx_latch *l)
   }
   // Phase 2: drain remaining readers.  No new readers can arrive
   // because XLOCKED is now true.
-  while (SLOCKED (atomic_load_explicit (l, memory_order_acquire))) { spin_pause (); }
+  while (SLOCKED (atomic_load_explicit (l, memory_order_acquire)))
+  {
+    spin_pause ();
+  }
 }
 
 HEADER_FUNC void
 spx_unlock_x (sx_latch *l)
-{ atomic_store_explicit (l, 0, memory_order_release); }
+{
+  atomic_store_explicit (l, 0, memory_order_release);
+}
 
 #endif // C_SPECX_SPX_LATCH_H

@@ -42,7 +42,10 @@ malloc_plan_alloc (struct malloc_plan *plan, error *e)
 {
   ASSERT (plan->mode == MP_PLANNING);
   plan->buffer = i_malloc (plan->size, 1, e);
-  if (plan->buffer == NULL) { return error_trace (e); }
+  if (plan->buffer == NULL)
+  {
+    return error_trace (e);
+  }
   plan->mode = MP_ALLOCING;
 
   return SUCCESS;

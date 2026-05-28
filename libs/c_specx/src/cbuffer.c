@@ -255,7 +255,10 @@ cbuffer_fakewrite (struct cbuffer *b, const u32 nbytes)
   ASSERT (nbytes <= cbuffer_avail (b));
 
   b->head = (b->head + nbytes) % b->cap;
-  if (nbytes > 0 && b->head == b->tail) { b->isfull = true; }
+  if (nbytes > 0 && b->head == b->tail)
+  {
+    b->isfull = true;
+  }
 }
 
 #ifndef NTEST
@@ -339,7 +342,10 @@ cbuffer_fakeread (struct cbuffer *b, const u32 nbytes)
   ASSERT (nbytes <= cbuffer_len (b));
 
   b->tail = (b->tail + nbytes) % b->cap;
-  if (nbytes > 0) { b->isfull = false; }
+  if (nbytes > 0)
+  {
+    b->isfull = false;
+  }
 }
 
 #ifndef NTEST
@@ -431,19 +437,28 @@ cbuffer_read (void *dest, const u32 size, const u32 n, struct cbuffer *b)
   u32       bread   = 0;
 
   u8 *output = NULL;
-  if (dest) { output = (u8 *)dest; }
+  if (dest)
+  {
+    output = (u8 *)dest;
+  }
 
   while (bread < btoread)
   {
     u32 next;
 
-    if (!b->isfull && b->head > b->tail) { next = MIN (b->head - b->tail, btoread - bread); }
+    if (!b->isfull && b->head > b->tail)
+    {
+      next = MIN (b->head - b->tail, btoread - bread);
+    }
     else
     {
       next = MIN (b->cap - b->tail, btoread - bread);
     }
 
-    if (output) { memcpy (output + bread, b->data + b->tail, next); }
+    if (output)
+    {
+      memcpy (output + bread, b->data + b->tail, next);
+    }
     b->tail = (b->tail + next) % b->cap;
     bread += next;
     b->isfull = 0;
@@ -489,7 +504,10 @@ cbuffer_copy (void *dest, const u32 size, const u32 n, const struct cbuffer *b)
   u32       bread   = 0;
 
   u8 *output = NULL;
-  if (dest) { output = (u8 *)dest; }
+  if (dest)
+  {
+    output = (u8 *)dest;
+  }
 
   // Literally the exact same as read but
   // use these temp variables instead
@@ -501,13 +519,19 @@ cbuffer_copy (void *dest, const u32 size, const u32 n, const struct cbuffer *b)
   {
     u32 next;
 
-    if (!isfull && b->head > tail) { next = MIN (b->head - tail, btoread - bread); }
+    if (!isfull && b->head > tail)
+    {
+      next = MIN (b->head - tail, btoread - bread);
+    }
     else
     {
       next = MIN (b->cap - tail, btoread - bread);
     }
 
-    if (output) { memcpy (output + bread, b->data + tail, next); }
+    if (output)
+    {
+      memcpy (output + bread, b->data + tail, next);
+    }
     tail = (tail + next) % b->cap;
     bread += next;
     isfull = 0;
@@ -595,7 +619,10 @@ cbuffer_write (const void *src, const u32 size, const u32 n, struct cbuffer *b)
     b->head = (b->head + next) % b->cap;
     bwrite += next;
 
-    if (b->head == b->tail) { b->isfull = 1; }
+    if (b->head == b->tail)
+    {
+      b->isfull = 1;
+    }
   }
 
   ASSERT (ntowrite * size == bwrite);
@@ -629,7 +656,12 @@ TEST (cbuffer_write)
 // CBUFFER READ / WRITE
 
 u32
-cbuffer_cbuffer_move (struct cbuffer *dest, const u32 sz, const u32 cnt, struct cbuffer *src)
+cbuffer_cbuffer_move (
+    struct cbuffer *dest,
+    const u32       sz,
+    const u32       cnt,
+    struct cbuffer *src
+)
 {
   DBG_ASSERT (cbuffer, dest);
   DBG_ASSERT (cbuffer, src);
@@ -639,25 +671,40 @@ cbuffer_cbuffer_move (struct cbuffer *dest, const u32 sz, const u32 cnt, struct 
   const u32 src_elems = cbuffer_len (src) / sz;
   const u32 dst_space = cbuffer_avail (dest) / sz;
   u32       n;
-  if (cnt < src_elems) { n = cnt; }
+  if (cnt < src_elems)
+  {
+    n = cnt;
+  }
   else
   {
     n = src_elems;
   }
-  if (dst_space < n) { n = dst_space; }
-  if (n == 0) { return 0; }
+  if (dst_space < n)
+  {
+    n = dst_space;
+  }
+  if (n == 0)
+  {
+    return 0;
+  }
 
   // total nbytes to transfer
   u32 nbytes = n * sz;
 
   // first chunk: from tail up to end of buffer
   u32 first;
-  if (src->isfull || src->head <= src->tail) { first = src->cap - src->tail; }
+  if (src->isfull || src->head <= src->tail)
+  {
+    first = src->cap - src->tail;
+  }
   else
   {
     first = src->head - src->tail;
   }
-  if (first > nbytes) { first = nbytes; }
+  if (first > nbytes)
+  {
+    first = nbytes;
+  }
 
   // write first chunk into dest
   cbuffer_write (src->data + src->tail, 1, first, dest);
@@ -717,7 +764,12 @@ TEST (cbuffer_cbuffer_move)
 #endif
 
 u32
-cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const struct cbuffer *src)
+cbuffer_cbuffer_copy (
+    struct cbuffer       *dest,
+    const u32             sz,
+    const u32             cnt,
+    const struct cbuffer *src
+)
 {
   DBG_ASSERT (cbuffer, dest);
   DBG_ASSERT (cbuffer, src);
@@ -727,13 +779,22 @@ cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const s
   const u32 src_elems = cbuffer_len (src) / sz;
   const u32 dst_space = cbuffer_avail (dest) / sz;
   u32       n;
-  if (cnt < src_elems) { n = cnt; }
+  if (cnt < src_elems)
+  {
+    n = cnt;
+  }
   else
   {
     n = src_elems;
   }
-  if (dst_space < n) { n = dst_space; }
-  if (n == 0) { return 0; }
+  if (dst_space < n)
+  {
+    n = dst_space;
+  }
+  if (n == 0)
+  {
+    return 0;
+  }
 
   // total nbytes to copy
   u32 nbytes = n * sz;
@@ -744,12 +805,18 @@ cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const s
 
   // first chunk: from pos up to end of buffer
   u32 first;
-  if (full || src->head <= pos) { first = src->cap - pos; }
+  if (full || src->head <= pos)
+  {
+    first = src->cap - pos;
+  }
   else
   {
     first = src->head - pos;
   }
-  if (first > nbytes) { first = nbytes; }
+  if (first > nbytes)
+  {
+    first = nbytes;
+  }
 
   // write first chunk into dest
   cbuffer_write (src->data + pos, 1, first, dest);
@@ -759,7 +826,10 @@ cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const s
   nbytes -= first;
 
   // second chunk if any remains
-  if (nbytes > 0) { cbuffer_write (src->data + pos, 1, nbytes, dest); }
+  if (nbytes > 0)
+  {
+    cbuffer_write (src->data + pos, 1, nbytes, dest);
+  }
 
   return n;
 }
@@ -806,7 +876,12 @@ TEST (cbuffer_cbuffer_copy)
 // IO READ / WRITE
 
 i32
-cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, const u32 len, error *e)
+cbuffer_read_from_file_1 (
+    i_file               *src,
+    const struct cbuffer *b,
+    const u32             len,
+    error                *e
+)
 {
   ASSERT (src);
   ASSERT (b);
@@ -840,19 +915,33 @@ cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, const u32 len, e
     bwrite += next;
   }
 
-  if (btowrite == 0) { return 0; }
+  if (btowrite == 0)
+  {
+    return 0;
+  }
 
   const i64 nread = i_readv_all (src, iov, iovcnt, e);
-  if (nread < 0) { return error_trace (e); }
+  if (nread < 0)
+  {
+    return error_trace (e);
+  }
 
   return nread;
 }
 
 err_t
-cbuffer_read_from_file_1_expect (i_file *src, const struct cbuffer *b, const u32 len, error *e)
+cbuffer_read_from_file_1_expect (
+    i_file               *src,
+    const struct cbuffer *b,
+    const u32             len,
+    error                *e
+)
 {
   const i32 read = cbuffer_read_from_file_1 (src, b, len, e);
-  if (read < 0) { return read; }
+  if (read < 0)
+  {
+    return read;
+  }
   ASSERT ((u32)read == len);
   return SUCCESS;
 }
@@ -865,7 +954,10 @@ cbuffer_read_from_file_2 (struct cbuffer *b, const u32 nread)
 
   b->head = (b->head + nread) % b->cap;
 
-  if (b->head == b->tail && nread > 0) { b->isfull = 1; }
+  if (b->head == b->tail && nread > 0)
+  {
+    b->isfull = 1;
+  }
 }
 
 i32
@@ -875,7 +967,10 @@ cbuffer_read_from_file (i_file *src, struct cbuffer *b, const u32 len, error *e)
   ASSERT (src);
 
   const i32 nread = cbuffer_read_from_file_1 (src, b, len, e);
-  if (nread < 0) { return nread; }
+  if (nread < 0)
+  {
+    return nread;
+  }
 
   cbuffer_read_from_file_2 (b, (u32)nread);
 
@@ -883,7 +978,12 @@ cbuffer_read_from_file (i_file *src, struct cbuffer *b, const u32 len, error *e)
 }
 
 i32
-cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, error *e)
+cbuffer_write_to_file_1 (
+    i_file               *dest,
+    const struct cbuffer *b,
+    const u32             len,
+    error                *e
+)
 {
   ASSERT (dest);
   ASSERT (b);
@@ -897,7 +997,10 @@ cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, e
   while (bread < btoread)
   {
     u32 next;
-    if (!b->isfull && b->head > newtail) { next = MIN (b->head - newtail, btoread - bread); }
+    if (!b->isfull && b->head > newtail)
+    {
+      next = MIN (b->head - newtail, btoread - bread);
+    }
     else
     {
       next = MIN (b->cap - newtail, btoread - bread);
@@ -912,19 +1015,33 @@ cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, e
     bread += next;
   }
 
-  if (btoread == 0) { return 0; }
+  if (btoread == 0)
+  {
+    return 0;
+  }
 
   const err_t err = i_writev_all (dest, iov, iovcnt, e);
-  if (err != SUCCESS) { return error_trace (e); }
+  if (err != SUCCESS)
+  {
+    return error_trace (e);
+  }
 
   return btoread;
 }
 
 err_t
-cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, const u32 len, error *e)
+cbuffer_write_to_file_1_expect (
+    i_file               *dest,
+    const struct cbuffer *b,
+    const u32             len,
+    error                *e
+)
 {
   const i32 written = cbuffer_write_to_file_1 (dest, b, len, e);
-  if (written < 0) { return written; }
+  if (written < 0)
+  {
+    return written;
+  }
   ASSERT ((u32)written == len);
   return SUCCESS;
 }
@@ -937,7 +1054,10 @@ cbuffer_write_to_file_2 (struct cbuffer *b, const u32 nwritten)
 
   b->tail = (b->tail + nwritten) % b->cap;
 
-  if (nwritten > 0) { b->isfull = 0; }
+  if (nwritten > 0)
+  {
+    b->isfull = 0;
+  }
 }
 
 i32
@@ -947,7 +1067,10 @@ cbuffer_write_to_file (i_file *dest, struct cbuffer *b, const u32 len, error *e)
   ASSERT (dest);
 
   const i32 result = cbuffer_write_to_file_1 (dest, b, len, e);
-  if (result < 0) { return result; }
+  if (result < 0)
+  {
+    return result;
+  }
 
   cbuffer_write_to_file_2 (b, (u32)result);
 
@@ -957,7 +1080,12 @@ cbuffer_write_to_file (i_file *dest, struct cbuffer *b, const u32 len, error *e)
 ////////////////////////////////////////////////////////////
 // WORKING WITH SINGLE ELEMENTS
 static u8
-cbuffer_get_no_check (void *dest, const u32 size, const u32 idx, const struct cbuffer *b)
+cbuffer_get_no_check (
+    void                 *dest,
+    const u32             size,
+    const u32             idx,
+    const struct cbuffer *b
+)
 {
   DBG_ASSERT (cbuffer, b);
   ASSERT (size > 0);
@@ -970,7 +1098,10 @@ cbuffer_get_no_check (void *dest, const u32 size, const u32 idx, const struct cb
   {
     const u32 offset = (b->tail + idx * size) % b->cap;
 
-    if (offset + size <= b->cap) { memcpy (dest, b->data + offset, size); }
+    if (offset + size <= b->cap)
+    {
+      memcpy (dest, b->data + offset, size);
+    }
     else
     {
       const u32 first = b->cap - offset;
@@ -1037,8 +1168,12 @@ TEST (cbuffer_get_no_check)
     cbuffer_write (src1, 1, 4, &b); // buffer now full
 
     u8 temp[2];
-    cbuffer_read (temp, 1, 2,
-                  &b); // advance tail by 2 bytes // head = 0, tail = 2 now
+    cbuffer_read (
+        temp,
+        1,
+        2,
+        &b
+    ); // advance tail by 2 bytes // head = 0, tail = 2 now
 
     const u8 src2[2] = {0xEE, 0xFF};
     cbuffer_write (src2, 1, 2,
@@ -1070,7 +1205,10 @@ cbuffer_get (void *dest, const u32 size, const u32 idx, const struct cbuffer *b)
   DBG_ASSERT (cbuffer, b);
   ASSERT (dest);
 
-  if (!b->isfull && (u32)idx >= (b->head + b->cap - b->tail) % b->cap) { return false; }
+  if (!b->isfull && (u32)idx >= (b->head + b->cap - b->tail) % b->cap)
+  {
+    return false;
+  }
 
   cbuffer_get_no_check (dest, size, idx, b);
 
@@ -1100,7 +1238,10 @@ cbuffer_peek_back (void *dest, const u32 size, const struct cbuffer *b)
   ASSERT (dest);
   DBG_ASSERT (cbuffer, b);
 
-  if (!b->isfull && b->head == b->tail) { return false; }
+  if (!b->isfull && b->head == b->tail)
+  {
+    return false;
+  }
 
   return cbuffer_get (dest, size, 0, b);
 }
@@ -1153,7 +1294,10 @@ cbuffer_peek_front (void *dest, const u32 size, const struct cbuffer *b)
   ASSERT (dest);
   DBG_ASSERT (cbuffer, b);
 
-  if (!b->isfull && b->head == b->tail) { return false; }
+  if (!b->isfull && b->head == b->tail)
+  {
+    return false;
+  }
 
   return cbuffer_get (dest, size, 0, b);
 }
@@ -1206,10 +1350,16 @@ cbuffer_push_back (const void *src, const u32 size, struct cbuffer *b)
   DBG_ASSERT (cbuffer, b);
   ASSERT (size > 0);
 
-  if (cbuffer_avail (b) < size) { return false; }
+  if (cbuffer_avail (b) < size)
+  {
+    return false;
+  }
 
   const u32 offset = b->head;
-  if (offset + size <= b->cap) { memcpy (b->data + offset, src, size); }
+  if (offset + size <= b->cap)
+  {
+    memcpy (b->data + offset, src, size);
+  }
   else
   {
     const u32 first = b->cap - offset;
@@ -1218,7 +1368,10 @@ cbuffer_push_back (const void *src, const u32 size, struct cbuffer *b)
   }
 
   b->head = (b->head + size) % b->cap;
-  if (b->head == b->tail) { b->isfull = true; }
+  if (b->head == b->tail)
+  {
+    b->isfull = true;
+  }
 
   return true;
 }
@@ -1256,12 +1409,18 @@ cbuffer_push_front (const void *src, const u32 size, struct cbuffer *b)
   DBG_ASSERT (cbuffer, b);
   ASSERT (size > 0);
 
-  if (cbuffer_avail (b) < size) { return false; }
+  if (cbuffer_avail (b) < size)
+  {
+    return false;
+  }
 
   // Compute new tail position before wrapping
   const u32 new_tail = (b->tail + b->cap - size) % b->cap;
 
-  if (new_tail + size <= b->cap) { memcpy (b->data + new_tail, src, size); }
+  if (new_tail + size <= b->cap)
+  {
+    memcpy (b->data + new_tail, src, size);
+  }
   else
   {
     const u32 first = b->cap - new_tail;
@@ -1270,7 +1429,10 @@ cbuffer_push_front (const void *src, const u32 size, struct cbuffer *b)
   }
 
   b->tail = new_tail;
-  if (b->head == b->tail) { b->isfull = true; }
+  if (b->head == b->tail)
+  {
+    b->isfull = true;
+  }
 
   return true;
 }
@@ -1323,10 +1485,16 @@ cbuffer_pop_back (void *dest, const u32 size, struct cbuffer *b)
   DBG_ASSERT (cbuffer, b);
   ASSERT (size > 0);
 
-  if (!b->isfull && b->head == b->tail) { return false; }
+  if (!b->isfull && b->head == b->tail)
+  {
+    return false;
+  }
 
   const u32 offset = b->tail;
-  if (offset + size <= b->cap) { memcpy (dest, b->data + offset, size); }
+  if (offset + size <= b->cap)
+  {
+    memcpy (dest, b->data + offset, size);
+  }
   else
   {
     const u32 first = b->cap - offset;
@@ -1388,10 +1556,16 @@ cbuffer_pop_front (void *dest, const u32 size, struct cbuffer *b)
   DBG_ASSERT (cbuffer, b);
   ASSERT (size > 0);
 
-  if (!b->isfull && b->head == b->tail) { return false; }
+  if (!b->isfull && b->head == b->tail)
+  {
+    return false;
+  }
 
   const u32 offset = b->tail;
-  if (offset + size <= b->cap) { memcpy (dest, b->data + offset, size); }
+  if (offset + size <= b->cap)
+  {
+    memcpy (dest, b->data + offset, size);
+  }
   else
   {
     const u32 first = b->cap - offset;

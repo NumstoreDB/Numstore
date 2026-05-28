@@ -30,7 +30,10 @@ _smfile_psize (struct nshandle *db, const char *name, error *e)
   b_size        ret;
 
   // BEGIN TXN
-  if (nsh_auto_begin_txn (db, e) < 0) { goto failed; }
+  if (nsh_auto_begin_txn (db, e) < 0)
+  {
+    goto failed;
+  }
 
   // GET OR CREATE VARIABLE
   struct ns_var_get_params gparams = {
@@ -39,12 +42,18 @@ _smfile_psize (struct nshandle *db, const char *name, error *e)
       .vname = vname,
       .alloc = &temp,
   };
-  if (ns_var_get (&gparams, e)) { goto failed; }
+  if (ns_var_get (&gparams, e))
+  {
+    goto failed;
+  }
 
   ret = gparams.dest.nbytes;
 
   // COMMIT
-  if (nsh_auto_commit (db, e) < 0) { goto failed_rollback; }
+  if (nsh_auto_commit (db, e) < 0)
+  {
+    goto failed_rollback;
+  }
 
   chunk_alloc_free_all (&temp);
 

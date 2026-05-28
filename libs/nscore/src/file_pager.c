@@ -44,20 +44,29 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
 {
   // Allocate space for the pager
   struct file_pager *dest = i_malloc (1, sizeof *dest, e);
-  if (dest == NULL) { return NULL; }
+  if (dest == NULL)
+  {
+    return NULL;
+  }
 
   // Basic initialization
   latch_init (&dest->l);
   dest->flags = 0;
 
   // Open the database in read write mode
-  if (i_open_rw (&dest->f, dbname, e)) { goto failed; }
+  if (i_open_rw (&dest->f, dbname, e))
+  {
+    goto failed;
+  }
 
   // We'll use the size for checking if it's new or not
   i64 size = i_file_size (&dest->f, e);
 
   // Failed
-  if (size < 0) { goto fp_failed; }
+  if (size < 0)
+  {
+    goto fp_failed;
+  }
 
   // No header or a newly created file (just a header)
   if (size == 0 || size == header_len)
@@ -67,7 +76,10 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
     // extend the file to the header length
     if (size == 0)
     {
-      if (i_truncate (&dest->f, header_len, e)) { goto fp_failed; }
+      if (i_truncate (&dest->f, header_len, e))
+      {
+        goto fp_failed;
+      }
     }
 
     size = header_len;
@@ -83,7 +95,11 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
   // Corrupt database - not a multiple of PAGE_SIZE
   if ((size - header_len) % PAGE_SIZE != 0)
   {
-    error_causef (e, ERR_CORRUPT, "File pager does not contain contiguous pagers\n");
+    error_causef (
+        e,
+        ERR_CORRUPT,
+        "File pager does not contain contiguous pagers\n"
+    );
     goto fp_failed;
   }
 
@@ -168,7 +184,9 @@ fpgr_reset (struct file_pager *f, error *e)
 
 bool
 fpgr_isnew (struct file_pager *f)
-{ return f->flags & FP_ISNEW; }
+{
+  return f->flags & FP_ISNEW;
+}
 
 p_size
 fpgr_get_npages (const struct file_pager *fp)
@@ -220,16 +238,25 @@ TEST (fpgr_new)
   // Create a new page
   test_fail_if (fpgr_extend (pager, 1, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 1);
-  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * atomic_load (&pager->npages));
+  test_assert_int_equal (
+      i_file_size (&fp, &e),
+      PAGE_SIZE * atomic_load (&pager->npages)
+  );
 
   // Add two more pages and do the same thing
   test_fail_if (fpgr_extend (pager, 2, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 2);
-  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * atomic_load (&pager->npages));
+  test_assert_int_equal (
+      i_file_size (&fp, &e),
+      PAGE_SIZE * atomic_load (&pager->npages)
+  );
 
   test_fail_if (fpgr_extend (pager, 3, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 3);
-  test_assert_int_equal (i_file_size (&fp, &e), PAGE_SIZE * atomic_load (&pager->npages));
+  test_assert_int_equal (
+      i_file_size (&fp, &e),
+      PAGE_SIZE * atomic_load (&pager->npages)
+  );
 
   test_fail_if (fpgr_close (pager, &e));
 
@@ -261,15 +288,24 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
   }
 
   // Read all from file
-  const i64 nread = i_pread_all (&p->f, dest, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e);
+  const i64 nread =
+      i_pread_all (&p->f, dest, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e);
 
   if (nread == 0)
   {
-    error_causef (e, ERR_CORRUPT, "pread returned 0 bytes at page %" PRpgno, pg);
+    error_causef (
+        e,
+        ERR_CORRUPT,
+        "pread returned 0 bytes at page %" PRpgno,
+        pg
+    );
     goto theend;
   }
 
-  if (nread < 0) { goto theend; }
+  if (nread < 0)
+  {
+    goto theend;
+  }
 
 theend:
 
@@ -288,7 +324,10 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (i_pwrite_all (&p->f, src, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e)) { goto theend; }
+  if (i_pwrite_all (&p->f, src, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e))
+  {
+    goto theend;
+  }
 
 theend:
 
@@ -298,7 +337,13 @@ theend:
 }
 
 err_t
-fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e)
+fpgr_write_header (
+    struct file_pager *p,
+    const u8          *src,
+    u32                ofst,
+    u32                size,
+    error             *e
+)
 {
   ASSERT (src);
   ASSERT (ofst + size <= p->header_len);
@@ -307,9 +352,15 @@ fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, erro
 
   DBG_ASSERT (file_pager, p);
 
-  if (i_pwrite_all (&p->f, src, size, ofst, e)) { goto theend; }
+  if (i_pwrite_all (&p->f, src, size, ofst, e))
+  {
+    goto theend;
+  }
 
-  if (i_fsync (&p->f, e)) { goto theend; }
+  if (i_fsync (&p->f, e))
+  {
+    goto theend;
+  }
 
 theend:
 
@@ -329,7 +380,10 @@ fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
   DBG_ASSERT (file_pager, p);
 
   // Read all from file
-  if (i_pread_all_expect (&p->f, dest, size, ofst, e)) { goto theend; }
+  if (i_pread_all_expect (&p->f, dest, size, ofst, e))
+  {
+    goto theend;
+  }
 
 theend:
 
@@ -359,7 +413,10 @@ TEST (fpgr_read_write)
   test_fail_if (fpgr_extend (pager, 2, &e));
 
   // Write 0 : PAGE_SIZE to each byte (overflow fine, it's just data)
-  for (u32 i = 0; i < PAGE_SIZE; i++) { _page[i] = (u8)i; }
+  for (u32 i = 0; i < PAGE_SIZE; i++)
+  {
+    _page[i] = (u8)i;
+  }
   // Write it out
   test_fail_if (fpgr_write (pager, _page, 1, &e));
 
@@ -368,7 +425,10 @@ TEST (fpgr_read_write)
   test_fail_if (fpgr_read (pager, _page, 1, &e));
 
   // Iterate and check that it matches what we expect
-  for (u32 i = 0; i < PAGE_SIZE; i++) { test_assert_int_equal (_page[i], (u8)i); }
+  for (u32 i = 0; i < PAGE_SIZE; i++)
+  {
+    test_assert_int_equal (_page[i], (u8)i);
+  }
 
   // There's 2 refs to this file, close the other one
   test_fail_if (fpgr_close (pager, &e));

@@ -22,7 +22,8 @@ struct type_parser
   struct chunk_alloc *persistent;
 };
 
-static err_t parse_type_inner (struct type_parser *parser, struct type *out, error *e);
+static err_t
+parse_type_inner (struct type_parser *parser, struct type *out, error *e);
 
 // primitive_type ::= PRIM
 static err_t
@@ -78,7 +79,10 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
 
   // Inner most type
   struct type *inner = chunk_malloc (parser->persistent, 1, sizeof *inner, e);
-  if (inner == NULL) { return error_trace (e); }
+  if (inner == NULL)
+  {
+    return error_trace (e);
+  }
   WRAP (parse_type_inner (parser, inner, e));
   WRAP (sab_accept_type (&builder, inner, e));
 
@@ -88,12 +92,21 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
 
 // field           ::= IDENTIFIER type
 static err_t
-parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error *e)
+parse_field (
+    struct kvt_list_builder *builder,
+    struct type_parser      *parser,
+    error                   *e
+)
 {
   // IDENT
   if (!parser_match (parser->base, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -108,7 +121,10 @@ parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error
 
   // Type
   struct type *inner = chunk_malloc (parser->persistent, 1, sizeof *inner, e);
-  if (inner == NULL) { return error_trace (e); }
+  if (inner == NULL)
+  {
+    return error_trace (e);
+  }
   WRAP (parse_type_inner (parser, inner, e));
   WRAP (kvlb_accept_type (builder, inner, e));
 
@@ -222,7 +238,12 @@ parse_type_inner (struct type_parser *parser, struct type *out, error *e)
 }
 
 err_t
-parse_type (struct parser *p, struct type *dest, struct chunk_alloc *dalloc, error *e)
+parse_type (
+    struct parser      *p,
+    struct type        *dest,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
 {
   struct type_parser parser = {
       .base       = p,
@@ -232,7 +253,10 @@ parse_type (struct parser *p, struct type *dest, struct chunk_alloc *dalloc, err
 
   chunk_alloc_create_default (&parser.temp);
 
-  if (unlikely ((parse_type_inner (&parser, parser.dest, e)) < SUCCESS)) { goto theend; }
+  if (unlikely ((parse_type_inner (&parser, parser.dest, e)) < SUCCESS))
+  {
+    goto theend;
+  }
 
 theend:
   chunk_alloc_free_all (&parser.temp);

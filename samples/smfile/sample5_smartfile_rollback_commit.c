@@ -223,7 +223,13 @@ phase5_rollback (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected)
+check_zone (
+    smfile_t   *smf,
+    const char *label,
+    b_size      bofst,
+    b_size      nelem,
+    const char *expected
+)
 {
   char    buf[64];
   sb_size n = smfile_read (smf, buf, bofst, nelem);
@@ -248,7 +254,10 @@ main (int argc, char *argv[])
     int       crash     = (phase_num == 3 || phase_num == 4);
     smfile_t *smf       = smfile_open (PATH);
     phases[phase_num](smf);
-    if (crash) { exit (1); }
+    if (crash)
+    {
+      exit (1);
+    }
     smfile_close (smf);
     return 0;
   }
@@ -260,23 +269,39 @@ main (int argc, char *argv[])
   printf ("[main] phase 1 done: inserted \"AAAAAAAAAA\" at 0 (baseline)\n");
 
   run_phase (2, 0, argv[0]);
-  printf ("[main] phase 2 done: inserted \"BB\" at 3 (committed, clean exit)\n");
+  printf (
+      "[main] phase 2 done: inserted \"BB\" at 3 (committed, clean exit)\n"
+  );
 
   run_phase (3, 1, argv[0]);
-  printf ("[main] phase 3 done: inserted \"CC\" at 7 (committed, then crashed)\n");
+  printf (
+      "[main] phase 3 done: inserted \"CC\" at 7 (committed, then crashed)\n"
+  );
 
   run_phase (4, 1, argv[0]);
-  printf ("[main] phase 4 done: inserted \"DD\" at 11 (no commit, crashed — should vanish)\n");
+  printf (
+      "[main] phase 4 done: inserted \"DD\" at 11 (no commit, crashed — should "
+      "vanish)\n"
+  );
 
   run_phase (5, 0, argv[0]);
-  printf ("[main] phase 5 done: inserted \"EE\" at 5 (rolled back — should vanish)\n");
+  printf (
+      "[main] phase 5 done: inserted \"EE\" at 5 (rolled back — should "
+      "vanish)\n"
+  );
 
   // Open the file fresh — this triggers WAL replay for any committed-but-
   // unwritten entries (i.e. phase 3's "CC").
   smfile_t *smf = smfile_open (PATH);
 
   printf ("\n--- Phase 6: verification ---\n\n");
-  check_zone (smf, "full contents (ph2 + ph3 visible, ph4 + ph5 gone):", 0, 14, "AAABBAACCAAAAA");
+  check_zone (
+      smf,
+      "full contents (ph2 + ph3 visible, ph4 + ph5 gone):",
+      0,
+      14,
+      "AAABBAACCAAAAA"
+  );
   check_zone (smf, "ph2 — BB committed, clean exit:", 3, 2, "BB");
   check_zone (smf, "ph3 — CC committed then crashed (WAL replay):", 7, 2, "CC");
   check_zone (smf, "ph4 — DD no commit + crash (must still be A):", 11, 1, "A");

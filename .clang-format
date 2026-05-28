@@ -1,92 +1,92 @@
 # Base style rules
 BasedOnStyle: Google
-ColumnLimit: 100
+ColumnLimit: 80
 IndentWidth: 2
 ContinuationIndentWidth: 4
 UseTab: Never
 
 # Function parameters & arguments layout
-AlignAfterOpenBracket: BlockIndent                  # Wrap long arguments onto new lines, indented as a block
-BinPackParameters: false                            # Put each wrapped parameter on its own line
-BinPackArguments: false                             # Put each wrapped argument on its own line
-AllowAllParametersOfDeclarationOnNextLine: false   # Prevent dumping all parameters onto a single next line
-AllowAllArgumentsOnNextLine: false                  # Prevent dumping all arguments onto a single next line
+AlignAfterOpenBracket: BlockIndent                  
+BinPackParameters: false                            
+BinPackArguments: false                             
+AllowAllParametersOfDeclarationOnNextLine: false   
+AllowAllArgumentsOnNextLine: false                  
 
 # Break return type on definitions, keep on declarations
-AlwaysBreakAfterReturnType: AllDefinitions          # Break return type to next line on definitions (older Clang)
-BreakAfterReturnType: AllDefinitions                # Break return type to next line on definitions (Clang 19+)
+AlwaysBreakAfterReturnType: AllDefinitions          
+BreakAfterReturnType: AllDefinitions                
 PenaltyReturnTypeOnItsOwnLine: 1
-SpaceBeforeParens: Always                           # Put a space before control statement parentheses
+SpaceBeforeParens: Always                           
 IndentWrappedFunctionNames: false
 
 # Brace placement rules
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: true                              # Brace after case label goes on next line
-  AfterControlStatement: Always                     # Braces for if/else/switch/for/while go on next line
-  AfterEnum: true                                   # Enum opening brace goes on next line
-  AfterFunction: true                               # Function body opening brace goes on next line
-  AfterStruct: true                                 # Struct opening brace goes on next line
-  BeforeElse: true                                  # Formats as } \n else
-  BeforeWhile: true                                 # Formats as } \n while
-  SplitEmptyFunction: false                         # Keep empty functions compact
-  SplitEmptyRecord: false                           # Keep empty structs/classes compact
-  SplitEmptyNamespace: false                        # Keep empty namespaces compact
+  AfterCaseLabel: true                              
+  AfterControlStatement: Always                     
+  AfterEnum: true                                   
+  AfterFunction: true                               
+  AfterStruct: true                                 
+  BeforeElse: true                                  
+  BeforeWhile: true                                 
+  SplitEmptyFunction: false                         
+  SplitEmptyRecord: false                           
+  SplitEmptyNamespace: false                        
 
 # Inline short code blocks
-AllowShortFunctionsOnASingleLine: None              # Never squeeze functions onto one line
-AllowShortBlocksOnASingleLine: Always               # Allow single-line short blocks
-AllowShortIfStatementsOnASingleLine: AllIfsAndElse # Allow one-line simple if/else statements
-AllowShortLoopsOnASingleLine: true                 # Allow one-line simple loops
-AllowShortCaseLabelsOnASingleLine: true             # Allow one-line simple case labels
-AllowShortEnumsOnASingleLine: true                  # Allow one-line simple enums
+AllowShortFunctionsOnASingleLine: None              
+AllowShortBlocksOnASingleLine: Never 
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse 
+AllowShortLoopsOnASingleLine: true                 
+AllowShortCaseLabelsOnASingleLine: true             
+AllowShortEnumsOnASingleLine: true                  
 
 # Auto-insert braces for control statements
-InsertBraces: true                                  # Add missing braces to single-line if/else/for/while
+InsertBraces: true                                  
 
 # Preprocessor directives indentation
-IndentPPDirectives: AfterHash                       # Indent nested macros after the '#' symbol
-PPIndentWidth: 2                                    # Indentation spacing for nested macros
+IndentPPDirectives: AfterHash                       
+PPIndentWidth: 2                                    
 
 # Include files organization
 SortIncludes: CaseSensitive
-IncludeBlocks: Regroup                               # Group and sort includes dynamically
-IncludeIsMainRegex: '([-_](test|unittest))?$'       # Identifies test files to pair with main headers
+IncludeBlocks: Regroup                               
+IncludeIsMainRegex: '([-_](test|unittest))?$'       
 IncludeCategories:
-  - Regex: '^"'                                     # Group 1: Local headers
+  - Regex: '^"'                                     
     Priority: 1
-  - Regex: '^<sys/'                                 # Group 2: POSIX system headers
+  - Regex: '^<sys/'                                 
     Priority: 2
-  - Regex: '^<.*\.h>'                               # Group 3: C standard headers
+  - Regex: '^<.*\.h>'                               
     Priority: 3
-  - Regex: '^<Python\.h>|numpy'                     # Group 4: Python headers
+  - Regex: '^<Python\.h>|numpy'                     
     Priority: 4
-  - Regex: '^<.*>'                                  # Group 5: C++ standard & all other headers
+  - Regex: '^<.*>'                                  
     Priority: 5
 
 # Whitespace cleanup
-MaxEmptyLinesToKeep: 1                              # Never allow more than one consecutive empty line
-KeepEmptyLinesAtTheStartOfBlocks: false            # Remove empty lines right after an opening brace
+MaxEmptyLinesToKeep: 1                              
+KeepEmptyLinesAtTheStartOfBlocks: false            
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpacesInCStyleCastParentheses: false
 SpaceAfterCStyleCast: false
-SpaceBeforeAssignmentOperators: true                # Put spaces around '=' signs
-SpacesBeforeTrailingComments: 1                    # One space before an inline comment
-DerivePointerAlignment: false                       # Force fixed pointer layout
-PointerAlignment: Right                             # Bind pointer asterisk to the variable name (e.g., int *var)
-Cpp11BracedListStyle: true                          # Use modern C++ initialization spacing
+SpaceBeforeAssignmentOperators: true                
+SpacesBeforeTrailingComments: 1                    
+DerivePointerAlignment: false                       
+PointerAlignment: Right                             
+Cpp11BracedListStyle: true                          
 
 # Consecutive block alignment
-AlignConsecutiveMacros: Consecutive                # Vertically align backslashes/values in adjacent macros
-AlignConsecutiveAssignments: Consecutive           # Vertically align '=' signs in adjacent lines
-AlignConsecutiveDeclarations: Consecutive          # Vertically align variable names in adjacent declarations
-AlignConsecutiveBitFields: Consecutive             # Vertically align bitfield colons
-AlignTrailingComments: true                         # Vertically align inline comments on adjacent lines
-AlignEscapedNewlines: Left                          # Align macro line-break backslashes to the left
-AlignOperands: Align                                # Align operands when expressions wrap lines
+AlignConsecutiveMacros: Consecutive                
+AlignConsecutiveAssignments: Consecutive           
+AlignConsecutiveDeclarations: Consecutive          
+AlignConsecutiveBitFields: Consecutive             
+AlignTrailingComments: true                         
+AlignEscapedNewlines: Left                          
+AlignOperands: Align                                
 
 # Line wraps inside expressions
-BreakBeforeBinaryOperators: NonAssignment           # Wrap lines before operators (except assignment)
-BreakStringLiterals: true                           # Automatically split long string literals across lines
-ReflowComments: true                                # Automatically wrap long comments to stay under column limit
+BreakBeforeBinaryOperators: NonAssignment           
+BreakStringLiterals: true                           
+ReflowComments: true                                

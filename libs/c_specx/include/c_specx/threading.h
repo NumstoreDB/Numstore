@@ -79,7 +79,12 @@ typedef struct
   pthread_t thread;
 #endif
 } i_thread;
-err_t i_thread_create (i_thread *t, void *(*start_routine) (void *), void *arg, error *e);
+err_t i_thread_create (
+    i_thread *t,
+    void *(*start_routine) (void *),
+    void  *arg,
+    error *e
+);
 err_t i_thread_join (i_thread *t, error *e);
 void  i_thread_cancel (i_thread *t);
 u64   get_available_threads (void);

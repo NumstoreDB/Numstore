@@ -29,4 +29,9 @@
 // primitive_type  ::= PRIM
 // field           ::= IDENTIFIER type
 
-err_t parse_type (struct parser *p, struct type *dest, struct chunk_alloc *dalloc, error *e);
+err_t parse_type (
+    struct parser      *p,
+    struct type        *dest,
+    struct chunk_alloc *dalloc,
+    error              *e
+);

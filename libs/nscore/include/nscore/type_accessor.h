@@ -41,12 +41,22 @@ struct type_accessor
   };
 };
 
-bool type_accessor_equal (const struct type_accessor left, const struct type_accessor right);
+bool type_accessor_equal (
+    const struct type_accessor left,
+    const struct type_accessor right
+);
 
-struct type *
-ta_subtype (struct type *reftype, struct type_accessor *ta, struct chunk_alloc *alloc, error *e);
+struct type *ta_subtype (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct chunk_alloc   *alloc,
+    error                *e
+);
 
-bool user_stride_equal (const struct user_stride *left, const struct user_stride *right);
+bool user_stride_equal (
+    const struct user_stride *left,
+    const struct user_stride *right
+);
 
 struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
@@ -72,10 +82,17 @@ struct range_builder
   struct chunk_alloc *persistent;
 };
 
-void
-rb_create (struct range_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent);
+void rb_create (
+    struct range_builder *dest,
+    struct chunk_alloc   *temp,
+    struct chunk_alloc   *persistent
+);
 
-err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e);
+err_t rb_accept_stride (
+    struct range_builder *rb,
+    struct user_stride    stride,
+    error                *e
+);
 
 err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e);
 
@@ -96,11 +113,22 @@ void tab_create (
     struct chunk_alloc           *persistent
 );
 
-err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e);
+err_t tab_accept_select (
+    struct type_accessor_builder *builder,
+    struct string                 key,
+    error                        *e
+);
 
-err_t
-tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e);
+err_t tab_accept_stride (
+    struct type_accessor_builder *builder,
+    struct user_stride            stride,
+    error                        *e
+);
 
 err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
 
-err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e);
+err_t tab_build (
+    struct type_accessor         *dest,
+    struct type_accessor_builder *builder,
+    error                        *e
+);

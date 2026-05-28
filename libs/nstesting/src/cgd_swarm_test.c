@@ -43,14 +43,20 @@ cgd_swmt_assert (int result)
 
 static struct mem_vhmap *
 active_db (struct cgd_swarm_test *meta)
-{ return meta->in_txn ? meta->working : meta->committed; }
+{
+  return meta->in_txn ? meta->working : meta->committed;
+}
 
 static void
 rebind_cur (struct cgd_swarm_test *meta, const char *preferred_name)
 {
   struct mem_vhmap *db = active_db (meta);
-  meta->cur            = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
-  if (!meta->cur && mem_vhmap_count (db) > 0) { meta->cur = mem_vhmap_random (db); }
+  meta->cur =
+      preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
+  if (!meta->cur && mem_vhmap_count (db) > 0)
+  {
+    meta->cur = mem_vhmap_random (db);
+  }
 }
 
 /**
@@ -64,7 +70,10 @@ static void
 cgd_swmt_set_random_enabled (struct cgd_swarm_test *meta)
 {
   int mask = rand () % ((1 << CDS_AT_LEN) - 1) + 1;
-  for (int i = 0; i < CDS_AT_LEN; ++i) { meta->enabled[i] = (mask >> i) & 1; }
+  for (int i = 0; i < CDS_AT_LEN; ++i)
+  {
+    meta->enabled[i] = (mask >> i) & 1;
+  }
 }
 
 /**
@@ -118,9 +127,15 @@ get_random_name_len (void)
 {
   u32 roll = randu32r (1, 100);
 
-  if (roll <= 90) { return randu32r (2, 10); }
+  if (roll <= 90)
+  {
+    return randu32r (2, 10);
+  }
 
-  if (roll <= 95) { return randu32r (10, PAGE_SIZE); }
+  if (roll <= 95)
+  {
+    return randu32r (10, PAGE_SIZE);
+  }
 
   return randu32r (PAGE_SIZE, 10 * PAGE_SIZE);
 }
@@ -140,7 +155,10 @@ get_random_type_depth (void)
 {
   u32 roll = randu32r (1, 100);
 
-  if (roll <= 95) { return randu32r (1, 3); }
+  if (roll <= 95)
+  {
+    return randu32r (1, 3);
+  }
 
   return randu32r (3, 10);
 }
@@ -186,11 +204,20 @@ cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname)
 void
 cgd_swmt_close (struct cgd_swarm_test *meta)
 {
-  if (meta->in_txn) { cgd_swmt_commit_txn (meta); }
+  if (meta->in_txn)
+  {
+    cgd_swmt_commit_txn (meta);
+  }
   cgd_swmt_assert (nsdb_close (meta->db) == 0);
 
-  if (meta->committed) { mem_vhmap_free (meta->committed); }
-  if (meta->working) { mem_vhmap_free (meta->working); }
+  if (meta->committed)
+  {
+    mem_vhmap_free (meta->committed);
+  }
+  if (meta->working)
+  {
+    mem_vhmap_free (meta->working);
+  }
 
   free (meta);
 }
@@ -207,7 +234,10 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
 
   /* Count allowed actions */
   int len = 0;
-  for (int i = 0; i < CDS_AT_LEN; ++i) { len += meta->allowed[i]; }
+  for (int i = 0; i < CDS_AT_LEN; ++i)
+  {
+    len += meta->allowed[i];
+  }
 
   /* If the cgd_swarm has masked everything off, re-roll and try again next
    * step rather than divide by zero. */
@@ -226,7 +256,10 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
   {
     if (meta->allowed[index])
     {
-      if (choice == next) { break; }
+      if (choice == next)
+      {
+        break;
+      }
       else
       {
         choice++;
@@ -386,7 +419,10 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     cgd_swmt_assert (mem_vhmap_add_var (db, &var, &e) == 0);
 
     /* First variable becomes the current one */
-    if (meta->cur == NULL) { meta->cur = mem_vhmap_get_var (db, var.vname); }
+    if (meta->cur == NULL)
+    {
+      meta->cur = mem_vhmap_get_var (db, var.vname);
+    }
 
     free (name);
     free (typestr);

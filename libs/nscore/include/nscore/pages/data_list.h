@@ -69,17 +69,32 @@ err_t  dl_validate_for_db (const page *d, error *e);
 p_size dl_append (page *d, const u8 *src, p_size bytes);
 void   dl_append_from_cbuffer (page *d, struct cbuffer *src, p_size amnt);
 p_size dl_write (const page *d, const u8 *src, p_size offset, p_size bytes);
-p_size dl_write_from_buffer (const page *d, struct cbuffer *src, p_size offset, p_size nbytes);
+p_size dl_write_from_buffer (
+    const page     *d,
+    struct cbuffer *src,
+    p_size          offset,
+    p_size          nbytes
+);
 p_size dl_memset_from_buffer (page *d, struct cbuffer *src, p_size nbytes);
-void   dl_memset_from_buffer_expect (page *d, struct cbuffer *src, p_size nbytes);
-void   dl_memset (page *d, const u8 *buf, p_size len);
-void   dl_set_data (page *p, struct dl_data d);
-void   dl_move_left (page *dest, page *src, p_size len);
-void   dl_move_right (page *src, page *dest, p_size len);
-void   i_log_dl (int level, const page *d);
+void dl_memset_from_buffer_expect (page *d, struct cbuffer *src, p_size nbytes);
+void dl_memset (page *d, const u8 *buf, p_size len);
+void dl_set_data (page *p, struct dl_data d);
+void dl_move_left (page *dest, page *src, p_size len);
+void dl_move_right (page *src, page *dest, p_size len);
+void i_log_dl (int level, const page *d);
 p_size dl_read (const page *d, u8 *dest, p_size offset, p_size bytes);
-p_size dl_read_into_cbuffer (const page *d, struct cbuffer *c, p_size offset, p_size bytes);
-p_size dl_read_out_into_cbuffer (page *d, struct cbuffer *dest, p_size offset, p_size bytes);
+p_size dl_read_into_cbuffer (
+    const page     *d,
+    struct cbuffer *c,
+    p_size          offset,
+    p_size          bytes
+);
+p_size dl_read_out_into_cbuffer (
+    page           *d,
+    struct cbuffer *dest,
+    p_size          offset,
+    p_size          bytes
+);
 void   dl_read_expect (const page *d, u8 *dest, p_size offset, p_size bytes);
 p_size dl_read_out_from (page *d, u8 *dest, p_size offset);
 void   dl_shift_right (page *d, p_size len);
@@ -90,23 +105,33 @@ void   dl_make_valid (page *d);
 
 HEADER_FUNC pgno
 dl_get_next (const page *d)
-{ PAGE_SIMPLE_GET_IMPL (d, pgno, DL_NEXT_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (d, pgno, DL_NEXT_OFST);
+}
 
 HEADER_FUNC pgno
 dl_get_prev (const page *d)
-{ PAGE_SIMPLE_GET_IMPL (d, pgno, DL_PREV_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (d, pgno, DL_PREV_OFST);
+}
 
 HEADER_FUNC void *
 dl_get_data (const page *d)
-{ return (void *)&d->raw[DL_DATA_OFST]; }
+{
+  return (void *)&d->raw[DL_DATA_OFST];
+}
 
 HEADER_FUNC p_size
 dl_used (const page *d)
-{ PAGE_SIMPLE_GET_IMPL (d, p_size, DL_BLEN_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (d, p_size, DL_BLEN_OFST);
+}
 
 HEADER_FUNC void *
 dl_avail_data (const page *d)
-{ return (u8 *)&d->raw[DL_DATA_OFST] + dl_used (d); }
+{
+  return (u8 *)&d->raw[DL_DATA_OFST] + dl_used (d);
+}
 
 HEADER_FUNC u8
 dl_get_byte (const page *d, const p_size i)
@@ -117,7 +142,9 @@ dl_get_byte (const page *d, const p_size i)
 
 HEADER_FUNC p_size
 dl_avail (const page *d)
-{ return DL_DATA_SIZE - dl_used (d); }
+{
+  return DL_DATA_SIZE - dl_used (d);
+}
 
 HEADER_FUNC bool
 dl_is_root (const page *p)
@@ -134,11 +161,15 @@ dl_is_root (const page *p)
 
 HEADER_FUNC void
 dl_set_next (page *d, const pgno next)
-{ PAGE_SIMPLE_SET_IMPL (d, next, DL_NEXT_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (d, next, DL_NEXT_OFST);
+}
 
 HEADER_FUNC void
 dl_set_prev (page *d, const pgno prev)
-{ PAGE_SIMPLE_SET_IMPL (d, prev, DL_PREV_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (d, prev, DL_PREV_OFST);
+}
 
 HEADER_FUNC void
 dl_set_byte (const page *d, const p_size i, const u8 byte)
@@ -181,8 +212,15 @@ dl_dl_memmove_permissive (
   if (dest->pg == src->pg)
   {
     ASSERT (sidx >= didx); // Nothing to do on same ptr
-    if (didx == sidx) { return; }
+    if (didx == sidx)
+    {
+      return;
+    }
   }
 
-  memmove ((u8 *)dl_get_data (dest) + didx, (u8 *)dl_get_data (src) + sidx, nbytes);
+  memmove (
+      (u8 *)dl_get_data (dest) + didx,
+      (u8 *)dl_get_data (src) + sidx,
+      nbytes
+  );
 }

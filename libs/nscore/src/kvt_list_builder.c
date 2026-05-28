@@ -46,7 +46,10 @@ kvlb_has_key_been_used (const struct kvt_list_builder *ub, struct string key)
   for (struct llnode *it = ub->head; it; it = it->next)
   {
     struct kv_llnode *kn = container_of (it, struct kv_llnode, link);
-    if (string_equal (kn->key, key)) { return true; }
+    if (string_equal (kn->key, key))
+    {
+      return true;
+    }
   }
   return false;
 }
@@ -59,28 +62,46 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   // Check for duplicate keys
   if (kvlb_has_key_been_used (ub, key))
   {
-    return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
+    return error_causef (
+        e,
+        ERR_INTERP,
+        "duplicate key: %.*s",
+        key.len,
+        key.data
+    );
   }
 
   // Copy key data to persistent memory
   key.data = chunk_alloc_move_mem (ub->persistent, key.data, key.len, e);
-  if (key.data == NULL) { return error_trace (e); }
+  if (key.data == NULL)
+  {
+    return error_trace (e);
+  }
 
   // Find where to insert this new key in the linked list
   struct llnode    *slot = llnode_get_n (ub->head, ub->klen);
   struct kv_llnode *node;
 
-  if (slot) { node = container_of (slot, struct kv_llnode, link); }
+  if (slot)
+  {
+    node = container_of (slot, struct kv_llnode, link);
+  }
   else
   {
     // Allocate new node onto temp
     node = chunk_malloc (ub->temp, 1, sizeof *node, e);
-    if (!node) { return error_trace (e); }
+    if (!node)
+    {
+      return error_trace (e);
+    }
     llnode_init (&node->link);
     node->value = NULL;
 
     // Set the head if it doesn't exist
-    if (!ub->head) { ub->head = &node->link; }
+    if (!ub->head)
+    {
+      ub->head = &node->link;
+    }
 
     // Otherwise, append to the list
     else
@@ -103,14 +124,23 @@ kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e)
 
   struct llnode    *slot = llnode_get_n (ub->head, ub->tlen);
   struct kv_llnode *node;
-  if (slot) { node = container_of (slot, struct kv_llnode, link); }
+  if (slot)
+  {
+    node = container_of (slot, struct kv_llnode, link);
+  }
   else
   {
     node = chunk_malloc (ub->temp, 1, sizeof *node, e);
-    if (!node) { return error_trace (e); }
+    if (!node)
+    {
+      return error_trace (e);
+    }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head) { ub->head = &node->link; }
+    if (!ub->head)
+    {
+      ub->head = &node->link;
+    }
     else
     {
       list_append (&ub->head, &node->link);
@@ -127,14 +157,28 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
 {
   ASSERT (dest);
 
-  if (ub->klen == 0) { return error_causef (e, ERR_INTERP, "no keys"); }
-  if (ub->klen != ub->tlen) { return error_causef (e, ERR_INTERP, "key/value count mismatch"); }
+  if (ub->klen == 0)
+  {
+    return error_causef (e, ERR_INTERP, "no keys");
+  }
+  if (ub->klen != ub->tlen)
+  {
+    return error_causef (e, ERR_INTERP, "key/value count mismatch");
+  }
 
-  struct string *keys = chunk_malloc (ub->persistent, ub->klen, sizeof *keys, e);
-  if (!keys) { return error_trace (e); }
+  struct string *keys =
+      chunk_malloc (ub->persistent, ub->klen, sizeof *keys, e);
+  if (!keys)
+  {
+    return error_trace (e);
+  }
 
-  struct type **types = chunk_malloc (ub->persistent, ub->tlen, sizeof (struct type *), e);
-  if (!types) { return error_trace (e); }
+  struct type **types =
+      chunk_malloc (ub->persistent, ub->tlen, sizeof (struct type *), e);
+  if (!types)
+  {
+    return error_trace (e);
+  }
 
   size_t i = 0;
   for (struct llnode *it = ub->head; it; it = it->next)
@@ -187,8 +231,10 @@ TEST (kvt_list_builder)
 
   // 5. mismatched key/type counts -> build must fail
   struct string key_extra = strfcstr ("extra");
-  test_assert_int_equal (kvlb_accept_key (&kb, key_extra, &err),
-                         SUCCESS); // klen=3, tlen=2
+  test_assert_int_equal (
+      kvlb_accept_key (&kb, key_extra, &err),
+      SUCCESS
+  ); // klen=3, tlen=2
   struct kvt_list list_fail = {0};
   test_assert_int_equal (kvlb_build (&list_fail, &kb, &err), ERR_INTERP);
   err.cause_code = SUCCESS;

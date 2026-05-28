@@ -26,7 +26,10 @@ _nsdb_get (struct nshandle *db, const char *name, error *e)
   struct string            vname = strfcstr (name); // Variable name
 
   ret = i_malloc (1, sizeof *ret, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   chunk_alloc_create_default (&ret->alloc);
 

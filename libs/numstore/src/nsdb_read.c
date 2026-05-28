@@ -23,7 +23,13 @@
 #include <c_specx.h>
 
 static sb_size
-_nsdb_read (struct nshandle *db, nsdb_var_t *var, void *dest, struct user_stride ustr, error *e)
+_nsdb_read (
+    struct nshandle   *db,
+    nsdb_var_t        *var,
+    void              *dest,
+    struct user_stride ustr,
+    error             *e
+)
 {
   sb_size                  ret;           // Return value
   t_size                   tsize;         // Size of  the variable
@@ -77,7 +83,10 @@ _nsdb_read (struct nshandle *db, nsdb_var_t *var, void *dest, struct user_stride
 
     len /= tsize;
 
-    if (stride_resolve (&stride, ustr, len, e)) { goto failed_rollback; }
+    if (stride_resolve (&stride, ustr, len, e))
+    {
+      goto failed_rollback;
+    }
 
     // Initialize the output buffer
     if (dest)
@@ -91,13 +100,16 @@ _nsdb_read (struct nshandle *db, nsdb_var_t *var, void *dest, struct user_stride
       "READ (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size
+      " curlen (bytes): %" PRb_size
       " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
-      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
+      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
+      " stop (bytes): %" PRId64
       " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
-      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
+      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
+      " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
       strfmt (&var->var.vname),
       tsize,

@@ -185,8 +185,9 @@ struct wal_rec_hdr_write
   };
 };
 
-void        wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc);
-const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
+void
+wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc);
+const char              *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry
@@ -268,8 +269,9 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
    sizeof (u32)       /* checksum */  \
   )
 // Size of DUMMY_CLR entry
-#define WL_DUMMY_CLR_LEN \
-  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
+#define WL_DUMMY_CLR_LEN                                          \
+  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) \
+   + sizeof (u32))
 
 // Utils
 stxid wrh_get_tid (const struct wal_rec_hdr_read *h);
@@ -277,24 +279,46 @@ slsn  wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
 bool  wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool  wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno  wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
-void  i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
-struct wal_clr_write wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
-void                 wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
+void  i_print_wal_rec_hdr_read_light (
+    int                            log_level,
+    const struct wal_rec_hdr_read *w,
+    lsn                            l
+);
+struct wal_clr_write
+wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
+void wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
 
 // DECODE
-void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN]);
-void walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN]);
-void walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN]);
-void walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN]);
-void walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN]);
-void walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN]);
+void walf_decode_physical_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_UPDATE_LEN]
+);
+void walf_decode_fsm_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FSM_UPDATE_LEN]
+);
+void walf_decode_file_extend_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FILE_EXT_LEN]
+);
+void
+walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN]);
+void
+walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN]);
+void walf_decode_dummy_clr (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_DUMMY_CLR_LEN]
+);
 void walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN]);
-void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]);
+void
+walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]);
 void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 
 #ifndef NTEST
-bool
-wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right);
+bool wal_rec_hdr_read_equal (
+    const struct wal_rec_hdr_read *left,
+    const struct wal_rec_hdr_read *right
+);
 #endif
 
 ////////////////////////////////////////////////////////////

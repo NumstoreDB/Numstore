@@ -33,28 +33,46 @@ _smfile_premove (
     error           *e
 )
 {
-  sb_size                     ret;                             // Return value
-  b_size                      ofst;                            // Resolved offset
-  struct stream               _output;                         // Output stream if present
-  struct stream_obuf_ctx      ctx;                             // Context for output stream
-  struct stream              *output = NULL;                   // Pointer to output stream
-  struct chunk_alloc          temp;                            // Allocator for get operation
-  struct ns_var_get_params    gparams;                         // Get operation
-  struct ns_remove_params     rparams;                         // Remove operation
-  struct ns_var_update_params uparams;                         // Update operation
+  sb_size                     ret;           // Return value
+  b_size                      ofst;          // Resolved offset
+  struct stream               _output;       // Output stream if present
+  struct stream_obuf_ctx      ctx;           // Context for output stream
+  struct stream              *output = NULL; // Pointer to output stream
+  struct chunk_alloc          temp;          // Allocator for get operation
+  struct ns_var_get_params    gparams;       // Get operation
+  struct ns_remove_params     rparams;       // Remove operation
+  struct ns_var_update_params uparams;       // Update operation
   struct string               vname = vname_or_default (name); // Variable name
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Negative strides aren't supported yet"
+    );
   }
   if (stride == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot remove with stride == 0"
+    );
   }
-  if (size == 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0"); }
-  if (nelem == 0) { return 0; }
+  if (size == 0)
+  {
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot remove with size == 0"
+    );
+  }
+  if (nelem == 0)
+  {
+    return 0;
+  }
 
   chunk_alloc_create_default (&temp);
 

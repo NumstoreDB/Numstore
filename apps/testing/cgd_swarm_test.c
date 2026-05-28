@@ -31,7 +31,10 @@ int
 main (void)
 {
   int start_enabled[CDS_AT_LEN];
-  for (int i = 0; i < CDS_AT_LEN; ++i) { start_enabled[i] = 1; }
+  for (int i = 0; i < CDS_AT_LEN; ++i)
+  {
+    start_enabled[i] = 1;
+  }
 
   struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
   srand (100);
@@ -57,7 +60,10 @@ main (void)
   }
 #endif
 
-  while (keep_running) { cgd_swmt_step (meta); }
+  while (keep_running)
+  {
+    cgd_swmt_step (meta);
+  }
 
   cgd_swmt_close (meta);
   return 0;

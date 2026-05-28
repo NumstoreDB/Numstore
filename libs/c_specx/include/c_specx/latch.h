@@ -40,7 +40,9 @@ typedef _Atomic (int) latch;
 
 HEADER_FUNC void
 latch_init (latch *l)
-{ *l = 0; }
+{
+  *l = 0;
+}
 
 /**
  * Returns true if the latch was locked, false otherwise
@@ -109,6 +111,8 @@ latch_lock (latch *l)
 
 HEADER_FUNC void
 latch_unlock (latch *l)
-{ atomic_store_explicit (l, 0, memory_order_release); }
+{
+  atomic_store_explicit (l, 0, memory_order_release);
+}
 
 #endif // C_SPECX_LATCH_H

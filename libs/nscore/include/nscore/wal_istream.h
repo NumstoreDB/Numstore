@@ -37,12 +37,12 @@ err_t walis_seek (struct wal_istream *w, lsn pos, error *e);
  */
 err_t walis_read_all (
     struct wal_istream *w,
-    bool               *iseof, // At the end, this is set to true or false if we encountered
-                               // the eof
-    lsn   *rlsn,               // NULLABLE The lsn that we just read
-    u32   *checksum,           // NULLABLE If passed, aggregates the checksum on [data]
-    void  *dest,               // The data to read into
-    u32    len,                // Length of the data to read
+    bool *iseof, // At the end, this is set to true or false if we encountered
+                 // the eof
+    lsn   *rlsn, // NULLABLE The lsn that we just read
+    u32   *checksum, // NULLABLE If passed, aggregates the checksum on [data]
+    void  *dest,     // The data to read into
+    u32    len,      // Length of the data to read
     error *e
 );
 

@@ -33,7 +33,10 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
 
   // Read the redo lsn log
   struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, read_lsn, e);
-  if (log_rec == NULL) { goto failed; }
+  if (log_rec == NULL)
+  {
+    goto failed;
+  }
 
   u32 nredone = 0;
 
@@ -49,12 +52,21 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
           lsn  rec_lsn;
           pgno pg = wrh_get_affected_pg (log_rec);
 
-          if (!dpgt_get (&rec_lsn, ctx->dpt, pg)) { break; }
+          if (!dpgt_get (&rec_lsn, ctx->dpt, pg))
+          {
+            break;
+          }
 
-          if (read_lsn < rec_lsn) { break; }
+          if (read_lsn < rec_lsn)
+          {
+            break;
+          }
 
           page_h ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) { goto failed; }
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e))
+          {
+            goto failed;
+          }
 
           // ph.pgr->flags |= PW_DIRTY;
           // ph.pgw->flags |= PW_DIRTY;
@@ -84,7 +96,10 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
 
     // Read next log record
     log_rec = wal_read_next (p->ww, &read_lsn, e);
-    if (log_rec == NULL) { goto failed; }
+    if (log_rec == NULL)
+    {
+      goto failed;
+    }
   }
 
   i_log_info ("Redo phase done. Total redos: %d\n", nredone);

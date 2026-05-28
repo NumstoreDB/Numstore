@@ -291,7 +291,10 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
 
     char *big = i_malloc (BIG_SIZE, 1, &e);
-    for (int i = 0; i < BIG_SIZE; i++) { big[i] = (char)('A' + (i % 26)); }
+    for (int i = 0; i < BIG_SIZE; i++)
+    {
+      big[i] = (char)('A' + (i % 26));
+    }
 
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);

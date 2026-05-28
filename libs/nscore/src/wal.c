@@ -53,7 +53,15 @@ wal_init (struct wal *dest, error *e)
 
   walis_mark_start_log (dest->istream);
 
-  if (walis_read_all (dest->istream, &iseof, NULL, &checksum, &start_lsn, sizeof (start_lsn), e))
+  if (walis_read_all (
+          dest->istream,
+          &iseof,
+          NULL,
+          &checksum,
+          &start_lsn,
+          sizeof (start_lsn),
+          e
+      ))
   {
     i_free ((char *)dest->fname.data);
     walos_close (dest->ostream, e);
@@ -106,7 +114,10 @@ static struct wal *
 wal_open_internal (const char *fname, error *e)
 {
   struct wal *dest = i_malloc (1, sizeof *dest, e);
-  if (dest == NULL) { return NULL; }
+  if (dest == NULL)
+  {
+    return NULL;
+  }
 
   if (string_copy (&dest->fname, strfcstr (fname), e))
   {
@@ -126,7 +137,9 @@ wal_open_internal (const char *fname, error *e)
 
 struct wal *
 wal_open (const char *fname, error *e)
-{ return wal_open_internal (fname, e); }
+{
+  return wal_open_internal (fname, e);
+}
 
 static inline err_t
 wal_destroy (struct wal *w, error *e)
@@ -135,7 +148,10 @@ wal_destroy (struct wal *w, error *e)
   walos_close (w->ostream, e);
   walis_close (w->istream, e);
 
-  if (w->fname.data) { i_free ((void *)w->fname.data); }
+  if (w->fname.data)
+  {
+    i_free ((void *)w->fname.data);
+  }
   return error_trace (e);
 }
 
@@ -192,15 +208,21 @@ wal_delete_and_reopen (struct wal *w, error *e)
 
 bool
 wal_isnew (const struct wal *w)
-{ return w->flags & WAL_ISNEW; }
+{
+  return w->flags & WAL_ISNEW;
+}
 
 lsn
 wal_start_lsn (struct wal *w)
-{ return w->start_lsn; }
+{
+  return w->start_lsn;
+}
 
 lsn
 wal_size (struct wal *w)
-{ return walos_get_next_lsn (w->ostream); }
+{
+  return walos_get_next_lsn (w->ostream);
+}
 
 err_t
 wal_flush_to (const struct wal *w, const lsn l, error *e)
@@ -237,7 +259,10 @@ wal_crash (struct wal *w, error *e)
 
   walos_close (w->ostream, e);
   walis_close (w->istream, e);
-  if (w->fname.data) { i_free ((void *)w->fname.data); }
+  if (w->fname.data)
+  {
+    i_free ((void *)w->fname.data);
+  }
   i_free (w);
 
   return SUCCESS;

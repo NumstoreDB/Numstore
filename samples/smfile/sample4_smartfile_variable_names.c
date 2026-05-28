@@ -20,7 +20,8 @@
 #include <string.h>
 
 /**
- * This example shows how to write data to different named "variables" inside a single file.
+ * This example shows how to write data to different named "variables" inside a
+ * single file.
  */
 int
 main (void)
@@ -53,17 +54,26 @@ main (void)
 
   n = smfile_pread (smf, "temps", buf, 1, 0, 1, 12);
   printf ("temps    (%lld): ", (long long)n);
-  for (int i = 0; i < (int)n; ++i) { printf ("%3d", buf[i]); }
+  for (int i = 0; i < (int)n; ++i)
+  {
+    printf ("%3d", buf[i]);
+  }
   printf ("\n");
 
   n = smfile_pread (smf, "humidity", buf, 1, 0, 1, 12);
   printf ("humidity (%lld): ", (long long)n);
-  for (int i = 0; i < (int)n; ++i) { printf ("%3d", buf[i]); }
+  for (int i = 0; i < (int)n; ++i)
+  {
+    printf ("%3d", buf[i]);
+  }
   printf ("\n");
 
   n = smfile_pread (smf, "pressure", buf, 1, 0, 1, 8);
   printf ("pressure (%lld): ", (long long)n);
-  for (int i = 0; i < (int)n; ++i) { printf ("%3d", buf[i]); }
+  for (int i = 0; i < (int)n; ++i)
+  {
+    printf ("%3d", buf[i]);
+  }
   printf ("\n");
 
   // Remove first two entries from pressure only
@@ -73,7 +83,10 @@ main (void)
 
   n = smfile_pread (smf, "pressure", buf, 1, 0, 1, 8);
   printf ("pressure after remove (%lld): ", (long long)n);
-  for (int i = 0; i < (int)n; ++i) { printf ("%3d", buf[i]); }
+  for (int i = 0; i < (int)n; ++i)
+  {
+    printf ("%3d", buf[i]);
+  }
   printf ("\n");
 
   return smfile_close (smf);

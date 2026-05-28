@@ -29,29 +29,39 @@
 err_t
 pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
-  struct wal_rec_hdr_read *log_rec = NULL;                  // Next record to read
-  struct wal_clr_write     clr;                             // Next record to write
-  page_h                   ph           = page_h_create (); // The page handle used for all undo's
-  lsn                      undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
-  slsn                     prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
-  txid                     tid          = tx->tid;      // The transaction id
+  struct wal_rec_hdr_read *log_rec = NULL; // Next record to read
+  struct wal_clr_write     clr;            // Next record to write
+  page_h ph           = page_h_create (); // The page handle used for all undo's
+  lsn    undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
+  slsn   prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
+  txid   tid          = tx->tid;      // The transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
   if (undo_nxt_lsn > 0)
   {
-    if (wal_flush_to (p->ww, undo_nxt_lsn, e)) { goto failed; }
+    if (wal_flush_to (p->ww, undo_nxt_lsn, e))
+    {
+      goto failed;
+    }
   }
 
   while (save_lsn < undo_nxt_lsn)
   {
     // Read the next undo log entry
-    if ((log_rec = wal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL) { return error_trace (e); }
+    if ((log_rec = wal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL)
+    {
+      return error_trace (e);
+    }
 
     // Early Done  - this is a corrupt sequence of logs written - we expect a
     // BEGIN
     if (log_rec->type == WL_EOF)
     {
-      return error_causef (e, ERR_CORRUPT, "Transaction does not have a valid top level log");
+      return error_causef (
+          e,
+          ERR_CORRUPT,
+          "Transaction does not have a valid top level log"
+      );
     }
 
     switch (log_rec->type)
@@ -61,11 +71,17 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
         if (wrh_is_undoable (log_rec))
         {
           pgno pg = wrh_get_affected_pg (log_rec);
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) { goto failed; }
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e))
+          {
+            goto failed;
+          }
 
           // Undo and append a clr log
           prev_lsn = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
-          if (prev_lsn < 0) { goto failed; }
+          if (prev_lsn < 0)
+          {
+            goto failed;
+          }
 
           // Set the last page lsn
           page_set_page_lsn (page_h_w (&ph), prev_lsn);
@@ -81,7 +97,10 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
         if (undo_nxt_lsn == 0)
         {
           slsn l = wal_append_end_log (p->ww, tx->tid, prev_lsn, e);
-          if (l < 0) { goto failed; }
+          if (l < 0)
+          {
+            goto failed;
+          }
           // We'll break next
         }
         break;
@@ -123,7 +142,10 @@ theend:
 
   if (undo_nxt_lsn > 0)
   {
-    if (wal_flush_to (p->ww, undo_nxt_lsn, e)) { goto failed; }
+    if (wal_flush_to (p->ww, undo_nxt_lsn, e))
+    {
+      goto failed;
+    }
   }
 
   txnt_remove_txn_expect (p->tnxt, tx);
@@ -167,7 +189,10 @@ TEST (aries_rollback_basic)
 
     for (p_size i = 0; i < FS_BTMP_NPGS; ++i)
     {
-      if (i < 4) { test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1); }
+      if (i < 4)
+      {
+        test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1);
+      }
       else
       {
         test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
@@ -226,7 +251,10 @@ TEST (aries_rollback_multiple_updates)
     dl_make_valid (page_h_w (&dl_page));
 
     memset (initial_data, 0xAA, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE}
+    );
 
     pgno1 = page_h_ro (&dl_page)->pg;
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
@@ -240,19 +268,28 @@ TEST (aries_rollback_multiple_updates)
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 update1_data[DL_DATA_SIZE];
     memset (update1_data, 0xBB, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update1_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = update1_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 update2_data[DL_DATA_SIZE];
     memset (update2_data, 0xCC, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update2_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = update2_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 update3_data[DL_DATA_SIZE];
     memset (update3_data, 0xDD, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_flush_wall (p, &e);
@@ -262,7 +299,11 @@ TEST (aries_rollback_multiple_updates)
   // Verify data is back to initial state
   {
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        initial_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 
@@ -320,7 +361,11 @@ TEST (aries_rollback_with_crash_recovery)
   {
     p = pgr_open_single_file ("testdb", &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), committed_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        committed_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 
@@ -348,7 +393,10 @@ TEST (aries_rollback_clr_not_undone)
     dl_make_valid (page_h_w (&dl_page));
 
     memset (initial_data, 0xAA, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE}
+    );
 
     pgno1 = page_h_ro (&dl_page)->pg;
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
@@ -363,7 +411,10 @@ TEST (aries_rollback_clr_not_undone)
 
     u8 temp_data[DL_DATA_SIZE];
     memset (temp_data, 0xBB, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = temp_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = temp_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_rollback (p, &tx2, 0, &e);
@@ -372,7 +423,11 @@ TEST (aries_rollback_clr_not_undone)
   // Verify data is back to initial
   {
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        initial_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 
@@ -381,7 +436,11 @@ TEST (aries_rollback_clr_not_undone)
     test_fail_if (pgr_crash (p, &e));
     p = pgr_open_single_file ("testdb", &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        initial_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 

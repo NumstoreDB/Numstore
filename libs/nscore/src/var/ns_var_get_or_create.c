@@ -49,19 +49,29 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
         .vname = params->vname,
         .type  = params->type,
     };
-    if (ns_var_create (cparams, e)) { goto failed; }
+    if (ns_var_create (cparams, e))
+    {
+      goto failed;
+    }
 
     // Try again
-    if (ns_var_get (&gparams, e)) { goto failed; }
+    if (ns_var_get (&gparams, e))
+    {
+      goto failed;
+    }
   }
-  else if (err < 0) { goto failed; }
+  else if (err < 0)
+  {
+    goto failed;
+  }
 
   if (!type_equal (params->type, gparams.dest.dtype))
   {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
-        "Trying to create variable: %.*s but variable already exists and types are different",
+        "Trying to create variable: %.*s but variable already exists and types "
+        "are different",
         params->vname.len,
         params->vname.data
     );
@@ -138,7 +148,11 @@ TEST (ns_var_get_or_create)
 
       // Should fail if you pass a different type
       params.type = &(struct type){.type = T_PRIM, .p = I32};
-      test_err_t_check (ns_var_get_or_create (&params, &f.e), ERR_INVALID_ARGUMENT, &f.e);
+      test_err_t_check (
+          ns_var_get_or_create (&params, &f.e),
+          ERR_INVALID_ARGUMENT,
+          &f.e
+      );
 
       pgr_commit (f.p, &tx, &f.e);
     }
@@ -165,7 +179,10 @@ TEST (ns_var_get_or_create)
 
         u32   len  = randu32r (PAGE_SIZE, PAGE_SIZE * 10);
         char *name = i_malloc (len, 1, &f.e);
-        for (u32 k = 0; k < len - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
+        for (u32 k = 0; k < len - 1; ++k)
+        {
+          name[k] = 'a' + randu32r (0, 26);
+        }
         name[len - 1] = '\0';
 
         struct ns_var_get_or_create_params params = {
@@ -210,7 +227,10 @@ TEST (ns_var_get_or_create)
 
         u32   len  = randu32r (PAGE_SIZE, PAGE_SIZE * 10);
         char *name = i_malloc (len, 1, &f.e);
-        for (u32 k = 0; k < len - 1; ++k) { name[k] = 'a' + randu32r (0, 26); }
+        for (u32 k = 0; k < len - 1; ++k)
+        {
+          name[k] = 'a' + randu32r (0, 26);
+        }
         name[len - 1] = '\0';
 
         struct type *t = type_random (&alloc, randu32r (0, 10), &f.e);

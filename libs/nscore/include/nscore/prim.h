@@ -56,15 +56,21 @@
 
 HEADER_FUNC bool
 prim_is_int (enum prim_t p)
-{ return p >= U8 && p <= I64; }
+{
+  return p >= U8 && p <= I64;
+}
 
 HEADER_FUNC bool
 prim_is_float (enum prim_t p)
-{ return p >= F16 && p <= F128; }
+{
+  return p >= F16 && p <= F128;
+}
 
 HEADER_FUNC bool
 prim_is_complex (enum prim_t p)
-{ return p >= CF32 && p <= CU128; }
+{
+  return p >= CF32 && p <= CU128;
+}
 
 #define PRIM_FOR_EACH(func, ...) \
   do                             \

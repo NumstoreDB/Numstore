@@ -28,7 +28,10 @@ ext_array_create (void)
 void
 ext_array_free (struct ext_array *r)
 {
-  if (r->data) { i_free (r->data); }
+  if (r->data)
+  {
+    i_free (r->data);
+  }
   r->data = NULL;
   r->len  = 0;
   r->cap  = 0;
@@ -40,7 +43,10 @@ ext_array_reserve (struct ext_array *r, const u32 cap, error *e)
   if (cap > r->cap)
   {
     u8 *data = i_realloc_right (r->data, r->cap, cap * 2, 1, e);
-    if (data == NULL) { return error_trace (e); }
+    if (data == NULL)
+    {
+      return error_trace (e);
+    }
     r->data = data;
     r->cap  = cap * 2;
   }
@@ -48,16 +54,28 @@ ext_array_reserve (struct ext_array *r, const u32 cap, error *e)
 }
 
 i64
-ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u32 slen, error *e)
+ext_array_insert (
+    struct ext_array *r,
+    const u32         ofst,
+    const void       *src,
+    const u32         slen,
+    error            *e
+)
 {
   ASSERT (ofst <= r->len);
-  if (ext_array_reserve (r, r->len + slen, e)) { return error_trace (e); }
+  if (ext_array_reserve (r, r->len + slen, e))
+  {
+    return error_trace (e);
+  }
 
   const u32 tlen = r->len - ofst;
   if (tlen > 0)
   {
     u8 *tail = i_malloc (tlen, 1, e);
-    if (tail == NULL) { return error_trace (e); }
+    if (tail == NULL)
+    {
+      return error_trace (e);
+    }
     memcpy (tail, r->data + ofst, tlen);
     memcpy (r->data + ofst, src, slen);
     memcpy (r->data + ofst + slen, tail, tlen);
@@ -87,7 +105,10 @@ ext_array_read (
 
   while (total_read < str.nelems)
   {
-    if (bidx + size > r->len) { return total_read; }
+    if (bidx + size > r->len)
+    {
+      return total_read;
+    }
     memcpy (dest, r->data + bidx, size);
     dest += size;
     bidx += str.stride * size;
@@ -112,7 +133,10 @@ ext_array_write (
 
   while (total_written < str.nelems)
   {
-    if (bidx + size > r->len) { return total_written; }
+    if (bidx + size > r->len)
+    {
+      return total_written;
+    }
     memcpy (r->data + bidx, src, size);
     src += size;
     bidx += str.stride * size;
@@ -151,7 +175,10 @@ ext_array_remove (
     }
     else
     {
-      if (wpos != rpos) { memmove (r->data + wpos * size, r->data + rpos * size, size); }
+      if (wpos != rpos)
+      {
+        memmove (r->data + wpos * size, r->data + rpos * size, size);
+      }
       wpos++;
     }
     rpos++;
@@ -163,28 +190,54 @@ ext_array_remove (
 
 u64
 ext_array_get_len (const struct ext_array *r)
-{ return r->len; }
+{
+  return r->len;
+}
 
 static err_t
-ext_array_insert_func (void *ctx, const u32 ofst, const void *src, const u32 slen, error *e)
+ext_array_insert_func (
+    void       *ctx,
+    const u32   ofst,
+    const void *src,
+    const u32   slen,
+    error      *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_insert (arr, ofst, src, slen, e);
 }
 static i64
-ext_array_read_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
+ext_array_read_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    void               *dest,
+    error              *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_read (arr, str, size, dest, e);
 }
 static i64
-ext_array_write_func (void *ctx, const struct stride str, const u32 size, const void *src, error *e)
+ext_array_write_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    const void         *src,
+    error              *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_write (arr, str, size, src, e);
 }
 static i64
-ext_array_remove_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
+ext_array_remove_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    void               *dest,
+    error              *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_remove (arr, str, size, dest, e);
@@ -652,7 +705,8 @@ TEST (ext_array_random)
   */
 
   // Block sizes to test
-  const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
+  const u32 niters[] =
+      {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
 
   for (u32 i = 0; i < arrlen (niters); ++i)
   {

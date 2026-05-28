@@ -40,7 +40,10 @@ DEFINE_DBG_ASSERT (struct dl_page_builder, dl_page_builder, in, {
   ASSERT (in);
   ASSERT (in->dclen <= DL_DATA_SIZE);
   ASSERT (in->data.blen <= in->dclen);
-  if (in->data.blen == 0) { ASSERT (in->data.data == NULL); }
+  if (in->data.blen == 0)
+  {
+    ASSERT (in->data.data == NULL);
+  }
   else
   {
     ASSERT (in->data.data != NULL);
@@ -59,7 +62,10 @@ pgr_fixture_create (struct pgr_fixture *dest)
   }
 
   struct pager *p = pgr_open_single_file ("testdb", &dest->e);
-  if (p == NULL) { return dest->e.cause_code; }
+  if (p == NULL)
+  {
+    return dest->e.cause_code;
+  }
 
   dest->p = p;
 
@@ -89,9 +95,15 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
   WRAP (pgr_new (dest, b.pager, b.txn, PG_INNER_NODE, e));
 
   // Create or link
-  if (b.prev) { dlgt_link (page_h_w (b.prev), page_h_w (dest)); }
+  if (b.prev)
+  {
+    dlgt_link (page_h_w (b.prev), page_h_w (dest));
+  }
 
-  if (b.next) { dlgt_link (page_h_w (dest), page_h_w (b.next)); }
+  if (b.next)
+  {
+    dlgt_link (page_h_w (dest), page_h_w (b.next));
+  }
 
   // Populate data
   struct in_pair data[IN_MAX_KEYS];
@@ -116,7 +128,10 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
     }
   }
 
-  in_set_data (page_h_w (dest), (struct in_data){.nodes = data, .len = b.dclen});
+  in_set_data (
+      page_h_w (dest),
+      (struct in_data){.nodes = data, .len = b.dclen}
+  );
 
   return 0;
 }
@@ -129,20 +144,35 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
   WRAP (pgr_new (dest, b.pager, b.txn, PG_DATA_LIST, e));
 
   // Create or link
-  if (b.prev) { dlgt_link (page_h_w (b.prev), page_h_w (dest)); }
+  if (b.prev)
+  {
+    dlgt_link (page_h_w (b.prev), page_h_w (dest));
+  }
 
-  if (b.next) { dlgt_link (page_h_w (dest), page_h_w (b.next)); }
+  if (b.next)
+  {
+    dlgt_link (page_h_w (dest), page_h_w (b.next));
+  }
 
   // Populate data
   u8 data[DL_DATA_SIZE];
 
   // Copy explicit children
-  if (b.data.data) { memcpy (data, b.data.data, b.data.blen); }
+  if (b.data.data)
+  {
+    memcpy (data, b.data.data, b.data.blen);
+  }
 
   // Fill rest with random
-  if (b.data.blen < b.dclen) { rand_bytes (&data[b.data.blen], (b.dclen - b.data.blen)); }
+  if (b.data.blen < b.dclen)
+  {
+    rand_bytes (&data[b.data.blen], (b.dclen - b.data.blen));
+  }
 
-  dl_set_data (page_h_w (dest), (struct dl_data){.data = data, .blen = b.dclen});
+  dl_set_data (
+      page_h_w (dest),
+      (struct dl_data){.data = data, .blen = b.dclen}
+  );
 
   return 0;
 }
@@ -150,15 +180,26 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
 ////////////////////////////////////////////////////////////
 /// DECLARATIVE API
 
-static err_t
-build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e);
+static err_t build_page_desc (
+    struct page_desc *desc,
+    struct pager     *pager,
+    struct txn       *txn,
+    error            *e
+);
 
 err_t
 build_page_tree (struct page_tree_builder *builder, error *e)
-{ return build_page_desc (&builder->root, builder->pager, builder->txn, e); }
+{
+  return build_page_desc (&builder->root, builder->pager, builder->txn, e);
+}
 
 static err_t
-build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e)
+build_page_desc (
+    struct page_desc *desc,
+    struct pager     *pager,
+    struct txn       *txn,
+    error            *e
+)
 {
   switch (desc->type)
   {
@@ -175,7 +216,10 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
 
         WRAP (build_page_desc (&desc->inner.children[i], pager, txn, e));
 
-        if (prev) { dlgt_link (page_h_w (prev), page_h_w (cur)); }
+        if (prev)
+        {
+          dlgt_link (page_h_w (prev), page_h_w (cur));
+        }
 
         prev = cur;
 
@@ -236,7 +280,10 @@ page_desc_release_all (struct page_desc *b, struct pager *p, error *e)
 
   if (b->type == PG_INNER_NODE)
   {
-    for (u32 i = 0; i < b->inner.clen; ++i) { page_desc_release_all (&b->inner.children[i], p, e); }
+    for (u32 i = 0; i < b->inner.clen; ++i)
+    {
+      page_desc_release_all (&b->inner.children[i], p, e);
+    }
   }
 
   return error_trace (e);
@@ -244,7 +291,9 @@ page_desc_release_all (struct page_desc *b, struct pager *p, error *e)
 
 err_t
 page_tree_builder_release_all (struct page_tree_builder *b, error *e)
-{ return page_desc_release_all (&b->root, b->pager, e); }
+{
+  return page_desc_release_all (&b->root, b->pager, e);
+}
 
 TEST (build_page_tree)
 {
@@ -279,7 +328,10 @@ TEST (build_page_tree)
                                                       .out  = page_h_create (),
                                                       .size = DL_DATA_SIZE,
                                                       .data_list =
-                                                          (struct dl_data){.data = NULL, .blen = 0},
+                                                          (struct dl_data){
+                                                              .data = NULL,
+                                                              .blen = 0
+                                                          },
                                                   },
                                               },
 
@@ -287,10 +339,11 @@ TEST (build_page_tree)
                               },
 
                               {
-                                  .type      = PG_DATA_LIST,
-                                  .out       = page_h_create (),
-                                  .size      = DL_DATA_SIZE,
-                                  .data_list = (struct dl_data){.data = NULL, .blen = 0},
+                                  .type = PG_DATA_LIST,
+                                  .out  = page_h_create (),
+                                  .size = DL_DATA_SIZE,
+                                  .data_list =
+                                      (struct dl_data){.data = NULL, .blen = 0},
                               },
                           },
                   },

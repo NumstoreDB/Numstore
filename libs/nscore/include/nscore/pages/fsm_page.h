@@ -35,22 +35,30 @@ pgtofsm (const pgno pg)
 
 HEADER_FUNC p_size
 pgtoidx (const pgno pg)
-{ return pg % FS_BTMP_NPGS; }
+{
+  return pg % FS_BTMP_NPGS;
+}
 
 ////////////////////////////////////////////////////////////
 /// GETTERS
 
 HEADER_FUNC const void *
 fsm_get_bitmap_imut (const page *p)
-{ return (void *)&p->raw[FS_BTMP_OFST]; }
+{
+  return (void *)&p->raw[FS_BTMP_OFST];
+}
 
 HEADER_FUNC void *
 fsm_get_bitmap_mut (page *p)
-{ return (void *)&p->raw[FS_BTMP_OFST]; }
+{
+  return (void *)&p->raw[FS_BTMP_OFST];
+}
 
 HEADER_FUNC p_size
 fsm_get_bit (const page *p, const p_size idx)
-{ return (((const u8 *)fsm_get_bitmap_imut (p))[idx / 8] >> (idx % 8)) & 1; }
+{
+  return (((const u8 *)fsm_get_bitmap_imut (p))[idx / 8] >> (idx % 8)) & 1;
+}
 
 HEADER_FUNC sp_size
 fsm_next_freebit (const page *p, const p_size frombit)
@@ -62,15 +70,27 @@ fsm_next_freebit (const page *p, const p_size frombit)
   for (p_size byte_i = frombyte; byte_i < FS_BTMP_SIZE; ++byte_i)
   {
     u8 b = ~((u8 *)data)[byte_i];
-    if (b == 0) { continue; }
+    if (b == 0)
+    {
+      continue;
+    }
 
-    if (byte_i == frombyte) { b &= ~((1 << (frombit % 8)) - 1); }
+    if (byte_i == frombyte)
+    {
+      b &= ~((1 << (frombit % 8)) - 1);
+    }
 
-    if (!b) { continue; }
+    if (!b)
+    {
+      continue;
+    }
 
     for (p_size bit = 0; bit < 8; ++bit)
     {
-      if ((b >> bit) & 1) { return byte_i * 8 + bit; }
+      if ((b >> bit) & 1)
+      {
+        return byte_i * 8 + bit;
+      }
     }
   }
 

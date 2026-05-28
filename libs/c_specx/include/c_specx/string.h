@@ -38,21 +38,34 @@ int strings_all_unique (const struct string *strs, u32 count);
 
 bool string_equal (const struct string s1, const struct string s2);
 
-struct string
-string_plus (const struct string left, const struct string right, struct lalloc *alloc, error *e);
+struct string string_plus (
+    const struct string left,
+    const struct string right,
+    struct lalloc      *alloc,
+    error              *e
+);
 
-const struct string *
-strings_are_disjoint (const struct string *left, u32 llen, const struct string *right, u32 rlen);
+const struct string *strings_are_disjoint (
+    const struct string *left,
+    u32                  llen,
+    const struct string *right,
+    u32                  rlen
+);
 
 bool string_contains (const struct string superset, const struct string subset);
 
 bool string_less_string (const struct string left, const struct string right);
 
-bool string_greater_string (const struct string left, const struct string right);
+bool
+string_greater_string (const struct string left, const struct string right);
 
-bool string_less_equal_string (const struct string left, const struct string right);
+bool
+string_less_equal_string (const struct string left, const struct string right);
 
-bool string_greater_equal_string (const struct string left, const struct string right);
+bool string_greater_equal_string (
+    const struct string left,
+    const struct string right
+);
 
 err_t string_copy (struct string *dest, struct string src, error *e);
 

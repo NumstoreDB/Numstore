@@ -78,7 +78,13 @@ lmalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
   const u32 avail = a->limit - a->used;
   if (avail <= total)
   {
-    error_causef (e, ERR_NOMEM, "linear alloc %d bytes: only %d remaining", total, avail);
+    error_causef (
+        e,
+        ERR_NOMEM,
+        "linear alloc %d bytes: only %d remaining",
+        total,
+        avail
+    );
     latch_unlock (&a->latch);
     return NULL;
   }
@@ -95,7 +101,10 @@ void *
 lcalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
 {
   void *ret = lmalloc (a, req, size, e);
-  if (ret == NULL) { return ret; }
+  if (ret == NULL)
+  {
+    return ret;
+  }
 
   memset (ret, 0, req * size);
 
@@ -135,7 +144,10 @@ TEST (lalloc_edge_cases)
   TEST_CASE ("lcalloc must zero the returned memory")
   {
     const int *p2 = lcalloc (&a, 4, sizeof (int), &e);
-    for (int i = 0; i < 4; ++i) { test_assert_int_equal (p2[i], 0); }
+    for (int i = 0; i < 4; ++i)
+    {
+      test_assert_int_equal (p2[i], 0);
+    }
   }
 
   TEST_CASE ("rewind with lalloc_reset_to_state")

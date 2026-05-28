@@ -33,7 +33,10 @@ err_t
 gr_lock_init (struct gr_lock *l, error *e)
 {
   const err_t result = i_mutex_create (&l->mutex, e);
-  if (result != SUCCESS) { return result; }
+  if (result != SUCCESS)
+  {
+    return result;
+  }
 
   memset (l->holder_counts, 0, sizeof (l->holder_counts));
   l->head = NULL;
@@ -82,7 +85,10 @@ is_compatible (const struct gr_lock *l, const enum lock_mode mode)
 {
   for (int i = 0; i < LM_COUNT; i++)
   {
-    if (l->holder_counts[i] > 0 && !compatible[mode][i]) { return false; }
+    if (l->holder_counts[i] > 0 && !compatible[mode][i])
+    {
+      return false;
+    }
   }
   return true;
 }
@@ -92,18 +98,28 @@ wake_waiters (struct gr_lock *l)
 {
   for (struct gr_lock_waiter *w = l->head; w; w = w->next)
   {
-    if (is_compatible (l, w->mode)) { i_cond_signal (&w->cond); }
+    if (is_compatible (l, w->mode))
+    {
+      i_cond_signal (&w->cond);
+    }
   }
 }
 
 static err_t
-gr_lock_waiter_init (struct gr_lock_waiter *dest, const enum lock_mode mode, error *e)
+gr_lock_waiter_init (
+    struct gr_lock_waiter *dest,
+    const enum lock_mode   mode,
+    error                 *e
+)
 {
   dest->mode = mode;
   dest->prev = NULL;
   dest->next = NULL;
 
-  if (i_cond_create (&dest->cond, e)) { return error_trace (e); }
+  if (i_cond_create (&dest->cond, e))
+  {
+    return error_trace (e);
+  }
 
   return SUCCESS;
 }
@@ -112,12 +128,18 @@ static void
 gr_lock_waiter_append_unsafe (struct gr_lock *l, struct gr_lock_waiter *w)
 {
   // Append on the front
-  if (l->head == NULL) { l->head = w; }
+  if (l->head == NULL)
+  {
+    l->head = w;
+  }
   else
   {
     // Search for the end
     struct gr_lock_waiter *head = l->head;
-    while (head->next != NULL) { head = head->next; }
+    while (head->next != NULL)
+    {
+      head = head->next;
+    }
 
     // Append on the end
     head->next = w;
@@ -128,14 +150,20 @@ gr_lock_waiter_append_unsafe (struct gr_lock *l, struct gr_lock_waiter *w)
 static void
 gr_lock_waiter_remove_unsafe (struct gr_lock *l, const struct gr_lock_waiter *w)
 {
-  if (w->prev != NULL) { w->prev->next = w->next; }
+  if (w->prev != NULL)
+  {
+    w->prev->next = w->next;
+  }
   else
   {
     ASSERT (l->head == w);
     l->head = w->next;
   }
 
-  if (w->next != NULL) { w->next->prev = w->prev; }
+  if (w->next != NULL)
+  {
+    w->next->prev = w->prev;
+  }
 }
 
 err_t
@@ -164,7 +192,10 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
   gr_lock_waiter_append_unsafe (l, &waiter);
 
   // Main wait code
-  while (!is_compatible (l, mode)) { i_cond_wait (&waiter.cond, &l->mutex); }
+  while (!is_compatible (l, mode))
+  {
+    i_cond_wait (&waiter.cond, &l->mutex);
+  }
 
   // Remove from waiters list
   gr_lock_waiter_remove_unsafe (l, &waiter);
@@ -184,7 +215,10 @@ gr_trylock (struct gr_lock *l, const enum lock_mode mode)
 {
   ASSERT (l);
 
-  if (!i_mutex_try_lock (&l->mutex)) { return false; }
+  if (!i_mutex_try_lock (&l->mutex))
+  {
+    return false;
+  }
 
   if (!is_compatible (l, mode))
   {
@@ -208,7 +242,10 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
   l->holder_counts[mode]--;
 
   // Wake any compatible waiters
-  if (l->head) { wake_waiters (l); }
+  if (l->head)
+  {
+    wake_waiters (l);
+  }
 
   i_mutex_unlock (&l->mutex);
 }
@@ -216,7 +253,10 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
 const char *
 gr_lock_mode_name (const enum lock_mode mode)
 {
-  if (mode >= 0 && mode < LM_COUNT) { return mode_names[mode]; }
+  if (mode >= 0 && mode < LM_COUNT)
+  {
+    return mode_names[mode];
+  }
   return "INVALID";
 }
 
@@ -320,7 +360,10 @@ thread_wait_and_try (void *arg)
 
   // Wait for Thread 1 to confirm it holds the lock
   i_mutex_lock (&ctx->gate_mtx);
-  while (!ctx->gate_open) { i_cond_wait (&ctx->gate_cv, &ctx->gate_mtx); }
+  while (!ctx->gate_open)
+  {
+    i_cond_wait (&ctx->gate_cv, &ctx->gate_mtx);
+  }
   i_mutex_unlock (&ctx->gate_mtx);
 
   // Attempt acquisition (will block if incompatible)
@@ -359,7 +402,10 @@ random_stress_worker (void *arg)
     }
 
     // Integrity check: current mode must have at least one holder
-    if (ctx->lock->holder_counts[mode] == 0) { panic ("Failed test"); }
+    if (ctx->lock->holder_counts[mode] == 0)
+    {
+      panic ("Failed test");
+    }
 
     gr_unlock (ctx->lock, mode);
   }
@@ -452,12 +498,21 @@ TEST (gr_lock_high_pressure_random)
 
   i_thread threads[12];
 
-  for (int i = 0; i < 12; i++) { i_thread_create (&threads[i], random_stress_worker, &ctx, &e); }
+  for (int i = 0; i < 12; i++)
+  {
+    i_thread_create (&threads[i], random_stress_worker, &ctx, &e);
+  }
 
-  for (int i = 0; i < 12; i++) { i_thread_join (&threads[i], &e); }
+  for (int i = 0; i < 12; i++)
+  {
+    i_thread_join (&threads[i], &e);
+  }
 
   // Final Validation
-  for (int m = 0; m < LM_COUNT; m++) { test_assert_equal (lock.holder_counts[m], 0); }
+  for (int m = 0; m < LM_COUNT; m++)
+  {
+    test_assert_equal (lock.holder_counts[m], 0);
+  }
 
   test_ctx_destroy (&ctx);
   gr_lock_destroy (&lock);

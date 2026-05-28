@@ -33,13 +33,17 @@ main (void)
 {
   // Open a new data file
   smfile_t *smf = smfile_open ("sample1_crud");
-  if (smf == NULL) { return -1; }
+  if (smf == NULL)
+  {
+    return -1;
+  }
 
   // Remove all data from the file
   smfile_remove (
       smf,
-      NULL,   // You can optionally supply a destination for the data - we'll just pass NULL
-      0,      // The starting offset to remove
+      NULL, // You can optionally supply a destination for the data - we'll just
+            // pass NULL
+      0,    // The starting offset to remove
       SMF_END // This let's you remove all the data
   );
 

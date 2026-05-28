@@ -21,7 +21,10 @@
 #include <c_specx.h>
 
 void
-walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN])
+walf_decode_physical_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_UPDATE_LEN]
+)
 {
   ASSERT (r->type == WL_UPDATE);
 
@@ -48,7 +51,10 @@ walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_
 }
 
 void
-walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN])
+walf_decode_fsm_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FSM_UPDATE_LEN]
+)
 {
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FSM);
@@ -80,7 +86,10 @@ walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_L
 }
 
 void
-walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN])
+walf_decode_file_extend_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FILE_EXT_LEN]
+)
 {
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FEXT);
@@ -164,7 +173,10 @@ walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN])
 }
 
 void
-walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN])
+walf_decode_dummy_clr (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_DUMMY_CLR_LEN]
+)
 {
   ASSERT (r->type == WL_CLR);
   ASSERT (r->clr.type == WCLR_DUMMY);

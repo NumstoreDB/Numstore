@@ -40,7 +40,10 @@ _nsdb_insert (
   chunk_alloc_create_default (&temp);
 
   // Parameter validation
-  if (slen == 0) { return 0; }
+  if (slen == 0)
+  {
+    return 0;
+  }
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
@@ -72,9 +75,11 @@ _nsdb_insert (
       "INSERT (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size
+      " curlen (bytes): %" PRb_size
       " Requested: "
-      " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64 " nbytes (bytes): %" PRId64
+      " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64
+      " nbytes (bytes): %" PRId64
       " Granted: "
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
@@ -103,7 +108,10 @@ _nsdb_insert (
         .bofst = bofst,
     };
     ret = ns_insert (&iparams, e);
-    if (ret != (sb_size)(slen * tsize)) { goto failed_rollback; }
+    if (ret != (sb_size)(slen * tsize))
+    {
+      goto failed_rollback;
+    }
   }
 
   // UPDATE VARIABLE
@@ -140,7 +148,13 @@ failed:
 }
 
 sb_size
-nsdb_insert (nsdb_t *_smf, nsdb_var_t *var, const void *src, sb_size bofst, b_size slen)
+nsdb_insert (
+    nsdb_t     *_smf,
+    nsdb_var_t *var,
+    const void *src,
+    sb_size     bofst,
+    b_size      slen
+)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
 
