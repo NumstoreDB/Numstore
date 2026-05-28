@@ -14,18 +14,19 @@
 
 #include "_pynumstore.h"
 
-PyObject *
-pyns_txn_rollback (PyObject *Py_UNUSED (m), PyObject *arg)
+int pyns_verify_types(PyArray_Descr *dtype, struct type *type)
 {
-  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!ns) { return NULL; }
+  PyArray_Descr *nsdtype = (PyArray_Descr *)pyns_type_to_dtype (type);
+  if (nsdtype == NULL) { return -1; }
 
-  // ROLLBACK
-  if (nsdb_rollback (ns) < 0)
-  {
-    _pyns_set_error (ns);
-    return NULL;
-  }
+  int eq = PyArray_EquivTypes (dtype, nsdtype);
+  Py_DECREF (nsdtype);
 
-  Py_RETURN_NONE;
+  if (!eq)
+    {
+      PyErr_SetString (PyExc_ValueError, "array dtype does not match variable type");
+      return -1;
+    }
+
+  return 0;
 }

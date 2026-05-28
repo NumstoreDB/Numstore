@@ -14,8 +14,6 @@
 
 #include "_pynumstore.h"
 
-#include <Python.h>
-
 PyObject *
 pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 {

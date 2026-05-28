@@ -327,7 +327,7 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
 
   /* DB side */
-  irwr_swmt_assert (nsdb_insert (meta->db, meta->varname, data, ofst, len) == len);
+  irwr_swmt_assert (nsdb_vinsert (meta->db, meta->varname, data, ofst, len) == len);
 
   /* Reference side */
   irwr_swmt_assert (
@@ -353,7 +353,7 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
 
   /* DB side */
   irwr_swmt_assert (
-      nsdb_remove (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_vremove (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
   /* Reference side */
@@ -382,7 +382,7 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   irwr_swmt_assert (db_buf && ref_buf);
 
   irwr_swmt_assert (
-      nsdb_read (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_vread (meta->db, meta->varname, db_buf, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
@@ -407,7 +407,7 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   for (int i = 0; i < blen; ++i) { data[i] = (uint8_t)rand (); }
 
   irwr_swmt_assert (
-      nsdb_write (meta->db, meta->varname, data, ofst, stride, ofst + len * stride, 0xFF) == len
+      nsdb_vwrite (meta->db, meta->varname, data, ofst, stride, ofst + len * stride, 0xFF) == len
   );
 
   struct stride str = to_block_stride (ofst, stride, len);

@@ -81,7 +81,7 @@ typedef uint8_t wlh;     // WAL header
 #define NS_IGNORE INT64_MAX
 
 typedef struct nsdb nsdb_t;
-struct type; // Internally you can pass type to verify
+typedef struct nsdb_var nsdb_var_t;
 
 // Lifecycle
 nsdb_t *nsdb_open (const char *path);
@@ -109,21 +109,20 @@ sb_size nsdb_len (nsdb_t *ns, const char *vname);
 #define STEP_PRESENT  (1 << 1) // [:b:]
 #define START_PRESENT (1 << 2) // [a:]
 #define COLON_PRESENT (1 << 3) // [:]
-
-const struct type* nsdb_get_type(nsdb_t* ns, const char*name);
+                              
+nsdb_var_t* nsdb_get(nsdb_t* db, const char* name);
+void nsdb_free(nsdb_var_t* var);
 
 sb_size nsdb_insert (
-    nsdb_t            *ns, 
-    const char        *name, 
-    const struct type *stype,
-    const void        *src, 
-    sb_size           ofst, 
-    b_size            slen);
+    nsdb_t     *ns, 
+    nsdb_var_t *var, 
+    const void *src, 
+    sb_size     ofst, 
+    b_size      slen);
 
 sb_size nsdb_write (
     nsdb_t     *ns,
-    const char *name,
-    const struct type *stype,
+    nsdb_var_t *var,
     const void *src,
     sb_size     start,
     sb_size     step,
@@ -132,8 +131,7 @@ sb_size nsdb_write (
 
 sb_size nsdb_read (
     nsdb_t     *ns,
-    const char *name,
-    const struct type *stype,
+    nsdb_var_t *var,
     void       *dest,
     sb_size     start,
     sb_size     step,
@@ -142,10 +140,14 @@ sb_size nsdb_read (
 
 sb_size nsdb_remove (
     nsdb_t     *ns,
-    const char *name,
-    const struct type *stype,
+    nsdb_var_t *var,
     void       *dest,
     sb_size     start,
     sb_size     step,
     sb_size     stop,
     int         flags);
+
+sb_size nsdb_vinsert (nsdb_t *ns, const char *name, const void *src, sb_size ofst, b_size slen);
+sb_size nsdb_vwrite (nsdb_t *ns, const char *name, const void *src, sb_size start, sb_size step, sb_size stop, int flags);
+sb_size nsdb_vread (nsdb_t *ns, const char *name, void *dest, sb_size start, sb_size step, sb_size stop, int flags);
+sb_size nsdb_vremove (nsdb_t *ns, const char *name, void *dest, sb_size start, sb_size step, sb_size stop, int flags);

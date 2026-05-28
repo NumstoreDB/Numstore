@@ -8,9 +8,10 @@ Python_add_library(_numstore MODULE WITH_SOABI ${NSPY_SOURCES})
 target_include_directories(_numstore
     PUBLIC          "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
     PRIVATE         "${CMAKE_CURRENT_SOURCE_DIR}/c/src"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/../nscore/include"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/../c_specx/include"
-                    "${CMAKE_CURRENT_SOURCE_DIR}/../numstore/include"
+                    "${CMAKE_SOURCE_DIR}/nscore/include"
+                    "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
+                    "${CMAKE_SOURCE_DIR}/libs/numstore/include"
+                    "${CMAKE_SOURCE_DIR}/libs/numstore/src" # TODO nsdb_var_t 
 )
 
 # Include Numpy includes seperately to ignore compiler flags

@@ -12,33 +12,30 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#define NO_IMPORT_ARRAY
 #include "_pynumstore.h"
-#include "pynumstore.h"
+#include "_numstore.h"
 
-#include <Python.h>
-#include <numpy/arrayobject.h>
-
-// var_write(db, txn_or_none, name: str, key: int|range, data: NDArray) -> None
 PyObject *
 pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject   *db;
-  PyObject   *txn_or_none;
-  const char *name;
-  PyObject   *key_obj;
-  PyObject   *data_obj;
+  PyObject   *db          = NULL;
+  PyObject   *txn_or_none = NULL;
+  PyObject   *key_obj     = NULL;
+  PyObject   *data_obj    = NULL;
+  PyObject   *r_start     = NULL;
+  PyObject   *r_stop      = NULL;
+  PyObject   *r_step      = NULL;
+  nsdb_var_t *var         = NULL;
+  const char *name        = NULL;
 
   if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &key_obj, &data_obj))
-  {
-    return NULL;
-  }
+    goto fail;
 
   if (!PyArray_Check (data_obj))
-  {
-    PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
-    return NULL;
-  }
+    {
+      PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
+      goto fail;
+    }
 
   PyArrayObject *arr = (PyArrayObject *)data_obj;
   void          *buf = PyArray_DATA (arr);
@@ -47,44 +44,55 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
   int       flags;
 
   if (PyLong_Check (key_obj))
-  {
-    start = PyLong_AsLongLong (key_obj);
-    if (start == -1 && PyErr_Occurred ()) { return NULL; }
-    step  = 1;
-    stop  = start + 1;
-    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  }
-  else
-  {
-    PyObject *r_start = PyObject_GetAttrString (key_obj, "start");
-    PyObject *r_stop  = PyObject_GetAttrString (key_obj, "stop");
-    PyObject *r_step  = PyObject_GetAttrString (key_obj, "step");
-    if (!r_start || !r_stop || !r_step)
     {
-      Py_XDECREF (r_start);
-      Py_XDECREF (r_stop);
-      Py_XDECREF (r_step);
-      return NULL;
+      start = PyLong_AsLongLong (key_obj);
+      if (start == -1 && PyErr_Occurred ()) goto fail;
+      step  = 1;
+      stop  = start + 1;
+      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
     }
-    start = PyLong_AsLongLong (r_start);
-    stop  = PyLong_AsLongLong (r_stop);
-    step  = PyLong_AsLongLong (r_step);
-    Py_DECREF (r_start);
-    Py_DECREF (r_stop);
-    Py_DECREF (r_step);
-    if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) { return NULL; }
-    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  }
+  else
+    {
+      r_start = PyObject_GetAttrString (key_obj, "start");
+      r_stop  = PyObject_GetAttrString (key_obj, "stop");
+      r_step  = PyObject_GetAttrString (key_obj, "step");
+      if (!r_start || !r_stop || !r_step) goto fail;
+
+      start = PyLong_AsLongLong (r_start);
+      stop  = PyLong_AsLongLong (r_stop);
+      step  = PyLong_AsLongLong (r_step);
+      Py_DECREF (r_start); r_start = NULL;
+      Py_DECREF (r_stop);  r_stop  = NULL;
+      Py_DECREF (r_step);  r_step  = NULL;
+
+      if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) goto fail;
+      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
+    }
+
+  if (step <= 0)
+    {
+      PyErr_SetString (PyExc_ValueError, "key step must be positive");
+      goto fail;
+    }
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns) { return NULL; }
+  if (!ns) goto fail;
 
-  sb_size written = nsdb_write (ns, name, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
-  if (written < 0)
-  {
-    _pyns_set_error (ns);
-    return NULL;
-  }
+  var = nsdb_get (ns, name);
+  if (var == NULL) goto fail;
 
+  if (pyns_verify_types (PyArray_DESCR (arr), var->var.dtype) != 0) goto fail;
+
+  sb_size written = nsdb_write (ns, var, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+  if (written < 0) { _pyns_set_error (ns); goto fail; }
+
+  nsdb_free (var);
   Py_RETURN_NONE;
+
+fail:
+  Py_XDECREF (r_start);
+  Py_XDECREF (r_stop);
+  Py_XDECREF (r_step);
+  nsdb_free (var);
+  return NULL;
 }

@@ -21,21 +21,20 @@
 #include <c_specx.h>
 
 static sb_size
-_nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e)
+_nsdb_premove (struct nshandle *db, nsdb_var_t *var, void *dest, struct user_stride ustr, error *e)
 {
-  sb_size                     ret;                     // Return value
-  b_size                      ofst;                    // Resolved offset
-  t_size                      tsize;                   // Size of  the variable
-  b_size                      len;                     // Length of the variable
-  struct stream               _output;                 // Output stream if present
-  struct stream_obuf_ctx      ctx;                     // Context for output stream
-  struct stream              *output = NULL;           // Pointer to output stream
-  struct chunk_alloc          temp;                    // Allocator for get operation
-  struct ns_var_get_params    gparams;                 // Get operation
-  struct ns_remove_params     rparams;                 // Remove operation
-  struct ns_var_update_params uparams;                 // Update operation
-  struct stride               stride;                  // Resolved stride
-  struct string               vname = strfcstr (name); // Variable name
+  sb_size                     ret;           // Return value
+  b_size                      ofst;          // Resolved offset
+  t_size                      tsize;         // Size of  the variable
+  b_size                      len;           // Length of the variable
+  struct stream               _output;       // Output stream if present
+  struct stream_obuf_ctx      ctx;           // Context for output stream
+  struct stream              *output = NULL; // Pointer to output stream
+  struct chunk_alloc          temp;          // Allocator for get operation
+  struct ns_var_get_params    gparams;       // Get operation
+  struct ns_remove_params     rparams;       // Remove operation
+  struct ns_var_update_params uparams;       // Update operation
+  struct stride               stride;        // Resolved stride
 
   chunk_alloc_create_default (&temp);
 
@@ -47,18 +46,17 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = vname,
+        .vname = var->var.vname,
         .alloc = &temp,
     };
-    err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
+
+    // Type check
+    if (!type_equal (var->var.dtype, gparams.dest.dtype))
     {
-      ret           = 0;
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      goto commit;
+      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
+      goto failed_rollback;
     }
-    WRAP_GOTO (err, failed_rollback);
   }
 
   // Resolve sizes
@@ -68,7 +66,12 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
 
     if (len % tsize != 0)
     {
-      error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
+      error_causef (
+          e,
+          ERR_CORRUPT,
+          "Variable: %.*s has invalid byte size",
+          strfmt (&var->var.vname)
+      );
       goto failed_rollback;
     }
 
@@ -86,7 +89,7 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
   i_log_debug (
       "REMOVE (txn = %" PRtxid
       ")"
-      " - %s"
+      " - %.*s"
       " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
       " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
@@ -95,7 +98,7 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      name,
+      strfmt (&var->var.vname),
       tsize,
       len,
       gparams.dest.nbytes,
@@ -145,8 +148,6 @@ _nsdb_premove (struct nshandle *db, const char *name, void *dest, struct user_st
     WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
 
-commit:
-
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
@@ -164,7 +165,7 @@ failed:
 sb_size
 nsdb_remove (
     nsdb_t     *_smf,
-    const char *name,
+    nsdb_var_t *var,
     void       *dest,
     sb_size     start,
     sb_size     step,
@@ -183,5 +184,5 @@ nsdb_remove (
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _nsdb_premove (smf, name, dest, stride, &smf->e);
+  return _nsdb_premove (smf, var, dest, stride, &smf->e);
 }

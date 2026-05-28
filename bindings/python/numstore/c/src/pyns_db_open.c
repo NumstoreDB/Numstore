@@ -13,9 +13,6 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "pynumstore.h"
-
-#include <Python.h>
 
 PyObject *
 pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg)

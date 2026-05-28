@@ -13,23 +13,11 @@
 /// limitations under the License.
 
 #include "nscore/compiler.h"
-#include "pynumstore.h"
-
-#include <numpy/ndarraytypes.h>
-#include <object.h>
-
-// Numpy options
-#define NO_IMPORT_ARRAY
-
+#include "_pynumstore.h"
 #include "nscore/types.h"
 
-#include <Python.h>
-#include <c_specx.h>
-#include <numpy/arrayobject.h>
-#include <string.h>
-
 // Build a complex valued struct
-static PyObject *
+static PyArray_Descr*
 build_complex_struct (int component_typenum)
 {
   PyArray_Descr *comp   = NULL; // dtype for the single component (e.g. f32)
@@ -71,7 +59,7 @@ build_complex_struct (int component_typenum)
   Py_DECREF (comp);
   Py_DECREF (fields);
 
-  return (PyObject *)out;
+  return out;
 
 fail:
   Py_XDECREF(name);
@@ -81,7 +69,7 @@ fail:
   return NULL;
 }
 
-static PyObject *
+static PyArray_Descr*
 primitive_to_dtype (enum prim_t p)
 {
   int typenum;
@@ -117,16 +105,16 @@ primitive_to_dtype (enum prim_t p)
   PyArray_Descr *d = PyArray_DescrFromType (typenum);
   if (d == NULL) { return NULL; }
 
-  return (PyObject *)d;
+  return d;
 }
 
-static PyObject *
+static PyArray_Descr*
 struct_to_dtype (const struct struct_t *st)
 {
   ASSERT (st->len > 0);
   PyObject      *fields = NULL; // List of fields
   PyObject      *name   = NULL; // name of each field
-  PyObject      *sub    = NULL; // sub type of each field
+  PyArray_Descr *sub    = NULL; // sub type of each field
   PyObject      *tup    = NULL; // the wrapper of (name, sub)
   PyArray_Descr *out    = NULL; // The result
 
@@ -150,7 +138,7 @@ struct_to_dtype (const struct struct_t *st)
 
   Py_DECREF (fields);
 
-  return (PyObject *)out;
+  return out;
 
 fail:
   Py_XDECREF (name);
@@ -160,7 +148,7 @@ fail:
   return NULL;
 }
 
-static PyObject *
+static PyArray_Descr*
 union_to_dtype (const struct union_t *un)
 {
   ASSERT (un->len > 0);
@@ -168,7 +156,7 @@ union_to_dtype (const struct union_t *un)
   PyObject      *formats  = NULL;
   PyObject      *offsets  = NULL;
   PyObject      *name     = NULL;
-  PyObject      *sub      = NULL;
+  PyArray_Descr *sub      = NULL;
   PyObject      *off      = NULL;
   PyObject      *itemsize = NULL;
   PyObject      *spec     = NULL;
@@ -219,7 +207,7 @@ union_to_dtype (const struct union_t *un)
   if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) goto fail;
 
   Py_DECREF (spec);
-  return (PyObject *)out;
+  return out;
 
 fail:
   Py_XDECREF (name);
@@ -233,11 +221,11 @@ fail:
   return NULL;
 }
 
-static PyObject *
+static PyArray_Descr*
 sarray_to_dtype (const struct sarray_t *sa)
 {
   ASSERT (sa->rank > 0);
-  PyObject      *sub   = NULL;
+  PyArray_Descr*sub   = NULL;
   PyObject      *shape = NULL;
   PyObject      *d     = NULL;
   PyObject      *spec  = NULL;
@@ -266,7 +254,7 @@ sarray_to_dtype (const struct sarray_t *sa)
   if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) goto fail;
 
   Py_DECREF (spec);
-  return (PyObject *)out;
+  return out;
 
 fail:
   Py_XDECREF (d);
@@ -276,7 +264,7 @@ fail:
   return NULL;
 }
 
-PyObject *
+PyArray_Descr *
 pyns_type_to_dtype (const struct type *t)
 {
   ASSERT (t);
@@ -312,10 +300,10 @@ pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg)
     return NULL;
   }
 
-  PyObject *ret = pyns_type_to_dtype (&t);
+  PyArray_Descr*ret = pyns_type_to_dtype (&t);
   chunk_alloc_free_all (&temp);
 
-  return ret;
+  return (PyObject*)ret;
 }
 
 #if 0

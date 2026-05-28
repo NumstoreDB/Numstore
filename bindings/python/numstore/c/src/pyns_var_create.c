@@ -13,9 +13,6 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "pynumstore.h"
-
-#include <Python.h>
 
 // var_create(db, txn_or_none, name: str, type_str: str) -> None
 PyObject *
