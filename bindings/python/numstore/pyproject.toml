@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.8.0", "numpy"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "pynumstore"
+name = "numstore"
 version = "0.1.0"
 description = "Python interface for the numerical database"
 requires-python = ">=3.8"
@@ -11,8 +11,8 @@ dependencies = ["numpy"]
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
-cmake.source-dir = "../.."
-wheel.packages = ["pynumstore"]
+cmake.source-dir = "../../.."
+wheel.packages = ["numstore"]
 cmake.args = [
     "-DENABLE_NDEBUG:BOOL=ON",
     "-DENABLE_NTEST:BOOL=ON",
@@ -24,4 +24,4 @@ cmake.args = [
 ]
 
 [tool.setuptools.package-data]
-pynumstore = ["_pynumstore.pyi", "py.typed"]
+numstore = ["_numstore.pyi", "py.typed"]

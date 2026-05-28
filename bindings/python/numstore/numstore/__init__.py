@@ -1,8 +1,8 @@
 from contextlib import contextmanager
 
 from .numstore_numpy import numpy_to_numstore
-from ._pynumstore import *
-from ._pynumstore import var_create as _c_var_create
+from ._numstore import *
+from ._numstore import var_create as _c_var_create
 from ._db_wrapper import Database, Transaction, Variable
 
 

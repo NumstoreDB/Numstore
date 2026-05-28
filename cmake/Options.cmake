@@ -6,6 +6,11 @@ option(ENABLE_GPROF "Enable gprof profiling support" OFF)
 option(ENABLE_PORTABLE "Portable build: no -march=native (for packages)" OFF)
 option(ENABLE_STRIP "Strip debug symbols from installed binaries" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer (default ON for non-release)" ON)
+option(BUILD_APPS "Build apps" ON)
+option(BUILD_BINDINGS "Build bindings" ON)
+option(BUILD_SAMPLES "Build samples" ON)
+option(BUILD_NUMSTORE_SAMPLES "Build numstore samples" ON)
+option(BUILD_SMARTFILE_SAMPLES "Build smart file samples" ON)
 
 # Translates ENABLE_* options into preprocessor defines.
 foreach(_flag NDEBUG NTEST NLOG)
