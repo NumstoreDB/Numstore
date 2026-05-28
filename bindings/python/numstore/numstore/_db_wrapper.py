@@ -1,41 +1,10 @@
-"""numstore — ergonomic Python wrapper around the ``_numstore`` C extension.
-
-Quick-start::
-
-    import numstore
-
-    with numstore.open("my.db") as db:
-        v = db.create("temps", dtype="float32")
-        v.append(np.array([20.1, 21.3, 19.8], dtype="float32"))
-        print(v[0])      # scalar
-        print(v[0:2])    # NDArray
-
-    # Explicit transaction
-    with numstore.open("my.db") as db:
-        with db.begin_txn() as txn:
-            v = txn.get("temps")
-            v[0] = np.float32(22.0)
-        # auto-committed
-
-Design notes
-------------
-* dtype validation is entirely delegated to the C layer via ``compile_type``.
-  There is no duplicate allowlist in Python.
-* ``var_remove`` returns the removed data; the high-level API surfaces this
-  as ``pop`` (returns) vs ``remove``/``__delitem__`` (discards).
-* ``create_from`` wraps ``var_newvar`` — create + populate in one C call.
-* ``_NamespaceMixin`` gives ``Database`` and ``Transaction`` identical
-  variable-management surfaces without code duplication.
-"""
-
 from __future__ import annotations
 
 from typing import overload
 import numpy as np
 import numpy.typing as npt
 
-from . import _numstore as _ns
-from ._numstore import Database as _DbHandle, Transaction as _TxnHandle
+from ._numstore import *
 
 # ---------------------------------------------------------------------------
 # Re-exported types & aliases
@@ -84,11 +53,11 @@ class _NamespaceMixin:
     """
 
     @property
-    def _db(self) -> _DbHandle:  # pragma: no cover
+    def _db(self) -> Any:  # pragma: no cover
         raise NotImplementedError
 
     @property
-    def _txn(self) -> _TxnHandle | None:  # pragma: no cover
+    def _txn(self) -> Any | None:  # pragma: no cover
         raise NotImplementedError
 
     # -- existence -----------------------------------------------------------
@@ -101,7 +70,7 @@ class _NamespaceMixin:
         needed.
         """
         try:
-            _ns.var_len(self._db, self._txn, name)
+            var_len(self._db, self._txn, name)
             return True
         except KeyError:
             return False
@@ -171,7 +140,7 @@ class _NamespaceMixin:
                 f"Variable {name!r} already exists; "
                 "use get_or_create() to open-or-create"
             )
-        _ns.var_create(self._db, self._txn, name, dtype)
+        var_create(self._db, self._txn, name, dtype)
         return Variable(self._db, self._txn, name)
 
     def create_from(self, name: str, data: npt.NDArray) -> "Variable":
@@ -186,7 +155,7 @@ class _NamespaceMixin:
             raise KeyError(
                 f"Variable {name!r} already exists"
             )
-        _ns.var_newvar(self._db, self._txn, name, data)
+        var_newvar(self._db, self._txn, name, data)
         return Variable(self._db, self._txn, name)
 
     # -- deletion ------------------------------------------------------------
@@ -199,7 +168,7 @@ class _NamespaceMixin:
         """
         if not self._var_exists(name):
             raise KeyError(f"Variable {name!r} does not exist")
-        _ns.var_delete(self._db, self._txn, name)
+        var_delete(self._db, self._txn, name)
 
 
 # ---------------------------------------------------------------------------
@@ -221,13 +190,13 @@ class Database(_NamespaceMixin):
 
     def __init__(self, path: str) -> None:
         self.path: str = path
-        self.__db: _DbHandle = _ns.db_open(path)
+        self.__db: Any = db_open(path)
         self.__closed: bool = False
 
     # -- _NamespaceMixin contract --------------------------------------------
 
     @property
-    def _db(self) -> _DbHandle:
+    def _db(self) -> Any:
         self._require_open()
         return self.__db
 
@@ -250,7 +219,7 @@ class Database(_NamespaceMixin):
     def close(self) -> None:
         """Close the database.  Idempotent — safe to call multiple times."""
         if not self.__closed:
-            _ns.db_close(self.__db)
+            db_close(self.__db)
             self.__closed = True
 
     def begin_txn(self) -> "Transaction":
@@ -265,7 +234,7 @@ class Database(_NamespaceMixin):
             RuntimeError: if the database is closed.
         """
         self._require_open()
-        return Transaction(self.__db, _ns.db_begin(self.__db))
+        return Transaction(self.__db, db_begin(self.__db))
 
     # -- context manager -----------------------------------------------------
 
@@ -300,19 +269,19 @@ class Transaction(_NamespaceMixin):
     the transaction must not be used again.
     """
 
-    def __init__(self, db: _DbHandle, txn: _TxnHandle) -> None:
-        self.__db: _DbHandle = db
-        self.__txn: _TxnHandle = txn
+    def __init__(self, db: Any, txn: Any) -> None:
+        self.__db: Any = db
+        self.__txn: Any = txn
         self.__done: bool = False
 
     # -- _NamespaceMixin contract --------------------------------------------
 
     @property
-    def _db(self) -> _DbHandle:
+    def _db(self) -> Any:
         return self.__db
 
     @property
-    def _txn(self) -> _TxnHandle:
+    def _txn(self) -> Any:
         self._require_active()
         return self.__txn
 
@@ -334,7 +303,7 @@ class Transaction(_NamespaceMixin):
             RuntimeError: if the transaction has already ended.
         """
         self._require_active()
-        _ns.txn_commit(self.__txn)
+        txn_commit(self.__txn)
         self.__done = True
 
     def rollback(self) -> None:
@@ -344,7 +313,7 @@ class Transaction(_NamespaceMixin):
             RuntimeError: if the transaction has already ended.
         """
         self._require_active()
-        _ns.txn_rollback(self.__txn)
+        txn_rollback(self.__txn)
         self.__done = True
 
     # -- context manager -----------------------------------------------------
@@ -390,12 +359,12 @@ class Variable:
 
     def __init__(
         self,
-        db: _DbHandle,
-        txn: _TxnHandle | None,
+        db: Any,
+        txn: Any | None,
         name: str,
     ) -> None:
-        self._db: _DbHandle = db
-        self._txn: _TxnHandle | None = txn
+        self._db: Any = db
+        self._txn: Any | None = txn
         self._name: str = name
 
     # -- metadata ------------------------------------------------------------
@@ -413,16 +382,16 @@ class Variable:
         variable must be non-empty.  The C layer encodes dtype in the variable
         header; a dedicated ``var_dtype`` call would be cleaner if added later.
         """
-        return _ns.type_to_dtype(_ns.compile_type(
+        return type_to_dtype(compile_type(
             # Round-trip through compile_type → type_to_dtype.
             # We read element [0] solely to get the type object back.
             # TODO: add a var_dtype() C call to avoid needing data for this.
-            _ns.var_read(self._db, self._txn, self._name, 0)
+            var_read(self._db, self._txn, self._name, 0)
         ))
 
     def __len__(self) -> int:
         """Number of elements currently stored in this variable."""
-        return _ns.var_len(self._db, self._txn, self._name)
+        return var_len(self._db, self._txn, self._name)
 
     # -- private helpers -----------------------------------------------------
 
@@ -449,7 +418,7 @@ class Variable:
             TypeError:  if *key* is not ``int`` or ``slice``.
             IndexError: if *key* is out of bounds.
         """
-        return _ns.var_read(self._db, self._txn, self._name, self._backend_key(key))
+        return var_read(self._db, self._txn, self._name, self._backend_key(key))
 
     def __getitem__(self, key: Key) -> Element | npt.NDArray:
         """Alias for :meth:`read`."""
@@ -473,7 +442,7 @@ class Variable:
                         is dtype-incompatible (raised by C layer).
             IndexError: if *key* is out of bounds.
         """
-        _ns.var_write(self._db, self._txn, self._name, self._backend_key(key), value)
+        var_write(self._db, self._txn, self._name, self._backend_key(key), value)
 
     def __setitem__(self, key: Key, value: Element | npt.NDArray) -> None:
         """Alias for :meth:`write`."""
@@ -495,7 +464,7 @@ class Variable:
         """
         if not isinstance(offset, int):
             raise TypeError(f"offset must be int, not {type(offset).__name__!r}")
-        _ns.var_insert(self._db, self._txn, self._name, offset, data)
+        var_insert(self._db, self._txn, self._name, offset, data)
 
     def append(self, data: npt.NDArray) -> int:
         """Append *data* after the last element.
@@ -507,7 +476,7 @@ class Variable:
             The index of the first newly appended element.
         """
         offset = len(self)
-        _ns.var_insert(self._db, self._txn, self._name, offset, data)
+        var_insert(self._db, self._txn, self._name, offset, data)
         return offset
 
     # -- remove / pop --------------------------------------------------------
@@ -529,7 +498,7 @@ class Variable:
             TypeError:  if *key* is not ``int`` or ``slice``.
             IndexError: if *key* is out of bounds.
         """
-        return _ns.var_remove(self._db, self._txn, self._name, self._backend_key(key))
+        return var_remove(self._db, self._txn, self._name, self._backend_key(key))
 
     def remove(self, key: Key) -> None:
         """Remove elements at *key* and discard them.
