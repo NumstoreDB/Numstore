@@ -16,6 +16,7 @@
 #include "windows.h"
 
 #include <c_specx.h>
+#include <limits.h>
 
 ////////////////////////////////////////////////////////////
 // Semaphore

@@ -1,11 +1,11 @@
 import numpy as np
-import pynumstore as ns
+import numstore as ns
 
 # Multiple variables with different dtypes
 with ns.open("mydb") as db:
     # Create two variables
-    timestamps = db.var("timestamps", dtype="f64", create=True)
-    labels = db.var("labels", dtype="i32", create=True)
+    timestamps = db.get_or_create("timestamps", dtype="f64")
+    labels = db.get_or_create("labels", dtype="i32")
 
     with db.begin_txn() as txn:
         del txn["timestamps"][0:]

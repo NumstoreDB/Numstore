@@ -22,10 +22,10 @@
 static PyMethodDef numstore_methods[] = {
     // Utils
     {
-        "pyns_compile_type",
+        "ns_to_np",
         pyns_compile_type,
         METH_O,
-        "pyns_compile_type(str) -> np.dtype",
+        "ns_to_np(str) -> np.dtype",
     },
 
     // Lifecycle

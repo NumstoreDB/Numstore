@@ -1,8 +1,8 @@
 import numpy as np
-import pynumstore as ns
+import numstore as ns
 
 with ns.open("mydb") as db:
-    counts = db.var("counts", dtype="i32", create=True)
+    counts = db.get_or_create("counts", dtype="i32")
     del counts[0:]
 
     with db.begin_txn() as txn:

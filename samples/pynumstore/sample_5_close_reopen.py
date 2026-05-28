@@ -1,9 +1,9 @@
 import numpy as np
-import pynumstore as ns
+import numstore as ns
 
 # Persistence — data survives close and reopen
 with ns.open("mydb") as db:
-    log = db.var("log", dtype="i32", create=True)
+    log = db.get_or_create("log", dtype="i32")
 
     # Delete all the data if log already exists
     del log[0:]
