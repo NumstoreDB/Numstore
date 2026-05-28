@@ -19,8 +19,11 @@
 PyObject *
 pyns_db_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 {
+  // Get the wrapped database 
   nsdb_t *ns = _unwrap_db (arg);
-  if (!ns) { return NULL; }
+  if (!ns) { 
+    return NULL; 
+  }
 
   // BEGIN TXN
   if (nsdb_begin (ns) < 0)

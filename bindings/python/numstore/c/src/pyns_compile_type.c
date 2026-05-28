@@ -16,6 +16,7 @@
 #include "pynumstore.h"
 
 #include <numpy/ndarraytypes.h>
+#include <object.h>
 
 // Numpy options
 #define NO_IMPORT_ARRAY
@@ -27,54 +28,57 @@
 #include <numpy/arrayobject.h>
 #include <string.h>
 
-PyObject *pyns_type_to_dtype (const struct type *t);
-
+// Build a complex valued struct
 static PyObject *
 build_complex_struct (int component_typenum)
 {
-  PyArray_Descr *comp = PyArray_DescrFromType (component_typenum);
-  if (comp == NULL) { return NULL; }
+  PyArray_Descr *comp   = NULL; // dtype for the single component (e.g. f32)
+  PyObject      *fields = NULL; // the list of fields
+  PyArray_Descr *out    = NULL; // dtype of the output complex float (a struct of re im)
+  PyObject* name = NULL;
+  PyObject* tup = NULL;
 
-  PyObject *fields = PyList_New (2);
-  if (fields == NULL)
-  {
-    Py_DECREF (comp);
-    return NULL;
-  }
+  // Internal type
+  comp = PyArray_DescrFromType (component_typenum);
+  fields = PyList_New (2);
 
+  if (comp == NULL || fields == NULL) goto fail;
+
+  // Names
   static const char *names[2] = {"re", "im"};
   for (int i = 0; i < 2; i++)
-  {
-    PyObject *name = PyUnicode_FromString (names[i]);
-    if (name == NULL)
     {
-      Py_DECREF (comp);
-      Py_DECREF (fields);
-      return NULL;
-    }
-    PyObject *tup = PyTuple_New (2);
-    if (tup == NULL)
-    {
-      Py_DECREF (name);
-      Py_DECREF (comp);
-      Py_DECREF (fields);
-      return NULL;
-    }
-    PyTuple_SET_ITEM (tup, 0, name); /* steals name */
-    Py_INCREF (comp);
-    PyTuple_SET_ITEM (tup, 1, (PyObject *)comp); /* steals one ref */
-    PyList_SET_ITEM (fields, i, tup);            /* steals tup */
-  }
-  Py_DECREF (comp); /* release our original ref */
+      // Generate python string
+      name = PyUnicode_FromString (names[i]);
+      tup = PyTuple_New (2);
+      
+      if (name == NULL || tup == NULL) goto fail;
 
-  PyArray_Descr *out = NULL;
-  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED)
-  {
-    Py_DECREF (fields);
-    return NULL;
-  }
+      // increase ref so that SET_ITEM doesn't set count to 0
+      Py_INCREF (comp);
+
+      // All these Steal
+      PyTuple_SET_ITEM (tup, 0, name);           
+      PyTuple_SET_ITEM (tup, 1, (PyObject *)comp); 
+      PyList_SET_ITEM (fields, i, tup);           
+
+      name = NULL;
+      comp = NULL;
+    }
+
+  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED) {  goto fail;}
+
+  Py_DECREF (comp);
   Py_DECREF (fields);
+
   return (PyObject *)out;
+
+fail:
+  Py_XDECREF(name);
+  Py_XDECREF(tup);
+  Py_XDECREF (comp);
+  Py_XDECREF (fields);
+  return NULL;
 }
 
 static PyObject *
@@ -98,7 +102,6 @@ primitive_to_dtype (enum prim_t p)
     case CF64: typenum = NPY_COMPLEX64; break;
     case CF128: typenum = NPY_COMPLEX128; break;
     case CF256: typenum = NPY_CLONGDOUBLE; break;
-    /* No native numpy dtype for these; build struct {re, im}. */
     case CF32: return build_complex_struct (NPY_FLOAT16);
     case CI16: return build_complex_struct (NPY_INT8);
     case CI32: return build_complex_struct (NPY_INT16);
@@ -121,202 +124,156 @@ static PyObject *
 struct_to_dtype (const struct struct_t *st)
 {
   ASSERT (st->len > 0);
+  PyObject      *fields = NULL; // List of fields
+  PyObject      *name   = NULL; // name of each field
+  PyObject      *sub    = NULL; // sub type of each field
+  PyObject      *tup    = NULL; // the wrapper of (name, sub)
+  PyArray_Descr *out    = NULL; // The result
 
-  // fields = [None, None, .... ]
-  PyObject *fields = PyList_New (st->len);
-  if (fields == NULL) { return NULL; }
+  fields = PyList_New (st->len);
+  if (fields == NULL) goto fail;
 
   for (u16 i = 0; i < st->len; i++)
-  {
-    // name = st.name
-    PyObject *name = PyUnicode_FromStringAndSize (st->keys[i].data, (Py_ssize_t)st->keys[i].len);
-    if (name == NULL)
     {
-      Py_DECREF (fields);
-      return NULL;
+      name = PyUnicode_FromStringAndSize (st->keys[i].data, (Py_ssize_t)st->keys[i].len);
+      sub = pyns_type_to_dtype (st->types[i]);
+      tup = PyTuple_New (2);
+
+      if (name == NULL || sub == NULL || tup == NULL) { goto fail; }
+
+      PyTuple_SET_ITEM (tup, 0, name); name = NULL;
+      PyTuple_SET_ITEM (tup, 1, sub);  sub  = NULL;
+      PyList_SET_ITEM (fields, i, tup); tup = NULL;
     }
 
-    // sub = topy(st.type)
-    PyObject *sub = pyns_type_to_dtype (st->types[i]);
-    if (sub == NULL)
-    {
-      Py_DECREF (name);
-      Py_DECREF (fields);
-      return NULL;
-    }
+  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED) { goto fail; }
 
-    // tup = (name, sub)
-    PyObject *tup = PyTuple_New (2);
-    if (tup == NULL)
-    {
-      Py_DECREF (name);
-      Py_DECREF (sub);
-      Py_DECREF (fields);
-      return NULL;
-    }
-    PyTuple_SET_ITEM (tup, 0, name);
-    PyTuple_SET_ITEM (tup, 1, sub);
-
-    // fields[i] = tup
-    PyList_SET_ITEM (fields, i, tup);
-  }
-
-  // out = np.dtype(fields)
-  PyArray_Descr *out = NULL;
-  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED)
-  {
-    Py_DECREF (fields);
-    return NULL;
-  }
   Py_DECREF (fields);
 
   return (PyObject *)out;
+
+fail:
+  Py_XDECREF (name);
+  Py_XDECREF (sub);
+  Py_XDECREF (tup);
+  Py_XDECREF (fields);
+  return NULL;
 }
 
 static PyObject *
 union_to_dtype (const struct union_t *un)
 {
   ASSERT (un->len > 0);
+  PyObject      *names    = NULL; // names 
+  PyObject      *formats  = NULL;
+  PyObject      *offsets  = NULL;
+  PyObject      *name     = NULL;
+  PyObject      *sub      = NULL;
+  PyObject      *off      = NULL;
+  PyObject      *itemsize = NULL;
+  PyObject      *spec     = NULL;
+  PyArray_Descr *out      = NULL;
 
-  // names = [None, None, ...]
-  // formats = [None, None, ...]
-  // offsets = [None, None, ...]
-  PyObject *names   = PyList_New (un->len);
-  PyObject *formats = PyList_New (un->len);
-  PyObject *offsets = PyList_New (un->len);
-  if (names == NULL || formats == NULL || offsets == NULL)
-  {
-    Py_XDECREF (names);
-    Py_XDECREF (formats);
-    Py_XDECREF (offsets);
-    return NULL;
-  }
+  names   = PyList_New (un->len);
+  formats = PyList_New (un->len);
+  offsets = PyList_New (un->len);
+  if (names == NULL || formats == NULL || offsets == NULL) goto fail;
 
   Py_ssize_t max_size = 0;
   for (u16 i = 0; i < un->len; i++)
-  {
-    // name = un.name
-    // sub = un.name
-    // offset = 0
-    PyObject *name = PyUnicode_FromStringAndSize (un->keys[i].data, (Py_ssize_t)un->keys[i].len);
-    PyObject *sub  = name ? pyns_type_to_dtype (un->types[i]) : NULL;
-    PyObject *off  = sub ? PyLong_FromLong (0) : NULL;
-
-    if (off == NULL)
     {
-      Py_XDECREF (name);
-      Py_XDECREF (sub);
-      Py_XDECREF (off);
-      Py_DECREF (names);
-      Py_DECREF (formats);
-      Py_DECREF (offsets);
-      return NULL;
+      name = PyUnicode_FromStringAndSize (un->keys[i].data, (Py_ssize_t)un->keys[i].len);
+      sub = pyns_type_to_dtype (un->types[i]);
+      off = PyLong_FromLong (0);
+
+      if (name == NULL || sub == NULL || off == NULL) goto fail;
+
+#if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
+      Py_ssize_t isize = ((PyArray_Descr *)sub)->elsize;
+#else
+      Py_ssize_t isize = PyDataType_ELSIZE ((PyArray_Descr *)sub);
+#endif
+
+      if (isize > max_size) { max_size = isize; }
+
+      PyList_SET_ITEM (names,   i, name); name = NULL;
+      PyList_SET_ITEM (formats, i, sub);  sub  = NULL;
+      PyList_SET_ITEM (offsets, i, off);  off  = NULL;
     }
 
-    // max_size = max(max_size, sizeof(sub))
-    Py_ssize_t isize = PyDataType_ELSIZE (((PyArray_Descr *)sub));
-    if (isize > max_size) { max_size = isize; }
+  itemsize = PyLong_FromSsize_t (max_size);
+  spec = PyDict_New ();
 
-    // names[i] = name
-    // formats[i] = sub
-    // offsets[i] = off
-    PyList_SET_ITEM (names, i, name);
-    PyList_SET_ITEM (formats, i, sub);
-    PyList_SET_ITEM (offsets, i, off);
-  }
+  if (itemsize == NULL || spec == NULL) goto fail;
 
-  // itemsize = long(max_size)
-  // spec = {}
-  PyObject *itemsize = PyLong_FromSsize_t (max_size);
-  PyObject *spec     = itemsize ? PyDict_New () : NULL;
-  if (spec == NULL)
-  {
-    Py_XDECREF (itemsize);
-    Py_DECREF (names);
-    Py_DECREF (formats);
-    Py_DECREF (offsets);
-    return NULL;
-  }
+  if (PyDict_SetItemString (spec, "names",    names)    != 0) goto fail;
+  if (PyDict_SetItemString (spec, "formats",  formats)  != 0) goto fail;
+  if (PyDict_SetItemString (spec, "offsets",  offsets)  != 0) goto fail;
+  if (PyDict_SetItemString (spec, "itemsize", itemsize) != 0) goto fail;
 
-  // spec["formats"] = formats
-  // spec["offsets"] = offsets
-  // spec["itemsize"] = itemsize
-  int rc = PyDict_SetItemString (spec, "names", names);
-  rc     = rc | PyDict_SetItemString (spec, "formats", formats);
-  rc     = rc | PyDict_SetItemString (spec, "offsets", offsets);
-  rc     = rc | PyDict_SetItemString (spec, "itemsize", itemsize);
-  Py_DECREF (names);
-  Py_DECREF (formats);
-  Py_DECREF (offsets);
-  Py_DECREF (itemsize);
-  if (rc != 0)
-  {
-    Py_DECREF (spec);
-    return NULL;
-  }
+  Py_DECREF (names);    names    = NULL;
+  Py_DECREF (formats);  formats  = NULL;
+  Py_DECREF (offsets);  offsets  = NULL;
+  Py_DECREF (itemsize); itemsize = NULL;
 
-  // out = np.dtype(spec)
-  PyArray_Descr *out = NULL;
-  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED)
-  {
-    Py_DECREF (spec);
-    return NULL;
-  }
+  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) goto fail;
+
   Py_DECREF (spec);
-
   return (PyObject *)out;
+
+fail:
+  Py_XDECREF (name);
+  Py_XDECREF (sub);
+  Py_XDECREF (off);
+  Py_XDECREF (names);
+  Py_XDECREF (formats);
+  Py_XDECREF (offsets);
+  Py_XDECREF (itemsize);
+  Py_XDECREF (spec);
+  return NULL;
 }
 
 static PyObject *
 sarray_to_dtype (const struct sarray_t *sa)
 {
   ASSERT (sa->rank > 0);
+  PyObject      *sub   = NULL;
+  PyObject      *shape = NULL;
+  PyObject      *d     = NULL;
+  PyObject      *spec  = NULL;
+  PyArray_Descr *out   = NULL;
 
-  // sub = topy(sa->t)
-  PyObject *sub = pyns_type_to_dtype (sa->t);
-  if (sub == NULL) { return NULL; }
+  sub = pyns_type_to_dtype (sa->t);
+  shape = PyTuple_New (sa->rank);
 
-  // shape = (sa->dims[0], sa->dims[1]...)
-  PyObject *shape = PyTuple_New (sa->rank);
-  if (shape == NULL)
-  {
-    Py_DECREF (sub);
-    return NULL;
-  }
+  if (sub == NULL || shape == NULL) goto fail;
+
   for (u16 i = 0; i < sa->rank; i++)
-  {
-    PyObject *d = PyLong_FromUnsignedLong ((unsigned long)sa->dims[i]);
-    if (d == NULL)
     {
-      Py_DECREF (shape);
-      Py_DECREF (sub);
-      return NULL;
+      d = PyLong_FromUnsignedLong ((unsigned long)sa->dims[i]);
+
+      if (d == NULL) goto fail;
+
+      PyTuple_SET_ITEM (shape, i, d); d = NULL;
     }
-    PyTuple_SET_ITEM (shape, i, d);
-  }
 
-  // spec = (sub, shape)
-  PyObject *spec = PyTuple_New (2);
-  if (spec == NULL)
-  {
-    Py_DECREF (shape);
-    Py_DECREF (sub);
-    return NULL;
-  }
-  // Steals
-  PyTuple_SET_ITEM (spec, 0, sub);
-  PyTuple_SET_ITEM (spec, 1, shape);
+  spec = PyTuple_New (2);
+  if (spec == NULL) goto fail;
 
-  // out = np.dtype(spec)
-  PyArray_Descr *out = NULL;
-  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED)
-  {
-    Py_DECREF (spec);
-    return NULL;
-  }
+  PyTuple_SET_ITEM (spec, 0, sub);   sub   = NULL;
+  PyTuple_SET_ITEM (spec, 1, shape); shape = NULL;
+
+  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) goto fail;
+
   Py_DECREF (spec);
-
   return (PyObject *)out;
+
+fail:
+  Py_XDECREF (d);
+  Py_XDECREF (sub);
+  Py_XDECREF (shape);
+  Py_XDECREF (spec);
+  return NULL;
 }
 
 PyObject *

@@ -91,7 +91,13 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
   if (!dtype_obj) { return NULL; }
 
   PyArray_Descr *dtype = (PyArray_Descr *)dtype_obj;
+
+#if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
+  npy_intp       tsize = ((PyArray_Descr *)dtype)->elsize;
+#else
   npy_intp       tsize = (npy_intp)PyDataType_ELSIZE (dtype);
+#endif
+
 
   // Compute maximum element count from key range
   npy_intp nelems_max;

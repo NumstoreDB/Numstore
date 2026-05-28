@@ -42,7 +42,7 @@ DEFINE_DBG_ASSERT (i_file, i_file, fp, {
 // File vtable — POSIX implementations
 
 static err_t
-posix_close (i_file *fp, error *e)
+_posix_close (i_file *fp, error *e)
 {
   DBG_ASSERT (i_file, fp);
 
@@ -787,7 +787,7 @@ posix_file_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, err
 // Default file system vtable
 
 struct i_file_vtable default_fvtable = {
-    .i_close       = posix_close,
+    .i_close       = _posix_close,
     .i_fsync       = posix_fsync,
     .i_file_size   = posix_file_size,
     .i_read_some   = posix_read_some,

@@ -23,12 +23,10 @@
 #include <c_specx/cbuffer.h>
 #include <c_specx/checksums.h>
 #include <c_specx/chunk_alloc.h>
-#include <c_specx/client.h>
 #include <c_specx/data_validator.h>
 #include <c_specx/data_writer.h>
 #include <c_specx/dbl_buffer.h>
 #include <c_specx/deserializer.h>
-#include <c_specx/echo_server.h>
 #include <c_specx/error.h>
 #include <c_specx/ext_array.h>
 #include <c_specx/file_system.h>
@@ -47,11 +45,9 @@
 #include <c_specx/numbers.h>
 #include <c_specx/periodic_task.h>
 #include <c_specx/platform.h>
-#include <c_specx/polling_server.h>
 #include <c_specx/random.h>
 #include <c_specx/serializer.h>
 #include <c_specx/slab_alloc.h>
-#include <c_specx/socket.h>
 #include <c_specx/spx_latch.h>
 #include <c_specx/stdtypes.h>
 #include <c_specx/stream.h>

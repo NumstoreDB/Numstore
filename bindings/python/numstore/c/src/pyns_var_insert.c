@@ -22,45 +22,51 @@
 PyObject *
 pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject   *db;
-  PyObject   *txn_or_none;
-  const char *name;
-  PyObject   *ofst_obj;
-  PyObject   *data_obj;
+  PyObject   *db         = NULL;
+  PyObject   *txn_or_none = NULL;
+  PyObject   *ofst_obj   = NULL;
+  PyObject   *data_obj   = NULL;
+  const char *name       = NULL;
 
-  if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &ofst_obj, &data_obj))
-  {
-    return NULL;
+  // Validate parameters
+  if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &ofst_obj, &data_obj)){
+    goto fail;
   }
 
+  // check that ofst_obj is an int
   if (!PyLong_Check (ofst_obj))
-  {
-    PyErr_SetString (PyExc_TypeError, "offset must be int");
-    return NULL;
-  }
+    {
+      PyErr_SetString (PyExc_TypeError, "offset must be int");
+      goto fail;
+    }
 
   long long ofst = PyLong_AsLongLong (ofst_obj);
-  if (ofst == -1 && PyErr_Occurred ()) { return NULL; }
+  if (ofst == -1 && PyErr_Occurred ()) goto fail;
 
+  // Check that data is a numpy array
   if (!PyArray_Check (data_obj))
-  {
-    PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
-    return NULL;
-  }
+    {
+      PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
+      goto fail;
+    }
 
   PyArrayObject *arr    = (PyArrayObject *)data_obj;
   void          *buf    = PyArray_DATA (arr);
   npy_intp       nelems = PyArray_SIZE (arr);
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns) { return NULL; }
+  if (!ns) goto fail;
 
   sb_size inserted = nsdb_insert (ns, name, buf, (sb_size)ofst, (b_size)nelems);
   if (inserted < 0)
-  {
-    _pyns_set_error (ns);
-    return NULL;
-  }
+    {
+      _pyns_set_error (ns);
+      goto fail;
+    }
 
   Py_RETURN_NONE;
+
+fail:
+  return NULL;
 }
+

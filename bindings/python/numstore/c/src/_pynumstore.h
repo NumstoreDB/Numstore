@@ -30,7 +30,9 @@ _nspy_release_db (PyObject *obj)
 
 HEADER_FUNC nsdb_t *
 _unwrap_db (PyObject *db)
-{ return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE); }
+{ 
+  return (nsdb_t *)PyCapsule_GetPointer (db, DB_CAPSULE); 
+}
 
 // Returns nsdb_t * from txn capsule, or NULL (without setting error) if None.
 HEADER_FUNC nsdb_t *

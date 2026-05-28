@@ -56,7 +56,7 @@ pgr_open_single_file (const char *dbname, error *e)
     return NULL;
   }
 
-  char fname[NAME_MAX - 4];
+  char fname[NAME_MAX];
   char walname[NAME_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
