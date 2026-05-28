@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from . import _pynumstore as _ns
+from . import _numstore as _ns
 
 class Database:
     def __init__(self, path: str) -> None:

@@ -27,17 +27,22 @@ include(cmake/Sanitizers.cmake)
 include(cmake/Packaging.cmake)
 include(cmake/Config.cmake)
 
-################### Inner Projects
+################### Core Libraries
 add_subdirectory(libs/c_specx)
 add_subdirectory(libs/nscore)
 add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
 add_subdirectory(libs/nstesting)
 
-## Python Build vs non python build
-if(NOT SKBUILD)
+################### Configuration sub projects
+if(BUILD_APPS)
   add_subdirectory(apps)
+endif()
+
+if(BUILD_SAMPLES)
   add_subdirectory(samples)
-else()
-  add_subdirectory(libs/pynumstore)
+endif()
+
+if(BUILD_BINDINGS)
+  add_subdirectory(bindings)
 endif()
