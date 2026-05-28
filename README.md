@@ -89,35 +89,24 @@ All PyNumstore samples live in `samples/pynumstore/`.
 
 ### 3.1.1 Opening a Database
 
-Use `ns.open()` as a context manager (recommended), or `Database(path)` for manual lifecycle management.
+Use `ns.open()` as a context manager 
 
 ```python
 import numstore as ns
 
-# Recommended: context manager
 with ns.open("mydb") as db:
     ...
-
-# Manual open/close
-db = ns.Database("mydb")
-db.close()
 ```
 
 ---
 
 ### 3.1.2 Variables
 
-A **Variable** is a named, typed array stream. Access one through `db["name"]`, or create it with `db.var()`.
+A **Variable** is a named, typed array stream. Access one through `db.get` or `db.get_or_create()`. You must specify the type which is a numstore type (not numpy)
 
 ```python
 with ns.open("mydb") as db:
-    # Open an existing variable
-    v = db["temperature"]
-
-    # Create a new variable (dtype required)
-    v = db.var("temperature", dtype="f32", create=True)
-
-    # Drop a variable and all its data
+    v = db.get_or_create("temperature", dtype="f32")
     db.delete("temperature")
 ```
 
