@@ -9,7 +9,7 @@ option(ENABLE_ASAN "Enable AddressSanitizer (default ON for non-release)" ON)
 option(BUILD_APPS "Build apps" ON)
 option(BUILD_BINDINGS "Build bindings" OFF)
 option(BUILD_SAMPLES "Build samples" ON)
-option(BUILD_NUMSTORE_SAMPLES "Build numstore samples" ON)
+option(BUILD_NUMSTORE_SAMPLES "Build numstore samples" OFF)
 option(BUILD_SMARTFILE_SAMPLES "Build smart file samples" ON)
 
 # Translates ENABLE_* options into preprocessor defines.
