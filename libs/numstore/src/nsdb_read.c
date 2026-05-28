@@ -23,19 +23,18 @@
 #include <c_specx.h>
 
 static sb_size
-_nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_stride ustr, error *e)
+_nsdb_read (struct nshandle *db, nsdb_var_t *var, void *dest, struct user_stride ustr, error *e)
 {
-  sb_size                  ret;                     // Return value
-  t_size                   tsize;                   // Size of  the variable
-  b_size                   len;                     // Length of the variable
-  struct stream            _output;                 // Output stream if present
-  struct stream_obuf_ctx   ctx;                     // Context for output stream
-  struct stream           *output = NULL;           // Pointer to output stream
-  struct chunk_alloc       temp;                    // Allocator for get operation
-  struct ns_var_get_params gparams;                 // Get operation
-  struct ns_read_params    rparams;                 // Read operation
-  struct stride            stride;                  // Resolved stride
-  struct string            vname = strfcstr (name); // Variable name
+  sb_size                  ret;           // Return value
+  t_size                   tsize;         // Size of  the variable
+  b_size                   len;           // Length of the variable
+  struct stream            _output;       // Output stream if present
+  struct stream_obuf_ctx   ctx;           // Context for output stream
+  struct stream           *output = NULL; // Pointer to output stream
+  struct chunk_alloc       temp;          // Allocator for get operation
+  struct ns_var_get_params gparams;       // Get operation
+  struct ns_read_params    rparams;       // Read operation
+  struct stride            stride;        // Resolved stride
 
   chunk_alloc_create_default (&temp);
 
@@ -47,18 +46,17 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = vname,
+        .vname = var->var.vname,
         .alloc = &temp,
     };
-    err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
+
+    // Type check
+    if (!type_equal (var->var.dtype, gparams.dest.dtype))
     {
-      ret           = 0;
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      goto commit;
+      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
+      goto failed_rollback;
     }
-    WRAP_GOTO (err, failed_rollback);
   }
 
   // Resolve sizes
@@ -68,7 +66,12 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
 
     if (len % tsize != 0)
     {
-      error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
+      error_causef (
+          e,
+          ERR_CORRUPT,
+          "Variable: %.*s has invalid byte size",
+          strfmt (&var->var.vname)
+      );
       goto failed_rollback;
     }
 
@@ -87,7 +90,7 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
   i_log_debug (
       "READ (txn = %" PRtxid
       ")"
-      " - %s"
+      " - %.*s"
       " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
       " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
@@ -96,7 +99,7 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      name,
+      strfmt (&var->var.vname),
       tsize,
       len,
       gparams.dest.nbytes,
@@ -130,8 +133,6 @@ _nsdb_read (struct nshandle *db, const char *name, void *dest, struct user_strid
     WRAP_GOTO (ret, failed_rollback);
   }
 
-commit:
-
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
@@ -149,7 +150,7 @@ failed:
 sb_size
 nsdb_read (
     nsdb_t     *_smf,
-    const char *name,
+    nsdb_var_t *var,
     void       *dest,
     sb_size     start,
     sb_size     step,
@@ -168,5 +169,5 @@ nsdb_read (
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _nsdb_read (smf, name, dest, stride, &smf->e);
+  return _nsdb_read (smf, var, dest, stride, &smf->e);
 }

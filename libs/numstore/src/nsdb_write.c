@@ -23,23 +23,22 @@
 static sb_size
 _nsdb_pwrite (
     struct nshandle   *db,
-    const char        *name,
+    nsdb_var_t        *var,
     const void        *src,
     struct user_stride ustr,
     error             *e
 )
 {
-  sb_size                  ret;                     // Return value
-  t_size                   tsize;                   // Size of  the variable
-  b_size                   len;                     // Length of the variable
-  b_size                   ofst;                    // Resolved offset
-  struct stream            _input;                  // Input stream
-  struct stream_ibuf_ctx   ctx;                     // Context for input stream
-  struct chunk_alloc       temp;                    // Allocator for get operation
-  struct ns_var_get_params gparams;                 // Get or create operation
-  struct ns_write_params   wparams;                 // Write operation
-  struct stride            stride;                  // Resolved stride
-  struct string            vname = strfcstr (name); // Variable name
+  sb_size                  ret;     // Return value
+  t_size                   tsize;   // Size of  the variable
+  b_size                   len;     // Length of the variable
+  b_size                   ofst;    // Resolved offset
+  struct stream            _input;  // Input stream
+  struct stream_ibuf_ctx   ctx;     // Context for input stream
+  struct chunk_alloc       temp;    // Allocator for get operation
+  struct ns_var_get_params gparams; // Get or create operation
+  struct ns_write_params   wparams; // Write operation
+  struct stride            stride;  // Resolved stride
 
   chunk_alloc_create_default (&temp);
 
@@ -51,18 +50,17 @@ _nsdb_pwrite (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = vname,
+        .vname = var->var.vname,
         .alloc = &temp,
     };
-    err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
+
+    // Type check
+    if (!type_equal (var->var.dtype, gparams.dest.dtype))
     {
-      ret           = 0;
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      goto commit;
+      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
+      goto failed_rollback;
     }
-    WRAP_GOTO (err, failed_rollback);
   }
 
   // Resolve sizes
@@ -72,7 +70,12 @@ _nsdb_pwrite (
 
     if (len % tsize != 0)
     {
-      error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
+      error_causef (
+          e,
+          ERR_CORRUPT,
+          "Variable: %.*s has invalid byte size",
+          strfmt (&var->var.vname)
+      );
       goto failed_rollback;
     }
 
@@ -86,7 +89,7 @@ _nsdb_pwrite (
   i_log_debug (
       "WRITE (txn = %" PRtxid
       ")"
-      " - %s"
+      " - %.*s"
       " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
       " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
@@ -95,7 +98,7 @@ _nsdb_pwrite (
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      name,
+      strfmt (&var->var.vname),
       tsize,
       len,
       gparams.dest.nbytes,
@@ -129,8 +132,6 @@ _nsdb_pwrite (
     WRAP_GOTO (ret, failed_rollback);
   }
 
-commit:
-
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
@@ -148,7 +149,7 @@ failed:
 sb_size
 nsdb_write (
     nsdb_t     *_smf,
-    const char *name,
+    nsdb_var_t *var,
     const void *src,
     sb_size     start,
     sb_size     step,
@@ -167,5 +168,5 @@ nsdb_write (
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _nsdb_pwrite (smf, name, src, stride, &smf->e);
+  return _nsdb_pwrite (smf, var, src, stride, &smf->e);
 }

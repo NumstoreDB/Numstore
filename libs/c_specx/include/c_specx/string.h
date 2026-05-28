@@ -56,4 +56,6 @@ bool string_greater_equal_string (const struct string left, const struct string 
 
 err_t string_copy (struct string *dest, struct string src, error *e);
 
+#define strfmt(str) (str)->len, (str)->data
+
 #endif // C_SPECX_STRING_H

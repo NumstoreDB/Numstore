@@ -54,22 +54,25 @@ main (void)
   struct example *src  = malloc (sizeof (struct example) * len);
   struct example *dest = malloc (sizeof (struct example) * len);
 
-  nsdb_insert (ns, "example", src, 0, len);
+  nsdb_var_t *var = nsdb_get (ns, "example");
+  nsdb_insert (ns, var, src, 0, len);
 
   int     flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  sb_size n     = nsdb_read (ns, "example", dest, 0, 1, -1, flags);
+  sb_size n     = nsdb_read (ns, var, dest, 0, 1, -1, flags);
 
   flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_remove (ns, "example", dest, 0, 1, -10, flags);
+  n     = nsdb_remove (ns, var, dest, 0, 1, -10, flags);
 
   flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_read (ns, "example", dest, 0, 1, -1, flags);
+  n     = nsdb_read (ns, var, dest, 0, 1, -1, flags);
 
   flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_write (ns, "example", src, 0, 1, -1, flags);
+  n     = nsdb_write (ns, var, src, 0, 1, -1, flags);
 
   flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_read (ns, "example", dest, 0, 1, -1, flags);
+  n     = nsdb_read (ns, var, dest, 0, 1, -1, flags);
+
+  nsdb_free (var);
 
   free (src);
   free (dest);

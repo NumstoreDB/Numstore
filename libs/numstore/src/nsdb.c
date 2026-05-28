@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "_numstore.h"
+#include "c_specx/chunk_alloc.h"
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 
@@ -56,4 +57,66 @@ nsdb_rollback (nsdb_t *smf)
 {
   i_log_debug ("ROLLBACK: %" PRtxid "\n", ((struct nshandle *)smf)->atx->tid);
   return nsh_rollback ((struct nshandle *)smf);
+}
+void
+nsdb_free (nsdb_var_t *var)
+{
+  chunk_alloc_free_all (&var->alloc);
+  i_free (var);
+}
+sb_size
+nsdb_vinsert (nsdb_t *ns, const char *name, const void *src, sb_size ofst, b_size slen)
+{
+  nsdb_var_t *var = nsdb_get (ns, name);
+  sb_size     ret = nsdb_insert (ns, var, src, ofst, slen);
+  nsdb_free (var);
+  return ret;
+}
+sb_size
+nsdb_vwrite (
+    nsdb_t     *ns,
+    const char *name,
+    const void *src,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+)
+{
+  nsdb_var_t *var = nsdb_get (ns, name);
+  sb_size     ret = nsdb_write (ns, var, src, start, step, stop, flags);
+  nsdb_free (var);
+  return ret;
+}
+sb_size
+nsdb_vread (
+    nsdb_t     *ns,
+    const char *name,
+    void       *dest,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+)
+{
+  nsdb_var_t *var = nsdb_get (ns, name);
+  sb_size     ret = nsdb_read (ns, var, dest, start, step, stop, flags);
+  nsdb_free (var);
+  return ret;
+}
+sb_size
+nsdb_vremove (
+    nsdb_t     *ns,
+    const char *name,
+    void       *dest,
+    sb_size     start,
+    sb_size     step,
+    sb_size     stop,
+    int         flags
+)
+{
+  nsdb_var_t *var = nsdb_get (ns, name);
+  sb_size     ret = nsdb_remove (ns, var, dest, start, step, stop, flags);
+  nsdb_free (var);
+  return ret;
 }

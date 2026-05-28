@@ -12,28 +12,22 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#define NO_IMPORT_ARRAY
 #include "_pynumstore.h"
-#include "pynumstore.h"
-
-#include <Python.h>
-#include <numpy/arrayobject.h>
+#include "_numstore.h"
 
 PyObject *
 pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject   *db         = NULL;
+  PyObject   *db          = NULL;
   PyObject   *txn_or_none = NULL;
-  PyObject   *ofst_obj   = NULL;
-  PyObject   *data_obj   = NULL;
-  const char *name       = NULL;
+  PyObject   *ofst_obj    = NULL;
+  PyObject   *data_obj    = NULL;
+  const char *name        = NULL;
+  nsdb_var_t *var         = NULL;
 
-  // Validate parameters
-  if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &ofst_obj, &data_obj)){
+  if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &ofst_obj, &data_obj))
     goto fail;
-  }
 
-  // check that ofst_obj is an int
   if (!PyLong_Check (ofst_obj))
     {
       PyErr_SetString (PyExc_TypeError, "offset must be int");
@@ -43,7 +37,6 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
   long long ofst = PyLong_AsLongLong (ofst_obj);
   if (ofst == -1 && PyErr_Occurred ()) goto fail;
 
-  // Check that data is a numpy array
   if (!PyArray_Check (data_obj))
     {
       PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
@@ -57,16 +50,23 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
   nsdb_t *ns = _active_ns (db, txn_or_none);
   if (!ns) goto fail;
 
-  sb_size inserted = nsdb_insert (ns, name, buf, (sb_size)ofst, (b_size)nelems);
+  var = nsdb_get (ns, name);
+  if (var == NULL) goto fail;
+
+  if (pyns_verify_types (PyArray_DESCR (arr), var->var.dtype) != 0) goto fail;
+
+  sb_size inserted = nsdb_insert (ns, var, buf, (sb_size)ofst, (b_size)nelems);
   if (inserted < 0)
     {
       _pyns_set_error (ns);
       goto fail;
     }
 
+  nsdb_free (var);
   Py_RETURN_NONE;
 
 fail:
+  nsdb_free (var);
   return NULL;
 }
 

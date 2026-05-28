@@ -14,6 +14,15 @@
 
 #pragma once
 
+#include "c_specx/chunk_alloc.h"
+#include "nscore/types.h"
+#include "nscore/variables.h"
 #include "numstore.h"
+
+struct nsdb_var
+{
+  struct variable    var;
+  struct chunk_alloc alloc;
+};
 
 int _nsdb_crash (nsdb_t *ns);

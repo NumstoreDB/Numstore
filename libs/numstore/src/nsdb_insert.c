@@ -13,28 +13,29 @@
 /// limitations under the License.
 
 #include "_numstore.h"
+#include "c_specx/error.h"
 #include "nscore/nshandle.h"
+#include "nscore/types.h"
 #include "nscore/var.h"
 
 static sb_size
 _nsdb_insert (
     struct nshandle *db,
-    const char      *name,
+    nsdb_var_t      *var,
     const void      *src,
     sb_size          _ofst,
     const b_size     slen,
     error           *e
 )
 {
-  sb_size                     ret;                     // Return value
-  b_size                      bofst;                   // Resolved offset
-  struct stream               _input;                  // Input stream
-  struct stream_ibuf_ctx      ctx;                     // Context for input stream
-  struct chunk_alloc          temp;                    // Allocator for get operation
-  struct ns_var_get_params    gparams;                 // Get or create operation
-  struct ns_insert_params     iparams;                 // Insert operation
-  struct ns_var_update_params uparams;                 // Update operation
-  struct string               vname = strfcstr (name); // Variable name
+  sb_size                     ret;     // Return value
+  b_size                      bofst;   // Resolved offset
+  struct stream               _input;  // Input stream
+  struct stream_ibuf_ctx      ctx;     // Context for input stream
+  struct chunk_alloc          temp;    // Allocator for get operation
+  struct ns_var_get_params    gparams; // Get or create operation
+  struct ns_insert_params     iparams; // Insert operation
+  struct ns_var_update_params uparams; // Update operation
 
   chunk_alloc_create_default (&temp);
 
@@ -49,18 +50,17 @@ _nsdb_insert (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = vname,
+        .vname = var->var.vname,
         .alloc = &temp,
     };
-    err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
+
+    // Type check
+    if (!type_equal (var->var.dtype, gparams.dest.dtype))
     {
-      ret           = 0;
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      goto commit;
+      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
+      goto failed_rollback;
     }
-    WRAP_GOTO (err, failed_rollback);
   }
 
   // Resolve sizes
@@ -71,7 +71,7 @@ _nsdb_insert (
   i_log_debug (
       "INSERT (txn = %" PRtxid
       ")"
-      " - %s"
+      " - %.*s"
       " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
       " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64 " nbytes (bytes): %" PRId64
@@ -79,7 +79,7 @@ _nsdb_insert (
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      name,
+      strfmt (&var->var.vname),
       tsize,
       gparams.dest.nbytes / tsize,
       gparams.dest.nbytes,
@@ -125,8 +125,6 @@ _nsdb_insert (
   ASSERT (ret % tsize == 0);
   ret /= tsize;
 
-commit:
-
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
@@ -142,12 +140,12 @@ failed:
 }
 
 sb_size
-nsdb_insert (nsdb_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen)
+nsdb_insert (nsdb_t *_smf, nsdb_var_t *var, const void *src, sb_size bofst, b_size slen)
 {
   struct nshandle *smf = (struct nshandle *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _nsdb_insert (smf, name, src, bofst, slen, &smf->e);
+  return _nsdb_insert (smf, var, src, bofst, slen, &smf->e);
 }

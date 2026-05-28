@@ -12,145 +12,111 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#define NO_IMPORT_ARRAY
 #include "_pynumstore.h"
-#include "pynumstore.h"
+#include "_numstore.h"
 
-#include <Python.h>
-#include <numpy/arrayobject.h>
-#include <stdlib.h>
-
-// var_remove(db, txn_or_none, name: str, key: int|range) -> NDArray
-//
-// Removes and returns the elements at key, shifting remaining elements left.
 PyObject *
 pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject   *db;
-  PyObject   *txn_or_none;
-  const char *name;
-  PyObject   *key_obj;
+  PyObject      *db          = NULL;
+  PyObject      *txn_or_none = NULL;
+  PyObject      *key_obj     = NULL;
+  PyObject      *r_start     = NULL;
+  PyObject      *r_stop      = NULL;
+  PyObject      *r_step      = NULL;
+  PyObject      *arr         = NULL;
+  PyArray_Descr *dtype       = NULL;
+  nsdb_var_t    *var         = NULL;
+  void          *buf         = NULL;
+  const char    *name        = NULL;
 
-  if (!PyArg_ParseTuple (args, "OOsO", &db, &txn_or_none, &name, &key_obj)) { return NULL; }
+  if (!PyArg_ParseTuple (args, "OOsO", &db, &txn_or_none, &name, &key_obj))
+    goto fail;
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns) { return NULL; }
+  if (!ns) goto fail;
 
-  // Determine key range
   long long start, step, stop;
   int       flags;
 
   if (PyLong_Check (key_obj))
-  {
-    start = PyLong_AsLongLong (key_obj);
-    if (start == -1 && PyErr_Occurred ()) { return NULL; }
-    step  = 1;
-    stop  = start + 1;
-    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  }
-  else
-  {
-    PyObject *r_start = PyObject_GetAttrString (key_obj, "start");
-    PyObject *r_stop  = PyObject_GetAttrString (key_obj, "stop");
-    PyObject *r_step  = PyObject_GetAttrString (key_obj, "step");
-    if (!r_start || !r_stop || !r_step)
     {
-      Py_XDECREF (r_start);
-      Py_XDECREF (r_stop);
-      Py_XDECREF (r_step);
-      return NULL;
+      start = PyLong_AsLongLong (key_obj);
+      if (start == -1 && PyErr_Occurred ()) goto fail;
+      step  = 1;
+      stop  = start + 1;
+      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
     }
-    start = PyLong_AsLongLong (r_start);
-    stop  = PyLong_AsLongLong (r_stop);
-    step  = PyLong_AsLongLong (r_step);
-    Py_DECREF (r_start);
-    Py_DECREF (r_stop);
-    Py_DECREF (r_step);
-    if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) { return NULL; }
-    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  }
+  else
+    {
+      r_start = PyObject_GetAttrString (key_obj, "start");
+      r_stop  = PyObject_GetAttrString (key_obj, "stop");
+      r_step  = PyObject_GetAttrString (key_obj, "step");
+      if (!r_start || !r_stop || !r_step) goto fail;
+
+      start = PyLong_AsLongLong (r_start);
+      stop  = PyLong_AsLongLong (r_stop);
+      step  = PyLong_AsLongLong (r_step);
+      Py_DECREF (r_start); r_start = NULL;
+      Py_DECREF (r_stop);  r_stop  = NULL;
+      Py_DECREF (r_step);  r_step  = NULL;
+
+      if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) goto fail;
+      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
+    }
 
   if (step <= 0)
-  {
-    PyErr_SetString (PyExc_ValueError, "key step must be positive");
-    return NULL;
-  }
+    {
+      PyErr_SetString (PyExc_ValueError, "key step must be positive");
+      goto fail;
+    }
 
-  // Get variable dtype to allocate the capture buffer
-  char *type_str = nsdb_type_str (ns, name);
-  if (!type_str)
-  {
-    _pyns_set_error (ns);
-    return NULL;
-  }
+  var = nsdb_get (ns, name);
+  if (var == NULL) goto fail;
 
-  PyObject *type_str_py = PyUnicode_FromString (type_str);
-  free (type_str);
-  if (!type_str_py) { return NULL; }
-
-  PyObject *dtype_obj = pyns_compile_type (NULL, type_str_py);
-  Py_DECREF (type_str_py);
-  if (!dtype_obj) { return NULL; }
-
-  PyArray_Descr *dtype = (PyArray_Descr *)dtype_obj;
+  dtype = (PyArray_Descr *)pyns_type_to_dtype (var->var.dtype);
+  if (dtype == NULL) goto fail;
 
 #if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
-  npy_intp       tsize = ((PyArray_Descr *)dtype)->elsize;
+  npy_intp tsize = dtype->elsize;
 #else
-  npy_intp       tsize = (npy_intp)PyDataType_ELSIZE (dtype);
+  npy_intp tsize = (npy_intp)PyDataType_ELSIZE (dtype);
 #endif
 
-  // Compute maximum element count
   npy_intp nelems_max;
   if (stop <= start) { nelems_max = 0; }
-  else
-  {
-    nelems_max = (npy_intp)((stop - start + step - 1) / step);
-  }
+  else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
 
-  // Allocate capture buffer
-  void *buf = NULL;
   if (nelems_max > 0)
-  {
-    buf = malloc ((size_t)(nelems_max * tsize));
-    if (!buf)
     {
-      Py_DECREF (dtype_obj);
-      PyErr_NoMemory ();
-      return NULL;
+      buf = malloc ((size_t)(nelems_max * tsize));
+      if (!buf) { PyErr_NoMemory (); goto fail; }
     }
-  }
 
-  sb_size bytes_removed =
-      nsdb_remove (ns, name, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+  sb_size bytes_removed = nsdb_remove (ns, var, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+  if (bytes_removed < 0) { _pyns_set_error (ns); goto fail; }
 
-  if (bytes_removed < 0)
-  {
-    free (buf);
-    Py_DECREF (dtype_obj);
-    _pyns_set_error (ns);
-    return NULL;
-  }
-
-  // nsdb_remove returns element count (not bytes)
   npy_intp nelems_actual = (npy_intp)bytes_removed;
   npy_intp dims[1]       = {nelems_actual};
 
-  Py_INCREF (dtype_obj);
-  PyObject *arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
-  Py_DECREF (dtype_obj);
-
-  if (!arr)
-  {
-    free (buf);
-    return NULL;
-  }
+  arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
+  dtype = NULL; /* stolen by PyArray_NewFromDescr */
+  if (!arr) goto fail;
 
   if (nelems_actual > 0)
-  {
     memcpy (PyArray_DATA ((PyArrayObject *)arr), buf, (size_t)(nelems_actual * tsize));
-  }
 
   free (buf);
+  nsdb_free (var);
   return arr;
+
+fail:
+  Py_XDECREF (r_start);
+  Py_XDECREF (r_stop);
+  Py_XDECREF (r_step);
+  Py_XDECREF (arr);
+  Py_XDECREF (dtype);
+  free (buf);
+  nsdb_free (var);
+  return NULL;
 }
