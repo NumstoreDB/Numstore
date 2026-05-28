@@ -60,27 +60,39 @@ TEST (vp_init_empty)
 
 void
 vp_set_next (page *p, const pgno pg)
-{ PAGE_SIMPLE_SET_IMPL (p, pg, VP_NEXT_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, pg, VP_NEXT_OFST);
+}
 
 void
 vp_set_ovnext (page *p, const pgno pg)
-{ PAGE_SIMPLE_SET_IMPL (p, pg, VP_OVNX_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, pg, VP_OVNX_OFST);
+}
 
 void
 vp_set_vlen (page *p, const u16 vlen)
-{ PAGE_SIMPLE_SET_IMPL (p, vlen, VP_VLEN_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, vlen, VP_VLEN_OFST);
+}
 
 void
 vp_set_tlen (page *p, const u16 tlen)
-{ PAGE_SIMPLE_SET_IMPL (p, tlen, VP_TLEN_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, tlen, VP_TLEN_OFST);
+}
 
 void
 vp_set_root (page *p, const pgno root)
-{ PAGE_SIMPLE_SET_IMPL (p, root, VP_ROOT_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, root, VP_ROOT_OFST);
+}
 
 void
 vp_set_nbytes (page *p, const b_size nbytes)
-{ PAGE_SIMPLE_SET_IMPL (p, nbytes, VP_NBYT_OFST); }
+{
+  PAGE_SIMPLE_SET_IMPL (p, nbytes, VP_NBYT_OFST);
+}
 
 void vp_append_cbuffer (page *p, struct cbuffer src);
 
@@ -89,27 +101,39 @@ void vp_append_cbuffer (page *p, struct cbuffer src);
 
 pgno
 vp_get_next (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, pgno, VP_NEXT_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, pgno, VP_NEXT_OFST);
+}
 
 pgno
 vp_get_ovnext (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, pgno, VP_OVNX_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, pgno, VP_OVNX_OFST);
+}
 
 u16
 vp_get_vlen (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, u16, VP_VLEN_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, u16, VP_VLEN_OFST);
+}
 
 u16
 vp_get_tlen (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, u16, VP_TLEN_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, u16, VP_TLEN_OFST);
+}
 
 pgno
 vp_get_root (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, pgno, VP_ROOT_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, pgno, VP_ROOT_OFST);
+}
 
 b_size
 vp_get_nbytes (const page *p)
-{ PAGE_SIMPLE_GET_IMPL (p, b_size, VP_NBYT_OFST); }
+{
+  PAGE_SIMPLE_GET_IMPL (p, b_size, VP_NBYT_OFST);
+}
 
 b_size
 vp_calc_tofst (const page *p)
@@ -120,7 +144,9 @@ vp_calc_tofst (const page *p)
 
 bool
 vp_is_overflow (const page *p)
-{ return vp_calc_tofst (p) > PAGE_SIZE; }
+{
+  return vp_calc_tofst (p) > PAGE_SIZE;
+}
 
 struct bytes
 vp_get_bytes (page *p)
@@ -150,11 +176,21 @@ vp_validate_for_db (const page *p, error *e)
   {
     return error_causef (e, ERR_CORRUPT, "wrong page type for var page");
   }
-  if (vp_get_vlen (p) == 0) { return error_causef (e, ERR_CORRUPT, "var length is 0"); }
-  if (vp_get_tlen (p) == 0) { return error_causef (e, ERR_CORRUPT, "type length is 0"); }
+  if (vp_get_vlen (p) == 0)
+  {
+    return error_causef (e, ERR_CORRUPT, "var length is 0");
+  }
+  if (vp_get_tlen (p) == 0)
+  {
+    return error_causef (e, ERR_CORRUPT, "type length is 0");
+  }
   if (vp_is_overflow (p) && vp_get_ovnext (p) == PGNO_NULL)
   {
-    return error_causef (e, ERR_CORRUPT, "overflow required but next pointer is null");
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "overflow required but next pointer is null"
+    );
   }
   return SUCCESS;
 }
@@ -228,17 +264,26 @@ i_log_vp (const int level, const page *vp)
   i_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
   i_printf (level, "VLEN:   %u\n", vp_get_vlen (vp));
   i_printf (level, "TLEN:   %u\n", vp_get_tlen (vp));
-  if (vp_get_root (vp) == PGNO_NULL) { i_printf (level, "ROOT:  NULL\n"); }
+  if (vp_get_root (vp) == PGNO_NULL)
+  {
+    i_printf (level, "ROOT:  NULL\n");
+  }
   else
   {
     i_printf (level, "ROOT:  %" PRpgno "\n", vp_get_root (vp));
   }
-  if (vp_get_next (vp) == PGNO_NULL) { i_printf (level, "NEXT:  NULL\n"); }
+  if (vp_get_next (vp) == PGNO_NULL)
+  {
+    i_printf (level, "NEXT:  NULL\n");
+  }
   else
   {
     i_printf (level, "NEXT:  %" PRpgno "\n", vp_get_next (vp));
   }
-  if (vp_get_ovnext (vp) == PGNO_NULL) { i_printf (level, "OVNEXT:  NULL\n"); }
+  if (vp_get_ovnext (vp) == PGNO_NULL)
+  {
+    i_printf (level, "OVNEXT:  NULL\n");
+  }
   else
   {
     i_printf (level, "OVNEXT:  %" PRpgno "\n", vp_get_ovnext (vp));

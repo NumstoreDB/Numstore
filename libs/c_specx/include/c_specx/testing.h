@@ -83,16 +83,25 @@ test_mark_match (const char *pat, const char *str)
     if (*pat == '*')
     {
       pat++;
-      if (!*pat) { return true; }
+      if (!*pat)
+      {
+        return true;
+      }
 
       while (*str)
       {
-        if (test_mark_match (pat, str)) { return true; }
+        if (test_mark_match (pat, str))
+        {
+          return true;
+        }
         str++;
       }
       return false;
     }
-    if (*str != *pat) { return false; }
+    if (*str != *pat)
+    {
+      return false;
+    }
     pat++;
     str++;
   }
@@ -115,8 +124,11 @@ test_mark_match (const char *pat, const char *str)
     }                                                    \
     while (0)
 
-#  define test_reset_marks()     \
-    do { test_marks_count = 0; } \
+#  define test_reset_marks() \
+    do                       \
+    {                        \
+      test_marks_count = 0;  \
+    }                        \
     while (0)
 
 ////////////////////////////////////////////////////////////
@@ -141,13 +153,15 @@ test_mark_match (const char *pat, const char *str)
     }                                                                  \
     static void test_##name (void)
 
-#  define TEST_CASE(fmt, ...)                                                                \
-    for (int _tc_once = (i_log_info ("------ CASE: " fmt "\n", ##__VA_ARGS__), 1),           \
-             _tc_prev = test_ret;                                                            \
-         _tc_once;                                                                           \
-         _tc_once = 0,                                                                       \
-             (test_ret == _tc_prev ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
-                                   : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
+#  define TEST_CASE(fmt, ...)                                               \
+    for (int _tc_once =                                                     \
+                 (i_log_info ("------ CASE: " fmt "\n", ##__VA_ARGS__), 1), \
+             _tc_prev = test_ret;                                           \
+         _tc_once;                                                          \
+         _tc_once = 0,                                                      \
+             (test_ret == _tc_prev                                          \
+                  ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
+                  : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
 
 ////////////////////////////////////////////////////////////
 /// Test Runtime Methods
@@ -161,14 +175,18 @@ test_mark_match (const char *pat, const char *str)
     }                                                             \
     while (0)
 
-#  define test_assert_equal(left, right)                                  \
-    do                                                                    \
-    {                                                                     \
-      if ((left) != (right)) { fail_test ("%s != %s\n", #left, #right); } \
-    }                                                                     \
+#  define test_assert_equal(left, right)         \
+    do                                           \
+    {                                            \
+      if ((left) != (right))                     \
+      {                                          \
+        fail_test ("%s != %s\n", #left, #right); \
+      }                                          \
+    }                                            \
     while (0)
 
-#  define test_assert_int_equal(left, right) test_assert_type_equal (left, right, i32, PRId32)
+#  define test_assert_int_equal(left, right) \
+    test_assert_type_equal (left, right, i32, PRId32)
 
 #  define test_assert_type_equal(left, right, type, fmt) \
     do                                                   \
@@ -189,20 +207,27 @@ test_mark_match (const char *pat, const char *str)
     }                                                    \
     while (0)
 
-#  define test_assert_ptr_equal(left, right) test_assert_equal ((void *)left, (void *)right)
+#  define test_assert_ptr_equal(left, right) \
+    test_assert_equal ((void *)left, (void *)right)
 
-#  define test_assert(expr)                                 \
-    do                                                      \
-    {                                                       \
-      if (!(expr)) { fail_test ("Expected: %s\n", #expr); } \
-    }                                                       \
+#  define test_assert(expr)                  \
+    do                                       \
+    {                                        \
+      if (!(expr))                           \
+      {                                      \
+        fail_test ("Expected: %s\n", #expr); \
+      }                                      \
+    }                                        \
     while (0)
 
-#  define test_fail_if(expr)                               \
-    do                                                     \
-    {                                                      \
-      if (expr) { fail_test ("Unexpected: %s\n", #expr); } \
-    }                                                      \
+#  define test_fail_if(expr)                   \
+    do                                         \
+    {                                          \
+      if (expr)                                \
+      {                                        \
+        fail_test ("Unexpected: %s\n", #expr); \
+      }                                        \
+    }                                          \
     while (0)
 
 #  define test_err_t_check(expr, exp, ename) \
@@ -214,40 +239,47 @@ test_mark_match (const char *pat, const char *str)
     }                                        \
     while (0)
 
-#  define test_assert_memequal(a, b, size) test_assert_int_equal (memcmp (a, b, size), 0)
+#  define test_assert_memequal(a, b, size) \
+    test_assert_int_equal (memcmp (a, b, size), 0)
 
-#  define test_assert_mark_hit(pattern)                                 \
-    do                                                                  \
-    {                                                                   \
-      const char *_pat = (pattern);                                     \
-      bool        _hit = false;                                         \
-      for (int _i = 0; _i < test_marks_count; _i++)                     \
-      {                                                                 \
-        if (test_mark_match (_pat, test_marks[_i]))                     \
-        {                                                               \
-          _hit = true;                                                  \
-          break;                                                        \
-        }                                                               \
-      }                                                                 \
-      if (!_hit) { fail_test ("No mark matched pattern: %s\n", _pat); } \
-    }                                                                   \
+#  define test_assert_mark_hit(pattern)                    \
+    do                                                     \
+    {                                                      \
+      const char *_pat = (pattern);                        \
+      bool        _hit = false;                            \
+      for (int _i = 0; _i < test_marks_count; _i++)        \
+      {                                                    \
+        if (test_mark_match (_pat, test_marks[_i]))        \
+        {                                                  \
+          _hit = true;                                     \
+          break;                                           \
+        }                                                  \
+      }                                                    \
+      if (!_hit)                                           \
+      {                                                    \
+        fail_test ("No mark matched pattern: %s\n", _pat); \
+      }                                                    \
+    }                                                      \
     while (0)
 
-#  define test_assert_mark_not_hit(pattern)                         \
-    do                                                              \
-    {                                                               \
-      const char *_pat = (pattern);                                 \
-      bool        _hit = false;                                     \
-      for (int _i = 0; _i < test_marks_count; _i++)                 \
-      {                                                             \
-        if (test_mark_match (_pat, test_marks[_i]))                 \
-        {                                                           \
-          _hit = true;                                              \
-          break;                                                    \
-        }                                                           \
-      }                                                             \
-      if (_hit) { fail_test ("Mark matched pattern: %s\n", _pat); } \
-    }                                                               \
+#  define test_assert_mark_not_hit(pattern)             \
+    do                                                  \
+    {                                                   \
+      const char *_pat = (pattern);                     \
+      bool        _hit = false;                         \
+      for (int _i = 0; _i < test_marks_count; _i++)     \
+      {                                                 \
+        if (test_mark_match (_pat, test_marks[_i]))     \
+        {                                               \
+          _hit = true;                                  \
+          break;                                        \
+        }                                               \
+      }                                                 \
+      if (_hit)                                         \
+      {                                                 \
+        fail_test ("Mark matched pattern: %s\n", _pat); \
+      }                                                 \
+    }                                                   \
     while (0)
 
 #else // NTEST

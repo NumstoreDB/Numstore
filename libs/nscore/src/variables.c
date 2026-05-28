@@ -22,11 +22,26 @@
 bool
 variable_equal (const struct variable *left, const struct variable *right)
 {
-  if (!string_equal (left->vname, right->vname)) { return false; }
-  if (!type_equal (left->dtype, right->dtype)) { return false; }
-  if (left->var_root != right->var_root) { return false; }
-  if (left->rpt_root != right->rpt_root) { return false; }
-  if (left->nbytes != right->nbytes) { return false; }
+  if (!string_equal (left->vname, right->vname))
+  {
+    return false;
+  }
+  if (!type_equal (left->dtype, right->dtype))
+  {
+    return false;
+  }
+  if (left->var_root != right->var_root)
+  {
+    return false;
+  }
+  if (left->rpt_root != right->rpt_root)
+  {
+    return false;
+  }
+  if (left->nbytes != right->nbytes)
+  {
+    return false;
+  }
 
   return true;
 }
@@ -34,11 +49,18 @@ variable_equal (const struct variable *left, const struct variable *right)
 err_t
 validate_vname (struct string vname, error *e)
 {
-  if (vname.len == 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "variable name is empty"); }
+  if (vname.len == 0)
+  {
+    return error_causef (e, ERR_INVALID_ARGUMENT, "variable name is empty");
+  }
 
   if (vname.len >= 4096)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "variable name exceeds 4096 chars");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "variable name exceeds 4096 chars"
+    );
   }
 
   if (!is_alpha (vname.data[0]))
@@ -77,7 +99,8 @@ const char alpha_pool[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "_";
 
-// Pool 2: Valid remaining characters (Letters, digits, underscore, dot, slash, hyphen)
+// Pool 2: Valid remaining characters (Letters, digits, underscore, dot, slash,
+// hyphen)
 const char generous_pool[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -87,7 +110,10 @@ const char generous_pool[] =
 void
 var_random_name (char *buffer, int length)
 {
-  if (length <= 0) { return; }
+  if (length <= 0)
+  {
+    return;
+  }
 
   int alpha_size    = sizeof (alpha_pool) - 1;
   int generous_size = sizeof (generous_pool) - 1;
@@ -96,7 +122,10 @@ var_random_name (char *buffer, int length)
   buffer[0] = alpha_pool[randu32 () % alpha_size];
 
   // Remaining chars can use the generous pool
-  for (int i = 1; i < length - 1; i++) { buffer[i] = generous_pool[randu32 () % generous_size]; }
+  for (int i = 1; i < length - 1; i++)
+  {
+    buffer[i] = generous_pool[randu32 () % generous_size];
+  }
   buffer[length - 1] = '\0';
 }
 
@@ -116,7 +145,10 @@ rand_varname (
 
   u32   len    = randu32r (minlen, maxlen);
   char *buffer = chunk_malloc (alloc, len, 1, e);
-  if (buffer == NULL) { return error_trace (e); }
+  if (buffer == NULL)
+  {
+    return error_trace (e);
+  }
   var_random_name (buffer, len);
 
   dest->data = buffer;
@@ -164,7 +196,10 @@ rand_varname_same_hash (
     {
       // commit strings - copy them to dest
       char *data = chunk_malloc (alloc, len1 + len2, 1, e);
-      if (data == NULL) { goto failed; }
+      if (data == NULL)
+      {
+        goto failed;
+      }
       memcpy (data, name1->data, len1);
       memcpy (data + len1, name2->data, len2);
       name1->data = data;
@@ -218,7 +253,10 @@ rand_varname_different_hash (
     {
       // commit strings - copy them to dest
       char *data = chunk_malloc (alloc, len1 + len2, 1, e);
-      if (data == NULL) { goto failed; }
+      if (data == NULL)
+      {
+        goto failed;
+      }
       memcpy (data, name1->data, len1);
       memcpy (data + len1, name2->data, len2);
       name1->data = data;
@@ -290,9 +328,16 @@ variable_malloc_copy (struct variable *v, struct malloc_plan *plan)
 
   struct variable *ret = malloc_plan_memcpy (plan, v, sizeof (struct variable));
 
-  if (active) { ret->dtype = type_malloc_copy (ret->dtype, plan); }
+  if (active)
+  {
+    ret->dtype = type_malloc_copy (ret->dtype, plan);
+  }
 
-  if (active) { ret->vname.data = malloc_plan_memcpy (plan, ret->vname.data, ret->vname.len); }
+  if (active)
+  {
+    ret->vname.data =
+        malloc_plan_memcpy (plan, ret->vname.data, ret->vname.len);
+  }
 
   return ret;
 }

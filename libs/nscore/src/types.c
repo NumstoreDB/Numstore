@@ -90,10 +90,16 @@ char *
 type_tostr (struct type *t)
 {
   int len = type_snprintf (NULL, 0, t);
-  if (len < 0) { return NULL; }
+  if (len < 0)
+  {
+    return NULL;
+  }
 
   char *msg = i_malloc (len + 1, 1, NULL);
-  if (msg == NULL) { return NULL; }
+  if (msg == NULL)
+  {
+    return NULL;
+  }
 
   if (type_snprintf (msg, len + 1, t) < 0)
   {
@@ -156,17 +162,22 @@ type_get_string_size (const struct type *t)
     case T_UNION:
     {
       // "struct { }" or "union { }"
-      u32 base_len = (t->type == T_STRUCT) ? sizeof ("struct { }") : sizeof ("union { }");
-      u32 sublen   = 0;
+      u32 base_len =
+          (t->type == T_STRUCT) ? sizeof ("struct { }") : sizeof ("union { }");
+      u32 sublen = 0;
 
-      // Accessing st or un identically since they share identical structural layouts
+      // Accessing st or un identically since they share identical structural
+      // layouts
       u16 len = t->st.len;
       for (u16 i = 0; i < len; ++i)
       {
         // Size of the key text + " " + string length of subtype
         sublen += t->st.keys[i].len + 1 + type_get_string_size (t->st.types[i]);
 
-        if (i < len - 1) { sublen += sizeof (", ") - 1; }
+        if (i < len - 1)
+        {
+          sublen += sizeof (", ") - 1;
+        }
       }
       return base_len + sublen;
     }
@@ -206,13 +217,24 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
     case T_UNION:
     {
       char *p = dest;
-      int n = snprintf (p, (size_t)(end - p), "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
+      int   n = snprintf (
+          p,
+          (size_t)(end - p),
+          "%s { ",
+          (t->type == T_STRUCT) ? "struct" : "union"
+      );
       p += (n > 0 ? n : 0);
 
       u16 len = t->st.len;
       for (u16 i = 0; i < len; ++i)
       {
-        n = snprintf (p, (size_t)(end - p), "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
+        n = snprintf (
+            p,
+            (size_t)(end - p),
+            "%.*s ",
+            t->st.keys[i].len,
+            t->st.keys[i].data
+        );
         p += (n > 0 ? n : 0);
 
         p = type_generate_string_rec (p, end, t->st.types[i]);
@@ -252,7 +274,10 @@ void
 type_generate_string (char *dest, const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
-  if (dest) { type_generate_string_rec (dest, dest + type_get_string_size (t), t); }
+  if (dest)
+  {
+    type_generate_string_rec (dest, dest + type_get_string_size (t), t);
+  }
 }
 
 #ifndef NTEST
@@ -272,9 +297,12 @@ TEST (type_generate_string)
 
   TEST_CASE ("sarray")
   {
-    struct type element      = {.type = T_PRIM, .p = I32};
-    u32         dims[3]      = {5, 20, 100};
-    struct type t            = {.type = T_SARRAY, .sa = {.rank = 3, .dims = dims, .t = &element}};
+    struct type element = {.type = T_PRIM, .p = I32};
+    u32         dims[3] = {5, 20, 100};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 3, .dims = dims, .t = &element}
+    };
     const char *expected     = "[5][20][100] i32";
     u32         expected_len = (u32)strlen (expected);
 
@@ -291,7 +319,10 @@ TEST (type_generate_string)
     struct type   f2       = {.type = T_PRIM, .p = F32};
     struct type  *types[2] = {&f1, &f2};
 
-    struct type t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
+    struct type t = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = keys, .types = types}
+    };
     const char *expected     = "struct { x f32, y f32 }";
     u32         expected_len = (u32)strlen (expected);
 
@@ -303,14 +334,21 @@ TEST (type_generate_string)
 
   TEST_CASE ("union")
   {
-    struct string keys[2]  = {{.data = "as_int", .len = 6}, {.data = "as_ptr", .len = 6}};
-    struct type   f1       = {.type = T_PRIM, .p = I64};
-    struct type   f2       = {.type = T_PRIM, .p = U64};
-    struct type  *types[2] = {&f1, &f2};
+    struct string keys[2] = {
+        {.data = "as_int", .len = 6},
+        {.data = "as_ptr", .len = 6}
+    };
+    struct type  f1       = {.type = T_PRIM, .p = I64};
+    struct type  f2       = {.type = T_PRIM, .p = U64};
+    struct type *types[2] = {&f1, &f2};
 
     struct type t = {
         .type = T_UNION,
-        .un   = {.len = 2, .keys = keys, .types = types} // Using .un overlay explicitly
+        .un   = {
+            .len   = 2,
+            .keys  = keys,
+            .types = types
+        } // Using .un overlay explicitly
     };
     const char *expected     = "union { as_int i64, as_ptr u64 }";
     u32         expected_len = (u32)strlen (expected);
@@ -324,11 +362,14 @@ TEST (type_generate_string)
   TEST_CASE ("complex_nested")
   {
     // Sub-component A: union { raw u8, state i32 }
-    struct string un_keys[2]  = {{.data = "raw", .len = 3}, {.data = "state", .len = 5}};
-    struct type   prim_u8     = {.type = T_PRIM, .p = U8};
-    struct type   prim_i32    = {.type = T_PRIM, .p = I32};
-    struct type  *un_types[2] = {&prim_u8, &prim_i32};
-    struct type   inner_union = {
+    struct string un_keys[2] = {
+        {.data = "raw", .len = 3},
+        {.data = "state", .len = 5}
+    };
+    struct type  prim_u8     = {.type = T_PRIM, .p = U8};
+    struct type  prim_i32    = {.type = T_PRIM, .p = I32};
+    struct type *un_types[2] = {&prim_u8, &prim_i32};
+    struct type  inner_union = {
         .type = T_UNION,
         .un   = {.len = 2, .keys = un_keys, .types = un_types}
     };
@@ -342,9 +383,12 @@ TEST (type_generate_string)
     };
 
     // Parent Struct: struct { payload <union>, tags <array> }
-    struct string st_keys[2]    = {{.data = "payload", .len = 7}, {.data = "tags", .len = 4}};
-    struct type  *st_types[2]   = {&inner_union, &inner_array};
-    struct type   parent_struct = {
+    struct string st_keys[2] = {
+        {.data = "payload", .len = 7},
+        {.data = "tags", .len = 4}
+    };
+    struct type *st_types[2]   = {&inner_union, &inner_array};
+    struct type  parent_struct = {
         .type = T_STRUCT,
         .st   = {.len = 2, .keys = st_keys, .types = st_types}
     };
@@ -356,8 +400,9 @@ TEST (type_generate_string)
         .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
     };
 
-    const char *expected     = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
-    u32         expected_len = (u32)strlen (expected);
+    const char *expected =
+        "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
+    u32 expected_len = (u32)strlen (expected);
 
     // Verify type_get_string_size returns enough space for safe serialization
     u32 calculated_size = type_get_string_size (&root_type);
@@ -450,7 +495,10 @@ type_deserialize (struct deserializer *src, struct chunk_alloc *alloc, error *e)
 {
   u8           header;
   struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
-  if (dest == NULL) { return NULL; }
+  if (dest == NULL)
+  {
+    return NULL;
+  }
   bool ret   = dsrlizr_read (&header, sizeof (u8), src);
   dest->type = (enum type_t)header;
 
@@ -458,27 +506,42 @@ type_deserialize (struct deserializer *src, struct chunk_alloc *alloc, error *e)
   {
     case T_PRIM:
     {
-      if (prim_t_deserialize (&dest->p, src, e)) { return NULL; }
+      if (prim_t_deserialize (&dest->p, src, e))
+      {
+        return NULL;
+      }
       return dest;
     }
     case T_STRUCT:
     {
-      if (struct_t_deserialize (&dest->st, src, alloc, e)) { return NULL; }
+      if (struct_t_deserialize (&dest->st, src, alloc, e))
+      {
+        return NULL;
+      }
       return dest;
     }
     case T_UNION:
     {
-      if (union_t_deserialize (&dest->un, src, alloc, e)) { return NULL; }
+      if (union_t_deserialize (&dest->un, src, alloc, e))
+      {
+        return NULL;
+      }
       return dest;
     }
     case T_SARRAY:
     {
-      if (sarray_t_deserialize (&dest->sa, src, alloc, e)) { return NULL; }
+      if (sarray_t_deserialize (&dest->sa, src, alloc, e))
+      {
+        return NULL;
+      }
       return dest;
     }
     default:
     {
-      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret)) { return NULL; }
+      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret))
+      {
+        return NULL;
+      }
       return dest;
     }
   }
@@ -488,7 +551,10 @@ struct type *
 type_random (struct chunk_alloc *alloc, u32 depth, error *e)
 {
   struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
-  if (dest == NULL) { return NULL; }
+  if (dest == NULL)
+  {
+    return NULL;
+  }
 
   if (depth == 0)
   {
@@ -511,19 +577,28 @@ type_random (struct chunk_alloc *alloc, u32 depth, error *e)
 
     case T_STRUCT:
     {
-      if (struct_t_random (&dest->st, alloc, depth, e)) { return NULL; }
+      if (struct_t_random (&dest->st, alloc, depth, e))
+      {
+        return NULL;
+      }
       return dest;
     }
 
     case T_UNION:
     {
-      if (union_t_random (&dest->un, alloc, depth, e)) { return NULL; }
+      if (union_t_random (&dest->un, alloc, depth, e))
+      {
+        return NULL;
+      }
       return dest;
     }
 
     case T_SARRAY:
     {
-      if (sarray_t_random (&dest->sa, alloc, depth, e)) { return NULL; }
+      if (sarray_t_random (&dest->sa, alloc, depth, e))
+      {
+        return NULL;
+      }
       return dest;
     }
 
@@ -539,7 +614,10 @@ type_random (struct chunk_alloc *alloc, u32 depth, error *e)
 bool
 type_equal (const struct type *left, const struct type *right)
 {
-  if (left->type != right->type) { return false; }
+  if (left->type != right->type)
+  {
+    return false;
+  }
 
   switch (left->type)
   {
@@ -570,10 +648,16 @@ err_t
 i_log_type (struct type *t, error *e)
 {
   i32 len = type_snprintf (NULL, 0, t);
-  if (len < 0) { return error_causef (e, ERR_IO, "snprintf failed"); }
+  if (len < 0)
+  {
+    return error_causef (e, ERR_IO, "snprintf failed");
+  }
 
   char *dest = i_malloc (len + 1, sizeof *dest, e);
-  if (dest == NULL) { return error_causef (e, ERR_NOMEM, "alloc failed for type log string"); }
+  if (dest == NULL)
+  {
+    return error_causef (e, ERR_NOMEM, "alloc failed for type log string");
+  }
 
   len = type_snprintf (dest, len + 1, t);
   if (len < 0)
@@ -592,34 +676,59 @@ static struct string
 string_movemem (struct string src, struct chunk_alloc *alloc, error *e)
 {
   char *data = chunk_alloc_move_mem (alloc, src.data, src.len, e);
-  if (!data) { return (struct string){0}; }
+  if (!data)
+  {
+    return (struct string){0};
+  }
   return (struct string){.data = data, .len = src.len};
 }
 
 static struct string *
-keylist_movemem (struct string *src, u32 len, struct chunk_alloc *alloc, error *e)
+keylist_movemem (
+    struct string      *src,
+    u32                 len,
+    struct chunk_alloc *alloc,
+    error              *e
+)
 {
   struct string *keys = chunk_malloc (alloc, len, sizeof *keys, e);
-  if (!keys) { return NULL; }
+  if (!keys)
+  {
+    return NULL;
+  }
 
   for (u32 i = 0; i < len; ++i)
   {
     keys[i] = string_movemem (src[i], alloc, e);
-    if (!keys[i].data) { return NULL; }
+    if (!keys[i].data)
+    {
+      return NULL;
+    }
   }
   return keys;
 }
 
 static struct type **
-typelist_movemem (struct type **src, u32 len, struct chunk_alloc *alloc, error *e)
+typelist_movemem (
+    struct type       **src,
+    u32                 len,
+    struct chunk_alloc *alloc,
+    error              *e
+)
 {
   struct type **types = chunk_malloc (alloc, len, sizeof (struct type *), e);
-  if (!types) { return NULL; }
+  if (!types)
+  {
+    return NULL;
+  }
 
   for (u32 i = 0; i < len; ++i)
   {
     types[i] = type_movemem (src[i], alloc, e);
-    if (!types[i]) { return NULL; }
+    if (!types[i])
+    {
+      return NULL;
+    }
   }
   return types;
 }
@@ -628,7 +737,10 @@ struct type *
 type_movemem (struct type *src, struct chunk_alloc *alloc, error *e)
 {
   struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
-  if (!ret) { return NULL; }
+  if (!ret)
+  {
+    return NULL;
+  }
 
   ret->type = src->type;
 
@@ -643,27 +755,46 @@ type_movemem (struct type *src, struct chunk_alloc *alloc, error *e)
     {
       ret->st.len  = src->st.len;
       ret->st.keys = keylist_movemem (src->st.keys, src->st.len, alloc, e);
-      if (!ret->st.keys) { return NULL; }
+      if (!ret->st.keys)
+      {
+        return NULL;
+      }
       ret->st.types = typelist_movemem (src->st.types, src->st.len, alloc, e);
-      if (!ret->st.types) { return NULL; }
+      if (!ret->st.types)
+      {
+        return NULL;
+      }
       break;
     }
     case T_UNION:
     {
       ret->un.len  = src->un.len;
       ret->un.keys = keylist_movemem (src->un.keys, src->un.len, alloc, e);
-      if (!ret->un.keys) { return NULL; }
+      if (!ret->un.keys)
+      {
+        return NULL;
+      }
       ret->un.types = typelist_movemem (src->un.types, src->un.len, alloc, e);
-      if (!ret->un.types) { return NULL; }
+      if (!ret->un.types)
+      {
+        return NULL;
+      }
       break;
     }
     case T_SARRAY:
     {
       ret->sa.rank = src->sa.rank;
       ret->sa.t    = type_movemem (src->sa.t, alloc, e);
-      if (ret->sa.t == NULL) { return NULL; }
-      ret->sa.dims = chunk_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
-      if (!ret->sa.dims) { return NULL; }
+      if (ret->sa.t == NULL)
+      {
+        return NULL;
+      }
+      ret->sa.dims =
+          chunk_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
+      if (!ret->sa.dims)
+      {
+        return NULL;
+      }
       memcpy (ret->sa.dims, src->sa.dims, src->sa.rank * sizeof *ret->sa.dims);
       break;
     }
@@ -747,9 +878,13 @@ type_malloc_copy (struct type *t, struct malloc_plan *plan)
     }
     case T_STRUCT:
     {
-      struct string *keys = malloc_plan_memcpy (plan, t->st.keys, t->st.len * sizeof *t->st.keys);
-      struct type  **types =
-          malloc_plan_memcpy (plan, t->st.types, t->st.len * sizeof (struct type *));
+      struct string *keys =
+          malloc_plan_memcpy (plan, t->st.keys, t->st.len * sizeof *t->st.keys);
+      struct type **types = malloc_plan_memcpy (
+          plan,
+          t->st.types,
+          t->st.len * sizeof (struct type *)
+      );
 
       if (active)
       {
@@ -759,7 +894,8 @@ type_malloc_copy (struct type *t, struct malloc_plan *plan)
 
       for (u32 i = 0; i < t->st.len; ++i)
       {
-        void        *data = malloc_plan_memcpy (plan, t->st.keys[i].data, t->st.keys[i].len);
+        void *data =
+            malloc_plan_memcpy (plan, t->st.keys[i].data, t->st.keys[i].len);
         struct type *type = type_malloc_copy (t->st.types[i], plan);
 
         // Change pointers
@@ -773,9 +909,13 @@ type_malloc_copy (struct type *t, struct malloc_plan *plan)
     }
     case T_UNION:
     {
-      struct string *keys = malloc_plan_memcpy (plan, t->un.keys, t->un.len * sizeof *t->un.keys);
-      struct type  **types =
-          malloc_plan_memcpy (plan, t->un.types, t->un.len * sizeof (struct type *));
+      struct string *keys =
+          malloc_plan_memcpy (plan, t->un.keys, t->un.len * sizeof *t->un.keys);
+      struct type **types = malloc_plan_memcpy (
+          plan,
+          t->un.types,
+          t->un.len * sizeof (struct type *)
+      );
 
       if (active)
       {
@@ -785,7 +925,8 @@ type_malloc_copy (struct type *t, struct malloc_plan *plan)
 
       for (u32 i = 0; i < t->un.len; ++i)
       {
-        void        *data = malloc_plan_memcpy (plan, t->un.keys[i].data, t->un.keys[i].len);
+        void *data =
+            malloc_plan_memcpy (plan, t->un.keys[i].data, t->un.keys[i].len);
         struct type *type = type_malloc_copy (t->un.types[i], plan);
 
         // Change pointers
@@ -799,12 +940,22 @@ type_malloc_copy (struct type *t, struct malloc_plan *plan)
     }
     case T_SARRAY:
     {
-      u32 *dims = malloc_plan_memcpy (plan, t->sa.dims, t->sa.rank * sizeof *t->sa.dims);
+      u32 *dims = malloc_plan_memcpy (
+          plan,
+          t->sa.dims,
+          t->sa.rank * sizeof *t->sa.dims
+      );
 
-      if (active) { ret->sa.dims = dims; }
+      if (active)
+      {
+        ret->sa.dims = dims;
+      }
 
       struct type *type = type_malloc_copy (t->sa.t, plan);
-      if (active) { ret->sa.t = type; }
+      if (active)
+      {
+        ret->sa.t = type;
+      }
 
       return ret;
     }

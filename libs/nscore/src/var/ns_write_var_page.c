@@ -29,13 +29,19 @@ ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
   page_h next = page_h_create ();
 
   // Create a tail page
-  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e)) { goto failed; }
+  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e))
+  {
+    goto failed;
+  }
 
   // Link with the existing page
   dlgtovlink (page_h_w (params->vp), page_h_w (&next));
 
   // Release current
-  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e))) { goto failed; }
+  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
+  {
+    goto failed;
+  }
 
   // And transfer next to current page
   page_h_xfer_ownership_ptr (params->vp, &next);
@@ -101,13 +107,17 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   p_size twritten = 0;
 
   // First, write the variable name
-  p_size lwritten = 0; // Local number of bytes written so far - resets on every new page
+  p_size lwritten =
+      0; // Local number of bytes written so far - resets on every new page
   while (vwritten < params->var->vname.len)
   {
     // Advance forward one new node and reset local written and head
     if (lwritten == head.len)
     {
-      if (ns_write_var_page_advance (params, e)) { goto failed; }
+      if (ns_write_var_page_advance (params, e))
+      {
+        goto failed;
+      }
       lwritten = 0;
       head     = dlgt_get_bytes (page_h_w (params->vp));
     }
@@ -128,7 +138,10 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
     // Advance forward one new node and reset local written and head
     if (lwritten == head.len)
     {
-      if (ns_write_var_page_advance (params, e)) { goto failed; }
+      if (ns_write_var_page_advance (params, e))
+      {
+        goto failed;
+      }
       lwritten = 0;
       head     = dlgt_get_bytes (page_h_w (params->vp));
     }
@@ -154,16 +167,28 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   if (page_h_pgno (params->vp) != start)
   {
     // Release the tail (must be a tail because we're not at the starting page)
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) { goto theend; }
+    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e)))
+    {
+      goto theend;
+    }
 
     // Get the starting node
-    if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) { goto theend; }
+    if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)))
+    {
+      goto theend;
+    }
   }
   else
   {
     // Release and get the page in read mode
-    if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e)) { goto theend; }
-    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)) { goto theend; }
+    if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e))
+    {
+      goto theend;
+    }
+    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))
+    {
+      goto theend;
+    }
   }
 
 theend:

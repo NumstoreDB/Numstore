@@ -37,7 +37,8 @@ pgr_release_with_log (
     ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e));
 
     // Append WAL information
-    if (h->tx) // If you pass tx == NULL - there's no WAL logging - used mid ARIES
+    if (h->tx) // If you pass tx == NULL - there's no WAL logging - used mid
+               // ARIES
     {
       // If no record was supplied, append a physical record
       if (record == NULL)
@@ -63,7 +64,10 @@ pgr_release_with_log (
         page_lsn = wal_append_update_log (p->ww, *record, e);
       }
 
-      if (page_lsn < 0) { return error_trace (e); }
+      if (page_lsn < 0)
+      {
+        return error_trace (e);
+      }
 
       // Update the page lsn
       page_set_page_lsn (page_h_w (h), (lsn)page_lsn);
@@ -72,10 +76,14 @@ pgr_release_with_log (
       h->tx->data.undo_next_lsn = page_lsn;
     }
 
-    // Add page to DPT if this is the first update (RecLSN = LSN of first update)
+    // Add page to DPT if this is the first update (RecLSN = LSN of first
+    // update)
     if (!dpgt_exists (p->dpt, page_h_pgno (h)))
     {
-      if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e)) { return error_trace (e); }
+      if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e))
+      {
+        return error_trace (e);
+      }
       h->pgr->flags |= PW_DIRTY;
     }
 

@@ -45,7 +45,10 @@ walf_print (const char *fname)
 
     i_print_wal_rec_hdr_read_light (LOG_INFO, out, rlsn);
 
-    if (out->type == WL_EOF) { break; }
+    if (out->type == WL_EOF)
+    {
+      break;
+    }
   }
 
 theend:

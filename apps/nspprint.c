@@ -40,7 +40,10 @@ _page_print (struct pager *p, const pgno pg, const pp_params params, error *e)
     return;
   }
 
-  if (params.flag & page_h_type (&cur)) { i_log_page (LOG_INFO, page_h_ro (&cur)); }
+  if (params.flag & page_h_type (&cur))
+  {
+    i_log_page (LOG_INFO, page_h_ro (&cur));
+  }
 
   if (pgr_release (p, &cur, PG_PERMISSIVE, e))
   {
@@ -65,7 +68,10 @@ page_print (const char *fname, const pp_params params)
   {
     bool contains;
     arr_contains (params.pgnos, params.pglen, i, contains);
-    if (params.pglen == 0 || contains) { _page_print (p, i, params, &e); }
+    if (params.pglen == 0 || contains)
+    {
+      _page_print (p, i, params, &e);
+    }
   }
 
   pgr_close (p, &e);
@@ -87,8 +93,14 @@ parse_params (const int argc, char *argv[], pp_params *params)
     char *arg = argv[i];
 
     // Check for flags
-    if (strcmp (arg, "IN") == 0) { params->flag |= PG_INNER_NODE; }
-    else if (strcmp (arg, "DL") == 0) { params->flag |= PG_DATA_LIST; }
+    if (strcmp (arg, "IN") == 0)
+    {
+      params->flag |= PG_INNER_NODE;
+    }
+    else if (strcmp (arg, "DL") == 0)
+    {
+      params->flag |= PG_DATA_LIST;
+    }
     else
     {
       char     *endptr;
@@ -122,7 +134,10 @@ parse_params (const int argc, char *argv[], pp_params *params)
     }
   }
 
-  if (params->flag == 0) { params->flag = PG_PERMISSIVE; }
+  if (params->flag == 0)
+  {
+    params->flag = PG_PERMISSIVE;
+  }
 
   return 0;
 }

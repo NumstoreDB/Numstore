@@ -48,7 +48,10 @@ pgr_close (struct pager *p, error *e)
 
     // Get the end_lsn
     lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
-    i_log_info ("Writing next WAL next start_lsn = %" PRlsn " to the database\n", end_lsn);
+    i_log_info (
+        "Writing next WAL next start_lsn = %" PRlsn " to the database\n",
+        end_lsn
+    );
 
     // Write the next min lsn slot
     pgr_write_next_lsn (p, end_lsn, e);

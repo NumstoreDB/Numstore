@@ -48,7 +48,9 @@ parser_init (struct token *src, u32 src_len)
 
 HEADER_FUNC u32
 parser_remain (struct parser *p)
-{ return p->src_len - p->pos; }
+{
+  return p->src_len - p->pos;
+}
 
 HEADER_FUNC struct token *
 parser_peek (struct parser *p)

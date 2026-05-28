@@ -34,12 +34,7 @@ class _NumstoreMixin:
         raise NotImplementedError
 
     def _var_exists(self, name: str) -> bool:
-        # TODO - c api needs more rich variable [exploration] tooling
-        try:
-            var_len(self._db, self._txn, name)
-            return True
-        except RuntimeError:
-            return False
+        return var_exists(self._db, self._txn, name)
 
     def get(self, name: str) -> "Variable":
         if not self._var_exists(name):

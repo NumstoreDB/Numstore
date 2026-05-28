@@ -23,7 +23,10 @@ _crc32c_init (void)
   for (u32 i = 0; i < 256; ++i)
   {
     u32 c = i;
-    for (int k = 0; k < 8; ++k) { c = (c >> 1) ^ (0x82F63B78u & -((int)(c & 1))); }
+    for (int k = 0; k < 8; ++k)
+    {
+      c = (c >> 1) ^ (0x82F63B78u & -((int)(c & 1)));
+    }
     _crc32c_tbl[i] = c;
   }
   _crc32c_inited = 1;
@@ -31,7 +34,9 @@ _crc32c_init (void)
 
 u32
 checksum_init (void)
-{ return 0; }
+{
+  return 0;
+}
 
 void
 checksum_execute (u32 *state, const u8 *data, const u32 len)
@@ -40,10 +45,16 @@ checksum_execute (u32 *state, const u8 *data, const u32 len)
   ASSERT (data);
   ASSERT (len > 0);
 
-  if (!_crc32c_inited) { _crc32c_init (); }
+  if (!_crc32c_inited)
+  {
+    _crc32c_init ();
+  }
 
   u32 c = ~(*state);
-  for (u32 i = 0; i < len; ++i) { c = (c >> 8) ^ _crc32c_tbl[(c ^ data[i]) & 0xFF]; }
+  for (u32 i = 0; i < len; ++i)
+  {
+    c = (c >> 8) ^ _crc32c_tbl[(c ^ data[i]) & 0xFF];
+  }
   *state = ~c;
 }
 

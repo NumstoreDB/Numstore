@@ -34,10 +34,16 @@ struct txn_table *
 txnt_open (error *e)
 {
   struct txn_table *dest = i_malloc (1, sizeof *dest, e);
-  if (dest == NULL) { goto failed; }
+  if (dest == NULL)
+  {
+    goto failed;
+  }
 
   dest->t = htable_create (512, e);
-  if (dest->t == NULL) { goto dest_failed; }
+  if (dest->t == NULL)
+  {
+    goto dest_failed;
+  }
 
   latch_init (&dest->l);
 
@@ -145,12 +151,18 @@ merge_txn (struct txn *tx, void *vctx)
   ASSERT (ctx->txn_dest == NULL || ctx->txn_dest->size == sizeof (struct txn));
 
   // Fail fast on an error
-  if (ctx->e->cause_code) { return; }
+  if (ctx->e->cause_code)
+  {
+    return;
+  }
 
   latch_lock (&tx->l);
 
   // Skip duplicate transactions
-  if (txn_exists (ctx->dest, tx->tid)) { goto theend; }
+  if (txn_exists (ctx->dest, tx->tid))
+  {
+    goto theend;
+  }
 
   // Handle in case we copy transaction over
   struct txn *target_txn = tx;
@@ -159,8 +171,14 @@ merge_txn (struct txn *tx, void *vctx)
   if (ctx->txn_dest && ctx->alloc)
   {
     target_txn = slab_alloc_alloc (ctx->alloc, ctx->e);
-    if (target_txn == NULL) { goto theend; }
-    if (dblb_append (ctx->txn_dest, &target_txn, 1, ctx->e)) { goto theend; }
+    if (target_txn == NULL)
+    {
+      goto theend;
+    }
+    if (dblb_append (ctx->txn_dest, &target_txn, 1, ctx->e))
+    {
+      goto theend;
+    }
     txn_init (target_txn, tx->tid, tx->data);
   }
 
@@ -249,7 +267,10 @@ TEST (txnt_merge_into)
     test_assert (result == SUCCESS);
 
     // Verify all exist in dest
-    for (txid tid = 1; tid <= 10; tid++) { test_assert (txn_exists (dest, tid)); }
+    for (txid tid = 1; tid <= 10; tid++)
+    {
+      test_assert (txn_exists (dest, tid));
+    }
 
     txnt_close (dest);
     txnt_close (src);
@@ -310,7 +331,10 @@ find_max_undo (struct txn *tx, void *vctx)
 
   if (tx->data.state == TX_CANDIDATE_FOR_UNDO)
   {
-    if ((slsn)tx->data.undo_next_lsn > *max) { *max = tx->data.undo_next_lsn; }
+    if ((slsn)tx->data.undo_next_lsn > *max)
+    {
+      *max = tx->data.undo_next_lsn;
+    }
   }
 
   latch_unlock (&tx->l);
@@ -351,24 +375,32 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx1,
         1,
-        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING}
+        (
+            struct txn_data
+        ){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING}
     );
 
     // Candidates
     txn_init (
         &tx2,
         2,
-        (struct txn_data){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO}
+        (
+            struct txn_data
+        ){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO}
     );
     txn_init (
         &tx3,
         3,
-        (struct txn_data){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO}
+        (
+            struct txn_data
+        ){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO}
     );
     txn_init (
         &tx4,
         4,
-        (struct txn_data){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO}
+        (
+            struct txn_data
+        ){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO}
     );
 
     txnt_insert_txn (t, &tx1);
@@ -390,17 +422,23 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx1,
         1,
-        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING}
+        (
+            struct txn_data
+        ){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING}
     );
     txn_init (
         &tx2,
         2,
-        (struct txn_data){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING}
+        (
+            struct txn_data
+        ){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING}
     );
     txn_init (
         &tx3,
         3,
-        (struct txn_data){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED}
+        (
+            struct txn_data
+        ){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED}
     );
 
     txnt_insert_txn (t, &tx1);
@@ -422,7 +460,10 @@ find_min_lsn (struct txn *tx, void *vctx)
 
   latch_lock (&tx->l);
 
-  if (*min == -1 || (slsn)tx->data.min_lsn < *min) { *min = tx->data.min_lsn; }
+  if (*min == -1 || (slsn)tx->data.min_lsn < *min)
+  {
+    *min = tx->data.min_lsn;
+  }
 
   latch_unlock (&tx->l);
 }
@@ -490,7 +531,11 @@ hnode_foreach (struct hnode *node, void *ctx)
 }
 
 void
-txnt_foreach (const struct txn_table *t, void (*action) (struct txn *, void *ctx), void *ctx)
+txnt_foreach (
+    const struct txn_table *t,
+    void (*action) (struct txn *, void *ctx),
+    void *ctx
+)
 {
   struct foreach_ctx _ctx = {
       .action = action,
@@ -501,13 +546,18 @@ txnt_foreach (const struct txn_table *t, void (*action) (struct txn *, void *ctx
 
 u32
 txnt_get_size (const struct txn_table *dest)
-{ return htable_size (dest->t); }
+{
+  return htable_size (dest->t);
+}
 
 static bool
 txn_equals_for_exists (const struct hnode *left, const struct hnode *right)
 {
   // Might have passed the exact same ref as exists in the htable
-  if (left == right) { return true; }
+  if (left == right)
+  {
+    return true;
+  }
 
   // Otherwise, passed a key with just relevant information
   else
@@ -584,7 +634,10 @@ txnt_insert_txn_if_not_exists (struct txn_table *t, struct txn *tx)
 
   latch_lock (&t->l);
 
-  if (txn_exists (t, tx->tid)) { goto theend; }
+  if (txn_exists (t, tx->tid))
+  {
+    goto theend;
+  }
 
   htable_insert (t->t, &tx->node);
 
@@ -665,16 +718,26 @@ TEST (txnt_insert)
     struct txn_table *t = txnt_open (&e);
     struct txn        tx1, tx2, tx3;
 
-    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING});
+    txn_init (
+        &tx1,
+        1,
+        (
+            struct txn_data
+        ){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING}
+    );
     txn_init (
         &tx2,
         2,
-        (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO}
+        (
+            struct txn_data
+        ){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO}
     );
     txn_init (
         &tx3,
         3,
-        (struct txn_data){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED}
+        (
+            struct txn_data
+        ){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED}
     );
 
     txnt_insert_txn (t, &tx1);
@@ -708,7 +771,10 @@ txnt_get (struct txn **dest, struct txn_table *t, const txid tid)
   latch_lock (&t->l);
 
   struct hnode **node = htable_lookup (t->t, &key.node, txn_equals_for_exists);
-  if (node) { *dest = container_of (*node, struct txn, node); }
+  if (node)
+  {
+    *dest = container_of (*node, struct txn, node);
+  }
 
   latch_unlock (&t->l);
 
@@ -1035,7 +1101,9 @@ txnt_unfreeze (struct txn_table *t)
 
 u32
 txnt_get_serialize_size (const struct txn_table *t)
-{ return htable_size (t->t) * TXN_SERIAL_UNIT; }
+{
+  return htable_size (t->t) * TXN_SERIAL_UNIT;
+}
 
 struct txn_serialize_ctx
 {
@@ -1083,9 +1151,15 @@ struct txn_table *
 txnt_deserialize (const u8 *src, struct txn *txn_bank, const u32 slen, error *e)
 {
   struct txn_table *dest = txnt_open (e);
-  if (dest == NULL) { goto failed; }
+  if (dest == NULL)
+  {
+    goto failed;
+  }
 
-  if (slen == 0) { return dest; }
+  if (slen == 0)
+  {
+    return dest;
+  }
 
   struct deserializer d = dsrlizr_create (src, slen);
 
@@ -1199,7 +1273,10 @@ static void
 txnt_eq_foreach (struct hnode *node, void *_ctx)
 {
   struct txnt_eq_ctx *ctx = _ctx;
-  if (ctx->ret == false) { return; }
+  if (ctx->ret == false)
+  {
+    return;
+  }
 
   struct txn *tx = container_of (node, struct txn, node);
   struct txn  candidate;
@@ -1315,8 +1392,20 @@ TEST (txnt_equal_ignore_state)
     struct txn_table *t1 = txnt_open (&e);
     struct txn_table *t2 = txnt_open (&e);
     struct txn        tx1, tx2;
-    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING});
-    txn_init (&tx2, 1, (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING});
+    txn_init (
+        &tx1,
+        1,
+        (
+            struct txn_data
+        ){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING}
+    );
+    txn_init (
+        &tx2,
+        1,
+        (
+            struct txn_data
+        ){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING}
+    );
 
     txnt_insert_txn (t1, &tx1);
     txnt_insert_txn (t2, &tx2);
@@ -1340,7 +1429,10 @@ txnt_rand_populate (struct txn_table *t, struct alloc *alloc, error *e)
   for (u32 i = 0; i < 100 - len; ++i, tid += randu32r (0, 100))
   {
     struct txn *tx = alloc_alloc (alloc, 1, sizeof *tx, NULL);
-    if (tx == NULL) { goto theend; }
+    if (tx == NULL)
+    {
+      goto theend;
+    }
 
     txn_init (
         tx,
@@ -1371,7 +1463,10 @@ txnt_determ_populate (struct txn_table *t, struct alloc *alloc, error *e)
   for (u32 i = 0; i < 1000 - len; ++i, tid++)
   {
     struct txn *tx = alloc_alloc (alloc, 1, sizeof *tx, NULL);
-    if (tx == NULL) { goto theend; }
+    if (tx == NULL)
+    {
+      goto theend;
+    }
 
     txn_init (
         tx,

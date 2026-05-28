@@ -26,14 +26,20 @@ smfile_open (const char *path)
 {
   struct nshandle *ret = nsh_open (path);
 
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   // Create the default variable
   if (pgr_isnew (ret->root->p))
   {
     // BEGIN TXN
     struct txn tx;
-    if (pgr_begin_txn (&tx, ret->root->p, &ret->e)) { goto failed; }
+    if (pgr_begin_txn (&tx, ret->root->p, &ret->e))
+    {
+      goto failed;
+    }
 
     struct ns_var_create_params params = {
         .p     = ret->root->p,
@@ -41,10 +47,16 @@ smfile_open (const char *path)
         .vname = strfcstr (DEFAULT_VARIABLE),
         .type  = &(struct type){.type = T_PRIM, .p = U8},
     };
-    if (ns_var_create (params, &ret->e)) { goto failed; }
+    if (ns_var_create (params, &ret->e))
+    {
+      goto failed;
+    }
 
     // COMMIT
-    if (pgr_commit (ret->root->p, &tx, &ret->e)) { goto failed; }
+    if (pgr_commit (ret->root->p, &tx, &ret->e))
+    {
+      goto failed;
+    }
   }
 
   return (smfile_t *)ret;

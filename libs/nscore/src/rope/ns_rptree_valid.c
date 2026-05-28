@@ -63,7 +63,10 @@ rptree_valid_recursive (
   else
   {
     struct frame *f = slab_alloc_alloc (&ctx->pg_alloc, e);
-    if (f == NULL) { goto failed; }
+    if (f == NULL)
+    {
+      goto failed;
+    }
     f->pg = pg;
     hnode_init (&f->node, pg);
     htable_insert (ctx->table, &f->node);
@@ -71,7 +74,10 @@ rptree_valid_recursive (
 
   // Validate this page
   page_h pivot = page_h_create ();
-  if (pgr_get (&pivot, PG_DATA_LIST | PG_VAR_PAGE, pg, p, e)) { goto failed; }
+  if (pgr_get (&pivot, PG_DATA_LIST | PG_VAR_PAGE, pg, p, e))
+  {
+    goto failed;
+  }
 
   // Check that root matches
   if (isroot != dlgt_is_root (page_h_ro (&pivot)))
@@ -98,7 +104,10 @@ rptree_valid_recursive (
   {
     case PG_DATA_LIST:
     {
-      if (pgr_release (p, &pivot, PG_DATA_LIST, e)) { goto failed; }
+      if (pgr_release (p, &pivot, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
       return error_trace (e);
     }
     case PG_VAR_PAGE:
@@ -106,12 +115,22 @@ rptree_valid_recursive (
       struct in_pair       nodes[IN_MAX_KEYS];
       const struct in_data data = in_get_data (page_h_ro (&pivot), nodes);
 
-      if (pgr_release (p, &pivot, PG_DATA_LIST, e)) { goto failed; }
+      if (pgr_release (p, &pivot, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
 
       // Validate each child
       for (u32 i = 0; i < data.len; ++i)
       {
-        if (rptree_valid_recursive (p, data.nodes[i].pg, false, data.nodes[i].key, ctx, e))
+        if (rptree_valid_recursive (
+                p,
+                data.nodes[i].pg,
+                false,
+                data.nodes[i].key,
+                ctx,
+                e
+            ))
         {
           goto failed;
         }
@@ -131,15 +150,26 @@ failed:
 }
 
 err_t
-ns_rptree_valid (struct pager *db, const pgno rpt_root, const b_size nbytes, error *e)
+ns_rptree_valid (
+    struct pager *db,
+    const pgno    rpt_root,
+    const b_size  nbytes,
+    error        *e
+)
 {
   struct rptree_valid_ctx ctx;
   slab_alloc_init (&ctx.pg_alloc, sizeof (struct frame), 512);
 
   ctx.table = htable_create (1000, e);
-  if (ctx.table == NULL) { return error_trace (e); }
+  if (ctx.table == NULL)
+  {
+    return error_trace (e);
+  }
 
-  if (rptree_valid_recursive (db, rpt_root, true, nbytes, &ctx, e)) { goto theend; }
+  if (rptree_valid_recursive (db, rpt_root, true, nbytes, &ctx, e))
+  {
+    goto theend;
+  }
 
 theend:
   htable_free (ctx.table);

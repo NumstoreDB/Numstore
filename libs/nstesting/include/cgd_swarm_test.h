@@ -69,9 +69,10 @@ struct cgd_swarm_test
 };
 
 // Main API
-struct cgd_swarm_test *cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname);
-void                   cgd_swmt_close (struct cgd_swarm_test *meta);
-void                   cgd_swmt_step (struct cgd_swarm_test *meta);
+struct cgd_swarm_test *
+cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname);
+void cgd_swmt_close (struct cgd_swarm_test *meta);
+void cgd_swmt_step (struct cgd_swarm_test *meta);
 
 // Concrete Actions
 void cgd_swmt_begin_txn (struct cgd_swarm_test *meta);

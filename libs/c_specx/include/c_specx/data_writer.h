@@ -34,29 +34,32 @@ typedef err_t (*insert_func) (
 
 /// Function pointer type for reading elements from a strided range
 typedef i64 (*read_func) (
-    void         *ctx,  // Caller-provided context pointer
-    struct stride str,  // Stride descriptor defining start, step, and element count
-    u32           size, // Size of each element in bytes
-    void         *dest, // Destination buffer to receive the data
-    error        *e
+    void *ctx, // Caller-provided context pointer
+    struct stride
+           str,  // Stride descriptor defining start, step, and element count
+    u32    size, // Size of each element in bytes
+    void  *dest, // Destination buffer to receive the data
+    error *e
 ); // The error object
 
 /// Function pointer type for writing elements into a strided range
 typedef i64 (*write_func) (
-    void         *ctx,  // Caller-provided context pointer
-    struct stride str,  // Stride descriptor defining start, step, and element count
-    u32           size, // Size of each element in bytes
-    const void   *src,  // Source data to write
-    error        *e
+    void *ctx, // Caller-provided context pointer
+    struct stride
+        str,  // Stride descriptor defining start, step, and element count
+    u32 size, // Size of each element in bytes
+    const void *src, // Source data to write
+    error      *e
 ); // The error object
 
 /// Function pointer type for removing elements from a strided range
 typedef i64 (*remove_func) (
-    void         *ctx,  // Caller-provided context pointer
-    struct stride str,  // Stride descriptor defining start, step, and element count
-    u32           size, // Size of each element in bytes
-    void         *dest, // Optional destination buffer to capture removed data (NULL to
-                        // discard)
+    void *ctx, // Caller-provided context pointer
+    struct stride
+          str,  // Stride descriptor defining start, step, and element count
+    u32   size, // Size of each element in bytes
+    void *dest, // Optional destination buffer to capture removed data (NULL to
+                // discard)
     error *e
 ); // The error object
 
@@ -81,7 +84,7 @@ struct data_writer_functions
 struct data_writer
 {
   struct data_writer_functions functions; // Vtable of data operations
-  void                        *ctx;       // Opaque context passed to every function call
+  void *ctx; // Opaque context passed to every function call
 };
 
 #endif // C_SPECX_DATA_WRITER_H

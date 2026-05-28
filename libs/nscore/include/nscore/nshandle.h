@@ -57,7 +57,7 @@ int              nsh_close (struct nshandle *ns);
 err_t            nsh_root_close (struct nshandle_root *root, error *e);
 err_t            nsh_root_crash (struct nshandle_root *root, error *e);
 struct nshandle *nsh_root_load (struct nshandle_root *root, error *e);
-void             nsh_root_release (struct nshandle_root *root, struct nshandle *sm);
+void nsh_root_release (struct nshandle_root *root, struct nshandle *sm);
 
 // Errors
 const char *nsh_strerror (struct nshandle *ns);

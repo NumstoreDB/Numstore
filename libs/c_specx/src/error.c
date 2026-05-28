@@ -22,7 +22,10 @@
 
 DEFINE_DBG_ASSERT (error, error, e, {
   ASSERT (e);
-  if (e->cause_code != SUCCESS) { ASSERT (e->cmlen > 0); }
+  if (e->cause_code != SUCCESS)
+  {
+    ASSERT (e->cmlen > 0);
+  }
 })
 
 error
@@ -40,16 +43,23 @@ error_create (void)
 
 void
 error_silence (error *e)
-{ e->disable_log = true; }
+{
+  e->disable_log = true;
+}
 
 void
 error_unsilence (error *e)
-{ e->disable_log = false; }
+{
+  e->disable_log = false;
+}
 
 err_t
 error_causef (error *e, const err_t c, const char *fmt, ...)
 {
-  if (e == NULL) { return c; }
+  if (e == NULL)
+  {
+    return c;
+  }
 
   ASSERT (fmt);
 
@@ -65,7 +75,10 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
 
   if (e->cause_code != SUCCESS)
   {
-    if (!e->disable_log) { i_log_error ("TRACE: %s\n", tmpbuf); }
+    if (!e->disable_log)
+    {
+      i_log_error ("TRACE: %s\n", tmpbuf);
+    }
   }
 
   if (e->cause_code == SUCCESS)
@@ -75,7 +88,10 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
     e->cause_msg[cmlen] = '\0';
     e->cmlen            = cmlen;
 
-    if (!e->disable_log) { i_log_error ("%.*s\n", e->cmlen, e->cause_msg); }
+    if (!e->disable_log)
+    {
+      i_log_error ("%.*s\n", e->cmlen, e->cause_msg);
+    }
   }
 
   va_end (ap);
@@ -84,7 +100,13 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
 }
 
 err_t
-error_change_causef_from (error *e, const err_t from, const err_t to, const char *fmt, ...)
+error_change_causef_from (
+    error      *e,
+    const err_t from,
+    const err_t to,
+    const char *fmt,
+    ...
+)
 {
   ASSERT (fmt);
 
@@ -158,12 +180,21 @@ error_equal (const error *left, const error *right)
 {
   DBG_ASSERT (error, left);
   DBG_ASSERT (error, right);
-  if (left->cause_code != right->cause_code) { return false; }
+  if (left->cause_code != right->cause_code)
+  {
+    return false;
+  }
 
   if (left->cause_code)
   {
-    if (left->cmlen != right->cmlen) { return false; }
-    if (strncmp (left->cause_msg, right->cause_msg, left->cmlen) != 0) { return false; }
+    if (left->cmlen != right->cmlen)
+    {
+      return false;
+    }
+    if (strncmp (left->cause_msg, right->cause_msg, left->cmlen) != 0)
+    {
+      return false;
+    }
   }
 
   return true;

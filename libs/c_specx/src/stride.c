@@ -21,19 +21,35 @@ ustride_equal (const struct user_stride left, const struct user_stride right)
   const int left_present  = left.present & mask;
   const int right_present = right.present & mask;
 
-  if (left_present != right_present) { return false; }
+  if (left_present != right_present)
+  {
+    return false;
+  }
 
-  if ((left_present & START_PRESENT) && left.start != right.start) { return false; }
+  if ((left_present & START_PRESENT) && left.start != right.start)
+  {
+    return false;
+  }
 
-  if ((left_present & STEP_PRESENT) && left.step != right.step) { return false; }
+  if ((left_present & STEP_PRESENT) && left.step != right.step)
+  {
+    return false;
+  }
 
-  if ((left_present & STOP_PRESENT) && left.stop != right.stop) { return false; }
+  if ((left_present & STOP_PRESENT) && left.stop != right.stop)
+  {
+    return false;
+  }
 
   return true;
 }
 
 void
-stride_resolve_expect (struct stride *dest, const struct user_stride src, const u64 arrlen)
+stride_resolve_expect (
+    struct stride           *dest,
+    const struct user_stride src,
+    const u64                arrlen
+)
 {
   const i64 step = (src.present & STEP_PRESENT) ? src.step : 1;
 
@@ -52,11 +68,20 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
   if (src.present & START_PRESENT)
   {
     start = src.start;
-    if (start < 0) { start += arrlen; }
+    if (start < 0)
+    {
+      start += arrlen;
+    }
 
     // Clamp [0, arrlen]
-    if (start < 0) { start = 0; }
-    if (start > (i64)arrlen) { start = arrlen; }
+    if (start < 0)
+    {
+      start = 0;
+    }
+    if (start > (i64)arrlen)
+    {
+      start = arrlen;
+    }
   }
   else
   {
@@ -66,11 +91,20 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
   if (src.present & STOP_PRESENT)
   {
     stop = src.stop;
-    if (stop < 0) { stop += arrlen; }
+    if (stop < 0)
+    {
+      stop += arrlen;
+    }
 
     // Clamp [0, arrlen]
-    if (stop < 0) { stop = 0; }
-    if (stop > (i64)arrlen) { stop = arrlen; }
+    if (stop < 0)
+    {
+      stop = 0;
+    }
+    if (stop > (i64)arrlen)
+    {
+      stop = arrlen;
+    }
   }
   else
   {
@@ -78,7 +112,10 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
   }
 
   u64 nelems;
-  if (stop <= start) { nelems = 0; }
+  if (stop <= start)
+  {
+    nelems = 0;
+  }
   else
   {
     nelems = (stop - start + step - 1) / step;
@@ -93,11 +130,23 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
 }
 
 err_t
-stride_resolve (struct stride *dest, const struct user_stride src, const u64 arrlen, error *e)
+stride_resolve (
+    struct stride           *dest,
+    const struct user_stride src,
+    const u64                arrlen,
+    error                   *e
+)
 {
   const i64 step = (src.present & STEP_PRESENT) ? src.step : 1;
 
-  if (step <= 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "stride step must be positive"); }
+  if (step <= 0)
+  {
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "stride step must be positive"
+    );
+  }
 
   stride_resolve_expect (dest, src, arrlen);
 
@@ -148,7 +197,11 @@ TEST (stride_resolve)
 
   TEST_CASE ("Range [2:8] on length 10 ")
   {
-    struct user_stride range = {.start = 2, .stop = 8, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride range = {
+        .start   = 2,
+        .stop    = 8,
+        .present = START_PRESENT | STOP_PRESENT
+    };
     stride_resolve (&result, range, 10, &e);
     test_assert_int_equal (result.start, 2);
     test_assert_int_equal (result.stride, 1);
@@ -157,8 +210,12 @@ TEST (stride_resolve)
 
   TEST_CASE ("Range with step [1:9:2] on length 10 ")
   {
-    struct user_stride range_step =
-        {.start = 1, .stop = 9, .step = 2, .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT};
+    struct user_stride range_step = {
+        .start   = 1,
+        .stop    = 9,
+        .step    = 2,
+        .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT
+    };
     stride_resolve (&result, range_step, 10, &e);
     test_assert_int_equal (result.start, 1);
     test_assert_int_equal (result.stride, 2);
@@ -207,7 +264,11 @@ TEST (stride_resolve)
 
   TEST_CASE ("Empty slice [5:2] on length 10 ")
   {
-    struct user_stride empty = {.start = 5, .stop = 2, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride empty = {
+        .start   = 5,
+        .stop    = 2,
+        .present = START_PRESENT | STOP_PRESENT
+    };
     stride_resolve (&result, empty, 10, &e);
     test_assert_int_equal (result.nelems, 0);
   }
@@ -222,17 +283,25 @@ TEST (stride_resolve)
   }
 
   TEST_CASE ("Invalid step = 0 ")
-  { struct user_stride zero_step = {.step = 0, .present = STEP_PRESENT}; }
+  {
+    struct user_stride zero_step = {.step = 0, .present = STEP_PRESENT};
+  }
 
   TEST_CASE ("Invalid negative step ")
-  { struct user_stride neg_step = {.step = -1, .present = STEP_PRESENT}; }
+  {
+    struct user_stride neg_step = {.step = -1, .present = STEP_PRESENT};
+  }
 }
 #endif
 
 DEFINE_DBG_ASSERT (struct mus_builder, mus_builder, s, { ASSERT (s); })
 
 void
-musb_create (struct mus_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent)
+musb_create (
+    struct mus_builder *dest,
+    struct chunk_alloc *temp,
+    struct chunk_alloc *persistent
+)
 {
   *dest = (struct mus_builder){
       .head       = NULL,
@@ -242,17 +311,27 @@ musb_create (struct mus_builder *dest, struct chunk_alloc *temp, struct chunk_al
 }
 
 err_t
-musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error *e)
+musb_accept_key (
+    struct mus_builder      *eb,
+    const struct user_stride stride,
+    error                   *e
+)
 {
   DBG_ASSERT (mus_builder, eb);
 
   struct mus_llnode *node = chunk_malloc (eb->temp, 1, sizeof *node, e);
-  if (!node) { return error_trace (e); }
+  if (!node)
+  {
+    return error_trace (e);
+  }
 
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!eb->head) { eb->head = &node->link; }
+  if (!eb->head)
+  {
+    eb->head = &node->link;
+  }
   else
   {
     list_append (&eb->head, &node->link);
@@ -262,7 +341,11 @@ musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error 
 }
 
 err_t
-musb_build (struct multi_user_stride *dest, const struct mus_builder *eb, error *e)
+musb_build (
+    struct multi_user_stride *dest,
+    const struct mus_builder *eb,
+    error                    *e
+)
 {
   DBG_ASSERT (mus_builder, eb);
   ASSERT (dest);
@@ -270,8 +353,12 @@ musb_build (struct multi_user_stride *dest, const struct mus_builder *eb, error 
   const u32 len = list_length (eb->head);
   ASSERT (len > 0);
 
-  struct user_stride *strides = chunk_malloc (eb->persistent, len, sizeof *strides, e);
-  if (!strides) { return error_trace (e); }
+  struct user_stride *strides =
+      chunk_malloc (eb->persistent, len, sizeof *strides, e);
+  if (!strides)
+  {
+    return error_trace (e);
+  }
 
   u32 i = 0;
   for (struct llnode *it = eb->head; it; it = it->next)

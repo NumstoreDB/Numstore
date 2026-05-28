@@ -26,9 +26,16 @@ struct multi_user_stride_parser
 
 // Parse optional ':' NUMBER (step)
 static err_t
-parse_step (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+parse_step (
+    struct multi_user_stride_parser *parser,
+    struct user_stride              *s,
+    error                           *e
+)
 {
-  if (!parser_match (parser->base, TT_COLON)) { return SUCCESS; }
+  if (!parser_match (parser->base, TT_COLON))
+  {
+    return SUCCESS;
+  }
 
   s->present |= COLON_PRESENT;
   parser_advance (parser->base);
@@ -45,7 +52,11 @@ parse_step (struct multi_user_stride_parser *parser, struct user_stride *s, erro
 
 // Parse optional NUMBER ':' NUMBER (stop + step)
 static err_t
-parse_stop (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+parse_stop (
+    struct multi_user_stride_parser *parser,
+    struct user_stride              *s,
+    error                           *e
+)
 {
   if (parser_match (parser->base, TT_INTEGER))
   {
@@ -71,7 +82,10 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     s.present |= START_PRESENT;
 
     // Bare number with no colon → single index
-    if (!parser_match (parser->base, TT_COLON)) { return musb_accept_key (&parser->builder, s, e); }
+    if (!parser_match (parser->base, TT_COLON))
+    {
+      return musb_accept_key (&parser->builder, s, e);
+    }
 
     s.present |= COLON_PRESENT;
     parser_advance (parser->base);
@@ -88,15 +102,26 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     return musb_accept_key (&parser->builder, s, e);
   }
 
-  return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->base->pos);
+  return error_causef (
+      e,
+      ERR_SYNTAX,
+      "Expected number or ':' at position %u",
+      parser->base->pos
+  );
 }
 
 // stride ::= '[' entry ( ',' entry )* ']'
 static err_t
-parse_multi_user_stride_inner (struct multi_user_stride_parser *parser, error *e)
+parse_multi_user_stride_inner (
+    struct multi_user_stride_parser *parser,
+    error                           *e
+)
 {
   // Check for empty: []
-  if (parser_match (parser->base, TT_RIGHT_BRACKET)) { return SUCCESS; }
+  if (parser_match (parser->base, TT_RIGHT_BRACKET))
+  {
+    return SUCCESS;
+  }
 
   WRAP (parse_entry (parser, e));
 
@@ -125,10 +150,22 @@ parse_multi_user_stride (
   chunk_alloc_create_default (&p.temp);
   musb_create (&p.builder, &p.temp, alloc);
 
-  if (unlikely ((parser_expect (p.base, TT_LEFT_BRACKET, e)) < SUCCESS)) { goto theend; }
-  if (unlikely ((parse_multi_user_stride_inner (&p, e)) < SUCCESS)) { goto theend; }
-  if (unlikely ((parser_expect (p.base, TT_RIGHT_BRACKET, e)) < SUCCESS)) { goto theend; }
-  if (unlikely ((musb_build (dest, &p.builder, e)) < SUCCESS)) { goto theend; }
+  if (unlikely ((parser_expect (p.base, TT_LEFT_BRACKET, e)) < SUCCESS))
+  {
+    goto theend;
+  }
+  if (unlikely ((parse_multi_user_stride_inner (&p, e)) < SUCCESS))
+  {
+    goto theend;
+  }
+  if (unlikely ((parser_expect (p.base, TT_RIGHT_BRACKET, e)) < SUCCESS))
+  {
+    goto theend;
+  }
+  if (unlikely ((musb_build (dest, &p.builder, e)) < SUCCESS))
+  {
+    goto theend;
+  }
 
 theend:
   chunk_alloc_free_all (&p.temp);

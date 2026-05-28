@@ -38,10 +38,16 @@ _nsdb_delete (struct nshandle *db, const char *vname, error *e)
         .vname = strfcstr (vname),
     };
     err_t err = ns_var_delete (params, e);
-    if (err < SUCCESS) { goto failed_rollback; }
+    if (err < SUCCESS)
+    {
+      goto failed_rollback;
+    }
   }
 
-  if (nsh_auto_commit (db, e)) { goto failed_rollback; }
+  if (nsh_auto_commit (db, e))
+  {
+    goto failed_rollback;
+  }
   return error_trace (e);
 
 failed_rollback:

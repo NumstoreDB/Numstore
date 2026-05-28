@@ -61,7 +61,10 @@ i_semaphore_post (i_semaphore *s)
   ASSERT (s);
   if (!ReleaseSemaphore (s->handle, 1, NULL))
   {
-    i_log_error ("semaphore_post: ReleaseSemaphore failed: %lu\n", GetLastError ());
+    i_log_error (
+        "semaphore_post: ReleaseSemaphore failed: %lu\n",
+        GetLastError ()
+    );
     UNREACHABLE ();
   }
 }
@@ -73,7 +76,10 @@ i_semaphore_wait (i_semaphore *s)
   DWORD ret = WaitForSingleObject (s->handle, INFINITE);
   if (ret != WAIT_OBJECT_0)
   {
-    i_log_error ("semaphore_wait: WaitForSingleObject failed: %lu\n", GetLastError ());
+    i_log_error (
+        "semaphore_wait: WaitForSingleObject failed: %lu\n",
+        GetLastError ()
+    );
     UNREACHABLE ();
   }
 }
@@ -83,9 +89,18 @@ i_semaphore_try_wait (i_semaphore *s)
 {
   ASSERT (s);
   DWORD ret = WaitForSingleObject (s->handle, 0);
-  if (ret == WAIT_OBJECT_0) { return true; }
-  if (ret == WAIT_TIMEOUT) { return false; }
-  i_log_error ("semaphore_try_wait: WaitForSingleObject failed: %lu\n", GetLastError ());
+  if (ret == WAIT_OBJECT_0)
+  {
+    return true;
+  }
+  if (ret == WAIT_TIMEOUT)
+  {
+    return false;
+  }
+  i_log_error (
+      "semaphore_try_wait: WaitForSingleObject failed: %lu\n",
+      GetLastError ()
+  );
   UNREACHABLE ();
 }
 
@@ -94,8 +109,17 @@ i_semaphore_timed_wait (i_semaphore *s, long msec)
 {
   ASSERT (s);
   DWORD ret = WaitForSingleObject (s->handle, (DWORD)msec);
-  if (ret == WAIT_OBJECT_0) { return true; }
-  if (ret == WAIT_TIMEOUT) { return false; }
-  i_log_error ("semaphore_timed_wait: WaitForSingleObject failed: %lu\n", GetLastError ());
+  if (ret == WAIT_OBJECT_0)
+  {
+    return true;
+  }
+  if (ret == WAIT_TIMEOUT)
+  {
+    return false;
+  }
+  i_log_error (
+      "semaphore_timed_wait: WaitForSingleObject failed: %lu\n",
+      GetLastError ()
+  );
   UNREACHABLE ();
 }

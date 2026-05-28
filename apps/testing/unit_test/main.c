@@ -29,10 +29,16 @@ main (const int argc, char **argv)
   error e = error_create ();
 
   i_timer timer;
-  if (i_timer_create (&timer, &e) != SUCCESS) { return -1; }
+  if (i_timer_create (&timer, &e) != SUCCESS)
+  {
+    return -1;
+  }
 
   struct dbl_buffer f;
-  if (dblb_create (&f, sizeof (char *), 1, &e)) { return -1; }
+  if (dblb_create (&f, sizeof (char *), 1, &e))
+  {
+    return -1;
+  }
 
   for (u32 i = 0; i < (u32)smartfiles_count; i++)
   {
@@ -43,7 +49,10 @@ main (const int argc, char **argv)
       const struct string tn  = strfcstr (t->test_name);
       const struct string flt = strfcstr (filter);
 
-      if (!string_contains (tn, flt)) { continue; }
+      if (!string_contains (tn, flt))
+      {
+        continue;
+      }
     }
 
     if (!t->test ())
@@ -64,7 +73,10 @@ main (const int argc, char **argv)
   if (f.nelem > 0)
   {
     i_log_failure ("FAILED TESTS:\n");
-    for (u32 i = 0; i < f.nelem; i++) { i_log_failure ("  %s\n", fl[i]); }
+    for (u32 i = 0; i < f.nelem; i++)
+    {
+      i_log_failure ("  %s\n", fl[i]);
+    }
   }
   else
   {

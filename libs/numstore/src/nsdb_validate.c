@@ -16,4 +16,6 @@
 
 int
 nsdb_validate (nsdb_t *ns)
-{ return 0; }
+{
+  return 0;
+}

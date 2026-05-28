@@ -28,13 +28,18 @@ struct llnode
 
 HEADER_FUNC void
 llnode_init (struct llnode *n)
-{ n->next = NULL; }
+{
+  n->next = NULL;
+}
 
 HEADER_FUNC u32
 list_length (const struct llnode *head)
 {
   u32 len = 0;
-  for (const struct llnode *cur = head; cur; cur = cur->next) { len++; }
+  for (const struct llnode *cur = head; cur; cur = cur->next)
+  {
+    len++;
+  }
   return len;
 }
 
@@ -49,11 +54,17 @@ HEADER_FUNC void
 list_append (struct llnode **head, struct llnode *n)
 {
   n->next = NULL;
-  if (!*head) { *head = n; }
+  if (!*head)
+  {
+    *head = n;
+  }
   else
   {
     struct llnode *cur = *head;
-    while (cur->next) { cur = cur->next; }
+    while (cur->next)
+    {
+      cur = cur->next;
+    }
     cur->next = n;
   }
 }
@@ -61,7 +72,10 @@ list_append (struct llnode **head, struct llnode *n)
 HEADER_FUNC struct llnode *
 list_pop (struct llnode **head)
 {
-  if (!*head) { return NULL; }
+  if (!*head)
+  {
+    return NULL;
+  }
 
   struct llnode *n = *head;
   *head            = n->next;
@@ -81,7 +95,10 @@ list_find (
   *didx = 0;
   for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1)
   {
-    if (eq (iter, node)) { return iter; }
+    if (eq (iter, node))
+    {
+      return iter;
+    }
   }
   return NULL;
 }
@@ -90,7 +107,10 @@ HEADER_FUNC void
 list_remove (struct llnode **head, struct llnode *n)
 {
   struct llnode **cur = head;
-  while (*cur && *cur != n) { cur = &(*cur)->next; }
+  while (*cur && *cur != n)
+  {
+    cur = &(*cur)->next;
+  }
   if (*cur)
   {
     *cur    = n->next;
@@ -102,11 +122,15 @@ HEADER_FUNC struct llnode *
 llnode_get_n (struct llnode *head, const u32 index)
 {
   struct llnode *cur = head;
-  for (u32 i = 0; cur && i < index; ++i) { cur = cur->next; }
+  for (u32 i = 0; cur && i < index; ++i)
+  {
+    cur = cur->next;
+  }
   return cur;
 }
 
 // Iterate over list
-#define LLIST_FOR_EACH(head, iter) for (llnode *iter = (head); iter; iter = iter->next)
+#define LLIST_FOR_EACH(head, iter) \
+  for (llnode *iter = (head); iter; iter = iter->next)
 
 #endif // C_SPECX_LLIST_H

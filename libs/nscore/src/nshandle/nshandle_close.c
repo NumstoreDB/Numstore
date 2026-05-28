@@ -22,10 +22,15 @@ _nsh_close (struct nshandle *n, error *e)
 {
   struct nshandle_root *root = n->root;
   nsh_root_release (root, n);
-  if (root->count == 0) { return nsh_root_close (root, &root->e); }
+  if (root->count == 0)
+  {
+    return nsh_root_close (root, &root->e);
+  }
   return SUCCESS;
 }
 
 int
 nsh_close (struct nshandle *ns)
-{ return _nsh_close (ns, &ns->e); }
+{
+  return _nsh_close (ns, &ns->e);
+}

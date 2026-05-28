@@ -29,25 +29,34 @@
 #define i_cabs_64(f)      cabsf (f)
 #define i_fabs_32(f)      fabsf (f)
 
-#define arr_range(arr)                                     \
-  do                                                       \
-  {                                                        \
-    for (u32 i = 0; i < arrlen (arr); ++i) { arr[i] = i; } \
-  }                                                        \
+#define arr_range(arr)                     \
+  do                                       \
+  {                                        \
+    for (u32 i = 0; i < arrlen (arr); ++i) \
+    {                                      \
+      arr[i] = i;                          \
+    }                                      \
+  }                                        \
   while (0)
 
-#define ptr_range(arr, size)                            \
-  do                                                    \
-  {                                                     \
-    for (u32 _i = 0; _i < size; ++_i) { arr[_i] = _i; } \
-  }                                                     \
+#define ptr_range(arr, size)          \
+  do                                  \
+  {                                   \
+    for (u32 _i = 0; _i < size; ++_i) \
+    {                                 \
+      arr[_i] = _i;                   \
+    }                                 \
+  }                                   \
   while (0)
 
-#define u32_arr_rand(arr)                                           \
-  do                                                                \
-  {                                                                 \
-    for (u32 i = 0; i < arrlen (arr); ++i) { arr[i] = randu32 (); } \
-  }                                                                 \
+#define u32_arr_rand(arr)                  \
+  do                                       \
+  {                                        \
+    for (u32 i = 0; i < arrlen (arr); ++i) \
+    {                                      \
+      arr[i] = randu32 ();                 \
+    }                                      \
+  }                                        \
   while (0)
 
 #define arr_contains(arr, len, val, ret)   \

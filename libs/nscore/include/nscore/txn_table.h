@@ -80,7 +80,8 @@ void txnt_unfreeze (struct txn_table *t);
 u32 txnt_serialize (u8 *dest, u32 dlen, struct txn_table *t);
 
 // Deserialization - this has the same behavior as txnt_open
-struct txn_table *txnt_deserialize (const u8 *src, struct txn *txn_bank, u32 slen, error *e);
+struct txn_table *
+txnt_deserialize (const u8 *src, struct txn *txn_bank, u32 slen, error *e);
 
 // Returns the number of bytes needed to serialize t
 u32 txnt_get_serialize_size (const struct txn_table *t);
@@ -126,9 +127,15 @@ void i_log_txnt (int log_level, struct txn_table *t);
  *
  * This does not lock internal transactions
  */
-void txnt_foreach (const struct txn_table *t, void (*action) (struct txn *, void *ctx), void *ctx);
+void txnt_foreach (
+    const struct txn_table *t,
+    void (*action) (struct txn *, void *ctx),
+    void *ctx
+);
 
-u32  txnt_get_size (const struct txn_table *dest);     // Returns the number of transactions active
+u32 txnt_get_size (
+    const struct txn_table *dest
+); // Returns the number of transactions active
 bool txn_exists (const struct txn_table *t, txid tid); // Fast path exists check
 
 /**

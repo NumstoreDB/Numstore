@@ -121,9 +121,9 @@ struct pager
   u8                  _header[PAGE_HEADER_LEN];
 
   // Resources
-  struct file_pager *const fp;          // File pager - just reads and writes pages
-  struct wal *const        ww;          // Write-ahead log abstraction
-  struct lockt            *lt;          // Lock table
+  struct file_pager *const fp; // File pager - just reads and writes pages
+  struct wal *const        ww; // Write-ahead log abstraction
+  struct lockt            *lt; // Lock table
   i_mutex                  serial_lock; // To be deleted in concurrency work
 
   _Atomic int flags;
@@ -139,7 +139,7 @@ struct pager
    */
   hash_table_idx pgno_to_value;
   hentry_idx     _hdata[MEMORY_PAGE_LEN];
-  latch          htable_lock; // Synchronizes access to the hash table across "get"
+  latch htable_lock; // Synchronizes access to the hash table across "get"
 
   struct dpg_table *const dpt;
   struct txn_table *const tnxt;
@@ -208,7 +208,8 @@ void  pgr_unfix (struct pager *p, page_h *h, int flags);
 i32   pgr_reserve_and_ctrl_lock (struct pager *p, error *e);
 err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e);
 err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e);
-err_t pgr_extend_file (const struct pager *p, pgno npages, struct txn *tx, error *e);
+err_t
+pgr_extend_file (const struct pager *p, pgno npages, struct txn *tx, error *e);
 
 ////////////////////////////////////////////////////////////
 /// Checkpoints
@@ -220,10 +221,23 @@ err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
 /// Primary API
 
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
+err_t pgr_get_writable (
+    page_h       *dest,
+    struct txn   *tx,
+    int           flags,
+    pgno          pg,
+    struct pager *p,
+    error        *e
+);
+err_t pgr_new (
+    page_h        *dest,
+    struct pager  *p,
+    struct txn    *tx,
+    enum page_type ptype,
+    error         *e
+);
 err_t
-pgr_get_writable (page_h *dest, struct txn *tx, int flags, pgno pg, struct pager *p, error *e);
-err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
-err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
+pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_release_with_log (
     struct pager            *p,
     page_h                  *h,
@@ -247,7 +261,10 @@ pgr_get_maybe_writable (
     error        *e
 )
 {
-  if (!writable) { return pgr_get (dest, flags, pg, p, e); }
+  if (!writable)
+  {
+    return pgr_get (dest, flags, pg, p, e);
+  }
   else
   {
     return pgr_get_writable (dest, tx, flags, pg, p, e);
@@ -256,12 +273,17 @@ pgr_get_maybe_writable (
 
 HEADER_FUNC err_t
 pgr_release (struct pager *p, page_h *h, const int flags, error *e)
-{ return pgr_release_with_log (p, h, flags, NULL, e); }
+{
+  return pgr_release_with_log (p, h, flags, NULL, e);
+}
 
 HEADER_FUNC err_t
 pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e)
 {
-  if (h->mode != PHM_NONE) { return pgr_release (p, h, flags, e); }
+  if (h->mode != PHM_NONE)
+  {
+    return pgr_release (p, h, flags, e);
+  }
   return SUCCESS;
 }
 
@@ -270,8 +292,14 @@ pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
 {
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e)) { return error_trace (e); }
-  if (pgr_flush_unsafe (p, pgr, e)) { return error_trace (e); }
+  if (pgr_release (p, h, flags, e))
+  {
+    return error_trace (e);
+  }
+  if (pgr_flush_unsafe (p, pgr, e))
+  {
+    return error_trace (e);
+  }
   return SUCCESS;
 }
 
@@ -280,8 +308,14 @@ pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
 {
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e)) { return error_trace (e); }
-  if (pgr_evict_unsafe (p, pgr, e)) { return error_trace (e); }
+  if (pgr_release (p, h, flags, e))
+  {
+    return error_trace (e);
+  }
+  if (pgr_evict_unsafe (p, pgr, e))
+  {
+    return error_trace (e);
+  }
   return SUCCESS;
 }
 
@@ -340,7 +374,10 @@ pgr_evict_all_pages (struct pager *p, error *e)
 HEADER_FUNC void
 pgr_cancel_if_exists (struct pager *p, page_h *h)
 {
-  if (h->mode == PHM_NONE) { return; }
+  if (h->mode == PHM_NONE)
+  {
+    return;
+  }
 
   pgr_cancel (p, h);
 }

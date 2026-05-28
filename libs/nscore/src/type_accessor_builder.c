@@ -19,16 +19,23 @@
 #include <c_specx.h>
 
 bool
-user_stride_equal (const struct user_stride *left, const struct user_stride *right)
+user_stride_equal (
+    const struct user_stride *left,
+    const struct user_stride *right
+)
 {
-  return left->start == right->start && left->step == right->step && left->stop == right->stop
-         && left->present == right->present;
+  return left->start == right->start && left->step == right->step
+         && left->stop == right->stop && left->present == right->present;
 }
 
 DEFINE_DBG_ASSERT (struct range_builder, range_builder, s, { ASSERT (s); })
 
 void
-rb_create (struct range_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent)
+rb_create (
+    struct range_builder *dest,
+    struct chunk_alloc   *temp,
+    struct chunk_alloc   *persistent
+)
 {
   *dest = (struct range_builder){
       .head       = NULL,
@@ -45,12 +52,18 @@ rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e)
   DBG_ASSERT (range_builder, rb);
 
   struct rb_llnode *node = chunk_malloc (rb->temp, 1, sizeof *node, e);
-  if (!node) { return error_trace (e); }
+  if (!node)
+  {
+    return error_trace (e);
+  }
 
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!rb->head) { rb->head = &node->link; }
+  if (!rb->head)
+  {
+    rb->head = &node->link;
+  }
   else
   {
     list_append (&rb->head, &node->link);
@@ -65,10 +78,17 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
 {
   DBG_ASSERT (range_builder, rb);
 
-  if (rb->len == 0) { return error_causef (e, ERR_INTERP, "range: no dimensions"); }
+  if (rb->len == 0)
+  {
+    return error_causef (e, ERR_INTERP, "range: no dimensions");
+  }
 
-  struct user_stride *dims = chunk_malloc (rb->persistent, rb->len, sizeof *dims, e);
-  if (!dims) { return error_trace (e); }
+  struct user_stride *dims =
+      chunk_malloc (rb->persistent, rb->len, sizeof *dims, e);
+  if (!dims)
+  {
+    return error_trace (e);
+  }
 
   u32 i = 0;
   for (struct llnode *it = rb->head; it; it = it->next)
@@ -84,25 +104,40 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
   return SUCCESS;
 }
 
-DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, { ASSERT (s); })
+DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, {
+  ASSERT (s);
+})
 
 static struct type_accessor *
 tab_alloc (struct type_accessor_builder *builder, error *e)
 {
-  if (builder->head == NULL) { return &builder->ret; }
+  if (builder->head == NULL)
+  {
+    return &builder->ret;
+  }
 
-  struct type_accessor *ta = chunk_malloc (builder->persistent, 1, sizeof *ta, e);
+  struct type_accessor *ta =
+      chunk_malloc (builder->persistent, 1, sizeof *ta, e);
   return ta;
 }
 
 static void
 tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 {
-  if (!builder->head) { builder->head = ta; }
+  if (!builder->head)
+  {
+    builder->head = ta;
+  }
   else
   {
-    if (builder->tail->type == TA_SELECT) { builder->tail->select.sub_ta = ta; }
-    else if (builder->tail->type == TA_RANGE) { builder->tail->range.sub_ta = ta; }
+    if (builder->tail->type == TA_SELECT)
+    {
+      builder->tail->select.sub_ta = ta;
+    }
+    else if (builder->tail->type == TA_RANGE)
+    {
+      builder->tail->range.sub_ta = ta;
+    }
   }
   builder->tail = ta;
 }
@@ -110,10 +145,16 @@ tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 static err_t
 tab_flush_range (struct type_accessor_builder *builder, error *e)
 {
-  if (!builder->in_range) { return SUCCESS; }
+  if (!builder->in_range)
+  {
+    return SUCCESS;
+  }
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta) { return error_trace (e); }
+  if (!ta)
+  {
+    return error_trace (e);
+  }
 
   ta->type         = TA_RANGE;
   ta->range.sub_ta = NULL;
@@ -155,17 +196,27 @@ tab_create (
 }
 
 err_t
-tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e)
+tab_accept_select (
+    struct type_accessor_builder *builder,
+    struct string                 key,
+    error                        *e
+)
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
   WRAP (tab_flush_range (builder, e));
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta) { return error_trace (e); }
+  if (!ta)
+  {
+    return error_trace (e);
+  }
 
   key.data = chunk_alloc_move_mem (builder->persistent, key.data, key.len, e);
-  if (!key.data) { return error_trace (e); }
+  if (!key.data)
+  {
+    return error_trace (e);
+  }
 
   ta->type          = TA_SELECT;
   ta->select.key    = key;
@@ -177,7 +228,11 @@ tab_accept_select (struct type_accessor_builder *builder, struct string key, err
 }
 
 err_t
-tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e)
+tab_accept_stride (
+    struct type_accessor_builder *builder,
+    struct user_stride            stride,
+    error                        *e
+)
 {
   DBG_ASSERT (type_accessor_builder, builder);
   tab_ensure_range (builder);
@@ -192,7 +247,10 @@ tab_accept_take (struct type_accessor_builder *builder, error *e)
   WRAP (tab_flush_range (builder, e));
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta) { return error_trace (e); }
+  if (!ta)
+  {
+    return error_trace (e);
+  }
 
   ta->type = TA_TAKE;
 
@@ -202,7 +260,11 @@ tab_accept_take (struct type_accessor_builder *builder, error *e)
 }
 
 err_t
-tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e)
+tab_build (
+    struct type_accessor         *dest,
+    struct type_accessor_builder *builder,
+    error                        *e
+)
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
@@ -236,9 +298,15 @@ TEST (type_accessor_builder)
   struct string key1 = strfcstr ("field1");
   test_assert_int_equal (tab_accept_select (&builder, key1, &e), SUCCESS);
   // 3. accept a stride + single (enters range mode)
-  test_assert_int_equal (tab_accept_stride (&builder, ustride012 (0, 10, 2), &e), SUCCESS);
+  test_assert_int_equal (
+      tab_accept_stride (&builder, ustride012 (0, 10, 2), &e),
+      SUCCESS
+  );
   test_assert (builder.in_range);
-  test_assert_int_equal (tab_accept_stride (&builder, ustride_single (5), &e), SUCCESS);
+  test_assert_int_equal (
+      tab_accept_stride (&builder, ustride_single (5), &e),
+      SUCCESS
+  );
   test_assert_int_equal (builder.rb.len, 2);
 
   // 4. accept another select accessor (should flush the range)

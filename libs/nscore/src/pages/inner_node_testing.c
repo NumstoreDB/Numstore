@@ -20,12 +20,20 @@
 #ifndef NTEST
 
 void
-inner_node_init_for_testing (page *in, const pgno *pgs, const b_size *keys, const p_size len)
+inner_node_init_for_testing (
+    page         *in,
+    const pgno   *pgs,
+    const b_size *keys,
+    const p_size  len
+)
 {
   page_init_empty (in, PG_INNER_NODE);
   in_set_len (in, 0);
 
-  for (p_size i = 0; i < len; ++i) { in_push_end (in, keys[i], pgs[i]); }
+  for (p_size i = 0; i < len; ++i)
+  {
+    in_push_end (in, keys[i], pgs[i]);
+  }
 }
 
 void

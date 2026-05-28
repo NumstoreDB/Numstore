@@ -52,7 +52,10 @@ i_log_fsm (const int level, const page *t)
   i_log (level, "=== FREE SPACE PAGE START ===\n");
   for (p_size i = 0; i < FS_BTMP_NPGS; ++i)
   {
-    if (fsm_get_bit (t, i)) { i_printf (level, "|%" PRp_size "| -- Occupied\n", i); }
+    if (fsm_get_bit (t, i))
+    {
+      i_printf (level, "|%" PRp_size "| -- Occupied\n", i);
+    }
   }
   i_log (level, "=== FREE SPACE PAGE END ===\n");
 }

@@ -121,9 +121,11 @@ DEFINE_DBG_ASSERT (page_h, page_h, h, {
   }
 })
 
-#define page_h_create() \
-  (page_h)              \
-  { .mode = PHM_NONE, .pgr = NULL, .pgw = NULL, }
+#define page_h_create()                         \
+  (page_h)                                      \
+  {                                             \
+    .mode = PHM_NONE, .pgr = NULL, .pgw = NULL, \
+  }
 
 HEADER_FUNC void
 page_h_xfer_ownership_ptr (page_h *dest, page_h *src)
@@ -180,7 +182,10 @@ HEADER_FUNC page *
 page_h_w_or_null (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_NONE) { return NULL; }
+  if (h->mode == PHM_NONE)
+  {
+    return NULL;
+  }
   if (h->mode != PHM_X)
   {
     ASSERT (h->mode == PHM_X);
@@ -193,8 +198,14 @@ HEADER_FUNC const page *
 page_h_ro (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_X) { return &h->pgw->page; }
-  else if (h->mode == PHM_S) { return &h->pgr->page; }
+  if (h->mode == PHM_X)
+  {
+    return &h->pgw->page;
+  }
+  else if (h->mode == PHM_S)
+  {
+    return &h->pgr->page;
+  }
 
   ASSERT (h->mode != PHM_NONE);
   UNREACHABLE ();
@@ -204,7 +215,10 @@ HEADER_FUNC const page *
 page_h_ro_or_null (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_NONE) { return NULL; }
+  if (h->mode == PHM_NONE)
+  {
+    return NULL;
+  }
   return page_h_ro (h);
 }
 
@@ -213,8 +227,14 @@ page_h_pgno (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
   const page *p = NULL;
-  if (h->mode == PHM_X) { p = &h->pgw->page; }
-  else if (h->mode == PHM_S) { p = &h->pgr->page; }
+  if (h->mode == PHM_X)
+  {
+    p = &h->pgw->page;
+  }
+  else if (h->mode == PHM_S)
+  {
+    p = &h->pgr->page;
+  }
   else
   {
     ASSERT (h->mode != PHM_NONE);
@@ -226,7 +246,10 @@ page_h_pgno (const page_h *h)
 HEADER_FUNC pgno
 page_h_pgno_or_null (const page_h *h)
 {
-  if (h->mode == PHM_NONE) { return PGNO_NULL; }
+  if (h->mode == PHM_NONE)
+  {
+    return PGNO_NULL;
+  }
   return page_h_pgno (h);
 }
 
@@ -235,8 +258,14 @@ page_h_type (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
   const page *p = NULL;
-  if (h->mode == PHM_X) { p = &h->pgw->page; }
-  else if (h->mode == PHM_S) { p = &h->pgr->page; }
+  if (h->mode == PHM_X)
+  {
+    p = &h->pgw->page;
+  }
+  else if (h->mode == PHM_S)
+  {
+    p = &h->pgr->page;
+  }
   else
   {
     ASSERT (h->mode != PHM_NONE);
@@ -248,7 +277,10 @@ page_h_type (const page_h *h)
 HEADER_FUNC struct in_pair
 in_pair_from_pgh (const page_h *pg)
 {
-  if (pg->mode == PHM_NONE) { return in_pair_empty; }
+  if (pg->mode == PHM_NONE)
+  {
+    return in_pair_empty;
+  }
   return (struct in_pair){
       .pg  = page_h_pgno (pg),
       .key = dlgt_get_size (page_h_ro (pg)),

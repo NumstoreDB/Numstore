@@ -44,7 +44,10 @@ ns_var_create (const struct ns_var_create_params params, error *e)
       .cur  = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e)) { goto failed; }
+  if (ns_find_var_page (&fparams, e))
+  {
+    goto failed;
+  }
 
   struct variable var = {
       .vname    = params.vname,
@@ -61,11 +64,17 @@ ns_var_create (const struct ns_var_create_params params, error *e)
       .var = &var,
   };
 
-  if (ns_write_var_page (&write_params, e)) { goto failed; }
+  if (ns_write_var_page (&write_params, e))
+  {
+    goto failed;
+  }
 
   pgno ret = page_h_pgno (&cur);
 
-  if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e))) { goto failed; }
+  if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e)))
+  {
+    goto failed;
+  }
 
   return SUCCESS;
 

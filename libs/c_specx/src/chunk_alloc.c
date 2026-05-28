@@ -29,12 +29,18 @@ DEFINE_DBG_ASSERT (struct chunk_alloc, chunk_alloc, ca, {
   ASSERT (ca->settings.target_chunk_mult >= 1.0f);
   ASSERT (ca->settings.min_chunk_size > 0);
   ASSERT (
-      ca->settings.max_chunk_size == 0 || ca->settings.max_chunk_size >= ca->settings.min_chunk_size
+      ca->settings.max_chunk_size == 0
+      || ca->settings.max_chunk_size >= ca->settings.min_chunk_size
   );
   ASSERT (ca->head != NULL || ca->num_chunks == 0);
   ASSERT (ca->total_used <= ca->total_allocated);
-  ASSERT (ca->settings.max_total_size == 0 || ca->total_allocated <= ca->settings.max_total_size);
-  ASSERT (ca->settings.max_chunks == 0 || ca->num_chunks < ca->settings.max_chunks);
+  ASSERT (
+      ca->settings.max_total_size == 0
+      || ca->total_allocated <= ca->settings.max_total_size
+  );
+  ASSERT (
+      ca->settings.max_chunks == 0 || ca->num_chunks < ca->settings.max_chunks
+  );
 
   u32 counted_chunks    = 0;
   u32 counted_allocated = 0;
@@ -48,7 +54,10 @@ DEFINE_DBG_ASSERT (struct chunk_alloc, chunk_alloc, ca, {
     counted_allocated += c->alloc.limit;
     counted_used += c->alloc.used;
 
-    ASSERT (counted_chunks <= ca->settings.max_chunks || ca->settings.max_chunks == 0);
+    ASSERT (
+        counted_chunks <= ca->settings.max_chunks
+        || ca->settings.max_chunks == 0
+    );
     ASSERT (counted_chunks <= 100000);
   }
 
@@ -62,7 +71,10 @@ static struct chunk *
 chunk_create (const u32 size, error *e)
 {
   struct chunk *ret = i_malloc (sizeof (struct chunk) + size, 1, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
   ret->alloc = lalloc_create (ret->data, size);
   ret->next  = NULL;
   DBG_ASSERT (chunk, ret);
@@ -100,23 +112,33 @@ compute_new_chunk_size (const struct chunk_alloc *ca, const u32 alloc_size)
   }
 
   // Clamp to maximum
-  if (ca->settings.max_chunk_size > 0 && new_chunk_size > ca->settings.max_chunk_size)
+  if (ca->settings.max_chunk_size > 0
+      && new_chunk_size > ca->settings.max_chunk_size)
   {
     new_chunk_size = ca->settings.max_chunk_size;
   }
 
   // Ensure it fits the current allocation
-  if (new_chunk_size < alloc_size) { new_chunk_size = alloc_size; }
+  if (new_chunk_size < alloc_size)
+  {
+    new_chunk_size = alloc_size;
+  }
 
   return new_chunk_size;
 }
 
 void
-chunk_alloc_create (struct chunk_alloc *dest, const struct chunk_alloc_settings settings)
+chunk_alloc_create (
+    struct chunk_alloc               *dest,
+    const struct chunk_alloc_settings settings
+)
 {
   ASSERT (settings.target_chunk_mult >= 1.0f);
   ASSERT (settings.min_chunk_size > 0);
-  ASSERT (settings.max_chunk_size == 0 || settings.max_chunk_size >= settings.min_chunk_size);
+  ASSERT (
+      settings.max_chunk_size == 0
+      || settings.max_chunk_size >= settings.min_chunk_size
+  );
 
   *dest = (struct chunk_alloc){
       .settings        = settings,
@@ -192,7 +214,9 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
 
   // Verify size constraints (internal assertions)
   ASSERT (size >= ca->settings.min_chunk_size);
-  ASSERT (ca->settings.max_chunk_size == 0 || size <= ca->settings.max_chunk_size);
+  ASSERT (
+      ca->settings.max_chunk_size == 0 || size <= ca->settings.max_chunk_size
+  );
 
   // Check total memory limit
   if (ca->settings.max_total_size > 0)
@@ -213,7 +237,10 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
 
   // Create chunk
   struct chunk *new_chunk = chunk_create (size, e);
-  if (new_chunk == NULL) { return error_trace (e); }
+  if (new_chunk == NULL)
+  {
+    return error_trace (e);
+  }
 
   // Add to front of list
   new_chunk->next = ca->head;
@@ -242,7 +269,8 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   const u32 alloc_size = req * size;
 
   // Check single allocation limit
-  if (ca->settings.max_alloc_size > 0 && alloc_size > ca->settings.max_alloc_size)
+  if (ca->settings.max_alloc_size > 0
+      && alloc_size > ca->settings.max_alloc_size)
   {
     error_causef (
         e,
@@ -279,7 +307,10 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
 
   // Allocate from new chunk
   void *ptr = lmalloc (&ca->head->alloc, req, size, e);
-  if (ptr != NULL) { ca->total_used += alloc_size; }
+  if (ptr != NULL)
+  {
+    ca->total_used += alloc_size;
+  }
 
   latch_unlock (&ca->latch);
 
@@ -292,16 +323,27 @@ chunk_calloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   DBG_ASSERT (chunk_alloc, ca);
 
   void *ptr = chunk_malloc (ca, req, size, e);
-  if (ptr != NULL) { memset (ptr, 0, req * size); }
+  if (ptr != NULL)
+  {
+    memset (ptr, 0, req * size);
+  }
   return ptr;
 }
 
 void *
-chunk_alloc_move_mem (struct chunk_alloc *ca, const void *ptr, const u32 size, error *e)
+chunk_alloc_move_mem (
+    struct chunk_alloc *ca,
+    const void         *ptr,
+    const u32           size,
+    error              *e
+)
 {
   void *dest = chunk_malloc (ca, size, 1, e);
 
-  if (dest == NULL) { return NULL; }
+  if (dest == NULL)
+  {
+    return NULL;
+  }
 
   memcpy (dest, ptr, size);
 

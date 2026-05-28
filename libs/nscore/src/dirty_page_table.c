@@ -60,7 +60,10 @@ static bool
 dpge_equals (const struct hnode *left, const struct hnode *right)
 {
   // Might have passed the exact same ref as exists in the htable
-  if (left == right) { return true; }
+  if (left == right)
+  {
+    return true;
+  }
 
   // Otherwise, passed a key with just relevant information
   else
@@ -87,11 +90,17 @@ struct dpg_table *
 dpgt_open (error *e)
 {
   struct dpg_table *dest = i_malloc (1, sizeof *dest, e);
-  if (dest == NULL) { goto failed; }
+  if (dest == NULL)
+  {
+    goto failed;
+  }
   slab_alloc_init (&dest->alloc, sizeof (struct dpg_entry), 1000);
 
   dest->t = htable_create (512, e);
-  if (dest->t == NULL) { goto dest_failed; }
+  if (dest->t == NULL)
+  {
+    goto dest_failed;
+  }
 
   latch_init (&dest->l);
 
@@ -122,7 +131,12 @@ i_log_dpge_in_dpgt (struct hnode *node, void *_log_level)
   struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
 
   latch_lock (&entry->l);
-  i_printf (*log_level, "|pg = %10" PRpgno " rec_lsn = %10" PRlsn "|\n", entry->pg, entry->rec_lsn);
+  i_printf (
+      *log_level,
+      "|pg = %10" PRpgno " rec_lsn = %10" PRlsn "|\n",
+      entry->pg,
+      entry->rec_lsn
+  );
   latch_unlock (&entry->l);
 }
 
@@ -131,7 +145,10 @@ i_log_dpgt (int log_level, struct dpg_table *dpt)
 {
   latch_lock (&dpt->l);
 
-  i_log (log_level, "================ Dirty Page Table START ================\n");
+  i_log (
+      log_level,
+      "================ Dirty Page Table START ================\n"
+  );
   htable_foreach (dpt->t, i_log_dpge_in_dpgt, &log_level);
   i_log (log_level, "================ Dirty Page Table END ================\n");
 
@@ -149,9 +166,15 @@ merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx)
 {
   const struct merge_ctx *ctx = vctx;
 
-  if (ctx->e->cause_code) { return; }
+  if (ctx->e->cause_code)
+  {
+    return;
+  }
 
-  if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e)) { return; }
+  if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e))
+  {
+    return;
+  }
 }
 
 err_t
@@ -174,7 +197,10 @@ dpge_max (pgno pg, const lsn rec_lsn, void *ctx)
 {
   lsn *min = ctx;
 
-  if (rec_lsn < *min) { *min = rec_lsn; }
+  if (rec_lsn < *min)
+  {
+    *min = rec_lsn;
+  }
 }
 
 lsn
@@ -228,7 +254,9 @@ dpgt_foreach (
 
 u32
 dpgt_get_size (const struct dpg_table *d)
-{ return htable_size (d->t); }
+{
+  return htable_size (d->t);
+}
 
 bool
 dpgt_exists (const struct dpg_table *t, const pgno pg)
@@ -249,7 +277,10 @@ dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e)
   latch_lock (&t->l);
 
   struct dpg_entry *v = slab_alloc_alloc (&t->alloc, e);
-  if (v == NULL) { goto theend; }
+  if (v == NULL)
+  {
+    goto theend;
+  }
 
   dpge_init (v, pg, rec_lsn);
 
@@ -263,7 +294,10 @@ theend:
 err_t
 dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e)
 {
-  if (!dpgt_exists (t, pg)) { return dpgt_add (t, pg, rec_lsn, e); }
+  if (!dpgt_exists (t, pg))
+  {
+    return dpgt_add (t, pg, rec_lsn, e);
+  }
   return SUCCESS;
 }
 
@@ -278,7 +312,10 @@ dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg)
   latch_lock (&t->l);
 
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
-  if (node) { *dest = container_of (*node, struct dpg_entry, node)->rec_lsn; }
+  if (node)
+  {
+    *dest = container_of (*node, struct dpg_entry, node)->rec_lsn;
+  }
 
   latch_unlock (&t->l);
 
@@ -370,7 +407,9 @@ dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn)
 
 u32
 dpgt_get_serialize_size (const struct dpg_table *t)
-{ return htable_size (t->t) * DPGT_SERIAL_UNIT; }
+{
+  return htable_size (t->t) * DPGT_SERIAL_UNIT;
+}
 
 struct dpge_serialize_ctx
 {
@@ -414,9 +453,15 @@ struct dpg_table *
 dpgt_deserialize (const u8 *src, const u32 slen, error *e)
 {
   struct dpg_table *dest = dpgt_open (e);
-  if (dest == NULL) { goto failed; }
+  if (dest == NULL)
+  {
+    goto failed;
+  }
 
-  if (slen == 0) { return dest; }
+  if (slen == 0)
+  {
+    return dest;
+  }
 
   struct deserializer d = dsrlizr_create (src, slen);
 
@@ -431,7 +476,10 @@ dpgt_deserialize (const u8 *src, const u32 slen, error *e)
     dsrlizr_read_expect (&pg, sizeof (pg), &d);
     dsrlizr_read_expect (&rec_lsn, sizeof (rec_lsn), &d);
 
-    if (dpgt_add (dest, pg, rec_lsn, e)) { goto dest_failed; }
+    if (dpgt_add (dest, pg, rec_lsn, e))
+    {
+      goto dest_failed;
+    }
   }
 
   return dest;
@@ -459,7 +507,10 @@ static void
 dpgt_eq_foreach (struct hnode *node, void *_ctx)
 {
   struct dpgt_eq_ctx *ctx = _ctx;
-  if (ctx->ret == false) { return; }
+  if (ctx->ret == false)
+  {
+    return;
+  }
 
   struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
   struct dpg_entry  candidate;
@@ -468,7 +519,8 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
   {
     dpge_key_init (&candidate, entry->pg);
 
-    struct hnode **other_node = htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
+    struct hnode **other_node =
+        htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
 
     if (other_node == NULL)
     {
@@ -476,7 +528,8 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
       goto theend;
     }
 
-    struct dpg_entry *other = container_of (*other_node, struct dpg_entry, node);
+    struct dpg_entry *other =
+        container_of (*other_node, struct dpg_entry, node);
 
     latch_lock (&other->l);
     {
@@ -498,7 +551,10 @@ dpgt_equal (struct dpg_table *left, struct dpg_table *right)
   latch_lock (&left->l);
   latch_lock (&right->l);
 
-  if (htable_size (left->t) != htable_size (right->t)) { goto theend; }
+  if (htable_size (left->t) != htable_size (right->t))
+  {
+    goto theend;
+  }
 
   struct dpgt_eq_ctx ctx = {
       .other = right,
@@ -522,9 +578,13 @@ dpgt_rand_populate (struct dpg_table *t, error *e)
   pgno pg = 0;
   lsn  l  = 0;
 
-  for (u32 i = 0; i < 100 - len; ++i, pg += randu32r (1, 100), l += randu32r (1, 100))
+  for (u32 i = 0; i < 100 - len;
+       ++i, pg += randu32r (1, 100), l += randu32r (1, 100))
   {
-    if (dpgt_add (t, pg, l, e)) { goto theend; }
+    if (dpgt_add (t, pg, l, e))
+    {
+      goto theend;
+    }
   }
 
 theend:

@@ -27,26 +27,39 @@ DEFINE_DBG_ASSERT (struct struct_t, unchecked_struct_t, s, {
 
 static err_t
 struct_t_type_err (const char *msg, error *e)
-{ return error_causef (e, ERR_INTERP, "Struct: %s", msg); }
+{
+  return error_causef (e, ERR_INTERP, "Struct: %s", msg);
+}
 
 static err_t
 struct_t_type_deser (const char *msg, error *e)
-{ return error_causef (e, ERR_CORRUPT, "Struct: %s", msg); }
+{
+  return error_causef (e, ERR_CORRUPT, "Struct: %s", msg);
+}
 
 static err_t
 struct_t_validate_shallow (const struct struct_t *s, error *e)
 {
   DBG_ASSERT (unchecked_struct_t, s);
 
-  if (s->len == 0) { return struct_t_type_err ("Keys length must be > 0", e); }
+  if (s->len == 0)
+  {
+    return struct_t_type_err ("Keys length must be > 0", e);
+  }
 
   for (u32 i = 0; i < s->len; ++i)
   {
-    if (s->keys[i].len == 0) { return struct_t_type_err ("Key length must be > 0", e); }
+    if (s->keys[i].len == 0)
+    {
+      return struct_t_type_err ("Key length must be > 0", e);
+    }
     ASSERT (s->keys[i].data);
   }
 
-  if (!strings_all_unique (s->keys, s->len)) { return struct_t_type_err ("Duplicate keys", e); }
+  if (!strings_all_unique (s->keys, s->len))
+  {
+    return struct_t_type_err ("Duplicate keys", e);
+  }
 
   return SUCCESS;
 }
@@ -57,19 +70,43 @@ DEFINE_DBG_ASSERT (struct struct_t, valid_struct_t, s, {
 })
 
 err_t
-struct_t_create (struct struct_t *dest, struct kvt_list list, struct chunk_alloc *dalloc, error *e)
+struct_t_create (
+    struct struct_t    *dest,
+    struct kvt_list     list,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
 {
-  if (list.len == 0) { return struct_t_type_err ("struct must have greater than 0 keys", e); }
+  if (list.len == 0)
+  {
+    return struct_t_type_err ("struct must have greater than 0 keys", e);
+  }
 
   // Copy stuff over
   if (dalloc)
   {
     dest->len  = list.len;
-    dest->keys = chunk_alloc_move_mem (dalloc, list.keys, list.len * sizeof *dest->keys, e);
-    if (dest->keys == NULL) { return error_trace (e); }
+    dest->keys = chunk_alloc_move_mem (
+        dalloc,
+        list.keys,
+        list.len * sizeof *dest->keys,
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
 
-    dest->types = chunk_alloc_move_mem (dalloc, list.types, list.len * sizeof (struct type *), e);
-    if (dest->keys == NULL) { return error_trace (e); }
+    dest->types = chunk_alloc_move_mem (
+        dalloc,
+        list.types,
+        list.len * sizeof (struct type *),
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
   }
 
   // Don't copy
@@ -111,12 +148,18 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
   int   n;
 
   n = snprintf (out, avail, "struct { ");
-  if (n < 0) { return n; }
+  if (n < 0)
+  {
+    return n;
+  }
   len += n;
   if (out)
   {
     out += n;
-    if ((u32)n < avail) { avail -= n; }
+    if ((u32)n < avail)
+    {
+      avail -= n;
+    }
     else
     {
       avail = 0;
@@ -127,12 +170,18 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
   {
     struct string key = st->keys[i];
     n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
-    if (n < 0) { return n; }
+    if (n < 0)
+    {
+      return n;
+    }
     len += n;
     if (out)
     {
       out += n;
-      if ((u32)n < avail) { avail -= n; }
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
       else
       {
         avail = 0;
@@ -140,12 +189,18 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
     }
 
     n = type_snprintf (out, avail, st->types[i]);
-    if (n < 0) { return n; }
+    if (n < 0)
+    {
+      return n;
+    }
     len += n;
     if (out)
     {
       out += n;
-      if ((u32)n < avail) { avail -= n; }
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
       else
       {
         avail = 0;
@@ -155,12 +210,18 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
     if (i + 1 < st->len)
     {
       n = snprintf (out, avail, ", ");
-      if (n < 0) { return n; }
+      if (n < 0)
+      {
+        return n;
+      }
       len += n;
       if (out)
       {
         out += n;
-        if ((u32)n < avail) { avail -= n; }
+        if ((u32)n < avail)
+        {
+          avail -= n;
+        }
         else
         {
           avail = 0;
@@ -170,7 +231,10 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
   }
 
   n = snprintf (out, avail, " }");
-  if (n < 0) { return n; }
+  if (n < 0)
+  {
+    return n;
+  }
   len += n;
 
   return len;
@@ -236,7 +300,10 @@ struct_t_byte_size (const struct struct_t *t)
   u32 ret = 0;
 
   // Each type is layed out contiguously
-  for (u32 i = 0; i < t->len; ++i) { ret += type_byte_size (t->types[i]); }
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    ret += type_byte_size (t->types[i]);
+  }
 
   return ret;
 }
@@ -372,7 +439,7 @@ struct_t_serialize (struct serializer *dest, const struct struct_t *src)
   {
     // (KLEN
     struct string next = src->keys[i];
-    ret                = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
+    ret = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
     ASSERT (ret);
 
     // KEY)
@@ -469,34 +536,61 @@ struct_t_deserialize (
 
   // LEN
   u16 len;
-  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src)) { goto early_termination; }
+  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src))
+  {
+    goto early_termination;
+  }
 
   for (u32 i = 0; i < len; ++i)
   {
     // Read the string key length
     u16 klen;
-    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src)) { goto early_termination; }
+    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src))
+    {
+      goto early_termination;
+    }
 
     struct string key = {
         .len  = klen,
         .data = chunk_malloc (a, key.len, 1, e),
     };
     // Read the string data
-    if (key.data == NULL) { goto theend; }
-    if (!dsrlizr_read ((u8 *)key.data, key.len, src)) { goto early_termination; }
+    if (key.data == NULL)
+    {
+      goto theend;
+    }
+    if (!dsrlizr_read ((u8 *)key.data, key.len, src))
+    {
+      goto early_termination;
+    }
 
     // Deserialize sub type
     struct type *t = type_deserialize (src, a, e);
-    if (t == NULL) { goto theend; }
+    if (t == NULL)
+    {
+      goto theend;
+    }
 
-    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS)) { goto theend; }
-    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS)) { goto theend; }
+    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS))
+    {
+      goto theend;
+    }
+    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS))
+    {
+      goto theend;
+    }
   }
 
   struct kvt_list list;
-  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS)) { goto theend; }
+  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS))
+  {
+    goto theend;
+  }
 
-  if (unlikely ((struct_t_create (dest, list, NULL, e)) < SUCCESS)) { goto theend; }
+  if (unlikely ((struct_t_create (dest, list, NULL, e)) < SUCCESS))
+  {
+    goto theend;
+  }
 
 theend:
   chunk_alloc_free_all (&temp);
@@ -627,23 +721,39 @@ TEST (struct_t_deserialize_red_path)
 #endif
 
 err_t
-struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth, error *e)
+struct_t_random (
+    struct struct_t    *st,
+    struct chunk_alloc *alloc,
+    u32                 depth,
+    error              *e
+)
 {
   ASSERT (st);
 
   st->len = (u16)randu32r (1, 5);
 
-  st->keys = (struct string *)chunk_malloc (alloc, st->len, sizeof (struct string), e);
-  if (!st->keys) { return error_trace (e); }
+  st->keys =
+      (struct string *)chunk_malloc (alloc, st->len, sizeof (struct string), e);
+  if (!st->keys)
+  {
+    return error_trace (e);
+  }
 
-  st->types = (struct type **)chunk_malloc (alloc, st->len, sizeof (struct type *), e);
-  if (!st->types) { return error_trace (e); }
+  st->types =
+      (struct type **)chunk_malloc (alloc, st->len, sizeof (struct type *), e);
+  if (!st->types)
+  {
+    return error_trace (e);
+  }
 
   for (u16 i = 0; i < st->len; ++i)
   {
     WRAP (rand_varname (&st->keys[i], alloc, 5, 11, e));
     st->types[i] = type_random (alloc, depth - 1, e);
-    if (st->types[i] == NULL) { return error_trace (e); }
+    if (st->types[i] == NULL)
+    {
+      return error_trace (e);
+    }
   }
 
   return SUCCESS;
@@ -652,26 +762,43 @@ struct_t_random (struct struct_t *st, struct chunk_alloc *alloc, u32 depth, erro
 bool
 struct_t_equal (const struct struct_t *left, const struct struct_t *right)
 {
-  if (left->len != right->len) { return false; }
+  if (left->len != right->len)
+  {
+    return false;
+  }
 
   for (u32 i = 0; i < left->len; ++i)
   {
-    if (!string_equal (left->keys[i], right->keys[i])) { return false; }
-    if (!type_equal (left->types[i], right->types[i])) { return false; }
+    if (!string_equal (left->keys[i], right->keys[i]))
+    {
+      return false;
+    }
+    if (!type_equal (left->types[i], right->types[i]))
+    {
+      return false;
+    }
   }
 
   return true;
 }
 
 struct type *
-struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key, error *e)
+struct_t_resolve_key (
+    t_size          *offset,
+    struct struct_t *t,
+    struct string    key,
+    error           *e
+)
 {
   t_size roffset = 0;
   for (u32 i = 0; i < t->len; ++i)
   {
     if (string_equal (t->keys[i], key))
     {
-      if (offset) { *offset = roffset; }
+      if (offset)
+      {
+        *offset = roffset;
+      }
       return t->types[i];
     }
     roffset += type_byte_size (t->types[i]);

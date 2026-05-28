@@ -34,25 +34,40 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
   i_mutex_lock (&p->serial_lock);
 
   // Flush all pages - so the database is consistent
-  if (pgr_flush_all_pages (p, e) < 0) { goto theend; }
+  if (pgr_flush_all_pages (p, e) < 0)
+  {
+    goto theend;
+  }
 
   // Flush the WAL
-  if (wal_flush_all (p->ww, e)) { goto theend; }
+  if (wal_flush_all (p->ww, e))
+  {
+    goto theend;
+  }
 
   // Get the end_lsn
   lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
   i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
 
   // Write the next min lsn slot
-  if (pgr_write_next_lsn (p, end_lsn, e)) { goto theend; }
+  if (pgr_write_next_lsn (p, end_lsn, e))
+  {
+    goto theend;
+  }
 
   // Delete the WAL and replace it with a fresh one
-  if (pgr_refresh_wal (p, e) < 0) { goto theend; }
+  if (pgr_refresh_wal (p, e) < 0)
+  {
+    goto theend;
+  }
 
   ASSERT (wal_isnew (p->ww));
 
   // Write the next start lsn for the WAL
-  if (wal_write_start_lsn (p->ww, end_lsn, e)) { goto theend; }
+  if (wal_write_start_lsn (p->ww, end_lsn, e))
+  {
+    goto theend;
+  }
 
 theend:
 

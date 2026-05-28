@@ -62,13 +62,19 @@ ns_insert (struct ns_insert_params *params, error *e)
 
   if (params->root == PGNO_NULL)
   {
-    if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e)) { goto failed; }
+    if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e))
+    {
+      goto failed;
+    }
 
     params->root = page_h_pgno (&cur);
   }
   else
   {
-    if (ns_seek (&seek, e)) { goto failed; }
+    if (ns_seek (&seek, e))
+    {
+      goto failed;
+    }
 
     cur  = page_h_xfer_ownership (&seek.pg);
     lidx = seek.lidx;
@@ -77,7 +83,10 @@ ns_insert (struct ns_insert_params *params, error *e)
   pgno last = dl_get_next (page_h_ro (&cur));
   tbl       = dl_read_out_from (page_h_w (&cur), temp_buf, lidx);
   output    = nupd_init (page_h_pgno (&cur), 0, e);
-  if (output == NULL) { goto failed; }
+  if (output == NULL)
+  {
+    goto failed;
+  }
 
   const b_size total_to_write = params->size * params->nelem;
 
@@ -89,14 +98,23 @@ ns_insert (struct ns_insert_params *params, error *e)
     {
       ASSERT (lidx == DL_DATA_SIZE);
 
-      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) { goto failed; }
+      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
 
       dl_set_next (page_h_w (&cur), page_h_pgno (&next));
       dl_set_prev (page_h_w (&next), page_h_pgno (&cur));
 
-      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e)) { goto failed; }
+      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e))
+      {
+        goto failed;
+      }
 
-      if (pgr_release (params->p, &cur, PG_DATA_LIST, e)) { goto failed; }
+      if (pgr_release (params->p, &cur, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
 
       cur   = page_h_xfer_ownership (&next);
       lidx  = 0;
@@ -104,16 +122,31 @@ ns_insert (struct ns_insert_params *params, error *e)
     }
 
     p_size next_amount;
-    if (params->nelem == 0) { next_amount = avail; }
+    if (params->nelem == 0)
+    {
+      next_amount = avail;
+    }
     else
     {
       next_amount = MIN (avail, (p_size)(total_to_write - total_written));
     }
 
-    i32 written = stream_bread (dl_avail_data (page_h_w (&cur)), 1, next_amount, params->src, e);
-    if (written < 0) { goto failed; }
+    i32 written = stream_bread (
+        dl_avail_data (page_h_w (&cur)),
+        1,
+        next_amount,
+        params->src,
+        e
+    );
+    if (written < 0)
+    {
+      goto failed;
+    }
 
-    if (written == 0 && stream_isdone (params->src)) { break; }
+    if (written == 0 && stream_isdone (params->src))
+    {
+      break;
+    }
 
     dl_set_used (page_h_w (&cur), dl_used (page_h_ro (&cur)) + written);
     lidx += (p_size)written;
@@ -131,14 +164,23 @@ ns_insert (struct ns_insert_params *params, error *e)
     {
       ASSERT (lidx == DL_DATA_SIZE);
 
-      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) { goto failed; }
+      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
 
       dl_set_next (page_h_w (&cur), page_h_pgno (&next));
       dl_set_prev (page_h_w (&next), page_h_pgno (&cur));
 
-      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e)) { goto failed; }
+      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e))
+      {
+        goto failed;
+      }
 
-      if (pgr_release (params->p, &cur, PG_DATA_LIST, e)) { goto failed; }
+      if (pgr_release (params->p, &cur, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
 
       page_h_xfer_ownership_ptr (&cur, &next);
       lidx = 0;
@@ -147,7 +189,10 @@ ns_insert (struct ns_insert_params *params, error *e)
 
   if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur)))
   {
-    if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e)) { goto failed; }
+    if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e))
+    {
+      goto failed;
+    }
 
     dlgt_link (page_h_w (&cur), page_h_w (&next));
   }
@@ -162,9 +207,15 @@ ns_insert (struct ns_insert_params *params, error *e)
       .next   = &next,
   };
 
-  if (ns_balance_and_release (bparams, e)) { goto failed; }
+  if (ns_balance_and_release (bparams, e))
+  {
+    goto failed;
+  }
 
-  if (nupd_append_tip_right (output, tip_out, e)) { goto failed; }
+  if (nupd_append_tip_right (output, tip_out, e))
+  {
+    goto failed;
+  }
 
   struct ns_rebalance_params rebalance = {
       .p          = params->p,
@@ -182,10 +233,19 @@ ns_insert (struct ns_insert_params *params, error *e)
 
   err_t ret = ns_rebalance (&rebalance, e);
 
-  if (rebalance.output) { nupd_free (rebalance.output); }
-  if (rebalance.input) { nupd_free (rebalance.input); }
+  if (rebalance.output)
+  {
+    nupd_free (rebalance.output);
+  }
+  if (rebalance.input)
+  {
+    nupd_free (rebalance.input);
+  }
 
-  if (ret) { goto failed; }
+  if (ret)
+  {
+    goto failed;
+  }
 
   params->root = rebalance.root;
 
@@ -196,10 +256,19 @@ failed:
   pgr_cancel_if_exists (params->p, &cur);
   pgr_cancel_if_exists (params->p, &next);
 
-  if (output) { nupd_free (output); }
-  if (rb_nupd2) { nupd_free (rb_nupd2); }
+  if (output)
+  {
+    nupd_free (output);
+  }
+  if (rb_nupd2)
+  {
+    nupd_free (rb_nupd2);
+  }
 
-  for (u32 i = 0; i < seek.sp; ++i) { pgr_cancel_if_exists (params->p, &seek.pstack[i].pg); }
+  for (u32 i = 0; i < seek.sp; ++i)
+  {
+    pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
+  }
 
   return error_trace (e);
 }

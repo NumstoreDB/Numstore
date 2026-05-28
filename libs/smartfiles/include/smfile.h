@@ -122,8 +122,8 @@ int smfile_close (smfile_t *ns);
 
 /**
  * @brief Similar to strerror. If any of the functions failed, you can
- * call this method to fetch the error string. If there are no errors, this method
- * returns NULL
+ * call this method to fetch the error string. If there are no errors, this
+ * method returns NULL
  */
 const char *smfile_strerror (smfile_t *ns);
 
@@ -171,25 +171,29 @@ sb_size smfile_size (smfile_t *smf);
  * @param slen The length in bytes of [src]
  * @return < 0 on error, 0 on success
  */
-sb_size smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
+sb_size
+smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
 
 /**
- * @brief Write elements into a smart file, overwriting existing data at that location.
- * Unlike fwrite, this operation is atomic — it either fully completes or has no effect.
+ * @brief Write elements into a smart file, overwriting existing data at that
+ * location. Unlike fwrite, this operation is atomic — it either fully completes
+ * or has no effect.
  *
  * @param src The data to write
  * @param bofst The byte offset in the file to begin writing at
  * @param nelem The number of elements to write
  * @return The number of elements written, or < 0 on error
  */
-sb_size smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem);
+sb_size
+smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem);
 
 /**
  * @brief Read elements from a smart file into dest.
- * Reads up to nelem elements starting at byte offset bofst. Returns fewer elements
- * if the end of the file is reached before nelem elements are read.
+ * Reads up to nelem elements starting at byte offset bofst. Returns fewer
+ * elements if the end of the file is reached before nelem elements are read.
  *
- * @param dest Buffer to read data into. Must be large enough to hold nelem elements
+ * @param dest Buffer to read data into. Must be large enough to hold nelem
+ * elements
  * @param bofst The byte offset in the file to begin reading from
  * @param nelem The number of elements to read
  * @return The number of elements read, or < 0 on error
@@ -199,8 +203,9 @@ sb_size smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem);
 /**
  * @brief Remove elements from the middle of a smart file, closing the gap.
  * Unlike a write of zeroes, remove shrinks the file — bytes after the removed
- * region shift down. Optionally captures the removed data into dest if non-NULL.
- * This operation is atomic — it either fully completes or has no effect.
+ * region shift down. Optionally captures the removed data into dest if
+ * non-NULL. This operation is atomic — it either fully completes or has no
+ * effect.
  *
  * @param dest Buffer to capture the removed data into, or NULL to discard
  * @param bofst The byte offset in the file to begin removing from
@@ -215,9 +220,9 @@ sb_size smfile_remove (smfile_t *smf, void *dest, sb_size bofst, b_size nelem);
 sb_size smfile_psize (smfile_t *smf, const char *vname);
 
 /**
- * @brief [Power] Insert data into the middle of a named variable within a smart file.
- * Equivalent to smfile_insert but targets a specific named variable rather than
- * the default variable.
+ * @brief [Power] Insert data into the middle of a named variable within a smart
+ * file. Equivalent to smfile_insert but targets a specific named variable
+ * rather than the default variable.
  *
  * @param name The name of the variable to insert into
  * @param src The byte data to insert
@@ -226,11 +231,12 @@ sb_size smfile_psize (smfile_t *smf, const char *vname);
  * @return < 0 on error, 0 on success
  */
 sb_size smfile_pinsert (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
     const void *src,
-    sb_size bofst,
-    b_size slen);
+    sb_size     bofst,
+    b_size      slen
+);
 
 /**
  * @brief [Power] Write elements into a named variable within a smart file,
@@ -247,13 +253,14 @@ sb_size smfile_pinsert (
  * @return The number of elements written, or < 0 on error
  */
 sb_size smfile_pwrite (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
     const void *src,
-    t_size size,
-    b_size bofst,
-    sb_size stride,
-    b_size nelem);
+    t_size      size,
+    b_size      bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 /**
  * @brief [Power] Read elements from a named variable within a smart file,
@@ -262,7 +269,8 @@ sb_size smfile_pwrite (
  * in between.
  *
  * @param name The name of the variable to read from
- * @param dest Buffer to read data into. Must be large enough to hold nelem elements
+ * @param dest Buffer to read data into. Must be large enough to hold nelem
+ * elements
  * @param size The size in bytes of a single element
  * @param bofst The byte offset within the variable to begin reading from
  * @param stride Element stride. 1 for contiguous, n to read every nth element
@@ -270,13 +278,14 @@ sb_size smfile_pwrite (
  * @return The number of elements read, or < 0 on error
  */
 sb_size smfile_pread (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
-    void *dest,
-    t_size size,
-    sb_size bofst,
-    sb_size stride,
-    b_size nelem);
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 /**
  * @brief [Power] Remove elements from a named variable within a smart file,
@@ -294,13 +303,14 @@ sb_size smfile_pread (
  * @return The number of elements removed, or < 0 on error
  */
 sb_size smfile_premove (
-    smfile_t *smf,
+    smfile_t   *smf,
     const char *name,
-    void *dest,
-    t_size size,
-    sb_size bofst,
-    sb_size stride,
-    b_size nelem);
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 // =============================================================================
 // Transactions
@@ -313,21 +323,24 @@ sb_size smfile_premove (
 // =============================================================================
 
 /**
- * @brief Begin a transaction. If smf is already apart of a transaction, this method errors.
+ * @brief Begin a transaction. If smf is already apart of a transaction, this
+ * method errors.
  *
  * @return < 0 on error, 0 on success
  */
 int smfile_begin (smfile_t *smf);
 
 /**
- * @brief Commit a transaction. If smf is not part of a transaction, this method errors
+ * @brief Commit a transaction. If smf is not part of a transaction, this method
+ * errors
  *
  * @return < 0 on error, 0 on success
  */
 int smfile_commit (smfile_t *smf);
 
 /**
- * @brief Rollback a transaction. If smf is not part of a transaction, this method errors
+ * @brief Rollback a transaction. If smf is not part of a transaction, this
+ * method errors
  *
  * @return < 0 on error, 0 on success
  */

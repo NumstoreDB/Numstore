@@ -24,7 +24,11 @@
 static void
 dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e)
 {
-  fprintf (stderr, "============================= %" PRpgno "\n", page_h_pgno (cur));
+  fprintf (
+      stderr,
+      "============================= %" PRpgno "\n",
+      page_h_pgno (cur)
+  );
   fprintf (stderr, "DATA_LIST\n");
   fprintf (stderr, "next: %" PRpgno "\n", dl_get_next (page_h_ro (cur)));
   fprintf (stderr, "prev: %" PRpgno "\n", dl_get_prev (page_h_ro (cur)));

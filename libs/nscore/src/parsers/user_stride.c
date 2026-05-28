@@ -20,7 +20,10 @@
 static err_t
 parse_step (struct parser *base, struct user_stride *s, error *e)
 {
-  if (!parser_match (base, TT_COLON)) { return SUCCESS; }
+  if (!parser_match (base, TT_COLON))
+  {
+    return SUCCESS;
+  }
 
   s->present |= COLON_PRESENT;
   parser_advance (base);
@@ -88,5 +91,10 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
     return SUCCESS;
   }
 
-  return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->pos);
+  return error_causef (
+      e,
+      ERR_SYNTAX,
+      "Expected number or ':' at position %u",
+      parser->pos
+  );
 }

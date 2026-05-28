@@ -22,13 +22,21 @@ DEFINE_DBG_ASSERT (struct dbl_buffer, dbl_buffer, d, {
 })
 
 err_t
-dblb_create (struct dbl_buffer *dest, const u32 size, const u32 initial_cap, error *e)
+dblb_create (
+    struct dbl_buffer *dest,
+    const u32          size,
+    const u32          initial_cap,
+    error             *e
+)
 {
   ASSERT (initial_cap > 0);
   ASSERT (size > 0);
 
   void *data = i_malloc (initial_cap, size, e);
-  if (data == NULL) { return error_trace (e); }
+  if (data == NULL)
+  {
+    return error_trace (e);
+  }
 
   *dest = (struct dbl_buffer){
       .size      = size,
@@ -48,7 +56,10 @@ dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
   DBG_ASSERT (dbl_buffer, d);
 
   void *head = dblb_append_alloc (d, nelem, e);
-  if (head == NULL) { return error_trace (e); }
+  if (head == NULL)
+  {
+    return error_trace (e);
+  }
 
   memcpy (head, data, d->size * nelem);
 
@@ -60,8 +71,12 @@ dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e)
 {
   if (nelem >= d->nelem_cap)
   {
-    void *newdata = i_realloc_right (d->data, d->nelem_cap, 2 * nelem, d->size, e);
-    if (newdata == NULL) { return error_trace (e); }
+    void *newdata =
+        i_realloc_right (d->data, d->nelem_cap, 2 * nelem, d->size, e);
+    if (newdata == NULL)
+    {
+      return error_trace (e);
+    }
     d->data      = newdata;
     d->nelem_cap = 2 * nelem;
   }
@@ -75,7 +90,10 @@ dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e)
 
   const u32 newnelem_cap = d->nelem + nelem;
 
-  if (dblb_ensure_space (d, newnelem_cap, e)) { return NULL; }
+  if (dblb_ensure_space (d, newnelem_cap, e))
+  {
+    return NULL;
+  }
 
   void *ret = (u8 *)d->data + d->nelem * d->size;
   d->nelem += nelem;
@@ -339,14 +357,20 @@ TEST (dblb_large_append)
 
   // Append many elements at once
   u32 vals[100];
-  for (u32 i = 0; i < 100; i++) { vals[i] = i; }
+  for (u32 i = 0; i < 100; i++)
+  {
+    vals[i] = i;
+  }
 
   dblb_append (&db, vals, 100, &e);
   test_assert_int_equal (db.nelem, 100);
 
   // Verify data
   const u32 *data = (u32 *)db.data;
-  for (u32 i = 0; i < 100; i++) { test_assert_int_equal (data[i], i); }
+  for (u32 i = 0; i < 100; i++)
+  {
+    test_assert_int_equal (data[i], i);
+  }
 
   dblb_free (&db);
 }

@@ -60,7 +60,10 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 
       // Otherwise, we'll scan for an open spot
       clock = pgr_reserve_and_ctrl_lock (p, e);
-      if (clock < 0) { return error_trace (e); }
+      if (clock < 0)
+      {
+        return error_trace (e);
+      }
 
       pgr = &p->pages[clock];
 
@@ -144,7 +147,11 @@ TEST (pgr_get_invalid_checksum)
   fpgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &pf.e);
 
   // This one will fail
-  test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e), ERR_CORRUPT, &pf.e);
+  test_err_t_check (
+      pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e),
+      ERR_CORRUPT,
+      &pf.e
+  );
 
   pgr_fixture_teardown (&pf);
 }

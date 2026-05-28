@@ -72,7 +72,10 @@ static struct in_pair_slab *
 slab_at (struct in_pair_slab *head, const u32 slab_idx)
 {
   struct in_pair_slab *cur = head;
-  for (u32 i = 0; i < slab_idx && cur != NULL; ++i) { cur = cur->next; }
+  for (u32 i = 0; i < slab_idx && cur != NULL; ++i)
+  {
+    cur = cur->next;
+  }
   return cur;
 }
 
@@ -97,7 +100,12 @@ nupd_get_left (struct node_updates *s, const u32 idx)
 }
 
 static struct in_pair *
-nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error *e)
+nupd_push_right (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         size,
+    error               *e
+)
 {
   const u32 slab_idx  = s->rlen / NUPD_LENGTH;
   const u32 local_idx = s->rlen % NUPD_LENGTH;
@@ -108,7 +116,10 @@ nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error
     if (slab->next == NULL)
     {
       slab->next = i_malloc (1, sizeof *slab->next, e);
-      if (slab->next == NULL) { return NULL; }
+      if (slab->next == NULL)
+      {
+        return NULL;
+      }
       memset (slab->next, 0, sizeof *slab->next);
     }
     slab = slab->next;
@@ -120,7 +131,12 @@ nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error
 }
 
 static struct in_pair *
-nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error *e)
+nupd_push_left (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         size,
+    error               *e
+)
 {
   const u32 slab_idx  = s->llen / NUPD_LENGTH;
   const u32 local_idx = s->llen % NUPD_LENGTH;
@@ -131,7 +147,10 @@ nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error 
     if (slab->next == NULL)
     {
       slab->next = i_malloc (1, sizeof *slab->next, e);
-      if (slab->next == NULL) { return NULL; }
+      if (slab->next == NULL)
+      {
+        return NULL;
+      }
       memset (slab->next, 0, sizeof *slab->next);
     }
     slab = slab->next;
@@ -159,7 +178,10 @@ struct node_updates *
 nupd_init (const pgno pg, const b_size size, error *e)
 {
   struct node_updates *ret = i_calloc (1, sizeof *ret, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   nupd_reset (ret, pg, size);
 
@@ -184,7 +206,10 @@ nupd_reset (struct node_updates *ret, const pgno pg, const b_size size)
 void
 nupd_free (struct node_updates *n)
 {
-  if (n == NULL) { return; }
+  if (n == NULL)
+  {
+    return;
+  }
   slab_free_chain (&n->right);
   slab_free_chain (&n->left);
   i_free (n);
@@ -192,7 +217,9 @@ nupd_free (struct node_updates *n)
 
 pgno
 nupd_pivot_pg (const struct node_updates *n)
-{ return n->pivot.pg; }
+{
+  return n->pivot.pg;
+}
 
 #ifndef NTEST
 TEST (nupd_init)
@@ -239,7 +266,12 @@ TEST (nupd_init)
 #endif
 
 static struct in_pair *
-nupd_append_right (struct node_updates *s, const pgno pg, const b_size size, error *e)
+nupd_append_right (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         size,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs == 0);
@@ -331,12 +363,18 @@ TEST (nupd_append_right)
   {
     struct node_updates *n = nupd_init (100, 512, &e);
 
-    for (u32 i = 0; i < NUPD_LENGTH + 5; ++i) { nupd_append_right (n, 200 + i, 1000 + i, &e); }
+    for (u32 i = 0; i < NUPD_LENGTH + 5; ++i)
+    {
+      nupd_append_right (n, 200 + i, 1000 + i, &e);
+    }
 
     test_assert_equal (n->rlen, NUPD_LENGTH + 5);
     test_assert_equal (nupd_get_right (n, 0)->pg, 200);
     test_assert_equal (nupd_get_right (n, NUPD_LENGTH)->pg, 200 + NUPD_LENGTH);
-    test_assert_equal (nupd_get_right (n, NUPD_LENGTH + 4)->pg, 200 + NUPD_LENGTH + 4);
+    test_assert_equal (
+        nupd_get_right (n, NUPD_LENGTH + 4)->pg,
+        200 + NUPD_LENGTH + 4
+    );
 
     nupd_free (n);
   }
@@ -344,7 +382,12 @@ TEST (nupd_append_right)
 #endif
 
 static struct in_pair *
-nupd_append_left (struct node_updates *s, const pgno pg, const b_size size, error *e)
+nupd_append_left (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         size,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs == 0);
@@ -434,7 +477,10 @@ TEST (nupd_append_left)
   {
     struct node_updates *n = nupd_init (100, 512, &e);
 
-    for (u32 i = 0; i < NUPD_LENGTH + 5; ++i) { nupd_append_left (n, 50 + i, 100 + i, &e); }
+    for (u32 i = 0; i < NUPD_LENGTH + 5; ++i)
+    {
+      nupd_append_left (n, 50 + i, 100 + i, &e);
+    }
 
     test_assert_equal (n->llen, NUPD_LENGTH + 5);
     test_assert_equal (nupd_get_left (n, NUPD_LENGTH)->pg, 50 + NUPD_LENGTH);
@@ -445,7 +491,12 @@ TEST (nupd_append_left)
 #endif
 
 err_t
-nupd_commit_1st_right (struct node_updates *s, const pgno pg, const b_size size, error *e)
+nupd_commit_1st_right (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         size,
+    error               *e
+)
 {
   if (s->prev != NULL)
   {
@@ -455,13 +506,21 @@ nupd_commit_1st_right (struct node_updates *s, const pgno pg, const b_size size,
   }
   else
   {
-    if (nupd_append_right (s, pg, size, e) == NULL) { return error_trace (e); }
+    if (nupd_append_right (s, pg, size, e) == NULL)
+    {
+      return error_trace (e);
+    }
   }
   return SUCCESS;
 }
 
 err_t
-nupd_commit_1st_left (struct node_updates *s, const pgno pg, const b_size size, error *e)
+nupd_commit_1st_left (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         size,
+    error               *e
+)
 {
   if (s->prev != NULL)
   {
@@ -471,7 +530,10 @@ nupd_commit_1st_left (struct node_updates *s, const pgno pg, const b_size size, 
   }
   else
   {
-    if (nupd_append_left (s, pg, size, e) == NULL) { return error_trace (e); }
+    if (nupd_append_left (s, pg, size, e) == NULL)
+    {
+      return error_trace (e);
+    }
   }
   return SUCCESS;
 }
@@ -486,13 +548,22 @@ nupd_append_2nd_right (
     error               *e
 )
 {
-  if (s->prev != NULL) { ASSERT (s->prev->pg == pg1); }
+  if (s->prev != NULL)
+  {
+    ASSERT (s->prev->pg == pg1);
+  }
   else
   {
     s->prev = nupd_append_right (s, pg1, size1, e);
-    if (s->prev == NULL) { return error_trace (e); }
+    if (s->prev == NULL)
+    {
+      return error_trace (e);
+    }
   }
-  if (nupd_append_right (s, pg2, size2, e) == NULL) { return error_trace (e); }
+  if (nupd_append_right (s, pg2, size2, e) == NULL)
+  {
+    return error_trace (e);
+  }
   return SUCCESS;
 }
 
@@ -506,21 +577,37 @@ nupd_append_2nd_left (
     error               *e
 )
 {
-  if (s->prev != NULL) { ASSERT (s->prev->pg == pg1); }
+  if (s->prev != NULL)
+  {
+    ASSERT (s->prev->pg == pg1);
+  }
   else
   {
     s->prev = nupd_append_left (s, pg1, size1, e);
-    if (s->prev == NULL) { return error_trace (e); }
+    if (s->prev == NULL)
+    {
+      return error_trace (e);
+    }
   }
-  if (nupd_append_left (s, pg2, size2, e) == NULL) { return error_trace (e); }
+  if (nupd_append_left (s, pg2, size2, e) == NULL)
+  {
+    return error_trace (e);
+  }
   return SUCCESS;
 }
 
 err_t
-nupd_append_tip_right (struct node_updates *s, const struct three_in_pair output, error *e)
+nupd_append_tip_right (
+    struct node_updates       *s,
+    const struct three_in_pair output,
+    error                     *e
+)
 {
   const err_t rc = nupd_commit_1st_right (s, output.cur.pg, output.cur.key, e);
-  if (rc != SUCCESS) { return rc; }
+  if (rc != SUCCESS)
+  {
+    return rc;
+  }
 
   if (!in_pair_is_empty (output.prev))
   {
@@ -710,10 +797,17 @@ TEST (nupd_append_tip_right)
 #endif
 
 err_t
-nupd_append_tip_left (struct node_updates *s, const struct three_in_pair output, error *e)
+nupd_append_tip_left (
+    struct node_updates       *s,
+    const struct three_in_pair output,
+    error                     *e
+)
 {
   const err_t rc = nupd_commit_1st_left (s, output.cur.pg, output.cur.key, e);
-  if (rc != SUCCESS) { return rc; }
+  if (rc != SUCCESS)
+  {
+    return rc;
+  }
 
   if (!in_pair_is_empty (output.next))
   {
@@ -884,47 +978,80 @@ TEST (nupd_append_tip_left)
 #endif
 
 static err_t
-nupd_observe_right (struct node_updates *s, const pgno pg, const b_size key, error *e)
+nupd_observe_right (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         key,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
 
-  if (s->robs == 0 && s->pivot.pg == pg) { return SUCCESS; }
+  if (s->robs == 0 && s->pivot.pg == pg)
+  {
+    return SUCCESS;
+  }
 
   while (s->robs < s->rlen)
   {
-    if (nupd_get_right (s, s->robs)->pg == pg) { return SUCCESS; }
+    if (nupd_get_right (s, s->robs)->pg == pg)
+    {
+      return SUCCESS;
+    }
     s->robs++;
   }
 
   // Need to add new observed entry
-  if (nupd_push_right (s, pg, key, e) == NULL) { return error_trace (e); }
+  if (nupd_push_right (s, pg, key, e) == NULL)
+  {
+    return error_trace (e);
+  }
   s->robs++;
 
   return SUCCESS;
 }
 
 static err_t
-nupd_observe_left (struct node_updates *s, const pgno pg, const b_size key, error *e)
+nupd_observe_left (
+    struct node_updates *s,
+    const pgno           pg,
+    const b_size         key,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
 
-  if (s->lobs == 0 && s->pivot.pg == pg) { return SUCCESS; }
+  if (s->lobs == 0 && s->pivot.pg == pg)
+  {
+    return SUCCESS;
+  }
 
   while (s->lobs < s->llen)
   {
-    if (nupd_get_left (s, s->lobs)->pg == pg) { return SUCCESS; }
+    if (nupd_get_left (s, s->lobs)->pg == pg)
+    {
+      return SUCCESS;
+    }
     s->lobs++;
   }
 
   // Need to add new observed entry
-  if (nupd_push_left (s, pg, key, e) == NULL) { return error_trace (e); }
+  if (nupd_push_left (s, pg, key, e) == NULL)
+  {
+    return error_trace (e);
+  }
   s->lobs++;
 
   return SUCCESS;
 }
 
 err_t
-nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx, error *e)
+nupd_observe_pivot (
+    struct node_updates *s,
+    page_h              *pg,
+    const p_size         lidx,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs == 0);
@@ -934,17 +1061,28 @@ nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx, error
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
 
   err_t rc = nupd_observe_right_from (s, pg, lidx, e);
-  if (rc != SUCCESS) { return rc; }
+  if (rc != SUCCESS)
+  {
+    return rc;
+  }
   if (lidx > 0)
   {
     rc = nupd_observe_left_from (s, pg, lidx, e);
-    if (rc != SUCCESS) { return rc; }
+    if (rc != SUCCESS)
+    {
+      return rc;
+    }
   }
   return SUCCESS;
 }
 
 err_t
-nupd_observe_right_from (struct node_updates *s, const page_h *pg, const p_size lidx, error *e)
+nupd_observe_right_from (
+    struct node_updates *s,
+    const page_h        *pg,
+    const p_size         lidx,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
   ASSERT (s->robs <= s->rlen);
@@ -962,14 +1100,22 @@ nupd_observe_right_from (struct node_updates *s, const page_h *pg, const p_size 
     const pgno   p  = in_get_leaf (page_h_ro (pg), i);
     const b_size b  = in_get_key (page_h_ro (pg), i);
     const err_t  rc = nupd_observe_right (s, p, b, e);
-    if (rc != SUCCESS) { return rc; }
+    if (rc != SUCCESS)
+    {
+      return rc;
+    }
   }
 
   return SUCCESS;
 }
 
 err_t
-nupd_observe_left_from (struct node_updates *s, const page_h *pg, const p_size lidx, error *e)
+nupd_observe_left_from (
+    struct node_updates *s,
+    const page_h        *pg,
+    const p_size         lidx,
+    error               *e
+)
 {
   DBG_ASSERT (node_updates, s);
   ASSERT (s->lobs <= s->llen);
@@ -987,7 +1133,10 @@ nupd_observe_left_from (struct node_updates *s, const page_h *pg, const p_size l
     const pgno   p  = in_get_leaf (page_h_ro (pg), i - 1);
     const b_size b  = in_get_key (page_h_ro (pg), i - 1);
     const err_t  rc = nupd_observe_left (s, p, b, e);
-    if (rc != SUCCESS) { return rc; }
+    if (rc != SUCCESS)
+    {
+      return rc;
+    }
   }
 
   return SUCCESS;
@@ -1012,7 +1161,10 @@ nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e)
     const pgno   p  = in_get_leaf (page_h_ro (pg), i);
     const b_size b  = in_get_key (page_h_ro (pg), i);
     const err_t  rc = nupd_observe_right (s, p, b, e);
-    if (rc != SUCCESS) { return rc; }
+    if (rc != SUCCESS)
+    {
+      return rc;
+    }
   }
 
   return SUCCESS;
@@ -1037,7 +1189,10 @@ nupd_observe_all_left (struct node_updates *s, const page_h *pg, error *e)
     const pgno   p  = in_get_leaf (page_h_ro (pg), i - 1);
     const b_size b  = in_get_key (page_h_ro (pg), i - 1);
     const err_t  rc = nupd_observe_left (s, p, b, e);
-    if (rc != SUCCESS) { return rc; }
+    if (rc != SUCCESS)
+    {
+      return rc;
+    }
   }
 
   return SUCCESS;
@@ -1099,7 +1254,10 @@ TEST (nupd_consume_right)
   {
     struct node_updates *n = nupd_init (100, 512, &e);
 
-    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i) { nupd_append_right (n, 200 + i, 1000 + i, &e); }
+    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i)
+    {
+      nupd_append_right (n, 200 + i, 1000 + i, &e);
+    }
     n->robs = NUPD_LENGTH + 2;
 
     for (u32 i = 0; i < NUPD_LENGTH + 2; ++i)
@@ -1169,7 +1327,10 @@ TEST (nupd_consume_left)
   {
     struct node_updates *n = nupd_init (100, 512, &e);
 
-    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i) { nupd_append_left (n, 50 + i, 100 + i, &e); }
+    for (u32 i = 0; i < NUPD_LENGTH + 2; ++i)
+    {
+      nupd_append_left (n, 50 + i, 100 + i, &e);
+    }
     n->lobs = NUPD_LENGTH + 2;
 
     for (u32 i = 0; i < NUPD_LENGTH + 2; ++i)
@@ -1186,7 +1347,9 @@ TEST (nupd_consume_left)
 
 bool
 nupd_done_observing_left (const struct node_updates *s)
-{ return s->lobs >= s->llen; }
+{
+  return s->lobs >= s->llen;
+}
 
 #ifndef NTEST
 TEST (nupd_done_observing_left)
@@ -1239,7 +1402,9 @@ TEST (nupd_done_observing_left)
 
 bool
 nupd_done_observing_right (const struct node_updates *s)
-{ return s->robs >= s->rlen; }
+{
+  return s->robs >= s->rlen;
+}
 
 #ifndef NTEST
 TEST (nupd_done_observing_right)
@@ -1280,7 +1445,9 @@ TEST (nupd_done_observing_right)
 
 bool
 nupd_done_consuming_left (const struct node_updates *s)
-{ return s->lcons == s->lobs; }
+{
+  return s->lcons == s->lobs;
+}
 
 #ifndef NTEST
 TEST (nupd_done_consuming_left)
@@ -1322,7 +1489,9 @@ TEST (nupd_done_consuming_left)
 
 bool
 nupd_done_consuming_right (const struct node_updates *s)
-{ return s->rcons == s->robs; }
+{
+  return s->rcons == s->robs;
+}
 
 #ifndef NTEST
 TEST (nupd_done_consuming_right)
@@ -1364,7 +1533,9 @@ TEST (nupd_done_consuming_right)
 
 bool
 nupd_done_left (struct node_updates *s)
-{ return nupd_done_observing_left (s) && nupd_done_consuming_left (s); }
+{
+  return nupd_done_observing_left (s) && nupd_done_consuming_left (s);
+}
 
 #ifndef NTEST
 TEST (nupd_done_left)
@@ -1416,7 +1587,9 @@ TEST (nupd_done_left)
 
 bool
 nupd_done_right (struct node_updates *s)
-{ return nupd_done_observing_right (s) && nupd_done_consuming_right (s); }
+{
+  return nupd_done_observing_right (s) && nupd_done_consuming_right (s);
+}
 
 #ifndef NTEST
 TEST (nupd_done_right)
@@ -1467,7 +1640,11 @@ TEST (nupd_done_right)
 #endif
 
 p_size
-nupd_append_maximally_left (struct node_updates *n, const page_h *pg, const p_size lidx)
+nupd_append_maximally_left (
+    struct node_updates *n,
+    const page_h        *pg,
+    const p_size         lidx
+)
 {
   DBG_ASSERT (node_updates, n);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
@@ -1491,7 +1668,11 @@ nupd_append_maximally_left (struct node_updates *n, const page_h *pg, const p_si
 }
 
 p_size
-nupd_append_maximally_right (struct node_updates *n, const page_h *pg, const p_size lidx)
+nupd_append_maximally_right (
+    struct node_updates *n,
+    const page_h        *pg,
+    const p_size         lidx
+)
 {
   DBG_ASSERT (node_updates, n);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
@@ -1526,7 +1707,12 @@ nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg)
   p_size len = 0;
   if (n->pivot.key > 0)
   {
-    in_set_key_leaf (page_h_w (pg), IN_MAX_KEYS - (++len), n->pivot.key, n->pivot.pg);
+    in_set_key_leaf (
+        page_h_w (pg),
+        IN_MAX_KEYS - (++len),
+        n->pivot.key,
+        n->pivot.pg
+    );
   }
 
   // Apply left
@@ -1562,7 +1748,10 @@ nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg)
   // ^
   // len = 1
   p_size len = 0;
-  if (n->pivot.key > 0) { in_set_key_leaf (page_h_w (pg), len++, n->pivot.key, n->pivot.pg); }
+  if (n->pivot.key > 0)
+  {
+    in_set_key_leaf (page_h_w (pg), len++, n->pivot.key, n->pivot.pg);
+  }
 
   // Apply right
   // [++++++++++++++------]

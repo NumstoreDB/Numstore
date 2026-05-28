@@ -59,10 +59,15 @@ struct hnode **htable_random (struct htable *t);
 // Simple getters
 HEADER_FUNC u32
 htable_size (const struct htable *t)
-{ return t->size; }
+{
+  return t->size;
+}
 
 // Iterator
-void
-htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx);
+void htable_foreach (
+    const struct htable *t,
+    void (*action) (struct hnode *v, void *ctx),
+    void *ctx
+);
 
 #endif // C_SPECX_HASH_TABLE_H

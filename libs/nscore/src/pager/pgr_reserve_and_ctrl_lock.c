@@ -31,9 +31,9 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
 
-  struct page_frame *mp             = NULL; // The working page frame
-  u32                clock          = pgr_spin_clock (p);
-  bool               ready_to_evict = false; // First round - don't evict any pages
+  struct page_frame *mp    = NULL; // The working page frame
+  u32                clock = pgr_spin_clock (p);
+  bool ready_to_evict      = false; // First round - don't evict any pages
 
   /**
    * Loop forever - this is highly concurrent
@@ -49,7 +49,10 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
     }
 
     // Found an empty spot
-    if (!(mp->flags & PW_PRESENT)) { goto found_spot; }
+    if (!(mp->flags & PW_PRESENT))
+    {
+      goto found_spot;
+    }
 
     // Pinned, skip it
     if (mp->pin > 0)
@@ -70,7 +73,10 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
     if (ready_to_evict)
     {
       // Found a spot - but it's not being used - safe to evict it
-      if (pgr_evict_unsafe (p, mp, e) < 0) { return error_trace (e); }
+      if (pgr_evict_unsafe (p, mp, e) < 0)
+      {
+        return error_trace (e);
+      }
 
       goto found_spot;
     }

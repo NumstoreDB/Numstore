@@ -19,62 +19,96 @@
 
 #include <c_specx.h>
 
-// smfile
-
 int
 nsdb_perror (nsdb_t *ns, const char *prefix)
-{ return nsh_perror ((struct nshandle *)ns, prefix); }
+{
+  return nsh_perror ((struct nshandle *)ns, prefix);
+}
+
 const char *
 nsdb_strerror (nsdb_t *ns)
-{ return nsh_strerror ((struct nshandle *)ns); }
+{
+  return nsh_strerror ((struct nshandle *)ns);
+}
+
 int
 nsdb_cleanup (const char *path)
-{ return nsh_cleanup (path); }
+{
+  return nsh_cleanup (path);
+}
+
 nsdb_t *
 nsdb_new_context (nsdb_t *n)
-{ return (nsdb_t *)nsh_new_context ((struct nshandle *)n); }
+{
+  return (nsdb_t *)nsh_new_context ((struct nshandle *)n);
+}
+
 int
 nsdb_close (nsdb_t *ns)
-{ return nsh_close ((struct nshandle *)ns); }
+{
+  return nsh_close ((struct nshandle *)ns);
+}
+
 int
 _nsdb_crash (nsdb_t *ns)
-{ return nsh_crash ((struct nshandle *)ns); }
+{
+  return nsh_crash ((struct nshandle *)ns);
+}
+
 int
 nsdb_begin (nsdb_t *_smf)
 {
   int ret = nsh_begin ((struct nshandle *)_smf);
-  if (ret == 0) { i_log_debug ("BEGIN TXN: %" PRtxid "\n", ((struct nshandle *)_smf)->atx->tid); }
+  if (ret == 0)
+  {
+    i_log_debug (
+        "BEGIN TXN: %" PRtxid "\n",
+        ((struct nshandle *)_smf)->atx->tid
+    );
+  }
   return ret;
 }
+
 int
 nsdb_commit (nsdb_t *_smf)
 {
   i_log_debug ("COMMIT: %" PRtxid "\n", ((struct nshandle *)_smf)->atx->tid);
   return nsh_commit ((struct nshandle *)_smf);
 }
+
 int
 nsdb_rollback (nsdb_t *smf)
 {
   i_log_debug ("ROLLBACK: %" PRtxid "\n", ((struct nshandle *)smf)->atx->tid);
   return nsh_rollback ((struct nshandle *)smf);
 }
+
 void
 nsdb_free (nsdb_var_t *var)
 {
   chunk_alloc_free_all (&var->alloc);
   i_free (var);
 }
+
 sb_size
-nsdb_vinsert (nsdb_t *ns, const char *name, const void *src, sb_size ofst, b_size slen)
+nsdb_vinsert (
+    nsdb_t     *ns,
+    const char *name,
+    const void *src,
+    sb_size     ofst,
+    b_size      slen
+)
 {
   nsdb_var_t *var = nsdb_get (ns, name);
   sb_size     ret = nsdb_insert (ns, var, src, ofst, slen);
   nsdb_free (var);
   return ret;
 }
+
 sb_size
 nsdb_vwrite (
-    nsdb_t     *ns,
+    nsdb_t *ns,
+
     const char *name,
     const void *src,
     sb_size     start,
@@ -88,6 +122,7 @@ nsdb_vwrite (
   nsdb_free (var);
   return ret;
 }
+
 sb_size
 nsdb_vread (
     nsdb_t     *ns,
@@ -104,6 +139,7 @@ nsdb_vread (
   nsdb_free (var);
   return ret;
 }
+
 sb_size
 nsdb_vremove (
     nsdb_t     *ns,

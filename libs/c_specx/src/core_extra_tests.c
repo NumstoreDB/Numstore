@@ -57,7 +57,12 @@ TEST (f16_to_f32_normals_and_specials)
       float result = f16_to_f32 (f16_f32_cases[i].h16);
       u32   bits;
       memcpy (&bits, &result, sizeof bits);
-      test_assert_type_equal (bits, f16_f32_cases[i].expected_f32_bits, u32, PRIu32);
+      test_assert_type_equal (
+          bits,
+          f16_f32_cases[i].expected_f32_bits,
+          u32,
+          PRIu32
+      );
     }
   }
 }
@@ -110,12 +115,21 @@ TEST (parse_i32_boundary_values)
   {
     TEST_CASE ("%s", parse_i32_cases[i].name)
     {
-      const err_t ret =
-          parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
+      const err_t ret = parse_i32_expect (
+          &out,
+          parse_i32_cases[i].input,
+          parse_i32_cases[i].ilen,
+          &e
+      );
       test_assert_int_equal (ret, parse_i32_cases[i].expected_ret);
       if (ret == SUCCESS)
       {
-        test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
+        test_assert_type_equal (
+            out,
+            parse_i32_cases[i].expected_val,
+            i32,
+            PRId32
+        );
       }
       else
       {
@@ -155,12 +169,21 @@ TEST (parse_i64_boundary_values)
   {
     TEST_CASE ("%s", parse_i64_cases[i].name)
     {
-      const err_t ret =
-          parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
+      const err_t ret = parse_i64_expect (
+          &out,
+          parse_i64_cases[i].input,
+          parse_i64_cases[i].ilen,
+          &e
+      );
       test_assert_int_equal (ret, parse_i64_cases[i].expected_ret);
       if (ret == SUCCESS)
       {
-        test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
+        test_assert_type_equal (
+            out,
+            parse_i64_cases[i].expected_val,
+            i64,
+            PRId64
+        );
       }
       else
       {
@@ -213,8 +236,13 @@ TEST (ext_array_remove_all_produces_empty)
   test_assert_int_equal (e.cause_code, SUCCESS);
 
   u8        out[5] = {0};
-  const i64 n =
-      ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out, &e);
+  const i64 n      = ext_array_remove (
+      &a,
+      (struct stride){.start = 0, .stride = 1, .nelems = 5},
+      1,
+      out,
+      &e
+  );
 
   test_assert_type_equal (n, (i64)5, i64, PRId64);
   test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);
@@ -535,13 +563,23 @@ TEST (line_length_newline_found)
   TEST_CASE ("newline at position 0")
   {
     const char buf[] = "\nhello";
-    test_assert_type_equal (line_length (buf, sizeof (buf) - 1), (u64)0, u64, PRIu64);
+    test_assert_type_equal (
+        line_length (buf, sizeof (buf) - 1),
+        (u64)0,
+        u64,
+        PRIu64
+    );
   }
 
   TEST_CASE ("newline in the middle")
   {
     const char buf[] = "hello\nworld";
-    test_assert_type_equal (line_length (buf, sizeof (buf) - 1), (u64)5, u64, PRIu64);
+    test_assert_type_equal (
+        line_length (buf, sizeof (buf) - 1),
+        (u64)5,
+        u64,
+        PRIu64
+    );
   }
 
   TEST_CASE ("newline at the last allowed position")
@@ -618,7 +656,9 @@ TEST (string_equal_cases)
 TEST (strings_are_disjoint_cases)
 {
   TEST_CASE ("both arrays empty: disjoint (returns NULL)")
-  { test_assert (strings_are_disjoint (NULL, 0, NULL, 0) == NULL); }
+  {
+    test_assert (strings_are_disjoint (NULL, 0, NULL, 0) == NULL);
+  }
 
   TEST_CASE ("left empty: disjoint")
   {
@@ -638,10 +678,13 @@ TEST (strings_are_disjoint_cases)
 
   TEST_CASE ("shared element: returns pointer into left")
   {
-    char                 da[]    = "foo";
-    char                 db[]    = "baz";
-    char                 dc[]    = "foo"; // duplicate of da
-    const struct string  left[]  = {{.len = 3, .data = da}, {.len = 3, .data = db}};
+    char                da[]   = "foo";
+    char                db[]   = "baz";
+    char                dc[]   = "foo"; // duplicate of da
+    const struct string left[] = {
+        {.len = 3, .data = da},
+        {.len = 3, .data = db}
+    };
     const struct string  right[] = {{.len = 3, .data = dc}};
     const struct string *hit     = strings_are_disjoint (left, 2, right, 1);
     test_assert (hit != NULL);
@@ -650,14 +693,19 @@ TEST (strings_are_disjoint_cases)
 
   TEST_CASE ("shared element found in second left position")
   {
-    char                 da[]    = "alpha";
-    char                 db[]    = "beta";
-    char                 dc[]    = "beta";
-    const struct string  left[]  = {{.len = 5, .data = da}, {.len = 4, .data = db}};
+    char                da[]   = "alpha";
+    char                db[]   = "beta";
+    char                dc[]   = "beta";
+    const struct string left[] = {
+        {.len = 5, .data = da},
+        {.len = 4, .data = db}
+    };
     const struct string  right[] = {{.len = 4, .data = dc}};
     const struct string *hit     = strings_are_disjoint (left, 2, right, 1);
     test_assert (hit != NULL);
-    test_assert (string_equal (*hit, (struct string){.len = 4, .data = "beta"}));
+    test_assert (
+        string_equal (*hit, (struct string){.len = 4, .data = "beta"})
+    );
   }
 
   TEST_CASE ("multiple right candidates, none match: returns NULL")
@@ -666,7 +714,10 @@ TEST (strings_are_disjoint_cases)
     char                db[]    = "y";
     char                dc[]    = "z";
     const struct string left[]  = {{.len = 1, .data = da}};
-    const struct string right[] = {{.len = 1, .data = db}, {.len = 1, .data = dc}};
+    const struct string right[] = {
+        {.len = 1, .data = db},
+        {.len = 1, .data = dc}
+    };
     test_assert (strings_are_disjoint (left, 1, right, 2) == NULL);
   }
 }

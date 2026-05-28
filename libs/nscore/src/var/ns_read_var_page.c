@@ -42,7 +42,10 @@ ns_read_var_page_advance (struct ns_read_var_page_params *params, error *e)
 
   WRAP (pgr_get_writable (&next, params->tx, PG_VAR_TAIL, npg, params->p, e));
 
-  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e))) { goto failed; }
+  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
+  {
+    goto failed;
+  }
 
   page_h_xfer_ownership_ptr (params->vp, &next);
 
@@ -93,18 +96,27 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   if (params->save_vname)
   {
     vstr = chunk_malloc (params->alloc, 1, vlen, e);
-    if (vstr == NULL) { goto failed; }
+    if (vstr == NULL)
+    {
+      goto failed;
+    }
   }
   else
   {
     vstr = chunk_malloc (&temp, 1, vlen, e);
-    if (vstr == NULL) { goto failed; }
+    if (vstr == NULL)
+    {
+      goto failed;
+    }
   }
 
   if (params->save_type)
   {
     tstr = chunk_malloc (&temp, 1, tlen, e);
-    if (tstr == NULL) { goto failed; }
+    if (tstr == NULL)
+    {
+      goto failed;
+    }
   }
   else
   {
@@ -119,7 +131,10 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
     // We exhausted this page - move forward one
     if (lread == head.len)
     {
-      if (ns_read_var_page_advance (params, e)) { goto failed; }
+      if (ns_read_var_page_advance (params, e))
+      {
+        goto failed;
+      }
 
       lread = 0;
       head  = dlgt_get_bytes_imut (page_h_ro (params->vp));
@@ -155,7 +170,10 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
       if (lread == head.len)
       {
         // Advance forward one node and reset local and head
-        if (ns_read_var_page_advance (params, e)) { goto failed; }
+        if (ns_read_var_page_advance (params, e))
+        {
+          goto failed;
+        }
         lread = 0;
         head  = dlgt_get_bytes_imut (page_h_ro (params->vp));
       }
@@ -192,11 +210,17 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   {
     struct deserializer d     = dsrlizr_create (tstr, tlen);
     struct type        *dtype = type_deserialize (&d, params->alloc, e);
-    if (dtype == NULL) { goto failed; }
+    if (dtype == NULL)
+    {
+      goto failed;
+    }
     params->dest->dtype = dtype;
   }
 
-  if (params->save_vname) { params->dest->vname = (struct string){.data = NULL, .len = 0}; }
+  if (params->save_vname)
+  {
+    params->dest->vname = (struct string){.data = NULL, .len = 0};
+  }
 
   params->matches = true;
 
@@ -204,7 +228,10 @@ theend:
   // Reset back to head page
   if (page_h_pgno (params->vp) != start)
   {
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) { goto failed; }
+    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e)))
+    {
+      goto failed;
+    }
     if ((pgr_get_maybe_writable (
             params->vp,
             params->tx,

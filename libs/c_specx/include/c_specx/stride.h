@@ -46,12 +46,23 @@ struct user_stride
 #define START_PRESENT (1 << 2)
 #define COLON_PRESENT (1 << 3)
 
-#define USER_STRIDE_ALL \
-  ((struct user_stride){.start = 0, .step = 1, .stop = 0, .present = STEP_PRESENT | START_PRESENT})
+#define USER_STRIDE_ALL                       \
+  ((struct user_stride){                      \
+      .start   = 0,                           \
+      .step    = 1,                           \
+      .stop    = 0,                           \
+      .present = STEP_PRESENT | START_PRESENT \
+  })
 
-bool  ustride_equal (struct user_stride left, struct user_stride right);
-void  stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
-err_t stride_resolve (struct stride *dest, struct user_stride src, u64 arrlen, error *e);
+bool ustride_equal (struct user_stride left, struct user_stride right);
+void
+stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
+err_t stride_resolve (
+    struct stride     *dest,
+    struct user_stride src,
+    u64                arrlen,
+    error             *e
+);
 
 ////////////////////////////////////////////////////////////
 /// Small Constructors
@@ -133,7 +144,13 @@ ustride (void)
 
 HEADER_FUNC struct user_stride
 usfrms (const struct stride str)
-{ return ustride012 (str.start, str.stride, str.start + str.stride * str.nelems); }
+{
+  return ustride012 (
+      str.start,
+      str.stride,
+      str.start + str.stride * str.nelems
+  );
+}
 
 struct multi_user_stride
 {
@@ -154,10 +171,18 @@ struct mus_builder
   struct chunk_alloc *persistent;
 };
 
-void
-musb_create (struct mus_builder *dest, struct chunk_alloc *temp, struct chunk_alloc *persistent);
+void musb_create (
+    struct mus_builder *dest,
+    struct chunk_alloc *temp,
+    struct chunk_alloc *persistent
+);
 
-err_t musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
-err_t musb_build (struct multi_user_stride *persistent, const struct mus_builder *eb, error *e);
+err_t
+musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
+err_t musb_build (
+    struct multi_user_stride *persistent,
+    const struct mus_builder *eb,
+    error                    *e
+);
 
 #endif // C_SPECX_STRIDE_H

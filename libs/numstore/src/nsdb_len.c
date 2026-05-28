@@ -31,7 +31,10 @@ _nsdb_len (struct nshandle *db, const char *name, error *e)
   t_size                   tsize;
 
   // BEGIN TXN
-  if (nsh_auto_begin_txn (db, e) < 0) { goto failed; }
+  if (nsh_auto_begin_txn (db, e) < 0)
+  {
+    goto failed;
+  }
 
   i_log_debug ("LEN (txn = %" PRtxid "): %s\n", db->atx->tid, name);
 
@@ -43,7 +46,10 @@ _nsdb_len (struct nshandle *db, const char *name, error *e)
         .vname = vname,
         .alloc = &temp,
     };
-    if (ns_var_get (&gparams, e)) { goto failed_rollback; }
+    if (ns_var_get (&gparams, e))
+    {
+      goto failed_rollback;
+    }
   }
 
   // Resolve length
@@ -61,7 +67,10 @@ _nsdb_len (struct nshandle *db, const char *name, error *e)
   }
 
   // COMMIT
-  if (nsh_auto_commit (db, e) < 0) { goto failed_rollback; }
+  if (nsh_auto_commit (db, e) < 0)
+  {
+    goto failed_rollback;
+  }
 
   chunk_alloc_free_all (&temp);
 

@@ -41,14 +41,23 @@ parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e)
 
     const i64 digit = c - '0';
 
-    if (!safe_mul_i64 (&acc, acc, 10L)) { goto failed; }
+    if (!safe_mul_i64 (&acc, acc, 10L))
+    {
+      goto failed;
+    }
 
-    if (!safe_sub_i64 (&acc, acc, digit)) { goto failed; }
+    if (!safe_sub_i64 (&acc, acc, digit))
+    {
+      goto failed;
+    }
   }
 
   if (!neg)
   {
-    if (acc == I64_MIN) { goto failed; }
+    if (acc == I64_MIN)
+    {
+      goto failed;
+    }
     acc = -acc;
   }
 
@@ -85,14 +94,23 @@ parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e)
 
     const i32 digit = c - '0';
 
-    if (!safe_mul_i32 (&acc, acc, 10)) { goto failed; }
+    if (!safe_mul_i32 (&acc, acc, 10))
+    {
+      goto failed;
+    }
 
-    if (!safe_sub_i32 (&acc, acc, digit)) { goto failed; }
+    if (!safe_sub_i32 (&acc, acc, digit))
+    {
+      goto failed;
+    }
   }
 
   if (!neg)
   {
-    if (acc == I32_MIN) { goto failed; }
+    if (acc == I32_MIN)
+    {
+      goto failed;
+    }
     acc = -acc;
   }
 
@@ -116,7 +134,10 @@ TEST (parse_i32_expect)
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &e), ERR_ARITH);
+  test_assert_int_equal (
+      parse_i32_expect (&out, big, strlen (big), &e),
+      ERR_ARITH
+  );
 }
 #endif
 
@@ -143,8 +164,14 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   while (i < len && s[i] >= '0' && s[i] <= '9')
   {
     const f32 d = (f32)(s[i] - '0');
-    if (!safe_mul_f32 (&acc, acc, 10.0f)) { goto failed; }
-    if (!safe_add_f32 (&acc, acc, d)) { goto failed; }
+    if (!safe_mul_f32 (&acc, acc, 10.0f))
+    {
+      goto failed;
+    }
+    if (!safe_add_f32 (&acc, acc, d))
+    {
+      goto failed;
+    }
     i++;
     saw_digit = true;
   }
@@ -158,15 +185,30 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
     while (i < len && s[i] >= '0' && s[i] <= '9')
     {
       const f32 d = (f32)(s[i] - '0');
-      if (!safe_mul_f32 (&frac, frac, 10.0f)) { goto failed; }
-      if (!safe_add_f32 (&frac, frac, d)) { goto failed; }
-      if (!safe_mul_f32 (&scale, scale, 10.0f)) { goto failed; }
+      if (!safe_mul_f32 (&frac, frac, 10.0f))
+      {
+        goto failed;
+      }
+      if (!safe_add_f32 (&frac, frac, d))
+      {
+        goto failed;
+      }
+      if (!safe_mul_f32 (&scale, scale, 10.0f))
+      {
+        goto failed;
+      }
       i++;
       saw_digit = true;
     }
     f32 tmp;
-    if (!safe_div_f32 (&tmp, frac, scale)) { goto failed; }
-    if (!safe_add_f32 (&acc, acc, tmp)) { goto failed; }
+    if (!safe_div_f32 (&tmp, frac, scale))
+    {
+      goto failed;
+    }
+    if (!safe_add_f32 (&acc, acc, tmp))
+    {
+      goto failed;
+    }
   }
 
   ASSERT (saw_digit);
@@ -200,18 +242,27 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
     {
       if (exp_neg)
       {
-        if (!safe_div_f32 (&acc, acc, 10.0f)) { goto failed; }
+        if (!safe_div_f32 (&acc, acc, 10.0f))
+        {
+          goto failed;
+        }
       }
       else
       {
-        if (!safe_mul_f32 (&acc, acc, 10.0f)) { goto failed; }
+        if (!safe_mul_f32 (&acc, acc, 10.0f))
+        {
+          goto failed;
+        }
       }
     }
   }
 
   ASSERT (i == len); // no extra characters
 
-  if (neg) { acc = -acc; }
+  if (neg)
+  {
+    acc = -acc;
+  }
   *dest = acc;
   return SUCCESS;
 
@@ -246,11 +297,17 @@ TEST (parse_f32_expect)
 float
 py_mod_f32 (const float num, const float denom)
 {
-  if (denom == 0.0f) { return INFINITY; }
+  if (denom == 0.0f)
+  {
+    return INFINITY;
+  }
 
   float rem = num - denom * (int)(num / denom);
 
-  if ((rem < 0.0f && denom > 0.0f) || (rem > 0.0f && denom < 0.0f)) { rem += denom; }
+  if ((rem < 0.0f && denom > 0.0f) || (rem > 0.0f && denom < 0.0f))
+  {
+    rem += denom;
+  }
 
   return rem;
 }
@@ -285,7 +342,10 @@ i32
 py_mod_i32 (const i32 num, const i32 denom)
 {
   i32 r = num % denom;
-  if ((r != 0) && ((r < 0) != (denom < 0))) { r += denom; }
+  if ((r != 0) && ((r < 0) != (denom < 0)))
+  {
+    r += denom;
+  }
   return r;
 }
 

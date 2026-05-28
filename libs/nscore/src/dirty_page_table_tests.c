@@ -55,16 +55,25 @@ TEST (dpgt_merge_into)
     struct dpg_table *dest = dpgt_open (&e);
     struct dpg_table *src  = dpgt_open (&e);
     // Add to dest (pages 1-5)
-    for (pgno pg = 1; pg <= 5; pg++) { dpgt_add (dest, pg, pg * 10, &e); }
+    for (pgno pg = 1; pg <= 5; pg++)
+    {
+      dpgt_add (dest, pg, pg * 10, &e);
+    }
 
     // Add to src (pages 6-10)
-    for (pgno pg = 6; pg <= 10; pg++) { dpgt_add (src, pg, pg * 10, &e); }
+    for (pgno pg = 6; pg <= 10; pg++)
+    {
+      dpgt_add (src, pg, pg * 10, &e);
+    }
 
     const err_t result = dpgt_merge_into (dest, src, &e);
     test_assert (result == SUCCESS);
 
     // Verify all pages exist in dest
-    for (pgno pg = 1; pg <= 10; pg++) { test_assert (dpgt_exists (dest, pg)); }
+    for (pgno pg = 1; pg <= 10; pg++)
+    {
+      test_assert (dpgt_exists (dest, pg));
+    }
 
     dpgt_close (dest);
     dpgt_close (src);
@@ -164,7 +173,10 @@ TEST (dpgt_add)
   {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
-    for (pgno pg = 1; pg <= 5; pg++) { dpgt_add (t, pg, pg * 10, &e); }
+    for (pgno pg = 1; pg <= 5; pg++)
+    {
+      dpgt_add (t, pg, pg * 10, &e);
+    }
 
     for (pgno pg = 1; pg <= 5; pg++)
     {
@@ -329,7 +341,10 @@ TEST (dpgt_serialize)
   {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
-    for (pgno pg = 1; pg <= 10; pg++) { dpgt_add (t, pg, pg * 100, &e); }
+    for (pgno pg = 1; pg <= 10; pg++)
+    {
+      dpgt_add (t, pg, pg * 100, &e);
+    }
 
     u8        buffer[4096];
     const u32 size = dpgt_serialize (buffer, sizeof (buffer), t);
@@ -352,7 +367,10 @@ TEST (dpgt_serialize)
   {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (&e);
-    for (pgno pg = 0; pg < 50; pg++) { dpgt_add (t, pg, pg * 7, &e); }
+    for (pgno pg = 0; pg < 50; pg++)
+    {
+      dpgt_add (t, pg, pg * 7, &e);
+    }
 
     u8        buffer[8192];
     const u32 size = dpgt_serialize (buffer, sizeof (buffer), t);

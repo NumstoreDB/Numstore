@@ -27,10 +27,20 @@ struct lockt
 err_t lockt_init (struct lockt *t, error *e);
 void  lockt_destroy (struct lockt *t);
 
-err_t
-lockt_lock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, struct txn *tx, error *e);
+err_t lockt_lock (
+    struct lockt  *t,
+    struct lt_lock lock,
+    enum lock_mode mode,
+    struct txn    *tx,
+    error         *e
+);
 
-err_t lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, error *e);
+err_t lockt_unlock (
+    struct lockt  *t,
+    struct lt_lock lock,
+    enum lock_mode mode,
+    error         *e
+);
 
 void lockt_unlock_tx (struct lockt *t, struct txn *tx);
 

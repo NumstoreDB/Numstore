@@ -20,10 +20,19 @@
 
 #include <c_specx.h>
 
-err_t compile_type (struct type *dest, const char *text, struct chunk_alloc *dalloc, error *e);
+err_t compile_type (
+    struct type        *dest,
+    const char         *text,
+    struct chunk_alloc *dalloc,
+    error              *e
+);
 
-err_t
-compile_subtype (struct subtype *dest, const char *text, struct chunk_alloc *dalloc, error *e);
+err_t compile_subtype (
+    struct subtype     *dest,
+    const char         *text,
+    struct chunk_alloc *dalloc,
+    error              *e
+);
 
 err_t compile_multi_user_stride (
     struct multi_user_stride *dest,
@@ -32,7 +41,12 @@ err_t compile_multi_user_stride (
     error                    *e
 );
 
-err_t compile_user_stride (struct user_stride *dest, const char *text, error *e);
-
 err_t
-compile_type_ref (struct type_ref *dest, const char *text, struct chunk_alloc *dalloc, error *e);
+compile_user_stride (struct user_stride *dest, const char *text, error *e);
+
+err_t compile_type_ref (
+    struct type_ref    *dest,
+    const char         *text,
+    struct chunk_alloc *dalloc,
+    error              *e
+);

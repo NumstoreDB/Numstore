@@ -45,9 +45,13 @@ struct type_ref
     } st;
   };
 };
-bool type_ref_equal (struct type_ref left, const struct type_ref right);
-struct type *
-tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *alloc, error *e);
+bool         type_ref_equal (struct type_ref left, const struct type_ref right);
+struct type *tr_construct (
+    struct type        *reftype,
+    struct type_ref    *tr,
+    struct chunk_alloc *alloc,
+    error              *e
+);
 
 ////////////////////////////////////////////////////////////
 /// KVT List
@@ -83,8 +87,17 @@ void kvrlb_create (
     struct chunk_alloc          *persistent
 );
 
-err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
+err_t
+kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
 
-err_t kvrlb_accept_type (struct kvt_ref_list_builder *eb, struct type_ref t, error *e);
+err_t kvrlb_accept_type (
+    struct kvt_ref_list_builder *eb,
+    struct type_ref              t,
+    error                       *e
+);
 
-err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *eb, error *e);
+err_t kvrlb_build (
+    struct kvt_ref_list         *dest,
+    struct kvt_ref_list_builder *eb,
+    error                       *e
+);

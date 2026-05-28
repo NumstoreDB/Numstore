@@ -30,7 +30,10 @@ pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e)
   ASSERT (mp->pin == 0);
 
   // Caller holds mp->latch, so use the unsafe (no-latch) flush variant
-  if (pgr_flush_unsafe (p, mp, e)) { goto failed; }
+  if (pgr_flush_unsafe (p, mp, e))
+  {
+    goto failed;
+  }
 
   ht_delete_expect_idx (&p->pgno_to_value, NULL, mp->page.pg);
   mp->flags = 0;

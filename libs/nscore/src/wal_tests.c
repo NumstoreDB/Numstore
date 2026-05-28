@@ -152,7 +152,12 @@ struct wal_test_params
 };
 
 static void
-wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len, struct alloc *a, error *e)
+wal_test_fill_batch (
+    struct wal_rec_hdr_read *batch,
+    const u32                len,
+    struct alloc            *a,
+    error                   *e
+)
 {
   for (u32 i = 0; i < len; i++)
   {
@@ -182,7 +187,10 @@ wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len, struct alloc
 static void
 wal_test_free_batch (const struct wal_rec_hdr_read *batch, const u32 len)
 {
-  for (u32 i = 0; i < len; i++) { const struct wal_rec_hdr_read *r = &batch[i]; }
+  for (u32 i = 0; i < len; i++)
+  {
+    const struct wal_rec_hdr_read *r = &batch[i];
+  }
 }
 
 static void
@@ -219,7 +227,10 @@ run_wal_test (const struct wal_test_params *p)
     {
       lsn                      read_lsn;
       struct wal_rec_hdr_read *next = NULL;
-      if (i == 0) { next = wal_read_first (ww, &e); }
+      if (i == 0)
+      {
+        next = wal_read_first (ww, &e);
+      }
       else
       {
         next = wal_read_next (ww, &read_lsn, &e);
@@ -249,7 +260,10 @@ run_wal_test (const struct wal_test_params *p)
     {
       lsn                      read_lsn;
       struct wal_rec_hdr_read *next = NULL;
-      if (i == 0) { next = wal_read_first (ww, &e); }
+      if (i == 0)
+      {
+        next = wal_read_first (ww, &e);
+      }
       else
       {
         next = wal_read_next (ww, &read_lsn, &e);
@@ -403,10 +417,17 @@ TEST (wal_single_entry)
       {.type = WL_BEGIN, .begin = {.tid = 1}},
       {.type = WL_COMMIT, .commit = {.tid = 2, .prev = 10}},
       {.type = WL_END, .end = {.tid = 3, .prev = 20}},
-      {.type   = WL_UPDATE,
-       .update = {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
+      {.type = WL_UPDATE,
+       .update =
+           {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
       {.type = WL_CLR,
-       .clr  = {.type = WCLR_PHYSICAL, .tid = 5, .prev = 40, .undo_next = 42, .phys = {.pg = 222}}},
+       .clr  = {
+           .type      = WCLR_PHYSICAL,
+           .tid       = 5,
+           .prev      = 40,
+           .undo_next = 42,
+           .phys      = {.pg = 222}
+       }},
   };
 
   for (u32 i = 0; i < arrlen (cases); i++)

@@ -33,31 +33,49 @@ _smfile_pwrite (
     error           *e
 )
 {
-  sb_size                            ret;          // Return value
-  sb_size                            inserted;     // Number of bytes inserted
-  b_size                             ofst;         // Resolved offset
-  b_size                             write_nelem;  // Elements that fit in existing variable
-  b_size                             insert_nelem; // Remainder to insert past the end
-  struct stream                      _input;       // Input stream
-  struct stream_ibuf_ctx             ctx;          // Context for input stream
-  struct chunk_alloc                 temp;         // Allocator for get operation
-  struct ns_var_get_or_create_params gparams;      // Get or create operation
-  struct ns_write_params             wparams;      // Write operation
-  struct ns_insert_params            iparams;      // Insert operation
-  struct ns_var_update_params        uparams;      // Update operation
-  struct string                      vname = vname_or_default (name); // Variable name
+  sb_size                ret;          // Return value
+  sb_size                inserted;     // Number of bytes inserted
+  b_size                 ofst;         // Resolved offset
+  b_size                 write_nelem;  // Elements that fit in existing variable
+  b_size                 insert_nelem; // Remainder to insert past the end
+  struct stream          _input;       // Input stream
+  struct stream_ibuf_ctx ctx;          // Context for input stream
+  struct chunk_alloc     temp;         // Allocator for get operation
+  struct ns_var_get_or_create_params gparams;    // Get or create operation
+  struct ns_write_params             wparams;    // Write operation
+  struct ns_insert_params            iparams;    // Insert operation
+  struct ns_var_update_params        uparams;    // Update operation
+  struct string vname = vname_or_default (name); // Variable name
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Negative strides aren't supported yet"
+    );
   }
   if (stride == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot write with stride == 0"
+    );
   }
-  if (size == 0) { return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0"); }
-  if (nelem == 0) { return 0; }
+  if (size == 0)
+  {
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot write with size == 0"
+    );
+  }
+  if (nelem == 0)
+  {
+    return 0;
+  }
 
   chunk_alloc_create_default (&temp);
 
@@ -83,7 +101,11 @@ _smfile_pwrite (
     insert_nelem = nelem - write_nelem;
     if (insert_nelem > 0 && stride != 1)
     {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
+      error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "Cannot write past end with stride != 1"
+      );
       goto failed_rollback;
     }
   }
@@ -112,7 +134,12 @@ _smfile_pwrite (
   {
     // INSERT
     {
-      stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
+      stream_ibuf_init (
+          &_input,
+          &ctx,
+          (u8 *)src + write_nelem * size,
+          insert_nelem * size
+      );
 
       iparams = (struct ns_insert_params){
           .p     = db->root->p,

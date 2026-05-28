@@ -25,30 +25,65 @@ stream_init (struct stream *s, const struct stream_ops *ops, void *ctx)
 
 void
 stream_finish (struct stream *s)
-{ atomic_store_explicit (&s->done, true, memory_order_release); }
+{
+  atomic_store_explicit (&s->done, true, memory_order_release);
+}
 
 bool
 stream_isdone (const struct stream *s)
-{ return atomic_load_explicit (&s->done, memory_order_acquire); }
+{
+  return atomic_load_explicit (&s->done, memory_order_acquire);
+}
 
 void
 stream_close (const struct stream *s)
 {
-  if (s->ops->close) { s->ops->close (s->ctx); }
+  if (s->ops->close)
+  {
+    s->ops->close (s->ctx);
+  }
 }
 
-i32 stream_read (struct stream *dest, u32 size, u32 n, struct stream *src, error *e);
+i32 stream_read (
+    struct stream *dest,
+    u32            size,
+    u32            n,
+    struct stream *src,
+    error         *e
+);
 
 i32
-stream_bread (void *dest, const u32 size, const u32 n, struct stream *src, error *e)
-{ return src->ops->pull (src, src->ctx, dest, size, n, e); }
+stream_bread (
+    void          *dest,
+    const u32      size,
+    const u32      n,
+    struct stream *src,
+    error         *e
+)
+{
+  return src->ops->pull (src, src->ctx, dest, size, n, e);
+}
 
 i32
-stream_bwrite (const void *buf, const u32 size, const u32 n, struct stream *dest, error *e)
-{ return dest->ops->push (dest, dest->ctx, buf, size, n, e); }
+stream_bwrite (
+    const void    *buf,
+    const u32      size,
+    const u32      n,
+    struct stream *dest,
+    error         *e
+)
+{
+  return dest->ops->push (dest, dest->ctx, buf, size, n, e);
+}
 
 i32
-stream_read (struct stream *dest, const u32 size, const u32 n, struct stream *src, error *e)
+stream_read (
+    struct stream *dest,
+    const u32      size,
+    const u32      n,
+    struct stream *src,
+    error         *e
+)
 {
   ASSERT (dest->ops->push);
   ASSERT (src->ops->pull);
@@ -58,36 +93,68 @@ stream_read (struct stream *dest, const u32 size, const u32 n, struct stream *sr
   u32 remaining = n;
   u32 batch_max = sizeof (buf) / size;
 
-  if (batch_max == 0) { batch_max = 1; }
+  if (batch_max == 0)
+  {
+    batch_max = 1;
+  }
 
   while (remaining > 0)
   {
     const u32 batch = remaining < batch_max ? remaining : batch_max;
 
     const i32 got = src->ops->pull (src, src->ctx, buf, size, batch, e);
-    if (got < 0) { return got; }
-    if (got == 0) { break; }
+    if (got < 0)
+    {
+      return got;
+    }
+    if (got == 0)
+    {
+      break;
+    }
 
     u32 pushed = 0;
     while (pushed < (u32)got)
     {
-      const i32 w = dest->ops->push (dest, dest->ctx, buf + (pushed * size), size, got - pushed, e);
-      if (w < 0) { return w; }
-      if (w == 0) { break; }
+      const i32 w = dest->ops->push (
+          dest,
+          dest->ctx,
+          buf + (pushed * size),
+          size,
+          got - pushed,
+          e
+      );
+      if (w < 0)
+      {
+        return w;
+      }
+      if (w == 0)
+      {
+        break;
+      }
       pushed += w;
     }
 
     total += pushed;
     remaining -= pushed;
 
-    if (pushed < (u32)got) { break; }
+    if (pushed < (u32)got)
+    {
+      break;
+    }
   }
 
   return total;
 }
 
 static i32
-stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, const u32 n, error *e)
+stream_ibuf_pull (
+    struct stream *s,
+    void          *vctx,
+    void          *dest,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
 {
   struct stream_ibuf_ctx *ctx = (struct stream_ibuf_ctx *)vctx;
 
@@ -98,7 +165,10 @@ stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, cons
 
   if (next == 0)
   {
-    if (avail == 0) { stream_finish (s); }
+    if (avail == 0)
+    {
+      stream_finish (s);
+    }
     return 0;
   }
 
@@ -127,7 +197,10 @@ stream_obuf_push (
 
   if (next == 0)
   {
-    if (avail == 0) { stream_finish (s); }
+    if (avail == 0)
+    {
+      stream_finish (s);
+    }
     return 0;
   }
 
@@ -150,7 +223,12 @@ static const struct stream_ops stream_obuf_ops = {
 };
 
 void
-stream_ibuf_init (struct stream *s, struct stream_ibuf_ctx *ctx, const void *buf, const u32 size)
+stream_ibuf_init (
+    struct stream          *s,
+    struct stream_ibuf_ctx *ctx,
+    const void             *buf,
+    const u32               size
+)
 {
   ctx->buf  = (const u8 *)buf;
   ctx->size = size;
@@ -159,7 +237,12 @@ stream_ibuf_init (struct stream *s, struct stream_ibuf_ctx *ctx, const void *buf
 }
 
 void
-stream_obuf_init (struct stream *s, struct stream_obuf_ctx *ctx, void *buf, const u32 cap)
+stream_obuf_init (
+    struct stream          *s,
+    struct stream_obuf_ctx *ctx,
+    void                   *buf,
+    const u32               cap
+)
 {
   ctx->buf = buf;
   ctx->cap = cap;
@@ -168,8 +251,17 @@ stream_obuf_init (struct stream *s, struct stream_obuf_ctx *ctx, void *buf, cons
 }
 
 static i32
-stream_sink_push (struct stream *s, void *vctx, const void *src, u32 size, const u32 n, error *e)
-{ return n; }
+stream_sink_push (
+    struct stream *s,
+    void          *vctx,
+    const void    *src,
+    u32            size,
+    const u32      n,
+    error         *e
+)
+{
+  return n;
+}
 
 static const struct stream_ops stream_sink_ops = {
     .pull  = NULL,
@@ -179,7 +271,9 @@ static const struct stream_ops stream_sink_ops = {
 
 void
 stream_sink_init (struct stream *s)
-{ stream_init (s, &stream_sink_ops, NULL); }
+{
+  stream_init (s, &stream_sink_ops, NULL);
+}
 
 static i32
 stream_opsink_push (
@@ -198,7 +292,10 @@ stream_opsink_push (
 
   const u32 next = MIN (avail, want);
 
-  if (next == 0) { return 0; }
+  if (next == 0)
+  {
+    return 0;
+  }
 
   memcpy ((u8 *)ctx->buf + ctx->pos, src, next);
   ctx->pos += next;
@@ -232,7 +329,14 @@ stream_opsink_init (
   stream_init (s, &stream_opsink_ops, ctx);
 }
 static i32
-stream_limit_pull (struct stream *s, void *vctx, void *buf, const u32 size, const u32 n, error *e)
+stream_limit_pull (
+    struct stream *s,
+    void          *vctx,
+    void          *buf,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
 {
   struct stream_limit_ctx *ctx = (struct stream_limit_ctx *)vctx;
 
@@ -251,11 +355,17 @@ stream_limit_pull (struct stream *s, void *vctx, void *buf, const u32 size, cons
   }
 
   const i32 got = stream_bread (buf, size, capped_n, ctx->underlying, e);
-  if (got < 0) { return got; }
+  if (got < 0)
+  {
+    return got;
+  }
 
   ctx->consumed += (u64)got * size;
 
-  if (ctx->consumed >= ctx->limit || stream_isdone (ctx->underlying)) { stream_finish (s); }
+  if (ctx->consumed >= ctx->limit || stream_isdone (ctx->underlying))
+  {
+    stream_finish (s);
+  }
 
   return got;
 }
@@ -287,11 +397,17 @@ stream_limit_push (
   }
 
   const i32 put = stream_bwrite (buf, size, capped_n, ctx->underlying, e);
-  if (put < 0) { return put; }
+  if (put < 0)
+  {
+    return put;
+  }
 
   ctx->consumed += (u64)put * size;
 
-  if (ctx->consumed >= ctx->limit || stream_isdone (ctx->underlying)) { stream_finish (s); }
+  if (ctx->consumed >= ctx->limit || stream_isdone (ctx->underlying))
+  {
+    stream_finish (s);
+  }
 
   return put;
 }

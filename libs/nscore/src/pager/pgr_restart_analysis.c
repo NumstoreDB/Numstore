@@ -35,7 +35,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
   struct wal_rec_hdr_read *log_rec = wal_read_next (p->ww, &read_lsn, e);
 
-  if (log_rec == NULL) { goto failed; }
+  if (log_rec == NULL)
+  {
+    goto failed;
+  }
 
   while (log_rec->type != WL_EOF)
   {
@@ -44,7 +47,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
     if (tid >= 0)
     {
-      if (tid > (stxid)ctx->max_tid) { ctx->max_tid = tid; }
+      if (tid > (stxid)ctx->max_tid)
+      {
+        ctx->max_tid = tid;
+      }
 
       slsn prev_lsn = wrh_get_prev_lsn (log_rec);
       ASSERT (prev_lsn >= 0);
@@ -54,7 +60,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
       {
         // Allocate
         tx = aries_ctx_txn_alloc (ctx, e);
-        if (tx == NULL) { goto failed; }
+        if (tx == NULL)
+        {
+          goto failed;
+        }
 
         txn_init (
             tx,
@@ -84,7 +93,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
         if (log_rec->type == WL_UPDATE)
         {
-          if (wrh_is_undoable (log_rec)) { tx->data.undo_next_lsn = read_lsn; }
+          if (wrh_is_undoable (log_rec))
+          {
+            tx->data.undo_next_lsn = read_lsn;
+          }
         }
         else
         {
@@ -93,7 +105,12 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
         if (wrh_is_redoable (log_rec))
         {
-          if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e))
+          if (dpgt_add_if_ne (
+                  ctx->dpt,
+                  wrh_get_affected_pg (log_rec),
+                  read_lsn,
+                  e
+              ))
           {
             goto failed;
           }
@@ -124,7 +141,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
     log_rec = wal_read_next (p->ww, &read_lsn, e);
 
-    if (log_rec == NULL) { goto failed; }
+    if (log_rec == NULL)
+    {
+      goto failed;
+    }
   }
 
   u32 before = txnt_get_size (ctx->txt);
@@ -135,27 +155,37 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   {
     struct txn *tx = ((struct txn **)ctx->txn_ptrs.data)[i];
 
-    bool nothing_to_do = tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
-    bool committed     = tx->data.state == TX_COMMITTED;
+    bool nothing_to_do =
+        tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
+    bool committed = tx->data.state == TX_COMMITTED;
 
     if (nothing_to_do || committed)
     {
       // Append an end log
       const slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
 
-      if (l < 0) { goto failed; }
+      if (l < 0)
+      {
+        goto failed;
+      }
       txnt_remove_txn_expect (ctx->txt, tx);
       txn_update_state (tx, TX_DONE);
     }
   }
 
-  if (dpgt_get_size (ctx->dpt) == 0) { ctx->redo_lsn = LSN_NULL; }
+  if (dpgt_get_size (ctx->dpt) == 0)
+  {
+    ctx->redo_lsn = LSN_NULL;
+  }
   else
   {
     ctx->redo_lsn = dpgt_min_rec_lsn (ctx->dpt);
   }
 
-  i_log_info ("Analysis phase: %d txns were removed\n", before - txnt_get_size (ctx->txt));
+  i_log_info (
+      "Analysis phase: %d txns were removed\n",
+      before - txnt_get_size (ctx->txt)
+  );
   i_log_info ("Done with Analysis. RedoLSN = %" PRlsn "\n", ctx->redo_lsn);
 
   return SUCCESS;

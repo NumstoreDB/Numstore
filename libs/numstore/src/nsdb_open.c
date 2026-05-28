@@ -26,7 +26,10 @@ nsdb_open (const char *path)
 {
   struct nshandle *ret = nsh_open (path);
 
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   return (nsdb_t *)ret;
 }

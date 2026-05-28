@@ -26,7 +26,11 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
     }
     case TA_SELECT:
     {
-      return ba_memcpy_from_recursive (dest, src + acc->select.bofst, acc->select.sub_ba);
+      return ba_memcpy_from_recursive (
+          dest,
+          src + acc->select.bofst,
+          acc->select.sub_ba
+      );
     }
     case TA_RANGE:
     {
@@ -37,8 +41,11 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
       while (i < acc->range.stride.nelems)
       {
-        written +=
-            ba_memcpy_from_recursive (dest + written, src + pos * elem_size, acc->range.sub_ba);
+        written += ba_memcpy_from_recursive (
+            dest + written,
+            src + pos * elem_size,
+            acc->range.sub_ba
+        );
 
         pos += acc->range.stride.stride;
         i++;
@@ -52,7 +59,9 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
 u32
 ba_memcpy_from (u8 *dest, const u8 *src, struct byte_accessor *acc)
-{ return ba_memcpy_from_recursive (dest, src, acc); }
+{
+  return ba_memcpy_from_recursive (dest, src, acc);
+}
 
 #ifndef NTEST
 TEST (ba_memcpy_from_basic)
@@ -350,7 +359,11 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
     }
     case TA_SELECT:
     {
-      return ba_memcpy_to_recursive (dest + acc->select.bofst, src, acc->select.sub_ba);
+      return ba_memcpy_to_recursive (
+          dest + acc->select.bofst,
+          src,
+          acc->select.sub_ba
+      );
     }
     case TA_RANGE:
     {
@@ -360,7 +373,11 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
       while (pos < acc->range.stride.nelems)
       {
-        read += ba_memcpy_to_recursive (dest + pos * elem_size, src + read, acc->range.sub_ba);
+        read += ba_memcpy_to_recursive (
+            dest + pos * elem_size,
+            src + read,
+            acc->range.sub_ba
+        );
         pos += acc->range.stride.stride;
       }
 
@@ -372,7 +389,9 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
 u32
 ba_memcpy_to (u8 *dest, const u8 *src, struct byte_accessor *acc)
-{ return ba_memcpy_to_recursive (dest, src, acc); }
+{
+  return ba_memcpy_to_recursive (dest, src, acc);
+}
 
 #ifndef NTEST
 TEST (ba_memcpy_to_basic)
@@ -472,8 +491,11 @@ TEST (ba_memcpy_to_basic)
 
     u32 moved = ba_memcpy_to (dest, src, &dotb); // 0xAB → dest[4]
     test_assert_int_equal (moved, 1);
-    moved = ba_memcpy_to (dest, src + moved,
-                          &dota); // {78,56,34,12} → dest[0..3]
+    moved = ba_memcpy_to (
+        dest,
+        src + moved,
+        &dota
+    ); // {78,56,34,12} → dest[0..3]
     test_assert_int_equal (moved, 4);
 
     test_assert_int_equal (dest[0], 78);

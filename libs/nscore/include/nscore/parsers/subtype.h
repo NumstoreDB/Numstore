@@ -21,4 +21,9 @@
 
 // subtype    ::= IDENT stride* ('.' IDENT stride*)*
 
-err_t parse_subtype (struct parser *p, struct subtype *dest, struct chunk_alloc *dalloc, error *e);
+err_t parse_subtype (
+    struct parser      *p,
+    struct subtype     *dest,
+    struct chunk_alloc *dalloc,
+    error              *e
+);

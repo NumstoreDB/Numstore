@@ -94,11 +94,15 @@ i_timer_now_ns (i_timer *timer)
 
 u64
 i_timer_now_us (i_timer *timer)
-{ return i_timer_now_ns (timer) / 1000ULL; }
+{
+  return i_timer_now_ns (timer) / 1000ULL;
+}
 
 u64
 i_timer_now_ms (i_timer *timer)
-{ return i_timer_now_ns (timer) / 1000000ULL; }
+{
+  return i_timer_now_ns (timer) / 1000000ULL;
+}
 
 f64
 i_timer_now_s (i_timer *timer)

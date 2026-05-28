@@ -30,8 +30,8 @@ struct mem_vhmap
 struct mem_vhmap *mem_vhmap_create (error *e);
 void              mem_vhmap_free (struct mem_vhmap *db);
 struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
-err_t             mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
-struct variable  *mem_vhmap_get_var (struct mem_vhmap *db, struct string name);
-void              mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
-u32               mem_vhmap_count (struct mem_vhmap *db);
-struct variable  *mem_vhmap_random (struct mem_vhmap *db);
+err_t mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
+struct variable *mem_vhmap_get_var (struct mem_vhmap *db, struct string name);
+void mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
+u32  mem_vhmap_count (struct mem_vhmap *db);
+struct variable *mem_vhmap_random (struct mem_vhmap *db);

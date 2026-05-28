@@ -31,20 +31,30 @@ DEFINE_DBG_ASSERT (struct sarray_t, valid_sarray_t, s, {
 
 static err_t
 sarray_t_type_err (const char *msg, error *e)
-{ return error_causef (e, ERR_INTERP, "Strict Array: %s", msg); }
+{
+  return error_causef (e, ERR_INTERP, "Strict Array: %s", msg);
+}
 
 static err_t
 sarray_t_type_deser (const char *msg, error *e)
-{ return error_causef (e, ERR_CORRUPT, "Strict Array: %s", msg); }
+{
+  return error_causef (e, ERR_CORRUPT, "Strict Array: %s", msg);
+}
 
 static err_t
 sarray_t_validate_shallow (const struct sarray_t *t, error *e)
 {
   DBG_ASSERT (unchecked_sarray_t, t);
-  if (t->rank == 0) { return sarray_t_type_err ("Rank must be > 0", e); }
+  if (t->rank == 0)
+  {
+    return sarray_t_type_err ("Rank must be > 0", e);
+  }
   for (u32 i = 0; i < t->rank; ++i)
   {
-    if (t->dims[i] == 0) { return sarray_t_type_err ("dimensions cannot be 0", e); }
+    if (t->dims[i] == 0)
+    {
+      return sarray_t_type_err ("dimensions cannot be 0", e);
+    }
   }
   return SUCCESS;
 }
@@ -73,12 +83,18 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
   for (u16 i = 0; i < p->rank; ++i)
   {
     n = snprintf (out, avail, "[%u]", p->dims[i]);
-    if (n < 0) { return n; }
+    if (n < 0)
+    {
+      return n;
+    }
     len += n;
     if (out)
     {
       out += n;
-      if ((u32)n < avail) { avail -= n; }
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
       else
       {
         avail = 0;
@@ -87,7 +103,10 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
   }
 
   n = type_snprintf (out, avail, p->t);
-  if (n < 0) { return n; }
+  if (n < 0)
+  {
+    return n;
+  }
   len += n;
 
   return len;
@@ -123,7 +142,10 @@ sarray_t_byte_size (const struct sarray_t *t)
   u32 ret = 1;
 
   // multiply up all ranks and multiply by size of type
-  for (u32 i = 0; i < t->rank; ++i) { ret *= t->dims[i]; }
+  for (u32 i = 0; i < t->rank; ++i)
+  {
+    ret *= t->dims[i];
+  }
 
   return ret * type_byte_size (t->t);
 }
@@ -237,16 +259,25 @@ sarray_t_deserialize (
   struct sarray_t sa = {0};
 
   // RANK
-  if (!dsrlizr_read ((u8 *)&sa.rank, sizeof (u16), src)) { goto early_terimination; }
+  if (!dsrlizr_read ((u8 *)&sa.rank, sizeof (u16), src))
+  {
+    goto early_terimination;
+  }
 
   // Allocate dimensions buffer
   u32 *dims = chunk_malloc (a, sa.rank, sizeof *dims, e);
-  if (dims == NULL) { return error_trace (e); }
+  if (dims == NULL)
+  {
+    return error_trace (e);
+  }
   sa.dims = dims;
 
   // Allocate type
   struct type *t = chunk_malloc (a, 1, sizeof *t, e);
-  if (t == NULL) { return error_trace (e); }
+  if (t == NULL)
+  {
+    return error_trace (e);
+  }
   sa.t = t;
 
   for (u32 i = 0; i < sa.rank; ++i)
@@ -254,14 +285,20 @@ sarray_t_deserialize (
     u32 dim;
 
     // DIMi
-    if (!dsrlizr_read ((u8 *)&dim, sizeof (u32), src)) { goto early_terimination; }
+    if (!dsrlizr_read ((u8 *)&dim, sizeof (u32), src))
+    {
+      goto early_terimination;
+    }
 
     sa.dims[i] = dim;
   }
 
   // (TYPE)
   sa.t = type_deserialize (src, a, e);
-  if (sa.t == NULL) { return error_trace (e); }
+  if (sa.t == NULL)
+  {
+    return error_trace (e);
+  }
   WRAP (sarray_t_validate_shallow (&sa, e));
 
   *persistent = sa;
@@ -334,22 +371,39 @@ TEST (sarray_t_deserialize_red_path)
 #endif
 
 err_t
-sarray_t_random (struct sarray_t *sa, struct chunk_alloc *temp, u32 depth, error *e)
+sarray_t_random (
+    struct sarray_t    *sa,
+    struct chunk_alloc *temp,
+    u32                 depth,
+    error              *e
+)
 {
   ASSERT (sa);
 
   sa->rank = (u16)randu32r (1, 4);
 
   sa->dims = (u32 *)chunk_malloc (temp, sa->rank, sizeof (u32), e);
-  if (!sa->dims) { return error_trace (e); }
+  if (!sa->dims)
+  {
+    return error_trace (e);
+  }
 
-  for (u16 i = 0; i < sa->rank; ++i) { sa->dims[i] = randu32r (1, 11); }
+  for (u16 i = 0; i < sa->rank; ++i)
+  {
+    sa->dims[i] = randu32r (1, 11);
+  }
 
   sa->t = (struct type *)chunk_malloc (temp, 1, sizeof (struct type), e);
-  if (!sa->t) { return error_trace (e); }
+  if (!sa->t)
+  {
+    return error_trace (e);
+  }
 
   sa->t = type_random (temp, depth - 1, e);
-  if (sa->t == NULL) { return error_trace (e); }
+  if (sa->t == NULL)
+  {
+    return error_trace (e);
+  }
 
   return SUCCESS;
 }
@@ -357,11 +411,17 @@ sarray_t_random (struct sarray_t *sa, struct chunk_alloc *temp, u32 depth, error
 bool
 sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right)
 {
-  if (left->rank != right->rank) { return false; }
+  if (left->rank != right->rank)
+  {
+    return false;
+  }
 
   for (u32 i = 0; i < left->rank; ++i)
   {
-    if (left->dims[i] != right->dims[i]) { return false; }
+    if (left->dims[i] != right->dims[i])
+    {
+      return false;
+    }
   }
 
   return true;

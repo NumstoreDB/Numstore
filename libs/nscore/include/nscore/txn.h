@@ -86,10 +86,10 @@ struct txn_lock
 
 struct txn
 {
-  txid              tid;        // Transaction id
-  struct txn_data   data;       // The transaction data
-  struct hnode      node;       // The node that indicates where this txn is in the att
-  struct txn_lock  *locks;      // All held locks for this transaction
+  txid             tid;  // Transaction id
+  struct txn_data  data; // The transaction data
+  struct hnode     node; // The node that indicates where this txn is in the att
+  struct txn_lock *locks;       // All held locks for this transaction
   struct slab_alloc lock_alloc; // Allocates txn_locks
   latch             l;          // Thread safety
 };
@@ -102,19 +102,24 @@ void txn_update_data (struct txn *t, struct txn_data data);
 void txn_update (struct txn *t, enum tx_state state, lsn last, lsn undo_next);
 void txn_update_state (struct txn *t, enum tx_state new_state);
 void txn_update_last_undo (struct txn *t, lsn last_lsn, lsn undo_next_lsn);
-void txn_update_last_state (struct txn *t, lsn last_lsn, enum tx_state new_state);
+void
+txn_update_last_state (struct txn *t, lsn last_lsn, enum tx_state new_state);
 void txn_update_last (struct txn *t, lsn last_lsn);
 void txn_update_undo_next (struct txn *t, lsn undo_next);
 
 // Equality
-bool txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right);
+bool txn_data_equal_unsafe (
+    const struct txn_data *left,
+    const struct txn_data *right
+);
 
 // Locking
 typedef void (*lock_func) (struct lt_lock lock, enum lock_mode mode, void *ctx);
-err_t txn_newlock (struct txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
-bool  txn_haslock (struct txn *t, struct lt_lock lock);
-void  txn_close (struct txn *t);
-void  txn_foreach_lock (struct txn *t, lock_func func, void *ctx);
+err_t
+txn_newlock (struct txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
+bool txn_haslock (struct txn *t, struct lt_lock lock);
+void txn_close (struct txn *t);
+void txn_foreach_lock (struct txn *t, lock_func func, void *ctx);
 
 // Utilities
 void i_log_txn (int log_level, struct txn *tx);

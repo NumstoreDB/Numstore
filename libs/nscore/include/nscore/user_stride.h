@@ -23,4 +23,5 @@
 // slice_range  ::= NUMBER? ':' NUMBER?
 // | NUMBER? ':' NUMBER? ':' NUMBER?
 
-err_t parse_user_stride (struct parser *parser, struct user_stride *dest, error *e);
+err_t
+parse_user_stride (struct parser *parser, struct user_stride *dest, error *e);

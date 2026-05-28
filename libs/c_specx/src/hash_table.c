@@ -23,14 +23,20 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
 
 static bool
 default_equals (const struct hnode *left, const struct hnode *right)
-{ return left->hcode == right->hcode; }
+{
+  return left->hcode == right->hcode;
+}
 
 struct htable *
 htable_create (const u32 n, error *e)
 {
-  struct htable *ret = i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
+  struct htable *ret =
+      i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
 
-  if (ret == NULL) { return ret; }
+  if (ret == NULL)
+  {
+    return ret;
+  }
 
   memset (ret->table, 0, n * sizeof (struct hnode *));
 
@@ -74,7 +80,10 @@ htable_lookup (
     bool (*eq) (const struct hnode *, const struct hnode *)
 )
 {
-  if (eq == NULL) { eq = default_equals; }
+  if (eq == NULL)
+  {
+    eq = default_equals;
+  }
 
   latch_lock (&t->latch);
 
@@ -143,7 +152,11 @@ htable_random (struct htable *t)
 }
 
 void
-htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx)
+htable_foreach (
+    const struct htable *t,
+    void (*action) (struct hnode *v, void *ctx),
+    void *ctx
+)
 {
   latch_lock (&((struct htable *)t)->latch);
 
@@ -196,7 +209,10 @@ TEST (htable)
 
   test_assert_int_equal (t->size, 1000);
 
-  for (int i = 0; i < 1000; ++i) { struct hnode **node = htable_random (t); }
+  for (int i = 0; i < 1000; ++i)
+  {
+    struct hnode **node = htable_random (t);
+  }
 
   for (int i = 0; i < 1000; ++i)
   {

@@ -27,12 +27,21 @@ struct wal_ostream *
 walos_open (const char *fname, error *e)
 {
   struct wal_ostream *ret = i_malloc (1, sizeof *ret, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
-  if (i_open_w (&ret->fd, fname, e)) { goto err_free; }
+  if (i_open_w (&ret->fd, fname, e))
+  {
+    goto err_free;
+  }
 
   const i64 len = i_seek (&ret->fd, 0, I_SEEK_END, e);
-  if (len < 0) { goto err_close; }
+  if (len < 0)
+  {
+    goto err_close;
+  }
 
   latch_init (&ret->l);
   ret->buffer      = cbuffer_create (ret->_buffer, sizeof (ret->_buffer));
@@ -74,7 +83,10 @@ static err_t
 walos_flush_impl (struct wal_ostream *w, error *e)
 {
   const u32 towrite = cbuffer_len (&w->buffer);
-  if (towrite == 0) { return SUCCESS; }
+  if (towrite == 0)
+  {
+    return SUCCESS;
+  }
 
   if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e))
   {
@@ -82,7 +94,10 @@ walos_flush_impl (struct wal_ostream *w, error *e)
   }
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
-  if (i_fsync (&w->fd, e)) { panic ("Wal fsync failed"); }
+  if (i_fsync (&w->fd, e))
+  {
+    panic ("Wal fsync failed");
+  }
 
   w->flushed_lsn += towrite;
   return SUCCESS;
@@ -93,7 +108,10 @@ walos_flush_to (struct wal_ostream *w, const lsn l, error *e)
 {
   latch_lock (&w->l);
   err_t ret = SUCCESS;
-  if (l > w->flushed_lsn) { ret = walos_flush_impl (w, e); }
+  if (l > w->flushed_lsn)
+  {
+    ret = walos_flush_impl (w, e);
+  }
   latch_unlock (&w->l);
   return ret;
 }
@@ -112,11 +130,20 @@ walos_flush_all (struct wal_ostream *w, error *e)
 /// Write
 
 err_t
-walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u32 len, error *e)
+walos_write_all (
+    struct wal_ostream *w,
+    u32                *checksum,
+    const void         *data,
+    const u32           len,
+    error              *e
+)
 {
   DBG_ASSERT (wal_ostream, w);
 
-  if (checksum) { checksum_execute (checksum, data, len); }
+  if (checksum)
+  {
+    checksum_execute (checksum, data, len);
+  }
 
   u32       written = 0;
   const u8 *src     = data;
@@ -159,8 +186,14 @@ slsn
 walos_truncate (struct wal_ostream *w, error *e)
 {
   latch_lock (&w->l);
-  if (i_truncate (&w->fd, 0, e)) { goto theend; }
-  if (i_seek (&w->fd, 0, I_SEEK_SET, e)) { goto theend; }
+  if (i_truncate (&w->fd, 0, e))
+  {
+    goto theend;
+  }
+  if (i_seek (&w->fd, 0, I_SEEK_SET, e))
+  {
+    goto theend;
+  }
 
 theend:
   latch_unlock (&w->l);

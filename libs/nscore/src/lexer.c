@@ -20,19 +20,27 @@
 
 static bool
 is_at_end (struct lexer *lex)
-{ return lex->current >= lex->src_len; }
+{
+  return lex->current >= lex->src_len;
+}
 
 static char
 peek (struct lexer *lex)
 {
-  if (is_at_end (lex)) { return '\0'; }
+  if (is_at_end (lex))
+  {
+    return '\0';
+  }
   return lex->src[lex->current];
 }
 
 static char
 peek_next (struct lexer *lex)
 {
-  if (lex->current + 1 >= lex->src_len) { return '\0'; }
+  if (lex->current + 1 >= lex->src_len)
+  {
+    return '\0';
+  }
   return lex->src[lex->current + 1];
 }
 
@@ -46,8 +54,14 @@ advance (struct lexer *lex)
 static bool
 match (struct lexer *lex, char expected)
 {
-  if (is_at_end (lex)) { return false; }
-  if (lex->src[lex->current] != expected) { return false; }
+  if (is_at_end (lex))
+  {
+    return false;
+  }
+  if (lex->src[lex->current] != expected)
+  {
+    return false;
+  }
 
   lex->current++;
   return true;
@@ -92,7 +106,13 @@ add_token_float (struct lexer *lex, f32 value, error *e)
 }
 
 static err_t
-add_token_str (struct lexer *lex, enum token_t type, const char *data, u32 len, error *e)
+add_token_str (
+    struct lexer *lex,
+    enum token_t  type,
+    const char   *data,
+    u32           len,
+    error        *e
+)
 {
   struct token next = (struct token){
       .type = type,
@@ -124,27 +144,78 @@ add_token_prim (struct lexer *lex, enum prim_t prim, error *e)
 static enum token_t
 check_keyword (const char *text, u32 len)
 {
-  if (len == sizeof ("create") - 1 && strncmp (text, "create", len) == 0) { return TT_CREATE; }
-  if (len == sizeof ("delete") - 1 && strncmp (text, "delete", len) == 0) { return TT_DELETE; }
-  if (len == sizeof ("insert") - 1 && strncmp (text, "insert", len) == 0) { return TT_INSERT; }
-  if (len == sizeof ("append") - 1 && strncmp (text, "append", len) == 0) { return TT_APPEND; }
-  if (len == sizeof ("read") - 1 && strncmp (text, "read", len) == 0) { return TT_READ; }
-  if (len == sizeof ("write") - 1 && strncmp (text, "write", len) == 0) { return TT_WRITE; }
-  if (len == sizeof ("remove") - 1 && strncmp (text, "remove", len) == 0) { return TT_REMOVE; }
-  if (len == sizeof ("take") - 1 && strncmp (text, "take", len) == 0) { return TT_TAKE; }
+  if (len == sizeof ("create") - 1 && strncmp (text, "create", len) == 0)
+  {
+    return TT_CREATE;
+  }
+  if (len == sizeof ("delete") - 1 && strncmp (text, "delete", len) == 0)
+  {
+    return TT_DELETE;
+  }
+  if (len == sizeof ("insert") - 1 && strncmp (text, "insert", len) == 0)
+  {
+    return TT_INSERT;
+  }
+  if (len == sizeof ("append") - 1 && strncmp (text, "append", len) == 0)
+  {
+    return TT_APPEND;
+  }
+  if (len == sizeof ("read") - 1 && strncmp (text, "read", len) == 0)
+  {
+    return TT_READ;
+  }
+  if (len == sizeof ("write") - 1 && strncmp (text, "write", len) == 0)
+  {
+    return TT_WRITE;
+  }
+  if (len == sizeof ("remove") - 1 && strncmp (text, "remove", len) == 0)
+  {
+    return TT_REMOVE;
+  }
+  if (len == sizeof ("take") - 1 && strncmp (text, "take", len) == 0)
+  {
+    return TT_TAKE;
+  }
 
-  if (len == sizeof ("file") - 1 && strncmp (text, "file", len) == 0) { return TT_FILE; }
-  if (len == sizeof ("query") - 1 && strncmp (text, "query", len) == 0) { return TT_QUERY; }
-  if (len == sizeof ("ofst") - 1 && strncmp (text, "ofst", len) == 0) { return TT_OFST; }
-  if (len == sizeof ("len") - 1 && strncmp (text, "len", len) == 0) { return TT_LEN; }
+  if (len == sizeof ("file") - 1 && strncmp (text, "file", len) == 0)
+  {
+    return TT_FILE;
+  }
+  if (len == sizeof ("query") - 1 && strncmp (text, "query", len) == 0)
+  {
+    return TT_QUERY;
+  }
+  if (len == sizeof ("ofst") - 1 && strncmp (text, "ofst", len) == 0)
+  {
+    return TT_OFST;
+  }
+  if (len == sizeof ("len") - 1 && strncmp (text, "len", len) == 0)
+  {
+    return TT_LEN;
+  }
 
-  if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0) { return TT_STRUCT; }
-  if (len == sizeof ("union") - 1 && strncmp (text, "union", len) == 0) { return TT_UNION; }
+  if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0)
+  {
+    return TT_STRUCT;
+  }
+  if (len == sizeof ("union") - 1 && strncmp (text, "union", len) == 0)
+  {
+    return TT_UNION;
+  }
 
-  if (len == sizeof ("true") - 1 && strncmp (text, "true", len) == 0) { return TT_TRUE; }
-  if (len == sizeof ("false") - 1 && strncmp (text, "false", len) == 0) { return TT_FALSE; }
+  if (len == sizeof ("true") - 1 && strncmp (text, "true", len) == 0)
+  {
+    return TT_TRUE;
+  }
+  if (len == sizeof ("false") - 1 && strncmp (text, "false", len) == 0)
+  {
+    return TT_FALSE;
+  }
 
-  if (len == sizeof ("as") - 1 && strncmp (text, "as", len) == 0) { return TT_AS; }
+  if (len == sizeof ("as") - 1 && strncmp (text, "as", len) == 0)
+  {
+    return TT_AS;
+  }
 
   return TT_IDENTIFIER;
 }
@@ -152,11 +223,19 @@ check_keyword (const char *text, u32 len)
 static err_t
 scan_string (struct lexer *lex, error *e)
 {
-  while (!is_at_end (lex) && peek (lex) != '"') { advance (lex); }
+  while (!is_at_end (lex) && peek (lex) != '"')
+  {
+    advance (lex);
+  }
 
   if (is_at_end (lex))
   {
-    return error_causef (e, ERR_SYNTAX, "Unterminated string at position %u", lex->start);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Unterminated string at position %u",
+        lex->start
+    );
   }
 
   advance (lex); // Closing quote
@@ -173,7 +252,10 @@ scan_string (struct lexer *lex, error *e)
 static err_t
 scan_number (struct lexer *lex, error *e)
 {
-  while (!is_at_end (lex) && is_num (peek (lex))) { advance (lex); }
+  while (!is_at_end (lex) && is_num (peek (lex)))
+  {
+    advance (lex);
+  }
 
   bool is_float = false;
   if (peek (lex) == '.' && is_num (peek_next (lex)))
@@ -181,7 +263,10 @@ scan_number (struct lexer *lex, error *e)
     is_float = true;
     advance (lex);
 
-    while (!is_at_end (lex) && is_num (peek (lex))) { advance (lex); }
+    while (!is_at_end (lex) && is_num (peek (lex)))
+    {
+      advance (lex);
+    }
   }
 
   const char *text = &lex->src[lex->start];
@@ -206,19 +291,28 @@ scan_number (struct lexer *lex, error *e)
 static err_t
 scan_identifier (struct lexer *lex, error *e)
 {
-  while (!is_at_end (lex) && is_alpha_num (peek (lex))) { advance (lex); }
+  while (!is_at_end (lex) && is_alpha_num (peek (lex)))
+  {
+    advance (lex);
+  }
 
   const char *text = &lex->src[lex->start];
   u32         len  = lex->current - lex->start;
 
   // Check for primitive types first
   enum prim_t prim = strtoprim (text, len);
-  if (prim != (enum prim_t) - 1) { return add_token_prim (lex, prim, e); }
+  if (prim != (enum prim_t) - 1)
+  {
+    return add_token_prim (lex, prim, e);
+  }
 
   // Check for keywords
   enum token_t type = check_keyword (text, len);
 
-  if (type == TT_IDENTIFIER) { return add_token_str (lex, TT_IDENTIFIER, text, len, e); }
+  if (type == TT_IDENTIFIER)
+  {
+    return add_token_str (lex, TT_IDENTIFIER, text, len, e);
+  }
   else
   {
     return add_token (lex, type, e);
@@ -329,7 +423,11 @@ scan_token (struct lexer *lex, error *e)
     }
     case '>':
     {
-      return add_token (lex, match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER, e);
+      return add_token (
+          lex,
+          match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER,
+          e
+      );
     }
     case '<':
     {
@@ -341,7 +439,11 @@ scan_token (struct lexer *lex, error *e)
     }
     case '&':
     {
-      return add_token (lex, match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND, e);
+      return add_token (
+          lex,
+          match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND,
+          e
+      );
     }
     case '"':
     {
@@ -350,9 +452,15 @@ scan_token (struct lexer *lex, error *e)
 
     default:
     {
-      if (is_num (c)) { return scan_number (lex, e); }
+      if (is_num (c))
+      {
+        return scan_number (lex, e);
+      }
 
-      if (is_alpha (c)) { return scan_identifier (lex, e); }
+      if (is_alpha (c))
+      {
+        return scan_identifier (lex, e);
+      }
 
       return error_causef (
           e,
@@ -378,10 +486,16 @@ lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e)
   while (!is_at_end (lex))
   {
     lex->start = lex->current;
-    if (scan_token (lex, e)) { goto failed; }
+    if (scan_token (lex, e))
+    {
+      goto failed;
+    }
   }
 
-  if (add_token (lex, TT_EOF, e)) { goto failed; }
+  if (add_token (lex, TT_EOF, e))
+  {
+    goto failed;
+  }
 
   lex->ntokens = lex->_tokens.nelem;
   lex->tokens  = lex->_tokens.data;
@@ -395,7 +509,9 @@ failed:
 
 void
 lex_free (struct lexer *lex)
-{ dblb_free (&lex->_tokens); }
+{
+  dblb_free (&lex->_tokens);
+}
 
 #ifndef NTEST
 

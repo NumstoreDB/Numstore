@@ -63,7 +63,10 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
       .cur  = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e)) { goto failed; }
+  if (ns_find_var_page (&fparams, e))
+  {
+    goto failed;
+  }
   pgr_upgrade (&prev, params.tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, params.p, e);
   pgr_upgrade (&cur, params.tx, PG_VAR_PAGE, params.p, e);
 
@@ -78,7 +81,10 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
       .nelem  = fparams.dvar->nbytes,
   };
 
-  if (ns_remove (&rparams, e)) { goto failed; }
+  if (ns_remove (&rparams, e))
+  {
+    goto failed;
+  }
 
   ASSERT (rparams.root == PGNO_NULL);
 
@@ -87,9 +93,16 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
       // Previous is the root hash page
     case PG_VAR_HASH_PAGE:
     {
-      vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
+      vh_set_hash_value (
+          page_h_w (&prev),
+          fparams.hpos,
+          vp_get_next (page_h_ro (&cur))
+      );
 
-      if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e)) { goto failed; }
+      if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e))
+      {
+        goto failed;
+      }
 
       break;
     }
@@ -99,7 +112,10 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
     {
       vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (params.p, &prev, PG_VAR_PAGE, e)) { goto failed; }
+      if (pgr_release (params.p, &prev, PG_VAR_PAGE, e))
+      {
+        goto failed;
+      }
 
       break;
     }
@@ -115,10 +131,16 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
     pgno npg = dlgt_get_ovnext (page_h_ro (&cur));
     if (npg != PGNO_NULL)
     {
-      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e)) { goto failed; }
+      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e))
+      {
+        goto failed;
+      }
     }
 
-    if (pgr_delete_and_release (params.p, params.tx, &cur, e)) { goto failed; }
+    if (pgr_delete_and_release (params.p, params.tx, &cur, e))
+    {
+      goto failed;
+    }
 
     page_h_xfer_ownership_ptr (&cur, &ovnext);
   }

@@ -1,0 +1,80 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+// AUTO GENERATED USING CMAKE - DO NOT MODIFY
+
+#pragma once
+
+#include <stdint.h>
+#include <inttypes.h>
+
+////////////////////////////////////////////////////////////
+// VERSION
+
+#define NS_VERSION_MAJOR @NS_VERSION_MAJOR@
+#define NS_VERSION_MINOR @NS_VERSION_MINOR@
+#define NS_VERSION_PATCH @NS_VERSION_PATCH@
+#define NS_VERSION_STRING "@NS_VERSION_STRING@"
+
+////////////////////////////////////////////////////////////
+// TUNING
+
+#define PAGE_SIZE       @NS_PAGE_SIZE@
+#define MEMORY_PAGE_LEN @NS_MEMORY_PAGE_LEN@
+#define WAL_BUFFER_CAP  @NS_WAL_BUFFER_CAP@
+
+////////////////////////////////////////////////////////////
+// CPU
+
+#define NS_CPU_COUNT @NS_CPU_COUNT@
+
+////////////////////////////////////////////////////////////
+// Data Type Sizes
+
+typedef uint@TSIZE_BITS@_t t_size; // Represents the size of a single type in bytes
+typedef int@TSIZE_BITS@_t st_size; // Signed t_size
+typedef uint@PSIZE_BITS@_t p_size; // To index inside a page
+typedef int@PSIZE_BITS@_t sp_size; // Signed p_size
+typedef uint@BSIZE_BITS@_t b_size; // Bytes size to index into a contiguous rope bytes
+typedef int@BSIZE_BITS@_t sb_size; // Signed b_size
+typedef uint@PGNO_BITS@_t pgno;   // Page number
+typedef int@PGNO_BITS@_t spgno;   // Signed page number
+typedef uint@TXID_BITS@_t txid;   // Transaction id
+typedef int@TXID_BITS@_t stxid;   // Signed transaction id
+typedef int@LSN_BITS@_t slsn;    // Wall index (often called LSN)
+typedef uint@LSN_BITS@_t lsn;    // Wall index (often called LSN)
+typedef uint@PGH_BITS@_t pgh;     // Page header
+typedef uint@WLH_BITS@_t wlh;     // WAL header
+
+#define PGNO_NULL U@PGNO_BITS@_MAX
+#define LSN_NULL  U@LSN_BITS@_MAX
+#define WLH_NULL  U@WLH_BITS@_MAX
+
+#define PRt_size  PRIu@TSIZE_BITS@
+#define PRst_size PRId@TSIZE_BITS@
+#define PRp_size  PRIu@PSIZE_BITS@
+#define PRsp_size PRId@PSIZE_BITS@
+#define PRb_size  PRIu@BSIZE_BITS@
+#define PRsb_size PRId@BSIZE_BITS@
+#define PRpgno    PRIu@PGNO_BITS@
+#define PRspgno   PRId@PGNO_BITS@
+#define PRtxid    PRIu@TXID_BITS@
+#define PRstxid   PRId@TXID_BITS@
+#define PRlsn     PRIu@LSN_BITS@
+#define PRslsn    PRId@LSN_BITS@
+#define PRpgh     PRIu@PGH_BITS@
+#define PRwlh     PRIu@WLH_BITS@
+
+// Magic constants
+#define SMF_END INT@BSIZE_BITS@_MAX

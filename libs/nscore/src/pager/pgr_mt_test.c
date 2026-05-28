@@ -89,10 +89,11 @@ simple_pager_ops (void *_ctx)
   pgr_get (&d, PG_DATA_LIST, dp, p, &e);
 
   // Check data
-  ctx->success = memcmp (dl_get_data (page_h_ro (&a)), abytes, DL_DATA_SIZE) == 0;
-  ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&b)), bbytes, DL_DATA_SIZE) == 0;
-  ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&c)), cbytes, DL_DATA_SIZE) == 0;
-  ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&d)), dbytes, DL_DATA_SIZE) == 0;
+  ctx->success = memcmp (dl_get_data (page_h_ro (&a)), abytes, DL_DATA_SIZE) ==
+0; ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&b)), bbytes,
+DL_DATA_SIZE) == 0; ctx->success = ctx->success && memcmp (dl_get_data
+(page_h_ro (&c)), cbytes, DL_DATA_SIZE) == 0; ctx->success = ctx->success &&
+memcmp (dl_get_data (page_h_ro (&d)), dbytes, DL_DATA_SIZE) == 0;
 
   // Release them all
   pgr_release (p, &a, PG_DATA_LIST, &e);
@@ -158,7 +159,8 @@ TEST_DISABLED (pager_mt)
   for (u32 i = 0; i < arrlen (threads); ++i) { i_semaphore_post (&begin); }
 
   // Join them all
-  for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i], &pf.e); }
+  for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i],
+&pf.e); }
 
   hash_table_pg unique_set;
   hentry_pg     _hdata[4 * arrlen (threads)];

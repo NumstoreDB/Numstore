@@ -22,9 +22,18 @@ periodic_task_init (struct periodic_task *t, error *e)
   t->done           = false;
   t->running        = false;
 
-  if (i_mutex_create (&t->mutex, e)) { goto theend; }
-  if (i_cond_create (&t->wake_cond, e)) { goto fail_mutex; }
-  if (i_cond_create (&t->done_cond, e)) { goto fail_wake_cond; }
+  if (i_mutex_create (&t->mutex, e))
+  {
+    goto theend;
+  }
+  if (i_cond_create (&t->wake_cond, e))
+  {
+    goto fail_mutex;
+  }
+  if (i_cond_create (&t->done_cond, e))
+  {
+    goto fail_wake_cond;
+  }
 
   goto theend;
 
@@ -46,12 +55,18 @@ periodic_task_thread (void *_ctx)
   {
     i_mutex_lock (&t->mutex);
     // TODO - spurrious wakeups
-    if (!t->wake_requested && !t->stop) { i_cond_timed_wait (&t->wake_cond, &t->mutex, t->msec); }
+    if (!t->wake_requested && !t->stop)
+    {
+      i_cond_timed_wait (&t->wake_cond, &t->mutex, t->msec);
+    }
     t->wake_requested = false;
     bool should_stop  = t->stop;
     i_mutex_unlock (&t->mutex);
 
-    if (should_stop) { break; }
+    if (should_stop)
+    {
+      break;
+    }
 
     t->fn (t->ctx);
   }
@@ -65,13 +80,22 @@ periodic_task_thread (void *_ctx)
 }
 
 err_t
-periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e)
+periodic_task_start (
+    struct periodic_task *t,
+    u64                   msec,
+    periodic_task_fn      fn,
+    void                 *ctx,
+    error                *e
+)
 {
   t->msec = msec;
   t->fn   = fn;
   t->ctx  = ctx;
 
-  if (i_thread_create (&t->thread, periodic_task_thread, t, e)) { return error_trace (e); }
+  if (i_thread_create (&t->thread, periodic_task_thread, t, e))
+  {
+    return error_trace (e);
+  }
 
   t->running = true;
 
@@ -81,7 +105,10 @@ periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, voi
 err_t
 periodic_task_stop (struct periodic_task *t, error *e)
 {
-  if (!t->running) { return SUCCESS; }
+  if (!t->running)
+  {
+    return SUCCESS;
+  }
 
   i_mutex_lock (&t->mutex);
   t->stop = true;
@@ -89,7 +116,10 @@ periodic_task_stop (struct periodic_task *t, error *e)
   i_mutex_unlock (&t->mutex);
 
   i_mutex_lock (&t->mutex);
-  while (!t->done) { i_cond_wait (&t->done_cond, &t->mutex); }
+  while (!t->done)
+  {
+    i_cond_wait (&t->done_cond, &t->mutex);
+  }
   i_mutex_unlock (&t->mutex);
 
   i_thread_join (&t->thread, e);

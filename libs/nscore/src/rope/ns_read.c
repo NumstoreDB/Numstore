@@ -75,7 +75,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
   p_size       lidx        = 0;
   b_size       total_bread = 0;
   const b_size max_bread   = params.size * params.nelem;
-  b_size       bnext       = params.size; // bytes remaining in the current read/skip window
+  b_size bnext = params.size; // bytes remaining in the current read/skip window
 
   struct ns_seek_params seek = {
       .p          = params.p,
@@ -89,9 +89,15 @@ ns_read_forward (const struct ns_read_params params, error *e)
   enum read_state state = ACTIVE;
 
   // Nothing to read from an empty tree.
-  if (params.root == PGNO_NULL) { return 0; }
+  if (params.root == PGNO_NULL)
+  {
+    return 0;
+  }
 
-  if (ns_seek (&seek, e)) { goto failed; }
+  if (ns_seek (&seek, e))
+  {
+    goto failed;
+  }
 
   cur  = page_h_xfer_ownership (&seek.pg);
   lidx = seek.lidx;
@@ -107,7 +113,8 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
   while (max_bread == 0 || total_bread < max_bread)
   {
-    t_size next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
+    t_size next_amount =
+        ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
     if (next_amount == 0)
     {
@@ -128,15 +135,28 @@ ns_read_forward (const struct ns_read_params params, error *e)
           break;
         }
 
-        if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e)) { goto failed; }
+        if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e))
+        {
+          goto failed;
+        }
 
-        if (pgr_release (params.p, &cur, PG_DATA_LIST, e)) { goto failed; }
+        if (pgr_release (params.p, &cur, PG_DATA_LIST, e))
+        {
+          goto failed;
+        }
 
         // Reset stuff
         lidx        = 0;
         cur         = page_h_xfer_ownership (&next);
         curp        = page_h_ro (&cur);
-        next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
+        next_amount = ns_read_next_amount (
+            curp,
+            lidx,
+            bnext,
+            max_bread,
+            total_bread,
+            state
+        );
 
         ASSERT (next_amount > 0);
       }
@@ -150,10 +170,18 @@ ns_read_forward (const struct ns_read_params params, error *e)
     {
       case ACTIVE:
       {
-        const sp_size read =
-            stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
+        const sp_size read = stream_bwrite (
+            (u8 *)dl_get_data (curp) + lidx,
+            1,
+            next_amount,
+            params.dest,
+            e
+        );
 
-        if (read < 0) { goto failed; }
+        if (read < 0)
+        {
+          goto failed;
+        }
 
         lidx += (p_size)read;
         total_bread += (b_size)read;
@@ -234,9 +262,15 @@ ns_read_backward (const struct ns_read_params params, error *e)
 sb_size
 ns_read (const struct ns_read_params params, error *e)
 {
-  if (params.stride > 0) { return ns_read_forward (params, e); }
+  if (params.stride > 0)
+  {
+    return ns_read_forward (params, e);
+  }
 
-  if (params.stride < 0) { return ns_read_backward (params, e); }
+  if (params.stride < 0)
+  {
+    return ns_read_backward (params, e);
+  }
 
   return error_causef (e, ERR_INVALID_ARGUMENT, "read stride is 0");
 }

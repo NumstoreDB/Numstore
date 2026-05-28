@@ -45,10 +45,17 @@ main (void)
   // Open a new data file
   nsdb_cleanup ("sample1_crud");
   nsdb_t *ns = nsdb_open ("sample1_crud");
-  if (ns == NULL) { return -1; }
+  if (ns == NULL)
+  {
+    return -1;
+  }
 
   // Insert out initial sentence
-  nsdb_create (ns, "example", "struct { d union { a u32, b u64, c u64 }, e [20][256]f32, f i32 }");
+  nsdb_create (
+      ns,
+      "example",
+      "struct { d union { a u32, b u64, c u64 }, e [20][256]f32, f i32 }"
+  );
 
   int             len  = 200;
   struct example *src  = malloc (sizeof (struct example) * len);

@@ -43,7 +43,10 @@ simple_page_print (const char *fname)
 
   struct file_pager *fp = fpgr_open (fname, 0, &e);
 
-  for (u32 i = 0; i < fpgr_get_npages (fp); ++i) { _simple_page_print (fp, i, &e); }
+  for (u32 i = 0; i < fpgr_get_npages (fp); ++i)
+  {
+    _simple_page_print (fp, i, &e);
+  }
 
   fpgr_close (fp, &e);
 }

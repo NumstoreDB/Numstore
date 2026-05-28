@@ -29,7 +29,14 @@ ns_update_by_id (struct ns_var_update_params params, error *e)
 {
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e))
+  if (pgr_get_writable (
+          &cur,
+          params.tx,
+          PG_VAR_PAGE,
+          params.retr.root,
+          params.p,
+          e
+      ))
   {
     goto failed;
   }
@@ -37,12 +44,18 @@ ns_update_by_id (struct ns_var_update_params params, error *e)
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) { goto failed; }
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e))
+  {
+    goto failed;
+  }
 
   goto failed;
 
 failed:
-  if (error_trace (e)) { return error_trace (e); }
+  if (error_trace (e))
+  {
+    return error_trace (e);
+  }
   else
   {
     return SUCCESS;
@@ -73,12 +86,18 @@ ns_update_by_name (struct ns_var_update_params params, error *e)
       .cur  = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e)) { goto failed; }
+  if (ns_find_var_page (&fparams, e))
+  {
+    goto failed;
+  }
 
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) { goto failed; }
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e))
+  {
+    goto failed;
+  }
 
   return SUCCESS;
 

@@ -40,7 +40,14 @@ def_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
   {
     if (errno == ENOMEM)
     {
-      error_causef (e, ERR_NOMEM, "malloc %d*%d: %s", nelem, size, strerror (errno));
+      error_causef (
+          e,
+          ERR_NOMEM,
+          "malloc %d*%d: %s",
+          nelem,
+          size,
+          strerror (errno)
+      );
     }
     else
     {
@@ -60,7 +67,8 @@ nomem_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
 
 TEST (i_malloc_injection)
 {
-  void *(*prev) (i_vmem *v, u32 nelem, u32 size, error *e) = default_vmem.i_malloc;
+  void *(*prev) (i_vmem *v, u32 nelem, u32 size, error *e) =
+      default_vmem.i_malloc;
 
   default_vmem.i_malloc = nomem_malloc;
 
@@ -100,7 +108,14 @@ def_calloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
   {
     if (errno == ENOMEM)
     {
-      error_causef (e, ERR_NOMEM, "calloc %d*%d: %s", nelem, size, strerror (errno));
+      error_causef (
+          e,
+          ERR_NOMEM,
+          "calloc %d*%d: %s",
+          nelem,
+          size,
+          strerror (errno)
+      );
     }
     else
     {
@@ -131,7 +146,13 @@ i_realloc (void *ptr, const u32 nelem, const u32 size, error *e)
   void *ret = realloc (ptr, (size_t)bytes);
   if (ret == NULL)
   {
-    error_causef (e, ERR_NOMEM, "realloc %u bytes: %s", bytes, strerror (errno));
+    error_causef (
+        e,
+        ERR_NOMEM,
+        "realloc %u bytes: %s",
+        bytes,
+        strerror (errno)
+    );
     return NULL;
   }
   return ret;
@@ -142,10 +163,16 @@ TEST (i_realloc_basic)
 {
   error e = error_create ();
   u32  *a = i_realloc (NULL, 10, sizeof *a, &e); // behaves like malloc
-  for (u32 i = 0; i < 10; i++) { a[i] = i; }
+  for (u32 i = 0; i < 10; i++)
+  {
+    a[i] = i;
+  }
 
   u32 *b = i_realloc (a, 20, sizeof *b, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (b[i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (b[i] == i);
+  }
   i_free (b);
 }
 #endif
@@ -166,7 +193,10 @@ def_realloc_right (
   (void)v;
 
   ASSERT (size > 0);
-  if (ptr == NULL) { ASSERT (old_nelem == 0); }
+  if (ptr == NULL)
+  {
+    ASSERT (old_nelem == 0);
+  }
   ASSERT (new_nelem > 0);
 
   return i_realloc (ptr, new_nelem, size, e);
@@ -177,14 +207,23 @@ TEST (i_realloc_right)
 {
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { a[i] = i; }
+  for (u32 i = 0; i < 10; i++)
+  {
+    a[i] = i;
+  }
 
   a = i_realloc_right (a, 10, 20, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[i] == i);
+  }
 
   // shrink path
   a = i_realloc_right (a, 20, 10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[i] == i);
+  }
   i_free (a);
 }
 #endif
@@ -203,10 +242,16 @@ def_realloc_left (
   (void)v;
 
   ASSERT (size > 0);
-  if (ptr == NULL) { ASSERT (old_nelem == 0); }
+  if (ptr == NULL)
+  {
+    ASSERT (old_nelem == 0);
+  }
   ASSERT (new_nelem > 0);
 
-  if (old_nelem == new_nelem) { return ptr; }
+  if (old_nelem == new_nelem)
+  {
+    return ptr;
+  }
 
   u32 old_bytes32 = 0, new_bytes32 = 0;
   {
@@ -224,7 +269,10 @@ def_realloc_left (
   const size_t old_bytes = (size_t)old_bytes32;
   const size_t new_bytes = (size_t)new_bytes32;
 
-  if (ptr == NULL) { return i_realloc (NULL, new_nelem, size, e); }
+  if (ptr == NULL)
+  {
+    return i_realloc (NULL, new_nelem, size, e);
+  }
 
   if (new_bytes < old_bytes)
   {
@@ -240,9 +288,15 @@ def_realloc_left (
     const size_t prepend = new_bytes - old_bytes;
 
     void *ret = i_realloc (ptr, new_nelem, size, e);
-    if (ret == NULL) { return NULL; }
+    if (ret == NULL)
+    {
+      return NULL;
+    }
 
-    if (old_bytes > 0) { memmove ((char *)ret + prepend, ret, old_bytes); }
+    if (old_bytes > 0)
+    {
+      memmove ((char *)ret + prepend, ret, old_bytes);
+    }
     return ret;
   }
 }
@@ -252,11 +306,17 @@ TEST (i_realloc_left)
 {
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { a[i] = i; }
+  for (u32 i = 0; i < 10; i++)
+  {
+    a[i] = i;
+  }
 
   // grow-left: old payload should appear starting at index 10
   a = i_realloc_left (a, 10, 20, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[10 + i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[10 + i] == i);
+  }
 
   // shrink-left: keep the *last* 10 elements moved to start
   a = i_realloc_left (a, 20, 10, sizeof *a, &e);
@@ -282,7 +342,10 @@ def_crealloc_right (
   (void)v;
   ASSERT (size > 0);
 
-  if (ptr == NULL) { ASSERT (old_nelem == 0); }
+  if (ptr == NULL)
+  {
+    ASSERT (old_nelem == 0);
+  }
 
   ASSERT (new_nelem > 0);
 
@@ -303,9 +366,15 @@ def_crealloc_right (
   const size_t new_bytes = (size_t)new_bytes32;
 
   void *ret = i_realloc (ptr, new_nelem, size, e);
-  if (ret == NULL) { return NULL; }
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
-  if (new_bytes > old_bytes) { memset ((char *)ret + old_bytes, 0, new_bytes - old_bytes); }
+  if (new_bytes > old_bytes)
+  {
+    memset ((char *)ret + old_bytes, 0, new_bytes - old_bytes);
+  }
   return ret;
 }
 
@@ -314,15 +383,27 @@ TEST (i_crealloc_right)
 {
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { a[i] = i; }
+  for (u32 i = 0; i < 10; i++)
+  {
+    a[i] = i;
+  }
 
   a = i_crealloc_right (a, 10, 20, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[i] == i); }
-  for (u32 i = 10; i < 20; i++) { test_assert (a[i] == 0); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[i] == i);
+  }
+  for (u32 i = 10; i < 20; i++)
+  {
+    test_assert (a[i] == 0);
+  }
 
   // shrink keeps prefix
   a = i_crealloc_right (a, 20, 10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[i] == i);
+  }
   i_free (a);
 }
 #endif
@@ -340,10 +421,16 @@ def_crealloc_left (
   (void)v;
 
   ASSERT (size > 0);
-  if (ptr == NULL) { ASSERT (old_nelem == 0); }
+  if (ptr == NULL)
+  {
+    ASSERT (old_nelem == 0);
+  }
   ASSERT (new_nelem > 0);
 
-  if (old_nelem == new_nelem) { return ptr; }
+  if (old_nelem == new_nelem)
+  {
+    return ptr;
+  }
 
   u32 old_bytes32 = 0, new_bytes32 = 0;
   {
@@ -364,7 +451,10 @@ def_crealloc_left (
   if (ptr == NULL)
   {
     void *ret = i_realloc (NULL, new_nelem, size, e);
-    if (ret != NULL) { memset (ret, 0, new_bytes); }
+    if (ret != NULL)
+    {
+      memset (ret, 0, new_bytes);
+    }
     return ret;
   }
 
@@ -380,9 +470,15 @@ def_crealloc_left (
     const size_t prepend = new_bytes - old_bytes;
 
     void *ret = i_realloc (ptr, new_nelem, size, e);
-    if (ret == NULL) { return NULL; }
+    if (ret == NULL)
+    {
+      return NULL;
+    }
 
-    if (old_bytes > 0) { memmove ((char *)ret + prepend, ret, old_bytes); }
+    if (old_bytes > 0)
+    {
+      memmove ((char *)ret + prepend, ret, old_bytes);
+    }
     memset (ret, 0, prepend);
     return ret;
   }
@@ -393,16 +489,28 @@ TEST (i_crealloc_left)
 {
   error e = error_create ();
   u32  *a = i_malloc (10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { a[i] = i; }
+  for (u32 i = 0; i < 10; i++)
+  {
+    a[i] = i;
+  }
 
   // grow-left: zeros in new head; old payload shifted right
   a = i_crealloc_left (a, 10, 20, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[i] == 0); }
-  for (u32 i = 0; i < 10; i++) { test_assert (a[10 + i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[i] == 0);
+  }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[10 + i] == i);
+  }
 
   // shrink-left: drop head, keep last 10 at start
   a = i_crealloc_left (a, 20, 10, sizeof *a, &e);
-  for (u32 i = 0; i < 10; i++) { test_assert (a[i] == i); }
+  for (u32 i = 0; i < 10; i++)
+  {
+    test_assert (a[i] == i);
+  }
   i_free (a);
 }
 #endif

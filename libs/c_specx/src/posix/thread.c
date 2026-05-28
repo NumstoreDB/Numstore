@@ -22,7 +22,12 @@
 // Condition Variable
 
 err_t
-i_thread_create (i_thread *dest, void *(*func) (void *), void *context, error *e)
+i_thread_create (
+    i_thread *dest,
+    void *(*func) (void *),
+    void  *context,
+    error *e
+)
 {
   ASSERT (dest);
 

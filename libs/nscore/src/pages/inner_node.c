@@ -61,7 +61,8 @@ in_validate_for_db (const page *in, error *e)
     return error_causef (
         e,
         ERR_CORRUPT,
-        "inner node len %" PRp_size " > max %" PRp_size " (page_size=%" PRp_size ")",
+        "inner node len %" PRp_size " > max %" PRp_size " (page_size=%" PRp_size
+        ")",
         in_get_len (in),
         IN_MAX_KEYS,
         PAGE_SIZE
@@ -82,7 +83,12 @@ in_validate_for_db (const page *in, error *e)
     const hti_res res = ht_insert_pgno (&ht, _data);
     if (res != HTIR_SUCCESS)
     {
-      return error_causef (e, ERR_CORRUPT, "duplicate leaf %" PRpgno " in inner node", _data.key);
+      return error_causef (
+          e,
+          ERR_CORRUPT,
+          "duplicate leaf %" PRpgno " in inner node",
+          _data.key
+      );
     }
   }
 
@@ -270,7 +276,10 @@ p_size
 in_page_memcpy_right (pgno *dest, const page *src, const p_size ofst)
 {
   ASSERT (ofst <= in_get_len (src));
-  if (ofst == in_get_len (src)) { return 0; }
+  if (ofst == in_get_len (src))
+  {
+    return 0;
+  }
 
   const p_size moving = in_get_len (src) - ofst;
   const pgno  *head   = in_get_leafs_imut (src);
@@ -284,9 +293,15 @@ in_key_memcpy_right (b_size *dest, const page *src, const p_size ofst)
 {
   ASSERT (ofst <= in_get_len (src));
 
-  if (ofst == in_get_len (src)) { return 0; }
+  if (ofst == in_get_len (src))
+  {
+    return 0;
+  }
 
-  for (u32 i = ofst; i < in_get_len (src); ++i) { dest[i - ofst] = in_get_key (src, i); }
+  for (u32 i = ofst; i < in_get_len (src); ++i)
+  {
+    dest[i - ofst] = in_get_key (src, i);
+  }
 
   return in_get_len (src) - ofst;
 }
@@ -352,12 +367,19 @@ TEST (in_memcpy)
     const pgno expected_p[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     p_size     copied       = in_page_memcpy_right (dest_page, &in, 0);
     test_assert_int_equal (copied, 10);
-    test_assert_int_equal (memcmp (dest_page, expected_p, sizeof (expected_p)), 0);
+    test_assert_int_equal (
+        memcmp (dest_page, expected_p, sizeof (expected_p)),
+        0
+    );
     memset (dest_page, 0xFF, sizeof (dest_page));
     copied = in_page_memcpy_right (dest_page, &in, 3);
     test_assert_int_equal (copied, 7);
     test_assert_int_equal (
-        memcmp (dest_page, &expected_p[3], sizeof (expected_p) - 3 * sizeof *expected_p),
+        memcmp (
+            dest_page,
+            &expected_p[3],
+            sizeof (expected_p) - 3 * sizeof *expected_p
+        ),
         0
     );
     memset (dest_page, 0xFF, sizeof (dest_page));
@@ -366,12 +388,19 @@ TEST (in_memcpy)
     const b_size expected_b1[] = {5, 6, 3, 1, 2, 10, 13, 8, 11, 12};
     copied                     = in_key_memcpy_right (dest_key, &in, 0);
     test_assert_int_equal (copied, 10);
-    test_assert_int_equal (memcmp (dest_key, expected_b1, sizeof (expected_b1)), 0);
+    test_assert_int_equal (
+        memcmp (dest_key, expected_b1, sizeof (expected_b1)),
+        0
+    );
     memset (dest_key, 0xFF, sizeof (dest_key));
     copied = in_key_memcpy_right (dest_key, &in, 3);
     test_assert_int_equal (copied, 7);
     test_assert_int_equal (
-        memcmp (dest_key, &expected_b1[3], sizeof (expected_b1) - 3 * sizeof *expected_b1),
+        memcmp (
+            dest_key,
+            &expected_b1[3],
+            sizeof (expected_b1) - 3 * sizeof *expected_b1
+        ),
         0
     );
     memset (dest_key, 0xFF, sizeof (dest_key));
@@ -380,7 +409,11 @@ TEST (in_memcpy)
 #endif
 
 void
-in_data_from_arrays (const struct in_data *dest, const pgno *pgs, const b_size *keys)
+in_data_from_arrays (
+    const struct in_data *dest,
+    const pgno           *pgs,
+    const b_size         *keys
+)
 {
   ASSERT (dest->len <= IN_MAX_KEYS);
   for (p_size i = 0; i < dest->len; ++i)
@@ -397,7 +430,10 @@ in_set_data (page *p, const struct in_data data)
 
   in_set_len (p, 0);
 
-  for (p_size i = 0; i < data.len; ++i) { in_push_end (p, data.nodes[i].key, data.nodes[i].pg); }
+  for (p_size i = 0; i < data.len; ++i)
+  {
+    in_push_end (p, data.nodes[i].key, data.nodes[i].pg);
+  }
 }
 
 struct in_data
@@ -438,15 +474,35 @@ TEST (in_move_left)
   page left;
   page right;
 
-  inner_node_init_for_testing (&left, (pgno[]){0, 1, 2, 3}, (b_size[]){10, 20, 30, 40}, 4);
+  inner_node_init_for_testing (
+      &left,
+      (pgno[]){0, 1, 2, 3},
+      (b_size[]){10, 20, 30, 40},
+      4
+  );
 
-  inner_node_init_for_testing (&right, (pgno[]){4, 5, 6, 7}, (b_size[]){5, 11, 18, 26}, 4);
+  inner_node_init_for_testing (
+      &right,
+      (pgno[]){4, 5, 6, 7},
+      (b_size[]){5, 11, 18, 26},
+      4
+  );
 
   in_move_left (&left, &right, 1);
 
-  test_assert_inner_node_equal (&left, (pgno[]){0, 1, 2, 3, 4}, (b_size[]){10, 20, 30, 40, 5}, 5);
+  test_assert_inner_node_equal (
+      &left,
+      (pgno[]){0, 1, 2, 3, 4},
+      (b_size[]){10, 20, 30, 40, 5},
+      5
+  );
 
-  test_assert_inner_node_equal (&right, (pgno[]){5, 6, 7}, (b_size[]){11, 18, 26}, 3);
+  test_assert_inner_node_equal (
+      &right,
+      (pgno[]){5, 6, 7},
+      (b_size[]){11, 18, 26},
+      3
+  );
 }
 
 #  ifndef NTEST
@@ -457,11 +513,21 @@ TEST (in_move_left_two_keys)
 
   inner_node_init_for_testing (&left, (pgno[]){10}, (b_size[]){15}, 1);
 
-  inner_node_init_for_testing (&right, (pgno[]){20, 21, 22}, (b_size[]){5, 13, 22}, 3);
+  inner_node_init_for_testing (
+      &right,
+      (pgno[]){20, 21, 22},
+      (b_size[]){5, 13, 22},
+      3
+  );
 
   in_move_left (&left, &right, 2);
 
-  test_assert_inner_node_equal (&left, (pgno[]){10, 20, 21}, (b_size[]){15, 5, 13}, 3);
+  test_assert_inner_node_equal (
+      &left,
+      (pgno[]){10, 20, 21},
+      (b_size[]){15, 5, 13},
+      3
+  );
 
   test_assert_inner_node_equal (&right, (pgno[]){22}, (b_size[]){22}, 1);
 }
@@ -479,7 +545,12 @@ TEST (in_move_left_all_keys)
 
   in_move_left (&left, &right, 2);
 
-  test_assert_inner_node_equal (&left, (pgno[]){1, 2, 3, 4}, (b_size[]){12, 28, 5, 10}, 4);
+  test_assert_inner_node_equal (
+      &left,
+      (pgno[]){1, 2, 3, 4},
+      (b_size[]){12, 28, 5, 10},
+      4
+  );
 
   test_assert_inner_node_equal (&right, NULL, NULL, 0);
 }
@@ -493,7 +564,12 @@ TEST (in_move_left_into_empty)
 
   inner_node_init_for_testing (&left, NULL, NULL, 0);
 
-  inner_node_init_for_testing (&right, (pgno[]){5, 6, 7}, (b_size[]){4, 10, 19}, 3);
+  inner_node_init_for_testing (
+      &right,
+      (pgno[]){5, 6, 7},
+      (b_size[]){4, 10, 19},
+      3
+  );
 
   in_move_left (&left, &right, 2);
 
@@ -509,7 +585,10 @@ in_push_left (page *in, const p_size len)
 {
   ASSERT (len + in_get_len (in) <= IN_MAX_KEYS);
 
-  if (len == 0) { return; }
+  if (len == 0)
+  {
+    return;
+  }
 
   const p_size len0 = in_get_len (in);
   in_set_len (in, len + in_get_len (in));
@@ -524,7 +603,9 @@ in_push_left (page *in, const p_size len)
 
 void
 in_push_all_left (page *in)
-{ in_push_left (in, in_get_avail (in)); }
+{
+  in_push_left (in, in_get_avail (in));
+}
 
 void
 in_push_left_permissive (page *in, const p_size amnt)
@@ -559,11 +640,21 @@ TEST (in_push_left)
 {
   page in;
 
-  inner_node_init_for_testing (&in, (pgno[]){0, 1, 2, 3}, (b_size[]){10, 21, 33, 46}, 4);
+  inner_node_init_for_testing (
+      &in,
+      (pgno[]){0, 1, 2, 3},
+      (b_size[]){10, 21, 33, 46},
+      4
+  );
 
   in_push_left (&in, 1);
 
-  test_assert_inner_node_equal (&in, (pgno[]){0, 0, 1, 2, 3}, (b_size[]){10, 10, 21, 33, 46}, 5);
+  test_assert_inner_node_equal (
+      &in,
+      (pgno[]){0, 0, 1, 2, 3},
+      (b_size[]){10, 10, 21, 33, 46},
+      5
+  );
 
   in_push_left (&in, 2);
 
@@ -629,7 +720,10 @@ in_move_right (page *src, page *dest, const p_size len)
   ASSERT (len <= in_get_len (src));
   ASSERT (len <= in_get_avail (dest));
 
-  if (len == 0) { return; }
+  if (len == 0)
+  {
+    return;
+  }
 
   in_push_left (dest, len);
 
@@ -651,15 +745,35 @@ TEST (in_move_right)
   page left;
   page right;
 
-  inner_node_init_for_testing (&left, (pgno[]){0, 1, 2, 3}, (b_size[]){10, 20, 30, 40}, 4);
+  inner_node_init_for_testing (
+      &left,
+      (pgno[]){0, 1, 2, 3},
+      (b_size[]){10, 20, 30, 40},
+      4
+  );
 
-  inner_node_init_for_testing (&right, (pgno[]){4, 5, 6, 7}, (b_size[]){5, 11, 18, 26}, 4);
+  inner_node_init_for_testing (
+      &right,
+      (pgno[]){4, 5, 6, 7},
+      (b_size[]){5, 11, 18, 26},
+      4
+  );
 
   in_move_right (&left, &right, 1);
 
-  test_assert_inner_node_equal (&left, (pgno[]){0, 1, 2}, (b_size[]){10, 20, 30}, 3);
+  test_assert_inner_node_equal (
+      &left,
+      (pgno[]){0, 1, 2},
+      (b_size[]){10, 20, 30},
+      3
+  );
 
-  test_assert_inner_node_equal (&right, (pgno[]){3, 4, 5, 6, 7}, (b_size[]){40, 5, 11, 18, 26}, 5);
+  test_assert_inner_node_equal (
+      &right,
+      (pgno[]){3, 4, 5, 6, 7},
+      (b_size[]){40, 5, 11, 18, 26},
+      5
+  );
 }
 
 #  ifndef NTEST
@@ -668,7 +782,12 @@ TEST (in_move_right_two_keys)
   page left;
   page right;
 
-  inner_node_init_for_testing (&left, (pgno[]){0, 1, 2, 3}, (b_size[]){10, 20, 30, 40}, 4);
+  inner_node_init_for_testing (
+      &left,
+      (pgno[]){0, 1, 2, 3},
+      (b_size[]){10, 20, 30, 40},
+      4
+  );
 
   inner_node_init_for_testing (&right, (pgno[]){4, 5}, (b_size[]){5, 11}, 2);
 
@@ -676,7 +795,12 @@ TEST (in_move_right_two_keys)
 
   test_assert_inner_node_equal (&left, (pgno[]){0, 1}, (b_size[]){10, 20}, 2);
 
-  test_assert_inner_node_equal (&right, (pgno[]){2, 3, 4, 5}, (b_size[]){30, 40, 5, 11}, 4);
+  test_assert_inner_node_equal (
+      &right,
+      (pgno[]){2, 3, 4, 5},
+      (b_size[]){30, 40, 5, 11},
+      4
+  );
 }
 #  endif
 
@@ -694,7 +818,12 @@ TEST (in_move_right_all_keys)
 
   test_assert_inner_node_equal (&left, NULL, NULL, 0);
 
-  test_assert_inner_node_equal (&right, (pgno[]){0, 1, 2}, (b_size[]){10, 25, 5}, 3);
+  test_assert_inner_node_equal (
+      &right,
+      (pgno[]){0, 1, 2},
+      (b_size[]){10, 25, 5},
+      3
+  );
 }
 #  endif
 
@@ -704,7 +833,12 @@ TEST (in_move_right_into_empty_right)
   page left;
   page right;
 
-  inner_node_init_for_testing (&left, (pgno[]){42, 43, 44}, (b_size[]){7, 15, 28}, 3);
+  inner_node_init_for_testing (
+      &left,
+      (pgno[]){42, 43, 44},
+      (b_size[]){7, 15, 28},
+      3
+  );
 
   inner_node_init_for_testing (&right, NULL, NULL, 0); // empty page
 
@@ -712,8 +846,12 @@ TEST (in_move_right_into_empty_right)
 
   test_assert_inner_node_equal (&left, (pgno[]){42, 43}, (b_size[]){7, 15}, 2);
 
-  test_assert_inner_node_equal (&right, (pgno[]){44}, (b_size[]){28},
-                                1); // 28 - 15 = 13 unravel
+  test_assert_inner_node_equal (
+      &right,
+      (pgno[]){44},
+      (b_size[]){28},
+      1
+  ); // 28 - 15 = 13 unravel
 }
 #  endif
 
@@ -828,7 +966,10 @@ in_cut_left (page *in, const p_size end)
 {
   ASSERT (end <= in_get_len (in));
 
-  if (end == 0) { return; }
+  if (end == 0)
+  {
+    return;
+  }
 
   for (p_size i = 0; i < in_get_len (in) - end; ++i)
   {
@@ -846,15 +987,30 @@ TEST (in_cut_left)
 {
   page in;
 
-  inner_node_init_for_testing (&in, (pgno[]){0, 1, 2, 3}, (b_size[]){10, 21, 33, 46}, 4);
+  inner_node_init_for_testing (
+      &in,
+      (pgno[]){0, 1, 2, 3},
+      (b_size[]){10, 21, 33, 46},
+      4
+  );
 
   in_cut_left (&in, 0);
 
-  test_assert_inner_node_equal (&in, (pgno[]){0, 1, 2, 3}, (b_size[]){10, 21, 33, 46}, 4);
+  test_assert_inner_node_equal (
+      &in,
+      (pgno[]){0, 1, 2, 3},
+      (b_size[]){10, 21, 33, 46},
+      4
+  );
 
   in_cut_left (&in, 1);
 
-  test_assert_inner_node_equal (&in, (pgno[]){1, 2, 3}, (b_size[]){21, 33, 46}, 3);
+  test_assert_inner_node_equal (
+      &in,
+      (pgno[]){1, 2, 3},
+      (b_size[]){21, 33, 46},
+      3
+  );
 
   in_cut_left (&in, 2);
 
@@ -869,7 +1025,12 @@ TEST (in_cut_left_all_at_once)
 {
   page in;
 
-  inner_node_init_for_testing (&in, (pgno[]){10, 20, 30}, (b_size[]){5, 15, 30}, 3);
+  inner_node_init_for_testing (
+      &in,
+      (pgno[]){10, 20, 30},
+      (b_size[]){5, 15, 30},
+      3
+  );
 
   in_cut_left (&in, 3);
 
@@ -895,7 +1056,12 @@ TEST (in_cut_left_to_one)
 {
   page in;
 
-  inner_node_init_for_testing (&in, (pgno[]){1, 2, 3, 4}, (b_size[]){7, 14, 22, 31}, 4);
+  inner_node_init_for_testing (
+      &in,
+      (pgno[]){1, 2, 3, 4},
+      (b_size[]){7, 14, 22, 31},
+      4
+  );
 
   in_cut_left (&in, 3);
 
@@ -907,7 +1073,10 @@ void
 in_make_valid (page *d)
 {
   in_set_len (d, IN_MAX_KEYS);
-  for (p_size i = 0; i < IN_MAX_KEYS; ++i) { in_set_key_leaf (d, i, i, i); }
+  for (p_size i = 0; i < IN_MAX_KEYS; ++i)
+  {
+    in_set_key_leaf (d, i, i, i);
+  }
 }
 
 void
@@ -916,12 +1085,18 @@ i_log_in (const int level, const page *in)
   i_log (level, "=== INNER NODE PAGE START ===\n");
 
   i_printf (level, "PGNO: %" PRpgno "\n", in->pg);
-  if (in_get_next (in) == PGNO_NULL) { i_printf (level, "NEXT: NULL\n"); }
+  if (in_get_next (in) == PGNO_NULL)
+  {
+    i_printf (level, "NEXT: NULL\n");
+  }
   else
   {
     i_printf (level, "NEXT: %" PRpgno "\n", in_get_next (in));
   }
-  if (in_get_prev (in) == PGNO_NULL) { i_printf (level, "PREV: NULL\n"); }
+  if (in_get_prev (in) == PGNO_NULL)
+  {
+    i_printf (level, "PREV: NULL\n");
+  }
   else
   {
     i_printf (level, "PREV: %" PRpgno "\n", in_get_prev (in));

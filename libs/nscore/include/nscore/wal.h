@@ -84,13 +84,15 @@ slsn wal_append_begin_log (struct wal *w, txid tid, error *e);
 slsn wal_append_commit_log (struct wal *w, txid tid, lsn prev, error *e);
 slsn wal_append_end_log (struct wal *w, txid tid, lsn prev, error *e);
 slsn wal_append_ckpt_begin (struct wal *w, error *e);
-slsn wal_append_update_log (struct wal *w, struct wal_update_write update, error *e);
+slsn
+wal_append_update_log (struct wal *w, struct wal_update_write update, error *e);
 slsn wal_append_clr_log (struct wal *w, struct wal_clr_write clr, error *e);
 
 /**
  * Just append an arbitrary log
  * this is used mostly for testing
  */
-slsn wal_append_log (struct wal *w, const struct wal_rec_hdr_write *hdr, error *e);
+slsn
+wal_append_log (struct wal *w, const struct wal_rec_hdr_write *hdr, error *e);
 
 err_t wal_crash (struct wal *w, error *e);

@@ -82,9 +82,9 @@ struct smfile_test_fixture_functions
 /// A virtual data source/sink pairing a function table with its context
 struct smfile_test_fixture
 {
-  void                                *ctx;       ///< Opaque context passed to every function call
+  void *ctx; ///< Opaque context passed to every function call
   struct smfile_test_fixture_functions functions; ///< Vtable of data operations
 };
 
 struct smfile_test_fixture smfile_test_fixture_open (const char *path);
-int                        smfile_test_fixture_close (struct smfile_test_fixture *f);
+int smfile_test_fixture_close (struct smfile_test_fixture *f);

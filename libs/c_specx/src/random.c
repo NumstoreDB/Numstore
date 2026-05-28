@@ -22,23 +22,33 @@
 
 void
 rand_seed (void)
-{ srand (time (NULL)); }
+{
+  srand (time (NULL));
+}
 
 void
 rand_seed_with (const u32 seed)
-{ srand (seed); }
+{
+  srand (seed);
+}
 
 u8
 randu8 (void)
-{ return (u8)rand (); }
+{
+  return (u8)rand ();
+}
 
 i8
 randi8 (void)
-{ return randi8r (I8_MIN, I8_MAX); }
+{
+  return randi8r (I8_MIN, I8_MAX);
+}
 
 u8
 randu8r (const u8 lower, const u8 upper)
-{ return (u8)randu32r ((u32)lower, (u32)upper); }
+{
+  return (u8)randu32r ((u32)lower, (u32)upper);
+}
 
 u8
 randu8e (const u8 lower, const u8 upper)
@@ -49,7 +59,9 @@ randu8e (const u8 lower, const u8 upper)
 
 i8
 randi8r (const i8 lower, const i8 upper)
-{ return (i8)randi32r ((i32)lower, (i32)upper); }
+{
+  return (i8)randi32r ((i32)lower, (i32)upper);
+}
 
 i8
 randi8e (const i8 lower, const i8 upper)
@@ -60,15 +72,21 @@ randi8e (const i8 lower, const i8 upper)
 
 u16
 randu16 (void)
-{ return (u16)randu32 (); }
+{
+  return (u16)randu32 ();
+}
 
 i16
 randi16 (void)
-{ return randi16r (I16_MIN, I16_MAX); }
+{
+  return randi16r (I16_MIN, I16_MAX);
+}
 
 u16
 randu16r (const u16 lower, const u16 upper)
-{ return (u16)randu32r ((u32)lower, (u32)upper); }
+{
+  return (u16)randu32r ((u32)lower, (u32)upper);
+}
 
 u16
 randu16e (const u16 lower, const u16 upper)
@@ -82,7 +100,10 @@ randi16r (const i16 lower, const i16 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower) { return lower; }
+  if (upper == lower)
+  {
+    return lower;
+  }
 
   return (i16)randi32r ((i32)lower, (i32)upper);
 }
@@ -96,7 +117,9 @@ randi16e (const i16 lower, const i16 upper)
 
 u32
 randu32 (void)
-{ return (u32)rand (); }
+{
+  return (u32)rand ();
+}
 
 #ifndef NTEST
 TEST (randu32)
@@ -112,14 +135,19 @@ TEST (randu32)
 
 i32
 randi32 (void)
-{ return randi32r (I32_MIN, I32_MAX); }
+{
+  return randi32r (I32_MIN, I32_MAX);
+}
 
 u32
 randu32r (const u32 lower, const u32 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower) { return lower; }
+  if (upper == lower)
+  {
+    return lower;
+  }
 
   return (u32)randu64r ((u64)lower, (u64)upper);
 }
@@ -142,8 +170,14 @@ TEST (randu32r)
     {
       const u32 v = randu32r (10, 11);
       test_assert (v == 10u || v == 11u);
-      if (v == 10u) { saw_lo = true; }
-      if (v == 11u) { saw_hi = true; }
+      if (v == 10u)
+      {
+        saw_lo = true;
+      }
+      if (v == 11u)
+      {
+        saw_hi = true;
+      }
     }
     test_assert (saw_lo);
     test_assert (saw_hi);
@@ -173,7 +207,10 @@ randi32r (const i32 lower, const i32 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower) { return lower; }
+  if (upper == lower)
+  {
+    return lower;
+  }
 
   const u64 range = (u64)((i64)upper - (i64)lower) + 1u;
   return (i32)((u32)lower + (u32)randu64r (0, range - 1));
@@ -242,17 +279,25 @@ randu64 (void)
 
 i64
 randi64 (void)
-{ return randi64r (I64_MIN, I64_MAX); }
+{
+  return randi64r (I64_MIN, I64_MAX);
+}
 
 u64
 randu64r (const u64 lower, const u64 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower) { return lower; }
+  if (upper == lower)
+  {
+    return lower;
+  }
 
   // Full 64-bit range: upper - lower + 1 would overflow u64
-  if (lower == 0 && upper == U64_MAX) { return randu64 (); }
+  if (lower == 0 && upper == U64_MAX)
+  {
+    return randu64 ();
+  }
 
   const u64 range = upper - lower + 1u;
 
@@ -316,8 +361,14 @@ TEST (randu64r)
     {
       const u64 v = randu64r (1000ull, 1001ull);
       test_assert (v == 1000ull || v == 1001ull);
-      if (v == 1000ull) { saw_lo = true; }
-      if (v == 1001ull) { saw_hi = true; }
+      if (v == 1000ull)
+      {
+        saw_lo = true;
+      }
+      if (v == 1001ull)
+      {
+        saw_hi = true;
+      }
     }
     test_assert (saw_lo);
     test_assert (saw_hi);
@@ -352,8 +403,14 @@ TEST (randu64e)
     {
       const u64 v = randu64e (10ull, 12ull);
       test_assert (v == 10ull || v == 11ull);
-      if (v == 10ull) { saw_lo = true; }
-      if (v == 11ull) { saw_hi = true; }
+      if (v == 10ull)
+      {
+        saw_lo = true;
+      }
+      if (v == 11ull)
+      {
+        saw_hi = true;
+      }
     }
     test_assert (saw_lo);
     test_assert (saw_hi);
@@ -374,11 +431,18 @@ randi64r (const i64 lower, const i64 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower) { return lower; }
+  if (upper == lower)
+  {
+    return lower;
+  }
 
-  // range via u64 subtraction. Overflows to 0 only for lower=I64_MIN, upper=I64_MAX.
+  // range via u64 subtraction. Overflows to 0 only for lower=I64_MIN,
+  // upper=I64_MAX.
   const u64 range = (u64)upper - (u64)lower + 1u;
-  if (range == 0) { return (i64)randu64 (); }
+  if (range == 0)
+  {
+    return (i64)randu64 ();
+  }
 
   return (i64)((u64)lower + randu64r (0, range - 1));
 }
@@ -425,8 +489,14 @@ TEST (randi64e)
     {
       const i64 v = randi64e (-5, -3);
       test_assert (v == -5 || v == -4);
-      if (v == -5) { saw_lo = true; }
-      if (v == -4) { saw_hi = true; }
+      if (v == -5)
+      {
+        saw_lo = true;
+      }
+      if (v == -4)
+      {
+        saw_hi = true;
+      }
     }
     test_assert (saw_lo);
     test_assert (saw_hi);
@@ -456,13 +526,22 @@ rand_str (
 
   const u32 len  = randu32r (minlen, maxlen);
   char     *data = (char *)chunk_malloc (alloc, len, sizeof *data, e);
-  if (!data) { return error_trace (e); }
+  if (!data)
+  {
+    return error_trace (e);
+  }
 
   for (u32 i = 0; i < len; ++i)
   {
     const int r = randu32r (0, 61);
-    if (r < 10) { data[i] = '0' + r; }
-    else if (r < 36) { data[i] = 'A' + (r - 10); }
+    if (r < 10)
+    {
+      data[i] = '0' + r;
+    }
+    else if (r < 36)
+    {
+      data[i] = 'A' + (r - 10);
+    }
     else
     {
       data[i] = 'a' + (r - 36);
@@ -482,7 +561,10 @@ rand_bytes (void *dest, const u32 len)
   ASSERT (len > 0);
 
   u8 *p = (u8 *)dest;
-  for (u32 i = 0; i < len; ++i) { p[i] = (u8)(rand () & 0xFF); }
+  for (u32 i = 0; i < len; ++i)
+  {
+    p[i] = (u8)(rand () & 0xFF);
+  }
 }
 
 void

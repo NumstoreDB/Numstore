@@ -513,9 +513,15 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
 
 #ifndef NTEST
 bool
-wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right)
+wal_rec_hdr_read_equal (
+    const struct wal_rec_hdr_read *left,
+    const struct wal_rec_hdr_read *right
+)
 {
-  if (left->type != right->type) { return false; }
+  if (left->type != right->type)
+  {
+    return false;
+  }
 
   bool match = true;
 
@@ -523,7 +529,10 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
   {
     case WL_UPDATE:
     {
-      if (left->update.type != right->update.type) { return false; }
+      if (left->update.type != right->update.type)
+      {
+        return false;
+      }
 
       match = match && left->update.tid == right->update.tid;
       match = match && left->update.prev == right->update.prev;
@@ -540,8 +549,18 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
         case WUP_PHYSICAL:
         {
           match = match && left->update.phys.pg == right->update.phys.pg;
-          match = match && memcmp (left->update.phys.undo, right->update.phys.undo, PAGE_SIZE) == 0;
-          match = match && memcmp (left->update.phys.redo, right->update.phys.redo, PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (
+                         left->update.phys.undo,
+                         right->update.phys.undo,
+                         PAGE_SIZE
+                     ) == 0;
+          match = match
+                  && memcmp (
+                         left->update.phys.redo,
+                         right->update.phys.redo,
+                         PAGE_SIZE
+                     ) == 0;
           break;
         }
         case WUP_FEXT:
@@ -556,7 +575,10 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
 
     case WL_CLR:
     {
-      if (left->clr.type != right->clr.type) { return false; }
+      if (left->clr.type != right->clr.type)
+      {
+        return false;
+      }
 
       match = match && left->clr.tid == right->clr.tid;
       match = match && left->clr.prev == right->clr.prev;
@@ -567,7 +589,10 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
         case WCLR_PHYSICAL:
         {
           match = match && left->clr.phys.pg == right->clr.phys.pg;
-          match = match && memcmp (left->clr.phys.redo, right->clr.phys.redo, PAGE_SIZE) == 0;
+          match =
+              match
+              && memcmp (left->clr.phys.redo, right->clr.phys.redo, PAGE_SIZE)
+                     == 0;
           break;
         }
         case WCLR_FSM:
@@ -616,7 +641,11 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
 #endif
 
 void
-i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_read *r, const lsn l)
+i_print_wal_rec_hdr_read_light (
+    const int                      log_level,
+    const struct wal_rec_hdr_read *r,
+    const lsn                      l
+)
 {
   char        fields[128];
   const char *name = "?";
@@ -646,7 +675,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", pg   = %8" PRpgno ", undo = 0x%02x, redo = 0x%02x",
+              "txid = %8" PRtxid ", pg   = %8" PRpgno
+              ", undo = 0x%02x, redo = 0x%02x",
               r->update.tid,
               r->update.fsm.pg,
               (unsigned)r->update.fsm.undo,
@@ -661,7 +691,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno ", redo_pgs = %8" PRpgno,
+              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno
+              ", redo_pgs = %8" PRpgno,
               r->update.tid,
               r->update.fext.undo,
               r->update.fext.redo
@@ -695,7 +726,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", pg   = %8" PRpgno ", redo = 0x%02x, undoNxt = %15" PRlsn,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno
+              ", redo = 0x%02x, undoNxt = %15" PRlsn,
               r->clr.tid,
               r->clr.fsm.pg,
               (unsigned)r->clr.fsm.redo,
@@ -756,7 +788,14 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
      Bump them if a new record type pushes past these. */
   if (prev)
   {
-    i_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n", l, name, fields, *prev);
+    i_printf (
+        log_level,
+        "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
+        l,
+        name,
+        fields,
+        *prev
+    );
   }
   else
   {
@@ -801,7 +840,10 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
         }
         case WUP_FSM:
         {
-          if (h->update.fsm.undo) { fsm_set_bit (page_h_w (ph), h->update.fsm.bit); }
+          if (h->update.fsm.undo)
+          {
+            fsm_set_bit (page_h_w (ph), h->update.fsm.bit);
+          }
           else
           {
             fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
@@ -880,7 +922,10 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
         }
         case WUP_FSM:
         {
-          if (h->update.fsm.redo) { fsm_set_bit (page_h_w (ph), h->update.fsm.bit); }
+          if (h->update.fsm.redo)
+          {
+            fsm_set_bit (page_h_w (ph), h->update.fsm.bit);
+          }
           else
           {
             fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
@@ -905,7 +950,10 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
         }
         case WCLR_FSM:
         {
-          if (h->clr.fsm.redo) { fsm_set_bit (page_h_w (ph), h->clr.fsm.bit); }
+          if (h->clr.fsm.redo)
+          {
+            fsm_set_bit (page_h_w (ph), h->clr.fsm.bit);
+          }
           else
           {
             fsm_clr_bit (page_h_w (ph), h->clr.fsm.bit);

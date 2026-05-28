@@ -34,11 +34,34 @@ struct ext_array
 struct ext_array ext_array_create (void);
 void             ext_array_free (struct ext_array *r);
 
-i64 ext_array_insert (struct ext_array *r, u32 ofst, const void *src, u32 slen, error *e);
-i64 ext_array_read (const struct ext_array *r, struct stride str, u32 size, void *dest, error *e);
-i64
-ext_array_write (const struct ext_array *r, struct stride str, u32 size, const void *src, error *e);
-i64 ext_array_remove (struct ext_array *r, struct stride str, u32 size, void *dest, error *e);
+i64 ext_array_insert (
+    struct ext_array *r,
+    u32               ofst,
+    const void       *src,
+    u32               slen,
+    error            *e
+);
+i64 ext_array_read (
+    const struct ext_array *r,
+    struct stride           str,
+    u32                     size,
+    void                   *dest,
+    error                  *e
+);
+i64 ext_array_write (
+    const struct ext_array *r,
+    struct stride           str,
+    u32                     size,
+    const void             *src,
+    error                  *e
+);
+i64 ext_array_remove (
+    struct ext_array *r,
+    struct stride     str,
+    u32               size,
+    void             *dest,
+    error            *e
+);
 u64 ext_array_get_len (const struct ext_array *r);
 
 void ext_array_data_writer (struct data_writer *dest, struct ext_array *arr);

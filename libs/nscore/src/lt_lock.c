@@ -46,13 +46,21 @@ lt_lock_key (const struct lt_lock lock)
     case LOCK_VAR_ROOT:
     case LOCK_VAR_NBYTES:
     {
-      memcpy (&hcode[hcodelen], &lock.data.var_root, sizeof (lock.data.var_root));
+      memcpy (
+          &hcode[hcodelen],
+          &lock.data.var_root,
+          sizeof (lock.data.var_root)
+      );
       hcodelen += sizeof (lock.data.var_root);
       break;
     }
     case LOCK_RPTREE:
     {
-      memcpy (&hcode[hcodelen], &lock.data.rptree_root, sizeof (lock.data.rptree_root));
+      memcpy (
+          &hcode[hcodelen],
+          &lock.data.rptree_root,
+          sizeof (lock.data.rptree_root)
+      );
       hcodelen += sizeof (lock.data.rptree_root);
       break;
     }
@@ -69,7 +77,10 @@ lt_lock_key (const struct lt_lock lock)
 bool
 lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
 {
-  if (left.type != right.type) { return false; }
+  if (left.type != right.type)
+  {
+    return false;
+  }
 
   switch (left.type)
   {
@@ -229,7 +240,10 @@ random_lt_lock (void)
     return r;         \
   }
 
-  switch ((enum lt_lock_type)randu32r (0, 10)) { LT_LOCK_FOR_EACH_RANDOM (func) }
+  switch ((enum lt_lock_type)randu32r (0, 10))
+  {
+    LT_LOCK_FOR_EACH_RANDOM (func)
+  }
 
 #undef func
 

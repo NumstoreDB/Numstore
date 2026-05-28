@@ -48,7 +48,12 @@ txn_update_data (struct txn *t, const struct txn_data data)
 }
 
 void
-txn_update (struct txn *t, enum tx_state state, const lsn last, const lsn undo_next)
+txn_update (
+    struct txn   *t,
+    enum tx_state state,
+    const lsn     last,
+    const lsn     undo_next
+)
 {
   latch_lock (&t->l);
   t->data = (struct txn_data){
@@ -68,7 +73,11 @@ txn_update_state (struct txn *t, const enum tx_state new_state)
 }
 
 void
-txn_update_last_undo (struct txn *t, const lsn last_lsn, const lsn undo_next_lsn)
+txn_update_last_undo (
+    struct txn *t,
+    const lsn   last_lsn,
+    const lsn   undo_next_lsn
+)
 {
   latch_lock (&t->l);
   t->data.last_lsn      = last_lsn;
@@ -77,7 +86,11 @@ txn_update_last_undo (struct txn *t, const lsn last_lsn, const lsn undo_next_lsn
 }
 
 void
-txn_update_last_state (struct txn *t, const lsn last_lsn, const enum tx_state new_state)
+txn_update_last_state (
+    struct txn         *t,
+    const lsn           last_lsn,
+    const enum tx_state new_state
+)
 {
   latch_lock (&t->l);
   t->data.last_lsn = last_lsn;
@@ -102,7 +115,10 @@ txn_update_undo_next (struct txn *t, const lsn undo_next)
 }
 
 bool
-txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right)
+txn_data_equal_unsafe (
+    const struct txn_data *left,
+    const struct txn_data *right
+)
 {
   bool equal = true;
 
@@ -134,7 +150,12 @@ theend:
 }
 
 err_t
-txn_newlock (struct txn *t, const struct lt_lock lock, const enum lock_mode mode, error *e)
+txn_newlock (
+    struct txn          *t,
+    const struct lt_lock lock,
+    const enum lock_mode mode,
+    error               *e
+)
 {
   latch_lock (&t->l);
 
@@ -280,7 +301,10 @@ txn_newlock_test (void *_tx)
 
 #  define MAYBE_ADD_LOCK(type, r)                                            \
     lock = r;                                                                \
-    if (txn_newlock (tx, lock, LM_X, &e)) { goto failed; }                   \
+    if (txn_newlock (tx, lock, LM_X, &e))                                    \
+    {                                                                        \
+      goto failed;                                                           \
+    }                                                                        \
     if (!txn_haslock (tx, lock))                                             \
     {                                                                        \
       error_causef (&e, ERR_INVALID_ARGUMENT, "Transaction must have lock"); \
@@ -310,7 +334,10 @@ TEST (txn_basic)
         }
     );
 
-    for (u32 i = 0; i < 1000; ++i) { txn_newlock_test (&tx); }
+    for (u32 i = 0; i < 1000; ++i)
+    {
+      txn_newlock_test (&tx);
+    }
 
     txn_close (&tx);
   }
@@ -330,9 +357,15 @@ TEST (txn_basic)
 
     i_thread threads[100];
 
-    for (u32 i = 0; i < 100; ++i) { i_thread_create (&threads[i], txn_newlock_test, &tx, &e); }
+    for (u32 i = 0; i < 100; ++i)
+    {
+      i_thread_create (&threads[i], txn_newlock_test, &tx, &e);
+    }
 
-    for (u32 i = 0; i < 100; ++i) { i_thread_join (&threads[i], &e); }
+    for (u32 i = 0; i < 100; ++i)
+    {
+      i_thread_join (&threads[i], &e);
+    }
 
     txn_close (&tx);
   }

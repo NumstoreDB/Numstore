@@ -47,7 +47,10 @@ struct wal_istream *
 walis_open (const char *fname, error *e)
 {
   struct wal_istream *dest = i_malloc (1, sizeof *dest, e);
-  if (dest == NULL) { return NULL; }
+  if (dest == NULL)
+  {
+    return NULL;
+  }
 
   /**
    * We'll open in write mode too
@@ -138,7 +141,10 @@ walis_read_all (
   DBG_ASSERT (wal_istream, w);
 
   *iseof = false;
-  if (rlsn) { *rlsn = w->curlsn; }
+  if (rlsn)
+  {
+    *rlsn = w->curlsn;
+  }
 
   const i64 bread = i_read_all (&w->fd, data, len, e);
   if (bread < 0)
@@ -166,7 +172,10 @@ walis_read_all (
     return SUCCESS;
   }
 
-  if (checksum) { checksum_execute (checksum, data, len); }
+  if (checksum)
+  {
+    checksum_execute (checksum, data, len);
+  }
 
   w->lsnidx += len;
 

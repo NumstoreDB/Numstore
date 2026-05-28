@@ -21,9 +21,20 @@ pgr_do_checkpoint (void *ctx)
 {
   struct pager *p = ctx;
   error         e = error_create ();
-  if (pgr_deletion_blocking_checkpoint (p, &e)) { error_log_consume (&e); }
+  if (pgr_deletion_blocking_checkpoint (p, &e))
+  {
+    error_log_consume (&e);
+  }
 }
 
 err_t
 pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
-{ return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e); }
+{
+  return periodic_task_start (
+      &p->checkpoint_task,
+      msec,
+      pgr_do_checkpoint,
+      p,
+      e
+  );
+}

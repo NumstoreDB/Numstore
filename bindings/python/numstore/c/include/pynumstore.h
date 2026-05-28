@@ -41,6 +41,7 @@ PyObject *pyns_txn_rollback(PyObject *Py_UNUSED(m), PyObject *arg);
 PyObject *pyns_var_create(PyObject *Py_UNUSED(m), PyObject *args);
 PyObject *pyns_var_delete(PyObject *Py_UNUSED(m), PyObject *args);
 PyObject *pyns_var_len(PyObject *Py_UNUSED(m), PyObject *args);
+PyObject *pyns_var_exists(PyObject *Py_UNUSED(m), PyObject *args);
 
 PyObject *pyns_var_read(PyObject *Py_UNUSED(m), PyObject *args);
 PyObject *pyns_var_insert(PyObject *Py_UNUSED(m), PyObject *args);

@@ -71,7 +71,10 @@ i_log_vt (const int level, const page *vp)
   i_log (level, "=== VARIABLE TAIL START ===\n");
 
   i_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
-  if (vt_get_next (vp) == PGNO_NULL) { i_printf (level, "NEXT:   NULL\n"); }
+  if (vt_get_next (vp) == PGNO_NULL)
+  {
+    i_printf (level, "NEXT:   NULL\n");
+  }
   else
   {
     i_printf (level, "NEXT:   %" PRpgno "\n", vt_get_next (vp));

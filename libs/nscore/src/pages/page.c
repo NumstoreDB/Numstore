@@ -75,13 +75,22 @@ page_validate_for_db (const page *p, const int flags, error *e)
 {
   ASSERT (p);
 
-  if (flags & PG_PERMISSIVE) { return SUCCESS; }
+  if (flags & PG_PERMISSIVE)
+  {
+    return SUCCESS;
+  }
 
   const pgh header = page_get_type (p);
 
   if (!(header & flags))
   {
-    return error_causef (e, ERR_CORRUPT, "expected page type %d, got %d", flags, header);
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "expected page type %d, got %d",
+        flags,
+        header
+    );
   }
 
   if (!(flags & PG_SKIP_CHECKSUM))
@@ -102,7 +111,10 @@ page_validate_for_db (const page *p, const int flags, error *e)
     }
   }
 
-  if (header == PG_TRASH) { return SUCCESS; }
+  if (header == PG_TRASH)
+  {
+    return SUCCESS;
+  }
 
   switch ((enum page_type)header)
   {

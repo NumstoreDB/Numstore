@@ -21,7 +21,10 @@
 bool
 type_ref_equal (const struct type_ref left, const struct type_ref right)
 {
-  if (left.type != right.type) { return false; }
+  if (left.type != right.type)
+  {
+    return false;
+  }
 
   switch (left.type)
   {
@@ -33,13 +36,22 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
 
     case TR_STRUCT:
     {
-      if (left.st.len != right.st.len) { return false; }
+      if (left.st.len != right.st.len)
+      {
+        return false;
+      }
 
       for (u16 i = 0; i < left.st.len; i++)
       {
-        if (!string_equal (left.st.keys[i], right.st.keys[i])) { return false; }
+        if (!string_equal (left.st.keys[i], right.st.keys[i]))
+        {
+          return false;
+        }
 
-        if (!type_ref_equal (left.st.types[i], right.st.types[i])) { return false; }
+        if (!type_ref_equal (left.st.types[i], right.st.types[i]))
+        {
+          return false;
+        }
       }
 
       return true;
@@ -50,7 +62,12 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
 }
 
 struct type *
-tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *alloc, error *e)
+tr_construct (
+    struct type        *reftype,
+    struct type_ref    *tr,
+    struct chunk_alloc *alloc,
+    error              *e
+)
 {
   struct chunk_alloc temp;
 
@@ -70,7 +87,10 @@ tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *all
 
       struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
 
-      if (ret == NULL) { goto temp_failed; }
+      if (ret == NULL)
+      {
+        goto temp_failed;
+      }
 
       // Struct building logic
       {
@@ -82,20 +102,35 @@ tr_construct (struct type *reftype, struct type_ref *tr, struct chunk_alloc *all
         for (u16 i = 0; i < len; ++i)
         {
           // The field name
-          if (kvlb_accept_key (&builder, keys[i], e)) { goto temp_failed; }
+          if (kvlb_accept_key (&builder, keys[i], e))
+          {
+            goto temp_failed;
+          }
 
           // Get the sub type
           // (recursively)
           struct type *subtype = tr_construct (reftype, &types[i], alloc, e);
-          if (subtype == NULL) { goto temp_failed; }
+          if (subtype == NULL)
+          {
+            goto temp_failed;
+          }
 
-          if (kvlb_accept_type (&builder, subtype, e)) { goto temp_failed; }
+          if (kvlb_accept_type (&builder, subtype, e))
+          {
+            goto temp_failed;
+          }
         }
 
         struct kvt_list kvl;
-        if (kvlb_build (&kvl, &builder, e)) { goto temp_failed; }
+        if (kvlb_build (&kvl, &builder, e))
+        {
+          goto temp_failed;
+        }
 
-        if (struct_t_create (&ret->st, kvl, alloc, e)) { goto temp_failed; }
+        if (struct_t_create (&ret->st, kvl, alloc, e))
+        {
+          goto temp_failed;
+        }
       }
 
       chunk_alloc_free_all (&temp);

@@ -99,19 +99,28 @@ ns_write_forward (const struct ns_write_params params, error *e)
   enum write_state state = ACTIVE;
 
   // Nothing to do
-  if (params.root == PGNO_NULL) { return 0; }
+  if (params.root == PGNO_NULL)
+  {
+    return 0;
+  }
 
   // Otherwise seek
   else
   {
-    if (ns_seek (&seek, e)) { goto failed; }
+    if (ns_seek (&seek, e))
+    {
+      goto failed;
+    }
 
     // Transition from Seeked -> inserting
     cur  = page_h_xfer_ownership (&seek.pg);
     lidx = seek.lidx;
 
     // Upgrade to X lock
-    if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e)) { goto failed; }
+    if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e))
+    {
+      goto failed;
+    }
   }
 
   page *curp = page_h_w (&cur);
@@ -125,7 +134,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
   while (max_bwrite == 0 || total_bwrite < max_bwrite)
   {
-    p_size next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
+    p_size next_amount = ns_write_next_amount (
+        curp,
+        lidx,
+        bnext,
+        max_bwrite,
+        total_bwrite,
+        state
+    );
 
     if (next_amount == 0)
     {
@@ -137,7 +153,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         if (npg != PGNO_NULL)
         {
-          WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.p, e));
+          WRAP (pgr_get_writable (
+              &next,
+              params.tx,
+              PG_DATA_LIST,
+              npg,
+              params.p,
+              e
+          ));
         }
 
         // Reached EOF
@@ -154,7 +177,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         curp = page_h_w (&cur);
 
-        next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
+        next_amount = ns_write_next_amount (
+            curp,
+            lidx,
+            bnext,
+            max_bwrite,
+            total_bwrite,
+            state
+        );
 
         ASSERT (next_amount > 0);
       }
@@ -173,10 +203,18 @@ ns_write_forward (const struct ns_write_params params, error *e)
         {
           // Pull bytes from caller's source stream and
           // stamp them into the page
-          const sp_size write =
-              stream_bread ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.src, e);
+          const sp_size write = stream_bread (
+              (u8 *)dl_get_data (curp) + lidx,
+              1,
+              next_amount,
+              params.src,
+              e
+          );
 
-          if (write < 0) { goto failed; }
+          if (write < 0)
+          {
+            goto failed;
+          }
 
           lidx += write;
           total_bwrite += write;
@@ -275,8 +313,14 @@ ns_write_backward (const struct ns_write_params params, error *e)
 sb_size
 ns_write (const struct ns_write_params params, error *e)
 {
-  if (params.stride > 0) { return ns_write_forward (params, e); }
-  else if (params.stride < 0) { return ns_write_backward (params, e); }
+  if (params.stride > 0)
+  {
+    return ns_write_forward (params, e);
+  }
+  else if (params.stride < 0)
+  {
+    return ns_write_backward (params, e);
+  }
   else
   {
     return error_causef (e, ERR_INVALID_ARGUMENT, "write stride is 0");

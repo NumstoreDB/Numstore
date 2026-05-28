@@ -22,13 +22,19 @@ ns_init_var_hash_map (struct pager *p, error *e)
 
   // BEGIN TXN
   struct txn tx;
-  if (pgr_begin_txn (&tx, p, e)) { goto failed; }
+  if (pgr_begin_txn (&tx, p, e))
+  {
+    goto failed;
+  }
 
   // Upfront initialization
   if (pgr_isnew (p))
   {
     // Create a new variable hash page
-    if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e)) { goto failed; }
+    if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e))
+    {
+      goto failed;
+    }
 
     // Next page should be valid
     //   this is a weak contract
@@ -36,11 +42,17 @@ ns_init_var_hash_map (struct pager *p, error *e)
     //   it's good enough but might need to change
     ASSERT (page_h_pgno (&hp) == VHASH_PGNO);
 
-    if (pgr_release (p, &hp, PG_VAR_HASH_PAGE, e)) { goto failed; }
+    if (pgr_release (p, &hp, PG_VAR_HASH_PAGE, e))
+    {
+      goto failed;
+    }
   }
 
   // COMMIT
-  if (pgr_commit (p, &tx, e)) { goto failed; }
+  if (pgr_commit (p, &tx, e))
+  {
+    goto failed;
+  }
 
 failed:
   return error_trace (e);

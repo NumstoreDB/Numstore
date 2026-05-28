@@ -28,7 +28,9 @@ DEFINE_DBG_ASSERT (struct string, cstring, s, {
 
 struct string
 strfcstr (const char *cstr)
-{ return (struct string){.data = cstr, .len = strlen (cstr)}; }
+{
+  return (struct string){.data = cstr, .len = strlen (cstr)};
+}
 
 u64
 line_length (const char *buf, const u64 max)
@@ -39,7 +41,10 @@ line_length (const char *buf, const u64 max)
   const char *nl = memchr (buf, '\n', max);
   u64         ret;
 
-  if (nl != NULL) { ret = (u64)(nl - buf); }
+  if (nl != NULL)
+  {
+    ret = (u64)(nl - buf);
+  }
   else
   {
     ret = max;
@@ -55,8 +60,14 @@ strings_all_unique (const struct string *strs, const u32 count)
   {
     for (u32 j = i + 1; j < count; ++j)
     {
-      if (strs[i].len != strs[j].len) { continue; }
-      if (memcmp (strs[i].data, strs[j].data, strs[i].len) == 0) { return 0; }
+      if (strs[i].len != strs[j].len)
+      {
+        continue;
+      }
+      if (memcmp (strs[i].data, strs[j].data, strs[i].len) == 0)
+      {
+        return 0;
+      }
     }
   }
   return 1;
@@ -66,7 +77,9 @@ strings_all_unique (const struct string *strs, const u32 count)
 TEST (strings_all_unique)
 {
   TEST_CASE ("empty array: trivially unique")
-  { test_assert_int_equal (strings_all_unique (NULL, 0), 1); }
+  {
+    test_assert_int_equal (strings_all_unique (NULL, 0), 1);
+  }
 
   TEST_CASE ("one string: unique")
   {
@@ -124,12 +137,20 @@ TEST (strings_all_unique)
 bool
 string_equal (const struct string s1, const struct string s2)
 {
-  if (s1.len != s2.len) { return false; }
+  if (s1.len != s2.len)
+  {
+    return false;
+  }
   return strncmp (s1.data, s2.data, s1.len) == 0;
 }
 
 struct string
-string_plus (const struct string left, const struct string right, struct lalloc *alloc, error *e)
+string_plus (
+    const struct string left,
+    const struct string right,
+    struct lalloc      *alloc,
+    error              *e
+)
 {
   const u32 len = left.len + right.len;
   ASSERT (len > 0);
@@ -165,7 +186,10 @@ strings_are_disjoint (
   {
     for (u32 j = 0; j < rlen; ++j)
     {
-      if (string_equal (left[i], right[j])) { return &left[i]; }
+      if (string_equal (left[i], right[j]))
+      {
+        return &left[i];
+      }
     }
   }
 
@@ -175,18 +199,27 @@ strings_are_disjoint (
 bool
 string_contains (const struct string superset, const struct string subset)
 {
-  if (superset.len == 0 && subset.len == 0) { return true; }
+  if (superset.len == 0 && subset.len == 0)
+  {
+    return true;
+  }
 
   for (u32 i = 0; i < superset.len; ++i)
   {
     const u32 len = superset.len - i;
-    if (len < subset.len) { return false; }
+    if (len < subset.len)
+    {
+      return false;
+    }
 
     const struct string _superset = {
         .data = &superset.data[i],
         .len  = subset.len,
     };
-    if (string_equal (_superset, subset)) { return true; }
+    if (string_equal (_superset, subset))
+    {
+      return true;
+    }
   }
 
   return false;
@@ -210,8 +243,14 @@ string_less_string (const struct string left, const struct string right)
 {
   const u32 min_len = (left.len < right.len) ? left.len : right.len;
   const int cmp     = memcmp (left.data, right.data, min_len);
-  if (cmp < 0) { return true; }
-  if (cmp > 0) { return false; }
+  if (cmp < 0)
+  {
+    return true;
+  }
+  if (cmp > 0)
+  {
+    return false;
+  }
   return left.len < right.len;
 }
 
@@ -220,24 +259,40 @@ string_greater_string (const struct string left, const struct string right)
 {
   const u32 min_len = (left.len < right.len) ? left.len : right.len;
   const int cmp     = memcmp (left.data, right.data, min_len);
-  if (cmp > 0) { return true; }
-  if (cmp < 0) { return false; }
+  if (cmp > 0)
+  {
+    return true;
+  }
+  if (cmp < 0)
+  {
+    return false;
+  }
   return left.len > right.len;
 }
 
 bool
 string_less_equal_string (const struct string left, const struct string right)
-{ return !string_greater_string (left, right); }
+{
+  return !string_greater_string (left, right);
+}
 
 bool
-string_greater_equal_string (const struct string left, const struct string right)
-{ return !string_less_string (left, right); }
+string_greater_equal_string (
+    const struct string left,
+    const struct string right
+)
+{
+  return !string_less_string (left, right);
+}
 
 err_t
 string_copy (struct string *dest, struct string src, error *e)
 {
   char *data = i_calloc (src.len + 1, 1, e);
-  if (data == NULL) { return error_trace (e); }
+  if (data == NULL)
+  {
+    return error_trace (e);
+  }
   memcpy (data, src.data, src.len);
   dest->data = data;
   dest->len  = src.len;

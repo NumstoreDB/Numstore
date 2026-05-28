@@ -26,12 +26,21 @@ aries_ctx_create (struct aries_ctx *dest, error *e)
   slab_alloc_init (&dest->alloc, sizeof (struct txn), 1000);
 
   dest->txt = txnt_open (e);
-  if (dest->txt == NULL) { goto failed; }
+  if (dest->txt == NULL)
+  {
+    goto failed;
+  }
 
   dest->dpt = dpgt_open (e);
-  if (dest->dpt == NULL) { goto txt_failed; }
+  if (dest->dpt == NULL)
+  {
+    goto txt_failed;
+  }
 
-  if (dblb_create (&dest->txn_ptrs, sizeof (struct txn *), 100, e)) { goto dpt_failed; }
+  if (dblb_create (&dest->txn_ptrs, sizeof (struct txn *), 100, e))
+  {
+    goto dpt_failed;
+  }
 
   return SUCCESS;
 
@@ -59,7 +68,10 @@ struct txn *
 aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
 {
   struct txn *tx = slab_alloc_alloc (&ctx->alloc, e);
-  if (tx == NULL) { return NULL; }
+  if (tx == NULL)
+  {
+    return NULL;
+  }
 
   if (dblb_append (&ctx->txn_ptrs, &tx, 1, e))
   {
