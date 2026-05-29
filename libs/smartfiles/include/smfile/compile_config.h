@@ -16,26 +16,26 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <inttypes.h>
+#include <stdint.h>
 
 ////////////////////////////////////////////////////////////
 // Data Type Sizes
 
-typedef uint32_t t_size; // Represents the size of a single type in bytes
-typedef int32_t st_size; // Signed t_size
-typedef uint32_t p_size; // To index inside a page
-typedef int32_t sp_size; // Signed p_size
-typedef uint64_t b_size; // Bytes size to index into a contiguous rope bytes
-typedef int64_t sb_size; // Signed b_size
-typedef uint64_t pgno;   // Page number
-typedef int64_t spgno;   // Signed page number
-typedef uint64_t txid;   // Transaction id
-typedef int64_t stxid;   // Signed transaction id
-typedef int64_t slsn;    // Wall index (often called LSN)
-typedef uint64_t lsn;    // Wall index (often called LSN)
-typedef uint8_t pgh;     // Page header
-typedef uint8_t wlh;     // WAL header
+typedef uint32_t t_size;  // Represents the size of a single type in bytes
+typedef int32_t  st_size; // Signed t_size
+typedef uint32_t p_size;  // To index inside a page
+typedef int32_t  sp_size; // Signed p_size
+typedef uint64_t b_size;  // Bytes size to index into a contiguous rope bytes
+typedef int64_t  sb_size; // Signed b_size
+typedef uint64_t pgno;    // Page number
+typedef int64_t  spgno;   // Signed page number
+typedef uint64_t txid;    // Transaction id
+typedef int64_t  stxid;   // Signed transaction id
+typedef int64_t  slsn;    // Wall index (often called LSN)
+typedef uint64_t lsn;     // Wall index (often called LSN)
+typedef uint8_t  pgh;     // Page header
+typedef uint8_t  wlh;     // WAL header
 
 #define PGNO_NULL U64_MAX
 #define LSN_NULL  U64_MAX
