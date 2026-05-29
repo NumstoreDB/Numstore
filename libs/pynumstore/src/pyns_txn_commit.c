@@ -18,7 +18,10 @@ PyObject *
 pyns_txn_commit (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!ns) { return NULL; }
+  if (!ns)
+  {
+    return NULL;
+  }
 
   // COMMIT
   if (nsdb_commit (ns) < 0)

@@ -18,7 +18,10 @@ PyObject *
 pyns_db_close (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   nsdb_t *ns = _unwrap_db (arg);
-  if (!ns) { return NULL; }
+  if (!ns)
+  {
+    return NULL;
+  }
 
   PyCapsule_SetDestructor (arg, NULL);
 

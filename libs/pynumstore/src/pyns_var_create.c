@@ -23,10 +23,16 @@ pyns_var_create (PyObject *Py_UNUSED (m), PyObject *args)
   const char *name;
   const char *type_str;
 
-  if (!PyArg_ParseTuple (args, "OOss", &db, &txn_or_none, &name, &type_str)) { return NULL; }
+  if (!PyArg_ParseTuple (args, "OOss", &db, &txn_or_none, &name, &type_str))
+  {
+    return NULL;
+  }
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns) { return NULL; }
+  if (!ns)
+  {
+    return NULL;
+  }
 
   if (nsdb_create (ns, name, type_str) < 0)
   {
