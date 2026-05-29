@@ -14,6 +14,7 @@
 
 #include "_pynumstore.h"
 #include "_numstore.h"
+#include "numstore.h"
 
 PyObject *
 pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
@@ -40,10 +41,12 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
   PyArrayObject *arr = (PyArrayObject *)data_obj;
   void          *buf = PyArray_DATA (arr);
 
-  long long start, step, stop;
+  long long start = -1;
+  long long step = -1;
+  long long stop = -1;
   int       flags;
 
-  if (PyLong_Check (key_obj))
+    if (PyLong_Check (key_obj))
     {
       start = PyLong_AsLongLong (key_obj);
       if (start == -1 && PyErr_Occurred ()) goto fail;
@@ -58,18 +61,31 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
       r_step  = PyObject_GetAttrString (key_obj, "step");
       if (!r_start || !r_stop || !r_step) goto fail;
 
-      start = PyLong_AsLongLong (r_start);
-      stop  = PyLong_AsLongLong (r_stop);
-      step  = PyLong_AsLongLong (r_step);
+      flags = COLON_PRESENT;
+
+      if (r_start != Py_None) {
+        start = PyLong_AsLongLong (r_start);
+        if (start == -1 && PyErr_Occurred ()) goto fail;
+        flags |= START_PRESENT;
+      }
+      if (r_stop != Py_None) {
+        stop = PyLong_AsLongLong (r_stop);
+        if (stop == -1 && PyErr_Occurred ()) goto fail;
+        flags |= STOP_PRESENT;
+      }
+      if (r_step != Py_None) {
+        step = PyLong_AsLongLong (r_step);
+        if (step == -1 && PyErr_Occurred ()) goto fail;
+        flags |= STEP_PRESENT;
+      }
+
       Py_DECREF (r_start); r_start = NULL;
       Py_DECREF (r_stop);  r_stop  = NULL;
       Py_DECREF (r_step);  r_step  = NULL;
-
-      if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) goto fail;
-      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
     }
 
-  if (step <= 0)
+
+  if (step <= 0 && STEP_PRESENT & flags)
     {
       PyErr_SetString (PyExc_ValueError, "key step must be positive");
       goto fail;

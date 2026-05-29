@@ -62,7 +62,7 @@ nsdb_begin (nsdb_t *_smf)
   if (ret == 0)
   {
     i_log_debug (
-        "BEGIN TXN: %" PRtxid "\n",
+        "a BEGIN TXN: %" PRtxid "\n",
         ((struct nshandle *)_smf)->atx->tid
     );
   }

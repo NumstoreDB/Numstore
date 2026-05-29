@@ -131,6 +131,8 @@ _nsdb_read (
 
   // READ
   {
+    printf("LLLLLLLLLLLLLLLLL\n");
+    fflush(stdout);
     rparams = (struct ns_read_params){
         .p      = db->root->p,
         .dest   = output,
@@ -141,13 +143,25 @@ _nsdb_read (
         .stride = stride.stride,
         .nelem  = stride.nelems,
     };
+    printf("KLLLLLLLLLLLLLLL\n");
+    fflush(stdout);
     ret = ns_read (rparams, e);
+    printf("KOLLLLLLLLLLLLLL\n");
+    fflush(stdout);
     WRAP_GOTO (ret, failed_rollback);
+    printf("KOPLLLLLLLLLLLLL\n");
+    fflush(stdout);
   }
+    printf("POPLLLLLLLLLLLLL\n");
+    fflush(stdout);
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+    printf("OPLLLLLLLLLLLLL\n");
+    fflush(stdout);
   chunk_alloc_free_all (&temp);
+    printf("OPLLLLILLLLLLLL\n");
+    fflush(stdout);
   return ret;
 
 failed_rollback:
