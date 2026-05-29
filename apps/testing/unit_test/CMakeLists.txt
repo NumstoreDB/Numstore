@@ -61,6 +61,14 @@ target_include_directories(unit_test
             "${CMAKE_SOURCE_DIR}/libs/numstore/src"
 )
 
+# Windows looks for debug version of python 
+# which isn't shipped - force release 
+if(MSVC)
+    target_compile_definitions(unit_test PRIVATE
+        $<$<CONFIG:Debug>:Py_DEBUG=0>
+    )
+endif()
+
 # The test need to import _numstore 
 # do that by defining this then running PyImport
 target_compile_definitions(unit_test PRIVATE
@@ -78,6 +86,8 @@ if(ENABLE_LEAK_TOOL AND NOT ENABLE_ASAN)
         set(MEMORYCHECK_COMMAND_OPTIONS "--atExit --")
     elseif(VALGRIND)
         set(MEMORYCHECK_COMMAND "${VALGRIND}")
+        set(MEMORYCHECK_SUPPRESSIONS_FILE 
+          "${CMAKE_SOURCE_DIR}/valgrind_suppress.txt")
         set(MEMORYCHECK_COMMAND_OPTIONS
             "--tool=memcheck \
              --leak-check=full \
