@@ -29,7 +29,8 @@ jobs:
           # - { os: macos-latest,   preset: release,                             config: Release }
           # - { os: macos-latest, preset: package-release,                    config: Release }
 
-          - { os: windows-latest, preset: release-tests,    run_tests: true,  config: Release }
+          # - { os: windows-latest, preset: release-tests,    run_tests: true,  config: Release }
+          - { os: windows-latest, preset: debug-asan,       run_tests: true,  config: Debug }
           # - { os: windows-latest, preset: package-release,                    config: Release }
 
     steps:
