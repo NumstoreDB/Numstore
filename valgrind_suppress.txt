@@ -30,3 +30,38 @@
    fun:_dl_catch_exception
    fun:dl_open_worker
 }
+{
+   python_libpython_leak
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   obj:*libpython*
+}
+{
+   python_init_leak
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:Py_InitializeEx
+}
+{
+   python_init_from_config
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:Py_InitializeFromConfig
+}
+{
+   python_import
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:PyImport_ImportModuleLevelObject
+}
+{
+   python_eval
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:_PyEval_EvalFrameDefault
+}
