@@ -13,24 +13,24 @@ jobs:
       matrix:
         include:
           # For each:
-          #   1. Compile and run debug tests with address sanitizer 
+          #   1. Compile and run debug tests with address sanitizer
           #   2. Compile and run debug tests with leak check
-          #   2. Just make sure release can compile (without tests)
-          #   3. (ubtuntu only) Compile release with tests to ensure no ASSERT tests pass
-          #   4. Ensure package release can compile
-          
-          # - { os: ubuntu-latest,  preset: debug-asan,       run_tests: true }
-          # - { os: ubuntu-latest,  preset: debug-leakcheck,  run_tests: true }
-          # - { os: ubuntu-latest,  preset: release }
-          # - { os: ubuntu-latest,  preset: release-asan,     run_tests: true }
-          # - { os: ubuntu-latest,  preset: package-release }
+          #   3. Just make sure release can compile (without tests)
+          #   4. (ubuntu only) Compile release with tests to ensure no ASSERT tests pass
+          #   5. Ensure package release can compile
 
-          - { os: macos-latest,   preset: debug-asan,       run_tests: true }
-          - { os: macos-latest,   preset: release }
-          # - { os: macos-latest,   preset: package-release }
+          # - { os: ubuntu-latest,  preset: debug-asan,      run_tests: true,  config: Debug   }
+          # - { os: ubuntu-latest,  preset: debug-leakcheck, run_tests: true,  config: Debug   }
+          # - { os: ubuntu-latest,  preset: release,                            config: Release }
+          # - { os: ubuntu-latest,  preset: release-asan,    run_tests: true,  config: Release }
+          # - { os: ubuntu-latest,  preset: package-release,                   config: Release }
 
-          - { os: windows-latest, preset: release-tests,    run_tests: true }
-          - { os: windows-latest, preset: package-release }
+          - { os: macos-latest,   preset: debug-asan,       run_tests: true,  config: Debug   }
+          - { os: macos-latest,   preset: release,                             config: Release }
+          # - { os: macos-latest, preset: package-release,                    config: Release }
+
+          - { os: windows-latest, preset: release-tests,    run_tests: true,  config: Release }
+          - { os: windows-latest, preset: package-release,                    config: Release }
 
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
         run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
 
       - name: Install Valgrind
-        if: contains(matrix.preset, 'leakcheck')
+        if: contains(matrix.preset, 'leakcheck') && matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y valgrind
 
       - name: Configure (Linux/macOS)
@@ -72,8 +72,12 @@ jobs:
 
       - name: Test
         if: matrix.run_tests && !contains(matrix.preset, 'leakcheck')
-        run: ctest --test-dir ${{ env.TEST_DIR }} -V
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V -C ${{ matrix.config || 'Debug' }}
 
       - name: Test (memcheck)
-        if: matrix.run_tests && contains(matrix.preset, 'leakcheck')
-        run: ctest --test-dir ${{ env.TEST_DIR }} -V -T memcheck
+        if: matrix.run_tests && contains(matrix.preset, 'leakcheck') && matrix.os != 'macos-latest'
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V -T memcheck -C ${{ matrix.config || 'Debug' }}
+
+      - name: Test (leaks)
+        if: matrix.run_tests && contains(matrix.preset, 'leakcheck') && matrix.os == 'macos-latest'
+        run: leaks --atExit -- ./build/${{ matrix.preset }}/bin/unit_test
