@@ -10,6 +10,8 @@ jobs:
       TEST_DIR: ./build/debug-coverage
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-python@v5
         id: setup-python
@@ -36,7 +38,18 @@ jobs:
       - name: Coverage
         run: |
           ctest -T coverage --test-dir ${{ env.TEST_DIR }} -V
-          lcov --capture --directory ${{ env.TEST_DIR }} --output-file coverage.info --ignore-errors mismatch
+          lcov --capture \
+               --directory ${{ env.TEST_DIR }} \
+               --base-directory . \
+               --output-file coverage.info \
+               --ignore-errors mismatch
+          lcov --remove coverage.info \
+               '/usr/*' \
+               '*/Python*' \
+               '*/numpy*' \
+               '*/test*' \
+               --output-file coverage.info \
+               --ignore-errors mismatch
           genhtml coverage.info --output-directory coverage_html
 
       - name: Upload coverage report
