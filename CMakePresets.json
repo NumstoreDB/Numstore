@@ -52,6 +52,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CONFIGURATION_TYPES": "Release",
         "ENABLE_NDEBUG":    "ON",
         "ENABLE_NTEST":     "ON",
         "ENABLE_NLOG":      "ON",
