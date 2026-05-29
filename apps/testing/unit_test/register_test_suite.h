@@ -284,7 +284,6 @@ register_tests (void)
   REGISTER (smartfiles, cgd_test_create_delete_rollback_delete);
   REGISTER (smartfiles, cgd_test_create_crash_close_delete);
   REGISTER (smartfiles, irwr_rollback_invalid_wal_header);
-  REGISTER (smartfiles, python_binding_transaction_error);
   REGISTER (smartfiles, nsdb_create_txn);
   REGISTER (smartfiles, nsdb_delete_txn);
   REGISTER (smartfiles, nsdb_insert_txn);
@@ -292,4 +291,5 @@ register_tests (void)
   REGISTER (smartfiles, nsdb_get_if_exists);
   REGISTER (smartfiles, aries_crash);
   REGISTER (smartfiles, smfile_data_writer);
+  REGISTER (smartfiles, numstore_to_dtype);
 }

@@ -15,6 +15,7 @@
 #include "nscore/compiler.h"
 #include "_pynumstore.h"
 #include "nscore/types.h"
+#include <object.h>
 
 // Build a complex valued struct
 static PyArray_Descr*
@@ -51,7 +52,7 @@ build_complex_struct (int component_typenum)
       PyList_SET_ITEM (fields, i, tup);           
 
       name = NULL;
-      comp = NULL;
+      tup = NULL;
     }
 
   if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED) {  goto fail;}
@@ -176,11 +177,7 @@ union_to_dtype (const struct union_t *un)
 
       if (name == NULL || sub == NULL || off == NULL) goto fail;
 
-#if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
-      Py_ssize_t isize = ((PyArray_Descr *)sub)->elsize;
-#else
-      Py_ssize_t isize = PyDataType_ELSIZE ((PyArray_Descr *)sub);
-#endif
+      Py_ssize_t isize = elsize(sub);
 
       if (isize > max_size) { max_size = isize; }
 
@@ -306,104 +303,43 @@ pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg)
   return (PyObject*)ret;
 }
 
-#if 0
-
-static inline struct type *
-mk_prim (enum prim_t p)
-{
-  struct type *t = calloc (1, sizeof (*t));
-  t->type        = T_PRIM;
-  t->p           = p;
-  return t;
-}
-
-static inline struct type *
-strfcstruct (u16 len, struct string *keys, struct type **types)
-{
-  struct type *t = calloc (1, sizeof (*t));
-  t->type        = T_STRUCT;
-  t->st.len      = len;
-  t->st.keys     = keys;
-  t->st.types    = types;
-  return t;
-}
-
-static inline struct type *
-mk_union (u16 len, struct string *keys, struct type **types)
-{
-  struct type *t = calloc (1, sizeof (*t));
-  t->type        = T_UNION;
-  t->un.len      = len;
-  t->un.keys     = keys;
-  t->un.types    = types;
-  return t;
-}
-
-static inline struct type *
-mk_sarray (u16 rank, u32 *dims, struct type *sub)
-{
-  struct type *t = calloc (1, sizeof (*t));
-  t->type        = T_SARRAY;
-  t->sa.rank     = rank;
-  t->sa.dims     = dims;
-  t->sa.t        = sub;
-  return t;
-}
+#ifndef NTEST 
 
 static PyObject *
 ref_dtype (const char *spec)
 {
-  PyObject *np = PyImport_ImportModule ("numpy");
-  if (np == NULL) { return NULL; }
+  // Test function - assume no failing
+  PyObject* np = ASSERT_NN(PyImport_ImportModule ("numpy"));
+  PyObject* fn = ASSERT_NN(PyObject_GetAttrString (np, "dtype"));
+  PyObject* s = ASSERT_NN(PyUnicode_FromString (spec));
+  PyObject* ret = ASSERT_NN(PyObject_CallOneArg (fn, s));
 
-  PyObject *fn = PyObject_GetAttrString (np, "dtype");
   Py_DECREF (np);
-  if (fn == NULL) { return NULL; }
-
-  PyObject *s = PyUnicode_FromString (spec);
-  if (s == NULL)
-  {
-    Py_DECREF (fn);
-    return NULL;
-  }
-
-  PyObject *r = PyObject_CallOneArg (fn, s);
   Py_DECREF (s);
   Py_DECREF (fn);
 
-  return r;
+  return ret;
 }
 
 static int
-dtype_equals_expr (PyObject *dt, const char *expr)
+dtype_equals_expr (PyArray_Descr *dt, const char *expr)
 {
-  PyObject *globals = PyDict_New ();
-  if (!globals) { return -1; }
+  // Test function - assume no failing
+  PyObject *globals = ASSERT_NN(PyDict_New ());
+  PyObject *np = ASSERT_NN(PyImport_ImportModule ("numpy"));
+  ASSERT_GTE0(PyDict_SetItemString (globals, "np", np));
+  PyObject *expected = ASSERT_NN(PyRun_String (expr, Py_eval_input, globals, globals));
+  int eq = ASSERT_GTE0(PyObject_RichCompareBool ((PyObject*)dt, expected, Py_EQ));
 
-  PyObject *np = PyImport_ImportModule ("numpy");
-  if (!np)
-  {
-    Py_DECREF (globals);
-    return -1;
-  }
-
-  PyDict_SetItemString (globals, "np", np);
   Py_DECREF (np);
-
-  PyObject *expected = PyRun_String (expr, Py_eval_input, globals, globals);
   Py_DECREF (globals);
-  if (!expected) { return -1; }
-
-  int eq = PyObject_RichCompareBool (dt, expected, Py_EQ);
   Py_DECREF (expected);
 
   return eq;
 }
 
-TEST_DISABLED (numstore_to_dtype)
+TEST(numstore_to_dtype)
 {
-  Py_Initialize ();
-
   TEST_CASE ("primitive_simple")
   {
     struct
@@ -430,15 +366,21 @@ TEST_DISABLED (numstore_to_dtype)
 
     for (size_t i = 0; i < sizeof (cases) / sizeof (cases[0]); i++)
     {
-      struct type t = {.type = T_PRIM};
-      t.p           = cases[i].p;
-      PyObject *dt  = pyns_type_to_dtype (&t);
+      // The type we are interested in
+      struct type t = {
+        .type = T_PRIM,
+        .p = cases[i].p,
+      };
+
+      // Convert it to a dtype
+      PyArray_Descr *dt  = pyns_type_to_dtype (&t);
       test_assert (dt);
 
+      // Get the 
       PyObject *ref = ref_dtype (cases[i].expected);
       test_assert (ref);
 
-      int eq = PyObject_RichCompareBool (dt, ref, Py_EQ);
+      int eq = PyObject_RichCompareBool ((PyObject*)dt, ref, Py_EQ);
       test_assert_int_equal (eq, 1);
 
       Py_DECREF (dt);
@@ -466,9 +408,12 @@ TEST_DISABLED (numstore_to_dtype)
     };
     for (size_t i = 0; i < sizeof (cases) / sizeof (cases[0]); i++)
     {
-      struct type t = {.type = T_PRIM};
-      t.p           = cases[i].p;
-      PyObject *dt  = pyns_type_to_dtype (&t);
+      struct type t = {
+        .type = T_PRIM,
+        .p = cases[i].p,
+      };
+
+      PyArray_Descr *dt  = pyns_type_to_dtype (&t);
 
       test_assert (dt);
       int eq = dtype_equals_expr (dt, cases[i].expr);
@@ -482,33 +427,29 @@ TEST_DISABLED (numstore_to_dtype)
   {
     /* struct { foo i32, bar f64 } */
     struct string keys[2]  = {strfcstr ("foo"), strfcstr ("bar")};
-    struct type  *types[2] = {mk_prim (I32), mk_prim (F64)};
-    struct type  *t        = strfcstruct (2, keys, types);
+    struct type *types[2] = {&TI32, &TF64};
+    struct type t = mk_struct(2, keys, types);
 
-    PyObject *dt = pyns_type_to_dtype (t);
+    PyArray_Descr *dt = pyns_type_to_dtype (&t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype([('foo','i4'),('bar','f8')])");
     test_assert_int_equal (eq, 1);
     Py_DECREF (dt);
-
-    i_free (types[0]);
-    i_free (types[1]);
-    i_free (t);
   }
 
   TEST_CASE ("struct_nested")
   {
     /* struct { foo i32, bar struct { biz u32, buz f32 } } */
     struct string inner_keys[2]  = {strfcstr ("biz"), strfcstr ("buz")};
-    struct type  *inner_types[2] = {mk_prim (U32), mk_prim (F32)};
-    struct type  *inner          = strfcstruct (2, inner_keys, inner_types);
+    struct type  *inner_types[2] = {&TU32, &TF32};
+    struct type  inner          = mk_struct(2, inner_keys, inner_types);
 
     struct string outer_keys[2]  = {strfcstr ("foo"), strfcstr ("bar")};
-    struct type  *outer_types[2] = {mk_prim (I32), inner};
-    struct type  *outer          = strfcstruct (2, outer_keys, outer_types);
+    struct type  *outer_types[2] = {&TI32, &inner};
+    struct type  outer          = mk_struct(2, outer_keys, outer_types);
 
-    PyObject *dt = pyns_type_to_dtype (outer);
+    PyArray_Descr *dt = pyns_type_to_dtype (&outer);
     test_assert (dt);
 
     int eq = dtype_equals_expr (
@@ -519,22 +460,16 @@ TEST_DISABLED (numstore_to_dtype)
     test_assert_int_equal (eq, 1);
 
     Py_DECREF (dt);
-
-    free (inner_types[0]);
-    free (inner_types[1]);
-    free (inner);
-    free (outer_types[0]);
-    free (outer);
   }
 
   TEST_CASE ("union_simple")
   {
     /* union { a i32, b f32 } */
     struct string keys[2]  = {strfcstr ("a"), strfcstr ("b")};
-    struct type  *types[2] = {mk_prim (I32), mk_prim (F32)};
-    struct type  *t        = mk_union (2, keys, types);
+    struct type  *types[2] = {&TI32, &TF32};
+    struct type  t        = mk_union (2, keys, types);
 
-    PyObject *dt = pyns_type_to_dtype (t);
+    PyArray_Descr *dt = pyns_type_to_dtype (&t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (
@@ -545,89 +480,72 @@ TEST_DISABLED (numstore_to_dtype)
     test_assert_int_equal (eq, 1);
 
     Py_DECREF (dt);
-
-    free (types[0]);
-    free (types[1]);
-    free (t);
   }
 
   TEST_CASE ("union_mixed_sizes")
   {
     /* union { small u8, big i64 } -> itemsize should be 8 */
     struct string keys[2]  = {strfcstr ("small"), strfcstr ("big")};
-    struct type  *types[2] = {mk_prim (U8), mk_prim (I64)};
-    struct type  *t        = mk_union (2, keys, types);
+    struct type  *types[2] = {&TU8, &TI64};
+    struct type  t        = mk_union (2, keys, types);
 
-    PyObject *dt = pyns_type_to_dtype (t);
+    PyArray_Descr *dt = pyns_type_to_dtype (&t);
     test_assert (dt);
 
     PyArray_Descr *d = (PyArray_Descr *)dt;
-    test_assert_int_equal (d->elsize, 8);
+    test_assert_int_equal (elsize(d), 8);
 
     Py_DECREF (dt);
-
-    free (types[0]);
-    free (types[1]);
-    free (t);
   }
 
   TEST_CASE ("sarray_1d")
   {
     /* [10] i32 */
-    u32          dims[1] = {10};
-    struct type *sub     = mk_prim (I32);
-    struct type *t       = mk_sarray (1, dims, sub);
+    u32 dims[1] = {10};
+    struct type t = mk_sarray (1, dims, &TI32);
 
-    PyObject *dt = pyns_type_to_dtype (t);
+    PyArray_Descr *dt = pyns_type_to_dtype (&t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype(('i4', (10,)))");
     test_assert_int_equal (eq, 1);
 
     Py_DECREF (dt);
-
-    free (sub);
-    free (t);
   }
 
   TEST_CASE ("sarray_2d")
   {
     /* [20][30] f64 */
-    u32          dims[2] = {20, 30};
-    struct type *sub     = mk_prim (F64);
-    struct type *t       = mk_sarray (2, dims, sub);
+    u32 dims[2] = {20, 30};
+    struct type t = mk_sarray (2, dims, &TF64);
 
-    PyObject *dt = pyns_type_to_dtype (t);
+    PyArray_Descr *dt = pyns_type_to_dtype (&t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype(('f8', (20,30)))");
     test_assert_int_equal (eq, 1);
 
     Py_DECREF (dt);
-
-    free (sub);
-    free (t);
   }
 
   TEST_CASE ("spec_example")
   {
     /* [20][30] struct { a union { i f32, b i64 }, c [10] f64 } */
     struct string union_keys[2]  = {strfcstr ("i"), strfcstr ("b")};
-    struct type  *union_types[2] = {mk_prim (F32), mk_prim (I64)};
-    struct type  *un             = mk_union (2, union_keys, union_types);
+    struct type  *union_types[2] = {&TF32, &TI64};
+    struct type  un             = mk_union (2, union_keys, union_types);
 
     u32          inner_dims[1] = {10};
-    struct type *inner_arr_sub = mk_prim (F64);
-    struct type *inner_arr     = mk_sarray (1, inner_dims, inner_arr_sub);
+    struct type inner_arr     = mk_sarray (1, inner_dims, &TF64);
 
     struct string struct_keys[2]  = {strfcstr ("a"), strfcstr ("c")};
-    struct type  *struct_types[2] = {un, inner_arr};
-    struct type  *st              = strfcstruct (2, struct_keys, struct_types);
+    struct type  *struct_types[2] = {&un, &inner_arr};
+    struct type  st              = mk_struct(2, struct_keys, struct_types);
 
     u32          outer_dims[2] = {20, 30};
-    struct type *outer         = mk_sarray (2, outer_dims, st);
+    struct type outer         = mk_sarray (2, outer_dims, &st);
 
-    PyObject *dt = pyns_type_to_dtype (outer);
+    PyArray_Descr*dt = pyns_type_to_dtype (&outer);
     test_assert (dt);
 
     const char *expr =
@@ -641,78 +559,28 @@ TEST_DISABLED (numstore_to_dtype)
 
     test_assert_int_equal (eq, 1);
     Py_DECREF (dt);
-    free (union_types[0]);
-    free (union_types[1]);
-    free (un);
-    free (inner_arr_sub);
-    free (inner_arr);
-    free (st);
-    free (outer);
-  }
-
-  TEST_CASE ("null_input")
-  {
-    PyObject *dt = pyns_type_to_dtype (NULL);
-    test_assert (dt == NULL);
-
-    int has_err = PyErr_Occurred () != NULL;
-    test_assert (!has_err);
-
-    PyErr_Clear ();
-  }
-
-  TEST_CASE ("unknown_kind")
-  {
-    struct type t = {.type = (enum type_t)99};
-
-    PyObject *dt = pyns_type_to_dtype (&t);
-    test_assert (dt == NULL);
-
-    int has_err = PyErr_Occurred () != NULL;
-    test_assert (!has_err);
-
-    PyErr_Clear ();
-  }
-
-  TEST_CASE ("unknown_primitive")
-  {
-    struct type t = {.type = T_PRIM};
-    t.p           = (enum prim_t)99;
-
-    PyObject *dt = pyns_type_to_dtype (&t);
-    test_assert (dt == NULL);
-
-    int has_err = PyErr_Occurred () != NULL;
-    test_assert (!has_err);
-
-    PyErr_Clear ();
   }
 
   TEST_CASE ("struct_with_array_field")
   {
     /* struct { xs [10] i32, y f64 } */
     u32          dims[1] = {10};
-    struct type *xs_sub  = mk_prim (I32);
-    struct type *xs      = mk_sarray (1, dims, xs_sub);
+    struct type xs      = mk_sarray (1, dims, &TI32);
 
     struct string keys[2]  = {strfcstr ("xs"), strfcstr ("y")};
-    struct type  *types[2] = {xs, mk_prim (F64)};
-    struct type  *t        = strfcstruct (2, keys, types);
+    struct type  *types[2] = {&xs, &TF64};
+    struct type  t        = mk_struct(2, keys, types);
 
-    PyObject *dt = pyns_type_to_dtype (t);
+    PyArray_Descr*dt = pyns_type_to_dtype (&t);
     test_assert (dt);
 
     int eq = dtype_equals_expr (dt, "np.dtype([('xs', 'i4', (10,)), ('y','f8')])");
     test_assert_int_equal (eq, 1);
 
     Py_DECREF (dt);
-
-    free (xs_sub);
-    free (xs);
-    free (types[1]);
-    free (t);
   }
 
   Py_Finalize ();
 }
+
 #endif

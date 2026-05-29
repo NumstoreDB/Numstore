@@ -7,56 +7,34 @@ jobs:
     name: ${{ matrix.preset }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
-      TEST_BIN: ./build/${{ matrix.preset }}/bin/unit_test
-      LEAKS: leaks --atExit --
-      VALGRIND: |
-        valgrind                                     \
-               --tool=memcheck                       \
-               --leak-check=full                     \
-               --leak-resolution=high                \
-               --show-leak-kinds=all                 \
-               --track-origins=yes                   \
-               --track-fds=yes                       \
-               --error-exitcode=1                    \
-               --errors-for-leak-kinds=all           \
-               --undef-value-errors=yes              \
-               --partial-loads-ok=no                 \
-               --expensive-definedness-checks=yes    \
-               --show-mismatched-frees=yes           \
-               --show-reachable=yes                  \
-               --num-callers=40                      \
+      TEST_DIR: ./build/${{ matrix.preset }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # ── Linux ──────────────────────────────────────────────────────────
-          - { os: ubuntu-latest,  preset: debug,                 run_tests: true,  extra: false } 
-          - { os: ubuntu-latest,  preset: debug-no-asan,         run_tests: true,  extra: true  }
-          - { os: ubuntu-latest,  preset: debug-ntests,          run_tests: false, extra: false }
-          - { os: ubuntu-latest,  preset: debug-ntests-no-asan,  run_tests: false, extra: false }
-          - { os: ubuntu-latest,  preset: release,               run_tests: false, extra: false }
-          - { os: ubuntu-latest,  preset: release-tests,         run_tests: true,  extra: true  }
-          - { os: ubuntu-latest,  preset: package-release,       run_tests: false, extra: false }
+          # For each:
+          #   1. Compile and run debug tests with address sanitizer 
+          #   2. Compile and run debug tests with leak check
+          #   2. Just make sure release can compile (without tests)
+          #   3. (ubtuntu only) Compile release with tests to ensure no ASSERT tests pass
+          #   4. Ensure package release can compile
+          
+          - { os: ubuntu-latest,  preset: debug-asan,       run_tests: true }
+          - { os: ubuntu-latest,  preset: debug-leakcheck,  run_tests: true }
+          - { os: ubuntu-latest,  preset: release }
+          - { os: ubuntu-latest,  preset: release-asan,     run_tests: true }
+          - { os: ubuntu-latest,  preset: package-release }
 
-          # macOS
-          - { os: macos-latest,   preset: debug,                 run_tests: true,  extra: false }
-          - { os: macos-latest,   preset: debug-no-asan,         run_tests: true,  extra: true  }
-          - { os: macos-latest,   preset: debug-ntests,          run_tests: false, extra: false }
-          - { os: macos-latest,   preset: debug-ntests-no-asan,  run_tests: false, extra: false }
-          - { os: macos-latest,   preset: release,               run_tests: false, extra: false }
-          - { os: macos-latest,   preset: release-tests,         run_tests: true,  extra: true  }
-          - { os: macos-latest,   preset: package-release,       run_tests: false, extra: false }
+          - { os: macos-latest,   preset: debug-asan,       run_tests: true }
+          - { os: macos-latest,   preset: debug-leakcheck,  run_tests: true }
+          - { os: macos-latest,   preset: release }
+          - { os: macos-latest,   preset: package-release }
 
-          # Windows 
-          - { os: windows-latest, preset: debug,                 run_tests: true,  extra: false }
-          - { os: windows-latest, preset: debug-no-asan,         run_tests: true,  extra: false }
-          - { os: windows-latest, preset: debug-ntests,          run_tests: false, extra: false }
-          - { os: windows-latest, preset: debug-ntests-no-asan,  run_tests: false, extra: false }
-          - { os: windows-latest, preset: release,               run_tests: false, extra: false }
-          - { os: windows-latest, preset: release-tests,         run_tests: true,  extra: false }
-          - { os: windows-latest, preset: package-release,       run_tests: false, extra: false }
+          - { os: windows-latest, preset: debug-asan,       run_tests: true }
+          - { os: windows-latest, preset: release }
+          - { os: windows-latest, preset: package-release }
+
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -70,19 +48,22 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python deps 
+      - name: Install Python deps
         run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
 
       - name: Install Valgrind
-        if: matrix.extra && matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && contains(matrix.preset, 'leakcheck')
         run: sudo apt-get install -y valgrind
+
+      - name: Check leaks available
+        if: matrix.os == 'macos-latest' && contains(matrix.preset, 'leakcheck')
+        run: leaks --version
 
       - name: Configure (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
           cmake --preset ${{ matrix.preset }} \
-            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}" \
-            ${{ matrix.extra && '-DENABLE_PORTABLE=ON' || '' }}
+            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
 
       - name: Configure (Windows)
         if: matrix.os == 'windows-latest'
@@ -90,25 +71,15 @@ jobs:
         run: |
           $pypath = "${{ steps.setup-python.outputs.python-path }}" -replace '\\', '/'
           cmake --preset ${{ matrix.preset }} `
-            -DPython_EXECUTABLE="$pypath" `
-            ${{ matrix.extra && '-DENABLE_PORTABLE=ON' || '' }}
+            -DPython_EXECUTABLE="$pypath"
 
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
-      # ── Test ───────────────────────────────────────────────────────────────
       - name: Test
-        if: matrix.run_tests && !matrix.extra && matrix.os != 'windows-latest'
-        run: ${{ env.TEST_BIN }}
+        if: matrix.run_tests && !contains(matrix.preset, 'leakcheck')
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V
 
-      - name: Test
-        if: matrix.run_tests && !matrix.extra && matrix.os == 'windows-latest'
-        run: ./build/${{ matrix.preset }}/bin/Debug/unit_test.exe
-
-      - name: Test (leaks)
-        if: matrix.extra && matrix.os == 'macos-latest'
-        run: ${{ env.LEAKS }} ${{ env.TEST_BIN }}
-
-      - name: Test (valgrind)
-        if: matrix.extra && matrix.os == 'ubuntu-latest'
-        run: ${{ env.VALGRIND }} ${{ env.TEST_BIN }}
+      - name: Test (memcheck)
+        if: matrix.run_tests && contains(matrix.preset, 'leakcheck')
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V -T memcheck

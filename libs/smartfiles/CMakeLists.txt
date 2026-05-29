@@ -11,12 +11,13 @@ file(
   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
 )
 
+set(SMFILE_PUBLIC_INCLUDE  CACHE PATH "")
+set(SMFILE_PRIVATE_INCLUDE  CACHE PATH "")
+
 ################### THE MAIN LIBRARY
 add_library(smartfiles STATIC ${SMFILE_SOURCES})
 target_include_directories(smartfiles
     PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
-            "${CMAKE_SOURCE_DIR}/libs/nscore/include"
-            "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
 )
 target_link_libraries(smartfiles PUBLIC c_specx nscore) 

@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #define PY_SSIZE_T_CLEAN
-#define PY_ARRAY_UNIQUE_SYMBOL _pynumstore_ARRAY_API
+#define PY_ARRAY_UNIQUE_SYMBOL _NUMSTORE_ARRAY_API
 #define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 
 #include <numpy/arrayobject.h>

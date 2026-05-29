@@ -1,5 +1,6 @@
 ################### Meta Information
 cmake_minimum_required(VERSION 3.18)
+enable_testing()
 
 ## Read the version from version.txt
 file(STRINGS "${CMAKE_SOURCE_DIR}/version.txt" NS_VERSION LIMIT_COUNT 1)
@@ -23,9 +24,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 include(GNUInstallDirs)
 include(cmake/Options.cmake)
 include(cmake/CompilerFlags.cmake)
-include(cmake/Sanitizers.cmake)
 include(cmake/Packaging.cmake)
 include(cmake/Config.cmake)
+include(cmake/Python.cmake)
 
 ################### Core Libraries
 add_subdirectory(libs/c_specx)

@@ -27,7 +27,7 @@ endif()
 ################### THE MAIN LIBRARY
 add_library(c_specx STATIC ${C_SPECX_SOURCES})
 target_include_directories(c_specx
-    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"  
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"       
+  PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 target_link_libraries(c_specx PUBLIC ${PLATFORM_DEPENDENCIES})

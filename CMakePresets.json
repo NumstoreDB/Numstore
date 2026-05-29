@@ -5,139 +5,112 @@
       "name": "base",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "warnings": {
-        "uninitialized": true
+      "warnings": { "uninitialized": true }
+    },
+
+    {
+      "name": "debug-base",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_NDEBUG":    "OFF",
+        "ENABLE_NTEST":     "OFF",
+        "ENABLE_NLOG":      "OFF",
+        "ENABLE_GPROF":     "OFF",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_STRIP":     "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "ENABLE_LEAK_TOOL": "OFF",
+        "ENABLE_COVERAGE":  "OFF"
       }
     },
     {
       "name": "debug",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_NDEBUG": "OFF",
-        "ENABLE_NTEST": "OFF",
-        "ENABLE_NLOG": "OFF",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "ON",
-        "ENABLE_STRIP": "OFF",
-        "ENABLE_ASAN": "ON",
-        "BUILD_BINDINGS": "ON"
-      }
+      "inherits": "debug-base",
+      "cacheVariables": { "ENABLE_ASAN": "ON" }
     },
     {
-      "name": "debug-no-asan",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_NDEBUG": "OFF",
-        "ENABLE_NTEST": "OFF",
-        "ENABLE_NLOG": "OFF",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "ON",
-        "ENABLE_STRIP": "OFF",
-        "ENABLE_ASAN": "OFF"
-      }
+      "name": "debug-asan",
+      "inherits": "debug-base",
+      "cacheVariables": { "ENABLE_ASAN": "ON" }
     },
     {
-      "name": "debug-ntests",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_NDEBUG": "OFF",
-        "ENABLE_NTEST": "ON",
-        "ENABLE_NLOG": "OFF",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "ON",
-        "ENABLE_STRIP": "OFF",
-        "ENABLE_ASAN": "ON"
-      }
+      "name": "debug-leakcheck",
+      "inherits": "debug-base",
+      "cacheVariables": { "ENABLE_LEAK_TOOL": "ON" }
     },
     {
-      "name": "debug-ntests-no-asan",
+      "name": "debug-coverage",
+      "inherits": "debug-base",
+      "cacheVariables": { "ENABLE_COVERAGE": "ON" }
+    },
+
+    {
+      "name": "release-base",
+      "hidden": true,
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_NDEBUG": "OFF",
-        "ENABLE_NTEST": "ON",
-        "ENABLE_NLOG": "OFF",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "ON",
-        "ENABLE_STRIP": "OFF",
-        "ENABLE_ASAN": "OFF"
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_NDEBUG":    "ON",
+        "ENABLE_NTEST":     "ON",
+        "ENABLE_NLOG":      "ON",
+        "ENABLE_GPROF":     "OFF",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_STRIP":     "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "ENABLE_LEAK_TOOL": "OFF",
+        "ENABLE_COVERAGE":  "OFF"
       }
     },
     {
       "name": "release",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "ENABLE_NDEBUG": "ON",
-        "ENABLE_NTEST": "ON",
-        "ENABLE_NLOG": "ON",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "ON",
-        "ENABLE_STRIP": "OFF",
-        "ENABLE_ASAN": "OFF"
-      }
+      "inherits": "release-base"
     },
     {
       "name": "release-tests",
-      "inherits": "base",
+      "inherits": "release-base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "ENABLE_NDEBUG": "ON",
         "ENABLE_NTEST": "OFF",
-        "ENABLE_NLOG": "OFF",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "OFF",
-        "ENABLE_STRIP": "OFF",
-        "ENABLE_ASAN": "OFF"
+        "ENABLE_NLOG":  "OFF"
+      }
+    },
+    {
+      "name": "release-asan",
+      "inherits": "release-base",
+      "cacheVariables": {
+        "ENABLE_NTEST": "OFF",
+        "ENABLE_NLOG":  "OFF",
+        "ENABLE_ASAN":  "ON"
+      }
+    },
+    {
+      "name": "release-leakcheck",
+      "inherits": "release-base",
+      "cacheVariables": {
+        "ENABLE_NTEST":     "OFF",
+        "ENABLE_NLOG":      "OFF",
+        "ENABLE_LEAK_TOOL": "ON"
       }
     },
     {
       "name": "package-release",
-      "inherits": "base",
+      "inherits": "release-base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "ENABLE_NDEBUG": "ON",
-        "ENABLE_NTEST": "ON",
-        "ENABLE_NLOG": "ON",
-        "ENABLE_GPROF": "OFF",
-        "ENABLE_PORTABLE": "ON",
-        "ENABLE_STRIP": "ON",
-        "ENABLE_ASAN": "OFF",
+        "ENABLE_STRIP":         "ON",
         "CMAKE_INSTALL_PREFIX": "/usr"
       }
     }
   ],
   "buildPresets": [
-    {
-      "name": "debug",
-      "configurePreset": "debug"
-    },
-    {
-      "name": "debug-no-asan",
-      "configurePreset": "debug-no-asan"
-    },
-    {
-      "name": "debug-ntests",
-      "configurePreset": "debug-ntests"
-    },
-    {
-      "name": "debug-ntests-no-asan",
-      "configurePreset": "debug-ntests-no-asan"
-    },
-    {
-      "name": "release",
-      "configurePreset": "release"
-    },
-    {
-      "name": "release-tests",
-      "configurePreset": "release-tests"
-    },
-    {
-      "name": "package-release",
-      "configurePreset": "package-release"
-    }
+    { "name": "debug",             "configurePreset": "debug"             },
+    { "name": "debug-asan",        "configurePreset": "debug-asan"        },
+    { "name": "debug-leakcheck",   "configurePreset": "debug-leakcheck"   },
+    { "name": "debug-coverage",    "configurePreset": "debug-coverage"    },
+    { "name": "release",           "configurePreset": "release"           },
+    { "name": "release-tests",     "configurePreset": "release-tests"     },
+    { "name": "release-asan",      "configurePreset": "release-asan"      },
+    { "name": "release-leakcheck", "configurePreset": "release-leakcheck" },
+    { "name": "package-release",   "configurePreset": "package-release"   }
   ]
 }

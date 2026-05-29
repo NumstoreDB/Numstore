@@ -9,8 +9,4 @@ foreach(APP_SRC ${SAMPLES_SRCS})
     add_executable(${APP_NAME} ${APP_SRC})
 
     target_link_libraries(${APP_NAME} PRIVATE smartfiles)
-
-    target_include_directories(${APP_NAME} 
-        PRIVATE "${CMAKE_SOURCE_DIR}/libs/smartfiles/include"
-    )
 endforeach()
