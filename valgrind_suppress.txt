@@ -59,9 +59,51 @@
    fun:PyImport_ImportModuleLevelObject
 }
 {
+   python_import_module
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:PyImport_ImportModule
+}
+{
    python_eval
    Memcheck:Leak
    match-leak-kinds: all
    ...
    fun:_PyEval_EvalFrameDefault
+}
+{
+   python_module_exec
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:PyModule_ExecDef
+}
+{
+   numpy_multiarray
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   obj:*_multiarray_umath*
+}
+{
+   numpy_ufunc
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:PyUFunc_FromFuncAndDataAndSignatureAndIdentity
+}
+{
+   python_mem_raw
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:PyMem_RawMalloc
+}
+{
+   python_capsule_import
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:PyCapsule_Import
 }
