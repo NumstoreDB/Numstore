@@ -20,17 +20,17 @@ jobs:
           #   5. Ensure package release can compile
 
           # - { os: ubuntu-latest,  preset: debug-asan,      run_tests: true,  config: Debug   }
-          # - { os: ubuntu-latest,  preset: debug-leakcheck, run_tests: true,  config: Debug   }
+          - { os: ubuntu-latest,  preset: debug-leakcheck, run_tests: true,  config: Debug   }
           # - { os: ubuntu-latest,  preset: release,                            config: Release }
           # - { os: ubuntu-latest,  preset: release-asan,    run_tests: true,  config: Release }
           # - { os: ubuntu-latest,  preset: package-release,                   config: Release }
 
-          - { os: macos-latest,   preset: debug-asan,       run_tests: true,  config: Debug   }
-          - { os: macos-latest,   preset: release,                             config: Release }
+          # - { os: macos-latest,   preset: debug-asan,       run_tests: true,  config: Debug   }
+          # - { os: macos-latest,   preset: release,                             config: Release }
           # - { os: macos-latest, preset: package-release,                    config: Release }
 
           - { os: windows-latest, preset: release-tests,    run_tests: true,  config: Release }
-          - { os: windows-latest, preset: package-release,                    config: Release }
+          # - { os: windows-latest, preset: package-release,                    config: Release }
 
     steps:
       - uses: actions/checkout@v4
@@ -81,3 +81,7 @@ jobs:
       - name: Test (leaks)
         if: matrix.run_tests && contains(matrix.preset, 'leakcheck') && matrix.os == 'macos-latest'
         run: leaks --atExit -- ./build/${{ matrix.preset }}/bin/unit_test
+
+      - name: Print memcheck log
+        if: failure() && contains(matrix.preset, 'leakcheck')
+        run: cat ./build/${{ matrix.preset }}/Testing/Temporary/MemoryChecker.1.log
