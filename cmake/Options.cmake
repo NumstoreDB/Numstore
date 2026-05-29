@@ -21,7 +21,7 @@ foreach(_flag NDEBUG NTEST NLOG)
 endforeach()
 
 if(ENABLE_COVERAGE)
-    add_compile_options(--coverage)
+    add_compile_options(--coverage -fprofile-update=atomic)
     add_link_options(--coverage)
 endif()
 
