@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/aries.h"
 #include "nscore/compile_config.h"
 #include "nscore/dirty_page_table.h"
@@ -20,8 +22,6 @@
 #include "nscore/txn.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
 
 ////////////////////////////////////////////////////////////
 // ANALYSIS (Figure 10)

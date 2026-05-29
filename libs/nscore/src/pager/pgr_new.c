@@ -12,6 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+#include <stdlib.h>
+
 #include "c_specx/error.h"
 #include "nscore/page_fixture.h"
 #include "nscore/page_h.h"
@@ -20,9 +23,6 @@
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/page.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
-#include <stdlib.h>
 
 static err_t
 pgr_new_impl (

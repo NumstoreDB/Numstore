@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+#include <stdatomic.h>
+
 #include "c_specx/threading.h"
 #include "nscore/lock_table.h"
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
 #include "nscore/txn_table.h"
-
-#include <c_specx.h>
-#include <stdatomic.h>
 
 err_t
 pgr_begin_txn (struct txn *tx, struct pager *p, error *e)

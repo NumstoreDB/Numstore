@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/dirty_page_table.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/page.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
 
 void
 walf_decode_physical_update (

@@ -14,12 +14,12 @@
 
 #pragma once
 
+#include <c_specx.h>
+
 #include "nscore/dirty_page_table.h"
 #include "nscore/pager.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
 
 struct aries_ctx
 {

@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "smfile.h"
-
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "smfile.h"
 
 /**
  * This demo shows the basics of transactions

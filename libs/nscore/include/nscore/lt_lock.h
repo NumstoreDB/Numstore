@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/compile_config.h"
-
 #include <c_specx.h>
+
+#include "nscore/compile_config.h"
 
 struct lt_lock
 {

@@ -17,8 +17,8 @@
 #define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 
 #include <numpy/arrayobject.h>
-#include "pynumstore.h"
 
+#include "pynumstore.h"
 
 static PyMethodDef numstore_methods[] = {
     // Utils

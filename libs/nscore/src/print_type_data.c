@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/types.h"
-
 #include <c_specx.h>
+
+#include "nscore/types.h"
 
 static void
 print_indent (int level, u32 spaces)

@@ -15,9 +15,9 @@
 #pragma once
 
 // smartfiles
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 ////////////////////////////////////////////////////////////
 /////// VAR PAGE TAIL

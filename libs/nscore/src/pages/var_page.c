@@ -14,10 +14,10 @@
 
 #include "nscore/pages/var_page.h"
 
+#include <c_specx.h>
+
 #include "nscore/compile_config.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 // smartfiles
 
