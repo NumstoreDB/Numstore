@@ -44,12 +44,12 @@ jobs:
                --output-file coverage.info \
                --ignore-errors mismatch
           lcov --remove coverage.info \
-               '/usr/*' \
+               '*/test*' \
                '*/Python*' \
                '*/numpy*' \
-               '*/test*' \
+               '*/hostedtoolcache/*' \
                --output-file coverage.info \
-               --ignore-errors mismatch
+               --ignore-errors mismatch,unused
           genhtml coverage.info --output-directory coverage_html
 
       - name: Upload coverage report
