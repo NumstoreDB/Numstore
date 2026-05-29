@@ -12,11 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "register_test_suite.h"
-
 #define PY_ARRAY_UNIQUE_SYMBOL _NUMSTORE_ARRAY_API
 #define PY_SSIZE_T_CLEAN
 #define NPY_NO_DEPRECATED_API NPY_2_0_API_VERSION
+#include "register_test_suite.h"
 #include <Python.h>
 #include <c_specx.h>
 #include <numpy/arrayobject.h>
@@ -30,6 +29,11 @@ main (const int argc, char **argv)
   Py_Initialize ();
   PyRun_SimpleString ("import sys; sys.path.insert(0, '" NUMSTORE_SO_DIR "')");
   PyObject *mod = PyImport_ImportModule ("_numstore");
+  if(!mod) {
+    PyErr_Print();
+    fprintf(stderr, "Failed to import _numstore from: %s\n", NUMSTORE_SO_DIR);
+    exit(1);
+  }
   _import_array ();
 
   register_tests ();
