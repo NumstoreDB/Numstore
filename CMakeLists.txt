@@ -38,6 +38,7 @@ add_subdirectory(libs/nscore)
 add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
 add_subdirectory(libs/nstesting)
+add_subdirectory(libs/pynumstore)
 
 ################### Configuration sub projects
 if(BUILD_APPS)
@@ -46,8 +47,4 @@ endif()
 
 if(BUILD_SAMPLES)
   add_subdirectory(samples)
-endif()
-
-if(BUILD_BINDINGS)
-  add_subdirectory(bindings)
 endif()

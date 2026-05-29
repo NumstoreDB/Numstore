@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/variables.h"
-
 #include <c_specx.h>
+
+#include "nscore/variables.h"
 
 // You may consider moving this to numstore - might be useful for caching
 

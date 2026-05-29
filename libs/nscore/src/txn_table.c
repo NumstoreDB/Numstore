@@ -14,9 +14,9 @@
 
 #include "nscore/txn_table.h"
 
-#include "nscore/txn.h"
-
 #include <c_specx.h>
+
+#include "nscore/txn.h"
 
 DEFINE_DBG_ASSERT (struct txn_table, txn_table, t, { ASSERT (t); })
 

@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 err_t
 pgr_release_with_log (

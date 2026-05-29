@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "nscore/compile_config.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/compile_config.h"
 
 /*
  * Page Layout

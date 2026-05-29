@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 /*
  * PG_VAR_HASH_PAGE — root of the variable name hash table.

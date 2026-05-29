@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/txn.h"
-
 #include <c_specx.h>
+
+#include "nscore/txn.h"
 
 /*
  * Active Transaction Table (ATT)

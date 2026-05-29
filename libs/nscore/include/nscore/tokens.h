@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/types.h"
-
 #include <c_specx.h>
+
+#include "nscore/types.h"
 
 enum token_t
 {

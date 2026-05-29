@@ -14,10 +14,10 @@
 
 #include "nscore/pages/inner_node.h"
 
+#include <c_specx.h>
+
 #include "inner_node_testing.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 #define VTYPE  int
 #define KTYPE  pgno
