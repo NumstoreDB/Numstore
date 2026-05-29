@@ -24,10 +24,7 @@ pyns_db_open (PyObject *Py_UNUSED (m), PyObject *arg)
   }
 
   const char *path = PyUnicode_AsUTF8 (arg);
-  if (!path)
-  {
-    return NULL;
-  }
+  if (!path) { return NULL; }
 
   nsdb_t *ns = nsdb_open (path);
   if (!ns)

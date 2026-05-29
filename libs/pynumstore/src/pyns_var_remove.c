@@ -12,8 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_numstore.h"
 #include "_pynumstore.h"
+#include "_numstore.h"
 
 PyObject *
 pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
@@ -31,15 +31,10 @@ pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
   const char    *name        = NULL;
 
   if (!PyArg_ParseTuple (args, "OOsO", &db, &txn_or_none, &name, &key_obj))
-  {
     goto fail;
-  }
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns)
-  {
-    goto fail;
-  }
+  if (!ns) goto fail;
 
   long long start = 0;
   long long step  = 1;
@@ -47,103 +42,75 @@ pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
   int       flags = 0;
 
   if (PyLong_Check (key_obj))
-  {
-    start = PyLong_AsLongLong (key_obj);
-    if (start == -1 && PyErr_Occurred ())
     {
-      goto fail;
+      start = PyLong_AsLongLong (key_obj);
+      if (start == -1 && PyErr_Occurred ()) goto fail;
+      step  = 1;
+      stop  = start + 1;
+      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
     }
-    step  = 1;
-    stop  = start + 1;
-    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  }
   else
-  {
-    r_start = PyObject_GetAttrString (key_obj, "start");
-    r_stop  = PyObject_GetAttrString (key_obj, "stop");
-    r_step  = PyObject_GetAttrString (key_obj, "step");
-    if (!r_start || !r_stop || !r_step)
     {
-      goto fail;
-    }
+      r_start = PyObject_GetAttrString (key_obj, "start");
+      r_stop  = PyObject_GetAttrString (key_obj, "stop");
+      r_step  = PyObject_GetAttrString (key_obj, "step");
+      if (!r_start || !r_stop || !r_step) goto fail;
 
-    flags = COLON_PRESENT;
+      flags = COLON_PRESENT;
 
-    if (r_start != Py_None)
-    {
-      start = PyLong_AsLongLong (r_start);
-      if (start == -1 && PyErr_Occurred ())
-      {
-        goto fail;
-      }
-      flags |= START_PRESENT;
-    }
-    if (r_stop != Py_None)
-    {
-      stop = PyLong_AsLongLong (r_stop);
-      if (stop == -1 && PyErr_Occurred ())
-      {
-        goto fail;
-      }
-      flags |= STOP_PRESENT;
-    }
-    if (r_step != Py_None)
-    {
-      step = PyLong_AsLongLong (r_step);
-      if (step == -1 && PyErr_Occurred ())
-      {
-        goto fail;
-      }
-      flags |= STEP_PRESENT;
-    }
+      if (r_start != Py_None)
+        {
+          start = PyLong_AsLongLong (r_start);
+          if (start == -1 && PyErr_Occurred ()) goto fail;
+          flags |= START_PRESENT;
+        }
+      if (r_stop != Py_None)
+        {
+          stop = PyLong_AsLongLong (r_stop);
+          if (stop == -1 && PyErr_Occurred ()) goto fail;
+          flags |= STOP_PRESENT;
+        }
+      if (r_step != Py_None)
+        {
+          step = PyLong_AsLongLong (r_step);
+          if (step == -1 && PyErr_Occurred ()) goto fail;
+          flags |= STEP_PRESENT;
+        }
 
-    Py_DECREF (r_start);
-    r_start = NULL;
-    Py_DECREF (r_stop);
-    r_stop = NULL;
-    Py_DECREF (r_step);
-    r_step = NULL;
-  }
+      Py_DECREF (r_start); r_start = NULL;
+      Py_DECREF (r_stop);  r_stop  = NULL;
+      Py_DECREF (r_step);  r_step  = NULL;
+    }
 
   if (!(flags & START_PRESENT))
-  {
-    start = 0;
-    flags |= START_PRESENT;
-  }
-  if (!(flags & STEP_PRESENT))
-  {
-    step = 1;
-    flags |= STEP_PRESENT;
-  }
-  if (!(flags & STOP_PRESENT))
-  {
-    sb_size len = nsdb_len (ns, name);
-    if (len < 0)
     {
-      _pyns_set_error (ns);
-      goto fail;
+      start  = 0;
+      flags |= START_PRESENT;
     }
-    stop = (long long)len;
-    flags |= STOP_PRESENT;
-  }
+  if (!(flags & STEP_PRESENT))
+    {
+      step   = 1;
+      flags |= STEP_PRESENT;
+    }
+  if (!(flags & STOP_PRESENT))
+    {
+      sb_size len = nsdb_len (ns, name);
+      if (len < 0) { _pyns_set_error (ns); goto fail; }
+      stop   = (long long)len;
+      flags |= STOP_PRESENT;
+    }
 
   if (step <= 0)
-  {
-    PyErr_SetString (PyExc_ValueError, "key step must be positive");
-    goto fail;
-  }
+    {
+      PyErr_SetString (PyExc_ValueError, "key step must be positive");
+      goto fail;
+    }
 
   var = nsdb_get (ns, name);
-  if (var == NULL)
-  {
-    goto fail;
-  }
+  if (var == NULL) goto fail;
 
   dtype = (PyArray_Descr *)pyns_type_to_dtype (var->var.dtype);
-  if (dtype == NULL)
-  {
-    goto fail;
-  }
+  if (dtype == NULL) goto fail;
 
 #if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
   npy_intp tsize = dtype->elsize;
@@ -152,59 +119,27 @@ pyns_var_remove (PyObject *Py_UNUSED (m), PyObject *args)
 #endif
 
   npy_intp nelems_max;
-  if (stop <= start)
-  {
-    nelems_max = 0;
-  }
-  else
-  {
-    nelems_max = (npy_intp)((stop - start + step - 1) / step);
-  }
+  if (stop <= start) { nelems_max = 0; }
+  else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
 
   if (nelems_max > 0)
-  {
-    buf = malloc ((size_t)(nelems_max * tsize));
-    if (!buf)
     {
-      PyErr_NoMemory ();
-      goto fail;
+      buf = malloc ((size_t)(nelems_max * tsize));
+      if (!buf) { PyErr_NoMemory (); goto fail; }
     }
-  }
 
-  sb_size bytes_removed = nsdb_remove (
-      ns,
-      var,
-      buf,
-      (sb_size)start,
-      (sb_size)step,
-      (sb_size)stop,
-      flags
-  );
-  if (bytes_removed < 0)
-  {
-    _pyns_set_error (ns);
-    goto fail;
-  }
+  sb_size bytes_removed = nsdb_remove (ns, var, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+  if (bytes_removed < 0) { _pyns_set_error (ns); goto fail; }
 
   npy_intp nelems_actual = (npy_intp)bytes_removed;
   npy_intp dims[1]       = {nelems_actual};
 
-  arr =
-      PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
+  arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
   dtype = NULL; /* stolen by PyArray_NewFromDescr */
-  if (!arr)
-  {
-    goto fail;
-  }
+  if (!arr) goto fail;
 
   if (nelems_actual > 0)
-  {
-    memcpy (
-        PyArray_DATA ((PyArrayObject *)arr),
-        buf,
-        (size_t)(nelems_actual * tsize)
-    );
-  }
+    memcpy (PyArray_DATA ((PyArrayObject *)arr), buf, (size_t)(nelems_actual * tsize));
 
   free (buf);
   nsdb_free (var);

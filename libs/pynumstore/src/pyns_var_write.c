@@ -12,8 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_numstore.h"
 #include "_pynumstore.h"
+#include "_numstore.h"
 #include "numstore.h"
 
 PyObject *
@@ -29,24 +29,14 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
   nsdb_var_t *var         = NULL;
   const char *name        = NULL;
 
-  if (!PyArg_ParseTuple (
-          args,
-          "OOsOO",
-          &db,
-          &txn_or_none,
-          &name,
-          &key_obj,
-          &data_obj
-      ))
-  {
+  if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &key_obj, &data_obj))
     goto fail;
-  }
 
   if (!PyArray_Check (data_obj))
-  {
-    PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
-    goto fail;
-  }
+    {
+      PyErr_SetString (PyExc_TypeError, "data must be a numpy array");
+      goto fail;
+    }
 
   PyArrayObject *arr = (PyArrayObject *)data_obj;
   void          *buf = PyArray_DATA (arr);
@@ -57,123 +47,80 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
   int       flags = 0;
 
   if (PyLong_Check (key_obj))
-  {
-    start = PyLong_AsLongLong (key_obj);
-    if (start == -1 && PyErr_Occurred ())
     {
-      goto fail;
+      start = PyLong_AsLongLong (key_obj);
+      if (start == -1 && PyErr_Occurred ()) goto fail;
+      step  = 1;
+      stop  = start + 1;
+      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
     }
-    step  = 1;
-    stop  = start + 1;
-    flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  }
   else
-  {
-    r_start = PyObject_GetAttrString (key_obj, "start");
-    r_stop  = PyObject_GetAttrString (key_obj, "stop");
-    r_step  = PyObject_GetAttrString (key_obj, "step");
-    if (!r_start || !r_stop || !r_step)
     {
-      goto fail;
-    }
+      r_start = PyObject_GetAttrString (key_obj, "start");
+      r_stop  = PyObject_GetAttrString (key_obj, "stop");
+      r_step  = PyObject_GetAttrString (key_obj, "step");
+      if (!r_start || !r_stop || !r_step) goto fail;
 
-    flags = COLON_PRESENT;
+      flags = COLON_PRESENT;
 
-    if (r_start != Py_None)
-    {
-      start = PyLong_AsLongLong (r_start);
-      if (start == -1 && PyErr_Occurred ())
-      {
-        goto fail;
-      }
-      flags |= START_PRESENT;
-    }
-    if (r_stop != Py_None)
-    {
-      stop = PyLong_AsLongLong (r_stop);
-      if (stop == -1 && PyErr_Occurred ())
-      {
-        goto fail;
-      }
-      flags |= STOP_PRESENT;
-    }
-    if (r_step != Py_None)
-    {
-      step = PyLong_AsLongLong (r_step);
-      if (step == -1 && PyErr_Occurred ())
-      {
-        goto fail;
-      }
-      flags |= STEP_PRESENT;
-    }
+      if (r_start != Py_None)
+        {
+          start = PyLong_AsLongLong (r_start);
+          if (start == -1 && PyErr_Occurred ()) goto fail;
+          flags |= START_PRESENT;
+        }
+      if (r_stop != Py_None)
+        {
+          stop = PyLong_AsLongLong (r_stop);
+          if (stop == -1 && PyErr_Occurred ()) goto fail;
+          flags |= STOP_PRESENT;
+        }
+      if (r_step != Py_None)
+        {
+          step = PyLong_AsLongLong (r_step);
+          if (step == -1 && PyErr_Occurred ()) goto fail;
+          flags |= STEP_PRESENT;
+        }
 
-    Py_DECREF (r_start);
-    r_start = NULL;
-    Py_DECREF (r_stop);
-    r_stop = NULL;
-    Py_DECREF (r_step);
-    r_step = NULL;
-  }
+      Py_DECREF (r_start); r_start = NULL;
+      Py_DECREF (r_stop);  r_stop  = NULL;
+      Py_DECREF (r_step);  r_step  = NULL;
+    }
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns)
-  {
-    goto fail;
-  }
+  if (!ns) goto fail;
 
   if (!(flags & START_PRESENT))
-  {
-    start = 0;
-    flags |= START_PRESENT;
-  }
-  if (!(flags & STEP_PRESENT))
-  {
-    step = 1;
-    flags |= STEP_PRESENT;
-  }
-  if (!(flags & STOP_PRESENT))
-  {
-    sb_size len = nsdb_len (ns, name);
-    if (len < 0)
     {
-      _pyns_set_error (ns);
-      goto fail;
+      start  = 0;
+      flags |= START_PRESENT;
     }
-    stop = (long long)len;
-    flags |= STOP_PRESENT;
-  }
+  if (!(flags & STEP_PRESENT))
+    {
+      step   = 1;
+      flags |= STEP_PRESENT;
+    }
+  if (!(flags & STOP_PRESENT))
+    {
+      sb_size len = nsdb_len (ns, name);
+      if (len < 0) { _pyns_set_error (ns); goto fail; }
+      stop   = (long long)len;
+      flags |= STOP_PRESENT;
+    }
 
   if (step <= 0)
-  {
-    PyErr_SetString (PyExc_ValueError, "key step must be positive");
-    goto fail;
-  }
+    {
+      PyErr_SetString (PyExc_ValueError, "key step must be positive");
+      goto fail;
+    }
 
   var = nsdb_get (ns, name);
-  if (var == NULL)
-  {
-    goto fail;
-  }
+  if (var == NULL) goto fail;
 
-  if (pyns_verify_types (PyArray_DESCR (arr), var->var.dtype) != 0)
-  {
-    goto fail;
-  }
+  if (pyns_verify_types (PyArray_DESCR (arr), var->var.dtype) != 0) goto fail;
 
-  sb_size written = nsdb_write (
-      ns,
-      var,
-      buf,
-      (sb_size)start,
-      (sb_size)step,
-      (sb_size)stop,
-      flags
-  );
-  if (written < 0)
-  {
-    _pyns_set_error (ns);
-    goto fail;
-  }
+  sb_size written = nsdb_write (ns, var, buf, (sb_size)start, (sb_size)step, (sb_size)stop, flags);
+  if (written < 0) { _pyns_set_error (ns); goto fail; }
 
   nsdb_free (var);
   Py_RETURN_NONE;

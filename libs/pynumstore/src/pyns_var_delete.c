@@ -21,16 +21,10 @@ pyns_var_delete (PyObject *Py_UNUSED (m), PyObject *args)
   PyObject   *txn_or_none;
   const char *name;
 
-  if (!PyArg_ParseTuple (args, "OOs", &db, &txn_or_none, &name))
-  {
-    return NULL;
-  }
+  if (!PyArg_ParseTuple (args, "OOs", &db, &txn_or_none, &name)) { return NULL; }
 
   nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns)
-  {
-    return NULL;
-  }
+  if (!ns) { return NULL; }
 
   if (nsdb_delete (ns, name) < 0)
   {
