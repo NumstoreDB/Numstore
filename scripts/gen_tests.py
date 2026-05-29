@@ -25,7 +25,7 @@ def find_tests(root):
             print(t)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print("Usage: ./gen_tests.py <search_dir...>", file=sys.stderr)
         sys.exit(1)
 
