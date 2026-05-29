@@ -20,7 +20,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
-# Windows needs this to function properly when loading dlls
 if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 endif()
@@ -39,7 +38,6 @@ add_subdirectory(libs/nscore)
 add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
 add_subdirectory(libs/nstesting)
-add_subdirectory(libs/pynumstore)
 
 ################### Configuration sub projects
 if(BUILD_APPS)
@@ -48,4 +46,8 @@ endif()
 
 if(BUILD_SAMPLES)
   add_subdirectory(samples)
+endif()
+
+if(BUILD_BINDINGS)
+  add_subdirectory(bindings)
 endif()
