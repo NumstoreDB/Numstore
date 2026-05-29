@@ -14,6 +14,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CONFIGURATION_TYPES": "Debug",
         "ENABLE_NDEBUG":    "OFF",
         "ENABLE_NTEST":     "OFF",
         "ENABLE_NLOG":      "OFF",
@@ -103,15 +104,15 @@
       }
     }
   ],
-  "buildPresets": [
-    { "name": "debug",             "configurePreset": "debug"             },
-    { "name": "debug-asan",        "configurePreset": "debug-asan"        },
-    { "name": "debug-leakcheck",   "configurePreset": "debug-leakcheck"   },
-    { "name": "debug-coverage",    "configurePreset": "debug-coverage"    },
-    { "name": "release",           "configurePreset": "release"           },
-    { "name": "release-tests",     "configurePreset": "release-tests"     },
-    { "name": "release-asan",      "configurePreset": "release-asan"      },
-    { "name": "release-leakcheck", "configurePreset": "release-leakcheck" },
-    { "name": "package-release",   "configurePreset": "package-release"   }
+    "buildPresets": [
+    { "name": "debug",              "configurePreset": "debug",              "configuration": "Debug"   },
+    { "name": "debug-asan",         "configurePreset": "debug-asan",         "configuration": "Debug"   },
+    { "name": "debug-leakcheck",    "configurePreset": "debug-leakcheck",    "configuration": "Debug"   },
+    { "name": "debug-coverage",     "configurePreset": "debug-coverage",     "configuration": "Debug"   },
+    { "name": "release",            "configurePreset": "release",            "configuration": "Release" },
+    { "name": "release-tests",      "configurePreset": "release-tests",      "configuration": "Release" },
+    { "name": "release-asan",       "configurePreset": "release-asan",       "configuration": "Release" },
+    { "name": "release-leakcheck",  "configurePreset": "release-leakcheck",  "configuration": "Release" },
+    { "name": "package-release",    "configurePreset": "package-release",    "configuration": "Release" }
   ]
 }

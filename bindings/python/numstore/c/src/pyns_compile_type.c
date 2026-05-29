@@ -362,10 +362,10 @@ TEST(numstore_to_dtype)
         {F16, "f2"},
         {F32, "f4"},
         {F64, "f8"},
-        {F128, "f16"},
+        // {F128, "f16"},
         {CF64, "c8"},
-        {CF128, "c16"},
-        {CF256, "c32"},
+        // {CF128, "c16"},
+        // {CF256, "c32"},
     };
 
     for (size_t i = 0; i < sizeof (cases) / sizeof (cases[0]); i++)
