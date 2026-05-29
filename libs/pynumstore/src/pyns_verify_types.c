@@ -14,19 +14,26 @@
 
 #include "_pynumstore.h"
 
-int pyns_verify_types(PyArray_Descr *dtype, struct type *type)
+int
+pyns_verify_types (PyArray_Descr *dtype, struct type *type)
 {
   PyArray_Descr *nsdtype = (PyArray_Descr *)pyns_type_to_dtype (type);
-  if (nsdtype == NULL) { return -1; }
+  if (nsdtype == NULL)
+  {
+    return -1;
+  }
 
   int eq = PyArray_EquivTypes (dtype, nsdtype);
   Py_DECREF (nsdtype);
 
   if (!eq)
-    {
-      PyErr_SetString (PyExc_ValueError, "array dtype does not match variable type");
-      return -1;
-    }
+  {
+    PyErr_SetString (
+        PyExc_ValueError,
+        "array dtype does not match variable type"
+    );
+    return -1;
+  }
 
   return 0;
 }
