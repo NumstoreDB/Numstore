@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_MSC_VER)
+#  pragma pack(push, 1)
+#endif
 struct example
 {
   union {
@@ -28,7 +31,14 @@ struct example
   } d;
   float   e[20][256];
   int32_t f;
-} __attribute__ ((packed));
+}
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__ ((packed))
+#endif
+;
+#if defined(_MSC_VER)
+#  pragma pack(pop)
+#endif
 
 /**
  * This example shows basic first class operations of smart files

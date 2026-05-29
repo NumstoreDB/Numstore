@@ -9,7 +9,7 @@ option(ENABLE_ASAN             "Enable AddressSanitizer"                    OFF)
 option(BUILD_APPS              "Build apps"                                 ON )
 option(BUILD_BINDINGS          "Build bindings"                             ON )
 option(BUILD_SAMPLES           "Build samples"                              ON )
-option(BUILD_NUMSTORE_SAMPLES  "Build numstore samples"                     OFF)
+option(BUILD_NUMSTORE_SAMPLES  "Build numstore samples"                     ON )
 option(BUILD_SMARTFILE_SAMPLES "Build smart file samples"                   ON )
 option(ENABLE_LEAK_TOOL        "Enables leak tool (valgrind or leaks)"      OFF)
 
