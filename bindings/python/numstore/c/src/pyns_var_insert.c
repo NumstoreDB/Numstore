@@ -25,8 +25,12 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
   const char *name        = NULL;
   nsdb_var_t *var         = NULL;
 
+  printf("....\n");
+
   if (!PyArg_ParseTuple (args, "OOsOO", &db, &txn_or_none, &name, &ofst_obj, &data_obj))
     goto fail;
+
+  printf(",,,,,\n");
 
   if (!PyLong_Check (ofst_obj))
     {
@@ -34,8 +38,12 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
       goto fail;
     }
 
+  printf(",x,,\n");
+
   long long ofst = PyLong_AsLongLong (ofst_obj);
   if (ofst == -1 && PyErr_Occurred ()) goto fail;
+
+  printf(",xi,\n");
 
   if (!PyArray_Check (data_obj))
     {
@@ -47,13 +55,19 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
   void          *buf    = PyArray_DATA (arr);
   npy_intp       nelems = PyArray_SIZE (arr);
 
+  printf(",xiy\n");
+
   nsdb_t *ns = _active_ns (db, txn_or_none);
   if (!ns) goto fail;
 
   var = nsdb_get (ns, name);
   if (var == NULL) goto fail;
 
+
+  printf(",iiy\n");
   if (pyns_verify_types (PyArray_DESCR (arr), var->var.dtype) != 0) goto fail;
+
+  printf(",oiy\n");
 
   sb_size inserted = nsdb_insert (ns, var, buf, (sb_size)ofst, (b_size)nelems);
   if (inserted < 0)
@@ -62,7 +76,12 @@ pyns_var_insert (PyObject *Py_UNUSED (m), PyObject *args)
       goto fail;
     }
 
+  printf(",oyi\n");
+
   nsdb_free (var);
+
+  printf(",oli\n");
+
   Py_RETURN_NONE;
 
 fail:

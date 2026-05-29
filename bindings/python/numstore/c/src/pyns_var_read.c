@@ -14,6 +14,7 @@
 
 #include "_pynumstore.h"
 #include "_numstore.h"
+#include "numstore.h"
 
 PyObject *
 pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
@@ -33,13 +34,24 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
   if (!PyArg_ParseTuple (args, "OOsO", &db, &txn_or_none, &name, &key_obj))
     goto fail;
 
+  printf("POPOPOPO\n");
+  fflush(stdout);
+
   nsdb_t *ns = _active_ns (db, txn_or_none);
   if (!ns) goto fail;
 
-  long long start, step, stop;
+  printf("THERE\n");
+  fflush(stdout);
+
+  long long start = -1;
+  long long step = -1;
+  long long stop = -1;
   int       flags;
 
-  if (PyLong_Check (key_obj))
+  printf("HERE\n");
+  fflush(stdout);
+
+    if (PyLong_Check (key_obj))
     {
       start = PyLong_AsLongLong (key_obj);
       if (start == -1 && PyErr_Occurred ()) goto fail;
@@ -54,28 +66,52 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
       r_step  = PyObject_GetAttrString (key_obj, "step");
       if (!r_start || !r_stop || !r_step) goto fail;
 
-      start = PyLong_AsLongLong (r_start);
-      stop  = PyLong_AsLongLong (r_stop);
-      step  = PyLong_AsLongLong (r_step);
+      flags = COLON_PRESENT;
+
+      if (r_start != Py_None) {
+        start = PyLong_AsLongLong (r_start);
+        if (start == -1 && PyErr_Occurred ()) goto fail;
+        flags |= START_PRESENT;
+      }
+      if (r_stop != Py_None) {
+        stop = PyLong_AsLongLong (r_stop);
+        if (stop == -1 && PyErr_Occurred ()) goto fail;
+        flags |= STOP_PRESENT;
+      }
+      if (r_step != Py_None) {
+        step = PyLong_AsLongLong (r_step);
+        if (step == -1 && PyErr_Occurred ()) goto fail;
+        flags |= STEP_PRESENT;
+      }
+
       Py_DECREF (r_start); r_start = NULL;
       Py_DECREF (r_stop);  r_stop  = NULL;
       Py_DECREF (r_step);  r_step  = NULL;
-
-      if ((start == -1 || stop == -1 || step == -1) && PyErr_Occurred ()) goto fail;
-      flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
     }
 
-  if (step <= 0)
+  printf("ASDASDASDASD\n");
+  fflush(stdout);
+
+  if (step <= 0 && STEP_PRESENT & flags)
     {
       PyErr_SetString (PyExc_ValueError, "key step must be positive");
       goto fail;
     }
 
+  printf("SDASDASDASD\n");
+  fflush(stdout);
+
   var = nsdb_get (ns, name);
   if (var == NULL) goto fail;
 
+  printf("SDASDAlDASD\n");
+  fflush(stdout);
+
   dtype = (PyArray_Descr *)pyns_type_to_dtype (var->var.dtype);
   if (dtype == NULL) goto fail;
+
+  printf("SDiSDAlDASD\n");
+  fflush(stdout);
 
 #if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
   npy_intp tsize = dtype->elsize;
@@ -83,9 +119,13 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
   npy_intp tsize = (npy_intp)PyDataType_ELSIZE (dtype);
 #endif
 
+  fflush(stdout);
+
   npy_intp nelems_max;
   if (stop <= start) { nelems_max = 0; }
   else { nelems_max = (npy_intp)((stop - start + step - 1) / step); }
+
+  printf("DolDASD %ld %ld\n", tsize, nelems_max);
 
   if (nelems_max > 0)
     {
@@ -99,6 +139,9 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
   npy_intp nelems_actual = (npy_intp)bytes_read;
   npy_intp dims[1]       = {nelems_actual};
 
+  printf("SDiSDolDoSD\n\n");
+  fflush(stdout);
+
   arr = PyArray_NewFromDescr (&PyArray_Type, dtype, 1, dims, NULL, NULL, 0, NULL);
   dtype = NULL; /* stolen by PyArray_NewFromDescr */
   if (!arr) goto fail;
@@ -108,7 +151,12 @@ pyns_var_read (PyObject *Py_UNUSED (m), PyObject *args)
 
   free (buf);
   nsdb_free (var);
+
+  printf("SiDSDolDoSD\n");
+  fflush(stdout);
+
   return arr;
+
 
 fail:
   Py_XDECREF (r_start);
