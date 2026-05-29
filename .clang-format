@@ -48,22 +48,6 @@ InsertBraces: true
 IndentPPDirectives: AfterHash                       
 PPIndentWidth: 2                                    
 
-# Include files organization
-SortIncludes: CaseSensitive
-IncludeBlocks: Regroup                               
-IncludeIsMainRegex: '([-_](test|unittest))?$'       
-IncludeCategories:
-  - Regex: '^"'                                     
-    Priority: 1
-  - Regex: '^<sys/'                                 
-    Priority: 2
-  - Regex: '^<.*\.h>'                               
-    Priority: 3
-  - Regex: '^<Python\.h>|numpy'                     
-    Priority: 4
-  - Regex: '^<.*>'                                  
-    Priority: 5
-
 # Whitespace cleanup
 MaxEmptyLinesToKeep: 1                              
 KeepEmptyLinesAtTheStartOfBlocks: false            

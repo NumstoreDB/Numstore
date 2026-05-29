@@ -23,8 +23,8 @@
 #include "nscore/types.h"
 
 #include <Python.h>
-#include <c_specx.h>
 #include <numpy/arrayobject.h>
+#include <c_specx.h>
 #include <string.h>
 
 PyObject      *pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg);

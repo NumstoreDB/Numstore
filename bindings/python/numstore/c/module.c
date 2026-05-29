@@ -16,9 +16,9 @@
 #define PY_ARRAY_UNIQUE_SYMBOL _NUMSTORE_ARRAY_API
 #define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 
+#include <numpy/arrayobject.h>
 #include "pynumstore.h"
 
-#include <numpy/arrayobject.h>
 
 static PyMethodDef numstore_methods[] = {
     // Utils
