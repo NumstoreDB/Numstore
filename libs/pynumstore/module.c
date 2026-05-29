@@ -16,9 +16,8 @@
 #define PY_ARRAY_UNIQUE_SYMBOL _NUMSTORE_ARRAY_API
 #define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 
-#include "pynumstore.h"
-
 #include <numpy/arrayobject.h>
+#include "pynumstore.h"
 
 static PyMethodDef numstore_methods[] = {
     // Utils
@@ -109,10 +108,10 @@ static PyMethodDef numstore_methods[] = {
         "var_remove(db, txn_or_none, var, key) -> NDArray",
     },
     {
-        "var_exists",
-        pyns_var_exists,
-        METH_VARARGS,
-        "var_exists(db, txn_or_none, var) -> bool",
+      "var_exists",
+      pyns_var_exists,
+      METH_VARARGS,
+      "var_exists(db, txn_or_none, var) -> bool",
     },
 
     // End
@@ -120,10 +119,9 @@ static PyMethodDef numstore_methods[] = {
 };
 
 static PyModuleDef numstore_module = {
-    .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "_numstore",
-    .m_doc =
-        "Thin C wrapper around smfile operations for the numstore package.",
+    .m_base    = PyModuleDef_HEAD_INIT,
+    .m_name    = "_numstore",
+    .m_doc     = "Thin C wrapper around smfile operations for the numstore package.",
     .m_size    = -1,
     .m_methods = numstore_methods,
 };

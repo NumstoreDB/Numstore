@@ -20,9 +20,7 @@
 
 TEST_SUITE (smartfiles, 269);
 
-HEADER_FUNC void
-register_tests (void)
-{
+HEADER_FUNC void register_tests(void) {
   REGISTER (smartfiles, block_insert_read);
   REGISTER (smartfiles, block_insert_remove_read);
   REGISTER (smartfiles, block_insert_write_read);
@@ -292,4 +290,5 @@ register_tests (void)
   REGISTER (smartfiles, numstore_to_dtype);
   REGISTER (smartfiles, aries_crash);
   REGISTER (smartfiles, smfile_data_writer);
+
 }
