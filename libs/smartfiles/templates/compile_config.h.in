@@ -20,26 +20,6 @@
 #include <inttypes.h>
 
 ////////////////////////////////////////////////////////////
-// VERSION
-
-#define NS_VERSION_MAJOR @NS_VERSION_MAJOR@
-#define NS_VERSION_MINOR @NS_VERSION_MINOR@
-#define NS_VERSION_PATCH @NS_VERSION_PATCH@
-#define NS_VERSION_STRING "@NS_VERSION_STRING@"
-
-////////////////////////////////////////////////////////////
-// TUNING
-
-#define PAGE_SIZE       @NS_PAGE_SIZE@
-#define MEMORY_PAGE_LEN @NS_MEMORY_PAGE_LEN@
-#define WAL_BUFFER_CAP  @NS_WAL_BUFFER_CAP@
-
-////////////////////////////////////////////////////////////
-// CPU
-
-#define NS_CPU_COUNT @NS_CPU_COUNT@
-
-////////////////////////////////////////////////////////////
 // Data Type Sizes
 
 typedef uint@TSIZE_BITS@_t t_size; // Represents the size of a single type in bytes

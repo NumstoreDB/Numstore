@@ -21,26 +21,6 @@
 #include <inttypes.h>
 
 ////////////////////////////////////////////////////////////
-// VERSION
-
-#define NS_VERSION_MAJOR 1
-#define NS_VERSION_MINOR 1
-#define NS_VERSION_PATCH 0
-#define NS_VERSION_STRING "1.1.0"
-
-////////////////////////////////////////////////////////////
-// TUNING
-
-#define PAGE_SIZE       4096
-#define MEMORY_PAGE_LEN 4096
-#define WAL_BUFFER_CAP  1048576
-
-////////////////////////////////////////////////////////////
-// CPU
-
-#define NS_CPU_COUNT 8
-
-////////////////////////////////////////////////////////////
 // Data Type Sizes
 
 typedef uint32_t t_size; // Represents the size of a single type in bytes

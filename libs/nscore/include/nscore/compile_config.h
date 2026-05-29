@@ -14,9 +14,7 @@
 
 // AUTO GENERATED USING CMAKE - DO NOT MODIFY
 
-// clang-format off
 #pragma once
-
 
 #include <stdint.h>
 #include <inttypes.h>
@@ -78,4 +76,3 @@ typedef uint8_t wlh;     // WAL header
 #define PRpgh     PRIu8
 #define PRwlh     PRIu8
 
-// clang-format on
