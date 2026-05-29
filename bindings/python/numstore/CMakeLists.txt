@@ -20,12 +20,6 @@ target_include_directories(_numstore
     SYSTEM PRIVATE  "${NumPy_INCLUDE}"
 )
 
-if(MSVC)
-    set_property(TARGET _numstore
-      PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
-    )
-endif()
-
 target_link_libraries(_numstore PRIVATE c_specx nscore numstore)
 
 install(TARGETS _numstore DESTINATION numstore)
