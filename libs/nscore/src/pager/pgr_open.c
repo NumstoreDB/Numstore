@@ -24,7 +24,11 @@
 
 #include <c_specx.h>
 
-#define NAME_MAX 200
+#ifdef _WIN32
+  #define NS_NAME_MAX 50
+#else
+  #define NS_NAME_MAX 200
+#endif
 
 /*
  * pgr_open_single_file — standard file-backed entry point.
@@ -44,20 +48,20 @@ struct pager *
 pgr_open_single_file (const char *dbname, error *e)
 {
   u32 len = strlen (dbname);
-  if (len > (NAME_MAX - 4))
+  if (len > (NS_NAME_MAX - 4))
   {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
         "DBName is too big. Supported max: %d actual len: %d",
-        NAME_MAX - 4,
+        NS_NAME_MAX - 4,
         len
     );
     return NULL;
   }
 
-  char fname[NAME_MAX];
-  char walname[NAME_MAX];
+  char fname[NS_NAME_MAX];
+  char walname[NS_NAME_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
@@ -300,19 +304,19 @@ TEST (pager_open)
 
   TEST_CASE ("dbname is too long")
   {
-    char *name = i_malloc (NAME_MAX, 1, &e);
-    for (int i = 0; i < NAME_MAX; ++i)
+    char *name = i_malloc (NS_NAME_MAX, 1, &e);
+    for (int i = 0; i < NS_NAME_MAX; ++i)
     {
       name[i] = 'c';
     }
-    name[NAME_MAX - 3] = '\0';
+    name[NS_NAME_MAX - 3] = '\0';
 
     struct pager *p = pgr_open_single_file (name, &e);
     test_assert (p == NULL);
     test_err_t_check (e.cause_code, ERR_INVALID_ARGUMENT, &e);
     e.cause_code = SUCCESS;
 
-    name[NAME_MAX - 4] = '\0';
+    name[NS_NAME_MAX - 4] = '\0';
     p                  = pgr_open_single_file (name, &e);
     test_assert (p != NULL);
 
