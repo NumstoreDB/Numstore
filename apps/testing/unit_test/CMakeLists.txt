@@ -78,37 +78,24 @@ target_compile_definitions(unit_test PRIVATE
 ############################## CTest
 # Add a leak checker tool if asan is off
 if(ENABLE_LEAK_TOOL AND NOT ENABLE_ASAN)
-    find_program(LEAKS leaks)
-    find_program(VALGRIND valgrind)
-
-    if(LEAKS)
-        set(MEMORYCHECK_COMMAND "${LEAKS}")
-        set(MEMORYCHECK_COMMAND_OPTIONS "--atExit --")
-    elseif(VALGRIND)
-        set(MEMORYCHECK_COMMAND "${VALGRIND}")
-        set(MEMORYCHECK_SUPPRESSIONS_FILE 
-          "${CMAKE_SOURCE_DIR}/valgrind_suppress.txt")
-        set(MEMORYCHECK_COMMAND_OPTIONS
-            "--tool=memcheck \
-             --leak-check=full \
-             --leak-resolution=high \
-             --show-leak-kinds=all \
-             --track-origins=yes \
-             --track-fds=yes \
-             --error-exitcode=1 \
-             --errors-for-leak-kinds=all \
-             --undef-value-errors=yes \
-             --partial-loads-ok=no \
-             --expensive-definedness-checks=yes \
-             --show-mismatched-frees=yes \
-             --show-reachable=yes \
-             --num-callers=40"
-        )
-    else()
-        message(WARNING 
-          "ENABLE_LEAK_TOOL is ON but neither "
-          "leaks nor valgrind was found")
-    endif()
+  set(MEMORYCHECK_SUPPRESSIONS_FILE 
+    "${CMAKE_SOURCE_DIR}/valgrind_suppress.txt")
+  set(MEMORYCHECK_COMMAND_OPTIONS
+      "--tool=memcheck \
+       --leak-check=full \
+       --leak-resolution=high \
+       --show-leak-kinds=all \
+       --track-origins=yes \
+       --track-fds=yes \
+       --error-exitcode=1 \
+       --errors-for-leak-kinds=all \
+       --undef-value-errors=yes \
+       --partial-loads-ok=no \
+       --expensive-definedness-checks=yes \
+       --show-mismatched-frees=yes \
+       --show-reachable=yes \
+       --num-callers=40"
+  )
 endif()
 
 include(CTest)
