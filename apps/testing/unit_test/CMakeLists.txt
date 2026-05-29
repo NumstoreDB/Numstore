@@ -61,12 +61,6 @@ target_include_directories(unit_test
             "${CMAKE_SOURCE_DIR}/libs/numstore/src"
 )
 
-if(MSVC)
-    set_property(TARGET unit_test
-      PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
-    )
-endif()
-
 # The test need to import _numstore 
 # do that by defining this then running PyImport
 target_compile_definitions(unit_test PRIVATE
