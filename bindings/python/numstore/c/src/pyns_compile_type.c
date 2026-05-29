@@ -312,7 +312,11 @@ ref_dtype (const char *spec)
   PyObject* np = ASSERT_NN(PyImport_ImportModule ("numpy"));
   PyObject* fn = ASSERT_NN(PyObject_GetAttrString (np, "dtype"));
   PyObject* s = ASSERT_NN(PyUnicode_FromString (spec));
-  PyObject* ret = ASSERT_NN(PyObject_CallOneArg (fn, s));
+  PyObject* ret = PyObject_CallOneArg(fn, s);
+  if (!ret) {
+      PyErr_Print();
+  }
+  ret = ASSERT_NN(ret);
 
   Py_DECREF (np);
   Py_DECREF (s);
