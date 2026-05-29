@@ -61,11 +61,9 @@ target_include_directories(unit_test
             "${CMAKE_SOURCE_DIR}/libs/numstore/src"
 )
 
-# Windows looks for debug version of python 
-# which isn't shipped - force release 
 if(MSVC)
-    target_compile_definitions(unit_test PRIVATE
-        $<$<CONFIG:Debug>:Py_DEBUG=0>
+    set_property(TARGET unit_test
+      PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
     )
 endif()
 

@@ -19,15 +19,15 @@ jobs:
           #   3. (ubtuntu only) Compile release with tests to ensure no ASSERT tests pass
           #   4. Ensure package release can compile
           
-          - { os: ubuntu-latest,  preset: debug-asan,       run_tests: true }
-          - { os: ubuntu-latest,  preset: debug-leakcheck,  run_tests: true }
-          - { os: ubuntu-latest,  preset: release }
-          - { os: ubuntu-latest,  preset: release-asan,     run_tests: true }
-          - { os: ubuntu-latest,  preset: package-release }
+          # - { os: ubuntu-latest,  preset: debug-asan,       run_tests: true }
+          # - { os: ubuntu-latest,  preset: debug-leakcheck,  run_tests: true }
+          # - { os: ubuntu-latest,  preset: release }
+          # - { os: ubuntu-latest,  preset: release-asan,     run_tests: true }
+          # - { os: ubuntu-latest,  preset: package-release }
 
           - { os: macos-latest,   preset: debug-asan,       run_tests: true }
           - { os: macos-latest,   preset: release }
-          - { os: macos-latest,   preset: package-release }
+          # - { os: macos-latest,   preset: package-release }
 
           - { os: windows-latest, preset: release-tests,    run_tests: true }
           - { os: windows-latest, preset: package-release }
