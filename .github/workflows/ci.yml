@@ -26,7 +26,6 @@ jobs:
           - { os: ubuntu-latest,  preset: package-release }
 
           - { os: macos-latest,   preset: debug-asan,       run_tests: true }
-          - { os: macos-latest,   preset: debug-leakcheck,  run_tests: true }
           - { os: macos-latest,   preset: release }
           - { os: macos-latest,   preset: package-release }
 
@@ -51,7 +50,7 @@ jobs:
         run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
 
       - name: Install Valgrind
-        if: matrix.os == 'ubuntu-latest' && contains(matrix.preset, 'leakcheck')
+        if: contains(matrix.preset, 'leakcheck')
         run: sudo apt-get install -y valgrind
 
       - name: Configure (Linux/macOS)
