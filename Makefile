@@ -84,7 +84,7 @@ clean:
 
 format:
 	python3 scripts/add_copywrite.py
-	find apps samples libs \
+	find apps samples libs bindings \
 		-name '.git' -prune -o \
 		-name 'build' -prune -o \
 		\( -name '*.c' -o -name '*.h' \) -print0 \
