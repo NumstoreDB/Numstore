@@ -107,3 +107,10 @@
    ...
    fun:PyCapsule_Import
 }
+{
+   libstdc_tls
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   obj:*libstdc++*
+}
