@@ -114,3 +114,10 @@
    ...
    obj:*libstdc++*
 }
+{
+   libstdc_tls
+   Memcheck:Leak
+   match-leak-kinds: all
+   ...
+   fun:__tls_get_addr
+}
