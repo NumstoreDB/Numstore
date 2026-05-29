@@ -25,9 +25,9 @@
 #include <c_specx.h>
 
 #ifdef _WIN32
-  #define NS_NAME_MAX 50
+#  define NS_NAME_MAX 50
 #else
-  #define NS_NAME_MAX 200
+#  define NS_NAME_MAX 200
 #endif
 
 /*
@@ -317,7 +317,7 @@ TEST (pager_open)
     e.cause_code = SUCCESS;
 
     name[NS_NAME_MAX - 4] = '\0';
-    p                  = pgr_open_single_file (name, &e);
+    p                     = pgr_open_single_file (name, &e);
     test_assert (p != NULL);
 
     pgr_close (p, &e);

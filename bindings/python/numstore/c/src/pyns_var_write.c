@@ -41,12 +41,12 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
   PyArrayObject *arr = (PyArrayObject *)data_obj;
   void          *buf = PyArray_DATA (arr);
 
-  long long start = -1;
-  long long step = -1;
-  long long stop = -1;
-  int       flags;
+  long long start = 0;
+  long long step  = 1;
+  long long stop  = 0;
+  int       flags = 0;
 
-    if (PyLong_Check (key_obj))
+  if (PyLong_Check (key_obj))
     {
       start = PyLong_AsLongLong (key_obj);
       if (start == -1 && PyErr_Occurred ()) goto fail;
@@ -63,36 +63,56 @@ pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)
 
       flags = COLON_PRESENT;
 
-      if (r_start != Py_None) {
-        start = PyLong_AsLongLong (r_start);
-        if (start == -1 && PyErr_Occurred ()) goto fail;
-        flags |= START_PRESENT;
-      }
-      if (r_stop != Py_None) {
-        stop = PyLong_AsLongLong (r_stop);
-        if (stop == -1 && PyErr_Occurred ()) goto fail;
-        flags |= STOP_PRESENT;
-      }
-      if (r_step != Py_None) {
-        step = PyLong_AsLongLong (r_step);
-        if (step == -1 && PyErr_Occurred ()) goto fail;
-        flags |= STEP_PRESENT;
-      }
+      if (r_start != Py_None)
+        {
+          start = PyLong_AsLongLong (r_start);
+          if (start == -1 && PyErr_Occurred ()) goto fail;
+          flags |= START_PRESENT;
+        }
+      if (r_stop != Py_None)
+        {
+          stop = PyLong_AsLongLong (r_stop);
+          if (stop == -1 && PyErr_Occurred ()) goto fail;
+          flags |= STOP_PRESENT;
+        }
+      if (r_step != Py_None)
+        {
+          step = PyLong_AsLongLong (r_step);
+          if (step == -1 && PyErr_Occurred ()) goto fail;
+          flags |= STEP_PRESENT;
+        }
 
       Py_DECREF (r_start); r_start = NULL;
       Py_DECREF (r_stop);  r_stop  = NULL;
       Py_DECREF (r_step);  r_step  = NULL;
     }
 
+  nsdb_t *ns = _active_ns (db, txn_or_none);
+  if (!ns) goto fail;
 
-  if (step <= 0 && STEP_PRESENT & flags)
+  if (!(flags & START_PRESENT))
+    {
+      start  = 0;
+      flags |= START_PRESENT;
+    }
+  if (!(flags & STEP_PRESENT))
+    {
+      step   = 1;
+      flags |= STEP_PRESENT;
+    }
+  if (!(flags & STOP_PRESENT))
+    {
+      sb_size len = nsdb_len (ns, name);
+      if (len < 0) { _pyns_set_error (ns); goto fail; }
+      stop   = (long long)len;
+      flags |= STOP_PRESENT;
+    }
+
+  if (step <= 0)
     {
       PyErr_SetString (PyExc_ValueError, "key step must be positive");
       goto fail;
     }
-
-  nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns) goto fail;
 
   var = nsdb_get (ns, name);
   if (var == NULL) goto fail;
