@@ -20,14 +20,11 @@ target_include_directories(_numstore
     SYSTEM PRIVATE  "${NumPy_INCLUDE}"
 )
 
-# Windows looks for debug version of python 
-# which isn't shipped - force release 
 if(MSVC)
-    target_compile_definitions(_numstore PRIVATE
-        $<$<CONFIG:Debug>:Py_DEBUG=0>
+    set_property(TARGET _numstore
+      PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
     )
 endif()
-
 
 target_link_libraries(_numstore PRIVATE c_specx nscore numstore)
 
