@@ -29,16 +29,6 @@ nsh_remove_and_open (const char *name, error *e)
 }
 
 err_t
-nsh_crash (struct nshandle *n)
-{
-  struct nshandle_root *root = n->root;
-  nsh_root_release (root, n);
-  ASSERT (root->count == 0);
-  return nsh_root_crash (root, &root->e);
-  return SUCCESS;
-}
-
-err_t
 nsh_root_crash (struct nshandle_root *root, error *e)
 {
   ASSERT (root->count == 0);
