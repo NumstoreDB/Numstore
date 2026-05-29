@@ -18,16 +18,34 @@
 
 #include <c_specx.h>
 
-// nsh
-
 struct nshandle *
 nsh_remove_and_open (const char *name, error *e)
 {
-  if (pgr_delete_single_file ("test", e))
+  if (pgr_delete_single_file (name, e))
   {
     return NULL;
   }
   return nsh_open (name);
+}
+
+err_t
+nsh_crash (struct nshandle *n)
+{
+  struct nshandle_root *root = n->root;
+  nsh_root_release (root, n);
+  ASSERT (root->count == 0);
+  return nsh_root_crash (root, &root->e);
+  return SUCCESS;
+}
+
+err_t
+nsh_root_crash (struct nshandle_root *root, error *e)
+{
+  ASSERT (root->count == 0);
+  err_t err = pgr_crash (root->p, e);
+  i_free ((void *)root->path.data);
+  i_free (root);
+  return err;
 }
 
 int
@@ -65,23 +83,13 @@ nsh_cleanup (const char *path)
   return error_trace (&e);
 }
 
-// nshandle_root
+// nsh_root
 
 err_t
 nsh_root_close (struct nshandle_root *root, error *e)
 {
   ASSERT (root->count == 0);
   err_t err = pgr_close (root->p, e);
-  i_free ((void *)root->path.data);
-  i_free (root);
-  return err;
-}
-
-err_t
-nsh_root_crash (struct nshandle_root *root, error *e)
-{
-  ASSERT (root->count == 0);
-  err_t err = pgr_crash (root->p, e);
   i_free ((void *)root->path.data);
   i_free (root);
   return err;
@@ -147,4 +155,89 @@ nsh_auto_rollback (struct nshandle *sm)
     panic ("Failed to rollback");
   }
   sm->atx = NULL;
+}
+
+//////////////////////// Begin
+static err_t
+_nsh_begin (struct nshandle *smf, error *e)
+{
+  if (smf->atx)
+  {
+    return error_causef (
+        &smf->e,
+        ERR_INVALID_ARGUMENT,
+        "Can't start another transaction, already a part of an existing "
+        "transaction: %" PRtxid ". Either commit or rollback first",
+        smf->atx->tid
+    );
+  }
+
+  WRAP (pgr_begin_txn (&smf->tx, smf->root->p, &smf->e));
+
+  smf->is_auto_txn = 0;
+  smf->atx         = &smf->tx;
+
+  return SUCCESS;
+}
+
+int
+nsh_begin (struct nshandle *smf)
+{
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+  return _nsh_begin (smf, &smf->e);
+}
+
+//////////////////////// Close
+static err_t
+_nsh_close (struct nshandle *n, error *e)
+{
+  struct nshandle_root *root = n->root;
+  nsh_root_release (root, n);
+  if (root->count == 0)
+  {
+    return nsh_root_close (root, &root->e);
+  }
+  return SUCCESS;
+}
+int
+nsh_close (struct nshandle *ns)
+{
+  ns->e.cause_code = SUCCESS;
+  ns->e.cmlen      = 0;
+  return _nsh_close (ns, &ns->e);
+}
+
+//////////////////////// Commit
+static err_t
+_nsh_commit (struct nshandle *smf, error *e)
+{
+  if (smf->atx == NULL)
+  {
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Can't commit transaction, not a part of an existing transaction"
+    );
+  }
+
+  WRAP (pgr_commit (smf->root->p, smf->atx, e));
+  smf->atx = NULL;
+
+  return SUCCESS;
+}
+int
+nsh_commit (struct nshandle *smf)
+{
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+  return _nsh_commit (smf, &smf->e);
+}
+
+struct nshandle *
+nsh_new_context (struct nshandle *ns)
+{
+  ns->e.cause_code = SUCCESS;
+  ns->e.cmlen      = 0;
+  return nsh_root_load (ns->root, &ns->e);
 }
