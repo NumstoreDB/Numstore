@@ -36,7 +36,7 @@ jobs:
       - name: Coverage
         run: |
           ctest -T coverage --test-dir ${{ env.TEST_DIR }} -V
-          lcov --capture --directory ${{ env.TEST_DIR }} --output-file coverage.info
+          lcov --capture --directory ${{ env.TEST_DIR }} --output-file coverage.info --ignore-errors mismatch
           genhtml coverage.info --output-directory coverage_html
 
       - name: Upload coverage report
