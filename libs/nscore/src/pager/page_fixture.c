@@ -14,14 +14,14 @@
 
 #include "nscore/page_fixture.h"
 
-#include <c_specx.h>
-
 #include "nscore/page_delegate.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/inner_node.h"
 #include "nscore/pages/page.h"
+
+#include <c_specx.h>
 
 #ifndef NTEST
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {

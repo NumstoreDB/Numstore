@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/parsers/parser.h"
 #include "nscore/types.h"
+
+#include <c_specx.h>
 
 // type            ::= struct_type
 // | union_type

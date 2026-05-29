@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include "nscore/pages/page.h"
+
 #include <c_specx.h>
 #include <string.h>
-
-#include "nscore/pages/page.h"
 
 /*
  * Data List Page (R+Tree leaf / data node)

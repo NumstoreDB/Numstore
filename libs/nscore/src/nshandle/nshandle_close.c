@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
+
+#include <c_specx.h>
 
 static err_t
 _nsh_close (struct nshandle *n, error *e)

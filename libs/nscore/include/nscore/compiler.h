@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/subtype.h"
 #include "nscore/type_ref.h"
 #include "nscore/types.h"
+
+#include <c_specx.h>
 
 err_t compile_type (
     struct type        *dest,

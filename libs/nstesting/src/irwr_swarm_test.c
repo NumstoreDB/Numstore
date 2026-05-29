@@ -14,16 +14,16 @@
 
 #include "irwr_swarm_test.h"
 
+#include "_numstore.h"
+#include "nscore/types.h"
+#include "nscore/variables.h"
+#include "numstore.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "_numstore.h"
-#include "nscore/types.h"
-#include "nscore/variables.h"
-#include "numstore.h"
 
 ///////////////////////////////////////////////////////////
 /// Utils

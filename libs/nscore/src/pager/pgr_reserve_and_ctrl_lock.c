@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-#include <stdatomic.h>
-
 #include "nscore/compile_config.h"
 #include "nscore/page_fixture.h"
 #include "nscore/pager.h"
+
+#include <c_specx.h>
+#include <stdatomic.h>
 
 static inline u32
 pgr_spin_clock (struct pager *p)

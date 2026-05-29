@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "numstore.h"
+
+#include <c_specx.h>
 
 // Actions you can take in a database
 enum action_type

@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "_smfile.h"
 #include "nscore/aries.h"
 #include "nscore/pager.h"
 #include "smfile.h"
+
+#include <c_specx.h>
 
 #ifndef NTEST
 

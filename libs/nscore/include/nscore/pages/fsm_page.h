@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/pages/page.h"
+
+#include <c_specx.h>
 
 // OFFSETS and _Static_asserts
 #define FS_BTMP_OFST PG_COMMN_END

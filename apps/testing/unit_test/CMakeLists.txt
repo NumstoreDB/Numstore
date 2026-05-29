@@ -4,6 +4,7 @@
 run_python_script(TEST_NAMES
     "${CMAKE_SOURCE_DIR}/scripts/gen_tests.py"
     "${CMAKE_SOURCE_DIR}/libs"
+    "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c"
 )
 
 # Check the output - should be something
@@ -18,7 +19,7 @@ string(REPLACE "\n" ";" TEST_NAMES_LIST "${TEST_NAMES}")
 set(PYTHON_OUTPUT "")
 set(COUNT 0)
 foreach(TEST_NAME ${TEST_NAMES_LIST})
-    string(APPEND PYTHON_OUTPUT "  REGISTER (numstore, ${TEST_NAME});\n")
+    string(APPEND PYTHON_OUTPUT "  REGISTER (smartfiles, ${TEST_NAME});\n")
     math(EXPR COUNT "${COUNT} + 1")
 endforeach()
 
@@ -26,9 +27,9 @@ endforeach()
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/register_test_suite.h.in" FILE_CONTENTS)
 
 # Replace variables
-string(REPLACE "%NAME%" "numstore" FILE_CONTENTS "${FILE_CONTENTS}")
+string(REPLACE "%NAME%"  "smartfiles"       FILE_CONTENTS "${FILE_CONTENTS}")
 string(REPLACE "%TESTS%" "${PYTHON_OUTPUT}" FILE_CONTENTS "${FILE_CONTENTS}")
-string(REPLACE "%COUNT%" "${COUNT}" FILE_CONTENTS "${FILE_CONTENTS}")
+string(REPLACE "%COUNT%" "${COUNT}"         FILE_CONTENTS "${FILE_CONTENTS}")
 
 # Write to new file
 file(
@@ -37,7 +38,7 @@ file(
 
 ############################## Unit Test Executable
 file(GLOB_RECURSE NSPY_SOURCES 
-    CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/libs/pynumstore/src/*.c"
+    CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/src/*.c"
 )
 
 add_executable(unit_test main.c "${NSPY_SOURCES}")
@@ -55,8 +56,8 @@ target_link_libraries(unit_test
 target_include_directories(unit_test SYSTEM PRIVATE "${NumPy_INCLUDE}")
 target_include_directories(unit_test
     PRIVATE "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
-            "${CMAKE_SOURCE_DIR}/libs/pynumstore/include"
-            "${CMAKE_SOURCE_DIR}/libs/pynumstore/src"
+            "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/include"
+            "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/src"
             "${CMAKE_SOURCE_DIR}/libs/numstore/src"
 )
 

@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "nscore/page_delegate.h"
 #include "nscore/page_h.h"
 #include "nscore/pages/inner_node.h"
 #include "nscore/rope.h"
+
+#include <c_specx.h>
 
 struct frame
 {
