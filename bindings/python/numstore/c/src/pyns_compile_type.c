@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <object.h>
-
 #include "_pynumstore.h"
 #include "nscore/compiler.h"
 #include "nscore/types.h"
+
+#include <object.h>
 
 // Build a complex valued struct
 static PyArray_Descr *

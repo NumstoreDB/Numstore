@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "c_specx/logging.h"
 #include "c_specx/threading.h"
 #include "nscore/file_pager.h"
@@ -21,6 +19,8 @@
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
 #include "nscore/wal.h"
+
+#include <c_specx.h>
 
 err_t
 pgr_close (struct pager *p, error *e)

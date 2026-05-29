@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/parser.h"
+
+#include <c_specx.h>
 
 // stride       ::= '[' entry_list ']'
 // entry_list   ::= entry

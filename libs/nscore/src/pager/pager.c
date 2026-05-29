@@ -14,13 +14,13 @@
 
 #include "nscore/pager.h"
 
-#include <c_specx.h>
-
 #include "nscore/aries.h"
 #include "nscore/compile_config.h"
 #include "nscore/file_pager.h"
 #include "nscore/lock_table.h"
 #include "nscore/page_fixture.h"
+
+#include <c_specx.h>
 
 bool
 pgr_isnew (const struct pager *p)

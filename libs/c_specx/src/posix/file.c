@@ -12,6 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <sys/stat.h>
+#include <sys/uio.h>
+
 #include <c_specx.h>
 #include <dirent.h>
 #include <errno.h>
@@ -22,8 +25,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/uio.h>
 #include <unistd.h>
 
 #ifndef NDEBUG

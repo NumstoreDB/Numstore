@@ -14,12 +14,6 @@
 
 #include "cgd_swarm_test.h"
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "_numstore.h"
 #include "c_specx/error.h"
 #include "mem_vhmap.h"
@@ -27,6 +21,12 @@
 #include "nscore/types.h"
 #include "nscore/variables.h"
 #include "numstore.h"
+
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 ///////////////////////////////////////////////////////////
 /// Utils

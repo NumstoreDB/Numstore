@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "nscore/compile_config.h"
 #include "nscore/errors.h"
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
+
+#include <c_specx.h>
 
 struct nshandle *
 nsh_new_context (struct nshandle *ns)

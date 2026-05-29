@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/pager.h"
 #include "nscore/variables.h"
 #include "smfile.h"
+
+#include <c_specx.h>
 
 #define DEFAULT_VARIABLE "."
 

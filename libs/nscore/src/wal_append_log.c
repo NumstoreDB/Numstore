@@ -12,15 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-#include <string.h>
-
 #include "nscore/dirty_page_table.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal.h"
 #include "nscore/wal_istream.h"
 #include "nscore/wal_ostream.h"
 #include "nscore/wal_rec_hdr.h"
+
+#include <c_specx.h>
+#include <string.h>
 
 slsn
 wal_append_begin_log (struct wal *w, const txid tid, error *e)

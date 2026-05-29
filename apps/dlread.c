@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 #include "smfile.h"
+
+#include <c_specx.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static void
 dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e)

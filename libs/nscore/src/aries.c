@@ -14,10 +14,10 @@
 
 #include "nscore/aries.h"
 
-#include <c_specx.h>
-
 #include "nscore/txn.h"
 #include "nscore/txn_table.h"
+
+#include <c_specx.h>
 
 err_t
 aries_ctx_create (struct aries_ctx *dest, error *e)

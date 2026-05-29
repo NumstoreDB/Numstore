@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/types.h"
+
+#include <c_specx.h>
 
 #define PRIM_INT \
   I8:            \

@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "nscore/wal.h"
+#include "nscore/wal_rec_hdr.h"
+
 #include <c_specx.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "nscore/wal.h"
-#include "nscore/wal_rec_hdr.h"
 
 static void
 walf_print (const char *fname)

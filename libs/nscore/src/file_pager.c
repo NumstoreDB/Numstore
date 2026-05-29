@@ -14,11 +14,11 @@
 
 #include "nscore/file_pager.h"
 
-#include <c_specx.h>
-#include <string.h>
-
 #include "nscore/compile_config.h"
 #include "nscore/errors.h"
+
+#include <c_specx.h>
+#include <string.h>
 
 enum file_pager_flags
 {

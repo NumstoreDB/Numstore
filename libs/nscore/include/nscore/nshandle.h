@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/pager.h"
 #include "nscore/variables.h"
+
+#include <c_specx.h>
 
 /**
  * A handle puts instance semantics to numstore

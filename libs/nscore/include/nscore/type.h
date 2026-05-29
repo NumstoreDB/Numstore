@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include <c_specx.h>
-
 #include "nscore/parser.h"
+
+#include <c_specx.h>
 
 // type            ::= struct_type
 // | union_type

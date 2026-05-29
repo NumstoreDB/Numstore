@@ -14,11 +14,11 @@
 
 #include "smfile.h"
 
-#include <c_specx.h>
-
 #include "_smfile.h"
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
+
+#include <c_specx.h>
 
 // smfile
 
