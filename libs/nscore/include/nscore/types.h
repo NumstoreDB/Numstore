@@ -317,3 +317,77 @@ err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
 
 err_t
 sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
+
+////////////////////////////////////////////////////////////
+/// Quick Builders
+
+#define _mk_prim(_p) {.type = T_PRIM, .p = _p}
+HEADER_FUNC struct type
+mk_prim (enum prim_t p)
+{
+  return (struct type)_mk_prim (p);
+}
+
+HEADER_FUNC struct type
+mk_struct (u16 len, struct string *keys, struct type **types)
+{
+  return (struct type){
+      .type = T_STRUCT,
+      .st   = (struct struct_t){
+          .len   = len,
+          .keys  = keys,
+          .types = types,
+      },
+  };
+}
+
+HEADER_FUNC struct type
+mk_union (u16 len, struct string *keys, struct type **types)
+{
+  return (struct type){
+      .type = T_UNION,
+      .un   = (struct union_t){
+          .len   = len,
+          .keys  = keys,
+          .types = types,
+      },
+  };
+}
+
+HEADER_FUNC struct type
+mk_sarray (u16 rank, u32 *dims, struct type *sub)
+{
+  return (struct type){
+      .type = T_SARRAY,
+      .sa   = (struct sarray_t){
+          .rank = rank,
+          .dims = dims,
+          .t    = sub,
+      },
+  };
+}
+
+static struct type TU8    = _mk_prim (U8);
+static struct type TU16   = _mk_prim (U16);
+static struct type TU32   = _mk_prim (U32);
+static struct type TU64   = _mk_prim (U64);
+static struct type TI8    = _mk_prim (I8);
+static struct type TI16   = _mk_prim (I16);
+static struct type TI32   = _mk_prim (I32);
+static struct type TI64   = _mk_prim (I64);
+static struct type TF16   = _mk_prim (F16);
+static struct type TF32   = _mk_prim (F32);
+static struct type TF64   = _mk_prim (F64);
+static struct type TF128  = _mk_prim (F128);
+static struct type TCF32  = _mk_prim (CF32);
+static struct type TCF64  = _mk_prim (CF64);
+static struct type TCF128 = _mk_prim (CF128);
+static struct type TCF256 = _mk_prim (CF256);
+static struct type TCI16  = _mk_prim (CI16);
+static struct type TCI32  = _mk_prim (CI32);
+static struct type TCI64  = _mk_prim (CI64);
+static struct type TCI128 = _mk_prim (CI128);
+static struct type TCU16  = _mk_prim (CU16);
+static struct type TCU32  = _mk_prim (CU32);
+static struct type TCU64  = _mk_prim (CU64);
+static struct type TCU128 = _mk_prim (CU128);

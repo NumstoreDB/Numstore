@@ -22,51 +22,14 @@ build:
 
 comprehensive:
 	$(MAKE) build target=debug
-	$(MAKE) build target=debug-no-asan
-	$(MAKE) build target=debug-ntests
-	$(MAKE) build target=debug-ntests-no-asan
-	$(MAKE) build target=debug-release
-	$(MAKE) build target=debug-release-tests
-	$(MAKE) build target=debug-package-release
-
-######################################################## Tests
-
-test:
-	$(MAKE) build target=$(target)
-
-run-tests: test
-	cd build/$(target)/lib/ && ./test
-
-run-tests-no-asan:
-	$(MAKE) build target=$(target)
-ifeq ($(shell uname),Darwin)
-	@set -o pipefail; \
-	leaks --atExit -- build/$(target)/lib/test pager_fill_ht 2>&1 | tee /tmp/leaks-$(target).txt; \
-	grep -q "0 leaks for 0 total leaked bytes" /tmp/leaks-$(target).txt \
-		|| (echo "FAIL: leaks detected in preset '$(target)'"; exit 1)
-else
-	valgrind \
-		--tool=memcheck \
-		--leak-check=full \
-		--leak-resolution=high \
-		--show-leak-kinds=all \
-		--track-origins=yes \
-		--track-fds=yes \
-		--error-exitcode=1 \
-		--errors-for-leak-kinds=all \
-		--undef-value-errors=yes \
-		--partial-loads-ok=no \
-		--expensive-definedness-checks=yes \
-		--show-mismatched-frees=yes \
-		--show-reachable=yes \
-		--num-callers=40 -- \
-		build/$(target)/apps/test
-endif
-
-comprehensive-tests:
-	$(MAKE) run-tests target=debug
-	$(MAKE) run-tests-no-asan target=debug-no-asan
-	$(MAKE) run-tests-no-asan target=release-tests
+	$(MAKE) build target=debug-asan
+	$(MAKE) build target=debug-leakcheck
+	$(MAKE) build target=debug-coverage
+	$(MAKE) build target=release
+	$(MAKE) build target=release-tests
+	$(MAKE) build target=release-asan
+	$(MAKE) build target=release-leakcheck
+	$(MAKE) build target=package-release
 
 ######################################################## Packaging
 

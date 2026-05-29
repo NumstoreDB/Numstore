@@ -3,20 +3,21 @@ file(GLOB_RECURSE
   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/c/src/*.c"
 )
 
-Python_add_library(_numstore MODULE WITH_SOABI ${NSPY_SOURCES})
+Python_add_library(_numstore MODULE WITH_SOABI c/module.c ${NSPY_SOURCES})
+
+# Save include paths for other targets to include from
+set(CPYNS_PUBLIC_INCLUDE  CACHE PATH "")
+set(CPYNS_PRIVATE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/c/src" CACHE PATH "")
 
 target_include_directories(_numstore
     PUBLIC          "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
-    PRIVATE         "${CMAKE_CURRENT_SOURCE_DIR}/c/src"
-                    "${CMAKE_SOURCE_DIR}/nscore/include"
-                    "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
-                    "${CMAKE_SOURCE_DIR}/libs/numstore/include"
-                    "${CMAKE_SOURCE_DIR}/libs/numstore/src" # TODO nsdb_var_t 
+    PUBLIC          "${CMAKE_CURRENT_SOURCE_DIR}/c/src"
+                    "${CMAKE_SOURCE_DIR}/libs/numstore/src" # TODO - fix this
 )
 
 # Include Numpy includes seperately to ignore compiler flags
 target_include_directories(_numstore
-    SYSTEM PRIVATE  "${NumPy_INCLUDE_DIRS}"
+    SYSTEM PRIVATE  "${NumPy_INCLUDE}"
 )
 
 target_link_libraries(_numstore PRIVATE c_specx nscore numstore)

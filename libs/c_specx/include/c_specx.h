@@ -16,6 +16,7 @@
 #define C_SPECX_H
 
 #include <c_specx/alloc.h>
+#include <c_specx/assert.h>
 #include <c_specx/block_array.h>
 #include <c_specx/bounds.h>
 #include <c_specx/byte_accessor.h>

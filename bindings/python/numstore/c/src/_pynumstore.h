@@ -61,3 +61,11 @@ _pyns_set_error (nsdb_t *ns)
     PyErr_SetString (PyExc_RuntimeError, "numstore operation failed");
   }
 }
+
+HEADER_FUNC Py_ssize_t elsize(PyArray_Descr* type) {
+#if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
+      return (type)->elsize;
+#else
+      return PyDataType_ELSIZE (type);
+#endif
+}

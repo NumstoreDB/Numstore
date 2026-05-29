@@ -15,6 +15,7 @@
 #ifndef C_SPECX_LALLOC_H
 #define C_SPECX_LALLOC_H
 
+#include <c_specx/assert.h>
 #include <c_specx/error.h>
 #include <c_specx/latch.h>
 #include <c_specx/logging.h>

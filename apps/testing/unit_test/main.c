@@ -14,7 +14,12 @@
 
 #include "register_test_suite.h"
 
+#define PY_ARRAY_UNIQUE_SYMBOL _NUMSTORE_ARRAY_API
+#define PY_SSIZE_T_CLEAN
+#define NPY_NO_DEPRECATED_API NPY_2_0_API_VERSION
+#include <Python.h>
 #include <c_specx.h>
+#include <numpy/arrayobject.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +27,11 @@
 int
 main (const int argc, char **argv)
 {
+  Py_Initialize ();
+  PyRun_SimpleString ("import sys; sys.path.insert(0, '" NUMSTORE_SO_DIR "')");
+  PyObject *mod = PyImport_ImportModule ("_numstore");
+  _import_array ();
+
   register_tests ();
 
   const char *filter = (argc > 1) ? argv[1] : NULL;
@@ -84,5 +94,8 @@ main (const int argc, char **argv)
   }
 
   dblb_free (&f);
+
+  Py_Finalize ();
+
   return test_ret;
 }

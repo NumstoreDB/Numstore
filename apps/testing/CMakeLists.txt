@@ -19,13 +19,6 @@ foreach(APP_SRC ${NS_TEST_APP_SOURCES})
                 nscore 
                 smartfiles 
                 numstore 
-                nstesting)
-
-    target_include_directories(${APP_NAME}
-        PRIVATE "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
-                "${CMAKE_SOURCE_DIR}/libs/nscore/include"
-                "${CMAKE_SOURCE_DIR}/libs/numstore/include"
-                "${CMAKE_SOURCE_DIR}/libs/smartfiles/include"
-                "${CMAKE_SOURCE_DIR}/libs/nstesting/include"
+                nstesting
     )
 endforeach()

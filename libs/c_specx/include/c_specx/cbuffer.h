@@ -15,6 +15,7 @@
 #ifndef C_SPECX_CBUFFER_H
 #define C_SPECX_CBUFFER_H
 
+#include <c_specx/assert.h>
 #include <c_specx/bytes.h>
 #include <c_specx/error.h>
 #include <c_specx/file_system.h>

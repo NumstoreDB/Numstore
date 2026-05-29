@@ -1,0 +1,46 @@
+name: Coverage
+on:
+  push:
+  pull_request:
+jobs:
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    env:
+      TEST_DIR: ./build/debug-coverage
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      - name: Configure
+        run: |
+          cmake --preset debug-coverage \
+            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Build
+        run: cmake --build --preset debug-coverage
+
+      - name: Test
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V
+
+      - name: Coverage
+        run: |
+          ctest -T coverage --test-dir ${{ env.TEST_DIR }} -V
+          lcov --capture --directory ${{ env.TEST_DIR }} --output-file coverage.info
+          genhtml coverage.info --output-directory coverage_html
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage_html/

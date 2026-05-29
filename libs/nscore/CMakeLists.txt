@@ -14,8 +14,7 @@ file(
 ################### THE MAIN LIBRARY
 add_library(nscore STATIC ${NS_SOURCES})
 target_include_directories(nscore
-    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/src"       
-            "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
+  PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 target_link_libraries(nscore PRIVATE c_specx)
