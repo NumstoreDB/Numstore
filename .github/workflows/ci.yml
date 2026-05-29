@@ -55,10 +55,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && contains(matrix.preset, 'leakcheck')
         run: sudo apt-get install -y valgrind
 
-      - name: Check leaks available
-        if: matrix.os == 'macos-latest' && contains(matrix.preset, 'leakcheck')
-        run: leaks --version
-
       - name: Configure (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
