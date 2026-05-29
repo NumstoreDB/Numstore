@@ -44,3 +44,9 @@ jobs:
         with:
           name: coverage-report
           path: coverage_html/
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
