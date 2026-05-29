@@ -37,7 +37,6 @@ _nsh_begin (struct nshandle *smf, error *e)
 
   smf->is_auto_txn = 0;
   smf->atx         = &smf->tx;
-  printf ("%" PRtxid "\n", smf->atx->tid);
 
   return SUCCESS;
 }

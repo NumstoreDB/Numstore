@@ -5,20 +5,16 @@ import numstore as ns
 with ns.open("mydb") as db:
     with db.begin_txn() as txn:
 
-        print("A")
         y = txn.get_or_create("y", dtype="f32")
 
         # Start with a fresh dataset if y already existed
-        print("B")
         del y[0:]
         print("Initial State: ", y[0:])
 
         # Append twice
-        print("C")
         y.append(np.array([1.0, 2.0, 3.0], dtype=np.float32))
         y.append(np.array([4.0, 5.0, 6.0], dtype=np.float32))
 
-        print("D")
         # Retrieve the whole array
         print("Seed Data: ", y[0:])
 
