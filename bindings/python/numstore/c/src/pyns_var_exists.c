@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_pynumstore.h"
 #include "_numstore.h"
+#include "_pynumstore.h"
 #include "numstore.h"
 
 PyObject *
-pyns_var_exists(PyObject *Py_UNUSED (m), PyObject *args)
+pyns_var_exists (PyObject *Py_UNUSED (m), PyObject *args)
 {
   PyObject   *db          = NULL;
   PyObject   *txn_or_none = NULL;
@@ -25,22 +25,30 @@ pyns_var_exists(PyObject *Py_UNUSED (m), PyObject *args)
   nsdb_var_t *var         = NULL;
 
   if (!PyArg_ParseTuple (args, "OOs", &db, &txn_or_none, &name))
+  {
     goto fail;
-
-  nsdb_t *ns = _active_ns (db, txn_or_none);
-  if (!ns) goto fail;
-
-  if(nsdb_get_if_exists(ns, &var, name)) { goto fail; }
-
-  bool exists = var != NULL;
-  if(var){
-    nsdb_free(var);
   }
 
-  return PyBool_FromLong(exists);
+  nsdb_t *ns = _active_ns (db, txn_or_none);
+  if (!ns)
+  {
+    goto fail;
+  }
+
+  if (nsdb_get_if_exists (ns, &var, name))
+  {
+    goto fail;
+  }
+
+  bool exists = var != NULL;
+  if (var)
+  {
+    nsdb_free (var);
+  }
+
+  return PyBool_FromLong (exists);
 
 fail:
   nsdb_free (var);
   return NULL;
 }
-
