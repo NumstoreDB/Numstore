@@ -4,7 +4,14 @@
 
 ### Changed
 
-- Organized libraries into three seperate components: c_specx, smartfiles and numstore
+- Broke libraries into components: 
+    - c_specx: In charge of core common code
+    - smartfiles: A filesystem in a file 
+    - nscore: Core numstore algorithms
+    - numstore: smartfiles with a type system built in 
+- Unit tests are now auto generated using python to remove the 
+  dependency on any type of constructor attributes to maintain 
+  portability
 
 ### Removed 
 
@@ -12,14 +19,18 @@
 
 ### Added
 
+- pynumstore - A Python binding for numstore written in CPython
 - numstore - a typed smartfiles - which constricts the variables to typed values
-- `struct` - A Product type
-- `union`  - A Summation type
-- `sarray` - A strict array type
+    - `prim` - A primitive type
+    - `struct` - A Product type
+    - `union`  - A Summation type
+    - `sarray` - A strict array type
 - Compilers for all new types
-- `type_ref`        - A compound type_accessor to create a new type
-- `type_accessor`   - A typed version of byte_accessor
-- `subtype`         - Sub type of an existing type
+    - `type_ref`        - A compound type_accessor to create a new type
+    - `type_accessor`   - A typed version of byte_accessor
+    - `subtype`         - Sub type of an existing type
+- Code coverage ci/cd target to test code coverage on unit tests 
+- Swarm tests - for irwr (insert read write remove) and cgd (create get delete)
 
 ## [v1.0.0] - 2026-05-01
 
