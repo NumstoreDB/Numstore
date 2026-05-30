@@ -14,11 +14,11 @@
 
 #include "nscore/file_pager.h"
 
-#include "nscore/compile_config.h"
-#include "nscore/errors.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/compile_config.h"
+#include "nscore/errors.h"
 
 enum file_pager_flags
 {
@@ -56,6 +56,19 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
   // Open the database in read write mode
   if (i_open_rw (&dest->f, dbname, e))
   {
+    goto failed;
+  }
+
+  // Check lock
+  bool already_locked;
+  if (i_flock (&dest->f, &already_locked, e))
+  {
+    goto failed;
+  }
+
+  if (already_locked)
+  {
+    error_causef (e, ERR_IO, "File: %s is already in use.");
     goto failed;
   }
 

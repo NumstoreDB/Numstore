@@ -42,6 +42,8 @@ struct i_file_vtable
   err_t (*i_eof) (i_file *fp, error *e);
   err_t (*i_fsync) (const i_file *fp, error *e);
   i64 (*i_file_size) (const i_file *fp, error *e);
+  err_t (*i_flock) (const i_file *fp, bool *already_locked, error *e);
+  err_t (*i_funlock) (const i_file *fp, error *e);
 
   ////////////////////////////////////////////////////////////
   // Read
@@ -313,6 +315,16 @@ HEADER_FUNC i64
 i_file_size (const i_file *fp, error *e)
 {
   return fp->fvtable->i_file_size (fp, e);
+}
+HEADER_FUNC err_t
+i_flock (const i_file *fp, bool *already_locked, error *e)
+{
+  return fp->fvtable->i_flock (fp, already_locked, e);
+}
+HEADER_FUNC err_t
+i_funlock (const i_file *fp, error *e)
+{
+  return fp->fvtable->i_funlock (fp, e);
 }
 HEADER_FUNC i64
 i_seek (const i_file *fp, u64 offset, seek_t whence, error *e)

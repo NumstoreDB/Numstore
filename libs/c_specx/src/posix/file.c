@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <sys/stat.h>
-#include <sys/uio.h>
-
 #include <c_specx.h>
 #include <dirent.h>
 #include <errno.h>
@@ -25,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/uio.h>
 #include <unistd.h>
 
 #ifndef NDEBUG
@@ -83,6 +82,41 @@ posix_file_size (const i_file *fp, error *e)
   }
 
   return (i64)st.st_size;
+}
+
+static err_t
+posix_flock (const i_file *fp, bool *already_locked, error *e)
+{
+  int result = flock (fp->fd, LOCK_EX | LOCK_NB);
+
+  // Lock was acquired
+  if (result == 0)
+  {
+    *already_locked = false;
+    return SUCCESS;
+  }
+
+  // Blocked
+  if (errno == EWOULDBLOCK)
+  {
+    *already_locked = true;
+    return 0;
+  }
+
+  if (unlikely (result))
+  {
+    return error_causef (e, ERR_IO, "flock: %s", strerror (errno));
+  }
+}
+
+static err_t
+posix_funlock (const i_file *fp, error *e)
+{
+  int result = flock (fp->fd, LOCK_EX);
+  if (unlikely (result))
+  {
+    return error_causef (e, ERR_IO, "funlock: %s", strerror (errno));
+  }
 }
 
 ////////////////////////////////////////////////////////////
@@ -904,6 +938,18 @@ posix_file_exists (
   return SUCCESS;
 }
 
+#include <errno.h>
+#include <string.h>
+
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <sys/file.h>
+#  include <unistd.h>
+#endif
+
+// Returns 0 on success, -1 on error (check errno / GetLastError on Windows)
+
 ////////////////////////////////////////////////////////////
 // Default file system vtable
 
@@ -911,6 +957,8 @@ struct i_file_vtable default_fvtable = {
     .i_close       = _posix_close,
     .i_fsync       = posix_fsync,
     .i_file_size   = posix_file_size,
+    .i_flock       = posix_flock,
+    .i_funlock     = posix_funlock,
     .i_read_some   = posix_read_some,
     .i_read_all    = posix_read_all,
     .i_pread_some  = posix_pread_some,

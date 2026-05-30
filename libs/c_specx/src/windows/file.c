@@ -13,12 +13,12 @@
 /// limitations under the License.
 
 #define WIN32_LEAN_AND_MEAN
-#include "windows.h"
-
 #include <c_specx.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "windows.h"
 
 ////////////////////////////////////////////////////////////
 // Helpers
@@ -110,6 +110,62 @@ win32_file_size (const i_file *fp, error *e)
   }
 
   return (i64)size.QuadPart;
+}
+
+static err_t
+win32_flock (const i_file *fp, bool *already_locked, error *e)
+{
+  OVERLAPPED overlapped;
+  memset (&overlapped, 0, sizeof (overlapped));
+
+  BOOL ok = LockFileEx (
+      fp->handle,
+      LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+      0,
+      MAXDWORD,
+      MAXDWORD,
+      &overlapped
+  );
+
+  // Acquired
+  if (ok)
+  {
+    *already_locked = false;
+    return SUCCESS;
+  }
+
+  // Check if it errored because it couldn't lock
+  if (GetLastError () == ERROR_LOCK_VIOLATION)
+  {
+    *already_locked = true;
+    return SUCCESS;
+  }
+
+  char buf[WIN_ERR_BUF];
+  return error_causef (e, ERR_IO, "flock: %s", WIN_ERRMSG (buf));
+}
+
+static int
+win32_funlock (const i_file *fp, error *e)
+{
+  OVERLAPPED overlapped;
+  memset (&overlapped, 0, sizeof (overlapped));
+
+  BOOL ok = UnlockFileEx (
+      fp->handle,
+      0, // reserved
+      MAXDWORD,
+      MAXDWORD,
+      &overlapped
+  );
+
+  if (!ok)
+  {
+    char buf[WIN_ERR_BUF];
+    return error_causef (e, ERR_IO, "funlock: %s", WIN_ERRMSG (buf));
+  }
+
+  return SUCCESS;
 }
 
 ////////////////////////////////////////////////////////////
@@ -967,6 +1023,8 @@ struct i_file_vtable default_fvtable = {
     .i_close       = win32_close,
     .i_fsync       = win32_fsync,
     .i_file_size   = win32_file_size,
+    .i_flock       = win32_flock,
+    .i_funlock     = win32_funlock,
     .i_read_some   = win32_read_some,
     .i_read_all    = win32_read_all,
     .i_pread_some  = win32_pread_some,
