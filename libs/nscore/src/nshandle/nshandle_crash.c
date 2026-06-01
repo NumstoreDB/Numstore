@@ -22,10 +22,13 @@ static err_t
 __nsh_crash (struct nshandle *n, error *e)
 {
   struct nshandle_root *root = n->root;
-  nsh_root_release (root, n);
-  ASSERT (root->count == 0);
-  return nsh_root_crash (root, &root->e);
-  return SUCCESS;
+
+  err_t err = pgr_crash (root->p, e);
+  i_free ((void *)root->path.data);
+  i_free (n);
+  i_free (root);
+
+  return err;
 }
 
 int
