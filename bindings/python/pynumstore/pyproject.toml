@@ -6,8 +6,39 @@ build-backend = "scikit_build_core.build"
 name = "pynumstore"
 dynamic = ["version"]
 description = "Python interface for the numerical database"
+readme = "README.md"
+license = {file = "../../../LICENSE.md"}
 requires-python = ">=3.8"
 dependencies = ["numpy"]
+authors = [
+  {name = "Theo Lincke", email = "lincketheo.dev@gmail.com"}
+]
+maintainers = [
+  {name = "Theo Lincke", email = "lincketheo.dev@gmail.com"}
+]
+keywords = ["database", "numerical", "timeseries", "storage"]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: C",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Topic :: Database",
+  "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "https://github.com/lincketheo/Numstore"
+Repository = "https://github.com/lincketheo/Numstore"
+Issues = "https://github.com/lincketheo/Numstore/issues"
+Changelog = "https://github.com/lincketheo/Numstore/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/lincketheo/Numstore/blob/main/README.md"
 
 [tool.scikit-build]
 cmake.version = ">=3.18"
