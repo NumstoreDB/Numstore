@@ -353,7 +353,6 @@ TEST (aries_rollback_with_crash_recovery)
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_flush_wall (p, &e);
-    lockt_unlock_tx (p->lt, &tx2); // Unlock tx's to avoid memory leaks
     test_fail_if (pgr_crash (p, &e));
   }
 

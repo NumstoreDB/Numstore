@@ -16,6 +16,8 @@
 
 #include <c_specx.h>
 
+#include "c_specx/hash_table.h"
+#include "nscore/lock_table.h"
 #include "nscore/txn.h"
 
 DEFINE_DBG_ASSERT (struct txn_table, txn_table, t, { ASSERT (t); })

@@ -299,7 +299,7 @@ randu64r (const u64 lower, const u64 upper)
 
 #if defined(_MSC_VER) && defined(_M_X64)
   // 64-bit MSVC: _umul128 intrinsic available
-  u64 x  = randu64 ();
+  u64 x = randu64 ();
   u64 hi;
   u64 lo = _umul128 (x, range, &hi);
   if (lo < range)
@@ -331,17 +331,17 @@ randu64r (const u64 lower, const u64 upper)
   return lower + (u64)(m >> 64);
 
 #else
-  // 32-bit MSVC (win32): emulate 64x64->128 multiply using 32-bit halves
-  // Decomposes a*b into (a_hi*2^32 + a_lo) * (b_hi*2^32 + b_lo)
-  #define HI32(v) ((u64)((v) >> 32))
-  #define LO32(v) ((u64)(u32)(v))
+// 32-bit MSVC (win32): emulate 64x64->128 multiply using 32-bit halves
+// Decomposes a*b into (a_hi*2^32 + a_lo) * (b_hi*2^32 + b_lo)
+#  define HI32(v) ((u64)((v) >> 32))
+#  define LO32(v) ((u64)(u32)(v))
 
-  u64 x  = randu64 ();
+  u64 x = randu64 ();
   // compute hi = upper 64 bits of x * range
-  u64 hi = HI32(x) * HI32(range)
-         + (HI32(HI32(x) * LO32(range) + HI32(LO32(x) * LO32(range)))
-         +  HI32(LO32(x) * HI32(range)));
-  u64 lo = x * range;   // lower 64 bits (natural wraparound)
+  u64 hi = HI32 (x) * HI32 (range)
+           + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range)))
+              + HI32 (LO32 (x) * HI32 (range)));
+  u64 lo = x * range; // lower 64 bits (natural wraparound)
 
   if (lo < range)
   {
@@ -349,16 +349,16 @@ randu64r (const u64 lower, const u64 upper)
     while (lo < t)
     {
       x  = randu64 ();
-      hi = HI32(x) * HI32(range)
-         + (HI32(HI32(x) * LO32(range) + HI32(LO32(x) * LO32(range)))
-         +  HI32(LO32(x) * HI32(range)));
+      hi = HI32 (x) * HI32 (range)
+           + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range)))
+              + HI32 (LO32 (x) * HI32 (range)));
       lo = x * range;
     }
   }
   return lower + hi;
 
-  #undef HI32
-  #undef LO32
+#  undef HI32
+#  undef LO32
 #endif
 }
 

@@ -20,6 +20,7 @@
 #include "nscore/lock_table.h"
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
+#include "nscore/txn_table.h"
 #include "nscore/wal.h"
 
 err_t
@@ -87,10 +88,19 @@ TEST (pgr_close_success)
 }
 #endif
 
+static void
+txntforeach (struct txn *tx, void *ctx)
+{
+  // Unlock all locks from the txn (2PL shrinking phase)
+  lockt_unlock_tx (((struct pager *)ctx)->lt, tx);
+}
+
 err_t
 pgr_crash (struct pager *p, error *e)
 {
   periodic_task_stop (&p->checkpoint_task, e);
+
+  txnt_foreach (p->tnxt, txntforeach, p);
 
   wal_crash (p->ww, e);
   fpgr_crash (p->fp, e);

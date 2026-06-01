@@ -16,6 +16,7 @@
 
 #include <c_specx.h>
 
+#include "nscore/lock_table.h"
 #include "nscore/txn.h"
 
 /*

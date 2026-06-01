@@ -26,6 +26,7 @@ struct lockt
 
 err_t lockt_init (struct lockt *t, error *e);
 void  lockt_destroy (struct lockt *t);
+void  lockt_crash (struct lockt *t);
 
 err_t lockt_lock (
     struct lockt  *t,
