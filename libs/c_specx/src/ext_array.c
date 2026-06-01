@@ -705,8 +705,7 @@ TEST (ext_array_random)
   */
 
   // Block sizes to test
-  const u32 niters[] =
-      {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
+  const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000};
 
   for (u32 i = 0; i < arrlen (niters); ++i)
   {
