@@ -1,0 +1,251 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.preset }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    env:
+      TEST_DIR: ./build/${{ matrix.preset }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Compile and run debug tests with address sanitizer
+          - { os: ubuntu-latest,    preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: macos-latest,     preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: windows-latest,   preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: ubuntu-24.04-arm, preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: ubuntu-22.04,     preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: macos-15,         preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: macos-15-intel,   preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: windows-11-arm,   preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: windows-2022,     preset: debug-asan, run_tests: true,  config: Debug }
+
+          # Compile and run debug tests with valgrind
+          - { os: ubuntu-latest, preset: debug-leakcheck, run_tests: true,  config: Debug }
+
+          # Compile release and run tests (tests don't fail in release mode)
+          - { os: ubuntu-latest,  preset: release-tests-asan, run_tests: true,  config: Release }
+          - { os: macos-latest,   preset: release-tests-asan, run_tests: true,  config: Release }
+          - { os: windows-latest, preset: release-tests-asan, run_tests: true,  config: Release }
+
+          # Package release for all architectures
+          - { os: ubuntu-latest,    preset: package-release, config: Release, generators: "TGZ;ZIP;DEB;RPM" }
+          - { os: macos-latest,     preset: package-release, config: Release, generators: "TGZ;ZIP"         }
+          - { os: windows-latest,   preset: package-release, config: Release, generators: "ZIP"             }
+          - { os: ubuntu-24.04-arm, preset: package-release, config: Release, generators: "TGZ;ZIP;DEB;RPM" }
+          - { os: ubuntu-22.04,     preset: package-release, config: Release, generators: "TGZ;ZIP;DEB;RPM" }
+          - { os: macos-15,         preset: package-release, config: Release, generators: "TGZ;ZIP"         }
+          - { os: macos-15-intel,   preset: package-release, config: Release, generators: "TGZ;ZIP"         }
+          - { os: windows-11-arm,   preset: package-release, config: Release, generators: "ZIP"             }
+          - { os: windows-2022,     preset: package-release, config: Release, generators: "ZIP"             }
+
+    steps:
+
+        ########################################################
+        ######## Base Images for build step
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: '3.11'
+
+        ########################################################
+        ######## Install Dependencies
+
+      - name: Install Python deps
+        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
+
+      - name: Install Valgrind
+        if: contains(matrix.preset, 'leakcheck') && matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y valgrind
+
+        ########################################################
+        ######## CMake Configure Step
+
+      - name: Configure (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cmake --preset ${{ matrix.preset }} \
+            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $pypath = "${{ steps.setup-python.outputs.python-path }}" -replace '\\', '/'
+          cmake --preset ${{ matrix.preset }} `
+            -DPython_EXECUTABLE="$pypath"
+
+        ########################################################
+        ######## CMake Build Step
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+        ########################################################
+        ######## Tests
+
+        # Normal test - just run the tests
+      - name: Test
+        if: matrix.run_tests && !contains(matrix.preset, 'leakcheck')
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V -C ${{ matrix.config || 'Debug' }}
+
+        # Leak check test - add valgrind to ctest test output
+      - name: Test (memcheck)
+        if: matrix.run_tests && contains(matrix.preset, 'leakcheck') && runner.os != 'macOS'
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V -T memcheck -C ${{ matrix.config || 'Debug' }}
+
+        # On the leakcheck failure it's nice to print the output
+      - name: Print memcheck log
+        if: failure() && contains(matrix.preset, 'leakcheck')
+        run: cat ./build/${{ matrix.preset }}/Testing/Temporary/MemoryChecker.1.log
+
+        ########################################################
+        ######## CMake Package Step 
+
+      - name: Package with CPack
+        if: matrix.generators != ''
+        shell: bash
+        run: |
+          cd build/package-release
+          cpack -C Release -G "${{ matrix.generators }}"
+
+        ########################################################
+        ######## Upload artifacts
+
+      - name: Prepare Artifacts
+        if: matrix.generators != ''
+        shell: bash
+        run: |
+          mkdir -p dist
+          mv build/package-release/*.tar.gz   dist/ 2>/dev/null || true
+          mv build/package-release/*.deb      dist/ 2>/dev/null || true
+          mv build/package-release/*.rpm      dist/ 2>/dev/null || true
+          mv build/package-release/*.zip      dist/ 2>/dev/null || true
+          cp LICENSE.md dist/
+
+      - name: Upload Artifacts
+        if: matrix.generators != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}-${{ matrix.preset }}
+          path: dist/*
+
+
+  ########################################################
+  ######## Generate Code Coverage
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    env:
+      TEST_DIR: ./build/debug-coverage
+    steps:
+
+        ########################################################
+        ######## Base Images
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version: '3.11'
+
+        ########################################################
+        ######## Dependencies
+
+      - name: Install Python deps
+        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
+
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+        ########################################################
+        ######## CMake Configure + Build
+
+      - name: Configure
+        run: |
+          cmake --preset debug-coverage \
+            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
+
+      - name: Build
+        run: cmake --build --preset debug-coverage
+
+        ########################################################
+        ######## Run unit tests
+
+      - name: Test
+        run: ctest --test-dir ${{ env.TEST_DIR }} -V
+
+        ########################################################
+        ######## Coverage
+
+      - name: Coverage
+        run: |
+          ctest -T coverage --test-dir ${{ env.TEST_DIR }} -V
+          lcov --capture \
+               --directory ${{ env.TEST_DIR }} \
+               --base-directory . \
+               --output-file coverage.info \
+               --ignore-errors mismatch
+          lcov --remove coverage.info \
+               '*/test*' \
+               '*/Python*' \
+               '*/numpy*' \
+               '*/hostedtoolcache/*' \
+               --output-file coverage.info \
+               --ignore-errors mismatch,unused
+          genhtml coverage.info --output-directory coverage_html
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage_html/
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  ########################################################
+  ######## Publish GitHub Release (tag only)
+
+  publish:
+    name: Publish GitHub Release
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: dist
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -14,10 +14,10 @@
 
 #include "nscore/pages/data_list.h"
 
+#include <c_specx.h>
+
 #include "nscore/compile_config.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 // smartfiles
 // Initialization
@@ -50,7 +50,7 @@ dl_validate_for_db (const page *d, error *e)
         "used %" PRp_size " > max %" PRp_size " (page_size=%" PRp_size ")",
         used,
         DL_DATA_SIZE,
-        PAGE_SIZE
+        NS_PAGE_SIZE
     );
   }
 
@@ -169,7 +169,7 @@ TEST (dl_validate)
 TEST (dl_set_get)
 {
   page p;
-  rand_bytes (p.raw, PAGE_SIZE);
+  rand_bytes (p.raw, NS_PAGE_SIZE);
 
   // Randomize array to pretend random
 
@@ -237,7 +237,7 @@ TEST (dl_read)
 
   TEST_CASE ("Read on an empty page")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     test_assert_int_equal (dl_read (&p, buf, 0, 1), 0);
@@ -620,7 +620,7 @@ TEST (dl_append)
 
   TEST_CASE ("empty page, append small data")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     const p_size n   = 16;
@@ -632,7 +632,7 @@ TEST (dl_append)
 
   TEST_CASE ("multiple appends accumulate")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     const p_size n1 = 8;
@@ -649,7 +649,7 @@ TEST (dl_append)
 
   TEST_CASE ("append more than available → clipped")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     const p_size big = DL_DATA_SIZE + 100;
@@ -662,7 +662,7 @@ TEST (dl_append)
 
   TEST_CASE ("no space left → append returns 0")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     // fill page fully
@@ -718,7 +718,7 @@ TEST (dl_write)
 
   // Fill page fully with known data
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     memcpy (dl_get_data (&p), src, DL_DATA_SIZE);
@@ -850,7 +850,7 @@ TEST (dl_memset)
 
   TEST_CASE ("basic fill")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     dl_memset (&p, buf1, sizeof buf1);
@@ -927,8 +927,8 @@ TEST (dl_move_left)
 
   TEST_CASE ("simple move")
   {
-    rand_bytes (src.raw, PAGE_SIZE);
-    rand_bytes (dest.raw, PAGE_SIZE);
+    rand_bytes (src.raw, NS_PAGE_SIZE);
+    rand_bytes (dest.raw, NS_PAGE_SIZE);
 
     page_init_empty (&src, PG_DATA_LIST);
     page_init_empty (&dest, PG_DATA_LIST);
@@ -947,8 +947,8 @@ TEST (dl_move_left)
 
   TEST_CASE ("request more than src has")
   {
-    rand_bytes (src.raw, PAGE_SIZE);
-    rand_bytes (dest.raw, PAGE_SIZE);
+    rand_bytes (src.raw, NS_PAGE_SIZE);
+    rand_bytes (dest.raw, NS_PAGE_SIZE);
 
     page_init_empty (&src, PG_DATA_LIST);
     page_init_empty (&dest, PG_DATA_LIST);
@@ -966,8 +966,8 @@ TEST (dl_move_left)
 
   TEST_CASE ("request when src empty")
   {
-    rand_bytes (src.raw, PAGE_SIZE);
-    rand_bytes (dest.raw, PAGE_SIZE);
+    rand_bytes (src.raw, NS_PAGE_SIZE);
+    rand_bytes (dest.raw, NS_PAGE_SIZE);
 
     page_init_empty (&src, PG_DATA_LIST);
     page_init_empty (&dest, PG_DATA_LIST);
@@ -1007,7 +1007,7 @@ TEST (dl_shift_right)
 
   TEST_CASE ("basic shift")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     // load 32 bytes
@@ -1029,7 +1029,7 @@ TEST (dl_shift_right)
 
   TEST_CASE ("zero shift is a no-op")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     dl_memset (&p, src, sizeof src);
@@ -1043,7 +1043,7 @@ TEST (dl_shift_right)
 
   TEST_CASE ("maximum legal shift")
   {
-    rand_bytes (p.raw, PAGE_SIZE);
+    rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
     // fill small data
@@ -1097,8 +1097,8 @@ TEST (dl_move_right)
 
   TEST_CASE ("basic move")
   {
-    rand_bytes (src.raw, PAGE_SIZE);
-    rand_bytes (dest.raw, PAGE_SIZE);
+    rand_bytes (src.raw, NS_PAGE_SIZE);
+    rand_bytes (dest.raw, NS_PAGE_SIZE);
 
     page_init_empty (&src, PG_DATA_LIST);
     page_init_empty (&dest, PG_DATA_LIST);
@@ -1125,8 +1125,8 @@ TEST (dl_move_right)
 
   TEST_CASE ("request more than src has → only available moves")
   {
-    rand_bytes (src.raw, PAGE_SIZE);
-    rand_bytes (dest.raw, PAGE_SIZE);
+    rand_bytes (src.raw, NS_PAGE_SIZE);
+    rand_bytes (dest.raw, NS_PAGE_SIZE);
 
     page_init_empty (&src, PG_DATA_LIST);
     page_init_empty (&dest, PG_DATA_LIST);
@@ -1148,8 +1148,8 @@ TEST (dl_move_right)
 
   TEST_CASE ("src empty → no-op")
   {
-    rand_bytes (src.raw, PAGE_SIZE);
-    rand_bytes (dest.raw, PAGE_SIZE);
+    rand_bytes (src.raw, NS_PAGE_SIZE);
+    rand_bytes (dest.raw, NS_PAGE_SIZE);
 
     page_init_empty (&src, PG_DATA_LIST);
     page_init_empty (&dest, PG_DATA_LIST);

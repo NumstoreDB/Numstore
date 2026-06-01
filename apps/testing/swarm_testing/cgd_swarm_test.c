@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "cgd_swarm_test.h"
-
 #include <signal.h>
 #include <stddef.h>
 #include <stdlib.h>
+
+#include "cgd_swarm_test_fixture.h"
 
 static volatile sig_atomic_t keep_running = 1;
 

@@ -14,9 +14,9 @@
 
 #include "nscore/pages/var_tail.h"
 
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 DEFINE_DBG_ASSERT (page, vt_page, v, { ASSERT (v); })
 
@@ -28,7 +28,7 @@ TEST (vt_init_empty)
 {
   page p;
 
-  rand_bytes (p.raw, PAGE_SIZE);
+  rand_bytes (p.raw, NS_PAGE_SIZE);
   page_init_empty (&p, PG_VAR_TAIL);
 
   test_assert_equal (vt_get_next (&p), PGNO_NULL);

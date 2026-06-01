@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 ////////////////////////////////////////////////////////////
 /////// VAR PAGE
@@ -48,7 +48,7 @@
 #define VP_ROOT_OFST ((p_size)(VP_TLEN_OFST + sizeof (u16)))
 #define VP_NBYT_OFST ((p_size)(VP_ROOT_OFST + sizeof (pgno)))
 #define VP_VNME_OFST ((p_size)(VP_NBYT_OFST + sizeof (b_size)))
-#define VP_MAX_LEN   (PAGE_SIZE - VP_VNME_OFST)
+#define VP_MAX_LEN   (NS_PAGE_SIZE - VP_VNME_OFST)
 
 // Initialization
 void vp_init_empty (page *p);

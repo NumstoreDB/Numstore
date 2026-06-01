@@ -57,12 +57,12 @@ struct in_data
 #define IN_LEAF_OFST ((p_size)(IN_NLEN_OFST + sizeof (p_size)))
 
 _Static_assert (
-    PAGE_SIZE > IN_LEAF_OFST + 5 * sizeof (b_size) + 6 * sizeof (pgno),
-    "Inner Node: PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys"
+    NS_PAGE_SIZE > IN_LEAF_OFST + 5 * sizeof (b_size) + 6 * sizeof (pgno),
+    "Inner Node: NS_PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys"
 );
 
 #define IN_MAX_KEYS \
-  (p_size) ((PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
+  (p_size) ((NS_PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
 #define IN_MIN_KEYS (IN_MAX_KEYS / 2)
 
 _Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
@@ -103,8 +103,8 @@ in_get_backwards_keys_imut (const page *in)
 {
   const p_size n      = in_get_len (in);
   const p_size nbytes = n * sizeof (b_size);
-  ASSERT (nbytes <= PAGE_SIZE);
-  if (nbytes > PAGE_SIZE)
+  ASSERT (nbytes <= NS_PAGE_SIZE);
+  if (nbytes > NS_PAGE_SIZE)
   {
     UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
   }
@@ -114,7 +114,7 @@ in_get_backwards_keys_imut (const page *in)
     return NULL;
   }
 
-  return &in->raw[PAGE_SIZE - nbytes];
+  return &in->raw[NS_PAGE_SIZE - nbytes];
 }
 
 HEADER_FUNC b_size
@@ -158,17 +158,17 @@ in_get_backwards_keys_mut (page *in)
 {
   const p_size n      = in_get_len (in);
   const p_size nbytes = n * sizeof (b_size);
-  ASSERT (nbytes <= PAGE_SIZE);
+  ASSERT (nbytes <= NS_PAGE_SIZE);
 
-  return &in->raw[PAGE_SIZE - nbytes];
+  return &in->raw[NS_PAGE_SIZE - nbytes];
 }
 
 HEADER_FUNC void *
 in_get_backwards_keys_mut_limit (page *in)
 {
   const p_size nbytes = IN_MAX_KEYS * sizeof (b_size);
-  ASSERT (nbytes <= PAGE_SIZE);
-  return &in->raw[PAGE_SIZE - nbytes];
+  ASSERT (nbytes <= NS_PAGE_SIZE);
+  return &in->raw[NS_PAGE_SIZE - nbytes];
 }
 
 HEADER_FUNC void *

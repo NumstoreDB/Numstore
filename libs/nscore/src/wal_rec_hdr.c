@@ -14,12 +14,12 @@
 
 #include "nscore/wal_rec_hdr.h"
 
+#include <c_specx.h>
+
 #include "nscore/dirty_page_table.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/page.h"
 #include "nscore/txn_table.h"
-
-#include <c_specx.h>
 
 void
 wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc)
@@ -54,8 +54,8 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc)
         case WUP_PHYSICAL:
         {
           dest->update.phys.pg = randu32 ();
-          rand_bytes (dest->update.phys.undo, PAGE_SIZE);
-          rand_bytes (dest->update.phys.redo, PAGE_SIZE);
+          rand_bytes (dest->update.phys.undo, NS_PAGE_SIZE);
+          rand_bytes (dest->update.phys.redo, NS_PAGE_SIZE);
           break;
         }
         case WUP_FSM:
@@ -85,7 +85,7 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc)
         case WCLR_PHYSICAL:
         {
           dest->clr.phys.pg = randu32 ();
-          rand_bytes (dest->clr.phys.redo, PAGE_SIZE);
+          rand_bytes (dest->clr.phys.redo, NS_PAGE_SIZE);
           break;
         }
         case WCLR_FSM:
@@ -553,13 +553,13 @@ wal_rec_hdr_read_equal (
                   && memcmp (
                          left->update.phys.undo,
                          right->update.phys.undo,
-                         PAGE_SIZE
+                         NS_PAGE_SIZE
                      ) == 0;
           match = match
                   && memcmp (
                          left->update.phys.redo,
                          right->update.phys.redo,
-                         PAGE_SIZE
+                         NS_PAGE_SIZE
                      ) == 0;
           break;
         }
@@ -589,10 +589,12 @@ wal_rec_hdr_read_equal (
         case WCLR_PHYSICAL:
         {
           match = match && left->clr.phys.pg == right->clr.phys.pg;
-          match =
-              match
-              && memcmp (left->clr.phys.redo, right->clr.phys.redo, PAGE_SIZE)
-                     == 0;
+          match = match
+                  && memcmp (
+                         left->clr.phys.redo,
+                         right->clr.phys.redo,
+                         NS_PAGE_SIZE
+                     ) == 0;
           break;
         }
         case WCLR_FSM:
@@ -826,7 +828,7 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
       {
         case WUP_PHYSICAL:
         {
-          memcpy (page_h_w (ph), h->update.phys.undo, PAGE_SIZE);
+          memcpy (page_h_w (ph), h->update.phys.undo, NS_PAGE_SIZE);
           return (struct wal_clr_write){
               .type      = WCLR_PHYSICAL,
               .tid       = h->update.tid,
@@ -917,7 +919,7 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
       {
         case WUP_PHYSICAL:
         {
-          memcpy (page_h_w (ph)->raw, h->update.phys.redo, PAGE_SIZE);
+          memcpy (page_h_w (ph)->raw, h->update.phys.redo, NS_PAGE_SIZE);
           return;
         }
         case WUP_FSM:
@@ -945,7 +947,7 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
       {
         case WCLR_PHYSICAL:
         {
-          memcpy (page_h_w (ph)->raw, h->clr.phys.redo, PAGE_SIZE);
+          memcpy (page_h_w (ph)->raw, h->clr.phys.redo, NS_PAGE_SIZE);
           return;
         }
         case WCLR_FSM:

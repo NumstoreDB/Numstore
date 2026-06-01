@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+#include <stdatomic.h>
+#include <string.h>
+
 #include "nscore/dirty_page_table.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
-#include <stdatomic.h>
-#include <string.h>
 
 #ifndef NTEST
 
@@ -167,13 +167,13 @@ wal_test_fill_batch (
     {
       case WL_UPDATE:
       {
-        rand_bytes (r->update.phys.undo, PAGE_SIZE);
-        rand_bytes (r->update.phys.redo, PAGE_SIZE);
+        rand_bytes (r->update.phys.undo, NS_PAGE_SIZE);
+        rand_bytes (r->update.phys.redo, NS_PAGE_SIZE);
         break;
       }
       case WL_CLR:
       {
-        rand_bytes (r->clr.phys.redo, PAGE_SIZE);
+        rand_bytes (r->clr.phys.redo, NS_PAGE_SIZE);
         break;
       }
       default:

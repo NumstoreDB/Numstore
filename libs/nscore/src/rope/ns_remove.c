@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/node_updates.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/page.h"
 #include "nscore/rope.h"
-
-#include <c_specx.h>
 
 /*
  * Remove elements from the R+Tree with an optional stride.

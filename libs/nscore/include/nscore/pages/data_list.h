@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/pages/page.h"
 
 /*
  * Data List Page (R+Tree leaf / data node)
@@ -32,7 +32,7 @@
  *   [DL_PREV_OFST]  pgno prev  — left sibling (PGNO_NULL if first).
  *   [DL_BLEN_OFST]  p_size len — number of bytes currently stored in this
  *                                page's data region.
- *   [DL_DATA_OFST .. PAGE_SIZE)  raw data bytes.
+ *   [DL_DATA_OFST .. NS_PAGE_SIZE)  raw data bytes.
  *
  * Data is always tightly packed starting at DL_DATA_OFST.  dl_used() is the
  * high-water mark; bytes beyond dl_used() are garbage and must not be read.
@@ -51,12 +51,12 @@ DEFINE_DBG_ASSERT (page, data_list, d, { ASSERT (d); })
 #define DL_DATA_OFST ((p_size)(DL_BLEN_OFST + sizeof (p_size)))
 
 _Static_assert (
-    PAGE_SIZE > DL_DATA_OFST + 10,
-    "Data List: PAGE_SIZE must be > DL_DATA_OFST "
+    NS_PAGE_SIZE > DL_DATA_OFST + 10,
+    "Data List: NS_PAGE_SIZE must be > DL_DATA_OFST "
     "plus at least 10 extra bytes of data"
 );
 
-#define DL_DATA_SIZE ((p_size)(PAGE_SIZE - DL_DATA_OFST))
+#define DL_DATA_SIZE ((p_size)(NS_PAGE_SIZE - DL_DATA_OFST))
 #define DL_REM       (DL_DATA_SIZE % 2)
 
 struct dl_data

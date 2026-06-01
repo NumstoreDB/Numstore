@@ -12,7 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "cgd_swarm_test.h"
+#include "cgd_swarm_test_fixture.h"
+
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "_numstore.h"
 #include "c_specx/error.h"
@@ -21,12 +27,6 @@
 #include "nscore/types.h"
 #include "nscore/variables.h"
 #include "numstore.h"
-
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 ///////////////////////////////////////////////////////////
 /// Utils
@@ -134,10 +134,10 @@ get_random_name_len (void)
 
   if (roll <= 95)
   {
-    return randu32r (10, PAGE_SIZE);
+    return randu32r (10, NS_PAGE_SIZE);
   }
 
-  return randu32r (PAGE_SIZE, 10 * PAGE_SIZE);
+  return randu32r (NS_PAGE_SIZE, 10 * NS_PAGE_SIZE);
 }
 
 static char *

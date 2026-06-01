@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/file_pager.h"
 #include "nscore/page_fixture.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 err_t
 pgr_get_writable (
@@ -73,7 +73,7 @@ pgr_get_writable (
       pgw->pin      = 1;
       pgw->wsibling = -1;
       pgw->flags    = PW_PRESENT | PW_X;
-      memcpy (pgw->page.raw, dest->pgr->page.raw, PAGE_SIZE);
+      memcpy (pgw->page.raw, dest->pgr->page.raw, NS_PAGE_SIZE);
       pgw->page.pg = dest->pgr->page.pg;
 
       latch_unlock (&pgw->ctrl);
@@ -138,7 +138,7 @@ pgr_get_writable (
       pgw->pin      = 1;
       pgw->wsibling = -1;
       pgw->flags    = PW_PRESENT | PW_X;
-      memcpy (pgw->page.raw, pgr->page.raw, PAGE_SIZE);
+      memcpy (pgw->page.raw, pgr->page.raw, NS_PAGE_SIZE);
       pgw->page.pg = pg;
 
       latch_unlock (&pgr->ctrl);

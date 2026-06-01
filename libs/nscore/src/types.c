@@ -14,9 +14,9 @@
 
 #include "nscore/types.h"
 
-#include "nscore/errors.h"
-
 #include <c_specx.h>
+
+#include "nscore/errors.h"
 
 DEFINE_DBG_ASSERT (struct type, unchecked_type, t, { ASSERT (t); })
 

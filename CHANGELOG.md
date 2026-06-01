@@ -12,6 +12,8 @@
 - Unit tests are now auto generated using python to remove the 
   dependency on any type of constructor attributes to maintain 
   portability
+- Renames PAGE_SIZE to NS_PAGE_SIZE because some x86_64 compilers 
+  reserve PAGE_SIZE in limits.h
 
 ### Removed 
 
@@ -31,6 +33,12 @@
     - `subtype`         - Sub type of an existing type
 - Code coverage ci/cd target to test code coverage on unit tests 
 - Swarm tests - for irwr (insert read write remove) and cgd (create get delete)
+- A bunch of new ci / cd tools:
+    - Builds numstore on a bunch of different architectures 
+    - Runs tests 
+    - Runs cibuildwheel 
+    - Publishes to pypi on releases
+    - Code coverage job that uploads to codecov
 
 ## [v1.0.0] - 2026-05-01
 

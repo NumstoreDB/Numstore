@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "c_specx/threading.h"
 #include "nscore/aries.h"
 #include "nscore/file_pager.h"
@@ -21,8 +23,6 @@
 #include "nscore/pages/fsm_page.h"
 #include "nscore/wal.h"
 #include "nscore/wal_ostream.h"
-
-#include <c_specx.h>
 
 #ifdef _WIN32
 #  define NS_NAME_MAX 50
@@ -95,9 +95,8 @@ pgr_open_single_file (const char *dbname, error *e)
     return NULL;
   }
 
-  bool          mutex_init = false;
-  page_h        root       = page_h_create ();
-  struct pager *ret        = NULL;
+  page_h        root = page_h_create ();
+  struct pager *ret  = NULL;
 
   if ((ret = i_calloc (1, sizeof *ret, e)) == NULL)
   {
@@ -108,11 +107,6 @@ pgr_open_single_file (const char *dbname, error *e)
   *(struct file_pager **)&ret->fp = fp;
   *(struct wal **)&ret->ww        = ww;
   ret->lt                         = lt;
-  if (i_mutex_create (&ret->serial_lock, e))
-  {
-    goto failed;
-  }
-  mutex_init = true;
   atomic_store (&ret->flags, fpgr_isnew (ret->fp));
   atomic_store (&ret->clock, 0);
   ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
@@ -256,10 +250,6 @@ failed:
   ASSERT (error_trace (e));
   if (ret)
   {
-    if (mutex_init)
-    {
-      i_mutex_free (&ret->serial_lock);
-    }
     pgr_cancel_if_exists (ret, &root);
     if (ret->dpt)
     {
@@ -340,14 +330,14 @@ TEST (pgr_open_basic)
   i_open_rw (&fp, "testdb", &e);
 
   // File is shorter than page size
-  test_fail_if (i_truncate (&fp, PAGE_SIZE - 1, &e));
+  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
   struct pager *p = pgr_open_single_file ("testdb", &e);
   test_assert_int_equal (e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
   e.cause_code = SUCCESS;
 
   // Half a page
-  test_fail_if (i_truncate (&fp, PAGE_SIZE / 2, &e));
+  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE / 2, &e));
   p = pgr_open_single_file ("testdb", &e);
   test_assert_int_equal (e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);

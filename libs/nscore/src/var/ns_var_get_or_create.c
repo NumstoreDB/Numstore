@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/compile_config.h"
 #include "nscore/page_fixture.h"
 #include "nscore/pager.h"
 #include "nscore/types.h"
 #include "nscore/var.h"
-
-#include <c_specx.h>
 
 err_t
 ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
@@ -177,7 +177,7 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        u32   len  = randu32r (PAGE_SIZE, PAGE_SIZE * 10);
+        u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
         char *name = i_malloc (len, 1, &f.e);
         for (u32 k = 0; k < len - 1; ++k)
         {
@@ -225,7 +225,7 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        u32   len  = randu32r (PAGE_SIZE, PAGE_SIZE * 10);
+        u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
         char *name = i_malloc (len, 1, &f.e);
         for (u32 k = 0; k < len - 1; ++k)
         {

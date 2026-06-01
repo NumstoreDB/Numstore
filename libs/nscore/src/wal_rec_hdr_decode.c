@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/dirty_page_table.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/page.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
 
 void
 walf_decode_physical_update (
@@ -43,11 +43,11 @@ walf_decode_physical_update (
   head += sizeof (r->update.phys.pg);
 
   // UNDO
-  memcpy (r->update.phys.undo, buf + head, PAGE_SIZE);
-  head += PAGE_SIZE;
+  memcpy (r->update.phys.undo, buf + head, NS_PAGE_SIZE);
+  head += NS_PAGE_SIZE;
 
   // REDO
-  memcpy (r->update.phys.redo, buf + head, PAGE_SIZE);
+  memcpy (r->update.phys.redo, buf + head, NS_PAGE_SIZE);
 }
 
 void
@@ -137,7 +137,7 @@ walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN])
   head += sizeof (r->clr.undo_next);
 
   // REDO
-  memcpy (r->clr.phys.redo, buf + head, PAGE_SIZE);
+  memcpy (r->clr.phys.redo, buf + head, NS_PAGE_SIZE);
 }
 
 void

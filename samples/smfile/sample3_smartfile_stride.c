@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "smfile.h"
-
 #include <stdint.h>
 #include <stdio.h>
+
+#include "smfile.h"
 
 /**
  * Showing off the power user functionality of strides.

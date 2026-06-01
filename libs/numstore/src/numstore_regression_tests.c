@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "_numstore.h"
 #include "nscore/errors.h"
 #include "nscore/nshandle.h"
 #include "nscore/var.h"
 #include "numstore.h"
-
-#include <c_specx.h>
 
 #ifndef NTEST
 TEST (cgd_test_create_delete_rollback_delete)

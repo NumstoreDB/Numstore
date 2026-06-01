@@ -12,18 +12,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "irwr_swarm_test.h"
-
-#include "_numstore.h"
-#include "nscore/types.h"
-#include "nscore/variables.h"
-#include "numstore.h"
+#include "irwr_swarm_test_fixture.h"
 
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "_numstore.h"
+#include "nscore/types.h"
+#include "nscore/variables.h"
+#include "numstore.h"
 
 ///////////////////////////////////////////////////////////
 /// Utils
@@ -195,7 +195,7 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
 {
   meta->allowed[IRWR_CRASH_AND_REOPEN] = 0;
   meta->allowed[IRWR_CLOSE_AND_REOPEN] = 0;
-  // meta->allowed[IRWR_ROLLBACK_TXN]     = 0;
+  meta->allowed[IRWR_ROLLBACK_TXN]     = 0;
   // meta->allowed[IRWR_COMMIT_TXN]       = 0;
   // meta->allowed[IRWR_BEGIN_TXN]        = 0;
 
@@ -439,6 +439,10 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   u64 got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
   irwr_swmt_assert (got == (u64)len);
 
+  if (memcmp (db_buf, ref_buf, buf_sz) != 0)
+  {
+    printf ("HERE");
+  }
   irwr_swmt_assert (memcmp (db_buf, ref_buf, buf_sz) == 0);
 
   free (db_buf);

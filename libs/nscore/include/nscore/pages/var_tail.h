@@ -15,9 +15,9 @@
 #pragma once
 
 // smartfiles
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 ////////////////////////////////////////////////////////////
 /////// VAR PAGE TAIL
@@ -25,7 +25,7 @@
 // OFFSETS and _Static_asserts
 #define VT_NEXT_OFST PG_COMMN_END
 #define VT_DATA_OFST ((p_size)(VT_NEXT_OFST + sizeof (pgno)))
-#define VT_DATA_LEN  (PAGE_SIZE - VT_DATA_OFST)
+#define VT_DATA_LEN  (NS_PAGE_SIZE - VT_DATA_OFST)
 
 // Setters
 HEADER_FUNC void
@@ -53,7 +53,7 @@ vt_get_bytes (page *p)
 {
   return (struct bytes){
       .head = (void *)&p->raw[VT_DATA_OFST],
-      .len  = PAGE_SIZE - VT_DATA_OFST,
+      .len  = NS_PAGE_SIZE - VT_DATA_OFST,
   };
 }
 
@@ -62,7 +62,7 @@ vt_get_bytes_imut (const page *p)
 {
   return (struct cbytes){
       .head = (void *)&p->raw[VT_DATA_OFST],
-      .len  = PAGE_SIZE - VT_DATA_OFST,
+      .len  = NS_PAGE_SIZE - VT_DATA_OFST,
   };
 }
 

@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "numstore"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Python interface for the numerical database"
 requires-python = ">=3.8"
 dependencies = ["numpy"]
@@ -18,14 +18,22 @@ cmake.args = [
     "-DENABLE_NTEST:BOOL=ON",
     "-DENABLE_NLOG:BOOL=ON",
     "-DENABLE_GPROF:BOOL=OFF",
-    "-DENABLE_PORTABLE:BOOL=OFF",
+    "-DENABLE_PORTABLE:BOOL=ON",
     "-DENABLE_STRIP:BOOL=ON",
     "-DENABLE_ASAN:BOOL=OFF",
-    "-DBUILD_BINDINGS=ON"
+    "-DENABLE_LEAK_TOOL:BOOL=OFF",
+    "-DBUILD_TOOLS:BOOL=OFF",
+    "-DBUILD_PYTHON_BINDINGS:BOOL=ON",
+    "-DBUILD_NUMSTORE_SAMPLES:BOOL=OFF",
+    "-DBUILD_SMARTFILE_SAMPLES:BOOL=OFF"
 ]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "../../../version.txt"
+regex = '(?P<value>[0-9.]+)'
 
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
-
-[tool.setuptools.package-data]
-numstore = ["_numstore.pyi"]
+test-requires = ["pytest", "pytest-subtests"]
+test-command = "pytest {project}/bindings/python/numstore/tests"

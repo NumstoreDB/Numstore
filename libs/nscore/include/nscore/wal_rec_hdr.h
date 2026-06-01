@@ -39,8 +39,8 @@ struct wal_update_read
     struct physical_read_update
     {
       pgno pg;
-      u8   undo[PAGE_SIZE];
-      u8   redo[PAGE_SIZE];
+      u8   undo[NS_PAGE_SIZE];
+      u8   redo[NS_PAGE_SIZE];
     } phys;
 
     struct fsm_update
@@ -118,7 +118,7 @@ struct wal_clr_read
     struct physical_read_clr
     {
       pgno pg;
-      u8   redo[PAGE_SIZE];
+      u8   redo[NS_PAGE_SIZE];
     } phys;
 
     struct fsm_clr
@@ -219,8 +219,8 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
    sizeof (pgno) +    /* pg */       \
-   PAGE_SIZE +        /* undo */     \
-   PAGE_SIZE +        /* redo */     \
+   NS_PAGE_SIZE +        /* undo */     \
+   NS_PAGE_SIZE +        /* redo */     \
    sizeof (u32)       /* checksum */ \
   )
 
@@ -253,7 +253,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
    sizeof (lsn) +     /* prev */      \
    sizeof (pgno) +    /* pg */        \
    sizeof (lsn) +     /* undo_next */ \
-   PAGE_SIZE +        /* redo */      \
+   NS_PAGE_SIZE +        /* redo */      \
    sizeof (u32)       /* checksum */  \
   )
 

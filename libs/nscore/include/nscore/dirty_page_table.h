@@ -14,15 +14,14 @@
 
 #pragma once
 
-#include "nscore/compile_config.h"
-
 #include <c_specx.h>
+
+#include "nscore/compile_config.h"
 
 struct dpg_table
 {
   struct htable    *t;     // Hash table pg -> entry
   struct slab_alloc alloc; // Allocator for dpgt frames
-  latch             l;
 };
 
 struct dpg_table *dpgt_open (error *e);

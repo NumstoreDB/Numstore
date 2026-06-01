@@ -37,6 +37,8 @@ file(
 )
 
 ############################## Unit Test Executable
+find_package(Python COMPONENTS Development REQUIRED)
+
 file(GLOB_RECURSE NSPY_SOURCES 
     CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/src/*.c"
 )

@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/file_pager.h"
 #include "nscore/page_fixture.h"
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 err_t
 pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
@@ -137,7 +137,7 @@ TEST (pgr_get_invalid_checksum)
 
   // Force checksum to be different
   page fake_page;
-  memcpy (fake_page.raw, page_h_ro (&pg)->raw, PAGE_SIZE);
+  memcpy (fake_page.raw, page_h_ro (&pg)->raw, NS_PAGE_SIZE);
   fake_page.pg = page_h_pgno (&pg);
   page_set_checksum (&fake_page, page_get_checksum (&fake_page) + 1);
 

@@ -16,8 +16,6 @@
 #include "nscore/compiler.h"
 #include "nscore/types.h"
 
-#include <object.h>
-
 // Build a complex valued struct
 static PyArray_Descr *
 build_complex_struct (int component_typenum)
@@ -157,7 +155,7 @@ struct_to_dtype (const struct struct_t *st)
 
     PyTuple_SET_ITEM (tup, 0, name);
     name = NULL;
-    PyTuple_SET_ITEM (tup, 1, sub);
+    PyTuple_SET_ITEM (tup, 1, (PyObject *)sub);
     sub = NULL;
     PyList_SET_ITEM (fields, i, tup);
     tup = NULL;
@@ -226,7 +224,7 @@ union_to_dtype (const struct union_t *un)
 
     PyList_SET_ITEM (names, i, name);
     name = NULL;
-    PyList_SET_ITEM (formats, i, sub);
+    PyList_SET_ITEM (formats, i, (PyObject *)sub);
     sub = NULL;
     PyList_SET_ITEM (offsets, i, off);
     off = NULL;
@@ -323,7 +321,7 @@ sarray_to_dtype (const struct sarray_t *sa)
     goto fail;
   }
 
-  PyTuple_SET_ITEM (spec, 0, sub);
+  PyTuple_SET_ITEM (spec, 0, (PyObject *)sub);
   sub = NULL;
   PyTuple_SET_ITEM (spec, 1, shape);
   shape = NULL;

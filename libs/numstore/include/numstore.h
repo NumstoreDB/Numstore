@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include "numstore/compile_config.h"
-
 #include <inttypes.h>
 #include <stdint.h>
+
+#include "numstore/compile_config.h"
 
 //////////////////////////////////////////////////
 /// Types

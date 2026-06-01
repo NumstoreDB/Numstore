@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "smfile.h"
-
 #include <c_specx.h>
+
+#include "smfile.h"
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);

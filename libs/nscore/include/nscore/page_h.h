@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "nscore/page_delegate.h"
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/page_delegate.h"
+#include "nscore/pages/page.h"
 
 /*
  * page_frame: one slot in the buffer pool.
@@ -32,8 +32,6 @@
  * pin counts outstanding page_h references to this frame.  A pinned frame
  * may not be evicted.  PW_ACCESS is set on every logical access and cleared
  * by the clock sweep, implementing the second-chance eviction policy.
- * PW_DIRTY is set when the read frame's content has been superseded by an
- * in-progress write and cleared once the page is flushed to disk.
  */
 struct page_frame
 {

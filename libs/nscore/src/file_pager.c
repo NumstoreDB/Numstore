@@ -14,11 +14,11 @@
 
 #include "nscore/file_pager.h"
 
-#include "nscore/compile_config.h"
-#include "nscore/errors.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/compile_config.h"
+#include "nscore/errors.h"
 
 enum file_pager_flags
 {
@@ -92,8 +92,8 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
     goto fp_failed;
   }
 
-  // Corrupt database - not a multiple of PAGE_SIZE
-  if ((size - header_len) % PAGE_SIZE != 0)
+  // Corrupt database - not a multiple of NS_PAGE_SIZE
+  if ((size - header_len) % NS_PAGE_SIZE != 0)
   {
     error_causef (
         e,
@@ -103,7 +103,7 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
     goto fp_failed;
   }
 
-  atomic_store (&dest->npages, (size - header_len) / PAGE_SIZE);
+  atomic_store (&dest->npages, (size - header_len) / NS_PAGE_SIZE);
   dest->header_len = header_len;
 
   DBG_ASSERT (file_pager, dest);
@@ -122,18 +122,21 @@ failed:
 TEST (fpgr_open)
 {
   error e = error_create ();
-  _Static_assert (PAGE_SIZE > 2, "PAGE_SIZE should be > 2 for file_pager test");
+  _Static_assert (
+      NS_PAGE_SIZE > 2,
+      "NS_PAGE_SIZE should be > 2 for file_pager test"
+  );
 
   i_file fp = {0};
   i_open_rw (&fp, "test.db", &e);
 
   // edge case: file shorter than header
-  test_fail_if (i_truncate (&fp, PAGE_SIZE - 1, &e));
+  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
   struct file_pager *pager = fpgr_open ("test.db", 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // edge case: file size = half a page
-  test_fail_if (i_truncate (&fp, PAGE_SIZE / 2, &e));
+  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE / 2, &e));
   pager = fpgr_open ("test.db", 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
@@ -144,7 +147,7 @@ TEST (fpgr_open)
   test_fail_if (fpgr_close (pager, &e));
 
   // happy path: file exactly header size, more pages
-  test_fail_if (i_truncate (&fp, 3 * PAGE_SIZE, &e));
+  test_fail_if (i_truncate (&fp, 3 * NS_PAGE_SIZE, &e));
   pager = fpgr_open ("test.db", 0, &e);
   test_assert_equal (atomic_load (&pager->npages), 3);
   test_fail_if (fpgr_close (pager, &e));
@@ -209,7 +212,7 @@ fpgr_extend (struct file_pager *p, pgno dest, error *e)
     return SUCCESS;
   }
 
-  if (i_truncate (&p->f, p->header_len + PAGE_SIZE * (dest), e))
+  if (i_truncate (&p->f, p->header_len + NS_PAGE_SIZE * (dest), e))
   {
     latch_unlock (&p->l);
     goto failed;
@@ -240,7 +243,7 @@ TEST (fpgr_new)
   test_assert_int_equal (atomic_load (&pager->npages), 1);
   test_assert_int_equal (
       i_file_size (&fp, &e),
-      PAGE_SIZE * atomic_load (&pager->npages)
+      NS_PAGE_SIZE * atomic_load (&pager->npages)
   );
 
   // Add two more pages and do the same thing
@@ -248,14 +251,14 @@ TEST (fpgr_new)
   test_assert_int_equal (atomic_load (&pager->npages), 2);
   test_assert_int_equal (
       i_file_size (&fp, &e),
-      PAGE_SIZE * atomic_load (&pager->npages)
+      NS_PAGE_SIZE * atomic_load (&pager->npages)
   );
 
   test_fail_if (fpgr_extend (pager, 3, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 3);
   test_assert_int_equal (
       i_file_size (&fp, &e),
-      PAGE_SIZE * atomic_load (&pager->npages)
+      NS_PAGE_SIZE * atomic_load (&pager->npages)
   );
 
   test_fail_if (fpgr_close (pager, &e));
@@ -288,8 +291,13 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
   }
 
   // Read all from file
-  const i64 nread =
-      i_pread_all (&p->f, dest, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e);
+  const i64 nread = i_pread_all (
+      &p->f,
+      dest,
+      NS_PAGE_SIZE,
+      p->header_len + pg * NS_PAGE_SIZE,
+      e
+  );
 
   if (nread == 0)
   {
@@ -324,7 +332,13 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (i_pwrite_all (&p->f, src, PAGE_SIZE, p->header_len + pg * PAGE_SIZE, e))
+  if (i_pwrite_all (
+          &p->f,
+          src,
+          NS_PAGE_SIZE,
+          p->header_len + pg * NS_PAGE_SIZE,
+          e
+      ))
   {
     goto theend;
   }
@@ -396,7 +410,7 @@ theend:
 TEST (fpgr_read_write)
 {
   // The raw page bytes
-  u8 _page[PAGE_SIZE];
+  u8 _page[NS_PAGE_SIZE];
 
   // Create a temporary file
   i_file fp = {0};
@@ -412,8 +426,8 @@ TEST (fpgr_read_write)
   // happy path: new page, write, then read back
   test_fail_if (fpgr_extend (pager, 2, &e));
 
-  // Write 0 : PAGE_SIZE to each byte (overflow fine, it's just data)
-  for (u32 i = 0; i < PAGE_SIZE; i++)
+  // Write 0 : NS_PAGE_SIZE to each byte (overflow fine, it's just data)
+  for (u32 i = 0; i < NS_PAGE_SIZE; i++)
   {
     _page[i] = (u8)i;
   }
@@ -421,11 +435,11 @@ TEST (fpgr_read_write)
   test_fail_if (fpgr_write (pager, _page, 1, &e));
 
   // Scramble page so we can read it back in
-  memset (_page, 0xFF, PAGE_SIZE);
+  memset (_page, 0xFF, NS_PAGE_SIZE);
   test_fail_if (fpgr_read (pager, _page, 1, &e));
 
   // Iterate and check that it matches what we expect
-  for (u32 i = 0; i < PAGE_SIZE; i++)
+  for (u32 i = 0; i < NS_PAGE_SIZE; i++)
   {
     test_assert_int_equal (_page[i], (u8)i);
   }

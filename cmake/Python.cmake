@@ -1,5 +1,5 @@
 # Look for python
-find_package(Python COMPONENTS Interpreter Development REQUIRED)
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
 function(run_python_script OUTPUT_VAR)
   execute_process(
