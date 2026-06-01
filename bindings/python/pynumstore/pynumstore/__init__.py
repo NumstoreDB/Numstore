@@ -4,7 +4,7 @@ from typing import Any
 import numpy.typing as npt
 import numpy as np
 
-from ._numstore import *
+from ._pynumstore import *
 
 #############################################
 ##### Primary API

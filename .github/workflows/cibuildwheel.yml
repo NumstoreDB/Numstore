@@ -65,7 +65,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-sdist
-          path: dist/*.tar.gz
+          path: ./bindings/python/numstore/dist/*.tar.gz
 
   ########################################################
   ######## Publish to PyPI (tag only)

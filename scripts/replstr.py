@@ -1,7 +1,7 @@
 import os
 
 ROOT = "."  
-OLD, NEW = "NS_PAGE_SIZE", "NS_NS_PAGE_SIZE"
+OLD, NEW = "import pynumstore", "import pynumstore"
 
 for dirpath, _, files in os.walk(ROOT):
     for name in files:

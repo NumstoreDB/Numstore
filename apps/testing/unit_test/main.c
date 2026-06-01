@@ -29,11 +29,15 @@ main (const int argc, char **argv)
 {
   Py_Initialize ();
   PyRun_SimpleString ("import sys; sys.path.insert(0, '" NUMSTORE_SO_DIR "')");
-  PyObject *mod = PyImport_ImportModule ("_numstore");
+  PyObject *mod = PyImport_ImportModule ("_pynumstore");
   if (!mod)
   {
     PyErr_Print ();
-    fprintf (stderr, "Failed to import _numstore from: %s\n", NUMSTORE_SO_DIR);
+    fprintf (
+        stderr,
+        "Failed to import _pynumstore from: %s\n",
+        NUMSTORE_SO_DIR
+    );
     exit (1);
   }
   _import_array ();
