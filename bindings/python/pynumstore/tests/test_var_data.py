@@ -5,7 +5,7 @@ Basic insert, read, remove, and write tests
 import pytest
 import os
 import numpy as np
-import numstore as ns
+import pynumstore as ns
 
 def test_insert_read_remove_write_autotxn(subtests):
     if os.path.isfile("mydb"):

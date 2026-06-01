@@ -1,5 +1,5 @@
 import numpy as np
-import numstore as ns
+import pynumstore as ns
 
 # Overwriting existing entries
 with ns.open("mydb") as db:

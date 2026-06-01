@@ -3,7 +3,7 @@
 import os
 import pytest
 
-import numstore as ns
+import pynumstore as ns
 
 def test_regression_txn_was_failing_on_close_didnt_exist():
     """

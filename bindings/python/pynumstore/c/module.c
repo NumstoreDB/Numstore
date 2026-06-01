@@ -20,7 +20,7 @@
 
 #include "pynumstore.h"
 
-static PyMethodDef numstore_methods[] = {
+static PyMethodDef pynumstore_methods[] = {
     // Utils
     {
         "ns_to_np",
@@ -119,20 +119,20 @@ static PyMethodDef numstore_methods[] = {
     {NULL, NULL, 0, NULL},
 };
 
-static PyModuleDef numstore_module = {
+static PyModuleDef pynumstore_module = {
     .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "_numstore",
+    .m_name = "_pynumstore",
     .m_doc =
-        "Thin C wrapper around smfile operations for the numstore package.",
+        "Thin C wrapper around smfile operations for the pynumstore package.",
     .m_size    = -1,
-    .m_methods = numstore_methods,
+    .m_methods = pynumstore_methods,
 };
 
-PyMODINIT_FUNC PyInit__numstore (void);
+PyMODINIT_FUNC PyInit__pynumstore (void);
 
 PyMODINIT_FUNC
-PyInit__numstore (void)
+PyInit__pynumstore (void)
 {
   import_array ();
-  return PyModule_Create (&numstore_module);
+  return PyModule_Create (&pynumstore_module);
 }

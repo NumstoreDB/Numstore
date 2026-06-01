@@ -4,7 +4,7 @@
 run_python_script(TEST_NAMES
     "${CMAKE_SOURCE_DIR}/scripts/gen_tests.py"
     "${CMAKE_SOURCE_DIR}/libs"
-    "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c"
+    "${CMAKE_SOURCE_DIR}/bindings/python/pynumstore/c"
 )
 
 # Check the output - should be something
@@ -40,7 +40,7 @@ file(
 find_package(Python COMPONENTS Development REQUIRED)
 
 file(GLOB_RECURSE NSPY_SOURCES 
-    CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/src/*.c"
+    CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/bindings/python/pynumstore/c/src/*.c"
 )
 
 add_executable(unit_test main.c "${NSPY_SOURCES}")
@@ -58,8 +58,8 @@ target_link_libraries(unit_test
 target_include_directories(unit_test SYSTEM PRIVATE "${NumPy_INCLUDE}")
 target_include_directories(unit_test
     PRIVATE "${CMAKE_SOURCE_DIR}/libs/c_specx/include"
-            "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/include"
-            "${CMAKE_SOURCE_DIR}/bindings/python/numstore/c/src"
+            "${CMAKE_SOURCE_DIR}/bindings/python/pynumstore/c/include"
+            "${CMAKE_SOURCE_DIR}/bindings/python/pynumstore/c/src"
             "${CMAKE_SOURCE_DIR}/libs/numstore/src"
 )
 

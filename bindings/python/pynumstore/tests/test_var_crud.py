@@ -5,7 +5,7 @@ Basic get and create and delete tests
 import pytest
 import os
 
-import numstore as ns
+import pynumstore as ns
 
 def test_get_create_var_autotxn(subtests):
     if os.path.isfile("mydb"):

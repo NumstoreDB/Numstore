@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from numstore import nstype_to_dtype, dtype_to_nstype
+from pynumstore import nstype_to_dtype, dtype_to_nstype
 
 @pytest.mark.parametrize(("np_str", "expected"), [
     ("u1", "u8"),  ("u2", "u16"), ("u4", "u32"), ("u8", "u64"),

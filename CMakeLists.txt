@@ -58,5 +58,5 @@ if(BUILD_NUMSTORE_SAMPLES)
 endif()
 
 if(BUILD_PYTHON_BINDINGS)
-  add_subdirectory(bindings/python/numstore)
+  add_subdirectory(bindings/python/pynumstore)
 endif()

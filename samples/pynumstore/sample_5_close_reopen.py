@@ -1,5 +1,5 @@
 import numpy as np
-import numstore as ns
+import pynumstore as ns
 
 # Persistence — data survives close and reopen
 with ns.open("mydb") as db:
