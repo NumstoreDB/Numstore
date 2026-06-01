@@ -14,7 +14,7 @@
 1.0 Install Numstore using pip
 ------------------------------
 ```
-pip3 install numstore 
+pip3 install pynumstore 
 ```
 
 1.1 Run a Sample Application 
