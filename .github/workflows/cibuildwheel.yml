@@ -33,9 +33,9 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4.1
         with:
-          package-dir: ./bindings/python/pynumstore
+          package-dir: .
           output-dir: wheelhouse
-          config-file: ./bindings/python/pynumstore/pyproject.toml
+          config-file: pyproject.toml
 
         ########################################################
         ######## Upload artifacts
@@ -61,11 +61,11 @@ jobs:
         ########################################################
         ######## Build SDist
       - name: Build SDist
-        run: pipx run build --sdist ./bindings/python/pynumstore
+        run: pipx run build --sdist .
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-sdist
-          path: ./bindings/python/pynumstore/dist/*.tar.gz
+          path: ./dist/*.tar.gz
 
   ########################################################
   ######## Publish to PyPI (tag only)
