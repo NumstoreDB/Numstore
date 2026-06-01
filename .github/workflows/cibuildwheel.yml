@@ -1,0 +1,88 @@
+name: Build Wheels
+on:
+  push:
+  pull_request:
+
+jobs:
+
+  ########################################################
+  ######## Build Python Wheels (cibuildwheel)
+
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-15-intel
+          - macos-14
+    steps:
+        ########################################################
+        ######## Base Images
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+        ########################################################
+        ######## CI Build Wheel Step
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.1
+        with:
+          package-dir: ./bindings/python/numstore
+          output-dir: wheelhouse
+          config-file: ./bindings/python/numstore/pyproject.toml
+
+        ########################################################
+        ######## Upload artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  ########################################################
+  ######## Build SDist
+
+  make_sdist:
+    name: Make SDist
+    runs-on: ubuntu-latest
+    steps:
+        ########################################################
+        ######## Base Images
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+        ########################################################
+        ######## Build SDist
+      - name: Build SDist
+        run: pipx run build --sdist ./bindings/python/numstore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
+
+  ########################################################
+  ######## Publish to PyPI (tag only)
+
+  publish_pypi:
+    name: Publish to PyPI
+    needs: [build_wheels, make_sdist]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: pypi
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1

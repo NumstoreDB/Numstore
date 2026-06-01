@@ -37,17 +37,26 @@ add_subdirectory(libs/c_specx)
 add_subdirectory(libs/nscore)
 add_subdirectory(libs/numstore)
 add_subdirectory(libs/smartfiles)
-add_subdirectory(libs/nstesting)
 
-################### Configuration sub projects
-if(BUILD_APPS)
-  add_subdirectory(apps)
+################### Optional Targets
+if(NOT ENABLE_NTEST)
+  add_subdirectory(libs/nstesting)
+  add_subdirectory(apps/testing/swarm_testing)
+  add_subdirectory(apps/testing/unit_test)
 endif()
 
-if(BUILD_SAMPLES)
-  add_subdirectory(samples)
+if(BUILD_TOOLS)
+  add_subdirectory(apps/tools)
 endif()
 
-if(BUILD_BINDINGS)
-  add_subdirectory(bindings)
+if(BUILD_SMARTFILE_SAMPLES)
+  add_subdirectory(samples/smfile)
+endif()
+
+if(BUILD_NUMSTORE_SAMPLES)
+  add_subdirectory(samples/numstore)
+endif()
+
+if(BUILD_PYTHON_BINDINGS)
+  add_subdirectory(bindings/python/numstore)
 endif()

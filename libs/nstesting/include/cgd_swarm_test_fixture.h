@@ -27,10 +27,10 @@
  * No data inserting in this test
  */
 
+#include <c_specx.h>
+
 #include "mem_vhmap.h"
 #include "numstore.h"
-
-#include <c_specx.h>
 
 // Actions you can take in a database
 enum action_type
@@ -43,9 +43,9 @@ enum action_type
   CDS_CLOSE_AND_REOPEN,
 
   // The main actions (subject to "swarm distribution"
-  CDS_CREATE,
-  CDS_SWITCH,
-  CDS_DELETE,
+  CDS_CREATE, // 0
+  CDS_SWITCH, // 1
+  CDS_DELETE, // 2
 
   // Length of options
   CDS_AT_LEN,

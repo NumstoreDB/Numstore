@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "nscore/aries.h"
 #include "nscore/dirty_page_table.h"
 #include "nscore/errors.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
 
 ////////////////////////////////////////////////////////////
 // REDO (FIGURE 11)
@@ -67,9 +67,6 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
           {
             goto failed;
           }
-
-          // ph.pgr->flags |= PW_DIRTY;
-          // ph.pgw->flags |= PW_DIRTY;
 
           pgno page_lsn = page_get_page_lsn (page_h_ro (&ph));
           if (page_lsn < read_lsn)

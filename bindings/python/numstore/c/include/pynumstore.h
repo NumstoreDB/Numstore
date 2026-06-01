@@ -20,12 +20,12 @@
 #define NPY_NO_DEPRECATED_API  NPY_2_0_API_VERSION
 #define NO_IMPORT_ARRAY
 
-#include "nscore/types.h"
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <c_specx.h>
+#include <numpy/arrayobject.h>
 #include <string.h>
+
+#include "nscore/types.h"
 
 PyObject      *pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg);
 int            pyns_verify_types (PyArray_Descr *dtype, struct type *type);

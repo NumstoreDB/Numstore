@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "_smfile.h"
 #include "nscore/nshandle.h"
 #include "nscore/rope.h"
@@ -19,8 +21,6 @@
 #include "nscore/var.h"
 #include "nscore/variables.h"
 #include "smfile.h"
-
-#include <c_specx.h>
 
 static sb_size
 _smfile_pread (

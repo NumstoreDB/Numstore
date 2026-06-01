@@ -15,14 +15,14 @@
 #define PY_ARRAY_UNIQUE_SYMBOL _NUMSTORE_ARRAY_API
 #define PY_SSIZE_T_CLEAN
 #define NPY_NO_DEPRECATED_API NPY_2_0_API_VERSION
-#include "register_test_suite.h"
-
 #include <Python.h>
 #include <c_specx.h>
 #include <numpy/arrayobject.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "register_test_suite.h"
 
 int
 main (const int argc, char **argv)

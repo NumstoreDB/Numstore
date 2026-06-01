@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/errors.h"
-#include "nscore/types.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/errors.h"
+#include "nscore/types.h"
 
 DEFINE_DBG_ASSERT (struct sarray_t, unchecked_sarray_t, s, {
   ASSERT (s);

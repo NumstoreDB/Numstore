@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/parsers/parser.h"
-
 #include <c_specx.h>
+
+#include "nscore/parsers/parser.h"
 
 // entry        ::= slice_range
 // | NUMBER

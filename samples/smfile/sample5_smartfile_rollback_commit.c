@@ -35,18 +35,17 @@
 ///
 /// Phases 4 (no-commit crash) and 5 (rollback) leave their slots as 'A'.
 
-#include "smfile.h"
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "smfile.h"
+
 #ifdef _WIN32
 #  include "windows.h"
 #else
 #  include <sys/wait.h>
-
 #  include <unistd.h>
 #endif
 

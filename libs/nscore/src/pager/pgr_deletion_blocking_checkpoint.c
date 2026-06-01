@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "c_specx/error.h"
 #include "c_specx/threading.h"
 #include "nscore/lock_table.h"
@@ -19,8 +21,6 @@
 #include "nscore/page_h.h"
 #include "nscore/pager.h"
 #include "nscore/wal.h"
-
-#include <c_specx.h>
 
 err_t
 pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
@@ -31,7 +31,8 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 
   // This is what makes the checkpoint blocking
   // it will wait for all open transactions to complete
-  i_mutex_lock (&p->serial_lock);
+  lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
+  i_log_debug ("Checkpoint - lock acquired\n");
 
   // Flush all pages - so the database is consistent
   if (pgr_flush_all_pages (p, e) < 0)
@@ -73,6 +74,6 @@ theend:
 
   // Unlock the database lock
   i_log_debug ("Checkpoint Done - unlocking the database\n");
-  i_mutex_unlock (&p->serial_lock);
+  lockt_unlock (p->lt, lock_db (), LM_X, e);
   return SUCCESS;
 }

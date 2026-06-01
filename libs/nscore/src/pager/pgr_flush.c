@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "nscore/dirty_page_table.h"
 #include "nscore/file_pager.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
@@ -23,7 +24,7 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
   ASSERT (!(mp->flags & PW_X));
 
   // Only need to write it out if it's dirty
-  if (mp->flags & PW_DIRTY)
+  if (dpgt_exists (p->dpt, mp->page.pg))
   {
     if (!(p->flags & PGR_ISRESTARTING) && p->ww)
     {
@@ -48,9 +49,6 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
     }
 
     dpgt_remove_expect (p->dpt, mp->page.pg);
-
-    // Not dirty any more
-    mp->flags &= ~PW_DIRTY;
   }
 
 theend:

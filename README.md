@@ -8,25 +8,117 @@
 
 ---
 
-1.0 Synopsis
-============
+1.0 Quick Start
+===============
 
-1.1 System requirements
+1.0 Install Numstore using pip
+------------------------------
+```
+pip3 install numstore 
+```
+
+1.1 Run a Sample Application 
+----------------------------
+
+The following example shows the main operations you can do on a 
+numstore database:
+
+The available things you can do to a numstore database are:
+*  **Create**       a new variable
+*  **Delete**       a variable variable
+*  **Get**          a variable 
+*  **Insert**       data into a variable
+*  **Read**         data from a variable
+*  **Write**        data into a variable
+*  **Remove**       data from a variable
+*  **Begin**        a transation
+*  **Commit**       an open transaction
+*  **Rollback**     an open transaction
+*  **Close**        and reopen a database
+
+You can see more examples in samples/pynumstore
+
+```
+import numpy as np
+import numstore as ns
+
+# Basic Operations
+with ns.open("mydb") as db:
+    ######## Part 1 - A simple Create Insert Read Write Remove example
+    y = db.get_or_create("y", dtype="f32")
+
+    # Start with a fresh dataset if y already existed
+    del y[0:]
+    print("Initial State: ", y[0:])
+
+    # Append twice
+    y.append(np.array([1.0, 2.0, 3.0], dtype=np.float32))
+    y.append(np.array([4.0, 5.0, 6.0], dtype=np.float32))
+
+    # Retrieve the whole array
+    print("Seed Data: ", y[0:])
+
+    # Insert in the middle (inner mutations are first class operations)
+    y.insert(2, np.array([4.0, 5.0, 6.0], dtype=np.float32))
+
+    # Retrieve the whole array
+    print("After inner insert: ", y[0:])
+
+    # Overwrite data at the start
+    y[1:4] = np.array([9.0, 9.0, 9.0], dtype=np.float32)
+    print("After overwrite 1: ", y[0:])
+
+    # Overwrite data at the start
+    y[3:7] = np.array([1, 2, 10, 12], dtype=np.float32)
+    print("After overwrite 2: ", y[0:]) 
+
+    # Remove every even index
+    del y[0::2]
+    print("End state: ", y[0:])
+
+    ######## Part 2 - Demonstrating some ACID properties of numstore
+
+    # Without a transaction - mutations happen in "auto transaction mode"
+    counts = db.get_or_create("counts", dtype="i32")
+    del counts[0:]
+
+    # You can wrap operations inside a transaction to be explicit
+    with db.begin_txn() as txn:
+        txn["counts"].append(np.array([1, 2, 3], dtype=np.int32))
+
+    print("First state: ", counts[0:])
+
+    # When an exception is thrown - numstore roll's back changes:
+    try:
+        with db.begin_txn() as txn:
+            txn["counts"].append(np.array([99, 99, 99], dtype=np.int32))
+            print("After modification (inside tx): ", txn["counts"][0:])
+            raise RuntimeError("something went wrong")
+    except RuntimeError:
+        pass
+
+    print("counts after rollback: ", db["counts"][0:])  
+```
+
+2.0 Building from Source
+========================
+
+2.1 System requirements
 -----------------------
 
 * C compiler supporting the C11 standard
 * CMake
 * Python 3
 
-1.2 Linux, Mac, Windows
+2.2 Linux, Mac, Windows
 -----------------------
 
     cd <path>/numstore
     cmake --preset debug
 
 
-2.0 Build!
-==========
+2.3 Build!
+----------
 
 Numstore is built with CMake:
 
@@ -71,31 +163,17 @@ but in general this is just a tool to help me reduce keystrokes
 new developers should use cmake as much as possible - while using 
 make if there are any common workflows.
 
-3.0 Run!
-========
-
-3.1 Pynumstore
+2.4 Pynumstore
 --------------
 
-pynumstore is the python wrapper around numstore that interacts heavily with numpy arrays.
-pynumstore is not published to PyPI (yet). The package is self-contained under
-libs/pynumstore and uses scikit-build-core - the C extension is compiled automatically
-as part of the install step.
-
-Note: Pynumstore is experimental - expect bugs around wrapping python and c -
-the core logic is found in numstore / nscore.
-
-3.1.0 Quick Start
------------------
-
-3.1.0.0. Install
+2.4.1. Install
 
     pip install -e libs/pynumstore
 
 This compiles the C extension and installs the package in editable mode. CMake and a C
 compiler must be available on your PATH.
 
-3.1.0.1. Run a sample
+2.4.2. Run a sample
 
     python samples/pynumstore/basic_operations.py
 
@@ -105,7 +183,7 @@ Note: pynumstore is in an unstable state - more docs to come while work is done 
 pynumstore - for now run samples in samples/pynumstore.
 
 
-4.0 Configure your build
+3.0 Configure your build
 ========================
 
 Numstore has compile time configuration of various application specific attributes
@@ -115,7 +193,7 @@ You can see them all in cmake/Config.cmake.
 
 These are common configuration options:
 
-* `-DNS_PAGE_SIZE=4096`          - Page size.
+* `-DNS_NS_PAGE_SIZE=4096`          - Page size.
 
 * `-DNS_MEMORY_PAGE_LEN=4096`    - Number of pages to fit inside the pager
                                    buffer pool.
@@ -149,7 +227,7 @@ These should rarely be changed:
                                    of a log header.
 
 
-5.0 Project Layout
+4.0 Project Layout
 ==================
 
 * `apps`                         - All applications in this directory are built
@@ -171,7 +249,7 @@ These should rarely be changed:
 * `docs`                         - Documentation for numstore.
 
 
-6.0 Summary of all Libraries
+5.0 Summary of all Libraries
 ============================
 
 The application contains various targets:
@@ -201,7 +279,7 @@ Consider adding qtrepotools/bin to your PATH
 environment variable to access them.
 
 
-7.0 Documentation
+6.0 Documentation
 =================
 
 After configuring and compiling, building the documentation is possible by running:
@@ -218,7 +296,7 @@ The documentation is installed in the path specified with the configure argument
 Note: Building the documentation is only tested on desktop platforms.
 
 
-8.0 AI Usage Policy
+7.0 AI Usage Policy
 ===================
 
 I use AI the way I use a language server: as a tool, not a co-author. AI usage is fine
@@ -244,7 +322,7 @@ The CLAUDE.md file ensures that if AI-assisted code ever does land here, it foll
 consistent standards.
 
 
-9.0 Contributing
+8.0 Contributing
 ================
 
 File a ticket on GitHub for bugs, feature requests, or questions.
@@ -252,7 +330,7 @@ Pull requests are welcome - see CONTRIBUTING.md for guidelines.
 Windows CI/CD support is an open and approachable first contribution.
 
 
-10.0 License
+9.0 License
 ============
 
 Apache 2.0. See LICENSE.

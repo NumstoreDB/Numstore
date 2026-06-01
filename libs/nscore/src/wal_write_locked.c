@@ -12,15 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+#include <string.h>
+
 #include "nscore/dirty_page_table.h"
 #include "nscore/txn_table.h"
 #include "nscore/wal.h"
 #include "nscore/wal_istream.h"
 #include "nscore/wal_ostream.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
-#include <string.h>
 
 static err_t
 wal_write_begin (
@@ -113,12 +113,20 @@ wal_write_physical_update (
       sizeof (pgno),
       e
   ));
-  WRAP (
-      walos_write_all (w->ostream, &checksum, r->update.phys.undo, PAGE_SIZE, e)
-  );
-  WRAP (
-      walos_write_all (w->ostream, &checksum, r->update.phys.redo, PAGE_SIZE, e)
-  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      r->update.phys.undo,
+      NS_PAGE_SIZE,
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      r->update.phys.redo,
+      NS_PAGE_SIZE,
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
@@ -245,7 +253,7 @@ wal_write_physical_clr (
       e
   ));
   WRAP (
-      walos_write_all (w->ostream, &checksum, r->clr.phys.redo, PAGE_SIZE, e)
+      walos_write_all (w->ostream, &checksum, r->clr.phys.redo, NS_PAGE_SIZE, e)
   );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 

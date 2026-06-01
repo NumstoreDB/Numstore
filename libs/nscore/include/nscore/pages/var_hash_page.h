@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 /*
  * PG_VAR_HASH_PAGE — root of the variable name hash table.
@@ -47,11 +47,11 @@
 
 // OFFSETS and _Static_asserts
 #define VH_HASH_OFST PG_COMMN_END
-#define VH_HASH_LEN  ((PAGE_SIZE - VH_HASH_OFST) / sizeof (pgno))
+#define VH_HASH_LEN  ((NS_PAGE_SIZE - VH_HASH_OFST) / sizeof (pgno))
 
 _Static_assert (
-    PAGE_SIZE > VH_HASH_OFST + 10 * sizeof (pgno),
-    "Root Page: PAGE_SIZE must be > RN_HASH_OFST plus at least 10 "
+    NS_PAGE_SIZE > VH_HASH_OFST + 10 * sizeof (pgno),
+    "Root Page: NS_PAGE_SIZE must be > RN_HASH_OFST plus at least 10 "
     "extra hashes"
 );
 

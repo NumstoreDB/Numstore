@@ -14,13 +14,13 @@
 
 #include "nscore/pager.h"
 
+#include <c_specx.h>
+
 #include "nscore/aries.h"
 #include "nscore/compile_config.h"
 #include "nscore/file_pager.h"
 #include "nscore/lock_table.h"
 #include "nscore/page_fixture.h"
-
-#include <c_specx.h>
 
 bool
 pgr_isnew (const struct pager *p)
@@ -266,14 +266,14 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
       i_printf (
           log_level,
           "%u |(PAGE)    pg: %" PRpgno
-          " pin: %d ax: %d drt: %d prsn: %d "
-          "sib: %d type: %d data: %d ctrl: %d|\n",
+          " pin: %d acess: %d dirty: %d present: %d "
+          "sibling: %d type: %d data: %d ctrl: %d|\n",
           i,
           mp->page.pg,
           mp->pin,
-          mp->flags & PW_ACCESS,
-          mp->flags & PW_DIRTY,
-          mp->flags & PW_PRESENT,
+          (mp->flags & PW_ACCESS) != 0,
+          dpgt_exists (p->dpt, mp->page.pg),
+          (mp->flags & PW_PRESENT) != 0,
           mp->wsibling,
           page_get_type (&mp->page),
           mp->data,

@@ -14,10 +14,10 @@
 
 #include "nscore/pages/inner_node.h"
 
+#include <c_specx.h>
+
 #include "inner_node_testing.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 #define VTYPE  int
 #define KTYPE  pgno
@@ -65,7 +65,7 @@ in_validate_for_db (const page *in, error *e)
         ")",
         in_get_len (in),
         IN_MAX_KEYS,
-        PAGE_SIZE
+        NS_PAGE_SIZE
     );
   }
 
@@ -187,7 +187,7 @@ TEST (in_validate_for_db)
 TEST (in_set_get_simple)
 {
   page p;
-  rand_bytes (p.raw, PAGE_SIZE);
+  rand_bytes (p.raw, NS_PAGE_SIZE);
 
   TEST_CASE ("Start: freshly initialized page")
   {
@@ -311,8 +311,8 @@ TEST (in_memcpy)
 {
   page in;
 
-  pgno   dest_page[PAGE_SIZE];
-  b_size dest_key[PAGE_SIZE];
+  pgno   dest_page[NS_PAGE_SIZE];
+  b_size dest_key[NS_PAGE_SIZE];
 
   TEST_CASE ("Size 0")
   {

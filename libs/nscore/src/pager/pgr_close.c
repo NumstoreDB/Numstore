@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "c_specx/logging.h"
 #include "c_specx/threading.h"
 #include "nscore/file_pager.h"
@@ -19,8 +21,6 @@
 #include "nscore/lt_lock.h"
 #include "nscore/pager.h"
 #include "nscore/wal.h"
-
-#include <c_specx.h>
 
 err_t
 pgr_close (struct pager *p, error *e)
@@ -34,7 +34,7 @@ pgr_close (struct pager *p, error *e)
 
   i_log_debug ("Checkpoint task complete\n");
 
-  i_mutex_lock (&p->serial_lock);
+  lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
 
   // Similar to a checkpoint
   {
@@ -62,10 +62,9 @@ pgr_close (struct pager *p, error *e)
   }
 
   fpgr_close (p->fp, e);
+  lockt_unlock (p->lt, lock_db (), LM_X, e);
   lockt_destroy (p->lt);
   i_free (p->lt);
-  i_mutex_unlock (&p->serial_lock);
-  i_mutex_free (&p->serial_lock);
 
   txnt_close (p->tnxt);
   dpgt_close (p->dpt);

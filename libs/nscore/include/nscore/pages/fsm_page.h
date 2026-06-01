@@ -14,15 +14,15 @@
 
 #pragma once
 
-#include "nscore/pages/page.h"
-
 #include <c_specx.h>
+
+#include "nscore/pages/page.h"
 
 // OFFSETS and _Static_asserts
 #define FS_BTMP_OFST PG_COMMN_END
 
-#define FS_BTMP_SIZE (PAGE_SIZE - FS_BTMP_OFST)
-#define FS_BTMP_NPGS ((PAGE_SIZE - FS_BTMP_OFST) * 8)
+#define FS_BTMP_SIZE (NS_PAGE_SIZE - FS_BTMP_OFST)
+#define FS_BTMP_NPGS ((NS_PAGE_SIZE - FS_BTMP_OFST) * 8)
 
 void fsm_init_empty (page *in);
 
@@ -110,7 +110,7 @@ fsm_set_bit (page *p, const p_size idx)
 HEADER_FUNC void
 fsm_clr_bit (page *p, const p_size idx)
 {
-  ASSERT (idx < PAGE_SIZE * 8);
+  ASSERT (idx < NS_PAGE_SIZE * 8);
   ((u8 *)fsm_get_bitmap_mut (p))[idx / 8] &= ~(1 << (idx % 8));
 }
 

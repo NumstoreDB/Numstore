@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include <c_specx.h>
+
 #include "nscore/errors.h"
 #include "nscore/tokens.h"
-
-#include <c_specx.h>
 
 struct parser
 {

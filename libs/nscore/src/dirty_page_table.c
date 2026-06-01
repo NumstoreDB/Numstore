@@ -14,9 +14,9 @@
 
 #include "nscore/dirty_page_table.h"
 
-#include "nscore/compile_config.h"
-
 #include <c_specx.h>
+
+#include "nscore/compile_config.h"
 
 /*
  * Dirty page table entry.
@@ -102,8 +102,6 @@ dpgt_open (error *e)
     goto dest_failed;
   }
 
-  latch_init (&dest->l);
-
   return dest;
 
 dest_failed:
@@ -116,10 +114,8 @@ void
 dpgt_close (struct dpg_table *t)
 {
   DBG_ASSERT (dirty_pg_table, t);
-  latch_lock (&t->l);
   slab_alloc_destroy (&t->alloc);
   htable_free (t->t);
-  latch_unlock (&t->l);
   i_free (t);
 }
 
@@ -143,16 +139,12 @@ i_log_dpge_in_dpgt (struct hnode *node, void *_log_level)
 void
 i_log_dpgt (int log_level, struct dpg_table *dpt)
 {
-  latch_lock (&dpt->l);
-
   i_log (
       log_level,
       "================ Dirty Page Table START ================\n"
   );
   htable_foreach (dpt->t, i_log_dpge_in_dpgt, &log_level);
   i_log (log_level, "================ Dirty Page Table END ================\n");
-
-  latch_unlock (&dpt->l);
 }
 
 struct merge_ctx
@@ -185,9 +177,7 @@ dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e)
       .e    = e,
   };
 
-  latch_lock (&src->l);
   dpgt_foreach (src, merge_dpge, &ctx);
-  latch_unlock (&src->l);
 
   return ctx.e->cause_code;
 }
@@ -209,9 +199,7 @@ dpgt_min_rec_lsn (struct dpg_table *d)
   ASSERT (dpgt_get_size (d) > 0);
   lsn min = (lsn)-1;
 
-  latch_lock (&d->l);
   dpgt_foreach (d, dpge_max, &min);
-  latch_unlock (&d->l);
 
   return min;
 }
@@ -274,8 +262,6 @@ dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e)
 {
   DBG_ASSERT (dirty_pg_table, t);
 
-  latch_lock (&t->l);
-
   struct dpg_entry *v = slab_alloc_alloc (&t->alloc, e);
   if (v == NULL)
   {
@@ -287,7 +273,6 @@ dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e)
   htable_insert (t->t, &v->node);
 
 theend:
-  latch_unlock (&t->l);
   return error_trace (e);
 }
 
@@ -309,15 +294,11 @@ dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg)
   struct dpg_entry key;
   dpge_key_init (&key, pg);
 
-  latch_lock (&t->l);
-
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
   if (node)
   {
     *dest = container_of (*node, struct dpg_entry, node)->rec_lsn;
   }
-
-  latch_unlock (&t->l);
 
   return node != NULL;
 }
@@ -330,14 +311,10 @@ dpgt_get_expect (lsn *dest, struct dpg_table *t, const pgno pg)
   struct dpg_entry key;
   dpge_key_init (&key, pg);
 
-  latch_lock (&t->l);
-
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
   ASSERT (node != NULL);
 
   *dest = container_of (*node, struct dpg_entry, node)->rec_lsn;
-
-  latch_unlock (&t->l);
 }
 
 void
@@ -348,22 +325,17 @@ dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg)
   struct dpg_entry key;
   dpge_key_init (&key, pg);
 
-  latch_lock (&t->l);
-
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
 
   if (node == NULL)
   {
     *exists = false;
-    goto theend;
+    return;
   }
 
   *exists = true;
 
   htable_delete (t->t, node);
-
-theend:
-  latch_unlock (&t->l);
 }
 
 void
@@ -374,13 +346,9 @@ dpgt_remove_expect (struct dpg_table *t, const pgno pg)
   struct dpg_entry key;
   dpge_key_init (&key, pg);
 
-  latch_lock (&t->l);
-
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
   ASSERT (node != NULL);
   htable_delete (t->t, node);
-
-  latch_unlock (&t->l);
 }
 
 void
@@ -389,7 +357,6 @@ dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn)
   struct dpg_entry key;
   dpge_key_init (&key, pg);
 
-  latch_lock (&t->l);
   {
     DBG_ASSERT (dirty_pg_table, t);
 
@@ -401,8 +368,6 @@ dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn)
     entry->rec_lsn = new_rec_lsn;
     latch_unlock (&entry->l);
   }
-
-  latch_unlock (&t->l);
 }
 
 u32
@@ -548,9 +513,6 @@ dpgt_equal (struct dpg_table *left, struct dpg_table *right)
 {
   bool ret = false;
 
-  latch_lock (&left->l);
-  latch_lock (&right->l);
-
   if (htable_size (left->t) != htable_size (right->t))
   {
     goto theend;
@@ -564,8 +526,6 @@ dpgt_equal (struct dpg_table *left, struct dpg_table *right)
   ret = ctx.ret;
 
 theend:
-  latch_unlock (&right->l);
-  latch_unlock (&left->l);
 
   return ret;
 }

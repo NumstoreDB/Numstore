@@ -14,10 +14,10 @@
 
 #include "nscore/pages/var_page.h"
 
+#include <c_specx.h>
+
 #include "nscore/compile_config.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 // smartfiles
 
@@ -42,7 +42,7 @@ TEST (vp_init_empty)
 {
   page p;
 
-  rand_bytes (p.raw, PAGE_SIZE);
+  rand_bytes (p.raw, NS_PAGE_SIZE);
   page_init_empty (&p, PG_VAR_PAGE);
 
   test_assert_equal (vp_get_next (&p), PGNO_NULL);
@@ -145,7 +145,7 @@ vp_calc_tofst (const page *p)
 bool
 vp_is_overflow (const page *p)
 {
-  return vp_calc_tofst (p) > PAGE_SIZE;
+  return vp_calc_tofst (p) > NS_PAGE_SIZE;
 }
 
 struct bytes
@@ -153,7 +153,7 @@ vp_get_bytes (page *p)
 {
   return (struct bytes){
       .head = (void *)&p->raw[VP_VNME_OFST],
-      .len  = PAGE_SIZE - VP_VNME_OFST,
+      .len  = NS_PAGE_SIZE - VP_VNME_OFST,
   };
 }
 
@@ -162,7 +162,7 @@ vp_get_bytes_imut (const page *p)
 {
   return (struct cbytes){
       .head = (void *)&p->raw[VP_VNME_OFST],
-      .len  = PAGE_SIZE - VP_VNME_OFST,
+      .len  = NS_PAGE_SIZE - VP_VNME_OFST,
   };
 }
 
@@ -228,7 +228,7 @@ TEST (vp_validate)
   TEST_CASE ("Overflow page requires next pointer")
   {
     page_init_empty (&sut, PG_VAR_PAGE);
-    vp_set_vlen (&sut, PAGE_SIZE);
+    vp_set_vlen (&sut, NS_PAGE_SIZE);
     vp_set_tlen (&sut, 10);
     vp_set_ovnext (&sut, PGNO_NULL);
     test_err_t_check (vp_validate_for_db (&sut, &e), ERR_CORRUPT, &e);

@@ -14,19 +14,19 @@
 
 #pragma once
 
-#include "nscore/compile_config.h"
-
 #include <c_specx.h>
 #include <string.h>
+
+#include "nscore/compile_config.h"
 
 /*
  * Page Layout
  *
- * Every page in the database file is PAGE_SIZE bytes.  The first bytes of
+ * Every page in the database file is NS_PAGE_SIZE bytes.  The first bytes of
  * every page form a fixed common header:
  *
  *   [0, 4)              u32 checksum   — CRC of all bytes after the checksum
- *                                        field (bytes [4, PAGE_SIZE)).
+ *                                        field (bytes [4, NS_PAGE_SIZE)).
  *   [4, 4+sizeof(pgh))  pgh type       — page type tag (enum page_type).
  *   [4+sizeof(pgh), ...) lsn pageLSN   — LSN of the last WAL record that
  *                                        modified this page.
@@ -68,11 +68,11 @@ enum page_type
 #define PG_PLSN_OFST ((p_size)(PG_HEDR_OFST + sizeof (pgh)))
 #define PG_COMMN_END ((p_size)(PG_PLSN_OFST + sizeof (lsn)))
 
-#define PG_CKSM_DATA_LEN (PAGE_SIZE - PG_CKSM_OFST)
+#define PG_CKSM_DATA_LEN (NS_PAGE_SIZE - PG_CKSM_OFST)
 
 typedef struct
 {
-  u8   raw[PAGE_SIZE];
+  u8   raw[NS_PAGE_SIZE];
   pgno pg;
 } page;
 
@@ -90,7 +90,7 @@ err_t page_validate_for_db (const page *p, int page_types, error *e);
 #define PAGE_SIMPLE_GET_IMPL(v, type, ofst)         \
   do                                                \
   {                                                 \
-    ASSERT ((ofst) + sizeof (type) < PAGE_SIZE);    \
+    ASSERT ((ofst) + sizeof (type) < NS_PAGE_SIZE); \
     type ret;                                       \
     memcpy (&(ret), &(v)->raw[ofst], sizeof (ret)); \
     return ret;                                     \
@@ -100,7 +100,7 @@ err_t page_validate_for_db (const page *p, int page_types, error *e);
 #define PAGE_SIMPLE_SET_IMPL(v, val, ofst)          \
   do                                                \
   {                                                 \
-    ASSERT ((ofst) + sizeof (val) < PAGE_SIZE);     \
+    ASSERT ((ofst) + sizeof (val) < NS_PAGE_SIZE);  \
     memcpy (&(v)->raw[ofst], &(val), sizeof (val)); \
   }                                                 \
   while (0)
@@ -121,7 +121,7 @@ page_compute_checksum (const page *p)
   DBG_ASSERT (page_base, p);
   const void *data     = &p->raw[4];
   u32         checksum = checksum_init ();
-  checksum_execute (&checksum, data, PAGE_SIZE - 4);
+  checksum_execute (&checksum, data, NS_PAGE_SIZE - 4);
   return checksum;
 }
 
@@ -167,7 +167,7 @@ HEADER_FUNC void
 page_memcpy (page *dest, const struct bytes src)
 {
   DBG_ASSERT (page_base, dest);
-  ASSERT (src.len == PAGE_SIZE);
+  ASSERT (src.len == NS_PAGE_SIZE);
   memcpy (dest->raw, src.head, src.len);
 }
 

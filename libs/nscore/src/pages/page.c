@@ -15,14 +15,14 @@
 // smartfiles
 #include "nscore/pages/page.h"
 
+#include <c_specx.h>
+
 #include "nscore/pages/data_list.h"
 #include "nscore/pages/fsm_page.h"
 #include "nscore/pages/inner_node.h"
 #include "nscore/pages/var_hash_page.h"
 #include "nscore/pages/var_page.h"
 #include "nscore/pages/var_tail.h"
-
-#include <c_specx.h>
 
 ////////////////////////////////////////////////////////////
 // INITIALIZATION
@@ -154,8 +154,8 @@ page_validate_for_db (const page *p, const int flags, error *e)
 TEST (page_set_get_simple)
 {
   page p, q;
-  rand_bytes (p.raw, PAGE_SIZE);
-  rand_bytes (q.raw, PAGE_SIZE);
+  rand_bytes (p.raw, NS_PAGE_SIZE);
+  rand_bytes (q.raw, NS_PAGE_SIZE);
 
   TEST_CASE ("Initialization: each page type")
   {
@@ -185,9 +185,9 @@ TEST (page_set_get_simple)
 
   TEST_CASE ("page_memcpy roundtrip")
   {
-    const struct bytes src = {.head = q.raw, .len = PAGE_SIZE};
+    const struct bytes src = {.head = q.raw, .len = NS_PAGE_SIZE};
     page_memcpy (&p, src);
-    test_assert_memequal (p.raw, q.raw, PAGE_SIZE);
+    test_assert_memequal (p.raw, q.raw, NS_PAGE_SIZE);
   }
 }
 #endif

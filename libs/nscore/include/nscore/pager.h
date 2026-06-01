@@ -14,14 +14,14 @@
 
 #pragma once
 
+#include <c_specx.h>
+
 #include "nscore/errors.h"
 #include "nscore/lock_table.h"
 #include "nscore/page_h.h"
 #include "nscore/txn.h"
 #include "nscore/wal.h"
 #include "nscore/wal_rec_hdr.h"
-
-#include <c_specx.h>
 
 /**
  * Database structure:
@@ -61,7 +61,6 @@
 enum
 {
   PW_ACCESS  = 1u << 0, // meaningless for X pages
-  PW_DIRTY   = 1u << 1, // meaningless for X pages
   PW_PRESENT = 1u << 2,
   PW_X       = 1u << 3,
 };
@@ -124,7 +123,6 @@ struct pager
   struct file_pager *const fp; // File pager - just reads and writes pages
   struct wal *const        ww; // Write-ahead log abstraction
   struct lockt            *lt; // Lock table
-  i_mutex                  serial_lock; // To be deleted in concurrency work
 
   _Atomic int flags;
   _Atomic u32 clock;
@@ -341,6 +339,20 @@ pgr_flush_all_pages (struct pager *p, error *e)
 
     if (mp->flags & PW_PRESENT && !(mp->flags & PW_X))
     {
+      /**
+       * I'm going to add this here because the only time
+       * this function is called is in the checkpoint
+       * thread and the checkpoint is stopping.
+       *
+       * If you used fuzzy checkpoints, then this is not
+       * true, e.g. you can flush while pages are making changes
+       *
+       * I add this here because the checkpoint is blocking the entire
+       * database, so nothing should be in edit mode.
+       *
+       * This can be removed safely. Please feel free to remove it
+       */
+      ASSERT (!(mp->flags & PW_X));
       pgr_flush_unsafe (p, mp, e); // Ignore error
     }
 

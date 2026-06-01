@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <c_specx.h>
+
 #include "c_specx/error.h"
 #include "nscore/pager.h"
 #include "nscore/pages/page.h"
-
-#include <c_specx.h>
 
 void
 pgr_unfix (struct pager *p, page_h *h, int flags)
@@ -37,9 +37,7 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
         !page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL)
     );
 
-    h->pgr->flags |= PW_DIRTY;
-
-    memcpy (&h->pgr->page.raw, h->pgw->page.raw, PAGE_SIZE);
+    memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
 
     latch_lock (&h->pgw->ctrl);
 
