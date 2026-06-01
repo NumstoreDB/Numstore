@@ -38,7 +38,8 @@
       "name": "debug-leakcheck",
       "inherits": "debug",
       "cacheVariables": { 
-        "ENABLE_LEAK_TOOL": "ON" 
+        "ENABLE_LEAK_TOOL": "ON" ,
+        "ENABLE_PORTABLE" : "ON"
       }
     },
 
