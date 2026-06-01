@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/lincketheo/Numstore/blob/b03a67452d2bfb3a3ce3e34581ac8df00fb24842/assets/logo.png" alt="NumStore Logo" width="200"/>
+  <img src="https://raw.githubusercontent.com/lincketheo/numstore/refs/heads/main/assets/logo.png" alt="NumStore Logo" width="200"/>
 </p>
 
 # PyNumstore

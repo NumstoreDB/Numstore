@@ -1,6 +1,14 @@
 # Changelog
 
-## [v1.1.1]
+## [v1.1.3] - Unreleased
+
+## [v1.1.2] - 2026-06-01 
+
+### Changed 
+
+- Image link for the numstore logo in pypi release
+
+## [v1.1.1] - 2026-06-01
 
 ### Changed
 
@@ -82,7 +90,9 @@
 - Negative byte offsets are interpreted relative to end of file
 - Explicit-width types used throughout for deterministic on-disk layout
 
-[v1.1.1]: https://github.com/lincketheo/smartfiles/compare/v1.1.0...HEAD
+[v1.1.3]: https://github.com/lincketheo/smartfiles/compare/v1.1.2...HEAD
+[v1.1.2]: https://github.com/lincketheo/smartfiles/compare/v1.1.1...v1.1.2
+[v1.1.1]: https://github.com/lincketheo/smartfiles/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...v1.1.0
 [v1.0.0]: https://github.com/lincketheo/smartfiles/compare/v0.0.3...v1.0.0
 [v0.0.3]: https://github.com/lincketheo/smartfiles/compare/v0.0.2...v0.0.3
