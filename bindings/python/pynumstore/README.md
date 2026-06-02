@@ -10,8 +10,6 @@ Pynumstore is a database for numerical arrays. It's written in C from scratch wi
 bindings in python. Pynumstore is fully ACID. Meaning you can pull the plug on your 
 application and the database stays in a consistent state. 
 
-Want to learn more? See my video here TODO describing how it works
-
 ---
 
 1.0 Quick Start
