@@ -34,7 +34,7 @@ jobs:
           - { os: windows-2022,     preset: debug, run_tests: true,  config: Debug }
 
           # Compile this one for valgrind run
-          - { os: ubuntu-latest,    preset: debug-no-asan, run_tests: true,  config: Debug }
+          - { os: ubuntu-latest,    preset: debug-valgrind, run_tests: true,  config: Debug }
 
           # Compile release and run tests (tests don't fail in release mode)
           - { os: ubuntu-latest,  preset: release-tests-asan, run_tests: true,  config: Release }
@@ -243,7 +243,7 @@ jobs:
     name: Valgrind / ubuntu-latest
     runs-on: ubuntu-latest
     env:
-      TEST_DIR: ./build/debug-no-asan
+      TEST_DIR: ./build/debug-valgrind
     steps:
 
         ########################################################
@@ -272,11 +272,11 @@ jobs:
 
       - name: Configure
         run: |
-          cmake --preset debug-no-asan \
+          cmake --preset debug-valgrind \
             -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
 
       - name: Build
-        run: cmake --build --preset debug-no-asan
+        run: cmake --build --preset debug-valgrind
 
         ########################################################
         ######## Run under Valgrind
