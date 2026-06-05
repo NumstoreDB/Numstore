@@ -28,10 +28,11 @@
     },
 
     {
-      "name": "debug-no-asan",
+      "name": "debug-valgrind",
       "inherits": "debug",
       "cacheVariables": { 
-        "ENABLE_ASAN": "OFF" 
+        "ENABLE_ASAN":     "OFF" ,
+        "ENABLE_PORTABLE": "ON"
       }
     },
 
@@ -88,7 +89,7 @@
   ],
   "buildPresets": [
     { "name": "debug",              "configurePreset": "debug",              "configuration": "Debug"   },
-    { "name": "debug-no-asan",      "configurePreset": "debug-no-asan",      "configuration": "Debug"   },
+    { "name": "debug-valgrind",     "configurePreset": "debug-valgrind",     "configuration": "Debug"   },
     { "name": "debug-coverage",     "configurePreset": "debug-coverage",     "configuration": "Debug"   },
     { "name": "release",            "configurePreset": "release",            "configuration": "Release" },
     { "name": "release-tests-asan", "configurePreset": "release-tests-asan", "configuration": "Release" },
