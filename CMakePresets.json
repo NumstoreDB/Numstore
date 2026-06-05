@@ -20,7 +20,7 @@
         "ENABLE_COVERAGE":            "OFF",
         "ENABLE_PORTABLE":            "OFF",
         "ENABLE_STRIP":               "OFF",
-        "ENABLE_ASAN":                "OFF",
+        "ENABLE_ASAN":                "ON",
         "BUILD_TOOLS":                "ON",
         "BUILD_PYTHON_BINDINGS":      "ON",
         "BUILD_SAMPLES":              "ON"
@@ -28,10 +28,10 @@
     },
 
     {
-      "name": "debug-asan",
+      "name": "debug-no-asan",
       "inherits": "debug",
       "cacheVariables": { 
-        "ENABLE_ASAN": "ON" 
+        "ENABLE_ASAN": "OFF" 
       }
     },
 
@@ -39,7 +39,8 @@
       "name": "debug-coverage",
       "inherits": "debug",
       "cacheVariables": { 
-        "ENABLE_COVERAGE": "ON" 
+        "ENABLE_COVERAGE": "ON",
+        "ENABLE_ASAN": "OFF"
       }
     },
 
