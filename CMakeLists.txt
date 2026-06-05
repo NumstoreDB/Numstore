@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.18)
 enable_testing()
 
 ## Read the version from version.txt
-file(STRINGS "${CMAKE_SOURCE_DIR}/version.txt" NS_VERSION LIMIT_COUNT 1)
+file(STRINGS "${CMAKE_SOURCE_DIR}/version.txt" NUMSTORE_VERSION LIMIT_COUNT 1)
 
 project(numstore
-    VERSION     "${NS_VERSION}"
+    VERSION     "${NUMSTORE_VERSION}"
     DESCRIPTION "Custom database engine for arrays"
     LANGUAGES   C
 )
@@ -30,33 +30,45 @@ include(cmake/Options.cmake)
 include(cmake/CompilerFlags.cmake)
 include(cmake/Packaging.cmake)
 include(cmake/Config.cmake)
-include(cmake/Python.cmake)
 
-################### Core Libraries
-add_subdirectory(libs/c_specx)
-add_subdirectory(libs/nscore)
-add_subdirectory(libs/numstore)
-add_subdirectory(libs/smartfiles)
+################### Auto Generate Code
+configure_file(
+    "${CMAKE_SOURCE_DIR}/templates/compile_config.h.in"
+    "${CMAKE_SOURCE_DIR}/include/compile_config.h"
+    @ONLY
+)
 
-################### Optional Targets
-if(NOT ENABLE_NTEST)
-  add_subdirectory(libs/nstesting)
-  add_subdirectory(apps/testing/swarm_testing)
-  add_subdirectory(apps/testing/unit_test)
+################### Numstore Library
+file(
+  GLOB_RECURSE NUMSTORE_SOURCES  
+  CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.c"
+)
+file(
+  GLOB_RECURSE POSIX_SOURCES 
+  CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/posix/*.c"
+)
+file(
+  GLOB_RECURSE WINDOWS_SOURCES 
+  CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/windows/*.c"
+)
+
+list(REMOVE_ITEM NUMSTORE_SOURCES ${POSIX_SOURCES})
+list(REMOVE_ITEM NUMSTORE_SOURCES ${WINDOWS_SOURCES})
+
+if(WIN32)
+    list(APPEND NUMSTORE_SOURCES ${WINDOWS_SOURCES})
+    set(PLATFORM_DEPENDENCIES ws2_32)
+else()
+    list(APPEND NUMSTORE_SOURCES ${POSIX_SOURCES})
+    set(PLATFORM_DEPENDENCIES pthread)
 endif()
 
-if(BUILD_TOOLS)
-  add_subdirectory(apps/tools)
-endif()
+add_library(numstore STATIC ${NUMSTORE_SOURCES})
+target_include_directories(numstore
+  PUBLIC  "${CMAKE_SOURCE_DIR}/include"
+  PRIVATE "${CMAKE_SOURCE_DIR}/src"
+)
+target_link_libraries(numstore PUBLIC ${PLATFORM_DEPENDENCIES})
 
-if(BUILD_SMARTFILE_SAMPLES)
-  add_subdirectory(samples/smfile)
-endif()
-
-if(BUILD_NUMSTORE_SAMPLES)
-  add_subdirectory(samples/numstore)
-endif()
-
-if(BUILD_PYTHON_BINDINGS)
-  add_subdirectory(bindings/python/pynumstore)
-endif()
+################### Sub Directories
+add_subdirectory(apps)
