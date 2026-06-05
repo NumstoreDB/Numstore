@@ -1,0 +1,4 @@
+ignore:
+  - "bindings/**"
+  - "apps/**"
+  - "src/windows/**"

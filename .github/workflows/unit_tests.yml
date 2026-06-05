@@ -222,26 +222,11 @@ jobs:
 
       - name: Coverage
         run: |
-          # Capture all .gcda data from the build tree
           lcov --capture \
                --directory ${{ env.TEST_DIR }} \
                --base-directory . \
-               --output-file coverage_raw.info \
+               --output-file coverage.info \
                --ignore-errors mismatch
-
-          # Keep only src/ — lcov uses fnmatch so */src/* matches
-          # any absolute path containing /src/ (which is what gcov records)
-          lcov --extract coverage_raw.info \
-               '*/src/*' \
-               --output-file coverage.info \
-               --ignore-errors mismatch,unused
-
-          # Strip out Windows-only platform code (not compiled on this runner)
-          lcov --remove coverage.info \
-               '*/src/windows/*' \
-               --output-file coverage.info \
-               --ignore-errors mismatch,unused
-
           genhtml coverage.info --output-directory coverage_html
 
       - name: Upload coverage report
@@ -255,7 +240,6 @@ jobs:
         with:
           files: coverage.info
           token: ${{ secrets.CODECOV_TOKEN }}
-
 
   ########################################################
   ######## Valgrind (ubuntu-latest, plain debug — no ASan)
