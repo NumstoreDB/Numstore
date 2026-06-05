@@ -225,13 +225,10 @@ jobs:
           lcov --capture \
                --directory ${{ env.TEST_DIR }} \
                --base-directory . \
-               --output-file coverage.info \
+               --output-file coverage_raw.info \
                --ignore-errors mismatch
-          lcov --remove coverage.info \
-               '*/test*' \
-               '*/Python*' \
-               '*/numpy*' \
-               '*/hostedtoolcache/*' \
+          lcov --extract coverage_raw.info \
+               "${{ github.workspace }}/src/*" \
                --output-file coverage.info \
                --ignore-errors mismatch,unused
           genhtml coverage.info --output-directory coverage_html
