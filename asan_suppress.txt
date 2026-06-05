@@ -1,2 +1,0 @@
-leak:*python*
-leak:*numpy*

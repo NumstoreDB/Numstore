@@ -22,6 +22,12 @@
 
 #ifndef NTEST
 
+extern int test_ret;
+
+#  define TEST(name)            \
+    void __test__##name (void); \
+    void __test__##name (void)
+
 ////////////////////////////////////////////////////////////
 /// Test Marker
 

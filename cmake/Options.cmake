@@ -1,30 +1,38 @@
 option(ENABLE_NDEBUG           "Disable assertions (NDEBUG)"                OFF)
 option(ENABLE_NTEST            "Exclude test code at compile time (NTEST)"  OFF)
 option(ENABLE_NLOG             "Disable all logging (NLOG)"                 OFF)
-option(ENABLE_GPROF            "Enable gprof profiling support"             OFF)
 option(ENABLE_COVERAGE         "Enable coverage for tests"                  OFF)
 option(ENABLE_PORTABLE         "Portable build: no -march=native"           OFF)
 option(ENABLE_STRIP            "Strip debug symbols from installed binary"  OFF)
 option(ENABLE_ASAN             "Enable AddressSanitizer"                    OFF)
-option(ENABLE_LEAK_TOOL        "Enables leak tool (valgrind or leaks)"      OFF)
 
 # Enable / Disable Certain Artifacts
 option(BUILD_TOOLS             "Build small useful cli tools for numstore"  ON )
 option(BUILD_PYTHON_BINDINGS   "Build bindings"                             ON )
-option(BUILD_NUMSTORE_SAMPLES  "Build numstore samples"                     ON )
-option(BUILD_SMARTFILE_SAMPLES "Build smart file samples"                   ON )
+option(BUILD_SAMPLES           "Build samples"                              ON )
 
-# Translates ENABLE_* options into preprocessor defines.
-foreach(_flag NDEBUG NTEST NLOG)
-    if(ENABLE_${_flag})
-        add_compile_definitions(${_flag})
-    endif()
-endforeach()
+######### Save as preprocessor macros
+
+if(ENABLE_NDEBUG)
+  add_compile_definitions(NDEBUG)
+endif()
+
+if(ENABLE_NTEST)
+  add_compile_definitions(NTEST)
+endif()
+
+if(ENABLE_NLOG)
+  add_compile_definitions(NLOG)
+endif()
+
+######### Add coverage flags to the compiler
 
 if(ENABLE_COVERAGE)
     add_compile_options(--coverage -fprofile-update=atomic)
     add_link_options(--coverage)
 endif()
+
+######### Add address sanitizer flags to the compiler
 
 if(ENABLE_ASAN)
     if(MSVC)
@@ -50,4 +58,3 @@ if(ENABLE_ASAN)
         endif()
     endif()
 endif()
-

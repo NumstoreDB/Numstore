@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pynumstore as ns
 
@@ -14,11 +16,11 @@ with ns.open("mydb") as db:
     with db.begin_txn() as txn:
         txn["timestamps"].append(
                 np.array([1.0, 1.5, 2.0], dtype=np.float64)
-        )
+                )
 
         txn["labels"].append(
                 np.array([0, 1, 0], dtype=np.int32)
-        )
+                )
 
     print("timestamps: ", db["timestamps"][0:])
     print("labels: ", db["labels"][0:])

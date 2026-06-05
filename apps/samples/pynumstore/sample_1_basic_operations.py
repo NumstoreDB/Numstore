@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pynumstore as ns
 
@@ -30,7 +32,7 @@ with ns.open("mydb") as db:
 
         # Overwrite data at the start
         y[3:7] = np.array([1, 2, 10, 12], dtype=np.float32)
-        print("After overwrite 2: ", y[0:]) 
+        print("After overwrite 2: ", y[0:])
 
         # Remove every even index
         del y[0::2]
