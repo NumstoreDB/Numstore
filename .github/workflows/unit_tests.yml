@@ -272,7 +272,7 @@ jobs:
 
       - name: Configure
         run: |
-          cmake --preset debug-valgrind \
+          cmake --preset debug-no-asan \
             -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
 
       - name: Build
