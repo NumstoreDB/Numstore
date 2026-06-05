@@ -17,12 +17,13 @@
         "ENABLE_NDEBUG":              "OFF",
         "ENABLE_NTEST":               "OFF",
         "ENABLE_NLOG":                "OFF",
-        "ENABLE_GPROF":               "OFF",
         "ENABLE_COVERAGE":            "OFF",
         "ENABLE_PORTABLE":            "OFF",
         "ENABLE_STRIP":               "OFF",
         "ENABLE_ASAN":                "OFF",
-        "ENABLE_LEAK_TOOL":           "OFF"
+        "BUILD_TOOLS":                "ON",
+        "BUILD_PYTHON_BINDINGS":      "ON",
+        "BUILD_SAMPLES":              "ON"
       }
     },
 
@@ -31,15 +32,6 @@
       "inherits": "debug",
       "cacheVariables": { 
         "ENABLE_ASAN": "ON" 
-      }
-    },
-
-    {
-      "name": "debug-leakcheck",
-      "inherits": "debug",
-      "cacheVariables": { 
-        "ENABLE_LEAK_TOOL": "ON" ,
-        "ENABLE_PORTABLE" : "ON"
       }
     },
 
@@ -61,12 +53,13 @@
         "ENABLE_NDEBUG":              "ON",
         "ENABLE_NTEST":               "ON",
         "ENABLE_NLOG":                "ON",
-        "ENABLE_GPROF":               "OFF",
         "ENABLE_PORTABLE":            "OFF",
         "ENABLE_STRIP":               "OFF",
         "ENABLE_ASAN":                "OFF",
-        "ENABLE_LEAK_TOOL":           "OFF",
-        "ENABLE_COVERAGE":            "OFF"
+        "ENABLE_COVERAGE":            "OFF",
+        "BUILD_TOOLS":                "ON",
+        "BUILD_PYTHON_BINDINGS":      "ON",
+        "BUILD_SAMPLES":              "ON"
       }
     },
 
@@ -84,16 +77,17 @@
       "name": "package-release",
       "inherits": "release",
       "cacheVariables": {
-        "ENABLE_STRIP":         "ON",
-        "ENABLE_PORTABLE":      "ON",
-        "CMAKE_INSTALL_PREFIX": "/usr"
+        "ENABLE_STRIP":               "ON",
+        "ENABLE_PORTABLE":            "ON",
+        "BUILD_TOOLS":                "OFF",
+        "BUILD_PYTHON_BINDINGS":      "OFF",
+        "BUILD_SAMPLES":              "OFF"
       }
     }
   ],
   "buildPresets": [
     { "name": "debug",              "configurePreset": "debug",              "configuration": "Debug"   },
     { "name": "debug-asan",         "configurePreset": "debug-asan",         "configuration": "Debug"   },
-    { "name": "debug-leakcheck",    "configurePreset": "debug-leakcheck",    "configuration": "Debug"   },
     { "name": "debug-coverage",     "configurePreset": "debug-coverage",     "configuration": "Debug"   },
     { "name": "release",            "configurePreset": "release",            "configuration": "Release" },
     { "name": "release-tests-asan", "configurePreset": "release-tests-asan", "configuration": "Release" },

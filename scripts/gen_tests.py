@@ -30,11 +30,11 @@ def make_calls(tests):
   //////////////////// {filepath}:{line} START
   if (!filter || strstr("{name}", filter))
   {{
-    extern void test_{name}(void);
+    extern void __test__{name}(void);
     i_log_info("========================= TEST CASE: %s\\n", "{name}");
     int prev = test_ret;
     test_ret = 0;
-    test_{name}();
+    __test__{name}();
     if (!test_ret)
     {{
       i_log_passed("%s\\n", "{name}");

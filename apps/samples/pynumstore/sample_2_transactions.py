@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pynumstore as ns
 
@@ -18,4 +20,4 @@ with ns.open("mydb") as db:
     except RuntimeError:
         pass
 
-    print("counts after rollback: ", db["counts"][0:])  
+    print("counts after rollback: ", db["counts"][0:])

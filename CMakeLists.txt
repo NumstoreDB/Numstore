@@ -72,3 +72,7 @@ target_link_libraries(numstore PUBLIC ${PLATFORM_DEPENDENCIES})
 
 ################### Sub Directories
 add_subdirectory(apps)
+
+if(BUILD_PYTHON_BINDINGS)
+  add_subdirectory(bindings/python/pynumstore)
+endif()

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pynumstore as ns
 
@@ -11,4 +13,4 @@ with ns.open("mydb") as db:
 
 # Reopen the database and read it all
 with ns.open("mydb") as db:
-    print(db["log"][0:])  
+    print(db["log"][0:])

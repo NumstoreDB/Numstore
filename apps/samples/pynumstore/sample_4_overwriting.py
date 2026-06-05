@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import pynumstore as ns
 
@@ -16,5 +18,5 @@ with ns.open("mydb") as db:
 
     # Overwrite data at the start
     v[3:7] = np.array([1, 2, 3, 4], dtype=np.float32)
-    print(v[0:]) 
+    print(v[0:])
 

@@ -93,16 +93,6 @@ else()
     endif()
 endif()
 
-# Enable profiling
-if(ENABLE_GPROF)
-  if(MSVC)
-    add_link_options(/PROFILE)
-  else()
-    add_compile_options(-pg)    
-    add_link_options(-pg)      
-  endif()
-endif()
-
 # Strip symbols
 if(ENABLE_STRIP)
     set(CMAKE_INSTALL_DO_STRIP TRUE) 
