@@ -18,7 +18,9 @@ set(CPACK_RESOURCE_FILE_README          "${CMAKE_SOURCE_DIR}/README.md")
 set(CPACK_STRIP_FILES                   TRUE)  
 
 # Set default install path
-set(CPACK_PACKAGING_INSTALL_PREFIX      "${CMAKE_INSTALL_PREFIX}") 
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
+endif()
 
 # Debian (.deb) 
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER     "Theo Lincke <lincketheo@gmail.com>")
