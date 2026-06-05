@@ -4,7 +4,16 @@
 
 # Numstore
 
-**A database for bytes**
+[![codecov](https://codecov.io/gh/lincketheo/Numstore/graph/badge.svg?token=GMNPHQID77)](https://codecov.io/gh/lincketheo/Numstore)
+![GitHub Actions](https://github.com/lincketheo/Numstore/actions/workflows/unit_tests.yml/badge.svg)
+![GitHub Actions](https://github.com/lincketheo/Numstore/actions/workflows/cibuildwheel.yml/badge.svg)
+
+
+**A database for arrays**
+
+Numstore is a single file embedded ACID database built for arrays written entirely 
+in C with no dependencies. Currently it has a nice easy python interface 
+to use - but stay tuned for more features as it grows. 
 
 ---
 
@@ -279,24 +288,7 @@ Consider adding qtrepotools/bin to your PATH
 environment variable to access them.
 
 
-6.0 Documentation
-=================
-
-After configuring and compiling, building the documentation is possible by running:
-
-    cmake --build . --target docs
-
-After having built the documentation, install it with:
-
-    cmake --build . --target install_docs
-
-The documentation is installed in the path specified with the configure argument
--docdir.
-
-Note: Building the documentation is only tested on desktop platforms.
-
-
-7.0 AI Usage Policy
+6.0 AI Usage Policy
 ===================
 
 I use AI the way I use a language server: as a tool, not a co-author. AI usage is fine
@@ -322,7 +314,7 @@ The CLAUDE.md file ensures that if AI-assisted code ever does land here, it foll
 consistent standards.
 
 
-8.0 Contributing
+7.0 Contributing
 ================
 
 File a ticket on GitHub for bugs, feature requests, or questions.
@@ -330,7 +322,7 @@ Pull requests are welcome - see CONTRIBUTING.md for guidelines.
 Windows CI/CD support is an open and approachable first contribution.
 
 
-9.0 License
+8.0 License
 ============
 
 Apache 2.0. See LICENSE.
