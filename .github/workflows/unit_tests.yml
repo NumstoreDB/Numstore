@@ -23,15 +23,18 @@ jobs:
       matrix:
         include:
           # Compile and run debug tests with address sanitizer
-          - { os: ubuntu-latest,    preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: macos-latest,     preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: windows-latest,   preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: ubuntu-24.04-arm, preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: ubuntu-22.04,     preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: macos-15,         preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: macos-15-intel,   preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: windows-11-arm,   preset: debug-asan, run_tests: true,  config: Debug }
-          - { os: windows-2022,     preset: debug-asan, run_tests: true,  config: Debug }
+          - { os: ubuntu-latest,    preset: debug, run_tests: true,  config: Debug }
+          - { os: macos-latest,     preset: debug, run_tests: true,  config: Debug }
+          - { os: windows-latest,   preset: debug, run_tests: true,  config: Debug }
+          - { os: ubuntu-24.04-arm, preset: debug, run_tests: true,  config: Debug }
+          - { os: ubuntu-22.04,     preset: debug, run_tests: true,  config: Debug }
+          - { os: macos-15,         preset: debug, run_tests: true,  config: Debug }
+          - { os: macos-15-intel,   preset: debug, run_tests: true,  config: Debug }
+          - { os: windows-11-arm,   preset: debug, run_tests: true,  config: Debug }
+          - { os: windows-2022,     preset: debug, run_tests: true,  config: Debug }
+
+          # Compile this one for valgrind run
+          - { os: ubuntu-latest,    preset: debug-no-asan, run_tests: true,  config: Debug }
 
           # Compile release and run tests (tests don't fail in release mode)
           - { os: ubuntu-latest,  preset: release-tests-asan, run_tests: true,  config: Release }
@@ -240,7 +243,7 @@ jobs:
     name: Valgrind / ubuntu-latest
     runs-on: ubuntu-latest
     env:
-      TEST_DIR: ./build/debug-valgrind
+      TEST_DIR: ./build/debug-no-asan
     steps:
 
         ########################################################
@@ -273,7 +276,7 @@ jobs:
             -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
 
       - name: Build
-        run: cmake --build --preset debug-valgrind
+        run: cmake --build --preset debug-no-asan
 
         ########################################################
         ######## Run under Valgrind
