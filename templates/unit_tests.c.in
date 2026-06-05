@@ -1,0 +1,55 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+// AUTO GENERATED - DO NOT MODIFY
+
+#include <c_specx.h>
+#include <stdio.h>
+#include <string.h>
+
+int
+main (const int argc, char **argv)
+{
+  const char *filter = (argc > 1) ? argv[1] : NULL;
+
+  error   e = error_create ();
+  i_timer timer;
+  if (i_timer_create (&timer, &e) != SUCCESS)
+  {
+    return -1;
+  }
+
+  int         failed = 0;
+  const char *failed_names[%TEST_COUNT%];
+
+  %CALLS%
+
+  printf ("Time: %llu ms\n", (unsigned long long)i_timer_now_ms (&timer));
+  i_timer_free (&timer);
+
+  if (failed)
+  {
+    i_log_failure ("FAILED TESTS (%d):\n", failed);
+    for (int i = 0; i < failed; i++)
+    {
+      i_log_failure ("  %s\n", failed_names[i]);
+    }
+  }
+  else
+  {
+    i_log_passed ("ALL TESTS PASSED\n");
+  }
+
+  return test_ret;
+}
