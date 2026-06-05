@@ -101,7 +101,6 @@ jobs:
 
         ########################################################
         ######## Tests
-
         # Resolve the binary path once, accounting for MSVC's config subfolder.
       - name: Set test binary path
         if: matrix.run_tests
@@ -109,14 +108,26 @@ jobs:
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
             echo "UNIT_TESTS=${{ env.BUILD_DIR }}/bin/${{ matrix.config }}/unit_tests.exe" >> "$GITHUB_ENV"
+            echo "CGD_SWARM_TEST=${{ env.BUILD_DIR }}/bin/${{ matrix.config }}/cgd_swarm_test.exe" >> "$GITHUB_ENV"
+            echo "IRWR_SWARM_TEST=${{ env.BUILD_DIR }}/bin/${{ matrix.config }}/irwr_swarm_test.exe" >> "$GITHUB_ENV"
           else
             echo "UNIT_TESTS=${{ env.BUILD_DIR }}/bin/unit_tests" >> "$GITHUB_ENV"
+            echo "CGD_SWARM_TEST=${{ env.BUILD_DIR }}/bin/cgd_swarm_test" >> "$GITHUB_ENV"
+            echo "IRWR_SWARM_TEST=${{ env.BUILD_DIR }}/bin/irwr_swarm_test" >> "$GITHUB_ENV"
           fi
 
         # Normal test - just run the tests
       - name: Test
         if: matrix.run_tests
         run: ${{ env.UNIT_TESTS }}
+
+      - name: cgd_swarm_test (10s)
+        if: matrix.run_tests
+        run: ${{ env.CGD_SWARM_TEST }} 10
+
+      - name: irwr_swarm_test (10s)
+        if: matrix.run_tests
+        run: ${{ env.IRWR_SWARM_TEST }} 10
 
         ########################################################
         ######## CMake Package Step
@@ -193,12 +204,18 @@ jobs:
         run: cmake --build --preset debug-coverage
 
         ########################################################
-        ######## Run unit tests
-        # Running the instrumented binary is all that's needed to
-        # populate .gcda files — no ctest -T coverage required.
+        ######## Run unit tests and swarm tests
 
       - name: Test
         run: ${{ env.TEST_DIR }}/bin/unit_tests
+
+      - name: cgd_swarm_test (10s)
+        if: matrix.run_tests
+        run: ${{ env.CGD_SWARM_TEST }} 10
+
+      - name: irwr_swarm_test (10s)
+        if: matrix.run_tests
+        run: ${{ env.IRWR_SWARM_TEST }} 10
 
         ########################################################
         ######## Coverage

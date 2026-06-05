@@ -11,12 +11,15 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
-
 #include <signal.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "cgd_swarm_test_fixture.h"
+
+#define DEFAULT_TIMEOUT_SECONDS 10
 
 static volatile sig_atomic_t keep_running = 1;
 
@@ -28,8 +31,25 @@ handle_sigint (int sig)
 }
 
 int
-main (void)
+main (int argc, char *argv[])
 {
+  int timeout_seconds = DEFAULT_TIMEOUT_SECONDS;
+
+  if (argc > 1)
+  {
+    timeout_seconds = atoi (argv[1]);
+    if (timeout_seconds <= 0)
+    {
+      fprintf (
+          stderr,
+          "Invalid timeout '%s', using default %ds\n",
+          argv[1],
+          DEFAULT_TIMEOUT_SECONDS
+      );
+      timeout_seconds = DEFAULT_TIMEOUT_SECONDS;
+    }
+  }
+
   int start_enabled[CDS_AT_LEN];
   for (int i = 0; i < CDS_AT_LEN; ++i)
   {
@@ -40,19 +60,16 @@ main (void)
   srand (100);
 
 #if PLATFORM_WINDOWS
-  // Windows / ISO C fallback
   if (signal (SIGINT, handle_sigint) == SIG_ERR)
   {
     cgd_swmt_close (meta);
     return 0;
   }
 #else
-  // POSIX robust signal handling (macOS and Linux)
   struct sigaction sa;
   sa.sa_handler = handle_sigint;
   sigemptyset (&sa.sa_mask);
   sa.sa_flags = 0;
-
   if (sigaction (SIGINT, &sa, NULL) == -1)
   {
     cgd_swmt_close (meta);
@@ -60,8 +77,14 @@ main (void)
   }
 #endif
 
+  time_t start = time (NULL);
+
   while (keep_running)
   {
+    if (time (NULL) - start >= timeout_seconds)
+    {
+      break;
+    }
     cgd_swmt_step (meta);
   }
 
