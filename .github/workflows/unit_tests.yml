@@ -231,6 +231,10 @@ jobs:
                "${{ github.workspace }}/src/*" \
                --output-file coverage.info \
                --ignore-errors mismatch,unused
+          lcov --remove coverage.info \
+               "${{ github.workspace }}/src/windows/*" \
+               --output-file coverage.info \
+               --ignore-errors mismatch,unused
           genhtml coverage.info --output-directory coverage_html
 
       - name: Upload coverage report
