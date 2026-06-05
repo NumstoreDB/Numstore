@@ -210,11 +210,9 @@ jobs:
         run: ${{ env.TEST_DIR }}/bin/unit_tests
 
       - name: cgd_swarm_test (10s)
-        if: matrix.run_tests
         run: ${{ env.CGD_SWARM_TEST }} 10
 
       - name: irwr_swarm_test (10s)
-        if: matrix.run_tests
         run: ${{ env.IRWR_SWARM_TEST }} 10
 
         ########################################################
