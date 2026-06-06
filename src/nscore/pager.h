@@ -79,7 +79,7 @@ enum
 #define KTYPE  pgno
 #define VTYPE  u32
 #define SUFFIX idx
-#include <c_specx.h>
+#include <robin_hood_ht.h>
 #undef KTYPE
 #undef VTYPE
 #undef SUFFIX

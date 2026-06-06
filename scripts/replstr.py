@@ -1,7 +1,7 @@
 import os
 
 ROOTS = ["src", "include"]
-OLD, NEW = "smfile/compile_config", "compile_config"
+OLD, NEW = "c_specx/malloc_plan.h", "alloc.h"
 
 for ROOT in ROOTS:
     for dirpath, _, files in os.walk(ROOT):

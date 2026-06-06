@@ -16,8 +16,8 @@
 
 #include <c_specx.h>
 
-#include "nscore/aries.h"
 #include "compile_config.h"
+#include "nscore/aries.h"
 #include "nscore/file_pager.h"
 #include "nscore/lock_table.h"
 #include "nscore/page_fixture.h"

@@ -15,7 +15,7 @@
 #ifndef C_SPECX_RANDOM_H
 #define C_SPECX_RANDOM_H
 
-#include <c_specx/chunk_alloc.h>
+#include <alloc.h>
 #include <c_specx/error.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>

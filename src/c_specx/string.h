@@ -15,8 +15,8 @@
 #ifndef C_SPECX_STRING_H
 #define C_SPECX_STRING_H
 
+#include <alloc.h>
 #include <c_specx/error.h>
-#include <c_specx/lalloc.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
 

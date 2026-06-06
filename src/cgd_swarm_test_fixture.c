@@ -22,8 +22,8 @@
 
 #include "_numstore.h"
 #include "c_specx/error.h"
-#include "mem_vhmap.h"
 #include "compile_config.h"
+#include "mem_vhmap.h"
 #include "nscore/types.h"
 #include "nscore/variables.h"
 #include "numstore.h"

@@ -22,7 +22,7 @@
 #define VTYPE  int
 #define KTYPE  pgno
 #define SUFFIX pgno
-#include <c_specx.h>
+#include <robin_hood_ht.h>
 #undef VTYPE
 #undef KTYPE
 #undef SUFFIX

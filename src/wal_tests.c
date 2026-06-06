@@ -152,12 +152,7 @@ struct wal_test_params
 };
 
 static void
-wal_test_fill_batch (
-    struct wal_rec_hdr_read *batch,
-    const u32                len,
-    struct alloc            *a,
-    error                   *e
-)
+wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len, error *e)
 {
   for (u32 i = 0; i < len; i++)
   {
@@ -287,9 +282,7 @@ run_wal_test (const struct wal_test_params *p)
 
 TEST (wal)
 {
-  error        e = error_create ();
-  struct alloc a = {.type = AT_CHNK_ALLOC};
-  chunk_alloc_create_default (&a._calloc);
+  error e = error_create ();
 
   struct wal_rec_hdr_read batch1_full[] = {
       {.type = WL_BEGIN, .begin = {.tid = 1}},
@@ -394,8 +387,8 @@ TEST (wal)
     {
       const struct wal_test_params *c = &cases[i];
 
-      wal_test_fill_batch (c->batch1, c->batch1_len, &a, &e);
-      wal_test_fill_batch (c->batch2, c->batch2_len, &a, &e);
+      wal_test_fill_batch (c->batch1, c->batch1_len, &e);
+      wal_test_fill_batch (c->batch2, c->batch2_len, &e);
 
       run_wal_test (c);
 
@@ -403,15 +396,11 @@ TEST (wal)
       wal_test_free_batch (c->batch2, c->batch2_len);
     }
   }
-
-  chunk_alloc_free_all (&a._calloc);
 }
 
 TEST (wal_single_entry)
 {
-  error        e = error_create ();
-  struct alloc a = {.type = AT_CHNK_ALLOC};
-  chunk_alloc_create_default (&a._calloc);
+  error e = error_create ();
 
   struct wal_rec_hdr_read cases[] = {
       {.type = WL_BEGIN, .begin = {.tid = 1}},
@@ -436,7 +425,7 @@ TEST (wal_single_entry)
     {
       struct wal_rec_hdr_read *c = &cases[i];
 
-      wal_test_fill_batch (c, 1, &a, &e);
+      wal_test_fill_batch (c, 1, &e);
 
       i_remove_quiet ("test_single_entry.wal", &e);
       struct wal *ww = wal_open ("test_single_entry.wal", &e);
@@ -458,8 +447,6 @@ TEST (wal_single_entry)
       wal_test_free_batch (c, 1);
     }
   }
-
-  chunk_alloc_free_all (&a._calloc);
 }
 
 #endif

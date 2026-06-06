@@ -12,17 +12,54 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef C_SPECX_CHUNK_ALLOC_H
-#define C_SPECX_CHUNK_ALLOC_H
+#ifndef LALLOC_H
+#define LALLOC_H
 
+#include <c_specx/assert.h>
 #include <c_specx/error.h>
-#include <c_specx/lalloc.h>
 #include <c_specx/latch.h>
+#include <c_specx/logging.h>
 #include <c_specx/platform.h>
 #include <c_specx/stdtypes.h>
 
 ////////////////////////////////////////////////////////////
-// MEMORY / CHUNK_ALLOC
+// Local linear Allocator
+//
+// A Linear allocator takes a buffer and dishes out memory
+// from this fixed sized buffer. It is not dynamic.
+// It does not do any mallocs under the hood
+
+struct lalloc
+{
+  latch latch;
+  u32   used;
+  u32   limit;
+  u8   *data;
+};
+
+#define lalloc_create_from(buf) lalloc_create ((u8 *)buf, sizeof (buf))
+
+struct lalloc lalloc_create (u8 *data, u32 limit);
+u32           lalloc_get_state (struct lalloc *l);
+void          lalloc_reset_to_state (struct lalloc *l, u32 state);
+void         *lmalloc (struct lalloc *a, u32 req, u32 size, error *e);
+void         *lcalloc (struct lalloc *a, u32 req, u32 size, error *e);
+void          lalloc_reset (struct lalloc *a);
+
+HEADER_FUNC void *
+lmalloc_expect (struct lalloc *a, const u32 req, const u32 size)
+{
+  void *ret = lmalloc (a, req, size, NULL);
+  ASSERT (ret);
+  return ret;
+}
+
+////////////////////////////////////////////////////////////
+// Chunk Allocator
+//
+// A chunk allocator allocates everything within a context
+// using chunks - one free frees all memory that was allocated
+// with it
 
 /// A single chunk of memory in a chunk allocator chain
 struct chunk
@@ -102,4 +139,81 @@ void *chunk_alloc_move_mem (
     error              *e
 ); // The error object
 
-#endif // C_SPECX_CHUNK_ALLOC_H
+////////////////////////////////////////////////////////////
+// Slab Allocator
+//
+// A slab allocator allocates fixed sized "slabs" it is dynamic
+// because it can allocate an infinite number of these
+
+struct slab;
+
+struct slab_alloc
+{
+  struct slab *head;
+  struct slab *current; // Cache slab with free space (hot path)
+  latch        l;
+  u32          size;
+  u32          cap_per_slab;
+};
+
+void slab_alloc_init (struct slab_alloc *dest, u32 size, u32 cap_per_slab);
+void slab_alloc_destroy (struct slab_alloc *alloc);
+
+void *slab_alloc_alloc (struct slab_alloc *alloc, error *e);
+void  slab_alloc_free (struct slab_alloc *alloc, void *ptr);
+
+////////////////////////////////////////////////////////////
+// Malloc Plan
+//
+// Does 2 phases of allocation:
+// 1. Fake allocation - keep track of how many bytes you need
+// 2. Real allocation - 1 malloc and 1 free
+
+struct malloc_plan
+{
+  u32   size;
+  u32   blen;
+  void *buffer;
+
+  enum
+  {
+    MP_PLANNING,
+    MP_ALLOCING
+  } mode;
+};
+
+HEADER_FUNC struct malloc_plan
+malloc_plan_create (void)
+{
+  return (struct malloc_plan){
+      .size   = 0,
+      .blen   = 0,
+      .buffer = NULL,
+      .mode   = MP_PLANNING,
+  };
+}
+
+HEADER_FUNC void *
+malloc_plan_head (const struct malloc_plan *plan)
+{
+  switch (plan->mode)
+  {
+    case MP_PLANNING:
+    {
+      return NULL;
+    }
+    case MP_ALLOCING:
+    {
+      return (u8 *)plan->buffer + plan->blen;
+    }
+  }
+  UNREACHABLE ();
+}
+
+// Allocate memory
+void *malloc_plan_memcpy (struct malloc_plan *plan, const void *data, u32 len);
+
+// Do the planning -> alloc swap
+err_t malloc_plan_alloc (struct malloc_plan *plan, error *e);
+
+#endif // LALLOC_H
