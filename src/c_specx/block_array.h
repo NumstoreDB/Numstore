@@ -15,10 +15,10 @@
 #ifndef C_SPECX_BLOCK_ARRAY_H
 #define C_SPECX_BLOCK_ARRAY_H
 
+#include <alloc.h>
 #include <c_specx/data_writer.h>
 #include <c_specx/error.h>
 #include <c_specx/platform.h>
-#include <c_specx/slab_alloc.h>
 #include <c_specx/stdtypes.h>
 #include <c_specx/stride.h>
 

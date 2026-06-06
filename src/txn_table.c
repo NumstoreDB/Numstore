@@ -1421,7 +1421,7 @@ TEST (txnt_equal_ignore_state)
 #endif
 
 err_t
-txnt_rand_populate (struct txn_table *t, struct alloc *alloc, error *e)
+txnt_rand_populate (struct txn_table *t, struct chunk_alloc *alloc, error *e)
 {
   latch_lock (&t->l);
   const u32 len = htable_size (t->t);
@@ -1430,7 +1430,7 @@ txnt_rand_populate (struct txn_table *t, struct alloc *alloc, error *e)
 
   for (u32 i = 0; i < 100 - len; ++i, tid += randu32r (0, 100))
   {
-    struct txn *tx = alloc_alloc (alloc, 1, sizeof *tx, NULL);
+    struct txn *tx = chunk_malloc (alloc, 1, sizeof *tx, NULL);
     if (tx == NULL)
     {
       goto theend;
@@ -1455,7 +1455,7 @@ theend:
 }
 
 err_t
-txnt_determ_populate (struct txn_table *t, struct alloc *alloc, error *e)
+txnt_determ_populate (struct txn_table *t, struct chunk_alloc *alloc, error *e)
 {
   latch_lock (&t->l);
   const u32 len = htable_size (t->t);
@@ -1464,7 +1464,7 @@ txnt_determ_populate (struct txn_table *t, struct alloc *alloc, error *e)
 
   for (u32 i = 0; i < 1000 - len; ++i, tid++)
   {
-    struct txn *tx = alloc_alloc (alloc, 1, sizeof *tx, NULL);
+    struct txn *tx = chunk_malloc (alloc, 1, sizeof *tx, NULL);
     if (tx == NULL)
     {
       goto theend;

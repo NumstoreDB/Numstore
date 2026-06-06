@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "_numstore.h"
-#include "c_specx/chunk_alloc.h"
+#include "alloc.h"
 #include "c_specx/error.h"
 #include "c_specx/memory.h"
 #include "nscore/errors.h"

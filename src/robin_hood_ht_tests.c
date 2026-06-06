@@ -17,7 +17,10 @@
 #define VTYPE  u32
 #define KTYPE  int
 #define SUFFIX idx
-#include "c_specx.h"
+#include "robin_hood_ht.h"
+#undef VTYPE
+#undef KTYPE
+#undef SUFFIX
 
 #ifndef NTEST
 #  define TEST_TABLE_LEN 1000

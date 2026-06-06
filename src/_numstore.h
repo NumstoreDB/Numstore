@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "c_specx/chunk_alloc.h"
+#include "alloc.h"
 #include "nscore/types.h"
 #include "nscore/variables.h"
 #include "numstore.h"

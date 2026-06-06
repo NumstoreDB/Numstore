@@ -172,7 +172,9 @@ void txnt_remove_txn_expect (struct txn_table *t, const struct txn *unsafe_tx);
 
 // SERIALIZATION
 
-bool  txnt_equal_ignore_state (struct txn_table *left, struct txn_table *right);
-err_t txnt_rand_populate (struct txn_table *t, struct alloc *alloc, error *e);
-err_t txnt_determ_populate (struct txn_table *t, struct alloc *alloc, error *e);
-void  txnt_crash (struct txn_table *t);
+bool txnt_equal_ignore_state (struct txn_table *left, struct txn_table *right);
+err_t
+txnt_rand_populate (struct txn_table *t, struct chunk_alloc *alloc, error *e);
+err_t
+txnt_determ_populate (struct txn_table *t, struct chunk_alloc *alloc, error *e);
+void txnt_crash (struct txn_table *t);

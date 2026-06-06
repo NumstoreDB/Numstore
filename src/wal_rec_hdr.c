@@ -22,7 +22,7 @@
 #include "nscore/txn_table.h"
 
 void
-wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc)
+wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
 {
   dest->type = randu32r (WL_BEGIN, WL_CLR);
   switch (dest->type)

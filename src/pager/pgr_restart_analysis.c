@@ -14,8 +14,8 @@
 
 #include <c_specx.h>
 
-#include "nscore/aries.h"
 #include "compile_config.h"
+#include "nscore/aries.h"
 #include "nscore/dirty_page_table.h"
 #include "nscore/pager.h"
 #include "nscore/pages/fsm_page.h"

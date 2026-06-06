@@ -185,9 +185,8 @@ struct wal_rec_hdr_write
   };
 };
 
-void
-wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest, struct alloc *alloc);
-const char              *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
+void        wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
+const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry

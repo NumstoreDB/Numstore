@@ -15,7 +15,7 @@
 #include <c_specx.h>
 
 #include "_numstore.h"
-#include "c_specx/chunk_alloc.h"
+#include "alloc.h"
 #include "nscore/nshandle.h"
 #include "nscore/pager.h"
 
