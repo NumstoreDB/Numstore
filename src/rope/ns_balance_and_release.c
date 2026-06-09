@@ -12,15 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/page_delegate.h"
-#include "nscore/page_fixture.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/data_list.h"
-#include "nscore/pages/page.h"
-#include "nscore/rope.h"
+#include "page_fixture.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/data_list.h"
+#include "pages/page.h"
+#include "pages/page_delegate.h"
+#include "rope.h"
 
 /*
  * Rebalance a data-list leaf against its left (prev) sibling.

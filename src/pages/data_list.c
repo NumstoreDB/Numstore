@@ -12,12 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pages/data_list.h"
-
-#include <c_specx.h>
+#include "pages/data_list.h"
 
 #include "compile_config.h"
-#include "nscore/pages/page.h"
+#include "pages/page.h"
+#include "testing/testing.h"
 
 // smartfiles
 // Initialization

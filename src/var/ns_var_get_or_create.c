@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
+
 
 #include "compile_config.h"
-#include "nscore/page_fixture.h"
-#include "nscore/pager.h"
-#include "nscore/types.h"
-#include "nscore/var.h"
+#include "page_fixture.h"
+#include "pager.h"
+#include "types.h"
+#include "var.h"
 
 err_t
 ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)

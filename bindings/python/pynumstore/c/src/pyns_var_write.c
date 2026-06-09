@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "_numstore.h"
 #include "_pynumstore.h"
 #include "numstore.h"
+#include "variables.h"
 
 PyObject *
 pyns_var_write (PyObject *Py_UNUSED (m), PyObject *args)

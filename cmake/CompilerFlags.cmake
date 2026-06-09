@@ -60,6 +60,7 @@ else()
 
         # Silence "assigned but never used" warnings
         -Wno-unused-but-set-variable 
+
     )
 
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")

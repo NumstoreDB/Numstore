@@ -12,13 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/prim.h"
+#include "prim.h"
 
-#include <c_specx.h>
-#include <string.h>
-
-#include "nscore/errors.h"
-#include "nscore/types.h"
+#include "error.h"
+#include "numerics.h"
+#include "testing/testing.h"
+#include "types.h"
 
 DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
   ASSERT (s);

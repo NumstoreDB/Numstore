@@ -12,11 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#pragma once
+#ifndef SMFILE_TEST_FIXTURE_H
+#define SMFILE_TEST_FIXTURE_H
 
-#include <c_specx.h>
-
-#include "smfile.h"
+#include "collections.h"    // data_writer
+#include "compile_config.h" // t_size ...etc
+#include "smfile.h"         // smfile
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);
@@ -88,3 +89,5 @@ struct smfile_test_fixture
 
 struct smfile_test_fixture smfile_test_fixture_open (const char *path);
 int smfile_test_fixture_close (struct smfile_test_fixture *f);
+
+#endif // SMFILE_TEST_FIXTURE_H

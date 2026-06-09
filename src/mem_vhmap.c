@@ -14,11 +14,10 @@
 
 #include "mem_vhmap.h"
 
-#include <c_specx.h>
-
-#include "nscore/errors.h"
-#include "nscore/types.h"
-#include "nscore/variables.h"
+#include "numerics.h"        // randu32
+#include "os.h"              // i_malloc
+#include "testing/testing.h" // TEST
+#include "variables.h"       // variable
 
 struct var_frame
 {

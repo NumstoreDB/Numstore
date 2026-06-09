@@ -12,16 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/aries.h"
-#include "nscore/lock_table.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/fsm_page.h"
-#include "nscore/pages/page.h"
-#include "nscore/txn.h"
-#include "nscore/wal_rec_hdr.h"
+#include "lock_table.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/fsm_page.h"
+#include "pages/page.h"
+#include "wal.h"
 
 ////////////////////////////////////////////////////////////
 // ROLLBACK (Figure 8)

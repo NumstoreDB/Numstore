@@ -13,8 +13,9 @@
 /// limitations under the License.
 
 #include "_pynumstore.h"
-#include "nscore/compiler.h"
-#include "nscore/types.h"
+#include "compiler.h"
+#include "testing/testing.h"
+#include "types.h"
 
 // Build a complex valued struct
 static PyArray_Descr *

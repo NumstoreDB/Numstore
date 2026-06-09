@@ -12,17 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "c_specx/threading.h"
-#include "nscore/aries.h"
-#include "nscore/file_pager.h"
-#include "nscore/lock_table.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/fsm_page.h"
-#include "nscore/wal.h"
-#include "nscore/wal_ostream.h"
+#include "file_pager.h"
+#include "lock_table.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/fsm_page.h"
+#include "wal.h"
 
 #ifdef _WIN32
 #  define NS_NAME_MAX 50

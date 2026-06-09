@@ -11,6 +11,7 @@ project(numstore
     LANGUAGES   C
 )
 
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -76,3 +77,4 @@ add_subdirectory(apps)
 if(BUILD_PYTHON_BINDINGS)
   add_subdirectory(bindings/python/pynumstore)
 endif()
+

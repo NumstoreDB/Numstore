@@ -12,11 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pages/fsm_page.h"
+#include "pages/fsm_page.h"
 
-#include <c_specx.h>
-
-#include "nscore/pages/page.h"
+#include "pages/page.h"
 
 void
 fsm_init_empty (page *in)

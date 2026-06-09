@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 
-#include "nscore/file_pager.h"
-#include "nscore/page_fixture.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/data_list.h"
-#include "nscore/pages/page.h"
+
+#include "file_pager.h"
+#include "page_fixture.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/data_list.h"
+#include "pages/page.h"
 
 err_t
 pgr_get_writable (

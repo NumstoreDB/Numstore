@@ -1,7 +1,7 @@
 import os
 
-ROOTS = ["src", "include"]
-OLD, NEW = "c_specx/malloc_plan.h", "alloc.h"
+ROOTS = ["src", "include", "apps", "bindings"]
+OLD, NEW = "page_delegate", "pages/page_delegate"
 
 for ROOT in ROOTS:
     for dirpath, _, files in os.walk(ROOT):

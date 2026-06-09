@@ -12,15 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
+
 
 #include "compile_config.h"
-#include "nscore/page_delegate.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/var_page.h"
-#include "nscore/types.h"
-#include "nscore/var.h"
+#include "pages/page_delegate.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/var_page.h"
+#include "types.h"
+#include "var.h"
 
 /*
  * Advance params->vp from the current PG_VAR_PAGE or PG_VAR_TAIL to the

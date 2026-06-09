@@ -12,12 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pages/inner_node.h"
+#include "pages/inner_node.h"
 
-#include <c_specx.h>
-
-#include "inner_node_testing.h"
-#include "nscore/pages/page.h"
+#include "pages/page.h"
+#include "testing/inner_node_testing.h"
+#include "testing/testing.h"
 
 #define VTYPE  int
 #define KTYPE  pgno

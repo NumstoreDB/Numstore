@@ -12,11 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/dirty_page_table.h"
-
-#include <c_specx.h>
+#include "dirty_page_table.h"
 
 #include "compile_config.h"
+#include "numerics.h"
 
 /*
  * Dirty page table entry.

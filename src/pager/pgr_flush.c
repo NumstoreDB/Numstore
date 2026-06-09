@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/dirty_page_table.h"
-#include "nscore/file_pager.h"
-#include "nscore/pager.h"
-#include "nscore/pages/page.h"
+#include "dirty_page_table.h"
+#include "file_pager.h"
+#include "pager.h"
+#include "pages/page.h"
 
 err_t
 pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)

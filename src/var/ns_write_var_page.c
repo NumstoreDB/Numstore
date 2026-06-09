@@ -12,16 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "compile_config.h"
-#include "nscore/page_delegate.h"
-#include "nscore/page_fixture.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/page.h"
-#include "nscore/types.h"
-#include "nscore/var.h"
+#include "page_fixture.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/page.h"
+#include "pages/page_delegate.h"
+#include "types.h"
+#include "var.h"
 
 static err_t
 ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)

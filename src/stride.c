@@ -12,7 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
+#include "collections.h"
+#include "testing/testing.h"
 
 bool
 ustride_equal (const struct user_stride left, const struct user_stride right)

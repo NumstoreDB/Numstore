@@ -12,13 +12,25 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#pragma once
+/**
+ * @file
+ * @brief Mem variable hash map
+ *
+ * An in memory variable hash map - used mostly for testing
+ * replicating get delete insert semantics in memory
+ */
 
-#include <c_specx.h>
+#ifndef MEM_VHMAP_H
+#define MEM_VHMAP_H
 
-#include "nscore/variables.h"
+#include "alloc.h"     // slab alloc
+#include "htable.h"    // hash table
+#include "serial.h"    // string
+#include "variables.h" // variable
 
-// You may consider moving this to numstore - might be useful for caching
+/******************************************************************************
+ * SECTION: Memory Variable Hash Map
+ ******************************************************************************/
 
 struct mem_vhmap
 {
@@ -26,12 +38,30 @@ struct mem_vhmap
   struct slab_alloc alloc;  // Allocator for variable frames
 };
 
-// Lifecycle
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Lifecycle
+ * @brief Creation and deletion
+ *----------------------------------------------------------------------------*/
+
 struct mem_vhmap *mem_vhmap_create (error *e);
 void              mem_vhmap_free (struct mem_vhmap *db);
 struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Primary API
+ * @brief Get Remove Delete
+ *----------------------------------------------------------------------------*/
+
 err_t mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
 struct variable *mem_vhmap_get_var (struct mem_vhmap *db, struct string name);
 void mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
-u32  mem_vhmap_count (struct mem_vhmap *db);
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Utilities
+ * @brief Random and count
+ *----------------------------------------------------------------------------*/
+
+u32              mem_vhmap_count (struct mem_vhmap *db);
 struct variable *mem_vhmap_random (struct mem_vhmap *db);
+
+#endif // MEM_VHMAP_H

@@ -12,14 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/node_updates.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/data_list.h"
-#include "nscore/pages/page.h"
-#include "nscore/rope.h"
+#include "node_updates.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/data_list.h"
+#include "pages/page.h"
+#include "rope.h"
 
 /*
  * Remove elements from the R+Tree with an optional stride.
@@ -338,10 +336,8 @@ ns_remove (struct ns_remove_params *params, error *e)
   s.read_idx = s.write_idx;
 
   // Phase 1: Remove / Skip
-  int k = 0;
   while (s.max_remove == 0 || s.total_removed < s.max_remove)
   {
-    k++;
     const page *sro  = page_h_ro (remove_creader (&s));
     p_size      rlen = dl_used (sro);
 

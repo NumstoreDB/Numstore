@@ -85,6 +85,16 @@
         "BUILD_PYTHON_BINDINGS":      "OFF",
         "BUILD_SAMPLES":              "OFF"
       }
+    },
+
+    {
+      "name": "ninja",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
     }
   ],
   "buildPresets": [

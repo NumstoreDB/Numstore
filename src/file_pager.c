@@ -12,13 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/file_pager.h"
+#include "file_pager.h"
 
-#include <c_specx.h>
-#include <string.h>
-
-#include "compile_config.h"
-#include "nscore/errors.h"
+#include "compile_config.h" // pgno ...etc
+#include "concurrency.h"
+#include "csx_assert.h"
+#include "error.h"
+#include "os.h"
+#include "platform.h"
+#include "testing/testing.h" // TEST
 
 enum file_pager_flags
 {

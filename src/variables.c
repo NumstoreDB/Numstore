@@ -12,12 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/variables.h"
+#include "variables.h"
 
-#include <c_specx.h>
-
-#include "nscore/pages/var_hash_page.h"
-#include "nscore/types.h"
+#include "pages/var_hash_page.h"
+#include "testing/testing.h"
+#include "types.h"
 
 bool
 variable_equal (const struct variable *left, const struct variable *right)

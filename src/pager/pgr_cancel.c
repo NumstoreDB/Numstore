@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pager.h"
+#include "pager.h"
 
 /*
  * Discard an in-flight page handle without writing changes to disk.

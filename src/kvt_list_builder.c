@@ -12,10 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/errors.h"
-#include "nscore/types.h"
+#include "error.h"
+#include "testing/testing.h"
+#include "types.h"
 
 DEFINE_DBG_ASSERT (struct kvt_list_builder, kvt_list_builder, s, {
   ASSERT (s);
