@@ -9,6 +9,7 @@
 ![GitHub Actions](https://github.com/lincketheo/Numstore/actions/workflows/cibuildwheel.yml/badge.svg)
 
 
+
 **A database for arrays**
 
 Numstore is a single file embedded ACID database built for arrays written entirely 
