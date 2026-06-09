@@ -12,16 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
 #include "compile_config.h"
-#include "nscore/aries.h"
-#include "nscore/dirty_page_table.h"
-#include "nscore/pager.h"
-#include "nscore/pages/fsm_page.h"
-#include "nscore/txn.h"
-#include "nscore/txn_table.h"
-#include "nscore/wal_rec_hdr.h"
+#include "dirty_page_table.h"
+#include "pager.h"
+#include "pages/fsm_page.h"
+#include "txn_table.h"
+#include "wal.h"
 
 ////////////////////////////////////////////////////////////
 // ANALYSIS (Figure 10)

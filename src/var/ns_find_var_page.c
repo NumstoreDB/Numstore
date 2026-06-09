@@ -12,19 +12,19 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
+
 
 #include "compile_config.h"
-#include "nscore/errors.h"
-#include "nscore/page_fixture.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/page.h"
-#include "nscore/pages/var_hash_page.h"
-#include "nscore/pages/var_page.h"
-#include "nscore/types.h"
-#include "nscore/var.h"
-#include "nscore/variables.h"
+#include "error.h"
+#include "page_fixture.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/page.h"
+#include "pages/var_hash_page.h"
+#include "pages/var_page.h"
+#include "types.h"
+#include "var.h"
+#include "variables.h"
 
 static err_t
 err_var_doesnt_exist (const struct string vname, error *e)

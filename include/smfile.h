@@ -12,55 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-// AUTO GENERATED USING CMAKE - DO NOT MODIFY
-
-// clang-format off
 #pragma once
 
-#include <stdint.h>
 #include <inttypes.h>
+#include <stdint.h>
 
-////////////////////////////////////////////////////////////
-// Data Type Sizes
+#include "compile_config.h"
 
-typedef uint32_t t_size; // Represents the size of a single type in bytes
-typedef int32_t st_size; // Signed t_size
-typedef uint32_t p_size; // To index inside a page
-typedef int32_t sp_size; // Signed p_size
-typedef uint64_t b_size; // Bytes size to index into a contiguous rope bytes
-typedef int64_t sb_size; // Signed b_size
-typedef uint64_t pgno;   // Page number
-typedef int64_t spgno;   // Signed page number
-typedef uint64_t txid;   // Transaction id
-typedef int64_t stxid;   // Signed transaction id
-typedef int64_t slsn;    // Wall index (often called LSN)
-typedef uint64_t lsn;    // Wall index (often called LSN)
-typedef uint8_t pgh;     // Page header
-typedef uint8_t wlh;     // WAL header
-
-#define PGNO_NULL U64_MAX
-#define LSN_NULL  U64_MAX
-#define WLH_NULL  U8_MAX
-
-#define PRt_size  PRIu32
-#define PRst_size PRId32
-#define PRp_size  PRIu32
-#define PRsp_size PRId32
-#define PRb_size  PRIu64
-#define PRsb_size PRId64
-#define PRpgno    PRIu64
-#define PRspgno   PRId64
-#define PRtxid    PRIu64
-#define PRstxid   PRId64
-#define PRlsn     PRIu64
-#define PRslsn    PRId64
-#define PRpgh     PRIu8
-#define PRwlh     PRIu8
-
-// Magic constants
 #define SMF_END INT64_MAX
-
-// clang-format on
 
 typedef struct smfile smfile_t;
 
@@ -99,6 +58,15 @@ smfile_t *smfile_new_context (smfile_t *ns);
  * @return < 0 on error, 0 on success
  */
 int smfile_close (smfile_t *ns);
+
+/**
+ * @brief Crash a smart file - this keeps the WAL alive
+ * and enters recovery mode on next open
+ *
+ * @param ns
+ * @return
+ */
+int smfile_crash (smfile_t *ns);
 
 /**
  * @brief Similar to strerror. If any of the functions failed, you can

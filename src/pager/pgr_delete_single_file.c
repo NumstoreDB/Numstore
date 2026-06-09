@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
+
 #include <limits.h>
 
-#include "nscore/pager.h"
+#include "pager.h"
 
 #ifndef PATH_MAX
 #  define PATH_MAX 260

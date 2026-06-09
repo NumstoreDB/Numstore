@@ -12,13 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/errors.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/page.h"
-#include "nscore/rope.h"
+#include "error.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/page.h"
+#include "rope.h"
 
 /*
  * Descend the R+Tree to the data-list page containing byte offset [bofst].

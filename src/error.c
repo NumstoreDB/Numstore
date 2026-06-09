@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
+#include "error.h"
+
+#include "csx_assert.h"
+#include "platform.h"
 
 #ifdef ERR_T_FAIL_FAST
 #endif

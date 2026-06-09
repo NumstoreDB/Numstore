@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/var.h"
+#include "page_h.h"
+#include "pager.h"
+#include "var.h"
 
 err_t
 ns_var_get (struct ns_var_get_params *params, error *e)

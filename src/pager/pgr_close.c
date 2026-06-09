@@ -12,16 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "c_specx/logging.h"
-#include "c_specx/threading.h"
-#include "nscore/file_pager.h"
-#include "nscore/lock_table.h"
-#include "nscore/lt_lock.h"
-#include "nscore/pager.h"
-#include "nscore/txn_table.h"
-#include "nscore/wal.h"
+#include "file_pager.h"
+#include "lock_table.h"
+#include "pager.h"
+#include "txn_table.h"
+#include "wal.h"
 
 err_t
 pgr_close (struct pager *p, error *e)

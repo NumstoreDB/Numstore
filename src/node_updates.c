@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/node_updates.h"
+#include "node_updates.h"
 
-#include <c_specx.h>
-
-#include "nscore/pages/inner_node.h"
-#include "nscore/pages/page.h"
+#include "compile_config.h"
+#include "pages/inner_node.h"
+#include "pages/page.h"
+#include "testing/testing.h"
 
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)

@@ -25,11 +25,34 @@
 typedef struct nsdb     nsdb_t;
 typedef struct nsdb_var nsdb_var_t;
 
-// In array notation [a:b:c]
-#define STOP_PRESENT  (1 << 0) // [:c]
-#define STEP_PRESENT  (1 << 1) // [:b:]
-#define START_PRESENT (1 << 2) // [a:]
-#define COLON_PRESENT (1 << 3) // [:]
+/**
+ * @enum user_stride::@0
+ * @brief Bitmask flags indicating which slice parameters were explicitly
+ * provided.
+ *
+ * @var STOP_PRESENT
+ * @brief `[0:-1]`, `[:-1]`, `[::-1]` are all examples where Stop is present.
+ * `[0:]`, `[:]`, `[::]` are all examples where Stop is not present.
+ *
+ * @var STEP_PRESENT
+ * @brief `[::2]`, `[1:10:2]` are examples where Step is present.
+ * `[1:10]` is an example where Step is not present.
+ *
+ * @var START_PRESENT
+ * @brief `[0:10]`, `[0::2]` are examples where Start is present.
+ * `[:10]`, `[::2]` are examples where Start is omitted.
+ *
+ * @var COLON_PRESENT
+ * @brief Indicates if at least one colon `:` was matched during parsing,
+ * distinguishing a slice sequence like `[:]` from a direct index like `[0]`.
+ */
+enum
+{
+  STOP_PRESENT  = 1 << 0,
+  STEP_PRESENT  = 1 << 1,
+  START_PRESENT = 1 << 2,
+  COLON_PRESENT = 1 << 3,
+};
 
 //////////////////////////////////////////////////
 /// Lifecycle and db tools
@@ -38,6 +61,7 @@ nsdb_t *nsdb_open (const char *path);
 int     nsdb_cleanup (const char *path);
 nsdb_t *nsdb_new_context (nsdb_t *ns);
 int     nsdb_close (nsdb_t *ns);
+int     nsdb_crash (nsdb_t *ns);
 int     nsdb_validate (nsdb_t *ns);
 
 //////////////////////////////////////////////////

@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pages/var_page.h"
+#include "pages/var_page.h"
 
-#include <c_specx.h>
-
+#include "collections.h"
 #include "compile_config.h"
-#include "nscore/pages/page.h"
+#include "pages/page.h"
+#include "testing/testing.h"
 
 // smartfiles
 

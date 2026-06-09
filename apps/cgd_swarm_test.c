@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "cgd_swarm_test_fixture.h"
+#include "testing/cgd_swarm_test_fixture.h"
 
 #define DEFAULT_TIMEOUT_SECONDS 10
 

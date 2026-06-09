@@ -12,16 +12,388 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/wal.h"
+#include "wal.h"
 
-#include <c_specx.h>
-#include <string.h>
+#include "compile_config.h"
+#include "dirty_page_table.h"
+#include "txn_table.h"
+#include "wal.h"
 
-#include "nscore/dirty_page_table.h"
-#include "nscore/txn_table.h"
-#include "nscore/wal_istream.h"
-#include "nscore/wal_ostream.h"
-#include "nscore/wal_rec_hdr.h"
+////////////////////////////////////////////////////////////
+/// WAL OStream
+
+DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, { ASSERT (w); })
+
+struct wal_ostream *
+walos_open (const char *fname, error *e)
+{
+  struct wal_ostream *ret = i_malloc (1, sizeof *ret, e);
+  if (ret == NULL)
+  {
+    return NULL;
+  }
+
+  if (i_open_w (&ret->fd, fname, e))
+  {
+    goto err_free;
+  }
+
+  const i64 len = i_seek (&ret->fd, 0, I_SEEK_END, e);
+  if (len < 0)
+  {
+    goto err_close;
+  }
+
+  latch_init (&ret->l);
+  ret->buffer      = cbuffer_create (ret->_buffer, sizeof (ret->_buffer));
+  ret->flushed_lsn = len;
+
+  DBG_ASSERT (wal_ostream, ret);
+  return ret;
+
+err_close:
+  i_close (&ret->fd, e);
+err_free:
+  i_free (ret);
+  return NULL;
+}
+
+err_t
+walos_close (struct wal_ostream *w, error *e)
+{
+  DBG_ASSERT (wal_ostream, w);
+  walos_flush_all (w, e);
+  i_close (&w->fd, e);
+  i_free (w);
+  return error_trace (e);
+}
+
+err_t
+walos_crash (struct wal_ostream *w, error *e)
+{
+  DBG_ASSERT (wal_ostream, w);
+  i_close (&w->fd, e);
+  i_free (w);
+  return error_trace (e);
+}
+
+static err_t
+walos_flush_impl (struct wal_ostream *w, error *e)
+{
+  const u32 towrite = cbuffer_len (&w->buffer);
+  if (towrite == 0)
+  {
+    return SUCCESS;
+  }
+
+  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e))
+  {
+    panic ("Wal write failed");
+  }
+  cbuffer_write_to_file_2 (&w->buffer, towrite);
+
+  if (i_fsync (&w->fd, e))
+  {
+    panic ("Wal fsync failed");
+  }
+
+  w->flushed_lsn += towrite;
+  return SUCCESS;
+}
+
+err_t
+walos_flush_to (struct wal_ostream *w, const lsn l, error *e)
+{
+  latch_lock (&w->l);
+  err_t ret = SUCCESS;
+  if (l > w->flushed_lsn)
+  {
+    ret = walos_flush_impl (w, e);
+  }
+  latch_unlock (&w->l);
+  return ret;
+}
+
+err_t
+walos_flush_all (struct wal_ostream *w, error *e)
+{
+  DBG_ASSERT (wal_ostream, w);
+  latch_lock (&w->l);
+  const err_t ret = walos_flush_impl (w, e);
+  latch_unlock (&w->l);
+  return ret;
+}
+
+err_t
+walos_write_all (
+    struct wal_ostream *w,
+    u32                *checksum,
+    const void         *data,
+    const u32           len,
+    error              *e
+)
+{
+  DBG_ASSERT (wal_ostream, w);
+
+  if (checksum)
+  {
+    checksum_execute (checksum, data, len);
+  }
+
+  u32       written = 0;
+  const u8 *src     = data;
+
+  latch_lock (&w->l);
+
+  while (written < len)
+  {
+    if (cbuffer_avail (&w->buffer) == 0)
+    {
+      if (walos_flush_impl (w, e))
+      {
+        latch_unlock (&w->l);
+        return error_trace (e);
+      }
+    }
+
+    const u32 towrite = MIN (len - written, cbuffer_avail (&w->buffer));
+    if (towrite > 0)
+    {
+      cbuffer_write_expect (src + written, 1, towrite, &w->buffer);
+      written += towrite;
+    }
+  }
+
+  latch_unlock (&w->l);
+  return SUCCESS;
+}
+
+lsn
+walos_get_next_lsn (struct wal_ostream *w)
+{
+  latch_lock (&w->l);
+  lsn ret = w->flushed_lsn + cbuffer_len (&w->buffer);
+  latch_unlock (&w->l);
+  return ret;
+}
+
+slsn
+walos_truncate (struct wal_ostream *w, error *e)
+{
+  latch_lock (&w->l);
+  if (i_truncate (&w->fd, 0, e))
+  {
+    goto theend;
+  }
+  if (i_seek (&w->fd, 0, I_SEEK_SET, e))
+  {
+    goto theend;
+  }
+
+theend:
+  latch_unlock (&w->l);
+  return error_trace (e);
+}
+
+////////////////////////////////////////////////////////////
+/// WAL IStream
+
+/*
+ * WAL input stream — sequential reader for recovery and backward scans.
+ *
+ * curlsn is the committed LSN: the byte offset in the WAL file of the start
+ * of the current log record being read, advanced by walis_mark_end_log().
+ * lsnidx tracks bytes read within the current record (reset by
+ * walis_mark_start_log()) so that curlsn is updated atomically per record.
+ *
+ * A partial read (fewer bytes than requested) means a torn record at the
+ * end of the WAL; walis_read_all() treats this as soft EOF (iseof=true)
+ * and seeks back to curlsn, leaving the file position at the last complete
+ * record boundary.
+ */
+
+DEFINE_DBG_ASSERT (struct wal_istream, wal_istream, w, { ASSERT (w); })
+
+struct wal_istream
+{
+  i_file fd;     // The file we're reading
+  lsn    curlsn; // Where we are within the entire log file
+  lsn    lsnidx; // Where we are within the current log
+
+  latch latch;
+};
+
+////////////////////////////////////////////////////////////
+/// LOGR Mode
+
+struct wal_istream *
+walis_open (const char *fname, error *e)
+{
+  struct wal_istream *dest = i_malloc (1, sizeof *dest, e);
+  if (dest == NULL)
+  {
+    return NULL;
+  }
+
+  /**
+   * We'll open in write mode too
+   * because if we reach the end on a corrupt
+   * record, it truncates the file.
+   *
+   * In the future I forsee this going away.
+   */
+  if (i_open_r (&dest->fd, fname, e))
+  {
+    i_free (dest);
+    return NULL;
+  }
+
+  const i64 len = i_file_size (&dest->fd, e);
+  if (len < 0)
+  {
+    i_close (&dest->fd, e);
+    i_free (dest);
+    return NULL;
+  }
+
+  if (i_seek (&dest->fd, 0, I_SEEK_SET, e) < 0)
+  {
+    i_close (&dest->fd, e);
+    i_free (dest);
+    return NULL;
+  }
+
+  dest->curlsn = 0;
+  dest->lsnidx = 0;
+  latch_init (&dest->latch);
+
+  DBG_ASSERT (wal_istream, dest);
+
+  return dest;
+}
+
+err_t
+walis_close (struct wal_istream *w, error *e)
+{
+  DBG_ASSERT (wal_istream, w);
+  i_close (&w->fd, e);
+  i_free (w);
+  return error_trace (e);
+}
+
+err_t
+walis_seek (struct wal_istream *w, const lsn pos, error *e)
+{
+  latch_lock (&w->latch);
+
+  DBG_ASSERT (wal_istream, w);
+
+  const i64 res = i_seek (&w->fd, pos, I_SEEK_SET, e);
+  if (res < 0)
+  {
+    latch_unlock (&w->latch);
+    return error_trace (e);
+  }
+
+  if ((u64)res != pos)
+  {
+    latch_unlock (&w->latch);
+    return error_causef (e, ERR_CORRUPT, "seek to invalid offset");
+  }
+
+  w->curlsn = pos;
+
+  latch_unlock (&w->latch);
+
+  return SUCCESS;
+}
+
+err_t
+walis_read_all (
+    struct wal_istream *w,
+    bool               *iseof,
+    lsn                *rlsn,
+    u32                *checksum,
+    void               *data,
+    const u32           len,
+    error              *e
+)
+{
+  latch_lock (&w->latch);
+
+  DBG_ASSERT (wal_istream, w);
+
+  *iseof = false;
+  if (rlsn)
+  {
+    *rlsn = w->curlsn;
+  }
+
+  const i64 bread = i_read_all (&w->fd, data, len, e);
+  if (bread < 0)
+  {
+    latch_unlock (&w->latch);
+    return error_trace (e);
+  }
+
+  if (bread < len)
+  {
+    // Hit EOF - incomplete record (torn write at end of WAL)
+    if (bread > 0)
+    {
+      // Partial read: seek back so the file position is at the
+      // record start, leaving it at the last fully-written
+      // record boundary
+      if (walis_seek (w, w->curlsn, e))
+      {
+        latch_unlock (&w->latch);
+        return error_trace (e);
+      }
+    }
+    *iseof = true;
+    latch_unlock (&w->latch);
+    return SUCCESS;
+  }
+
+  if (checksum)
+  {
+    checksum_execute (checksum, data, len);
+  }
+
+  w->lsnidx += len;
+
+  latch_unlock (&w->latch);
+
+  return SUCCESS;
+}
+
+void
+walis_mark_start_log (struct wal_istream *w)
+{
+  latch_lock (&w->latch);
+  w->lsnidx = 0; // Reset intra-record byte counter before reading a new record
+  latch_unlock (&w->latch);
+}
+
+void
+walis_mark_end_log (struct wal_istream *w)
+{
+  latch_lock (&w->latch);
+  w->curlsn += w->lsnidx; // Advance committed LSN by the bytes just consumed
+  latch_unlock (&w->latch);
+}
+
+err_t
+walis_crash (struct wal_istream *w, error *e)
+{
+  DBG_ASSERT (wal_istream, w);
+  i_close (&w->fd, e);
+  i_free (w);
+  return error_trace (e);
+}
+
+////////////////////////////////////////////////////////////
+/// WAL
 
 static err_t
 wal_init (struct wal *dest, error *e)
@@ -266,4 +638,2177 @@ wal_crash (struct wal *w, error *e)
   i_free (w);
 
   return SUCCESS;
+}
+
+////////////////////////////////////////////////////////////
+/// WAL Append Log
+
+slsn
+wal_append_begin_log (struct wal *w, const txid tid, error *e)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+  w->whdr.type      = WL_BEGIN;
+  w->whdr.begin     = (struct wal_begin){.tid = tid};
+  const slsn result = wal_write_locked (w, e);
+  latch_unlock (&w->latch);
+  return result;
+}
+
+slsn
+wal_append_commit_log (struct wal *w, const txid tid, const lsn prev, error *e)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+  w->whdr.type      = WL_COMMIT;
+  w->whdr.commit    = (struct wal_commit){.tid = tid, .prev = prev};
+  const slsn result = wal_write_locked (w, e);
+  latch_unlock (&w->latch);
+  return result;
+}
+
+slsn
+wal_append_end_log (struct wal *w, const txid tid, const lsn prev, error *e)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+  w->whdr.type      = WL_END;
+  w->whdr.end       = (struct wal_end){.tid = tid, .prev = prev};
+  const slsn result = wal_write_locked (w, e);
+  latch_unlock (&w->latch);
+  return result;
+}
+
+slsn
+wal_append_update_log (
+    struct wal                   *w,
+    const struct wal_update_write update,
+    error                        *e
+)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+  w->whdr.type      = WL_UPDATE;
+  w->whdr.update    = update;
+  const slsn result = wal_write_locked (w, e);
+  latch_unlock (&w->latch);
+  return result;
+}
+
+slsn
+wal_append_clr_log (struct wal *w, const struct wal_clr_write clr, error *e)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+  w->whdr.type      = WL_CLR;
+  w->whdr.clr       = clr;
+  const slsn result = wal_write_locked (w, e);
+  latch_unlock (&w->latch);
+  return result;
+}
+
+slsn
+wal_append_log (struct wal *w, const struct wal_rec_hdr_write *whdr, error *e)
+{
+  switch (whdr->type)
+  {
+    case WL_BEGIN:
+    {
+      return wal_append_begin_log (w, whdr->begin.tid, e);
+    }
+    case WL_COMMIT:
+    {
+      return wal_append_commit_log (w, whdr->commit.tid, whdr->commit.prev, e);
+    }
+    case WL_END:
+    {
+      return wal_append_end_log (w, whdr->end.tid, whdr->end.prev, e);
+    }
+    case WL_UPDATE:
+    {
+      return wal_append_update_log (w, whdr->update, e);
+    }
+    case WL_CLR:
+    {
+      return wal_append_clr_log (w, whdr->clr, e);
+    }
+    case WL_EOF: UNREACHABLE ();
+  }
+
+  UNREACHABLE ();
+}
+
+////////////////////////////////////////////////////////////
+/// WAL Read
+
+static int
+wal_read_full (
+    const struct wal *w,
+    u32              *checksum,
+    const wlh         type,
+    const wlh         second_type,
+    u8               *buf,
+    const u32         total_len,
+    error            *e
+)
+{
+  ASSERT (total_len >= sizeof (wlh) + sizeof (u32));
+
+  u8 *head = buf;
+
+  memcpy (head, &type, sizeof (wlh));
+  head += sizeof (wlh);
+
+  if (second_type != WLH_NULL)
+  {
+    memcpy (head, &second_type, sizeof (wlh));
+    head += sizeof (wlh);
+  }
+
+  {
+    const u32 toread = total_len - (head - buf) - sizeof (u32);
+    if (toread > 0)
+    {
+      bool iseof;
+      WRAP (
+          walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e)
+      );
+      if (iseof)
+      {
+        return WL_EOF;
+      }
+    }
+
+    head += toread;
+    bool iseof;
+    WRAP (
+        walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e)
+    );
+    if (iseof)
+    {
+      return WL_EOF;
+    }
+  }
+
+  u32 actual_crc;
+  memcpy (&actual_crc, buf + total_len - sizeof (u32), sizeof (u32));
+  if (*checksum != actual_crc)
+  {
+    return error_causef (e, ERR_CORRUPT, "Invalid CRC");
+  }
+
+  return SUCCESS;
+}
+
+static err_t
+wal_read_physical_update (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_UPDATE);
+  u8        buf[WL_UPDATE_LEN];
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->update.type,
+      buf,
+      WL_UPDATE_LEN,
+      e
+  );
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_physical_update (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_fsm_update (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_UPDATE);
+  u8        buf[WL_FSM_UPDATE_LEN];
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->update.type,
+      buf,
+      WL_FSM_UPDATE_LEN,
+      e
+  );
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_fsm_update (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_file_extend_update (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_UPDATE);
+  u8        buf[WL_FILE_EXT_LEN];
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->update.type,
+      buf,
+      WL_FILE_EXT_LEN,
+      e
+  );
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_file_extend_update (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_physical_clr (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_CLR);
+  u8        buf[WL_CLR_LEN];
+  const int ret =
+      wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_CLR_LEN, e);
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_physical_clr (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_fsm_clr (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_CLR);
+  u8        buf[WL_FSM_CLR_LEN];
+  const int ret =
+      wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_FSM_CLR_LEN, e);
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_fsm_clr (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_dummy_clr (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_CLR);
+  u8        buf[WL_DUMMY_CLR_LEN];
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->clr.type,
+      buf,
+      WL_DUMMY_CLR_LEN,
+      e
+  );
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_dummy_clr (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_begin (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_BEGIN);
+  u8        buf[WL_BEGIN_LEN];
+  const int ret =
+      wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_BEGIN_LEN, e);
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_begin (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_commit (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_COMMIT);
+  u8        buf[WL_COMMIT_LEN];
+  const int ret =
+      wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_COMMIT_LEN, e);
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_commit (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_end (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
+{
+  ASSERT (r->type == WL_END);
+  u8        buf[WL_END_LEN];
+  const int ret =
+      wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_END_LEN, e);
+  WRAP (ret);
+  if (ret == WL_EOF)
+  {
+    r->type = WL_EOF;
+    return SUCCESS;
+  }
+  ASSERT (ret == SUCCESS);
+  walf_decode_end (r, buf);
+  return SUCCESS;
+}
+
+static err_t
+wal_read_sequential (
+    struct wal              *w,
+    struct wal_rec_hdr_read *dest,
+    lsn                     *rlsn,
+    error                   *e
+)
+{
+  u32  checksum = checksum_init ();
+  wlh  t;
+  bool iseof;
+
+  walis_mark_start_log (w->istream);
+
+  WRAP (
+      walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e)
+  );
+  if (rlsn)
+  {
+    *rlsn += w->start_lsn;
+  }
+  if (iseof)
+  {
+    dest->type = WL_EOF;
+    return SUCCESS;
+  }
+
+  dest->type = -1;
+
+  switch (t)
+  {
+    case WL_UPDATE:
+    {
+      dest->type        = t;
+      dest->update.type = -1;
+      WRAP (walis_read_all (
+          w->istream,
+          &iseof,
+          rlsn,
+          &checksum,
+          &t,
+          sizeof (t),
+          e
+      ));
+      if (rlsn)
+      {
+        *rlsn += w->start_lsn;
+      }
+      if (iseof)
+      {
+        dest->type = WL_EOF;
+        return SUCCESS;
+      }
+      switch (t)
+      {
+        case WUP_PHYSICAL:
+          dest->update.type = t;
+          WRAP (wal_read_physical_update (w, &checksum, dest, e));
+          break;
+        case WUP_FEXT:
+          dest->update.type = t;
+          WRAP (wal_read_file_extend_update (w, &checksum, dest, e));
+          break;
+        case WUP_FSM:
+          dest->update.type = t;
+          WRAP (wal_read_fsm_update (w, &checksum, dest, e));
+          break;
+      }
+      if ((int)dest->update.type == -1)
+      {
+        dest->type = -1;
+      }
+      break;
+    }
+    case WL_CLR:
+    {
+      dest->type     = t;
+      dest->clr.type = -1;
+      WRAP (walis_read_all (
+          w->istream,
+          &iseof,
+          rlsn,
+          &checksum,
+          &t,
+          sizeof (t),
+          e
+      ));
+      if (rlsn)
+      {
+        *rlsn += w->start_lsn;
+      }
+      if (iseof)
+      {
+        dest->type = WL_EOF;
+        return SUCCESS;
+      }
+      switch (t)
+      {
+        case WCLR_PHYSICAL:
+          dest->clr.type = t;
+          WRAP (wal_read_physical_clr (w, &checksum, dest, e));
+          break;
+        case WCLR_FSM:
+          dest->clr.type = t;
+          WRAP (wal_read_fsm_clr (w, &checksum, dest, e));
+          break;
+        case WCLR_DUMMY:
+          dest->clr.type = t;
+          WRAP (wal_read_dummy_clr (w, &checksum, dest, e));
+          break;
+      }
+      if ((int)dest->clr.type == -1)
+      {
+        dest->type = -1;
+      }
+      break;
+    }
+    case WL_BEGIN:
+    {
+      dest->type = t;
+      WRAP (wal_read_begin (w, &checksum, dest, e));
+      break;
+    }
+    case WL_COMMIT:
+    {
+      dest->type = t;
+      WRAP (wal_read_commit (w, &checksum, dest, e));
+      break;
+    }
+    case WL_END:
+    {
+      dest->type = t;
+      WRAP (wal_read_end (w, &checksum, dest, e));
+      break;
+    }
+  }
+
+  if ((int)dest->type == -1)
+  {
+    return error_causef (e, ERR_CORRUPT, "Invalid wal header type");
+  }
+
+  walis_mark_end_log (w->istream);
+
+  return SUCCESS;
+}
+
+struct wal_rec_hdr_read *
+wal_read_next (struct wal *w, lsn *rlsn, error *e)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+
+  ASSERT (w->istream);
+  if (wal_read_sequential (w, &w->rhdr, rlsn, e))
+  {
+    latch_unlock (&w->latch);
+    return NULL;
+  }
+
+  latch_unlock (&w->latch);
+  return &w->rhdr;
+}
+
+struct wal_rec_hdr_read *
+wal_read_first (struct wal *w, error *e)
+{
+  return wal_read_entry (w, sizeof (lsn), e);
+}
+
+struct wal_rec_hdr_read *
+wal_read_entry (struct wal *w, const lsn id, error *e)
+{
+  latch_lock (&w->latch);
+  DBG_ASSERT (wal, w);
+
+  ASSERT (w->istream);
+  if (id < w->start_lsn)
+  {
+    error_causef (
+        e,
+        ERR_CORRUPT,
+        "Tried to read previous deleted log %" PRlsn " %" PRlsn,
+        id,
+        w->start_lsn
+    );
+    latch_unlock (&w->latch);
+    return NULL;
+  }
+
+  if (walis_seek (w->istream, id - w->start_lsn, e))
+  {
+    latch_unlock (&w->latch);
+    return NULL;
+  }
+
+  lsn rlsn;
+  if (wal_read_sequential (w, &w->rhdr, &rlsn, e))
+  {
+    latch_unlock (&w->latch);
+    return NULL;
+  }
+
+  latch_unlock (&w->latch);
+  return &w->rhdr;
+}
+
+////////////////////////////////////////////////////////////
+/// WAL Record Header
+
+void
+wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
+{
+  dest->type = randu32r (WL_BEGIN, WL_CLR);
+  switch (dest->type)
+  {
+    case WL_BEGIN:
+    {
+      dest->begin.tid = randu32 ();
+      break;
+    }
+    case WL_COMMIT:
+    {
+      dest->commit.tid  = randu32 ();
+      dest->commit.prev = randu32 ();
+      break;
+    }
+    case WL_END:
+    {
+      dest->end.tid  = randu32 ();
+      dest->end.prev = randu32 ();
+      break;
+    }
+    case WL_UPDATE:
+    {
+      dest->update.type = randu32r (WUP_PHYSICAL, WUP_FEXT);
+      dest->update.tid  = randu32 ();
+      dest->update.prev = randu32 ();
+      switch (dest->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          dest->update.phys.pg = randu32 ();
+          rand_bytes (dest->update.phys.undo, NS_PAGE_SIZE);
+          rand_bytes (dest->update.phys.redo, NS_PAGE_SIZE);
+          break;
+        }
+        case WUP_FSM:
+        {
+          dest->update.fsm.pg   = randu32 ();
+          dest->update.fsm.undo = randu8 ();
+          dest->update.fsm.redo = randu8 ();
+          break;
+        }
+        case WUP_FEXT:
+        {
+          dest->update.fext.undo = randu32 ();
+          dest->update.fext.redo = randu32 ();
+          break;
+        }
+      }
+      break;
+    }
+    case WL_CLR:
+    {
+      dest->clr.type      = randu32r (WCLR_PHYSICAL, WCLR_DUMMY);
+      dest->clr.tid       = randu32 ();
+      dest->clr.prev      = randu32 ();
+      dest->clr.undo_next = randu32 ();
+      switch (dest->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          dest->clr.phys.pg = randu32 ();
+          rand_bytes (dest->clr.phys.redo, NS_PAGE_SIZE);
+          break;
+        }
+        case WCLR_FSM:
+        {
+          dest->clr.fsm.pg   = randu32 ();
+          dest->clr.fsm.redo = randu8 ();
+          break;
+        }
+        case WCLR_DUMMY:
+        {
+          break;
+        }
+      }
+      break;
+    }
+    case WL_EOF:
+    {
+      ASSERT (false);
+    }
+  }
+}
+
+const char *
+wal_rec_hdr_type_tostr (const enum wal_rec_hdr_type type)
+{
+  switch (type)
+  {
+    case WL_UPDATE:
+    {
+      return "WL_UPDATE";
+    }
+    case WL_CLR:
+    {
+      return "WL_CLR";
+    }
+    case WL_BEGIN:
+    {
+      return "WL_BEGIN";
+    }
+    case WL_COMMIT:
+    {
+      return "WL_COMMIT";
+    }
+    case WL_END:
+    {
+      return "WL_END";
+    }
+    case WL_EOF:
+    {
+      return "WL_EOF";
+    }
+  }
+
+  UNREACHABLE ();
+}
+
+struct wal_rec_hdr_write
+wrhw_from_wrhr (struct wal_rec_hdr_read *src)
+{
+  switch (src->type)
+  {
+    case WL_BEGIN:
+    {
+      return (struct wal_rec_hdr_write){
+          .type  = WL_BEGIN,
+          .begin = src->begin,
+      };
+    }
+    case WL_COMMIT:
+    {
+      return (struct wal_rec_hdr_write){
+          .type   = WL_COMMIT,
+          .commit = src->commit,
+      };
+    }
+    case WL_END:
+    {
+      return (struct wal_rec_hdr_write){
+          .type = WL_END,
+          .end  = src->end,
+      };
+    }
+    case WL_UPDATE:
+    {
+      switch (src->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          return (struct wal_rec_hdr_write){
+              .type   = WL_UPDATE,
+              .update = {
+                  .type = WUP_PHYSICAL,
+                  .tid  = src->update.tid,
+                  .prev = src->update.prev,
+                  .phys = (struct physical_write_update){
+                      .pg   = src->update.phys.pg,
+                      .redo = src->update.phys.redo,
+                      .undo = src->update.phys.undo,
+                  },
+              },
+          };
+        }
+        case WUP_FSM:
+        {
+          return (struct wal_rec_hdr_write){
+              .type   = WL_UPDATE,
+              .update = {
+                  .type = WUP_FSM,
+                  .tid  = src->update.tid,
+                  .prev = src->update.prev,
+                  .fsm  = src->update.fsm,
+              },
+          };
+        }
+        case WUP_FEXT:
+        {
+          return (struct wal_rec_hdr_write){
+              .type   = WL_UPDATE,
+              .update = {
+                  .type = WUP_FEXT,
+                  .tid  = src->update.tid,
+                  .prev = src->update.prev,
+                  .fext = src->update.fext,
+              },
+          };
+        }
+      }
+      break;
+    }
+    case WL_CLR:
+    {
+      switch (src->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          return (struct wal_rec_hdr_write){
+              .type = WL_CLR,
+              .clr  = {
+                  .type      = WCLR_PHYSICAL,
+                  .tid       = src->clr.tid,
+                  .prev      = src->clr.prev,
+                  .undo_next = src->clr.undo_next,
+                  .phys      = (struct physical_write_clr){
+                      .pg   = src->clr.phys.pg,
+                      .redo = src->clr.phys.redo,
+                  },
+              },
+          };
+        }
+        case WCLR_FSM:
+        {
+          return (struct wal_rec_hdr_write){
+              .type = WL_CLR,
+              .clr  = {
+                  .type      = WCLR_FSM,
+                  .tid       = src->clr.tid,
+                  .prev      = src->clr.prev,
+                  .undo_next = src->clr.undo_next,
+                  .fsm       = src->clr.fsm,
+              },
+          };
+        }
+        case WCLR_DUMMY:
+        {
+          return (struct wal_rec_hdr_write){
+              .type = WL_CLR,
+              .clr  = {
+                  .type      = WCLR_DUMMY,
+                  .tid       = src->clr.tid,
+                  .prev      = src->clr.prev,
+                  .undo_next = src->clr.undo_next,
+              },
+          };
+        }
+      }
+      break;
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+stxid
+wrh_get_tid (const struct wal_rec_hdr_read *h)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      return h->begin.tid;
+    }
+    case WL_COMMIT:
+    {
+      return h->commit.tid;
+    }
+    case WL_END:
+    {
+      return h->end.tid;
+    }
+    case WL_UPDATE:
+    {
+      return h->update.tid;
+    }
+    case WL_CLR:
+    {
+      return h->clr.tid;
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+slsn
+wrh_get_prev_lsn (const struct wal_rec_hdr_read *h)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      return 0;
+    }
+    case WL_COMMIT:
+    {
+      return h->commit.prev;
+    }
+    case WL_END:
+    {
+      return h->end.prev;
+    }
+    case WL_UPDATE:
+    {
+      return h->update.prev;
+    }
+    case WL_CLR:
+    {
+      return h->clr.prev;
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+bool
+wrh_is_undoable (const struct wal_rec_hdr_read *h)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      return false;
+    }
+    case WL_COMMIT:
+    {
+      return false;
+    }
+    case WL_END:
+    {
+      return false;
+    }
+    case WL_UPDATE:
+    {
+      switch (h->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          return true;
+        }
+        case WUP_FSM:
+        {
+          return true;
+        }
+        case WUP_FEXT:
+        {
+          return false;
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_CLR:
+    {
+      return false;
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+bool
+wrh_is_redoable (const struct wal_rec_hdr_read *h)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      return false;
+    }
+    case WL_COMMIT:
+    {
+      return false;
+    }
+    case WL_END:
+    {
+      return false;
+    }
+    case WL_UPDATE:
+    {
+      switch (h->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          return true;
+        }
+        case WUP_FSM:
+        {
+          return true;
+        }
+        case WUP_FEXT:
+        {
+          return false;
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_CLR:
+    {
+      switch (h->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          return true;
+        }
+        case WCLR_FSM:
+        {
+          return true;
+        }
+        case WCLR_DUMMY:
+        {
+          return false;
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+pgno
+wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      UNREACHABLE ();
+    }
+    case WL_COMMIT:
+    {
+      UNREACHABLE ();
+    }
+    case WL_END:
+    {
+      UNREACHABLE ();
+    }
+    case WL_UPDATE:
+    {
+      switch (h->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          return h->update.phys.pg;
+        }
+        case WUP_FSM:
+        {
+          return h->update.fsm.pg;
+        }
+        case WUP_FEXT:
+        {
+          UNREACHABLE ();
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_CLR:
+    {
+      switch (h->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          return h->clr.phys.pg;
+        }
+        case WCLR_FSM:
+        {
+          return h->clr.fsm.pg;
+        }
+        case WCLR_DUMMY:
+        {
+          UNREACHABLE ();
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+#ifndef NTEST
+bool
+wal_rec_hdr_read_equal (
+    const struct wal_rec_hdr_read *left,
+    const struct wal_rec_hdr_read *right
+)
+{
+  if (left->type != right->type)
+  {
+    return false;
+  }
+
+  bool match = true;
+
+  switch (left->type)
+  {
+    case WL_UPDATE:
+    {
+      if (left->update.type != right->update.type)
+      {
+        return false;
+      }
+
+      match = match && left->update.tid == right->update.tid;
+      match = match && left->update.prev == right->update.prev;
+
+      switch (left->update.type)
+      {
+        case WUP_FSM:
+        {
+          match = match && left->update.fsm.pg == right->update.fsm.pg;
+          match = match && left->update.fsm.undo == right->update.fsm.undo;
+          match = match && left->update.fsm.redo == right->update.fsm.redo;
+          break;
+        }
+        case WUP_PHYSICAL:
+        {
+          match = match && left->update.phys.pg == right->update.phys.pg;
+          match = match
+                  && memcmp (
+                         left->update.phys.undo,
+                         right->update.phys.undo,
+                         NS_PAGE_SIZE
+                     ) == 0;
+          match = match
+                  && memcmp (
+                         left->update.phys.redo,
+                         right->update.phys.redo,
+                         NS_PAGE_SIZE
+                     ) == 0;
+          break;
+        }
+        case WUP_FEXT:
+        {
+          match = match && left->update.fext.undo == right->update.fext.undo;
+          match = match && left->update.fext.redo == right->update.fext.redo;
+          break;
+        }
+      }
+      break;
+    }
+
+    case WL_CLR:
+    {
+      if (left->clr.type != right->clr.type)
+      {
+        return false;
+      }
+
+      match = match && left->clr.tid == right->clr.tid;
+      match = match && left->clr.prev == right->clr.prev;
+      match = match && left->clr.undo_next == right->clr.undo_next;
+
+      switch (left->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          match = match && left->clr.phys.pg == right->clr.phys.pg;
+          match = match
+                  && memcmp (
+                         left->clr.phys.redo,
+                         right->clr.phys.redo,
+                         NS_PAGE_SIZE
+                     ) == 0;
+          break;
+        }
+        case WCLR_FSM:
+        {
+          match = match && left->clr.fsm.pg == right->clr.fsm.pg;
+          match = match && left->clr.fsm.redo == right->clr.fsm.redo;
+          break;
+        }
+        case WCLR_DUMMY:
+        {
+          break;
+        }
+      }
+
+      break;
+    }
+
+    case WL_BEGIN:
+    {
+      match = match && left->begin.tid == right->begin.tid;
+      break;
+    }
+
+    case WL_END:
+    {
+      match = match && left->end.tid == right->end.tid;
+      match = match && left->end.prev == right->end.prev;
+      break;
+    }
+
+    case WL_COMMIT:
+    {
+      match = match && left->commit.tid == right->commit.tid;
+      match = match && left->commit.prev == right->commit.prev;
+      break;
+    }
+
+    case WL_EOF:
+    {
+      return true;
+    }
+  }
+
+  return match;
+}
+#endif
+
+void
+i_print_wal_rec_hdr_read_light (
+    const int                      log_level,
+    const struct wal_rec_hdr_read *r,
+    const lsn                      l
+)
+{
+  char        fields[128];
+  const char *name = "?";
+  const lsn  *prev = NULL;
+
+  switch (r->type)
+  {
+    case WL_UPDATE:
+      switch (r->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          name = "UPDATE PHYS";
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno,
+              r->update.tid,
+              r->update.phys.pg
+          );
+          prev = &r->update.prev;
+          break;
+        }
+        case WUP_FSM:
+        {
+          name = "UPDATE FSM";
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno
+              ", undo = 0x%02x, redo = 0x%02x",
+              r->update.tid,
+              r->update.fsm.pg,
+              (unsigned)r->update.fsm.undo,
+              (unsigned)r->update.fsm.redo
+          );
+          prev = &r->update.prev;
+          break;
+        }
+        case WUP_FEXT:
+        {
+          name = "UPDATE FEXT";
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno
+              ", redo_pgs = %8" PRpgno,
+              r->update.tid,
+              r->update.fext.undo,
+              r->update.fext.redo
+          );
+          prev = &r->update.prev;
+          break;
+        }
+      }
+      break;
+
+    case WL_CLR:
+      switch (r->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          name = "CLR PHYS";
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno ", undoNxt = %15" PRlsn,
+              r->clr.tid,
+              r->clr.phys.pg,
+              r->clr.undo_next
+          );
+          prev = &r->clr.prev;
+          break;
+        }
+        case WCLR_FSM:
+        {
+          name = "CLR FSM";
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno
+              ", redo = 0x%02x, undoNxt = %15" PRlsn,
+              r->clr.tid,
+              r->clr.fsm.pg,
+              (unsigned)r->clr.fsm.redo,
+              r->clr.undo_next
+          );
+          prev = &r->clr.prev;
+          break;
+        }
+        case WCLR_DUMMY:
+        {
+          name = "CLR DUMMY";
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", undoNxt = %15" PRlsn,
+              r->clr.tid,
+              r->clr.undo_next
+          );
+          prev = &r->clr.prev;
+          break;
+        }
+      }
+      break;
+
+    case WL_BEGIN:
+    {
+      name = "BEGIN";
+      snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->begin.tid);
+      break;
+    }
+
+    case WL_COMMIT:
+    {
+      name = "COMMIT";
+      snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->commit.tid);
+      prev = &r->commit.prev;
+      break;
+    }
+
+    case WL_END:
+    {
+      name = "END";
+      snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->end.tid);
+      prev = &r->end.prev;
+      break;
+    }
+
+    case WL_EOF:
+    {
+      i_printf (log_level, "%15" PRlsn "  WL_EOF\n", l);
+      return;
+    }
+  }
+
+  /* Widths set in one place:
+       11 = strlen("UPDATE FEXT")  -- widest type name
+       72 = widest fields line     -- "CLR FSM" case
+     Bump them if a new record type pushes past these. */
+  if (prev)
+  {
+    i_printf (
+        log_level,
+        "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
+        l,
+        name,
+        fields,
+        *prev
+    );
+  }
+  else
+  {
+    i_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
+  }
+}
+
+struct wal_clr_write
+wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      UNREACHABLE ();
+    }
+    case WL_COMMIT:
+    {
+      UNREACHABLE ();
+    }
+    case WL_END:
+    {
+      UNREACHABLE ();
+    }
+    case WL_UPDATE:
+    {
+      switch (h->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          memcpy (page_h_w (ph), h->update.phys.undo, NS_PAGE_SIZE);
+          return (struct wal_clr_write){
+              .type      = WCLR_PHYSICAL,
+              .tid       = h->update.tid,
+              .prev      = tx->data.last_lsn,
+              .undo_next = h->update.prev,
+              .phys      = {
+                  .pg   = wrh_get_affected_pg (h),
+                  .redo = h->update.phys.undo,
+              },
+          };
+        }
+        case WUP_FSM:
+        {
+          if (h->update.fsm.undo)
+          {
+            fsm_set_bit (page_h_w (ph), h->update.fsm.bit);
+          }
+          else
+          {
+            fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
+          }
+          return (struct wal_clr_write){
+              .type      = WCLR_FSM,
+              .tid       = h->update.tid,
+              .prev      = tx->data.last_lsn,
+              .undo_next = h->update.prev,
+              .fsm       = {
+                  .pg   = page_h_pgno (ph),
+                  .bit  = h->update.fsm.bit,
+                  .redo = h->update.fsm.undo,
+              },
+          };
+        }
+        case WUP_FEXT:
+        {
+          UNREACHABLE ();
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_CLR:
+    {
+      switch (h->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          UNREACHABLE ();
+        }
+        case WCLR_FSM:
+        {
+          UNREACHABLE ();
+        }
+        case WCLR_DUMMY:
+        {
+          UNREACHABLE ();
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+void
+wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
+{
+  switch (h->type)
+  {
+    case WL_BEGIN:
+    {
+      UNREACHABLE ();
+    }
+    case WL_COMMIT:
+    {
+      UNREACHABLE ();
+    }
+    case WL_END:
+    {
+      UNREACHABLE ();
+    }
+    case WL_UPDATE:
+    {
+      switch (h->update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          memcpy (page_h_w (ph)->raw, h->update.phys.redo, NS_PAGE_SIZE);
+          return;
+        }
+        case WUP_FSM:
+        {
+          if (h->update.fsm.redo)
+          {
+            fsm_set_bit (page_h_w (ph), h->update.fsm.bit);
+          }
+          else
+          {
+            fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
+          }
+          return;
+        }
+        case WUP_FEXT:
+        {
+          UNREACHABLE ();
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_CLR:
+    {
+      switch (h->clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          memcpy (page_h_w (ph)->raw, h->clr.phys.redo, NS_PAGE_SIZE);
+          return;
+        }
+        case WCLR_FSM:
+        {
+          if (h->clr.fsm.redo)
+          {
+            fsm_set_bit (page_h_w (ph), h->clr.fsm.bit);
+          }
+          else
+          {
+            fsm_clr_bit (page_h_w (ph), h->clr.fsm.bit);
+          }
+          return;
+        }
+        case WCLR_DUMMY:
+        {
+          UNREACHABLE ();
+        }
+      }
+      UNREACHABLE ();
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+  UNREACHABLE ();
+}
+
+////////////////////////////////////////////////////////////
+/// WAL Record Header
+
+void
+walf_decode_physical_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_UPDATE_LEN]
+)
+{
+  ASSERT (r->type == WL_UPDATE);
+
+  u32 head = 2 * sizeof (wlh);
+
+  // TID
+  memcpy (&r->update.tid, buf + head, sizeof (r->update.tid));
+  head += sizeof (r->update.tid);
+
+  // PREV
+  memcpy (&r->update.prev, buf + head, sizeof (r->update.prev));
+  head += sizeof (r->update.prev);
+
+  // PG
+  memcpy (&r->update.phys.pg, buf + head, sizeof (r->update.phys.pg));
+  head += sizeof (r->update.phys.pg);
+
+  // UNDO
+  memcpy (r->update.phys.undo, buf + head, NS_PAGE_SIZE);
+  head += NS_PAGE_SIZE;
+
+  // REDO
+  memcpy (r->update.phys.redo, buf + head, NS_PAGE_SIZE);
+}
+
+void
+walf_decode_fsm_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FSM_UPDATE_LEN]
+)
+{
+  ASSERT (r->type == WL_UPDATE);
+  ASSERT (r->update.type == WUP_FSM);
+
+  u32 head = 2 * sizeof (wlh);
+
+  // TID
+  memcpy (&r->update.tid, buf + head, sizeof (r->update.tid));
+  head += sizeof (r->update.tid);
+
+  // PREV
+  memcpy (&r->update.prev, buf + head, sizeof (r->update.prev));
+  head += sizeof (r->update.prev);
+
+  // PG
+  memcpy (&r->update.fsm.pg, buf + head, sizeof (r->update.fsm.pg));
+  head += sizeof (r->update.fsm.pg);
+
+  // BIT
+  memcpy (&r->update.fsm.bit, buf + head, sizeof (r->update.fsm.bit));
+  head += sizeof (r->update.fsm.bit);
+
+  // UNDO
+  memcpy (&r->update.fsm.undo, buf + head, sizeof (r->update.fsm.undo));
+  head += sizeof (r->update.fsm.undo);
+
+  // REDO
+  memcpy (&r->update.fsm.redo, buf + head, sizeof (r->update.fsm.redo));
+}
+
+void
+walf_decode_file_extend_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FILE_EXT_LEN]
+)
+{
+  ASSERT (r->type == WL_UPDATE);
+  ASSERT (r->update.type == WUP_FEXT);
+
+  u32 head = 2 * sizeof (wlh);
+
+  // TID
+  memcpy (&r->update.tid, buf + head, sizeof (r->update.tid));
+  head += sizeof (r->update.tid);
+
+  // PREV
+  memcpy (&r->update.prev, buf + head, sizeof (r->update.prev));
+  head += sizeof (r->update.prev);
+
+  // UNDO
+  memcpy (&r->update.fext.undo, buf + head, sizeof (r->update.fext.undo));
+  head += sizeof (r->update.fext.undo);
+
+  // REDO
+  memcpy (&r->update.fext.redo, buf + head, sizeof (r->update.fext.redo));
+}
+
+void
+walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN])
+{
+  ASSERT (r->type == WL_CLR);
+  ASSERT (r->clr.type == WCLR_PHYSICAL);
+
+  u32 head = 2 * sizeof (wlh);
+
+  // TID
+  memcpy (&r->clr.tid, buf + head, sizeof (r->clr.tid));
+  head += sizeof (r->clr.tid);
+
+  // PREV
+  memcpy (&r->clr.prev, buf + head, sizeof (r->clr.prev));
+  head += sizeof (r->clr.prev);
+
+  // PG
+  memcpy (&r->clr.phys.pg, buf + head, sizeof (r->clr.phys.pg));
+  head += sizeof (r->clr.phys.pg);
+
+  // UNDO_NEXT
+  memcpy (&r->clr.undo_next, buf + head, sizeof (r->clr.undo_next));
+  head += sizeof (r->clr.undo_next);
+
+  // REDO
+  memcpy (r->clr.phys.redo, buf + head, NS_PAGE_SIZE);
+}
+
+void
+walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN])
+{
+  ASSERT (r->type == WL_CLR);
+  ASSERT (r->clr.type == WCLR_FSM);
+
+  u32 head = 2 * sizeof (wlh);
+
+  // TID
+  memcpy (&r->clr.tid, buf + head, sizeof (r->clr.tid));
+  head += sizeof (r->clr.tid);
+
+  // PREV
+  memcpy (&r->clr.prev, buf + head, sizeof (r->clr.prev));
+  head += sizeof (r->clr.prev);
+
+  // PG
+  memcpy (&r->clr.fsm.pg, buf + head, sizeof (r->clr.fsm.pg));
+  head += sizeof (r->clr.fsm.pg);
+
+  // UNDO_NEXT
+  memcpy (&r->clr.undo_next, buf + head, sizeof (r->clr.undo_next));
+  head += sizeof (r->clr.undo_next);
+
+  // BIT
+  memcpy (&r->clr.fsm.bit, buf + head, sizeof (r->clr.fsm.bit));
+  head += sizeof (r->clr.fsm.bit);
+
+  // REDO
+  memcpy (&r->clr.fsm.redo, buf + head, sizeof (r->clr.fsm.redo));
+}
+
+void
+walf_decode_dummy_clr (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_DUMMY_CLR_LEN]
+)
+{
+  ASSERT (r->type == WL_CLR);
+  ASSERT (r->clr.type == WCLR_DUMMY);
+
+  u32 head = 2 * sizeof (wlh);
+
+  // TID
+  memcpy (&r->clr.tid, buf + head, sizeof (r->clr.tid));
+  head += sizeof (r->clr.tid);
+
+  // PREV
+  memcpy (&r->clr.prev, buf + head, sizeof (r->clr.prev));
+  head += sizeof (r->clr.prev);
+
+  // UNDO_NEXT
+  memcpy (&r->clr.undo_next, buf + head, sizeof (r->clr.undo_next));
+  head += sizeof (r->clr.undo_next);
+}
+
+void
+walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN])
+{
+  ASSERT (r->type == WL_BEGIN);
+
+  u32 head = sizeof (wlh);
+
+  // TID
+  memcpy (&r->begin.tid, buf + head, sizeof (r->begin.tid));
+}
+
+void
+walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN])
+{
+  ASSERT (r->type == WL_COMMIT);
+
+  u32 head = sizeof (wlh);
+
+  // TID
+  memcpy (&r->commit.tid, buf + head, sizeof (r->commit.tid));
+  head += sizeof (r->commit.tid);
+
+  // PREV
+  memcpy (&r->commit.prev, buf + head, sizeof (r->commit.prev));
+}
+
+void
+walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN])
+{
+  ASSERT (r->type == WL_END);
+
+  u32 head = sizeof (wlh);
+
+  // TID
+  memcpy (&r->end.tid, buf + head, sizeof (r->end.tid));
+  head += sizeof (r->end.tid);
+
+  // PREV
+  memcpy (&r->end.prev, buf + head, sizeof (r->end.prev));
+}
+
+////////////////////////////////////////////////////////////
+/// WAL Write
+
+static err_t
+wal_write_begin (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (r->type == WL_BEGIN);
+
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = r->type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
+  );
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_commit (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (r->type == WL_COMMIT);
+
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = r->type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->commit.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->commit.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_end (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+{
+  ASSERT (r->type == WL_END);
+
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = r->type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->end.tid, sizeof (txid), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->end.prev, sizeof (lsn), e));
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_physical_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = (wlh)r->type;
+  const wlh ut       = (wlh)r->update.type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.phys.pg,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      r->update.phys.undo,
+      NS_PAGE_SIZE,
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      r->update.phys.redo,
+      NS_PAGE_SIZE,
+      e
+  ));
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_fsm_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = (wlh)r->type;
+  const wlh ut       = (wlh)r->update.type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.pg,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.bit,
+      sizeof (p_size),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.undo,
+      sizeof (u8),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.redo,
+      sizeof (u8),
+      e
+  ));
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_file_extend_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = (wlh)r->type;
+  const wlh ut       = (wlh)r->update.type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fext.undo,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fext.redo,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_physical_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (r->type == WL_CLR);
+
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = r->type;
+  const wlh ut       = r->clr.type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.phys.pg, sizeof (pgno), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, r->clr.phys.redo, NS_PAGE_SIZE, e)
+  );
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_fsm_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (r->type == WL_CLR);
+
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = r->type;
+  const wlh ut       = r->clr.type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.fsm.pg, sizeof (pgno), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.fsm.bit,
+      sizeof (p_size),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.fsm.redo, sizeof (u8), e)
+  );
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+static err_t
+wal_write_dummy_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
+{
+  ASSERT (r->type == WL_CLR);
+
+  ASSERT (w->ostream);
+
+  u32       checksum = checksum_init ();
+  const wlh t        = r->type;
+  const wlh ut       = r->clr.type;
+  WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
+  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
+
+  return SUCCESS;
+}
+
+slsn
+wal_write_locked (struct wal *w, error *e)
+{
+  ASSERT (w->ostream);
+  ASSERT (!(w->flags & WAL_ISNEW));
+
+  const lsn ret = walos_get_next_lsn (w->ostream) + w->start_lsn;
+
+  switch (w->whdr.type)
+  {
+    case WL_BEGIN:
+    {
+      WRAP (wal_write_begin (w, &w->whdr, e));
+      break;
+    }
+    case WL_COMMIT:
+    {
+      WRAP (wal_write_commit (w, &w->whdr, e));
+      break;
+    }
+    case WL_END:
+    {
+      WRAP (wal_write_end (w, &w->whdr, e));
+      break;
+    }
+    case WL_UPDATE:
+    {
+      switch (w->whdr.update.type)
+      {
+        case WUP_PHYSICAL:
+        {
+          WRAP (wal_write_physical_update (w, &w->whdr, e));
+          break;
+        }
+        case WUP_FSM:
+        {
+          WRAP (wal_write_fsm_update (w, &w->whdr, e));
+          break;
+        }
+        case WUP_FEXT:
+        {
+          WRAP (wal_write_file_extend_update (w, &w->whdr, e));
+          break;
+        }
+      }
+      break;
+    }
+    case WL_CLR:
+    {
+      switch (w->whdr.clr.type)
+      {
+        case WCLR_PHYSICAL:
+        {
+          WRAP (wal_write_physical_clr (w, &w->whdr, e));
+          break;
+        }
+        case WCLR_FSM:
+        {
+          WRAP (wal_write_fsm_clr (w, &w->whdr, e));
+          break;
+        }
+        case WCLR_DUMMY:
+        {
+          WRAP (wal_write_dummy_clr (w, &w->whdr, e));
+          break;
+        }
+      }
+      break;
+    }
+    case WL_EOF:
+    {
+      UNREACHABLE ();
+    }
+  }
+
+  return ret;
 }

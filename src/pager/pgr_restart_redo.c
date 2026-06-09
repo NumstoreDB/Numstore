@@ -12,14 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/aries.h"
-#include "nscore/dirty_page_table.h"
-#include "nscore/errors.h"
-#include "nscore/pager.h"
-#include "nscore/pages/page.h"
-#include "nscore/wal_rec_hdr.h"
+#include "dirty_page_table.h"
+#include "error.h"
+#include "pager.h"
+#include "pages/page.h"
+#include "wal.h"
 
 ////////////////////////////////////////////////////////////
 // REDO (FIGURE 11)

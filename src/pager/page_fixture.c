@@ -12,16 +12,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/page_fixture.h"
+#include "page_fixture.h"
 
-#include <c_specx.h>
 
-#include "nscore/page_delegate.h"
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/pages/data_list.h"
-#include "nscore/pages/inner_node.h"
-#include "nscore/pages/page.h"
+
+#include "pages/page_delegate.h"
+#include "page_h.h"
+#include "pager.h"
+#include "pages/data_list.h"
+#include "pages/inner_node.h"
+#include "pages/page.h"
 
 #ifndef NTEST
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {

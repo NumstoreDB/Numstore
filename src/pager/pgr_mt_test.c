@@ -12,12 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/page_fixture.h"
-#include "nscore/pager.h"
-#include "nscore/pages/data_list.h"
-#include "nscore/txn.h"
+#include "page_fixture.h"
+#include "pager.h"
+#include "pages/data_list.h"
+#include "txn_table.h"
 
 #ifndef NTEST
 int i = 10;
@@ -115,7 +113,7 @@ memcmp (dl_get_data (page_h_ro (&d)), dbytes, DL_DATA_SIZE) == 0;
 #  define KTYPE  pgno
 #  define VTYPE  bool
 #  define SUFFIX pg
-#  include "c_specx.h"
+#  include "common.h"
 #  undef KTYPE
 #  undef VTYPE
 #  undef SUFFIX

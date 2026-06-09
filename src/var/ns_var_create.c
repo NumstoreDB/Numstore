@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/page_h.h"
-#include "nscore/pager.h"
-#include "nscore/var.h"
+#include "page_h.h"
+#include "pager.h"
+#include "var.h"
 
 /*
  * Create a new variable record in the variable hash table.
@@ -68,8 +68,6 @@ ns_var_create (const struct ns_var_create_params params, error *e)
   {
     goto failed;
   }
-
-  pgno ret = page_h_pgno (&cur);
 
   if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e)))
   {

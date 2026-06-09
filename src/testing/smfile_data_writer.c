@@ -12,12 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "_smfile.h"
-#include "nscore/nshandle.h"
-#include "nscore/pager.h"
+#include "nshandle.h"
+#include "pager.h"
 #include "smfile.h"
+#include "testing/data_validator.h"
 #include "testing/smfile_test_fixture.h"
 
 static err_t

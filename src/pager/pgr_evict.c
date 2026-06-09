@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pager.h"
+#include "pager.h"
 
 /*
  * Evict a page frame from the buffer pool.

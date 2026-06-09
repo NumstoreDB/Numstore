@@ -12,11 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
 
-#include "c_specx/error.h"
-#include "nscore/pager.h"
-#include "nscore/pages/page.h"
+#include "pager.h"
+#include "pages/page.h"
 
 void
 pgr_unfix (struct pager *p, page_h *h, int flags)

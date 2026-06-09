@@ -12,10 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "c_specx/threading.h"
-#include "nscore/lock_table.h"
-#include "nscore/pager.h"
-#include "nscore/txn.h"
+#include "lock_table.h"
+#include "pager.h"
+#include "txn_table.h"
 
 err_t
 pgr_commit (struct pager *p, struct txn *tx, error *e)

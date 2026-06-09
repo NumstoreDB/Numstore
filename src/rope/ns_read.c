@@ -12,11 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <c_specx.h>
-
-#include "nscore/pager.h"
-#include "nscore/pages/data_list.h"
-#include "nscore/rope.h"
+#include "pager.h"
+#include "pages/data_list.h"
+#include "rope.h"
 
 enum read_state
 {

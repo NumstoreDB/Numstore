@@ -13,16 +13,15 @@
 /// limitations under the License.
 
 // smartfiles
-#include "nscore/pages/page.h"
+#include "pages/page.h"
 
-#include <c_specx.h>
-
-#include "nscore/pages/data_list.h"
-#include "nscore/pages/fsm_page.h"
-#include "nscore/pages/inner_node.h"
-#include "nscore/pages/var_hash_page.h"
-#include "nscore/pages/var_page.h"
-#include "nscore/pages/var_tail.h"
+#include "pages/data_list.h"
+#include "pages/fsm_page.h"
+#include "pages/inner_node.h"
+#include "pages/var_hash_page.h"
+#include "pages/var_page.h"
+#include "pages/var_tail.h"
+#include "testing/testing.h"
 
 ////////////////////////////////////////////////////////////
 // INITIALIZATION

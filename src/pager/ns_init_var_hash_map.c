@@ -12,8 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/page_h.h"
-#include "nscore/var.h"
+#include "page_h.h"
+#include "var.h"
 
 err_t
 ns_init_var_hash_map (struct pager *p, error *e)

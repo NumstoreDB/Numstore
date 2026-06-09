@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/pages/var_hash_page.h"
+#include "pages/var_hash_page.h"
 
-#include <c_specx.h>
+
 
 DEFINE_DBG_ASSERT (page, vh_page, d, { ASSERT (d); })
 

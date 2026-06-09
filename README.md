@@ -147,12 +147,10 @@ Here are some other cmake presets:
                                    Not stripped.
                                    Address sanitizer compiled in.
 
-* `--preset debug-no-asan`       - Same as debug but without address sanitizer
-                                   (useful for running against valgrind).
+* `--preset debug-valgrind`      - Same as debug but without address sanitizer
+                                   (useful for running against valgrind) and portable.
 
-* `--preset debug-ntests`        - Debug build without any tests compiled in.
-
-* `--preset debug-ntests-no-asan`- Same as debug-ntests without address sanitizer.
+* `--preset debug-coverage`      - Debug with coverage enabled
 
 * `--preset release`             - Release build.
                                    Logging disabled.
@@ -161,7 +159,7 @@ Here are some other cmake presets:
                                    Optimized for your machine.
                                    No address sanitizer.
 
-* `--preset release-tests`       - Same as release but with tests compiled in
+* `--preset release-tests-asan`  - Same as release but with tests compiled in
                                    (to ensure unit tests pass with 
                                    or without asserts).
 
@@ -248,7 +246,9 @@ These should rarely be changed:
 * `samples`                      - A list of samples for easy developer
                                    onboarding.
 
-* `libs`                         - Each directory inside this is a library.
+* `src`                          - Source code and private headers
+
+* `include`                      - Public headers
 
 * `scripts`                      - Simple scripts for auto code generation or
                                    formatting or ci / cd. Mostly python.
@@ -257,38 +257,7 @@ These should rarely be changed:
 
 * `docs`                         - Documentation for numstore.
 
-
-5.0 Summary of all Libraries
-============================
-
-The application contains various targets:
-
-* `libnumstore`                  - The numstore library is a wrapper over nscore
-                                   that adds convenience one time operations
-                                   over arrays.
-
-* `libnscore`                    - This is the core of numstore - all headers
-                                   are exposed - all heavy weight algorithms
-                                   live here.
-
-* `lib_pynumstore`               - The python wrapper over libnumstore.
-
-* `lib_smartfiles`               - The smart files library is a simple api over
-                                   a file like object with inner mutations,
-                                   kind of like numstore but every type is a
-                                   uint8_t.
-
-* `libc_specx`                   - Core common logic.
-
-* `libnstesting`                 - Testing scaffolding.
-
-The submodule repository qtrepotools contains useful 
-scripts for developers and release engineers. 
-Consider adding qtrepotools/bin to your PATH 
-environment variable to access them.
-
-
-6.0 AI Usage Policy
+5.0 AI Usage Policy
 ===================
 
 I use AI the way I use a language server: as a tool, not a co-author. AI usage is fine
@@ -314,7 +283,7 @@ The CLAUDE.md file ensures that if AI-assisted code ever does land here, it foll
 consistent standards.
 
 
-7.0 Contributing
+6.0 Contributing
 ================
 
 File a ticket on GitHub for bugs, feature requests, or questions.
@@ -322,7 +291,7 @@ Pull requests are welcome - see CONTRIBUTING.md for guidelines.
 Windows CI/CD support is an open and approachable first contribution.
 
 
-8.0 License
+7.0 License
 ============
 
 Apache 2.0. See LICENSE.

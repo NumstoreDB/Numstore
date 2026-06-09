@@ -21,11 +21,10 @@
 #define NO_IMPORT_ARRAY
 
 #include <Python.h>
-#include <c_specx.h>
 #include <numpy/arrayobject.h>
 #include <string.h>
 
-#include "nscore/types.h"
+#include "types.h"
 
 PyObject      *pyns_compile_type (PyObject *Py_UNUSED (m), PyObject *arg);
 int            pyns_verify_types (PyArray_Descr *dtype, struct type *type);
