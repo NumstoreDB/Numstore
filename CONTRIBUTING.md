@@ -1,13 +1,15 @@
 # Contributing to NumStore
 
-Contributions are welcome. Just reach out directly if you're interested.
+Contributions are welcome. I will try to maintain better ticket descriptions,
+as the project is early on, some tickets will lack information and clarity. 
+If you want to contribute, definitely reach out to me or start hacking and 
+submitting a pull request.
 
-## Talk to me first
+## Good first time tickets 
 
-This is a small project and I'd like to stay in the loop before work begins. 
-Open an issue or reach out before you start coding - it avoids wasted effort 
-and keeps things moving in a consistent direction. All pull requests go 
-through my review before merging.
+Right now, documentation and code sanitization is a big focus. Writing tests 
+and documentation is a good first point of entry if you're interested in 
+contributing.
 
 ## AI usage
 
@@ -19,8 +21,8 @@ it'll be rejected.
 
 ## Getting started
 
-1. Fork the repo and clone it locally
+1. Clone the repo locally
 2. Read the [README](README.md) 
-3. Open an issue describing what you want to work on
+3. Open an issue describing what you want to work on or select an issue to work on
 4. Write your code
 5. Submit a PR with a clear description of what changed and why
