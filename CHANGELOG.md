@@ -1,6 +1,14 @@
 # Changelog
 
-## [v1.1.3] - Unreleased
+## [v1.1.4] - Unreleased
+
+## [v1.1.3] - 2026-06-09
+
+### Changed 
+- Big changes to the readability and organization of the code to make it more friendly for open 
+  source developers
+    - Removes all the excess libraries - now there's just one: Numstore 
+    - Adds a consistent comment and documentation scheme
 
 ## [v1.1.2] - 2026-06-01 
 
@@ -90,7 +98,8 @@
 - Negative byte offsets are interpreted relative to end of file
 - Explicit-width types used throughout for deterministic on-disk layout
 
-[v1.1.3]: https://github.com/lincketheo/smartfiles/compare/v1.1.2...HEAD
+[v1.1.4]: https://github.com/lincketheo/smartfiles/compare/v1.1.3...HEAD
+[v1.1.3]: https://github.com/lincketheo/smartfiles/compare/v1.1.2...v1.1.3
 [v1.1.2]: https://github.com/lincketheo/smartfiles/compare/v1.1.1...v1.1.2
 [v1.1.1]: https://github.com/lincketheo/smartfiles/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/lincketheo/smartfiles/compare/v1.0.0...v1.1.0
