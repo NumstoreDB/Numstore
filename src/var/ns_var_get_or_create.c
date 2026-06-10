@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
 #include "compile_config.h"
 #include "page_fixture.h"
 #include "pager.h"

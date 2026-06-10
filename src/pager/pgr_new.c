@@ -14,7 +14,6 @@
 
 #include <stdlib.h>
 
-
 #include "page_fixture.h"
 #include "page_h.h"
 #include "pager.h"

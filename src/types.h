@@ -545,7 +545,9 @@ struct type_ref
     } st;
   };
 };
-bool         type_ref_equal (struct type_ref left, const struct type_ref right);
+
+bool type_ref_equal (struct type_ref left, const struct type_ref right);
+
 struct type *tr_construct (
     struct type        *reftype,
     struct type_ref    *tr,

@@ -352,7 +352,12 @@ musb_build (
   ASSERT (dest);
 
   const u32 len = list_length (eb->head);
-  ASSERT (len > 0);
+  if (len == 0)
+  {
+    dest->strides = NULL;
+    dest->len     = 0;
+    return SUCCESS;
+  }
 
   struct user_stride *strides =
       chunk_malloc (eb->persistent, len, sizeof *strides, e);

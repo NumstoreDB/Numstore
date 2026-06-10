@@ -83,7 +83,7 @@ clean:
 	rm -f compile_commands.json
 
 format:
-	python3 scripts/add_copywrite.ppiy
+	python3 scripts/add_copywrite.py
 	find apps src include bindings \
 		-name '.git' -prune -o \
 		-name 'build' -prune -o \

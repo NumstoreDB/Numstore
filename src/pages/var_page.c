@@ -292,3 +292,22 @@ i_log_vp (const int level, const page *vp)
 
   i_log (level, "=== VARIABLE PAGE END ===\n");
 }
+
+#ifndef NTEST
+TEST (i_log_vp)
+{
+  page vp;
+
+  page_init_empty (&vp, PG_VAR_PAGE);
+
+  vp_set_next (&vp, 10);
+  vp_set_ovnext (&vp, 10);
+  vp_set_root (&vp, 10);
+  i_log_vp (LOG_INFO, &vp);
+
+  vp_set_next (&vp, PGNO_NULL);
+  vp_set_ovnext (&vp, PGNO_NULL);
+  vp_set_root (&vp, PGNO_NULL);
+  i_log_vp (LOG_INFO, &vp);
+}
+#endif

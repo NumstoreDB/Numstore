@@ -14,7 +14,11 @@
 
 #include "compiler.h"
 
+#include "alloc.h"
+#include "collections.h"
+#include "error.h"
 #include "numerics.h"        // parse_i32_expect
+#include "serial.h"          // string_equal
 #include "testing/testing.h" // TEST
 #include "utils.h"           // case_ENUM_RETURN_STRING
 
@@ -1034,6 +1038,576 @@ TEST (compile_user_stride_basic)
     );
     err.cause_code = SUCCESS;
   }
+}
+
+TEST (compile_multi_user_stride)
+{
+  error                    e      = error_create ();
+  struct multi_user_stride stride = {0};
+  struct chunk_alloc       alloc;
+  chunk_alloc_create_default (&alloc);
+
+  // -------------------------------------------------------------------------
+  // Empty array
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ ]")
+  {
+    compile_multi_user_stride (&stride, "[]", &alloc, &e);
+    test_assert_int_equal (stride.len, 0);
+    test_assert_equal (stride.strides, NULL);
+    compile_multi_user_stride (&stride, "[ ]", &alloc, &e);
+    test_assert_int_equal (stride.len, 0);
+    test_assert_equal (stride.strides, NULL);
+    compile_multi_user_stride (&stride, " [ ]", &alloc, &e);
+    test_assert_int_equal (stride.len, 0);
+    test_assert_equal (stride.strides, NULL);
+    compile_multi_user_stride (&stride, " [] ", &alloc, &e);
+    test_assert_int_equal (stride.len, 0);
+    test_assert_equal (stride.strides, NULL);
+  }
+
+  // -------------------------------------------------------------------------
+  // Single bare index
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 1);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (stride.strides[0].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[0].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Two bare indices
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[0, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    // first
+    test_assert_int_equal (stride.strides[0].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[0].start, 0);
+    // second
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // start + colon, no stop, no step  →  "0:"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0: ]")
+  {
+    compile_multi_user_stride (&stride, "[0:]", &alloc, &e);
+    test_assert_int_equal (stride.len, 1);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // "0:" followed by a bare index
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0:, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[0:, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Colon only  →  ":"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ :, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[:, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (stride.strides[0].present, COLON_PRESENT);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Colon + stop  →  ":0"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ :0, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[:0, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STOP_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].stop, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Double colon, no numbers  →  "::"
+  // parse_entry sets COLON_PRESENT, parse_step also matches ':' and sets it
+  // again (no-op), no integers → only COLON_PRESENT in present
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ ::, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[::, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (stride.strides[0].present, COLON_PRESENT);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Double colon + step  →  "::0"
+  // COLON_PRESENT (from first ':') | STEP_PRESENT (from "::0")
+  // Note: no START_PRESENT, no STOP_PRESENT
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ ::0, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[::0, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STEP_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Colon + stop + colon, no step  →  ":0:"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ :0:, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[:0:, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STOP_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].stop, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Colon + stop + colon + step  →  ":0:0"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ :0:0, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[:0:0, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STOP_PRESENT | STEP_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].stop, 0);
+    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Start + double colon, no stop/step  →  "0::"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0::, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[0::, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Start + double colon + step  →  "0::0"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0::0, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[0::0, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT | STEP_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // -------------------------------------------------------------------------
+  // Full slice  →  "0:0:0"
+  // -------------------------------------------------------------------------
+  TEST_CASE ("[ 0:0:0, 0 ]")
+  {
+    compile_multi_user_stride (&stride, "[0:0:0, 0]", &alloc, &e);
+    test_assert_int_equal (stride.len, 2);
+    test_assert (stride.strides != NULL);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT | STOP_PRESENT | STEP_PRESENT
+    );
+    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_int_equal (stride.strides[0].stop, 0);
+    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[1].present, START_PRESENT);
+    test_assert_int_equal (stride.strides[1].start, 0);
+  }
+
+  // =========================================================================
+  // Error conditions
+  // =========================================================================
+
+  // Missing opening bracket
+  TEST_CASE ("error: no leading '['")
+  {
+    err_t err = compile_multi_user_stride (&stride, "0, 1]", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Missing closing bracket
+  TEST_CASE ("error: no trailing ']'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[0, 1", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Empty input
+  TEST_CASE ("error: empty string")
+  {
+    err_t err = compile_multi_user_stride (&stride, "", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Trailing comma with no entry after it  →  parse_entry gets ']', not a
+  // number or ':', so it returns ERR_SYNTAX
+  TEST_CASE ("error: trailing comma '[0,]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[0,]", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Leading comma — parse_entry gets ',' which is neither number nor ':'
+  TEST_CASE ("error: leading comma '[,0]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[,0]", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Bare comma between two commas
+  TEST_CASE ("error: double comma '[0,,1]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[0,,1]", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Garbage token (not number, colon, comma, or bracket)
+  TEST_CASE ("error: garbage token '[abc]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[abc]", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Completely wrong structure
+  TEST_CASE ("error: only a number, no brackets")
+  {
+    err_t err = compile_multi_user_stride (&stride, "42", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  chunk_alloc_free_all (&alloc);
+}
+
+TEST (compile_type_ref)
+{
+  error              e   = error_create ();
+  struct type_ref    ref = {0};
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+
+  TEST_CASE ("bare identifier")
+  {
+    compile_type_ref (&ref, "myvar", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_TAKE);
+    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
+    // No accessor — sub_ta should be NULL / ta default
+  }
+
+  TEST_CASE ("identifier with range accessor '[0]'")
+  {
+    compile_type_ref (&ref, "myvar[9]", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_TAKE);
+    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
+    test_assert_int_equal (ref.tk.ta.type, TA_RANGE);
+    test_assert_int_equal (ref.tk.ta.range.dlen, 1);
+    test_assert_int_equal (
+        ref.tk.ta.range.dim_accessors[0].present,
+        START_PRESENT
+    );
+    test_assert_int_equal (ref.tk.ta.range.dim_accessors[0].start, 9);
+  }
+
+  TEST_CASE ("identifier with select accessor '.field'")
+  {
+    compile_type_ref (&ref, "myvar.field", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_TAKE);
+    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
+    test_assert_int_equal (ref.tk.ta.type, TA_SELECT);
+    test_assert (string_equal (ref.tk.ta.select.key, strfcstr ("field")));
+    test_assert (ref.tk.ta.select.sub_ta->type == TA_TAKE);
+  }
+
+  TEST_CASE ("identifier with chained accessors '.a[0]'")
+  {
+    compile_type_ref (&ref, "myvar.a[0]", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_TAKE);
+    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
+    test_assert_int_equal (ref.tk.ta.type, TA_SELECT);
+    test_assert (string_equal (ref.tk.ta.select.key, strfcstr ("a")));
+    test_assert (ref.tk.ta.select.sub_ta != NULL);
+    test_assert_int_equal (ref.tk.ta.select.sub_ta->type, TA_RANGE);
+  }
+
+  // =========================================================================
+  // Struct path — single field
+  // =========================================================================
+
+  TEST_CASE ("struct { a myvar }")
+  {
+    compile_type_ref (&ref, "struct { a myvar }", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_STRUCT);
+    test_assert_int_equal (ref.st.len, 1);
+    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
+    test_assert_int_equal (ref.st.types[0].type, TR_TAKE);
+    test_assert (string_equal (ref.st.types[0].tk.vname, strfcstr ("myvar")));
+  }
+
+  // =========================================================================
+  // Struct path — multiple fields
+  // =========================================================================
+
+  TEST_CASE ("struct { a x, b y }")
+  {
+    compile_type_ref (&ref, "struct { a x, b y }", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_STRUCT);
+    test_assert_int_equal (ref.st.len, 2);
+    // first field
+    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
+    test_assert_int_equal (ref.st.types[0].type, TR_TAKE);
+    test_assert (string_equal (ref.st.types[0].tk.vname, strfcstr ("x")));
+    // second field
+    test_assert (string_equal (ref.st.keys[1], strfcstr ("b")));
+    test_assert_int_equal (ref.st.types[1].type, TR_TAKE);
+    test_assert (string_equal (ref.st.types[1].tk.vname, strfcstr ("y")));
+  }
+
+  TEST_CASE ("struct { a x, b y, c z } — three fields")
+  {
+    compile_type_ref (&ref, "struct { a x, b y, c z }", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_STRUCT);
+    test_assert_int_equal (ref.st.len, 3);
+    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
+    test_assert (string_equal (ref.st.keys[1], strfcstr ("b")));
+    test_assert (string_equal (ref.st.keys[2], strfcstr ("c")));
+    test_assert (string_equal (ref.st.types[0].tk.vname, strfcstr ("x")));
+    test_assert (string_equal (ref.st.types[1].tk.vname, strfcstr ("y")));
+    test_assert (string_equal (ref.st.types[2].tk.vname, strfcstr ("z")));
+  }
+
+  // =========================================================================
+  // Nested struct  (struct field whose type is itself a struct)
+  // =========================================================================
+
+  TEST_CASE ("struct { a struct { b x } }")
+  {
+    compile_type_ref (&ref, "struct { a struct { b x } }", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_STRUCT);
+    test_assert_int_equal (ref.st.len, 1);
+    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
+    test_assert_int_equal (ref.st.types[0].type, TR_STRUCT);
+    test_assert_int_equal (ref.st.types[0].st.len, 1);
+    test_assert (string_equal (ref.st.types[0].st.keys[0], strfcstr ("b")));
+    test_assert_int_equal (ref.st.types[0].st.types[0].type, TR_TAKE);
+    test_assert (
+        string_equal (ref.st.types[0].st.types[0].tk.vname, strfcstr ("x"))
+    );
+  }
+
+  // Struct field whose value is a take with an accessor
+  TEST_CASE ("struct { a myvar[0] }")
+  {
+    compile_type_ref (&ref, "struct { a myvar[0] }", &alloc, &e);
+    test_assert_int_equal (ref.type, TR_STRUCT);
+    test_assert_int_equal (ref.st.len, 1);
+    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
+    test_assert_int_equal (ref.st.types[0].type, TR_TAKE);
+    test_assert_int_equal (ref.st.types[0].tk.ta.type, TA_RANGE);
+  }
+
+  // =========================================================================
+  // Error conditions
+  // =========================================================================
+
+  // Completely empty input — default branch → ERR_SYNTAX
+  TEST_CASE ("error: empty string")
+  {
+    err_t err = compile_type_ref (&ref, "", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Token that is neither IDENT nor 'struct'
+  TEST_CASE ("error: bare integer")
+  {
+    err_t err = compile_type_ref (&ref, "42", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  TEST_CASE ("error: bare punctuation")
+  {
+    err_t err = compile_type_ref (&ref, "[0]", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // 'struct' keyword but no opening brace
+  TEST_CASE ("error: 'struct' missing '{'")
+  {
+    err_t err = compile_type_ref (&ref, "struct a x }", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // 'struct {}' — body is empty, parse_field_ref expects IDENT but gets '}'
+  TEST_CASE ("error: 'struct {}' empty body")
+  {
+    err_t err = compile_type_ref (&ref, "struct {}", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Field key present but no type_ref following it — next token is '}'
+  // which hits the default branch of parse_type_ref_inner
+  TEST_CASE ("error: 'struct { a }' field with no type")
+  {
+    err_t err = compile_type_ref (&ref, "struct { a }", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Missing closing brace
+  TEST_CASE ("error: 'struct { a x' missing '}'")
+  {
+    err_t err = compile_type_ref (&ref, "struct { a x", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Trailing comma — parse_field_ref is called again and gets '}' not IDENT
+  TEST_CASE ("error: 'struct { a x, }' trailing comma")
+  {
+    err_t err = compile_type_ref (&ref, "struct { a x, }", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Double comma
+  TEST_CASE ("error: 'struct { a x,, b y }' double comma")
+  {
+    err_t err = compile_type_ref (&ref, "struct { a x,, b y }", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Second field missing its type_ref
+  TEST_CASE ("error: 'struct { a x, b }' second field no type")
+  {
+    err_t err = compile_type_ref (&ref, "struct { a x, b }", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  // Second field key is a keyword, not an identifier
+  TEST_CASE ("error: 'struct { a x, struct y }' keyword as field name")
+  {
+    err_t err = compile_type_ref (&ref, "struct { a x, struct y }", &alloc, &e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
+    e.cause_code = 0;
+    e.cmlen      = 0;
+  }
+
+  chunk_alloc_free_all (&alloc);
 }
 
 TEST (compile_type_primitives)

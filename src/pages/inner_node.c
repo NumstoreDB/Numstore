@@ -1121,3 +1121,18 @@ i_log_in (const int level, const page *in)
 
   i_log (level, "=== INNER NODE PAGE END ===\n");
 }
+
+#ifndef NTEST
+TEST (i_log_in)
+{
+  page in;
+  in_make_valid (&in);
+  in_set_prev (&in, 10);
+  in_set_next (&in, 10);
+  i_log_in (LOG_INFO, &in);
+
+  in_set_prev (&in, PGNO_NULL);
+  in_set_next (&in, PGNO_NULL);
+  i_log_in (LOG_INFO, &in);
+}
+#endif

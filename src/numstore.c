@@ -14,8 +14,6 @@
 
 #include "numstore.h"
 
-
-
 #include "alloc.h"
 #include "compiler.h"
 #include "nshandle.h"

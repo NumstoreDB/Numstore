@@ -15,6 +15,7 @@
 #include "pages/fsm_page.h"
 
 #include "pages/page.h"
+#include "testing/testing.h"
 
 void
 fsm_init_empty (page *in)
@@ -57,3 +58,13 @@ i_log_fsm (const int level, const page *t)
   }
   i_log (level, "=== FREE SPACE PAGE END ===\n");
 }
+
+#ifndef NTEST
+TEST (i_log_fsm)
+{
+  page fsm;
+  page_init_empty (&fsm, PG_FREE_SPACE_MAP);
+  fsm_set_bit (&fsm, 10);
+  i_log_fsm (LOG_INFO, &fsm);
+}
+#endif

@@ -12,13 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
 #include <stdatomic.h>
 #include <string.h>
 
 #include "dirty_page_table.h"
 #include "txn_table.h"
-#include "wal.h"
 #include "wal.h"
 
 #ifndef NTEST
