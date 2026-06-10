@@ -81,3 +81,17 @@ i_log_vt (const int level, const page *vp)
 
   i_log (level, "=== VARIABLE TAIL END ===\n");
 }
+
+#ifndef NTEST
+TEST (i_log_vt)
+{
+  page vt;
+  page_init_empty (&vt, PG_VAR_TAIL);
+
+  vt_set_next (&vt, PGNO_NULL);
+  i_log_vt (LOG_INFO, &vt);
+
+  vt_set_next (&vt, 10);
+  i_log_vt (LOG_INFO, &vt);
+}
+#endif

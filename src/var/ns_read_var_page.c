@@ -12,12 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-
-
 #include "compile_config.h"
-#include "pages/page_delegate.h"
 #include "page_h.h"
 #include "pager.h"
+#include "pages/page_delegate.h"
 #include "pages/var_page.h"
 #include "types.h"
 #include "var.h"

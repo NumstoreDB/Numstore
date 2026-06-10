@@ -1194,8 +1194,43 @@ i_log_dl (const int level, const page *d)
   i_log (level, "=== DATA LIST PAGE END ===\n");
 }
 
+#ifndef NTEST
+TEST (i_log_dl)
+{
+  page dl;
+  dl_make_valid (&dl);
+
+  dl_set_next (&dl, PGNO_NULL);
+  dl_set_prev (&dl, PGNO_NULL);
+  i_log_dl (LOG_INFO, &dl);
+
+  dl_set_next (&dl, 10);
+  dl_set_prev (&dl, PGNO_NULL);
+  i_log_dl (LOG_INFO, &dl);
+
+  dl_set_next (&dl, PGNO_NULL);
+  dl_set_prev (&dl, 10);
+  i_log_dl (LOG_INFO, &dl);
+
+  dl_set_next (&dl, 10);
+  dl_set_prev (&dl, 10);
+  i_log_dl (LOG_INFO, &dl);
+}
+#endif
+
 void
 dl_make_valid (page *d)
 {
   dl_set_used (d, DL_DATA_SIZE);
 }
+
+#ifndef NTEST
+TEST (dl_make_valid)
+{
+  page dl;
+  page_init_empty (&dl, PG_DATA_LIST);
+  dl_make_valid (&dl);
+  page_set_checksum (&dl, page_compute_checksum (&dl));
+  test_assert_equal (page_validate_for_db (&dl, PG_DATA_LIST, NULL), SUCCESS);
+}
+#endif

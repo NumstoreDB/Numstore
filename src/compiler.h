@@ -355,12 +355,25 @@ parser_check_end (struct parser *p, error *e)
  ******************************************************************************/
 
 // stride       ::= '[' entry_list ']'
-// entry_list   ::= entry
-// | entry ',' entry_list
-// entry        ::= slice_range
-// | NUMBER
-// slice_range  ::= NUMBER? ':' NUMBER?
-// | NUMBER? ':' NUMBER? ':' NUMBER?
+// entry_list   ::= entry | entry ',' entry_list
+// entry        ::= slice_range | NUMBER
+// slice_range  ::= NUMBER? ':' NUMBER? | NUMBER? ':' NUMBER? ':' NUMBER?
+//
+// Test Cases:
+//  - [ ]
+//  - [ 0 ]
+//  - [ 0, 0 ]
+//  - [ 0: ]
+//  - [ 0:, 0 ]
+//  - [ :, 0 ]
+//  - [ :0, 0 ]
+//  - [ ::, 0 ]
+//  - [ ::0, 0 ]
+//  - [ :0:, 0 ]
+//  - [ :0:0, 0 ]
+//  - [ 0::, 0 ]
+//  - [ 0::0, 0 ]
+//  - [ 0:0:0, 0 ]
 
 err_t parse_multi_user_stride (
     struct parser            *parser,

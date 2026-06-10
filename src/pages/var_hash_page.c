@@ -14,7 +14,8 @@
 
 #include "pages/var_hash_page.h"
 
-
+#include "pages/page.h"
+#include "testing/testing.h"
 
 DEFINE_DBG_ASSERT (page, vh_page, d, { ASSERT (d); })
 
@@ -67,3 +68,17 @@ i_log_vh (const int level, const page *vh)
 
   i_log (level, "=== VAR HASH TABLE PAGE END ===\n");
 }
+
+#ifndef NTEST
+TEST (i_log_vh)
+{
+  page vh;
+
+  page_init_empty (&vh, PG_VAR_HASH_PAGE);
+  i_log_vh (LOG_INFO, &vh);
+
+  vh_set_hash_value (&vh, 10, 10);
+  vh_set_hash_value (&vh, 12, 10);
+  i_log_vh (LOG_INFO, &vh);
+}
+#endif

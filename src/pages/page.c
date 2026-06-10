@@ -227,5 +227,28 @@ i_log_page (const int log_level, const page *p)
       return;
     }
   }
-  // UNREACHABLE ();
 }
+
+#ifndef NTEST
+TEST (i_log_page)
+{
+  page pg;
+  page_init_empty (&pg, PG_DATA_LIST);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_INNER_NODE);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_FREE_SPACE_MAP);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_VAR_PAGE);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_VAR_TAIL);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_VAR_HASH_PAGE);
+  i_log_page (LOG_INFO, &pg);
+}
+#endif
