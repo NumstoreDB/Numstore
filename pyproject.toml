@@ -63,5 +63,5 @@ regex = '(?P<value>[0-9.]+)'
 
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
-test-requires = ["pytest", "pytest-subtests"]
+test-requires = ["pytest", "pytest-subtests", "hypothesis"]
 test-command = "pytest {project}/bindings/python/pynumstore/tests"
