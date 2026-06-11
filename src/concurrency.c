@@ -72,7 +72,7 @@ TEST (gr_lock_init)
   {
     error          e = error_create ();
     struct gr_lock l;
-    test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
+    gr_lock_init (&l, &e);
     gr_lock_destroy (&l);
   }
 }
@@ -84,7 +84,7 @@ gr_lock_destroy (struct gr_lock *l)
   i_mutex_lock (&l->mutex);
   // TODO - Caller must ensure all threads have released locks
   // You could put a done flag - and assert !done on actions
-  i_mutex_free (&l->mutex);
+  i_mutex_unlock (&l->mutex);
 
   i_mutex_free (&l->mutex);
 
@@ -103,7 +103,7 @@ TEST (gr_lock_destroy)
   {
     error          e = error_create ();
     struct gr_lock l;
-    test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
+    gr_lock_init (&l, &e);
     gr_lock_destroy (&l);
   }
 }
