@@ -29,8 +29,9 @@
 
 #include "concurrency.h" // latch
 #include "csx_assert.h"  // UNREACHABLE
-#include "platform.h"    // HEADER_FUNC
-#include "stdtypes.h"    // u32
+#include "os.h"
+#include "platform.h" // HEADER_FUNC
+#include "stdtypes.h" // u32
 
 /******************************************************************************
  * SECTION: Local Linear Allocator
@@ -385,14 +386,29 @@ void *chunk_alloc_move_mem (
 );
 
 /******************************************************************************
- * SECTION: Blocking
+ * SECTION: Blocking Object Pool
  * ----------------------------------------------------------------------------
  *
- * @brief Allocates fixed size blocks
- *
- * A slab allocator allocates fixed sized "slabs" it is dynamic
- * because it can allocate an infinite number of these
+ * @brief Allocates fixed size blocks - limited memory - blocks on overfull
  ******************************************************************************/
+
+struct bobj_pool
+{
+  i_mutex mutex;
+  i_cond  avail;
+  void   *freelist;
+  u32     used;
+  u32     cap;
+  u32     size;
+  bool    active;
+  u8      data[];
+};
+
+struct bobj_pool *bobjp_create (u32 cap, u32 size, error *e);
+void              bobjp_destroy (struct bobj_pool *p);
+
+void *bobjp_alloc (struct bobj_pool *pool);
+void  bobjp_free (struct bobj_pool *pool, void *ptr);
 
 /******************************************************************************
  * SECTION: Slab Allocator

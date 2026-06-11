@@ -14,308 +14,11 @@
 
 #include "os.h"
 
-#include <errno.h>
-#include <pthread.h>
-#include <string.h>
-
-#include "csx_assert.h"
-#include "error.h" // error
-#include "serial.h"
-
-////////////////////////////////////////////////////////////
-// Condition Variable
-
-err_t
-i_cond_create (i_cond *c, error *e)
-{
-  ASSERT (c);
-
-#ifndef NDEBUG
-  pthread_condattr_t attr;
-
-  // I just don't want to handle errors for debug code
-  int r1 = pthread_condattr_init (&attr);
-  ASSERT (r1 == 0);
-
-  const int r2 = pthread_cond_init (&c->cond, &attr);
-
-  r1 = pthread_condattr_destroy (&attr);
-  ASSERT (r1 == 0);
-
-  if (r2)
-#else
-  if (pthread_cond_init (&c->cond, NULL))
-#endif
-  {
-    switch (errno)
-    {
-      case EAGAIN:
-      {
-        return error_causef (
-            e,
-            ERR_IO,
-            "pthread_cond_init: %s",
-            strerror (errno)
-        );
-      }
-
-      case ENOMEM:
-      {
-        return error_causef (
-            e,
-            ERR_NOMEM,
-            "pthread_cond_init: %s",
-            strerror (errno)
-        );
-      }
-
-      case EBUSY:
-      {
-        i_log_error (
-            "cond_create: cond "
-            "already initialized: "
-            "%s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      case EINVAL:
-      {
-        i_log_error (
-            "cond_create: invalid "
-            "attributes or cond: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      default:
-      {
-        i_log_error (
-            "cond_create: unknown "
-            "error: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-    }
-  }
-
-  return SUCCESS;
-}
-
-void
-i_cond_free (i_cond *c)
-{
-  ASSERT (c);
-
-  errno = 0;
-  if (pthread_cond_destroy (&c->cond))
-  {
-    switch (errno)
-    {
-      case EBUSY:
-      {
-        i_log_error (
-            "cond_free: cond has "
-            "active waiters: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      case EINVAL:
-      {
-        i_log_error (
-            "cond_free: invalid or "
-            "uninitialized cond: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      default:
-      {
-        i_log_error (
-            "cond_free: unknown "
-            "error: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-    }
-  }
-}
-
-void
-i_cond_wait (i_cond *c, i_mutex *m)
-{
-  ASSERT (c);
-  ASSERT (m);
-
-  errno = 0;
-  if (pthread_cond_wait (&c->cond, &m->m))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
-        i_log_error (
-            "cond_wait: invalid cond "
-            "or mutex: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      case EPERM:
-      {
-        i_log_error (
-            "cond_wait: mutex not "
-            "owned by thread: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      default:
-      {
-        i_log_error (
-            "cond_wait: unknown "
-            "error: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-    }
-  }
-}
-
-void
-i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
-{
-  ASSERT (c);
-  ASSERT (m);
-
-  struct timespec ts;
-  clock_gettime (CLOCK_REALTIME, &ts);
-  ts.tv_sec += msec / 1000;
-  ts.tv_nsec += (msec % 1000) * 1000000LL;
-  if (ts.tv_nsec >= 1000000000LL)
-  {
-    ts.tv_sec += 1;
-    ts.tv_nsec -= 1000000000LL;
-  }
-
-  errno   = 0;
-  int ret = pthread_cond_timedwait (&c->cond, &m->m, &ts);
-  if (ret && ret != ETIMEDOUT)
-  {
-    switch (ret)
-    {
-      case EINVAL:
-      {
-        i_log_error (
-            "cond_timed_wait: invalid cond, "
-            "mutex, or abstime: %s\n",
-            strerror (ret)
-        );
-        UNREACHABLE ();
-      }
-      case EPERM:
-      {
-        i_log_error (
-            "cond_timed_wait: mutex not "
-            "owned by thread: %s\n",
-            strerror (ret)
-        );
-        UNREACHABLE ();
-      }
-      default:
-      {
-        i_log_error (
-            "cond_timed_wait: unknown "
-            "error: %s\n",
-            strerror (ret)
-        );
-        UNREACHABLE ();
-      }
-    }
-  }
-}
-
-void
-i_cond_signal (i_cond *c)
-{
-  ASSERT (c);
-
-  errno = 0;
-  if (pthread_cond_signal (&c->cond))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
-        i_log_error (
-            "cond_signal: invalid or "
-            "uninitialized cond: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      default:
-      {
-        i_log_error (
-            "cond_signal: unknown "
-            "error: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-    }
-  }
-}
-
-void
-i_cond_broadcast (i_cond *c)
-{
-  ASSERT (c);
-
-  errno = 0;
-  if (pthread_cond_broadcast (&c->cond))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
-        i_log_error (
-            "cond_broadcast: invalid "
-            "or uninitialized cond: "
-            "%s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-
-      default:
-      {
-        i_log_error (
-            "cond_broadcast: unknown "
-            "error: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE ();
-      }
-    }
-  }
-}
-
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -323,7 +26,16 @@ i_cond_broadcast (i_cond *c)
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
+#include <time.h>
 #include <unistd.h>
+
+#include "csx_assert.h"
+#include "error.h" // error
+#include "serial.h"
+
+/******************************************************************************
+ * SECTION: File System
+ ******************************************************************************/
 
 #ifndef NDEBUG
 static bool
@@ -338,8 +50,9 @@ DEFINE_DBG_ASSERT (i_file, i_file, fp, {
   ASSERT (fd_is_open (fp->fd));
 })
 
-////////////////////////////////////////////////////////////
-// File vtable — POSIX implementations
+/******************************************************************************
+ * SECTION: File System
+ ******************************************************************************/
 
 static err_t
 _posix_close (i_file *fp, error *e)
@@ -382,9 +95,6 @@ posix_file_size (const i_file *fp, error *e)
 
   return (i64)st.st_size;
 }
-
-////////////////////////////////////////////////////////////
-// Positional Read / Write
 
 static i64
 posix_pread_some (
@@ -1242,21 +952,320 @@ struct i_file_system_vtable default_fsvtable = {
     .i_file_exists  = posix_file_exists,
 };
 
-#include <errno.h>
-#include <pthread.h>
-#include <string.h>
+/******************************************************************************
+ * SECTION: Threading
+ ******************************************************************************/
 
-////////////////////////////////////////////////////////////
-// Mutex
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Condition Variables
+ *----------------------------------------------------------------------------*/
+
+static err_t
+posix_cond_create (i_threading *t, i_cond *c, error *e)
+{
+  (void)t;
+  ASSERT (c);
+
+#ifndef NDEBUG
+  pthread_condattr_t attr;
+
+  // I just don't want to handle errors for debug code
+  int r1 = pthread_condattr_init (&attr);
+  ASSERT (r1 == 0);
+
+  const int r2 = pthread_cond_init (&c->cond, &attr);
+
+  r1 = pthread_condattr_destroy (&attr);
+  ASSERT (r1 == 0);
+
+  if (r2)
+#else
+  if (pthread_cond_init (&c->cond, NULL))
+#endif
+  {
+    switch (errno)
+    {
+      case EAGAIN:
+      {
+        return error_causef (
+            e,
+            ERR_IO,
+            "pthread_cond_init: %s",
+            strerror (errno)
+        );
+      }
+
+      case ENOMEM:
+      {
+        return error_causef (
+            e,
+            ERR_NOMEM,
+            "pthread_cond_init: %s",
+            strerror (errno)
+        );
+      }
+
+      case EBUSY:
+      {
+        i_log_error (
+            "cond_create: cond "
+            "already initialized: "
+            "%s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      case EINVAL:
+      {
+        i_log_error (
+            "cond_create: invalid "
+            "attributes or cond: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      default:
+      {
+        i_log_error (
+            "cond_create: unknown "
+            "error: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+    }
+  }
+
+  return SUCCESS;
+}
+
+static void
+posix_cond_free (i_threading *t, i_cond *c)
+{
+  (void)t;
+  ASSERT (c);
+
+  errno = 0;
+  if (pthread_cond_destroy (&c->cond))
+  {
+    switch (errno)
+    {
+      case EBUSY:
+      {
+        i_log_error (
+            "cond_free: cond has "
+            "active waiters: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      case EINVAL:
+      {
+        i_log_error (
+            "cond_free: invalid or "
+            "uninitialized cond: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      default:
+      {
+        i_log_error (
+            "cond_free: unknown "
+            "error: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+    }
+  }
+}
+
+static void
+posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
+{
+  (void)t;
+  ASSERT (c);
+  ASSERT (m);
+
+  errno = 0;
+  if (pthread_cond_wait (&c->cond, &m->m))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
+        i_log_error (
+            "cond_wait: invalid cond "
+            "or mutex: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      case EPERM:
+      {
+        i_log_error (
+            "cond_wait: mutex not "
+            "owned by thread: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      default:
+      {
+        i_log_error (
+            "cond_wait: unknown "
+            "error: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+    }
+  }
+}
+
+static void
+posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
+{
+  (void)t;
+  ASSERT (c);
+  ASSERT (m);
+
+  struct timespec ts;
+  clock_gettime (CLOCK_REALTIME, &ts);
+  ts.tv_sec += msec / 1000;
+  ts.tv_nsec += (msec % 1000) * 1000000LL;
+  if (ts.tv_nsec >= 1000000000LL)
+  {
+    ts.tv_sec += 1;
+    ts.tv_nsec -= 1000000000LL;
+  }
+
+  errno   = 0;
+  int ret = pthread_cond_timedwait (&c->cond, &m->m, &ts);
+  if (ret && ret != ETIMEDOUT)
+  {
+    switch (ret)
+    {
+      case EINVAL:
+      {
+        i_log_error (
+            "cond_timed_wait: invalid cond, "
+            "mutex, or abstime: %s\n",
+            strerror (ret)
+        );
+        UNREACHABLE ();
+      }
+      case EPERM:
+      {
+        i_log_error (
+            "cond_timed_wait: mutex not "
+            "owned by thread: %s\n",
+            strerror (ret)
+        );
+        UNREACHABLE ();
+      }
+      default:
+      {
+        i_log_error (
+            "cond_timed_wait: unknown "
+            "error: %s\n",
+            strerror (ret)
+        );
+        UNREACHABLE ();
+      }
+    }
+  }
+}
+
+static void
+posix_cond_signal (i_threading *t, i_cond *c)
+{
+  (void)t;
+  ASSERT (c);
+
+  errno = 0;
+  if (pthread_cond_signal (&c->cond))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
+        i_log_error (
+            "cond_signal: invalid or "
+            "uninitialized cond: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      default:
+      {
+        i_log_error (
+            "cond_signal: unknown "
+            "error: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+    }
+  }
+}
+
+static void
+posix_cond_broadcast (i_threading *t, i_cond *c)
+{
+  (void)t;
+  ASSERT (c);
+
+  errno = 0;
+  if (pthread_cond_broadcast (&c->cond))
+  {
+    switch (errno)
+    {
+      case EINVAL:
+      {
+        i_log_error (
+            "cond_broadcast: invalid "
+            "or uninitialized cond: "
+            "%s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+
+      default:
+      {
+        i_log_error (
+            "cond_broadcast: unknown "
+            "error: %s\n",
+            strerror (errno)
+        );
+        UNREACHABLE ();
+      }
+    }
+  }
+}
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Mutex
+ *----------------------------------------------------------------------------*/
 
 struct i_mutex_s
 {
   pthread_mutex_t mutex;
 };
 
-err_t
-i_mutex_create (i_mutex *dest, error *e)
+static err_t
+posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
 {
+  (void)t;
   errno = 0;
 #ifndef NDEBUG
   pthread_mutexattr_t attr;
@@ -1306,9 +1315,10 @@ i_mutex_create (i_mutex *dest, error *e)
   return SUCCESS;
 }
 
-void
-i_mutex_free (i_mutex *m)
+static void
+posix_mutex_free (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 
   errno = 0;
@@ -1343,22 +1353,23 @@ i_mutex_free (i_mutex *m)
   }
 }
 
-void
-i_mutex_lock (i_mutex *m)
+static void
+posix_mutex_lock (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 
-  errno = 0;
-  if (pthread_mutex_lock (&m->m))
+  int ret = pthread_mutex_lock (&m->m);
+  if (ret)
   {
-    switch (errno)
+    switch (ret)
     {
       case EINVAL:
       {
         i_log_error (
             "mutex_lock: "
             "invalid: %s\n",
-            strerror (errno)
+            strerror (ret)
         );
         UNREACHABLE ();
       }
@@ -1367,7 +1378,7 @@ i_mutex_lock (i_mutex *m)
         i_log_error (
             "mutex_lock: recursive "
             "lock: %s\n",
-            strerror (errno)
+            strerror (ret)
         );
         UNREACHABLE ();
       }
@@ -1376,22 +1387,23 @@ i_mutex_lock (i_mutex *m)
         i_log_error (
             "mutex_lock: "
             "deadlock: %s\n",
-            strerror (errno)
+            strerror (ret)
         );
         UNREACHABLE ();
       }
       default:
       {
-        i_log_error ("mutex_lock: %s\n", strerror (errno));
+        i_log_error ("mutex_lock: %s\n", strerror (ret));
         UNREACHABLE ();
       }
     }
   }
 }
 
-bool
-i_mutex_try_lock (i_mutex *m)
+static bool
+posix_mutex_try_lock (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 
   errno = 0;
@@ -1440,9 +1452,10 @@ i_mutex_try_lock (i_mutex *m)
   return true;
 }
 
-void
-i_mutex_unlock (i_mutex *m)
+static void
+posix_mutex_unlock (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 
   errno = 0;
@@ -1486,17 +1499,20 @@ i_mutex_unlock (i_mutex *m)
   }
 }
 
-////////////////////////////////////////////////////////////
-// Condition Variable
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Thread
+ *----------------------------------------------------------------------------*/
 
-err_t
-i_thread_create (
-    i_thread *dest,
+static err_t
+posix_thread_create (
+    i_threading *t,
+    i_thread    *dest,
     void *(*func) (void *),
     void  *context,
     error *e
 )
 {
+  (void)t;
   ASSERT (dest);
 
 #ifndef NDEBUG
@@ -1556,12 +1572,13 @@ i_thread_create (
   return SUCCESS;
 }
 
-err_t
-i_thread_join (i_thread *t, error *e)
+static err_t
+posix_thread_join (i_threading *t, i_thread *th, error *e)
 {
-  ASSERT (t);
+  (void)t;
+  ASSERT (th);
 
-  const int r = pthread_join (t->thread, NULL);
+  const int r = pthread_join (th->thread, NULL);
 
   if (r != 0)
   {
@@ -1604,49 +1621,32 @@ i_thread_join (i_thread *t, error *e)
   return SUCCESS;
 }
 
-void
-i_thread_cancel (i_thread *t)
-{
-  ASSERT (t);
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Abstraction
+ *----------------------------------------------------------------------------*/
 
-  const int r = pthread_cancel (t->thread);
-  if (r != 0)
-  {
-    switch (r)
-    {
-      case ESRCH:
-      {
-        i_log_error (
-            "pthread_cancel: no such "
-            "thread: %s\n",
-            strerror (r)
-        );
-        UNREACHABLE ();
-      }
-      default:
-      {
-        UNREACHABLE ();
-      }
-    }
-  }
-}
+struct i_threading default_threading = {
+    .i_thread_create = posix_thread_create,
+    .i_thread_join   = posix_thread_join,
 
-u64
-get_available_threads (void)
-{
-  const long ret = sysconf (_SC_NPROCESSORS_ONLN);
-  ASSERT (ret > 0);
-  return (u64)ret;
-}
+    .i_mutex_create   = posix_mutex_create,
+    .i_mutex_free     = posix_mutex_free,
+    .i_mutex_lock     = posix_mutex_lock,
+    .i_mutex_try_lock = posix_mutex_try_lock,
+    .i_mutex_unlock   = posix_mutex_unlock,
 
-#include <errno.h>
-#include <string.h>
-#include <time.h>
+    .i_cond_create     = posix_cond_create,
+    .i_cond_free       = posix_cond_free,
+    .i_cond_wait       = posix_cond_wait,
+    .i_cond_timed_wait = posix_cond_timed_wait,
+    .i_cond_signal     = posix_cond_signal,
+    .i_cond_broadcast  = posix_cond_broadcast,
+};
 
-////////////////////////////////////////////////////////////
-// TIMING
+/******************************************************************************
+ * SECTION: Timing
+ ******************************************************************************/
 
-// Timer API - handle-based monotonic timer
 err_t
 i_timer_create (i_timer *timer, error *e)
 {
@@ -1664,7 +1664,6 @@ void
 i_timer_free (i_timer *timer)
 {
   ASSERT (timer);
-  // No cleanup needed for POSIX timers
 }
 
 u64

@@ -25,6 +25,7 @@
 u32
 lt_lock_key (const struct lt_lock lock)
 {
+  // The containing buffer
   char     hcode[sizeof (union lt_lock_data) + sizeof (u8)];
   u32      hcodelen = 0;
   const u8 _type    = lock.type;
@@ -35,7 +36,6 @@ lt_lock_key (const struct lt_lock lock)
   switch (lock.type)
   {
     case LOCK_DB:
-    case LOCK_ROOT:
     case LOCK_VHP:
     {
       break;
@@ -93,10 +93,6 @@ lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
     {
       return true;
     }
-    case LOCK_ROOT:
-    {
-      return true;
-    }
     case LOCK_VHP:
     {
       return true;
@@ -128,11 +124,6 @@ i_print_lt_lock (const int log_level, const struct lt_lock l)
     case LOCK_DB:
     {
       i_printf (log_level, "LOCK_DB\n");
-      return;
-    }
-    case LOCK_ROOT:
-    {
-      i_printf (log_level, "LOCK_ROOT\n");
       return;
     }
     case LOCK_VHP:
@@ -182,12 +173,6 @@ get_parent (struct lt_lock *parent, const struct lt_lock lock)
     case LOCK_DB:
     {
       return false;
-    }
-    case LOCK_ROOT:
-    {
-      parent->type = LOCK_DB;
-      parent->data = (union lt_lock_data){0};
-      return true;
     }
     case LOCK_VHP:
     {
