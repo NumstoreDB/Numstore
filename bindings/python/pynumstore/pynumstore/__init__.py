@@ -42,6 +42,8 @@ class _NumstoreMixin:
         return Variable(self._db, self._txn, name)
 
     def get_or_create(self, name: str, dtype: str | None):
+        if not dtype.isascii() or not dtype.isprintable():
+            raise ValueError(f"dtype must be ASCII and printable, got {dtype!r}")
         if self._var_exists(name):
             return Variable(self._db, self._txn, name)
         if dtype is None:
@@ -52,6 +54,8 @@ class _NumstoreMixin:
         return self.create(name, dtype=dtype)
 
     def create(self, name: str, dtype: str):
+        if not dtype.isascii() or not dtype.isprintable():
+            raise ValueError(f"dtype must be ASCII and printable, got {dtype!r}")
         if self._var_exists(name):
             raise RuntimeError(
                 f"Variable {name!r} already exists; "
