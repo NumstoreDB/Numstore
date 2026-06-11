@@ -505,7 +505,10 @@ ns_balance_and_release (
   // Need to delete cur
   if (dlgt_get_len (page_h_ro (params.cur)) == 0)
   {
-    i_log_trace ("balance: deleting page %" PRpgno "\n", page_h_pgno (cur));
+    i_log_trace (
+        "balance: deleting page %" PRpgno "\n",
+        page_h_pgno (params.cur)
+    );
 
     // Fetch prev and next for link re writing
     if (!params.root->isroot)

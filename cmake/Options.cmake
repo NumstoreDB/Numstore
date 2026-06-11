@@ -11,6 +11,9 @@ option(BUILD_TOOLS             "Build small useful cli tools for numstore"  ON )
 option(BUILD_PYTHON_BINDINGS   "Build bindings"                             ON )
 option(BUILD_SAMPLES           "Build samples"                              ON )
 
+# Variables
+set(LOG_LEVEL "LOG_INFO" CACHE STRING "Set the log level (ignored if NLOG)")
+
 ######### Save as preprocessor macros
 
 if(ENABLE_NDEBUG)
@@ -23,6 +26,10 @@ endif()
 
 if(ENABLE_NLOG)
   add_compile_definitions(NLOG)
+endif()
+
+if(LOG_LEVEL)
+  add_compile_definitions(I_LOG_LEVEL=${LOG_LEVEL})
 endif()
 
 ######### Add coverage flags to the compiler

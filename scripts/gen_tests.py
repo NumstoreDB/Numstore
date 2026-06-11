@@ -44,6 +44,7 @@ def make_calls(tests):
     {{
       failed_names[failed++] = "{name}";
     }}
+    ntests++;
   }}
   //////////////////// {filepath}:{line} DONE
 """

@@ -23,7 +23,8 @@
         "ENABLE_ASAN":                "ON",
         "BUILD_TOOLS":                "ON",
         "BUILD_PYTHON_BINDINGS":      "ON",
-        "BUILD_SAMPLES":              "ON"
+        "BUILD_SAMPLES":              "ON",
+        "LOG_LEVEL":                  "LOG_INFO"
       }
     },
 
@@ -32,7 +33,8 @@
       "inherits": "debug",
       "cacheVariables": { 
         "ENABLE_ASAN":     "OFF" ,
-        "ENABLE_PORTABLE": "ON"
+        "ENABLE_PORTABLE": "ON",
+        "LOG_LEVEL":       "LOG_TRACE"
       }
     },
 
@@ -61,7 +63,8 @@
         "ENABLE_COVERAGE":            "OFF",
         "BUILD_TOOLS":                "ON",
         "BUILD_PYTHON_BINDINGS":      "ON",
-        "BUILD_SAMPLES":              "ON"
+        "BUILD_SAMPLES":              "ON",
+        "LOG_LEVEL":                  "IGNORED"
       }
     },
 

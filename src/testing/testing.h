@@ -35,8 +35,7 @@ extern int test_ret;
     void __test__##name (void)
 
 #  define TEST_CASE(fmt, ...)                                               \
-    for (int _tc_once =                                                     \
-                 (i_log_info ("------ CASE: " fmt "\n", ##__VA_ARGS__), 1), \
+    for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1),     \
              _tc_prev = test_ret;                                           \
          _tc_once;                                                          \
          _tc_once = 0,                                                      \

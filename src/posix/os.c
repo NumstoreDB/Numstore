@@ -422,9 +422,9 @@ posix_read_some (const i_file *fp, void *dest, const u64 nbytes, error *e)
   ASSERT (dest);
   ASSERT (nbytes > 0);
 
-  i_log_trace ("read %llu bytes\n", nbytes);
+  i_log_trace ("read %" PRIu64 " bytes\n", nbytes);
   const ssize_t ret = read (fp->fd, dest, nbytes);
-  i_log_trace ("read returned %ld\n", ret);
+  i_log_trace ("read returned %zu\n", ret);
 
   if (unlikely (ret < 0))
   {
@@ -480,7 +480,7 @@ posix_write_some (const i_file *fp, const void *src, const u64 nbytes, error *e)
   ASSERT (src);
   ASSERT (nbytes > 0);
 
-  i_log_trace ("write %llu bytes\n", nbytes);
+  i_log_trace ("write %" PRIu64 " bytes\n", nbytes);
   const ssize_t ret = write (fp->fd, src, nbytes);
   i_log_trace ("write returned %ld\n", ret);
 
