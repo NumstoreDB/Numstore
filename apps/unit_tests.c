@@ -3745,7 +3745,7 @@ main (const int argc, char **argv)
   ////home/theo/Development/numstore/src/pages/data_list.c:1198 DONE
 
   ////////////////////
-  ////home/theo/Development/numstore/src/pages/data_list.c:1229 START
+  ////home/theo/Development/numstore/src/pages/data_list.c:1231 START
   if (!filter || strstr ("dl_make_valid", filter))
   {
     extern void __test__dl_make_valid (void);
@@ -3765,7 +3765,7 @@ main (const int argc, char **argv)
     ntests++;
   }
   ////////////////////
-  ////home/theo/Development/numstore/src/pages/data_list.c:1229 DONE
+  ////home/theo/Development/numstore/src/pages/data_list.c:1231 DONE
 
   //////////////////// /home/theo/Development/numstore/src/pages/fsm_page.c:63
   ///START
@@ -4312,7 +4312,7 @@ main (const int argc, char **argv)
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:1126 DONE
 
-  //////////////////// /home/theo/Development/numstore/src/pages/page.c:154
+  //////////////////// /home/theo/Development/numstore/src/pages/page.c:153
   ///START
   if (!filter || strstr ("page_set_get_simple", filter))
   {
@@ -4335,9 +4335,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// /home/theo/Development/numstore/src/pages/page.c:154 DONE
+  //////////////////// /home/theo/Development/numstore/src/pages/page.c:153 DONE
 
-  //////////////////// /home/theo/Development/numstore/src/pages/page.c:234
+  //////////////////// /home/theo/Development/numstore/src/pages/page.c:233
   ///START
   if (!filter || strstr ("i_log_page", filter))
   {
@@ -4357,7 +4357,7 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// /home/theo/Development/numstore/src/pages/page.c:234 DONE
+  //////////////////// /home/theo/Development/numstore/src/pages/page.c:233 DONE
 
   ////////////////////
   ////home/theo/Development/numstore/src/pages/var_hash_page.c:73 START

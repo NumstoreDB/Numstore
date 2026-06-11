@@ -63,6 +63,8 @@ i_log_fsm (const int level, const page *t)
 TEST (i_log_fsm)
 {
   page fsm;
+  fsm.pg = 10;
+
   page_init_empty (&fsm, PG_FREE_SPACE_MAP);
   fsm_set_bit (&fsm, 10);
   i_log_fsm (LOG_INFO, &fsm);
