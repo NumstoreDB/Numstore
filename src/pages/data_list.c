@@ -1198,6 +1198,7 @@ i_log_dl (const int level, const page *d)
 TEST (i_log_dl)
 {
   page dl;
+  page_init_empty (&dl, PG_DATA_LIST);
   dl_make_valid (&dl);
 
   dl_set_next (&dl, PGNO_NULL);

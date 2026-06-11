@@ -1126,6 +1126,7 @@ i_log_in (const int level, const page *in)
 TEST (i_log_in)
 {
   page in;
+  page_init_empty (&in, PG_INNER_NODE);
   in_make_valid (&in);
   in_set_prev (&in, 10);
   in_set_next (&in, 10);

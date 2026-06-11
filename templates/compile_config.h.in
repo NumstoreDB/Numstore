@@ -30,9 +30,10 @@
 ////////////////////////////////////////////////////////////
 // TUNING
 
-#define NS_PAGE_SIZE       @NS_NS_PAGE_SIZE@
+#define NS_PAGE_SIZE       @NS_PAGE_SIZE@
 #define MEMORY_PAGE_LEN @NS_MEMORY_PAGE_LEN@
 #define WAL_BUFFER_CAP  @NS_WAL_BUFFER_CAP@
+#define MAX_OPEN_FILES  @NS_MAX_OPEN_FILES@
 
 ////////////////////////////////////////////////////////////
 // CPU
