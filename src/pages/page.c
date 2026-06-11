@@ -29,7 +29,6 @@
 void
 page_init_empty (page *p, const enum page_type type)
 {
-  memset (p->raw, 0, sizeof (p->raw));
   page_set_type (p, type);
   page_set_page_lsn (p, PGNO_NULL);
   page_set_checksum (p, 0);
@@ -234,6 +233,8 @@ i_log_page (const int log_level, const page *p)
 TEST (i_log_page)
 {
   page pg;
+  pg.pg = 10;
+
   page_init_empty (&pg, PG_DATA_LIST);
   i_log_page (LOG_INFO, &pg);
 

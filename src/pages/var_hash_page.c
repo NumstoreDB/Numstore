@@ -73,6 +73,8 @@ i_log_vh (const int level, const page *vh)
 TEST (i_log_vh)
 {
   page vh;
+  vh.pg = 10;
+
   page_init_empty (&vh, PG_VAR_HASH_PAGE);
   i_log_vh (LOG_INFO, &vh);
 

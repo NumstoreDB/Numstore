@@ -86,6 +86,8 @@ i_log_vt (const int level, const page *vp)
 TEST (i_log_vt)
 {
   page vt;
+  vt.pg = 10;
+
   page_init_empty (&vt, PG_VAR_TAIL);
 
   vt_set_next (&vt, PGNO_NULL);

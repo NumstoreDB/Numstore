@@ -297,6 +297,7 @@ i_log_vp (const int level, const page *vp)
 TEST (i_log_vp)
 {
   page vp;
+  vp.pg = 10;
 
   page_init_empty (&vp, PG_VAR_PAGE);
 
