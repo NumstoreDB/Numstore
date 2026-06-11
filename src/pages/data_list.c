@@ -1231,6 +1231,9 @@ dl_make_valid (page *d)
 TEST (dl_make_valid)
 {
   page dl;
+  dl.pg = 10;
+
+  memset (dl.raw, 0, sizeof (dl.raw));
   page_init_empty (&dl, PG_DATA_LIST);
   dl_make_valid (&dl);
   page_set_checksum (&dl, page_compute_checksum (&dl));
