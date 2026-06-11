@@ -26,6 +26,7 @@ int
 main (const int argc, char **argv)
 {
   const char *filter = (argc > 1) ? argv[1] : NULL;
+  int         ntests = 0;
 
   error   e = error_create ();
   i_timer timer;
@@ -57,6 +58,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lalloc_edge_cases";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:139 DONE
 
@@ -77,6 +79,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "bobjp_create";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:261 DONE
 
@@ -97,6 +100,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "bobjp_destroy";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:333 DONE
 
@@ -117,6 +121,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "bobjp_alloc";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:435 DONE
 
@@ -140,6 +145,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_simple";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:784 DONE
 
@@ -163,6 +169,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_cap_one";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:900 DONE
 
@@ -186,6 +193,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_no_duplicates";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:936 DONE
 
@@ -209,6 +217,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_free_all_realloc";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:965 DONE
 
@@ -232,6 +241,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_interleaved_patterns";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:1008 DONE
 
@@ -255,6 +265,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_free_head_slab";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:1060 DONE
 
@@ -278,6 +289,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_free_middle_slab";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:1104 DONE
 
@@ -301,6 +313,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_minimum_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:1150 DONE
 
@@ -324,6 +337,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "slab_alloc_stress_random";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/alloc.c:1179 DONE
 
@@ -345,6 +359,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "llist";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:28 DONE
 
@@ -366,6 +381,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_isempty";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:96 DONE
 
@@ -387,6 +403,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_len";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:106
   ///DONE
@@ -409,6 +426,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_avail";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:116
   ///DONE
@@ -434,6 +452,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_get_next_data_bytes";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:166
   ///DONE
@@ -459,6 +478,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_get_nbytes";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:239
   ///DONE
@@ -484,6 +504,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_fakewrite";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:306
   ///DONE
@@ -509,6 +530,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_fakeread";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:393
   ///DONE
@@ -531,6 +553,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_read";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:514
   ///DONE
@@ -553,6 +576,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_copy";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:586
   ///DONE
@@ -575,6 +599,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_write";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:675
   ///DONE
@@ -600,6 +625,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_cbuffer_move";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:769
   ///DONE
@@ -625,6 +651,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_cbuffer_copy";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:878
   ///DONE
@@ -650,6 +677,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_get_no_check";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1158
   ///DONE
@@ -672,6 +700,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_get";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1260
   ///DONE
@@ -697,6 +726,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_peek_back";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1291
   ///DONE
@@ -722,6 +752,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_peek_front";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1347
   ///DONE
@@ -747,6 +778,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_push_back";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1421
   ///DONE
@@ -772,6 +804,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_push_front";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1482
   ///DONE
@@ -797,6 +830,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_pop_back";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1553
   ///DONE
@@ -822,6 +856,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_pop_front";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1624
   ///DONE
@@ -847,6 +882,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_create_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1760
   ///DONE
@@ -872,6 +908,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_append_single";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1776
   ///DONE
@@ -897,6 +934,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_append_multiple";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1797
   ///DONE
@@ -922,6 +960,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_append_triggers_realloc";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1819
   ///DONE
@@ -947,6 +986,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_append_alloc_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1856
   ///DONE
@@ -972,6 +1012,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_append_alloc_sequential";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1881
   ///DONE
@@ -997,6 +1038,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_append_alloc_triggers_realloc";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1912
   ///DONE
@@ -1022,6 +1064,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_different_element_sizes";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1932
   ///DONE
@@ -1047,6 +1090,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_struct_elements";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1952
   ///DONE
@@ -1072,6 +1116,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_free_resets";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1980
   ///DONE
@@ -1097,6 +1142,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dblb_large_append";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:1996
   ///DONE
@@ -1122,6 +1168,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ext_array_insert_read";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:2276
   ///DONE
@@ -1144,6 +1191,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ext_array_write";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:2415
   ///DONE
@@ -1169,6 +1217,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ext_array_remove";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:2521
   ///DONE
@@ -1194,6 +1243,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ext_array_random";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:2688
   ///DONE
@@ -1219,6 +1269,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "block_insert_read";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:3420
   ///DONE
@@ -1244,6 +1295,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "block_insert_remove_read";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:3680
   ///DONE
@@ -1269,6 +1321,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "block_insert_write_read";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:3825
   ///DONE
@@ -1291,6 +1344,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "block_random";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:3988
   ///DONE
@@ -1316,6 +1370,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ba_memcpy_from_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:4077
   ///DONE
@@ -1341,6 +1396,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ba_memcpy_to_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/collections.c:4407
   ///DONE
@@ -1365,6 +1421,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_two_char_tokens";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:687 DONE
 
@@ -1388,6 +1445,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_single_char_operators";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:713 DONE
 
@@ -1408,6 +1466,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_strings";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:741 DONE
 
@@ -1431,6 +1490,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_identifiers";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:754 DONE
 
@@ -1451,6 +1511,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_numbers";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:768 DONE
 
@@ -1471,6 +1532,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_keywords";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:784 DONE
 
@@ -1494,6 +1556,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_primitives";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:803 DONE
 
@@ -1517,6 +1580,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_whitespace_handling";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:823 DONE
 
@@ -1540,6 +1604,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_complex_expression";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:841 DONE
 
@@ -1563,6 +1628,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_keyword_prefix";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:863 DONE
 
@@ -1583,6 +1649,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_errors";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:879 DONE
 
@@ -1606,6 +1673,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_empty_string";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:891 DONE
 
@@ -1629,6 +1697,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "lexer_numbers_in_sequence";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:902 DONE
 
@@ -1652,6 +1721,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_user_stride_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1009 DONE
 
@@ -1675,6 +1745,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_multi_user_stride";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1043 DONE
 
@@ -1698,6 +1769,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_type_ref";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1370 DONE
 
@@ -1721,6 +1793,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_type_primitives";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1613 DONE
 
@@ -1744,6 +1817,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_type_sarray";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1682 DONE
 
@@ -1767,6 +1841,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_type_struct";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1725 DONE
 
@@ -1790,6 +1865,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_type_union";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1761 DONE
 
@@ -1813,6 +1889,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "compile_type_complex";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/compiler.c:1785 DONE
 
@@ -1834,6 +1911,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_init";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:55 DONE
 
@@ -1855,6 +1933,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_destroy";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:100
   ///DONE
@@ -1880,6 +1959,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_is_compatible";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:146
   ///DONE
@@ -1902,6 +1982,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_unlock";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:379
   ///DONE
@@ -1927,6 +2008,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_mode_name";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:477
   ///DONE
@@ -1952,6 +2034,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_basic_sanity";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:636
   ///DONE
@@ -1977,6 +2060,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_is_is_compatible";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:653
   ///DONE
@@ -2002,6 +2086,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_is_x_blocks";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:678
   ///DONE
@@ -2027,6 +2112,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "gr_lock_high_pressure_random";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:707
   ///DONE
@@ -2049,6 +2135,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "latch";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:897
   ///DONE
@@ -2071,6 +2158,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fpgr_open";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/file_pager.c:124 DONE
 
@@ -2092,6 +2180,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fpgr_new";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/file_pager.c:233 DONE
 
@@ -2113,6 +2202,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fpgr_read_write";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/file_pager.c:412 DONE
 
@@ -2133,6 +2223,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "htable";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/htable.c:198 DONE
 
@@ -2156,6 +2247,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fnv1a_hash_empty";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/htable.c:273 DONE
 
@@ -2179,6 +2271,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fnv1a_hash_single_char";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/htable.c:281 DONE
 
@@ -2202,6 +2295,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fnv1a_hash_known_value";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/htable.c:290 DONE
 
@@ -2225,6 +2319,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "fnv1a_hash_deterministic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/htable.c:298 DONE
 
@@ -2249,6 +2344,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "kvt_list_builder";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/kvt_list_builder.c:199 DONE
@@ -2270,6 +2366,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "mem_vhmap";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/mem_vhmap.c:254 DONE
 
@@ -2291,6 +2388,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_init";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:225
   ///DONE
@@ -2316,6 +2414,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_append_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:298
   ///DONE
@@ -2341,6 +2440,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_append_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:414
   ///DONE
@@ -2366,6 +2466,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_append_tip_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:664
   ///DONE
@@ -2391,6 +2492,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_append_tip_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:864
   ///DONE
@@ -2416,6 +2518,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_consume_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1211
   ///DONE
@@ -2441,6 +2544,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_consume_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1285
   ///DONE
@@ -2466,6 +2570,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_done_observing_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1355
   ///DONE
@@ -2491,6 +2596,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_done_observing_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1410
   ///DONE
@@ -2516,6 +2622,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_done_consuming_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1453
   ///DONE
@@ -2541,6 +2648,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_done_consuming_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1497
   ///DONE
@@ -2563,6 +2671,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_done_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1541
   ///DONE
@@ -2585,6 +2694,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nupd_done_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/node_updates.c:1595
   ///DONE
@@ -2609,6 +2719,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "checksum_execute_simple";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:112 DONE
 
@@ -2632,6 +2743,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "checksum_execute_deterministic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:123 DONE
 
@@ -2655,6 +2767,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "checksum_execute_incremental";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:135 DONE
 
@@ -2675,6 +2788,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randu32";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:261 DONE
 
@@ -2695,6 +2809,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randu32r";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:292 DONE
 
@@ -2715,6 +2830,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randi32r";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:370 DONE
 
@@ -2735,6 +2851,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randu64r";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:509 DONE
 
@@ -2755,6 +2872,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randu64e";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:559 DONE
 
@@ -2775,6 +2893,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randi64r";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:623 DONE
 
@@ -2795,6 +2914,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "randi64e";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:646 DONE
 
@@ -2818,6 +2938,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "parse_i32_expect";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:857 DONE
 
@@ -2841,6 +2962,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "parse_f32_expect";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:1008 DONE
 
@@ -2861,6 +2983,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "py_mod_f32";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:1048 DONE
 
@@ -2881,6 +3004,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "py_mod_i32";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/numerics.c:1085 DONE
 
@@ -2904,6 +3028,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_malloc_injection";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/os.c:73 DONE
 
@@ -2924,6 +3049,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_realloc_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/os.c:167 DONE
 
@@ -2944,6 +3070,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_realloc_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/os.c:208 DONE
 
@@ -2964,6 +3091,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_realloc_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/os.c:307 DONE
 
@@ -2987,6 +3115,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_crealloc_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/os.c:384 DONE
 
@@ -3007,6 +3136,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_crealloc_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/os.c:490 DONE
 
@@ -3028,6 +3158,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "build_page_tree";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/page_fixture.c:296 DONE
@@ -3050,6 +3181,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pager_fill_ht";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pager.c:180
   ///DONE
@@ -3072,6 +3204,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "wal_int";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pager.c:234
   ///DONE
@@ -3097,6 +3230,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pgr_close_success";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pgr_close.c:74
   ///DONE
@@ -3119,6 +3253,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pgr_delete";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/pgr_delete_and_release.c:83 DONE
@@ -3144,6 +3279,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pgr_get_invalid_checksum";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pgr_get.c:112
   ///DONE
@@ -3169,6 +3305,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pgr_new_get_save";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pgr_new.c:218
   ///DONE
@@ -3191,6 +3328,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pager_open";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pgr_open.c:277
   ///DONE
@@ -3213,6 +3351,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pgr_open_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pager/pgr_open.c:319
   ///DONE
@@ -3239,6 +3378,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "pgr_reserve_and_ctrl_lock_st";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/pgr_reserve_and_ctrl_lock.c:95
@@ -3265,6 +3405,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "aries_rollback_basic";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/pgr_rollback.c:157 DONE
@@ -3290,6 +3431,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "aries_rollback_multiple_updates";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/pgr_rollback.c:230 DONE
@@ -3315,6 +3457,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "aries_rollback_with_crash_recovery";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/pgr_rollback.c:309 DONE
@@ -3340,6 +3483,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "aries_rollback_clr_not_undone";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pager/pgr_rollback.c:370 DONE
@@ -3362,6 +3506,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_validate";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:86
   ///DONE
@@ -3384,6 +3529,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_set_get";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:168
   ///DONE
@@ -3406,6 +3552,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_read";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:231
   ///DONE
@@ -3431,6 +3578,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_read_out_from";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:410
   ///DONE
@@ -3453,6 +3601,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_append";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:613
   ///DONE
@@ -3475,6 +3624,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_write";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:711
   ///DONE
@@ -3497,6 +3647,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_memset";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:841
   ///DONE
@@ -3519,6 +3670,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_move_left";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:918
   ///DONE
@@ -3541,6 +3693,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_shift_right";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/data_list.c:998
   ///DONE
@@ -3563,6 +3716,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_move_right";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/data_list.c:1088 DONE
@@ -3585,6 +3739,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_dl";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/data_list.c:1198 DONE
@@ -3607,6 +3762,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dl_make_valid";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/data_list.c:1229 DONE
@@ -3629,6 +3785,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_fsm";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/fsm_page.c:63
   ///DONE
@@ -3654,6 +3811,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_validate_for_db";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:125 DONE
@@ -3679,6 +3837,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_set_get_simple";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:186 DONE
@@ -3701,6 +3860,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_push_end";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:244 DONE
@@ -3723,6 +3883,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_memcpy";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:309 DONE
@@ -3745,6 +3906,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_left";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:471 DONE
@@ -3770,6 +3932,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_left_two_keys";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:508 DONE
@@ -3795,6 +3958,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_left_all_keys";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:536 DONE
@@ -3820,6 +3984,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_left_into_empty";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:559 DONE
@@ -3842,6 +4007,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_push_left";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:638 DONE
@@ -3867,6 +4033,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_push_left_into_empty";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:669 DONE
@@ -3892,6 +4059,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_push_left_to_full";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:682 DONE
@@ -3914,6 +4082,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_right";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:742 DONE
@@ -3939,6 +4108,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_right_two_keys";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:779 DONE
@@ -3964,6 +4134,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_right_all_keys";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:807 DONE
@@ -3989,6 +4160,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_move_right_into_empty_right";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:830 DONE
@@ -4011,6 +4183,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_choose_lidx";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:887 DONE
@@ -4033,6 +4206,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_cut_left";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:985 DONE
@@ -4058,6 +4232,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_cut_left_all_at_once";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:1023 DONE
@@ -4083,6 +4258,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_cut_left_from_empty";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:1041 DONE
@@ -4108,6 +4284,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "in_cut_left_to_one";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:1054 DONE
@@ -4130,6 +4307,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_in";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/inner_node.c:1126 DONE
@@ -4155,6 +4333,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "page_set_get_simple";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/page.c:154 DONE
 
@@ -4176,6 +4355,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_page";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/page.c:234 DONE
 
@@ -4197,6 +4377,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_vh";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/pages/var_hash_page.c:73 DONE
@@ -4219,6 +4400,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "vp_init_empty";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/var_page.c:41
   ///DONE
@@ -4241,6 +4423,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "vp_validate";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/var_page.c:199
   ///DONE
@@ -4263,6 +4446,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_vp";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/var_page.c:297
   ///DONE
@@ -4285,6 +4469,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "vt_init_empty";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/var_tail.c:26
   ///DONE
@@ -4307,6 +4492,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "vt_validate";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/var_tail.c:51
   ///DONE
@@ -4329,6 +4515,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "i_log_vt";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/pages/var_tail.c:86
   ///DONE
@@ -4350,6 +4537,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "prim_t_validate";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/prim.c:48 DONE
 
@@ -4370,6 +4558,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "prim_t_snprintf";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/prim.c:130 DONE
 
@@ -4393,6 +4582,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "prim_t_byte_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/prim.c:197 DONE
 
@@ -4416,6 +4606,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "prim_t_serialize";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/prim.c:209 DONE
 
@@ -4439,6 +4630,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "prim_t_deserialize";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/prim.c:247 DONE
 
@@ -4459,6 +4651,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "prim_t_random";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/prim.c:273 DONE
 
@@ -4483,6 +4676,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dlgt_balance_with_prev";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/rope/ns_balance_and_release.c:68 DONE
@@ -4508,6 +4702,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dlgt_balance_with_next";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/rope/ns_balance_and_release.c:248 DONE
@@ -4532,6 +4727,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_t_snprintf";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:119 DONE
 
@@ -4555,6 +4751,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_t_byte_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:157 DONE
 
@@ -4578,6 +4775,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_t_get_serial_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:186 DONE
 
@@ -4601,6 +4799,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_t_serialize";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:222 DONE
 
@@ -4624,6 +4823,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_t_deserialize_green_path";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:315 DONE
 
@@ -4647,6 +4847,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_t_deserialize_red_path";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:350 DONE
 
@@ -4667,6 +4868,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "sarray_builder";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/sarray.c:556 DONE
 
@@ -4690,6 +4892,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "strings_all_unique";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/serial.c:82 DONE
 
@@ -4710,6 +4913,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "string_contains";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/serial.c:234 DONE
 
@@ -4730,6 +4934,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "stride_resolve";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/stride.c:158 DONE
 
@@ -4753,6 +4958,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "struct_t_snprintf";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/struct.c:244 DONE
 
@@ -4776,6 +4982,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "struct_t_byte_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/struct.c:312 DONE
 
@@ -4799,6 +5006,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "struct_t_get_serial_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/struct.c:380 DONE
 
@@ -4822,6 +5030,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "struct_t_serialize";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/struct.c:455 DONE
 
@@ -4845,6 +5054,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "struct_t_deserialize_green_path";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/struct.c:605 DONE
 
@@ -4868,6 +5078,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "struct_t_deserialize_red_path";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/struct.c:661 DONE
 
@@ -4889,6 +5100,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "aries_crash";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/aries_tests.c:20 DONE
@@ -4914,6 +5126,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "f16_to_f32_normals_and_specials";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:54 DONE
@@ -4939,6 +5152,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "f16_to_f32_nan_is_nan";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:73 DONE
@@ -4964,6 +5178,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "f16_to_f32_smallest_subnormal_correct_value";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:80 DONE
@@ -4989,6 +5204,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "parse_i32_boundary_values";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:112 DONE
@@ -5014,6 +5230,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "parse_i64_boundary_values";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:166 DONE
@@ -5039,6 +5256,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ext_array_capacity_doubles_on_growth";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:201 DONE
@@ -5064,6 +5282,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ext_array_remove_all_produces_empty";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:232 DONE
@@ -5089,6 +5308,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "llist_append_maintaififo_order";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:271 DONE
@@ -5114,6 +5334,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "llist_find_returnode_and_index";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:295 DONE
@@ -5139,6 +5360,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "llist_remove_from_head_middle_tail";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:329 DONE
@@ -5164,6 +5386,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "llist_remove_absent_node_is_noop";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:366 DONE
@@ -5189,6 +5412,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "checksum_known_crc32c_vector";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:388 DONE
@@ -5214,6 +5438,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "checksum_distinct_bytes_differ";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:397 DONE
@@ -5239,6 +5464,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "serializer_write_at_capacity_then_overflow";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:410 DONE
@@ -5264,6 +5490,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "serializer_incremental_write_overflow";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:429 DONE
@@ -5289,6 +5516,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "stride_constructors_resolve_correctly";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:448 DONE
@@ -5314,6 +5542,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "string_ordering_operators";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:523 DONE
@@ -5339,6 +5568,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "line_length_newline_found";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:564 DONE
@@ -5364,6 +5594,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "string_equal_cases";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:621 DONE
@@ -5389,6 +5620,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "strings_are_disjoint_cases";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:659 DONE
@@ -5414,6 +5646,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "string_plus_concatenates";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:728 DONE
@@ -5439,6 +5672,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_discard_all_resets_state";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:779 DONE
@@ -5464,6 +5698,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_read_write_wraparound";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:816 DONE
@@ -5489,6 +5724,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cbuffer_cbuffer_move_transfers_bytes";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/core_extra_tests.c:875 DONE
@@ -5512,6 +5748,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_open";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:19
@@ -5536,6 +5773,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_merge_into";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:39
@@ -5563,6 +5801,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_min_rec_lsn";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:104
@@ -5587,6 +5826,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_exists";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:134
@@ -5611,6 +5851,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_add";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:157
@@ -5635,6 +5876,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_get";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:194
@@ -5659,6 +5901,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_remove";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:260
@@ -5683,6 +5926,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_serialize";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:324
@@ -5707,6 +5951,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_equal";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dirty_page_table_tests.c:388
@@ -5731,6 +5976,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "dpgt_concurrent";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/dpgt_concurrency_tests.c:100
@@ -5758,6 +6004,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cgd_test_create_delete_rollback_delete";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_regression_tests.c:21
@@ -5785,6 +6032,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "cgd_test_create_crash_close_delete";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_regression_tests.c:67
@@ -5812,6 +6060,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "irwr_rollback_invalid_wal_header";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_regression_tests.c:97
@@ -5835,6 +6084,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nsdb_create_txn";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_tests.c:24 DONE
@@ -5857,6 +6107,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nsdb_delete_txn";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_tests.c:179 DONE
@@ -5879,6 +6130,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nsdb_insert_txn";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_tests.c:287 DONE
@@ -5901,6 +6153,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nsdb_write_txn";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_tests.c:503 DONE
@@ -5926,6 +6179,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "nsdb_get_if_exists";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/numstore_tests.c:762 DONE
@@ -5951,6 +6205,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ht_insert_idx_regression_trigger_swap";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/robin_hood_ht_tests.c:27 DONE
@@ -5973,6 +6228,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "robin_hood_ht";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/robin_hood_ht_tests.c:105 DONE
@@ -5998,6 +6254,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "smfile_data_writer";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/smfile_data_writer.c:125 DONE
@@ -6020,6 +6277,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "test_mark_works";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/testing/testing.c:38
   ///DONE
@@ -6042,6 +6300,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "test_mark_match";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/testing/testing.c:49
   ///DONE
@@ -6065,6 +6324,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_concurrent";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/txnt_concurrency_tests.c:119
@@ -6088,6 +6348,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "wal";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/wal_tests.c:281 DONE
@@ -6113,6 +6374,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "wal_single_entry";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/testing/wal_tests.c:399 DONE
@@ -6134,6 +6396,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txn_basic";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:324 DONE
 
@@ -6154,6 +6417,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_open";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:431 DONE
 
@@ -6174,6 +6438,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_merge_into";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:577 DONE
 
@@ -6197,6 +6462,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_max_u_undo_lsn";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:718 DONE
 
@@ -6217,6 +6483,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_min_lsn";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:846 DONE
 
@@ -6237,6 +6504,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_exists";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:954 DONE
 
@@ -6258,6 +6526,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_insert";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:1011 DONE
 
@@ -6279,6 +6548,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_get";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:1164 DONE
 
@@ -6300,6 +6570,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_remove";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:1348 DONE
 
@@ -6321,6 +6592,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_serialize";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:1568 DONE
 
@@ -6345,6 +6617,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "txnt_equal_ignore_state";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/txn_table.c:1702 DONE
 
@@ -6368,6 +6641,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "type_generate_string";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/types.c:285 DONE
 
@@ -6391,6 +6665,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "type_malloc_copy";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/types.c:968 DONE
 
@@ -6411,6 +6686,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ta_subtype";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/types.c:1420 DONE
 
@@ -6434,6 +6710,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "type_accessor_builder";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/types.c:1791 DONE
 
@@ -6457,6 +6734,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "union_t_snprintf";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/union.c:243 DONE
 
@@ -6480,6 +6758,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "union_t_byte_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/union.c:314 DONE
 
@@ -6503,6 +6782,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "union_t_get_serial_size";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/union.c:382 DONE
 
@@ -6526,6 +6806,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "union_t_serialize";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/union.c:457 DONE
 
@@ -6549,6 +6830,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "union_t_deserialize_green_path";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/union.c:603 DONE
 
@@ -6572,6 +6854,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "union_t_deserialize_red_path";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/union.c:659 DONE
 
@@ -6592,6 +6875,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "file_basename";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/utils.c:30 DONE
 
@@ -6616,6 +6900,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ns_find_var_page";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/var/ns_find_var_page.c:349 DONE
@@ -6641,6 +6926,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "ns_var_get_or_create";
     }
+    ntests++;
   }
   ////////////////////
   ////home/theo/Development/numstore/src/var/ns_var_get_or_create.c:88 DONE
@@ -6665,6 +6951,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "rand_varname_same_hash";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/variables.c:274 DONE
 
@@ -6688,6 +6975,7 @@ main (const int argc, char **argv)
     {
       failed_names[failed++] = "rand_varname_different_hash";
     }
+    ntests++;
   }
   //////////////////// /home/theo/Development/numstore/src/variables.c:291 DONE
 
@@ -6704,7 +6992,7 @@ main (const int argc, char **argv)
   }
   else
   {
-    i_log_passed ("ALL TESTS PASSED\n");
+    i_log_passed ("ALL %d TESTS PASSED\n", ntests);
   }
 
   return test_ret;

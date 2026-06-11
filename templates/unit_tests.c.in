@@ -26,6 +26,7 @@ int
 main (const int argc, char **argv)
 {
   const char *filter = (argc > 1) ? argv[1] : NULL;
+  int ntests = 0;
 
   error   e = error_create ();
   i_timer timer;
@@ -52,7 +53,7 @@ main (const int argc, char **argv)
   }
   else
   {
-    i_log_passed ("ALL TESTS PASSED\n");
+    i_log_passed ("ALL %d TESTS PASSED\n", ntests);
   }
 
   return test_ret;

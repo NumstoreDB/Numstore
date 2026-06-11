@@ -92,10 +92,6 @@ void i_log_internal (
 
 void i_log_flush (void);
 
-#ifndef I_LOG_LEVEL
-#  define I_LOG_LEVEL LOG_DEBUG
-#endif
-
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Wrappers
  *----------------------------------------------------------------------------*/
@@ -145,10 +141,12 @@ void i_log_flush (void);
 #  define i_log_assert(...)  i_log_internal ("ASSERT", RED, __VA_ARGS__)
 #  define i_log_failure(...) i_log_internal ("FAILURE", BOLD_RED, __VA_ARGS__)
 #  define i_log_passed(...)  i_log_internal ("PASSED", BOLD_GREEN, __VA_ARGS__)
+#  define i_log_test_case(...) i_log_internal ("CASE", GREEN, __VA_ARGS__)
 #else
-#  define i_log_assert(...)  i_log_internal ("ASSERT", RED, __VA_ARGS__)
-#  define i_log_failure(...) ((void)0)
-#  define i_log_passed(...)  ((void)0)
+#  define i_log_assert(...)    i_log_internal ("ASSERT", RED, __VA_ARGS__)
+#  define i_log_failure(...)   ((void)0)
+#  define i_log_passed(...)    ((void)0)
+#  define i_log_test_case(...) ((void)0)
 #endif
 
 // Programatically choose the log level
