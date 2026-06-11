@@ -548,9 +548,23 @@ i_read_all_expect (i_file *fp, void *dest, const u64 nbytes, error *e)
  * routines
  ******************************************************************************/
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Thread
- *----------------------------------------------------------------------------*/
+typedef struct
+{
+#if defined(_WIN32)
+  CRITICAL_SECTION m;
+#else
+  pthread_mutex_t m;
+#endif
+} i_mutex;
+
+typedef struct
+{
+#if defined(_WIN32)
+  CONDITION_VARIABLE cond;
+#else
+  pthread_cond_t cond;
+#endif
+} i_cond;
 
 typedef struct
 {
@@ -561,51 +575,125 @@ typedef struct
   pthread_t thread;
 #endif
 } i_thread;
-err_t i_thread_create (
-    i_thread *t,
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Abstraction
+ *----------------------------------------------------------------------------*/
+
+typedef struct i_threading i_threading;
+
+struct i_threading
+{
+  err_t (*i_thread_create) (
+      i_threading *t,
+      i_thread    *th,
+      void *(*start_routine) (void *),
+      void  *arg,
+      error *e
+  );
+  err_t (*i_thread_join) (i_threading *t, i_thread *th, error *e);
+
+  err_t (*i_mutex_create) (i_threading *t, i_mutex *m, error *e);
+  void (*i_mutex_free) (i_threading *t, i_mutex *m);
+  void (*i_mutex_lock) (i_threading *t, i_mutex *m);
+  bool (*i_mutex_try_lock) (i_threading *t, i_mutex *m);
+  void (*i_mutex_unlock) (i_threading *t, i_mutex *m);
+
+  err_t (*i_cond_create) (i_threading *t, i_cond *c, error *e);
+  void (*i_cond_free) (i_threading *t, i_cond *c);
+  void (*i_cond_wait) (i_threading *t, i_cond *c, i_mutex *m);
+  void (*i_cond_timed_wait) (i_threading *t, i_cond *c, i_mutex *m, u64 msec);
+  void (*i_cond_signal) (i_threading *t, i_cond *c);
+  void (*i_cond_broadcast) (i_threading *t, i_cond *c);
+};
+
+extern struct i_threading default_threading;
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Thread
+ *----------------------------------------------------------------------------*/
+
+HEADER_FUNC err_t
+i_thread_create (
+    i_thread *th,
     void *(*start_routine) (void *),
     void  *arg,
     error *e
-);
-err_t i_thread_join (i_thread *t, error *e);
-void  i_thread_cancel (i_thread *t);
-u64   get_available_threads (void);
+)
+{
+  return default_threading
+      .i_thread_create (&default_threading, th, start_routine, arg, e);
+}
+HEADER_FUNC err_t
+i_thread_join (i_thread *th, error *e)
+{
+  return default_threading.i_thread_join (&default_threading, th, e);
+}
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Mutex
  *----------------------------------------------------------------------------*/
 
-typedef struct
+HEADER_FUNC err_t
+i_mutex_create (i_mutex *m, error *e)
 {
-#if defined(_WIN32)
-  CRITICAL_SECTION m;
-#else
-  pthread_mutex_t m;
-#endif
-} i_mutex;
-err_t i_mutex_create (i_mutex *m, error *e);
-void  i_mutex_free (i_mutex *m);
-void  i_mutex_lock (i_mutex *m);
-bool  i_mutex_try_lock (i_mutex *m);
-void  i_mutex_unlock (i_mutex *m);
+  return default_threading.i_mutex_create (&default_threading, m, e);
+}
+HEADER_FUNC void
+i_mutex_free (i_mutex *m)
+{
+  default_threading.i_mutex_free (&default_threading, m);
+}
+HEADER_FUNC void
+i_mutex_lock (i_mutex *m)
+{
+  default_threading.i_mutex_lock (&default_threading, m);
+}
+HEADER_FUNC bool
+i_mutex_try_lock (i_mutex *m)
+{
+  return default_threading.i_mutex_try_lock (&default_threading, m);
+}
+HEADER_FUNC void
+i_mutex_unlock (i_mutex *m)
+{
+  default_threading.i_mutex_unlock (&default_threading, m);
+}
+
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Condition Variable
  *----------------------------------------------------------------------------*/
 
-typedef struct
+HEADER_FUNC err_t
+i_cond_create (i_cond *c, error *e)
 {
-#if defined(_WIN32)
-  CONDITION_VARIABLE cond;
-#else
-  pthread_cond_t cond;
-#endif
-} i_cond;
-err_t i_cond_create (i_cond *c, error *e);
-void  i_cond_free (i_cond *c);
-void  i_cond_wait (i_cond *c, i_mutex *m);
-void  i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec);
-void  i_cond_signal (i_cond *c);
-void  i_cond_broadcast (i_cond *c);
+  return default_threading.i_cond_create (&default_threading, c, e);
+}
+HEADER_FUNC void
+i_cond_free (i_cond *c)
+{
+  default_threading.i_cond_free (&default_threading, c);
+}
+HEADER_FUNC void
+i_cond_wait (i_cond *c, i_mutex *m)
+{
+  default_threading.i_cond_wait (&default_threading, c, m);
+}
+HEADER_FUNC void
+i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
+{
+  default_threading.i_cond_timed_wait (&default_threading, c, m, msec);
+}
+HEADER_FUNC void
+i_cond_signal (i_cond *c)
+{
+  default_threading.i_cond_signal (&default_threading, c);
+}
+HEADER_FUNC void
+i_cond_broadcast (i_cond *c)
+{
+  default_threading.i_cond_broadcast (&default_threading, c);
+}
 
 /******************************************************************************
  * SECTION: Time
@@ -649,5 +737,37 @@ f64   i_timer_now_s (i_timer *timer);
 void  i_sleep_us (u64 us);
 #define i_sleep_ms(ms) i_sleep_us (1000 * ms)
 #define i_sleep_s(s)   i_sleep_us (1000000 * s)
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Fault Injection
+ *----------------------------------------------------------------------------*/
+
+/**
+ * @brief Returns ERR_IO on mutex creation
+ *
+ * @param t The threading instance - ignored
+ * @param m The destination mutex - ignored
+ * @param e The error - garuntee throws
+ */
+err_t i_mutex_create_errio (i_threading *t, i_mutex *m, error *e);
+
+/**
+ * @brief Returns ERR_IO on condition variable creation
+ *
+ * @param t The threading instance - ignored
+ * @param m The destination cond - ignored
+ * @param e The error - gauruntee throws
+ */
+err_t i_cond_create_errio (i_threading *t, i_cond *m, error *e);
+
+/**
+ * @brief Mallocs and returns ERR_NOMEM
+ *
+ * @param v The vmem instance
+ * @param nelem number of elements
+ * @param size size of each element
+ * @param e error - garuntee throws
+ */
+void *i_malloc_nomem (i_vmem *v, u32 nelem, u32 size, error *e);
 
 #endif // OS_H

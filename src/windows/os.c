@@ -14,91 +14,20 @@
 
 #include "os.h"
 
-#include "csx_assert.h"
-#include "error.h" // error
-#include "serial.h"
-
-////////////////////////////////////////////////////////////
-// Condition Variable
-//
-// Windows CONDITION_VARIABLE needs no explicit init/destroy —
-// InitializeConditionVariable is a no-op stub and there is no
-// destroy. We keep create/free for API symmetry.
-
-err_t
-i_cond_create (i_cond *c, error *e)
-{
-  ASSERT (c);
-  (void)e;
-  InitializeConditionVariable (&c->cond);
-  return SUCCESS;
-}
-
-void
-i_cond_free (i_cond *c)
-{
-  ASSERT (c);
-  // No-op: CONDITION_VARIABLE has no destroy function.
-}
-
-void
-i_cond_wait (i_cond *c, i_mutex *m)
-{
-  ASSERT (c);
-  ASSERT (m);
-
-  if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE))
-  {
-    i_log_error (
-        "cond_wait: SleepConditionVariableCS failed: %lu\n",
-        GetLastError ()
-    );
-    UNREACHABLE ();
-  }
-}
-
-void
-i_cond_timed_wait (i_cond *c, i_mutex *m, u64 msec)
-{
-  ASSERT (c);
-  ASSERT (m);
-  if (!SleepConditionVariableCS (&c->cond, &m->m, (DWORD)msec))
-  {
-    DWORD err = GetLastError ();
-    if (err != ERROR_TIMEOUT)
-    {
-      i_log_error (
-          "cond_timed_wait: SleepConditionVariableCS failed: %lu\n",
-          err
-      );
-      UNREACHABLE ();
-    }
-  }
-}
-
-void
-i_cond_signal (i_cond *c)
-{
-  ASSERT (c);
-  WakeConditionVariable (&c->cond);
-}
-
-void
-i_cond_broadcast (i_cond *c)
-{
-  ASSERT (c);
-  WakeAllConditionVariable (&c->cond);
-}
-#define WIN32_LEAN_AND_MEAN
-
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "csx_assert.h"
+#include "error.h" // error
+#include "serial.h"
+
+#define WIN32_LEAN_AND_MEAN
 #include "windows.h"
 
-////////////////////////////////////////////////////////////
-// Helpers
+/******************************************************************************
+ * SECTION: Helpers
+ ******************************************************************************/
 
 static char *
 win32_strerror (DWORD err, char *buf, DWORD buflen)
@@ -140,8 +69,9 @@ DEFINE_DBG_ASSERT (i_file, i_file, fp, {
   ASSERT (handle_is_open (fp->handle));
 })
 
-////////////////////////////////////////////////////////////
-// File vtable — Win32 implementations
+/******************************************************************************
+ * SECTION: File System
+ ******************************************************************************/
 
 static err_t
 win32_close (i_file *fp, error *e)
@@ -1076,17 +1006,89 @@ struct i_file_system_vtable default_fsvtable = {
     .i_dir_exists   = win32_dir_exists,
     .i_file_exists  = win32_file_exists,
 };
-#define WIN32_LEAN_AND_MEAN
 
-#include "windows.h"
+/******************************************************************************
+ * SECTION: Threading
+ ******************************************************************************/
 
-////////////////////////////////////////////////////////////
-// Mutex
-//
-// CRITICAL_SECTION is always recursive on Windows. There is no
-// non-recursive variant. In debug builds we emulate ERRORCHECK
-// behavior by tracking the owning thread and asserting on
-// re-entry and unlock-without-lock.
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Condition Variable
+ *----------------------------------------------------------------------------*/
+
+static err_t
+win32_cond_create (i_threading *t, i_cond *c, error *e)
+{
+  (void)t;
+  ASSERT (c);
+  (void)e;
+  InitializeConditionVariable (&c->cond);
+  return SUCCESS;
+}
+
+static void
+win32_cond_free (i_threading *t, i_cond *c)
+{
+  (void)t;
+  ASSERT (c);
+  // No-op: CONDITION_VARIABLE has no destroy function.
+}
+
+static void
+win32_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
+{
+  (void)t;
+  ASSERT (c);
+  ASSERT (m);
+
+  if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE))
+  {
+    i_log_error (
+        "cond_wait: SleepConditionVariableCS failed: %lu\n",
+        GetLastError ()
+    );
+    UNREACHABLE ();
+  }
+}
+
+static void
+win32_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
+{
+  (void)t;
+  ASSERT (c);
+  ASSERT (m);
+  if (!SleepConditionVariableCS (&c->cond, &m->m, (DWORD)msec))
+  {
+    DWORD err = GetLastError ();
+    if (err != ERROR_TIMEOUT)
+    {
+      i_log_error (
+          "cond_timed_wait: SleepConditionVariableCS failed: %lu\n",
+          err
+      );
+      UNREACHABLE ();
+    }
+  }
+}
+
+static void
+win32_cond_signal (i_threading *t, i_cond *c)
+{
+  (void)t;
+  ASSERT (c);
+  WakeConditionVariable (&c->cond);
+}
+
+static void
+win32_cond_broadcast (i_threading *t, i_cond *c)
+{
+  (void)t;
+  ASSERT (c);
+  WakeAllConditionVariable (&c->cond);
+}
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Mutex
+ *----------------------------------------------------------------------------*/
 
 #ifndef NDEBUG
 static DWORD
@@ -1098,9 +1100,10 @@ cs_owner (i_mutex *m)
 }
 #endif
 
-err_t
-i_mutex_create (i_mutex *dest, error *e)
+static err_t
+win32_mutex_create (i_threading *t, i_mutex *dest, error *e)
 {
+  (void)t;
   ASSERT (dest);
   (void)e;
   // dwSpinCount=0: no spinning, go straight to kernel wait.
@@ -1109,9 +1112,10 @@ i_mutex_create (i_mutex *dest, error *e)
   return SUCCESS;
 }
 
-void
-i_mutex_free (i_mutex *m)
+static void
+win32_mutex_free (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 #ifndef NDEBUG
   DWORD owner = cs_owner (m);
@@ -1124,9 +1128,10 @@ i_mutex_free (i_mutex *m)
   DeleteCriticalSection (&m->m);
 }
 
-void
-i_mutex_lock (i_mutex *m)
+static void
+win32_mutex_lock (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 #ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
@@ -1139,9 +1144,10 @@ i_mutex_lock (i_mutex *m)
   EnterCriticalSection (&m->m);
 }
 
-bool
-i_mutex_try_lock (i_mutex *m)
+static bool
+win32_mutex_try_lock (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 #ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
@@ -1154,9 +1160,10 @@ i_mutex_try_lock (i_mutex *m)
   return TryEnterCriticalSection (&m->m) != 0;
 }
 
-void
-i_mutex_unlock (i_mutex *m)
+static void
+win32_mutex_unlock (i_threading *t, i_mutex *m)
 {
+  (void)t;
   ASSERT (m);
 #ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
@@ -1168,17 +1175,10 @@ i_mutex_unlock (i_mutex *m)
 #endif
   LeaveCriticalSection (&m->m);
 }
-#define WIN32_LEAN_AND_MEAN
 
-#include "windows.h"
-
-////////////////////////////////////////////////////////////
-// Trampoline
-//
-// Windows thread start routine is DWORD WINAPI f(LPVOID), but
-// our API is void *(*f)(void *). We bridge them with a small
-// trampoline allocated on the heap so the args outlive the
-// CreateThread call.
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Threading
+ *----------------------------------------------------------------------------*/
 
 typedef struct
 {
@@ -1197,17 +1197,16 @@ thread_trampoline (LPVOID param)
   return 0;
 }
 
-////////////////////////////////////////////////////////////
-// Thread
-
-err_t
-i_thread_create (
-    i_thread *dest,
+static err_t
+win32_thread_create (
+    i_threading *t,
+    i_thread    *dest,
     void *(*func) (void *),
     void  *context,
     error *e
 )
 {
+  (void)t;
   ASSERT (dest);
 
   thread_trampoline_args *args = HeapAlloc (GetProcessHeap (), 0, sizeof *args);
@@ -1239,13 +1238,14 @@ i_thread_create (
   return SUCCESS;
 }
 
-err_t
-i_thread_join (i_thread *t, error *e)
+static err_t
+win32_thread_join (i_threading *t, i_thread *th, error *e)
 {
-  ASSERT (t);
-  ASSERT (t->handle);
+  (void)t;
+  ASSERT (th);
+  ASSERT (th->handle);
 
-  DWORD ret = WaitForSingleObject (t->handle, INFINITE);
+  DWORD ret = WaitForSingleObject (th->handle, INFINITE);
   if (ret != WAIT_OBJECT_0)
   {
     char buf[256];
@@ -1261,47 +1261,31 @@ i_thread_join (i_thread *t, error *e)
     return error_causef (e, ERR_IO, "thread_join: %s", buf);
   }
 
-  CloseHandle (t->handle);
-  t->handle = NULL;
+  CloseHandle (th->handle);
+  th->handle = NULL;
   return SUCCESS;
 }
 
-void
-i_thread_cancel (i_thread *t)
-{
-  ASSERT (t);
-  ASSERT (t->handle);
+////////////////////////////////////////////////////////////
+// Default threading vtable
 
-  // TerminateThread is asynchronous and does not run destructors,
-  // flush buffers, or release locks. It is the closest Windows
-  // equivalent to pthread_cancel with deferred cancellation disabled.
-  // smartfile uses cancel only for WAL background flush threads that
-  // hold no locks at cancel points, so this is safe in practice.
-  if (!TerminateThread (t->handle, 0))
-  {
-    i_log_error (
-        "thread_cancel: TerminateThread failed: %lu\n",
-        GetLastError ()
-    );
-    UNREACHABLE ();
-  }
+struct i_threading default_threading = {
+    .i_thread_create = win32_thread_create,
+    .i_thread_join   = win32_thread_join,
 
-  CloseHandle (t->handle);
-  t->handle = NULL;
-}
+    .i_mutex_create   = win32_mutex_create,
+    .i_mutex_free     = win32_mutex_free,
+    .i_mutex_lock     = win32_mutex_lock,
+    .i_mutex_try_lock = win32_mutex_try_lock,
+    .i_mutex_unlock   = win32_mutex_unlock,
 
-u64
-get_available_threads (void)
-{
-  SYSTEM_INFO si;
-  GetSystemInfo (&si);
-  ASSERT (si.dwNumberOfProcessors > 0);
-  return (u64)si.dwNumberOfProcessors;
-}
-#if defined(_WIN32)
-
-#  define WIN32_LEAN_AND_MEAN
-#  include "windows.h"
+    .i_cond_create     = win32_cond_create,
+    .i_cond_free       = win32_cond_free,
+    .i_cond_wait       = win32_cond_wait,
+    .i_cond_timed_wait = win32_cond_timed_wait,
+    .i_cond_signal     = win32_cond_signal,
+    .i_cond_broadcast  = win32_cond_broadcast,
+};
 
 ////////////////////////////////////////////////////////////
 // Timing
@@ -1408,5 +1392,3 @@ i_sleep_us (u64 us)
   DWORD ms = (DWORD)((us + 999ULL) / 1000ULL);
   Sleep (ms);
 }
-
-#endif // _WIN32

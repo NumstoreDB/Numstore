@@ -14,6 +14,9 @@
 
 #include "concurrency.h"
 
+#include "csx_assert.h"
+#include "error.h"
+#include "os.h"
 #include "testing/testing.h"
 
 /******************************************************************************
@@ -48,13 +51,42 @@ gr_lock_init (struct gr_lock *l, error *e)
   return SUCCESS;
 }
 
+#ifndef NTEST
+TEST (gr_lock_init)
+{
+  TEST_CASE ("mutex create fails")
+  {
+    error e = error_create ();
+
+    err_t (*backup) (i_threading *t, i_mutex *m, error *e) =
+        default_threading.i_mutex_create;
+    default_threading.i_mutex_create = i_mutex_create_errio;
+
+    struct gr_lock l;
+    test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
+
+    default_threading.i_mutex_create = backup;
+  }
+
+  TEST_CASE ("mutex create green path")
+  {
+    error          e = error_create ();
+    struct gr_lock l;
+    test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
+    gr_lock_destroy (&l);
+  }
+}
+#endif
+
 void
 gr_lock_destroy (struct gr_lock *l)
 {
+  i_mutex_lock (&l->mutex);
+  // TODO - Caller must ensure all threads have released locks
+  // You could put a done flag - and assert !done on actions
   i_mutex_free (&l->mutex);
 
-  // Note: This assumes no threads are still waiting
-  // TODO - (6) Caller must ensure all threads have released locks
+  i_mutex_free (&l->mutex);
 
   while (l->head)
   {
@@ -63,6 +95,19 @@ gr_lock_destroy (struct gr_lock *l)
     i_cond_free (&w->cond);
   }
 }
+
+#ifndef NTEST
+TEST (gr_lock_destroy)
+{
+  TEST_CASE ("green path")
+  {
+    error          e = error_create ();
+    struct gr_lock l;
+    test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
+    gr_lock_destroy (&l);
+  }
+}
+#endif
 
 /**
  * Example:
@@ -97,120 +142,139 @@ is_compatible (const struct gr_lock *l, const enum lock_mode mode)
   return true;
 }
 
-static void
-wake_waiters (struct gr_lock *l)
+#ifndef NTEST
+TEST (gr_lock_is_compatible)
 {
-  for (struct gr_lock_waiter *w = l->head; w; w = w->next)
-  {
-    if (is_compatible (l, w->mode))
-    {
-      i_cond_signal (&w->cond);
-    }
-  }
+  error          e = error_create ();
+  struct gr_lock l;
+  gr_lock_init (&l, &e);
+
+  // All locks compatible on init
+  test_assert (is_compatible (&l, LM_IS));
+  test_assert (is_compatible (&l, LM_IX));
+  test_assert (is_compatible (&l, LM_S));
+  test_assert (is_compatible (&l, LM_SIX));
+  test_assert (is_compatible (&l, LM_X));
+
+  // IS is incompatible with X
+  gr_lock (&l, LM_IS, &e);
+  test_assert (is_compatible (&l, LM_IS));
+  test_assert (is_compatible (&l, LM_IX));
+  test_assert (is_compatible (&l, LM_S));
+  test_assert (is_compatible (&l, LM_SIX));
+  test_assert (!is_compatible (&l, LM_X));
+  gr_unlock (&l, LM_IS);
+
+  // IX is incompatible with S SIX X
+  gr_lock (&l, LM_IX, &e);
+  test_assert (is_compatible (&l, LM_IS));
+  test_assert (is_compatible (&l, LM_IX));
+  test_assert (!is_compatible (&l, LM_S));
+  test_assert (!is_compatible (&l, LM_SIX));
+  test_assert (!is_compatible (&l, LM_X));
+  gr_unlock (&l, LM_IX);
+
+  // S is incompatible with IX SIX X
+  gr_lock (&l, LM_S, &e);
+  test_assert (is_compatible (&l, LM_IS));
+  test_assert (!is_compatible (&l, LM_IX));
+  test_assert (is_compatible (&l, LM_S));
+  test_assert (!is_compatible (&l, LM_SIX));
+  test_assert (!is_compatible (&l, LM_X));
+  gr_unlock (&l, LM_S);
+
+  // SIX is incompatible with IX S SIX X
+  gr_lock (&l, LM_SIX, &e);
+  test_assert (is_compatible (&l, LM_IS));
+  test_assert (!is_compatible (&l, LM_IX));
+  test_assert (!is_compatible (&l, LM_S));
+  test_assert (!is_compatible (&l, LM_SIX));
+  test_assert (!is_compatible (&l, LM_X));
+  gr_unlock (&l, LM_SIX);
+
+  // X is incompatible with IS IX S SIX X
+  gr_lock (&l, LM_X, &e);
+  test_assert (!is_compatible (&l, LM_IS));
+  test_assert (!is_compatible (&l, LM_IX));
+  test_assert (!is_compatible (&l, LM_S));
+  test_assert (!is_compatible (&l, LM_SIX));
+  test_assert (!is_compatible (&l, LM_X));
+  gr_unlock (&l, LM_X);
 }
-
-static err_t
-gr_lock_waiter_init (
-    struct gr_lock_waiter *dest,
-    const enum lock_mode   mode,
-    error                 *e
-)
-{
-  dest->mode = mode;
-  dest->prev = NULL;
-  dest->next = NULL;
-
-  if (i_cond_create (&dest->cond, e))
-  {
-    return error_trace (e);
-  }
-
-  return SUCCESS;
-}
-
-static void
-gr_lock_waiter_append_unsafe (struct gr_lock *l, struct gr_lock_waiter *w)
-{
-  // Append on the front
-  if (l->head == NULL)
-  {
-    l->head = w;
-  }
-  else
-  {
-    // Search for the end
-    struct gr_lock_waiter *head = l->head;
-    while (head->next != NULL)
-    {
-      head = head->next;
-    }
-
-    // Append on the end
-    head->next = w;
-    w->prev    = head;
-  }
-}
-
-static void
-gr_lock_waiter_remove_unsafe (struct gr_lock *l, const struct gr_lock_waiter *w)
-{
-  if (w->prev != NULL)
-  {
-    w->prev->next = w->next;
-  }
-  else
-  {
-    ASSERT (l->head == w);
-    l->head = w->next;
-  }
-
-  if (w->next != NULL)
-  {
-    w->next->prev = w->prev;
-  }
-}
+#endif
 
 err_t
 gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
 {
+  // First do a global mutex lock
   i_mutex_lock (&l->mutex);
 
-  // Is compatible - add this lock mode to the lock group
-  // and move on
+  // If it's compatible - just increment mode count and move on
   if (is_compatible (l, mode))
   {
-    l->holder_counts[mode]++;
-    i_mutex_unlock (&l->mutex);
-    return SUCCESS;
+    TEST_MARK ("gr_lock:gr_lock:immediate_acquire");
+    goto acquire;
   }
 
-  // Create a new waiter
-  struct gr_lock_waiter waiter;
-  if (gr_lock_waiter_init (&waiter, mode, e))
+  // Otherwise, we need to create a new lock waiter
+  struct gr_lock_waiter waiter = {
+      .mode = mode,
+      .prev = NULL,
+      .next = NULL,
+  };
+  if (i_cond_create (&waiter.cond, e))
   {
+    // Ok here - we just failed and everything is unlocked
     i_mutex_unlock (&l->mutex);
     return error_trace (e);
   }
 
-  // Append it to the end of the waiter list
-  gr_lock_waiter_append_unsafe (l, &waiter);
+  // Append waiter to the linked list of waiters
+  if (l->head == NULL)
+  {
+    l->head = &waiter;
+  }
+  else
+  {
+    struct gr_lock_waiter *end = l->head;
+    while (end->next != NULL)
+    {
+      end = end->next;
+    }
 
-  // Main wait code
+    end->next   = &waiter;
+    waiter.prev = end;
+  }
+
+  // Wait for someone to signal my condition variable - main wait code
   while (!is_compatible (l, mode))
   {
+    TEST_MARK ("gr_lock:gr_lock:wait");
     i_cond_wait (&waiter.cond, &l->mutex);
   }
 
   // Remove from waiters list
-  gr_lock_waiter_remove_unsafe (l, &waiter);
+  if (waiter.prev != NULL)
+  {
+    waiter.prev->next = waiter.next;
+  }
+  else
+  {
+    ASSERT (l->head == &waiter);
+    l->head = waiter.next;
+  }
+  if (waiter.next != NULL)
+  {
+    waiter.next->prev = waiter.prev;
+  }
 
+  // Release resources
   i_cond_free (&waiter.cond);
 
+acquire:
   // Acquire the lock
   l->holder_counts[mode]++;
-
   i_mutex_unlock (&l->mutex);
-
   return SUCCESS;
 }
 
@@ -230,6 +294,7 @@ gr_trylock (struct gr_lock *l, const enum lock_mode mode)
     return false;
   }
 
+  // acquire
   l->holder_counts[mode]++;
   i_mutex_unlock (&l->mutex);
 
@@ -241,18 +306,162 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
 {
   i_mutex_lock (&l->mutex);
 
+  // do unlock
   ASSERT (l->holder_counts[mode] > 0);
-
   l->holder_counts[mode]--;
 
   // Wake any compatible waiters
   if (l->head)
   {
-    wake_waiters (l);
+    for (struct gr_lock_waiter *w = l->head; w; w = w->next)
+    {
+      // signal all waiters - they do the compatability check - it's ok
+      i_cond_signal (&w->cond);
+    }
   }
 
   i_mutex_unlock (&l->mutex);
 }
+
+#ifndef NTEST
+struct thread_ctx
+{
+  struct gr_lock *l;
+  enum lock_mode  mode1;
+  enum lock_mode  mode2;
+  _Atomic u32     locked1;
+  _Atomic u32     locked2;
+  _Atomic u32     gate;
+};
+
+static void *
+thread1 (void *_ctx)
+{
+  struct thread_ctx *ctx = _ctx;
+
+  while (!atomic_load (&ctx->gate))
+  {
+    spin_pause ();
+  }
+
+  // This should pass through
+  gr_lock (ctx->l, ctx->mode1, NULL);
+
+  atomic_store (&ctx->locked1, 1);
+
+  return NULL;
+}
+
+static void *
+thread2 (void *_ctx)
+{
+  struct thread_ctx *ctx = _ctx;
+
+  while (!atomic_load (&ctx->gate))
+  {
+    spin_pause ();
+  }
+
+  // Wait until thread 1 issued the lock
+  while (!atomic_load (&ctx->locked1))
+  {
+    spin_pause ();
+  }
+
+  // This is the lock query in question
+  gr_lock (ctx->l, ctx->mode2, NULL);
+
+  atomic_store (&ctx->locked2, 1);
+
+  return NULL;
+}
+
+TEST (gr_lock_unlock)
+{
+  i_thread       t1, t2;
+  error          e = error_create ();
+  struct gr_lock l;
+  gr_lock_init (&l, &e);
+
+  // Cartesion product
+  for (int m1 = 0; m1 < LM_COUNT; ++m1)
+  {
+    for (int m2 = 0; m2 < LM_COUNT; ++m2)
+    {
+      TEST_CASE ("%s + %s", mode_names[m1], mode_names[m2])
+      {
+        test_reset_marks ();
+
+        struct thread_ctx ctx = {
+            .l       = &l,
+            .mode1   = m1,
+            .mode2   = m2,
+            .locked1 = 0,
+            .locked2 = 0,
+            .gate    = 0,
+        };
+
+        i_thread_create (&t1, thread1, &ctx, &e);
+        i_thread_create (&t2, thread2, &ctx, &e);
+
+        // Launch both threads
+        atomic_store (&ctx.gate, 1);
+
+        if (compatible[m1][m2])
+        {
+          // 2 finishes without unlocking anything
+          while (!atomic_load (&ctx.locked2))
+          {
+            spin_pause ();
+          }
+
+          // 1 LOCKED
+          // 2 LOCKED
+
+          gr_unlock (&l, m1);
+          gr_unlock (&l, m2);
+
+          test_assert_mark_hit ("gr_lock:gr_lock:immediate_acquire");
+          test_assert_mark_not_hit ("gr_lock:gr_lock:wait");
+        }
+        else
+        {
+          // 1 finishes fine
+          while (!atomic_load (&ctx.locked1))
+          {
+            spin_pause ();
+          }
+
+          // 1 LOCKED
+          // 2 PENDING
+
+          // Wait 10 ms and 2 is STILL not locked
+          i_sleep_ms (10);
+          test_assert_int_equal (atomic_load (&ctx.locked2), 0);
+
+          // Unlock 2
+          gr_unlock (&l, m1);
+          while (!atomic_load (&ctx.locked2))
+          {
+            spin_pause ();
+          }
+
+          // 1 UNLOCKED
+          // 2 LOCKED
+
+          gr_unlock (&l, m2);
+
+          test_assert_mark_hit ("gr_lock:gr_lock:immediate_acquire");
+          test_assert_mark_hit ("gr_lock:gr_lock:wait");
+        }
+
+        i_thread_join (&t1, &e);
+        i_thread_join (&t2, &e);
+      }
+    }
+  }
+}
+#endif
 
 const char *
 gr_lock_mode_name (const enum lock_mode mode)
@@ -261,8 +470,19 @@ gr_lock_mode_name (const enum lock_mode mode)
   {
     return mode_names[mode];
   }
-  return "INVALID";
+  UNREACHABLE ();
 }
+
+#ifndef NTEST
+TEST (gr_lock_mode_name)
+{
+  i_log_info ("%s\n", gr_lock_mode_name (LM_IS));
+  i_log_info ("%s\n", gr_lock_mode_name (LM_IX));
+  i_log_info ("%s\n", gr_lock_mode_name (LM_S));
+  i_log_info ("%s\n", gr_lock_mode_name (LM_SIX));
+  i_log_info ("%s\n", gr_lock_mode_name (LM_X));
+}
+#endif
 
 enum lock_mode
 get_parent_mode (const enum lock_mode child_mode)
@@ -289,9 +509,6 @@ get_parent_mode (const enum lock_mode child_mode)
 }
 
 #ifndef NTEST
-#  include <stdatomic.h>
-#  include <stdint.h>
-#  include <string.h>
 
 /* --- Test Infrastructure --- */
 
@@ -381,8 +598,6 @@ thread_wait_and_try (void *arg)
   return NULL;
 }
 
-/* --- Randomized Stress Test Routine --- */
-
 static void *
 random_stress_worker (void *arg)
 {
@@ -458,10 +673,9 @@ TEST (gr_lock_is_is_compatible)
   gr_lock_destroy (&lock);
 }
 
-/**
 // Example of a Blocking Test (Incompatible)
 // This one is breaking on Mac Os
-TEST_DISABLED (gr_lock_is_x_blocks)
+TEST (gr_lock_is_x_blocks)
 {
   struct gr_lock lock;
   error          e = error_create ();
@@ -489,7 +703,6 @@ TEST_DISABLED (gr_lock_is_x_blocks)
   test_ctx_destroy (&ctx);
   gr_lock_destroy (&lock);
 }
-*/
 
 TEST (gr_lock_high_pressure_random)
 {

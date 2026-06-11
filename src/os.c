@@ -21,7 +21,7 @@
 #include "testing/testing.h" // TEST
 
 /******************************************************************************
- * SECTION: GR Lock
+ * SECTION: Memory
  ******************************************************************************/
 
 static void *
@@ -534,3 +534,26 @@ struct i_vmem default_vmem = {
     .i_crealloc_left  = def_crealloc_left,
     .i_free           = def_free,
 };
+
+/******************************************************************************
+ * SECTION: Faulting
+ ******************************************************************************/
+
+err_t
+i_mutex_create_errio (i_threading *t, i_mutex *m, error *e)
+{
+  return error_causef (e, ERR_IO, "Failed to create mutex");
+}
+
+err_t
+i_cond_create_errio (i_threading *t, i_cond *m, error *e)
+{
+  return error_causef (e, ERR_IO, "Failed to create condition variable");
+}
+
+void *
+i_malloc_nomem (i_vmem *v, u32 nelem, u32 size, error *e)
+{
+  error_causef (e, ERR_NOMEM, "Failed to malloc");
+  return NULL;
+}

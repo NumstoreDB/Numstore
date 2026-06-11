@@ -14,10 +14,15 @@
 
 #include "alloc.h"
 
+#include <stdatomic.h>
 #include <string.h>
 
+#include "concurrency.h"
+#include "error.h"
 #include "numerics.h"
+#include "os.h"
 #include "testing/testing.h"
+#include "utils.h"
 
 /******************************************************************************
  * SECTION: Local Linear Allocator
@@ -198,6 +203,329 @@ TEST (lalloc_edge_cases)
   }
 }
 #endif
+
+/******************************************************************************
+ * SECTION: Blocking Object Pool
+ ******************************************************************************/
+
+struct bobj_pool *
+bobjp_create (u32 cap, u32 size, error *e)
+{
+  ASSERT (cap > 0);
+  ASSERT (size > 0);
+
+  // Align size to pointer boundary for better performance
+  size = (size + sizeof (void *) - 1) & ~(sizeof (void *) - 1);
+
+  u32               bsize = size * cap + sizeof (struct bobj_pool);
+  struct bobj_pool *ret   = i_malloc (1, bsize, e);
+
+  if (ret == NULL)
+  {
+    return NULL;
+  }
+
+  if (i_mutex_create (&ret->mutex, e))
+  {
+    i_free (ret);
+    return NULL;
+  }
+
+  if (i_cond_create (&ret->avail, e))
+  {
+    i_mutex_free (&ret->mutex);
+    i_free (ret);
+    return NULL;
+  }
+
+  // Simple stuff
+  ret->used     = 0;
+  ret->cap      = cap;
+  ret->size     = size;
+  ret->freelist = ret->data;
+
+  // Create a linked list of each block inside the node
+  u8 *cur = ret->data;
+  for (u32 i = 0; i < cap - 1; ++i)
+  {
+    u8 *next      = cur + size;
+    *(void **)cur = next;
+    cur           = next;
+  }
+  *(void **)cur = NULL;
+
+  return ret;
+}
+
+#ifndef NTEST
+TEST (bobjp_create)
+{
+  TEST_CASE ("No Memory Failure - no memory leaks")
+  {
+    error e                                       = error_create ();
+    void *(*backup) (i_vmem *, u32, u32, error *) = default_vmem.i_malloc;
+    default_vmem.i_malloc                         = i_malloc_nomem;
+    struct bobj_pool *pool                        = bobjp_create (10, 1, &e);
+    test_assert (pool == NULL);
+
+    // NO LEAKS (ASAN)
+    default_vmem.i_malloc = backup;
+  }
+
+  TEST_CASE ("mutex create failed - no memory leaks")
+  {
+    error e = error_create ();
+    err_t (*backup) (i_threading *, i_mutex *, error *) =
+        default_threading.i_mutex_create;
+    default_threading.i_mutex_create = i_mutex_create_errio;
+    struct bobj_pool *pool           = bobjp_create (10, 1, &e);
+    test_assert (pool == NULL);
+
+    // NO LEAKS (ASAN)
+    default_threading.i_mutex_create = backup;
+  }
+
+  TEST_CASE ("condition var create failed - no memory leaks")
+  {
+    error e = error_create ();
+    err_t (*backup) (i_threading *, i_cond *, error *) =
+        default_threading.i_cond_create;
+    default_threading.i_cond_create = i_cond_create_errio;
+    struct bobj_pool *pool          = bobjp_create (10, 1, &e);
+    test_assert (pool == NULL);
+
+    // NO LEAKS (ASAN)
+    default_threading.i_cond_create = backup;
+  }
+
+  TEST_CASE ("green path")
+  {
+    error             e    = error_create ();
+    struct bobj_pool *pool = bobjp_create (10, 1, &e);
+    test_assert (pool != NULL);
+    bobjp_destroy (pool);
+  }
+}
+#endif
+
+void
+bobjp_destroy (struct bobj_pool *p)
+{
+  i_mutex_lock (&p->mutex);
+  p->active = false;
+  i_mutex_unlock (&p->mutex);
+
+  // Drain - wait for all to free
+  i_mutex_lock (&p->mutex);
+  while (p->used > 0)
+  {
+    i_cond_wait (&p->avail, &p->mutex);
+  }
+  i_mutex_unlock (&p->mutex);
+
+  // Free
+  i_mutex_free (&p->mutex);
+  i_cond_free (&p->avail);
+  i_free (p);
+}
+
+#ifndef NTEST
+TEST (bobjp_destroy)
+{
+  TEST_CASE ("Destroy Green Path")
+  {
+    error             e    = error_create ();
+    struct bobj_pool *pool = bobjp_create (10, 1, &e);
+    test_assert (pool != NULL);
+    bobjp_destroy (pool);
+  }
+}
+#endif
+
+void *
+bobjp_alloc (struct bobj_pool *pool)
+{
+  i_mutex_lock (&pool->mutex);
+
+  // While full - wait for condition variable
+  while (pool->used == pool->cap)
+  {
+    TEST_MARK ("bobj_pool_alloc_backpressure");
+    i_cond_wait (&pool->avail, &pool->mutex);
+  }
+
+  // Critical section
+  ASSERT (pool->used < pool->cap);
+  u8 *head       = pool->freelist;
+  pool->freelist = *(void **)head;
+  pool->used++;
+
+  i_mutex_unlock (&pool->mutex);
+
+  return head;
+}
+
+#ifndef NTEST
+
+struct test_alloc_ctx
+{
+  u32               data[1000];
+  u32              *objs[1000];
+  struct bobj_pool *pool;
+  _Atomic u32       idx;
+  _Atomic u32       ready;
+};
+
+/*
+ * Just pumps out allocations - tries to fill out
+ */
+static void *
+greedy_allocator (void *_ctx)
+{
+  struct test_alloc_ctx *ctx = _ctx;
+
+  while (atomic_load_explicit (&ctx->ready, memory_order_seq_cst) == 0)
+  {
+    spin_pause ();
+  }
+
+  for (u32 i = 0; i < arrlen (ctx->objs); ++i)
+  {
+    u32 idx         = atomic_fetch_add (&ctx->idx, 1);
+    ctx->objs[idx]  = bobjp_alloc (ctx->pool);
+    ctx->data[idx]  = randu32 ();
+    *ctx->objs[idx] = ctx->data[idx];
+    ASSERT (ctx->objs[idx] != NULL);
+  }
+
+  return NULL;
+}
+
+static void *
+slow_freer (void *_ctx)
+{
+  struct test_alloc_ctx *ctx = _ctx;
+
+  while (atomic_load_explicit (&ctx->ready, memory_order_seq_cst) == 0)
+  {
+    spin_pause ();
+  }
+
+  for (u32 k = 0; k < arrlen (ctx->objs) / 5; ++k)
+  {
+    i_sleep_ms (10);
+
+    for (u32 i = 0; i < 5; ++i)
+    {
+      u32 flat = k * 5 + i;
+
+      while (flat >= atomic_load_explicit (&ctx->idx, memory_order_seq_cst))
+      {
+        spin_pause ();
+      }
+
+      ASSERT (*ctx->objs[flat] == ctx->data[flat]);
+      bobjp_free (ctx->pool, ctx->objs[flat]);
+    }
+  }
+
+  return NULL;
+}
+
+TEST (bobjp_alloc)
+{
+  TEST_CASE ("Green Path")
+  {
+    error             e    = error_create ();
+    struct bobj_pool *pool = bobjp_create (10, 4, &e);
+    test_assert (pool != NULL);
+
+    // Test
+    {
+      int *data[10];
+      for (int i = 0; i < 10; ++i)
+      {
+        data[i]  = bobjp_alloc (pool);
+        *data[i] = i;
+      }
+      for (int i = 0; i < 10; ++i)
+      {
+        test_assert_int_equal (*data[i], i);
+      }
+
+      for (int i = 5; i < 10; ++i)
+      {
+        bobjp_free (pool, data[i]);
+      }
+
+      for (int i = 5; i < 10; ++i)
+      {
+        data[i]  = bobjp_alloc (pool);
+        *data[i] = i;
+      }
+
+      for (int i = 0; i < 10; ++i)
+      {
+        test_assert_int_equal (*data[i], i);
+      }
+
+      for (int i = 0; i < 10; ++i)
+      {
+        bobjp_free (pool, data[i]);
+      }
+    }
+
+    bobjp_destroy (pool);
+  }
+
+  TEST_CASE ("Greedy Allocator Slow Freer")
+  {
+    test_reset_marks ();
+
+    error             e    = error_create ();
+    struct bobj_pool *pool = bobjp_create (10, 1, &e);
+    test_assert (pool != NULL);
+
+    i_thread t1;
+    i_thread t2;
+
+    struct test_alloc_ctx ctx = {
+        .idx   = 0,
+        .pool  = pool,
+        .ready = 0,
+    };
+
+    i_thread_create (&t1, greedy_allocator, &ctx, &e);
+    i_thread_create (&t2, slow_freer, &ctx, &e);
+
+    // Launch threads
+    atomic_store (&ctx.ready, 1);
+
+    i_thread_join (&t1, &e);
+    i_thread_join (&t2, &e);
+
+    bobjp_destroy (pool);
+
+    // We experienced some sort of backpressure
+    test_assert_mark_hit ("bobj_pool_alloc_backpressure");
+  }
+}
+#endif
+
+void
+bobjp_free (struct bobj_pool *pool, void *ptr)
+{
+  i_mutex_lock (&pool->mutex);
+
+  ASSERT (pool->used > 0);
+
+  *(void **)ptr  = pool->freelist;
+  pool->freelist = ptr;
+  pool->used--;
+
+  i_mutex_unlock (&pool->mutex);
+  i_cond_signal (&pool->avail);
+}
 
 /******************************************************************************
  * SECTION: Slab Allocator
