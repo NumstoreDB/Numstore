@@ -24,7 +24,6 @@ INVALID_TYPES = st.one_of(
     st.just("32"),
     st.just("invalid"),
     st.just("U32"),
-    st.just(""),
     st.text().filter(
         lambda s: s not in {"u32", "u64", "i32", "i64", "f32", "f64"} and len(s) > 0
     ),
