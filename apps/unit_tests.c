@@ -36,7 +36,7 @@ main (const int argc, char **argv)
   }
 
   int         failed = 0;
-  const char *failed_names[287];
+  const char *failed_names[286];
 
   //////////////////// /home/theo/Development/numstore/src/alloc.c:139 START
   if (!filter || strstr ("lalloc_edge_cases", filter))
@@ -2065,33 +2065,7 @@ main (const int argc, char **argv)
   //////////////////// /home/theo/Development/numstore/src/concurrency.c:653
   ///DONE
 
-  //////////////////// /home/theo/Development/numstore/src/concurrency.c:678
-  ///START
-  if (!filter || strstr ("gr_lock_is_x_blocks", filter))
-  {
-    extern void __test__gr_lock_is_x_blocks (void);
-    i_log_info (
-        "========================= TEST CASE: %s\n",
-        "gr_lock_is_x_blocks"
-    );
-    int prev = test_ret;
-    test_ret = 0;
-    __test__gr_lock_is_x_blocks ();
-    if (!test_ret)
-    {
-      i_log_passed ("%s\n", "gr_lock_is_x_blocks");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "gr_lock_is_x_blocks";
-    }
-    ntests++;
-  }
-  //////////////////// /home/theo/Development/numstore/src/concurrency.c:678
-  ///DONE
-
-  //////////////////// /home/theo/Development/numstore/src/concurrency.c:707
+  //////////////////// /home/theo/Development/numstore/src/concurrency.c:709
   ///START
   if (!filter || strstr ("gr_lock_high_pressure_random", filter))
   {
@@ -2114,10 +2088,10 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// /home/theo/Development/numstore/src/concurrency.c:707
+  //////////////////// /home/theo/Development/numstore/src/concurrency.c:709
   ///DONE
 
-  //////////////////// /home/theo/Development/numstore/src/concurrency.c:897
+  //////////////////// /home/theo/Development/numstore/src/concurrency.c:899
   ///START
   if (!filter || strstr ("latch", filter))
   {
@@ -2137,7 +2111,7 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// /home/theo/Development/numstore/src/concurrency.c:897
+  //////////////////// /home/theo/Development/numstore/src/concurrency.c:899
   ///DONE
 
   //////////////////// /home/theo/Development/numstore/src/file_pager.c:124
