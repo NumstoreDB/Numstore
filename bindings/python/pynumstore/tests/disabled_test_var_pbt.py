@@ -48,8 +48,9 @@ DB_PATH = "hypothesis_test.db"
 def db():
     if os.path.isfile(DB_PATH):
         os.remove(DB_PATH)
-    with ns.open(DB_PATH) as database:
-        yield database
+    db = Database(DB_PATH)
+    yield db
+    db.close()   
 
 
 # ---------------------------------------------------------------------------
