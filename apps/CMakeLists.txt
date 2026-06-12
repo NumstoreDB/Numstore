@@ -1,4 +1,3 @@
-
 ############################## Add Executable
 # Creates an executable target, sets up standard include directories, 
 # and links it against the internal numstore library.
@@ -35,10 +34,7 @@ endfunction()
 #
 function(ns_add_sample NAME FILE)
   add_executable(${NAME} ${FILE})
-  target_include_directories(${NAME}
-    PRIVATE "${CMAKE_SOURCE_DIR}/include"
-            "${CMAKE_SOURCE_DIR}/src"
-  )
+  target_include_directories(${NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
   target_link_libraries(${NAME} PRIVATE numstore)
   install(TARGETS ${NAME} DESTINATION bin)
 endfunction()
@@ -54,13 +50,13 @@ if(NOT ENABLE_NTEST)
   execute_process(
       COMMAND "python3" "${CMAKE_SOURCE_DIR}/scripts/gen_tests.py"
               "${CMAKE_SOURCE_DIR}/templates/unit_tests.c.in"
-              "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests.c"
+              "${CMAKE_CURRENT_SOURCE_DIR}/testing/unit_tests.c"
               "${CMAKE_SOURCE_DIR}/src"
       RESULT_VARIABLE GEN_RESULT
   )
-  ns_add_executable(cgd_swarm_test cgd_swarm_test.c)
-  ns_add_executable(irwr_swarm_test irwr_swarm_test.c)
-  ns_add_executable(unit_tests unit_tests.c)
+  ns_add_executable(cgd_swarm_test testing/cgd_swarm_test.c)
+  ns_add_executable(irwr_swarm_test testing/irwr_swarm_test.c)
+  ns_add_executable(unit_tests testing/unit_tests.c)
 endif()
 
 if(BUILD_TOOLS)
@@ -70,31 +66,24 @@ if(BUILD_TOOLS)
   #
   # Simple tools that analyze datbaase 
   # issues and problems
-  ns_add_executable(dlread dlread.c)
-  ns_add_executable(nspprint nspprint.c)
-  ns_add_executable(simple_nspprint simple_nspprint.c)
-  ns_add_executable(walfprint walfprint.c)
+  ns_add_executable(dlread tools/dlread.c)
+  ns_add_executable(nspprint tools/nspprint.c)
+  ns_add_executable(simple_nspprint tools/simple_nspprint.c)
+  ns_add_executable(walfprint tools/walfprint.c)
 endif()
 
 if(BUILD_SAMPLES)
   ############################## Samples
   # Samples are pedagogical programs 
   # to help people new to the numstore ecosystem
-  # 
-  # Only include python scripts if we build python bindings
   #
-  ns_add_sample(ns_sample1_basic_crud           ${CMAKE_CURRENT_SOURCE_DIR}/samples/numstore/sample1_basic_crud.c)
-  ns_add_sample(smfile_sample1_basic_crud       ${CMAKE_CURRENT_SOURCE_DIR}/samples/smfile/sample1_basic_crud.c)
-  ns_add_sample(smfile_sample2_transactions     ${CMAKE_CURRENT_SOURCE_DIR}/samples/smfile/sample2_transactions.c)
-  ns_add_sample(smfile_sample3_stride           ${CMAKE_CURRENT_SOURCE_DIR}/samples/smfile/sample3_stride.c)
-  ns_add_sample(smfile_sample4_variable_names   ${CMAKE_CURRENT_SOURCE_DIR}/samples/smfile/sample4_variable_names.c)
-  ns_add_sample(smfile_sample5_rollback_commit  ${CMAKE_CURRENT_SOURCE_DIR}/samples/smfile/sample5_rollback_commit.c)
-
-  if(BUILD_PYTHON_BINDINGS)
-    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/pynumstore/sample_1_basic_operations.py DESTINATION bin)
-    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/pynumstore/sample_2_transactions.py DESTINATION bin)
-    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/pynumstore/sample_3_multiple_variables.py DESTINATION bin)
-    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/pynumstore/sample_4_overwriting.py DESTINATION bin)
-    install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/pynumstore/sample_5_close_reopen.py DESTINATION bin)
-  endif()
+  ns_add_sample(ns_sample1_basic_crud           samples/numstore/sample1_basic_crud.c)
+  ns_add_sample(smfile_sample1_basic_crud       samples/smartfiles/sample1_basic_crud.c)
+  ns_add_sample(smfile_sample2_transactions     samples/smartfiles/sample2_transactions.c)
+  ns_add_sample(smfile_sample3_stride           samples/smartfiles/sample3_stride.c)
+  ns_add_sample(smfile_sample4_variable_names   samples/smartfiles/sample4_variable_names.c)
+  ns_add_sample(smfile_sample5_rollback_commit  samples/smartfiles/sample5_rollback_commit.c)
 endif()
+
+
+ns_add_executable(nscli numstore.c)

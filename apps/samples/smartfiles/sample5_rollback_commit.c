@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "smfile.h"
+#include "smartfiles.h"
 
 #ifdef _WIN32
 #  include "windows.h"

@@ -87,8 +87,10 @@ struct literal
   };
 };
 
-/////////////////////////
-// Object / Array builders
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Object and Array Builders
+ * @brief Building objects and arrays on demand
+ *----------------------------------------------------------------------------*/
 
 struct object_llnode
 {
@@ -136,8 +138,9 @@ struct array_builder arb_create (struct lalloc *work, struct lalloc *dest);
 err_t arb_accept_literal (struct array_builder *o, struct literal v, error *e);
 err_t arb_build (struct array *dest, struct array_builder *b, error *e);
 
-/////////////////////////
-// Simple constructors for the other types
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Simple constructors for stack allocated literals
+ *----------------------------------------------------------------------------*/
 
 HEADER_FUNC struct literal
 literal_string_create (struct string str)
@@ -189,8 +192,17 @@ literal_bool_create (bool bl)
 
 void i_log_literal (struct literal *v);
 
-/////////////////////////
-// Expression reductions
+/******************************************************************************
+ * SECTION: Literal Reductions
+ * ----------------------------------------------------------------------------
+ * @brief Single operation expression reductions
+ *
+ * Generally they take the form of
+ *    expr1 OP expr2
+ *    or
+ *    OP expr
+ * Usually they maintain the destination buffer as one of the arguments
+ ******************************************************************************/
 
 // dest = dest + right
 err_t literal_plus_literal (

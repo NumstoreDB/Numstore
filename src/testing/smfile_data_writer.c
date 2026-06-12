@@ -14,7 +14,7 @@
 
 #include "nshandle.h"
 #include "pager.h"
-#include "smfile.h"
+#include "smartfiles.h"
 #include "testing/data_validator.h"
 #include "testing/smfile_test_fixture.h"
 

@@ -8,7 +8,6 @@ option(ENABLE_ASAN             "Enable AddressSanitizer"                    OFF)
 
 # Enable / Disable Certain Artifacts
 option(BUILD_TOOLS             "Build small useful cli tools for numstore"  ON )
-option(BUILD_PYTHON_BINDINGS   "Build bindings"                             ON )
 option(BUILD_SAMPLES           "Build samples"                              ON )
 
 # Variables

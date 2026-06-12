@@ -15,7 +15,7 @@
 #include "nshandle.h"
 #include "pager.h"
 #include "rope.h"
-#include "smfile.h"
+#include "smartfiles.h"
 #include "var.h"
 
 // smfile
