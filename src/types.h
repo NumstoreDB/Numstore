@@ -401,7 +401,25 @@ static struct type TCU128 = _mk_prim (CU128);
 /******************************************************************************
  * SECTION: Type Accessor
  * ----------------------------------------------------------------------------
- * @brief How to access an individual type
+ * @brief Given a variable - what sub fields of the variable am I accessing
+ *
+ * Consider a struct { a f32, b u32, c [10]i32 }
+ * A type accessor encodes the "sub selection" within this struct.
+ * If I wanted to select .a or .c[0:10] or just take the entire struct
+ * I use a type accessor to do that.
+ *
+ * Note a type accessor is anonymous. It doesn't actually know what
+ * variable it's selecting from, just the sub selection.
+ *
+ * TAKE                                         - Stop here - take everything
+ *
+ * SELECT(field: str, sub: type_accessor)       - Select ".field" then select
+ *                                                recursively inside ".field"
+ *                                                using [sub] type accessor
+ *
+ * RANGE(strides: []stride, sub: type_accessor) - For each stride strides,
+ * Select each element in [a:b:c] and for each element select [sub] inside that
+ * type Lay results out contiguously
  ******************************************************************************/
 
 struct type_accessor
@@ -520,6 +538,8 @@ err_t tab_build (
  * SECTION: Type Reference
  * ----------------------------------------------------------------------------
  * @brief A reference to a specific type
+ *
+ *
  ******************************************************************************/
 
 struct type_ref

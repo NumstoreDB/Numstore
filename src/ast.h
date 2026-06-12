@@ -17,6 +17,7 @@
 
 #include "compile_config.h"
 #include "compiler.h"
+#include "types.h"
 
 /******************************************************************************
  * SECTION: Literals
@@ -470,9 +471,29 @@ err_t expr_evaluate (
  * @brief A Literal is a user entered value
  ******************************************************************************/
 
-struct query_source
+struct query_src
 {
-  struct literal
+  enum
+  {
+    QS_LITERAL,
+    QS_SUBQUERY,
+    QS_FILE,
+    QS_NULL,
+  };
+
+  union {
+    struct literal literal;
+    struct query  *subquery;
+    const char    *fname;
+  };
+};
+
+struct query_dest
+{
+  union {
+    struct query *subquery;
+    const char   *fname;
+  };
 };
 
 struct query
@@ -491,11 +512,21 @@ struct query
   } type;
 
   union {
-    struct
+    struct insert_query
     {
-      const char *vname;
-      b_size      offst;
+      const char      *vname;
+      b_size           offst;
+      struct query_src src;
     } insert;
+
+    struct read_query
+    {
+      const struct type_ref *ref;
+      struct query_dest      dest;
+    } read;
+
+    struct write_query
+    {};
   };
 };
 
