@@ -85,5 +85,6 @@ if(BUILD_SAMPLES)
   ns_add_sample(smfile_sample5_rollback_commit  samples/smartfiles/sample5_rollback_commit.c)
 endif()
 
-
-ns_add_executable(nscli numstore.c)
+if(BUILD_APP)
+  ns_add_executable(nscli numstore.c)
+endif()
