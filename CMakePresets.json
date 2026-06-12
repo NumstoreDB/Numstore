@@ -22,7 +22,6 @@
         "ENABLE_STRIP":               "OFF",
         "ENABLE_ASAN":                "ON",
         "BUILD_TOOLS":                "ON",
-        "BUILD_PYTHON_BINDINGS":      "ON",
         "BUILD_SAMPLES":              "ON",
         "LOG_LEVEL":                  "LOG_INFO"
       }
@@ -62,7 +61,6 @@
         "ENABLE_ASAN":                "OFF",
         "ENABLE_COVERAGE":            "OFF",
         "BUILD_TOOLS":                "ON",
-        "BUILD_PYTHON_BINDINGS":      "ON",
         "BUILD_SAMPLES":              "ON",
         "LOG_LEVEL":                  "IGNORED"
       }
@@ -85,7 +83,6 @@
         "ENABLE_STRIP":               "ON",
         "ENABLE_PORTABLE":            "ON",
         "BUILD_TOOLS":                "OFF",
-        "BUILD_PYTHON_BINDINGS":      "OFF",
         "BUILD_SAMPLES":              "OFF"
       }
     },

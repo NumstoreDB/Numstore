@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "smfile.h"
+#include "smartfiles.h"
 
 /**
  * This example shows basic first class operations of smart files

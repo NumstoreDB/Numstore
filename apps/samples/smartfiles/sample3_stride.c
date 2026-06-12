@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "smfile.h"
+#include "smartfiles.h"
 
 /**
  * Showing off the power user functionality of strides.

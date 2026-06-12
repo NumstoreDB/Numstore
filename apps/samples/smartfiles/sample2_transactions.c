@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "smfile.h"
+#include "smartfiles.h"
 
 /**
  * This demo shows the basics of transactions

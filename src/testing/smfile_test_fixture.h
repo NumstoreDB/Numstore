@@ -17,7 +17,7 @@
 
 #include "collections.h"    // data_writer
 #include "compile_config.h" // t_size ...etc
-#include "smfile.h"         // smfile
+#include "smartfiles.h"         // smfile
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);

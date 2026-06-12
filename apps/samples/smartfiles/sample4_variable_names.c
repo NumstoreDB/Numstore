@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "smfile.h"
+#include "smartfiles.h"
 
 /**
  * This example shows how to write data to different named "variables" inside a

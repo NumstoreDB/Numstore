@@ -18,7 +18,6 @@
 #include "page_h.h"
 #include "pager.h"
 #include "pages/page.h"
-#include "smfile.h"
 
 static void
 dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e)

@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "pager.h"
-#include "smfile.h"
+#include "smartfiles.h"
 
 #ifndef NTEST
 

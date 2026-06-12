@@ -1,7 +1,7 @@
 import os
 
 ROOTS = ["src", "include", "apps", "bindings"]
-OLD, NEW = "page_delegate", "pages/page_delegate"
+OLD, NEW = "smfile.h", "smartfiles.h"
 
 for ROOT in ROOTS:
     for dirpath, _, files in os.walk(ROOT):
