@@ -23,6 +23,7 @@
         "ENABLE_ASAN":                "ON",
         "BUILD_TOOLS":                "ON",
         "BUILD_SAMPLES":              "ON",
+        "BUILD_APP":                  "ON",
         "LOG_LEVEL":                  "LOG_INFO"
       }
     },
@@ -62,6 +63,7 @@
         "ENABLE_COVERAGE":            "OFF",
         "BUILD_TOOLS":                "ON",
         "BUILD_SAMPLES":              "ON",
+        "BUILD_APP":                  "ON",
         "LOG_LEVEL":                  "IGNORED"
       }
     },
@@ -83,7 +85,8 @@
         "ENABLE_STRIP":               "ON",
         "ENABLE_PORTABLE":            "ON",
         "BUILD_TOOLS":                "OFF",
-        "BUILD_SAMPLES":              "OFF"
+        "BUILD_SAMPLES":              "OFF",
+        "BUILD_APP":                  "OFF"
       }
     },
 

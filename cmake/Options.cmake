@@ -9,6 +9,7 @@ option(ENABLE_ASAN             "Enable AddressSanitizer"                    OFF)
 # Enable / Disable Certain Artifacts
 option(BUILD_TOOLS             "Build small useful cli tools for numstore"  ON )
 option(BUILD_SAMPLES           "Build samples"                              ON )
+option(BUILD_APP               "Build the numstore app"                     ON )
 
 # Variables
 set(LOG_LEVEL "LOG_INFO" CACHE STRING "Set the log level (ignored if NLOG)")

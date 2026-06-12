@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.18)
 
 ## Read the version from version.txt
-file(STRINGS "${CMAKE_SOURCE_DIR}/version.txt" NUMSTORE_VERSION LIMIT_COUNT 1)
+file(STRINGS "${PROJECT_SOURCE_DIR}/version.txt" NUMSTORE_VERSION LIMIT_COUNT 1)
 
 project(numstore
     VERSION     "${NUMSTORE_VERSION}"
@@ -34,8 +34,8 @@ include(cmake/Config.cmake)
 # Compile Config contains compile time constants 
 # like type sizes and static buffer sizes
 configure_file(
-    "${CMAKE_SOURCE_DIR}/templates/compile_config.h.in"
-    "${CMAKE_SOURCE_DIR}/include/compile_config.h"
+    "${PROJECT_SOURCE_DIR}/templates/compile_config.h.in"
+    "${PROJECT_SOURCE_DIR}/include/compile_config.h"
     @ONLY
 )
 
@@ -53,36 +53,36 @@ configure_file(
 ## Shared Common Code
 file(
   GLOB NUMSTORE_SOURCES CONFIGURE_DEPENDS 
-  "${CMAKE_SOURCE_DIR}/src/*.c"
-  "${CMAKE_SOURCE_DIR}/src/pager/*.c"
-  "${CMAKE_SOURCE_DIR}/src/pages/*.c"
-  "${CMAKE_SOURCE_DIR}/src/parsers/*.c"
-  "${CMAKE_SOURCE_DIR}/src/rope/*.c"
-  "${CMAKE_SOURCE_DIR}/src/var/*.c"
+  "${PROJECT_SOURCE_DIR}/src/*.c"
+  "${PROJECT_SOURCE_DIR}/src/pager/*.c"
+  "${PROJECT_SOURCE_DIR}/src/pages/*.c"
+  "${PROJECT_SOURCE_DIR}/src/parsers/*.c"
+  "${PROJECT_SOURCE_DIR}/src/rope/*.c"
+  "${PROJECT_SOURCE_DIR}/src/var/*.c"
 )
 
 ## Platform Specific Code and libraries
 if(WIN32)
-    file(GLOB WINDOWS_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/windows/*.c")
+    file(GLOB WINDOWS_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/windows/*.c")
     list(APPEND NUMSTORE_SOURCES ${WINDOWS_SOURCES})
     set(PLATFORM_DEPENDENCIES ws2_32)
 else()
-    file(GLOB POSIX_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/posix/*.c")
+    file(GLOB POSIX_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/posix/*.c")
     list(APPEND NUMSTORE_SOURCES ${POSIX_SOURCES})
     set(PLATFORM_DEPENDENCIES pthread)
 endif()
 
 ## Test specific code
 if(NOT NTEST)
-    file(GLOB NSTEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/testing/*.c")
+    file(GLOB NSTEST_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/testing/*.c")
     list(APPEND NUMSTORE_SOURCES ${NSTEST_SOURCES})
 endif()
 
 ## Create the Library
 add_library(numstore STATIC ${NUMSTORE_SOURCES})
 target_include_directories(numstore
-  PUBLIC  "${CMAKE_SOURCE_DIR}/include"
-  PRIVATE "${CMAKE_SOURCE_DIR}/src"
+  PUBLIC  "${PROJECT_SOURCE_DIR}/include"
+  PRIVATE "${PROJECT_SOURCE_DIR}/src"
 )
 target_link_libraries(numstore PUBLIC ${PLATFORM_DEPENDENCIES})
 
