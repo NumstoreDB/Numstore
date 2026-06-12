@@ -42,7 +42,7 @@ handle_command (const char *command, error *e)
     return CMD_FAILURE;
   }
 
-  for (int i = 0; i < lex.ntokens; ++i)
+  for (u32 i = 0; i < lex.ntokens; ++i)
   {
     printf ("%s ", tt_tostr (lex.tokens[i].type));
   }
