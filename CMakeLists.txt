@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.18)
 
 ## Read the version from version.txt
-file(STRINGS "${PROJECT_SOURCE_DIR}/version.txt" NUMSTORE_VERSION LIMIT_COUNT 1)
+file(STRINGS version.txt NUMSTORE_VERSION LIMIT_COUNT 1)
 
 project(numstore
     VERSION     "${NUMSTORE_VERSION}"
