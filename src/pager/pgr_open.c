@@ -14,6 +14,7 @@
 
 #include "file_pager.h"
 #include "lock_table.h"
+#include "numerics.h"
 #include "page_h.h"
 #include "pager.h"
 #include "pages/fsm_page.h"
@@ -42,6 +43,8 @@
 struct pager *
 pgr_open_single_file (const char *dbname, error *e)
 {
+  _crc32c_init();
+
   u32 len = strlen (dbname);
   if (len > (NS_NAME_MAX - 4))
   {

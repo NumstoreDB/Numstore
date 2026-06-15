@@ -36,6 +36,7 @@
 
 u32  checksum_init (void);
 void checksum_execute (u32 *dest, const u8 *data, u32 len);
+void _crc32c_init (void);
 
 /******************************************************************************
  * SECTION: Random

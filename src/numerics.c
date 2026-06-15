@@ -67,7 +67,7 @@ f16_to_f32 (const u16 h)
 static u32 _crc32c_tbl[256];
 static int _crc32c_inited = 0;
 
-static void
+void
 _crc32c_init (void)
 {
   for (u32 i = 0; i < 256; ++i)
@@ -88,24 +88,25 @@ checksum_init (void)
   return 0;
 }
 
-void
-checksum_execute (u32 *state, const u8 *data, const u32 len)
+#include <nmmintrin.h>
+
+void checksum_execute(u32 *state, const u8 *data, const u32 len)
 {
-  ASSERT (state);
-  ASSERT (data);
-  ASSERT (len > 0);
+    u32 c = ~(*state);
+    u32 i = 0;
 
-  if (!_crc32c_inited)
-  {
-    _crc32c_init ();
-  }
+    // Process 8 bytes at a time using hardware instruction
+#ifdef __x86_64__
+    u64 c64 = c;
+    for (; i + 8 <= len; i += 8)
+        c64 = _mm_crc32_u64(c64, *(const u64 *)(data + i));
+    c = (u32)c64;
+#endif
+    // Handle remaining bytes
+    for (; i < len; ++i)
+        c = _mm_crc32_u8(c, data[i]);
 
-  u32 c = ~(*state);
-  for (u32 i = 0; i < len; ++i)
-  {
-    c = (c >> 8) ^ _crc32c_tbl[(c ^ data[i]) & 0xFF];
-  }
-  *state = ~c;
+    *state = ~c;
 }
 
 #ifndef NTEST

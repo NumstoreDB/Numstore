@@ -25,6 +25,10 @@ if(MSVC)
     add_compile_options("$<$<CONFIG:Debug>:/Od;/Zi>")
 else()
     add_compile_options(
+        -O3
+
+        -msse4.2
+
         # Enable standard warnings
         -Wall                         
 
