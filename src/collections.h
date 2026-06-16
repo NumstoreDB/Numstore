@@ -231,20 +231,28 @@ struct user_stride
   u32 present;
 };
 
+struct multi_user_stride
+{
+  struct user_stride *strides;
+  u32                 len;
+};
+
 /**
  * @brief all elements from 0 to end
  */
-#define USER_STRIDE_ALL                       \
-  ((struct user_stride){                      \
-      .start   = 0,                           \
-      .step    = 1,                           \
-      .stop    = 0,                           \
-      .present = STEP_PRESENT | START_PRESENT \
+#define USER_STRIDE_ALL                        \
+  ((struct user_stride){                       \
+      .start   = 0,                            \
+      .step    = 1,                            \
+      .stop    = 0,                            \
+      .present = STEP_PRESENT | START_PRESENT, \
   })
 
 bool ustride_equal (struct user_stride left, struct user_stride right);
+
 void
 stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
+
 err_t stride_resolve (
     struct stride     *dest,
     struct user_stride src,
@@ -257,79 +265,95 @@ err_t stride_resolve (
  * @brief Short Constructors for building user strides
  *----------------------------------------------------------------------------*/
 
+#define make_ustride(start_, stop_, step_, present_) \
+  ((struct user_stride){                             \
+      .start   = (start_),                           \
+      .stop    = (stop_),                            \
+      .step    = (step_),                            \
+      .present = (present_),                         \
+  })
+
+// [:stop]
 HEADER_FUNC struct user_stride
-ustride_single (const i64 start)
+ustride1 (i64 stop)
 {
-  return (struct user_stride){
-      .start   = start,
-      .present = START_PRESENT,
-  };
+  return make_ustride (0, stop, 0, STOP_PRESENT | COLON_PRESENT);
 }
 
+// [::step]
 HEADER_FUNC struct user_stride
-ustride012 (const i64 start, const i64 step, const i64 stop)
+ustride2 (i64 step)
 {
-  return (struct user_stride){
-      .start   = start,
-      .step    = step,
-      .stop    = stop,
-      .present = STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT,
-  };
+  return make_ustride (0, 0, step, STEP_PRESENT | COLON_PRESENT);
 }
 
+// [:stop:step]
 HEADER_FUNC struct user_stride
-ustride01 (const i64 start, const i64 step)
+ustride12 (i64 stop, i64 step)
 {
-  return (struct user_stride){
-      .start   = start,
-      .step    = step,
-      .present = STEP_PRESENT | START_PRESENT | COLON_PRESENT,
-  };
+  return make_ustride (
+      0,
+      stop,
+      step,
+      STOP_PRESENT | STEP_PRESENT | COLON_PRESENT
+  );
 }
 
+// [start:]
 HEADER_FUNC struct user_stride
-ustride0 (const i64 start)
+ustride0 (i64 start)
 {
-  return (struct user_stride){
-      .start   = start,
-      .present = START_PRESENT | COLON_PRESENT,
-  };
+  return make_ustride (start, 0, 0, START_PRESENT | COLON_PRESENT);
 }
 
+// [start:stop]
 HEADER_FUNC struct user_stride
-ustride12 (const i64 step, const i64 stop)
+ustride01 (i64 start, i64 stop)
 {
-  return (struct user_stride){
-      .step    = step,
-      .stop    = stop,
-      .present = STOP_PRESENT | STEP_PRESENT | COLON_PRESENT,
-  };
+  return make_ustride (
+      start,
+      stop,
+      0,
+      STOP_PRESENT | START_PRESENT | COLON_PRESENT
+  );
 }
 
+// [start::step]
 HEADER_FUNC struct user_stride
-ustride1 (const i64 step)
+ustride02 (i64 start, i64 step)
 {
-  return (struct user_stride){
-      .step    = step,
-      .present = STEP_PRESENT | START_PRESENT | COLON_PRESENT,
-  };
+  return make_ustride (
+      start,
+      0,
+      step,
+      STEP_PRESENT | START_PRESENT | COLON_PRESENT
+  );
 }
 
+// [start:stop:step]
 HEADER_FUNC struct user_stride
-ustride2 (const i64 stop)
+ustride012 (i64 start, i64 stop, i64 step)
 {
-  return (struct user_stride){
-      .stop    = stop,
-      .present = STOP_PRESENT | COLON_PRESENT,
-  };
+  return make_ustride (
+      start,
+      stop,
+      step,
+      STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT
+  );
 }
 
+// [start]  — bare index, no colon
+HEADER_FUNC struct user_stride
+ustride_single (i64 start)
+{
+  return make_ustride (start, 0, 0, START_PRESENT);
+}
+
+// [:]  — colon only
 HEADER_FUNC struct user_stride
 ustride (void)
 {
-  return (struct user_stride){
-      .present = COLON_PRESENT,
-  };
+  return make_ustride (0, 0, 0, COLON_PRESENT);
 }
 
 HEADER_FUNC struct user_stride
@@ -337,16 +361,14 @@ usfrms (const struct stride str)
 {
   return ustride012 (
       str.start,
-      str.stride,
-      str.start + str.stride * str.nelems
+      str.start + str.stride * str.nelems,
+      str.stride
   );
 }
 
-struct multi_user_stride
-{
-  struct user_stride *strides;
-  u32                 len;
-};
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Multi User Stride Builder
+ *----------------------------------------------------------------------------*/
 
 struct mus_llnode
 {
@@ -369,6 +391,7 @@ void musb_create (
 
 err_t
 musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
+
 err_t musb_build (
     struct multi_user_stride *persistent,
     const struct mus_builder *eb,

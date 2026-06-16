@@ -96,7 +96,6 @@ struct wal_ostream *walos_open (const char *fname, error *e);
 err_t               walos_close (struct wal_ostream *w, error *e);
 
 // Flush
-err_t walos_flush_to (struct wal_ostream *w, lsn l, error *e);
 err_t walos_flush_all (struct wal_ostream *w, error *e);
 
 // Write
@@ -280,14 +279,14 @@ const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry
-#define WL_BEGIN_LEN \
+#define WL_BEGIN_LEN              \
   (sizeof (wlh) +  /* header */   \
    sizeof (txid) + /* txid */     \
    sizeof (u32)    /* checksum */ \
   )
 
 // Size of COMMIT entry
-#define WL_COMMIT_LEN \
+#define WL_COMMIT_LEN             \
   (sizeof (wlh) +  /* header */   \
    sizeof (txid) + /* txid */     \
    sizeof (lsn) +  /* prev */     \
@@ -295,7 +294,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of END entry
-#define WL_END_LEN \
+#define WL_END_LEN                \
   (sizeof (wlh) +  /* header */   \
    sizeof (txid) + /* txid */     \
    sizeof (lsn) +  /* prev */     \
@@ -303,18 +302,18 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of physical UPDATE entry
-#define WL_UPDATE_LEN \
+#define WL_UPDATE_LEN                \
   (2 * sizeof (wlh) + /* header */   \
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
    sizeof (pgno) +    /* pg */       \
-   NS_PAGE_SIZE +        /* undo */     \
-   NS_PAGE_SIZE +        /* redo */     \
+   NS_PAGE_SIZE +     /* undo */     \
+   NS_PAGE_SIZE +     /* redo */     \
    sizeof (u32)       /* checksum */ \
   )
 
 // Size of FSM UPDATE entry
-#define WL_FSM_UPDATE_LEN \
+#define WL_FSM_UPDATE_LEN            \
   (2 * sizeof (wlh) + /* header */   \
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
@@ -326,7 +325,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of FILE EXTENT UPDATE entry
-#define WL_FILE_EXT_LEN \
+#define WL_FILE_EXT_LEN              \
   (2 * sizeof (wlh) + /* header */   \
    sizeof (txid) +    /* txid */     \
    sizeof (lsn) +     /* prev */     \
@@ -336,18 +335,18 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   )
 
 // Size of physical CLR entry
-#define WL_CLR_LEN \
+#define WL_CLR_LEN                    \
   (2 * sizeof (wlh) + /* header */    \
    sizeof (txid) +    /* txid */      \
    sizeof (lsn) +     /* prev */      \
    sizeof (pgno) +    /* pg */        \
    sizeof (lsn) +     /* undo_next */ \
-   NS_PAGE_SIZE +        /* redo */      \
+   NS_PAGE_SIZE +     /* redo */      \
    sizeof (u32)       /* checksum */  \
   )
 
 // Size of FSM CLR entry
-#define WL_FSM_CLR_LEN \
+#define WL_FSM_CLR_LEN                \
   (2 * sizeof (wlh) + /* header */    \
    sizeof (txid) +    /* txid */      \
    sizeof (lsn) +     /* prev */      \
@@ -369,12 +368,12 @@ bool  wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool  wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno  wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
 void  i_print_wal_rec_hdr_read_light (
-    int                            log_level,
-    const struct wal_rec_hdr_read *w,
-    lsn                            l
-);
+     int                            log_level,
+     const struct wal_rec_hdr_read *w,
+     lsn                            l
+ );
 struct wal_clr_write
-wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
+     wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
 void wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
 
 // DECODE
@@ -419,12 +418,13 @@ wup_fsm (pgno fsmpg, struct txn *tx, p_size bit, u8 undo, u8 redo)
       .type = WUP_FSM,
       .tid  = tx->tid,
       .prev = tx->data.last_lsn,
-      .fsm  = {
-          .pg   = fsmpg,
-          .bit  = bit,
-          .undo = undo,
-          .redo = redo,
-      },
+      .fsm =
+          {
+              .pg   = fsmpg,
+              .bit  = bit,
+              .undo = undo,
+              .redo = redo,
+          },
   };
 }
 
@@ -476,7 +476,6 @@ lsn  wal_size (struct wal *w);
  * under the hood this is just the same as flush all
  * with an assert that [l] has been written already.
  */
-err_t wal_flush_to (const struct wal *w, lsn l, error *e);
 err_t wal_flush_all (const struct wal *w, error *e);
 
 /**

@@ -33,7 +33,7 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
       // Remember:
       //    page_lsn = latest log page that modified this page
       const lsn plsn = page_get_page_lsn (&mp->page);
-      if (wal_flush_to (p->ww, plsn, e))
+      if (wal_flush_all (p->ww, e))
       {
         goto theend;
       }

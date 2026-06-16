@@ -17,10 +17,12 @@
 #include "alloc.h"
 #include "collections.h"
 #include "error.h"
-#include "numerics.h"        // parse_i32_expect
+#include "numerics.h" // parse_i32_expect
+#include "query.h"
 #include "serial.h"          // string_equal
 #include "testing/testing.h" // TEST
-#include "utils.h"           // case_ENUM_RETURN_STRING
+#include "types.h"
+#include "utils.h" // case_ENUM_RETURN_STRING
 
 /******************************************************************************
  * SECTION: Tokens
@@ -109,6 +111,9 @@ tt_tostr (enum token_t t)
     // Literal Operations
     case_ENUM_RETURN_STRING (TT_CREATE);
     case_ENUM_RETURN_STRING (TT_DELETE);
+    case_ENUM_RETURN_STRING (TT_GET);
+    case_ENUM_RETURN_STRING (TT_EXIT);
+    case_ENUM_RETURN_STRING (TT_HELP);
     case_ENUM_RETURN_STRING (TT_INSERT);
     case_ENUM_RETURN_STRING (TT_APPEND);
     case_ENUM_RETURN_STRING (TT_READ);
@@ -221,12 +226,10 @@ add_token_int (struct lexer *lex, i32 value, error *e)
 static err_t
 add_token_float (struct lexer *lex, f32 value, error *e)
 {
-  struct token next = (struct token){
-      .type       = TT_FLOAT,
-      .floating   = value,
-      .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
-  };
+  struct token next = (struct token){.type       = TT_FLOAT,
+                                     .floating   = value,
+                                     .text_start = &lex->src[lex->start],
+                                     .text_len   = lex->current - lex->start};
 
   return dblb_append (&lex->_tokens, &next, 1, e);
 }
@@ -240,16 +243,14 @@ add_token_str (
     error        *e
 )
 {
-  struct token next = (struct token){
-      .type = type,
-      .str =
-          {
-              .data = data,
-              .len  = len,
-          },
-      .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
-  };
+  struct token next = (struct token){.type = type,
+                                     .str =
+                                         {
+                                             .data = data,
+                                             .len  = len,
+                                         },
+                                     .text_start = &lex->src[lex->start],
+                                     .text_len   = lex->current - lex->start};
 
   return dblb_append (&lex->_tokens, &next, 1, e);
 }
@@ -257,12 +258,10 @@ add_token_str (
 static err_t
 add_token_prim (struct lexer *lex, enum prim_t prim, error *e)
 {
-  struct token next = (struct token){
-      .type       = TT_PRIM,
-      .prim       = prim,
-      .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
-  };
+  struct token next = (struct token){.type       = TT_PRIM,
+                                     .prim       = prim,
+                                     .text_start = &lex->src[lex->start],
+                                     .text_len   = lex->current - lex->start};
 
   return dblb_append (&lex->_tokens, &next, 1, e);
 }
@@ -277,6 +276,18 @@ check_keyword (const char *text, u32 len)
   if (len == sizeof ("delete") - 1 && strncmp (text, "delete", len) == 0)
   {
     return TT_DELETE;
+  }
+  if (len == sizeof ("get") - 1 && strncmp (text, "get", len) == 0)
+  {
+    return TT_GET;
+  }
+  if (len == sizeof ("exit") - 1 && strncmp (text, "exit", len) == 0)
+  {
+    return TT_EXIT;
+  }
+  if (len == sizeof ("help") - 1 && strncmp (text, "help", len) == 0)
+  {
+    return TT_HELP;
   }
   if (len == sizeof ("insert") - 1 && strncmp (text, "insert", len) == 0)
   {
@@ -783,11 +794,15 @@ TEST (lexer_numbers)
 
 TEST (lexer_keywords)
 {
-  const char *src = "create delete insert file query struct union true false";
+  const char *src =
+      "create delete get exit help insert file query struct union true false";
 
   struct token expected[] = {
       quick_tok (TT_CREATE),
       quick_tok (TT_DELETE),
+      quick_tok (TT_GET),
+      quick_tok (TT_EXIT),
+      quick_tok (TT_HELP),
       quick_tok (TT_INSERT),
       quick_tok (TT_FILE),
       quick_tok (TT_QUERY),
@@ -972,74 +987,7 @@ compile_multi_user_stride (
   return ret;
 }
 
-err_t
-compile_user_stride (struct user_stride *dest, const char *text, error *e)
-{
-  struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
-
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
-
-  err_t ret = parse_user_stride (&parser, dest, e);
-  lex_free (&lex);
-  return ret;
-}
-
-err_t
-compile_type_ref (
-    struct type_ref    *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
-{
-  struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
-
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
-
-  err_t ret = parse_type_ref (&parser, dest, dalloc, e);
-
-  lex_free (&lex);
-
-  return ret;
-}
-
 #ifndef NTEST
-TEST (compile_user_stride_basic)
-{
-  error              err    = error_create ();
-  struct user_stride stride = {0};
-  TEST_CASE ("empty stride []")
-  {
-    test_assert_int_equal (
-        compile_user_stride (&stride, "[]", &err),
-        ERR_SYNTAX
-    );
-    err.cause_code = SUCCESS;
-  }
-
-  TEST_CASE ("single integer [5]")
-  {
-    stride = (struct user_stride){0};
-    test_assert_int_equal (compile_user_stride (&stride, "[5]", &err), SUCCESS);
-    test_assert_int_equal (stride.start, 5);
-    test_assert_int_equal (stride.present & START_PRESENT, START_PRESENT);
-    test_assert_int_equal (stride.present & STOP_PRESENT, 0);
-    test_assert_int_equal (stride.present & STEP_PRESENT, 0);
-  }
-
-  TEST_CASE ("step cannot be zero")
-  {
-    stride = (struct user_stride){0};
-    test_assert_int_equal (
-        compile_user_stride (&stride, "[::0]", &err),
-        ERR_SYNTAX
-    );
-    err.cause_code = SUCCESS;
-  }
-}
-
 TEST (compile_multi_user_stride)
 {
   error                    e      = error_create ();
@@ -1366,441 +1314,595 @@ TEST (compile_multi_user_stride)
 
   chunk_alloc_free_all (&alloc);
 }
+#endif
 
-TEST (compile_type_ref)
+err_t
+compile_user_stride (struct user_stride *dest, const char *text, error *e)
 {
-  error              e   = error_create ();
-  struct type_ref    ref = {0};
+  struct lexer lex;
+  WRAP (lex_tokens (text, strlen (text), &lex, e));
+
+  struct parser parser = parser_init (lex.tokens, lex.ntokens);
+
+  err_t ret = parse_user_stride (&parser, dest, e);
+  lex_free (&lex);
+  return ret;
+}
+
+#ifndef NTEST
+static void
+test_compile_user_stride_green_path (
+    const char        *query,
+    struct user_stride expected
+)
+{
+  struct user_stride actual;
+  error              e = error_create ();
+
+  TEST_CASE ("SHOULD PASS: %s", query)
+  {
+    compile_user_stride (&actual, query, &e);
+    test_assert (user_stride_equal (&actual, &expected));
+  }
+}
+
+static void
+test_compile_user_stride_red_path (const char *query, err_t code)
+{
+  struct user_stride actual;
+  error              e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
+  {
+    test_err_t_check (compile_user_stride (&actual, query, &e), code, &e);
+  }
+}
+
+TEST (compile_user_stride)
+{
+  test_compile_user_stride_red_path ("[]", ERR_SYNTAX);
+  test_compile_user_stride_red_path ("[ ]", ERR_SYNTAX);
+  test_compile_user_stride_red_path (" [ ]", ERR_SYNTAX);
+
+  test_compile_user_stride_green_path ("[5]", ustride_single (5));
+
+  test_compile_user_stride_green_path ("[:]", ustride ());
+  test_compile_user_stride_green_path ("[:6]", ustride1 (6));
+  test_compile_user_stride_green_path ("[5:]", ustride0 (5));
+  test_compile_user_stride_green_path ("[5:6]", ustride01 (5, 6));
+
+  test_compile_user_stride_green_path ("[::]", ustride ());
+  test_compile_user_stride_green_path ("[::7]", ustride2 (7));
+  test_compile_user_stride_green_path ("[:6:]", ustride1 (6));
+  test_compile_user_stride_green_path ("[:6:7]", ustride12 (6, 7));
+
+  test_compile_user_stride_green_path ("[5::]", ustride0 (5));
+  test_compile_user_stride_green_path ("[5::7]", ustride02 (5, 7));
+  test_compile_user_stride_green_path ("[5:6:]", ustride01 (5, 6));
+  test_compile_user_stride_green_path ("[5:6:7]", ustride012 (5, 6, 7));
+}
+#endif
+
+err_t
+compile_type_ref (
+    struct type_ref    *dest,
+    const char         *text,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
+{
+  struct lexer lex;
+  WRAP (lex_tokens (text, strlen (text), &lex, e));
+
+  struct parser parser = parser_init (lex.tokens, lex.ntokens);
+
+  err_t ret = parse_type_ref (&parser, dest, dalloc, e);
+
+  lex_free (&lex);
+
+  return ret;
+}
+
+#ifndef NTEST
+
+static void
+test_compile_type_ref_green_path (const char *query, struct type_ref expected)
+{
   struct chunk_alloc alloc;
+  struct type_ref    actual;
   chunk_alloc_create_default (&alloc);
+  error e = error_create ();
 
-  TEST_CASE ("bare identifier")
+  TEST_CASE ("SHOULD PASS: %s", query)
   {
-    compile_type_ref (&ref, "myvar", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_TAKE);
-    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
-    // No accessor — sub_ta should be NULL / ta default
-  }
-
-  TEST_CASE ("identifier with range accessor '[0]'")
-  {
-    compile_type_ref (&ref, "myvar[9]", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_TAKE);
-    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
-    test_assert_int_equal (ref.tk.ta.type, TA_RANGE);
-    test_assert_int_equal (ref.tk.ta.range.dlen, 1);
-    test_assert_int_equal (
-        ref.tk.ta.range.dim_accessors[0].present,
-        START_PRESENT
-    );
-    test_assert_int_equal (ref.tk.ta.range.dim_accessors[0].start, 9);
-  }
-
-  TEST_CASE ("identifier with select accessor '.field'")
-  {
-    compile_type_ref (&ref, "myvar.field", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_TAKE);
-    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
-    test_assert_int_equal (ref.tk.ta.type, TA_SELECT);
-    test_assert (string_equal (ref.tk.ta.select.key, strfcstr ("field")));
-    test_assert (ref.tk.ta.select.sub_ta->type == TA_TAKE);
-  }
-
-  TEST_CASE ("identifier with chained accessors '.a[0]'")
-  {
-    compile_type_ref (&ref, "myvar.a[0]", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_TAKE);
-    test_assert (string_equal (ref.tk.vname, strfcstr ("myvar")));
-    test_assert_int_equal (ref.tk.ta.type, TA_SELECT);
-    test_assert (string_equal (ref.tk.ta.select.key, strfcstr ("a")));
-    test_assert (ref.tk.ta.select.sub_ta != NULL);
-    test_assert_int_equal (ref.tk.ta.select.sub_ta->type, TA_RANGE);
-  }
-
-  // =========================================================================
-  // Struct path — single field
-  // =========================================================================
-
-  TEST_CASE ("struct { a myvar }")
-  {
-    compile_type_ref (&ref, "struct { a myvar }", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_STRUCT);
-    test_assert_int_equal (ref.st.len, 1);
-    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
-    test_assert_int_equal (ref.st.types[0].type, TR_TAKE);
-    test_assert (string_equal (ref.st.types[0].tk.vname, strfcstr ("myvar")));
-  }
-
-  // =========================================================================
-  // Struct path — multiple fields
-  // =========================================================================
-
-  TEST_CASE ("struct { a x, b y }")
-  {
-    compile_type_ref (&ref, "struct { a x, b y }", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_STRUCT);
-    test_assert_int_equal (ref.st.len, 2);
-    // first field
-    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
-    test_assert_int_equal (ref.st.types[0].type, TR_TAKE);
-    test_assert (string_equal (ref.st.types[0].tk.vname, strfcstr ("x")));
-    // second field
-    test_assert (string_equal (ref.st.keys[1], strfcstr ("b")));
-    test_assert_int_equal (ref.st.types[1].type, TR_TAKE);
-    test_assert (string_equal (ref.st.types[1].tk.vname, strfcstr ("y")));
-  }
-
-  TEST_CASE ("struct { a x, b y, c z } — three fields")
-  {
-    compile_type_ref (&ref, "struct { a x, b y, c z }", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_STRUCT);
-    test_assert_int_equal (ref.st.len, 3);
-    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
-    test_assert (string_equal (ref.st.keys[1], strfcstr ("b")));
-    test_assert (string_equal (ref.st.keys[2], strfcstr ("c")));
-    test_assert (string_equal (ref.st.types[0].tk.vname, strfcstr ("x")));
-    test_assert (string_equal (ref.st.types[1].tk.vname, strfcstr ("y")));
-    test_assert (string_equal (ref.st.types[2].tk.vname, strfcstr ("z")));
-  }
-
-  // =========================================================================
-  // Nested struct  (struct field whose type is itself a struct)
-  // =========================================================================
-
-  TEST_CASE ("struct { a struct { b x } }")
-  {
-    compile_type_ref (&ref, "struct { a struct { b x } }", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_STRUCT);
-    test_assert_int_equal (ref.st.len, 1);
-    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
-    test_assert_int_equal (ref.st.types[0].type, TR_STRUCT);
-    test_assert_int_equal (ref.st.types[0].st.len, 1);
-    test_assert (string_equal (ref.st.types[0].st.keys[0], strfcstr ("b")));
-    test_assert_int_equal (ref.st.types[0].st.types[0].type, TR_TAKE);
-    test_assert (
-        string_equal (ref.st.types[0].st.types[0].tk.vname, strfcstr ("x"))
-    );
-  }
-
-  // Struct field whose value is a take with an accessor
-  TEST_CASE ("struct { a myvar[0] }")
-  {
-    compile_type_ref (&ref, "struct { a myvar[0] }", &alloc, &e);
-    test_assert_int_equal (ref.type, TR_STRUCT);
-    test_assert_int_equal (ref.st.len, 1);
-    test_assert (string_equal (ref.st.keys[0], strfcstr ("a")));
-    test_assert_int_equal (ref.st.types[0].type, TR_TAKE);
-    test_assert_int_equal (ref.st.types[0].tk.ta.type, TA_RANGE);
-  }
-
-  // =========================================================================
-  // Error conditions
-  // =========================================================================
-
-  // Completely empty input — default branch → ERR_SYNTAX
-  TEST_CASE ("error: empty string")
-  {
-    err_t err = compile_type_ref (&ref, "", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Token that is neither IDENT nor 'struct'
-  TEST_CASE ("error: bare integer")
-  {
-    err_t err = compile_type_ref (&ref, "42", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  TEST_CASE ("error: bare punctuation")
-  {
-    err_t err = compile_type_ref (&ref, "[0]", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // 'struct' keyword but no opening brace
-  TEST_CASE ("error: 'struct' missing '{'")
-  {
-    err_t err = compile_type_ref (&ref, "struct a x }", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // 'struct {}' — body is empty, parse_field_ref expects IDENT but gets '}'
-  TEST_CASE ("error: 'struct {}' empty body")
-  {
-    err_t err = compile_type_ref (&ref, "struct {}", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Field key present but no type_ref following it — next token is '}'
-  // which hits the default branch of parse_type_ref_inner
-  TEST_CASE ("error: 'struct { a }' field with no type")
-  {
-    err_t err = compile_type_ref (&ref, "struct { a }", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Missing closing brace
-  TEST_CASE ("error: 'struct { a x' missing '}'")
-  {
-    err_t err = compile_type_ref (&ref, "struct { a x", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Trailing comma — parse_field_ref is called again and gets '}' not IDENT
-  TEST_CASE ("error: 'struct { a x, }' trailing comma")
-  {
-    err_t err = compile_type_ref (&ref, "struct { a x, }", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Double comma
-  TEST_CASE ("error: 'struct { a x,, b y }' double comma")
-  {
-    err_t err = compile_type_ref (&ref, "struct { a x,, b y }", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Second field missing its type_ref
-  TEST_CASE ("error: 'struct { a x, b }' second field no type")
-  {
-    err_t err = compile_type_ref (&ref, "struct { a x, b }", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
-  }
-
-  // Second field key is a keyword, not an identifier
-  TEST_CASE ("error: 'struct { a x, struct y }' keyword as field name")
-  {
-    err_t err = compile_type_ref (&ref, "struct { a x, struct y }", &alloc, &e);
-    test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    compile_type_ref (&actual, query, &alloc, &e);
+    test_assert (type_ref_equal (expected, actual));
   }
 
   chunk_alloc_free_all (&alloc);
 }
 
-TEST (compile_type_primitives)
+static void
+test_compile_type_ref_red_path (const char *query, err_t code)
 {
-  error              err = error_create ();
-  struct chunk_alloc arena;
-  chunk_alloc_create_default (&arena);
-  struct type t;
-  TEST_CASE ("i8")
+  struct chunk_alloc alloc;
+  struct type_ref    actual;
+  chunk_alloc_create_default (&alloc);
+  error e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
   {
-    test_assert_int_equal (compile_type (&t, "i8", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, I8);
+    test_err_t_check (compile_type_ref (&actual, query, &alloc, &e), code, &e);
   }
-  TEST_CASE ("i16")
-  {
-    test_assert_int_equal (compile_type (&t, "i16", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, I16);
-  }
-  TEST_CASE ("i32")
-  {
-    test_assert_int_equal (compile_type (&t, "i32", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, I32);
-  }
-  TEST_CASE ("i64")
-  {
-    test_assert_int_equal (compile_type (&t, "i64", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, I64);
-  }
-  TEST_CASE ("u8")
-  {
-    test_assert_int_equal (compile_type (&t, "u8", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, U8);
-  }
-  TEST_CASE ("u16")
-  {
-    test_assert_int_equal (compile_type (&t, "u16", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, U16);
-  }
-  TEST_CASE ("u32")
-  {
-    test_assert_int_equal (compile_type (&t, "u32", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, U32);
-  }
-  TEST_CASE ("u64")
-  {
-    test_assert_int_equal (compile_type (&t, "u64", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, U64);
-  }
-  TEST_CASE ("f32")
-  {
-    test_assert_int_equal (compile_type (&t, "f32", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, F32);
-  }
-  TEST_CASE ("f64")
-  {
-    test_assert_int_equal (compile_type (&t, "f64", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_PRIM);
-    test_assert_int_equal (t.p, F64);
-  }
-  chunk_alloc_free_all (&arena);
+
+  chunk_alloc_free_all (&alloc);
 }
 
-TEST (compile_type_sarray)
+TEST (compile_type_ref)
 {
-  error              err = error_create ();
-  struct chunk_alloc arena;
-  chunk_alloc_create_default (&arena);
-  struct type t;
-  TEST_CASE ("[10]i32")
-  {
-    test_assert_int_equal (compile_type (&t, "[10]i32", &arena, &err), SUCCESS);
-    test_assert_int_equal (t.type, T_SARRAY);
-    test_assert_int_equal (t.sa.rank, 1);
-    test_assert_int_equal (t.sa.dims[0], 10);
-    test_assert_int_equal (t.sa.t->type, T_PRIM);
-    test_assert_int_equal (t.sa.t->p, I32);
-  }
-  TEST_CASE ("[5][10]f64")
-  {
-    test_assert_int_equal (
-        compile_type (&t, "[5][10]f64", &arena, &err),
-        SUCCESS
-    );
-    test_assert_int_equal (t.type, T_SARRAY);
-    test_assert_int_equal (t.sa.rank, 2);
-    test_assert_int_equal (t.sa.dims[0], 5);
-    test_assert_int_equal (t.sa.dims[1], 10);
-    test_assert_int_equal (t.sa.t->type, T_PRIM);
-    test_assert_int_equal (t.sa.t->p, F64);
-  }
-  TEST_CASE ("[2][3][4]u8")
-  {
-    test_assert_int_equal (
-        compile_type (&t, "[2][3][4]u8", &arena, &err),
-        SUCCESS
-    );
-    test_assert_int_equal (t.type, T_SARRAY);
-    test_assert_int_equal (t.sa.rank, 3);
-    test_assert_int_equal (t.sa.dims[0], 2);
-    test_assert_int_equal (t.sa.dims[1], 3);
-    test_assert_int_equal (t.sa.dims[2], 4);
-  }
-  chunk_alloc_free_all (&arena);
+  test_compile_type_ref_green_path (
+      "myvar",
+      tr_take (strfcstr ("myvar"), ta_take ())
+  );
+
+  test_compile_type_ref_green_path (
+      "myvar[9]",
+      tr_take (
+          strfcstr ("myvar"),
+          ta_range ((struct user_stride[]){ustride_single (9)}, 1, &ta_take ())
+      )
+  );
+
+  test_compile_type_ref_green_path (
+      "myvar.field",
+      tr_take (strfcstr ("myvar"), ta_select (strfcstr ("field"), &ta_take ()))
+  );
+
+  struct type_accessor subrange =
+      ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ());
+  test_compile_type_ref_green_path (
+      "myvar.a[0]",
+      tr_take (strfcstr ("myvar"), ta_select (strfcstr ("a"), &subrange))
+  );
+
+  test_compile_type_ref_green_path (
+      "struct { a myvar }",
+      tr_struct (
+          1,
+          (struct string[]){strfcstr ("a")},
+          (struct type_ref[]){tr_take (strfcstr ("myvar"), ta_take ())}
+      )
+  );
+
+  test_compile_type_ref_green_path (
+      "struct { a x, b y }",
+      tr_struct (
+          2,
+          (struct string[]){strfcstr ("a"), strfcstr ("b")},
+          (struct type_ref[]){
+              tr_take (strfcstr ("x"), ta_take ()),
+              tr_take (strfcstr ("y"), ta_take ()),
+          }
+      )
+  );
+
+  test_compile_type_ref_green_path (
+      "struct { a x, b y, c z }",
+      tr_struct (
+          3,
+          (struct string[]){strfcstr ("a"), strfcstr ("b"), strfcstr ("c")},
+          (struct type_ref[]){
+              tr_take (strfcstr ("x"), ta_take ()),
+              tr_take (strfcstr ("y"), ta_take ()),
+              tr_take (strfcstr ("z"), ta_take ()),
+          }
+      )
+  );
+
+  test_compile_type_ref_green_path (
+      "struct { a struct { b x } }",
+      tr_struct (
+          1,
+          (struct string[]){strfcstr ("a")},
+          (struct type_ref[]){
+              tr_struct (
+                  1,
+                  (struct string[]){strfcstr ("b")},
+                  (struct type_ref[]){tr_take (strfcstr ("x"), ta_take ())}
+              ),
+          }
+      )
+  );
+
+  test_compile_type_ref_green_path (
+      "struct { a myvar[0] }",
+      tr_struct (
+          1,
+          (struct string[]){strfcstr ("a")},
+          (struct type_ref[]){tr_take (
+              strfcstr ("myvar"),
+              ta_range (
+                  (struct user_stride[]){ustride_single (0)},
+                  1,
+                  &ta_take ()
+              )
+          )}
+      )
+  );
+
+  test_compile_type_ref_red_path ("", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("42", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("[0]", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct a x }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct {}", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a x", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a x, }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a x,, b y }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a x, b }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a x, struct y }", ERR_SYNTAX);
 }
 
-TEST (compile_type_struct)
+#endif
+
+#ifndef NTEST
+
+static void
+test_compile_type_green_path (const char *query, struct type expected)
 {
-  error              err = error_create ();
-  struct chunk_alloc arena;
-  chunk_alloc_create_default (&arena);
-  struct type t;
-  TEST_CASE ("struct { x i32 y f64 }")
+  struct chunk_alloc alloc;
+  struct type        actual;
+  chunk_alloc_create_default (&alloc);
+  error e = error_create ();
+
+  TEST_CASE ("SHOULD PASS: %s", query)
   {
-    test_assert_int_equal (
-        compile_type (&t, "struct { x i32, y f64 }", &arena, &err),
-        SUCCESS
-    );
-    test_assert_int_equal (t.type, T_STRUCT);
-    test_assert_int_equal (t.st.len, 2);
-    test_assert (string_equal (t.st.keys[0], strfcstr ("x")));
-    test_assert (string_equal (t.st.keys[1], strfcstr ("y")));
-    test_assert_int_equal (t.st.types[0]->type, T_PRIM);
-    test_assert_int_equal (t.st.types[0]->p, I32);
-    test_assert_int_equal (t.st.types[1]->type, T_PRIM);
-    test_assert_int_equal (t.st.types[1]->p, F64);
+    compile_type (&actual, query, &alloc, &e);
+    test_assert (type_equal (&expected, &actual));
   }
-  TEST_CASE ("nested struct { a struct { b i32 } }")
-  {
-    test_assert_int_equal (
-        compile_type (&t, "struct { a struct { b i32 } }", &arena, &err),
-        SUCCESS
-    );
-    test_assert_int_equal (t.type, T_STRUCT);
-    test_assert_int_equal (t.st.len, 1);
-    test_assert (string_equal (t.st.keys[0], strfcstr ("a")));
-    test_assert_int_equal (t.st.types[0]->type, T_STRUCT);
-    test_assert_int_equal (t.st.types[0]->st.len, 1);
-  }
-  chunk_alloc_free_all (&arena);
+
+  chunk_alloc_free_all (&alloc);
 }
 
-TEST (compile_type_union)
+static void
+test_compile_type_red_path (const char *query, err_t code)
 {
-  error              err = error_create ();
-  struct chunk_alloc arena;
-  chunk_alloc_create_default (&arena);
-  struct type t;
-  TEST_CASE ("union { a i32, b f64 }")
+  struct chunk_alloc alloc;
+  struct type        actual;
+  chunk_alloc_create_default (&alloc);
+  error e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
   {
-    test_assert_int_equal (
-        compile_type (&t, "union { a i32, b f64 }", &arena, &err),
-        SUCCESS
-    );
-    test_assert_int_equal (t.type, T_UNION);
-    test_assert_int_equal (t.un.len, 2);
-    test_assert (string_equal (t.un.keys[0], strfcstr ("a")));
-    test_assert (string_equal (t.un.keys[1], strfcstr ("b")));
-    test_assert_int_equal (t.un.types[0]->type, T_PRIM);
-    test_assert_int_equal (t.un.types[0]->p, I32);
-    test_assert_int_equal (t.un.types[1]->type, T_PRIM);
-    test_assert_int_equal (t.un.types[1]->p, F64);
+    test_err_t_check (compile_type (&actual, query, &alloc, &e), code, &e);
   }
-  chunk_alloc_free_all (&arena);
+
+  chunk_alloc_free_all (&alloc);
 }
 
-TEST (compile_type_complex)
+TEST (compile_type)
 {
-  error              err = error_create ();
-  struct chunk_alloc arena;
-  chunk_alloc_create_default (&arena);
-  struct type t;
-  TEST_CASE ("[10]struct { x i32, y [5]f64 }")
-  {
-    test_assert_int_equal (
-        compile_type (&t, "[10]struct { x i32, y [5]f64 }", &arena, &err),
-        SUCCESS
-    );
-    test_assert_int_equal (t.type, T_SARRAY);
-    test_assert_int_equal (t.sa.rank, 1);
-    test_assert_int_equal (t.sa.dims[0], 10);
-    test_assert_int_equal (t.sa.t->type, T_STRUCT);
-    test_assert_int_equal (t.sa.t->st.len, 2);
-  }
-  chunk_alloc_free_all (&arena);
+  test_compile_type_green_path ("i8", TI8);
+  test_compile_type_green_path ("i16", TI16);
+  test_compile_type_green_path ("i32", TI32);
+  test_compile_type_green_path ("i64", TI64);
+
+  test_compile_type_green_path ("u8", TU8);
+  test_compile_type_green_path ("u16", TU16);
+  test_compile_type_green_path ("u32", TU32);
+  test_compile_type_green_path ("u64", TU64);
+
+  test_compile_type_green_path ("f16", TF16);
+  test_compile_type_green_path ("f32", TF32);
+  test_compile_type_green_path ("f64", TF64);
+  test_compile_type_green_path ("f128", TF128);
+
+  test_compile_type_green_path ("cf32", TCF32);
+  test_compile_type_green_path ("cf64", TCF64);
+  test_compile_type_green_path ("cf128", TCF128);
+  test_compile_type_green_path ("cf256", TCF256);
+
+  test_compile_type_red_path ("i2", ERR_SYNTAX);
+
+  // SARRAY
+  test_compile_type_green_path ("[10]i32", mk_sarray (1, (u32[]){10}, &TI32));
+  test_compile_type_green_path (
+      "[5][10]f64",
+      mk_sarray (2, (u32[]){5, 10}, &TF64)
+  );
+  test_compile_type_green_path (
+      "[2][3][4]u8",
+      mk_sarray (3, (u32[]){2, 3, 4}, &TU8)
+  );
+
+  // STRUCT
+  test_compile_type_green_path (
+      "struct { x i32, y f64 }",
+      mk_struct (
+          2,
+          (struct string[]){
+              strfcstr ("x"),
+              strfcstr ("y"),
+          },
+          (struct type *[]){
+              &TI32,
+              &TF64,
+          }
+      )
+  );
+
+  struct type inner = mk_struct (
+      1,
+      (struct string[]){strfcstr ("b")},
+      (struct type *[]){&TI32}
+  );
+  test_compile_type_green_path (
+      "struct { a struct { b i32 } }",
+      mk_struct (
+          1,
+          (struct string[]){strfcstr ("a")},
+          (struct type *[]){&inner}
+      )
+  );
+
+  // UNION
+  test_compile_type_green_path (
+      "union { x i32, y f64 }",
+      mk_union (
+          2,
+          (struct string[]){
+              strfcstr ("x"),
+              strfcstr ("y"),
+          },
+          (struct type *[]){
+              &TI32,
+              &TF64,
+          }
+      )
+  );
+
+  // COMPLICATED
+  struct type inner_sarray = mk_sarray (1, (u32[]){5}, &TF64);
+  struct type inner_struct = mk_struct (
+      1,
+      (struct string[]){strfcstr ("x"), strfcstr ("y")},
+      (struct type *[]){&TI32, &inner_sarray}
+  );
+  test_compile_type_green_path (
+      "[10]struct { x i32, y [5]f64 }",
+      mk_sarray (1, (u32[]){10}, &inner_struct)
+  );
 }
 
+#endif
+
+err_t
+compile_query (
+    struct query       *dest,
+    const char         *text,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
+{
+  struct lexer lex;
+  WRAP (lex_tokens (text, strlen (text), &lex, e));
+
+  struct parser parser = parser_init (lex.tokens, lex.ntokens);
+
+  err_t ret = parse_query (&parser, dest, dalloc, e);
+  lex_free (&lex);
+  return ret;
+}
+
+#ifndef NTEST
+
+static void
+test_query_green_path (const char *query, struct query expected)
+{
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+  struct query actual;
+  error        e = error_create ();
+
+  TEST_CASE ("SHOULD PASS: %s", query)
+  {
+    compile_query (&actual, query, &alloc, &e);
+    test_assert (query_equal (&actual, &expected));
+  }
+
+  chunk_alloc_free_all (&alloc);
+}
+
+static void
+test_query_red_path (const char *query, err_t code)
+{
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+  struct query actual;
+  error        e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
+  {
+    test_err_t_check (compile_query (&actual, query, &alloc, &e), code, &e);
+  }
+
+  chunk_alloc_free_all (&alloc);
+}
+
+TEST (compile_query)
+{
+  // READ
+  {
+    test_query_red_path ("read", ERR_SYNTAX);
+    test_query_red_path ("read;", ERR_SYNTAX);
+    test_query_green_path (
+        "read foo;",
+        (struct query){.type = QT_READ,
+                       .read = {.vname = strfcstr ("foo"), .ustr = ustride ()}}
+    );
+    test_query_green_path (
+        "read foo[0:10:20];",
+        (struct query){
+            .type = QT_READ,
+            .read = {.vname = strfcstr ("foo"), .ustr = ustride012 (0, 10, 20)},
+        }
+    );
+  }
+
+  // CREATE
+  {
+    test_query_red_path ("create", ERR_SYNTAX);
+    test_query_red_path ("create 1;", ERR_SYNTAX);
+    test_query_red_path ("create foo;", ERR_SYNTAX);
+    test_query_red_path ("create foo 1;", ERR_SYNTAX);
+    test_query_red_path ("create a i32", ERR_SYNTAX);
+
+    // Sarray
+    u32         dims[2] = {10, 20};
+    struct type t0      = {
+             .type = T_SARRAY,
+             .sa   = {.rank = 2, .dims = dims, .t = &TF32}
+    };
+
+    // Union
+    struct type  *utypes[2] = {&TI32, &t0};
+    struct string ukeys[2]  = {strfcstr ("c"), strfcstr ("d")};
+    struct type   t1        = {
+                 .type = T_UNION,
+                 .un =
+            {
+                         .len   = 2,
+                         .types = utypes,
+                         .keys  = ukeys,
+            },
+    };
+
+    // Struct
+    struct type  *stypes[2] = {&TI32, &t1};
+    struct string skeys[2]  = {strfcstr ("a"), strfcstr ("b")};
+    struct type   t2        = {
+                 .type = T_STRUCT,
+                 .st =
+            {
+                         .len   = 2,
+                         .types = stypes,
+                         .keys  = skeys,
+            },
+    };
+    test_query_green_path (
+        "create foo struct { a i32, b union { c i32, d [10][20]f32 } };",
+        (struct query){
+            .type = QT_CREATE,
+            .create =
+                {
+                    .vname = strfcstr ("foo"),
+                    .type  = &t2,
+                },
+        }
+    );
+  }
+
+  // DELETE
+  {
+    test_query_red_path ("delete", ERR_SYNTAX);
+    test_query_red_path ("delete 1;", ERR_SYNTAX);
+    test_query_red_path ("delete foo", ERR_SYNTAX);
+    test_query_green_path (
+        "delete foo;",
+        (struct query){
+            .type = QT_DELETE,
+            .delete =
+                {
+                    .vname = strfcstr ("foo"),
+                },
+        }
+    );
+  }
+
+  // GET
+  {
+    test_query_red_path ("get", ERR_SYNTAX);
+    test_query_red_path ("get 1;", ERR_SYNTAX);
+    test_query_red_path ("get foo", ERR_SYNTAX);
+    test_query_green_path (
+        "get foo;",
+        (struct query){
+            .type = QT_GET,
+            .get =
+                {
+                    .vname = strfcstr ("foo"),
+                },
+        }
+    );
+  }
+
+  {
+    test_query_red_path ("exit", ERR_SYNTAX);
+    test_query_red_path ("exit 1;", ERR_SYNTAX);
+    test_query_red_path ("exit foo", ERR_SYNTAX);
+    test_query_green_path (
+        "exit;",
+        (struct query){
+            .type = QT_EXIT,
+        }
+    );
+  }
+
+  {
+    test_query_red_path ("help", ERR_SYNTAX);
+    test_query_red_path ("help 1;", ERR_SYNTAX);
+    test_query_red_path ("help foo", ERR_SYNTAX);
+    test_query_red_path ("help read", ERR_SYNTAX);
+    test_query_red_path ("help foo;", ERR_SYNTAX);
+    test_query_green_path (
+        "help;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = false},
+        }
+    );
+    test_query_green_path (
+        "help read;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = true, .command = QT_READ},
+        }
+    );
+    test_query_green_path (
+        "help create;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = true, .command = QT_CREATE},
+        }
+    );
+    test_query_green_path (
+        "help delete;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = true, .command = QT_DELETE},
+        }
+    );
+    test_query_green_path (
+        "help get;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = true, .command = QT_GET},
+        }
+    );
+    test_query_green_path (
+        "help exit;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = true, .command = QT_EXIT},
+        }
+    );
+    test_query_green_path (
+        "help help;",
+        (struct query){
+            .type = QT_HELP,
+            .help = {.has_command = true, .command = QT_HELP},
+        }
+    );
+  }
+}
 #endif

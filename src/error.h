@@ -46,11 +46,11 @@ typedef struct
 
 typedef err_t (*isvalid_func) (void *ctx, error *e);
 
-#define SUCCESS     0  // Operation completed successfully.
-#define ERR_IO      -1 // Generic I/O error (read, write, or fsync failure).
-#define ERR_NOMEM   -2 // Memory allocation failed.
-#define ERR_ARITH   -3 // Integer arithmetic overflow detected.
-#define ERR_CORRUPT -4 // Corrupted data - user might've tampered with something
+#define SUCCESS                        0 // Operation completed successfully.
+#define ERR_IO                         -1 // Generic I/O error (read, write, or fsync failure).
+#define ERR_NOMEM                      -2 // Memory allocation failed.
+#define ERR_ARITH                      -3 // Integer arithmetic overflow detected.
+#define ERR_CORRUPT                    -4 // Corrupted data - user might've tampered with something
 #define ERR_INVALID_ARGUMENT           -5 // User provided an invalid argument
 #define ERR_PG_OUT_OF_RANGE            -6
 #define ERR_SYNTAX                     -7
@@ -63,28 +63,8 @@ typedef err_t (*isvalid_func) (void *ctx, error *e);
 error error_create (void);
 void  error_silence (error *e);
 void  error_unsilence (error *e);
-void  err_t_perror (FILE *output, error *e);
 err_t error_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (3, 4);
-
-err_t
-error_change_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (
-    3,
-    4
-);
-
-err_t error_change_causef_from (
-    error      *e,
-    err_t       from,
-    err_t       to,
-    const char *fmt,
-    ...
-) PRINTF_ATTR (4, 5);
-
-void error_log_consume (error *e);
-
-bool error_equal (const error *left, const error *right);
-
-NORETURN void error_fatal (const char *fmt, ...);
+void  error_log_consume (error *e);
 
 #define error_trace(e)                                               \
   (e)->cause_code < 0                                                \

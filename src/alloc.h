@@ -29,9 +29,8 @@
 
 #include "concurrency.h" // latch
 #include "csx_assert.h"  // UNREACHABLE
-#include "os.h"
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32
+#include "platform.h"    // HEADER_FUNC
+#include "stdtypes.h"    // u32
 
 /******************************************************************************
  * SECTION: Local Linear Allocator

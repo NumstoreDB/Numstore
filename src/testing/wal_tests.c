@@ -15,130 +15,146 @@
 #include <stdatomic.h>
 #include <string.h>
 
-#include "dirty_page_table.h"
-#include "txn_table.h"
+#include "concurrency.h"
+#include "os.h"
 #include "wal.h"
 
 #ifndef NTEST
 
 /**
+ * @struct wal_queue
+ * @brief Parameters for the wal_multi_threaded test
+ *
+ * @var wal_queue::sync
+ * @brief The "start" signal so all threads start at the same time
+ *
+ * @var wal_queue::ww
+ * @brief The shared wal writer
+ *
+ * @var wal_queue::idx
+ * @brief The next log to write - this is atomically added to for each writer
+ *
+ * @var wal_queue::read
+ * @brief The list of log records to write (as read to make it easier to build)
+ *
+ * @var wal_queue::len
+ * @brief Length of [read]
+ */
 struct wal_queue
 {
-  i_semaphore sync;
+  _Atomic u32 sync;
   struct wal *ww;
-  atomic_int idx;
+  atomic_int  idx;
+
   struct wal_rec_hdr_read *read;
-  const int len;
-  atomic_int ret;
+  const int                len;
 };
 
 static void *
 wal_thread (void *ctx)
 {
-  error e = error_create ();
+  error             e = error_create ();
   struct wal_queue *q = ctx;
 
-  i_semaphore_wait (&q->sync);
+  while (atomic_load (&q->sync) > 0)
+  {
+    spin_pause ();
+  }
 
   while (true)
+  {
+    const int idx = atomic_fetch_add (&q->idx, 1);
+    if (idx >= q->len)
     {
-      const int idx = atomic_fetch_add (&q->idx, 1);
-      if (idx >= q->len)
-        {
-          goto theend;
-        }
-      struct wal_rec_hdr_write write = wrhw_from_wrhr (&q->read[idx]);
-
-      const slsn l = wal_append_log (q->ww, &write, &e);
-      if (l < 0)
-        {
-          goto theend;
-        }
-
-      if (wal_flush_to (q->ww, l, &e))
-        {
-          goto theend;
-        }
+      return NULL;
     }
 
-theend:
-  if (e.cause_code)
+    struct wal_rec_hdr_write write = wrhw_from_wrhr (&q->read[idx]);
+
+    const slsn l = wal_append_log (q->ww, &write, &e);
+    if (l < 0)
     {
-      atomic_store (&q->ret, e.cause_code);
+      panic ("Failed to write log");
     }
-  return NULL;
+
+    if (wal_flush_all (q->ww, &e))
+    {
+      panic ("Failed to flush wal");
+    }
+  }
 }
 
-TEST_DISABLED (wal_multi_threaded)
+TEST (wal_multi_threaded)
 {
   error e = error_create ();
+  i_remove_quiet ("test.wal", &e);
   struct wal *ww = wal_open ("test.wal", &e);
+  wal_write_start_lsn (ww, 0, &e);
 
-  struct wal_rec_hdr_read *read = i_malloc (1000, sizeof *read, &e);
-  struct alloc alloc;
-  chunk_alloc_create_default (&alloc._calloc);
-  alloc.type = AT_CHNK_ALLOC;
+  const u32 N = 5000;
 
-  for (u32 i = 0; i < 1000; ++i)
-    {
-      wal_rec_hdr_read_random (&read[i], &alloc, &e);
-    }
+  struct wal_rec_hdr_read *read = i_malloc (N, sizeof *read, &e);
+
+  for (u32 i = 0; i < N; ++i)
+  {
+    wal_rec_hdr_read_random (&read[i]);
+  }
 
   struct wal_queue ctx = {
-    .ww = ww,
-    .idx = 0,
-    .read = read,
-    .len = 1000,
+      .sync = 1,
+      .ww   = ww,
+      .idx  = 0,
+      .read = read,
+      .len  = N,
   };
 
-  i_semaphore_create (&ctx.sync, 10, &e);
-
-  u32 nthreads;
+  u32      nthreads;
   i_thread threads[10];
   for (nthreads = 0; nthreads < arrlen (threads); ++nthreads)
-    {
-      i_thread_create (&threads[nthreads], wal_thread, &ctx, &e);
-    }
+  {
+    i_thread_create (&threads[nthreads], wal_thread, &ctx, &e);
+  }
 
-  for (u32 i = 0; i < 10; ++i)
-    {
-      i_semaphore_post (&ctx.sync);
-    }
+  // launch
+  atomic_store (&ctx.sync, 0);
 
   i_log_info ("Threads active\n");
 
   for (; nthreads > 0; --nthreads)
-    {
-      i_thread_join (&threads[nthreads - 1], &e);
-    }
+  {
+    i_thread_join (&threads[nthreads - 1], &e);
+  }
 
+  // To speed up searches, keep a "finger" which is "near" the
+  // most recent found log
+  u32 finger   = 0;
   lsn read_lsn = 0;
-  u32 finger = 0;
 
-  for (u32 i = 0; i < 1000; ++i)
+  for (u32 i = 0; i < N; ++i)
+  {
+    struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &e);
+    i_print_wal_rec_hdr_read_light (LOG_INFO, actual, read_lsn);
+    test_assert (actual->type != WL_EOF);
+
+    // Search through all records to ensure it's there
+    bool found = false;
+    for (u32 k = 0; k < N; ++k)
     {
-      struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &e);
-      test_assert (actual->type != WL_EOF);
-
-      bool found = false;
-      for (u32 k = 0; k < 1000; ++k)
-        {
-          const u32 idx = (finger + k) % 1000;
-          if (wal_rec_hdr_read_equal (actual, &read[idx]))
-            {
-              finger = (idx + 1) % 1000;
-              read[idx].type = WL_EOF;
-              found = true;
-              break;
-            }
-        }
-      test_assert (found);
+      const u32 idx = (finger + k) % N;
+      if (wal_rec_hdr_read_equal (actual, &read[idx]))
+      {
+        finger         = (idx + 1) % N;
+        read[idx].type = WL_EOF;
+        found          = true;
+        break;
+      }
     }
+    test_assert (found);
+  }
 
   const struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &e);
   test_assert_int_equal (actual->type, WL_EOF);
 }
-*/
 
 struct wal_test_params
 {
@@ -298,26 +314,28 @@ TEST (wal)
       },
       {
           .type = WL_CLR,
-          .clr  = {
-              .type      = WCLR_PHYSICAL,
-              .tid       = 6,
-              .prev      = 50,
-              .undo_next = 42,
-              .phys      = {.pg = 222},
-          },
+          .clr =
+              {
+                  .type      = WCLR_PHYSICAL,
+                  .tid       = 6,
+                  .prev      = 50,
+                  .undo_next = 42,
+                  .phys      = {.pg = 222},
+              },
       },
   };
 
   struct wal_rec_hdr_read batch2_full[] = {
       {.type = WL_BEGIN, .begin = {.tid = 2}},
       {
-          .type   = WL_UPDATE,
-          .update = {
-              .type = WUP_PHYSICAL,
-              .tid  = 6,
-              .prev = 41,
-              .phys = {.pg = 112},
-          },
+          .type = WL_UPDATE,
+          .update =
+              {
+                  .type = WUP_PHYSICAL,
+                  .tid  = 6,
+                  .prev = 41,
+                  .phys = {.pg = 112},
+              },
       },
   };
 
@@ -345,13 +363,14 @@ TEST (wal)
       },
       {
           .type = WL_CLR,
-          .clr  = {
-              .type      = WCLR_PHYSICAL,
-              .tid       = 6,
-              .prev      = 50,
-              .undo_next = 42,
-              .phys      = {.pg = 222},
-          },
+          .clr =
+              {
+                  .type      = WCLR_PHYSICAL,
+                  .tid       = 6,
+                  .prev      = 50,
+                  .undo_next = 42,
+                  .phys      = {.pg = 222},
+              },
       },
   };
 
@@ -408,13 +427,12 @@ TEST (wal_single_entry)
        .update =
            {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
       {.type = WL_CLR,
-       .clr  = {
-           .type      = WCLR_PHYSICAL,
-           .tid       = 5,
-           .prev      = 40,
-           .undo_next = 42,
-           .phys      = {.pg = 222}
-       }},
+       .clr =
+           {.type      = WCLR_PHYSICAL,
+            .tid       = 5,
+            .prev      = 40,
+            .undo_next = 42,
+            .phys      = {.pg = 222}}},
   };
 
   for (u32 i = 0; i < arrlen (cases); i++)

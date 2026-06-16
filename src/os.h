@@ -745,29 +745,41 @@ void  i_sleep_us (u64 us);
 /**
  * @brief Returns ERR_IO on mutex creation
  *
- * @param t The threading instance - ignored
- * @param m The destination mutex - ignored
- * @param e The error - garuntee throws
+ * @return Garunteed error
  */
 err_t i_mutex_create_errio (i_threading *t, i_mutex *m, error *e);
 
 /**
  * @brief Returns ERR_IO on condition variable creation
  *
- * @param t The threading instance - ignored
- * @param m The destination cond - ignored
- * @param e The error - gauruntee throws
+ * @return Garunteed error
  */
 err_t i_cond_create_errio (i_threading *t, i_cond *m, error *e);
 
 /**
  * @brief Mallocs and returns ERR_NOMEM
  *
- * @param v The vmem instance
- * @param nelem number of elements
- * @param size size of each element
- * @param e error - garuntee throws
+ * @return garunteed NULL
  */
 void *i_malloc_nomem (i_vmem *v, u32 nelem, u32 size, error *e);
+
+/**
+ * @brief An erroring open_w
+ *
+ * @return A garunteed error open
+ */
+err_t i_open_errio (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+);
+
+/**
+ * @brief An erroring seek
+ *
+ * @return A garunteed error seek
+ */
+i64 i_seek_errio (const i_file *fp, u64 offset, seek_t whence, error *e);
 
 #endif // OS_H

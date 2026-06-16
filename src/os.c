@@ -16,7 +16,6 @@
 
 #include "error.h"           // error
 #include "numerics.h"        // safe_mul_...
-#include "platform.h"        // string.h
 #include "stdtypes.h"        // u32 ...etc
 #include "testing/testing.h" // TEST
 
@@ -536,7 +535,7 @@ struct i_vmem default_vmem = {
 };
 
 /******************************************************************************
- * SECTION: Faulting
+ * SECTION: Fault Injection
  ******************************************************************************/
 
 err_t
@@ -556,4 +555,21 @@ i_malloc_nomem (i_vmem *v, u32 nelem, u32 size, error *e)
 {
   error_causef (e, ERR_NOMEM, "Failed to malloc");
   return NULL;
+}
+
+err_t
+i_open_errio (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
+{
+  return error_causef (e, ERR_IO, "Injected Fault");
+}
+
+i64
+i_seek_errio (const i_file *fp, u64 offset, seek_t whence, error *e)
+{
+  return error_causef (e, ERR_IO, "Injected Fault");
 }

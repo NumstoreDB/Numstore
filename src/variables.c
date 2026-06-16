@@ -306,20 +306,6 @@ TEST (rand_varname_different_hash)
 }
 #endif
 
-void
-variable_free (struct variable *v)
-{
-  type_free (v->dtype);
-  v->dtype = NULL;
-
-  i_free ((void *)v->vname.data);
-  v->vname.data = NULL;
-  v->vname.len  = 0;
-  v->nbytes     = 0;
-  v->rpt_root   = PGNO_NULL;
-  v->var_root   = PGNO_NULL;
-}
-
 struct variable *
 variable_malloc_copy (struct variable *v, struct malloc_plan *plan)
 {

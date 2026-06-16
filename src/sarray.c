@@ -14,7 +14,6 @@
 
 #include "error.h"
 #include "numerics.h"
-#include "platform.h"
 #include "testing/testing.h"
 #include "types.h"
 
@@ -118,23 +117,27 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
 #ifndef NTEST
 TEST (sarray_t_snprintf)
 {
-  struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
-      .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+  struct type s = (struct type){
+      .type = T_SARRAY,
+      .sa =
+          {
+              .dims = (u32[]){10, 11, 12},
+              .rank = 3,
+              .t =
+                  &(struct type){
+                      .type = T_PRIM,
+                      .p    = U32,
+                  },
+          },
   };
 
-  char        buffer[200];
   const char *expected = "[10][11][12]u32";
-  u32         len      = strlen (expected);
 
-  int i = sarray_t_snprintf (buffer, 200, &s);
-
-  test_assert_int_equal (i, len);
-  test_assert_int_equal (strncmp (expected, buffer, len), 0);
+  char *ret = type_tostr (&s);
+  error e   = error_create ();
+  i_log_type (&s, &e);
+  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  i_free (ret);
 }
 #endif
 
@@ -159,10 +162,11 @@ TEST (sarray_t_byte_size)
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+      .t =
+          &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
   };
   test_assert_int_equal (sarray_t_byte_size (&s), 10 * 11 * 12 * 4);
 }
@@ -188,10 +192,11 @@ TEST (sarray_t_get_serial_size)
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+      .t =
+          &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
   };
   test_assert_int_equal (sarray_t_get_serial_size (&s), 3 * 4 + 2 + 2);
 }
@@ -224,10 +229,11 @@ TEST (sarray_t_serialize)
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+      .t =
+          &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
   };
 
   u8  act[200];

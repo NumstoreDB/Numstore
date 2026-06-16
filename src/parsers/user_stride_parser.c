@@ -11,7 +11,6 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
-
 #include "compiler.h"
 
 // Parse optional ':' NUMBER (step)
@@ -36,7 +35,7 @@ parse_step (struct parser *base, struct user_stride *s, error *e)
   return SUCCESS;
 }
 
-// Parse optional NUMBER ':' NUMBER (stop + step)
+// Parse optional NUMBER (stop), then optional ':' NUMBER (step)
 static err_t
 parse_stop (struct parser *base, struct user_stride *s, error *e)
 {
@@ -50,7 +49,9 @@ parse_stop (struct parser *base, struct user_stride *s, error *e)
   return parse_step (base, s, e);
 }
 
-// entry ::= [ NUMBER | NUMBER? ':' NUMBER? | NUMBER? ':' NUMBER? ':' NUMBER? ]
+// entry ::= '[' ( NUMBER ( ':' NUMBER? ( ':' NUMBER? )? )?
+//               | ':' NUMBER? ( ':' NUMBER? )?
+//               )? ']'
 err_t
 parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
 {
@@ -60,39 +61,37 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
 
   if (parser_match (parser, TT_INTEGER))
   {
+    // Leading integer: start
     struct token *tok = parser_advance (parser);
     s.start           = (sb_size)tok->integer;
     s.present |= START_PRESENT;
 
-    if (!parser_match (parser, TT_COLON))
+    if (parser_match (parser, TT_COLON))
     {
-      // Bare integer — single index
-      *dest = s;
-      return SUCCESS;
+      // start ':' ...
+      s.present |= COLON_PRESENT;
+      parser_advance (parser);
+      WRAP (parse_stop (parser, &s, e));
     }
-
-    s.present |= COLON_PRESENT;
-    parser_advance (parser);
-    WRAP (parse_stop (parser, &s, e));
-    *dest = s;
-    return SUCCESS;
+    // else: bare integer — single index, nothing more to parse
   }
-
-  // No leading integer — must start with ':'
-  if (parser_match (parser, TT_COLON))
+  else if (parser_match (parser, TT_COLON))
   {
+    // No leading integer: ':' ...
     s.present |= COLON_PRESENT;
     parser_advance (parser);
-    WRAP (parser_expect (parser, TT_RIGHT_BRACKET, e));
     WRAP (parse_stop (parser, &s, e));
-    *dest = s;
-    return SUCCESS;
+  }
+  else
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected number or ':' at position %u",
+        parser->pos
+    );
   }
 
-  return error_causef (
-      e,
-      ERR_SYNTAX,
-      "Expected number or ':' at position %u",
-      parser->pos
-  );
+  *dest = s;
+  return parser_expect (parser, TT_RIGHT_BRACKET, e);
 }
