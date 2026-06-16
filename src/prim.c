@@ -129,14 +129,17 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
 #ifndef NTEST
 TEST (prim_t_snprintf)
 {
-  enum prim_t p = F64;
-  char        buf[32];
-  const char *expect = "f64";
-  u32         elen   = strlen (expect);
+  struct type t = {
+      .type = T_PRIM,
+      .p    = F64,
+  };
 
-  int n = prim_t_snprintf (buf, sizeof buf, &p);
-  test_assert_int_equal (n, elen);
-  test_assert_int_equal (strncmp (expect, buf, elen), 0);
+  const char *expect = "f64";
+  char       *ret    = type_tostr (&t);
+  error       e      = error_create ();
+  i_log_type (&t, &e);
+  test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0);
+  i_free (ret);
 }
 #endif
 

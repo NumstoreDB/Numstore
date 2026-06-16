@@ -282,14 +282,18 @@ TEST (struct_t_snprintf)
       },
   };
 
-  char        buffer[200];
+  struct type t = {
+      .type = T_STRUCT,
+      .st   = st,
+  };
+
   const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
-  u32         len      = strlen (expected);
 
-  int i = struct_t_snprintf (buffer, 200, &st);
-
-  test_assert_int_equal (i, len);
-  test_assert_int_equal (strncmp (expected, buffer, len), 0);
+  char *ret = type_tostr (&t);
+  error e   = error_create ();
+  i_log_type (&t, &e);
+  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  i_free (ret);
 }
 #endif
 

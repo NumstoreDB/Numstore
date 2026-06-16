@@ -1,74 +1,20 @@
-Inserting
-=========
-
-```
-> insert <VNAME> <OFFSET> from <SOURCE>;
-```
-
-Where SOURCE can be:
-
-* A file
-```
-> insert <VNAME> <OFFSET> from file.bin;
-```
-
-* Another non sink query
-```
-> insert <VNAME> <OFFSET> from (read <VNAME> [RANGE]);
-```
-
-* Literal
-```
-> insert <VNAME> <OFFSET> from [0, 1, 2, 3];
-```
-
 Reading
 =======
 
 ```
-> read <VNAME> [RANGE] to <DEST>;
-```
-
-Where DEST can be:
-
-* A file
-```
-> read <VNAME> [RANGE] to out.bin;
-```
-
-* Another non sink query
-```
-> read <VNAME> [RANGE] to (insert <VNAME> <OFFSET>);
-> read <VNAME> [RANGE] to (write <VNAME> [RANGE]);
-```
-
-* To the console
-```
 > read <VNAME> [RANGE];
 ```
 
-Writing
-=======
+Examples
 
+* Read all of foo to the console (with dots):
 ```
-> write <VNAME> [RANGE] from <SOURCE>;
-```
-
-Where SOURCE can be:
-
-* A file
-```
-> write <VNAME> [RANGE] from file.bin;
+> read foo;
 ```
 
-* Another non sink query
+* Read a subset of foo;
 ```
-> write <VNAME> [RANGE] from (read <VNAME> [RANGE]);
-```
-
-* Literal
-```
-> write <VNAME> [RANGE] from [0, 1, 2, 3];
+> read foo[10:100];
 ```
 
 Removing

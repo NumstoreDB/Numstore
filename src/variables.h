@@ -88,7 +88,6 @@ struct nsdb_var
   struct variable    var;
   struct chunk_alloc alloc;
 };
-void variable_free (struct variable *v);
 bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
 void  var_random_name (char *buffer, int length);

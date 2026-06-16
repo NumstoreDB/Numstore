@@ -40,7 +40,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
   }
 
   // FLUSH
-  if (wal_flush_to (p->ww, l, e))
+  if (wal_flush_all (p->ww, e))
   {
     // We have a commit log appended to the WAL.
     // It may or may not be written to disk.

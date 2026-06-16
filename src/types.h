@@ -18,8 +18,9 @@
 #include "collections.h"    // llnode
 #include "compile_config.h" // pgno ...etc
 #include "error.h"          // error
-#include "serial.h"         // string
-#include "stdtypes.h"       // u32 ...etc
+#include "platform.h"
+#include "serial.h"   // string
+#include "stdtypes.h" // u32 ...etc
 
 /******************************************************************************
  * SECTION: Type Data structure
@@ -111,7 +112,7 @@ struct type *type_deserialize (
 struct type *type_random (struct chunk_alloc *alloc, u32 depth, error *e);
 bool         type_equal (const struct type *left, const struct type *right);
 err_t        i_log_type (struct type *t, error *e);
-struct type *
+struct type      *
 type_movemem (struct type *src, struct chunk_alloc *alloc, error *e);
 void type_print_data (
     int                log_level,
@@ -121,7 +122,6 @@ void type_print_data (
 );
 err_t type_stream_printer_init (struct stream *s, struct type *t, error *e);
 struct type *type_malloc_copy (struct type *t, struct malloc_plan *plan);
-void         type_free (struct type *t);
 
 ////////////////////////////////////////////////////////////
 /// KVT List
@@ -339,11 +339,12 @@ mk_struct (u16 len, struct string *keys, struct type **types)
 {
   return (struct type){
       .type = T_STRUCT,
-      .st   = (struct struct_t){
-          .len   = len,
-          .keys  = keys,
-          .types = types,
-      },
+      .st =
+          (struct struct_t){
+              .len   = len,
+              .keys  = keys,
+              .types = types,
+          },
   };
 }
 
@@ -352,11 +353,12 @@ mk_union (u16 len, struct string *keys, struct type **types)
 {
   return (struct type){
       .type = T_UNION,
-      .un   = (struct union_t){
-          .len   = len,
-          .keys  = keys,
-          .types = types,
-      },
+      .un =
+          (struct union_t){
+              .len   = len,
+              .keys  = keys,
+              .types = types,
+          },
   };
 }
 
@@ -365,11 +367,12 @@ mk_sarray (u16 rank, u32 *dims, struct type *sub)
 {
   return (struct type){
       .type = T_SARRAY,
-      .sa   = (struct sarray_t){
-          .rank = rank,
-          .dims = dims,
-          .t    = sub,
-      },
+      .sa =
+          (struct sarray_t){
+              .rank = rank,
+              .dims = dims,
+              .t    = sub,
+          },
   };
 }
 
@@ -447,6 +450,40 @@ struct byte_accessor *type_to_byte_accessor (
     struct chunk_alloc   *dalloc,
     error                *e
 );
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Simple Stack Constructors
+ *----------------------------------------------------------------------------*/
+
+#define ta_take() ((struct type_accessor){.type = TA_TAKE})
+
+#define ta_select(_key, _sub_ta)   \
+  ((struct type_accessor){         \
+      .type = TA_SELECT,           \
+      .select =                    \
+          {                        \
+              .key    = (_key),    \
+              .sub_ta = (_sub_ta), \
+          },                       \
+  })
+
+HEADER_FUNC struct type_accessor
+ta_range (
+    struct user_stride   *dim_accessors,
+    u16                   dlen,
+    struct type_accessor *sub_ta
+)
+{
+  return (struct type_accessor){
+      .type = TA_RANGE,
+      .range =
+          (struct range_ta){
+              .dim_accessors = dim_accessors,
+              .dlen          = dlen,
+              .sub_ta        = sub_ta,
+          },
+  };
+}
 
 ////////////////////////////////////////////////////////////
 /// BUILDER
@@ -555,6 +592,37 @@ struct type *tr_construct (
     error              *e
 );
 
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Simple Stack Constructors
+ *----------------------------------------------------------------------------*/
+
+HEADER_FUNC struct type_ref
+tr_take (struct string name, struct type_accessor ta)
+{
+  return (struct type_ref){
+      .type = TR_TAKE,
+      .tk =
+          {
+              .vname = name,
+              .ta    = ta,
+          },
+  };
+}
+
+HEADER_FUNC struct type_ref
+tr_struct (u16 len, struct string *keys, struct type_ref *types)
+{
+  return (struct type_ref){
+      .type = TR_STRUCT,
+      .st =
+          {
+              .len   = (len),
+              .keys  = keys,
+              .types = types,
+          },
+  };
+}
+
 /******************************************************************************
  * SECTION: Key Value Type Reference List
  * ----------------------------------------------------------------------------
@@ -634,5 +702,4 @@ struct type *subtype_get_type (
     struct chunk_alloc   *alloc,
     error                *e
 );
-
 #endif // TYPES_H

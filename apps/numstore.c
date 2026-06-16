@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "collections.h" // dblb_buffer
 #include "compiler.h"    // lexer
 #include "error.h"       // error
@@ -30,26 +31,13 @@ enum cmd_status
 static enum cmd_status
 handle_command (const char *command, error *e)
 {
-  printf ("%s\n", command);
-  if (strncmp (command, "exit;", 5) == 0)
-  {
-    return CMD_TERMINATE;
-  }
-
-  struct lexer lex;
-  if (lex_tokens (command, strlen (command), &lex, e))
+  struct chunk_alloc alloc;
+  chunk_alloc_create_default (&alloc);
+  struct query q;
+  if (compile_query (&q, command, &alloc, e))
   {
     return CMD_FAILURE;
   }
-
-  for (u32 i = 0; i < lex.ntokens; ++i)
-  {
-    printf ("%s ", tt_tostr (lex.tokens[i].type));
-  }
-
-  printf ("\n");
-
-  lex_free (&lex);
 
   return CMD_SUCCESS;
 }

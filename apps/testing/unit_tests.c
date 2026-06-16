@@ -36,10 +36,10 @@ main (const int argc, char **argv)
   }
 
   int         failed = 0;
-  const char *failed_names[286];
+  const char *failed_names[287];
 
   
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:139 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:139 START
   if (!filter || strstr("lalloc_edge_cases", filter))
   {
     extern void __test__lalloc_edge_cases(void);
@@ -58,9 +58,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:139 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:139 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:261 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:261 START
   if (!filter || strstr("bobjp_create", filter))
   {
     extern void __test__bobjp_create(void);
@@ -79,9 +79,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:261 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:261 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:333 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:333 START
   if (!filter || strstr("bobjp_destroy", filter))
   {
     extern void __test__bobjp_destroy(void);
@@ -100,9 +100,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:333 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:333 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:435 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:435 START
   if (!filter || strstr("bobjp_alloc", filter))
   {
     extern void __test__bobjp_alloc(void);
@@ -121,9 +121,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:435 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:435 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:784 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:784 START
   if (!filter || strstr("slab_alloc_simple", filter))
   {
     extern void __test__slab_alloc_simple(void);
@@ -142,9 +142,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:784 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:784 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:900 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:900 START
   if (!filter || strstr("slab_alloc_cap_one", filter))
   {
     extern void __test__slab_alloc_cap_one(void);
@@ -163,9 +163,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:900 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:900 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:936 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:936 START
   if (!filter || strstr("slab_alloc_no_duplicates", filter))
   {
     extern void __test__slab_alloc_no_duplicates(void);
@@ -184,9 +184,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:936 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:936 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:965 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:965 START
   if (!filter || strstr("slab_alloc_free_all_realloc", filter))
   {
     extern void __test__slab_alloc_free_all_realloc(void);
@@ -205,9 +205,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:965 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:965 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1008 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1008 START
   if (!filter || strstr("slab_alloc_interleaved_patterns", filter))
   {
     extern void __test__slab_alloc_interleaved_patterns(void);
@@ -226,9 +226,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1008 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1008 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1060 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1060 START
   if (!filter || strstr("slab_alloc_free_head_slab", filter))
   {
     extern void __test__slab_alloc_free_head_slab(void);
@@ -247,9 +247,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1060 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1060 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1104 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1104 START
   if (!filter || strstr("slab_alloc_free_middle_slab", filter))
   {
     extern void __test__slab_alloc_free_middle_slab(void);
@@ -268,9 +268,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1104 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1104 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1150 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1150 START
   if (!filter || strstr("slab_alloc_minimum_size", filter))
   {
     extern void __test__slab_alloc_minimum_size(void);
@@ -289,9 +289,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1150 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1150 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1179 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1179 START
   if (!filter || strstr("slab_alloc_stress_random", filter))
   {
     extern void __test__slab_alloc_stress_random(void);
@@ -310,9 +310,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\alloc.c:1179 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1179 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:28 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:28 START
   if (!filter || strstr("llist", filter))
   {
     extern void __test__llist(void);
@@ -331,9 +331,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:28 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:28 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:96 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:96 START
   if (!filter || strstr("cbuffer_isempty", filter))
   {
     extern void __test__cbuffer_isempty(void);
@@ -352,9 +352,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:96 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:96 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:106 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:106 START
   if (!filter || strstr("cbuffer_len", filter))
   {
     extern void __test__cbuffer_len(void);
@@ -373,9 +373,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:106 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:106 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:116 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:116 START
   if (!filter || strstr("cbuffer_avail", filter))
   {
     extern void __test__cbuffer_avail(void);
@@ -394,9 +394,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:116 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:116 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:166 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:166 START
   if (!filter || strstr("cbuffer_get_next_data_bytes", filter))
   {
     extern void __test__cbuffer_get_next_data_bytes(void);
@@ -415,9 +415,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:166 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:166 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:239 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:239 START
   if (!filter || strstr("cbuffer_get_nbytes", filter))
   {
     extern void __test__cbuffer_get_nbytes(void);
@@ -436,9 +436,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:239 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:239 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:306 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:306 START
   if (!filter || strstr("cbuffer_fakewrite", filter))
   {
     extern void __test__cbuffer_fakewrite(void);
@@ -457,9 +457,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:306 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:306 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:393 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:393 START
   if (!filter || strstr("cbuffer_fakeread", filter))
   {
     extern void __test__cbuffer_fakeread(void);
@@ -478,9 +478,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:393 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:393 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:514 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:514 START
   if (!filter || strstr("cbuffer_read", filter))
   {
     extern void __test__cbuffer_read(void);
@@ -499,9 +499,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:514 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:514 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:586 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:586 START
   if (!filter || strstr("cbuffer_copy", filter))
   {
     extern void __test__cbuffer_copy(void);
@@ -520,9 +520,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:586 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:586 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:675 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:675 START
   if (!filter || strstr("cbuffer_write", filter))
   {
     extern void __test__cbuffer_write(void);
@@ -541,9 +541,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:675 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:675 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:769 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:769 START
   if (!filter || strstr("cbuffer_cbuffer_move", filter))
   {
     extern void __test__cbuffer_cbuffer_move(void);
@@ -562,9 +562,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:769 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:769 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:878 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:878 START
   if (!filter || strstr("cbuffer_cbuffer_copy", filter))
   {
     extern void __test__cbuffer_cbuffer_copy(void);
@@ -583,9 +583,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:878 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:878 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1158 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1158 START
   if (!filter || strstr("cbuffer_get_no_check", filter))
   {
     extern void __test__cbuffer_get_no_check(void);
@@ -604,9 +604,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1158 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1158 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1260 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1260 START
   if (!filter || strstr("cbuffer_get", filter))
   {
     extern void __test__cbuffer_get(void);
@@ -625,9 +625,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1260 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1260 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1291 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1291 START
   if (!filter || strstr("cbuffer_peek_back", filter))
   {
     extern void __test__cbuffer_peek_back(void);
@@ -646,9 +646,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1291 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1291 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1347 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1347 START
   if (!filter || strstr("cbuffer_peek_front", filter))
   {
     extern void __test__cbuffer_peek_front(void);
@@ -667,9 +667,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1347 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1347 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1421 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1421 START
   if (!filter || strstr("cbuffer_push_back", filter))
   {
     extern void __test__cbuffer_push_back(void);
@@ -688,9 +688,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1421 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1421 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1482 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1482 START
   if (!filter || strstr("cbuffer_push_front", filter))
   {
     extern void __test__cbuffer_push_front(void);
@@ -709,9 +709,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1482 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1482 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1553 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1553 START
   if (!filter || strstr("cbuffer_pop_back", filter))
   {
     extern void __test__cbuffer_pop_back(void);
@@ -730,9 +730,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1553 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1553 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1624 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1624 START
   if (!filter || strstr("cbuffer_pop_front", filter))
   {
     extern void __test__cbuffer_pop_front(void);
@@ -751,9 +751,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1624 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1624 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1760 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1760 START
   if (!filter || strstr("dblb_create_basic", filter))
   {
     extern void __test__dblb_create_basic(void);
@@ -772,9 +772,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1760 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1760 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1776 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1776 START
   if (!filter || strstr("dblb_append_single", filter))
   {
     extern void __test__dblb_append_single(void);
@@ -793,9 +793,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1776 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1776 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1797 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1797 START
   if (!filter || strstr("dblb_append_multiple", filter))
   {
     extern void __test__dblb_append_multiple(void);
@@ -814,9 +814,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1797 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1797 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1819 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1819 START
   if (!filter || strstr("dblb_append_triggers_realloc", filter))
   {
     extern void __test__dblb_append_triggers_realloc(void);
@@ -835,9 +835,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1819 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1819 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1856 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1856 START
   if (!filter || strstr("dblb_append_alloc_basic", filter))
   {
     extern void __test__dblb_append_alloc_basic(void);
@@ -856,9 +856,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1856 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1856 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1881 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1881 START
   if (!filter || strstr("dblb_append_alloc_sequential", filter))
   {
     extern void __test__dblb_append_alloc_sequential(void);
@@ -877,9 +877,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1881 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1881 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1912 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1912 START
   if (!filter || strstr("dblb_append_alloc_triggers_realloc", filter))
   {
     extern void __test__dblb_append_alloc_triggers_realloc(void);
@@ -898,9 +898,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1912 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1912 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1932 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1932 START
   if (!filter || strstr("dblb_different_element_sizes", filter))
   {
     extern void __test__dblb_different_element_sizes(void);
@@ -919,9 +919,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1932 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1932 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1952 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1952 START
   if (!filter || strstr("dblb_struct_elements", filter))
   {
     extern void __test__dblb_struct_elements(void);
@@ -940,9 +940,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1952 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1952 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1980 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1980 START
   if (!filter || strstr("dblb_free_resets", filter))
   {
     extern void __test__dblb_free_resets(void);
@@ -961,9 +961,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1980 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1980 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1996 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1996 START
   if (!filter || strstr("dblb_large_append", filter))
   {
     extern void __test__dblb_large_append(void);
@@ -982,9 +982,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:1996 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:1996 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2276 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2276 START
   if (!filter || strstr("ext_array_insert_read", filter))
   {
     extern void __test__ext_array_insert_read(void);
@@ -1003,9 +1003,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2276 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2276 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2415 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2415 START
   if (!filter || strstr("ext_array_write", filter))
   {
     extern void __test__ext_array_write(void);
@@ -1024,9 +1024,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2415 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2415 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2521 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2521 START
   if (!filter || strstr("ext_array_remove", filter))
   {
     extern void __test__ext_array_remove(void);
@@ -1045,9 +1045,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2521 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2521 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2688 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2688 START
   if (!filter || strstr("ext_array_random", filter))
   {
     extern void __test__ext_array_random(void);
@@ -1066,9 +1066,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:2688 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:2688 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3420 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3420 START
   if (!filter || strstr("block_insert_read", filter))
   {
     extern void __test__block_insert_read(void);
@@ -1087,9 +1087,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3420 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3420 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3680 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3680 START
   if (!filter || strstr("block_insert_remove_read", filter))
   {
     extern void __test__block_insert_remove_read(void);
@@ -1108,9 +1108,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3680 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3680 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3825 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3825 START
   if (!filter || strstr("block_insert_write_read", filter))
   {
     extern void __test__block_insert_write_read(void);
@@ -1129,9 +1129,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3825 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3825 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3988 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3988 START
   if (!filter || strstr("block_random", filter))
   {
     extern void __test__block_random(void);
@@ -1150,9 +1150,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:3988 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:3988 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:4077 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:4077 START
   if (!filter || strstr("ba_memcpy_from_basic", filter))
   {
     extern void __test__ba_memcpy_from_basic(void);
@@ -1171,9 +1171,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:4077 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:4077 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:4407 START
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:4407 START
   if (!filter || strstr("ba_memcpy_to_basic", filter))
   {
     extern void __test__ba_memcpy_to_basic(void);
@@ -1192,9 +1192,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\collections.c:4407 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/collections.c:4407 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:687 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:698 START
   if (!filter || strstr("lexer_two_char_tokens", filter))
   {
     extern void __test__lexer_two_char_tokens(void);
@@ -1213,9 +1213,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:687 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:698 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:713 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:724 START
   if (!filter || strstr("lexer_single_char_operators", filter))
   {
     extern void __test__lexer_single_char_operators(void);
@@ -1234,9 +1234,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:713 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:724 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:741 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:752 START
   if (!filter || strstr("lexer_strings", filter))
   {
     extern void __test__lexer_strings(void);
@@ -1255,9 +1255,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:741 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:752 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:754 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:765 START
   if (!filter || strstr("lexer_identifiers", filter))
   {
     extern void __test__lexer_identifiers(void);
@@ -1276,9 +1276,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:754 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:765 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:768 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:779 START
   if (!filter || strstr("lexer_numbers", filter))
   {
     extern void __test__lexer_numbers(void);
@@ -1297,9 +1297,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:768 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:779 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:784 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:795 START
   if (!filter || strstr("lexer_keywords", filter))
   {
     extern void __test__lexer_keywords(void);
@@ -1318,9 +1318,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:784 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:795 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:803 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:818 START
   if (!filter || strstr("lexer_primitives", filter))
   {
     extern void __test__lexer_primitives(void);
@@ -1339,9 +1339,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:803 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:818 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:823 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:838 START
   if (!filter || strstr("lexer_whitespace_handling", filter))
   {
     extern void __test__lexer_whitespace_handling(void);
@@ -1360,9 +1360,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:823 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:838 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:841 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:856 START
   if (!filter || strstr("lexer_complex_expression", filter))
   {
     extern void __test__lexer_complex_expression(void);
@@ -1381,9 +1381,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:841 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:856 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:863 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:878 START
   if (!filter || strstr("lexer_keyword_prefix", filter))
   {
     extern void __test__lexer_keyword_prefix(void);
@@ -1402,9 +1402,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:863 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:878 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:879 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:894 START
   if (!filter || strstr("lexer_errors", filter))
   {
     extern void __test__lexer_errors(void);
@@ -1423,9 +1423,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:879 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:894 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:891 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:906 START
   if (!filter || strstr("lexer_empty_string", filter))
   {
     extern void __test__lexer_empty_string(void);
@@ -1444,9 +1444,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:891 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:906 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:902 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:917 START
   if (!filter || strstr("lexer_numbers_in_sequence", filter))
   {
     extern void __test__lexer_numbers_in_sequence(void);
@@ -1465,30 +1465,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:902 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:917 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1009 START
-  if (!filter || strstr("compile_user_stride_basic", filter))
-  {
-    extern void __test__compile_user_stride_basic(void);
-    i_log_info("========================= TEST CASE: %s\n", "compile_user_stride_basic");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__compile_user_stride_basic();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "compile_user_stride_basic");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "compile_user_stride_basic";
-    }
-    ntests++;
-  }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1009 DONE
-
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1043 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:991 START
   if (!filter || strstr("compile_multi_user_stride", filter))
   {
     extern void __test__compile_multi_user_stride(void);
@@ -1507,9 +1486,30 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1043 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:991 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1370 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1361 START
+  if (!filter || strstr("compile_user_stride", filter))
+  {
+    extern void __test__compile_user_stride(void);
+    i_log_info("========================= TEST CASE: %s\n", "compile_user_stride");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__compile_user_stride();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "compile_user_stride");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "compile_user_stride";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1361 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1441 START
   if (!filter || strstr("compile_type_ref", filter))
   {
     extern void __test__compile_type_ref(void);
@@ -1528,114 +1528,51 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1370 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1441 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1613 START
-  if (!filter || strstr("compile_type_primitives", filter))
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1583 START
+  if (!filter || strstr("compile_type", filter))
   {
-    extern void __test__compile_type_primitives(void);
-    i_log_info("========================= TEST CASE: %s\n", "compile_type_primitives");
+    extern void __test__compile_type(void);
+    i_log_info("========================= TEST CASE: %s\n", "compile_type");
     int prev = test_ret;
     test_ret = 0;
-    __test__compile_type_primitives();
+    __test__compile_type();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "compile_type_primitives");
+      i_log_passed("%s\n", "compile_type");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "compile_type_primitives";
+      failed_names[failed++] = "compile_type";
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1613 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1583 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1682 START
-  if (!filter || strstr("compile_type_sarray", filter))
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1732 START
+  if (!filter || strstr("compile_query", filter))
   {
-    extern void __test__compile_type_sarray(void);
-    i_log_info("========================= TEST CASE: %s\n", "compile_type_sarray");
+    extern void __test__compile_query(void);
+    i_log_info("========================= TEST CASE: %s\n", "compile_query");
     int prev = test_ret;
     test_ret = 0;
-    __test__compile_type_sarray();
+    __test__compile_query();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "compile_type_sarray");
+      i_log_passed("%s\n", "compile_query");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "compile_type_sarray";
+      failed_names[failed++] = "compile_query";
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1682 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:1732 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1725 START
-  if (!filter || strstr("compile_type_struct", filter))
-  {
-    extern void __test__compile_type_struct(void);
-    i_log_info("========================= TEST CASE: %s\n", "compile_type_struct");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__compile_type_struct();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "compile_type_struct");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "compile_type_struct";
-    }
-    ntests++;
-  }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1725 DONE
-
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1761 START
-  if (!filter || strstr("compile_type_union", filter))
-  {
-    extern void __test__compile_type_union(void);
-    i_log_info("========================= TEST CASE: %s\n", "compile_type_union");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__compile_type_union();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "compile_type_union");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "compile_type_union";
-    }
-    ntests++;
-  }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1761 DONE
-
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1785 START
-  if (!filter || strstr("compile_type_complex", filter))
-  {
-    extern void __test__compile_type_complex(void);
-    i_log_info("========================= TEST CASE: %s\n", "compile_type_complex");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__compile_type_complex();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "compile_type_complex");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "compile_type_complex";
-    }
-    ntests++;
-  }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\compiler.c:1785 DONE
-
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:55 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:55 START
   if (!filter || strstr("gr_lock_init", filter))
   {
     extern void __test__gr_lock_init(void);
@@ -1654,9 +1591,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:55 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:55 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:100 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:100 START
   if (!filter || strstr("gr_lock_destroy", filter))
   {
     extern void __test__gr_lock_destroy(void);
@@ -1675,9 +1612,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:100 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:100 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:146 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:146 START
   if (!filter || strstr("gr_lock_is_compatible", filter))
   {
     extern void __test__gr_lock_is_compatible(void);
@@ -1696,9 +1633,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:146 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:146 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:379 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:379 START
   if (!filter || strstr("gr_lock_unlock", filter))
   {
     extern void __test__gr_lock_unlock(void);
@@ -1717,9 +1654,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:379 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:379 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:477 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:477 START
   if (!filter || strstr("gr_lock_mode_name", filter))
   {
     extern void __test__gr_lock_mode_name(void);
@@ -1738,9 +1675,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:477 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:477 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:636 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:636 START
   if (!filter || strstr("gr_lock_basic_sanity", filter))
   {
     extern void __test__gr_lock_basic_sanity(void);
@@ -1759,9 +1696,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:636 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:636 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:653 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:653 START
   if (!filter || strstr("gr_lock_is_is_compatible", filter))
   {
     extern void __test__gr_lock_is_is_compatible(void);
@@ -1780,9 +1717,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:653 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:653 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:709 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:709 START
   if (!filter || strstr("gr_lock_high_pressure_random", filter))
   {
     extern void __test__gr_lock_high_pressure_random(void);
@@ -1801,9 +1738,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:709 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:709 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:899 START
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:899 START
   if (!filter || strstr("latch", filter))
   {
     extern void __test__latch(void);
@@ -1822,9 +1759,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\concurrency.c:899 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:899 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\file_pager.c:124 START
+  //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:124 START
   if (!filter || strstr("fpgr_open", filter))
   {
     extern void __test__fpgr_open(void);
@@ -1843,9 +1780,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\file_pager.c:124 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:124 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\file_pager.c:233 START
+  //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:233 START
   if (!filter || strstr("fpgr_new", filter))
   {
     extern void __test__fpgr_new(void);
@@ -1864,9 +1801,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\file_pager.c:233 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:233 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\file_pager.c:412 START
+  //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:412 START
   if (!filter || strstr("fpgr_read_write", filter))
   {
     extern void __test__fpgr_read_write(void);
@@ -1885,9 +1822,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\file_pager.c:412 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:412 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:198 START
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:198 START
   if (!filter || strstr("htable", filter))
   {
     extern void __test__htable(void);
@@ -1906,9 +1843,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:198 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:198 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:273 START
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:273 START
   if (!filter || strstr("fnv1a_hash_empty", filter))
   {
     extern void __test__fnv1a_hash_empty(void);
@@ -1927,9 +1864,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:273 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:273 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:281 START
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:281 START
   if (!filter || strstr("fnv1a_hash_single_char", filter))
   {
     extern void __test__fnv1a_hash_single_char(void);
@@ -1948,9 +1885,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:281 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:281 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:290 START
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:290 START
   if (!filter || strstr("fnv1a_hash_known_value", filter))
   {
     extern void __test__fnv1a_hash_known_value(void);
@@ -1969,9 +1906,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:290 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:290 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:298 START
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:298 START
   if (!filter || strstr("fnv1a_hash_deterministic", filter))
   {
     extern void __test__fnv1a_hash_deterministic(void);
@@ -1990,9 +1927,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\htable.c:298 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/htable.c:298 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\kvt_list_builder.c:199 START
+  //////////////////// /Users/theo/Development/Numstore/src/kvt_list_builder.c:199 START
   if (!filter || strstr("kvt_list_builder", filter))
   {
     extern void __test__kvt_list_builder(void);
@@ -2011,9 +1948,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\kvt_list_builder.c:199 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/kvt_list_builder.c:199 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\mem_vhmap.c:254 START
+  //////////////////// /Users/theo/Development/Numstore/src/mem_vhmap.c:254 START
   if (!filter || strstr("mem_vhmap", filter))
   {
     extern void __test__mem_vhmap(void);
@@ -2032,9 +1969,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\mem_vhmap.c:254 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/mem_vhmap.c:254 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:225 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:225 START
   if (!filter || strstr("nupd_init", filter))
   {
     extern void __test__nupd_init(void);
@@ -2053,9 +1990,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:225 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:225 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:298 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:298 START
   if (!filter || strstr("nupd_append_right", filter))
   {
     extern void __test__nupd_append_right(void);
@@ -2074,9 +2011,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:298 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:298 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:414 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:414 START
   if (!filter || strstr("nupd_append_left", filter))
   {
     extern void __test__nupd_append_left(void);
@@ -2095,9 +2032,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:414 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:414 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:664 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:664 START
   if (!filter || strstr("nupd_append_tip_right", filter))
   {
     extern void __test__nupd_append_tip_right(void);
@@ -2116,9 +2053,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:664 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:664 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:864 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:864 START
   if (!filter || strstr("nupd_append_tip_left", filter))
   {
     extern void __test__nupd_append_tip_left(void);
@@ -2137,9 +2074,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:864 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:864 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1211 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1211 START
   if (!filter || strstr("nupd_consume_right", filter))
   {
     extern void __test__nupd_consume_right(void);
@@ -2158,9 +2095,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1211 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1211 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1285 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1285 START
   if (!filter || strstr("nupd_consume_left", filter))
   {
     extern void __test__nupd_consume_left(void);
@@ -2179,9 +2116,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1285 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1285 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1355 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1355 START
   if (!filter || strstr("nupd_done_observing_left", filter))
   {
     extern void __test__nupd_done_observing_left(void);
@@ -2200,9 +2137,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1355 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1355 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1410 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1410 START
   if (!filter || strstr("nupd_done_observing_right", filter))
   {
     extern void __test__nupd_done_observing_right(void);
@@ -2221,9 +2158,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1410 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1410 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1453 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1453 START
   if (!filter || strstr("nupd_done_consuming_left", filter))
   {
     extern void __test__nupd_done_consuming_left(void);
@@ -2242,9 +2179,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1453 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1453 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1497 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1497 START
   if (!filter || strstr("nupd_done_consuming_right", filter))
   {
     extern void __test__nupd_done_consuming_right(void);
@@ -2263,9 +2200,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1497 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1497 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1541 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1541 START
   if (!filter || strstr("nupd_done_left", filter))
   {
     extern void __test__nupd_done_left(void);
@@ -2284,9 +2221,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1541 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1541 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1595 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1595 START
   if (!filter || strstr("nupd_done_right", filter))
   {
     extern void __test__nupd_done_right(void);
@@ -2305,9 +2242,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\node_updates.c:1595 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1595 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:112 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:112 START
   if (!filter || strstr("checksum_execute_simple", filter))
   {
     extern void __test__checksum_execute_simple(void);
@@ -2326,9 +2263,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:112 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:112 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:123 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:123 START
   if (!filter || strstr("checksum_execute_deterministic", filter))
   {
     extern void __test__checksum_execute_deterministic(void);
@@ -2347,9 +2284,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:123 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:123 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:135 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:135 START
   if (!filter || strstr("checksum_execute_incremental", filter))
   {
     extern void __test__checksum_execute_incremental(void);
@@ -2368,9 +2305,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:135 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:135 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:261 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:261 START
   if (!filter || strstr("randu32", filter))
   {
     extern void __test__randu32(void);
@@ -2389,9 +2326,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:261 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:261 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:292 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:292 START
   if (!filter || strstr("randu32r", filter))
   {
     extern void __test__randu32r(void);
@@ -2410,9 +2347,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:292 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:292 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:370 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:370 START
   if (!filter || strstr("randi32r", filter))
   {
     extern void __test__randi32r(void);
@@ -2431,9 +2368,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:370 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:370 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:509 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:509 START
   if (!filter || strstr("randu64r", filter))
   {
     extern void __test__randu64r(void);
@@ -2452,9 +2389,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:509 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:509 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:559 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:559 START
   if (!filter || strstr("randu64e", filter))
   {
     extern void __test__randu64e(void);
@@ -2473,9 +2410,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:559 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:559 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:623 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:623 START
   if (!filter || strstr("randi64r", filter))
   {
     extern void __test__randi64r(void);
@@ -2494,9 +2431,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:623 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:623 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:646 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:646 START
   if (!filter || strstr("randi64e", filter))
   {
     extern void __test__randi64e(void);
@@ -2515,9 +2452,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:646 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:646 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:857 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:857 START
   if (!filter || strstr("parse_i32_expect", filter))
   {
     extern void __test__parse_i32_expect(void);
@@ -2536,9 +2473,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:857 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:857 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:1008 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1008 START
   if (!filter || strstr("parse_f32_expect", filter))
   {
     extern void __test__parse_f32_expect(void);
@@ -2557,9 +2494,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:1008 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1008 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:1048 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1048 START
   if (!filter || strstr("py_mod_f32", filter))
   {
     extern void __test__py_mod_f32(void);
@@ -2578,9 +2515,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:1048 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1048 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:1085 START
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1085 START
   if (!filter || strstr("py_mod_i32", filter))
   {
     extern void __test__py_mod_i32(void);
@@ -2599,9 +2536,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\numerics.c:1085 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1085 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:73 START
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:73 START
   if (!filter || strstr("i_malloc_injection", filter))
   {
     extern void __test__i_malloc_injection(void);
@@ -2620,9 +2557,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:73 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:73 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:167 START
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:167 START
   if (!filter || strstr("i_realloc_basic", filter))
   {
     extern void __test__i_realloc_basic(void);
@@ -2641,9 +2578,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:167 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:167 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:208 START
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:208 START
   if (!filter || strstr("i_realloc_right", filter))
   {
     extern void __test__i_realloc_right(void);
@@ -2662,9 +2599,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:208 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:208 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:307 START
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:307 START
   if (!filter || strstr("i_realloc_left", filter))
   {
     extern void __test__i_realloc_left(void);
@@ -2683,9 +2620,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:307 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:307 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:384 START
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:384 START
   if (!filter || strstr("i_crealloc_right", filter))
   {
     extern void __test__i_crealloc_right(void);
@@ -2704,9 +2641,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:384 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:384 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:490 START
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:490 START
   if (!filter || strstr("i_crealloc_left", filter))
   {
     extern void __test__i_crealloc_left(void);
@@ -2725,9 +2662,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\os.c:490 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/os.c:490 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\page_fixture.c:296 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/page_fixture.c:296 START
   if (!filter || strstr("build_page_tree", filter))
   {
     extern void __test__build_page_tree(void);
@@ -2746,9 +2683,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\page_fixture.c:296 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/page_fixture.c:296 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pager.c:180 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pager.c:180 START
   if (!filter || strstr("pager_fill_ht", filter))
   {
     extern void __test__pager_fill_ht(void);
@@ -2767,9 +2704,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pager.c:180 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pager.c:180 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pager.c:234 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pager.c:234 START
   if (!filter || strstr("wal_int", filter))
   {
     extern void __test__wal_int(void);
@@ -2788,9 +2725,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pager.c:234 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pager.c:234 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_close.c:74 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_close.c:74 START
   if (!filter || strstr("pgr_close_success", filter))
   {
     extern void __test__pgr_close_success(void);
@@ -2809,9 +2746,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_close.c:74 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_close.c:74 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_delete_and_release.c:83 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_delete_and_release.c:83 START
   if (!filter || strstr("pgr_delete", filter))
   {
     extern void __test__pgr_delete(void);
@@ -2830,9 +2767,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_delete_and_release.c:83 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_delete_and_release.c:83 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_get.c:112 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_get.c:112 START
   if (!filter || strstr("pgr_get_invalid_checksum", filter))
   {
     extern void __test__pgr_get_invalid_checksum(void);
@@ -2851,9 +2788,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_get.c:112 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_get.c:112 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_new.c:218 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_new.c:218 START
   if (!filter || strstr("pgr_new_get_save", filter))
   {
     extern void __test__pgr_new_get_save(void);
@@ -2872,9 +2809,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_new.c:218 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_new.c:218 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_open.c:277 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_open.c:277 START
   if (!filter || strstr("pager_open", filter))
   {
     extern void __test__pager_open(void);
@@ -2893,9 +2830,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_open.c:277 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_open.c:277 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_open.c:319 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_open.c:319 START
   if (!filter || strstr("pgr_open_basic", filter))
   {
     extern void __test__pgr_open_basic(void);
@@ -2914,9 +2851,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_open.c:319 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_open.c:319 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_reserve_and_ctrl_lock.c:95 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_reserve_and_ctrl_lock.c:95 START
   if (!filter || strstr("pgr_reserve_and_ctrl_lock_st", filter))
   {
     extern void __test__pgr_reserve_and_ctrl_lock_st(void);
@@ -2935,9 +2872,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_reserve_and_ctrl_lock.c:95 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_reserve_and_ctrl_lock.c:95 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:157 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:157 START
   if (!filter || strstr("aries_rollback_basic", filter))
   {
     extern void __test__aries_rollback_basic(void);
@@ -2956,9 +2893,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:157 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:157 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:230 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:230 START
   if (!filter || strstr("aries_rollback_multiple_updates", filter))
   {
     extern void __test__aries_rollback_multiple_updates(void);
@@ -2977,9 +2914,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:230 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:230 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:309 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:309 START
   if (!filter || strstr("aries_rollback_with_crash_recovery", filter))
   {
     extern void __test__aries_rollback_with_crash_recovery(void);
@@ -2998,9 +2935,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:309 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:309 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:370 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:370 START
   if (!filter || strstr("aries_rollback_clr_not_undone", filter))
   {
     extern void __test__aries_rollback_clr_not_undone(void);
@@ -3019,9 +2956,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pager\pgr_rollback.c:370 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager/pgr_rollback.c:370 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:86 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:86 START
   if (!filter || strstr("dl_validate", filter))
   {
     extern void __test__dl_validate(void);
@@ -3040,9 +2977,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:86 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:86 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:168 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:168 START
   if (!filter || strstr("dl_set_get", filter))
   {
     extern void __test__dl_set_get(void);
@@ -3061,9 +2998,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:168 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:168 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:231 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:231 START
   if (!filter || strstr("dl_read", filter))
   {
     extern void __test__dl_read(void);
@@ -3082,9 +3019,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:231 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:231 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:410 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:410 START
   if (!filter || strstr("dl_read_out_from", filter))
   {
     extern void __test__dl_read_out_from(void);
@@ -3103,9 +3040,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:410 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:410 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:613 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:613 START
   if (!filter || strstr("dl_append", filter))
   {
     extern void __test__dl_append(void);
@@ -3124,9 +3061,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:613 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:613 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:711 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:711 START
   if (!filter || strstr("dl_write", filter))
   {
     extern void __test__dl_write(void);
@@ -3145,9 +3082,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:711 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:711 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:841 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:841 START
   if (!filter || strstr("dl_memset", filter))
   {
     extern void __test__dl_memset(void);
@@ -3166,9 +3103,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:841 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:841 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:918 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:918 START
   if (!filter || strstr("dl_move_left", filter))
   {
     extern void __test__dl_move_left(void);
@@ -3187,9 +3124,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:918 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:918 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:998 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:998 START
   if (!filter || strstr("dl_shift_right", filter))
   {
     extern void __test__dl_shift_right(void);
@@ -3208,9 +3145,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:998 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:998 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:1088 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:1088 START
   if (!filter || strstr("dl_move_right", filter))
   {
     extern void __test__dl_move_right(void);
@@ -3229,9 +3166,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:1088 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:1088 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:1198 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:1198 START
   if (!filter || strstr("i_log_dl", filter))
   {
     extern void __test__i_log_dl(void);
@@ -3250,9 +3187,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:1198 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:1198 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:1231 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:1231 START
   if (!filter || strstr("dl_make_valid", filter))
   {
     extern void __test__dl_make_valid(void);
@@ -3271,9 +3208,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\data_list.c:1231 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/data_list.c:1231 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\fsm_page.c:63 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/fsm_page.c:63 START
   if (!filter || strstr("i_log_fsm", filter))
   {
     extern void __test__i_log_fsm(void);
@@ -3292,9 +3229,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\fsm_page.c:63 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/fsm_page.c:63 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:125 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:125 START
   if (!filter || strstr("in_validate_for_db", filter))
   {
     extern void __test__in_validate_for_db(void);
@@ -3313,9 +3250,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:125 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:125 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:186 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:186 START
   if (!filter || strstr("in_set_get_simple", filter))
   {
     extern void __test__in_set_get_simple(void);
@@ -3334,9 +3271,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:186 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:186 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:244 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:244 START
   if (!filter || strstr("in_push_end", filter))
   {
     extern void __test__in_push_end(void);
@@ -3355,9 +3292,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:244 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:244 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:309 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:309 START
   if (!filter || strstr("in_memcpy", filter))
   {
     extern void __test__in_memcpy(void);
@@ -3376,9 +3313,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:309 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:309 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:471 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:471 START
   if (!filter || strstr("in_move_left", filter))
   {
     extern void __test__in_move_left(void);
@@ -3397,9 +3334,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:471 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:471 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:508 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:508 START
   if (!filter || strstr("in_move_left_two_keys", filter))
   {
     extern void __test__in_move_left_two_keys(void);
@@ -3418,9 +3355,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:508 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:508 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:536 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:536 START
   if (!filter || strstr("in_move_left_all_keys", filter))
   {
     extern void __test__in_move_left_all_keys(void);
@@ -3439,9 +3376,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:536 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:536 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:559 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:559 START
   if (!filter || strstr("in_move_left_into_empty", filter))
   {
     extern void __test__in_move_left_into_empty(void);
@@ -3460,9 +3397,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:559 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:559 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:638 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:638 START
   if (!filter || strstr("in_push_left", filter))
   {
     extern void __test__in_push_left(void);
@@ -3481,9 +3418,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:638 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:638 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:669 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:669 START
   if (!filter || strstr("in_push_left_into_empty", filter))
   {
     extern void __test__in_push_left_into_empty(void);
@@ -3502,9 +3439,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:669 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:669 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:682 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:682 START
   if (!filter || strstr("in_push_left_to_full", filter))
   {
     extern void __test__in_push_left_to_full(void);
@@ -3523,9 +3460,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:682 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:682 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:742 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:742 START
   if (!filter || strstr("in_move_right", filter))
   {
     extern void __test__in_move_right(void);
@@ -3544,9 +3481,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:742 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:742 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:779 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:779 START
   if (!filter || strstr("in_move_right_two_keys", filter))
   {
     extern void __test__in_move_right_two_keys(void);
@@ -3565,9 +3502,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:779 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:779 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:807 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:807 START
   if (!filter || strstr("in_move_right_all_keys", filter))
   {
     extern void __test__in_move_right_all_keys(void);
@@ -3586,9 +3523,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:807 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:807 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:830 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:830 START
   if (!filter || strstr("in_move_right_into_empty_right", filter))
   {
     extern void __test__in_move_right_into_empty_right(void);
@@ -3607,9 +3544,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:830 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:830 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:887 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:887 START
   if (!filter || strstr("in_choose_lidx", filter))
   {
     extern void __test__in_choose_lidx(void);
@@ -3628,9 +3565,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:887 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:887 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:985 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:985 START
   if (!filter || strstr("in_cut_left", filter))
   {
     extern void __test__in_cut_left(void);
@@ -3649,9 +3586,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:985 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:985 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1023 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1023 START
   if (!filter || strstr("in_cut_left_all_at_once", filter))
   {
     extern void __test__in_cut_left_all_at_once(void);
@@ -3670,9 +3607,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1023 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1023 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1041 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1041 START
   if (!filter || strstr("in_cut_left_from_empty", filter))
   {
     extern void __test__in_cut_left_from_empty(void);
@@ -3691,9 +3628,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1041 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1041 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1054 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1054 START
   if (!filter || strstr("in_cut_left_to_one", filter))
   {
     extern void __test__in_cut_left_to_one(void);
@@ -3712,9 +3649,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1054 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1054 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1126 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1126 START
   if (!filter || strstr("i_log_in", filter))
   {
     extern void __test__i_log_in(void);
@@ -3733,9 +3670,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\inner_node.c:1126 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/inner_node.c:1126 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\page.c:153 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/page.c:153 START
   if (!filter || strstr("page_set_get_simple", filter))
   {
     extern void __test__page_set_get_simple(void);
@@ -3754,9 +3691,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\page.c:153 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/page.c:153 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\page.c:233 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/page.c:233 START
   if (!filter || strstr("i_log_page", filter))
   {
     extern void __test__i_log_page(void);
@@ -3775,9 +3712,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\page.c:233 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/page.c:233 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_hash_page.c:73 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_hash_page.c:73 START
   if (!filter || strstr("i_log_vh", filter))
   {
     extern void __test__i_log_vh(void);
@@ -3796,9 +3733,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_hash_page.c:73 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_hash_page.c:73 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_page.c:41 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_page.c:41 START
   if (!filter || strstr("vp_init_empty", filter))
   {
     extern void __test__vp_init_empty(void);
@@ -3817,9 +3754,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_page.c:41 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_page.c:41 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_page.c:199 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_page.c:199 START
   if (!filter || strstr("vp_validate", filter))
   {
     extern void __test__vp_validate(void);
@@ -3838,9 +3775,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_page.c:199 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_page.c:199 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_page.c:297 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_page.c:297 START
   if (!filter || strstr("i_log_vp", filter))
   {
     extern void __test__i_log_vp(void);
@@ -3859,9 +3796,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_page.c:297 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_page.c:297 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_tail.c:26 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_tail.c:26 START
   if (!filter || strstr("vt_init_empty", filter))
   {
     extern void __test__vt_init_empty(void);
@@ -3880,9 +3817,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_tail.c:26 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_tail.c:26 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_tail.c:51 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_tail.c:51 START
   if (!filter || strstr("vt_validate", filter))
   {
     extern void __test__vt_validate(void);
@@ -3901,9 +3838,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_tail.c:51 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_tail.c:51 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_tail.c:86 START
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_tail.c:86 START
   if (!filter || strstr("i_log_vt", filter))
   {
     extern void __test__i_log_vt(void);
@@ -3922,9 +3859,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\pages\var_tail.c:86 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pages/var_tail.c:86 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:48 START
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:48 START
   if (!filter || strstr("prim_t_validate", filter))
   {
     extern void __test__prim_t_validate(void);
@@ -3943,9 +3880,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:48 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:48 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:130 START
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:130 START
   if (!filter || strstr("prim_t_snprintf", filter))
   {
     extern void __test__prim_t_snprintf(void);
@@ -3964,9 +3901,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:130 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:130 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:197 START
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:200 START
   if (!filter || strstr("prim_t_byte_size", filter))
   {
     extern void __test__prim_t_byte_size(void);
@@ -3985,9 +3922,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:197 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:200 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:209 START
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:212 START
   if (!filter || strstr("prim_t_serialize", filter))
   {
     extern void __test__prim_t_serialize(void);
@@ -4006,9 +3943,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:209 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:212 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:247 START
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:250 START
   if (!filter || strstr("prim_t_deserialize", filter))
   {
     extern void __test__prim_t_deserialize(void);
@@ -4027,9 +3964,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:247 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:250 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:273 START
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:276 START
   if (!filter || strstr("prim_t_random", filter))
   {
     extern void __test__prim_t_random(void);
@@ -4048,9 +3985,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\prim.c:273 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/prim.c:276 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\rope\ns_balance_and_release.c:68 START
+  //////////////////// /Users/theo/Development/Numstore/src/rope/ns_balance_and_release.c:68 START
   if (!filter || strstr("dlgt_balance_with_prev", filter))
   {
     extern void __test__dlgt_balance_with_prev(void);
@@ -4069,9 +4006,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\rope\ns_balance_and_release.c:68 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/rope/ns_balance_and_release.c:68 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\rope\ns_balance_and_release.c:248 START
+  //////////////////// /Users/theo/Development/Numstore/src/rope/ns_balance_and_release.c:248 START
   if (!filter || strstr("dlgt_balance_with_next", filter))
   {
     extern void __test__dlgt_balance_with_next(void);
@@ -4090,9 +4027,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\rope\ns_balance_and_release.c:248 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/rope/ns_balance_and_release.c:248 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:119 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:118 START
   if (!filter || strstr("sarray_t_snprintf", filter))
   {
     extern void __test__sarray_t_snprintf(void);
@@ -4111,9 +4048,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:119 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:118 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:157 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:160 START
   if (!filter || strstr("sarray_t_byte_size", filter))
   {
     extern void __test__sarray_t_byte_size(void);
@@ -4132,9 +4069,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:157 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:160 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:186 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:190 START
   if (!filter || strstr("sarray_t_get_serial_size", filter))
   {
     extern void __test__sarray_t_get_serial_size(void);
@@ -4153,9 +4090,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:186 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:190 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:222 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:227 START
   if (!filter || strstr("sarray_t_serialize", filter))
   {
     extern void __test__sarray_t_serialize(void);
@@ -4174,9 +4111,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:222 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:227 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:315 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:321 START
   if (!filter || strstr("sarray_t_deserialize_green_path", filter))
   {
     extern void __test__sarray_t_deserialize_green_path(void);
@@ -4195,9 +4132,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:315 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:321 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:350 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:356 START
   if (!filter || strstr("sarray_t_deserialize_red_path", filter))
   {
     extern void __test__sarray_t_deserialize_red_path(void);
@@ -4216,9 +4153,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:350 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:356 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:556 START
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:562 START
   if (!filter || strstr("sarray_builder", filter))
   {
     extern void __test__sarray_builder(void);
@@ -4237,9 +4174,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\sarray.c:556 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/sarray.c:562 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\serial.c:82 START
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:82 START
   if (!filter || strstr("strings_all_unique", filter))
   {
     extern void __test__strings_all_unique(void);
@@ -4258,9 +4195,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\serial.c:82 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:82 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\serial.c:234 START
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:234 START
   if (!filter || strstr("string_contains", filter))
   {
     extern void __test__string_contains(void);
@@ -4279,9 +4216,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\serial.c:234 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:234 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\stride.c:158 START
+  //////////////////// /Users/theo/Development/Numstore/src/stride.c:158 START
   if (!filter || strstr("stride_resolve", filter))
   {
     extern void __test__stride_resolve(void);
@@ -4300,9 +4237,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\stride.c:158 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/stride.c:158 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:244 START
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:244 START
   if (!filter || strstr("struct_t_snprintf", filter))
   {
     extern void __test__struct_t_snprintf(void);
@@ -4321,9 +4258,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:244 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:244 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:312 START
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:316 START
   if (!filter || strstr("struct_t_byte_size", filter))
   {
     extern void __test__struct_t_byte_size(void);
@@ -4342,9 +4279,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:312 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:316 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:380 START
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:384 START
   if (!filter || strstr("struct_t_get_serial_size", filter))
   {
     extern void __test__struct_t_get_serial_size(void);
@@ -4363,9 +4300,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:380 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:384 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:455 START
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:459 START
   if (!filter || strstr("struct_t_serialize", filter))
   {
     extern void __test__struct_t_serialize(void);
@@ -4384,9 +4321,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:455 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:459 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:605 START
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:609 START
   if (!filter || strstr("struct_t_deserialize_green_path", filter))
   {
     extern void __test__struct_t_deserialize_green_path(void);
@@ -4405,9 +4342,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:605 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:609 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:661 START
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:665 START
   if (!filter || strstr("struct_t_deserialize_red_path", filter))
   {
     extern void __test__struct_t_deserialize_red_path(void);
@@ -4426,9 +4363,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\struct.c:661 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/struct.c:665 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\aries_tests.c:20 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/aries_tests.c:20 START
   if (!filter || strstr("aries_crash", filter))
   {
     extern void __test__aries_crash(void);
@@ -4447,9 +4384,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\aries_tests.c:20 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/aries_tests.c:20 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:54 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:54 START
   if (!filter || strstr("f16_to_f32_normals_and_specials", filter))
   {
     extern void __test__f16_to_f32_normals_and_specials(void);
@@ -4468,9 +4405,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:54 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:54 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:73 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:73 START
   if (!filter || strstr("f16_to_f32_nan_is_nan", filter))
   {
     extern void __test__f16_to_f32_nan_is_nan(void);
@@ -4489,9 +4426,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:73 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:73 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:80 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:80 START
   if (!filter || strstr("f16_to_f32_smallest_subnormal_correct_value", filter))
   {
     extern void __test__f16_to_f32_smallest_subnormal_correct_value(void);
@@ -4510,9 +4447,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:80 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:80 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:112 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:112 START
   if (!filter || strstr("parse_i32_boundary_values", filter))
   {
     extern void __test__parse_i32_boundary_values(void);
@@ -4531,9 +4468,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:112 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:112 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:166 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:166 START
   if (!filter || strstr("parse_i64_boundary_values", filter))
   {
     extern void __test__parse_i64_boundary_values(void);
@@ -4552,9 +4489,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:166 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:166 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:201 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:201 START
   if (!filter || strstr("ext_array_capacity_doubles_on_growth", filter))
   {
     extern void __test__ext_array_capacity_doubles_on_growth(void);
@@ -4573,9 +4510,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:201 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:201 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:232 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:232 START
   if (!filter || strstr("ext_array_remove_all_produces_empty", filter))
   {
     extern void __test__ext_array_remove_all_produces_empty(void);
@@ -4594,9 +4531,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:232 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:232 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:271 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:271 START
   if (!filter || strstr("llist_append_maintaififo_order", filter))
   {
     extern void __test__llist_append_maintaififo_order(void);
@@ -4615,9 +4552,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:271 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:271 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:295 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:295 START
   if (!filter || strstr("llist_find_returnode_and_index", filter))
   {
     extern void __test__llist_find_returnode_and_index(void);
@@ -4636,9 +4573,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:295 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:295 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:329 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:329 START
   if (!filter || strstr("llist_remove_from_head_middle_tail", filter))
   {
     extern void __test__llist_remove_from_head_middle_tail(void);
@@ -4657,9 +4594,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:329 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:329 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:366 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:366 START
   if (!filter || strstr("llist_remove_absent_node_is_noop", filter))
   {
     extern void __test__llist_remove_absent_node_is_noop(void);
@@ -4678,9 +4615,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:366 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:366 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:388 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:388 START
   if (!filter || strstr("checksum_known_crc32c_vector", filter))
   {
     extern void __test__checksum_known_crc32c_vector(void);
@@ -4699,9 +4636,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:388 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:388 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:397 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:397 START
   if (!filter || strstr("checksum_distinct_bytes_differ", filter))
   {
     extern void __test__checksum_distinct_bytes_differ(void);
@@ -4720,9 +4657,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:397 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:397 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:410 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:410 START
   if (!filter || strstr("serializer_write_at_capacity_then_overflow", filter))
   {
     extern void __test__serializer_write_at_capacity_then_overflow(void);
@@ -4741,9 +4678,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:410 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:410 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:429 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:429 START
   if (!filter || strstr("serializer_incremental_write_overflow", filter))
   {
     extern void __test__serializer_incremental_write_overflow(void);
@@ -4762,9 +4699,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:429 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:429 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:448 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:448 START
   if (!filter || strstr("stride_constructors_resolve_correctly", filter))
   {
     extern void __test__stride_constructors_resolve_correctly(void);
@@ -4783,9 +4720,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:448 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:448 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:523 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:523 START
   if (!filter || strstr("string_ordering_operators", filter))
   {
     extern void __test__string_ordering_operators(void);
@@ -4804,9 +4741,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:523 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:523 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:564 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:564 START
   if (!filter || strstr("line_length_newline_found", filter))
   {
     extern void __test__line_length_newline_found(void);
@@ -4825,9 +4762,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:564 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:564 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:621 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:621 START
   if (!filter || strstr("string_equal_cases", filter))
   {
     extern void __test__string_equal_cases(void);
@@ -4846,9 +4783,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:621 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:621 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:659 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:659 START
   if (!filter || strstr("strings_are_disjoint_cases", filter))
   {
     extern void __test__strings_are_disjoint_cases(void);
@@ -4867,9 +4804,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:659 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:659 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:728 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:727 START
   if (!filter || strstr("string_plus_concatenates", filter))
   {
     extern void __test__string_plus_concatenates(void);
@@ -4888,9 +4825,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:728 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:727 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:779 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:778 START
   if (!filter || strstr("cbuffer_discard_all_resets_state", filter))
   {
     extern void __test__cbuffer_discard_all_resets_state(void);
@@ -4909,9 +4846,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:779 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:778 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:816 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:815 START
   if (!filter || strstr("cbuffer_read_write_wraparound", filter))
   {
     extern void __test__cbuffer_read_write_wraparound(void);
@@ -4930,9 +4867,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:816 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:815 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:875 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:874 START
   if (!filter || strstr("cbuffer_cbuffer_move_transfers_bytes", filter))
   {
     extern void __test__cbuffer_cbuffer_move_transfers_bytes(void);
@@ -4951,9 +4888,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\core_extra_tests.c:875 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/core_extra_tests.c:874 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:19 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:19 START
   if (!filter || strstr("dpgt_open", filter))
   {
     extern void __test__dpgt_open(void);
@@ -4972,9 +4909,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:19 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:19 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:39 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:39 START
   if (!filter || strstr("dpgt_merge_into", filter))
   {
     extern void __test__dpgt_merge_into(void);
@@ -4993,9 +4930,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:39 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:39 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:104 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:104 START
   if (!filter || strstr("dpgt_min_rec_lsn", filter))
   {
     extern void __test__dpgt_min_rec_lsn(void);
@@ -5014,9 +4951,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:104 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:104 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:134 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:134 START
   if (!filter || strstr("dpgt_exists", filter))
   {
     extern void __test__dpgt_exists(void);
@@ -5035,9 +4972,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:134 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:134 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:157 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:157 START
   if (!filter || strstr("dpgt_add", filter))
   {
     extern void __test__dpgt_add(void);
@@ -5056,9 +4993,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:157 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:157 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:194 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:194 START
   if (!filter || strstr("dpgt_get", filter))
   {
     extern void __test__dpgt_get(void);
@@ -5077,9 +5014,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:194 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:194 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:260 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:260 START
   if (!filter || strstr("dpgt_remove", filter))
   {
     extern void __test__dpgt_remove(void);
@@ -5098,9 +5035,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:260 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:260 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:324 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:324 START
   if (!filter || strstr("dpgt_serialize", filter))
   {
     extern void __test__dpgt_serialize(void);
@@ -5119,9 +5056,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:324 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:324 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:388 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:388 START
   if (!filter || strstr("dpgt_equal", filter))
   {
     extern void __test__dpgt_equal(void);
@@ -5140,9 +5077,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dirty_page_table_tests.c:388 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:388 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dpgt_concurrency_tests.c:100 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dpgt_concurrency_tests.c:100 START
   if (!filter || strstr("dpgt_concurrent", filter))
   {
     extern void __test__dpgt_concurrent(void);
@@ -5161,9 +5098,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\dpgt_concurrency_tests.c:100 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/dpgt_concurrency_tests.c:100 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_regression_tests.c:21 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:21 START
   if (!filter || strstr("cgd_test_create_delete_rollback_delete", filter))
   {
     extern void __test__cgd_test_create_delete_rollback_delete(void);
@@ -5182,9 +5119,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_regression_tests.c:21 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:21 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_regression_tests.c:67 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:67 START
   if (!filter || strstr("cgd_test_create_crash_close_delete", filter))
   {
     extern void __test__cgd_test_create_crash_close_delete(void);
@@ -5203,9 +5140,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_regression_tests.c:67 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:67 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_regression_tests.c:97 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:97 START
   if (!filter || strstr("irwr_rollback_invalid_wal_header", filter))
   {
     extern void __test__irwr_rollback_invalid_wal_header(void);
@@ -5224,9 +5161,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_regression_tests.c:97 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:97 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:24 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:24 START
   if (!filter || strstr("nsdb_create_txn", filter))
   {
     extern void __test__nsdb_create_txn(void);
@@ -5245,9 +5182,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:24 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:24 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:179 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:179 START
   if (!filter || strstr("nsdb_delete_txn", filter))
   {
     extern void __test__nsdb_delete_txn(void);
@@ -5266,9 +5203,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:179 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:179 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:287 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:287 START
   if (!filter || strstr("nsdb_insert_txn", filter))
   {
     extern void __test__nsdb_insert_txn(void);
@@ -5287,9 +5224,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:287 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:287 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:503 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:503 START
   if (!filter || strstr("nsdb_write_txn", filter))
   {
     extern void __test__nsdb_write_txn(void);
@@ -5308,9 +5245,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:503 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:503 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:762 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:762 START
   if (!filter || strstr("nsdb_get_if_exists", filter))
   {
     extern void __test__nsdb_get_if_exists(void);
@@ -5329,9 +5266,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\numstore_tests.c:762 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/numstore_tests.c:762 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\robin_hood_ht_tests.c:27 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/robin_hood_ht_tests.c:27 START
   if (!filter || strstr("ht_insert_idx_regression_trigger_swap", filter))
   {
     extern void __test__ht_insert_idx_regression_trigger_swap(void);
@@ -5350,9 +5287,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\robin_hood_ht_tests.c:27 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/robin_hood_ht_tests.c:27 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\robin_hood_ht_tests.c:105 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/robin_hood_ht_tests.c:105 START
   if (!filter || strstr("robin_hood_ht", filter))
   {
     extern void __test__robin_hood_ht(void);
@@ -5371,9 +5308,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\robin_hood_ht_tests.c:105 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/robin_hood_ht_tests.c:105 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\smfile_data_writer.c:125 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/smfile_data_writer.c:125 START
   if (!filter || strstr("smfile_data_writer", filter))
   {
     extern void __test__smfile_data_writer(void);
@@ -5392,9 +5329,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\smfile_data_writer.c:125 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/smfile_data_writer.c:125 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\testing.c:38 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:38 START
   if (!filter || strstr("test_mark_works", filter))
   {
     extern void __test__test_mark_works(void);
@@ -5413,9 +5350,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\testing.c:38 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:38 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\testing.c:49 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:49 START
   if (!filter || strstr("test_mark_match", filter))
   {
     extern void __test__test_mark_match(void);
@@ -5434,9 +5371,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\testing.c:49 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:49 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\txnt_concurrency_tests.c:119 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/txnt_concurrency_tests.c:119 START
   if (!filter || strstr("txnt_concurrent", filter))
   {
     extern void __test__txnt_concurrent(void);
@@ -5455,9 +5392,30 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\txnt_concurrency_tests.c:119 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/txnt_concurrency_tests.c:119 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\wal_tests.c:281 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/wal_tests.c:87 START
+  if (!filter || strstr("wal_multi_threaded", filter))
+  {
+    extern void __test__wal_multi_threaded(void);
+    i_log_info("========================= TEST CASE: %s\n", "wal_multi_threaded");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__wal_multi_threaded();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "wal_multi_threaded");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "wal_multi_threaded";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/testing/wal_tests.c:87 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/testing/wal_tests.c:297 START
   if (!filter || strstr("wal", filter))
   {
     extern void __test__wal(void);
@@ -5476,9 +5434,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\wal_tests.c:281 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/wal_tests.c:297 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\wal_tests.c:399 START
+  //////////////////// /Users/theo/Development/Numstore/src/testing/wal_tests.c:418 START
   if (!filter || strstr("wal_single_entry", filter))
   {
     extern void __test__wal_single_entry(void);
@@ -5497,9 +5455,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\testing\wal_tests.c:399 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/testing/wal_tests.c:418 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:324 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:324 START
   if (!filter || strstr("txn_basic", filter))
   {
     extern void __test__txn_basic(void);
@@ -5518,9 +5476,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:324 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:324 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:431 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:431 START
   if (!filter || strstr("txnt_open", filter))
   {
     extern void __test__txnt_open(void);
@@ -5539,9 +5497,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:431 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:431 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:577 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:577 START
   if (!filter || strstr("txnt_merge_into", filter))
   {
     extern void __test__txnt_merge_into(void);
@@ -5560,9 +5518,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:577 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:577 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:718 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:718 START
   if (!filter || strstr("txnt_max_u_undo_lsn", filter))
   {
     extern void __test__txnt_max_u_undo_lsn(void);
@@ -5581,9 +5539,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:718 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:718 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:846 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:846 START
   if (!filter || strstr("txnt_min_lsn", filter))
   {
     extern void __test__txnt_min_lsn(void);
@@ -5602,9 +5560,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:846 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:846 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:954 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:954 START
   if (!filter || strstr("txnt_exists", filter))
   {
     extern void __test__txnt_exists(void);
@@ -5623,9 +5581,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:954 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:954 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1011 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1011 START
   if (!filter || strstr("txnt_insert", filter))
   {
     extern void __test__txnt_insert(void);
@@ -5644,9 +5602,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1011 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1011 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1164 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1164 START
   if (!filter || strstr("txnt_get", filter))
   {
     extern void __test__txnt_get(void);
@@ -5665,9 +5623,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1164 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1164 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1348 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1348 START
   if (!filter || strstr("txnt_remove", filter))
   {
     extern void __test__txnt_remove(void);
@@ -5686,9 +5644,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1348 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1348 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1568 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1568 START
   if (!filter || strstr("txnt_serialize", filter))
   {
     extern void __test__txnt_serialize(void);
@@ -5707,9 +5665,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1568 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1568 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1702 START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1702 START
   if (!filter || strstr("txnt_equal_ignore_state", filter))
   {
     extern void __test__txnt_equal_ignore_state(void);
@@ -5728,9 +5686,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\txn_table.c:1702 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1702 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:285 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:285 START
   if (!filter || strstr("type_generate_string", filter))
   {
     extern void __test__type_generate_string(void);
@@ -5749,9 +5707,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:285 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:285 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:968 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:909 START
   if (!filter || strstr("type_malloc_copy", filter))
   {
     extern void __test__type_malloc_copy(void);
@@ -5770,9 +5728,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:968 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:909 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:1420 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1367 START
   if (!filter || strstr("ta_subtype", filter))
   {
     extern void __test__ta_subtype(void);
@@ -5791,9 +5749,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:1420 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1367 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:1791 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1738 START
   if (!filter || strstr("type_accessor_builder", filter))
   {
     extern void __test__type_accessor_builder(void);
@@ -5812,9 +5770,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\types.c:1791 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1738 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:243 START
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:243 START
   if (!filter || strstr("union_t_snprintf", filter))
   {
     extern void __test__union_t_snprintf(void);
@@ -5833,9 +5791,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:243 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:243 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:314 START
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:317 START
   if (!filter || strstr("union_t_byte_size", filter))
   {
     extern void __test__union_t_byte_size(void);
@@ -5854,9 +5812,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:314 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:317 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:382 START
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:385 START
   if (!filter || strstr("union_t_get_serial_size", filter))
   {
     extern void __test__union_t_get_serial_size(void);
@@ -5875,9 +5833,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:382 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:385 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:457 START
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:460 START
   if (!filter || strstr("union_t_serialize", filter))
   {
     extern void __test__union_t_serialize(void);
@@ -5896,9 +5854,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:457 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:460 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:603 START
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:606 START
   if (!filter || strstr("union_t_deserialize_green_path", filter))
   {
     extern void __test__union_t_deserialize_green_path(void);
@@ -5917,9 +5875,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:603 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:606 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:659 START
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:662 START
   if (!filter || strstr("union_t_deserialize_red_path", filter))
   {
     extern void __test__union_t_deserialize_red_path(void);
@@ -5938,9 +5896,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\union.c:659 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/union.c:662 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\utils.c:30 START
+  //////////////////// /Users/theo/Development/Numstore/src/utils.c:30 START
   if (!filter || strstr("file_basename", filter))
   {
     extern void __test__file_basename(void);
@@ -5959,9 +5917,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\utils.c:30 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/utils.c:30 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\var\ns_find_var_page.c:349 START
+  //////////////////// /Users/theo/Development/Numstore/src/var/ns_find_var_page.c:349 START
   if (!filter || strstr("ns_find_var_page", filter))
   {
     extern void __test__ns_find_var_page(void);
@@ -5980,9 +5938,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\var\ns_find_var_page.c:349 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/var/ns_find_var_page.c:349 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\var\ns_var_get_or_create.c:88 START
+  //////////////////// /Users/theo/Development/Numstore/src/var/ns_var_get_or_create.c:88 START
   if (!filter || strstr("ns_var_get_or_create", filter))
   {
     extern void __test__ns_var_get_or_create(void);
@@ -6001,9 +5959,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\var\ns_var_get_or_create.c:88 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/var/ns_var_get_or_create.c:88 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\variables.c:274 START
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:274 START
   if (!filter || strstr("rand_varname_same_hash", filter))
   {
     extern void __test__rand_varname_same_hash(void);
@@ -6022,9 +5980,9 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\variables.c:274 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:274 DONE
 
-  //////////////////// C:\Users\tlincke\dev\numstore\src\variables.c:291 START
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:291 START
   if (!filter || strstr("rand_varname_different_hash", filter))
   {
     extern void __test__rand_varname_different_hash(void);
@@ -6043,7 +6001,70 @@ main (const int argc, char **argv)
     }
     ntests++;
   }
-  //////////////////// C:\Users\tlincke\dev\numstore\src\variables.c:291 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:291 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/wal.c:64 START
+  if (!filter || strstr("walos_open", filter))
+  {
+    extern void __test__walos_open(void);
+    i_log_info("========================= TEST CASE: %s\n", "walos_open");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__walos_open();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "walos_open");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "walos_open";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/wal.c:64 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/wal.c:318 START
+  if (!filter || strstr("walis_open", filter))
+  {
+    extern void __test__walis_open(void);
+    i_log_info("========================= TEST CASE: %s\n", "walis_open");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__walis_open();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "walis_open");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "walis_open";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/wal.c:318 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/wal.c:1442 START
+  if (!filter || strstr("wal_rec_hdr_type_tostr", filter))
+  {
+    extern void __test__wal_rec_hdr_type_tostr(void);
+    i_log_info("========================= TEST CASE: %s\n", "wal_rec_hdr_type_tostr");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__wal_rec_hdr_type_tostr();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "wal_rec_hdr_type_tostr");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "wal_rec_hdr_type_tostr";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/wal.c:1442 DONE
 
 
   printf ("Time: %llu ms\n", (unsigned long long)i_timer_now_ms (&timer));

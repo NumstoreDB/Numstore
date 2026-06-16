@@ -35,7 +35,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   // First ensure the wal is flushed so that any undoable log is readable
   if (undo_nxt_lsn > 0)
   {
-    if (wal_flush_to (p->ww, undo_nxt_lsn, e))
+    if (wal_flush_all (p->ww, e))
     {
       goto failed;
     }
@@ -138,7 +138,7 @@ theend:
 
   if (undo_nxt_lsn > 0)
   {
-    if (wal_flush_to (p->ww, undo_nxt_lsn, e))
+    if (wal_flush_all (p->ww, e))
     {
       goto failed;
     }

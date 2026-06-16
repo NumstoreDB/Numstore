@@ -15,7 +15,9 @@
 #include "wal.h"
 
 #include "compile_config.h"
-#include "dirty_page_table.h"
+#include "error.h"
+#include "os.h"
+#include "testing/testing.h"
 #include "txn_table.h"
 #include "wal.h"
 
@@ -58,6 +60,59 @@ err_free:
   return NULL;
 }
 
+#ifndef NTEST
+TEST (walos_open)
+{
+  error e = error_create ();
+
+  TEST_CASE ("Red Path - No Memory")
+  {
+    void *(*backup) (i_vmem *, u32, u32, error *) = default_vmem.i_malloc;
+    default_vmem.i_malloc                         = i_malloc_nomem;
+
+    struct wal_ostream *wos = walos_open ("foo", &e);
+    test_assert (wos == NULL);
+    e.cause_code = SUCCESS;
+    e.cmlen      = 0;
+
+    default_vmem.i_malloc = backup;
+  }
+
+  TEST_CASE ("Red Path - can't open file")
+  {
+    err_t (*backup) (
+        i_file_system_vtable *vfs,
+        i_file               *dest,
+        const char           *fname,
+        error                *e
+    ) = default_fsvtable.i_open_w;
+
+    default_fsvtable.i_open_w = i_open_errio;
+
+    struct wal_ostream *wos = walos_open ("foo", &e);
+    test_assert (wos == NULL);
+    e.cause_code = SUCCESS;
+    e.cmlen      = 0;
+
+    default_fsvtable.i_open_w = backup;
+  }
+
+  TEST_CASE ("Red Path - can't seek")
+  {
+    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) =
+        default_fvtable.i_seek;
+    default_fvtable.i_seek = i_seek_errio;
+
+    struct wal_ostream *wos = walos_open ("foo", &e);
+    test_assert (wos == NULL);
+    e.cause_code = SUCCESS;
+    e.cmlen      = 0;
+
+    default_fvtable.i_seek = backup;
+  }
+}
+#endif
+
 err_t
 walos_close (struct wal_ostream *w, error *e)
 {
@@ -99,19 +154,6 @@ walos_flush_impl (struct wal_ostream *w, error *e)
 
   w->flushed_lsn += towrite;
   return SUCCESS;
-}
-
-err_t
-walos_flush_to (struct wal_ostream *w, const lsn l, error *e)
-{
-  latch_lock (&w->l);
-  err_t ret = SUCCESS;
-  if (l > w->flushed_lsn)
-  {
-    ret = walos_flush_impl (w, e);
-  }
-  latch_unlock (&w->l);
-  return ret;
 }
 
 err_t
@@ -271,6 +313,59 @@ walis_open (const char *fname, error *e)
 
   return dest;
 }
+
+#ifndef NTEST
+TEST (walis_open)
+{
+  error e = error_create ();
+
+  TEST_CASE ("Red Path - No Memory")
+  {
+    void *(*backup) (i_vmem *, u32, u32, error *) = default_vmem.i_malloc;
+    default_vmem.i_malloc                         = i_malloc_nomem;
+
+    struct wal_istream *wis = walis_open ("foo", &e);
+    test_assert (wis == NULL);
+    e.cause_code = SUCCESS;
+    e.cmlen      = 0;
+
+    default_vmem.i_malloc = backup;
+  }
+
+  TEST_CASE ("Red Path - can't open file")
+  {
+    err_t (*backup) (
+        i_file_system_vtable *vfs,
+        i_file               *dest,
+        const char           *fname,
+        error                *e
+    ) = default_fsvtable.i_open_r;
+
+    default_fsvtable.i_open_r = i_open_errio;
+
+    struct wal_istream *wis = walis_open ("foo", &e);
+    test_assert (wis == NULL);
+    e.cause_code = SUCCESS;
+    e.cmlen      = 0;
+
+    default_fsvtable.i_open_r = backup;
+  }
+
+  TEST_CASE ("Red Path - can't seek")
+  {
+    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) =
+        default_fvtable.i_seek;
+    default_fvtable.i_seek = i_seek_errio;
+
+    struct wal_istream *wis = walis_open ("foo", &e);
+    test_assert (wis == NULL);
+    e.cause_code = SUCCESS;
+    e.cmlen      = 0;
+
+    default_fvtable.i_seek = backup;
+  }
+}
+#endif
 
 err_t
 walis_close (struct wal_istream *w, error *e)
@@ -597,26 +692,6 @@ wal_size (struct wal *w)
 }
 
 err_t
-wal_flush_to (const struct wal *w, const lsn l, error *e)
-{
-  DBG_ASSERT (wal, w);
-  ASSERT (w->ostream);
-
-  if (l < w->start_lsn)
-  {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "Tried to flush to previous deleted log %" PRlsn " %" PRlsn,
-        l,
-        w->start_lsn
-    );
-  }
-
-  return walos_flush_to (w->ostream, l - w->start_lsn, e);
-}
-
-err_t
 wal_flush_all (const struct wal *w, error *e)
 {
   DBG_ASSERT (wal, w);
@@ -770,8 +845,7 @@ wal_read_full (
     if (toread > 0)
     {
       bool iseof;
-      WRAP (
-          walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e)
+      WRAP (walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e)
       );
       if (iseof)
       {
@@ -781,8 +855,7 @@ wal_read_full (
 
     head += toread;
     bool iseof;
-    WRAP (
-        walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e)
+    WRAP (walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e)
     );
     if (iseof)
     {
@@ -1049,8 +1122,7 @@ wal_read_sequential (
 
   walis_mark_start_log (w->istream);
 
-  WRAP (
-      walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e)
+  WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e)
   );
   if (rlsn)
   {
@@ -1366,6 +1438,18 @@ wal_rec_hdr_type_tostr (const enum wal_rec_hdr_type type)
   UNREACHABLE ();
 }
 
+#ifndef NTEST
+TEST (wal_rec_hdr_type_tostr)
+{
+  test_assert (wal_rec_hdr_type_tostr (WL_UPDATE) != NULL);
+  test_assert (wal_rec_hdr_type_tostr (WL_CLR) != NULL);
+  test_assert (wal_rec_hdr_type_tostr (WL_BEGIN) != NULL);
+  test_assert (wal_rec_hdr_type_tostr (WL_COMMIT) != NULL);
+  test_assert (wal_rec_hdr_type_tostr (WL_END) != NULL);
+  test_assert (wal_rec_hdr_type_tostr (WL_EOF) != NULL);
+}
+#endif
+
 struct wal_rec_hdr_write
 wrhw_from_wrhr (struct wal_rec_hdr_read *src)
 {
@@ -1399,41 +1483,45 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
         case WUP_PHYSICAL:
         {
           return (struct wal_rec_hdr_write){
-              .type   = WL_UPDATE,
-              .update = {
-                  .type = WUP_PHYSICAL,
-                  .tid  = src->update.tid,
-                  .prev = src->update.prev,
-                  .phys = (struct physical_write_update){
-                      .pg   = src->update.phys.pg,
-                      .redo = src->update.phys.redo,
-                      .undo = src->update.phys.undo,
+              .type = WL_UPDATE,
+              .update =
+                  {
+                      .type = WUP_PHYSICAL,
+                      .tid  = src->update.tid,
+                      .prev = src->update.prev,
+                      .phys =
+                          (struct physical_write_update){
+                              .pg   = src->update.phys.pg,
+                              .redo = src->update.phys.redo,
+                              .undo = src->update.phys.undo,
+                          },
                   },
-              },
           };
         }
         case WUP_FSM:
         {
           return (struct wal_rec_hdr_write){
-              .type   = WL_UPDATE,
-              .update = {
-                  .type = WUP_FSM,
-                  .tid  = src->update.tid,
-                  .prev = src->update.prev,
-                  .fsm  = src->update.fsm,
-              },
+              .type = WL_UPDATE,
+              .update =
+                  {
+                      .type = WUP_FSM,
+                      .tid  = src->update.tid,
+                      .prev = src->update.prev,
+                      .fsm  = src->update.fsm,
+                  },
           };
         }
         case WUP_FEXT:
         {
           return (struct wal_rec_hdr_write){
-              .type   = WL_UPDATE,
-              .update = {
-                  .type = WUP_FEXT,
-                  .tid  = src->update.tid,
-                  .prev = src->update.prev,
-                  .fext = src->update.fext,
-              },
+              .type = WL_UPDATE,
+              .update =
+                  {
+                      .type = WUP_FEXT,
+                      .tid  = src->update.tid,
+                      .prev = src->update.prev,
+                      .fext = src->update.fext,
+                  },
           };
         }
       }
@@ -1447,41 +1535,45 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
         {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
-              .clr  = {
-                  .type      = WCLR_PHYSICAL,
-                  .tid       = src->clr.tid,
-                  .prev      = src->clr.prev,
-                  .undo_next = src->clr.undo_next,
-                  .phys      = (struct physical_write_clr){
-                      .pg   = src->clr.phys.pg,
-                      .redo = src->clr.phys.redo,
+              .clr =
+                  {
+                      .type      = WCLR_PHYSICAL,
+                      .tid       = src->clr.tid,
+                      .prev      = src->clr.prev,
+                      .undo_next = src->clr.undo_next,
+                      .phys =
+                          (struct physical_write_clr){
+                              .pg   = src->clr.phys.pg,
+                              .redo = src->clr.phys.redo,
+                          },
                   },
-              },
           };
         }
         case WCLR_FSM:
         {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
-              .clr  = {
-                  .type      = WCLR_FSM,
-                  .tid       = src->clr.tid,
-                  .prev      = src->clr.prev,
-                  .undo_next = src->clr.undo_next,
-                  .fsm       = src->clr.fsm,
-              },
+              .clr =
+                  {
+                      .type      = WCLR_FSM,
+                      .tid       = src->clr.tid,
+                      .prev      = src->clr.prev,
+                      .undo_next = src->clr.undo_next,
+                      .fsm       = src->clr.fsm,
+                  },
           };
         }
         case WCLR_DUMMY:
         {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
-              .clr  = {
-                  .type      = WCLR_DUMMY,
-                  .tid       = src->clr.tid,
-                  .prev      = src->clr.prev,
-                  .undo_next = src->clr.undo_next,
-              },
+              .clr =
+                  {
+                      .type      = WCLR_DUMMY,
+                      .tid       = src->clr.tid,
+                      .prev      = src->clr.prev,
+                      .undo_next = src->clr.undo_next,
+                  },
           };
         }
       }
@@ -2058,10 +2150,11 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
               .tid       = h->update.tid,
               .prev      = tx->data.last_lsn,
               .undo_next = h->update.prev,
-              .phys      = {
-                  .pg   = wrh_get_affected_pg (h),
-                  .redo = h->update.phys.undo,
-              },
+              .phys =
+                  {
+                      .pg   = wrh_get_affected_pg (h),
+                      .redo = h->update.phys.undo,
+                  },
           };
         }
         case WUP_FSM:
@@ -2079,11 +2172,12 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
               .tid       = h->update.tid,
               .prev      = tx->data.last_lsn,
               .undo_next = h->update.prev,
-              .fsm       = {
-                  .pg   = page_h_pgno (ph),
-                  .bit  = h->update.fsm.bit,
-                  .redo = h->update.fsm.undo,
-              },
+              .fsm =
+                  {
+                      .pg   = page_h_pgno (ph),
+                      .bit  = h->update.fsm.bit,
+                      .redo = h->update.fsm.undo,
+                  },
           };
         }
         case WUP_FEXT:
@@ -2438,8 +2532,7 @@ wal_write_begin (
   u32       checksum = checksum_init ();
   const wlh t        = r->type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
-  WRAP (
-      walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
+  WRAP (walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
   );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 

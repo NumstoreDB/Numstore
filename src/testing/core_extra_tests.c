@@ -449,11 +449,10 @@ TEST (stride_constructors_resolve_correctly)
 {
   struct stride r;
   error         e = error_create ();
-  const u64     N = 10;
 
   TEST_CASE ("ustride() = [::] — all elements")
   {
-    stride_resolve (&r, ustride (), N, &e);
+    stride_resolve (&r, ustride (), 10, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 10);
@@ -461,7 +460,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride0(3) = [3:] — from index 3 to end")
   {
-    stride_resolve (&r, ustride0 (3), N, &e);
+    stride_resolve (&r, ustride0 (3), 10, &e);
     test_assert_int_equal (r.start, 3);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 7);
@@ -469,7 +468,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride2(6) = [:6] — first 6 elements")
   {
-    stride_resolve (&r, ustride2 (6), N, &e);
+    stride_resolve (&r, ustride1 (6), 10, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 6);
@@ -477,7 +476,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride1(3) = [::3] — every 3rd, indices 0,3,6,9")
   {
-    stride_resolve (&r, ustride1 (3), N, &e);
+    stride_resolve (&r, ustride2 (3), 10, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 3);
     test_assert_int_equal (r.nelems, 4);
@@ -485,15 +484,15 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride01(2,3) = [2::3] — from 2, step 3, indices 2,5,8")
   {
-    stride_resolve (&r, ustride01 (2, 3), N, &e);
+    stride_resolve (&r, ustride02 (2, 3), 10, &e);
     test_assert_int_equal (r.start, 2);
     test_assert_int_equal (r.stride, 3);
     test_assert_int_equal (r.nelems, 3);
   }
 
-  TEST_CASE ("ustride12(2,8) = [::2] stop 8 — indices 0,2,4,6")
+  TEST_CASE ("ustride12(2,8) = [:2:8] stop 8 — indices 0,2,4,6")
   {
-    stride_resolve (&r, ustride12 (2, 8), N, &e);
+    stride_resolve (&r, ustride12 (8, 2), 10, &e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 2);
     test_assert_int_equal (r.nelems, 4);
@@ -501,19 +500,20 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride012(1,2,7) = [1:7:2] — indices 1,3,5")
   {
-    stride_resolve (&r, ustride012 (1, 2, 7), N, &e);
+    stride_resolve (&r, ustride012 (1, 7, 2), 10, &e);
     test_assert_int_equal (r.start, 1);
     test_assert_int_equal (r.stride, 2);
     test_assert_int_equal (r.nelems, 3);
   }
 
-  TEST_CASE ("usfrms round-trip: stride → user_stride → stride is identity")
+  TEST_CASE ("usfrms round-trip: stride -> user_stride -> stride is identity")
   {
     // Build a concrete stride and convert it back; resolution must agree.
     const struct stride      orig = {.start = 2, .stride = 3, .nelems = 3};
     const struct user_stride us   = usfrms (orig);
     struct stride            got;
-    stride_resolve (&got, us, N, &e);
+    stride_resolve (&got, us, 10, &e);
+
     test_assert_type_equal (got.start, orig.start, u64, PRIu64);
     test_assert_type_equal (got.stride, orig.stride, u32, PRIu32);
     test_assert_type_equal (got.nelems, orig.nelems, u64, PRIu64);
@@ -706,8 +706,7 @@ TEST (strings_are_disjoint_cases)
     const struct string  right[] = {{.len = 4, .data = dc}};
     const struct string *hit     = strings_are_disjoint (left, 2, right, 1);
     test_assert (hit != NULL);
-    test_assert (
-        string_equal (*hit, (struct string){.len = 4, .data = "beta"})
+    test_assert (string_equal (*hit, (struct string){.len = 4, .data = "beta"})
     );
   }
 
