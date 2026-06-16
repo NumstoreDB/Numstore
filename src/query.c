@@ -1,5 +1,6 @@
 #include "query.h"
 
+#include "csx_assert.h"
 #include "serial.h"
 #include "types.h"
 
@@ -86,4 +87,6 @@ query_equal (const struct query *left, const struct query *right)
       return true;
     }
   }
+
+  UNREACHABLE ();
 }
