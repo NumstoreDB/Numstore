@@ -155,6 +155,7 @@ TEST (wal_multi_threaded)
   const struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &e);
   test_assert_int_equal (actual->type, WL_EOF);
 
+  wal_close (ww, &e);
   i_free (read);
 }
 
