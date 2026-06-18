@@ -1,3 +1,16 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 
 #include "alloc.h"
 #include "collections.h"
@@ -78,7 +91,7 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     s.start           = (sb_size)tok->integer;
     s.present |= START_PRESENT;
 
-    // Bare number with no colon → single index
+    // Bare number with no colon â†’ single index
     if (!parser_match (parser->base, TT_COLON))
     {
       return musb_accept_key (&parser->builder, s, e);
@@ -90,7 +103,7 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     return musb_accept_key (&parser->builder, s, e);
   }
 
-  // No leading number — must be ':'
+  // No leading number â€” must be ':'
   if (parser_match (parser->base, TT_COLON))
   {
     s.present |= COLON_PRESENT;
@@ -242,7 +255,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // start + colon, no stop, no step  →  "0:"
+  // start + colon, no stop, no step  â†’  "0:"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0: ]")
   {
@@ -274,7 +287,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Colon only  →  ":"
+  // Colon only  â†’  ":"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :, 0 ]")
   {
@@ -287,7 +300,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop  →  ":0"
+  // Colon + stop  â†’  ":0"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0, 0 ]")
   {
@@ -304,9 +317,9 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Double colon, no numbers  →  "::"
+  // Double colon, no numbers  â†’  "::"
   // parse_entry sets COLON_PRESENT, parse_step also matches ':' and sets it
-  // again (no-op), no integers → only COLON_PRESENT in present
+  // again (no-op), no integers â†’ only COLON_PRESENT in present
   // -------------------------------------------------------------------------
   TEST_CASE ("[ ::, 0 ]")
   {
@@ -319,7 +332,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Double colon + step  →  "::0"
+  // Double colon + step  â†’  "::0"
   // COLON_PRESENT (from first ':') | STEP_PRESENT (from "::0")
   // Note: no START_PRESENT, no STOP_PRESENT
   // -------------------------------------------------------------------------
@@ -338,7 +351,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop + colon, no step  →  ":0:"
+  // Colon + stop + colon, no step  â†’  ":0:"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0:, 0 ]")
   {
@@ -355,7 +368,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop + colon + step  →  ":0:0"
+  // Colon + stop + colon + step  â†’  ":0:0"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0:0, 0 ]")
   {
@@ -373,7 +386,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Start + double colon, no stop/step  →  "0::"
+  // Start + double colon, no stop/step  â†’  "0::"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0::, 0 ]")
   {
@@ -390,7 +403,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Start + double colon + step  →  "0::0"
+  // Start + double colon + step  â†’  "0::0"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0::0, 0 ]")
   {
@@ -408,7 +421,7 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Full slice  →  "0:0:0"
+  // Full slice  â†’  "0:0:0"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0:0:0, 0 ]")
   {
@@ -460,7 +473,7 @@ TEST (compile_multi_user_stride)
     e.cmlen      = 0;
   }
 
-  // Trailing comma with no entry after it  →  parse_entry gets ']', not a
+  // Trailing comma with no entry after it  â†’  parse_entry gets ']', not a
   // number or ':', so it returns ERR_SYNTAX
   TEST_CASE ("error: trailing comma '[0,]'")
   {
@@ -471,7 +484,7 @@ TEST (compile_multi_user_stride)
     e.cmlen      = 0;
   }
 
-  // Leading comma — parse_entry gets ',' which is neither number nor ':'
+  // Leading comma â€” parse_entry gets ',' which is neither number nor ':'
   TEST_CASE ("error: leading comma '[,0]'")
   {
     err_t err = compile_multi_user_stride (&stride, "[,0]", &alloc, &e);
@@ -1953,7 +1966,7 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
       parser_advance (parser);
       WRAP (parse_us_stop (parser, &s, e));
     }
-    // else: bare integer — single index, nothing more to parse
+    // else: bare integer â€” single index, nothing more to parse
   }
   else if (parser_match (parser, TT_COLON))
   {

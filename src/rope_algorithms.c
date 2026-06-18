@@ -1,3 +1,16 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 
 #include "rope_algorithms.h"
 
@@ -2198,21 +2211,21 @@ failed:
  * left by deleted bytes is closed by sliding the trailing data forward.  To
  * avoid re-reading pages, two cursors scan the leaf level simultaneously:
  *
- *   writer — the destination cursor; data is compacted into this position.
- *   reader — the source cursor; always ahead of (or equal to) writer.
+ *   writer â€” the destination cursor; data is compacted into this position.
+ *   reader â€” the source cursor; always ahead of (or equal to) writer.
  *
  * When writer == reader (reader.mode == PHM_NONE), there is no separation
  * yet and both cursors refer to the same page via s.writer.
  *
  * The outer loop alternates between two phases:
  *
- *   ACTIVE — the reader advances by [size] bytes without copying them to
+ *   ACTIVE â€” the reader advances by [size] bytes without copying them to
  *              the writer; this is what "removes" the elements.  If
  *              params->dest is non-NULL the removed bytes are streamed out
  *              before being discarded.  After [size] bytes, bnext resets to
  *              (stride-1)*size and phase switches to SKIPPING.
  *
- *   SKIPPING — [size*(stride-1)] bytes are copied from reader to writer
+ *   SKIPPING â€” [size*(stride-1)] bytes are copied from reader to writer
  *              (these are the elements that must survive).  The writer
  *              page is flushed when full, and the reader page is deleted
  *              once fully consumed if it is distinct from the writer page.
@@ -2320,7 +2333,7 @@ failed:
  *      open the successor as the new reader.
  *   2. writer page is more than half full: flush writer first
  *      (advance_writer), then open the current page's next as the new reader.
- *   3. reader page is fully consumed: delete it, re-link writer → next, open
+ *   3. reader page is fully consumed: delete it, re-link writer â†’ next, open
  *      the next page as the new reader, and record the deletion in output.
  *
  * Sets *iseof=true and finalizes write_idx when the chain has no successor.
@@ -3009,7 +3022,7 @@ theend:
  * is released immediately after the child page is fetched.
  *
  * When the descent lands on a data-list page, lidx is set to
- * MIN(bofst, dl_used()) — it saturates at the page's current content length,
+ * MIN(bofst, dl_used()) â€” it saturates at the page's current content length,
  * meaning seeks past EOF land at the end of the last page rather than
  * producing an error.  This is intentional: inserts after EOF are valid.
  */
@@ -3130,7 +3143,7 @@ failed:
  *
  * Mirrors ns_read_next_amount exactly: minimum of bytes remaining on the
  * page from lidx, bytes remaining in the current write/skip window (bnext),
- * and — in ACTIVE state only — bytes remaining before the global write
+ * and â€” in ACTIVE state only â€” bytes remaining before the global write
  * limit (max_bwrite).  Skip-window bytes do not count toward max_bwrite.
  */
 static t_size
