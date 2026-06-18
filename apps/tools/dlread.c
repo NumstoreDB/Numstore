@@ -15,9 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "page_h.h"
+#include "page.h"
 #include "pager.h"
-#include "pages/page.h"
 
 static void
 dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e)

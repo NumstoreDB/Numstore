@@ -26,7 +26,7 @@
 
 #include "compile_config.h" // pgno b_size ...etc
 #include "error.h"          // error
-#include "page_h.h"         // page_h
+#include "pager.h"          // page_h
 
 /******************************************************************************
  * SECTION: Node Updates

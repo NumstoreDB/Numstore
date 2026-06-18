@@ -16,7 +16,7 @@
 
 #include "pager.h"
 #include "testing/testing.h"
-#include "var.h"
+#include "var_algorithms.h"
 
 struct nshandle *
 nsh_remove_and_open (const char *name, error *e)

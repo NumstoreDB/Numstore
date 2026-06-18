@@ -12,11 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "smartfiles.h"
+
 #include "nshandle.h"
 #include "pager.h"
-#include "rope.h"
-#include "smartfiles.h"
-#include "var.h"
+#include "rope_algorithms.h"
+#include "var_algorithms.h"
 
 // smfile
 

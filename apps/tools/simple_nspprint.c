@@ -17,8 +17,8 @@
 #include <string.h>
 
 #include "file_pager.h"
+#include "page.h"
 #include "pager.h"
-#include "pages/page.h"
 
 static void
 _simple_page_print (struct file_pager *p, const pgno pg, error *e)

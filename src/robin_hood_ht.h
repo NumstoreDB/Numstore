@@ -30,7 +30,7 @@
 #include "stdtypes.h"    // u32 ...etc
 
 /******************************************************************************
- * SECTION: Robin Hood HAsh Table
+ * SECTION: Robin Hood Hash Table
  * ----------------------------------------------------------------------------
  * @brief An open address hash table
  *

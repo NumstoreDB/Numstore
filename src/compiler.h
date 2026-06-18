@@ -358,37 +358,12 @@ parser_check_end (struct parser *p, error *e)
  * @brief Implementations of parsers
  ******************************************************************************/
 
-/**
- * stride       ::= '[' entry_list ']'
- * entry_list   ::= entry | entry ',' entry_list
- * entry        ::= slice_range | NUMBER
- * slice_range  ::= NUMBER? ':' NUMBER? | NUMBER? ':' NUMBER? ':' NUMBER?
- *
- * Test Cases:
- *  - [ ]
- *  - [ 0 ]
- *  - [ 0, 0 ]
- *  - [ 0: ]
- *  - [ 0:, 0 ]
- *  - [ :, 0 ]
- *  - [ :0, 0 ]
- *  - [ ::, 0 ]
- *  - [ ::0, 0 ]
- *  - [ :0:, 0 ]
- *  - [ :0:0, 0 ]
- *  - [ 0::, 0 ]
- *  - [ 0::0, 0 ]
- *  - [ 0:0:0, 0 ]
- */
-
 err_t parse_multi_user_stride (
     struct parser            *parser,
     struct multi_user_stride *dest,
     struct chunk_alloc       *dalloc,
     error                    *e
 );
-
-// subtype    ::= IDENT stride* ('.' IDENT stride*)*
 
 err_t parse_subtype (
     struct parser      *p,
@@ -397,32 +372,12 @@ err_t parse_subtype (
     error              *e
 );
 
-/**
- * type            ::= struct_type
- * | union_type
- * | sarray_type
- * | primitive_type
- * struct_type     ::= 'struct' '{' field (',' field)* '}'
- * union_type      ::= 'union' '{' field (',' field)* '}'
- * sarray_type     ::= '[' INTEGER ']'+ type
- * primitive_type  ::= PRIM
- * field           ::= IDENTIFIER type
- */
-
 err_t parse_type (
     struct parser      *p,
     struct type        *dest,
     struct chunk_alloc *dalloc,
     error              *e
 );
-
-/**
- * type_ref        ::= struct_type_ref
- * | take_type_ref
- * struct_type_ref ::= 'struct' '{' field_ref (',' field_ref)* '}'
- * take_type_ref   ::= subtype
- * field_ref       ::= IDENTIFIER type_ref
- */
 
 err_t parse_type_ref (
     struct parser      *p,
@@ -431,24 +386,9 @@ err_t parse_type_ref (
     error              *e
 );
 
-/**
- * entry        ::= slice_range | NUMBER
- * slice_range  ::= NUMBER? ':' NUMBER? | NUMBER? ':' NUMBER? ':' NUMBER?
- */
-
 err_t
 parse_user_stride (struct parser *parser, struct user_stride *dest, error *e);
 
-/**
- * query         ::= READ | CREATE | DELETE | GET | EXIT | HELP ';'
- *
- * READ  ::= read IDENT USER_STRIDE
- * CREATE ::= create IDENT TYPE
- * DELETE ::= delete IDENT
- * GET    ::= get IDENT
- * EXIT   ::= exit
- * HELP   ::= help command?
- */
 err_t parse_query (
     struct parser      *parser,
     struct query       *dest,

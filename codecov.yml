@@ -1,8 +1,8 @@
 ignore:
   - "bindings/**"
   - "apps/**"
-  - "src/windows/**"
-  - "src/posix/**"
+  - "src/os_windows.c"
+  - "src/os_posix.c"
 coverage:
   status:
     project:

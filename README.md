@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="NumStore Logo" width="200"/>
+  <img src="docs/logo.png" alt="NumStore Logo" width="200"/>
 </p>
 
 # Numstore
@@ -173,17 +173,11 @@ Things I don't ask AI to do:
 In practice, AI is useful for ideation, code review, and generating mundane code I'll
 immediately refactor. Every algorithm in this codebase was written by me.
 
-The CLAUDE.md file ensures that if AI-assisted code ever does land here, it follows
-consistent standards.
-
-
 5.0 Contributing
 ================
 
 File a ticket on GitHub for bugs, feature requests, or questions.
-Pull requests are welcome - see CONTRIBUTING.md for guidelines.
-Windows CI/CD support is an open and approachable first contribution.
-
+Many tickets that are easy to contribute will be marked
 
 6.0 License
 ============

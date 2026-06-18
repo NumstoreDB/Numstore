@@ -16,7 +16,7 @@
 #define INNER_NODE_TESTING_H
 
 #ifndef NTEST
-#  include "pages/page.h"
+#  include "page.h"
 
 void in_print (const page *in);
 
