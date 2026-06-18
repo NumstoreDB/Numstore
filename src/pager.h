@@ -286,7 +286,6 @@ err_t         pgr_delete_single_file (const char *dbname, error *e);
  *----------------------------------------------------------------------------*/
 
 err_t pgr_close (struct pager *p, error *e);
-void  pgr_attach_lock_table (struct pager *p, struct lockt *lt);
 err_t pgr_crash (struct pager *p, error *e);
 
 /*-----------------------------------------------------------------------------
@@ -297,13 +296,6 @@ err_t pgr_crash (struct pager *p, error *e);
 p_size pgr_get_npages (struct pager *p);
 bool   pgr_isnew (const struct pager *p);
 void   i_log_page_table (int log_level, bool only_present, struct pager *p);
-err_t  pgr_read_header (struct pager *p, error *e);
-err_t  pgr_write_header (struct pager *p, error *e);
-err_t  pgr_write_next_lsn (struct pager *p, lsn lsn, error *e);
-err_t  pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e);
-err_t  pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e);
-
-err_t pgr_recover (struct pager *p, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Transaction Control
@@ -313,27 +305,20 @@ err_t pgr_recover (struct pager *p, error *e);
 err_t pgr_begin_txn (struct txn *tx, struct pager *p, error *e);
 err_t pgr_commit (struct pager *p, struct txn *tx, error *e);
 err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e);
-err_t pgr_flush_wall (struct pager *p, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Inner Utils
  * @brief Internal structural maintenance, unsafe flushes, and file sizing
  *----------------------------------------------------------------------------*/
 
-err_t pgr_refresh_wal (struct pager *p, error *e);
-void  pgr_unfix (struct pager *p, page_h *h, int flags);
-i32   pgr_reserve_and_ctrl_lock (struct pager *p, error *e);
 err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e);
 err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e);
-err_t
-pgr_extend_file (const struct pager *p, pgno npages, struct txn *tx, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Checkpoints
  * @brief Synchronization barriers to flush dirty state and truncate the WAL
  *----------------------------------------------------------------------------*/
 
-err_t pgr_deletion_blocking_checkpoint (struct pager *p, error *e);
 err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
 
 /*-----------------------------------------------------------------------------
@@ -416,11 +401,6 @@ struct aries_ctx
 err_t       aries_ctx_create (struct aries_ctx *dest, error *e);
 void        aries_ctx_free (struct aries_ctx *ctx);
 struct txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e);
-
-err_t pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Short Hands

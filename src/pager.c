@@ -99,22 +99,62 @@ pgr_get_npages (struct pager *p)
   return fpgr_get_npages (p->fp);
 }
 
-err_t
+static void
+pgr_unfix (struct pager *p, page_h *h, int flags)
+{
+  ASSERT (h->mode == PHM_X || h->mode == PHM_S);
+
+  latch_lock (&h->pgr->ctrl);
+
+  ASSERT (h->pgr->flags & PW_PRESENT);
+
+  // Need to save this page
+  if (h->mode == PHM_X)
+  {
+    spgno page_lsn = 0;
+
+    // Can only save valid pages
+    ASSERT (
+        !page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL)
+    );
+
+    memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
+
+    latch_lock (&h->pgw->ctrl);
+
+    h->pgw->flags    = 0; // Release pgw
+    h->pgr->wsibling = -1;
+
+    latch_unlock (&h->pgw->ctrl);
+
+    h->pgw = NULL;
+
+    h->mode = PHM_S;
+
+    // Unlock read page data
+    spx_unlock_x (&h->pgr->data);
+  }
+  else
+  {
+    // Unlock read page data
+    spx_unlock_s (&h->pgr->data);
+  }
+
+  h->pgr->pin--;
+  latch_unlock (&h->pgr->ctrl);
+
+  h->pgr  = NULL;
+  h->mode = PHM_NONE;
+}
+
+static err_t
 pgr_flush_wall (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
   return wal_flush_all (p->ww, e);
 }
 
-void
-pgr_attach_lock_table (struct pager *p, struct lockt *lt)
-{
-  DBG_ASSERT (pager, p);
-  ASSERT (p->lt == NULL);
-  p->lt = lt;
-}
-
-err_t
+static err_t
 pgr_read_header (struct pager *p, error *e)
 {
   if (fpgr_read_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e))
@@ -151,7 +191,7 @@ pgr_read_header (struct pager *p, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 pgr_write_header (struct pager *p, error *e)
 {
   p->header.lsn0csm = checksum_init ();
@@ -168,7 +208,7 @@ pgr_write_header (struct pager *p, error *e)
   return fpgr_write_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e);
 }
 
-err_t
+static err_t
 pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
 {
   p->header.lsn0    = lsn0;
@@ -187,7 +227,7 @@ pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
   );
 }
 
-err_t
+static err_t
 pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
 {
   p->header.lsn1    = lsn1;
@@ -206,7 +246,7 @@ pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
   );
 }
 
-err_t
+static err_t
 pgr_write_next_lsn (struct pager *p, lsn l, error *e)
 {
   if (p->header.lsn0 > p->header.lsn1)
@@ -217,27 +257,6 @@ pgr_write_next_lsn (struct pager *p, lsn l, error *e)
   {
     return pgr_write_lsn0 (p, l, e);
   }
-}
-
-err_t
-pgr_recover (struct pager *p, error *e)
-{
-  // Run ARIES recovery
-  struct aries_ctx ctx;
-  if (aries_ctx_create (&ctx, e))
-  {
-    return error_trace (e);
-  }
-
-  if (pgr_restart (p, &ctx, e))
-  {
-    return error_trace (e);
-  }
-
-  // Start transactions one past maximum txid
-  atomic_store (&p->next_tid, ctx.max_tid + 1);
-
-  return SUCCESS;
 }
 
 #ifndef NTEST
@@ -350,7 +369,7 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
   }
 }
 
-err_t
+static err_t
 pgr_refresh_wal (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
@@ -599,6 +618,461 @@ pgr_cancel (const struct pager *p, page_h *h)
   h->pgr->pin--;
   h->pgr  = NULL;
   h->mode = PHM_NONE;
+}
+
+/******************************************************************************
+ * SECTION: pgr_restart_analysis
+ * ----------------------------------------------------------------------------
+ * @brief Analysis phase of ARIES (Figure 10)
+ ******************************************************************************/
+
+static err_t
+pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
+{
+  i_log_info ("Starting Analysis phase\n");
+
+  lsn read_lsn = 0;
+
+  struct wal_rec_hdr_read *log_rec = wal_read_next (p->ww, &read_lsn, e);
+
+  if (log_rec == NULL)
+  {
+    goto failed;
+  }
+
+  while (log_rec->type != WL_EOF)
+  {
+    stxid       tid = wrh_get_tid (log_rec);
+    struct txn *tx  = NULL;
+
+    if (tid >= 0)
+    {
+      if (tid > (stxid)ctx->max_tid)
+      {
+        ctx->max_tid = tid;
+      }
+
+      slsn prev_lsn = wrh_get_prev_lsn (log_rec);
+      ASSERT (prev_lsn >= 0);
+
+      // Get or create the transaction associated with this log record
+      if (!txnt_get (&tx, ctx->txt, tid))
+      {
+        // Allocate
+        tx = aries_ctx_txn_alloc (ctx, e);
+        if (tx == NULL)
+        {
+          goto failed;
+        }
+
+        txn_init (
+            tx,
+            tid,
+            (struct txn_data){
+                .state         = TX_CANDIDATE_FOR_UNDO,
+                .last_lsn      = read_lsn,
+                .undo_next_lsn = prev_lsn,
+            }
+        );
+
+        // Insert this transaction
+        txnt_insert_txn_if_not_exists (ctx->txt, tx);
+      }
+      else
+      {
+        txn_update (tx, TX_CANDIDATE_FOR_UNDO, read_lsn, prev_lsn);
+      }
+    }
+
+    switch (log_rec->type)
+    {
+      case WL_UPDATE:
+      case WL_CLR:
+      {
+        tx->data.last_lsn = read_lsn;
+
+        if (log_rec->type == WL_UPDATE)
+        {
+          if (wrh_is_undoable (log_rec))
+          {
+            tx->data.undo_next_lsn = read_lsn;
+          }
+        }
+        else
+        {
+          tx->data.undo_next_lsn = log_rec->clr.undo_next;
+        }
+
+        if (wrh_is_redoable (log_rec))
+        {
+          if (dpgt_add_if_ne (
+                  ctx->dpt,
+                  wrh_get_affected_pg (log_rec),
+                  read_lsn,
+                  e
+              ))
+          {
+            goto failed;
+          }
+        }
+
+        break;
+      }
+      case WL_COMMIT:
+      {
+        tx->data.last_lsn = read_lsn;
+        tx->data.state    = TX_COMMITTED;
+        break;
+      }
+      case WL_BEGIN:
+      {
+        break;
+      }
+      case WL_END:
+      {
+        txnt_remove_txn_expect (ctx->txt, tx);
+        break;
+      }
+      case WL_EOF:
+      {
+        UNREACHABLE ();
+      }
+    }
+
+    log_rec = wal_read_next (p->ww, &read_lsn, e);
+
+    if (log_rec == NULL)
+    {
+      goto failed;
+    }
+  }
+
+  u32 before = txnt_get_size (ctx->txt);
+  i_log_info ("Analysis phase, txns in table: %d\n", before);
+
+  // Append end logs and remove rolled back and committed txns
+  for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i)
+  {
+    struct txn *tx = ((struct txn **)ctx->txn_ptrs.data)[i];
+
+    bool nothing_to_do =
+        tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
+    bool committed = tx->data.state == TX_COMMITTED;
+
+    if (nothing_to_do || committed)
+    {
+      // Append an end log
+      const slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+
+      if (l < 0)
+      {
+        goto failed;
+      }
+      txnt_remove_txn_expect (ctx->txt, tx);
+      txn_update_state (tx, TX_DONE);
+    }
+  }
+
+  if (dpgt_get_size (ctx->dpt) == 0)
+  {
+    ctx->redo_lsn = LSN_NULL;
+  }
+  else
+  {
+    ctx->redo_lsn = dpgt_min_rec_lsn (ctx->dpt);
+  }
+
+  i_log_info (
+      "Analysis phase: %d txns were removed\n",
+      before - txnt_get_size (ctx->txt)
+  );
+  i_log_info ("Done with Analysis. RedoLSN = %" PRlsn "\n", ctx->redo_lsn);
+
+  return SUCCESS;
+
+failed:
+  return error_trace (e);
+}
+
+/******************************************************************************
+ * SECTION: pgr_restart_redo
+ * ----------------------------------------------------------------------------
+ * @brief Redo phase of ARIES (Figure 11)
+ ******************************************************************************/
+
+static err_t
+pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
+{
+  i_log_info ("Starting Redo phase\n");
+
+  lsn read_lsn = ctx->redo_lsn;
+
+  // Read the redo lsn log
+  struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, read_lsn, e);
+  if (log_rec == NULL)
+  {
+    goto failed;
+  }
+
+  u32 nredone = 0;
+
+  while (log_rec->type != WL_EOF)
+  {
+    switch (log_rec->type)
+    {
+      case WL_UPDATE:
+      case WL_CLR:
+      {
+        if (wrh_is_redoable (log_rec))
+        {
+          lsn  rec_lsn;
+          pgno pg = wrh_get_affected_pg (log_rec);
+
+          if (!dpgt_get (&rec_lsn, ctx->dpt, pg))
+          {
+            break;
+          }
+
+          if (read_lsn < rec_lsn)
+          {
+            break;
+          }
+
+          page_h ph = page_h_create ();
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e))
+          {
+            goto failed;
+          }
+
+          pgno page_lsn = page_get_page_lsn (page_h_ro (&ph));
+          if (page_lsn < read_lsn)
+          {
+            wrh_redo (log_rec, &ph);
+            nredone++;
+            page_set_page_lsn (page_h_w (&ph), read_lsn);
+          }
+          else
+          {
+            dpgt_update (ctx->dpt, pg, page_lsn + 1);
+          }
+
+          pgr_unfix (p, &ph, PG_PERMISSIVE);
+        }
+        break;
+      }
+      default:
+      {
+        // Do nothing
+        break;
+      }
+    }
+
+    // Read next log record
+    log_rec = wal_read_next (p->ww, &read_lsn, e);
+    if (log_rec == NULL)
+    {
+      goto failed;
+    }
+  }
+
+  i_log_info ("Redo phase done. Total redos: %d\n", nredone);
+
+  return SUCCESS;
+
+failed:
+  return error_trace (e);
+}
+
+/******************************************************************************
+ * SECTION: pgr_restart_undo
+ * ----------------------------------------------------------------------------
+ * @brief Undo phase of ARIES (Figure 12)
+ ******************************************************************************/
+
+static err_t
+pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
+{
+  i_log_info ("Starting Undo phase.\n");
+
+  while (true)
+  {
+    slsn undo_lsn = txnt_max_u_undo_lsn (ctx->txt);
+    if (undo_lsn < 0)
+    {
+      break;
+    }
+
+    struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, undo_lsn, e);
+    if (log_rec == NULL)
+    {
+      goto failed;
+    }
+
+    switch (log_rec->type)
+    {
+      case WL_UPDATE:
+      {
+        struct txn *tx;
+        txnt_get_expect (&tx, ctx->txt, log_rec->update.tid);
+
+        if (wrh_is_undoable (log_rec))
+        {
+          page_h ph = page_h_create ();
+          if (pgr_get_writable (
+                  &ph,
+                  NULL,
+                  PG_PERMISSIVE,
+                  log_rec->update.phys.pg,
+                  p,
+                  e
+              ))
+          {
+            goto failed;
+          }
+
+          // Undo and Append a clr log
+          slsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
+          if (l < 0)
+          {
+            goto failed;
+          }
+
+          // Set the page lsn
+          page_set_page_lsn (page_h_w (&ph), l);
+
+          // Update the last lsn of the transaction
+          tx->data.last_lsn = l;
+
+          // Release this page
+          pgr_unfix (p, &ph, PG_PERMISSIVE);
+        }
+
+        // Update undo next page
+        tx->data.undo_next_lsn = log_rec->update.prev;
+
+        if (log_rec->update.prev == 0)
+        {
+          slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+          if (l < 0)
+          {
+            goto failed;
+          }
+          txnt_remove_txn_expect (ctx->txt, tx);
+          txn_update_state (tx, TX_DONE);
+        }
+        break;
+      }
+
+      case WL_CLR:
+      {
+        struct txn *tx;
+        txnt_get_expect (&tx, ctx->txt, log_rec->clr.tid);
+        tx->data.undo_next_lsn = log_rec->clr.undo_next;
+        break;
+      }
+
+      case WL_BEGIN:
+      {
+        struct txn *tx;
+        txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
+
+        slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
+        if (l < 0)
+        {
+          goto failed;
+        }
+        txnt_remove_txn_expect (ctx->txt, tx);
+        txn_update_state (tx, TX_DONE);
+        break;
+      }
+      case WL_COMMIT:
+      case WL_EOF:
+      case WL_END:
+      {
+        UNREACHABLE ();
+      }
+    }
+  }
+
+  i_log_info ("Undo phase done.\n");
+
+  return SUCCESS;
+
+failed:
+  return error_trace (e);
+}
+
+/******************************************************************************
+ * SECTION: pgr_restart
+ * ----------------------------------------------------------------------------
+ * @brief ARIES implementation of pager restart
+ ******************************************************************************/
+
+/*
+ * Entry point for ARIES crash recovery.
+ *
+ * Sets PGR_ISRESTARTING for the duration of recovery so that pgr_flush()
+ * skips the WAL-before-page flush (the WAL is already ahead of any page
+ * being replayed).  Runs the three phases in order and frees the aries_ctx
+ * on completion, whether or not an error occurred.
+ */
+static err_t
+pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
+{
+  err_t ret = SUCCESS;
+  p->flags |= PGR_ISRESTARTING;
+
+  // ANALYSIS
+  if (pgr_restart_analysis (p, ctx, e))
+  {
+    goto theend;
+  }
+
+  if (ctx->redo_lsn != LSN_NULL)
+  {
+    // REDO
+    if (pgr_restart_redo (p, ctx, e))
+    {
+      goto theend;
+    }
+
+    // UNDO
+    if (pgr_restart_undo (p, ctx, e))
+    {
+      goto theend;
+    }
+  }
+
+  // This is a good time to do a checkpoint
+  // pgr_deletion_blocking_checkpoint (p, e);
+
+theend:
+  dpgt_merge_into (p->dpt, ctx->dpt, e);
+  aries_ctx_free (ctx);
+  p->flags &= ~PGR_ISRESTARTING;
+
+  return error_trace (e);
+}
+
+static err_t
+pgr_recover (struct pager *p, error *e)
+{
+  // Run ARIES recovery
+  struct aries_ctx ctx;
+  if (aries_ctx_create (&ctx, e))
+  {
+    return error_trace (e);
+  }
+
+  if (pgr_restart (p, &ctx, e))
+  {
+    return error_trace (e);
+  }
+
+  // Start transactions one past maximum txid
+  atomic_store (&p->next_tid, ctx.max_tid + 1);
+
+  return SUCCESS;
 }
 
 /******************************************************************************
@@ -1199,7 +1673,7 @@ pgr_delete_single_file (const char *dbname, error *e)
  * @brief Blocking checkpoint that delete's the WAL
  ******************************************************************************/
 
-err_t
+static err_t
 pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 {
   ASSERT (p->ww);
@@ -1324,7 +1798,7 @@ failed:
  *
  *   5. Actually extend the file on disk.
  */
-err_t
+static err_t
 pgr_extend_file (
     const struct pager *p,
     const pgno          npages,
@@ -1424,6 +1898,129 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
 theend:
   return error_trace (e);
 }
+
+/******************************************************************************
+ * SECTION: pgr_reserve_and_ctrl_lock
+ * ----------------------------------------------------------------------------
+ * @brief Reserves a page frame - at the end - page is control locked
+ ******************************************************************************/
+
+static inline u32
+pgr_spin_clock (struct pager *p)
+{
+  ASSERT (MEMORY_PAGE_LEN % 2 == 0); // For overflow and faster modulo
+  return atomic_fetch_add (&p->clock, 1) & (MEMORY_PAGE_LEN - 1);
+}
+
+static i32
+pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
+{
+  DBG_ASSERT (pager, p);
+
+  struct page_frame *mp    = NULL; // The working page frame
+  u32                clock = pgr_spin_clock (p);
+  bool ready_to_evict      = false; // First round - don't evict any pages
+
+  /**
+   * Loop forever - this is highly concurrent
+   */
+  for (;; clock = pgr_spin_clock (p))
+  {
+    mp = &p->pages[clock];
+
+    if (!latch_trylock (&mp->ctrl))
+    {
+      // If we can't lock - don't spin - just move on and find a new slot
+      continue;
+    }
+
+    // Found an empty spot
+    if (!(mp->flags & PW_PRESENT))
+    {
+      goto found_spot;
+    }
+
+    // Pinned, skip it
+    if (mp->pin > 0)
+    {
+      latch_unlock (&mp->ctrl);
+      continue;
+    }
+
+    // Access bit is on - set off and continue
+    if (mp->flags & PW_ACCESS)
+    {
+      mp->flags &= ~PW_ACCESS;
+
+      latch_unlock (&mp->ctrl);
+      continue;
+    }
+
+    if (ready_to_evict)
+    {
+      // Found a spot - but it's not being used - safe to evict it
+      if (pgr_evict_unsafe (p, mp, e) < 0)
+      {
+        return error_trace (e);
+      }
+
+      goto found_spot;
+    }
+    else
+    {
+      // The first round - don't evict anything
+      latch_unlock (&mp->ctrl);
+      ready_to_evict = true;
+    }
+  }
+
+found_spot:
+  return clock;
+}
+
+#ifndef NTEST
+TEST (pgr_reserve_and_ctrl_lock_st)
+{
+  TEST_CASE ("single threaded clock iterator test")
+  {
+    struct pgr_fixture pgr;
+    pgr_fixture_create (&pgr);
+
+    i32 clock1   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    pgr.p->clock = 0;
+    i32 clock2   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    pgr.p->clock = 0;
+    i32 clock3   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    pgr.p->clock = 0;
+
+    test_assert_int_equal (clock1, 0);
+    test_assert_int_equal (clock2, 1);
+    test_assert_int_equal (clock3, 2);
+
+    latch_unlock (&pgr.p->pages[0].ctrl);
+    latch_unlock (&pgr.p->pages[1].ctrl);
+    latch_unlock (&pgr.p->pages[2].ctrl);
+
+    // If I don't do anything and just unlock - it should repeat
+    clock1       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    pgr.p->clock = 0;
+    clock2       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    pgr.p->clock = 0;
+    clock3       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    pgr.p->clock = 0;
+
+    test_assert_int_equal (clock1, 0);
+    test_assert_int_equal (clock2, 1);
+    test_assert_int_equal (clock3, 2);
+
+    latch_unlock (&pgr.p->pages[0].ctrl);
+    latch_unlock (&pgr.p->pages[1].ctrl);
+    latch_unlock (&pgr.p->pages[2].ctrl);
+
+    pgr_fixture_teardown (&pgr);
+  }
+}
+#endif
 
 /******************************************************************************
  * SECTION: pgr_get
@@ -2260,563 +2857,6 @@ pgr_release_with_log (
 }
 
 /******************************************************************************
- * SECTION: pgr_reserve_and_ctrl_lock
- * ----------------------------------------------------------------------------
- * @brief Reserves a page frame - at the end - page is control locked
- ******************************************************************************/
-
-static inline u32
-pgr_spin_clock (struct pager *p)
-{
-  ASSERT (MEMORY_PAGE_LEN % 2 == 0); // For overflow and faster modulo
-  return atomic_fetch_add (&p->clock, 1) & (MEMORY_PAGE_LEN - 1);
-}
-
-i32
-pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
-{
-  DBG_ASSERT (pager, p);
-
-  struct page_frame *mp    = NULL; // The working page frame
-  u32                clock = pgr_spin_clock (p);
-  bool ready_to_evict      = false; // First round - don't evict any pages
-
-  /**
-   * Loop forever - this is highly concurrent
-   */
-  for (;; clock = pgr_spin_clock (p))
-  {
-    mp = &p->pages[clock];
-
-    if (!latch_trylock (&mp->ctrl))
-    {
-      // If we can't lock - don't spin - just move on and find a new slot
-      continue;
-    }
-
-    // Found an empty spot
-    if (!(mp->flags & PW_PRESENT))
-    {
-      goto found_spot;
-    }
-
-    // Pinned, skip it
-    if (mp->pin > 0)
-    {
-      latch_unlock (&mp->ctrl);
-      continue;
-    }
-
-    // Access bit is on - set off and continue
-    if (mp->flags & PW_ACCESS)
-    {
-      mp->flags &= ~PW_ACCESS;
-
-      latch_unlock (&mp->ctrl);
-      continue;
-    }
-
-    if (ready_to_evict)
-    {
-      // Found a spot - but it's not being used - safe to evict it
-      if (pgr_evict_unsafe (p, mp, e) < 0)
-      {
-        return error_trace (e);
-      }
-
-      goto found_spot;
-    }
-    else
-    {
-      // The first round - don't evict anything
-      latch_unlock (&mp->ctrl);
-      ready_to_evict = true;
-    }
-  }
-
-found_spot:
-  return clock;
-}
-
-#ifndef NTEST
-TEST (pgr_reserve_and_ctrl_lock_st)
-{
-  TEST_CASE ("single threaded clock iterator test")
-  {
-    struct pgr_fixture pgr;
-    pgr_fixture_create (&pgr);
-
-    i32 clock1   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
-    pgr.p->clock = 0;
-    i32 clock2   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
-    pgr.p->clock = 0;
-    i32 clock3   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
-    pgr.p->clock = 0;
-
-    test_assert_int_equal (clock1, 0);
-    test_assert_int_equal (clock2, 1);
-    test_assert_int_equal (clock3, 2);
-
-    latch_unlock (&pgr.p->pages[0].ctrl);
-    latch_unlock (&pgr.p->pages[1].ctrl);
-    latch_unlock (&pgr.p->pages[2].ctrl);
-
-    // If I don't do anything and just unlock - it should repeat
-    clock1       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
-    pgr.p->clock = 0;
-    clock2       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
-    pgr.p->clock = 0;
-    clock3       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
-    pgr.p->clock = 0;
-
-    test_assert_int_equal (clock1, 0);
-    test_assert_int_equal (clock2, 1);
-    test_assert_int_equal (clock3, 2);
-
-    latch_unlock (&pgr.p->pages[0].ctrl);
-    latch_unlock (&pgr.p->pages[1].ctrl);
-    latch_unlock (&pgr.p->pages[2].ctrl);
-
-    pgr_fixture_teardown (&pgr);
-  }
-}
-#endif
-
-/******************************************************************************
- * SECTION: pgr_restart
- * ----------------------------------------------------------------------------
- * @brief ARIES implementation of pager restart
- ******************************************************************************/
-
-/*
- * Entry point for ARIES crash recovery.
- *
- * Sets PGR_ISRESTARTING for the duration of recovery so that pgr_flush()
- * skips the WAL-before-page flush (the WAL is already ahead of any page
- * being replayed).  Runs the three phases in order and frees the aries_ctx
- * on completion, whether or not an error occurred.
- */
-err_t
-pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
-{
-  err_t ret = SUCCESS;
-  p->flags |= PGR_ISRESTARTING;
-
-  // ANALYSIS
-  if (pgr_restart_analysis (p, ctx, e))
-  {
-    goto theend;
-  }
-
-  if (ctx->redo_lsn != LSN_NULL)
-  {
-    // REDO
-    if (pgr_restart_redo (p, ctx, e))
-    {
-      goto theend;
-    }
-
-    // UNDO
-    if (pgr_restart_undo (p, ctx, e))
-    {
-      goto theend;
-    }
-  }
-
-  // This is a good time to do a checkpoint
-  // pgr_deletion_blocking_checkpoint (p, e);
-
-theend:
-  dpgt_merge_into (p->dpt, ctx->dpt, e);
-  aries_ctx_free (ctx);
-  p->flags &= ~PGR_ISRESTARTING;
-
-  return error_trace (e);
-}
-
-/******************************************************************************
- * SECTION: pgr_restart_analysis
- * ----------------------------------------------------------------------------
- * @brief Analysis phase of ARIES (Figure 10)
- ******************************************************************************/
-
-err_t
-pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
-{
-  i_log_info ("Starting Analysis phase\n");
-
-  lsn read_lsn = 0;
-
-  struct wal_rec_hdr_read *log_rec = wal_read_next (p->ww, &read_lsn, e);
-
-  if (log_rec == NULL)
-  {
-    goto failed;
-  }
-
-  while (log_rec->type != WL_EOF)
-  {
-    stxid       tid = wrh_get_tid (log_rec);
-    struct txn *tx  = NULL;
-
-    if (tid >= 0)
-    {
-      if (tid > (stxid)ctx->max_tid)
-      {
-        ctx->max_tid = tid;
-      }
-
-      slsn prev_lsn = wrh_get_prev_lsn (log_rec);
-      ASSERT (prev_lsn >= 0);
-
-      // Get or create the transaction associated with this log record
-      if (!txnt_get (&tx, ctx->txt, tid))
-      {
-        // Allocate
-        tx = aries_ctx_txn_alloc (ctx, e);
-        if (tx == NULL)
-        {
-          goto failed;
-        }
-
-        txn_init (
-            tx,
-            tid,
-            (struct txn_data){
-                .state         = TX_CANDIDATE_FOR_UNDO,
-                .last_lsn      = read_lsn,
-                .undo_next_lsn = prev_lsn,
-            }
-        );
-
-        // Insert this transaction
-        txnt_insert_txn_if_not_exists (ctx->txt, tx);
-      }
-      else
-      {
-        txn_update (tx, TX_CANDIDATE_FOR_UNDO, read_lsn, prev_lsn);
-      }
-    }
-
-    switch (log_rec->type)
-    {
-      case WL_UPDATE:
-      case WL_CLR:
-      {
-        tx->data.last_lsn = read_lsn;
-
-        if (log_rec->type == WL_UPDATE)
-        {
-          if (wrh_is_undoable (log_rec))
-          {
-            tx->data.undo_next_lsn = read_lsn;
-          }
-        }
-        else
-        {
-          tx->data.undo_next_lsn = log_rec->clr.undo_next;
-        }
-
-        if (wrh_is_redoable (log_rec))
-        {
-          if (dpgt_add_if_ne (
-                  ctx->dpt,
-                  wrh_get_affected_pg (log_rec),
-                  read_lsn,
-                  e
-              ))
-          {
-            goto failed;
-          }
-        }
-
-        break;
-      }
-      case WL_COMMIT:
-      {
-        tx->data.last_lsn = read_lsn;
-        tx->data.state    = TX_COMMITTED;
-        break;
-      }
-      case WL_BEGIN:
-      {
-        break;
-      }
-      case WL_END:
-      {
-        txnt_remove_txn_expect (ctx->txt, tx);
-        break;
-      }
-      case WL_EOF:
-      {
-        UNREACHABLE ();
-      }
-    }
-
-    log_rec = wal_read_next (p->ww, &read_lsn, e);
-
-    if (log_rec == NULL)
-    {
-      goto failed;
-    }
-  }
-
-  u32 before = txnt_get_size (ctx->txt);
-  i_log_info ("Analysis phase, txns in table: %d\n", before);
-
-  // Append end logs and remove rolled back and committed txns
-  for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i)
-  {
-    struct txn *tx = ((struct txn **)ctx->txn_ptrs.data)[i];
-
-    bool nothing_to_do =
-        tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
-    bool committed = tx->data.state == TX_COMMITTED;
-
-    if (nothing_to_do || committed)
-    {
-      // Append an end log
-      const slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-
-      if (l < 0)
-      {
-        goto failed;
-      }
-      txnt_remove_txn_expect (ctx->txt, tx);
-      txn_update_state (tx, TX_DONE);
-    }
-  }
-
-  if (dpgt_get_size (ctx->dpt) == 0)
-  {
-    ctx->redo_lsn = LSN_NULL;
-  }
-  else
-  {
-    ctx->redo_lsn = dpgt_min_rec_lsn (ctx->dpt);
-  }
-
-  i_log_info (
-      "Analysis phase: %d txns were removed\n",
-      before - txnt_get_size (ctx->txt)
-  );
-  i_log_info ("Done with Analysis. RedoLSN = %" PRlsn "\n", ctx->redo_lsn);
-
-  return SUCCESS;
-
-failed:
-  return error_trace (e);
-}
-
-/******************************************************************************
- * SECTION: pgr_restart_redo
- * ----------------------------------------------------------------------------
- * @brief Redo phase of ARIES (Figure 11)
- ******************************************************************************/
-
-err_t
-pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
-{
-  i_log_info ("Starting Redo phase\n");
-
-  lsn read_lsn = ctx->redo_lsn;
-
-  // Read the redo lsn log
-  struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, read_lsn, e);
-  if (log_rec == NULL)
-  {
-    goto failed;
-  }
-
-  u32 nredone = 0;
-
-  while (log_rec->type != WL_EOF)
-  {
-    switch (log_rec->type)
-    {
-      case WL_UPDATE:
-      case WL_CLR:
-      {
-        if (wrh_is_redoable (log_rec))
-        {
-          lsn  rec_lsn;
-          pgno pg = wrh_get_affected_pg (log_rec);
-
-          if (!dpgt_get (&rec_lsn, ctx->dpt, pg))
-          {
-            break;
-          }
-
-          if (read_lsn < rec_lsn)
-          {
-            break;
-          }
-
-          page_h ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e))
-          {
-            goto failed;
-          }
-
-          pgno page_lsn = page_get_page_lsn (page_h_ro (&ph));
-          if (page_lsn < read_lsn)
-          {
-            wrh_redo (log_rec, &ph);
-            nredone++;
-            page_set_page_lsn (page_h_w (&ph), read_lsn);
-          }
-          else
-          {
-            dpgt_update (ctx->dpt, pg, page_lsn + 1);
-          }
-
-          pgr_unfix (p, &ph, PG_PERMISSIVE);
-        }
-        break;
-      }
-      default:
-      {
-        // Do nothing
-        break;
-      }
-    }
-
-    // Read next log record
-    log_rec = wal_read_next (p->ww, &read_lsn, e);
-    if (log_rec == NULL)
-    {
-      goto failed;
-    }
-  }
-
-  i_log_info ("Redo phase done. Total redos: %d\n", nredone);
-
-  return SUCCESS;
-
-failed:
-  return error_trace (e);
-}
-
-/******************************************************************************
- * SECTION: pgr_restart_undo
- * ----------------------------------------------------------------------------
- * @brief Undo phase of ARIES (Figure 12)
- ******************************************************************************/
-
-err_t
-pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
-{
-  i_log_info ("Starting Undo phase.\n");
-
-  while (true)
-  {
-    slsn undo_lsn = txnt_max_u_undo_lsn (ctx->txt);
-    if (undo_lsn < 0)
-    {
-      break;
-    }
-
-    struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, undo_lsn, e);
-    if (log_rec == NULL)
-    {
-      goto failed;
-    }
-
-    switch (log_rec->type)
-    {
-      case WL_UPDATE:
-      {
-        struct txn *tx;
-        txnt_get_expect (&tx, ctx->txt, log_rec->update.tid);
-
-        if (wrh_is_undoable (log_rec))
-        {
-          page_h ph = page_h_create ();
-          if (pgr_get_writable (
-                  &ph,
-                  NULL,
-                  PG_PERMISSIVE,
-                  log_rec->update.phys.pg,
-                  p,
-                  e
-              ))
-          {
-            goto failed;
-          }
-
-          // Undo and Append a clr log
-          slsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
-          if (l < 0)
-          {
-            goto failed;
-          }
-
-          // Set the page lsn
-          page_set_page_lsn (page_h_w (&ph), l);
-
-          // Update the last lsn of the transaction
-          tx->data.last_lsn = l;
-
-          // Release this page
-          pgr_unfix (p, &ph, PG_PERMISSIVE);
-        }
-
-        // Update undo next page
-        tx->data.undo_next_lsn = log_rec->update.prev;
-
-        if (log_rec->update.prev == 0)
-        {
-          slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-          if (l < 0)
-          {
-            goto failed;
-          }
-          txnt_remove_txn_expect (ctx->txt, tx);
-          txn_update_state (tx, TX_DONE);
-        }
-        break;
-      }
-
-      case WL_CLR:
-      {
-        struct txn *tx;
-        txnt_get_expect (&tx, ctx->txt, log_rec->clr.tid);
-        tx->data.undo_next_lsn = log_rec->clr.undo_next;
-        break;
-      }
-
-      case WL_BEGIN:
-      {
-        struct txn *tx;
-        txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
-
-        slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-        if (l < 0)
-        {
-          goto failed;
-        }
-        txnt_remove_txn_expect (ctx->txt, tx);
-        txn_update_state (tx, TX_DONE);
-        break;
-      }
-      case WL_COMMIT:
-      case WL_EOF:
-      case WL_END:
-      {
-        UNREACHABLE ();
-      }
-    }
-  }
-
-  i_log_info ("Undo phase done.\n");
-
-  return SUCCESS;
-
-failed:
-  return error_trace (e);
-}
-
-/******************************************************************************
  * SECTION: pgr_rollback
  * ----------------------------------------------------------------------------
  * @brief Rollback algorithm from ARIES (Figure 8)
@@ -3242,57 +3282,3 @@ TEST (aries_rollback_clr_not_undone)
   pgr_close (p, &e);
 }
 #endif
-
-/******************************************************************************
- * SECTION: pgr_unfix
- * ----------------------------------------------------------------------------
- * @brief Just unfix a page frame - don't log it
- ******************************************************************************/
-
-void
-pgr_unfix (struct pager *p, page_h *h, int flags)
-{
-  ASSERT (h->mode == PHM_X || h->mode == PHM_S);
-
-  latch_lock (&h->pgr->ctrl);
-
-  ASSERT (h->pgr->flags & PW_PRESENT);
-
-  // Need to save this page
-  if (h->mode == PHM_X)
-  {
-    spgno page_lsn = 0;
-
-    // Can only save valid pages
-    ASSERT (
-        !page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL)
-    );
-
-    memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
-
-    latch_lock (&h->pgw->ctrl);
-
-    h->pgw->flags    = 0; // Release pgw
-    h->pgr->wsibling = -1;
-
-    latch_unlock (&h->pgw->ctrl);
-
-    h->pgw = NULL;
-
-    h->mode = PHM_S;
-
-    // Unlock read page data
-    spx_unlock_x (&h->pgr->data);
-  }
-  else
-  {
-    // Unlock read page data
-    spx_unlock_s (&h->pgr->data);
-  }
-
-  h->pgr->pin--;
-  latch_unlock (&h->pgr->ctrl);
-
-  h->pgr  = NULL;
-  h->mode = PHM_NONE;
-}
