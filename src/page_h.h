@@ -15,12 +15,10 @@
 #ifndef PAGE_H_H
 #define PAGE_H_H
 
-#include "concurrency.h"         // latch
-#include "csx_assert.h"          // DEFINE_DBG_ASSERT
-#include "pages/inner_node.h"    // in_pair
-#include "pages/page.h"          // page
-#include "pages/page_delegate.h" // dlgt_get_size
-#include "stdtypes.h"            // u32 ...etc
+#include "concurrency.h" // latch
+#include "csx_assert.h"  // DEFINE_DBG_ASSERT
+#include "page.h"        // page
+#include "stdtypes.h"    // u32 ...etc
 
 /******************************************************************************
  * SECTION: Page Frame

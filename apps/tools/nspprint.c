@@ -16,8 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "page.h"
 #include "pager.h"
-#include "pages/page.h"
 #include "smartfiles.h"
 
 typedef struct

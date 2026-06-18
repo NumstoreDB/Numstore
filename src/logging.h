@@ -92,6 +92,10 @@ void i_log_internal (
 
 void i_log_flush (void);
 
+#ifndef I_LOG_LEVEL
+#  define I_LOG_LEVEL LOG_TRACE
+#endif
+
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Wrappers
  *----------------------------------------------------------------------------*/

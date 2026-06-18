@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Re-resolve transitive deps so the imported target works for downstreams.
+if(NOT WIN32)
+    find_dependency(Threads)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/numstoreTargets.cmake")
+
+check_required_components(numstore)

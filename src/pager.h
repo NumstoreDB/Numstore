@@ -159,7 +159,7 @@ struct pager_header
 #define KTYPE  pgno
 #define VTYPE  u32
 #define SUFFIX idx
-#include <robin_hood_ht.h>
+#include "robin_hood_ht.h"
 #undef KTYPE
 #undef VTYPE
 #undef SUFFIX

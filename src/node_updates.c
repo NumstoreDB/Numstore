@@ -15,8 +15,7 @@
 #include "node_updates.h"
 
 #include "compile_config.h"
-#include "pages/inner_node.h"
-#include "pages/page.h"
+#include "page.h"
 #include "testing/testing.h"
 
 #define MAX_INNER_NODES_PER_NUPD 6

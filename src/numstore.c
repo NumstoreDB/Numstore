@@ -18,8 +18,8 @@
 #include "compiler.h"
 #include "nshandle.h"
 #include "pager.h"
-#include "rope.h"
-#include "var.h"
+#include "rope_algorithms.h"
+#include "var_algorithms.h"
 
 int
 nsdb_validate (nsdb_t *ns)

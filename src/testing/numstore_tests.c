@@ -15,7 +15,7 @@
 #include "error.h"
 #include "nshandle.h"
 #include "numstore.h"
-#include "var.h"
+#include "var_algorithms.h"
 
 #define ITERS        10
 #define REOPEN_ITERS 20

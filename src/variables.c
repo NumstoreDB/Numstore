@@ -14,7 +14,7 @@
 
 #include "variables.h"
 
-#include "pages/var_hash_page.h"
+#include "page.h"
 #include "testing/testing.h"
 #include "types.h"
 

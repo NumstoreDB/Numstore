@@ -14,8 +14,7 @@
 
 #include "testing/inner_node_testing.h"
 
-#include "pages/inner_node.h"
-#include "pages/page.h"
+#include "page.h"
 #include "testing/testing.h"
 
 #ifndef NTEST

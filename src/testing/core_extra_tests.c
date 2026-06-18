@@ -706,7 +706,8 @@ TEST (strings_are_disjoint_cases)
     const struct string  right[] = {{.len = 4, .data = dc}};
     const struct string *hit     = strings_are_disjoint (left, 2, right, 1);
     test_assert (hit != NULL);
-    test_assert (string_equal (*hit, (struct string){.len = 4, .data = "beta"})
+    test_assert (
+        string_equal (*hit, (struct string){.len = 4, .data = "beta"})
     );
   }
 
