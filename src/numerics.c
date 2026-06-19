@@ -15,7 +15,7 @@
 #include "numerics.h"
 
 #include "csx_assert.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 float
 f16_to_f32 (const u16 h)
@@ -150,23 +150,10 @@ TEST (checksum_execute_incremental)
 #endif
 
 #include <stdlib.h>
-#include <time.h>
 
 #ifdef _MSC_VER
 #  include "intrin.h"
 #endif
-
-void
-rand_seed (void)
-{
-  srand (time (NULL));
-}
-
-void
-rand_seed_with (const u32 seed)
-{
-  srand (seed);
-}
 
 u8
 randu8 (void)
@@ -260,7 +247,6 @@ randu32 (void)
 #ifndef NTEST
 TEST (randu32)
 {
-  srand (0);
   for (int i = 0; i < 1000; ++i)
   {
     const u32 v = randu32 ();
@@ -291,8 +277,6 @@ randu32r (const u32 lower, const u32 upper)
 #ifndef NTEST
 TEST (randu32r)
 {
-  srand (1);
-
   // lower == upper
   test_assert_type_equal (randu32r (5, 5), 5u, u32, "ud");
   test_assert_type_equal (randu32r (0, 0), 0u, u32, "ud");
@@ -369,7 +353,6 @@ randi32e (const i32 lower, const i32 upper)
 #ifndef NTEST
 TEST (randi32r)
 {
-  rand_seed_with (4);
   test_assert_int_equal (randi32r (7, 7), 7);
   test_assert_int_equal (randi32r (I32_MIN, I32_MIN), I32_MIN);
   test_assert_int_equal (randi32r (I32_MAX, I32_MAX), I32_MAX);
@@ -508,7 +491,6 @@ randu64e (const u64 lower, const u64 upper)
 #ifndef NTEST
 TEST (randu64r)
 {
-  srand (3);
   test_assert_type_equal (
       randu64r (1234567890123ull, 1234567890123ull),
       1234567890123ull,
@@ -558,8 +540,6 @@ TEST (randu64r)
 
 TEST (randu64e)
 {
-  srand (7);
-
   // Both endpoints of the exclusive range reachable
   {
     bool saw_lo = false;
@@ -622,7 +602,6 @@ randi64e (const i64 lower, const i64 upper)
 #ifndef NTEST
 TEST (randi64r)
 {
-  srand (11);
   test_assert_type_equal (randi64r (7, 7), 7, i64, PRId64);
   test_assert_type_equal (randi64r (I64_MIN, I64_MIN), I64_MIN, i64, PRId64);
   test_assert_type_equal (randi64r (I64_MAX, I64_MAX), I64_MAX, i64, PRId64);
@@ -645,8 +624,6 @@ TEST (randi64r)
 
 TEST (randi64e)
 {
-  srand (13);
-
   {
     bool saw_lo = false;
     bool saw_hi = false;

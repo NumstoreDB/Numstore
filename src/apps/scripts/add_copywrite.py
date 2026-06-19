@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-IGNORE_BASENAMES = {"testing/testing.h", "csx_assert.h"}
+IGNORE_BASENAMES = {"testing_only/testing.h", "csx_assert.h"}
 SKIP_DIRS = {"build", "node_modules"}
 
 COPYRIGHT_HEADER = """\

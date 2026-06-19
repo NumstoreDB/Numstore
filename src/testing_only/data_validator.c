@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing/data_validator.h"
+#include "testing_only/data_validator.h"
 
 #include "numerics.h" // ptr_range
 

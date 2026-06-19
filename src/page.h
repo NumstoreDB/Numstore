@@ -27,7 +27,7 @@
 #include "serial.h"   // bytes
 #include "stdtypes.h" // u32 ...etc
 #include "stdtypes.h" // u8 ...etc
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 /******************************************************************************
  * SECTION: Page Common

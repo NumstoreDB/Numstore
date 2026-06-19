@@ -1,7 +1,7 @@
 import os
 
 ROOTS = ["src", "include", "apps", "bindings"]
-OLD, NEW = "page_h.h", "pager.h"
+OLD, NEW = "testing_only/", "testing_only/"
 
 for ROOT in ROOTS:
     for dirpath, _, files in os.walk(ROOT):

@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing/irwr_swarm_test_fixture.h"
+#include "testing_only/irwr_swarm_test_fixture.h"
 
 #include <stdint.h>
 #include <stdlib.h> // abort
@@ -30,8 +30,8 @@ irwr_swmt_ASSERT (int result)
 {
   if (!result)
   {
-    printf ("Failed irwr_swarm test\n");
-    abort ();
+    i_log_failure ("Failed Insert Read Write Remove test\n");
+    panic ("Aborting early\n");
   }
 }
 
@@ -229,7 +229,7 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
     }
   }
 
-  enum action_type action = (enum action_type)index;
+  enum irwr_action_type action = (enum irwr_action_type)index;
 
   switch (action)
   {
@@ -434,10 +434,6 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   u64 got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
   irwr_swmt_ASSERT (got == (u64)len);
 
-  if (memcmp (db_buf, ref_buf, buf_sz) != 0)
-  {
-    printf ("HERE");
-  }
   irwr_swmt_ASSERT (memcmp (db_buf, ref_buf, buf_sz) == 0);
 
   free (db_buf);

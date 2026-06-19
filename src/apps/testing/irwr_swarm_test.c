@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "testing/cgd_swarm_test_fixture.h"
+#include "testing_only/irwr_swarm_test_fixture.h"
 
 #define DEFAULT_TIMEOUT_SECONDS 10
 
@@ -50,19 +50,27 @@ main (int argc, char *argv[])
     }
   }
 
-  int start_enabled[CDS_AT_LEN];
-  for (int i = 0; i < CDS_AT_LEN; ++i)
+  srand (10000);
+
+  int start_enabled[IRWR_AT_LEN];
+  for (int i = 0; i < IRWR_AT_LEN; ++i)
   {
     start_enabled[i] = 1;
   }
 
-  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
-  srand (100);
+  struct irwr_swarm_test *meta = irwr_swmt_open (
+      start_enabled,
+      "test",
+      100000,
+      "testvar",
+      "u32",
+      sizeof (u32)
+  );
 
 #if PLATFORM_WINDOWS
   if (signal (SIGINT, handle_sigint) == SIG_ERR)
   {
-    cgd_swmt_close (meta);
+    irwr_swmt_close (meta);
     return 0;
   }
 #else
@@ -72,7 +80,7 @@ main (int argc, char *argv[])
   sa.sa_flags = 0;
   if (sigaction (SIGINT, &sa, NULL) == -1)
   {
-    cgd_swmt_close (meta);
+    irwr_swmt_close (meta);
     return 0;
   }
 #endif
@@ -85,9 +93,9 @@ main (int argc, char *argv[])
     {
       break;
     }
-    cgd_swmt_step (meta);
+    irwr_swmt_step (meta);
   }
 
-  cgd_swmt_close (meta);
+  irwr_swmt_close (meta);
   return 0;
 }

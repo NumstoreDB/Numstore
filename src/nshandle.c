@@ -15,7 +15,7 @@
 #include "nshandle.h"
 
 #include "pager.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 #include "var_algorithms.h"
 
 struct nshandle *

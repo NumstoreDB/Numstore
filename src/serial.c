@@ -15,7 +15,7 @@
 #include "serial.h"
 
 #include "csx_assert.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 /////////////////////////////////////////////////////////////////////
 ////// String

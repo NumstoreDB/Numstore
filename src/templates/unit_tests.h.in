@@ -20,12 +20,11 @@
 #include "error.h"
 #include "logging.h"
 #include "os.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
-int
-main (const int argc, char **argv)
+HEADER_FUNC int
+run_unit_tests (const char* filter)
 {
-  const char *filter = (argc > 1) ? argv[1] : NULL;
   int ntests = 0;
 
   error   e = error_create ();

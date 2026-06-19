@@ -15,8 +15,8 @@
 #include "nshandle.h"
 #include "pager.h"
 #include "smartfiles.h"
-#include "testing/data_validator.h"
-#include "testing/smfile_test_fixture.h"
+#include "testing_only/data_validator.h"
+#include "testing_only/smfile_test_fixture.h"
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)

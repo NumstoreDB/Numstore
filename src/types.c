@@ -17,7 +17,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "numerics.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 #include "variables.h"
 
 /******************************************************************************

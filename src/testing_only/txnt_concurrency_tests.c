@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing/testing.h" // TEST
+#include "testing_only/testing.h" // TEST
 #include "txn_table.h"       // txn
 
 #ifndef NTEST

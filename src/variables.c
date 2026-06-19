@@ -15,7 +15,7 @@
 #include "variables.h"
 
 #include "page.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 #include "types.h"
 
 bool

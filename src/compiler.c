@@ -20,7 +20,7 @@
 #include "numerics.h"        // parse_i32_expect
 #include "query.h"           // query
 #include "serial.h"          // string_equal
-#include "testing/testing.h" // TEST
+#include "testing_only/testing.h" // TEST
 #include "types.h"           // type_Ref
 #include "utils.h"           // case_ENUM_RETURN_STRING
 

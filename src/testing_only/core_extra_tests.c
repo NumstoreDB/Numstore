@@ -17,7 +17,7 @@
 #include "platform.h"    // math.h string.h
 #include "serial.h"
 #include "stdtypes.h"        // u32
-#include "testing/testing.h" // TEST
+#include "testing_only/testing.h" // TEST
 
 #ifndef NTEST
 
