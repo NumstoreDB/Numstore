@@ -164,13 +164,13 @@ install(TARGETS numstore
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(FILES "${PROJECT_BINARY_DIR}/src/numstore.h"
+install(FILES "${PROJECT_SOURCE_DIR}/src/numstore.h"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(FILES "${PROJECT_BINARY_DIR}/src/smartfiles.h"
+install(FILES "${PROJECT_SOURCE_DIR}/src/smartfiles.h"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(FILES "${PROJECT_BINARY_DIR}/src/compile_config.h"
+install(FILES "${PROJECT_SOURCE_DIR}/src/compile_config.h"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
