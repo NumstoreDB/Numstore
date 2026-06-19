@@ -29,7 +29,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
 include(GNUInstallDirs)
@@ -220,6 +220,10 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/numstore.pc"
 # CPack — .tar.gz / .zip / .deb / .rpm
 ########################################################################
 include(InstallRequiredSystemLibraries)
+
+if(NOT CPACK_BUILD_CONFIG)
+    set(CPACK_BUILD_CONFIG Release)
+endif()
 
 set(CPACK_PACKAGE_NAME                "numstore")
 set(CPACK_PACKAGE_VENDOR              "NumStore Project")

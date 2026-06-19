@@ -114,12 +114,12 @@
     }
   ],
   "buildPresets": [
-    { "name": "package",          "configurePreset": "package" },
-    { "name": "release",          "configurePreset": "release" },
-    { "name": "debug",            "configurePreset": "debug" },
-    { "name": "ci-valgrind",      "configurePreset": "ci-valgrind" },
-    { "name": "ci-tests",         "configurePreset": "ci-tests" },
-    { "name": "ci-release-tests", "configurePreset": "ci-release-tests" },
-    { "name": "ci-coverage",      "configurePreset": "ci-coverage" }
-  ]
+  { "name": "package",          "configurePreset": "package",          "configuration": "Release" },
+  { "name": "release",          "configurePreset": "release",          "configuration": "Release" },
+  { "name": "debug",            "configurePreset": "debug",            "configuration": "Debug"   },
+  { "name": "ci-valgrind",      "configurePreset": "ci-valgrind",      "configuration": "Debug"   },
+  { "name": "ci-tests",         "configurePreset": "ci-tests",         "configuration": "Debug"   },
+  { "name": "ci-release-tests", "configurePreset": "ci-release-tests", "configuration": "Release" },
+  { "name": "ci-coverage",      "configurePreset": "ci-coverage",      "configuration": "Debug"   }
+]
 }
