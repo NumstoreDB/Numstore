@@ -32,7 +32,7 @@
 #include "numstore.h"  // nsdb_t
 
 // Actions you can take in a database
-enum action_type
+enum cgd_action_type
 {
   // Other outside actions that can occur
   CDS_BEGIN_TXN,

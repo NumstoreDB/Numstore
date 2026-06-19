@@ -16,7 +16,7 @@
 
 #include "collections.h"
 #include "lock_table.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 /******************************************************************************
  * SECTION: Transaction

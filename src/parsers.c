@@ -17,7 +17,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "query.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 /******************************************************************************
  * SECTION: Multi User Stride

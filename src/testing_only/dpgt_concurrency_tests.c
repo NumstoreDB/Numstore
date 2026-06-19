@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "dirty_page_table.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 #ifndef NTEST
 struct dpgt_thread_ctx

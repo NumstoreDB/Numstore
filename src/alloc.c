@@ -21,7 +21,7 @@
 #include "error.h"
 #include "numerics.h"
 #include "os.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 #include "utils.h"
 
 /******************************************************************************

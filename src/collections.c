@@ -15,8 +15,8 @@
 #include "collections.h"
 
 #include "csx_assert.h"
-#include "testing/data_validator.h"
-#include "testing/testing.h"
+#include "testing_only/data_validator.h"
+#include "testing_only/testing.h"
 
 struct int_node
 {

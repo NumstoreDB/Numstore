@@ -20,7 +20,7 @@
 #include "stdtypes.h"    // u32 ...etc
 
 // Actions you can take in a database
-enum action_type
+enum irwr_action_type
 {
   IRWR_BEGIN_TXN,
   IRWR_COMMIT_TXN,

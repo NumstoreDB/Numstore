@@ -17,7 +17,7 @@
 #include "compile_config.h"
 #include "error.h"
 #include "os.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 #include "txn_table.h"
 #include "wal.h"
 

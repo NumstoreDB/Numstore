@@ -16,7 +16,7 @@
 
 #include "numerics.h"        // randu32
 #include "os.h"              // i_malloc
-#include "testing/testing.h" // TEST
+#include "testing_only/testing.h" // TEST
 #include "variables.h"       // variable
 
 struct var_frame

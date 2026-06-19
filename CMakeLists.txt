@@ -4,7 +4,6 @@
 #     and high level things like artifact locations
 ########################################################################
 cmake_minimum_required(VERSION 3.18)
-enable_testing()
 
 file(STRINGS version.txt NUMSTORE_VERSION LIMIT_COUNT 1)
 project(numstore
@@ -72,46 +71,8 @@ if(NOT ENABLE_LOGGING)
   add_compile_definitions(NLOG)
 endif()
 
-
 ########################################################################
-# Compile-time config (consumed by src/templates/compile_config.h.in)
-#     These are all the configurable compile time constants 
-#     in numstore - things like the number of bits per data element 
-#     PAGE_SIZE, memory pool size etc.
-########################################################################
-include(ProcessorCount)
-ProcessorCount(NS_CPU_COUNT)
-if(NS_CPU_COUNT EQUAL 0)
-    set(NS_CPU_COUNT 1)
-endif()
-
-set(NS_VERSION_MAJOR  ${PROJECT_VERSION_MAJOR})
-set(NS_VERSION_MINOR  ${PROJECT_VERSION_MINOR})
-set(NS_VERSION_PATCH  ${PROJECT_VERSION_PATCH})
-set(NS_VERSION_STRING "${PROJECT_VERSION}")
-
-set(NS_PAGE_SIZE       4096    CACHE STRING "Page size")
-set(NS_MAX_OPEN_FILES  20      CACHE STRING "Maximum number of open files")
-set(NS_MEMORY_PAGE_LEN 4096    CACHE STRING "Number of buffer pool slots")
-set(NS_WAL_BUFFER_CAP  1048576 CACHE STRING "WAL buffer capacity in bytes")
-
-set(TSIZE_BITS 32 CACHE STRING "Index into a type")
-set(PSIZE_BITS 32 CACHE STRING "Index into a page")
-set(BSIZE_BITS 64 CACHE STRING "Index into a byte stream or array")
-set(PGNO_BITS  64 CACHE STRING "Page number")
-set(TXID_BITS  64 CACHE STRING "Transaction id")
-set(LSN_BITS   64 CACHE STRING "WAL log sequence number")
-set(PGH_BITS   8  CACHE STRING "Page header size")
-set(WLH_BITS   8  CACHE STRING "WAL header size")
-
-configure_file(
-    "${PROJECT_SOURCE_DIR}/src/templates/compile_config.h.in"
-    "${PROJECT_SOURCE_DIR}/src/compile_config.h"
-    @ONLY
-)
-
-########################################################################
-# Windows / MSVC
+# Compiler Flags
 ########################################################################
 if(MSVC)
     add_compile_options(
@@ -137,10 +98,8 @@ if(MSVC)
         message(FATAL_ERROR "Coverage is only supported on GCC/Clang.")
     endif()
 
-########################################################################
-# GCC / Clang
-########################################################################
 else()
+
     add_compile_options(
         -Wall -Wextra -Werror
         -Wshadow -Wsign-compare
@@ -188,37 +147,10 @@ else()
 endif()
 
 ########################################################################
-# Platform link deps
+# CMake Dependencies
 ########################################################################
-if(WIN32)
-    set(PLATFORM_DEPENDENCIES ws2_32)
-else()
-    find_package(Threads REQUIRED)
-    set(PLATFORM_DEPENDENCIES Threads::Threads)
-endif()
-
-########################################################################
-# Numstore Library
-########################################################################
-file(GLOB NUMSTORE_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/*.c")
-file(GLOB NUMSTORE_TESTING_SOURCES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/src/testing/*.c")
-
-if(ENABLE_TESTS)
-    add_library(numstore ${NUMSTORE_SOURCES} ${NUMSTORE_TESTING_SOURCES})
-else()
-    add_library(numstore ${NUMSTORE_SOURCES})
-endif()
-
-add_library(numstore::numstore ALIAS numstore)
-
-set_target_properties(numstore PROPERTIES 
-    VERSION   ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
-)
-
-target_include_directories(numstore PRIVATE "${PROJECT_SOURCE_DIR}/src")
-
-target_link_libraries(numstore PUBLIC ${PLATFORM_DEPENDENCIES})
+add_subdirectory(src)
+add_subdirectory(src/apps)
 
 ########################################################################
 # Install rules
@@ -282,107 +214,6 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/numstore.pc"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
 
-############################## Add Numstore Executable
-# Creates an executable target, sets up standard include directories,
-# links it against the internal numstore library, and installs it.
-# This targets headers against all private and public includes.
-#
-# NAME
-#   The target name for the generated executable
-#
-# FILE
-#   The path to the primary source file (e.g., main.c)
-#
-# Example:
-#   ns_add_executable(my_app src/main.c)
-#
-function(ns_add_executable NAME FILE)
-  add_executable(${NAME} ${FILE})
-  target_include_directories(${NAME}
-    PRIVATE "${PROJECT_SOURCE_DIR}/src"
-  )
-  target_link_libraries(${NAME} PRIVATE numstore::numstore)
-  install(TARGETS ${NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endfunction()
-
-############################## Add Numstore Sample
-# Creates a single sample executable target, includes the project
-# header directory, and links it against the core library.
-# Only links public headers.
-#
-# NAME
-#   The target name for the generated executable.
-#
-# FILE
-#   The path to the source file (e.g., sample.c).
-#
-function(ns_add_sample NAME FILE)
-  add_executable(${NAME} ${FILE})
-  target_include_directories(${NAME} PRIVATE "${PROJECT_SOURCE_DIR}/src")
-  target_link_libraries(${NAME} PRIVATE numstore::numstore)
-  install(TARGETS ${NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-endfunction()
-
-########################################################################
-# Testing Code
-########################################################################
-if(ENABLE_TESTS)
-  find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
-  # See apps/scripts/gen_tests.py — scans src/ for TEST(...) markers and
-  # generates a runner from the template.
-  set(GENERATED_UNIT_TESTS "${PROJECT_SOURCE_DIR}/apps/testing/unit_tests.c")
-  execute_process(
-    COMMAND ${Python3_EXECUTABLE}
-            "${PROJECT_SOURCE_DIR}/apps/scripts/gen_tests.py"
-            "${PROJECT_SOURCE_DIR}/src/templates/unit_tests.c.in"
-            "${GENERATED_UNIT_TESTS}"
-            "${PROJECT_SOURCE_DIR}/src"
-    RESULT_VARIABLE gen_result
-    OUTPUT_VARIABLE gen_stdout
-    ERROR_VARIABLE  gen_stderr
-  )
-  if(NOT gen_result EQUAL 0)
-    message(FATAL_ERROR
-      "gen_tests.py failed (${gen_result}):\n${gen_stdout}\n${gen_stderr}")
-  endif()
-
-  # ----- Build the test executables -----
-  ns_add_executable(cgd_swarm_test  apps/testing/cgd_swarm_test.c)
-  ns_add_executable(irwr_swarm_test apps/testing/irwr_swarm_test.c)
-  ns_add_executable(unit_tests      "${GENERATED_UNIT_TESTS}")
-
-  # ----- Register with CTest -----
-  # Both swarm tests take a single integer argument (seconds).
-  # Override at configure time with -DNS_SWARM_TIMEOUT=<n>.
-  set(NS_SWARM_TIMEOUT 20 CACHE STRING "Seconds for swarm tests")
-
-  add_test(NAME unit_tests      COMMAND unit_tests)
-  add_test(NAME cgd_swarm_test  COMMAND cgd_swarm_test  ${NS_SWARM_TIMEOUT})
-  add_test(NAME irwr_swarm_test COMMAND irwr_swarm_test ${NS_SWARM_TIMEOUT})
-endif()
-
-########################################################################
-# Tools — simple UNIX-like debug tools 
-########################################################################
-if(BUILD_TOOLS)
-  ns_add_executable(dlread          apps/tools/dlread.c)
-  ns_add_executable(nspprint        apps/tools/nspprint.c)
-  ns_add_executable(simple_nspprint apps/tools/simple_nspprint.c)
-  ns_add_executable(walfprint       apps/tools/walfprint.c)
-endif()
-
-########################################################################
-# Samples — pedagogical programs for numstore newcomers
-########################################################################
-if(BUILD_SAMPLES)
-  ns_add_sample(ns_sample1_basic_crud          apps/samples/numstore/sample1_basic_crud.c)
-  ns_add_sample(smfile_sample1_basic_crud      apps/samples/smartfiles/sample1_basic_crud.c)
-  ns_add_sample(smfile_sample2_transactions    apps/samples/smartfiles/sample2_transactions.c)
-  ns_add_sample(smfile_sample3_stride          apps/samples/smartfiles/sample3_stride.c)
-  ns_add_sample(smfile_sample4_variable_names  apps/samples/smartfiles/sample4_variable_names.c)
-  ns_add_sample(smfile_sample5_rollback_commit apps/samples/smartfiles/sample5_rollback_commit.c)
-endif()
 
 ########################################################################
 # CPack — .tar.gz / .zip / .deb / .rpm

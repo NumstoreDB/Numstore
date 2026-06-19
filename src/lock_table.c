@@ -15,7 +15,7 @@
 #include "lock_table.h"
 
 #include "numerics.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 #include "txn_table.h"
 
 /******************************************************************************

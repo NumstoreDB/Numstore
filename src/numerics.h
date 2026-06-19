@@ -41,9 +41,6 @@ void checksum_execute (u32 *dest, const u8 *data, u32 len);
  * SECTION: Random
  ******************************************************************************/
 
-void rand_seed (void);
-void rand_seed_with (u32 seed);
-
 u8 randu8 (void);
 i8 randi8 (void);
 u8 randu8r (u8 lower, u8 upper); // [lower, upper]

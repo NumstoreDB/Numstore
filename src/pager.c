@@ -25,7 +25,7 @@
 #include "lock_table.h"
 #include "page.h"
 #include "pager.h"
-#include "testing/page_fixture.h"
+#include "testing_only/page_fixture.h"
 #include "txn_table.h"
 #include "var_algorithms.h"
 #include "wal.h"

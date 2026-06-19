@@ -17,7 +17,7 @@
 #include "error.h"           // error
 #include "numerics.h"        // safe_mul_...
 #include "stdtypes.h"        // u32 ...etc
-#include "testing/testing.h" // TEST
+#include "testing_only/testing.h" // TEST
 
 /******************************************************************************
  * SECTION: Memory

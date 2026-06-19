@@ -12,15 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing/cgd_swarm_test_fixture.h"
+#include "testing_only/cgd_swarm_test_fixture.h"
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "compile_config.h"
+#include "logging.h"
 #include "mem_vhmap.h"
 #include "numerics.h"
 #include "numstore.h"
@@ -36,8 +36,8 @@ cgd_swmt_assert (int result)
 {
   if (!result)
   {
-    printf ("Failed cgd_swarm test\n");
-    abort ();
+    i_log_failure ("Failed Create Get Delete test\n");
+    panic ("Aborting early\n");
   }
 }
 
@@ -267,7 +267,7 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
     }
   }
 
-  enum action_type action = (enum action_type)index;
+  enum cgd_action_type action = (enum cgd_action_type)index;
 
   switch (action)
   {

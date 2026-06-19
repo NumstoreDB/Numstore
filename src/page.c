@@ -14,8 +14,8 @@
 
 #include "page.h"
 
-#include "testing/inner_node_testing.h"
-#include "testing/testing.h"
+#include "testing_only/inner_node_testing.h"
+#include "testing_only/testing.h"
 
 /******************************************************************************
  * SECTION: Page Common

@@ -15,7 +15,7 @@
 #include "utils.h"
 
 #include "platform.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 const char *
 file_basename (const char *path)

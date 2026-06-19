@@ -19,7 +19,7 @@
 #include "page.h"
 #include "pager.h"
 #include "rope_algorithms.h"
-#include "testing/page_fixture.h"
+#include "testing_only/page_fixture.h"
 #include "types.h"
 #include "variables.h"
 

@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "collections.h"
-#include "testing/testing.h"
+#include "testing_only/testing.h"
 
 bool
 ustride_equal (const struct user_stride left, const struct user_stride right)
