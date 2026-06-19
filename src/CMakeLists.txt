@@ -41,7 +41,7 @@ configure_file(
 
 # Glob all *.c files together
 file(GLOB NUMSTORE_SOURCES CONFIGURE_DEPENDS "*.c")
-file(GLOB NUMSTORE_TESTING_SOURCES CONFIGURE_DEPENDS "testing_only/*.c")
+file(GLOB NUMSTORE_TESTING_SOURCES CONFIGURE_DEPENDS "testing/*.c")
 
 # Add test specific code if we're compiling tests
 if(ENABLE_TESTS)

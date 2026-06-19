@@ -15,7 +15,7 @@
 #include "error.h"           // error
 #include "nshandle.h"        // nshandle
 #include "numstore.h"        // nsdb
-#include "testing_only/testing.h" // TEST
+#include "testing/testing.h" // TEST
 
 #ifndef NTEST
 TEST (cgd_test_create_delete_rollback_delete)

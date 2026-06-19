@@ -15,7 +15,7 @@
 #include "numerics.h"
 
 #include "csx_assert.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 float
 f16_to_f32 (const u16 h)
@@ -108,7 +108,7 @@ checksum_execute (u32 *state, const u8 *data, const u32 len)
   *state = ~c;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (checksum_execute_simple)
 {
   const u8 data[] = {1, 2, 3, 4};
@@ -244,7 +244,7 @@ randu32 (void)
   return (u32)rand ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (randu32)
 {
   for (int i = 0; i < 1000; ++i)
@@ -274,7 +274,7 @@ randu32r (const u32 lower, const u32 upper)
   return (u32)randu64r ((u64)lower, (u64)upper);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (randu32r)
 {
   // lower == upper
@@ -350,7 +350,7 @@ randi32e (const i32 lower, const i32 upper)
   return randi32r (lower, upper - 1);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (randi32r)
 {
   test_assert_int_equal (randi32r (7, 7), 7);
@@ -488,7 +488,7 @@ randu64e (const u64 lower, const u64 upper)
   return randu64r (lower, upper - 1);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (randu64r)
 {
   test_assert_type_equal (
@@ -599,7 +599,7 @@ randi64e (const i64 lower, const i64 upper)
   return randi64r (lower, upper - 1);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (randi64r)
 {
   test_assert_type_equal (randi64r (7, 7), 7, i64, PRId64);
@@ -830,7 +830,7 @@ failed:
   return error_causef (e, ERR_ARITH, "i32 overflow");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (parse_i32_expect)
 {
   i32   out = -1;
@@ -981,7 +981,7 @@ failed:
 
 #define EPSILON 1e-6f
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (parse_f32_expect)
 {
   f32   out = NAN;
@@ -1021,7 +1021,7 @@ py_mod_f32 (const float num, const float denom)
   return rem;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (py_mod_f32)
 {
   // +num , +denom  (generic)
@@ -1058,7 +1058,7 @@ py_mod_i32 (const i32 num, const i32 denom)
   return r;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (py_mod_i32)
 {
   // +num , +denom

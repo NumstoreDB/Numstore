@@ -17,7 +17,7 @@
 #include "compile_config.h"
 #include "error.h"
 #include "os.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 #include "txn_table.h"
 #include "wal.h"
 
@@ -65,7 +65,7 @@ err_free:
   return NULL;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (walos_open)
 {
   error e = error_create ();
@@ -318,7 +318,7 @@ walis_open (const char *fname, error *e)
   return dest;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (walis_open)
 {
   error e = error_create ();
@@ -1453,7 +1453,7 @@ wal_rec_hdr_type_tostr (const enum wal_rec_hdr_type type)
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (wal_rec_hdr_type_tostr)
 {
   test_assert (wal_rec_hdr_type_tostr (WL_UPDATE) != NULL);
@@ -1834,7 +1834,7 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 bool
 wal_rec_hdr_read_equal (
     const struct wal_rec_hdr_read *left,
@@ -2918,7 +2918,7 @@ wal_write_locked (struct wal *w, error *e)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 /**
  * @struct wal_queue

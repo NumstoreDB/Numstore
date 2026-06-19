@@ -17,7 +17,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "query.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 /******************************************************************************
  * SECTION: Multi User Stride
@@ -199,7 +199,7 @@ compile_multi_user_stride (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (compile_multi_user_stride)
 {
   error                    e      = error_create ();
@@ -827,7 +827,7 @@ compile_query (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 static void
 test_query_green_path (const char *query, struct query expected)
@@ -1432,7 +1432,7 @@ compile_type (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 static void
 test_compile_type_green_path (const char *query, struct type expected)
@@ -1759,7 +1759,7 @@ compile_type_ref (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 static void
 test_compile_type_ref_green_path (const char *query, struct type_ref expected)
@@ -2002,7 +2002,7 @@ compile_user_stride (struct user_stride *dest, const char *text, error *e)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 static void
 test_compile_user_stride_green_path (
     const char        *query,

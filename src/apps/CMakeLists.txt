@@ -50,7 +50,7 @@ if(ENABLE_TESTS)
     COMMAND ${Python3_EXECUTABLE}
             "${PROJECT_SOURCE_DIR}/src/apps/scripts/gen_tests.py"
             "${PROJECT_SOURCE_DIR}/src/templates/unit_tests.h.in"
-            "${PROJECT_SOURCE_DIR}/src/testing_only/unit_tests.h"
+            "${PROJECT_SOURCE_DIR}/src/testing/unit_tests.h"
             "${PROJECT_SOURCE_DIR}/src"
     RESULT_VARIABLE gen_result
     OUTPUT_VARIABLE gen_stdout

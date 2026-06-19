@@ -17,7 +17,7 @@
 #include "node_updates.h"
 #include "page.h"
 #include "pager.h"
-#include "testing_only/page_fixture.h"
+#include "testing/page_fixture.h"
 
 /******************************************************************************
  * SECTION: Common Data Structures
@@ -83,7 +83,7 @@ dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
   dlgt_move_left (page_h_w (prev), page_h_w (cur), cur_len);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dlgt_balance_with_prev)
 {
   struct pgr_fixture f;
@@ -263,7 +263,7 @@ dlgt_balance_with_next (const page_h *cur, const page_h *next)
   dlgt_move_right (page_h_w (cur), page_h_w (next), cur_len);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dlgt_balance_with_next)
 {
   struct pgr_fixture f;

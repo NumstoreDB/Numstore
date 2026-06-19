@@ -16,7 +16,7 @@ project(numstore
 # Default Debug build type
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Package)
 endif()
 
 set(CMAKE_C_STANDARD 11)
@@ -52,6 +52,7 @@ option(ENABLE_PORTABLE "Portable build"                        OFF)
 option(ENABLE_TESTS    "Compile self-tests into the library"   ${_ns_debug})
 option(ENABLE_LOGGING  "Compile in runtime logging"            ${_ns_debug})
 option(ENABLE_ASAN     "Enable AddressSanitizer"               ${_ns_debug})
+option(OPTIMIZE_CODE   "Build in optimized mode"               ${_ns_debug})
 option(ENABLE_COVERAGE "Enable coverage (GCC/Clang only)"      OFF)
 option(BUILD_TOOLS     "Build numstore CLI tools"              ON)
 option(BUILD_SAMPLES   "Build sample programs"                 ON)
@@ -63,8 +64,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_definitions(NDEBUG)
 endif()
 
-if(NOT ENABLE_TESTS)
-  add_compile_definitions(NTEST)
+if(ENABLE_TESTS)
+  add_compile_definitions(TESTING)
 endif()
 
 if(NOT ENABLE_LOGGING)

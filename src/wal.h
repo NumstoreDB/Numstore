@@ -402,7 +402,7 @@ void
 walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]);
 void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 
-#ifndef NTEST
+#ifdef TESTING
 bool wal_rec_hdr_read_equal (
     const struct wal_rec_hdr_read *left,
     const struct wal_rec_hdr_read *right

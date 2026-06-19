@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "collections.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 bool
 ustride_equal (const struct user_stride left, const struct user_stride right)
@@ -154,7 +154,7 @@ stride_resolve (
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (stride_resolve)
 {
   struct stride result;

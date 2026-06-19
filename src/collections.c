@@ -15,8 +15,8 @@
 #include "collections.h"
 
 #include "csx_assert.h"
-#include "testing_only/data_validator.h"
-#include "testing_only/testing.h"
+#include "testing/data_validator.h"
+#include "testing/testing.h"
 
 struct int_node
 {
@@ -24,7 +24,7 @@ struct int_node
   struct llnode node;
 };
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (llist)
 {
   struct int_node nodes[10];
@@ -92,7 +92,7 @@ cbuffer_create_with (void *data, const u32 cap, const u32 len)
 ////////////////////////////////////////////////////////////
 // UTILS
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_isempty)
 {
   u8             buf[1];
@@ -162,7 +162,7 @@ cbuffer_get_next_data_bytes (const struct cbuffer *b)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_get_next_data_bytes)
 {
   u8             raw[16];
@@ -235,7 +235,7 @@ cbuffer_get_next_avail_bytes (const struct cbuffer *b)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_get_nbytes)
 {
   u8             raw[16];
@@ -302,7 +302,7 @@ cbuffer_fakewrite (struct cbuffer *b, const u32 nbytes)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_fakewrite)
 {
   u8             raw[8];
@@ -389,7 +389,7 @@ cbuffer_fakeread (struct cbuffer *b, const u32 nbytes)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_fakeread)
 {
   u8             raw[8];
@@ -510,7 +510,7 @@ cbuffer_read (void *dest, const u32 size, const u32 n, struct cbuffer *b)
   return ntoread;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_read)
 {
   u8             buf[3];
@@ -582,7 +582,7 @@ cbuffer_copy (void *dest, const u32 size, const u32 n, const struct cbuffer *b)
   return ntoread;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_copy)
 {
   u8             buf[3];
@@ -671,7 +671,7 @@ cbuffer_write (const void *src, const u32 size, const u32 n, struct cbuffer *b)
   return ntowrite;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_write)
 {
   u8             buf[3];
@@ -765,7 +765,7 @@ cbuffer_cbuffer_move (
   return n;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_cbuffer_move)
 {
   u8             buf_s[4];
@@ -874,7 +874,7 @@ cbuffer_cbuffer_copy (
 
   return n;
 }
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_cbuffer_copy)
 {
   u8             buf_s[4];
@@ -1154,7 +1154,7 @@ cbuffer_get_no_check (
   return 0;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_get_no_check)
 {
   TEST_CASE ("Normal behavior")
@@ -1256,7 +1256,7 @@ cbuffer_get (void *dest, const u32 size, const u32 idx, const struct cbuffer *b)
   return true;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_get)
 {
   u8             buf[2];
@@ -1287,7 +1287,7 @@ cbuffer_peek_back (void *dest, const u32 size, const struct cbuffer *b)
   return cbuffer_get (dest, size, 0, b);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_peek_back)
 {
   u8             buf1[1];
@@ -1343,7 +1343,7 @@ cbuffer_peek_front (void *dest, const u32 size, const struct cbuffer *b)
   return cbuffer_get (dest, size, 0, b);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_peek_front)
 {
   u8             buf1[1];
@@ -1417,7 +1417,7 @@ cbuffer_push_back (const void *src, const u32 size, struct cbuffer *b)
   return true;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_push_back)
 {
   u8             buf[2];
@@ -1478,7 +1478,7 @@ cbuffer_push_front (const void *src, const u32 size, struct cbuffer *b)
   return true;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_push_front)
 {
   u8             buf[3];
@@ -1549,7 +1549,7 @@ cbuffer_pop_back (void *dest, const u32 size, struct cbuffer *b)
   return true;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_pop_back)
 {
   u8             buf1[1];
@@ -1620,7 +1620,7 @@ cbuffer_pop_front (void *dest, const u32 size, struct cbuffer *b)
   return true;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cbuffer_pop_front)
 {
   u8             buf1[1];
@@ -1756,7 +1756,7 @@ dblb_free (struct dbl_buffer *d)
   d->nelem     = 0;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dblb_create_basic)
 {
   struct dbl_buffer db;
@@ -2272,7 +2272,7 @@ ext_array_data_writer (struct data_writer *dest, struct ext_array *arr)
   dest->ctx       = arr;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (ext_array_insert_read)
 {
   TEST_CASE ("basic sequential")
@@ -3416,7 +3416,7 @@ block_array_data_writer (struct data_writer *dest, struct block_array *arr)
   dest->ctx       = arr;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (block_insert_read)
 {
   TEST_CASE ("basic")
@@ -4073,7 +4073,7 @@ ba_memcpy_from (u8 *dest, const u8 *src, struct byte_accessor *acc)
   return ba_memcpy_from_recursive (dest, src, acc);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (ba_memcpy_from_basic)
 {
   // struct { a int, b struct { b char, c [5]u16 } }
@@ -4403,7 +4403,7 @@ ba_memcpy_to (u8 *dest, const u8 *src, struct byte_accessor *acc)
   return ba_memcpy_to_recursive (dest, src, acc);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (ba_memcpy_to_basic)
 {
   // struct { a int, b struct { b char, c [5]u16 } }

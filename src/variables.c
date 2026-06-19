@@ -15,7 +15,7 @@
 #include "variables.h"
 
 #include "page.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 #include "types.h"
 
 bool
@@ -270,7 +270,7 @@ failed:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (rand_varname_same_hash)
 {
   struct chunk_alloc alloc;

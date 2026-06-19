@@ -19,7 +19,7 @@
 #include "page.h"
 #include "pager.h"
 #include "rope_algorithms.h"
-#include "testing_only/page_fixture.h"
+#include "testing/page_fixture.h"
 #include "types.h"
 #include "variables.h"
 
@@ -352,7 +352,7 @@ failed:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (ns_find_var_page)
 {
   TEST_CASE ("create new variable page (prev, cur) = (vhp, vp)")
@@ -1407,7 +1407,7 @@ failed:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (ns_var_get_or_create)
 {
   TEST_CASE ("check types is correct")

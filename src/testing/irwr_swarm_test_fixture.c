@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing_only/irwr_swarm_test_fixture.h"
+#include "testing/irwr_swarm_test_fixture.h"
 
 #include <stdint.h>
 #include <stdlib.h> // abort

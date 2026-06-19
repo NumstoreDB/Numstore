@@ -25,7 +25,7 @@
 #include "lock_table.h"
 #include "page.h"
 #include "pager.h"
-#include "testing_only/page_fixture.h"
+#include "testing/page_fixture.h"
 #include "txn_table.h"
 #include "var_algorithms.h"
 #include "wal.h"
@@ -259,7 +259,7 @@ pgr_write_next_lsn (struct pager *p, lsn l, error *e)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 TEST (pager_fill_ht)
 {
@@ -1335,7 +1335,7 @@ failed:
   return NULL;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pager_open)
 {
   error e = error_create ();
@@ -1377,7 +1377,7 @@ TEST (pager_open)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pgr_open_basic)
 {
   error e = error_create ();
@@ -1471,7 +1471,7 @@ pgr_close (struct pager *p, error *e)
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pgr_close_success)
 {
   error e = error_create ();
@@ -1578,7 +1578,7 @@ failed:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pgr_delete)
 {
   struct pgr_fixture f;
@@ -1978,7 +1978,7 @@ found_spot:
   return clock;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pgr_reserve_and_ctrl_lock_st)
 {
   TEST_CASE ("single threaded clock iterator test")
@@ -2117,7 +2117,7 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pgr_get_invalid_checksum)
 {
   page_h             pg = page_h_create ();
@@ -2306,7 +2306,7 @@ pgr_get_writable (
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 int i = 10;
 
 /**
@@ -2691,7 +2691,7 @@ retry:
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (pgr_new_get_save)
 {
   struct pgr_fixture f;
@@ -2993,7 +2993,7 @@ failed:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (aries_rollback_basic)
 {
   error e = error_create ();

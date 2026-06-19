@@ -15,7 +15,7 @@
 #include "serial.h"
 
 #include "csx_assert.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 /////////////////////////////////////////////////////////////////////
 ////// String
@@ -78,7 +78,7 @@ strings_all_unique (const struct string *strs, const u32 count)
   return 1;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (strings_all_unique)
 {
   TEST_CASE ("empty array: trivially unique")
@@ -230,7 +230,7 @@ string_contains (const struct string superset, const struct string subset)
   return false;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (string_contains)
 {
   test_assert (!string_contains (strfcstr ("foo"), strfcstr ("foobar")));

@@ -16,7 +16,7 @@
 
 #include "compile_config.h"
 #include "page.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)
@@ -220,7 +220,7 @@ nupd_pivot_pg (const struct node_updates *n)
   return n->pivot.pg;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_init)
 {
   error e = error_create ();
@@ -293,7 +293,7 @@ nupd_append_right (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_append_right)
 {
   error e = error_create ();
@@ -409,7 +409,7 @@ nupd_append_left (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_append_left)
 {
   error e = error_create ();
@@ -659,7 +659,7 @@ regular:
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_append_tip_right)
 {
   error e = error_create ();
@@ -859,7 +859,7 @@ regular:
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_append_tip_left)
 {
   error e = error_create ();
@@ -1206,7 +1206,7 @@ nupd_consume_right (struct node_updates *s)
   return *nupd_get_right (s, s->rcons++);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_consume_right)
 {
   error e = error_create ();
@@ -1280,7 +1280,7 @@ nupd_consume_left (struct node_updates *s)
   return *nupd_get_left (s, s->lcons++);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_consume_left)
 {
   error e = error_create ();
@@ -1350,7 +1350,7 @@ nupd_done_observing_left (const struct node_updates *s)
   return s->lobs >= s->llen;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_done_observing_left)
 {
   error e = error_create ();
@@ -1405,7 +1405,7 @@ nupd_done_observing_right (const struct node_updates *s)
   return s->robs >= s->rlen;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_done_observing_right)
 {
   error e = error_create ();
@@ -1448,7 +1448,7 @@ nupd_done_consuming_left (const struct node_updates *s)
   return s->lcons == s->lobs;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_done_consuming_left)
 {
   error e = error_create ();
@@ -1492,7 +1492,7 @@ nupd_done_consuming_right (const struct node_updates *s)
   return s->rcons == s->robs;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_done_consuming_right)
 {
   error e = error_create ();
@@ -1536,7 +1536,7 @@ nupd_done_left (struct node_updates *s)
   return nupd_done_observing_left (s) && nupd_done_consuming_left (s);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_done_left)
 {
   error e = error_create ();
@@ -1590,7 +1590,7 @@ nupd_done_right (struct node_updates *s)
   return nupd_done_observing_right (s) && nupd_done_consuming_right (s);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (nupd_done_right)
 {
   error e = error_create ();

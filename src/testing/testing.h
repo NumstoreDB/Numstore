@@ -20,7 +20,7 @@
 #include "platform.h"   // HEADER_FUNC
 #include "utils.h"      // FPREFIX_STR
 
-#ifndef NTEST
+#ifdef TESTING
 
 extern int test_ret;
 

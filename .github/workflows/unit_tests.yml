@@ -7,253 +7,104 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  tests:
     name: ${{ matrix.preset }} / ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    env:
-      BUILD_DIR: ./build/${{ matrix.preset }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # ---- Debug + ASan smoke tests on the three major OSes ----
-          - { os: ubuntu-latest,  preset: debug-asan, config: Debug, run_tests: true }
-          - { os: macos-latest,   preset: debug-asan, config: Debug, run_tests: true }
-          - { os: windows-latest, preset: debug-asan, config: Debug, run_tests: true }
+          - { os: ubuntu-latest,    preset: ci-tests }
+          - { os: macos-latest,     preset: ci-tests }
+          - { os: windows-latest,   preset: ci-tests }
+          - { os: ubuntu-latest,    preset: ci-release-tests }
+          - { os: ubuntu-22.04,     preset: ci-release-tests }
+          - { os: ubuntu-24.04-arm, preset: ci-release-tests }
+          - { os: macos-latest,     preset: ci-release-tests }
+          - { os: macos-15-intel,   preset: ci-release-tests }
+          - { os: windows-latest,   preset: ci-release-tests }
+          - { os: windows-11-arm,   preset: ci-release-tests }
 
-          # ---- Release + tests across every shipping platform.
-          #      Catches optimization-related regressions per-arch. ----
-          - { os: ubuntu-latest,    preset: release-tests, config: Release, run_tests: true }
-          - { os: ubuntu-22.04,     preset: release-tests, config: Release, run_tests: true }
-          - { os: ubuntu-24.04-arm, preset: release-tests, config: Release, run_tests: true }
-          - { os: macos-latest,     preset: release-tests, config: Release, run_tests: true }
-          - { os: macos-15-intel,   preset: release-tests, config: Release, run_tests: true }
-          - { os: windows-latest,   preset: release-tests, config: Release, run_tests: true }
-          - { os: windows-11-arm,   preset: release-tests, config: Release, run_tests: true }
-
-          # ---- Package release ----
-          - { os: ubuntu-latest,    preset: package-release, config: Release, generators: "TGZ;DEB;RPM" }
-          - { os: ubuntu-22.04,     preset: package-release, config: Release, generators: "TGZ;DEB;RPM" }
-          - { os: ubuntu-24.04-arm, preset: package-release, config: Release, generators: "TGZ;DEB;RPM" }
-          - { os: macos-latest,     preset: package-release, config: Release, generators: "TGZ"         }
-          - { os: macos-15-intel,   preset: package-release, config: Release, generators: "TGZ"         }
-          - { os: windows-latest,   preset: package-release, config: Release, generators: "ZIP"         }
-          - { os: windows-11-arm,   preset: package-release, config: Release, generators: "ZIP"         }
-
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+        with: { submodules: recursive }
 
-      - name: Set up MSVC
-        if: runner.os == 'Windows'
+      - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - uses: actions/setup-python@v5
-        id: setup-python
-        with:
-          python-version: '3.11'
+      # CMake Stuff
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }}
 
-      - name: Install Python deps
-        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
-
-      - name: Configure (Linux/macOS)
-        if: runner.os != 'Windows'
+      # Run the tests
+      - shell: bash
         run: |
-          cmake --preset ${{ matrix.preset }} \
-            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'all_tests*' -type f | head -1)
+          "$exe" 10 $RANDOM
 
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $pypath = "${{ steps.setup-python.outputs.python-path }}" -replace '\\', '/'
-          cmake --preset ${{ matrix.preset }} `
-            -DPython_EXECUTABLE="$pypath"
-
-      - name: Build
-        run: cmake --build --preset ${{ matrix.preset }}
-
-      # Resolve test binary paths. MSVC drops binaries into a per-config
-      # subfolder (bin/Release/x.exe); single-config generators don't.
-      - name: Set test binary paths
-        if: matrix.run_tests
-        shell: bash
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            sub="${{ matrix.config }}/"
-            ext=".exe"
-          else
-            sub=""
-            ext=""
-          fi
-          echo "UNIT_TESTS=${BUILD_DIR}/bin/${sub}unit_tests${ext}"            >> "$GITHUB_ENV"
-          echo "CGD_SWARM_TEST=${BUILD_DIR}/bin/${sub}cgd_swarm_test${ext}"    >> "$GITHUB_ENV"
-          echo "IRWR_SWARM_TEST=${BUILD_DIR}/bin/${sub}irwr_swarm_test${ext}"  >> "$GITHUB_ENV"
-
-      - name: Unit tests
-        if: matrix.run_tests
-        run: ${{ env.UNIT_TESTS }}
-
-      - name: cgd_swarm_test (10s)
-        if: matrix.run_tests
-        run: ${{ env.CGD_SWARM_TEST }} 10
-
-      - name: irwr_swarm_test (10s)
-        if: matrix.run_tests
-        run: ${{ env.IRWR_SWARM_TEST }} 10
-
-      - name: Package with CPack
-        if: matrix.generators != ''
-        shell: bash
-        run: |
-          cd ${{ env.BUILD_DIR }}
-          cpack -C Release -G "${{ matrix.generators }}"
-
-      - name: Prepare artifacts
-        if: matrix.generators != ''
-        shell: bash
-        run: |
-          mkdir -p dist
-          for ext in tar.gz deb rpm zip; do
-            mv ${{ env.BUILD_DIR }}/*.${ext} dist/ 2>/dev/null || true
-          done
-          cp LICENSE.md dist/ 2>/dev/null || true
-
-      - name: Upload artifacts
-        if: matrix.generators != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.os }}-${{ matrix.preset }}
-          path: dist/*
-
-  ########################################################
-  # Coverage (Linux x86_64 only — needs gcov)
-  ########################################################
-  coverage:
-    name: Coverage / ubuntu-latest
-    runs-on: ubuntu-latest
-    env:
-      BUILD_DIR: ./build/debug-coverage
+  package:
+    name: package / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - run: cmake --preset package
+      - run: cmake --build --preset package
+      - run: cd build/package && cpack
+        shell: bash
+      - uses: actions/upload-artifact@v4
         with:
-          submodules: recursive
+          name: packages-${{ matrix.os }}
+          path: |
+            build/package/*.tar.gz
+            build/package/*.zip
+            build/package/*.deb
+            build/package/*.rpm
 
-      - uses: actions/setup-python@v5
-        id: setup-python
-        with:
-          python-version: '3.11'
+  valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - run: sudo apt-get install -y valgrind
+      - run: cmake --preset ci-valgrind
+      - run: cmake --build --preset ci-valgrind
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/all_tests 10 $RANDOM
 
-      - name: Install Python deps
-        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
-
-      - name: Install lcov
-        run: sudo apt-get install -y lcov
-
-      - name: Configure
-        run: |
-          cmake --preset debug-coverage \
-            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
-
-      - name: Build
-        run: cmake --build --preset debug-coverage
-
-      - name: Unit tests
-        run: ${{ env.BUILD_DIR }}/bin/unit_tests
-
-      - name: cgd_swarm_test (10s)
-        run: ${{ env.BUILD_DIR }}/bin/cgd_swarm_test 10
-
-      - name: irwr_swarm_test (10s)
-        run: ${{ env.BUILD_DIR }}/bin/irwr_swarm_test 10
-
-      - name: Capture coverage
-        run: |
-          lcov --capture \
-               --directory ${{ env.BUILD_DIR }} \
-               --base-directory . \
-               --output-file coverage.info \
-               --ignore-errors mismatch
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - run: sudo apt-get install -y lcov
+      - run: cmake --preset ci-coverage
+      - run: cmake --build --preset ci-coverage
+      - run: ./build/ci-coverage/bin/all_tests
+      - run: |
+          lcov --capture --directory build/ci-coverage --output-file coverage.info --ignore-errors mismatch
           genhtml coverage.info --output-directory coverage_html
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage
           path: coverage_html/
 
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-  ########################################################
-  # Valgrind (Linux x86_64 only — and no ASan, since ASan
-  # and Valgrind both intercept malloc and conflict)
-  ########################################################
-  valgrind:
-    name: Valgrind / ubuntu-latest
-    runs-on: ubuntu-latest
-    env:
-      BUILD_DIR: ./build/debug-valgrind
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: actions/setup-python@v5
-        id: setup-python
-        with:
-          python-version: '3.11'
-
-      - name: Install Python deps
-        run: ${{ steps.setup-python.outputs.python-path }} -m pip install numpy
-
-      - name: Install Valgrind
-        run: sudo apt-get install -y valgrind
-
-      - name: Configure
-        run: |
-          cmake --preset debug-valgrind \
-            -DPython_EXECUTABLE="${{ steps.setup-python.outputs.python-path }}"
-
-      - name: Build
-        run: cmake --build --preset debug-valgrind
-
-      - name: Valgrind unit_tests
-        run: |
-          valgrind \
-            --error-exitcode=1 \
-            --xml=yes \
-            --xml-file=valgrind-report.xml \
-            ${{ env.BUILD_DIR }}/bin/unit_tests
-
-      - name: Upload Valgrind report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: valgrind-report
-          path: valgrind-report.xml
-
-  ########################################################
-  # Publish a GitHub Release on tag pushes
-  ########################################################
-  publish:
-    name: Publish GitHub Release
-    needs: [build]
+  release:
+    needs: package
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
           merge-multiple: true
           path: dist
-      - name: Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
