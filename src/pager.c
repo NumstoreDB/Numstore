@@ -147,12 +147,14 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
   h->mode = PHM_NONE;
 }
 
+#ifdef TEST
 static err_t
 pgr_flush_wall (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
   return wal_flush_all (p->ww, e);
 }
+#endif
 
 static err_t
 pgr_read_header (struct pager *p, error *e)
