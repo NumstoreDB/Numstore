@@ -52,10 +52,10 @@ endif()
 
 add_library(numstore::numstore ALIAS numstore)
 
-set_target_properties(numstore PROPERTIES 
-    VERSION   ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}
-)
+set_target_properties(numstore PROPERTIES VERSION ${PROJECT_VERSION})
+if(NOT WIN32)
+    set_target_properties(numstore PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
+endif()
 
 target_include_directories(numstore PRIVATE "${PROJECT_SOURCE_DIR}/src")
 
