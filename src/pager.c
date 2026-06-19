@@ -147,7 +147,7 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
   h->mode = PHM_NONE;
 }
 
-#ifdef TEST
+#ifdef TESTING
 static err_t
 pgr_flush_wall (struct pager *p, error *e)
 {
