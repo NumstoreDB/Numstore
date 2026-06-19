@@ -85,7 +85,7 @@ jobs:
       - run: sudo apt-get install -y lcov
       - run: cmake --preset ci-coverage
       - run: cmake --build --preset ci-coverage
-      - run: ./build/ci-coverage/bin/all_tests
+      - run: ./build/ci-coverage/bin/all_tests 10 $RANDOM
       - run: |
           lcov --capture --directory build/ci-coverage --output-file coverage.info --ignore-errors mismatch
           genhtml coverage.info --output-directory coverage_html

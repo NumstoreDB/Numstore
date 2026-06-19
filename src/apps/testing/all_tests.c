@@ -144,7 +144,7 @@ main (int argc, char *argv[])
   i_thread_join (&irwr_thread, &e);
   i_thread_join (&unit_thread, &e);
 
-  if (unit_result)
+  if (unit_result == 0)
   {
     i_log_passed ("All Tests Passed\n");
   }
