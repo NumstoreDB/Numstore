@@ -20,7 +20,7 @@
 #include "error.h"
 #include "os.h"
 #include "platform.h"
-#include "testing_only/testing.h" // TEST
+#include "testing/testing.h" // TEST
 
 enum file_pager_flags
 {
@@ -120,7 +120,7 @@ failed:
   return NULL;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (fpgr_open)
 {
   error e = error_create ();
@@ -229,7 +229,7 @@ failed:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (fpgr_new)
 {
   i_file fp = {0};
@@ -408,7 +408,7 @@ theend:
   return error_trace (e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (fpgr_read_write)
 {
   // The raw page bytes

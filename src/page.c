@@ -14,8 +14,8 @@
 
 #include "page.h"
 
-#include "testing_only/inner_node_testing.h"
-#include "testing_only/testing.h"
+#include "testing/inner_node_testing.h"
+#include "testing/testing.h"
 
 /******************************************************************************
  * SECTION: Page Common
@@ -148,7 +148,7 @@ page_validate_for_db (const page *p, const int flags, error *e)
 ////////////////////////////////////////////////////////////
 // SETTERS
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (page_set_get_simple)
 {
   page p, q;
@@ -228,7 +228,7 @@ i_log_page (const int log_level, const page *p)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_page)
 {
   page pg;
@@ -304,7 +304,7 @@ i_log_fsm (const int level, const page *t)
   i_log (level, "=== FREE SPACE PAGE END ===\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_fsm)
 {
   page fsm;
@@ -385,7 +385,7 @@ dl_validate_for_db (const page *d, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_validate)
 {
   page  sut;
@@ -467,7 +467,7 @@ TEST (dl_validate)
 
 // Getters
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_set_get)
 {
   page p;
@@ -530,7 +530,7 @@ dl_read (const page *d, u8 *dest, const p_size offset, const p_size nbytes)
   return toread;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_read)
 {
   page p;
@@ -709,7 +709,7 @@ dl_read_out_from (page *d, u8 *dest, const p_size offset)
   return dlen;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_read_out_from)
 {
   page dl;
@@ -912,7 +912,7 @@ dl_append_from_cbuffer (page *d, struct cbuffer *src, const p_size amnt)
   DBG_ASSERT (data_list, d);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_append)
 {
   page p;
@@ -1010,7 +1010,7 @@ dl_write (
   return toread;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_write)
 {
   page p;
@@ -1140,7 +1140,7 @@ dl_memset (page *d, const u8 *buf, const p_size len)
   dl_set_used (d, len);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_memset)
 {
   page p;
@@ -1217,7 +1217,7 @@ dl_move_left (page *dest, page *src, const p_size len)
   i_log_trace ("%" PRp_size " %" PRp_size "\n", dl_used (src), dl_used (dest));
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_move_left)
 {
   page src, dest;
@@ -1297,7 +1297,7 @@ dl_shift_right (page *d, const p_size len)
   dl_set_used (d, used + len);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_shift_right)
 {
   page p;
@@ -1387,7 +1387,7 @@ dl_move_right (page *src, page *dest, const p_size len)
   dl_set_used (src, dl_used (src) - actual);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_move_right)
 {
   page src, dest;
@@ -1497,7 +1497,7 @@ i_log_dl (const int level, const page *d)
   i_log (level, "=== DATA LIST PAGE END ===\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_dl)
 {
   page dl;
@@ -1530,7 +1530,7 @@ dl_make_valid (page *d)
   dl_set_used (d, DL_DATA_SIZE);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (dl_make_valid)
 {
   page dl;
@@ -1655,7 +1655,7 @@ in_validate_for_db (const page *in, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_validate_for_db)
 {
   error e = error_create ();
@@ -1716,7 +1716,7 @@ TEST (in_validate_for_db)
 
 // Getters
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_set_get_simple)
 {
   page p;
@@ -1774,7 +1774,7 @@ TEST (in_set_get_simple)
 #endif
 
 // Setters
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_push_end)
 {
   page in;
@@ -1839,7 +1839,7 @@ in_key_memcpy_right (b_size *dest, const page *src, const p_size ofst)
   return in_get_len (src) - ofst;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_memcpy)
 {
   page in;
@@ -2001,7 +2001,7 @@ in_move_left (page *dest, page *src, const p_size len)
   in_cut_left (src, len);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_move_left)
 {
   page left;
@@ -2038,7 +2038,7 @@ TEST (in_move_left)
   );
 }
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_move_left_two_keys)
 {
   page left;
@@ -2066,7 +2066,7 @@ TEST (in_move_left_two_keys)
 }
 #  endif
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_move_left_all_keys)
 {
   page left;
@@ -2089,7 +2089,7 @@ TEST (in_move_left_all_keys)
 }
 #  endif
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_move_left_into_empty)
 {
   page left;
@@ -2168,7 +2168,7 @@ in_push_right_permissive (page *in, const p_size amnt)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_push_left)
 {
   page in;
@@ -2199,7 +2199,7 @@ TEST (in_push_left)
   );
 }
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_push_left_into_empty)
 {
   page in;
@@ -2212,7 +2212,7 @@ TEST (in_push_left_into_empty)
 }
 #  endif
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_push_left_to_full)
 {
   page in;
@@ -2272,7 +2272,7 @@ in_move_right (page *src, page *dest, const p_size len)
   in_set_len (src, in_get_len (src) - len);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_move_right)
 {
   page left;
@@ -2309,7 +2309,7 @@ TEST (in_move_right)
   );
 }
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_move_right_two_keys)
 {
   page left;
@@ -2337,7 +2337,7 @@ TEST (in_move_right_two_keys)
 }
 #  endif
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_move_right_all_keys)
 {
   page left;
@@ -2360,7 +2360,7 @@ TEST (in_move_right_all_keys)
 }
 #  endif
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (in_move_right_into_empty_right)
 {
   page left;
@@ -2417,7 +2417,7 @@ in_choose_lidx (p_size *idx, b_size *nleft, const page *node, const b_size loc)
   *idx = i;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_choose_lidx)
 {
   page in;
@@ -2515,7 +2515,7 @@ in_cut_left (page *in, const p_size end)
   in_set_len (in, in_get_len (in) - end);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_cut_left)
 {
   page in;
@@ -2571,7 +2571,7 @@ TEST (in_cut_left_all_at_once)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_cut_left_from_empty)
 {
   page in;
@@ -2584,7 +2584,7 @@ TEST (in_cut_left_from_empty)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (in_cut_left_to_one)
 {
   page in;
@@ -2656,7 +2656,7 @@ i_log_in (const int level, const page *in)
   i_log (level, "=== INNER NODE PAGE END ===\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_in)
 {
   page in;
@@ -2734,7 +2734,7 @@ i_log_vh (const int level, const page *vh)
   i_log (level, "=== VAR HASH TABLE PAGE END ===\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_vh)
 {
   page vh;
@@ -2773,7 +2773,7 @@ vp_init_empty (page *p)
   vp_set_root (p, PGNO_NULL);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (vp_init_empty)
 {
   page p;
@@ -2931,7 +2931,7 @@ vp_validate_for_db (const page *p, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (vp_validate)
 {
   page  sut;
@@ -3029,7 +3029,7 @@ i_log_vp (const int level, const page *vp)
   i_log (level, "=== VARIABLE PAGE END ===\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_vp)
 {
   page vp;
@@ -3062,7 +3062,7 @@ DEFINE_DBG_ASSERT (page, vt_page, v, { ASSERT (v); })
 ////////////////////////////////////////////////////////////
 // INITIALIZATION
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (vt_init_empty)
 {
   page p;
@@ -3087,7 +3087,7 @@ vt_validate_for_db (const page *p, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (vt_validate)
 {
   page  sut;
@@ -3122,7 +3122,7 @@ i_log_vt (const int level, const page *vp)
   i_log (level, "=== VARIABLE TAIL END ===\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_log_vt)
 {
   page vt;

@@ -17,7 +17,7 @@
 #include "error.h"           // error
 #include "numerics.h"        // safe_mul_...
 #include "stdtypes.h"        // u32 ...etc
-#include "testing_only/testing.h" // TEST
+#include "testing/testing.h" // TEST
 
 /******************************************************************************
  * SECTION: Memory
@@ -61,7 +61,7 @@ def_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 static void *
 nomem_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
 {
@@ -162,7 +162,7 @@ i_realloc (void *ptr, const u32 nelem, const u32 size, error *e)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_realloc_basic)
 {
   error e = error_create ();
@@ -203,7 +203,7 @@ def_realloc_right (
   return i_realloc (ptr, new_nelem, size, e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_realloc_right)
 {
   error e = error_create ();
@@ -302,7 +302,7 @@ def_realloc_left (
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_realloc_left)
 {
   error e = error_create ();
@@ -379,7 +379,7 @@ def_crealloc_right (
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_crealloc_right)
 {
   error e = error_create ();
@@ -485,7 +485,7 @@ def_crealloc_left (
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (i_crealloc_left)
 {
   error e = error_create ();

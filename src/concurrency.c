@@ -17,7 +17,7 @@
 #include "csx_assert.h"
 #include "error.h"
 #include "os.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 /******************************************************************************
  * SECTION: GR Lock
@@ -51,7 +51,7 @@ gr_lock_init (struct gr_lock *l, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (gr_lock_init)
 {
   TEST_CASE ("mutex create fails")
@@ -96,7 +96,7 @@ gr_lock_destroy (struct gr_lock *l)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (gr_lock_destroy)
 {
   TEST_CASE ("green path")
@@ -142,7 +142,7 @@ is_compatible (const struct gr_lock *l, const enum lock_mode mode)
   return true;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (gr_lock_is_compatible)
 {
   error          e = error_create ();
@@ -323,7 +323,7 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
   i_mutex_unlock (&l->mutex);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 struct thread_ctx
 {
   struct gr_lock *l;
@@ -473,7 +473,7 @@ gr_lock_mode_name (const enum lock_mode mode)
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (gr_lock_mode_name)
 {
   i_log_info ("%s\n", gr_lock_mode_name (LM_IS));
@@ -508,7 +508,7 @@ get_parent_mode (const enum lock_mode child_mode)
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 /* --- Test Infrastructure --- */
 
@@ -873,7 +873,7 @@ periodic_task_wake (struct periodic_task *t)
  * SECTION: Latch (tests)
  ******************************************************************************/
 
-#ifndef NTEST
+#ifdef TESTING
 struct data
 {
   const u32 iters;

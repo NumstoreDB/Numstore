@@ -16,7 +16,7 @@
 
 #include "collections.h"
 #include "lock_table.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 /******************************************************************************
  * SECTION: Transaction
@@ -294,7 +294,7 @@ i_log_txn (const int log_level, struct txn *tx)
   latch_unlock (&tx->l);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 static void *
 txn_newlock_test (void *_tx)
@@ -427,7 +427,7 @@ txnt_close (struct txn_table *t)
   i_free (t);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_open)
 {
   TEST_CASE ("basic")
@@ -573,7 +573,7 @@ txnt_merge_into (
   return ctx.e->cause_code;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_merge_into)
 {
   TEST_CASE ("Empty to Empty")
@@ -714,7 +714,7 @@ txnt_max_u_undo_lsn (struct txn_table *t)
   return max;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_max_u_undo_lsn)
 {
   TEST_CASE ("empty")
@@ -842,7 +842,7 @@ txnt_min_lsn (struct txn_table *t)
   return min;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_min_lsn)
 {
   TEST_CASE ("empty")
@@ -950,7 +950,7 @@ txn_exists (const struct txn_table *t, const txid tid)
   return ret != NULL;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_exists)
 {
   TEST_CASE ("txnt_exists")
@@ -1007,7 +1007,7 @@ theend:
   latch_unlock (&t->l);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_insert)
 {
   TEST_CASE ("new")
@@ -1160,7 +1160,7 @@ txnt_get_expect (struct txn **dest, struct txn_table *t, const txid tid)
   latch_unlock (&t->l);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_get)
 {
   TEST_CASE ("nonexistent returns false")
@@ -1344,7 +1344,7 @@ txnt_remove_txn_expect (struct txn_table *t, const struct txn *tx)
   latch_unlock (&t->l);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_remove)
 {
   TEST_CASE ("txnt_remove_existing_txn")
@@ -1564,7 +1564,7 @@ txnlen_from_serialized (const u32 slen)
   return slen / TXN_SERIAL_UNIT;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_serialize)
 {
   TEST_CASE ("txnt_serialize_deserialize_empty")
@@ -1698,7 +1698,7 @@ txnt_equal_ignore_state (struct txn_table *left, struct txn_table *right)
   return ctx.ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (txnt_equal_ignore_state)
 {
   TEST_CASE ("txnt_equal_ignore_state_empty_tables")

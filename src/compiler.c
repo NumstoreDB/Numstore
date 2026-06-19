@@ -20,7 +20,7 @@
 #include "numerics.h"        // parse_i32_expect
 #include "query.h"           // query
 #include "serial.h"          // string_equal
-#include "testing_only/testing.h" // TEST
+#include "testing/testing.h" // TEST
 #include "types.h"           // type_Ref
 #include "utils.h"           // case_ENUM_RETURN_STRING
 
@@ -656,7 +656,7 @@ lex_free (struct lexer *lex)
   dblb_free (&lex->_tokens);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 static void
 test_lexer_case (const char *input, const struct token *expected, u32 nexpected)

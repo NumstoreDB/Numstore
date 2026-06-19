@@ -15,7 +15,7 @@
 #include "utils.h"
 
 #include "platform.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 const char *
 file_basename (const char *path)
@@ -26,7 +26,7 @@ file_basename (const char *path)
   return p ? p + 1 : path;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (file_basename)
 {
   test_assert (strcmp (file_basename ("foo/bar"), "bar") == 0);

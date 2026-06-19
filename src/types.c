@@ -17,7 +17,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "numerics.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 #include "variables.h"
 
 /******************************************************************************
@@ -288,7 +288,7 @@ type_generate_string (char *dest, const struct type *t)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (type_generate_string)
 {
   TEST_CASE ("primitive")
@@ -914,7 +914,7 @@ type_malloc_copy (struct type *t, struct malloc_plan *plan)
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (type_malloc_copy)
 {
   struct type t = {
@@ -1065,7 +1065,7 @@ prim_t_validate (const enum prim_t *t, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (prim_t_validate)
 {
   error err = error_create ();
@@ -1147,7 +1147,7 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
   return len;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (prim_t_snprintf)
 {
   struct type t = {
@@ -1217,7 +1217,7 @@ prim_t_serialize (struct serializer *dest, const enum prim_t *src)
   ret         = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
   ASSERT (ret);
 }
-#ifndef NTEST
+#ifdef TESTING
 TEST (prim_t_byte_size)
 {
   enum prim_t p1 = U8;
@@ -1229,7 +1229,7 @@ TEST (prim_t_byte_size)
   test_assert_int_equal (prim_t_byte_size (&p3), 32);
 }
 
-#  ifndef NTEST
+#  ifdef TESTING
 TEST (prim_t_serialize)
 {
   enum prim_t       p = I16;
@@ -1267,7 +1267,7 @@ prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (prim_t_deserialize)
 {
   // 5.1 green path
@@ -1293,7 +1293,7 @@ prim_t_random (void)
   return (enum prim_t)randu32r (U8, CU128);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (prim_t_random)
 {
   error err = error_create ();
@@ -1637,7 +1637,7 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
   return len;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (struct_t_snprintf)
 {
   struct struct_t st;
@@ -1709,7 +1709,7 @@ struct_t_byte_size (const struct struct_t *t)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (struct_t_byte_size)
 {
   struct struct_t st;
@@ -1777,7 +1777,7 @@ struct_t_get_serial_size (const struct struct_t *t)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (struct_t_get_serial_size)
 {
   struct struct_t st;
@@ -1852,7 +1852,7 @@ struct_t_serialize (struct serializer *dest, const struct struct_t *src)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (struct_t_serialize)
 {
   struct struct_t st;
@@ -2002,7 +2002,7 @@ early_termination:
   return struct_t_type_deser ("Early end of serialized string", e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (struct_t_deserialize_green_path)
 {
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
@@ -2058,7 +2058,7 @@ TEST (struct_t_deserialize_green_path)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (struct_t_deserialize_red_path)
 {
   u8 data[] = {
@@ -2435,7 +2435,7 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
   return len;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (union_t_snprintf)
 {
   struct union_t st;
@@ -2509,7 +2509,7 @@ union_t_byte_size (const struct union_t *t)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (union_t_byte_size)
 {
   struct union_t st;
@@ -2577,7 +2577,7 @@ union_t_get_serial_size (const struct union_t *t)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (union_t_get_serial_size)
 {
   struct union_t st;
@@ -2652,7 +2652,7 @@ union_t_serialize (struct serializer *dest, const struct union_t *src)
   }
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (union_t_serialize)
 {
   struct union_t st;
@@ -2798,7 +2798,7 @@ early_termination:
   return union_t_type_deser ("Early end of serialized string", e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (union_t_deserialize_green_path)
 {
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
@@ -2854,7 +2854,7 @@ TEST (union_t_deserialize_green_path)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (union_t_deserialize_red_path)
 {
   u8  data[] = {0,          0,          0,       0,          'f',      'o', 'o',
@@ -3062,7 +3062,7 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
   return len;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_t_snprintf)
 {
   struct type s = (struct type){
@@ -3102,7 +3102,7 @@ sarray_t_byte_size (const struct sarray_t *t)
   return ret * type_byte_size (t->t);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_t_byte_size)
 {
   struct sarray_t s = {
@@ -3131,7 +3131,7 @@ sarray_t_get_serial_size (const struct sarray_t *t)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_t_get_serial_size)
 {
   struct sarray_t s = {
@@ -3167,7 +3167,7 @@ sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
   type_serialize (persistent, src->t);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_t_serialize)
 {
   struct sarray_t s = {
@@ -3260,7 +3260,7 @@ early_terimination:
   return sarray_t_type_deser ("Early end of serialized string", e);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_t_deserialize_green_path)
 {
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
@@ -3295,7 +3295,7 @@ TEST (sarray_t_deserialize_green_path)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_t_deserialize_red_path)
 {
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
@@ -3501,7 +3501,7 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (sarray_builder)
 {
   error err = error_create ();
@@ -3736,7 +3736,7 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (kvt_list_builder)
 {
   error err = error_create ();
@@ -4299,7 +4299,7 @@ ta_subtype (
   UNREACHABLE ();
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 static void
 test_ta_subtype_case (
@@ -4696,7 +4696,7 @@ tab_build (
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (type_accessor_builder)
 {
   error e = error_create ();

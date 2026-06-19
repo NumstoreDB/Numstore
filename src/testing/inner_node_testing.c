@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing_only/inner_node_testing.h"
+#include "testing/inner_node_testing.h"
 
 #include "page.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 #ifndef NTEST
 

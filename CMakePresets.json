@@ -1,0 +1,125 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "package",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_TESTS":     "OFF",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "OPTIMIZE_CODE":    "ON",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "OFF",
+        "BUILD_SAMPLES":    "OFF"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_PORTABLE":  "OFF",
+        "ENABLE_TESTS":     "OFF",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "OPTIMIZE_CODE":    "ON",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "ON",
+        "BUILD_SAMPLES":    "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PORTABLE":  "OFF",
+        "ENABLE_TESTS":     "ON",
+        "ENABLE_LOGGING":   "ON",
+        "ENABLE_ASAN":      "ON",
+        "OPTIMIZE_CODE":    "OFF",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "ON",
+        "BUILD_SAMPLES":    "ON"
+      }
+    },
+    {
+      "name": "ci-valgrind",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_TESTS":     "ON",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "OPTIMIZE_CODE":    "ON",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "ON",
+        "BUILD_SAMPLES":    "ON"
+      }
+    },
+    {
+      "name": "ci-tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_TESTS":     "ON",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "ON",
+        "OPTIMIZE_CODE":    "ON",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "OFF",
+        "BUILD_SAMPLES":    "OFF"
+      }
+    },
+    {
+      "name": "ci-release-tests",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_TESTS":     "ON",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "OPTIMIZE_CODE":    "ON",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "OFF",
+        "BUILD_SAMPLES":    "OFF"
+      }
+    },
+    {
+      "name": "ci-coverage",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PORTABLE":  "ON",
+        "ENABLE_TESTS":     "ON",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "OPTIMIZE_CODE":    "OFF",
+        "ENABLE_COVERAGE":  "ON",
+        "BUILD_TOOLS":      "OFF",
+        "BUILD_SAMPLES":    "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "package",          "configurePreset": "package" },
+    { "name": "release",          "configurePreset": "release" },
+    { "name": "debug",            "configurePreset": "debug" },
+    { "name": "ci-valgrind",      "configurePreset": "ci-valgrind" },
+    { "name": "ci-tests",         "configurePreset": "ci-tests" },
+    { "name": "ci-release-tests", "configurePreset": "ci-release-tests" },
+    { "name": "ci-coverage",      "configurePreset": "ci-coverage" }
+  ]
+}

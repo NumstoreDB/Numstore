@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="docs/logo.png" alt="NumStore Logo" width="200"/>
+  <img src="docs/assets/logo.png" alt="NumStore Logo" width="200"/>
 </p>
 
 # Numstore
 
-[![codecov](https://codecov.io/gh/lincketheo/Numstore/graph/badge.svg?token=GMNPHQID77)](https://codecov.io/gh/lincketheo/Numstore)
+[![codecov](https://codecov.io/gh/lincketheo/Numstore/graph/badge.svg?token=GMNPHQID77)](https://codecov.io/gh/NumstoreDB/Numstore)
 ![GitHub Actions](https://github.com/lincketheo/Numstore/actions/workflows/unit_tests.yml/badge.svg)
 
 **A database for arrays**
@@ -28,64 +28,46 @@ to use - but stay tuned for more features as it grows.
 1.2 Linux, Mac, Windows
 -----------------------
 
+Numstore is built with CMake.
+Default build config is `Debug`:
+
     cd <path>/numstore
-    cmake --preset debug
+    mkdir build 
+    cd build 
+    cmake ..
+    cmake --build .
 
 
-1.3 Build!
-----------
+1.3 Build in Release Mode
+-------------------------
 
-Numstore is built with CMake:
+Release mode has no tests, and no ASSERTS
 
-    cmake --build --preset debug
+    cd <path>/numstore
+    mkdir build 
+    cd build 
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake --build .
 
-1.4 Run! 
---------
-Run a sample application inside `apps/samples` use these as pedagogical 
+1.4 Run
+-------
+
+Run a sample application inside `src/apps/samples` use these as pedagogical 
 sample applications that show you how numstore works
 
 2.0 Configure your build
 ========================
 
-2.1 Choose a different build prefix 
------------------------------------
+2.1 CMake Options
+-----------------
 
-You can see the options of various presets in CMakePresets.json
-as well as build your own custom presets using flags found in
-./cmake/Options.cmake
-
-Here are some other cmake presets:
-
-* `--preset debug`               - Debug build.
-                                   Logging enabled.
-                                   Asserts enabled.
-                                   Symbols included.
-                                   Portable.
-                                   Not stripped.
-                                   Address sanitizer compiled in.
-
-* `--preset debug-valgrind`      - Same as debug but without address sanitizer
-                                   (useful for running against valgrind) and portable.
-
-* `--preset debug-coverage`      - Debug with coverage enabled
-
-* `--preset release`             - Release build.
-                                   Logging disabled.
-                                   No asserts.
-                                   No tests.
-                                   Optimized for your machine.
-                                   No address sanitizer.
-
-* `--preset release-tests-asan`  - Same as release but with tests compiled in
-                                   (to ensure unit tests pass with 
-                                   or without asserts).
-
-* `--preset package-release`     - Portable binary with stripped symbols.
-
-There's an upfront Makefile that has common targets that I run a lot 
-but in general this is just a tool to help me reduce keystrokes 
-new developers should use cmake as much as possible - while using 
-make if there are any common workflows.
+* `ENABLE_PORTABLE`              - Build code without machine optimized instructions (to distribute and valgrind)
+* `ENABLE_TESTS`                 - Include testing specific code in the numstore library
+* `ENABLE_LOGGING`               - Include logging code in the numstore library 
+* `ENABLE_ASAN`                  - Compile in an address sanitizer
+* `ENABLE_COVERAGE`              - Compile in coverage flag (for gnu only)
+* `BUILD_TOOLS`                  - Build a bunch of command line tools
+* `BUILD_SAMPLES`                - Build the sample code
 
 2.2 Configure Compile Time attributes 
 -------------------------------------
@@ -97,59 +79,40 @@ You can see them all in cmake/Config.cmake.
 
 These are common configuration options:
 
-* `-DNS_NS_PAGE_SIZE=4096`          - Page size.
-
-* `-DNS_MEMORY_PAGE_LEN=4096`    - Number of pages to fit inside the pager
-                                   buffer pool.
-
+* `-DNS_NS_PAGE_SIZE=4096`       - Page size.
+* `-DNS_MEMORY_PAGE_LEN=4096`    - Number of pages to fit inside the pager buffer pool.
 * `-DNS_WAL_BUFFER_CAP=1048576`  - The size of the internal in memory WAL.
 
 These should rarely be changed:
 
-* `-DTSIZE_BITS=32`              - Number of bits needed to represent the size
-                                   of a data type.
+* `-DTSIZE_BITS=32`              - Number of bits needed to represent the size of a data type.
+* `-DPSIZE_BITS=32`              - Number of bits needed to represent the size of an index into a page.
+* `-DBSIZE_BITS=64`              - Number of bits needed to represent the size of an index into an array.
+* `-DPGNO_BITS=64`               - Number of bits needed to represent the size of a page number.
+* `-DTXID_BITS=32`               - Number of bits needed to represent the size of a transaction id.
+* `-DLSN_BITS=64`                - Number of bits needed to represent the size of a log sequence number.
+* `-DPGH_BITS=8`                 - Number of bits needed to represent the size of a page header.
+* `-DWLH_BITS=8`                 - Number of bits needed to represent the size of a log header.
 
-* `-DPSIZE_BITS=32`              - Number of bits needed to represent the size
-                                   of an index into a page.
-
-* `-DBSIZE_BITS=64`              - Number of bits needed to represent the size
-                                   of an index into an array.
-
-* `-DPGNO_BITS=64`               - Number of bits needed to represent the size
-                                   of a page number.
-
-* `-DTXID_BITS=32`               - Number of bits needed to represent the size
-                                   of a transaction id.
-
-* `-DLSN_BITS=64`                - Number of bits needed to represent the size
-                                   of a log sequence number.
-
-* `-DPGH_BITS=8`                 - Number of bits needed to represent the size
-                                   of a page header.
-
-* `-DWLH_BITS=8`                 - Number of bits needed to represent the size
-                                   of a log header.
-
+Or you can choose from a preset:
+* `--preset release`             - Optimized build with tools and samples.
+* `--preset debug`               - Debug build with tests, ASan, and logging.
+* `--preset package`             - Portable, stripped build for packaging.
+* `--preset ci-tests`            - Debug + ASan + tests. Used by CI.
+* `--preset ci-release-tests`    - Release + tests. Used by CI.
+* `--preset ci-valgrind`         - Debug + tests, no ASan. Used by CI under Valgrind.
+* `--preset ci-coverage`         - Debug + tests + gcov instrumentation. Used by CI.
 
 3.0 Project Layout
 ==================
 
-* `apps`                         - All applications in this directory are built
-                                   and linked with all libraries built in this
-                                   project, making it easy to create on the fly
-                                   applications for simple utilities on the
-                                   database.
-
-* `src`                          - Source code and private headers
-
-* `include`                      - Public headers
-
-* `scripts`                      - Simple scripts for auto code generation or
-                                   formatting or ci / cd. Mostly python.
-
-* `cmake`                        - CMake utilities and includes.
-
-* `docs`                         - Documentation for numstore.
+* `src\*.c`                      - All the library files - numstore is flat - you could just compile them all without CMake
+* `src\testing\*.c`              - Code for libnumstore that's test specific - leave out by default
+* `src\apps\samples`             - Pedagogical sample apps
+* `src\apps\scripts`             - Scripts to run on the code base
+* `src\apps\testing`             - Tests
+* `src\apps\tools`               - Utility debug tools
+* `src\templates`                - Files that get generated during configure time
 
 4.0 AI Usage Policy
 ===================

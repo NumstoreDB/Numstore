@@ -21,7 +21,7 @@
 #include "error.h"
 #include "numerics.h"
 #include "os.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 #include "utils.h"
 
 /******************************************************************************
@@ -135,7 +135,7 @@ lalloc_reset (struct lalloc *a)
   latch_unlock (&a->latch);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (lalloc_edge_cases)
 {
   u8            mem[64];
@@ -257,7 +257,7 @@ bobjp_create (u32 cap, u32 size, error *e)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (bobjp_create)
 {
   TEST_CASE ("No Memory Failure - no memory leaks")
@@ -329,7 +329,7 @@ bobjp_destroy (struct bobj_pool *p)
   i_free (p);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (bobjp_destroy)
 {
   TEST_CASE ("Destroy Green Path")
@@ -365,7 +365,7 @@ bobjp_alloc (struct bobj_pool *pool)
   return head;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 struct test_alloc_ctx
 {
@@ -750,7 +750,7 @@ slab_alloc_free (struct slab_alloc *alloc, void *ptr)
   latch_unlock (&alloc->l);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 struct test_item
 {

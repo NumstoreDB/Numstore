@@ -20,7 +20,7 @@
 #include "error.h"
 #include "logging.h"
 #include "os.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 
 HEADER_FUNC int
 run_unit_tests (const char* filter)

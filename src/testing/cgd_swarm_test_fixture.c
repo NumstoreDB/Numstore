@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing_only/cgd_swarm_test_fixture.h"
+#include "testing/cgd_swarm_test_fixture.h"
 
 #include <assert.h>
 #include <stdint.h>

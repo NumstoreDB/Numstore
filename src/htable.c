@@ -17,7 +17,7 @@
 #include "csx_assert.h"
 #include "numerics.h"        // randu32
 #include "os.h"              // i_malloc
-#include "testing_only/testing.h" // TEST
+#include "testing/testing.h" // TEST
 
 DEFINE_DBG_ASSERT (struct htable, htable, t, {
   ASSERT (t);
@@ -178,7 +178,7 @@ htable_foreach (
   latch_unlock (&((struct htable *)t)->latch);
 }
 
-#ifndef NTEST
+#ifdef TESTING
 struct hdata
 {
   struct hnode node;
@@ -269,7 +269,7 @@ fnv1a_hash (const struct string s)
   return hash;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (fnv1a_hash_empty)
 {
   const struct string empty = {.data = "", .len = 0};

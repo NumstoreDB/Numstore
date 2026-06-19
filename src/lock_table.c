@@ -15,7 +15,7 @@
 #include "lock_table.h"
 
 #include "numerics.h"
-#include "testing_only/testing.h"
+#include "testing/testing.h"
 #include "txn_table.h"
 
 /******************************************************************************
@@ -538,7 +538,7 @@ i_log_lockt (int log_level, const struct lockt *t)
   i_log (log_level, "================== LOCK TABLE END ==================\n");
 }
 
-#ifndef NTEST
+#ifdef TESTING
 
 /**
 struct test_case
