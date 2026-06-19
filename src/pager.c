@@ -2307,7 +2307,6 @@ pgr_get_writable (
 }
 
 #ifdef TESTING
-int i = 10;
 
 /**
 struct thread_ctx
