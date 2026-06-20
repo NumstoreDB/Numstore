@@ -26,15 +26,15 @@ jobs:
           sudo apt-get install -y cmake ninja-build
 
       - name: Configure
-        run: cmake --preset release
+        run: cmake --preset ci-docs
 
       - name: Build
-        run: cmake --build --preset release
+        run: cmake --build --preset ci-docs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/release/html
+          path: build/ci-docs/html
 
   deploy:
     needs: build

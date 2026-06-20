@@ -40,6 +40,22 @@
       }
     },
     {
+      "name": "ci-docs",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_PORTABLE":  "OFF",
+        "ENABLE_TESTS":     "OFF",
+        "ENABLE_LOGGING":   "OFF",
+        "ENABLE_ASAN":      "OFF",
+        "OPTIMIZE_CODE":    "OFF",
+        "ENABLE_COVERAGE":  "OFF",
+        "BUILD_TOOLS":      "OFF",
+        "BUILD_SAMPLES":    "OFF",
+        "BUILD_DOCS":       "ON"
+      }
+    },
+    {
       "name": "debug",
       "inherits": "base",
       "cacheVariables": {
@@ -123,6 +139,7 @@
   "buildPresets": [
   { "name": "package",          "configurePreset": "package",          "configuration": "Release" },
   { "name": "release",          "configurePreset": "release",          "configuration": "Release" },
+  { "name": "ci-docs",          "configurePreset": "ci-docs",          "configuration": "Release" },
   { "name": "debug",            "configurePreset": "debug",            "configuration": "Debug"   },
   { "name": "ci-valgrind",      "configurePreset": "ci-valgrind",      "configuration": "Debug"   },
   { "name": "ci-tests",         "configurePreset": "ci-tests",         "configuration": "Debug"   },
