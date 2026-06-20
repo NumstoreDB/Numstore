@@ -115,3 +115,60 @@ img { max-width: 100%; height: auto; }
 
 /* Horizontal rule */
 hr { border: 0; border-top: 1px solid var(--rule); margin: 2em 0; }
+
+/* Sticky top bar */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+}
+
+/* The dropdown itself */
+.docs-switcher {
+    display: inline-block;
+    position: relative;
+}
+
+.docs-switcher > summary {
+    cursor: pointer;
+    list-style: none;                 /* hide default disclosure triangle */
+    padding: 0.4em 0.9em;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--code-bg);
+    font-weight: 500;
+    user-select: none;
+}
+.docs-switcher > summary::-webkit-details-marker { display: none; }  /* Safari */
+
+.docs-switcher[open] > summary {
+    border-color: var(--accent);
+}
+
+/* The menu floats over content */
+.docs-switcher > ul {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 220px;
+    margin: 0;
+    padding: 0.3em 0;
+    list-style: none;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.docs-switcher > ul a {
+    display: block;
+    padding: 0.45em 1em;
+    color: var(--fg);
+    text-decoration: none;
+}
+.docs-switcher > ul a:hover {
+    background: var(--code-bg);
+}
