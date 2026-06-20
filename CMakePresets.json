@@ -19,7 +19,8 @@
         "OPTIMIZE_CODE":    "ON",
         "ENABLE_COVERAGE":  "OFF",
         "BUILD_TOOLS":      "OFF",
-        "BUILD_SAMPLES":    "OFF"
+        "BUILD_SAMPLES":    "OFF",
+        "BUILD_DOCS":       "OFF"
       }
     },
     {
@@ -34,7 +35,8 @@
         "OPTIMIZE_CODE":    "ON",
         "ENABLE_COVERAGE":  "OFF",
         "BUILD_TOOLS":      "ON",
-        "BUILD_SAMPLES":    "ON"
+        "BUILD_SAMPLES":    "ON",
+        "BUILD_DOCS":       "OFF"
       }
     },
     {
@@ -49,7 +51,8 @@
         "OPTIMIZE_CODE":    "OFF",
         "ENABLE_COVERAGE":  "OFF",
         "BUILD_TOOLS":      "ON",
-        "BUILD_SAMPLES":    "ON"
+        "BUILD_SAMPLES":    "ON",
+        "BUILD_DOCS":       "OFF"
       }
     },
     {
@@ -64,7 +67,8 @@
         "OPTIMIZE_CODE":    "ON",
         "ENABLE_COVERAGE":  "OFF",
         "BUILD_TOOLS":      "ON",
-        "BUILD_SAMPLES":    "ON"
+        "BUILD_SAMPLES":    "ON",
+        "BUILD_DOCS":       "OFF"
       }
     },
     {
@@ -79,7 +83,8 @@
         "OPTIMIZE_CODE":    "ON",
         "ENABLE_COVERAGE":  "OFF",
         "BUILD_TOOLS":      "OFF",
-        "BUILD_SAMPLES":    "OFF"
+        "BUILD_SAMPLES":    "OFF",
+        "BUILD_DOCS":       "OFF"
       }
     },
     {
@@ -94,7 +99,8 @@
         "OPTIMIZE_CODE":    "ON",
         "ENABLE_COVERAGE":  "OFF",
         "BUILD_TOOLS":      "OFF",
-        "BUILD_SAMPLES":    "OFF"
+        "BUILD_SAMPLES":    "OFF",
+        "BUILD_DOCS":       "OFF"
       }
     },
     {
@@ -109,7 +115,8 @@
         "OPTIMIZE_CODE":    "OFF",
         "ENABLE_COVERAGE":  "ON",
         "BUILD_TOOLS":      "OFF",
-        "BUILD_SAMPLES":    "OFF"
+        "BUILD_SAMPLES":    "OFF",
+        "BUILD_DOCS":       "OFF"
       }
     }
   ],
