@@ -1,9 +1,6 @@
 Building Numstore
 =================
 
-[Test](developing.md)
-![Test Logo](assets/logo.png)
-
 System requirements
 -------------------
 
