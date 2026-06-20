@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="$if(lang)$$lang$$else$en$endif$"$if(dir)$ dir="$dir$"$endif$>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="pandoc">
+$if(author-meta)$
+  <meta name="author" content="$for(author-meta)$$author-meta$$sep$, $endfor$">
+$endif$
+$if(date-meta)$
+  <meta name="dcterms.date" content="$date-meta$">
+$endif$
+$if(description-meta)$
+  <meta name="description" content="$description-meta$">
+$endif$
+  <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
+
+$for(css)$
+  <link rel="stylesheet" href="$css$">
+$endfor$
+$if(highlighting-css)$
+  <style>
+$highlighting-css$
+  </style>
+$endif$
+$for(header-includes)$
+  $header-includes$
+$endfor$
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-title" href="https://github.com/NumstoreDB/Numstore">
+      <img src="assets/logo.png" alt="" class="site-logo">
+      <span>Numstore</span>
+    </a>
+    <nav class="site-nav">
+      <a href="https://github.com/NumstoreDB/Numstore">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="page">
+    $for(include-before)$
+    $include-before$
+    $endfor$
+
+    <main>
+      $if(title)$
+      <header>
+        <h1>$title$</h1>
+        $if(subtitle)$<p class="subtitle">$subtitle$</p>$endif$
+      </header>
+      $endif$
+      $body$
+    </main>
+  </div>
+
+<script>
+(function () {
+  function stripIndex(p) {
+    return p.endsWith('index.html') ? p.slice(0, -'index.html'.length) : p;
+  }
+  var here = stripIndex(location.pathname);
+  document.querySelectorAll('.docs-nav a').forEach(function (a) {
+    if (stripIndex(a.getAttribute('href')) === here) {
+      a.classList.add('active');
+    }
+  });
+})();
+</script>
+</body>
+</main>
+$for(include-after)$
+$include-after$
+$endfor$
+</body>
+</html>

@@ -18,9 +18,10 @@ file(GLOB_RECURSE MD_FILES
     CONFIGURE_DEPENDS
     "*.md")
 
-set(PANDOC_LUA      "${PROJECT_SOURCE_DIR}/src/docs/md-links.lua")
-set(PANDOC_CSS      "${PROJECT_SOURCE_DIR}/src/docs/style.css")
-set(PANDOC_TEMPLATE "${PROJECT_SOURCE_DIR}/src/docs/template.html")
+set(PANDOC_LUA      "${PROJECT_SOURCE_DIR}/docs/pandoc/md-links.lua")
+set(PANDOC_CSS      "${PROJECT_SOURCE_DIR}/docs/pandoc/style.css")
+set(PANDOC_TEMPLATE "${PROJECT_SOURCE_DIR}/docs/pandoc/template.html")
+set(PANDOC_SIDEBAR  "${PROJECT_SOURCE_DIR}/docs/pandoc/_sidebar.html")
 
 set(PANDOC_ARGS
     --from=markdown
@@ -29,7 +30,9 @@ set(PANDOC_ARGS
     --embed-resources
     --lua-filter=${PANDOC_LUA}
     --css=${PANDOC_CSS}
-    --template=${PANDOC_TEMPLATE})
+    --template=${PANDOC_TEMPLATE}
+    --include-before-body=${PANDOC_SIDEBAR}
+  )
 
 ########################################################################
 # Gather all MD Sources
@@ -57,6 +60,7 @@ foreach(MD_REL IN LISTS MD_FILES)
             "${PANDOC_CSS}" 
             "${PANDOC_TEMPLATE}"
             "${PANDOC_LUA}"
+            "${PANDOC_SIDEBAR}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "pandoc: ${MD_REL} -> ${HTML_REL}"
     VERBATIM
