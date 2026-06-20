@@ -1,0 +1,97 @@
+name: CI (main)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: ${{ matrix.preset }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,    preset: ci-tests }
+          - { os: macos-latest,     preset: ci-tests }
+          - { os: windows-latest,   preset: ci-tests }
+          - { os: ubuntu-latest,    preset: ci-release-tests }
+          - { os: ubuntu-22.04,     preset: ci-release-tests }
+          - { os: ubuntu-24.04-arm, preset: ci-release-tests }
+          - { os: macos-latest,     preset: ci-release-tests }
+          - { os: macos-15-intel,   preset: ci-release-tests }
+          - { os: windows-latest,   preset: ci-release-tests }
+          - { os: windows-11-arm,   preset: ci-release-tests }
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # Build the code
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }}
+
+      # Run the tests
+      - shell: bash
+        run: |
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
+          "$exe"
+
+      - shell: bash
+        run: |
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'irwr_swarm_test*' -type f | head -1)
+          "$exe" 10 $RANDOM
+
+      - shell: bash
+        run: |
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
+          "$exe" 10 $RANDOM
+
+  package:
+    name: package / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # Build the code
+      - run: cmake --preset package
+      - run: cmake --build --preset package
+
+      # Package the code
+      - run: cd build/package && cpack
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}
+          path: |
+            build/package/*.tar.gz
+            build/package/*.zip
+            build/package/*.deb
+            build/package/*.rpm
+
+  valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - run: sudo apt-get install -y valgrind
+
+      # Build the code
+      - run: cmake --preset ci-valgrind
+      - run: cmake --build --preset ci-valgrind
+
+      # Run all tests in valgrind
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/unit_tests
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/cgd_swarm_test 10 $RANDOM
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/irwr_swarm_test 10 $RANDOM
