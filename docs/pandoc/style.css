@@ -1,0 +1,398 @@
+/* ──────────────────────────────────────────────────────────────
+   docs_styles.css — design system port
+   Dark-first. Inter (sans), Space Grotesk (display), JetBrains Mono (mono).
+   Translated from the Tailwind tokens; pandoc-compatible (no build step).
+   ────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+
+/* ── Tokens ──────────────────────────────────────────────────── */
+:root {
+    /* Surface palette */
+    --bg:       #0a0a0a;
+    --surface:  #111113;
+    --elevated: #17171a;
+    --border:   #26262b;
+
+    /* Text */
+    --fg:    #e7e7ea;
+    --muted: #9a9aa3;
+
+    /* Accent (navy) */
+    --accent:      #1c3a7a;
+    --accent-soft: #4a6cd9;
+    --accent-deep: #142a5a;
+
+    /* Secondary (clay) */
+    --secondary:      #c0391b;
+    --secondary-soft: #e04a2c;
+    --secondary-deep: #8e2613;
+
+    /* Product colors */
+    --product-smartfiles:  #4a6cd9;
+    --product-numstore:    #1c3a7a;
+    --product-enterprise:  #c0391b;
+
+    /* Fonts */
+    --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: '"Space Grotesk"', 'Space Grotesk', system-ui, sans-serif;
+    --font-mono:    '"JetBrains Mono"', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* Layout */
+    --container-max: 1200px;
+    --radius:        6px;
+    --radius-sm:     4px;
+
+    /* Aliases kept for code blocks etc. */
+    --rule:    var(--border);
+    --code-bg: var(--surface);
+    --code-fg: var(--fg);
+}
+
+/* ── Base ────────────────────────────────────────────────────── */
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    line-height: 1.6;
+}
+
+:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-soft);
+    border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ── Typography ──────────────────────────────────────────────── */
+h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    color: var(--fg);
+}
+h1 { font-size: 2.25rem; border-bottom: 1px solid var(--border); padding-bottom: .35em; }
+h2 { font-size: 1.6rem;  border-bottom: 1px solid var(--border); padding-bottom: .25em; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1rem;    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+p { margin: 0.9em 0; }
+strong { font-weight: 600; color: var(--fg); }
+small { color: var(--muted); }
+
+a {
+    color: var(--accent-soft);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+a:hover { text-decoration: underline; }
+
+/* Header block (page title/author/date) */
+header h1 { margin-top: 0; }
+header .subtitle { color: var(--muted); font-size: 1.15rem; margin-top: -.2em; font-family: var(--font-display); }
+header .author, header .date { color: var(--muted); margin: 0; }
+
+/* ── Code ────────────────────────────────────────────────────── */
+code, pre, kbd, samp {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+code {
+    background: var(--surface);
+    color: var(--fg);
+    padding: 0.15em 0.4em;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+pre {
+    background: var(--surface);
+    color: var(--fg);
+    padding: 1em 1.1em;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    line-height: 1.55;
+}
+pre code {
+    background: none;
+    padding: 0;
+    border: none;
+    font-size: 0.92em;
+}
+
+kbd {
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.45em;
+    font-size: 0.85em;
+}
+
+/* ── Blockquote, tables, images, rule ────────────────────────── */
+blockquote {
+    margin: 1.2em 0;
+    padding: 0.2em 1.1em;
+    color: var(--muted);
+    border-left: 3px solid var(--accent-soft);
+    background: var(--surface);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+table {
+    border-collapse: collapse;
+    margin: 1.2em 0;
+    width: 100%;
+    font-size: 0.95em;
+}
+th, td {
+    border: 1px solid var(--border);
+    padding: 0.55em 0.8em;
+    text-align: left;
+}
+th {
+    background: var(--surface);
+    font-weight: 600;
+    color: var(--fg);
+}
+
+img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 2.5em 0;
+}
+
+/* TOC */
+#toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75em 1.1em;
+    margin: 2em 0;
+    font-size: 0.95em;
+}
+#toc ul { padding-left: 1.2em; }
+
+/* ── Components ──────────────────────────────────────────────── */
+.container-page {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--container-max);
+    padding-inline: 1.5rem;
+}
+@media (min-width: 640px) {
+    .container-page { padding-inline: 2rem; }
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius);
+    padding: 0.65rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    min-height: 44px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+    font-family: var(--font-sans);
+}
+.btn-primary   { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-soft); }
+.btn-secondary { background: transparent; color: var(--fg); border-color: var(--border); }
+.btn-secondary:hover { background: var(--elevated); }
+.btn-ghost     { background: transparent; color: var(--fg); }
+.btn-ghost:hover { background: var(--elevated); }
+.btn:hover     { text-decoration: none; }
+
+/* Eyebrow tag */
+.eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+}
+
+/* Scroll-reveal hooks (toggle .reveal-visible from JS / IntersectionObserver) */
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.reveal { opacity: 0; }
+.reveal-visible {
+    opacity: 1;
+    animation: fade-in-up 0.6s ease-out both;
+}
+
+/* ── Site chrome ─────────────────────────────────────────────── */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--border);
+}
+
+.site-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    text-decoration: none;
+}
+.site-title:hover { text-decoration: none; color: var(--fg); }
+
+.site-logo {
+    height: 1.6rem;
+    width: auto;
+    display: block;
+}
+
+.site-nav a {
+    color: var(--muted);
+    text-decoration: none;
+    margin-left: 1.4em;
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+.site-nav a:hover { color: var(--accent-soft); text-decoration: none; }
+
+/* ── Page grid (sidebar + main) ──────────────────────────────── */
+.page {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 3rem;
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+main {
+    max-width: 44rem;
+    margin: 2.5rem auto;
+    padding: 0 0.25rem;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.docs-nav {
+    position: sticky;
+    top: 4rem;
+    align-self: start;
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
+    padding: 1.5rem 0;
+    font-size: 0.93rem;
+}
+
+.docs-nav ul { list-style: none; padding: 0; margin: 0; }
+.docs-nav li { margin: 0; }
+
+.docs-nav .top-link {
+    display: block;
+    padding: 0.4em 0.75em;
+    color: var(--fg);
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+.docs-nav .top-link:hover { background: var(--elevated); text-decoration: none; }
+
+.docs-nav h3 {
+    margin: 1.2em 0 0.35em;
+    padding: 0 0.75em;
+    border: 0;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+
+.docs-nav .section > ul {
+    margin: 0 0 0.6em 0.85em;
+    padding-left: 0.65em;
+    border-left: 1px solid var(--border);
+}
+
+.docs-nav .section > ul a {
+    display: block;
+    padding: 0.35em 0.75em;
+    margin: 0.05em 0;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s, background-color 0.12s;
+}
+.docs-nav .section > ul a:hover {
+    background: var(--elevated);
+    color: var(--fg);
+    text-decoration: none;
+}
+
+.docs-nav a.active {
+    color: var(--accent-soft);
+    font-weight: 600;
+    background: var(--elevated);
+}
+
+/* Optional: per-product accent on the left rule.
+   Add data-product="numstore|smartfiles|enterprise" to <li class="section"> */
+.docs-nav .section[data-product="numstore"]    > ul { border-left-color: var(--product-numstore); }
+.docs-nav .section[data-product="smartfiles"]  > ul { border-left-color: var(--product-smartfiles); }
+.docs-nav .section[data-product="enterprise"]  > ul { border-left-color: var(--product-enterprise); }
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 800px) {
+    .page { grid-template-columns: 1fr; gap: 0; padding: 0 1rem; }
+    .docs-nav {
+        position: static;
+        max-height: none;
+        border-bottom: 1px solid var(--border);
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+    }
+    main { margin: 1.5rem auto; }
+    .site-nav a { margin-left: 0.9em; }
+}
