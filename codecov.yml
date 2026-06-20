@@ -1,6 +1,6 @@
 ignore:
-  - "bindings/**"
-  - "apps/**"
+  - "src/apps**"
+  - "src/testing/**"
   - "src/os_windows.c"
   - "src/os_posix.c"
 coverage:
