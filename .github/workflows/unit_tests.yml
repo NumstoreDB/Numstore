@@ -87,7 +87,9 @@ jobs:
       - run: sudo apt-get install -y valgrind
       - run: cmake --preset ci-valgrind
       - run: cmake --build --preset ci-valgrind
-      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/all_tests 10 $RANDOM
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/unit_tests
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/cgd_swarm_test 10 $RANDOM
+      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/irwr_swarm_test 10 $RANDOM
 
   coverage:
     runs-on: ubuntu-latest
