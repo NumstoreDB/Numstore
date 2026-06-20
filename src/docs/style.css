@@ -1,0 +1,117 @@
+/* style.css — minimal docs theme */
+:root {
+    --fg:        #1f2328;
+    --muted:     #57606a;
+    --bg:        #ffffff;
+    --accent:    #0969da;
+    --rule:      #d0d7de;
+    --code-bg:   #f6f8fa;
+    --code-fg:   #24292f;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --fg:      #e6edf3;
+        --muted:   #8b949e;
+        --bg:      #0d1117;
+        --accent:  #4493f8;
+        --rule:    #30363d;
+        --code-bg: #161b22;
+        --code-fg: #e6edf3;
+    }
+}
+
+html { font-size: 16px; }
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+}
+
+main {
+    max-width: 42rem;
+    margin: 3rem auto;
+    padding: 0 1.25rem;
+}
+
+/* Headings */
+h1, h2, h3, h4 {
+    line-height: 1.25;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+h1 { font-size: 2rem;   border-bottom: 1px solid var(--rule); padding-bottom: .3em; }
+h2 { font-size: 1.5rem; border-bottom: 1px solid var(--rule); padding-bottom: .2em; }
+h3 { font-size: 1.2rem; }
+h4 { font-size: 1rem;   color: var(--muted); }
+
+/* Header block (title/author/date) */
+header h1 { margin-top: 0; }
+header .subtitle { color: var(--muted); font-size: 1.15rem; margin-top: -.2em; }
+header .author, header .date { color: var(--muted); margin: 0; }
+
+/* Links */
+a          { color: var(--accent); text-decoration: none; }
+a:hover    { text-decoration: underline; }
+
+/* Code */
+code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9em;
+}
+code {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: .15em .35em;
+    border-radius: 4px;
+}
+pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+}
+pre code { background: none; padding: 0; }
+
+/* Blockquote */
+blockquote {
+    margin: 1em 0;
+    padding: 0 1em;
+    color: var(--muted);
+    border-left: 4px solid var(--rule);
+}
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    width: 100%;
+}
+th, td {
+    border: 1px solid var(--rule);
+    padding: .5em .75em;
+    text-align: left;
+}
+th { background: var(--code-bg); }
+
+/* TOC */
+#toc {
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: .5em 1em;
+    margin: 2em 0;
+    font-size: 0.95em;
+}
+#toc ul { padding-left: 1.2em; }
+
+/* Images */
+img { max-width: 100%; height: auto; }
+
+/* Horizontal rule */
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2em 0; }

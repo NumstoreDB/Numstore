@@ -17,7 +17,10 @@
 #include "csx_assert.h"
 #include "error.h"
 #include "os.h"
-#include "testing/testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: GR Lock

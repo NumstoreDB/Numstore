@@ -15,8 +15,11 @@
 #include "variables.h"
 
 #include "page.h"
-#include "testing/testing.h"
 #include "types.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 bool
 variable_equal (const struct variable *left, const struct variable *right)

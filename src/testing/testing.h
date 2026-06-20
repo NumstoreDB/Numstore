@@ -20,8 +20,6 @@
 #include "platform.h"   // HEADER_FUNC
 #include "utils.h"      // FPREFIX_STR
 
-#ifdef TESTING
-
 extern int test_ret;
 
 /******************************************************************************
@@ -30,18 +28,18 @@ extern int test_ret;
  * @brief Macro for defining new tests
  ******************************************************************************/
 
-#  define TEST(name)            \
-    void __test__##name (void); \
-    void __test__##name (void)
+#define TEST(name)            \
+  void __test__##name (void); \
+  void __test__##name (void)
 
-#  define TEST_CASE(fmt, ...)                                               \
-    for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1),     \
-             _tc_prev = test_ret;                                           \
-         _tc_once;                                                          \
-         _tc_once = 0,                                                      \
-             (test_ret == _tc_prev                                          \
-                  ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
-                  : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
+#define TEST_CASE(fmt, ...)                                               \
+  for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1),     \
+           _tc_prev = test_ret;                                           \
+       _tc_once;                                                          \
+       _tc_once = 0,                                                      \
+           (test_ret == _tc_prev                                          \
+                ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
+                : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
 
 /******************************************************************************
  * SECTION: TEST Marker
@@ -107,22 +105,22 @@ __test_mark (const char *_src)
   _dst[_i] = '\0';
 }
 
-#  define TEST_MARK(label)          \
-    do                              \
-    {                               \
-      if (!__test_mark_hit (label)) \
-      {                             \
-        __test_mark (label);        \
-      }                             \
-    }                               \
-    while (0)
+#define TEST_MARK(label)          \
+  do                              \
+  {                               \
+    if (!__test_mark_hit (label)) \
+    {                             \
+      __test_mark (label);        \
+    }                             \
+  }                               \
+  while (0)
 
-#  define test_reset_marks() \
-    do                       \
-    {                        \
-      test_marks_count = 0;  \
-    }                        \
-    while (0)
+#define test_reset_marks() \
+  do                       \
+  {                        \
+    test_marks_count = 0;  \
+  }                        \
+  while (0)
 
 /******************************************************************************
  * SECTION: TEST runtime checks
@@ -130,81 +128,81 @@ __test_mark (const char *_src)
  * @brief methods to use during tests
  ******************************************************************************/
 
-#  define fail_test(fmt, ...)                                     \
-    do                                                            \
-    {                                                             \
-      i_log_failure (FPREFIX_STR fmt, FPREFIX_ARGS, __VA_ARGS__); \
-      test_ret = -1;                                              \
-      return;                                                     \
-    }                                                             \
-    while (0)
+#define fail_test(fmt, ...)                                     \
+  do                                                            \
+  {                                                             \
+    i_log_failure (FPREFIX_STR fmt, FPREFIX_ARGS, __VA_ARGS__); \
+    test_ret = -1;                                              \
+    return;                                                     \
+  }                                                             \
+  while (0)
 
-#  define test_assert_equal(left, right)         \
-    do                                           \
-    {                                            \
-      if ((left) != (right))                     \
-      {                                          \
-        fail_test ("%s != %s\n", #left, #right); \
-      }                                          \
-    }                                            \
-    while (0)
-
-#  define test_assert_int_equal(left, right) \
-    test_assert_type_equal (left, right, i32, PRId32)
-
-#  define test_assert_type_equal(left, right, type, fmt) \
-    do                                                   \
-    {                                                    \
-      type _left  = left;                                \
-      type _right = right;                               \
-      if ((_left) != (_right))                           \
-      {                                                  \
-        fail_test (                                      \
-            "Expression: %s != %s values: "              \
-            "(%" fmt ") != (%" fmt ")\n",                \
-            #left,                                       \
-            #right,                                      \
-            _left,                                       \
-            _right                                       \
-        );                                               \
-      }                                                  \
-    }                                                    \
-    while (0)
-
-#  define test_assert_ptr_equal(left, right) \
-    test_assert_equal ((void *)left, (void *)right)
-
-#  define test_assert(expr)                  \
-    do                                       \
-    {                                        \
-      if (!(expr))                           \
-      {                                      \
-        fail_test ("Expected: %s\n", #expr); \
-      }                                      \
-    }                                        \
-    while (0)
-
-#  define test_fail_if(expr)                   \
-    do                                         \
+#define test_assert_equal(left, right)         \
+  do                                           \
+  {                                            \
+    if ((left) != (right))                     \
     {                                          \
-      if (expr)                                \
-      {                                        \
-        fail_test ("Unexpected: %s\n", #expr); \
-      }                                        \
+      fail_test ("%s != %s\n", #left, #right); \
     }                                          \
-    while (0)
+  }                                            \
+  while (0)
 
-#  define test_err_t_check(expr, exp, ename) \
-    do                                       \
+#define test_assert_int_equal(left, right) \
+  test_assert_type_equal (left, right, i32, PRId32)
+
+#define test_assert_type_equal(left, right, type, fmt) \
+  do                                                   \
+  {                                                    \
+    type _left  = left;                                \
+    type _right = right;                               \
+    if ((_left) != (_right))                           \
+    {                                                  \
+      fail_test (                                      \
+          "Expression: %s != %s values: "              \
+          "(%" fmt ") != (%" fmt ")\n",                \
+          #left,                                       \
+          #right,                                      \
+          _left,                                       \
+          _right                                       \
+      );                                               \
+    }                                                  \
+  }                                                    \
+  while (0)
+
+#define test_assert_ptr_equal(left, right) \
+  test_assert_equal ((void *)left, (void *)right)
+
+#define test_assert(expr)                  \
+  do                                       \
+  {                                        \
+    if (!(expr))                           \
+    {                                      \
+      fail_test ("Expected: %s\n", #expr); \
+    }                                      \
+  }                                        \
+  while (0)
+
+#define test_fail_if(expr)                   \
+  do                                         \
+  {                                          \
+    if (expr)                                \
     {                                        \
-      err_t __ret = (err_t)expr;             \
-      test_assert_int_equal (__ret, exp);    \
-      (ename)->cause_code = SUCCESS;         \
+      fail_test ("Unexpected: %s\n", #expr); \
     }                                        \
-    while (0)
+  }                                          \
+  while (0)
 
-#  define test_assert_memequal(a, b, size) \
-    test_assert_int_equal (memcmp (a, b, size), 0)
+#define test_err_t_check(expr, exp, ename) \
+  do                                       \
+  {                                        \
+    err_t __ret = (err_t)expr;             \
+    test_assert_int_equal (__ret, exp);    \
+    (ename)->cause_code = SUCCESS;         \
+  }                                        \
+  while (0)
+
+#define test_assert_memequal(a, b, size) \
+  test_assert_int_equal (memcmp (a, b, size), 0)
 
 HEADER_FUNC bool
 __test_mark_hit (const char *_pat)
@@ -221,48 +219,24 @@ __test_mark_hit (const char *_pat)
   return _hit;
 }
 
-#  define test_assert_mark_hit(pattern)                       \
-    do                                                        \
-    {                                                         \
-      if (!__test_mark_hit (pattern))                         \
-      {                                                       \
-        fail_test ("No mark matched pattern: %s\n", pattern); \
-      }                                                       \
-    }                                                         \
-    while (0)
+#define test_assert_mark_hit(pattern)                       \
+  do                                                        \
+  {                                                         \
+    if (!__test_mark_hit (pattern))                         \
+    {                                                       \
+      fail_test ("No mark matched pattern: %s\n", pattern); \
+    }                                                       \
+  }                                                         \
+  while (0)
 
-#  define test_assert_mark_not_hit(pattern)                \
-    do                                                     \
-    {                                                      \
-      if (__test_mark_hit (pattern))                       \
-      {                                                    \
-        fail_test ("Mark matched pattern: %s\n", pattern); \
-      }                                                    \
-    }                                                      \
-    while (0)
-
-#else // NTEST
-
-#  define TEST_SUITE(name, max) ((void)0)
-#  define REGISTER(suite, name) ((void)0)
-#  define TEST(type, name)                              \
-    static inline void test_##name (void) MAYBE_UNUSED; \
-    static inline void test_##name (void)
-#  define TEST_CASE(fmt, ...)                         if (0)
-#  define TEST_MARK(label)                            ((void)0)
-#  define test_assert_mark_hit(pattern)               ((void)0)
-#  define test_reset_marks()                          ((void)0)
-#  define test_assert(expr)                           ((void)0)
-#  define test_assert_equal(left, right)              ((void)0)
-#  define test_assert_int_equal(left, right)          ((void)0)
-#  define test_assert_type_equal(left, right, t, fmt) ((void)0)
-#  define test_assert_ptr_equal(left, right)          ((void)0)
-#  define test_assert_memequal(a, b, size)            ((void)0)
-#  define test_fail_if(expr)                          ((void)0)
-#  define test_err_t_wrap(expr, ename)                ((void)(expr))
-#  define test_err_t_check(expr, exp, ename)          ((void)(expr))
-#  define fail_test(fmt, ...)                         ((void)0)
-
-#endif // NTEST
+#define test_assert_mark_not_hit(pattern)                \
+  do                                                     \
+  {                                                      \
+    if (__test_mark_hit (pattern))                       \
+    {                                                    \
+      fail_test ("Mark matched pattern: %s\n", pattern); \
+    }                                                    \
+  }                                                      \
+  while (0)
 
 #endif // TESTING_H

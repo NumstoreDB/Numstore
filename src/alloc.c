@@ -21,8 +21,11 @@
 #include "error.h"
 #include "numerics.h"
 #include "os.h"
-#include "testing/testing.h"
 #include "utils.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Local Linear Allocator

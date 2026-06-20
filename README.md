@@ -2,7 +2,8 @@
   <img src="docs/assets/logo.png" alt="NumStore Logo" width="200"/>
 </p>
 
-# Numstore
+Numstore
+========
 
 [![codecov](https://codecov.io/gh/NumstoreDB/Numstore/graph/badge.svg?token=GMNPHQID77)](https://codecov.io/gh/NumstoreDB/Numstore)
 ![GitHub Actions](https://github.com/NumstoreDB/Numstore/actions/workflows/develop.yml/badge.svg)
@@ -10,112 +11,53 @@
 **A database for arrays**
 
 Numstore is a single file embedded ACID database built for arrays written entirely 
-in C with no dependencies. Currently it has a nice easy python interface 
-to use - but stay tuned for more features as it grows. 
+in C with no dependencies. 
 
----
+Conceptually, it's a file with ACID properties and faster inner file mutations
 
-1.0 Quick Start
+Numstore has two libraries so far:
+
+1. libsmartfiles:
+    Smartfiles is conceptually a database for "file like data". That is, just an array of bytes.
+    Smartfiles has far better performance for inner insertions and removals than regular files 
+    Smartfiles is ACID - your file never writes half of what you want it to write, even if you unplug your 
+    computer while it's doing work.
+
+2. libnumstore:
+    Numstore is the same as smartfiles but it has a rich type system built on top to handle numerical data
+
+To get started, choose your platform and run:
+
+<details>
+<summary><strong>Linux / MacOS</strong></summary>
+
+```
+cd <numstore>/src
+gcc -c *.c
+ar rcs libnumstore.a *.o
+gcc apps/samples/smartfiles/sample1_basic_crud.c -o sample libnumstore.a -I.
+./sample
+```
+
+</details>
+
+<details>
+<summary><strong>Windows (MSVC)</strong></summary>
+
+```
+cd <numstore>\src
+cl /c *.c
+lib /OUT:numstore.lib *.obj
+cl apps\samples\smartfiles\sample1_basic_crud.c /Fe:sample.exe numstore.lib /I.
+sample.exe
+```
+
+</details>
+
+For more information, refer to the [Quick Start Guide](docs/quick_start.md).
+
+AI Usage Policy
 ===============
-
-1.1 System requirements
------------------------
-
-* C compiler supporting the C11 standard
-* CMake
-* Python 3
-
-1.2 Linux, Mac, Windows
------------------------
-
-Numstore is built with CMake.
-Default build config is `Debug`:
-
-    cd <path>/numstore
-    mkdir build 
-    cd build 
-    cmake ..
-    cmake --build .
-
-
-1.3 Build in Release Mode
--------------------------
-
-Release mode has no tests, and no ASSERTS
-
-    cd <path>/numstore
-    mkdir build 
-    cd build 
-    cmake .. -DCMAKE_BUILD_TYPE=Release
-    cmake --build .
-
-1.4 Run
--------
-
-Run a sample application inside `src/apps/samples` use these as pedagogical 
-sample applications that show you how numstore works
-
-2.0 Configure your build
-========================
-
-2.1 CMake Options
------------------
-
-* `ENABLE_PORTABLE`              - Build code without machine optimized instructions (to distribute and valgrind)
-* `ENABLE_TESTS`                 - Include testing specific code in the numstore library
-* `ENABLE_LOGGING`               - Include logging code in the numstore library 
-* `ENABLE_ASAN`                  - Compile in an address sanitizer
-* `ENABLE_COVERAGE`              - Compile in coverage flag (for gnu only)
-* `BUILD_TOOLS`                  - Build a bunch of command line tools
-* `BUILD_SAMPLES`                - Build the sample code
-
-2.2 Configure Compile Time attributes 
--------------------------------------
-
-Numstore has compile time configuration of various application specific attributes
-such as page size, number of bits for a page number etc.
-
-You can see them all in cmake/Config.cmake.
-
-These are common configuration options:
-
-* `-DNS_NS_PAGE_SIZE=4096`       - Page size.
-* `-DNS_MEMORY_PAGE_LEN=4096`    - Number of pages to fit inside the pager buffer pool.
-* `-DNS_WAL_BUFFER_CAP=1048576`  - The size of the internal in memory WAL.
-
-These should rarely be changed:
-
-* `-DTSIZE_BITS=32`              - Number of bits needed to represent the size of a data type.
-* `-DPSIZE_BITS=32`              - Number of bits needed to represent the size of an index into a page.
-* `-DBSIZE_BITS=64`              - Number of bits needed to represent the size of an index into an array.
-* `-DPGNO_BITS=64`               - Number of bits needed to represent the size of a page number.
-* `-DTXID_BITS=32`               - Number of bits needed to represent the size of a transaction id.
-* `-DLSN_BITS=64`                - Number of bits needed to represent the size of a log sequence number.
-* `-DPGH_BITS=8`                 - Number of bits needed to represent the size of a page header.
-* `-DWLH_BITS=8`                 - Number of bits needed to represent the size of a log header.
-
-Or you can choose from a preset:
-* `--preset release`             - Optimized build with tools and samples.
-* `--preset debug`               - Debug build with tests, ASan, and logging.
-* `--preset package`             - Portable, stripped build for packaging.
-* `--preset ci-tests`            - Debug + ASan + tests. Used by CI.
-* `--preset ci-release-tests`    - Release + tests. Used by CI.
-* `--preset ci-valgrind`         - Debug + tests, no ASan. Used by CI under Valgrind.
-* `--preset ci-coverage`         - Debug + tests + gcov instrumentation. Used by CI.
-
-3.0 Project Layout
-==================
-
-* `src\*.c`                      - All the library files - numstore is flat - you could just compile them all without CMake
-* `src\testing\*.c`              - Code for libnumstore that's test specific - leave out by default
-* `src\apps\samples`             - Pedagogical sample apps
-* `src\apps\scripts`             - Scripts to run on the code base
-* `src\apps\testing`             - Tests
-* `src\apps\tools`               - Utility debug tools
-* `src\templates`                - Files that get generated during configure time
-
-4.0 AI Usage Policy
-===================
 
 I use AI the way I use a language server: as a tool, not a co-author. AI usage is fine
 but not for heavy tasks.
@@ -136,13 +78,13 @@ Things I don't ask AI to do:
 In practice, AI is useful for ideation, code review, and generating mundane code I'll
 immediately refactor. Every algorithm in this codebase was written by me.
 
-5.0 Contributing
-================
+Contributing
+============
 
 File a ticket on GitHub for bugs, feature requests, or questions.
 Many tickets that are easy to contribute will be marked
 
-6.0 License
-============
+License
+=======
 
 Apache 2.0. See LICENSE.

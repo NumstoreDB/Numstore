@@ -17,7 +17,10 @@
 #include "node_updates.h"
 #include "page.h"
 #include "pager.h"
-#include "testing/page_fixture.h"
+
+#ifdef TESTING
+#  include "testing/page_fixture.h"
+#endif
 
 /******************************************************************************
  * SECTION: Common Data Structures
