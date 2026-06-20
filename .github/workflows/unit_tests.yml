@@ -36,10 +36,22 @@ jobs:
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }}
 
-      # Run the tests
+      # Run the unit tests
       - shell: bash
         run: |
-          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'all_tests*' -type f | head -1)
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
+          "$exe" 
+
+      # Run irwr tests
+      - shell: bash
+        run: |
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'irwr_swarm_test*' -type f | head -1)
+          "$exe" 10 $RANDOM
+
+      # Run cgd tests
+      - shell: bash
+        run: |
+          exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
           "$exe" 10 $RANDOM
 
   package:
@@ -85,7 +97,9 @@ jobs:
       - run: sudo apt-get install -y lcov
       - run: cmake --preset ci-coverage
       - run: cmake --build --preset ci-coverage
-      - run: ./build/ci-coverage/bin/all_tests 10 $RANDOM
+      - run: ./build/ci-coverage/bin/unit_tests 
+      - run: ./build/ci-coverage/bin/irwr_swarm_test 10 $RANDOM
+      - run: ./build/ci-coverage/bin/cgd_swarm_test 10 $RANDOM
       - run: |
           lcov --capture --directory build/ci-coverage --output-file coverage.info --ignore-errors mismatch
           genhtml coverage.info --output-directory coverage_html

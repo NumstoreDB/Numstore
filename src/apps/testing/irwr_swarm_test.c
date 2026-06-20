@@ -19,8 +19,6 @@
 
 #include "testing/irwr_swarm_test_fixture.h"
 
-#define DEFAULT_TIMEOUT_SECONDS 10
-
 static volatile sig_atomic_t keep_running = 1;
 
 static void
@@ -33,24 +31,16 @@ handle_sigint (int sig)
 int
 main (int argc, char *argv[])
 {
-  int timeout_seconds = DEFAULT_TIMEOUT_SECONDS;
-
-  if (argc > 1)
+  if (argc != 3)
   {
-    timeout_seconds = atoi (argv[1]);
-    if (timeout_seconds <= 0)
-    {
-      fprintf (
-          stderr,
-          "Invalid timeout '%s', using default %ds\n",
-          argv[1],
-          DEFAULT_TIMEOUT_SECONDS
-      );
-      timeout_seconds = DEFAULT_TIMEOUT_SECONDS;
-    }
+    fprintf (stderr, "usage: %s TIMEOUT SEED\n", argv[0]);
+    return 2;
   }
 
-  srand (10000);
+  // Parse arguments
+  int      timeout_seconds = atoi (argv[1]);
+  unsigned seed            = (unsigned)strtoul (argv[2], NULL, 10);
+  srand (seed);
 
   int start_enabled[IRWR_AT_LEN];
   for (int i = 0; i < IRWR_AT_LEN; ++i)

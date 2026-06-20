@@ -60,7 +60,6 @@ if(ENABLE_TESTS)
     message(FATAL_ERROR "gen_tests.py failed (${gen_result}):\n${gen_stdout}\n${gen_stderr}")
   endif()
 
-  ns_add_executable(all_tests         testing/all_tests.c)
   ns_add_executable(unit_tests        testing/unit_tests.c)
   ns_add_executable(cgd_swarm_test    testing/cgd_swarm_test.c)
   ns_add_executable(irwr_swarm_test   testing/irwr_swarm_test.c)
