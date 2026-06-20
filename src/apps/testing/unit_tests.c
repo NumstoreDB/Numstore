@@ -20,7 +20,7 @@ main (const int argc, char **argv)
   const char *filter = (argc > 1) ? argv[1] : NULL;
   int         ret    = run_unit_tests (filter);
 
-  if (ret)
+  if (ret == 0)
   {
     i_log_passed ("All Tests Passed\n");
   }
