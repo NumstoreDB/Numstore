@@ -1,7 +1,7 @@
-name: CI
+name: CI (release)
 on:
   push:
-  pull_request:
+    tags: ['v*']
 
 permissions:
   contents: write
@@ -32,23 +32,21 @@ jobs:
       - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      # CMake Stuff
+      # Build the code
       - run: cmake --preset ${{ matrix.preset }}
       - run: cmake --build --preset ${{ matrix.preset }}
 
-      # Run the unit tests
+      # Run the tests
       - shell: bash
         run: |
           exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
-          "$exe" 
+          "$exe"
 
-      # Run irwr tests
       - shell: bash
         run: |
           exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'irwr_swarm_test*' -type f | head -1)
           "$exe" 10 $RANDOM
 
-      # Run cgd tests
       - shell: bash
         run: |
           exe=$(find build/${{ matrix.preset }}/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
@@ -66,10 +64,16 @@ jobs:
         with: { submodules: recursive }
       - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
+
+      # Build the code
       - run: cmake --preset package
       - run: cmake --build --preset package
+
+      # Package the code
       - run: cd build/package && cpack
         shell: bash
+
+      # Upload to github
       - uses: actions/upload-artifact@v4
         with:
           name: packages-${{ matrix.os }}
@@ -79,40 +83,8 @@ jobs:
             build/package/*.deb
             build/package/*.rpm
 
-  valgrind:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { submodules: recursive }
-      - run: sudo apt-get install -y valgrind
-      - run: cmake --preset ci-valgrind
-      - run: cmake --build --preset ci-valgrind
-      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/unit_tests
-      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/cgd_swarm_test 10 $RANDOM
-      - run: valgrind --error-exitcode=1 ./build/ci-valgrind/bin/irwr_swarm_test 10 $RANDOM
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { submodules: recursive }
-      - run: sudo apt-get install -y lcov
-      - run: cmake --preset ci-coverage
-      - run: cmake --build --preset ci-coverage
-      - run: ./build/ci-coverage/bin/unit_tests 
-      - run: ./build/ci-coverage/bin/irwr_swarm_test 10 $RANDOM
-      - run: ./build/ci-coverage/bin/cgd_swarm_test 10 $RANDOM
-      - run: |
-          lcov --capture --directory build/ci-coverage --output-file coverage.info --ignore-errors mismatch
-          genhtml coverage.info --output-directory coverage_html
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage_html/
-
   release:
-    needs: package
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [tests, package, valgrind, coverage]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
