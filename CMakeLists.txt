@@ -56,6 +56,7 @@ option(OPTIMIZE_CODE   "Build in optimized mode"               ${_ns_debug})
 option(ENABLE_COVERAGE "Enable coverage (GCC/Clang only)"      OFF)
 option(BUILD_TOOLS     "Build numstore CLI tools"              ON)
 option(BUILD_SAMPLES   "Build sample programs"                 ON)
+option(BUILD_DOCS      "Build documentation"                   ON)
 
 unset(_ns_debug)
 
@@ -152,6 +153,9 @@ endif()
 ########################################################################
 add_subdirectory(src)
 add_subdirectory(src/apps)
+if(BUILD_DOCS) 
+  add_subdirectory(docs)
+endif()
 
 ########################################################################
 # Install rules

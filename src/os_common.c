@@ -14,10 +14,13 @@
 
 #include <errno.h>
 
-#include "error.h"           // error
-#include "numerics.h"        // safe_mul_...
-#include "stdtypes.h"        // u32 ...etc
-#include "testing/testing.h" // TEST
+#include "error.h"    // error
+#include "numerics.h" // safe_mul_...
+#include "stdtypes.h" // u32 ...etc
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Memory

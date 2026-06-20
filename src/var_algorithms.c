@@ -19,9 +19,13 @@
 #include "page.h"
 #include "pager.h"
 #include "rope_algorithms.h"
-#include "testing/page_fixture.h"
 #include "types.h"
 #include "variables.h"
+
+#ifdef TESTING
+#  include "testing/page_fixture.h"
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: ns_find_var_page

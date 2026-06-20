@@ -16,13 +16,16 @@
 
 #include "alloc.h"
 #include "collections.h"
-#include "error.h"           // error
-#include "numerics.h"        // parse_i32_expect
-#include "query.h"           // query
-#include "serial.h"          // string_equal
-#include "testing/testing.h" // TEST
-#include "types.h"           // type_Ref
-#include "utils.h"           // case_ENUM_RETURN_STRING
+#include "error.h"    // error
+#include "numerics.h" // parse_i32_expect
+#include "query.h"    // query
+#include "serial.h"   // string_equal
+#include "types.h"    // type_Ref
+#include "utils.h"    // case_ENUM_RETURN_STRING
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Tokens

@@ -17,7 +17,10 @@
 #include "compiler.h"
 #include "error.h"
 #include "query.h"
-#include "testing/testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Multi User Stride

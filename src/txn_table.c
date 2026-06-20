@@ -16,7 +16,10 @@
 
 #include "collections.h"
 #include "lock_table.h"
-#include "testing/testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Transaction

@@ -14,8 +14,10 @@
 
 #include "page.h"
 
-#include "testing/inner_node_testing.h"
-#include "testing/testing.h"
+#ifdef TESTING
+#  include "testing/inner_node_testing.h"
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Page Common

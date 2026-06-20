@@ -15,8 +15,11 @@
 #include "lock_table.h"
 
 #include "numerics.h"
-#include "testing/testing.h"
 #include "txn_table.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Lt Lock

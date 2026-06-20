@@ -16,7 +16,10 @@
 
 #include "compile_config.h"
 #include "page.h"
-#include "testing/testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)

@@ -20,7 +20,10 @@
 #include "error.h"
 #include "os.h"
 #include "platform.h"
-#include "testing/testing.h" // TEST
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 enum file_pager_flags
 {
