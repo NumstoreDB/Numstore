@@ -856,8 +856,7 @@ wal_read_full (
     if (toread > 0)
     {
       bool iseof;
-      WRAP (
-          walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e)
+      WRAP (walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e)
       );
       if (iseof)
       {
@@ -867,8 +866,7 @@ wal_read_full (
 
     head += toread;
     bool iseof;
-    WRAP (
-        walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e)
+    WRAP (walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e)
     );
     if (iseof)
     {
@@ -1135,8 +1133,7 @@ wal_read_sequential (
 
   walis_mark_start_log (w->istream);
 
-  WRAP (
-      walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e)
+  WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e)
   );
   if (rlsn)
   {
@@ -1372,6 +1369,7 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
         case WUP_FSM:
         {
           dest->update.fsm.pg   = randu32 ();
+          dest->update.fsm.bit  = randu32 ();
           dest->update.fsm.undo = randu8 ();
           dest->update.fsm.redo = randu8 ();
           break;
@@ -1402,6 +1400,7 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
         case WCLR_FSM:
         {
           dest->clr.fsm.pg   = randu32 ();
+          dest->clr.fsm.bit  = randu32 ();
           dest->clr.fsm.redo = randu8 ();
           break;
         }
@@ -1498,41 +1497,45 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
         case WUP_PHYSICAL:
         {
           return (struct wal_rec_hdr_write){
-              .type   = WL_UPDATE,
-              .update = {
-                  .type = WUP_PHYSICAL,
-                  .tid  = src->update.tid,
-                  .prev = src->update.prev,
-                  .phys = (struct physical_write_update){
-                      .pg   = src->update.phys.pg,
-                      .redo = src->update.phys.redo,
-                      .undo = src->update.phys.undo,
+              .type = WL_UPDATE,
+              .update =
+                  {
+                      .type = WUP_PHYSICAL,
+                      .tid  = src->update.tid,
+                      .prev = src->update.prev,
+                      .phys =
+                          (struct physical_write_update){
+                              .pg   = src->update.phys.pg,
+                              .redo = src->update.phys.redo,
+                              .undo = src->update.phys.undo,
+                          },
                   },
-              },
           };
         }
         case WUP_FSM:
         {
           return (struct wal_rec_hdr_write){
-              .type   = WL_UPDATE,
-              .update = {
-                  .type = WUP_FSM,
-                  .tid  = src->update.tid,
-                  .prev = src->update.prev,
-                  .fsm  = src->update.fsm,
-              },
+              .type = WL_UPDATE,
+              .update =
+                  {
+                      .type = WUP_FSM,
+                      .tid  = src->update.tid,
+                      .prev = src->update.prev,
+                      .fsm  = src->update.fsm,
+                  },
           };
         }
         case WUP_FEXT:
         {
           return (struct wal_rec_hdr_write){
-              .type   = WL_UPDATE,
-              .update = {
-                  .type = WUP_FEXT,
-                  .tid  = src->update.tid,
-                  .prev = src->update.prev,
-                  .fext = src->update.fext,
-              },
+              .type = WL_UPDATE,
+              .update =
+                  {
+                      .type = WUP_FEXT,
+                      .tid  = src->update.tid,
+                      .prev = src->update.prev,
+                      .fext = src->update.fext,
+                  },
           };
         }
       }
@@ -1546,41 +1549,45 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
         {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
-              .clr  = {
-                  .type      = WCLR_PHYSICAL,
-                  .tid       = src->clr.tid,
-                  .prev      = src->clr.prev,
-                  .undo_next = src->clr.undo_next,
-                  .phys      = (struct physical_write_clr){
-                      .pg   = src->clr.phys.pg,
-                      .redo = src->clr.phys.redo,
+              .clr =
+                  {
+                      .type      = WCLR_PHYSICAL,
+                      .tid       = src->clr.tid,
+                      .prev      = src->clr.prev,
+                      .undo_next = src->clr.undo_next,
+                      .phys =
+                          (struct physical_write_clr){
+                              .pg   = src->clr.phys.pg,
+                              .redo = src->clr.phys.redo,
+                          },
                   },
-              },
           };
         }
         case WCLR_FSM:
         {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
-              .clr  = {
-                  .type      = WCLR_FSM,
-                  .tid       = src->clr.tid,
-                  .prev      = src->clr.prev,
-                  .undo_next = src->clr.undo_next,
-                  .fsm       = src->clr.fsm,
-              },
+              .clr =
+                  {
+                      .type      = WCLR_FSM,
+                      .tid       = src->clr.tid,
+                      .prev      = src->clr.prev,
+                      .undo_next = src->clr.undo_next,
+                      .fsm       = src->clr.fsm,
+                  },
           };
         }
         case WCLR_DUMMY:
         {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
-              .clr  = {
-                  .type      = WCLR_DUMMY,
-                  .tid       = src->clr.tid,
-                  .prev      = src->clr.prev,
-                  .undo_next = src->clr.undo_next,
-              },
+              .clr =
+                  {
+                      .type      = WCLR_DUMMY,
+                      .tid       = src->clr.tid,
+                      .prev      = src->clr.prev,
+                      .undo_next = src->clr.undo_next,
+                  },
           };
         }
       }
@@ -2157,10 +2164,11 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
               .tid       = h->update.tid,
               .prev      = tx->data.last_lsn,
               .undo_next = h->update.prev,
-              .phys      = {
-                  .pg   = wrh_get_affected_pg (h),
-                  .redo = h->update.phys.undo,
-              },
+              .phys =
+                  {
+                      .pg   = wrh_get_affected_pg (h),
+                      .redo = h->update.phys.undo,
+                  },
           };
         }
         case WUP_FSM:
@@ -2178,11 +2186,12 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
               .tid       = h->update.tid,
               .prev      = tx->data.last_lsn,
               .undo_next = h->update.prev,
-              .fsm       = {
-                  .pg   = page_h_pgno (ph),
-                  .bit  = h->update.fsm.bit,
-                  .redo = h->update.fsm.undo,
-              },
+              .fsm =
+                  {
+                      .pg   = page_h_pgno (ph),
+                      .bit  = h->update.fsm.bit,
+                      .redo = h->update.fsm.undo,
+                  },
           };
         }
         case WUP_FEXT:
@@ -2543,8 +2552,7 @@ wal_write_begin (
   u32       checksum = checksum_init ();
   const wlh t        = r->type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
-  WRAP (
-      walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
+  WRAP (walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
   );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
@@ -3216,26 +3224,28 @@ TEST (wal)
       },
       {
           .type = WL_CLR,
-          .clr  = {
-              .type      = WCLR_PHYSICAL,
-              .tid       = 6,
-              .prev      = 50,
-              .undo_next = 42,
-              .phys      = {.pg = 222},
-          },
+          .clr =
+              {
+                  .type      = WCLR_PHYSICAL,
+                  .tid       = 6,
+                  .prev      = 50,
+                  .undo_next = 42,
+                  .phys      = {.pg = 222},
+              },
       },
   };
 
   struct wal_rec_hdr_read batch2_full[] = {
       {.type = WL_BEGIN, .begin = {.tid = 2}},
       {
-          .type   = WL_UPDATE,
-          .update = {
-              .type = WUP_PHYSICAL,
-              .tid  = 6,
-              .prev = 41,
-              .phys = {.pg = 112},
-          },
+          .type = WL_UPDATE,
+          .update =
+              {
+                  .type = WUP_PHYSICAL,
+                  .tid  = 6,
+                  .prev = 41,
+                  .phys = {.pg = 112},
+              },
       },
   };
 
@@ -3263,13 +3273,14 @@ TEST (wal)
       },
       {
           .type = WL_CLR,
-          .clr  = {
-              .type      = WCLR_PHYSICAL,
-              .tid       = 6,
-              .prev      = 50,
-              .undo_next = 42,
-              .phys      = {.pg = 222},
-          },
+          .clr =
+              {
+                  .type      = WCLR_PHYSICAL,
+                  .tid       = 6,
+                  .prev      = 50,
+                  .undo_next = 42,
+                  .phys      = {.pg = 222},
+              },
       },
   };
 
@@ -3326,13 +3337,12 @@ TEST (wal_single_entry)
        .update =
            {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
       {.type = WL_CLR,
-       .clr  = {
-           .type      = WCLR_PHYSICAL,
-           .tid       = 5,
-           .prev      = 40,
-           .undo_next = 42,
-           .phys      = {.pg = 222}
-       }},
+       .clr =
+           {.type      = WCLR_PHYSICAL,
+            .tid       = 5,
+            .prev      = 40,
+            .undo_next = 42,
+            .phys      = {.pg = 222}}},
   };
 
   for (u32 i = 0; i < arrlen (cases); i++)
