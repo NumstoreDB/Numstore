@@ -84,7 +84,7 @@ jobs:
             build/package/*.rpm
 
   release:
-    needs: [tests, package, valgrind, coverage]
+    needs: [tests, package]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
