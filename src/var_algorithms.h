@@ -19,7 +19,6 @@
 #include "compile_config.h" // pgno ...etc
 #include "error.h"          // error
 #include "pager.h"          // pager
-#include "serial.h"         // string
 #include "stdtypes.h"       // bool ...etc
 #include "txn_table.h"      // txn
 #include "variables.h"      // variable
@@ -28,6 +27,17 @@
  * SECTION: Initialization
  * ----------------------------------------------------------------------------
  * @brief Initializing a variable hash map and database for location
+ *
+ * A Numstore file is conceptually a hash map of "variable names"
+ * The first two pages are special in a database. The first one is the
+ * first free space map, and the second one is the variable hash map:
+ *
+ * [Free Space Map Page]
+ * [Variable Hash Map  ]
+ * ...
+ * ...
+ *
+ * The function sets up the variable hash map
  ******************************************************************************/
 
 err_t ns_init_var_hash_map (struct pager *p, error *e);
@@ -104,34 +114,6 @@ struct ns_var_get_or_create_params
 
 err_t
 ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);
-
-/**
- * Simply finds or creates the new page where vname should exist.
- * If this is a create operation - then the page is found and
- * the neighbor links are written, but the page itself is not completed
- * thats where you need to call ns_write_var_page
- */
-struct ns_find_var_page_params
-{
-  struct pager       *p;
-  struct txn         *tx;
-  struct chunk_alloc *alloc;
-
-  struct string    vname;
-  struct variable *dvar;
-  enum
-  {
-    FP_CREATE,
-    FP_FIND,
-  } mode;
-
-  // You don't need to set these
-  pgno    hpos;
-  page_h *prev;
-  page_h *cur;
-};
-
-err_t ns_find_var_page (struct ns_find_var_page_params *params, error *e);
 
 /******************************************************************************
  * SECTION: Creating Variables

@@ -7,3 +7,4 @@ Numstore is a database for arrays and "file-like" data
 * See [developing](developing.md) to get started understanding the code base
 * See [language spec](language_spec.md) to get started understanding the numstore query language
 * See [algorithms](algorithms.md) to learn about the four core algorithms numstore uses in its array manipulation queries
+* See [Smart Files](smart_files.md) for a detailed reference docs of the smartfiles embedded database

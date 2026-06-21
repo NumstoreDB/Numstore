@@ -35,7 +35,7 @@ run_unit_tests (const char *filter)
   }
 
   int         failed = 0;
-  const char *failed_names[287];
+  const char *failed_names[288];
 
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:142 START
   if (!filter || strstr ("lalloc_edge_cases", filter))
@@ -3835,7 +3835,7 @@ run_unit_tests (const char *filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/page.c:3128 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:269 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:219 START
   if (!filter || strstr ("pager_fill_ht", filter))
   {
     extern void __test__pager_fill_ht (void);
@@ -3854,9 +3854,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:269 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:219 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:323 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:273 START
   if (!filter || strstr ("wal_int", filter))
   {
     extern void __test__wal_int (void);
@@ -3875,9 +3875,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:323 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:273 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1344 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1294 START
   if (!filter || strstr ("pager_open", filter))
   {
     extern void __test__pager_open (void);
@@ -3896,9 +3896,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1344 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1294 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1386 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1336 START
   if (!filter || strstr ("pgr_open_basic", filter))
   {
     extern void __test__pgr_open_basic (void);
@@ -3917,9 +3917,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1386 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1336 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1480 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1430 START
   if (!filter || strstr ("pgr_close_success", filter))
   {
     extern void __test__pgr_close_success (void);
@@ -3941,9 +3941,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1480 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1430 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1587 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1537 START
   if (!filter || strstr ("pgr_delete", filter))
   {
     extern void __test__pgr_delete (void);
@@ -3962,9 +3962,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1587 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1537 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1987 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1937 START
   if (!filter || strstr ("pgr_reserve_and_ctrl_lock_st", filter))
   {
     extern void __test__pgr_reserve_and_ctrl_lock_st (void);
@@ -3986,9 +3986,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1987 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:1937 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2126 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2079 START
   if (!filter || strstr ("pgr_get_invalid_checksum", filter))
   {
     extern void __test__pgr_get_invalid_checksum (void);
@@ -4010,9 +4010,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2126 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2079 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2699 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2657 START
   if (!filter || strstr ("pgr_new_get_save", filter))
   {
     extern void __test__pgr_new_get_save (void);
@@ -4034,9 +4034,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2699 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2657 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3001 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2961 START
   if (!filter || strstr ("aries_rollback_basic", filter))
   {
     extern void __test__aries_rollback_basic (void);
@@ -4058,9 +4058,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3001 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:2961 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3074 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3034 START
   if (!filter || strstr ("aries_rollback_multiple_updates", filter))
   {
     extern void __test__aries_rollback_multiple_updates (void);
@@ -4082,9 +4082,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3074 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3034 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3153 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3113 START
   if (!filter || strstr ("aries_rollback_with_crash_recovery", filter))
   {
     extern void __test__aries_rollback_with_crash_recovery (void);
@@ -4106,9 +4106,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3153 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3113 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3214 START
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3174 START
   if (!filter || strstr ("aries_rollback_clr_not_undone", filter))
   {
     extern void __test__aries_rollback_clr_not_undone (void);
@@ -4130,7 +4130,7 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3214 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/pager.c:3174 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/parsers.c:206 START
   if (!filter || strstr ("compile_multi_user_stride", filter))
@@ -6638,7 +6638,33 @@ run_unit_tests (const char *filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/utils.c:33 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:360
+  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:79
+  ///START
+  if (!filter || strstr ("ns_init_var_hash_map", filter))
+  {
+    extern void __test__ns_init_var_hash_map (void);
+    i_log_info (
+        "========================= TEST CASE: %s\n",
+        "ns_init_var_hash_map"
+    );
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_init_var_hash_map ();
+    if (!test_ret)
+    {
+      i_log_passed ("%s\n", "ns_init_var_hash_map");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_init_var_hash_map";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:79
+  ///DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:466
   ///START
   if (!filter || strstr ("ns_find_var_page", filter))
   {
@@ -6661,11 +6687,11 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:360
+  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:466
   ///DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/var_algorithms.c:1415 START
+  ////Users/theo/Development/Numstore/src/var_algorithms.c:1731 START
   if (!filter || strstr ("ns_var_get_or_create", filter))
   {
     extern void __test__ns_var_get_or_create (void);
@@ -6688,7 +6714,7 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/var_algorithms.c:1415 DONE
+  ////Users/theo/Development/Numstore/src/var_algorithms.c:1731 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/variables.c:277
   ///START
