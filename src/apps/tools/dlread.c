@@ -59,7 +59,7 @@ dl_contents (FILE *out, const char *fname, const pgno pg)
   error  e    = error_create ();
   page_h next = page_h_create ();
 
-  struct pager *p = pgr_open_single_file (fname, &e);
+  struct pager *p = pgr_open (fname, &e);
   if (p == NULL)
   {
     error_log_consume (&e);

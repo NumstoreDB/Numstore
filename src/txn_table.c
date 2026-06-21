@@ -16,6 +16,7 @@
 
 #include "collections.h"
 #include "lock_table.h"
+#include "serial.h"
 
 #ifdef TESTING
 #  include "testing/testing.h"

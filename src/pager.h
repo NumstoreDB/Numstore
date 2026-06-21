@@ -277,7 +277,7 @@ DEFINE_DBG_ASSERT (struct pager, pager, p, {
  * @brief Initialization and destruction of single-file database engines
  *----------------------------------------------------------------------------*/
 
-struct pager *pgr_open_single_file (const char *dbname, error *e);
+struct pager *pgr_open (const char *dbname, error *e);
 err_t         pgr_delete_single_file (const char *dbname, error *e);
 
 /*-----------------------------------------------------------------------------
