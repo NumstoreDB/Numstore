@@ -31,6 +31,9 @@ jobs:
       - name: Build
         run: cmake --build --preset ci-docs
 
+      - name: Add CNAME
+        run: echo "docs.numstore.org" > build/ci-docs/html/CNAME
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
