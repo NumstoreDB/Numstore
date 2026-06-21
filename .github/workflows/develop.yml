@@ -41,6 +41,32 @@ jobs:
           exe=$(find build/ci-tests/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
           "$exe" 10 $RANDOM
 
+  release-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+
+      # Build the code
+      - run: cmake --preset ci-release-tests
+      - run: cmake --build --preset ci-release-tests
+
+      # Run the tests
+      - shell: bash
+        run: |
+          exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
+          "$exe"
+
+      - shell: bash
+        run: |
+          exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'irwr_swarm_test*' -type f | head -1)
+          "$exe" 10 $RANDOM
+
+      - shell: bash
+        run: |
+          exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
+          "$exe" 10 $RANDOM
+
   coverage:
     runs-on: ubuntu-latest
     steps:
