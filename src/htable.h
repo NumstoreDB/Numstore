@@ -18,7 +18,6 @@
 #include "concurrency.h" // latch
 #include "error.h"       // error
 #include "platform.h"    // HEADER_FUNC
-#include "serial.h"      // string
 #include "stdtypes.h"    // u32 ...etc
 
 /******************************************************************************

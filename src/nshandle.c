@@ -326,7 +326,7 @@ _nsh_open (const char *path, error *e)
     }
 
     // db
-    ret->p = pgr_open_single_file (path, e);
+    ret->p = pgr_open (path, e);
     if (ret->p == NULL)
     {
       goto failed;

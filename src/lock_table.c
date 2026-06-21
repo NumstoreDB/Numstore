@@ -586,7 +586,7 @@ TEST_DISABLE (lock_table_exclusivity)
   error e = error_create ();
 
   // Why doesnt this fail?
-  struct pager    *p = pgr_open_single_file ("testdb", &e);
+  struct pager    *p = pgr_open ("testdb", &e);
   struct test_case c = {
       .lt      = p->lt,
       .counter = 0,

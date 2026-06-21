@@ -1043,7 +1043,7 @@ pgr_recover (struct pager *p, error *e)
 #endif
 
 /*
- * pgr_open_single_file — standard file-backed entry point.
+ * pgr_open — standard file-backed entry point.
  *
  * Creates [dbname] if it does not exist, constructs a file_pager and a
  * file-backed WAL, then delegates to pgr_open().  Directory cleanup on
@@ -1057,7 +1057,7 @@ pgr_recover (struct pager *p, error *e)
  *   Runs the three-phase ARIES restart via pgr_open().
  */
 struct pager *
-pgr_open_single_file (const char *dbname, error *e)
+pgr_open (const char *dbname, error *e)
 {
   u32 len = strlen (dbname);
   if (len > (NS_NAME_MAX - 4))
@@ -1299,7 +1299,7 @@ TEST (pager_open)
   {
     test_fail_if (pgr_delete_single_file ("testdb", &e));
 
-    struct pager *p = pgr_open_single_file ("testdb", &e);
+    struct pager *p = pgr_open ("testdb", &e);
 
     pgr_close (p, &e);
   }
@@ -1313,13 +1313,13 @@ TEST (pager_open)
     }
     name[NS_NAME_MAX - 3] = '\0';
 
-    struct pager *p = pgr_open_single_file (name, &e);
+    struct pager *p = pgr_open (name, &e);
     test_assert (p == NULL);
     test_err_t_check (e.cause_code, ERR_INVALID_ARGUMENT, &e);
     e.cause_code = SUCCESS;
 
     name[NS_NAME_MAX - 4] = '\0';
-    p                     = pgr_open_single_file (name, &e);
+    p                     = pgr_open (name, &e);
     test_assert (p != NULL);
 
     pgr_close (p, &e);
@@ -1343,21 +1343,21 @@ TEST (pgr_open_basic)
 
   // File is shorter than page size
   test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
-  struct pager *p = pgr_open_single_file ("testdb", &e);
+  struct pager *p = pgr_open ("testdb", &e);
   test_assert_int_equal (e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
   e.cause_code = SUCCESS;
 
   // Half a page
   test_fail_if (i_truncate (&fp, NS_PAGE_SIZE / 2, &e));
-  p = pgr_open_single_file ("testdb", &e);
+  p = pgr_open ("testdb", &e);
   test_assert_int_equal (e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
   e.cause_code = SUCCESS;
 
   // 0 pages
   test_fail_if (i_truncate (&fp, 0, &e));
-  p = pgr_open_single_file ("testdb", &e);
+  p = pgr_open ("testdb", &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
   test_assert_int_equal ((int)pgr_get_npages (p), 0);
   test_fail_if (pgr_close (p, &e));
@@ -1432,7 +1432,7 @@ TEST (pgr_close_success)
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
-  struct pager *p = pgr_open_single_file ("testdb", &e);
+  struct pager *p = pgr_open ("testdb", &e);
   // Delete file i_close should fail
   test_assert_equal (pgr_close (p, &e), SUCCESS);
   test_fail_if (pgr_delete_single_file ("foodir", &e));
@@ -2953,7 +2953,7 @@ TEST (aries_rollback_basic)
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
-  struct pager *p = pgr_open_single_file ("testdb", &e);
+  struct pager *p = pgr_open ("testdb", &e);
   struct txn    tx;
   page_h        fsm = page_h_create ();
   page_h        pg  = page_h_create ();
@@ -3026,7 +3026,7 @@ TEST (aries_rollback_multiple_updates)
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
-  struct pager *p = pgr_open_single_file ("testdb", &e);
+  struct pager *p = pgr_open ("testdb", &e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -3105,7 +3105,7 @@ TEST (aries_rollback_with_crash_recovery)
   error e = error_create ();
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
-  struct pager *p = pgr_open_single_file ("testdb", &e);
+  struct pager *p = pgr_open ("testdb", &e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -3148,7 +3148,7 @@ TEST (aries_rollback_with_crash_recovery)
 
   // Verify data is back to committed state after recovery
   {
-    p = pgr_open_single_file ("testdb", &e);
+    p = pgr_open ("testdb", &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
     test_assert_memequal (
         dl_get_data (page_h_ro (&dl_page)),
@@ -3167,7 +3167,7 @@ TEST (aries_rollback_clr_not_undone)
 
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
-  struct pager *p = pgr_open_single_file ("testdb", &e);
+  struct pager *p = pgr_open ("testdb", &e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -3223,7 +3223,7 @@ TEST (aries_rollback_clr_not_undone)
   // Crash and recover - verify CLRs were not undone
   {
     test_fail_if (pgr_crash (p, &e));
-    p = pgr_open_single_file ("testdb", &e);
+    p = pgr_open ("testdb", &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
     test_assert_memequal (
         dl_get_data (page_h_ro (&dl_page)),

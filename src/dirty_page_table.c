@@ -16,6 +16,7 @@
 
 #include "compile_config.h"
 #include "numerics.h"
+#include "serial.h"
 
 /*
  * Dirty page table entry.

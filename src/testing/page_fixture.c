@@ -57,7 +57,7 @@ pgr_fixture_create (struct pgr_fixture *dest)
     return error_trace (&dest->e);
   }
 
-  struct pager *p = pgr_open_single_file ("testdb", &dest->e);
+  struct pager *p = pgr_open ("testdb", &dest->e);
   if (p == NULL)
   {
     return dest->e.cause_code;

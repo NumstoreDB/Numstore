@@ -56,7 +56,7 @@ page_print (const char *fname, const pp_params params)
 {
   error e = error_create ();
 
-  struct pager *p = pgr_open_single_file (fname, &e);
+  struct pager *p = pgr_open (fname, &e);
   if (p == NULL)
   {
     error_log_consume (&e);
