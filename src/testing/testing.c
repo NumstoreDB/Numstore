@@ -20,6 +20,40 @@ int  test_ret = 0;
 char test_marks[test_marks_max][test_mark_len];
 int  test_marks_count = 0;
 
+static const char *g_faults[test_faults_max];
+static size_t      g_fault_count = 0;
+
+bool
+fault_is_set (const char *name)
+{
+  for (size_t i = 0; i < g_fault_count; i++)
+  {
+    if (strcmp (g_faults[i], name) == 0)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+void
+fault_set (const char *name)
+{
+  if (fault_is_set (name))
+  {
+    return;
+  }
+  ASSERT (g_fault_count < test_faults_max);
+
+  g_faults[g_fault_count++] = name;
+}
+
+void
+fault_reset_all (void)
+{
+  g_fault_count = 0;
+}
+
 static int
 example_func (void)
 {

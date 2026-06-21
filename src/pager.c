@@ -26,61 +26,11 @@
 #include "page.h"
 #include "pager.h"
 #include "txn_table.h"
-#include "var_algorithms.h"
 #include "wal.h"
 
 #ifdef TESTING
 #  include "testing/page_fixture.h"
 #endif
-
-/******************************************************************************
- * SECTION: ns_init_var_hash_map
- * ----------------------------------------------------------------------------
- * @brief Initialize the first hash map page of a pager
- ******************************************************************************/
-
-err_t
-ns_init_var_hash_map (struct pager *p, error *e)
-{
-  page_h hp = page_h_create ();
-
-  // BEGIN TXN
-  struct txn tx;
-  if (pgr_begin_txn (&tx, p, e))
-  {
-    goto failed;
-  }
-
-  // Upfront initialization
-  if (pgr_isnew (p))
-  {
-    // Create a new variable hash page
-    if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e))
-    {
-      goto failed;
-    }
-
-    // Next page should be valid
-    //   this is a weak contract
-    //   but assumes the structure of the pager,
-    //   it's good enough but might need to change
-    ASSERT (page_h_pgno (&hp) == VHASH_PGNO);
-
-    if (pgr_release (p, &hp, PG_VAR_HASH_PAGE, e))
-    {
-      goto failed;
-    }
-  }
-
-  // COMMIT
-  if (pgr_commit (p, &tx, e))
-  {
-    goto failed;
-  }
-
-failed:
-  return error_trace (e);
-}
 
 /******************************************************************************
  * SECTION: Pager Simple Functions

@@ -35,9 +35,11 @@ struct pgr_fixture
   error              e;
   struct pager      *p;
   struct chunk_alloc alloc;
+  struct txn         tx;
 };
 
 err_t pgr_fixture_create (struct pgr_fixture *dest);
+err_t pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest);
 err_t pgr_fixture_teardown (struct pgr_fixture *f);
 
 /******************************************************************************

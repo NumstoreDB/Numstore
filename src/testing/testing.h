@@ -22,6 +22,14 @@
 
 extern int test_ret;
 
+// Limits
+enum
+{
+  test_faults_max = 256,
+  test_marks_max  = 256,
+  test_mark_len   = 128,
+};
+
 /******************************************************************************
  * SECTION: TEST Macro
  * ----------------------------------------------------------------------------
@@ -42,16 +50,31 @@ extern int test_ret;
                 : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
 
 /******************************************************************************
+ * SECTION: Fault Injection
+ * ----------------------------------------------------------------------------
+ * @brief injecting faults
+ ******************************************************************************/
+
+bool fault_is_set (const char *name);
+void fault_set (const char *name);
+void fault_reset_all (void);
+
+#define FAULT(expr, name)                                                \
+  (fault_is_set (name)                                                   \
+       ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) \
+       : (expr))
+
+#define FAULT_NULL(expr, name)                                           \
+  (fault_is_set (name)                                                   \
+       ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), \
+          (void *)0)                                                     \
+       : (expr))
+
+/******************************************************************************
  * SECTION: TEST Marker
  * ----------------------------------------------------------------------------
  * @brief A way to check if a line of code was run
  ******************************************************************************/
-
-enum
-{
-  test_marks_max = 256,
-  test_mark_len  = 128,
-};
 
 extern char test_marks[test_marks_max][test_mark_len];
 extern int  test_marks_count;

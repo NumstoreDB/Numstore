@@ -14,8 +14,10 @@
 
 #include "testing/page_fixture.h"
 
+#include "error.h"
 #include "page.h"
 #include "pager.h"
+#include "var_algorithms.h"
 
 #ifndef NTEST
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {
@@ -70,6 +72,19 @@ pgr_fixture_create (struct pgr_fixture *dest)
   return SUCCESS;
 
   return dest->e.cause_code;
+}
+
+err_t
+pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest)
+{
+  pgr_fixture_create (dest);
+  if (ns_init_var_hash_map (dest->p, &dest->e))
+  {
+    pgr_fixture_teardown (dest);
+    return error_trace (&dest->e);
+  }
+
+  return SUCCESS;
 }
 
 err_t

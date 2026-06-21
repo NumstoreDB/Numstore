@@ -13,7 +13,7 @@ Numstore
 Numstore is a single file embedded ACID database built for arrays written entirely 
 in C with no dependencies. 
 
-Conceptually, it's a file with ACID properties and faster inner file mutations
+Conceptually, it's an ACID file with [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
 
 Numstore has two libraries so far:
 
