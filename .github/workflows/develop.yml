@@ -6,6 +6,9 @@ on:
     branches: [develop]
 
 jobs:
+
+  # Run debug tests on the three main platforms
+  # (includes address sanitizer)
   tests:
     name: ci-tests / ${{ matrix.os }}
     strategy:
@@ -41,6 +44,8 @@ jobs:
           exe=$(find build/ci-tests/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
           "$exe" 10 $RANDOM
 
+  # Build and run release tests just once to ensure 
+  # no debug/release code broke the pipeline
   release-tests:
     runs-on: ubuntu-latest
     steps:
