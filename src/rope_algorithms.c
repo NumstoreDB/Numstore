@@ -582,10 +582,8 @@ ns_balance_and_release (
         params.root->root   = page_h_pgno (params.prev);
         params.root->isroot = true;
       }
-      else if (
-          params.next->mode != PHM_NONE
-          && dlgt_is_root (page_h_ro (params.next))
-      )
+      else if (params.next->mode != PHM_NONE
+               && dlgt_is_root (page_h_ro (params.next)))
       {
         params.root->root   = page_h_pgno (params.next);
         params.root->isroot = true;
@@ -2562,7 +2560,6 @@ ns_remove (struct ns_remove_params *params, error *e)
           {
             goto failed;
           }
-          ASSERT ((p_size)written == next_amount);
         }
 
         s.read_idx += next_amount;

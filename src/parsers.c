@@ -632,13 +632,15 @@ parse_query_get (struct parser *parser, struct query *dest, error *e)
   struct token *tok = parser_advance (parser);
 
   *dest = (struct query){
-      .type   = QT_GET,
-      .create = {
-          .vname = (struct string){
-              .data = (char *)tok->str.data,
-              .len  = tok->str.len,
+      .type = QT_GET,
+      .create =
+          {
+              .name =
+                  (struct string){
+                      .data = (char *)tok->str.data,
+                      .len  = tok->str.len,
+                  },
           },
-      },
   };
 
   return SUCCESS;
@@ -663,13 +665,15 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
   struct token *tok = parser_advance (parser);
 
   *dest = (struct query){
-      .type   = QT_DELETE,
-      .create = {
-          .vname = (struct string){
-              .data = (char *)tok->str.data,
-              .len  = tok->str.len,
+      .type = QT_DELETE,
+      .create =
+          {
+              .name =
+                  (struct string){
+                      .data = (char *)tok->str.data,
+                      .len  = tok->str.len,
+                  },
           },
-      },
   };
 
   return SUCCESS;
@@ -698,25 +702,21 @@ parse_query_create (
   }
   struct token *tok = parser_advance (parser);
 
-  // TYPE
-  struct type *t = chunk_malloc (dalloc, 1, sizeof *t, e);
-  if (t == NULL)
-  {
-    return error_trace (e);
-  }
-  WRAP (parse_type (parser, t, dalloc, e));
-
   *dest = (struct query){
-      .type   = QT_CREATE,
-      .create = {
-          .vname =
-              (struct string){
-                  .data = (char *)tok->str.data,
-                  .len  = tok->str.len,
-              },
-          .type = t,
-      },
+      .type = QT_CREATE,
+      .create =
+          {
+              .name =
+                  (struct string){
+                      .data = (char *)tok->str.data,
+                      .len  = tok->str.len,
+                  },
+              // .type = PARSE,
+          },
   };
+
+  // TYPE
+  WRAP (parse_type (parser, &dest->create.type, dalloc, e));
 
   return SUCCESS;
 }
@@ -749,14 +749,15 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
 
   *dest = (struct query){
       .type = QT_READ,
-      .read = {
-          .vname =
-              (struct string){
-                  .data = (char *)tok->str.data,
-                  .len  = tok->str.len,
-              },
-          .ustr = ustr,
-      },
+      .read =
+          {
+              .name =
+                  (struct string){
+                      .data = (char *)tok->str.data,
+                      .len  = tok->str.len,
+                  },
+              .ustr = ustr,
+          },
   };
 
   return SUCCESS;
@@ -873,16 +874,14 @@ TEST (compile_query)
     test_query_red_path ("read;", ERR_SYNTAX);
     test_query_green_path (
         "read foo;",
-        (struct query){
-            .type = QT_READ,
-            .read = {.vname = strfcstr ("foo"), .ustr = ustride ()}
-        }
+        (struct query){.type = QT_READ,
+                       .read = {.name = strfcstr ("foo"), .ustr = ustride ()}}
     );
     test_query_green_path (
         "read foo[0:10:20];",
         (struct query){
             .type = QT_READ,
-            .read = {.vname = strfcstr ("foo"), .ustr = ustride012 (0, 10, 20)},
+            .read = {.name = strfcstr ("foo"), .ustr = ustride012 (0, 10, 20)},
         }
     );
   }
@@ -898,41 +897,44 @@ TEST (compile_query)
     // Sarray
     u32         dims[2] = {10, 20};
     struct type t0      = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 2, .dims = dims, .t = &TF32}
+             .type = T_SARRAY,
+             .sa   = {.rank = 2, .dims = dims, .t = &TF32}
     };
 
     // Union
     struct type  *utypes[2] = {&TI32, &t0};
     struct string ukeys[2]  = {strfcstr ("c"), strfcstr ("d")};
     struct type   t1        = {
-        .type = T_UNION,
-        .un   = {
-            .len   = 2,
-            .types = utypes,
-            .keys  = ukeys,
-        },
+                 .type = T_UNION,
+                 .un =
+            {
+                         .len   = 2,
+                         .types = utypes,
+                         .keys  = ukeys,
+            },
     };
 
     // Struct
     struct type  *stypes[2] = {&TI32, &t1};
     struct string skeys[2]  = {strfcstr ("a"), strfcstr ("b")};
     struct type   t2        = {
-        .type = T_STRUCT,
-        .st   = {
-            .len   = 2,
-            .types = stypes,
-            .keys  = skeys,
-        },
+                 .type = T_STRUCT,
+                 .st =
+            {
+                         .len   = 2,
+                         .types = stypes,
+                         .keys  = skeys,
+            },
     };
     test_query_green_path (
         "create foo struct { a i32, b union { c i32, d [10][20]f32 } };",
         (struct query){
-            .type   = QT_CREATE,
-            .create = {
-                .vname = strfcstr ("foo"),
-                .type  = &t2,
-            },
+            .type = QT_CREATE,
+            .create =
+                {
+                    .name = strfcstr ("foo"),
+                    .type = t2,
+                },
         }
     );
   }
@@ -945,10 +947,11 @@ TEST (compile_query)
     test_query_green_path (
         "delete foo;",
         (struct query){
-            .type   = QT_DELETE,
-            .delete = {
-                .vname = strfcstr ("foo"),
-            },
+            .type = QT_DELETE,
+            .delete =
+                {
+                    .name = strfcstr ("foo"),
+                },
         }
     );
   }
@@ -962,9 +965,10 @@ TEST (compile_query)
         "get foo;",
         (struct query){
             .type = QT_GET,
-            .get  = {
-                .vname = strfcstr ("foo"),
-            },
+            .get =
+                {
+                    .name = strfcstr ("foo"),
+                },
         }
     );
   }
@@ -1068,8 +1072,8 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
   }
 
   // VNAME
-  struct token *tok   = parser_advance (parser->base);
-  struct string vname = {.data = tok->str.data, .len = tok->str.len};
+  struct token *tok  = parser_advance (parser->base);
+  struct string name = {.data = tok->str.data, .len = tok->str.len};
 
   // Type accessors
   struct type_accessor_builder tab;
@@ -1123,7 +1127,7 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
   struct type_accessor ta;
   WRAP (tab_build (&ta, &tab, e));
 
-  return subtype_create (parser->dest, vname, ta, e);
+  return subtype_create (parser->dest, name, ta, e);
 }
 
 err_t
@@ -1674,9 +1678,9 @@ parse_struct_type_ref (
 
   out->type = TR_STRUCT;
   out->st   = (struct struct_tr){
-      .len   = list.len,
-      .keys  = list.keys,
-      .types = list.types,
+        .len   = list.len,
+        .keys  = list.keys,
+        .types = list.types,
   };
 
   return SUCCESS;

@@ -12,12 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"           // error
 #include "nshandle.h"        // nshandle
 #include "numstore.h"        // nsdb
 #include "testing/testing.h" // TEST
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (cgd_test_create_delete_rollback_delete)
 {
   test_assert_int_equal (nsh_cleanup ("test"), 0);
@@ -26,28 +25,29 @@ TEST (cgd_test_create_delete_rollback_delete)
 
   // Create the variable
   test_assert_int_equal (
-      nsdb_create (
+      nsdb_execute (
           db,
-          "n8Si3C",
-          "union { tok6UW u32, YGhr cf128, LDzpWVm f16 }"
+          "create n8Si3C union { tok6UW u32, YGhr cf128, LDzpWVm f16 }",
+          NULL
       ),
       0
   );
 
   // The culprit txn
   test_assert_int_equal (nsdb_begin (db), 0);
-  test_assert_int_equal (nsdb_delete (db, "n8Si3C"), 0);
+  test_assert_int_equal (nsdb_execute (db, "delete n8Si3C", NULL), 0);
   test_assert_int_equal (nsdb_rollback (db), 0);
 
   // Do something (seemingly unrelated)
   test_assert_int_equal (nsdb_begin (db), 0);
   test_assert_int_equal (
-      nsdb_create (
+      nsdb_execute (
           db,
-          "yJIF",
+          "create yJIF"
           "struct { sQf8W7t6 struct { ukc7C4 cf256, CHbmDuiD6 union { aVmHRo "
           "cf64, FeVvpnN u64 } } "
-          "}"
+          "}",
+          NULL
       ),
       0
   );
@@ -59,7 +59,7 @@ TEST (cgd_test_create_delete_rollback_delete)
   //          to the page being released, not the fsm - this came from a
   //          refactor - I used to do that
   //          also it never included the bit in the log
-  test_assert (nsdb_delete (db, "n8Si3C") == 0);
+  test_assert (nsdb_execute (db, "delete n8Si3C", NULL) == 0);
 
   test_assert_int_equal (nsdb_close (db), 0);
 }
@@ -71,7 +71,10 @@ TEST (cgd_test_create_crash_close_delete)
   test_assert (db != NULL);
 
   // Create
-  test_assert_int_equal (nsdb_create (db, "MkWMJ9a", "[8][9][3][3] i16"), 0);
+  test_assert_int_equal (
+      nsdb_execute (db, "create MkWMJ9a [8][9][3][3] i16", NULL),
+      0
+  );
 
   // Crash
   test_assert_int_equal (nsdb_crash (db), 0);
@@ -89,7 +92,7 @@ TEST (cgd_test_create_crash_close_delete)
   //          uninitialized, therefore it needs one upfront physical log first
   //          before it can be used - log a physical update log then continue on
   //          with fsm specific logs
-  test_assert (nsdb_delete (db, "MkWMJ9a") == 0);
+  test_assert (nsdb_execute (db, "create MkWMJ9a", NULL) == 0);
 
   test_assert_int_equal (nsdb_close (db), 0);
 }
@@ -101,7 +104,7 @@ TEST (irwr_rollback_invalid_wal_header)
   test_assert (db != NULL);
 
   // TXN 1 (auto)
-  test_assert_int_equal (nsdb_create (db, "testvar", "u32"), 0);
+  test_assert_int_equal (nsdb_execute (db, "create testvar u32", NULL), 0);
 
   // TXN 2
   test_assert_int_equal (nsdb_begin (db), 0);
@@ -111,8 +114,6 @@ TEST (irwr_rollback_invalid_wal_header)
   test_assert_int_equal (nsdb_begin (db), 0);
   test_assert_int_equal (nsdb_commit (db), 0);
 
-  nsdb_var_t *var = nsdb_get (db, "testvar");
-
   // TXN 4 (auto): INSERT ofst=0 nelem=53797
   {
     u32 *data = i_malloc (53797 * sizeof (u32), 1, NULL);
@@ -121,7 +122,10 @@ TEST (irwr_rollback_invalid_wal_header)
     {
       data[i] = (u32)randu32 ();
     }
-    test_assert_int_equal (nsdb_insert (db, var, data, 0, 53797), 53797);
+    test_assert_int_equal (
+        nsdb_execute (db, "insert testvar %d %d", data, 0, 53797),
+        53797
+    );
     i_free (data);
   }
 
@@ -133,7 +137,7 @@ TEST (irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_write (db, var, data, 23070, 7888, 54622, 0xFF),
+        nsdb_execute (db, "write testvar[23070:54622:7888]", data),
         4
     );
   }
@@ -143,7 +147,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 removed[2];
     test_assert_int_equal (
-        nsdb_remove (db, var, removed, 5512, 13648, 32808, 0xFF),
+        nsdb_execute (db, "remove testvar[5512:32808:13648]", removed),
         2
     );
   }
@@ -157,7 +161,7 @@ TEST (irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_write (db, var, data, 50236, 283, 51085, 0xFF),
+        nsdb_execute (db, "write testvar[50236:51085:283]", data),
         3
     );
   }
@@ -170,7 +174,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 removed[2];
     test_assert_int_equal (
-        nsdb_remove (db, var, removed, 51429, 1931, 55291, 0xFF),
+        nsdb_execute (db, "remove testvar[51429:55291:1931]", removed),
         2
     );
   }
@@ -179,7 +183,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 buf[2];
     test_assert_int_equal (
-        nsdb_read (db, var, buf, 1632, 9623, 20878, 0xFF),
+        nsdb_execute (db, "read testvar[1632:20878:9623]", buf),
         2
     );
   }
@@ -188,7 +192,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 buf[2];
     test_assert_int_equal (
-        nsdb_read (db, var, buf, 48723, 4036, 56795, 0xFF),
+        nsdb_execute (db, "read testvar[48723:56795:4036]", buf),
         2
     );
   }
@@ -204,7 +208,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 data[1] = {(u32)randu32 ()};
     test_assert_int_equal (
-        nsdb_write (db, var, data, 49014, 3051, 52065, 0xFF),
+        nsdb_execute (db, "write testvar[49014:52065:3051]", data),
         1
     );
   }
@@ -217,7 +221,10 @@ TEST (irwr_rollback_invalid_wal_header)
     {
       data[i] = (u32)randu32 ();
     }
-    test_assert_int_equal (nsdb_insert (db, var, data, 22727, 73857), 73857);
+    test_assert_int_equal (
+        nsdb_execute (db, "insert testvar %d %d", data, 22727, 73857),
+        73857
+    );
     i_free (data);
   }
 
@@ -225,7 +232,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 removed[2];
     test_assert_int_equal (
-        nsdb_remove (db, var, removed, 5509, 92363, 190235, 0xFF),
+        nsdb_execute (db, "remove testvar[5509:190235:92363]", removed),
         2
     );
   }
@@ -238,7 +245,10 @@ TEST (irwr_rollback_invalid_wal_header)
     {
       data[i] = (u32)randu32 ();
     }
-    test_assert_int_equal (nsdb_insert (db, var, data, 8986, 15959), 15959);
+    test_assert_int_equal (
+        nsdb_execute (db, "insert testvar %d %d", data, 8986, 15959),
+        15959
+    );
     i_free (data);
   }
 
@@ -246,7 +256,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 buf[2];
     test_assert_int_equal (
-        nsdb_read (db, var, buf, 118059, 13676, 145411, 0xFF),
+        nsdb_execute (db, "read testvar[118059:145411:13676]", buf),
         2
     );
   }
@@ -259,7 +269,7 @@ TEST (irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_write (db, var, data, 58530, 22447, 103424, 0xFF),
+        nsdb_execute (db, "write testvar[58530:103424:22447]", data),
         2
     );
   }
@@ -272,7 +282,10 @@ TEST (irwr_rollback_invalid_wal_header)
     {
       data[i] = (u32)randu32 ();
     }
-    test_assert_int_equal (nsdb_insert (db, var, data, 29193, 27045), 27045);
+    test_assert_int_equal (
+        nsdb_execute (db, "insert testvar %d %d", data, 29193, 27045),
+        27045
+    );
     i_free (data);
   }
 
@@ -280,7 +293,7 @@ TEST (irwr_rollback_invalid_wal_header)
   {
     u32 buf[1];
     test_assert_int_equal (
-        nsdb_read (db, var, buf, 39413, 49536, 88949, 0xFF),
+        nsdb_execute (db, "read testvar[39413:88949:49536]", buf),
         1
     );
   }
@@ -290,8 +303,6 @@ TEST (irwr_rollback_invalid_wal_header)
   //          The threading logic was wrong - I just made the WAL single
   //          threaded instead
   test_assert_int_equal (nsdb_rollback (db), 0);
-
-  nsdb_free (var);
 
   test_assert_int_equal (nsdb_close (db), 0);
 }

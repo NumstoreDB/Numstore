@@ -14,11 +14,9 @@
 
 #include "compiler.h"
 
-#include "alloc.h"
 #include "collections.h"
 #include "error.h"    // error
 #include "numerics.h" // parse_i32_expect
-#include "query.h"    // query
 #include "serial.h"   // string_equal
 #include "types.h"    // type_Ref
 #include "utils.h"    // case_ENUM_RETURN_STRING
@@ -233,7 +231,7 @@ add_token_float (struct lexer *lex, f32 value, error *e)
       .type       = TT_FLOAT,
       .floating   = value,
       .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
+      .text_len   = lex->current - lex->start,
   };
 
   return dblb_append (&lex->_tokens, &next, 1, e);
@@ -256,7 +254,7 @@ add_token_str (
               .len  = len,
           },
       .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
+      .text_len   = lex->current - lex->start,
   };
 
   return dblb_append (&lex->_tokens, &next, 1, e);
@@ -269,7 +267,7 @@ add_token_prim (struct lexer *lex, enum prim_t prim, error *e)
       .type       = TT_PRIM,
       .prim       = prim,
       .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
+      .text_len   = lex->current - lex->start,
   };
 
   return dblb_append (&lex->_tokens, &next, 1, e);
