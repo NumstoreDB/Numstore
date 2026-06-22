@@ -29,37 +29,67 @@ struct query
 {
   enum query_type
   {
+    // Array Operations
     QT_READ,
+    QT_WRITE,
+    QT_INSERT,
+    QT_REMOVE,
+
+    // Variable Operations
     QT_CREATE,
     QT_DELETE,
     QT_GET,
+
+    // Meta Operations
     QT_EXIT,
     QT_HELP,
   } type;
 
   union {
+    // Array Operations
     struct
     {
-      struct string      vname;
+      struct string      name;
       struct user_stride ustr;
     } read;
 
     struct
     {
-      struct string vname;
-      struct type  *type;
+      struct string      name;
+      struct user_stride ustr;
+    } write;
+
+    struct
+    {
+      struct string name;
+      sb_size       ofst;
+      b_size        len;
+    } insert;
+
+    struct
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } remove;
+
+    // Variable Operations
+    struct
+    {
+      struct string name;
+      struct type   type;
     } create;
 
     struct
     {
-      struct string vname;
+      struct string name;
     } delete;
 
     struct
     {
-      struct string vname;
+      struct string name;
     } get;
 
+    // Meta Operations
     struct
     {
       bool            has_command;

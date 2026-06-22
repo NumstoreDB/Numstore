@@ -413,7 +413,9 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     };
 
     /* DB side */
-    cgd_swmt_assert (nsdb_create (meta->db, name, typestr) == 0);
+    cgd_swmt_assert (
+        nsdb_execute (meta->db, "create %s %s", NULL, name, typestr) == 0
+    );
 
     /* Reference side -- takes ownership of name & typestr */
     cgd_swmt_assert (mem_vhmap_add_var (db, &var, &e) == 0);
@@ -449,7 +451,9 @@ void
 cgd_swmt_delete (struct cgd_swarm_test *meta)
 {
   assert (meta->cur != NULL);
-  cgd_swmt_assert (nsdb_delete (meta->db, meta->cur->vname.data) == 0);
+  cgd_swmt_assert (
+      nsdb_execute (meta->db, "delete %s", NULL, meta->cur->vname.data) == 0
+  );
   mem_vhmap_remove_var (active_db (meta), meta->cur->vname);
   meta->cur = mem_vhmap_random (active_db (meta));
 }

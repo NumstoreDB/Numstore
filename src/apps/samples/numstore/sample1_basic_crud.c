@@ -19,26 +19,21 @@
 
 #include "numstore.h"
 
-#if defined(_MSC_VER)
-#  pragma pack(push, 1)
-#endif
+// A packed struct - modeling the type we create
 struct example
 {
-  union {
-    int32_t  a;
-    uint64_t b;
-    uint64_t c;
-  } d;
-  float   e[20][256];
-  int32_t f;
-}
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__ ((packed))
-#endif
-;
-#if defined(_MSC_VER)
-#  pragma pack(pop)
-#endif
+  float    a;
+  int32_t  b;
+  uint32_t d[10][20];
+} __attribute__ ((packed));
+
+// Two utility functions to print and seed an example struct array
+static void print_example (const char *label, struct example *ex, int size);
+static void init_example (struct example *ex, int size);
+
+// Our source and destination buffers
+static struct example src[200];
+static struct example dest[200];
 
 /**
  * This example shows basic first class operations of smart files
@@ -60,39 +55,86 @@ main (void)
     return -1;
   }
 
-  // Insert out initial sentence
-  nsdb_create (
+  // Create a new variable
+  nsdb_execute (
       ns,
-      "example",
-      "struct { d union { a u32, b u64, c u64 }, e [20][256]f32, f i32 }"
+      "create example struct {\n"
+      "  a f32,\n"
+      "  b i32,\n"
+      "  d [10][20] u32\n"
+      "}",
+      NULL
   );
 
-  int             len  = 200;
-  struct example *src  = malloc (sizeof (struct example) * len);
-  struct example *dest = malloc (sizeof (struct example) * len);
+  init_example (src, 200);
 
-  nsdb_var_t *var = nsdb_get (ns, "example");
-  nsdb_insert (ns, var, src, 0, len);
+  // Insert data at offset 0
+  sb_size n = nsdb_execute (ns, "insert example 0 %s", src, 200);
 
-  int     flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  sb_size n     = nsdb_read (ns, var, dest, 0, 1, -1, flags);
+  // Read (most of) data with a stride of 3
+  n = nsdb_execute (ns, "read example[0:3:-10]", dest);
+  print_example ("Read elements: ", dest, n);
 
-  flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_remove (ns, var, dest, 0, 1, -10, flags);
+  // Remove (most of) data with a stride of 2
+  n = nsdb_execute (ns, "remove example[0:2:-10]", dest);
+  print_example ("Removed elements: ", dest, n);
 
-  flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_read (ns, var, dest, 0, 1, -1, flags);
+  // Read all of data
+  n = nsdb_execute (ns, "read example[0:]", dest);
+  print_example ("After Remove: ", dest, n);
 
-  flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_write (ns, var, src, 0, 1, -1, flags);
-
-  flags = START_PRESENT | STOP_PRESENT | STEP_PRESENT;
-  n     = nsdb_read (ns, var, dest, 0, 1, -1, flags);
-
-  nsdb_free (var);
-
-  free (src);
-  free (dest);
+  // Write all of data with src
+  n = nsdb_execute (ns, "write example[0::]", src);
+  n = nsdb_execute (ns, "read example[0:]", dest);
+  print_example ("After write: ", dest, n);
 
   return nsdb_close (ns);
+}
+
+static void
+print_example (const char *label, struct example *ex, int size)
+{
+  int show = size > 10 ? 10 : size;
+
+  printf ("%s: examples (%d):\n", label, size);
+  for (int i = 0; i < show; i++)
+  {
+    printf (
+        "%s:   [%d] a=%g  b=%d  d=[[%u, %u, %u, ...], [%u, %u, %u, ...], "
+        "...]\n",
+        label,
+        i,
+        ex[i].a,
+        ex[i].b,
+        ex[i].d[0][0],
+        ex[i].d[0][1],
+        ex[i].d[0][2],
+        ex[i].d[1][0],
+        ex[i].d[1][1],
+        ex[i].d[1][2]
+    );
+  }
+  if (size > show)
+  {
+    printf ("%s:   ... (%d more)\n", label, size - show);
+  }
+}
+
+static void
+init_example (struct example *ex, int size)
+{
+  uint32_t n = 0;
+
+  for (int i = 0; i < size; i++)
+  {
+    ex[i].a = (float)n++;
+    ex[i].b = (int32_t)n++;
+    for (int r = 0; r < 10; r++)
+    {
+      for (int c = 0; c < 20; c++)
+      {
+        ex[i].d[r][c] = n++;
+      }
+    }
+  }
 }
