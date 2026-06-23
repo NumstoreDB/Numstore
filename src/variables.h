@@ -85,7 +85,7 @@ vname_or_default (const char *name)
 
 struct nsdb_var
 {
-  struct variable     var;
+  struct variable    *var;
   struct chunk_alloc *alloc;
 };
 bool variable_equal (const struct variable *left, const struct variable *right);

@@ -24,7 +24,7 @@ struct example
 {
   float    a;
   int32_t  b;
-  uint32_t d[10][20];
+  uint32_t d[5][10];
 } __attribute__ ((packed));
 
 // Two utility functions to print and seed an example struct array
@@ -61,7 +61,7 @@ main (void)
       "create example struct {\n"
       "  a f32,\n"
       "  b i32,\n"
-      "  d [10][20] u32\n"
+      "  d [5][10] u32\n"
       "}",
       NULL
   );
@@ -69,14 +69,14 @@ main (void)
   init_example (src, 200);
 
   // Insert data at offset 0
-  sb_size n = nsdb_execute (ns, "insert example 0 %s", src, 200);
+  sb_size n = nsdb_execute (ns, "insert example 0 %d", src, 200);
 
   // Read (most of) data with a stride of 3
-  n = nsdb_execute (ns, "read example[0:3:-10]", dest);
+  n = nsdb_execute (ns, "read example[0:-10:3]", dest);
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
-  n = nsdb_execute (ns, "remove example[0:2:-10]", dest);
+  n = nsdb_execute (ns, "remove example[0:-10:2]", dest);
   print_example ("Removed elements: ", dest, n);
 
   // Read all of data
@@ -100,7 +100,7 @@ print_example (const char *label, struct example *ex, int size)
   for (int i = 0; i < show; i++)
   {
     printf (
-        "%s:   [%d] a=%g  b=%d  d=[[%u, %u, %u, ...], [%u, %u, %u, ...], "
+        "%s:   [%d] a=%g  b=%d  d=[[%u, %u ...], [%u, %u ...], "
         "...]\n",
         label,
         i,
@@ -108,10 +108,8 @@ print_example (const char *label, struct example *ex, int size)
         ex[i].b,
         ex[i].d[0][0],
         ex[i].d[0][1],
-        ex[i].d[0][2],
         ex[i].d[1][0],
-        ex[i].d[1][1],
-        ex[i].d[1][2]
+        ex[i].d[1][1]
     );
   }
   if (size > show)
@@ -123,17 +121,15 @@ print_example (const char *label, struct example *ex, int size)
 static void
 init_example (struct example *ex, int size)
 {
-  uint32_t n = 0;
-
   for (int i = 0; i < size; i++)
   {
-    ex[i].a = (float)n++;
-    ex[i].b = (int32_t)n++;
-    for (int r = 0; r < 10; r++)
+    ex[i].a = i;
+    ex[i].b = i + 1;
+    for (int r = 0; r < 5; r++)
     {
-      for (int c = 0; c < 20; c++)
+      for (int c = 0; c < 10; c++)
       {
-        ex[i].d[r][c] = n++;
+        ex[i].d[r][c] = i + r * 10 + c;
       }
     }
   }

@@ -347,7 +347,8 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   }
 
   irwr_swmt_ASSERT (
-      nsdb_execute (meta->db, "insert %s %s", data, ofst, len) == 0
+      nsdb_execute (meta->db, "insert %s %d %d", data, meta->varname, ofst, len)
+      == len
   );
 
   /* Reference side */
@@ -381,8 +382,9 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
   /* DB side */
   irwr_swmt_ASSERT (nsdb_execute (
       meta->db,
-      "remove %s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+      "remove %s[%d:%d:%d]",
       db_buf,
+      meta->varname,
       ofst,
       ofst + len * stride,
       stride
@@ -417,8 +419,9 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   /* DB side */
   irwr_swmt_ASSERT (nsdb_execute (
       meta->db,
-      "read %s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+      "read %s[%d:%d:%d]",
       db_buf,
+      meta->varname,
       ofst,
       ofst + len * stride,
       stride
@@ -451,8 +454,9 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   /* DB side */
   irwr_swmt_ASSERT (nsdb_execute (
       meta->db,
-      "write %s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+      "write %s[%d:%d:%d]",
       data,
+      meta->varname,
       ofst,
       ofst + len * stride,
       stride

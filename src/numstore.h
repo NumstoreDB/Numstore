@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "compile_config.h"
+#include "platform.h"
 
 #define NS_END INT64_MAX
 
@@ -57,4 +58,8 @@ int nsdb_rollback (nsdb_t *ns);
 //////////////////////////////////////////////////
 /// Execute an operation
 
-sb_size nsdb_execute (nsdb_t *ns, const char *query, void *data, ...);
+sb_size
+nsdb_execute (nsdb_t *ns, const char *query, void *data, ...) PRINTF_ATTR (
+    2,
+    4
+);
