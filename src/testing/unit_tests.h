@@ -35,7 +35,7 @@ run_unit_tests (const char *filter)
   }
 
   int         failed = 0;
-  const char *failed_names[288];
+  const char *failed_names[287];
 
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:142 START
   if (!filter || strstr ("lalloc_edge_cases", filter))
@@ -341,7 +341,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:1182 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:31
-  ///START
+  /// START
   if (!filter || strstr ("llist", filter))
   {
     extern void __test__llist (void);
@@ -361,10 +361,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:31
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:99
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_isempty", filter))
   {
     extern void __test__cbuffer_isempty (void);
@@ -384,10 +384,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:99
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:109
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_len", filter))
   {
     extern void __test__cbuffer_len (void);
@@ -407,10 +407,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:109
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:119
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_avail", filter))
   {
     extern void __test__cbuffer_avail (void);
@@ -430,10 +430,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:119
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:169
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_get_next_data_bytes", filter))
   {
     extern void __test__cbuffer_get_next_data_bytes (void);
@@ -456,10 +456,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:169
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:242
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_get_nbytes", filter))
   {
     extern void __test__cbuffer_get_nbytes (void);
@@ -482,10 +482,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:242
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:309
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_fakewrite", filter))
   {
     extern void __test__cbuffer_fakewrite (void);
@@ -508,10 +508,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:309
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:396
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_fakeread", filter))
   {
     extern void __test__cbuffer_fakeread (void);
@@ -534,10 +534,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:396
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:517
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_read", filter))
   {
     extern void __test__cbuffer_read (void);
@@ -557,10 +557,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:517
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:589
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_copy", filter))
   {
     extern void __test__cbuffer_copy (void);
@@ -580,10 +580,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:589
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:678
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_write", filter))
   {
     extern void __test__cbuffer_write (void);
@@ -603,10 +603,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:678
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:772
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_cbuffer_move", filter))
   {
     extern void __test__cbuffer_cbuffer_move (void);
@@ -629,10 +629,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:772
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:881
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_cbuffer_copy", filter))
   {
     extern void __test__cbuffer_cbuffer_copy (void);
@@ -655,10 +655,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:881
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1161
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_get_no_check", filter))
   {
     extern void __test__cbuffer_get_no_check (void);
@@ -681,10 +681,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1161
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1263
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_get", filter))
   {
     extern void __test__cbuffer_get (void);
@@ -704,10 +704,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1263
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1294
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_peek_back", filter))
   {
     extern void __test__cbuffer_peek_back (void);
@@ -730,10 +730,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1294
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1350
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_peek_front", filter))
   {
     extern void __test__cbuffer_peek_front (void);
@@ -756,10 +756,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1350
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1424
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_push_back", filter))
   {
     extern void __test__cbuffer_push_back (void);
@@ -782,10 +782,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1424
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1485
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_push_front", filter))
   {
     extern void __test__cbuffer_push_front (void);
@@ -808,10 +808,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1485
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1556
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_pop_back", filter))
   {
     extern void __test__cbuffer_pop_back (void);
@@ -834,10 +834,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1556
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1627
-  ///START
+  /// START
   if (!filter || strstr ("cbuffer_pop_front", filter))
   {
     extern void __test__cbuffer_pop_front (void);
@@ -860,10 +860,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1627
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1763
-  ///START
+  /// START
   if (!filter || strstr ("dblb_create_basic", filter))
   {
     extern void __test__dblb_create_basic (void);
@@ -886,10 +886,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1763
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1779
-  ///START
+  /// START
   if (!filter || strstr ("dblb_append_single", filter))
   {
     extern void __test__dblb_append_single (void);
@@ -912,10 +912,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1779
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1800
-  ///START
+  /// START
   if (!filter || strstr ("dblb_append_multiple", filter))
   {
     extern void __test__dblb_append_multiple (void);
@@ -938,10 +938,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1800
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1822
-  ///START
+  /// START
   if (!filter || strstr ("dblb_append_triggers_realloc", filter))
   {
     extern void __test__dblb_append_triggers_realloc (void);
@@ -964,10 +964,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1822
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1859
-  ///START
+  /// START
   if (!filter || strstr ("dblb_append_alloc_basic", filter))
   {
     extern void __test__dblb_append_alloc_basic (void);
@@ -990,10 +990,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1859
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1884
-  ///START
+  /// START
   if (!filter || strstr ("dblb_append_alloc_sequential", filter))
   {
     extern void __test__dblb_append_alloc_sequential (void);
@@ -1016,10 +1016,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1884
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1915
-  ///START
+  /// START
   if (!filter || strstr ("dblb_append_alloc_triggers_realloc", filter))
   {
     extern void __test__dblb_append_alloc_triggers_realloc (void);
@@ -1042,10 +1042,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1915
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1935
-  ///START
+  /// START
   if (!filter || strstr ("dblb_different_element_sizes", filter))
   {
     extern void __test__dblb_different_element_sizes (void);
@@ -1068,10 +1068,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1935
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1955
-  ///START
+  /// START
   if (!filter || strstr ("dblb_struct_elements", filter))
   {
     extern void __test__dblb_struct_elements (void);
@@ -1094,10 +1094,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1955
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1983
-  ///START
+  /// START
   if (!filter || strstr ("dblb_free_resets", filter))
   {
     extern void __test__dblb_free_resets (void);
@@ -1120,10 +1120,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1983
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1999
-  ///START
+  /// START
   if (!filter || strstr ("dblb_large_append", filter))
   {
     extern void __test__dblb_large_append (void);
@@ -1146,10 +1146,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:1999
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2279
-  ///START
+  /// START
   if (!filter || strstr ("ext_array_insert_read", filter))
   {
     extern void __test__ext_array_insert_read (void);
@@ -1172,10 +1172,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2279
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2418
-  ///START
+  /// START
   if (!filter || strstr ("ext_array_write", filter))
   {
     extern void __test__ext_array_write (void);
@@ -1195,10 +1195,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2418
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2524
-  ///START
+  /// START
   if (!filter || strstr ("ext_array_remove", filter))
   {
     extern void __test__ext_array_remove (void);
@@ -1221,10 +1221,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2524
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2691
-  ///START
+  /// START
   if (!filter || strstr ("ext_array_random", filter))
   {
     extern void __test__ext_array_random (void);
@@ -1247,10 +1247,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:2691
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3423
-  ///START
+  /// START
   if (!filter || strstr ("block_insert_read", filter))
   {
     extern void __test__block_insert_read (void);
@@ -1273,10 +1273,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3423
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3683
-  ///START
+  /// START
   if (!filter || strstr ("block_insert_remove_read", filter))
   {
     extern void __test__block_insert_remove_read (void);
@@ -1299,10 +1299,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3683
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3828
-  ///START
+  /// START
   if (!filter || strstr ("block_insert_write_read", filter))
   {
     extern void __test__block_insert_write_read (void);
@@ -1325,10 +1325,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3828
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3991
-  ///START
+  /// START
   if (!filter || strstr ("block_random", filter))
   {
     extern void __test__block_random (void);
@@ -1348,10 +1348,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:3991
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:4080
-  ///START
+  /// START
   if (!filter || strstr ("ba_memcpy_from_basic", filter))
   {
     extern void __test__ba_memcpy_from_basic (void);
@@ -1374,10 +1374,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:4080
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:4410
-  ///START
+  /// START
   if (!filter || strstr ("ba_memcpy_to_basic", filter))
   {
     extern void __test__ba_memcpy_to_basic (void);
@@ -1400,9 +1400,9 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:4410
-  ///DONE
+  /// DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:707 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:695 START
   if (!filter || strstr ("lexer_two_char_tokens", filter))
   {
     extern void __test__lexer_two_char_tokens (void);
@@ -1424,9 +1424,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:707 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:695 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:733 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:721 START
   if (!filter || strstr ("lexer_single_char_operators", filter))
   {
     extern void __test__lexer_single_char_operators (void);
@@ -1448,9 +1448,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:733 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:721 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:761 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:749 START
   if (!filter || strstr ("lexer_strings", filter))
   {
     extern void __test__lexer_strings (void);
@@ -1469,9 +1469,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:761 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:749 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:774 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:762 START
   if (!filter || strstr ("lexer_identifiers", filter))
   {
     extern void __test__lexer_identifiers (void);
@@ -1493,9 +1493,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:774 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:762 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:788 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:776 START
   if (!filter || strstr ("lexer_numbers", filter))
   {
     extern void __test__lexer_numbers (void);
@@ -1514,9 +1514,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:788 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:776 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:804 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:792 START
   if (!filter || strstr ("lexer_keywords", filter))
   {
     extern void __test__lexer_keywords (void);
@@ -1535,9 +1535,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:804 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:792 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:827 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:815 START
   if (!filter || strstr ("lexer_primitives", filter))
   {
     extern void __test__lexer_primitives (void);
@@ -1559,9 +1559,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:827 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:815 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:847 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:835 START
   if (!filter || strstr ("lexer_whitespace_handling", filter))
   {
     extern void __test__lexer_whitespace_handling (void);
@@ -1583,9 +1583,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:847 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:835 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:865 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:853 START
   if (!filter || strstr ("lexer_complex_expression", filter))
   {
     extern void __test__lexer_complex_expression (void);
@@ -1607,9 +1607,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:865 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:853 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:887 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:875 START
   if (!filter || strstr ("lexer_keyword_prefix", filter))
   {
     extern void __test__lexer_keyword_prefix (void);
@@ -1631,9 +1631,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:887 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:875 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:903 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:891 START
   if (!filter || strstr ("lexer_errors", filter))
   {
     extern void __test__lexer_errors (void);
@@ -1652,9 +1652,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:903 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:891 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:915 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:903 START
   if (!filter || strstr ("lexer_empty_string", filter))
   {
     extern void __test__lexer_empty_string (void);
@@ -1676,9 +1676,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:915 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:903 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:926 START
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:914 START
   if (!filter || strstr ("lexer_numbers_in_sequence", filter))
   {
     extern void __test__lexer_numbers_in_sequence (void);
@@ -1700,10 +1700,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:926 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/compiler.c:914 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:58
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_init", filter))
   {
     extern void __test__gr_lock_init (void);
@@ -1723,10 +1723,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:58
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:103
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_destroy", filter))
   {
     extern void __test__gr_lock_destroy (void);
@@ -1746,10 +1746,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:103
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:149
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_is_compatible", filter))
   {
     extern void __test__gr_lock_is_compatible (void);
@@ -1772,10 +1772,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:149
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:382
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_unlock", filter))
   {
     extern void __test__gr_lock_unlock (void);
@@ -1795,10 +1795,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:382
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:480
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_mode_name", filter))
   {
     extern void __test__gr_lock_mode_name (void);
@@ -1821,10 +1821,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:480
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:639
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_basic_sanity", filter))
   {
     extern void __test__gr_lock_basic_sanity (void);
@@ -1847,10 +1847,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:639
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:656
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_is_is_compatible", filter))
   {
     extern void __test__gr_lock_is_is_compatible (void);
@@ -1873,10 +1873,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:656
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:712
-  ///START
+  /// START
   if (!filter || strstr ("gr_lock_high_pressure_random", filter))
   {
     extern void __test__gr_lock_high_pressure_random (void);
@@ -1899,10 +1899,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:712
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:902
-  ///START
+  /// START
   if (!filter || strstr ("latch", filter))
   {
     extern void __test__latch (void);
@@ -1922,10 +1922,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/concurrency.c:902
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:127
-  ///START
+  /// START
   if (!filter || strstr ("fpgr_open", filter))
   {
     extern void __test__fpgr_open (void);
@@ -1945,10 +1945,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:127
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:236
-  ///START
+  /// START
   if (!filter || strstr ("fpgr_new", filter))
   {
     extern void __test__fpgr_new (void);
@@ -1968,10 +1968,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:236
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:415
-  ///START
+  /// START
   if (!filter || strstr ("fpgr_read_write", filter))
   {
     extern void __test__fpgr_read_write (void);
@@ -1991,7 +1991,7 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/file_pager.c:415
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/htable.c:201 START
   if (!filter || strstr ("htable", filter))
@@ -2111,7 +2111,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/htable.c:301 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:227
-  ///START
+  /// START
   if (!filter || strstr ("nupd_init", filter))
   {
     extern void __test__nupd_init (void);
@@ -2131,10 +2131,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:227
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:300
-  ///START
+  /// START
   if (!filter || strstr ("nupd_append_right", filter))
   {
     extern void __test__nupd_append_right (void);
@@ -2157,10 +2157,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:300
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:416
-  ///START
+  /// START
   if (!filter || strstr ("nupd_append_left", filter))
   {
     extern void __test__nupd_append_left (void);
@@ -2183,10 +2183,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:416
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:666
-  ///START
+  /// START
   if (!filter || strstr ("nupd_append_tip_right", filter))
   {
     extern void __test__nupd_append_tip_right (void);
@@ -2209,10 +2209,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:666
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:866
-  ///START
+  /// START
   if (!filter || strstr ("nupd_append_tip_left", filter))
   {
     extern void __test__nupd_append_tip_left (void);
@@ -2235,10 +2235,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:866
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1213
-  ///START
+  /// START
   if (!filter || strstr ("nupd_consume_right", filter))
   {
     extern void __test__nupd_consume_right (void);
@@ -2261,10 +2261,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1213
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1287
-  ///START
+  /// START
   if (!filter || strstr ("nupd_consume_left", filter))
   {
     extern void __test__nupd_consume_left (void);
@@ -2287,10 +2287,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1287
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1357
-  ///START
+  /// START
   if (!filter || strstr ("nupd_done_observing_left", filter))
   {
     extern void __test__nupd_done_observing_left (void);
@@ -2313,10 +2313,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1357
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1412
-  ///START
+  /// START
   if (!filter || strstr ("nupd_done_observing_right", filter))
   {
     extern void __test__nupd_done_observing_right (void);
@@ -2339,10 +2339,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1412
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1455
-  ///START
+  /// START
   if (!filter || strstr ("nupd_done_consuming_left", filter))
   {
     extern void __test__nupd_done_consuming_left (void);
@@ -2365,10 +2365,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1455
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1499
-  ///START
+  /// START
   if (!filter || strstr ("nupd_done_consuming_right", filter))
   {
     extern void __test__nupd_done_consuming_right (void);
@@ -2391,10 +2391,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1499
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1543
-  ///START
+  /// START
   if (!filter || strstr ("nupd_done_left", filter))
   {
     extern void __test__nupd_done_left (void);
@@ -2414,10 +2414,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1543
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1597
-  ///START
+  /// START
   if (!filter || strstr ("nupd_done_right", filter))
   {
     extern void __test__nupd_done_right (void);
@@ -2437,7 +2437,7 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1597
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/numerics.c:115 START
   if (!filter || strstr ("checksum_execute_simple", filter))
@@ -2707,7 +2707,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/numerics.c:988 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1028
-  ///START
+  /// START
   if (!filter || strstr ("py_mod_f32", filter))
   {
     extern void __test__py_mod_f32 (void);
@@ -2729,7 +2729,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1028 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/numerics.c:1065
-  ///START
+  /// START
   if (!filter || strstr ("py_mod_i32", filter))
   {
     extern void __test__py_mod_i32 (void);
@@ -2775,7 +2775,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:75 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:169
-  ///START
+  /// START
   if (!filter || strstr ("i_realloc_basic", filter))
   {
     extern void __test__i_realloc_basic (void);
@@ -2797,7 +2797,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:169 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:210
-  ///START
+  /// START
   if (!filter || strstr ("i_realloc_right", filter))
   {
     extern void __test__i_realloc_right (void);
@@ -2819,7 +2819,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:210 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:309
-  ///START
+  /// START
   if (!filter || strstr ("i_realloc_left", filter))
   {
     extern void __test__i_realloc_left (void);
@@ -2841,7 +2841,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:309 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:386
-  ///START
+  /// START
   if (!filter || strstr ("i_crealloc_right", filter))
   {
     extern void __test__i_crealloc_right (void);
@@ -2866,7 +2866,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:386 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/os_common.c:492
-  ///START
+  /// START
   if (!filter || strstr ("i_crealloc_left", filter))
   {
     extern void __test__i_crealloc_left (void);
@@ -4156,7 +4156,7 @@ run_unit_tests (const char *filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/parsers.c:206 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:868 START
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1025 START
   if (!filter || strstr ("compile_query", filter))
   {
     extern void __test__compile_query (void);
@@ -4175,9 +4175,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:868 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1025 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1473 START
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1684 START
   if (!filter || strstr ("compile_type", filter))
   {
     extern void __test__compile_type (void);
@@ -4196,9 +4196,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1473 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1684 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1800 START
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:2011 START
   if (!filter || strstr ("compile_type_ref", filter))
   {
     extern void __test__compile_type_ref (void);
@@ -4220,9 +4220,9 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:1800 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:2011 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:2037 START
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:2248 START
   if (!filter || strstr ("compile_user_stride", filter))
   {
     extern void __test__compile_user_stride (void);
@@ -4244,10 +4244,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:2037 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/parsers.c:2248 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:90
-  ///START
+  /// START
   if (!filter || strstr ("dlgt_balance_with_prev", filter))
   {
     extern void __test__dlgt_balance_with_prev (void);
@@ -4270,7 +4270,7 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:90
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/rope_algorithms.c:270 START
@@ -5013,7 +5013,7 @@ run_unit_tests (const char *filter)
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:19
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_open", filter))
   {
     extern void __test__dpgt_open (void);
@@ -5034,11 +5034,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:19
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:39
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_merge_into", filter))
   {
     extern void __test__dpgt_merge_into (void);
@@ -5059,11 +5059,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:39
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:104
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_min_rec_lsn", filter))
   {
     extern void __test__dpgt_min_rec_lsn (void);
@@ -5087,11 +5087,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:104
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:134
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_exists", filter))
   {
     extern void __test__dpgt_exists (void);
@@ -5112,11 +5112,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:134
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:157
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_add", filter))
   {
     extern void __test__dpgt_add (void);
@@ -5137,11 +5137,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:157
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:194
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_get", filter))
   {
     extern void __test__dpgt_get (void);
@@ -5162,11 +5162,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:194
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:260
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_remove", filter))
   {
     extern void __test__dpgt_remove (void);
@@ -5187,11 +5187,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:260
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:324
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_serialize", filter))
   {
     extern void __test__dpgt_serialize (void);
@@ -5212,11 +5212,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:324
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:388
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_equal", filter))
   {
     extern void __test__dpgt_equal (void);
@@ -5237,11 +5237,11 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dirty_page_table_tests.c:388
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dpgt_concurrency_tests.c:100
-  ///START
+  /// START
   if (!filter || strstr ("dpgt_concurrent", filter))
   {
     extern void __test__dpgt_concurrent (void);
@@ -5262,7 +5262,7 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/dpgt_concurrency_tests.c:100
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/mem_vhmap.c:254 START
@@ -5288,88 +5288,96 @@ run_unit_tests (const char *filter)
   ////Users/theo/Development/Numstore/src/testing/mem_vhmap.c:254 DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:21
-  ///START
-  if (!filter || strstr ("cgd_test_create_delete_rollback_delete", filter))
+  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:20
+  /// START
+  if (!filter
+      || strstr ("regression_cgd_test_create_delete_rollback_delete", filter))
   {
-    extern void __test__cgd_test_create_delete_rollback_delete (void);
+    extern void __test__regression_cgd_test_create_delete_rollback_delete (
+        void
+    );
     i_log_info (
         "========================= TEST CASE: %s\n",
-        "cgd_test_create_delete_rollback_delete"
+        "regression_cgd_test_create_delete_rollback_delete"
     );
     int prev = test_ret;
     test_ret = 0;
-    __test__cgd_test_create_delete_rollback_delete ();
+    __test__regression_cgd_test_create_delete_rollback_delete ();
     if (!test_ret)
     {
-      i_log_passed ("%s\n", "cgd_test_create_delete_rollback_delete");
+      i_log_passed (
+          "%s\n",
+          "regression_cgd_test_create_delete_rollback_delete"
+      );
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "cgd_test_create_delete_rollback_delete";
+      failed_names[failed++] =
+          "regression_cgd_test_create_delete_rollback_delete";
     }
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:21
-  ///DONE
+  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:20
+  /// DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:67
-  ///START
-  if (!filter || strstr ("cgd_test_create_crash_close_delete", filter))
+  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:66
+  /// START
+  if (!filter
+      || strstr ("regression_cgd_test_create_crash_close_delete", filter))
   {
-    extern void __test__cgd_test_create_crash_close_delete (void);
+    extern void __test__regression_cgd_test_create_crash_close_delete (void);
     i_log_info (
         "========================= TEST CASE: %s\n",
-        "cgd_test_create_crash_close_delete"
+        "regression_cgd_test_create_crash_close_delete"
     );
     int prev = test_ret;
     test_ret = 0;
-    __test__cgd_test_create_crash_close_delete ();
+    __test__regression_cgd_test_create_crash_close_delete ();
     if (!test_ret)
     {
-      i_log_passed ("%s\n", "cgd_test_create_crash_close_delete");
+      i_log_passed ("%s\n", "regression_cgd_test_create_crash_close_delete");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "cgd_test_create_crash_close_delete";
+      failed_names[failed++] = "regression_cgd_test_create_crash_close_delete";
     }
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:67
-  ///DONE
+  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:66
+  /// DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:97
-  ///START
-  if (!filter || strstr ("irwr_rollback_invalid_wal_header", filter))
+  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:99
+  /// START
+  if (!filter || strstr ("regression_irwr_rollback_invalid_wal_header", filter))
   {
-    extern void __test__irwr_rollback_invalid_wal_header (void);
+    extern void __test__regression_irwr_rollback_invalid_wal_header (void);
     i_log_info (
         "========================= TEST CASE: %s\n",
-        "irwr_rollback_invalid_wal_header"
+        "regression_irwr_rollback_invalid_wal_header"
     );
     int prev = test_ret;
     test_ret = 0;
-    __test__irwr_rollback_invalid_wal_header ();
+    __test__regression_irwr_rollback_invalid_wal_header ();
     if (!test_ret)
     {
-      i_log_passed ("%s\n", "irwr_rollback_invalid_wal_header");
+      i_log_passed ("%s\n", "regression_irwr_rollback_invalid_wal_header");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "irwr_rollback_invalid_wal_header";
+      failed_names[failed++] = "regression_irwr_rollback_invalid_wal_header";
     }
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:97
-  ///DONE
+  ////Users/theo/Development/Numstore/src/testing/numstore_regression_tests.c:99
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:24 START
@@ -5395,7 +5403,7 @@ run_unit_tests (const char *filter)
   ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:24 DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:179 START
+  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:207 START
   if (!filter || strstr ("nsdb_delete_txn", filter))
   {
     extern void __test__nsdb_delete_txn (void);
@@ -5415,10 +5423,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:179 DONE
+  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:207 DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:287 START
+  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:322 START
   if (!filter || strstr ("nsdb_insert_txn", filter))
   {
     extern void __test__nsdb_insert_txn (void);
@@ -5438,10 +5446,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:287 DONE
+  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:322 DONE
 
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:503 START
+  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:584 START
   if (!filter || strstr ("nsdb_write_txn", filter))
   {
     extern void __test__nsdb_write_txn (void);
@@ -5461,33 +5469,7 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:503 DONE
-
-  ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:762 START
-  if (!filter || strstr ("nsdb_get_if_exists", filter))
-  {
-    extern void __test__nsdb_get_if_exists (void);
-    i_log_info (
-        "========================= TEST CASE: %s\n",
-        "nsdb_get_if_exists"
-    );
-    int prev = test_ret;
-    test_ret = 0;
-    __test__nsdb_get_if_exists ();
-    if (!test_ret)
-    {
-      i_log_passed ("%s\n", "nsdb_get_if_exists");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "nsdb_get_if_exists";
-    }
-    ntests++;
-  }
-  ////////////////////
-  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:762 DONE
+  ////Users/theo/Development/Numstore/src/testing/numstore_tests.c:584 DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/page_fixture.c:307 START
@@ -5540,7 +5522,7 @@ run_unit_tests (const char *filter)
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/robin_hood_ht_tests.c:105
-  ///START
+  /// START
   if (!filter || strstr ("robin_hood_ht", filter))
   {
     extern void __test__robin_hood_ht (void);
@@ -5589,7 +5571,7 @@ run_unit_tests (const char *filter)
   ////Users/theo/Development/Numstore/src/testing/smfile_data_writer.c:125 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:72
-  ///START
+  /// START
   if (!filter || strstr ("test_mark_works", filter))
   {
     extern void __test__test_mark_works (void);
@@ -5609,10 +5591,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:72
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:83
-  ///START
+  /// START
   if (!filter || strstr ("test_mark_match", filter))
   {
     extern void __test__test_mark_match (void);
@@ -5632,11 +5614,11 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/testing/testing.c:83
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/txnt_concurrency_tests.c:119
-  ///START
+  /// START
   if (!filter || strstr ("txnt_concurrent", filter))
   {
     extern void __test__txnt_concurrent (void);
@@ -5657,10 +5639,10 @@ run_unit_tests (const char *filter)
   }
   ////////////////////
   ////Users/theo/Development/Numstore/src/testing/txnt_concurrency_tests.c:119
-  ///DONE
+  /// DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:327
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:328
+  /// START
   if (!filter || strstr ("txn_basic", filter))
   {
     extern void __test__txn_basic (void);
@@ -5679,10 +5661,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:327 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:328 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:434
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:435
+  /// START
   if (!filter || strstr ("txnt_open", filter))
   {
     extern void __test__txnt_open (void);
@@ -5701,10 +5683,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:434 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:435 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:580
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:581
+  /// START
   if (!filter || strstr ("txnt_merge_into", filter))
   {
     extern void __test__txnt_merge_into (void);
@@ -5723,10 +5705,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:580 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:581 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:721
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:722
+  /// START
   if (!filter || strstr ("txnt_max_u_undo_lsn", filter))
   {
     extern void __test__txnt_max_u_undo_lsn (void);
@@ -5748,10 +5730,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:721 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:722 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:849
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:850
+  /// START
   if (!filter || strstr ("txnt_min_lsn", filter))
   {
     extern void __test__txnt_min_lsn (void);
@@ -5770,10 +5752,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:849 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:850 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:957
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:958
+  /// START
   if (!filter || strstr ("txnt_exists", filter))
   {
     extern void __test__txnt_exists (void);
@@ -5792,10 +5774,10 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:957 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:958 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1014
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1015
+  /// START
   if (!filter || strstr ("txnt_insert", filter))
   {
     extern void __test__txnt_insert (void);
@@ -5814,11 +5796,11 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1014
-  ///DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1015
+  /// DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1167
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1168
+  /// START
   if (!filter || strstr ("txnt_get", filter))
   {
     extern void __test__txnt_get (void);
@@ -5837,11 +5819,11 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1167
-  ///DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1168
+  /// DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1351
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1352
+  /// START
   if (!filter || strstr ("txnt_remove", filter))
   {
     extern void __test__txnt_remove (void);
@@ -5860,11 +5842,11 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1351
-  ///DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1352
+  /// DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1571
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1572
+  /// START
   if (!filter || strstr ("txnt_serialize", filter))
   {
     extern void __test__txnt_serialize (void);
@@ -5883,11 +5865,11 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1571
-  ///DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1572
+  /// DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1705
-  ///START
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1706
+  /// START
   if (!filter || strstr ("txnt_equal_ignore_state", filter))
   {
     extern void __test__txnt_equal_ignore_state (void);
@@ -5909,8 +5891,8 @@ run_unit_tests (const char *filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1705
-  ///DONE
+  //////////////////// /Users/theo/Development/Numstore/src/txn_table.c:1706
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/types.c:295 START
   if (!filter || strstr ("type_generate_string", filter))
@@ -6639,7 +6621,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/utils.c:33 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:79
-  ///START
+  /// START
   if (!filter || strstr ("ns_init_var_hash_map", filter))
   {
     extern void __test__ns_init_var_hash_map (void);
@@ -6662,10 +6644,10 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:79
-  ///DONE
+  /// DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:471
-  ///START
+  /// START
   if (!filter || strstr ("ns_find_var_page", filter))
   {
     extern void __test__ns_find_var_page (void);
@@ -6688,7 +6670,7 @@ run_unit_tests (const char *filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:471
-  ///DONE
+  /// DONE
 
   ////////////////////
   ////Users/theo/Development/Numstore/src/var_algorithms.c:1643 START
@@ -6717,7 +6699,7 @@ run_unit_tests (const char *filter)
   ////Users/theo/Development/Numstore/src/var_algorithms.c:1643 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/variables.c:277
-  ///START
+  /// START
   if (!filter || strstr ("rand_varname_same_hash", filter))
   {
     extern void __test__rand_varname_same_hash (void);
@@ -6742,7 +6724,7 @@ run_unit_tests (const char *filter)
   //////////////////// /Users/theo/Development/Numstore/src/variables.c:277 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/variables.c:294
-  ///START
+  /// START
   if (!filter || strstr ("rand_varname_different_hash", filter))
   {
     extern void __test__rand_varname_different_hash (void);

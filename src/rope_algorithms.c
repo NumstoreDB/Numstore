@@ -14,6 +14,7 @@
 
 #include "rope_algorithms.h"
 
+#include "error.h"
 #include "node_updates.h"
 #include "page.h"
 #include "pager.h"
@@ -1120,8 +1121,11 @@ failed:
 static sb_size
 ns_read_backward (const struct ns_read_params params, error *e)
 {
-  panic ("TODO - (12)");
-  return 0;
+  return error_causef (
+      e,
+      ERR_INVALID_ARGUMENT,
+      "Negative strides are not implemented (yet)"
+  );
 }
 
 sb_size
@@ -2562,7 +2566,6 @@ ns_remove (struct ns_remove_params *params, error *e)
           {
             goto failed;
           }
-          ASSERT ((p_size)written == next_amount);
         }
 
         s.read_idx += next_amount;
@@ -3423,8 +3426,11 @@ failed:
 static sb_size
 ns_write_backward (const struct ns_write_params params, error *e)
 {
-  panic ("TODO - (12)");
-  return 0;
+  return error_causef (
+      e,
+      ERR_INVALID_ARGUMENT,
+      "Negative strides are not implemented (yet)"
+  );
 }
 
 sb_size
