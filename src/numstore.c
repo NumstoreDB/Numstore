@@ -256,8 +256,6 @@ nsdb_create (
 {
   struct ns_var_get_or_create_params gparams; // Get or create operation
 
-  chunk_alloc_create_default (alloc);
-
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
@@ -1167,6 +1165,7 @@ _nsdb_execute (
 
 failed:
   chunk_alloc_free_all (&alc);
+
   return error_trace (e);
 }
 
