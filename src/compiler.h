@@ -84,10 +84,8 @@ enum token_t
   TT_UNION,
   TT_PRIM,
 
-  TT_FILE,
-  TT_QUERY,
-  TT_OFST,
-  TT_LEN,
+  TT_IF,
+  TT_EXISTS,
 
   TT_TRUE,
   TT_FALSE,
@@ -304,6 +302,31 @@ parser_advance (struct parser *p)
   p->pos++;
 
   return tok;
+}
+
+HEADER_FUNC bool
+parser_maybe_parse_integer (struct parser *p, i32 *dest)
+{
+  struct token *tok1 = parser_peek (p);
+  if (tok1->type == TT_INTEGER)
+  {
+    *dest = parser_advance (p)->integer;
+    return true;
+  }
+  else if (tok1->type == TT_MINUS)
+  {
+    if (p->pos + 1 < p->src_len)
+    {
+      struct token *tok2 = parser_peek_n (p, 1);
+      if (tok2->type == TT_INTEGER)
+      {
+        parser_advance (p);
+        *dest = -parser_advance (p)->integer;
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // Expect a specific token type, consume it, and advance

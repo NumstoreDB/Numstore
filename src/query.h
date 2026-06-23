@@ -87,6 +87,7 @@ struct query
     struct
     {
       struct string name;
+      bool          if_exists;
     } get;
 
     // Meta Operations

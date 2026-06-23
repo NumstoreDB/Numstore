@@ -75,7 +75,7 @@ nsdb_crash (nsdb_t *ns)
 b_size
 nsdb_var_len (nsdb_var_t *var)
 {
-  return var->var.nbytes / type_byte_size (var->var.dtype);
+  return var->var->nbytes / type_byte_size (var->var->dtype);
 }
 
 void
@@ -170,7 +170,6 @@ failed_rollback:
   nsh_auto_rollback (db);
 
 failed:
-  i_free (ret);
   return NULL;
 }
 
@@ -182,14 +181,13 @@ HEADER_FUNC int
 nsdb_get_if_exists (
     struct nshandle    *db,
     struct chunk_alloc *alloc,
-    const char         *name,
+    struct string       vname,
     struct variable   **dest,
     error              *e
 )
 {
   ASSERT (dest);
-  struct ns_var_get_params gparams;                 // Get or create operation
-  struct string            vname = strfcstr (name); // Variable name
+  struct ns_var_get_params gparams; // Get or create operation
 
   *dest = chunk_malloc (alloc, 1, sizeof (struct variable), e);
   if (*dest == NULL)
@@ -203,9 +201,9 @@ nsdb_get_if_exists (
   i_log_debug (
       "GET IF EXISTS (txn = %" PRtxid
       ")"
-      " - %s\n",
+      " - %.*s\n",
       db->atx->tid,
-      name
+      strfmt (&vname)
   );
 
   // GET VARIABLE
@@ -1082,27 +1080,70 @@ _nsdb_execute (
       {
         goto failed;
       }
+      chunk_alloc_create_default (valloc);
 
-      var = nsdb_get (ns, valloc, q.get.name, e);
-      if (var == NULL)
+      if (q.get.if_exists)
       {
-        chunk_alloc_free_all (valloc);
-        i_free (valloc);
-        goto failed;
+        ret = nsdb_get_if_exists (ns, valloc, q.get.name, &var, e);
+
+        if (ret < 0)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
+
+        if (var == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          ret                    = SUCCESS;
+          struct nsdb_var **dest = (struct nsdb_var **)data;
+          *dest                  = NULL;
+        }
+        else
+        {
+          ASSERT (data);
+          struct nsdb_var **dest = (struct nsdb_var **)data;
+          *dest        = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
+          (*dest)->var = var;
+          (*dest)->alloc = valloc;
+
+          if (*dest == NULL)
+          {
+            chunk_alloc_free_all (valloc);
+            i_free (valloc);
+            goto failed;
+          }
+
+          ret = SUCCESS;
+        }
       }
-
-      ASSERT (data);
-      struct nsdb_var_t **dest = (struct nsdb_var_t **)data;
-      *dest = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
-
-      if (*dest == NULL)
+      else
       {
-        chunk_alloc_free_all (valloc);
-        i_free (valloc);
-        goto failed;
-      }
+        var = nsdb_get (ns, valloc, q.get.name, e);
+        if (var == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
 
-      ret = SUCCESS;
+        ASSERT (data);
+        struct nsdb_var **dest = (struct nsdb_var **)data;
+        *dest          = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
+        (*dest)->var   = var;
+        (*dest)->alloc = valloc;
+
+        if (*dest == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
+
+        ret = SUCCESS;
+      }
 
       break;
     }
@@ -1132,6 +1173,10 @@ failed:
 sb_size
 nsdb_execute (nsdb_t *ns, const char *query, void *data, ...)
 {
+  struct nshandle *nh = (struct nshandle *)ns;
+  nh->e.cause_code    = 0;
+  nh->e.cmlen         = 0;
+
   char    stackbuf[2048];
   char   *buf = stackbuf;
   va_list ap, ap2;
@@ -1145,27 +1190,31 @@ nsdb_execute (nsdb_t *ns, const char *query, void *data, ...)
   if (n < 0)
   {
     va_end (ap2);
-    return -1;
+    return error_causef (
+        &nh->e,
+        ERR_INVALID_ARGUMENT,
+        "Invalid printf argument"
+    );
   }
 
   if ((size_t)n >= sizeof stackbuf)
   {
-    buf = malloc (n + 1);
+    buf = i_malloc (n + 1, 1, &nh->e);
     if (!buf)
     {
       va_end (ap2);
-      return -1;
+      return error_trace (&nh->e);
     }
-    vsnprintf (buf, n + 1, query, ap2);
+    n = vsnprintf (buf, n + 1, query, ap2);
+    ASSERT (n >= 0);
   }
   va_end (ap2);
 
-  struct nshandle *nh  = (struct nshandle *)ns;
-  sb_size          ret = _nsdb_execute (nh, buf, (u32)n, data, &nh->e);
+  sb_size ret = _nsdb_execute (nh, buf, (u32)n, data, &nh->e);
 
   if (buf != stackbuf)
   {
-    free (buf);
+    i_free (buf);
   }
   return ret;
 }

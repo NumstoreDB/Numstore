@@ -128,10 +128,8 @@ tt_tostr (enum token_t t)
     case_ENUM_RETURN_STRING (TT_PRIM);
 
     // other literals
-    case_ENUM_RETURN_STRING (TT_FILE);
-    case_ENUM_RETURN_STRING (TT_QUERY);
-    case_ENUM_RETURN_STRING (TT_OFST);
-    case_ENUM_RETURN_STRING (TT_LEN);
+    case_ENUM_RETURN_STRING (TT_IF);
+    case_ENUM_RETURN_STRING (TT_EXISTS);
 
     // Bools
     case_ENUM_RETURN_STRING (TT_TRUE);
@@ -321,21 +319,13 @@ check_keyword (const char *text, u32 len)
     return TT_TAKE;
   }
 
-  if (len == sizeof ("file") - 1 && strncmp (text, "file", len) == 0)
+  if (len == sizeof ("if") - 1 && strncmp (text, "if", len) == 0)
   {
-    return TT_FILE;
+    return TT_IF;
   }
-  if (len == sizeof ("query") - 1 && strncmp (text, "query", len) == 0)
+  if (len == sizeof ("exists") - 1 && strncmp (text, "exists", len) == 0)
   {
-    return TT_QUERY;
-  }
-  if (len == sizeof ("ofst") - 1 && strncmp (text, "ofst", len) == 0)
-  {
-    return TT_OFST;
-  }
-  if (len == sizeof ("len") - 1 && strncmp (text, "len", len) == 0)
-  {
-    return TT_LEN;
+    return TT_EXISTS;
   }
 
   if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0)
@@ -802,7 +792,7 @@ TEST (lexer_numbers)
 TEST (lexer_keywords)
 {
   const char *src =
-      "create delete get exit help insert file query struct union true false";
+      "create delete get exit help insert if exists struct union true false";
 
   struct token expected[] = {
       quick_tok (TT_CREATE),
@@ -811,8 +801,8 @@ TEST (lexer_keywords)
       quick_tok (TT_EXIT),
       quick_tok (TT_HELP),
       quick_tok (TT_INSERT),
-      quick_tok (TT_FILE),
-      quick_tok (TT_QUERY),
+      quick_tok (TT_IF),
+      quick_tok (TT_EXISTS),
       quick_tok (TT_STRUCT),
       quick_tok (TT_UNION),
       quick_tok (TT_TRUE),

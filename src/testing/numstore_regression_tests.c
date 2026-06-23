@@ -17,7 +17,7 @@
 #include "testing/testing.h" // TEST
 
 #ifdef TESTING
-TEST (cgd_test_create_delete_rollback_delete)
+TEST (regression_cgd_test_create_delete_rollback_delete)
 {
   test_assert_int_equal (nsh_cleanup ("test"), 0);
   nsdb_t *db = nsdb_open ("test");
@@ -43,10 +43,9 @@ TEST (cgd_test_create_delete_rollback_delete)
   test_assert_int_equal (
       nsdb_execute (
           db,
-          "create yJIF"
+          "create yJIF "
           "struct { sQf8W7t6 struct { ukc7C4 cf256, CHbmDuiD6 union { aVmHRo "
-          "cf64, FeVvpnN u64 } } "
-          "}",
+          "cf64, FeVvpnN u64 } } }",
           NULL
       ),
       0
@@ -64,7 +63,7 @@ TEST (cgd_test_create_delete_rollback_delete)
   test_assert_int_equal (nsdb_close (db), 0);
 }
 
-TEST (cgd_test_create_crash_close_delete)
+TEST (regression_cgd_test_create_crash_close_delete)
 {
   test_assert_int_equal (nsh_cleanup ("test"), 0);
   nsdb_t *db = nsdb_open ("test");
@@ -92,12 +91,12 @@ TEST (cgd_test_create_crash_close_delete)
   //          uninitialized, therefore it needs one upfront physical log first
   //          before it can be used - log a physical update log then continue on
   //          with fsm specific logs
-  test_assert (nsdb_execute (db, "create MkWMJ9a", NULL) == 0);
+  test_assert (nsdb_execute (db, "delete MkWMJ9a", NULL) == 0);
 
   test_assert_int_equal (nsdb_close (db), 0);
 }
 
-TEST (irwr_rollback_invalid_wal_header)
+TEST (regression_irwr_rollback_invalid_wal_header)
 {
   test_assert_int_equal (nsh_cleanup ("test"), 0);
   nsdb_t *db = nsdb_open ("test");

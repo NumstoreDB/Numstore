@@ -116,7 +116,8 @@ query_equal (const struct query *left, const struct query *right)
     }
     case QT_GET:
     {
-      return string_equal (left->get.name, right->get.name);
+      return string_equal (left->get.name, right->get.name)
+             && left->get.if_exists == right->get.if_exists;
     }
 
     case QT_EXIT:

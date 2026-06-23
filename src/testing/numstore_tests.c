@@ -15,6 +15,7 @@
 #include "error.h"
 #include "nshandle.h"
 #include "numstore.h"
+#include "testing/testing.h"
 
 #define ITERS        10
 #define REOPEN_ITERS 20
@@ -35,7 +36,7 @@ TEST (nsdb_create_txn)
     db = nsdb_open ("test");
     test_assert (db != NULL);
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
     test_assert_int_equal (nsdb_close (db), 0);
@@ -84,10 +85,8 @@ TEST (nsdb_create_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       nsdb_var_t *var;
-      test_assert_int_equal (
-          nsdb_execute (db, "get foo", &var),
-          ERR_VARIABLE_NE
-      );
+      test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
+      test_assert (var == NULL);
     }
     test_assert_int_equal (nsdb_close (db), 0);
   }
@@ -120,13 +119,18 @@ TEST (nsdb_create_txn)
       if (i % 2 == 0)
       {
         test_assert_int_equal (
-            nsdb_execute (db, "get foo", &var),
-            ERR_VARIABLE_NE
+            nsdb_execute (db, "get if exists foo", &var),
+            SUCCESS
         );
+        test_assert (var == NULL);
       }
       else
       {
-        test_assert (nsdb_execute (db, "get foo", &var) != 0);
+        test_assert_int_equal (
+            nsdb_execute (db, "get if exists foo", &var),
+            SUCCESS
+        );
+        test_assert (var == NULL);
       }
     }
     test_assert_int_equal (nsdb_close (db), 0);
@@ -146,9 +150,10 @@ TEST (nsdb_create_txn)
       );
       nsdb_var_t *var;
       test_assert_int_equal (
-          nsdb_execute (db, "get foo", &var),
-          ERR_VARIABLE_NE
+          nsdb_execute (db, "get if exists foo", &var),
+          SUCCESS
       );
+      test_assert (var == NULL);
     }
     test_assert_int_equal (nsdb_close (db), 0);
   }
@@ -182,13 +187,17 @@ TEST (nsdb_create_txn)
       test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
       test_assert_int_equal (nsdb_rollback (db), 0);
       nsdb_var_t *var;
-      test_assert (nsdb_execute (db, "get foo", &var) != 0);
+      test_assert_int_equal (
+          nsdb_execute (db, "get if exists foo", &var),
+          SUCCESS
+      );
+      test_assert (var == NULL);
     }
     test_assert_int_equal (nsdb_begin (db), 0);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_commit (db), 0);
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
     test_assert_int_equal (nsdb_close (db), 0);

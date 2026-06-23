@@ -55,10 +55,10 @@ parse_mus_step (
   s->present |= COLON_PRESENT;
   parser_advance (parser->base);
 
-  if (parser_match (parser->base, TT_INTEGER))
+  i32 num;
+  if (parser_maybe_parse_integer (parser->base, &num))
   {
-    struct token *tok = parser_advance (parser->base);
-    s->step           = (sb_size)tok->integer;
+    s->step = num;
     s->present |= STEP_PRESENT;
   }
 
@@ -72,10 +72,10 @@ parse_mus_stop (
     error                           *e
 )
 {
-  if (parser_match (parser->base, TT_INTEGER))
+  i32 num;
+  if (parser_maybe_parse_integer (parser->base, &num))
   {
-    struct token *tok = parser_advance (parser->base);
-    s->stop           = (sb_size)tok->integer;
+    s->stop = num;
     s->present |= STOP_PRESENT;
   }
 
@@ -88,10 +88,10 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
   struct user_stride s = {0};
 
   // Optional start integer
-  if (parser_match (parser->base, TT_INTEGER))
+  i32 num;
+  if (parser_maybe_parse_integer (parser->base, &num))
   {
-    struct token *tok = parser_advance (parser->base);
-    s.start           = (sb_size)tok->integer;
+    s.start = num;
     s.present |= START_PRESENT;
 
     // Bare number with no colon â†’ single index
@@ -487,7 +487,7 @@ TEST (compile_multi_user_stride)
     e.cmlen      = 0;
   }
 
-  // Leading comma â€” parse_entry gets ',' which is neither number nor ':'
+  // Leading comma parse_entry gets ',' which is neither number nor ':'
   TEST_CASE ("error: leading comma '[,0]'")
   {
     err_t err = compile_multi_user_stride (&stride, "[,0]", &alloc, &e);
@@ -534,20 +534,21 @@ TEST (compile_multi_user_stride)
 /******************************************************************************
  * SECTION: Query
  * ----------------------------------------------------------------------------
- * query   ::= command ';'
- * command ::= read | create | delete | get | exit | help
- * read    ::= 'read'   IDENT user_stride?
- * create  ::= 'create' IDENT type
- * delete  ::= 'delete' IDENT
- * get     ::= 'get'    IDENT
- * exit    ::= 'exit'
+ * query   ::= read | create | delete | get | exit | help
  * help    ::= 'help' ( 'read' | 'create' | 'delete' | 'get' | 'exit' | 'help')?
+ * exit    ::= 'exit'
+ * get     ::= 'get'    IDENT
+ * delete  ::= 'delete' IDENT
+ * create  ::= 'create' IDENT type
+ * insert  ::= 'insert' IDENT ofst len
+ * read    ::= 'read'   IDENT user_stride?
+ * remove  ::= 'remove' IDENT user_stride?
+ * write   ::= 'write'  IDENT user_stride?
  ******************************************************************************/
 
 static err_t
 parse_query_help (struct parser *parser, struct query *dest, error *e)
 {
-  // HELP
   WRAP (parser_expect (parser, TT_HELP, e));
   dest->type = QT_HELP;
 
@@ -619,6 +620,15 @@ parse_query_get (struct parser *parser, struct query *dest, error *e)
   // GET
   WRAP (parser_expect (parser, TT_GET, e));
 
+  // IF EXISTS
+  bool if_exists = false;
+  if (parser_match (parser, TT_IF))
+  {
+    parser_advance (parser);
+    WRAP (parser_expect (parser, TT_EXISTS, e));
+    if_exists = true;
+  }
+
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
@@ -633,14 +643,14 @@ parse_query_get (struct parser *parser, struct query *dest, error *e)
 
   *dest = (struct query){
       .type = QT_GET,
-      .create =
-          {
-              .name =
-                  (struct string){
-                      .data = (char *)tok->str.data,
-                      .len  = tok->str.len,
-                  },
-          },
+      .get  = {
+          .name =
+              (struct string){
+                  .data = (char *)tok->str.data,
+                  .len  = tok->str.len,
+              },
+          .if_exists = if_exists,
+      },
   };
 
   return SUCCESS;
@@ -665,15 +675,13 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
   struct token *tok = parser_advance (parser);
 
   *dest = (struct query){
-      .type = QT_DELETE,
-      .create =
-          {
-              .name =
-                  (struct string){
-                      .data = (char *)tok->str.data,
-                      .len  = tok->str.len,
-                  },
+      .type   = QT_DELETE,
+      .delete = {
+          .name = (struct string){
+              .data = (char *)tok->str.data,
+              .len  = tok->str.len,
           },
+      },
   };
 
   return SUCCESS;
@@ -687,10 +695,8 @@ parse_query_create (
     error              *e
 )
 {
-  // CREATE
   WRAP (parser_expect (parser, TT_CREATE, e));
 
-  // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
     return error_causef (
@@ -700,23 +706,77 @@ parse_query_create (
         parser->pos
     );
   }
+
   struct token *tok = parser_advance (parser);
 
   *dest = (struct query){
-      .type = QT_CREATE,
-      .create =
-          {
-              .name =
-                  (struct string){
-                      .data = (char *)tok->str.data,
-                      .len  = tok->str.len,
-                  },
-              // .type = PARSE,
-          },
+      .type   = QT_CREATE,
+      .create = {
+          .name =
+              (struct string){
+                  .data = (char *)tok->str.data,
+                  .len  = tok->str.len,
+              },
+          // .type = PARSE,
+      },
   };
 
-  // TYPE
   WRAP (parse_type (parser, &dest->create.type, dalloc, e));
+
+  return SUCCESS;
+}
+
+static err_t
+parse_query_insert (struct parser *parser, struct query *dest, error *e)
+{
+  WRAP (parser_expect (parser, TT_INSERT, e));
+
+  if (!parser_match (parser, TT_IDENTIFIER))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
+  }
+  struct token *ident = parser_advance (parser);
+  ASSERT (ident->type == TT_IDENTIFIER);
+
+  i32 ofst;
+  if (!parser_maybe_parse_integer (parser, &ofst))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected integer at position %u",
+        parser->pos
+    );
+  }
+
+  i32 len;
+  if (!parser_maybe_parse_integer (parser, &len))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected integer at position %u",
+        parser->pos
+    );
+  }
+
+  *dest = (struct query){
+      .type   = QT_INSERT,
+      .insert = {
+          .name =
+              (struct string){
+                  .data = (char *)ident->str.data,
+                  .len  = ident->str.len,
+              },
+          .ofst = ofst,
+          .len  = len,
+      },
+  };
 
   return SUCCESS;
 }
@@ -749,15 +809,96 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
 
   *dest = (struct query){
       .type = QT_READ,
-      .read =
-          {
-              .name =
-                  (struct string){
-                      .data = (char *)tok->str.data,
-                      .len  = tok->str.len,
-                  },
-              .ustr = ustr,
-          },
+      .read = {
+          .name =
+              (struct string){
+                  .data = (char *)tok->str.data,
+                  .len  = tok->str.len,
+              },
+          .ustr = ustr,
+      },
+  };
+
+  return SUCCESS;
+}
+
+static err_t
+parse_query_remove (struct parser *parser, struct query *dest, error *e)
+{
+  // READ
+  WRAP (parser_expect (parser, TT_REMOVE, e));
+
+  // IDENT
+  if (!parser_match (parser, TT_IDENTIFIER))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
+  }
+  struct token *tok = parser_advance (parser);
+
+  // USER_STRIDE
+  struct user_stride ustr = ustride ();
+
+  if (parser_match (parser, TT_LEFT_BRACKET))
+  {
+    WRAP (parse_user_stride (parser, &ustr, e));
+  }
+
+  *dest = (struct query){
+      .type   = QT_REMOVE,
+      .remove = {
+          .name =
+              (struct string){
+                  .data = (char *)tok->str.data,
+                  .len  = tok->str.len,
+              },
+          .ustr = ustr,
+      },
+  };
+
+  return SUCCESS;
+}
+
+static err_t
+parse_query_write (struct parser *parser, struct query *dest, error *e)
+{
+  // READ
+  WRAP (parser_expect (parser, TT_WRITE, e));
+
+  // IDENT
+  if (!parser_match (parser, TT_IDENTIFIER))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
+  }
+  struct token *tok = parser_advance (parser);
+
+  // USER_STRIDE
+  struct user_stride ustr = ustride ();
+
+  if (parser_match (parser, TT_LEFT_BRACKET))
+  {
+    WRAP (parse_user_stride (parser, &ustr, e));
+  }
+
+  *dest = (struct query){
+      .type  = QT_WRITE,
+      .write = {
+          .name =
+              (struct string){
+                  .data = (char *)tok->str.data,
+                  .len  = tok->str.len,
+              },
+          .ustr = ustr,
+      },
   };
 
   return SUCCESS;
@@ -771,34 +912,41 @@ parse_query (
     error              *e
 )
 {
-  if (parser_match (parser, TT_READ))
+  if (parser_match (parser, TT_HELP))
   {
-    WRAP (parse_query_read (parser, dest, e));
+    WRAP (parse_query_help (parser, dest, e));
   }
-
-  else if (parser_match (parser, TT_CREATE))
-  {
-    WRAP (parse_query_create (parser, dest, dalloc, e));
-  }
-
-  else if (parser_match (parser, TT_DELETE))
-  {
-    WRAP (parse_query_delete (parser, dest, e));
-  }
-
-  else if (parser_match (parser, TT_GET))
-  {
-    WRAP (parse_query_get (parser, dest, e));
-  }
-
   else if (parser_match (parser, TT_EXIT))
   {
     WRAP (parse_query_exit (parser, dest, e));
   }
-
-  else if (parser_match (parser, TT_HELP))
+  else if (parser_match (parser, TT_GET))
   {
-    WRAP (parse_query_help (parser, dest, e));
+    WRAP (parse_query_get (parser, dest, e));
+  }
+  else if (parser_match (parser, TT_DELETE))
+  {
+    WRAP (parse_query_delete (parser, dest, e));
+  }
+  else if (parser_match (parser, TT_CREATE))
+  {
+    WRAP (parse_query_create (parser, dest, dalloc, e));
+  }
+  else if (parser_match (parser, TT_INSERT))
+  {
+    WRAP (parse_query_insert (parser, dest, e));
+  }
+  else if (parser_match (parser, TT_READ))
+  {
+    WRAP (parse_query_read (parser, dest, e));
+  }
+  else if (parser_match (parser, TT_REMOVE))
+  {
+    WRAP (parse_query_remove (parser, dest, e));
+  }
+  else if (parser_match (parser, TT_WRITE))
+  {
+    WRAP (parse_query_write (parser, dest, e));
   }
   else
   {
@@ -810,7 +958,7 @@ parse_query (
     );
   }
 
-  return parser_expect (parser, TT_SEMICOLON, e);
+  return SUCCESS;
 }
 
 err_t
@@ -843,7 +991,7 @@ test_query_green_path (const char *query, struct query expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    compile_query (&actual, query, &alloc, &e);
+    test_assert (compile_query (&actual, query, &alloc, &e) == SUCCESS);
     test_assert (query_equal (&actual, &expected));
   }
 
@@ -871,14 +1019,15 @@ TEST (compile_query)
   // READ
   {
     test_query_red_path ("read", ERR_SYNTAX);
-    test_query_red_path ("read;", ERR_SYNTAX);
     test_query_green_path (
-        "read foo;",
-        (struct query){.type = QT_READ,
-                       .read = {.name = strfcstr ("foo"), .ustr = ustride ()}}
+        "read foo",
+        (struct query){
+            .type = QT_READ,
+            .read = {.name = strfcstr ("foo"), .ustr = ustride ()}
+        }
     );
     test_query_green_path (
-        "read foo[0:10:20];",
+        "read foo[0:10:20]",
         (struct query){
             .type = QT_READ,
             .read = {.name = strfcstr ("foo"), .ustr = ustride012 (0, 10, 20)},
@@ -886,55 +1035,105 @@ TEST (compile_query)
     );
   }
 
+  // REMOVE
+  {
+    test_query_red_path ("remove", ERR_SYNTAX);
+    test_query_red_path ("remove", ERR_SYNTAX);
+    test_query_green_path (
+        "remove foo",
+        (struct query){
+            .type   = QT_REMOVE,
+            .remove = {.name = strfcstr ("foo"), .ustr = ustride ()}
+        }
+    );
+    test_query_green_path (
+        "remove foo[0:10:20]",
+        (struct query){
+            .type = QT_REMOVE,
+            .remove =
+                {.name = strfcstr ("foo"), .ustr = ustride012 (0, 10, 20)},
+        }
+    );
+  }
+
+  // WRITE
+  {
+    test_query_red_path ("write", ERR_SYNTAX);
+    test_query_green_path (
+        "write foo",
+        (struct query){
+            .type  = QT_WRITE,
+            .write = {.name = strfcstr ("foo"), .ustr = ustride ()}
+        }
+    );
+    test_query_green_path (
+        "write foo[0:10:20]",
+        (struct query){
+            .type  = QT_WRITE,
+            .write = {.name = strfcstr ("foo"), .ustr = ustride012 (0, 10, 20)},
+        }
+    );
+  }
+
+  // INSERT
+  {
+    test_query_red_path ("insert", ERR_SYNTAX);
+    test_query_red_path ("insert foo", ERR_SYNTAX);
+    test_query_red_path ("insert foo 0", ERR_SYNTAX);
+    test_query_green_path (
+        "insert foo 0 1",
+        (struct query){
+            .type   = QT_INSERT,
+            .insert = {.name = strfcstr ("foo"), .ofst = 0, .len = 1},
+        }
+    );
+  }
+
   // CREATE
   {
     test_query_red_path ("create", ERR_SYNTAX);
-    test_query_red_path ("create 1;", ERR_SYNTAX);
-    test_query_red_path ("create foo;", ERR_SYNTAX);
-    test_query_red_path ("create foo 1;", ERR_SYNTAX);
-    test_query_red_path ("create a i32", ERR_SYNTAX);
+    test_query_red_path ("create 1", ERR_SYNTAX);
+    test_query_red_path ("create foo", ERR_SYNTAX);
+    test_query_red_path ("create foo 1", ERR_SYNTAX);
 
     // Sarray
     u32         dims[2] = {10, 20};
     struct type t0      = {
-             .type = T_SARRAY,
-             .sa   = {.rank = 2, .dims = dims, .t = &TF32}
+        .type = T_SARRAY,
+        .sa   = {.rank = 2, .dims = dims, .t = &TF32}
     };
 
     // Union
     struct type  *utypes[2] = {&TI32, &t0};
     struct string ukeys[2]  = {strfcstr ("c"), strfcstr ("d")};
     struct type   t1        = {
-                 .type = T_UNION,
-                 .un =
-            {
-                         .len   = 2,
-                         .types = utypes,
-                         .keys  = ukeys,
-            },
+        .type = T_UNION,
+        .un   = {
+            .len   = 2,
+            .types = utypes,
+            .keys  = ukeys,
+        },
     };
 
     // Struct
     struct type  *stypes[2] = {&TI32, &t1};
     struct string skeys[2]  = {strfcstr ("a"), strfcstr ("b")};
     struct type   t2        = {
-                 .type = T_STRUCT,
-                 .st =
-            {
-                         .len   = 2,
-                         .types = stypes,
-                         .keys  = skeys,
-            },
+        .type = T_STRUCT,
+        .st   = {
+            .len   = 2,
+            .types = stypes,
+            .keys  = skeys,
+        },
     };
     test_query_green_path (
-        "create foo struct { a i32, b union { c i32, d [10][20]f32 } };",
+        "create foo struct { a i32, b union { c i32, d [10][20]f32 } }",
         (struct query){
-            .type = QT_CREATE,
-            .create =
-                {
-                    .name = strfcstr ("foo"),
-                    .type = t2,
-                },
+            .type   = QT_CREATE,
+            .create = {
+                .name = strfcstr ("foo"),
+                .type = t2,
+            },
         }
     );
   }
@@ -942,16 +1141,14 @@ TEST (compile_query)
   // DELETE
   {
     test_query_red_path ("delete", ERR_SYNTAX);
-    test_query_red_path ("delete 1;", ERR_SYNTAX);
-    test_query_red_path ("delete foo", ERR_SYNTAX);
+    test_query_red_path ("delete 1", ERR_SYNTAX);
     test_query_green_path (
-        "delete foo;",
+        "delete foo",
         (struct query){
-            .type = QT_DELETE,
-            .delete =
-                {
-                    .name = strfcstr ("foo"),
-                },
+            .type   = QT_DELETE,
+            .delete = {
+                .name = strfcstr ("foo"),
+            },
         }
     );
   }
@@ -959,26 +1156,34 @@ TEST (compile_query)
   // GET
   {
     test_query_red_path ("get", ERR_SYNTAX);
-    test_query_red_path ("get 1;", ERR_SYNTAX);
-    test_query_red_path ("get foo", ERR_SYNTAX);
+    test_query_red_path ("get 1", ERR_SYNTAX);
+    test_query_red_path ("get if", ERR_SYNTAX);
+    test_query_red_path ("get if foo", ERR_SYNTAX);
     test_query_green_path (
-        "get foo;",
+        "get foo",
         (struct query){
             .type = QT_GET,
-            .get =
-                {
-                    .name = strfcstr ("foo"),
-                },
+            .get  = {
+                .name      = strfcstr ("foo"),
+                .if_exists = false,
+            },
+        }
+    );
+    test_query_green_path (
+        "get if exists foo",
+        (struct query){
+            .type = QT_GET,
+            .get  = {
+                .name      = strfcstr ("foo"),
+                .if_exists = true,
+            },
         }
     );
   }
 
   {
-    test_query_red_path ("exit", ERR_SYNTAX);
-    test_query_red_path ("exit 1;", ERR_SYNTAX);
-    test_query_red_path ("exit foo", ERR_SYNTAX);
     test_query_green_path (
-        "exit;",
+        "exit",
         (struct query){
             .type = QT_EXIT,
         }
@@ -986,55 +1191,50 @@ TEST (compile_query)
   }
 
   {
-    test_query_red_path ("help", ERR_SYNTAX);
-    test_query_red_path ("help 1;", ERR_SYNTAX);
-    test_query_red_path ("help foo", ERR_SYNTAX);
-    test_query_red_path ("help read", ERR_SYNTAX);
-    test_query_red_path ("help foo;", ERR_SYNTAX);
     test_query_green_path (
-        "help;",
+        "help",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = false},
         }
     );
     test_query_green_path (
-        "help read;",
+        "help read",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = true, .command = QT_READ},
         }
     );
     test_query_green_path (
-        "help create;",
+        "help create",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = true, .command = QT_CREATE},
         }
     );
     test_query_green_path (
-        "help delete;",
+        "help delete",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = true, .command = QT_DELETE},
         }
     );
     test_query_green_path (
-        "help get;",
+        "help get",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = true, .command = QT_GET},
         }
     );
     test_query_green_path (
-        "help exit;",
+        "help exit",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = true, .command = QT_EXIT},
         }
     );
     test_query_green_path (
-        "help help;",
+        "help help",
         (struct query){
             .type = QT_HELP,
             .help = {.has_command = true, .command = QT_HELP},
@@ -1226,7 +1426,8 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
   {
     WRAP (parser_expect (parser->base, TT_LEFT_BRACKET, e));
 
-    if (!parser_match (parser->base, TT_INTEGER))
+    i32 num;
+    if (!parser_maybe_parse_integer (parser->base, &num))
     {
       return error_causef (
           e,
@@ -1237,9 +1438,7 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
       );
     }
 
-    struct token *tok = parser_advance (parser->base);
-
-    WRAP (sab_accept_dim (&builder, tok->integer, e));
+    WRAP (sab_accept_dim (&builder, num, e));
     WRAP (parser_expect (parser->base, TT_RIGHT_BRACKET, e));
   }
 
@@ -1451,7 +1650,7 @@ test_compile_type_green_path (const char *query, struct type expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    compile_type (&actual, query, &alloc, &e);
+    test_assert_equal (compile_type (&actual, query, &alloc, &e), SUCCESS);
     test_assert (type_equal (&expected, &actual));
   }
 
@@ -1678,9 +1877,9 @@ parse_struct_type_ref (
 
   out->type = TR_STRUCT;
   out->st   = (struct struct_tr){
-        .len   = list.len,
-        .keys  = list.keys,
-        .types = list.types,
+      .len   = list.len,
+      .keys  = list.keys,
+      .types = list.types,
   };
 
   return SUCCESS;
@@ -1778,7 +1977,7 @@ test_compile_type_ref_green_path (const char *query, struct type_ref expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    compile_type_ref (&actual, query, &alloc, &e);
+    test_assert_equal (compile_type_ref (&actual, query, &alloc, &e), SUCCESS);
     test_assert (type_ref_equal (expected, actual));
   }
 
@@ -1928,10 +2127,10 @@ parse_us_step (struct parser *base, struct user_stride *s, error *e)
   s->present |= COLON_PRESENT;
   parser_advance (base);
 
-  if (parser_match (base, TT_INTEGER))
+  i32 num;
+  if (parser_maybe_parse_integer (base, &num))
   {
-    struct token *tok = parser_advance (base);
-    s->step           = (sb_size)tok->integer;
+    s->step = num;
     s->present |= STEP_PRESENT;
   }
 
@@ -1942,10 +2141,10 @@ parse_us_step (struct parser *base, struct user_stride *s, error *e)
 static err_t
 parse_us_stop (struct parser *base, struct user_stride *s, error *e)
 {
-  if (parser_match (base, TT_INTEGER))
+  i32 num;
+  if (parser_maybe_parse_integer (base, &num))
   {
-    struct token *tok = parser_advance (base);
-    s->stop           = (sb_size)tok->integer;
+    s->stop = num;
     s->present |= STOP_PRESENT;
   }
 
@@ -1959,11 +2158,11 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
 
   WRAP (parser_expect (parser, TT_LEFT_BRACKET, e));
 
-  if (parser_match (parser, TT_INTEGER))
+  int num;
+  if (parser_maybe_parse_integer (parser, &num))
   {
     // Leading integer: start
-    struct token *tok = parser_advance (parser);
-    s.start           = (sb_size)tok->integer;
+    s.start = num;
     s.present |= START_PRESENT;
 
     if (parser_match (parser, TT_COLON))
@@ -2021,7 +2220,7 @@ test_compile_user_stride_green_path (
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    compile_user_stride (&actual, query, &e);
+    test_assert_equal (compile_user_stride (&actual, query, &e), SUCCESS);
     test_assert (user_stride_equal (&actual, &expected));
   }
 }
