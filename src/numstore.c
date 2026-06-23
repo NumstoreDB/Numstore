@@ -16,16 +16,18 @@
 
 #include "alloc.h"
 #include "compiler.h"
+#include "csx_assert.h"
+#include "error.h"
+#include "logging.h"
 #include "nshandle.h"
-#include "pager.h"
+#include "os.h"
 #include "rope_algorithms.h"
+#include "types.h"
 #include "var_algorithms.h"
 
-int
-nsdb_validate (nsdb_t *ns)
-{
-  return 0;
-}
+/******************************************************************************
+ * SECTION: Simple Functions
+ ******************************************************************************/
 
 nsdb_t *
 nsdb_open (const char *path)
@@ -58,12 +60,6 @@ nsdb_cleanup (const char *path)
   return nsh_cleanup (path);
 }
 
-nsdb_t *
-nsdb_new_context (nsdb_t *n)
-{
-  return (nsdb_t *)nsh_new_context ((struct nshandle *)n);
-}
-
 int
 nsdb_close (nsdb_t *ns)
 {
@@ -74,6 +70,20 @@ int
 nsdb_crash (nsdb_t *ns)
 {
   return nsh_crash ((struct nshandle *)ns);
+}
+
+b_size
+nsdb_var_len (nsdb_var_t *var)
+{
+  return var->var->nbytes / type_byte_size (var->var->dtype);
+}
+
+void
+nsdb_var_free (nsdb_var_t *var)
+{
+  struct chunk_alloc *alloc = var->alloc;
+  chunk_alloc_free_all (alloc);
+  i_free (alloc);
 }
 
 int
@@ -104,116 +114,122 @@ nsdb_rollback (nsdb_t *smf)
   return nsh_rollback ((struct nshandle *)smf);
 }
 
-void
-nsdb_free (nsdb_var_t *var)
-{
-  chunk_alloc_free_all (&var->alloc);
-  i_free (var);
-}
+/******************************************************************************
+ * SECTION: nsdb_get
+ ******************************************************************************/
 
-sb_size
-nsdb_vinsert (
-    nsdb_t     *ns,
-    const char *name,
-    const void *src,
-    sb_size     ofst,
-    b_size      slen
+static struct variable *
+nsdb_get (
+    struct nshandle    *db,
+    struct chunk_alloc *alloc,
+    struct string       vname,
+    error              *e
 )
 {
-  nsdb_var_t *var = nsdb_get (ns, name);
-  sb_size     ret = nsdb_insert (ns, var, src, ofst, slen);
-  nsdb_free (var);
-  return ret;
-}
+  struct variable         *ret = NULL; // Return value
+  struct ns_var_get_params gparams;    // Get or create operation
 
-sb_size
-nsdb_vwrite (
-    nsdb_t *ns,
-
-    const char *name,
-    const void *src,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-)
-{
-  nsdb_var_t *var = nsdb_get (ns, name);
-  sb_size     ret = nsdb_write (ns, var, src, start, step, stop, flags);
-  nsdb_free (var);
-  return ret;
-}
-
-sb_size
-nsdb_vread (
-    nsdb_t     *ns,
-    const char *name,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-)
-{
-  nsdb_var_t *var = nsdb_get (ns, name);
-  sb_size     ret = nsdb_read (ns, var, dest, start, step, stop, flags);
-  nsdb_free (var);
-  return ret;
-}
-
-sb_size
-nsdb_vremove (
-    nsdb_t     *ns,
-    const char *name,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-)
-{
-  nsdb_var_t *var = nsdb_get (ns, name);
-  sb_size     ret = nsdb_remove (ns, var, dest, start, step, stop, flags);
-  nsdb_free (var);
-  return ret;
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Create
-
-static int
-_nsdb_create (struct nshandle *db, const char *name, const char *type, error *e)
-{
-  struct chunk_alloc                 temp;    // Allocator for get operation
-  struct ns_var_get_or_create_params gparams; // Get or create operation
-
-  struct string vname = strfcstr (name); // Variable name
-  chunk_alloc_create_default (&temp);
-
-  // Compile type
-  struct type dtype;
-  WRAP_GOTO (compile_type (&dtype, type, &temp, e), failed);
+  ret = chunk_malloc (alloc, 1, sizeof *ret, e);
+  if (ret == NULL)
+  {
+    return NULL;
+  }
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
-  i_log_debug ("CREATE (txn = %" PRtxid "): %s %s\n", db->atx->tid, name, type);
+  i_log_debug (
+      "GET (txn = %" PRtxid
+      ")"
+      " - %.*s\n",
+      db->atx->tid,
+      strfmt (&vname)
+  );
 
-  // GET OR CREATE VARIABLE
+  // GET VARIABLE
   {
-    gparams = (struct ns_var_get_or_create_params){
+    gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
         .vname = vname,
-        .type  = &dtype,
-        .alloc = &temp,
+        .alloc = alloc,
     };
-    WRAP_GOTO (ns_var_get_or_create (&gparams, e), failed_rollback);
+    err_t err = ns_var_get (&gparams, e);
+    WRAP_GOTO (err, failed_rollback);
+
+    *ret = gparams.dest;
   }
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
+
+  return ret;
+
+failed_rollback:
+
+  nsh_auto_rollback (db);
+
+failed:
+  return NULL;
+}
+
+/******************************************************************************
+ * SECTION: nsdb_get_if_exists
+ ******************************************************************************/
+
+HEADER_FUNC int
+nsdb_get_if_exists (
+    struct nshandle    *db,
+    struct chunk_alloc *alloc,
+    struct string       vname,
+    struct variable   **dest,
+    error              *e
+)
+{
+  ASSERT (dest);
+  struct ns_var_get_params gparams; // Get or create operation
+
+  *dest = chunk_malloc (alloc, 1, sizeof (struct variable), e);
+  if (*dest == NULL)
+  {
+    return error_trace (e);
+  }
+
+  // BEGIN TXN
+  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+
+  i_log_debug (
+      "GET IF EXISTS (txn = %" PRtxid
+      ")"
+      " - %.*s\n",
+      db->atx->tid,
+      strfmt (&vname)
+  );
+
+  // GET VARIABLE
+  {
+    gparams = (struct ns_var_get_params){
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = vname,
+        .alloc = alloc,
+    };
+    err_t err = ns_var_get (&gparams, e);
+    if (err == ERR_VARIABLE_NE)
+    {
+      e->cause_code = SUCCESS;
+      e->cmlen      = 0;
+      *dest         = NULL;
+      goto commit;
+    }
+    WRAP_GOTO (err, failed_rollback);
+
+    *(*dest) = gparams.dest;
+  }
+
+commit:
+  // COMMIT
+  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
 
   return SUCCESS;
 
@@ -222,41 +238,84 @@ failed_rollback:
   nsh_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
   return error_trace (e);
 }
 
-int
-nsdb_create (nsdb_t *_smf, const char *name, const char *type)
+/******************************************************************************
+ * SECTION: nsdb_create
+ ******************************************************************************/
+
+static int
+nsdb_create (
+    struct nshandle    *db,
+    struct chunk_alloc *alloc,
+    struct string       vname,
+    struct type         dtype,
+    error              *e
+)
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct ns_var_get_or_create_params gparams; // Get or create operation
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  // BEGIN TXN
+  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
-  return _nsdb_create (smf, name, type, &smf->e);
+  i_log_debug (
+      "CREATE (txn = %" PRtxid "): %.*s\n",
+      db->atx->tid,
+      strfmt (&vname)
+  );
+
+  // GET OR CREATE VARIABLE
+  {
+    gparams = (struct ns_var_get_or_create_params){
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = vname,
+        .type  = &dtype,
+        .alloc = alloc,
+    };
+    WRAP_GOTO (ns_var_get_or_create (&gparams, e), failed_rollback);
+  }
+
+  // COMMIT
+  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+  chunk_alloc_free_all (alloc);
+
+  return SUCCESS;
+
+failed_rollback:
+
+  nsh_auto_rollback (db);
+
+failed:
+  chunk_alloc_free_all (alloc);
+  return error_trace (e);
 }
 
-/////////////////////////////////////////////////////////////////////
-////// Delete
+/******************************************************************************
+ * SECTION: nsdb_delete
+ ******************************************************************************/
 
 static err_t
-_nsdb_delete (struct nshandle *db, const char *vname, error *e)
+nsdb_delete (struct nshandle *db, struct string vname, error *e)
 {
   struct txn auto_txn;
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
-  i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", db->atx->tid, vname);
+  i_log_debug (
+      "DELETE (txn = %" PRtxid "): %.*s\n",
+      db->atx->tid,
+      strfmt (&vname)
+  );
 
-  struct string vnamestr = strfcstr (vname);
   {
     // DELETE
     struct ns_var_delete_params params = {
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = strfcstr (vname),
+        .vname = vname,
     };
     err_t err = ns_var_delete (params, e);
     if (err < SUCCESS)
@@ -279,193 +338,97 @@ failed:
   return error_trace (e);
 }
 
-int
-nsdb_delete (nsdb_t *_smf, const char *vname)
-{
-  struct nshandle *smf = (struct nshandle *)_smf;
+/******************************************************************************
+ * SECTION: nsdb_len
+ ******************************************************************************/
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_delete (smf, vname, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Get
-
-static nsdb_var_t *
-_nsdb_get (struct nshandle *db, const char *name, error *e)
-{
-  nsdb_var_t              *ret = NULL;              // Return value
-  struct ns_var_get_params gparams;                 // Get or create operation
-  struct string            vname = strfcstr (name); // Variable name
-
-  ret = i_malloc (1, sizeof *ret, e);
-  if (ret == NULL)
-  {
-    return NULL;
-  }
-
-  chunk_alloc_create_default (&ret->alloc);
-
-  // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
-
-  i_log_debug (
-      "GET (txn = %" PRtxid
-      ")"
-      " - %s\n",
-      db->atx->tid,
-      name
-  );
-
-  // GET VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .alloc = &ret->alloc,
-    };
-    err_t err = ns_var_get (&gparams, e);
-    WRAP_GOTO (err, failed_rollback);
-
-    ret->var = gparams.dest;
-  }
-
-  // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-
-  return ret;
-
-failed_rollback:
-
-  nsh_auto_rollback (db);
-
-failed:
-  chunk_alloc_free_all (&ret->alloc);
-  i_free (ret);
-  return NULL;
-}
-
-nsdb_var_t *
-nsdb_get (nsdb_t *_smf, const char *name)
-{
-  struct nshandle *smf = (struct nshandle *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_get (smf, name, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Get if exists
-
-static int
-_nsdb_get_if_exists (
-    struct nshandle *db,
-    const char      *name,
-    nsdb_var_t     **dest,
-    error           *e
+HEADER_FUNC sb_size
+nsdb_len (
+    struct nshandle    *db,
+    struct chunk_alloc *alloc,
+    const char         *name,
+    error              *e
 )
 {
-  nsdb_var_t              *ret = NULL;              // Return value
-  struct ns_var_get_params gparams;                 // Get or create operation
-  struct string            vname = strfcstr (name); // Variable name
-
-  ret = i_malloc (1, sizeof *ret, e);
-  if (ret == NULL)
-  {
-    return error_trace (e);
-  }
-
-  chunk_alloc_create_default (&ret->alloc);
+  struct string            vname = strfcstr (name);
+  struct ns_var_get_params gparams;
+  b_size                   len;
+  t_size                   tsize;
 
   // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+  if (nsh_auto_begin_txn (db, e) < 0)
+  {
+    goto failed;
+  }
 
-  i_log_debug (
-      "GET IF EXISTS (txn = %" PRtxid
-      ")"
-      " - %s\n",
-      db->atx->tid,
-      name
-  );
+  i_log_debug ("LEN (txn = %" PRtxid "): %s\n", db->atx->tid, name);
 
-  // GET VARIABLE
+  // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
         .vname = vname,
-        .alloc = &ret->alloc,
+        .alloc = alloc,
     };
-    err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
+    if (ns_var_get (&gparams, e))
     {
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      i_free (ret);
-      *dest = NULL;
-      goto commit;
+      goto failed_rollback;
     }
-    WRAP_GOTO (err, failed_rollback);
-
-    ret->var = gparams.dest;
-    *dest    = ret;
   }
 
-commit:
-  // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+  // Resolve length
+  {
+    tsize = type_byte_size (gparams.dest.dtype);
+    len   = gparams.dest.nbytes;
 
-  return SUCCESS;
+    if (len % tsize != 0)
+    {
+      error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
+      goto failed_rollback;
+    }
+
+    len /= tsize;
+  }
+
+  // COMMIT
+  if (nsh_auto_commit (db, e) < 0)
+  {
+    goto failed_rollback;
+  }
+
+  return len;
 
 failed_rollback:
 
   nsh_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&ret->alloc);
-  i_free (ret);
   return error_trace (e);
 }
 
-int
-nsdb_get_if_exists (nsdb_t *_smf, nsdb_var_t **dest, const char *name)
-{
-  struct nshandle *smf = (struct nshandle *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_get_if_exists (smf, name, dest, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Insert
+/******************************************************************************
+ * SECTION: nsdb_insert
+ ******************************************************************************/
 
 static sb_size
-_nsdb_insert (
-    struct nshandle *db,
-    nsdb_var_t      *var,
-    const void      *src,
-    sb_size          _ofst,
-    const b_size     slen,
-    error           *e
+nsdb_insert (
+    struct nshandle    *db,
+    struct variable    *var,
+    struct chunk_alloc *alloc,
+    const void         *src,
+    sb_size             _ofst,
+    const b_size        slen,
+    error              *e
 )
 {
   sb_size                     ret;     // Return value
   b_size                      bofst;   // Resolved offset
   struct stream               _input;  // Input stream
   struct stream_ibuf_ctx      ctx;     // Context for input stream
-  struct chunk_alloc          temp;    // Allocator for get operation
   struct ns_var_get_params    gparams; // Get or create operation
   struct ns_insert_params     iparams; // Insert operation
   struct ns_var_update_params uparams; // Update operation
-
-  chunk_alloc_create_default (&temp);
 
   // Parameter validation
   if (slen == 0)
@@ -481,13 +444,13 @@ _nsdb_insert (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->var.vname,
-        .alloc = &temp,
+        .vname = var->vname,
+        .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
 
     // Type check
-    if (!type_equal (var->var.dtype, gparams.dest.dtype))
+    if (!type_equal (var->dtype, gparams.dest.dtype))
     {
       error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
       goto failed_rollback;
@@ -512,7 +475,7 @@ _nsdb_insert (
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->var.vname),
+      strfmt (&var->vname),
       tsize,
       gparams.dest.nbytes / tsize,
       gparams.dest.nbytes,
@@ -563,7 +526,6 @@ _nsdb_insert (
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
@@ -571,116 +533,21 @@ failed_rollback:
   nsh_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
   return error_trace (e);
 }
 
-sb_size
-nsdb_insert (
-    nsdb_t     *_smf,
-    nsdb_var_t *var,
-    const void *src,
-    sb_size     bofst,
-    b_size      slen
-)
-{
-  struct nshandle *smf = (struct nshandle *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_insert (smf, var, src, bofst, slen, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Insert
+/******************************************************************************
+ * SECTION: nsdb_read
+ ******************************************************************************/
 
 static sb_size
-_nsdb_len (struct nshandle *db, const char *name, error *e)
-{
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
-  struct string            vname = strfcstr (name);
-  struct ns_var_get_params gparams;
-  b_size                   len;
-  t_size                   tsize;
-
-  // BEGIN TXN
-  if (nsh_auto_begin_txn (db, e) < 0)
-  {
-    goto failed;
-  }
-
-  i_log_debug ("LEN (txn = %" PRtxid "): %s\n", db->atx->tid, name);
-
-  // GET OR CREATE VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .alloc = &temp,
-    };
-    if (ns_var_get (&gparams, e))
-    {
-      goto failed_rollback;
-    }
-  }
-
-  // Resolve length
-  {
-    tsize = type_byte_size (gparams.dest.dtype);
-    len   = gparams.dest.nbytes;
-
-    if (len % tsize != 0)
-    {
-      error_causef (e, ERR_CORRUPT, "Variable: %s has invalid byte size", name);
-      goto failed_rollback;
-    }
-
-    len /= tsize;
-  }
-
-  // COMMIT
-  if (nsh_auto_commit (db, e) < 0)
-  {
-    goto failed_rollback;
-  }
-
-  chunk_alloc_free_all (&temp);
-
-  return len;
-
-failed_rollback:
-
-  nsh_auto_rollback (db);
-
-failed:
-  chunk_alloc_free_all (&temp);
-  return error_trace (e);
-}
-
-sb_size
-nsdb_len (nsdb_t *_smf, const char *name)
-{
-  struct nshandle *smf = (struct nshandle *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_len (smf, name, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Read
-
-static sb_size
-_nsdb_read (
-    struct nshandle   *db,
-    nsdb_var_t        *var,
-    void              *dest,
-    struct user_stride ustr,
-    error             *e
+nsdb_read (
+    struct nshandle    *db,
+    struct variable    *var,
+    struct chunk_alloc *alloc,
+    void               *dest,
+    struct user_stride  ustr,
+    error              *e
 )
 {
   sb_size                  ret;           // Return value
@@ -689,12 +556,9 @@ _nsdb_read (
   struct stream            _output;       // Output stream if present
   struct stream_obuf_ctx   ctx;           // Context for output stream
   struct stream           *output = NULL; // Pointer to output stream
-  struct chunk_alloc       temp;          // Allocator for get operation
   struct ns_var_get_params gparams;       // Get operation
   struct ns_read_params    rparams;       // Read operation
   struct stride            stride;        // Resolved stride
-
-  chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
@@ -704,13 +568,13 @@ _nsdb_read (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->var.vname,
-        .alloc = &temp,
+        .vname = var->vname,
+        .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
 
     // Type check
-    if (!type_equal (var->var.dtype, gparams.dest.dtype))
+    if (!type_equal (var->dtype, gparams.dest.dtype))
     {
       error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
       goto failed_rollback;
@@ -728,7 +592,7 @@ _nsdb_read (
           e,
           ERR_CORRUPT,
           "Variable: %.*s has invalid byte size",
-          strfmt (&var->var.vname)
+          strfmt (&var->vname)
       );
       goto failed_rollback;
     }
@@ -763,7 +627,7 @@ _nsdb_read (
       " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
       " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->var.vname),
+      strfmt (&var->vname),
       tsize,
       len,
       gparams.dest.nbytes,
@@ -799,7 +663,6 @@ _nsdb_read (
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
@@ -807,45 +670,21 @@ failed_rollback:
   nsh_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
   return error_trace (e);
 }
 
-sb_size
-nsdb_read (
-    nsdb_t     *_smf,
-    nsdb_var_t *var,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-)
-{
-  struct user_stride stride = {
-      .start   = start,
-      .step    = step,
-      .stop    = stop,
-      .present = flags,
-  };
-  struct nshandle *smf = (struct nshandle *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_read (smf, var, dest, stride, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Remove
+/******************************************************************************
+ * SECTION: nsdb_remove
+ ******************************************************************************/
 
 static sb_size
-_nsdb_premove (
-    struct nshandle   *db,
-    nsdb_var_t        *var,
-    void              *dest,
-    struct user_stride ustr,
-    error             *e
+nsdb_remove (
+    struct nshandle    *db,
+    struct variable    *var,
+    struct chunk_alloc *alloc,
+    void               *dest,
+    struct user_stride  ustr,
+    error              *e
 )
 {
   sb_size                     ret;           // Return value
@@ -855,13 +694,10 @@ _nsdb_premove (
   struct stream               _output;       // Output stream if present
   struct stream_obuf_ctx      ctx;           // Context for output stream
   struct stream              *output = NULL; // Pointer to output stream
-  struct chunk_alloc          temp;          // Allocator for get operation
   struct ns_var_get_params    gparams;       // Get operation
   struct ns_remove_params     rparams;       // Remove operation
   struct ns_var_update_params uparams;       // Update operation
   struct stride               stride;        // Resolved stride
-
-  chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
@@ -871,13 +707,13 @@ _nsdb_premove (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->var.vname,
-        .alloc = &temp,
+        .vname = var->vname,
+        .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
 
     // Type check
-    if (!type_equal (var->var.dtype, gparams.dest.dtype))
+    if (!type_equal (var->dtype, gparams.dest.dtype))
     {
       error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
       goto failed_rollback;
@@ -895,7 +731,7 @@ _nsdb_premove (
           e,
           ERR_CORRUPT,
           "Variable: %.*s has invalid byte size",
-          strfmt (&var->var.vname)
+          strfmt (&var->vname)
       );
       goto failed_rollback;
     }
@@ -909,7 +745,7 @@ _nsdb_premove (
 
     if (dest)
     {
-      stream_obuf_init (&_output, &ctx, dest, stride.nelems * len);
+      stream_obuf_init (&_output, &ctx, dest, tsize * stride.nelems * len);
       output = &_output;
     }
   }
@@ -929,7 +765,7 @@ _nsdb_premove (
       " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
       " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->var.vname),
+      strfmt (&var->vname),
       tsize,
       len,
       gparams.dest.nbytes,
@@ -981,7 +817,6 @@ _nsdb_premove (
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
@@ -989,45 +824,21 @@ failed_rollback:
   nsh_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
   return error_trace (e);
 }
 
-sb_size
-nsdb_remove (
-    nsdb_t     *_smf,
-    nsdb_var_t *var,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-)
-{
-  struct user_stride stride = {
-      .start   = start,
-      .step    = step,
-      .stop    = stop,
-      .present = flags,
-  };
-  struct nshandle *smf = (struct nshandle *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  return _nsdb_premove (smf, var, dest, stride, &smf->e);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Write
+/******************************************************************************
+ * SECTION: nsdb_write
+ ******************************************************************************/
 
 static sb_size
-_nsdb_pwrite (
-    struct nshandle   *db,
-    nsdb_var_t        *var,
-    const void        *src,
-    struct user_stride ustr,
-    error             *e
+nsdb_write (
+    struct nshandle    *db,
+    struct variable    *var,
+    struct chunk_alloc *alloc,
+    const void         *src,
+    struct user_stride  ustr,
+    error              *e
 )
 {
   sb_size                  ret;     // Return value
@@ -1036,12 +847,9 @@ _nsdb_pwrite (
   b_size                   ofst;    // Resolved offset
   struct stream            _input;  // Input stream
   struct stream_ibuf_ctx   ctx;     // Context for input stream
-  struct chunk_alloc       temp;    // Allocator for get operation
   struct ns_var_get_params gparams; // Get or create operation
   struct ns_write_params   wparams; // Write operation
   struct stride            stride;  // Resolved stride
-
-  chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
@@ -1051,13 +859,13 @@ _nsdb_pwrite (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->var.vname,
-        .alloc = &temp,
+        .vname = var->vname,
+        .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
 
     // Type check
-    if (!type_equal (var->var.dtype, gparams.dest.dtype))
+    if (!type_equal (var->dtype, gparams.dest.dtype))
     {
       error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
       goto failed_rollback;
@@ -1075,7 +883,7 @@ _nsdb_pwrite (
           e,
           ERR_CORRUPT,
           "Variable: %.*s has invalid byte size",
-          strfmt (&var->var.vname)
+          strfmt (&var->vname)
       );
       goto failed_rollback;
     }
@@ -1105,7 +913,7 @@ _nsdb_pwrite (
       " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
       " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->var.vname),
+      strfmt (&var->vname),
       tsize,
       len,
       gparams.dest.nbytes,
@@ -1141,7 +949,6 @@ _nsdb_pwrite (
 
   // COMMIT
   WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
@@ -1149,31 +956,264 @@ failed_rollback:
   nsh_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  return error_trace (e);
+}
+
+/******************************************************************************
+ * SECTION: nsdb_execute
+ ******************************************************************************/
+
+static sb_size
+_nsdb_execute (
+    struct nshandle *ns,
+    const char      *query,
+    u32              len,
+    void            *data,
+    error           *e
+)
+{
+  struct chunk_alloc alc;
+  struct query       q;
+  sb_size            ret;
+  struct variable   *var;
+
+  chunk_alloc_create_default (&alc);
+
+  if (compile_query (&q, query, &alc, e))
+  {
+    goto failed;
+  }
+
+  switch (q.type)
+  {
+    case QT_READ:
+    {
+      var = nsdb_get (ns, &alc, q.read.name, e);
+      if (var == NULL)
+      {
+        goto failed;
+      }
+
+      ret = nsdb_read (ns, var, &alc, data, q.read.ustr, e);
+      if (ret < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+    case QT_WRITE:
+    {
+      var = nsdb_get (ns, &alc, q.write.name, e);
+      if (var == NULL)
+      {
+        goto failed;
+      }
+
+      ret = nsdb_write (ns, var, &alc, data, q.write.ustr, e);
+      if (ret < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+    case QT_REMOVE:
+    {
+      var = nsdb_get (ns, &alc, q.remove.name, e);
+      if (var == NULL)
+      {
+        goto failed;
+      }
+      ret = nsdb_remove (ns, var, &alc, data, q.remove.ustr, e);
+      if (ret < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+    case QT_INSERT:
+    {
+      var = nsdb_get (ns, &alc, q.insert.name, e);
+      if (var == NULL)
+      {
+        goto failed;
+      }
+      ret = nsdb_insert (ns, var, &alc, data, q.insert.ofst, q.insert.len, e);
+      if (ret < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+
+    case QT_CREATE:
+    {
+      if (nsdb_create (ns, &alc, q.create.name, q.create.type, e))
+      {
+        goto failed;
+      }
+
+      ret = SUCCESS;
+
+      break;
+    }
+    case QT_DELETE:
+    {
+      if (nsdb_delete (ns, q.delete.name, e))
+      {
+        goto failed;
+      }
+
+      ret = SUCCESS;
+
+      break;
+    }
+    case QT_GET:
+    {
+      struct chunk_alloc *valloc = i_malloc (1, sizeof *valloc, e);
+      if (valloc == NULL)
+      {
+        goto failed;
+      }
+      chunk_alloc_create_default (valloc);
+
+      if (q.get.if_exists)
+      {
+        ret = nsdb_get_if_exists (ns, valloc, q.get.name, &var, e);
+
+        if (ret < 0)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
+
+        if (var == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          ret                    = SUCCESS;
+          struct nsdb_var **dest = (struct nsdb_var **)data;
+          *dest                  = NULL;
+        }
+        else
+        {
+          ASSERT (data);
+          struct nsdb_var **dest = (struct nsdb_var **)data;
+          *dest        = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
+          (*dest)->var = var;
+          (*dest)->alloc = valloc;
+
+          if (*dest == NULL)
+          {
+            chunk_alloc_free_all (valloc);
+            i_free (valloc);
+            goto failed;
+          }
+
+          ret = SUCCESS;
+        }
+      }
+      else
+      {
+        var = nsdb_get (ns, valloc, q.get.name, e);
+        if (var == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
+
+        ASSERT (data);
+        struct nsdb_var **dest = (struct nsdb_var **)data;
+        *dest          = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
+        (*dest)->var   = var;
+        (*dest)->alloc = valloc;
+
+        if (*dest == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
+
+        ret = SUCCESS;
+      }
+
+      break;
+    }
+
+    case QT_EXIT:
+    {
+      ret = SUCCESS;
+      break;
+    }
+
+    case QT_HELP:
+    {
+      ret = SUCCESS;
+      break;
+    }
+  }
+
+  chunk_alloc_free_all (&alc);
+
+  return ret;
+
+failed:
+  chunk_alloc_free_all (&alc);
+
   return error_trace (e);
 }
 
 sb_size
-nsdb_write (
-    nsdb_t     *_smf,
-    nsdb_var_t *var,
-    const void *src,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-)
+nsdb_execute (nsdb_t *ns, const char *query, void *data, ...)
 {
-  struct user_stride stride = {
-      .start   = start,
-      .step    = step,
-      .stop    = stop,
-      .present = flags,
-  };
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nshandle *nh = (struct nshandle *)ns;
+  nh->e.cause_code    = 0;
+  nh->e.cmlen         = 0;
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  char    stackbuf[2048];
+  char   *buf = stackbuf;
+  va_list ap, ap2;
 
-  return _nsdb_pwrite (smf, var, src, stride, &smf->e);
+  va_start (ap, data);
+  va_copy (ap2, ap);
+
+  i32 n = vsnprintf (stackbuf, sizeof stackbuf, query, ap);
+  va_end (ap);
+
+  if (n < 0)
+  {
+    va_end (ap2);
+    return error_causef (
+        &nh->e,
+        ERR_INVALID_ARGUMENT,
+        "Invalid printf argument"
+    );
+  }
+
+  if ((size_t)n >= sizeof stackbuf)
+  {
+    buf = i_malloc (n + 1, 1, &nh->e);
+    if (!buf)
+    {
+      va_end (ap2);
+      return error_trace (&nh->e);
+    }
+    n = vsnprintf (buf, n + 1, query, ap2);
+    ASSERT (n >= 0);
+  }
+  va_end (ap2);
+
+  sb_size ret = _nsdb_execute (nh, buf, (u32)n, data, &nh->e);
+
+  if (buf != stackbuf)
+  {
+    i_free (buf);
+  }
+  return ret;
 }

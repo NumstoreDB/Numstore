@@ -18,6 +18,9 @@
 #include <stdint.h>
 
 #include "compile_config.h"
+#include "platform.h"
+
+#define NS_END INT64_MAX
 
 //////////////////////////////////////////////////
 /// Types
@@ -25,44 +28,19 @@
 typedef struct nsdb     nsdb_t;
 typedef struct nsdb_var nsdb_var_t;
 
-/**
- * @enum user_stride::@0
- * @brief Bitmask flags indicating which slice parameters were explicitly
- * provided.
- *
- * @var STOP_PRESENT
- * @brief `[0:-1]`, `[:-1]`, `[::-1]` are all examples where Stop is present.
- * `[0:]`, `[:]`, `[::]` are all examples where Stop is not present.
- *
- * @var STEP_PRESENT
- * @brief `[::2]`, `[1:10:2]` are examples where Step is present.
- * `[1:10]` is an example where Step is not present.
- *
- * @var START_PRESENT
- * @brief `[0:10]`, `[0::2]` are examples where Start is present.
- * `[:10]`, `[::2]` are examples where Start is omitted.
- *
- * @var COLON_PRESENT
- * @brief Indicates if at least one colon `:` was matched during parsing,
- * distinguishing a slice sequence like `[:]` from a direct index like `[0]`.
- */
-enum
-{
-  STOP_PRESENT  = 1 << 0,
-  STEP_PRESENT  = 1 << 1,
-  START_PRESENT = 1 << 2,
-  COLON_PRESENT = 1 << 3,
-};
-
 //////////////////////////////////////////////////
 /// Lifecycle and db tools
 
 nsdb_t *nsdb_open (const char *path);
 int     nsdb_cleanup (const char *path);
-nsdb_t *nsdb_new_context (nsdb_t *ns);
 int     nsdb_close (nsdb_t *ns);
 int     nsdb_crash (nsdb_t *ns);
-int     nsdb_validate (nsdb_t *ns);
+
+//////////////////////////////////////////////////
+/// Variable manipulation
+
+b_size nsdb_var_len (nsdb_var_t *var);
+void   nsdb_var_free (nsdb_var_t *var);
 
 //////////////////////////////////////////////////
 /// Error management
@@ -71,104 +49,17 @@ const char *nsdb_strerror (nsdb_t *ns);
 int         nsdb_perror (nsdb_t *ns, const char *prefix);
 
 //////////////////////////////////////////////////
-/// Variable API
-
-int     nsdb_delete (nsdb_t *ns, const char *vname);
-int     nsdb_create (nsdb_t *ns, const char *name, const char *type);
-sb_size nsdb_len (nsdb_t *ns, const char *vname);
-
-//////////////////////////////////////////////////
-/// Transactions
+/// Transaction control
 
 int nsdb_begin (nsdb_t *ns);
 int nsdb_commit (nsdb_t *ns);
 int nsdb_rollback (nsdb_t *ns);
 
 //////////////////////////////////////////////////
-/// Fetch a variable reference handle
+/// Execute an operation
 
-nsdb_var_t *nsdb_get (nsdb_t *db, const char *name);
-int         nsdb_get_if_exists (nsdb_t *db, nsdb_var_t **var, const char *name);
-void        nsdb_free (nsdb_var_t *var);
-
-//////////////////////////////////////////////////
-/// Core Array Operations
-
-sb_size nsdb_insert (
-    nsdb_t     *ns,
-    nsdb_var_t *var,
-    const void *src,
-    sb_size     ofst,
-    b_size      slen
-);
-
-sb_size nsdb_write (
-    nsdb_t     *ns,
-    nsdb_var_t *var,
-    const void *src,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-);
-
-sb_size nsdb_read (
-    nsdb_t     *ns,
-    nsdb_var_t *var,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-);
-
-sb_size nsdb_remove (
-    nsdb_t     *ns,
-    nsdb_var_t *var,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-);
-
-//////////////////////////////////////////////////
-/// Do the same operations on just a variable name
-
-sb_size nsdb_vinsert (
-    nsdb_t     *ns,
-    const char *name,
-    const void *src,
-    sb_size     ofst,
-    b_size      slen
-);
-
-sb_size nsdb_vwrite (
-    nsdb_t     *ns,
-    const char *name,
-    const void *src,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-);
-
-sb_size nsdb_vread (
-    nsdb_t     *ns,
-    const char *name,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
-);
-
-sb_size nsdb_vremove (
-    nsdb_t     *ns,
-    const char *name,
-    void       *dest,
-    sb_size     start,
-    sb_size     step,
-    sb_size     stop,
-    int         flags
+sb_size
+nsdb_execute (nsdb_t *ns, const char *query, void *data, ...) PRINTF_ATTR (
+    2,
+    4
 );

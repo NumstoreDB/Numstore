@@ -160,7 +160,9 @@ irwr_swmt_open (
   memcpy (ret->enabled, start_enabled, IRWR_AT_LEN * sizeof (int));
   irwr_swmt_set_allowed (ret);
 
-  irwr_swmt_ASSERT (nsdb_create (ret->db, varname, vartype) == 0);
+  irwr_swmt_ASSERT (
+      nsdb_execute (ret->db, "create %s %s", NULL, varname, vartype) == 0
+  );
 
   return ret;
 }
@@ -344,9 +346,9 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
     data[i] = (uint8_t)rand ();
   }
 
-  /* DB side */
   irwr_swmt_ASSERT (
-      nsdb_vinsert (meta->db, meta->varname, data, ofst, len) == len
+      nsdb_execute (meta->db, "insert %s %d %d", data, meta->varname, ofst, len)
+      == len
   );
 
   /* Reference side */
@@ -378,18 +380,15 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
   irwr_swmt_ASSERT (db_buf && ref_buf);
 
   /* DB side */
-  irwr_swmt_ASSERT (
-      nsdb_vremove (
-          meta->db,
-          meta->varname,
-          db_buf,
-          ofst,
-          stride,
-          ofst + len * stride,
-          0xFF
-      )
-      == len
-  );
+  irwr_swmt_ASSERT (nsdb_execute (
+      meta->db,
+      "remove %s[%d:%d:%d]",
+      db_buf,
+      meta->varname,
+      ofst,
+      ofst + len * stride,
+      stride
+  ));
 
   /* Reference side */
   struct stride str = to_block_stride (ofst, stride, len);
@@ -417,18 +416,16 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   uint8_t *ref_buf = calloc (1, buf_sz);
   irwr_swmt_ASSERT (db_buf && ref_buf);
 
-  irwr_swmt_ASSERT (
-      nsdb_vread (
-          meta->db,
-          meta->varname,
-          db_buf,
-          ofst,
-          stride,
-          ofst + len * stride,
-          0xFF
-      )
-      == len
-  );
+  /* DB side */
+  irwr_swmt_ASSERT (nsdb_execute (
+      meta->db,
+      "read %s[%d:%d:%d]",
+      db_buf,
+      meta->varname,
+      ofst,
+      ofst + len * stride,
+      stride
+  ));
 
   struct stride str = to_block_stride (ofst, stride, len);
   u64 got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
@@ -454,18 +451,16 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
     data[i] = (uint8_t)rand ();
   }
 
-  irwr_swmt_ASSERT (
-      nsdb_vwrite (
-          meta->db,
-          meta->varname,
-          data,
-          ofst,
-          stride,
-          ofst + len * stride,
-          0xFF
-      )
-      == len
-  );
+  /* DB side */
+  irwr_swmt_ASSERT (nsdb_execute (
+      meta->db,
+      "write %s[%d:%d:%d]",
+      data,
+      meta->varname,
+      ofst,
+      ofst + len * stride,
+      stride
+  ));
 
   struct stride str = to_block_stride (ofst, stride, len);
   u64 got = block_array_write (active_db (meta), str, meta->esize, data);

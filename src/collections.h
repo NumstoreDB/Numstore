@@ -18,7 +18,6 @@
 #include "alloc.h"       // slab alloc
 #include "concurrency.h" // latch
 #include "error.h"       // err_t
-#include "numstore.h"    // STOP_PRESENT ...etc
 #include "os.h"          // i_file
 #include "platform.h"    // HEADER_FUNC
 #include "stdtypes.h"    // u32 ...etc
@@ -196,6 +195,14 @@ struct stride
   u64 start;
   u64 stride;
   u64 nelems;
+};
+
+enum
+{
+  START_PRESENT = (1 << 0),
+  STEP_PRESENT  = (1 << 1),
+  STOP_PRESENT  = (1 << 2),
+  COLON_PRESENT = (1 << 3),
 };
 
 /**
