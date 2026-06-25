@@ -16,9 +16,9 @@
 #define TXN_TABLE_H
 
 #include "collections.h"
-#include "compile_config.h" // lsn ...etc
-#include "error.h"          // error
+#include "error.h" // error
 #include "lock_table.h"
+#include "numstore.h" // lsn ...etc
 
 /******************************************************************************
  * SECTION: Transaction

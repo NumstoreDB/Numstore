@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "compile_config.h"
 #include "logging.h"
 #include "mem_vhmap.h"
 #include "numerics.h"

@@ -17,7 +17,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 
-#include "compile_config.h"
+#include "numstore.h"
 
 #define SMF_END INT64_MAX
 

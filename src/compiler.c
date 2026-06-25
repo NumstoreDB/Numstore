@@ -130,6 +130,8 @@ tt_tostr (enum token_t t)
     // other literals
     case_ENUM_RETURN_STRING (TT_IF);
     case_ENUM_RETURN_STRING (TT_EXISTS);
+    case_ENUM_RETURN_STRING (TT_BLIMIT);
+    case_ENUM_RETURN_STRING (TT_LIMIT);
 
     // Bools
     case_ENUM_RETURN_STRING (TT_TRUE);
@@ -326,6 +328,14 @@ check_keyword (const char *text, u32 len)
   if (len == sizeof ("exists") - 1 && strncmp (text, "exists", len) == 0)
   {
     return TT_EXISTS;
+  }
+  if (len == sizeof ("blimit") - 1 && strncmp (text, "exists", len) == 0)
+  {
+    return TT_BLIMIT;
+  }
+  if (len == sizeof ("limit") - 1 && strncmp (text, "exists", len) == 0)
+  {
+    return TT_LIMIT;
   }
 
   if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0)
@@ -792,7 +802,9 @@ TEST (lexer_numbers)
 TEST (lexer_keywords)
 {
   const char *src =
-      "create delete get exit help insert if exists struct union true false";
+      "create delete get exit help insert if exists blimit limit struct union "
+      "true "
+      "false";
 
   struct token expected[] = {
       quick_tok (TT_CREATE),
@@ -803,6 +815,8 @@ TEST (lexer_keywords)
       quick_tok (TT_INSERT),
       quick_tok (TT_IF),
       quick_tok (TT_EXISTS),
+      quick_tok (TT_BLIMIT),
+      quick_tok (TT_LIMIT),
       quick_tok (TT_STRUCT),
       quick_tok (TT_UNION),
       quick_tok (TT_TRUE),

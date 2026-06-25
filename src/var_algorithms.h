@@ -15,13 +15,13 @@
 #ifndef VAR_H
 #define VAR_H
 
-#include "alloc.h"          // chunk_alloc
-#include "compile_config.h" // pgno ...etc
-#include "error.h"          // error
-#include "pager.h"          // pager
-#include "stdtypes.h"       // bool ...etc
-#include "txn_table.h"      // txn
-#include "variables.h"      // variable
+#include "alloc.h"     // chunk_alloc
+#include "error.h"     // error
+#include "numstore.h"  // pgno ...etc
+#include "pager.h"     // pager
+#include "stdtypes.h"  // bool ...etc
+#include "txn_table.h" // txn
+#include "variables.h" // variable
 
 /******************************************************************************
  * SECTION: Initialization

@@ -14,8 +14,8 @@
 
 #include "wal.h"
 
-#include "compile_config.h"
 #include "error.h"
+#include "numstore.h"
 #include "os.h"
 #include "txn_table.h"
 #include "wal.h"

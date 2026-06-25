@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "smartfiles.h"
+#include "numstore.h"
 
 /**
  * This example shows how to write data to different named "variables" inside a

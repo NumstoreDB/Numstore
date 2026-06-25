@@ -15,11 +15,11 @@
 #ifndef PAGER_H
 #define PAGER_H
 
-#include "compile_config.h"   // lsn ...etc
 #include "concurrency.h"      // latch / lock table / periodic_task
 #include "dirty_page_table.h" // dpgt_table
 #include "error.h"            // error
 #include "file_pager.h"       // file_pager
+#include "numstore.h"         // lsn ...etc
 #include "page_h.h"           // page_header
 #include "stdtypes.h"         // u8 ...etc
 #include "txn_table.h"        // txn_table

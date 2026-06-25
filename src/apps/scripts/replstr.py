@@ -1,7 +1,7 @@
 import os
 
-ROOTS = ["src", "src/testing", "src/apps", "src/templates", "src/apps/samples", "src/apps/testing", "src/apps/tools"]
-OLD, NEW = "pgr_open_single_file", "pgr_open"
+ROOTS = ["src", "src/testing", "src/apps", "src/templates", "src/apps/samples/numstore", "src/apps/samples/smartfiles", "src/apps/testing", "src/apps/tools"]
+OLD, NEW = "include \"compile_config.h\"", "include \"numstore.h\""
 
 for ROOT in ROOTS:
     for name in os.listdir(ROOT):

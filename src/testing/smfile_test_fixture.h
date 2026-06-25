@@ -15,9 +15,9 @@
 #ifndef SMFILE_TEST_FIXTURE_H
 #define SMFILE_TEST_FIXTURE_H
 
-#include "collections.h"    // data_writer
-#include "compile_config.h" // t_size ...etc
-#include "smartfiles.h"     // smfile
+#include "collections.h" // data_writer
+#include "numstore.h"    // t_size ...etc
+#include "numstore.h"    // smfile
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);

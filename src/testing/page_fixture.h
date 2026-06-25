@@ -15,13 +15,13 @@
 #ifndef PAGE_FIXTURE_H
 #define PAGE_FIXTURE_H
 
-#include "alloc.h"          // chunk_alloc
-#include "compile_config.h" // pgno ...etc
-#include "error.h"          // error
-#include "page.h"           // dl_data
-#include "pager.h"          // page_h
-#include "pager.h"          // pager
-#include "stdtypes.h"       // u32 ...etc
+#include "alloc.h"    // chunk_alloc
+#include "error.h"    // error
+#include "numstore.h" // pgno ...etc
+#include "page.h"     // dl_data
+#include "pager.h"    // page_h
+#include "pager.h"    // pager
+#include "stdtypes.h" // u32 ...etc
 
 /******************************************************************************
  * SECTION: Page Fixture

@@ -14,8 +14,8 @@
 
 #include "dirty_page_table.h"
 
-#include "compile_config.h"
 #include "numerics.h"
+#include "numstore.h"
 #include "serial.h"
 
 /*

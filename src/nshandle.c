@@ -17,11 +17,7 @@
 #include "pager.h"
 #include "var_algorithms.h"
 
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
-
-struct nshandle *
+struct nsdb *
 nsh_remove_and_open (const char *name, error *e)
 {
   if (pgr_delete_single_file (name, e))
@@ -32,7 +28,7 @@ nsh_remove_and_open (const char *name, error *e)
 }
 
 err_t
-nsh_root_crash (struct nshandle_root *root, error *e)
+nsh_root_crash (struct nsdb_root *root, error *e)
 {
   ASSERT (root->count == 0);
   err_t err = pgr_crash (root->p, e);
@@ -42,7 +38,7 @@ nsh_root_crash (struct nshandle_root *root, error *e)
 }
 
 int
-nsh_perror (struct nshandle *ns, const char *prefix)
+nsh_perror (struct nsdb *ns, const char *prefix)
 {
   const char *err = nsh_strerror (ns);
   if (err)
@@ -56,7 +52,7 @@ nsh_perror (struct nshandle *ns, const char *prefix)
 }
 
 const char *
-nsh_strerror (struct nshandle *ns)
+nsh_strerror (struct nsdb *ns)
 {
   if (ns->e.cause_code < 0)
   {
@@ -79,7 +75,7 @@ nsh_cleanup (const char *path)
 // nsh_root
 
 err_t
-nsh_root_close (struct nshandle_root *root, error *e)
+nsh_root_close (struct nsdb_root *root, error *e)
 {
   ASSERT (root->count == 0);
   err_t err = pgr_close (root->p, e);
@@ -88,10 +84,10 @@ nsh_root_close (struct nshandle_root *root, error *e)
   return err;
 }
 
-struct nshandle *
-nsh_root_load (struct nshandle_root *ns, error *e)
+struct nsdb *
+nsh_root_load (struct nsdb_root *ns, error *e)
 {
-  struct nshandle *ret = i_malloc (1, sizeof *ret, e);
+  struct nsdb *ret = i_malloc (1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
@@ -107,7 +103,7 @@ nsh_root_load (struct nshandle_root *ns, error *e)
 }
 
 void
-nsh_root_release (struct nshandle_root *root, struct nshandle *sm)
+nsh_root_release (struct nsdb_root *root, struct nsdb *sm)
 {
   ASSERT (root->count > 0);
   i_free (sm);
@@ -116,7 +112,7 @@ nsh_root_release (struct nshandle_root *root, struct nshandle *sm)
 
 // Transactional Support
 err_t
-nsh_auto_begin_txn (struct nshandle *sm, error *e)
+nsh_auto_begin_txn (struct nsdb *sm, error *e)
 {
   if (sm->atx == NULL)
   {
@@ -129,7 +125,7 @@ nsh_auto_begin_txn (struct nshandle *sm, error *e)
 }
 
 err_t
-nsh_auto_commit (struct nshandle *sm, error *e)
+nsh_auto_commit (struct nsdb *sm, error *e)
 {
   if (sm->is_auto_txn)
   {
@@ -141,7 +137,7 @@ nsh_auto_commit (struct nshandle *sm, error *e)
 }
 
 void
-nsh_auto_rollback (struct nshandle *sm)
+nsh_auto_rollback (struct nsdb *sm)
 {
   if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e))
   {
@@ -154,7 +150,7 @@ nsh_auto_rollback (struct nshandle *sm)
 ////// Begin
 
 static err_t
-_nsh_begin (struct nshandle *smf, error *e)
+_nsh_begin (struct nsdb *smf, error *e)
 {
   if (smf->atx)
   {
@@ -176,7 +172,7 @@ _nsh_begin (struct nshandle *smf, error *e)
 }
 
 int
-nsh_begin (struct nshandle *smf)
+nsh_begin (struct nsdb *smf)
 {
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -188,9 +184,9 @@ nsh_begin (struct nshandle *smf)
 ////// Close
 
 static err_t
-_nsh_close (struct nshandle *n, error *e)
+_nsh_close (struct nsdb *n, error *e)
 {
-  struct nshandle_root *root = n->root;
+  struct nsdb_root *root = n->root;
   nsh_root_release (root, n);
   if (root->count == 0)
   {
@@ -200,7 +196,7 @@ _nsh_close (struct nshandle *n, error *e)
 }
 
 int
-nsh_close (struct nshandle *ns)
+nsh_close (struct nsdb *ns)
 {
   return _nsh_close (ns, &ns->e);
 }
@@ -209,7 +205,7 @@ nsh_close (struct nshandle *ns)
 ////// Commit
 
 static err_t
-_nsh_commit (struct nshandle *smf, error *e)
+_nsh_commit (struct nsdb *smf, error *e)
 {
   if (smf->atx == NULL)
   {
@@ -227,7 +223,7 @@ _nsh_commit (struct nshandle *smf, error *e)
 }
 
 int
-nsh_commit (struct nshandle *smf)
+nsh_commit (struct nsdb *smf)
 {
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -239,7 +235,7 @@ nsh_commit (struct nshandle *smf)
 ////// Rollback
 
 static err_t
-_nsh_rollback (struct nshandle *smf, error *e)
+_nsh_rollback (struct nsdb *smf, error *e)
 {
   if (smf->atx == NULL)
   {
@@ -257,7 +253,7 @@ _nsh_rollback (struct nshandle *smf, error *e)
 }
 
 int
-nsh_rollback (struct nshandle *smf)
+nsh_rollback (struct nsdb *smf)
 {
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -269,9 +265,9 @@ nsh_rollback (struct nshandle *smf)
 ////// Crash
 
 static err_t
-_nsh_crash (struct nshandle *n, error *e)
+_nsh_crash (struct nsdb *n, error *e)
 {
-  struct nshandle_root *root = n->root;
+  struct nsdb_root *root = n->root;
 
   err_t err = pgr_crash (root->p, e);
   i_free ((void *)root->path.data);
@@ -282,7 +278,7 @@ _nsh_crash (struct nshandle *n, error *e)
 }
 
 int
-nsh_crash (struct nshandle *ns)
+nsh_crash (struct nsdb *ns)
 {
   return _nsh_crash (ns, &ns->e);
 }
@@ -290,8 +286,8 @@ nsh_crash (struct nshandle *ns)
 /////////////////////////////////////////////////////////////////////
 ////// New Context
 
-struct nshandle *
-nsh_new_context (struct nshandle *ns)
+struct nsdb *
+nsh_new_context (struct nsdb *ns)
 {
   ns->e.cause_code = SUCCESS;
   ns->e.cmlen      = 0;
@@ -301,11 +297,11 @@ nsh_new_context (struct nshandle *ns)
 /////////////////////////////////////////////////////////////////////
 ////// Open
 
-static struct nshandle *
+static struct nsdb *
 _nsh_open (const char *path, error *e)
 {
-  struct nshandle_root *ret = i_malloc (1, sizeof *ret, e);
-  page_h                hp  = page_h_create ();
+  struct nsdb_root *ret = i_malloc (1, sizeof *ret, e);
+  page_h            hp  = page_h_create ();
 
   if (ret == NULL)
   {
@@ -350,7 +346,7 @@ _nsh_open (const char *path, error *e)
   }
 
   // Load the default context
-  struct nshandle *sret = nsh_root_load (ret, e);
+  struct nsdb *sret = nsh_root_load (ret, e);
 
   return sret;
 
@@ -360,11 +356,11 @@ failed:
   return NULL;
 }
 
-struct nshandle *
+struct nsdb *
 nsh_open (const char *path)
 {
-  error            e   = error_create ();
-  struct nshandle *ret = _nsh_open (path, &e);
+  error        e   = error_create ();
+  struct nsdb *ret = _nsh_open (path, &e);
   if (ret == NULL)
   {
     return NULL;
