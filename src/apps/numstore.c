@@ -22,13 +22,12 @@
 #include "collections.h"
 #include "compiler.h"
 #include "error.h"
-#include "nshandle.h"
+#include "nsdb.h"
+#include "query.h"
 
 #define REPL_PREFIX "numstore> "
 #define CONT_PREFIX "      ... "
 #define INITIAL_CAP 128
-
-static struct nsdb *db;
 
 enum cmd_status
 {
@@ -38,7 +37,7 @@ enum cmd_status
 };
 
 static enum cmd_status
-handle_command (const char *command, error *e)
+handle_command (struct nsdb *db, const char *command, error *e)
 {
   struct chunk_alloc alloc;
   struct query       q;
@@ -51,8 +50,14 @@ handle_command (const char *command, error *e)
     return CMD_FAILURE;
   }
 
+  if (q.type == QT_EXIT)
+  {
+    chunk_alloc_free_all (&alloc);
+    return CMD_TERMINATE;
+  }
+
   // Execute the query
-  if (nsdb_execute_in_console (db, &q, &alloc, e) < 0)
+  if (nsdb_execute_in_console (db, &q, &alloc) < 0)
   {
     chunk_alloc_free_all (&alloc);
     return CMD_FAILURE;
@@ -106,9 +111,16 @@ is_blank (const struct dbl_buffer *b)
 }
 
 int
-main (void)
+main (int argc, char **argv)
 {
-  error e = error_create ();
+  if (argc != 2)
+  {
+    fprintf (stderr, "Usage: %s filename", argv[0]);
+    return -1;
+  }
+
+  error        e  = error_create ();
+  struct nsdb *db = nsdb_open (argv[1]);
 
   while (true)
   {
@@ -116,8 +128,7 @@ main (void)
     struct dbl_buffer stmt;
     if (dblb_create (&stmt, 1, INITIAL_CAP, &e))
     {
-      error_log_consume (&e);
-      return EXIT_FAILURE;
+      goto fatal;
     }
 
     // Print out the repl prefix
@@ -173,7 +184,7 @@ main (void)
       continue;
     }
 
-    switch (handle_command (stmt.data, &e))
+    switch (handle_command (db, stmt.data, &e))
     {
       case CMD_SUCCESS:
       {
@@ -183,18 +194,23 @@ main (void)
       case CMD_TERMINATE:
       {
         dblb_free (&stmt);
-        return EXIT_SUCCESS;
+        goto complete;
       }
       case CMD_FAILURE:
       {
         error_log_consume (&e);
         dblb_free (&stmt);
-        return EXIT_FAILURE;
+        continue;
       }
     }
   }
 
 fatal:
   error_log_consume (&e);
+  nsdb_close (db);
   return EXIT_FAILURE;
+
+complete:
+  nsdb_close (db);
+  return EXIT_SUCCESS;
 }

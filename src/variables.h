@@ -54,6 +54,8 @@ struct variable
   b_size        nbytes;
 };
 
+err_t i_print_variable (struct variable *v, error *e);
+
 /**
  * @def DEFAULT_VARIABLE
  * @brief The default variable name for application level libraries

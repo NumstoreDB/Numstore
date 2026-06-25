@@ -815,7 +815,7 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
     parser_advance (parser);
     if (!parser_match (parser, TT_INTEGER))
     {
-      return error_causef (e, ERR_INTERP, "Expected number after limit");
+      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = false;
@@ -825,7 +825,7 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
     parser_advance (parser);
     if (!parser_match (parser, TT_INTEGER))
     {
-      return error_causef (e, ERR_INTERP, "Expected number after limit");
+      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = true;
@@ -882,7 +882,7 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
     parser_advance (parser);
     if (!parser_match (parser, TT_INTEGER))
     {
-      return error_causef (e, ERR_INTERP, "Expected number after limit");
+      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = false;
@@ -892,7 +892,7 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
     parser_advance (parser);
     if (!parser_match (parser, TT_INTEGER))
     {
-      return error_causef (e, ERR_INTERP, "Expected number after limit");
+      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = true;
@@ -949,7 +949,7 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
     parser_advance (parser);
     if (!parser_match (parser, TT_INTEGER))
     {
-      return error_causef (e, ERR_INTERP, "Expected number after limit");
+      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = false;
@@ -959,7 +959,7 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
     parser_advance (parser);
     if (!parser_match (parser, TT_INTEGER))
     {
-      return error_causef (e, ERR_INTERP, "Expected number after limit");
+      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = true;
@@ -1194,7 +1194,7 @@ TEST (compile_query)
     test_query_green_path (
         "remove foo",
         (struct query){
-            .type   = QT_READ,
+            .type   = QT_REMOVE,
             .remove = {
                 .name  = strfcstr ("foo"),
                 .ustr  = ustride (),
@@ -1205,7 +1205,7 @@ TEST (compile_query)
     test_query_green_path (
         "remove foo limit 10",
         (struct query){
-            .type   = QT_READ,
+            .type   = QT_REMOVE,
             .remove = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride (),
@@ -1217,7 +1217,7 @@ TEST (compile_query)
     test_query_green_path (
         "remove foo blimit 10",
         (struct query){
-            .type   = QT_READ,
+            .type   = QT_REMOVE,
             .remove = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride (),
@@ -1229,7 +1229,7 @@ TEST (compile_query)
     test_query_green_path (
         "remove foo[0:10:20]",
         (struct query){
-            .type   = QT_READ,
+            .type   = QT_REMOVE,
             .remove = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride012 (0, 10, 20),
@@ -1241,7 +1241,7 @@ TEST (compile_query)
     test_query_green_path (
         "remove foo[0:10:20] limit 40",
         (struct query){
-            .type   = QT_READ,
+            .type   = QT_REMOVE,
             .remove = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride012 (0, 10, 20),
@@ -1253,7 +1253,7 @@ TEST (compile_query)
     test_query_green_path (
         "remove foo[0:10:20] blimit 40",
         (struct query){
-            .type   = QT_READ,
+            .type   = QT_REMOVE,
             .remove = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride012 (0, 10, 20),
@@ -1279,7 +1279,7 @@ TEST (compile_query)
     test_query_green_path (
         "write foo",
         (struct query){
-            .type  = QT_READ,
+            .type  = QT_WRITE,
             .write = {
                 .name  = strfcstr ("foo"),
                 .ustr  = ustride (),
@@ -1290,7 +1290,7 @@ TEST (compile_query)
     test_query_green_path (
         "write foo limit 10",
         (struct query){
-            .type  = QT_READ,
+            .type  = QT_WRITE,
             .write = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride (),
@@ -1302,7 +1302,7 @@ TEST (compile_query)
     test_query_green_path (
         "write foo blimit 10",
         (struct query){
-            .type  = QT_READ,
+            .type  = QT_WRITE,
             .write = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride (),
@@ -1314,7 +1314,7 @@ TEST (compile_query)
     test_query_green_path (
         "write foo[0:10:20]",
         (struct query){
-            .type  = QT_READ,
+            .type  = QT_WRITE,
             .write = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride012 (0, 10, 20),
@@ -1326,7 +1326,7 @@ TEST (compile_query)
     test_query_green_path (
         "write foo[0:10:20] limit 40",
         (struct query){
-            .type  = QT_READ,
+            .type  = QT_WRITE,
             .write = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride012 (0, 10, 20),
@@ -1338,7 +1338,7 @@ TEST (compile_query)
     test_query_green_path (
         "write foo[0:10:20] blimit 40",
         (struct query){
-            .type  = QT_READ,
+            .type  = QT_WRITE,
             .write = {
                 .name   = strfcstr ("foo"),
                 .ustr   = ustride012 (0, 10, 20),

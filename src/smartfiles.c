@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nshandle.h"
+#include "nsdb.h"
 #include "numstore.h"
 #include "pager.h"
 #include "rope_algorithms.h"
@@ -23,58 +23,55 @@
 int
 smfile_perror (smfile_t *ns, const char *prefix)
 {
-  return nsh_perror ((struct nsdb *)ns, prefix);
+  return nsdb_perror ((struct nsdb *)ns, prefix);
 }
+
 const char *
 smfile_strerror (smfile_t *ns)
 {
-  return nsh_strerror ((struct nsdb *)ns);
+  return nsdb_strerror ((struct nsdb *)ns);
 }
 
 int
 smfile_cleanup (const char *path)
 {
-  return nsh_cleanup (path);
+  return nsdb_cleanup (path);
 }
 
-// Core Operations
 sb_size
 smfile_size (smfile_t *smf)
 {
   return smfile_psize (smf, NULL);
 }
 
-smfile_t *
-smfile_new_context (smfile_t *n)
-{
-  return (smfile_t *)nsh_new_context ((struct nsdb *)n);
-}
-
 int
 smfile_close (smfile_t *ns)
 {
-  return nsh_close ((struct nsdb *)ns);
+  return nsdb_close ((struct nsdb *)ns);
 }
+
 int
 smfile_crash (smfile_t *ns)
 {
-  return nsh_crash ((struct nsdb *)ns);
+  return nsdb_crash ((struct nsdb *)ns);
 }
 
 int
 smfile_begin (smfile_t *_smf)
 {
-  return nsh_begin ((struct nsdb *)_smf);
+  return nsdb_begin ((struct nsdb *)_smf);
 }
+
 int
 smfile_commit (smfile_t *_smf)
 {
-  return nsh_commit ((struct nsdb *)_smf);
+  return nsdb_commit ((struct nsdb *)_smf);
 }
+
 int
 smfile_rollback (smfile_t *smf)
 {
-  return nsh_rollback ((struct nsdb *)smf);
+  return nsdb_rollback ((struct nsdb *)smf);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -86,7 +83,7 @@ _smfile_delete (struct nsdb *db, const char *vname, error *e)
   struct txn auto_txn;
 
   // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
 
   i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", db->atx->tid, vname);
 
@@ -112,7 +109,7 @@ _smfile_delete (struct nsdb *db, const char *vname, error *e)
 
 commit:
 
-  if (nsh_auto_commit (db, e))
+  if (nsdb_auto_commit (db, e))
   {
     goto failed_rollback;
   }
@@ -120,7 +117,7 @@ commit:
 
 failed_rollback:
 
-  nsh_auto_rollback (db);
+  nsdb_auto_rollback (db);
 
 failed:
   return error_trace (e);
@@ -143,7 +140,7 @@ smfile_delete (smfile_t *_smf, const char *vname)
 smfile_t *
 smfile_open (const char *path)
 {
-  struct nsdb *ret = nsh_open (path);
+  struct nsdb *ret = nsdb_open (path);
 
   if (ret == NULL)
   {
@@ -181,7 +178,7 @@ smfile_open (const char *path)
   return (smfile_t *)ret;
 
 failed:
-  nsh_close (ret);
+  nsdb_close (ret);
 
   return NULL;
 }
@@ -219,7 +216,7 @@ _smfile_pinsert (
   stream_ibuf_init (&_input, &ctx, src, slen);
 
   // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
 
   // GET OR CREATE VARIABLE
   {
@@ -268,13 +265,13 @@ _smfile_pinsert (
   }
 
   // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
 
-  nsh_auto_rollback (db);
+  nsdb_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
@@ -358,7 +355,7 @@ _smfile_pread (
   chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
 
   // GET VARIABLE
   {
@@ -414,13 +411,13 @@ _smfile_pread (
 commit:
 
   // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
 
-  nsh_auto_rollback (db);
+  nsdb_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
@@ -511,7 +508,7 @@ _smfile_premove (
   chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
 
   // GET VARIABLE
   {
@@ -583,13 +580,13 @@ _smfile_premove (
 commit:
 
   // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
 
-  nsh_auto_rollback (db);
+  nsdb_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
@@ -683,7 +680,7 @@ _smfile_pwrite (
   chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
 
   // GET OR CREATE VARIABLE
   {
@@ -775,13 +772,13 @@ _smfile_pwrite (
   }
 
   // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
   chunk_alloc_free_all (&temp);
   return ret;
 
 failed_rollback:
 
-  nsh_auto_rollback (db);
+  nsdb_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);
@@ -825,7 +822,7 @@ _smfile_psize (struct nsdb *db, const char *name, error *e)
   b_size        ret;
 
   // BEGIN TXN
-  if (nsh_auto_begin_txn (db, e) < 0)
+  if (nsdb_auto_begin_txn (db, e) < 0)
   {
     goto failed;
   }
@@ -845,7 +842,7 @@ _smfile_psize (struct nsdb *db, const char *name, error *e)
   ret = gparams.dest.nbytes;
 
   // COMMIT
-  if (nsh_auto_commit (db, e) < 0)
+  if (nsdb_auto_commit (db, e) < 0)
   {
     goto failed_rollback;
   }
@@ -856,7 +853,7 @@ _smfile_psize (struct nsdb *db, const char *name, error *e)
 
 failed_rollback:
 
-  nsh_auto_rollback (db);
+  nsdb_auto_rollback (db);
 
 failed:
   chunk_alloc_free_all (&temp);

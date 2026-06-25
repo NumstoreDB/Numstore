@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "error.h"
-#include "nshandle.h"
+#include "nsdb.h"
 #include "numstore.h"
 #include "testing/testing.h"
 
@@ -25,7 +25,7 @@ TEST (nsdb_create_txn)
 {
   TEST_CASE ("create_commit_persists_across_reopen")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_begin (db), 0);
@@ -44,7 +44,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_rollback_var_not_visible")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_begin (db), 0);
@@ -57,7 +57,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_rollback_same_name_succeeds")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_begin (db), 0);
@@ -69,7 +69,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_sequential_commits_all_persist")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -84,7 +84,7 @@ TEST (nsdb_create_txn)
     }
     for (int i = 0; i < ITERS; ++i)
     {
-      nsdb_var_t *var;
+      nsdb_var_t *var = NULL;
       test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
       test_assert (var == NULL);
     }
@@ -93,7 +93,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_alternating_commit_rollback")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -138,7 +138,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_new_var_always_empty")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -160,7 +160,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_duplicate_fails")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -177,7 +177,7 @@ TEST (nsdb_create_txn)
 
   TEST_CASE ("create_rollback_N_times_then_commit")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -208,7 +208,7 @@ TEST (nsdb_delete_txn)
 {
   TEST_CASE ("create_delete_rollback_delete_again")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -221,7 +221,7 @@ TEST (nsdb_delete_txn)
 
   TEST_CASE ("delete_commit_var_not_visible")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -247,7 +247,7 @@ TEST (nsdb_delete_txn)
 
   TEST_CASE ("delete_rollback_var_and_data_survive")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -287,7 +287,7 @@ TEST (nsdb_delete_txn)
 
   TEST_CASE ("delete_nonexistent_fails")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -303,7 +303,7 @@ TEST (nsdb_delete_txn)
 
   TEST_CASE ("delete_twice_fails")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -323,7 +323,7 @@ TEST (nsdb_insert_txn)
 {
   TEST_CASE ("insert_commit_data_persists")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -359,7 +359,7 @@ TEST (nsdb_insert_txn)
 
   TEST_CASE ("insert_rollback_len_unchanged")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -392,7 +392,7 @@ TEST (nsdb_insert_txn)
 
   TEST_CASE ("insert_rollback_data_reverts")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -444,7 +444,7 @@ TEST (nsdb_insert_txn)
 
   TEST_CASE ("insert_returns_count_accumulates_len")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -466,7 +466,7 @@ TEST (nsdb_insert_txn)
 
   TEST_CASE ("insert_at_front_preserves_order")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -502,7 +502,7 @@ TEST (nsdb_insert_txn)
 
   TEST_CASE ("insert_rollback_N_times_data_stable")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -548,7 +548,7 @@ TEST (nsdb_insert_txn)
 
   TEST_CASE ("insert_many_vars_independent")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
@@ -585,7 +585,7 @@ TEST (nsdb_write_txn)
 {
   TEST_CASE ("write_commit_data_persists")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -620,7 +620,7 @@ TEST (nsdb_write_txn)
 
   TEST_CASE ("write_rollback_data_reverts")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -655,7 +655,7 @@ TEST (nsdb_write_txn)
 
   TEST_CASE ("write_does_not_change_len")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -686,7 +686,7 @@ TEST (nsdb_write_txn)
 
   TEST_CASE ("write_single_element_others_unchanged")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -721,7 +721,7 @@ TEST (nsdb_write_txn)
 
   TEST_CASE ("write_rollback_N_times_data_stable")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
@@ -757,7 +757,7 @@ TEST (nsdb_write_txn)
 
   TEST_CASE ("write_commit_persists_across_reopen")
   {
-    test_assert_int_equal (nsh_cleanup ("test"), 0);
+    test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);

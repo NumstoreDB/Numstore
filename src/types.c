@@ -4937,8 +4937,16 @@ subtype_equal (const struct subtype *left, const struct subtype *right)
 }
 
 /******************************************************************************
- * SECTION: Print Type Data
+ * SECTION: Print Type
  ******************************************************************************/
+
+static void print_type_inner (
+    int                level,
+    const u8          *buf,
+    const struct type *t,
+    u32                max_elems,
+    u32                indent
+);
 
 static void
 print_indent (int level, u32 spaces)
@@ -5164,14 +5172,6 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
     }
   }
 }
-
-static void print_type_inner (
-    int                level,
-    const u8          *buf,
-    const struct type *t,
-    u32                max_elems,
-    u32                indent
-);
 
 // Product of dims[dim_idx+1 .. rank-1] * element_size
 static u32
