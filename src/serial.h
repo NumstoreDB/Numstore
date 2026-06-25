@@ -275,8 +275,6 @@ void stream_finish (struct stream *s);
 bool stream_isdone (const struct stream *s);
 
 /**
- * @fn i32 stream_read(struct stream *dest, u32 size, u32 n, struct stream *src,
- * error *e)
  * @brief Copies up to n elements of size bytes from src to dest via their
  * stream interfaces.
  *

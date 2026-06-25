@@ -21,7 +21,9 @@
 #include "logging.h"
 #include "nshandle.h"
 #include "os.h"
+#include "query.h"
 #include "rope_algorithms.h"
+#include "serial.h"
 #include "types.h"
 #include "var_algorithms.h"
 
@@ -112,73 +114,14 @@ nsdb_rollback (nsdb_t *smf)
 }
 
 /******************************************************************************
- * SECTION: nsdb_get
- ******************************************************************************/
-
-static struct variable *
-nsdb_get (
-    struct nsdb        *db,
-    struct chunk_alloc *alloc,
-    struct string       vname,
-    error              *e
-)
-{
-  struct variable         *ret = NULL; // Return value
-  struct ns_var_get_params gparams;    // Get or create operation
-
-  ret = chunk_malloc (alloc, 1, sizeof *ret, e);
-  if (ret == NULL)
-  {
-    return NULL;
-  }
-
-  // BEGIN TXN
-  WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
-
-  i_log_debug (
-      "GET (txn = %" PRtxid
-      ")"
-      " - %.*s\n",
-      db->atx->tid,
-      strfmt (&vname)
-  );
-
-  // GET VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .alloc = alloc,
-    };
-    err_t err = ns_var_get (&gparams, e);
-    WRAP_GOTO (err, failed_rollback);
-
-    *ret = gparams.dest;
-  }
-
-  // COMMIT
-  WRAP_GOTO (nsh_auto_commit (db, e), failed_rollback);
-
-  return ret;
-
-failed_rollback:
-
-  nsh_auto_rollback (db);
-
-failed:
-  return NULL;
-}
-
-/******************************************************************************
  * SECTION: nsdb_get_if_exists
  ******************************************************************************/
 
-HEADER_FUNC int
-nsdb_get_if_exists (
+static err_t
+nsdb_get (
     struct nsdb        *db,
+    struct get_query   *query,
     struct chunk_alloc *alloc,
-    struct string       vname,
     struct variable   **dest,
     error              *e
 )
@@ -196,11 +139,11 @@ nsdb_get_if_exists (
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
 
   i_log_debug (
-      "GET IF EXISTS (txn = %" PRtxid
+      "GET (txn = %" PRtxid
       ")"
       " - %.*s\n",
       db->atx->tid,
-      strfmt (&vname)
+      strfmt (&query->name)
   );
 
   // GET VARIABLE
@@ -208,11 +151,11 @@ nsdb_get_if_exists (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = vname,
+        .vname = query->name,
         .alloc = alloc,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
+    if (query->if_exists && err == ERR_VARIABLE_NE)
     {
       e->cause_code = SUCCESS;
       e->cmlen      = 0;
@@ -410,25 +353,21 @@ failed:
 
 static sb_size
 nsdb_insert (
-    struct nsdb        *db,
-    struct variable    *var,
-    struct chunk_alloc *alloc,
-    const void         *src,
-    sb_size             _ofst,
-    const b_size        slen,
-    error              *e
+    struct nsdb         *db,
+    struct insert_query *query,
+    struct chunk_alloc  *alloc,
+    struct stream       *src,
+    error               *e
 )
 {
   sb_size                     ret;     // Return value
   b_size                      bofst;   // Resolved offset
-  struct stream               _input;  // Input stream
-  struct stream_ibuf_ctx      ctx;     // Context for input stream
   struct ns_var_get_params    gparams; // Get or create operation
   struct ns_insert_params     iparams; // Insert operation
   struct ns_var_update_params uparams; // Update operation
 
   // Parameter validation
-  if (slen == 0)
+  if (query->len == 0)
   {
     return 0;
   }
@@ -441,23 +380,15 @@ nsdb_insert (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->vname,
+        .vname = query->name,
         .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
-
-    // Type check
-    if (!type_equal (var->dtype, gparams.dest.dtype))
-    {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
-      goto failed_rollback;
-    }
   }
 
   // Resolve sizes
   t_size tsize = type_byte_size (gparams.dest.dtype);
-  stream_ibuf_init (&_input, &ctx, src, slen * tsize);
-  bofst = var_resolve_index (&gparams.dest, tsize * _ofst);
+  bofst        = var_resolve_index (&gparams.dest, tsize * query->ofst);
 
   i_log_debug (
       "INSERT (txn = %" PRtxid
@@ -472,31 +403,32 @@ nsdb_insert (
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->vname),
+      strfmt (&query->name),
       tsize,
       gparams.dest.nbytes / tsize,
       gparams.dest.nbytes,
-      _ofst,
-      _ofst * tsize,
-      slen,
-      slen * tsize,
+      query->ofst,
+      query->ofst * tsize,
+      query->len,
+      query->len * tsize,
       bofst / tsize,
       bofst,
-      slen,
-      slen * tsize
+      query->len,
+      query->len * tsize
   );
 
   // INSERT
   {
     iparams = (struct ns_insert_params){
         .p     = db->root->p,
-        .src   = &_input,
+        .src   = src,
         .tx    = db->atx,
         .root  = gparams.dest.rpt_root,
         .bofst = bofst,
+        .nelem = query->len,
     };
     ret = ns_insert (&iparams, e);
-    if (ret != (sb_size)(slen * tsize))
+    if (ret != (sb_size)(query->len * tsize))
     {
       goto failed_rollback;
     }
@@ -542,19 +474,16 @@ nsdb_read (
     struct nsdb        *db,    // The database handle
     struct read_query  *query, // The query that got parsed
     struct chunk_alloc *alloc, // Where to allocate stuff
-    void               *dest,  // Destination buffer
+    struct stream      *dest,  // destination stream
     error              *e      // Error pointer
 )
 {
-  sb_size                  ret;           // Return value
-  t_size                   tsize;         // Size of  the variable
-  b_size                   len;           // Length of the variable
-  struct stream            _output;       // Output stream if present
-  struct stream_obuf_ctx   ctx;           // Context for output stream
-  struct stream           *output = NULL; // Pointer to output stream
-  struct ns_var_get_params gparams;       // Get operation
-  struct ns_read_params    rparams;       // Read operation
-  struct stride            stride;        // Resolved stride
+  sb_size                  ret;     // Return value
+  t_size                   tsize;   // Size of  the variable
+  b_size                   len;     // Length of the variable
+  struct ns_var_get_params gparams; // Get operation
+  struct ns_read_params    rparams; // Read operation
+  struct stride            stride;  // Resolved stride
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
@@ -612,13 +541,6 @@ nsdb_read (
     else
     {
       ASSERT (!query->blimit);
-    }
-
-    // Initialize the output buffer
-    if (dest)
-    {
-      stream_obuf_init (&_output, &ctx, dest, stride.nelems * tsize);
-      output = &_output;
     }
   }
 
@@ -659,7 +581,7 @@ nsdb_read (
   {
     rparams = (struct ns_read_params){
         .p      = db->root->p,
-        .dest   = output,
+        .dest   = dest,
         .tx     = db->atx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
@@ -692,21 +614,18 @@ nsdb_remove (
     struct nsdb         *db,
     struct remove_query *query,
     struct chunk_alloc  *alloc,
-    void                *dest,
+    struct stream       *dest,
     error               *e
 )
 {
-  sb_size                     ret;           // Return value
-  b_size                      ofst;          // Resolved offset
-  t_size                      tsize;         // Size of  the variable
-  b_size                      len;           // Length of the variable
-  struct stream               _output;       // Output stream if present
-  struct stream_obuf_ctx      ctx;           // Context for output stream
-  struct stream              *output = NULL; // Pointer to output stream
-  struct ns_var_get_params    gparams;       // Get operation
-  struct ns_remove_params     rparams;       // Remove operation
-  struct ns_var_update_params uparams;       // Update operation
-  struct stride               stride;        // Resolved stride
+  sb_size                     ret;     // Return value
+  b_size                      ofst;    // Resolved offset
+  t_size                      tsize;   // Size of  the variable
+  b_size                      len;     // Length of the variable
+  struct ns_var_get_params    gparams; // Get operation
+  struct ns_remove_params     rparams; // Remove operation
+  struct ns_var_update_params uparams; // Update operation
+  struct stride               stride;  // Resolved stride
 
   // BEGIN TXN
   WRAP_GOTO (nsh_auto_begin_txn (db, e), failed);
@@ -765,13 +684,6 @@ nsdb_remove (
     {
       ASSERT (!query->blimit);
     }
-
-    // Initialize the output buffer
-    if (dest)
-    {
-      stream_obuf_init (&_output, &ctx, dest, stride.nelems * tsize);
-      output = &_output;
-    }
   }
 
   i_log_debug (
@@ -811,7 +723,7 @@ nsdb_remove (
   {
     rparams = (struct ns_remove_params){
         .p      = db->root->p,
-        .dest   = output,
+        .dest   = dest,
         .tx     = db->atx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
@@ -860,7 +772,7 @@ nsdb_write (
     struct nsdb        *db,
     struct write_query *query,
     struct chunk_alloc *alloc,
-    const void         *src,
+    struct stream      *src,
     error              *e
 )
 {
@@ -868,8 +780,6 @@ nsdb_write (
   t_size                   tsize;   // Size of  the variable
   b_size                   len;     // Length of the variable
   b_size                   ofst;    // Resolved offset
-  struct stream            _input;  // Input stream
-  struct stream_ibuf_ctx   ctx;     // Context for input stream
   struct ns_var_get_params gparams; // Get or create operation
   struct ns_write_params   wparams; // Write operation
   struct stride            stride;  // Resolved stride
@@ -933,8 +843,6 @@ nsdb_write (
     {
       ASSERT (!query->blimit);
     }
-
-    stream_ibuf_init (&_input, &ctx, src, stride.nelems * tsize);
   }
 
   i_log_debug (
@@ -974,7 +882,7 @@ nsdb_write (
   {
     wparams = (struct ns_write_params){
         .p      = db->root->p,
-        .src    = &_input,
+        .src    = src,
         .tx     = db->atx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
@@ -999,35 +907,63 @@ failed:
 }
 
 /******************************************************************************
- * SECTION: nsdb_execute
+ * SECTION: nsdb_execute in console
  ******************************************************************************/
 
-static sb_size
-_nsdb_execute (
-    struct nsdb *ns,
-    const char  *query,
-    u32          len,
-    void        *data,
-    error       *e
+sb_size
+nsdb_execute_in_console (
+    struct nsdb        *ns,
+    struct query       *q,
+    struct chunk_alloc *alc,
+    error              *e
 )
 {
-  struct chunk_alloc alc;
-  struct query       q;
-  sb_size            ret;
-  struct variable   *var;
+  return 0;
+}
 
-  chunk_alloc_create_default (&alc);
+/******************************************************************************
+ * SECTION: nsdb_execute on buffer
+ ******************************************************************************/
 
-  if (compile_query (&q, query, &alc, e))
-  {
-    goto failed;
-  }
+sb_size
+nsdb_execute_on_buffer (
+    struct nsdb        *ns,
+    struct query       *q,
+    void               *data,
+    struct chunk_alloc *alc,
+    error              *e
+)
+{
+  sb_size                ret;
+  struct variable       *var;
+  struct stream          stream;
+  struct stream_obuf_ctx octx;
+  struct stream_ibuf_ctx ictx;
 
-  switch (q.type)
+  switch (q->type)
   {
     case QT_READ:
     {
-      ret = nsdb_read (ns, &q.read, &alc, data, e);
+      // Destination pointer is required
+      if (data == NULL)
+      {
+        error_causef (
+            e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a get operation"
+        );
+        goto failed;
+      }
+
+      if (q->read.limit && q->read.blimit)
+      {
+        stream_obuf_init (&stream, &octx, data, q->read.limit);
+      }
+      else
+      {
+        stream_obuf_init (&stream, &octx, data, 0);
+      }
+      ret = nsdb_read (ns, &q->read, alc, &stream, e);
       if (ret < 0)
       {
         goto failed;
@@ -1037,7 +973,26 @@ _nsdb_execute (
     }
     case QT_WRITE:
     {
-      ret = nsdb_write (ns, &q.write, &alc, data, e);
+      // Source pointer is required
+      if (data == NULL)
+      {
+        error_causef (
+            e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a get operation"
+        );
+        goto failed;
+      }
+
+      if (q->write.limit && q->write.blimit)
+      {
+        stream_ibuf_init (&stream, &ictx, data, q->write.limit);
+      }
+      else
+      {
+        stream_ibuf_init (&stream, &ictx, data, 0);
+      }
+      ret = nsdb_write (ns, &q->write, alc, &stream, e);
       if (ret < 0)
       {
         goto failed;
@@ -1047,7 +1002,23 @@ _nsdb_execute (
     }
     case QT_REMOVE:
     {
-      ret = nsdb_remove (ns, &q.remove, &alc, data, e);
+      if (data)
+      {
+        if (q->remove.limit && q->remove.blimit)
+        {
+          stream_obuf_init (&stream, &octx, data, q->remove.limit);
+        }
+        else
+        {
+          stream_obuf_init (&stream, &octx, data, 0);
+        }
+
+        ret = nsdb_remove (ns, &q->remove, alc, &stream, e);
+      }
+      else
+      {
+        ret = nsdb_remove (ns, &q->remove, alc, NULL, e);
+      }
       if (ret < 0)
       {
         goto failed;
@@ -1057,12 +1028,19 @@ _nsdb_execute (
     }
     case QT_INSERT:
     {
-      var = nsdb_get (ns, &alc, q.insert.name, e);
-      if (var == NULL)
+      // Source pointer is required
+      if (data == NULL)
       {
+        error_causef (
+            e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a get operation"
+        );
         goto failed;
       }
-      ret = nsdb_insert (ns, var, &alc, data, q.insert.ofst, q.insert.len, e);
+
+      stream_ibuf_init (&stream, &ictx, data, 0);
+      ret = nsdb_insert (ns, &q->insert, alc, &stream, e);
       if (ret < 0)
       {
         goto failed;
@@ -1073,7 +1051,7 @@ _nsdb_execute (
 
     case QT_CREATE:
     {
-      if (nsdb_create (ns, &alc, q.create.name, q.create.type, e))
+      if (nsdb_create (ns, alc, q->create.name, q->create.type, e))
       {
         goto failed;
       }
@@ -1084,7 +1062,7 @@ _nsdb_execute (
     }
     case QT_DELETE:
     {
-      if (nsdb_delete (ns, q.delete.name, e))
+      if (nsdb_delete (ns, q->delete.name, e))
       {
         goto failed;
       }
@@ -1095,6 +1073,19 @@ _nsdb_execute (
     }
     case QT_GET:
     {
+      // Destination pointer is required
+      if (data == NULL)
+      {
+        error_causef (
+            e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a get operation"
+        );
+        goto failed;
+      }
+
+      // Variables get their own chunk allocator
+      // context that gets freed on nsdb_var_free
       struct chunk_alloc *valloc = i_malloc (1, sizeof *valloc, e);
       if (valloc == NULL)
       {
@@ -1102,68 +1093,29 @@ _nsdb_execute (
       }
       chunk_alloc_create_default (valloc);
 
-      if (q.get.if_exists)
+      // Get the variable
+      if (nsdb_get (ns, &q->get, valloc, &var, e) < 0)
       {
-        ret = nsdb_get_if_exists (ns, valloc, q.get.name, &var, e);
-
-        if (ret < 0)
-        {
-          chunk_alloc_free_all (valloc);
-          i_free (valloc);
-          goto failed;
-        }
-
-        if (var == NULL)
-        {
-          chunk_alloc_free_all (valloc);
-          i_free (valloc);
-          ret                    = SUCCESS;
-          struct nsdb_var **dest = (struct nsdb_var **)data;
-          *dest                  = NULL;
-        }
-        else
-        {
-          ASSERT (data);
-          struct nsdb_var **dest = (struct nsdb_var **)data;
-          *dest        = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
-          (*dest)->var = var;
-          (*dest)->alloc = valloc;
-
-          if (*dest == NULL)
-          {
-            chunk_alloc_free_all (valloc);
-            i_free (valloc);
-            goto failed;
-          }
-
-          ret = SUCCESS;
-        }
+        chunk_alloc_free_all (valloc);
+        i_free (valloc);
+        goto failed;
       }
-      else
+
+      // Transfer over to a variable handle (that can be free'd)
+      struct nsdb_var **dest = (struct nsdb_var **)data;
+      *dest = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
+
+      if (*dest == NULL)
       {
-        var = nsdb_get (ns, valloc, q.get.name, e);
-        if (var == NULL)
-        {
-          chunk_alloc_free_all (valloc);
-          i_free (valloc);
-          goto failed;
-        }
-
-        ASSERT (data);
-        struct nsdb_var **dest = (struct nsdb_var **)data;
-        *dest          = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), e);
-        (*dest)->var   = var;
-        (*dest)->alloc = valloc;
-
-        if (*dest == NULL)
-        {
-          chunk_alloc_free_all (valloc);
-          i_free (valloc);
-          goto failed;
-        }
-
-        ret = SUCCESS;
+        chunk_alloc_free_all (valloc);
+        i_free (valloc);
+        goto failed;
       }
+
+      (*dest)->var   = var;
+      (*dest)->alloc = valloc;
+
+      ret = SUCCESS;
 
       break;
     }
@@ -1181,60 +1133,80 @@ _nsdb_execute (
     }
   }
 
-  chunk_alloc_free_all (&alc);
-
   return ret;
 
 failed:
-  chunk_alloc_free_all (&alc);
 
   return error_trace (e);
 }
 
+/******************************************************************************
+ * SECTION: Library exposed nsdb_execute
+ ******************************************************************************/
+
 sb_size
 nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
 {
+  struct chunk_alloc alloc;          // Memory allocation context
+  sb_size            ret;            // return variable
+  char               stackbuf[2048]; // Stack buffer if the query fits
+  char              *buf = stackbuf; // Pointer to the buffer
+  va_list            ap, ap2;        // Argument list
+  i32                qlen;           // Length of the query
+  struct query       q;              // The AST
+
+  // Reset errors before proceeding
   nh->e.cause_code = 0;
   nh->e.cmlen      = 0;
 
-  char    stackbuf[2048];
-  char   *buf = stackbuf;
-  va_list ap, ap2;
+  chunk_alloc_create_default (&alloc);
+
+  // A small stack buffer - if the query doesn't fit into
+  // this buffer - we'll need to malloc
 
   va_start (ap, data);
   va_copy (ap2, ap);
 
-  i32 n = vsnprintf (stackbuf, sizeof stackbuf, query, ap);
+  qlen = vsnprintf (stackbuf, sizeof stackbuf, query, ap);
   va_end (ap);
 
-  if (n < 0)
+  if (qlen < 0)
   {
     va_end (ap2);
-    return error_causef (
-        &nh->e,
-        ERR_INVALID_ARGUMENT,
-        "Invalid printf argument"
-    );
+    ret =
+        error_causef (&nh->e, ERR_INVALID_ARGUMENT, "Invalid printf argument");
+    goto theend;
   }
 
-  if ((size_t)n >= sizeof stackbuf)
+  if ((size_t)qlen >= sizeof stackbuf)
   {
-    buf = i_malloc (n + 1, 1, &nh->e);
+    buf = chunk_malloc (&alloc, qlen + 1, 1, &nh->e);
     if (!buf)
     {
       va_end (ap2);
-      return error_trace (&nh->e);
+      ret = error_trace (&nh->e);
+      goto theend;
     }
-    n = vsnprintf (buf, n + 1, query, ap2);
-    ASSERT (n >= 0);
+    qlen = vsnprintf (buf, qlen + 1, query, ap2);
+    ASSERT (qlen >= 0);
   }
   va_end (ap2);
 
-  sb_size ret = _nsdb_execute (nh, buf, (u32)n, data, &nh->e);
+  // Compile the query
+  if (compile_query (&q, buf, &alloc, &nh->e))
+  {
+    ret = error_trace (&nh->e);
+    goto theend;
+  }
+
+  ret = nsdb_execute_on_buffer (nh, &q, data, &alloc, &nh->e);
 
   if (buf != stackbuf)
   {
     i_free (buf);
   }
+
+theend:
+  chunk_alloc_free_all (&alloc);
   return ret;
 }

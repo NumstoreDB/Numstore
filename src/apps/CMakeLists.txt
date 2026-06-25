@@ -86,3 +86,5 @@ if(BUILD_SAMPLES)
   ns_add_sample(smfile_sample4_variable_names  samples/smartfiles/sample4_variable_names.c)
   ns_add_sample(smfile_sample5_rollback_commit samples/smartfiles/sample5_rollback_commit.c)
 endif()
+
+ns_add_executable(nscli numstore.c)
