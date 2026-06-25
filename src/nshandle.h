@@ -20,10 +20,10 @@
 #ifndef NSHANDLE_H
 #define NSHANDLE_H
 
-#include "error.h"     // error
-#include "pager.h"     // pager
-#include "serial.h"    // string
-#include "txn_table.h" // txn
+#include "error.h"
+#include "pager.h"
+#include "query.h"
+#include "txn_table.h"
 
 /******************************************************************************
  * SECTION: NSHandle
@@ -103,4 +103,24 @@ int nsh_rollback (struct nsdb *smf);
 err_t nsh_auto_begin_txn (struct nsdb *sm, error *e);
 err_t nsh_auto_commit (struct nsdb *sm, error *e);
 void  nsh_auto_rollback (struct nsdb *sm);
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Execute Internal
+ *----------------------------------------------------------------------------*/
+
+sb_size nsdb_execute_on_buffer (
+    struct nsdb        *ns,
+    struct query       *q,
+    void               *data,
+    struct chunk_alloc *alc,
+    error              *e
+);
+
+sb_size nsdb_execute_in_console (
+    struct nsdb        *ns,
+    struct query       *q,
+    struct chunk_alloc *alc,
+    error              *e
+);
+
 #endif // NSHANDLE_H
