@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nshandle.h"
+#include "nsdb.h"
 #include "numstore.h"
 #include "pager.h"
 #include "testing/data_validator.h"

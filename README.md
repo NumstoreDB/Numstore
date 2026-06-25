@@ -10,21 +10,21 @@ Numstore
 
 **A database for arrays**
 
-Numstore is a single file embedded ACID database built for arrays written entirely 
-in C with no dependencies. 
+Numstore is a single file embedded ACID database built for arrays written entirely
+in C with no dependencies.
 
 Conceptually, it's an ACID file with [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
 
-Numstore has two libraries so far:
+Numstore has two paradigms so far:
 
-1. libsmartfiles:
-    Smartfiles is conceptually a database for "file like data". That is, just an array of bytes.
-    Smartfiles has far better performance for inner insertions and removals than regular files 
-    Smartfiles is ACID - your file never writes half of what you want it to write, even if you unplug your 
-    computer while it's doing work.
+1. Smart files:
+   Smartfiles is conceptually a database for "file like data". That is, just an array of bytes.
+   Smartfiles has far better performance for inner insertions and removals than regular files
+   Smartfiles is ACID - your file never writes half of what you want it to write, even if you unplug your
+   computer while it's doing work.
 
-2. libnumstore:
-    Numstore is the same as smartfiles but it has a rich type system built on top to handle numerical data
+1. Numstore:
+   Numstore is the same as smartfiles but it has a rich type system built on top to handle numerical data
 
 To get started, choose your platform and run:
 
@@ -54,7 +54,7 @@ sample.exe
 
 </details>
 
-For more information, refer to the [Quick Start Guide](docs/quick_start.md).
+For more information, refer to the [Documentation](docs/index.md).
 
 AI Usage Policy
 ===============
@@ -64,16 +64,16 @@ but not for heavy tasks.
 
 Things I ask AI to do:
 
-* Add edge-case test scenarios to existing unit tests (reviewed before committing).
-* Review an algorithm I've written and flag anything that looks wrong.
-* Write formatting scripts, CI/CD glue, and other boilerplate I could write myself
+- Add edge-case test scenarios to existing unit tests (reviewed before committing).
+- Review an algorithm I've written and flag anything that looks wrong.
+- Write formatting scripts, CI/CD glue, and other boilerplate I could write myself
   but would rather not.
 
 Things I don't ask AI to do:
 
-* Implement features.
-* Delete or replace code I've written.
-* Read a paper and implement the algorithm.
+- Implement features.
+- Delete or replace code I've written.
+- Read a paper and implement the algorithm.
 
 In practice, AI is useful for ideation, code review, and generating mundane code I'll
 immediately refactor. Every algorithm in this codebase was written by me.

@@ -16,6 +16,7 @@
 #define AST_H
 
 #include "collections.h"
+#include "serial.h"
 #include "types.h"
 
 /******************************************************************************

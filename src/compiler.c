@@ -329,11 +329,11 @@ check_keyword (const char *text, u32 len)
   {
     return TT_EXISTS;
   }
-  if (len == sizeof ("blimit") - 1 && strncmp (text, "exists", len) == 0)
+  if (len == sizeof ("blimit") - 1 && strncmp (text, "blimit", len) == 0)
   {
     return TT_BLIMIT;
   }
-  if (len == sizeof ("limit") - 1 && strncmp (text, "exists", len) == 0)
+  if (len == sizeof ("limit") - 1 && strncmp (text, "limit", len) == 0)
   {
     return TT_LIMIT;
   }

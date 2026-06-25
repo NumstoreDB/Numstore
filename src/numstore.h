@@ -183,17 +183,6 @@ smfile_t *smfile_open (const char *path);
 int smfile_cleanup (const char *path);
 
 /**
- * @brief Smart files can be attached to only one transaction at a time.
- * In order to allow for concurrent smart file operations at the same time,
- * you can create new contexts from existing smart files. This allows you to
- * run multiple smart file operations at the same time on different transactions
- *
- * @param ns The existing smart file
- * @return A new "clone" of the smart file that has it's own transaction space
- */
-smfile_t *smfile_new_context (smfile_t *ns);
-
-/**
  * @brief Close a smart file. This releases all resources and terminates
  * any open transactions
  *

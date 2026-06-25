@@ -14,12 +14,26 @@
 
 #include "variables.h"
 
+#include "error.h"
 #include "page.h"
 #include "types.h"
 
 #ifdef TESTING
 #  include "testing/testing.h"
 #endif
+
+err_t
+i_print_variable (struct variable *v, error *e)
+{
+  i_log_info ("=========== Variable: %.*s\n", strfmt (&v->vname));
+  i_log_info ("   root: %" PRpgno "\n", v->var_root);
+  i_log_info ("   array root: %" PRpgno "\n", v->rpt_root);
+  i_log_info ("   nbytes: %" PRb_size "\n", v->nbytes);
+  i_log_info ("   Data type:\n");
+  err_t ret = i_log_type (v->dtype, e);
+  i_log_info ("===========\n");
+  return ret;
+}
 
 bool
 variable_equal (const struct variable *left, const struct variable *right)

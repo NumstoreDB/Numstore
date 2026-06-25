@@ -71,22 +71,22 @@ endforeach()
 ########################################################################
 # Copy image/asset files next to the HTML output
 ########################################################################
-file(GLOB_RECURSE ASSET_FILES
-    RELATIVE assets
-    CONFIGURE_DEPENDS
-    assets/*.png
-    assets/*.jpg
-    assets/*.jpeg
-    assets/*.gif
-    assets/*.svg
-    assets/*.webp
-  )
 
+file(GLOB_RECURSE ASSET_FILES
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.png"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.jpg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.jpeg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.gif"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.svg"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.webp"
+)
+message(STATUS "Assets: ${ASSET_FILES}")
 foreach(ASSET_REL IN LISTS ASSET_FILES)
-    set(ASSET_SRC assets/${ASSET_REL})
+    set(ASSET_SRC "${CMAKE_CURRENT_SOURCE_DIR}/assets/${ASSET_REL}")
     set(ASSET_DST "${CMAKE_BINARY_DIR}/html/assets/${ASSET_REL}")
     get_filename_component(ASSET_SUBDIR "${ASSET_DST}" DIRECTORY)
-
     add_custom_command(
         OUTPUT  "${ASSET_DST}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${ASSET_SUBDIR}"

@@ -12,14 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nshandle.h"        // nshandle
+#include "nsdb.h"            // nsdbandle
 #include "numstore.h"        // nsdb
 #include "testing/testing.h" // TEST
 
 #ifdef TESTING
 TEST (regression_cgd_test_create_delete_rollback_delete)
 {
-  test_assert_int_equal (nsh_cleanup ("test"), 0);
+  test_assert_int_equal (nsdb_cleanup ("test"), 0);
   nsdb_t *db = nsdb_open ("test");
   test_assert (db != NULL);
 
@@ -65,7 +65,7 @@ TEST (regression_cgd_test_create_delete_rollback_delete)
 
 TEST (regression_cgd_test_create_crash_close_delete)
 {
-  test_assert_int_equal (nsh_cleanup ("test"), 0);
+  test_assert_int_equal (nsdb_cleanup ("test"), 0);
   nsdb_t *db = nsdb_open ("test");
   test_assert (db != NULL);
 
@@ -98,7 +98,7 @@ TEST (regression_cgd_test_create_crash_close_delete)
 
 TEST (regression_irwr_rollback_invalid_wal_header)
 {
-  test_assert_int_equal (nsh_cleanup ("test"), 0);
+  test_assert_int_equal (nsdb_cleanup ("test"), 0);
   nsdb_t *db = nsdb_open ("test");
   test_assert (db != NULL);
 

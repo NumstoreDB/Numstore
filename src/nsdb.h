@@ -14,7 +14,7 @@
 
 /**
  * @file
- * @brief NSHandle is a stateful wrapper for numstore
+ * @brief Internals of numstore user exposed type
  */
 
 #ifndef NSHANDLE_H
@@ -24,9 +24,10 @@
 #include "pager.h"
 #include "query.h"
 #include "txn_table.h"
+#include "variables.h"
 
 /******************************************************************************
- * SECTION: NSHandle
+ * SECTION: nsdb
  * ----------------------------------------------------------------------------
  * @brief A Handle of a numstore database that has static transaction context
  *
@@ -59,40 +60,39 @@ struct nsdb
  * @brief Utilities used mostly for testing and fault injection
  *----------------------------------------------------------------------------*/
 
-struct nsdb *nsh_remove_and_open (const char *name, error *e);
-int          nsh_crash (struct nsdb *ns);
+struct nsdb *nsdb_remove_and_open (const char *name, error *e);
+int          nsdb_crash (struct nsdb *ns);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lifecycle
  * @brief Opening and closing a handle
  *----------------------------------------------------------------------------*/
 
-struct nsdb *nsh_open (const char *path);
-int          nsh_cleanup (const char *path);
-struct nsdb *nsh_new_context (struct nsdb *ns);
-int          nsh_close (struct nsdb *ns);
+struct nsdb *nsdb_open (const char *path);
+int          nsdb_cleanup (const char *path);
+int          nsdb_close (struct nsdb *ns);
 
-err_t        nsh_root_close (struct nsdb_root *root, error *e);
-err_t        nsh_root_crash (struct nsdb_root *root, error *e);
-struct nsdb *nsh_root_load (struct nsdb_root *root, error *e);
-void         nsh_root_release (struct nsdb_root *root, struct nsdb *sm);
+err_t        nsdb_root_close (struct nsdb_root *root, error *e);
+err_t        nsdb_root_crash (struct nsdb_root *root, error *e);
+struct nsdb *nsdb_root_load (struct nsdb_root *root, error *e);
+void         nsdb_root_release (struct nsdb_root *root, struct nsdb *sm);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Error reporting
  * @brief Monitoring the error of a nsdb state
  *----------------------------------------------------------------------------*/
 
-const char *nsh_strerror (struct nsdb *ns);
-int         nsh_perror (struct nsdb *ns, const char *prefix);
+const char *nsdb_strerror (struct nsdb *ns);
+int         nsdb_perror (struct nsdb *ns, const char *prefix);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Transaction Control
  * @brief Utilities used mostly for testing and fault injection
  *----------------------------------------------------------------------------*/
 
-int nsh_begin (struct nsdb *smf);
-int nsh_commit (struct nsdb *smf);
-int nsh_rollback (struct nsdb *smf);
+int nsdb_begin (struct nsdb *smf);
+int nsdb_commit (struct nsdb *smf);
+int nsdb_rollback (struct nsdb *smf);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Auto transactions
@@ -100,9 +100,9 @@ int nsh_rollback (struct nsdb *smf);
  * transaction
  *----------------------------------------------------------------------------*/
 
-err_t nsh_auto_begin_txn (struct nsdb *sm, error *e);
-err_t nsh_auto_commit (struct nsdb *sm, error *e);
-void  nsh_auto_rollback (struct nsdb *sm);
+err_t nsdb_auto_begin_txn (struct nsdb *sm, error *e);
+err_t nsdb_auto_commit (struct nsdb *sm, error *e);
+void  nsdb_auto_rollback (struct nsdb *sm);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Execute Internal
@@ -112,15 +112,75 @@ sb_size nsdb_execute_on_buffer (
     struct nsdb        *ns,
     struct query       *q,
     void               *data,
-    struct chunk_alloc *alc,
-    error              *e
+    struct chunk_alloc *alc
 );
 
-sb_size nsdb_execute_in_console (
+err_t nsdb_execute_in_console (
     struct nsdb        *ns,
     struct query       *q,
-    struct chunk_alloc *alc,
-    error              *e
+    struct chunk_alloc *alc
+);
+
+/******************************************************************************
+ * SECTION: Query literal routines
+ * ----------------------------------------------------------------------------
+ * @brief
+ ******************************************************************************/
+
+int nsdb_create (
+    struct nsdb        *db,
+    struct chunk_alloc *alloc,
+    struct string       vname,
+    struct type         dtype
+);
+
+err_t nsdb_delete (struct nsdb *db, struct string vname);
+
+err_t nsdb_get (
+    struct nsdb        *db,
+    struct get_query   *query,
+    struct chunk_alloc *alloc,
+    struct variable   **dest
+);
+
+err_t nsdb_get_and_print (
+    struct nsdb        *db,
+    struct get_query   *query,
+    struct chunk_alloc *alloc
+);
+
+sb_size nsdb_insert (
+    struct nsdb         *db,
+    struct insert_query *query,
+    struct chunk_alloc  *alloc,
+    struct stream       *src
+);
+
+sb_size nsdb_read (
+    struct nsdb        *db,
+    struct read_query  *query,
+    struct chunk_alloc *alloc,
+    struct stream      *dest
+);
+
+sb_size nsdb_read_and_print (
+    struct nsdb        *db,
+    struct read_query  *query,
+    struct chunk_alloc *alloc
+);
+
+sb_size nsdb_write (
+    struct nsdb        *db,
+    struct write_query *query,
+    struct chunk_alloc *alloc,
+    struct stream      *src
+);
+
+sb_size nsdb_remove (
+    struct nsdb         *db,
+    struct remove_query *query,
+    struct chunk_alloc  *alloc,
+    struct stream       *dest
 );
 
 #endif // NSHANDLE_H
