@@ -171,12 +171,6 @@ install(TARGETS numstore
 install(FILES "${PROJECT_SOURCE_DIR}/src/numstore.h"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(FILES "${PROJECT_SOURCE_DIR}/src/smartfiles.h"
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-install(FILES "${PROJECT_SOURCE_DIR}/src/compile_config.h"
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
 
 # CMake package config — enables find_package(numstore)
 install(EXPORT numstoreTargets

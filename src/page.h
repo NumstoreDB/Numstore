@@ -15,12 +15,12 @@
 #ifndef PAGE_H
 #define PAGE_H
 
-#include "collections.h"    // cbuffer
-#include "compile_config.h" // pgno ...etc
-#include "csx_assert.h"     // DBG_ASSERT
-#include "error.h"          // error
+#include "collections.h" // cbuffer
+#include "csx_assert.h"  // DBG_ASSERT
+#include "error.h"       // error
 #include "htable.h"
 #include "numerics.h" // checksum
+#include "numstore.h" // pgno ...etc
 #include "page.h"
 #include "platform.h" // string.h
 #include "platform.h" // HEADER_FUNC

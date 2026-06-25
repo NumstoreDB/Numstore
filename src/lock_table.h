@@ -24,14 +24,14 @@
 #ifndef LOCK_TABLE_H
 #define LOCK_TABLE_H
 
-#include "alloc.h"          // slab alloc
-#include "compile_config.h" // pgno ...etc
-#include "concurrency.h"    // latch / grlock
-#include "error.h"          // error
-#include "htable.h"         // htable
-#include "numerics.h"       // randu64
-#include "platform.h"       // HEADER_FUNC/PLATFORM_WINDOWS ...etc
-#include "stdtypes.h"       // u32 ...etc
+#include "alloc.h"       // slab alloc
+#include "concurrency.h" // latch / grlock
+#include "error.h"       // error
+#include "htable.h"      // htable
+#include "numerics.h"    // randu64
+#include "numstore.h"    // pgno ...etc
+#include "platform.h"    // HEADER_FUNC/PLATFORM_WINDOWS ...etc
+#include "stdtypes.h"    // u32 ...etc
 
 /******************************************************************************
  * SECTION: LT Lock

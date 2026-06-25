@@ -14,10 +14,10 @@
 
 #include "file_pager.h"
 
-#include "compile_config.h" // pgno ...etc
 #include "concurrency.h"
 #include "csx_assert.h"
 #include "error.h"
+#include "numstore.h" // pgno ...etc
 #include "os.h"
 #include "platform.h"
 

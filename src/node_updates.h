@@ -24,9 +24,9 @@
 #ifndef NODE_UPDATES_H
 #define NODE_UPDATES_H
 
-#include "compile_config.h" // pgno b_size ...etc
-#include "error.h"          // error
-#include "pager.h"          // page_h
+#include "error.h"    // error
+#include "numstore.h" // pgno b_size ...etc
+#include "pager.h"    // page_h
 
 /******************************************************************************
  * SECTION: Node Updates

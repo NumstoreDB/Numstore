@@ -84,8 +84,11 @@ enum token_t
   TT_UNION,
   TT_PRIM,
 
+  // Modifiers
   TT_IF,
   TT_EXISTS,
+  TT_BLIMIT,
+  TT_LIMIT,
 
   TT_TRUE,
   TT_FALSE,

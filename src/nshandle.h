@@ -35,7 +35,7 @@
  * a state and split into new contexts for new threads
  ******************************************************************************/
 
-struct nshandle_root
+struct nsdb_root
 {
   struct pager *p;     // The database resources
   struct string path;  // Path to the database
@@ -43,13 +43,13 @@ struct nshandle_root
   error         e;
 };
 
-struct nshandle
+struct nsdb
 {
-  struct nshandle_root *root;
-  int                   is_auto_txn; // If atx is an auto transaction
-  struct txn           *atx;         // Active transaction
-  struct txn            tx;          // Transaction storage
-  error                 e;
+  struct nsdb_root *root;
+  int               is_auto_txn; // If atx is an auto transaction
+  struct txn       *atx;         // Active transaction
+  struct txn        tx;          // Transaction storage
+  error             e;
 };
 
 // Testing
@@ -59,40 +59,40 @@ struct nshandle
  * @brief Utilities used mostly for testing and fault injection
  *----------------------------------------------------------------------------*/
 
-struct nshandle *nsh_remove_and_open (const char *name, error *e);
-int              nsh_crash (struct nshandle *ns);
+struct nsdb *nsh_remove_and_open (const char *name, error *e);
+int          nsh_crash (struct nsdb *ns);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lifecycle
  * @brief Opening and closing a handle
  *----------------------------------------------------------------------------*/
 
-struct nshandle *nsh_open (const char *path);
-int              nsh_cleanup (const char *path);
-struct nshandle *nsh_new_context (struct nshandle *ns);
-int              nsh_close (struct nshandle *ns);
+struct nsdb *nsh_open (const char *path);
+int          nsh_cleanup (const char *path);
+struct nsdb *nsh_new_context (struct nsdb *ns);
+int          nsh_close (struct nsdb *ns);
 
-err_t            nsh_root_close (struct nshandle_root *root, error *e);
-err_t            nsh_root_crash (struct nshandle_root *root, error *e);
-struct nshandle *nsh_root_load (struct nshandle_root *root, error *e);
-void nsh_root_release (struct nshandle_root *root, struct nshandle *sm);
+err_t        nsh_root_close (struct nsdb_root *root, error *e);
+err_t        nsh_root_crash (struct nsdb_root *root, error *e);
+struct nsdb *nsh_root_load (struct nsdb_root *root, error *e);
+void         nsh_root_release (struct nsdb_root *root, struct nsdb *sm);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Error reporting
- * @brief Monitoring the error of a nshandle state
+ * @brief Monitoring the error of a nsdb state
  *----------------------------------------------------------------------------*/
 
-const char *nsh_strerror (struct nshandle *ns);
-int         nsh_perror (struct nshandle *ns, const char *prefix);
+const char *nsh_strerror (struct nsdb *ns);
+int         nsh_perror (struct nsdb *ns, const char *prefix);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Transaction Control
  * @brief Utilities used mostly for testing and fault injection
  *----------------------------------------------------------------------------*/
 
-int nsh_begin (struct nshandle *smf);
-int nsh_commit (struct nshandle *smf);
-int nsh_rollback (struct nshandle *smf);
+int nsh_begin (struct nsdb *smf);
+int nsh_commit (struct nsdb *smf);
+int nsh_rollback (struct nsdb *smf);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Auto transactions
@@ -100,7 +100,7 @@ int nsh_rollback (struct nshandle *smf);
  * transaction
  *----------------------------------------------------------------------------*/
 
-err_t nsh_auto_begin_txn (struct nshandle *sm, error *e);
-err_t nsh_auto_commit (struct nshandle *sm, error *e);
-void  nsh_auto_rollback (struct nshandle *sm);
+err_t nsh_auto_begin_txn (struct nsdb *sm, error *e);
+err_t nsh_auto_commit (struct nsdb *sm, error *e);
+void  nsh_auto_rollback (struct nsdb *sm);
 #endif // NSHANDLE_H

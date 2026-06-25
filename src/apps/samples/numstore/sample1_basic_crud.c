@@ -72,20 +72,30 @@ main (void)
   sb_size n = nsdb_execute (ns, "insert example 0 %d", src, 200);
 
   // Read (most of) data with a stride of 3
-  n = nsdb_execute (ns, "read example[0:-10:3]", dest);
+  n = nsdb_execute (
+      ns,
+      "read example[0:-10:3] blimit %ld",
+      dest,
+      sizeof (dest)
+  );
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
-  n = nsdb_execute (ns, "remove example[0:-10:2]", dest);
+  n = nsdb_execute (
+      ns,
+      "remove example[0:-10:2] blimit %ld",
+      dest,
+      sizeof (dest)
+  );
   print_example ("Removed elements: ", dest, n);
 
   // Read all of data
-  n = nsdb_execute (ns, "read example[0:]", dest);
+  n = nsdb_execute (ns, "read example[0:] blimit %ld", dest, sizeof (dest));
   print_example ("After Remove: ", dest, n);
 
   // Write all of data with src
-  n = nsdb_execute (ns, "write example[0::]", src);
-  n = nsdb_execute (ns, "read example[0:]", dest);
+  n = nsdb_execute (ns, "write example[0::] blimit %ld", src, sizeof (src));
+  n = nsdb_execute (ns, "read example[0:] blimit %ld", dest, sizeof (dest));
   print_example ("After write: ", dest, n);
 
   return nsdb_close (ns);

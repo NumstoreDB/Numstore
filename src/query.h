@@ -47,51 +47,57 @@ struct query
 
   union {
     // Array Operations
-    struct
+    struct read_query
     {
       struct string      name;
       struct user_stride ustr;
+      b_size             limit;
+      bool               blimit;
     } read;
 
-    struct
+    struct write_query
     {
       struct string      name;
       struct user_stride ustr;
+      b_size             limit;
+      bool               blimit;
     } write;
 
-    struct
+    struct insert_query
     {
       struct string name;
       sb_size       ofst;
       b_size        len;
     } insert;
 
-    struct
+    struct remove_query
     {
       struct string      name;
       struct user_stride ustr;
+      b_size             limit;
+      bool               blimit;
     } remove;
 
     // Variable Operations
-    struct
+    struct create_query
     {
       struct string name;
       struct type   type;
     } create;
 
-    struct
+    struct delete_query
     {
       struct string name;
     } delete;
 
-    struct
+    struct get_query
     {
       struct string name;
       bool          if_exists;
     } get;
 
     // Meta Operations
-    struct
+    struct help_query
     {
       bool            has_command;
       enum query_type command;

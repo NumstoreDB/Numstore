@@ -15,9 +15,9 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include "collections.h"    // llnode
-#include "compile_config.h" // pgno ...etc
-#include "error.h"          // error
+#include "collections.h" // llnode
+#include "error.h"       // error
+#include "numstore.h"    // pgno ...etc
 #include "platform.h"
 #include "serial.h"   // string
 #include "stdtypes.h" // u32 ...etc

@@ -12,9 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "smartfiles.h"
-
 #include "nshandle.h"
+#include "numstore.h"
 #include "pager.h"
 #include "rope_algorithms.h"
 #include "var_algorithms.h"
@@ -24,12 +23,12 @@
 int
 smfile_perror (smfile_t *ns, const char *prefix)
 {
-  return nsh_perror ((struct nshandle *)ns, prefix);
+  return nsh_perror ((struct nsdb *)ns, prefix);
 }
 const char *
 smfile_strerror (smfile_t *ns)
 {
-  return nsh_strerror ((struct nshandle *)ns);
+  return nsh_strerror ((struct nsdb *)ns);
 }
 
 int
@@ -48,41 +47,41 @@ smfile_size (smfile_t *smf)
 smfile_t *
 smfile_new_context (smfile_t *n)
 {
-  return (smfile_t *)nsh_new_context ((struct nshandle *)n);
+  return (smfile_t *)nsh_new_context ((struct nsdb *)n);
 }
 
 int
 smfile_close (smfile_t *ns)
 {
-  return nsh_close ((struct nshandle *)ns);
+  return nsh_close ((struct nsdb *)ns);
 }
 int
 smfile_crash (smfile_t *ns)
 {
-  return nsh_crash ((struct nshandle *)ns);
+  return nsh_crash ((struct nsdb *)ns);
 }
 
 int
 smfile_begin (smfile_t *_smf)
 {
-  return nsh_begin ((struct nshandle *)_smf);
+  return nsh_begin ((struct nsdb *)_smf);
 }
 int
 smfile_commit (smfile_t *_smf)
 {
-  return nsh_commit ((struct nshandle *)_smf);
+  return nsh_commit ((struct nsdb *)_smf);
 }
 int
 smfile_rollback (smfile_t *smf)
 {
-  return nsh_rollback ((struct nshandle *)smf);
+  return nsh_rollback ((struct nsdb *)smf);
 }
 
 /////////////////////////////////////////////////////////////////////
 ////// Delete
 
 static err_t
-_smfile_delete (struct nshandle *db, const char *vname, error *e)
+_smfile_delete (struct nsdb *db, const char *vname, error *e)
 {
   struct txn auto_txn;
 
@@ -130,7 +129,7 @@ failed:
 int
 smfile_delete (smfile_t *_smf, const char *vname)
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nsdb *smf = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -144,7 +143,7 @@ smfile_delete (smfile_t *_smf, const char *vname)
 smfile_t *
 smfile_open (const char *path)
 {
-  struct nshandle *ret = nsh_open (path);
+  struct nsdb *ret = nsh_open (path);
 
   if (ret == NULL)
   {
@@ -192,12 +191,12 @@ failed:
 
 static sb_size
 _smfile_pinsert (
-    struct nshandle *db,
-    const char      *name,
-    const void      *src,
-    const b_size     slen,
-    sb_size          bofst,
-    error           *e
+    struct nsdb *db,
+    const char  *name,
+    const void  *src,
+    const b_size slen,
+    sb_size      bofst,
+    error       *e
 )
 {
   sb_size                            ret;        // Return value
@@ -291,7 +290,7 @@ smfile_pinsert (
     b_size      slen
 )
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nsdb *smf = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -310,14 +309,14 @@ smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen)
 
 static sb_size
 _smfile_pread (
-    struct nshandle *db,
-    const char      *name,
-    void            *dest,
-    const t_size     size,
-    const sb_size    bofst,
-    const sb_size    stride,
-    b_size           nelem,
-    error           *e
+    struct nsdb  *db,
+    const char   *name,
+    void         *dest,
+    const t_size  size,
+    const sb_size bofst,
+    const sb_size stride,
+    b_size        nelem,
+    error        *e
 )
 {
   sb_size                  ret;           // Return value
@@ -439,7 +438,7 @@ smfile_pread (
     b_size      nelem
 )
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nsdb *smf = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -458,14 +457,14 @@ smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
 
 static sb_size
 _smfile_premove (
-    struct nshandle *db,
-    const char      *name,
-    void            *dest,
-    const t_size     size,
-    const sb_size    bofst,
-    const sb_size    stride,
-    b_size           nelem,
-    error           *e
+    struct nsdb  *db,
+    const char   *name,
+    void         *dest,
+    const t_size  size,
+    const sb_size bofst,
+    const sb_size stride,
+    b_size        nelem,
+    error        *e
 )
 {
   sb_size                     ret;           // Return value
@@ -608,7 +607,7 @@ smfile_premove (
     b_size      nelem
 )
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nsdb *smf = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -627,14 +626,14 @@ smfile_remove (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
 
 static sb_size
 _smfile_pwrite (
-    struct nshandle *db,
-    const char      *name,
-    const void      *src,
-    const t_size     size,
-    const sb_size    bofst,
-    const sb_size    stride,
-    const b_size     nelem,
-    error           *e
+    struct nsdb  *db,
+    const char   *name,
+    const void   *src,
+    const t_size  size,
+    const sb_size bofst,
+    const sb_size stride,
+    const b_size  nelem,
+    error        *e
 )
 {
   sb_size                ret;          // Return value
@@ -800,7 +799,7 @@ smfile_pwrite (
     b_size      nelem
 )
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nsdb *smf = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -818,7 +817,7 @@ smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem)
 ////// Size
 
 static sb_size
-_smfile_psize (struct nshandle *db, const char *name, error *e)
+_smfile_psize (struct nsdb *db, const char *name, error *e)
 {
   struct chunk_alloc temp;
   chunk_alloc_create_default (&temp);
@@ -867,7 +866,7 @@ failed:
 sb_size
 smfile_psize (smfile_t *_smf, const char *name)
 {
-  struct nshandle *smf = (struct nshandle *)_smf;
+  struct nsdb *smf = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;

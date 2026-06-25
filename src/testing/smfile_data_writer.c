@@ -13,8 +13,8 @@
 /// limitations under the License.
 
 #include "nshandle.h"
+#include "numstore.h"
 #include "pager.h"
-#include "smartfiles.h"
 #include "testing/data_validator.h"
 #include "testing/smfile_test_fixture.h"
 
@@ -102,7 +102,7 @@ smfile_data_writer_open (const char *path)
     return NULL;
   }
   struct data_writer *writer =
-      i_malloc (1, sizeof *writer, &((struct nshandle *)smf)->e);
+      i_malloc (1, sizeof *writer, &((struct nsdb *)smf)->e);
   if (writer == NULL)
   {
     smfile_close (smf);

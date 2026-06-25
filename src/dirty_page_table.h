@@ -26,10 +26,10 @@
 #ifndef DIRTY_PAGE_TABLE_H
 #define DIRTY_PAGE_TABLE_H
 
-#include "alloc.h"          // slab alloc
-#include "compile_config.h" // lsn / pgno
-#include "htable.h"         // htable
-#include "stdtypes.h"       // u8
+#include "alloc.h"    // slab alloc
+#include "htable.h"   // htable
+#include "numstore.h" // lsn / pgno
+#include "stdtypes.h" // u8
 
 /******************************************************************************
  * SECTION: Dirty Page Table

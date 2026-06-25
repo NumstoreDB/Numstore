@@ -16,9 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "numstore.h"
 #include "page.h"
 #include "pager.h"
-#include "smartfiles.h"
 
 typedef struct
 {

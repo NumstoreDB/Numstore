@@ -21,10 +21,10 @@
 #ifndef ROPE_H
 #define ROPE_H
 
-#include "compile_config.h" // pgno
-#include "node_updates.h"   // node_updates
-#include "pager.h"          // page_h
-#include "pager.h"          // pager
+#include "node_updates.h" // node_updates
+#include "numstore.h"     // pgno
+#include "pager.h"        // page_h
+#include "pager.h"        // pager
 
 /******************************************************************************
  * SECTION: Validation

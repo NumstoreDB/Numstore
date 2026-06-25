@@ -14,7 +14,7 @@
 
 #include "node_updates.h"
 
-#include "compile_config.h"
+#include "numstore.h"
 #include "page.h"
 
 #ifdef TESTING

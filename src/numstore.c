@@ -32,7 +32,7 @@
 nsdb_t *
 nsdb_open (const char *path)
 {
-  struct nshandle *ret = nsh_open (path);
+  struct nsdb *ret = nsh_open (path);
 
   if (ret == NULL)
   {
@@ -45,13 +45,13 @@ nsdb_open (const char *path)
 int
 nsdb_perror (nsdb_t *ns, const char *prefix)
 {
-  return nsh_perror ((struct nshandle *)ns, prefix);
+  return nsh_perror ((struct nsdb *)ns, prefix);
 }
 
 const char *
 nsdb_strerror (nsdb_t *ns)
 {
-  return nsh_strerror ((struct nshandle *)ns);
+  return nsh_strerror ((struct nsdb *)ns);
 }
 
 int
@@ -63,13 +63,13 @@ nsdb_cleanup (const char *path)
 int
 nsdb_close (nsdb_t *ns)
 {
-  return nsh_close ((struct nshandle *)ns);
+  return nsh_close ((struct nsdb *)ns);
 }
 
 int
 nsdb_crash (nsdb_t *ns)
 {
-  return nsh_crash ((struct nshandle *)ns);
+  return nsh_crash ((struct nsdb *)ns);
 }
 
 b_size
@@ -89,13 +89,10 @@ nsdb_var_free (nsdb_var_t *var)
 int
 nsdb_begin (nsdb_t *_smf)
 {
-  int ret = nsh_begin ((struct nshandle *)_smf);
+  int ret = nsh_begin ((struct nsdb *)_smf);
   if (ret == 0)
   {
-    i_log_debug (
-        "a BEGIN TXN: %" PRtxid "\n",
-        ((struct nshandle *)_smf)->atx->tid
-    );
+    i_log_debug ("a BEGIN TXN: %" PRtxid "\n", ((struct nsdb *)_smf)->atx->tid);
   }
   return ret;
 }
@@ -103,15 +100,15 @@ nsdb_begin (nsdb_t *_smf)
 int
 nsdb_commit (nsdb_t *_smf)
 {
-  i_log_debug ("COMMIT: %" PRtxid "\n", ((struct nshandle *)_smf)->atx->tid);
-  return nsh_commit ((struct nshandle *)_smf);
+  i_log_debug ("COMMIT: %" PRtxid "\n", ((struct nsdb *)_smf)->atx->tid);
+  return nsh_commit ((struct nsdb *)_smf);
 }
 
 int
 nsdb_rollback (nsdb_t *smf)
 {
-  i_log_debug ("ROLLBACK: %" PRtxid "\n", ((struct nshandle *)smf)->atx->tid);
-  return nsh_rollback ((struct nshandle *)smf);
+  i_log_debug ("ROLLBACK: %" PRtxid "\n", ((struct nsdb *)smf)->atx->tid);
+  return nsh_rollback ((struct nsdb *)smf);
 }
 
 /******************************************************************************
@@ -120,7 +117,7 @@ nsdb_rollback (nsdb_t *smf)
 
 static struct variable *
 nsdb_get (
-    struct nshandle    *db,
+    struct nsdb        *db,
     struct chunk_alloc *alloc,
     struct string       vname,
     error              *e
@@ -179,7 +176,7 @@ failed:
 
 HEADER_FUNC int
 nsdb_get_if_exists (
-    struct nshandle    *db,
+    struct nsdb        *db,
     struct chunk_alloc *alloc,
     struct string       vname,
     struct variable   **dest,
@@ -247,7 +244,7 @@ failed:
 
 static int
 nsdb_create (
-    struct nshandle    *db,
+    struct nsdb        *db,
     struct chunk_alloc *alloc,
     struct string       vname,
     struct type         dtype,
@@ -297,7 +294,7 @@ failed:
  ******************************************************************************/
 
 static err_t
-nsdb_delete (struct nshandle *db, struct string vname, error *e)
+nsdb_delete (struct nsdb *db, struct string vname, error *e)
 {
   struct txn auto_txn;
 
@@ -344,7 +341,7 @@ failed:
 
 HEADER_FUNC sb_size
 nsdb_len (
-    struct nshandle    *db,
+    struct nsdb        *db,
     struct chunk_alloc *alloc,
     const char         *name,
     error              *e
@@ -413,7 +410,7 @@ failed:
 
 static sb_size
 nsdb_insert (
-    struct nshandle    *db,
+    struct nsdb        *db,
     struct variable    *var,
     struct chunk_alloc *alloc,
     const void         *src,
@@ -542,12 +539,11 @@ failed:
 
 static sb_size
 nsdb_read (
-    struct nshandle    *db,
-    struct variable    *var,
-    struct chunk_alloc *alloc,
-    void               *dest,
-    struct user_stride  ustr,
-    error              *e
+    struct nsdb        *db,    // The database handle
+    struct read_query  *query, // The query that got parsed
+    struct chunk_alloc *alloc, // Where to allocate stuff
+    void               *dest,  // Destination buffer
+    error              *e      // Error pointer
 )
 {
   sb_size                  ret;           // Return value
@@ -568,40 +564,54 @@ nsdb_read (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->vname,
+        .vname = query->name,
         .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
-
-    // Type check
-    if (!type_equal (var->dtype, gparams.dest.dtype))
-    {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
-      goto failed_rollback;
-    }
   }
 
   // Resolve sizes
   {
+    // Size of each variable
     tsize = type_byte_size (gparams.dest.dtype);
-    len   = gparams.dest.nbytes;
 
+    // Total size in bytes of the variable
+    len = gparams.dest.nbytes;
+
+    // A consistent database has this be a multiple of tsize
     if (len % tsize != 0)
     {
       error_causef (
           e,
           ERR_CORRUPT,
           "Variable: %.*s has invalid byte size",
-          strfmt (&var->vname)
+          strfmt (&query->name)
       );
       goto failed_rollback;
     }
-
     len /= tsize;
 
-    if (stride_resolve (&stride, ustr, len, e))
+    // Resolve length based on the stride
+    if (stride_resolve (&stride, query->ustr, len, e))
     {
       goto failed_rollback;
+    }
+
+    // Check limit
+    if (query->limit > 0)
+    {
+      if (query->blimit)
+      {
+        stride.nelems = query->limit / tsize;
+      }
+      else
+      {
+        stride.nelems = query->limit;
+      }
+    }
+    else
+    {
+      ASSERT (!query->blimit);
     }
 
     // Initialize the output buffer
@@ -627,16 +637,16 @@ nsdb_read (
       " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
       " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->vname),
+      strfmt (&query->name),
       tsize,
       len,
       gparams.dest.nbytes,
-      ustr.present & START_PRESENT ? ustr.start : 0,
-      ustr.present & STEP_PRESENT ? ustr.step : 0,
-      ustr.present & STOP_PRESENT ? ustr.stop : 0,
-      ustr.present & START_PRESENT ? tsize * ustr.start : 0,
-      ustr.present & STEP_PRESENT ? tsize * ustr.step : 0,
-      ustr.present & STOP_PRESENT ? tsize * ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? query->ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? tsize * query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? tsize * query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? tsize * query->ustr.stop : 0,
       stride.start,
       stride.stride,
       stride.nelems,
@@ -679,12 +689,11 @@ failed:
 
 static sb_size
 nsdb_remove (
-    struct nshandle    *db,
-    struct variable    *var,
-    struct chunk_alloc *alloc,
-    void               *dest,
-    struct user_stride  ustr,
-    error              *e
+    struct nsdb         *db,
+    struct remove_query *query,
+    struct chunk_alloc  *alloc,
+    void                *dest,
+    error               *e
 )
 {
   sb_size                     ret;           // Return value
@@ -707,45 +716,60 @@ nsdb_remove (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->vname,
+        .vname = query->name,
         .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
-
-    // Type check
-    if (!type_equal (var->dtype, gparams.dest.dtype))
-    {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
-      goto failed_rollback;
-    }
   }
 
   // Resolve sizes
   {
+    // Size of each variable
     tsize = type_byte_size (gparams.dest.dtype);
-    len   = gparams.dest.nbytes;
 
+    // Total size in bytes of the variable
+    len = gparams.dest.nbytes;
+
+    // A consistent database has this be a multiple of tsize
     if (len % tsize != 0)
     {
       error_causef (
           e,
           ERR_CORRUPT,
           "Variable: %.*s has invalid byte size",
-          strfmt (&var->vname)
+          strfmt (&query->name)
       );
       goto failed_rollback;
     }
-
     len /= tsize;
 
-    if (stride_resolve (&stride, ustr, len, e))
+    // Resolve length based on the stride
+    if (stride_resolve (&stride, query->ustr, len, e))
     {
       goto failed_rollback;
     }
 
+    // Check limit
+    if (query->limit > 0)
+    {
+      if (query->blimit)
+      {
+        stride.nelems = query->limit / tsize;
+      }
+      else
+      {
+        stride.nelems = query->limit;
+      }
+    }
+    else
+    {
+      ASSERT (!query->blimit);
+    }
+
+    // Initialize the output buffer
     if (dest)
     {
-      stream_obuf_init (&_output, &ctx, dest, tsize * stride.nelems * len);
+      stream_obuf_init (&_output, &ctx, dest, stride.nelems * tsize);
       output = &_output;
     }
   }
@@ -765,16 +789,16 @@ nsdb_remove (
       " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
       " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->vname),
+      strfmt (&query->name),
       tsize,
       len,
       gparams.dest.nbytes,
-      ustr.present & START_PRESENT ? ustr.start : 0,
-      ustr.present & STEP_PRESENT ? ustr.step : 0,
-      ustr.present & STOP_PRESENT ? ustr.stop : 0,
-      ustr.present & START_PRESENT ? tsize * ustr.start : 0,
-      ustr.present & STEP_PRESENT ? tsize * ustr.step : 0,
-      ustr.present & STOP_PRESENT ? tsize * ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? query->ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? tsize * query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? tsize * query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? tsize * query->ustr.stop : 0,
       stride.start,
       stride.stride,
       stride.nelems,
@@ -833,11 +857,10 @@ failed:
 
 static sb_size
 nsdb_write (
-    struct nshandle    *db,
-    struct variable    *var,
+    struct nsdb        *db,
+    struct write_query *query,
     struct chunk_alloc *alloc,
     const void         *src,
-    struct user_stride  ustr,
     error              *e
 )
 {
@@ -859,40 +882,56 @@ nsdb_write (
     gparams = (struct ns_var_get_params){
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = var->vname,
+        .vname = query->name,
         .alloc = alloc,
     };
     WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
-
-    // Type check
-    if (!type_equal (var->dtype, gparams.dest.dtype))
-    {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Conflicting types on insert");
-      goto failed_rollback;
-    }
   }
 
   // Resolve sizes
   {
+    // Size of each variable
     tsize = type_byte_size (gparams.dest.dtype);
-    len   = gparams.dest.nbytes;
 
+    // Total size in bytes of the variable
+    len = gparams.dest.nbytes;
+
+    // A consistent database has this be a multiple of tsize
     if (len % tsize != 0)
     {
       error_causef (
           e,
           ERR_CORRUPT,
           "Variable: %.*s has invalid byte size",
-          strfmt (&var->vname)
+          strfmt (&query->name)
       );
       goto failed_rollback;
     }
-
     len /= tsize;
 
-    if (stride_resolve (&stride, ustr, len, e))
+    // Resolve length based on the stride
+    if (stride_resolve (&stride, query->ustr, len, e))
     {
       goto failed_rollback;
+    }
+
+    // Check limit
+    if (query->limit > 0)
+    {
+      if (query->blimit)
+      {
+        // byte limit
+        stride.nelems = query->limit / tsize;
+      }
+      else
+      {
+        // element limit
+        stride.nelems = query->limit;
+      }
+    }
+    else
+    {
+      ASSERT (!query->blimit);
     }
 
     stream_ibuf_init (&_input, &ctx, src, stride.nelems * tsize);
@@ -913,16 +952,16 @@ nsdb_write (
       " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
       " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
-      strfmt (&var->vname),
+      strfmt (&query->name),
       tsize,
       len,
       gparams.dest.nbytes,
-      ustr.present & START_PRESENT ? ustr.start : 0,
-      ustr.present & STEP_PRESENT ? ustr.step : 0,
-      ustr.present & STOP_PRESENT ? ustr.stop : 0,
-      ustr.present & START_PRESENT ? tsize * ustr.start : 0,
-      ustr.present & STEP_PRESENT ? tsize * ustr.step : 0,
-      ustr.present & STOP_PRESENT ? tsize * ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? query->ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? tsize * query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? tsize * query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? tsize * query->ustr.stop : 0,
       stride.start,
       stride.stride,
       stride.nelems,
@@ -965,11 +1004,11 @@ failed:
 
 static sb_size
 _nsdb_execute (
-    struct nshandle *ns,
-    const char      *query,
-    u32              len,
-    void            *data,
-    error           *e
+    struct nsdb *ns,
+    const char  *query,
+    u32          len,
+    void        *data,
+    error       *e
 )
 {
   struct chunk_alloc alc;
@@ -988,13 +1027,7 @@ _nsdb_execute (
   {
     case QT_READ:
     {
-      var = nsdb_get (ns, &alc, q.read.name, e);
-      if (var == NULL)
-      {
-        goto failed;
-      }
-
-      ret = nsdb_read (ns, var, &alc, data, q.read.ustr, e);
+      ret = nsdb_read (ns, &q.read, &alc, data, e);
       if (ret < 0)
       {
         goto failed;
@@ -1004,13 +1037,7 @@ _nsdb_execute (
     }
     case QT_WRITE:
     {
-      var = nsdb_get (ns, &alc, q.write.name, e);
-      if (var == NULL)
-      {
-        goto failed;
-      }
-
-      ret = nsdb_write (ns, var, &alc, data, q.write.ustr, e);
+      ret = nsdb_write (ns, &q.write, &alc, data, e);
       if (ret < 0)
       {
         goto failed;
@@ -1020,12 +1047,7 @@ _nsdb_execute (
     }
     case QT_REMOVE:
     {
-      var = nsdb_get (ns, &alc, q.remove.name, e);
-      if (var == NULL)
-      {
-        goto failed;
-      }
-      ret = nsdb_remove (ns, var, &alc, data, q.remove.ustr, e);
+      ret = nsdb_remove (ns, &q.remove, &alc, data, e);
       if (ret < 0)
       {
         goto failed;
@@ -1170,11 +1192,10 @@ failed:
 }
 
 sb_size
-nsdb_execute (nsdb_t *ns, const char *query, void *data, ...)
+nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
 {
-  struct nshandle *nh = (struct nshandle *)ns;
-  nh->e.cause_code    = 0;
-  nh->e.cmlen         = 0;
+  nh->e.cause_code = 0;
+  nh->e.cmlen      = 0;
 
   char    stackbuf[2048];
   char   *buf = stackbuf;

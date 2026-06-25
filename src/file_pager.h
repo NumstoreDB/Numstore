@@ -23,9 +23,9 @@
 #ifndef FILE_PAGER_H
 #define FILE_PAGER_H
 
-#include "compile_config.h" // pgno ...etc
-#include "error.h"          // error
-#include "stdtypes.h"       // u32
+#include "error.h"    // error
+#include "numstore.h" // pgno ...etc
+#include "stdtypes.h" // u32
 
 /******************************************************************************
  * SECTION: File Pager

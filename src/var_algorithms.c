@@ -14,8 +14,8 @@
 
 #include "var_algorithms.h"
 
-#include "compile_config.h"
 #include "error.h"
+#include "numstore.h"
 #include "page.h"
 #include "page_h.h"
 #include "pager.h"

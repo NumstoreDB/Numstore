@@ -18,11 +18,11 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
-#include "compile_config.h"
 #include "dirty_page_table.h"
 #include "error.h"
 #include "file_pager.h"
 #include "lock_table.h"
+#include "numstore.h"
 #include "page.h"
 #include "pager.h"
 #include "txn_table.h"

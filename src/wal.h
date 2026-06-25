@@ -15,11 +15,11 @@
 #ifndef WAL_H
 #define WAL_H
 
-#include "collections.h"    // cbuffer
-#include "compile_config.h" // lsn
-#include "page.h"           // fsm_page
-#include "page_h.h"         // page_h
-#include "txn_table.h"      // txn
+#include "collections.h" // cbuffer
+#include "numstore.h"    // lsn
+#include "page.h"        // fsm_page
+#include "page_h.h"      // page_h
+#include "txn_table.h"   // txn
 
 /******************************************************************************
  * SECTION: Wal Input Stream

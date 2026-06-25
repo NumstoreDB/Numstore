@@ -12,8 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "numstore.h"
 #include "pager.h"
-#include "smartfiles.h"
 
 #ifndef NTEST
 
