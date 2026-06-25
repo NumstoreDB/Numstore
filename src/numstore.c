@@ -918,6 +918,7 @@ nsdb_execute_in_console (
     error              *e
 )
 {
+  i_log_query (LOG_INFO, q);
   return 0;
 }
 

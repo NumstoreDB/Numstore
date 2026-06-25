@@ -20,11 +20,15 @@
 
 #include "alloc.h"
 #include "collections.h"
+#include "compiler.h"
 #include "error.h"
+#include "nshandle.h"
 
 #define REPL_PREFIX "numstore> "
 #define CONT_PREFIX "      ... "
 #define INITIAL_CAP 128
+
+static struct nsdb *db;
 
 enum cmd_status
 {
@@ -37,8 +41,24 @@ static enum cmd_status
 handle_command (const char *command, error *e)
 {
   struct chunk_alloc alloc;
+  struct query       q;
   chunk_alloc_create_default (&alloc);
 
+  // compile the query
+  if (compile_query (&q, command, &alloc, e))
+  {
+    chunk_alloc_free_all (&alloc);
+    return CMD_FAILURE;
+  }
+
+  // Execute the query
+  if (nsdb_execute_in_console (db, &q, &alloc, e) < 0)
+  {
+    chunk_alloc_free_all (&alloc);
+    return CMD_FAILURE;
+  }
+
+  chunk_alloc_free_all (&alloc);
   return CMD_SUCCESS;
 }
 
