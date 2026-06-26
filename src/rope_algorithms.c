@@ -18,6 +18,8 @@
 #include "node_updates.h"
 #include "page.h"
 #include "pager.h"
+#include "serial.h"
+#include "testing/testing.h"
 
 #ifdef TESTING
 #  include "testing/page_fixture.h"
@@ -699,9 +701,7 @@ ns_insert (struct ns_insert_params *params, error *e)
     goto failed;
   }
 
-  const b_size total_to_write = params->size * params->nelem;
-
-  while (params->nelem == 0 || total_written < total_to_write)
+  while (params->bytes == 0 || total_written < params->bytes)
   {
     p_size avail = dl_avail (page_h_ro (&cur));
 
@@ -733,13 +733,14 @@ ns_insert (struct ns_insert_params *params, error *e)
     }
 
     p_size next_amount;
-    if (params->nelem == 0)
+    if (params->bytes == 0)
     {
       next_amount = avail;
     }
     else
     {
-      next_amount = MIN (avail, (p_size)(total_to_write - total_written));
+      ASSERT (params->bytes >= total_written);
+      next_amount = MIN (avail, (p_size)(params->bytes - total_written));
     }
 
     i32 written = stream_bread (
@@ -883,6 +884,115 @@ failed:
 
   return error_trace (e);
 }
+
+#ifdef TESTING
+TEST (ns_insert)
+{
+  struct pgr_fixture f;
+  struct txn         tx;
+  pgr_fixture_create (&f);
+
+  TEST_CASE ("Smoke Test")
+  {
+    u32                    buffer[2048];
+    struct stream          input;
+    struct stream_ibuf_ctx ctx;
+    stream_ibuf_init (&input, &ctx, buffer, sizeof (buffer));
+
+    struct ns_insert_params params = {
+        .p     = f.p,
+        .src   = &input,
+        .tx    = &tx,
+        .root  = PGNO_NULL,
+        .bofst = 0,
+        .bytes = 40,
+    };
+
+    sb_size nelems = ns_insert (&params, &f.e);
+
+    test_assert_int_equal (nelems, 40);
+    test_assert (params.root != PGNO_NULL);
+  }
+
+  TEST_CASE ("Insert twice")
+  {
+    u32                    buffer[2048];
+    struct stream          input;
+    struct stream_ibuf_ctx ctx;
+    stream_ibuf_init (&input, &ctx, buffer, sizeof (buffer));
+
+    struct ns_insert_params params = {
+        .p     = f.p,
+        .src   = &input,
+        .tx    = &tx,
+        .root  = PGNO_NULL,
+        .bofst = 0,
+        .bytes = 40,
+    };
+
+    sb_size nelems = ns_insert (&params, &f.e);
+
+    test_assert_int_equal (nelems, 40);
+    test_assert (params.root != PGNO_NULL);
+
+    nelems = ns_insert (&params, &f.e);
+
+    test_assert_int_equal (nelems, 40);
+    test_assert (params.root != PGNO_NULL);
+  }
+
+  /*-----------------------------------------------------------------------------
+   * SUBSECTION: Testing that sizeof(stream) and provided bytes behaves
+   *----------------------------------------------------------------------------*/
+
+#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected) \
+    do                                                            \
+    {                                                             \
+      TEST_CASE (                                                 \
+          "Bytes: %d Stream: %d => %d",                           \
+          byte_size,                                              \
+          stream_size,                                            \
+          expected                                                \
+      )                                                           \
+      {                                                           \
+        u8                     buffer[4096];                      \
+        struct stream          input;                             \
+        struct stream_ibuf_ctx ctx;                               \
+        stream_ibuf_init (&input, &ctx, buffer, stream_size);     \
+                                                                  \
+        struct ns_insert_params params = {                        \
+            .p     = f.p,                                         \
+            .src   = &input,                                      \
+            .tx    = &tx,                                         \
+            .root  = PGNO_NULL,                                   \
+            .bofst = 0,                                           \
+            .bytes = byte_size,                                   \
+        };                                                        \
+                                                                  \
+        sb_size nelems = ns_insert (&params, &f.e);               \
+                                                                  \
+        test_assert_int_equal (nelems, expected);                 \
+        if (expected > 0)                                         \
+        {                                                         \
+          test_assert (params.root != PGNO_NULL);                 \
+        }                                                         \
+        else                                                      \
+        {                                                         \
+          test_assert (params.root == PGNO_NULL);                 \
+        }                                                         \
+      }                                                           \
+    }                                                             \
+    while (0)
+
+  BYTE_STREAM_SIZE_TEST (0, 2048, 2048);
+  BYTE_STREAM_SIZE_TEST (2048, 0, 2048);
+  BYTE_STREAM_SIZE_TEST (2048, 2048, 2048);
+  BYTE_STREAM_SIZE_TEST (2048, 4096, 2048);
+  BYTE_STREAM_SIZE_TEST (4096, 2048, 2048);
+
+  pgr_fixture_teardown (&f);
+}
+#endif
 
 /******************************************************************************
  * SECTION: ns_read

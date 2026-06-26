@@ -18,9 +18,8 @@
 #include "collections.h" // llnode
 #include "error.h"       // error
 #include "numstore.h"    // pgno ...etc
-#include "platform.h"
-#include "serial.h"   // string
-#include "stdtypes.h" // u32 ...etc
+#include "serial.h"      // string
+#include "stdtypes.h"    // u32 ...etc
 
 /******************************************************************************
  * SECTION: Type Data structure
@@ -90,16 +89,13 @@ struct type
   };
 };
 
-err_t type_validate (const struct type *t, error *e);
-i32   type_snprintf (char *str, u32 size, struct type *t);
-char *type_tostr (struct type *t);
-u32   type_byte_size (const struct type *t);
-
-// String generation
-u32  type_get_string_size (const struct type *t);
-void type_generate_string (char *dest, const struct type *t);
-
-// Serialization
+// Core api
+err_t        type_validate (const struct type *t, error *e);
+i32          type_snprintf (char *str, u32 size, struct type *t);
+char        *type_tostr (struct type *t);
+u32          type_byte_size (const struct type *t);
+u32          type_get_string_size (const struct type *t);
+void         type_generate_string (char *dest, const struct type *t);
 u32          type_get_serial_size (const struct type *t);
 void         type_serialize (struct serializer *dest, const struct type *src);
 struct type *type_deserialize (
@@ -107,8 +103,6 @@ struct type *type_deserialize (
     struct chunk_alloc  *alloc,
     error               *e
 );
-
-// Random
 struct type *type_random (struct chunk_alloc *alloc, u32 depth, error *e);
 bool         type_equal (const struct type *left, const struct type *right);
 err_t        i_log_type (struct type *t, error *e);
@@ -121,10 +115,12 @@ void type_print_data (
     u32                max_elems
 );
 err_t type_stream_printer_init (struct stream *s, struct type *t, error *e);
-struct type *type_malloc_copy (struct type *t, struct malloc_plan *plan);
 
-////////////////////////////////////////////////////////////
-/// KVT List
+/******************************************************************************
+ * SECTION: Key Value Type List
+ * ----------------------------------------------------------------------------
+ * @brief A list of string key type value
+ ******************************************************************************/
 
 struct kvt_list
 {
@@ -156,16 +152,16 @@ void kvlb_create (
     struct chunk_alloc      *temp,
     struct chunk_alloc      *persistent
 );
-
 err_t
 kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
-
 err_t kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
-
 err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
 
-////////////////////////////////////////////////////////////
-/// Struct
+/******************************************************************************
+ * SECTION: Smaller type functions
+ * ----------------------------------------------------------------------------
+ * @brief More functions for structs unions primitives
+ ******************************************************************************/
 
 err_t struct_t_create (
     struct struct_t    *dest,
@@ -173,33 +169,7 @@ err_t struct_t_create (
     struct chunk_alloc *dalloc,
     error              *e
 );
-
-err_t struct_t_validate (const struct struct_t *t, error *e);
-
-i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st);
-
-u32 struct_t_byte_size (const struct struct_t *t);
-
-u32 struct_t_get_serial_size (const struct struct_t *t);
-
-void struct_t_serialize (struct serializer *dest, const struct struct_t *src);
-
-err_t struct_t_deserialize (
-    struct struct_t     *dest,
-    struct deserializer *src,
-    struct chunk_alloc  *a,
-    error               *e
-);
-
-err_t struct_t_random (
-    struct struct_t    *st,
-    struct chunk_alloc *alloc,
-    u32                 depth,
-    error              *e
-);
-
 bool struct_t_equal (const struct struct_t *left, const struct struct_t *right);
-
 struct type *struct_t_resolve_key (
     t_size          *offset,
     struct struct_t *t,
@@ -207,29 +177,8 @@ struct type *struct_t_resolve_key (
     error           *e
 );
 
-////////////////////////////////////////////////////////////
-/// Prim
-
-const char *prim_to_str (enum prim_t p);
-
-err_t prim_t_validate (const enum prim_t *t, error *e);
-
-i32 prim_t_snprintf (char *str, u32 size, const enum prim_t *p);
-
-u32 prim_t_byte_size (const enum prim_t *t);
-
-void prim_t_serialize (struct serializer *dest, const enum prim_t *src);
-
-err_t
-prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e);
-
-enum prim_t prim_t_random (void);
-
-enum prim_t strtoprim (const char *text, u32 len);
-
-////////////////////////////////////////////////////////////
-/// Union
-
+struct type *
+union_t_resolve_key (struct union_t *t, struct string key, error *e);
 err_t union_t_create (
     struct union_t     *dest,
     struct kvt_list     list,
@@ -237,64 +186,13 @@ err_t union_t_create (
     error              *e
 );
 
-err_t union_t_validate (const struct union_t *t, error *e);
+enum prim_t strtoprim (const char *text, u32 len);
 
-i32 union_t_snprintf (char *str, u32 size, const struct union_t *p);
-
-u32 union_t_byte_size (const struct union_t *t);
-
-u32 union_t_get_serial_size (const struct union_t *t);
-
-void union_t_serialize (struct serializer *dest, const struct union_t *src);
-
-err_t union_t_deserialize (
-    struct union_t      *dest,
-    struct deserializer *src,
-    struct chunk_alloc  *a,
-    error               *e
-);
-
-err_t union_t_random (
-    struct union_t     *un,
-    struct chunk_alloc *alloc,
-    u32                 depth,
-    error              *e
-);
-
-bool union_t_equal (const struct union_t *left, const struct union_t *right);
-
-struct type *
-union_t_resolve_key (struct union_t *t, struct string key, error *e);
-
-////////////////////////////////////////////////////////////
-/// SARRAY
-
-err_t sarray_t_validate (const struct sarray_t *t, error *e);
-
-i32 sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p);
-
-u32 sarray_t_byte_size (const struct sarray_t *t);
-
-u32 sarray_t_get_serial_size (const struct sarray_t *t);
-
-void
-sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src);
-
-err_t sarray_t_deserialize (
-    struct sarray_t     *persistent,
-    struct deserializer *src,
-    struct chunk_alloc  *a,
-    error               *e
-);
-
-err_t sarray_t_random (
-    struct sarray_t    *sa,
-    struct chunk_alloc *temp,
-    u32                 depth,
-    error              *e
-);
-
-bool sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right);
+/******************************************************************************
+ * SECTION: SArray Builder
+ * ----------------------------------------------------------------------------
+ * @brief A builder for a strict array
+ ******************************************************************************/
 
 struct dim_llnode
 {
@@ -316,16 +214,16 @@ void sab_create (
     struct chunk_alloc    *temp,
     struct chunk_alloc    *persistent
 );
-
 err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
-
 err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
-
 err_t
 sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
 
-////////////////////////////////////////////////////////////
-/// Quick Builders
+/******************************************************************************
+ * SECTION: Rapid Fire builders
+ * ----------------------------------------------------------------------------
+ * @brief Utility constructors for building types on the stack
+ ******************************************************************************/
 
 #define _mk_prim(_p) {.type = T_PRIM, .p = _p}
 HEADER_FUNC struct type
@@ -399,126 +297,6 @@ static struct type TCU64  = _mk_prim (CU64);
 static struct type TCU128 = _mk_prim (CU128);
 
 /******************************************************************************
- * SECTION: Primitive Type macros
- ******************************************************************************/
-
-#define PRIM_INT \
-I8:              \
-case I16:        \
-case I32:        \
-case I64
-
-#define PRIM_UINT \
-U8:               \
-case U16:         \
-case U32:         \
-case U64
-
-#define PRIM_FLOAT \
-F16:               \
-case F32:          \
-case F64:          \
-case F128
-
-#define PRIM_CF \
-CF32:           \
-case CF64:      \
-case CF128:     \
-case CF256
-
-#define PRIM_CI \
-CI16:           \
-case CI32:      \
-case CI64:      \
-case CI128
-
-#define PRIM_CU \
-CU16:           \
-case CU32:      \
-case CU64:      \
-case CU128
-
-HEADER_FUNC bool
-prim_is_int (enum prim_t p)
-{
-  return p >= U8 && p <= I64;
-}
-
-HEADER_FUNC bool
-prim_is_float (enum prim_t p)
-{
-  return p >= F16 && p <= F128;
-}
-
-HEADER_FUNC bool
-prim_is_complex (enum prim_t p)
-{
-  return p >= CF32 && p <= CU128;
-}
-
-#define PRIM_FOR_EACH(func, ...) \
-  do                             \
-  {                              \
-    func (U8, __VA_ARGS__);      \
-    func (U8, __VA_ARGS__);      \
-    func (U16, __VA_ARGS__);     \
-    func (U32, __VA_ARGS__);     \
-    func (U64, __VA_ARGS__);     \
-    func (I8, __VA_ARGS__);      \
-    func (I16, __VA_ARGS__);     \
-    func (I32, __VA_ARGS__);     \
-    func (I64, __VA_ARGS__);     \
-    func (F16, __VA_ARGS__);     \
-    func (F32, __VA_ARGS__);     \
-    func (F64, __VA_ARGS__);     \
-    func (F128, __VA_ARGS__);    \
-    func (CF32, __VA_ARGS__);    \
-    func (CF64, __VA_ARGS__);    \
-    func (CF128, __VA_ARGS__);   \
-    func (CF256, __VA_ARGS__);   \
-    func (CI16, __VA_ARGS__);    \
-    func (CI32, __VA_ARGS__);    \
-    func (CI64, __VA_ARGS__);    \
-    func (CI128, __VA_ARGS__);   \
-    func (CU16, __VA_ARGS__);    \
-    func (CU32, __VA_ARGS__);    \
-    func (CU64, __VA_ARGS__);    \
-    func (CU128, __VA_ARGS__);   \
-  }                              \
-  while (0)
-
-#define PRIM_FOR_EACH_LITERAL(func, ...) \
-  do                                     \
-  {                                      \
-    func ("u8", __VA_ARGS__);            \
-    func ("u8", __VA_ARGS__);            \
-    func ("u16", __VA_ARGS__);           \
-    func ("u32", __VA_ARGS__);           \
-    func ("u64", __VA_ARGS__);           \
-    func ("i8", __VA_ARGS__);            \
-    func ("i16", __VA_ARGS__);           \
-    func ("i32", __VA_ARGS__);           \
-    func ("i64", __VA_ARGS__);           \
-    func ("f16", __VA_ARGS__);           \
-    func ("f32", __VA_ARGS__);           \
-    func ("f64", __VA_ARGS__);           \
-    func ("f128", __VA_ARGS__);          \
-    func ("cf32", __VA_ARGS__);          \
-    func ("cf64", __VA_ARGS__);          \
-    func ("cf128", __VA_ARGS__);         \
-    func ("cf256", __VA_ARGS__);         \
-    func ("ci16", __VA_ARGS__);          \
-    func ("ci32", __VA_ARGS__);          \
-    func ("ci64", __VA_ARGS__);          \
-    func ("ci128", __VA_ARGS__);         \
-    func ("cu16", __VA_ARGS__);          \
-    func ("cu32", __VA_ARGS__);          \
-    func ("cu64", __VA_ARGS__);          \
-    func ("cu128", __VA_ARGS__);         \
-  }                                      \
-  while (0)
-
-/******************************************************************************
  * SECTION: Type Accessor
  * ----------------------------------------------------------------------------
  * @brief How to access an individual type
@@ -548,19 +326,12 @@ bool type_accessor_equal (
     const struct type_accessor left,
     const struct type_accessor right
 );
-
 struct type *ta_subtype (
     struct type          *reftype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
     error                *e
 );
-
-bool user_stride_equal (
-    const struct user_stride *left,
-    const struct user_stride *right
-);
-
 struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
     struct type          *reftype,
@@ -622,13 +393,11 @@ void rb_create (
     struct chunk_alloc   *temp,
     struct chunk_alloc   *persistent
 );
-
 err_t rb_accept_stride (
     struct range_builder *rb,
     struct user_stride    stride,
     error                *e
 );
-
 err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e);
 
 struct type_accessor_builder
@@ -647,21 +416,17 @@ void tab_create (
     struct chunk_alloc           *temp,
     struct chunk_alloc           *persistent
 );
-
 err_t tab_accept_select (
     struct type_accessor_builder *builder,
     struct string                 key,
     error                        *e
 );
-
 err_t tab_accept_stride (
     struct type_accessor_builder *builder,
     struct user_stride            stride,
     error                        *e
 );
-
 err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
-
 err_t tab_build (
     struct type_accessor         *dest,
     struct type_accessor_builder *builder,
@@ -698,8 +463,7 @@ struct type_ref
   };
 };
 
-bool type_ref_equal (struct type_ref left, const struct type_ref right);
-
+bool         type_ref_equal (struct type_ref left, const struct type_ref right);
 struct type *tr_construct (
     struct type        *reftype,
     struct type_ref    *tr,
@@ -772,16 +536,13 @@ void kvrlb_create (
     struct chunk_alloc          *temp,
     struct chunk_alloc          *persistent
 );
-
 err_t
 kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
-
 err_t kvrlb_accept_type (
     struct kvt_ref_list_builder *eb,
     struct type_ref              t,
     error                       *e
 );
-
 err_t kvrlb_build (
     struct kvt_ref_list         *dest,
     struct kvt_ref_list_builder *eb,
@@ -806,13 +567,12 @@ err_t subtype_create (
     struct type_accessor ta,
     error               *e
 );
-
 bool subtype_equal (const struct subtype *left, const struct subtype *right);
-
 struct type *subtype_get_type (
     struct type          *stype,
     struct type_accessor *ta,
     struct chunk_alloc   *alloc,
     error                *e
 );
+
 #endif // TYPES_H

@@ -541,10 +541,20 @@ stream_ibuf_pull (
 {
   struct stream_ibuf_ctx *ctx = (struct stream_ibuf_ctx *)vctx;
 
-  const u32 avail = ctx->size - ctx->pos;
-  const u32 want  = size * n;
+  u32 avail;
 
-  const u32 next = MIN (avail, want);
+  if (ctx->size == 0)
+  {
+    avail = size * n;
+  }
+  else
+  {
+    avail = ctx->size - ctx->pos;
+  }
+
+  u32 want = size * n;
+
+  u32 next = MIN (avail, want);
 
   if (next == 0)
   {
@@ -573,10 +583,20 @@ stream_obuf_push (
 {
   struct stream_obuf_ctx *ctx = (struct stream_obuf_ctx *)vctx;
 
-  const u32 avail = ctx->cap - ctx->pos;
-  const u32 want  = size * n;
+  u32 avail;
 
-  const u32 next = MIN (avail, want);
+  if (ctx->cap == 0)
+  {
+    avail = size * n;
+  }
+  else
+  {
+    avail = ctx->cap - ctx->pos;
+  }
+
+  u32 want = size * n;
+
+  u32 next = MIN (avail, want);
 
   if (next == 0)
   {

@@ -53,8 +53,6 @@ struct nsdb
   error             e;
 };
 
-// Testing
-
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Testing Utilities
  * @brief Utilities used mostly for testing and fault injection
@@ -114,7 +112,6 @@ sb_size nsdb_execute_on_buffer (
     void               *data,
     struct chunk_alloc *alc
 );
-
 err_t nsdb_execute_in_console (
     struct nsdb        *ns,
     struct query       *q,
@@ -124,7 +121,7 @@ err_t nsdb_execute_in_console (
 /******************************************************************************
  * SECTION: Query literal routines
  * ----------------------------------------------------------------------------
- * @brief
+ * @brief Individual actions you can take on a numstore database
  ******************************************************************************/
 
 int nsdb_create (
@@ -133,49 +130,41 @@ int nsdb_create (
     struct string       vname,
     struct type         dtype
 );
-
 err_t nsdb_delete (struct nsdb *db, struct string vname);
-
 err_t nsdb_get (
     struct nsdb        *db,
     struct get_query   *query,
     struct chunk_alloc *alloc,
     struct variable   **dest
 );
-
 err_t nsdb_get_and_print (
     struct nsdb        *db,
     struct get_query   *query,
     struct chunk_alloc *alloc
 );
-
 sb_size nsdb_insert (
     struct nsdb         *db,
     struct insert_query *query,
     struct chunk_alloc  *alloc,
     struct stream       *src
 );
-
 sb_size nsdb_read (
     struct nsdb        *db,
     struct read_query  *query,
     struct chunk_alloc *alloc,
     struct stream      *dest
 );
-
 sb_size nsdb_read_and_print (
     struct nsdb        *db,
     struct read_query  *query,
     struct chunk_alloc *alloc
 );
-
 sb_size nsdb_write (
     struct nsdb        *db,
     struct write_query *query,
     struct chunk_alloc *alloc,
     struct stream      *src
 );
-
 sb_size nsdb_remove (
     struct nsdb         *db,
     struct remove_query *query,

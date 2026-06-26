@@ -112,8 +112,6 @@ err_t rand_varname_different_hash (
     struct chunk_alloc *alloc,
     error              *e
 );
-struct variable *
-variable_malloc_copy (struct variable *v, struct malloc_plan *plan);
 
 HEADER_FUNC b_size
 var_resolve_index (struct variable *v, sb_size bofst)

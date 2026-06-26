@@ -657,6 +657,23 @@ TEST (randi64e)
 }
 #endif
 
+f32
+randf (void)
+{
+  return (f32)rand () / (f32)RAND_MAX;
+}
+
+#ifndef NTEST
+TEST (randf)
+{
+  for (int i = 0; i < 1000; ++i)
+  {
+    f32 f = randf ();
+    test_assert (f >= 0 && f <= 1);
+  }
+}
+#endif
+
 err_t
 rand_str (
     struct string      *dest,

@@ -322,24 +322,3 @@ TEST (rand_varname_different_hash)
   chunk_alloc_free_all (&alloc);
 }
 #endif
-
-struct variable *
-variable_malloc_copy (struct variable *v, struct malloc_plan *plan)
-{
-  bool active = plan->mode == MP_ALLOCING;
-
-  struct variable *ret = malloc_plan_memcpy (plan, v, sizeof (struct variable));
-
-  if (active)
-  {
-    ret->dtype = type_malloc_copy (ret->dtype, plan);
-  }
-
-  if (active)
-  {
-    ret->vname.data =
-        malloc_plan_memcpy (plan, ret->vname.data, ret->vname.len);
-  }
-
-  return ret;
-}
