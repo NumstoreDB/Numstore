@@ -83,11 +83,6 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
 
   ret = nsdb_execute_on_buffer (nh, &q, data, &alloc);
 
-  if (buf != stackbuf)
-  {
-    i_free (buf);
-  }
-
 theend:
   chunk_alloc_free_all (&alloc);
   return ret;

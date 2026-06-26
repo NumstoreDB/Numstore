@@ -48,7 +48,7 @@ main (int argc, char *argv[])
     start_enabled[i] = 1;
   }
 
-  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test");
+  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, "test", 0.01);
 
 #if PLATFORM_WINDOWS
   if (signal (SIGINT, handle_sigint) == SIG_ERR)

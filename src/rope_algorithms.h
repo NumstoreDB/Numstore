@@ -74,14 +74,11 @@ err_t ns_rptree_valid (struct pager *p, pgno rpt_root, b_size nbytes, error *e);
  * @var ns_insert_params::root
  * @brief Root page of the target tree (updated in place if root changes)
  *
- * @var ns_insert_params::size
- * @brief Element size in bytes
- *
  * @var ns_insert_params::bofst
  * @brief Byte offset at which to begin inserting
  *
- * @var ns_insert_params::nelem
- * @brief Number of elements to insert (0 = consume src until exhausted)
+ * @var ns_insert_params::bytes
+ * @brief Number of bytes to insert (0 = consume src until exhausted)
  *
  */
 struct ns_insert_params
@@ -90,9 +87,8 @@ struct ns_insert_params
   struct stream *src;
   struct txn    *tx;
   pgno           root;
-  b_size         size;
   b_size         bofst;
-  b_size         nelem;
+  b_size         bytes;
 };
 
 /**

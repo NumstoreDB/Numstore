@@ -19,7 +19,6 @@
 #include "error.h"
 #include "numstore.h" // pgno ...etc
 #include "os.h"
-#include "platform.h"
 
 #ifdef TESTING
 #  include "testing/testing.h"

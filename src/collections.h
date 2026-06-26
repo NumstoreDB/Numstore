@@ -256,10 +256,12 @@ struct multi_user_stride
   })
 
 bool ustride_equal (struct user_stride left, struct user_stride right);
-
+bool user_stride_equal (
+    const struct user_stride *left,
+    const struct user_stride *right
+);
 void
 stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
-
 err_t stride_resolve (
     struct stride     *dest,
     struct user_stride src,

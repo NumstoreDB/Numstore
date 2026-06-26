@@ -681,7 +681,7 @@ nsdb_insert (
         .tx    = db->atx,
         .root  = gparams.dest.rpt_root,
         .bofst = bofst,
-        .nelem = query->len,
+        .bytes = query->len * tsize,
     };
     ret = ns_insert (&iparams, &db->e);
     if (ret != (sb_size)(query->len * tsize))

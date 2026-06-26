@@ -36,6 +36,243 @@ DEFINE_DBG_ASSERT (struct type, valid_type, t, {
   ASSERT (type_validate (t, NULL) == SUCCESS);
 })
 
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_validate
+ * @brief Validate that a type is sound
+ *----------------------------------------------------------------------------*/
+
+static inline err_t
+prim_t_validate (const enum prim_t *t, error *e)
+{
+  ASSERT (t);
+  if (!(*t <= CU128 && *t >= U8))
+  {
+    return error_causef (
+        e,
+        ERR_INTERP,
+        "invalid prim type %d (valid range %d..%d)",
+        *t,
+        U8,
+        CU128
+    );
+  }
+
+  return SUCCESS;
+}
+
+DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
+  ASSERT (s);
+  error e = error_create ();
+  ASSERT (prim_t_validate (s, &e) == SUCCESS);
+})
+
+#ifdef TESTING
+TEST (prim_t_validate)
+{
+  error err = error_create ();
+
+  // 1.1 happy path – legal value
+  enum prim_t ok = U32;
+  test_assert_int_equal (prim_t_validate (&ok, &err), SUCCESS);
+
+  // 1.2 too‑small → ERR_INTERP
+  enum prim_t bad_lo = (enum prim_t) (U8 - 1);
+  test_assert_int_equal (prim_t_validate (&bad_lo, &err), ERR_INTERP);
+  err.cause_code = SUCCESS;
+
+  // 1.3 too‑large → ERR_INTERP
+  enum prim_t bad_hi = (enum prim_t) (CU128 + 1);
+  test_assert_int_equal (prim_t_validate (&bad_hi, &err), ERR_INTERP);
+  err.cause_code = SUCCESS;
+}
+#endif
+
+DEFINE_DBG_ASSERT (struct struct_t, unchecked_struct_t, s, {
+  ASSERT (s);
+  ASSERT (s->keys);
+  ASSERT (s->types);
+})
+
+static err_t
+struct_t_type_err (const char *msg, error *e)
+{
+  return error_causef (e, ERR_INTERP, "Struct: %s", msg);
+}
+
+static err_t
+struct_t_type_deser (const char *msg, error *e)
+{
+  return error_causef (e, ERR_CORRUPT, "Struct: %s", msg);
+}
+
+static err_t
+struct_t_validate_shallow (const struct struct_t *s, error *e)
+{
+  DBG_ASSERT (unchecked_struct_t, s);
+
+  if (s->len == 0)
+  {
+    return struct_t_type_err ("Keys length must be > 0", e);
+  }
+
+  for (u32 i = 0; i < s->len; ++i)
+  {
+    if (s->keys[i].len == 0)
+    {
+      return struct_t_type_err ("Key length must be > 0", e);
+    }
+    ASSERT (s->keys[i].data);
+  }
+
+  if (!strings_all_unique (s->keys, s->len))
+  {
+    return struct_t_type_err ("Duplicate keys", e);
+  }
+
+  return SUCCESS;
+}
+
+DEFINE_DBG_ASSERT (struct struct_t, valid_struct_t, s, {
+  error e = error_create ();
+  ASSERT (struct_t_validate_shallow (s, &e) == SUCCESS);
+})
+
+static inline err_t
+struct_t_validate (const struct struct_t *s, error *e)
+{
+  WRAP (struct_t_validate_shallow (s, e));
+  {
+    return false;
+  }
+  for (u32 i = 0; i < s->len; ++i)
+  {
+    WRAP (type_validate (s->types[i], e));
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+DEFINE_DBG_ASSERT (struct union_t, unchecked_union_t, s, {
+  ASSERT (s);
+  ASSERT (s->keys);
+  ASSERT (s->types);
+})
+
+static err_t
+union_t_type_err (const char *msg, error *e)
+{
+  return error_causef (e, ERR_INTERP, "Union: %s", msg);
+}
+
+static err_t
+union_t_type_deser (const char *msg, error *e)
+{
+  return error_causef (e, ERR_CORRUPT, "Union: %s", msg);
+}
+
+static err_t
+union_t_validate_shallow (const struct union_t *s, error *e)
+{
+  DBG_ASSERT (unchecked_union_t, s);
+
+  if (s->len == 0)
+  {
+    return union_t_type_err ("Keys length must be > 0", e);
+  }
+
+  for (u32 i = 0; i < s->len; ++i)
+  {
+    if (s->keys[i].len == 0)
+    {
+      return union_t_type_err ("Key length must be > 0", e);
+    }
+    ASSERT (s->keys[i].data);
+  }
+
+  if (!strings_all_unique (s->keys, s->len))
+  {
+    return union_t_type_err ("Duplicate keys", e);
+  }
+
+  return SUCCESS;
+}
+
+DEFINE_DBG_ASSERT (struct union_t, valid_union_t, s, {
+  error e = error_create ();
+  ASSERT (union_t_validate_shallow (s, &e) == SUCCESS);
+})
+
+static err_t
+union_t_validate (const struct union_t *s, error *e)
+{
+  WRAP (union_t_validate_shallow (s, e));
+  {
+    return false;
+  }
+  for (u32 i = 0; i < s->len; ++i)
+  {
+    WRAP (type_validate (s->types[i], e));
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+DEFINE_DBG_ASSERT (struct sarray_t, unchecked_sarray_t, s, {
+  ASSERT (s);
+  ASSERT (s->dims);
+  ASSERT (s->t);
+})
+
+static err_t
+sarray_t_type_err (const char *msg, error *e)
+{
+  return error_causef (e, ERR_INTERP, "Strict Array: %s", msg);
+}
+
+static err_t
+sarray_t_type_deser (const char *msg, error *e)
+{
+  return error_causef (e, ERR_CORRUPT, "Strict Array: %s", msg);
+}
+
+static err_t
+sarray_t_validate_shallow (const struct sarray_t *t, error *e)
+{
+  DBG_ASSERT (unchecked_sarray_t, t);
+  if (t->rank == 0)
+  {
+    return sarray_t_type_err ("Rank must be > 0", e);
+  }
+  for (u32 i = 0; i < t->rank; ++i)
+  {
+    if (t->dims[i] == 0)
+    {
+      return sarray_t_type_err ("dimensions cannot be 0", e);
+    }
+  }
+  return SUCCESS;
+}
+
+static inline err_t
+sarray_t_validate (const struct sarray_t *t, error *e)
+{
+  DBG_ASSERT (unchecked_sarray_t, t);
+
+  WRAP (sarray_t_validate_shallow (t, e));
+  WRAP (type_validate (t->t, e));
+
+  return SUCCESS;
+}
+
+DEFINE_DBG_ASSERT (struct sarray_t, valid_sarray_t, s, {
+  error e = error_create ();
+  ASSERT (sarray_t_validate (s, &e) == SUCCESS);
+})
+
 err_t
 type_validate (const struct type *t, error *e)
 {
@@ -65,6 +302,475 @@ type_validate (const struct type *t, error *e)
     }
   }
 }
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_snprintf
+ * @brief Print a type into a buffer cleanly
+ *----------------------------------------------------------------------------*/
+
+static const char *
+prim_to_str (enum prim_t p)
+{
+  DBG_ASSERT (prim_t, &p);
+  switch (p)
+  {
+    case U8: return "u8";
+    case U16: return "u16";
+    case U32: return "u32";
+    case U64: return "u64";
+
+    case I8: return "i8";
+    case I16: return "i16";
+    case I32: return "i32";
+    case I64: return "i64";
+
+    case F16: return "f16";
+    case F32: return "f32";
+    case F64: return "f64";
+    case F128: return "f128";
+
+    case CF32: return "cf32";
+    case CF64: return "cf64";
+    case CF128: return "cf128";
+    case CF256: return "cf256";
+
+    case CI16: return "ci16";
+    case CI32: return "ci32";
+    case CI64: return "ci64";
+    case CI128: return "ci128";
+
+    case CU16: return "cu16";
+    case CU32: return "cu32";
+    case CU64: return "cu64";
+    case CU128: return "cu128";
+  }
+  UNREACHABLE ();
+  return "";
+}
+
+static i32
+prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
+{
+  DBG_ASSERT (prim_t, p);
+
+  char       *out   = str;
+  u32         avail = size;
+  int         len   = 0;
+  int         n;
+  const char *name = prim_to_str (*p);
+
+  n = snprintf (out, avail, "%s", name);
+  if (n < 0)
+  {
+    return n;
+  }
+  len += n;
+
+  return len;
+}
+
+#ifdef TESTING
+TEST (prim_t_snprintf)
+{
+  struct type t = {
+      .type = T_PRIM,
+      .p    = F64,
+  };
+
+  const char *expect = "f64";
+  char       *ret    = type_tostr (&t);
+  error       e      = error_create ();
+  i_log_type (&t, &e);
+  test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0);
+  i_free (ret);
+}
+#endif
+
+static inline i32
+struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
+{
+  DBG_ASSERT (valid_struct_t, st);
+
+  char *out   = str;
+  u32   avail = size;
+  int   len   = 0;
+  int   n;
+
+  n = snprintf (out, avail, "struct { ");
+  if (n < 0)
+  {
+    return n;
+  }
+  len += n;
+  if (out)
+  {
+    out += n;
+    if ((u32)n < avail)
+    {
+      avail -= n;
+    }
+    else
+    {
+      avail = 0;
+    }
+  }
+
+  for (u32 i = 0; i < st->len; ++i)
+  {
+    struct string key = st->keys[i];
+    n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
+    if (n < 0)
+    {
+      return n;
+    }
+    len += n;
+    if (out)
+    {
+      out += n;
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
+      else
+      {
+        avail = 0;
+      }
+    }
+
+    n = type_snprintf (out, avail, st->types[i]);
+    if (n < 0)
+    {
+      return n;
+    }
+    len += n;
+    if (out)
+    {
+      out += n;
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
+      else
+      {
+        avail = 0;
+      }
+    }
+
+    if (i + 1 < st->len)
+    {
+      n = snprintf (out, avail, ", ");
+      if (n < 0)
+      {
+        return n;
+      }
+      len += n;
+      if (out)
+      {
+        out += n;
+        if ((u32)n < avail)
+        {
+          avail -= n;
+        }
+        else
+        {
+          avail = 0;
+        }
+      }
+    }
+  }
+
+  n = snprintf (out, avail, " }");
+  if (n < 0)
+  {
+    return n;
+  }
+  len += n;
+
+  return len;
+}
+
+#ifdef TESTING
+TEST (struct_t_snprintf)
+{
+  struct struct_t st;
+  st.len  = 4;
+  st.keys = (struct string[]){
+      {
+          .len  = 3,
+          .data = "foo",
+      },
+      {
+          .len  = 2,
+          .data = "fo",
+      },
+      {
+          .len  = 4,
+          .data = "baro",
+      },
+      {
+          .len  = 5,
+          .data = "bazbi",
+      },
+  };
+  st.types = (struct type *[]){
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U8,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U16,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = CF128,
+      },
+  };
+
+  struct type t = {
+      .type = T_STRUCT,
+      .st   = st,
+  };
+
+  const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
+
+  char *ret = type_tostr (&t);
+  error e   = error_create ();
+  i_log_type (&t, &e);
+  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  i_free (ret);
+}
+#endif
+
+static i32
+union_t_snprintf (char *str, u32 size, const struct union_t *st)
+{
+  DBG_ASSERT (valid_union_t, st);
+
+  char *out   = str;
+  u32   avail = size;
+  int   len   = 0;
+  int   n;
+
+  n = snprintf (out, avail, "union { ");
+  if (n < 0)
+  {
+    return n;
+  }
+  len += n;
+  if (out)
+  {
+    out += n;
+    if ((u32)n < avail)
+    {
+      avail -= n;
+    }
+    else
+    {
+      avail = 0;
+    }
+  }
+
+  for (u32 i = 0; i < st->len; ++i)
+  {
+    struct string key = st->keys[i];
+    n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
+    if (n < 0)
+    {
+      return n;
+    }
+    len += n;
+    if (out)
+    {
+      out += n;
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
+      else
+      {
+        avail = 0;
+      }
+    }
+
+    n = type_snprintf (out, avail, st->types[i]);
+    if (n < 0)
+    {
+      return n;
+    }
+    len += n;
+    if (out)
+    {
+      out += n;
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
+      else
+      {
+        avail = 0;
+      }
+    }
+
+    if (i + 1 < st->len)
+    {
+      n = snprintf (out, avail, ", ");
+      if (n < 0)
+      {
+        return n;
+      }
+      len += n;
+      if (out)
+      {
+        out += n;
+        if ((u32)n < avail)
+        {
+          avail -= n;
+        }
+        else
+        {
+          avail = 0;
+        }
+      }
+    }
+  }
+
+  n = snprintf (out, avail, " }");
+  if (n < 0)
+  {
+    return n;
+  }
+  len += n;
+
+  return len;
+}
+
+#ifdef TESTING
+TEST (union_t_snprintf)
+{
+  struct union_t st;
+  st.len  = 4;
+  st.keys = (struct string[]){
+      {
+          .len  = 3,
+          .data = "foo",
+      },
+      {
+          .len  = 2,
+          .data = "fo",
+      },
+      {
+          .len  = 4,
+          .data = "baro",
+      },
+      {
+          .len  = 5,
+          .data = "bazbi",
+      },
+  };
+  st.types = (struct type *[]){
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U8,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U16,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = CF128,
+      },
+  };
+
+  struct type t = {
+      .type = T_UNION,
+      .un   = st,
+  };
+
+  const char *expected = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
+  char       *ret      = type_tostr (&t);
+  error       e        = error_create ();
+  i_log_type (&t, &e);
+  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  i_free (ret);
+}
+#endif
+
+static inline i32
+sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
+{
+  DBG_ASSERT (valid_sarray_t, p);
+
+  char *out   = str;
+  u32   avail = size;
+  int   len   = 0;
+  int   n;
+
+  for (u16 i = 0; i < p->rank; ++i)
+  {
+    n = snprintf (out, avail, "[%u]", p->dims[i]);
+    if (n < 0)
+    {
+      return n;
+    }
+    len += n;
+    if (out)
+    {
+      out += n;
+      if ((u32)n < avail)
+      {
+        avail -= n;
+      }
+      else
+      {
+        avail = 0;
+      }
+    }
+  }
+
+  n = type_snprintf (out, avail, p->t);
+  if (n < 0)
+  {
+    return n;
+  }
+  len += n;
+
+  return len;
+}
+
+#ifdef TESTING
+TEST (sarray_t_snprintf)
+{
+  struct type s = (struct type){
+      .type = T_SARRAY,
+      .sa   = {
+          .dims = (u32[]){10, 11, 12},
+          .rank = 3,
+          .t    = &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
+      },
+  };
+
+  const char *expected = "[10][11][12]u32";
+
+  char *ret = type_tostr (&s);
+  error e   = error_create ();
+  i_log_type (&s, &e);
+  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  i_free (ret);
+}
+#endif
 
 i32
 type_snprintf (char *str, u32 size, struct type *t)
@@ -120,6 +826,241 @@ type_tostr (struct type *t)
 
   return msg;
 }
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_byte_size
+ * @brief Calculate how many bytes a type takes up
+ *----------------------------------------------------------------------------*/
+
+static u32
+prim_t_byte_size (const enum prim_t *t)
+{
+  DBG_ASSERT (prim_t, t);
+
+  switch (*t)
+  {
+    case U8:
+    case I8: return 1;
+
+    case U16:
+    case I16:
+    case F16:
+    case CI16:
+    case CU16: return 2;
+
+    case U32:
+    case I32:
+    case F32:
+    case CF32:
+    case CI32:
+    case CU32: return 4;
+
+    case U64:
+    case I64:
+    case F64:
+    case CF64:
+    case CI64:
+    case CU64: return 8;
+
+    case F128:
+    case CF128:
+    case CI128:
+    case CU128: return 16;
+
+    case CF256: return 32;
+  }
+
+  UNREACHABLE ();
+  return 0;
+}
+
+#ifdef TESTING
+TEST (prim_t_byte_size)
+{
+  enum prim_t p1 = U8;
+  enum prim_t p2 = CF128;
+  enum prim_t p3 = CF256;
+
+  test_assert_int_equal (prim_t_byte_size (&p1), 1);
+  test_assert_int_equal (prim_t_byte_size (&p2), 16);
+  test_assert_int_equal (prim_t_byte_size (&p3), 32);
+}
+
+#endif
+
+static inline u32
+struct_t_byte_size (const struct struct_t *t)
+{
+  DBG_ASSERT (valid_struct_t, t);
+  u32 ret = 0;
+
+  // Each type is layed out contiguously
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    ret += type_byte_size (t->types[i]);
+  }
+
+  return ret;
+}
+
+#ifdef TESTING
+TEST (struct_t_byte_size)
+{
+  struct struct_t st;
+  st.len  = 4;
+  st.keys = (struct string[]){
+      {
+          .len  = 3,
+          .data = "foo",
+      },
+      {
+          .len  = 2,
+          .data = "fo",
+      },
+      {
+          .len  = 4,
+          .data = "baro",
+      },
+      {
+          .len  = 5,
+          .data = "bazbi",
+      },
+  };
+  st.types = (struct type *[]){
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U8,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U16,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = CF128,
+      },
+  };
+
+  struct type t = {
+      .type = T_STRUCT,
+      .st   = st,
+  };
+  u64 act = type_byte_size (&t);
+  u64 exp = (sizeof (u32) + sizeof (u8) + sizeof (u16) + sizeof (cf128));
+
+  test_assert_int_equal (exp, act);
+}
+#endif
+
+static u32
+union_t_byte_size (const struct union_t *t)
+{
+  DBG_ASSERT (valid_union_t, t);
+  u32 ret = 0;
+
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    u32 next = type_byte_size (t->types[i]);
+    if (next > ret)
+    {
+      ret = next;
+    }
+  }
+
+  return ret;
+}
+
+#ifdef TESTING
+TEST (union_t_byte_size)
+{
+  struct union_t st;
+  st.len  = 4;
+  st.keys = (struct string[]){
+      {
+          .len  = 3,
+          .data = "foo",
+      },
+      {
+          .len  = 2,
+          .data = "fo",
+      },
+      {
+          .len  = 4,
+          .data = "baro",
+      },
+      {
+          .len  = 5,
+          .data = "bazbi",
+      },
+  };
+  st.types = (struct type *[]){
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U8,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U16,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = CF128,
+      },
+  };
+
+  struct type t = {
+      .type = T_UNION,
+      .un   = st,
+  };
+  u64 act = type_byte_size (&t);
+  u64 exp = sizeof (cf128);
+
+  test_assert_int_equal (exp, act);
+}
+#endif
+
+static inline u32
+sarray_t_byte_size (const struct sarray_t *t)
+{
+  DBG_ASSERT (valid_sarray_t, t);
+  u32 ret = 1;
+
+  // multiply up all ranks and multiply by size of type
+  for (u32 i = 0; i < t->rank; ++i)
+  {
+    ret *= t->dims[i];
+  }
+
+  return ret * type_byte_size (t->t);
+}
+
+#ifdef TESTING
+TEST (sarray_t_byte_size)
+{
+  struct sarray_t s = {
+      .dims = (u32[]){10, 11, 12},
+      .rank = 3,
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+  };
+
+  struct type t = {
+      .type = T_SARRAY,
+      .sa   = s,
+  };
+  u64 act = type_byte_size (&t);
+  test_assert_int_equal (act, 10 * 11 * 12 * 4);
+}
+#endif
 
 u32
 type_byte_size (const struct type *t)
@@ -427,1345 +1368,12 @@ TEST (type_generate_string)
 }
 #endif
 
-u32
-type_get_serial_size (const struct type *t)
-{
-  DBG_ASSERT (valid_type, t);
-
-  // LABEL TYPE
-  u32 ret = sizeof (u8);
-
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
-      return ret + sizeof (u8);
-    }
-    case T_STRUCT:
-    {
-      return ret + struct_t_get_serial_size (&t->st);
-    }
-    case T_UNION:
-    {
-      return ret + union_t_get_serial_size (&t->un);
-    }
-    case T_SARRAY:
-    {
-      return ret + sarray_t_get_serial_size (&t->sa);
-    }
-    default:
-    {
-      UNREACHABLE ();
-      return 0;
-    }
-  }
-}
-
-void
-type_serialize (struct serializer *dest, const struct type *src)
-{
-  DBG_ASSERT (valid_type, src);
-  bool ret;
-
-  u8 type_val = (u8)src->type;
-  ret         = srlizr_write (dest, &type_val, sizeof (u8));
-  ASSERT (ret);
-
-  switch (src->type)
-  {
-    case T_PRIM:
-    {
-      prim_t_serialize (dest, &src->p);
-      break;
-    }
-    case T_STRUCT:
-    {
-      struct_t_serialize (dest, &src->st);
-      break;
-    }
-    case T_UNION:
-    {
-      union_t_serialize (dest, &src->un);
-      break;
-    }
-    case T_SARRAY:
-    {
-      sarray_t_serialize (dest, &src->sa);
-      break;
-    }
-    default:
-    {
-      UNREACHABLE ();
-      break;
-    }
-  }
-}
-
-struct type *
-type_deserialize (struct deserializer *src, struct chunk_alloc *alloc, error *e)
-{
-  u8           header;
-  struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
-    return NULL;
-  }
-  bool ret   = dsrlizr_read (&header, sizeof (u8), src);
-  dest->type = (enum type_t)header;
-
-  switch (header)
-  {
-    case T_PRIM:
-    {
-      if (prim_t_deserialize (&dest->p, src, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-    case T_STRUCT:
-    {
-      if (struct_t_deserialize (&dest->st, src, alloc, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-    case T_UNION:
-    {
-      if (union_t_deserialize (&dest->un, src, alloc, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-    case T_SARRAY:
-    {
-      if (sarray_t_deserialize (&dest->sa, src, alloc, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-    default:
-    {
-      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-  }
-}
-
-struct type *
-type_random (struct chunk_alloc *alloc, u32 depth, error *e)
-{
-  struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
-    return NULL;
-  }
-
-  if (depth == 0)
-  {
-    dest->type = T_PRIM;
-    dest->p    = prim_t_random ();
-    return dest;
-  }
-
-  static const enum type_t weighted[] = {T_PRIM, T_STRUCT, T_UNION, T_SARRAY};
-
-  dest->type = weighted[randu32r (0, arrlen (weighted) - 1)];
-
-  switch (dest->type)
-  {
-    case T_PRIM:
-    {
-      dest->p = prim_t_random ();
-      return dest;
-    }
-
-    case T_STRUCT:
-    {
-      if (struct_t_random (&dest->st, alloc, depth, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-
-    case T_UNION:
-    {
-      if (union_t_random (&dest->un, alloc, depth, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-
-    case T_SARRAY:
-    {
-      if (sarray_t_random (&dest->sa, alloc, depth, e))
-      {
-        return NULL;
-      }
-      return dest;
-    }
-
-    default:
-    {
-      error_causef (e, ERR_NOMEM, "invalid type tag");
-      return NULL;
-    }
-  }
-  UNREACHABLE ();
-}
-
-bool
-type_equal (const struct type *left, const struct type *right)
-{
-  if (left->type != right->type)
-  {
-    return false;
-  }
-
-  switch (left->type)
-  {
-    case T_PRIM:
-    {
-      return left->p == right->p;
-    }
-    case T_STRUCT:
-    {
-      return struct_t_equal (&left->st, &right->st);
-    }
-    case T_UNION:
-    {
-      return union_t_equal (&left->un, &right->un);
-    }
-    case T_SARRAY:
-    {
-      return sarray_t_equal (&left->sa, &right->sa);
-    }
-    default:
-    {
-      UNREACHABLE ();
-    }
-  }
-}
-
-err_t
-i_log_type (struct type *t, error *e)
-{
-  i32 len = type_snprintf (NULL, 0, t);
-  if (len < 0)
-  {
-    return error_causef (e, ERR_IO, "snprintf failed");
-  }
-
-  char *dest = i_malloc (len + 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
-    return error_causef (e, ERR_NOMEM, "alloc failed for type log string");
-  }
-
-  len = type_snprintf (dest, len + 1, t);
-  if (len < 0)
-  {
-    i_free (dest);
-    return error_causef (e, ERR_IO, "snprintf failed");
-  }
-
-  i_log_info ("%.*s\n", len, dest);
-  i_free (dest);
-
-  return SUCCESS;
-}
-
-static struct string
-string_movemem (struct string src, struct chunk_alloc *alloc, error *e)
-{
-  char *data = chunk_alloc_move_mem (alloc, src.data, src.len, e);
-  if (!data)
-  {
-    return (struct string){0};
-  }
-  return (struct string){.data = data, .len = src.len};
-}
-
-static struct string *
-keylist_movemem (
-    struct string      *src,
-    u32                 len,
-    struct chunk_alloc *alloc,
-    error              *e
-)
-{
-  struct string *keys = chunk_malloc (alloc, len, sizeof *keys, e);
-  if (!keys)
-  {
-    return NULL;
-  }
-
-  for (u32 i = 0; i < len; ++i)
-  {
-    keys[i] = string_movemem (src[i], alloc, e);
-    if (!keys[i].data)
-    {
-      return NULL;
-    }
-  }
-  return keys;
-}
-
-static struct type **
-typelist_movemem (
-    struct type       **src,
-    u32                 len,
-    struct chunk_alloc *alloc,
-    error              *e
-)
-{
-  struct type **types = chunk_malloc (alloc, len, sizeof (struct type *), e);
-  if (!types)
-  {
-    return NULL;
-  }
-
-  for (u32 i = 0; i < len; ++i)
-  {
-    types[i] = type_movemem (src[i], alloc, e);
-    if (!types[i])
-    {
-      return NULL;
-    }
-  }
-  return types;
-}
-
-struct type *
-type_movemem (struct type *src, struct chunk_alloc *alloc, error *e)
-{
-  struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
-  if (!ret)
-  {
-    return NULL;
-  }
-
-  ret->type = src->type;
-
-  switch (src->type)
-  {
-    case T_PRIM:
-    {
-      ret->p = src->p;
-      break;
-    }
-    case T_STRUCT:
-    {
-      ret->st.len  = src->st.len;
-      ret->st.keys = keylist_movemem (src->st.keys, src->st.len, alloc, e);
-      if (!ret->st.keys)
-      {
-        return NULL;
-      }
-      ret->st.types = typelist_movemem (src->st.types, src->st.len, alloc, e);
-      if (!ret->st.types)
-      {
-        return NULL;
-      }
-      break;
-    }
-    case T_UNION:
-    {
-      ret->un.len  = src->un.len;
-      ret->un.keys = keylist_movemem (src->un.keys, src->un.len, alloc, e);
-      if (!ret->un.keys)
-      {
-        return NULL;
-      }
-      ret->un.types = typelist_movemem (src->un.types, src->un.len, alloc, e);
-      if (!ret->un.types)
-      {
-        return NULL;
-      }
-      break;
-    }
-    case T_SARRAY:
-    {
-      ret->sa.rank = src->sa.rank;
-      ret->sa.t    = type_movemem (src->sa.t, alloc, e);
-      if (ret->sa.t == NULL)
-      {
-        return NULL;
-      }
-      ret->sa.dims =
-          chunk_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
-      if (!ret->sa.dims)
-      {
-        return NULL;
-      }
-      memcpy (ret->sa.dims, src->sa.dims, src->sa.rank * sizeof *ret->sa.dims);
-      break;
-    }
-  }
-
-  return ret;
-}
-
-struct type *
-type_malloc_copy (struct type *t, struct malloc_plan *plan)
-{
-  bool active = plan->mode == MP_ALLOCING;
-
-  /**
-   * [ type ]
-   */
-  struct type *ret = malloc_plan_memcpy (plan, t, sizeof (struct type));
-
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
-      return ret;
-    }
-    case T_STRUCT:
-    {
-      struct string *keys =
-          malloc_plan_memcpy (plan, t->st.keys, t->st.len * sizeof *t->st.keys);
-      struct type **types = malloc_plan_memcpy (
-          plan,
-          t->st.types,
-          t->st.len * sizeof (struct type *)
-      );
-
-      if (active)
-      {
-        ret->st.keys  = keys;
-        ret->st.types = types;
-      }
-
-      for (u32 i = 0; i < t->st.len; ++i)
-      {
-        void *data =
-            malloc_plan_memcpy (plan, t->st.keys[i].data, t->st.keys[i].len);
-        struct type *type = type_malloc_copy (t->st.types[i], plan);
-
-        // Change pointers
-        if (active)
-        {
-          keys[i].data = data;
-          types[i]     = type;
-        }
-      }
-      return ret;
-    }
-    case T_UNION:
-    {
-      struct string *keys =
-          malloc_plan_memcpy (plan, t->un.keys, t->un.len * sizeof *t->un.keys);
-      struct type **types = malloc_plan_memcpy (
-          plan,
-          t->un.types,
-          t->un.len * sizeof (struct type *)
-      );
-
-      if (active)
-      {
-        ret->un.keys  = keys;
-        ret->un.types = types;
-      }
-
-      for (u32 i = 0; i < t->un.len; ++i)
-      {
-        void *data =
-            malloc_plan_memcpy (plan, t->un.keys[i].data, t->un.keys[i].len);
-        struct type *type = type_malloc_copy (t->un.types[i], plan);
-
-        // Change pointers
-        if (active)
-        {
-          keys[i].data = data;
-          types[i]     = type;
-        }
-      }
-      return ret;
-    }
-    case T_SARRAY:
-    {
-      u32 *dims = malloc_plan_memcpy (
-          plan,
-          t->sa.dims,
-          t->sa.rank * sizeof *t->sa.dims
-      );
-
-      if (active)
-      {
-        ret->sa.dims = dims;
-      }
-
-      struct type *type = type_malloc_copy (t->sa.t, plan);
-      if (active)
-      {
-        ret->sa.t = type;
-      }
-
-      return ret;
-    }
-  }
-  UNREACHABLE ();
-}
-
-#ifdef TESTING
-TEST (type_malloc_copy)
-{
-  struct type t = {
-      .type = T_PRIM,
-      .p    = U32,
-  };
-
-  struct malloc_plan plan = malloc_plan_create ();
-  type_malloc_copy (&t, &plan);
-  malloc_plan_alloc (&plan, NULL);
-  struct type *_t = type_malloc_copy (&t, &plan);
-  test_assert_int_equal (plan.size, sizeof (struct type));
-  test_assert (type_equal (_t, &t));
-  i_free (_t);
-
-  t = (struct type){
-      .type = T_STRUCT,
-      .st   = (struct struct_t){
-          .len = 2,
-          .keys =
-              (struct string[]){
-                  {
-                      .len  = strlen ("hello"),
-                      .data = "hello",
-                  },
-                  {
-                      .len  = strlen ("world"),
-                      .data = "world",
-                  },
-              },
-          .types = (struct type *[]){
-              &(struct type){
-                  .type = T_PRIM,
-                  .p    = U32,
-              },
-              &(struct type){
-                  .type = T_PRIM,
-                  .p    = U32,
-              },
-          },
-      },
-  };
-
-  u32 exp = 3 * sizeof (struct type) + strlen ("hello") + strlen ("world")
-            + 2 * (sizeof (struct string) + sizeof (struct type *));
-
-  plan = malloc_plan_create ();
-  type_malloc_copy (&t, &plan);
-  malloc_plan_alloc (&plan, NULL);
-  _t = type_malloc_copy (&t, &plan);
-  test_assert_int_equal (plan.size, exp);
-  test_assert (type_equal (_t, &t));
-  i_free (_t);
-
-  t = (struct type){
-      .type = T_UNION,
-      .un   = (struct union_t){
-          .len = 2,
-          .keys =
-              (struct string[]){
-                  {
-                      .len  = strlen ("hello"),
-                      .data = "hello",
-                  },
-                  {
-                      .len  = strlen ("world"),
-                      .data = "world",
-                  },
-              },
-          .types = (struct type *[]){
-              &(struct type){
-                  .type = T_PRIM,
-                  .p    = U32,
-              },
-              &(struct type){
-                  .type = T_PRIM,
-                  .p    = U32,
-              },
-          },
-      },
-  };
-
-  exp = 3 * sizeof (struct type) + strlen ("hello") + strlen ("world")
-        + 2 * (sizeof (struct string) + sizeof (struct type *));
-
-  plan = malloc_plan_create ();
-  type_malloc_copy (&t, &plan);
-  malloc_plan_alloc (&plan, NULL);
-  _t = type_malloc_copy (&t, &plan);
-  test_assert_int_equal (plan.size, exp);
-  test_assert (type_equal (_t, &t));
-  i_free (_t);
-
-  t = (struct type){
-      .type = T_SARRAY,
-      .sa   = (struct sarray_t){
-          .rank = 10,
-          .dims = (u32[]){0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-          .t    = &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
-          },
-      },
-  };
-
-  exp = 2 * sizeof (struct type) + 10 * sizeof (u32);
-
-  plan = malloc_plan_create ();
-  type_malloc_copy (&t, &plan);
-  malloc_plan_alloc (&plan, NULL);
-  _t = type_malloc_copy (&t, &plan);
-  test_assert_int_equal (plan.size, exp);
-  test_assert (type_equal (_t, &t));
-  i_free (_t);
-}
-#endif
-
-/******************************************************************************
- * SECTION: Primitive Types
- * ----------------------------------------------------------------------------
- * @brief
- *
- *
- ******************************************************************************/
-
-DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
-  ASSERT (s);
-  error e = error_create ();
-  ASSERT (prim_t_validate (s, &e) == SUCCESS);
-})
-
-err_t
-prim_t_validate (const enum prim_t *t, error *e)
-{
-  ASSERT (t);
-  if (!(*t <= CU128 && *t >= U8))
-  {
-    return error_causef (
-        e,
-        ERR_INTERP,
-        "invalid prim type %d (valid range %d..%d)",
-        *t,
-        U8,
-        CU128
-    );
-  }
-
-  return SUCCESS;
-}
-
-#ifdef TESTING
-TEST (prim_t_validate)
-{
-  error err = error_create ();
-
-  // 1.1 happy path – legal value
-  enum prim_t ok = U32;
-  test_assert_int_equal (prim_t_validate (&ok, &err), SUCCESS);
-
-  // 1.2 too‑small → ERR_INTERP
-  enum prim_t bad_lo = (enum prim_t) (U8 - 1);
-  test_assert_int_equal (prim_t_validate (&bad_lo, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
-
-  // 1.3 too‑large → ERR_INTERP
-  enum prim_t bad_hi = (enum prim_t) (CU128 + 1);
-  test_assert_int_equal (prim_t_validate (&bad_hi, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
-}
-#endif
-
-const char *
-prim_to_str (enum prim_t p)
-{
-  DBG_ASSERT (prim_t, &p);
-  switch (p)
-  {
-    case U8: return "u8";
-    case U16: return "u16";
-    case U32: return "u32";
-    case U64: return "u64";
-
-    case I8: return "i8";
-    case I16: return "i16";
-    case I32: return "i32";
-    case I64: return "i64";
-
-    case F16: return "f16";
-    case F32: return "f32";
-    case F64: return "f64";
-    case F128: return "f128";
-
-    case CF32: return "cf32";
-    case CF64: return "cf64";
-    case CF128: return "cf128";
-    case CF256: return "cf256";
-
-    case CI16: return "ci16";
-    case CI32: return "ci32";
-    case CI64: return "ci64";
-    case CI128: return "ci128";
-
-    case CU16: return "cu16";
-    case CU32: return "cu32";
-    case CU64: return "cu64";
-    case CU128: return "cu128";
-  }
-  UNREACHABLE ();
-  return "";
-}
-
-i32
-prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
-{
-  DBG_ASSERT (prim_t, p);
-
-  char       *out   = str;
-  u32         avail = size;
-  int         len   = 0;
-  int         n;
-  const char *name = prim_to_str (*p);
-
-  n = snprintf (out, avail, "%s", name);
-  if (n < 0)
-  {
-    return n;
-  }
-  len += n;
-
-  return len;
-}
-
-#ifdef TESTING
-TEST (prim_t_snprintf)
-{
-  struct type t = {
-      .type = T_PRIM,
-      .p    = F64,
-  };
-
-  const char *expect = "f64";
-  char       *ret    = type_tostr (&t);
-  error       e      = error_create ();
-  i_log_type (&t, &e);
-  test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0);
-  i_free (ret);
-}
-#endif
-
-u32
-prim_t_byte_size (const enum prim_t *t)
-{
-  DBG_ASSERT (prim_t, t);
-
-  switch (*t)
-  {
-    case U8:
-    case I8: return 1;
-
-    case U16:
-    case I16:
-    case F16:
-    case CI16:
-    case CU16: return 2;
-
-    case U32:
-    case I32:
-    case F32:
-    case CF32:
-    case CI32:
-    case CU32: return 4;
-
-    case U64:
-    case I64:
-    case F64:
-    case CF64:
-    case CI64:
-    case CU64: return 8;
-
-    case F128:
-    case CF128:
-    case CI128:
-    case CU128: return 16;
-
-    case CF256: return 32;
-  }
-
-  UNREACHABLE ();
-  return 0;
-}
-
-void
-prim_t_serialize (struct serializer *dest, const enum prim_t *src)
-{
-  DBG_ASSERT (prim_t, src);
-  bool ret;
-
-  // PRIM
-  u8 prim_val = (u8)*src;
-  ret         = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
-  ASSERT (ret);
-}
-#ifdef TESTING
-TEST (prim_t_byte_size)
-{
-  enum prim_t p1 = U8;
-  enum prim_t p2 = CF128;
-  enum prim_t p3 = CF256;
-
-  test_assert_int_equal (prim_t_byte_size (&p1), 1);
-  test_assert_int_equal (prim_t_byte_size (&p2), 16);
-  test_assert_int_equal (prim_t_byte_size (&p3), 32);
-}
-
-#  ifdef TESTING
-TEST (prim_t_serialize)
-{
-  enum prim_t       p = I16;
-  u8                out[4];
-  struct serializer s = srlizr_create (out, sizeof out);
-  prim_t_serialize (&s, &p);
-
-  u8 exp[] = {(u8)I16};
-  test_assert_int_equal (s.dlen, sizeof exp);
-  test_assert_int_equal (memcmp (out, exp, sizeof exp), 0);
-}
-#  endif
-#endif
-
-err_t
-prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
-{
-  ASSERT (dest);
-
-  u8   p;
-  bool ret = dsrlizr_read ((u8 *)&p, sizeof (u8), src);
-  if (!ret)
-  {
-    return error_causef (e, ERR_CORRUPT, "prim: missing length header");
-  }
-
-  enum prim_t _p = p;
-
-  WRAP (prim_t_validate (&_p, e));
-
-  DBG_ASSERT (prim_t, &_p);
-
-  *dest = _p;
-
-  return SUCCESS;
-}
-
-#ifdef TESTING
-TEST (prim_t_deserialize)
-{
-  // 5.1 green path
-  u8                  data[] = {(u8)CI32};
-  struct deserializer d      = dsrlizr_create (data, sizeof data);
-  error               err    = error_create ();
-  enum prim_t         out    = 0;
-
-  test_assert_int_equal (prim_t_deserialize (&out, &d, &err), SUCCESS);
-  test_assert_int_equal (out, CI32);
-
-  // 5.2 red path – invalid enum value (CU128+1)
-  u8                  bad[] = {(u8)(CU128 + 1)};
-  struct deserializer d2    = dsrlizr_create (bad, sizeof bad);
-  test_assert_int_equal (prim_t_deserialize (&out, &d2, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
-}
-#endif
-
-enum prim_t
-prim_t_random (void)
-{
-  return (enum prim_t)randu32r (U8, CU128);
-}
-
-#ifdef TESTING
-TEST (prim_t_random)
-{
-  error err = error_create ();
-  for (u32 i = 0; i < 1000; ++i)
-  {
-    enum prim_t p = prim_t_random ();
-    test_assert_int_equal (prim_t_validate (&p, &err), SUCCESS);
-  }
-}
-#endif
-
-enum prim_t
-strtoprim (const char *text, u32 len)
-{
-  struct string str = {.data = (char *)text, .len = len};
-
-  if (string_equal (str, strfcstr ("u8")))
-  {
-    return U8;
-  }
-  if (string_equal (str, strfcstr ("u16")))
-  {
-    return U16;
-  }
-  if (string_equal (str, strfcstr ("u32")))
-  {
-    return U32;
-  }
-  if (string_equal (str, strfcstr ("u64")))
-  {
-    return U64;
-  }
-  if (string_equal (str, strfcstr ("i8")))
-  {
-    return I8;
-  }
-  if (string_equal (str, strfcstr ("i16")))
-  {
-    return I16;
-  }
-  if (string_equal (str, strfcstr ("i32")))
-  {
-    return I32;
-  }
-  if (string_equal (str, strfcstr ("i64")))
-  {
-    return I64;
-  }
-  if (string_equal (str, strfcstr ("f16")))
-  {
-    return F16;
-  }
-  if (string_equal (str, strfcstr ("f32")))
-  {
-    return F32;
-  }
-  if (string_equal (str, strfcstr ("f64")))
-  {
-    return F64;
-  }
-  if (string_equal (str, strfcstr ("f128")))
-  {
-    return F128;
-  }
-  if (string_equal (str, strfcstr ("cf32")))
-  {
-    return CF32;
-  }
-  if (string_equal (str, strfcstr ("cf64")))
-  {
-    return CF64;
-  }
-  if (string_equal (str, strfcstr ("cf128")))
-  {
-    return CF128;
-  }
-  if (string_equal (str, strfcstr ("cf256")))
-  {
-    return CF256;
-  }
-  if (string_equal (str, strfcstr ("ci16")))
-  {
-    return CI16;
-  }
-  if (string_equal (str, strfcstr ("ci32")))
-  {
-    return CI32;
-  }
-  if (string_equal (str, strfcstr ("ci64")))
-  {
-    return CI64;
-  }
-  if (string_equal (str, strfcstr ("ci128")))
-  {
-    return CI128;
-  }
-  if (string_equal (str, strfcstr ("cu16")))
-  {
-    return CU16;
-  }
-  if (string_equal (str, strfcstr ("cu32")))
-  {
-    return CU32;
-  }
-  if (string_equal (str, strfcstr ("cu64")))
-  {
-    return CU64;
-  }
-  if (string_equal (str, strfcstr ("cu128")))
-  {
-    return CU128;
-  }
-
-  return (enum prim_t) - 1;
-}
-
-/******************************************************************************
- * SECTION: Struct
- * ----------------------------------------------------------------------------
- * @brief A structured type
- ******************************************************************************/
-
-DEFINE_DBG_ASSERT (struct struct_t, unchecked_struct_t, s, {
-  ASSERT (s);
-  ASSERT (s->keys);
-  ASSERT (s->types);
-})
-
-static err_t
-struct_t_type_err (const char *msg, error *e)
-{
-  return error_causef (e, ERR_INTERP, "Struct: %s", msg);
-}
-
-static err_t
-struct_t_type_deser (const char *msg, error *e)
-{
-  return error_causef (e, ERR_CORRUPT, "Struct: %s", msg);
-}
-
-static err_t
-struct_t_validate_shallow (const struct struct_t *s, error *e)
-{
-  DBG_ASSERT (unchecked_struct_t, s);
-
-  if (s->len == 0)
-  {
-    return struct_t_type_err ("Keys length must be > 0", e);
-  }
-
-  for (u32 i = 0; i < s->len; ++i)
-  {
-    if (s->keys[i].len == 0)
-    {
-      return struct_t_type_err ("Key length must be > 0", e);
-    }
-    ASSERT (s->keys[i].data);
-  }
-
-  if (!strings_all_unique (s->keys, s->len))
-  {
-    return struct_t_type_err ("Duplicate keys", e);
-  }
-
-  return SUCCESS;
-}
-
-DEFINE_DBG_ASSERT (struct struct_t, valid_struct_t, s, {
-  error e = error_create ();
-  ASSERT (struct_t_validate_shallow (s, &e) == SUCCESS);
-})
-
-err_t
-struct_t_create (
-    struct struct_t    *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
-{
-  if (list.len == 0)
-  {
-    return struct_t_type_err ("struct must have greater than 0 keys", e);
-  }
-
-  // Copy stuff over
-  if (dalloc)
-  {
-    dest->len  = list.len;
-    dest->keys = chunk_alloc_move_mem (
-        dalloc,
-        list.keys,
-        list.len * sizeof *dest->keys,
-        e
-    );
-    if (dest->keys == NULL)
-    {
-      return error_trace (e);
-    }
-
-    dest->types = chunk_alloc_move_mem (
-        dalloc,
-        list.types,
-        list.len * sizeof (struct type *),
-        e
-    );
-    if (dest->keys == NULL)
-    {
-      return error_trace (e);
-    }
-  }
-
-  // Don't copy
-  else
-  {
-    dest->len   = list.len;
-    dest->keys  = list.keys;
-    dest->types = list.types;
-  }
-
-  return SUCCESS;
-}
-
-err_t
-struct_t_validate (const struct struct_t *s, error *e)
-{
-  WRAP (struct_t_validate_shallow (s, e));
-  {
-    return false;
-  }
-  for (u32 i = 0; i < s->len; ++i)
-  {
-    WRAP (type_validate (s->types[i], e));
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
-i32
-struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
-{
-  DBG_ASSERT (valid_struct_t, st);
-
-  char *out   = str;
-  u32   avail = size;
-  int   len   = 0;
-  int   n;
-
-  n = snprintf (out, avail, "struct { ");
-  if (n < 0)
-  {
-    return n;
-  }
-  len += n;
-  if (out)
-  {
-    out += n;
-    if ((u32)n < avail)
-    {
-      avail -= n;
-    }
-    else
-    {
-      avail = 0;
-    }
-  }
-
-  for (u32 i = 0; i < st->len; ++i)
-  {
-    struct string key = st->keys[i];
-    n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
-    if (n < 0)
-    {
-      return n;
-    }
-    len += n;
-    if (out)
-    {
-      out += n;
-      if ((u32)n < avail)
-      {
-        avail -= n;
-      }
-      else
-      {
-        avail = 0;
-      }
-    }
-
-    n = type_snprintf (out, avail, st->types[i]);
-    if (n < 0)
-    {
-      return n;
-    }
-    len += n;
-    if (out)
-    {
-      out += n;
-      if ((u32)n < avail)
-      {
-        avail -= n;
-      }
-      else
-      {
-        avail = 0;
-      }
-    }
-
-    if (i + 1 < st->len)
-    {
-      n = snprintf (out, avail, ", ");
-      if (n < 0)
-      {
-        return n;
-      }
-      len += n;
-      if (out)
-      {
-        out += n;
-        if ((u32)n < avail)
-        {
-          avail -= n;
-        }
-        else
-        {
-          avail = 0;
-        }
-      }
-    }
-  }
-
-  n = snprintf (out, avail, " }");
-  if (n < 0)
-  {
-    return n;
-  }
-  len += n;
-
-  return len;
-}
-
-#ifdef TESTING
-TEST (struct_t_snprintf)
-{
-  struct struct_t st;
-  st.len  = 4;
-  st.keys = (struct string[]){
-      {
-          .len  = 3,
-          .data = "foo",
-      },
-      {
-          .len  = 2,
-          .data = "fo",
-      },
-      {
-          .len  = 4,
-          .data = "baro",
-      },
-      {
-          .len  = 5,
-          .data = "bazbi",
-      },
-  };
-  st.types = (struct type *[]){
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U8,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U16,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = CF128,
-      },
-  };
-
-  struct type t = {
-      .type = T_STRUCT,
-      .st   = st,
-  };
-
-  const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
-
-  char *ret = type_tostr (&t);
-  error e   = error_create ();
-  i_log_type (&t, &e);
-  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (ret);
-}
-#endif
-
-u32
-struct_t_byte_size (const struct struct_t *t)
-{
-  DBG_ASSERT (valid_struct_t, t);
-  u32 ret = 0;
-
-  // Each type is layed out contiguously
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    ret += type_byte_size (t->types[i]);
-  }
-
-  return ret;
-}
-
-#ifdef TESTING
-TEST (struct_t_byte_size)
-{
-  struct struct_t st;
-  st.len  = 4;
-  st.keys = (struct string[]){
-      {
-          .len  = 3,
-          .data = "foo",
-      },
-      {
-          .len  = 2,
-          .data = "fo",
-      },
-      {
-          .len  = 4,
-          .data = "baro",
-      },
-      {
-          .len  = 5,
-          .data = "bazbi",
-      },
-  };
-  st.types = (struct type *[]){
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U8,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U16,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = CF128,
-      },
-  };
-
-  struct type t = {
-      .type = T_STRUCT,
-      .st   = st,
-  };
-  u64 act = type_byte_size (&t);
-  u64 exp = (sizeof (u32) + sizeof (u8) + sizeof (u16) + sizeof (cf128));
-
-  test_assert_int_equal (exp, act);
-}
-#endif
-
-u32
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_get_serial_size
+ * @brief Get the amount of bytes needed to serialize a type
+ *----------------------------------------------------------------------------*/
+
+static inline u32
 struct_t_get_serial_size (const struct struct_t *t)
 {
   DBG_ASSERT (valid_struct_t, t);
@@ -1833,7 +1441,164 @@ TEST (struct_t_get_serial_size)
 }
 #endif
 
-void
+static inline u32
+union_t_get_serial_size (const struct union_t *t)
+{
+  DBG_ASSERT (valid_union_t, t);
+  u32 ret = 0;
+
+  // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
+  ret += sizeof (u16);
+  ret += t->len * sizeof (u16);
+
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    ret += t->keys[i].len;
+    ret += type_get_serial_size (t->types[i]);
+  }
+
+  return ret;
+}
+
+#ifdef TESTING
+TEST (union_t_get_serial_size)
+{
+  struct union_t st;
+  st.len  = 4;
+  st.keys = (struct string[]){
+      {
+          .len  = 3,
+          .data = "foo",
+      },
+      {
+          .len  = 2,
+          .data = "fo",
+      },
+      {
+          .len  = 4,
+          .data = "baro",
+      },
+      {
+          .len  = 5,
+          .data = "bazbi",
+      },
+  };
+  st.types = (struct type *[]){
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U8,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U16,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = CF128,
+      },
+  };
+
+  u64 act = union_t_get_serial_size (&st);
+  u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
+
+  test_assert_int_equal (exp, act);
+}
+#endif
+
+static inline u32
+sarray_t_get_serial_size (const struct sarray_t *t)
+{
+  DBG_ASSERT (valid_sarray_t, t);
+  u32 ret = 0;
+
+  // RANK DIM0 DIM1 DIM2 ... TYPE
+  ret += sizeof (u16);
+  ret += sizeof (u32) * t->rank;
+  ret += type_get_serial_size (t->t);
+
+  return ret;
+}
+
+#ifdef TESTING
+TEST (sarray_t_get_serial_size)
+{
+  struct sarray_t s = {
+      .dims = (u32[]){10, 11, 12},
+      .rank = 3,
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+  };
+  test_assert_int_equal (sarray_t_get_serial_size (&s), 3 * 4 + 2 + 2);
+}
+#endif
+
+u32
+type_get_serial_size (const struct type *t)
+{
+  DBG_ASSERT (valid_type, t);
+
+  // LABEL TYPE
+  u32 ret = sizeof (u8);
+
+  switch (t->type)
+  {
+    case T_PRIM:
+    {
+      return ret + sizeof (u8);
+    }
+    case T_STRUCT:
+    {
+      return ret + struct_t_get_serial_size (&t->st);
+    }
+    case T_UNION:
+    {
+      return ret + union_t_get_serial_size (&t->un);
+    }
+    case T_SARRAY:
+    {
+      return ret + sarray_t_get_serial_size (&t->sa);
+    }
+    default:
+    {
+      UNREACHABLE ();
+      return 0;
+    }
+  }
+}
+
+static void
+prim_t_serialize (struct serializer *dest, const enum prim_t *src)
+{
+  DBG_ASSERT (prim_t, src);
+  bool ret;
+
+  // PRIM
+  u8 prim_val = (u8)*src;
+  ret         = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
+  ASSERT (ret);
+}
+
+#ifdef TESTING
+TEST (prim_t_serialize)
+{
+  enum prim_t       p = I16;
+  u8                out[4];
+  struct serializer s = srlizr_create (out, sizeof out);
+  prim_t_serialize (&s, &p);
+
+  u8 exp[] = {(u8)I16};
+  test_assert_int_equal (s.dlen, sizeof exp);
+  test_assert_int_equal (memcmp (out, exp, sizeof exp), 0);
+}
+#endif
+
+static inline void
 struct_t_serialize (struct serializer *dest, const struct struct_t *src)
 {
   DBG_ASSERT (valid_struct_t, src);
@@ -1926,7 +1691,240 @@ TEST (struct_t_serialize)
 }
 #endif
 
-err_t
+static inline void
+union_t_serialize (struct serializer *dest, const struct union_t *src)
+{
+  DBG_ASSERT (valid_union_t, src);
+  bool ret;
+
+  // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
+  ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));
+  ASSERT (ret);
+
+  for (u32 i = 0; i < src->len; ++i)
+  {
+    // (KLEN
+    struct string next = src->keys[i];
+    ret = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
+    ASSERT (ret);
+
+    // KEY)
+    ret = srlizr_write (dest, (u8 *)next.data, next.len);
+    ASSERT (ret);
+
+    // (TYPE)
+    type_serialize (dest, src->types[i]);
+  }
+}
+
+#ifdef TESTING
+TEST (union_t_serialize)
+{
+  struct union_t st;
+  st.len  = 4;
+  st.keys = (struct string[]){
+      {
+          .len  = 3,
+          .data = "foo",
+      },
+      {
+          .len  = 2,
+          .data = "fo",
+      },
+      {
+          .len  = 4,
+          .data = "baro",
+      },
+      {
+          .len  = 5,
+          .data = "bazbi",
+      },
+  };
+  st.types = (struct type *[]){
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U8,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = U16,
+      },
+      &(struct type){
+          .type = T_PRIM,
+          .p    = CF128,
+      },
+  };
+
+  u8  act[200]; // Sloppy sizing
+  u8  exp[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
+               (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
+               0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
+               0,       'b', 'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
+  u16 len   = 4;
+  u16 l0    = 3;
+  u16 l2    = 2;
+  u16 l3    = 4;
+  u16 l4    = 5;
+  memcpy (&exp[0], &len, sizeof (u16));
+  memcpy (&exp[2], &l0, sizeof (u16));
+  memcpy (&exp[9], &l2, sizeof (u16));
+  memcpy (&exp[15], &l3, sizeof (u16));
+  memcpy (&exp[23], &l4, sizeof (u16));
+
+  // Expected
+  struct serializer s = srlizr_create (act, 200);
+  union_t_serialize (&s, &st);
+
+  test_assert_int_equal (s.dlen, sizeof (exp));
+  test_assert_int_equal (memcmp (act, exp, sizeof (exp)), 0);
+}
+#endif
+
+static inline void
+sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
+{
+  DBG_ASSERT (valid_sarray_t, src);
+  bool ret;
+
+  // RANK DIM0 DIM1 DIM2 ... TYPE
+  ret = srlizr_write (persistent, (const u8 *)&src->rank, sizeof (u16));
+  ASSERT (ret);
+
+  for (u32 i = 0; i < src->rank; ++i)
+  {
+    // DIMi
+    ret = srlizr_write (persistent, (const u8 *)&src->dims[i], sizeof (u32));
+    ASSERT (ret);
+  }
+
+  // (TYPE)
+  type_serialize (persistent, src->t);
+}
+
+#ifdef TESTING
+TEST (sarray_t_serialize)
+{
+  struct sarray_t s = {
+      .dims = (u32[]){10, 11, 12},
+      .rank = 3,
+      .t    = &(struct type){
+          .type = T_PRIM,
+          .p    = U32,
+      },
+  };
+
+  u8  act[200];
+  u8  exp[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
+  u16 len   = 3;
+  u32 d0    = 10;
+  u32 d1    = 11;
+  u32 d2    = 12;
+  memcpy (exp, &len, 2);
+  memcpy (exp + 2, &d0, 4);
+  memcpy (exp + 6, &d1, 4);
+  memcpy (exp + 10, &d2, 4);
+
+  struct serializer sr = srlizr_create (act, 200);
+  sarray_t_serialize (&sr, &s);
+
+  test_assert_int_equal (sr.dlen, sizeof (exp));
+  test_assert_int_equal (memcmp (act, exp, sizeof (exp)), 0);
+}
+#endif
+
+void
+type_serialize (struct serializer *dest, const struct type *src)
+{
+  DBG_ASSERT (valid_type, src);
+  bool ret;
+
+  u8 type_val = (u8)src->type;
+  ret         = srlizr_write (dest, &type_val, sizeof (u8));
+  ASSERT (ret);
+
+  switch (src->type)
+  {
+    case T_PRIM:
+    {
+      prim_t_serialize (dest, &src->p);
+      break;
+    }
+    case T_STRUCT:
+    {
+      struct_t_serialize (dest, &src->st);
+      break;
+    }
+    case T_UNION:
+    {
+      union_t_serialize (dest, &src->un);
+      break;
+    }
+    case T_SARRAY:
+    {
+      sarray_t_serialize (dest, &src->sa);
+      break;
+    }
+    default:
+    {
+      UNREACHABLE ();
+      break;
+    }
+  }
+}
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_deserialize
+ * @brief Deserialize a buffer into a type
+ *----------------------------------------------------------------------------*/
+
+static err_t
+prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
+{
+  ASSERT (dest);
+
+  u8   p;
+  bool ret = dsrlizr_read ((u8 *)&p, sizeof (u8), src);
+  if (!ret)
+  {
+    return error_causef (e, ERR_CORRUPT, "prim: missing length header");
+  }
+
+  enum prim_t _p = p;
+
+  WRAP (prim_t_validate (&_p, e));
+
+  DBG_ASSERT (prim_t, &_p);
+
+  *dest = _p;
+
+  return SUCCESS;
+}
+
+#ifdef TESTING
+TEST (prim_t_deserialize)
+{
+  // 5.1 green path
+  u8                  data[] = {(u8)CI32};
+  struct deserializer d      = dsrlizr_create (data, sizeof data);
+  error               err    = error_create ();
+  enum prim_t         out    = 0;
+
+  test_assert_int_equal (prim_t_deserialize (&out, &d, &err), SUCCESS);
+  test_assert_int_equal (out, CI32);
+
+  // 5.2 red path – invalid enum value (CU128+1)
+  u8                  bad[] = {(u8)(CU128 + 1)};
+  struct deserializer d2    = dsrlizr_create (bad, sizeof bad);
+  test_assert_int_equal (prim_t_deserialize (&out, &d2, &err), ERR_INTERP);
+  err.cause_code = SUCCESS;
+}
+#endif
+
+static inline err_t
 struct_t_deserialize (
     struct struct_t     *dest,
     struct deserializer *src,
@@ -2128,609 +2126,7 @@ TEST (struct_t_deserialize_red_path)
 }
 #endif
 
-err_t
-struct_t_random (
-    struct struct_t    *st,
-    struct chunk_alloc *alloc,
-    u32                 depth,
-    error              *e
-)
-{
-  ASSERT (st);
-
-  st->len = (u16)randu32r (1, 5);
-
-  st->keys =
-      (struct string *)chunk_malloc (alloc, st->len, sizeof (struct string), e);
-  if (!st->keys)
-  {
-    return error_trace (e);
-  }
-
-  st->types =
-      (struct type **)chunk_malloc (alloc, st->len, sizeof (struct type *), e);
-  if (!st->types)
-  {
-    return error_trace (e);
-  }
-
-  for (u16 i = 0; i < st->len; ++i)
-  {
-    WRAP (rand_varname (&st->keys[i], alloc, 5, 11, e));
-    st->types[i] = type_random (alloc, depth - 1, e);
-    if (st->types[i] == NULL)
-    {
-      return error_trace (e);
-    }
-  }
-
-  return SUCCESS;
-}
-
-bool
-struct_t_equal (const struct struct_t *left, const struct struct_t *right)
-{
-  if (left->len != right->len)
-  {
-    return false;
-  }
-
-  for (u32 i = 0; i < left->len; ++i)
-  {
-    if (!string_equal (left->keys[i], right->keys[i]))
-    {
-      return false;
-    }
-    if (!type_equal (left->types[i], right->types[i]))
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-struct type *
-struct_t_resolve_key (
-    t_size          *offset,
-    struct struct_t *t,
-    struct string    key,
-    error           *e
-)
-{
-  t_size roffset = 0;
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    if (string_equal (t->keys[i], key))
-    {
-      if (offset)
-      {
-        *offset = roffset;
-      }
-      return t->types[i];
-    }
-    roffset += type_byte_size (t->types[i]);
-  }
-
-  return NULL;
-}
-
-/******************************************************************************
- * SECTION: Union
- * ----------------------------------------------------------------------------
- * @brief A Union type
- ******************************************************************************/
-
-DEFINE_DBG_ASSERT (struct union_t, unchecked_union_t, s, {
-  ASSERT (s);
-  ASSERT (s->keys);
-  ASSERT (s->types);
-})
-
-static err_t
-union_t_type_err (const char *msg, error *e)
-{
-  return error_causef (e, ERR_INTERP, "Union: %s", msg);
-}
-
-static err_t
-union_t_type_deser (const char *msg, error *e)
-{
-  return error_causef (e, ERR_CORRUPT, "Union: %s", msg);
-}
-
-static err_t
-union_t_validate_shallow (const struct union_t *s, error *e)
-{
-  DBG_ASSERT (unchecked_union_t, s);
-
-  if (s->len == 0)
-  {
-    return union_t_type_err ("Keys length must be > 0", e);
-  }
-
-  for (u32 i = 0; i < s->len; ++i)
-  {
-    if (s->keys[i].len == 0)
-    {
-      return union_t_type_err ("Key length must be > 0", e);
-    }
-    ASSERT (s->keys[i].data);
-  }
-
-  if (!strings_all_unique (s->keys, s->len))
-  {
-    return union_t_type_err ("Duplicate keys", e);
-  }
-
-  return SUCCESS;
-}
-
-DEFINE_DBG_ASSERT (struct union_t, valid_union_t, s, {
-  error e = error_create ();
-  ASSERT (union_t_validate_shallow (s, &e) == SUCCESS);
-})
-
-err_t
-union_t_create (
-    struct union_t     *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
-{
-  if (list.len == 0)
-  {
-    return union_t_type_err ("union must have greater than 0 keys", e);
-  }
-
-  // Copy stuff over
-  if (dalloc)
-  {
-    dest->len  = list.len;
-    dest->keys = chunk_alloc_move_mem (
-        dalloc,
-        list.keys,
-        list.len * sizeof *dest->keys,
-        e
-    );
-    if (dest->keys == NULL)
-    {
-      return error_trace (e);
-    }
-
-    dest->types = chunk_alloc_move_mem (
-        dalloc,
-        list.types,
-        list.len * sizeof (struct type *),
-        e
-    );
-    if (dest->keys == NULL)
-    {
-      return error_trace (e);
-    }
-  }
-
-  // Don't copy
-  else
-  {
-    dest->len   = list.len;
-    dest->keys  = list.keys;
-    dest->types = list.types;
-  }
-
-  return SUCCESS;
-}
-
-err_t
-union_t_validate (const struct union_t *s, error *e)
-{
-  WRAP (union_t_validate_shallow (s, e));
-  {
-    return false;
-  }
-  for (u32 i = 0; i < s->len; ++i)
-  {
-    WRAP (type_validate (s->types[i], e));
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
-i32
-union_t_snprintf (char *str, u32 size, const struct union_t *st)
-{
-  DBG_ASSERT (valid_union_t, st);
-
-  char *out   = str;
-  u32   avail = size;
-  int   len   = 0;
-  int   n;
-
-  n = snprintf (out, avail, "union { ");
-  if (n < 0)
-  {
-    return n;
-  }
-  len += n;
-  if (out)
-  {
-    out += n;
-    if ((u32)n < avail)
-    {
-      avail -= n;
-    }
-    else
-    {
-      avail = 0;
-    }
-  }
-
-  for (u32 i = 0; i < st->len; ++i)
-  {
-    struct string key = st->keys[i];
-    n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
-    if (n < 0)
-    {
-      return n;
-    }
-    len += n;
-    if (out)
-    {
-      out += n;
-      if ((u32)n < avail)
-      {
-        avail -= n;
-      }
-      else
-      {
-        avail = 0;
-      }
-    }
-
-    n = type_snprintf (out, avail, st->types[i]);
-    if (n < 0)
-    {
-      return n;
-    }
-    len += n;
-    if (out)
-    {
-      out += n;
-      if ((u32)n < avail)
-      {
-        avail -= n;
-      }
-      else
-      {
-        avail = 0;
-      }
-    }
-
-    if (i + 1 < st->len)
-    {
-      n = snprintf (out, avail, ", ");
-      if (n < 0)
-      {
-        return n;
-      }
-      len += n;
-      if (out)
-      {
-        out += n;
-        if ((u32)n < avail)
-        {
-          avail -= n;
-        }
-        else
-        {
-          avail = 0;
-        }
-      }
-    }
-  }
-
-  n = snprintf (out, avail, " }");
-  if (n < 0)
-  {
-    return n;
-  }
-  len += n;
-
-  return len;
-}
-
-#ifdef TESTING
-TEST (union_t_snprintf)
-{
-  struct union_t st;
-  st.len  = 4;
-  st.keys = (struct string[]){
-      {
-          .len  = 3,
-          .data = "foo",
-      },
-      {
-          .len  = 2,
-          .data = "fo",
-      },
-      {
-          .len  = 4,
-          .data = "baro",
-      },
-      {
-          .len  = 5,
-          .data = "bazbi",
-      },
-  };
-  st.types = (struct type *[]){
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U8,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U16,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = CF128,
-      },
-  };
-
-  struct type t = {
-      .type = T_UNION,
-      .un   = st,
-  };
-
-  const char *expected = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
-  char       *ret      = type_tostr (&t);
-  error       e        = error_create ();
-  i_log_type (&t, &e);
-  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (ret);
-}
-#endif
-
-u32
-union_t_byte_size (const struct union_t *t)
-{
-  DBG_ASSERT (valid_union_t, t);
-  u32 ret = 0;
-
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    u32 next = type_byte_size (t->types[i]);
-    if (next > ret)
-    {
-      ret = next;
-    }
-  }
-
-  return ret;
-}
-
-#ifdef TESTING
-TEST (union_t_byte_size)
-{
-  struct union_t st;
-  st.len  = 4;
-  st.keys = (struct string[]){
-      {
-          .len  = 3,
-          .data = "foo",
-      },
-      {
-          .len  = 2,
-          .data = "fo",
-      },
-      {
-          .len  = 4,
-          .data = "baro",
-      },
-      {
-          .len  = 5,
-          .data = "bazbi",
-      },
-  };
-  st.types = (struct type *[]){
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U8,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U16,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = CF128,
-      },
-  };
-
-  struct type t = {
-      .type = T_UNION,
-      .un   = st,
-  };
-  u64 act = type_byte_size (&t);
-  u64 exp = sizeof (cf128);
-
-  test_assert_int_equal (exp, act);
-}
-#endif
-
-u32
-union_t_get_serial_size (const struct union_t *t)
-{
-  DBG_ASSERT (valid_union_t, t);
-  u32 ret = 0;
-
-  // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
-  ret += sizeof (u16);
-  ret += t->len * sizeof (u16);
-
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    ret += t->keys[i].len;
-    ret += type_get_serial_size (t->types[i]);
-  }
-
-  return ret;
-}
-
-#ifdef TESTING
-TEST (union_t_get_serial_size)
-{
-  struct union_t st;
-  st.len  = 4;
-  st.keys = (struct string[]){
-      {
-          .len  = 3,
-          .data = "foo",
-      },
-      {
-          .len  = 2,
-          .data = "fo",
-      },
-      {
-          .len  = 4,
-          .data = "baro",
-      },
-      {
-          .len  = 5,
-          .data = "bazbi",
-      },
-  };
-  st.types = (struct type *[]){
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U8,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U16,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = CF128,
-      },
-  };
-
-  u64 act = union_t_get_serial_size (&st);
-  u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
-
-  test_assert_int_equal (exp, act);
-}
-#endif
-
-void
-union_t_serialize (struct serializer *dest, const struct union_t *src)
-{
-  DBG_ASSERT (valid_union_t, src);
-  bool ret;
-
-  // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
-  ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));
-  ASSERT (ret);
-
-  for (u32 i = 0; i < src->len; ++i)
-  {
-    // (KLEN
-    struct string next = src->keys[i];
-    ret = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
-    ASSERT (ret);
-
-    // KEY)
-    ret = srlizr_write (dest, (u8 *)next.data, next.len);
-    ASSERT (ret);
-
-    // (TYPE)
-    type_serialize (dest, src->types[i]);
-  }
-}
-
-#ifdef TESTING
-TEST (union_t_serialize)
-{
-  struct union_t st;
-  st.len  = 4;
-  st.keys = (struct string[]){
-      {
-          .len  = 3,
-          .data = "foo",
-      },
-      {
-          .len  = 2,
-          .data = "fo",
-      },
-      {
-          .len  = 4,
-          .data = "baro",
-      },
-      {
-          .len  = 5,
-          .data = "bazbi",
-      },
-  };
-  st.types = (struct type *[]){
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U8,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = U16,
-      },
-      &(struct type){
-          .type = T_PRIM,
-          .p    = CF128,
-      },
-  };
-
-  u8  act[200]; // Sloppy sizing
-  u8  exp[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
-               (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
-               0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
-               0,       'b', 'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
-  u16 len   = 4;
-  u16 l0    = 3;
-  u16 l2    = 2;
-  u16 l3    = 4;
-  u16 l4    = 5;
-  memcpy (&exp[0], &len, sizeof (u16));
-  memcpy (&exp[2], &l0, sizeof (u16));
-  memcpy (&exp[9], &l2, sizeof (u16));
-  memcpy (&exp[15], &l3, sizeof (u16));
-  memcpy (&exp[23], &l4, sizeof (u16));
-
-  // Expected
-  struct serializer s = srlizr_create (act, 200);
-  union_t_serialize (&s, &st);
-
-  test_assert_int_equal (s.dlen, sizeof (exp));
-  test_assert_int_equal (memcmp (act, exp, sizeof (exp)), 0);
-}
-#endif
-
-err_t
+static inline err_t
 union_t_deserialize (
     struct union_t      *dest,
     struct deserializer *src,
@@ -2897,325 +2293,7 @@ TEST (union_t_deserialize_red_path)
 }
 #endif
 
-err_t
-union_t_random (
-    struct union_t     *un,
-    struct chunk_alloc *alloc,
-    u32                 depth,
-    error              *e
-)
-{
-  ASSERT (un);
-
-  un->len = (u16)randu32r (1, 5);
-
-  un->keys =
-      (struct string *)chunk_malloc (alloc, un->len, sizeof (struct string), e);
-  if (!un->keys)
-  {
-    return error_trace (e);
-  }
-
-  un->types =
-      (struct type **)chunk_malloc (alloc, un->len, sizeof (struct type *), e);
-  if (!un->types)
-  {
-    return error_trace (e);
-  }
-
-  for (u16 i = 0; i < un->len; ++i)
-  {
-    WRAP (rand_varname (&un->keys[i], alloc, 5, 11, e));
-    un->types[i] = type_random (alloc, depth - 1, e);
-    if (un->types[i] == NULL)
-    {
-      return error_trace (e);
-    }
-  }
-
-  return SUCCESS;
-}
-
-bool
-union_t_equal (const struct union_t *left, const struct union_t *right)
-{
-  if (left->len != right->len)
-  {
-    return false;
-  }
-
-  for (u32 i = 0; i < left->len; ++i)
-  {
-    if (!string_equal (left->keys[i], right->keys[i]))
-    {
-      return false;
-    }
-    if (!type_equal (left->types[i], right->types[i]))
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-struct type *
-union_t_resolve_key (struct union_t *t, struct string key, error *e)
-{
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    if (string_equal (t->keys[i], key))
-    {
-      return t->types[i];
-    }
-  }
-
-  return NULL;
-}
-
-/******************************************************************************
- * SECTION: Strict Array
- * ----------------------------------------------------------------------------
- * @brief A strict array type
- ******************************************************************************/
-
-DEFINE_DBG_ASSERT (struct sarray_t, unchecked_sarray_t, s, {
-  ASSERT (s);
-  ASSERT (s->dims);
-  ASSERT (s->t);
-})
-
-DEFINE_DBG_ASSERT (struct sarray_t, valid_sarray_t, s, {
-  error e = error_create ();
-  ASSERT (sarray_t_validate (s, &e) == SUCCESS);
-})
-
-static err_t
-sarray_t_type_err (const char *msg, error *e)
-{
-  return error_causef (e, ERR_INTERP, "Strict Array: %s", msg);
-}
-
-static err_t
-sarray_t_type_deser (const char *msg, error *e)
-{
-  return error_causef (e, ERR_CORRUPT, "Strict Array: %s", msg);
-}
-
-static err_t
-sarray_t_validate_shallow (const struct sarray_t *t, error *e)
-{
-  DBG_ASSERT (unchecked_sarray_t, t);
-  if (t->rank == 0)
-  {
-    return sarray_t_type_err ("Rank must be > 0", e);
-  }
-  for (u32 i = 0; i < t->rank; ++i)
-  {
-    if (t->dims[i] == 0)
-    {
-      return sarray_t_type_err ("dimensions cannot be 0", e);
-    }
-  }
-  return SUCCESS;
-}
-
-err_t
-sarray_t_validate (const struct sarray_t *t, error *e)
-{
-  DBG_ASSERT (unchecked_sarray_t, t);
-
-  WRAP (sarray_t_validate_shallow (t, e));
-  WRAP (type_validate (t->t, e));
-
-  return SUCCESS;
-}
-
-i32
-sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
-{
-  DBG_ASSERT (valid_sarray_t, p);
-
-  char *out   = str;
-  u32   avail = size;
-  int   len   = 0;
-  int   n;
-
-  for (u16 i = 0; i < p->rank; ++i)
-  {
-    n = snprintf (out, avail, "[%u]", p->dims[i]);
-    if (n < 0)
-    {
-      return n;
-    }
-    len += n;
-    if (out)
-    {
-      out += n;
-      if ((u32)n < avail)
-      {
-        avail -= n;
-      }
-      else
-      {
-        avail = 0;
-      }
-    }
-  }
-
-  n = type_snprintf (out, avail, p->t);
-  if (n < 0)
-  {
-    return n;
-  }
-  len += n;
-
-  return len;
-}
-
-#ifdef TESTING
-TEST (sarray_t_snprintf)
-{
-  struct type s = (struct type){
-      .type = T_SARRAY,
-      .sa   = {
-          .dims = (u32[]){10, 11, 12},
-          .rank = 3,
-          .t    = &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
-          },
-      },
-  };
-
-  const char *expected = "[10][11][12]u32";
-
-  char *ret = type_tostr (&s);
-  error e   = error_create ();
-  i_log_type (&s, &e);
-  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (ret);
-}
-#endif
-
-u32
-sarray_t_byte_size (const struct sarray_t *t)
-{
-  DBG_ASSERT (valid_sarray_t, t);
-  u32 ret = 1;
-
-  // multiply up all ranks and multiply by size of type
-  for (u32 i = 0; i < t->rank; ++i)
-  {
-    ret *= t->dims[i];
-  }
-
-  return ret * type_byte_size (t->t);
-}
-
-#ifdef TESTING
-TEST (sarray_t_byte_size)
-{
-  struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
-      .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-  };
-
-  struct type t = {
-      .type = T_SARRAY,
-      .sa   = s,
-  };
-  u64 act = type_byte_size (&t);
-  test_assert_int_equal (act, 10 * 11 * 12 * 4);
-}
-#endif
-
-u32
-sarray_t_get_serial_size (const struct sarray_t *t)
-{
-  DBG_ASSERT (valid_sarray_t, t);
-  u32 ret = 0;
-
-  // RANK DIM0 DIM1 DIM2 ... TYPE
-  ret += sizeof (u16);
-  ret += sizeof (u32) * t->rank;
-  ret += type_get_serial_size (t->t);
-
-  return ret;
-}
-
-#ifdef TESTING
-TEST (sarray_t_get_serial_size)
-{
-  struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
-      .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-  };
-  test_assert_int_equal (sarray_t_get_serial_size (&s), 3 * 4 + 2 + 2);
-}
-#endif
-
-void
-sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
-{
-  DBG_ASSERT (valid_sarray_t, src);
-  bool ret;
-
-  // RANK DIM0 DIM1 DIM2 ... TYPE
-  ret = srlizr_write (persistent, (const u8 *)&src->rank, sizeof (u16));
-  ASSERT (ret);
-
-  for (u32 i = 0; i < src->rank; ++i)
-  {
-    // DIMi
-    ret = srlizr_write (persistent, (const u8 *)&src->dims[i], sizeof (u32));
-    ASSERT (ret);
-  }
-
-  // (TYPE)
-  type_serialize (persistent, src->t);
-}
-
-#ifdef TESTING
-TEST (sarray_t_serialize)
-{
-  struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
-      .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
-  };
-
-  u8  act[200];
-  u8  exp[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
-  u16 len   = 3;
-  u32 d0    = 10;
-  u32 d1    = 11;
-  u32 d2    = 12;
-  memcpy (exp, &len, 2);
-  memcpy (exp + 2, &d0, 4);
-  memcpy (exp + 6, &d1, 4);
-  memcpy (exp + 10, &d2, 4);
-
-  struct serializer sr = srlizr_create (act, 200);
-  sarray_t_serialize (&sr, &s);
-
-  test_assert_int_equal (sr.dlen, sizeof (exp));
-  test_assert_int_equal (memcmp (act, exp, sizeof (exp)), 0);
-}
-#endif
-
-err_t
+static inline err_t
 sarray_t_deserialize (
     struct sarray_t     *persistent,
     struct deserializer *src,
@@ -3339,7 +2417,165 @@ TEST (sarray_t_deserialize_red_path)
 }
 #endif
 
-err_t
+struct type *
+type_deserialize (struct deserializer *src, struct chunk_alloc *alloc, error *e)
+{
+  u8           header;
+  struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
+  if (dest == NULL)
+  {
+    return NULL;
+  }
+  bool ret   = dsrlizr_read (&header, sizeof (u8), src);
+  dest->type = (enum type_t)header;
+
+  switch (header)
+  {
+    case T_PRIM:
+    {
+      if (prim_t_deserialize (&dest->p, src, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+    case T_STRUCT:
+    {
+      if (struct_t_deserialize (&dest->st, src, alloc, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+    case T_UNION:
+    {
+      if (union_t_deserialize (&dest->un, src, alloc, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+    case T_SARRAY:
+    {
+      if (sarray_t_deserialize (&dest->sa, src, alloc, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+    default:
+    {
+      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+  }
+}
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_random
+ * @brief Generate a random type
+ *----------------------------------------------------------------------------*/
+
+static enum prim_t
+prim_t_random (void)
+{
+  return (enum prim_t)randu32r (U8, CU128);
+}
+
+#ifdef TESTING
+TEST (prim_t_random)
+{
+  error err = error_create ();
+  for (u32 i = 0; i < 1000; ++i)
+  {
+    enum prim_t p = prim_t_random ();
+    test_assert_int_equal (prim_t_validate (&p, &err), SUCCESS);
+  }
+}
+#endif
+
+static err_t
+struct_t_random (
+    struct struct_t    *st,
+    struct chunk_alloc *alloc,
+    u32                 depth,
+    error              *e
+)
+{
+  ASSERT (st);
+
+  st->len = (u16)randu32r (1, 5);
+
+  st->keys =
+      (struct string *)chunk_malloc (alloc, st->len, sizeof (struct string), e);
+  if (!st->keys)
+  {
+    return error_trace (e);
+  }
+
+  st->types =
+      (struct type **)chunk_malloc (alloc, st->len, sizeof (struct type *), e);
+  if (!st->types)
+  {
+    return error_trace (e);
+  }
+
+  for (u16 i = 0; i < st->len; ++i)
+  {
+    WRAP (rand_varname (&st->keys[i], alloc, 5, 11, e));
+    st->types[i] = type_random (alloc, depth - 1, e);
+    if (st->types[i] == NULL)
+    {
+      return error_trace (e);
+    }
+  }
+
+  return SUCCESS;
+}
+
+static inline err_t
+union_t_random (
+    struct union_t     *un,
+    struct chunk_alloc *alloc,
+    u32                 depth,
+    error              *e
+)
+{
+  ASSERT (un);
+
+  un->len = (u16)randu32r (1, 5);
+
+  un->keys =
+      (struct string *)chunk_malloc (alloc, un->len, sizeof (struct string), e);
+  if (!un->keys)
+  {
+    return error_trace (e);
+  }
+
+  un->types =
+      (struct type **)chunk_malloc (alloc, un->len, sizeof (struct type *), e);
+  if (!un->types)
+  {
+    return error_trace (e);
+  }
+
+  for (u16 i = 0; i < un->len; ++i)
+  {
+    WRAP (rand_varname (&un->keys[i], alloc, 5, 11, e));
+    un->types[i] = type_random (alloc, depth - 1, e);
+    if (un->types[i] == NULL)
+    {
+      return error_trace (e);
+    }
+  }
+
+  return SUCCESS;
+}
+
+static inline err_t
 sarray_t_random (
     struct sarray_t    *sa,
     struct chunk_alloc *temp,
@@ -3377,7 +2613,122 @@ sarray_t_random (
   return SUCCESS;
 }
 
+struct type *
+type_random (struct chunk_alloc *alloc, u32 depth, error *e)
+{
+  struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
+  if (dest == NULL)
+  {
+    return NULL;
+  }
+
+  if (depth == 0)
+  {
+    dest->type = T_PRIM;
+    dest->p    = prim_t_random ();
+    return dest;
+  }
+
+  static const enum type_t weighted[] = {T_PRIM, T_STRUCT, T_UNION, T_SARRAY};
+
+  dest->type = weighted[randu32r (0, arrlen (weighted) - 1)];
+
+  switch (dest->type)
+  {
+    case T_PRIM:
+    {
+      dest->p = prim_t_random ();
+      return dest;
+    }
+
+    case T_STRUCT:
+    {
+      if (struct_t_random (&dest->st, alloc, depth, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+
+    case T_UNION:
+    {
+      if (union_t_random (&dest->un, alloc, depth, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+
+    case T_SARRAY:
+    {
+      if (sarray_t_random (&dest->sa, alloc, depth, e))
+      {
+        return NULL;
+      }
+      return dest;
+    }
+
+    default:
+    {
+      error_causef (e, ERR_NOMEM, "invalid type tag");
+      return NULL;
+    }
+  }
+  UNREACHABLE ();
+}
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: type_equal
+ * @brief Check if two types are equal
+ *----------------------------------------------------------------------------*/
+
 bool
+struct_t_equal (const struct struct_t *left, const struct struct_t *right)
+{
+  if (left->len != right->len)
+  {
+    return false;
+  }
+
+  for (u32 i = 0; i < left->len; ++i)
+  {
+    if (!string_equal (left->keys[i], right->keys[i]))
+    {
+      return false;
+    }
+    if (!type_equal (left->types[i], right->types[i]))
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static inline bool
+union_t_equal (const struct union_t *left, const struct union_t *right)
+{
+  if (left->len != right->len)
+  {
+    return false;
+  }
+
+  for (u32 i = 0; i < left->len; ++i)
+  {
+    if (!string_equal (left->keys[i], right->keys[i]))
+    {
+      return false;
+    }
+    if (!type_equal (left->types[i], right->types[i]))
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static inline bool
 sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right)
 {
   if (left->rank != right->rank)
@@ -3396,8 +2747,463 @@ sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right)
   return true;
 }
 
-/////////////////////////////////////////////////////////////////////
-////// Builder
+bool
+type_equal (const struct type *left, const struct type *right)
+{
+  if (left->type != right->type)
+  {
+    return false;
+  }
+
+  switch (left->type)
+  {
+    case T_PRIM:
+    {
+      return left->p == right->p;
+    }
+    case T_STRUCT:
+    {
+      return struct_t_equal (&left->st, &right->st);
+    }
+    case T_UNION:
+    {
+      return union_t_equal (&left->un, &right->un);
+    }
+    case T_SARRAY:
+    {
+      return sarray_t_equal (&left->sa, &right->sa);
+    }
+    default:
+    {
+      UNREACHABLE ();
+    }
+  }
+}
+
+err_t
+i_log_type (struct type *t, error *e)
+{
+  i32 len = type_snprintf (NULL, 0, t);
+  if (len < 0)
+  {
+    return error_causef (e, ERR_IO, "snprintf failed");
+  }
+
+  char *dest = i_malloc (len + 1, sizeof *dest, e);
+  if (dest == NULL)
+  {
+    return error_causef (e, ERR_NOMEM, "alloc failed for type log string");
+  }
+
+  len = type_snprintf (dest, len + 1, t);
+  if (len < 0)
+  {
+    i_free (dest);
+    return error_causef (e, ERR_IO, "snprintf failed");
+  }
+
+  i_log_info ("%.*s\n", len, dest);
+  i_free (dest);
+
+  return SUCCESS;
+}
+
+static struct string
+string_movemem (struct string src, struct chunk_alloc *alloc, error *e)
+{
+  char *data = chunk_alloc_move_mem (alloc, src.data, src.len, e);
+  if (!data)
+  {
+    return (struct string){0};
+  }
+  return (struct string){.data = data, .len = src.len};
+}
+
+static struct string *
+keylist_movemem (
+    struct string      *src,
+    u32                 len,
+    struct chunk_alloc *alloc,
+    error              *e
+)
+{
+  struct string *keys = chunk_malloc (alloc, len, sizeof *keys, e);
+  if (!keys)
+  {
+    return NULL;
+  }
+
+  for (u32 i = 0; i < len; ++i)
+  {
+    keys[i] = string_movemem (src[i], alloc, e);
+    if (!keys[i].data)
+    {
+      return NULL;
+    }
+  }
+  return keys;
+}
+
+static struct type **
+typelist_movemem (
+    struct type       **src,
+    u32                 len,
+    struct chunk_alloc *alloc,
+    error              *e
+)
+{
+  struct type **types = chunk_malloc (alloc, len, sizeof (struct type *), e);
+  if (!types)
+  {
+    return NULL;
+  }
+
+  for (u32 i = 0; i < len; ++i)
+  {
+    types[i] = type_movemem (src[i], alloc, e);
+    if (!types[i])
+    {
+      return NULL;
+    }
+  }
+  return types;
+}
+
+struct type *
+type_movemem (struct type *src, struct chunk_alloc *alloc, error *e)
+{
+  struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
+  if (!ret)
+  {
+    return NULL;
+  }
+
+  ret->type = src->type;
+
+  switch (src->type)
+  {
+    case T_PRIM:
+    {
+      ret->p = src->p;
+      break;
+    }
+    case T_STRUCT:
+    {
+      ret->st.len  = src->st.len;
+      ret->st.keys = keylist_movemem (src->st.keys, src->st.len, alloc, e);
+      if (!ret->st.keys)
+      {
+        return NULL;
+      }
+      ret->st.types = typelist_movemem (src->st.types, src->st.len, alloc, e);
+      if (!ret->st.types)
+      {
+        return NULL;
+      }
+      break;
+    }
+    case T_UNION:
+    {
+      ret->un.len  = src->un.len;
+      ret->un.keys = keylist_movemem (src->un.keys, src->un.len, alloc, e);
+      if (!ret->un.keys)
+      {
+        return NULL;
+      }
+      ret->un.types = typelist_movemem (src->un.types, src->un.len, alloc, e);
+      if (!ret->un.types)
+      {
+        return NULL;
+      }
+      break;
+    }
+    case T_SARRAY:
+    {
+      ret->sa.rank = src->sa.rank;
+      ret->sa.t    = type_movemem (src->sa.t, alloc, e);
+      if (ret->sa.t == NULL)
+      {
+        return NULL;
+      }
+      ret->sa.dims =
+          chunk_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
+      if (!ret->sa.dims)
+      {
+        return NULL;
+      }
+      memcpy (ret->sa.dims, src->sa.dims, src->sa.rank * sizeof *ret->sa.dims);
+      break;
+    }
+  }
+
+  return ret;
+}
+
+/******************************************************************************
+ * SECTION: Primitive Types
+ ******************************************************************************/
+
+enum prim_t
+strtoprim (const char *text, u32 len)
+{
+  struct string str = {.data = (char *)text, .len = len};
+
+  if (string_equal (str, strfcstr ("u8")))
+  {
+    return U8;
+  }
+  if (string_equal (str, strfcstr ("u16")))
+  {
+    return U16;
+  }
+  if (string_equal (str, strfcstr ("u32")))
+  {
+    return U32;
+  }
+  if (string_equal (str, strfcstr ("u64")))
+  {
+    return U64;
+  }
+  if (string_equal (str, strfcstr ("i8")))
+  {
+    return I8;
+  }
+  if (string_equal (str, strfcstr ("i16")))
+  {
+    return I16;
+  }
+  if (string_equal (str, strfcstr ("i32")))
+  {
+    return I32;
+  }
+  if (string_equal (str, strfcstr ("i64")))
+  {
+    return I64;
+  }
+  if (string_equal (str, strfcstr ("f16")))
+  {
+    return F16;
+  }
+  if (string_equal (str, strfcstr ("f32")))
+  {
+    return F32;
+  }
+  if (string_equal (str, strfcstr ("f64")))
+  {
+    return F64;
+  }
+  if (string_equal (str, strfcstr ("f128")))
+  {
+    return F128;
+  }
+  if (string_equal (str, strfcstr ("cf32")))
+  {
+    return CF32;
+  }
+  if (string_equal (str, strfcstr ("cf64")))
+  {
+    return CF64;
+  }
+  if (string_equal (str, strfcstr ("cf128")))
+  {
+    return CF128;
+  }
+  if (string_equal (str, strfcstr ("cf256")))
+  {
+    return CF256;
+  }
+  if (string_equal (str, strfcstr ("ci16")))
+  {
+    return CI16;
+  }
+  if (string_equal (str, strfcstr ("ci32")))
+  {
+    return CI32;
+  }
+  if (string_equal (str, strfcstr ("ci64")))
+  {
+    return CI64;
+  }
+  if (string_equal (str, strfcstr ("ci128")))
+  {
+    return CI128;
+  }
+  if (string_equal (str, strfcstr ("cu16")))
+  {
+    return CU16;
+  }
+  if (string_equal (str, strfcstr ("cu32")))
+  {
+    return CU32;
+  }
+  if (string_equal (str, strfcstr ("cu64")))
+  {
+    return CU64;
+  }
+  if (string_equal (str, strfcstr ("cu128")))
+  {
+    return CU128;
+  }
+
+  return (enum prim_t) - 1;
+}
+
+/******************************************************************************
+ * SECTION: Struct
+ * ----------------------------------------------------------------------------
+ * @brief A structured type
+ ******************************************************************************/
+
+struct type *
+struct_t_resolve_key (
+    t_size          *offset,
+    struct struct_t *t,
+    struct string    key,
+    error           *e
+)
+{
+  t_size roffset = 0;
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    if (string_equal (t->keys[i], key))
+    {
+      if (offset)
+      {
+        *offset = roffset;
+      }
+      return t->types[i];
+    }
+    roffset += type_byte_size (t->types[i]);
+  }
+
+  return NULL;
+}
+
+err_t
+struct_t_create (
+    struct struct_t    *dest,
+    struct kvt_list     list,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
+{
+  if (list.len == 0)
+  {
+    return struct_t_type_err ("struct must have greater than 0 keys", e);
+  }
+
+  // Copy stuff over
+  if (dalloc)
+  {
+    dest->len  = list.len;
+    dest->keys = chunk_alloc_move_mem (
+        dalloc,
+        list.keys,
+        list.len * sizeof *dest->keys,
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
+
+    dest->types = chunk_alloc_move_mem (
+        dalloc,
+        list.types,
+        list.len * sizeof (struct type *),
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
+  }
+
+  // Don't copy
+  else
+  {
+    dest->len   = list.len;
+    dest->keys  = list.keys;
+    dest->types = list.types;
+  }
+
+  return SUCCESS;
+}
+
+/******************************************************************************
+ * SECTION: Union
+ * ----------------------------------------------------------------------------
+ * @brief A Union type
+ ******************************************************************************/
+
+struct type *
+union_t_resolve_key (struct union_t *t, struct string key, error *e)
+{
+  for (u32 i = 0; i < t->len; ++i)
+  {
+    if (string_equal (t->keys[i], key))
+    {
+      return t->types[i];
+    }
+  }
+
+  return NULL;
+}
+
+err_t
+union_t_create (
+    struct union_t     *dest,
+    struct kvt_list     list,
+    struct chunk_alloc *dalloc,
+    error              *e
+)
+{
+  if (list.len == 0)
+  {
+    return union_t_type_err ("union must have greater than 0 keys", e);
+  }
+
+  // Copy stuff over
+  if (dalloc)
+  {
+    dest->len  = list.len;
+    dest->keys = chunk_alloc_move_mem (
+        dalloc,
+        list.keys,
+        list.len * sizeof *dest->keys,
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
+
+    dest->types = chunk_alloc_move_mem (
+        dalloc,
+        list.types,
+        list.len * sizeof (struct type *),
+        e
+    );
+    if (dest->keys == NULL)
+    {
+      return error_trace (e);
+    }
+  }
+
+  // Don't copy
+  else
+  {
+    dest->len   = list.len;
+    dest->keys  = list.keys;
+    dest->types = list.types;
+  }
+
+  return SUCCESS;
+}
+
+/******************************************************************************
+ * SECTION: Strict Array Builder
+ ******************************************************************************/
 
 DEFINE_DBG_ASSERT (struct sarray_builder, sarray_builder, s, { ASSERT (s); })
 
@@ -4957,6 +4763,16 @@ print_indent (int level, u32 spaces)
   }
 }
 
+#ifdef TESTING
+TEST (print_indent)
+{
+  TEST_CASE ("smoke test")
+  {
+    print_indent (LOG_INFO, 4);
+  }
+}
+#endif
+
 static void
 print_prim_value (int level, const u8 *buf, enum prim_t p)
 {
@@ -5173,6 +4989,137 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
   }
 }
 
+#ifdef TESTING
+TEST (print_prim_value)
+{
+  TEST_CASE ("smoke test")
+  {
+    u8 v = 10;
+    print_prim_value (LOG_INFO, &v, U8);
+  }
+  TEST_CASE ("u8")
+  {
+    u8 v = 42;
+    print_prim_value (LOG_INFO, (const u8 *)&v, U8);
+  }
+  TEST_CASE ("u16")
+  {
+    u16 v = 12345;
+    print_prim_value (LOG_INFO, (const u8 *)&v, U16);
+  }
+  TEST_CASE ("u32")
+  {
+    u32 v = 1234567u;
+    print_prim_value (LOG_INFO, (const u8 *)&v, U32);
+  }
+  TEST_CASE ("u64")
+  {
+    u64 v = 1234567890123ULL;
+    print_prim_value (LOG_INFO, (const u8 *)&v, U64);
+  }
+  TEST_CASE ("i8")
+  {
+    i8 v = -42;
+    print_prim_value (LOG_INFO, (const u8 *)&v, I8);
+  }
+  TEST_CASE ("i16")
+  {
+    i16 v = -12345;
+    print_prim_value (LOG_INFO, (const u8 *)&v, I16);
+  }
+  TEST_CASE ("i32")
+  {
+    i32 v = -1234567;
+    print_prim_value (LOG_INFO, (const u8 *)&v, I32);
+  }
+  TEST_CASE ("i64")
+  {
+    i64 v = -1234567890123LL;
+    print_prim_value (LOG_INFO, (const u8 *)&v, I64);
+  }
+  TEST_CASE ("f16")
+  {
+    u16 v = 0x3C00; // 1.0 in IEEE 754 half-precision
+    print_prim_value (LOG_INFO, (const u8 *)&v, F16);
+  }
+  TEST_CASE ("f32")
+  {
+    float v = 3.14f;
+    print_prim_value (LOG_INFO, (const u8 *)&v, F32);
+  }
+  TEST_CASE ("f64")
+  {
+    double v = 3.14159265358979;
+    print_prim_value (LOG_INFO, (const u8 *)&v, F64);
+  }
+  TEST_CASE ("f128")
+  {
+    u8 buf[16] = {0};
+    print_prim_value (LOG_INFO, buf, F128);
+  }
+  TEST_CASE ("cf32")
+  {
+    u16 v[2] = {0x3C00, 0x4000}; // (1.0, 2.0) half-precision
+    print_prim_value (LOG_INFO, (const u8 *)v, CF32);
+  }
+  TEST_CASE ("cf64")
+  {
+    float v[2] = {1.0f, 2.0f};
+    print_prim_value (LOG_INFO, (const u8 *)v, CF64);
+  }
+  TEST_CASE ("cf128")
+  {
+    double v[2] = {1.0, 2.0};
+    print_prim_value (LOG_INFO, (const u8 *)v, CF128);
+  }
+  TEST_CASE ("cf256")
+  {
+    u8 buf[32] = {0};
+    print_prim_value (LOG_INFO, buf, CF256);
+  }
+  TEST_CASE ("ci16")
+  {
+    i8 v[2] = {-5, 5};
+    print_prim_value (LOG_INFO, (const u8 *)v, CI16);
+  }
+  TEST_CASE ("ci32")
+  {
+    i16 v[2] = {-1000, 1000};
+    print_prim_value (LOG_INFO, (const u8 *)v, CI32);
+  }
+  TEST_CASE ("ci64")
+  {
+    i32 v[2] = {-100000, 100000};
+    print_prim_value (LOG_INFO, (const u8 *)v, CI64);
+  }
+  TEST_CASE ("ci128")
+  {
+    i64 v[2] = {-1000000000LL, 1000000000LL};
+    print_prim_value (LOG_INFO, (const u8 *)v, CI128);
+  }
+  TEST_CASE ("cu16")
+  {
+    u8 v[2] = {5, 10};
+    print_prim_value (LOG_INFO, (const u8 *)v, CU16);
+  }
+  TEST_CASE ("cu32")
+  {
+    u16 v[2] = {1000, 2000};
+    print_prim_value (LOG_INFO, (const u8 *)v, CU32);
+  }
+  TEST_CASE ("cu64")
+  {
+    u32 v[2] = {100000u, 200000u};
+    print_prim_value (LOG_INFO, (const u8 *)v, CU64);
+  }
+  TEST_CASE ("cu128")
+  {
+    u64 v[2] = {1000000000ULL, 2000000000ULL};
+    print_prim_value (LOG_INFO, (const u8 *)v, CU128);
+  }
+}
+#endif
+
 // Product of dims[dim_idx+1 .. rank-1] * element_size
 static u32
 sarray_sub_size (const struct sarray_t *sa, u16 dim_idx)
@@ -5184,6 +5131,20 @@ sarray_sub_size (const struct sarray_t *sa, u16 dim_idx)
   }
   return sub;
 }
+
+#ifdef TESTING
+TEST (sarray_sub_size)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct type     element = {.type = T_PRIM, .p = I32};
+    u32             dims[2] = {3, 4};
+    struct sarray_t sa      = {.rank = 2, .dims = dims, .t = &element};
+    u32             sub     = sarray_sub_size (&sa, 0);
+    (void)sub;
+  }
+}
+#endif
 
 // col: visual column of the '[' just printed at this dimension,
 // used to align continuation rows under it.
@@ -5256,6 +5217,20 @@ print_sarray_dim (
 
   i_printf (level, "]");
 }
+
+#ifdef TESTING
+TEST (print_sarray_dim)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct type     element = {.type = T_PRIM, .p = I32};
+    u32             dims[1] = {3};
+    struct sarray_t sa      = {.rank = 1, .dims = dims, .t = &element};
+    i32             buf[3]  = {1, 2, 3};
+    print_sarray_dim (LOG_INFO, (const u8 *)buf, &sa, 0, 10, 0, 0);
+  }
+}
+#endif
 
 static void
 print_type_inner (
@@ -5339,6 +5314,18 @@ print_type_inner (
   }
 }
 
+#ifdef TESTING
+TEST (print_type_inner)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct type t = {.type = T_PRIM, .p = I32};
+    i32         v = 42;
+    print_type_inner (LOG_INFO, (const u8 *)&v, &t, 10, 0);
+  }
+}
+#endif
+
 void
 type_print_data (
     int                log_level,
@@ -5350,6 +5337,110 @@ type_print_data (
   print_type_inner (log_level, buf, t, max_elems, 0);
   i_printf (log_level, "\n");
 }
+
+#ifdef TESTING
+TEST (type_print_data)
+{
+  TEST_CASE ("T_PRIM")
+  {
+    struct type t = {.type = T_PRIM, .p = I32};
+    i32         v = -42;
+    type_print_data (LOG_INFO, (const u8 *)&v, &t, 10);
+  }
+  TEST_CASE ("T_STRUCT")
+  {
+    struct string keys[2]  = {{.data = "x", .len = 1}, {.data = "y", .len = 1}};
+    struct type   f1       = {.type = T_PRIM, .p = F32};
+    struct type   f2       = {.type = T_PRIM, .p = F32};
+    struct type  *types[2] = {&f1, &f2};
+    struct type   t        = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = keys, .types = types}
+    };
+    float buf[2] = {1.5f, 2.5f};
+    type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
+  }
+  TEST_CASE ("T_STRUCT with T_SARRAY field")
+  {
+    struct type elem        = {.type = T_PRIM, .p = I32};
+    u32         arr_dims[1] = {3};
+    struct type arr         = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = arr_dims, .t = &elem}
+    };
+    struct type   scalar  = {.type = T_PRIM, .p = U32};
+    struct string keys[2] = {
+        {.data = "tag", .len = 3},
+        {.data = "values", .len = 6}
+    };
+    struct type *types[2] = {&scalar, &arr};
+    struct type  t        = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = keys, .types = types}
+    };
+    u8 buf[16] = {0};
+    type_print_data (LOG_INFO, buf, &t, 10);
+  }
+  TEST_CASE ("T_UNION")
+  {
+    struct string keys[2] = {
+        {.data = "as_int", .len = 6},
+        {.data = "as_uint", .len = 7}
+    };
+    struct type  f1       = {.type = T_PRIM, .p = I64};
+    struct type  f2       = {.type = T_PRIM, .p = U64};
+    struct type *types[2] = {&f1, &f2};
+    struct type  t        = {
+        .type = T_UNION,
+        .un   = {.len = 2, .keys = keys, .types = types}
+    };
+    i64 v = -1;
+    type_print_data (LOG_INFO, (const u8 *)&v, &t, 10);
+  }
+  TEST_CASE ("T_UNION empty")
+  {
+    struct type t = {
+        .type = T_UNION,
+        .un   = {.len = 0, .keys = NULL, .types = NULL}
+    };
+    u8 buf = 0;
+    type_print_data (LOG_INFO, &buf, &t, 10);
+  }
+  TEST_CASE ("T_SARRAY 1d")
+  {
+    struct type element = {.type = T_PRIM, .p = I32};
+    u32         dims[1] = {3};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = dims, .t = &element}
+    };
+    i32 buf[3] = {1, 2, 3};
+    type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
+  }
+  TEST_CASE ("T_SARRAY 1d truncated")
+  {
+    struct type element = {.type = T_PRIM, .p = I32};
+    u32         dims[1] = {10};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = dims, .t = &element}
+    };
+    i32 buf[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    type_print_data (LOG_INFO, (const u8 *)buf, &t, 3);
+  }
+  TEST_CASE ("T_SARRAY 2d truncated")
+  {
+    struct type element = {.type = T_PRIM, .p = U8};
+    u32         dims[2] = {5, 4};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 2, .dims = dims, .t = &element}
+    };
+    u8 buf[20] = {0};
+    type_print_data (LOG_INFO, buf, &t, 2);
+  }
+}
+#endif
 
 struct type_printer_ostream_ctx
 {
@@ -5393,11 +5484,43 @@ type_print_os_sink (
   return (i32)next;
 }
 
+#ifdef TESTING
+TEST (type_print_os_sink)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct type                      t    = {.type = T_PRIM, .p = U32};
+    error                            e    = {0};
+    t_size                           size = type_byte_size (&t);
+    struct type_printer_ostream_ctx *ctx = i_malloc (1, sizeof *ctx + size, &e);
+    ctx->t                               = &t;
+    ctx->pos                             = 0;
+    ctx->size                            = size;
+    struct stream s                      = {0};
+    u32           v                      = 0xDEADBEEF;
+    type_print_os_sink (&s, ctx, &v, 1, sizeof v, &e);
+    i_free (ctx);
+  }
+}
+#endif
+
 static void
 type_print_os_close (void *ctx)
 {
   i_free ((struct type_printer_ostream_ctx *)ctx);
 }
+
+#ifdef TESTING
+TEST (type_print_os_close)
+{
+  TEST_CASE ("smoke test")
+  {
+    error                            e   = {0};
+    struct type_printer_ostream_ctx *ctx = i_malloc (1, sizeof *ctx, &e);
+    type_print_os_close (ctx);
+  }
+}
+#endif
 
 static const struct stream_ops type_printer_os_ops = {
     .pull  = NULL,
@@ -5422,3 +5545,16 @@ type_stream_printer_init (struct stream *s, struct type *t, error *e)
 
   return SUCCESS;
 }
+
+#ifdef TESTING
+TEST (type_stream_printer_init)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct type   t = {.type = T_PRIM, .p = U32};
+    struct stream s = {0};
+    error         e = {0};
+    type_stream_printer_init (&s, &t, &e);
+  }
+}
+#endif

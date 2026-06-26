@@ -65,23 +65,16 @@ struct cgd_swarm_test
   nsdb_t     *db;
   int         in_txn;
   const char *dbname;
+  float       sample_space_prob;
 };
 
 // Main API
-struct cgd_swarm_test *
-cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname);
+struct cgd_swarm_test *cgd_swmt_open (
+    int         start_enabled[CDS_AT_LEN],
+    const char *dbname,
+    float       sample_space_prob
+);
 void cgd_swmt_close (struct cgd_swarm_test *meta);
 void cgd_swmt_step (struct cgd_swarm_test *meta);
-
-// Concrete Actions
-void cgd_swmt_begin_txn (struct cgd_swarm_test *meta);
-void cgd_swmt_commit_txn (struct cgd_swarm_test *meta);
-void cgd_swmt_rollback_txn (struct cgd_swarm_test *meta);
-void cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta);
-void cgd_swmt_close_and_reopen (struct cgd_swarm_test *meta);
-
-void cgd_swmt_create (struct cgd_swarm_test *meta);
-void cgd_swmt_switch (struct cgd_swarm_test *meta);
-void cgd_swmt_delete (struct cgd_swarm_test *meta);
 
 #endif // CGD_SWARM_TEST_FIXTURE_H

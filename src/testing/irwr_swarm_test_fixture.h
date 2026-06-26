@@ -19,7 +19,7 @@
 #include "numstore.h"    // nsdb_t
 #include "stdtypes.h"    // u32 ...etc
 
-// Actions you can take in a database
+// Actions you can take in a irwr only database
 enum irwr_action_type
 {
   IRWR_BEGIN_TXN,
@@ -53,28 +53,18 @@ struct irwr_swarm_test
   u32         esize;
   int         max_insert_len;
   b_size      len;
+  float       sample_space_prob;
 };
 
-// Main API
 struct irwr_swarm_test *irwr_swmt_open (
-    int         start_enabled[IRWR_AT_LEN],
-    const char *dbname,
-    int         max_insert_len,
-    const char *varname,
-    const char *vartype,
-    u32         esize
+    int         initial_enabled[IRWR_AT_LEN], // Starting enabled sample space
+    const char *dbname,                       // Name of the database
+    int         max_insert_len,               // Maximum elements to insert
+    const char *varname,                      // Variable name
+    const char *vartype,                      // Variable type
+    float       sample_space_prob             // Probability swap sample space
 );
 void irwr_swmt_close (struct irwr_swarm_test *meta);
 void irwr_swmt_step (struct irwr_swarm_test *meta);
 
-// Concrete Actions
-void irwr_swmt_begin_txn (struct irwr_swarm_test *meta);
-void irwr_swmt_commit_txn (struct irwr_swarm_test *meta);
-void irwr_swmt_rollback_txn (struct irwr_swarm_test *meta);
-void irwr_swmt_crash_and_reopen (struct irwr_swarm_test *meta);
-void irwr_swmt_close_and_reopen (struct irwr_swarm_test *meta);
-void irwr_swmt_insert (struct irwr_swarm_test *meta);
-void irwr_swmt_remove (struct irwr_swarm_test *meta);
-void irwr_swmt_read (struct irwr_swarm_test *meta);
-void irwr_swmt_write (struct irwr_swarm_test *meta);
 #endif // IRWR_SWARM_TEST_FIXTURE_H
