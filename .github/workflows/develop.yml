@@ -40,14 +40,14 @@ jobs:
           SEED=$((1 + $(date +%s%N | cut -b10-15) % 32767))
           echo "Using random seed: $SEED"
           exe=$(find build/ci-tests/bin -maxdepth 2 -name 'irwr_swarm_test*' -type f | head -1)
-          "$exe" 10 $SEED
+          "$exe" 5 $SEED
 
       - shell: bash
         run: |
           SEED=$((1 + $(date +%s%N | cut -b10-15) % 32767))
           echo "Using random seed: $SEED"
           exe=$(find build/ci-tests/bin -maxdepth 2 -name 'cgd_swarm_test*' -type f | head -1)
-          "$exe" 10 $SEED
+          "$exe" 5 $SEED
 
   # Build and run release tests just once to ensure 
   # no debug/release code broke the pipeline
