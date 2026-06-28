@@ -1352,25 +1352,23 @@ nsdb_execute_on_buffer (
         ret = SUCCESS;
         break;
       }
-      else
+
+      // Transfer over to a variable handle (that can be free'd)
+      *_data = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
+
+      if (*_data == NULL)
       {
-        // Transfer over to a variable handle (that can be free'd)
-        *_data = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
-
-        if (*_data == NULL)
-        {
-          chunk_alloc_free_all (valloc);
-          i_free (valloc);
-          goto failed;
-        }
-
-        (*_data)->var   = var;
-        (*_data)->alloc = valloc;
-
-        ret = SUCCESS;
-
-        break;
+        chunk_alloc_free_all (valloc);
+        i_free (valloc);
+        goto failed;
       }
+
+      (*_data)->var   = var;
+      (*_data)->alloc = valloc;
+
+      ret = SUCCESS;
+
+      break;
     }
 
     case QT_EXIT:
