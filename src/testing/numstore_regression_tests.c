@@ -305,4 +305,5 @@ TEST (regression_irwr_rollback_invalid_wal_header)
 
   test_assert_int_equal (nsdb_close (db), 0);
 }
+
 #endif

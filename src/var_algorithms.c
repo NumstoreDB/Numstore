@@ -1778,15 +1778,20 @@ TEST (ns_var_get_or_create)
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
-        char *name = i_malloc (len, 1, &f.e);
-        for (u32 k = 0; k < len - 1; ++k)
+        // Generate a random name that spans 1 - 10 pages
+        char *name;
         {
-          name[k] = 'a' + randu32r (0, 26);
+          u32 len = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
+          name    = i_malloc (len, 1, &f.e);
+          for (u32 k = 0; k < len - 1; ++k)
+          {
+            name[k] = 'a' + randu32r (0, 26);
+          }
+          name[len - 1] = '\0';
         }
-        name[len - 1] = '\0';
 
-        struct type *t = type_random (&alloc, randu32r (0, 10), &f.e);
+        // Generate a random type that goes 0 - 10 layers deep
+        struct type *t = type_random (&alloc, randu32r (0, 5), &f.e);
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {

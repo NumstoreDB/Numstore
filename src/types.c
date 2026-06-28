@@ -1381,10 +1381,10 @@ struct_t_get_serial_size (const struct struct_t *t)
 
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
   ret += sizeof (u16);
-  ret += t->len * sizeof (u16);
 
   for (u32 i = 0; i < t->len; ++i)
   {
+    ret += sizeof (u16);
     ret += t->keys[i].len;
     ret += type_get_serial_size (t->types[i]);
   }
@@ -1449,10 +1449,10 @@ union_t_get_serial_size (const struct union_t *t)
 
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
   ret += sizeof (u16);
-  ret += t->len * sizeof (u16);
 
   for (u32 i = 0; i < t->len; ++i)
   {
+    ret += sizeof (u16);
     ret += t->keys[i].len;
     ret += type_get_serial_size (t->types[i]);
   }
@@ -1503,7 +1503,7 @@ TEST (union_t_get_serial_size)
   };
 
   u64 act = union_t_get_serial_size (&st);
-  u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
+  u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
 
   test_assert_int_equal (exp, act);
 }
@@ -1611,12 +1611,12 @@ struct_t_serialize (struct serializer *dest, const struct struct_t *src)
   for (u32 i = 0; i < src->len; ++i)
   {
     // (KLEN
-    struct string next = src->keys[i];
-    ret = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
+    struct string key = src->keys[i];
+    ret               = srlizr_write (dest, (const u8 *)&key.len, sizeof (u16));
     ASSERT (ret);
 
     // KEY)
-    ret = srlizr_write (dest, (u8 *)next.data, next.len);
+    ret = srlizr_write (dest, (u8 *)key.data, key.len);
     ASSERT (ret);
 
     // (TYPE)
@@ -1691,7 +1691,7 @@ TEST (struct_t_serialize)
 }
 #endif
 
-static inline void
+static void
 union_t_serialize (struct serializer *dest, const struct union_t *src)
 {
   DBG_ASSERT (valid_union_t, src);
