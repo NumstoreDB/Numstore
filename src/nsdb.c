@@ -162,6 +162,9 @@ nsdb_auto_rollback (struct nsdb *sm)
 err_t
 nsdb_begin (struct nsdb *smf)
 {
+  smf->e.cause_code = 0;
+  smf->e.cmlen      = 0;
+
   if (smf->atx)
   {
     return error_causef (
@@ -1311,6 +1314,8 @@ nsdb_execute_on_buffer (
     }
     case QT_GET:
     {
+      struct nsdb_var **_data = data;
+
       // Destination pointer is required
       if (data == NULL)
       {
@@ -1339,23 +1344,33 @@ nsdb_execute_on_buffer (
         goto failed;
       }
 
-      // Transfer over to a variable handle (that can be free'd)
-      struct nsdb_var **dest = (struct nsdb_var **)data;
-      *dest = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
-
-      if (*dest == NULL)
+      if (var == NULL)
       {
+        *_data = NULL;
         chunk_alloc_free_all (valloc);
         i_free (valloc);
-        goto failed;
+        ret = SUCCESS;
+        break;
       }
+      else
+      {
+        // Transfer over to a variable handle (that can be free'd)
+        *_data = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
 
-      (*dest)->var   = var;
-      (*dest)->alloc = valloc;
+        if (*_data == NULL)
+        {
+          chunk_alloc_free_all (valloc);
+          i_free (valloc);
+          goto failed;
+        }
 
-      ret = SUCCESS;
+        (*_data)->var   = var;
+        (*_data)->alloc = valloc;
 
-      break;
+        ret = SUCCESS;
+
+        break;
+      }
     }
 
     case QT_EXIT:
