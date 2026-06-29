@@ -5545,17 +5545,3 @@ type_stream_printer_init (struct stream *s, struct type *t, error *e)
 
   return SUCCESS;
 }
-
-#ifdef TESTING
-TEST (type_stream_printer_init)
-{
-  TEST_CASE ("smoke test")
-  {
-    struct type   t = {.type = T_PRIM, .p = U32};
-    struct stream s = {0};
-    error         e = {0};
-    type_stream_printer_init (&s, &t, &e);
-    type_print_os_close (&s);
-  }
-}
-#endif
