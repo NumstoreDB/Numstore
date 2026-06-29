@@ -131,7 +131,7 @@
         "OPTIMIZE_CODE":    "OFF",
         "ENABLE_COVERAGE":  "ON",
         "BUILD_TOOLS":      "OFF",
-        "BUILD_SAMPLES":    "OFF",
+        "BUILD_SAMPLES":    "ON",
         "BUILD_DOCS":       "OFF"
       }
     }
