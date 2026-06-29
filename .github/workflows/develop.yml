@@ -67,6 +67,8 @@ jobs:
       - run: ./build/ci-coverage/bin/unit_tests
       - run: ./build/ci-coverage/bin/irwr_swarm_test 10 $RANDOM
       - run: ./build/ci-coverage/bin/cgd_swarm_test 10 $RANDOM
+      - run: ./build/ci-coverage/bin/ns_sample1_basic_crud
+      - run: cat src/testing/test_commands.txt | ./build/ci-coverage/bin/nscli sample1_crud
 
       # Generate and upload coverage
       - run: |
