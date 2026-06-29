@@ -59,16 +59,18 @@ bool fault_is_set (const char *name);
 void fault_set (const char *name);
 void fault_reset_all (void);
 
-#define FAULT(expr, name)                                                \
-  (fault_is_set (name)                                                   \
-       ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) \
-       : (expr))
+#ifndef FAULT
+#  define FAULT(expr, name)                                                \
+    (fault_is_set (name)                                                   \
+         ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) \
+         : (expr))
 
-#define FAULT_NULL(expr, name)                                           \
-  (fault_is_set (name)                                                   \
-       ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), \
-          (void *)0)                                                     \
-       : (expr))
+#  define FAULT_NULL(expr, name)                                           \
+    (fault_is_set (name)                                                   \
+         ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), \
+            (void *)0)                                                     \
+         : (expr))
+#endif
 
 /******************************************************************************
  * SECTION: TEST Marker
