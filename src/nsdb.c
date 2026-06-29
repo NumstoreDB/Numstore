@@ -1174,7 +1174,7 @@ nsdb_execute_on_buffer (
     struct chunk_alloc *alc
 )
 {
-  sb_size          ret;
+  sb_size          ret = SUCCESS;
   struct variable *var;
 
   struct stream          stream;
