@@ -719,7 +719,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
       }
       case WL_EOF:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
 
@@ -973,7 +973,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
       case WL_EOF:
       case WL_END:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1276,7 +1276,7 @@ pgr_open (const char *dbname, error *e)
         }
         else
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
 
         WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
@@ -2098,7 +2098,7 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
     }
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING
@@ -2287,7 +2287,7 @@ pgr_get_writable (
       return SUCCESS;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING

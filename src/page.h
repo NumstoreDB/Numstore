@@ -1087,7 +1087,7 @@ dlgt_get_next (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1107,7 +1107,7 @@ dlgt_get_ovnext (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1139,7 +1139,7 @@ dlgt_set_next (page *p, const pgno n)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1159,7 +1159,7 @@ dlgt_get_prev (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1181,7 +1181,7 @@ dlgt_set_prev (page *p, const pgno prev)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1203,7 +1203,7 @@ dlgtset_ovnext (page *p, const pgno next)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1223,7 +1223,7 @@ dlgt_get_len (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1243,7 +1243,7 @@ dlgt_get_size (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1263,7 +1263,7 @@ dlgt_get_max_len (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1289,7 +1289,7 @@ dlgt_is_full (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1309,7 +1309,7 @@ dlgt_get_bytes (page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1329,7 +1329,7 @@ dlgt_get_bytes_imut (const page *p)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1351,7 +1351,7 @@ dlgt_set_data (page *p, const in_dl_data d)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1375,7 +1375,7 @@ dlgt_move_left (page *dest, page *src, const p_size len)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1399,7 +1399,7 @@ dlgt_move_right (page *src, page *dest, const p_size len)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }

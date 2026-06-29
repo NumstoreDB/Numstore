@@ -465,7 +465,7 @@ txn_state_to_str (const int state)
     case_ENUM_RETURN_STRING (TX_DONE);
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 #endif
 

@@ -67,7 +67,7 @@ page_init_empty (page *p, const enum page_type type)
       return;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 err_t
@@ -144,7 +144,7 @@ page_validate_for_db (const page *p, const int flags, error *e)
     }
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 ////////////////////////////////////////////////////////////

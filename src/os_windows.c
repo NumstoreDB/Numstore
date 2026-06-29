@@ -604,7 +604,7 @@ win32_seek (const i_file *fp, const u64 offset, const seek_t whence, error *e)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 
@@ -1049,7 +1049,7 @@ win32_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
         "cond_wait: SleepConditionVariableCS failed: %lu\n",
         GetLastError ()
     );
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
 }
 
@@ -1068,7 +1068,7 @@ win32_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
           "cond_timed_wait: SleepConditionVariableCS failed: %lu\n",
           err
       );
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -1125,7 +1125,7 @@ win32_mutex_free (i_threading *t, i_mutex *m)
   if (owner != 0)
   {
     i_log_error ("mutex_destroy: still locked by thread %lu\n", owner);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
 #  endif
   DeleteCriticalSection (&m->m);
@@ -1141,7 +1141,7 @@ win32_mutex_lock (i_threading *t, i_mutex *m)
   if (cs_owner (m) == tid)
   {
     i_log_error ("mutex_lock: deadlock — thread %lu already owns mutex\n", tid);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
 #  endif
   EnterCriticalSection (&m->m);
@@ -1157,7 +1157,7 @@ win32_mutex_try_lock (i_threading *t, i_mutex *m)
   if (cs_owner (m) == tid)
   {
     i_log_error ("mutex_try_lock: thread %lu already owns mutex\n", tid);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
 #  endif
   return TryEnterCriticalSection (&m->m) != 0;
@@ -1173,7 +1173,7 @@ win32_mutex_unlock (i_threading *t, i_mutex *m)
   if (cs_owner (m) != tid)
   {
     i_log_error ("mutex_unlock: thread %lu does not own mutex\n", tid);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
 #  endif
   LeaveCriticalSection (&m->m);

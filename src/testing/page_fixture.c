@@ -276,7 +276,7 @@ build_page_desc (
 
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 

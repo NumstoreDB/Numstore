@@ -116,7 +116,7 @@ lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
       return left.data.rptree_root == right.data.rptree_root;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 void
@@ -165,7 +165,7 @@ i_print_lt_lock (const int log_level, const struct lt_lock l)
       return;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 bool
@@ -221,7 +221,7 @@ get_parent (struct lt_lock *parent, const struct lt_lock lock)
     }
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 struct lt_lock
@@ -240,7 +240,7 @@ random_lt_lock (void)
 
 #undef func
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 /******************************************************************************

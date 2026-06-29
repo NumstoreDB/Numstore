@@ -599,7 +599,7 @@ posix_seek (const i_file *fp, const u64 offset, const seek_t whence, error *e)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 
@@ -1016,7 +1016,7 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
             "%s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       case EINVAL:
@@ -1026,7 +1026,7 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
             "attributes or cond: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       default:
@@ -1036,7 +1036,7 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
             "error: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1062,7 +1062,7 @@ posix_cond_free (i_threading *t, i_cond *c)
             "active waiters: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       case EINVAL:
@@ -1072,7 +1072,7 @@ posix_cond_free (i_threading *t, i_cond *c)
             "uninitialized cond: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       default:
@@ -1082,7 +1082,7 @@ posix_cond_free (i_threading *t, i_cond *c)
             "error: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1107,7 +1107,7 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
             "or mutex: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       case EPERM:
@@ -1117,7 +1117,7 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
             "owned by thread: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       default:
@@ -1127,7 +1127,7 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
             "error: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1163,7 +1163,7 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
             "mutex, or abstime: %s\n",
             strerror (ret)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EPERM:
       {
@@ -1172,7 +1172,7 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
             "owned by thread: %s\n",
             strerror (ret)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
@@ -1181,7 +1181,7 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
             "error: %s\n",
             strerror (ret)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1205,7 +1205,7 @@ posix_cond_signal (i_threading *t, i_cond *c)
             "uninitialized cond: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       default:
@@ -1215,7 +1215,7 @@ posix_cond_signal (i_threading *t, i_cond *c)
             "error: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1240,7 +1240,7 @@ posix_cond_broadcast (i_threading *t, i_cond *c)
             "%s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
       default:
@@ -1250,7 +1250,7 @@ posix_cond_broadcast (i_threading *t, i_cond *c)
             "error: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1306,11 +1306,11 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
             "permissions: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1337,7 +1337,7 @@ posix_mutex_free (i_threading *t, i_mutex *m)
             "locked: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EINVAL:
       {
@@ -1346,11 +1346,11 @@ posix_mutex_free (i_threading *t, i_mutex *m)
             "invalid: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1374,7 +1374,7 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
             "invalid: %s\n",
             strerror (ret)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EAGAIN:
       {
@@ -1383,7 +1383,7 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
             "lock: %s\n",
             strerror (ret)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EDEADLK:
       {
@@ -1392,12 +1392,12 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
             "deadlock: %s\n",
             strerror (ret)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
         i_log_error ("mutex_lock: %s\n", strerror (ret));
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1421,7 +1421,7 @@ posix_mutex_try_lock (i_threading *t, i_mutex *m)
             "invalid: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EAGAIN:
       {
@@ -1430,7 +1430,7 @@ posix_mutex_try_lock (i_threading *t, i_mutex *m)
             "lock: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EDEADLK:
       {
@@ -1439,7 +1439,7 @@ posix_mutex_try_lock (i_threading *t, i_mutex *m)
             "deadlock: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EBUSY:
       {
@@ -1448,7 +1448,7 @@ posix_mutex_try_lock (i_threading *t, i_mutex *m)
       default:
       {
         i_log_error ("mutex_lock: %s\n", strerror (errno));
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1473,7 +1473,7 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
             "invalid: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EAGAIN:
       {
@@ -1482,7 +1482,7 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
             "lock: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EPERM:
       {
@@ -1491,12 +1491,12 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
             "not owner: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
         i_log_error ("mutex_unlock: %s\n", strerror (errno));
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1553,7 +1553,7 @@ posix_thread_create (
             "attributes: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EPERM:
       {
@@ -1563,11 +1563,11 @@ posix_thread_create (
             "permissions: %s\n",
             strerror (errno)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -1594,7 +1594,7 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
             "deadlock: %s\n",
             strerror (r)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EINVAL:
       {
@@ -1603,7 +1603,7 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
             "joinable: %s\n",
             strerror (r)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case ESRCH:
       {
@@ -1612,11 +1612,11 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
             "thread: %s\n",
             strerror (r)
         );
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
       default:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }

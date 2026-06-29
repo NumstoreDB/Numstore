@@ -473,7 +473,7 @@ gr_lock_mode_name (const enum lock_mode mode)
   {
     return mode_names[mode];
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING
@@ -505,10 +505,10 @@ get_parent_mode (const enum lock_mode child_mode)
     }
     case LM_COUNT:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING

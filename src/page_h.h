@@ -139,7 +139,7 @@ page_h_xfer_ownership_ptr (page_h *dest, page_h *src)
   if (dest->mode != PHM_NONE)
   {
     ASSERT (dest->mode == PHM_NONE);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
   *dest     = *src;
   src->mode = PHM_NONE;
@@ -165,7 +165,7 @@ page_h_r (const page_h *h)
   if (h->mode != PHM_S)
   {
     ASSERT (h->mode == PHM_S);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
   return &h->pgr->page;
 }
@@ -177,7 +177,7 @@ page_h_w (const page_h *h)
   if (h->mode != PHM_X)
   {
     ASSERT (h->mode == PHM_X);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
   return &h->pgw->page;
 }
@@ -193,7 +193,7 @@ page_h_w_or_null (const page_h *h)
   if (h->mode != PHM_X)
   {
     ASSERT (h->mode == PHM_X);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
   return &h->pgw->page;
 }
@@ -212,7 +212,7 @@ page_h_ro (const page_h *h)
   }
 
   ASSERT (h->mode != PHM_NONE);
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 HEADER_FUNC const page *
@@ -242,7 +242,7 @@ page_h_pgno (const page_h *h)
   else
   {
     ASSERT (h->mode != PHM_NONE);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
   return p->pg;
 }
@@ -273,7 +273,7 @@ page_h_type (const page_h *h)
   else
   {
     ASSERT (h->mode != PHM_NONE);
-    UNREACHABLE ();
+    UNREACHABLE (); // LCOV_EXCL_LINE
   }
   return page_get_type (p);
 }
