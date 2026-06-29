@@ -315,48 +315,54 @@ main {
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
-.docs-nav {
-    position: sticky;
-    top: 4rem;
-    align-self: start;
-    max-height: calc(100vh - 5rem);
-    overflow-y: auto;
-    padding: 1.5rem 0;
-    font-size: 0.93rem;
-}
+/* ── Collapsible nav (details/summary) ──────────────────────── */
+.docs-nav details { margin: 0; }
 
-.docs-nav ul { list-style: none; padding: 0; margin: 0; }
-.docs-nav li { margin: 0; }
-
-.docs-nav .top-link {
-    display: block;
-    padding: 0.4em 0.75em;
-    color: var(--fg);
-    text-decoration: none;
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-}
-.docs-nav .top-link:hover { background: var(--elevated); text-decoration: none; }
-
-.docs-nav h3 {
+.docs-nav details > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.55em;
     margin: 1.2em 0 0.35em;
     padding: 0 0.75em;
-    border: 0;
     font-family: var(--font-sans);
     font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s;
 }
+.docs-nav details > summary::-webkit-details-marker { display: none; }
+.docs-nav details > summary:hover { color: var(--fg); }
 
-.docs-nav .section > ul {
+/* Chevron — pure CSS, rotates on open */
+.docs-nav details > summary::before {
+    content: "";
+    flex-shrink: 0;
+    width: 0.4em;
+    height: 0.4em;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.18s ease;
+    opacity: 0.8;
+}
+.docs-nav details[open] > summary::before { transform: rotate(45deg); }
+
+/* Lists inside details — match your existing .section > ul style */
+.docs-nav details > ul {
+    list-style: none;
     margin: 0 0 0.6em 0.85em;
     padding-left: 0.65em;
     border-left: 1px solid var(--border);
 }
 
-.docs-nav .section > ul a {
+/* Leaf links inside details */
+.docs-nav details > ul a {
     display: block;
     padding: 0.35em 0.75em;
     margin: 0.05em 0;
@@ -365,34 +371,33 @@ main {
     border-radius: var(--radius-sm);
     transition: color 0.12s, background-color 0.12s;
 }
-.docs-nav .section > ul a:hover {
+.docs-nav details > ul a:hover {
     background: var(--elevated);
     color: var(--fg);
     text-decoration: none;
 }
-
-.docs-nav a.active {
+.docs-nav details > ul a.active {
+    background: var(--elevated);
     color: var(--accent-soft);
     font-weight: 600;
+}
+
+/* Nested subsection summaries — less prominent than top-level */
+.docs-nav .subsection > details > summary {
+    margin: 0.15em 0;
+    padding: 0.35em 0.75em;
+    font-size: 0.93rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--muted);
+}
+.docs-nav .subsection > details > summary:hover {
     background: var(--elevated);
+    color: var(--fg);
 }
 
-/* Optional: per-product accent on the left rule.
-   Add data-product="numstore|smartfiles|enterprise" to <li class="section"> */
-.docs-nav .section[data-product="numstore"]    > ul { border-left-color: var(--product-numstore); }
-.docs-nav .section[data-product="smartfiles"]  > ul { border-left-color: var(--product-smartfiles); }
-.docs-nav .section[data-product="enterprise"]  > ul { border-left-color: var(--product-enterprise); }
-
-/* ── Mobile ──────────────────────────────────────────────────── */
-@media (max-width: 800px) {
-    .page { grid-template-columns: 1fr; gap: 0; padding: 0 1rem; }
-    .docs-nav {
-        position: static;
-        max-height: none;
-        border-bottom: 1px solid var(--border);
-        padding: 1rem 0;
-        margin-bottom: 1rem;
-    }
-    main { margin: 1.5rem auto; }
-    .site-nav a { margin-left: 0.9em; }
-}
+/* Per-product accent on subsection rule */
+.docs-nav .subsection[data-product="numstore"]   > details > ul { border-left-color: var(--product-numstore); }
+.docs-nav .subsection[data-product="smartfiles"] > details > ul { border-left-color: var(--product-smartfiles); }
+.docs-nav .subsection[data-product="enterprise"] > details > ul { border-left-color: var(--product-enterprise); }

@@ -61,7 +61,7 @@ There were three main takeaways from this performance analysis of Numstore:
    carries no such constraints, making it more portable and easier to reason
    about in general-purpose contexts.
 
-![A plot of time vs insertion size](assets/p6_bar_time_vs_file_size_log.png)
+![A plot of time vs insertion size](assets/blog/2026/jun/performance/p6_bar_time_vs_file_size_log.png)
 
 *Figure 0 — Time vs. file size with a fixed offset and file size (both
 relatively small). As file size increases, SmartFiles takes relatively the
@@ -291,7 +291,7 @@ contains a lot of interior machinery for fault tolerance. Analytically, it
 writes 3× as much data — both an undo and a redo for the write-ahead log, plus
 the flushed page to disk on the eviction path.
 
-![A plot of time vs insertion size](assets/p2_time_vs_insert_size_linear.png)
+![A plot of time vs insertion size](assets/blog/2026/jun/performance/p2_time_vs_insert_size_linear.png)
 
 *Figure 1 — Time vs. insertion size with a fixed offset and file size (both
 relatively small). As insertion size increases, SmartFiles balloons at a
@@ -325,17 +325,17 @@ I'm happy to adjust my code and regenerate the results.
 In general, SmartFiles is very fast when inserting data into an already-large
 dataset.
 
-![A linear plot of file size vs time to insert](assets/p1_time_vs_file_size_linear.png)
+![A linear plot of file size vs time to insert](assets/blog/2026/jun/performance/p1_time_vs_file_size_linear.png)
 
 *Figure 2 — A linear plot of file size (x axis) vs. time to insert a
 fixed-size buffer at a fixed offset.*
 
-![A logarithmic plot of file size vs time to insert](assets/p1_time_vs_file_size_log.png)
+![A logarithmic plot of file size vs time to insert](assets/blog/2026/jun/performance/p1_time_vs_file_size_log.png)
 
 *Figure 3 — A logarithmic plot of the same data. SmartFiles remains relatively
 constant as file size increases.*
 
-![A heat map of time vs file size vs insert size](assets/p5_heatmap_file_x_insert_log.png)
+![A heat map of time vs file size vs insert size](assets/blog/2026/jun/performance/p5_heatmap_file_x_insert_log.png)
 
 *Figure 4 — A heat map where x and y represent file size and insertion size.
 Naive I/O grows as both x and y increase; SmartFiles only grows as y
@@ -359,17 +359,17 @@ A flame graph is a useful tool for understanding which methods are consuming
 the most time within a routine. It doesn't give wall-clock measurements, but
 it breaks down the relative cost of each call.
 
-![Flamegraph for the buffered file I/O implementation](assets/buffered_flamegraph.png)
+![Flamegraph for the buffered file I/O implementation](assets/blog/2026/jun/performance/buffered_flamegraph.png)
 
 *Figure 5 — Flame graph for the buffered file I/O implementation. Roughly
 equal time is spent between the `fsync`, `pread`, and `pwrite` calls.*
 
-![Flamegraph for the unbuffered file I/O implementation](assets/unbuffered_flamegraph.png)
+![Flamegraph for the unbuffered file I/O implementation](assets/blog/2026/jun/performance/unbuffered_flamegraph.png)
 
 *Figure 6 — Flame graph for the unbuffered file I/O implementation. The same
 story as Figure 5.*
 
-![Flamegraph for the SmartFiles timed portion](assets/smartfiles_flamegraph.png)
+![Flamegraph for the SmartFiles timed portion](assets/blog/2026/jun/performance/smartfiles_flamegraph.png)
 
 *Figure 7 — Flame graph for the SmartFiles timed portion. A large portion of
 time is spent inside `pgr_new` — we're constantly creating new pages and
