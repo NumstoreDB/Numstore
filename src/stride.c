@@ -12,7 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "alloc.h"
 #include "collections.h"
+#include "error.h"
 
 #ifdef TESTING
 #  include "testing/testing.h"
@@ -300,17 +302,12 @@ TEST (stride_resolve)
 
 DEFINE_DBG_ASSERT (struct mus_builder, mus_builder, s, { ASSERT (s); })
 
-void
-musb_create (
-    struct mus_builder *dest,
-    struct chunk_alloc *temp,
-    struct chunk_alloc *persistent
-)
+struct mus_builder
+musb_create (struct builder *b)
 {
-  *dest = (struct mus_builder){
-      .head       = NULL,
-      .temp       = temp,
-      .persistent = persistent,
+  return (struct mus_builder){
+      .head = NULL,
+      .b    = b,
   };
 }
 
@@ -323,7 +320,7 @@ musb_accept_key (
 {
   DBG_ASSERT (mus_builder, eb);
 
-  struct mus_llnode *node = chunk_malloc (eb->temp, 1, sizeof *node, e);
+  struct mus_llnode *node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
   if (!node)
   {
     return error_trace (e);
@@ -345,11 +342,7 @@ musb_accept_key (
 }
 
 err_t
-musb_build (
-    struct multi_user_stride *dest,
-    const struct mus_builder *eb,
-    error                    *e
-)
+musb_build (struct multi_user_stride *dest, struct mus_builder *eb, error *e)
 {
   DBG_ASSERT (mus_builder, eb);
   ASSERT (dest);
@@ -359,14 +352,14 @@ musb_build (
   {
     dest->strides = NULL;
     dest->len     = 0;
-    return SUCCESS;
+    goto theend;
   }
 
   struct user_stride *strides =
-      chunk_malloc (eb->persistent, len, sizeof *strides, e);
+      builder_malloc_persist (eb->b, len, sizeof *strides, e);
   if (!strides)
   {
-    return error_trace (e);
+    goto theend;
   }
 
   u32 i = 0;
@@ -378,5 +371,7 @@ musb_build (
 
   dest->strides = strides;
   dest->len     = len;
-  return SUCCESS;
+
+theend:
+  return error_trace (e);
 }

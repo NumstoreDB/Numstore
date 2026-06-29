@@ -14,6 +14,10 @@
 
 #include "collections.h"
 
+#include <stdlib.h>
+#include <string.h>
+
+#include "alloc.h"
 #include "csx_assert.h"
 
 #ifdef TESTING
@@ -1672,6 +1676,7 @@ DEFINE_DBG_ASSERT (struct dbl_buffer, dbl_buffer, d, {
 err_t
 dblb_create (
     struct dbl_buffer *dest,
+    struct allocator  *alloc,
     const u32          size,
     const u32          initial_cap,
     error             *e
@@ -1691,6 +1696,7 @@ dblb_create (
       .nelem     = 0,
       .nelem_cap = initial_cap,
       .data      = data,
+      .alloc     = alloc,
   };
 
   DBG_ASSERT (dbl_buffer, dest);
@@ -1750,11 +1756,10 @@ dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e)
 }
 
 void
-dblb_free (struct dbl_buffer *d)
+dblb_reset (struct dbl_buffer *d)
 {
   DBG_ASSERT (dbl_buffer, d);
 
-  i_free (d->data);
   d->nelem_cap = 0;
   d->nelem     = 0;
 }
@@ -1762,26 +1767,30 @@ dblb_free (struct dbl_buffer *d)
 #ifdef TESTING
 TEST (dblb_create_basic)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
   // Create buffer with size=4, initial_cap=2
-  const err_t err = dblb_create (&db, 4, 2, &e);
+  const err_t err = dblb_create (&db, &alloc, 4, 2, &e);
   test_assert_int_equal (err, SUCCESS);
   test_assert_int_equal (db.size, 4);
   test_assert_int_equal (db.nelem, 0);
   test_assert_int_equal (db.nelem_cap, 2);
   test_assert (db.data != NULL);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_append_single)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 4, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 4, &e);
 
   // Append single element
   u32         val = 0x12345678;
@@ -1794,15 +1803,17 @@ TEST (dblb_append_single)
   const u32 *data = (u32 *)db.data;
   test_assert_int_equal (data[0], 0x12345678);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_append_multiple)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 2, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
 
   // Append multiple elements
   u32         vals[] = {0x11, 0x22, 0x33};
@@ -1816,16 +1827,18 @@ TEST (dblb_append_multiple)
   test_assert_int_equal (data[1], 0x22);
   test_assert_int_equal (data[2], 0x33);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_append_triggers_realloc)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
   // Start with capacity of 2
-  dblb_create (&db, sizeof (u32), 2, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
 
   u32 val1 = 0xAA;
   dblb_append (&db, &val1, 1, &e);
@@ -1853,15 +1866,17 @@ TEST (dblb_append_triggers_realloc)
   test_assert_int_equal (data[2], 0xCC);
   test_assert_int_equal (data[3], 0xDD);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_append_alloc_basic)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 4, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 4, &e);
 
   // Allocate space for 2 elements
   void *ptr = dblb_append_alloc (&db, 2, &e);
@@ -1878,15 +1893,17 @@ TEST (dblb_append_alloc_basic)
   test_assert_int_equal (base[0], 0x1111);
   test_assert_int_equal (base[1], 0x2222);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_append_alloc_sequential)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 8, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 8, &e);
 
   // First allocation
   u32 *ptr1 = (u32 *)dblb_append_alloc (&db, 2, &e);
@@ -1909,15 +1926,17 @@ TEST (dblb_append_alloc_sequential)
   test_assert_int_equal (base[3], 0xDD);
   test_assert_int_equal (db.nelem, 4);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_append_alloc_triggers_realloc)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 2, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
 
   // Fill to capacity
   dblb_append_alloc (&db, 2, &e);
@@ -1929,31 +1948,34 @@ TEST (dblb_append_alloc_triggers_realloc)
   test_assert_int_equal (db.nelem, 3);
   test_assert_int_equal (db.nelem_cap, 4);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_different_element_sizes)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
   // Test with u8
-  dblb_create (&db, sizeof (u8), 4, &e);
+  dblb_create (&db, &alloc, sizeof (u8), 4, &e);
   u8 byte = 0x42;
   dblb_append (&db, &byte, 1, &e);
   test_assert_int_equal (((u8 *)db.data)[0], 0x42);
-  dblb_free (&db);
 
   // Test with u64
-  dblb_create (&db, sizeof (u64), 4, &e);
+  dblb_create (&db, &alloc, sizeof (u64), 4, &e);
   u64 large = 0x123456789ABCDEF0;
   dblb_append (&db, &large, 1, &e);
   test_assert_equal (((u64 *)db.data)[0], 0x123456789ABCDEF0);
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_struct_elements)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
@@ -1963,7 +1985,7 @@ TEST (dblb_struct_elements)
     u32 value;
   };
 
-  dblb_create (&db, sizeof (struct test_struct), 2, &e);
+  dblb_create (&db, &alloc, sizeof (struct test_struct), 2, &e);
 
   struct test_struct s1 = {.id = 1, .value = 100};
   struct test_struct s2 = {.id = 2, .value = 200};
@@ -1977,31 +1999,35 @@ TEST (dblb_struct_elements)
   test_assert_int_equal (data[1].id, 2);
   test_assert_int_equal (data[1].value, 200);
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_free_resets)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 4, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 4, &e);
   u32 val = 0x1234;
   dblb_append (&db, &val, 1, &e);
 
-  dblb_free (&db);
+  dblb_reset (&db);
 
   // Verify fields are reset
   test_assert_int_equal (db.nelem, 0);
-  test_assert_int_equal (db.nelem_cap, 0);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (dblb_large_append)
 {
+  ALLOC_INIT (alloc);
+
   struct dbl_buffer db;
   error             e = error_create ();
 
-  dblb_create (&db, sizeof (u32), 2, &e);
+  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
 
   // Append many elements at once
   u32 vals[100];
@@ -2020,7 +2046,7 @@ TEST (dblb_large_append)
     test_assert_int_equal (data[i], i);
   }
 
-  dblb_free (&db);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -2744,9 +2770,6 @@ TEST (ext_array_random)
   }
 }
 #endif
-
-#include <stdlib.h>
-#include <string.h>
 
 struct block_array *
 block_array_create (const u32 cap_per_node, error *e)

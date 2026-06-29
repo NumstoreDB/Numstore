@@ -510,22 +510,18 @@ void txnt_remove_txn_expect (struct txn_table *t, const struct txn *unsafe_tx);
 bool txnt_equal_ignore_state (struct txn_table *left, struct txn_table *right);
 
 /**
- * @fn err_t txnt_rand_populate(struct txn_table *t, struct chunk_alloc *alloc,
- * error *e)
  * @brief Fills the transaction table space layout using randomized state
  * configurations.
  */
 err_t
-txnt_rand_populate (struct txn_table *t, struct chunk_alloc *alloc, error *e);
+txnt_rand_populate (struct txn_table *t, struct allocator *alloc, error *e);
 
 /**
- * @fn err_t txnt_determ_populate(struct txn_table *t, struct chunk_alloc
- * *alloc, error *e)
  * @brief Fills the transaction table space layout using predictable baseline
  * configurations.
  */
 err_t
-txnt_determ_populate (struct txn_table *t, struct chunk_alloc *alloc, error *e);
+txnt_determ_populate (struct txn_table *t, struct allocator *alloc, error *e);
 
 /**
  * @fn void txnt_crash(struct txn_table *t)

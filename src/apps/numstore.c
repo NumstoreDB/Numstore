@@ -18,97 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "alloc.h"
-#include "collections.h"
-#include "compiler.h"
-#include "error.h"
 #include "nsdb.h"
-#include "query.h"
-
-#define REPL_PREFIX "numstore> "
-#define CONT_PREFIX "      ... "
-#define INITIAL_CAP 128
-
-enum cmd_status
-{
-  CMD_SUCCESS,
-  CMD_TERMINATE,
-  CMD_FAILURE,
-};
-
-static enum cmd_status
-handle_command (struct nsdb *db, const char *command, error *e)
-{
-  struct chunk_alloc alloc;
-  struct query       q;
-  chunk_alloc_create_default (&alloc);
-
-  // compile the query
-  if (compile_query (&q, command, &alloc, e))
-  {
-    chunk_alloc_free_all (&alloc);
-    return CMD_FAILURE;
-  }
-
-  if (q.type == QT_EXIT)
-  {
-    chunk_alloc_free_all (&alloc);
-    return CMD_TERMINATE;
-  }
-
-  // Execute the query
-  if (nsdb_execute_in_console (db, &q, &alloc) < 0)
-  {
-    chunk_alloc_free_all (&alloc);
-    return CMD_FAILURE;
-  }
-
-  chunk_alloc_free_all (&alloc);
-  return CMD_SUCCESS;
-}
-
-/*
- * Append one line from stream to the buffer (newline not stored).
- * Returns 1 on success, 0 on EOF with nothing read, -1 on error.
- */
-static int
-append_line (struct dbl_buffer *b, FILE *stream, error *e)
-{
-  int    c;
-  size_t before = b->nelem;
-
-  while ((c = fgetc (stream)) != EOF && c != '\n')
-  {
-    char _c = (char)c;
-    WRAP (dblb_append (b, &_c, 1, e));
-  }
-
-  if (c == EOF && b->nelem == before)
-  {
-    return 0;
-  }
-
-  return 1;
-}
-
-static int
-has_terminator (const struct dbl_buffer *b)
-{
-  return memchr (b->data, ';', b->nelem) != NULL;
-}
-
-static int
-is_blank (const struct dbl_buffer *b)
-{
-  for (size_t i = 0; i < b->nelem; i++)
-  {
-    if (((char *)b->data)[i] != ' ' && ((char *)b->data)[i] != '\t')
-    {
-      return 0;
-    }
-  }
-  return 1;
-}
 
 int
 main (int argc, char **argv)
@@ -119,98 +29,61 @@ main (int argc, char **argv)
     return -1;
   }
 
-  error        e  = error_create ();
-  struct nsdb *db = nsdb_open (argv[1]);
+  struct nscli cli;
+  if (nscli_init (&cli, argv[1]))
+  {
+    return EXIT_FAILURE;
+  }
 
   while (true)
   {
-    // Build the line as a double buffer
-    struct dbl_buffer stmt;
-    if (dblb_create (&stmt, 1, INITIAL_CAP, &e))
+    // Initialize
+    if (nscli_step_init (&cli))
     {
       goto fatal;
     }
 
-    // Print out the repl prefix
-    fputs (REPL_PREFIX, stdout);
-    fflush (stdout);
-
-    // Accumulate lines until a ';' appears or EOF.
-    while (true)
+    // Read input
+    switch (nscli_step_read_stdin (&cli))
     {
-      // Read a whole line
-      int r = append_line (&stmt, stdin, &e);
-
-      // handle error
-      if (r < 0)
+      case CMD_FATAL:
       {
-        goto fatal;
-      }
-
-      // nothing - got eof
-      if (r == 0)
-      {
-        fputc ('\n', stdout);
-        continue;
-      }
-
-      // Check if this line is the last one
-      if (has_terminator (&stmt))
-      {
-        char c = '\0';
-        if (dblb_append (&stmt, &c, 1, &e))
-        {
-          goto fatal;
-        }
-        break;
-      }
-
-      if (stmt.nelem > 0)
-      {
-        /* Separate lines with a space so tokens don't merge. */
-        char c = ' ';
-        if (dblb_append (&stmt, &c, 1, &e))
-        {
-          goto fatal;
-        }
-      }
-
-      fputs (CONT_PREFIX, stdout);
-      fflush (stdout);
-    }
-
-    if (is_blank (&stmt))
-    {
-      continue;
-    }
-
-    switch (handle_command (db, stmt.data, &e))
-    {
-      case CMD_SUCCESS:
-      {
-        dblb_free (&stmt);
-        continue;
-      }
-      case CMD_TERMINATE:
-      {
-        dblb_free (&stmt);
+        nsdb_perror (cli.db, "Error: ");
         goto complete;
       }
-      case CMD_FAILURE:
+      case CMD_NOTHING_TO_DO:
       {
-        error_log_consume (&e);
-        dblb_free (&stmt);
-        continue;
+        break;
+      }
+      case CMD_RUN:
+      {
+        switch (nscli_step_execute (&cli))
+        {
+          case EXE_ERROR:
+          {
+            nsdb_perror (cli.db, "Error: ");
+            break;
+          }
+          case EXE_SUCCESS:
+          {
+            break;
+          }
+          case EXE_EXIT:
+          {
+            goto complete;
+          }
+        }
       }
     }
+
+    nscli_step_clean (&cli);
   }
 
 fatal:
-  error_log_consume (&e);
-  nsdb_close (db);
+  nscli_close (&cli);
   return EXIT_FAILURE;
 
 complete:
-  nsdb_close (db);
+  nscli_close (&cli);
   return EXIT_SUCCESS;
 }

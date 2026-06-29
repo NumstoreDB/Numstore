@@ -72,11 +72,11 @@ i64 randi64e (i64 lower, i64 upper); // [lower, upper)
 f32 randf (void); // [0, 1]
 
 err_t rand_str (
-    struct string      *dest,
-    struct chunk_alloc *alloc,
-    u32                 minlen,
-    u32                 maxlen,
-    error              *e
+    struct string    *dest,
+    struct allocator *alloc,
+    u32               minlen,
+    u32               maxlen,
+    error            *e
 );
 
 void rand_bytes (void *dest, u32 len);

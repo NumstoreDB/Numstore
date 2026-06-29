@@ -15,7 +15,7 @@
 #ifndef VAR_H
 #define VAR_H
 
-#include "alloc.h"     // chunk_alloc
+#include "alloc.h"     // allocator
 #include "error.h"     // error
 #include "numstore.h"  // pgno ...etc
 #include "pager.h"     // pager
@@ -76,8 +76,8 @@ struct ns_var_get_params
   struct pager *p;
   struct txn   *tx;
 
-  struct string       vname;
-  struct chunk_alloc *alloc;
+  struct string     vname;
+  struct allocator *alloc;
 
   struct variable dest;
 };
@@ -88,9 +88,9 @@ struct ns_read_var_page_params
   struct pager *p;
   struct txn   *tx;
 
-  page_h             *vp;    // The currently loaded variable page
-  struct chunk_alloc *alloc; // Where to allocate stuff
-  struct variable    *dest;  // Output variable
+  page_h           *vp;    // The currently loaded variable page
+  struct allocator *alloc; // Where to allocate stuff
+  struct variable  *dest;  // Output variable
 
   bool                 matches;
   const struct string *check;
@@ -105,9 +105,9 @@ struct ns_var_get_or_create_params
   struct pager *p;
   struct txn   *tx;
 
-  struct string       vname;
-  struct type        *type;
-  struct chunk_alloc *alloc;
+  struct string     vname;
+  struct type      *type;
+  struct allocator *alloc;
 
   struct variable dest;
 };

@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "alloc.h"
 #include "logging.h"
 #include "mem_vhmap.h"
 #include "numerics.h"
@@ -376,8 +377,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
   // Loop until you get a unique variable name
   for (;;)
   {
-    struct chunk_alloc temp;
-    chunk_alloc_create_default (&temp);
+    ALLOC_INIT (temp);
 
     error        e       = error_create ();
     char        *name    = random_name ();
@@ -389,7 +389,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     {
       free (name);
       free (typestr);
-      chunk_alloc_free_all (&temp);
+      ALLOC_CLOSE (temp);
       continue;
     }
 
@@ -430,7 +430,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
 
     free (name);
     free (typestr);
-    chunk_alloc_free_all (&temp);
+    ALLOC_CLOSE (temp);
 
     return;
   }

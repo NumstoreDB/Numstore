@@ -18,8 +18,6 @@
  *
  * Alloc.h contains specialized allocators used in numstore
  * such as:
- * - Local Allocator - a standard arena allocator that is fixed in size
- * - Chunk Allocator - an allocator that offers 1 free for all attached allocs
  * - Slab Allocator  - an allocator that allocates fixed size slabs
  * - Malloc Plan     - a two phase malloc - defining the size - then one malloc
  */
@@ -33,153 +31,6 @@
 #include "stdtypes.h"    // u32
 
 /******************************************************************************
- * SECTION: Local Linear Allocator
- * ----------------------------------------------------------------------------
- *
- * @brief A fixed sized memory arena
- *
- * A Linear allocator takes a buffer and dishes out memory
- * from this fixed sized buffer. It is not dynamic.
- * It does not do any mallocs under the hood.
- ******************************************************************************/
-
-/**
- * @struct lalloc
- * @brief A local arena allocator
- *
- * An allocator that allocates from a fixed size buffer
- * provided by the user
- *
- * @var lalloc::latch
- * @brief The latch to maintain thread safety
- *
- * @var lalloc::used
- * @brief How many bytes have been used
- *
- * @var lalloc::limit
- * @brief The maximum number of bytes available
- *
- * @var lalloc::data
- * @brief The buffer that holds all the data
- */
-struct lalloc
-{
-  latch latch;
-  u32   used;
-  u32   limit;
-  u8   *data;
-};
-
-/**
- * @brief Creates a new local allocator using the user supplied buffer
- *
- * No memory allocations because the allocator is provided via the user
- *
- * @param  data The buffer to hold all the data
- * @param  limit The length of [data]
- * @return A new stack allocated local allocator
- */
-struct lalloc lalloc_create (u8 *data, u32 limit);
-
-/**
- * @brief Creates an allocator from a fixed size buffer
- *
- * Shorthand for an allocator from a stack allocated buffer
- *
- * do something like:
- * u8 data[1065];
- * struct lalloc l = lalloc_create_from(data)
- *
- *
- * @param buf The stack allocated buffer - needs sizeof
- * @return A new local allocator
- */
-#define lalloc_create_from(buf) lalloc_create ((u8 *)buf, sizeof (buf))
-
-/**
- * @brief Gets how many bytes are being used
- *
- * Useful for setting state - doing a bunch of allocations,
- * then calling lalloc_reset_to_state to reset back to the
- * recorded state
- *
- * @param l The local allocator
- * @return A u32 - opaque, but internally represents the number
- * of bytes used
- */
-u32 lalloc_get_state (struct lalloc *l);
-
-/**
- * @brief Resets to the state obtained via [lalloc_get_state]
- *
- * Resets state so that any allocation that happened between [lalloc_get_state]
- * and now is ignored
- *
- * @param l The allocator
- * @param state The state obtained from [lalloc_get_state]
- */
-void lalloc_reset_to_state (struct lalloc *l, u32 state);
-
-/**
- * @brief Primary allocator for local linear allocator
- *
- * Performs a thread-safe bump allocation from the underlying arena buffer.
- * Memory returned is uninitialized and aligned according to alignment
- * constraints.
- *
- * @param a Pointer to the local linear allocator instance.
- * @param req Requested memory alignment boundary in bytes.
- * @param size Total number of contiguous bytes to allocate.
- * @param e Pointer to an error container tracking out-of-memory states.
- * @return void* Pointer to the allocated memory block, or NULL on failure.
- */
-void *lmalloc (struct lalloc *a, u32 req, u32 size, error *e);
-
-/**
- * @brief Primary zero-initializing allocator for local linear allocator
- *
- * Allocates a block of memory exactly like lmalloc, but zeroes out the memory
- * block before passing the pointer back to the caller.
- *
- * @param a Pointer to the local linear allocator instance.
- * @param req Requested memory alignment boundary in bytes.
- * @param size Total number of contiguous bytes to allocate.
- * @param e Pointer to an error container tracking out-of-memory states.
- * @return void* Pointer to the zeroed memory block, or NULL on failure.
- */
-void *lcalloc (struct lalloc *a, u32 req, u32 size, error *e);
-
-/**
- * @brief Total reset of local linear allocator consumption tracking
- *
- * Thread-safely resets the internal used counter back to zero. This completely
- * invalidates all existing allocations made out of this allocator instance.
- *
- * @param a Pointer to the target linear allocator instance.
- */
-void lalloc_reset (struct lalloc *a);
-
-/**
- * @brief Inline allocator helper asserting on allocation exhaustion
- *
- * Wraps around standard lmalloc, bypassing external error parameters and
- * forcing a hard system runtime panic if an out-of-memory event triggers.
- *
- * @param a Pointer to the local linear allocator instance.
- * @param req Requested memory alignment boundary in bytes.
- * @param size Total number of contiguous bytes to allocate.
- * @return void* Guaranteed non-NULL pointer to the newly allocated memory
- * block.
- */
-HEADER_FUNC void *
-lmalloc_expect (struct lalloc *a, const u32 req, const u32 size)
-{
-  void *ret = lmalloc (a, req, size, NULL);
-  ASSERT (ret);
-  return ret;
-}
-
-/******************************************************************************
  * SECTION: Chunk Allocator
  * ----------------------------------------------------------------------------
  *
@@ -189,27 +40,6 @@ lmalloc_expect (struct lalloc *a, const u32 req, const u32 size)
  * using chunks - one free frees all memory that was allocated
  * with it.
  ******************************************************************************/
-
-/**
- * @struct chunk
- * @brief Single link block within a chunk allocator chain
- *
- * Wraps a standard local linear allocator instance alongside a flexible data
- * array which handles the payload tracking for this specific segment.
- *
- * @var chunk::alloc
- * @brief The internal linear allocator wrapper riding on top of the chunk data.
- * @var chunk::next
- * @brief Pointer to the subsequent chunk link in the chain or NULL if tail.
- * @var chunk::data
- * @brief Inline flexible array handling the raw bytes owned by this block.
- */
-struct chunk
-{
-  struct lalloc alloc;  // Base allocator interface for this chunk
-  struct chunk *next;   // Next chunk in the linked list, or NULL if tail
-  u8            data[]; // Flexible array of chunk-owned bytes
-};
 
 /**
  * @struct chunk_alloc_settings
@@ -281,134 +111,6 @@ struct chunk_alloc
   u32                         total_used;
 };
 
-/**
- * @brief Initializes a chunk allocation controller with explicit custom
- * metrics.
- *
- * Sets up the root context control blocks, clears tracking metadata counters,
- * and bakes in the unique runtime limitations specified by the caller.
- *
- * @param dest Pointer to the uninitialized controller destination memory.
- * @param  settings  The immutable operational constraints for the arena
- * chain.
- */
-void chunk_alloc_create (
-    struct chunk_alloc         *dest,
-    struct chunk_alloc_settings settings
-);
-
-/**
- * @brief Initializes a chunk allocation controller using baseline platform
- * presets.
- *
- * Convenience wrapper with sensible defaults
- *
- * @param dest Pointer to the uninitialized controller destination memory.
- */
-void chunk_alloc_create_default (struct chunk_alloc *dest);
-
-/**
- * @brief Destroys the allocation list and frees all memory segments
- *
- * Iterates through every node linked to the root node, releases backing
- * host memory frames, and fully clears control metrics back to zero.
- *
- * @param ca Target allocator context
- */
-void chunk_alloc_free_all (struct chunk_alloc *ca);
-
-/**
- * @brief Resets tracking offsets to zero without releasing underlying system
- * segments.
- *
- * Wipes out utilized tracking metrics to allow memory reuse across the chain,
- * eliminating the CPU penalty of recurring system-level allocation calls.
- *
- * @param ca Target allocator context being recycled.
- */
-void chunk_alloc_reset_all (struct chunk_alloc *ca);
-
-/**
- * @brief Reserves a contiguous raw segment of memory out of the managed arena.
- *
- * Evaluates the active block space, dynamically spawning an underlying node
- * bridge if current payload capacities cannot fit the multiplied payload matrix
- * size.
- *
- * @param ca   Target allocator context handling the request.
- * @param req  Number of elements requested.
- * @param size Size of each individual element in bytes.
- * @param e    Error context
- *
- * @return void* Pointer to the newly carved block segment, or NULL on failure.
- */
-void *chunk_malloc (struct chunk_alloc *ca, u32 req, u32 size, error *e);
-
-/**
- * @brief Reserves a contiguous block segment out of the arena and
- * zero-initializes it.
- *
- * Executes identical block evaluation processes as standard allocation
- * routines, but explicitly forces bitwise zero clearing across the entire
- * returning block payload.
- *
- * @param ca   Target allocator context handling the request.
- * @param req  Number of elements requested.
- * @param size Size of each individual element in bytes.
- * @param e    Error context
- *
- * @return void* Pointer to the cleared block segment, or NULL on failure.
- */
-void *chunk_calloc (struct chunk_alloc *ca, u32 req, u32 size, error *e);
-
-/**
- * @brief Copies external memory blocks inside a newly reserved arena payload
- * area.
- *
- * Allocates fresh space inside the active chain matching the source volume,
- * copies the existing buffer content over, and returns the managed target block
- * address.
- *
- * @param ca   Target allocator context receiving the content.
- * @param ptr  Pointer to the external source data block to be copied.
- * @param size Total size in bytes of the external memory footprint.
- * @param e    Error context
- *
- * @return void* Pointer to the localized deep-copied buffer, or NULL on
- * failure.
- */
-void *chunk_alloc_move_mem (
-    struct chunk_alloc *ca,
-    const void         *ptr,
-    u32                 size,
-    error              *e
-);
-
-/******************************************************************************
- * SECTION: Blocking Object Pool
- * ----------------------------------------------------------------------------
- *
- * @brief Allocates fixed size blocks - limited memory - blocks on overfull
- ******************************************************************************/
-
-struct bobj_pool
-{
-  i_mutex mutex;
-  i_cond  avail;
-  void   *freelist;
-  u32     used;
-  u32     cap;
-  u32     size;
-  bool    active;
-  u8      data[];
-};
-
-struct bobj_pool *bobjp_create (u32 cap, u32 size, error *e);
-void              bobjp_destroy (struct bobj_pool *p);
-
-void *bobjp_alloc (struct bobj_pool *pool);
-void  bobjp_free (struct bobj_pool *pool, void *ptr);
-
 /******************************************************************************
  * SECTION: Slab Allocator
  * ----------------------------------------------------------------------------
@@ -448,11 +150,12 @@ struct slab;
  */
 struct slab_alloc
 {
-  struct slab *head;
-  struct slab *current;
-  latch        l;
-  u32          size;
-  u32          cap_per_slab;
+  struct slab      *head;
+  struct slab      *current;
+  latch             l;
+  u32               size;
+  u32               cap_per_slab;
+  struct allocator *alloc;
 };
 
 /**
@@ -611,5 +314,61 @@ void *malloc_plan_memcpy (struct malloc_plan *plan, const void *data, u32 len);
  * @return err_t Custom error response metrics tracking execution success.
  */
 err_t malloc_plan_alloc (struct malloc_plan *plan, error *e);
+
+/******************************************************************************
+ * SECTION: Generic Allocator
+ * ----------------------------------------------------------------------------
+ * @brief Just a container for any generic allocator
+ ******************************************************************************/
+
+struct allocator
+{
+  enum
+  {
+    AT_CHUNK_ALLOCATOR,
+  } type;
+
+  union {
+    struct chunk_alloc calloc;
+  };
+};
+
+void  create_default_allocator (struct allocator *alloc);
+void *allocate (struct allocator *alloc, u32 nelem, u32 size, error *e);
+void *
+allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e);
+void allocator_free (struct allocator *alloc);
+
+#define ALLOC_INIT(name) \
+  struct allocator name; \
+  create_default_allocator (&name)
+
+#define ALLOC_CLOSE(name) allocator_free (&name)
+#define ALLOC_RESET(name) \
+  allocator_free (&name); \
+  create_default_allocator (&name)
+
+/******************************************************************************
+ * SECTION: Builder Pattern
+ * ----------------------------------------------------------------------------
+ * @brief Contains two allocators - a persistent allocator and a temp
+ ******************************************************************************/
+
+struct builder
+{
+  struct allocator *persistent;
+  struct allocator  temp;
+};
+
+void  builder_init (struct builder *b, struct allocator *alloc);
+void *builder_malloc_temp (struct builder *b, u32 nelem, u32 size, error *e);
+void *builder_malloc_persist (struct builder *b, u32 nelem, u32 size, error *e);
+void  builder_free (struct builder *b);
+
+#define BUILDER_INIT(name, alloc) \
+  struct builder name;            \
+  builder_init (&name, alloc)
+
+#define BUILDER_CLOSE(name) builder_free (&name)
 
 #endif // LALLOC_H

@@ -25,7 +25,6 @@
 
 #include "alloc.h"     // slab alloc
 #include "htable.h"    // hash table
-#include "serial.h"    // string
 #include "variables.h" // variable
 
 /******************************************************************************

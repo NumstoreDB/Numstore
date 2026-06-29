@@ -87,30 +87,30 @@ vname_or_default (const char *name)
 
 struct nsdb_var
 {
-  struct variable    *var;
-  struct chunk_alloc *alloc;
+  struct variable  *var;
+  struct allocator *alloc;
 };
 bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
 void  var_random_name (char *buffer, int length);
 err_t rand_varname (
-    struct string      *dest,
-    struct chunk_alloc *alloc,
-    const u32           minlen,
-    const u32           maxlen,
-    error              *e
+    struct string    *dest,
+    struct allocator *alloc,
+    const u32         minlen,
+    const u32         maxlen,
+    error            *e
 );
 err_t rand_varname_same_hash (
-    struct string      *name1,
-    struct string      *name2,
-    struct chunk_alloc *alloc,
-    error              *e
+    struct string    *name1,
+    struct string    *name2,
+    struct allocator *alloc,
+    error            *e
 );
 err_t rand_varname_different_hash (
-    struct string      *name1,
-    struct string      *name2,
-    struct chunk_alloc *alloc,
-    error              *e
+    struct string    *name1,
+    struct string    *name2,
+    struct allocator *alloc,
+    error            *e
 );
 
 HEADER_FUNC b_size

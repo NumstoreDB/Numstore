@@ -396,6 +396,7 @@ struct aries_ctx
    */
   struct dbl_buffer txn_ptrs;
   struct slab_alloc alloc;
+  struct allocator  backing_alloc;
 };
 
 err_t       aries_ctx_create (struct aries_ctx *dest, error *e);

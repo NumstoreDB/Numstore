@@ -14,6 +14,7 @@
 
 #include "var_algorithms.h"
 
+#include "alloc.h"
 #include "error.h"
 #include "numstore.h"
 #include "page.h"
@@ -190,9 +191,9 @@ theend:
 
 struct ns_find_var_page_params
 {
-  struct pager       *p;
-  struct txn         *tx;
-  struct chunk_alloc *alloc;
+  struct pager     *p;
+  struct txn       *tx;
+  struct allocator *alloc;
 
   struct string    vname;
   struct variable *dvar;
@@ -219,8 +220,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   bool writable = pms->mode == FP_CREATE;
 
   // Temporary allocator while scanning nodes
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
+  ALLOC_INIT (temp);
 
   // The hash bin of this variable
   pms->hpos = vh_get_hash_pos (pms->vname);
@@ -342,7 +342,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
       // Need to advance
       else
       {
-        chunk_alloc_reset_all (&temp);
+        ALLOC_RESET (temp);
 
         // Continue
         pgno next = vp_get_next (page_h_ro (&cur));
@@ -429,7 +429,7 @@ foundit:
   {
     // Transfer variable name and type to persistent allocator
     pms->dvar->vname.data =
-        chunk_alloc_move_mem (pms->alloc, pms->vname.data, pms->vname.len, e);
+        allocator_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
     pms->dvar->vname.len = pms->vname.len;
 
     // Error check
@@ -438,8 +438,6 @@ foundit:
       goto failed;
     }
   }
-
-  chunk_alloc_free_all (&temp);
 
   // Transfer nodes to params
   if (page_h_type (&prev) == PG_VAR_TAIL)
@@ -455,10 +453,12 @@ foundit:
     goto failed;
   }
 
+  ALLOC_CLOSE (temp);
+
   return SUCCESS;
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
 
   pgr_cancel_if_exists (pms->p, &prev);
   pgr_cancel_if_exists (pms->p, &cur);
@@ -1104,8 +1104,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   bool writable = params->vp->mode == PHM_X;
 
   // Temporary allocator
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
+  ALLOC_INIT (temp);
 
   // Initialize the simple stuff
   u16    vlen     = vp_get_vlen (page_h_ro (params->vp));
@@ -1127,7 +1126,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   // Allocate variable name
   if (params->save_vname)
   {
-    vstr = chunk_malloc (params->alloc, 1, vlen, e);
+    vstr = allocate (params->alloc, 1, vlen, e);
     if (vstr == NULL)
     {
       goto failed;
@@ -1135,7 +1134,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
   else
   {
-    vstr = chunk_malloc (&temp, 1, vlen, e);
+    vstr = allocate (&temp, 1, vlen, e);
     if (vstr == NULL)
     {
       goto failed;
@@ -1144,7 +1143,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 
   if (params->save_type)
   {
-    tstr = chunk_malloc (&temp, 1, tlen, e);
+    tstr = allocate (&temp, 1, tlen, e);
     if (tstr == NULL)
     {
       goto failed;
@@ -1278,11 +1277,11 @@ theend:
     }
   }
 
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return SUCCESS;
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
@@ -1647,9 +1646,7 @@ TEST (ns_var_get_or_create)
     struct pgr_fixture f;
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
-    struct txn         tx;
-    struct chunk_alloc alloc;
-    chunk_alloc_create_default (&alloc);
+    struct txn tx;
 
     // Create
     {
@@ -1661,7 +1658,7 @@ TEST (ns_var_get_or_create)
 
           .vname = strfcstr ("foo"),
           .type  = &(struct type){.type = T_PRIM, .p = U32},
-          .alloc = &alloc,
+          .alloc = &f.alloc,
       };
 
       // Do it twice, both times succeed because it checks types
@@ -1671,7 +1668,6 @@ TEST (ns_var_get_or_create)
       pgr_commit (f.p, &tx, &f.e);
     }
 
-    chunk_alloc_free_all (&alloc);
     pgr_fixture_teardown (&f);
   }
 
@@ -1680,9 +1676,7 @@ TEST (ns_var_get_or_create)
     struct pgr_fixture f;
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
-    struct txn         tx;
-    struct chunk_alloc alloc;
-    chunk_alloc_create_default (&alloc);
+    struct txn tx;
 
     // Create
     {
@@ -1694,7 +1688,7 @@ TEST (ns_var_get_or_create)
 
           .vname = strfcstr ("foo"),
           .type  = &(struct type){.type = T_PRIM, .p = U32},
-          .alloc = &alloc,
+          .alloc = &f.alloc,
       };
 
       test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
@@ -1710,7 +1704,6 @@ TEST (ns_var_get_or_create)
       pgr_commit (f.p, &tx, &f.e);
     }
 
-    chunk_alloc_free_all (&alloc);
     pgr_fixture_teardown (&f);
   }
 
@@ -1722,9 +1715,7 @@ TEST (ns_var_get_or_create)
 
     for (u32 i = 0; i < 100; ++i)
     {
-      struct txn         tx;
-      struct chunk_alloc alloc;
-      chunk_alloc_create_default (&alloc);
+      struct txn tx;
 
       // Long variable name
       {
@@ -1744,7 +1735,7 @@ TEST (ns_var_get_or_create)
 
             .vname = strfcstr (name),
             .type  = &(struct type){.type = T_PRIM, .p = U32},
-            .alloc = &alloc,
+            .alloc = &f.alloc,
         };
 
         // Do it twice, both times succeed because it checks types
@@ -1755,8 +1746,6 @@ TEST (ns_var_get_or_create)
 
         pgr_commit (f.p, &tx, &f.e);
       }
-
-      chunk_alloc_free_all (&alloc);
     }
 
     pgr_fixture_teardown (&f);
@@ -1770,9 +1759,7 @@ TEST (ns_var_get_or_create)
 
     for (u32 i = 0; i < 100; ++i)
     {
-      struct txn         tx;
-      struct chunk_alloc alloc;
-      chunk_alloc_create_default (&alloc);
+      struct txn tx;
 
       // Long variable name
       {
@@ -1791,7 +1778,7 @@ TEST (ns_var_get_or_create)
         }
 
         // Generate a random type that goes 0 - 10 layers deep
-        struct type *t = type_random (&alloc, randu32r (0, 5), &f.e);
+        struct type *t = type_random (&f.alloc, randu32r (0, 5), &f.e);
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
@@ -1800,7 +1787,7 @@ TEST (ns_var_get_or_create)
 
             .vname = strfcstr (name),
             .type  = t,
-            .alloc = &alloc,
+            .alloc = &f.alloc,
         };
 
         // Do it twice, both times succeed because it checks types
@@ -1811,8 +1798,6 @@ TEST (ns_var_get_or_create)
 
         pgr_commit (f.p, &tx, &f.e);
       }
-
-      chunk_alloc_free_all (&alloc);
     }
 
     pgr_fixture_teardown (&f);
@@ -1827,14 +1812,11 @@ TEST (ns_var_get_or_create)
       ns_init_var_hash_map (f.p, &f.e);
       struct txn tx;
 
-      struct chunk_alloc alloc;
-      chunk_alloc_create_default (&alloc);
-
       // Long variable name
       {
         pgr_begin_txn (&tx, f.p, &f.e);
 
-        struct type *t = type_random (&alloc, randu32r (0, 10), &f.e);
+        struct type *t = type_random (&f.alloc, randu32r (0, 10), &f.e);
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
@@ -1843,7 +1825,7 @@ TEST (ns_var_get_or_create)
 
             .vname = strfcstr ("foo"),
             .type  = t,
-            .alloc = &alloc,
+            .alloc = &f.alloc,
         };
 
         // Do it twice, both times succeed because it checks types
@@ -1853,7 +1835,6 @@ TEST (ns_var_get_or_create)
         pgr_commit (f.p, &tx, &f.e);
       }
 
-      chunk_alloc_free_all (&alloc);
       pgr_fixture_teardown (&f);
     }
   }
@@ -2028,12 +2009,11 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   ASSERT (params->tx);
 
   // Serialize dtype
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
+  ALLOC_INIT (temp);
 
   // The serialized data
   u16 tlen             = type_get_serial_size (params->var->dtype);
-  u8 *dtype_serialized = chunk_malloc (&temp, tlen, 1, e);
+  u8 *dtype_serialized = allocate (&temp, tlen, 1, e);
 
   if (dtype_serialized == NULL)
   {
@@ -2150,10 +2130,10 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   }
 
 theend:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 }

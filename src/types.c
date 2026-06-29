@@ -14,6 +14,7 @@
 
 #include "types.h"
 
+#include "alloc.h"
 #include "compiler.h"
 #include "error.h"
 #include "numerics.h"
@@ -1928,17 +1929,14 @@ static inline err_t
 struct_t_deserialize (
     struct struct_t     *dest,
     struct deserializer *src,
-    struct chunk_alloc  *a,
+    struct allocator    *a,
     error               *e
 )
 {
   ASSERT (dest);
+  BUILDER_INIT (b, a);
 
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
-
-  struct kvt_list_builder unb;
-  kvlb_create (&unb, &temp, a);
+  struct kvt_list_builder unb = kvlb_create (&b);
 
   // LEN
   u16 len;
@@ -1958,7 +1956,7 @@ struct_t_deserialize (
 
     struct string key = {
         .len  = klen,
-        .data = chunk_malloc (a, key.len, 1, e),
+        .data = allocate (a, key.len, 1, e),
     };
     // Read the string data
     if (key.data == NULL)
@@ -1999,17 +1997,17 @@ struct_t_deserialize (
   }
 
 theend:
-  chunk_alloc_free_all (&temp);
   return error_trace (e);
 
 early_termination:
-  chunk_alloc_free_all (&temp);
   return struct_t_type_deser ("Early end of serialized string", e);
 }
 
 #ifdef TESTING
 TEST (struct_t_deserialize_green_path)
 {
+  ALLOC_INIT (st_alloc);
+
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
                 (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
                 0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
@@ -2024,9 +2022,6 @@ TEST (struct_t_deserialize_green_path)
   memcpy (&data[9], &l2, sizeof (u16));
   memcpy (&data[15], &l3, sizeof (u16));
   memcpy (&data[23], &l4, sizeof (u16));
-
-  struct chunk_alloc st_alloc;
-  chunk_alloc_create_default (&st_alloc);
 
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
@@ -2059,13 +2054,15 @@ TEST (struct_t_deserialize_green_path)
   test_assert_int_equal (eret.types[3]->type, T_PRIM);
   test_assert_int_equal (eret.types[3]->p, CF128);
 
-  chunk_alloc_free_all (&st_alloc);
+  ALLOC_CLOSE (st_alloc);
 }
 #endif
 
 #ifdef TESTING
 TEST (struct_t_deserialize_red_path)
 {
+  ALLOC_INIT (alloc);
+
   u8 data[] = {
       0,
       0, // Total length (4)
@@ -2113,16 +2110,15 @@ TEST (struct_t_deserialize_red_path)
   memcpy (&data[16], &l3, sizeof (u16));
   memcpy (&data[24], &l4, sizeof (u16));
 
-  struct struct_t    sret = {0};
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
-  struct deserializer d = dsrlizr_create (data, sizeof (data));
+  struct struct_t     sret = {0};
+  struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
   error e   = error_create ();
   err_t ret = struct_t_deserialize (&sret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, ERR_INTERP); // Duplicate
-  chunk_alloc_free_all (&alloc);
+
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -2130,16 +2126,14 @@ static inline err_t
 union_t_deserialize (
     struct union_t      *dest,
     struct deserializer *src,
-    struct chunk_alloc  *a,
+    struct allocator    *a,
     error               *e
 )
 {
   ASSERT (dest);
+  BUILDER_INIT (b, a);
 
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
-  struct kvt_list_builder unb;
-  kvlb_create (&unb, &temp, a);
+  struct kvt_list_builder unb = kvlb_create (&b);
 
   // LEN
   u16 len;
@@ -2158,7 +2152,7 @@ union_t_deserialize (
 
     struct string key = {
         .len  = klen,
-        .data = chunk_malloc (a, klen, 1, e),
+        .data = allocate (a, klen, 1, e),
     };
     if (key.data == NULL)
     {
@@ -2197,17 +2191,17 @@ union_t_deserialize (
   }
 
 theend:
-  chunk_alloc_free_all (&temp);
   return error_trace (e);
 
 early_termination:
-  chunk_alloc_free_all (&temp);
   return union_t_type_deser ("Early end of serialized string", e);
 }
 
 #ifdef TESTING
 TEST (union_t_deserialize_green_path)
 {
+  ALLOC_INIT (alloc);
+
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
                 (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
                 0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
@@ -2223,15 +2217,12 @@ TEST (union_t_deserialize_green_path)
   memcpy (&data[15], &l3, sizeof (u16));
   memcpy (&data[23], &l4, sizeof (u16));
 
-  struct chunk_alloc st_alloc;
-  chunk_alloc_create_default (&st_alloc);
-
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
   error e = error_create ();
 
   struct union_t eret;
-  err_t          ret = union_t_deserialize (&eret, &d, &st_alloc, &e);
+  err_t          ret = union_t_deserialize (&eret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, SUCCESS);
 
@@ -2257,13 +2248,15 @@ TEST (union_t_deserialize_green_path)
   test_assert_int_equal (eret.types[3]->type, T_PRIM);
   test_assert_int_equal (eret.types[3]->p, CF128);
 
-  chunk_alloc_free_all (&st_alloc);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
 #ifdef TESTING
 TEST (union_t_deserialize_red_path)
 {
+  ALLOC_INIT (alloc);
+
   u8  data[] = {0,          0,          0,       0,          'f',      'o', 'o',
                 (u8)T_PRIM, (u8)U32,    0,       0,          'f',      'o', 'o',
                 (u8)T_PRIM, (u8)U8,     0,       0,          'b',      'a', 'r',
@@ -2280,16 +2273,14 @@ TEST (union_t_deserialize_red_path)
   memcpy (&data[16], &l3, sizeof (u16));
   memcpy (&data[24], &l4, sizeof (u16));
 
-  struct union_t     sret = {0};
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
-  struct deserializer d = dsrlizr_create (data, sizeof (data));
+  struct union_t      sret = {0};
+  struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
   error e   = error_create ();
   err_t ret = union_t_deserialize (&sret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, ERR_INTERP); // Duplicate
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -2297,7 +2288,7 @@ static inline err_t
 sarray_t_deserialize (
     struct sarray_t     *persistent,
     struct deserializer *src,
-    struct chunk_alloc  *a,
+    struct allocator    *a,
     error               *e
 )
 {
@@ -2312,7 +2303,7 @@ sarray_t_deserialize (
   }
 
   // Allocate dimensions buffer
-  u32 *dims = chunk_malloc (a, sa.rank, sizeof *dims, e);
+  u32 *dims = allocate (a, sa.rank, sizeof *dims, e);
   if (dims == NULL)
   {
     return error_trace (e);
@@ -2320,7 +2311,7 @@ sarray_t_deserialize (
   sa.dims = dims;
 
   // Allocate type
-  struct type *t = chunk_malloc (a, 1, sizeof *t, e);
+  struct type *t = allocate (a, 1, sizeof *t, e);
   if (t == NULL)
   {
     return error_trace (e);
@@ -2358,6 +2349,8 @@ early_terimination:
 #ifdef TESTING
 TEST (sarray_t_deserialize_green_path)
 {
+  ALLOC_INIT (sab_temp);
+
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
   u16 len    = 3;
   u32 d0     = 10;
@@ -2367,9 +2360,6 @@ TEST (sarray_t_deserialize_green_path)
   memcpy (data + 2, &d0, 4);
   memcpy (data + 6, &d1, 4);
   memcpy (data + 10, &d2, 4);
-
-  struct chunk_alloc sab_temp;
-  chunk_alloc_create_default (&sab_temp);
 
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
@@ -2386,13 +2376,15 @@ TEST (sarray_t_deserialize_green_path)
   test_assert_int_equal (sret.dims[1], 11);
   test_assert_int_equal (sret.dims[2], 12);
 
-  chunk_alloc_free_all (&sab_temp);
+  ALLOC_CLOSE (sab_temp);
 }
 #endif
 
 #ifdef TESTING
 TEST (sarray_t_deserialize_red_path)
 {
+  ALLOC_INIT (alloc);
+
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
   u16 len    = 3;
   u32 d0     = 10;
@@ -2403,25 +2395,23 @@ TEST (sarray_t_deserialize_red_path)
   memcpy (data + 6, &d1, 4);
   memcpy (data + 10, &d2, 4);
 
-  struct sarray_t    eret;
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
+  struct sarray_t     eret;
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
   error e   = error_create ();
-  err_t ret = sarray_t_deserialize (&eret, &d, &temp, &e);
+  err_t ret = sarray_t_deserialize (&eret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, ERR_INTERP); // 0 value
 
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
 struct type *
-type_deserialize (struct deserializer *src, struct chunk_alloc *alloc, error *e)
+type_deserialize (struct deserializer *src, struct allocator *alloc, error *e)
 {
   u8           header;
-  struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
+  struct type *dest = allocate (alloc, 1, sizeof *dest, e);
   if (dest == NULL)
   {
     return NULL;
@@ -2499,25 +2489,23 @@ TEST (prim_t_random)
 
 static err_t
 struct_t_random (
-    struct struct_t    *st,
-    struct chunk_alloc *alloc,
-    u32                 depth,
-    error              *e
+    struct struct_t  *st,
+    struct allocator *alloc,
+    u32               depth,
+    error            *e
 )
 {
   ASSERT (st);
 
   st->len = (u16)randu32r (1, 5);
 
-  st->keys =
-      (struct string *)chunk_malloc (alloc, st->len, sizeof (struct string), e);
+  st->keys = allocate (alloc, st->len, sizeof (struct string), e);
   if (!st->keys)
   {
     return error_trace (e);
   }
 
-  st->types =
-      (struct type **)chunk_malloc (alloc, st->len, sizeof (struct type *), e);
+  st->types = allocate (alloc, st->len, sizeof (struct type *), e);
   if (!st->types)
   {
     return error_trace (e);
@@ -2538,10 +2526,10 @@ struct_t_random (
 
 static inline err_t
 union_t_random (
-    struct union_t     *un,
-    struct chunk_alloc *alloc,
-    u32                 depth,
-    error              *e
+    struct union_t   *un,
+    struct allocator *alloc,
+    u32               depth,
+    error            *e
 )
 {
   ASSERT (un);
@@ -2549,14 +2537,14 @@ union_t_random (
   un->len = (u16)randu32r (1, 5);
 
   un->keys =
-      (struct string *)chunk_malloc (alloc, un->len, sizeof (struct string), e);
+      (struct string *)allocate (alloc, un->len, sizeof (struct string), e);
   if (!un->keys)
   {
     return error_trace (e);
   }
 
   un->types =
-      (struct type **)chunk_malloc (alloc, un->len, sizeof (struct type *), e);
+      (struct type **)allocate (alloc, un->len, sizeof (struct type *), e);
   if (!un->types)
   {
     return error_trace (e);
@@ -2577,17 +2565,17 @@ union_t_random (
 
 static inline err_t
 sarray_t_random (
-    struct sarray_t    *sa,
-    struct chunk_alloc *temp,
-    u32                 depth,
-    error              *e
+    struct sarray_t  *sa,
+    struct allocator *temp,
+    u32               depth,
+    error            *e
 )
 {
   ASSERT (sa);
 
   sa->rank = (u16)randu32r (1, 4);
 
-  sa->dims = (u32 *)chunk_malloc (temp, sa->rank, sizeof (u32), e);
+  sa->dims = (u32 *)allocate (temp, sa->rank, sizeof (u32), e);
   if (!sa->dims)
   {
     return error_trace (e);
@@ -2598,7 +2586,7 @@ sarray_t_random (
     sa->dims[i] = randu32r (1, 11);
   }
 
-  sa->t = (struct type *)chunk_malloc (temp, 1, sizeof (struct type), e);
+  sa->t = (struct type *)allocate (temp, 1, sizeof (struct type), e);
   if (!sa->t)
   {
     return error_trace (e);
@@ -2614,9 +2602,9 @@ sarray_t_random (
 }
 
 struct type *
-type_random (struct chunk_alloc *alloc, u32 depth, error *e)
+type_random (struct allocator *alloc, u32 depth, error *e)
 {
-  struct type *dest = chunk_malloc (alloc, 1, sizeof *dest, e);
+  struct type *dest = allocate (alloc, 1, sizeof *dest, e);
   if (dest == NULL)
   {
     return NULL;
@@ -2809,9 +2797,9 @@ i_log_type (struct type *t, error *e)
 }
 
 static struct string
-string_movemem (struct string src, struct chunk_alloc *alloc, error *e)
+string_movemem (struct string src, struct allocator *alloc, error *e)
 {
-  char *data = chunk_alloc_move_mem (alloc, src.data, src.len, e);
+  char *data = allocator_copy (alloc, src.data, src.len, e);
   if (!data)
   {
     return (struct string){0};
@@ -2820,14 +2808,9 @@ string_movemem (struct string src, struct chunk_alloc *alloc, error *e)
 }
 
 static struct string *
-keylist_movemem (
-    struct string      *src,
-    u32                 len,
-    struct chunk_alloc *alloc,
-    error              *e
-)
+keylist_movemem (struct string *src, u32 len, struct allocator *alloc, error *e)
 {
-  struct string *keys = chunk_malloc (alloc, len, sizeof *keys, e);
+  struct string *keys = allocate (alloc, len, sizeof *keys, e);
   if (!keys)
   {
     return NULL;
@@ -2845,14 +2828,9 @@ keylist_movemem (
 }
 
 static struct type **
-typelist_movemem (
-    struct type       **src,
-    u32                 len,
-    struct chunk_alloc *alloc,
-    error              *e
-)
+typelist_movemem (struct type **src, u32 len, struct allocator *alloc, error *e)
 {
-  struct type **types = chunk_malloc (alloc, len, sizeof (struct type *), e);
+  struct type **types = allocate (alloc, len, sizeof (struct type *), e);
   if (!types)
   {
     return NULL;
@@ -2870,9 +2848,9 @@ typelist_movemem (
 }
 
 struct type *
-type_movemem (struct type *src, struct chunk_alloc *alloc, error *e)
+type_movemem (struct type *src, struct allocator *alloc, error *e)
 {
-  struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
+  struct type *ret = allocate (alloc, 1, sizeof *ret, e);
   if (!ret)
   {
     return NULL;
@@ -2925,8 +2903,7 @@ type_movemem (struct type *src, struct chunk_alloc *alloc, error *e)
       {
         return NULL;
       }
-      ret->sa.dims =
-          chunk_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
+      ret->sa.dims = allocate (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
       if (!ret->sa.dims)
       {
         return NULL;
@@ -3081,10 +3058,10 @@ struct_t_resolve_key (
 
 err_t
 struct_t_create (
-    struct struct_t    *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct struct_t  *dest,
+    struct kvt_list   list,
+    struct allocator *dalloc,
+    error            *e
 )
 {
   if (list.len == 0)
@@ -3095,19 +3072,15 @@ struct_t_create (
   // Copy stuff over
   if (dalloc)
   {
-    dest->len  = list.len;
-    dest->keys = chunk_alloc_move_mem (
-        dalloc,
-        list.keys,
-        list.len * sizeof *dest->keys,
-        e
-    );
+    dest->len = list.len;
+    dest->keys =
+        allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL)
     {
       return error_trace (e);
     }
 
-    dest->types = chunk_alloc_move_mem (
+    dest->types = allocator_copy (
         dalloc,
         list.types,
         list.len * sizeof (struct type *),
@@ -3152,10 +3125,10 @@ union_t_resolve_key (struct union_t *t, struct string key, error *e)
 
 err_t
 union_t_create (
-    struct union_t     *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct union_t   *dest,
+    struct kvt_list   list,
+    struct allocator *dalloc,
+    error            *e
 )
 {
   if (list.len == 0)
@@ -3166,19 +3139,15 @@ union_t_create (
   // Copy stuff over
   if (dalloc)
   {
-    dest->len  = list.len;
-    dest->keys = chunk_alloc_move_mem (
-        dalloc,
-        list.keys,
-        list.len * sizeof *dest->keys,
-        e
-    );
+    dest->len = list.len;
+    dest->keys =
+        allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL)
     {
       return error_trace (e);
     }
 
-    dest->types = chunk_alloc_move_mem (
+    dest->types = allocator_copy (
         dalloc,
         list.types,
         list.len * sizeof (struct type *),
@@ -3207,21 +3176,14 @@ union_t_create (
 
 DEFINE_DBG_ASSERT (struct sarray_builder, sarray_builder, s, { ASSERT (s); })
 
-void
-sab_create (
-    struct sarray_builder *dest,
-    struct chunk_alloc    *temp,
-    struct chunk_alloc    *persistent
-)
+struct sarray_builder
+sab_create (struct builder *b)
 {
-  *dest = (struct sarray_builder){
-      .head       = NULL,
-      .type       = NULL,
-      .temp       = temp,
-      .persistent = persistent,
+  return (struct sarray_builder){
+      .head = NULL,
+      .type = NULL,
+      .b    = b,
   };
-
-  DBG_ASSERT (sarray_builder, dest);
 }
 
 err_t
@@ -3244,7 +3206,7 @@ sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
   }
   else
   {
-    node = chunk_malloc (eb->temp, 1, sizeof *node, e);
+    node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
     if (!node)
     {
       return error_trace (e);
@@ -3274,7 +3236,7 @@ sab_accept_type (struct sarray_builder *eb, struct type *t, error *e)
     return error_causef (e, ERR_INTERP, "type already set");
   }
 
-  eb->type = type_movemem (t, eb->persistent, e);
+  eb->type = type_movemem (t, eb->b->persistent, e);
 
   return error_trace (e);
 }
@@ -3287,26 +3249,28 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
 
   if (!eb->type)
   {
-    return error_causef (e, ERR_INTERP, "type not set");
+    error_causef (e, ERR_INTERP, "type not set");
+    goto theend;
   }
 
   u16 rank = (u16)list_length (eb->head);
   if (rank == 0)
   {
-    return error_causef (e, ERR_INTERP, "no dims to build");
+    error_causef (e, ERR_INTERP, "no dims to build");
+    goto theend;
   }
 
-  u32 *dims = chunk_malloc (eb->persistent, rank, sizeof *dims, e);
+  u32 *dims = builder_malloc_persist (eb->b, rank, sizeof *dims, e);
   if (!dims)
   {
-    return error_trace (e);
+    goto theend;
   }
 
   // Copy type to persistent memory (eb->type is on temp)
-  struct type *t = chunk_malloc (eb->persistent, 1, sizeof *t, e);
+  struct type *t = builder_malloc_persist (eb->b, 1, sizeof *t, e);
   if (!t)
   {
-    return error_trace (e);
+    goto theend;
   }
   *t = *eb->type;
 
@@ -3321,21 +3285,22 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
   persistent->dims = dims;
   persistent->t    = t;
 
-  return SUCCESS;
+theend:
+  return error_trace (e);
 }
 
 #ifdef TESTING
 TEST (sarray_builder)
 {
+  ALLOC_INIT (persistent);
+  BUILDER_INIT (b, &persistent);
+
   error err = error_create ();
 
   // provide two fixed-size allocators for nodes + dims array
-  struct chunk_alloc persistent;
-  chunk_alloc_create_default (&persistent);
 
   // 0. freshly-created builder must be clean
-  struct sarray_builder sb;
-  sab_create (&sb, &persistent, &persistent);
+  struct sarray_builder sb = sab_create (&b);
   test_fail_if (sb.head != NULL);
   test_fail_if (sb.type != NULL);
 
@@ -3372,7 +3337,8 @@ TEST (sarray_builder)
   test_assert_int_equal (sar.dims[1], 4);
   test_assert_int_equal (sar.dims[2], 2);
 
-  chunk_alloc_free_all (&persistent);
+  BUILDER_CLOSE (b);
+  ALLOC_CLOSE (persistent);
 }
 #endif
 
@@ -3386,21 +3352,15 @@ DEFINE_DBG_ASSERT (struct kvt_list_builder, kvt_list_builder, s, {
   ASSERT (s->tlen <= 10);
 })
 
-void
-kvlb_create (
-    struct kvt_list_builder *dest,
-    struct chunk_alloc      *temp,
-    struct chunk_alloc      *persistent
-)
+struct kvt_list_builder
+kvlb_create (struct builder *b)
 {
-  *dest = (struct kvt_list_builder){
-      .head       = NULL,
-      .klen       = 0,
-      .tlen       = 0,
-      .temp       = temp,
-      .persistent = persistent,
+  return (struct kvt_list_builder){
+      .head = NULL,
+      .klen = 0,
+      .tlen = 0,
+      .b    = b,
   };
-  DBG_ASSERT (kvt_list_builder, dest);
 }
 
 static bool
@@ -3435,7 +3395,7 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   }
 
   // Copy key data to persistent memory
-  key.data = chunk_alloc_move_mem (ub->persistent, key.data, key.len, e);
+  key.data = allocator_copy (ub->b->persistent, key.data, key.len, e);
   if (key.data == NULL)
   {
     return error_trace (e);
@@ -3452,7 +3412,7 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   else
   {
     // Allocate new node onto temp
-    node = chunk_malloc (ub->temp, 1, sizeof *node, e);
+    node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
     if (!node)
     {
       return error_trace (e);
@@ -3493,7 +3453,7 @@ kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e)
   }
   else
   {
-    node = chunk_malloc (ub->temp, 1, sizeof *node, e);
+    node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
     if (!node)
     {
       return error_trace (e);
@@ -3530,14 +3490,14 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
   }
 
   struct string *keys =
-      chunk_malloc (ub->persistent, ub->klen, sizeof *keys, e);
+      builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
   if (!keys)
   {
     return error_trace (e);
   }
 
   struct type **types =
-      chunk_malloc (ub->persistent, ub->tlen, sizeof (struct type *), e);
+      builder_malloc_persist (ub->b, ub->tlen, sizeof (struct type *), e);
   if (!types)
   {
     return error_trace (e);
@@ -3562,14 +3522,13 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
 #ifdef TESTING
 TEST (kvt_list_builder)
 {
+  ALLOC_INIT (alloc);
+  BUILDER_INIT (b, &alloc);
+
   error err = error_create ();
 
-  struct chunk_alloc persistent;
-  chunk_alloc_create_default (&persistent);
-
   // 0. freshly-created builder must be clean
-  struct kvt_list_builder kb;
-  kvlb_create (&kb, &persistent, &persistent);
+  struct kvt_list_builder kb = kvlb_create (&b);
   test_assert_int_equal (kb.klen, 0);
   test_assert_int_equal (kb.tlen, 0);
   test_fail_if (kb.head != NULL);
@@ -3620,7 +3579,8 @@ TEST (kvt_list_builder)
   test_assert_int_equal (list.types[1]->p, t_i32.p);
   test_assert_int_equal (list.types[2]->p, t_f32.p);
 
-  chunk_alloc_free_all (&persistent);
+  BUILDER_CLOSE (b);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -3634,21 +3594,15 @@ DEFINE_DBG_ASSERT (struct kvt_ref_list_builder, kvt_ref_list_builder, s, {
   ASSERT (s->tlen <= 10);
 })
 
-void
-kvrlb_create (
-    struct kvt_ref_list_builder *dest,
-    struct chunk_alloc          *temp,
-    struct chunk_alloc          *persistent
-)
+struct kvt_ref_list_builder
+kvrlb_create (struct builder *b)
 {
-  *dest = (struct kvt_ref_list_builder){
-      .head       = NULL,
-      .klen       = 0,
-      .tlen       = 0,
-      .temp       = temp,
-      .persistent = persistent,
+  return (struct kvt_ref_list_builder){
+      .head = NULL,
+      .klen = 0,
+      .tlen = 0,
+      .b    = b,
   };
-  DBG_ASSERT (kvt_ref_list_builder, dest);
 }
 
 static bool
@@ -3686,7 +3640,7 @@ kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
   }
 
   // Copy key data to persistent memory
-  key.data = chunk_alloc_move_mem (ub->persistent, key.data, key.len, e);
+  key.data = allocator_copy (ub->b->persistent, key.data, key.len, e);
   if (key.data == NULL)
   {
     return error_trace (e);
@@ -3702,7 +3656,7 @@ kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
   else
   {
     // Allocate new node onto temp
-    node = chunk_malloc (ub->temp, 1, sizeof *node, e);
+    node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
     if (!node)
     {
       return error_trace (e);
@@ -3742,7 +3696,7 @@ kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e)
   }
   else
   {
-    node = chunk_malloc (ub->temp, 1, sizeof *node, e);
+    node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
     if (!node)
     {
       return error_trace (e);
@@ -3775,27 +3729,28 @@ kvrlb_build (
 
   if (ub->klen == 0)
   {
-    return error_causef (e, ERR_INTERP, "no keys");
+    error_causef (e, ERR_INTERP, "no keys");
+    goto theend;
   }
   if (ub->klen != ub->tlen)
   {
-    return error_causef (e, ERR_INTERP, "key/value count mismatch");
+    error_causef (e, ERR_INTERP, "key/value count mismatch");
+    goto theend;
   }
 
   struct string *keys =
-      chunk_malloc (ub->persistent, ub->klen, sizeof *keys, e);
-
+      builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
   if (!keys)
   {
-    return error_trace (e);
+    goto theend;
   }
 
   struct type_ref *types =
-      chunk_malloc (ub->persistent, ub->tlen, sizeof *types, e);
+      builder_malloc_persist (ub->b, ub->tlen, sizeof *types, e);
 
   if (!types)
   {
-    return error_trace (e);
+    goto theend;
   }
 
   size_t i = 0;
@@ -3811,7 +3766,8 @@ kvrlb_build (
   dest->types = types;
   dest->len   = ub->klen;
 
-  return SUCCESS;
+theend:
+  return error_trace (e);
 }
 
 /******************************************************************************
@@ -3874,26 +3830,25 @@ type_accessor_equal (
 
 static struct type *
 ta_select_struct (
-    struct type          *reftype,
+    struct type          *ref,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 )
 {
-  struct type *subtype =
-      struct_t_resolve_key (NULL, &reftype->st, ta->select.key, e);
-  if (subtype == NULL)
+  struct type *sub = struct_t_resolve_key (NULL, &ref->st, ta->select.key, e);
+  if (sub == NULL)
   {
     return NULL;
   }
-  return ta_subtype (subtype, ta->select.sub_ta, alloc, e);
+  return ta_subtype (sub, ta->select.sub_ta, alloc, e);
 }
 
 static struct type *
 ta_select_union (
     struct type          *reftype,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 )
 {
@@ -3909,52 +3864,50 @@ static struct type *
 ta_select_sarray (
     struct type          *reftype,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 )
 {
-  struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
+  BUILDER_INIT (b, alloc);
+
+  struct type *ret = allocate (alloc, 1, sizeof *ret, e);
   if (ret == NULL)
   {
     goto failed;
   }
 
-  struct sarray_builder builder;
-  struct chunk_alloc    temp;
-  chunk_alloc_create_default (&temp);
-  sab_create (&builder, &temp, alloc);
+  struct sarray_builder builder = sab_create (&b);
 
   for (u32 i = 0; i < reftype->sa.rank; ++i)
   {
     if (sab_accept_dim (&builder, reftype->sa.dims[i], e))
     {
-      goto fail_chunk_alloc;
+      goto failed;
     }
   }
 
   struct type *t = ta_subtype (reftype->sa.t, ta->select.sub_ta, alloc, e);
   if (t == NULL)
   {
-    goto fail_chunk_alloc;
+    goto failed;
   }
 
   if (sab_accept_type (&builder, t, e))
   {
-    goto fail_chunk_alloc;
+    goto failed;
   }
 
   ret->type = T_SARRAY;
   if (sab_build (&ret->sa, &builder, e))
   {
-    goto fail_chunk_alloc;
+    goto failed;
   }
 
-  chunk_alloc_free_all (&temp);
+  BUILDER_CLOSE (b);
   return ret;
 
-fail_chunk_alloc:
-  chunk_alloc_free_all (&temp);
 failed:
+  BUILDER_CLOSE (b);
   return NULL;
 }
 
@@ -3962,14 +3915,12 @@ static struct type *
 ta_range_sarray (
     struct type          *reftype,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 )
 {
-  struct sarray_builder builder;
-  struct chunk_alloc    temp;
-  chunk_alloc_create_default (&temp);
-  sab_create (&builder, &temp, alloc);
+  BUILDER_INIT (b, alloc);
+  struct sarray_builder builder = sab_create (&b);
 
   bool isarray = false;
 
@@ -3981,11 +3932,11 @@ ta_range_sarray (
       struct stride str;
       if (stride_resolve (&str, USER_STRIDE_ALL, reftype->sa.dims[i], e))
       {
-        goto fail_chunk_alloc;
+        goto failure;
       }
       if (sab_accept_dim (&builder, str.nelems, e))
       {
-        goto fail_chunk_alloc;
+        goto failure;
       }
     }
     else
@@ -3999,13 +3950,13 @@ ta_range_sarray (
               e
           ))
       {
-        goto fail_chunk_alloc;
+        goto failure;
       }
       if (ta->range.dim_accessors[i].present & COLON_PRESENT)
       {
         if (sab_accept_dim (&builder, str.nelems, e))
         {
-          goto fail_chunk_alloc;
+          goto failure;
         }
       }
     }
@@ -4015,17 +3966,17 @@ ta_range_sarray (
   struct type *t   = ta_subtype (reftype->sa.t, ta->range.sub_ta, alloc, e);
   if (t == NULL)
   {
-    goto fail_chunk_alloc;
+    goto failure;
   }
 
   if (isarray)
   {
     if (sab_accept_type (&builder, t, e))
     {
-      goto fail_chunk_alloc;
+      goto failure;
     }
 
-    ret = chunk_malloc (alloc, 1, sizeof *ret, e);
+    ret = allocate (alloc, 1, sizeof *ret, e);
     if (ret == NULL)
     {
       return NULL;
@@ -4034,7 +3985,7 @@ ta_range_sarray (
     ret->type = T_SARRAY;
     if (sab_build (&ret->sa, &builder, e))
     {
-      goto fail_chunk_alloc;
+      goto failure;
     }
   }
   else
@@ -4042,11 +3993,11 @@ ta_range_sarray (
     ret = t;
   }
 
-  chunk_alloc_free_all (&temp);
+  BUILDER_CLOSE (b);
   return ret;
 
-fail_chunk_alloc:
-  chunk_alloc_free_all (&temp);
+failure:
+  BUILDER_CLOSE (b);
   return NULL;
 }
 
@@ -4054,7 +4005,7 @@ struct type *
 ta_subtype (
     struct type          *reftype,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 )
 {
@@ -4131,9 +4082,9 @@ test_ta_subtype_case (
     const char *expected_type
 )
 {
-  error              e = error_create ();
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
+  ALLOC_INIT (alloc);
+
+  error e = error_create ();
 
   struct type    reftype;
   struct type    expected;
@@ -4146,7 +4097,7 @@ test_ta_subtype_case (
   struct type *subtype = ta_subtype (&reftype, &st.ta, &alloc, &e);
   test_assert (type_equal (&expected, subtype));
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (ta_subtype)
@@ -4275,20 +4226,14 @@ user_stride_equal (
 
 DEFINE_DBG_ASSERT (struct range_builder, range_builder, s, { ASSERT (s); })
 
-void
-rb_create (
-    struct range_builder *dest,
-    struct chunk_alloc   *temp,
-    struct chunk_alloc   *persistent
-)
+struct range_builder
+rb_create (struct builder *b)
 {
-  *dest = (struct range_builder){
-      .head       = NULL,
-      .len        = 0,
-      .temp       = temp,
-      .persistent = persistent,
+  return (struct range_builder){
+      .head = NULL,
+      .len  = 0,
+      .b    = b,
   };
-  DBG_ASSERT (range_builder, dest);
 }
 
 err_t
@@ -4296,7 +4241,7 @@ rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e)
 {
   DBG_ASSERT (range_builder, rb);
 
-  struct rb_llnode *node = chunk_malloc (rb->temp, 1, sizeof *node, e);
+  struct rb_llnode *node = builder_malloc_temp (rb->b, 1, sizeof *node, e);
   if (!node)
   {
     return error_trace (e);
@@ -4325,14 +4270,15 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
 
   if (rb->len == 0)
   {
-    return error_causef (e, ERR_INTERP, "range: no dimensions");
+    error_causef (e, ERR_INTERP, "range: no dimensions");
+    goto theend;
   }
 
   struct user_stride *dims =
-      chunk_malloc (rb->persistent, rb->len, sizeof *dims, e);
+      builder_malloc_persist (rb->b, rb->len, sizeof *dims, e);
   if (!dims)
   {
-    return error_trace (e);
+    goto theend;
   }
 
   u32 i = 0;
@@ -4346,7 +4292,8 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
   dest->dim_accessors = dims;
   dest->dlen          = rb->len;
 
-  return SUCCESS;
+theend:
+  return error_trace (e);
 }
 
 DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, {
@@ -4362,7 +4309,7 @@ tab_alloc (struct type_accessor_builder *builder, error *e)
   }
 
   struct type_accessor *ta =
-      chunk_malloc (builder->persistent, 1, sizeof *ta, e);
+      builder_malloc_persist (builder->b, 1, sizeof *ta, e);
   return ta;
 }
 
@@ -4417,27 +4364,20 @@ tab_ensure_range (struct type_accessor_builder *builder)
 {
   if (!builder->in_range)
   {
-    rb_create (&builder->rb, builder->temp, builder->persistent);
+    builder->rb       = rb_create (builder->b);
     builder->in_range = true;
   }
 }
 
-void
-tab_create (
-    struct type_accessor_builder *dest,
-    struct chunk_alloc           *temp,
-    struct chunk_alloc           *persistent
-)
+struct type_accessor_builder
+tab_create (struct builder *b)
 {
-  *dest = (struct type_accessor_builder){
-      .head       = NULL,
-      .tail       = NULL,
-      .temp       = temp,
-      .persistent = persistent,
-      .in_range   = false,
+  return (struct type_accessor_builder){
+      .head     = NULL,
+      .tail     = NULL,
+      .b        = b,
+      .in_range = false,
   };
-
-  DBG_ASSERT (type_accessor_builder, dest);
 }
 
 err_t
@@ -4457,7 +4397,7 @@ tab_accept_select (
     return error_trace (e);
   }
 
-  key.data = chunk_alloc_move_mem (builder->persistent, key.data, key.len, e);
+  key.data = allocator_copy (builder->b->persistent, key.data, key.len, e);
   if (!key.data)
   {
     return error_trace (e);
@@ -4513,23 +4453,27 @@ tab_build (
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
-  WRAP (tab_accept_take (builder, e));
+  if (tab_accept_take (builder, e))
+  {
+    goto theend;
+  }
 
   *dest = builder->ret;
-  return SUCCESS;
+
+theend:
+  return error_trace (e);
 }
 
 #ifdef TESTING
 TEST (type_accessor_builder)
 {
+  ALLOC_INIT (alloc);
+  BUILDER_INIT (b, &alloc);
+
   error e = error_create ();
 
-  struct chunk_alloc arena;
-  chunk_alloc_create_default (&arena);
-
   // 0. freshly-created builder must be clean
-  struct type_accessor_builder builder;
-  tab_create (&builder, &arena, &arena);
+  struct type_accessor_builder builder = tab_create (&b);
   test_fail_if (builder.head != NULL);
   test_fail_if (builder.tail != NULL);
 
@@ -4537,7 +4481,7 @@ TEST (type_accessor_builder)
   tab_build (&acc, &builder, &e);
   test_assert_int_equal (acc.type, TA_TAKE);
 
-  tab_create (&builder, &arena, &arena);
+  builder = tab_create (&b);
 
   // 2. accept a select accessor
   struct string key1 = strfcstr ("field1");
@@ -4583,7 +4527,7 @@ TEST (type_accessor_builder)
   test_assert_int_equal (string_equal (select_acc->select.key, key2), true);
   test_assert_int_equal (select_acc->select.sub_ta->type, TA_TAKE);
 
-  chunk_alloc_free_all (&arena);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -4636,13 +4580,15 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
 
 struct type *
 tr_construct (
-    struct type        *reftype,
-    struct type_ref    *tr,
-    struct chunk_alloc *alloc,
-    error              *e
+    struct type      *reftype,
+    struct type_ref  *tr,
+    struct allocator *alloc,
+    error            *e
 )
 {
-  struct chunk_alloc temp;
+  BUILDER_INIT (b, alloc);
+
+  struct allocator temp;
 
   switch (tr->type)
   {
@@ -4658,7 +4604,7 @@ tr_construct (
       struct string   *keys  = tr->st.keys;
       struct type_ref *types = tr->st.types;
 
-      struct type *ret = chunk_malloc (alloc, 1, sizeof *ret, e);
+      struct type *ret = allocate (alloc, 1, sizeof *ret, e);
 
       if (ret == NULL)
       {
@@ -4667,10 +4613,7 @@ tr_construct (
 
       // Struct building logic
       {
-        struct kvt_list_builder builder;
-        chunk_alloc_create_default (&temp);
-
-        kvlb_create (&builder, &temp, alloc);
+        struct kvt_list_builder builder = kvlb_create (&b);
 
         for (u16 i = 0; i < len; ++i)
         {
@@ -4706,13 +4649,13 @@ tr_construct (
         }
       }
 
-      chunk_alloc_free_all (&temp);
+      BUILDER_CLOSE (b);
       return ret;
     }
   }
 
 temp_failed:
-  chunk_alloc_free_all (&temp);
+  BUILDER_CLOSE (b);
   return NULL;
 }
 

@@ -15,7 +15,7 @@
 #ifndef PAGE_FIXTURE_H
 #define PAGE_FIXTURE_H
 
-#include "alloc.h"    // chunk_alloc
+#include "alloc.h"    // allocator
 #include "error.h"    // error
 #include "numstore.h" // pgno ...etc
 #include "page.h"     // dl_data
@@ -32,10 +32,10 @@
 
 struct pgr_fixture
 {
-  error              e;
-  struct pager      *p;
-  struct chunk_alloc alloc;
-  struct txn         tx;
+  error            e;
+  struct pager    *p;
+  struct allocator alloc;
+  struct txn       tx;
 };
 
 err_t pgr_fixture_create (struct pgr_fixture *dest);

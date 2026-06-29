@@ -14,6 +14,7 @@
 
 #include "compiler.h"
 
+#include "alloc.h"
 #include "collections.h"
 #include "error.h"    // error
 #include "numerics.h" // parse_i32_expect
@@ -618,14 +619,20 @@ scan_token (struct lexer *lex, error *e)
 }
 
 err_t
-lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e)
+lex_tokens (
+    const char       *src,
+    struct allocator *alloc,
+    u32               src_len,
+    struct lexer     *lex,
+    error            *e
+)
 {
   memset (lex, 0, sizeof (*lex));
   lex->src     = src;
   lex->src_len = src_len;
   lex->start   = 0;
   lex->current = 0;
-  WRAP (dblb_create (&lex->_tokens, sizeof (struct token), 256, e));
+  WRAP (dblb_create (&lex->_tokens, alloc, sizeof (struct token), 256, e));
 
   while (!is_at_end (lex))
   {
@@ -647,14 +654,7 @@ lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e)
   return SUCCESS;
 
 failed:
-  dblb_free (&lex->_tokens);
   return error_trace (e);
-}
-
-void
-lex_free (struct lexer *lex)
-{
-  dblb_free (&lex->_tokens);
 }
 
 #ifdef TESTING
@@ -662,10 +662,12 @@ lex_free (struct lexer *lex)
 static void
 test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
 {
+  ALLOC_INIT (alloc);
+
   struct lexer lex;
   error        e = error_create ();
 
-  err_t result = lex_tokens (input, strlen (input), &lex, &e);
+  err_t result = lex_tokens (input, &alloc, strlen (input), &lex, &e);
 
   // Check for expected errors
   if (nexpected == 0)
@@ -699,7 +701,7 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
     test_assert (token_equal (left, right));
   }
 
-  lex_free (&lex);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (lexer_two_char_tokens)

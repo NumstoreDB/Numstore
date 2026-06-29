@@ -220,10 +220,16 @@ struct lexer
 
   u32               ntokens;
   struct dbl_buffer _tokens;
+  struct allocator *alloc;
 };
 
-err_t lex_tokens (const char *src, u32 src_len, struct lexer *lex, error *e);
-void  lex_free (struct lexer *lex);
+err_t lex_tokens (
+    const char       *src,
+    struct allocator *alloc,
+    u32               src_len,
+    struct lexer     *lex,
+    error            *e
+);
 
 /******************************************************************************
  * SECTION: Parser
@@ -236,9 +242,10 @@ void  lex_free (struct lexer *lex);
 
 struct parser
 {
-  struct token *src;
-  u32           src_len;
-  u32           pos;
+  struct token   *src;
+  u32             src_len;
+  u32             pos;
+  struct builder *b;
 };
 
 DEFINE_DBG_ASSERT (struct parser, parser, p, {
@@ -248,12 +255,13 @@ DEFINE_DBG_ASSERT (struct parser, parser, p, {
 })
 
 HEADER_FUNC struct parser
-parser_init (struct token *src, u32 src_len)
+parser_init (struct token *src, struct builder *b, u32 src_len)
 {
   struct parser ret = {
       .src     = src,
       .src_len = src_len,
       .pos     = 0,
+      .b       = b,
   };
 
   DBG_ASSERT (parser, &ret);
@@ -379,50 +387,6 @@ parser_check_end (struct parser *p, error *e)
 }
 
 /******************************************************************************
- * SECTION: Parser Implementations
- * ----------------------------------------------------------------------------
- * @brief Implementations of parsers
- ******************************************************************************/
-
-err_t parse_multi_user_stride (
-    struct parser            *parser,
-    struct multi_user_stride *dest,
-    struct chunk_alloc       *dalloc,
-    error                    *e
-);
-
-err_t parse_subtype (
-    struct parser      *p,
-    struct subtype     *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-);
-
-err_t parse_type (
-    struct parser      *p,
-    struct type        *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-);
-
-err_t parse_type_ref (
-    struct parser      *p,
-    struct type_ref    *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-);
-
-err_t
-parse_user_stride (struct parser *parser, struct user_stride *dest, error *e);
-
-err_t parse_query (
-    struct parser      *parser,
-    struct query       *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-);
-
-/******************************************************************************
  * SECTION: Compiler
  * ----------------------------------------------------------------------------
  * @brief Compiler of various objects from strings
@@ -431,23 +395,23 @@ err_t parse_query (
  ******************************************************************************/
 
 err_t compile_type (
-    struct type        *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct type      *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 );
 
 err_t compile_subtype (
-    struct subtype     *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct subtype   *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 );
 
 err_t compile_multi_user_stride (
     struct multi_user_stride *dest,
     const char               *text,
-    struct chunk_alloc       *dalloc,
+    struct allocator         *dalloc,
     error                    *e
 );
 
@@ -455,17 +419,17 @@ err_t
 compile_user_stride (struct user_stride *dest, const char *text, error *e);
 
 err_t compile_type_ref (
-    struct type_ref    *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct type_ref  *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 );
 
 err_t compile_query (
-    struct query       *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct query     *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 );
 
 #endif // COMPILER_H

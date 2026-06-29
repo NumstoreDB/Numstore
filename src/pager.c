@@ -18,13 +18,18 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
+#include "alloc.h"
 #include "dirty_page_table.h"
 #include "error.h"
 #include "file_pager.h"
 #include "lock_table.h"
+#include "logging.h"
 #include "numstore.h"
+#include "os.h"
 #include "page.h"
+#include "page_h.h"
 #include "pager.h"
+#include "testing/testing.h"
 #include "txn_table.h"
 #include "wal.h"
 
@@ -324,6 +329,23 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
   }
 }
 
+#ifdef TESTING
+TEST (i_log_page_table)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create (&f);
+
+  page_h a = page_h_create ();
+  pgr_new (&a, f.p, &f.tx, PG_DATA_LIST, &f.e);
+  dl_make_valid (page_h_w (&a));
+  pgr_release (f.p, &a, PG_DATA_LIST, &f.e);
+
+  i_log_page_table (LOG_INFO, false, f.p);
+
+  pgr_fixture_teardown (&f);
+}
+#endif
+
 static err_t
 pgr_refresh_wal (struct pager *p, error *e)
 {
@@ -342,6 +364,7 @@ aries_ctx_create (struct aries_ctx *dest, error *e)
 {
   dest->max_tid = 0;
   slab_alloc_init (&dest->alloc, sizeof (struct txn), 1000);
+  create_default_allocator (&dest->backing_alloc);
 
   dest->txt = txnt_open (e);
   if (dest->txt == NULL)
@@ -355,7 +378,13 @@ aries_ctx_create (struct aries_ctx *dest, error *e)
     goto txt_failed;
   }
 
-  if (dblb_create (&dest->txn_ptrs, sizeof (struct txn *), 100, e))
+  if (dblb_create (
+          &dest->txn_ptrs,
+          &dest->backing_alloc,
+          sizeof (struct txn *),
+          100,
+          e
+      ))
   {
     goto dpt_failed;
   }
@@ -379,7 +408,7 @@ aries_ctx_free (struct aries_ctx *ctx)
   slab_alloc_destroy (&ctx->alloc);
   txnt_close (ctx->txt);
   dpgt_close (ctx->dpt);
-  dblb_free (&ctx->txn_ptrs);
+  allocator_free (&ctx->backing_alloc);
 }
 
 struct txn *
@@ -2697,6 +2726,62 @@ pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
       e
   );
 }
+
+#ifdef TESTING
+struct args
+{
+  struct pager *p;
+  _Atomic u32   done;
+};
+
+static void *
+producer_thread (void *_args)
+{
+  struct args *args = _args;
+  error        e    = error_create ();
+  page_h       a    = page_h_create ();
+  struct txn   tx;
+
+  while (!args->done)
+  {
+    pgr_begin_txn (&tx, args->p, &e);
+
+    pgr_new (&a, args->p, &tx, PG_DATA_LIST, &e);
+    dl_make_valid (page_h_w (&a));
+    pgr_release (args->p, &a, PG_DATA_LIST, &e);
+
+    pgr_commit (args->p, &tx, &e);
+  }
+
+  return NULL;
+}
+
+TEST (pgr_checkpoint)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct pgr_fixture f;
+    pgr_fixture_create (&f);
+    pgr_launch_checkpoint_thread (f.p, 100, &f.e);
+
+    struct args args = {
+        .done = 0,
+        .p    = f.p,
+    };
+
+    i_thread producer;
+    i_thread_create (&producer, producer_thread, &args, &f.e);
+    i_sleep_ms (1000);
+
+    args.done = 1;
+
+    i_thread_join (&producer, &f.e);
+
+    pgr_fixture_teardown (&f);
+  }
+}
+
+#endif
 
 /******************************************************************************
  * SECTION: pgr_release_with_log

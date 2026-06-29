@@ -14,6 +14,7 @@
 
 #include "mem_vhmap.h"
 
+#include "alloc.h"
 #include "numerics.h"        // randu32
 #include "os.h"              // i_malloc
 #include "testing/testing.h" // TEST
@@ -21,9 +22,9 @@
 
 struct var_frame
 {
-  struct variable    var;
-  struct hnode       node;
-  struct chunk_alloc alloc;
+  struct variable  var;
+  struct hnode     node;
+  struct allocator alloc;
 };
 
 // Lifecycle
@@ -52,7 +53,7 @@ static void
 var_frame_free (struct hnode *node, void *ctx)
 {
   struct var_frame *frame = container_of (node, struct var_frame, node);
-  chunk_alloc_free_all (&frame->alloc);
+  allocator_free (&frame->alloc);
 }
 
 void
@@ -140,9 +141,9 @@ mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
       return error_trace (e);
     }
 
-    chunk_alloc_create_default (&frame->alloc);
+    create_default_allocator (&frame->alloc);
 
-    frame->var.vname.data = chunk_alloc_move_mem (
+    frame->var.vname.data = allocator_copy (
         &frame->alloc,
         var->vname.data,
         var->vname.len + 1, // TODO - this is awful - remove +1
@@ -156,7 +157,7 @@ mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
 
     if (frame->var.vname.data == NULL || frame->var.dtype == NULL)
     {
-      chunk_alloc_free_all (&frame->alloc);
+      allocator_free (&frame->alloc);
       slab_alloc_free (&db->alloc, frame);
       return error_trace (e);
     }
@@ -202,7 +203,7 @@ mem_vhmap_remove_var (struct mem_vhmap *db, struct string name)
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
   ASSERT (found);
   struct var_frame *frame = container_of (*found, struct var_frame, node);
-  chunk_alloc_free_all (&frame->alloc);
+  allocator_free (&frame->alloc);
   htable_delete (db->vhasht, found);
 }
 

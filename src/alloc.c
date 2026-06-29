@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "concurrency.h"
+#include "csx_assert.h"
 #include "error.h"
 #include "numerics.h"
 #include "os.h"
@@ -31,6 +32,33 @@
  * SECTION: Local Linear Allocator
  ******************************************************************************/
 
+/**
+ * @struct lalloc
+ * @brief A local arena allocator
+ *
+ * An allocator that allocates from a fixed size buffer
+ * provided by the user
+ *
+ * @var lalloc::latch
+ * @brief The latch to maintain thread safety
+ *
+ * @var lalloc::used
+ * @brief How many bytes have been used
+ *
+ * @var lalloc::limit
+ * @brief The maximum number of bytes available
+ *
+ * @var lalloc::data
+ * @brief The buffer that holds all the data
+ */
+struct lalloc
+{
+  latch latch;
+  u32   used;
+  u32   limit;
+  u8   *data;
+};
+
 DEFINE_DBG_ASSERT (struct lalloc, lalloc, l, {
   ASSERT (l);
   ASSERT (l->data);
@@ -39,7 +67,7 @@ DEFINE_DBG_ASSERT (struct lalloc, lalloc, l, {
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-struct lalloc
+static struct lalloc
 lalloc_create (u8 *data, const u32 limit)
 {
   ASSERT (limit > 0);
@@ -53,7 +81,7 @@ lalloc_create (u8 *data, const u32 limit)
   return ret;
 }
 
-u32
+static u32
 lalloc_get_state (struct lalloc *l)
 {
   latch_lock (&l->latch);
@@ -64,7 +92,7 @@ lalloc_get_state (struct lalloc *l)
   return result;
 }
 
-void
+static void
 lalloc_reset_to_state (struct lalloc *l, const u32 state)
 {
   latch_lock (&l->latch);
@@ -74,7 +102,7 @@ lalloc_reset_to_state (struct lalloc *l, const u32 state)
   latch_unlock (&l->latch);
 }
 
-void *
+static void *
 lmalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
 {
   latch_lock (&a->latch);
@@ -113,7 +141,7 @@ lmalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
   return ret;
 }
 
-void *
+static void *
 lcalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
 {
   void *ret = lmalloc (a, req, size, e);
@@ -127,7 +155,7 @@ lcalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
   return ret;
 }
 
-void
+static void
 lalloc_reset (struct lalloc *a)
 {
   latch_lock (&a->latch);
@@ -209,9 +237,24 @@ TEST (lalloc_edge_cases)
 
 /******************************************************************************
  * SECTION: Blocking Object Pool
+ * ----------------------------------------------------------------------------
+ *
+ * @brief Allocates fixed size blocks - limited memory - blocks on overfull
  ******************************************************************************/
 
-struct bobj_pool *
+struct bobj_pool
+{
+  i_mutex mutex;
+  i_cond  avail;
+  void   *freelist;
+  u32     used;
+  u32     cap;
+  u32     size;
+  bool    active;
+  u8      data[];
+};
+
+static struct bobj_pool *
 bobjp_create (u32 cap, u32 size, error *e)
 {
   ASSERT (cap > 0);
@@ -258,6 +301,27 @@ bobjp_create (u32 cap, u32 size, error *e)
   *(void **)cur = NULL;
 
   return ret;
+}
+
+static void
+bobjp_destroy (struct bobj_pool *p)
+{
+  i_mutex_lock (&p->mutex);
+  p->active = false;
+  i_mutex_unlock (&p->mutex);
+
+  // Drain - wait for all to free
+  i_mutex_lock (&p->mutex);
+  while (p->used > 0)
+  {
+    i_cond_wait (&p->avail, &p->mutex);
+  }
+  i_mutex_unlock (&p->mutex);
+
+  // Free
+  i_mutex_free (&p->mutex);
+  i_cond_free (&p->avail);
+  i_free (p);
 }
 
 #ifdef TESTING
@@ -311,27 +375,6 @@ TEST (bobjp_create)
 }
 #endif
 
-void
-bobjp_destroy (struct bobj_pool *p)
-{
-  i_mutex_lock (&p->mutex);
-  p->active = false;
-  i_mutex_unlock (&p->mutex);
-
-  // Drain - wait for all to free
-  i_mutex_lock (&p->mutex);
-  while (p->used > 0)
-  {
-    i_cond_wait (&p->avail, &p->mutex);
-  }
-  i_mutex_unlock (&p->mutex);
-
-  // Free
-  i_mutex_free (&p->mutex);
-  i_cond_free (&p->avail);
-  i_free (p);
-}
-
 #ifdef TESTING
 TEST (bobjp_destroy)
 {
@@ -345,7 +388,7 @@ TEST (bobjp_destroy)
 }
 #endif
 
-void *
+static void *
 bobjp_alloc (struct bobj_pool *pool)
 {
   i_mutex_lock (&pool->mutex);
@@ -366,6 +409,21 @@ bobjp_alloc (struct bobj_pool *pool)
   i_mutex_unlock (&pool->mutex);
 
   return head;
+}
+
+static void
+bobjp_free (struct bobj_pool *pool, void *ptr)
+{
+  i_mutex_lock (&pool->mutex);
+
+  ASSERT (pool->used > 0);
+
+  *(void **)ptr  = pool->freelist;
+  pool->freelist = ptr;
+  pool->used--;
+
+  i_mutex_unlock (&pool->mutex);
+  i_cond_signal (&pool->avail);
 }
 
 #ifdef TESTING
@@ -514,21 +572,6 @@ TEST (bobjp_alloc)
   }
 }
 #endif
-
-void
-bobjp_free (struct bobj_pool *pool, void *ptr)
-{
-  i_mutex_lock (&pool->mutex);
-
-  ASSERT (pool->used > 0);
-
-  *(void **)ptr  = pool->freelist;
-  pool->freelist = ptr;
-  pool->used--;
-
-  i_mutex_unlock (&pool->mutex);
-  i_cond_signal (&pool->avail);
-}
 
 /******************************************************************************
  * SECTION: Slab Allocator
@@ -1270,6 +1313,27 @@ TEST (slab_alloc_stress_random)
  * SECTION: Chunk Allocator
  ******************************************************************************/
 
+/**
+ * @struct chunk
+ * @brief Single link block within a chunk allocator chain
+ *
+ * Wraps a standard local linear allocator instance alongside a flexible data
+ * array which handles the payload tracking for this specific segment.
+ *
+ * @var chunk::alloc
+ * @brief The internal linear allocator wrapper riding on top of the chunk data.
+ * @var chunk::next
+ * @brief Pointer to the subsequent chunk link in the chain or NULL if tail.
+ * @var chunk::data
+ * @brief Inline flexible array handling the raw bytes owned by this block.
+ */
+struct chunk
+{
+  struct lalloc alloc;  // Base allocator interface for this chunk
+  struct chunk *next;   // Next chunk in the linked list, or NULL if tail
+  u8            data[]; // Flexible array of chunk-owned bytes
+};
+
 DEFINE_DBG_ASSERT (struct chunk, chunk, c, {
   ASSERT (c);
   ASSERT (c->alloc.data == c->data);
@@ -1335,7 +1399,33 @@ chunk_create (const u32 size, error *e)
   return ret;
 }
 
-void
+static void
+chunk_alloc_create (
+    struct chunk_alloc               *dest,
+    const struct chunk_alloc_settings settings
+)
+{
+  ASSERT (settings.target_chunk_mult >= 1.0f);
+  ASSERT (settings.min_chunk_size > 0);
+  ASSERT (
+      settings.max_chunk_size == 0
+      || settings.max_chunk_size >= settings.min_chunk_size
+  );
+
+  *dest = (struct chunk_alloc){
+      .settings        = settings,
+      .head            = NULL,
+      .num_chunks      = 0,
+      .total_allocated = 0,
+      .total_used      = 0,
+  };
+
+  latch_init (&dest->latch);
+
+  DBG_ASSERT (chunk_alloc, dest);
+}
+
+static void
 chunk_alloc_create_default (struct chunk_alloc *dest)
 {
   chunk_alloc_create (
@@ -1381,33 +1471,7 @@ compute_new_chunk_size (const struct chunk_alloc *ca, const u32 alloc_size)
   return new_chunk_size;
 }
 
-void
-chunk_alloc_create (
-    struct chunk_alloc               *dest,
-    const struct chunk_alloc_settings settings
-)
-{
-  ASSERT (settings.target_chunk_mult >= 1.0f);
-  ASSERT (settings.min_chunk_size > 0);
-  ASSERT (
-      settings.max_chunk_size == 0
-      || settings.max_chunk_size >= settings.min_chunk_size
-  );
-
-  *dest = (struct chunk_alloc){
-      .settings        = settings,
-      .head            = NULL,
-      .num_chunks      = 0,
-      .total_allocated = 0,
-      .total_used      = 0,
-  };
-
-  latch_init (&dest->latch);
-
-  DBG_ASSERT (chunk_alloc, dest);
-}
-
-void
+static void
 chunk_alloc_free_all (struct chunk_alloc *ca)
 {
   latch_lock (&ca->latch);
@@ -1427,24 +1491,6 @@ chunk_alloc_free_all (struct chunk_alloc *ca)
   ca->num_chunks      = 0;
   ca->total_allocated = 0;
   ca->total_used      = 0;
-
-  latch_unlock (&ca->latch);
-}
-
-void
-chunk_alloc_reset_all (struct chunk_alloc *ca)
-{
-  latch_lock (&ca->latch);
-
-  DBG_ASSERT (chunk_alloc, ca);
-
-  for (struct chunk *c = ca->head; c != NULL; c = c->next)
-  {
-    DBG_ASSERT (chunk, c);
-    lalloc_reset (&c->alloc);
-  }
-
-  ca->total_used = 0;
 
   latch_unlock (&ca->latch);
 }
@@ -1505,7 +1551,7 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
   return SUCCESS;
 }
 
-void *
+static void *
 chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
 {
   latch_lock (&ca->latch);
@@ -1571,39 +1617,6 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   return ptr;
 }
 
-void *
-chunk_calloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
-{
-  DBG_ASSERT (chunk_alloc, ca);
-
-  void *ptr = chunk_malloc (ca, req, size, e);
-  if (ptr != NULL)
-  {
-    memset (ptr, 0, req * size);
-  }
-  return ptr;
-}
-
-void *
-chunk_alloc_move_mem (
-    struct chunk_alloc *ca,
-    const void         *ptr,
-    const u32           size,
-    error              *e
-)
-{
-  void *dest = chunk_malloc (ca, size, 1, e);
-
-  if (dest == NULL)
-  {
-    return NULL;
-  }
-
-  memcpy (dest, ptr, size);
-
-  return dest;
-}
-
 /******************************************************************************
  * SECTION: Malloc Plan
  ******************************************************************************/
@@ -1642,4 +1655,82 @@ malloc_plan_alloc (struct malloc_plan *plan, error *e)
   plan->mode = MP_ALLOCING;
 
   return SUCCESS;
+}
+
+/******************************************************************************
+ * SECTION: Generic Allocator
+ ******************************************************************************/
+
+void
+create_default_allocator (struct allocator *alloc)
+{
+  alloc->type = AT_CHUNK_ALLOCATOR;
+  chunk_alloc_create_default (&alloc->calloc);
+}
+
+void *
+allocate (struct allocator *alloc, u32 nelem, u32 size, error *e)
+{
+  ASSERT (alloc);
+  switch (alloc->type)
+  {
+    case AT_CHUNK_ALLOCATOR:
+    {
+      return chunk_malloc (&alloc->calloc, nelem, size, e);
+    }
+    default:
+    {
+      UNREACHABLE ();
+    }
+  }
+}
+
+void *
+allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e)
+{
+  void *dest = allocate (alloc, size, 1, e);
+
+  if (dest == NULL)
+  {
+    return NULL;
+  }
+
+  memcpy (dest, ptr, size);
+
+  return dest;
+}
+
+void
+allocator_free (struct allocator *alloc)
+{
+  chunk_alloc_free_all (&alloc->calloc);
+}
+
+/******************************************************************************
+ * SECTION: Builder Pattern
+ ******************************************************************************/
+
+void
+builder_init (struct builder *b, struct allocator *alloc)
+{
+  b->persistent = alloc;
+  create_default_allocator (&b->temp);
+}
+
+void *
+builder_malloc_temp (struct builder *b, u32 nelem, u32 size, error *e)
+{
+  return allocate (&b->temp, nelem, size, e);
+}
+
+void *
+builder_malloc_persist (struct builder *b, u32 nelem, u32 size, error *e)
+{
+  return allocate (b->persistent, nelem, size, e);
+}
+
+void
+builder_free (struct builder *b)
+{
+  allocator_free (&b->temp);
 }

@@ -19,7 +19,6 @@
 #include "csx_assert.h"
 #include "error.h"
 #include "nsdb.h"
-#include "os.h"
 #include "query.h"
 
 /******************************************************************************
@@ -29,19 +28,18 @@
 sb_size
 nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
 {
-  struct chunk_alloc alloc;          // Memory allocation context
-  sb_size            ret;            // return variable
-  char               stackbuf[2048]; // Stack buffer if the query fits
-  char              *buf = stackbuf; // Pointer to the buffer
-  va_list            ap, ap2;        // Argument list
-  i32                qlen;           // Length of the query
-  struct query       q;              // The AST
+  ALLOC_INIT (alloc);
+
+  sb_size      ret;            // return variable
+  char         stackbuf[2048]; // Stack buffer if the query fits
+  char        *buf = stackbuf; // Pointer to the buffer
+  va_list      ap, ap2;        // Argument list
+  i32          qlen;           // Length of the query
+  struct query q;              // The AST
 
   // Reset errors before proceeding
   nh->e.cause_code = 0;
   nh->e.cmlen      = 0;
-
-  chunk_alloc_create_default (&alloc);
 
   // A small stack buffer - if the query doesn't fit into
   // this buffer - we'll need to malloc
@@ -62,7 +60,7 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
 
   if ((size_t)qlen >= sizeof stackbuf)
   {
-    buf = chunk_malloc (&alloc, qlen + 1, 1, &nh->e);
+    buf = allocate (&alloc, qlen + 1, 1, &nh->e);
     if (!buf)
     {
       va_end (ap2);
@@ -84,6 +82,6 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
   ret = nsdb_execute_on_buffer (nh, &q, data, &alloc);
 
 theend:
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
   return ret;
 }

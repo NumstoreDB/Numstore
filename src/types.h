@@ -15,6 +15,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include "alloc.h"
 #include "collections.h" // llnode
 #include "error.h"       // error
 #include "numstore.h"    // pgno ...etc
@@ -90,25 +91,21 @@ struct type
 };
 
 // Core api
-err_t        type_validate (const struct type *t, error *e);
-i32          type_snprintf (char *str, u32 size, struct type *t);
-char        *type_tostr (struct type *t);
-u32          type_byte_size (const struct type *t);
-u32          type_get_string_size (const struct type *t);
-void         type_generate_string (char *dest, const struct type *t);
-u32          type_get_serial_size (const struct type *t);
-void         type_serialize (struct serializer *dest, const struct type *src);
-struct type *type_deserialize (
-    struct deserializer *src,
-    struct chunk_alloc  *alloc,
-    error               *e
-);
-struct type *type_random (struct chunk_alloc *alloc, u32 depth, error *e);
+err_t type_validate (const struct type *t, error *e);
+i32   type_snprintf (char *str, u32 size, struct type *t);
+char *type_tostr (struct type *t);
+u32   type_byte_size (const struct type *t);
+u32   type_get_string_size (const struct type *t);
+void  type_generate_string (char *dest, const struct type *t);
+u32   type_get_serial_size (const struct type *t);
+void  type_serialize (struct serializer *dest, const struct type *src);
+struct type *
+type_deserialize (struct deserializer *src, struct allocator *alloc, error *e);
+struct type *type_random (struct allocator *alloc, u32 depth, error *e);
 bool         type_equal (const struct type *left, const struct type *right);
 err_t        i_log_type (struct type *t, error *e);
-struct type *
-type_movemem (struct type *src, struct chunk_alloc *alloc, error *e);
-void type_print_data (
+struct type *type_movemem (struct type *src, struct allocator *alloc, error *e);
+void         type_print_data (
     int                log_level,
     const u8          *buf,
     const struct type *t,
@@ -138,20 +135,13 @@ struct kv_llnode
 
 struct kvt_list_builder
 {
-  struct llnode *head;
-
-  u16 klen;
-  u16 tlen;
-
-  struct chunk_alloc *temp;
-  struct chunk_alloc *persistent;
+  struct llnode  *head;
+  u16             klen;
+  u16             tlen;
+  struct builder *b;
 };
 
-void kvlb_create (
-    struct kvt_list_builder *dest,
-    struct chunk_alloc      *temp,
-    struct chunk_alloc      *persistent
-);
+struct kvt_list_builder kvlb_create (struct builder *b);
 err_t
 kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
 err_t kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
@@ -164,10 +154,10 @@ err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
  ******************************************************************************/
 
 err_t struct_t_create (
-    struct struct_t    *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct struct_t  *dest,
+    struct kvt_list   list,
+    struct allocator *dalloc,
+    error            *e
 );
 bool struct_t_equal (const struct struct_t *left, const struct struct_t *right);
 struct type *struct_t_resolve_key (
@@ -180,10 +170,10 @@ struct type *struct_t_resolve_key (
 struct type *
 union_t_resolve_key (struct union_t *t, struct string key, error *e);
 err_t union_t_create (
-    struct union_t     *dest,
-    struct kvt_list     list,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct union_t   *dest,
+    struct kvt_list   list,
+    struct allocator *dalloc,
+    error            *e
 );
 
 enum prim_t strtoprim (const char *text, u32 len);
@@ -202,18 +192,12 @@ struct dim_llnode
 
 struct sarray_builder
 {
-  struct llnode *head;
-  struct type   *type;
-
-  struct chunk_alloc *temp;
-  struct chunk_alloc *persistent;
+  struct llnode  *head;
+  struct type    *type;
+  struct builder *b;
 };
 
-void sab_create (
-    struct sarray_builder *dest,
-    struct chunk_alloc    *temp,
-    struct chunk_alloc    *persistent
-);
+struct sarray_builder sab_create (struct builder *b);
 err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
 err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
 err_t
@@ -329,13 +313,13 @@ bool type_accessor_equal (
 struct type *ta_subtype (
     struct type          *reftype,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 );
 struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
     struct type          *reftype,
-    struct chunk_alloc   *dalloc,
+    struct allocator     *dalloc,
     error                *e
 );
 
@@ -382,18 +366,13 @@ struct rb_llnode
 
 struct range_builder
 {
-  struct llnode      *head;
-  u32                 len;
-  struct chunk_alloc *temp;
-  struct chunk_alloc *persistent;
+  struct llnode  *head;
+  u32             len;
+  struct builder *b;
 };
 
-void rb_create (
-    struct range_builder *dest,
-    struct chunk_alloc   *temp,
-    struct chunk_alloc   *persistent
-);
-err_t rb_accept_stride (
+struct range_builder rb_create (struct builder *b);
+err_t                rb_accept_stride (
     struct range_builder *rb,
     struct user_stride    stride,
     error                *e
@@ -405,18 +384,13 @@ struct type_accessor_builder
   struct type_accessor  ret;
   struct type_accessor *head;
   struct type_accessor *tail;
-  struct chunk_alloc   *temp;
-  struct chunk_alloc   *persistent;
+  struct builder       *b;
   struct range_builder  rb;
   bool                  in_range;
 };
 
-void tab_create (
-    struct type_accessor_builder *dest,
-    struct chunk_alloc           *temp,
-    struct chunk_alloc           *persistent
-);
-err_t tab_accept_select (
+struct type_accessor_builder tab_create (struct builder *b);
+err_t                        tab_accept_select (
     struct type_accessor_builder *builder,
     struct string                 key,
     error                        *e
@@ -465,10 +439,10 @@ struct type_ref
 
 bool         type_ref_equal (struct type_ref left, const struct type_ref right);
 struct type *tr_construct (
-    struct type        *reftype,
-    struct type_ref    *tr,
-    struct chunk_alloc *alloc,
-    error              *e
+    struct type      *reftype,
+    struct type_ref  *tr,
+    struct allocator *alloc,
+    error            *e
 );
 
 /*-----------------------------------------------------------------------------
@@ -527,15 +501,10 @@ struct kvt_ref_list_builder
   u16 klen;
   u16 tlen;
 
-  struct chunk_alloc *temp;
-  struct chunk_alloc *persistent;
+  struct builder *b;
 };
 
-void kvrlb_create (
-    struct kvt_ref_list_builder *dest,
-    struct chunk_alloc          *temp,
-    struct chunk_alloc          *persistent
-);
+struct kvt_ref_list_builder kvrlb_create (struct builder *b);
 err_t
 kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
 err_t kvrlb_accept_type (
@@ -571,7 +540,7 @@ bool subtype_equal (const struct subtype *left, const struct subtype *right);
 struct type *subtype_get_type (
     struct type          *stype,
     struct type_accessor *ta,
-    struct chunk_alloc   *alloc,
+    struct allocator     *alloc,
     error                *e
 );
 
