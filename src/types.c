@@ -2113,7 +2113,7 @@ TEST (struct_t_deserialize_red_path)
   memcpy (&data[16], &l3, sizeof (u16));
   memcpy (&data[24], &l4, sizeof (u16));
 
-  struct struct_t    sret;
+  struct struct_t    sret = {0};
   struct chunk_alloc alloc;
   chunk_alloc_create_default (&alloc);
   struct deserializer d = dsrlizr_create (data, sizeof (data));
@@ -2280,7 +2280,7 @@ TEST (union_t_deserialize_red_path)
   memcpy (&data[16], &l3, sizeof (u16));
   memcpy (&data[24], &l4, sizeof (u16));
 
-  struct union_t     sret;
+  struct union_t     sret = {0};
   struct chunk_alloc alloc;
   chunk_alloc_create_default (&alloc);
   struct deserializer d = dsrlizr_create (data, sizeof (data));
@@ -2375,8 +2375,8 @@ TEST (sarray_t_deserialize_green_path)
 
   error e = error_create ();
 
-  struct sarray_t sret;
-  err_t           ret = sarray_t_deserialize (&sret, &d, &sab_temp, &e);
+  struct sarray_t sret = {0};
+  err_t           ret  = sarray_t_deserialize (&sret, &d, &sab_temp, &e);
 
   test_assert_int_equal (ret, SUCCESS);
 
