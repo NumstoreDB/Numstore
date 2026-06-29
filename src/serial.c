@@ -152,36 +152,6 @@ string_equal (const struct string s1, const struct string s2)
   return strncmp (s1.data, s2.data, s1.len) == 0;
 }
 
-struct string
-string_plus (
-    const struct string left,
-    const struct string right,
-    struct lalloc      *alloc,
-    error              *e
-)
-{
-  const u32 len = left.len + right.len;
-  ASSERT (len > 0);
-
-  char *data = lmalloc (alloc, len, 1, e);
-
-  if (data == NULL)
-  {
-    return (struct string){
-        .data = NULL,
-        .len  = 0,
-    };
-  }
-
-  memcpy (data, left.data, left.len);
-  memcpy (data + left.len, right.data, right.len);
-
-  return (struct string){
-      .data = data,
-      .len  = len,
-  };
-}
-
 const struct string *
 strings_are_disjoint (
     const struct string *left,

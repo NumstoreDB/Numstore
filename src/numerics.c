@@ -676,18 +676,18 @@ TEST (randf)
 
 err_t
 rand_str (
-    struct string      *dest,
-    struct chunk_alloc *alloc,
-    const u32           minlen,
-    const u32           maxlen,
-    error              *e
+    struct string    *dest,
+    struct allocator *alloc,
+    const u32         minlen,
+    const u32         maxlen,
+    error            *e
 )
 {
   ASSERT (dest);
   ASSERT (maxlen >= minlen);
 
   const u32 len  = randu32r (minlen, maxlen);
-  char     *data = (char *)chunk_malloc (alloc, len, sizeof *data, e);
+  char     *data = allocate (alloc, len, sizeof *data, e);
   if (!data)
   {
     return error_trace (e);

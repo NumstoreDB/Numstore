@@ -14,6 +14,9 @@
 
 #include "nsdb.h"
 
+#include "alloc.h"
+#include "collections.h"
+#include "compiler.h"
 #include "error.h"
 #include "pager.h"
 #include "rope_algorithms.h"
@@ -370,8 +373,8 @@ nsdb_var_len (nsdb_var_t *var)
 void
 nsdb_var_free (nsdb_var_t *var)
 {
-  struct chunk_alloc *alloc = var->alloc;
-  chunk_alloc_free_all (alloc);
+  struct allocator *alloc = var->alloc;
+  allocator_free (alloc);
   i_free (alloc);
 }
 
@@ -381,16 +384,16 @@ nsdb_var_free (nsdb_var_t *var)
 
 err_t
 nsdb_get (
-    struct nsdb        *db,
-    struct get_query   *query,
-    struct chunk_alloc *alloc,
-    struct variable   **dest
+    struct nsdb      *db,
+    struct get_query *query,
+    struct allocator *alloc,
+    struct variable **dest
 )
 {
   ASSERT (dest);
   struct ns_var_get_params gparams; // Get or create operation
 
-  *dest = chunk_malloc (alloc, 1, sizeof (struct variable), &db->e);
+  *dest = allocate (alloc, 1, sizeof (struct variable), &db->e);
   if (*dest == NULL)
   {
     return error_trace (&db->e);
@@ -448,10 +451,10 @@ failed:
 
 int
 nsdb_create (
-    struct nsdb        *db,
-    struct chunk_alloc *alloc,
-    struct string       vname,
-    struct type         dtype
+    struct nsdb      *db,
+    struct allocator *alloc,
+    struct string     vname,
+    struct type       dtype
 )
 {
   struct ns_var_get_or_create_params gparams; // Get or create operation
@@ -479,7 +482,6 @@ nsdb_create (
 
   // COMMIT
   WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
-  chunk_alloc_free_all (alloc);
 
   return SUCCESS;
 
@@ -488,7 +490,6 @@ failed_rollback:
   nsdb_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (alloc);
   return error_trace (&db->e);
 }
 
@@ -543,12 +544,7 @@ failed:
  ******************************************************************************/
 
 HEADER_FUNC sb_size
-nsdb_len (
-    struct nsdb        *db,
-    struct chunk_alloc *alloc,
-    const char         *name,
-    error              *e
-)
+nsdb_len (struct nsdb *db, struct allocator *alloc, const char *name, error *e)
 {
   struct string            vname = strfcstr (name);
   struct ns_var_get_params gparams;
@@ -615,7 +611,7 @@ sb_size
 nsdb_insert (
     struct nsdb         *db,
     struct insert_query *query,
-    struct chunk_alloc  *alloc,
+    struct allocator    *alloc,
     struct stream       *src
 )
 {
@@ -730,10 +726,10 @@ failed:
 
 sb_size
 nsdb_read (
-    struct nsdb        *db,    // The database handle
-    struct read_query  *query, // The query that got parsed
-    struct chunk_alloc *alloc, // Where to allocate stuff
-    struct stream      *dest   // destination stream
+    struct nsdb       *db,    // The database handle
+    struct read_query *query, // The query that got parsed
+    struct allocator  *alloc, // Where to allocate stuff
+    struct stream     *dest   // destination stream
 )
 {
   sb_size                  ret;     // Return value
@@ -871,7 +867,7 @@ sb_size
 nsdb_remove (
     struct nsdb         *db,
     struct remove_query *query,
-    struct chunk_alloc  *alloc,
+    struct allocator    *alloc,
     struct stream       *dest
 )
 {
@@ -1028,7 +1024,7 @@ sb_size
 nsdb_write (
     struct nsdb        *db,
     struct write_query *query,
-    struct chunk_alloc *alloc,
+    struct allocator   *alloc,
     struct stream      *src
 )
 {
@@ -1168,10 +1164,10 @@ failed:
 
 sb_size
 nsdb_execute_on_buffer (
-    struct nsdb        *ns,
-    struct query       *q,
-    void               *data,
-    struct chunk_alloc *alc
+    struct nsdb      *ns,
+    struct query     *q,
+    void             *data,
+    struct allocator *alc
 )
 {
   sb_size          ret = SUCCESS;
@@ -1327,19 +1323,19 @@ nsdb_execute_on_buffer (
         goto failed;
       }
 
-      // Variables get their own chunk allocator
+      // Variables get their own allocator
       // context that gets freed on nsdb_var_free
-      struct chunk_alloc *valloc = i_malloc (1, sizeof *valloc, &ns->e);
+      struct allocator *valloc = i_malloc (1, sizeof *valloc, &ns->e);
       if (valloc == NULL)
       {
         goto failed;
       }
-      chunk_alloc_create_default (valloc);
+      create_default_allocator (valloc);
 
       // Get the variable
       if (nsdb_get (ns, &q->get, valloc, &var) < 0)
       {
-        chunk_alloc_free_all (valloc);
+        allocator_free (valloc);
         i_free (valloc);
         goto failed;
       }
@@ -1347,18 +1343,18 @@ nsdb_execute_on_buffer (
       if (var == NULL)
       {
         *_data = NULL;
-        chunk_alloc_free_all (valloc);
+        allocator_free (valloc);
         i_free (valloc);
         ret = SUCCESS;
         break;
       }
 
       // Transfer over to a variable handle (that can be free'd)
-      *_data = chunk_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
+      *_data = allocate (valloc, 1, sizeof (struct nsdb_var), &ns->e);
 
       if (*_data == NULL)
       {
-        chunk_alloc_free_all (valloc);
+        allocator_free (valloc);
         i_free (valloc);
         goto failed;
       }
@@ -1389,4 +1385,470 @@ nsdb_execute_on_buffer (
 failed:
 
   return error_trace (&ns->e);
+}
+
+/******************************************************************************
+ * SECTION: nsdb_get_and_print
+ ******************************************************************************/
+
+err_t
+nsdb_get_and_print (
+    struct nsdb      *db,
+    struct get_query *query,
+    struct allocator *alloc
+)
+{
+  struct ns_var_get_params gparams; // Get or create operation
+
+  // BEGIN TXN
+  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+
+  i_log_debug (
+      "GET (txn = %" PRtxid
+      ")"
+      " - %.*s\n",
+      db->atx->tid,
+      strfmt (&query->name)
+  );
+
+  // GET VARIABLE
+  {
+    gparams = (struct ns_var_get_params){
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = query->name,
+        .alloc = alloc,
+    };
+    err_t err = ns_var_get (&gparams, &db->e);
+    if (query->if_exists && err == ERR_VARIABLE_NE)
+    {
+      db->e.cause_code = SUCCESS;
+      db->e.cmlen      = 0;
+      fprintf (stderr, "Variable: %.*s doesn't exist\n", strfmt (&query->name));
+      goto commit;
+    }
+    WRAP_GOTO (err, failed_rollback);
+
+    i_print_variable (&gparams.dest, &db->e);
+  }
+
+commit:
+  // COMMIT
+  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+
+  return SUCCESS;
+
+failed_rollback:
+
+  nsdb_auto_rollback (db);
+
+failed:
+  return error_trace (&db->e);
+}
+
+/******************************************************************************
+ * SECTION: nsdb_read_and_print
+ ******************************************************************************/
+
+sb_size
+nsdb_read_and_print (
+    struct nsdb       *db,    // The database handle
+    struct read_query *query, // The query that got parsed
+    struct allocator  *alloc  // Where to allocate stuff
+)
+{
+  sb_size                  ret;     // Return value
+  t_size                   tsize;   // Size of  the variable
+  b_size                   len;     // Length of the variable
+  struct ns_var_get_params gparams; // Get operation
+  struct ns_read_params    rparams; // Read operation
+  struct stride            stride;  // Resolved stride
+  struct stream            dest;    // Output stream
+
+  // BEGIN TXN
+  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+
+  // GET VARIABLE
+  {
+    gparams = (struct ns_var_get_params){
+        .p     = db->root->p,
+        .tx    = db->atx,
+        .vname = query->name,
+        .alloc = alloc,
+    };
+    WRAP_GOTO (ns_var_get (&gparams, &db->e), failed_rollback);
+  }
+
+  // Resolve sizes
+  {
+    // Size of each variable
+    tsize = type_byte_size (gparams.dest.dtype);
+
+    // Total size in bytes of the variable
+    len = gparams.dest.nbytes;
+
+    // A consistent database has this be a multiple of tsize
+    if (len % tsize != 0)
+    {
+      error_causef (
+          &db->e,
+          ERR_CORRUPT,
+          "Variable: %.*s has invalid byte size",
+          strfmt (&query->name)
+      );
+      goto failed_rollback;
+    }
+    len /= tsize;
+
+    // Resolve length based on the stride
+    if (stride_resolve (&stride, query->ustr, len, &db->e))
+    {
+      goto failed_rollback;
+    }
+
+    // Check limit
+    if (query->limit > 0)
+    {
+      if (query->blimit)
+      {
+        stride.nelems = query->limit / tsize;
+      }
+      else
+      {
+        stride.nelems = query->limit;
+      }
+    }
+    else
+    {
+      ASSERT (!query->blimit);
+    }
+
+    // Create the destination stream to print to the console
+    if (type_stream_printer_init (&dest, gparams.dest.dtype, &db->e))
+    {
+      goto failed_rollback;
+    }
+  }
+
+  i_log_debug (
+      "READ (txn = %" PRtxid
+      ")"
+      " - %.*s"
+      " size (bytes): %" PRt_size " curlen: %" PRb_size
+      " curlen (bytes): %" PRb_size
+      " Requested: "
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
+      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
+      " stop (bytes): %" PRId64
+      " Granted: "
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
+      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
+      " nelems (bytes): %" PRIu64 "\n",
+      db->atx->tid,
+      strfmt (&query->name),
+      tsize,
+      len,
+      gparams.dest.nbytes,
+      query->ustr.present & START_PRESENT ? query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? query->ustr.stop : 0,
+      query->ustr.present & START_PRESENT ? tsize * query->ustr.start : 0,
+      query->ustr.present & STEP_PRESENT ? tsize * query->ustr.step : 0,
+      query->ustr.present & STOP_PRESENT ? tsize * query->ustr.stop : 0,
+      stride.start,
+      stride.stride,
+      stride.nelems,
+      tsize * stride.start,
+      tsize * stride.stride,
+      tsize * stride.nelems
+  );
+
+  // READ
+  {
+    rparams = (struct ns_read_params){
+        .p      = db->root->p,
+        .dest   = &dest,
+        .tx     = db->atx,
+        .root   = gparams.dest.rpt_root,
+        .size   = tsize,
+        .bofst  = tsize * stride.start,
+        .stride = stride.stride,
+        .nelem  = stride.nelems,
+    };
+    ret = ns_read (rparams, &db->e);
+    WRAP_GOTO (ret, failed_rollback);
+  }
+
+  // COMMIT
+  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  return ret;
+
+failed_rollback:
+
+  nsdb_auto_rollback (db);
+
+failed:
+  return error_trace (&db->e);
+}
+
+/******************************************************************************
+ * SECTION: nsdb_execute on console
+ ******************************************************************************/
+
+static err_t
+nsdb_execute_in_console (
+    struct nsdb      *ns,
+    struct query     *q,
+    struct allocator *alc
+)
+{
+  sb_size ret = SUCCESS;
+
+  switch (q->type)
+  {
+    case QT_READ:
+    {
+      ret = nsdb_read_and_print (ns, &q->read, alc);
+      if (ret < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+    case QT_WRITE:
+    {
+      break;
+    }
+    case QT_REMOVE:
+    {
+      break;
+    }
+    case QT_INSERT:
+    {
+      break;
+    }
+
+    case QT_CREATE:
+    {
+      if (nsdb_create (ns, alc, q->create.name, q->create.type))
+      {
+        goto failed;
+      }
+
+      ret = SUCCESS;
+
+      break;
+    }
+    case QT_DELETE:
+    {
+      break;
+    }
+    case QT_GET:
+    {
+      ret = nsdb_get_and_print (ns, &q->get, alc);
+      if (ret < 0)
+      {
+        goto failed;
+      }
+      break;
+    }
+
+    case QT_EXIT:
+    {
+      break;
+    }
+
+    case QT_HELP:
+    {
+      break;
+    }
+  }
+
+  return ret;
+
+failed:
+
+  return error_trace (&ns->e);
+}
+
+/******************************************************************************
+ * SECTION: NSDB CLI
+ ******************************************************************************/
+
+err_t
+nscli_init (struct nscli *cli, const char *dbname)
+{
+  cli->db = nsdb_open (dbname);
+
+  if (cli->db == NULL)
+  {
+    return -1;
+  }
+
+  return SUCCESS;
+}
+
+err_t
+nscli_step_init (struct nscli *cli)
+{
+  create_default_allocator (&cli->step_alloc);
+
+  if (dblb_create (&cli->stmt, &cli->step_alloc, 1, 128, &cli->db->e))
+  {
+    allocator_free (&cli->step_alloc);
+    return error_trace (&cli->db->e);
+  }
+
+  return SUCCESS;
+}
+
+/*
+ * Append one line from stream to the buffer (newline not stored).
+ * Returns 1 on success, 0 on EOF with nothing read, -1 on error.
+ */
+static int
+append_line (struct dbl_buffer *b, FILE *stream, error *e)
+{
+  int    c;
+  size_t before = b->nelem;
+
+  while ((c = fgetc (stream)) != EOF && c != '\n')
+  {
+    char _c = (char)c;
+    WRAP (dblb_append (b, &_c, 1, e));
+  }
+
+  if (c == EOF && b->nelem == before)
+  {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int
+has_terminator (const struct dbl_buffer *b)
+{
+  return memchr (b->data, ';', b->nelem) != NULL;
+}
+
+static int
+is_blank (const struct dbl_buffer *b)
+{
+  for (size_t i = 0; i < b->nelem; i++)
+  {
+    if (((char *)b->data)[i] != ' ' && ((char *)b->data)[i] != '\t')
+    {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+enum nscli_read_result
+nscli_step_read_stdin (struct nscli *cli)
+{
+  // Print out the repl prefix
+  fputs ("numstore> ", stdout);
+  fflush (stdout);
+
+  // Accumulate lines until a ';' appears or EOF.
+  while (true)
+  {
+    // Read a whole line
+    int r = append_line (&cli->stmt, stdin, &cli->db->e);
+
+    // handle error
+    if (r < 0)
+    {
+      return CMD_FATAL;
+    }
+
+    // nothing - got eof
+    if (r == 0)
+    {
+      fputc ('\n', stdout);
+      return CMD_NOTHING_TO_DO;
+    }
+
+    // Check if this line is the last one
+    if (has_terminator (&cli->stmt))
+    {
+      char c = '\0';
+      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e))
+      {
+        return CMD_FATAL;
+      }
+      break;
+    }
+
+    if (cli->stmt.nelem > 0)
+    {
+      /* Separate lines with a space so tokens don't merge. */
+      char c = ' ';
+      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e))
+      {
+        return CMD_FATAL;
+      }
+    }
+
+    fputs ("      ... ", stdout);
+    fflush (stdout);
+  }
+
+  if (is_blank (&cli->stmt))
+  {
+    return CMD_NOTHING_TO_DO;
+  }
+
+  return CMD_RUN;
+}
+
+enum nscli_execute_result
+nscli_step_execute (struct nscli *cli)
+{
+  enum nscli_execute_result ret = EXE_SUCCESS;
+  struct query              q;
+
+  printf ("%s\n", (char *)cli->stmt.data);
+
+  // compile the query
+  if (compile_query (&q, cli->stmt.data, &cli->step_alloc, &cli->db->e))
+  {
+    ret = EXE_ERROR;
+    goto theend;
+  }
+
+  if (q.type == QT_EXIT)
+  {
+    ret = EXE_EXIT;
+    goto theend;
+  }
+
+  // Execute the query
+  if (nsdb_execute_in_console (cli->db, &q, &cli->step_alloc) < 0)
+  {
+    ret = EXE_ERROR;
+    goto theend;
+  }
+
+theend:
+  return ret;
+}
+
+void
+nscli_step_clean (struct nscli *cli)
+{
+  allocator_free (&cli->step_alloc);
+  dblb_reset (&cli->stmt);
+  cli->db->e.cause_code = SUCCESS;
+  cli->db->e.cmlen      = 0;
+}
+
+void
+nscli_close (struct nscli *cli)
+{
+  allocator_free (&cli->step_alloc);
+  nsdb_close (cli->db);
 }

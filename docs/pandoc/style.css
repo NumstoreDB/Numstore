@@ -314,30 +314,45 @@ main {
     padding: 0 0.25rem;
 }
 
-/* ── Sidebar ─────────────────────────────────────────────────── */
+/* ── Nav: kill all bullets ──────────────────────────────────── */
+.docs-nav ul,
+.docs-nav ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.docs-nav li { list-style: none; }
+.docs-nav li::marker { content: ""; }
+
 /* ── Collapsible nav (details/summary) ──────────────────────── */
 .docs-nav details { margin: 0; }
 
-.docs-nav details > summary {
+/* Top-level dropdown headers — match .top-link weight/sizing */
+.docs-nav .section > details > summary {
     display: flex;
     align-items: center;
     gap: 0.55em;
-    margin: 1.2em 0 0.35em;
-    padding: 0 0.75em;
+    padding: 0.4em 0.75em;
+    margin: 0.05em 0;
+    color: var(--fg);
     font-family: var(--font-sans);
-    font-size: 0.72rem;
+    font-size: 0.93rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
+    text-transform: none;
+    letter-spacing: normal;
     cursor: pointer;
-    list-style: none;
     user-select: none;
     border-radius: var(--radius-sm);
-    transition: color 0.12s;
+    list-style: none;
+    transition: background-color 0.12s, color 0.12s;
 }
 .docs-nav details > summary::-webkit-details-marker { display: none; }
-.docs-nav details > summary:hover { color: var(--fg); }
+.docs-nav details > summary::marker { content: ""; }
+
+.docs-nav .section > details > summary:hover {
+    background: var(--elevated);
+    color: var(--fg);
+}
 
 /* Chevron — pure CSS, rotates on open */
 .docs-nav details > summary::before {
@@ -349,14 +364,13 @@ main {
     border-bottom: 1.5px solid currentColor;
     transform: rotate(-45deg);
     transition: transform 0.18s ease;
-    opacity: 0.8;
+    opacity: 0.75;
 }
 .docs-nav details[open] > summary::before { transform: rotate(45deg); }
 
-/* Lists inside details — match your existing .section > ul style */
+/* Lists inside details */
 .docs-nav details > ul {
-    list-style: none;
-    margin: 0 0 0.6em 0.85em;
+    margin: 0.15em 0 0.4em 0.85em;
     padding-left: 0.65em;
     border-left: 1px solid var(--border);
 }
@@ -369,6 +383,7 @@ main {
     color: var(--muted);
     text-decoration: none;
     border-radius: var(--radius-sm);
+    font-size: 0.92rem;
     transition: color 0.12s, background-color 0.12s;
 }
 .docs-nav details > ul a:hover {
@@ -382,15 +397,21 @@ main {
     font-weight: 600;
 }
 
-/* Nested subsection summaries — less prominent than top-level */
+/* Nested subsection summaries — slightly lighter */
 .docs-nav .subsection > details > summary {
-    margin: 0.15em 0;
-    padding: 0.35em 0.75em;
-    font-size: 0.93rem;
+    display: flex;
+    align-items: center;
+    gap: 0.55em;
+    padding: 0.32em 0.75em;
+    margin: 0.05em 0;
+    font-size: 0.9rem;
     font-weight: 500;
-    text-transform: none;
-    letter-spacing: normal;
     color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    border-radius: var(--radius-sm);
+    list-style: none;
+    transition: background-color 0.12s, color 0.12s;
 }
 .docs-nav .subsection > details > summary:hover {
     background: var(--elevated);

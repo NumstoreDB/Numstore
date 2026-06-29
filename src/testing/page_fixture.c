@@ -14,6 +14,7 @@
 
 #include "testing/page_fixture.h"
 
+#include "alloc.h"
 #include "error.h"
 #include "page.h"
 #include "pager.h"
@@ -67,7 +68,7 @@ pgr_fixture_create (struct pgr_fixture *dest)
 
   DBG_ASSERT (pgr_fixture, dest);
 
-  chunk_alloc_create_default (&dest->alloc);
+  create_default_allocator (&dest->alloc);
 
   return SUCCESS;
 
@@ -91,7 +92,7 @@ err_t
 pgr_fixture_teardown (struct pgr_fixture *f)
 {
   pgr_close (f->p, &f->e);
-  chunk_alloc_free_all (&f->alloc);
+  allocator_free (&f->alloc);
 
   return f->e.cause_code;
 }

@@ -14,6 +14,7 @@
 
 #include "variables.h"
 
+#include "alloc.h"
 #include "error.h"
 #include "page.h"
 #include "types.h"
@@ -147,11 +148,11 @@ var_random_name (char *buffer, int length)
 
 err_t
 rand_varname (
-    struct string      *dest,
-    struct chunk_alloc *alloc,
-    const u32           minlen,
-    const u32           maxlen,
-    error              *e
+    struct string    *dest,
+    struct allocator *alloc,
+    const u32         minlen,
+    const u32         maxlen,
+    error            *e
 )
 {
   ASSERT (dest);
@@ -160,7 +161,7 @@ rand_varname (
   ASSERT (minlen <= maxlen);
 
   u32   len    = randu32r (minlen, maxlen);
-  char *buffer = chunk_malloc (alloc, len, 1, e);
+  char *buffer = allocate (alloc, len, 1, e);
   if (buffer == NULL)
   {
     return error_trace (e);
@@ -175,10 +176,10 @@ rand_varname (
 
 err_t
 rand_varname_same_hash (
-    struct string      *name1,
-    struct string      *name2,
-    struct chunk_alloc *alloc,
-    error              *e
+    struct string    *name1,
+    struct string    *name2,
+    struct allocator *alloc,
+    error            *e
 )
 {
   ASSERT (name1);
@@ -211,7 +212,7 @@ rand_varname_same_hash (
     if (hpos1 == hpos2)
     {
       // commit strings - copy them to dest
-      char *data = chunk_malloc (alloc, len1 + len2, 1, e);
+      char *data = allocate (alloc, len1 + len2, 1, e);
       if (data == NULL)
       {
         goto failed;
@@ -232,10 +233,10 @@ failed:
 
 err_t
 rand_varname_different_hash (
-    struct string      *name1,
-    struct string      *name2,
-    struct chunk_alloc *alloc,
-    error              *e
+    struct string    *name1,
+    struct string    *name2,
+    struct allocator *alloc,
+    error            *e
 )
 {
   ASSERT (name1);
@@ -268,7 +269,7 @@ rand_varname_different_hash (
     if (hpos1 != hpos2)
     {
       // commit strings - copy them to dest
-      char *data = chunk_malloc (alloc, len1 + len2, 1, e);
+      char *data = allocate (alloc, len1 + len2, 1, e);
       if (data == NULL)
       {
         goto failed;
@@ -290,8 +291,8 @@ failed:
 #ifdef TESTING
 TEST (rand_varname_same_hash)
 {
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
+  ALLOC_INIT (alloc);
+
   error e = error_create ();
 
   for (int i = 0; i < 10; ++i)
@@ -302,13 +303,13 @@ TEST (rand_varname_same_hash)
     test_assert_int_equal (vh_get_hash_pos (name1), vh_get_hash_pos (name2));
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (rand_varname_different_hash)
 {
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
+  ALLOC_INIT (alloc);
+
   error e = error_create ();
 
   for (int i = 0; i < 10; ++i)
@@ -319,6 +320,6 @@ TEST (rand_varname_different_hash)
     test_assert (vh_get_hash_pos (name1) != vh_get_hash_pos (name2));
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 #endif

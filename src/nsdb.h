@@ -107,15 +107,10 @@ void  nsdb_auto_rollback (struct nsdb *sm);
  *----------------------------------------------------------------------------*/
 
 sb_size nsdb_execute_on_buffer (
-    struct nsdb        *ns,
-    struct query       *q,
-    void               *data,
-    struct chunk_alloc *alc
-);
-err_t nsdb_execute_in_console (
-    struct nsdb        *ns,
-    struct query       *q,
-    struct chunk_alloc *alc
+    struct nsdb      *ns,
+    struct query     *q,
+    void             *data,
+    struct allocator *alc
 );
 
 /******************************************************************************
@@ -125,51 +120,84 @@ err_t nsdb_execute_in_console (
  ******************************************************************************/
 
 int nsdb_create (
-    struct nsdb        *db,
-    struct chunk_alloc *alloc,
-    struct string       vname,
-    struct type         dtype
+    struct nsdb      *db,
+    struct allocator *alloc,
+    struct string     vname,
+    struct type       dtype
 );
 err_t nsdb_delete (struct nsdb *db, struct string vname);
 err_t nsdb_get (
-    struct nsdb        *db,
-    struct get_query   *query,
-    struct chunk_alloc *alloc,
-    struct variable   **dest
+    struct nsdb      *db,
+    struct get_query *query,
+    struct allocator *alloc,
+    struct variable **dest
 );
 err_t nsdb_get_and_print (
-    struct nsdb        *db,
-    struct get_query   *query,
-    struct chunk_alloc *alloc
+    struct nsdb      *db,
+    struct get_query *query,
+    struct allocator *alloc
 );
 sb_size nsdb_insert (
     struct nsdb         *db,
     struct insert_query *query,
-    struct chunk_alloc  *alloc,
+    struct allocator    *alloc,
     struct stream       *src
 );
 sb_size nsdb_read (
-    struct nsdb        *db,
-    struct read_query  *query,
-    struct chunk_alloc *alloc,
-    struct stream      *dest
+    struct nsdb       *db,
+    struct read_query *query,
+    struct allocator  *alloc,
+    struct stream     *dest
 );
 sb_size nsdb_read_and_print (
-    struct nsdb        *db,
-    struct read_query  *query,
-    struct chunk_alloc *alloc
+    struct nsdb       *db,
+    struct read_query *query,
+    struct allocator  *alloc
 );
 sb_size nsdb_write (
     struct nsdb        *db,
     struct write_query *query,
-    struct chunk_alloc *alloc,
+    struct allocator   *alloc,
     struct stream      *src
 );
 sb_size nsdb_remove (
     struct nsdb         *db,
     struct remove_query *query,
-    struct chunk_alloc  *alloc,
+    struct allocator    *alloc,
     struct stream       *dest
 );
+
+/******************************************************************************
+ * SECTION: NSDB CLI
+ * ----------------------------------------------------------------------------
+ * @brief A stateful cli tool for nsdb
+ ******************************************************************************/
+
+struct nscli
+{
+  struct nsdb      *db;         // The Database
+  struct dbl_buffer stmt;       // Statement
+  struct allocator  step_alloc; // Allocator for anything per step
+};
+
+err_t nscli_init (struct nscli *cli, const char *dbname);
+err_t nscli_step_init (struct nscli *cli);
+
+enum nscli_read_result
+{
+  CMD_NOTHING_TO_DO,
+  CMD_FATAL,
+  CMD_RUN,
+} nscli_step_read_stdin (struct nscli *cli);
+
+enum nscli_execute_result
+{
+  EXE_SUCCESS,
+  EXE_ERROR,
+  EXE_EXIT,
+} nscli_step_execute (struct nscli *cli);
+
+void nscli_step_clean (struct nscli *cli);
+void nscli_close (struct nscli *cli);
 
 #endif // NSHANDLE_H

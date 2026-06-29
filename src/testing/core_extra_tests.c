@@ -14,7 +14,6 @@
 
 #include "collections.h" // ext_array
 #include "numerics.h"    // f16_to_f32
-#include "platform.h"    // math.h string.h
 #include "serial.h"
 #include "stdtypes.h"        // u32
 #include "testing/testing.h" // TEST
@@ -722,57 +721,6 @@ TEST (strings_are_disjoint_cases)
         {.len = 1, .data = dc}
     };
     test_assert (strings_are_disjoint (left, 1, right, 2) == NULL);
-  }
-}
-
-TEST (string_plus_concatenates)
-{
-  TEST_CASE ("basic concatenation")
-  {
-    u8            arena[64];
-    struct lalloc alloc = lalloc_create_from (arena);
-    error         e     = error_create ();
-
-    const struct string left   = strfcstr ("Hello");
-    const struct string right  = strfcstr (" world");
-    const struct string result = string_plus (left, right, &alloc, &e);
-
-    test_assert (result.data != NULL);
-    test_assert_type_equal (result.len, (u32)(5 + 6), u32, PRIu32);
-    test_assert (memcmp (result.data, "Hello world", 11) == 0);
-  }
-
-  TEST_CASE ("concatenate two single-char strings")
-  {
-    u8            arena[16];
-    struct lalloc alloc = lalloc_create_from (arena);
-    error         e     = error_create ();
-
-    const struct string left   = strfcstr ("A");
-    const struct string right  = strfcstr ("B");
-    const struct string result = string_plus (left, right, &alloc, &e);
-
-    test_assert (result.data != NULL);
-    test_assert_type_equal (result.len, (u32)2, u32, PRIu32);
-    test_assert (result.data[0] == 'A');
-    test_assert (result.data[1] == 'B');
-  }
-
-  TEST_CASE ("concatenate three strings via two calls")
-  {
-    u8            arena[128];
-    struct lalloc alloc = lalloc_create_from (arena);
-    error         e     = error_create ();
-
-    const struct string a   = strfcstr ("foo");
-    const struct string b   = strfcstr ("/");
-    const struct string c   = strfcstr ("bar");
-    const struct string ab  = string_plus (a, b, &alloc, &e);
-    const struct string abc = string_plus (ab, c, &alloc, &e);
-
-    test_assert (abc.data != NULL);
-    test_assert_type_equal (abc.len, (u32)7, u32, PRIu32);
-    test_assert (memcmp (abc.data, "foo/bar", 7) == 0);
   }
 }
 

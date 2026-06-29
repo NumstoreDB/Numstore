@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "alloc.h"
 #include "nsdb.h"
 #include "numstore.h"
 #include "pager.h"
@@ -196,11 +197,12 @@ _smfile_pinsert (
     error       *e
 )
 {
+  ALLOC_INIT (temp);
+
   sb_size                            ret;        // Return value
   b_size                             ofst;       // Resolved offset
   struct stream                      _input;     // Input stream
   struct stream_ibuf_ctx             ctx;        // Context for input stream
-  struct chunk_alloc                 temp;       // Allocator for get operation
   struct ns_var_get_or_create_params gparams;    // Get or create operation
   struct ns_insert_params            iparams;    // Insert operation
   struct ns_var_update_params        uparams;    // Update operation
@@ -212,7 +214,6 @@ _smfile_pinsert (
     return 0;
   }
 
-  chunk_alloc_create_default (&temp);
   stream_ibuf_init (&_input, &ctx, src, slen);
 
   // BEGIN TXN
@@ -266,7 +267,9 @@ _smfile_pinsert (
 
   // COMMIT
   WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
+
+  ALLOC_CLOSE (temp);
+
   return ret;
 
 failed_rollback:
@@ -274,7 +277,8 @@ failed_rollback:
   nsdb_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
+
   return error_trace (e);
 }
 
@@ -316,12 +320,13 @@ _smfile_pread (
     error        *e
 )
 {
+  ALLOC_INIT (temp);
+
   sb_size                  ret;           // Return value
   b_size                   ofst;          // Resolved offset
   struct stream            _output;       // Output stream if present
   struct stream_obuf_ctx   ctx;           // Context for output stream
   struct stream           *output = NULL; // Pointer to output stream
-  struct chunk_alloc       temp;          // Allocator for get operation
   struct ns_var_get_params gparams;       // Get operation
   struct ns_read_params    rparams;       // Read operation
   struct string            vname = vname_or_default (name); // Variable name
@@ -351,8 +356,6 @@ _smfile_pread (
   {
     return 0;
   }
-
-  chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
   WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
@@ -412,7 +415,7 @@ commit:
 
   // COMMIT
   WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
@@ -420,7 +423,7 @@ failed_rollback:
   nsdb_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
@@ -464,12 +467,13 @@ _smfile_premove (
     error        *e
 )
 {
+  ALLOC_INIT (temp);
+
   sb_size                     ret;           // Return value
   b_size                      ofst;          // Resolved offset
   struct stream               _output;       // Output stream if present
   struct stream_obuf_ctx      ctx;           // Context for output stream
   struct stream              *output = NULL; // Pointer to output stream
-  struct chunk_alloc          temp;          // Allocator for get operation
   struct ns_var_get_params    gparams;       // Get operation
   struct ns_remove_params     rparams;       // Remove operation
   struct ns_var_update_params uparams;       // Update operation
@@ -504,8 +508,6 @@ _smfile_premove (
   {
     return 0;
   }
-
-  chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
   WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
@@ -581,7 +583,7 @@ commit:
 
   // COMMIT
   WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
@@ -589,7 +591,7 @@ failed_rollback:
   nsdb_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
@@ -633,6 +635,8 @@ _smfile_pwrite (
     error        *e
 )
 {
+  ALLOC_INIT (temp);
+
   sb_size                ret;          // Return value
   sb_size                inserted;     // Number of bytes inserted
   b_size                 ofst;         // Resolved offset
@@ -640,7 +644,6 @@ _smfile_pwrite (
   b_size                 insert_nelem; // Remainder to insert past the end
   struct stream          _input;       // Input stream
   struct stream_ibuf_ctx ctx;          // Context for input stream
-  struct chunk_alloc     temp;         // Allocator for get operation
   struct ns_var_get_or_create_params gparams;    // Get or create operation
   struct ns_write_params             wparams;    // Write operation
   struct ns_insert_params            iparams;    // Insert operation
@@ -676,8 +679,6 @@ _smfile_pwrite (
   {
     return 0;
   }
-
-  chunk_alloc_create_default (&temp);
 
   // BEGIN TXN
   WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
@@ -773,7 +774,7 @@ _smfile_pwrite (
 
   // COMMIT
   WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
@@ -781,7 +782,7 @@ failed_rollback:
   nsdb_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
@@ -816,8 +817,8 @@ smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem)
 static sb_size
 _smfile_psize (struct nsdb *db, const char *name, error *e)
 {
-  struct chunk_alloc temp;
-  chunk_alloc_create_default (&temp);
+  ALLOC_INIT (temp);
+
   struct string vname = vname_or_default (name);
   b_size        ret;
 
@@ -847,7 +848,7 @@ _smfile_psize (struct nsdb *db, const char *name, error *e)
     goto failed_rollback;
   }
 
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
 
   return ret;
 
@@ -856,7 +857,7 @@ failed_rollback:
   nsdb_auto_rollback (db);
 
 failed:
-  chunk_alloc_free_all (&temp);
+  ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 

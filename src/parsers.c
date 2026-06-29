@@ -17,9 +17,175 @@
 #include "compiler.h"
 #include "error.h"
 #include "query.h"
+#include "types.h"
 
 #ifdef TESTING
 #  include "testing/testing.h"
+#endif
+
+/******************************************************************************
+ * SECTION: User Stride
+ * ----------------------------------------------------------------------------
+ * user_stride ::= '[' ( INTEGER ( ':' INTEGER? ( ':' INTEGER? )? )?
+ *                     | ':' INTEGER? ( ':' INTEGER? )?
+ *                     ) ']'
+ ******************************************************************************/
+
+// Parse optional ':' NUMBER (step)
+static err_t
+parse_us_step (struct parser *base, struct user_stride *s, error *e)
+{
+  if (!parser_match (base, TT_COLON))
+  {
+    return SUCCESS;
+  }
+
+  s->present |= COLON_PRESENT;
+  parser_advance (base);
+
+  i32 num;
+  if (parser_maybe_parse_integer (base, &num))
+  {
+    s->step = num;
+    s->present |= STEP_PRESENT;
+  }
+
+  return SUCCESS;
+}
+
+// Parse optional NUMBER (stop), then optional ':' NUMBER (step)
+static err_t
+parse_us_stop (struct parser *base, struct user_stride *s, error *e)
+{
+  i32 num;
+  if (parser_maybe_parse_integer (base, &num))
+  {
+    s->stop = num;
+    s->present |= STOP_PRESENT;
+  }
+
+  return parse_us_step (base, s, e);
+}
+
+static err_t
+parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
+{
+  struct user_stride s = {0};
+
+  WRAP (parser_expect (parser, TT_LEFT_BRACKET, e));
+
+  int num;
+  if (parser_maybe_parse_integer (parser, &num))
+  {
+    // Leading integer: start
+    s.start = num;
+    s.present |= START_PRESENT;
+
+    if (parser_match (parser, TT_COLON))
+    {
+      // start ':' ...
+      s.present |= COLON_PRESENT;
+      parser_advance (parser);
+      WRAP (parse_us_stop (parser, &s, e));
+    }
+    // else: bare integer â€” single index, nothing more to parse
+  }
+  else if (parser_match (parser, TT_COLON))
+  {
+    // No leading integer: ':' ...
+    s.present |= COLON_PRESENT;
+    parser_advance (parser);
+    WRAP (parse_us_stop (parser, &s, e));
+  }
+  else
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected number or ':' at position %u",
+        parser->pos
+    );
+  }
+
+  *dest = s;
+  return parser_expect (parser, TT_RIGHT_BRACKET, e);
+}
+
+err_t
+compile_user_stride (struct user_stride *dest, const char *text, error *e)
+{
+  ALLOC_INIT (alloc);
+
+  struct lexer lex;
+  if (lex_tokens (text, &alloc, strlen (text), &lex, e) < 0)
+  {
+    goto theend;
+  }
+
+  struct parser parser = parser_init (lex.tokens, NULL, lex.ntokens);
+
+  if (parse_user_stride (&parser, dest, e))
+  {
+    goto theend;
+  }
+
+theend:
+  ALLOC_CLOSE (alloc);
+  return error_trace (e);
+}
+
+#ifdef TESTING
+static void
+test_compile_user_stride_green_path (
+    const char        *query,
+    struct user_stride expected
+)
+{
+  struct user_stride actual;
+  error              e = error_create ();
+
+  TEST_CASE ("SHOULD PASS: %s", query)
+  {
+    test_assert_equal (compile_user_stride (&actual, query, &e), SUCCESS);
+    test_assert (user_stride_equal (&actual, &expected));
+  }
+}
+
+static void
+test_compile_user_stride_red_path (const char *query, err_t code)
+{
+  struct user_stride actual;
+  error              e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
+  {
+    test_err_t_check (compile_user_stride (&actual, query, &e), code, &e);
+  }
+}
+
+TEST (compile_user_stride)
+{
+  test_compile_user_stride_red_path ("[]", ERR_SYNTAX);
+  test_compile_user_stride_red_path ("[ ]", ERR_SYNTAX);
+  test_compile_user_stride_red_path (" [ ]", ERR_SYNTAX);
+
+  test_compile_user_stride_green_path ("[5]", ustride_single (5));
+
+  test_compile_user_stride_green_path ("[:]", ustride ());
+  test_compile_user_stride_green_path ("[:6]", ustride1 (6));
+  test_compile_user_stride_green_path ("[5:]", ustride0 (5));
+  test_compile_user_stride_green_path ("[5:6]", ustride01 (5, 6));
+
+  test_compile_user_stride_green_path ("[::]", ustride ());
+  test_compile_user_stride_green_path ("[::7]", ustride2 (7));
+  test_compile_user_stride_green_path ("[:6:]", ustride1 (6));
+  test_compile_user_stride_green_path ("[:6:7]", ustride12 (6, 7));
+
+  test_compile_user_stride_green_path ("[5::]", ustride0 (5));
+  test_compile_user_stride_green_path ("[5::7]", ustride02 (5, 7));
+  test_compile_user_stride_green_path ("[5:6:]", ustride01 (5, 6));
+  test_compile_user_stride_green_path ("[5:6:7]", ustride012 (5, 6, 7));
+}
 #endif
 
 /******************************************************************************
@@ -33,10 +199,8 @@
 
 struct multi_user_stride_parser
 {
-  struct parser      *base;
-  struct mus_builder  builder;
-  struct chunk_alloc  temp;
-  struct chunk_alloc *persistent;
+  struct parser     *base;
+  struct mus_builder builder;
 };
 
 // Parse optional ':' NUMBER (step)
@@ -146,21 +310,17 @@ parse_multi_user_stride_inner (
   return SUCCESS;
 }
 
-err_t
+static err_t
 parse_multi_user_stride (
     struct parser            *parser,
     struct multi_user_stride *dest,
-    struct chunk_alloc       *alloc,
     error                    *e
 )
 {
   struct multi_user_stride_parser p = {
-      .base       = parser,
-      .persistent = alloc,
+      .base    = parser,
+      .builder = musb_create (parser->b),
   };
-
-  chunk_alloc_create_default (&p.temp);
-  musb_create (&p.builder, &p.temp, alloc);
 
   if (unlikely ((parser_expect (p.base, TT_LEFT_BRACKET, e)) < SUCCESS))
   {
@@ -180,7 +340,6 @@ parse_multi_user_stride (
   }
 
 theend:
-  chunk_alloc_free_all (&p.temp);
   return error_trace (e);
 }
 
@@ -188,27 +347,37 @@ err_t
 compile_multi_user_stride (
     struct multi_user_stride *dest,
     const char               *text,
-    struct chunk_alloc       *dalloc,
+    struct allocator         *dalloc,
     error                    *e
 )
 {
+  BUILDER_INIT (b, dalloc);
+
   struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0)
+  {
+    goto theend;
+  }
 
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
+  struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  err_t ret = parse_multi_user_stride (&parser, dest, dalloc, e);
-  lex_free (&lex);
-  return ret;
+  if (parse_multi_user_stride (&parser, dest, e))
+  {
+    goto theend;
+  }
+
+theend:
+  BUILDER_CLOSE (b);
+  return error_trace (e);
 }
 
 #ifdef TESTING
 TEST (compile_multi_user_stride)
 {
+  ALLOC_INIT (alloc);
+
   error                    e      = error_create ();
   struct multi_user_stride stride = {0};
-  struct chunk_alloc       alloc;
-  chunk_alloc_create_default (&alloc);
 
   // -------------------------------------------------------------------------
   // Empty array
@@ -527,8 +696,402 @@ TEST (compile_multi_user_stride)
     e.cmlen      = 0;
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
+#endif
+
+/******************************************************************************
+ * SECTION: Type
+ * ----------------------------------------------------------------------------
+ * type           ::= struct_type | union_type | sarray_type | primitive_type
+ * primitive_type ::= PRIM
+ * sarray_type    ::= ( '[' INTEGER ']' )+ type
+ * struct_type    ::= 'struct' '{' field ( ',' field )* '}'
+ * union_type     ::= 'union'  '{' field ( ',' field )* '}'
+ * field          ::= IDENT type
+ ******************************************************************************/
+
+struct type_parser
+{
+  struct parser *base;
+  struct type   *dest;
+};
+
+static err_t
+parse_type_inner (struct type_parser *parser, struct type *out, error *e);
+
+static err_t
+parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
+{
+  if (!parser_match (parser->base, TT_PRIM))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected primitive type at position %u",
+        parser->base->pos
+    );
+  }
+
+  struct token *tok = parser_advance (parser->base);
+  out->type         = T_PRIM;
+  out->p            = tok->prim;
+
+  return SUCCESS;
+}
+
+static err_t
+parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
+{
+  struct sarray_builder builder = sab_create (parser->base->b);
+
+  // Parse all [N] brackets
+  while (parser_match (parser->base, TT_LEFT_BRACKET))
+  {
+    WRAP (parser_expect (parser->base, TT_LEFT_BRACKET, e));
+
+    i32 num;
+    if (!parser_maybe_parse_integer (parser->base, &num))
+    {
+      return error_causef (
+          e,
+          ERR_SYNTAX,
+          "Expected array size at position "
+          "%u",
+          parser->base->pos
+      );
+    }
+
+    WRAP (sab_accept_dim (&builder, num, e));
+    WRAP (parser_expect (parser->base, TT_RIGHT_BRACKET, e));
+  }
+
+  // Inner most type
+  struct type *inner =
+      builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
+  if (inner == NULL)
+  {
+    return error_trace (e);
+  }
+  WRAP (parse_type_inner (parser, inner, e));
+  WRAP (sab_accept_type (&builder, inner, e));
+
+  out->type = T_SARRAY;
+  return sab_build (&out->sa, &builder, e);
+}
+
+static err_t
+parse_field (
+    struct kvt_list_builder *builder,
+    struct type_parser      *parser,
+    error                   *e
+)
+{
+  // IDENT
+  if (!parser_match (parser->base, TT_IDENTIFIER))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->base->pos
+    );
+  }
+
+  struct token *tok = parser_advance (parser->base);
+  WRAP (kvlb_accept_key (
+      builder,
+      (struct string){
+          .data = (char *)tok->str.data,
+          .len  = tok->str.len,
+      },
+      e
+  ));
+
+  // Type
+  struct type *inner =
+      builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
+  if (inner == NULL)
+  {
+    return error_trace (e);
+  }
+  WRAP (parse_type_inner (parser, inner, e));
+  WRAP (kvlb_accept_type (builder, inner, e));
+
+  return SUCCESS;
+}
+
+static err_t
+parse_struct_type (struct type_parser *parser, struct type *out, error *e)
+{
+  // 'struct'
+  WRAP (parser_expect (parser->base, TT_STRUCT, e));
+
+  // '{ '
+  WRAP (parser_expect (parser->base, TT_LEFT_BRACE, e));
+
+  struct kvt_list_builder builder = kvlb_create (parser->base->b);
+
+  WRAP (parse_field (&builder, parser, e));
+
+  while (parser_match (parser->base, TT_COMMA))
+  {
+    parser_advance (parser->base);
+    WRAP (parse_field (&builder, parser, e));
+  }
+
+  WRAP (parser_expect (parser->base, TT_RIGHT_BRACE, e));
+
+  // Build kvt list
+  struct kvt_list list;
+  WRAP (kvlb_build (&list, &builder, e));
+
+  out->type = T_STRUCT;
+
+  return struct_t_create (&out->st, list, NULL, e);
+}
+
+static err_t
+parse_union_type (struct type_parser *parser, struct type *out, error *e)
+{
+  // 'union'
+  WRAP (parser_expect (parser->base, TT_UNION, e));
+
+  // '{ '
+  WRAP (parser_expect (parser->base, TT_LEFT_BRACE, e));
+
+  struct kvt_list_builder builder = kvlb_create (parser->base->b);
+
+  WRAP (parse_field (&builder, parser, e));
+
+  while (parser_match (parser->base, TT_COMMA))
+  {
+    parser_advance (parser->base);
+    WRAP (parse_field (&builder, parser, e));
+  }
+
+  WRAP (parser_expect (parser->base, TT_RIGHT_BRACE, e));
+
+  // Build kvt list
+  struct kvt_list list;
+  WRAP (kvlb_build (&list, &builder, e));
+
+  out->type = T_UNION;
+
+  return union_t_create (&out->un, list, NULL, e);
+}
+
+static err_t
+parse_type_inner (struct type_parser *parser, struct type *out, error *e)
+{
+  struct token *tok = parser_peek (parser->base);
+
+  switch (tok->type)
+  {
+    case TT_STRUCT:
+    {
+      return parse_struct_type (parser, out, e);
+    }
+    case TT_UNION:
+    {
+      return parse_union_type (parser, out, e);
+    }
+    case TT_LEFT_BRACKET:
+    {
+      return parse_sarray_type (parser, out, e);
+    }
+    case TT_PRIM:
+    {
+      return parse_primitive_type (parser, out, e);
+    }
+    default:
+    {
+      return error_causef (
+          e,
+          ERR_SYNTAX,
+          "Expected type at position %u, got token "
+          "type %s",
+          parser->base->pos,
+          tt_tostr (tok->type)
+      );
+    }
+  }
+}
+
+static err_t
+parse_type (struct parser *p, struct type *dest, error *e)
+{
+  struct type_parser parser = {
+      .base = p,
+      .dest = dest,
+  };
+
+  if (unlikely ((parse_type_inner (&parser, parser.dest, e)) < SUCCESS))
+  {
+    goto theend;
+  }
+
+theend:
+  return error_trace (e);
+}
+
+err_t
+compile_type (
+    struct type      *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+)
+{
+  BUILDER_INIT (b, dalloc);
+
+  struct lexer lex;
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e))
+  {
+    goto theend;
+  }
+
+  struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
+
+  if (parse_type (&parser, dest, e))
+  {
+    goto theend;
+  }
+
+theend:
+  BUILDER_CLOSE (b);
+  return error_trace (e);
+}
+
+#ifdef TESTING
+
+static void
+test_compile_type_green_path (const char *query, struct type expected)
+{
+  ALLOC_INIT (alloc);
+
+  struct type actual;
+  error       e = error_create ();
+
+  TEST_CASE ("SHOULD PASS: %s", query)
+  {
+    test_assert_equal (compile_type (&actual, query, &alloc, &e), SUCCESS);
+    test_assert (type_equal (&expected, &actual));
+  }
+
+  ALLOC_CLOSE (alloc);
+}
+
+static void
+test_compile_type_red_path (const char *query, err_t code)
+{
+  ALLOC_INIT (alloc);
+
+  struct type actual;
+  error       e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
+  {
+    test_err_t_check (compile_type (&actual, query, &alloc, &e), code, &e);
+  }
+
+  ALLOC_CLOSE (alloc);
+}
+
+TEST (compile_type)
+{
+  test_compile_type_green_path ("i8", TI8);
+  test_compile_type_green_path ("i16", TI16);
+  test_compile_type_green_path ("i32", TI32);
+  test_compile_type_green_path ("i64", TI64);
+
+  test_compile_type_green_path ("u8", TU8);
+  test_compile_type_green_path ("u16", TU16);
+  test_compile_type_green_path ("u32", TU32);
+  test_compile_type_green_path ("u64", TU64);
+
+  test_compile_type_green_path ("f16", TF16);
+  test_compile_type_green_path ("f32", TF32);
+  test_compile_type_green_path ("f64", TF64);
+  test_compile_type_green_path ("f128", TF128);
+
+  test_compile_type_green_path ("cf32", TCF32);
+  test_compile_type_green_path ("cf64", TCF64);
+  test_compile_type_green_path ("cf128", TCF128);
+  test_compile_type_green_path ("cf256", TCF256);
+
+  test_compile_type_red_path ("i2", ERR_SYNTAX);
+
+  // SARRAY
+  test_compile_type_green_path ("[10]i32", mk_sarray (1, (u32[]){10}, &TI32));
+  test_compile_type_green_path (
+      "[5][10]f64",
+      mk_sarray (2, (u32[]){5, 10}, &TF64)
+  );
+  test_compile_type_green_path (
+      "[2][3][4]u8",
+      mk_sarray (3, (u32[]){2, 3, 4}, &TU8)
+  );
+
+  // STRUCT
+  test_compile_type_green_path (
+      "struct { x i32, y f64 }",
+      mk_struct (
+          2,
+          (struct string[]){
+              strfcstr ("x"),
+              strfcstr ("y"),
+          },
+          (struct type *[]){
+              &TI32,
+              &TF64,
+          }
+      )
+  );
+
+  struct type inner = mk_struct (
+      1,
+      (struct string[]){strfcstr ("b")},
+      (struct type *[]){&TI32}
+  );
+  test_compile_type_green_path (
+      "struct { a struct { b i32 } }",
+      mk_struct (
+          1,
+          (struct string[]){strfcstr ("a")},
+          (struct type *[]){&inner}
+      )
+  );
+
+  // UNION
+  test_compile_type_green_path (
+      "union { x i32, y f64 }",
+      mk_union (
+          2,
+          (struct string[]){
+              strfcstr ("x"),
+              strfcstr ("y"),
+          },
+          (struct type *[]){
+              &TI32,
+              &TF64,
+          }
+      )
+  );
+
+  // COMPLICATED
+  struct type inner_sarray = mk_sarray (1, (u32[]){5}, &TF64);
+  struct type inner_struct = mk_struct (
+      1,
+      (struct string[]){strfcstr ("x"), strfcstr ("y")},
+      (struct type *[]){&TI32, &inner_sarray}
+  );
+  test_compile_type_green_path (
+      "[10]struct { x i32, y [5]f64 }",
+      mk_sarray (1, (u32[]){10}, &inner_struct)
+  );
+}
+
 #endif
 
 /******************************************************************************
@@ -688,12 +1251,7 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
 }
 
 static err_t
-parse_query_create (
-    struct parser      *parser,
-    struct query       *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
+parse_query_create (struct parser *parser, struct query *dest, error *e)
 {
   WRAP (parser_expect (parser, TT_CREATE, e));
 
@@ -721,7 +1279,7 @@ parse_query_create (
       },
   };
 
-  WRAP (parse_type (parser, &dest->create.type, dalloc, e));
+  WRAP (parse_type (parser, &dest->create.type, e));
 
   return SUCCESS;
 }
@@ -982,12 +1540,12 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 parse_query (
-    struct parser      *parser,
-    struct query       *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct parser    *parser,
+    struct query     *dest,
+    struct allocator *dalloc,
+    error            *e
 )
 {
   if (parser_match (parser, TT_HELP))
@@ -1008,7 +1566,7 @@ parse_query (
   }
   else if (parser_match (parser, TT_CREATE))
   {
-    WRAP (parse_query_create (parser, dest, dalloc, e));
+    WRAP (parse_query_create (parser, dest, e));
   }
   else if (parser_match (parser, TT_INSERT))
   {
@@ -1041,20 +1599,30 @@ parse_query (
 
 err_t
 compile_query (
-    struct query       *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct query     *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 )
 {
+  BUILDER_INIT (b, dalloc);
+
   struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e))
+  {
+    goto theend;
+  }
 
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
+  struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  err_t ret = parse_query (&parser, dest, dalloc, e);
-  lex_free (&lex);
-  return ret;
+  if (parse_query (&parser, dest, dalloc, e))
+  {
+    goto theend;
+  }
+
+theend:
+  BUILDER_CLOSE (b);
+  return error_trace (e);
 }
 
 #ifdef TESTING
@@ -1062,8 +1630,8 @@ compile_query (
 static void
 test_query_green_path (const char *query, struct query expected)
 {
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
+  ALLOC_INIT (alloc);
+
   struct query actual;
   error        e = error_create ();
 
@@ -1073,14 +1641,14 @@ test_query_green_path (const char *query, struct query expected)
     test_assert (query_equal (&actual, &expected));
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 
 static void
 test_query_red_path (const char *query, err_t code)
 {
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
+  ALLOC_INIT (alloc);
+
   struct query actual;
   error        e = error_create ();
 
@@ -1089,7 +1657,7 @@ test_query_red_path (const char *query, err_t code)
     test_err_t_check (compile_query (&actual, query, &alloc, &e), code, &e);
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (compile_query)
@@ -1526,10 +2094,8 @@ TEST (compile_query)
 
 struct sub_type_parser
 {
-  struct parser      *base;
-  struct subtype     *dest;
-  struct chunk_alloc  temp;
-  struct chunk_alloc *persistent;
+  struct parser  *base;
+  struct subtype *dest;
 };
 
 static err_t
@@ -1550,17 +2116,14 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
   struct string name = {.data = tok->str.data, .len = tok->str.len};
 
   // Type accessors
-  struct type_accessor_builder tab;
-  tab_create (&tab, &parser->temp, parser->persistent);
+  struct type_accessor_builder tab = tab_create (parser->base->b);
   while (true)
   {
     // Stride
     if (parser_match (parser->base, TT_LEFT_BRACKET))
     {
       struct multi_user_stride stride;
-      WRAP (
-          parse_multi_user_stride (parser->base, &stride, parser->persistent, e)
-      );
+      WRAP (parse_multi_user_stride (parser->base, &stride, e));
       for (u32 i = 0; i < stride.len; ++i)
       {
         WRAP (tab_accept_stride (&tab, stride.strides[i], e));
@@ -1604,444 +2167,48 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
   return subtype_create (parser->dest, name, ta, e);
 }
 
-err_t
-parse_subtype (
-    struct parser      *p,
-    struct subtype     *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
+static err_t
+parse_subtype (struct parser *p, struct subtype *dest, error *e)
 {
   struct sub_type_parser parser = {
-      .base       = p,
-      .dest       = dest,
-      .persistent = dalloc,
+      .base = p,
+      .dest = dest,
   };
 
-  chunk_alloc_create_default (&parser.temp);
-
   err_t rc = parse_sub_type_inner (&parser, e);
-
-  chunk_alloc_free_all (&parser.temp);
 
   return rc;
 }
 
 err_t
 compile_subtype (
-    struct subtype     *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct subtype   *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 )
 {
+  BUILDER_INIT (b, dalloc);
+
   struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
-
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
-
-  err_t ret = parse_subtype (&parser, dest, dalloc, e);
-  lex_free (&lex);
-  return ret;
-}
-
-// TODO - Sub type tests
-
-/******************************************************************************
- * SECTION: Type
- * ----------------------------------------------------------------------------
- * type           ::= struct_type | union_type | sarray_type | primitive_type
- * primitive_type ::= PRIM
- * sarray_type    ::= ( '[' INTEGER ']' )+ type
- * struct_type    ::= 'struct' '{' field ( ',' field )* '}'
- * union_type     ::= 'union'  '{' field ( ',' field )* '}'
- * field          ::= IDENT type
- ******************************************************************************/
-
-struct type_parser
-{
-  struct parser      *base;
-  struct type        *dest;
-  struct chunk_alloc  temp;
-  struct chunk_alloc *persistent;
-};
-
-static err_t
-parse_type_inner (struct type_parser *parser, struct type *out, error *e);
-
-static err_t
-parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
-{
-  if (!parser_match (parser->base, TT_PRIM))
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e))
   {
-    return error_causef (
-        e,
-        ERR_SYNTAX,
-        "Expected primitive type at position %u",
-        parser->base->pos
-    );
+    goto theend;
   }
 
-  struct token *tok = parser_advance (parser->base);
-  out->type         = T_PRIM;
-  out->p            = tok->prim;
+  struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  return SUCCESS;
-}
-
-static err_t
-parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
-{
-  struct sarray_builder builder;
-  sab_create (&builder, &parser->temp, parser->persistent);
-
-  // Parse all [N] brackets
-  while (parser_match (parser->base, TT_LEFT_BRACKET))
-  {
-    WRAP (parser_expect (parser->base, TT_LEFT_BRACKET, e));
-
-    i32 num;
-    if (!parser_maybe_parse_integer (parser->base, &num))
-    {
-      return error_causef (
-          e,
-          ERR_SYNTAX,
-          "Expected array size at position "
-          "%u",
-          parser->base->pos
-      );
-    }
-
-    WRAP (sab_accept_dim (&builder, num, e));
-    WRAP (parser_expect (parser->base, TT_RIGHT_BRACKET, e));
-  }
-
-  // Inner most type
-  struct type *inner = chunk_malloc (parser->persistent, 1, sizeof *inner, e);
-  if (inner == NULL)
-  {
-    return error_trace (e);
-  }
-  WRAP (parse_type_inner (parser, inner, e));
-  WRAP (sab_accept_type (&builder, inner, e));
-
-  out->type = T_SARRAY;
-  return sab_build (&out->sa, &builder, e);
-}
-
-static err_t
-parse_field (
-    struct kvt_list_builder *builder,
-    struct type_parser      *parser,
-    error                   *e
-)
-{
-  // IDENT
-  if (!parser_match (parser->base, TT_IDENTIFIER))
-  {
-    return error_causef (
-        e,
-        ERR_SYNTAX,
-        "Expected identifier at position %u",
-        parser->base->pos
-    );
-  }
-
-  struct token *tok = parser_advance (parser->base);
-  WRAP (kvlb_accept_key (
-      builder,
-      (struct string){
-          .data = (char *)tok->str.data,
-          .len  = tok->str.len,
-      },
-      e
-  ));
-
-  // Type
-  struct type *inner = chunk_malloc (parser->persistent, 1, sizeof *inner, e);
-  if (inner == NULL)
-  {
-    return error_trace (e);
-  }
-  WRAP (parse_type_inner (parser, inner, e));
-  WRAP (kvlb_accept_type (builder, inner, e));
-
-  return SUCCESS;
-}
-
-static err_t
-parse_struct_type (struct type_parser *parser, struct type *out, error *e)
-{
-  // 'struct'
-  WRAP (parser_expect (parser->base, TT_STRUCT, e));
-
-  // '{ '
-  WRAP (parser_expect (parser->base, TT_LEFT_BRACE, e));
-
-  struct kvt_list_builder builder;
-  kvlb_create (&builder, &parser->temp, parser->persistent);
-
-  WRAP (parse_field (&builder, parser, e));
-
-  while (parser_match (parser->base, TT_COMMA))
-  {
-    parser_advance (parser->base);
-    WRAP (parse_field (&builder, parser, e));
-  }
-
-  WRAP (parser_expect (parser->base, TT_RIGHT_BRACE, e));
-
-  // Build kvt list
-  struct kvt_list list;
-  WRAP (kvlb_build (&list, &builder, e));
-
-  out->type = T_STRUCT;
-
-  return struct_t_create (&out->st, list, NULL, e);
-}
-
-static err_t
-parse_union_type (struct type_parser *parser, struct type *out, error *e)
-{
-  // 'union'
-  WRAP (parser_expect (parser->base, TT_UNION, e));
-
-  // '{ '
-  WRAP (parser_expect (parser->base, TT_LEFT_BRACE, e));
-
-  struct kvt_list_builder builder;
-  kvlb_create (&builder, &parser->temp, parser->persistent);
-
-  WRAP (parse_field (&builder, parser, e));
-
-  while (parser_match (parser->base, TT_COMMA))
-  {
-    parser_advance (parser->base);
-    WRAP (parse_field (&builder, parser, e));
-  }
-
-  WRAP (parser_expect (parser->base, TT_RIGHT_BRACE, e));
-
-  // Build kvt list
-  struct kvt_list list;
-  WRAP (kvlb_build (&list, &builder, e));
-
-  out->type = T_UNION;
-
-  return union_t_create (&out->un, list, NULL, e);
-}
-
-static err_t
-parse_type_inner (struct type_parser *parser, struct type *out, error *e)
-{
-  struct token *tok = parser_peek (parser->base);
-
-  switch (tok->type)
-  {
-    case TT_STRUCT:
-    {
-      return parse_struct_type (parser, out, e);
-    }
-    case TT_UNION:
-    {
-      return parse_union_type (parser, out, e);
-    }
-    case TT_LEFT_BRACKET:
-    {
-      return parse_sarray_type (parser, out, e);
-    }
-    case TT_PRIM:
-    {
-      return parse_primitive_type (parser, out, e);
-    }
-    default:
-    {
-      return error_causef (
-          e,
-          ERR_SYNTAX,
-          "Expected type at position %u, got token "
-          "type %s",
-          parser->base->pos,
-          tt_tostr (tok->type)
-      );
-    }
-  }
-}
-
-err_t
-parse_type (
-    struct parser      *p,
-    struct type        *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
-{
-  struct type_parser parser = {
-      .base       = p,
-      .dest       = dest,
-      .persistent = dalloc,
-  };
-
-  chunk_alloc_create_default (&parser.temp);
-
-  if (unlikely ((parse_type_inner (&parser, parser.dest, e)) < SUCCESS))
+  if (parse_subtype (&parser, dest, e))
   {
     goto theend;
   }
 
 theend:
-  chunk_alloc_free_all (&parser.temp);
+  BUILDER_CLOSE (b);
   return error_trace (e);
 }
 
-err_t
-compile_type (
-    struct type        *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
-{
-  struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
-
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
-
-  err_t ret = parse_type (&parser, dest, dalloc, e);
-  lex_free (&lex);
-  return ret;
-}
-
-#ifdef TESTING
-
-static void
-test_compile_type_green_path (const char *query, struct type expected)
-{
-  struct chunk_alloc alloc;
-  struct type        actual;
-  chunk_alloc_create_default (&alloc);
-  error e = error_create ();
-
-  TEST_CASE ("SHOULD PASS: %s", query)
-  {
-    test_assert_equal (compile_type (&actual, query, &alloc, &e), SUCCESS);
-    test_assert (type_equal (&expected, &actual));
-  }
-
-  chunk_alloc_free_all (&alloc);
-}
-
-static void
-test_compile_type_red_path (const char *query, err_t code)
-{
-  struct chunk_alloc alloc;
-  struct type        actual;
-  chunk_alloc_create_default (&alloc);
-  error e = error_create ();
-
-  TEST_CASE ("SHOULD FAIL: %s", query)
-  {
-    test_err_t_check (compile_type (&actual, query, &alloc, &e), code, &e);
-  }
-
-  chunk_alloc_free_all (&alloc);
-}
-
-TEST (compile_type)
-{
-  test_compile_type_green_path ("i8", TI8);
-  test_compile_type_green_path ("i16", TI16);
-  test_compile_type_green_path ("i32", TI32);
-  test_compile_type_green_path ("i64", TI64);
-
-  test_compile_type_green_path ("u8", TU8);
-  test_compile_type_green_path ("u16", TU16);
-  test_compile_type_green_path ("u32", TU32);
-  test_compile_type_green_path ("u64", TU64);
-
-  test_compile_type_green_path ("f16", TF16);
-  test_compile_type_green_path ("f32", TF32);
-  test_compile_type_green_path ("f64", TF64);
-  test_compile_type_green_path ("f128", TF128);
-
-  test_compile_type_green_path ("cf32", TCF32);
-  test_compile_type_green_path ("cf64", TCF64);
-  test_compile_type_green_path ("cf128", TCF128);
-  test_compile_type_green_path ("cf256", TCF256);
-
-  test_compile_type_red_path ("i2", ERR_SYNTAX);
-
-  // SARRAY
-  test_compile_type_green_path ("[10]i32", mk_sarray (1, (u32[]){10}, &TI32));
-  test_compile_type_green_path (
-      "[5][10]f64",
-      mk_sarray (2, (u32[]){5, 10}, &TF64)
-  );
-  test_compile_type_green_path (
-      "[2][3][4]u8",
-      mk_sarray (3, (u32[]){2, 3, 4}, &TU8)
-  );
-
-  // STRUCT
-  test_compile_type_green_path (
-      "struct { x i32, y f64 }",
-      mk_struct (
-          2,
-          (struct string[]){
-              strfcstr ("x"),
-              strfcstr ("y"),
-          },
-          (struct type *[]){
-              &TI32,
-              &TF64,
-          }
-      )
-  );
-
-  struct type inner = mk_struct (
-      1,
-      (struct string[]){strfcstr ("b")},
-      (struct type *[]){&TI32}
-  );
-  test_compile_type_green_path (
-      "struct { a struct { b i32 } }",
-      mk_struct (
-          1,
-          (struct string[]){strfcstr ("a")},
-          (struct type *[]){&inner}
-      )
-  );
-
-  // UNION
-  test_compile_type_green_path (
-      "union { x i32, y f64 }",
-      mk_union (
-          2,
-          (struct string[]){
-              strfcstr ("x"),
-              strfcstr ("y"),
-          },
-          (struct type *[]){
-              &TI32,
-              &TF64,
-          }
-      )
-  );
-
-  // COMPLICATED
-  struct type inner_sarray = mk_sarray (1, (u32[]){5}, &TF64);
-  struct type inner_struct = mk_struct (
-      1,
-      (struct string[]){strfcstr ("x"), strfcstr ("y")},
-      (struct type *[]){&TI32, &inner_sarray}
-  );
-  test_compile_type_green_path (
-      "[10]struct { x i32, y [5]f64 }",
-      mk_sarray (1, (u32[]){10}, &inner_struct)
-  );
-}
-
-#endif
+// TODO - Sub type tests
 
 /******************************************************************************
  * SECTION: Type Ref
@@ -2054,10 +2221,8 @@ TEST (compile_type)
 
 struct type_ref_parser
 {
-  struct parser      *base;
-  struct type_ref    *dest;
-  struct chunk_alloc  temp;
-  struct chunk_alloc *persistent;
+  struct parser   *base;
+  struct type_ref *dest;
 };
 
 static err_t parse_type_ref_inner (
@@ -2074,7 +2239,7 @@ parse_take_type_ref (
 )
 {
   struct subtype st;
-  WRAP (parse_subtype (parser->base, &st, parser->persistent, e));
+  WRAP (parse_subtype (parser->base, &st, e));
 
   out->type     = TR_TAKE;
   out->tk.vname = st.vname;
@@ -2132,8 +2297,7 @@ parse_struct_type_ref (
   // '{ '
   WRAP (parser_expect (parser->base, TT_LEFT_BRACE, e));
 
-  struct kvt_ref_list_builder builder;
-  kvrlb_create (&builder, &parser->temp, parser->persistent);
+  struct kvt_ref_list_builder builder = kvrlb_create (parser->base->b);
 
   WRAP (parse_field_ref (&builder, parser, e));
 
@@ -2193,21 +2357,13 @@ parse_type_ref_inner (
   }
 }
 
-err_t
-parse_type_ref (
-    struct parser      *p,
-    struct type_ref    *dest,
-    struct chunk_alloc *dalloc,
-    error              *e
-)
+static err_t
+parse_type_ref (struct parser *p, struct type_ref *dest, error *e)
 {
   struct type_ref_parser parser = {
-      .base       = p,
-      .dest       = dest,
-      .persistent = dalloc,
+      .base = p,
+      .dest = dest,
   };
-
-  chunk_alloc_create_default (&parser.temp);
 
   if (unlikely ((parse_type_ref_inner (&parser, parser.dest, e)) < SUCCESS))
   {
@@ -2215,28 +2371,35 @@ parse_type_ref (
   }
 
 theend:
-  chunk_alloc_free_all (&parser.temp);
   return error_trace (e);
 }
 
 err_t
 compile_type_ref (
-    struct type_ref    *dest,
-    const char         *text,
-    struct chunk_alloc *dalloc,
-    error              *e
+    struct type_ref  *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
 )
 {
+  BUILDER_INIT (b, dalloc);
+
   struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0)
+  {
+    goto theend;
+  }
 
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
+  struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  err_t ret = parse_type_ref (&parser, dest, dalloc, e);
+  if (parse_type_ref (&parser, dest, e))
+  {
+    goto theend;
+  }
 
-  lex_free (&lex);
-
-  return ret;
+theend:
+  BUILDER_CLOSE (b);
+  return error_trace (e);
 }
 
 #ifdef TESTING
@@ -2244,10 +2407,10 @@ compile_type_ref (
 static void
 test_compile_type_ref_green_path (const char *query, struct type_ref expected)
 {
-  struct chunk_alloc alloc;
-  struct type_ref    actual;
-  chunk_alloc_create_default (&alloc);
-  error e = error_create ();
+  ALLOC_INIT (alloc);
+
+  struct type_ref actual;
+  error           e = error_create ();
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
@@ -2255,23 +2418,23 @@ test_compile_type_ref_green_path (const char *query, struct type_ref expected)
     test_assert (type_ref_equal (expected, actual));
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 
 static void
 test_compile_type_ref_red_path (const char *query, err_t code)
 {
-  struct chunk_alloc alloc;
-  struct type_ref    actual;
-  chunk_alloc_create_default (&alloc);
-  error e = error_create ();
+  ALLOC_INIT (alloc);
+
+  struct type_ref actual;
+  error           e = error_create ();
 
   TEST_CASE ("SHOULD FAIL: %s", query)
   {
     test_err_t_check (compile_type_ref (&actual, query, &alloc, &e), code, &e);
   }
 
-  chunk_alloc_free_all (&alloc);
+  ALLOC_CLOSE (alloc);
 }
 
 TEST (compile_type_ref)
@@ -2379,159 +2542,4 @@ TEST (compile_type_ref)
   test_compile_type_ref_red_path ("struct { a x, struct y }", ERR_SYNTAX);
 }
 
-#endif
-
-/******************************************************************************
- * SECTION: User Stride
- * ----------------------------------------------------------------------------
- * user_stride ::= '[' ( INTEGER ( ':' INTEGER? ( ':' INTEGER? )? )?
- *                     | ':' INTEGER? ( ':' INTEGER? )?
- *                     ) ']'
- ******************************************************************************/
-
-// Parse optional ':' NUMBER (step)
-static err_t
-parse_us_step (struct parser *base, struct user_stride *s, error *e)
-{
-  if (!parser_match (base, TT_COLON))
-  {
-    return SUCCESS;
-  }
-
-  s->present |= COLON_PRESENT;
-  parser_advance (base);
-
-  i32 num;
-  if (parser_maybe_parse_integer (base, &num))
-  {
-    s->step = num;
-    s->present |= STEP_PRESENT;
-  }
-
-  return SUCCESS;
-}
-
-// Parse optional NUMBER (stop), then optional ':' NUMBER (step)
-static err_t
-parse_us_stop (struct parser *base, struct user_stride *s, error *e)
-{
-  i32 num;
-  if (parser_maybe_parse_integer (base, &num))
-  {
-    s->stop = num;
-    s->present |= STOP_PRESENT;
-  }
-
-  return parse_us_step (base, s, e);
-}
-
-err_t
-parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
-{
-  struct user_stride s = {0};
-
-  WRAP (parser_expect (parser, TT_LEFT_BRACKET, e));
-
-  int num;
-  if (parser_maybe_parse_integer (parser, &num))
-  {
-    // Leading integer: start
-    s.start = num;
-    s.present |= START_PRESENT;
-
-    if (parser_match (parser, TT_COLON))
-    {
-      // start ':' ...
-      s.present |= COLON_PRESENT;
-      parser_advance (parser);
-      WRAP (parse_us_stop (parser, &s, e));
-    }
-    // else: bare integer â€” single index, nothing more to parse
-  }
-  else if (parser_match (parser, TT_COLON))
-  {
-    // No leading integer: ':' ...
-    s.present |= COLON_PRESENT;
-    parser_advance (parser);
-    WRAP (parse_us_stop (parser, &s, e));
-  }
-  else
-  {
-    return error_causef (
-        e,
-        ERR_SYNTAX,
-        "Expected number or ':' at position %u",
-        parser->pos
-    );
-  }
-
-  *dest = s;
-  return parser_expect (parser, TT_RIGHT_BRACKET, e);
-}
-
-err_t
-compile_user_stride (struct user_stride *dest, const char *text, error *e)
-{
-  struct lexer lex;
-  WRAP (lex_tokens (text, strlen (text), &lex, e));
-
-  struct parser parser = parser_init (lex.tokens, lex.ntokens);
-
-  err_t ret = parse_user_stride (&parser, dest, e);
-  lex_free (&lex);
-  return ret;
-}
-
-#ifdef TESTING
-static void
-test_compile_user_stride_green_path (
-    const char        *query,
-    struct user_stride expected
-)
-{
-  struct user_stride actual;
-  error              e = error_create ();
-
-  TEST_CASE ("SHOULD PASS: %s", query)
-  {
-    test_assert_equal (compile_user_stride (&actual, query, &e), SUCCESS);
-    test_assert (user_stride_equal (&actual, &expected));
-  }
-}
-
-static void
-test_compile_user_stride_red_path (const char *query, err_t code)
-{
-  struct user_stride actual;
-  error              e = error_create ();
-
-  TEST_CASE ("SHOULD FAIL: %s", query)
-  {
-    test_err_t_check (compile_user_stride (&actual, query, &e), code, &e);
-  }
-}
-
-TEST (compile_user_stride)
-{
-  test_compile_user_stride_red_path ("[]", ERR_SYNTAX);
-  test_compile_user_stride_red_path ("[ ]", ERR_SYNTAX);
-  test_compile_user_stride_red_path (" [ ]", ERR_SYNTAX);
-
-  test_compile_user_stride_green_path ("[5]", ustride_single (5));
-
-  test_compile_user_stride_green_path ("[:]", ustride ());
-  test_compile_user_stride_green_path ("[:6]", ustride1 (6));
-  test_compile_user_stride_green_path ("[5:]", ustride0 (5));
-  test_compile_user_stride_green_path ("[5:6]", ustride01 (5, 6));
-
-  test_compile_user_stride_green_path ("[::]", ustride ());
-  test_compile_user_stride_green_path ("[::7]", ustride2 (7));
-  test_compile_user_stride_green_path ("[:6:]", ustride1 (6));
-  test_compile_user_stride_green_path ("[:6:7]", ustride12 (6, 7));
-
-  test_compile_user_stride_green_path ("[5::]", ustride0 (5));
-  test_compile_user_stride_green_path ("[5::7]", ustride02 (5, 7));
-  test_compile_user_stride_green_path ("[5:6:]", ustride01 (5, 6));
-  test_compile_user_stride_green_path ("[5:6:7]", ustride012 (5, 6, 7));
-}
 #endif

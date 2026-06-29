@@ -387,25 +387,17 @@ struct mus_llnode
 
 struct mus_builder
 {
-  struct llnode      *head;
-  struct chunk_alloc *temp;
-  struct chunk_alloc *persistent;
+  struct llnode  *head;
+  struct builder *b;
 };
 
-void musb_create (
-    struct mus_builder *dest,
-    struct chunk_alloc *temp,
-    struct chunk_alloc *persistent
-);
+struct mus_builder musb_create (struct builder *b);
 
 err_t
 musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
 
-err_t musb_build (
-    struct multi_user_stride *persistent,
-    const struct mus_builder *eb,
-    error                    *e
-);
+err_t
+musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
 
 /******************************************************************************
  * SECTION: Data Writer
@@ -480,19 +472,25 @@ struct data_writer
 
 struct dbl_buffer
 {
-  latch latch;
-  void *data;
-  u32   size;
-  u32   nelem_cap;
-  u32   nelem;
+  latch             latch;
+  void             *data;
+  u32               size;
+  u32               nelem_cap;
+  u32               nelem;
+  struct allocator *alloc;
 };
 
-err_t
-dblb_create (struct dbl_buffer *dest, u32 size, u32 initial_cap, error *e);
+err_t dblb_create (
+    struct dbl_buffer *dest,
+    struct allocator  *alloc,
+    u32                size,
+    u32                initial_cap,
+    error             *e
+);
 err_t dblb_append (struct dbl_buffer *d, const void *data, u32 nelem, error *e);
 err_t dblb_ensure_space (struct dbl_buffer *d, u32 nelem, error *e);
 void *dblb_append_alloc (struct dbl_buffer *d, u32 nelem, error *e);
-void  dblb_free (struct dbl_buffer *d); // Target buffer
+void  dblb_reset (struct dbl_buffer *d); // Target buffer
 
 /******************************************************************************
  * SECTION: Extending array

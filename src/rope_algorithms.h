@@ -27,21 +27,6 @@
 #include "pager.h"        // pager
 
 /******************************************************************************
- * SECTION: Validation
- * ----------------------------------------------------------------------------
- * @brief Validating a rope tree to ensure the database is not corrupt
- *
- * This is a WIP
- ******************************************************************************/
-
-/**
- * @fn err_t ns_rptree_valid(struct pager *p, pgno rpt_root, b_size nbytes,
- * error *e)
- * @brief Validates the structural integrity of an R+Tree's repeat-index tree.
- */
-err_t ns_rptree_valid (struct pager *p, pgno rpt_root, b_size nbytes, error *e);
-
-/******************************************************************************
  * SECTION: Core R+Tree Algorithms
  * ----------------------------------------------------------------------------
  * @brief Algorithms for updating a rope+tree - primarily insert read write and

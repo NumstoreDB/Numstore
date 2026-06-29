@@ -20,7 +20,6 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include "alloc.h"
 #include "concurrency.h" // latch
 #include "error.h"       // error
 #include "stdtypes.h"    // u32 ...etc
@@ -32,13 +31,6 @@ u64 line_length (const char *buf, u64 max);
 int strings_all_unique (const struct string *strs, u32 count);
 
 bool string_equal (const struct string s1, const struct string s2);
-
-struct string string_plus (
-    const struct string left,
-    const struct string right,
-    struct lalloc      *alloc,
-    error              *e
-);
 
 const struct string *strings_are_disjoint (
     const struct string *left,

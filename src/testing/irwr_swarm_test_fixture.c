@@ -606,8 +606,7 @@ irwr_swmt_open (
       dbname
   );
 
-  struct chunk_alloc alloc;
-  chunk_alloc_create_default (&alloc);
+  ALLOC_INIT (alloc);
 
   error       e = error_create ();
   struct type t;
@@ -617,7 +616,8 @@ irwr_swmt_open (
       vartype
   );
   t_size esize = type_byte_size (&t);
-  chunk_alloc_free_all (&alloc);
+
+  ALLOC_CLOSE (alloc);
 
   *ret = (struct irwr_swarm_test){
       .committed         = block_array_create (512, NULL),
