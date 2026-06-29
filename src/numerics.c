@@ -663,7 +663,7 @@ randf (void)
   return (f32)rand () / (f32)RAND_MAX;
 }
 
-#ifdef NTEST
+#ifdef TESTING
 TEST (randf)
 {
   for (int i = 0; i < 1000; ++i)
