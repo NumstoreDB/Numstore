@@ -1,7 +1,8 @@
 import os
 
 ROOTS = ["src", "src/testing", "src/apps", "src/templates", "src/apps/samples/numstore", "src/apps/samples/smartfiles", "src/apps/testing", "src/apps/tools"]
-OLD, NEW = "include \"numstore_internal.h\"", "include \"nsdb.h\""
+
+OLD, NEW = "UNREACHABLE ();", "UNREACHABLE (); // LCOV_EXCL_LINE"
 
 for ROOT in ROOTS:
     for name in os.listdir(ROOT):

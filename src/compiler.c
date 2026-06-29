@@ -143,7 +143,7 @@ tt_tostr (enum token_t t)
     case_ENUM_RETURN_STRING (TT_EOF);
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
   return NULL;
 }
 

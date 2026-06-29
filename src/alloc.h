@@ -281,7 +281,7 @@ malloc_plan_head (const struct malloc_plan *plan)
       return (u8 *)plan->buffer + plan->blen;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 /**

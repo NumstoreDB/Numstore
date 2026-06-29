@@ -298,7 +298,7 @@ type_validate (const struct type *t, error *e)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       return -1;
     }
   }
@@ -345,7 +345,7 @@ prim_to_str (enum prim_t p)
     case CU64: return "cu64";
     case CU128: return "cu128";
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
   return "";
 }
 
@@ -798,7 +798,7 @@ type_snprintf (char *str, u32 size, struct type *t)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       return -1;
     }
   }
@@ -870,7 +870,7 @@ prim_t_byte_size (const enum prim_t *t)
     case CF256: return 32;
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
   return 0;
 }
 
@@ -1092,7 +1092,7 @@ type_byte_size (const struct type *t)
 
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;
     }
   }
@@ -1150,7 +1150,7 @@ type_get_string_size (const struct type *t)
 
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;
     }
   }
@@ -1216,7 +1216,7 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       return dest;
     }
   }
@@ -1567,7 +1567,7 @@ type_get_serial_size (const struct type *t)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;
     }
   }
@@ -1871,7 +1871,7 @@ type_serialize (struct serializer *dest, const struct type *src)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
       break;
     }
   }
@@ -2662,7 +2662,7 @@ type_random (struct allocator *alloc, u32 depth, error *e)
       return NULL;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 /*-----------------------------------------------------------------------------
@@ -2763,7 +2763,7 @@ type_equal (const struct type *left, const struct type *right)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -4043,7 +4043,7 @@ ta_subtype (
           return NULL;
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case TA_RANGE:
     {
@@ -4066,11 +4066,11 @@ ta_subtype (
           return NULL;
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING

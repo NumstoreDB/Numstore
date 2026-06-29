@@ -4090,7 +4090,7 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
       return written;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 u32
@@ -4420,7 +4420,7 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
       return read;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 u32

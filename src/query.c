@@ -138,5 +138,5 @@ query_equal (const struct query *left, const struct query *right)
     }
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }

@@ -737,7 +737,7 @@ slab_from_ptr (struct slab_alloc *alloc, void *ptr)
     s = s->next;
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 void
@@ -1640,7 +1640,7 @@ malloc_plan_memcpy (struct malloc_plan *plan, const void *data, const u32 len)
       return ret;
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 err_t
@@ -1680,7 +1680,7 @@ allocate (struct allocator *alloc, u32 nelem, u32 size, error *e)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }

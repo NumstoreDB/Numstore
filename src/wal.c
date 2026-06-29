@@ -819,10 +819,10 @@ wal_append_log (struct wal *w, const struct wal_rec_hdr_write *whdr, error *e)
     {
       return wal_append_clr_log (w, whdr->clr, e);
     }
-    case WL_EOF: UNREACHABLE ();
+    case WL_EOF: UNREACHABLE (); // LCOV_EXCL_LINE
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 /*-----------------------------------------------------------------------------
@@ -1455,7 +1455,7 @@ wal_rec_hdr_type_tostr (const enum wal_rec_hdr_type type)
     }
   }
 
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING
@@ -1593,10 +1593,10 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 stxid
@@ -1626,10 +1626,10 @@ wrh_get_tid (const struct wal_rec_hdr_read *h)
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 slsn
@@ -1659,10 +1659,10 @@ wrh_get_prev_lsn (const struct wal_rec_hdr_read *h)
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 bool
@@ -1699,7 +1699,7 @@ wrh_is_undoable (const struct wal_rec_hdr_read *h)
           return false;
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_CLR:
     {
@@ -1707,10 +1707,10 @@ wrh_is_undoable (const struct wal_rec_hdr_read *h)
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 bool
@@ -1747,7 +1747,7 @@ wrh_is_redoable (const struct wal_rec_hdr_read *h)
           return false;
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_CLR:
     {
@@ -1766,14 +1766,14 @@ wrh_is_redoable (const struct wal_rec_hdr_read *h)
           return false;
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 pgno
@@ -1783,15 +1783,15 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
   {
     case WL_BEGIN:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_COMMIT:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_END:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_UPDATE:
     {
@@ -1807,10 +1807,10 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
         }
         case WUP_FEXT:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_CLR:
     {
@@ -1826,17 +1826,17 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
         }
         case WCLR_DUMMY:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING
@@ -2140,15 +2140,15 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
   {
     case WL_BEGIN:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_COMMIT:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_END:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_UPDATE:
     {
@@ -2192,10 +2192,10 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
         }
         case WUP_FEXT:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_CLR:
     {
@@ -2203,25 +2203,25 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
       {
         case WCLR_PHYSICAL:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
         case WCLR_FSM:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
         case WCLR_DUMMY:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 void
@@ -2231,15 +2231,15 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
   {
     case WL_BEGIN:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_COMMIT:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_END:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_UPDATE:
     {
@@ -2264,10 +2264,10 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
         }
         case WUP_FEXT:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_CLR:
     {
@@ -2292,17 +2292,17 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
         }
         case WCLR_DUMMY:
         {
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 /******************************************************************************
@@ -2916,7 +2916,7 @@ wal_write_locked (struct wal *w, error *e)
     }
     case WL_EOF:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 

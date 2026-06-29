@@ -1137,7 +1137,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
       }
       else
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
 
@@ -1430,7 +1430,7 @@ rb_right_to_left (struct ns_rebalance_params *pms, error *e)
   }
 
   // We go left, then right - so you never need to go right again
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 
 failed:
   pgr_cancel_if_exists (pms->p, &prev);
@@ -2733,7 +2733,7 @@ ns_remove (struct ns_remove_params *params, error *e)
             continue;
           }
 
-          UNREACHABLE ();
+          UNREACHABLE (); // LCOV_EXCL_LINE
         }
 
         dl_dl_memmove_permissive (
@@ -2842,7 +2842,7 @@ drain:
       }
       else
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
 
@@ -3066,7 +3066,7 @@ ns_seek (struct ns_seek_params *a, error *e)
 
       default:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
   }
@@ -3256,7 +3256,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
       else
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
 
@@ -3328,7 +3328,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
       default:
       {
-        UNREACHABLE ();
+        UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
 

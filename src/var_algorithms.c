@@ -1466,7 +1466,7 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
     }
     default:
     {
-      UNREACHABLE ();
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 
@@ -1951,7 +1951,7 @@ ns_var_update (struct ns_var_update_params params, error *e)
       return ns_update_by_id (params, e);
     }
   }
-  UNREACHABLE ();
+  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 /******************************************************************************
