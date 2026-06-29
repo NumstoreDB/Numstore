@@ -5555,6 +5555,7 @@ TEST (type_stream_printer_init)
     struct stream s = {0};
     error         e = {0};
     type_stream_printer_init (&s, &t, &e);
+    type_print_os_close (&s);
   }
 }
 #endif
