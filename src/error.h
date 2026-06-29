@@ -91,7 +91,7 @@ void  error_log_consume (error *e);
   }                                  \
   while (0)
 
-#ifndef TESTING
+#ifndef FAULT
 #  define FAULT(expr, label) unlikely (expr)
 #endif
 
