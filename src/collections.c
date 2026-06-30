@@ -1685,7 +1685,7 @@ dblb_create (
   ASSERT (initial_cap > 0);
   ASSERT (size > 0);
 
-  void *data = i_malloc (initial_cap, size, e);
+  void *data = allocate (alloc, initial_cap, size, e);
   if (data == NULL)
   {
     return error_trace (e);
