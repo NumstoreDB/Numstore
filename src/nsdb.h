@@ -58,8 +58,7 @@ struct nsdb
  * @brief Utilities used mostly for testing and fault injection
  *----------------------------------------------------------------------------*/
 
-struct nsdb *nsdb_remove_and_open (const char *name, error *e);
-int          nsdb_crash (struct nsdb *ns);
+int nsdb_crash (struct nsdb *ns);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lifecycle

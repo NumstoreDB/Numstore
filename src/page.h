@@ -15,9 +15,8 @@
 #ifndef PAGE_H
 #define PAGE_H
 
-#include "collections.h" // cbuffer
-#include "csx_assert.h"  // DBG_ASSERT
-#include "error.h"       // error
+#include "csx_assert.h" // DBG_ASSERT
+#include "error.h"      // error
 #include "htable.h"
 #include "numerics.h" // checksum
 #include "numstore.h" // pgno ...etc
@@ -362,12 +361,6 @@ void   dl_move_left (page *dest, page *src, p_size len);
 void   dl_move_right (page *src, page *dest, p_size len);
 void   i_log_dl (int level, const page *d);
 p_size dl_read (const page *d, u8 *dest, p_size offset, p_size bytes);
-p_size dl_read_into_cbuffer (
-    const page     *d,
-    struct cbuffer *c,
-    p_size          offset,
-    p_size          bytes
-);
 p_size dl_read_out_from (page *d, u8 *dest, p_size offset);
 void   dl_shift_right (page *d, p_size len);
 void   dl_make_valid (page *d);

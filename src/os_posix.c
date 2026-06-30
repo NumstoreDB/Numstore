@@ -644,44 +644,6 @@ posix_mkdir (i_file_system_vtable *vfs, const char *name, error *e)
 }
 
 static err_t
-posix_mkdir_quiet (i_file_system_vtable *vfs, const char *name, error *e)
-{
-  (void)vfs;
-
-  if (unlikely (mkdir (name, S_IRWXU | S_IRWXG | S_IRWXO) == 0))
-  {
-    return SUCCESS;
-  }
-
-  if (unlikely (errno != EEXIST))
-  {
-    error_causef (e, ERR_IO, "mkdir: %s", strerror (errno));
-    return error_trace (e);
-  }
-
-  struct stat st;
-
-  if (unlikely (stat (name, &st) != 0))
-  {
-    error_causef (e, ERR_IO, "stat %s: %s", name, strerror (errno));
-    return error_trace (e);
-  }
-
-  if (unlikely (!S_ISDIR (st.st_mode)))
-  {
-    error_causef (
-        e,
-        ERR_IO,
-        "mkdir_quiet: %s exists but is not a directory",
-        name
-    );
-    return error_trace (e);
-  }
-
-  return SUCCESS;
-}
-
-static err_t
 posix_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
 {
   (void)vfs;
@@ -846,7 +808,6 @@ struct i_file_system_vtable default_fsvtable = {
     .i_remove_quiet = posix_remove_quiet,
     .i_unlink       = posix_unlink,
     .i_mkdir        = posix_mkdir,
-    .i_mkdir_quiet  = posix_mkdir_quiet,
     .i_rm_rf        = posix_rm_rf,
     .i_access_rw    = posix_access_rw,
     .i_exists_rw    = posix_exists_rw,

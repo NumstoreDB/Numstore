@@ -1698,47 +1698,6 @@ nupd_append_maximally_right (
 }
 
 p_size
-nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg)
-{
-  DBG_ASSERT (node_updates, n);
-  ASSERT (page_h_type (pg) == PG_INNER_NODE);
-  ASSERT (in_get_len (page_h_ro (pg)) == IN_MAX_KEYS);
-
-  // Append Pivot to the end
-  // [-------------------+]
-  p_size len = 0;
-  if (n->pivot.key > 0)
-  {
-    in_set_key_leaf (
-        page_h_w (pg),
-        IN_MAX_KEYS - (++len),
-        n->pivot.key,
-        n->pivot.pg
-    );
-  }
-
-  // Apply left
-  // [------++++++++++++++]
-  len += nupd_append_maximally_left (n, pg, IN_MAX_KEYS - len);
-
-  ASSERT (len <= IN_MAX_KEYS);
-
-  // Haven't finish - apply right remaining pages
-  if (len < IN_MAX_KEYS)
-  {
-    // Shift left (memcpy x1)
-    // [++++++++++++++------]
-    in_cut_left (page_h_w (pg), IN_MAX_KEYS - len);
-
-    // Apply right
-    // [++++++++++++++++++--]
-    len += nupd_append_maximally_right (n, pg, len);
-  }
-
-  return len;
-}
-
-p_size
 nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg)
 {
   DBG_ASSERT (node_updates, n);

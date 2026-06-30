@@ -253,12 +253,6 @@ void txn_foreach_lock (struct txn *t, lock_func func, void *ctx);
  * SUBSECTION: Utilities
  *----------------------------------------------------------------------------*/
 
-/**
- * @fn void i_log_txn(int log_level, struct txn *tx)
- * @brief Diagnostic formatting output tracing current transaction conditions.
- */
-void i_log_txn (int log_level, struct txn *tx);
-
 /******************************************************************************
  * SECTION: Active Transaction Table (ATT) Type Definition
  * ----------------------------------------------------------------------------
@@ -319,51 +313,6 @@ void txnt_close (struct txn_table *t);
  * Under the hood, for now this just locks the entire txn table until the
  * number of unlocks is equal to the number of txns, but in the future
  * this can be optimized.
- *----------------------------------------------------------------------------*/
-
-/**
- * @fn void txnt_freeze_active_txns_for_serialization(struct txn_table *t)
- * @brief Latches the table and all contained transactions for safe
- * serialization.
- */
-void txnt_freeze_active_txns_for_serialization (struct txn_table *t);
-
-/**
- * @fn void txnt_unfreeze(struct txn_table *t)
- * @brief This Should only be used on error / failure and should not be called
- * after serialize. serialize already unfreezes iteratively.
- */
-void txnt_unfreeze (struct txn_table *t);
-
-/**
- * @fn u32 txnt_serialize(u8 *dest, u32 dlen, struct txn_table *t)
- * @brief Returns the same number as [txnt_get_serialize_size].
- */
-u32 txnt_serialize (u8 *dest, u32 dlen, struct txn_table *t);
-
-/**
- * @fn struct txn_table *txnt_deserialize(const u8 *src, struct txn *txn_bank,
- * u32 slen, error *e)
- * @brief Deserialization - this has the same behavior as txnt_open.
- */
-struct txn_table *
-txnt_deserialize (const u8 *src, struct txn *txn_bank, u32 slen, error *e);
-
-/**
- * @fn u32 txnt_get_serialize_size(const struct txn_table *t)
- * @brief Returns the number of bytes needed to serialize t.
- */
-u32 txnt_get_serialize_size (const struct txn_table *t);
-
-/**
- * @fn u32 txnlen_from_serialized(u32 slen)
- * @brief Number of transactions based on the length of the serialized data -
- * inverse of serialize_size.
- */
-u32 txnlen_from_serialized (u32 slen);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Recovery Telemetry & Metrics
  *----------------------------------------------------------------------------*/
 
 /**

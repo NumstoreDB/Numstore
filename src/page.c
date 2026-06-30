@@ -14,6 +14,8 @@
 
 #include "page.h"
 
+#include "collections.h"
+
 #ifdef TESTING
 #  include "testing/inner_node_testing.h"
 #  include "testing/testing.h"
@@ -595,37 +597,6 @@ TEST (dl_read)
   }
 }
 #endif
-
-p_size
-dl_read_into_cbuffer (
-    const page     *d,
-    struct cbuffer *dest,
-    const p_size    offset,
-    const p_size    b
-)
-{
-  ASSERT (b > 0);
-
-  const p_size dlen = dl_used (d);
-  const u8    *base = dl_get_data (d);
-
-  ASSERT (offset <= dlen);
-
-  if (offset == dlen)
-  {
-    return 0;
-  }
-
-  const p_size avail  = dlen - offset;
-  p_size       toread = MIN (avail, b);
-
-  if (toread > 0 && dest)
-  {
-    toread = cbuffer_write (base + offset, 1, toread, dest);
-  }
-
-  return toread;
-}
 
 p_size
 dl_read_out_from (page *d, u8 *dest, const p_size offset)
