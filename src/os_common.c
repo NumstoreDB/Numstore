@@ -14,6 +14,7 @@
 
 #include <errno.h>
 
+#include "csx_assert.h"
 #include "error.h"    // error
 #include "numerics.h" // safe_mul_...
 #include "os.h"
