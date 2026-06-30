@@ -5248,7 +5248,7 @@ run_unit_tests (const char* filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/types.c:524 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:687 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:684 START
   if (!filter || strstr("struct_t_snprintf", filter))
   {
     extern void __test__struct_t_snprintf(void);
@@ -5267,9 +5267,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:687 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:684 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:858 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:852 START
   if (!filter || strstr("union_t_snprintf", filter))
   {
     extern void __test__union_t_snprintf(void);
@@ -5288,9 +5288,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:858 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:852 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:967 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:958 START
   if (!filter || strstr("sarray_t_snprintf", filter))
   {
     extern void __test__sarray_t_snprintf(void);
@@ -5309,9 +5309,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:967 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:958 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1106 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1094 START
   if (!filter || strstr("prim_t_byte_size", filter))
   {
     extern void __test__prim_t_byte_size(void);
@@ -5330,9 +5330,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1106 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1094 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1135 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1123 START
   if (!filter || strstr("struct_t_byte_size", filter))
   {
     extern void __test__struct_t_byte_size(void);
@@ -5351,9 +5351,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1135 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1123 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1206 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1194 START
   if (!filter || strstr("union_t_byte_size", filter))
   {
     extern void __test__union_t_byte_size(void);
@@ -5372,9 +5372,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1206 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1194 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1274 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1262 START
   if (!filter || strstr("sarray_t_byte_size", filter))
   {
     extern void __test__sarray_t_byte_size(void);
@@ -5393,9 +5393,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1274 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1262 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1466 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1454 START
   if (!filter || strstr("type_generate_string", filter))
   {
     extern void __test__type_generate_string(void);
@@ -5414,9 +5414,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1466 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1454 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1624 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1612 START
   if (!filter || strstr("struct_t_get_serial_size", filter))
   {
     extern void __test__struct_t_get_serial_size(void);
@@ -5435,9 +5435,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1624 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1612 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1692 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1680 START
   if (!filter || strstr("union_t_get_serial_size", filter))
   {
     extern void __test__union_t_get_serial_size(void);
@@ -5456,9 +5456,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1692 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1680 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1755 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1743 START
   if (!filter || strstr("sarray_t_get_serial_size", filter))
   {
     extern void __test__sarray_t_get_serial_size(void);
@@ -5477,9 +5477,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1755 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1743 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1817 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1805 START
   if (!filter || strstr("prim_t_serialize", filter))
   {
     extern void __test__prim_t_serialize(void);
@@ -5498,9 +5498,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1817 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1805 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1857 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1845 START
   if (!filter || strstr("struct_t_serialize", filter))
   {
     extern void __test__struct_t_serialize(void);
@@ -5519,9 +5519,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1857 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1845 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1950 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1938 START
   if (!filter || strstr("union_t_serialize", filter))
   {
     extern void __test__union_t_serialize(void);
@@ -5540,9 +5540,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:1950 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:1938 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2038 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2026 START
   if (!filter || strstr("sarray_t_serialize", filter))
   {
     extern void __test__sarray_t_serialize(void);
@@ -5561,9 +5561,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2038 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2026 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2138 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2126 START
   if (!filter || strstr("prim_t_deserialize", filter))
   {
     extern void __test__prim_t_deserialize(void);
@@ -5582,9 +5582,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2138 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2126 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2238 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2226 START
   if (!filter || strstr("struct_t_deserialize_green_path", filter))
   {
     extern void __test__struct_t_deserialize_green_path(void);
@@ -5603,9 +5603,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2238 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2226 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2293 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2281 START
   if (!filter || strstr("struct_t_deserialize_red_path", filter))
   {
     extern void __test__struct_t_deserialize_red_path(void);
@@ -5624,9 +5624,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2293 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2281 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2434 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2422 START
   if (!filter || strstr("union_t_deserialize_green_path", filter))
   {
     extern void __test__union_t_deserialize_green_path(void);
@@ -5645,9 +5645,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2434 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2422 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2489 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2477 START
   if (!filter || strstr("union_t_deserialize_red_path", filter))
   {
     extern void __test__union_t_deserialize_red_path(void);
@@ -5666,9 +5666,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2489 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2477 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2583 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2571 START
   if (!filter || strstr("sarray_t_deserialize_green_path", filter))
   {
     extern void __test__sarray_t_deserialize_green_path(void);
@@ -5687,9 +5687,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2583 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2571 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2617 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2605 START
   if (!filter || strstr("sarray_t_deserialize_red_path", filter))
   {
     extern void __test__sarray_t_deserialize_red_path(void);
@@ -5708,9 +5708,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2617 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2605 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2712 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2700 START
   if (!filter || strstr("prim_t_random", filter))
   {
     extern void __test__prim_t_random(void);
@@ -5729,9 +5729,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:2712 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:2700 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:3527 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:3515 START
   if (!filter || strstr("sarray_builder", filter))
   {
     extern void __test__sarray_builder(void);
@@ -5750,9 +5750,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:3527 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:3515 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:3757 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:3745 START
   if (!filter || strstr("kvt_list_builder", filter))
   {
     extern void __test__kvt_list_builder(void);
@@ -5771,9 +5771,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:3757 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:3745 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4338 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4326 START
   if (!filter || strstr("ta_subtype", filter))
   {
     extern void __test__ta_subtype(void);
@@ -5792,9 +5792,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4338 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4326 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4703 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4691 START
   if (!filter || strstr("type_accessor_builder", filter))
   {
     extern void __test__type_accessor_builder(void);
@@ -5813,9 +5813,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4703 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4691 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4818 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4806 START
   if (!filter || strstr("type_ref_equal", filter))
   {
     extern void __test__type_ref_equal(void);
@@ -5834,9 +5834,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4818 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4806 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4963 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4951 START
   if (!filter || strstr("tr_construct", filter))
   {
     extern void __test__tr_construct(void);
@@ -5855,9 +5855,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:4963 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:4951 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5043 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5031 START
   if (!filter || strstr("subtype_equal", filter))
   {
     extern void __test__subtype_equal(void);
@@ -5876,9 +5876,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5043 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5031 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5100 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5088 START
   if (!filter || strstr("print_indent", filter))
   {
     extern void __test__print_indent(void);
@@ -5897,9 +5897,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5100 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5088 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5326 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5314 START
   if (!filter || strstr("print_prim_value", filter))
   {
     extern void __test__print_prim_value(void);
@@ -5918,9 +5918,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5326 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5314 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5469 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5457 START
   if (!filter || strstr("sarray_sub_size", filter))
   {
     extern void __test__sarray_sub_size(void);
@@ -5939,9 +5939,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5469 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5457 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5555 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5543 START
   if (!filter || strstr("print_sarray_dim", filter))
   {
     extern void __test__print_sarray_dim(void);
@@ -5960,9 +5960,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5555 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5543 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5651 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5639 START
   if (!filter || strstr("print_type_inner", filter))
   {
     extern void __test__print_type_inner(void);
@@ -5981,9 +5981,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5651 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5639 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5675 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5663 START
   if (!filter || strstr("type_print_data", filter))
   {
     extern void __test__type_print_data(void);
@@ -6002,9 +6002,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5675 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5663 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5821 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5809 START
   if (!filter || strstr("type_print_os_sink", filter))
   {
     extern void __test__type_print_os_sink(void);
@@ -6023,9 +6023,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5821 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5809 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5847 START
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5835 START
   if (!filter || strstr("type_print_os_close", filter))
   {
     extern void __test__type_print_os_close(void);
@@ -6044,7 +6044,7 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/types.c:5847 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/types.c:5835 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/utils.c:33 START
   if (!filter || strstr("file_basename", filter))
