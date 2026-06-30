@@ -432,8 +432,8 @@ win32_write_all (const i_file *fp, const void *src, const u64 nbytes, error *e)
   while (nwrite < nbytes)
   {
     DWORD chunk = 0;
-    DWORD want = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL
-                                                           : (nbytes - nwrite));
+    DWORD want  = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL
+                                                            : (nbytes - nwrite));
 
     if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, NULL)))
     {
@@ -812,7 +812,6 @@ struct i_file_system_vtable default_fsvtable = {
     .i_remove_quiet = win32_remove_quiet,
     .i_unlink       = win32_unlink,
     .i_mkdir        = win32_mkdir,
-    .i_rm_rf        = win32_rm_rf,
     .i_access_rw    = win32_access_rw,
     .i_exists_rw    = win32_exists_rw,
     .i_touch        = win32_touch,
