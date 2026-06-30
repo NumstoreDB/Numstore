@@ -364,6 +364,7 @@ i_writev_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e)
 {
   return fp->fvtable->i_writev_all (fp, arrs, iovcnt, e);
 }
+
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Basic Read / Write
  *----------------------------------------------------------------------------*/
@@ -427,16 +428,6 @@ HEADER_FUNC err_t
 i_mkdir (const char *name, error *e)
 {
   return default_fsvtable.i_mkdir (&default_fsvtable, name, e);
-}
-HEADER_FUNC err_t
-i_mkdir_quiet (const char *name, error *e)
-{
-  return default_fsvtable.i_mkdir_quiet (&default_fsvtable, name, e);
-}
-HEADER_FUNC err_t
-i_rm_rf (const char *path, error *e)
-{
-  return default_fsvtable.i_rm_rf (&default_fsvtable, path, e);
 }
 
 HEADER_FUNC err_t

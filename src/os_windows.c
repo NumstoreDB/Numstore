@@ -432,8 +432,8 @@ win32_write_all (const i_file *fp, const void *src, const u64 nbytes, error *e)
   while (nwrite < nbytes)
   {
     DWORD chunk = 0;
-    DWORD want  = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL
-                                                            : (nbytes - nwrite));
+    DWORD want = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL
+                                                           : (nbytes - nwrite));
 
     if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, NULL)))
     {

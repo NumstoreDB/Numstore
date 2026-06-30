@@ -2164,7 +2164,9 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
   struct type_accessor ta;
   WRAP (tab_build (&ta, &tab, e));
 
-  return subtype_create (parser->dest, name, ta, e);
+  *parser->dest = subtype_create (name, ta);
+
+  return SUCCESS;
 }
 
 static err_t
@@ -2208,7 +2210,79 @@ theend:
   return error_trace (e);
 }
 
-// TODO - Sub type tests
+#ifdef TESTING
+static void
+test_compile_subtype_green_path (const char *query, struct subtype expected)
+{
+  ALLOC_INIT (alloc);
+
+  struct subtype actual;
+  error          e = error_create ();
+
+  TEST_CASE ("SHOULD PASS: %s", query)
+  {
+    test_assert_equal (compile_subtype (&actual, query, &alloc, &e), SUCCESS);
+    test_assert (subtype_equal (&expected, &actual));
+  }
+
+  ALLOC_CLOSE (alloc);
+}
+
+static void
+test_compile_subtype_red_path (const char *query, err_t code)
+{
+  ALLOC_INIT (alloc);
+
+  struct subtype actual;
+  error          e = error_create ();
+
+  TEST_CASE ("SHOULD FAIL: %s", query)
+  {
+    test_err_t_check (compile_subtype (&actual, query, &alloc, &e), code, &e);
+  }
+
+  ALLOC_CLOSE (alloc);
+}
+
+TEST (compile_subtype)
+{
+  test_compile_subtype_green_path (
+      "myvar",
+      subtype_create (strfcstr ("myvar"), ta_take ())
+  );
+
+  test_compile_subtype_green_path (
+      "myvar[9]",
+      subtype_create (
+          strfcstr ("myvar"),
+          ta_range ((struct user_stride[]){ustride_single (9)}, 1, &ta_take ())
+      )
+  );
+
+  test_compile_subtype_green_path (
+      "myvar.field",
+      subtype_create (
+          strfcstr ("myvar"),
+          ta_select (strfcstr ("field"), &ta_take ())
+      )
+  );
+
+  struct type_accessor subrange =
+      ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ());
+
+  test_compile_subtype_green_path (
+      "myvar.a[0]",
+      subtype_create (strfcstr ("myvar"), ta_select (strfcstr ("a"), &subrange))
+  );
+
+  test_compile_subtype_red_path ("", ERR_SYNTAX);
+  test_compile_subtype_red_path ("42", ERR_SYNTAX);
+  test_compile_subtype_red_path ("[0]", ERR_SYNTAX);
+  test_compile_subtype_red_path ("struct a x }", ERR_SYNTAX);
+  test_compile_subtype_red_path ("foo.", ERR_SYNTAX);
+  test_compile_subtype_red_path (".bar", ERR_SYNTAX);
+}
+#endif
 
 /******************************************************************************
  * SECTION: Type Ref
