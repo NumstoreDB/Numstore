@@ -18,6 +18,7 @@
 #include "compiler.h"
 #include "error.h"
 #include "numerics.h"
+#include "serial.h"
 #include "variables.h"
 
 #ifdef TESTING
@@ -133,6 +134,76 @@ struct_t_validate_shallow (const struct struct_t *s, error *e)
   return SUCCESS;
 }
 
+#ifdef TESTING
+TEST (struct_t_validate_shallow)
+{
+  ALLOC_INIT (alloc);
+  BUILDER_INIT (b, &alloc);
+
+  TEST_CASE ("Len == 0")
+  {
+    error           e = error_create ();
+    struct struct_t s = {
+        .keys  = (struct string[]){strfcstr ("foo")},
+        .types = (struct type *[]){&TU8},
+        .len   = 0,
+    };
+    test_err_t_check (struct_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("One Invalid label")
+  {
+    error           e = error_create ();
+    struct struct_t s = {
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr (""),
+                strfcstr ("biz")
+            },
+        .types = (struct type *[]){&TU8, &TU16, &TU32},
+        .len   = 3,
+    };
+    test_err_t_check (struct_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("Non Unique labels")
+  {
+    error           e = error_create ();
+    struct struct_t s = {
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("biz"),
+                strfcstr ("biz")
+            },
+        .types = (struct type *[]){&TU8, &TU16, &TU32},
+        .len   = 3,
+    };
+    test_err_t_check (struct_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("Valid")
+  {
+    error           e = error_create ();
+    struct struct_t s = {
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("bar"),
+                strfcstr ("biz")
+            },
+        .types = (struct type *[]){&TU8, &TU16, &TU32},
+        .len   = 3,
+    };
+    test_assert (struct_t_validate_shallow (&s, &e) == SUCCESS);
+  }
+
+  BUILDER_CLOSE (b);
+  ALLOC_CLOSE (alloc);
+}
+#endif
+
 DEFINE_DBG_ASSERT (struct struct_t, valid_struct_t, s, {
   error e = error_create ();
   ASSERT (struct_t_validate_shallow (s, &e) == SUCCESS);
@@ -200,6 +271,76 @@ union_t_validate_shallow (const struct union_t *s, error *e)
   return SUCCESS;
 }
 
+#ifdef TESTING
+TEST (union_t_validate_shallow)
+{
+  ALLOC_INIT (alloc);
+  BUILDER_INIT (b, &alloc);
+
+  TEST_CASE ("Len == 0")
+  {
+    error          e = error_create ();
+    struct union_t s = {
+        .keys  = (struct string[]){strfcstr ("foo")},
+        .types = (struct type *[]){&TU8},
+        .len   = 0,
+    };
+    test_err_t_check (union_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("One Invalid label")
+  {
+    error          e = error_create ();
+    struct union_t s = {
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr (""),
+                strfcstr ("biz")
+            },
+        .types = (struct type *[]){&TU8, &TU16, &TU32},
+        .len   = 3,
+    };
+    test_err_t_check (union_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("Non Unique labels")
+  {
+    error          e = error_create ();
+    struct union_t s = {
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("biz"),
+                strfcstr ("biz")
+            },
+        .types = (struct type *[]){&TU8, &TU16, &TU32},
+        .len   = 3,
+    };
+    test_err_t_check (union_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("Valid")
+  {
+    error          e = error_create ();
+    struct union_t s = {
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("bar"),
+                strfcstr ("biz")
+            },
+        .types = (struct type *[]){&TU8, &TU16, &TU32},
+        .len   = 3,
+    };
+    test_assert (union_t_validate_shallow (&s, &e) == SUCCESS);
+  }
+
+  BUILDER_CLOSE (b);
+  ALLOC_CLOSE (alloc);
+}
+#endif
+
 DEFINE_DBG_ASSERT (struct union_t, valid_union_t, s, {
   error e = error_create ();
   ASSERT (union_t_validate_shallow (s, &e) == SUCCESS);
@@ -258,6 +399,39 @@ sarray_t_validate_shallow (const struct sarray_t *t, error *e)
   return SUCCESS;
 }
 
+#ifdef TESTING
+TEST (sarray_t_validate_shallow)
+{
+  ALLOC_INIT (alloc);
+  BUILDER_INIT (b, &alloc);
+
+  TEST_CASE ("rank == 0")
+  {
+    error           e = error_create ();
+    struct sarray_t s = {
+        .dims = (u32[]){1},
+        .rank = 0,
+        .t    = &TU8,
+    };
+    test_err_t_check (sarray_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  TEST_CASE ("Null dimension")
+  {
+    error           e = error_create ();
+    struct sarray_t s = {
+        .dims = (u32[]){10, 0, 11},
+        .rank = 3,
+        .t    = &TU8,
+    };
+    test_err_t_check (sarray_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+  }
+
+  BUILDER_CLOSE (b);
+  ALLOC_CLOSE (alloc);
+}
+#endif
+
 static inline err_t
 sarray_t_validate (const struct sarray_t *t, error *e)
 {
@@ -299,7 +473,7 @@ type_validate (const struct type *t, error *e)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return -1;
+      return 0;       // LCOV_EXCL_LINE
     }
   }
 }
@@ -346,19 +520,19 @@ prim_to_str (enum prim_t p)
     case CU128: return "cu128";
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
-  return "";
+  return "";      // LCOV_EXCL_LINE
 }
 
 static i32
-prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
+prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 {
-  DBG_ASSERT (prim_t, p);
+  DBG_ASSERT (prim_t, &p);
 
   char       *out   = str;
   u32         avail = size;
   int         len   = 0;
   int         n;
-  const char *name = prim_to_str (*p);
+  const char *name = prim_to_str (p);
 
   n = snprintf (out, avail, "%s", name);
   if (n < 0)
@@ -373,17 +547,57 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t *p)
 #ifdef TESTING
 TEST (prim_t_snprintf)
 {
-  struct type t = {
-      .type = T_PRIM,
-      .p    = F64,
-  };
+#  define CASE_PRIM(prim_type, exp)                                      \
+    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, #exp)            \
+    {                                                                    \
+      struct type t = {                                                  \
+          .type = T_PRIM,                                                \
+          .p    = prim_type,                                             \
+      };                                                                 \
+                                                                         \
+      const char *expect = exp;                                          \
+      char       *ret    = type_tostr (&t);                              \
+      error       e      = error_create ();                              \
+      i_log_type (&t, &e);                                               \
+      test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0); \
+      i_free (ret);                                                      \
+    }
 
-  const char *expect = "f64";
-  char       *ret    = type_tostr (&t);
-  error       e      = error_create ();
-  i_log_type (&t, &e);
-  test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0);
-  i_free (ret);
+  CASE_PRIM (U8, "u8");
+  CASE_PRIM (U16, "u16");
+  CASE_PRIM (U32, "u32");
+  CASE_PRIM (U64, "u64");
+
+  CASE_PRIM (I8, "i8");
+  CASE_PRIM (I16, "i16");
+  CASE_PRIM (I32, "i32");
+  CASE_PRIM (I64, "i64");
+
+  CASE_PRIM (F16, "f16");
+  CASE_PRIM (F32, "f32");
+  CASE_PRIM (F64, "f64");
+  CASE_PRIM (F128, "f128");
+
+  CASE_PRIM (CF32, "cf32");
+  CASE_PRIM (CF64, "cf64");
+  CASE_PRIM (CF128, "cf128");
+  CASE_PRIM (CF256, "cf256");
+
+  CASE_PRIM (CI16, "ci16");
+  CASE_PRIM (CI32, "ci32");
+  CASE_PRIM (CI64, "ci64");
+  CASE_PRIM (CI128, "ci128");
+
+  CASE_PRIM (CU16, "cu16");
+  CASE_PRIM (CU32, "cu32");
+  CASE_PRIM (CU64, "cu64");
+  CASE_PRIM (CU128, "cu128");
+
+  TEST_CASE ("Smaller buffer - behaves like snprintf")
+  {
+    char out[1];
+    test_assert (prim_t_snprintf (out, 1, U8) == 2);
+  }
 }
 #endif
 
@@ -544,6 +758,14 @@ TEST (struct_t_snprintf)
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (ret);
+
+  TEST_CASE ("can't fit string")
+  {
+    char b1[1];
+    char b2[15];
+    test_assert ((size_t)struct_t_snprintf (b1, 1, &st) > sizeof (b1));
+    test_assert ((size_t)struct_t_snprintf (b2, 1, &st) > sizeof (b2));
+  }
 }
 #endif
 
@@ -703,6 +925,14 @@ TEST (union_t_snprintf)
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (ret);
+
+  TEST_CASE ("can't fit string")
+  {
+    char b1[1];
+    char b2[15];
+    test_assert ((size_t)union_t_snprintf (b1, 1, &st) > sizeof (b1));
+    test_assert ((size_t)union_t_snprintf (b2, 1, &st) > sizeof (b2));
+  }
 }
 #endif
 
@@ -770,6 +1000,14 @@ TEST (sarray_t_snprintf)
   i_log_type (&s, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (ret);
+
+  TEST_CASE ("can't fit string")
+  {
+    char b1[1];
+    char b2[10];
+    test_assert ((size_t)sarray_t_snprintf (b1, 1, &s.sa) > sizeof (b1));
+    test_assert ((size_t)sarray_t_snprintf (b2, 1, &s.sa) > sizeof (b2));
+  }
 }
 #endif
 
@@ -782,7 +1020,7 @@ type_snprintf (char *str, u32 size, struct type *t)
   {
     case T_PRIM:
     {
-      return prim_t_snprintf (str, size, &t->p);
+      return prim_t_snprintf (str, size, t->p);
     }
     case T_STRUCT:
     {
@@ -799,7 +1037,7 @@ type_snprintf (char *str, u32 size, struct type *t)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return -1;
+      return -1;      // LCOV_EXCL_LINE
     }
   }
 }
@@ -871,7 +1109,7 @@ prim_t_byte_size (const enum prim_t *t)
   }
 
   UNREACHABLE (); // LCOV_EXCL_LINE
-  return 0;
+  return 0;       // LCOV_EXCL_LINE
 }
 
 #ifdef TESTING
@@ -1093,7 +1331,7 @@ type_byte_size (const struct type *t)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return 0;
+      return 0;       // LCOV_EXCL_LINE
     }
   }
 }
@@ -1151,7 +1389,7 @@ type_get_string_size (const struct type *t)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return 0;
+      return 0;       // LCOV_EXCL_LINE
     }
   }
 }
@@ -1217,7 +1455,7 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return dest;
+      return dest;    // LCOV_EXCL_LINE
     }
   }
 }
@@ -1568,7 +1806,7 @@ type_get_serial_size (const struct type *t)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return 0;
+      return 0;       // LCOV_EXCL_LINE
     }
   }
 }
@@ -1872,7 +2110,7 @@ type_serialize (struct serializer *dest, const struct type *src)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      break;
+      break;          // LCOV_EXCL_LINE
     }
   }
 }
@@ -2768,6 +3006,7 @@ type_equal (const struct type *left, const struct type *right)
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
+      return 0;       // LCOV_EXCL_LINE
     }
   }
 }
@@ -4071,6 +4310,7 @@ ta_subtype (
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
+      return 0;       // LCOV_EXCL_LINE
     }
   }
 
@@ -4583,6 +4823,131 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
   }
 }
 
+#ifdef TESTING
+TEST (type_ref_equal)
+{
+  ALLOC_INIT (alloc);
+  error e = error_create ();
+
+#  define TRE_TC(left, right, expected)                            \
+    TEST_CASE ("%s == %s == %d", left, right, expected)            \
+    {                                                              \
+      struct type_ref left_tr;                                     \
+      struct type_ref right_tr;                                    \
+                                                                   \
+      compile_type_ref (&left_tr, left, &alloc, &e);               \
+      compile_type_ref (&right_tr, right, &alloc, &e);             \
+                                                                   \
+      if (expected)                                                \
+      {                                                            \
+        test_assert (type_ref_equal (left_tr, right_tr));          \
+      }                                                            \
+      else                                                         \
+      {                                                            \
+        test_assert (type_ref_equal (left_tr, right_tr) == false); \
+      }                                                            \
+    }
+
+  TRE_TC ("foo", "foo", true);
+  TRE_TC ("foo.bar", "foo.bar", true);
+  TRE_TC ("struct { a foo }", "struct { a foo }", true);
+  TRE_TC ("struct { a foo, b biz }", "struct { a foo, b biz }", true);
+  TRE_TC ("struct { a foo.bar, b biz }", "struct { a foo.bar, b biz }", true);
+  TRE_TC (
+      "struct { a foo.bar, b struct { c biz, d bar.baz } }",
+      "struct { a foo.bar, b struct { c biz, d bar.baz } }",
+      true
+  );
+
+  TRE_TC ("foo", "bar", false);
+  TRE_TC ("foo", "foo.bar", false);
+  TRE_TC ("foo.biz", "foo.bar", false);
+  TRE_TC ("foo", "struct { a foo }", false);
+  TRE_TC ("struct { a bar }", "struct { a foo }", false);
+  TRE_TC ("struct { b foo }", "struct { a foo }", false);
+  TRE_TC ("struct { a foo.bar }", "struct { a foo.biz }", false);
+  TRE_TC (
+      "struct { a foo.bar, b struct { c foo, d bar } }",
+      "struct { a foo.bar, b struct { c foo, d biz } }",
+      false
+  );
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
+
+static struct type *
+tr_construct_inner (
+    struct type     *reftype,
+    struct type_ref *tr,
+    struct builder  *b,
+    error           *e
+)
+{
+  switch (tr->type)
+  {
+    case TR_TAKE:
+    {
+      struct type_accessor *ta = &tr->tk.ta;
+      return ta_subtype (reftype, ta, b->persistent, e);
+    }
+
+    case TR_STRUCT:
+    {
+      u16              len   = tr->st.len;
+      struct string   *keys  = tr->st.keys;
+      struct type_ref *types = tr->st.types;
+
+      struct type *ret = builder_malloc_persist (b, 1, sizeof *ret, e);
+
+      if (ret == NULL)
+      {
+        return NULL;
+      }
+
+      // Struct building logic
+      {
+        struct kvt_list_builder builder = kvlb_create (b);
+
+        for (u16 i = 0; i < len; ++i)
+        {
+          // The field name
+          if (kvlb_accept_key (&builder, keys[i], e))
+          {
+            return NULL;
+          }
+
+          // Get the sub type
+          // (recursively)
+          struct type *subtype = tr_construct_inner (reftype, &types[i], b, e);
+          if (subtype == NULL)
+          {
+            return NULL;
+          }
+
+          if (kvlb_accept_type (&builder, subtype, e))
+          {
+            return NULL;
+          }
+        }
+
+        struct kvt_list kvl;
+        if (kvlb_build (&kvl, &builder, e))
+        {
+          return NULL;
+        }
+
+        if (struct_t_create (&ret->st, kvl, b->persistent, e))
+        {
+          return NULL;
+        }
+      }
+
+      return ret;
+    }
+  }
+}
+
 struct type *
 tr_construct (
     struct type      *reftype,
@@ -4592,95 +4957,76 @@ tr_construct (
 )
 {
   BUILDER_INIT (b, alloc);
-
-  struct allocator temp;
-
-  switch (tr->type)
-  {
-    case TR_TAKE:
-    {
-      struct type_accessor *ta = &tr->tk.ta;
-      return ta_subtype (reftype, ta, alloc, e);
-    }
-
-    case TR_STRUCT:
-    {
-      u16              len   = tr->st.len;
-      struct string   *keys  = tr->st.keys;
-      struct type_ref *types = tr->st.types;
-
-      struct type *ret = allocate (alloc, 1, sizeof *ret, e);
-
-      if (ret == NULL)
-      {
-        goto temp_failed;
-      }
-
-      // Struct building logic
-      {
-        struct kvt_list_builder builder = kvlb_create (&b);
-
-        for (u16 i = 0; i < len; ++i)
-        {
-          // The field name
-          if (kvlb_accept_key (&builder, keys[i], e))
-          {
-            goto temp_failed;
-          }
-
-          // Get the sub type
-          // (recursively)
-          struct type *subtype = tr_construct (reftype, &types[i], alloc, e);
-          if (subtype == NULL)
-          {
-            goto temp_failed;
-          }
-
-          if (kvlb_accept_type (&builder, subtype, e))
-          {
-            goto temp_failed;
-          }
-        }
-
-        struct kvt_list kvl;
-        if (kvlb_build (&kvl, &builder, e))
-        {
-          goto temp_failed;
-        }
-
-        if (struct_t_create (&ret->st, kvl, alloc, e))
-        {
-          goto temp_failed;
-        }
-      }
-
-      BUILDER_CLOSE (b);
-      return ret;
-    }
-  }
-
-temp_failed:
+  struct type *ret = tr_construct_inner (reftype, tr, &b, e);
   BUILDER_CLOSE (b);
-  return NULL;
+  return ret;
 }
+
+#ifdef TESTING
+TEST (tr_construct)
+{
+  ALLOC_INIT (alloc);
+  error e = error_create ();
+
+#  define TRC_TC(typestr, trstr, expectedstr)                             \
+    TEST_CASE ("tr_construct(%s, %s) == %s", typestr, trstr, expectedstr) \
+    {                                                                     \
+      struct type     base_type;                                          \
+      struct type_ref tr;                                                 \
+      struct type     expected_type;                                      \
+                                                                          \
+      compile_type (&base_type, typestr, &alloc, &e);                     \
+      compile_type_ref (&tr, trstr, &alloc, &e);                          \
+      compile_type (&expected_type, expectedstr, &alloc, &e);             \
+                                                                          \
+      struct type *actual = tr_construct (&base_type, &tr, &alloc, &e);   \
+                                                                          \
+      test_assert (type_equal (&expected_type, actual));                  \
+    }
+
+#  define TRC_TC_FAIL(typestr, trstr)                                   \
+    TEST_CASE ("tr_construct(%s, %s) == FAIL", typestr, trstr)          \
+    {                                                                   \
+      struct type     base_type;                                        \
+      struct type_ref tr;                                               \
+                                                                        \
+      compile_type (&base_type, typestr, &alloc, &e);                   \
+      compile_type_ref (&tr, trstr, &alloc, &e);                        \
+                                                                        \
+      struct type *actual = tr_construct (&base_type, &tr, &alloc, &e); \
+                                                                        \
+      test_assert (actual == NULL);                                     \
+      e.cause_code = SUCCESS;                                           \
+      e.cmlen      = 0;                                                 \
+    }
+
+  TRC_TC ("u8", "foo", "u8");
+  TRC_TC_FAIL ("u8", "foo.bar");
+
+  TRC_TC ("struct { a u8 }", "foo", "struct { a u8 }");
+  TRC_TC ("struct { a u8 }", "foo.a", "u8");
+  TRC_TC ("struct { a u8, b struct { c u16 } }", "foo.b", "struct { c u16 }");
+  TRC_TC ("struct { a u8, b struct { c u16 } }", "foo.b.c", "u16");
+  TRC_TC_FAIL ("struct { a u8 }", "foo.bar");
+  TRC_TC_FAIL ("struct { a u8 }", "foo.a.b");
+
+  TRC_TC ("struct { a u8, b [10][20]u16 }", "foo.b", "[10][20]u16");
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
 
 /******************************************************************************
  * SECTION: Sub Type
  ******************************************************************************/
 
-err_t
-subtype_create (
-    struct subtype      *dest,
-    struct string        vname,
-    struct type_accessor ta,
-    error               *e
-)
+struct subtype
+subtype_create (struct string vname, struct type_accessor ta)
 {
-  *dest = (struct subtype){
+  return (struct subtype){
       .vname = vname,
       .ta    = ta,
   };
-  return SUCCESS;
 }
 
 bool
@@ -4689,6 +5035,42 @@ subtype_equal (const struct subtype *left, const struct subtype *right)
   return string_equal (left->vname, right->vname)
          && type_accessor_equal (left->ta, right->ta);
 }
+
+#ifdef TESTING
+TEST (subtype_equal)
+{
+  ALLOC_INIT (alloc);
+  error e = error_create ();
+
+#  define STE_TC(left, right, expected)                           \
+    TEST_CASE ("%s == %s == %d", left, right, expected)           \
+    {                                                             \
+      struct subtype leftst;                                      \
+      struct subtype rightst;                                     \
+                                                                  \
+      compile_subtype (&leftst, left, &alloc, &e);                \
+      compile_subtype (&rightst, right, &alloc, &e);              \
+                                                                  \
+      if (expected)                                               \
+      {                                                           \
+        test_assert (subtype_equal (&leftst, &rightst));          \
+      }                                                           \
+      else                                                        \
+      {                                                           \
+        test_assert (subtype_equal (&leftst, &rightst) == false); \
+      }                                                           \
+    }
+
+  STE_TC ("foo.bar", "foo.bar", true);
+  STE_TC ("foo.bar[0]", "foo.bar[0]", true);
+  STE_TC ("foo.bar[1]", "foo.bar[0]", false);
+  STE_TC ("foo.bar[0][1]", "foo.bar[0]", false);
+  STE_TC ("foo[0][1]", "foo.bar[0]", false);
+  STE_TC ("biz.bar[0]", "foo.bar[0]", false);
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
 
 /******************************************************************************
  * SECTION: Print Type

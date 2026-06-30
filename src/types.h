@@ -530,12 +530,7 @@ struct subtype
   struct type_accessor ta;
 };
 
-err_t subtype_create (
-    struct subtype      *dest,
-    struct string        vname,
-    struct type_accessor ta,
-    error               *e
-);
+struct subtype subtype_create (struct string vname, struct type_accessor ta);
 bool subtype_equal (const struct subtype *left, const struct subtype *right);
 struct type *subtype_get_type (
     struct type          *stype,
