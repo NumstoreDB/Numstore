@@ -15,6 +15,7 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include "alloc.h"
 #include "collections.h" // dbl_buffer / multi_user_stride
 #include "csx_assert.h"  // DEFINE_DBG_ASSERT
 #include "platform.h"    // HEADER_FUNC
@@ -74,11 +75,9 @@ enum token_t
   TT_EXIT,
   TT_HELP,
   TT_INSERT,
-  TT_APPEND,
   TT_READ,
   TT_WRITE,
   TT_REMOVE,
-  TT_TAKE,
 
   TT_STRUCT,
   TT_UNION,
@@ -93,10 +92,61 @@ enum token_t
   TT_TRUE,
   TT_FALSE,
 
-  TT_AS,
-
   TT_EOF,
 };
+
+#define TT_FOREACH(X)         \
+  X (TT_PLUS);                \
+  X (TT_MINUS);               \
+  X (TT_SLASH);               \
+  X (TT_STAR);                \
+  X (TT_BANG);                \
+  X (TT_BANG_EQUAL);          \
+  X (TT_EQUAL_EQUAL);         \
+  X (TT_GREATER);             \
+  X (TT_GREATER_EQUAL);       \
+  X (TT_LESS);                \
+  X (TT_LESS_EQUAL);          \
+  X (TT_NOT);                 \
+  X (TT_CARET);               \
+  X (TT_PERCENT);             \
+  X (TT_PIPE);                \
+  X (TT_PIPE_PIPE);           \
+  X (TT_AMPERSAND);           \
+  X (TT_AMPERSAND_AMPERSAND); \
+  X (TT_SEMICOLON);           \
+  X (TT_COLON);               \
+  X (TT_LEFT_BRACKET);        \
+  X (TT_RIGHT_BRACKET);       \
+  X (TT_LEFT_BRACE);          \
+  X (TT_RIGHT_BRACE);         \
+  X (TT_LEFT_PAREN);          \
+  X (TT_RIGHT_PAREN);         \
+  X (TT_COMMA);               \
+  X (TT_DOT);                 \
+  X (TT_STRING);              \
+  X (TT_IDENTIFIER);          \
+  X (TT_INTEGER);             \
+  X (TT_FLOAT);               \
+  X (TT_CREATE);              \
+  X (TT_DELETE);              \
+  X (TT_GET);                 \
+  X (TT_EXIT);                \
+  X (TT_HELP);                \
+  X (TT_INSERT);              \
+  X (TT_READ);                \
+  X (TT_WRITE);               \
+  X (TT_REMOVE);              \
+  X (TT_STRUCT);              \
+  X (TT_UNION);               \
+  X (TT_PRIM);                \
+  X (TT_IF);                  \
+  X (TT_EXISTS);              \
+  X (TT_BLIMIT);              \
+  X (TT_LIMIT);               \
+  X (TT_TRUE);                \
+  X (TT_FALSE);               \
+  X (TT_EOF);
 
 struct token
 {
@@ -400,6 +450,17 @@ err_t compile_type (
     struct allocator *dalloc,
     error            *e
 );
+
+HEADER_FUNC struct type *
+compile_type_alloc (const char *text, struct allocator *dalloc, error *e)
+{
+  struct type *ret = allocate (dalloc, 1, sizeof *ret, e);
+  if (ret)
+  {
+    compile_type (ret, text, dalloc, e);
+  }
+  return ret;
+}
 
 err_t compile_subtype (
     struct subtype   *dest,

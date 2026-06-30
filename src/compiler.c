@@ -66,86 +66,20 @@ tt_tostr (enum token_t t)
 {
   switch (t)
   {
-    // Arithmetic Operators
-    case_ENUM_RETURN_STRING (TT_PLUS);
-    case_ENUM_RETURN_STRING (TT_MINUS);
-    case_ENUM_RETURN_STRING (TT_SLASH);
-    case_ENUM_RETURN_STRING (TT_STAR);
-
-    // Logical Operators
-    case_ENUM_RETURN_STRING (TT_BANG);
-    case_ENUM_RETURN_STRING (TT_BANG_EQUAL);
-    case_ENUM_RETURN_STRING (TT_EQUAL_EQUAL);
-    case_ENUM_RETURN_STRING (TT_GREATER);
-    case_ENUM_RETURN_STRING (TT_GREATER_EQUAL);
-    case_ENUM_RETURN_STRING (TT_LESS);
-    case_ENUM_RETURN_STRING (TT_LESS_EQUAL);
-
-    // Fancy Operators
-    case_ENUM_RETURN_STRING (TT_NOT);
-    case_ENUM_RETURN_STRING (TT_CARET);
-    case_ENUM_RETURN_STRING (TT_PERCENT);
-    case_ENUM_RETURN_STRING (TT_PIPE);
-    case_ENUM_RETURN_STRING (TT_PIPE_PIPE);
-    case_ENUM_RETURN_STRING (TT_AMPERSAND);
-    case_ENUM_RETURN_STRING (TT_AMPERSAND_AMPERSAND);
-
-    // Other One char tokens
-    case_ENUM_RETURN_STRING (TT_SEMICOLON);
-    case_ENUM_RETURN_STRING (TT_COLON);
-    case_ENUM_RETURN_STRING (TT_LEFT_BRACKET);
-    case_ENUM_RETURN_STRING (TT_RIGHT_BRACKET);
-    case_ENUM_RETURN_STRING (TT_LEFT_BRACE);
-    case_ENUM_RETURN_STRING (TT_RIGHT_BRACE);
-    case_ENUM_RETURN_STRING (TT_LEFT_PAREN);
-    case_ENUM_RETURN_STRING (TT_RIGHT_PAREN);
-    case_ENUM_RETURN_STRING (TT_COMMA);
-    case_ENUM_RETURN_STRING (TT_DOT);
-
-    // Other
-    case_ENUM_RETURN_STRING (TT_STRING);
-    case_ENUM_RETURN_STRING (TT_IDENTIFIER);
-
-    // Tokens that start with a number or +/-
-    case_ENUM_RETURN_STRING (TT_INTEGER);
-    case_ENUM_RETURN_STRING (TT_FLOAT);
-
-    // Literal Operations
-    case_ENUM_RETURN_STRING (TT_CREATE);
-    case_ENUM_RETURN_STRING (TT_DELETE);
-    case_ENUM_RETURN_STRING (TT_GET);
-    case_ENUM_RETURN_STRING (TT_EXIT);
-    case_ENUM_RETURN_STRING (TT_HELP);
-    case_ENUM_RETURN_STRING (TT_INSERT);
-    case_ENUM_RETURN_STRING (TT_APPEND);
-    case_ENUM_RETURN_STRING (TT_READ);
-    case_ENUM_RETURN_STRING (TT_WRITE);
-    case_ENUM_RETURN_STRING (TT_REMOVE);
-    case_ENUM_RETURN_STRING (TT_TAKE);
-
-    // Type literals
-    case_ENUM_RETURN_STRING (TT_STRUCT);
-    case_ENUM_RETURN_STRING (TT_UNION);
-    case_ENUM_RETURN_STRING (TT_PRIM);
-
-    // other literals
-    case_ENUM_RETURN_STRING (TT_IF);
-    case_ENUM_RETURN_STRING (TT_EXISTS);
-    case_ENUM_RETURN_STRING (TT_BLIMIT);
-    case_ENUM_RETURN_STRING (TT_LIMIT);
-
-    // Bools
-    case_ENUM_RETURN_STRING (TT_TRUE);
-    case_ENUM_RETURN_STRING (TT_FALSE);
-
-    case_ENUM_RETURN_STRING (TT_AS);
-
-    case_ENUM_RETURN_STRING (TT_EOF);
+    TT_FOREACH (case_ENUM_RETURN_STRING)
   }
 
   UNREACHABLE (); // LCOV_EXCL_LINE
   return NULL;
 }
+
+#ifdef TESTING
+TEST (tt_tostr)
+{
+#  define TC_TTTOSTR(x) const char *x##_str = tt_tostr (x);
+  TT_FOREACH (TC_TTTOSTR);
+}
+#endif
 
 /******************************************************************************
  * SECTION: Lexer
@@ -170,10 +104,7 @@ peek (struct lexer *lex)
 static char
 peek_next (struct lexer *lex)
 {
-  if (lex->current + 1 >= lex->src_len)
-  {
-    return '\0';
-  }
+  ASSERT (lex->current + 1 < lex->src_len);
   return lex->src[lex->current + 1];
 }
 
@@ -187,10 +118,8 @@ advance (struct lexer *lex)
 static bool
 match (struct lexer *lex, char expected)
 {
-  if (is_at_end (lex))
-  {
-    return false;
-  }
+  ASSERT (!is_at_end (lex));
+
   if (lex->src[lex->current] != expected)
   {
     return false;
@@ -301,10 +230,6 @@ check_keyword (const char *text, u32 len)
   {
     return TT_INSERT;
   }
-  if (len == sizeof ("append") - 1 && strncmp (text, "append", len) == 0)
-  {
-    return TT_APPEND;
-  }
   if (len == sizeof ("read") - 1 && strncmp (text, "read", len) == 0)
   {
     return TT_READ;
@@ -316,10 +241,6 @@ check_keyword (const char *text, u32 len)
   if (len == sizeof ("remove") - 1 && strncmp (text, "remove", len) == 0)
   {
     return TT_REMOVE;
-  }
-  if (len == sizeof ("take") - 1 && strncmp (text, "take", len) == 0)
-  {
-    return TT_TAKE;
   }
 
   if (len == sizeof ("if") - 1 && strncmp (text, "if", len) == 0)
@@ -355,11 +276,6 @@ check_keyword (const char *text, u32 len)
   if (len == sizeof ("false") - 1 && strncmp (text, "false", len) == 0)
   {
     return TT_FALSE;
-  }
-
-  if (len == sizeof ("as") - 1 && strncmp (text, "as", len) == 0)
-  {
-    return TT_AS;
   }
 
   return TT_IDENTIFIER;
@@ -688,16 +604,6 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
     struct token       *left  = &lex.tokens[i];
     const struct token *right = &expected[i];
 
-    if (!token_equal (left, right))
-    {
-      i_log_failure ("Input: %s\n", input);
-      i_log_failure (
-          "Token %u: got %s, expected %s\n",
-          i,
-          tt_tostr (left->type),
-          tt_tostr (right->type)
-      );
-    }
     test_assert (token_equal (left, right));
   }
 

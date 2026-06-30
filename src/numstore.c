@@ -21,6 +21,10 @@
 #include "nsdb.h"
 #include "query.h"
 
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
+
 /******************************************************************************
  * SECTION: Library exposed nsdb_execute
  ******************************************************************************/
@@ -29,27 +33,22 @@ sb_size
 nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
 {
   ALLOC_INIT (alloc);
-
-  sb_size      ret;            // return variable
-  char         stackbuf[2048]; // Stack buffer if the query fits
-  char        *buf = stackbuf; // Pointer to the buffer
-  va_list      ap, ap2;        // Argument list
-  i32          qlen;           // Length of the query
-  struct query q;              // The AST
+  sb_size      ret; // return variable
+  char        *buf; // The formatted query buffer
+  va_list      ap, ap2;
+  i32          qlen; // Length of the query
+  struct query q;    // The AST
 
   // Reset errors before proceeding
   nh->e.cause_code = 0;
   nh->e.cmlen      = 0;
 
-  // A small stack buffer - if the query doesn't fit into
-  // this buffer - we'll need to malloc
-
+  // First pass: compute the length the formatted query needs,
+  // without writing anything.
   va_start (ap, data);
   va_copy (ap2, ap);
-
-  qlen = vsnprintf (stackbuf, sizeof stackbuf, query, ap);
+  qlen = vsnprintf (NULL, 0, query, ap);
   va_end (ap);
-
   if (qlen < 0)
   {
     va_end (ap2);
@@ -58,18 +57,17 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
     goto theend;
   }
 
-  if ((size_t)qlen >= sizeof stackbuf)
+  buf = allocate (&alloc, (size_t)qlen + 1, 1, &nh->e);
+  if (!buf)
   {
-    buf = allocate (&alloc, qlen + 1, 1, &nh->e);
-    if (!buf)
-    {
-      va_end (ap2);
-      ret = error_trace (&nh->e);
-      goto theend;
-    }
-    qlen = vsnprintf (buf, qlen + 1, query, ap2);
-    ASSERT (qlen >= 0);
+    va_end (ap2);
+    ret = error_trace (&nh->e);
+    goto theend;
   }
+
+  // Second pass: actually write the formatted query into buf.
+  qlen = vsnprintf (buf, (size_t)qlen + 1, query, ap2);
+  ASSERT (qlen >= 0);
   va_end (ap2);
 
   // Compile the query
@@ -78,10 +76,36 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
     ret = error_trace (&nh->e);
     goto theend;
   }
-
   ret = nsdb_execute_on_buffer (nh, &q, data, &alloc);
-
 theend:
   ALLOC_CLOSE (alloc);
   return ret;
 }
+
+#ifdef TESTING
+TEST (nsdb_execute)
+{
+  ALLOC_INIT (alloc);
+  error e = error_create ();
+
+  nsdb_cleanup ("test");
+  struct nsdb     *db  = nsdb_open ("test");
+  struct nsdb_var *var = NULL;
+
+  nsdb_execute (db, "get %s", &var, "a");
+  test_assert_equal (var, NULL);
+
+  nsdb_execute (db, "create %s %s", NULL, "a", "u32");
+  nsdb_execute (db, "get %s", &var, "a");
+  test_assert (var != NULL);
+
+  test_assert (string_equal (var->var->vname, strfcstr ("a")));
+  test_assert (
+      type_equal (var->var->dtype, compile_type_alloc ("u32", &alloc, &e))
+  );
+  test_assert_equal (nsdb_var_len (var), 0);
+  nsdb_var_free (var);
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
