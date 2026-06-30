@@ -81,7 +81,7 @@ lalloc_create (u8 *data, const u32 limit)
   return ret;
 }
 
-static u32
+MAYBE_UNUSED static u32
 lalloc_get_state (struct lalloc *l)
 {
   latch_lock (&l->latch);
@@ -92,7 +92,7 @@ lalloc_get_state (struct lalloc *l)
   return result;
 }
 
-static void
+MAYBE_UNUSED static void
 lalloc_reset_to_state (struct lalloc *l, const u32 state)
 {
   latch_lock (&l->latch);
@@ -141,7 +141,7 @@ lmalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
   return ret;
 }
 
-static void *
+MAYBE_UNUSED static void *
 lcalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
 {
   void *ret = lmalloc (a, req, size, e);
@@ -155,7 +155,7 @@ lcalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
   return ret;
 }
 
-static void
+MAYBE_UNUSED static void
 lalloc_reset (struct lalloc *a)
 {
   latch_lock (&a->latch);
@@ -254,7 +254,7 @@ struct bobj_pool
   u8      data[];
 };
 
-static struct bobj_pool *
+MAYBE_UNUSED static struct bobj_pool *
 bobjp_create (u32 cap, u32 size, error *e)
 {
   ASSERT (cap > 0);
@@ -303,7 +303,7 @@ bobjp_create (u32 cap, u32 size, error *e)
   return ret;
 }
 
-static void
+MAYBE_UNUSED static void
 bobjp_destroy (struct bobj_pool *p)
 {
   i_mutex_lock (&p->mutex);
@@ -388,7 +388,7 @@ TEST (bobjp_destroy)
 }
 #endif
 
-static void *
+MAYBE_UNUSED static void *
 bobjp_alloc (struct bobj_pool *pool)
 {
   i_mutex_lock (&pool->mutex);
@@ -411,7 +411,7 @@ bobjp_alloc (struct bobj_pool *pool)
   return head;
 }
 
-static void
+MAYBE_UNUSED static void
 bobjp_free (struct bobj_pool *pool, void *ptr)
 {
   i_mutex_lock (&pool->mutex);
