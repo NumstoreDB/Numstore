@@ -1703,7 +1703,17 @@ allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e)
 void
 allocator_free (struct allocator *alloc)
 {
-  chunk_alloc_free_all (&alloc->calloc);
+  switch (alloc->type)
+  {
+    case AT_CHUNK_ALLOCATOR:
+    {
+      chunk_alloc_free_all (&alloc->calloc);
+    }
+    default:
+    {
+      UNREACHABLE (); // LCOV_EXCL_LINE
+    }
+  }
 }
 
 /******************************************************************************

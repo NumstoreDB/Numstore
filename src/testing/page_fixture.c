@@ -93,7 +93,6 @@ pgr_fixture_teardown (struct pgr_fixture *f)
 {
   pgr_close (f->p, &f->e);
   allocator_free (&f->alloc);
-
   return f->e.cause_code;
 }
 
@@ -338,10 +337,9 @@ TEST (build_page_tree)
                                                       .out  = page_h_create (),
                                                       .size = DL_DATA_SIZE,
                                                       .data_list =
-                                                          (struct dl_data){
-                                                              .data = NULL,
-                                                              .blen = 0
-                                                          },
+                                                          (struct dl_data
+                                                          ){.data = NULL,
+                                                            .blen = 0},
                                                   },
                                               },
 
