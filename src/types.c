@@ -753,14 +753,16 @@ TEST (sarray_t_snprintf)
 {
   struct type s = (struct type){
       .type = T_SARRAY,
-      .sa   = {
-          .dims = (u32[]){10, 11, 12},
-          .rank = 3,
-          .t    = &(struct type){
-              .type = T_PRIM,
-              .p    = U32,
+      .sa =
+          {
+              .dims = (u32[]){10, 11, 12},
+              .rank = 3,
+              .t =
+                  &(struct type){
+                      .type = T_PRIM,
+                      .p    = U32,
+                  },
           },
-      },
   };
 
   const char *expected = "[10][11][12]u32";
@@ -1048,10 +1050,11 @@ TEST (sarray_t_byte_size)
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+      .t =
+          &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
   };
 
   struct type t = {
@@ -1253,8 +1256,8 @@ TEST (type_generate_string)
     struct type element = {.type = T_PRIM, .p = I32};
     u32         dims[3] = {5, 20, 100};
     struct type t       = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 3, .dims = dims, .t = &element}
+              .type = T_SARRAY,
+              .sa   = {.rank = 3, .dims = dims, .t = &element}
     };
     const char *expected     = "[5][20][100] i32";
     u32         expected_len = (u32)strlen (expected);
@@ -1297,11 +1300,9 @@ TEST (type_generate_string)
 
     struct type t = {
         .type = T_UNION,
-        .un   = {
-            .len   = 2,
-            .keys  = keys,
-            .types = types
-        } // Using .un overlay explicitly
+        .un =
+            {.len = 2, .keys = keys, .types = types
+            } // Using .un overlay explicitly
     };
     const char *expected     = "union { as_int i64, as_ptr u64 }";
     u32         expected_len = (u32)strlen (expected);
@@ -1323,16 +1324,16 @@ TEST (type_generate_string)
     struct type  prim_i32    = {.type = T_PRIM, .p = I32};
     struct type *un_types[2] = {&prim_u8, &prim_i32};
     struct type  inner_union = {
-        .type = T_UNION,
-        .un   = {.len = 2, .keys = un_keys, .types = un_types}
+         .type = T_UNION,
+         .un   = {.len = 2, .keys = un_keys, .types = un_types}
     };
 
     // Sub-component B: [5] cf32
     struct type prim_cf32         = {.type = T_PRIM, .p = CF32};
     u32         inner_arr_dims[1] = {5};
     struct type inner_array       = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = inner_arr_dims, .t = &prim_cf32}
+              .type = T_SARRAY,
+              .sa   = {.rank = 1, .dims = inner_arr_dims, .t = &prim_cf32}
     };
 
     // Parent Struct: struct { payload <union>, tags <array> }
@@ -1342,15 +1343,15 @@ TEST (type_generate_string)
     };
     struct type *st_types[2]   = {&inner_union, &inner_array};
     struct type  parent_struct = {
-        .type = T_STRUCT,
-        .st   = {.len = 2, .keys = st_keys, .types = st_types}
+         .type = T_STRUCT,
+         .st   = {.len = 2, .keys = st_keys, .types = st_types}
     };
 
     // Root Array: [2] <struct>
     u32         root_dims[1] = {2};
     struct type root_type    = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
+           .type = T_SARRAY,
+           .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
     };
 
     const char *expected =
@@ -1530,10 +1531,11 @@ TEST (sarray_t_get_serial_size)
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+      .t =
+          &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
   };
   test_assert_int_equal (sarray_t_get_serial_size (&s), 3 * 4 + 2 + 2);
 }
@@ -1812,10 +1814,11 @@ TEST (sarray_t_serialize)
   struct sarray_t s = {
       .dims = (u32[]){10, 11, 12},
       .rank = 3,
-      .t    = &(struct type){
-          .type = T_PRIM,
-          .p    = U32,
-      },
+      .t =
+          &(struct type){
+              .type = T_PRIM,
+              .p    = U32,
+          },
   };
 
   u8  act[200];
@@ -1997,9 +2000,11 @@ struct_t_deserialize (
   }
 
 theend:
+  BUILDER_CLOSE (b);
   return error_trace (e);
 
 early_termination:
+  BUILDER_CLOSE (b);
   return struct_t_type_deser ("Early end of serialized string", e);
 }
 
@@ -2191,9 +2196,11 @@ union_t_deserialize (
   }
 
 theend:
+  BUILDER_CLOSE (b);
   return error_trace (e);
 
 early_termination:
+  BUILDER_CLOSE (b);
   return union_t_type_deser ("Early end of serialized string", e);
 }
 
@@ -5297,8 +5304,8 @@ TEST (type_print_data)
     struct type   f2       = {.type = T_PRIM, .p = F32};
     struct type  *types[2] = {&f1, &f2};
     struct type   t        = {
-        .type = T_STRUCT,
-        .st   = {.len = 2, .keys = keys, .types = types}
+                 .type = T_STRUCT,
+                 .st   = {.len = 2, .keys = keys, .types = types}
     };
     float buf[2] = {1.5f, 2.5f};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
@@ -5308,8 +5315,8 @@ TEST (type_print_data)
     struct type elem        = {.type = T_PRIM, .p = I32};
     u32         arr_dims[1] = {3};
     struct type arr         = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = arr_dims, .t = &elem}
+                .type = T_SARRAY,
+                .sa   = {.rank = 1, .dims = arr_dims, .t = &elem}
     };
     struct type   scalar  = {.type = T_PRIM, .p = U32};
     struct string keys[2] = {
@@ -5318,8 +5325,8 @@ TEST (type_print_data)
     };
     struct type *types[2] = {&scalar, &arr};
     struct type  t        = {
-        .type = T_STRUCT,
-        .st   = {.len = 2, .keys = keys, .types = types}
+                .type = T_STRUCT,
+                .st   = {.len = 2, .keys = keys, .types = types}
     };
     u8 buf[16] = {0};
     type_print_data (LOG_INFO, buf, &t, 10);
@@ -5334,8 +5341,8 @@ TEST (type_print_data)
     struct type  f2       = {.type = T_PRIM, .p = U64};
     struct type *types[2] = {&f1, &f2};
     struct type  t        = {
-        .type = T_UNION,
-        .un   = {.len = 2, .keys = keys, .types = types}
+                .type = T_UNION,
+                .un   = {.len = 2, .keys = keys, .types = types}
     };
     i64 v = -1;
     type_print_data (LOG_INFO, (const u8 *)&v, &t, 10);
@@ -5354,8 +5361,8 @@ TEST (type_print_data)
     struct type element = {.type = T_PRIM, .p = I32};
     u32         dims[1] = {3};
     struct type t       = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = dims, .t = &element}
+              .type = T_SARRAY,
+              .sa   = {.rank = 1, .dims = dims, .t = &element}
     };
     i32 buf[3] = {1, 2, 3};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
@@ -5365,8 +5372,8 @@ TEST (type_print_data)
     struct type element = {.type = T_PRIM, .p = I32};
     u32         dims[1] = {10};
     struct type t       = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = dims, .t = &element}
+              .type = T_SARRAY,
+              .sa   = {.rank = 1, .dims = dims, .t = &element}
     };
     i32 buf[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 3);
@@ -5376,8 +5383,8 @@ TEST (type_print_data)
     struct type element = {.type = T_PRIM, .p = U8};
     u32         dims[2] = {5, 4};
     struct type t       = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 2, .dims = dims, .t = &element}
+              .type = T_SARRAY,
+              .sa   = {.rank = 2, .dims = dims, .t = &element}
     };
     u8 buf[20] = {0};
     type_print_data (LOG_INFO, buf, &t, 2);
