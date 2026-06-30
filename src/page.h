@@ -21,16 +21,10 @@
 #include "htable.h"
 #include "numerics.h" // checksum
 #include "numstore.h" // pgno ...etc
-#include "page.h"
 #include "platform.h" // string.h
 #include "platform.h" // HEADER_FUNC
-#include "serial.h"   // bytes
 #include "stdtypes.h" // u32 ...etc
 #include "stdtypes.h" // u8 ...etc
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
 
 /******************************************************************************
  * SECTION: Page Common
@@ -361,21 +355,12 @@ struct dl_data
 
 err_t  dl_validate_for_db (const page *d, error *e);
 p_size dl_append (page *d, const u8 *src, p_size bytes);
-void   dl_append_from_cbuffer (page *d, struct cbuffer *src, p_size amnt);
 p_size dl_write (const page *d, const u8 *src, p_size offset, p_size bytes);
-p_size dl_write_from_buffer (
-    const page     *d,
-    struct cbuffer *src,
-    p_size          offset,
-    p_size          nbytes
-);
-p_size dl_memset_from_buffer (page *d, struct cbuffer *src, p_size nbytes);
-void dl_memset_from_buffer_expect (page *d, struct cbuffer *src, p_size nbytes);
-void dl_memset (page *d, const u8 *buf, p_size len);
-void dl_set_data (page *p, struct dl_data d);
-void dl_move_left (page *dest, page *src, p_size len);
-void dl_move_right (page *src, page *dest, p_size len);
-void i_log_dl (int level, const page *d);
+void   dl_memset (page *d, const u8 *buf, p_size len);
+void   dl_set_data (page *p, struct dl_data d);
+void   dl_move_left (page *dest, page *src, p_size len);
+void   dl_move_right (page *src, page *dest, p_size len);
+void   i_log_dl (int level, const page *d);
 p_size dl_read (const page *d, u8 *dest, p_size offset, p_size bytes);
 p_size dl_read_into_cbuffer (
     const page     *d,
@@ -383,13 +368,6 @@ p_size dl_read_into_cbuffer (
     p_size          offset,
     p_size          bytes
 );
-p_size dl_read_out_into_cbuffer (
-    page           *d,
-    struct cbuffer *dest,
-    p_size          offset,
-    p_size          bytes
-);
-void   dl_read_expect (const page *d, u8 *dest, p_size offset, p_size bytes);
 p_size dl_read_out_from (page *d, u8 *dest, p_size offset);
 void   dl_shift_right (page *d, p_size len);
 void   dl_make_valid (page *d);
@@ -577,20 +555,13 @@ _Static_assert (
 
 _Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
 
-void   in_init_empty (page *in);
-err_t  in_validate_for_db (const page *in, error *e);
-p_size in_page_memcpy_right (pgno *dest, const page *src, p_size ofst);
-p_size in_key_memcpy_right (b_size *dest, const page *src, p_size ofst);
-void   in_push_left (page *in, p_size len);
-void   in_push_right_permissive (page *in, p_size amnt);
-void   in_push_left_permissive (page *in, p_size len);
-void   in_push_all_left (page *in);
-void   in_cut_left (page *in, p_size end);
-void   in_data_from_arrays (
-    const struct in_data *dest,
-    const pgno           *pgs,
-    const b_size         *keys
-);
+void           in_init_empty (page *in);
+err_t          in_validate_for_db (const page *in, error *e);
+p_size         in_page_memcpy_right (pgno *dest, const page *src, p_size ofst);
+p_size         in_key_memcpy_right (b_size *dest, const page *src, p_size ofst);
+void           in_push_left (page *in, p_size len);
+void           in_push_left_permissive (page *in, p_size len);
+void           in_cut_left (page *in, p_size end);
 void           in_set_data (page *p, struct in_data data);
 struct in_data in_get_data (const page *p, struct in_pair nodes[IN_MAX_KEYS]);
 void           in_move_left (page *dest, page *src, p_size len);

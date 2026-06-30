@@ -23,6 +23,7 @@ If no path is given, the current directory is scanned.
 """
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -154,10 +155,18 @@ def skip_post_paren(code: str, i: int) -> int:
 
 
 _IDENT_RE = re.compile(r"\b([a-zA-Z_]\w*)\s*\(")
+_ALL_CAPS_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
 
-def find_functions_in_text(code: str) -> set:
-    """Return the set of function names defined in `code`."""
+def find_functions_in_text(code: str, include_macros: bool = False) -> set:
+    """Return the set of function names defined in `code`.
+
+    If `include_macros` is False (the default), names that are conventionally
+    macros — pure ALL_CAPS_WITH_UNDERSCORES — are filtered out. This drops
+    common false positives like `TEST(name) { ... }` and
+    `TEST_CASE("...") { ... }`, where the macro invocation is structurally
+    indistinguishable from a function definition.
+    """
     code = strip_comments_and_strings(code)
     code = strip_preprocessor(code)
 
@@ -167,6 +176,8 @@ def find_functions_in_text(code: str) -> set:
     for m in _IDENT_RE.finditer(code):
         name = m.group(1)
         if name in CONTROL_KEYWORDS:
+            continue
+        if not include_macros and _ALL_CAPS_RE.match(name):
             continue
 
         paren_open = m.end() - 1
@@ -194,6 +205,85 @@ def iter_source_files(roots, exclude_dirs):
                     yield os.path.join(dirpath, f)
 
 
+def handle_track(track_path: str, found: set) -> int:
+    """Sync state with a tracking JSON file.
+
+    If `track_path` is missing or empty, write a fresh `{name: false}` map
+    for every discovered function and exit 0.
+
+    Otherwise read the file as a JSON object, compare its keys against the
+    discovered names, and complain loudly about either direction of drift.
+    Exit 0 if in sync, 1 if drift was found, 2 on read/parse errors.
+
+    The file itself is never modified when it is non-empty.
+    """
+    # "Empty" means: file doesn't exist, is zero bytes, or contains only
+    # whitespace.
+    is_empty = (not os.path.exists(track_path)
+                or os.path.getsize(track_path) == 0)
+    if not is_empty:
+        try:
+            with open(track_path, "r", encoding="utf-8") as f:
+                raw = f.read()
+            is_empty = not raw.strip()
+        except OSError as e:
+            print(f"!! could not read {track_path}: {e}", file=sys.stderr)
+            return 2
+
+    if is_empty:
+        data = {name: False for name in sorted(found)}
+        try:
+            with open(track_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+                f.write("\n")
+        except OSError as e:
+            print(f"!! could not write {track_path}: {e}", file=sys.stderr)
+            return 2
+        print(f"# wrote {len(data)} function(s) to {track_path}",
+              file=sys.stderr)
+        return 0
+
+    # Non-empty: parse and diff.
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"!! {track_path} is not valid JSON: {e}", file=sys.stderr)
+        return 2
+
+    if not isinstance(data, dict):
+        print(f"!! {track_path} must be a JSON object "
+              f"(got {type(data).__name__})", file=sys.stderr)
+        return 2
+
+    tracked = set(data.keys())
+    only_in_file = tracked - found
+    only_in_code = found - tracked
+
+    bar = "!" * 72
+
+    if only_in_file:
+        print(bar, file=sys.stderr)
+        print(f"!! {len(only_in_file)} FUNCTION(S) IN {track_path} "
+              f"BUT NOT IN CODE:", file=sys.stderr)
+        for name in sorted(only_in_file):
+            print(f"!!   {name}", file=sys.stderr)
+        print(bar, file=sys.stderr)
+
+    if only_in_code:
+        print(bar, file=sys.stderr)
+        print(f"!! {len(only_in_code)} FUNCTION(S) IN CODE "
+              f"BUT NOT IN {track_path}:", file=sys.stderr)
+        for name in sorted(only_in_code):
+            print(f"!!   {name}", file=sys.stderr)
+        print(bar, file=sys.stderr)
+
+    if not only_in_file and not only_in_code:
+        print(f"# {track_path}: in sync ({len(tracked)} function(s))",
+              file=sys.stderr)
+        return 0
+    return 1
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="List unique function definitions in C source files.")
@@ -204,6 +294,16 @@ def main():
     ap.add_argument("--exclude", action="append", default=[],
                     help="directory name to skip (repeatable); "
                          "e.g. --exclude build --exclude third_party")
+    ap.add_argument("--include-macros", action="store_true",
+                    help="don't filter out ALL_CAPS names (which are "
+                         "usually macros like TEST(name) {...}). Off by "
+                         "default to suppress test-harness false positives.")
+    ap.add_argument("--track", metavar="FILE",
+                    help="track functions in a JSON checklist. If FILE is "
+                         "empty or missing, write {name: false} for every "
+                         "function found. Otherwise, leave FILE alone and "
+                         "yell about any names that exist in one place but "
+                         "not the other. Exits non-zero on drift.")
     args = ap.parse_args()
 
     exclude = set(args.exclude)
@@ -217,10 +317,13 @@ def main():
         except OSError as e:
             print(f"# could not read {path}: {e}", file=sys.stderr)
             continue
-        names = find_functions_in_text(code)
+        names = find_functions_in_text(code, include_macros=args.include_macros)
         if names:
             by_file[path] = names
             all_functions.update(names)
+
+    if args.track:
+        sys.exit(handle_track(args.track, all_functions))
 
     if args.verbose:
         for path in sorted(by_file):

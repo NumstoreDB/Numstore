@@ -21,10 +21,6 @@
 
 /******************************************************************************
  * SECTION: Page Common
- * ----------------------------------------------------------------------------
- * @brief
- *
- *
  ******************************************************************************/
 
 void
@@ -632,57 +628,6 @@ dl_read_into_cbuffer (
 }
 
 p_size
-dl_read_out_into_cbuffer (
-    page           *d,
-    struct cbuffer *dest,
-    const p_size    offset,
-    const p_size    b
-)
-{
-  ASSERT (b > 0);
-
-  const p_size dlen = dl_used (d);
-  u8          *base = dl_get_data (d);
-
-  ASSERT (offset <= dlen);
-
-  if (offset == dlen)
-  {
-    return 0;
-  }
-
-  const p_size avail  = dlen - offset;
-  p_size       toread = MIN (avail, b);
-
-  if (toread > 0 && dest)
-  {
-    toread = cbuffer_write (base + offset, 1, toread, dest);
-  }
-
-  // [ ++++++++++ __________ ++++++ ]
-  //            ^           ^
-  //            ofst     ofst + toread
-  //                        [       ] = dlen - (ofst + toread)
-  const p_size remain = dlen - toread - offset;
-  memmove (base + offset, base + offset + toread, remain);
-  dl_set_used (d, offset + remain);
-
-  return toread;
-}
-
-void
-dl_read_expect (
-    const page  *d,
-    u8          *dest,
-    const p_size offset,
-    const p_size nbytes
-)
-{
-  const p_size read = dl_read (d, dest, offset, nbytes);
-  ASSERT (read == nbytes);
-}
-
-p_size
 dl_read_out_from (page *d, u8 *dest, const p_size offset)
 {
   DBG_ASSERT (data_list, d);
@@ -897,23 +842,6 @@ dl_append (page *d, const u8 *src, const p_size nbytes)
   return next;
 }
 
-void
-dl_append_from_cbuffer (page *d, struct cbuffer *src, const p_size amnt)
-{
-  DBG_ASSERT (data_list, d);
-  ASSERT (amnt > 0);
-  ASSERT (src);
-  ASSERT (amnt <= DL_DATA_SIZE - dl_used (d));
-  ASSERT (amnt <= cbuffer_len (src));
-
-  u8 *data = dl_get_data (d);
-  u8 *tail = data + dl_used (d);
-  cbuffer_read_expect (tail, 1, amnt, src);
-  dl_set_used (d, dl_used (d) + amnt);
-
-  DBG_ASSERT (data_list, d);
-}
-
 #ifdef TESTING
 TEST (dl_append)
 {
@@ -1081,56 +1009,6 @@ TEST (dl_write)
   }
 }
 #endif
-
-p_size
-dl_write_from_buffer (
-    const page     *d,
-    struct cbuffer *src,
-    const p_size    offset,
-    const p_size    nbytes
-)
-{
-  ASSERT (nbytes > 0);
-
-  const p_size dlen = dl_used (d);
-  u8          *base = dl_get_data (d);
-
-  ASSERT (offset <= dlen);
-
-  if (offset == dlen)
-  {
-    return 0;
-  }
-
-  const p_size avail  = dlen - offset;
-  p_size       toread = MIN (avail, nbytes);
-
-  if (toread > 0 && src)
-  {
-    toread = cbuffer_read (base + offset, 1, toread, src);
-  }
-
-  return toread;
-}
-
-p_size
-dl_memset_from_buffer (page *d, struct cbuffer *src, const p_size nbytes)
-{
-  ASSERT (nbytes > 0);
-  ASSERT (nbytes < DL_DATA_SIZE);
-
-  const p_size read = cbuffer_read (dl_get_data (d), 1, nbytes, src);
-  dl_set_used (d, read);
-
-  return read;
-}
-
-void
-dl_memset_from_buffer_expect (page *d, struct cbuffer *src, const p_size nbytes)
-{
-  const p_size read = dl_memset_from_buffer (d, src, nbytes);
-  ASSERT (read == nbytes);
-}
 
 void
 dl_memset (page *d, const u8 *buf, const p_size len)
@@ -1944,21 +1822,6 @@ TEST (in_memcpy)
 #endif
 
 void
-in_data_from_arrays (
-    const struct in_data *dest,
-    const pgno           *pgs,
-    const b_size         *keys
-)
-{
-  ASSERT (dest->len <= IN_MAX_KEYS);
-  for (p_size i = 0; i < dest->len; ++i)
-  {
-    dest->nodes[i].pg  = pgs[i];
-    dest->nodes[i].key = keys[i];
-  }
-}
-
-void
 in_set_data (page *p, const struct in_data data)
 {
   ASSERT (data.len <= IN_MAX_KEYS);
@@ -1970,22 +1833,6 @@ in_set_data (page *p, const struct in_data data)
     in_push_end (p, data.nodes[i].key, data.nodes[i].pg);
   }
 }
-
-struct in_data
-in_get_data (const page *p, struct in_pair nodes[IN_MAX_KEYS])
-{
-  for (u32 i = 0; i < in_get_len (p); ++i)
-  {
-    nodes[i].pg  = in_get_leaf (p, i);
-    nodes[i].key = in_get_key (p, i);
-  }
-  return (struct in_data){
-      .nodes = nodes,
-      .len   = in_get_len (p),
-  };
-}
-
-// Data Movement
 
 void
 in_move_left (page *dest, page *src, const p_size len)
@@ -2137,12 +1984,6 @@ in_push_left (page *in, const p_size len)
 }
 
 void
-in_push_all_left (page *in)
-{
-  in_push_left (in, in_get_avail (in));
-}
-
-void
 in_push_left_permissive (page *in, const p_size amnt)
 {
   ASSERT (in_get_len (in) == IN_MAX_KEYS);
@@ -2153,20 +1994,6 @@ in_push_left_permissive (page *in, const p_size amnt)
     const pgno   pg  = in_get_leaf (in, i - 1);
     const b_size key = in_get_key (in, i - 1);
     in_set_key_leaf (in, k - 1, key, pg);
-  }
-}
-
-void
-in_push_right_permissive (page *in, const p_size amnt)
-{
-  ASSERT (in_get_len (in) == IN_MAX_KEYS);
-  ASSERT (amnt <= IN_MAX_KEYS);
-
-  for (p_size i = amnt, k = 0; i < IN_MAX_KEYS; ++i, ++k)
-  {
-    const pgno   pg  = in_get_leaf (in, i);
-    const b_size key = in_get_key (in, i);
-    in_set_key_leaf (in, k, key, pg);
   }
 }
 

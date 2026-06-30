@@ -106,8 +106,7 @@ struct query
   };
 };
 
-void i_log_query (int log_level, struct query *q);
-
+// TODO
 bool query_equal (const struct query *left, const struct query *right);
 
 #endif

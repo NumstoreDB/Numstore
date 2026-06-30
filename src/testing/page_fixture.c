@@ -337,9 +337,10 @@ TEST (build_page_tree)
                                                       .out  = page_h_create (),
                                                       .size = DL_DATA_SIZE,
                                                       .data_list =
-                                                          (struct dl_data
-                                                          ){.data = NULL,
-                                                            .blen = 0},
+                                                          (struct dl_data){
+                                                              .data = NULL,
+                                                              .blen = 0
+                                                          },
                                                   },
                                               },
 

@@ -14,8 +14,9 @@
 
 #include "numstore.h"
 #include "pager.h"
+#include "testing/testing.h"
 
-#ifndef NTEST
+#ifdef TESTING
 
 TEST (aries_crash)
 {

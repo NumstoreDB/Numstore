@@ -17,6 +17,7 @@
 #include "error.h"
 #include "numstore.h"
 #include "os.h"
+#include "serial.h"
 #include "txn_table.h"
 #include "wal.h"
 

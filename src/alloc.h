@@ -26,8 +26,6 @@
 #define LALLOC_H
 
 #include "concurrency.h" // latch
-#include "csx_assert.h"  // UNREACHABLE
-#include "platform.h"    // HEADER_FUNC
 #include "stdtypes.h"    // u32
 
 /******************************************************************************
@@ -198,122 +196,6 @@ void *slab_alloc_alloc (struct slab_alloc *alloc, error *e);
  * @param ptr Target memory location to return back to the vacancy pool.
  */
 void slab_alloc_free (struct slab_alloc *alloc, void *ptr);
-
-/******************************************************************************
- * SECTION: Malloc Plan
- * ----------------------------------------------------------------------------
- *
- * @brief Does 2 phases of allocation - a planning and a memcpy
- *
- * 1. Fake allocation - keep track of how many bytes you need
- * 2. Real allocation - 1 malloc and 1 free
- ******************************************************************************/
-
-/**
- * @struct malloc_plan
- * @brief State container managing a two-phase structured execution pipeline
- *
- * This tracking context logs target structural limits safely first before
- * shifting state into active allocation mode to pass down slices from one
- * consolidated buffer.
- *
- * @var malloc_plan::size
- * @brief Accumulated size metrics tracked during the preliminary plan phase.
- *
- * @var malloc_plan::blen
- * @brief Offset cursor tracking bytes sliced away during the active allocation
- * phase.
- *
- * @var malloc_plan::buffer
- * @brief Monolithic root pointer tracking the memory buffer block.
- *
- * @var malloc_plan::mode
- * @brief Current operational phase context.
- */
-struct malloc_plan
-{
-  u32   size;
-  u32   blen;
-  void *buffer;
-
-  enum
-  {
-    MP_PLANNING,
-    MP_ALLOCING
-  } mode;
-};
-
-/**
- * @brief Zero initializes a new execution tracking plan block
- *
- * @return struct malloc_plan Cleanly initialized planning tracking state
- * struct.
- */
-HEADER_FUNC struct malloc_plan
-malloc_plan_create (void)
-{
-  return (struct malloc_plan){
-      .size   = 0,
-      .blen   = 0,
-      .buffer = NULL,
-      .mode   = MP_PLANNING,
-  };
-}
-
-/**
- * @brief Retrieves the write tracking cursor offset location from an active
- * allocation context
- *
- * @param plan Const tracking pointer capturing the active plan state.
- * @return void* Pointer to the current offset write head, or NULL if planning.
- */
-HEADER_FUNC void *
-malloc_plan_head (const struct malloc_plan *plan)
-{
-  switch (plan->mode)
-  {
-    case MP_PLANNING:
-    {
-      return NULL;
-    }
-    case MP_ALLOCING:
-    {
-      return (u8 *)plan->buffer + plan->blen;
-    }
-  }
-  UNREACHABLE (); // LCOV_EXCL_LINE
-}
-
-/**
- * @brief Dual-behavior planning tool or copy executor tracking a target chunk
- * state
- *
- * If in MP_PLANNING mode, this simply increments internal size constraints by
- * len. If in MP_ALLOCING mode, this performs a physical copy of data into the
- * plan buffer.
- *
- * @param plan Tracking state coordinator pointer.
- * @param data Source pointer targeting an unmanaged structure data block.
- * @param len Exact byte distance bounds tracked for copying.
- *
- * @return void* Destination pointer offset where data will reside, or NULL if
- * planning.
- */
-void *malloc_plan_memcpy (struct malloc_plan *plan, const void *data, u32 len);
-
-/**
- * @brief Transitions a plan state from planning constraints over to raw buffer
- * initialization
- *
- * Allocates the single consolidated memory chunk computed during the tracking
- * phase.
- *
- * @param plan Target structural manager context to evaluate and initialize.
- * @param e Tracking parameter to capture standard execution faults.
- *
- * @return err_t Custom error response metrics tracking execution success.
- */
-err_t malloc_plan_alloc (struct malloc_plan *plan, error *e);
 
 /******************************************************************************
  * SECTION: Generic Allocator

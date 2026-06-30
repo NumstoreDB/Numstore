@@ -281,29 +281,6 @@ acquire:
   return SUCCESS;
 }
 
-bool
-gr_trylock (struct gr_lock *l, const enum lock_mode mode)
-{
-  ASSERT (l);
-
-  if (!i_mutex_try_lock (&l->mutex))
-  {
-    return false;
-  }
-
-  if (!is_compatible (l, mode))
-  {
-    i_mutex_unlock (&l->mutex);
-    return false;
-  }
-
-  // acquire
-  l->holder_counts[mode]++;
-  i_mutex_unlock (&l->mutex);
-
-  return true;
-}
-
 void
 gr_unlock (struct gr_lock *l, const enum lock_mode mode)
 {

@@ -17,6 +17,7 @@
 #include "pager.h"
 #include "testing/data_validator.h"
 #include "testing/smfile_test_fixture.h"
+#include "testing/testing.h"
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)

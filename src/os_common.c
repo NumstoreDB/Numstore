@@ -16,6 +16,7 @@
 
 #include "error.h"    // error
 #include "numerics.h" // safe_mul_...
+#include "os.h"
 #include "stdtypes.h" // u32 ...etc
 
 #ifdef TESTING

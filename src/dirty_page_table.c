@@ -14,9 +14,8 @@
 
 #include "dirty_page_table.h"
 
-#include "numerics.h"
+#include "csx_assert.h"
 #include "numstore.h"
-#include "serial.h"
 
 /*
  * Dirty page table entry.
@@ -117,34 +116,6 @@ dpgt_close (struct dpg_table *t)
   slab_alloc_destroy (&t->alloc);
   htable_free (t->t);
   i_free (t);
-}
-
-static void
-i_log_dpge_in_dpgt (struct hnode *node, void *_log_level)
-{
-  const int *log_level = _log_level;
-
-  struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
-
-  latch_lock (&entry->l);
-  i_printf (
-      *log_level,
-      "|pg = %10" PRpgno " rec_lsn = %10" PRlsn "|\n",
-      entry->pg,
-      entry->rec_lsn
-  );
-  latch_unlock (&entry->l);
-}
-
-void
-i_log_dpgt (int log_level, struct dpg_table *dpt)
-{
-  i_log (
-      log_level,
-      "================ Dirty Page Table START ================\n"
-  );
-  htable_foreach (dpt->t, i_log_dpge_in_dpgt, &log_level);
-  i_log (log_level, "================ Dirty Page Table END ================\n");
 }
 
 struct merge_ctx
@@ -304,20 +275,6 @@ dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg)
 }
 
 void
-dpgt_get_expect (lsn *dest, struct dpg_table *t, const pgno pg)
-{
-  DBG_ASSERT (dirty_pg_table, t);
-
-  struct dpg_entry key;
-  dpge_key_init (&key, pg);
-
-  struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
-  ASSERT (node != NULL);
-
-  *dest = container_of (*node, struct dpg_entry, node)->rec_lsn;
-}
-
-void
 dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg)
 {
   DBG_ASSERT (dirty_pg_table, t);
@@ -368,98 +325,6 @@ dpgt_update (struct dpg_table *t, const pgno pg, const lsn new_rec_lsn)
     entry->rec_lsn = new_rec_lsn;
     latch_unlock (&entry->l);
   }
-}
-
-u32
-dpgt_get_serialize_size (const struct dpg_table *t)
-{
-  return htable_size (t->t) * DPGT_SERIAL_UNIT;
-}
-
-struct dpge_serialize_ctx
-{
-  struct serializer s;
-};
-
-static void
-hnode_foreach_serialize (struct hnode *node, void *ctx)
-{
-  struct dpge_serialize_ctx *_ctx = ctx;
-
-  struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
-
-  pgno pg;
-  lsn  rec_lsn;
-
-  latch_lock (&entry->l);
-
-  pg      = entry->pg;
-  rec_lsn = entry->rec_lsn;
-
-  latch_unlock (&entry->l);
-
-  srlizr_write_expect (&_ctx->s, &pg, sizeof (pg));
-  srlizr_write_expect (&_ctx->s, &rec_lsn, sizeof (rec_lsn));
-}
-
-u32
-dpgt_serialize (u8 *dest, const u32 dlen, const struct dpg_table *t)
-{
-  struct dpge_serialize_ctx ctx = {
-      .s = srlizr_create (dest, dlen),
-  };
-
-  htable_foreach (t->t, hnode_foreach_serialize, &ctx);
-
-  return ctx.s.dlen;
-}
-
-struct dpg_table *
-dpgt_deserialize (const u8 *src, const u32 slen, error *e)
-{
-  struct dpg_table *dest = dpgt_open (e);
-  if (dest == NULL)
-  {
-    goto failed;
-  }
-
-  if (slen == 0)
-  {
-    return dest;
-  }
-
-  struct deserializer d = dsrlizr_create (src, slen);
-
-  ASSERT (slen % DPGT_SERIAL_UNIT == 0);
-  const u32 tlen = slen / DPGT_SERIAL_UNIT;
-
-  for (u32 i = 0; i < tlen; ++i)
-  {
-    pgno pg      = 0;
-    lsn  rec_lsn = 0;
-
-    dsrlizr_read_expect (&pg, sizeof (pg), &d);
-    dsrlizr_read_expect (&rec_lsn, sizeof (rec_lsn), &d);
-
-    if (dpgt_add (dest, pg, rec_lsn, e))
-    {
-      goto dest_failed;
-    }
-  }
-
-  return dest;
-
-dest_failed:
-  dpgt_close (dest);
-failed:
-  return NULL;
-}
-
-u32
-dpgtlen_from_serialized (const u32 slen)
-{
-  ASSERT (slen % DPGT_SERIAL_UNIT == 0);
-  return slen / DPGT_SERIAL_UNIT;
 }
 
 struct dpgt_eq_ctx
@@ -528,27 +393,6 @@ dpgt_equal (struct dpg_table *left, struct dpg_table *right)
 theend:
 
   return ret;
-}
-
-err_t
-dpgt_rand_populate (struct dpg_table *t, error *e)
-{
-  const u32 len = htable_size (t->t);
-
-  pgno pg = 0;
-  lsn  l  = 0;
-
-  for (u32 i = 0; i < 100 - len;
-       ++i, pg += randu32r (1, 100), l += randu32r (1, 100))
-  {
-    if (dpgt_add (t, pg, l, e))
-    {
-      goto theend;
-    }
-  }
-
-theend:
-  return error_trace (e);
 }
 
 void

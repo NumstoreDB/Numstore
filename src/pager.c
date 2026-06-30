@@ -34,6 +34,7 @@
 
 #ifdef TESTING
 #  include "testing/page_fixture.h"
+#  include "testing/testing.h"
 #endif
 
 /******************************************************************************
