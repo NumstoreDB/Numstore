@@ -1708,12 +1708,14 @@ allocator_free (struct allocator *alloc)
     case AT_CHUNK_ALLOCATOR:
     {
       chunk_alloc_free_all (&alloc->calloc);
+      return;
     }
     default:
     {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
+  UNREACHABLE ();
 }
 
 /******************************************************************************
