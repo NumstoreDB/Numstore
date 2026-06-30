@@ -106,6 +106,7 @@ TEST (nsdb_execute)
   test_assert_equal (nsdb_var_len (var), 0);
   nsdb_var_free (var);
 
+  nsdb_close (db);
   ALLOC_CLOSE (alloc);
 }
 #endif
