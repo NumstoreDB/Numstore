@@ -673,7 +673,7 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
   if (nexpected == 0)
   {
     test_assert (result != SUCCESS);
-    return;
+    goto theend;
   }
 
   // Should succeed
@@ -701,6 +701,7 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
     test_assert (token_equal (left, right));
   }
 
+theend:
   ALLOC_CLOSE (alloc);
 }
 
