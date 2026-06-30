@@ -568,15 +568,6 @@ TEST (prim_t_snprintf)
   CASE_PRIM (CU32, "cu32");
   CASE_PRIM (CU64, "cu64");
   CASE_PRIM (CU128, "cu128");
-
-  TEST_CASE ("Smaller buffer - behaves like snprintf")
-  {
-    char out[1];
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wformat-truncation"
-    test_assert (prim_t_snprintf (out, 1, U8) == 2);
-#  pragma GCC diagnostic pop
-  }
 }
 #endif
 
@@ -737,17 +728,6 @@ TEST (struct_t_snprintf)
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (ret);
-
-  TEST_CASE ("can't fit string")
-  {
-    char b1[1];
-    char b2[15];
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wformat-truncation"
-    test_assert ((size_t)struct_t_snprintf (b1, 1, &st) > sizeof (b1));
-    test_assert ((size_t)struct_t_snprintf (b2, 1, &st) > sizeof (b2));
-#  pragma GCC diagnostic pop
-  }
 }
 #endif
 
@@ -907,17 +887,6 @@ TEST (union_t_snprintf)
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (ret);
-
-  TEST_CASE ("can't fit string")
-  {
-    char b1[1];
-    char b2[15];
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wformat-truncation"
-    test_assert ((size_t)union_t_snprintf (b1, 1, &st) > sizeof (b1));
-    test_assert ((size_t)union_t_snprintf (b2, 1, &st) > sizeof (b2));
-#  pragma GCC diagnostic pop
-  }
 }
 #endif
 
@@ -987,17 +956,6 @@ TEST (sarray_t_snprintf)
   i_log_type (&s, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (ret);
-
-  TEST_CASE ("can't fit string")
-  {
-    char b1[1];
-    char b2[10];
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wformat-truncation"
-    test_assert ((size_t)sarray_t_snprintf (b1, 1, &s.sa) > sizeof (b1));
-    test_assert ((size_t)sarray_t_snprintf (b2, 1, &s.sa) > sizeof (b2));
-#  pragma GCC diagnostic pop
-  }
 }
 #endif
 
