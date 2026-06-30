@@ -28,8 +28,6 @@
 #include "concurrency.h" // latch / grlock
 #include "error.h"       // error
 #include "htable.h"      // htable
-#include "numerics.h"    // randu64
-#include "numstore.h"    // pgno ...etc
 #include "platform.h"    // HEADER_FUNC/PLATFORM_WINDOWS ...etc
 #include "stdtypes.h"    // u32 ...etc
 
@@ -47,26 +45,7 @@ struct lt_lock
   enum lt_lock_type
   {
     LOCK_DB, // The whole database
-
-    LOCK_VHP,     // The variable hash page
-    LOCK_VHP_POS, // An individual spot in the variable hash page
-
-    // Individual Variables
-    LOCK_VAR,        // A variable
-    LOCK_VAR_NEXT,   // The next pointer of a variable
-    LOCK_VAR_ROOT,   // The variable root of a variable
-    LOCK_VAR_NBYTES, // The number of bytes in a variable
-
-    // Individual rptrees
-    LOCK_RPTREE, // An entire rptree
   } type;
-
-  union lt_lock_data {
-    pgno vhp_pos;     // LOCK_VHP_POS,
-    pgno var_root;    // LOCK_VAR, LOCK_VAR_NEXT, LOCK_VAR_ROOT,
-                      // LOCK_VAR_NBYTES,
-    pgno rptree_root; // LOCK_RPTREE,
-  } data;
 };
 
 /**
@@ -90,14 +69,6 @@ u32 lt_lock_key (struct lt_lock lock);
 bool lt_lock_equal (const struct lt_lock left, const struct lt_lock right);
 
 /**
- * @brief Prints a lt_lock cleanly
- *
- * @param log_level What log level to print at
- * @param l The lock to print
- */
-void i_print_lt_lock (int log_level, struct lt_lock l);
-
-/**
  * @brief Gets the parent lt_lock in heirarchial locking
  *
  * lt_locks are heirarchial locks - lock types have parents
@@ -117,9 +88,9 @@ bool get_parent (struct lt_lock *parent, struct lt_lock lock);
  * @return A new lt_lock
  */
 HEADER_FUNC struct lt_lock
-lock_create (const enum lt_lock_type type, const union lt_lock_data data)
+lock_create (const enum lt_lock_type type)
 {
-  return (struct lt_lock){.type = type, .data = data};
+  return (struct lt_lock){.type = type};
 }
 
 /**
@@ -130,129 +101,8 @@ lock_create (const enum lt_lock_type type, const union lt_lock_data data)
 HEADER_FUNC struct lt_lock
 lock_db (void)
 {
-  return lock_create (LOCK_DB, (union lt_lock_data){0});
+  return lock_create (LOCK_DB);
 }
-
-/**
- * @brief Shorthand for variable hash page
- *
- * @return A variable hash page lock
- */
-HEADER_FUNC struct lt_lock
-lock_vhp (void)
-{
-  return lock_create (LOCK_VHP, (union lt_lock_data){0});
-}
-
-/**
- * @brief Shorthand for variable hash page position page
- *
- * @param vhp_pos The position within the variable hash page
- * @return The variable hash page
- */
-HEADER_FUNC struct lt_lock
-lock_vhp_pos (const pgno vhp_pos)
-{
-  return lock_create (LOCK_VHP_POS, (union lt_lock_data){.vhp_pos = vhp_pos});
-}
-
-/**
- * @brief Shorthand for locking a variable
- *
- * @param var_root The root of the variable (careful, not the rpt_root)
- * @return The variable to lock
- */
-HEADER_FUNC struct lt_lock
-lock_var (const pgno var_root)
-{
-  return lock_create (LOCK_VAR, (union lt_lock_data){.var_root = var_root});
-}
-
-/**
- * @brief Shorthand for the next page of a variable
- *
- * @param var_root The root of the variable
- * @return The lock for the next pointer
- */
-HEADER_FUNC struct lt_lock
-lock_var_next (const pgno var_root)
-{
-  return lock_create (
-      LOCK_VAR_NEXT,
-      (union lt_lock_data){.var_root = var_root}
-  );
-}
-
-/**
- * @brief Shorthand for the root of a variable
- *
- * @param var_root The root of the variable
- * @return The lock for the rpt root of the variable
- */
-HEADER_FUNC struct lt_lock
-lock_var_root (const pgno var_root)
-{
-  return lock_create (
-      LOCK_VAR_ROOT,
-      (union lt_lock_data){.var_root = var_root}
-  );
-}
-
-/**
- * @brief Shorthand for the bytes value for a variable
- *
- * @param var_root The root of the variable
- * @return The lock for the nbytes of the variable
- */
-HEADER_FUNC struct lt_lock
-lock_var_nbytes (const pgno var_root)
-{
-  return lock_create (
-      LOCK_VAR_NBYTES,
-      (union lt_lock_data){.var_root = var_root}
-  );
-}
-
-/**
- * @brief Shorthand for locking an entire rptree root
- *
- * @param rptree_root The root of the tree
- * @return The lock for the root of the variable
- */
-HEADER_FUNC struct lt_lock
-lock_rptree (const pgno rptree_root)
-{
-  return lock_create (
-      LOCK_RPTREE,
-      (union lt_lock_data){.rptree_root = rptree_root}
-  );
-}
-
-#define LT_LOCK_FOR_EACH(X) \
-  X (LOCK_DB)               \
-  X (LOCK_VHP)              \
-  X (LOCK_VHP_POS)          \
-  X (LOCK_VAR)              \
-  X (LOCK_VAR_NEXT)         \
-  X (LOCK_VAR_ROOT)         \
-  X (LOCK_VAR_NBYTES)       \
-  X (LOCK_RPTREE)
-
-#define LT_LOCK_FOR_EACH_RANDOM(X)                           \
-  X (LOCK_DB, lock_db ())                                    \
-  X (LOCK_VHP, lock_vhp ())                                  \
-  X (LOCK_VHP_POS, lock_vhp_pos (randu64r (0, 10000)))       \
-  X (LOCK_VAR, lock_var (randu64r (0, 10000)))               \
-  X (LOCK_VAR_NEXT, lock_var_next (randu64r (0, 10000)))     \
-  X (LOCK_VAR_ROOT, lock_var_root (randu64r (0, 10000)))     \
-  X (LOCK_VAR_NBYTES, lock_var_nbytes (randu64r (0, 10000))) \
-  X (LOCK_RPTREE, lock_rptree (randu64r (0, 10000)))
-
-/**
- * @brief Generate a random lock
- * @return a random lock
- */
-struct lt_lock random_lt_lock (void);
 
 /******************************************************************************
  * SECTION: Lock Table
@@ -290,7 +140,5 @@ err_t lockt_unlock (
 );
 
 void lockt_unlock_tx (struct lockt *t, struct txn *tx);
-
-void i_log_lockt (int log_level, const struct lockt *t);
 
 #endif // LOCK_TABLE_H

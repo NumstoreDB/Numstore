@@ -14,6 +14,8 @@
 
 #include "numerics.h"
 
+#include <string.h>
+
 #include "csx_assert.h"
 
 #ifdef TESTING
@@ -154,91 +156,10 @@ TEST (checksum_execute_incremental)
 
 #include <stdlib.h>
 
-#ifdef _MSC_VER
-#  include "intrin.h"
-#endif
-
 u8
 randu8 (void)
 {
   return (u8)rand ();
-}
-
-i8
-randi8 (void)
-{
-  return randi8r (I8_MIN, I8_MAX);
-}
-
-u8
-randu8r (const u8 lower, const u8 upper)
-{
-  return (u8)randu32r ((u32)lower, (u32)upper);
-}
-
-u8
-randu8e (const u8 lower, const u8 upper)
-{
-  ASSERT (upper > lower);
-  return randu8r (lower, upper - 1);
-}
-
-i8
-randi8r (const i8 lower, const i8 upper)
-{
-  return (i8)randi32r ((i32)lower, (i32)upper);
-}
-
-i8
-randi8e (const i8 lower, const i8 upper)
-{
-  ASSERT (upper > lower);
-  return randi8r (lower, upper - 1);
-}
-
-u16
-randu16 (void)
-{
-  return (u16)randu32 ();
-}
-
-i16
-randi16 (void)
-{
-  return randi16r (I16_MIN, I16_MAX);
-}
-
-u16
-randu16r (const u16 lower, const u16 upper)
-{
-  return (u16)randu32r ((u32)lower, (u32)upper);
-}
-
-u16
-randu16e (const u16 lower, const u16 upper)
-{
-  ASSERT (upper > lower);
-  return randu16r (lower, upper - 1);
-}
-
-i16
-randi16r (const i16 lower, const i16 upper)
-{
-  ASSERT (upper >= lower);
-
-  if (upper == lower)
-  {
-    return lower;
-  }
-
-  return (i16)randi32r ((i32)lower, (i32)upper);
-}
-
-i16
-randi16e (const i16 lower, const i16 upper)
-{
-  ASSERT (upper > lower);
-  return randi16r (lower, upper - 1);
 }
 
 u32
@@ -257,12 +178,6 @@ TEST (randu32)
   }
 }
 #endif
-
-i32
-randi32 (void)
-{
-  return randi32r (I32_MIN, I32_MAX);
-}
 
 u32
 randu32r (const u32 lower, const u32 upper)
@@ -339,20 +254,6 @@ randi32r (const i32 lower, const i32 upper)
   return (i32)((u32)lower + (u32)randu64r (0, range - 1));
 }
 
-u32
-randu32e (const u32 lower, const u32 upper)
-{
-  ASSERT (upper > lower);
-  return randu32r (lower, upper - 1);
-}
-
-i32
-randi32e (const i32 lower, const i32 upper)
-{
-  ASSERT (upper > lower);
-  return randi32r (lower, upper - 1);
-}
-
 #ifdef TESTING
 TEST (randi32r)
 {
@@ -397,12 +298,6 @@ randu64 (void)
   }
   r = r * base + (u64)rand ();
   return r;
-}
-
-i64
-randi64 (void)
-{
-  return randi64r (I64_MIN, I64_MAX);
 }
 
 u64
@@ -674,48 +569,6 @@ TEST (randf)
 }
 #endif
 
-err_t
-rand_str (
-    struct string    *dest,
-    struct allocator *alloc,
-    const u32         minlen,
-    const u32         maxlen,
-    error            *e
-)
-{
-  ASSERT (dest);
-  ASSERT (maxlen >= minlen);
-
-  const u32 len  = randu32r (minlen, maxlen);
-  char     *data = allocate (alloc, len, sizeof *data, e);
-  if (!data)
-  {
-    return error_trace (e);
-  }
-
-  for (u32 i = 0; i < len; ++i)
-  {
-    const int r = randu32r (0, 61);
-    if (r < 10)
-    {
-      data[i] = '0' + r;
-    }
-    else if (r < 36)
-    {
-      data[i] = 'A' + (r - 10);
-    }
-    else
-    {
-      data[i] = 'a' + (r - 36);
-    }
-  }
-
-  dest->len  = (u16)len;
-  dest->data = data;
-
-  return SUCCESS;
-}
-
 void
 rand_bytes (void *dest, const u32 len)
 {
@@ -728,21 +581,6 @@ rand_bytes (void *dest, const u32 len)
     p[i] = (u8)(rand () & 0xFF);
   }
 }
-
-void
-shuffle_u32 (u32 *array, const u32 len)
-{
-  for (int i = (int)len - 1; i > 0; i--)
-  {
-    const u32 j = randu32r (0, (u32)i);
-
-    const u32 temp = array[i];
-    array[i]       = array[j];
-    array[j]       = temp;
-  }
-}
-
-#include <string.h>
 
 err_t
 parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e)

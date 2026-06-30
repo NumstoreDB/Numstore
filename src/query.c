@@ -18,61 +18,6 @@
 #include "serial.h"
 #include "types.h"
 
-void
-i_log_query (int log_level, struct query *q)
-{
-  switch (q->type)
-  {
-    case QT_READ:
-    {
-      i_log (log_level, "READ [%.*s]\n", strfmt (&q->read.name));
-      return;
-    }
-    case QT_WRITE:
-    {
-      i_log (log_level, "WRITE [%.*s]\n", strfmt (&q->write.name));
-      return;
-    }
-    case QT_REMOVE:
-    {
-      i_log (log_level, "REMOVE [%.*s]\n", strfmt (&q->remove.name));
-      return;
-    }
-    case QT_INSERT:
-    {
-      i_log (log_level, "INSERT [%.*s]\n", strfmt (&q->insert.name));
-      return;
-    }
-
-    case QT_CREATE:
-    {
-      i_log (log_level, "CREATE [%.*s]\n", strfmt (&q->create.name));
-      return;
-    }
-    case QT_DELETE:
-    {
-      i_log (log_level, "DELETE [%.*s]\n", strfmt (&q->delete.name));
-      return;
-    }
-    case QT_GET:
-    {
-      i_log (log_level, "GET [%.*s]\n", strfmt (&q->get.name));
-      return;
-    }
-
-    case QT_EXIT:
-    {
-      i_log (log_level, "EXIT\n");
-      return;
-    }
-    case QT_HELP:
-    {
-      i_log (log_level, "HELP\n");
-      return;
-    }
-  }
-}
-
 bool
 query_equal (const struct query *left, const struct query *right)
 {

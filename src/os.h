@@ -173,18 +173,6 @@ struct i_file_vtable
       u64           offset,
       error        *e
   );
-  i64 (*i_readv_some) (
-      const i_file       *fp,
-      const struct bytes *arrs,
-      int                 iovcnt,
-      error              *e
-  );
-  i64 (*i_readv_all) (
-      const i_file *fp,
-      struct bytes *arrs,
-      int           iovcnt,
-      error        *e
-  );
 
   ////////////////////////////////////////////////////////////
   // Write
@@ -376,17 +364,6 @@ i_writev_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e)
 {
   return fp->fvtable->i_writev_all (fp, arrs, iovcnt, e);
 }
-HEADER_FUNC i64
-i_readv_some (const i_file *fp, const struct bytes *arrs, int iovcnt, error *e)
-{
-  return fp->fvtable->i_readv_some (fp, arrs, iovcnt, e);
-}
-HEADER_FUNC i64
-i_readv_all (const i_file *fp, struct bytes *arrs, int iovcnt, error *e)
-{
-  return fp->fvtable->i_readv_all (fp, arrs, iovcnt, e);
-}
-
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Basic Read / Write
  *----------------------------------------------------------------------------*/
@@ -596,7 +573,6 @@ struct i_threading
   err_t (*i_mutex_create) (i_threading *t, i_mutex *m, error *e);
   void (*i_mutex_free) (i_threading *t, i_mutex *m);
   void (*i_mutex_lock) (i_threading *t, i_mutex *m);
-  bool (*i_mutex_try_lock) (i_threading *t, i_mutex *m);
   void (*i_mutex_unlock) (i_threading *t, i_mutex *m);
 
   err_t (*i_cond_create) (i_threading *t, i_cond *c, error *e);
@@ -648,11 +624,6 @@ HEADER_FUNC void
 i_mutex_lock (i_mutex *m)
 {
   default_threading.i_mutex_lock (&default_threading, m);
-}
-HEADER_FUNC bool
-i_mutex_try_lock (i_mutex *m)
-{
-  return default_threading.i_mutex_try_lock (&default_threading, m);
 }
 HEADER_FUNC void
 i_mutex_unlock (i_mutex *m)

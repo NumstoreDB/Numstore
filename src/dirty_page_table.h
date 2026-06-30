@@ -42,9 +42,7 @@ struct dpg_table
 };
 
 struct dpg_table *dpgt_open (error *e);
-struct dpg_table *dpgt_deserialize (const u8 *src, u32 slen, error *e);
 void              dpgt_close (struct dpg_table *t);
-void              i_log_dpgt (int log_level, struct dpg_table *dpt);
 err_t dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e);
 lsn   dpgt_min_rec_lsn (struct dpg_table *d);
 u32   dpgt_get_size (const struct dpg_table *d);
@@ -52,15 +50,10 @@ bool  dpgt_exists (const struct dpg_table *t, pgno pg);
 err_t dpgt_add (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e);
 err_t dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e);
 bool  dpgt_get (lsn *dest, struct dpg_table *t, pgno pg);
-void  dpgt_get_expect (lsn *dest, struct dpg_table *t, pgno pg);
 void  dpgt_remove (bool *exists, struct dpg_table *t, pgno pg);
 void  dpgt_remove_expect (struct dpg_table *t, pgno pg);
 void  dpgt_update (struct dpg_table *d, pgno pg, lsn new_rec_lsn);
-u32   dpgt_get_serialize_size (const struct dpg_table *t);
-u32   dpgt_serialize (u8 *dest, u32 dlen, const struct dpg_table *t);
-u32   dpgtlen_from_serialized (u32 slen);
 bool  dpgt_equal (struct dpg_table *left, struct dpg_table *right);
-err_t dpgt_rand_populate (struct dpg_table *t, error *e);
 void  dpgt_crash (struct dpg_table *t);
 
 void dpgt_foreach (

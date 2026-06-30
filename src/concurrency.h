@@ -86,7 +86,6 @@ err_t gr_lock_init (struct gr_lock *l, error *e);
 void gr_lock_destroy (struct gr_lock *l);
 
 err_t gr_lock (struct gr_lock *l, enum lock_mode mode, error *e);
-bool  gr_trylock (struct gr_lock *l, enum lock_mode mode);
 void  gr_unlock (struct gr_lock *l, enum lock_mode mode);
 
 const char    *gr_lock_mode_name (enum lock_mode mode);

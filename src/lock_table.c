@@ -14,7 +14,6 @@
 
 #include "lock_table.h"
 
-#include "numerics.h"
 #include "txn_table.h"
 
 #ifdef TESTING
@@ -29,7 +28,7 @@ u32
 lt_lock_key (const struct lt_lock lock)
 {
   // The containing buffer
-  char     hcode[sizeof (union lt_lock_data) + sizeof (u8)];
+  char     hcode[sizeof (u8)];
   u32      hcodelen = 0;
   const u8 _type    = lock.type;
 
@@ -39,37 +38,7 @@ lt_lock_key (const struct lt_lock lock)
   switch (lock.type)
   {
     case LOCK_DB:
-    case LOCK_VHP:
     {
-      break;
-    }
-    case LOCK_VHP_POS:
-    {
-      memcpy (&hcode[hcodelen], &lock.data.vhp_pos, sizeof (lock.data.vhp_pos));
-      hcodelen += sizeof (lock.data.vhp_pos);
-      break;
-    }
-    case LOCK_VAR:
-    case LOCK_VAR_NEXT:
-    case LOCK_VAR_ROOT:
-    case LOCK_VAR_NBYTES:
-    {
-      memcpy (
-          &hcode[hcodelen],
-          &lock.data.var_root,
-          sizeof (lock.data.var_root)
-      );
-      hcodelen += sizeof (lock.data.var_root);
-      break;
-    }
-    case LOCK_RPTREE:
-    {
-      memcpy (
-          &hcode[hcodelen],
-          &lock.data.rptree_root,
-          sizeof (lock.data.rptree_root)
-      );
-      hcodelen += sizeof (lock.data.rptree_root);
       break;
     }
   }
@@ -96,74 +65,6 @@ lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
     {
       return true;
     }
-    case LOCK_VHP:
-    {
-      return true;
-    }
-    case LOCK_VHP_POS:
-    {
-      return left.data.vhp_pos == right.data.vhp_pos;
-    }
-    case LOCK_VAR:
-    case LOCK_VAR_NEXT:
-    case LOCK_VAR_ROOT:
-    case LOCK_VAR_NBYTES:
-    {
-      return left.data.var_root == right.data.var_root;
-    }
-    case LOCK_RPTREE:
-    {
-      return left.data.rptree_root == right.data.rptree_root;
-    }
-  }
-  UNREACHABLE (); // LCOV_EXCL_LINE
-}
-
-void
-i_print_lt_lock (const int log_level, const struct lt_lock l)
-{
-  switch (l.type)
-  {
-    case LOCK_DB:
-    {
-      i_printf (log_level, "LOCK_DB\n");
-      return;
-    }
-    case LOCK_VHP:
-    {
-      i_printf (log_level, "LOCK_VHP\n");
-      return;
-    }
-    case LOCK_VHP_POS:
-    {
-      i_printf (log_level, "LOCK_VHP_POS(%" PRpgno ")\n", l.data.vhp_pos);
-      return;
-    }
-    case LOCK_VAR:
-    {
-      i_printf (log_level, "LOCK_VAR(%" PRpgno ")\n", l.data.var_root);
-      return;
-    }
-    case LOCK_VAR_NEXT:
-    {
-      i_printf (log_level, "LOCK_VAR_NEXT(%" PRpgno ")\n", l.data.var_root);
-      return;
-    }
-    case LOCK_VAR_ROOT:
-    {
-      i_printf (log_level, "LOCK_VAR_ROOT(%" PRpgno ")\n", l.data.var_root);
-      return;
-    }
-    case LOCK_VAR_NBYTES:
-    {
-      i_printf (log_level, "LOCK_VAR_NBYTES(%" PRpgno ")\n", l.data.var_root);
-      return;
-    }
-    case LOCK_RPTREE:
-    {
-      i_printf (log_level, "LOCK_RPTREE(%" PRpgno ")\n", l.data.rptree_root);
-      return;
-    }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
@@ -177,68 +78,7 @@ get_parent (struct lt_lock *parent, const struct lt_lock lock)
     {
       return false;
     }
-    case LOCK_VHP:
-    {
-      parent->type = LOCK_DB;
-      parent->data = (union lt_lock_data){0};
-      return true;
-    }
-    case LOCK_VHP_POS:
-    {
-      parent->type = LOCK_VHP;
-      parent->data = (union lt_lock_data){0};
-      return true;
-    }
-    case LOCK_VAR:
-    {
-      parent->type = LOCK_DB;
-      parent->data = (union lt_lock_data){0};
-      return true;
-    }
-    case LOCK_VAR_NEXT:
-    {
-      parent->type = LOCK_VAR;
-      parent->data = (union lt_lock_data){.var_root = lock.data.var_root};
-      return true;
-    }
-    case LOCK_VAR_ROOT:
-    {
-      parent->type = LOCK_VAR;
-      parent->data = (union lt_lock_data){.var_root = lock.data.var_root};
-      return true;
-    }
-    case LOCK_VAR_NBYTES:
-    {
-      parent->type = LOCK_VAR;
-      parent->data = (union lt_lock_data){.var_root = lock.data.var_root};
-      return true;
-    }
-    case LOCK_RPTREE:
-    {
-      parent->type = LOCK_DB;
-      parent->data = (union lt_lock_data){0};
-      return true;
-    }
   }
-
-  UNREACHABLE (); // LCOV_EXCL_LINE
-}
-
-struct lt_lock
-random_lt_lock (void)
-{
-#define func(type, r) \
-  case type:          \
-  {                   \
-    return r;         \
-  }
-
-  switch ((enum lt_lock_type)randu32r (0, 10))
-  {
-    LT_LOCK_FOR_EACH_RANDOM (func)
-  }
-
-#undef func
 
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
@@ -523,93 +363,3 @@ lockt_unlock_tx (struct lockt *t, struct txn *tx)
   latch_unlock (&t->l);
   txn_close (tx);
 }
-
-static void
-i_log_lockt_frame_hnode (struct hnode *node, void *ctx)
-{
-  const int                *log_level = ctx;
-  const struct lockt_frame *frame =
-      container_of (node, struct lockt_frame, node);
-  i_print_lt_lock (*log_level, frame->key);
-}
-
-void
-i_log_lockt (int log_level, const struct lockt *t)
-{
-  i_log (log_level, "================== LOCK TABLE START ==================\n");
-  htable_foreach (t->table, i_log_lockt_frame_hnode, &log_level);
-  i_log (log_level, "================== LOCK TABLE END ==================\n");
-}
-
-#ifdef TESTING
-
-/**
-struct test_case
-{
-  struct lockt  *lt;
-  int            counter;
-  struct lt_lock key1;
-  struct pager  *p;
-};
-
-static void *
-writer_thread_locks_type1_x (void *args)
-{
-  struct test_case *c = args;
-  error             e = error_create ();
-
-  for (int i = 0; i < 100; i++)
-  {
-    struct txn tx;
-    if (unlikely (pgr_begin_txn (&tx, c->p, &e) < SUCCESS)) { panic ("Test
-Failed"); }
-
-    if (unlikely (lockt_lock (c->lt, c->key1, LM_X, &tx, &e) < SUCCESS)) { panic
-("Test Failed"); }
-
-    {
-      int counter = c->counter;
-      counter++;
-      c->counter = counter;
-    }
-
-    if (unlikely (pgr_commit (c->p, &tx, &e) < SUCCESS)) { panic ("TODO"); }
-  }
-
-  return NULL;
-}
-*/
-
-/**
-TEST_DISABLE (lock_table_exclusivity)
-{
-  error e = error_create ();
-
-  // Why doesnt this fail?
-  struct pager    *p = pgr_open ("testdb", &e);
-  struct test_case c = {
-      .lt      = p->lt,
-      .counter = 0,
-      .key1 =
-          {
-              .type = LOCK_DB,
-              .data = {0},
-          },
-      .p = p,
-  };
-
-  i_thread threads[20];
-  for (u32 i = 0; i < arrlen (threads); ++i)
-  {
-    i_thread_create (&threads[i], writer_thread_locks_type1_x, &c, &e);
-  }
-  for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i], &e);
-}
-
-  test_assert_int_equal (c.counter, 100 * arrlen (threads));
-
-  pgr_close (p, &e);
-}
-*/
-
-#endif

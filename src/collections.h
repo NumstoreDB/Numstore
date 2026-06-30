@@ -17,10 +17,11 @@
 
 #include "alloc.h"       // slab alloc
 #include "concurrency.h" // latch
-#include "error.h"       // err_t
-#include "os.h"          // i_file
-#include "platform.h"    // HEADER_FUNC
-#include "stdtypes.h"    // u32 ...etc
+#include "csx_assert.h"
+#include "error.h"    // err_t
+#include "os.h"       // i_file
+#include "platform.h" // HEADER_FUNC
+#include "stdtypes.h" // u32 ...etc
 
 /******************************************************************************
  * SECTION: Linked List

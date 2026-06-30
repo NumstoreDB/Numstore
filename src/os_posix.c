@@ -34,7 +34,6 @@
 #  include "csx_assert.h"
 #  include "error.h" // error
 #  include "os.h"
-#  include "serial.h"
 
 /******************************************************************************
  * SECTION: File System
@@ -316,103 +315,6 @@ posix_writev_all (
 
   ASSERT (nwritten == total);
   return SUCCESS;
-}
-
-static i64
-posix_readv_some (
-    const i_file       *fp,
-    const struct bytes *iov,
-    const int           iovcnt,
-    error              *e
-)
-{
-  DBG_ASSERT (i_file, fp);
-  ASSERT (iov);
-  ASSERT (iovcnt > 0 && iovcnt <= 2);
-
-  struct iovec sys_iov[2];
-  for (int i = 0; i < iovcnt; i++)
-  {
-    sys_iov[i].iov_base = iov[i].head;
-    sys_iov[i].iov_len  = iov[i].len;
-  }
-
-  const ssize_t ret = readv (fp->fd, sys_iov, iovcnt);
-
-  if (unlikely (ret < 0 && errno != EINTR))
-  {
-    return error_causef (e, ERR_IO, "readv: %s", strerror (errno));
-  }
-
-  return (i64)ret;
-}
-
-static i64
-posix_readv_all (
-    const i_file *fp,
-    struct bytes *iov,
-    const int     iovcnt,
-    error        *e
-)
-{
-  DBG_ASSERT (i_file, fp);
-  ASSERT (iov);
-  ASSERT (iovcnt > 0 && iovcnt <= 2);
-
-  u64 total = 0;
-  for (int i = 0; i < iovcnt; i++)
-  {
-    total += iov[i].len;
-  }
-  ASSERT (total > 0);
-
-  u64           nread     = 0;
-  struct bytes *cur       = iov;
-  int           remaining = iovcnt;
-
-  while (nread < total)
-  {
-    struct iovec sys_iov[2];
-    for (int i = 0; i < remaining; i++)
-    {
-      sys_iov[i].iov_base = cur[i].head;
-      sys_iov[i].iov_len  = cur[i].len;
-    }
-
-    const ssize_t ret = readv (fp->fd, sys_iov, remaining);
-    if (unlikely (ret < 0 && errno != EINTR))
-    {
-      return error_causef (e, ERR_IO, "readv: %s", strerror (errno));
-    }
-    if (ret == 0)
-    {
-      break;
-    }
-    if (ret < 0)
-    {
-      continue; // EINTR, already handled above — defensive
-    }
-
-    nread += (u64)ret;
-    u64 skip = (u64)ret;
-    while (skip > 0 && remaining > 0)
-    {
-      if (skip >= cur->len)
-      {
-        skip -= cur->len;
-        cur++;
-        remaining--;
-      }
-      else
-      {
-        cur->head = (u8 *)cur->head + skip;
-        cur->len -= skip;
-        skip = 0;
-      }
-    }
-  }
-
-  return (i64)nread;
 }
 
 ////////////////////////////////////////////////////////////
@@ -926,8 +828,6 @@ struct i_file_vtable default_fvtable = {
     .i_read_all    = posix_read_all,
     .i_pread_some  = posix_pread_some,
     .i_pread_all   = posix_pread_all,
-    .i_readv_some  = posix_readv_some,
-    .i_readv_all   = posix_readv_all,
     .i_write_some  = posix_write_some,
     .i_write_all   = posix_write_all,
     .i_pwrite_some = posix_pwrite_some,
@@ -1403,58 +1303,6 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
   }
 }
 
-static bool
-posix_mutex_try_lock (i_threading *t, i_mutex *m)
-{
-  (void)t;
-  ASSERT (m);
-
-  errno = 0;
-  if (pthread_mutex_trylock (&m->m))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
-        i_log_error (
-            "mutex_lock: "
-            "invalid: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
-      case EAGAIN:
-      {
-        i_log_error (
-            "mutex_lock: recursive "
-            "lock: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
-      case EDEADLK:
-      {
-        i_log_error (
-            "mutex_lock: "
-            "deadlock: %s\n",
-            strerror (errno)
-        );
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
-      case EBUSY:
-      {
-        return false;
-      }
-      default:
-      {
-        i_log_error ("mutex_lock: %s\n", strerror (errno));
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
-    }
-  }
-  return true;
-}
-
 static void
 posix_mutex_unlock (i_threading *t, i_mutex *m)
 {
@@ -1632,11 +1480,10 @@ struct i_threading default_threading = {
     .i_thread_create = posix_thread_create,
     .i_thread_join   = posix_thread_join,
 
-    .i_mutex_create   = posix_mutex_create,
-    .i_mutex_free     = posix_mutex_free,
-    .i_mutex_lock     = posix_mutex_lock,
-    .i_mutex_try_lock = posix_mutex_try_lock,
-    .i_mutex_unlock   = posix_mutex_unlock,
+    .i_mutex_create = posix_mutex_create,
+    .i_mutex_free   = posix_mutex_free,
+    .i_mutex_lock   = posix_mutex_lock,
+    .i_mutex_unlock = posix_mutex_unlock,
 
     .i_cond_create     = posix_cond_create,
     .i_cond_free       = posix_cond_free,

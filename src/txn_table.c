@@ -289,7 +289,6 @@ i_log_txn (const int log_level, struct txn *tx)
   while (curr)
   {
     i_printf (log_level, "     |%3s| ", gr_lock_mode_name (curr->mode));
-    i_print_lt_lock (log_level, curr->lock);
     curr = curr->next;
   }
 
@@ -319,9 +318,6 @@ txn_newlock_test (void *_tx)
       goto failed;                                                           \
     }
 
-  LT_LOCK_FOR_EACH_RANDOM (MAYBE_ADD_LOCK);
-
-failed:
   return NULL;
 }
 
@@ -1783,74 +1779,6 @@ TEST (txnt_equal_ignore_state)
   }
 }
 #endif
-
-err_t
-txnt_rand_populate (struct txn_table *t, struct allocator *alloc, error *e)
-{
-  latch_lock (&t->l);
-  const u32 len = htable_size (t->t);
-
-  txid tid = 0;
-
-  for (u32 i = 0; i < 100 - len; ++i, tid += randu32r (0, 100))
-  {
-    struct txn *tx = allocate (alloc, 1, sizeof *tx, NULL);
-    if (tx == NULL)
-    {
-      goto theend;
-    }
-
-    txn_init (
-        tx,
-        tid,
-        (struct txn_data){
-            .last_lsn      = randu32r (0, 1000),
-            .undo_next_lsn = randu32r (0, 1000),
-            .state         = TX_RUNNING,
-        }
-    );
-
-    htable_insert (t->t, &tx->node);
-  }
-
-theend:
-  latch_unlock (&t->l);
-  return error_trace (e);
-}
-
-err_t
-txnt_determ_populate (struct txn_table *t, struct allocator *alloc, error *e)
-{
-  latch_lock (&t->l);
-  const u32 len = htable_size (t->t);
-
-  txid tid = 0;
-
-  for (u32 i = 0; i < 1000 - len; ++i, tid++)
-  {
-    struct txn *tx = allocate (alloc, 1, sizeof *tx, NULL);
-    if (tx == NULL)
-    {
-      goto theend;
-    }
-
-    txn_init (
-        tx,
-        tid,
-        (struct txn_data){
-            .last_lsn      = i,
-            .undo_next_lsn = i,
-            .state         = TX_RUNNING,
-        }
-    );
-
-    htable_insert (t->t, &tx->node);
-  }
-
-theend:
-  latch_unlock (&t->l);
-  return error_trace (e);
-}
 
 void
 txnt_crash (struct txn_table *t)

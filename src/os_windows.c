@@ -339,89 +339,6 @@ win32_writev_all (
   return SUCCESS;
 }
 
-static i64
-win32_readv_some (
-    const i_file       *fp,
-    const struct bytes *iov,
-    const int           iovcnt,
-    error              *e
-)
-{
-  DBG_ASSERT (i_file, fp);
-  ASSERT (iov);
-  ASSERT (iovcnt > 0 && iovcnt <= 2);
-
-  i64 total = 0;
-  for (int i = 0; i < iovcnt; i++)
-  {
-    DWORD nread = 0;
-    if (unlikely (
-            !ReadFile (fp->handle, iov[i].head, (DWORD)iov[i].len, &nread, NULL)
-        ))
-    {
-      DWORD err = GetLastError ();
-      if (likely (err == ERROR_HANDLE_EOF))
-      {
-        break;
-      }
-      char buf[WIN_ERR_BUF];
-      win32_strerror (err, buf, sizeof (buf));
-      return error_causef (e, ERR_IO, "readv: %s", buf);
-    }
-    total += nread;
-    if ((u64)nread < iov[i].len)
-    {
-      break; // partial / EOF
-    }
-  }
-  return total;
-}
-
-static i64
-win32_readv_all (
-    const i_file *fp,
-    struct bytes *iov,
-    const int     iovcnt,
-    error        *e
-)
-{
-  DBG_ASSERT (i_file, fp);
-  ASSERT (iov);
-  ASSERT (iovcnt > 0 && iovcnt <= 2);
-
-  i64 total = 0;
-  for (int i = 0; i < iovcnt; i++)
-  {
-    u8 *dst    = (u8 *)iov[i].head;
-    u64 remain = iov[i].len;
-    while (remain > 0)
-    {
-      DWORD want  = (DWORD)(remain > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : remain);
-      DWORD nread = 0;
-      if (unlikely (!ReadFile (fp->handle, dst, want, &nread, NULL)))
-      {
-        DWORD err = GetLastError ();
-        if (likely (err == ERROR_HANDLE_EOF))
-        {
-          goto done;
-        }
-        char buf[WIN_ERR_BUF];
-        win32_strerror (err, buf, sizeof (buf));
-        return error_causef (e, ERR_IO, "readv: %s", buf);
-      }
-      if (nread == 0)
-      {
-        goto done;
-      }
-      dst += nread;
-      remain -= nread;
-      total += nread;
-    }
-  }
-done:
-  return total;
-}
-
 ////////////////////////////////////////////////////////////
 // Stream Read / Write
 
@@ -981,8 +898,6 @@ struct i_file_vtable default_fvtable = {
     .i_read_all    = win32_read_all,
     .i_pread_some  = win32_pread_some,
     .i_pread_all   = win32_pread_all,
-    .i_readv_some  = win32_readv_some,
-    .i_readv_all   = win32_readv_all,
     .i_write_some  = win32_write_some,
     .i_write_all   = win32_write_all,
     .i_pwrite_some = win32_pwrite_some,
@@ -1147,22 +1062,6 @@ win32_mutex_lock (i_threading *t, i_mutex *m)
   EnterCriticalSection (&m->m);
 }
 
-static bool
-win32_mutex_try_lock (i_threading *t, i_mutex *m)
-{
-  (void)t;
-  ASSERT (m);
-#  ifndef NDEBUG
-  DWORD tid = GetCurrentThreadId ();
-  if (cs_owner (m) == tid)
-  {
-    i_log_error ("mutex_try_lock: thread %lu already owns mutex\n", tid);
-    UNREACHABLE (); // LCOV_EXCL_LINE
-  }
-#  endif
-  return TryEnterCriticalSection (&m->m) != 0;
-}
-
 static void
 win32_mutex_unlock (i_threading *t, i_mutex *m)
 {
@@ -1276,11 +1175,10 @@ struct i_threading default_threading = {
     .i_thread_create = win32_thread_create,
     .i_thread_join   = win32_thread_join,
 
-    .i_mutex_create   = win32_mutex_create,
-    .i_mutex_free     = win32_mutex_free,
-    .i_mutex_lock     = win32_mutex_lock,
-    .i_mutex_try_lock = win32_mutex_try_lock,
-    .i_mutex_unlock   = win32_mutex_unlock,
+    .i_mutex_create = win32_mutex_create,
+    .i_mutex_free   = win32_mutex_free,
+    .i_mutex_lock   = win32_mutex_lock,
+    .i_mutex_unlock = win32_mutex_unlock,
 
     .i_cond_create     = win32_cond_create,
     .i_cond_free       = win32_cond_free,
