@@ -572,7 +572,10 @@ TEST (prim_t_snprintf)
   TEST_CASE ("Smaller buffer - behaves like snprintf")
   {
     char out[1];
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wformat-truncation"
     test_assert (prim_t_snprintf (out, 1, U8) == 2);
+#  pragma GCC diagnostic pop
   }
 }
 #endif
@@ -739,8 +742,11 @@ TEST (struct_t_snprintf)
   {
     char b1[1];
     char b2[15];
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wformat-truncation"
     test_assert ((size_t)struct_t_snprintf (b1, 1, &st) > sizeof (b1));
     test_assert ((size_t)struct_t_snprintf (b2, 1, &st) > sizeof (b2));
+#  pragma GCC diagnostic pop
   }
 }
 #endif
@@ -906,8 +912,11 @@ TEST (union_t_snprintf)
   {
     char b1[1];
     char b2[15];
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wformat-truncation"
     test_assert ((size_t)union_t_snprintf (b1, 1, &st) > sizeof (b1));
     test_assert ((size_t)union_t_snprintf (b2, 1, &st) > sizeof (b2));
+#  pragma GCC diagnostic pop
   }
 }
 #endif
@@ -983,8 +992,11 @@ TEST (sarray_t_snprintf)
   {
     char b1[1];
     char b2[10];
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wformat-truncation"
     test_assert ((size_t)sarray_t_snprintf (b1, 1, &s.sa) > sizeof (b1));
     test_assert ((size_t)sarray_t_snprintf (b2, 1, &s.sa) > sizeof (b2));
+#  pragma GCC diagnostic pop
   }
 }
 #endif
@@ -4920,6 +4932,7 @@ tr_construct_inner (
         {
           return NULL;
         }
+        ret->type = T_STRUCT;
       }
 
       return ret;
@@ -4995,6 +5008,12 @@ TEST (tr_construct)
   TRC_TC_FAIL ("struct { a u8 }", "foo.a.b");
 
   TRC_TC ("struct { a u8, b [10][20]u16 }", "foo.b", "[10][20]u16");
+
+  TRC_TC (
+      "struct { a u8, b struct { c u16 } }",
+      "struct { a foo.b, b foo.a }",
+      "struct { a struct { c u16 }, b u8 }"
+  );
 
   ALLOC_CLOSE (alloc);
 }
