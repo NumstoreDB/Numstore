@@ -4534,6 +4534,7 @@ TEST (type_accessor_builder)
   test_assert_int_equal (string_equal (select_acc->select.key, key2), true);
   test_assert_int_equal (select_acc->select.sub_ta->type, TA_TAKE);
 
+  BUILDER_CLOSE (b);
   ALLOC_CLOSE (alloc);
 }
 #endif
