@@ -692,110 +692,6 @@ win32_mkdir (i_file_system_vtable *vfs, const char *name, error *e)
 }
 
 static err_t
-win32_mkdir_quiet (i_file_system_vtable *vfs, const char *name, error *e)
-{
-  (void)vfs;
-  if (CreateDirectoryA (name, NULL))
-  {
-    return SUCCESS;
-  }
-
-  DWORD err = GetLastError ();
-  if (unlikely (err != ERROR_ALREADY_EXISTS))
-  {
-    char buf[WIN_ERR_BUF];
-    win32_strerror (err, buf, sizeof (buf));
-    error_causef (e, ERR_IO, "mkdir: %s", buf);
-    return error_trace (e);
-  }
-
-  DWORD attrs = GetFileAttributesA (name);
-  if (unlikely (attrs == INVALID_FILE_ATTRIBUTES))
-  {
-    char buf[WIN_ERR_BUF];
-    error_causef (e, ERR_IO, "mkdir_quiet (stat): %s", WIN_ERRMSG (buf));
-    return error_trace (e);
-  }
-
-  if (unlikely (!(attrs & FILE_ATTRIBUTE_DIRECTORY)))
-  {
-    error_causef (
-        e,
-        ERR_IO,
-        "mkdir_quiet: %s exists but is not a directory",
-        name
-    );
-    return error_trace (e);
-  }
-
-  return SUCCESS;
-}
-
-static err_t
-win32_rm_rf (i_file_system_vtable *vfs, const char *path, error *e)
-{
-  (void)vfs;
-
-  char pattern[MAX_PATH];
-  snprintf (pattern, sizeof (pattern), "%s\\*", path);
-
-  WIN32_FIND_DATAA fd;
-  HANDLE           hFind = FindFirstFileA (pattern, &fd);
-
-  if (unlikely (hFind == INVALID_HANDLE_VALUE))
-  {
-    DWORD err = GetLastError ();
-    if (err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND)
-    {
-      return SUCCESS;
-    }
-    char buf[WIN_ERR_BUF];
-    win32_strerror (err, buf, sizeof (buf));
-    error_causef (e, ERR_IO, "opendir %s: %s", path, buf);
-    return error_trace (e);
-  }
-
-  do
-  {
-    if (strcmp (fd.cFileName, ".") == 0 || strcmp (fd.cFileName, "..") == 0)
-    {
-      continue;
-    }
-    char child[MAX_PATH];
-    snprintf (child, sizeof (child), "%s\\%s", path, fd.cFileName);
-    if (unlikely (!DeleteFileA (child)))
-    {
-      DWORD err = GetLastError ();
-      if (err != ERROR_FILE_NOT_FOUND)
-      {
-        FindClose (hFind);
-        char buf[WIN_ERR_BUF];
-        win32_strerror (err, buf, sizeof (buf));
-        error_causef (e, ERR_IO, "unlink %s: %s", child, buf);
-        return error_trace (e);
-      }
-    }
-  }
-  while (FindNextFileA (hFind, &fd));
-
-  FindClose (hFind);
-
-  if (unlikely (!RemoveDirectoryA (path)))
-  {
-    DWORD err = GetLastError ();
-    if (err != ERROR_FILE_NOT_FOUND && err != ERROR_PATH_NOT_FOUND)
-    {
-      char buf[WIN_ERR_BUF];
-      win32_strerror (err, buf, sizeof (buf));
-      error_causef (e, ERR_IO, "rmdir %s: %s", path, buf);
-      return error_trace (e);
-    }
-  }
-
-  return SUCCESS;
-}
-
-static err_t
 win32_access_rw (i_file_system_vtable *vfs, const char *fname, error *e)
 {
   (void)vfs;
@@ -916,7 +812,6 @@ struct i_file_system_vtable default_fsvtable = {
     .i_remove_quiet = win32_remove_quiet,
     .i_unlink       = win32_unlink,
     .i_mkdir        = win32_mkdir,
-    .i_mkdir_quiet  = win32_mkdir_quiet,
     .i_rm_rf        = win32_rm_rf,
     .i_access_rw    = win32_access_rw,
     .i_exists_rw    = win32_exists_rw,

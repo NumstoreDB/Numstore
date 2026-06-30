@@ -328,16 +328,6 @@ p_size nupd_append_maximally_right (
 );
 
 /**
- * @brief Fills the left update list first, then the right, from pg's key array
- *
- * @param n  The node_updates to append into
- * @param pg The inner-node page to read keys from
- * @return   The total number of keys appended across both sides
- */
-p_size
-nupd_append_maximally_left_then_right (struct node_updates *n, page_h *pg);
-
-/**
  * @brief Fills the right update list first, then the left, from pg's key array
  *
  * @param n  The node_updates to append into

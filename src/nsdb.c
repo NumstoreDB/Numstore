@@ -22,16 +22,6 @@
 #include "rope_algorithms.h"
 #include "var_algorithms.h"
 
-struct nsdb *
-nsdb_remove_and_open (const char *name, error *e)
-{
-  if (pgr_delete_single_file (name, e))
-  {
-    return NULL;
-  }
-  return nsdb_open (name);
-}
-
 err_t
 nsdb_root_crash (struct nsdb_root *root, error *e)
 {
