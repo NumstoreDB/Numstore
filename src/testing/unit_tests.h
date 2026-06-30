@@ -37,31 +37,10 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[293];
+  const char *failed_names[292];
 
   
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:169 START
-  if (!filter || strstr("lalloc_edge_cases", filter))
-  {
-    extern void __test__lalloc_edge_cases(void);
-    i_log_info("========================= TEST CASE: %s\n", "lalloc_edge_cases");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__lalloc_edge_cases();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "lalloc_edge_cases");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "lalloc_edge_cases";
-    }
-    ntests++;
-  }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:169 DONE
-
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:491 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
   if (!filter || strstr("slab_alloc_simple", filter))
   {
     extern void __test__slab_alloc_simple(void);
@@ -80,9 +59,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:491 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:607 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:492 START
   if (!filter || strstr("slab_alloc_cap_one", filter))
   {
     extern void __test__slab_alloc_cap_one(void);
@@ -101,9 +80,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:607 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:492 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:643 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:528 START
   if (!filter || strstr("slab_alloc_no_duplicates", filter))
   {
     extern void __test__slab_alloc_no_duplicates(void);
@@ -122,9 +101,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:643 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:528 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:672 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:557 START
   if (!filter || strstr("slab_alloc_free_all_realloc", filter))
   {
     extern void __test__slab_alloc_free_all_realloc(void);
@@ -143,9 +122,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:672 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:557 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:715 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:600 START
   if (!filter || strstr("slab_alloc_interleaved_patterns", filter))
   {
     extern void __test__slab_alloc_interleaved_patterns(void);
@@ -164,9 +143,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:715 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:600 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:767 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:652 START
   if (!filter || strstr("slab_alloc_free_head_slab", filter))
   {
     extern void __test__slab_alloc_free_head_slab(void);
@@ -185,9 +164,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:767 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:652 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:811 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:696 START
   if (!filter || strstr("slab_alloc_free_middle_slab", filter))
   {
     extern void __test__slab_alloc_free_middle_slab(void);
@@ -206,9 +185,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:811 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:696 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:857 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:742 START
   if (!filter || strstr("slab_alloc_minimum_size", filter))
   {
     extern void __test__slab_alloc_minimum_size(void);
@@ -227,9 +206,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:857 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:742 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:886 START
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:771 START
   if (!filter || strstr("slab_alloc_stress_random", filter))
   {
     extern void __test__slab_alloc_stress_random(void);
@@ -248,7 +227,7 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:886 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/alloc.c:771 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/collections.c:35 START
   if (!filter || strstr("llist", filter))
