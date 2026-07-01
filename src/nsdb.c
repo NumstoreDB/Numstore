@@ -22,16 +22,6 @@
 #include "rope_algorithms.h"
 #include "var_algorithms.h"
 
-err_t
-nsdb_root_crash (struct nsdb_root *root, error *e)
-{
-  ASSERT (root->count == 0);
-  err_t err = pgr_crash (root->p, e);
-  i_free ((void *)root->path.data);
-  i_free (root);
-  return err;
-}
-
 int
 nsdb_perror (struct nsdb *ns, const char *prefix)
 {

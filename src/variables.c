@@ -15,6 +15,7 @@
 #include "variables.h"
 
 #include "alloc.h"
+#include "compiler.h"
 #include "error.h"
 #include "page.h"
 #include "types.h"
@@ -35,6 +36,28 @@ i_print_variable (struct variable *v, error *e)
   i_log_info ("===========\n");
   return ret;
 }
+
+#ifdef TESTING
+TEST (i_print_variable)
+{
+  ALLOC_INIT (alloc);
+
+  error e = error_create ();
+
+  struct variable v = {
+      .vname    = strfcstr ("foo"),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e),
+      .var_root = 123,
+      .rpt_root = 456,
+      .nbytes   = 789,
+  };
+
+  // Just logging - make sure it succeeds and doesn't crash.
+  test_assert (i_print_variable (&v, &e) == SUCCESS);
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
 
 bool
 variable_equal (const struct variable *left, const struct variable *right)
@@ -62,6 +85,55 @@ variable_equal (const struct variable *left, const struct variable *right)
 
   return true;
 }
+
+#ifdef TESTING
+TEST (variable_equal)
+{
+  ALLOC_INIT (alloc);
+
+  error e = error_create ();
+
+  struct variable a = {
+      .vname    = strfcstr ("foo"),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e),
+      .var_root = 123,
+      .rpt_root = 456,
+      .nbytes   = 789,
+  };
+
+  struct variable b = {
+      .vname    = strfcstr ("foo"),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e),
+      .var_root = 123,
+      .rpt_root = 456,
+      .nbytes   = 789,
+  };
+
+  test_assert (variable_equal (&a, &b));
+
+  a.vname = strfcstr ("biz");
+  test_assert (!variable_equal (&a, &b));
+  a.vname = strfcstr ("foo");
+
+  a.dtype = compile_type_alloc ("u32", &alloc, &e);
+  test_assert (!variable_equal (&a, &b));
+  a.dtype = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e);
+
+  a.var_root = 987;
+  test_assert (!variable_equal (&a, &b));
+  a.var_root = 123;
+
+  a.rpt_root = 999;
+  test_assert (!variable_equal (&a, &b));
+  a.rpt_root = 456;
+
+  a.nbytes = 111;
+  test_assert (!variable_equal (&a, &b));
+  a.nbytes = 789;
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
 
 err_t
 validate_vname (struct string vname, error *e)
@@ -110,6 +182,34 @@ validate_vname (struct string vname, error *e)
   return SUCCESS;
 }
 
+#ifdef TESTING
+TEST (validate_vname)
+{
+  error e = error_create ();
+
+  // Valid: plain letters.
+  test_assert (validate_vname (strfcstr ("foo"), &e) == SUCCESS);
+
+  // Valid: leading underscore, mixed digits/letters after.
+  test_assert (validate_vname (strfcstr ("_valid_Name123"), &e) == SUCCESS);
+
+  // Invalid: empty name.
+  test_assert (validate_vname (strfcstr (""), &e) != SUCCESS);
+
+  // Invalid: starts with a digit.
+  test_assert (validate_vname (strfcstr ("1abc"), &e) != SUCCESS);
+
+  // Invalid: contains a character outside the allowed set.
+  test_assert (validate_vname (strfcstr ("abc!def"), &e) != SUCCESS);
+
+  // Invalid: name is too long (>= 4096 chars).
+  static char long_name[5000];
+  memset (long_name, 'a', sizeof (long_name));
+  struct string too_long = {.data = long_name, .len = sizeof (long_name)};
+  test_assert (validate_vname (too_long, &e) != SUCCESS);
+}
+#endif
+
 // Pool 1: Valid first characters (Letters and underscore)
 const char alpha_pool[] =
     "abcdefghijklmnopqrstuvwxyz"
@@ -146,6 +246,60 @@ var_random_name (char *buffer, int length)
   buffer[length - 1] = '\0';
 }
 
+#ifdef TESTING
+
+static bool
+test_char_in_pool (char c, const char *pool, int pool_size)
+{
+  for (int i = 0; i < pool_size; i++)
+  {
+    if (pool[i] == c)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+TEST (var_random_name)
+{
+  // First char is always from alpha_pool, and the last is always the
+  // null terminator, with everything in between from generous_pool.
+  for (int trial = 0; trial < 10; trial++)
+  {
+    char buf[16];
+    var_random_name (buf, sizeof (buf));
+
+    test_assert (
+        test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1)
+    );
+    test_assert_int_equal (buf[sizeof (buf) - 1], '\0');
+
+    for (u32 i = 1; i < sizeof (buf) - 1; i++)
+    {
+      test_assert (
+          test_char_in_pool (buf[i], generous_pool, sizeof (generous_pool) - 1)
+      );
+    }
+  }
+
+  // length <= 0 should leave the buffer untouched.
+  char sentinel[4] = {'x', 'x', 'x', 'x'};
+  var_random_name (sentinel, 0);
+  test_assert (memcmp (sentinel, "xxxx", 4) == 0);
+  var_random_name (sentinel, -1);
+  test_assert (memcmp (sentinel, "xxxx", 4) == 0);
+
+  // NOTE: with length == 1, the null terminator write at
+  // buffer[length - 1] overwrites the alpha char written moments
+  // before, so the "name" ends up being just '\0'.
+  char single[1];
+  var_random_name (single, 1);
+  test_assert_int_equal (single[0], '\0');
+}
+
+#endif // TESTING
+
 err_t
 rand_varname (
     struct string    *dest,
@@ -173,6 +327,30 @@ rand_varname (
 
   return SUCCESS;
 }
+
+#ifdef TESTING
+TEST (rand_varname)
+{
+  ALLOC_INIT (alloc);
+
+  error e = error_create ();
+
+  for (int i = 0; i < 10; ++i)
+  {
+    struct string name;
+    err_t         ret = rand_varname (&name, &alloc, 5, 10, &e);
+
+    test_assert_int_equal (ret, SUCCESS);
+    test_assert (name.len >= 5 && name.len <= 10);
+    test_assert (
+        test_char_in_pool (name.data[0], alpha_pool, sizeof (alpha_pool) - 1)
+    );
+    test_assert_int_equal (name.data[name.len - 1], '\0');
+  }
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
 
 err_t
 rand_varname_same_hash (

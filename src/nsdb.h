@@ -70,7 +70,6 @@ int          nsdb_cleanup (const char *path);
 int          nsdb_close (struct nsdb *ns);
 
 err_t        nsdb_root_close (struct nsdb_root *root, error *e);
-err_t        nsdb_root_crash (struct nsdb_root *root, error *e);
 struct nsdb *nsdb_root_load (struct nsdb_root *root, error *e);
 void         nsdb_root_release (struct nsdb_root *root, struct nsdb *sm);
 
