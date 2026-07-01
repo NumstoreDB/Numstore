@@ -112,6 +112,7 @@ TEST (nsdb_execute)
 #endif
 
 #ifndef NUMSTORE_LIB
+// LCOV_EXCL_START
 int
 main (int argc, char **argv)
 {
@@ -179,4 +180,5 @@ complete:
   nscli_close (&cli);
   return EXIT_SUCCESS;
 }
+// LCOV_EXCL_END
 #endif
