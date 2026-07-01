@@ -376,17 +376,93 @@ stream_init (struct stream *s, const struct stream_ops *ops, void *ctx)
   s->done = false;
 }
 
+#ifdef TESTING
+
+static void
+test_close_flag_fn (void *vctx)
+{
+  bool *flag = (bool *)vctx;
+  *flag      = true;
+}
+
+static const struct stream_ops test_close_ops = {
+    .pull  = NULL,
+    .push  = NULL,
+    .close = test_close_flag_fn,
+};
+
+static const struct stream_ops test_noclose_ops = {
+    .pull  = NULL,
+    .push  = NULL,
+    .close = NULL,
+};
+
+TEST (stream_init)
+{
+  TEST_CASE ("sets ops, ctx, and done fields")
+  {
+    bool          dummy_ctx = false;
+    struct stream s;
+
+    stream_init (&s, &test_noclose_ops, &dummy_ctx);
+
+    test_assert (s.ops == &test_noclose_ops);
+    test_assert (s.ctx == &dummy_ctx);
+    test_assert (!stream_isdone (&s));
+  }
+}
+
+#endif // TESTING
+
 void
 stream_finish (struct stream *s)
 {
   atomic_store_explicit (&s->done, true, memory_order_release);
 }
 
+#ifdef TESTING
+
+TEST (stream_finish)
+{
+  TEST_CASE ("marks the stream done")
+  {
+    struct stream s;
+    stream_init (&s, &test_noclose_ops, NULL);
+
+    test_assert (!stream_isdone (&s));
+    stream_finish (&s);
+    test_assert (stream_isdone (&s));
+
+    // Finishing an already-finished stream should be a harmless no-op.
+    stream_finish (&s);
+    test_assert (stream_isdone (&s));
+  }
+}
+
+#endif // TESTING
+
 bool
 stream_isdone (const struct stream *s)
 {
   return atomic_load_explicit (&s->done, memory_order_acquire);
 }
+
+#ifdef TESTING
+
+TEST (stream_isdone)
+{
+  TEST_CASE ("reflects finish state")
+  {
+    struct stream s;
+    stream_init (&s, &test_noclose_ops, NULL);
+
+    test_assert (!stream_isdone (&s));
+    stream_finish (&s);
+    test_assert (stream_isdone (&s));
+  }
+}
+
+#endif // TESTING
 
 void
 stream_close (const struct stream *s)
@@ -396,6 +472,35 @@ stream_close (const struct stream *s)
     s->ops->close (s->ctx);
   }
 }
+
+#ifdef TESTING
+
+TEST (stream_close)
+{
+  TEST_CASE ("invokes close callback")
+  {
+    bool          flag = false;
+    struct stream s;
+
+    stream_init (&s, &test_close_ops, &flag);
+    stream_close (&s);
+
+    test_assert (flag);
+  }
+
+  TEST_CASE ("no-op when close is null")
+  {
+    struct stream s;
+
+    stream_init (&s, &test_noclose_ops, NULL);
+
+    // Should not crash even though close is NULL.
+    stream_close (&s);
+    test_assert (true);
+  }
+}
+
+#endif // TESTING
 
 i32 stream_read (
     struct stream *dest,
@@ -417,6 +522,92 @@ stream_bread (
   return src->ops->pull (src, src->ctx, dest, size, n, e);
 }
 
+#ifdef TESTING
+
+struct test_pull_ctx
+{
+  const u8 *data;
+  u32       len;
+  u32       pos;
+};
+
+static i32
+test_pull_fn (
+    struct stream *s,
+    void          *vctx,
+    void          *dest,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
+{
+  struct test_pull_ctx *ctx = (struct test_pull_ctx *)vctx;
+
+  const u32 avail = ctx->len - ctx->pos;
+  const u32 want  = size * n;
+  const u32 next  = MIN (avail, want);
+
+  if (next == 0)
+  {
+    stream_finish (s);
+    return 0;
+  }
+
+  memcpy (dest, ctx->data + ctx->pos, next);
+  ctx->pos += next;
+
+  return (i32)(next / size);
+}
+
+static const struct stream_ops test_pull_ops = {
+    .pull  = test_pull_fn,
+    .push  = NULL,
+    .close = NULL,
+};
+
+TEST (stream_bread)
+{
+  TEST_CASE ("reads requested data")
+  {
+    const u8             data[] = {1, 2, 3, 4, 5, 6, 7, 8};
+    struct test_pull_ctx ctx = {.data = data, .len = sizeof (data), .pos = 0};
+    struct stream        src;
+
+    stream_init (&src, &test_pull_ops, &ctx);
+
+    u8    buf[4] = {0};
+    error e      = error_create ();
+
+    i32 got = stream_bread (buf, 1, 4, &src, &e);
+
+    test_assert_int_equal (got, 4);
+    test_assert (memcmp (buf, data, 4) == 0);
+    test_assert (!stream_isdone (&src));
+  }
+
+  TEST_CASE ("partial read then exhausted")
+  {
+    const u8             data[] = {9, 8, 7};
+    struct test_pull_ctx ctx = {.data = data, .len = sizeof (data), .pos = 0};
+    struct stream        src;
+
+    stream_init (&src, &test_pull_ops, &ctx);
+
+    u8    buf[10] = {0};
+    error e       = error_create ();
+
+    i32 got = stream_bread (buf, 1, 10, &src, &e);
+    test_assert_int_equal (got, 3);
+    test_assert (memcmp (buf, data, 3) == 0);
+
+    got = stream_bread (buf, 1, 10, &src, &e);
+    test_assert_int_equal (got, 0);
+    test_assert (stream_isdone (&src));
+  }
+}
+
+#endif // TESTING
+
 i32
 stream_bwrite (
     const void    *buf,
@@ -428,6 +619,92 @@ stream_bwrite (
 {
   return dest->ops->push (dest, dest->ctx, buf, size, n, e);
 }
+
+#ifdef TESTING
+
+struct test_push_ctx
+{
+  u8 *data;
+  u32 cap;
+  u32 pos;
+};
+
+static i32
+test_push_fn (
+    struct stream *s,
+    void          *vctx,
+    const void    *src,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
+{
+  struct test_push_ctx *ctx = (struct test_push_ctx *)vctx;
+
+  const u32 avail = ctx->cap - ctx->pos;
+  const u32 want  = size * n;
+  const u32 next  = MIN (avail, want);
+
+  if (next == 0)
+  {
+    stream_finish (s);
+    return 0;
+  }
+
+  memcpy (ctx->data + ctx->pos, src, next);
+  ctx->pos += next;
+
+  return (i32)(next / size);
+}
+
+static const struct stream_ops test_push_ops = {
+    .pull  = NULL,
+    .push  = test_push_fn,
+    .close = NULL,
+};
+
+TEST (stream_bwrite)
+{
+  TEST_CASE ("writes requested data")
+  {
+    u8                   out[8] = {0};
+    struct test_push_ctx ctx    = {.data = out, .cap = sizeof (out), .pos = 0};
+    struct stream        dest;
+
+    stream_init (&dest, &test_push_ops, &ctx);
+
+    const u8 src[4] = {10, 20, 30, 40};
+    error    e      = error_create ();
+
+    i32 put = stream_bwrite (src, 1, 4, &dest, &e);
+
+    test_assert_int_equal (put, 4);
+    test_assert (memcmp (out, src, 4) == 0);
+    test_assert (!stream_isdone (&dest));
+  }
+
+  TEST_CASE ("partial write then exhausted")
+  {
+    u8                   out[3] = {0};
+    struct test_push_ctx ctx    = {.data = out, .cap = sizeof (out), .pos = 0};
+    struct stream        dest;
+
+    stream_init (&dest, &test_push_ops, &ctx);
+
+    const u8 src[5] = {1, 2, 3, 4, 5};
+    error    e      = error_create ();
+
+    i32 put = stream_bwrite (src, 1, 5, &dest, &e);
+    test_assert_int_equal (put, 3);
+    test_assert (memcmp (out, src, 3) == 0);
+
+    put = stream_bwrite (src, 1, 5, &dest, &e);
+    test_assert_int_equal (put, 0);
+    test_assert (stream_isdone (&dest));
+  }
+}
+
+#endif // TESTING
 
 i32
 stream_read (
@@ -498,6 +775,114 @@ stream_read (
 
   return total;
 }
+
+#ifdef TESTING
+
+TEST (stream_read)
+{
+  TEST_CASE ("full transfer")
+  {
+    const u8             data[6] = {1, 2, 3, 4, 5, 6};
+    struct test_pull_ctx pctx = {.data = data, .len = sizeof (data), .pos = 0};
+    struct stream        src;
+
+    stream_init (&src, &test_pull_ops, &pctx);
+
+    u8                   out[6] = {0};
+    struct test_push_ctx octx   = {.data = out, .cap = sizeof (out), .pos = 0};
+    struct stream        dest;
+
+    stream_init (&dest, &test_push_ops, &octx);
+
+    error e     = error_create ();
+    i32   total = stream_read (&dest, 1, 6, &src, &e);
+
+    test_assert_int_equal (total, 6);
+    test_assert (memcmp (out, data, 6) == 0);
+  }
+
+  TEST_CASE ("multi batch exceeds internal buffer")
+  {
+    // Forces stream_read's internal 4096-byte staging buffer to be
+    // reused across multiple pull/push iterations.
+    enum
+    {
+      N = 10000
+    };
+
+    static u8 data[N];
+    static u8 out[N];
+
+    for (u32 i = 0; i < N; i++)
+    {
+      data[i] = (u8)(i & 0xFF);
+    }
+    memset (out, 0, N);
+
+    struct test_pull_ctx pctx = {.data = data, .len = N, .pos = 0};
+    struct stream        src;
+    stream_init (&src, &test_pull_ops, &pctx);
+
+    struct test_push_ctx octx = {.data = out, .cap = N, .pos = 0};
+    struct stream        dest;
+    stream_init (&dest, &test_push_ops, &octx);
+
+    error e     = error_create ();
+    i32   total = stream_read (&dest, 1, N, &src, &e);
+
+    test_assert_int_equal (total, N);
+    test_assert (memcmp (out, data, N) == 0);
+  }
+
+  TEST_CASE ("source exhausts before n")
+  {
+    const u8             data[3] = {7, 8, 9};
+    struct test_pull_ctx pctx    = {.data = data, .len = 3, .pos = 0};
+    struct stream        src;
+
+    stream_init (&src, &test_pull_ops, &pctx);
+
+    u8                   out[10] = {0};
+    struct test_push_ctx octx    = {.data = out, .cap = 10, .pos = 0};
+    struct stream        dest;
+
+    stream_init (&dest, &test_push_ops, &octx);
+
+    error e     = error_create ();
+    i32   total = stream_read (&dest, 1, 10, &src, &e);
+
+    test_assert_int_equal (total, 3);
+    test_assert (memcmp (out, data, 3) == 0);
+    test_assert (stream_isdone (&src));
+  }
+
+  TEST_CASE ("dest has insufficient capacity")
+  {
+    const u8             data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    struct test_pull_ctx pctx     = {.data = data, .len = 10, .pos = 0};
+    struct stream        src;
+
+    stream_init (&src, &test_pull_ops, &pctx);
+
+    u8                   out[7] = {0};
+    struct test_push_ctx octx   = {.data = out, .cap = 7, .pos = 0};
+    struct stream        dest;
+
+    stream_init (&dest, &test_push_ops, &octx);
+
+    error e     = error_create ();
+    i32   total = stream_read (&dest, 1, 10, &src, &e);
+
+    // Dest only has room for 7 bytes, so the transfer stops short and
+    // marks dest finished even though src still has data left.
+    test_assert_int_equal (total, 7);
+    test_assert (memcmp (out, data, 7) == 0);
+    test_assert (stream_isdone (&dest));
+    test_assert (!stream_isdone (&src));
+  }
+}
+
+#endif // TESTING
 
 static i32
 stream_ibuf_pull (
@@ -609,6 +994,96 @@ stream_ibuf_init (
   stream_init (s, &stream_ibuf_ops, ctx);
 }
 
+#ifdef TESTING
+
+TEST (stream_ibuf)
+{
+  TEST_CASE ("reads sequential chunks")
+  {
+    const u8 data[5] = {1, 2, 3, 4, 5};
+
+    struct stream          s;
+    struct stream_ibuf_ctx ctx;
+
+    stream_ibuf_init (&s, &ctx, data, sizeof (data));
+
+    u8    buf[2];
+    error e = error_create ();
+
+    i32 got = stream_bread (buf, 1, 2, &s, &e);
+    test_assert_int_equal (got, 2);
+    test_assert (memcmp (buf, data, 2) == 0);
+    test_assert (!stream_isdone (&s));
+
+    got = stream_bread (buf, 1, 2, &s, &e);
+    test_assert_int_equal (got, 2);
+    test_assert (memcmp (buf, data + 2, 2) == 0);
+    test_assert (!stream_isdone (&s));
+
+    // Only one byte remains; should clamp and mark done.
+    got = stream_bread (buf, 1, 2, &s, &e);
+    test_assert_int_equal (got, 1);
+    test_assert_int_equal (buf[0], data[4]);
+
+    // not done until you do 1 more read - it
+    // would be nice to change this
+    test_assert (!stream_isdone (&s));
+    got = stream_bread (buf, 1, 2, &s, &e);
+    test_assert_int_equal (got, 0);
+    test_assert (stream_isdone (&s));
+
+    got = stream_bread (buf, 1, 2, &s, &e);
+    test_assert_int_equal (got, 0);
+  }
+
+  TEST_CASE ("zero n request does not finish")
+  {
+    const u8 data[3] = {1, 2, 3};
+
+    struct stream          s;
+    struct stream_ibuf_ctx ctx;
+
+    stream_ibuf_init (&s, &ctx, data, sizeof (data));
+
+    u8    buf[1];
+    error e = error_create ();
+
+    i32 got = stream_bread (buf, 1, 0, &s, &e);
+
+    test_assert_int_equal (got, 0);
+    test_assert (!stream_isdone (&s));
+  }
+
+  TEST_CASE ("size zero is treated as unbounded")
+  {
+    // NOTE: ctx->size == 0 is used internally as a sentinel meaning
+    // "unbounded", not "empty". A buffer initialized with size 0 will
+    // happily satisfy pulls up to whatever the real backing memory
+    // allows; it never reports exhaustion on its own.
+    static u8 data[16];
+    for (u32 i = 0; i < 16; i++)
+    {
+      data[i] = (u8)(i + 1);
+    }
+
+    struct stream          s;
+    struct stream_ibuf_ctx ctx;
+
+    stream_ibuf_init (&s, &ctx, data, 0);
+
+    u8    buf[16] = {0};
+    error e       = error_create ();
+
+    i32 got = stream_bread (buf, 1, 16, &s, &e);
+
+    test_assert_int_equal (got, 16);
+    test_assert (memcmp (buf, data, 16) == 0);
+    test_assert (!stream_isdone (&s));
+  }
+}
+
+#endif // TESTING
+
 void
 stream_obuf_init (
     struct stream          *s,
@@ -622,6 +1097,153 @@ stream_obuf_init (
   ctx->pos = 0;
   stream_init (s, &stream_obuf_ops, ctx);
 }
+
+#ifdef TESTING
+
+TEST (stream_obuf)
+{
+  TEST_CASE ("writes sequential chunks")
+  {
+    u8 out[5] = {0};
+
+    struct stream          s;
+    struct stream_obuf_ctx ctx;
+
+    stream_obuf_init (&s, &ctx, out, sizeof (out));
+
+    const u8 chunk1[2] = {1, 2};
+    const u8 chunk2[2] = {3, 4};
+    const u8 chunk3[2] = {5, 6}; // only 1 byte of capacity remains
+
+    error e = error_create ();
+
+    i32 put = stream_bwrite (chunk1, 1, 2, &s, &e);
+    test_assert_int_equal (put, 2);
+
+    put = stream_bwrite (chunk2, 1, 2, &s, &e);
+    test_assert_int_equal (put, 2);
+
+    put = stream_bwrite (chunk3, 1, 2, &s, &e);
+    test_assert_int_equal (put, 1);
+
+    // One more 0 read
+    test_assert (!stream_isdone (&s));
+    put = stream_bwrite (chunk3, 1, 2, &s, &e);
+    test_assert_int_equal (put, 0);
+    test_assert (stream_isdone (&s));
+
+    const u8 expected[5] = {1, 2, 3, 4, 5};
+    test_assert (memcmp (out, expected, 5) == 0);
+  }
+
+  TEST_CASE ("exact fill then exhausted")
+  {
+    u8 out[2] = {0};
+
+    struct stream          s;
+    struct stream_obuf_ctx ctx;
+
+    stream_obuf_init (&s, &ctx, out, sizeof (out));
+
+    const u8 chunk[2] = {9, 9};
+    error    e        = error_create ();
+
+    i32 put = stream_bwrite (chunk, 1, 2, &s, &e);
+    test_assert_int_equal (put, 2);
+    test_assert (!stream_isdone (&s)); // exactly filled, not yet probed again
+
+    put = stream_bwrite (chunk, 1, 1, &s, &e);
+    test_assert_int_equal (put, 0);
+    test_assert (stream_isdone (&s));
+  }
+
+  TEST_CASE ("cap zero is treated as unbounded")
+  {
+    // Same sentinel behavior as stream_ibuf: cap == 0 means
+    // "unbounded", not "no capacity".
+    static u8 out[16];
+    memset (out, 0, sizeof (out));
+
+    struct stream          s;
+    struct stream_obuf_ctx ctx;
+
+    stream_obuf_init (&s, &ctx, out, 0);
+
+    u8 chunk[16];
+    for (u32 i = 0; i < 16; i++)
+    {
+      chunk[i] = (u8)(i + 1);
+    }
+
+    error e   = error_create ();
+    i32   put = stream_bwrite (chunk, 1, 16, &s, &e);
+
+    test_assert_int_equal (put, 16);
+    test_assert (memcmp (out, chunk, 16) == 0);
+    test_assert (!stream_isdone (&s));
+  }
+}
+
+TEST (stream_read_ibuf_to_obuf)
+{
+  TEST_CASE ("full pipe")
+  {
+    // Exercises stream_read driving a real ibuf source into a real
+    // obuf destination end-to-end, rather than the bread/bwrite mocks
+    // used above.
+    const u8 data[6] = {1, 2, 3, 4, 5, 6};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    u8                     out[6] = {0};
+    struct stream          obuf_s;
+    struct stream_obuf_ctx obuf_ctx;
+    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
+
+    error e     = error_create ();
+    i32   total = stream_read (&obuf_s, 1, 6, &ibuf_s, &e);
+
+    test_assert_int_equal (total, 6);
+    test_assert (memcmp (out, data, 6) == 0);
+
+    test_assert (!stream_isdone (&ibuf_s));
+    test_assert (!stream_isdone (&obuf_s));
+    total = stream_read (&obuf_s, 1, 6, &ibuf_s, &e);
+    test_assert_int_equal (total, 0);
+
+    test_assert (stream_isdone (&ibuf_s));
+  }
+
+  TEST_CASE ("dest smaller than src")
+  {
+    // When the real obuf destination has less capacity than the
+    // source has data, stream_read should stop short and mark dest
+    // finished, mirroring stream_read's "dest has insufficient
+    // capacity" test but through the real ibuf/obuf implementations.
+    const u8 data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    u8                     out[4] = {0};
+    struct stream          obuf_s;
+    struct stream_obuf_ctx obuf_ctx;
+    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
+
+    error e     = error_create ();
+    i32   total = stream_read (&obuf_s, 1, 10, &ibuf_s, &e);
+
+    test_assert_int_equal (total, 4);
+    test_assert (memcmp (out, data, 4) == 0);
+    test_assert (stream_isdone (&obuf_s));
+    test_assert (!stream_isdone (&ibuf_s));
+  }
+}
+
+#endif // TESTING
 
 static i32
 stream_sink_push (
@@ -647,6 +1269,62 @@ stream_sink_init (struct stream *s)
 {
   stream_init (s, &stream_sink_ops, NULL);
 }
+
+#ifdef TESTING
+
+TEST (stream_sink)
+{
+  TEST_CASE ("discards all input")
+  {
+    struct stream s;
+    stream_sink_init (&s);
+
+    const u8 chunk[100] = {0};
+    error    e          = error_create ();
+
+    i32 put = stream_bwrite (chunk, 1, 100, &s, &e);
+    test_assert_int_equal (put, 100);
+    test_assert (!stream_isdone (&s));
+
+    // Zero-length and odd element sizes should also be accepted
+    // without ever reporting the stream as done.
+    put = stream_bwrite (chunk, 4, 0, &s, &e);
+    test_assert_int_equal (put, 0);
+
+    put = stream_bwrite (chunk, 7, 3, &s, &e);
+    test_assert_int_equal (put, 3);
+    test_assert (!stream_isdone (&s));
+  }
+
+  TEST_CASE ("works as a stream_read destination")
+  {
+    // stream_read should report a full transfer even though the sink
+    // destination keeps no data, since sink_push always reports
+    // success.
+    const u8 data[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    struct stream sink_s;
+    stream_sink_init (&sink_s);
+
+    error e     = error_create ();
+    i32   total = stream_read (&sink_s, 1, 12, &ibuf_s, &e);
+
+    test_assert_int_equal (total, 12);
+
+    test_assert (!stream_isdone (&ibuf_s));
+    total = stream_read (&sink_s, 1, 12, &ibuf_s, &e);
+    test_assert_int_equal (total, 0);
+    test_assert (stream_isdone (&ibuf_s));
+
+    test_assert (!stream_isdone (&sink_s));
+  }
+}
+
+#endif // TESTING
 
 static i32
 stream_opsink_push (
@@ -701,6 +1379,169 @@ stream_opsink_init (
   ctx->pos = 0;
   stream_init (s, &stream_opsink_ops, ctx);
 }
+
+#ifdef TESTING
+
+#  define TEST_OPSINK_MAX_CALLS 8
+#  define TEST_OPSINK_MAX_ELEM  8
+
+static u8  g_opsink_calls[TEST_OPSINK_MAX_CALLS][TEST_OPSINK_MAX_ELEM];
+static u32 g_opsink_ncalls;
+static u32 g_opsink_elem_size;
+
+static void
+test_opsink_capture (void *buffer)
+{
+  memcpy (g_opsink_calls[g_opsink_ncalls], buffer, g_opsink_elem_size);
+  g_opsink_ncalls++;
+}
+
+TEST (stream_opsink)
+{
+  TEST_CASE ("invokes callback on complete element")
+  {
+    g_opsink_ncalls    = 0;
+    g_opsink_elem_size = 4;
+
+    u8 staging[4];
+
+    struct stream            s;
+    struct stream_opsink_ctx ctx;
+
+    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 4);
+
+    const u8 elem[4] = {1, 2, 3, 4};
+    error    e       = error_create ();
+
+    i32 put = stream_bwrite (elem, 1, 4, &s, &e);
+
+    test_assert_int_equal (put, 4);
+    test_assert_int_equal (g_opsink_ncalls, 1);
+    test_assert (memcmp (g_opsink_calls[0], elem, 4) == 0);
+  }
+
+  TEST_CASE ("partial push defers callback")
+  {
+    g_opsink_ncalls    = 0;
+    g_opsink_elem_size = 4;
+
+    u8 staging[4];
+
+    struct stream            s;
+    struct stream_opsink_ctx ctx;
+
+    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 4);
+
+    const u8 part1[2] = {1, 2};
+    const u8 part2[2] = {3, 4};
+    error    e        = error_create ();
+
+    i32 put = stream_bwrite (part1, 1, 2, &s, &e);
+    test_assert_int_equal (put, 2);
+    test_assert_int_equal (g_opsink_ncalls, 0); // element not complete yet
+
+    put = stream_bwrite (part2, 1, 2, &s, &e);
+    test_assert_int_equal (put, 2);
+    test_assert_int_equal (g_opsink_ncalls, 1);
+
+    const u8 expected[4] = {1, 2, 3, 4};
+    test_assert (memcmp (g_opsink_calls[0], expected, 4) == 0);
+  }
+
+  TEST_CASE ("excess bytes require a followup call")
+  {
+    // A single push only fills up to one staging element's worth of
+    // bytes; anything beyond that is NOT consumed in the same call
+    // and must be retried by the caller in a subsequent push.
+    g_opsink_ncalls    = 0;
+    g_opsink_elem_size = 4;
+
+    u8 staging[4];
+
+    struct stream            s;
+    struct stream_opsink_ctx ctx;
+
+    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 4);
+
+    const u8 elem[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+    error    e       = error_create ();
+
+    i32 put = stream_bwrite (elem, 1, 8, &s, &e);
+    test_assert_int_equal (put, 4);
+    test_assert_int_equal (g_opsink_ncalls, 1);
+    test_assert (memcmp (g_opsink_calls[0], elem, 4) == 0);
+
+    put = stream_bwrite (elem + 4, 1, 4, &s, &e);
+    test_assert_int_equal (put, 4);
+    test_assert_int_equal (g_opsink_ncalls, 2);
+    test_assert (memcmp (g_opsink_calls[1], elem + 4, 4) == 0);
+  }
+
+  TEST_CASE ("multiple complete cycles")
+  {
+    g_opsink_ncalls    = 0;
+    g_opsink_elem_size = 2;
+
+    u8 staging[2];
+
+    struct stream            s;
+    struct stream_opsink_ctx ctx;
+
+    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 2);
+
+    const u8 stream_data[6] = {1, 2, 3, 4, 5, 6};
+    error    e              = error_create ();
+
+    for (u32 i = 0; i < 3; i++)
+    {
+      i32 put = stream_bwrite (stream_data + i * 2, 1, 2, &s, &e);
+      test_assert_int_equal (put, 2);
+    }
+
+    test_assert_int_equal (g_opsink_ncalls, 3);
+    test_assert (memcmp (g_opsink_calls[0], stream_data, 2) == 0);
+    test_assert (memcmp (g_opsink_calls[1], stream_data + 2, 2) == 0);
+    test_assert (memcmp (g_opsink_calls[2], stream_data + 4, 2) == 0);
+  }
+
+  TEST_CASE ("stream_read drives the callback per element")
+  {
+    // stream_read internally loops pushes until all pulled bytes are
+    // consumed, so a single stream_read call should drive the opsink
+    // through multiple complete callback cycles.
+    g_opsink_ncalls    = 0;
+    g_opsink_elem_size = 2;
+
+    u8 staging[2];
+
+    struct stream            opsink_s;
+    struct stream_opsink_ctx opctx;
+    stream_opsink_init (&opsink_s, &opctx, test_opsink_capture, staging, 2);
+
+    const u8 data[6] = {1, 2, 3, 4, 5, 6};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    error e     = error_create ();
+    i32   total = stream_read (&opsink_s, 1, 6, &ibuf_s, &e);
+
+    test_assert_int_equal (total, 6);
+    test_assert_int_equal (g_opsink_ncalls, 3);
+    test_assert (memcmp (g_opsink_calls[0], data, 2) == 0);
+    test_assert (memcmp (g_opsink_calls[1], data + 2, 2) == 0);
+    test_assert (memcmp (g_opsink_calls[2], data + 4, 2) == 0);
+
+    test_assert (!stream_isdone (&ibuf_s));
+    total = stream_read (&opsink_s, 1, 6, &ibuf_s, &e);
+    test_assert_int_equal (total, 0);
+    test_assert (stream_isdone (&ibuf_s));
+  }
+}
+
+#endif // TESTING
+
 static i32
 stream_limit_pull (
     struct stream *s,
@@ -742,6 +1583,99 @@ stream_limit_pull (
 
   return got;
 }
+
+#ifdef TESTING
+
+TEST (stream_limit_pull)
+{
+  TEST_CASE ("caps reads at the limit")
+  {
+    const u8 data[20] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                         10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    struct stream           limited;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited, &lctx, &ibuf_s, 5);
+
+    u8    buf[20] = {0};
+    error e       = error_create ();
+
+    i32 got = stream_bread (buf, 1, 20, &limited, &e);
+
+    test_assert_int_equal (got, 5);
+    test_assert (memcmp (buf, data, 5) == 0);
+    test_assert (stream_isdone (&limited));
+    test_assert (!stream_isdone (&ibuf_s)); // underlying still has data
+  }
+
+  TEST_CASE ("underlying exhausts before the limit")
+  {
+    const u8 data[3] = {7, 8, 9};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    struct stream           limited;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited, &lctx, &ibuf_s, 100); // exceeds data
+
+    u8    buf[10] = {0};
+    error e       = error_create ();
+
+    i32 got = stream_bread (buf, 1, 10, &limited, &e);
+
+    test_assert_int_equal (got, 3);
+    test_assert (memcmp (buf, data, 3) == 0);
+
+    test_assert (!stream_isdone (&ibuf_s));
+    test_assert (!stream_isdone (&limited));
+
+    got = stream_bread (buf, 1, 10, &limited, &e);
+    test_assert_int_equal (got, 0);
+
+    test_assert (stream_isdone (&ibuf_s));
+    test_assert (stream_isdone (&limited)); // done bc underlying finished
+  }
+
+  TEST_CASE ("incremental reads reach the limit")
+  {
+    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    struct stream           limited;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited, &lctx, &ibuf_s, 7);
+
+    u8    buf[3];
+    error e = error_create ();
+
+    i32 got = stream_bread (buf, 1, 3, &limited, &e);
+    test_assert_int_equal (got, 3);
+    test_assert (!stream_isdone (&limited));
+
+    got = stream_bread (buf, 1, 3, &limited, &e);
+    test_assert_int_equal (got, 3);
+    test_assert (!stream_isdone (&limited));
+
+    // Only 1 byte remains under the limit (6 consumed of 7).
+    got = stream_bread (buf, 1, 3, &limited, &e);
+    test_assert_int_equal (got, 1);
+    test_assert (stream_isdone (&limited));
+
+    got = stream_bread (buf, 1, 3, &limited, &e);
+    test_assert_int_equal (got, 0);
+  }
+}
+
+#endif // TESTING
 
 static i32
 stream_limit_push (
@@ -785,6 +1719,65 @@ stream_limit_push (
   return put;
 }
 
+#ifdef TESTING
+
+TEST (stream_limit_push)
+{
+  TEST_CASE ("caps writes at the limit")
+  {
+    u8 out[20] = {0};
+
+    struct stream          obuf_s;
+    struct stream_obuf_ctx obuf_ctx;
+    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
+
+    struct stream           limited;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited, &lctx, &obuf_s, 4);
+
+    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    error    e        = error_create ();
+
+    i32 put = stream_bwrite (data, 1, 10, &limited, &e);
+
+    test_assert_int_equal (put, 4);
+    test_assert (memcmp (out, data, 4) == 0);
+    test_assert (stream_isdone (&limited));
+    test_assert (!stream_isdone (&obuf_s));
+  }
+
+  TEST_CASE ("underlying exhausts before the limit")
+  {
+    u8 out[3] = {0};
+
+    struct stream          obuf_s;
+    struct stream_obuf_ctx obuf_ctx;
+    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
+
+    struct stream           limited;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited, &lctx, &obuf_s, 100); // exceeds capacity
+
+    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    error    e        = error_create ();
+
+    i32 put = stream_bwrite (data, 1, 10, &limited, &e);
+
+    test_assert_int_equal (put, 3);
+    test_assert (memcmp (out, data, 3) == 0);
+
+    test_assert (!stream_isdone (&obuf_s));
+    test_assert (!stream_isdone (&limited));
+
+    put = stream_bwrite (data, 1, 10, &limited, &e);
+    test_assert_int_equal (put, 0);
+    test_assert (stream_isdone (&obuf_s));
+    test_assert (stream_isdone (&limited));
+  }
+}
+
+#endif // TESTING
+
 static const struct stream_ops stream_limit_ops = {
     .pull  = stream_limit_pull,
     .push  = stream_limit_push,
@@ -804,3 +1797,88 @@ stream_limit_init (
   ctx->consumed   = 0;
   stream_init (s, &stream_limit_ops, ctx);
 }
+
+#ifdef TESTING
+
+TEST (stream_limit_init)
+{
+  TEST_CASE ("sets initial state")
+  {
+    const u8 data[4] = {0, 0, 0, 0};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    struct stream           limited;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited, &lctx, &ibuf_s, 2);
+
+    test_assert (lctx.underlying == &ibuf_s);
+    test_assert_int_equal ((i32)lctx.limit, 2);
+    test_assert_int_equal ((i32)lctx.consumed, 0);
+    test_assert (!stream_isdone (&limited));
+  }
+
+  TEST_CASE ("stream_read stops at a limited source")
+  {
+    // stream_read pulling from a limit-wrapped ibuf should stop once
+    // the limit is reached even though the underlying buffer has
+    // more data.
+    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    struct stream           limited_src;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited_src, &lctx, &ibuf_s, 4);
+
+    u8                     out[10] = {0};
+    struct stream          obuf_s;
+    struct stream_obuf_ctx obuf_ctx;
+    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
+
+    error e     = error_create ();
+    i32   total = stream_read (&obuf_s, 1, 10, &limited_src, &e);
+
+    test_assert_int_equal (total, 4);
+    test_assert (memcmp (out, data, 4) == 0);
+    test_assert (stream_isdone (&limited_src));
+    test_assert (!stream_isdone (&ibuf_s));
+    test_assert (!stream_isdone (&obuf_s));
+  }
+
+  TEST_CASE ("stream_read stops at a limited dest")
+  {
+    // stream_read pushing into a limit-wrapped obuf should stop once
+    // the limit is reached even though the source still has more
+    // data and the underlying obuf still has spare capacity.
+    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    struct stream          ibuf_s;
+    struct stream_ibuf_ctx ibuf_ctx;
+    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
+
+    u8                     out[10] = {0};
+    struct stream          obuf_s;
+    struct stream_obuf_ctx obuf_ctx;
+    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
+
+    struct stream           limited_dest;
+    struct stream_limit_ctx lctx;
+    stream_limit_init (&limited_dest, &lctx, &obuf_s, 6);
+
+    error e     = error_create ();
+    i32   total = stream_read (&limited_dest, 1, 10, &ibuf_s, &e);
+
+    test_assert_int_equal (total, 6);
+    test_assert (memcmp (out, data, 6) == 0);
+    test_assert (stream_isdone (&limited_dest));
+    test_assert (!stream_isdone (&obuf_s));
+    test_assert (!stream_isdone (&ibuf_s));
+  }
+}
+
+#endif // TESTING

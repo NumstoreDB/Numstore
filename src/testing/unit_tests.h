@@ -37,7 +37,7 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[300];
+  const char *failed_names[315];
 
   
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
@@ -3945,6 +3945,321 @@ run_unit_tests (const char* filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/serial.c:207 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:400 START
+  if (!filter || strstr("stream_init", filter))
+  {
+    extern void __test__stream_init(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_init");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_init();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_init");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_init";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:400 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:425 START
+  if (!filter || strstr("stream_finish", filter))
+  {
+    extern void __test__stream_finish(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_finish");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_finish();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_finish");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_finish";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:425 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:452 START
+  if (!filter || strstr("stream_isdone", filter))
+  {
+    extern void __test__stream_isdone(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_isdone");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_isdone();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_isdone");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_isdone";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:452 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:478 START
+  if (!filter || strstr("stream_close", filter))
+  {
+    extern void __test__stream_close(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_close");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_close();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_close");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_close";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:478 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:568 START
+  if (!filter || strstr("stream_bread", filter))
+  {
+    extern void __test__stream_bread(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_bread");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_bread();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_bread");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_bread";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:568 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:666 START
+  if (!filter || strstr("stream_bwrite", filter))
+  {
+    extern void __test__stream_bwrite(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_bwrite");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_bwrite();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_bwrite");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_bwrite";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:666 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:781 START
+  if (!filter || strstr("stream_read", filter))
+  {
+    extern void __test__stream_read(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_read");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_read();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_read");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_read";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:781 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:999 START
+  if (!filter || strstr("stream_ibuf", filter))
+  {
+    extern void __test__stream_ibuf(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_ibuf");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_ibuf();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_ibuf");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_ibuf";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:999 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1103 START
+  if (!filter || strstr("stream_obuf", filter))
+  {
+    extern void __test__stream_obuf(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_obuf");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_obuf();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_obuf");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_obuf";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1103 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1187 START
+  if (!filter || strstr("stream_read_ibuf_to_obuf", filter))
+  {
+    extern void __test__stream_read_ibuf_to_obuf(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_read_ibuf_to_obuf");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_read_ibuf_to_obuf();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_read_ibuf_to_obuf");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_read_ibuf_to_obuf";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1187 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1275 START
+  if (!filter || strstr("stream_sink", filter))
+  {
+    extern void __test__stream_sink(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_sink");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_sink();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_sink");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_sink";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1275 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1399 START
+  if (!filter || strstr("stream_opsink", filter))
+  {
+    extern void __test__stream_opsink(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_opsink");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_opsink();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_opsink");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_opsink";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1399 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1589 START
+  if (!filter || strstr("stream_limit_pull", filter))
+  {
+    extern void __test__stream_limit_pull(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_limit_pull");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_limit_pull();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_limit_pull");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_limit_pull";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1589 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1724 START
+  if (!filter || strstr("stream_limit_push", filter))
+  {
+    extern void __test__stream_limit_push(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_limit_push");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_limit_push();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_limit_push");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_limit_push";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1724 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1803 START
+  if (!filter || strstr("stream_limit_init", filter))
+  {
+    extern void __test__stream_limit_init(void);
+    i_log_info("========================= TEST CASE: %s\n", "stream_limit_init");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__stream_limit_init();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "stream_limit_init");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "stream_limit_init";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/serial.c:1803 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/stride.c:163 START
   if (!filter || strstr("stride_resolve", filter))
