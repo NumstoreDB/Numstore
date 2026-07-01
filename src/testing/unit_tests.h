@@ -37,7 +37,7 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[342];
+  const char *failed_names[344];
 
   
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
@@ -7095,6 +7095,48 @@ run_unit_tests (const char* filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/variables.c:486 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:505 START
+  if (!filter || strstr("var_resolve_index", filter))
+  {
+    extern void __test__var_resolve_index(void);
+    i_log_info("========================= TEST CASE: %s\n", "var_resolve_index");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__var_resolve_index();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "var_resolve_index");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "var_resolve_index";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:505 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:533 START
+  if (!filter || strstr("var_resolve_nelem", filter))
+  {
+    extern void __test__var_resolve_nelem(void);
+    i_log_info("========================= TEST CASE: %s\n", "var_resolve_nelem");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__var_resolve_nelem();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "var_resolve_nelem");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "var_resolve_nelem";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:533 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/wal.c:73 START
   if (!filter || strstr("walos_open", filter))
