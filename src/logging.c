@@ -14,6 +14,10 @@
 
 #include "logging.h"
 
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
+
 ////////////////////////////////////////////////////////////
 // LOGGING
 void
@@ -32,3 +36,15 @@ i_log_flush (void)
 {
   fflush (stderr);
 }
+
+#ifdef TESTING
+TEST (i_log)
+{
+  // Just make sure it doesn't crash
+  TEST_CASE ("Smoke test")
+  {
+    i_log_internal ("FOO", BLUE, "bar: %s %d\n", "biz", 1);
+    i_log_flush ();
+  }
+}
+#endif
