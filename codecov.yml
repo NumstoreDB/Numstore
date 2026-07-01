@@ -1,6 +1,9 @@
 ignore:
-  - "src/apps**"
+  - "src/samples/**"
+  - "src/scripts/**"
+  - "src/templates/**"
   - "src/testing/**"
+  - "src/tools/**"
   - "src/os_windows.c"
   - "src/os_posix.c"
 coverage:

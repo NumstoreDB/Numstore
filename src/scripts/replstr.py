@@ -1,6 +1,6 @@
 import os
 
-ROOTS = ["src", "src/testing", "src/apps", "src/templates", "src/apps/samples/numstore", "src/apps/samples/smartfiles", "src/apps/testing", "src/apps/tools"]
+ROOTS = ["src", "src/testing", "src/templates", "src/samples/numstore", "src/samples/smartfiles", "src/testing", "src/tools"]
 
 OLD, NEW = "UNREACHABLE ();", "UNREACHABLE (); // LCOV_EXCL_LINE"
 
