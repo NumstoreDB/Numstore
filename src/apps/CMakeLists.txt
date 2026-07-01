@@ -79,12 +79,7 @@ endif()
 # Samples — pedagogical programs for numstore newcomers
 ########################################################################
 if(BUILD_SAMPLES)
-  ns_add_sample(ns_sample1_basic_crud          samples/numstore/sample1_basic_crud.c)
-  ns_add_sample(smfile_sample1_basic_crud      samples/smartfiles/sample1_basic_crud.c)
-  ns_add_sample(smfile_sample2_transactions    samples/smartfiles/sample2_transactions.c)
-  ns_add_sample(smfile_sample3_stride          samples/smartfiles/sample3_stride.c)
-  ns_add_sample(smfile_sample4_variable_names  samples/smartfiles/sample4_variable_names.c)
-  ns_add_sample(smfile_sample5_rollback_commit samples/smartfiles/sample5_rollback_commit.c)
+  ns_add_sample(ns_sample1_basic_crud          samples/sample1_basic_crud.c)
 endif()
 
 ns_add_executable(nscli numstore.c)
