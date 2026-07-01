@@ -23,34 +23,38 @@ To get started, choose your platform and run:
 <details>
 <summary><strong>Linux / MacOS</strong></summary>
 
+    # Build Numstore:
     cd <numstore>/src
-    gcc *.c apps/samples/sample1_basic_crud.c -I. -o sample
-    ./sample
+    gcc *.c -o numstore
+    ./numstore
 
     # Hint - you can get rid of all that logging with:
+    cd <numstore>/src
+    gcc *.c -o numstore -DNLOG
+    ./numstore
 
-    gcc *.c apps/samples/sample1_basic_crud.c -I. -o sample -DNLOG
-
-    # Hint - Try increasing the page size:
-
-    gcc *.c apps/samples/sample1_basic_crud.c -I. -o sample -DNLOG -DPAGE_SIZE=4096
+    # Build sample apps by adding NUMSTORE_LIB
+    cd <numstore>/src
+    gcc *.c samples/sample1_basic_crud.c -DNUMSTORE_LIB -o sample -I. -DNLOG
+    ./sample
 
 </details>
 
 <details>
 <summary><strong>Windows (MSVC)</strong></summary>
 
+    REM Build Numstore:
     cd <numstore>\src
-    cl *.c apps\samples\sample1_basic_crud.c /I. /Fe:sample.exe
-    sample.exe
+    cl *.c /Fe:numstore.exe
+    numstore.exe
 
     REM Hint - you can get rid of all that logging with:
+    cl *.c /Fe:numstore.exe /DNLOG
+    numstore.exe
 
-    cl *.c apps\samples\sample1_basic_crud.c /I. /Fe:sample.exe /DNLOG
-
-    REM Hint - Try increasing the page size:
-
-    cl *.c apps\samples\sample1_basic_crud.c /I. /Fe:sample.exe /DNLOG /DPAGE_SIZE=4096
+    REM Build sample apps by adding NUMSTORE_LIB
+    cl *.c samples\sample1_basic_crud.c /DNUMSTORE_LIB /I. /Fe:sample.exe /DNLOG
+    sample.exe
 
 </details>
 

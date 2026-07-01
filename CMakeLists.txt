@@ -152,7 +152,6 @@ endif()
 # CMake Dependencies
 ########################################################################
 add_subdirectory(src)
-add_subdirectory(src/apps)
 if(BUILD_DOCS) 
   add_subdirectory(docs)
 endif()

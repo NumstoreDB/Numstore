@@ -32,7 +32,7 @@ Release mode has no tests, and no ASSERTS
     cmake .. -DCMAKE_BUILD_TYPE=Release
     cmake --build .
 
-Run a sample application inside `src/apps/samples` use these as pedagogical 
+Run a sample application inside `src/samples` use these as pedagogical 
 sample applications that show you how numstore works
 
 Configure your build

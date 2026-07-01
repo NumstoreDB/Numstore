@@ -110,3 +110,73 @@ TEST (nsdb_execute)
   ALLOC_CLOSE (alloc);
 }
 #endif
+
+#ifndef NUMSTORE_LIB
+int
+main (int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    fprintf (stderr, "Usage: %s filename\n", argv[0]);
+    return -1;
+  }
+
+  struct nscli cli;
+  if (nscli_init (&cli, argv[1]))
+  {
+    return EXIT_FAILURE;
+  }
+
+  while (true)
+  {
+    // Initialize
+    if (nscli_step_init (&cli))
+    {
+      goto fatal;
+    }
+
+    // Read input
+    switch (nscli_step_read_stdin (&cli))
+    {
+      case CMD_FATAL:
+      {
+        nsdb_perror (cli.db, "Error: ");
+        goto complete;
+      }
+      case CMD_NOTHING_TO_DO:
+      {
+        break;
+      }
+      case CMD_RUN:
+      {
+        switch (nscli_step_execute (&cli))
+        {
+          case EXE_ERROR:
+          {
+            nsdb_perror (cli.db, "Error: ");
+            break;
+          }
+          case EXE_SUCCESS:
+          {
+            break;
+          }
+          case EXE_EXIT:
+          {
+            goto complete;
+          }
+        }
+      }
+    }
+
+    nscli_step_clean (&cli);
+  }
+
+fatal:
+  nscli_close (&cli);
+  return EXIT_FAILURE;
+
+complete:
+  nscli_close (&cli);
+  return EXIT_SUCCESS;
+}
+#endif
