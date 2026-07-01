@@ -12,10 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "smartfiles.h"
+
 #include "alloc.h"
 #include "error.h"
 #include "nsdb.h"
-#include "numstore.h"
 #include "os.h"
 #include "pager.h"
 #include "rope_algorithms.h"

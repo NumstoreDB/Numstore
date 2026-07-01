@@ -13,8 +13,8 @@
 /// limitations under the License.
 
 #include "nsdb.h"
-#include "numstore.h"
 #include "pager.h"
+#include "smartfiles.h"
 #include "testing/data_validator.h"
 #include "testing/smfile_test_fixture.h"
 #include "testing/testing.h"

@@ -15,42 +15,42 @@ in C with no dependencies.
 
 Conceptually, it's an ACID file with [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
 
-Numstore has two paradigms so far:
-
-1. Smart files:
-   Smartfiles is conceptually a database for "file like data". That is, just an array of bytes.
-   Smartfiles has far better performance for inner insertions and removals than regular files
-   Smartfiles is ACID - your file never writes half of what you want it to write, even if you unplug your
-   computer while it's doing work.
-
-1. Numstore:
-   Numstore is the same as smartfiles but it has a rich type system built on top to handle numerical data
+Getting Started 
+===============
 
 To get started, choose your platform and run:
 
 <details>
 <summary><strong>Linux / MacOS</strong></summary>
 
-```
-cd <numstore>/src
-gcc -c *.c
-ar rcs libnumstore.a *.o
-gcc apps/samples/smartfiles/sample1_basic_crud.c -o sample libnumstore.a -I.
-./sample
-```
+    cd <numstore>/src
+    gcc *.c apps/samples/sample1_basic_crud.c -I. -o sample
+    ./sample
+
+    # Hint - you can get rid of all that logging with:
+
+    gcc *.c apps/samples/sample1_basic_crud.c -I. -o sample -DNLOG
+
+    # Hint - Try increasing the page size:
+
+    gcc *.c apps/samples/sample1_basic_crud.c -I. -o sample -DNLOG -DPAGE_SIZE=4096
 
 </details>
 
 <details>
 <summary><strong>Windows (MSVC)</strong></summary>
 
-```
-cd <numstore>\src
-cl /c *.c
-lib /OUT:numstore.lib *.obj
-cl apps\samples\smartfiles\sample1_basic_crud.c /Fe:sample.exe numstore.lib /I.
-sample.exe
-```
+    cd <numstore>\src
+    cl *.c apps\samples\sample1_basic_crud.c /I. /Fe:sample.exe
+    sample.exe
+
+    REM Hint - you can get rid of all that logging with:
+
+    cl *.c apps\samples\sample1_basic_crud.c /I. /Fe:sample.exe /DNLOG
+
+    REM Hint - Try increasing the page size:
+
+    cl *.c apps\samples\sample1_basic_crud.c /I. /Fe:sample.exe /DNLOG /DPAGE_SIZE=4096
 
 </details>
 
