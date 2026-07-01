@@ -13,11 +13,17 @@
 /// limitations under the License.
 
 #include "alloc.h"
+#include "error.h"
 #include "nsdb.h"
 #include "numstore.h"
+#include "os.h"
 #include "pager.h"
 #include "rope_algorithms.h"
 #include "var_algorithms.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 // smfile
 
@@ -27,11 +33,45 @@ smfile_perror (smfile_t *ns, const char *prefix)
   return nsdb_perror ((struct nsdb *)ns, prefix);
 }
 
+#ifdef TESTING
+TEST (smfile_perror)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[2048];
+
+  // stride == 0 => ERROR
+  test_assert (smfile_pread (s, "foo", buffer, 10, 0, 0, 10) < 0);
+  test_assert (smfile_perror (s, "bar") > 0);
+
+  smfile_close (s);
+}
+#endif
+
 const char *
 smfile_strerror (smfile_t *ns)
 {
   return nsdb_strerror ((struct nsdb *)ns);
 }
+
+#ifdef TESTING
+TEST (smfile_strerror)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[2048];
+
+  // stride == 0 => ERROR
+  test_assert (smfile_pread (s, "foo", buffer, 10, 0, 0, 10) < 0);
+  test_assert (
+      string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0"))
+  );
+
+  smfile_close (s);
+}
+#endif
 
 int
 smfile_cleanup (const char *path)
@@ -39,11 +79,52 @@ smfile_cleanup (const char *path)
   return nsdb_cleanup (path);
 }
 
+#ifdef TESTING
+TEST (smfile_cleanup)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  smfile_close (s);
+  error e = error_create ();
+
+  bool exists;
+  i_file_exists ("test", &exists, &e);
+  test_assert (exists);
+
+  smfile_cleanup ("test");
+  i_file_exists ("test", &exists, &e);
+  test_assert (!exists);
+}
+#endif
+
 sb_size
 smfile_size (smfile_t *smf)
 {
   return smfile_psize (smf, NULL);
 }
+
+#ifdef TESTING
+TEST (smfile_size)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+
+  test_assert_equal (smfile_size (s), 0);
+
+  u8 buffer[2048];
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+
+  test_assert_equal (smfile_size (s), sizeof (buffer));
+
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+
+  test_assert_equal (smfile_size (s), 2 * sizeof (buffer));
+
+  smfile_close (s);
+}
+#endif
 
 int
 smfile_close (smfile_t *ns)
@@ -51,11 +132,45 @@ smfile_close (smfile_t *ns)
   return nsdb_close ((struct nsdb *)ns);
 }
 
+#ifdef TESTING
+TEST (smfile_close)
+{
+  smfile_cleanup ("test");
+
+  error          e = error_create ();
+  struct smfile *s = smfile_open ("test");
+  smfile_close (s);
+
+  bool exists;
+  i_file_exists ("test", &exists, &e);
+  test_assert (exists);
+  i_file_exists ("test.wal", &exists, &e);
+  test_assert (!exists);
+}
+#endif
+
 int
 smfile_crash (smfile_t *ns)
 {
   return nsdb_crash ((struct nsdb *)ns);
 }
+
+#ifdef TESTING
+TEST (smfile_crash)
+{
+  smfile_cleanup ("test");
+
+  error          e = error_create ();
+  struct smfile *s = smfile_open ("test");
+  smfile_crash (s);
+
+  bool exists;
+  i_file_exists ("test", &exists, &e);
+  test_assert (exists);
+  i_file_exists ("test.wal", &exists, &e);
+  test_assert (exists);
+}
+#endif
 
 int
 smfile_begin (smfile_t *_smf)
@@ -75,25 +190,59 @@ smfile_rollback (smfile_t *smf)
   return nsdb_rollback ((struct nsdb *)smf);
 }
 
+#ifdef TESTING
+TEST (smfile_txns)
+{
+  smfile_cleanup ("test");
+
+  u8             buffer[2048];
+  error          e = error_create ();
+  struct smfile *s = smfile_open ("test");
+
+  test_assert_equal (smfile_size (s), 0);
+
+  smfile_begin (s);
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_size (s), sizeof (buffer));
+  smfile_commit (s);
+  test_assert_equal (smfile_size (s), sizeof (buffer));
+
+  smfile_begin (s);
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_size (s), 2 * sizeof (buffer));
+  smfile_rollback (s);
+  test_assert_equal (smfile_size (s), sizeof (buffer));
+
+  smfile_close (s);
+}
+#endif
+
 /////////////////////////////////////////////////////////////////////
 ////// Delete
 
-static err_t
-_smfile_delete (struct nsdb *db, const char *vname, error *e)
+int
+smfile_delete (smfile_t *_smf, const char *vname)
 {
+  struct nsdb *smf = (struct nsdb *)_smf;
+
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  error *e = &smf->e;
+
   struct txn auto_txn;
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (smf, e), failed);
 
-  i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", db->atx->tid, vname);
+  i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", smf->atx->tid, vname);
 
   struct string vnamestr = strfcstr (vname);
   {
     // DELETE
     struct ns_var_delete_params params = {
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = smf->root->p,
+        .tx    = smf->atx,
         .vname = strfcstr (vname),
     };
     err_t err = ns_var_delete (params, e);
@@ -110,7 +259,7 @@ _smfile_delete (struct nsdb *db, const char *vname, error *e)
 
 commit:
 
-  if (nsdb_auto_commit (db, e))
+  if (nsdb_auto_commit (smf, e))
   {
     goto failed_rollback;
   }
@@ -118,22 +267,32 @@ commit:
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_auto_rollback (smf);
 
 failed:
   return error_trace (e);
 }
 
-int
-smfile_delete (smfile_t *_smf, const char *vname)
+#ifdef TESTING
+TEST (smfile_delete)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  smfile_cleanup ("test");
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[2048];
 
-  return _smfile_delete (smf, vname, &smf->e);
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+
+  smfile_delete (s, "foo");
+  test_assert (smfile_psize (s, "foo") < 0);
+
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+
+  smfile_close (s);
 }
+#endif
 
 /////////////////////////////////////////////////////////////////////
 ////// Open
@@ -184,19 +343,45 @@ failed:
   return NULL;
 }
 
+#ifdef TESTING
+TEST (smfile_open)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  test_assert (s != NULL);
+  test_assert_equal (smfile_size (s), 0);
+
+  smfile_close (s);
+
+  // Reopening an existing file should succeed and preserve its data.
+  struct smfile *s2 = smfile_open ("test");
+  test_assert (s2 != NULL);
+  test_assert_equal (smfile_size (s2), 0);
+
+  smfile_close (s2);
+}
+#endif
+
 /////////////////////////////////////////////////////////////////////
 ////// Insert
 
-static sb_size
-_smfile_pinsert (
-    struct nsdb *db,
-    const char  *name,
-    const void  *src,
-    const b_size slen,
-    sb_size      bofst,
-    error       *e
+sb_size
+smfile_pinsert (
+    smfile_t   *_smf,
+    const char *name,
+    const void *src,
+    sb_size     bofst,
+    b_size      slen
 )
 {
+  struct nsdb *smf = (struct nsdb *)_smf;
+
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  error *e = &smf->e;
+
   ALLOC_INIT (temp);
 
   sb_size                            ret;        // Return value
@@ -217,13 +402,13 @@ _smfile_pinsert (
   stream_ibuf_init (&_input, &ctx, src, slen);
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (smf, e), failed);
 
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_or_create_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = smf->root->p,
+        .tx    = smf->atx,
         .vname = vname,
         .type  = &(struct type){.type = T_PRIM, .p = U8},
         .alloc = &temp,
@@ -239,9 +424,9 @@ _smfile_pinsert (
   // INSERT
   {
     iparams = (struct ns_insert_params){
-        .p     = db->root->p,
+        .p     = smf->root->p,
         .src   = &_input,
-        .tx    = db->atx,
+        .tx    = smf->atx,
         .root  = gparams.dest.rpt_root,
         .bofst = bofst,
     };
@@ -252,8 +437,8 @@ _smfile_pinsert (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->root->p,
-        .tx = db->atx,
+        .p  = smf->root->p,
+        .tx = smf->atx,
         .retr =
             (struct var_retrieval){
                 .type = VR_PG,
@@ -266,7 +451,7 @@ _smfile_pinsert (
   }
 
   // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (smf, e), failed_rollback);
 
   ALLOC_CLOSE (temp);
 
@@ -274,7 +459,7 @@ _smfile_pinsert (
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_auto_rollback (smf);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -282,22 +467,20 @@ failed:
   return error_trace (e);
 }
 
-sb_size
-smfile_pinsert (
-    smfile_t   *_smf,
-    const char *name,
-    const void *src,
-    sb_size     bofst,
-    b_size      slen
-)
+#ifdef TESTING
+TEST (smfile_pinsert)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  smfile_cleanup ("test");
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[2048];
 
-  return _smfile_pinsert (smf, name, src, slen, bofst, &smf->e);
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+
+  smfile_close (s);
 }
+#endif
 
 sb_size
 smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen)
@@ -305,21 +488,42 @@ smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen)
   return smfile_pinsert (smf, NULL, src, bofst, slen);
 }
 
+#ifdef TESTING
+TEST (smfile_insert)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[2048];
+
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_size (s), sizeof (buffer));
+
+  smfile_close (s);
+}
+#endif
+
 /////////////////////////////////////////////////////////////////////
 ////// Read
 
-static sb_size
-_smfile_pread (
-    struct nsdb  *db,
-    const char   *name,
-    void         *dest,
-    const t_size  size,
-    const sb_size bofst,
-    const sb_size stride,
-    b_size        nelem,
-    error        *e
+sb_size
+smfile_pread (
+    smfile_t   *_smf,
+    const char *name,
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
 )
 {
+  struct nsdb *smf = (struct nsdb *)_smf;
+
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  error *e = &smf->e;
+
   ALLOC_INIT (temp);
 
   sb_size                  ret;           // Return value
@@ -358,13 +562,13 @@ _smfile_pread (
   }
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (smf, e), failed);
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = smf->root->p,
+        .tx    = smf->atx,
         .vname = vname,
         .alloc = &temp,
     };
@@ -398,9 +602,9 @@ _smfile_pread (
   // READ
   {
     rparams = (struct ns_read_params){
-        .p      = db->root->p,
+        .p      = smf->root->p,
         .dest   = output,
-        .tx     = db->atx,
+        .tx     = smf->atx,
         .root   = gparams.dest.rpt_root,
         .size   = size,
         .bofst  = ofst,
@@ -414,21 +618,74 @@ _smfile_pread (
 commit:
 
   // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (smf, e), failed_rollback);
   ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_auto_rollback (smf);
 
 failed:
   ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
+#ifdef TESTING
+TEST (smfile_pread)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[16];
+  for (u32 i = 0; i < sizeof (buffer); i++)
+  {
+    buffer[i] = (u8)i;
+  }
+
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+
+  u8      out[16] = {0};
+  sb_size n       = smfile_pread (s, "foo", out, 1, 0, 1, sizeof (buffer));
+
+  test_assert_equal (n, sizeof (buffer));
+  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
+
+  smfile_close (s);
+}
+#endif
+
 sb_size
-smfile_pread (
+smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
+{
+  return smfile_pread (smf, NULL, dest, 1, bofst, 1, nelem);
+}
+
+#ifdef TESTING
+TEST (smfile_read)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s         = smfile_open ("test");
+  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+
+  u8      out[8] = {0};
+  sb_size n      = smfile_read (s, out, 0, sizeof (buffer));
+
+  test_assert_equal (n, sizeof (buffer));
+  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
+
+  smfile_close (s);
+}
+#endif
+
+/////////////////////////////////////////////////////////////////////
+////// Remove
+
+sb_size
+smfile_premove (
     smfile_t   *_smf,
     const char *name,
     void       *dest,
@@ -443,30 +700,8 @@ smfile_pread (
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _smfile_pread (smf, name, dest, size, bofst, stride, nelem, &smf->e);
-}
+  error *e = &smf->e;
 
-sb_size
-smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
-{
-  return smfile_pread (smf, NULL, dest, 1, bofst, 1, nelem);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Remove
-
-static sb_size
-_smfile_premove (
-    struct nsdb  *db,
-    const char   *name,
-    void         *dest,
-    const t_size  size,
-    const sb_size bofst,
-    const sb_size stride,
-    b_size        nelem,
-    error        *e
-)
-{
   ALLOC_INIT (temp);
 
   sb_size                     ret;           // Return value
@@ -510,13 +745,13 @@ _smfile_premove (
   }
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (smf, e), failed);
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = smf->root->p,
+        .tx    = smf->atx,
         .vname = vname,
         .alloc = &temp,
     };
@@ -550,9 +785,9 @@ _smfile_premove (
   // REMOVE
   {
     rparams = (struct ns_remove_params){
-        .p      = db->root->p,
+        .p      = smf->root->p,
         .dest   = output,
-        .tx     = db->atx,
+        .tx     = smf->atx,
         .root   = gparams.dest.rpt_root,
         .size   = size,
         .bofst  = ofst,
@@ -566,8 +801,8 @@ _smfile_premove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->root->p,
-        .tx = db->atx,
+        .p  = smf->root->p,
+        .tx = smf->atx,
         .retr =
             (struct var_retrieval){
                 .type = VR_PG,
@@ -582,26 +817,82 @@ _smfile_premove (
 commit:
 
   // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (smf, e), failed_rollback);
   ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_auto_rollback (smf);
 
 failed:
   ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
+#ifdef TESTING
+TEST (smfile_premove)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[16];
+  for (u32 i = 0; i < sizeof (buffer); i++)
+  {
+    buffer[i] = (u8)i;
+  }
+
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+
+  u8      out[16] = {0};
+  sb_size n       = smfile_premove (s, "foo", out, 1, 0, 1, sizeof (buffer));
+
+  test_assert_equal (n, sizeof (buffer));
+  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
+  test_assert_equal (smfile_psize (s, "foo"), 0);
+
+  smfile_close (s);
+}
+#endif
+
 sb_size
-smfile_premove (
+smfile_remove (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
+{
+  return smfile_premove (smf, NULL, dest, 1, bofst, 1, nelem);
+}
+
+#ifdef TESTING
+TEST (smfile_remove)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s         = smfile_open ("test");
+  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+
+  u8      out[8] = {0};
+  sb_size n      = smfile_remove (s, out, 0, sizeof (buffer));
+
+  test_assert_equal (n, sizeof (buffer));
+  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
+  test_assert_equal (smfile_size (s), 0);
+
+  smfile_close (s);
+}
+#endif
+
+/////////////////////////////////////////////////////////////////////
+////// Write
+
+sb_size
+smfile_pwrite (
     smfile_t   *_smf,
     const char *name,
-    void       *dest,
+    const void *src,
     t_size      size,
-    sb_size     bofst,
+    b_size      bofst,
     sb_size     stride,
     b_size      nelem
 )
@@ -611,30 +902,8 @@ smfile_premove (
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  return _smfile_premove (smf, name, dest, size, bofst, stride, nelem, &smf->e);
-}
+  error *e = &smf->e;
 
-sb_size
-smfile_remove (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
-{
-  return smfile_premove (smf, NULL, dest, 1, bofst, 1, nelem);
-}
-
-/////////////////////////////////////////////////////////////////////
-////// Write
-
-static sb_size
-_smfile_pwrite (
-    struct nsdb  *db,
-    const char   *name,
-    const void   *src,
-    const t_size  size,
-    const sb_size bofst,
-    const sb_size stride,
-    const b_size  nelem,
-    error        *e
-)
-{
   ALLOC_INIT (temp);
 
   sb_size                ret;          // Return value
@@ -681,13 +950,13 @@ _smfile_pwrite (
   }
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, e), failed);
+  WRAP_GOTO (nsdb_auto_begin_txn (smf, e), failed);
 
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_or_create_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = smf->root->p,
+        .tx    = smf->atx,
         .vname = vname,
         .type  = &(struct type){.type = T_PRIM, .p = U8},
         .alloc = &temp,
@@ -716,9 +985,9 @@ _smfile_pwrite (
     stream_ibuf_init (&_input, &ctx, src, size * write_nelem);
 
     wparams = (struct ns_write_params){
-        .p      = db->root->p,
+        .p      = smf->root->p,
         .src    = &_input,
-        .tx     = db->atx,
+        .tx     = smf->atx,
         .root   = gparams.dest.rpt_root,
         .size   = size,
         .bofst  = ofst,
@@ -743,9 +1012,9 @@ _smfile_pwrite (
       );
 
       iparams = (struct ns_insert_params){
-          .p     = db->root->p,
+          .p     = smf->root->p,
           .src   = &_input,
-          .tx    = db->atx,
+          .tx    = smf->atx,
           .root  = wparams.root,
           .bofst = gparams.dest.nbytes, // Append
       };
@@ -758,8 +1027,8 @@ _smfile_pwrite (
     // UPDATE VARIABLE
     {
       uparams = (struct ns_var_update_params){
-          .p  = db->root->p,
-          .tx = db->atx,
+          .p  = smf->root->p,
+          .tx = smf->atx,
           .retr =
               (struct var_retrieval){
                   .type = VR_PG,
@@ -773,37 +1042,55 @@ _smfile_pwrite (
   }
 
   // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, e), failed_rollback);
+  WRAP_GOTO (nsdb_auto_commit (smf, e), failed_rollback);
   ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_auto_rollback (smf);
 
 failed:
   ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
-sb_size
-smfile_pwrite (
-    smfile_t   *_smf,
-    const char *name,
-    const void *src,
-    t_size      size,
-    b_size      bofst,
-    sb_size     stride,
-    b_size      nelem
-)
+#ifdef TESTING
+TEST (smfile_pwrite)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  smfile_cleanup ("test");
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  struct smfile *s         = smfile_open ("test");
+  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-  return _smfile_pwrite (smf, name, src, size, bofst, stride, nelem, &smf->e);
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+
+  // Overwrite the first 4 bytes in place.
+  u8      overwrite[4] = {9, 9, 9, 9};
+  sb_size n = smfile_pwrite (s, "foo", overwrite, 1, 0, 1, sizeof (overwrite));
+
+  test_assert_equal (n, sizeof (overwrite));
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+
+  u8 out[8] = {0};
+  smfile_pread (s, "foo", out, 1, 0, 1, sizeof (out));
+
+  u8 expected[8] = {9, 9, 9, 9, 5, 6, 7, 8};
+  test_assert (memcmp (out, expected, sizeof (expected)) == 0);
+
+  // Writing past the end should append (insert the remainder).
+  u8 append[4] = {11, 12, 13, 14};
+  n = smfile_pwrite (s, "foo", append, 1, sizeof (buffer), 1, sizeof (append));
+
+  test_assert_equal (n, sizeof (append));
+  test_assert_equal (
+      smfile_psize (s, "foo"),
+      sizeof (buffer) + sizeof (append)
+  );
+
+  smfile_close (s);
 }
+#endif
 
 sb_size
 smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem)
@@ -811,27 +1098,57 @@ smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem)
   return smfile_pwrite (smf, NULL, src, 1, bofst, 1, nelem);
 }
 
+#ifdef TESTING
+TEST (smfile_write)
+{
+  smfile_cleanup ("test");
+
+  struct smfile *s         = smfile_open ("test");
+  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+
+  u8 overwrite[4] = {9, 9, 9, 9};
+  smfile_write (s, overwrite, 0, sizeof (overwrite));
+
+  u8 out[8] = {0};
+  smfile_read (s, out, 0, sizeof (out));
+
+  u8 expected[8] = {9, 9, 9, 9, 5, 6, 7, 8};
+  test_assert (memcmp (out, expected, sizeof (expected)) == 0);
+
+  smfile_close (s);
+}
+#endif
+
 /////////////////////////////////////////////////////////////////////
 ////// Size
 
-static sb_size
-_smfile_psize (struct nsdb *db, const char *name, error *e)
+sb_size
+smfile_psize (smfile_t *_smf, const char *name)
 {
+  struct nsdb *smf = (struct nsdb *)_smf;
+
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  error *e = &smf->e;
+
   ALLOC_INIT (temp);
 
   struct string vname = vname_or_default (name);
   b_size        ret;
 
   // BEGIN TXN
-  if (nsdb_auto_begin_txn (db, e) < 0)
+  if (nsdb_auto_begin_txn (smf, e) < 0)
   {
     goto failed;
   }
 
-  // GET OR CREATE VARIABLE
+  // GET
   struct ns_var_get_params gparams = {
-      .p     = db->root->p,
-      .tx    = db->atx,
+      .p     = smf->root->p,
+      .tx    = smf->atx,
       .vname = vname,
       .alloc = &temp,
   };
@@ -843,7 +1160,7 @@ _smfile_psize (struct nsdb *db, const char *name, error *e)
   ret = gparams.dest.nbytes;
 
   // COMMIT
-  if (nsdb_auto_commit (db, e) < 0)
+  if (nsdb_auto_commit (smf, e) < 0)
   {
     goto failed_rollback;
   }
@@ -854,20 +1171,24 @@ _smfile_psize (struct nsdb *db, const char *name, error *e)
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_auto_rollback (smf);
 
 failed:
   ALLOC_CLOSE (temp);
   return error_trace (e);
 }
 
-sb_size
-smfile_psize (smfile_t *_smf, const char *name)
+#ifdef TESTING
+TEST (smfile_psize)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  smfile_cleanup ("test");
 
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  struct smfile *s = smfile_open ("test");
+  u8             buffer[2048];
 
-  return _smfile_psize (smf, name, &smf->e);
+  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+
+  smfile_close (s);
 }
+#endif
