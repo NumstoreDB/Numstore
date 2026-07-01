@@ -3245,12 +3245,7 @@ strtoprim (const char *text, u32 len)
  ******************************************************************************/
 
 struct type *
-struct_t_resolve_key (
-    t_size          *offset,
-    struct struct_t *t,
-    struct string    key,
-    error           *e
-)
+struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key)
 {
   t_size roffset = 0;
   for (u32 i = 0; i < t->len; ++i)
@@ -3268,6 +3263,70 @@ struct_t_resolve_key (
 
   return NULL;
 }
+
+#ifdef TESTING
+TEST (struct_t_resolve_key)
+{
+  ALLOC_INIT (alloc);
+  error  e = error_create ();
+  t_size ofst;
+
+  struct type *t = compile_type_alloc (
+      "struct { "
+      "     a struct { "
+      "         a u32, "
+      "         b [10]f32 "
+      "     }, "
+      "     b f32, "
+      "     c [10][20]f32, "
+      "     d i8, "
+      "     e cf256 "
+      "}",
+      &alloc,
+      &e
+  );
+
+  test_assert (type_equal (
+      compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e),
+      struct_t_resolve_key (&ofst, &t->st, strfcstr ("a"))
+  ));
+  test_assert_int_equal (ofst, 0);
+
+  test_assert (type_equal (
+      compile_type_alloc ("f32", &alloc, &e),
+      struct_t_resolve_key (&ofst, &t->st, strfcstr ("b"))
+  ));
+  test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32));
+
+  test_assert (type_equal (
+      compile_type_alloc ("[10][20]f32", &alloc, &e),
+      struct_t_resolve_key (&ofst, &t->st, strfcstr ("c"))
+  ));
+  test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32) + sizeof (f32));
+
+  test_assert (type_equal (
+      compile_type_alloc ("i8", &alloc, &e),
+      struct_t_resolve_key (&ofst, &t->st, strfcstr ("d"))
+  ));
+  test_assert_int_equal (
+      ofst,
+      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32)
+  );
+
+  test_assert (type_equal (
+      compile_type_alloc ("cf256", &alloc, &e),
+      struct_t_resolve_key (&ofst, &t->st, strfcstr ("e"))
+  ));
+  test_assert_int_equal (
+      ofst,
+      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32)
+          + sizeof (i8)
+  );
+
+  ALLOC_CLOSE (alloc);
+}
+
+#endif
 
 err_t
 struct_t_create (
@@ -3323,7 +3382,7 @@ struct_t_create (
  ******************************************************************************/
 
 struct type *
-union_t_resolve_key (struct union_t *t, struct string key, error *e)
+union_t_resolve_key (struct union_t *t, struct string key)
 {
   for (u32 i = 0; i < t->len; ++i)
   {
@@ -3335,6 +3394,38 @@ union_t_resolve_key (struct union_t *t, struct string key, error *e)
 
   return NULL;
 }
+
+#ifdef TESTING
+TEST (union_t_resolve_key)
+{
+  ALLOC_INIT (alloc);
+  error e = error_create ();
+
+  struct type *t = compile_type_alloc (
+      "union { a struct { a u32, b [10]f32 }, b f32 }",
+      &alloc,
+      &e
+  );
+
+  struct type *subtype0 =
+      compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e);
+
+  struct type *subtype1 = compile_type_alloc ("[10]f32", &alloc, &e);
+
+  test_assert (type_equal (
+      compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e),
+      union_t_resolve_key (&t->un, strfcstr ("a"))
+  ));
+
+  test_assert (type_equal (
+      compile_type_alloc ("f32", &alloc, &e),
+      union_t_resolve_key (&t->un, strfcstr ("b"))
+  ));
+
+  ALLOC_CLOSE (alloc);
+}
+
+#endif
 
 err_t
 union_t_create (
@@ -4049,9 +4140,10 @@ ta_select_struct (
     error                *e
 )
 {
-  struct type *sub = struct_t_resolve_key (NULL, &ref->st, ta->select.key, e);
+  struct type *sub = struct_t_resolve_key (NULL, &ref->st, ta->select.key);
   if (sub == NULL)
   {
+    error_causef (e, ERR_INTERP, "Failed to find sub key in struct");
     return NULL;
   }
   return ta_subtype (sub, ta->select.sub_ta, alloc, e);
@@ -4065,9 +4157,10 @@ ta_select_union (
     error                *e
 )
 {
-  struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key, e);
+  struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key);
   if (subtype == NULL)
   {
+    error_causef (e, ERR_INTERP, "Failed to resolve subtype");
     return NULL;
   }
   return ta_subtype (subtype, ta->select.sub_ta, alloc, e);

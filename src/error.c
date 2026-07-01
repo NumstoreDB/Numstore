@@ -16,6 +16,10 @@
 
 #include "csx_assert.h"
 
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
+
 #ifdef ERR_T_FAIL_FAST
 #endif
 
@@ -107,3 +111,18 @@ error_log_consume (error *e)
   e->cmlen      = 0;
   e->cause_code = SUCCESS;
 }
+
+#ifdef TESTING
+TEST (error_log_consume)
+{
+  TEST_CASE ("error consumes")
+  {
+    error e = error_create ();
+    error_causef (&e, ERR_CORRUPT, "Test");
+    test_assert (e.cause_code == SUCCESS);
+    error_log_consume (&e);
+    test_assert (e.cause_code == SUCCESS);
+    test_assert (e.cmlen == 0);
+  }
+}
+#endif
