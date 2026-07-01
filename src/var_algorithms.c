@@ -1426,7 +1426,8 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
       .nelem  = fparams.dvar->nbytes,
   };
 
-  if (ns_remove (&rparams, e))
+  sb_size removed = ns_remove (&rparams, e);
+  if (removed < 0)
   {
     goto failed;
   }

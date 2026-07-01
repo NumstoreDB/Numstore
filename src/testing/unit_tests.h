@@ -37,7 +37,7 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[318];
+  const char *failed_names[337];
 
   
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
@@ -1782,6 +1782,27 @@ run_unit_tests (const char* filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/htable.c:291 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/logging.c:41 START
+  if (!filter || strstr("i_log", filter))
+  {
+    extern void __test__i_log(void);
+    i_log_info("========================= TEST CASE: %s\n", "i_log");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__i_log();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "i_log");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "i_log";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/logging.c:41 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:227 START
   if (!filter || strstr("nupd_init", filter))
@@ -4281,6 +4302,384 @@ run_unit_tests (const char* filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/serial.c:1803 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:37 START
+  if (!filter || strstr("smfile_perror", filter))
+  {
+    extern void __test__smfile_perror(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_perror");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_perror();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_perror");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_perror";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:37 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:59 START
+  if (!filter || strstr("smfile_strerror", filter))
+  {
+    extern void __test__smfile_strerror(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_strerror");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_strerror();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_strerror");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_strerror";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:59 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:83 START
+  if (!filter || strstr("smfile_cleanup", filter))
+  {
+    extern void __test__smfile_cleanup(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_cleanup");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_cleanup();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_cleanup");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_cleanup";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:83 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:108 START
+  if (!filter || strstr("smfile_size", filter))
+  {
+    extern void __test__smfile_size(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_size");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_size();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_size");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_size";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:108 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:136 START
+  if (!filter || strstr("smfile_close", filter))
+  {
+    extern void __test__smfile_close(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_close");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_close();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_close");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_close";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:136 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:159 START
+  if (!filter || strstr("smfile_crash", filter))
+  {
+    extern void __test__smfile_crash(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_crash");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_crash();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_crash");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_crash";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:159 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:194 START
+  if (!filter || strstr("smfile_txns", filter))
+  {
+    extern void __test__smfile_txns(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_txns");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_txns();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_txns");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_txns";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:194 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:277 START
+  if (!filter || strstr("smfile_delete", filter))
+  {
+    extern void __test__smfile_delete(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_delete");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_delete();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_delete");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_delete";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:277 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:344 START
+  if (!filter || strstr("smfile_open", filter))
+  {
+    extern void __test__smfile_open(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_open");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_open();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_open");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_open";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:344 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:468 START
+  if (!filter || strstr("smfile_pinsert", filter))
+  {
+    extern void __test__smfile_pinsert(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_pinsert");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_pinsert();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_pinsert");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_pinsert";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:468 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:491 START
+  if (!filter || strstr("smfile_insert", filter))
+  {
+    extern void __test__smfile_insert(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_insert");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_insert();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_insert");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_insert";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:491 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:634 START
+  if (!filter || strstr("smfile_pread", filter))
+  {
+    extern void __test__smfile_pread(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_pread");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_pread();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_pread");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_pread";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:634 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:664 START
+  if (!filter || strstr("smfile_read", filter))
+  {
+    extern void __test__smfile_read(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_read");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_read();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_read");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_read";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:664 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:833 START
+  if (!filter || strstr("smfile_premove", filter))
+  {
+    extern void __test__smfile_premove(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_premove");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_premove();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_premove");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_premove";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:833 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:865 START
+  if (!filter || strstr("smfile_remove", filter))
+  {
+    extern void __test__smfile_remove(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_remove");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_remove();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_remove");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_remove";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:865 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1058 START
+  if (!filter || strstr("smfile_pwrite", filter))
+  {
+    extern void __test__smfile_pwrite(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_pwrite");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_pwrite();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_pwrite");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_pwrite";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1058 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1101 START
+  if (!filter || strstr("smfile_write", filter))
+  {
+    extern void __test__smfile_write(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_write");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_write();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_write");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_write";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1101 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1181 START
+  if (!filter || strstr("smfile_psize", filter))
+  {
+    extern void __test__smfile_psize(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_psize");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_psize();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_psize");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_psize";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1181 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/stride.c:163 START
   if (!filter || strstr("stride_resolve", filter))
