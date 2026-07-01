@@ -501,3 +501,57 @@ TEST (rand_varname_different_hash)
   ALLOC_CLOSE (alloc);
 }
 #endif
+
+#ifdef TESTING
+TEST (var_resolve_index)
+{
+  struct variable v = {.nbytes = 100};
+
+  // Positive offset within range is unchanged.
+  test_assert_int_equal (var_resolve_index (&v, 10), 10);
+
+  // Offset exactly at nbytes is valid (append position).
+  test_assert_int_equal (var_resolve_index (&v, 100), 100);
+
+  // Offset past nbytes is clamped to nbytes.
+  test_assert_int_equal (var_resolve_index (&v, 150), 100);
+
+  // Offset of 0 is unchanged.
+  test_assert_int_equal (var_resolve_index (&v, 0), 0);
+
+  // Negative offset is translated relative to nbytes.
+  test_assert_int_equal (var_resolve_index (&v, -10), 90);
+
+  // Negative offset equal to -nbytes translates to 0.
+  test_assert_int_equal (var_resolve_index (&v, -100), 0);
+
+  // Negative offset more negative than -nbytes clamps to 0.
+  test_assert_int_equal (var_resolve_index (&v, -150), 0);
+}
+#endif
+
+#ifdef TESTING
+TEST (var_resolve_nelem)
+{
+  struct variable v = {.nbytes = 100};
+
+  // nelem within the available remainder is unchanged.
+  test_assert_int_equal (var_resolve_nelem (&v, 0, 10, 1), 10);
+
+  // nelem exactly at the remainder is unchanged.
+  test_assert_int_equal (var_resolve_nelem (&v, 0, 100, 1), 100);
+
+  // nelem past the remainder is clamped down to it.
+  test_assert_int_equal (var_resolve_nelem (&v, 0, 200, 1), 100);
+
+  // Remainder shrinks as bofst moves forward.
+  test_assert_int_equal (var_resolve_nelem (&v, 90, 20, 1), 10);
+
+  // Larger element size reduces the available element count
+  // (integer division truncates any partial trailing element).
+  test_assert_int_equal (var_resolve_nelem (&v, 0, 100, 8), 12);
+
+  // bofst == nbytes leaves no remainder at all.
+  test_assert_int_equal (var_resolve_nelem (&v, 100, 5, 1), 0);
+}
+#endif
