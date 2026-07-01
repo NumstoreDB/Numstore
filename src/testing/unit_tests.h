@@ -37,7 +37,7 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[337];
+  const char *failed_names[342];
 
   
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
@@ -4471,7 +4471,7 @@ run_unit_tests (const char* filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:277 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:344 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:347 START
   if (!filter || strstr("smfile_open", filter))
   {
     extern void __test__smfile_open(void);
@@ -4490,9 +4490,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:344 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:347 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:468 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:471 START
   if (!filter || strstr("smfile_pinsert", filter))
   {
     extern void __test__smfile_pinsert(void);
@@ -4511,9 +4511,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:468 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:471 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:491 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:492 START
   if (!filter || strstr("smfile_insert", filter))
   {
     extern void __test__smfile_insert(void);
@@ -4532,9 +4532,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:491 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:492 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:634 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:635 START
   if (!filter || strstr("smfile_pread", filter))
   {
     extern void __test__smfile_pread(void);
@@ -4553,9 +4553,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:634 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:635 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:664 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:665 START
   if (!filter || strstr("smfile_read", filter))
   {
     extern void __test__smfile_read(void);
@@ -4574,9 +4574,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:664 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:665 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:833 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:834 START
   if (!filter || strstr("smfile_premove", filter))
   {
     extern void __test__smfile_premove(void);
@@ -4595,9 +4595,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:833 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:834 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:865 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:866 START
   if (!filter || strstr("smfile_remove", filter))
   {
     extern void __test__smfile_remove(void);
@@ -4616,9 +4616,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:865 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:866 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1058 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1059 START
   if (!filter || strstr("smfile_pwrite", filter))
   {
     extern void __test__smfile_pwrite(void);
@@ -4637,9 +4637,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1058 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1059 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1101 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1102 START
   if (!filter || strstr("smfile_write", filter))
   {
     extern void __test__smfile_write(void);
@@ -4658,9 +4658,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1101 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1102 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1181 START
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1182 START
   if (!filter || strstr("smfile_psize", filter))
   {
     extern void __test__smfile_psize(void);
@@ -4679,7 +4679,7 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1181 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/smartfiles.c:1182 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/stride.c:163 START
   if (!filter || strstr("stride_resolve", filter))
@@ -6928,7 +6928,7 @@ run_unit_tests (const char* filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:471 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:1638 START
+  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:1639 START
   if (!filter || strstr("ns_var_get_or_create", filter))
   {
     extern void __test__ns_var_get_or_create(void);
@@ -6947,9 +6947,114 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:1638 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/var_algorithms.c:1639 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/variables.c:292 START
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:41 START
+  if (!filter || strstr("i_print_variable", filter))
+  {
+    extern void __test__i_print_variable(void);
+    i_log_info("========================= TEST CASE: %s\n", "i_print_variable");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__i_print_variable();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "i_print_variable");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "i_print_variable";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:41 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:90 START
+  if (!filter || strstr("variable_equal", filter))
+  {
+    extern void __test__variable_equal(void);
+    i_log_info("========================= TEST CASE: %s\n", "variable_equal");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__variable_equal();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "variable_equal");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "variable_equal";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:90 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:186 START
+  if (!filter || strstr("validate_vname", filter))
+  {
+    extern void __test__validate_vname(void);
+    i_log_info("========================= TEST CASE: %s\n", "validate_vname");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__validate_vname();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "validate_vname");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "validate_vname";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:186 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:264 START
+  if (!filter || strstr("var_random_name", filter))
+  {
+    extern void __test__var_random_name(void);
+    i_log_info("========================= TEST CASE: %s\n", "var_random_name");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__var_random_name();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "var_random_name");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "var_random_name";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:264 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:331 START
+  if (!filter || strstr("rand_varname", filter))
+  {
+    extern void __test__rand_varname(void);
+    i_log_info("========================= TEST CASE: %s\n", "rand_varname");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__rand_varname();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "rand_varname");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "rand_varname";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:331 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:469 START
   if (!filter || strstr("rand_varname_same_hash", filter))
   {
     extern void __test__rand_varname_same_hash(void);
@@ -6968,9 +7073,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/variables.c:292 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:469 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/variables.c:309 START
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:486 START
   if (!filter || strstr("rand_varname_different_hash", filter))
   {
     extern void __test__rand_varname_different_hash(void);
@@ -6989,7 +7094,7 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/variables.c:309 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/variables.c:486 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/wal.c:73 START
   if (!filter || strstr("walos_open", filter))
