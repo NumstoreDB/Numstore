@@ -119,7 +119,7 @@ TEST (error_log_consume)
   {
     error e = error_create ();
     error_causef (&e, ERR_CORRUPT, "Test");
-    test_assert (e.cause_code == SUCCESS);
+    test_assert (e.cause_code == ERR_CORRUPT);
     error_log_consume (&e);
     test_assert (e.cause_code == SUCCESS);
     test_assert (e.cmlen == 0);
