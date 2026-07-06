@@ -134,6 +134,16 @@
         "BUILD_SAMPLES":    "ON",
         "BUILD_DOCS":       "OFF"
       }
+    },
+    {
+      "name": "ninja",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_TESTS": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
     }
   ],
   "buildPresets": [

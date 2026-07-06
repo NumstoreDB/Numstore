@@ -26,10 +26,6 @@
 
 /******************************************************************************
  * SECTION: Common Data Structures
- * ----------------------------------------------------------------------------
- * @brief
- *
- *
  ******************************************************************************/
 
 enum stride_phase
@@ -438,79 +434,68 @@ three_in_pair_from (const page_h *prev, const page_h *cur, const page_h *next)
   return ret;
 }
 
-// TODO - graceful error handling and clean up of partial pages
-err_t
-ns_balance_and_release (
-    const struct ns_balance_and_release_params params,
-    error                                     *e
+/*
+ * Tries to balance with page next or prev that
+ * is loaded into memory
+ *
+ * if neither is loaded, tries again after
+ * loading them.
+ *
+ * Takes preference towards balancing with nodes
+ * that are already loaded in memory
+ */
+static err_t
+ns_balance_with_next_or_prev (
+    page_h               *prev,
+    page_h               *cur,
+    page_h               *next,
+    struct pager         *p,
+    struct txn           *tx,
+    struct three_in_pair *output,
+    error                *e
 )
 {
-  ASSERT (
-      params.prev->mode == PHM_NONE
-      || dlgt_valid_neighbors (page_h_ro (params.prev), page_h_ro (params.cur))
-  );
-  ASSERT (
-      params.next->mode == PHM_NONE
-      || dlgt_valid_neighbors (page_h_ro (params.cur), page_h_ro (params.next))
-  );
-  ASSERT (params.output);
-
-  // Upgrade cur to writable - so far there's no garuntees that cur
-  // is already writable on entry
-  const p_size csize = dlgt_get_len (page_h_ro (params.cur));
-
-  *params.output = three_in_pair_from (NULL, params.cur, NULL);
+  int    flags = PG_INNER_NODE | PG_DATA_LIST;
+  p_size csize = dlgt_get_len (page_h_ro (cur));
 
   // Cur needs balancing because it is less than maxlen / 2
-  if (csize > 0 && csize < dlgt_get_max_len (page_h_ro (params.cur)) / 2)
+  if (csize > 0 && csize < dlgt_get_max_len (page_h_ro (cur)) / 2)
   {
-    // If next is present - try balancing with next
-    if (params.next->mode != PHM_NONE)
+    // If next is loaded - balance with it
+    if (next->mode != PHM_NONE)
     {
-      dlgt_balance_with_next (params.cur, params.next);
-      *params.output = three_in_pair_from (NULL, params.cur, params.next);
+      dlgt_balance_with_next (cur, next);
+      *output = three_in_pair_from (NULL, cur, next);
     }
 
-    // If prev is present - try balancing with prev
-    else if (params.prev->mode != PHM_NONE)
+    // If prev is present - balance with it
+    else if (prev->mode != PHM_NONE)
     {
-      dlgt_balance_with_prev (params.prev, params.cur);
-      *params.output = three_in_pair_from (params.prev, params.cur, NULL);
+      dlgt_balance_with_prev (prev, cur);
+      *output = three_in_pair_from (prev, cur, NULL);
     }
 
-    // Loop back to next - load next and try again (if next even exists)
-    else if (dlgt_get_next (page_h_ro (params.cur)) != PGNO_NULL)
+    // None were pre loaded - try again with next by loading it into memory
+    else if (dlgt_get_next (page_h_ro (cur)) != PGNO_NULL)
     {
-      WRAP (pgr_get_writable (
-          params.next,
-          params.tx,
-          PG_INNER_NODE | PG_DATA_LIST,
-          dlgt_get_next (page_h_ro (params.cur)),
-          params.p,
-          e
-      ));
-      dlgt_balance_with_next (params.cur, params.next);
-      *params.output = three_in_pair_from (NULL, params.cur, params.next);
+      pgno npg = dlgt_get_next (page_h_ro (cur));
+      WRAP (pgr_get_writable (next, tx, flags, npg, p, e));
+      dlgt_balance_with_next (cur, next);
+      *output = three_in_pair_from (NULL, cur, next);
     }
 
-    // Loop back to start - load prev and try again (if prev even exists)
-    else if (dlgt_get_prev (page_h_ro (params.cur)) != PGNO_NULL)
+    // Next isn't present - try again with next by loading it into memory
+    else if (dlgt_get_prev (page_h_ro (cur)) != PGNO_NULL)
     {
-      WRAP (pgr_get_writable (
-          params.prev,
-          params.tx,
-          PG_INNER_NODE | PG_DATA_LIST,
-          dlgt_get_prev (page_h_ro (params.cur)),
-          params.p,
-          e
-      ));
-      dlgt_balance_with_prev (params.prev, params.cur);
-      *params.output = three_in_pair_from (params.prev, params.cur, NULL);
+      pgno ppg = dlgt_get_prev (page_h_ro (cur));
+      WRAP (pgr_get_writable (prev, tx, flags, ppg, p, e));
+      dlgt_balance_with_prev (prev, cur);
+      *output = three_in_pair_from (prev, cur, NULL);
     }
     else
     {
       // This balance was performed on a root  node
-      ASSERT (dlgt_is_root (page_h_ro (params.cur)));
+      ASSERT (dlgt_is_root (page_h_ro (cur)));
     }
   }
   else
@@ -518,79 +503,78 @@ ns_balance_and_release (
     // there's no need to balance
   }
 
-  // Assume cur is not a root; override below if it is
-  params.root->isroot = false;
-  if (dlgt_is_root (page_h_ro (params.cur)))
+  return SUCCESS;
+}
+
+/*
+ * Tries to balance with page next or prev that
+ * is loaded into memory
+ *
+ * if neither is loaded, tries again after
+ * loading them.
+ *
+ * Takes preference towards balancing with nodes
+ * that are already loaded in memory
+ */
+static err_t
+ns_maybe_delete_cur (
+    page_h             *prev,
+    page_h             *cur,
+    page_h             *next,
+    struct pager       *p,
+    struct txn         *tx,
+    struct root_update *root,
+    error              *e
+)
+{
+  int flags = PG_INNER_NODE | PG_DATA_LIST;
+
+  root->isroot = false;
+  if (dlgt_is_root (page_h_ro (cur)))
   {
-    params.root->isroot = true;
-    params.root->root   = page_h_pgno (params.cur);
+    root->isroot = true;
+    root->root   = page_h_pgno (cur);
   }
 
   // Need to delete cur
-  if (dlgt_get_len (page_h_ro (params.cur)) == 0)
+  if (dlgt_get_len (page_h_ro (cur)) == 0)
   {
-    i_log_trace (
-        "balance: deleting page %" PRpgno "\n",
-        page_h_pgno (params.cur)
-    );
-
     // Fetch prev and next for link re writing
-    if (!params.root->isroot)
+    if (!root->isroot)
     {
       // Load prev sibling if the caller did not already pin it
-      if (params.prev->mode == PHM_NONE)
+      if (prev->mode == PHM_NONE)
       {
-        const pgno prev_pg = dlgt_get_prev (page_h_ro (params.cur));
-        if (prev_pg != PGNO_NULL)
+        pgno ppg = dlgt_get_prev (page_h_ro (cur));
+        if (ppg != PGNO_NULL)
         {
-          WRAP (pgr_get_writable (
-              params.prev,
-              params.tx,
-              PG_INNER_NODE | PG_DATA_LIST,
-              prev_pg,
-              params.p,
-              e
-          ));
+          WRAP (pgr_get_writable (prev, tx, flags, ppg, p, e));
         }
       }
 
       // Load next sibling if the caller did not already pin it
-      if (params.next->mode == PHM_NONE)
+      if (next->mode == PHM_NONE)
       {
-        const pgno next_pg = dlgt_get_next (page_h_ro (params.cur));
-        if (next_pg != PGNO_NULL)
+        const pgno npg = dlgt_get_next (page_h_ro (cur));
+        if (npg != PGNO_NULL)
         {
-          WRAP (pgr_get_writable (
-              params.next,
-              params.tx,
-              PG_INNER_NODE | PG_DATA_LIST,
-              dlgt_get_next (page_h_ro (params.cur)),
-              params.p,
-              e
-          ));
+          WRAP (pgr_get_writable (next, tx, flags, npg, p, e));
         }
       }
 
       // Bridge the gap: prev->next = next, next->prev = prev
-      dlgt_link (
-          page_h_w_or_null (params.prev),
-          page_h_w_or_null (params.next)
-      );
+      dlgt_link (page_h_w_or_null (prev), page_h_w_or_null (next));
 
       // We might have turned prev / next into a new root by deleting cur
-      if (params.prev->mode != PHM_NONE
-          && dlgt_is_root (page_h_ro (params.prev)))
+      if (prev->mode != PHM_NONE && dlgt_is_root (page_h_ro (prev)))
       {
-        params.root->root   = page_h_pgno (params.prev);
-        params.root->isroot = true;
+        root->root   = page_h_pgno (prev);
+        root->isroot = true;
       }
-      else if (
-          params.next->mode != PHM_NONE
-          && dlgt_is_root (page_h_ro (params.next))
-      )
+      else if (next->mode != PHM_NONE && dlgt_is_root (page_h_ro (next)))
       {
-        params.root->root   = page_h_pgno (params.next);
-        params.root->isroot = true;
+        root->root   = page_h_pgno (next);
+        root->isroot = true;
       }
     }
 
@@ -598,31 +582,57 @@ ns_balance_and_release (
     else
     {
       // balance performed on root and deleted
-      params.root->root = PGNO_NULL;
+      root->root = PGNO_NULL;
     }
 
-    WRAP (pgr_delete_and_release (params.p, params.tx, params.cur, e));
+    WRAP (pgr_delete_and_release (p, tx, cur, e));
   }
 
+  return SUCCESS;
+}
+
+// TODO - graceful error handling and clean up of partial pages
+err_t
+ns_balance_and_release (struct ns_balance_and_release_params params, error *e)
+{
+  ASSERT (params.output);
+
+  // First - do the balance -
+  // e.g. transfer data between prev / cur / next
+  // to make all nodes valid
+  if (ns_balance_with_next_or_prev (
+          params.prev,
+          params.cur,
+          params.next,
+          params.p,
+          params.tx,
+          params.output,
+          e
+      ))
+  {
+    return error_trace (e);
+  }
+
+  // Clean up - delete cur if needed
+  if (ns_maybe_delete_cur (
+          params.prev,
+          params.cur,
+          params.next,
+          params.p,
+          params.tx,
+          params.root,
+          e
+      ))
+  {
+    return error_trace (e);
+  }
+
+  int flags = PG_INNER_NODE | PG_DATA_LIST;
+
   // One final common cleanup
-  WRAP (pgr_release_if_exists (
-      params.p,
-      params.prev,
-      PG_DATA_LIST | PG_INNER_NODE,
-      e
-  ));
-  WRAP (pgr_release_if_exists (
-      params.p,
-      params.cur,
-      PG_DATA_LIST | PG_INNER_NODE,
-      e
-  ));
-  WRAP (pgr_release_if_exists (
-      params.p,
-      params.next,
-      PG_DATA_LIST | PG_INNER_NODE,
-      e
-  ));
+  WRAP (pgr_release_if_exists (params.p, params.prev, flags, e));
+  WRAP (pgr_release_if_exists (params.p, params.cur, flags, e));
+  WRAP (pgr_release_if_exists (params.p, params.next, flags, e));
 
   return SUCCESS;
 }
@@ -888,7 +898,6 @@ failed:
 TEST (ns_insert)
 {
   struct pgr_fixture f;
-  struct txn         tx;
   pgr_fixture_create (&f);
 
   TEST_CASE ("Smoke Test")
@@ -901,7 +910,7 @@ TEST (ns_insert)
     struct ns_insert_params params = {
         .p     = f.p,
         .src   = &input,
-        .tx    = &tx,
+        .tx    = &f.tx,
         .root  = PGNO_NULL,
         .bofst = 0,
         .bytes = 40,
@@ -923,7 +932,7 @@ TEST (ns_insert)
     struct ns_insert_params params = {
         .p     = f.p,
         .src   = &input,
-        .tx    = &tx,
+        .tx    = &f.tx,
         .root  = PGNO_NULL,
         .bofst = 0,
         .bytes = 40,
@@ -962,7 +971,7 @@ TEST (ns_insert)
         struct ns_insert_params params = {                        \
             .p     = f.p,                                         \
             .src   = &input,                                      \
-            .tx    = &tx,                                         \
+            .tx    = &f.tx,                                       \
             .root  = PGNO_NULL,                                   \
             .bofst = 0,                                           \
             .bytes = byte_size,                                   \
@@ -991,6 +1000,7 @@ TEST (ns_insert)
 
   pgr_fixture_teardown (&f);
 }
+
 #endif
 
 /******************************************************************************
@@ -3394,3 +3404,35 @@ ns_write (const struct ns_write_params params, error *e)
     return error_causef (e, ERR_INVALID_ARGUMENT, "write stride is 0");
   }
 }
+
+/******************************************************************************
+ * SECTION: Explicit Tree Tests
+ ******************************************************************************/
+
+#ifdef TESTING
+TEST (tree_tests)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create (&f);
+
+  TEST_CASE ("Foo")
+  {
+    u8 _prev[DL_DATA_SIZE];
+    u8 _cur[DL_DATA_SIZE];
+    u32_arr_rand (_prev);
+    u32_arr_rand (_cur);
+
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+
+    struct page_tree_builder builder =
+        in2dl (f.p, &f.tx, 2, DL_DATA_SIZE, DL_DATA_SIZE);
+
+    build_page_tree (&builder, &f.e);
+
+    page_tree_builder_release_all (&builder, &f.e);
+  }
+
+  pgr_fixture_teardown (&f);
+}
+
+#endif
