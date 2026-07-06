@@ -64,10 +64,10 @@
  *
  * @var ns_insert_params::bytes
  * @brief Number of bytes to insert (0 = consume src until exhausted)
- *
  */
 struct ns_insert_params
 {
+  // Parameters
   struct pager  *p;
   struct stream *src;
   struct txn    *tx;
