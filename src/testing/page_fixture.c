@@ -113,7 +113,8 @@ build_tree_from_descr_inner (
     error              *e
 )
 {
-  page_h cur = page_h_create ();
+  page_h cur  = page_h_create ();
+  page_h next = page_h_create ();
 
   if (descr.next == NULL)
   {
