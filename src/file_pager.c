@@ -99,11 +99,7 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
   // Corrupt database - not a multiple of NS_PAGE_SIZE
   if ((size - header_len) % NS_PAGE_SIZE != 0)
   {
-    error_causef (
-        e,
-        ERR_CORRUPT,
-        "File pager does not contain contiguous pagers\n"
-    );
+    error_causef (e, ERR_CORRUPT, "File pager does not contain contiguous pagers\n");
     goto fp_failed;
   }
 
@@ -126,10 +122,7 @@ failed:
 TEST (fpgr_open)
 {
   error e = error_create ();
-  _Static_assert (
-      NS_PAGE_SIZE > 2,
-      "NS_PAGE_SIZE should be > 2 for file_pager test"
-  );
+  _Static_assert (NS_PAGE_SIZE > 2, "NS_PAGE_SIZE should be > 2 for file_pager test");
 
   i_file fp = {0};
   i_open_rw (&fp, "test.db", &e);
@@ -245,25 +238,16 @@ TEST (fpgr_new)
   // Create a new page
   test_fail_if (fpgr_extend (pager, 1, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 1);
-  test_assert_int_equal (
-      i_file_size (&fp, &e),
-      NS_PAGE_SIZE * atomic_load (&pager->npages)
-  );
+  test_assert_int_equal (i_file_size (&fp, &e), NS_PAGE_SIZE * atomic_load (&pager->npages));
 
   // Add two more pages and do the same thing
   test_fail_if (fpgr_extend (pager, 2, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 2);
-  test_assert_int_equal (
-      i_file_size (&fp, &e),
-      NS_PAGE_SIZE * atomic_load (&pager->npages)
-  );
+  test_assert_int_equal (i_file_size (&fp, &e), NS_PAGE_SIZE * atomic_load (&pager->npages));
 
   test_fail_if (fpgr_extend (pager, 3, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 3);
-  test_assert_int_equal (
-      i_file_size (&fp, &e),
-      NS_PAGE_SIZE * atomic_load (&pager->npages)
-  );
+  test_assert_int_equal (i_file_size (&fp, &e), NS_PAGE_SIZE * atomic_load (&pager->npages));
 
   test_fail_if (fpgr_close (pager, &e));
 
@@ -295,22 +279,11 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
   }
 
   // Read all from file
-  const i64 nread = i_pread_all (
-      &p->f,
-      dest,
-      NS_PAGE_SIZE,
-      p->header_len + pg * NS_PAGE_SIZE,
-      e
-  );
+  const i64 nread = i_pread_all (&p->f, dest, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e);
 
   if (nread == 0)
   {
-    error_causef (
-        e,
-        ERR_CORRUPT,
-        "pread returned 0 bytes at page %" PRpgno,
-        pg
-    );
+    error_causef (e, ERR_CORRUPT, "pread returned 0 bytes at page %" PRpgno, pg);
     goto theend;
   }
 
@@ -336,13 +309,7 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (i_pwrite_all (
-          &p->f,
-          src,
-          NS_PAGE_SIZE,
-          p->header_len + pg * NS_PAGE_SIZE,
-          e
-      ))
+  if (i_pwrite_all (&p->f, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e))
   {
     goto theend;
   }
@@ -355,13 +322,7 @@ theend:
 }
 
 err_t
-fpgr_write_header (
-    struct file_pager *p,
-    const u8          *src,
-    u32                ofst,
-    u32                size,
-    error             *e
-)
+fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e)
 {
   ASSERT (src);
   ASSERT (ofst + size <= p->header_len);

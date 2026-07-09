@@ -55,12 +55,7 @@ txn_update_data (struct txn *t, const struct txn_data data)
 }
 
 void
-txn_update (
-    struct txn   *t,
-    enum tx_state state,
-    const lsn     last,
-    const lsn     undo_next
-)
+txn_update (struct txn *t, enum tx_state state, const lsn last, const lsn undo_next)
 {
   latch_lock (&t->l);
   t->data = (struct txn_data){
@@ -80,11 +75,7 @@ txn_update_state (struct txn *t, const enum tx_state new_state)
 }
 
 void
-txn_update_last_undo (
-    struct txn *t,
-    const lsn   last_lsn,
-    const lsn   undo_next_lsn
-)
+txn_update_last_undo (struct txn *t, const lsn last_lsn, const lsn undo_next_lsn)
 {
   latch_lock (&t->l);
   t->data.last_lsn      = last_lsn;
@@ -93,11 +84,7 @@ txn_update_last_undo (
 }
 
 void
-txn_update_last_state (
-    struct txn         *t,
-    const lsn           last_lsn,
-    const enum tx_state new_state
-)
+txn_update_last_state (struct txn *t, const lsn last_lsn, const enum tx_state new_state)
 {
   latch_lock (&t->l);
   t->data.last_lsn = last_lsn;
@@ -122,10 +109,7 @@ txn_update_undo_next (struct txn *t, const lsn undo_next)
 }
 
 bool
-txn_data_equal_unsafe (
-    const struct txn_data *left,
-    const struct txn_data *right
-)
+txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right)
 {
   bool equal = true;
 
@@ -157,12 +141,7 @@ theend:
 }
 
 err_t
-txn_newlock (
-    struct txn          *t,
-    const struct lt_lock lock,
-    const enum lock_mode mode,
-    error               *e
-)
+txn_newlock (struct txn *t, const struct lt_lock lock, const enum lock_mode mode, error *e)
 {
   latch_lock (&t->l);
 
@@ -685,32 +664,24 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx1,
         1,
-        (
-            struct txn_data
-        ){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING}
+        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING}
     );
 
     // Candidates
     txn_init (
         &tx2,
         2,
-        (
-            struct txn_data
-        ){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO}
+        (struct txn_data){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO}
     );
     txn_init (
         &tx3,
         3,
-        (
-            struct txn_data
-        ){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO}
+        (struct txn_data){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO}
     );
     txn_init (
         &tx4,
         4,
-        (
-            struct txn_data
-        ){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO}
+        (struct txn_data){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO}
     );
 
     txnt_insert_txn (t, &tx1);
@@ -732,23 +703,17 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx1,
         1,
-        (
-            struct txn_data
-        ){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING}
+        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING}
     );
     txn_init (
         &tx2,
         2,
-        (
-            struct txn_data
-        ){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING}
+        (struct txn_data){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING}
     );
     txn_init (
         &tx3,
         3,
-        (
-            struct txn_data
-        ){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED}
+        (struct txn_data){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED}
     );
 
     txnt_insert_txn (t, &tx1);
@@ -841,11 +806,7 @@ hnode_foreach (struct hnode *node, void *ctx)
 }
 
 void
-txnt_foreach (
-    const struct txn_table *t,
-    void (*action) (struct txn *, void *ctx),
-    void *ctx
-)
+txnt_foreach (const struct txn_table *t, void (*action) (struct txn *, void *ctx), void *ctx)
 {
   struct foreach_ctx _ctx = {
       .action = action,
@@ -1028,26 +989,16 @@ TEST (txnt_insert)
     struct txn_table *t = txnt_open (&e);
     struct txn        tx1, tx2, tx3;
 
-    txn_init (
-        &tx1,
-        1,
-        (
-            struct txn_data
-        ){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING}
-    );
+    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING});
     txn_init (
         &tx2,
         2,
-        (
-            struct txn_data
-        ){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO}
+        (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO}
     );
     txn_init (
         &tx3,
         3,
-        (
-            struct txn_data
-        ){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED}
+        (struct txn_data){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED}
     );
 
     txnt_insert_txn (t, &tx1);
@@ -1524,20 +1475,8 @@ TEST (txnt_equal_ignore_state)
     struct txn_table *t1 = txnt_open (&e);
     struct txn_table *t2 = txnt_open (&e);
     struct txn        tx1, tx2;
-    txn_init (
-        &tx1,
-        1,
-        (
-            struct txn_data
-        ){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING}
-    );
-    txn_init (
-        &tx2,
-        1,
-        (
-            struct txn_data
-        ){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING}
-    );
+    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING});
+    txn_init (&tx2, 1, (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING});
 
     txnt_insert_txn (t1, &tx1);
     txnt_insert_txn (t2, &tx2);

@@ -164,8 +164,7 @@ llnode_get_n (struct llnode *head, const u32 index)
 }
 
 // Iterate over list
-#define LLIST_FOR_EACH(head, iter) \
-  for (llnode *iter = (head); iter; iter = iter->next)
+#define LLIST_FOR_EACH(head, iter) for (llnode *iter = (head); iter; iter = iter->next)
 
 /******************************************************************************
  * SECTION: Stride
@@ -256,19 +255,10 @@ struct multi_user_stride
       .present = STEP_PRESENT | START_PRESENT, \
   })
 
-bool ustride_equal (struct user_stride left, struct user_stride right);
-bool user_stride_equal (
-    const struct user_stride *left,
-    const struct user_stride *right
-);
-void
-stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
-err_t stride_resolve (
-    struct stride     *dest,
-    struct user_stride src,
-    u64                arrlen,
-    error             *e
-);
+bool  ustride_equal (struct user_stride left, struct user_stride right);
+bool  user_stride_equal (const struct user_stride *left, const struct user_stride *right);
+void  stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
+err_t stride_resolve (struct stride *dest, struct user_stride src, u64 arrlen, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Small Constructors
@@ -301,12 +291,7 @@ ustride2 (i64 step)
 HEADER_FUNC struct user_stride
 ustride12 (i64 stop, i64 step)
 {
-  return make_ustride (
-      0,
-      stop,
-      step,
-      STOP_PRESENT | STEP_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (0, stop, step, STOP_PRESENT | STEP_PRESENT | COLON_PRESENT);
 }
 
 // [start:]
@@ -320,24 +305,14 @@ ustride0 (i64 start)
 HEADER_FUNC struct user_stride
 ustride01 (i64 start, i64 stop)
 {
-  return make_ustride (
-      start,
-      stop,
-      0,
-      STOP_PRESENT | START_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (start, stop, 0, STOP_PRESENT | START_PRESENT | COLON_PRESENT);
 }
 
 // [start::step]
 HEADER_FUNC struct user_stride
 ustride02 (i64 start, i64 step)
 {
-  return make_ustride (
-      start,
-      0,
-      step,
-      STEP_PRESENT | START_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (start, 0, step, STEP_PRESENT | START_PRESENT | COLON_PRESENT);
 }
 
 // [start:stop:step]
@@ -369,11 +344,7 @@ ustride (void)
 HEADER_FUNC struct user_stride
 usfrms (const struct stride str)
 {
-  return ustride012 (
-      str.start,
-      str.start + str.stride * str.nelems,
-      str.stride
-  );
+  return ustride012 (str.start, str.start + str.stride * str.nelems, str.stride);
 }
 
 /*-----------------------------------------------------------------------------
@@ -394,11 +365,9 @@ struct mus_builder
 
 struct mus_builder musb_create (struct builder *b);
 
-err_t
-musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
+err_t musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
 
-err_t
-musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
+err_t musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
 
 /******************************************************************************
  * SECTION: Data Writer
@@ -411,34 +380,10 @@ musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
  * array patterns by defining them in memory and comparing
  ******************************************************************************/
 
-typedef err_t (*insert_func) (
-    void       *ctx,
-    u32         ofst,
-    const void *src,
-    u32         slen,
-    error      *e
-);
-typedef i64 (*read_func) (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    void         *dest,
-    error        *e
-);
-typedef i64 (*write_func) (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    const void   *src,
-    error        *e
-);
-typedef i64 (*remove_func) (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    void         *dest,
-    error        *e
-);
+typedef err_t (*insert_func) (void *ctx, u32 ofst, const void *src, u32 slen, error *e);
+typedef i64 (*read_func) (void *ctx, struct stride str, u32 size, void *dest, error *e);
+typedef i64 (*write_func) (void *ctx, struct stride str, u32 size, const void *src, error *e);
+typedef i64 (*remove_func) (void *ctx, struct stride str, u32 size, void *dest, error *e);
 typedef i64 (*get_len_func) (void *ctx, error *e);
 
 struct data_writer_functions
@@ -481,13 +426,8 @@ struct dbl_buffer
   struct allocator *alloc;
 };
 
-err_t dblb_create (
-    struct dbl_buffer *dest,
-    struct allocator  *alloc,
-    u32                size,
-    u32                initial_cap,
-    error             *e
-);
+err_t
+dblb_create (struct dbl_buffer *dest, struct allocator *alloc, u32 size, u32 initial_cap, error *e);
 err_t dblb_append (struct dbl_buffer *d, const void *data, u32 nelem, error *e);
 err_t dblb_ensure_space (struct dbl_buffer *d, u32 nelem, error *e);
 void *dblb_append_alloc (struct dbl_buffer *d, u32 nelem, error *e);
@@ -517,34 +457,11 @@ struct ext_array
 struct ext_array ext_array_create (void);
 void             ext_array_free (struct ext_array *r);
 
-i64 ext_array_insert (
-    struct ext_array *r,
-    u32               ofst,
-    const void       *src,
-    u32               slen,
-    error            *e
-);
-i64 ext_array_read (
-    const struct ext_array *r,
-    struct stride           str,
-    u32                     size,
-    void                   *dest,
-    error                  *e
-);
-i64 ext_array_write (
-    const struct ext_array *r,
-    struct stride           str,
-    u32                     size,
-    const void             *src,
-    error                  *e
-);
-i64 ext_array_remove (
-    struct ext_array *r,
-    struct stride     str,
-    u32               size,
-    void             *dest,
-    error            *e
-);
+i64 ext_array_insert (struct ext_array *r, u32 ofst, const void *src, u32 slen, error *e);
+i64 ext_array_read (const struct ext_array *r, struct stride str, u32 size, void *dest, error *e);
+i64
+ext_array_write (const struct ext_array *r, struct stride str, u32 size, const void *src, error *e);
+i64 ext_array_remove (struct ext_array *r, struct stride str, u32 size, void *dest, error *e);
 u64 ext_array_get_len (const struct ext_array *r);
 
 void ext_array_data_writer (struct data_writer *dest, struct ext_array *arr);
@@ -592,55 +509,31 @@ struct block_array
   u32               cap_per_node;
   struct block     *head;
 
-  u32 tlen;  // length of tail
-  u8 tail[]; // A temporary buffer used for storing the right half of a block on
-             // insert
+  u32 tlen;   // length of tail
+  u8  tail[]; // A temporary buffer used for storing the right half of a block on
+              // insert
 };
 
 struct block_array *block_array_create (u32 cap_per_node, error *e);
 struct block_array *block_array_clone (const struct block_array *r, error *e);
 void                block_array_free (struct block_array *r);
 
-err_t block_array_insert (
-    struct block_array *r,
-    u32                 ofst,
-    const void         *src,
-    u32                 slen,
-    error              *e
-);
+err_t block_array_insert (struct block_array *r, u32 ofst, const void *src, u32 slen, error *e);
 
-u64 block_array_read (
-    const struct block_array *r,
-    struct stride             str,
-    u32                       size,
-    void                     *dest
-);
+u64 block_array_read (const struct block_array *r, struct stride str, u32 size, void *dest);
 
-u64 block_array_write (
-    const struct block_array *r,
-    struct stride             str,
-    u32                       size,
-    const void               *src
-);
+u64 block_array_write (const struct block_array *r, struct stride str, u32 size, const void *src);
 
-i64 block_array_remove (
-    struct block_array *r,
-    struct stride       str,
-    u32                 size,
-    void               *dest,
-    error              *e
-);
+i64 block_array_remove (struct block_array *r, struct stride str, u32 size, void *dest, error *e);
 
 u64 block_array_getlen (const struct block_array *r);
 
 // Array accessor pattern
 void *block_array_get (struct block_array *r, u64 idx);
 
-void
-block_array_set (struct block_array *r, u64 idx, const void *data, u32 dlen);
+void block_array_set (struct block_array *r, u64 idx, const void *data, u32 dlen);
 
-void
-block_array_data_writer (struct data_writer *dest, struct block_array *arr);
+void block_array_data_writer (struct data_writer *dest, struct block_array *arr);
 
 /******************************************************************************
  * SECTION: Circular Buffer
@@ -715,16 +608,14 @@ struct cbuffer
  * @brief Creates a cbuffer over an existing array, treating it as full.
  * @param data Pointer to the backing array (already filled).
  */
-#define cbuffer_create_full_from(data) \
-  cbuffer_create_with (data, sizeof data, sizeof data)
+#define cbuffer_create_full_from(data) cbuffer_create_with (data, sizeof data, sizeof data)
 
 /**
  * @def cbuffer_create_from_cstr
  * @brief Creates a cbuffer from a C string, treating the string bytes as data.
  * @param cstr Null-terminated string to wrap (length is strlen(cstr)).
  */
-#define cbuffer_create_from_cstr(cstr) \
-  cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
+#define cbuffer_create_from_cstr(cstr) cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
 
 /**
  * @fn struct cbuffer cbuffer_create(void *data, u32 cap)
@@ -987,12 +878,7 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
  * @param src Source ring buffer generator.
  * @return Total elements moved.
  */
-u32 cbuffer_cbuffer_move (
-    struct cbuffer *dest,
-    u32             size,
-    u32             n,
-    struct cbuffer *src
-);
+u32 cbuffer_cbuffer_move (struct cbuffer *dest, u32 size, u32 n, struct cbuffer *src);
 
 /**
  * @fn u32 cbuffer_cbuffer_copy(struct cbuffer *dest, u32 size, u32 n, const
@@ -1006,27 +892,20 @@ u32 cbuffer_cbuffer_move (
  * @param src Source ring buffer reference container.
  * @return Total elements copied.
  */
-u32 cbuffer_cbuffer_copy (
-    struct cbuffer       *dest,
-    u32                   size,
-    u32                   n,
-    const struct cbuffer *src
-);
+u32 cbuffer_cbuffer_copy (struct cbuffer *dest, u32 size, u32 n, const struct cbuffer *src);
 
 /**
  * @def cbuffer_cbuffer_move_max
  * @brief Evicts and moves all tracked active data elements safely between
  * contexts.
  */
-#define cbuffer_cbuffer_move_max(dest, src) \
-  cbuffer_cbuffer_move (dest, 1, cbuffer_len (src), src)
+#define cbuffer_cbuffer_move_max(dest, src) cbuffer_cbuffer_move (dest, 1, cbuffer_len (src), src)
 
 /**
  * @def cbuffer_cbuffer_copy_max
  * @brief Copies all tracked active data elements safely between contexts.
  */
-#define cbuffer_cbuffer_copy_max(dest, src) \
-  cbuffer_cbuffer_copy (dest, 1, cbuffer_len (src), src)
+#define cbuffer_cbuffer_copy_max(dest, src) cbuffer_cbuffer_copy (dest, 1, cbuffer_len (src), src)
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: IO Read / Writing
@@ -1045,12 +924,7 @@ u32 cbuffer_cbuffer_copy (
  * @param e Error reporting instance container.
  * @return Tracked metric status representing processed fields.
  */
-i32 cbuffer_write_to_file_1 (
-    i_file               *dest,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+i32 cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn err_t cbuffer_write_to_file_1_expect(i_file *dest, const struct cbuffer
@@ -1063,12 +937,7 @@ i32 cbuffer_write_to_file_1 (
  * @param e Error reporting instance container.
  * @return Code validation metrics verifying the operation.
  */
-err_t cbuffer_write_to_file_1_expect (
-    i_file               *dest,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+err_t cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn void cbuffer_write_to_file_2(struct cbuffer *b, u32 nwritten)
@@ -1106,12 +975,7 @@ i32 cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
  * @param e Error tracking storage.
  * @return Read verification data loops.
  */
-i32 cbuffer_read_from_file_1 (
-    i_file               *src,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+i32 cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn err_t cbuffer_read_from_file_1_expect(i_file *src, const struct cbuffer
@@ -1125,12 +989,7 @@ i32 cbuffer_read_from_file_1 (
  * @param e Error tracking storage.
  * @return Validation context verification fields.
  */
-err_t cbuffer_read_from_file_1_expect (
-    i_file               *src,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+err_t cbuffer_read_from_file_1_expect (i_file *src, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn void cbuffer_read_from_file_2(struct cbuffer *b, u32 nread)

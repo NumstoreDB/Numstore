@@ -79,8 +79,7 @@ dvalidtr_read (
     error_causef (
         e,
         ERR_CORRUPT,
-        "ref read failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-        " size=%u)",
+        "ref read failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -96,8 +95,7 @@ dvalidtr_read (
     error_causef (
         e,
         ERR_CORRUPT,
-        "sut read failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-        " size=%u)",
+        "sut read failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -111,8 +109,8 @@ dvalidtr_read (
     error_causef (
         e,
         ERR_CORRUPT,
-        "read count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64
-        " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
+        "read count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64
+        " nelems=%" PRIu64 " size=%u)",
         ref_read,
         sut_read,
         str.start,
@@ -129,8 +127,7 @@ dvalidtr_read (
         e,
         ERR_CORRUPT,
         "read data mismatch: ref/sut diverged"
-        " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-        " size=%u nread=%" PRIu64 ")",
+        " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u nread=%" PRIu64 ")",
         str.start,
         str.stride,
         str.nelems,
@@ -153,13 +150,7 @@ theend:
 }
 
 static err_t
-dvalidtr_insert (
-    struct dvalidtr *d,
-    const u32        ofst,
-    const void      *_src,
-    const u32        slen,
-    error           *e
-)
+dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32 slen, error *e)
 {
   u8 *src = (u8 *)_src;
   if (_src == NULL)
@@ -173,8 +164,7 @@ dvalidtr_insert (
   }
 
   // Insert into ref
-  const i64 ref_written =
-      d->ref.functions.insert (d->ref.ctx, ofst, src, slen, e);
+  const i64 ref_written = d->ref.functions.insert (d->ref.ctx, ofst, src, slen, e);
   if (ref_written < 0)
   {
     error_causef (
@@ -189,8 +179,7 @@ dvalidtr_insert (
   }
 
   // Insert into system under test
-  const i64 sut_written =
-      d->sut.functions.insert (d->sut.ctx, ofst, src, slen, e);
+  const i64 sut_written = d->sut.functions.insert (d->sut.ctx, ofst, src, slen, e);
   if (sut_written < 0)
   {
     error_causef (
@@ -291,15 +280,13 @@ dvalidtr_write (
     ptr_range (src, str.nelems * size);
   }
 
-  const i64 sut_written =
-      d->sut.functions.write (d->sut.ctx, str, size, src, e);
+  const i64 sut_written = d->sut.functions.write (d->sut.ctx, str, size, src, e);
   if (sut_written < 0)
   {
     error_causef (
         e,
         ERR_CORRUPT,
-        "write into sut failed (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "write into sut failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -308,15 +295,13 @@ dvalidtr_write (
     goto theend;
   }
 
-  const i64 ref_written =
-      d->ref.functions.write (d->ref.ctx, str, size, src, e);
+  const i64 ref_written = d->ref.functions.write (d->ref.ctx, str, size, src, e);
   if (ref_written < 0)
   {
     error_causef (
         e,
         ERR_CORRUPT,
-        "write into ref failed (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "write into ref failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -330,8 +315,8 @@ dvalidtr_write (
     error_causef (
         e,
         ERR_CORRUPT,
-        "write count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64
-        " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
+        "write count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64
+        " nelems=%" PRIu64 " size=%u)",
         ref_written,
         sut_written,
         str.start,
@@ -348,8 +333,8 @@ dvalidtr_write (
     error_causef (
         e,
         ERR_CORRUPT,
-        "read-back after write failed (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "read-back after write failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
+        " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -375,13 +360,7 @@ theend:
 }
 
 static err_t
-dvalidtr_remove (
-    struct dvalidtr    *d,
-    const struct stride str,
-    const u32           size,
-    void               *_dest,
-    error              *e
-)
+dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, void *_dest, error *e)
 {
   void *ref  = i_malloc (str.nelems, size, e);
   void *dest = _dest;
@@ -407,8 +386,7 @@ dvalidtr_remove (
     error_causef (
         e,
         ERR_CORRUPT,
-        "remove from ref failed (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "remove from ref failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -424,8 +402,7 @@ dvalidtr_remove (
     error_causef (
         e,
         ERR_CORRUPT,
-        "remove from sut failed (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "remove from sut failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -439,8 +416,8 @@ dvalidtr_remove (
     error_causef (
         e,
         ERR_CORRUPT,
-        "remove count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64
-        " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
+        "remove count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64
+        " nelems=%" PRIu64 " size=%u)",
         ref_read,
         sut_read,
         str.start,
@@ -457,8 +434,7 @@ dvalidtr_remove (
         e,
         ERR_CORRUPT,
         "remove data mismatch: ref/sut diverged"
-        " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-        " size=%u nremoved=%" PRIu64 ")",
+        " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u nremoved=%" PRIu64 ")",
         str.start,
         str.stride,
         str.nelems,
@@ -535,12 +511,7 @@ dvalidtr_validate (struct dvalidtr *d, error *e)
           e
       ))
   {
-    error_causef (
-        e,
-        ERR_CORRUPT,
-        "full read validation failed (len=%" PRIu64 ")",
-        len
-    );
+    error_causef (e, ERR_CORRUPT, "full read validation failed (len=%" PRIu64 ")", len);
     return error_trace (e);
   }
 
@@ -616,9 +587,8 @@ dvalidtr_random_test (
           return error_causef (
               e,
               ERR_CORRUPT,
-              "random test failed on iter %u: read (len=%" PRIu64
-              " start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-              " size=%u)",
+              "random test failed on iter %u: read (len=%" PRIu64 " start=%" PRIu64
+              " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
               k,
               len,
               start,
@@ -636,9 +606,8 @@ dvalidtr_random_test (
           return error_causef (
               e,
               ERR_CORRUPT,
-              "random test failed on iter %u: remove (len=%" PRIu64
-              " start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-              " size=%u)",
+              "random test failed on iter %u: remove (len=%" PRIu64 " start=%" PRIu64
+              " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
               k,
               len,
               start,
@@ -656,9 +625,8 @@ dvalidtr_random_test (
           return error_causef (
               e,
               ERR_CORRUPT,
-              "random test failed on iter %u: write (len=%" PRIu64
-              " start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-              " size=%u)",
+              "random test failed on iter %u: write (len=%" PRIu64 " start=%" PRIu64
+              " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
               k,
               len,
               start,
@@ -674,11 +642,7 @@ dvalidtr_random_test (
 
   if (dvalidtr_validate (d, e))
   {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "random test failed to validate data at the end"
-    );
+    return error_causef (e, ERR_CORRUPT, "random test failed to validate data at the end");
   }
 
   return SUCCESS;

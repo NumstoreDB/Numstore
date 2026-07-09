@@ -181,8 +181,7 @@ void txn_update_last_undo (struct txn *t, lsn last_lsn, lsn undo_next_lsn);
  * new_state)
  * @brief Explicit atomic mutation matching state changes with sequence numbers.
  */
-void
-txn_update_last_state (struct txn *t, lsn last_lsn, enum tx_state new_state);
+void txn_update_last_state (struct txn *t, lsn last_lsn, enum tx_state new_state);
 
 /**
  * @fn void txn_update_last(struct txn *t, lsn last_lsn)
@@ -206,10 +205,7 @@ void txn_update_undo_next (struct txn *t, lsn undo_next);
  * @brief Direct memory validation check evaluating differences without
  * acquiring latches.
  */
-bool txn_data_equal_unsafe (
-    const struct txn_data *left,
-    const struct txn_data *right
-);
+bool txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lock Management
@@ -227,8 +223,7 @@ typedef void (*lock_func) (struct lt_lock lock, enum lock_mode mode, void *ctx);
  * mode, error *e)
  * @brief Attaches a newly tracked lock resource allocation context container.
  */
-err_t
-txn_newlock (struct txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
+err_t txn_newlock (struct txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
 
 /**
  * @fn bool txn_haslock(struct txn *t, struct lt_lock lock)
@@ -358,11 +353,7 @@ void i_log_txnt (int log_level, struct txn_table *t);
  * @brief Executes a function on each open transaction. This does not lock
  * internal transactions.
  */
-void txnt_foreach (
-    const struct txn_table *t,
-    void (*action) (struct txn *, void *ctx),
-    void *ctx
-);
+void txnt_foreach (const struct txn_table *t, void (*action) (struct txn *, void *ctx), void *ctx);
 
 /**
  * @fn u32 txnt_get_size(const struct txn_table *dest)

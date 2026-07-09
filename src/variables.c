@@ -145,11 +145,7 @@ validate_vname (struct string vname, error *e)
 
   if (vname.len >= 4096)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "variable name exceeds 4096 chars"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "variable name exceeds 4096 chars");
   }
 
   if (!is_alpha (vname.data[0]))
@@ -270,16 +266,12 @@ TEST (var_random_name)
     char buf[16];
     var_random_name (buf, sizeof (buf));
 
-    test_assert (
-        test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1)
-    );
+    test_assert (test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1));
     test_assert_int_equal (buf[sizeof (buf) - 1], '\0');
 
     for (u32 i = 1; i < sizeof (buf) - 1; i++)
     {
-      test_assert (
-          test_char_in_pool (buf[i], generous_pool, sizeof (generous_pool) - 1)
-      );
+      test_assert (test_char_in_pool (buf[i], generous_pool, sizeof (generous_pool) - 1));
     }
   }
 
@@ -342,9 +334,7 @@ TEST (rand_varname)
 
     test_assert_int_equal (ret, SUCCESS);
     test_assert (name.len >= 5 && name.len <= 10);
-    test_assert (
-        test_char_in_pool (name.data[0], alpha_pool, sizeof (alpha_pool) - 1)
-    );
+    test_assert (test_char_in_pool (name.data[0], alpha_pool, sizeof (alpha_pool) - 1));
     test_assert_int_equal (name.data[name.len - 1], '\0');
   }
 

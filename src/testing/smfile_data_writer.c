@@ -28,45 +28,17 @@ smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
 static i64
 smfile_read_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
-  return smfile_pread (
-      ctx,
-      "testing",
-      dest,
-      size,
-      str.start * size,
-      str.stride * size,
-      str.nelems
-  );
+  return smfile_pread (ctx, "testing", dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
-smfile_write_func (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    const void   *src,
-    error        *e
-)
+smfile_write_func (void *ctx, struct stride str, u32 size, const void *src, error *e)
 {
-  return smfile_pwrite (
-      ctx,
-      "testing",
-      src,
-      size,
-      str.start * size,
-      str.stride * size,
-      str.nelems
-  );
+  return smfile_pwrite (ctx, "testing", src, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
-smfile_remove_func (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    void         *dest,
-    error        *e
-)
+smfile_remove_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
   return smfile_premove (
       ctx,
@@ -102,8 +74,7 @@ smfile_data_writer_open (const char *path)
   {
     return NULL;
   }
-  struct data_writer *writer =
-      i_malloc (1, sizeof *writer, &((struct nsdb *)smf)->e);
+  struct data_writer *writer = i_malloc (1, sizeof *writer, &((struct nsdb *)smf)->e);
   if (writer == NULL)
   {
     smfile_close (smf);
@@ -151,10 +122,7 @@ TEST (smfile_data_writer)
         .isvalid = NULL,
     };
 
-    test_assert_equal (
-        dvalidtr_random_test (&d, 1, niters[i], 1000, &e),
-        SUCCESS
-    );
+    test_assert_equal (dvalidtr_random_test (&d, 1, niters[i], 1000, &e), SUCCESS);
 
     ext_array_free (&ext_arr_1);
     test_assert (smfile_data_writer_close (sut) == 0);

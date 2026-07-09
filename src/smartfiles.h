@@ -166,8 +166,7 @@ sb_size smfile_size (smfile_t *smf);
  * @param slen The length in bytes of [src]
  * @return < 0 on error, 0 on success
  */
-sb_size
-smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
+sb_size smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
 
 /**
  * @brief Write elements into a smart file, overwriting existing data at that
@@ -179,8 +178,7 @@ smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
  * @param nelem The number of elements to write
  * @return The number of elements written, or < 0 on error
  */
-sb_size
-smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem);
+sb_size smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem);
 
 /**
  * @brief Read elements from a smart file into dest.
@@ -225,13 +223,8 @@ sb_size smfile_psize (smfile_t *smf, const char *vname);
  * @param slen The length in bytes of [src]
  * @return < 0 on error, 0 on success
  */
-sb_size smfile_pinsert (
-    smfile_t   *smf,
-    const char *name,
-    const void *src,
-    sb_size     bofst,
-    b_size      slen
-);
+sb_size
+smfile_pinsert (smfile_t *smf, const char *name, const void *src, sb_size bofst, b_size slen);
 
 /**
  * @brief [Power] Write elements into a named variable within a smart file,

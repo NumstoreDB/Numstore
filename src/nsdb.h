@@ -104,12 +104,8 @@ void  nsdb_auto_rollback (struct nsdb *sm);
  * SUBSECTION: Execute Internal
  *----------------------------------------------------------------------------*/
 
-sb_size nsdb_execute_on_buffer (
-    struct nsdb      *ns,
-    struct query     *q,
-    void             *data,
-    struct allocator *alc
-);
+sb_size
+nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct allocator *alc);
 
 /******************************************************************************
  * SECTION: Query literal routines
@@ -117,12 +113,7 @@ sb_size nsdb_execute_on_buffer (
  * @brief Individual actions you can take on a numstore database
  ******************************************************************************/
 
-int nsdb_create (
-    struct nsdb      *db,
-    struct allocator *alloc,
-    struct string     vname,
-    struct type       dtype
-);
+int nsdb_create (struct nsdb *db, struct allocator *alloc, struct string vname, struct type dtype);
 err_t nsdb_delete (struct nsdb *db, struct string vname);
 err_t nsdb_get (
     struct nsdb      *db,
@@ -130,28 +121,16 @@ err_t nsdb_get (
     struct allocator *alloc,
     struct variable **dest
 );
-err_t nsdb_get_and_print (
-    struct nsdb      *db,
-    struct get_query *query,
-    struct allocator *alloc
-);
+err_t   nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc);
 sb_size nsdb_insert (
     struct nsdb         *db,
     struct insert_query *query,
     struct allocator    *alloc,
     struct stream       *src
 );
-sb_size nsdb_read (
-    struct nsdb       *db,
-    struct read_query *query,
-    struct allocator  *alloc,
-    struct stream     *dest
-);
-sb_size nsdb_read_and_print (
-    struct nsdb       *db,
-    struct read_query *query,
-    struct allocator  *alloc
-);
+sb_size
+nsdb_read (struct nsdb *db, struct read_query *query, struct allocator *alloc, struct stream *dest);
+sb_size nsdb_read_and_print (struct nsdb *db, struct read_query *query, struct allocator *alloc);
 sb_size nsdb_write (
     struct nsdb        *db,
     struct write_query *query,

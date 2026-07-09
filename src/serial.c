@@ -255,10 +255,7 @@ string_less_equal_string (const struct string left, const struct string right)
 }
 
 bool
-string_greater_equal_string (
-    const struct string left,
-    const struct string right
-)
+string_greater_equal_string (const struct string left, const struct string right)
 {
   return !string_less_string (left, right);
 }
@@ -502,22 +499,10 @@ TEST (stream_close)
 
 #endif // TESTING
 
-i32 stream_read (
-    struct stream *dest,
-    u32            size,
-    u32            n,
-    struct stream *src,
-    error         *e
-);
+i32 stream_read (struct stream *dest, u32 size, u32 n, struct stream *src, error *e);
 
 i32
-stream_bread (
-    void          *dest,
-    const u32      size,
-    const u32      n,
-    struct stream *src,
-    error         *e
-)
+stream_bread (void *dest, const u32 size, const u32 n, struct stream *src, error *e)
 {
   return src->ops->pull (src, src->ctx, dest, size, n, e);
 }
@@ -532,14 +517,7 @@ struct test_pull_ctx
 };
 
 static i32
-test_pull_fn (
-    struct stream *s,
-    void          *vctx,
-    void          *dest,
-    const u32      size,
-    const u32      n,
-    error         *e
-)
+test_pull_fn (struct stream *s, void *vctx, void *dest, const u32 size, const u32 n, error *e)
 {
   struct test_pull_ctx *ctx = (struct test_pull_ctx *)vctx;
 
@@ -570,7 +548,7 @@ TEST (stream_bread)
   TEST_CASE ("reads requested data")
   {
     const u8             data[] = {1, 2, 3, 4, 5, 6, 7, 8};
-    struct test_pull_ctx ctx = {.data = data, .len = sizeof (data), .pos = 0};
+    struct test_pull_ctx ctx    = {.data = data, .len = sizeof (data), .pos = 0};
     struct stream        src;
 
     stream_init (&src, &test_pull_ops, &ctx);
@@ -588,7 +566,7 @@ TEST (stream_bread)
   TEST_CASE ("partial read then exhausted")
   {
     const u8             data[] = {9, 8, 7};
-    struct test_pull_ctx ctx = {.data = data, .len = sizeof (data), .pos = 0};
+    struct test_pull_ctx ctx    = {.data = data, .len = sizeof (data), .pos = 0};
     struct stream        src;
 
     stream_init (&src, &test_pull_ops, &ctx);
@@ -609,13 +587,7 @@ TEST (stream_bread)
 #endif // TESTING
 
 i32
-stream_bwrite (
-    const void    *buf,
-    const u32      size,
-    const u32      n,
-    struct stream *dest,
-    error         *e
-)
+stream_bwrite (const void *buf, const u32 size, const u32 n, struct stream *dest, error *e)
 {
   return dest->ops->push (dest, dest->ctx, buf, size, n, e);
 }
@@ -630,14 +602,7 @@ struct test_push_ctx
 };
 
 static i32
-test_push_fn (
-    struct stream *s,
-    void          *vctx,
-    const void    *src,
-    const u32      size,
-    const u32      n,
-    error         *e
-)
+test_push_fn (struct stream *s, void *vctx, const void *src, const u32 size, const u32 n, error *e)
 {
   struct test_push_ctx *ctx = (struct test_push_ctx *)vctx;
 
@@ -707,13 +672,7 @@ TEST (stream_bwrite)
 #endif // TESTING
 
 i32
-stream_read (
-    struct stream *dest,
-    const u32      size,
-    const u32      n,
-    struct stream *src,
-    error         *e
-)
+stream_read (struct stream *dest, const u32 size, const u32 n, struct stream *src, error *e)
 {
   ASSERT (dest->ops->push);
   ASSERT (src->ops->pull);
@@ -745,14 +704,7 @@ stream_read (
     u32 pushed = 0;
     while (pushed < (u32)got)
     {
-      const i32 w = dest->ops->push (
-          dest,
-          dest->ctx,
-          buf + (pushed * size),
-          size,
-          got - pushed,
-          e
-      );
+      const i32 w = dest->ops->push (dest, dest->ctx, buf + (pushed * size), size, got - pushed, e);
       if (w < 0)
       {
         return w;
@@ -783,7 +735,7 @@ TEST (stream_read)
   TEST_CASE ("full transfer")
   {
     const u8             data[6] = {1, 2, 3, 4, 5, 6};
-    struct test_pull_ctx pctx = {.data = data, .len = sizeof (data), .pos = 0};
+    struct test_pull_ctx pctx    = {.data = data, .len = sizeof (data), .pos = 0};
     struct stream        src;
 
     stream_init (&src, &test_pull_ops, &pctx);
@@ -885,14 +837,7 @@ TEST (stream_read)
 #endif // TESTING
 
 static i32
-stream_ibuf_pull (
-    struct stream *s,
-    void          *vctx,
-    void          *dest,
-    const u32      size,
-    const u32      n,
-    error         *e
-)
+stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, const u32 n, error *e)
 {
   struct stream_ibuf_ctx *ctx = (struct stream_ibuf_ctx *)vctx;
 
@@ -981,12 +926,7 @@ static const struct stream_ops stream_obuf_ops = {
 };
 
 void
-stream_ibuf_init (
-    struct stream          *s,
-    struct stream_ibuf_ctx *ctx,
-    const void             *buf,
-    const u32               size
-)
+stream_ibuf_init (struct stream *s, struct stream_ibuf_ctx *ctx, const void *buf, const u32 size)
 {
   ctx->buf  = (const u8 *)buf;
   ctx->size = size;
@@ -1085,12 +1025,7 @@ TEST (stream_ibuf)
 #endif // TESTING
 
 void
-stream_obuf_init (
-    struct stream          *s,
-    struct stream_obuf_ctx *ctx,
-    void                   *buf,
-    const u32               cap
-)
+stream_obuf_init (struct stream *s, struct stream_obuf_ctx *ctx, void *buf, const u32 cap)
 {
   ctx->buf = buf;
   ctx->cap = cap;
@@ -1246,14 +1181,7 @@ TEST (stream_read_ibuf_to_obuf)
 #endif // TESTING
 
 static i32
-stream_sink_push (
-    struct stream *s,
-    void          *vctx,
-    const void    *src,
-    u32            size,
-    const u32      n,
-    error         *e
-)
+stream_sink_push (struct stream *s, void *vctx, const void *src, u32 size, const u32 n, error *e)
 {
   return n;
 }
@@ -1543,14 +1471,7 @@ TEST (stream_opsink)
 #endif // TESTING
 
 static i32
-stream_limit_pull (
-    struct stream *s,
-    void          *vctx,
-    void          *buf,
-    const u32      size,
-    const u32      n,
-    error         *e
-)
+stream_limit_pull (struct stream *s, void *vctx, void *buf, const u32 size, const u32 n, error *e)
 {
   struct stream_limit_ctx *ctx = (struct stream_limit_ctx *)vctx;
 
@@ -1590,8 +1511,7 @@ TEST (stream_limit_pull)
 {
   TEST_CASE ("caps reads at the limit")
   {
-    const u8 data[20] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                         10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+    const u8 data[20] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
 
     struct stream          ibuf_s;
     struct stream_ibuf_ctx ibuf_ctx;

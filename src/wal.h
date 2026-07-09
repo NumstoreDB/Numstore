@@ -46,12 +46,12 @@ err_t walis_seek (struct wal_istream *w, lsn pos, error *e);
  */
 err_t walis_read_all (
     struct wal_istream *w,
-    bool *iseof, // At the end, this is set to true or false if we encountered
-                 // the eof
-    lsn   *rlsn, // NULLABLE The lsn that we just read
-    u32   *checksum, // NULLABLE If passed, aggregates the checksum on [data]
-    void  *dest,     // The data to read into
-    u32    len,      // Length of the data to read
+    bool               *iseof, // At the end, this is set to true or false if we encountered
+                               // the eof
+    lsn   *rlsn,               // NULLABLE The lsn that we just read
+    u32   *checksum,           // NULLABLE If passed, aggregates the checksum on [data]
+    void  *dest,               // The data to read into
+    u32    len,                // Length of the data to read
     error *e
 );
 
@@ -99,15 +99,9 @@ err_t               walos_close (struct wal_ostream *w, error *e);
 err_t walos_flush_all (struct wal_ostream *w, error *e);
 
 // Write
-err_t walos_write_all (
-    struct wal_ostream *w,
-    u32                *checksum,
-    const void         *data,
-    u32                 len,
-    error              *e
-);
-lsn  walos_get_next_lsn (struct wal_ostream *w);
-slsn walos_truncate (struct wal_ostream *w, error *e);
+err_t walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len, error *e);
+lsn   walos_get_next_lsn (struct wal_ostream *w);
+slsn  walos_truncate (struct wal_ostream *w, error *e);
 
 err_t walos_crash (struct wal_ostream *w, error *e);
 
@@ -274,8 +268,8 @@ struct wal_rec_hdr_write
   };
 };
 
-void        wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
-const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
+void                     wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
+const char              *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry
@@ -357,9 +351,8 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
    sizeof (u32)       /* checksum */  \
   )
 // Size of DUMMY_CLR entry
-#define WL_DUMMY_CLR_LEN                                          \
-  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) \
-   + sizeof (u32))
+#define WL_DUMMY_CLR_LEN \
+  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
 
 // Utils
 stxid wrh_get_tid (const struct wal_rec_hdr_read *h);
@@ -367,46 +360,24 @@ slsn  wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
 bool  wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool  wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno  wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
-void  i_print_wal_rec_hdr_read_light (
-    int                            log_level,
-    const struct wal_rec_hdr_read *w,
-    lsn                            l
-);
-struct wal_clr_write
-wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
-void wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
+void  i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
+struct wal_clr_write wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
+void                 wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
 
 // DECODE
-void walf_decode_physical_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_UPDATE_LEN]
-);
-void walf_decode_fsm_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FSM_UPDATE_LEN]
-);
-void walf_decode_file_extend_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FILE_EXT_LEN]
-);
-void
-walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN]);
-void
-walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN]);
-void walf_decode_dummy_clr (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_DUMMY_CLR_LEN]
-);
+void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN]);
+void walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN]);
+void walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN]);
+void walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN]);
+void walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN]);
+void walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN]);
 void walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN]);
-void
-walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]);
+void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]);
 void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 
 #ifdef TESTING
-bool wal_rec_hdr_read_equal (
-    const struct wal_rec_hdr_read *left,
-    const struct wal_rec_hdr_read *right
-);
+bool
+wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right);
 #endif
 
 HEADER_FUNC struct wal_update_write
@@ -496,16 +467,14 @@ slsn wal_append_begin_log (struct wal *w, txid tid, error *e);
 slsn wal_append_commit_log (struct wal *w, txid tid, lsn prev, error *e);
 slsn wal_append_end_log (struct wal *w, txid tid, lsn prev, error *e);
 slsn wal_append_ckpt_begin (struct wal *w, error *e);
-slsn
-wal_append_update_log (struct wal *w, struct wal_update_write update, error *e);
+slsn wal_append_update_log (struct wal *w, struct wal_update_write update, error *e);
 slsn wal_append_clr_log (struct wal *w, struct wal_clr_write clr, error *e);
 
 /**
  * Just append an arbitrary log
  * this is used mostly for testing
  */
-slsn
-wal_append_log (struct wal *w, const struct wal_rec_hdr_write *hdr, error *e);
+slsn wal_append_log (struct wal *w, const struct wal_rec_hdr_write *hdr, error *e);
 
 err_t wal_crash (struct wal *w, error *e);
 

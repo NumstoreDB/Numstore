@@ -32,27 +32,18 @@ int strings_all_unique (const struct string *strs, u32 count);
 
 bool string_equal (const struct string s1, const struct string s2);
 
-const struct string *strings_are_disjoint (
-    const struct string *left,
-    u32                  llen,
-    const struct string *right,
-    u32                  rlen
-);
+const struct string *
+strings_are_disjoint (const struct string *left, u32 llen, const struct string *right, u32 rlen);
 
 bool string_contains (const struct string superset, const struct string subset);
 
 bool string_less_string (const struct string left, const struct string right);
 
-bool
-string_greater_string (const struct string left, const struct string right);
+bool string_greater_string (const struct string left, const struct string right);
 
-bool
-string_less_equal_string (const struct string left, const struct string right);
+bool string_less_equal_string (const struct string left, const struct string right);
 
-bool string_greater_equal_string (
-    const struct string left,
-    const struct string right
-);
+bool string_greater_equal_string (const struct string left, const struct string right);
 
 err_t string_copy (struct string *dest, struct string src, error *e);
 
@@ -152,14 +143,7 @@ struct stream;
  * @param e The error object.
  * @return Number of elements successfully pulled.
  */
-typedef i32 (*stream_pull_fn) (
-    struct stream *s,
-    void          *ctx,
-    void          *buf,
-    u32            size,
-    u32            n,
-    error         *e
-);
+typedef i32 (*stream_pull_fn) (struct stream *s, void *ctx, void *buf, u32 size, u32 n, error *e);
 
 /**
  * @fn i32 (*stream_push_fn)(struct stream *s, void *ctx, const void *buf, u32
@@ -277,13 +261,7 @@ bool stream_isdone (const struct stream *s);
  * @param e The error object.
  * @return Number of elements successfully transferred.
  */
-i32 stream_read (
-    struct stream *dest,
-    u32            size,
-    u32            n,
-    struct stream *src,
-    error         *e
-);
+i32 stream_read (struct stream *dest, u32 size, u32 n, struct stream *src, error *e);
 
 /**
  * @fn i32 stream_bread(void *dest, u32 size, u32 n, struct stream *src, error
@@ -311,8 +289,7 @@ i32 stream_bread (void *dest, u32 size, u32 n, struct stream *src, error *e);
  * @param e The error object.
  * @return Number of elements successfully pushed.
  */
-i32
-stream_bwrite (const void *buf, u32 size, u32 n, struct stream *dest, error *e);
+i32 stream_bwrite (const void *buf, u32 size, u32 n, struct stream *dest, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Special Streams
@@ -374,12 +351,7 @@ struct stream_obuf_ctx
  * @param buf Source buffer to read from.
  * @param size Number of bytes in buf.
  */
-void stream_ibuf_init (
-    struct stream          *s,
-    struct stream_ibuf_ctx *ctx,
-    const void             *buf,
-    u32                     size
-);
+void stream_ibuf_init (struct stream *s, struct stream_ibuf_ctx *ctx, const void *buf, u32 size);
 
 /**
  * @fn void stream_obuf_init(struct stream *s, struct stream_obuf_ctx *ctx, void
@@ -392,12 +364,7 @@ void stream_ibuf_init (
  * @param buf Destination buffer to write into.
  * @param cap Capacity of buf in bytes.
  */
-void stream_obuf_init (
-    struct stream          *s,
-    struct stream_obuf_ctx *ctx,
-    void                   *buf,
-    u32                     cap
-);
+void stream_obuf_init (struct stream *s, struct stream_obuf_ctx *ctx, void *buf, u32 cap);
 
 /**
  * @fn void stream_sink_init(struct stream *s)
@@ -487,11 +454,7 @@ struct stream_limit_ctx
  * @param src Underlying stream to wrap.
  * @param limit Maximum number of bytes to forward.
  */
-void stream_limit_init (
-    struct stream           *s,
-    struct stream_limit_ctx *ctx,
-    struct stream           *src,
-    u64                      limit
-);
+void
+stream_limit_init (struct stream *s, struct stream_limit_ctx *ctx, struct stream *src, u64 limit);
 
 #endif // SERIAL_H

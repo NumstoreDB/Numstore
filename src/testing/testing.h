@@ -40,14 +40,12 @@ enum
   void __test__##name (void); \
   void __test__##name (void)
 
-#define TEST_CASE(fmt, ...)                                               \
-  for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1),     \
-           _tc_prev = test_ret;                                           \
-       _tc_once;                                                          \
-       _tc_once = 0,                                                      \
-           (test_ret == _tc_prev                                          \
-                ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
-                : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
+#define TEST_CASE(fmt, ...)                                                                \
+  for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1), _tc_prev = test_ret; \
+       _tc_once;                                                                           \
+       _tc_once = 0,                                                                       \
+           (test_ret == _tc_prev ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
+                                 : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
 
 /******************************************************************************
  * SECTION: Fault Injection
@@ -60,15 +58,12 @@ void fault_set (const char *name);
 void fault_reset_all (void);
 
 #ifndef FAULT
-#  define FAULT(expr, name)                                                \
-    (fault_is_set (name)                                                   \
-         ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) \
-         : (expr))
+#  define FAULT(expr, name) \
+    (fault_is_set (name) ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) : (expr))
 
-#  define FAULT_NULL(expr, name)                                           \
-    (fault_is_set (name)                                                   \
-         ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), \
-            (void *)0)                                                     \
+#  define FAULT_NULL(expr, name)                                                      \
+    (fault_is_set (name)                                                              \
+         ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), (void *)0) \
          : (expr))
 #endif
 
@@ -172,8 +167,7 @@ __test_mark (const char *_src)
   }                                            \
   while (0)
 
-#define test_assert_int_equal(left, right) \
-  test_assert_type_equal (left, right, i32, PRId32)
+#define test_assert_int_equal(left, right) test_assert_type_equal (left, right, i32, PRId32)
 
 #define test_assert_type_equal(left, right, type, fmt) \
   do                                                   \
@@ -194,8 +188,7 @@ __test_mark (const char *_src)
   }                                                    \
   while (0)
 
-#define test_assert_ptr_equal(left, right) \
-  test_assert_equal ((void *)left, (void *)right)
+#define test_assert_ptr_equal(left, right) test_assert_equal ((void *)left, (void *)right)
 
 #define test_assert(expr)                  \
   do                                       \
@@ -226,8 +219,7 @@ __test_mark (const char *_src)
   }                                        \
   while (0)
 
-#define test_assert_memequal(a, b, size) \
-  test_assert_int_equal (memcmp (a, b, size), 0)
+#define test_assert_memequal(a, b, size) test_assert_int_equal (memcmp (a, b, size), 0)
 
 HEADER_FUNC bool
 __test_mark_hit (const char *_pat)

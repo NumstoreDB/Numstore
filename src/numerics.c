@@ -701,10 +701,7 @@ TEST (parse_i32_expect)
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_assert_int_equal (
-      parse_i32_expect (&out, big, strlen (big), &e),
-      ERR_ARITH
-  );
+  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &e), ERR_ARITH);
 }
 #endif
 
