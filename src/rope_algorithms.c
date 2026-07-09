@@ -16,9 +16,12 @@
 
 #include "error.h"
 #include "node_updates.h"
+#include "numstore.h"
 #include "page.h"
+#include "page_h.h"
 #include "pager.h"
 #include "serial.h"
+#include "testing/testing.h"
 
 #ifdef TESTING
 #  include "testing/page_fixture.h"
@@ -176,10 +179,7 @@ TEST (dlgt_balance_with_prev)
     i = 0;
     for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i)
     {
-      test_assert_equal (
-          dl_get_byte (page_h_ro (cur), i),
-          _prev[DL_DATA_SIZE / 2 + DL_REM + i]
-      );
+      test_assert_equal (dl_get_byte (page_h_ro (cur), i), _prev[DL_DATA_SIZE / 2 + DL_REM + i]);
     }
     const u32 k = i;
     for (; i < DL_DATA_SIZE / 2; ++i)
@@ -361,10 +361,7 @@ TEST (dlgt_balance_with_next)
     i = 0;
     for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i)
     {
-      test_assert_equal (
-          dl_get_byte (page_h_ro (next), i),
-          _next[i + DL_DATA_SIZE / 2 - 10]
-      );
+      test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i + DL_DATA_SIZE / 2 - 10]);
     }
   }
 
@@ -457,6 +454,7 @@ ns_balance_with_next_or_prev (
 {
   int    flags = PG_INNER_NODE | PG_DATA_LIST;
   p_size csize = dlgt_get_len (page_h_ro (cur));
+  *output      = three_in_pair_from (NULL, cur, NULL);
 
   // Cur needs balancing because it is less than maxlen / 2
   if (csize > 0 && csize < dlgt_get_max_len (page_h_ro (cur)) / 2)
@@ -752,13 +750,7 @@ ns_insert (struct ns_insert_params *params, error *e)
       next_amount = MIN (avail, (p_size)(params->bytes - total_written));
     }
 
-    i32 written = stream_bread (
-        dl_avail_data (page_h_w (&cur)),
-        1,
-        next_amount,
-        params->src,
-        e
-    );
+    i32 written = stream_bread (dl_avail_data (page_h_w (&cur)), 1, next_amount, params->src, e);
     if (written < 0)
     {
       goto failed;
@@ -953,43 +945,38 @@ TEST (ns_insert)
    * SUBSECTION: Testing that sizeof(stream) and provided bytes behaves
    *----------------------------------------------------------------------------*/
 
-#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected) \
-    do                                                            \
-    {                                                             \
-      TEST_CASE (                                                 \
-          "Bytes: %d Stream: %d => %d",                           \
-          byte_size,                                              \
-          stream_size,                                            \
-          expected                                                \
-      )                                                           \
-      {                                                           \
-        u8                     buffer[4096];                      \
-        struct stream          input;                             \
-        struct stream_ibuf_ctx ctx;                               \
-        stream_ibuf_init (&input, &ctx, buffer, stream_size);     \
-                                                                  \
-        struct ns_insert_params params = {                        \
-            .p     = f.p,                                         \
-            .src   = &input,                                      \
-            .tx    = &f.tx,                                       \
-            .root  = PGNO_NULL,                                   \
-            .bofst = 0,                                           \
-            .bytes = byte_size,                                   \
-        };                                                        \
-                                                                  \
-        sb_size nelems = ns_insert (&params, &f.e);               \
-                                                                  \
-        test_assert_int_equal (nelems, expected);                 \
-        if (expected > 0)                                         \
-        {                                                         \
-          test_assert (params.root != PGNO_NULL);                 \
-        }                                                         \
-        else                                                      \
-        {                                                         \
-          test_assert (params.root == PGNO_NULL);                 \
-        }                                                         \
-      }                                                           \
-    }                                                             \
+#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected)                \
+    do                                                                           \
+    {                                                                            \
+      TEST_CASE ("Bytes: %d Stream: %d => %d", byte_size, stream_size, expected) \
+      {                                                                          \
+        u8                     buffer[4096];                                     \
+        struct stream          input;                                            \
+        struct stream_ibuf_ctx ctx;                                              \
+        stream_ibuf_init (&input, &ctx, buffer, stream_size);                    \
+                                                                                 \
+        struct ns_insert_params params = {                                       \
+            .p     = f.p,                                                        \
+            .src   = &input,                                                     \
+            .tx    = &f.tx,                                                      \
+            .root  = PGNO_NULL,                                                  \
+            .bofst = 0,                                                          \
+            .bytes = byte_size,                                                  \
+        };                                                                       \
+                                                                                 \
+        sb_size nelems = ns_insert (&params, &f.e);                              \
+                                                                                 \
+        test_assert_int_equal (nelems, expected);                                \
+        if (expected > 0)                                                        \
+        {                                                                        \
+          test_assert (params.root != PGNO_NULL);                                \
+        }                                                                        \
+        else                                                                     \
+        {                                                                        \
+          test_assert (params.root == PGNO_NULL);                                \
+        }                                                                        \
+      }                                                                          \
+    }                                                                            \
     while (0)
 
   BYTE_STREAM_SIZE_TEST (0, 2048, 2048);
@@ -1000,6 +987,187 @@ TEST (ns_insert)
 
   pgr_fixture_teardown (&f);
 }
+
+#endif
+
+#ifdef TESTING
+#  define DO_INSERT(f, _root, _bofst, data, params)       \
+    do                                                    \
+    {                                                     \
+      u32_arr_rand (data);                                \
+      struct stream          src;                         \
+      struct stream_ibuf_ctx ctx;                         \
+      stream_ibuf_init (&src, &ctx, data, sizeof (data)); \
+                                                          \
+      pgr_begin_txn (&f.tx, f.p, &f.e);                   \
+                                                          \
+      params = (struct ns_insert_params){                 \
+          .p     = f.p,                                   \
+          .src   = &src,                                  \
+          .tx    = &f.tx,                                 \
+          .root  = _root,                                 \
+          .bofst = _bofst,                                \
+          .bytes = sizeof (data),                         \
+      };                                                  \
+                                                          \
+      ns_insert (&params, &f.e);                          \
+                                                          \
+      pgr_commit (f.p, &f.tx, &f.e);                      \
+                                                          \
+      test_assert (params.root != PGNO_NULL);             \
+    }                                                     \
+    while (0)
+
+#  define TEST_DATA_LIST(pgno, expected_data)                                                      \
+    do                                                                                             \
+    {                                                                                              \
+      page_h root = page_h_create ();                                                              \
+      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e);                                              \
+      test_assert_int_equal (dl_used (page_h_ro (&root)), sizeof (expected_data));                 \
+      int equal = memcmp (dl_get_data (page_h_ro (&root)), expected_data, sizeof (expected_data)); \
+      test_assert_int_equal (equal, 0);                                                            \
+      pgr_release (f.p, &root, PG_DATA_LIST, &f.e);                                                \
+    }                                                                                              \
+    while (0)
+
+TEST (ns_insert_from_empty)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create (&f);
+
+  TEST_CASE ("Create a data list page with one element")
+  {
+    struct ns_insert_params params;
+    u8                      data[1];
+    DO_INSERT (f, PGNO_NULL, 0, data, params);
+    TEST_DATA_LIST (params.root, data);
+  }
+
+  TEST_CASE ("When ofst > size, treats as ofst = size")
+  {
+    struct ns_insert_params params;
+    u8                      data[1];
+    DO_INSERT (f, PGNO_NULL, 10, data, params);
+    TEST_DATA_LIST (params.root, data);
+  }
+
+  TEST_CASE ("Insert 1 element twice at offset 0")
+  {
+    struct ns_insert_params params;
+    u8                      data[1];
+    u8                      expected[2];
+
+    DO_INSERT (f, PGNO_NULL, 0, data, params);
+    expected[1] = data[0];
+
+    DO_INSERT (f, params.root, 0, data, params);
+    expected[0] = data[0];
+
+    TEST_DATA_LIST (params.root, expected);
+  }
+
+  TEST_CASE ("Insert 1 element twice at offset -1")
+  {
+    struct ns_insert_params params;
+    u8                      data[1];
+    u8                      expected[2];
+
+    DO_INSERT (f, PGNO_NULL, 0, data, params);
+    expected[0] = data[0];
+
+    DO_INSERT (f, params.root, 1, data, params);
+    expected[1] = data[0];
+
+    TEST_DATA_LIST (params.root, expected);
+  }
+
+  TEST_CASE ("Insert DL_DATA_SIZE elements - doesn't break into nodes")
+  {
+    struct ns_insert_params params;
+    u8                      data[DL_DATA_SIZE];
+    DO_INSERT (f, PGNO_NULL, 0, data, params);
+    TEST_DATA_LIST (params.root, data);
+  }
+
+  TEST_CASE ("Insert combined DL_DATA_SIZE elements - doesn't break into nodes")
+  {
+    struct ns_insert_params params;
+    u8                      data1[DL_DATA_SIZE - 1];
+    u8                      data2[1];
+    u8                      expected[DL_DATA_SIZE];
+
+    DO_INSERT (f, PGNO_NULL, 0, data1, params);
+    DO_INSERT (f, params.root, 0, data2, params);
+
+    expected[0] = data2[0];
+    memcpy (&expected[1], data1, DL_DATA_SIZE - 1);
+
+    TEST_DATA_LIST (params.root, expected);
+  }
+
+  TEST_CASE ("Insert combined DL_DATA_SIZE elements - doesn't break into nodes")
+  {
+    struct ns_insert_params params;
+    u8                      data1[DL_DATA_SIZE - 3];
+    u8                      data2[1];
+    u8                      data3[1];
+    u8                      data4[1];
+
+    u8 expected[DL_DATA_SIZE];
+
+    DO_INSERT (f, PGNO_NULL, 0, data1, params);
+    DO_INSERT (f, params.root, 1, data2, params);
+    DO_INSERT (f, params.root, 1, data3, params);
+    DO_INSERT (f, params.root, 1, data4, params);
+
+    expected[0] = data1[0];
+    expected[1] = data4[0];
+    expected[2] = data3[0];
+    expected[3] = data2[0];
+    memcpy (&expected[4], &data1[1], DL_DATA_SIZE - 4);
+
+    TEST_DATA_LIST (params.root, expected);
+  }
+
+  pgr_fixture_teardown (&f);
+}
+
+/**
+TEST_DISABLED (ns_insert_fine_grained)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create (&f);
+
+  TEST_CASE ("Foo")
+  {
+    u8 _prev[DL_DATA_SIZE];
+    u8 _cur[DL_DATA_SIZE];
+    u32_arr_rand (_prev);
+    u32_arr_rand (_cur);
+
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+
+    struct page_tree_builder builder = in2dl (f.p, &f.tx, 2, DL_DATA_SIZE, DL_DATA_SIZE);
+    build_page_tree (&builder, &f.e);
+    page_tree_builder_release_all (&builder, &f.e);
+
+    pgr_commit (f.p, &f.tx, &f.e);
+    */
+
+/*
+ *          [++___________________________]
+ *
+ * [+++++++++++++++]                 [+++++++++++++++++]
+ */
+
+/**
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+  }
+
+  pgr_fixture_teardown (&f);
+}
+*/
 
 #endif
 
@@ -1060,7 +1228,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
   p_size       lidx        = 0;
   b_size       total_bread = 0;
   const b_size max_bread   = params.size * params.nelem;
-  b_size bnext = params.size; // bytes remaining in the current read/skip window
+  b_size       bnext       = params.size; // bytes remaining in the current read/skip window
 
   struct ns_seek_params seek = {
       .p          = params.p,
@@ -1098,8 +1266,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
   while (max_bread == 0 || total_bread < max_bread)
   {
-    t_size next_amount =
-        ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
+    t_size next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
     if (next_amount == 0)
     {
@@ -1134,14 +1301,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
         lidx        = 0;
         cur         = page_h_xfer_ownership (&next);
         curp        = page_h_ro (&cur);
-        next_amount = ns_read_next_amount (
-            curp,
-            lidx,
-            bnext,
-            max_bread,
-            total_bread,
-            state
-        );
+        next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
         ASSERT (next_amount > 0);
       }
@@ -1155,13 +1315,8 @@ ns_read_forward (const struct ns_read_params params, error *e)
     {
       case ACTIVE:
       {
-        const sp_size read = stream_bwrite (
-            (u8 *)dl_get_data (curp) + lidx,
-            1,
-            next_amount,
-            params.dest,
-            e
-        );
+        const sp_size read =
+            stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
         if (read < 0)
         {
@@ -1240,11 +1395,7 @@ failed:
 static sb_size
 ns_read_backward (const struct ns_read_params params, error *e)
 {
-  return error_causef (
-      e,
-      ERR_INVALID_ARGUMENT,
-      "Negative strides are not implemented (yet)"
-  );
+  return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
 }
 
 sb_size
@@ -1563,8 +1714,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
     // rcons  rlen     robs
     if (nupd_done_observing_right (pms->input))
     {
-      pms->lidx +=
-          nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
+      pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
       // ^
@@ -1633,8 +1783,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
       {
         goto failed;
       }
-      pms->lidx +=
-          nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
+      pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++______]
       // ^
@@ -1700,14 +1849,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         const pgno npg = in_get_next (page_h_ro (&pms->cur));
         if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE)
         {
-          if (pgr_get_writable (
-                  &pms->limit,
-                  pms->tx,
-                  PG_INNER_NODE,
-                  npg,
-                  pms->p,
-                  e
-              ))
+          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e))
           {
             goto failed;
           }
@@ -1740,14 +1882,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
           const pgno nnpg = in_get_next (page_h_ro (&pms->limit));
           if (nnpg != PGNO_NULL)
           {
-            if (pgr_get_writable (
-                    &next_next,
-                    pms->tx,
-                    PG_INNER_NODE,
-                    nnpg,
-                    pms->p,
-                    e
-                ))
+            if (pgr_get_writable (&next_next, pms->tx, PG_INNER_NODE, nnpg, pms->p, e))
             {
               goto failed;
             }
@@ -1759,13 +1894,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
           in_link (page_h_w (&pms->cur), page_h_w_or_null (&next_next));
           page_h_xfer_ownership_ptr (&pms->limit, &next_next);
 
-          if (nupd_append_2nd_right (
-                  pms->output,
-                  pgh_unravel (&pms->cur),
-                  npg,
-                  0,
-                  e
-              ))
+          if (nupd_append_2nd_right (pms->output, pgh_unravel (&pms->cur), npg, 0, e))
           {
             goto failed;
           }
@@ -1796,8 +1925,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
     // lobs     llen   lcons
     if (nupd_done_observing_left (pms->input))
     {
-      pms->lidx -=
-          nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
+      pms->lidx -= nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
       // ^
@@ -1865,8 +1993,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       {
         goto failed;
       }
-      pms->lidx -=
-          nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
+      pms->lidx -= nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
 
       // [_______+++++++++++]
       // ^
@@ -1874,8 +2001,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       // [a, b, c, d, e, f] p [g, h, i]
       // ^  ^        ^
       // llen lobs   lcons
-      if (!nupd_done_left (pms->input)
-          && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2)
+      if (!nupd_done_left (pms->input) && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2)
       {
         // Shift left (limit is
         // effectively "empty"
@@ -1930,14 +2056,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         const pgno ppg = in_get_prev (page_h_ro (&pms->cur));
         if (ppg != PGNO_NULL && pms->limit.mode == PHM_NONE)
         {
-          if (pgr_get_writable (
-                  &pms->limit,
-                  pms->tx,
-                  PG_INNER_NODE,
-                  ppg,
-                  pms->p,
-                  e
-              ))
+          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, ppg, pms->p, e))
           {
             goto failed;
           }
@@ -1970,14 +2089,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
           const pgno pppg = in_get_prev (page_h_ro (&pms->limit));
           if (pppg != PGNO_NULL)
           {
-            if (pgr_get_writable (
-                    &prev_prev,
-                    pms->tx,
-                    PG_INNER_NODE,
-                    pppg,
-                    pms->p,
-                    e
-                ))
+            if (pgr_get_writable (&prev_prev, pms->tx, PG_INNER_NODE, pppg, pms->p, e))
             {
               goto failed;
             }
@@ -1989,13 +2101,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
           in_link (page_h_w_or_null (&prev_prev), page_h_w (&pms->cur));
           page_h_xfer_ownership_ptr (&pms->limit, &prev_prev);
 
-          if (nupd_append_2nd_left (
-                  pms->output,
-                  pgh_unravel (&pms->cur),
-                  ppg,
-                  0,
-                  e
-              ))
+          if (nupd_append_2nd_left (pms->output, pgh_unravel (&pms->cur), ppg, 0, e))
           {
             goto failed;
           }
@@ -2038,8 +2144,7 @@ failed:
   return error_trace (e);
 }
 
-static err_t
-ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e);
+static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e);
 
 static err_t
 ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
@@ -2086,8 +2191,7 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
   // ^
   // lidx
   // Continue in left mode
-  pms->lidx = IN_MAX_KEYS
-              - nupd_append_maximally_right_then_left (pms->input, &pms->cur);
+  pms->lidx = IN_MAX_KEYS - nupd_append_maximally_right_then_left (pms->input, &pms->cur);
 
   if (nupd_done_left (pms->input))
   {
@@ -2135,14 +2239,7 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
     const pgno next_pg = in_get_next (page_h_ro (&pms->cur));
     if (next_pg != PGNO_NULL)
     {
-      if (pgr_get_writable (
-              &pms->limit,
-              pms->tx,
-              PG_INNER_NODE,
-              next_pg,
-              pms->p,
-              e
-          ))
+      if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, next_pg, pms->p, e))
       {
         goto failed;
       }
@@ -2227,11 +2324,7 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
 
     if (pms->output == NULL)
     {
-      pms->output = nupd_init (
-          page_h_pgno (&pms->cur),
-          in_get_size (page_h_ro (&pms->cur)),
-          e
-      );
+      pms->output = nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e);
       if (pms->output == NULL)
       {
         goto failed;
@@ -2239,11 +2332,7 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
     }
     else
     {
-      nupd_reset (
-          pms->output,
-          page_h_pgno (&pms->cur),
-          in_get_size (page_h_ro (&pms->cur))
-      );
+      nupd_reset (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)));
     }
 
     return ns_rebalance_apply_to_pivot (pms, e);
@@ -2323,6 +2412,48 @@ failed:
   pgr_cancel_if_exists (pms->p, &pms->limit);
   return error_trace (e);
 }
+
+#ifdef TESTING
+TEST (ns_insert_fine_grained)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create (&f);
+
+  TEST_CASE ("Foo")
+  {
+    u8 _prev[DL_DATA_SIZE];
+    u8 _cur[DL_DATA_SIZE];
+    u32_arr_rand (_prev);
+    u32_arr_rand (_cur);
+
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+
+    struct page_tree_builder builder = in2dl (f.p, &f.tx, 2, DL_DATA_SIZE, DL_DATA_SIZE);
+    build_page_tree (&builder, &f.e);
+    pgno root = page_h_pgno (&builder.root.out);
+    page_tree_builder_release_all (&builder, &f.e);
+
+    /*
+     *          [++___________________________]
+     *
+     * [+++++++++++++++]                 [+++++++++++++++++]
+     */
+
+    // Insert IN_MAX_KEYS - 2 to fill up - which shouldn't trigger a layer increase
+
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+
+    struct ns_insert_params params;
+    u8                      data[DL_DATA_SIZE * (IN_MAX_KEYS - 2)];
+    DO_INSERT (f, root, 0, data, params);
+
+    pgr_commit (f.p, &f.tx, &f.e);
+  }
+
+  pgr_fixture_teardown (&f);
+}
+
+#endif
 
 /******************************************************************************
  * SECTION: ns_remove
@@ -2632,8 +2763,7 @@ ns_remove (struct ns_remove_params *params, error *e)
   s.writer    = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  s.output =
-      nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
+  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
   if (s.output == NULL)
   {
     goto failed;
@@ -2673,13 +2803,8 @@ ns_remove (struct ns_remove_params *params, error *e)
 
         if (params->dest)
         {
-          i32 written = stream_bwrite (
-              (u8 *)dl_get_data (sro) + s.read_idx,
-              1,
-              next_amount,
-              params->dest,
-              e
-          );
+          i32 written =
+              stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1, next_amount, params->dest, e);
 
           if (written < 0)
           {
@@ -2797,14 +2922,7 @@ drain:
 
           if (npg != PGNO_NULL)
           {
-            if (pgr_get_writable (
-                    &next,
-                    params->tx,
-                    PG_DATA_LIST,
-                    npg,
-                    params->p,
-                    e
-                ))
+            if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e))
             {
               goto failed;
             }
@@ -2818,13 +2936,7 @@ drain:
           dlgt_link (page_h_w (&s.writer), page_h_w_or_null (&next));
           page_h_xfer_ownership_ptr (&s.reader, &next);
 
-          if (nupd_append_2nd_right (
-                  s.output,
-                  pgh_unravel (&s.writer),
-                  rpg,
-                  0,
-                  e
-              ))
+          if (nupd_append_2nd_right (s.output, pgh_unravel (&s.writer), rpg, 0, e))
           {
             goto failed;
           }
@@ -2875,8 +2987,7 @@ drain:
     error_causef (
         e,
         ERR_CORRUPT,
-        "removed %" PRb_size
-        " bytes, not a multiple of element size %" PRb_size,
+        "removed %" PRb_size " bytes, not a multiple of element size %" PRb_size,
         s.total_removed,
         params->size
     );
@@ -3017,11 +3128,7 @@ ns_seek (struct ns_seek_params *a, error *e)
         // Stack overflow
         if (a->sp == 20)
         {
-          error_causef (
-              e,
-              ERR_RPTREE_PAGE_STACK_OVERFLOW,
-              "page stack overflow (depth 20)"
-          );
+          error_causef (e, ERR_RPTREE_PAGE_STACK_OVERFLOW, "page stack overflow (depth 20)");
           goto failed;
         }
 
@@ -3209,14 +3316,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
   while (max_bwrite == 0 || total_bwrite < max_bwrite)
   {
-    p_size next_amount = ns_write_next_amount (
-        curp,
-        lidx,
-        bnext,
-        max_bwrite,
-        total_bwrite,
-        state
-    );
+    p_size next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
 
     if (next_amount == 0)
     {
@@ -3228,14 +3328,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         if (npg != PGNO_NULL)
         {
-          WRAP (pgr_get_writable (
-              &next,
-              params.tx,
-              PG_DATA_LIST,
-              npg,
-              params.p,
-              e
-          ));
+          WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.p, e));
         }
 
         // Reached EOF
@@ -3252,14 +3345,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         curp = page_h_w (&cur);
 
-        next_amount = ns_write_next_amount (
-            curp,
-            lidx,
-            bnext,
-            max_bwrite,
-            total_bwrite,
-            state
-        );
+        next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
 
         ASSERT (next_amount > 0);
       }
@@ -3278,13 +3364,8 @@ ns_write_forward (const struct ns_write_params params, error *e)
         {
           // Pull bytes from caller's source stream and
           // stamp them into the page
-          const sp_size write = stream_bread (
-              (u8 *)dl_get_data (curp) + lidx,
-              1,
-              next_amount,
-              params.src,
-              e
-          );
+          const sp_size write =
+              stream_bread ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.src, e);
 
           if (write < 0)
           {
@@ -3381,11 +3462,7 @@ failed:
 static sb_size
 ns_write_backward (const struct ns_write_params params, error *e)
 {
-  return error_causef (
-      e,
-      ERR_INVALID_ARGUMENT,
-      "Negative strides are not implemented (yet)"
-  );
+  return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
 }
 
 sb_size
@@ -3406,33 +3483,166 @@ ns_write (const struct ns_write_params params, error *e)
 }
 
 /******************************************************************************
- * SECTION: Explicit Tree Tests
+ * SECTION: Utils
  ******************************************************************************/
 
-#ifdef TESTING
-TEST (tree_tests)
+i32
+ns_get_number_of_layers (struct pager *p, pgno root, error *e)
 {
-  struct pgr_fixture f;
-  pgr_fixture_create (&f);
-
-  TEST_CASE ("Foo")
+  if (root == PGNO_NULL)
   {
-    u8 _prev[DL_DATA_SIZE];
-    u8 _cur[DL_DATA_SIZE];
-    u32_arr_rand (_prev);
-    u32_arr_rand (_cur);
-
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-
-    struct page_tree_builder builder =
-        in2dl (f.p, &f.tx, 2, DL_DATA_SIZE, DL_DATA_SIZE);
-
-    build_page_tree (&builder, &f.e);
-
-    page_tree_builder_release_all (&builder, &f.e);
+    return 0;
   }
 
-  pgr_fixture_teardown (&f);
+  page_h cur  = page_h_create ();
+  i32    ret  = 0;
+  pgno   next = root;
+
+  while (true)
+  {
+    if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e))
+    {
+      goto failed;
+    }
+
+    ret++;
+
+    if (page_h_type (&cur) == PG_DATA_LIST)
+    {
+      if (pgr_release (p, &cur, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
+      return ret;
+    }
+    else if (page_h_type (&cur) == PG_INNER_NODE)
+    {
+      next = in_get_leaf (page_h_ro (&cur), 0);
+      if (pgr_release (p, &cur, PG_DATA_LIST, e))
+      {
+        goto failed;
+      }
+    }
+  }
+
+  return ret;
+
+failed:
+  pgr_cancel_if_exists (p, &cur);
+  return error_trace (e);
 }
 
-#endif
+i32
+ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e)
+{
+  if (pg == PGNO_NULL)
+  {
+    return 0;
+  }
+
+  page_h cur = page_h_create ();
+  i32    ret = 1;
+
+  if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, pg, p, e))
+  {
+    goto failed;
+  }
+
+  // Scan Right
+  while (true)
+  {
+    pgno next = dlgt_get_next (page_h_ro (&cur));
+    if (pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e))
+    {
+      goto failed;
+    }
+
+    if (next == PGNO_NULL)
+    {
+      break;
+    }
+    else
+    {
+      ret++;
+
+      if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e))
+      {
+        goto failed;
+      }
+    }
+  }
+  return ret;
+
+failed:
+  pgr_cancel_if_exists (p, &cur);
+  return error_trace (e);
+}
+
+i32
+ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e)
+{
+  if (pg == PGNO_NULL)
+  {
+    return 0;
+  }
+
+  page_h cur = page_h_create ();
+  i32    ret = 1;
+
+  if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, pg, p, e))
+  {
+    goto failed;
+  }
+
+  // Scan left
+  while (true)
+  {
+    pgno next = dlgt_get_prev (page_h_ro (&cur));
+    if (pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e))
+    {
+      goto failed;
+    }
+
+    if (next == PGNO_NULL)
+    {
+      break;
+    }
+    else
+    {
+      ret++;
+
+      if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e))
+      {
+        goto failed;
+      }
+    }
+  }
+  return ret;
+
+failed:
+  pgr_cancel_if_exists (p, &cur);
+  return error_trace (e);
+}
+
+i32
+ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error *e)
+{
+  if (pg == PGNO_NULL)
+  {
+    return 0;
+  }
+
+  i32 left = ns_get_length_to_the_left_of (p, pg, e);
+  if (left < 0)
+  {
+    return left;
+  }
+
+  i32 right = ns_get_length_to_the_left_of (p, pg, e);
+  if (right < 0)
+  {
+    return right;
+  }
+
+  return left + right + 1;
+}

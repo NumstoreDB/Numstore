@@ -399,8 +399,7 @@ struct ns_balance_and_release_params
  * On success, prev, cur, and next are all released.  The caller obtains the
  * resulting (prev, cur, next) in_pairs via params.output for nupd accounting.
  */
-err_t
-ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
+err_t ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
 
 /**
  * @struct ns_rebalance_params
@@ -463,4 +462,15 @@ struct ns_rebalance_params
  * R+Tree
  */
 err_t ns_rebalance (struct ns_rebalance_params *params, error *e);
+
+/******************************************************************************
+ * SECTION: Utils
+ ******************************************************************************/
+
+// UNTESTED (ALL)
+i32 ns_get_number_of_layers (struct pager *p, pgno root, error *e);
+i32 ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e);
+i32 ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e);
+i32 ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error *e);
+
 #endif // ROPE_H
