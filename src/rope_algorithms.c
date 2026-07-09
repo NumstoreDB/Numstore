@@ -3694,6 +3694,7 @@ failed:
   return error_trace (e);
 }
 
+/**
 i32
 ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e)
 {
@@ -3808,3 +3809,4 @@ ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error *e)
 
   return left + right + 1;
 }
+*/

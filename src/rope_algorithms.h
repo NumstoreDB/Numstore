@@ -469,8 +469,10 @@ err_t ns_rebalance (struct ns_rebalance_params *params, error *e);
 
 // UNTESTED (ALL)
 i32 ns_get_number_of_layers (struct pager *p, pgno root, error *e);
+/**
 i32 ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e);
 i32 ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e);
 i32 ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error *e);
+*/
 
 #endif // ROPE_H
