@@ -22,7 +22,6 @@
 #include "page_h.h"
 #include "pager.h"
 #include "serial.h"
-#include "testing/testing.h"
 
 #ifdef TESTING
 #  include "testing/page_fixture.h"
