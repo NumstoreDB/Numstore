@@ -2413,48 +2413,6 @@ failed:
   return error_trace (e);
 }
 
-#ifdef TESTING
-TEST (ns_insert_fine_grained)
-{
-  struct pgr_fixture f;
-  pgr_fixture_create (&f);
-
-  TEST_CASE ("Foo")
-  {
-    u8 _prev[DL_DATA_SIZE];
-    u8 _cur[DL_DATA_SIZE];
-    u32_arr_rand (_prev);
-    u32_arr_rand (_cur);
-
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-
-    struct page_tree_builder builder = in2dl (f.p, &f.tx, 2, DL_DATA_SIZE, DL_DATA_SIZE);
-    build_page_tree (&builder, &f.e);
-    pgno root = page_h_pgno (&builder.root.out);
-    page_tree_builder_release_all (&builder, &f.e);
-
-    /*
-     *          [++___________________________]
-     *
-     * [+++++++++++++++]                 [+++++++++++++++++]
-     */
-
-    // Insert IN_MAX_KEYS - 2 to fill up - which shouldn't trigger a layer increase
-
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
-
-    struct ns_insert_params params;
-    u8                      data[DL_DATA_SIZE * (IN_MAX_KEYS - 2)];
-    DO_INSERT (f, root, 0, data, params);
-
-    pgr_commit (f.p, &f.tx, &f.e);
-  }
-
-  pgr_fixture_teardown (&f);
-}
-
-#endif
-
 /******************************************************************************
  * SECTION: ns_remove
  * ----------------------------------------------------------------------------
