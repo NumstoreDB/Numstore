@@ -37,7 +37,7 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[346];
+  const char *failed_names[345];
 
   
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
@@ -3966,27 +3966,6 @@ run_unit_tests (const char* filter)
     ntests++;
   }
   //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:1033 DONE
-
-  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:2417 START
-  if (!filter || strstr("ns_insert_fine_grained", filter))
-  {
-    extern void __test__ns_insert_fine_grained(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_insert_fine_grained");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__ns_insert_fine_grained();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "ns_insert_fine_grained");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "ns_insert_fine_grained";
-    }
-    ntests++;
-  }
-  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:2417 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/serial.c:85 START
   if (!filter || strstr("strings_all_unique", filter))
