@@ -273,13 +273,8 @@ struct lexer
   struct allocator *alloc;
 };
 
-err_t lex_tokens (
-    const char       *src,
-    struct allocator *alloc,
-    u32               src_len,
-    struct lexer     *lex,
-    error            *e
-);
+err_t
+lex_tokens (const char *src, struct allocator *alloc, u32 src_len, struct lexer *lex, error *e);
 
 /******************************************************************************
  * SECTION: Parser
@@ -444,12 +439,7 @@ parser_check_end (struct parser *p, error *e)
  * Allocates types on the provided dalloc if provided
  ******************************************************************************/
 
-err_t compile_type (
-    struct type      *dest,
-    const char       *text,
-    struct allocator *dalloc,
-    error            *e
-);
+err_t compile_type (struct type *dest, const char *text, struct allocator *dalloc, error *e);
 
 HEADER_FUNC struct type *
 compile_type_alloc (const char *text, struct allocator *dalloc, error *e)
@@ -462,12 +452,7 @@ compile_type_alloc (const char *text, struct allocator *dalloc, error *e)
   return ret;
 }
 
-err_t compile_subtype (
-    struct subtype   *dest,
-    const char       *text,
-    struct allocator *dalloc,
-    error            *e
-);
+err_t compile_subtype (struct subtype *dest, const char *text, struct allocator *dalloc, error *e);
 
 err_t compile_multi_user_stride (
     struct multi_user_stride *dest,
@@ -476,21 +461,11 @@ err_t compile_multi_user_stride (
     error                    *e
 );
 
+err_t compile_user_stride (struct user_stride *dest, const char *text, error *e);
+
 err_t
-compile_user_stride (struct user_stride *dest, const char *text, error *e);
+compile_type_ref (struct type_ref *dest, const char *text, struct allocator *dalloc, error *e);
 
-err_t compile_type_ref (
-    struct type_ref  *dest,
-    const char       *text,
-    struct allocator *dalloc,
-    error            *e
-);
-
-err_t compile_query (
-    struct query     *dest,
-    const char       *text,
-    struct allocator *dalloc,
-    error            *e
-);
+err_t compile_query (struct query *dest, const char *text, struct allocator *dalloc, error *e);
 
 #endif // COMPILER_H

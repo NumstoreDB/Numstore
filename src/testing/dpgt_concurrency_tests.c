@@ -123,18 +123,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_insert_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_insert_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_insert_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_insert_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_insert_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_insert_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -181,18 +172,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_reader_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_reader_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_reader_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_reader_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_reader_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_reader_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -234,18 +216,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_updater_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_updater_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_updater_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_updater_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_updater_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_updater_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -295,18 +268,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_remove_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_remove_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_remove_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_remove_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_remove_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_remove_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -353,18 +317,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_insert_thread, &insert_ctx, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_reader_thread, &read_ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_reader_thread, &read_ctx2, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_insert_thread, &insert_ctx, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_reader_thread, &read_ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_reader_thread, &read_ctx2, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);

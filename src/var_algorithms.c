@@ -84,10 +84,7 @@ TEST (ns_init_var_hash_map)
   ns_init_var_hash_map (f.p, &f.e);
 
   page_h vhp = page_h_create ();
-  test_assert_int_equal (
-      pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &f.e),
-      SUCCESS
-  );
+  test_assert_int_equal (pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &f.e), SUCCESS);
 
   pgr_release (f.p, &vhp, PG_VAR_HASH_PAGE, &f.e);
   pgr_fixture_teardown (&f);
@@ -117,23 +114,11 @@ err_var_doesnt_exist (const struct string vname, error *e)
 {
   if (vname.len > 10)
   {
-    return error_causef (
-        e,
-        ERR_VARIABLE_NE,
-        "Variable: %.*s... doesn't exist",
-        7,
-        vname.data
-    );
+    return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s... doesn't exist", 7, vname.data);
   }
   else
   {
-    return error_causef (
-        e,
-        ERR_VARIABLE_NE,
-        "Variable: %.*s doesn't exist",
-        vname.len,
-        vname.data
-    );
+    return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s doesn't exist", vname.len, vname.data);
   }
 }
 
@@ -261,10 +246,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
       case FP_CREATE:
       {
         // Create a new variable page
-        if (FAULT (
-                pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e),
-                "ns_find_var_page:2"
-            ))
+        if (FAULT (pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e), "ns_find_var_page:2"))
         {
           goto failed;
         }
@@ -284,15 +266,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   {
     // Fetch start hash chain
     if (FAULT (
-            pgr_get_maybe_writable (
-                &cur,
-                pms->tx,
-                PG_VAR_PAGE,
-                head,
-                pms->p,
-                writable,
-                e
-            ),
+            pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e),
             "ns_find_var_page:3"
         ))
     {
@@ -367,12 +341,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
               // Advance
               {
                 // free(prev)
-                if ((pgr_release_if_exists (
-                        pms->p,
-                        &prev,
-                        PG_VAR_PAGE | PG_VAR_HASH_PAGE,
-                        e
-                    )))
+                if ((pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e)))
                 {
                   goto failed;
                 }
@@ -406,15 +375,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           prev = page_h_xfer_ownership (&cur);
 
           // cur = cur->next
-          if ((pgr_get_maybe_writable (
-                  &cur,
-                  pms->tx,
-                  PG_VAR_PAGE,
-                  next,
-                  pms->p,
-                  writable,
-                  e
-              )))
+          if ((pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e)))
           {
             goto failed;
           }
@@ -428,9 +389,8 @@ foundit:
   if (pms->dvar && pms->alloc)
   {
     // Transfer variable name and type to persistent allocator
-    pms->dvar->vname.data =
-        allocator_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
-    pms->dvar->vname.len = pms->vname.len;
+    pms->dvar->vname.data = allocator_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
+    pms->dvar->vname.len  = pms->vname.len;
 
     // Error check
     if (pms->dvar->vname.data == NULL)
@@ -668,10 +628,7 @@ TEST (ns_find_var_page)
 
       ns_find_var_page (&fparams, &f.e);
 
-      test_assert_int_equal (
-          page_get_type (page_h_ro (&prev)),
-          PG_VAR_HASH_PAGE
-      );
+      test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
@@ -707,10 +664,7 @@ TEST (ns_find_var_page)
 
       ns_find_var_page (&fparams, &f.e);
 
-      test_assert_int_equal (
-          page_get_type (page_h_ro (&prev)),
-          PG_VAR_HASH_PAGE
-      );
+      test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
 
       pg1 = page_h_pgno (&cur);
@@ -785,11 +739,7 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      test_err_t_check (
-          ns_find_var_page (&fparams, &f.e),
-          ERR_DUPLICATE_VARIABLE,
-          &f.e
-      );
+      test_err_t_check (ns_find_var_page (&fparams, &f.e), ERR_DUPLICATE_VARIABLE, &f.e);
 
       pgr_commit (f.p, &f.tx, &f.e);
     }
@@ -834,10 +784,7 @@ TEST (ns_find_var_page)
       ns_find_var_page (&fparams, &f.e);
 
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
-      test_assert_int_equal (
-          page_get_type (page_h_ro (&prev)),
-          PG_VAR_HASH_PAGE
-      );
+      test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (pg1, page_h_pgno (&cur));
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
@@ -903,10 +850,7 @@ TEST (ns_find_var_page)
           .prev  = &prev,
       };
       ns_find_var_page (&fparams, &f.e);
-      test_assert_int_equal (
-          page_get_type (page_h_ro (&prev)),
-          PG_VAR_HASH_PAGE
-      );
+      test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (pg1, page_h_pgno (&cur));
 
@@ -999,10 +943,7 @@ TEST (ns_find_var_page)
       };
       ns_find_var_page (&fparams, &f.e);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
-      test_assert_int_equal (
-          page_get_type (page_h_ro (&prev)),
-          PG_VAR_HASH_PAGE
-      );
+      test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
 
       test_assert_int_equal (page_h_pgno (&cur), pg1);
 
@@ -1028,10 +969,7 @@ TEST (ns_find_var_page)
       };
       ns_find_var_page (&fparams, &f.e);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
-      test_assert_int_equal (
-          page_get_type (page_h_ro (&prev)),
-          PG_VAR_HASH_PAGE
-      );
+      test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
 
       test_assert_int_equal (page_h_pgno (&cur), pg2);
 
@@ -1439,11 +1377,7 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
       // Previous is the root hash page
     case PG_VAR_HASH_PAGE:
     {
-      vh_set_hash_value (
-          page_h_w (&prev),
-          fparams.hpos,
-          vp_get_next (page_h_ro (&cur))
-      );
+      vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
 
       if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e))
       {
@@ -1692,11 +1626,7 @@ TEST (ns_var_get_or_create)
 
       // Should fail if you pass a different type
       params.type = &(struct type){.type = T_PRIM, .p = I32};
-      test_err_t_check (
-          ns_var_get_or_create (&params, &f.e),
-          ERR_INVALID_ARGUMENT,
-          &f.e
-      );
+      test_err_t_check (ns_var_get_or_create (&params, &f.e), ERR_INVALID_ARGUMENT, &f.e);
 
       pgr_commit (f.p, &tx, &f.e);
     }
@@ -1857,14 +1787,7 @@ ns_update_by_id (struct ns_var_update_params params, error *e)
 {
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (
-          &cur,
-          params.tx,
-          PG_VAR_PAGE,
-          params.retr.root,
-          params.p,
-          e
-      ))
+  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e))
   {
     goto failed;
   }
@@ -2042,8 +1965,7 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   p_size twritten = 0;
 
   // First, write the variable name
-  p_size lwritten =
-      0; // Local number of bytes written so far - resets on every new page
+  p_size lwritten = 0; // Local number of bytes written so far - resets on every new page
   while (vwritten < params->var->vname.len)
   {
     // Advance forward one new node and reset local written and head

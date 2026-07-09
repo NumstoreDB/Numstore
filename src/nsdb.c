@@ -363,12 +363,7 @@ nsdb_var_free (nsdb_var_t *var)
  ******************************************************************************/
 
 err_t
-nsdb_get (
-    struct nsdb      *db,
-    struct get_query *query,
-    struct allocator *alloc,
-    struct variable **dest
-)
+nsdb_get (struct nsdb *db, struct get_query *query, struct allocator *alloc, struct variable **dest)
 {
   ASSERT (dest);
   struct ns_var_get_params gparams; // Get or create operation
@@ -430,23 +425,14 @@ failed:
  ******************************************************************************/
 
 int
-nsdb_create (
-    struct nsdb      *db,
-    struct allocator *alloc,
-    struct string     vname,
-    struct type       dtype
-)
+nsdb_create (struct nsdb *db, struct allocator *alloc, struct string vname, struct type dtype)
 {
   struct ns_var_get_or_create_params gparams; // Get or create operation
 
   // BEGIN TXN
   WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
 
-  i_log_debug (
-      "CREATE (txn = %" PRtxid "): %.*s\n",
-      db->atx->tid,
-      strfmt (&vname)
-  );
+  i_log_debug ("CREATE (txn = %" PRtxid "): %.*s\n", db->atx->tid, strfmt (&vname));
 
   // GET OR CREATE VARIABLE
   {
@@ -485,11 +471,7 @@ nsdb_delete (struct nsdb *db, struct string vname)
   // BEGIN TXN
   WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
 
-  i_log_debug (
-      "DELETE (txn = %" PRtxid "): %.*s\n",
-      db->atx->tid,
-      strfmt (&vname)
-  );
+  i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", db->atx->tid, strfmt (&vname));
 
   {
     // DELETE
@@ -629,11 +611,9 @@ nsdb_insert (
       "INSERT (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size
-      " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
-      " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64
-      " nbytes (bytes): %" PRId64
+      " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64 " nbytes (bytes): %" PRId64
       " Granted: "
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
@@ -782,16 +762,13 @@ nsdb_read (
       "READ (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size
-      " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
-      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
-      " stop (bytes): %" PRId64
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
+      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
       " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
-      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
-      " nelems (bytes): %" PRIu64 "\n",
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
+      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
       strfmt (&query->name),
       tsize,
@@ -923,16 +900,13 @@ nsdb_remove (
       "REMOVE (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size
-      " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
-      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
-      " stop (bytes): %" PRId64
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
+      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
       " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
-      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
-      " nelems (bytes): %" PRIu64 "\n",
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
+      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
       strfmt (&query->name),
       tsize,
@@ -1001,12 +975,7 @@ failed:
  ******************************************************************************/
 
 sb_size
-nsdb_write (
-    struct nsdb        *db,
-    struct write_query *query,
-    struct allocator   *alloc,
-    struct stream      *src
-)
+nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc, struct stream *src)
 {
   sb_size                  ret;     // Return value
   t_size                   tsize;   // Size of  the variable
@@ -1081,16 +1050,13 @@ nsdb_write (
       "WRITE (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size
-      " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
-      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
-      " stop (bytes): %" PRId64
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
+      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
       " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
-      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
-      " nelems (bytes): %" PRIu64 "\n",
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
+      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
       strfmt (&query->name),
       tsize,
@@ -1143,12 +1109,7 @@ failed:
  ******************************************************************************/
 
 sb_size
-nsdb_execute_on_buffer (
-    struct nsdb      *ns,
-    struct query     *q,
-    void             *data,
-    struct allocator *alc
-)
+nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct allocator *alc)
 {
   sb_size          ret = SUCCESS;
   struct variable *var;
@@ -1164,11 +1125,7 @@ nsdb_execute_on_buffer (
       // Destination pointer is required
       if (data == NULL)
       {
-        error_causef (
-            &ns->e,
-            ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
-        );
+        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
         goto failed;
       }
 
@@ -1193,11 +1150,7 @@ nsdb_execute_on_buffer (
       // Source pointer is required
       if (data == NULL)
       {
-        error_causef (
-            &ns->e,
-            ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
-        );
+        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
         goto failed;
       }
 
@@ -1248,11 +1201,7 @@ nsdb_execute_on_buffer (
       // Source pointer is required
       if (data == NULL)
       {
-        error_causef (
-            &ns->e,
-            ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
-        );
+        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
         goto failed;
       }
 
@@ -1295,11 +1244,7 @@ nsdb_execute_on_buffer (
       // Destination pointer is required
       if (data == NULL)
       {
-        error_causef (
-            &ns->e,
-            ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
-        );
+        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
         goto failed;
       }
 
@@ -1372,11 +1317,7 @@ failed:
  ******************************************************************************/
 
 err_t
-nsdb_get_and_print (
-    struct nsdb      *db,
-    struct get_query *query,
-    struct allocator *alloc
-)
+nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc)
 {
   struct ns_var_get_params gparams; // Get or create operation
 
@@ -1514,16 +1455,13 @@ nsdb_read_and_print (
       "READ (txn = %" PRtxid
       ")"
       " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size
-      " curlen (bytes): %" PRb_size
+      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
       " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64
-      " start (bytes): %" PRId64 " stride (bytes): %" PRId64
-      " stop (bytes): %" PRId64
+      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
+      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
       " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64
-      " start (bytes): %" PRIu64 " stride (bytes): %" PRIu64
-      " nelems (bytes): %" PRIu64 "\n",
+      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
+      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
       db->atx->tid,
       strfmt (&query->name),
       tsize,
@@ -1576,11 +1514,7 @@ failed:
  ******************************************************************************/
 
 static err_t
-nsdb_execute_in_console (
-    struct nsdb      *ns,
-    struct query     *q,
-    struct allocator *alc
-)
+nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc)
 {
   sb_size ret = SUCCESS;
 

@@ -274,8 +274,7 @@ int nsdb_rollback (nsdb_t *ns);
  *----------------------------------------------------------------------------*/
 
 #if defined(__GNUC__) || defined(__clang__)
-#  define NSDB_PRINTF(fmt_idx, vargs_idx) \
-    __attribute__ ((format (printf, fmt_idx, vargs_idx)))
+#  define NSDB_PRINTF(fmt_idx, vargs_idx) __attribute__ ((format (printf, fmt_idx, vargs_idx)))
 #else
 #  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
@@ -290,8 +289,4 @@ int nsdb_rollback (nsdb_t *ns);
  * @return < 0 on error - otherwise 0 on non data related queries or > 0 number
  * of elements inserted / written / removed / read for each op code respectively
  */
-sb_size
-nsdb_execute (nsdb_t *ns, const char *query_fmt, void *data, ...) NSDB_PRINTF (
-    2,
-    4
-);
+sb_size nsdb_execute (nsdb_t *ns, const char *query_fmt, void *data, ...) NSDB_PRINTF (2, 4);

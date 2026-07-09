@@ -37,7 +37,7 @@ run_unit_tests (const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[345];
+  const char *failed_names[346];
 
   
   //////////////////// /Users/theo/Development/Numstore/src/alloc.c:376 START
@@ -1804,7 +1804,7 @@ run_unit_tests (const char* filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/logging.c:41 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:227 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:218 START
   if (!filter || strstr("nupd_init", filter))
   {
     extern void __test__nupd_init(void);
@@ -1823,9 +1823,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:227 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:218 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:300 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:286 START
   if (!filter || strstr("nupd_append_right", filter))
   {
     extern void __test__nupd_append_right(void);
@@ -1844,9 +1844,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:300 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:286 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:416 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:394 START
   if (!filter || strstr("nupd_append_left", filter))
   {
     extern void __test__nupd_append_left(void);
@@ -1865,9 +1865,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:416 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:394 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:666 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:630 START
   if (!filter || strstr("nupd_append_tip_right", filter))
   {
     extern void __test__nupd_append_tip_right(void);
@@ -1886,9 +1886,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:666 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:630 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:866 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:826 START
   if (!filter || strstr("nupd_append_tip_left", filter))
   {
     extern void __test__nupd_append_tip_left(void);
@@ -1907,9 +1907,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:866 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:826 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1213 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1146 START
   if (!filter || strstr("nupd_consume_right", filter))
   {
     extern void __test__nupd_consume_right(void);
@@ -1928,9 +1928,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1213 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1146 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1287 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1220 START
   if (!filter || strstr("nupd_consume_left", filter))
   {
     extern void __test__nupd_consume_left(void);
@@ -1949,9 +1949,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1287 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1220 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1357 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1290 START
   if (!filter || strstr("nupd_done_observing_left", filter))
   {
     extern void __test__nupd_done_observing_left(void);
@@ -1970,9 +1970,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1357 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1290 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1412 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1345 START
   if (!filter || strstr("nupd_done_observing_right", filter))
   {
     extern void __test__nupd_done_observing_right(void);
@@ -1991,9 +1991,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1412 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1345 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1455 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1388 START
   if (!filter || strstr("nupd_done_consuming_left", filter))
   {
     extern void __test__nupd_done_consuming_left(void);
@@ -2012,9 +2012,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1455 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1388 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1499 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1432 START
   if (!filter || strstr("nupd_done_consuming_right", filter))
   {
     extern void __test__nupd_done_consuming_right(void);
@@ -2033,9 +2033,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1499 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1432 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1543 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1476 START
   if (!filter || strstr("nupd_done_left", filter))
   {
     extern void __test__nupd_done_left(void);
@@ -2054,9 +2054,9 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1543 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1476 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1597 START
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1530 START
   if (!filter || strstr("nupd_done_right", filter))
   {
     extern void __test__nupd_done_right(void);
@@ -2075,7 +2075,7 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1597 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/node_updates.c:1530 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/numerics.c:117 START
   if (!filter || strstr("checksum_execute_simple", filter))
@@ -3946,7 +3946,7 @@ run_unit_tests (const char* filter)
   }
   //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:890 DONE
 
-  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:1033 START
+  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:1051 START
   if (!filter || strstr("ns_insert_from_empty", filter))
   {
     extern void __test__ns_insert_from_empty(void);
@@ -3965,7 +3965,28 @@ run_unit_tests (const char* filter)
     }
     ntests++;
   }
-  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:1033 DONE
+  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:1051 DONE
+
+  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:2116 START
+  if (!filter || strstr("ns_rebalance_execute_right_left_coverage", filter))
+  {
+    extern void __test__ns_rebalance_execute_right_left_coverage(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_rebalance_execute_right_left_coverage");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_rebalance_execute_right_left_coverage();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_rebalance_execute_right_left_coverage");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_rebalance_execute_right_left_coverage";
+    }
+    ntests++;
+  }
+  //////////////////// /Users/theo/Development/Numstore/src/rope_algorithms.c:2116 DONE
 
   //////////////////// /Users/theo/Development/Numstore/src/serial.c:85 START
   if (!filter || strstr("strings_all_unique", filter))

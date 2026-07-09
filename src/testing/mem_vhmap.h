@@ -51,9 +51,9 @@ struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
  * @brief Get Remove Delete
  *----------------------------------------------------------------------------*/
 
-err_t mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
+err_t            mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
 struct variable *mem_vhmap_get_var (struct mem_vhmap *db, struct string name);
-void mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
+void             mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Utilities

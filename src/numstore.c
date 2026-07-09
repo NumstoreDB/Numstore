@@ -52,8 +52,7 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
   if (qlen < 0)
   {
     va_end (ap2);
-    ret =
-        error_causef (&nh->e, ERR_INVALID_ARGUMENT, "Invalid printf argument");
+    ret = error_causef (&nh->e, ERR_INVALID_ARGUMENT, "Invalid printf argument");
     goto theend;
   }
 
@@ -100,9 +99,7 @@ TEST (nsdb_execute)
   test_assert (var != NULL);
 
   test_assert (string_equal (var->var->vname, strfcstr ("a")));
-  test_assert (
-      type_equal (var->var->dtype, compile_type_alloc ("u32", &alloc, &e))
-  );
+  test_assert (type_equal (var->var->dtype, compile_type_alloc ("u32", &alloc, &e)));
   test_assert_equal (nsdb_var_len (var), 0);
   nsdb_var_free (var);
 

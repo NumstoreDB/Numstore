@@ -17,6 +17,7 @@
 #include "error.h"
 #include "node_updates.h"
 #include "numstore.h"
+#include "os.h"
 #include "page.h"
 #include "page_h.h"
 #include "pager.h"
@@ -988,9 +989,6 @@ TEST (ns_insert)
   pgr_fixture_teardown (&f);
 }
 
-#endif
-
-#ifdef TESTING
 #  define DO_INSERT(f, _root, _bofst, data, params)       \
     do                                                    \
     {                                                     \
@@ -1016,6 +1014,27 @@ TEST (ns_insert)
                                                           \
       test_assert (params.root != PGNO_NULL);             \
     }                                                     \
+    while (0)
+
+#  define DO_REMOVE(f, _root, _bofst, _size, params) \
+    do                                               \
+    {                                                \
+      pgr_begin_txn (&f.tx, f.p, &f.e);              \
+                                                     \
+      params = (struct ns_remove_params){            \
+          .p      = f.p,                             \
+          .dest   = NULL,                            \
+          .tx     = &f.tx,                           \
+          .root   = _root,                           \
+          .bofst  = _bofst,                          \
+          .stride = 1,                               \
+          .nelem  = _size,                           \
+      };                                             \
+                                                     \
+      ns_remove (&params, &f.e);                     \
+                                                     \
+      pgr_commit (f.p, &f.tx, &f.e);                 \
+    }                                                \
     while (0)
 
 #  define TEST_DATA_LIST(pgno, expected_data)                                                      \
@@ -1131,44 +1150,6 @@ TEST (ns_insert_from_empty)
 
   pgr_fixture_teardown (&f);
 }
-
-/**
-TEST_DISABLED (ns_insert_fine_grained)
-{
-  struct pgr_fixture f;
-  pgr_fixture_create (&f);
-
-  TEST_CASE ("Foo")
-  {
-    u8 _prev[DL_DATA_SIZE];
-    u8 _cur[DL_DATA_SIZE];
-    u32_arr_rand (_prev);
-    u32_arr_rand (_cur);
-
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-
-    struct page_tree_builder builder = in2dl (f.p, &f.tx, 2, DL_DATA_SIZE, DL_DATA_SIZE);
-    build_page_tree (&builder, &f.e);
-    page_tree_builder_release_all (&builder, &f.e);
-
-    pgr_commit (f.p, &f.tx, &f.e);
-    */
-
-/*
- *          [++___________________________]
- *
- * [+++++++++++++++]                 [+++++++++++++++++]
- */
-
-/**
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-  }
-
-  pgr_fixture_teardown (&f);
-}
-*/
-
 #endif
 
 /******************************************************************************
@@ -1707,26 +1688,29 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
   while (true)
   {
     // [+++++++++++_______]
-    // ^
-    // lidx
+    //             ^
+    //            lidx
     // [a, b, c] p [d, e, f, g, h, i]
-    // ^     ^        ^
-    // rcons  rlen     robs
+    //              ^     ^        ^
+    //            rcons  rlen     robs
     if (nupd_done_observing_right (pms->input))
     {
       pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
-      // ^
-      // lidx
+      //                    ^
+      //                  lidx
       // [a, b, c] p [d, e, f, g, h, i]
-      // ^  ^      ^
-      // rlen rcons  robs
+      //                   ^  ^      ^
+      //                 rlen rcons  robs
+      //
       // rcons didn't reach robs. That can
       // only happen if we filled up current
       // node
       if (!nupd_done_right (pms->input))
       {
+        TEST_MARK ("rebalance:right:done_observing:not_done_consuming");
+
         ASSERT (pms->lidx == IN_MAX_KEYS);
 
         if (nupd_commit_1st_right (
@@ -1746,8 +1730,10 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         {
           goto failed;
         }
+
         in_link (page_h_w (&pms->cur), page_h_w (&next));
         in_link (page_h_w (&next), page_h_w_or_null (&pms->limit));
+
         if (pgr_release (pms->p, &pms->cur, PG_INNER_NODE, e))
         {
           goto failed;
@@ -1763,8 +1749,8 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
       else
       {
         // [++++++++----------]
-        // ^
-        // lidx
+        //          ^
+        //         lidx
         // [++++++++__________]
         in_set_len (page_h_w (&pms->cur), pms->lidx);
         return rb_right_to_left (pms, e);
@@ -1772,13 +1758,15 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
     }
 
     // [+++++++++++_______]
-    // ^
-    // lidx
+    //             ^
+    //            lidx
     // [a, b, c] p [d, e, f, g, h, i]
-    // ^     ^        ^
-    // rcons  robs     rlen
+    //              ^     ^        ^
+    //            rcons  robs     rlen
     else
     {
+      TEST_MARK ("rebalance:right:not_done_observing");
+
       if (nupd_observe_all_right (pms->input, &pms->limit, e))
       {
         goto failed;
@@ -1786,22 +1774,21 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
       pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++______]
-      // ^
-      // lidx
+      //              ^
+      //            lidx
       // [a, b, c] p [d, e, f, g, h, i]
-      // ^        ^  ^
-      // rcons    robs rlen
+      //                 ^        ^  ^
+      //               rcons    robs rlen
       if (!nupd_done_right (pms->input) && pms->lidx > IN_MAX_KEYS / 2)
       {
-        // Shift right (limit
-        // is effectively
-        // "empty" because it
-        // was observed so we
-        // can use it as a slot
-        // for next) cur ->
-        // NULL cur
-        // -> limit limit limit
-        // -> next
+        TEST_MARK ("rebalance:right:not_done_observing:not_done:still_shift");
+
+        // Shift right (limit is effectively "empty" because it
+        // was observed so we can use it as a slot for next)
+        // cur -> NULL
+        // cur -> limit
+        // limit
+        // limit -> next
         if (pms->limit.mode == PHM_NONE)
         {
           if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e))
@@ -1816,11 +1803,11 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         // limit -> next
 
         // [++++++++----------]
-        // ^
-        // lidx
+        //          ^
+        //         lidx
         // [++++++++__________]
-        // ^
-        // lidx
+        //          ^
+        //        lidx
         in_set_len (page_h_w (&pms->cur), pms->lidx);
 
         if (nupd_commit_1st_right (
@@ -1857,26 +1844,31 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
       }
 
       // [++++++____________]
-      // ^
-      // lidx
+      //        ^
+      //       lidx
       // [a, b, c] p [d, e, f, g, h, i]
-      // ^        ^  ^
-      // rcons    robs rlen
+      //                 ^        ^  ^
+      //               rcons    robs rlen
       // OR
+      //
       // Node could be done:
       // TODO - (18) Maybe optimize this out
-      // - right now there's an extra page
-      // load [a, b, c] p [d, e, f, g, h, i]
-      // ^  ^
-      // rlen robs
+      // - right now there's an extra page load
+      //
+      // [a, b, c] p [d, e, f, g, h, i]
+      //                          ^  ^
+      //                        rlen robs
       // rcons
       else
       {
+        TEST_MARK ("rebalance:right:not_done_observing:done_consuming");
+
         ASSERT (nupd_done_consuming_right (pms->input));
         ASSERT (nupd_done_right (pms->input) || pms->limit.mode != PHM_NONE);
 
         if (pms->limit.mode != PHM_NONE)
         {
+          TEST_MARK ("rebalance:right:not_done_observing:done_consuming:limit_nn");
           const pgno npg = page_h_pgno (&pms->limit);
 
           const pgno nnpg = in_get_next (page_h_ro (&pms->limit));
@@ -1938,6 +1930,8 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       // node
       if (!nupd_done_left (pms->input))
       {
+        TEST_MARK ("rebalance:left:done_observing:not_done_consuming");
+
         ASSERT (pms->lidx == 0);
         if (nupd_commit_1st_left (
                 pms->output,
@@ -2003,6 +1997,8 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       // llen lobs   lcons
       if (!nupd_done_left (pms->input) && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2)
       {
+        TEST_MARK ("rebalance:left:not_done_observing:not_done:still_shift");
+
         // Shift left (limit is
         // effectively "empty"
         // because it was
@@ -2079,11 +2075,14 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       // lcons
       else
       {
+        TEST_MARK ("rebalance:left:not_done_observing:done_consuming");
+
         ASSERT (nupd_done_consuming_left (pms->input));
         ASSERT (nupd_done_left (pms->input) || pms->limit.mode != PHM_NONE);
 
         if (pms->limit.mode != PHM_NONE)
         {
+          TEST_MARK ("rebalance:left:not_done_observing:done_consuming:limit_nn");
           const pgno ppg = page_h_pgno (&pms->limit);
 
           const pgno pppg = in_get_prev (page_h_ro (&pms->limit));
@@ -2116,6 +2115,248 @@ failed:
   return error_trace (e);
 }
 
+#ifdef TESTING
+TEST (ns_rebalance_execute_right_left_coverage)
+{
+  struct pgr_fixture f;
+  error              e = error_create ();
+  pgr_fixture_create (&f);
+
+  /*
+   * Shared scratch. 3x is enough to overflow an
+   * inner node in either direction with room to spare.
+   */
+  static u8 data[DL_DATA_SIZE * IN_MAX_KEYS * 3];
+  static u8 bulk[DL_DATA_SIZE * IN_MAX_KEYS * 2];
+  static u8 bulk3[DL_DATA_SIZE * IN_MAX_KEYS * 3];
+  static u8 leaf[DL_DATA_SIZE];
+
+#  define BUILD(pg)                                             \
+    pgr_begin_txn (&f.tx, f.p, &f.e);                           \
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e); \
+    pgr_commit (f.p, &f.tx, &f.e)
+
+  struct tree_descr descr = {
+      .next =
+          (struct tree_descr[]){
+              {.data = data, .dlen = DL_DATA_SIZE},
+              {.data = data, .dlen = DL_DATA_SIZE},
+              {.data = data, .dlen = DL_DATA_SIZE},
+          },
+      .nlen = 3,
+  };
+
+  /*
+   * Append at the far right end - more than one inner
+   * node's worth of new leaves.
+   *
+   * robs is basically 0 from the start (there is nothing
+   * to the right of the pivot to observe), but rcons has
+   * 2 * IN_MAX_KEYS separators to place. cur fills, the
+   * chain is exhausted, so new pages must be minted:
+   * done_observing_right && !done_right -> split
+   *
+   *            [   ] -> New inner nodes grow this way
+   *    _ _ _ _ _ _ _ _ _ _ _ _ _ _  -> Append here
+   */
+  TEST_CASE ("rebalance:right:done_observing:not_done_consuming")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params);
+
+    test_assert_mark_hit ("rebalance:right:done_observing:not_done_consuming");
+  }
+
+  TEST_CASE ("rebalance:right:not_done_observing")
+  {
+    struct tree_descr _descr = {
+        .next =
+            (struct tree_descr[]){
+                {
+                    .next = i_malloc (IN_MAX_KEYS, sizeof (struct tree_descr), &f.e),
+                    .nlen = IN_MAX_KEYS,
+                },
+                {
+                    .next = i_malloc (IN_MAX_KEYS, sizeof (struct tree_descr), &f.e),
+                    .nlen = IN_MAX_KEYS,
+                },
+            },
+        .nlen = 2,
+    };
+
+    for (u32 i = 0; i < IN_MAX_KEYS; ++i)
+    {
+      _descr.next[0].next[i].data = data;
+      _descr.next[0].next[i].dlen = DL_DATA_SIZE;
+      _descr.next[0].next[i].next = NULL;
+
+      _descr.next[1].next[i].data = data;
+      _descr.next[1].next[i].dlen = DL_DATA_SIZE;
+      _descr.next[1].next[i].next = NULL;
+    }
+
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, _descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    i_free (_descr.next[0].next);
+    i_free (_descr.next[1].next);
+
+    test_assert_int_equal (ns_get_number_of_layers (f.p, pg, &f.e), 3);
+
+    struct ns_remove_params params;
+    DO_REMOVE (f, pg, (IN_MAX_KEYS / 2) * DL_DATA_SIZE, DL_DATA_SIZE * IN_MAX_KEYS, params);
+
+    test_assert_mark_hit ("rebalance:right:not_done_observing");
+    test_assert_mark_not_hit ("rebalance:right:not_done_observing:still_shift");
+  }
+
+  TEST_CASE ("rebalance:right:not_done_observing:not_done:still_shift")
+  {}
+
+  TEST_CASE ("rebalance_right_done_observing_not_done_consuming")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params);
+
+    test_assert_mark_hit ("rebalance:right:done_observing:not_done_consuming");
+  }
+
+  /*
+   * Shifts need a pre-existing multi-node inner level so
+   * there are dense siblings to observe. Build it the same
+   * way case 1 does (bulk append), commit, then insert a
+   * second bulk in the middle of the range.
+   *
+   * The pivot leaves apply_to_pivot full (lidx ==
+   * IN_MAX_KEYS > IN_MAX_KEYS / 2), the right sibling is
+   * observed but consumption isn't done, so cur is
+   * committed and the frontier shell is reused:
+   * !done_observing && !done_right && lidx > half -> shift.
+   * The trailing overflow past the end of the chain also
+   * re-hits the A1 split.
+   */
+  TEST_CASE ("rebalance_right_shift")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
+    DO_INSERT (f, pg, DL_DATA_SIZE, data, params);     // burst near the left
+
+    test_assert_mark_hit ("rebalance:right:not_done_observing:not_done:still_shift");
+  }
+
+  /*
+   * The absorb paths are the shrink direction: growth can
+   * never leave an observed husk with all consumption done
+   * (a dense sibling exactly refills an empty cur), but a
+   * bulk delete can. Children below merge, append_2nd
+   * records flow up, and the parent level repacks fewer
+   * entries than it has nodes - so each observed limit is
+   * emptied, deleted, and bridged over:
+   * !done_observing && done_consuming, limit != NONE
+   * -> absorb (+ the limit_nn inner mark).
+   *
+   * Deleting from near the front pulls survivors leftward
+   * across the right frontier; the delete ending mid-chain
+   * (not at the tail) is what keeps limit non-NONE.
+   */
+  /**
+  TEST_CASE ("rebalance_right_done_consuming_absorb")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
+
+    struct ns_remove_params dparams;
+    DO_REMOVE (f, params.root, DL_DATA_SIZE, DL_DATA_SIZE * IN_MAX_KEYS, dparams);
+
+    test_assert_mark_hit ("rebalance:right:not_done_observing:done_consuming");
+    test_assert_mark_hit ("rebalance:right:not_done_observing:done_consuming:limit_nn");
+  }
+  */
+
+  /*
+   * Mirror of the case above at the left edge.
+   *
+   * Insert the same bulk at a tiny offset. The pivot node
+   * packs right-then-left, so the prefix plus most of the
+   * new separators end up as left-side pending with no
+   * left siblings to observe or reuse:
+   * done_observing_left && !done_left -> split (A1 left).
+   */
+  TEST_CASE ("rebalance_left_done_observing_not_done_consuming")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE / 2, data, params);
+
+    test_assert_mark_hit ("rebalance:left:done_observing:not_done_consuming");
+  }
+
+  /*
+   * Same setup, but the burst lands near the right end of
+   * the (now wide) range, so the displacement runs through
+   * the left siblings instead.
+   */
+  /**
+  TEST_CASE ("rebalance_left_shift")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
+    DO_INSERT (f, pg, DL_DATA_SIZE * (3 + IN_MAX_KEYS), data, params);
+
+    test_assert_mark_hit ("rebalance:left:not_done_observing:not_done:still_shift");
+  }
+  */
+
+  /*
+   * Mirror: delete a bulk range near the right end, so the
+   * repack absorbs leftward husks instead.
+   */
+  /**
+  TEST_CASE ("rebalance_left_done_consuming_absorb")
+  {
+    pgr_begin_txn (&f.tx, f.p, &f.e);
+    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
+    pgr_commit (f.p, &f.tx, &f.e);
+
+    struct ns_insert_params params;
+    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
+
+    struct ns_remove_params dparams;
+    DO_REMOVE (f, pg, DL_DATA_SIZE * (3 + IN_MAX_KEYS), DL_DATA_SIZE * IN_MAX_KEYS, dparams);
+
+    test_assert_mark_hit ("rebalance:left:not_done_observing:done_consuming");
+    test_assert_mark_hit ("rebalance:left:not_done_observing:done_consuming:limit_nn");
+  }
+  */
+
+  pgr_fixture_teardown (&f);
+}
+#endif
+
 static err_t
 ns_pop_stack (struct ns_rebalance_params *pms, error *e)
 {
@@ -2146,35 +2387,15 @@ failed:
 
 static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e);
 
+/*
+ * Maximally applies node updates
+ * to the pivot node
+ */
 static err_t
 ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
 {
   page_h prev = page_h_create ();
   page_h next = page_h_create ();
-
-  // Output is empty
-  /**
-  ASSERT (pms->output->lcons == 0);
-  ASSERT (pms->output->llen == 0);
-  ASSERT (pms->output->lobs == 0);
-  ASSERT (pms->output->rcons == 0);
-  ASSERT (pms->output->rlen == 0);
-  ASSERT (pms->output->rcons == 0);
-  ASSERT (pms->output->pivot.pg == page_h_pgno (&pms->cur));
-  ASSERT (pms->output->pivot.key == in_get_size (page_h_ro
-  (&pms->cur)));
-
-  // Input is not consumed
-  ASSERT (pms->input->lcons == 0);
-  ASSERT (pms->input->lobs == 0);
-  ASSERT (pms->input->rcons == 0);
-  ASSERT (pms->input->robs == 0);
-  if (in_get_len (page_h_ro (&pms->cur)) > 0)
-  {
-  ASSERT (pms->input->pivot.pg == in_get_leaf (page_h_ro (&pms->cur),
-  pms->lidx));
-  }
-  */
 
   if (nupd_observe_pivot (pms->input, &pms->cur, pms->lidx, e))
   {
@@ -2298,8 +2519,11 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
   }
   else
   {
+    // We filled a layer, but need to grow upwards
     if (pms->sp == 0)
     {
+      // This is where tree's grow upwards - create a new layer
+      // we are now 1 layer bigger
       if (pgr_new (&pms->cur, pms->p, pms->tx, PG_INNER_NODE, e))
       {
         goto failed;
@@ -2310,6 +2534,7 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
     }
     else
     {
+      // Otherwise we're just working out way upwards
       if (ns_pop_stack (pms, e))
       {
         goto failed;
@@ -2324,6 +2549,13 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
 
     if (pms->output == NULL)
     {
+      /*
+       * The input from the previous layer is null on the first
+       * (bottom) layer. Think input = NULL because there is no
+       * input at the bottom layer.
+       *
+       * So this line is hit one the first loop always
+       */
       pms->output = nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e);
       if (pms->output == NULL)
       {
@@ -2332,6 +2564,10 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
     }
     else
     {
+      /*
+       * This happens when the previous layer input was not NULL,
+       * e.g. at least two loops/layers happened
+       */
       nupd_reset (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)));
     }
 
@@ -2373,9 +2609,13 @@ ns_rebalance (struct ns_rebalance_params *pms, error *e)
       goto failed;
     }
 
-    // Pop up the stack once
+    /*
+     * In the previous function call, we covered root node,
+     * so just return SUCCESS
+     */
     if (pms->layer_root.isroot)
     {
+      ASSERT (e->cause_code == SUCCESS);
       return error_trace (e);
     }
 
@@ -2418,40 +2658,6 @@ failed:
  * ----------------------------------------------------------------------------
  * @brief Main remove function
  ******************************************************************************/
-
-/*
- * Remove elements from the R+Tree with an optional stride.
- *
- * Unlike insert/write, remove must compact the byte stream in place: the gap
- * left by deleted bytes is closed by sliding the trailing data forward.  To
- * avoid re-reading pages, two cursors scan the leaf level simultaneously:
- *
- *   writer â€” the destination cursor; data is compacted into this position.
- *   reader â€” the source cursor; always ahead of (or equal to) writer.
- *
- * When writer == reader (reader.mode == PHM_NONE), there is no separation
- * yet and both cursors refer to the same page via s.writer.
- *
- * The outer loop alternates between two phases:
- *
- *   ACTIVE â€” the reader advances by [size] bytes without copying them to
- *              the writer; this is what "removes" the elements.  If
- *              params->dest is non-NULL the removed bytes are streamed out
- *              before being discarded.  After [size] bytes, bnext resets to
- *              (stride-1)*size and phase switches to SKIPPING.
- *
- *   SKIPPING â€” [size*(stride-1)] bytes are copied from reader to writer
- *              (these are the elements that must survive).  The writer
- *              page is flushed when full, and the reader page is deleted
- *              once fully consumed if it is distinct from the writer page.
- *
- * After the remove/skip loop finishes ("drain" label), all remaining reader
- * data is copied into writer pages and exhausted reader pages are deleted.
- *
- * Phase 3 validates that total_removed is a multiple of [size], then calls
- * ns_balance_and_release() and ns_rebalance() to fix up the leaf level
- * and propagate size decrements up the inner-node tree.
- */
 
 struct remove_state
 {
@@ -2743,8 +2949,6 @@ ns_remove (struct ns_remove_params *params, error *e)
 
         if (next_amount == 0)
         {
-          ASSERT (s.read_idx == rlen);
-
           bool iseof;
           if (advance_reader (&s, &iseof, e))
           {

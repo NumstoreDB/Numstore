@@ -90,7 +90,7 @@ struct nsdb_var
   struct variable  *var;
   struct allocator *alloc;
 };
-bool variable_equal (const struct variable *left, const struct variable *right);
+bool  variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
 void  var_random_name (char *buffer, int length);
 err_t rand_varname (
@@ -129,8 +129,7 @@ var_resolve_index (struct variable *v, sb_size bofst)
   }
 
   // Translate indexes past nybtes
-  if ((b_size)bofst
-      > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
+  if ((b_size)bofst > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
   {
     bofst = v->nbytes;
   }

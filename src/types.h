@@ -91,27 +91,21 @@ struct type
 };
 
 // Core api
-err_t type_validate (const struct type *t, error *e);
-i32   type_snprintf (char *str, u32 size, struct type *t);
-char *type_tostr (struct type *t);
-u32   type_byte_size (const struct type *t);
-u32   type_get_string_size (const struct type *t);
-void  type_generate_string (char *dest, const struct type *t);
-u32   type_get_serial_size (const struct type *t);
-void  type_serialize (struct serializer *dest, const struct type *src);
-struct type *
-type_deserialize (struct deserializer *src, struct allocator *alloc, error *e);
+err_t        type_validate (const struct type *t, error *e);
+i32          type_snprintf (char *str, u32 size, struct type *t);
+char        *type_tostr (struct type *t);
+u32          type_byte_size (const struct type *t);
+u32          type_get_string_size (const struct type *t);
+void         type_generate_string (char *dest, const struct type *t);
+u32          type_get_serial_size (const struct type *t);
+void         type_serialize (struct serializer *dest, const struct type *src);
+struct type *type_deserialize (struct deserializer *src, struct allocator *alloc, error *e);
 struct type *type_random (struct allocator *alloc, u32 depth, error *e);
 bool         type_equal (const struct type *left, const struct type *right);
 err_t        i_log_type (struct type *t, error *e);
 struct type *type_movemem (struct type *src, struct allocator *alloc, error *e);
-void         type_print_data (
-    int                log_level,
-    const u8          *buf,
-    const struct type *t,
-    u32                max_elems
-);
-err_t type_stream_printer_init (struct stream *s, struct type *t, error *e);
+void         type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems);
+err_t        type_stream_printer_init (struct stream *s, struct type *t, error *e);
 
 /******************************************************************************
  * SECTION: Key Value Type List
@@ -142,10 +136,9 @@ struct kvt_list_builder
 };
 
 struct kvt_list_builder kvlb_create (struct builder *b);
-err_t
-kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
-err_t kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
-err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
+err_t                   kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
+err_t                   kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
+err_t                   kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
 
 /******************************************************************************
  * SECTION: Smaller type functions
@@ -153,24 +146,15 @@ err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
  * @brief More functions for structs unions primitives
  ******************************************************************************/
 
-err_t struct_t_create (
-    struct struct_t  *dest,
-    struct kvt_list   list,
-    struct allocator *dalloc,
-    error            *e
-);
-bool struct_t_equal (const struct struct_t *left, const struct struct_t *right);
-struct type *
-struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key);
+err_t
+struct_t_create (struct struct_t *dest, struct kvt_list list, struct allocator *dalloc, error *e);
+bool         struct_t_equal (const struct struct_t *left, const struct struct_t *right);
+struct type *struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key);
 
 struct type *union_t_resolve_key (struct union_t *t, struct string key);
 
-err_t union_t_create (
-    struct union_t   *dest,
-    struct kvt_list   list,
-    struct allocator *dalloc,
-    error            *e
-);
+err_t
+union_t_create (struct union_t *dest, struct kvt_list list, struct allocator *dalloc, error *e);
 
 enum prim_t strtoprim (const char *text, u32 len);
 
@@ -194,10 +178,9 @@ struct sarray_builder
 };
 
 struct sarray_builder sab_create (struct builder *b);
-err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
-err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
-err_t
-sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
+err_t                 sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
+err_t                 sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
+err_t                 sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
 
 /******************************************************************************
  * SECTION: Rapid Fire builders
@@ -302,16 +285,9 @@ struct type_accessor
   };
 };
 
-bool type_accessor_equal (
-    const struct type_accessor left,
-    const struct type_accessor right
-);
-struct type *ta_subtype (
-    struct type          *reftype,
-    struct type_accessor *ta,
-    struct allocator     *alloc,
-    error                *e
-);
+bool type_accessor_equal (const struct type_accessor left, const struct type_accessor right);
+struct type *
+ta_subtype (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e);
 struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
     struct type          *reftype,
@@ -335,11 +311,7 @@ struct byte_accessor *type_to_byte_accessor (
   })
 
 HEADER_FUNC struct type_accessor
-ta_range (
-    struct user_stride   *dim_accessors,
-    u16                   dlen,
-    struct type_accessor *sub_ta
-)
+ta_range (struct user_stride *dim_accessors, u16 dlen, struct type_accessor *sub_ta)
 {
   return (struct type_accessor){
       .type  = TA_RANGE,
@@ -368,11 +340,7 @@ struct range_builder
 };
 
 struct range_builder rb_create (struct builder *b);
-err_t                rb_accept_stride (
-    struct range_builder *rb,
-    struct user_stride    stride,
-    error                *e
-);
+err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e);
 err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e);
 
 struct type_accessor_builder
@@ -386,22 +354,11 @@ struct type_accessor_builder
 };
 
 struct type_accessor_builder tab_create (struct builder *b);
-err_t                        tab_accept_select (
-    struct type_accessor_builder *builder,
-    struct string                 key,
-    error                        *e
-);
-err_t tab_accept_stride (
-    struct type_accessor_builder *builder,
-    struct user_stride            stride,
-    error                        *e
-);
+err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e);
+err_t
+tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e);
 err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
-err_t tab_build (
-    struct type_accessor         *dest,
-    struct type_accessor_builder *builder,
-    error                        *e
-);
+err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e);
 
 /******************************************************************************
  * SECTION: Type Reference
@@ -433,13 +390,9 @@ struct type_ref
   };
 };
 
-bool         type_ref_equal (struct type_ref left, const struct type_ref right);
-struct type *tr_construct (
-    struct type      *reftype,
-    struct type_ref  *tr,
-    struct allocator *alloc,
-    error            *e
-);
+bool type_ref_equal (struct type_ref left, const struct type_ref right);
+struct type *
+tr_construct (struct type *reftype, struct type_ref *tr, struct allocator *alloc, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Simple Stack Constructors
@@ -501,18 +454,9 @@ struct kvt_ref_list_builder
 };
 
 struct kvt_ref_list_builder kvrlb_create (struct builder *b);
-err_t
-kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
-err_t kvrlb_accept_type (
-    struct kvt_ref_list_builder *eb,
-    struct type_ref              t,
-    error                       *e
-);
-err_t kvrlb_build (
-    struct kvt_ref_list         *dest,
-    struct kvt_ref_list_builder *eb,
-    error                       *e
-);
+err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
+err_t kvrlb_accept_type (struct kvt_ref_list_builder *eb, struct type_ref t, error *e);
+err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *eb, error *e);
 
 /******************************************************************************
  * SECTION: Sub Type
@@ -527,12 +471,8 @@ struct subtype
 };
 
 struct subtype subtype_create (struct string vname, struct type_accessor ta);
-bool subtype_equal (const struct subtype *left, const struct subtype *right);
-struct type *subtype_get_type (
-    struct type          *stype,
-    struct type_accessor *ta,
-    struct allocator     *alloc,
-    error                *e
-);
+bool           subtype_equal (const struct subtype *left, const struct subtype *right);
+struct type *
+subtype_get_type (struct type *stype, struct type_accessor *ta, struct allocator *alloc, error *e);
 
 #endif // TYPES_H

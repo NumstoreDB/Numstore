@@ -86,8 +86,7 @@ pgno nupd_pivot_pg (const struct node_updates *n);
  * @param size Byte size of the right neighbour's data
  * @param e    The error object
  */
-err_t
-nupd_commit_1st_right (struct node_updates *s, pgno pg, b_size size, error *e);
+err_t nupd_commit_1st_right (struct node_updates *s, pgno pg, b_size size, error *e);
 
 /**
  * @brief Commits the first left-side update, replacing any existing first-left
@@ -98,8 +97,7 @@ nupd_commit_1st_right (struct node_updates *s, pgno pg, b_size size, error *e);
  * @param size Byte size of the left neighbour's data
  * @param e    The error object
  */
-err_t
-nupd_commit_1st_left (struct node_updates *s, pgno pg, b_size size, error *e);
+err_t nupd_commit_1st_left (struct node_updates *s, pgno pg, b_size size, error *e);
 
 /**
  * @brief Appends two entries to the right side of the update list
@@ -147,11 +145,7 @@ err_t nupd_append_2nd_left (
  * @param output The three-page result of a balance operation
  * @param e      The error object
  */
-err_t nupd_append_tip_right (
-    struct node_updates *s,
-    struct three_in_pair output,
-    error               *e
-);
+err_t nupd_append_tip_right (struct node_updates *s, struct three_in_pair output, error *e);
 
 /**
  * @brief Appends the three pages from a balance output to the left side of the
@@ -161,11 +155,7 @@ err_t nupd_append_tip_right (
  * @param output The three-page result of a balance operation
  * @param e      The error object
  */
-err_t nupd_append_tip_left (
-    struct node_updates *s,
-    struct three_in_pair output,
-    error               *e
-);
+err_t nupd_append_tip_left (struct node_updates *s, struct three_in_pair output, error *e);
 
 /**
  * @brief Reads the pivot key from an inner-node page at lidx into the nupd
@@ -176,8 +166,7 @@ err_t nupd_append_tip_left (
  * @param lidx Local key index within pg that corresponds to the pivot
  * @param e    The error object
  */
-err_t
-nupd_observe_pivot (struct node_updates *s, page_h *pg, p_size lidx, error *e);
+err_t nupd_observe_pivot (struct node_updates *s, page_h *pg, p_size lidx, error *e);
 
 /**
  * @brief Reads inner-node keys to the right of lidx into the right observation
@@ -188,12 +177,7 @@ nupd_observe_pivot (struct node_updates *s, page_h *pg, p_size lidx, error *e);
  * @param lidx Local key index to start reading from (exclusive)
  * @param e    The error object
  */
-err_t nupd_observe_right_from (
-    struct node_updates *s,
-    const page_h        *pg,
-    p_size               lidx,
-    error               *e
-);
+err_t nupd_observe_right_from (struct node_updates *s, const page_h *pg, p_size lidx, error *e);
 
 /**
  * @brief Reads inner-node keys to the left of lidx into the left observation
@@ -204,12 +188,7 @@ err_t nupd_observe_right_from (
  * @param lidx Local key index to stop reading before (exclusive)
  * @param e    The error object
  */
-err_t nupd_observe_left_from (
-    struct node_updates *s,
-    const page_h        *pg,
-    p_size               lidx,
-    error               *e
-);
+err_t nupd_observe_left_from (struct node_updates *s, const page_h *pg, p_size lidx, error *e);
 
 /**
  * @brief Reads all keys in an inner-node page into the right observation list
@@ -218,8 +197,7 @@ err_t nupd_observe_left_from (
  * @param pg The inner-node page to read from
  * @param e  The error object
  */
-err_t
-nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e);
+err_t nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e);
 
 /**
  * @brief Reads all keys in an inner-node page into the left observation list
@@ -228,8 +206,7 @@ nupd_observe_all_right (struct node_updates *s, const page_h *pg, error *e);
  * @param pg The inner-node page to read from
  * @param e  The error object
  */
-err_t
-nupd_observe_all_left (struct node_updates *s, const page_h *pg, error *e);
+err_t nupd_observe_all_left (struct node_updates *s, const page_h *pg, error *e);
 
 /**
  * @brief Consumes and returns the next pending right-side update
@@ -303,11 +280,7 @@ bool nupd_done_right (struct node_updates *s);
  * @param rlen Maximum number of keys to read from the right end of pg
  * @return     The number of keys actually appended
  */
-p_size nupd_append_maximally_left (
-    struct node_updates *n,
-    const page_h        *pg,
-    p_size               rlen
-);
+p_size nupd_append_maximally_left (struct node_updates *n, const page_h *pg, p_size rlen);
 
 /**
  * @brief Appends as many keys as possible from the right side of pg into the
@@ -321,11 +294,7 @@ p_size nupd_append_maximally_left (
  * @param llen Maximum number of keys to read from the left end of pg
  * @return     The number of keys actually appended
  */
-p_size nupd_append_maximally_right (
-    struct node_updates *n,
-    const page_h        *pg,
-    p_size               llen
-);
+p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, p_size llen);
 
 /**
  * @brief Fills the right update list first, then the left, from pg's key array
@@ -334,7 +303,6 @@ p_size nupd_append_maximally_right (
  * @param pg The inner-node page to read keys from
  * @return   The total number of keys appended across both sides
  */
-p_size
-nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg);
+p_size nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg);
 
 #endif // NODE_UPDATES_H

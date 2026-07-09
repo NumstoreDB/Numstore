@@ -66,9 +66,7 @@ TEST (smfile_strerror)
 
   // stride == 0 => ERROR
   test_assert (smfile_pread (s, "foo", buffer, 10, 0, 0, 10) < 0);
-  test_assert (
-      string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0"))
-  );
+  test_assert (string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0")));
 
   smfile_close (s);
 }
@@ -368,13 +366,7 @@ TEST (smfile_open)
 ////// Insert
 
 sb_size
-smfile_pinsert (
-    smfile_t   *_smf,
-    const char *name,
-    const void *src,
-    sb_size     bofst,
-    b_size      slen
-)
+smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen)
 {
   struct nsdb *smf = (struct nsdb *)_smf;
 
@@ -385,14 +377,14 @@ smfile_pinsert (
 
   ALLOC_INIT (temp);
 
-  sb_size                            ret;        // Return value
-  b_size                             ofst;       // Resolved offset
-  struct stream                      _input;     // Input stream
-  struct stream_ibuf_ctx             ctx;        // Context for input stream
-  struct ns_var_get_or_create_params gparams;    // Get or create operation
-  struct ns_insert_params            iparams;    // Insert operation
-  struct ns_var_update_params        uparams;    // Update operation
-  struct string vname = vname_or_default (name); // Variable name
+  sb_size                            ret;                             // Return value
+  b_size                             ofst;                            // Resolved offset
+  struct stream                      _input;                          // Input stream
+  struct stream_ibuf_ctx             ctx;                             // Context for input stream
+  struct ns_var_get_or_create_params gparams;                         // Get or create operation
+  struct ns_insert_params            iparams;                         // Insert operation
+  struct ns_var_update_params        uparams;                         // Update operation
+  struct string                      vname = vname_or_default (name); // Variable name
 
   // Parameter validation
   if (slen == 0)
@@ -527,31 +519,23 @@ smfile_pread (
 
   ALLOC_INIT (temp);
 
-  sb_size                  ret;           // Return value
-  b_size                   ofst;          // Resolved offset
-  struct stream            _output;       // Output stream if present
-  struct stream_obuf_ctx   ctx;           // Context for output stream
-  struct stream           *output = NULL; // Pointer to output stream
-  struct ns_var_get_params gparams;       // Get operation
-  struct ns_read_params    rparams;       // Read operation
+  sb_size                  ret;                             // Return value
+  b_size                   ofst;                            // Resolved offset
+  struct stream            _output;                         // Output stream if present
+  struct stream_obuf_ctx   ctx;                             // Context for output stream
+  struct stream           *output = NULL;                   // Pointer to output stream
+  struct ns_var_get_params gparams;                         // Get operation
+  struct ns_read_params    rparams;                         // Read operation
   struct string            vname = vname_or_default (name); // Variable name
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Negative strides aren't supported yet"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
   if (stride == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot read with stride == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with stride == 0");
   }
   if (size == 0)
   {
@@ -705,40 +689,28 @@ smfile_premove (
 
   ALLOC_INIT (temp);
 
-  sb_size                     ret;           // Return value
-  b_size                      ofst;          // Resolved offset
-  struct stream               _output;       // Output stream if present
-  struct stream_obuf_ctx      ctx;           // Context for output stream
-  struct stream              *output = NULL; // Pointer to output stream
-  struct ns_var_get_params    gparams;       // Get operation
-  struct ns_remove_params     rparams;       // Remove operation
-  struct ns_var_update_params uparams;       // Update operation
+  sb_size                     ret;                             // Return value
+  b_size                      ofst;                            // Resolved offset
+  struct stream               _output;                         // Output stream if present
+  struct stream_obuf_ctx      ctx;                             // Context for output stream
+  struct stream              *output = NULL;                   // Pointer to output stream
+  struct ns_var_get_params    gparams;                         // Get operation
+  struct ns_remove_params     rparams;                         // Remove operation
+  struct ns_var_update_params uparams;                         // Update operation
   struct string               vname = vname_or_default (name); // Variable name
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Negative strides aren't supported yet"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
   if (stride == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot remove with stride == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
   }
   if (size == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot remove with size == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0");
   }
   if (nelem == 0)
   {
@@ -907,43 +879,31 @@ smfile_pwrite (
 
   ALLOC_INIT (temp);
 
-  sb_size                ret;          // Return value
-  sb_size                inserted;     // Number of bytes inserted
-  b_size                 ofst;         // Resolved offset
-  b_size                 write_nelem;  // Elements that fit in existing variable
-  b_size                 insert_nelem; // Remainder to insert past the end
-  struct stream          _input;       // Input stream
-  struct stream_ibuf_ctx ctx;          // Context for input stream
-  struct ns_var_get_or_create_params gparams;    // Get or create operation
-  struct ns_write_params             wparams;    // Write operation
-  struct ns_insert_params            iparams;    // Insert operation
-  struct ns_var_update_params        uparams;    // Update operation
-  struct string vname = vname_or_default (name); // Variable name
+  sb_size                            ret;          // Return value
+  sb_size                            inserted;     // Number of bytes inserted
+  b_size                             ofst;         // Resolved offset
+  b_size                             write_nelem;  // Elements that fit in existing variable
+  b_size                             insert_nelem; // Remainder to insert past the end
+  struct stream                      _input;       // Input stream
+  struct stream_ibuf_ctx             ctx;          // Context for input stream
+  struct ns_var_get_or_create_params gparams;      // Get or create operation
+  struct ns_write_params             wparams;      // Write operation
+  struct ns_insert_params            iparams;      // Insert operation
+  struct ns_var_update_params        uparams;      // Update operation
+  struct string                      vname = vname_or_default (name); // Variable name
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Negative strides aren't supported yet"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
   if (stride == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot write with stride == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
   }
   if (size == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot write with size == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0");
   }
   if (nelem == 0)
   {
@@ -972,11 +932,7 @@ smfile_pwrite (
     insert_nelem = nelem - write_nelem;
     if (insert_nelem > 0 && stride != 1)
     {
-      error_causef (
-          e,
-          ERR_INVALID_ARGUMENT,
-          "Cannot write past end with stride != 1"
-      );
+      error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
       goto failed_rollback;
     }
   }
@@ -1005,12 +961,7 @@ smfile_pwrite (
   {
     // INSERT
     {
-      stream_ibuf_init (
-          &_input,
-          &ctx,
-          (u8 *)src + write_nelem * size,
-          insert_nelem * size
-      );
+      stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
 
       iparams = (struct ns_insert_params){
           .p     = smf->root->p,
@@ -1068,7 +1019,7 @@ TEST (smfile_pwrite)
 
   // Overwrite the first 4 bytes in place.
   u8      overwrite[4] = {9, 9, 9, 9};
-  sb_size n = smfile_pwrite (s, "foo", overwrite, 1, 0, 1, sizeof (overwrite));
+  sb_size n            = smfile_pwrite (s, "foo", overwrite, 1, 0, 1, sizeof (overwrite));
 
   test_assert_equal (n, sizeof (overwrite));
   test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
@@ -1081,13 +1032,10 @@ TEST (smfile_pwrite)
 
   // Writing past the end should append (insert the remainder).
   u8 append[4] = {11, 12, 13, 14};
-  n = smfile_pwrite (s, "foo", append, 1, sizeof (buffer), 1, sizeof (append));
+  n            = smfile_pwrite (s, "foo", append, 1, sizeof (buffer), 1, sizeof (append));
 
   test_assert_equal (n, sizeof (append));
-  test_assert_equal (
-      smfile_psize (s, "foo"),
-      sizeof (buffer) + sizeof (append)
-  );
+  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer) + sizeof (append));
 
   smfile_close (s);
 }

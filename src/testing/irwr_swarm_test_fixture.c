@@ -217,11 +217,7 @@ irwr_swmt_begin_txn (struct irwr_swarm_test *meta)
   ASSERT (!meta->in_txn);
   ASSERT (meta->working == NULL);
 
-  IRWR_SWMT_ASSERTF (
-      nsdb_begin (meta->db) == 0,
-      "nsdb_begin failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_begin (meta->db) == 0, "nsdb_begin failed on db='%s'", meta->dbname);
 
   meta->working = block_array_clone (meta->committed, NULL);
   IRWR_SWMT_ASSERTF (
@@ -271,11 +267,7 @@ irwr_swmt_rollback_txn (struct irwr_swarm_test *meta)
 static void
 irwr_swmt_crash_and_reopen (struct irwr_swarm_test *meta)
 {
-  IRWR_SWMT_ASSERTF (
-      nsdb_crash (meta->db) == 0,
-      "nsdb_crash failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_crash (meta->db) == 0, "nsdb_crash failed on db='%s'", meta->dbname);
 
   meta->db = nsdb_open (meta->dbname);
   IRWR_SWMT_ASSERTF (
@@ -297,11 +289,7 @@ static void
 irwr_swmt_close_and_reopen (struct irwr_swarm_test *meta)
 {
   ASSERT (!meta->in_txn);
-  IRWR_SWMT_ASSERTF (
-      nsdb_close (meta->db) == 0,
-      "nsdb_close failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
   meta->db = nsdb_open (meta->dbname);
   IRWR_SWMT_ASSERTF (
@@ -332,14 +320,7 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   }
 
   /* DB side (NOTE: was previously executed twice — collapsed to one call). */
-  int got = nsdb_execute (
-      meta->db,
-      "insert %s %d %d",
-      data,
-      meta->varname,
-      ofst,
-      len
-  );
+  int got = nsdb_execute (meta->db, "insert %s %d %d", data, meta->varname, ofst, len);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == len,
@@ -353,13 +334,8 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   );
 
   /* Reference side */
-  int ba = block_array_insert (
-      active_db (meta),
-      (u32)(ofst * (int)meta->esize),
-      data,
-      (u32)blen,
-      NULL
-  );
+  int ba =
+      block_array_insert (active_db (meta), (u32)(ofst * (int)meta->esize), data, (u32)blen, NULL);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       ba == 0,
@@ -415,8 +391,7 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
 
   /* Reference side */
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got =
-      block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
+  i64           got = block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == (i64)len,
@@ -488,7 +463,7 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64 got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
+  u64           got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == (u64)len,
@@ -560,7 +535,7 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64 got = block_array_write (active_db (meta), str, meta->esize, data);
+  u64           got = block_array_write (active_db (meta), str, meta->esize, data);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == (u64)len,
@@ -600,11 +575,7 @@ irwr_swmt_open (
       dbname
   );
 
-  IRWR_SWMT_ASSERTF (
-      nsdb_cleanup (dbname) == 0,
-      "nsdb_cleanup failed for db='%s'",
-      dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_cleanup (dbname) == 0, "nsdb_cleanup failed for db='%s'", dbname);
 
   ALLOC_INIT (alloc);
 
@@ -638,11 +609,7 @@ irwr_swmt_open (
       "block_array_create(512) returned NULL (db='%s')",
       dbname
   );
-  IRWR_SWMT_ASSERTF (
-      ret->db != NULL,
-      "nsdb_open returned NULL (db='%s')",
-      dbname
-  );
+  IRWR_SWMT_ASSERTF (ret->db != NULL, "nsdb_open returned NULL (db='%s')", dbname);
 
   memcpy (ret->enabled, initial_enabled, IRWR_AT_LEN * sizeof (int));
   irwr_swmt_set_allowed (ret);
@@ -665,11 +632,7 @@ irwr_swmt_close (struct irwr_swarm_test *meta)
   {
     irwr_swmt_commit_txn (meta);
   }
-  IRWR_SWMT_ASSERTF (
-      nsdb_close (meta->db) == 0,
-      "nsdb_close failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
   if (meta->committed)
   {
