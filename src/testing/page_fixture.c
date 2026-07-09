@@ -104,7 +104,7 @@ struct tree_result
 };
 
 // UNTESTED
-err_t
+static err_t
 build_tree_from_descr_inner (
     struct tree_result *dest,
     struct pager       *p,
