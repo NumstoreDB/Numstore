@@ -19,13 +19,31 @@
 
 #include "numstore.h"
 
-// A packed struct - modeling the type we create
+// 1. Define the packing macros based on the compiler
+#if defined(_MSC_VER)
+#  define PACKED_STRUCT_START __pragma (pack (push, 1))
+#  define PACKED_STRUCT_END
+#  define PACKED_ATTR
+#elif defined(__GNUC__) || defined(__clang__)
+#  define PACKED_STRUCT_START
+#  define PACKED_STRUCT_END
+#  define PACKED_ATTR __attribute__ ((packed))
+#else
+#  define PACKED_STRUCT_START
+#  define PACKED_STRUCT_END
+#  define PACKED_ATTR
+#  warning "Compiler packing not supported on this platform. Alignment issues may occur."
+#endif
+
+// 2. Apply the macros to your struct
+PACKED_STRUCT_START
 struct example
 {
   float    a;
   int32_t  b;
   uint32_t d[5][10];
-} __attribute__ ((packed));
+} PACKED_ATTR;
+PACKED_STRUCT_END
 
 // Two utility functions to print and seed an example struct array
 static void print_example (const char *label, struct example *ex, int size);
@@ -72,21 +90,11 @@ main (void)
   sb_size n = nsdb_execute (ns, "insert example 0 %d", src, 200);
 
   // Read (most of) data with a stride of 3
-  n = nsdb_execute (
-      ns,
-      "read example[0:-10:3] blimit %ld",
-      dest,
-      sizeof (dest)
-  );
+  n = nsdb_execute (ns, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
-  n = nsdb_execute (
-      ns,
-      "remove example[0:-10:2] blimit %ld",
-      dest,
-      sizeof (dest)
-  );
+  n = nsdb_execute (ns, "remove example[0:-10:2] blimit %ld", dest, sizeof (dest));
   print_example ("Removed elements: ", dest, n);
 
   // Read all of data

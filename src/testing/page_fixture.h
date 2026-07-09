@@ -44,6 +44,23 @@ err_t pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest);
 err_t pgr_fixture_teardown (struct pgr_fixture *f);
 
 /******************************************************************************
+ * SECTION: Tree fixture 2
+ * ----------------------------------------------------------------------------
+ * @brief easier to use than page tree builder
+ ******************************************************************************/
+
+struct tree_descr
+{
+  u8 *data;
+  u32 dlen;
+
+  struct tree_descr *next;
+  u32                nlen;
+};
+
+spgno build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr descr, error *e);
+
+/******************************************************************************
  * SECTION: Fake Database Building
  * ----------------------------------------------------------------------------
  * @brief Building fake page layouts to test with
@@ -121,263 +138,203 @@ err_t page_tree_builder_release_all (struct page_tree_builder *b, error *e);
  *----------------------------------------------------------------------------*/
 
 // IN -> DL, DL, ...
-#define in1dl(_pager, txid, inl, dl0)                       \
-  {                                                         \
-      .root =                                               \
-          {                                                 \
-              .type = PG_INNER_NODE,                        \
-              .out  = page_h_create (),                     \
-              .inner =                                      \
-                  {                                         \
-                      .dclen = inl,                         \
-                      .clen  = 2,                           \
-                      .children =                           \
-                          (struct page_desc[]){             \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl0,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                          },                                \
-                  },                                        \
-          },                                                \
-      .pager = _pager,                                      \
-      .txn   = txid,                                        \
+#define in1dl(_pager, txid, inl, dl0)                                                     \
+  {                                                                                       \
+      .root =                                                                             \
+          {                                                                               \
+              .type = PG_INNER_NODE,                                                      \
+              .out  = page_h_create (),                                                   \
+              .inner =                                                                    \
+                  {                                                                       \
+                      .dclen = inl,                                                       \
+                      .clen  = 2,                                                         \
+                      .children =                                                         \
+                          (struct page_desc[]){                                           \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl0,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                          },                                                              \
+                  },                                                                      \
+          },                                                                              \
+      .pager = _pager,                                                                    \
+      .txn   = txid,                                                                      \
   }
 
-#define in2dl(_pager, txid, inl, dl0, dl1)                  \
-  {                                                         \
-      .root =                                               \
-          {                                                 \
-              .type = PG_INNER_NODE,                        \
-              .out  = page_h_create (),                     \
-              .inner =                                      \
-                  {                                         \
-                      .dclen = inl,                         \
-                      .clen  = 2,                           \
-                      .children =                           \
-                          (struct page_desc[]){             \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl0,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl1,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                          },                                \
-                  },                                        \
-          },                                                \
-      .pager = _pager,                                      \
-      .txn   = txid,                                        \
+#define in2dl(_pager, txid, inl, dl0, dl1)                                                \
+  {                                                                                       \
+      .root =                                                                             \
+          {                                                                               \
+              .type = PG_INNER_NODE,                                                      \
+              .out  = page_h_create (),                                                   \
+              .inner =                                                                    \
+                  {                                                                       \
+                      .dclen = inl,                                                       \
+                      .clen  = 2,                                                         \
+                      .children =                                                         \
+                          (struct page_desc[]){                                           \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl0,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl1,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                          },                                                              \
+                  },                                                                      \
+          },                                                                              \
+      .pager = _pager,                                                                    \
+      .txn   = txid,                                                                      \
   }
 
-#define in3dl(_pager, txid, inl, dl0, dl1, dl2)             \
-  {                                                         \
-      .root =                                               \
-          {                                                 \
-              .type = PG_INNER_NODE,                        \
-              .out  = page_h_create (),                     \
-              .inner =                                      \
-                  {                                         \
-                      .dclen = inl,                         \
-                      .clen  = 3,                           \
-                      .children =                           \
-                          (struct page_desc[]){             \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl0,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl1,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl2,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                          },                                \
-                  },                                        \
-          },                                                \
-      .pager = _pager,                                      \
-      .txn   = txid,                                        \
+#define in3dl(_pager, txid, inl, dl0, dl1, dl2)                                           \
+  {                                                                                       \
+      .root =                                                                             \
+          {                                                                               \
+              .type = PG_INNER_NODE,                                                      \
+              .out  = page_h_create (),                                                   \
+              .inner =                                                                    \
+                  {                                                                       \
+                      .dclen = inl,                                                       \
+                      .clen  = 3,                                                         \
+                      .children =                                                         \
+                          (struct page_desc[]){                                           \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl0,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl1,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl2,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                          },                                                              \
+                  },                                                                      \
+          },                                                                              \
+      .pager = _pager,                                                                    \
+      .txn   = txid,                                                                      \
   }
 
-#define in4dl(_pager, txid, inl, dl0, dl1, dl2, dl3)        \
-  {                                                         \
-      .root =                                               \
-          {                                                 \
-              .type = PG_INNER_NODE,                        \
-              .out  = page_h_create (),                     \
-              .inner =                                      \
-                  {                                         \
-                      .dclen = inl,                         \
-                      .clen  = 4,                           \
-                      .children =                           \
-                          (struct page_desc[]){             \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl0,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl1,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl2,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl3,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                          },                                \
-                  },                                        \
-          },                                                \
-      .pager = _pager,                                      \
-      .txn   = txid,                                        \
+#define in4dl(_pager, txid, inl, dl0, dl1, dl2, dl3)                                      \
+  {                                                                                       \
+      .root =                                                                             \
+          {                                                                               \
+              .type = PG_INNER_NODE,                                                      \
+              .out  = page_h_create (),                                                   \
+              .inner =                                                                    \
+                  {                                                                       \
+                      .dclen = inl,                                                       \
+                      .clen  = 4,                                                         \
+                      .children =                                                         \
+                          (struct page_desc[]){                                           \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl0,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl1,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl2,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl3,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                          },                                                              \
+                  },                                                                      \
+          },                                                                              \
+      .pager = _pager,                                                                    \
+      .txn   = txid,                                                                      \
   }
 
-#define in5dl(_pager, txid, inl, dl0, dl1, dl2, dl3, dl4)   \
-  {                                                         \
-      .root =                                               \
-          {                                                 \
-              .type = PG_INNER_NODE,                        \
-              .out  = page_h_create (),                     \
-              .inner =                                      \
-                  {                                         \
-                      .dclen = inl,                         \
-                      .clen  = 5,                           \
-                      .children =                           \
-                          (struct page_desc[]){             \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl0,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl1,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl2,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl3,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                                                            \
-                              {                             \
-                                  .type = PG_DATA_LIST,     \
-                                  .size = dl4,              \
-                                  .out  = page_h_create (), \
-                                  .data_list =              \
-                                      (struct dl_data){     \
-                                          .data = NULL,     \
-                                          .blen = 0         \
-                                      },                    \
-                              },                            \
-                          },                                \
-                  },                                        \
-          },                                                \
-      .pager = _pager,                                      \
-      .txn   = txid,                                        \
+#define in5dl(_pager, txid, inl, dl0, dl1, dl2, dl3, dl4)                                 \
+  {                                                                                       \
+      .root =                                                                             \
+          {                                                                               \
+              .type = PG_INNER_NODE,                                                      \
+              .out  = page_h_create (),                                                   \
+              .inner =                                                                    \
+                  {                                                                       \
+                      .dclen = inl,                                                       \
+                      .clen  = 5,                                                         \
+                      .children =                                                         \
+                          (struct page_desc[]){                                           \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl0,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl1,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl2,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl3,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                                                                                          \
+                              {                                                           \
+                                  .type      = PG_DATA_LIST,                              \
+                                  .size      = dl4,                                       \
+                                  .out       = page_h_create (),                          \
+                                  .data_list = (struct dl_data){.data = NULL, .blen = 0}, \
+                              },                                                          \
+                          },                                                              \
+                  },                                                                      \
+          },                                                                              \
+      .pager = _pager,                                                                    \
+      .txn   = txid,                                                                      \
   }
 
 // IN -> IN, IN,

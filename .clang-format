@@ -1,6 +1,6 @@
 # Base style rules
 BasedOnStyle: Google
-ColumnLimit: 80
+ColumnLimit: 100
 IndentWidth: 2
 ContinuationIndentWidth: 4
 UseTab: Never
