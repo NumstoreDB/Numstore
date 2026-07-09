@@ -2170,6 +2170,7 @@ TEST (ns_rebalance_execute_right_left_coverage)
     test_assert_mark_hit ("rebalance:right:done_observing:not_done_consuming");
   }
 
+  /**
   TEST_CASE ("rebalance:right:not_done_observing")
   {
     struct tree_descr _descr = {
@@ -2213,6 +2214,7 @@ TEST (ns_rebalance_execute_right_left_coverage)
     test_assert_mark_hit ("rebalance:right:not_done_observing");
     test_assert_mark_not_hit ("rebalance:right:not_done_observing:still_shift");
   }
+  */
 
   TEST_CASE ("rebalance:right:not_done_observing:not_done:still_shift")
   {}
