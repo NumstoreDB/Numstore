@@ -2208,7 +2208,7 @@ TEST (ns_rebalance_execute_right_left_coverage)
     test_assert_int_equal (ns_get_number_of_layers (f.p, pg, &f.e), 3);
 
     struct ns_remove_params params;
-    DO_REMOVE (f, pg, (IN_MAX_KEYS / 2) * DL_DATA_SIZE, DL_DATA_SIZE * IN_MAX_KEYS, params);
+    DO_REMOVE (f, pg, 0, DL_DATA_SIZE * IN_MAX_KEYS, params);
 
     test_assert_mark_hit ("rebalance:right:not_done_observing");
     test_assert_mark_not_hit ("rebalance:right:not_done_observing:still_shift");
