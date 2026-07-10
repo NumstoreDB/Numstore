@@ -2457,6 +2457,7 @@ do_rebalance_on_2_layer_tree (
   // Create random node updates
   struct node_updates *output =
       nupd_random_from (left, llen, pivot, right, rlen, &f->e);
+  struct node_updates *input = nupd_init (0, 0, &f->e);
   ASSERT (output != NULL);
 
   // Do rebalance
@@ -2472,7 +2473,7 @@ do_rebalance_on_2_layer_tree (
               },
           },
       .sp         = 1,
-      .input      = NULL,
+      .input      = input,
       .output     = output,
       .layer_root = {.isroot = false},
   };
@@ -2482,6 +2483,7 @@ do_rebalance_on_2_layer_tree (
   i_cfree (right);
   i_cfree (left);
   nupd_free (output);
+  nupd_free (input);
 
   return rebalance.root;
 }
