@@ -2481,6 +2481,7 @@ do_rebalance_on_2_layer_tree (
 
   i_cfree (right);
   i_cfree (left);
+  nupd_free (output);
 
   return rebalance.root;
 }
