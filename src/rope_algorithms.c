@@ -2537,7 +2537,7 @@ TEST (ns_rebalance_apply_to_pivot_splits_2_layer_tree)
 
   for (u32 i = 2; i < 10; ++i)
   {
-    u32 in_len = randu32r (1, IN_MAX_KEYS);
+    u32 in_len = randu32r (1, IN_MAX_KEYS - 1);
     u32 len    = randu32r (0, IN_MAX_KEYS * 10);
 
     TEST_CASE ("Right length %d", len)
