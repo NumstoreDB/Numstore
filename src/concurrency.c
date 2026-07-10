@@ -61,8 +61,9 @@ TEST (gr_lock_init)
   {
     error e = error_create ();
 
-    err_t (*backup) (i_threading *t, i_mutex *m, error *e) = default_threading.i_mutex_create;
-    default_threading.i_mutex_create                       = i_mutex_create_errio;
+    err_t (*backup) (i_threading *t, i_mutex *m, error *e) =
+        default_threading.i_mutex_create;
+    default_threading.i_mutex_create = i_mutex_create_errio;
 
     struct gr_lock l;
     test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
@@ -788,7 +789,13 @@ periodic_task_thread (void *_ctx)
 }
 
 err_t
-periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e)
+periodic_task_start (
+    struct periodic_task *t,
+    u64                   msec,
+    periodic_task_fn      fn,
+    void                 *ctx,
+    error                *e
+)
 {
   t->msec = msec;
   t->fn   = fn;

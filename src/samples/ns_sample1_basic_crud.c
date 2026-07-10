@@ -32,7 +32,8 @@
 #  define PACKED_STRUCT_START
 #  define PACKED_STRUCT_END
 #  define PACKED_ATTR
-#  warning "Compiler packing not supported on this platform. Alignment issues may occur."
+#  warning \
+      "Compiler packing not supported on this platform. Alignment issues may occur."
 #endif
 
 // 2. Apply the macros to your struct
@@ -90,11 +91,21 @@ main (void)
   sb_size n = nsdb_execute (ns, "insert example 0 %d", src, 200);
 
   // Read (most of) data with a stride of 3
-  n = nsdb_execute (ns, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
+  n = nsdb_execute (
+      ns,
+      "read example[0:-10:3] blimit %ld",
+      dest,
+      sizeof (dest)
+  );
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
-  n = nsdb_execute (ns, "remove example[0:-10:2] blimit %ld", dest, sizeof (dest));
+  n = nsdb_execute (
+      ns,
+      "remove example[0:-10:2] blimit %ld",
+      dest,
+      sizeof (dest)
+  );
   print_example ("Removed elements: ", dest, n);
 
   // Read all of data

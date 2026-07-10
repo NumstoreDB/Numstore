@@ -123,7 +123,10 @@ cgd_swmt_print_state (const struct cgd_swarm_test *meta)
       meta->working ? "present" : "<null>",
       meta->working ? mem_vhmap_count (meta->working) : -1
   );
-  i_log_info ("  cur:            %s\n", meta->cur ? meta->cur->vname.data : "<null>");
+  i_log_info (
+      "  cur:            %s\n",
+      meta->cur ? meta->cur->vname.data : "<null>"
+  );
   i_log_info ("  sample_space_p: %.3f\n", (double)meta->sample_space_prob);
   i_log_info ("  Actions             enabled   allowed\n");
   for (int i = 0; i < CDS_AT_LEN; ++i)
@@ -150,7 +153,8 @@ static void
 rebind_cur (struct cgd_swarm_test *meta, const char *preferred_name)
 {
   struct mem_vhmap *db = active_db (meta);
-  meta->cur            = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
+  meta->cur =
+      preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
   if (!meta->cur && mem_vhmap_count (db) > 0)
   {
     meta->cur = mem_vhmap_random (db);
@@ -259,7 +263,11 @@ cgd_swmt_begin_txn (struct cgd_swarm_test *meta)
   assert (!meta->in_txn);
   assert (meta->working == NULL);
 
-  CGD_SWMT_ASSERTF (nsdb_begin (meta->db) == 0, "nsdb_begin failed on db='%s'", meta->dbname);
+  CGD_SWMT_ASSERTF (
+      nsdb_begin (meta->db) == 0,
+      "nsdb_begin failed on db='%s'",
+      meta->dbname
+  );
 
   error e       = error_create ();
   meta->working = mem_vhmap_clone (meta->committed, &e);
@@ -299,7 +307,11 @@ cgd_swmt_rollback_txn (struct cgd_swarm_test *meta)
 {
   assert (meta->in_txn);
 
-  CGD_SWMT_ASSERTF (nsdb_rollback (meta->db) == 0, "nsdb_rollback failed on db='%s'", meta->dbname);
+  CGD_SWMT_ASSERTF (
+      nsdb_rollback (meta->db) == 0,
+      "nsdb_rollback failed on db='%s'",
+      meta->dbname
+  );
 
   char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
   mem_vhmap_free (meta->working);
@@ -315,7 +327,11 @@ cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta)
 {
   char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
 
-  CGD_SWMT_ASSERTF (nsdb_crash (meta->db) == 0, "nsdb_crash failed on db='%s'", meta->dbname);
+  CGD_SWMT_ASSERTF (
+      nsdb_crash (meta->db) == 0,
+      "nsdb_crash failed on db='%s'",
+      meta->dbname
+  );
 
   meta->db = nsdb_open (meta->dbname);
   CGD_SWMT_ASSERTF (
@@ -339,7 +355,11 @@ static void
 cgd_swmt_close_and_reopen (struct cgd_swarm_test *meta)
 {
   assert (!meta->in_txn);
-  CGD_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
+  CGD_SWMT_ASSERTF (
+      nsdb_close (meta->db) == 0,
+      "nsdb_close failed on db='%s'",
+      meta->dbname
+  );
 
   meta->db = nsdb_open (meta->dbname);
   CGD_SWMT_ASSERTF (
@@ -457,7 +477,11 @@ cgd_swmt_delete (struct cgd_swarm_test *meta)
 /// Main Api
 
 struct cgd_swarm_test *
-cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, float sample_space_prob)
+cgd_swmt_open (
+    int         start_enabled[CDS_AT_LEN],
+    const char *dbname,
+    float       sample_space_prob
+)
 {
   ASSERT (sample_space_prob >= 0 && sample_space_prob <= 1);
 
@@ -469,7 +493,11 @@ cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, float sample_s
       dbname
   );
 
-  CGD_SWMT_ASSERTF (nsdb_cleanup (dbname) == 0, "nsdb_cleanup failed for db='%s'", dbname);
+  CGD_SWMT_ASSERTF (
+      nsdb_cleanup (dbname) == 0,
+      "nsdb_cleanup failed for db='%s'",
+      dbname
+  );
 
   *ret = (struct cgd_swarm_test){
       .committed         = mem_vhmap_create (NULL),
@@ -481,8 +509,16 @@ cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, float sample_s
       .sample_space_prob = sample_space_prob,
   };
 
-  CGD_SWMT_ASSERTF (ret->committed != NULL, "mem_vhmap_create returned NULL (db='%s')", dbname);
-  CGD_SWMT_ASSERTF (ret->db != NULL, "nsdb_open returned NULL (db='%s')", dbname);
+  CGD_SWMT_ASSERTF (
+      ret->committed != NULL,
+      "mem_vhmap_create returned NULL (db='%s')",
+      dbname
+  );
+  CGD_SWMT_ASSERTF (
+      ret->db != NULL,
+      "nsdb_open returned NULL (db='%s')",
+      dbname
+  );
 
   memcpy (ret->enabled, start_enabled, CDS_AT_LEN * sizeof (int));
   cgd_swmt_set_allowed (ret);
@@ -497,7 +533,11 @@ cgd_swmt_close (struct cgd_swarm_test *meta)
   {
     cgd_swmt_commit_txn (meta);
   }
-  CGD_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
+  CGD_SWMT_ASSERTF (
+      nsdb_close (meta->db) == 0,
+      "nsdb_close failed on db='%s'",
+      meta->dbname
+  );
 
   if (meta->committed)
   {
@@ -527,7 +567,7 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
    * step rather than divide by zero. */
   if (len == 0)
   {
-    i_log_info ("No allowed actions — re-rolling enabled mask\n");
+    i_log_info ("No allowed actions - re-rolling enabled mask\n");
     cgd_swmt_set_random_enabled (meta);
     cgd_swmt_set_allowed (meta);
     return;

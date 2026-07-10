@@ -112,7 +112,10 @@ struct ns_var_get_or_create_params
   struct variable dest;
 };
 
-err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);
+err_t ns_var_get_or_create (
+    struct ns_var_get_or_create_params *params,
+    error                              *e
+);
 
 /******************************************************************************
  * SECTION: Creating Variables

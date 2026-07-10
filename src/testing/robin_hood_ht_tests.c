@@ -34,7 +34,10 @@ TEST (ht_insert_idx_regression_trigger_swap)
 
   for (u32 i = 0; i < TEST_TABLE_LEN; ++i)
   {
-    test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = i, .value = i}), HTIR_SUCCESS);
+    test_assert_int_equal (
+        ht_insert_idx (&ht, (hdata_idx){.key = i, .value = i}),
+        HTIR_SUCCESS
+    );
   }
 
   test_assert_int_equal (ht_delete_idx (&ht, NULL, 0), HTAR_SUCCESS);
@@ -50,7 +53,10 @@ TEST (ht_insert_idx_regression_trigger_swap)
       HTIR_SUCCESS
   );
 
-  test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 0, .value = 0}), HTIR_SUCCESS);
+  test_assert_int_equal (
+      ht_insert_idx (&ht, (hdata_idx){.key = 0, .value = 0}),
+      HTIR_SUCCESS
+  );
 
   bool has_bug = false;
 
@@ -103,11 +109,17 @@ TEST (robin_hood_ht)
   ht_init_idx (&ht, entries, TEST_TABLE_LEN);
   hdata_idx out;
 
-  test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 5}), HTIR_SUCCESS);
+  test_assert_int_equal (
+      ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 5}),
+      HTIR_SUCCESS
+  );
 
   TEST_CASE ("Duplicate insert")
   {
-    test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 99}), HTIR_EXISTS);
+    test_assert_int_equal (
+        ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 99}),
+        HTIR_EXISTS
+    );
   }
 
   TEST_CASE ("Get normal")
@@ -134,7 +146,10 @@ TEST (robin_hood_ht)
 
   TEST_CASE ("Linear probing")
   {
-    test_assert_int_equal (ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 10}), HTIR_SUCCESS);
+    test_assert_int_equal (
+        ht_insert_idx (&ht, (hdata_idx){.key = 10u, .value = 10}),
+        HTIR_SUCCESS
+    );
     test_assert_int_equal (
         ht_insert_idx (&ht, (hdata_idx){.key = 110u, .value = 11}),
         HTIR_SUCCESS
@@ -177,7 +192,10 @@ TEST (robin_hood_ht)
       );
     }
 
-    test_assert_int_equal (ht_insert_idx (&tiny, (hdata_idx){.key = 99u, .value = 99}), HTIR_FULL);
+    test_assert_int_equal (
+        ht_insert_idx (&tiny, (hdata_idx){.key = 99u, .value = 99}),
+        HTIR_FULL
+    );
   }
 }
 #endif

@@ -39,10 +39,10 @@
  * Every page in the database file is NS_PAGE_SIZE bytes.  The first bytes of
  * every page form a fixed common header:
  *
- *   [0, 4)              u32 checksum   — CRC of all bytes after the checksum
+ *   [0, 4)              u32 checksum   - CRC of all bytes after the checksum
  *                                        field (bytes [4, NS_PAGE_SIZE)).
- *   [4, 4+sizeof(pgh))  pgh type       — page type tag (enum page_type).
- *   [4+sizeof(pgh), ...) lsn pageLSN   — LSN of the last WAL record that
+ *   [4, 4+sizeof(pgh))  pgh type       - page type tag (enum page_type).
+ *   [4+sizeof(pgh), ...) lsn pageLSN   - LSN of the last WAL record that
  *                                        modified this page.
  *
  * Page content begins at PG_COMMN_END.  Each page type interprets the
@@ -66,9 +66,10 @@ enum page_type
   PG_INNER_NODE = (1 << 3), // r+tree Inner node
 
   // Variable page types
-  PG_VAR_HASH_PAGE = (1 << 4), // A Hash Table for variable names - links to a linked list
-  PG_VAR_PAGE      = (1 << 5), // A Single link in the hash table linked list
-  PG_VAR_TAIL      = (1 << 6), // Overflow to a VAR_PAGE
+  PG_VAR_HASH_PAGE =
+      (1 << 4), // A Hash Table for variable names - links to a linked list
+  PG_VAR_PAGE = (1 << 5), // A Single link in the hash table linked list
+  PG_VAR_TAIL = (1 << 6), // Overflow to a VAR_PAGE
 };
 
 #define PG_PERMISSIVE    (1 << 7)
@@ -314,9 +315,9 @@ void i_log_fsm (int level, const page *t);
  * DL_DATA_SIZE bytes of raw user data.
  *
  * MEMORY LAYOUT (after PG_COMMN_END):
- *   [DL_NEXT_OFST]  pgno next  — right sibling (PGNO_NULL if last).
- *   [DL_PREV_OFST]  pgno prev  — left sibling (PGNO_NULL if first).
- *   [DL_BLEN_OFST]  p_size len — number of bytes currently stored in this
+ *   [DL_NEXT_OFST]  pgno next  - right sibling (PGNO_NULL if last).
+ *   [DL_PREV_OFST]  pgno prev  - left sibling (PGNO_NULL if first).
+ *   [DL_BLEN_OFST]  p_size len - number of bytes currently stored in this
  *                                page's data region.
  *   [DL_DATA_OFST .. NS_PAGE_SIZE)  raw data bytes.
  *
@@ -482,7 +483,11 @@ dl_dl_memmove_permissive (
     }
   }
 
-  memmove ((u8 *)dl_get_data (dest) + didx, (u8 *)dl_get_data (src) + sidx, nbytes);
+  memmove (
+      (u8 *)dl_get_data (dest) + didx,
+      (u8 *)dl_get_data (src) + sidx,
+      nbytes
+  );
 }
 /******************************************************************************
  * SECTION: Inner Node
@@ -537,7 +542,8 @@ _Static_assert (
     "Inner Node: NS_PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys"
 );
 
-#define IN_MAX_KEYS (p_size) ((NS_PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
+#define IN_MAX_KEYS \
+  (p_size) ((NS_PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
 #define IN_MIN_KEYS (IN_MAX_KEYS / 2)
 
 _Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
@@ -553,9 +559,9 @@ void           in_set_data (page *p, struct in_data data);
 struct in_data in_get_data (const page *p, struct in_pair nodes[IN_MAX_KEYS]);
 void           in_move_left (page *dest, page *src, p_size len);
 void           in_move_right (page *src, page *dest, p_size len);
-void           in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
-void           i_log_in (int level, const page *in);
-void           in_make_valid (page *in);
+void in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
+void i_log_in (int level, const page *in);
+void in_make_valid (page *in);
 
 ////////////////////////////////////////////////////////////
 // GETTERS
@@ -760,7 +766,12 @@ in_set_key_ignore_len (page *in, const p_size idx, const b_size key)
 }
 
 HEADER_FUNC void
-in_set_key_leaf_ignore_len (page *in, const p_size idx, const b_size key, const pgno pg)
+in_set_key_leaf_ignore_len (
+    page        *in,
+    const p_size idx,
+    const b_size key,
+    const pgno   pg
+)
 {
   in_set_key_ignore_len (in, idx, key);
   in_set_leaf_ignore_len (in, idx, pg);
@@ -801,7 +812,7 @@ in_link (page *left, page *right)
  ******************************************************************************/
 
 /*
- * PG_VAR_HASH_PAGE — root of the variable name hash table.
+ * PG_VAR_HASH_PAGE - root of the variable name hash table.
  *
  * There is exactly one of these pages in every database, at VHASH_PGNO.
  * It contains an array of VH_HASH_LEN pgno slots, each the head of a
@@ -1012,8 +1023,10 @@ typedef union {
   struct in_data in;
 } in_dl_data;
 
-#define dlgt_move_all_right(src, dest) dlgt_move_right (src, dest, dlgt_get_len (src))
-#define dlgt_move_all_left(dest, src)  dlgt_move_left (dest, src, dlgt_get_len (src))
+#define dlgt_move_all_right(src, dest) \
+  dlgt_move_right (src, dest, dlgt_get_len (src))
+#define dlgt_move_all_left(dest, src) \
+  dlgt_move_left (dest, src, dlgt_get_len (src))
 
 HEADER_FUNC pgno
 dlgt_get_next (const page *p)

@@ -21,12 +21,11 @@
 #include "pager.h"
 #include "rope_algorithms.h"
 #include "var_algorithms.h"
+#include "variables.h"
 
 #ifdef TESTING
 #  include "testing/testing.h"
 #endif
-
-// smfile
 
 int
 smfile_perror (smfile_t *ns, const char *prefix)
@@ -43,7 +42,7 @@ TEST (smfile_perror)
   u8             buffer[2048];
 
   // stride == 0 => ERROR
-  test_assert (smfile_pread (s, "foo", buffer, 10, 0, 0, 10) < 0);
+  test_assert (smfile_read (s, buffer, 10, 0, 0, 10) < 0);
   test_assert (smfile_perror (s, "bar") > 0);
 
   smfile_close (s);
@@ -65,8 +64,10 @@ TEST (smfile_strerror)
   u8             buffer[2048];
 
   // stride == 0 => ERROR
-  test_assert (smfile_pread (s, "foo", buffer, 10, 0, 0, 10) < 0);
-  test_assert (string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0")));
+  test_assert (smfile_read (s, buffer, 10, 0, 0, 10) < 0);
+  test_assert (
+      string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0"))
+  );
 
   smfile_close (s);
 }
@@ -98,9 +99,56 @@ TEST (smfile_cleanup)
 #endif
 
 sb_size
-smfile_size (smfile_t *smf)
+smfile_size (smfile_t *_smf)
 {
-  return smfile_psize (smf, NULL);
+  struct nsdb *smf = (struct nsdb *)_smf;
+
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  error *e = &smf->e;
+
+  ALLOC_INIT (temp);
+
+  b_size ret;
+
+  // BEGIN TXN
+  if (nsdb_auto_begin_txn (smf, e) < 0)
+  {
+    goto failed;
+  }
+
+  // GET
+  struct ns_var_get_params gparams = {
+      .p     = smf->root->p,
+      .tx    = smf->atx,
+      .vname = strfcstr (DEFAULT_VARIABLE),
+      .alloc = &temp,
+  };
+  if (ns_var_get (&gparams, e))
+  {
+    goto failed;
+  }
+
+  ret = gparams.dest.nbytes;
+
+  // COMMIT
+  if (nsdb_auto_commit (smf, e) < 0)
+  {
+    goto failed_rollback;
+  }
+
+  ALLOC_CLOSE (temp);
+
+  return ret;
+
+failed_rollback:
+
+  nsdb_auto_rollback (smf);
+
+failed:
+  ALLOC_CLOSE (temp);
+  return error_trace (e);
 }
 
 #ifdef TESTING
@@ -195,7 +243,6 @@ TEST (smfile_txns)
   smfile_cleanup ("test");
 
   u8             buffer[2048];
-  error          e = error_create ();
   struct smfile *s = smfile_open ("test");
 
   test_assert_equal (smfile_size (s), 0);
@@ -211,83 +258,6 @@ TEST (smfile_txns)
   test_assert_equal (smfile_size (s), 2 * sizeof (buffer));
   smfile_rollback (s);
   test_assert_equal (smfile_size (s), sizeof (buffer));
-
-  smfile_close (s);
-}
-#endif
-
-/////////////////////////////////////////////////////////////////////
-////// Delete
-
-int
-smfile_delete (smfile_t *_smf, const char *vname)
-{
-  struct nsdb *smf = (struct nsdb *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e = &smf->e;
-
-  struct txn auto_txn;
-
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (smf, e), failed);
-
-  i_log_debug ("DELETE (txn = %" PRtxid "): %s\n", smf->atx->tid, vname);
-
-  struct string vnamestr = strfcstr (vname);
-  {
-    // DELETE
-    struct ns_var_delete_params params = {
-        .p     = smf->root->p,
-        .tx    = smf->atx,
-        .vname = strfcstr (vname),
-    };
-    err_t err = ns_var_delete (params, e);
-    if (err == ERR_VARIABLE_NE)
-    {
-      // It's ok - just return the error
-      goto commit;
-    }
-    if (err < SUCCESS)
-    {
-      goto failed_rollback;
-    }
-  }
-
-commit:
-
-  if (nsdb_auto_commit (smf, e))
-  {
-    goto failed_rollback;
-  }
-  return error_trace (e);
-
-failed_rollback:
-
-  nsdb_auto_rollback (smf);
-
-failed:
-  return error_trace (e);
-}
-
-#ifdef TESTING
-TEST (smfile_delete)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[2048];
-
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
-
-  smfile_delete (s, "foo");
-  test_assert (smfile_psize (s, "foo") < 0);
-
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
 
   smfile_close (s);
 }
@@ -366,7 +336,7 @@ TEST (smfile_open)
 ////// Insert
 
 sb_size
-smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst, b_size slen)
+smfile_insert (smfile_t *_smf, const void *src, sb_size bofst, b_size slen)
 {
   struct nsdb *smf = (struct nsdb *)_smf;
 
@@ -377,14 +347,13 @@ smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst
 
   ALLOC_INIT (temp);
 
-  sb_size                            ret;                             // Return value
-  b_size                             ofst;                            // Resolved offset
-  struct stream                      _input;                          // Input stream
-  struct stream_ibuf_ctx             ctx;                             // Context for input stream
-  struct ns_var_get_or_create_params gparams;                         // Get or create operation
-  struct ns_insert_params            iparams;                         // Insert operation
-  struct ns_var_update_params        uparams;                         // Update operation
-  struct string                      vname = vname_or_default (name); // Variable name
+  sb_size                     ret;     // Return value
+  b_size                      ofst;    // Resolved offset
+  struct stream               _input;  // Input stream
+  struct stream_ibuf_ctx      ctx;     // Context for input stream
+  struct ns_var_get_params    gparams; // Get or create operation
+  struct ns_insert_params     iparams; // Insert operation
+  struct ns_var_update_params uparams; // Update operation
 
   // Parameter validation
   if (slen == 0)
@@ -399,14 +368,13 @@ smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst
 
   // GET OR CREATE VARIABLE
   {
-    gparams = (struct ns_var_get_or_create_params){
+    gparams = (struct ns_var_get_params){
         .p     = smf->root->p,
         .tx    = smf->atx,
-        .vname = vname,
-        .type  = &(struct type){.type = T_PRIM, .p = U8},
+        .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
     };
-    WRAP_GOTO (ns_var_get_or_create (&gparams, e), failed_rollback);
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
   }
 
   // Resolve sizes
@@ -421,7 +389,7 @@ smfile_pinsert (smfile_t *_smf, const char *name, const void *src, sb_size bofst
         .src   = &_input,
         .tx    = smf->atx,
         .root  = gparams.dest.rpt_root,
-        .bofst = bofst,
+        .bofst = ofst,
     };
     ret = ns_insert (&iparams, e);
     WRAP_GOTO (ret, failed_rollback);
@@ -461,27 +429,6 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_pinsert)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[2048];
-
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
-
-  smfile_close (s);
-}
-#endif
-
-sb_size
-smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen)
-{
-  return smfile_pinsert (smf, NULL, src, bofst, slen);
-}
-
-#ifdef TESTING
 TEST (smfile_insert)
 {
   smfile_cleanup ("test");
@@ -500,14 +447,13 @@ TEST (smfile_insert)
 ////// Read
 
 sb_size
-smfile_pread (
-    smfile_t   *_smf,
-    const char *name,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
+smfile_read (
+    smfile_t *_smf,
+    void     *dest,
+    t_size    size,
+    sb_size   bofst,
+    sb_size   stride,
+    b_size    nelem
 )
 {
   struct nsdb *smf = (struct nsdb *)_smf;
@@ -519,23 +465,30 @@ smfile_pread (
 
   ALLOC_INIT (temp);
 
-  sb_size                  ret;                             // Return value
-  b_size                   ofst;                            // Resolved offset
-  struct stream            _output;                         // Output stream if present
-  struct stream_obuf_ctx   ctx;                             // Context for output stream
-  struct stream           *output = NULL;                   // Pointer to output stream
-  struct ns_var_get_params gparams;                         // Get operation
-  struct ns_read_params    rparams;                         // Read operation
-  struct string            vname = vname_or_default (name); // Variable name
+  sb_size                  ret;           // Return value
+  b_size                   ofst;          // Resolved offset
+  struct stream            _output;       // Output stream if present
+  struct stream_obuf_ctx   ctx;           // Context for output stream
+  struct stream           *output = NULL; // Pointer to output stream
+  struct ns_var_get_params gparams;       // Get operation
+  struct ns_read_params    rparams;       // Read operation
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Negative strides aren't supported yet"
+    );
   }
   if (stride == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with stride == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot read with stride == 0"
+    );
   }
   if (size == 0)
   {
@@ -554,17 +507,10 @@ smfile_pread (
     gparams = (struct ns_var_get_params){
         .p     = smf->root->p,
         .tx    = smf->atx,
-        .vname = vname,
+        .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
-    {
-      ret           = 0;
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      goto commit;
-    }
     WRAP_GOTO (err, failed_rollback);
   }
 
@@ -617,7 +563,7 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_pread)
+TEST (smfile_read)
 {
   smfile_cleanup ("test");
 
@@ -628,36 +574,10 @@ TEST (smfile_pread)
     buffer[i] = (u8)i;
   }
 
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
-
-  u8      out[16] = {0};
-  sb_size n       = smfile_pread (s, "foo", out, 1, 0, 1, sizeof (buffer));
-
-  test_assert_equal (n, sizeof (buffer));
-  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
-
-  smfile_close (s);
-}
-#endif
-
-sb_size
-smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
-{
-  return smfile_pread (smf, NULL, dest, 1, bofst, 1, nelem);
-}
-
-#ifdef TESTING
-TEST (smfile_read)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s         = smfile_open ("test");
-  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-
   smfile_insert (s, buffer, 0, sizeof (buffer));
 
-  u8      out[8] = {0};
-  sb_size n      = smfile_read (s, out, 0, sizeof (buffer));
+  u8      out[16] = {0};
+  sb_size n       = smfile_read (s, out, 1, 0, 1, sizeof (buffer));
 
   test_assert_equal (n, sizeof (buffer));
   test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
@@ -670,14 +590,13 @@ TEST (smfile_read)
 ////// Remove
 
 sb_size
-smfile_premove (
-    smfile_t   *_smf,
-    const char *name,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
+smfile_remove (
+    smfile_t *_smf,
+    void     *dest,
+    t_size    size,
+    sb_size   bofst,
+    sb_size   stride,
+    b_size    nelem
 )
 {
   struct nsdb *smf = (struct nsdb *)_smf;
@@ -689,28 +608,39 @@ smfile_premove (
 
   ALLOC_INIT (temp);
 
-  sb_size                     ret;                             // Return value
-  b_size                      ofst;                            // Resolved offset
-  struct stream               _output;                         // Output stream if present
-  struct stream_obuf_ctx      ctx;                             // Context for output stream
-  struct stream              *output = NULL;                   // Pointer to output stream
-  struct ns_var_get_params    gparams;                         // Get operation
-  struct ns_remove_params     rparams;                         // Remove operation
-  struct ns_var_update_params uparams;                         // Update operation
-  struct string               vname = vname_or_default (name); // Variable name
+  sb_size                     ret;           // Return value
+  b_size                      ofst;          // Resolved offset
+  struct stream               _output;       // Output stream if present
+  struct stream_obuf_ctx      ctx;           // Context for output stream
+  struct stream              *output = NULL; // Pointer to output stream
+  struct ns_var_get_params    gparams;       // Get operation
+  struct ns_remove_params     rparams;       // Remove operation
+  struct ns_var_update_params uparams;       // Update operation
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Negative strides aren't supported yet"
+    );
   }
   if (stride == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot remove with stride == 0"
+    );
   }
   if (size == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot remove with size == 0"
+    );
   }
   if (nelem == 0)
   {
@@ -725,17 +655,10 @@ smfile_premove (
     gparams = (struct ns_var_get_params){
         .p     = smf->root->p,
         .tx    = smf->atx,
-        .vname = vname,
+        .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
     };
     err_t err = ns_var_get (&gparams, e);
-    if (err == ERR_VARIABLE_NE)
-    {
-      ret           = 0;
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      goto commit;
-    }
     WRAP_GOTO (err, failed_rollback);
   }
 
@@ -804,7 +727,7 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_premove)
+TEST (smfile_remove)
 {
   smfile_cleanup ("test");
 
@@ -815,38 +738,11 @@ TEST (smfile_premove)
     buffer[i] = (u8)i;
   }
 
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+  smfile_insert (s, buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_size (s), sizeof (buffer));
 
   u8      out[16] = {0};
-  sb_size n       = smfile_premove (s, "foo", out, 1, 0, 1, sizeof (buffer));
-
-  test_assert_equal (n, sizeof (buffer));
-  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
-  test_assert_equal (smfile_psize (s, "foo"), 0);
-
-  smfile_close (s);
-}
-#endif
-
-sb_size
-smfile_remove (smfile_t *smf, void *dest, sb_size bofst, b_size nelem)
-{
-  return smfile_premove (smf, NULL, dest, 1, bofst, 1, nelem);
-}
-
-#ifdef TESTING
-TEST (smfile_remove)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s         = smfile_open ("test");
-  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-
-  smfile_insert (s, buffer, 0, sizeof (buffer));
-
-  u8      out[8] = {0};
-  sb_size n      = smfile_remove (s, out, 0, sizeof (buffer));
+  sb_size n       = smfile_remove (s, out, 1, 0, 1, sizeof (buffer));
 
   test_assert_equal (n, sizeof (buffer));
   test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
@@ -860,9 +756,8 @@ TEST (smfile_remove)
 ////// Write
 
 sb_size
-smfile_pwrite (
+smfile_write (
     smfile_t   *_smf,
-    const char *name,
     const void *src,
     t_size      size,
     b_size      bofst,
@@ -879,31 +774,42 @@ smfile_pwrite (
 
   ALLOC_INIT (temp);
 
-  sb_size                            ret;          // Return value
-  sb_size                            inserted;     // Number of bytes inserted
-  b_size                             ofst;         // Resolved offset
-  b_size                             write_nelem;  // Elements that fit in existing variable
-  b_size                             insert_nelem; // Remainder to insert past the end
-  struct stream                      _input;       // Input stream
-  struct stream_ibuf_ctx             ctx;          // Context for input stream
-  struct ns_var_get_or_create_params gparams;      // Get or create operation
-  struct ns_write_params             wparams;      // Write operation
-  struct ns_insert_params            iparams;      // Insert operation
-  struct ns_var_update_params        uparams;      // Update operation
-  struct string                      vname = vname_or_default (name); // Variable name
+  sb_size                ret;          // Return value
+  sb_size                inserted;     // Number of bytes inserted
+  b_size                 ofst;         // Resolved offset
+  b_size                 write_nelem;  // Elements that fit in existing variable
+  b_size                 insert_nelem; // Remainder to insert past the end
+  struct stream          _input;       // Input stream
+  struct stream_ibuf_ctx ctx;          // Context for input stream
+  struct ns_var_get_params    gparams; // Get or create operation
+  struct ns_write_params      wparams; // Write operation
+  struct ns_insert_params     iparams; // Insert operation
+  struct ns_var_update_params uparams; // Update operation
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Negative strides aren't supported yet"
+    );
   }
   if (stride == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot write with stride == 0"
+    );
   }
   if (size == 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "Cannot write with size == 0"
+    );
   }
   if (nelem == 0)
   {
@@ -915,14 +821,13 @@ smfile_pwrite (
 
   // GET OR CREATE VARIABLE
   {
-    gparams = (struct ns_var_get_or_create_params){
+    gparams = (struct ns_var_get_params){
         .p     = smf->root->p,
         .tx    = smf->atx,
-        .vname = vname,
-        .type  = &(struct type){.type = T_PRIM, .p = U8},
+        .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
     };
-    WRAP_GOTO (ns_var_get_or_create (&gparams, e), failed_rollback);
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
   }
 
   // Resolve sizes
@@ -932,7 +837,11 @@ smfile_pwrite (
     insert_nelem = nelem - write_nelem;
     if (insert_nelem > 0 && stride != 1)
     {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
+      error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "Cannot write past end with stride != 1"
+      );
       goto failed_rollback;
     }
   }
@@ -961,7 +870,12 @@ smfile_pwrite (
   {
     // INSERT
     {
-      stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
+      stream_ibuf_init (
+          &_input,
+          &ctx,
+          (u8 *)src + write_nelem * size,
+          insert_nelem * size
+      );
 
       iparams = (struct ns_insert_params){
           .p     = smf->root->p,
@@ -1015,56 +929,27 @@ TEST (smfile_pwrite)
   struct smfile *s         = smfile_open ("test");
   u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
+  smfile_insert (s, buffer, 0, sizeof (buffer));
 
   // Overwrite the first 4 bytes in place.
   u8      overwrite[4] = {9, 9, 9, 9};
-  sb_size n            = smfile_pwrite (s, "foo", overwrite, 1, 0, 1, sizeof (overwrite));
+  sb_size n = smfile_write (s, overwrite, 1, 0, 1, sizeof (overwrite));
 
   test_assert_equal (n, sizeof (overwrite));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
+  test_assert_equal (smfile_size (s), sizeof (buffer));
 
   u8 out[8] = {0};
-  smfile_pread (s, "foo", out, 1, 0, 1, sizeof (out));
+  smfile_read (s, out, 1, 0, 1, sizeof (out));
 
   u8 expected[8] = {9, 9, 9, 9, 5, 6, 7, 8};
   test_assert (memcmp (out, expected, sizeof (expected)) == 0);
 
   // Writing past the end should append (insert the remainder).
   u8 append[4] = {11, 12, 13, 14};
-  n            = smfile_pwrite (s, "foo", append, 1, sizeof (buffer), 1, sizeof (append));
+  n = smfile_write (s, append, 1, sizeof (buffer), 1, sizeof (append));
 
   test_assert_equal (n, sizeof (append));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer) + sizeof (append));
-
-  smfile_close (s);
-}
-#endif
-
-sb_size
-smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem)
-{
-  return smfile_pwrite (smf, NULL, src, 1, bofst, 1, nelem);
-}
-
-#ifdef TESTING
-TEST (smfile_write)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s         = smfile_open ("test");
-  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-
-  smfile_insert (s, buffer, 0, sizeof (buffer));
-
-  u8 overwrite[4] = {9, 9, 9, 9};
-  smfile_write (s, overwrite, 0, sizeof (overwrite));
-
-  u8 out[8] = {0};
-  smfile_read (s, out, 0, sizeof (out));
-
-  u8 expected[8] = {9, 9, 9, 9, 5, 6, 7, 8};
-  test_assert (memcmp (out, expected, sizeof (expected)) == 0);
+  test_assert_equal (smfile_size (s), sizeof (buffer) + sizeof (append));
 
   smfile_close (s);
 }
@@ -1072,72 +957,3 @@ TEST (smfile_write)
 
 /////////////////////////////////////////////////////////////////////
 ////// Size
-
-sb_size
-smfile_psize (smfile_t *_smf, const char *name)
-{
-  struct nsdb *smf = (struct nsdb *)_smf;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e = &smf->e;
-
-  ALLOC_INIT (temp);
-
-  struct string vname = vname_or_default (name);
-  b_size        ret;
-
-  // BEGIN TXN
-  if (nsdb_auto_begin_txn (smf, e) < 0)
-  {
-    goto failed;
-  }
-
-  // GET
-  struct ns_var_get_params gparams = {
-      .p     = smf->root->p,
-      .tx    = smf->atx,
-      .vname = vname,
-      .alloc = &temp,
-  };
-  if (ns_var_get (&gparams, e))
-  {
-    goto failed;
-  }
-
-  ret = gparams.dest.nbytes;
-
-  // COMMIT
-  if (nsdb_auto_commit (smf, e) < 0)
-  {
-    goto failed_rollback;
-  }
-
-  ALLOC_CLOSE (temp);
-
-  return ret;
-
-failed_rollback:
-
-  nsdb_auto_rollback (smf);
-
-failed:
-  ALLOC_CLOSE (temp);
-  return error_trace (e);
-}
-
-#ifdef TESTING
-TEST (smfile_psize)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[2048];
-
-  smfile_pinsert (s, "foo", buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_psize (s, "foo"), sizeof (buffer));
-
-  smfile_close (s);
-}
-#endif

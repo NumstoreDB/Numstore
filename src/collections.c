@@ -688,7 +688,12 @@ TEST (cbuffer_write)
 // CBUFFER READ / WRITE
 
 u32
-cbuffer_cbuffer_move (struct cbuffer *dest, const u32 sz, const u32 cnt, struct cbuffer *src)
+cbuffer_cbuffer_move (
+    struct cbuffer *dest,
+    const u32       sz,
+    const u32       cnt,
+    struct cbuffer *src
+)
 {
   DBG_ASSERT (cbuffer, dest);
   DBG_ASSERT (cbuffer, src);
@@ -791,7 +796,12 @@ TEST (cbuffer_cbuffer_move)
 #endif
 
 u32
-cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const struct cbuffer *src)
+cbuffer_cbuffer_copy (
+    struct cbuffer       *dest,
+    const u32             sz,
+    const u32             cnt,
+    const struct cbuffer *src
+)
 {
   DBG_ASSERT (cbuffer, dest);
   DBG_ASSERT (cbuffer, src);
@@ -898,7 +908,12 @@ TEST (cbuffer_cbuffer_copy)
 // IO READ / WRITE
 
 i32
-cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, error *e)
+cbuffer_write_to_file_1 (
+    i_file               *dest,
+    const struct cbuffer *b,
+    const u32             len,
+    error                *e
+)
 {
   ASSERT (dest);
   ASSERT (b);
@@ -945,7 +960,12 @@ cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, e
 }
 
 err_t
-cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, const u32 len, error *e)
+cbuffer_write_to_file_1_expect (
+    i_file               *dest,
+    const struct cbuffer *b,
+    const u32             len,
+    error                *e
+)
 {
   const i32 written = cbuffer_write_to_file_1 (dest, b, len, e);
   if (written < 0)
@@ -973,7 +993,12 @@ cbuffer_write_to_file_2 (struct cbuffer *b, const u32 nwritten)
 ////////////////////////////////////////////////////////////
 // WORKING WITH SINGLE ELEMENTS
 static u8
-cbuffer_get_no_check (void *dest, const u32 size, const u32 idx, const struct cbuffer *b)
+cbuffer_get_no_check (
+    void                 *dest,
+    const u32             size,
+    const u32             idx,
+    const struct cbuffer *b
+)
 {
   DBG_ASSERT (cbuffer, b);
   ASSERT (size > 0);
@@ -1056,8 +1081,12 @@ TEST (cbuffer_get_no_check)
     cbuffer_write (src1, 1, 4, &b); // buffer now full
 
     u8 temp[2];
-    cbuffer_read (temp, 1, 2,
-                  &b); // advance tail by 2 bytes // head = 0, tail = 2 now
+    cbuffer_read (
+        temp,
+        1,
+        2,
+        &b
+    ); // advance tail by 2 bytes // head = 0, tail = 2 now
 
     const u8 src2[2] = {0xEE, 0xFF};
     cbuffer_write (src2, 1, 2,
@@ -1927,7 +1956,13 @@ ext_array_reserve (struct ext_array *r, const u32 cap, error *e)
 }
 
 i64
-ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u32 slen, error *e)
+ext_array_insert (
+    struct ext_array *r,
+    const u32         ofst,
+    const void       *src,
+    const u32         slen,
+    error            *e
+)
 {
   ASSERT (ofst <= r->len);
   if (ext_array_reserve (r, r->len + slen, e))
@@ -2062,25 +2097,49 @@ ext_array_get_len (const struct ext_array *r)
 }
 
 static err_t
-ext_array_insert_func (void *ctx, const u32 ofst, const void *src, const u32 slen, error *e)
+ext_array_insert_func (
+    void       *ctx,
+    const u32   ofst,
+    const void *src,
+    const u32   slen,
+    error      *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_insert (arr, ofst, src, slen, e);
 }
 static i64
-ext_array_read_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
+ext_array_read_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    void               *dest,
+    error              *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_read (arr, str, size, dest, e);
 }
 static i64
-ext_array_write_func (void *ctx, const struct stride str, const u32 size, const void *src, error *e)
+ext_array_write_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    const void         *src,
+    error              *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_write (arr, str, size, src, e);
 }
 static i64
-ext_array_remove_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
+ext_array_remove_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    void               *dest,
+    error              *e
+)
 {
   struct ext_array *arr = ctx;
   return ext_array_remove (arr, str, size, dest, e);
@@ -2582,13 +2641,18 @@ block_array_create (const u32 cap_per_node, error *e)
 {
   ASSERT (cap_per_node > 0);
 
-  struct block_array *ret = i_malloc (1, sizeof (struct block_array) + cap_per_node, e);
+  struct block_array *ret =
+      i_malloc (1, sizeof (struct block_array) + cap_per_node, e);
   if (ret == NULL)
   {
     return ret;
   }
 
-  slab_alloc_init (&ret->block_alloc, sizeof (struct block) + cap_per_node, 512);
+  slab_alloc_init (
+      &ret->block_alloc,
+      sizeof (struct block) + cap_per_node,
+      512
+  );
   ret->cap_per_node = cap_per_node;
   ret->head         = NULL;
   ret->tlen         = 0;
@@ -2618,7 +2682,12 @@ block_array_clone (const struct block_array *src, error *e)
     return NULL;
   }
 
-  block_array_read (src, (struct stride){.start = 0, .stride = 1, .nelems = total_bytes}, 1, buf);
+  block_array_read (
+      src,
+      (struct stride){.start = 0, .stride = 1, .nelems = total_bytes},
+      1,
+      buf
+  );
 
   err_t err = block_array_insert (dst, 0, buf, (u32)total_bytes, e);
   free (buf);
@@ -2668,7 +2737,13 @@ block_alloc_empty (struct block_array *r, struct block *prev, error *e)
 }
 
 err_t
-block_array_insert (struct block_array *r, u32 ofst, const void *_src, u32 slen, error *e)
+block_array_insert (
+    struct block_array *r,
+    u32                 ofst,
+    const void         *_src,
+    u32                 slen,
+    error              *e
+)
 {
   ASSERT (slen > 0);
 
@@ -2765,7 +2840,12 @@ struct stride_state
 };
 
 u64
-block_array_read (const struct block_array *r, const struct stride str, const u32 size, void *_dest)
+block_array_read (
+    const struct block_array *r,
+    const struct stride       str,
+    const u32                 size,
+    void                     *_dest
+)
 {
   u8 *dest = _dest;
 
@@ -3158,13 +3238,25 @@ block_array_getlen (const struct block_array *r)
 }
 
 static err_t
-block_array_insert_func (void *ctx, const u32 ofst, const void *src, const u32 slen, error *e)
+block_array_insert_func (
+    void       *ctx,
+    const u32   ofst,
+    const void *src,
+    const u32   slen,
+    error      *e
+)
 {
   struct block_array *arr = ctx;
   return block_array_insert (arr, ofst, src, slen, e);
 }
 static i64
-block_array_read_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
+block_array_read_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    void               *dest,
+    error              *e
+)
 {
   struct block_array *arr = ctx;
   return block_array_read (arr, str, size, dest);
@@ -3182,7 +3274,13 @@ block_array_write_func (
   return block_array_write (arr, str, size, src);
 }
 static i64
-block_array_remove_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
+block_array_remove_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    void               *dest,
+    error              *e
+)
 {
   struct block_array *arr = ctx;
   return block_array_remove (arr, str, size, dest, e);
@@ -3373,7 +3471,7 @@ TEST (block_insert_read)
     block_array_free (b);
   }
 
-  // cap_per_node larger than the entire payload — single block case
+  // cap_per_node larger than the entire payload - single block case
   TEST_CASE ("block_array_single_block")
   {
     error               e = error_create ();
@@ -3495,7 +3593,12 @@ TEST (block_insert_remove_read)
     test_assert_memequal (&expected_removed, &removed, 1);
 
     u32 dest[4] = {0};
-    block_array_read (b, (struct stride){.start = 0, .stride = 1, .nelems = 4}, sizeof (u32), dest);
+    block_array_read (
+        b,
+        (struct stride){.start = 0, .stride = 1, .nelems = 4},
+        sizeof (u32),
+        dest
+    );
 
     const u32 expected[] = {1, 2, 4, 5};
     test_assert_memequal (expected, dest, arrlen (expected));
@@ -3525,7 +3628,12 @@ TEST (block_insert_remove_read)
     test_assert_memequal (&expected_removed, &removed, 1);
 
     u32 dest[2] = {0};
-    block_array_read (b, (struct stride){.start = 0, .stride = 1, .nelems = 2}, sizeof (u32), dest);
+    block_array_read (
+        b,
+        (struct stride){.start = 0, .stride = 1, .nelems = 2},
+        sizeof (u32),
+        dest
+    );
 
     const u32 expected[] = {20, 30};
     test_assert_memequal (expected, dest, arrlen (expected));
@@ -3555,7 +3663,12 @@ TEST (block_insert_remove_read)
     test_assert_memequal (&expected_removed, &removed, 1);
 
     u32 dest[2] = {0};
-    block_array_read (b, (struct stride){.start = 0, .stride = 1, .nelems = 2}, sizeof (u32), dest);
+    block_array_read (
+        b,
+        (struct stride){.start = 0, .stride = 1, .nelems = 2},
+        sizeof (u32),
+        dest
+    );
 
     const u32 expected[] = {10, 20};
     test_assert_memequal (expected, dest, arrlen (expected));
@@ -3568,7 +3681,7 @@ TEST (block_insert_remove_read)
     error               e = error_create ();
     struct block_array *b = block_array_create (2, &e);
 
-    // Remove every other element: 1, 3, 5 — leaving 2, 4, 6
+    // Remove every other element: 1, 3, 5 - leaving 2, 4, 6
     const u32 src[] = {1, 2, 3, 4, 5, 6};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
@@ -3586,7 +3699,12 @@ TEST (block_insert_remove_read)
     test_assert_memequal (expected_removed, removed, arrlen (expected_removed));
 
     u32 dest[3] = {0};
-    block_array_read (b, (struct stride){.start = 0, .stride = 1, .nelems = 3}, sizeof (u32), dest);
+    block_array_read (
+        b,
+        (struct stride){.start = 0, .stride = 1, .nelems = 3},
+        sizeof (u32),
+        dest
+    );
 
     const u32 expected[] = {2, 4, 6};
     test_assert_memequal (expected, dest, arrlen (expected));
@@ -3763,8 +3881,9 @@ TEST (block_random)
   error e = error_create ();
 
   // Block sizes to test
-  const u32 sizes[]  = {1, 2, 3, 4, 5, 10, 100, 500, 1000, 5000, 10000};
-  const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
+  const u32 sizes[] = {1, 2, 3, 4, 5, 10, 100, 500, 1000, 5000, 10000};
+  const u32 niters[] =
+      {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
 
   for (u32 i = 0; i < arrlen (sizes); ++i)
   {
@@ -3808,7 +3927,11 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
     }
     case TA_SELECT:
     {
-      return ba_memcpy_from_recursive (dest, src + acc->select.bofst, acc->select.sub_ba);
+      return ba_memcpy_from_recursive (
+          dest,
+          src + acc->select.bofst,
+          acc->select.sub_ba
+      );
     }
     case TA_RANGE:
     {
@@ -3819,8 +3942,11 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
       while (i < acc->range.stride.nelems)
       {
-        written +=
-            ba_memcpy_from_recursive (dest + written, src + pos * elem_size, acc->range.sub_ba);
+        written += ba_memcpy_from_recursive (
+            dest + written,
+            src + pos * elem_size,
+            acc->range.sub_ba
+        );
 
         pos += acc->range.stride.stride;
         i++;
@@ -4134,7 +4260,11 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
     }
     case TA_SELECT:
     {
-      return ba_memcpy_to_recursive (dest + acc->select.bofst, src, acc->select.sub_ba);
+      return ba_memcpy_to_recursive (
+          dest + acc->select.bofst,
+          src,
+          acc->select.sub_ba
+      );
     }
     case TA_RANGE:
     {
@@ -4144,7 +4274,11 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
       while (pos < acc->range.stride.nelems)
       {
-        read += ba_memcpy_to_recursive (dest + pos * elem_size, src + read, acc->range.sub_ba);
+        read += ba_memcpy_to_recursive (
+            dest + pos * elem_size,
+            src + read,
+            acc->range.sub_ba
+        );
         pos += acc->range.stride.stride;
       }
 
@@ -4258,8 +4392,11 @@ TEST (ba_memcpy_to_basic)
 
     u32 moved = ba_memcpy_to (dest, src, &dotb); // 0xAB → dest[4]
     test_assert_int_equal (moved, 1);
-    moved = ba_memcpy_to (dest, src + moved,
-                          &dota); // {78,56,34,12} → dest[0..3]
+    moved = ba_memcpy_to (
+        dest,
+        src + moved,
+        &dota
+    ); // {78,56,34,12} → dest[0..3]
     test_assert_int_equal (moved, 4);
 
     test_assert_int_equal (dest[0], 78);

@@ -168,7 +168,13 @@ add_token_float (struct lexer *lex, f32 value, error *e)
 }
 
 static err_t
-add_token_str (struct lexer *lex, enum token_t type, const char *data, u32 len, error *e)
+add_token_str (
+    struct lexer *lex,
+    enum token_t  type,
+    const char   *data,
+    u32           len,
+    error        *e
+)
 {
   struct token next = (struct token){
       .type = type,
@@ -285,7 +291,12 @@ scan_string (struct lexer *lex, error *e)
 
   if (is_at_end (lex))
   {
-    return error_causef (e, ERR_SYNTAX, "Unterminated string at position %u", lex->start);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Unterminated string at position %u",
+        lex->start
+    );
   }
 
   advance (lex); // Closing quote
@@ -473,7 +484,11 @@ scan_token (struct lexer *lex, error *e)
     }
     case '>':
     {
-      return add_token (lex, match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER, e);
+      return add_token (
+          lex,
+          match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER,
+          e
+      );
     }
     case '<':
     {
@@ -485,7 +500,11 @@ scan_token (struct lexer *lex, error *e)
     }
     case '&':
     {
-      return add_token (lex, match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND, e);
+      return add_token (
+          lex,
+          match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND,
+          e
+      );
     }
     case '"':
     {
@@ -516,7 +535,13 @@ scan_token (struct lexer *lex, error *e)
 }
 
 err_t
-lex_tokens (const char *src, struct allocator *alloc, u32 src_len, struct lexer *lex, error *e)
+lex_tokens (
+    const char       *src,
+    struct allocator *alloc,
+    u32               src_len,
+    struct lexer     *lex,
+    error            *e
+)
 {
   memset (lex, 0, sizeof (*lex));
   lex->src     = src;

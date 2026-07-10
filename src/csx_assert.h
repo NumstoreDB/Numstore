@@ -52,16 +52,22 @@
 ////////////////////////////////////////////////////////////
 /// ASSERT
 
-#  define ASSERT(expr)                                                                   \
-    do                                                                                   \
-    {                                                                                    \
-      if (!(expr))                                                                       \
-      {                                                                                  \
-        i_log_assert ("%s failed at %s:%d (%s)\n", #expr, __FILE__, __LINE__, __func__); \
-        i_log_flush ();                                                                  \
-        crash ();                                                                        \
-      }                                                                                  \
-    }                                                                                    \
+#  define ASSERT(expr)                   \
+    do                                   \
+    {                                    \
+      if (!(expr))                       \
+      {                                  \
+        i_log_assert (                   \
+            "%s failed at %s:%d (%s)\n", \
+            #expr,                       \
+            __FILE__,                    \
+            __LINE__,                    \
+            __func__                     \
+        );                               \
+        i_log_flush ();                  \
+        crash ();                        \
+      }                                  \
+    }                                    \
     while (0)
 
 HEADER_FUNC void *

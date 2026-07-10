@@ -46,7 +46,8 @@ query_equal (const struct query *left, const struct query *right)
     case QT_INSERT:
     {
       return string_equal (left->insert.name, right->insert.name)
-             && left->insert.ofst == right->insert.ofst && left->insert.len == right->insert.len;
+             && left->insert.ofst == right->insert.ofst
+             && left->insert.len == right->insert.len;
     }
 
     case QT_CREATE:

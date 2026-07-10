@@ -69,8 +69,11 @@ struct cgd_swarm_test
 };
 
 // Main API
-struct cgd_swarm_test *
-cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, float sample_space_prob);
+struct cgd_swarm_test *cgd_swmt_open (
+    int         start_enabled[CDS_AT_LEN],
+    const char *dbname,
+    float       sample_space_prob
+);
 void cgd_swmt_close (struct cgd_swarm_test *meta);
 void cgd_swmt_step (struct cgd_swarm_test *meta);
 

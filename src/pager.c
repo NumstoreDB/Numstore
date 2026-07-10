@@ -72,7 +72,9 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
     spgno page_lsn = 0;
 
     // Can only save valid pages
-    ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL));
+    ASSERT (
+        !page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL)
+    );
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
 
@@ -176,7 +178,13 @@ pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
   memcpy (p->_header + LSN0_OFST, &p->header.lsn0, sizeof (lsn));
   memcpy (p->_header + LSN0_CSM_OFST, &p->header.lsn0csm, sizeof (u32));
 
-  return fpgr_write_header (p->fp, p->_header, LSN0_OFST, sizeof (lsn) + sizeof (u32), e);
+  return fpgr_write_header (
+      p->fp,
+      p->_header,
+      LSN0_OFST,
+      sizeof (lsn) + sizeof (u32),
+      e
+  );
 }
 
 static err_t
@@ -370,7 +378,13 @@ aries_ctx_create (struct aries_ctx *dest, error *e)
     goto txt_failed;
   }
 
-  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct txn *), 100, e))
+  if (dblb_create (
+          &dest->txn_ptrs,
+          &dest->backing_alloc,
+          sizeof (struct txn *),
+          100,
+          e
+      ))
   {
     goto dpt_failed;
   }
@@ -559,7 +573,7 @@ theend:
  * (pinned by other holders or eligible for clock eviction).
  *
  * Used on all error paths to release pages without committing partial
- * changes — the WAL-before-page invariant is never violated because
+ * changes - the WAL-before-page invariant is never violated because
  * no WAL record is written for cancelled mutations.
  */
 void
@@ -675,7 +689,12 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
         if (wrh_is_redoable (log_rec))
         {
-          if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e))
+          if (dpgt_add_if_ne (
+                  ctx->dpt,
+                  wrh_get_affected_pg (log_rec),
+                  read_lsn,
+                  e
+              ))
           {
             goto failed;
           }
@@ -720,8 +739,9 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   {
     struct txn *tx = ((struct txn **)ctx->txn_ptrs.data)[i];
 
-    bool nothing_to_do = tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
-    bool committed     = tx->data.state == TX_COMMITTED;
+    bool nothing_to_do =
+        tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
+    bool committed = tx->data.state == TX_COMMITTED;
 
     if (nothing_to_do || committed)
     {
@@ -746,7 +766,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
     ctx->redo_lsn = dpgt_min_rec_lsn (ctx->dpt);
   }
 
-  i_log_info ("Analysis phase: %d txns were removed\n", before - txnt_get_size (ctx->txt));
+  i_log_info (
+      "Analysis phase: %d txns were removed\n",
+      before - txnt_get_size (ctx->txt)
+  );
   i_log_info ("Done with Analysis. RedoLSN = %" PRlsn "\n", ctx->redo_lsn);
 
   return SUCCESS;
@@ -879,7 +902,14 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         if (wrh_is_undoable (log_rec))
         {
           page_h ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e))
+          if (pgr_get_writable (
+                  &ph,
+                  NULL,
+                  PG_PERMISSIVE,
+                  log_rec->update.phys.pg,
+                  p,
+                  e
+              ))
           {
             goto failed;
           }
@@ -1042,7 +1072,7 @@ pgr_recover (struct pager *p, error *e)
 #endif
 
 /*
- * pgr_open — standard file-backed entry point.
+ * pgr_open - standard file-backed entry point.
  *
  * Creates [dbname] if it does not exist, constructs a file_pager and a
  * file-backed WAL, then delegates to pgr_open().  Directory cleanup on
@@ -1186,7 +1216,11 @@ pgr_open (const char *dbname, error *e)
 
     if (wal_isnew (ww))
     {
-      if (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e))
+      if (wal_write_start_lsn (
+              ret->ww,
+              MAX (ret->header.lsn0, ret->header.lsn1),
+              e
+          ))
       {
         goto failed;
       }
@@ -1206,7 +1240,11 @@ pgr_open (const char *dbname, error *e)
         {
           WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
           WRAP_GOTO (
-              wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e),
+              wal_write_start_lsn (
+                  ret->ww,
+                  MAX (ret->header.lsn0, ret->header.lsn1),
+                  e
+              ),
               failed
           );
         }
@@ -1391,7 +1429,10 @@ pgr_close (struct pager *p, error *e)
 
     // Get the end_lsn
     lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
-    i_log_info ("Writing next WAL next start_lsn = %" PRlsn " to the database\n", end_lsn);
+    i_log_info (
+        "Writing next WAL next start_lsn = %" PRlsn " to the database\n",
+        end_lsn
+    );
 
     // Write the next min lsn slot
     pgr_write_next_lsn (p, end_lsn, e);
@@ -1742,7 +1783,12 @@ failed:
  *   5. Actually extend the file on disk.
  */
 static err_t
-pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
+pgr_extend_file (
+    const struct pager *p,
+    const pgno          npages,
+    struct txn         *tx,
+    error              *e
+)
 {
   // Do a Nested Top Action
 
@@ -1855,9 +1901,9 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
 
-  struct page_frame *mp             = NULL; // The working page frame
-  u32                clock          = pgr_spin_clock (p);
-  bool               ready_to_evict = false; // First round - don't evict any pages
+  struct page_frame *mp    = NULL; // The working page frame
+  u32                clock = pgr_spin_clock (p);
+  bool ready_to_evict      = false; // First round - don't evict any pages
 
   /**
    * Loop forever - this is highly concurrent
@@ -2092,7 +2138,11 @@ TEST (pgr_get_invalid_checksum)
   fpgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &pf.e);
 
   // This one will fail
-  test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e), ERR_CORRUPT, &pf.e);
+  test_err_t_check (
+      pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e),
+      ERR_CORRUPT,
+      &pf.e
+  );
 
   pgr_fixture_teardown (&pf);
 }
@@ -2536,7 +2586,13 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
 }
 
 err_t
-pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e)
+pgr_new (
+    page_h              *dest,
+    struct pager        *p,
+    struct txn          *tx,
+    const enum page_type type,
+    error               *e
+)
 {
   int    r     = rand ();
   page_h fsm   = page_h_create ();
@@ -2662,7 +2718,13 @@ pgr_do_checkpoint (void *ctx)
 err_t
 pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
 {
-  return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e);
+  return periodic_task_start (
+      &p->checkpoint_task,
+      msec,
+      pgr_do_checkpoint,
+      p,
+      e
+  );
 }
 
 #ifdef TESTING
@@ -2842,12 +2904,12 @@ pgr_release_with_log (
 err_t
 pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
-  struct wal_rec_hdr_read *log_rec = NULL;                  // Next record to read
-  struct wal_clr_write     clr;                             // Next record to write
-  page_h                   ph           = page_h_create (); // The page handle used for all undo's
-  lsn                      undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
-  slsn                     prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
-  txid                     tid          = tx->tid;      // The transaction id
+  struct wal_rec_hdr_read *log_rec = NULL; // Next record to read
+  struct wal_clr_write     clr;            // Next record to write
+  page_h ph           = page_h_create (); // The page handle used for all undo's
+  lsn    undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
+  slsn   prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
+  txid   tid          = tx->tid;      // The transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
   if (undo_nxt_lsn > 0)
@@ -2870,7 +2932,11 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
     // BEGIN
     if (log_rec->type == WL_EOF)
     {
-      return error_causef (e, ERR_CORRUPT, "Transaction does not have a valid top level log");
+      return error_causef (
+          e,
+          ERR_CORRUPT,
+          "Transaction does not have a valid top level log"
+      );
     }
 
     switch (log_rec->type)
@@ -3060,7 +3126,10 @@ TEST (aries_rollback_multiple_updates)
     dl_make_valid (page_h_w (&dl_page));
 
     memset (initial_data, 0xAA, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE}
+    );
 
     pgno1 = page_h_ro (&dl_page)->pg;
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
@@ -3074,19 +3143,28 @@ TEST (aries_rollback_multiple_updates)
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 update1_data[DL_DATA_SIZE];
     memset (update1_data, 0xBB, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update1_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = update1_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 update2_data[DL_DATA_SIZE];
     memset (update2_data, 0xCC, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update2_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = update2_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 update3_data[DL_DATA_SIZE];
     memset (update3_data, 0xDD, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_flush_wall (p, &e);
@@ -3096,7 +3174,11 @@ TEST (aries_rollback_multiple_updates)
   // Verify data is back to initial state
   {
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        initial_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 
@@ -3153,7 +3235,11 @@ TEST (aries_rollback_with_crash_recovery)
   {
     p = pgr_open ("testdb", &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), committed_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        committed_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 
@@ -3181,7 +3267,10 @@ TEST (aries_rollback_clr_not_undone)
     dl_make_valid (page_h_w (&dl_page));
 
     memset (initial_data, 0xAA, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE}
+    );
 
     pgno1 = page_h_ro (&dl_page)->pg;
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
@@ -3196,7 +3285,10 @@ TEST (aries_rollback_clr_not_undone)
 
     u8 temp_data[DL_DATA_SIZE];
     memset (temp_data, 0xBB, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = temp_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = temp_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_rollback (p, &tx2, 0, &e);
@@ -3205,7 +3297,11 @@ TEST (aries_rollback_clr_not_undone)
   // Verify data is back to initial
   {
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        initial_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 
@@ -3214,7 +3310,11 @@ TEST (aries_rollback_clr_not_undone)
     test_fail_if (pgr_crash (p, &e));
     p = pgr_open ("testdb", &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
-    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    test_assert_memequal (
+        dl_get_data (page_h_ro (&dl_page)),
+        initial_data,
+        DL_DATA_SIZE
+    );
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
   }
 

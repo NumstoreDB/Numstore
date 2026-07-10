@@ -113,8 +113,7 @@ build_tree_from_descr_inner (
     error              *e
 )
 {
-  page_h cur  = page_h_create ();
-  page_h next = page_h_create ();
+  page_h cur = page_h_create ();
 
   if (descr.next == NULL)
   {
@@ -124,7 +123,10 @@ build_tree_from_descr_inner (
       goto failed;
     }
 
-    dl_set_data (page_h_w (&cur), (struct dl_data){.data = descr.data, .blen = descr.dlen});
+    dl_set_data (
+        page_h_w (&cur),
+        (struct dl_data){.data = descr.data, .blen = descr.dlen}
+    );
   }
   else
   {
@@ -158,7 +160,12 @@ failed:
 }
 
 spgno
-build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr descr, error *e)
+build_tree_from_descr (
+    struct pager     *p,
+    struct txn       *tx,
+    struct tree_descr descr,
+    error            *e
+)
 {
   struct tree_result result;
   if (build_tree_from_descr_inner (&result, p, tx, descr, e))
@@ -209,7 +216,10 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
     }
   }
 
-  in_set_data (page_h_w (dest), (struct in_data){.nodes = data, .len = b.dclen});
+  in_set_data (
+      page_h_w (dest),
+      (struct in_data){.nodes = data, .len = b.dclen}
+  );
 
   return 0;
 }
@@ -247,7 +257,10 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
     rand_bytes (&data[b.data.blen], (b.dclen - b.data.blen));
   }
 
-  dl_set_data (page_h_w (dest), (struct dl_data){.data = data, .blen = b.dclen});
+  dl_set_data (
+      page_h_w (dest),
+      (struct dl_data){.data = data, .blen = b.dclen}
+  );
 
   return 0;
 }
@@ -255,8 +268,12 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
 ////////////////////////////////////////////////////////////
 /// DECLARATIVE API
 
-static err_t
-build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e);
+static err_t build_page_desc (
+    struct page_desc *desc,
+    struct pager     *pager,
+    struct txn       *txn,
+    error            *e
+);
 
 err_t
 build_page_tree (struct page_tree_builder *builder, error *e)
@@ -265,7 +282,12 @@ build_page_tree (struct page_tree_builder *builder, error *e)
 }
 
 static err_t
-build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e)
+build_page_desc (
+    struct page_desc *desc,
+    struct pager     *pager,
+    struct txn       *txn,
+    error            *e
+)
 {
   switch (desc->type)
   {
@@ -394,7 +416,10 @@ TEST (build_page_tree)
                                                       .out  = page_h_create (),
                                                       .size = DL_DATA_SIZE,
                                                       .data_list =
-                                                          (struct dl_data){.data = NULL, .blen = 0},
+                                                          (struct dl_data){
+                                                              .data = NULL,
+                                                              .blen = 0
+                                                          },
                                                   },
                                               },
 
@@ -402,10 +427,11 @@ TEST (build_page_tree)
                               },
 
                               {
-                                  .type      = PG_DATA_LIST,
-                                  .out       = page_h_create (),
-                                  .size      = DL_DATA_SIZE,
-                                  .data_list = (struct dl_data){.data = NULL, .blen = 0},
+                                  .type = PG_DATA_LIST,
+                                  .out  = page_h_create (),
+                                  .size = DL_DATA_SIZE,
+                                  .data_list =
+                                      (struct dl_data){.data = NULL, .blen = 0},
                               },
                           },
                   },

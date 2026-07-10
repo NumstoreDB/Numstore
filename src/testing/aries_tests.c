@@ -46,7 +46,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "AAABBAACCAAAAA";
     char        actual[sizeof ("AAABBAACCAAAAA") - 1];
-    sb_size     n = smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -73,7 +73,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "AAAAAAAAAA";
     char        actual[sizeof ("AAAAAAAAAA") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -99,7 +99,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "HELLO";
     char        actual[sizeof ("HELLO") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -134,7 +134,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "ONETWOTHREE";
     char        actual[sizeof ("ONETWOTHREE") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -160,7 +160,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "STABLE";
     char        actual[sizeof ("STABLE") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -187,14 +187,14 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     char        actual[sizeof ("ABCDEFGHIJKLMNOPQRSTUVWXYZ") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
 
   /**
    * 6. Several inserts inside a single transaction, then commit, then crash.
-   *    Either ALL of them survive or NONE of them — atomicity check.
+   *    Either ALL of them survive or NONE of them - atomicity check.
    */
   TEST_CASE ("multi_insert_single_txn_is_atomic_through_crash")
   {
@@ -213,7 +213,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "CCAABBAA";
     char        actual[sizeof ("CCAABBAA") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -241,7 +241,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "ABCDEFGH";
     char        actual[sizeof ("ABCDEFGH") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -269,13 +269,13 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "HELLO WORLD";
     char        actual[sizeof ("HELLO WORLD") - 1];
-    smfile_read (smf, actual, 0, sizeof (actual));
+    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
 
   /**
-   * 9. Single insert larger than one page — exercises multi-page redo.
+   * 9. Single insert larger than one page - exercises multi-page redo.
    *    Adjust BIG_SIZE to comfortably exceed your page size.
    */
   TEST_CASE ("large_page_spanning_insert_then_crash")
@@ -301,7 +301,7 @@ TEST (aries_crash)
 
     smf          = smfile_open ("testdb");
     char *actual = i_malloc (BIG_SIZE, 1, &e);
-    smfile_read (smf, actual, 0, BIG_SIZE);
+    smfile_read (smf, actual, 1, 0, 1, BIG_SIZE);
     test_assert_memequal (big, actual, BIG_SIZE);
     smfile_close (smf);
     i_free (big);
@@ -326,7 +326,7 @@ TEST (aries_crash)
     smf = smfile_open ("testdb");
     /* read the last 4 bytes */
     char actual[4];
-    smfile_read (smf, actual, 6, sizeof (actual));
+    smfile_read (smf, actual, 1, 6, 1, sizeof (actual));
     test_assert_memequal ("6789", actual, sizeof (actual));
     smfile_close (smf);
   }

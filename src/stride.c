@@ -51,7 +51,11 @@ ustride_equal (const struct user_stride left, const struct user_stride right)
 }
 
 void
-stride_resolve_expect (struct stride *dest, const struct user_stride src, const u64 arrlen)
+stride_resolve_expect (
+    struct stride           *dest,
+    const struct user_stride src,
+    const u64                arrlen
+)
 {
   const i64 step = (src.present & STEP_PRESENT) ? src.step : 1;
 
@@ -132,13 +136,22 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
 }
 
 err_t
-stride_resolve (struct stride *dest, const struct user_stride src, const u64 arrlen, error *e)
+stride_resolve (
+    struct stride           *dest,
+    const struct user_stride src,
+    const u64                arrlen,
+    error                   *e
+)
 {
   const i64 step = (src.present & STEP_PRESENT) ? src.step : 1;
 
   if (step <= 0)
   {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "stride step must be positive");
+    return error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "stride step must be positive"
+    );
   }
 
   stride_resolve_expect (dest, src, arrlen);
@@ -190,7 +203,11 @@ TEST (stride_resolve)
 
   TEST_CASE ("Range [2:8] on length 10 ")
   {
-    struct user_stride range = {.start = 2, .stop = 8, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride range = {
+        .start   = 2,
+        .stop    = 8,
+        .present = START_PRESENT | STOP_PRESENT
+    };
     stride_resolve (&result, range, 10, &e);
     test_assert_int_equal (result.start, 2);
     test_assert_int_equal (result.stride, 1);
@@ -199,8 +216,12 @@ TEST (stride_resolve)
 
   TEST_CASE ("Range with step [1:9:2] on length 10 ")
   {
-    struct user_stride range_step =
-        {.start = 1, .stop = 9, .step = 2, .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT};
+    struct user_stride range_step = {
+        .start   = 1,
+        .stop    = 9,
+        .step    = 2,
+        .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT
+    };
     stride_resolve (&result, range_step, 10, &e);
     test_assert_int_equal (result.start, 1);
     test_assert_int_equal (result.stride, 2);
@@ -249,7 +270,11 @@ TEST (stride_resolve)
 
   TEST_CASE ("Empty slice [5:2] on length 10 ")
   {
-    struct user_stride empty = {.start = 5, .stop = 2, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride empty = {
+        .start   = 5,
+        .stop    = 2,
+        .present = START_PRESENT | STOP_PRESENT
+    };
     stride_resolve (&result, empty, 10, &e);
     test_assert_int_equal (result.nelems, 0);
   }
@@ -287,7 +312,11 @@ musb_create (struct builder *b)
 }
 
 err_t
-musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error *e)
+musb_accept_key (
+    struct mus_builder      *eb,
+    const struct user_stride stride,
+    error                   *e
+)
 {
   DBG_ASSERT (mus_builder, eb);
 
@@ -326,7 +355,8 @@ musb_build (struct multi_user_stride *dest, struct mus_builder *eb, error *e)
     goto theend;
   }
 
-  struct user_stride *strides = builder_malloc_persist (eb->b, len, sizeof *strides, e);
+  struct user_stride *strides =
+      builder_malloc_persist (eb->b, len, sizeof *strides, e);
   if (!strides)
   {
     goto theend;

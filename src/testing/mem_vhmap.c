@@ -343,8 +343,12 @@ TEST (mem_vhmap)
     }
 
     mem_vhmap_remove_var (c, strfcstr ("cv_0"));
-    ASSERT (mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL); // removed in clone
-    ASSERT (mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL); // original intact
+    ASSERT (
+        mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL
+    ); // removed in clone
+    ASSERT (
+        mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL
+    ); // original intact
 
     mem_vhmap_free (c);
   }

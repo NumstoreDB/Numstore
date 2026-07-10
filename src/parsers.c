@@ -99,7 +99,12 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
   }
   else
   {
-    return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected number or ':' at position %u",
+        parser->pos
+    );
   }
 
   *dest = s;
@@ -131,7 +136,10 @@ theend:
 
 #ifdef TESTING
 static void
-test_compile_user_stride_green_path (const char *query, struct user_stride expected)
+test_compile_user_stride_green_path (
+    const char        *query,
+    struct user_stride expected
+)
 {
   struct user_stride actual;
   error              e = error_create ();
@@ -197,7 +205,11 @@ struct multi_user_stride_parser
 
 // Parse optional ':' NUMBER (step)
 static err_t
-parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+parse_mus_step (
+    struct multi_user_stride_parser *parser,
+    struct user_stride              *s,
+    error                           *e
+)
 {
   if (!parser_match (parser->base, TT_COLON))
   {
@@ -218,7 +230,11 @@ parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s, 
 }
 
 static err_t
-parse_mus_stop (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+parse_mus_stop (
+    struct multi_user_stride_parser *parser,
+    struct user_stride              *s,
+    error                           *e
+)
 {
   i32 num;
   if (parser_maybe_parse_integer (parser->base, &num))
@@ -263,11 +279,19 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     return musb_accept_key (&parser->builder, s, e);
   }
 
-  return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->base->pos);
+  return error_causef (
+      e,
+      ERR_SYNTAX,
+      "Expected number or ':' at position %u",
+      parser->base->pos
+  );
 }
 
 static err_t
-parse_multi_user_stride_inner (struct multi_user_stride_parser *parser, error *e)
+parse_multi_user_stride_inner (
+    struct multi_user_stride_parser *parser,
+    error                           *e
+)
 {
   // Check for empty: []
   if (parser_match (parser->base, TT_RIGHT_BRACKET))
@@ -287,7 +311,11 @@ parse_multi_user_stride_inner (struct multi_user_stride_parser *parser, error *e
 }
 
 static err_t
-parse_multi_user_stride (struct parser *parser, struct multi_user_stride *dest, error *e)
+parse_multi_user_stride (
+    struct parser            *parser,
+    struct multi_user_stride *dest,
+    error                    *e
+)
 {
   struct multi_user_stride_parser p = {
       .base    = parser,
@@ -406,7 +434,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[0:]", &alloc, &e);
     test_assert_int_equal (stride.len, 1);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].start, 0);
   }
 
@@ -418,7 +449,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[0:, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].start, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
@@ -445,7 +479,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[:0, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STOP_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].stop, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
@@ -476,7 +513,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[::0, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STEP_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STEP_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].step, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
@@ -490,7 +530,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[:0:, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STOP_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].stop, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
@@ -504,7 +547,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[:0:0, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT | STEP_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        COLON_PRESENT | STOP_PRESENT | STEP_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].stop, 0);
     test_assert_int_equal (stride.strides[0].step, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
@@ -519,7 +565,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[0::, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].start, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
@@ -533,7 +582,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[0::0, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT | STEP_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT | STEP_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].start, 0);
     test_assert_int_equal (stride.strides[0].step, 0);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
@@ -665,7 +717,11 @@ struct type_parser
   struct type   *dest;
 };
 
-static err_t parse_type_inner (struct type_parser *parser, struct type *out, error *e);
+static err_t parse_type_inner (
+    struct type_parser *parser,
+    struct type        *out,
+    error              *e
+);
 
 static err_t
 parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
@@ -714,7 +770,8 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
   }
 
   // Inner most type
-  struct type *inner = builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
+  struct type *inner =
+      builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
   if (inner == NULL)
   {
     return error_trace (e);
@@ -727,12 +784,21 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
 }
 
 static err_t
-parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error *e)
+parse_field (
+    struct kvt_list_builder *builder,
+    struct type_parser      *parser,
+    error                   *e
+)
 {
   // IDENT
   if (!parser_match (parser->base, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -746,7 +812,8 @@ parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error
   ));
 
   // Type
-  struct type *inner = builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
+  struct type *inner =
+      builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
   if (inner == NULL)
   {
     return error_trace (e);
@@ -872,7 +939,12 @@ theend:
 }
 
 err_t
-compile_type (struct type *dest, const char *text, struct allocator *dalloc, error *e)
+compile_type (
+    struct type      *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   BUILDER_INIT (b, dalloc);
 
@@ -907,6 +979,8 @@ test_compile_type_green_path (const char *query, struct type expected)
   TEST_CASE ("SHOULD PASS: %s", query)
   {
     test_assert_equal (compile_type (&actual, query, &alloc, &e), SUCCESS);
+    i_log_type (&expected, &e);
+    i_log_type (&actual, &e);
     test_assert (type_equal (&expected, &actual));
   }
 
@@ -951,12 +1025,28 @@ TEST (compile_type)
   test_compile_type_green_path ("cf128", TCF128);
   test_compile_type_green_path ("cf256", TCF256);
 
+  test_compile_type_green_path ("ci16", TCI16);
+  test_compile_type_green_path ("ci32", TCI32);
+  test_compile_type_green_path ("ci64", TCI64);
+  test_compile_type_green_path ("ci128", TCI128);
+
+  test_compile_type_green_path ("cu16", TCU16);
+  test_compile_type_green_path ("cu32", TCU32);
+  test_compile_type_green_path ("cu64", TCU64);
+  test_compile_type_green_path ("cu128", TCU128);
+
   test_compile_type_red_path ("i2", ERR_SYNTAX);
 
   // SARRAY
   test_compile_type_green_path ("[10]i32", mk_sarray (1, (u32[]){10}, &TI32));
-  test_compile_type_green_path ("[5][10]f64", mk_sarray (2, (u32[]){5, 10}, &TF64));
-  test_compile_type_green_path ("[2][3][4]u8", mk_sarray (3, (u32[]){2, 3, 4}, &TU8));
+  test_compile_type_green_path (
+      "[5][10]f64",
+      mk_sarray (2, (u32[]){5, 10}, &TF64)
+  );
+  test_compile_type_green_path (
+      "[2][3][4]u8",
+      mk_sarray (3, (u32[]){2, 3, 4}, &TU8)
+  );
 
   // STRUCT
   test_compile_type_green_path (
@@ -974,10 +1064,18 @@ TEST (compile_type)
       )
   );
 
-  struct type inner = mk_struct (1, (struct string[]){strfcstr ("b")}, (struct type *[]){&TI32});
+  struct type inner = mk_struct (
+      1,
+      (struct string[]){strfcstr ("b")},
+      (struct type *[]){&TI32}
+  );
   test_compile_type_green_path (
       "struct { a struct { b i32 } }",
-      mk_struct (1, (struct string[]){strfcstr ("a")}, (struct type *[]){&inner})
+      mk_struct (
+          1,
+          (struct string[]){strfcstr ("a")},
+          (struct type *[]){&inner}
+      )
   );
 
   // UNION
@@ -999,7 +1097,7 @@ TEST (compile_type)
   // COMPLICATED
   struct type inner_sarray = mk_sarray (1, (u32[]){5}, &TF64);
   struct type inner_struct = mk_struct (
-      1,
+      2,
       (struct string[]){strfcstr ("x"), strfcstr ("y")},
       (struct type *[]){&TI32, &inner_sarray}
   );
@@ -1112,7 +1210,12 @@ parse_query_get (struct parser *parser, struct query *dest, error *e)
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
   struct token *tok = parser_advance (parser);
 
@@ -1140,7 +1243,12 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
   struct token *tok = parser_advance (parser);
 
@@ -1164,7 +1272,12 @@ parse_query_create (struct parser *parser, struct query *dest, error *e)
 
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
 
   struct token *tok = parser_advance (parser);
@@ -1193,7 +1306,12 @@ parse_query_insert (struct parser *parser, struct query *dest, error *e)
 
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
   struct token *ident = parser_advance (parser);
   ASSERT (ident->type == TT_IDENTIFIER);
@@ -1201,13 +1319,23 @@ parse_query_insert (struct parser *parser, struct query *dest, error *e)
   i32 ofst;
   if (!parser_maybe_parse_integer (parser, &ofst))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected integer at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected integer at position %u",
+        parser->pos
+    );
   }
 
   i32 len;
   if (!parser_maybe_parse_integer (parser, &len))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected integer at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected integer at position %u",
+        parser->pos
+    );
   }
 
   *dest = (struct query){
@@ -1235,7 +1363,12 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
   struct token *tok = parser_advance (parser);
 
@@ -1297,7 +1430,12 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
   struct token *tok = parser_advance (parser);
 
@@ -1359,7 +1497,12 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->pos
+    );
   }
   struct token *tok = parser_advance (parser);
 
@@ -1413,7 +1556,12 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
 }
 
 static err_t
-parse_query (struct parser *parser, struct query *dest, struct allocator *dalloc, error *e)
+parse_query (
+    struct parser    *parser,
+    struct query     *dest,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   if (parser_match (parser, TT_HELP))
   {
@@ -1453,14 +1601,24 @@ parse_query (struct parser *parser, struct query *dest, struct allocator *dalloc
   }
   else
   {
-    return error_causef (e, ERR_SYNTAX, "Expected a valid operation at pos: %u", parser->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected a valid operation at pos: %u",
+        parser->pos
+    );
   }
 
   return SUCCESS;
 }
 
 err_t
-compile_query (struct query *dest, const char *text, struct allocator *dalloc, error *e)
+compile_query (
+    struct query     *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   BUILDER_INIT (b, dalloc);
 
@@ -1797,7 +1955,10 @@ TEST (compile_query)
 
     // Sarray
     u32         dims[2] = {10, 20};
-    struct type t0      = {.type = T_SARRAY, .sa = {.rank = 2, .dims = dims, .t = &TF32}};
+    struct type t0      = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 2, .dims = dims, .t = &TF32}
+    };
 
     // Union
     struct type  *utypes[2] = {&TI32, &t0};
@@ -1957,7 +2118,12 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
 {
   if (!parser_match (parser->base, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected variable name at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected variable name at position %u",
+        parser->base->pos
+    );
   }
 
   // VNAME
@@ -2032,7 +2198,12 @@ parse_subtype (struct parser *p, struct subtype *dest, error *e)
 }
 
 err_t
-compile_subtype (struct subtype *dest, const char *text, struct allocator *dalloc, error *e)
+compile_subtype (
+    struct subtype   *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   BUILDER_INIT (b, dalloc);
 
@@ -2090,7 +2261,10 @@ test_compile_subtype_red_path (const char *query, err_t code)
 
 TEST (compile_subtype)
 {
-  test_compile_subtype_green_path ("myvar", subtype_create (strfcstr ("myvar"), ta_take ()));
+  test_compile_subtype_green_path (
+      "myvar",
+      subtype_create (strfcstr ("myvar"), ta_take ())
+  );
 
   test_compile_subtype_green_path (
       "myvar[9]",
@@ -2102,7 +2276,10 @@ TEST (compile_subtype)
 
   test_compile_subtype_green_path (
       "myvar.field",
-      subtype_create (strfcstr ("myvar"), ta_select (strfcstr ("field"), &ta_take ()))
+      subtype_create (
+          strfcstr ("myvar"),
+          ta_select (strfcstr ("field"), &ta_take ())
+      )
   );
 
   struct type_accessor subrange =
@@ -2137,10 +2314,18 @@ struct type_ref_parser
   struct type_ref *dest;
 };
 
-static err_t parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, error *e);
+static err_t parse_type_ref_inner (
+    struct type_ref_parser *parser,
+    struct type_ref        *out,
+    error                  *e
+);
 
 static err_t
-parse_take_type_ref (struct type_ref_parser *parser, struct type_ref *out, error *e)
+parse_take_type_ref (
+    struct type_ref_parser *parser,
+    struct type_ref        *out,
+    error                  *e
+)
 {
   struct subtype st;
   WRAP (parse_subtype (parser->base, &st, e));
@@ -2153,12 +2338,21 @@ parse_take_type_ref (struct type_ref_parser *parser, struct type_ref *out, error
 }
 
 static err_t
-parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *parser, error *e)
+parse_field_ref (
+    struct kvt_ref_list_builder *builder,
+    struct type_ref_parser      *parser,
+    error                       *e
+)
 {
   // IDENT
   if (!parser_match (parser->base, TT_IDENTIFIER))
   {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %u",
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -2180,7 +2374,11 @@ parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *p
 }
 
 static err_t
-parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, error *e)
+parse_struct_type_ref (
+    struct type_ref_parser *parser,
+    struct type_ref        *out,
+    error                  *e
+)
 {
   // 'struct'
   WRAP (parser_expect (parser->base, TT_STRUCT, e));
@@ -2215,7 +2413,11 @@ parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, err
 }
 
 static err_t
-parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, error *e)
+parse_type_ref_inner (
+    struct type_ref_parser *parser,
+    struct type_ref        *out,
+    error                  *e
+)
 {
   struct token *tok = parser_peek (parser->base);
 
@@ -2262,7 +2464,12 @@ theend:
 }
 
 err_t
-compile_type_ref (struct type_ref *dest, const char *text, struct allocator *dalloc, error *e)
+compile_type_ref (
+    struct type_ref  *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   BUILDER_INIT (b, dalloc);
 
@@ -2321,7 +2528,10 @@ test_compile_type_ref_red_path (const char *query, err_t code)
 
 TEST (compile_type_ref)
 {
-  test_compile_type_ref_green_path ("myvar", tr_take (strfcstr ("myvar"), ta_take ()));
+  test_compile_type_ref_green_path (
+      "myvar",
+      tr_take (strfcstr ("myvar"), ta_take ())
+  );
 
   test_compile_type_ref_green_path (
       "myvar[9]",
@@ -2399,7 +2609,11 @@ TEST (compile_type_ref)
           (struct string[]){strfcstr ("a")},
           (struct type_ref[]){tr_take (
               strfcstr ("myvar"),
-              ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ())
+              ta_range (
+                  (struct user_stride[]){ustride_single (0)},
+                  1,
+                  &ta_take ()
+              )
           )}
       )
   );

@@ -49,7 +49,7 @@ main (int argc, char *argv[])
   }
 
   struct irwr_swarm_test *meta =
-      irwr_swmt_open (start_enabled, "test", 100000, "testvar", "u32", 0.01);
+      irwr_swmt_open (start_enabled, "test", 100000, "testvar", "u32", 0.01f);
 
 #if PLATFORM_WINDOWS
   if (signal (SIGINT, handle_sigint) == SIG_ERR)

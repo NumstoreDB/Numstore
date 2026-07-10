@@ -44,54 +44,6 @@ typedef struct smfile smfile_t;
  * adds two knobs: a named variable target, and element stride. Use it when you
  * need multiple independent variables in one file, or when you want to touch
  * every nth element without reading the rest into memory.
- *
- * Usage
- * =====
- *
- * <code>
- *  // Open a database
- *  smfile_t *smf = smfile_open ("sample1_crud");
- *  smfile_remove (smf, NULL, 0, SMF_END);
- *
- *  // Insert data at offset 0
- *  const char *initial = "The quick brown fox jumps over the lazy dog";
- *  smfile_insert (smf, initial, 0, strlen (initial));
- *
- *  // Read that data (all of it)
- *  sb_size n = smfile_read (smf, buf, 0, SMF_END);
- *  printf ("after insert:  \\"%.*s\\"\\n", (int)n, buf);
- *
- *  // Execute a transaction
- *  smfile_begin (smf);
- *  {
- *    // Insert data at offset 34
- *    const char *adverb = " really";
- *    smfile_insert (smf, adverb, 34, strlen (adverb));
- *
- *    n = smfile_read (smf, buf, 0, SMF_END);
- *    printf ("after insert:  \\"%.*s\\"\\n", (int)n, buf);
- *
- *    // Overwrite data at offset 16
- *    smfile_write (smf, "cat", 16, 3);
- *
- *    n = smfile_read (smf, buf, 0, SMF_END);
- *    printf ("after write:   \\"%.*s\\"\\n", (int)n, buf);
- *
- *    // Remove data starting at offset
- *    n = smfile_remove (smf, buf, 4, 6);
- *    printf ("removed:       \\"%.*s\\"\\n", (int)n, buf);
- *
- *    n = smfile_read (smf, buf, 0, SMF_END);
- *    printf ("after remove (inside txn):  \\"%.*s\\"\\n", (int)n, buf);
- *  }
- *  smfile_rollback (smf);
- *
- *  n = smfile_read (smf, buf, 0, SMF_END);
- *  printf ("after rollback:  \\"%.*s\\"\\n", (int)n, buf);
- *
- *  smfile_close (smf);
- * </code>
- *
  ******************************************************************************/
 
 /**
@@ -144,14 +96,6 @@ const char *smfile_strerror (smfile_t *ns);
 int smfile_perror (smfile_t *ns, const char *prefix);
 
 /**
- * @brief Delete a variable with the name vname
- *
- * @param vname The variable to delete
- * @return < 0 on error, 0 on success
- */
-int smfile_delete (smfile_t *ns, const char *vname);
-
-/**
  * @brief The size of a smfile
  * @return < 0 on error -> size on success
  */
@@ -166,11 +110,16 @@ sb_size smfile_size (smfile_t *smf);
  * @param slen The length in bytes of [src]
  * @return < 0 on error, 0 on success
  */
-sb_size smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
+sb_size smfile_insert (
+    smfile_t   *smf,
+    const void *src,
+    sb_size     bofst,
+    b_size      slen
+);
 
 /**
  * @brief Write elements into a smart file, overwriting existing data at that
- * location. Unlike fwrite, this operation is atomic — it either fully completes
+ * location. Unlike fwrite, this operation is atomic - it either fully completes
  * or has no effect.
  *
  * @param src The data to write
@@ -178,7 +127,14 @@ sb_size smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size sle
  * @param nelem The number of elements to write
  * @return The number of elements written, or < 0 on error
  */
-sb_size smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem);
+sb_size smfile_write (
+    smfile_t   *smf,
+    const void *src,
+    t_size      size,
+    b_size      bofst,
+    sb_size     stride,
+    b_size      nelem
+);
 
 /**
  * @brief Read elements from a smart file into dest.
@@ -191,13 +147,20 @@ sb_size smfile_write (smfile_t *smf, const void *src, b_size bofst, b_size nelem
  * @param nelem The number of elements to read
  * @return The number of elements read, or < 0 on error
  */
-sb_size smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem);
+sb_size smfile_read (
+    smfile_t *smf,
+    void     *dest,
+    t_size    size,
+    sb_size   bofst,
+    sb_size   stride,
+    b_size    nelem
+);
 
 /**
  * @brief Remove elements from the middle of a smart file, closing the gap.
- * Unlike a write of zeroes, remove shrinks the file — bytes after the removed
+ * Unlike a write of zeroes, remove shrinks the file - bytes after the removed
  * region shift down. Optionally captures the removed data into dest if
- * non-NULL. This operation is atomic — it either fully completes or has no
+ * non-NULL. This operation is atomic - it either fully completes or has no
  * effect.
  *
  * @param dest Buffer to capture the removed data into, or NULL to discard
@@ -205,110 +168,14 @@ sb_size smfile_read (smfile_t *smf, void *dest, sb_size bofst, b_size nelem);
  * @param nelem The number of elements to remove
  * @return The number of elements removed, or < 0 on error
  */
-sb_size smfile_remove (smfile_t *smf, void *dest, sb_size bofst, b_size nelem);
-
-/**
- * @brief Returns the size of an individual variable
- */
-sb_size smfile_psize (smfile_t *smf, const char *vname);
-
-/**
- * @brief [Power] Insert data into the middle of a named variable within a smart
- * file. Equivalent to smfile_insert but targets a specific named variable
- * rather than the default variable.
- *
- * @param name The name of the variable to insert into
- * @param src The byte data to insert
- * @param bofst The byte offset within the variable to begin the insert
- * @param slen The length in bytes of [src]
- * @return < 0 on error, 0 on success
- */
-sb_size
-smfile_pinsert (smfile_t *smf, const char *name, const void *src, sb_size bofst, b_size slen);
-
-/**
- * @brief [Power] Write elements into a named variable within a smart file,
- * with support for strided access. A stride of 1 means contiguous elements;
- * a stride of n means every nth element is written, leaving the elements
- * in between untouched.
- *
- * @param name The name of the variable to write into
- * @param src The data to write
- * @param size The size in bytes of a single element
- * @param bofst The byte offset within the variable to begin writing at
- * @param stride Element stride. 1 for contiguous, n to write every nth element
- * @param nelem The number of elements to write
- * @return The number of elements written, or < 0 on error
- */
-sb_size smfile_pwrite (
-    smfile_t   *smf,
-    const char *name,
-    const void *src,
-    t_size      size,
-    b_size      bofst,
-    sb_size     stride,
-    b_size      nelem
+sb_size smfile_remove (
+    smfile_t *smf,
+    void     *dest,
+    t_size    size,
+    sb_size   bofst,
+    sb_size   stride,
+    b_size    nelem
 );
-
-/**
- * @brief [Power] Read elements from a named variable within a smart file,
- * with support for strided access. A stride of 1 means contiguous elements;
- * a stride of n means every nth element is read, skipping the elements
- * in between.
- *
- * @param name The name of the variable to read from
- * @param dest Buffer to read data into. Must be large enough to hold nelem
- * elements
- * @param size The size in bytes of a single element
- * @param bofst The byte offset within the variable to begin reading from
- * @param stride Element stride. 1 for contiguous, n to read every nth element
- * @param nelem The number of elements to read
- * @return The number of elements read, or < 0 on error
- */
-sb_size smfile_pread (
-    smfile_t   *smf,
-    const char *name,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-);
-
-/**
- * @brief [Power] Remove elements from a named variable within a smart file,
- * with support for strided access. A stride of 1 removes contiguous elements;
- * a stride of n removes every nth element, closing each gap independently.
- * Optionally captures the removed data into dest if non-NULL.
- * This operation is atomic — it either fully completes or has no effect.
- *
- * @param name The name of the variable to remove from
- * @param dest Buffer to capture the removed data into, or NULL to discard
- * @param size The size in bytes of a single element
- * @param bofst The byte offset within the variable to begin removing from
- * @param stride Element stride. 1 for contiguous, n to remove every nth element
- * @param nelem The number of elements to remove
- * @return The number of elements removed, or < 0 on error
- */
-sb_size smfile_premove (
-    smfile_t   *smf,
-    const char *name,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Transaction Control
- *
- * Every simple and power operation is individually atomic by default. Wrapping
- * a sequence of operations in smfile_begin / smfile_commit promotes that group
- * to a single atomic unit backed by a write-ahead log and two-phase locking —
- * either every operation in the transaction lands, or none of them do.
- * smfile_rollback undoes all mutations since the last smfile_begin.
- *----------------------------------------------------------------------------*/
 
 /**
  * @brief Begin a transaction. If smf is already apart of a transaction, this

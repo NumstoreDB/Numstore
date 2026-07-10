@@ -29,7 +29,7 @@
  * The pgno_to_value hash table always points to the read frame.  When a page
  * is upgraded for writing, a second frame is allocated; pgr->wsibling gives
  * its index.  The write frame is flagged PW_X and is invisible to the hash
- * table — callers reach it only through a page_h in PHM_X mode.
+ * table - callers reach it only through a page_h in PHM_X mode.
  *
  * pin counts outstanding page_h references to this frame.  A pinned frame
  * may not be evicted.  PW_ACCESS is set on every logical access and cleared

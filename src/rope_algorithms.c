@@ -16,6 +16,7 @@
 
 #include "error.h"
 #include "node_updates.h"
+#include "numerics.h"
 #include "numstore.h"
 #include "os.h"
 #include "page.h"
@@ -179,7 +180,10 @@ TEST (dlgt_balance_with_prev)
     i = 0;
     for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i)
     {
-      test_assert_equal (dl_get_byte (page_h_ro (cur), i), _prev[DL_DATA_SIZE / 2 + DL_REM + i]);
+      test_assert_equal (
+          dl_get_byte (page_h_ro (cur), i),
+          _prev[DL_DATA_SIZE / 2 + DL_REM + i]
+      );
     }
     const u32 k = i;
     for (; i < DL_DATA_SIZE / 2; ++i)
@@ -361,7 +365,10 @@ TEST (dlgt_balance_with_next)
     i = 0;
     for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i)
     {
-      test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i + DL_DATA_SIZE / 2 - 10]);
+      test_assert_equal (
+          dl_get_byte (page_h_ro (next), i),
+          _next[i + DL_DATA_SIZE / 2 - 10]
+      );
     }
   }
 
@@ -750,7 +757,13 @@ ns_insert (struct ns_insert_params *params, error *e)
       next_amount = MIN (avail, (p_size)(params->bytes - total_written));
     }
 
-    i32 written = stream_bread (dl_avail_data (page_h_w (&cur)), 1, next_amount, params->src, e);
+    i32 written = stream_bread (
+        dl_avail_data (page_h_w (&cur)),
+        1,
+        next_amount,
+        params->src,
+        e
+    );
     if (written < 0)
     {
       goto failed;
@@ -945,38 +958,43 @@ TEST (ns_insert)
    * SUBSECTION: Testing that sizeof(stream) and provided bytes behaves
    *----------------------------------------------------------------------------*/
 
-#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected)                \
-    do                                                                           \
-    {                                                                            \
-      TEST_CASE ("Bytes: %d Stream: %d => %d", byte_size, stream_size, expected) \
-      {                                                                          \
-        u8                     buffer[4096];                                     \
-        struct stream          input;                                            \
-        struct stream_ibuf_ctx ctx;                                              \
-        stream_ibuf_init (&input, &ctx, buffer, stream_size);                    \
-                                                                                 \
-        struct ns_insert_params params = {                                       \
-            .p     = f.p,                                                        \
-            .src   = &input,                                                     \
-            .tx    = &f.tx,                                                      \
-            .root  = PGNO_NULL,                                                  \
-            .bofst = 0,                                                          \
-            .bytes = byte_size,                                                  \
-        };                                                                       \
-                                                                                 \
-        sb_size nelems = ns_insert (&params, &f.e);                              \
-                                                                                 \
-        test_assert_int_equal (nelems, expected);                                \
-        if (expected > 0)                                                        \
-        {                                                                        \
-          test_assert (params.root != PGNO_NULL);                                \
-        }                                                                        \
-        else                                                                     \
-        {                                                                        \
-          test_assert (params.root == PGNO_NULL);                                \
-        }                                                                        \
-      }                                                                          \
-    }                                                                            \
+#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected) \
+    do                                                            \
+    {                                                             \
+      TEST_CASE (                                                 \
+          "Bytes: %d Stream: %d => %d",                           \
+          byte_size,                                              \
+          stream_size,                                            \
+          expected                                                \
+      )                                                           \
+      {                                                           \
+        u8                     buffer[4096];                      \
+        struct stream          input;                             \
+        struct stream_ibuf_ctx ctx;                               \
+        stream_ibuf_init (&input, &ctx, buffer, stream_size);     \
+                                                                  \
+        struct ns_insert_params params = {                        \
+            .p     = f.p,                                         \
+            .src   = &input,                                      \
+            .tx    = &f.tx,                                       \
+            .root  = PGNO_NULL,                                   \
+            .bofst = 0,                                           \
+            .bytes = byte_size,                                   \
+        };                                                        \
+                                                                  \
+        sb_size nelems = ns_insert (&params, &f.e);               \
+                                                                  \
+        test_assert_int_equal (nelems, expected);                 \
+        if (expected > 0)                                         \
+        {                                                         \
+          test_assert (params.root != PGNO_NULL);                 \
+        }                                                         \
+        else                                                      \
+        {                                                         \
+          test_assert (params.root == PGNO_NULL);                 \
+        }                                                         \
+      }                                                           \
+    }                                                             \
     while (0)
 
   BYTE_STREAM_SIZE_TEST (0, 2048, 2048);
@@ -1036,16 +1054,23 @@ TEST (ns_insert)
     }                                                \
     while (0)
 
-#  define TEST_DATA_LIST(pgno, expected_data)                                                      \
-    do                                                                                             \
-    {                                                                                              \
-      page_h root = page_h_create ();                                                              \
-      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e);                                              \
-      test_assert_int_equal (dl_used (page_h_ro (&root)), sizeof (expected_data));                 \
-      int equal = memcmp (dl_get_data (page_h_ro (&root)), expected_data, sizeof (expected_data)); \
-      test_assert_int_equal (equal, 0);                                                            \
-      pgr_release (f.p, &root, PG_DATA_LIST, &f.e);                                                \
-    }                                                                                              \
+#  define TEST_DATA_LIST(pgno, expected_data)         \
+    do                                                \
+    {                                                 \
+      page_h root = page_h_create ();                 \
+      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e); \
+      test_assert_int_equal (                         \
+          dl_used (page_h_ro (&root)),                \
+          sizeof (expected_data)                      \
+      );                                              \
+      int equal = memcmp (                            \
+          dl_get_data (page_h_ro (&root)),            \
+          expected_data,                              \
+          sizeof (expected_data)                      \
+      );                                              \
+      test_assert_int_equal (equal, 0);               \
+      pgr_release (f.p, &root, PG_DATA_LIST, &f.e);   \
+    }                                                 \
     while (0)
 
 TEST (ns_insert_from_empty)
@@ -1208,7 +1233,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
   p_size       lidx        = 0;
   b_size       total_bread = 0;
   const b_size max_bread   = params.size * params.nelem;
-  b_size       bnext       = params.size; // bytes remaining in the current read/skip window
+  b_size bnext = params.size; // bytes remaining in the current read/skip window
 
   struct ns_seek_params seek = {
       .p          = params.p,
@@ -1246,7 +1271,8 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
   while (max_bread == 0 || total_bread < max_bread)
   {
-    t_size next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
+    t_size next_amount =
+        ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
     if (next_amount == 0)
     {
@@ -1257,12 +1283,6 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
         if (npg == PGNO_NULL)
         {
-          // No
-          // more
-          // nodes
-          // to
-          // the
-          // right
           termination = DATA_EXHAUSTED;
           break;
         }
@@ -1281,7 +1301,14 @@ ns_read_forward (const struct ns_read_params params, error *e)
         lidx        = 0;
         cur         = page_h_xfer_ownership (&next);
         curp        = page_h_ro (&cur);
-        next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
+        next_amount = ns_read_next_amount (
+            curp,
+            lidx,
+            bnext,
+            max_bread,
+            total_bread,
+            state
+        );
 
         ASSERT (next_amount > 0);
       }
@@ -1295,8 +1322,13 @@ ns_read_forward (const struct ns_read_params params, error *e)
     {
       case ACTIVE:
       {
-        const sp_size read =
-            stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
+        const sp_size read = stream_bwrite (
+            (u8 *)dl_get_data (curp) + lidx,
+            1,
+            next_amount,
+            params.dest,
+            e
+        );
 
         if (read < 0)
         {
@@ -1312,9 +1344,6 @@ ns_read_forward (const struct ns_read_params params, error *e)
           bnext = (b_size)(params.stride - 1) * params.size;
           state = SKIPPING;
 
-          // TODO - (5)
-          // Optimize
-          // stride = 1
           if (bnext == 0)
           {
             bnext = params.size;
@@ -1375,7 +1404,11 @@ failed:
 static sb_size
 ns_read_backward (const struct ns_read_params params, error *e)
 {
-  return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
+  return error_causef (
+      e,
+      ERR_INVALID_ARGUMENT,
+      "Negative strides are not implemented (yet)"
+  );
 }
 
 sb_size
@@ -1694,7 +1727,8 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
     //            rcons  rlen     robs
     if (nupd_done_observing_right (pms->input))
     {
-      pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
+      pms->lidx +=
+          nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
       //                    ^
@@ -1770,7 +1804,8 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
       {
         goto failed;
       }
-      pms->lidx += nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
+      pms->lidx +=
+          nupd_append_maximally_right (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++______]
       //              ^
@@ -1835,7 +1870,14 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         const pgno npg = in_get_next (page_h_ro (&pms->cur));
         if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE)
         {
-          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e))
+          if (pgr_get_writable (
+                  &pms->limit,
+                  pms->tx,
+                  PG_INNER_NODE,
+                  npg,
+                  pms->p,
+                  e
+              ))
           {
             goto failed;
           }
@@ -1867,13 +1909,22 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
 
         if (pms->limit.mode != PHM_NONE)
         {
-          TEST_MARK ("rebalance:right:not_done_observing:done_consuming:limit_nn");
+          TEST_MARK (
+              "rebalance:right:not_done_observing:done_consuming:limit_nn"
+          );
           const pgno npg = page_h_pgno (&pms->limit);
 
           const pgno nnpg = in_get_next (page_h_ro (&pms->limit));
           if (nnpg != PGNO_NULL)
           {
-            if (pgr_get_writable (&next_next, pms->tx, PG_INNER_NODE, nnpg, pms->p, e))
+            if (pgr_get_writable (
+                    &next_next,
+                    pms->tx,
+                    PG_INNER_NODE,
+                    nnpg,
+                    pms->p,
+                    e
+                ))
             {
               goto failed;
             }
@@ -1885,7 +1936,13 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
           in_link (page_h_w (&pms->cur), page_h_w_or_null (&next_next));
           page_h_xfer_ownership_ptr (&pms->limit, &next_next);
 
-          if (nupd_append_2nd_right (pms->output, pgh_unravel (&pms->cur), npg, 0, e))
+          if (nupd_append_2nd_right (
+                  pms->output,
+                  pgh_unravel (&pms->cur),
+                  npg,
+                  0,
+                  e
+              ))
           {
             goto failed;
           }
@@ -1916,7 +1973,8 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
     // lobs     llen   lcons
     if (nupd_done_observing_left (pms->input))
     {
-      pms->lidx -= nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
+      pms->lidx -=
+          nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
 
       // [++++++++++++++++++]
       // ^
@@ -1986,7 +2044,8 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       {
         goto failed;
       }
-      pms->lidx -= nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
+      pms->lidx -=
+          nupd_append_maximally_left (pms->input, &pms->cur, pms->lidx);
 
       // [_______+++++++++++]
       // ^
@@ -1994,7 +2053,8 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
       // [a, b, c, d, e, f] p [g, h, i]
       // ^  ^        ^
       // llen lobs   lcons
-      if (!nupd_done_left (pms->input) && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2)
+      if (!nupd_done_left (pms->input)
+          && (IN_MAX_KEYS - pms->lidx) > IN_MAX_KEYS / 2)
       {
         TEST_MARK ("rebalance:left:not_done_observing:not_done:still_shift");
 
@@ -2051,7 +2111,14 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         const pgno ppg = in_get_prev (page_h_ro (&pms->cur));
         if (ppg != PGNO_NULL && pms->limit.mode == PHM_NONE)
         {
-          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, ppg, pms->p, e))
+          if (pgr_get_writable (
+                  &pms->limit,
+                  pms->tx,
+                  PG_INNER_NODE,
+                  ppg,
+                  pms->p,
+                  e
+              ))
           {
             goto failed;
           }
@@ -2081,13 +2148,22 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
 
         if (pms->limit.mode != PHM_NONE)
         {
-          TEST_MARK ("rebalance:left:not_done_observing:done_consuming:limit_nn");
+          TEST_MARK (
+              "rebalance:left:not_done_observing:done_consuming:limit_nn"
+          );
           const pgno ppg = page_h_pgno (&pms->limit);
 
           const pgno pppg = in_get_prev (page_h_ro (&pms->limit));
           if (pppg != PGNO_NULL)
           {
-            if (pgr_get_writable (&prev_prev, pms->tx, PG_INNER_NODE, pppg, pms->p, e))
+            if (pgr_get_writable (
+                    &prev_prev,
+                    pms->tx,
+                    PG_INNER_NODE,
+                    pppg,
+                    pms->p,
+                    e
+                ))
             {
               goto failed;
             }
@@ -2099,7 +2175,13 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
           in_link (page_h_w_or_null (&prev_prev), page_h_w (&pms->cur));
           page_h_xfer_ownership_ptr (&pms->limit, &prev_prev);
 
-          if (nupd_append_2nd_left (pms->output, pgh_unravel (&pms->cur), ppg, 0, e))
+          if (nupd_append_2nd_left (
+                  pms->output,
+                  pgh_unravel (&pms->cur),
+                  ppg,
+                  0,
+                  e
+              ))
           {
             goto failed;
           }
@@ -2113,250 +2195,6 @@ failed:
   pgr_cancel_if_exists (pms->p, &prev_prev);
   return error_trace (e);
 }
-
-#ifdef TESTING
-TEST (ns_rebalance_execute_right_left_coverage)
-{
-  struct pgr_fixture f;
-  error              e = error_create ();
-  pgr_fixture_create (&f);
-
-  /*
-   * Shared scratch. 3x is enough to overflow an
-   * inner node in either direction with room to spare.
-   */
-  static u8 data[DL_DATA_SIZE * IN_MAX_KEYS * 3];
-  static u8 bulk[DL_DATA_SIZE * IN_MAX_KEYS * 2];
-  static u8 bulk3[DL_DATA_SIZE * IN_MAX_KEYS * 3];
-  static u8 leaf[DL_DATA_SIZE];
-
-#  define BUILD(pg)                                             \
-    pgr_begin_txn (&f.tx, f.p, &f.e);                           \
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e); \
-    pgr_commit (f.p, &f.tx, &f.e)
-
-  struct tree_descr descr = {
-      .next =
-          (struct tree_descr[]){
-              {.data = data, .dlen = DL_DATA_SIZE},
-              {.data = data, .dlen = DL_DATA_SIZE},
-              {.data = data, .dlen = DL_DATA_SIZE},
-          },
-      .nlen = 3,
-  };
-
-  /*
-   * Append at the far right end - more than one inner
-   * node's worth of new leaves.
-   *
-   * robs is basically 0 from the start (there is nothing
-   * to the right of the pivot to observe), but rcons has
-   * 2 * IN_MAX_KEYS separators to place. cur fills, the
-   * chain is exhausted, so new pages must be minted:
-   * done_observing_right && !done_right -> split
-   *
-   *            [   ] -> New inner nodes grow this way
-   *    _ _ _ _ _ _ _ _ _ _ _ _ _ _  -> Append here
-   */
-  TEST_CASE ("rebalance:right:done_observing:not_done_consuming")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params);
-
-    test_assert_mark_hit ("rebalance:right:done_observing:not_done_consuming");
-  }
-
-  /**
-  TEST_CASE ("rebalance:right:not_done_observing")
-  {
-    struct tree_descr _descr = {
-        .next =
-            (struct tree_descr[]){
-                {
-                    .next = i_malloc (IN_MAX_KEYS, sizeof (struct tree_descr), &f.e),
-                    .nlen = IN_MAX_KEYS,
-                },
-                {
-                    .next = i_malloc (IN_MAX_KEYS, sizeof (struct tree_descr), &f.e),
-                    .nlen = IN_MAX_KEYS,
-                },
-            },
-        .nlen = 2,
-    };
-
-    for (u32 i = 0; i < IN_MAX_KEYS; ++i)
-    {
-      _descr.next[0].next[i].data = data;
-      _descr.next[0].next[i].dlen = DL_DATA_SIZE;
-      _descr.next[0].next[i].next = NULL;
-
-      _descr.next[1].next[i].data = data;
-      _descr.next[1].next[i].dlen = DL_DATA_SIZE;
-      _descr.next[1].next[i].next = NULL;
-    }
-
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, _descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    i_free (_descr.next[0].next);
-    i_free (_descr.next[1].next);
-
-    test_assert_int_equal (ns_get_number_of_layers (f.p, pg, &f.e), 3);
-
-    struct ns_remove_params params;
-    DO_REMOVE (f, pg, 0, DL_DATA_SIZE * IN_MAX_KEYS, params);
-
-    test_assert_mark_hit ("rebalance:right:not_done_observing");
-    test_assert_mark_not_hit ("rebalance:right:not_done_observing:still_shift");
-  }
-  */
-
-  TEST_CASE ("rebalance:right:not_done_observing:not_done:still_shift")
-  {}
-
-  TEST_CASE ("rebalance_right_done_observing_not_done_consuming")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params);
-
-    test_assert_mark_hit ("rebalance:right:done_observing:not_done_consuming");
-  }
-
-  /*
-   * Shifts need a pre-existing multi-node inner level so
-   * there are dense siblings to observe. Build it the same
-   * way case 1 does (bulk append), commit, then insert a
-   * second bulk in the middle of the range.
-   *
-   * The pivot leaves apply_to_pivot full (lidx ==
-   * IN_MAX_KEYS > IN_MAX_KEYS / 2), the right sibling is
-   * observed but consumption isn't done, so cur is
-   * committed and the frontier shell is reused:
-   * !done_observing && !done_right && lidx > half -> shift.
-   * The trailing overflow past the end of the chain also
-   * re-hits the A1 split.
-   */
-  TEST_CASE ("rebalance_right_shift")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
-    DO_INSERT (f, pg, DL_DATA_SIZE, data, params);     // burst near the left
-
-    test_assert_mark_hit ("rebalance:right:not_done_observing:not_done:still_shift");
-  }
-
-  /*
-   * The absorb paths are the shrink direction: growth can
-   * never leave an observed husk with all consumption done
-   * (a dense sibling exactly refills an empty cur), but a
-   * bulk delete can. Children below merge, append_2nd
-   * records flow up, and the parent level repacks fewer
-   * entries than it has nodes - so each observed limit is
-   * emptied, deleted, and bridged over:
-   * !done_observing && done_consuming, limit != NONE
-   * -> absorb (+ the limit_nn inner mark).
-   *
-   * Deleting from near the front pulls survivors leftward
-   * across the right frontier; the delete ending mid-chain
-   * (not at the tail) is what keeps limit non-NONE.
-   */
-  /**
-  TEST_CASE ("rebalance_right_done_consuming_absorb")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
-
-    struct ns_remove_params dparams;
-    DO_REMOVE (f, params.root, DL_DATA_SIZE, DL_DATA_SIZE * IN_MAX_KEYS, dparams);
-
-    test_assert_mark_hit ("rebalance:right:not_done_observing:done_consuming");
-    test_assert_mark_hit ("rebalance:right:not_done_observing:done_consuming:limit_nn");
-  }
-  */
-
-  /*
-   * Mirror of the case above at the left edge.
-   *
-   * Insert the same bulk at a tiny offset. The pivot node
-   * packs right-then-left, so the prefix plus most of the
-   * new separators end up as left-side pending with no
-   * left siblings to observe or reuse:
-   * done_observing_left && !done_left -> split (A1 left).
-   */
-  TEST_CASE ("rebalance_left_done_observing_not_done_consuming")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE / 2, data, params);
-
-    test_assert_mark_hit ("rebalance:left:done_observing:not_done_consuming");
-  }
-
-  /*
-   * Same setup, but the burst lands near the right end of
-   * the (now wide) range, so the displacement runs through
-   * the left siblings instead.
-   */
-  /**
-  TEST_CASE ("rebalance_left_shift")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
-    DO_INSERT (f, pg, DL_DATA_SIZE * (3 + IN_MAX_KEYS), data, params);
-
-    test_assert_mark_hit ("rebalance:left:not_done_observing:not_done:still_shift");
-  }
-  */
-
-  /*
-   * Mirror: delete a bulk range near the right end, so the
-   * repack absorbs leftward husks instead.
-   */
-  /**
-  TEST_CASE ("rebalance_left_done_consuming_absorb")
-  {
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    spgno pg = build_tree_from_descr (f.p, &f.tx, descr, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
-
-    struct ns_insert_params params;
-    DO_INSERT (f, pg, DL_DATA_SIZE * 3, data, params); // widen the level
-
-    struct ns_remove_params dparams;
-    DO_REMOVE (f, pg, DL_DATA_SIZE * (3 + IN_MAX_KEYS), DL_DATA_SIZE * IN_MAX_KEYS, dparams);
-
-    test_assert_mark_hit ("rebalance:left:not_done_observing:done_consuming");
-    test_assert_mark_hit ("rebalance:left:not_done_observing:done_consuming:limit_nn");
-  }
-  */
-
-  pgr_fixture_teardown (&f);
-}
-#endif
 
 static err_t
 ns_pop_stack (struct ns_rebalance_params *pms, error *e)
@@ -2386,7 +2224,10 @@ failed:
   return error_trace (e);
 }
 
-static err_t ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e);
+static err_t ns_rebalance_move_up_stack (
+    struct ns_rebalance_params *pms,
+    error                      *e
+);
 
 /*
  * Maximally applies node updates
@@ -2413,10 +2254,12 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
   // ^
   // lidx
   // Continue in left mode
-  pms->lidx = IN_MAX_KEYS - nupd_append_maximally_right_then_left (pms->input, &pms->cur);
+  pms->lidx = IN_MAX_KEYS
+              - nupd_append_maximally_right_then_left (pms->input, &pms->cur);
 
   if (nupd_done_left (pms->input))
   {
+    TEST_MARK ("apply_to_pivot_done_left");
     // [++++++++++++++++++__]
     // ^
     // lidx
@@ -2461,7 +2304,37 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
     const pgno next_pg = in_get_next (page_h_ro (&pms->cur));
     if (next_pg != PGNO_NULL)
     {
-      if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, next_pg, pms->p, e))
+      if (pgr_get_writable (
+              &pms->limit,
+              pms->tx,
+              PG_INNER_NODE,
+              next_pg,
+              pms->p,
+              e
+          ))
+      {
+        goto failed;
+      }
+    }
+
+    return SUCCESS;
+  }
+  else
+  {
+    TEST_MARK ("apply_to_pivot_not_done_left");
+
+    // Left mode
+    const pgno prev_pg = in_get_prev (page_h_ro (&pms->cur));
+    if (prev_pg != PGNO_NULL)
+    {
+      if (pgr_get_writable (
+              &pms->limit,
+              pms->tx,
+              PG_INNER_NODE,
+              prev_pg,
+              pms->p,
+              e
+          ))
       {
         goto failed;
       }
@@ -2470,30 +2343,246 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
     return SUCCESS;
   }
 
-  // Left mode
-  const pgno prev_pg = in_get_prev (page_h_ro (&pms->cur));
-  if (prev_pg != PGNO_NULL)
-  {
-    if (pgr_get_writable (
-            &pms->limit,
-            pms->tx,
-            PG_INNER_NODE,
-            in_get_prev (page_h_ro (&pms->cur)),
-            pms->p,
-            e
-        ))
-    {
-      goto failed;
-    }
-  }
-
-  return SUCCESS;
-
 failed:
   pgr_cancel_if_exists (pms->p, &prev);
   pgr_cancel_if_exists (pms->p, &next);
   return error_trace (e);
 }
+
+#ifdef TESTING
+
+/*
+ * Rebalance tests construct node updates manually,
+ * but if it weren't possible to have arbitrary length
+ * node updates to begin with, then those tests are
+ * completely useless.
+ *
+ * This test serves as a way to ensure that node
+ * update states are actually reachable.
+ */
+TEST (possible_to_get_long_left_tail_on_nupd)
+{
+  // TODO
+}
+
+static inline spgno
+build_2_layer_tree (p_size len, struct pgr_fixture *f)
+{
+  u8 data[DL_DATA_SIZE];
+  rand_bytes (data, sizeof (data));
+
+  struct tree_descr bottom[IN_MAX_KEYS];
+  for (u32 i = 0; i < len; ++i)
+  {
+    bottom[i].data = data;
+    bottom[i].dlen = DL_DATA_SIZE;
+    bottom[i].next = NULL;
+  }
+
+  struct tree_descr descr = {
+      .next = bottom,
+      .nlen = len,
+  };
+
+  return build_tree_from_descr (f->p, &f->tx, descr, &f->e);
+}
+
+/*
+ * These tests construct a 2 layer tree:
+ *
+ *              [+++++++_______________]
+ *        ... ... ... ... ... ... ... ... ...
+ *
+ * You specify:
+ * - (in_len) how much data goes into the root inner node
+ *
+ * Then you apply a rebalance to the root node. You specify:
+ * - (rlen) how long the right updates are
+ * - (llen) how long the left updates are
+ *
+ * When you apply a rebalance, if rlen + llen + in_len > IN_MAX_KEYS,
+ * we expect a tree split, which would mean growing upwards by 1 node
+ *
+ * Otherwise, we expect it to remain at 2 layers.
+ *
+ * The function do_rebalance_on_2_layer_tree does the full test case
+ * read through the code to understand exactly what it does
+ */
+static inline spgno
+do_rebalance_on_2_layer_tree (
+    struct pgr_fixture *f,
+    u32                 llen,
+    u32                 rlen,
+    p_size              in_len,
+    p_size              lidx
+)
+{
+  // Build the 3 node tree
+  spgno root = build_2_layer_tree (in_len, f);
+
+  // Should be 3 nodes - e.g.
+  ASSERT (ns_get_number_of_layers (f->p, root, &f->e) == 2);
+
+  // Fetch the root page to reconstruct the seek stack
+  page_h rpg = page_h_create ();
+  pgr_get_writable (&rpg, &f->tx, PG_INNER_NODE, root, f->p, &f->e);
+
+  // Build the mock node updates
+  pgno  pivot = in_get_leaf (page_h_ro (&rpg), lidx);
+  pgno *right = NULL;
+  pgno *left  = NULL;
+
+  if (rlen > 0)
+  {
+    right = i_malloc (rlen, sizeof *right, &f->e);
+
+    // Ensure they are unique - TODO - make this better
+    for (u32 i = 0; i < rlen; ++i)
+    {
+      right[i] = randu64r (1000000, 1000000000000000);
+    }
+  }
+
+  if (llen > 0)
+  {
+    left = i_malloc (llen, sizeof *left, &f->e);
+
+    // Ensure they are unique
+    for (u32 i = 0; i < llen; ++i)
+    {
+      left[i] = randu64r (1000000, 1000000000000000);
+    }
+  }
+
+  // Create random node updates
+  struct node_updates *output =
+      nupd_random_from (left, llen, pivot, right, rlen, &f->e);
+  ASSERT (output != NULL);
+
+  // Do rebalance
+  struct ns_rebalance_params rebalance = {
+      .p    = f->p,
+      .tx   = &f->tx,
+      .root = root,
+      .pstack =
+          (struct seek_v[]){
+              (struct seek_v){
+                  .pg   = rpg,
+                  .lidx = lidx,
+              },
+          },
+      .sp         = 1,
+      .input      = NULL,
+      .output     = output,
+      .layer_root = {.isroot = false},
+  };
+
+  ns_rebalance (&rebalance, &f->e);
+
+  i_cfree (right);
+  i_cfree (left);
+
+  return rebalance.root;
+}
+TEST (ns_rebalance_apply_to_pivot_splits_2_layer_tree)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create (&f);
+  pgr_begin_txn (&f.tx, f.p, &f.e);
+
+  TEST_CASE ("Just overwrite one key")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 0, IN_MAX_KEYS, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+  }
+
+  TEST_CASE ("Right 1 key full")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 1, IN_MAX_KEYS, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+  }
+
+  TEST_CASE ("Left 1 key full")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 0, IN_MAX_KEYS, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+  }
+
+  TEST_CASE ("Right and Left 1 key full")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+    root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS - 1, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+  }
+
+  TEST_CASE ("Right 1 key don't split")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 1, IN_MAX_KEYS - 1, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+  }
+
+  TEST_CASE ("Left 1 key don't split")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 0, IN_MAX_KEYS - 1, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+  }
+
+  TEST_CASE ("Right and Left 1 key don't split")
+  {
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS - 2, 10);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+  }
+
+  for (u32 i = 2; i < 10; ++i)
+  {
+    u32 in_len = randu32r (1, IN_MAX_KEYS);
+    u32 len    = randu32r (0, IN_MAX_KEYS * 10);
+
+    TEST_CASE ("Right length %d", len)
+    {
+      spgno root = do_rebalance_on_2_layer_tree (&f, 0, len, in_len, 10);
+      if (in_len + len > IN_MAX_KEYS)
+      {
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+      }
+      else
+      {
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+      }
+    }
+
+    TEST_CASE ("Left length %d", len)
+    {
+      spgno root = do_rebalance_on_2_layer_tree (&f, len, 0, in_len, 10);
+      if (in_len + len > IN_MAX_KEYS)
+      {
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+      }
+      else
+      {
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+      }
+    }
+
+    TEST_CASE ("Right Left length %d", len)
+    {
+      spgno root = do_rebalance_on_2_layer_tree (&f, len, len, in_len, 10);
+      if (in_len + 2 * len > IN_MAX_KEYS)
+      {
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+      }
+      else
+      {
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+      }
+    }
+  }
+
+  pgr_commit (f.p, &f.tx, &f.e);
+  pgr_fixture_teardown (&f);
+}
+#endif
 
 static err_t
 ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
@@ -2557,7 +2646,11 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
        *
        * So this line is hit one the first loop always
        */
-      pms->output = nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e);
+      pms->output = nupd_init (
+          page_h_pgno (&pms->cur),
+          in_get_size (page_h_ro (&pms->cur)),
+          e
+      );
       if (pms->output == NULL)
       {
         goto failed;
@@ -2569,7 +2662,11 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
        * This happens when the previous layer input was not NULL,
        * e.g. at least two loops/layers happened
        */
-      nupd_reset (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)));
+      nupd_reset (
+          pms->output,
+          page_h_pgno (&pms->cur),
+          in_get_size (page_h_ro (&pms->cur))
+      );
     }
 
     return ns_rebalance_apply_to_pivot (pms, e);
@@ -2928,7 +3025,8 @@ ns_remove (struct ns_remove_params *params, error *e)
   s.writer    = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
+  s.output =
+      nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
   if (s.output == NULL)
   {
     goto failed;
@@ -2966,8 +3064,13 @@ ns_remove (struct ns_remove_params *params, error *e)
 
         if (params->dest)
         {
-          i32 written =
-              stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1, next_amount, params->dest, e);
+          i32 written = stream_bwrite (
+              (u8 *)dl_get_data (sro) + s.read_idx,
+              1,
+              next_amount,
+              params->dest,
+              e
+          );
 
           if (written < 0)
           {
@@ -3085,7 +3188,14 @@ drain:
 
           if (npg != PGNO_NULL)
           {
-            if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e))
+            if (pgr_get_writable (
+                    &next,
+                    params->tx,
+                    PG_DATA_LIST,
+                    npg,
+                    params->p,
+                    e
+                ))
             {
               goto failed;
             }
@@ -3099,7 +3209,13 @@ drain:
           dlgt_link (page_h_w (&s.writer), page_h_w_or_null (&next));
           page_h_xfer_ownership_ptr (&s.reader, &next);
 
-          if (nupd_append_2nd_right (s.output, pgh_unravel (&s.writer), rpg, 0, e))
+          if (nupd_append_2nd_right (
+                  s.output,
+                  pgh_unravel (&s.writer),
+                  rpg,
+                  0,
+                  e
+              ))
           {
             goto failed;
           }
@@ -3150,7 +3266,8 @@ drain:
     error_causef (
         e,
         ERR_CORRUPT,
-        "removed %" PRb_size " bytes, not a multiple of element size %" PRb_size,
+        "removed %" PRb_size
+        " bytes, not a multiple of element size %" PRb_size,
         s.total_removed,
         params->size
     );
@@ -3291,7 +3408,11 @@ ns_seek (struct ns_seek_params *a, error *e)
         // Stack overflow
         if (a->sp == 20)
         {
-          error_causef (e, ERR_RPTREE_PAGE_STACK_OVERFLOW, "page stack overflow (depth 20)");
+          error_causef (
+              e,
+              ERR_RPTREE_PAGE_STACK_OVERFLOW,
+              "page stack overflow (depth 20)"
+          );
           goto failed;
         }
 
@@ -3479,7 +3600,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
   while (max_bwrite == 0 || total_bwrite < max_bwrite)
   {
-    p_size next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
+    p_size next_amount = ns_write_next_amount (
+        curp,
+        lidx,
+        bnext,
+        max_bwrite,
+        total_bwrite,
+        state
+    );
 
     if (next_amount == 0)
     {
@@ -3491,7 +3619,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         if (npg != PGNO_NULL)
         {
-          WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.p, e));
+          WRAP (pgr_get_writable (
+              &next,
+              params.tx,
+              PG_DATA_LIST,
+              npg,
+              params.p,
+              e
+          ));
         }
 
         // Reached EOF
@@ -3508,7 +3643,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         curp = page_h_w (&cur);
 
-        next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
+        next_amount = ns_write_next_amount (
+            curp,
+            lidx,
+            bnext,
+            max_bwrite,
+            total_bwrite,
+            state
+        );
 
         ASSERT (next_amount > 0);
       }
@@ -3527,8 +3669,13 @@ ns_write_forward (const struct ns_write_params params, error *e)
         {
           // Pull bytes from caller's source stream and
           // stamp them into the page
-          const sp_size write =
-              stream_bread ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.src, e);
+          const sp_size write = stream_bread (
+              (u8 *)dl_get_data (curp) + lidx,
+              1,
+              next_amount,
+              params.src,
+              e
+          );
 
           if (write < 0)
           {
@@ -3625,7 +3772,11 @@ failed:
 static sb_size
 ns_write_backward (const struct ns_write_params params, error *e)
 {
-  return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
+  return error_causef (
+      e,
+      ERR_INVALID_ARGUMENT,
+      "Negative strides are not implemented (yet)"
+  );
 }
 
 sb_size
