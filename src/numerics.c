@@ -200,7 +200,7 @@ TEST (randu32r)
   test_assert_type_equal (randu32r (0, 0), 0u, u32, "ud");
   test_assert_type_equal (randu32r (U32_MAX, U32_MAX), U32_MAX, u32, "ud");
 
-  // tiny range — both endpoints must be reachable
+  // tiny range - both endpoints must be reachable
   {
     bool saw_lo = false;
     bool saw_hi = false;
@@ -701,7 +701,10 @@ TEST (parse_i32_expect)
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &e), ERR_ARITH);
+  test_assert_int_equal (
+      parse_i32_expect (&out, big, strlen (big), &e),
+      ERR_ARITH
+  );
 }
 #endif
 

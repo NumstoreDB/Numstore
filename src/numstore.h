@@ -241,7 +241,7 @@ int nsdb_perror (nsdb_t *ns, const char *prefix);
  * Every nsdb_execute call is individually atomic by default. Wrapping a
  * sequence of calls in nsdb_begin / nsdb_commit promotes that group to a
  * single atomic unit backed by the same WAL + two-phase locking used by
- * smart files — either every query in the transaction lands, or none of
+ * smart files - either every query in the transaction lands, or none of
  * them do. nsdb_rollback undoes all mutations since the last nsdb_begin.
  *----------------------------------------------------------------------------*/
 
@@ -274,7 +274,8 @@ int nsdb_rollback (nsdb_t *ns);
  *----------------------------------------------------------------------------*/
 
 #if defined(__GNUC__) || defined(__clang__)
-#  define NSDB_PRINTF(fmt_idx, vargs_idx) __attribute__ ((format (printf, fmt_idx, vargs_idx)))
+#  define NSDB_PRINTF(fmt_idx, vargs_idx) \
+    __attribute__ ((format (printf, fmt_idx, vargs_idx)))
 #else
 #  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
@@ -289,4 +290,9 @@ int nsdb_rollback (nsdb_t *ns);
  * @return < 0 on error - otherwise 0 on non data related queries or > 0 number
  * of elements inserted / written / removed / read for each op code respectively
  */
-sb_size nsdb_execute (nsdb_t *ns, const char *query_fmt, void *data, ...) NSDB_PRINTF (2, 4);
+sb_size nsdb_execute (
+    nsdb_t     *ns,
+    const char *query_fmt,
+    void       *data,
+    ...
+) NSDB_PRINTF (2, 4);

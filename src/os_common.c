@@ -49,7 +49,14 @@ def_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
   {
     if (errno == ENOMEM)
     {
-      error_causef (e, ERR_NOMEM, "malloc %d*%d: %s", nelem, size, strerror (errno));
+      error_causef (
+          e,
+          ERR_NOMEM,
+          "malloc %d*%d: %s",
+          nelem,
+          size,
+          strerror (errno)
+      );
     }
     else
     {
@@ -69,7 +76,8 @@ nomem_malloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
 
 TEST (i_malloc_injection)
 {
-  void *(*prev) (i_vmem *v, u32 nelem, u32 size, error *e) = default_vmem.i_malloc;
+  void *(*prev) (i_vmem *v, u32 nelem, u32 size, error *e) =
+      default_vmem.i_malloc;
 
   default_vmem.i_malloc = nomem_malloc;
 
@@ -109,7 +117,14 @@ def_calloc (i_vmem *v, const u32 nelem, const u32 size, error *e)
   {
     if (errno == ENOMEM)
     {
-      error_causef (e, ERR_NOMEM, "calloc %d*%d: %s", nelem, size, strerror (errno));
+      error_causef (
+          e,
+          ERR_NOMEM,
+          "calloc %d*%d: %s",
+          nelem,
+          size,
+          strerror (errno)
+      );
     }
     else
     {
@@ -140,7 +155,13 @@ i_realloc (void *ptr, const u32 nelem, const u32 size, error *e)
   void *ret = realloc (ptr, (size_t)bytes);
   if (ret == NULL)
   {
-    error_causef (e, ERR_NOMEM, "realloc %u bytes: %s", bytes, strerror (errno));
+    error_causef (
+        e,
+        ERR_NOMEM,
+        "realloc %u bytes: %s",
+        bytes,
+        strerror (errno)
+    );
     return NULL;
   }
   return ret;
@@ -542,7 +563,12 @@ i_malloc_nomem (i_vmem *v, u32 nelem, u32 size, error *e)
 }
 
 err_t
-i_open_errio (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+i_open_errio (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   return error_causef (e, ERR_IO, "Injected Fault");
 }

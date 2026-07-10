@@ -1,8 +1,8 @@
 import os
 
-ROOTS = ["src", "src/testing", "src/templates", "src/samples/numstore", "src/samples/smartfiles", "src/testing", "src/tools"]
+ROOTS = ["src", "src/testing", "src/templates", "src/samples", "src/testing", "src/tools"]
 
-OLD, NEW = "UNREACHABLE ();", "UNREACHABLE (); // LCOV_EXCL_LINE"
+OLD, NEW = "—", "-"
 
 for ROOT in ROOTS:
     for name in os.listdir(ROOT):

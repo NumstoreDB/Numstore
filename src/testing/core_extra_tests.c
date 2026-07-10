@@ -59,14 +59,19 @@ TEST (f16_to_f32_normals_and_specials)
       float result = f16_to_f32 (f16_f32_cases[i].h16);
       u32   bits;
       memcpy (&bits, &result, sizeof bits);
-      test_assert_type_equal (bits, f16_f32_cases[i].expected_f32_bits, u32, PRIu32);
+      test_assert_type_equal (
+          bits,
+          f16_f32_cases[i].expected_f32_bits,
+          u32,
+          PRIu32
+      );
     }
   }
 }
 
 TEST (f16_to_f32_nan_is_nan)
 {
-  // sign=0, exp=31, mant=0x200 — arbitrary non-zero mantissa → NaN
+  // sign=0, exp=31, mant=0x200 - arbitrary non-zero mantissa → NaN
   const float result = f16_to_f32 (0x7E00u);
   test_assert (isnan (result));
 }
@@ -112,12 +117,21 @@ TEST (parse_i32_boundary_values)
   {
     TEST_CASE ("%s", parse_i32_cases[i].name)
     {
-      const err_t ret =
-          parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
+      const err_t ret = parse_i32_expect (
+          &out,
+          parse_i32_cases[i].input,
+          parse_i32_cases[i].ilen,
+          &e
+      );
       test_assert_int_equal (ret, parse_i32_cases[i].expected_ret);
       if (ret == SUCCESS)
       {
-        test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
+        test_assert_type_equal (
+            out,
+            parse_i32_cases[i].expected_val,
+            i32,
+            PRId32
+        );
       }
       else
       {
@@ -157,12 +171,21 @@ TEST (parse_i64_boundary_values)
   {
     TEST_CASE ("%s", parse_i64_cases[i].name)
     {
-      const err_t ret =
-          parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
+      const err_t ret = parse_i64_expect (
+          &out,
+          parse_i64_cases[i].input,
+          parse_i64_cases[i].ilen,
+          &e
+      );
       test_assert_int_equal (ret, parse_i64_cases[i].expected_ret);
       if (ret == SUCCESS)
       {
-        test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
+        test_assert_type_equal (
+            out,
+            parse_i64_cases[i].expected_val,
+            i64,
+            PRId64
+        );
       }
       else
       {
@@ -215,8 +238,13 @@ TEST (ext_array_remove_all_produces_empty)
   test_assert_int_equal (e.cause_code, SUCCESS);
 
   u8        out[5] = {0};
-  const i64 n =
-      ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out, &e);
+  const i64 n      = ext_array_remove (
+      &a,
+      (struct stride){.start = 0, .stride = 1, .nelems = 5},
+      1,
+      out,
+      &e
+  );
 
   test_assert_type_equal (n, (i64)5, i64, PRId64);
   test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);
@@ -408,7 +436,7 @@ TEST (serializer_incremental_write_overflow)
   test_assert (srlizr_write (&s, part_a, 3));
   test_assert (srlizr_write (&s, part_b, 3));
 
-  // Capacity exhausted — any further write must return false.
+  // Capacity exhausted - any further write must return false.
   const u8 c = 0x00;
   test_assert_int_equal (srlizr_write (&s, &c, 1), false);
 
@@ -421,7 +449,7 @@ TEST (stride_constructors_resolve_correctly)
   struct stride r;
   error         e = error_create ();
 
-  TEST_CASE ("ustride() = [::] — all elements")
+  TEST_CASE ("ustride() = [::] - all elements")
   {
     stride_resolve (&r, ustride (), 10, &e);
     test_assert_int_equal (r.start, 0);
@@ -429,7 +457,7 @@ TEST (stride_constructors_resolve_correctly)
     test_assert_int_equal (r.nelems, 10);
   }
 
-  TEST_CASE ("ustride0(3) = [3:] — from index 3 to end")
+  TEST_CASE ("ustride0(3) = [3:] - from index 3 to end")
   {
     stride_resolve (&r, ustride0 (3), 10, &e);
     test_assert_int_equal (r.start, 3);
@@ -437,7 +465,7 @@ TEST (stride_constructors_resolve_correctly)
     test_assert_int_equal (r.nelems, 7);
   }
 
-  TEST_CASE ("ustride2(6) = [:6] — first 6 elements")
+  TEST_CASE ("ustride2(6) = [:6] - first 6 elements")
   {
     stride_resolve (&r, ustride1 (6), 10, &e);
     test_assert_int_equal (r.start, 0);
@@ -445,7 +473,7 @@ TEST (stride_constructors_resolve_correctly)
     test_assert_int_equal (r.nelems, 6);
   }
 
-  TEST_CASE ("ustride1(3) = [::3] — every 3rd, indices 0,3,6,9")
+  TEST_CASE ("ustride1(3) = [::3] - every 3rd, indices 0,3,6,9")
   {
     stride_resolve (&r, ustride2 (3), 10, &e);
     test_assert_int_equal (r.start, 0);
@@ -453,7 +481,7 @@ TEST (stride_constructors_resolve_correctly)
     test_assert_int_equal (r.nelems, 4);
   }
 
-  TEST_CASE ("ustride01(2,3) = [2::3] — from 2, step 3, indices 2,5,8")
+  TEST_CASE ("ustride01(2,3) = [2::3] - from 2, step 3, indices 2,5,8")
   {
     stride_resolve (&r, ustride02 (2, 3), 10, &e);
     test_assert_int_equal (r.start, 2);
@@ -461,7 +489,7 @@ TEST (stride_constructors_resolve_correctly)
     test_assert_int_equal (r.nelems, 3);
   }
 
-  TEST_CASE ("ustride12(2,8) = [:2:8] stop 8 — indices 0,2,4,6")
+  TEST_CASE ("ustride12(2,8) = [:2:8] stop 8 - indices 0,2,4,6")
   {
     stride_resolve (&r, ustride12 (8, 2), 10, &e);
     test_assert_int_equal (r.start, 0);
@@ -469,7 +497,7 @@ TEST (stride_constructors_resolve_correctly)
     test_assert_int_equal (r.nelems, 4);
   }
 
-  TEST_CASE ("ustride012(1,2,7) = [1:7:2] — indices 1,3,5")
+  TEST_CASE ("ustride012(1,2,7) = [1:7:2] - indices 1,3,5")
   {
     stride_resolve (&r, ustride012 (1, 7, 2), 10, &e);
     test_assert_int_equal (r.start, 1);
@@ -537,13 +565,23 @@ TEST (line_length_newline_found)
   TEST_CASE ("newline at position 0")
   {
     const char buf[] = "\nhello";
-    test_assert_type_equal (line_length (buf, sizeof (buf) - 1), (u64)0, u64, PRIu64);
+    test_assert_type_equal (
+        line_length (buf, sizeof (buf) - 1),
+        (u64)0,
+        u64,
+        PRIu64
+    );
   }
 
   TEST_CASE ("newline in the middle")
   {
     const char buf[] = "hello\nworld";
-    test_assert_type_equal (line_length (buf, sizeof (buf) - 1), (u64)5, u64, PRIu64);
+    test_assert_type_equal (
+        line_length (buf, sizeof (buf) - 1),
+        (u64)5,
+        u64,
+        PRIu64
+    );
   }
 
   TEST_CASE ("newline at the last allowed position")
@@ -642,10 +680,13 @@ TEST (strings_are_disjoint_cases)
 
   TEST_CASE ("shared element: returns pointer into left")
   {
-    char                 da[]    = "foo";
-    char                 db[]    = "baz";
-    char                 dc[]    = "foo"; // duplicate of da
-    const struct string  left[]  = {{.len = 3, .data = da}, {.len = 3, .data = db}};
+    char                da[]   = "foo";
+    char                db[]   = "baz";
+    char                dc[]   = "foo"; // duplicate of da
+    const struct string left[] = {
+        {.len = 3, .data = da},
+        {.len = 3, .data = db}
+    };
     const struct string  right[] = {{.len = 3, .data = dc}};
     const struct string *hit     = strings_are_disjoint (left, 2, right, 1);
     test_assert (hit != NULL);
@@ -654,14 +695,19 @@ TEST (strings_are_disjoint_cases)
 
   TEST_CASE ("shared element found in second left position")
   {
-    char                 da[]    = "alpha";
-    char                 db[]    = "beta";
-    char                 dc[]    = "beta";
-    const struct string  left[]  = {{.len = 5, .data = da}, {.len = 4, .data = db}};
+    char                da[]   = "alpha";
+    char                db[]   = "beta";
+    char                dc[]   = "beta";
+    const struct string left[] = {
+        {.len = 5, .data = da},
+        {.len = 4, .data = db}
+    };
     const struct string  right[] = {{.len = 4, .data = dc}};
     const struct string *hit     = strings_are_disjoint (left, 2, right, 1);
     test_assert (hit != NULL);
-    test_assert (string_equal (*hit, (struct string){.len = 4, .data = "beta"}));
+    test_assert (
+        string_equal (*hit, (struct string){.len = 4, .data = "beta"})
+    );
   }
 
   TEST_CASE ("multiple right candidates, none match: returns NULL")
@@ -670,7 +716,10 @@ TEST (strings_are_disjoint_cases)
     char                db[]    = "y";
     char                dc[]    = "z";
     const struct string left[]  = {{.len = 1, .data = da}};
-    const struct string right[] = {{.len = 1, .data = db}, {.len = 1, .data = dc}};
+    const struct string right[] = {
+        {.len = 1, .data = db},
+        {.len = 1, .data = dc}
+    };
     test_assert (strings_are_disjoint (left, 1, right, 2) == NULL);
   }
 }
@@ -740,7 +789,7 @@ TEST (cbuffer_read_write_wraparound)
     test_assert_int_equal ((int)n, 3);
     test_assert_type_equal (cbuffer_len (&b), (u32)4, u32, PRIu32);
 
-    // Read all 4 bytes — must be CC DD EE FF in order
+    // Read all 4 bytes - must be CC DD EE FF in order
     u8 result[4] = {0};
     n            = cbuffer_read (result, 1, 4, &b);
     test_assert_int_equal ((int)n, 4);

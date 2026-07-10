@@ -78,7 +78,7 @@ struct ns_insert_params
 
 /**
  * @struct ns_write_params
- * @brief Parameters for ns_write() — in-place overwrite of elements in an
+ * @brief Parameters for ns_write() - in-place overwrite of elements in an
  * R+Tree
  *
  * @var ns_write_params::p
@@ -120,7 +120,7 @@ struct ns_write_params
 
 /**
  * @struct ns_read_params
- * @brief Parameters for ns_read() — element retrieval from an R+Tree into a
+ * @brief Parameters for ns_read() - element retrieval from an R+Tree into a
  * stream
  *
  * @var ns_read_params::p
@@ -162,7 +162,7 @@ struct ns_read_params
 
 /**
  * @struct ns_remove_params
- * @brief Parameters for ns_remove() — element deletion and optional capture
+ * @brief Parameters for ns_remove() - element deletion and optional capture
  * from an R+Tree
  *
  * @var ns_remove_params::p
@@ -399,7 +399,10 @@ struct ns_balance_and_release_params
  * On success, prev, cur, and next are all released.  The caller obtains the
  * resulting (prev, cur, next) in_pairs via params.output for nupd accounting.
  */
-err_t ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
+err_t ns_balance_and_release (
+    struct ns_balance_and_release_params params,
+    error                               *e
+);
 
 /**
  * @struct ns_rebalance_params
@@ -472,7 +475,8 @@ i32 ns_get_number_of_layers (struct pager *p, pgno root, error *e);
 /**
 i32 ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e);
 i32 ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e);
-i32 ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error *e);
+i32 ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error
+*e);
 */
 
 #endif // ROPE_H

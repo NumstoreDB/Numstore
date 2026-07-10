@@ -103,14 +103,14 @@ TEST (test_mark_match)
     test_assert (test_mark_match ("*", "anything"));
     test_assert (test_mark_match ("*", "foo:bar:biz"));
 
-    // trailing '*' — prefix match
+    // trailing '*' - prefix match
     test_assert (test_mark_match ("foo:*", "foo:"));
     test_assert (test_mark_match ("foo:*", "foo:bar"));
     test_assert (test_mark_match ("foo:bar:*", "foo:bar:biz"));
     test_fail_if (test_mark_match ("foo:*", "fo"));
     test_fail_if (test_mark_match ("foo:*", "bar:foo"));
 
-    // leading '*' — suffix match
+    // leading '*' - suffix match
     test_assert (test_mark_match ("*:biz", "foo:bar:biz"));
     test_assert (test_mark_match ("*biz", "biz"));
     test_fail_if (test_mark_match ("*:biz", "biz"));

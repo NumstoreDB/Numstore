@@ -1,6 +1,6 @@
 # Base style rules
 BasedOnStyle: Google
-ColumnLimit: 100
+ColumnLimit: 80
 IndentWidth: 2
 ContinuationIndentWidth: 4
 UseTab: Never
@@ -13,9 +13,8 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllArgumentsOnNextLine: false                  
 
 # Break return type on definitions, keep on declarations
-AlwaysBreakAfterReturnType: AllDefinitions          
 BreakAfterReturnType: AllDefinitions                
-PenaltyReturnTypeOnItsOwnLine: 1
+PenaltyReturnTypeOnItsOwnLine: 1000000
 SpaceBeforeParens: Always                           
 IndentWrappedFunctionNames: false
 

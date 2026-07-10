@@ -126,7 +126,13 @@ win32_file_size (const i_file *fp, error *e)
 // Positional Read / Write
 
 static i64
-win32_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+win32_pread_some (
+    const i_file *fp,
+    void         *dest,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
@@ -153,7 +159,13 @@ win32_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, e
 }
 
 static i64
-win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+win32_pread_all (
+    const i_file *fp,
+    void         *dest,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
@@ -166,7 +178,8 @@ win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, er
   {
     OVERLAPPED ov    = make_overlapped (offset + nread);
     DWORD      chunk = 0;
-    DWORD      want  = (DWORD)((n - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nread));
+    DWORD      want =
+        (DWORD)((n - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nread));
 
     if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, &ov)))
     {
@@ -195,7 +208,13 @@ win32_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, er
 }
 
 static i64
-win32_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e)
+win32_pwrite_some (
+    const i_file *fp,
+    const void   *src,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
@@ -214,7 +233,13 @@ win32_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 off
 }
 
 static err_t
-win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e)
+win32_pwrite_all (
+    const i_file *fp,
+    const void   *src,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
@@ -227,7 +252,8 @@ win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offs
   {
     OVERLAPPED ov    = make_overlapped (offset + nwrite);
     DWORD      chunk = 0;
-    DWORD      want  = (DWORD)((n - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nwrite));
+    DWORD      want =
+        (DWORD)((n - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nwrite));
 
     if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, &ov)))
     {
@@ -242,10 +268,15 @@ win32_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offs
 }
 
 ////////////////////////////////////////////////////////////
-// IO Vec (no scatter-gather on Windows for regular files — loop per buffer)
+// IO Vec (no scatter-gather on Windows for regular files - loop per buffer)
 
 static i64
-win32_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, error *e)
+win32_writev_some (
+    const i_file       *fp,
+    const struct bytes *src,
+    const int           iovcnt,
+    error              *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
@@ -255,7 +286,13 @@ win32_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, 
   for (int i = 0; i < iovcnt; i++)
   {
     DWORD nwritten = 0;
-    if (unlikely (!WriteFile (fp->handle, src[i].head, (DWORD)src[i].len, &nwritten, NULL)))
+    if (unlikely (!WriteFile (
+            fp->handle,
+            src[i].head,
+            (DWORD)src[i].len,
+            &nwritten,
+            NULL
+        )))
     {
       char buf[WIN_ERR_BUF];
       return error_causef (e, ERR_IO, "writev: %s", WIN_ERRMSG (buf));
@@ -271,7 +308,12 @@ win32_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, 
 }
 
 static err_t
-win32_writev_all (const i_file *fp, struct bytes *iov, const int iovcnt, error *e)
+win32_writev_all (
+    const i_file *fp,
+    struct bytes *iov,
+    const int     iovcnt,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
@@ -335,7 +377,8 @@ win32_read_all (const i_file *fp, void *dest, const u64 nbytes, error *e)
   while (nread < nbytes)
   {
     DWORD chunk = 0;
-    DWORD want  = (DWORD)((nbytes - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (nbytes - nread));
+    DWORD want  = (DWORD)((nbytes - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL
+                                                           : (nbytes - nread));
 
     if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, NULL)))
     {
@@ -389,7 +432,8 @@ win32_write_all (const i_file *fp, const void *src, const u64 nbytes, error *e)
   while (nwrite < nbytes)
   {
     DWORD chunk = 0;
-    DWORD want  = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (nbytes - nwrite));
+    DWORD want = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL
+                                                           : (nbytes - nwrite));
 
     if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, NULL)))
     {
@@ -495,11 +539,16 @@ win32_seek (const i_file *fp, const u64 offset, const seek_t whence, error *e)
 }
 
 ////////////////////////////////////////////////////////////
-// File system vtable — Win32 implementations
+// File system vtable - Win32 implementations
 // vfs parameter unused; Win32 FS operations are stateless.
 
 static err_t
-win32_open_rw (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+win32_open_rw (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   (void)vfs;
   HANDLE h = CreateFileA (
@@ -529,7 +578,12 @@ win32_open_rw (i_file_system_vtable *vfs, i_file *dest, const char *fname, error
 }
 
 static err_t
-win32_open_r (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+win32_open_r (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   (void)vfs;
   HANDLE h = CreateFileA (
@@ -559,7 +613,12 @@ win32_open_r (i_file_system_vtable *vfs, i_file *dest, const char *fname, error 
 }
 
 static err_t
-win32_open_w (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+win32_open_w (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   (void)vfs;
   HANDLE h = CreateFileA (
@@ -663,7 +722,12 @@ win32_touch (i_file_system_vtable *vfs, const char *fname, error *e)
 }
 
 static err_t
-win32_dir_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e)
+win32_dir_exists (
+    i_file_system_vtable *vfs,
+    const char           *fname,
+    bool                 *dest,
+    error                *e
+)
 {
   (void)vfs;
   DWORD attrs = GetFileAttributesA (fname);
@@ -688,7 +752,12 @@ win32_dir_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, erro
 }
 
 static err_t
-win32_file_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e)
+win32_file_exists (
+    i_file_system_vtable *vfs,
+    const char           *fname,
+    bool                 *dest,
+    error                *e
+)
 {
   (void)vfs;
   DWORD attrs = GetFileAttributesA (fname);
@@ -785,7 +854,10 @@ win32_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
 
   if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE))
   {
-    i_log_error ("cond_wait: SleepConditionVariableCS failed: %lu\n", GetLastError ());
+    i_log_error (
+        "cond_wait: SleepConditionVariableCS failed: %lu\n",
+        GetLastError ()
+    );
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
 }
@@ -801,7 +873,10 @@ win32_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
     DWORD err = GetLastError ();
     if (err != ERROR_TIMEOUT)
     {
-      i_log_error ("cond_timed_wait: SleepConditionVariableCS failed: %lu\n", err);
+      i_log_error (
+          "cond_timed_wait: SleepConditionVariableCS failed: %lu\n",
+          err
+      );
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -874,7 +949,7 @@ win32_mutex_lock (i_threading *t, i_mutex *m)
   DWORD tid = GetCurrentThreadId ();
   if (cs_owner (m) == tid)
   {
-    i_log_error ("mutex_lock: deadlock — thread %lu already owns mutex\n", tid);
+    i_log_error ("mutex_lock: deadlock - thread %lu already owns mutex\n", tid);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
 #  endif
@@ -1012,7 +1087,7 @@ struct i_threading default_threading = {
 //
 // QueryPerformanceCounter is the Windows monotonic clock.
 // QueryPerformanceFrequency returns ticks/sec and is fixed
-// at boot — safe to query once per timer.
+// at boot - safe to query once per timer.
 
 err_t
 i_timer_create (i_timer *timer, error *e)
@@ -1069,7 +1144,7 @@ i_timer_now_ns (i_timer *timer)
 
   LONGLONG elapsed = now.QuadPart - timer->start.QuadPart;
 
-  // elapsed * 1e9 / frequency — multiply before divide to preserve precision.
+  // elapsed * 1e9 / frequency - multiply before divide to preserve precision.
   // Risk of overflow: elapsed * 1e9 overflows LONGLONG at ~9.2 seconds if
   // frequency is 1 GHz. Most systems are 10–100 MHz, giving ~92–920 seconds
   // before overflow. For long-running timers use the 128-bit path below.

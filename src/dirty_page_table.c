@@ -349,7 +349,8 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
   {
     dpge_key_init (&candidate, entry->pg);
 
-    struct hnode **other_node = htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
+    struct hnode **other_node =
+        htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
 
     if (other_node == NULL)
     {
@@ -357,7 +358,8 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
       goto theend;
     }
 
-    struct dpg_entry *other = container_of (*other_node, struct dpg_entry, node);
+    struct dpg_entry *other =
+        container_of (*other_node, struct dpg_entry, node);
 
     latch_lock (&other->l);
     {

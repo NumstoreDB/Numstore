@@ -99,7 +99,13 @@ posix_file_size (const i_file *fp, error *e)
 }
 
 static i64
-posix_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+posix_pread_some (
+    const i_file *fp,
+    void         *dest,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
@@ -116,7 +122,13 @@ posix_pread_some (const i_file *fp, void *dest, const u64 n, const u64 offset, e
 }
 
 static i64
-posix_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+posix_pread_all (
+    const i_file *fp,
+    void         *dest,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
@@ -128,7 +140,8 @@ posix_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, er
   while (nread < n)
   {
     ASSERT (n > nread);
-    const ssize_t _nread = pread (fp->fd, _dest + nread, n - nread, (off_t)(offset + nread));
+    const ssize_t _nread =
+        pread (fp->fd, _dest + nread, n - nread, (off_t)(offset + nread));
     if (_nread == 0)
     {
       return (i64)nread;
@@ -146,7 +159,13 @@ posix_pread_all (const i_file *fp, void *dest, const u64 n, const u64 offset, er
 }
 
 static i64
-posix_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e)
+posix_pwrite_some (
+    const i_file *fp,
+    const void   *src,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
@@ -163,7 +182,13 @@ posix_pwrite_some (const i_file *fp, const void *src, const u64 n, const u64 off
 }
 
 static err_t
-posix_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offset, error *e)
+posix_pwrite_all (
+    const i_file *fp,
+    const void   *src,
+    const u64     n,
+    const u64     offset,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
@@ -176,7 +201,12 @@ posix_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offs
   {
     ASSERT (n > nwritten);
 
-    const ssize_t _nw = pwrite (fp->fd, _src + nwritten, n - nwritten, (off_t)(offset + nwritten));
+    const ssize_t _nw = pwrite (
+        fp->fd,
+        _src + nwritten,
+        n - nwritten,
+        (off_t)(offset + nwritten)
+    );
 
     if (unlikely (_nw < 0 && errno != EINTR))
     {
@@ -193,7 +223,12 @@ posix_pwrite_all (const i_file *fp, const void *src, const u64 n, const u64 offs
 // IO Vec
 
 static i64
-posix_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, error *e)
+posix_writev_some (
+    const i_file       *fp,
+    const struct bytes *src,
+    const int           iovcnt,
+    error              *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
@@ -215,7 +250,12 @@ posix_writev_some (const i_file *fp, const struct bytes *src, const int iovcnt, 
 }
 
 static err_t
-posix_writev_all (const i_file *fp, struct bytes *iov, const int iovcnt, error *e)
+posix_writev_all (
+    const i_file *fp,
+    struct bytes *iov,
+    const int     iovcnt,
+    error        *e
+)
 {
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
@@ -478,7 +518,12 @@ posix_seek (const i_file *fp, const u64 offset, const seek_t whence, error *e)
 }
 
 static err_t
-posix_open_rw (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+posix_open_rw (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   (void)vfs;
   const int fd = open (fname, O_RDWR | O_CREAT, 0644);
@@ -501,7 +546,12 @@ posix_open_rw (i_file_system_vtable *vfs, i_file *dest, const char *fname, error
 }
 
 static err_t
-posix_open_r (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+posix_open_r (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   (void)vfs;
   const int fd = open (fname, O_RDONLY, 0644);
@@ -524,7 +574,12 @@ posix_open_r (i_file_system_vtable *vfs, i_file *dest, const char *fname, error 
 }
 
 static err_t
-posix_open_w (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e)
+posix_open_w (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+)
 {
   (void)vfs;
   const int fd = open (fname, O_WRONLY | O_CREAT, 0644);
@@ -670,7 +725,12 @@ posix_touch (i_file_system_vtable *vfs, const char *fname, error *e)
 }
 
 static err_t
-posix_dir_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e)
+posix_dir_exists (
+    i_file_system_vtable *vfs,
+    const char           *fname,
+    bool                 *dest,
+    error                *e
+)
 {
   (void)vfs;
 
@@ -693,7 +753,12 @@ posix_dir_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, erro
 }
 
 static err_t
-posix_file_exists (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e)
+posix_file_exists (
+    i_file_system_vtable *vfs,
+    const char           *fname,
+    bool                 *dest,
+    error                *e
+)
 {
   (void)vfs;
 
@@ -786,12 +851,22 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
     {
       case EAGAIN:
       {
-        return error_causef (e, ERR_IO, "pthread_cond_init: %s", strerror (errno));
+        return error_causef (
+            e,
+            ERR_IO,
+            "pthread_cond_init: %s",
+            strerror (errno)
+        );
       }
 
       case ENOMEM:
       {
-        return error_causef (e, ERR_NOMEM, "pthread_cond_init: %s", strerror (errno));
+        return error_causef (
+            e,
+            ERR_NOMEM,
+            "pthread_cond_init: %s",
+            strerror (errno)
+        );
       }
 
       case EBUSY:

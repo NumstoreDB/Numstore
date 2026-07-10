@@ -1,6 +1,20 @@
 # Changelog
 
-## [v1.1.4] - Unreleased
+## [v1.2.0] - Unreleased
+
+## Changed 
+- When you build sarrays, it flattens dimensions instead of creating nested dimensions 
+    - `[10][5] TYPE` gets reduced from `SARRAY(10, SARRAY(5, TYPE))` to `SARRAY(10, 5, TYPE)`
+- CI is lightweight on the develop branch and heavy weight on master branch 
+- Column limit from 80 to 100
+
+## Added 
+- Lots of rebalance tests
+- nscli - a command line tool for numstore that reads data from the numstore file
+- The ability to compile queries directly into nsdb_execute rather than seperate utilities for each
+
+## Removed 
+- Public smfile api - users can just make types u8
 
 ## [v1.1.3] - 2026-06-09
 

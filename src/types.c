@@ -49,7 +49,14 @@ prim_t_validate (const enum prim_t *t, error *e)
   ASSERT (t);
   if (!(*t <= CU128 && *t >= U8))
   {
-    return error_causef (e, ERR_INTERP, "invalid prim type %d (valid range %d..%d)", *t, U8, CU128);
+    return error_causef (
+        e,
+        ERR_INTERP,
+        "invalid prim type %d (valid range %d..%d)",
+        *t,
+        U8,
+        CU128
+    );
   }
 
   return SUCCESS;
@@ -148,7 +155,12 @@ TEST (struct_t_validate_shallow)
   {
     error           e = error_create ();
     struct struct_t s = {
-        .keys  = (struct string[]){strfcstr ("foo"), strfcstr (""), strfcstr ("biz")},
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr (""),
+                strfcstr ("biz")
+            },
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
@@ -159,7 +171,12 @@ TEST (struct_t_validate_shallow)
   {
     error           e = error_create ();
     struct struct_t s = {
-        .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("biz"), strfcstr ("biz")},
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("biz"),
+                strfcstr ("biz")
+            },
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
@@ -170,7 +187,12 @@ TEST (struct_t_validate_shallow)
   {
     error           e = error_create ();
     struct struct_t s = {
-        .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("bar"), strfcstr ("biz")},
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("bar"),
+                strfcstr ("biz")
+            },
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
@@ -270,7 +292,12 @@ TEST (union_t_validate_shallow)
   {
     error          e = error_create ();
     struct union_t s = {
-        .keys  = (struct string[]){strfcstr ("foo"), strfcstr (""), strfcstr ("biz")},
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr (""),
+                strfcstr ("biz")
+            },
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
@@ -281,7 +308,12 @@ TEST (union_t_validate_shallow)
   {
     error          e = error_create ();
     struct union_t s = {
-        .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("biz"), strfcstr ("biz")},
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("biz"),
+                strfcstr ("biz")
+            },
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
@@ -292,7 +324,12 @@ TEST (union_t_validate_shallow)
   {
     error          e = error_create ();
     struct union_t s = {
-        .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("bar"), strfcstr ("biz")},
+        .keys =
+            (struct string[]){
+                strfcstr ("foo"),
+                strfcstr ("bar"),
+                strfcstr ("biz")
+            },
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
@@ -1286,8 +1323,9 @@ type_get_string_size (const struct type *t)
     case T_UNION:
     {
       // "struct { }" or "union { }"
-      u32 base_len = (t->type == T_STRUCT) ? sizeof ("struct { }") : sizeof ("union { }");
-      u32 sublen   = 0;
+      u32 base_len =
+          (t->type == T_STRUCT) ? sizeof ("struct { }") : sizeof ("union { }");
+      u32 sublen = 0;
 
       // Accessing st or un identically since they share identical structural
       // layouts
@@ -1340,13 +1378,24 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
     case T_UNION:
     {
       char *p = dest;
-      int n = snprintf (p, (size_t)(end - p), "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
+      int   n = snprintf (
+          p,
+          (size_t)(end - p),
+          "%s { ",
+          (t->type == T_STRUCT) ? "struct" : "union"
+      );
       p += (n > 0 ? n : 0);
 
       u16 len = t->st.len;
       for (u16 i = 0; i < len; ++i)
       {
-        n = snprintf (p, (size_t)(end - p), "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
+        n = snprintf (
+            p,
+            (size_t)(end - p),
+            "%.*s ",
+            t->st.keys[i].len,
+            t->st.keys[i].data
+        );
         p += (n > 0 ? n : 0);
 
         p = type_generate_string_rec (p, end, t->st.types[i]);
@@ -1409,9 +1458,12 @@ TEST (type_generate_string)
 
   TEST_CASE ("sarray")
   {
-    struct type element      = {.type = T_PRIM, .p = I32};
-    u32         dims[3]      = {5, 20, 100};
-    struct type t            = {.type = T_SARRAY, .sa = {.rank = 3, .dims = dims, .t = &element}};
+    struct type element = {.type = T_PRIM, .p = I32};
+    u32         dims[3] = {5, 20, 100};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 3, .dims = dims, .t = &element}
+    };
     const char *expected     = "[5][20][100] i32";
     u32         expected_len = (u32)strlen (expected);
 
@@ -1428,7 +1480,10 @@ TEST (type_generate_string)
     struct type   f2       = {.type = T_PRIM, .p = F32};
     struct type  *types[2] = {&f1, &f2};
 
-    struct type t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
+    struct type t = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = keys, .types = types}
+    };
     const char *expected     = "struct { x f32, y f32 }";
     u32         expected_len = (u32)strlen (expected);
 
@@ -1440,14 +1495,21 @@ TEST (type_generate_string)
 
   TEST_CASE ("union")
   {
-    struct string keys[2]  = {{.data = "as_int", .len = 6}, {.data = "as_ptr", .len = 6}};
-    struct type   f1       = {.type = T_PRIM, .p = I64};
-    struct type   f2       = {.type = T_PRIM, .p = U64};
-    struct type  *types[2] = {&f1, &f2};
+    struct string keys[2] = {
+        {.data = "as_int", .len = 6},
+        {.data = "as_ptr", .len = 6}
+    };
+    struct type  f1       = {.type = T_PRIM, .p = I64};
+    struct type  f2       = {.type = T_PRIM, .p = U64};
+    struct type *types[2] = {&f1, &f2};
 
     struct type t = {
         .type = T_UNION,
-        .un   = {.len = 2, .keys = keys, .types = types} // Using .un overlay explicitly
+        .un   = {
+            .len   = 2,
+            .keys  = keys,
+            .types = types
+        } // Using .un overlay explicitly
     };
     const char *expected     = "union { as_int i64, as_ptr u64 }";
     u32         expected_len = (u32)strlen (expected);
@@ -1461,11 +1523,14 @@ TEST (type_generate_string)
   TEST_CASE ("complex_nested")
   {
     // Sub-component A: union { raw u8, state i32 }
-    struct string un_keys[2]  = {{.data = "raw", .len = 3}, {.data = "state", .len = 5}};
-    struct type   prim_u8     = {.type = T_PRIM, .p = U8};
-    struct type   prim_i32    = {.type = T_PRIM, .p = I32};
-    struct type  *un_types[2] = {&prim_u8, &prim_i32};
-    struct type   inner_union = {
+    struct string un_keys[2] = {
+        {.data = "raw", .len = 3},
+        {.data = "state", .len = 5}
+    };
+    struct type  prim_u8     = {.type = T_PRIM, .p = U8};
+    struct type  prim_i32    = {.type = T_PRIM, .p = I32};
+    struct type *un_types[2] = {&prim_u8, &prim_i32};
+    struct type  inner_union = {
         .type = T_UNION,
         .un   = {.len = 2, .keys = un_keys, .types = un_types}
     };
@@ -1479,9 +1544,12 @@ TEST (type_generate_string)
     };
 
     // Parent Struct: struct { payload <union>, tags <array> }
-    struct string st_keys[2]    = {{.data = "payload", .len = 7}, {.data = "tags", .len = 4}};
-    struct type  *st_types[2]   = {&inner_union, &inner_array};
-    struct type   parent_struct = {
+    struct string st_keys[2] = {
+        {.data = "payload", .len = 7},
+        {.data = "tags", .len = 4}
+    };
+    struct type *st_types[2]   = {&inner_union, &inner_array};
+    struct type  parent_struct = {
         .type = T_STRUCT,
         .st   = {.len = 2, .keys = st_keys, .types = st_types}
     };
@@ -1493,8 +1561,9 @@ TEST (type_generate_string)
         .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
     };
 
-    const char *expected     = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
-    u32         expected_len = (u32)strlen (expected);
+    const char *expected =
+        "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
+    u32 expected_len = (u32)strlen (expected);
 
     // Verify type_get_string_size returns enough space for safe serialization
     u32 calculated_size = type_get_string_size (&root_type);
@@ -1845,7 +1914,7 @@ union_t_serialize (struct serializer *dest, const struct union_t *src)
   {
     // (KLEN
     struct string next = src->keys[i];
-    ret                = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
+    ret = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
     ASSERT (ret);
 
     // KEY)
@@ -2264,7 +2333,12 @@ TEST (struct_t_deserialize_red_path)
 #endif
 
 static inline err_t
-union_t_deserialize (struct union_t *dest, struct deserializer *src, struct allocator *a, error *e)
+union_t_deserialize (
+    struct union_t      *dest,
+    struct deserializer *src,
+    struct allocator    *a,
+    error               *e
+)
 {
   ASSERT (dest);
   BUILDER_INIT (b, a);
@@ -2395,10 +2469,11 @@ TEST (union_t_deserialize_red_path)
 {
   ALLOC_INIT (alloc);
 
-  u8  data[] = {0,   0,   0,   0,   'f',        'o',        'o',    (u8)T_PRIM, (u8)U32,
-                0,   0,   'f', 'o', 'o',        (u8)T_PRIM, (u8)U8, 0,          0,
-                'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,      0,          'b',
-                'a', 'z', 'b', 'i', (u8)T_PRIM, (u8)CF128};
+  u8  data[] = {0,          0,          0,       0,          'f',      'o', 'o',
+                (u8)T_PRIM, (u8)U32,    0,       0,          'f',      'o', 'o',
+                (u8)T_PRIM, (u8)U8,     0,       0,          'b',      'a', 'r',
+                'o',        (u8)T_PRIM, (u8)U16, 0,          0,        'b', 'a',
+                'z',        'b',        'i',     (u8)T_PRIM, (u8)CF128};
   u16 len    = 4;
   u16 l0     = 3;
   u16 l2     = 3;
@@ -2625,7 +2700,12 @@ TEST (prim_t_random)
 #endif
 
 static err_t
-struct_t_random (struct struct_t *st, struct allocator *alloc, u32 depth, error *e)
+struct_t_random (
+    struct struct_t  *st,
+    struct allocator *alloc,
+    u32               depth,
+    error            *e
+)
 {
   ASSERT (st);
 
@@ -2657,19 +2737,26 @@ struct_t_random (struct struct_t *st, struct allocator *alloc, u32 depth, error 
 }
 
 static inline err_t
-union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e)
+union_t_random (
+    struct union_t   *un,
+    struct allocator *alloc,
+    u32               depth,
+    error            *e
+)
 {
   ASSERT (un);
 
   un->len = (u16)randu32r (1, 5);
 
-  un->keys = (struct string *)allocate (alloc, un->len, sizeof (struct string), e);
+  un->keys =
+      (struct string *)allocate (alloc, un->len, sizeof (struct string), e);
   if (!un->keys)
   {
     return error_trace (e);
   }
 
-  un->types = (struct type **)allocate (alloc, un->len, sizeof (struct type *), e);
+  un->types =
+      (struct type **)allocate (alloc, un->len, sizeof (struct type *), e);
   if (!un->types)
   {
     return error_trace (e);
@@ -2689,7 +2776,12 @@ union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e
 }
 
 static inline err_t
-sarray_t_random (struct sarray_t *sa, struct allocator *temp, u32 depth, error *e)
+sarray_t_random (
+    struct sarray_t  *sa,
+    struct allocator *temp,
+    u32               depth,
+    error            *e
+)
 {
   ASSERT (sa);
 
@@ -2852,7 +2944,7 @@ sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right)
     }
   }
 
-  return true;
+  return type_equal (left->t, right->t);
 }
 
 bool
@@ -3227,7 +3319,8 @@ TEST (struct_t_resolve_key)
   ));
   test_assert_int_equal (
       ofst,
-      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32) + sizeof (i8)
+      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32)
+          + sizeof (i8)
   );
 
   ALLOC_CLOSE (alloc);
@@ -3236,7 +3329,12 @@ TEST (struct_t_resolve_key)
 #endif
 
 err_t
-struct_t_create (struct struct_t *dest, struct kvt_list list, struct allocator *dalloc, error *e)
+struct_t_create (
+    struct struct_t  *dest,
+    struct kvt_list   list,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   if (list.len == 0)
   {
@@ -3246,14 +3344,20 @@ struct_t_create (struct struct_t *dest, struct kvt_list list, struct allocator *
   // Copy stuff over
   if (dalloc)
   {
-    dest->len  = list.len;
-    dest->keys = allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
+    dest->len = list.len;
+    dest->keys =
+        allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL)
     {
       return error_trace (e);
     }
 
-    dest->types = allocator_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
+    dest->types = allocator_copy (
+        dalloc,
+        list.types,
+        list.len * sizeof (struct type *),
+        e
+    );
     if (dest->keys == NULL)
     {
       return error_trace (e);
@@ -3297,10 +3401,14 @@ TEST (union_t_resolve_key)
   ALLOC_INIT (alloc);
   error e = error_create ();
 
-  struct type *t =
-      compile_type_alloc ("union { a struct { a u32, b [10]f32 }, b f32 }", &alloc, &e);
+  struct type *t = compile_type_alloc (
+      "union { a struct { a u32, b [10]f32 }, b f32 }",
+      &alloc,
+      &e
+  );
 
-  struct type *subtype0 = compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e);
+  struct type *subtype0 =
+      compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e);
 
   struct type *subtype1 = compile_type_alloc ("[10]f32", &alloc, &e);
 
@@ -3320,7 +3428,12 @@ TEST (union_t_resolve_key)
 #endif
 
 err_t
-union_t_create (struct union_t *dest, struct kvt_list list, struct allocator *dalloc, error *e)
+union_t_create (
+    struct union_t   *dest,
+    struct kvt_list   list,
+    struct allocator *dalloc,
+    error            *e
+)
 {
   if (list.len == 0)
   {
@@ -3330,14 +3443,20 @@ union_t_create (struct union_t *dest, struct kvt_list list, struct allocator *da
   // Copy stuff over
   if (dalloc)
   {
-    dest->len  = list.len;
-    dest->keys = allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
+    dest->len = list.len;
+    dest->keys =
+        allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL)
     {
       return error_trace (e);
     }
 
-    dest->types = allocator_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
+    dest->types = allocator_copy (
+        dalloc,
+        list.types,
+        list.len * sizeof (struct type *),
+        e
+    );
     if (dest->keys == NULL)
     {
       return error_trace (e);
@@ -3445,7 +3564,19 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
     goto theend;
   }
 
-  u32 *dims = builder_malloc_persist (eb->b, rank, sizeof *dims, e);
+  // If the element type is itself an sarray, flatten it: our dims come
+  // first, then the sub-array's dims, and the element type collapses to
+  // the sub-array's (already-flat) element type.
+  struct sarray_t *sub      = NULL;
+  u16              sub_rank = 0;
+  if (eb->type->type == T_SARRAY)
+  {
+    sub      = &eb->type->sa;
+    sub_rank = sub->rank;
+  }
+
+  u16  total_rank = rank + sub_rank;
+  u32 *dims       = builder_malloc_persist (eb->b, total_rank, sizeof *dims, e);
   if (!dims)
   {
     goto theend;
@@ -3457,7 +3588,7 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
   {
     goto theend;
   }
-  *t = *eb->type;
+  *t = sub ? *sub->t : *eb->type;
 
   u16 i = 0;
   for (struct llnode *it = eb->head; it; it = it->next)
@@ -3465,8 +3596,12 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
     struct dim_llnode *dn = container_of (it, struct dim_llnode, link);
     dims[i++]             = dn->dim;
   }
+  for (u16 j = 0; j < sub_rank; j++)
+  {
+    dims[i++] = sub->dims[j];
+  }
 
-  persistent->rank = rank;
+  persistent->rank = total_rank;
   persistent->dims = dims;
   persistent->t    = t;
 
@@ -3522,6 +3657,29 @@ TEST (sarray_builder)
   test_assert_int_equal (sar.dims[1], 4);
   test_assert_int_equal (sar.dims[2], 2);
 
+  // 7. element type that is itself an sarray must be flattened into the
+  //    top-level sarray (dims concatenated, element type collapsed)
+  struct sarray_builder nb = sab_create (&b);
+
+  struct type inner_elem  = (struct type){.type = T_PRIM, .p = U32};
+  u32         sub_dims[2] = {3, 5};
+  struct type sub_ty      = (struct type){
+      .type = T_SARRAY,
+      .sa   = {.rank = 2, .dims = sub_dims, .t = &inner_elem},
+  };
+
+  test_assert_int_equal (sab_accept_type (&nb, &sub_ty, &err), SUCCESS);
+  test_assert_int_equal (sab_accept_dim (&nb, 10, &err), SUCCESS);
+
+  struct sarray_t flat = {0};
+  test_assert_int_equal (sab_build (&flat, &nb, &err), SUCCESS);
+  test_assert_int_equal (flat.rank, 3);
+  test_assert_int_equal (flat.dims[0], 10);
+  test_assert_int_equal (flat.dims[1], 3);
+  test_assert_int_equal (flat.dims[2], 5);
+  test_assert_int_equal (flat.t->type, T_PRIM);
+  test_assert_int_equal (flat.t->p, U32);
+
   BUILDER_CLOSE (b);
   ALLOC_CLOSE (persistent);
 }
@@ -3570,7 +3728,13 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   // Check for duplicate keys
   if (kvlb_has_key_been_used (ub, key))
   {
-    return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
+    return error_causef (
+        e,
+        ERR_INTERP,
+        "duplicate key: %.*s",
+        key.len,
+        key.data
+    );
   }
 
   // Copy key data to persistent memory
@@ -3668,13 +3832,15 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
     return error_causef (e, ERR_INTERP, "key/value count mismatch");
   }
 
-  struct string *keys = builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
+  struct string *keys =
+      builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
   if (!keys)
   {
     return error_trace (e);
   }
 
-  struct type **types = builder_malloc_persist (ub->b, ub->tlen, sizeof (struct type *), e);
+  struct type **types =
+      builder_malloc_persist (ub->b, ub->tlen, sizeof (struct type *), e);
   if (!types)
   {
     return error_trace (e);
@@ -3730,8 +3896,10 @@ TEST (kvt_list_builder)
 
   // 5. mismatched key/type counts -> build must fail
   struct string key_extra = strfcstr ("extra");
-  test_assert_int_equal (kvlb_accept_key (&kb, key_extra, &err),
-                         SUCCESS); // klen=3, tlen=2
+  test_assert_int_equal (
+      kvlb_accept_key (&kb, key_extra, &err),
+      SUCCESS
+  ); // klen=3, tlen=2
   struct kvt_list list_fail = {0};
   test_assert_int_equal (kvlb_build (&list_fail, &kb, &err), ERR_INTERP);
   err.cause_code = SUCCESS;
@@ -3781,7 +3949,10 @@ kvrlb_create (struct builder *b)
 }
 
 static bool
-kvrlb_has_key_been_used (const struct kvt_ref_list_builder *ub, struct string key)
+kvrlb_has_key_been_used (
+    const struct kvt_ref_list_builder *ub,
+    struct string                      key
+)
 {
   for (struct llnode *it = ub->head; it; it = it->next)
   {
@@ -3802,7 +3973,13 @@ kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
   // Check for duplicate keys
   if (kvrlb_has_key_been_used (ub, key))
   {
-    return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
+    return error_causef (
+        e,
+        ERR_INTERP,
+        "duplicate key: %.*s",
+        key.len,
+        key.data
+    );
   }
 
   // Copy key data to persistent memory
@@ -3885,7 +4062,11 @@ kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e)
 }
 
 err_t
-kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *e)
+kvrlb_build (
+    struct kvt_ref_list         *dest,
+    struct kvt_ref_list_builder *ub,
+    error                       *e
+)
 {
   ASSERT (dest);
 
@@ -3900,13 +4081,15 @@ kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *
     goto theend;
   }
 
-  struct string *keys = builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
+  struct string *keys =
+      builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
   if (!keys)
   {
     goto theend;
   }
 
-  struct type_ref *types = builder_malloc_persist (ub->b, ub->tlen, sizeof *types, e);
+  struct type_ref *types =
+      builder_malloc_persist (ub->b, ub->tlen, sizeof *types, e);
 
   if (!types)
   {
@@ -3955,7 +4138,10 @@ range_ta_equal (const struct range_ta *left, const struct range_ta *right)
 }
 
 bool
-type_accessor_equal (const struct type_accessor left, const struct type_accessor right)
+type_accessor_equal (
+    const struct type_accessor left,
+    const struct type_accessor right
+)
 {
   if (left.type != right.type)
   {
@@ -3986,7 +4172,12 @@ type_accessor_equal (const struct type_accessor left, const struct type_accessor
 }
 
 static struct type *
-ta_select_struct (struct type *ref, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_select_struct (
+    struct type          *ref,
+    struct type_accessor *ta,
+    struct allocator     *alloc,
+    error                *e
+)
 {
   struct type *sub = struct_t_resolve_key (NULL, &ref->st, ta->select.key);
   if (sub == NULL)
@@ -3998,7 +4189,12 @@ ta_select_struct (struct type *ref, struct type_accessor *ta, struct allocator *
 }
 
 static struct type *
-ta_select_union (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_select_union (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct allocator     *alloc,
+    error                *e
+)
 {
   struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key);
   if (subtype == NULL)
@@ -4010,7 +4206,12 @@ ta_select_union (struct type *reftype, struct type_accessor *ta, struct allocato
 }
 
 static struct type *
-ta_select_sarray (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_select_sarray (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct allocator     *alloc,
+    error                *e
+)
 {
   BUILDER_INIT (b, alloc);
 
@@ -4030,7 +4231,7 @@ ta_select_sarray (struct type *reftype, struct type_accessor *ta, struct allocat
     }
   }
 
-  struct type *t = ta_subtype (reftype->sa.t, ta->select.sub_ta, alloc, e);
+  struct type *t = ta_subtype (reftype->sa.t, ta, alloc, e);
   if (t == NULL)
   {
     goto failed;
@@ -4056,7 +4257,12 @@ failed:
 }
 
 static struct type *
-ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_range_sarray (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct allocator     *alloc,
+    error                *e
+)
 {
   BUILDER_INIT (b, alloc);
   struct sarray_builder builder = sab_create (&b);
@@ -4082,7 +4288,12 @@ ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocato
     {
       isarray = isarray || ta->range.dim_accessors[i].present & COLON_PRESENT;
       struct stride str;
-      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e))
+      if (stride_resolve (
+              &str,
+              ta->range.dim_accessors[i],
+              reftype->sa.dims[i],
+              e
+          ))
       {
         goto failure;
       }
@@ -4136,7 +4347,12 @@ failure:
 }
 
 struct type *
-ta_subtype (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_subtype (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct allocator     *alloc,
+    error                *e
+)
 {
   switch (ta->type)
   {
@@ -4206,7 +4422,11 @@ ta_subtype (struct type *reftype, struct type_accessor *ta, struct allocator *al
 #ifdef TESTING
 
 static void
-test_ta_subtype_case (const char *typestr, const char *accessor, const char *expected_type)
+test_ta_subtype_case (
+    const char *typestr,
+    const char *accessor,
+    const char *expected_type
+)
 {
   ALLOC_INIT (alloc);
 
@@ -4221,6 +4441,8 @@ test_ta_subtype_case (const char *typestr, const char *accessor, const char *exp
   compile_subtype (&st, accessor, &alloc, &e);
 
   struct type *subtype = ta_subtype (&reftype, &st.ta, &alloc, &e);
+  i_log_type (subtype, &e);
+  i_log_type (&expected, &e);
   test_assert (type_equal (&expected, subtype));
 
   ALLOC_CLOSE (alloc);
@@ -4228,108 +4450,134 @@ test_ta_subtype_case (const char *typestr, const char *accessor, const char *exp
 
 TEST (ta_subtype)
 {
+  // Edge-focused cases. The interesting rules being exercised:
+  //   * field select on an aggregate picks the field's type
+  //   * field select on an ARRAY of aggregates BROADCASTS: the field type
+  //     is re-wrapped in the outer array dimensions (a.i on [10] struct{..}
+  //     -> [10] <fieldtype>)
+  //   * a single index removes one dimension
+  //   * a stride s:e:st resizes a dimension to ceil((e-s)/st)
+  // Union cases are kept only as parity spot-checks, not full mirrors.
   struct test_entry
   {
     const char *typestr;
     const char *accessor;
     const char *expected_type;
   } entries[] = {
-      {"struct { i i32 } ", "a.i", "i32"},
-
-      // ── simple struct field access ────────────────────────────
-
+      // field select: baseline + non-first field (offset)
       {"struct { i i32 }", "a.i", "i32"},
-      {"struct { x f32, y f64 }", "a.x", "f32"},
-      {"struct { x f32, y f64 }", "a.y", "f64"},
+      {"struct { x u32, y f64 }", "a.y", "f64"}, // pick 2nd field
+      {"union { x f32, y f64 }", "a.y", "f64"},  // union parity
 
-      // ── nested struct ─────────────────────────────────────────
-      {"struct { a struct { b i64 } }", "x.a.b", "i64"},
+      // nested aggregates: depth + sibling offset
       {"struct { a struct { b struct { c f32 } } }", "x.a.b.c", "f32"},
       {"struct { a struct { b i32, c f64 }, d i8 }", "x.a.c", "f64"},
+      {"union { a union { b i32, c f64 }, d i8 }",
+       "x.a.c",
+       "f64"}, // union parity
 
-      // ── 1D array: single index (removes dimension) ───────────
-      {"[10] i32", "a[5]", "i32"},
-      {"[10] f64", "a[0]", "f64"},
-      {"[10] f64", "a[9]", "f64"},
+      // 1D single index: dimension removal at the boundaries
+      {"[10] i32", "a[0]", "i32"}, // first
+      {"[10] u32", "a[9]", "u32"}, // last
 
-      // ── 1D array: stride (computes new dimension) ────────────
-      {"[10] i32", "a[0:10:1]", "[10] i32"},
-      {"[10] i32", "a[0:10:2]", "[5] i32"},
-      {"[20] f32", "a[2:10:2]", "[4] f32"},
-      {"[100] i64", "a[0:100:10]", "[10] i64"},
-      {"[50] f64", "a[10:30:5]", "[4] f64"},
-      {"[10] i32", "a[0:1:1]", "[1] i32"},
-      {"[20] f32", "a[1:10:3]", "[3] f32"},
+      // 1D stride: new size = ceil((stop - start) / step)
+      {"[10] i32", "a[0:10:1]", "[10] i32"}, // identity (step 1)
+      {"[10] i32", "a[0:10:3]", "[4] i32"},  // ceil edge: 0,3,6,9
+      {"[20] f32", "a[2:10:2]", "[4] f32"},  // nonzero start
+      {"[10] i32", "a[0:1:1]", "[1] i32"},   // degenerate single
 
-      // ── multi-dim: all singles ───────────────────────────────
-      {"[10][ 20] i32", "a[5, 3]", "i32"},
-      {"[2][ 3][ 4] f32", "a[0, 1, 2]", "f32"},
+      // multi-dim: full collapse / full stride / mixed removal
+      {"[2][ 3][ 4] f32", "a[0, 1, 2]", "f32"}, // all singles -> scalar
+      {"[6][ 8][ 10] i32",
+       "a[0:6:2, 0:8:4, 0:10:5]",
+       "[3][ 2][ 2] i32"}, // all strides
+      {"[2][ 3][ 4] f32",
+       "a[0:2:1, 1, 0:4:2]",
+       "[2][ 2] f32"},                                  // middle dim removed
+      {"[4][ 6][ 8] i64", "a[2, 0:6:3, 3]", "[2] i64"}, // lead+trail removed
 
-      // ── multi-dim: all strides ───────────────────────────────
-      {"[10][ 20] i32", "a[0:10:2, 0:20:5]", "[5][ 4] i32"},
-      {"[10][ 20] f64", "a[0:10:1, 0:20:1]", "[10][ 20] f64"},
-      {"[6][ 8][ 10] i32", "a[0:6:2, 0:8:4, 0:10:5]", "[3][ 2][ 2] i32"},
+      // struct/union containing an array
+      {"struct { data [100] f64 }", "a.data[5]", "f64"}, // field -> single
+      {"struct { data [10][ 20] i32 }",
+       "a.data[0:10:5, 3]",
+       "[2] i32"}, // field -> mixed multidim
+      {"union { data [10][ 20] i32 }",
+       "a.data[0:10:5, 3]",
+       "[2] i32"}, // union parity
 
-      // ── multi-dim: mixed single + stride ─────────────────────
-      {"[10][ 20] i32", "a[0:10:2, 5]", "[5] i32"},
-      {"[10][ 20] i32", "a[5, 0:20:4]", "[5] i32"},
-      {"[2][ 3][ 4] f32", "a[0:2:1, 1, 0:4:2]", "[2][ 2] f32"},
-      {"[4][ 6][ 8] i64", "a[2, 0:6:3, 3]", "[2] i64"},
-      {"[4][ 6][ 8] i64", "a[0:4:1, 2, 0:8:2]", "[4][ 4] i64"},
+      // array sub-access: field select BROADCASTS over array dims
+      {"[10] struct { i i32 }", "a.i", "[10] i32"}, // the canonical case
+      {"[10] struct { x f32, y f64 }",
+       "a.y",
+       "[10] f64"}, // broadcast + field offset
+      {"[3][ 4] struct { v f32 }",
+       "a.v",
+       "[3][ 4] f32"}, // broadcast over 2 dims
+      {"[5] struct { d [10] i32 }",
+       "a.d",
+       "[5][ 10] i32"}, // broadcast field is itself an array
+      {"[6] struct { p struct { q i16 } }",
+       "a.p.q",
+       "[6] i16"}, // broadcast through nested field
+      {"[10] union { x f32, y f32 }", "a.y", "[10] f32"}, // union parity
 
-      // ── struct containing array ──────────────────────────────
-      {"struct { data [100] f64 }", "a.data[0:50:1]", "[50] f64"},
-      {"struct { data [100] f64 }", "a.data[5]", "f64"},
-      {"struct { data [10][ 20] i32 }", "a.data[0:10:5, 3]", "[2] i32"},
-      {"struct { m [4][ 4] f64 }", "a.m[0:4:1, 0:4:1]", "[4][ 4] f64"},
+      // index/stride on array-of-aggregate, THEN field
+      {"[10] struct { x f32, y f32 }",
+       "a[3].x",
+       "f32"}, // single index -> scalar field
+      {"[10] struct { x f32, y f32 }",
+       "a[0:10:2].y",
+       "[5] f32"}, // stride -> broadcast field
+      {"[10] union { x f32, y f32 }", "a[0:10:2].y", "[5] f32"}, // union parity
 
-      // ── array of structs ─────────────────────────────────────
-      {"[10] struct { x f32, y f32 }", "a[3].x", "f32"},
-      {"[10] struct { x f32, y f32 }", "a[0:5:1].x", "[5] f32"},
-      {"[10] struct { x f32, y f32 }", "a[0:10:2].y", "[5] f32"},
+      // struct -> array -> struct chains
+      {"struct { points [100] struct { val f32 } }",
+       "a.points[7].val",
+       "f32"}, // chain -> scalar
+      {"struct { points [100] struct { val f32 } }",
+       "a.points[0:50:2].val",
+       "[25] f32"}, // chain -> broadcast
 
-      // ── array of structs with nested field ───────────────────
-      {"[10] struct { pos struct { x f64, y f64 } }", "a[4].pos.x", "f64"},
-      {"[10] struct { pos struct { x f64, y f64 } }", "a[0:10:5].pos.y", "[2] f64"},
+      // deep nest + array stride broadcast
+      {"struct { a struct { b [20] struct { c i32 } } }",
+       "a.a.b[0:20:4].c",
+       "[5] i32"},
 
-      // ── struct → array → struct chain ────────────────────────
-      {"struct { points [100] struct { val f32 } }", "a.points[0:50:2].val", "[25] f32"},
-      {"struct { points [100] struct { val f32 } }", "a.points[7].val", "f32"},
-
-      // ── deeply nested struct + array ─────────────────────────
-      {"struct { a struct { b [20] struct { c i32 } } }", "a.a.b[0:20:4].c", "[5] i32"},
-      {"struct { a struct { b [20] struct { c i32 } } }", "a.a.b[10].c", "i32"},
-
-      // ── struct field is a primitive (identity select) ────────
-      {"struct { x i8 }", "a.x", "i8"},
-      {"struct { x i16 }", "a.x", "i16"},
-      {"struct { x i64 }", "a.x", "i64"},
-      {"struct { x f32 }", "a.x", "f32"},
-
-      // ── sibling field doesn't affect result ──────────────────
-      {"struct { a i32, b f64, c [10] i8 }", "a.a", "i32"},
+      // sibling fields don't shift the array-field result
       {"struct { a i32, b f64, c [10] i8 }", "a.c[0:10:2]", "[5] i8"},
-      {"struct { a i32, b f64, c [10] i8 }", "a.c[3]", "i8"},
   };
 
   for (u32 i = 0; i < arrlen (entries); ++i)
   {
-    TEST_CASE ("%s %s %s", entries[i].typestr, entries[i].accessor, entries[i].expected_type)
+    TEST_CASE (
+        "%s :: %s :: %s",
+        entries[i].typestr,
+        entries[i].accessor,
+        entries[i].expected_type
+    )
     {
-      test_ta_subtype_case (entries[i].typestr, entries[i].accessor, entries[i].expected_type);
+      test_ta_subtype_case (
+          entries[i].typestr,
+          entries[i].accessor,
+          entries[i].expected_type
+      );
     }
   }
 }
+
 #endif
 
 /////////////////////////////////////////////////////////////////////
 ////// Builder
 
 bool
-user_stride_equal (const struct user_stride *left, const struct user_stride *right)
+user_stride_equal (
+    const struct user_stride *left,
+    const struct user_stride *right
+)
 {
-  return left->start == right->start && left->step == right->step && left->stop == right->stop
-         && left->present == right->present;
+  return left->start == right->start && left->step == right->step
+         && left->stop == right->stop && left->present == right->present;
 }
 
 DEFINE_DBG_ASSERT (struct range_builder, range_builder, s, { ASSERT (s); })
@@ -4382,7 +4630,8 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
     goto theend;
   }
 
-  struct user_stride *dims = builder_malloc_persist (rb->b, rb->len, sizeof *dims, e);
+  struct user_stride *dims =
+      builder_malloc_persist (rb->b, rb->len, sizeof *dims, e);
   if (!dims)
   {
     goto theend;
@@ -4403,7 +4652,9 @@ theend:
   return error_trace (e);
 }
 
-DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, { ASSERT (s); })
+DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, {
+  ASSERT (s);
+})
 
 static struct type_accessor *
 tab_alloc (struct type_accessor_builder *builder, error *e)
@@ -4413,7 +4664,8 @@ tab_alloc (struct type_accessor_builder *builder, error *e)
     return &builder->ret;
   }
 
-  struct type_accessor *ta = builder_malloc_persist (builder->b, 1, sizeof *ta, e);
+  struct type_accessor *ta =
+      builder_malloc_persist (builder->b, 1, sizeof *ta, e);
   return ta;
 }
 
@@ -4485,7 +4737,11 @@ tab_create (struct builder *b)
 }
 
 err_t
-tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e)
+tab_accept_select (
+    struct type_accessor_builder *builder,
+    struct string                 key,
+    error                        *e
+)
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
@@ -4513,7 +4769,11 @@ tab_accept_select (struct type_accessor_builder *builder, struct string key, err
 }
 
 err_t
-tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e)
+tab_accept_stride (
+    struct type_accessor_builder *builder,
+    struct user_stride            stride,
+    error                        *e
+)
 {
   DBG_ASSERT (type_accessor_builder, builder);
   tab_ensure_range (builder);
@@ -4541,7 +4801,11 @@ tab_accept_take (struct type_accessor_builder *builder, error *e)
 }
 
 err_t
-tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e)
+tab_build (
+    struct type_accessor         *dest,
+    struct type_accessor_builder *builder,
+    error                        *e
+)
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
@@ -4579,9 +4843,15 @@ TEST (type_accessor_builder)
   struct string key1 = strfcstr ("field1");
   test_assert_int_equal (tab_accept_select (&builder, key1, &e), SUCCESS);
   // 3. accept a stride + single (enters range mode)
-  test_assert_int_equal (tab_accept_stride (&builder, ustride012 (0, 10, 2), &e), SUCCESS);
+  test_assert_int_equal (
+      tab_accept_stride (&builder, ustride012 (0, 10, 2), &e),
+      SUCCESS
+  );
   test_assert (builder.in_range);
-  test_assert_int_equal (tab_accept_stride (&builder, ustride_single (5), &e), SUCCESS);
+  test_assert_int_equal (
+      tab_accept_stride (&builder, ustride_single (5), &e),
+      SUCCESS
+  );
   test_assert_int_equal (builder.rb.len, 2);
 
   // 4. accept another select accessor (should flush the range)
@@ -4719,7 +4989,12 @@ TEST (type_ref_equal)
 #endif
 
 static struct type *
-tr_construct_inner (struct type *reftype, struct type_ref *tr, struct builder *b, error *e)
+tr_construct_inner (
+    struct type     *reftype,
+    struct type_ref *tr,
+    struct builder  *b,
+    error           *e
+)
 {
   switch (tr->type)
   {
@@ -4792,7 +5067,12 @@ tr_construct_inner (struct type *reftype, struct type_ref *tr, struct builder *b
 }
 
 struct type *
-tr_construct (struct type *reftype, struct type_ref *tr, struct allocator *alloc, error *e)
+tr_construct (
+    struct type      *reftype,
+    struct type_ref  *tr,
+    struct allocator *alloc,
+    error            *e
+)
 {
   BUILDER_INIT (b, alloc);
   struct type *ret = tr_construct_inner (reftype, tr, &b, e);
@@ -4876,7 +5156,8 @@ subtype_create (struct string vname, struct type_accessor ta)
 bool
 subtype_equal (const struct subtype *left, const struct subtype *right)
 {
-  return string_equal (left->vname, right->vname) && type_accessor_equal (left->ta, right->ta);
+  return string_equal (left->vname, right->vname)
+         && type_accessor_equal (left->ta, right->ta);
 }
 
 #ifdef TESTING
@@ -4919,8 +5200,13 @@ TEST (subtype_equal)
  * SECTION: Print Type
  ******************************************************************************/
 
-static void
-print_type_inner (int level, const u8 *buf, const struct type *t, u32 max_elems, u32 indent);
+static void print_type_inner (
+    int                level,
+    const u8          *buf,
+    const struct type *t,
+    u32                max_elems,
+    u32                indent
+);
 
 static void
 print_indent (int level, u32 spaces)
@@ -5028,7 +5314,12 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u64 lo, hi;
       memcpy (&lo, buf, 8);
       memcpy (&hi, buf + 8, 8);
-      i_printf (level, "<f128:0x%016lx%016lx>", (unsigned long)hi, (unsigned long)lo);
+      i_printf (
+          level,
+          "<f128:0x%016lx%016lx>",
+          (unsigned long)hi,
+          (unsigned long)lo
+      );
       return;
     }
     case CF32:
@@ -5036,7 +5327,12 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u16 rh, ih;
       memcpy (&rh, buf, 2);
       memcpy (&ih, buf + 2, 2);
-      i_printf (level, "(%g, %g)", (double)f16_to_f32 (rh), (double)f16_to_f32 (ih));
+      i_printf (
+          level,
+          "(%g, %g)",
+          (double)f16_to_f32 (rh),
+          (double)f16_to_f32 (ih)
+      );
       return;
     }
     case CF64:
@@ -5332,7 +5628,13 @@ print_sarray_dim (
       {
         i_printf (level, ", ");
       }
-      print_type_inner (level, buf + i * sub_size, sa->t, max_elems, indent + 1);
+      print_type_inner (
+          level,
+          buf + i * sub_size,
+          sa->t,
+          max_elems,
+          indent + 1
+      );
     }
     if (dim_len > max_elems)
     {
@@ -5349,7 +5651,15 @@ print_sarray_dim (
         i_printf (level, ",\n");
         print_indent (level, col + 1);
       }
-      print_sarray_dim (level, buf + i * sub_size, sa, dim_idx + 1, max_elems, indent + 1, col + 1);
+      print_sarray_dim (
+          level,
+          buf + i * sub_size,
+          sa,
+          dim_idx + 1,
+          max_elems,
+          indent + 1,
+          col + 1
+      );
     }
     if (dim_len > max_elems)
     {
@@ -5377,7 +5687,13 @@ TEST (print_sarray_dim)
 #endif
 
 static void
-print_type_inner (int level, const u8 *buf, const struct type *t, u32 max_elems, u32 indent)
+print_type_inner (
+    int                level,
+    const u8          *buf,
+    const struct type *t,
+    u32                max_elems,
+    u32                indent
+)
 {
   switch (t->type)
   {
@@ -5401,7 +5717,15 @@ print_type_inner (int level, const u8 *buf, const struct type *t, u32 max_elems,
         if (ft->type == T_SARRAY)
         {
           u32 col = field_indent + t->st.keys[i].len + 3;
-          print_sarray_dim (level, buf + offset, &ft->sa, 0, max_elems, field_indent, col);
+          print_sarray_dim (
+              level,
+              buf + offset,
+              &ft->sa,
+              0,
+              max_elems,
+              field_indent,
+              col
+          );
         }
         else
         {
@@ -5457,7 +5781,12 @@ TEST (print_type_inner)
 #endif
 
 void
-type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems)
+type_print_data (
+    int                log_level,
+    const u8          *buf,
+    const struct type *t,
+    u32                max_elems
+)
 {
   print_type_inner (log_level, buf, t, max_elems, 0);
   i_printf (log_level, "\n");
@@ -5478,60 +5807,90 @@ TEST (type_print_data)
     struct type   f1       = {.type = T_PRIM, .p = F32};
     struct type   f2       = {.type = T_PRIM, .p = F32};
     struct type  *types[2] = {&f1, &f2};
-    struct type   t        = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
-    float         buf[2]   = {1.5f, 2.5f};
+    struct type   t        = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = keys, .types = types}
+    };
+    float buf[2] = {1.5f, 2.5f};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
   }
   TEST_CASE ("T_STRUCT with T_SARRAY field")
   {
-    struct type   elem        = {.type = T_PRIM, .p = I32};
-    u32           arr_dims[1] = {3};
-    struct type   arr         = {.type = T_SARRAY, .sa = {.rank = 1, .dims = arr_dims, .t = &elem}};
-    struct type   scalar      = {.type = T_PRIM, .p = U32};
-    struct string keys[2]     = {{.data = "tag", .len = 3}, {.data = "values", .len = 6}};
-    struct type  *types[2]    = {&scalar, &arr};
-    struct type   t           = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
-    u8            buf[16]     = {0};
+    struct type elem        = {.type = T_PRIM, .p = I32};
+    u32         arr_dims[1] = {3};
+    struct type arr         = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = arr_dims, .t = &elem}
+    };
+    struct type   scalar  = {.type = T_PRIM, .p = U32};
+    struct string keys[2] = {
+        {.data = "tag", .len = 3},
+        {.data = "values", .len = 6}
+    };
+    struct type *types[2] = {&scalar, &arr};
+    struct type  t        = {
+        .type = T_STRUCT,
+        .st   = {.len = 2, .keys = keys, .types = types}
+    };
+    u8 buf[16] = {0};
     type_print_data (LOG_INFO, buf, &t, 10);
   }
   TEST_CASE ("T_UNION")
   {
-    struct string keys[2]  = {{.data = "as_int", .len = 6}, {.data = "as_uint", .len = 7}};
-    struct type   f1       = {.type = T_PRIM, .p = I64};
-    struct type   f2       = {.type = T_PRIM, .p = U64};
-    struct type  *types[2] = {&f1, &f2};
-    struct type   t        = {.type = T_UNION, .un = {.len = 2, .keys = keys, .types = types}};
-    i64           v        = -1;
+    struct string keys[2] = {
+        {.data = "as_int", .len = 6},
+        {.data = "as_uint", .len = 7}
+    };
+    struct type  f1       = {.type = T_PRIM, .p = I64};
+    struct type  f2       = {.type = T_PRIM, .p = U64};
+    struct type *types[2] = {&f1, &f2};
+    struct type  t        = {
+        .type = T_UNION,
+        .un   = {.len = 2, .keys = keys, .types = types}
+    };
+    i64 v = -1;
     type_print_data (LOG_INFO, (const u8 *)&v, &t, 10);
   }
   TEST_CASE ("T_UNION empty")
   {
-    struct type t   = {.type = T_UNION, .un = {.len = 0, .keys = NULL, .types = NULL}};
-    u8          buf = 0;
+    struct type t = {
+        .type = T_UNION,
+        .un   = {.len = 0, .keys = NULL, .types = NULL}
+    };
+    u8 buf = 0;
     type_print_data (LOG_INFO, &buf, &t, 10);
   }
   TEST_CASE ("T_SARRAY 1d")
   {
     struct type element = {.type = T_PRIM, .p = I32};
     u32         dims[1] = {3};
-    struct type t       = {.type = T_SARRAY, .sa = {.rank = 1, .dims = dims, .t = &element}};
-    i32         buf[3]  = {1, 2, 3};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = dims, .t = &element}
+    };
+    i32 buf[3] = {1, 2, 3};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
   }
   TEST_CASE ("T_SARRAY 1d truncated")
   {
     struct type element = {.type = T_PRIM, .p = I32};
     u32         dims[1] = {10};
-    struct type t       = {.type = T_SARRAY, .sa = {.rank = 1, .dims = dims, .t = &element}};
-    i32         buf[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 1, .dims = dims, .t = &element}
+    };
+    i32 buf[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 3);
   }
   TEST_CASE ("T_SARRAY 2d truncated")
   {
     struct type element = {.type = T_PRIM, .p = U8};
     u32         dims[2] = {5, 4};
-    struct type t       = {.type = T_SARRAY, .sa = {.rank = 2, .dims = dims, .t = &element}};
-    u8          buf[20] = {0};
+    struct type t       = {
+        .type = T_SARRAY,
+        .sa   = {.rank = 2, .dims = dims, .t = &element}
+    };
+    u8 buf[20] = {0};
     type_print_data (LOG_INFO, buf, &t, 2);
   }
 }
@@ -5546,10 +5905,18 @@ struct type_printer_ostream_ctx
 };
 
 static i32
-type_print_os_sink (struct stream *s, void *vctx, const void *src, u32 size, u32 n, error *e)
+type_print_os_sink (
+    struct stream *s,
+    void          *vctx,
+    const void    *src,
+    u32            size,
+    u32            n,
+    error         *e
+)
 {
   ASSERT (size == 1);
-  struct type_printer_ostream_ctx *ctx = (struct type_printer_ostream_ctx *)vctx;
+  struct type_printer_ostream_ctx *ctx =
+      (struct type_printer_ostream_ctx *)vctx;
 
   u32 avail = ctx->size - ctx->pos;
   u32 next  = MIN (avail, n);
@@ -5579,12 +5946,12 @@ TEST (type_print_os_sink)
     struct type                      t    = {.type = T_PRIM, .p = U32};
     error                            e    = {0};
     t_size                           size = type_byte_size (&t);
-    struct type_printer_ostream_ctx *ctx  = i_malloc (1, sizeof *ctx + size, &e);
-    ctx->t                                = &t;
-    ctx->pos                              = 0;
-    ctx->size                             = size;
-    struct stream s                       = {0};
-    u32           v                       = 0xDEADBEEF;
+    struct type_printer_ostream_ctx *ctx = i_malloc (1, sizeof *ctx + size, &e);
+    ctx->t                               = &t;
+    ctx->pos                             = 0;
+    ctx->size                            = size;
+    struct stream s                      = {0};
+    u32           v                      = 0xDEADBEEF;
     type_print_os_sink (&s, ctx, &v, 1, sizeof v, &e);
     i_free (ctx);
   }

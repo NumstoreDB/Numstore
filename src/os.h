@@ -40,10 +40,38 @@ struct i_vmem
 {
   void *(*i_malloc) (i_vmem *v, u32 nelem, u32 size, error *e);
   void *(*i_calloc) (i_vmem *v, u32 nelem, u32 size, error *e);
-  void *(*i_realloc_right) (i_vmem *v, void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e);
-  void *(*i_realloc_left) (i_vmem *v, void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e);
-  void *(*i_crealloc_right) (i_vmem *v, void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e);
-  void *(*i_crealloc_left) (i_vmem *v, void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e);
+  void *(*i_realloc_right) (
+      i_vmem *v,
+      void   *ptr,
+      u32     old_nelem,
+      u32     nelem,
+      u32     size,
+      error  *e
+  );
+  void *(*i_realloc_left) (
+      i_vmem *v,
+      void   *ptr,
+      u32     old_nelem,
+      u32     nelem,
+      u32     size,
+      error  *e
+  );
+  void *(*i_crealloc_right) (
+      i_vmem *v,
+      void   *ptr,
+      u32     old_nelem,
+      u32     nelem,
+      u32     size,
+      error  *e
+  );
+  void *(*i_crealloc_left) (
+      i_vmem *v,
+      void   *ptr,
+      u32     old_nelem,
+      u32     nelem,
+      u32     size,
+      error  *e
+  );
   void (*i_free) (i_vmem *v, void *ptr);
 };
 
@@ -62,22 +90,26 @@ i_calloc (u32 nelem, u32 size, error *e)
 HEADER_FUNC void *
 i_realloc_right (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
 {
-  return default_vmem.i_realloc_right (&default_vmem, ptr, old_nelem, nelem, size, e);
+  return default_vmem
+      .i_realloc_right (&default_vmem, ptr, old_nelem, nelem, size, e);
 }
 HEADER_FUNC void *
 i_realloc_left (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
 {
-  return default_vmem.i_realloc_left (&default_vmem, ptr, old_nelem, nelem, size, e);
+  return default_vmem
+      .i_realloc_left (&default_vmem, ptr, old_nelem, nelem, size, e);
 }
 HEADER_FUNC void *
 i_crealloc_right (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
 {
-  return default_vmem.i_crealloc_right (&default_vmem, ptr, old_nelem, nelem, size, e);
+  return default_vmem
+      .i_crealloc_right (&default_vmem, ptr, old_nelem, nelem, size, e);
 }
 HEADER_FUNC void *
 i_crealloc_left (void *ptr, u32 old_nelem, u32 nelem, u32 size, error *e)
 {
-  return default_vmem.i_crealloc_left (&default_vmem, ptr, old_nelem, nelem, size, e);
+  return default_vmem
+      .i_crealloc_left (&default_vmem, ptr, old_nelem, nelem, size, e);
 }
 HEADER_FUNC void
 i_free (void *ptr)
@@ -127,17 +159,56 @@ struct i_file_vtable
   // Read
   i64 (*i_read_some) (const i_file *fp, void *dest, u64 nbytes, error *e);
   i64 (*i_read_all) (const i_file *fp, void *dest, u64 nbytes, error *e);
-  i64 (*i_pread_some) (const i_file *fp, void *dest, u64 n, u64 offset, error *e);
-  i64 (*i_pread_all) (const i_file *fp, void *dest, u64 n, u64 offset, error *e);
+  i64 (*i_pread_some) (
+      const i_file *fp,
+      void         *dest,
+      u64           n,
+      u64           offset,
+      error        *e
+  );
+  i64 (*i_pread_all) (
+      const i_file *fp,
+      void         *dest,
+      u64           n,
+      u64           offset,
+      error        *e
+  );
 
   ////////////////////////////////////////////////////////////
   // Write
   i64 (*i_write_some) (const i_file *fp, const void *src, u64 nbytes, error *e);
-  err_t (*i_write_all) (const i_file *fp, const void *src, u64 nbytes, error *e);
-  i64 (*i_pwrite_some) (const i_file *fp, const void *src, u64 n, u64 offset, error *e);
-  err_t (*i_pwrite_all) (const i_file *fp, const void *src, u64 n, u64 offset, error *e);
-  i64 (*i_writev_some) (const i_file *fp, const struct bytes *arrs, int iovcnt, error *e);
-  err_t (*i_writev_all) (const i_file *fp, struct bytes *arrs, int iovcnt, error *e);
+  err_t (*i_write_all) (
+      const i_file *fp,
+      const void   *src,
+      u64           nbytes,
+      error        *e
+  );
+  i64 (*i_pwrite_some) (
+      const i_file *fp,
+      const void   *src,
+      u64           n,
+      u64           offset,
+      error        *e
+  );
+  err_t (*i_pwrite_all) (
+      const i_file *fp,
+      const void   *src,
+      u64           n,
+      u64           offset,
+      error        *e
+  );
+  i64 (*i_writev_some) (
+      const i_file       *fp,
+      const struct bytes *arrs,
+      int                 iovcnt,
+      error              *e
+  );
+  err_t (*i_writev_all) (
+      const i_file *fp,
+      struct bytes *arrs,
+      int           iovcnt,
+      error        *e
+  );
 
   ////////////////////////////////////////////////////////////
   // Other
@@ -150,16 +221,39 @@ struct i_file_system_vtable
 {
   ////////////////////////////////////////////////////////////
   // Open
-  err_t (*i_open_rw) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e);
-  err_t (*i_open_r) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e);
-  err_t (*i_open_w) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e);
+  err_t (*i_open_rw) (
+      i_file_system_vtable *vfs,
+      i_file               *dest,
+      const char           *fname,
+      error                *e
+  );
+  err_t (*i_open_r) (
+      i_file_system_vtable *vfs,
+      i_file               *dest,
+      const char           *fname,
+      error                *e
+  );
+  err_t (*i_open_w) (
+      i_file_system_vtable *vfs,
+      i_file               *dest,
+      const char           *fname,
+      error                *e
+  );
 
   ////////////////////////////////////////////////////////////
   // Others
-  err_t (*i_remove_quiet) (i_file_system_vtable *vfs, const char *fname, error *e);
+  err_t (*i_remove_quiet) (
+      i_file_system_vtable *vfs,
+      const char           *fname,
+      error                *e
+  );
   err_t (*i_unlink) (i_file_system_vtable *vfs, const char *name, error *e);
   err_t (*i_mkdir) (i_file_system_vtable *vfs, const char *name, error *e);
-  err_t (*i_mkdir_quiet) (i_file_system_vtable *vfs, const char *name, error *e);
+  err_t (*i_mkdir_quiet) (
+      i_file_system_vtable *vfs,
+      const char           *name,
+      error                *e
+  );
   err_t (*i_rm_rf) (i_file_system_vtable *vfs, const char *path, error *e);
 
   ////////////////////////////////////////////////////////////
@@ -167,8 +261,18 @@ struct i_file_system_vtable
   err_t (*i_access_rw) (i_file_system_vtable *vfs, const char *fname, error *e);
   bool (*i_exists_rw) (i_file_system_vtable *vfs, const char *fname);
   err_t (*i_touch) (i_file_system_vtable *vfs, const char *fname, error *e);
-  err_t (*i_dir_exists) (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e);
-  err_t (*i_file_exists) (i_file_system_vtable *vfs, const char *fname, bool *dest, error *e);
+  err_t (*i_dir_exists) (
+      i_file_system_vtable *vfs,
+      const char           *fname,
+      bool                 *dest,
+      error                *e
+  );
+  err_t (*i_file_exists) (
+      i_file_system_vtable *vfs,
+      const char           *fname,
+      bool                 *dest,
+      error                *e
+  );
 };
 
 struct i_file
@@ -357,7 +461,13 @@ i_file_exists (const char *fname, bool *dest, error *e)
  *----------------------------------------------------------------------------*/
 
 HEADER_FUNC err_t
-i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+i_pread_all_expect (
+    i_file   *fp,
+    void     *dest,
+    const u64 n,
+    const u64 offset,
+    error    *e
+)
 {
   const i64 ret = i_pread_all (fp, dest, n, offset, e);
   WRAP (ret);
@@ -471,9 +581,15 @@ extern struct i_threading default_threading;
  *----------------------------------------------------------------------------*/
 
 HEADER_FUNC err_t
-i_thread_create (i_thread *th, void *(*start_routine) (void *), void *arg, error *e)
+i_thread_create (
+    i_thread *th,
+    void *(*start_routine) (void *),
+    void  *arg,
+    error *e
+)
 {
-  return default_threading.i_thread_create (&default_threading, th, start_routine, arg, e);
+  return default_threading
+      .i_thread_create (&default_threading, th, start_routine, arg, e);
 }
 HEADER_FUNC err_t
 i_thread_join (i_thread *th, error *e)
@@ -614,7 +730,12 @@ void *i_malloc_nomem (i_vmem *v, u32 nelem, u32 size, error *e);
  *
  * @return A garunteed error open
  */
-err_t i_open_errio (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e);
+err_t i_open_errio (
+    i_file_system_vtable *vfs,
+    i_file               *dest,
+    const char           *fname,
+    error                *e
+);
 
 /**
  * @brief An erroring seek

@@ -96,7 +96,10 @@ htable_size (const struct htable *t)
   return t->size;
 }
 
-void
-htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx);
+void htable_foreach (
+    const struct htable *t,
+    void (*action) (struct hnode *v, void *ctx),
+    void *ctx
+);
 
 #endif // HTABLE_H

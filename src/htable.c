@@ -31,7 +31,8 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
 struct htable *
 htable_create (const u32 n, error *e)
 {
-  struct htable *ret = i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
+  struct htable *ret =
+      i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
 
   if (ret == NULL)
   {
@@ -148,7 +149,11 @@ htable_random (struct htable *t)
 }
 
 void
-htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx)
+htable_foreach (
+    const struct htable *t,
+    void (*action) (struct hnode *v, void *ctx),
+    void *ctx
+)
 {
   latch_lock (&((struct htable *)t)->latch);
 

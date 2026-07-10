@@ -112,7 +112,7 @@ if(ENABLE_TESTS)
 endif()
 
 ########################################################################
-# Tools — simple UNIX-like debug tools 
+# Tools - simple UNIX-like debug tools 
 ########################################################################
 if(BUILD_TOOLS)
   ns_add_executable(dlread          tools/dlread.c)
@@ -122,8 +122,12 @@ if(BUILD_TOOLS)
 endif()
 
 ########################################################################
-# Samples — pedagogical programs for numstore newcomers
+# Samples - pedagogical programs for numstore newcomers
 ########################################################################
 if(BUILD_SAMPLES)
-  ns_add_sample(ns_sample1_basic_crud          samples/sample1_basic_crud.c)
+  ns_add_sample(ns_sample1_basic_crud          samples/ns_sample1_basic_crud.c)
+  ns_add_sample(smfile_sample1_basic_crud      samples/smfile_sample1_basic_crud.c)
+  ns_add_sample(smfile_sample2_transactions    samples/smfile_sample2_transactions.c)
+  ns_add_sample(smfile_sample3_stride          samples/smfile_sample3_stride.c)
+  ns_add_sample(smfile_sample4_rollback_commit samples/smfile_sample4_rollback_commit.c)
 endif()

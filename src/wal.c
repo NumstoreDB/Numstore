@@ -89,8 +89,12 @@ TEST (walos_open)
 
   TEST_CASE ("Red Path - can't open file")
   {
-    err_t (*backup) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) =
-        default_fsvtable.i_open_w;
+    err_t (*backup) (
+        i_file_system_vtable *vfs,
+        i_file               *dest,
+        const char           *fname,
+        error                *e
+    ) = default_fsvtable.i_open_w;
 
     default_fsvtable.i_open_w = i_open_errio;
 
@@ -104,8 +108,9 @@ TEST (walos_open)
 
   TEST_CASE ("Red Path - can't seek")
   {
-    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) = default_fvtable.i_seek;
-    default_fvtable.i_seek                                                = i_seek_errio;
+    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) =
+        default_fvtable.i_seek;
+    default_fvtable.i_seek = i_seek_errio;
 
     struct wal_ostream *wos = walos_open ("foo", &e);
     test_assert (wos == NULL);
@@ -171,7 +176,13 @@ walos_flush_all (struct wal_ostream *w, error *e)
 }
 
 err_t
-walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u32 len, error *e)
+walos_write_all (
+    struct wal_ostream *w,
+    u32                *checksum,
+    const void         *data,
+    const u32           len,
+    error              *e
+)
 {
   DBG_ASSERT (wal_ostream, w);
 
@@ -331,8 +342,12 @@ TEST (walis_open)
 
   TEST_CASE ("Red Path - can't open file")
   {
-    err_t (*backup) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) =
-        default_fsvtable.i_open_r;
+    err_t (*backup) (
+        i_file_system_vtable *vfs,
+        i_file               *dest,
+        const char           *fname,
+        error                *e
+    ) = default_fsvtable.i_open_r;
 
     default_fsvtable.i_open_r = i_open_errio;
 
@@ -346,8 +361,9 @@ TEST (walis_open)
 
   TEST_CASE ("Red Path - can't seek")
   {
-    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) = default_fvtable.i_seek;
-    default_fvtable.i_seek                                                = i_seek_errio;
+    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) =
+        default_fvtable.i_seek;
+    default_fvtable.i_seek = i_seek_errio;
 
     struct wal_istream *wis = walis_open ("foo", &e);
     test_assert (wis == NULL);
@@ -515,7 +531,15 @@ wal_init (struct wal *dest, error *e)
 
   walis_mark_start_log (dest->istream);
 
-  if (walis_read_all (dest->istream, &iseof, NULL, &checksum, &start_lsn, sizeof (start_lsn), e))
+  if (walis_read_all (
+          dest->istream,
+          &iseof,
+          NULL,
+          &checksum,
+          &start_lsn,
+          sizeof (start_lsn),
+          e
+      ))
   {
     i_free ((char *)dest->fname.data);
     walos_close (dest->ostream, e);
@@ -744,7 +768,11 @@ wal_append_end_log (struct wal *w, const txid tid, const lsn prev, error *e)
 }
 
 slsn
-wal_append_update_log (struct wal *w, const struct wal_update_write update, error *e)
+wal_append_update_log (
+    struct wal                   *w,
+    const struct wal_update_write update,
+    error                        *e
+)
 {
   latch_lock (&w->latch);
   DBG_ASSERT (wal, w);
@@ -832,7 +860,9 @@ wal_read_full (
     if (toread > 0)
     {
       bool iseof;
-      WRAP (walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e));
+      WRAP (
+          walis_read_all (w->istream, &iseof, NULL, checksum, head, toread, e)
+      );
       if (iseof)
       {
         return WL_EOF;
@@ -841,7 +871,9 @@ wal_read_full (
 
     head += toread;
     bool iseof;
-    WRAP (walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e));
+    WRAP (
+        walis_read_all (w->istream, &iseof, NULL, NULL, head, sizeof (u32), e)
+    );
     if (iseof)
     {
       return WL_EOF;
@@ -859,11 +891,24 @@ wal_read_full (
 }
 
 static err_t
-wal_read_physical_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_physical_update (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_UPDATE);
   u8        buf[WL_UPDATE_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->update.type, buf, WL_UPDATE_LEN, e);
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->update.type,
+      buf,
+      WL_UPDATE_LEN,
+      e
+  );
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -876,11 +921,24 @@ wal_read_physical_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read 
 }
 
 static err_t
-wal_read_fsm_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_fsm_update (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_UPDATE);
   u8        buf[WL_FSM_UPDATE_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->update.type, buf, WL_FSM_UPDATE_LEN, e);
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->update.type,
+      buf,
+      WL_FSM_UPDATE_LEN,
+      e
+  );
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -893,11 +951,24 @@ wal_read_fsm_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, e
 }
 
 static err_t
-wal_read_file_extend_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_file_extend_update (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_UPDATE);
   u8        buf[WL_FILE_EXT_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->update.type, buf, WL_FILE_EXT_LEN, e);
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->update.type,
+      buf,
+      WL_FILE_EXT_LEN,
+      e
+  );
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -910,11 +981,17 @@ wal_read_file_extend_update (struct wal *w, u32 *checksum, struct wal_rec_hdr_re
 }
 
 static err_t
-wal_read_physical_clr (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_physical_clr (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_CLR);
   u8        buf[WL_CLR_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_CLR_LEN, e);
+  const int ret =
+      wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_CLR_LEN, e);
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -927,11 +1004,17 @@ wal_read_physical_clr (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r,
 }
 
 static err_t
-wal_read_fsm_clr (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_fsm_clr (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_CLR);
   u8        buf[WL_FSM_CLR_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_FSM_CLR_LEN, e);
+  const int ret =
+      wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_FSM_CLR_LEN, e);
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -944,11 +1027,24 @@ wal_read_fsm_clr (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, erro
 }
 
 static err_t
-wal_read_dummy_clr (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_dummy_clr (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_CLR);
   u8        buf[WL_DUMMY_CLR_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, r->clr.type, buf, WL_DUMMY_CLR_LEN, e);
+  const int ret = wal_read_full (
+      w,
+      checksum,
+      r->type,
+      r->clr.type,
+      buf,
+      WL_DUMMY_CLR_LEN,
+      e
+  );
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -961,11 +1057,17 @@ wal_read_dummy_clr (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, er
 }
 
 static err_t
-wal_read_begin (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_begin (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_BEGIN);
   u8        buf[WL_BEGIN_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_BEGIN_LEN, e);
+  const int ret =
+      wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_BEGIN_LEN, e);
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -978,11 +1080,17 @@ wal_read_begin (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error 
 }
 
 static err_t
-wal_read_commit (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_commit (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_COMMIT);
   u8        buf[WL_COMMIT_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_COMMIT_LEN, e);
+  const int ret =
+      wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_COMMIT_LEN, e);
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -995,11 +1103,17 @@ wal_read_commit (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error
 }
 
 static err_t
-wal_read_end (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e)
+wal_read_end (
+    struct wal              *w,
+    u32                     *checksum,
+    struct wal_rec_hdr_read *r,
+    error                   *e
+)
 {
   ASSERT (r->type == WL_END);
   u8        buf[WL_END_LEN];
-  const int ret = wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_END_LEN, e);
+  const int ret =
+      wal_read_full (w, checksum, r->type, WLH_NULL, buf, WL_END_LEN, e);
   WRAP (ret);
   if (ret == WL_EOF)
   {
@@ -1012,7 +1126,12 @@ wal_read_end (struct wal *w, u32 *checksum, struct wal_rec_hdr_read *r, error *e
 }
 
 static err_t
-wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, error *e)
+wal_read_sequential (
+    struct wal              *w,
+    struct wal_rec_hdr_read *dest,
+    lsn                     *rlsn,
+    error                   *e
+)
 {
   u32  checksum = checksum_init ();
   wlh  t;
@@ -1020,7 +1139,9 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
 
   walis_mark_start_log (w->istream);
 
-  WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+  WRAP (
+      walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e)
+  );
   if (rlsn)
   {
     *rlsn += w->start_lsn;
@@ -1039,7 +1160,15 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
     {
       dest->type        = t;
       dest->update.type = -1;
-      WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+      WRAP (walis_read_all (
+          w->istream,
+          &iseof,
+          rlsn,
+          &checksum,
+          &t,
+          sizeof (t),
+          e
+      ));
       if (rlsn)
       {
         *rlsn += w->start_lsn;
@@ -1074,7 +1203,15 @@ wal_read_sequential (struct wal *w, struct wal_rec_hdr_read *dest, lsn *rlsn, er
     {
       dest->type     = t;
       dest->clr.type = -1;
-      WRAP (walis_read_all (w->istream, &iseof, rlsn, &checksum, &t, sizeof (t), e));
+      WRAP (walis_read_all (
+          w->istream,
+          &iseof,
+          rlsn,
+          &checksum,
+          &t,
+          sizeof (t),
+          e
+      ));
       if (rlsn)
       {
         *rlsn += w->start_lsn;
@@ -1705,7 +1842,10 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
 
 #ifdef TESTING
 bool
-wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right)
+wal_rec_hdr_read_equal (
+    const struct wal_rec_hdr_read *left,
+    const struct wal_rec_hdr_read *right
+)
 {
   if (left->type != right->type)
   {
@@ -1738,10 +1878,18 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
         case WUP_PHYSICAL:
         {
           match = match && left->update.phys.pg == right->update.phys.pg;
-          match =
-              match && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
-          match =
-              match && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (
+                         left->update.phys.undo,
+                         right->update.phys.undo,
+                         NS_PAGE_SIZE
+                     ) == 0;
+          match = match
+                  && memcmp (
+                         left->update.phys.redo,
+                         right->update.phys.redo,
+                         NS_PAGE_SIZE
+                     ) == 0;
           break;
         }
         case WUP_FEXT:
@@ -1770,7 +1918,12 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
         case WCLR_PHYSICAL:
         {
           match = match && left->clr.phys.pg == right->clr.phys.pg;
-          match = match && memcmp (left->clr.phys.redo, right->clr.phys.redo, NS_PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (
+                         left->clr.phys.redo,
+                         right->clr.phys.redo,
+                         NS_PAGE_SIZE
+                     ) == 0;
           break;
         }
         case WCLR_FSM:
@@ -1819,7 +1972,11 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
 #endif
 
 void
-i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_read *r, const lsn l)
+i_print_wal_rec_hdr_read_light (
+    const int                      log_level,
+    const struct wal_rec_hdr_read *r,
+    const lsn                      l
+)
 {
   char        fields[128];
   const char *name = "?";
@@ -1849,7 +2006,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", pg   = %8" PRpgno ", undo = 0x%02x, redo = 0x%02x",
+              "txid = %8" PRtxid ", pg   = %8" PRpgno
+              ", undo = 0x%02x, redo = 0x%02x",
               r->update.tid,
               r->update.fsm.pg,
               (unsigned)r->update.fsm.undo,
@@ -1864,7 +2022,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno ", redo_pgs = %8" PRpgno,
+              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno
+              ", redo_pgs = %8" PRpgno,
               r->update.tid,
               r->update.fext.undo,
               r->update.fext.redo
@@ -1898,7 +2057,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", pg   = %8" PRpgno ", redo = 0x%02x, undoNxt = %15" PRlsn,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno
+              ", redo = 0x%02x, undoNxt = %15" PRlsn,
               r->clr.tid,
               r->clr.fsm.pg,
               (unsigned)r->clr.fsm.redo,
@@ -1959,7 +2119,14 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
      Bump them if a new record type pushes past these. */
   if (prev)
   {
-    i_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n", l, name, fields, *prev);
+    i_printf (
+        log_level,
+        "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
+        l,
+        name,
+        fields,
+        *prev
+    );
   }
   else
   {
@@ -2146,7 +2313,10 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
  ******************************************************************************/
 
 void
-walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN])
+walf_decode_physical_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_UPDATE_LEN]
+)
 {
   ASSERT (r->type == WL_UPDATE);
 
@@ -2173,7 +2343,10 @@ walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_
 }
 
 void
-walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN])
+walf_decode_fsm_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FSM_UPDATE_LEN]
+)
 {
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FSM);
@@ -2205,7 +2378,10 @@ walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_L
 }
 
 void
-walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN])
+walf_decode_file_extend_update (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_FILE_EXT_LEN]
+)
 {
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FEXT);
@@ -2289,7 +2465,10 @@ walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN])
 }
 
 void
-walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN])
+walf_decode_dummy_clr (
+    struct wal_rec_hdr_read *r,
+    const u8                 buf[WL_DUMMY_CLR_LEN]
+)
 {
   ASSERT (r->type == WL_CLR);
   ASSERT (r->clr.type == WCLR_DUMMY);
@@ -2357,7 +2536,11 @@ walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN])
  ******************************************************************************/
 
 static err_t
-wal_write_begin (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_begin (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_BEGIN);
 
@@ -2366,14 +2549,20 @@ wal_write_begin (const struct wal *w, const struct wal_rec_hdr_write *r, error *
   u32       checksum = checksum_init ();
   const wlh t        = r->type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->begin.tid, sizeof (txid), e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_commit (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_commit (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_COMMIT);
 
@@ -2382,8 +2571,12 @@ wal_write_commit (const struct wal *w, const struct wal_rec_hdr_write *r, error 
   u32       checksum = checksum_init ();
   const wlh t        = r->type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->commit.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->commit.prev, sizeof (lsn), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->commit.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->commit.prev, sizeof (lsn), e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
@@ -2407,7 +2600,11 @@ wal_write_end (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
 }
 
 static err_t
-wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_physical_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (w->ostream);
 
@@ -2416,18 +2613,44 @@ wal_write_physical_update (const struct wal *w, const struct wal_rec_hdr_write *
   const wlh ut       = (wlh)r->update.type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.phys.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, r->update.phys.undo, NS_PAGE_SIZE, e));
-  WRAP (walos_write_all (w->ostream, &checksum, r->update.phys.redo, NS_PAGE_SIZE, e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.phys.pg,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      r->update.phys.undo,
+      NS_PAGE_SIZE,
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      r->update.phys.redo,
+      NS_PAGE_SIZE,
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_fsm_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (w->ostream);
 
@@ -2436,19 +2659,51 @@ wal_write_fsm_update (const struct wal *w, const struct wal_rec_hdr_write *r, er
   const wlh ut       = (wlh)r->update.type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.bit, sizeof (p_size), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.undo, sizeof (u8), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fsm.redo, sizeof (u8), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.pg,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.bit,
+      sizeof (p_size),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.undo,
+      sizeof (u8),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fsm.redo,
+      sizeof (u8),
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_file_extend_update (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (w->ostream);
 
@@ -2457,17 +2712,37 @@ wal_write_file_extend_update (const struct wal *w, const struct wal_rec_hdr_writ
   const wlh ut       = (wlh)r->update.type;
   WRAP (walos_write_all (w->ostream, &checksum, &t, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fext.undo, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->update.fext.redo, sizeof (pgno), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.tid, sizeof (txid), e)
+  );
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->update.prev, sizeof (lsn), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fext.undo,
+      sizeof (pgno),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->update.fext.redo,
+      sizeof (pgno),
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_physical_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_CLR);
 
@@ -2480,16 +2755,30 @@ wal_write_physical_clr (const struct wal *w, const struct wal_rec_hdr_write *r, 
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.phys.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.undo_next, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, r->clr.phys.redo, NS_PAGE_SIZE, e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.phys.pg, sizeof (pgno), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, r->clr.phys.redo, NS_PAGE_SIZE, e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_fsm_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_CLR);
 
@@ -2502,17 +2791,37 @@ wal_write_fsm_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.fsm.pg, sizeof (pgno), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.undo_next, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.fsm.bit, sizeof (p_size), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.fsm.redo, sizeof (u8), e));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.fsm.pg, sizeof (pgno), e)
+  );
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.fsm.bit,
+      sizeof (p_size),
+      e
+  ));
+  WRAP (
+      walos_write_all (w->ostream, &checksum, &r->clr.fsm.redo, sizeof (u8), e)
+  );
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
 }
 
 static err_t
-wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, error *e)
+wal_write_dummy_clr (
+    const struct wal               *w,
+    const struct wal_rec_hdr_write *r,
+    error                          *e
+)
 {
   ASSERT (r->type == WL_CLR);
 
@@ -2525,7 +2834,13 @@ wal_write_dummy_clr (const struct wal *w, const struct wal_rec_hdr_write *r, err
   WRAP (walos_write_all (w->ostream, &checksum, &ut, sizeof (wlh), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.tid, sizeof (txid), e));
   WRAP (walos_write_all (w->ostream, &checksum, &r->clr.prev, sizeof (lsn), e));
-  WRAP (walos_write_all (w->ostream, &checksum, &r->clr.undo_next, sizeof (lsn), e));
+  WRAP (walos_write_all (
+      w->ostream,
+      &checksum,
+      &r->clr.undo_next,
+      sizeof (lsn),
+      e
+  ));
   WRAP (walos_write_all (w->ostream, NULL, &checksum, sizeof (u32), e));
 
   return SUCCESS;
@@ -3013,10 +3328,17 @@ TEST (wal_single_entry)
       {.type = WL_BEGIN, .begin = {.tid = 1}},
       {.type = WL_COMMIT, .commit = {.tid = 2, .prev = 10}},
       {.type = WL_END, .end = {.tid = 3, .prev = 20}},
-      {.type   = WL_UPDATE,
-       .update = {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
+      {.type = WL_UPDATE,
+       .update =
+           {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
       {.type = WL_CLR,
-       .clr  = {.type = WCLR_PHYSICAL, .tid = 5, .prev = 40, .undo_next = 42, .phys = {.pg = 222}}},
+       .clr  = {
+           .type      = WCLR_PHYSICAL,
+           .tid       = 5,
+           .prev      = 40,
+           .undo_next = 42,
+           .phys      = {.pg = 222}
+       }},
   };
 
   for (u32 i = 0; i < arrlen (cases); i++)
