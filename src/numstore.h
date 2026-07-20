@@ -290,9 +290,6 @@ int nsdb_rollback (nsdb_t *ns);
  * @return < 0 on error - otherwise 0 on non data related queries or > 0 number
  * of elements inserted / written / removed / read for each op code respectively
  */
-sb_size nsdb_execute (
-    nsdb_t     *ns,
-    const char *query_fmt,
-    void       *data,
-    ...
-) NSDB_PRINTF (2, 4);
+sb_size nsdb_execute (nsdb_t *nh, const char *query, void *data);
+sb_size nsdb_fexecute (nsdb_t *ns, const char *query_fmt, void *data, ...)
+    NSDB_PRINTF (2, 4);
