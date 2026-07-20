@@ -106,39 +106,39 @@ void i_log_flush (void);
 #  define SHOULD_LOG_AT(lvl) ((I_LOG_LEVEL) >= (lvl))
 #endif
 #if SHOULD_LOG_AT(LOG_TRACE)
-#  define i_log_trace(...)    i_log_internal ("TRACE", BOLD_WHITE, __VA_ARGS__)
-#  define i_printf_trace(...) fprintf (stderr, __VA_ARGS__);
+#  define i_log_trace(...) i_log_internal ("TRACE", BOLD_WHITE, __VA_ARGS__)
+#  define i_log_printf_trace(...) fprintf (stderr, __VA_ARGS__);
 #else
-#  define i_log_trace(...)    ((void)0)
-#  define i_printf_trace(...) ((void)0)
+#  define i_log_trace(...)        ((void)0)
+#  define i_log_printf_trace(...) ((void)0)
 #endif
 #if SHOULD_LOG_AT(LOG_DEBUG)
-#  define i_log_debug(...)    i_log_internal ("DEBUG", BLUE, __VA_ARGS__)
-#  define i_printf_debug(...) fprintf (stderr, __VA_ARGS__)
+#  define i_log_debug(...)        i_log_internal ("DEBUG", BLUE, __VA_ARGS__)
+#  define i_log_printf_debug(...) fprintf (stderr, __VA_ARGS__)
 #else
-#  define i_log_debug(...)    ((void)0)
-#  define i_printf_debug(...) ((void)0)
+#  define i_log_debug(...)        ((void)0)
+#  define i_log_printf_debug(...) ((void)0)
 #endif
 #if SHOULD_LOG_AT(LOG_INFO)
-#  define i_log_info(...)    i_log_internal ("INFO", GREEN, __VA_ARGS__)
-#  define i_printf_info(...) fprintf (stderr, __VA_ARGS__)
+#  define i_log_info(...)        i_log_internal ("INFO", GREEN, __VA_ARGS__)
+#  define i_log_printf_info(...) fprintf (stderr, __VA_ARGS__)
 #else
-#  define i_log_info(...)    ((void)0)
-#  define i_printf_info(...) ((void)0)
+#  define i_log_info(...)        ((void)0)
+#  define i_log_printf_info(...) ((void)0)
 #endif
 #if SHOULD_LOG_AT(LOG_WARN)
-#  define i_log_warn(...)    i_log_internal ("WARN", YELLOW, __VA_ARGS__)
-#  define i_printf_warn(...) fprintf (stderr, __VA_ARGS__)
+#  define i_log_warn(...)        i_log_internal ("WARN", YELLOW, __VA_ARGS__)
+#  define i_log_printf_warn(...) fprintf (stderr, __VA_ARGS__)
 #else
-#  define i_log_warn(...)    ((void)0)
-#  define i_printf_warn(...) ((void)0)
+#  define i_log_warn(...)        ((void)0)
+#  define i_log_printf_warn(...) ((void)0)
 #endif
 #if SHOULD_LOG_AT(LOG_ERROR)
-#  define i_log_error(...)    i_log_internal ("ERROR", RED, __VA_ARGS__)
-#  define i_printf_error(...) fprintf (stderr, __VA_ARGS__)
+#  define i_log_error(...)        i_log_internal ("ERROR", RED, __VA_ARGS__)
+#  define i_log_printf_error(...) fprintf (stderr, __VA_ARGS__)
 #else
-#  define i_log_error(...)    ((void)0)
-#  define i_printf_error(...) ((void)0)
+#  define i_log_error(...)        ((void)0)
+#  define i_log_printf_error(...) ((void)0)
 #endif
 // These are always logged
 #ifndef NLOG
@@ -188,37 +188,39 @@ void i_log_flush (void);
   while (0)
 
 // Print instead of log at a certain logging level
-#define i_printf(lvl, ...)          \
-  do                                \
-  {                                 \
-    if ((lvl) == LOG_TRACE)         \
-    {                               \
-      i_printf_trace (__VA_ARGS__); \
-    }                               \
-    else if ((lvl) == LOG_DEBUG)    \
-    {                               \
-      i_printf_debug (__VA_ARGS__); \
-    }                               \
-    else if ((lvl) == LOG_INFO)     \
-    {                               \
-      i_printf_info (__VA_ARGS__);  \
-    }                               \
-    else if ((lvl) == LOG_WARN)     \
-    {                               \
-      i_printf_warn (__VA_ARGS__);  \
-    }                               \
-    else if ((lvl) == LOG_ERROR)    \
-    {                               \
-      i_printf_error (__VA_ARGS__); \
-    }                               \
-    else if ((lvl) == LOG_NONE)     \
-    {                               \
-    }                               \
-    else                            \
-    {                               \
-      UNREACHABLE ();               \
-    }                               \
-  }                                 \
+#define i_log_printf(lvl, ...)          \
+  do                                    \
+  {                                     \
+    if ((lvl) == LOG_TRACE)             \
+    {                                   \
+      i_log_printf_trace (__VA_ARGS__); \
+    }                                   \
+    else if ((lvl) == LOG_DEBUG)        \
+    {                                   \
+      i_log_printf_debug (__VA_ARGS__); \
+    }                                   \
+    else if ((lvl) == LOG_INFO)         \
+    {                                   \
+      i_log_printf_info (__VA_ARGS__);  \
+    }                                   \
+    else if ((lvl) == LOG_WARN)         \
+    {                                   \
+      i_log_printf_warn (__VA_ARGS__);  \
+    }                                   \
+    else if ((lvl) == LOG_ERROR)        \
+    {                                   \
+      i_log_printf_error (__VA_ARGS__); \
+    }                                   \
+    else if ((lvl) == LOG_NONE)         \
+    {                                   \
+    }                                   \
+    else                                \
+    {                                   \
+      UNREACHABLE ();                   \
+    }                                   \
+  }                                     \
   while (0)
+
+void i_printf (const char *fmt, ...) PRINTF_ATTR (1, 2);
 
 #endif // LOGGING_H

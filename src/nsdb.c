@@ -1800,6 +1800,8 @@ nscli_step_execute (struct nscli *cli)
     goto theend;
   }
 
+  i_log_query (LOG_INFO, &q);
+
   if (q.type == QT_EXIT)
   {
     ret = EXE_EXIT;

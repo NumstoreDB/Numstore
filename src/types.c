@@ -2981,30 +2981,64 @@ type_equal (const struct type *left, const struct type *right)
   }
 }
 
-err_t
-i_log_type (struct type *t, error *e)
+static char *
+get_var_str (struct type *t, u32 *dlen, error *e)
 {
   i32 len = type_snprintf (NULL, 0, t);
   if (len < 0)
   {
-    return error_causef (e, ERR_IO, "snprintf failed");
+    error_causef (e, ERR_IO, "snprintf failed");
+    return NULL;
   }
 
   char *dest = i_malloc (len + 1, sizeof *dest, e);
   if (dest == NULL)
   {
-    return error_causef (e, ERR_NOMEM, "alloc failed for type log string");
+    error_causef (e, ERR_NOMEM, "alloc failed for type log string");
+    return NULL;
   }
 
   len = type_snprintf (dest, len + 1, t);
   if (len < 0)
   {
     i_free (dest);
-    return error_causef (e, ERR_IO, "snprintf failed");
+    error_causef (e, ERR_IO, "snprintf failed");
+    return NULL;
   }
 
-  i_log_info ("%.*s\n", len, dest);
-  i_free (dest);
+  *dlen = len;
+
+  return dest;
+}
+
+err_t
+i_print_type (struct type *t, error *e)
+{
+  u32   len;
+  char *var_str = get_var_str (t, &len, e);
+  if (var_str == NULL)
+  {
+    return error_trace (e);
+  }
+
+  i_printf ("%.*s\n", len, var_str);
+  i_free (var_str);
+
+  return SUCCESS;
+}
+
+err_t
+i_log_type (struct type *t, error *e)
+{
+  u32   len;
+  char *var_str = get_var_str (t, &len, e);
+  if (var_str == NULL)
+  {
+    return error_trace (e);
+  }
+
+  i_log_info ("%.*s\n", len, var_str);
+  i_free (var_str);
 
   return SUCCESS;
 }
@@ -5213,7 +5247,7 @@ print_indent (int level, u32 spaces)
 {
   for (u32 i = 0; i < spaces; ++i)
   {
-    i_printf (level, " ");
+    i_log_printf (level, " ");
   }
 }
 
@@ -5236,77 +5270,77 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
     {
       u8 v;
       memcpy (&v, buf, 1);
-      i_printf (level, "%u", (unsigned)v);
+      i_log_printf (level, "%u", (unsigned)v);
       return;
     }
     case U16:
     {
       u16 v;
       memcpy (&v, buf, 2);
-      i_printf (level, "%u", (unsigned)v);
+      i_log_printf (level, "%u", (unsigned)v);
       return;
     }
     case U32:
     {
       u32 v;
       memcpy (&v, buf, 4);
-      i_printf (level, "%u", (unsigned)v);
+      i_log_printf (level, "%u", (unsigned)v);
       return;
     }
     case U64:
     {
       u64 v;
       memcpy (&v, buf, 8);
-      i_printf (level, "%lu", (unsigned long)v);
+      i_log_printf (level, "%lu", (unsigned long)v);
       return;
     }
     case I8:
     {
       i8 v;
       memcpy (&v, buf, 1);
-      i_printf (level, "%d", (int)v);
+      i_log_printf (level, "%d", (int)v);
       return;
     }
     case I16:
     {
       i16 v;
       memcpy (&v, buf, 2);
-      i_printf (level, "%d", (int)v);
+      i_log_printf (level, "%d", (int)v);
       return;
     }
     case I32:
     {
       i32 v;
       memcpy (&v, buf, 4);
-      i_printf (level, "%d", (int)v);
+      i_log_printf (level, "%d", (int)v);
       return;
     }
     case I64:
     {
       i64 v;
       memcpy (&v, buf, 8);
-      i_printf (level, "%ld", (long)v);
+      i_log_printf (level, "%ld", (long)v);
       return;
     }
     case F16:
     {
       u16 h;
       memcpy (&h, buf, 2);
-      i_printf (level, "%g", (double)f16_to_f32 (h));
+      i_log_printf (level, "%g", (double)f16_to_f32 (h));
       return;
     }
     case F32:
     {
       float v;
       memcpy (&v, buf, 4);
-      i_printf (level, "%g", (double)v);
+      i_log_printf (level, "%g", (double)v);
       return;
     }
     case F64:
     {
       double v;
       memcpy (&v, buf, 8);
-      i_printf (level, "%g", v);
+      i_log_printf (level, "%g", v);
       return;
     }
     case F128:
@@ -5314,7 +5348,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u64 lo, hi;
       memcpy (&lo, buf, 8);
       memcpy (&hi, buf + 8, 8);
-      i_printf (
+      i_log_printf (
           level,
           "<f128:0x%016lx%016lx>",
           (unsigned long)hi,
@@ -5327,7 +5361,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u16 rh, ih;
       memcpy (&rh, buf, 2);
       memcpy (&ih, buf + 2, 2);
-      i_printf (
+      i_log_printf (
           level,
           "(%g, %g)",
           (double)f16_to_f32 (rh),
@@ -5340,7 +5374,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       float r, im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
-      i_printf (level, "(%g, %g)", (double)r, (double)im);
+      i_log_printf (level, "(%g, %g)", (double)r, (double)im);
       return;
     }
     case CF128:
@@ -5348,7 +5382,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       double r, im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
-      i_printf (level, "(%g, %g)", r, im);
+      i_log_printf (level, "(%g, %g)", r, im);
       return;
     }
     case CF256:
@@ -5357,14 +5391,14 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       long double r, im;
       memcpy (&r, buf, 16);
       memcpy (&im, buf + 16, 16);
-      i_printf (level, "(%Lg, %Lg)", r, im);
+      i_log_printf (level, "(%Lg, %Lg)", r, im);
 #else
       u64 r_lo, r_hi, im_lo, im_hi;
       memcpy (&r_lo, buf, 8);
       memcpy (&r_hi, buf + 8, 8);
       memcpy (&im_lo, buf + 16, 8);
       memcpy (&im_hi, buf + 24, 8);
-      i_printf (
+      i_log_printf (
           level,
           "(<f128:0x%016lx%016lx>, "
           "<f128:0x%016lx%016lx>)",
@@ -5381,7 +5415,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       i8 r, im;
       memcpy (&r, buf, 1);
       memcpy (&im, buf + 1, 1);
-      i_printf (level, "(%d, %d)", (int)r, (int)im);
+      i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
     case CI32:
@@ -5389,7 +5423,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       i16 r, im;
       memcpy (&r, buf, 2);
       memcpy (&im, buf + 2, 2);
-      i_printf (level, "(%d, %d)", (int)r, (int)im);
+      i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
     case CI64:
@@ -5397,7 +5431,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       i32 r, im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
-      i_printf (level, "(%d, %d)", (int)r, (int)im);
+      i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
     case CI128:
@@ -5405,7 +5439,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       i64 r, im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
-      i_printf (level, "(%ld, %ld)", (long)r, (long)im);
+      i_log_printf (level, "(%ld, %ld)", (long)r, (long)im);
       return;
     }
     case CU16:
@@ -5413,7 +5447,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u8 r, im;
       memcpy (&r, buf, 1);
       memcpy (&im, buf + 1, 1);
-      i_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
+      i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
     case CU32:
@@ -5421,7 +5455,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u16 r, im;
       memcpy (&r, buf, 2);
       memcpy (&im, buf + 2, 2);
-      i_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
+      i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
     case CU64:
@@ -5429,7 +5463,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u32 r, im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
-      i_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
+      i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
     case CU128:
@@ -5437,7 +5471,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u64 r, im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
-      i_printf (level, "(%lu, %lu)", (unsigned long)r, (unsigned long)im);
+      i_log_printf (level, "(%lu, %lu)", (unsigned long)r, (unsigned long)im);
       return;
     }
   }
@@ -5617,7 +5651,7 @@ print_sarray_dim (
   u32 show     = dim_len < max_elems ? dim_len : max_elems;
   u32 sub_size = sarray_sub_size (sa, dim_idx);
 
-  i_printf (level, "[");
+  i_log_printf (level, "[");
 
   if (dim_idx == sa->rank - 1)
   {
@@ -5626,7 +5660,7 @@ print_sarray_dim (
     {
       if (i > 0)
       {
-        i_printf (level, ", ");
+        i_log_printf (level, ", ");
       }
       print_type_inner (
           level,
@@ -5638,7 +5672,7 @@ print_sarray_dim (
     }
     if (dim_len > max_elems)
     {
-      i_printf (level, ", ...");
+      i_log_printf (level, ", ...");
     }
   }
   else
@@ -5648,7 +5682,7 @@ print_sarray_dim (
     {
       if (i > 0)
       {
-        i_printf (level, ",\n");
+        i_log_printf (level, ",\n");
         print_indent (level, col + 1);
       }
       print_sarray_dim (
@@ -5663,13 +5697,13 @@ print_sarray_dim (
     }
     if (dim_len > max_elems)
     {
-      i_printf (level, ",\n");
+      i_log_printf (level, ",\n");
       print_indent (level, col + 1);
-      i_printf (level, "...");
+      i_log_printf (level, "...");
     }
   }
 
-  i_printf (level, "]");
+  i_log_printf (level, "]");
 }
 
 #ifdef TESTING
@@ -5705,13 +5739,18 @@ print_type_inner (
 
     case T_STRUCT:
     {
-      i_printf (level, "{\n");
+      i_log_printf (level, "{\n");
       u32 offset = 0;
       for (u16 i = 0; i < t->st.len; ++i)
       {
         u32 field_indent = indent + 4;
         print_indent (level, field_indent);
-        i_printf (level, "%.*s = ", (int)t->st.keys[i].len, t->st.keys[i].data);
+        i_log_printf (
+            level,
+            "%.*s = ",
+            (int)t->st.keys[i].len,
+            t->st.keys[i].data
+        );
 
         const struct type *ft = t->st.types[i];
         if (ft->type == T_SARRAY)
@@ -5735,28 +5774,33 @@ print_type_inner (
         offset += type_byte_size (ft);
         if (i + 1 < t->st.len)
         {
-          i_printf (level, ",");
+          i_log_printf (level, ",");
         }
-        i_printf (level, "\n");
+        i_log_printf (level, "\n");
       }
       print_indent (level, indent);
-      i_printf (level, "}");
+      i_log_printf (level, "}");
       return;
     }
 
     case T_UNION:
     {
-      i_printf (level, "<union[0]: ");
+      i_log_printf (level, "<union[0]: ");
       if (t->un.len > 0)
       {
-        i_printf (level, "%.*s = ", (int)t->un.keys[0].len, t->un.keys[0].data);
+        i_log_printf (
+            level,
+            "%.*s = ",
+            (int)t->un.keys[0].len,
+            t->un.keys[0].data
+        );
         print_type_inner (level, buf, t->un.types[0], max_elems, indent);
       }
       else
       {
-        i_printf (level, "empty");
+        i_log_printf (level, "empty");
       }
-      i_printf (level, ">");
+      i_log_printf (level, ">");
       return;
     }
 
@@ -5789,7 +5833,7 @@ type_print_data (
 )
 {
   print_type_inner (log_level, buf, t, max_elems, 0);
-  i_printf (log_level, "\n");
+  i_log_printf (log_level, "\n");
 }
 
 #ifdef TESTING

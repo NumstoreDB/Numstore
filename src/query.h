@@ -16,7 +16,6 @@
 #define AST_H
 
 #include "collections.h"
-#include "serial.h"
 #include "types.h"
 
 /******************************************************************************
@@ -106,7 +105,8 @@ struct query
   };
 };
 
-// TODO
 bool query_equal (const struct query *left, const struct query *right);
+
+void i_log_query (int LOG_LEVEL, struct query *q);
 
 #endif
