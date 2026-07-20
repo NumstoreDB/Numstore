@@ -25,7 +25,7 @@ TEST (regression_cgd_test_create_delete_rollback_delete)
 
   // Create the variable
   test_assert_int_equal (
-      nsdb_execute (
+      nsdb_fexecute (
           db,
           "create n8Si3C union { tok6UW u32, YGhr cf128, LDzpWVm f16 }",
           NULL
@@ -35,13 +35,13 @@ TEST (regression_cgd_test_create_delete_rollback_delete)
 
   // The culprit txn
   test_assert_int_equal (nsdb_begin (db), 0);
-  test_assert_int_equal (nsdb_execute (db, "delete n8Si3C", NULL), 0);
+  test_assert_int_equal (nsdb_fexecute (db, "delete n8Si3C", NULL), 0);
   test_assert_int_equal (nsdb_rollback (db), 0);
 
   // Do something (seemingly unrelated)
   test_assert_int_equal (nsdb_begin (db), 0);
   test_assert_int_equal (
-      nsdb_execute (
+      nsdb_fexecute (
           db,
           "create yJIF "
           "struct { sQf8W7t6 struct { ukc7C4 cf256, CHbmDuiD6 union { aVmHRo "
@@ -58,7 +58,7 @@ TEST (regression_cgd_test_create_delete_rollback_delete)
   //          to the page being released, not the fsm - this came from a
   //          refactor - I used to do that
   //          also it never included the bit in the log
-  test_assert (nsdb_execute (db, "delete n8Si3C", NULL) == 0);
+  test_assert (nsdb_fexecute (db, "delete n8Si3C", NULL) == 0);
 
   test_assert_int_equal (nsdb_close (db), 0);
 }
@@ -71,7 +71,7 @@ TEST (regression_cgd_test_create_crash_close_delete)
 
   // Create
   test_assert_int_equal (
-      nsdb_execute (db, "create MkWMJ9a [8][9][3][3] i16", NULL),
+      nsdb_fexecute (db, "create MkWMJ9a [8][9][3][3] i16", NULL),
       0
   );
 
@@ -91,7 +91,7 @@ TEST (regression_cgd_test_create_crash_close_delete)
   //          uninitialized, therefore it needs one upfront physical log first
   //          before it can be used - log a physical update log then continue on
   //          with fsm specific logs
-  test_assert (nsdb_execute (db, "delete MkWMJ9a", NULL) == 0);
+  test_assert (nsdb_fexecute (db, "delete MkWMJ9a", NULL) == 0);
 
   test_assert_int_equal (nsdb_close (db), 0);
 }
@@ -103,7 +103,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   test_assert (db != NULL);
 
   // TXN 1 (auto)
-  test_assert_int_equal (nsdb_execute (db, "create testvar u32", NULL), 0);
+  test_assert_int_equal (nsdb_fexecute (db, "create testvar u32", NULL), 0);
 
   // TXN 2
   test_assert_int_equal (nsdb_begin (db), 0);
@@ -122,7 +122,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert testvar %d %d", data, 0, 53797),
+        nsdb_fexecute (db, "insert testvar %d %d", data, 0, 53797),
         53797
     );
     i_free (data);
@@ -136,7 +136,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "write testvar[23070:54622:7888]", data),
+        nsdb_fexecute (db, "write testvar[23070:54622:7888]", data),
         4
     );
   }
@@ -146,7 +146,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 removed[2];
     test_assert_int_equal (
-        nsdb_execute (db, "remove testvar[5512:32808:13648]", removed),
+        nsdb_fexecute (db, "remove testvar[5512:32808:13648]", removed),
         2
     );
   }
@@ -160,7 +160,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "write testvar[50236:51085:283]", data),
+        nsdb_fexecute (db, "write testvar[50236:51085:283]", data),
         3
     );
   }
@@ -173,7 +173,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 removed[2];
     test_assert_int_equal (
-        nsdb_execute (db, "remove testvar[51429:55291:1931]", removed),
+        nsdb_fexecute (db, "remove testvar[51429:55291:1931]", removed),
         2
     );
   }
@@ -182,7 +182,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 buf[2];
     test_assert_int_equal (
-        nsdb_execute (db, "read testvar[1632:20878:9623]", buf),
+        nsdb_fexecute (db, "read testvar[1632:20878:9623]", buf),
         2
     );
   }
@@ -191,7 +191,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 buf[2];
     test_assert_int_equal (
-        nsdb_execute (db, "read testvar[48723:56795:4036]", buf),
+        nsdb_fexecute (db, "read testvar[48723:56795:4036]", buf),
         2
     );
   }
@@ -207,7 +207,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 data[1] = {(u32)randu32 ()};
     test_assert_int_equal (
-        nsdb_execute (db, "write testvar[49014:52065:3051]", data),
+        nsdb_fexecute (db, "write testvar[49014:52065:3051]", data),
         1
     );
   }
@@ -221,7 +221,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert testvar %d %d", data, 22727, 73857),
+        nsdb_fexecute (db, "insert testvar %d %d", data, 22727, 73857),
         73857
     );
     i_free (data);
@@ -231,7 +231,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 removed[2];
     test_assert_int_equal (
-        nsdb_execute (db, "remove testvar[5509:190235:92363]", removed),
+        nsdb_fexecute (db, "remove testvar[5509:190235:92363]", removed),
         2
     );
   }
@@ -245,7 +245,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert testvar %d %d", data, 8986, 15959),
+        nsdb_fexecute (db, "insert testvar %d %d", data, 8986, 15959),
         15959
     );
     i_free (data);
@@ -255,7 +255,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 buf[2];
     test_assert_int_equal (
-        nsdb_execute (db, "read testvar[118059:145411:13676]", buf),
+        nsdb_fexecute (db, "read testvar[118059:145411:13676]", buf),
         2
     );
   }
@@ -268,7 +268,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "write testvar[58530:103424:22447]", data),
+        nsdb_fexecute (db, "write testvar[58530:103424:22447]", data),
         2
     );
   }
@@ -282,7 +282,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert testvar %d %d", data, 29193, 27045),
+        nsdb_fexecute (db, "insert testvar %d %d", data, 29193, 27045),
         27045
     );
     i_free (data);
@@ -292,7 +292,7 @@ TEST (regression_irwr_rollback_invalid_wal_header)
   {
     u32 buf[1];
     test_assert_int_equal (
-        nsdb_execute (db, "read testvar[39413:88949:49536]", buf),
+        nsdb_fexecute (db, "read testvar[39413:88949:49536]", buf),
         1
     );
   }
