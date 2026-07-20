@@ -30,7 +30,31 @@
  ******************************************************************************/
 
 sb_size
-nsdb_execute (nsdb_t *nh, const char *query, void *data, ...)
+nsdb_execute (nsdb_t *nh, const char *query, void *data)
+{
+  ALLOC_INIT (alloc);
+  sb_size      ret; // return variable
+  char        *buf; // The formatted query buffer
+  struct query q;   // The AST
+
+  // Reset errors before proceeding
+  nh->e.cause_code = 0;
+  nh->e.cmlen      = 0;
+
+  // Compile the query
+  if (compile_query (&q, buf, &alloc, &nh->e))
+  {
+    ret = error_trace (&nh->e);
+    goto theend;
+  }
+  ret = nsdb_execute_on_buffer (nh, &q, data, &alloc);
+theend:
+  ALLOC_CLOSE (alloc);
+  return ret;
+}
+
+sb_size
+nsdb_fexecute (nsdb_t *nh, const char *query, void *data, ...)
 {
   ALLOC_INIT (alloc);
   sb_size      ret; // return variable
@@ -83,7 +107,7 @@ theend:
 }
 
 #ifdef TESTING
-TEST (nsdb_execute)
+TEST (nsdb_fexecute)
 {
   ALLOC_INIT (alloc);
   error e = error_create ();
@@ -92,11 +116,11 @@ TEST (nsdb_execute)
   struct nsdb     *db  = nsdb_open ("test");
   struct nsdb_var *var = NULL;
 
-  nsdb_execute (db, "get %s", &var, "a");
+  nsdb_fexecute (db, "get %s", &var, "a");
   test_assert_equal (var, NULL);
 
-  nsdb_execute (db, "create %s %s", NULL, "a", "u32");
-  nsdb_execute (db, "get %s", &var, "a");
+  nsdb_fexecute (db, "create %s %s", NULL, "a", "u32");
+  nsdb_fexecute (db, "get %s", &var, "a");
   test_assert (var != NULL);
 
   test_assert (string_equal (var->var->vname, strfcstr ("a")));
