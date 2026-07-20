@@ -34,7 +34,6 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data)
 {
   ALLOC_INIT (alloc);
   sb_size      ret; // return variable
-  char        *buf; // The formatted query buffer
   struct query q;   // The AST
 
   // Reset errors before proceeding
@@ -42,7 +41,7 @@ nsdb_execute (nsdb_t *nh, const char *query, void *data)
   nh->e.cmlen      = 0;
 
   // Compile the query
-  if (compile_query (&q, buf, &alloc, &nh->e))
+  if (compile_query (&q, query, &alloc, &nh->e))
   {
     ret = error_trace (&nh->e);
     goto theend;

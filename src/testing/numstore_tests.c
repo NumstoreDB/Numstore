@@ -29,14 +29,14 @@ TEST (nsdb_create_txn)
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_begin (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_commit (db), 0);
     test_assert_int_equal (nsdb_close (db), 0);
 
     db = nsdb_open ("test");
     test_assert (db != NULL);
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get if exists foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
     test_assert_int_equal (nsdb_close (db), 0);
@@ -48,10 +48,10 @@ TEST (nsdb_create_txn)
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_begin (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_rollback (db), 0);
     nsdb_var_t *var;
-    test_assert (nsdb_execute (db, "get foo", &var) != 0);
+    test_assert (nsdb_fexecute (db, "get foo", &var) != 0);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -61,9 +61,9 @@ TEST (nsdb_create_txn)
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_begin (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_rollback (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -77,7 +77,7 @@ TEST (nsdb_create_txn)
     {
       test_assert_int_equal (nsdb_begin (db), 0);
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
       test_assert_int_equal (nsdb_commit (db), 0);
@@ -85,7 +85,7 @@ TEST (nsdb_create_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       nsdb_var_t *var = NULL;
-      test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "get if exists foo", &var), 0);
       test_assert (var == NULL);
     }
     test_assert_int_equal (nsdb_close (db), 0);
@@ -101,7 +101,7 @@ TEST (nsdb_create_txn)
     {
       test_assert_int_equal (nsdb_begin (db), 0);
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
       if (i % 2 == 0)
@@ -119,7 +119,7 @@ TEST (nsdb_create_txn)
       if (i % 2 == 0)
       {
         test_assert_int_equal (
-            nsdb_execute (db, "get if exists foo", &var),
+            nsdb_fexecute (db, "get if exists foo", &var),
             SUCCESS
         );
         test_assert (var == NULL);
@@ -127,7 +127,7 @@ TEST (nsdb_create_txn)
       else
       {
         test_assert_int_equal (
-            nsdb_execute (db, "get if exists foo", &var),
+            nsdb_fexecute (db, "get if exists foo", &var),
             SUCCESS
         );
         test_assert (var == NULL);
@@ -145,12 +145,12 @@ TEST (nsdb_create_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
       nsdb_var_t *var;
       test_assert_int_equal (
-          nsdb_execute (db, "get if exists foo", &var),
+          nsdb_fexecute (db, "get if exists foo", &var),
           SUCCESS
       );
       test_assert (var == NULL);
@@ -167,10 +167,10 @@ TEST (nsdb_create_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
-      test_assert (nsdb_execute (db, "create var_%d u32", NULL, i) == SUCCESS);
+      test_assert (nsdb_fexecute (db, "create var_%d u32", NULL, i) == SUCCESS);
     }
     test_assert_int_equal (nsdb_close (db), 0);
   }
@@ -184,20 +184,20 @@ TEST (nsdb_create_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (nsdb_begin (db), 0);
-      test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
       test_assert_int_equal (nsdb_rollback (db), 0);
       nsdb_var_t *var;
       test_assert_int_equal (
-          nsdb_execute (db, "get if exists foo", &var),
+          nsdb_fexecute (db, "get if exists foo", &var),
           SUCCESS
       );
       test_assert (var == NULL);
     }
     test_assert_int_equal (nsdb_begin (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_commit (db), 0);
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get if exists foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get if exists foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
     test_assert_int_equal (nsdb_close (db), 0);
@@ -211,11 +211,11 @@ TEST (nsdb_delete_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
     test_assert_int_equal (nsdb_begin (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "delete foo", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "delete foo", NULL), 0);
     test_assert_int_equal (nsdb_rollback (db), 0);
-    test_assert_int_equal (nsdb_execute (db, "delete foo", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "delete foo", NULL), 0);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -228,7 +228,7 @@ TEST (nsdb_delete_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
     }
@@ -236,11 +236,11 @@ TEST (nsdb_delete_txn)
     {
       test_assert_int_equal (nsdb_begin (db), 0);
       test_assert_int_equal (
-          nsdb_execute (db, "delete var", NULL),
+          nsdb_fexecute (db, "delete var", NULL),
           ERR_VARIABLE_NE
       );
       nsdb_var_t *var;
-      test_assert (nsdb_execute (db, "get var", &var) != 0);
+      test_assert (nsdb_fexecute (db, "get var", &var) != 0);
     }
     test_assert_int_equal (nsdb_close (db), 0);
   }
@@ -250,7 +250,7 @@ TEST (nsdb_delete_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *src = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -258,23 +258,23 @@ TEST (nsdb_delete_txn)
       src[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", src, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", src, 0, ITERS),
         ITERS
     );
 
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (nsdb_begin (db), 0);
-      test_assert_int_equal (nsdb_execute (db, "delete foo", NULL), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "delete foo", NULL), 0);
       test_assert_int_equal (nsdb_rollback (db), 0);
 
       nsdb_var_t *var;
-      test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
       test_assert_int_equal (nsdb_var_len (var), ITERS);
       nsdb_var_free (var);
 
       u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-      nsdb_execute (db, "read foo[:]", dst);
+      nsdb_fexecute (db, "read foo[:]", dst);
       for (int j = 0; j < ITERS; ++j)
       {
         test_assert_int_equal (dst[j], src[j]);
@@ -294,7 +294,7 @@ TEST (nsdb_delete_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (
-          nsdb_execute (db, "delete var_%d", NULL, i),
+          nsdb_fexecute (db, "delete var_%d", NULL, i),
           ERR_VARIABLE_NE
       );
     }
@@ -310,10 +310,10 @@ TEST (nsdb_delete_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
-      test_assert (nsdb_execute (db, "delete var", NULL) == ERR_VARIABLE_NE);
+      test_assert (nsdb_fexecute (db, "delete var", NULL) == ERR_VARIABLE_NE);
     }
     test_assert_int_equal (nsdb_close (db), 0);
   }
@@ -326,7 +326,7 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *src = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -336,18 +336,18 @@ TEST (nsdb_insert_txn)
 
     test_assert_int_equal (nsdb_begin (db), 0);
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", src, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", src, 0, ITERS),
         ITERS
     );
     test_assert_int_equal (nsdb_commit (db), 0);
 
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), ITERS);
     nsdb_var_free (var);
 
     u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    nsdb_execute (db, "read foo[:]", dst);
+    nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], src[i]);
@@ -362,10 +362,10 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
 
@@ -377,12 +377,12 @@ TEST (nsdb_insert_txn)
 
     test_assert_int_equal (nsdb_begin (db), 0);
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", src, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", src, 0, ITERS),
         ITERS
     );
     test_assert_int_equal (nsdb_rollback (db), 0);
 
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
 
@@ -395,7 +395,7 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -403,7 +403,7 @@ TEST (nsdb_insert_txn)
       initial[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", initial, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS),
         ITERS
     );
 
@@ -415,23 +415,23 @@ TEST (nsdb_insert_txn)
 
     test_assert_int_equal (nsdb_begin (db), 0);
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", extra, ITERS, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", extra, ITERS, ITERS),
         ITERS
     );
 
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), ITERS * 2);
     nsdb_var_free (var);
 
     test_assert_int_equal (nsdb_rollback (db), 0);
 
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), ITERS);
     nsdb_var_free (var);
 
     u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    nsdb_execute (db, "read foo[:]", dst);
+    nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], initial[i]);
@@ -447,17 +447,17 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     for (int i = 0; i < ITERS; ++i)
     {
       u32 val = (u32)randu32 ();
       test_assert_int_equal (
-          nsdb_execute (db, "insert foo %d %d", &val, i, 1),
+          nsdb_fexecute (db, "insert foo %d %d", &val, i, 1),
           1
       );
       nsdb_var_t *var;
-      test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
       test_assert_int_equal (nsdb_var_len (var), i + 1);
       nsdb_var_free (var);
     }
@@ -469,7 +469,7 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *vals = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -479,18 +479,18 @@ TEST (nsdb_insert_txn)
     for (int i = ITERS - 1; i >= 0; --i)
     {
       test_assert_int_equal (
-          nsdb_execute (db, "insert foo %d %d", &vals[i], 0, 1),
+          nsdb_fexecute (db, "insert foo %d %d", &vals[i], 0, 1),
           1
       );
     }
 
     nsdb_var_t *var;
-    test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
     test_assert_int_equal (nsdb_var_len (var), ITERS);
     nsdb_var_free (var);
 
     u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    nsdb_execute (db, "read foo[:]", dst);
+    nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], vals[i]);
@@ -505,7 +505,7 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -513,7 +513,7 @@ TEST (nsdb_insert_txn)
       initial[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", initial, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS),
         ITERS
     );
 
@@ -523,19 +523,19 @@ TEST (nsdb_insert_txn)
       extra[i] = (u32)randu32 ();
       test_assert_int_equal (nsdb_begin (db), 0);
       test_assert_int_equal (
-          nsdb_execute (db, "insert foo %d %d", &extra[i], ITERS, 1),
+          nsdb_fexecute (db, "insert foo %d %d", &extra[i], ITERS, 1),
           1
       );
       test_assert_int_equal (nsdb_rollback (db), 0);
 
       nsdb_var_t *var;
-      test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
       test_assert_int_equal (nsdb_var_len (var), ITERS);
       nsdb_var_free (var);
     }
 
     u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    nsdb_execute (db, "read foo[:]", dst);
+    nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], initial[i]);
@@ -557,23 +557,23 @@ TEST (nsdb_insert_txn)
     {
       vals[i] = (u32)randu32 ();
       test_assert_int_equal (
-          nsdb_execute (db, "create var_%d u32", NULL, i),
+          nsdb_fexecute (db, "create var_%d u32", NULL, i),
           0
       );
       test_assert_int_equal (
-          nsdb_execute (db, "insert var_%d %d %d", &vals[i], i, 0, 1),
+          nsdb_fexecute (db, "insert var_%d %d %d", &vals[i], i, 0, 1),
           1
       );
     }
     for (int i = 0; i < ITERS; ++i)
     {
       nsdb_var_t *var;
-      test_assert_int_equal (nsdb_execute (db, "get var_%d", &var, i), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "get var_%d", &var, i), 0);
       test_assert_int_equal (nsdb_var_len (var), 1);
       nsdb_var_free (var);
 
       u32 dst = 0;
-      nsdb_execute (db, "read var_%d[:]", &dst, i);
+      nsdb_fexecute (db, "read var_%d[:]", &dst, i);
       test_assert_int_equal (dst, vals[i]);
     }
     i_free (vals);
@@ -588,7 +588,7 @@ TEST (nsdb_write_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
     u32 *patch   = i_malloc (ITERS * sizeof (u32), 1, NULL);
@@ -598,16 +598,16 @@ TEST (nsdb_write_txn)
       patch[i]   = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", initial, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS),
         ITERS
     );
 
     test_assert_int_equal (nsdb_begin (db), 0);
-    nsdb_execute (db, "write foo[0:%d:1]", patch, ITERS);
+    nsdb_fexecute (db, "write foo[0:%d:1]", patch, ITERS);
     test_assert_int_equal (nsdb_commit (db), 0);
 
     u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    nsdb_execute (db, "read foo[:]", dst);
+    nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], patch[i]);
@@ -623,7 +623,7 @@ TEST (nsdb_write_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
     u32 *patch   = i_malloc (ITERS * sizeof (u32), 1, NULL);
@@ -633,16 +633,16 @@ TEST (nsdb_write_txn)
       patch[i]   = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", initial, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS),
         ITERS
     );
 
     test_assert_int_equal (nsdb_begin (db), 0);
-    nsdb_execute (db, "write foo[0:%d:1]", patch, ITERS);
+    nsdb_fexecute (db, "write foo[0:%d:1]", patch, ITERS);
     test_assert_int_equal (nsdb_rollback (db), 0);
 
     u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    nsdb_execute (db, "read foo[:]", dst);
+    nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], initial[i]);
@@ -658,7 +658,7 @@ TEST (nsdb_write_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *data = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -666,7 +666,7 @@ TEST (nsdb_write_txn)
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", data, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", data, 0, ITERS),
         ITERS
     );
     i_free (data);
@@ -674,10 +674,10 @@ TEST (nsdb_write_txn)
     for (int i = 0; i < ITERS; ++i)
     {
       u32 val = (u32)randu32 ();
-      nsdb_execute (db, "write foo[%d:%d:1]", &val, i, i + 1);
+      nsdb_fexecute (db, "write foo[%d:%d:1]", &val, i, i + 1);
 
       nsdb_var_t *var;
-      test_assert_int_equal (nsdb_execute (db, "get foo", &var), 0);
+      test_assert_int_equal (nsdb_fexecute (db, "get foo", &var), 0);
       test_assert_int_equal (nsdb_var_len (var), ITERS);
       nsdb_var_free (var);
     }
@@ -689,7 +689,7 @@ TEST (nsdb_write_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *shadow = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -697,7 +697,7 @@ TEST (nsdb_write_txn)
       shadow[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", shadow, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", shadow, 0, ITERS),
         ITERS
     );
 
@@ -707,8 +707,8 @@ TEST (nsdb_write_txn)
       int idx     = randu32 () % ITERS;
       u32 val     = (u32)randu32 ();
       shadow[idx] = val;
-      nsdb_execute (db, "write foo[%d:%d:1]", &val, idx, idx + 1);
-      nsdb_execute (db, "read foo[:]", dst);
+      nsdb_fexecute (db, "write foo[%d:%d:1]", &val, idx, idx + 1);
+      nsdb_fexecute (db, "read foo[:]", dst);
       for (int j = 0; j < ITERS; ++j)
       {
         test_assert_int_equal (dst[j], shadow[j]);
@@ -724,7 +724,7 @@ TEST (nsdb_write_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -732,7 +732,7 @@ TEST (nsdb_write_txn)
       initial[i] = (u32)randu32 ();
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", initial, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS),
         ITERS
     );
 
@@ -742,9 +742,9 @@ TEST (nsdb_write_txn)
       int idx = randu32 () % ITERS;
       u32 val = (u32)randu32 ();
       test_assert_int_equal (nsdb_begin (db), 0);
-      nsdb_execute (db, "write foo[%d:%d:1]", &val, idx, idx + 1);
+      nsdb_fexecute (db, "write foo[%d:%d:1]", &val, idx, idx + 1);
       test_assert_int_equal (nsdb_rollback (db), 0);
-      nsdb_execute (db, "read foo[:]", dst);
+      nsdb_fexecute (db, "read foo[:]", dst);
       for (int j = 0; j < ITERS; ++j)
       {
         test_assert_int_equal (dst[j], initial[j]);
@@ -760,7 +760,7 @@ TEST (nsdb_write_txn)
     test_assert_int_equal (nsdb_cleanup ("test"), 0);
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
-    test_assert_int_equal (nsdb_execute (db, "create foo u32", NULL), 0);
+    test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
     u32 *data = i_malloc (ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
@@ -768,7 +768,7 @@ TEST (nsdb_write_txn)
       data[i] = 0;
     }
     test_assert_int_equal (
-        nsdb_execute (db, "insert foo %d %d", data, 0, ITERS),
+        nsdb_fexecute (db, "insert foo %d %d", data, 0, ITERS),
         ITERS
     );
 
@@ -780,13 +780,13 @@ TEST (nsdb_write_txn)
       data[idx] = val;
 
       test_assert_int_equal (nsdb_begin (db), 0);
-      nsdb_execute (db, "write foo[%d:%d:1]", &val, idx, idx + 1);
+      nsdb_fexecute (db, "write foo[%d:%d:1]", &val, idx, idx + 1);
       test_assert_int_equal (nsdb_commit (db), 0);
       test_assert_int_equal (nsdb_close (db), 0);
 
       db = nsdb_open ("test");
       test_assert (db != NULL);
-      nsdb_execute (db, "read foo[:]", dst);
+      nsdb_fexecute (db, "read foo[:]", dst);
       for (int j = 0; j < ITERS; ++j)
       {
         test_assert_int_equal (dst[j], data[j]);

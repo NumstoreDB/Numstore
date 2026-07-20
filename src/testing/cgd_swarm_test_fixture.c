@@ -402,7 +402,8 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     };
 
     /* DB side */
-    int exec_ret = nsdb_execute (meta->db, "create %s %s", NULL, name, typestr);
+    int exec_ret =
+        nsdb_fexecute (meta->db, "create %s %s", NULL, name, typestr);
     CGD_SWMT_ASSERT_STATE (
         meta,
         exec_ret == 0,
@@ -460,7 +461,7 @@ cgd_swmt_delete (struct cgd_swarm_test *meta)
   );
 
   const char *name     = meta->cur->vname.data;
-  int         exec_ret = nsdb_execute (meta->db, "delete %s", NULL, name);
+  int         exec_ret = nsdb_fexecute (meta->db, "delete %s", NULL, name);
   CGD_SWMT_ASSERT_STATE (
       meta,
       exec_ret == 0,

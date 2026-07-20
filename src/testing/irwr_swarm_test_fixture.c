@@ -332,7 +332,7 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   }
 
   /* DB side (NOTE: was previously executed twice - collapsed to one call). */
-  int got = nsdb_execute (
+  int got = nsdb_fexecute (
       meta->db,
       "insert %s %d %d",
       data,
@@ -392,7 +392,7 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
   );
 
   /* DB side */
-  int exec_ret = nsdb_execute (
+  int exec_ret = nsdb_fexecute (
       meta->db,
       "remove %s[%d:%d:%d]",
       db_buf,
@@ -466,7 +466,7 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   );
 
   /* DB side */
-  int exec_ret = nsdb_execute (
+  int exec_ret = nsdb_fexecute (
       meta->db,
       "read %s[%d:%d:%d]",
       db_buf,
@@ -538,7 +538,7 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   }
 
   /* DB side */
-  int exec_ret = nsdb_execute (
+  int exec_ret = nsdb_fexecute (
       meta->db,
       "write %s[%d:%d:%d]",
       data,
@@ -648,7 +648,7 @@ irwr_swmt_open (
   irwr_swmt_set_allowed (ret);
 
   IRWR_SWMT_ASSERTF (
-      nsdb_execute (ret->db, "create %s %s", NULL, varname, vartype) == 0,
+      nsdb_fexecute (ret->db, "create %s %s", NULL, varname, vartype) == 0,
       "nsdb create failed (var='%s' type='%s' db='%s')",
       varname,
       vartype,
