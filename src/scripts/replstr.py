@@ -2,7 +2,7 @@ import os
 
 ROOTS = ["src", "src/testing", "src/templates", "src/samples", "src/testing", "src/tools"]
 
-OLD, NEW = "—", "-"
+OLD, NEW = "i_printf", "i_log_printf"
 
 for ROOT in ROOTS:
     for name in os.listdir(ROOT):

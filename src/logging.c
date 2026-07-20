@@ -32,6 +32,15 @@ i_log_internal (const char *prefix, const char *color, const char *fmt, ...)
 }
 
 void
+i_printf (const char *fmt, ...)
+{
+  va_list args;
+  va_start (args, fmt);
+  vfprintf (stderr, fmt, args);
+  va_end (args);
+}
+
+void
 i_log_flush (void)
 {
   fflush (stderr);
@@ -44,6 +53,15 @@ TEST (i_log)
   TEST_CASE ("Smoke test")
   {
     i_log_internal ("FOO", BLUE, "bar: %s %d\n", "biz", 1);
+    i_log_flush ();
+  }
+}
+TEST (i_printf)
+{
+  // Just make sure it doesn't crash
+  TEST_CASE ("Smoke test")
+  {
+    i_printf ("bar: %s %d\n", "biz", 1);
     i_log_flush ();
   }
 }

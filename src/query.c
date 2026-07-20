@@ -85,3 +85,61 @@ query_equal (const struct query *left, const struct query *right)
 
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
+
+void
+i_log_query (int log_level, struct query *q)
+{
+  switch (q->type)
+  {
+    // Array Operations
+    case QT_READ:
+    {
+      i_log (log_level, "READ\n");
+      break;
+    }
+    case QT_WRITE:
+    {
+      i_log (log_level, "WRITE\n");
+      break;
+    }
+    case QT_INSERT:
+    {
+      i_log (log_level, "INSERT\n");
+      break;
+    }
+    case QT_REMOVE:
+    {
+      i_log (log_level, "REMOVE\n");
+      break;
+    }
+
+    // Variable Operations
+    case QT_CREATE:
+    {
+      i_log (log_level, "CREATE\n");
+      break;
+    }
+    case QT_DELETE:
+    {
+      i_log (log_level, "DELETE\n");
+      break;
+    }
+    case QT_GET:
+    {
+      i_log (log_level, "GET\n");
+      break;
+    }
+
+    // Meta Operations
+    case QT_EXIT:
+    {
+      i_log (log_level, "EXIT\n");
+      break;
+    }
+    case QT_HELP:
+    {
+      i_log (log_level, "HELP\n");
+      break;
+    }
+  }
+}

@@ -305,7 +305,7 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
     const struct page_frame *mp = &p->pages[i];
     if (mp->flags & PW_PRESENT)
     {
-      i_printf (
+      i_log_printf (
           log_level,
           "%u |(PAGE)    pg: %" PRpgno
           " pin: %d acess: %d dirty: %d present: %d "
@@ -324,7 +324,7 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
     }
     else if (!only_present)
     {
-      i_printf (log_level, "%u | |\n", i);
+      i_log_printf (log_level, "%u | |\n", i);
     }
   }
 }
@@ -1662,12 +1662,12 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 {
   ASSERT (p->ww);
 
-  i_log_debug ("Starting Checkpoint - locking the database\n");
+  // i_log_debug ("Starting Checkpoint - locking the database\n");
 
   // This is what makes the checkpoint blocking
   // it will wait for all open transactions to complete
   lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
-  i_log_debug ("Checkpoint - lock acquired\n");
+  // i_log_debug ("Checkpoint - lock acquired\n");
 
   // Flush all pages - so the database is consistent
   if (pgr_flush_all_pages (p, e) < 0)
@@ -1683,7 +1683,7 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 
   // Get the end_lsn
   lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
-  i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
+  // i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
 
   // Write the next min lsn slot
   if (pgr_write_next_lsn (p, end_lsn, e))
@@ -1708,7 +1708,7 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 theend:
 
   // Unlock the database lock
-  i_log_debug ("Checkpoint Done - unlocking the database\n");
+  // i_log_debug ("Checkpoint Done - unlocking the database\n");
   lockt_unlock (p->lt, lock_db (), LM_X, e);
   return SUCCESS;
 }

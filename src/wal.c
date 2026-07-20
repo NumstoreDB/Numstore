@@ -2108,7 +2108,7 @@ i_print_wal_rec_hdr_read_light (
 
     case WL_EOF:
     {
-      i_printf (log_level, "%15" PRlsn "  WL_EOF\n", l);
+      i_log_printf (log_level, "%15" PRlsn "  WL_EOF\n", l);
       return;
     }
   }
@@ -2119,7 +2119,7 @@ i_print_wal_rec_hdr_read_light (
      Bump them if a new record type pushes past these. */
   if (prev)
   {
-    i_printf (
+    i_log_printf (
         log_level,
         "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
         l,
@@ -2130,7 +2130,13 @@ i_print_wal_rec_hdr_read_light (
   }
   else
   {
-    i_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
+    i_log_printf (
+        log_level,
+        "%15" PRlsn "  %-11s  [ %-72s ]\n",
+        l,
+        name,
+        fields
+    );
   }
 }
 

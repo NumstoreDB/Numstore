@@ -421,7 +421,7 @@ i_log_txn_in_txnt (struct hnode *node, void *_log_level)
 
   latch_lock (&tx->l);
 
-  i_printf (
+  i_log_printf (
       *log_level,
       "| %d | %" PRtxid " | %" PRpgno " | %" PRpgno " | %s |\n",
       tx->node.hcode,

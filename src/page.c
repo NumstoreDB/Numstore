@@ -298,7 +298,7 @@ i_log_fsm (const int level, const page *t)
   {
     if (fsm_get_bit (t, i))
     {
-      i_printf (level, "|%" PRp_size "| -- Occupied\n", i);
+      i_log_printf (level, "|%" PRp_size "| -- Occupied\n", i);
     }
   }
   i_log (level, "=== FREE SPACE PAGE END ===\n");
@@ -1326,24 +1326,24 @@ i_log_dl (const int level, const page *d)
 {
   i_log (level, "=== DATA LIST PAGE START ===\n");
 
-  i_printf (level, "PGNO: %" PRpgno "\n", d->pg);
+  i_log_printf (level, "PGNO: %" PRpgno "\n", d->pg);
   if (dl_get_next (d) == PGNO_NULL)
   {
-    i_printf (level, "NEXT: NULL\n");
+    i_log_printf (level, "NEXT: NULL\n");
   }
   else
   {
-    i_printf (level, "NEXT: %" PRpgno "\n", dl_get_next (d));
+    i_log_printf (level, "NEXT: %" PRpgno "\n", dl_get_next (d));
   }
   if (dl_get_prev (d) == PGNO_NULL)
   {
-    i_printf (level, "PREV: NULL\n");
+    i_log_printf (level, "PREV: NULL\n");
   }
   else
   {
-    i_printf (level, "PREV: %" PRpgno "\n", dl_get_prev (d));
+    i_log_printf (level, "PREV: %" PRpgno "\n", dl_get_prev (d));
   }
-  i_printf (level, "BLEN: %u\n", dl_used (d));
+  i_log_printf (level, "BLEN: %u\n", dl_used (d));
 
   i_log (level, "=== DATA LIST PAGE END ===\n");
 }
@@ -2417,25 +2417,25 @@ i_log_in (const int level, const page *in)
 {
   i_log (level, "=== INNER NODE PAGE START ===\n");
 
-  i_printf (level, "PGNO: %" PRpgno "\n", in->pg);
+  i_log_printf (level, "PGNO: %" PRpgno "\n", in->pg);
   if (in_get_next (in) == PGNO_NULL)
   {
-    i_printf (level, "NEXT: NULL\n");
+    i_log_printf (level, "NEXT: NULL\n");
   }
   else
   {
-    i_printf (level, "NEXT: %" PRpgno "\n", in_get_next (in));
+    i_log_printf (level, "NEXT: %" PRpgno "\n", in_get_next (in));
   }
   if (in_get_prev (in) == PGNO_NULL)
   {
-    i_printf (level, "PREV: NULL\n");
+    i_log_printf (level, "PREV: NULL\n");
   }
   else
   {
-    i_printf (level, "PREV: %" PRpgno "\n", in_get_prev (in));
+    i_log_printf (level, "PREV: %" PRpgno "\n", in_get_prev (in));
   }
-  i_printf (level, "SIZE: %" PRb_size "\n", in_get_size (in));
-  i_printf (level, "LEN:  %u\n", in_get_len (in));
+  i_log_printf (level, "SIZE: %" PRb_size "\n", in_get_size (in));
+  i_log_printf (level, "LEN:  %u\n", in_get_len (in));
 
   const u32 len = in_get_len (in);
   for (u32 i = 0; i < len; ++i)
@@ -2449,9 +2449,9 @@ i_log_in (const int level, const page *in)
         in_get_key (in, i),
         in_get_leaf (in, i)
     );
-    i_printf (level, "%s ", line);
+    i_log_printf (level, "%s ", line);
   }
-  i_printf (level, "\n");
+  i_log_printf (level, "\n");
 
   i_log (level, "=== INNER NODE PAGE END ===\n");
 }
@@ -2522,13 +2522,13 @@ i_log_vh (const int level, const page *vh)
     if (p != PGNO_NULL)
     {
       empty = false;
-      i_printf (level, "[%" PRp_size "]: %" PRpgno "\n", i, p);
+      i_log_printf (level, "[%" PRp_size "]: %" PRpgno "\n", i, p);
     }
   }
 
   if (empty)
   {
-    i_printf (level, "Empty\n");
+    i_log_printf (level, "Empty\n");
   }
 
   i_log (level, "=== VAR HASH TABLE PAGE END ===\n");
@@ -2797,34 +2797,34 @@ i_log_vp (const int level, const page *vp)
 {
   i_log (level, "=== VARIABLE PAGE START ===\n");
 
-  i_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
-  i_printf (level, "VLEN:   %u\n", vp_get_vlen (vp));
-  i_printf (level, "TLEN:   %u\n", vp_get_tlen (vp));
+  i_log_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
+  i_log_printf (level, "VLEN:   %u\n", vp_get_vlen (vp));
+  i_log_printf (level, "TLEN:   %u\n", vp_get_tlen (vp));
   if (vp_get_root (vp) == PGNO_NULL)
   {
-    i_printf (level, "ROOT:  NULL\n");
+    i_log_printf (level, "ROOT:  NULL\n");
   }
   else
   {
-    i_printf (level, "ROOT:  %" PRpgno "\n", vp_get_root (vp));
+    i_log_printf (level, "ROOT:  %" PRpgno "\n", vp_get_root (vp));
   }
   if (vp_get_next (vp) == PGNO_NULL)
   {
-    i_printf (level, "NEXT:  NULL\n");
+    i_log_printf (level, "NEXT:  NULL\n");
   }
   else
   {
-    i_printf (level, "NEXT:  %" PRpgno "\n", vp_get_next (vp));
+    i_log_printf (level, "NEXT:  %" PRpgno "\n", vp_get_next (vp));
   }
   if (vp_get_ovnext (vp) == PGNO_NULL)
   {
-    i_printf (level, "OVNEXT:  NULL\n");
+    i_log_printf (level, "OVNEXT:  NULL\n");
   }
   else
   {
-    i_printf (level, "OVNEXT:  %" PRpgno "\n", vp_get_ovnext (vp));
+    i_log_printf (level, "OVNEXT:  %" PRpgno "\n", vp_get_ovnext (vp));
   }
-  i_printf (level, "TOFST:  %" PRb_size "\n", vp_calc_tofst (vp));
+  i_log_printf (level, "TOFST:  %" PRb_size "\n", vp_calc_tofst (vp));
 
   i_log (level, "=== VARIABLE PAGE END ===\n");
 }
@@ -2909,14 +2909,14 @@ i_log_vt (const int level, const page *vp)
 {
   i_log (level, "=== VARIABLE TAIL START ===\n");
 
-  i_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
+  i_log_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
   if (vt_get_next (vp) == PGNO_NULL)
   {
-    i_printf (level, "NEXT:   NULL\n");
+    i_log_printf (level, "NEXT:   NULL\n");
   }
   else
   {
-    i_printf (level, "NEXT:   %" PRpgno "\n", vt_get_next (vp));
+    i_log_printf (level, "NEXT:   %" PRpgno "\n", vt_get_next (vp));
   }
 
   i_log (level, "=== VARIABLE TAIL END ===\n");
