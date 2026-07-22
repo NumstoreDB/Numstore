@@ -23,8 +23,9 @@
 #include "logging.h"
 #include "os.h"
 #include "testing/testing.h"
+#include "testing/unit_tests.h"
 
-HEADER_FUNC int
+int
 run_unit_tests (const char* filter)
 {
   int ntests = 0;

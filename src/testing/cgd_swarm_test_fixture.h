@@ -15,6 +15,8 @@
 #ifndef CGD_SWARM_TEST_FIXTURE_H
 #define CGD_SWARM_TEST_FIXTURE_H
 
+void cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed);
+
 /**
  * Create Delete Swarm Test
  *
