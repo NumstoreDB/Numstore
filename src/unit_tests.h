@@ -12,4 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-int run_unit_tests (const char *filter);
+#ifdef TESTING
+int run_unit_tests (int seed, const char *filter);
+#endif
