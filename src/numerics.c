@@ -17,10 +17,7 @@
 #include <string.h>
 
 #include "csx_assert.h"
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
+#include "testing.h"
 
 float
 f16_to_f32 (const u16 h)

@@ -41,5 +41,5 @@ if __name__ == '__main__':
         dirs[:] = [d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS]
 
         for fname in sorted(files):
-            if fname.endswith((".c", ".h")):
+            if fname.endswith((".c", ".h", ".rs")):
                 process_file(Path(root) / fname)

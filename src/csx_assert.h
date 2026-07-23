@@ -114,8 +114,4 @@ gte0 (int val)
 #  define DBG_ASSERT(name, expr) ((void)0)
 #endif
 
-#ifndef TESTING
-#  define TEST_MARK(v)
-#endif
-
 #endif // CSX_ASSERT_H

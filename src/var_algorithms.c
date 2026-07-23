@@ -18,16 +18,13 @@
 #include "error.h"
 #include "numstore.h"
 #include "page.h"
+#include "page_fixture.h"
 #include "page_h.h"
 #include "pager.h"
 #include "rope_algorithms.h"
+#include "testing.h"
 #include "types.h"
 #include "variables.h"
-
-#ifdef TESTING
-#  include "testing/page_fixture.h"
-#  include "testing/testing.h"
-#endif
 
 /******************************************************************************
  * SECTION: ns_init_var_hash_map

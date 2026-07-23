@@ -15,10 +15,7 @@
 #include "utils.h"
 
 #include "platform.h"
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
+#include "testing.h"
 
 const char *
 file_basename (const char *path)

@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "smfile_test_fixture.h"
+
 #include "nsdb.h"
 #include "pager.h"
 #include "smartfiles.h"
-#include "testing/data_validator.h"
-#include "testing/smfile_test_fixture.h"
-#include "testing/testing.h"
+#include "testing.h"
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
@@ -119,7 +119,7 @@ smfile_data_writer_close (struct data_writer *w)
   return ret;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (smfile_data_writer)
 {
   error e = error_create ();
