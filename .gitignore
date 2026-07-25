@@ -64,8 +64,3 @@ _build/
 # Added by cargo
 
 /target
-cgd_swarm_test
-foo
-irwr_swarm_test
-test
-testdb
