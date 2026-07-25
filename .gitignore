@@ -59,8 +59,3 @@ _build/
 
 # Claude Code agent worktrees
 .claude/
-
-
-# Added by cargo
-
-/target

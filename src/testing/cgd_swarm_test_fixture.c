@@ -12,15 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+/// Copyright 2026 Theo Lincke
+/// ... (license header unchanged)
+
 #include "testing/cgd_swarm_test_fixture.h"
 
-#include <signal.h>
-#include <stddef.h>
+#include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "alloc.h"
 #include "logging.h"
@@ -31,12 +31,8 @@
 #include "types.h"
 #include "variables.h"
 
-/******************************************************************************
- * SECTION: Diagnostics
- * ----------------------------------------------------------------------------
- * @brief Assertion macros, action-name table, and state dumper used by every
- *        failure path in this fixture.
- ******************************************************************************/
+///////////////////////////////////////////////////////////
+/// Diagnostics
 
 static const char *const cgd_action_names[CDS_AT_LEN] = {
     [CDS_BEGIN_TXN]        = "BEGIN_TXN",
@@ -52,7 +48,7 @@ static const char *const cgd_action_names[CDS_AT_LEN] = {
 static void cgd_swmt_print_state (const struct cgd_swarm_test *meta);
 
 /**
- * Bare ASSERTion: prints the failing expression and source location.
+ * Bare assertion: prints the failing expression and source location.
  */
 #define CGD_SWMT_ASSERT(expr)                                                  \
   do                                                                           \
@@ -68,7 +64,7 @@ static void cgd_swmt_print_state (const struct cgd_swarm_test *meta);
   while (0)
 
 /**
- * Formatted ASSERTion: adds a printf-style context line.
+ * Formatted assertion: adds a printf-style context line.
  */
 #define CGD_SWMT_ASSERTF(expr, fmt, ...)                                       \
   do                                                                           \
@@ -178,9 +174,9 @@ cgd_swmt_set_random_enabled (struct cgd_swarm_test *meta)
 static void
 cgd_swmt_set_allowed (struct cgd_swarm_test *meta)
 {
-  ASSERT (meta);
-  ASSERT (meta->db);
-  ASSERT (meta->dbname);
+  assert (meta);
+  assert (meta->db);
+  assert (meta->dbname);
 
   memset (meta->allowed, 0, sizeof (meta->allowed));
 
@@ -264,8 +260,8 @@ type_str (const struct type *t)
 static void
 cgd_swmt_begin_txn (struct cgd_swarm_test *meta)
 {
-  ASSERT (!meta->in_txn);
-  ASSERT (meta->working == NULL);
+  assert (!meta->in_txn);
+  assert (meta->working == NULL);
 
   CGD_SWMT_ASSERTF (
       nsdb_begin (meta->db) == 0,
@@ -286,8 +282,8 @@ cgd_swmt_begin_txn (struct cgd_swarm_test *meta)
 static void
 cgd_swmt_commit_txn (struct cgd_swarm_test *meta)
 {
-  ASSERT (meta->in_txn);
-  ASSERT (meta->working != NULL);
+  assert (meta->in_txn);
+  assert (meta->working != NULL);
 
   CGD_SWMT_ASSERTF (
       nsdb_commit (meta->db) == 0,
@@ -309,7 +305,7 @@ cgd_swmt_commit_txn (struct cgd_swarm_test *meta)
 static void
 cgd_swmt_rollback_txn (struct cgd_swarm_test *meta)
 {
-  ASSERT (meta->in_txn);
+  assert (meta->in_txn);
 
   CGD_SWMT_ASSERTF (
       nsdb_rollback (meta->db) == 0,
@@ -358,7 +354,7 @@ cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta)
 static void
 cgd_swmt_close_and_reopen (struct cgd_swarm_test *meta)
 {
-  ASSERT (!meta->in_txn);
+  assert (!meta->in_txn);
   CGD_SWMT_ASSERTF (
       nsdb_close (meta->db) == 0,
       "nsdb_close failed on db='%s'",
@@ -630,62 +626,4 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
   }
 
   cgd_swmt_set_allowed (meta);
-}
-
-/******************************************************************************
- * SECTION: cgd_swarm_test
- ******************************************************************************/
-
-static volatile sig_atomic_t cgd_keep_running = 1;
-
-static void
-handle_sigint (int sig)
-{
-  (void)sig;
-  cgd_keep_running = 0;
-}
-
-void
-cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
-{
-  srand (seed);
-
-  int start_enabled[CDS_AT_LEN];
-  for (int i = 0; i < CDS_AT_LEN; ++i)
-  {
-    start_enabled[i] = 1;
-  }
-
-  struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, dbname, 0.01f);
-
-#if PLATFORM_WINDOWS
-  if (signal (SIGINT, handle_sigint) == SIG_ERR)
-  {
-    cgd_swmt_close (meta);
-    return 0;
-  }
-#else
-  struct sigaction sa;
-  sa.sa_handler = handle_sigint;
-  sigemptyset (&sa.sa_mask);
-  sa.sa_flags = 0;
-  if (sigaction (SIGINT, &sa, NULL) == -1)
-  {
-    cgd_swmt_close (meta);
-    return;
-  }
-#endif
-
-  time_t start = time (NULL);
-
-  while (cgd_keep_running)
-  {
-    if (time (NULL) - start >= timeout_seconds)
-    {
-      break;
-    }
-    cgd_swmt_step (meta);
-  }
-
-  cgd_swmt_close (meta);
 }

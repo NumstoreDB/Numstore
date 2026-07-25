@@ -1,4 +1,0 @@
-Wire Server protocol
-====================
-
-
