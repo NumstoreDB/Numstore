@@ -15,10 +15,10 @@
 #include "mem_vhmap.h"
 
 #include "alloc.h"
-#include "numerics.h"        // randu32
-#include "os.h"              // i_malloc
-#include "testing/testing.h" // TEST
-#include "variables.h"       // variable
+#include "numerics.h"  // randu32
+#include "os.h"        // i_malloc
+#include "testing.h"   // TEST
+#include "variables.h" // variable
 
 struct var_frame
 {
@@ -251,7 +251,7 @@ mem_vhmap_random (struct mem_vhmap *db)
   return ctx.dest;
 }
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (mem_vhmap)
 {
   error             e = error_create ();

@@ -15,10 +15,7 @@
 #include "serial.h"
 
 #include "csx_assert.h"
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
+#include "testing.h"
 
 /////////////////////////////////////////////////////////////////////
 ////// String

@@ -24,20 +24,6 @@
  * @brief Pass compiler flags to override these constants
  ******************************************************************************/
 
-// Versions
-#ifndef NS_VERSION_MAJOR
-#  define NS_VERSION_MAJOR 0
-#endif
-#ifndef NS_VERSION_MINOR
-#  define NS_VERSION_MINOR 0
-#endif
-#ifndef NS_VERSION_PATCH
-#  define NS_VERSION_PATCH 0
-#endif
-#ifndef NS_VERSION_STRING
-#  define NS_VERSION_STRING "0.0.0"
-#endif
-
 // Compile Time Options
 #ifndef NS_PAGE_SIZE
 #  define NS_PAGE_SIZE 4096
@@ -291,5 +277,9 @@ int nsdb_rollback (nsdb_t *ns);
  * of elements inserted / written / removed / read for each op code respectively
  */
 sb_size nsdb_execute (nsdb_t *nh, const char *query, void *data);
-sb_size nsdb_fexecute (nsdb_t *ns, const char *query_fmt, void *data, ...)
-    NSDB_PRINTF (2, 4);
+sb_size nsdb_fexecute (
+    nsdb_t     *ns,
+    const char *query_fmt,
+    void       *data,
+    ...
+) NSDB_PRINTF (2, 4);

@@ -1,29 +1,36 @@
-set(NS_VERSION_MAJOR  ${PROJECT_VERSION_MAJOR})
-set(NS_VERSION_MINOR  ${PROJECT_VERSION_MINOR})
-set(NS_VERSION_PATCH  ${PROJECT_VERSION_PATCH})
-set(NS_VERSION_STRING "${PROJECT_VERSION}")
+file(GLOB NUMSTORE_SOURCES CONFIGURE_DEPENDS "*.c")
+
+########################################################################
+# Testing Code
+########################################################################
+if(ENABLE_TESTS)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+  # Generate unit test header
+  execute_process(
+    COMMAND ${Python3_EXECUTABLE}
+            "${PROJECT_SOURCE_DIR}/src/scripts/gen_tests.py"
+            "${PROJECT_SOURCE_DIR}/src/templates/unit_tests.c.in"
+            "${PROJECT_BINARY_DIR}/unit_tests.c"
+            "${PROJECT_SOURCE_DIR}/src"
+    RESULT_VARIABLE gen_result
+    OUTPUT_VARIABLE gen_stdout
+    ERROR_VARIABLE  gen_stderr
+  )
+  if(NOT gen_result EQUAL 0)
+    message(FATAL_ERROR "gen_tests.py failed (${gen_result}):\n${gen_stdout}\n${gen_stderr}")
+  endif()
+
+  list(APPEND NUMSTORE_SOURCES "${PROJECT_BINARY_DIR}/unit_tests.c")
+endif()
 
 ########################################################################
 # Generate the numstore library
 ########################################################################
-file(GLOB NUMSTORE_SOURCES CONFIGURE_DEPENDS "*.c")
-file(GLOB NUMSTORE_TESTING_SOURCES CONFIGURE_DEPENDS "testing/*.c")
-
-if(ENABLE_TESTS)
-    add_library(numstore ${NUMSTORE_SOURCES} ${NUMSTORE_TESTING_SOURCES})
-else()
-    add_library(numstore ${NUMSTORE_SOURCES})
-endif()
+add_library(numstore ${NUMSTORE_SOURCES})
 add_library(numstore::numstore ALIAS numstore)
-
-# PRIVATE is key: this must NOT propagate to targets that link against numstore,
-# otherwise main() would get stripped out of the executable build below too.
 target_compile_definitions(numstore PRIVATE NUMSTORE_LIB)
-
 set_target_properties(numstore PROPERTIES VERSION ${PROJECT_VERSION})
-if(NOT WIN32)
-    set_target_properties(numstore PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
-endif()
 target_include_directories(numstore PRIVATE "${PROJECT_SOURCE_DIR}/src")
 
 if(WIN32)
@@ -31,6 +38,7 @@ if(WIN32)
 else()
     find_package(Threads REQUIRED)
     target_link_libraries(numstore PUBLIC Threads::Threads)
+    set_target_properties(numstore PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
 endif()
 
 ########################################################################
@@ -84,32 +92,6 @@ function(ns_add_sample NAME FILE)
   target_link_libraries(${NAME} PRIVATE numstore::numstore)
   install(TARGETS ${NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endfunction()
-
-########################################################################
-# Testing Code
-########################################################################
-if(ENABLE_TESTS)
-  find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
-  # Generate unit test header
-  execute_process(
-    COMMAND ${Python3_EXECUTABLE}
-            "${PROJECT_SOURCE_DIR}/src/scripts/gen_tests.py"
-            "${PROJECT_SOURCE_DIR}/src/templates/unit_tests.h.in"
-            "${PROJECT_SOURCE_DIR}/src/testing/unit_tests.h"
-            "${PROJECT_SOURCE_DIR}/src"
-    RESULT_VARIABLE gen_result
-    OUTPUT_VARIABLE gen_stdout
-    ERROR_VARIABLE  gen_stderr
-  )
-  if(NOT gen_result EQUAL 0)
-    message(FATAL_ERROR "gen_tests.py failed (${gen_result}):\n${gen_stdout}\n${gen_stderr}")
-  endif()
-
-  ns_add_executable(unit_tests        testing/apps/unit_tests.c)
-  ns_add_executable(cgd_swarm_test    testing/apps/cgd_swarm_test.c)
-  ns_add_executable(irwr_swarm_test   testing/apps/irwr_swarm_test.c)
-endif()
 
 ########################################################################
 # Tools - simple UNIX-like debug tools 

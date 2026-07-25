@@ -20,13 +20,11 @@
 #include "numstore.h"
 #include "os.h"
 #include "page.h"
+#include "page_fixture.h"
 #include "page_h.h"
 #include "pager.h"
 #include "serial.h"
-
-#ifdef TESTING
-#  include "testing/page_fixture.h"
-#endif
+#include "testing.h"
 
 /******************************************************************************
  * SECTION: Common Data Structures

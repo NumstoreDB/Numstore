@@ -14,9 +14,7 @@
 
 #include "logging.h"
 
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
+#include "testing.h"
 
 ////////////////////////////////////////////////////////////
 // LOGGING

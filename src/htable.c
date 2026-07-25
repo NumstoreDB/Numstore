@@ -17,10 +17,7 @@
 #include "csx_assert.h"
 #include "numerics.h" // randu32
 #include "os.h"       // i_malloc
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
+#include "testing.h"
 
 DEFINE_DBG_ASSERT (struct htable, htable, t, {
   ASSERT (t);

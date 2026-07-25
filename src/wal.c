@@ -18,12 +18,9 @@
 #include "numstore.h"
 #include "os.h"
 #include "serial.h"
+#include "testing.h"
 #include "txn_table.h"
 #include "wal.h"
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
 
 /******************************************************************************
  * SECTION: WAL OStream
