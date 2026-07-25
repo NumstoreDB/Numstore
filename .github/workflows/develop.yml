@@ -32,7 +32,7 @@ jobs:
       - shell: bash
         run: |
           exe=$(find build/ci-tests/bin -maxdepth 2 -name 'numstore*' -type f | head -1)
-          "$exe --unit_tests"
+          "$exe" --unit_tests
 
   # Build and run release tests just once to ensure 
   # no debug/release code broke the pipeline
@@ -50,7 +50,7 @@ jobs:
       - shell: bash
         run: |
           exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
-          "$exe"
+          "$exe" --unit_tests
 
   coverage:
     runs-on: ubuntu-latest
