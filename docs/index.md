@@ -1,7 +1,7 @@
 Numstore Docs
 =============
 
-Numstore is a database for arrays and "file-like" data 
+Numstore is a database for arrays.
 
 * See [building](building.md) for a walkthrough on how to configure your build using cmake
 * See [developing](developing.md) to get started understanding the code base
