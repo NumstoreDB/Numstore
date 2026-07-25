@@ -49,7 +49,7 @@ jobs:
       # Run the tests
       - shell: bash
         run: |
-          exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
+          exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'numstore*' -type f | head -1)
           "$exe" --unit_tests
 
   coverage:
@@ -65,8 +65,8 @@ jobs:
 
       # Run the tests
       - run: ./build/ci-coverage/bin/numstore --unit_tests
-      - run: ./build/debug/bin/numstore --irwr foo 10 12314
-      - run: ./build/debug/bin/numstore --cgd foo 10 1231
+      - run: ./build/ci-coverage/bin/numstore --irwr foo 10 12314
+      - run: ./build/ci-coverage/bin/numstore --cgd foo 10 1231
       - run: ./build/ci-coverage/bin/ns_sample1_basic_crud
 
       # Generate and upload coverage
