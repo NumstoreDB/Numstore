@@ -2978,7 +2978,7 @@ type_equal (const struct type *left, const struct type *right)
   }
 }
 
-static char *
+char *
 get_var_str (struct type *t, u32 *dlen, error *e)
 {
   i32 len = type_snprintf (NULL, 0, t);
@@ -3018,7 +3018,7 @@ i_print_type (struct type *t, error *e)
     return error_trace (e);
   }
 
-  i_printf ("%.*s\n", len, var_str);
+  i_printf ("%.*s", len, var_str);
   i_free (var_str);
 
   return SUCCESS;

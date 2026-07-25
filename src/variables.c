@@ -24,14 +24,41 @@
 err_t
 i_print_variable (struct variable *v, error *e)
 {
-  i_printf ("=========== Variable: %.*s\n", strfmt (&v->vname));
-  i_printf ("   root: %" PRpgno "\n", v->var_root);
-  i_printf ("   array root: %" PRpgno "\n", v->rpt_root);
-  i_printf ("   nbytes: %" PRb_size "\n", v->nbytes);
-  i_printf ("   Data type:\n");
-  err_t ret = i_print_type (v->dtype, e);
-  i_printf ("===========\n");
-  return ret;
+  i_printf ("{\n");
+  i_printf ("    \"Status\" : \"Ok\",\n");
+  i_printf ("    \"Name\"   : \"%.*s\",\n", strfmt (&v->vname));
+
+  u32   len;
+  char *var_str = get_var_str (v->dtype, &len, e);
+  if (var_str == NULL)
+  {
+    return error_trace (e);
+  }
+  i_printf ("    \"DType\"  : \"%.*s\",\n", len, var_str);
+  i_free (var_str);
+  i_printf ("    \"DSize\"  : %u,\n", type_byte_size (v->dtype));
+
+  /* Assuming Nelems is derived from bytes / size, or replace with v->nelems if
+   * it exists */
+  i_printf (
+      "    \"Nelems\" : %" PRb_size ",\n",
+      v->nbytes / type_byte_size (v->dtype)
+  );
+  i_printf ("    \"Bytes\"  : %" PRb_size ",\n", v->nbytes);
+
+  /* JSON strictly requires lowercase 'null' */
+  if (v->var_root == PGNO_NULL)
+  {
+    i_printf ("    \"Root\"   : NULL\n");
+  }
+  else
+  {
+    i_printf ("    \"Root\"   : %" PRpgno "\n", v->var_root);
+  }
+
+  i_printf ("}\n");
+
+  return error_trace (e);
 }
 
 #ifdef TESTING

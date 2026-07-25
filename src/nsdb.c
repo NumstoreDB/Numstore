@@ -1616,6 +1616,8 @@ nsdb_execute_in_console (
         goto failed;
       }
 
+      printf ("{ \"Status\" : \"Ok\" }\n");
+
       ret = SUCCESS;
 
       break;
@@ -1790,8 +1792,6 @@ nscli_step_execute (struct nscli *cli)
 {
   enum nscli_execute_result ret = EXE_SUCCESS;
   struct query              q;
-
-  printf ("%s\n", (char *)cli->stmt.data);
 
   // compile the query
   if (compile_query (&q, cli->stmt.data, &cli->step_alloc, &cli->db->e))
