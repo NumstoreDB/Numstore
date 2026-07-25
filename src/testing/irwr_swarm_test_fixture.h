@@ -19,8 +19,6 @@
 #include "numstore.h"    // nsdb_t
 #include "stdtypes.h"    // u32 ...etc
 
-void irwr_swarm_test (const char *dbname, int timeout_seconds, unsigned seed);
-
 // Actions you can take in a irwr only database
 enum irwr_action_type
 {
