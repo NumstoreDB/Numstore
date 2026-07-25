@@ -1,6 +1,0 @@
-get example;
-get IDONTEXIST;
-create a struct { a u32, i f32 };
-delete a;
-read example;
-exit;

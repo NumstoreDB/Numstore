@@ -12,22 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing/unit_tests.h"
-
-int
-main (const int argc, char **argv)
-{
-  const char *filter = (argc > 1) ? argv[1] : NULL;
-  int         ret    = run_unit_tests (filter);
-
-  if (ret == 0)
-  {
-    i_log_passed ("All Tests Passed\n");
-  }
-  else
-  {
-    i_log_failure ("Unit Tests Failed\n");
-  }
-
-  return ret;
-}
+#ifdef TESTING
+int run_unit_tests (int seed, const char *filter);
+#endif

@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing/testing.h"
+#include "testing.h"
 
 #define VTYPE  u32
 #define KTYPE  int
@@ -22,7 +22,7 @@
 #undef KTYPE
 #undef SUFFIX
 
-#ifndef NTEST
+#ifdef TESTING
 #  define TEST_TABLE_LEN 1000
 TEST (ht_insert_idx_regression_trigger_swap)
 {
@@ -101,7 +101,7 @@ TEST (ht_insert_idx_regression_trigger_swap)
 }
 #endif
 
-#ifndef NTEST
+#ifdef TESTING
 TEST (robin_hood_ht)
 {
   hash_table_idx ht;

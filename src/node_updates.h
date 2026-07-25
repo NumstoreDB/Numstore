@@ -26,7 +26,8 @@
 
 #include "error.h"    // error
 #include "numstore.h" // pgno b_size ...etc
-#include "pager.h"    // page_h
+#include "page.h"     // page_h
+#include "page_h.h"   // page_h
 
 /******************************************************************************
  * SECTION: Node Updates

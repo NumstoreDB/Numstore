@@ -31,8 +31,8 @@ jobs:
       # Run the tests
       - shell: bash
         run: |
-          exe=$(find build/ci-tests/bin -maxdepth 2 -name 'unit_tests*' -type f | head -1)
-          "$exe"
+          exe=$(find build/ci-tests/bin -maxdepth 2 -name 'numstore*' -type f | head -1)
+          "$exe --unit_tests"
 
   # Build and run release tests just once to ensure 
   # no debug/release code broke the pipeline
@@ -64,9 +64,10 @@ jobs:
       - run: cmake --build --preset ci-coverage
 
       # Run the tests
-      - run: ./build/ci-coverage/bin/unit_tests
+      - run: ./build/ci-coverage/bin/numstore --unit_tests
+      - run: ./build/debug/bin/numstore --irwr foo 10 12314
+      - run: ./build/debug/bin/numstore --cgd foo 10 1231
       - run: ./build/ci-coverage/bin/ns_sample1_basic_crud
-      - run: cat src/testing/fixtures/test_commands.txt | ./build/ci-coverage/bin/numstore sample1_crud
 
       # Generate and upload coverage
       - run: |

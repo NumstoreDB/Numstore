@@ -15,10 +15,7 @@
 #include "error.h"
 
 #include "csx_assert.h"
-
-#ifdef TESTING
-#  include "testing/testing.h"
-#endif
+#include "testing.h"
 
 #ifdef ERR_T_FAIL_FAST
 #endif

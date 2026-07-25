@@ -267,7 +267,8 @@ main (int argc, char *argv[])
   printf ("[main] phase 1 done: inserted \"AAAAAAAAAA\" at 0 (baseline)\n");
 
   run_phase (2, 0, argv[0]);
-  printf ("[main] phase 2 done: inserted \"BB\" at 3 (committed, clean exit)\n"
+  printf (
+      "[main] phase 2 done: inserted \"BB\" at 3 (committed, clean exit)\n"
   );
 
   run_phase (3, 1, argv[0]);
