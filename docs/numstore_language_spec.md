@@ -1,14 +1,20 @@
-Numstore Language Spec
-======================
-At the core of Numstore is the Language Spec
-A Numstore database is a hash map of arrays:
+Numstore
+========
+
+At the core of Numstore is a hash map of arrays.
+
+One Numstore database is a collection of "variables" 
+that point to arrays:
+
 ```
 "foo"  ->  [1, 2, 3, 4, 5, ...]
 "bar"  ->  [1, 3, 8, 9, 10, ...]
 "biz"  ->  [3, 6, 7, 8, 9, ...]
 ...
 ```
-Furthermore, each variable has an associated type with it:
+
+Furthermore, "variables" have "types".
+has an associated type with it:
 ```
 "foo: (u32)"                   ->  [1, 2, 3, 4, 5, ...]
 "bar: (f32)"                   ->  [1.0, 2.0, ...]
