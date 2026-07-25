@@ -15,10 +15,10 @@
 #include "collections.h" // ext_array
 #include "numerics.h"    // f16_to_f32
 #include "serial.h"
-#include "stdtypes.h" // u32
-#include "testing.h"  // TEST
+#include "stdtypes.h"        // u32
+#include "testing/testing.h" // TEST
 
-#ifdef TESTING
+#ifndef NTEST
 
 // Parameterised table for paths the current code handles CORRECTLY:
 // zero, negative-zero, normals, infinity, and NaN.
@@ -764,8 +764,8 @@ TEST (cbuffer_discard_all_resets_state)
 TEST (cbuffer_read_write_wraparound)
 {
   // Scenario: fill buffer, partially drain it, then write again so that
-  // the data ph[59;1:3uysically wraps around the end of the backing array.
-  // Read must reassemble the correct byte sequence regardless.
+  // the data physically wraps around the end of the backing array.  Read
+  // must reassemble the correct byte sequence regardless.
   TEST_CASE ("write wraps around, read yields original bytes in order")
   {
     u8             buf[4];

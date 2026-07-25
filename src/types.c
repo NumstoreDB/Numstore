@@ -19,8 +19,11 @@
 #include "error.h"
 #include "numerics.h"
 #include "serial.h"
-#include "testing.h"
 #include "variables.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Types
