@@ -1,86 +1,88 @@
 Table of Contents
 =================
 
-* [What is Numstore?](#1-introduction)
+* [What is Numstore?](#what-is-numstore)
     * [How is it different than other databases?](#how-is-it-different-than-other-databases)
 * [A tour of the language](#a-tour-of-the-language)
   * [Variable Operations](#variable-operations)
   * [Array Operations](#array-operations)
-    * [Insert](#INSERT)
-    * [Write](#WRITE)
-    * [Read](#READ)
-    * [Remove](#REMOVE)
+    * [Insert](#insert)
+    * [Write](#write)
+    * [Read](#read)
+    * [Remove](#remove)
   * [The Numstore Type System](#the-numstore-type-system)
-  * [Variable References](#variable-references)
-  * [Variable Constructions](#variable-constructions)
+  * [Data Inputs and Outputs](#data-inputs-and-outputs)
 
 What is Numstore?
 =================
 
-Numstore is a database for arrays. It is an ACID database meant to store contiguous 
-arrays of numerical values. 
+Numstore is a database for arrays. It is an ACID database meant to store
+contiguous arrays of numerical values.
 
 How is it different than other databases?
 -----------------------------------------
 
-SQL is great. It's versatile and in record oriented computing, SQL solves the data 
-storage problem very well. Numstore doesn't compete with SQL. Numstore is meant to 
-store a different shape of data: _arrays_.
+SQL is great. It's versatile and in record-oriented computing, SQL solves the
+data storage problem very well. Numstore doesn't compete with SQL. Numstore is
+meant to store a different shape of data: _arrays_.
 
-In traditional relational databases, data is organized into _Tables_ (a singular 
-_type_) which are further organized into _columns_. Columns are named quantities.
-Each column has a name, and to access certain data you specify what table(s) you 
-want and what column(s) you want. This is tabular data. 
+In traditional relational databases, data is organized into _Tables_ (a
+singular _type_) which are further organized into _columns_. Columns are named
+quantities. Each column has a name, and to access certain data you specify what
+table(s) you want and what column(s) you want. This is tabular data.
 
-Would you ever store a 256x256 pixel image in a Relational database? Let's think of 
-ways to do this:
+Would you ever store a 256x256 pixel image in a relational database? Let's
+think of ways to do this:
 
-1. Store each pixel in it's own column - up to pixel 65536. This breaks down easily 
-   with column limits. Postgres limits columns to 1600. For small arrays this is 
-   a tempting idea. A 5 element long array of floats could just be stored as 5 columns 
-   but in general, arrays are things were the "names" of columns are implicitly the 
-   index where they reside.
+1. Store each pixel in its own column - up to pixel 65536. This breaks down
+   easily with column limits. Postgres limits columns to 1600. For small
+   arrays this is a tempting idea. A 5 element long array of floats could just
+   be stored as 5 columns but in general, arrays are things where the "names"
+   of columns are implicitly the index where they reside.
 
-2. Storing a reference to the file system data. This is probably the most common 
-   approach to storing high dimensionality data in databases. You store the location 
-   of the file on disk (e.g. 'file:///foo/bar/biz/image.png') or where it is on 
-   the internet (e.g. 'https://amazonaws.com/foo/bar/biz/image.png'). This is nice,
-   but now you have two sources of truth. What happens if you move the image and don't 
-   update the database? Fundamentally, you're removing all the ACID properties of the 
-   database in favor of just storing the image in an unreliable file system.
+2. Storing a reference to the file system data. This is probably the most
+   common approach to storing high-dimensionality data in databases. You store
+   the location of the file on disk (e.g. 'file:///foo/bar/biz/image.png') or
+   where it is on the internet
+   (e.g. 'https://amazonaws.com/foo/bar/biz/image.png'). This is nice, but now
+   you have two sources of truth. What happens if you move the image and don't
+   update the database? Fundamentally, you're removing all the ACID properties
+   of the database in favor of just storing the image in an unreliable file
+   system.
 
-3. Store the image data as some internal column type. We could store the image pixels 
-   as a BYTEA or something similar. This solves some of the problems of (2), but it 
-   doesn't always make sense to store large files in a database column. This often bloats 
-   database size and degrades memory consumption because fundamentally, relational databases 
-   weren't built for that type of data.
+3. Store the image data as some internal column type. We could store the image
+   pixels as a BYTEA or something similar. This solves some of the problems of
+   (2), but it doesn't always make sense to store large files in a database
+   column. This often bloats database size and degrades memory consumption
+   because fundamentally, relational databases weren't built for that type of
+   data.
 
-A fundamental limitation of relational databases is that _they don't support packed 
-high dimensional data natively_. There are file formats out there:
+A fundamental limitation of relational databases is that _they don't support
+packed high-dimensional data natively_. There are file formats out there:
 
-1. Hdf5
-2. Parquette
+1. HDF5
+2. Parquet
 3. Zarr-Python
 
-But each one makes it very clear that they aren't databases because: 
+But each one makes it very clear that it isn't a database because:
 
-1. Databases should support concurrent writers / readers and logical isolation 
-   meaning two threads don't know about each other's work on the same data but 
+1. Databases should support concurrent writers / readers and logical isolation
+   meaning two threads don't know about each other's work on the same data but
    keep the database in a consistent state.
 
-2. Databases should support transactions - sure Hdf5 is atomic, but you can't 
-   do multiple things to an Hdf5 file atomically.
+2. Databases should support transactions - sure HDF5 is atomic, but you can't
+   do multiple things to an HDF5 file atomically.
 
 Numstore is the database for this type of data.
 
 A tour of the language
 ======================
 
-To get a better glimpse of what Numstore can do, it helps to understand the Numstore language, 
-which is very self contained and simple.
+To get a better glimpse of what Numstore can do, it helps to understand the
+Numstore language, which is very self-contained and simple.
 
-Numstore's query language is not SQL. This was a very intentional decision. A Numstore database 
-has seven fundamental operations:
+Numstore's query language is not SQL. This was a very intentional decision. A
+Numstore database has seven fundamental operations:
 
 1. `CREATE`
 2. `GET`
@@ -90,14 +92,15 @@ has seven fundamental operations:
 6. `READ`
 7. `REMOVE`
 
-You could put `CREATE`, `GET` and `DELETE` in their own category of _variable operations_ 
-and `INSERT`, `WRITE`, `READ` and `REMOVE` in their own category of _array operations_. 
+You could put `CREATE`, `GET` and `DELETE` in their own category of _variable
+operations_ and `INSERT`, `WRITE`, `READ` and `REMOVE` in their own category of
+_array operations_.
 
 Variable Operations 
 -------------------
 
-`CREATE` `GET` and `DELETE` exist because a Numstore database 
-is really just a map of "variables" to "arrays".
+`CREATE`, `GET` and `DELETE` exist because a Numstore database is really just a
+map of "variables" to "arrays".
 
 A Numstore database may look like this:
 ```
@@ -135,12 +138,14 @@ get foo;
 }
 ```
 
-1. `Name` is the variable name 
-2. `DType` is the data type of the array - explained further in TODO TYPE LINK
-3. `DSize` is the size of each element inside the array `foo` (a `u32` is 4 bytes)
-4. `Nelems` is the number of elements in the array 
+1. `Name` is the variable name
+2. `DType` is the data type of the array - explained further in
+   [The Numstore Type System](#the-numstore-type-system)
+3. `DSize` is the size of each element inside the array `foo` (a `u32` is 4
+   bytes)
+4. `Nelems` is the number of elements in the array
 5. `Bytes` is the total size of the array in bytes.
-6. `Root` is the page number that the root of the variable's array begins
+6. `Root` is the page number where the root of the variable's array begins
 
 You can delete a variable by invoking the `DELETE` operation:
 
@@ -172,19 +177,19 @@ numstore> get foo;
     "DSize"  : 4,
     "Nelems" : 0,
     "Bytes"  : 0,
-    "Root"   : null,
+    "Root"   : null
 }
 ```
 
-The only way to _add_ data to an array (e.g. increase the array size) is 
-to `INSERT` data into the array. `WRITE` doesn't increase the array size, 
-it only overwrites data. `INSERT` and `REMOVE` are the only length modifying 
-operations. 
+The only way to _add_ data to an array (e.g. increase the array size) is to
+`INSERT` data into the array. `WRITE` doesn't increase the array size, it only
+overwrites data. `INSERT` and `REMOVE` are the only length-modifying
+operations.
 
 ### INSERT
 
-To `INSERT` data, you specify what _offset_ to insert the data into and 
-optionally the data. 
+To `INSERT` data, you specify what _offset_ to insert the data into and
+optionally the data.
 
 ```
 numstore> insert foo[0] [ 1, 2, 3, 4, 5 ];
@@ -196,14 +201,13 @@ The general form of an insert command looks like this:
 insert <Variable Name>[ "[" Offset "]" ] [ data ];
 ```
 
-* _Offset_ (`0` in the example above) is where to insert the data into the array.
-  If it isn't included, it appends to the end of the array. 
-  Negative numbers count back from the end of the array, -1 being the last index
-* _data_ is an optional explicit data source. See TODO DATA SECTION for more information 
-  on how numstore manages data input and output streams.
+* _Offset_ (`0` in the example above) is where to insert the data into the
+  array. If it isn't included, it appends to the end of the array. Negative
+  numbers count back from the end of the array, -1 being the last index.
+* _data_ is an optional explicit data source.
 
-Assuming `foo` is an empty array to begin with, the following commands 
-do the same thing:
+Assuming `foo` is an empty array to begin with, the following commands do the
+same thing:
 
 ```
 numstore> insert foo[0] [ 1, 2, 3, 4, 5];
@@ -213,7 +217,7 @@ numstore> insert foo [ 1, 2, 3, 4, 5];
 { "Status" : "Ok" }
 ```
 
-For example, if we insert an array into a 6 element array at index 2, it's like 
+For example, if we insert an array into a 6 element array at index 2, it's like
 we're "pushing" data into index 2:
 
 ```
@@ -305,8 +309,8 @@ numstore> insert foo[-9] [ 1, 2, 3, 4, 5];
 
 ### WRITE
 
-While `INSERT` increases the array length, `WRITE` simply overwrites
-data in place. To write data, you specify the _range_ you wish to modify.
+While `INSERT` increases the array length, `WRITE` simply overwrites data in
+place. To write data, you specify the _range_ you wish to modify.
 
 ```
 numstore> write foo[0:10:12] [ 1, 2, 3, 4, 5 ];
@@ -314,13 +318,6 @@ numstore> write foo[0:10:12] [ 1, 2, 3, 4, 5 ];
 ```
 
 The general form of a write command looks like this:
-
-```
-write <Variable Ref> [ data ];
-```
-
-A `Variable Ref` is discussed more in TODO varref, but 99% of cases,
-a write command looks like this:
 
 ```
 write <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ] [ data ];
@@ -331,13 +328,12 @@ Every part of the range is optional:
 * _start_ (`0` in the example above) is the first index written to. If it isn't
   included, it defaults to `0`. Negative numbers count back from the end of the
   array, -1 being the last index.
-* _stop_ (`10` in the example above) is the index to stop at, **exclusive**. If it
-  isn't included, it defaults to the length of the array. Negative numbers count
-  back from the end.
-* _step_ (`12` in the example above) is the distance between written indexes. If it
-  isn't included, it defaults to `1`. A step of `0` is an error.
-* _data_ is an optional explicit data source. See TODO DATA SECTION for more information
-  on how numstore manages data input and output streams.
+* _stop_ (`10` in the example above) is the index to stop at, **exclusive**. If
+  it isn't included, it defaults to the length of the array. Negative numbers
+  count back from the end.
+* _step_ (`12` in the example above) is the distance between written indexes. If
+  it isn't included, it defaults to `1`. A step of `0` is an error.
+* _data_ is an optional explicit data source.
 
 Assuming `foo` is a 5 element array, the following commands do the same thing:
 
@@ -356,8 +352,8 @@ numstore> write foo [ 1, 2, 3, 4, 5 ];
 ```
 
 For example, if we write into a 6 element array over the range `2:5`, the data
-lands on top of what was already there. Nothing moves, and the array is the same
-length afterwards:
+lands on top of what was already there. Nothing moves, and the array is the
+same length afterwards:
 
 ```
 write foo[2:5] [7, 8, 9]
@@ -370,8 +366,8 @@ After:
 ```
 
 Compare that to `insert foo[2] [7, 8, 9]`, which pushes the old data out of the
-way and leaves you with a 9 element array. If you want to grow an array, you want
-`INSERT`.
+way and leaves you with a 9 element array. If you want to grow an array, you
+want `INSERT`.
 
 A _step_ spreads the write out over the array instead of laying it down
 contiguously:
@@ -386,8 +382,8 @@ After:
   [7, 2, 8, 4, 9, 6]
 ```
 
-A negative _step_ walks the array backwards. Negative steps aren't supported yet but 
-a planned feature.
+A negative _step_ walks the array backwards. Negative steps aren't supported
+yet but are a planned feature.
 
 ```
 numstore> write foo[0:6:-2] [7, 8, 9]
@@ -398,8 +394,8 @@ numstore> write foo[0:6:-2] [7, 8, 9]
 ```
 
 The range and the data don't have to agree on length. `WRITE` pairs them up one
-element at a time and stops as soon as either one runs out. If the data runs out
-first, the rest of the range is left exactly as it was:
+element at a time and stops as soon as either one runs out. If the data runs
+out first, the rest of the range is left exactly as it was:
 
 ```
 write foo[:] [7, 8]
@@ -491,21 +487,13 @@ numstore> read foo[0:10:12];
 The general form of a read command looks like this:
 
 ```
-read <Variable Ref>;
-```
-
-A `Variable Ref` is discussed more in TODO varref, but 99% of cases,
-a read command looks like this:
-
-```
 read <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ];
 ```
 
-`READ` has the same range semantics as `WRITE`. See TODO Write link
+`READ` has the same range semantics as `WRITE`. See [WRITE](#write).
 
 Where `WRITE` puts data into the range, `READ` takes it out. `Data` in the
-response is the default output stream. See TODO DATA SECTION for more information
-on how numstore manages data input and output streams.
+response is the default output stream.
 
 Assuming `foo` is a 5 element array, the following commands do the same thing:
 
@@ -564,16 +552,16 @@ numstore> read foo[0:6:-2];
 }
 ```
 
-An empty range is legal and reads nothing. Reading the range just past the end of
-an array gives you back an empty array, not an error:
+An empty range is legal and reads nothing. Reading the range just past the end
+of an array gives you back an empty array, not an error:
 
 ```
 numstore> read foo[6:];
 { "Status" : "Ok", "Data" : [] }
 ```
 
-Like `WRITE`, `READ` is strongly ranged. _start_ must be a valid index, and _stop_
-may be at most the length of the array (one past the last index):
+Like `WRITE`, `READ` is strongly ranged. _start_ must be a valid index, and
+_stop_ may be at most the length of the array (one past the last index):
 
 ```
 numstore> create foo;
@@ -616,9 +604,9 @@ numstore> read foo[-6:];
 { "Status" : "Ok", "Data" : [ 1, 2, 3, 4, 5, 6 ] }
 ```
 
-### REMOVE 
+### REMOVE
 
-To `REMOVE` data, you specify the _range_ you wish to remove. 
+To `REMOVE` data, you specify the _range_ you wish to remove.
 
 ```
 numstore> remove foo[0:10:12];
@@ -633,11 +621,11 @@ The general form of a remove command looks like this:
 remove <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ];
 ```
 
-`REMOVE` has the same range semantics as `READ`. See TODO Write link
+`REMOVE` has the same range semantics as `READ`. See [READ](#read).
 
 `REMOVE` is the other half of `INSERT`: it's the only operation besides `INSERT`
-that changes the length of an array. Everything the range covers is taken out and
-whatever is left closes the gap.
+that changes the length of an array. Everything the range covers is taken out
+and whatever is left closes the gap.
 
 Because the whole range is optional, the following commands all remove
 everything:
@@ -767,12 +755,316 @@ numstore> remove foo[-6:];
 The Numstore Type System
 ------------------------
 
+In all the previous examples, we created _arrays of scalars_. Numstore supports
+far more than arrays of scalars, in fact, our original example was an array of
+`256x256` images! There are 4 main types in Numstore:
+1. `Primitive`
+2. `Struct`
+3. `Union`
+4. `Strict Array`
 
-Variable References
--------------------
+Everything in Numstore is built out of these 4. Structs, unions, and arrays are
+all ways of gluing other types together, and at the bottom of every type is a
+`Primitive`. Once you know how to size these 4, you can size any type in
+Numstore.
 
+#### Primitives
 
-Variable Constructions
-----------------------
+`Primitives` are the core data type of Numstore. They are categorized into
+signed/unsigned, floats/integers, complex/real, and number of bits.
 
+The signed ints are:
+* `i8` - a 1 byte signed integer 
+* `i16` - a 2 byte signed integer 
+* `i32` - a 4 byte signed integer 
+* `i64` - an 8 byte signed integer 
 
+Integers can be unsigned too:
+* `u8` - a 1 byte unsigned integer 
+* `u16` - a 2 byte unsigned integer 
+* `u32` - a 4 byte unsigned integer 
+* `u64` - an 8 byte unsigned integer 
+
+Numstore also supports floating point numbers:
+* `f16` - a 2 byte float
+* `f32` - a 4 byte float
+* `f64` - an 8 byte float
+* `f128` - a 16 byte float
+
+Finally, any of the above types can also be complex (effectively doubling their
+size):
+* `ci16-128` - Complex signed ints
+* `cu16-128` - Complex unsigned ints 
+* `cf32-256` - Complex floats
+
+The number in a primitive's name is always its size **in bits**, so the byte
+size is just `bits / 8`. A complex type stores a real part and an imaginary part
+back to back, which is why its name is double the bits of the real type it's
+built from: `cf64` is two `f32`s, so `64 / 8 = 8` bytes.
+
+Here's the full key:
+
+| Type    | Bits | Bytes | Notes                         |
+|---------|------|-------|-------------------------------|
+| `i8`    | 8    | 1     | signed integer                |
+| `i16`   | 16   | 2     | signed integer                |
+| `i32`   | 32   | 4     | signed integer                |
+| `i64`   | 64   | 8     | signed integer                |
+| `u8`    | 8    | 1     | unsigned integer              |
+| `u16`   | 16   | 2     | unsigned integer              |
+| `u32`   | 32   | 4     | unsigned integer              |
+| `u64`   | 64   | 8     | unsigned integer              |
+| `f16`   | 16   | 2     | float                         |
+| `f32`   | 32   | 4     | float                         |
+| `f64`   | 64   | 8     | float                         |
+| `f128`  | 128  | 16    | float                         |
+| `ci16`  | 16   | 2     | complex `i8`  (2 x `i8`)      |
+| `ci32`  | 32   | 4     | complex `i16` (2 x `i16`)     |
+| `ci64`  | 64   | 8     | complex `i32` (2 x `i32`)     |
+| `ci128` | 128  | 16    | complex `i64` (2 x `i64`)     |
+| `cu16`  | 16   | 2     | complex `u8`  (2 x `u8`)      |
+| `cu32`  | 32   | 4     | complex `u16` (2 x `u16`)     |
+| `cu64`  | 64   | 8     | complex `u32` (2 x `u32`)     |
+| `cu128` | 128  | 16    | complex `u64` (2 x `u64`)     |
+| `cf32`  | 32   | 4     | complex `f16` (2 x `f16`)     |
+| `cf64`  | 64   | 8     | complex `f32` (2 x `f32`)     |
+| `cf128` | 128  | 16    | complex `f64` (2 x `f64`)     |
+| `cf256` | 256  | 32    | complex `f128` (2 x `f128`)   |
+
+To create a primitive type, you specify the name right after your `create`
+command:
+```
+numstore> create foo u32;
+{ "Status" : "Ok" }
+
+numstore> create bar cf256;
+{ "Status" : "Ok" }
+
+numstore> create biz ci128;
+{ "Status" : "Ok" }
+```
+
+The size of each variable is the size of the primitive:
+```
+get foo;
+{
+    "Status" : "Ok",
+    "Name"   : "foo",
+    "DType"  : "u32",
+    "DSize"  : 4,
+    "Nelems" : 0,
+    "Bytes"  : 0,
+    "Root"   : NULL 
+}
+get bar;
+{
+    "Status" : "Ok",
+    "Name"   : "bar",
+    "DType"  : "cf256",
+    "DSize"  : 32,
+    "Nelems" : 0,
+    "Bytes"  : 0,
+    "Root"   : NULL 
+}
+get biz;
+{
+    "Status" : "Ok",
+    "Name"   : "biz",
+    "DType"  : "ci128",
+    "DSize"  : 16,
+    "Nelems" : 0,
+    "Bytes"  : 0,
+    "Root"   : NULL 
+}
+```
+
+`DSize` is the size of **one element** of the variable. A fresh variable has
+`Nelems` 0 and `Bytes` 0 - you haven't pushed any data in yet - but its `DSize`
+is locked in the moment you create it, because that's fixed by the type.
+
+#### Structs 
+
+A `Struct` is a product type. That essentially means sub types are "stacked" on
+top of each other. Unlike programming languages, there is no struct padding.
+Numstore structs are WYSIWYG.
+
+In the following example:
+```
+numstore> create foo struct { a u32, b cf256 };
+{ "Status" : "Ok" }
+```
+`foo` is a variable whose elements as bytes in memory look like:
+
+`[ 4 byte int ][    32 byte complex float    ]`
+
+Because there's no padding, **the size of a struct is just the sum of its
+members**. Here that's `4 + 32 = 36` bytes:
+```
+get foo;
+{
+    "Status" : "Ok",
+    "Name"   : "foo",
+    "DType"  : "struct { a u32, b cf256 }",
+    "DSize"  : 36,
+    "Nelems" : 0,
+    "Bytes"  : 0,
+    "Root"   : NULL 
+}
+```
+Members are laid out in the order you write them, and each member starts exactly
+where the previous one ended. `a` sits at byte offset 0, `b` sits at byte
+offset 4.
+
+#### Unions
+
+A `Union` is a sum type. That essentially means sub types are "overlayed" on top
+of each other. Unlike programming languages, there is no union padding. Numstore
+unions are WYSIWYG.
+
+In the following example:
+```
+numstore> create foo union { a u32, b cf256 };
+{ "Status" : "Ok" }
+```
+`foo` is a variable whose elements as bytes in memory look like:
+
+```
+a -> [ 4 byte int ]
+b -> [            32 byte complex float            ]
+     ^-- both members start at the same byte --^
+```
+
+Every member shares the same starting byte, so **the size of a union is the
+size of its largest member** - here `max(4, 32) = 32` bytes:
+
+```
+get foo;
+{
+    "Status" : "Ok",
+    "Name"   : "foo",
+    "DType"  : "union { a u32, b cf256 }",
+    "DSize"  : 32,
+    "Nelems" : 0,
+    "Bytes"  : 0,
+    "Root"   : NULL 
+}
+```
+
+Reading `a` interprets the first 4 bytes as a `u32`; reading `b` interprets all
+32 bytes as a `cf256`. It's the same memory - you just choose how to read it.
+
+#### Strict Arrays
+
+A `Strict Array` is an array type. This is how we'd store our 256x256 image in
+our database.
+
+In the following example:
+```
+numstore> create foo [256][256] f32;
+{ "Status" : "Ok" }
+```
+`foo` is a 256x256 grid of `f32`s - exactly the image from our very first
+example. You read the dimensions left to right, outermost first: `[256][256]
+f32` means "a 256-element array, where each element is a 256-element array of
+`f32`."
+
+**The size of an array is the product of its dimensions times the size of its
+element.** Each `f32` is 4 bytes and there are `256 x 256 = 65,536` of them, so
+one `foo` element is `65,536 x 4 = 262,144` bytes:
+```
+get foo;
+{
+    "Status" : "Ok",
+    "Name"   : "foo",
+    "DType"  : "[256][256] f32",
+    "DSize"  : 262144,
+    "Nelems" : 0,
+    "Bytes"  : 0,
+    "Root"   : NULL 
+}
+```
+
+##### Array ordering (C order)
+
+Numstore stores arrays in **C order** (row-major), which means **the last
+dimension is contiguous in memory** and the first dimension has the largest
+stride. The last index varies fastest as you walk through memory.
+
+For a small `[2][3] u8`, memory looks like:
+```
+[ (0,0) ][ (0,1) ][ (0,2) ][ (1,0) ][ (1,1) ][ (1,2) ]
+```
+Notice the second index (the column) races from 0->2 before the first index
+(the row) ticks over. That's row-major.
+
+To find where element `[i][j]` lives in a `[R][C]` array of element size `S`,
+the byte offset is:
+
+`offset = (i * C + j) * S`
+
+So in our `[256][256] f32`, element `[2][3]` sits at `(2 * 256 + 3) * 4 = 2060`
+bytes into the element. This generalizes to any number of dimensions: multiply
+each index by the product of all the dimensions to its right, sum them up, and
+multiply by the element size.
+
+#### Combining Types
+
+A struct member can be an array, an array element can be a struct, a union can
+hold an array, and so on - as deep as you like. The sizing rules compose, so you
+never need a new rule, you just apply the same 4 recursively:
+
+| Type          | Size                                             |
+|---------------|--------------------------------------------------|
+| `Primitive`   | `bits / 8`                                       |
+| `Struct`      | sum of member sizes                              |
+| `Union`       | max of member sizes                              |
+| `Strict Array`| product of dimensions x element size             |
+
+An **array of structs** - say a buffer of 3D points:
+```
+numstore> create points [1000] struct { x f32, y f32, z f32 };
+{ "Status" : "Ok" }
+```
+The struct is `4 + 4 + 4 = 12` bytes, and there are 1000 of them, so
+`DSize = 12,000` bytes.
+
+A **struct with an array member** - an image with a header:
+```
+numstore> create frame struct { timestamp u64, pixels [256][256] u8 };
+{ "Status" : "Ok" }
+```
+`timestamp` is 8 bytes, `pixels` is `256 x 256 x 1 = 65,536` bytes, so
+`DSize = 65,544` bytes.
+
+And our original **array of images**, now fully spelled out - 12 frames of
+256x256 RGB:
+```
+numstore> create video [12][256][256] struct { r u8, g u8, b u8 };
+{ "Status" : "Ok" }
+```
+
+The struct is `1 + 1 + 1 = 3` bytes, the array is `12 x 256 x 256 = 786,432`
+elements, so `DSize = 2,359,296` bytes. Same 4 rules, just stacked.
+
+#### Practice Problems
+
+1. What is the `DSize` of `struct { a u16, b i64, c f32 }`?
+2. What is the `DSize` of `union { a u16, b i64, c f32 }`?
+3. What is the `DSize` of `[10][20] u32`?
+4. What is the `DSize` of `[100] struct { x f32, y f32, z f32 }`?
+5. What is the `DSize` of `struct { id u64, samples [8] cf64 }`?
+6. What is the `DSize` of `[12][256][256] struct { r u8, g u8, b u8 }`?
+7. In a `[4][4] f32`, what byte offset is element `[2][3]`?
+8. What is the `DSize` of
+   `struct { tag u8, payload union { a f64, b [2] u32 } }`?
+
+##### Answers
+
+1. `2 + 8 + 4 = 14` bytes.
+2. `max(2, 8, 4) = 8` bytes.
+3. `10 x 20 x 4 = 800` bytes.
+4. struct is `12`, so `100 x 12 = 1,200` bytes.
+5. `cf64` is 8 bytes -> `samples` is `8 x 8 = 64`, plus `id` at 8 -> `72` bytes.
+6. struct is `3`, array is `12 x 256 x 256 = 786,432` -> `2,359,296` bytes.
+7. `(2 x 4 + 3) x 4 = 11 x 4 = 44` bytes.
+8. `union` is `max(8, 2 x 4) = 8`, plus `tag` at 1 -> `9` bytes.

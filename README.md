@@ -58,7 +58,14 @@ To get started, choose your platform and run:
 
 </details>
 
-For more information, refer to the [Documentation](docs/index.md).
+You can also use cmake if you prefer:
+
+    mkdir build 
+    cd build 
+    cmake .. 
+    cmake --build .
+
+For more information, refer to the [Documentation](docs/user_guide.md).
 
 AI Usage Policy
 ===============
