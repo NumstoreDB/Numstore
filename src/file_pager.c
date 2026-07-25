@@ -19,7 +19,10 @@
 #include "error.h"
 #include "numstore.h" // pgno ...etc
 #include "os.h"
-#include "testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 enum file_pager_flags
 {

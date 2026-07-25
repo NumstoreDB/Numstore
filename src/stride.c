@@ -15,7 +15,10 @@
 #include "alloc.h"
 #include "collections.h"
 #include "error.h"
-#include "testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 bool
 ustride_equal (const struct user_stride left, const struct user_stride right)

@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing.h"
+#include "testing/testing.h"
 
-#ifdef TESTING
+#ifndef NTEST
 
 int  test_ret = 0;
 char test_marks[test_marks_max][test_mark_len];

@@ -18,8 +18,11 @@
 #include "compiler.h"
 #include "error.h"
 #include "page.h"
-#include "testing.h"
 #include "types.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 err_t
 i_print_variable (struct variable *v, error *e)
@@ -267,8 +270,7 @@ TEST (var_random_name)
     char buf[16];
     var_random_name (buf, sizeof (buf));
 
-    test_assert (
-        test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1)
+    test_assert (test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1)
     );
     test_assert_int_equal (buf[sizeof (buf) - 1], '\0');
 

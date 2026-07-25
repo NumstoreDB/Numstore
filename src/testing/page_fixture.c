@@ -12,17 +12,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "page_fixture.h"
+#include "testing/page_fixture.h"
 
-#ifdef TESTING
-#  include "alloc.h"
-#  include "error.h"
-#  include "page.h"
-#  include "page_h.h"
-#  include "pager.h"
-#  include "testing.h"
-#  include "var_algorithms.h"
+#include "alloc.h"
+#include "error.h"
+#include "page.h"
+#include "page_h.h"
+#include "pager.h"
+#include "var_algorithms.h"
 
+#ifndef NTEST
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {
   ASSERT (f);
   ASSERT (f->p);

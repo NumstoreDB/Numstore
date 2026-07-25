@@ -20,9 +20,12 @@
 #include "os.h"
 #include "pager.h"
 #include "rope_algorithms.h"
-#include "testing.h"
 #include "var_algorithms.h"
 #include "variables.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 int
 smfile_perror (smfile_t *ns, const char *prefix)

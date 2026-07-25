@@ -19,9 +19,12 @@
 #include "error.h"    // error
 #include "numerics.h" // parse_i32_expect
 #include "serial.h"   // string_equal
-#include "testing.h"
-#include "types.h" // type_Ref
-#include "utils.h" // case_ENUM_RETURN_STRING
+#include "types.h"    // type_Ref
+#include "utils.h"    // case_ENUM_RETURN_STRING
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Tokens

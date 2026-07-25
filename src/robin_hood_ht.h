@@ -25,10 +25,9 @@
  */
 
 #include "concurrency.h" // latch
-#include "csx_assert.h"
-#include "htable.h"   // hti_res etc
-#include "platform.h" // string.h
-#include "stdtypes.h" // u32 ...etc
+#include "htable.h"      // hti_res etc
+#include "platform.h"    // string.h
+#include "stdtypes.h"    // u32 ...etc
 
 /******************************************************************************
  * SECTION: Robin Hood Hash Table

@@ -19,7 +19,10 @@
 #include "numerics.h" // safe_mul_...
 #include "os.h"
 #include "stdtypes.h" // u32 ...etc
-#include "testing.h"
+
+#ifdef TESTING
+#  include "testing/testing.h"
+#endif
 
 /******************************************************************************
  * SECTION: Memory

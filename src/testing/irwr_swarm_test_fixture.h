@@ -19,16 +19,7 @@
 #include "numstore.h"    // nsdb_t
 #include "stdtypes.h"    // u32 ...etc
 
-/******************************************************************************
- * SECTION: Main Tests to run
- ******************************************************************************/
-
 void irwr_swarm_test (const char *dbname, int timeout_seconds, unsigned seed);
-void cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed);
-
-/******************************************************************************
- * SECTION: IRWR Internals
- ******************************************************************************/
 
 // Actions you can take in a irwr only database
 enum irwr_action_type
@@ -77,73 +68,5 @@ struct irwr_swarm_test *irwr_swmt_open (
 );
 void irwr_swmt_close (struct irwr_swarm_test *meta);
 void irwr_swmt_step (struct irwr_swarm_test *meta);
-
-/******************************************************************************
- * SECTION: CGD Internals
- ******************************************************************************/
-
-void cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed);
-
-/**
- * Create Delete Swarm Test
- *
- * Swarm Test for the
- *    CREATE
- *    GET
- *    DELETE
- *
- * Operations for variables
- *
- * No data inserting in this test
- */
-
-#include "mem_vhmap.h" // mem_vhmap
-#include "numstore.h"  // nsdb_t
-
-// Actions you can take in a database
-enum cgd_action_type
-{
-  // Other outside actions that can occur
-  CDS_BEGIN_TXN,
-  CDS_COMMIT_TXN,
-  CDS_ROLLBACK_TXN,
-  CDS_CRASH_AND_REOPEN,
-  CDS_CLOSE_AND_REOPEN,
-
-  // The main actions (subject to "swarm distribution"
-  CDS_CREATE, // 0
-  CDS_SWITCH, // 1
-  CDS_DELETE, // 2
-
-  // Length of options
-  CDS_AT_LEN,
-};
-
-// Opaque swarm test
-struct cgd_swarm_test
-{
-  // Fake database transaction semantics
-  struct mem_vhmap *committed;
-  struct mem_vhmap *working;
-
-  struct variable *cur;
-
-  int enabled[CDS_AT_LEN];
-  int allowed[CDS_AT_LEN];
-
-  nsdb_t     *db;
-  int         in_txn;
-  const char *dbname;
-  float       sample_space_prob;
-};
-
-// Main API
-struct cgd_swarm_test *cgd_swmt_open (
-    int         start_enabled[CDS_AT_LEN],
-    const char *dbname,
-    float       sample_space_prob
-);
-void cgd_swmt_close (struct cgd_swarm_test *meta);
-void cgd_swmt_step (struct cgd_swarm_test *meta);
 
 #endif // IRWR_SWARM_TEST_FIXTURE_H
