@@ -65,8 +65,8 @@ jobs:
 
       # Run the tests
       - run: ./build/ci-coverage/bin/numstore --unit_tests
-      - run: ./build/ci-coverage/bin/numstore --irwr foo 10 12314
-      - run: ./build/ci-coverage/bin/numstore --cgd foo 10 1231
+      - run: ./build/ci-coverage/bin/numstore --irwr irwr 5 12314
+      - run: ./build/ci-coverage/bin/numstore --cgd cgd 5 123
       - run: ./build/ci-coverage/bin/ns_sample1_basic_crud
 
       # Generate and upload coverage
