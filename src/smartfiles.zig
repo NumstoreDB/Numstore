@@ -8,8 +8,9 @@ pub const Error = error{
     Smfile,
 };
 
-pub const sb_size = i64; 
 pub const b_size = u64;
+pub const sb_size = i64; 
+pub const t_size = u32;
 
 
 pub const Smfile = struct {
@@ -35,9 +36,29 @@ pub const Smfile = struct {
         if (c.smfile_crash(self.ptr) < 0) return error.Smfile;
     }
 
-    // Void src is supposed to be a generic type
-    pub fn insert(self: Smfile, src: u8, bofst: sb_size, slen: b_size) Error!void {
+    pub fn insert(self: Smfile, src: []u8, bofst: sb_size, slen: b_size) Error!void {
         return if (c.smfile_insert(self.ptr, src, bofst, slen) < 0) return error.Smfile;
+    }
+
+    pub fn read(self: Smfile, dest: []u8, size: t_size, bofst: sb_size, stride: sb_size, nelem: b_size) Error!void {
+
+        if (c.smfile_read(self.ptr, dest, size, bofst, stride, nelem) < 0) return error.Smfile;
+    }
+
+    pub fn remove(self: Smfile, dest: []u8, size: t_size, bofst: sb_size, stride: sb_size, nelem: b_size) Error!void {
+        if (c.smfile_remove(self.ptr, dest, size, bofst, stride, nelem) < 0) return error.Smfile;
+    }
+
+    pub fn begin(self: Smfile) Error!void {
+        if (c.smfile_begin(self.ptr) < 0) return error.Smfile;
+    }
+
+    pub fn commit(self: Smfile) Error!void {
+        if (c.smfile_commit(self.ptr) < 0) return error.Smfile;
+    }
+
+    pub fn rollback(self: Smfile) Error!void {
+        if (c.smfile_rollback(self.ptr) < 0) return error.Smfile;
     }
 
 };
