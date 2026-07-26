@@ -6,14 +6,14 @@ pub fn build(b: *std.Build) !void {
     const csrcs = try glob(b.allocator, b.graph.io, "src", ".c");
 
     // Build Numstore
-    const numstore = b.addExecutable(.{
+    const numstore = b.addLibrary(.{
         .name = "numstore",
         .linkage = .dynamic,
         .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .root_source_file = b.path("src/main.zig"),
+            .root_source_file = b.path("src/numstore.zig"),
         }),
     });
     numstore.root_module.addCSourceFiles(.{
@@ -25,7 +25,6 @@ pub fn build(b: *std.Build) !void {
     });
     numstore.root_module.addIncludePath(b.path("src"));
 
-
     // Build samples
     const sample1 = b.addExecutable(.{
         .name = "sample1",
@@ -35,14 +34,16 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
             .link_libc = true,
             .root_source_file = b.path("src/samples/ns_sample1_basic_crud.zig"),
+        .imports = &.{
+            .{ .name = "numstore", .module = numstore.root_module },
+        },
         }),
     });
-    sample1.root_module.addImport("numstore", numstore.root_module);
+    sample1.root_module.linkLibrary(numstore);
 
     b.installArtifact(numstore);
     b.installArtifact(sample1);
 }
-
 
 pub fn glob(
     allocator: std.mem.Allocator,
