@@ -65,7 +65,7 @@ You can also use cmake if you prefer:
     cmake .. 
     cmake --build .
 
-For more information, refer to the [Documentation](docs/user_guide.md).
+For more information, refer to the [Documentation](docs/index.md).
 
 AI Usage Policy
 ===============
