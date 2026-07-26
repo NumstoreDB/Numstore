@@ -21,6 +21,7 @@ pub fn build(b: *std.Build) !void {
         .files = csrcs.items,
         .flags = &.{
             "-DNUMSTORE_LIB",
+            "-DNLOG",
             "-fno-sanitize=alignment", // TODO - remove this
         },
     });
@@ -34,7 +35,7 @@ pub fn build(b: *std.Build) !void {
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .root_source_file = b.path("src/samples/ns_sample1_basic_crud.zig"),
+            .root_source_file = b.path("src/samples/ns_sample1_basic.zig"),
             .imports = &.{
                 .{ .name = "numstore", .module = numstore.root_module },
             },
@@ -42,8 +43,25 @@ pub fn build(b: *std.Build) !void {
     });
     sample1.root_module.linkLibrary(numstore);
 
+    // Build samples
+    const sample2 = b.addExecutable(.{
+        .name = "sample2",
+        .linkage = .dynamic,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .root_source_file = b.path("src/samples/ns_sample2_struct.zig"),
+            .imports = &.{
+                .{ .name = "numstore", .module = numstore.root_module },
+            },
+        }),
+    });
+    sample2.root_module.linkLibrary(numstore);
+
     b.installArtifact(numstore);
     b.installArtifact(sample1);
+    b.installArtifact(sample2);
 }
 
 pub fn glob(
