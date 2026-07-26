@@ -21,6 +21,7 @@ pub fn build(b: *std.Build) !void {
         .files = csrcs.items,
         .flags = &.{
             "-DNUMSTORE_LIB",
+            "-fno-sanitize=alignment", // TODO - remove this
         },
     });
     numstore.root_module.addIncludePath(b.path("src"));
@@ -34,9 +35,9 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
             .link_libc = true,
             .root_source_file = b.path("src/samples/ns_sample1_basic_crud.zig"),
-        .imports = &.{
-            .{ .name = "numstore", .module = numstore.root_module },
-        },
+            .imports = &.{
+                .{ .name = "numstore", .module = numstore.root_module },
+            },
         }),
     });
     sample1.root_module.linkLibrary(numstore);
