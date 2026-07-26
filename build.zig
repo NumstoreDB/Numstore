@@ -3,32 +3,65 @@ const std = @import("std");
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
     const csrcs = try glob(b.allocator, b.graph.io, "src", ".c");
 
-    // Build the numstore module
-    const cmodule = b.createModule(.{
+    // Build Numstore
+    const numstore = b.addLibrary(.{
+        .name = "numstore",
+        .linkage = .dynamic,
+        .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .root_source_file = b.path("src/main.zig"),
-        }); 
-    cmodule.addCSourceFiles(.{
+            .root_source_file = b.path("src/numstore.zig"),
+        }),
+    });
+    numstore.root_module.addCSourceFiles(.{
         .root = b.path("src"),
         .files = csrcs.items,
         .flags = &.{
             "-DNUMSTORE_LIB",
+            "-DNLOG",
+            "-fno-sanitize=alignment", // TODO - remove this
         },
     });
-    cmodule.addIncludePath(b.path("src"));
+    numstore.root_module.addIncludePath(b.path("src"));
 
-    const numstore = b.addExecutable(.{
-        .name = "numstore",
+    // Build samples
+    const sample1 = b.addExecutable(.{
+        .name = "sample1",
         .linkage = .dynamic,
-        .root_module = cmodule,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .root_source_file = b.path("src/samples/ns_sample1_basic.zig"),
+            .imports = &.{
+                .{ .name = "numstore", .module = numstore.root_module },
+            },
+        }),
     });
+    sample1.root_module.linkLibrary(numstore);
+
+    // Build samples
+    const sample2 = b.addExecutable(.{
+        .name = "sample2",
+        .linkage = .dynamic,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .root_source_file = b.path("src/samples/ns_sample2_struct.zig"),
+            .imports = &.{
+                .{ .name = "numstore", .module = numstore.root_module },
+            },
+        }),
+    });
+    sample2.root_module.linkLibrary(numstore);
 
     b.installArtifact(numstore);
+    b.installArtifact(sample1);
+    b.installArtifact(sample2);
 }
 
 pub fn glob(
