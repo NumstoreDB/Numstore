@@ -1,5 +1,6 @@
 const std = @import("std");
-const numstore = @import("numstore.zig");
+const numstore = @import("numstore");
+
 const Db = numstore.Db;
 
 const Example = extern struct {
@@ -25,7 +26,15 @@ pub fn main() !void {
         \\}
     , null);
 
-    initExample(&src);
+    for (&src, 0..) |*e, i| {
+        e.a = @floatFromInt(i);
+        e.b = @intCast(i + 1);
+        for (0..5) |r| {
+            for (0..10) |col| {
+                e.d[r][col] = @intCast(i + r * 10 + col);
+            }
+        }
+    }
 
     _ = try db.executeFmt(&buf, @ptrCast(&src), "insert example 0 {d}", .{200});
 
@@ -82,17 +91,5 @@ fn printExample(label: []const u8, ex: []const Example) void {
     }
     if (size > show) {
         std.debug.print("{s}:   ... ({d} more)\n", .{ label, size - show });
-    }
-}
-
-fn initExample(ex: []Example) void {
-    for (ex, 0..) |*e, i| {
-        e.a = @floatFromInt(i);
-        e.b = @intCast(i + 1);
-        for (0..5) |r| {
-            for (0..10) |col| {
-                e.d[r][col] = @intCast(i + r * 10 + col);
-            }
-        }
     }
 }
