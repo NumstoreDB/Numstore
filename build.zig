@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) !void {
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .root_source_file = b.path("src/numstore.zig"),
+            .root_source_file = b.path("src/lib.zig"),
         }),
     });
     numstore.root_module.addCSourceFiles(.{
