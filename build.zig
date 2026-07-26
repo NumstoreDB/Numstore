@@ -28,8 +28,8 @@ pub fn build(b: *std.Build) !void {
     numstore.root_module.addIncludePath(b.path("src"));
 
     // Build samples
-    const sample1 = b.addExecutable(.{
-        .name = "sample1",
+    const ns_sample1 = b.addExecutable(.{
+        .name = "ns_sample1",
         .linkage = .dynamic,
         .root_module = b.createModule(.{
             .target = target,
@@ -41,11 +41,11 @@ pub fn build(b: *std.Build) !void {
             },
         }),
     });
-    sample1.root_module.linkLibrary(numstore);
+    ns_sample1.root_module.linkLibrary(numstore);
 
     // Build samples
-    const sample2 = b.addExecutable(.{
-        .name = "sample2",
+    const ns_sample2 = b.addExecutable(.{
+        .name = "ns_sample2",
         .linkage = .dynamic,
         .root_module = b.createModule(.{
             .target = target,
@@ -57,11 +57,11 @@ pub fn build(b: *std.Build) !void {
             },
         }),
     });
-    sample2.root_module.linkLibrary(numstore);
+    ns_sample2.root_module.linkLibrary(numstore);
 
     b.installArtifact(numstore);
-    b.installArtifact(sample1);
-    b.installArtifact(sample2);
+    b.installArtifact(ns_sample1);
+    b.installArtifact(ns_sample2);
 }
 
 pub fn glob(
