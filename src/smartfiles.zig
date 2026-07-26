@@ -41,7 +41,6 @@ pub const Smfile = struct {
     }
 
     pub fn read(self: Smfile, dest: []u8, size: t_size, bofst: sb_size, stride: sb_size, nelem: b_size) Error!void {
-
         if (c.smfile_read(self.ptr, dest, size, bofst, stride, nelem) < 0) return error.Smfile;
     }
 
