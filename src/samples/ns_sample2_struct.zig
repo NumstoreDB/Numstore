@@ -1,7 +1,7 @@
 const std = @import("std");
 const numstore = @import("numstore");
 
-const Db = numstore.Db;
+const Db = numstore.numstore.Db;
 
 const Example = extern struct {
     a: f32,

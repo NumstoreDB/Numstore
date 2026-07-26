@@ -1,7 +1,7 @@
 const std = @import("std");
 const numstore = @import("numstore");
 
-const Db = numstore.Db;
+const Db = numstore.numstore.Db;
 
 var src: [200]u32 = undefined;
 var dest: [200]u32 = undefined;
