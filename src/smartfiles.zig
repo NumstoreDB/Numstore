@@ -37,7 +37,7 @@ pub const Smfile = struct {
     }
 
     pub fn insert(self: Smfile, src: []u8, bofst: sb_size, slen: b_size) Error!void {
-        return if (c.smfile_insert(self.ptr, src, bofst, slen) < 0) return error.Smfile;
+        if (c.smfile_insert(self.ptr, src, bofst, slen) < 0) return error.Smfile;
     }
 
     pub fn read(self: Smfile, dest: []u8, size: t_size, bofst: sb_size, stride: sb_size, nelem: b_size) Error!void {
