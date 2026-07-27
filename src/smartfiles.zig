@@ -9,16 +9,15 @@ pub const Error = error{
 };
 
 pub const b_size = u64;
-pub const sb_size = i64; 
+pub const sb_size = i64;
 pub const t_size = u32;
 
-
 pub const Smfile = struct {
-    ptr: *c.smfile_t,    
+    ptr: *c.smfile_t,
 
     pub fn fromPtr(ptr: *c.smfile_t) Smfile {
         return .{ .ptr = ptr };
-    } 
+    }
 
     pub fn open(path: [*:0]const u8) Error!Smfile {
         return .{ .ptr = c.smfile_open(path) orelse return error.SmOpenFailed };
@@ -59,5 +58,4 @@ pub const Smfile = struct {
     pub fn rollback(self: Smfile) Error!void {
         if (c.smfile_rollback(self.ptr) < 0) return error.Smfile;
     }
-
 };
