@@ -41,56 +41,24 @@ pub fn build(b: *std.Build) !void {
     b.installArtifact(numstore);
     try targets.append(b.allocator, numstore);
 
-    if(build_samples) {
+    if (build_samples) {
         // Build Zig Samples
-        try build_zig_sample(
-            b, &targets, 
-            "ns_zig_sample1", 
-            b.path("src/samples/ns_sample1_basic.zig"), 
-            target, optimize, numstore);
+        try build_zig_sample(b, &targets, "ns_zig_sample1", b.path("src/samples/ns_sample1_basic.zig"), target, optimize, numstore);
 
-        try build_zig_sample(
-            b, &targets, 
-            "ns_zig_sample2", 
-            b.path("src/samples/ns_sample2_struct.zig"), 
-            target, optimize, numstore);
+        try build_zig_sample(b, &targets, "ns_zig_sample2", b.path("src/samples/ns_sample2_struct.zig"), target, optimize, numstore);
 
-        try build_zig_sample(
-            b, &targets, 
-            "ns_zig_sample3", 
-            b.path("src/samples/ns_sample3_transactions.zig"), 
-            target, optimize, numstore);
+        try build_zig_sample(b, &targets, "ns_zig_sample3", b.path("src/samples/ns_sample3_transactions.zig"), target, optimize, numstore);
 
         // Build c Samples
-        try build_c_sample(
-            b, &targets, 
-            "ns_c_sample1", 
-            b.path("src/samples/ns_sample1_basic_crud.c"), 
-            target, optimize, numstore);
+        try build_c_sample(b, &targets, "ns_c_sample1", b.path("src/samples/ns_sample1_basic_crud.c"), target, optimize, numstore);
 
-        try build_c_sample(
-            b, &targets, 
-            "smfile_c_sample1", 
-            b.path("src/samples/smfile_sample1_basic_crud.c"), 
-            target, optimize, numstore);
+        try build_c_sample(b, &targets, "smfile_c_sample1", b.path("src/samples/smfile_sample1_basic_crud.c"), target, optimize, numstore);
 
-        try build_c_sample(
-            b, &targets, 
-            "smfile_c_sample2", 
-            b.path("src/samples/smfile_sample2_transactions.c"), 
-            target, optimize, numstore);
+        try build_c_sample(b, &targets, "smfile_c_sample2", b.path("src/samples/smfile_sample2_transactions.c"), target, optimize, numstore);
 
-        try build_c_sample(
-            b, &targets, 
-            "smfile_c_sample3", 
-            b.path("src/samples/smfile_sample3_stride.c"), 
-            target, optimize, numstore);
+        try build_c_sample(b, &targets, "smfile_c_sample3", b.path("src/samples/smfile_sample3_stride.c"), target, optimize, numstore);
 
-        try build_c_sample(
-            b, &targets, 
-            "smfile_c_sample4", 
-            b.path("src/samples/smfile_sample4_rollback_commit.c"), 
-            target, optimize, numstore);
+        try build_c_sample(b, &targets, "smfile_c_sample4", b.path("src/samples/smfile_sample4_rollback_commit.c"), target, optimize, numstore);
     }
 
     // Add compile_commands.json for c family language servers
@@ -98,13 +66,13 @@ pub fn build(b: *std.Build) !void {
 }
 
 pub fn build_zig_sample(
-    b: *std.Build, 
+    b: *std.Build,
     targets: *std.ArrayList(*std.Build.Step.Compile),
-    name: [] const u8,
+    name: []const u8,
     path: std.Build.LazyPath,
     target: ?std.Build.ResolvedTarget,
     optimize: ?std.builtin.OptimizeMode,
-    numstore: *std.Build.Step.Compile, 
+    numstore: *std.Build.Step.Compile,
 ) !void {
     const sample = b.addExecutable(.{
         .name = name,
@@ -125,15 +93,15 @@ pub fn build_zig_sample(
 }
 
 pub fn build_c_sample(
-    b: *std.Build, 
+    b: *std.Build,
     targets: *std.ArrayList(*std.Build.Step.Compile),
-    name: [] const u8,
+    name: []const u8,
     path: std.Build.LazyPath,
     target: ?std.Build.ResolvedTarget,
     optimize: ?std.builtin.OptimizeMode,
-    numstore: *std.Build.Step.Compile, 
+    numstore: *std.Build.Step.Compile,
 ) !void {
-    // 
+    //
     const sample = b.addExecutable(.{
         .name = name,
         .linkage = .dynamic,
@@ -151,7 +119,6 @@ pub fn build_c_sample(
     sample.root_module.addIncludePath(b.path("src"));
     b.installArtifact(sample);
     try targets.append(b.allocator, sample);
-
 }
 
 pub fn glob(

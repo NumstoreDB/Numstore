@@ -36,12 +36,12 @@ pub const Db = struct {
         return .{ .ptr = ptr };
     }
 
-    /// Open (creating if needed) a numstore database. 
+    /// Open (creating if needed) a numstore database.
     pub fn open(path: [*:0]const u8) Error!Db {
         return .{ .ptr = c.nsdb_open(path) orelse return error.OpenFailed };
     }
 
-    /// Remove all on-disk resources for `path`. 
+    /// Remove all on-disk resources for `path`.
     pub fn cleanup(path: [*:0]const u8) Error!void {
         if (c.nsdb_cleanup(path) < 0) return error.Nsdb;
     }
@@ -56,7 +56,7 @@ pub const Db = struct {
         if (c.nsdb_crash(self.ptr) < 0) return error.Nsdb;
     }
 
-    // Transaction control 
+    // Transaction control
 
     pub fn begin(self: Db) Error!void {
         if (c.nsdb_begin(self.ptr) < 0) return error.Nsdb;
@@ -70,7 +70,7 @@ pub const Db = struct {
         if (c.nsdb_rollback(self.ptr) < 0) return error.Nsdb;
     }
 
-    /// Run `body` inside begin/commit, rolling back automatically on error. 
+    /// Run `body` inside begin/commit, rolling back automatically on error.
     /// `body` is any callable returning `!void`.
     pub fn transaction(self: Db, body: anytype) !void {
         try self.begin();
@@ -79,7 +79,7 @@ pub const Db = struct {
         try self.commit();
     }
 
-    // Query execution 
+    // Query execution
 
     /// Execute a query. `data` is the caller-owned buffer used by
     /// insert / read / write / remove; pass `null` for queries with no payload.
@@ -107,7 +107,7 @@ pub const Db = struct {
         return self.execute(query, data);
     }
 
-    // Error reporting 
+    // Error reporting
 
     /// Current error message, or `null` if none is set. The returned slice is
     /// owned by numstore and valid until the next call on this handle.

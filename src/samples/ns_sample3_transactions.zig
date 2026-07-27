@@ -29,4 +29,3 @@ pub fn main() !void {
 
     try db.close();
 }
-
