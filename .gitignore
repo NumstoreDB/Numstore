@@ -69,3 +69,4 @@ zig-out/
 /build-*/
 /docgen_tmp/
 zig-pkg
+sample1_crud
