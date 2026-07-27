@@ -4,7 +4,7 @@ const posix = std.posix;
 
 pub fn server() !void {
     const address = try net.Address.parseIp4("127.0.0.1", 8080);
-    
+
     // 1. Create a listening socket equipped with Non-Blocking flags
     const socket_fd = try posix.socket(
         address.any.family,
@@ -55,7 +55,7 @@ pub fn server() !void {
                     while (true) {
                         var client_address: posix.sockaddr = undefined;
                         var client_address_len: posix.socklen_t = @sizeOf(posix.sockaddr);
-                        
+
                         // Accept the new socket connection safely in non-blocking mode
                         const client_fd = posix.accept(socket_fd, &client_address, &client_address_len, posix.SOCK.NONBLOCK) catch |err| {
                             if (err == error.WouldBlock) break; // No more pending connections
@@ -105,4 +105,3 @@ pub fn server() !void {
         }
     }
 }
-

@@ -59,3 +59,14 @@ _build/
 
 # Claude Code agent worktrees
 .claude/
+
+
+.zig-cache/
+zig-out/
+/release/
+/debug/
+/build/
+/build-*/
+/docgen_tmp/
+zig-pkg
+sample1_crud
