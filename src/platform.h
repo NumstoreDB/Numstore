@@ -114,10 +114,9 @@
 
 ////////////////////////////////////////////////////////////
 // Verify
-#if (                                                                   \
-    PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC \
-    + PLATFORM_IOS + PLATFORM_BSD + PLATFORM_EMSCRIPTEN                 \
-) > 1
+#if (PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC \
+     + PLATFORM_IOS + PLATFORM_BSD + PLATFORM_EMSCRIPTEN)                \
+    > 1
 #  warning "Multiple platforms detected - check your build configuration"
 #endif
 
@@ -227,7 +226,6 @@ platformstr (void)
 ////////////////////////////////////////////////////////////
 // SYSTEM INCLUDES
 
-#include <complex.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdarg.h>
