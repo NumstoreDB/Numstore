@@ -14,7 +14,6 @@ compile_commands.json
 *dist*
 history.txt
 .idea
-build
 build_coverage
 create
 dlread
@@ -40,7 +39,6 @@ __pycache__/
 *.egg
 *.egg-info/
 dist/
-build/
 .Python
 vgcore.*
 thirdparty/openssl
@@ -65,8 +63,6 @@ _build/
 zig-out/
 /release/
 /debug/
-/build/
-/build-*/
 /docgen_tmp/
 zig-pkg
 sample1_crud

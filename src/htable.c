@@ -25,6 +25,13 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
   ASSERT (t->table);
 })
 
+int
+foo ()
+{
+  printf ("YAY");
+  return 0;
+}
+
 struct htable *
 htable_create (const u32 n, error *e)
 {

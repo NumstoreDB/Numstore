@@ -18,6 +18,7 @@
 #include "compiler.h"
 #include "csx_assert.h"
 #include "error.h"
+#include "logging.h"
 #include "nsdb.h"
 #include "query.h"
 #include "testing.h"

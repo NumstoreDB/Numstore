@@ -2,132 +2,59 @@ const std = @import("std");
 const c = @cImport({
     @cInclude("numstore.h");
 });
-
-pub const nsdb_t = opaque {};
-pub const nsdb_var_t = opaque {};
-
-pub const t_size = u32;
-pub const st_size = i32;
-pub const p_size = u32;
-pub const sp_size = i32;
-pub const b_size = u64;
-pub const sb_size = i64;
-pub const pgno = u64;
-pub const spgno = i64;
-pub const txid = u64;
-pub const stxid = i64;
-pub const lsn = u64;
-pub const slsn = i64;
-
-pub const NS_END: i64 = std.math.maxInt(i64);
-pub const SMF_END: i64 = std.math.maxInt(i64);
-
-pub const Error = error{
-    OpenFailed,
-    Nsdb,
-    QueryTooLong,
-};
+const e = @import("error.zig");
+const stdtypes = @import("stdtypes.zig");
+const sb_size = stdtypes.sb_size;
+const b_size = stdtypes.b_size;
+const t_size = stdtypes.t_size;
 
 pub const Db = struct {
     ptr: *c.nsdb_t,
 
-    /// Wrap a raw `*nsdb_t` (e.g. one handed back through a C boundary).
-    pub fn fromPtr(ptr: *c.nsdb_t) Db {
+    /// Open (creating if needed) a numstore database.
+    pub fn open(path: [*:0]const u8) e.Error!Db {
+        const ptr = c.nsdb_open(path) orelse return error.Io;
         return .{ .ptr = ptr };
     }
 
-    /// Open (creating if needed) a numstore database.
-    pub fn open(path: [*:0]const u8) Error!Db {
-        return .{ .ptr = c.nsdb_open(path) orelse return error.OpenFailed };
-    }
-
     /// Remove all on-disk resources for `path`.
-    pub fn cleanup(path: [*:0]const u8) Error!void {
-        if (c.nsdb_cleanup(path) < 0) return error.Nsdb;
+    pub fn cleanup(path: [*:0]const u8) e.Error!void {
+        return try e.check_int(c.nsdb_cleanup(path));
     }
 
     /// Close the database
-    pub fn close(self: Db) Error!void {
-        if (c.nsdb_close(self.ptr) < 0) return error.Nsdb;
+    pub fn close(self: Db) e.Error!void {
+        return e.check_int(c.nsdb_close(self.ptr));
     }
 
     /// Crash the database
-    pub fn crash(self: Db) Error!void {
-        if (c.nsdb_crash(self.ptr) < 0) return error.Nsdb;
+    pub fn crash(self: Db) e.Error!void {
+        return try e.check_int(c.nsdb_crash(self.ptr));
     }
 
-    // Transaction control
-
-    pub fn begin(self: Db) Error!void {
-        if (c.nsdb_begin(self.ptr) < 0) return error.Nsdb;
+    /// Begin a new transaction
+    pub fn begin(self: Db) e.Error!void {
+        return try e.check_int(c.nsdb_begin(self.ptr));
     }
 
-    pub fn commit(self: Db) Error!void {
-        if (c.nsdb_commit(self.ptr) < 0) return error.Nsdb;
+    /// Commit a transaction
+    pub fn commit(self: Db) e.Error!void {
+        return try e.check_int(c.nsdb_commit(self.ptr));
     }
 
-    pub fn rollback(self: Db) Error!void {
-        if (c.nsdb_rollback(self.ptr) < 0) return error.Nsdb;
+    /// Roll a transaction back
+    pub fn rollback(self: Db) e.Error!void {
+        return try e.check_int(c.nsdb_rollback(self.ptr));
     }
 
-    /// Run `body` inside begin/commit, rolling back automatically on error.
-    /// `body` is any callable returning `!void`.
-    pub fn transaction(self: Db, body: anytype) !void {
-        try self.begin();
-        errdefer self.rollback() catch {};
-        try body();
-        try self.commit();
-    }
-
-    // Query execution
-
-    /// Execute a query. `data` is the caller-owned buffer used by
-    /// insert / read / write / remove; pass `null` for queries with no payload.
-    /// Returns the number of elements touched (0 for non-data queries).
-    pub fn execute(self: Db, query: [*:0]const u8, data: ?*anyopaque) Error!u64 {
-        const n = c.nsdb_execute(self.ptr, query, data);
-        if (n < 0) return error.Nsdb;
-        return @intCast(n);
-    }
-
-    /// Build a query with Zig's `std.fmt` into `buf`, then execute it.
-    ///
-    /// This intentionally sidesteps `nsdb_fexecute`'s printf format string:
-    /// numstore receives the already-rendered query, so use Zig placeholders
-    /// (`{d}`, `{s}`, ...) rather than `%d`. For the genuine C variadic path,
-    /// call `c.nsdb_fexecute` directly.
-    pub fn executeFmt(
-        self: Db,
-        buf: []u8,
-        data: ?*anyopaque,
-        comptime fmt: []const u8,
-        args: anytype,
-    ) Error!u64 {
-        const query = std.fmt.bufPrintZ(buf, fmt, args) catch return error.QueryTooLong;
-        return self.execute(query, data);
-    }
-
-    // Error reporting
-
-    /// Current error message, or `null` if none is set. The returned slice is
-    /// owned by numstore and valid until the next call on this handle.
-    pub fn lastError(self: Db) ?[:0]const u8 {
-        const s = c.nsdb_strerror(self.ptr) orelse return null;
-        return std.mem.span(s);
-    }
-
-    /// Print the current error to stderr, prefixed like `perror(3)`.
-    pub fn perror(self: Db, prefix: [*:0]const u8) void {
-        _ = c.nsdb_perror(self.ptr, prefix);
+    /// Execute a query
+    pub fn execute(self: Db, query: [*:0]const u8, data: ?*anyopaque) e.Error!u64 {
+        return try e.check_sb_size(c.nsdb_execute(self.ptr, query, data));
     }
 };
 
 pub const Var = struct {
     ptr: *c.nsdb_var_t,
-
-    pub fn fromPtr(ptr: *c.nsdb_var_t) Var {
-        return .{ .ptr = ptr };
-    }
 
     /// Number of elements addressable through this handle.
     pub fn len(self: Var) u64 {
@@ -139,3 +66,219 @@ pub const Var = struct {
         c.nsdb_var_free(self.ptr);
     }
 };
+
+const testing = @import("std").testing;
+const test_helpers = @import("helpers.zig").test_helpers;
+
+test "smoke test open" {
+    try Db.cleanup("foo");
+    const db = try Db.open("foo");
+    try db.close();
+}
+
+test "smoke test cleanup close and crash" {
+    const io = std.testing.io;
+
+    // Expect no database to exist
+    try Db.cleanup("foo");
+    try testing.expect(!try test_helpers.fileExists(io, "foo"));
+    try testing.expect(!try test_helpers.fileExists(io, "foo.wal"));
+
+    // Open a new database
+    var db = try Db.open("foo");
+    try testing.expect(try test_helpers.fileExists(io, "foo"));
+    try testing.expect(try test_helpers.fileExists(io, "foo.wal"));
+
+    // Close it no more WAL
+    try db.close();
+    try testing.expect(try test_helpers.fileExists(io, "foo"));
+    try testing.expect(!try test_helpers.fileExists(io, "foo.wal"));
+
+    // Clean it up
+    try Db.cleanup("foo");
+    try testing.expect(!try test_helpers.fileExists(io, "foo"));
+    try testing.expect(!try test_helpers.fileExists(io, "foo.wal"));
+
+    // Open a new database
+    db = try Db.open("foo");
+    try testing.expect(try test_helpers.fileExists(io, "foo"));
+    try testing.expect(try test_helpers.fileExists(io, "foo.wal"));
+
+    // Crash it
+    try db.crash();
+    try testing.expect(try test_helpers.fileExists(io, "foo"));
+    try testing.expect(try test_helpers.fileExists(io, "foo.wal"));
+
+    // Clean it up all is gone
+    try Db.cleanup("foo");
+    try testing.expect(!try test_helpers.fileExists(io, "foo"));
+    try testing.expect(!try test_helpers.fileExists(io, "foo.wal"));
+}
+
+test "sample 1" {
+    var src: [200]u32 = undefined;
+    var dest: [200]u32 = undefined;
+
+    Db.cleanup("test") catch {};
+    const db = try Db.open("test");
+
+    _ = try db.execute("create example u32", null);
+
+    // Just a growing int: src[i] == i
+    for (&src, 0..) |*v, i| {
+        v.* = @intCast(i);
+    }
+    // Insert src into db
+    var n = try db.execute("insert example 0 200", @ptrCast(&src));
+    try testing.expectEqual(200, n);
+
+    // Should be every third element: dest[i] == i*3
+    n = try db.execute("read example[0:-10:3]", @ptrCast(&dest));
+    try testing.expectEqual((200 - 10 - 1) / 3 + 1, n);
+    for (dest[0..n], 0..) |v, i| {
+        try testing.expectEqual(@as(u32, @intCast(i * 3)), v);
+    }
+
+    // Removed every second element in [0:-10]: dest[i] == i*2
+    n = try db.execute("remove example[0:-10:2] blimit 800", @ptrCast(&dest));
+    const removed = (200 - 10 - 1) / 2 + 1; // 95
+    try testing.expectEqual(removed, n);
+    for (dest[0..n], 0..) |v, i| {
+        try testing.expectEqual(@as(u32, @intCast(i * 2)), v);
+    }
+
+    // Read everything left after the remove.
+    n = try db.execute("read example[0:] blimit 800", @ptrCast(&dest));
+    try testing.expectEqual(200 - removed, n);
+    const kept_in_range = (200 - 10) - removed; // 95 odd survivors
+
+    // 1, 3, ..., 189
+    for (dest[0..kept_in_range], 0..) |v, i| {
+        try testing.expectEqual(@as(u32, @intCast(i * 2 + 1)), v);
+    }
+
+    // 190 .. 199
+    for (dest[kept_in_range..n], 0..) |v, i| {
+        try testing.expectEqual(@as(u32, @intCast(200 - 10 + i)), v);
+    }
+
+    // Overwrite all remaining entries with src[0..n] = 0,1,2,...,n-1
+    n = try db.execute("write example[0::] blimit 800", @ptrCast(&src));
+    try testing.expectEqual(200 - removed, n);
+
+    n = try db.execute("read example[0:] blimit 800", @ptrCast(&dest));
+    try testing.expectEqual(200 - removed, n);
+    for (dest[0..n], 0..) |v, i| {
+        try testing.expectEqual(@as(u32, @intCast(i)), v);
+    }
+
+    try db.close();
+}
+
+test "sample 2" {
+    const Example = extern struct {
+        a: f32,
+        b: i32,
+        d: [5][10]u32,
+    };
+    var src: [200]Example = undefined;
+    var dest: [200]Example = undefined;
+
+    Db.cleanup("sample2") catch {};
+    const db = try Db.open("sample2");
+    _ = try db.execute(
+        \\create example struct {
+        \\  a f32,
+        \\  b i32,
+        \\  d [5][10] u32
+        \\}
+    , null);
+
+    // src[i]: a = i, b = i+1, d[r][col] = i + r*10 + col
+    for (&src, 0..) |*v, i| {
+        v.a = @floatFromInt(i);
+        v.b = @intCast(i + 1);
+        for (0..5) |r| {
+            for (0..10) |col| {
+                v.d[r][col] = @intCast(i + r * 10 + col);
+            }
+        }
+    }
+
+    // Assert that a read-back entry equals src[si].
+    const expectElem = struct {
+        fn f(v: Example, si: usize) !void {
+            try testing.expectEqual(@as(f32, @floatFromInt(si)), v.a);
+            try testing.expectEqual(@as(i32, @intCast(si + 1)), v.b);
+            for (0..5) |r| {
+                for (0..10) |col| {
+                    try testing.expectEqual(@as(u32, @intCast(si + r * 10 + col)), v.d[r][col]);
+                }
+            }
+        }
+    }.f;
+
+    // blimit is a byte cap; per-entry size is @sizeOf(Example) = 208 (no padding).
+    const dest_bytes = @sizeOf(@TypeOf(dest)); // 200 * 208
+    const src_bytes = @sizeOf(@TypeOf(src));
+
+    // Insert src into db
+    var n = try db.execute("insert example 0 200", @ptrCast(&src));
+    try testing.expectEqual(200, n);
+
+    // Every third element: dest[i] == src[i*3]
+    n = try db.execute(
+        comptime std.fmt.comptimePrint("read example[0:-10:3] blimit {d}", .{dest_bytes}),
+        @ptrCast(&dest),
+    );
+    try testing.expectEqual((200 - 10 - 1) / 3 + 1, n);
+    for (dest[0..n], 0..) |v, i| {
+        try expectElem(v, i * 3);
+    }
+
+    // Remove every second element in [0:-10]: dest[i] == src[i*2]
+    n = try db.execute(
+        comptime std.fmt.comptimePrint("remove example[0:-10:2] blimit {d}", .{dest_bytes}),
+        @ptrCast(&dest),
+    );
+    const removed = (200 - 10 - 1) / 2 + 1; // 95
+    try testing.expectEqual(removed, n);
+    for (dest[0..n], 0..) |v, i| {
+        try expectElem(v, i * 2);
+    }
+
+    // Read everything left after the remove (two passes, remove stopped at -10):
+    //   * in [0,190): evens removed, odd src indices 1,3,...,189 survive (95)
+    //   * src indices 190..199 untouched                                  (10)
+    n = try db.execute(
+        comptime std.fmt.comptimePrint("read example[0:] blimit {d}", .{dest_bytes}),
+        @ptrCast(&dest),
+    );
+    try testing.expectEqual(200 - removed, n);
+    const kept_in_range = (200 - 10) - removed; // 95 odd survivors
+    // Pass 1: src indices 1, 3, ..., 189
+    for (dest[0..kept_in_range], 0..) |v, i| {
+        try expectElem(v, i * 2 + 1);
+    }
+    // Pass 2: src indices 190 .. 199
+    for (dest[kept_in_range..n], 0..) |v, i| {
+        try expectElem(v, 200 - 10 + i);
+    }
+
+    // Overwrite all remaining entries with src[0..n] -> dest[i] == src[i]
+    n = try db.execute(
+        comptime std.fmt.comptimePrint("write example[0::] blimit {d}", .{src_bytes}),
+        @ptrCast(&src),
+    );
+    try testing.expectEqual(200 - removed, n);
+    n = try db.execute(
+        comptime std.fmt.comptimePrint("read example[0:] blimit {d}", .{dest_bytes}),
+        @ptrCast(&dest),
+    );
+    try testing.expectEqual(200 - removed, n);
+    for (dest[0..n], 0..) |v, i| {
+        try expectElem(v, i);
+    }
+
+    try db.close();
+}
