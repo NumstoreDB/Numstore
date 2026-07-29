@@ -194,7 +194,11 @@ test "sample 2" {
         \\}
     , null);
 
-    // src[i]: a = i, b = i+1, d[r][col] = i + r*10 + col
+    // src[i] {
+    //  .a = i,
+    //  .b = i+1,
+    //  .d[r][col] = i + r*10 + col
+    // }
     for (&src, 0..) |*v, i| {
         v.a = @floatFromInt(i);
         v.b = @intCast(i + 1);
@@ -205,7 +209,6 @@ test "sample 2" {
         }
     }
 
-    // Assert that a read-back entry equals src[si].
     const expectElem = struct {
         fn f(v: Example, si: usize) !void {
             try testing.expectEqual(@as(f32, @floatFromInt(si)), v.a);
@@ -218,7 +221,6 @@ test "sample 2" {
         }
     }.f;
 
-    // blimit is a byte cap; per-entry size is @sizeOf(Example) = 208 (no padding).
     const dest_bytes = @sizeOf(@TypeOf(dest)); // 200 * 208
     const src_bytes = @sizeOf(@TypeOf(src));
 
@@ -248,18 +250,18 @@ test "sample 2" {
     }
 
     // Read everything left after the remove (two passes, remove stopped at -10):
-    //   * in [0,190): evens removed, odd src indices 1,3,...,189 survive (95)
-    //   * src indices 190..199 untouched                                  (10)
     n = try db.execute(
         comptime std.fmt.comptimePrint("read example[0:] blimit {d}", .{dest_bytes}),
         @ptrCast(&dest),
     );
     try testing.expectEqual(200 - removed, n);
     const kept_in_range = (200 - 10) - removed; // 95 odd survivors
-    // Pass 1: src indices 1, 3, ..., 189
+
+    // 1, 3, ..., 189
     for (dest[0..kept_in_range], 0..) |v, i| {
         try expectElem(v, i * 2 + 1);
     }
+
     // Pass 2: src indices 190 .. 199
     for (dest[kept_in_range..n], 0..) |v, i| {
         try expectElem(v, 200 - 10 + i);

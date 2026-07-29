@@ -218,7 +218,6 @@ test "sample 2 txn" {
     Smfile.cleanup("sample2_txn") catch {};
     const db = try Smfile.open("sample2_txn");
 
-    // header[0..7] = 1, body[8..71] = 0..63, footer[72..79] = 99
     try db.begin();
     var header: [8]u8 = undefined;
     var body: [64]u8 = undefined;
@@ -231,15 +230,12 @@ test "sample 2 txn" {
     _ = try db.insert(&footer, 72, footer.len);
     try db.commit();
 
-    // Rolled-back transaction: overwrite everything with 0x00, then undo
     try db.begin();
     var zeros: [80]u8 = undefined;
     @memset(&zeros, 0);
     _ = try db.write(&zeros, 1, 0, 1, zeros.len);
     try db.rollback();
 
-    // Bytes [68..79] must be unchanged by the rolled-back write.
-    // [68..71] are body[60..63] == 60,61,62,63; [72..79] are footer == 99.
     var verify: [12]u8 = undefined;
     var n = try db.read(&verify, 1, 68, 1, 12);
     try testing.expectEqual(@as(b_size, 12), n);
@@ -247,20 +243,19 @@ test "sample 2 txn" {
         60, 61, 62, 63, 99, 99, 99, 99, 99, 99, 99, 99,
     }, verify[0..@intCast(n)]);
 
-    // ---- Committed transaction: append 4 bytes of 0xCC at [80..83] ----
+    // Committed
     try db.begin();
     var extra: [4]u8 = undefined;
     @memset(&extra, 0xCC);
     _ = try db.insert(&extra, 80, extra.len);
     try db.commit();
 
-    // ---- Rolled-back transaction: try to remove those 4 bytes, then undo ----
+    // Rolled-back
     try db.begin();
     var scratch: [4]u8 = undefined; // wrapper needs a dest; C passed NULL here
     _ = try db.remove(&scratch, 1, 80, 1, 4);
     try db.rollback();
 
-    // The append survived; the removal was undone. [80..83] == 0xCC.
     var tail: [4]u8 = undefined;
     n = try db.read(&tail, 1, 80, 1, 4);
     try testing.expectEqual(@as(b_size, 4), n);
@@ -275,12 +270,12 @@ test "sample 4 stride" {
 
     const fsz = @sizeOf(f32);
 
-    // Insert 16 contiguous floats: data[i] == i
+    // data[i] == i
     var data: [16]f32 = undefined;
     for (&data, 0..) |*v, i| v.* = @floatFromInt(i);
     _ = try db.insert(@ptrCast(&data), 0, @sizeOf(@TypeOf(data)));
 
-    // Read every other float (byte offset 0, stride 2, 8 elems): 0 2 4 6 ... 14
+    // 0 2 4 6 ... 14
     var evens: [8]f32 = undefined;
     var n = try db.read(@ptrCast(&evens), fsz, 0, 2, 8);
     try testing.expectEqual(@as(b_size, 8), n);
@@ -288,13 +283,12 @@ test "sample 4 stride" {
         try testing.expectEqual(@as(f32, @floatFromInt(i * 2)), v);
     }
 
-    // Write -1 starting at byte offset 4 (element 1), stride 2, 8 elems:
-    // overwrites the odd positions 1,3,5,...,15.
+    // 1,3,5,...,15.
     var neg: [8]f32 = undefined;
     @memset(&neg, -1.0);
     _ = try db.write(@ptrCast(&neg), fsz, 4, 2, 8);
 
-    // Read back all 16 (stride 1): 0,-1,2,-1,4,-1,...,14,-1
+    // 0,-1,2,-1,4,-1,...,14,-1
     var readback: [16]f32 = undefined;
     n = try db.read(@ptrCast(&readback), fsz, 0, 1, 16);
     try testing.expectEqual(@as(b_size, 16), n);
@@ -303,8 +297,7 @@ test "sample 4 stride" {
         try testing.expectEqual(exp, v);
     }
 
-    // Remove 8 elements (byte offset 0, stride 2): pulls out the even positions
-    // 0,2,4,...,14, capturing them.
+    // 0,2,4,...,14
     var removed: [8]f32 = undefined;
     n = try db.remove(@ptrCast(&removed), fsz, 0, 2, 8);
     try testing.expectEqual(@as(b_size, 8), n);
@@ -312,7 +305,7 @@ test "sample 4 stride" {
         try testing.expectEqual(@as(f32, @floatFromInt(i * 2)), v);
     }
 
-    // What remains are the 8 odd positions, all -1.
+    // 8 odd positions, all -1.
     n = try db.read(@ptrCast(&readback), fsz, 0, 1, 8);
     try testing.expectEqual(@as(b_size, 8), n);
     for (readback[0..@intCast(n)]) |v| {
@@ -326,7 +319,7 @@ test "sample 5 durability" {
     const PATH = "sample5_durability";
     Smfile.cleanup(PATH) catch {};
 
-    // Phase 1 - baseline: 10 'A's, committed cleanly.
+    // 10 'A's, committed cleanly
     {
         const db = try Smfile.open(PATH);
         try db.begin();
@@ -335,7 +328,7 @@ test "sample 5 durability" {
         try db.close();
     }
 
-    // Phase 2 - insert "BB" at 3, commit, clean exit. Must survive.
+    // insert "BB" at 3, commit, clean exit.
     {
         const db = try Smfile.open(PATH);
         try db.begin();
@@ -344,8 +337,8 @@ test "sample 5 durability" {
         try db.close();
     }
 
-    // Phase 3 - insert "CC" at 7, commit, then CRASH.
-    // Committed before the crash -> must be replayed on next open.
+    // insert "CC" at 7, commit, then crash.
+    // replayed on next open.
     {
         const db = try Smfile.open(PATH);
         try db.begin();
@@ -354,8 +347,8 @@ test "sample 5 durability" {
         try db.crash(); // no close: WAL left committed-but-unflushed
     }
 
-    // Phase 4 - insert "DD" at 11, NO commit, then CRASH.
-    // Never committed -> must be discarded on next open.
+    // insert "DD" at 11, no commit, then crash
+    // discarded on next open.
     {
         const db = try Smfile.open(PATH); // replays phase 3's CC
         try db.begin();
@@ -363,8 +356,8 @@ test "sample 5 durability" {
         try db.crash(); // no commit, no close
     }
 
-    // Phase 5 - insert "EE" at 5, explicit rollback, clean exit.
-    // Rolled back -> must leave no trace.
+    // insert "EE" at 5, explicit rollback, clean exit.
+    // must leave no trace.
     {
         const db = try Smfile.open(PATH);
         try db.begin();
@@ -373,13 +366,10 @@ test "sample 5 durability" {
         try db.close();
     }
 
-    // Phase 6 - reopen fresh and verify the durability guarantees held.
+    // reopen fresh and verify the durability guarantees held.
     const db = try Smfile.open(PATH);
     var buf: [64]u8 = undefined;
 
-    // Full contents: ph2 (BB) + ph3 (CC) visible; ph4 (DD) + ph5 (EE) gone.
-    // insert shifts rather than overwrites, so the file grew 10 -> 14 bytes:
-    //   AAAAAAAAAA -> AAA[BB]AAAAAAA -> AAABBAA[CC]AAAAA
     var n = try db.read(&buf, 1, 0, 1, 14);
     try testing.expectEqual(@as(b_size, 14), n);
     try testing.expectEqualStrings("AAABBAACCAAAAA", buf[0..@intCast(n)]);
