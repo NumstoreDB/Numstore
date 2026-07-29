@@ -66,3 +66,5 @@ zig-out/
 /docgen_tmp/
 zig-pkg
 sample1_crud
+
+src/unit_tests.c
