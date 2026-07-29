@@ -1,6 +1,5 @@
 const std = @import("std");
 const fs = @import("src/build/filesystem.zig");
-const zcc = @import("zig_compile_commands");
 const gen_unit_tests = @import("src/build/gen_unit_tests.zig").gen_unit_tests;
 
 pub fn build(b: *std.Build) !void {
@@ -15,9 +14,6 @@ pub fn build(b: *std.Build) !void {
         "src/templates/unit_tests.c.in",
         "src/unit_tests.c",
     );
-
-    // Compile commands targets
-    var cc_targets: std.ArrayList(*std.Build.Step.Compile) = .empty;
 
     // C source code
     const csrcs = try fs.glob(b.allocator, b.graph.io, "src", ".c");
@@ -45,7 +41,6 @@ pub fn build(b: *std.Build) !void {
     });
     numstore.root_module.addIncludePath(b.path("src"));
     b.installArtifact(numstore);
-    try cc_targets.append(b.allocator, numstore);
 
     //////////////////////////// Build Tests
     const test_step = b.step("test", "Run unit tests");
@@ -70,7 +65,4 @@ pub fn build(b: *std.Build) !void {
     tests.root_module.addIncludePath(b.path("src"));
     const unit_tests = b.addRunArtifact(tests);
     test_step.dependOn(&unit_tests.step);
-
-    //////////////////////////// Generate compile Commands
-    _ = zcc.createStep(b, "cdb", try cc_targets.toOwnedSlice(b.allocator));
 }
