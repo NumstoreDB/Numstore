@@ -13,3 +13,7 @@ This style guide draws heavily on TigerBeetle's
 6. At most one level of pointer indirection                 - In Progress
 7. Assertion density of 2%                                  - Unmeasured
 8. Compile clean against all warnings                       - Fix: `-falignment`
+
+Developer Rules:
+
+1. Keep the code in a better place than when you found it 
