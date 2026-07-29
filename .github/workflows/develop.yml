@@ -1,4 +1,5 @@
 name: CI (develop)
+
 on:
   push:
     branches: [develop]
@@ -6,73 +7,17 @@ on:
     branches: [develop]
 
 jobs:
-
-  # Run debug tests on the three main platforms
-  # (includes address sanitizer)
   tests:
     name: ci-tests / ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-
     steps:
       - uses: actions/checkout@v4
         with: { submodules: recursive }
-
-      - if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      # Build the code
-      - run: cmake --preset ci-tests
-      - run: cmake --build --preset ci-tests
-
-      # Run the tests
-      - shell: bash
-        run: |
-          exe=$(find build/ci-tests/bin -maxdepth 2 -name 'numstore*' -type f | head -1)
-          "$exe" --unit_tests
-
-  # Build and run release tests just once to ensure 
-  # no debug/release code broke the pipeline
-  release-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { submodules: recursive }
-
-      # Build the code
-      - run: cmake --preset ci-release-tests
-      - run: cmake --build --preset ci-release-tests
-
-      # Run the tests
-      - shell: bash
-        run: |
-          exe=$(find build/ci-release-tests/bin -maxdepth 2 -name 'numstore*' -type f | head -1)
-          "$exe" --unit_tests
-
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { submodules: recursive }
-      - run: sudo apt-get install -y lcov
-
-      # Build the code
-      - run: cmake --preset ci-coverage
-      - run: cmake --build --preset ci-coverage
-
-      # Run the tests
-      - run: ./build/ci-coverage/bin/numstore --unit_tests
-      - run: ./build/ci-coverage/bin/ns_sample1_basic_crud
-
-      # Generate and upload coverage
-      - run: |
-          lcov --capture --directory build/ci-coverage --output-file coverage.info --ignore-errors mismatch
-      - uses: codecov/codecov-action@v5
+      - uses: mlugg/setup-zig@v2
         with:
-          files: ./coverage.info
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          version: 0.16.0
+      - run: zig build test
