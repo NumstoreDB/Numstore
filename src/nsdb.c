@@ -765,11 +765,11 @@ nsdb_read (
     {
       if (query->blimit)
       {
-        stride.nelems = query->limit / tsize;
+        stride.nelems = MIN (query->limit / tsize, stride.nelems);
       }
       else
       {
-        stride.nelems = query->limit;
+        stride.nelems = MIN (query->limit, stride.nelems);
       }
     }
     else
@@ -906,11 +906,11 @@ nsdb_remove (
     {
       if (query->blimit)
       {
-        stride.nelems = query->limit / tsize;
+        stride.nelems = MIN (query->limit / tsize, stride.nelems);
       }
       else
       {
-        stride.nelems = query->limit;
+        stride.nelems = MIN (query->limit, stride.nelems);
       }
     }
     else
@@ -1150,6 +1150,7 @@ nsdb_execute_on_buffer (
     struct allocator *alc
 )
 {
+  printf ("HERE THERE\n");
   sb_size          ret = SUCCESS;
   struct variable *var;
 
@@ -1181,6 +1182,7 @@ nsdb_execute_on_buffer (
         stream_obuf_init (&stream, &octx, data, 0);
       }
       ret = nsdb_read (ns, &q->read, alc, &stream);
+      printf ("HERE %lld\n", ret);
       if (ret < 0)
       {
         goto failed;
