@@ -1,6 +1,8 @@
 const std = @import("std");
 const Io = std.Io;
 
+/// Generates unit test .c file from a
+/// template file. Searches through a directory
 pub fn gen_unit_tests(
     io: Io,
     gpa: std.mem.Allocator,
@@ -54,7 +56,6 @@ fn isWord(c: u8) bool {
     return std.ascii.isAlphanumeric(c) or c == '_';
 }
 
-/// Mirrors TEST\s*\(\s*(\w+)\s*\), scanning left-to-right. No I/O, so no `io` needed.
 fn scanFile(w: *Io.Writer, count: *usize, path: []const u8, content: []const u8) !void {
     var i: usize = 0;
     while (std.mem.indexOfPos(u8, content, i, "TEST")) |start| {
@@ -90,7 +91,6 @@ fn scanFile(w: *Io.Writer, count: *usize, path: []const u8, content: []const u8)
 }
 
 fn emitCall(w: *Io.Writer, path: []const u8, line: usize, name: []const u8) !void {
-    // {{ }} are literal braces; \\n emits a literal backslash-n into the C source.
     try w.print(
         \\  //////////////////// {s}:{d} START
         \\  if (!filter || strstr("{s}", filter))
