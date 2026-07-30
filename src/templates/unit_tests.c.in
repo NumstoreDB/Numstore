@@ -21,10 +21,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "error.h"
-#include "logging.h"
-#include "os.h"
-#include "testing.h"
+#include "core/error.h"
+#include "core/logging.h"
+#include "core/os.h"
+#include "core/testing.h"
 #include "unit_tests.h"
 
 int

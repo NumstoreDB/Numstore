@@ -1,5 +1,7 @@
 const std = @import("std");
 
+/// Glob all files flat inside path [path]
+/// with suffixes in [suffix]
 pub fn glob(
     allocator: std.mem.Allocator,
     io: std.Io,

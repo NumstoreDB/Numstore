@@ -1,10 +1,10 @@
-pub const numstore = @import("numstore.zig");
-pub const smartfiles = @import("smartfiles.zig");
+pub const numstore = @import("numstore");
+pub const smartfiles = @import("smartfiles");
 
 const c = @cImport({
     @cDefine("TESTING", "1");
     @cInclude("unit_tests.h");
-    @cInclude("swarm_tests.h");
+    @cInclude("numstore/swarm_tests.h");
 });
 const std = @import("std");
 
