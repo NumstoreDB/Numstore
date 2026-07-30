@@ -1,0 +1,499 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef COMPILER_H
+#define COMPILER_H
+
+#include "core/alloc.h"
+#include "core/collections.h" // dbl_buffer / multi_user_stride
+#include "core/csx_assert.h"  // DEFINE_DBG_ASSERT
+#include "core/platform.h"    // HEADER_FUNC
+#include "query.h"       // query
+#include "core/stdtypes.h"    // u32 ...etc
+#include "types.h"       // type
+
+/******************************************************************************
+ * SECTION: Tokens
+ * ----------------------------------------------------------------------------
+ * @brief Representation of tokens in compiled structs
+ ******************************************************************************/
+
+enum token_t
+{
+  TT_PLUS = 1,
+  TT_MINUS,
+  TT_SLASH,
+  TT_STAR,
+
+  TT_BANG,
+  TT_BANG_EQUAL,
+  TT_EQUAL_EQUAL,
+  TT_GREATER,
+  TT_GREATER_EQUAL,
+  TT_LESS,
+  TT_LESS_EQUAL,
+
+  TT_NOT,
+  TT_CARET,
+  TT_PERCENT,
+  TT_PIPE,
+  TT_PIPE_PIPE,
+  TT_AMPERSAND,
+  TT_AMPERSAND_AMPERSAND,
+
+  TT_SEMICOLON,
+  TT_COLON,
+  TT_LEFT_BRACKET,
+  TT_RIGHT_BRACKET,
+  TT_LEFT_BRACE,
+  TT_RIGHT_BRACE,
+  TT_LEFT_PAREN,
+  TT_RIGHT_PAREN,
+  TT_COMMA,
+  TT_DOT,
+
+  TT_STRING,
+  TT_IDENTIFIER,
+
+  TT_INTEGER,
+  TT_FLOAT,
+
+  TT_CREATE,
+  TT_DELETE,
+  TT_GET,
+  TT_EXIT,
+  TT_HELP,
+  TT_INSERT,
+  TT_READ,
+  TT_WRITE,
+  TT_REMOVE,
+
+  TT_STRUCT,
+  TT_UNION,
+  TT_PRIM,
+
+  // Modifiers
+  TT_IF,
+  TT_EXISTS,
+  TT_BLIMIT,
+  TT_LIMIT,
+
+  TT_TRUE,
+  TT_FALSE,
+
+  TT_EOF,
+};
+
+#define TT_FOREACH(X)         \
+  X (TT_PLUS);                \
+  X (TT_MINUS);               \
+  X (TT_SLASH);               \
+  X (TT_STAR);                \
+  X (TT_BANG);                \
+  X (TT_BANG_EQUAL);          \
+  X (TT_EQUAL_EQUAL);         \
+  X (TT_GREATER);             \
+  X (TT_GREATER_EQUAL);       \
+  X (TT_LESS);                \
+  X (TT_LESS_EQUAL);          \
+  X (TT_NOT);                 \
+  X (TT_CARET);               \
+  X (TT_PERCENT);             \
+  X (TT_PIPE);                \
+  X (TT_PIPE_PIPE);           \
+  X (TT_AMPERSAND);           \
+  X (TT_AMPERSAND_AMPERSAND); \
+  X (TT_SEMICOLON);           \
+  X (TT_COLON);               \
+  X (TT_LEFT_BRACKET);        \
+  X (TT_RIGHT_BRACKET);       \
+  X (TT_LEFT_BRACE);          \
+  X (TT_RIGHT_BRACE);         \
+  X (TT_LEFT_PAREN);          \
+  X (TT_RIGHT_PAREN);         \
+  X (TT_COMMA);               \
+  X (TT_DOT);                 \
+  X (TT_STRING);              \
+  X (TT_IDENTIFIER);          \
+  X (TT_INTEGER);             \
+  X (TT_FLOAT);               \
+  X (TT_CREATE);              \
+  X (TT_DELETE);              \
+  X (TT_GET);                 \
+  X (TT_EXIT);                \
+  X (TT_HELP);                \
+  X (TT_INSERT);              \
+  X (TT_READ);                \
+  X (TT_WRITE);               \
+  X (TT_REMOVE);              \
+  X (TT_STRUCT);              \
+  X (TT_UNION);               \
+  X (TT_PRIM);                \
+  X (TT_IF);                  \
+  X (TT_EXISTS);              \
+  X (TT_BLIMIT);              \
+  X (TT_LIMIT);               \
+  X (TT_TRUE);                \
+  X (TT_FALSE);               \
+  X (TT_EOF);
+
+struct token
+{
+  enum token_t type;
+
+  union {
+    struct
+    {
+      const char *data;
+      u32         len;
+    } str;
+    i32         integer;
+    f32         floating;
+    enum prim_t prim;
+  };
+
+  const char *text_start;
+  u32         text_len;
+};
+
+#define case_OPCODE \
+TT_CREATE:          \
+case TT_DELETE:     \
+case TT_INSERT
+
+HEADER_FUNC bool
+tt_is_opcode (enum token_t ttype)
+{
+  switch (ttype)
+  {
+    case case_OPCODE:
+    {
+      return true;
+    }
+    default:
+    {
+      return false;
+    }
+  }
+}
+
+// Shorthands
+#define quick_tok(_type) \
+  (struct token)         \
+  {                      \
+    .type = _type        \
+  }
+
+#define tt_integer(val)                \
+  (struct token)                       \
+  {                                    \
+    .type = TT_INTEGER, .integer = val \
+  }
+
+#define tt_float(val)                 \
+  (struct token)                      \
+  {                                   \
+    .type = TT_FLOAT, .floating = val \
+  }
+
+#define tt_ident(_data, _len) \
+  (struct token)              \
+  {                           \
+    .type = TT_IDENTIFIER,    \
+    .str  = {                 \
+        .data = _data,        \
+        .len  = _len,         \
+    },                        \
+  }
+
+#define tt_string(_data, _len) \
+  (struct token)               \
+  {                            \
+    .type = TT_STRING,         \
+    .str  = {                  \
+        .data = _data,         \
+        .len  = _len,          \
+    },                         \
+  }
+
+#define tt_prim(val)             \
+  (struct token)                 \
+  {                              \
+    .type = TT_PRIM, .prim = val \
+  }
+
+#define tt_opcode(op, _s)  \
+  (struct token)           \
+  {                        \
+    .type = op, .stmt = _s \
+  }
+
+#define tt_err(_e)            \
+  (struct token)              \
+  {                           \
+    .type = TT_ERROR, .e = _e \
+  }
+
+#define MAX_TOK_T_LEN 16
+
+bool token_equal (const struct token *left, const struct token *right);
+
+const char *tt_tostr (enum token_t t);
+
+/******************************************************************************
+ * SECTION: Lexer
+ * ----------------------------------------------------------------------------
+ * @brief A lexer that converts strings into tokens
+ *
+ * Uses a double buffer under the hood so there are inner allocations
+ ******************************************************************************/
+
+struct lexer
+{
+  const char *src;
+  u32         src_len;
+  u32         start;
+  u32         current;
+
+  struct token *tokens;
+
+  u32               ntokens;
+  struct dbl_buffer _tokens;
+  struct allocator *alloc;
+};
+
+err_t lex_tokens (
+    const char       *src,
+    struct allocator *alloc,
+    u32               src_len,
+    struct lexer     *lex,
+    error            *e
+);
+
+/******************************************************************************
+ * SECTION: Parser
+ * ----------------------------------------------------------------------------
+ * @brief A parser utility
+ *
+ * No actual type is parsed, this tool just advances tokens and
+ * offers useful utilities for parsing
+ ******************************************************************************/
+
+struct parser
+{
+  struct token   *src;
+  u32             src_len;
+  u32             pos;
+  struct builder *b;
+};
+
+DEFINE_DBG_ASSERT (struct parser, parser, p, {
+  ASSERT (p->src);
+  ASSERT (p->src_len > 0);
+  ASSERT (p->pos <= p->src_len);
+})
+
+HEADER_FUNC struct parser
+parser_init (struct token *src, struct builder *b, u32 src_len)
+{
+  struct parser ret = {
+      .src     = src,
+      .src_len = src_len,
+      .pos     = 0,
+      .b       = b,
+  };
+
+  DBG_ASSERT (parser, &ret);
+
+  return ret;
+}
+
+HEADER_FUNC u32
+parser_remain (struct parser *p)
+{
+  return p->src_len - p->pos;
+}
+
+HEADER_FUNC struct token *
+parser_peek (struct parser *p)
+{
+  DBG_ASSERT (parser, p);
+  ASSERT (p->pos < p->src_len);
+
+  return (p->pos < p->src_len) ? &p->src[p->pos] : NULL;
+}
+
+HEADER_FUNC struct token *
+parser_peek_n (struct parser *p, u32 n)
+{
+  DBG_ASSERT (parser, p);
+  ASSERT (p->pos + n < p->src_len);
+
+  u32 target_pos = p->pos + n;
+  return (target_pos < p->src_len) ? &p->src[target_pos] : NULL;
+}
+
+HEADER_FUNC bool
+parser_match (struct parser *p, enum token_t type)
+{
+  DBG_ASSERT (parser, p);
+
+  struct token *tok = parser_peek (p);
+
+  return tok->type == type;
+}
+
+HEADER_FUNC struct token *
+parser_advance (struct parser *p)
+{
+  DBG_ASSERT (parser, p);
+
+  struct token *tok = &p->src[p->pos];
+  p->pos++;
+
+  return tok;
+}
+
+HEADER_FUNC bool
+parser_maybe_parse_integer (struct parser *p, i32 *dest)
+{
+  struct token *tok1 = parser_peek (p);
+  if (tok1->type == TT_INTEGER)
+  {
+    *dest = parser_advance (p)->integer;
+    return true;
+  }
+  else if (tok1->type == TT_MINUS)
+  {
+    if (p->pos + 1 < p->src_len)
+    {
+      struct token *tok2 = parser_peek_n (p, 1);
+      if (tok2->type == TT_INTEGER)
+      {
+        parser_advance (p);
+        *dest = -parser_advance (p)->integer;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Expect a specific token type, consume it, and advance
+HEADER_FUNC err_t
+parser_expect (struct parser *p, enum token_t type, error *e)
+{
+  struct token *tok = parser_peek (p);
+
+  if (tok->type != type)
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected token type %s at position %u, got %s",
+        tt_tostr (type),
+        p->pos,
+        tt_tostr (tok->type)
+    );
+  }
+
+  p->pos++;
+  return SUCCESS;
+}
+
+HEADER_FUNC bool
+parser_at_end (struct parser *p)
+{
+  DBG_ASSERT (parser, p);
+  return p->pos == p->src_len;
+}
+
+HEADER_FUNC err_t
+parser_check_end (struct parser *p, error *e)
+{
+  if (!parser_at_end (p))
+  {
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Unexpected tokens after "
+        "expression at position %u",
+        p->pos
+    );
+  }
+
+  return SUCCESS;
+}
+
+/******************************************************************************
+ * SECTION: Compiler
+ * ----------------------------------------------------------------------------
+ * @brief Compiler of various objects from strings
+ *
+ * Allocates types on the provided dalloc if provided
+ ******************************************************************************/
+
+err_t compile_type (
+    struct type      *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+);
+
+HEADER_FUNC struct type *
+compile_type_alloc (const char *text, struct allocator *dalloc, error *e)
+{
+  struct type *ret = allocate (dalloc, 1, sizeof *ret, e);
+  if (ret)
+  {
+    compile_type (ret, text, dalloc, e);
+  }
+  return ret;
+}
+
+err_t compile_subtype (
+    struct subtype   *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+);
+
+err_t compile_multi_user_stride (
+    struct multi_user_stride *dest,
+    const char               *text,
+    struct allocator         *dalloc,
+    error                    *e
+);
+
+err_t compile_user_stride (
+    struct user_stride *dest,
+    const char         *text,
+    error              *e
+);
+
+err_t compile_type_ref (
+    struct type_ref  *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+);
+
+err_t compile_query (
+    struct query     *dest,
+    const char       *text,
+    struct allocator *dalloc,
+    error            *e
+);
+
+#endif // COMPILER_H

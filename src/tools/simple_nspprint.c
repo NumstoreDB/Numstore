@@ -16,9 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "file_pager.h"
-#include "page.h"
-#include "pager.h"
+#include "file_nscore/pager.h"
+#include "nscore/page.h"
+#include "nscore/pager.h"
 
 static void
 _simple_page_print (struct file_pager *p, const pgno pg, error *e)
