@@ -1,14 +1,14 @@
 const std = @import("std");
 const testing = std.testing;
 const c = @cImport({
-    @cInclude("smartfiles.h");
+    @cInclude("smartfiles/smartfiles.h");
 });
-const core = @import("core");
-const e = core.errors;
-const sb_size = core.stdtypes.sb_size;
-const b_size = core.stdtypes.b_size;
-const t_size = core.stdtypes.t_size;
-const test_helpers = core.helpers.test_helpers;
+
+const e = @import("../core/error.zig");
+const sb_size = @import("../core/stdtypes.zig").sb_size;
+const b_size = @import("../core/stdtypes.zig").b_size;
+const t_size = @import("../core/stdtypes.zig").t_size;
+const test_helpers = @import("../core/helpers.zig").test_helpers;
 
 pub const Smfile = struct {
     ptr: *c.smfile_t,

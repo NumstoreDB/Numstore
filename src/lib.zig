@@ -1,5 +1,5 @@
-pub const numstore = @import("numstore");
-pub const smartfiles = @import("smartfiles");
+pub const numstore = @import("numstore/numstore.zig");
+pub const smartfiles = @import("smartfiles/smartfiles.zig");
 
 const c = @cImport({
     @cDefine("TESTING", "1");
