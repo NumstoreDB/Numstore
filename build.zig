@@ -14,6 +14,10 @@ pub fn build(b: *std.Build) !void {
         "src/unit_tests.c",
     );
 
+    // This list is kept explicit because
+    // it motivates you to reduce the number
+    // of c files - no glob or anything
+    // general which would encourage more c code
     const c_srcs = .{
         "core/os_windows.c",
         "core/serial.c",
@@ -88,8 +92,6 @@ pub fn build(b: *std.Build) !void {
         .name = "test",
         .root_module = numstore_module,
     });
-
     const unit_tests = b.addRunArtifact(tests);
-
     test_step.dependOn(&unit_tests.step);
 }
