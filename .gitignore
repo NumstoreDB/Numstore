@@ -67,4 +67,3 @@ zig-out/
 zig-pkg
 sample1_crud
 
-src/unit_tests.c
