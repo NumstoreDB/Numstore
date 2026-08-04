@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "nscore/wal.h"
+#include "wal.h"
 
 static void
 walf_print (const char *fname)
