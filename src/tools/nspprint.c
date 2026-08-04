@@ -16,9 +16,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "numstore/numstore.h"
-#include "nscore/page.h"
-#include "nscore/pager.h"
+#include "numstore.h"
+#include "page.h"
+#include "pager.h"
 
 typedef struct
 {

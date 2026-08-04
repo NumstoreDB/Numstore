@@ -1,8 +1,6 @@
 Numstore
 ========
 
-![GitHub Actions](https://github.com/NumstoreDB/Numstore/actions/workflows/develop.yml/badge.svg)
-
 **A database for arrays**
 
 Numstore is a single file embedded ACID database built for arrays written entirely
@@ -13,52 +11,61 @@ Conceptually, it's an ACID file with [faster inner file mutations](https://theol
 Getting Started 
 ===============
 
-To get started, choose your platform and run:
+To get started, pick a platform and follow the steps:
 
 <details>
 <summary><strong>Linux / MacOS</strong></summary>
 
-    # Build Numstore:
-    cd <numstore>/src
-    gcc *.c -o numstore
-    ./numstore
+1. Amalgamte numstore into one source file:
+    
+        python3 src/scripts/amalgamate.py 
 
-    # Hint - you can get rid of all that logging with:
-    cd <numstore>/src
-    gcc *.c -o numstore -DNLOG
-    ./numstore
+2. Compile the executable (by adding the NUMSTORE_EXE macro)
 
-    # Build sample apps by adding NUMSTORE_LIB
-    cd <numstore>/src
-    gcc *.c samples/sample1_basic_crud.c -DNUMSTORE_LIB -o sample -I. -DNLOG
-    ./sample
+        gcc -o numstore -DNUMSTORE_EXE numstore.c
+        ./numstore foo.db
+
+3. You can remove all those debug logs and make it release worthy:
+
+        # Hint - you can get rid of all that logging with:
+        gcc -o numstore -O3 -DNDEBUG -DNUMSTORE_EXE -DNLOG numstore.c
+        ./numstore foo.db
+
+4. You can use numstore as a library by removing NUMSTORE_EXE flag:
+
+        # Build sample apps by adding NUMSTORE_LIB
+        gcc -o sample numstore.c src/samples/ns_sample1_basic_crud.c -Isrc -DNLOG -DNEBUG -O3
+        ./sample
 
 </details>
 
 <details>
 <summary><strong>Windows (MSVC)</strong></summary>
 
-    REM Build Numstore:
-    cd <numstore>\src
-    cl *.c /Fe:numstore.exe
-    numstore.exe
+Run these from a Developer Command Prompt for VS (or after running
+vcvars64.bat), so that `cl` is on your PATH.
 
-    REM Hint - you can get rid of all that logging with:
-    cl *.c /Fe:numstore.exe /DNLOG
-    numstore.exe
+1. Amalgamate numstore into one source file:
 
-    REM Build sample apps by adding NUMSTORE_LIB
-    cl *.c samples\sample1_basic_crud.c /DNUMSTORE_LIB /I. /Fe:sample.exe /DNLOG
-    sample.exe
+       python src\scripts\amalgamate.py
+
+2. Compile the executable (by adding the NUMSTORE_EXE macro):
+
+       cl /Fe:numstore.exe /DNUMSTORE_EXE numstore.c
+       numstore.exe foo.db
+
+3. Remove all those debug logs and make it release worthy:
+
+       cl /Fe:numstore.exe /O2 /DNDEBUG /DNUMSTORE_EXE /DNLOG numstore.c
+       numstore.exe foo.db
+
+4. Use numstore as a library by removing the NUMSTORE_EXE flag
+   (build sample apps by adding NUMSTORE_LIB):
+
+       cl /Fe:sample.exe numstore.c src\samples\ns_sample1_basic_crud.c /Isrc /DNLOG /DNDEBUG /O2
+       sample.exe
 
 </details>
-
-You can also use cmake if you prefer:
-
-    mkdir build 
-    cd build 
-    cmake .. 
-    cmake --build .
 
 For more information, refer to the [Documentation](docs/index.md).
 
