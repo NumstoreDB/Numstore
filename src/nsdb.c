@@ -20,6 +20,7 @@
 #include "error.h"
 #include "pager.h"
 #include "rope_algorithms.h"
+#include "serial.h"
 #include "var_algorithms.h"
 
 int
@@ -413,7 +414,10 @@ nsdb_get (
 
 commit:
   // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  if (nsdb_auto_commit (db, &db->e))
+  {
+    goto failed_rollback;
+  }
 
   return SUCCESS;
 
@@ -478,7 +482,7 @@ failed:
  ******************************************************************************/
 
 err_t
-nsdb_delete (struct nsdb *db, struct string vname)
+nsdb_delete (struct nsdb *db, struct delete_query *query)
 {
   struct txn auto_txn;
 
@@ -488,7 +492,7 @@ nsdb_delete (struct nsdb *db, struct string vname)
   i_log_debug (
       "DELETE (txn = %" PRtxid "): %.*s\n",
       db->atx->tid,
-      strfmt (&vname)
+      strfmt (&query->name)
   );
 
   {
@@ -496,15 +500,23 @@ nsdb_delete (struct nsdb *db, struct string vname)
     struct ns_var_delete_params params = {
         .p     = db->root->p,
         .tx    = db->atx,
-        .vname = vname,
+        .vname = query->name,
     };
     err_t err = ns_var_delete (params, &db->e);
+    if (query->if_exists && err == ERR_VARIABLE_NE)
+    {
+      db->e.cause_code = SUCCESS;
+      db->e.cmlen      = 0;
+      goto commit;
+    }
+    WRAP_GOTO (err, failed_rollback);
     if (err < SUCCESS)
     {
       goto failed_rollback;
     }
   }
 
+commit:
   if (nsdb_auto_commit (db, &db->e))
   {
     goto failed_rollback;
@@ -1167,7 +1179,7 @@ nsdb_execute_on_buffer (
         error_causef (
             &ns->e,
             ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
+            "data is required for a read operation"
         );
         goto failed;
       }
@@ -1196,7 +1208,7 @@ nsdb_execute_on_buffer (
         error_causef (
             &ns->e,
             ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
+            "data is required for a write operation"
         );
         goto failed;
       }
@@ -1251,7 +1263,7 @@ nsdb_execute_on_buffer (
         error_causef (
             &ns->e,
             ERR_INVALID_ARGUMENT,
-            "data is required for a get operation"
+            "data is required for a insert operation"
         );
         goto failed;
       }
@@ -1279,7 +1291,7 @@ nsdb_execute_on_buffer (
     }
     case QT_DELETE:
     {
-      if (nsdb_delete (ns, q->delete.name))
+      if (nsdb_delete (ns, &q->delete))
       {
         goto failed;
       }
@@ -1365,6 +1377,218 @@ nsdb_execute_on_buffer (
 failed:
 
   return error_trace (&ns->e);
+}
+
+/******************************************************************************
+ * SECTION: nsdb_execute_malloc
+ ******************************************************************************/
+
+void *
+nsdb_execute_malloc (
+    struct nsdb      *ns,
+    struct query     *q,
+    const void       *data,
+    struct allocator *alc
+)
+{
+  void            *ret = NULL;
+  struct variable *var;
+
+  struct stream              stream;
+  struct stream_dyn_obuf_ctx octx;
+  struct stream_ibuf_ctx     ictx;
+
+  switch (q->type)
+  {
+    case QT_READ:
+    {
+      if (q->read.limit && q->read.blimit)
+      {
+        stream_dyn_obuf_init (&stream, &octx, q->read.limit);
+      }
+      else
+      {
+        stream_dyn_obuf_init (&stream, &octx, 0);
+      }
+      if (nsdb_read (ns, &q->read, alc, &stream) < 0)
+      {
+        ext_array_free (&octx.buffer);
+        goto failed;
+      }
+
+      ret = octx.buffer.data;
+
+      break;
+    }
+    case QT_WRITE:
+    {
+      // Source pointer is required
+      if (data == NULL)
+      {
+        error_causef (
+            &ns->e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a write operation"
+        );
+        goto failed;
+      }
+
+      if (q->write.limit && q->write.blimit)
+      {
+        stream_ibuf_init (&stream, &ictx, data, q->write.limit);
+      }
+      else
+      {
+        stream_ibuf_init (&stream, &ictx, data, 0);
+      }
+      if (nsdb_write (ns, &q->write, alc, &stream) < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+    case QT_REMOVE:
+    {
+      if (q->remove.limit && q->remove.blimit)
+      {
+        stream_dyn_obuf_init (&stream, &octx, q->remove.limit);
+      }
+      else
+      {
+        stream_dyn_obuf_init (&stream, &octx, 0);
+      }
+      if (nsdb_remove (ns, &q->remove, alc, &stream) < 0)
+      {
+        ext_array_free (&octx.buffer);
+        goto failed;
+      }
+
+      ret = octx.buffer.data;
+
+      break;
+    }
+    case QT_INSERT:
+    {
+      // Source pointer is required
+      if (data == NULL)
+      {
+        error_causef (
+            &ns->e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a insert operation"
+        );
+        goto failed;
+      }
+
+      stream_ibuf_init (&stream, &ictx, data, 0);
+      if (nsdb_insert (ns, &q->insert, alc, &stream) < 0)
+      {
+        goto failed;
+      }
+
+      break;
+    }
+
+    case QT_CREATE:
+    {
+      if (nsdb_create (ns, alc, q->create.name, q->create.type))
+      {
+        goto failed;
+      }
+
+      ret = SUCCESS;
+
+      break;
+    }
+    case QT_DELETE:
+    {
+      if (nsdb_delete (ns, &q->delete))
+      {
+        goto failed;
+      }
+
+      ret = SUCCESS;
+
+      break;
+    }
+    case QT_GET:
+    {
+      struct nsdb_var *_data = NULL;
+
+      // Destination pointer is required
+      if (data == NULL)
+      {
+        error_causef (
+            &ns->e,
+            ERR_INVALID_ARGUMENT,
+            "data is required for a get operation"
+        );
+        goto failed;
+      }
+
+      // Variables get their own allocator
+      // context that gets freed on nsdb_var_free
+      struct allocator *valloc = i_malloc (1, sizeof *valloc, &ns->e);
+      if (valloc == NULL)
+      {
+        goto failed;
+      }
+      create_default_allocator (valloc);
+
+      // Get the variable
+      if (nsdb_get (ns, &q->get, valloc, &var) < 0)
+      {
+        allocator_free (valloc);
+        i_free (valloc);
+        goto failed;
+      }
+
+      if (var == NULL)
+      {
+        _data = NULL;
+        allocator_free (valloc);
+        i_free (valloc);
+        ret = SUCCESS;
+        break;
+      }
+
+      // Transfer over to a variable handle (that can be free'd)
+      _data = allocate (valloc, 1, sizeof (struct nsdb_var), &ns->e);
+
+      if (_data == NULL)
+      {
+        allocator_free (valloc);
+        i_free (valloc);
+        goto failed;
+      }
+
+      (_data)->var   = var;
+      (_data)->alloc = valloc;
+
+      ret = _data;
+
+      break;
+    }
+
+    case QT_EXIT:
+    {
+      ret = SUCCESS;
+      break;
+    }
+
+    case QT_HELP:
+    {
+      ret = SUCCESS;
+      break;
+    }
+  }
+
+  return ret;
+
+failed:
+
+  return NULL;
 }
 
 /******************************************************************************

@@ -14,7 +14,9 @@
 
 #include "serial.h"
 
+#include "collections.h"
 #include "csx_assert.h"
+#include "error.h"
 #include "testing.h"
 
 /////////////////////////////////////////////////////////////////////
@@ -965,6 +967,39 @@ stream_obuf_push (
   return next / size;
 }
 
+static i32
+stream_dyn_obuf_push (
+    struct stream *s,
+    void          *vctx,
+    const void    *src,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
+{
+  struct stream_dyn_obuf_ctx *ctx = (struct stream_dyn_obuf_ctx *)vctx;
+
+  // Minimum available space
+  u32 next = 0;
+
+  if (ctx->limit == 0)
+  {
+    next = size * n;
+  }
+  else
+  {
+    next = MIN (size * n, ctx->limit - ctx->buffer.len);
+  }
+
+  // Do append
+  if (ext_array_insert (&ctx->buffer, ctx->buffer.len, src, n * size, e) < 0)
+  {
+    return error_trace (e);
+  }
+
+  return next;
+}
+
 static const struct stream_ops stream_ibuf_ops = {
     .pull  = stream_ibuf_pull,
     .push  = NULL,
@@ -974,6 +1009,12 @@ static const struct stream_ops stream_ibuf_ops = {
 static const struct stream_ops stream_obuf_ops = {
     .pull  = NULL,
     .push  = stream_obuf_push,
+    .close = NULL,
+};
+
+static const struct stream_ops stream_dyn_obuf_ops = {
+    .pull  = NULL,
+    .push  = stream_dyn_obuf_push,
     .close = NULL,
 };
 
@@ -1242,640 +1283,25 @@ TEST (stream_read_ibuf_to_obuf)
 
 #endif // TESTING
 
-static i32
-stream_sink_push (
-    struct stream *s,
-    void          *vctx,
-    const void    *src,
-    u32            size,
-    const u32      n,
-    error         *e
-)
-{
-  return n;
-}
-
-static const struct stream_ops stream_sink_ops = {
-    .pull  = NULL,
-    .push  = stream_sink_push,
-    .close = NULL,
-};
-
+/**
+ * @fn void stream_obuf_init(struct stream *s, struct stream_obuf_ctx *ctx, void
+ * *buf, u32 cap)
+ * @brief Initializes a write-only stream that pushes into a fixed mutable byte
+ * buffer.
+ *
+ * @param s Stream to initialize.
+ * @param ctx Context to initialize and attach.
+ * @param buf Destination buffer to write into.
+ * @param cap Capacity of buf in bytes.
+ */
 void
-stream_sink_init (struct stream *s)
-{
-  stream_init (s, &stream_sink_ops, NULL);
-}
-
-#ifdef TESTING
-
-TEST (stream_sink)
-{
-  TEST_CASE ("discards all input")
-  {
-    struct stream s;
-    stream_sink_init (&s);
-
-    const u8 chunk[100] = {0};
-    error    e          = error_create ();
-
-    i32 put = stream_bwrite (chunk, 1, 100, &s, &e);
-    test_assert_int_equal (put, 100);
-    test_assert (!stream_isdone (&s));
-
-    // Zero-length and odd element sizes should also be accepted
-    // without ever reporting the stream as done.
-    put = stream_bwrite (chunk, 4, 0, &s, &e);
-    test_assert_int_equal (put, 0);
-
-    put = stream_bwrite (chunk, 7, 3, &s, &e);
-    test_assert_int_equal (put, 3);
-    test_assert (!stream_isdone (&s));
-  }
-
-  TEST_CASE ("works as a stream_read destination")
-  {
-    // stream_read should report a full transfer even though the sink
-    // destination keeps no data, since sink_push always reports
-    // success.
-    const u8 data[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    struct stream sink_s;
-    stream_sink_init (&sink_s);
-
-    error e     = error_create ();
-    i32   total = stream_read (&sink_s, 1, 12, &ibuf_s, &e);
-
-    test_assert_int_equal (total, 12);
-
-    test_assert (!stream_isdone (&ibuf_s));
-    total = stream_read (&sink_s, 1, 12, &ibuf_s, &e);
-    test_assert_int_equal (total, 0);
-    test_assert (stream_isdone (&ibuf_s));
-
-    test_assert (!stream_isdone (&sink_s));
-  }
-}
-
-#endif // TESTING
-
-static i32
-stream_opsink_push (
-    struct stream *s,
-    void          *vctx,
-    const void    *src,
-    const u32      size,
-    const u32      n,
-    error         *e
+stream_dyn_obuf_init (
+    struct stream              *s,
+    struct stream_dyn_obuf_ctx *ctx,
+    u32                         limit
 )
 {
-  struct stream_opsink_ctx *ctx = (struct stream_opsink_ctx *)vctx;
-
-  const u32 avail = ctx->size - ctx->pos;
-  const u32 want  = size * n;
-
-  const u32 next = MIN (avail, want);
-
-  if (next == 0)
-  {
-    return 0;
-  }
-
-  memcpy ((u8 *)ctx->buf + ctx->pos, src, next);
-  ctx->pos += next;
-
-  if (ctx->pos == ctx->size)
-  {
-    ctx->op (ctx->buf);
-    ctx->pos = 0;
-  }
-
-  return next / size;
+  ctx->buffer = ext_array_create ();
+  ctx->limit  = limit;
+  stream_init (s, &stream_dyn_obuf_ops, ctx);
 }
-
-static const struct stream_ops stream_opsink_ops = {
-    .pull  = NULL,
-    .push  = stream_opsink_push,
-    .close = NULL,
-};
-
-void
-stream_opsink_init (
-    struct stream            *s,
-    struct stream_opsink_ctx *ctx,
-    const byte_op             op,
-    void                     *buf,
-    const u32                 size
-)
-{
-  ctx->buf = buf, ctx->op = op, ctx->size = size;
-  ctx->pos = 0;
-  stream_init (s, &stream_opsink_ops, ctx);
-}
-
-#ifdef TESTING
-
-#  define TEST_OPSINK_MAX_CALLS 8
-#  define TEST_OPSINK_MAX_ELEM  8
-
-static u8  g_opsink_calls[TEST_OPSINK_MAX_CALLS][TEST_OPSINK_MAX_ELEM];
-static u32 g_opsink_ncalls;
-static u32 g_opsink_elem_size;
-
-static void
-test_opsink_capture (void *buffer)
-{
-  memcpy (g_opsink_calls[g_opsink_ncalls], buffer, g_opsink_elem_size);
-  g_opsink_ncalls++;
-}
-
-TEST (stream_opsink)
-{
-  TEST_CASE ("invokes callback on complete element")
-  {
-    g_opsink_ncalls    = 0;
-    g_opsink_elem_size = 4;
-
-    u8 staging[4];
-
-    struct stream            s;
-    struct stream_opsink_ctx ctx;
-
-    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 4);
-
-    const u8 elem[4] = {1, 2, 3, 4};
-    error    e       = error_create ();
-
-    i32 put = stream_bwrite (elem, 1, 4, &s, &e);
-
-    test_assert_int_equal (put, 4);
-    test_assert_int_equal (g_opsink_ncalls, 1);
-    test_assert (memcmp (g_opsink_calls[0], elem, 4) == 0);
-  }
-
-  TEST_CASE ("partial push defers callback")
-  {
-    g_opsink_ncalls    = 0;
-    g_opsink_elem_size = 4;
-
-    u8 staging[4];
-
-    struct stream            s;
-    struct stream_opsink_ctx ctx;
-
-    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 4);
-
-    const u8 part1[2] = {1, 2};
-    const u8 part2[2] = {3, 4};
-    error    e        = error_create ();
-
-    i32 put = stream_bwrite (part1, 1, 2, &s, &e);
-    test_assert_int_equal (put, 2);
-    test_assert_int_equal (g_opsink_ncalls, 0); // element not complete yet
-
-    put = stream_bwrite (part2, 1, 2, &s, &e);
-    test_assert_int_equal (put, 2);
-    test_assert_int_equal (g_opsink_ncalls, 1);
-
-    const u8 expected[4] = {1, 2, 3, 4};
-    test_assert (memcmp (g_opsink_calls[0], expected, 4) == 0);
-  }
-
-  TEST_CASE ("excess bytes require a followup call")
-  {
-    // A single push only fills up to one staging element's worth of
-    // bytes; anything beyond that is NOT consumed in the same call
-    // and must be retried by the caller in a subsequent push.
-    g_opsink_ncalls    = 0;
-    g_opsink_elem_size = 4;
-
-    u8 staging[4];
-
-    struct stream            s;
-    struct stream_opsink_ctx ctx;
-
-    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 4);
-
-    const u8 elem[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-    error    e       = error_create ();
-
-    i32 put = stream_bwrite (elem, 1, 8, &s, &e);
-    test_assert_int_equal (put, 4);
-    test_assert_int_equal (g_opsink_ncalls, 1);
-    test_assert (memcmp (g_opsink_calls[0], elem, 4) == 0);
-
-    put = stream_bwrite (elem + 4, 1, 4, &s, &e);
-    test_assert_int_equal (put, 4);
-    test_assert_int_equal (g_opsink_ncalls, 2);
-    test_assert (memcmp (g_opsink_calls[1], elem + 4, 4) == 0);
-  }
-
-  TEST_CASE ("multiple complete cycles")
-  {
-    g_opsink_ncalls    = 0;
-    g_opsink_elem_size = 2;
-
-    u8 staging[2];
-
-    struct stream            s;
-    struct stream_opsink_ctx ctx;
-
-    stream_opsink_init (&s, &ctx, test_opsink_capture, staging, 2);
-
-    const u8 stream_data[6] = {1, 2, 3, 4, 5, 6};
-    error    e              = error_create ();
-
-    for (u32 i = 0; i < 3; i++)
-    {
-      i32 put = stream_bwrite (stream_data + i * 2, 1, 2, &s, &e);
-      test_assert_int_equal (put, 2);
-    }
-
-    test_assert_int_equal (g_opsink_ncalls, 3);
-    test_assert (memcmp (g_opsink_calls[0], stream_data, 2) == 0);
-    test_assert (memcmp (g_opsink_calls[1], stream_data + 2, 2) == 0);
-    test_assert (memcmp (g_opsink_calls[2], stream_data + 4, 2) == 0);
-  }
-
-  TEST_CASE ("stream_read drives the callback per element")
-  {
-    // stream_read internally loops pushes until all pulled bytes are
-    // consumed, so a single stream_read call should drive the opsink
-    // through multiple complete callback cycles.
-    g_opsink_ncalls    = 0;
-    g_opsink_elem_size = 2;
-
-    u8 staging[2];
-
-    struct stream            opsink_s;
-    struct stream_opsink_ctx opctx;
-    stream_opsink_init (&opsink_s, &opctx, test_opsink_capture, staging, 2);
-
-    const u8 data[6] = {1, 2, 3, 4, 5, 6};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    error e     = error_create ();
-    i32   total = stream_read (&opsink_s, 1, 6, &ibuf_s, &e);
-
-    test_assert_int_equal (total, 6);
-    test_assert_int_equal (g_opsink_ncalls, 3);
-    test_assert (memcmp (g_opsink_calls[0], data, 2) == 0);
-    test_assert (memcmp (g_opsink_calls[1], data + 2, 2) == 0);
-    test_assert (memcmp (g_opsink_calls[2], data + 4, 2) == 0);
-
-    test_assert (!stream_isdone (&ibuf_s));
-    total = stream_read (&opsink_s, 1, 6, &ibuf_s, &e);
-    test_assert_int_equal (total, 0);
-    test_assert (stream_isdone (&ibuf_s));
-  }
-}
-
-#endif // TESTING
-
-static i32
-stream_limit_pull (
-    struct stream *s,
-    void          *vctx,
-    void          *buf,
-    const u32      size,
-    const u32      n,
-    error         *e
-)
-{
-  struct stream_limit_ctx *ctx = (struct stream_limit_ctx *)vctx;
-
-  const u64 remaining = ctx->limit - ctx->consumed;
-  if (remaining == 0)
-  {
-    stream_finish (s);
-    return 0;
-  }
-
-  const u32 capped_n = (u32)(MIN ((u64)(size * n), remaining) / size);
-  if (capped_n == 0)
-  {
-    stream_finish (s);
-    return 0;
-  }
-
-  const i32 got = stream_bread (buf, size, capped_n, ctx->underlying, e);
-  if (got < 0)
-  {
-    return got;
-  }
-
-  ctx->consumed += (u64)got * size;
-
-  if (ctx->consumed >= ctx->limit || stream_isdone (ctx->underlying))
-  {
-    stream_finish (s);
-  }
-
-  return got;
-}
-
-#ifdef TESTING
-
-TEST (stream_limit_pull)
-{
-  TEST_CASE ("caps reads at the limit")
-  {
-    const u8 data[20] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                         10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    struct stream           limited;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited, &lctx, &ibuf_s, 5);
-
-    u8    buf[20] = {0};
-    error e       = error_create ();
-
-    i32 got = stream_bread (buf, 1, 20, &limited, &e);
-
-    test_assert_int_equal (got, 5);
-    test_assert (memcmp (buf, data, 5) == 0);
-    test_assert (stream_isdone (&limited));
-    test_assert (!stream_isdone (&ibuf_s)); // underlying still has data
-  }
-
-  TEST_CASE ("underlying exhausts before the limit")
-  {
-    const u8 data[3] = {7, 8, 9};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    struct stream           limited;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited, &lctx, &ibuf_s, 100); // exceeds data
-
-    u8    buf[10] = {0};
-    error e       = error_create ();
-
-    i32 got = stream_bread (buf, 1, 10, &limited, &e);
-
-    test_assert_int_equal (got, 3);
-    test_assert (memcmp (buf, data, 3) == 0);
-
-    test_assert (!stream_isdone (&ibuf_s));
-    test_assert (!stream_isdone (&limited));
-
-    got = stream_bread (buf, 1, 10, &limited, &e);
-    test_assert_int_equal (got, 0);
-
-    test_assert (stream_isdone (&ibuf_s));
-    test_assert (stream_isdone (&limited)); // done bc underlying finished
-  }
-
-  TEST_CASE ("incremental reads reach the limit")
-  {
-    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    struct stream           limited;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited, &lctx, &ibuf_s, 7);
-
-    u8    buf[3];
-    error e = error_create ();
-
-    i32 got = stream_bread (buf, 1, 3, &limited, &e);
-    test_assert_int_equal (got, 3);
-    test_assert (!stream_isdone (&limited));
-
-    got = stream_bread (buf, 1, 3, &limited, &e);
-    test_assert_int_equal (got, 3);
-    test_assert (!stream_isdone (&limited));
-
-    // Only 1 byte remains under the limit (6 consumed of 7).
-    got = stream_bread (buf, 1, 3, &limited, &e);
-    test_assert_int_equal (got, 1);
-    test_assert (stream_isdone (&limited));
-
-    got = stream_bread (buf, 1, 3, &limited, &e);
-    test_assert_int_equal (got, 0);
-  }
-}
-
-#endif // TESTING
-
-static i32
-stream_limit_push (
-    struct stream *s,
-    void          *vctx,
-    const void    *buf,
-    const u32      size,
-    const u32      n,
-    error         *e
-)
-{
-  struct stream_limit_ctx *ctx = (struct stream_limit_ctx *)vctx;
-
-  const u64 remaining = ctx->limit - ctx->consumed;
-  if (remaining == 0)
-  {
-    stream_finish (s);
-    return 0;
-  }
-
-  const u32 capped_n = (u32)(MIN ((u64)(size * n), remaining) / size);
-  if (capped_n == 0)
-  {
-    stream_finish (s);
-    return 0;
-  }
-
-  const i32 put = stream_bwrite (buf, size, capped_n, ctx->underlying, e);
-  if (put < 0)
-  {
-    return put;
-  }
-
-  ctx->consumed += (u64)put * size;
-
-  if (ctx->consumed >= ctx->limit || stream_isdone (ctx->underlying))
-  {
-    stream_finish (s);
-  }
-
-  return put;
-}
-
-#ifdef TESTING
-
-TEST (stream_limit_push)
-{
-  TEST_CASE ("caps writes at the limit")
-  {
-    u8 out[20] = {0};
-
-    struct stream          obuf_s;
-    struct stream_obuf_ctx obuf_ctx;
-    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
-
-    struct stream           limited;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited, &lctx, &obuf_s, 4);
-
-    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    error    e        = error_create ();
-
-    i32 put = stream_bwrite (data, 1, 10, &limited, &e);
-
-    test_assert_int_equal (put, 4);
-    test_assert (memcmp (out, data, 4) == 0);
-    test_assert (stream_isdone (&limited));
-    test_assert (!stream_isdone (&obuf_s));
-  }
-
-  TEST_CASE ("underlying exhausts before the limit")
-  {
-    u8 out[3] = {0};
-
-    struct stream          obuf_s;
-    struct stream_obuf_ctx obuf_ctx;
-    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
-
-    struct stream           limited;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited, &lctx, &obuf_s, 100); // exceeds capacity
-
-    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    error    e        = error_create ();
-
-    i32 put = stream_bwrite (data, 1, 10, &limited, &e);
-
-    test_assert_int_equal (put, 3);
-    test_assert (memcmp (out, data, 3) == 0);
-
-    test_assert (!stream_isdone (&obuf_s));
-    test_assert (!stream_isdone (&limited));
-
-    put = stream_bwrite (data, 1, 10, &limited, &e);
-    test_assert_int_equal (put, 0);
-    test_assert (stream_isdone (&obuf_s));
-    test_assert (stream_isdone (&limited));
-  }
-}
-
-#endif // TESTING
-
-static const struct stream_ops stream_limit_ops = {
-    .pull  = stream_limit_pull,
-    .push  = stream_limit_push,
-    .close = NULL,
-};
-
-void
-stream_limit_init (
-    struct stream           *s,
-    struct stream_limit_ctx *ctx,
-    struct stream           *underlying,
-    const u64                limit
-)
-{
-  ctx->underlying = underlying;
-  ctx->limit      = limit;
-  ctx->consumed   = 0;
-  stream_init (s, &stream_limit_ops, ctx);
-}
-
-#ifdef TESTING
-
-TEST (stream_limit_init)
-{
-  TEST_CASE ("sets initial state")
-  {
-    const u8 data[4] = {0, 0, 0, 0};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    struct stream           limited;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited, &lctx, &ibuf_s, 2);
-
-    test_assert (lctx.underlying == &ibuf_s);
-    test_assert_int_equal ((i32)lctx.limit, 2);
-    test_assert_int_equal ((i32)lctx.consumed, 0);
-    test_assert (!stream_isdone (&limited));
-  }
-
-  TEST_CASE ("stream_read stops at a limited source")
-  {
-    // stream_read pulling from a limit-wrapped ibuf should stop once
-    // the limit is reached even though the underlying buffer has
-    // more data.
-    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    struct stream           limited_src;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited_src, &lctx, &ibuf_s, 4);
-
-    u8                     out[10] = {0};
-    struct stream          obuf_s;
-    struct stream_obuf_ctx obuf_ctx;
-    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
-
-    error e     = error_create ();
-    i32   total = stream_read (&obuf_s, 1, 10, &limited_src, &e);
-
-    test_assert_int_equal (total, 4);
-    test_assert (memcmp (out, data, 4) == 0);
-    test_assert (stream_isdone (&limited_src));
-    test_assert (!stream_isdone (&ibuf_s));
-    test_assert (!stream_isdone (&obuf_s));
-  }
-
-  TEST_CASE ("stream_read stops at a limited dest")
-  {
-    // stream_read pushing into a limit-wrapped obuf should stop once
-    // the limit is reached even though the source still has more
-    // data and the underlying obuf still has spare capacity.
-    const u8 data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-    struct stream          ibuf_s;
-    struct stream_ibuf_ctx ibuf_ctx;
-    stream_ibuf_init (&ibuf_s, &ibuf_ctx, data, sizeof (data));
-
-    u8                     out[10] = {0};
-    struct stream          obuf_s;
-    struct stream_obuf_ctx obuf_ctx;
-    stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
-
-    struct stream           limited_dest;
-    struct stream_limit_ctx lctx;
-    stream_limit_init (&limited_dest, &lctx, &obuf_s, 6);
-
-    error e     = error_create ();
-    i32   total = stream_read (&limited_dest, 1, 10, &ibuf_s, &e);
-
-    test_assert_int_equal (total, 6);
-    test_assert (memcmp (out, data, 6) == 0);
-    test_assert (stream_isdone (&limited_dest));
-    test_assert (!stream_isdone (&obuf_s));
-    test_assert (!stream_isdone (&ibuf_s));
-  }
-}
-
-#endif // TESTING

@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "smartfiles.h"
+#include "numstore.h"
 
 /**
  * This example shows basic first class operations of smart files

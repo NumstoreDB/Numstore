@@ -88,6 +88,7 @@ struct query
     struct delete_query
     {
       struct string name;
+      bool          if_exists;
     } delete;
 
     struct get_query
