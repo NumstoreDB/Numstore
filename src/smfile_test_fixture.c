@@ -15,8 +15,8 @@
 #include "smfile_test_fixture.h"
 
 #include "nsdb.h"
+#include "numstore.h"
 #include "pager.h"
-#include "smartfiles.h"
 #include "testing.h"
 
 static err_t

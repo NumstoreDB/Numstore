@@ -208,6 +208,7 @@ struct allocator
   enum
   {
     AT_CHUNK_ALLOCATOR,
+    AT_MALLOC,
   } type;
 
   union {
@@ -223,7 +224,8 @@ void *allocator_copy (
     u32               size,
     error            *e
 );
-void allocator_free (struct allocator *alloc);
+void             allocator_free (struct allocator *alloc);
+struct allocator g_malloc;
 
 #define ALLOC_INIT(name) \
   struct allocator name; \

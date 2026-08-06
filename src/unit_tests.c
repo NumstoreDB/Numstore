@@ -41,7 +41,7 @@ run_unit_tests (int seed, const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[342];
+  const char *failed_names[337];
 
   
   if (!filter || strstr("slab_alloc_simple", filter))
@@ -4277,101 +4277,6 @@ run_unit_tests (int seed, const char* filter)
     else
     {
       failed_names[failed++] = "stream_read_ibuf_to_obuf";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("stream_sink", filter))
-  {
-    extern void __test__stream_sink(void);
-    i_log_info("========================= TEST CASE: %s\n", "stream_sink");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__stream_sink();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "stream_sink");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "stream_sink";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("stream_opsink", filter))
-  {
-    extern void __test__stream_opsink(void);
-    i_log_info("========================= TEST CASE: %s\n", "stream_opsink");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__stream_opsink();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "stream_opsink");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "stream_opsink";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("stream_limit_pull", filter))
-  {
-    extern void __test__stream_limit_pull(void);
-    i_log_info("========================= TEST CASE: %s\n", "stream_limit_pull");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__stream_limit_pull();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "stream_limit_pull");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "stream_limit_pull";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("stream_limit_push", filter))
-  {
-    extern void __test__stream_limit_push(void);
-    i_log_info("========================= TEST CASE: %s\n", "stream_limit_push");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__stream_limit_push();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "stream_limit_push");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "stream_limit_push";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("stream_limit_init", filter))
-  {
-    extern void __test__stream_limit_init(void);
-    i_log_info("========================= TEST CASE: %s\n", "stream_limit_init");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__stream_limit_init();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "stream_limit_init");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "stream_limit_init";
     }
     ntests++;
   }

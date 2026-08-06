@@ -20,6 +20,7 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
+#include "collections.h"
 #include "concurrency.h" // latch
 #include "error.h"       // error
 #include "stdtypes.h"    // u32 ...etc
@@ -136,9 +137,6 @@ bool dsrlizr_read (void *dest, u32 dlen, struct deserializer *src);
  * Concrete stream implementations included here:
  *   stream_ibuf    - pulls from a fixed const byte buffer (read source).
  *   stream_obuf    - pushes into a fixed mutable byte buffer (write sink).
- *   stream_sink    - discards all bytes written to it (null sink).
- *   stream_opsink  - applies a callback to each element pushed.
- *   stream_limit   - wraps another stream and enforces a byte limit.
  ******************************************************************************/
 
 struct stream;
@@ -331,8 +329,6 @@ i32 stream_bwrite (
  * 1. ibuf - An input buffer stream that reads from a byte buffer
  * 2. obuf - An output buffer stream that writes to a byte buffer
  * 3. sink - Just ignores bytes
- * 4. opsink - Applys a consuming operation on each packet of bytes
- * 5. limit - Forwards data to an upstream stream and limits the number of bytes
  *----------------------------------------------------------------------------*/
 
 /**
@@ -354,7 +350,6 @@ struct stream_ibuf_ctx
 };
 
 /**
- * @struct stream_obuf_ctx
  * @brief Context for a write-only stream that writes into a fixed mutable byte
  * buffer.
  *
@@ -370,6 +365,12 @@ struct stream_obuf_ctx
   u8 *buf;
   u32 cap;
   u32 pos;
+};
+
+struct stream_dyn_obuf_ctx
+{
+  struct ext_array buffer;
+  u32              limit;
 };
 
 /**
@@ -409,98 +410,20 @@ void stream_obuf_init (
 );
 
 /**
- * @fn void stream_sink_init(struct stream *s)
- * @brief Initializes a null sink stream that discards all bytes written to it.
- *
- * @param s Stream to initialize.
- */
-void stream_sink_init (struct stream *s);
-
-/**
- * @fn void (*byte_op)(void *buffer)
- * @brief Callback type invoked on each element pushed into an opsink stream.
- *
- * @param buffer Pointer to the element being processed.
- */
-typedef void (*byte_op) (void *buffer);
-
-/**
- * @struct stream_opsink_ctx
- * @brief Context for a stream that applies a callback to each element pushed
- * into it.
- *
- * @var stream_opsink_ctx::op
- * @brief Callback invoked on each complete element.
- * @var stream_opsink_ctx::buf
- * @brief Staging buffer used to accumulate one element before invoking op.
- * @var stream_opsink_ctx::size
- * @brief Size of each element in bytes.
- * @var stream_opsink_ctx::pos
- * @brief Current write position within the staging buffer.
- */
-struct stream_opsink_ctx
-{
-  byte_op op;
-  void   *buf;
-  u32     size;
-  u32     pos;
-};
-
-/**
- * @fn void stream_opsink_init(struct stream *s, struct stream_opsink_ctx *ctx,
- * byte_op op, void *buf, u32 size)
- * @brief Initializes a stream that applies op to each complete element of size
- * bytes pushed into it.
+ * @fn void stream_obuf_init(struct stream *s, struct stream_obuf_ctx *ctx, void
+ * *buf, u32 cap)
+ * @brief Initializes a write-only stream that pushes into a fixed mutable byte
+ * buffer.
  *
  * @param s Stream to initialize.
  * @param ctx Context to initialize and attach.
- * @param op Callback to invoke on each element.
- * @param buf Staging buffer of at least size bytes.
- * @param size Size of each element in bytes.
+ * @param buf Destination buffer to write into.
+ * @param cap Capacity of buf in bytes.
  */
-void stream_opsink_init (
-    struct stream            *s,
-    struct stream_opsink_ctx *ctx,
-    byte_op                   op,
-    void                     *buf,
-    u32                       size
-);
-
-/**
- * @struct stream_limit_ctx
- * @brief Context for a stream that forwards to an underlying stream up to a
- * byte limit.
- *
- * @var stream_limit_ctx::underlying
- * @brief The stream being wrapped.
- * @var stream_limit_ctx::limit
- * @brief Maximum number of bytes to forward.
- * @var stream_limit_ctx::consumed
- * @brief Number of bytes forwarded so far.
- */
-struct stream_limit_ctx
-{
-  struct stream *underlying;
-  u64            limit;
-  u64            consumed;
-};
-
-/**
- * @fn void stream_limit_init(struct stream *s, struct stream_limit_ctx *ctx,
- * struct stream *src, u64 limit)
- * @brief Initializes a stream that forwards at most limit bytes from src before
- * marking itself done.
- *
- * @param s Stream to initialize.
- * @param ctx Context to initialize and attach.
- * @param src Underlying stream to wrap.
- * @param limit Maximum number of bytes to forward.
- */
-void stream_limit_init (
-    struct stream           *s,
-    struct stream_limit_ctx *ctx,
-    struct stream           *src,
-    u64                      limit
+void stream_dyn_obuf_init (
+    struct stream              *s,
+    struct stream_dyn_obuf_ctx *ctx,
+    u32                         limit
 );
 
 #endif // SERIAL_H

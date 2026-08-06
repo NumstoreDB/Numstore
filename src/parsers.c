@@ -1237,6 +1237,15 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
   // DELETE
   WRAP (parser_expect (parser, TT_DELETE, e));
 
+  // IF EXISTS
+  bool if_exists = false;
+  if (parser_match (parser, TT_IF))
+  {
+    parser_advance (parser);
+    WRAP (parser_expect (parser, TT_EXISTS, e));
+    if_exists = true;
+  }
+
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER))
   {
@@ -1252,10 +1261,12 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
   *dest = (struct query){
       .type   = QT_DELETE,
       .delete = {
-          .name = (struct string){
-              .data = (char *)tok->str.data,
-              .len  = tok->str.len,
-          },
+          .name =
+              (struct string){
+                  .data = (char *)tok->str.data,
+                  .len  = tok->str.len,
+              },
+          .if_exists = if_exists,
       },
   };
 

@@ -20,35 +20,11 @@
 #include "error.h"
 #include "nsdb.h"
 #include "query.h"
-#include "swarm_tests.h"
 #include "testing.h"
 
 /******************************************************************************
  * SECTION: Library exposed nsdb_execute
  ******************************************************************************/
-
-sb_size
-nsdb_execute (nsdb_t *nh, const char *query, void *data)
-{
-  ALLOC_INIT (alloc);
-  sb_size      ret; // return variable
-  struct query q;   // The AST
-
-  // Reset errors before proceeding
-  nh->e.cause_code = 0;
-  nh->e.cmlen      = 0;
-
-  // Compile the query
-  if (compile_query (&q, query, &alloc, &nh->e))
-  {
-    ret = error_trace (&nh->e);
-    goto theend;
-  }
-  ret = nsdb_execute_on_buffer (nh, &q, data, &alloc);
-theend:
-  ALLOC_CLOSE (alloc);
-  return ret;
-}
 
 sb_size
 nsdb_fexecute (nsdb_t *nh, const char *query, void *data, ...)

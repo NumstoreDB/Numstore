@@ -30,7 +30,6 @@
 #include "page_fixture.h"
 #include "page_h.h"
 #include "pager.h"
-#include "smartfiles.h"
 #include "testing.h"
 #include "txn_table.h"
 #include "wal.h"

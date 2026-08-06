@@ -111,6 +111,13 @@ sb_size nsdb_execute_on_buffer (
     struct allocator *alc
 );
 
+void *nsdb_execute_malloc (
+    struct nsdb      *ns,
+    struct query     *q,
+    const void       *data,
+    struct allocator *alc
+);
+
 /******************************************************************************
  * SECTION: Query literal routines
  * ----------------------------------------------------------------------------
@@ -123,7 +130,7 @@ int nsdb_create (
     struct string     vname,
     struct type       dtype
 );
-err_t nsdb_delete (struct nsdb *db, struct string vname);
+err_t nsdb_delete (struct nsdb *db, struct delete_query *query);
 err_t nsdb_get (
     struct nsdb      *db,
     struct get_query *query,
