@@ -1,0 +1,27 @@
+CC      := gcc
+CFLAGS  := -Wall -Wextra -std=c11 -Iinclude -Isrc -DTESTING
+LDFLAGS :=
+
+# Recursively find all .c files under src/
+SRCS := $(shell find src -name '*.c')
+OBJS := $(patsubst src/%.c,build/%.o,$(SRCS))
+
+# All headers and sources, for the format target
+FMT_FILES := $(shell find src include -type f \( -name '*.c' -o -name '*.h' \) 2>/dev/null)
+
+.PHONY: all clean format
+
+all: app
+
+app: $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+build/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -rf build app
+
+format:
+	clang-format -i $(FMT_FILES)
