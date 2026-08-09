@@ -12,8 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "logging.h"
-#include "testing.h"
+#include "core/ns_logging.h"
+
+#include "core/testing/ns_testing.h"
 
 ////////////////////////////////////////////////////////////
 // LOGGING

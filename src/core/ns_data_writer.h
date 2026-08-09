@@ -12,16 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef COLLECTIONS_H
-#define COLLECTIONS_H
+#ifndef NS_DATA_WRITER_H_H
+#define NS_DATA_WRITER_H_H
 
-#include "alloc.h"       // slab alloc
-#include "concurrency.h" // latch
-#include "csx_assert.h"
-#include "error.h"    // err_t
-#include "os.h"       // i_file
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32 ...etc
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_stride.h"
 
 /******************************************************************************
  * SECTION: Data Writer
@@ -34,34 +30,10 @@
  * array patterns by defining them in memory and comparing
  ******************************************************************************/
 
-typedef err_t (*insert_func) (
-    void       *ctx,
-    u32         ofst,
-    const void *src,
-    u32         slen,
-    error      *e
-);
-typedef i64 (*read_func) (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    void         *dest,
-    error        *e
-);
-typedef i64 (*write_func) (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    const void   *src,
-    error        *e
-);
-typedef i64 (*remove_func) (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    void         *dest,
-    error        *e
-);
+typedef err_t (*insert_func) (void *ctx, u32 ofst, const void *src, u32 slen, error *e);
+typedef i64 (*read_func) (void *ctx, struct stride str, u32 size, void *dest, error *e);
+typedef i64 (*write_func) (void *ctx, struct stride str, u32 size, const void *src, error *e);
+typedef i64 (*remove_func) (void *ctx, struct stride str, u32 size, void *dest, error *e);
 typedef i64 (*get_len_func) (void *ctx, error *e);
 
 struct data_writer_functions

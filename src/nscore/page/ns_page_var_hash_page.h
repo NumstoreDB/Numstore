@@ -1,13 +1,32 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_PAGE_VAR_HASH_PAGE_H
+#define NS_PAGE_VAR_HASH_PAGE_H
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_htable.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/page/ns_page.h"
+#include "numstore.h"
+
 /******************************************************************************
  * SECTION: var_hash_page
  * ----------------------------------------------------------------------------
- * @brief
- *
- *
- ******************************************************************************/
-
-/*
- * PG_VAR_HASH_PAGE - root of the variable name hash table.
+ * @brief PG_VAR_HASH_PAGE - root of the variable name hash table.
  *
  * There is exactly one of these pages in every database, at VHASH_PGNO.
  * It contains an array of VH_HASH_LEN pgno slots, each the head of a
@@ -19,7 +38,7 @@
  * Because all bucket pointers live in a single page, creating or deleting a
  * variable always requires a write to this page.  Collisions are resolved by
  * chaining via vp_get_next/vp_set_next on the PG_VAR_PAGE nodes.
- */
+ ******************************************************************************/
 
 ////////////////////////////////////////////////////////////
 /////// VAR HASH PAGE
@@ -73,3 +92,5 @@ err_t vh_validate_for_db (const page *p, error *e);
 
 // Utils
 void i_log_vh (int level, const page *vh);
+
+#endif

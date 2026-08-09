@@ -15,10 +15,10 @@
 #ifndef HTABLE_H
 #define HTABLE_H
 
-#include "concurrency.h" // latch
-#include "error.h"       // error
-#include "platform.h"    // HEADER_FUNC
-#include "stdtypes.h"    // u32 ...etc
+#include "core/ns_concurrency.h" // latch
+#include "core/ns_error.h"       // error
+#include "core/ns_platform.h"    // HEADER_FUNC
+#include "core/ns_stdtypes.h"    // u32 ...etc
 
 /******************************************************************************
  * SECTION: Hash Table Models

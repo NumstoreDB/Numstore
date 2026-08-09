@@ -12,18 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "alloc.h"
-#include "error.h"
-#include "numstore.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "testing.h"
-#include "types.h"
-#include "var_algorithms.h"
-#include "variables.h"
+#include "core/ns_error.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/algorithms/ns_var_algorithms.h"
+#include "nscore/ns_page_fixture.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 
 /******************************************************************************
  * SECTION: ns_init_var_hash_map
@@ -80,10 +75,7 @@ TEST (ns_init_var_hash_map)
   ns_init_var_hash_map (f.p, &f.e);
 
   page_h vhp = page_h_create ();
-  test_assert_int_equal (
-      pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &f.e),
-      SUCCESS
-  );
+  test_assert_int_equal (pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &f.e), SUCCESS);
 
   pgr_release (f.p, &vhp, PG_VAR_HASH_PAGE, &f.e);
   pgr_fixture_teardown (&f);

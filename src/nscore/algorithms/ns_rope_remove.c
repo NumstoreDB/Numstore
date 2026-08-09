@@ -12,18 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
-#include "node_updates.h"
-#include "numerics.h"
+#include "core/ns_error.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/ns_node_updates.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "serial.h"
-#include "testing.h"
 
 /******************************************************************************
  * SECTION: ns_remove
@@ -299,8 +294,7 @@ ns_remove (struct ns_remove_params *params, error *e)
   s.writer    = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  s.output =
-      nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
+  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
   if (s.output == NULL)
   {
     goto failed;
@@ -338,13 +332,8 @@ ns_remove (struct ns_remove_params *params, error *e)
 
         if (params->dest)
         {
-          i32 written = stream_bwrite (
-              (u8 *)dl_get_data (sro) + s.read_idx,
-              1,
-              next_amount,
-              params->dest,
-              e
-          );
+          i32 written =
+              stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1, next_amount, params->dest, e);
 
           if (written < 0)
           {
@@ -462,14 +451,7 @@ drain:
 
           if (npg != PGNO_NULL)
           {
-            if (pgr_get_writable (
-                    &next,
-                    params->tx,
-                    PG_DATA_LIST,
-                    npg,
-                    params->p,
-                    e
-                ))
+            if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, npg, params->p, e))
             {
               goto failed;
             }
@@ -483,13 +465,7 @@ drain:
           dlgt_link (page_h_w (&s.writer), page_h_w_or_null (&next));
           page_h_xfer_ownership_ptr (&s.reader, &next);
 
-          if (nupd_append_2nd_right (
-                  s.output,
-                  pgh_unravel (&s.writer),
-                  rpg,
-                  0,
-                  e
-              ))
+          if (nupd_append_2nd_right (s.output, pgh_unravel (&s.writer), rpg, 0, e))
           {
             goto failed;
           }
@@ -540,8 +516,7 @@ drain:
     error_causef (
         e,
         ERR_CORRUPT,
-        "removed %" PRb_size
-        " bytes, not a multiple of element size %" PRb_size,
+        "removed %" PRb_size " bytes, not a multiple of element size %" PRb_size,
         s.total_removed,
         params->size
     );

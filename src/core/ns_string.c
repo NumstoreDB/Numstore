@@ -12,11 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "collections.h"
-#include "csx_assert.h"
-#include "error.h"
-#include "serial.h"
-#include "testing.h"
+#include "core/ns_string.h"
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
 
 /////////////////////////////////////////////////////////////////////
 ////// String
@@ -253,10 +254,7 @@ string_less_equal_string (const struct string left, const struct string right)
 }
 
 bool
-string_greater_equal_string (
-    const struct string left,
-    const struct string right
-)
+string_greater_equal_string (const struct string left, const struct string right)
 {
   return !string_less_string (left, right);
 }

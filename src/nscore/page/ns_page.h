@@ -15,15 +15,12 @@
 #ifndef PAGE_H
 #define PAGE_H
 
-#include "csx_assert.h" // DBG_ASSERT
-#include "error.h"      // error
-#include "htable.h"
-#include "numerics.h" // checksum
-#include "numstore.h" // pgno ...etc
-#include "platform.h" // string.h
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32 ...etc
-#include "stdtypes.h" // u8 ...etc
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
+#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Page Common
@@ -62,10 +59,9 @@ enum page_type
   PG_INNER_NODE = (1 << 3), // r+tree Inner node
 
   // Variable page types
-  PG_VAR_HASH_PAGE =
-      (1 << 4), // A Hash Table for variable names - links to a linked list
-  PG_VAR_PAGE = (1 << 5), // A Single link in the hash table linked list
-  PG_VAR_TAIL = (1 << 6), // Overflow to a VAR_PAGE
+  PG_VAR_HASH_PAGE = (1 << 4), // A Hash Table for variable names - links to a linked list
+  PG_VAR_PAGE      = (1 << 5), // A Single link in the hash table linked list
+  PG_VAR_TAIL      = (1 << 6), // Overflow to a VAR_PAGE
 };
 
 #define PG_PERMISSIVE    (1 << 7)
@@ -184,4 +180,4 @@ page_memcpy (page *dest, const struct bytes src)
 // Logging
 void i_log_page (int log_level, const page *p);
 
-#endif // PAGE_H
+#endif

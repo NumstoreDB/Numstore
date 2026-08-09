@@ -12,18 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
-#include "node_updates.h"
-#include "numerics.h"
+#include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/ns_page_fixture.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_h.h"
 #include "numstore.h"
-#include "os.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "serial.h"
-#include "testing.h"
 
 /******************************************************************************
  * SECTION: ns_balance_and_release
@@ -167,10 +163,7 @@ TEST (dlgt_balance_with_prev)
     i = 0;
     for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i)
     {
-      test_assert_equal (
-          dl_get_byte (page_h_ro (cur), i),
-          _prev[DL_DATA_SIZE / 2 + DL_REM + i]
-      );
+      test_assert_equal (dl_get_byte (page_h_ro (cur), i), _prev[DL_DATA_SIZE / 2 + DL_REM + i]);
     }
     const u32 k = i;
     for (; i < DL_DATA_SIZE / 2; ++i)
@@ -352,10 +345,7 @@ TEST (dlgt_balance_with_next)
     i = 0;
     for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i)
     {
-      test_assert_equal (
-          dl_get_byte (page_h_ro (next), i),
-          _next[i + DL_DATA_SIZE / 2 - 10]
-      );
+      test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i + DL_DATA_SIZE / 2 - 10]);
     }
   }
 

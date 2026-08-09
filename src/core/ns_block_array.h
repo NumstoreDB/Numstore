@@ -15,13 +15,11 @@
 #ifndef COLLECTIONS_H
 #define COLLECTIONS_H
 
-#include "alloc.h"       // slab alloc
-#include "concurrency.h" // latch
-#include "csx_assert.h"
-#include "error.h"    // err_t
-#include "os.h"       // i_file
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32 ...etc
+#include "core/ns_data_writer.h"
+#include "core/ns_error.h"
+#include "core/ns_slab_alloc.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_stride.h"
 
 /******************************************************************************
  * SECTION: Block Array
@@ -66,60 +64,30 @@ struct block_array
   u32               cap_per_node;
   struct block     *head;
 
-  u32 tlen;  // length of tail
-  u8 tail[]; // A temporary buffer used for storing the right half of a block on
-             // insert
+  u32 tlen;   // length of tail
+  u8  tail[]; // A temporary buffer used for storing the right half of a block on
+              // insert
 };
 
 struct block_array *block_array_create (u32 cap_per_node, error *e);
 struct block_array *block_array_clone (const struct block_array *r, error *e);
 void                block_array_free (struct block_array *r);
 
-err_t block_array_insert (
-    struct block_array *r,
-    u32                 ofst,
-    const void         *src,
-    u32                 slen,
-    error              *e
-);
+err_t block_array_insert (struct block_array *r, u32 ofst, const void *src, u32 slen, error *e);
 
-u64 block_array_read (
-    const struct block_array *r,
-    struct stride             str,
-    u32                       size,
-    void                     *dest
-);
+u64 block_array_read (const struct block_array *r, struct stride str, u32 size, void *dest);
 
-u64 block_array_write (
-    const struct block_array *r,
-    struct stride             str,
-    u32                       size,
-    const void               *src
-);
+u64 block_array_write (const struct block_array *r, struct stride str, u32 size, const void *src);
 
-i64 block_array_remove (
-    struct block_array *r,
-    struct stride       str,
-    u32                 size,
-    void               *dest,
-    error              *e
-);
+i64 block_array_remove (struct block_array *r, struct stride str, u32 size, void *dest, error *e);
 
 u64 block_array_getlen (const struct block_array *r);
 
 // Array accessor pattern
 void *block_array_get (struct block_array *r, u64 idx);
 
-void block_array_set (
-    struct block_array *r,
-    u64                 idx,
-    const void         *data,
-    u32                 dlen
-);
+void block_array_set (struct block_array *r, u64 idx, const void *data, u32 dlen);
 
-void block_array_data_writer (
-    struct data_writer *dest,
-    struct block_array *arr
-);
+void block_array_data_writer (struct data_writer *dest, struct block_array *arr);
 
 #endif

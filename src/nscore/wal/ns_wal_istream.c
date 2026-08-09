@@ -12,13 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
+#include "core/ns_error.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/wal/ns_wal.h"
 #include "numstore.h"
-#include "os.h"
-#include "serial.h"
-#include "testing.h"
-#include "txn_table.h"
-#include "wal.h"
 
 /******************************************************************************
  * SECTION: WAL Input Stream
@@ -116,12 +114,8 @@ TEST (walis_open)
 
   TEST_CASE ("Red Path - can't open file")
   {
-    err_t (*backup) (
-        i_file_system_vtable *vfs,
-        i_file               *dest,
-        const char           *fname,
-        error                *e
-    ) = default_fsvtable.i_open_r;
+    err_t (*backup) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) =
+        default_fsvtable.i_open_r;
 
     default_fsvtable.i_open_r = i_open_errio;
 
@@ -135,9 +129,8 @@ TEST (walis_open)
 
   TEST_CASE ("Red Path - can't seek")
   {
-    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) =
-        default_fvtable.i_seek;
-    default_fvtable.i_seek = i_seek_errio;
+    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) = default_fvtable.i_seek;
+    default_fvtable.i_seek                                                = i_seek_errio;
 
     struct wal_istream *wis = walis_open ("foo", &e);
     test_assert (wis == NULL);

@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "platform.h"
-#include "testing.h"
-#include "utils.h"
+#include "core/ns_utils.h"
+
+#include "core/testing/ns_testing.h"
 
 const char *
 file_basename (const char *path)

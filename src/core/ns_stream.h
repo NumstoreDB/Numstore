@@ -17,13 +17,12 @@
  * @brief Functions and data structures on bytes or strings
  */
 
-#ifndef SERIAL_H
-#define SERIAL_H
+#ifndef NS_STREAM_H
+#define NS_STREAM_H
 
-#include "collections.h"
-#include "concurrency.h" // latch
-#include "error.h"       // error
-#include "stdtypes.h"    // u32 ...etc
+#include "core/ns_error.h"
+#include "core/ns_ext_array.h"
+#include "core/ns_stdtypes.h"
 
 /******************************************************************************
  * SECTION: Stream
@@ -66,14 +65,7 @@ struct stream;
  * @param e The error object.
  * @return Number of elements successfully pulled.
  */
-typedef i32 (*stream_pull_fn) (
-    struct stream *s,
-    void          *ctx,
-    void          *buf,
-    u32            size,
-    u32            n,
-    error         *e
-);
+typedef i32 (*stream_pull_fn) (struct stream *s, void *ctx, void *buf, u32 size, u32 n, error *e);
 
 /**
  * @fn i32 (*stream_push_fn)(struct stream *s, void *ctx, const void *buf, u32
@@ -191,13 +183,7 @@ bool stream_isdone (const struct stream *s);
  * @param e The error object.
  * @return Number of elements successfully transferred.
  */
-i32 stream_read (
-    struct stream *dest,
-    u32            size,
-    u32            n,
-    struct stream *src,
-    error         *e
-);
+i32 stream_read (struct stream *dest, u32 size, u32 n, struct stream *src, error *e);
 
 /**
  * @fn i32 stream_bread(void *dest, u32 size, u32 n, struct stream *src, error
@@ -225,13 +211,7 @@ i32 stream_bread (void *dest, u32 size, u32 n, struct stream *src, error *e);
  * @param e The error object.
  * @return Number of elements successfully pushed.
  */
-i32 stream_bwrite (
-    const void    *buf,
-    u32            size,
-    u32            n,
-    struct stream *dest,
-    error         *e
-);
+i32 stream_bwrite (const void *buf, u32 size, u32 n, struct stream *dest, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Special Streams
@@ -296,12 +276,7 @@ struct stream_dyn_obuf_ctx
  * @param buf Source buffer to read from.
  * @param size Number of bytes in buf.
  */
-void stream_ibuf_init (
-    struct stream          *s,
-    struct stream_ibuf_ctx *ctx,
-    const void             *buf,
-    u32                     size
-);
+void stream_ibuf_init (struct stream *s, struct stream_ibuf_ctx *ctx, const void *buf, u32 size);
 
 /**
  * @fn void stream_obuf_init(struct stream *s, struct stream_obuf_ctx *ctx, void
@@ -314,12 +289,7 @@ void stream_ibuf_init (
  * @param buf Destination buffer to write into.
  * @param cap Capacity of buf in bytes.
  */
-void stream_obuf_init (
-    struct stream          *s,
-    struct stream_obuf_ctx *ctx,
-    void                   *buf,
-    u32                     cap
-);
+void stream_obuf_init (struct stream *s, struct stream_obuf_ctx *ctx, void *buf, u32 cap);
 
 /**
  * @fn void stream_obuf_init(struct stream *s, struct stream_obuf_ctx *ctx, void
@@ -332,10 +302,6 @@ void stream_obuf_init (
  * @param buf Destination buffer to write into.
  * @param cap Capacity of buf in bytes.
  */
-void stream_dyn_obuf_init (
-    struct stream              *s,
-    struct stream_dyn_obuf_ctx *ctx,
-    u32                         limit
-);
+void stream_dyn_obuf_init (struct stream *s, struct stream_dyn_obuf_ctx *ctx, u32 limit);
 
 #endif

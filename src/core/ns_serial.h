@@ -20,10 +20,8 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include "collections.h"
-#include "concurrency.h" // latch
-#include "error.h"       // error
-#include "stdtypes.h"    // u32 ...etc
+#include "core/ns_concurrency.h"
+#include "core/ns_stdtypes.h"
 
 /******************************************************************************
  * SECTION: Serializer

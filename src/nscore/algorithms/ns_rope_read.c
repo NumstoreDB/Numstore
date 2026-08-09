@@ -12,18 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
-#include "node_updates.h"
-#include "numerics.h"
+#include "core/ns_error.h"
+#include "core/ns_stream.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "serial.h"
-#include "testing.h"
 
 /******************************************************************************
  * SECTION: ns_read
@@ -82,7 +77,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
   p_size       lidx        = 0;
   b_size       total_bread = 0;
   const b_size max_bread   = params.size * params.nelem;
-  b_size bnext = params.size; // bytes remaining in the current read/skip window
+  b_size       bnext       = params.size; // bytes remaining in the current read/skip window
 
   struct ns_seek_params seek = {
       .p          = params.p,
@@ -120,8 +115,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
   while (max_bread == 0 || total_bread < max_bread)
   {
-    t_size next_amount =
-        ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
+    t_size next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
     if (next_amount == 0)
     {
@@ -150,14 +144,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
         lidx        = 0;
         cur         = page_h_xfer_ownership (&next);
         curp        = page_h_ro (&cur);
-        next_amount = ns_read_next_amount (
-            curp,
-            lidx,
-            bnext,
-            max_bread,
-            total_bread,
-            state
-        );
+        next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
         ASSERT (next_amount > 0);
       }
@@ -171,13 +158,8 @@ ns_read_forward (const struct ns_read_params params, error *e)
     {
       case ACTIVE:
       {
-        const sp_size read = stream_bwrite (
-            (u8 *)dl_get_data (curp) + lidx,
-            1,
-            next_amount,
-            params.dest,
-            e
-        );
+        const sp_size read =
+            stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
         if (read < 0)
         {
@@ -253,11 +235,7 @@ failed:
 static sb_size
 ns_read_backward (const struct ns_read_params params, error *e)
 {
-  return error_causef (
-      e,
-      ERR_INVALID_ARGUMENT,
-      "Negative strides are not implemented (yet)"
-  );
+  return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
 }
 
 sb_size

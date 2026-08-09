@@ -12,18 +12,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "alloc.h"
-#include "error.h"
+#include "core/ns_error.h"
+#include "core/ns_string.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/algorithms/ns_var_algorithms.h"
+#include "nscore/ns_page_fixture.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/ns_variables.h"
+#include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_types.h"
 #include "numstore.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "testing.h"
-#include "types.h"
-#include "var_algorithms.h"
-#include "variables.h"
+
 err_t
 ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
 {
@@ -147,11 +146,7 @@ TEST (ns_var_get_or_create)
 
       // Should fail if you pass a different type
       params.type = &(struct type){.type = T_PRIM, .p = I32};
-      test_err_t_check (
-          ns_var_get_or_create (&params, &f.e),
-          ERR_INVALID_ARGUMENT,
-          &f.e
-      );
+      test_err_t_check (ns_var_get_or_create (&params, &f.e), ERR_INVALID_ARGUMENT, &f.e);
 
       pgr_commit (f.p, &tx, &f.e);
     }

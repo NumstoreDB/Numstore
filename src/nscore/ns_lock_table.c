@@ -12,8 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "lock_table.h"
-#include "txn_table.h"
+#include "nscore/ns_lock_table.h"
+
+#include "core/ns_csx_assert.h"
+#include "nscore/ns_txn_table.h"
 
 /******************************************************************************
  * SECTION: Lt Lock
@@ -118,10 +120,8 @@ lockt_frame_init_key (struct lockt_frame *dest, const struct lt_lock key)
 static bool
 lockt_frame_eq (const struct hnode *left, const struct hnode *right)
 {
-  const struct lockt_frame *_left =
-      container_of (left, struct lockt_frame, node);
-  const struct lockt_frame *_right =
-      container_of (right, struct lockt_frame, node);
+  const struct lockt_frame *_left  = container_of (left, struct lockt_frame, node);
+  const struct lockt_frame *_right = container_of (right, struct lockt_frame, node);
   return lt_lock_equal (_left->key, _right->key);
 }
 
@@ -139,8 +139,7 @@ frame_unref (struct lockt *t, struct lockt_frame *frame)
 
   if (frame->refcount == 0)
   {
-    struct hnode **found =
-        htable_lookup (t->table, &frame->node, lockt_frame_eq);
+    struct hnode **found = htable_lookup (t->table, &frame->node, lockt_frame_eq);
     htable_delete (t->table, found);
     lockt_frame_destroy (frame);
     slab_alloc_free (&t->lock_alloc, frame);
@@ -271,11 +270,7 @@ lockt_lock (
 }
 
 static void
-lockt_unlock_once (
-    struct lockt        *t,
-    const struct lt_lock lock,
-    const enum lock_mode mode
-)
+lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode)
 {
   latch_lock (&t->l);
   {
@@ -296,12 +291,7 @@ lockt_unlock_once (
 }
 
 err_t
-lockt_unlock (
-    struct lockt        *t,
-    const struct lt_lock lock,
-    const enum lock_mode mode,
-    error               *e
-)
+lockt_unlock (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode, error *e)
 {
   // Unlock the child first (bottom-up).
   lockt_unlock_once (t, lock, mode);
@@ -323,11 +313,7 @@ struct unlock_ctx
 };
 
 static void
-unlock_single_lock (
-    const struct lt_lock lock,
-    const enum lock_mode mode,
-    void                *ctx
-)
+unlock_single_lock (const struct lt_lock lock, const enum lock_mode mode, void *ctx)
 {
   const struct unlock_ctx *c = ctx;
   struct lockt            *t = c->t;

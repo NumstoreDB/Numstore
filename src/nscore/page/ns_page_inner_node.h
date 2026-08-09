@@ -1,10 +1,26 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_PAGE_INNER_NODE_H
+#define NS_PAGE_INNER_NODE_H
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/page/ns_page.h"
 
 /******************************************************************************
  * SECTION: Inner Node
- * ----------------------------------------------------------------------------
- * @brief
- *
- *
  ******************************************************************************/
 
 struct in_pair
@@ -52,8 +68,7 @@ _Static_assert (
     "Inner Node: NS_PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys"
 );
 
-#define IN_MAX_KEYS \
-  (p_size) ((NS_PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
+#define IN_MAX_KEYS (p_size) ((NS_PAGE_SIZE - IN_LEAF_OFST) / (sizeof (pgno) + sizeof (b_size)))
 #define IN_MIN_KEYS (IN_MAX_KEYS / 2)
 
 _Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
@@ -69,9 +84,9 @@ void           in_set_data (page *p, struct in_data data);
 struct in_data in_get_data (const page *p, struct in_pair nodes[IN_MAX_KEYS]);
 void           in_move_left (page *dest, page *src, p_size len);
 void           in_move_right (page *src, page *dest, p_size len);
-void in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
-void i_log_in (int level, const page *in);
-void in_make_valid (page *in);
+void           in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
+void           i_log_in (int level, const page *in);
+void           in_make_valid (page *in);
 
 ////////////////////////////////////////////////////////////
 // GETTERS
@@ -276,12 +291,7 @@ in_set_key_ignore_len (page *in, const p_size idx, const b_size key)
 }
 
 HEADER_FUNC void
-in_set_key_leaf_ignore_len (
-    page        *in,
-    const p_size idx,
-    const b_size key,
-    const pgno   pg
-)
+in_set_key_leaf_ignore_len (page *in, const p_size idx, const b_size key, const pgno pg)
 {
   in_set_key_ignore_len (in, idx, key);
   in_set_leaf_ignore_len (in, idx, pg);
@@ -313,3 +323,5 @@ in_link (page *left, page *right)
     in_set_prev (right, lpg);
   }
 }
+
+#endif

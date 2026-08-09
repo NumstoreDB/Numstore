@@ -12,13 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
+#include "nscore/wal/ns_wal_record.h"
+
+#include "core/testing/ns_testing.h"
+#include "nscore/ns_txn_table.h"
 #include "numstore.h"
-#include "os.h"
-#include "serial.h"
-#include "testing.h"
-#include "txn_table.h"
-#include "wal.h"
 
 /******************************************************************************
  * SECTION: WAL Decoding
@@ -27,10 +25,7 @@
  ******************************************************************************/
 
 void
-walf_decode_physical_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_UPDATE_LEN]
-)
+walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN])
 {
   ASSERT (r->type == WL_UPDATE);
 
@@ -57,10 +52,7 @@ walf_decode_physical_update (
 }
 
 void
-walf_decode_fsm_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FSM_UPDATE_LEN]
-)
+walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN])
 {
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FSM);
@@ -92,10 +84,7 @@ walf_decode_fsm_update (
 }
 
 void
-walf_decode_file_extend_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FILE_EXT_LEN]
-)
+walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN])
 {
   ASSERT (r->type == WL_UPDATE);
   ASSERT (r->update.type == WUP_FEXT);
@@ -179,10 +168,7 @@ walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN])
 }
 
 void
-walf_decode_dummy_clr (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_DUMMY_CLR_LEN]
-)
+walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN])
 {
   ASSERT (r->type == WL_CLR);
   ASSERT (r->clr.type == WCLR_DUMMY);
@@ -753,10 +739,7 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
 
 #ifdef TESTING
 bool
-wal_rec_hdr_read_equal (
-    const struct wal_rec_hdr_read *left,
-    const struct wal_rec_hdr_read *right
-)
+wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right)
 {
   if (left->type != right->type)
   {
@@ -789,18 +772,10 @@ wal_rec_hdr_read_equal (
         case WUP_PHYSICAL:
         {
           match = match && left->update.phys.pg == right->update.phys.pg;
-          match = match
-                  && memcmp (
-                         left->update.phys.undo,
-                         right->update.phys.undo,
-                         NS_PAGE_SIZE
-                     ) == 0;
-          match = match
-                  && memcmp (
-                         left->update.phys.redo,
-                         right->update.phys.redo,
-                         NS_PAGE_SIZE
-                     ) == 0;
+          match =
+              match && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
+          match =
+              match && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
           break;
         }
         case WUP_FEXT:
@@ -829,12 +804,7 @@ wal_rec_hdr_read_equal (
         case WCLR_PHYSICAL:
         {
           match = match && left->clr.phys.pg == right->clr.phys.pg;
-          match = match
-                  && memcmp (
-                         left->clr.phys.redo,
-                         right->clr.phys.redo,
-                         NS_PAGE_SIZE
-                     ) == 0;
+          match = match && memcmp (left->clr.phys.redo, right->clr.phys.redo, NS_PAGE_SIZE) == 0;
           break;
         }
         case WCLR_FSM:
@@ -883,11 +853,7 @@ wal_rec_hdr_read_equal (
 #endif
 
 void
-i_print_wal_rec_hdr_read_light (
-    const int                      log_level,
-    const struct wal_rec_hdr_read *r,
-    const lsn                      l
-)
+i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_read *r, const lsn l)
 {
   char        fields[128];
   const char *name = "?";
@@ -917,8 +883,7 @@ i_print_wal_rec_hdr_read_light (
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", pg   = %8" PRpgno
-              ", undo = 0x%02x, redo = 0x%02x",
+              "txid = %8" PRtxid ", pg   = %8" PRpgno ", undo = 0x%02x, redo = 0x%02x",
               r->update.tid,
               r->update.fsm.pg,
               (unsigned)r->update.fsm.undo,
@@ -933,8 +898,7 @@ i_print_wal_rec_hdr_read_light (
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno
-              ", redo_pgs = %8" PRpgno,
+              "txid = %8" PRtxid ", undo_pgs = %8" PRpgno ", redo_pgs = %8" PRpgno,
               r->update.tid,
               r->update.fext.undo,
               r->update.fext.redo
@@ -968,8 +932,7 @@ i_print_wal_rec_hdr_read_light (
           snprintf (
               fields,
               sizeof fields,
-              "txid = %8" PRtxid ", pg   = %8" PRpgno
-              ", redo = 0x%02x, undoNxt = %15" PRlsn,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno ", redo = 0x%02x, undoNxt = %15" PRlsn,
               r->clr.tid,
               r->clr.fsm.pg,
               (unsigned)r->clr.fsm.redo,
@@ -1041,13 +1004,7 @@ i_print_wal_rec_hdr_read_light (
   }
   else
   {
-    i_log_printf (
-        log_level,
-        "%15" PRlsn "  %-11s  [ %-72s ]\n",
-        l,
-        name,
-        fields
-    );
+    i_log_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
   }
 }
 

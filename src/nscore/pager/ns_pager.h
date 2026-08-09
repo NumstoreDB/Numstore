@@ -15,15 +15,16 @@
 #ifndef PAGER_H
 #define PAGER_H
 
-#include "concurrency.h"      // latch / lock table / periodic_task
-#include "dirty_page_table.h" // dpgt_table
-#include "error.h"            // error
-#include "file_pager.h"       // file_pager
-#include "numstore.h"         // lsn ...etc
-#include "page_h.h"           // page_header
-#include "stdtypes.h"         // u8 ...etc
-#include "txn_table.h"        // txn_table
-#include "wal.h"              // wal
+#include "core/ns_concurrency.h"
+#include "core/ns_dbl_buffer.h"
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/ns_dirty_page_table.h"
+#include "nscore/ns_txn_table.h"
+#include "nscore/page/ns_page_h.h"
+#include "nscore/pager/ns_file_pager.h"
+#include "nscore/wal/ns_wal.h"
+#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Database structure
@@ -159,7 +160,7 @@ struct pager_header
 #define KTYPE  pgno
 #define VTYPE  u32
 #define SUFFIX idx
-#include "robin_hood_ht.h"
+#include "core/ns_robin_hood_ht.h"
 #undef KTYPE
 #undef VTYPE
 #undef SUFFIX
@@ -335,19 +336,8 @@ err_t pgr_get_writable (
     struct pager *p,
     error        *e
 );
-err_t pgr_new (
-    page_h        *dest,
-    struct pager  *p,
-    struct txn    *tx,
-    enum page_type ptype,
-    error         *e
-);
-err_t pgr_delete_and_release (
-    struct pager *p,
-    struct txn   *tx,
-    page_h       *h,
-    error        *e
-);
+err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
+err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
 err_t pgr_release_with_log (
     struct pager            *p,
     page_h                  *h,

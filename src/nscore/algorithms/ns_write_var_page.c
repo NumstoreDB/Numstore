@@ -12,18 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "alloc.h"
-#include "error.h"
+#include "core/ns_alloc.h"
+#include "core/ns_error.h"
+#include "nscore/algorithms/ns_var_algorithms.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/ns_variables.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_types.h"
 #include "numstore.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "testing.h"
-#include "types.h"
-#include "var_algorithms.h"
-#include "variables.h"
 
 static err_t
 ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
@@ -108,8 +105,7 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   p_size twritten = 0;
 
   // First, write the variable name
-  p_size lwritten =
-      0; // Local number of bytes written so far - resets on every new page
+  p_size lwritten = 0; // Local number of bytes written so far - resets on every new page
   while (vwritten < params->var->vname.len)
   {
     // Advance forward one new node and reset local written and head

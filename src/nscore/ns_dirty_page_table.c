@@ -12,10 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "csx_assert.h"
-#include "dirty_page_table.h"
+#include "nscore/ns_dirty_page_table.h"
+
+#include "core/ns_csx_assert.h"
+#include "core/testing/ns_testing.h"
 #include "numstore.h"
-#include "testing.h"
 
 /*
  * Dirty page table entry.
@@ -184,8 +185,8 @@ struct dpgt_foreach_ctx
 static void
 dpgt_hnode_foreach (struct hnode *node, void *ctx)
 {
-  const struct dpgt_foreach_ctx *_ctx = ctx;
-  struct dpg_entry *entry = container_of (node, struct dpg_entry, node);
+  const struct dpgt_foreach_ctx *_ctx  = ctx;
+  struct dpg_entry              *entry = container_of (node, struct dpg_entry, node);
 
   latch_lock (&entry->l);
 
@@ -349,8 +350,7 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
   {
     dpge_key_init (&candidate, entry->pg);
 
-    struct hnode **other_node =
-        htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
+    struct hnode **other_node = htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
 
     if (other_node == NULL)
     {
@@ -358,8 +358,7 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
       goto theend;
     }
 
-    struct dpg_entry *other =
-        container_of (*other_node, struct dpg_entry, node);
+    struct dpg_entry *other = container_of (*other_node, struct dpg_entry, node);
 
     latch_lock (&other->l);
     {
@@ -893,18 +892,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_insert_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_insert_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_insert_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_insert_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_insert_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_insert_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -951,18 +941,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_reader_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_reader_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_reader_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_reader_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_reader_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_reader_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -1004,18 +985,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_updater_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_updater_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_updater_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_updater_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_updater_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_updater_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -1065,18 +1037,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_remove_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_remove_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_remove_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_remove_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_remove_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_remove_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);
@@ -1123,18 +1086,9 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (&t1, dpgt_insert_thread, &insert_ctx, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t2, dpgt_reader_thread, &read_ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (&t3, dpgt_reader_thread, &read_ctx2, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (&t1, dpgt_insert_thread, &insert_ctx, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t2, dpgt_reader_thread, &read_ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (&t3, dpgt_reader_thread, &read_ctx2, &e), SUCCESS);
 
     i_thread_join (&t1, &e);
     i_thread_join (&t2, &e);

@@ -83,12 +83,10 @@
 #define LOG_DEBUG 4
 #define LOG_TRACE 5
 
-void i_log_internal (
-    const char *prefix,
-    const char *color,
-    const char *fmt,
-    ...
-) PRINTF_ATTR (3, 4);
+void i_log_internal (const char *prefix, const char *color, const char *fmt, ...) PRINTF_ATTR (
+    3,
+    4
+);
 
 void i_log_flush (void);
 
@@ -106,7 +104,7 @@ void i_log_flush (void);
 #  define SHOULD_LOG_AT(lvl) ((I_LOG_LEVEL) >= (lvl))
 #endif
 #if SHOULD_LOG_AT(LOG_TRACE)
-#  define i_log_trace(...) i_log_internal ("TRACE", BOLD_WHITE, __VA_ARGS__)
+#  define i_log_trace(...)        i_log_internal ("TRACE", BOLD_WHITE, __VA_ARGS__)
 #  define i_log_printf_trace(...) fprintf (stdout, __VA_ARGS__);
 #else
 #  define i_log_trace(...)        ((void)0)
@@ -142,14 +140,14 @@ void i_log_flush (void);
 #endif
 // These are always logged
 #ifndef NLOG
-#  define i_log_assert(...)  i_log_internal ("ASSERT", RED, __VA_ARGS__)
-#  define i_log_failure(...) i_log_internal ("FAILURE", BOLD_RED, __VA_ARGS__)
-#  define i_log_passed(...)  i_log_internal ("PASSED", BOLD_GREEN, __VA_ARGS__)
+#  define i_log_assert(...)    i_log_internal ("ASSERT", RED, __VA_ARGS__)
+#  define i_log_failure(...)   i_log_internal ("FAILURE", BOLD_RED, __VA_ARGS__)
+#  define i_log_passed(...)    i_log_internal ("PASSED", BOLD_GREEN, __VA_ARGS__)
 #  define i_log_test_case(...) i_log_internal ("CASE", GREEN, __VA_ARGS__)
 #else
-#  define i_log_assert(...)  i_log_internal ("ASSERT", RED, __VA_ARGS__)
-#  define i_log_failure(...) i_log_internal ("FAILURE", BOLD_RED, __VA_ARGS__)
-#  define i_log_passed(...)  i_log_internal ("PASSED", BOLD_GREEN, __VA_ARGS__)
+#  define i_log_assert(...)    i_log_internal ("ASSERT", RED, __VA_ARGS__)
+#  define i_log_failure(...)   i_log_internal ("FAILURE", BOLD_RED, __VA_ARGS__)
+#  define i_log_passed(...)    i_log_internal ("PASSED", BOLD_GREEN, __VA_ARGS__)
 #  define i_log_test_case(...) i_log_internal ("CASE", GREEN, __VA_ARGS__)
 #endif
 

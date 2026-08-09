@@ -1,10 +1,30 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_PAGE_DELEGATE_H
+#define NS_PAGE_DELEGATE_H
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_data_list.h"
+#include "nscore/page/ns_page_inner_node.h"
+#include "nscore/page/ns_page_var_page.h"
+#include "nscore/page/ns_page_var_tail.h"
 
 /******************************************************************************
  * SECTION: Page Delegate
- * ----------------------------------------------------------------------------
- * @brief
- *
- *
  ******************************************************************************/
 
 typedef union {
@@ -12,10 +32,8 @@ typedef union {
   struct in_data in;
 } in_dl_data;
 
-#define dlgt_move_all_right(src, dest) \
-  dlgt_move_right (src, dest, dlgt_get_len (src))
-#define dlgt_move_all_left(dest, src) \
-  dlgt_move_left (dest, src, dlgt_get_len (src))
+#define dlgt_move_all_right(src, dest) dlgt_move_right (src, dest, dlgt_get_len (src))
+#define dlgt_move_all_left(dest, src)  dlgt_move_left (dest, src, dlgt_get_len (src))
 
 HEADER_FUNC pgno
 dlgt_get_next (const page *p)
@@ -450,3 +468,5 @@ make_valid (page *p)
     }
   }
 }
+
+#endif

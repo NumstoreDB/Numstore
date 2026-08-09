@@ -12,21 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-/**
- * @file
- * @brief Allocators and memory allocation patterns
- *
- * Alloc.h contains specialized allocators used in numstore
- * such as:
- * - Slab Allocator  - an allocator that allocates fixed size slabs
- * - Malloc Plan     - a two phase malloc - defining the size - then one malloc
- */
+#ifndef NS_ALLOC_H
+#define NS_ALLOC_H
 
-#ifndef LALLOC_H
-#define LALLOC_H
-
-#include "core/ns_chunk_alloc.h" // latch
-#include "core/ns_stdtypes.h"    // u32
+#include "core/ns_chunk_alloc.h"
+#include "core/ns_stdtypes.h"
 
 /******************************************************************************
  * SECTION: Generic Allocator
@@ -47,14 +37,9 @@ struct allocator
   };
 };
 
-void  create_default_allocator (struct allocator *alloc);
-void *allocate (struct allocator *alloc, u32 nelem, u32 size, error *e);
-void *allocator_copy (
-    struct allocator *alloc,
-    const void       *ptr,
-    u32               size,
-    error            *e
-);
+void             create_default_allocator (struct allocator *alloc);
+void            *allocate (struct allocator *alloc, u32 nelem, u32 size, error *e);
+void            *allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e);
 void             allocator_free (struct allocator *alloc);
 struct allocator g_malloc;
 
@@ -90,4 +75,4 @@ void  builder_free (struct builder *b);
 
 #define BUILDER_CLOSE(name) builder_free (&name)
 
-#endif // LALLOC_H
+#endif // NS_ALLOC_H

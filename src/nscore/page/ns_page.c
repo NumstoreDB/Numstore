@@ -12,9 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "collections.h"
-#include "page.h"
-#include "testing.h"
+#include "nscore/page/ns_page.h"
+
+#include "core/testing/ns_testing.h"
+#include "nscore/page/ns_page_delegate.h"
+#include "nscore/page/ns_page_fsm.h"
+#include "nscore/page/ns_page_var_hash_page.h"
 
 /******************************************************************************
  * SECTION: Page Common
@@ -77,13 +80,7 @@ page_validate_for_db (const page *p, const int flags, error *e)
 
   if (!(header & flags))
   {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "expected page type %d, got %d",
-        flags,
-        header
-    );
+    return error_causef (e, ERR_CORRUPT, "expected page type %d, got %d", flags, header);
   }
 
   if (!(flags & PG_SKIP_CHECKSUM))

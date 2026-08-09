@@ -12,12 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "alloc.h"
-#include "mem_vhmap.h"
-#include "numerics.h"  // randu32
-#include "os.h"        // i_malloc
-#include "testing.h"   // TEST
-#include "variables.h" // variable
+#include "nscore/ns_mem_vhmap.h"
+
+#include "core/ns_alloc.h"
+#include "core/ns_numerics.h"        // randu32
+#include "core/os/ns_os.h"           // i_malloc
+#include "core/testing/ns_testing.h" // TEST
+#include "nscore/ns_variables.h"     // variable
 
 struct var_frame
 {
@@ -342,12 +343,8 @@ TEST (mem_vhmap)
     }
 
     mem_vhmap_remove_var (c, strfcstr ("cv_0"));
-    ASSERT (
-        mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL
-    ); // removed in clone
-    ASSERT (
-        mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL
-    ); // original intact
+    ASSERT (mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL); // removed in clone
+    ASSERT (mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL); // original intact
 
     mem_vhmap_free (c);
   }

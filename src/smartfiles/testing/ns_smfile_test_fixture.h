@@ -15,9 +15,9 @@
 #ifndef SMFILE_TEST_FIXTURE_H
 #define SMFILE_TEST_FIXTURE_H
 
-#include "collections.h" // data_writer
-#include "numstore.h"    // t_size ...etc
-#include "numstore.h"    // smfile
+#include "core/ns_data_writer.h"
+#include "numstore.h" // t_size ...etc
+#include "numstore.h" // smfile
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);
@@ -83,11 +83,11 @@ struct smfile_test_fixture_functions
 /// A virtual data source/sink pairing a function table with its context
 struct smfile_test_fixture
 {
-  void *ctx; ///< Opaque context passed to every function call
+  void                                *ctx;       ///< Opaque context passed to every function call
   struct smfile_test_fixture_functions functions; ///< Vtable of data operations
 };
 
 struct smfile_test_fixture smfile_test_fixture_open (const char *path);
-int smfile_test_fixture_close (struct smfile_test_fixture *f);
+int                        smfile_test_fixture_close (struct smfile_test_fixture *f);
 
 #endif // SMFILE_TEST_FIXTURE_H

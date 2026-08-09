@@ -12,11 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "concurrency.h"
-#include "csx_assert.h"
-#include "error.h"
-#include "os.h"
-#include "testing.h"
+#include "core/ns_concurrency.h"
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
 
 /******************************************************************************
  * SECTION: GR Lock
@@ -57,9 +58,8 @@ TEST (gr_lock_init)
   {
     error e = error_create ();
 
-    err_t (*backup) (i_threading *t, i_mutex *m, error *e) =
-        default_threading.i_mutex_create;
-    default_threading.i_mutex_create = i_mutex_create_errio;
+    err_t (*backup) (i_threading *t, i_mutex *m, error *e) = default_threading.i_mutex_create;
+    default_threading.i_mutex_create                       = i_mutex_create_errio;
 
     struct gr_lock l;
     test_err_t_check (gr_lock_init (&l, &e), ERR_IO, &e);
@@ -785,13 +785,7 @@ periodic_task_thread (void *_ctx)
 }
 
 err_t
-periodic_task_start (
-    struct periodic_task *t,
-    u64                   msec,
-    periodic_task_fn      fn,
-    void                 *ctx,
-    error                *e
-)
+periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e)
 {
   t->msec = msec;
   t->fn   = fn;

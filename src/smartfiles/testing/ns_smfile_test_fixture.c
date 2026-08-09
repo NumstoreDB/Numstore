@@ -12,11 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nsdb.h"
+#include "smartfiles/testing/ns_smfile_test_fixture.h"
+
+#include "core/ns_data_validator.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/ns_nsdb.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "pager.h"
-#include "smfile_test_fixture.h"
-#include "testing.h"
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
@@ -27,52 +29,19 @@ smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
 static i64
 smfile_read_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
-  return smfile_read (
-      ctx,
-      dest,
-      size,
-      str.start * size,
-      str.stride * size,
-      str.nelems
-  );
+  return smfile_read (ctx, dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
-smfile_write_func (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    const void   *src,
-    error        *e
-)
+smfile_write_func (void *ctx, struct stride str, u32 size, const void *src, error *e)
 {
-  return smfile_write (
-      ctx,
-      src,
-      size,
-      str.start * size,
-      str.stride * size,
-      str.nelems
-  );
+  return smfile_write (ctx, src, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
-smfile_remove_func (
-    void         *ctx,
-    struct stride str,
-    u32           size,
-    void         *dest,
-    error        *e
-)
+smfile_remove_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
-  return smfile_remove (
-      ctx,
-      dest,
-      size,
-      str.start * size,
-      str.stride * size,
-      str.nelems
-  );
+  return smfile_remove (ctx, dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
@@ -98,8 +67,7 @@ smfile_data_writer_open (const char *path)
   {
     return NULL;
   }
-  struct data_writer *writer =
-      i_malloc (1, sizeof *writer, &((struct nsdb *)smf)->e);
+  struct data_writer *writer = i_malloc (1, sizeof *writer, &((struct nsdb *)smf)->e);
   if (writer == NULL)
   {
     smfile_close (smf);
@@ -147,10 +115,7 @@ TEST (smfile_data_writer)
         .isvalid = NULL,
     };
 
-    test_assert_equal (
-        dvalidtr_random_test (&d, 1, niters[i], 1000, &e),
-        SUCCESS
-    );
+    test_assert_equal (dvalidtr_random_test (&d, 1, niters[i], 1000, &e), SUCCESS);
 
     ext_array_free (&ext_arr_1);
     test_assert (smfile_data_writer_close (sut) == 0);

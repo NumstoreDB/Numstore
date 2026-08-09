@@ -12,18 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "alloc.h"
-#include "error.h"
+#include "core/ns_error.h"
+#include "nscore/algorithms/ns_var_algorithms.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/ns_variables.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "testing.h"
-#include "types.h"
-#include "var_algorithms.h"
-#include "variables.h"
 
 /*
  * Create a new variable record in the variable hash table.

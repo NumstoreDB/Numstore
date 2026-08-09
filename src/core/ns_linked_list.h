@@ -12,16 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef COLLECTIONS_H
-#define COLLECTIONS_H
+#ifndef NS_LINKED_LIST_H
+#define NS_LINKED_LIST_H
 
-#include "alloc.h"       // slab alloc
-#include "concurrency.h" // latch
-#include "csx_assert.h"
-#include "error.h"    // err_t
-#include "os.h"       // i_file
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32 ...etc
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
 
 /******************************************************************************
  * SECTION: Linked List
@@ -164,7 +159,6 @@ llnode_get_n (struct llnode *head, const u32 index)
 }
 
 // Iterate over list
-#define LLIST_FOR_EACH(head, iter) \
-  for (llnode *iter = (head); iter; iter = iter->next)
+#define LLIST_FOR_EACH(head, iter) for (llnode *iter = (head); iter; iter = iter->next)
 
 #endif

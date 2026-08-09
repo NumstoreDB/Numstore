@@ -67,14 +67,8 @@ main (void)
 
     uint8_t zeros[80];
     memset (zeros, 0, sizeof (zeros));
-    smfile_write (
-        smf,
-        zeros,
-        1,
-        0,
-        1,
-        sizeof (zeros)
-    ); // overwrite everything with 0x00
+    smfile_write (smf, zeros, 1, 0, 1,
+                  sizeof (zeros)); // overwrite everything with 0x00
 
     smfile_rollback (smf);
   }

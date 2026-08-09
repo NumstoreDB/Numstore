@@ -1,10 +1,13 @@
-#  include <stdbool.h>
-#  include <stdio.h>
-#  include <stdlib.h>
-#  include <string.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#  ifdef TESTING
-#    include "unit_tests.h"
+#ifdef TESTING
+#  include "core/ns_logging.h"
+#  include "core/testing/ns_unit_tests.h"
+#  include "nscore/ns_nsdb.h"
+#  include "numstore/testing/ns_swarm_tests.h"
 
 struct test_args
 {
@@ -41,14 +44,7 @@ test_usage (const char *prog)
 /* Parse the 3 operands shared by --irwr / --cgd. Advances *i past them.
  * Returns 0 on success, -1 on missing/invalid operands. */
 static int
-parse_swarm_args (
-    int          argc,
-    char       **argv,
-    int         *i,
-    const char **db,
-    int         *duration,
-    unsigned    *seed
-)
+parse_swarm_args (int argc, char **argv, int *i, const char **db, int *duration, unsigned *seed)
 {
   if (*i + 3 >= argc)
   {
@@ -97,14 +93,7 @@ parse_test_args (int argc, char **argv, struct test_args *out)
     else if (strcmp (argv[i], "--irwr") == 0)
     {
       out->irwr = true;
-      if (parse_swarm_args (
-              argc,
-              argv,
-              &i,
-              &out->irwr_db,
-              &out->irwr_duration,
-              &out->irwr_seed
-          ))
+      if (parse_swarm_args (argc, argv, &i, &out->irwr_db, &out->irwr_duration, &out->irwr_seed))
       {
         return -1;
       }
@@ -112,14 +101,7 @@ parse_test_args (int argc, char **argv, struct test_args *out)
     else if (strcmp (argv[i], "--cgd") == 0)
     {
       out->cgd = true;
-      if (parse_swarm_args (
-              argc,
-              argv,
-              &i,
-              &out->cgd_db,
-              &out->cgd_duration,
-              &out->cgd_seed
-          ))
+      if (parse_swarm_args (argc, argv, &i, &out->cgd_db, &out->cgd_duration, &out->cgd_seed))
       {
         return -1;
       }
@@ -168,12 +150,12 @@ run_tests (const struct test_args *t)
   return ret;
 }
 
-#  endif /* TESTING */
+#endif /* TESTING */
 
 int
 main (int argc, char **argv)
 {
-#  ifdef TESTING
+#ifdef TESTING
   struct test_args targs;
   if (parse_test_args (argc, argv, &targs))
   {
@@ -184,7 +166,7 @@ main (int argc, char **argv)
   {
     return run_tests (&targs);
   }
-#  endif
+#endif
 
   if (argc != 2)
   {
@@ -244,4 +226,3 @@ complete:
   nscli_close (&cli);
   return EXIT_SUCCESS;
 }
-

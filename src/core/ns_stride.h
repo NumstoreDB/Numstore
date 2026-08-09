@@ -15,11 +15,9 @@
 #ifndef NS_STRIDE_H
 #define NS_STRIDE_H
 
-#include "core/ns_alloc.h"       
-#include "core/ns_concurrency.h"
-#include "core/ns_csx_assert.h"
-#include "core/ns_error.h"    
-#include "core/ns_os.h"       
+#include "core/ns_alloc.h"
+#include "core/ns_error.h"
+#include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 
@@ -112,22 +110,10 @@ struct multi_user_stride
       .present = STEP_PRESENT | START_PRESENT, \
   })
 
-bool ustride_equal (struct user_stride left, struct user_stride right);
-bool user_stride_equal (
-    const struct user_stride *left,
-    const struct user_stride *right
-);
-void stride_resolve_expect (
-    struct stride     *dest,
-    struct user_stride src,
-    u64                arrlen
-);
-err_t stride_resolve (
-    struct stride     *dest,
-    struct user_stride src,
-    u64                arrlen,
-    error             *e
-);
+bool  ustride_equal (struct user_stride left, struct user_stride right);
+bool  user_stride_equal (const struct user_stride *left, const struct user_stride *right);
+void  stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
+err_t stride_resolve (struct stride *dest, struct user_stride src, u64 arrlen, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Small Constructors
@@ -160,12 +146,7 @@ ustride2 (i64 step)
 HEADER_FUNC struct user_stride
 ustride12 (i64 stop, i64 step)
 {
-  return make_ustride (
-      0,
-      stop,
-      step,
-      STOP_PRESENT | STEP_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (0, stop, step, STOP_PRESENT | STEP_PRESENT | COLON_PRESENT);
 }
 
 // [start:]
@@ -179,24 +160,14 @@ ustride0 (i64 start)
 HEADER_FUNC struct user_stride
 ustride01 (i64 start, i64 stop)
 {
-  return make_ustride (
-      start,
-      stop,
-      0,
-      STOP_PRESENT | START_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (start, stop, 0, STOP_PRESENT | START_PRESENT | COLON_PRESENT);
 }
 
 // [start::step]
 HEADER_FUNC struct user_stride
 ustride02 (i64 start, i64 step)
 {
-  return make_ustride (
-      start,
-      0,
-      step,
-      STEP_PRESENT | START_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (start, 0, step, STEP_PRESENT | START_PRESENT | COLON_PRESENT);
 }
 
 // [start:stop:step]
@@ -228,11 +199,7 @@ ustride (void)
 HEADER_FUNC struct user_stride
 usfrms (const struct stride str)
 {
-  return ustride012 (
-      str.start,
-      str.start + str.stride * str.nelems,
-      str.stride
-  );
+  return ustride012 (str.start, str.start + str.stride * str.nelems, str.stride);
 }
 
 /*-----------------------------------------------------------------------------
@@ -252,17 +219,7 @@ struct mus_builder
 };
 
 struct mus_builder musb_create (struct builder *b);
-
-err_t musb_accept_key (
-    struct mus_builder *eb,
-    struct user_stride  stride,
-    error              *e
-);
-
-err_t musb_build (
-    struct multi_user_stride *m,
-    struct mus_builder       *eb,
-    error                    *e
-);
+err_t              musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
+err_t              musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
 
 #endif // NS_STRIDE_H

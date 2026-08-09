@@ -20,11 +20,11 @@
 #ifndef NSHANDLE_H
 #define NSHANDLE_H
 
-#include "error.h"
-#include "pager.h"
-#include "query.h"
-#include "txn_table.h"
-#include "variables.h"
+#include "core/ns_error.h"
+#include "nscore/ns_txn_table.h"
+#include "nscore/ns_variables.h"
+#include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_query.h"
 
 /******************************************************************************
  * SECTION: nsdb
@@ -124,12 +124,7 @@ void *nsdb_execute_malloc (
  * @brief Individual actions you can take on a numstore database
  ******************************************************************************/
 
-int nsdb_create (
-    struct nsdb      *db,
-    struct allocator *alloc,
-    struct string     vname,
-    struct type       dtype
-);
+int nsdb_create (struct nsdb *db, struct allocator *alloc, struct string vname, struct type dtype);
 err_t nsdb_delete (struct nsdb *db, struct delete_query *query);
 err_t nsdb_get (
     struct nsdb      *db,
@@ -137,11 +132,7 @@ err_t nsdb_get (
     struct allocator *alloc,
     struct variable **dest
 );
-err_t nsdb_get_and_print (
-    struct nsdb      *db,
-    struct get_query *query,
-    struct allocator *alloc
-);
+err_t   nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc);
 sb_size nsdb_insert (
     struct nsdb         *db,
     struct insert_query *query,
@@ -154,11 +145,7 @@ sb_size nsdb_read (
     struct allocator  *alloc,
     struct stream     *dest
 );
-sb_size nsdb_read_and_print (
-    struct nsdb       *db,
-    struct read_query *query,
-    struct allocator  *alloc
-);
+sb_size nsdb_read_and_print (struct nsdb *db, struct read_query *query, struct allocator *alloc);
 sb_size nsdb_write (
     struct nsdb        *db,
     struct write_query *query,

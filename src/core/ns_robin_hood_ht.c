@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "testing.h"
+#include "core/testing/ns_testing.h"
 
 #define VTYPE  u32
 #define KTYPE  int
 #define SUFFIX test
-#include "robin_hood_ht.h"
+#include "core/ns_robin_hood_ht.h"
 #undef VTYPE
 #undef KTYPE
 #undef SUFFIX
@@ -34,10 +34,7 @@ TEST (ht_insert_test_regression_trigger_swap)
 
   for (u32 i = 0; i < TEST_TABLE_LEN; ++i)
   {
-    test_assert_int_equal (
-        ht_insert_test (&ht, (hdata_test){.key = i, .value = i}),
-        HTIR_SUCCESS
-    );
+    test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = i, .value = i}), HTIR_SUCCESS);
   }
 
   test_assert_int_equal (ht_delete_test (&ht, NULL, 0), HTAR_SUCCESS);
@@ -53,10 +50,7 @@ TEST (ht_insert_test_regression_trigger_swap)
       HTIR_SUCCESS
   );
 
-  test_assert_int_equal (
-      ht_insert_test (&ht, (hdata_test){.key = 0, .value = 0}),
-      HTIR_SUCCESS
-  );
+  test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 0, .value = 0}), HTIR_SUCCESS);
 
   bool has_bug = false;
 
@@ -109,10 +103,7 @@ TEST (robin_hood_ht)
   ht_init_test (&ht, entries, TEST_TABLE_LEN);
   hdata_test out;
 
-  test_assert_int_equal (
-      ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 5}),
-      HTIR_SUCCESS
-  );
+  test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 5}), HTIR_SUCCESS);
 
   TEST_CASE ("Duplicate insert")
   {

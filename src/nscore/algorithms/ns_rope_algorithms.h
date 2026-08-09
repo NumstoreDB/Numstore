@@ -18,13 +18,13 @@
  * Various numstore rope algorithms
  */
 
-#ifndef ROPE_H
-#define ROPE_H
+#ifndef NS_ROPE_ALGORITHMS_H
+#define NS_ROPE_ALGORITHMS_H
 
-#include "node_updates.h" // node_updates
-#include "numstore.h"     // pgno
-#include "pager.h"        // page_h
-#include "pager.h"        // pager
+#include "core/ns_stream.h"
+#include "nscore/ns_node_updates.h"
+#include "nscore/pager/ns_pager.h"
+#include "numstore.h"
 
 enum stride_phase
 {
@@ -122,10 +122,7 @@ struct ns_balance_and_release_params
   page_h               *next;
 };
 
-err_t ns_balance_and_release (
-    struct ns_balance_and_release_params params,
-    error                               *e
-);
+err_t ns_balance_and_release (struct ns_balance_and_release_params params, error *e);
 
 struct ns_rebalance_params
 {
@@ -153,4 +150,4 @@ i32 ns_get_length_of_layer_that_contains_node (struct pager *p, pgno pg, error
 *e);
 */
 
-#endif // ROPE_H
+#endif // NS_ROPE_ALGORITHMS_H

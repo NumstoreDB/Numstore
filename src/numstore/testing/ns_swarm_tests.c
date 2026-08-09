@@ -13,6 +13,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "numstore/testing/ns_swarm_tests.h"
+
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -21,16 +23,15 @@
 #include <string.h>
 #include <time.h>
 
-#include "alloc.h"
-#include "compiler.h"
-#include "logging.h"
-#include "mem_vhmap.h"
-#include "numerics.h"
+#include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
+#include "core/ns_logging.h"
+#include "core/ns_numerics.h"
+#include "nscore/compiler/ns_compiler.h"
+#include "nscore/ns_mem_vhmap.h"
+#include "nscore/ns_variables.h"
+#include "nscore/types/ns_types.h"
 #include "numstore.h"
-#include "serial.h" // strfcstr
-#include "swarm_tests.h"
-#include "types.h"
-#include "variables.h"
 
 /******************************************************************************
  * SECTION: Diagnostics
@@ -232,11 +233,7 @@ irwr_swmt_begin_txn (struct irwr_swarm_test *meta)
   ASSERT (!meta->in_txn);
   ASSERT (meta->working == NULL);
 
-  IRWR_SWMT_ASSERTF (
-      nsdb_begin (meta->db) == 0,
-      "nsdb_begin failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_begin (meta->db) == 0, "nsdb_begin failed on db='%s'", meta->dbname);
 
   meta->working = block_array_clone (meta->committed, NULL);
   IRWR_SWMT_ASSERTF (
@@ -286,11 +283,7 @@ irwr_swmt_rollback_txn (struct irwr_swarm_test *meta)
 static void
 irwr_swmt_crash_and_reopen (struct irwr_swarm_test *meta)
 {
-  IRWR_SWMT_ASSERTF (
-      nsdb_crash (meta->db) == 0,
-      "nsdb_crash failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_crash (meta->db) == 0, "nsdb_crash failed on db='%s'", meta->dbname);
 
   meta->db = nsdb_open (meta->dbname);
   IRWR_SWMT_ASSERTF (
@@ -312,11 +305,7 @@ static void
 irwr_swmt_close_and_reopen (struct irwr_swarm_test *meta)
 {
   ASSERT (!meta->in_txn);
-  IRWR_SWMT_ASSERTF (
-      nsdb_close (meta->db) == 0,
-      "nsdb_close failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
   meta->db = nsdb_open (meta->dbname);
   IRWR_SWMT_ASSERTF (
@@ -347,14 +336,7 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   }
 
   /* DB side (NOTE: was previously executed twice - collapsed to one call). */
-  int got = nsdb_fexecute (
-      meta->db,
-      "insert %s %d %d",
-      data,
-      meta->varname,
-      ofst,
-      len
-  );
+  int got = nsdb_fexecute (meta->db, "insert %s %d %d", data, meta->varname, ofst, len);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == len,
@@ -368,13 +350,8 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
   );
 
   /* Reference side */
-  int ba = block_array_insert (
-      active_db (meta),
-      (u32)(ofst * (int)meta->esize),
-      data,
-      (u32)blen,
-      NULL
-  );
+  int ba =
+      block_array_insert (active_db (meta), (u32)(ofst * (int)meta->esize), data, (u32)blen, NULL);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       ba == 0,
@@ -430,8 +407,7 @@ irwr_swmt_remove (struct irwr_swarm_test *meta)
 
   /* Reference side */
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got =
-      block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
+  i64           got = block_array_remove (active_db (meta), str, meta->esize, ref_buf, NULL);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == (i64)len,
@@ -503,7 +479,7 @@ irwr_swmt_read (struct irwr_swarm_test *meta)
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64 got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
+  u64           got = block_array_read (active_db (meta), str, meta->esize, ref_buf);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == (u64)len,
@@ -575,7 +551,7 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
   );
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64 got = block_array_write (active_db (meta), str, meta->esize, data);
+  u64           got = block_array_write (active_db (meta), str, meta->esize, data);
   IRWR_SWMT_ASSERT_STATE (
       meta,
       got == (u64)len,
@@ -615,11 +591,7 @@ irwr_swmt_open (
       dbname
   );
 
-  IRWR_SWMT_ASSERTF (
-      nsdb_cleanup (dbname) == 0,
-      "nsdb_cleanup failed for db='%s'",
-      dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_cleanup (dbname) == 0, "nsdb_cleanup failed for db='%s'", dbname);
 
   ALLOC_INIT (alloc);
 
@@ -653,11 +625,7 @@ irwr_swmt_open (
       "block_array_create(512) returned NULL (db='%s')",
       dbname
   );
-  IRWR_SWMT_ASSERTF (
-      ret->db != NULL,
-      "nsdb_open returned NULL (db='%s')",
-      dbname
-  );
+  IRWR_SWMT_ASSERTF (ret->db != NULL, "nsdb_open returned NULL (db='%s')", dbname);
 
   memcpy (ret->enabled, initial_enabled, IRWR_AT_LEN * sizeof (int));
   irwr_swmt_set_allowed (ret);
@@ -680,11 +648,7 @@ irwr_swmt_close (struct irwr_swarm_test *meta)
   {
     irwr_swmt_commit_txn (meta);
   }
-  IRWR_SWMT_ASSERTF (
-      nsdb_close (meta->db) == 0,
-      "nsdb_close failed on db='%s'",
-      meta->dbname
-  );
+  IRWR_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
   if (meta->committed)
   {
@@ -929,10 +893,7 @@ cgd_swmt_print_state (const struct cgd_swarm_test *meta)
       meta->working ? "present" : "<null>",
       meta->working ? mem_vhmap_count (meta->working) : -1
   );
-  i_log_info (
-      "  cur:            %s\n",
-      meta->cur ? meta->cur->vname.data : "<null>"
-  );
+  i_log_info ("  cur:            %s\n", meta->cur ? meta->cur->vname.data : "<null>");
   i_log_info ("  sample_space_p: %.3f\n", (double)meta->sample_space_prob);
   i_log_info ("  Actions             enabled   allowed\n");
   for (int i = 0; i < CDS_AT_LEN; ++i)
@@ -959,8 +920,7 @@ static void
 rebind_cur (struct cgd_swarm_test *meta, const char *preferred_name)
 {
   struct mem_vhmap *db = cgd_active_db (meta);
-  meta->cur =
-      preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
+  meta->cur            = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
   if (!meta->cur && mem_vhmap_count (db) > 0)
   {
     meta->cur = mem_vhmap_random (db);
@@ -1069,11 +1029,7 @@ cgd_swmt_begin_txn (struct cgd_swarm_test *meta)
   ASSERT (!meta->in_txn);
   ASSERT (meta->working == NULL);
 
-  CGD_SWMT_ASSERTF (
-      nsdb_begin (meta->db) == 0,
-      "nsdb_begin failed on db='%s'",
-      meta->dbname
-  );
+  CGD_SWMT_ASSERTF (nsdb_begin (meta->db) == 0, "nsdb_begin failed on db='%s'", meta->dbname);
 
   error e       = error_create ();
   meta->working = mem_vhmap_clone (meta->committed, &e);
@@ -1113,11 +1069,7 @@ cgd_swmt_rollback_txn (struct cgd_swarm_test *meta)
 {
   ASSERT (meta->in_txn);
 
-  CGD_SWMT_ASSERTF (
-      nsdb_rollback (meta->db) == 0,
-      "nsdb_rollback failed on db='%s'",
-      meta->dbname
-  );
+  CGD_SWMT_ASSERTF (nsdb_rollback (meta->db) == 0, "nsdb_rollback failed on db='%s'", meta->dbname);
 
   char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
   mem_vhmap_free (meta->working);
@@ -1133,11 +1085,7 @@ cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta)
 {
   char *saved = meta->cur ? strdup (meta->cur->vname.data) : NULL;
 
-  CGD_SWMT_ASSERTF (
-      nsdb_crash (meta->db) == 0,
-      "nsdb_crash failed on db='%s'",
-      meta->dbname
-  );
+  CGD_SWMT_ASSERTF (nsdb_crash (meta->db) == 0, "nsdb_crash failed on db='%s'", meta->dbname);
 
   meta->db = nsdb_open (meta->dbname);
   CGD_SWMT_ASSERTF (
@@ -1161,11 +1109,7 @@ static void
 cgd_swmt_close_and_reopen (struct cgd_swarm_test *meta)
 {
   ASSERT (!meta->in_txn);
-  CGD_SWMT_ASSERTF (
-      nsdb_close (meta->db) == 0,
-      "nsdb_close failed on db='%s'",
-      meta->dbname
-  );
+  CGD_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
   meta->db = nsdb_open (meta->dbname);
   CGD_SWMT_ASSERTF (
@@ -1208,8 +1152,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     };
 
     /* DB side */
-    int exec_ret =
-        nsdb_fexecute (meta->db, "create %s %s", NULL, name, typestr);
+    int exec_ret = nsdb_fexecute (meta->db, "create %s %s", NULL, name, typestr);
     CGD_SWMT_ASSERT_STATE (
         meta,
         exec_ret == 0,
@@ -1284,11 +1227,7 @@ cgd_swmt_delete (struct cgd_swarm_test *meta)
 /// Main Api
 
 struct cgd_swarm_test *
-cgd_swmt_open (
-    int         start_enabled[CDS_AT_LEN],
-    const char *dbname,
-    float       sample_space_prob
-)
+cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, float sample_space_prob)
 {
   ASSERT (sample_space_prob >= 0 && sample_space_prob <= 1);
 
@@ -1300,11 +1239,7 @@ cgd_swmt_open (
       dbname
   );
 
-  CGD_SWMT_ASSERTF (
-      nsdb_cleanup (dbname) == 0,
-      "nsdb_cleanup failed for db='%s'",
-      dbname
-  );
+  CGD_SWMT_ASSERTF (nsdb_cleanup (dbname) == 0, "nsdb_cleanup failed for db='%s'", dbname);
 
   *ret = (struct cgd_swarm_test){
       .committed         = mem_vhmap_create (NULL),
@@ -1316,16 +1251,8 @@ cgd_swmt_open (
       .sample_space_prob = sample_space_prob,
   };
 
-  CGD_SWMT_ASSERTF (
-      ret->committed != NULL,
-      "mem_vhmap_create returned NULL (db='%s')",
-      dbname
-  );
-  CGD_SWMT_ASSERTF (
-      ret->db != NULL,
-      "nsdb_open returned NULL (db='%s')",
-      dbname
-  );
+  CGD_SWMT_ASSERTF (ret->committed != NULL, "mem_vhmap_create returned NULL (db='%s')", dbname);
+  CGD_SWMT_ASSERTF (ret->db != NULL, "nsdb_open returned NULL (db='%s')", dbname);
 
   memcpy (ret->enabled, start_enabled, CDS_AT_LEN * sizeof (int));
   cgd_swmt_set_allowed (ret);
@@ -1340,11 +1267,7 @@ cgd_swmt_close (struct cgd_swarm_test *meta)
   {
     cgd_swmt_commit_txn (meta);
   }
-  CGD_SWMT_ASSERTF (
-      nsdb_close (meta->db) == 0,
-      "nsdb_close failed on db='%s'",
-      meta->dbname
-  );
+  CGD_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
   if (meta->committed)
   {

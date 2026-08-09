@@ -15,9 +15,9 @@
 #ifndef IRWR_SWARM_TEST_FIXTURE_H
 #define IRWR_SWARM_TEST_FIXTURE_H
 
-#include "collections.h" // block_array
-#include "numstore.h"    // nsdb_t
-#include "stdtypes.h"    // u32 ...etc
+#include "core/ns_block_array.h" // block_array
+#include "core/ns_stdtypes.h"    // u32 ...etc
+#include "numstore.h"            // nsdb_t
 
 /******************************************************************************
  * SECTION: Main Tests to run
@@ -97,8 +97,8 @@ void cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed);
  * No data inserting in this test
  */
 
-#include "mem_vhmap.h" // mem_vhmap
-#include "numstore.h"  // nsdb_t
+#include "nscore/ns_mem_vhmap.h" // mem_vhmap
+#include "numstore.h"            // nsdb_t
 
 // Actions you can take in a database
 enum cgd_action_type

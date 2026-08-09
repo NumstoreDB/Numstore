@@ -12,16 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef COLLECTIONS_H
-#define COLLECTIONS_H
+#ifndef NS_DBL_BUFFER_H
+#define NS_DBL_BUFFER_H
 
-#include "alloc.h"       // slab alloc
-#include "concurrency.h" // latch
-#include "csx_assert.h"
-#include "error.h"    // err_t
-#include "os.h"       // i_file
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32 ...etc
+#include "core/ns_alloc.h"       // slab alloc
+#include "core/ns_concurrency.h" // latch
+#include "core/ns_error.h"       // err_t
+#include "core/ns_stdtypes.h"    // u32 ...etc
 
 struct dbl_buffer
 {
