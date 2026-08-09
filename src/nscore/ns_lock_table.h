@@ -24,12 +24,12 @@
 #ifndef LOCK_TABLE_H
 #define LOCK_TABLE_H
 
-#include "alloc.h"       // slab alloc
-#include "concurrency.h" // latch / grlock
-#include "error.h"       // error
-#include "htable.h"      // htable
-#include "platform.h"    // HEADER_FUNC/PLATFORM_WINDOWS ...etc
-#include "stdtypes.h"    // u32 ...etc
+#include "core/ns_concurrency.h"
+#include "core/ns_error.h"
+#include "core/ns_htable.h"
+#include "core/ns_platform.h"
+#include "core/ns_slab_alloc.h"
+#include "core/ns_stdtypes.h"
 
 /******************************************************************************
  * SECTION: LT Lock
@@ -132,12 +132,7 @@ err_t lockt_lock (
     error         *e
 );
 
-err_t lockt_unlock (
-    struct lockt  *t,
-    struct lt_lock lock,
-    enum lock_mode mode,
-    error         *e
-);
+err_t lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, error *e);
 
 void lockt_unlock_tx (struct lockt *t, struct txn *tx);
 

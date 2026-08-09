@@ -26,7 +26,6 @@
 #define NUMERICS_H
 
 #include "core/ns_error.h"
-#include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 
 /******************************************************************************

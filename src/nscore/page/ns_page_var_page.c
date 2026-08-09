@@ -1,10 +1,10 @@
+#include "nscore/page/ns_page_var_page.h"
+
+#include "core/ns_cbuffer.h"
+#include "core/testing/ns_testing.h"
 
 /******************************************************************************
  * SECTION: Var Page
- * ----------------------------------------------------------------------------
- * @brief
- *
- *
  ******************************************************************************/
 
 DEFINE_DBG_ASSERT (page, vp_page, v, { ASSERT (v); })
@@ -172,11 +172,7 @@ vp_validate_for_db (const page *p, error *e)
   }
   if (vp_is_overflow (p) && vp_get_ovnext (p) == PGNO_NULL)
   {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "overflow required but next pointer is null"
-    );
+    return error_causef (e, ERR_CORRUPT, "overflow required but next pointer is null");
   }
   return SUCCESS;
 }

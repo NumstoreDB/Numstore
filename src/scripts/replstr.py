@@ -4,7 +4,7 @@ ROOTS = ["src"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-    "i_printf": "i_log_printf",
+    "i_log_printf": "i_log_printf",
     # add more OLD: NEW pairs here
     "include \"string.h\"": "include \"core/ns_string.h\"",
     "include \"slab_alloc.h\"": "include \"core/ns_slab_alloc.h\"",

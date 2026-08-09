@@ -12,16 +12,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef VAR_H
-#define VAR_H
+#ifndef NS_VAR_ALGORITHMS_H
+#define NS_VAR_ALGORITHMS_H
 
-#include "alloc.h"     // allocator
-#include "error.h"     // error
-#include "numstore.h"  // pgno ...etc
-#include "pager.h"     // pager
-#include "stdtypes.h"  // bool ...etc
-#include "txn_table.h" // txn
-#include "variables.h" // variable
+#include "core/ns_alloc.h"
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/ns_txn_table.h"
+#include "nscore/ns_variables.h"
+#include "nscore/pager/ns_pager.h"
+#include "numstore.h"
 
 err_t ns_init_var_hash_map (struct pager *p, error *e);
 err_t ns_valid (struct pager *p, error *e);
@@ -83,10 +83,7 @@ struct ns_var_get_or_create_params
   struct variable dest;
 };
 
-err_t ns_var_get_or_create (
-    struct ns_var_get_or_create_params *params,
-    error                              *e
-);
+err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);
 
 /******************************************************************************
  * SECTION: Creating Variables
@@ -163,4 +160,4 @@ struct ns_find_var_page_params
 
 err_t ns_find_var_page (struct ns_find_var_page_params *pms, error *e);
 
-#endif // VAR_H
+#endif

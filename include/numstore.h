@@ -40,8 +40,7 @@
 #endif
 
 #if defined(__GNUC__) || defined(__clang__)
-#  define NSDB_PRINTF(fmt_idx, vargs_idx) \
-    __attribute__ ((format (printf, fmt_idx, vargs_idx)))
+#  define NSDB_PRINTF(fmt_idx, vargs_idx) __attribute__ ((format (printf, fmt_idx, vargs_idx)))
 #else
 #  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
@@ -112,12 +111,7 @@ int smfile_begin (smfile_t *smf);
 int smfile_commit (smfile_t *smf);
 int smfile_rollback (smfile_t *smf);
 
-sb_size smfile_insert (
-    smfile_t   *smf,
-    const void *src,
-    sb_size     bofst,
-    b_size      slen
-);
+sb_size smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
 
 sb_size smfile_write (
     smfile_t   *smf,
@@ -167,17 +161,8 @@ int nsdb_begin (nsdb_t *ns);
 int nsdb_commit (nsdb_t *ns);
 int nsdb_rollback (nsdb_t *ns);
 
-sb_size nsdb_fexecute (
-    nsdb_t     *ns,
-    const char *query_fmt,
-    void       *data,
-    ...
-) NSDB_PRINTF (2, 4);
+sb_size nsdb_fexecute (nsdb_t *ns, const char *query_fmt, void *data, ...) NSDB_PRINTF (2, 4);
 
-void *nsdb_fexecute_malloc (
-    nsdb_t     *ns,
-    const char *query_fmt,
-    ...
-) NSDB_PRINTF (2, 3);
+void *nsdb_fexecute_malloc (nsdb_t *ns, const char *query_fmt, ...) NSDB_PRINTF (2, 3);
 
 #endif

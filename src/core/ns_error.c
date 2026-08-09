@@ -12,9 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "csx_assert.h"
-#include "error.h"
-#include "testing.h"
+#include "core/ns_error.h"
+
+#include "core/ns_csx_assert.h"
+#include "core/testing/ns_testing.h"
 
 #ifdef ERR_T_FAIL_FAST
 #endif

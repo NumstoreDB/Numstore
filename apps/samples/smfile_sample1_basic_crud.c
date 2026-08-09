@@ -40,10 +40,10 @@ main (void)
   // Remove all data from the file
   smfile_remove (
       smf,
-      NULL, // You can optionally supply a destination for the data - we'll just
-      1,    // The size of each element to remove
-      0,    // The starting offset to remove
-      1,    // The stride of the remove step
+      NULL,   // You can optionally supply a destination for the data - we'll just
+      1,      // The size of each element to remove
+      0,      // The starting offset to remove
+      1,      // The stride of the remove step
       SMF_END // This let's you remove all the data
   );
 

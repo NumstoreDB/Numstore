@@ -12,14 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef WAL_H
-#define WAL_H
+#ifndef NS_WAL_RECORD_H
+#define NS_WAL_RECORD_H
 
-#include "collections.h" // cbuffer
-#include "numstore.h"    // lsn
-#include "page.h"        // fsm_page
-#include "page_h.h"      // page_h
-#include "txn_table.h"   // txn
+#include "nscore/ns_txn_table.h"
+#include "nscore/page/ns_page_fsm.h"
+#include "nscore/page/ns_page_h.h"
+#include "numstore.h"
 
 /******************************************************************************
  * SECTION: WAL Records
@@ -184,92 +183,91 @@ struct wal_rec_hdr_write
   };
 };
 
-void        wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
-const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
+void                     wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
+const char              *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry
 #define WL_BEGIN_LEN \
-  (sizeof (wlh) +  /* header */   \
-   sizeof (txid) + /* txid */     \
-   sizeof (u32)    /* checksum */ \
+  (sizeof(wlh) +  /* header */                                                 \
+   sizeof(txid) + /* txid */                                                   \
+   sizeof(u32)    /* checksum */                                               \
   )
 
 // Size of COMMIT entry
 #define WL_COMMIT_LEN \
-  (sizeof (wlh) +  /* header */   \
-   sizeof (txid) + /* txid */     \
-   sizeof (lsn) +  /* prev */     \
-   sizeof (u32)    /* checksum */ \
+  (sizeof(wlh) +  /* header */                                                 \
+   sizeof(txid) + /* txid */                                                   \
+   sizeof(lsn) +  /* prev */                                                   \
+   sizeof(u32)    /* checksum */                                               \
   )
 
 // Size of END entry
 #define WL_END_LEN \
-  (sizeof (wlh) +  /* header */   \
-   sizeof (txid) + /* txid */     \
-   sizeof (lsn) +  /* prev */     \
-   sizeof (u32)    /* checksum */ \
+  (sizeof(wlh) +  /* header */                                                 \
+   sizeof(txid) + /* txid */                                                   \
+   sizeof(lsn) +  /* prev */                                                   \
+   sizeof(u32)    /* checksum */                                               \
   )
 
 // Size of physical UPDATE entry
 #define WL_UPDATE_LEN \
-  (2 * sizeof (wlh) + /* header */   \
-   sizeof (txid) +    /* txid */     \
-   sizeof (lsn) +     /* prev */     \
-   sizeof (pgno) +    /* pg */       \
-   NS_PAGE_SIZE +     /* undo */     \
-   NS_PAGE_SIZE +     /* redo */     \
-   sizeof (u32)       /* checksum */ \
+  (2 * sizeof(wlh) + /* header */                                              \
+   sizeof(txid) +    /* txid */                                                \
+   sizeof(lsn) +     /* prev */                                                \
+   sizeof(pgno) +    /* pg */                                                  \
+   NS_PAGE_SIZE +    /* undo */                                                \
+   NS_PAGE_SIZE +    /* redo */                                                \
+   sizeof(u32)       /* checksum */                                            \
   )
 
 // Size of FSM UPDATE entry
 #define WL_FSM_UPDATE_LEN \
-  (2 * sizeof (wlh) + /* header */   \
-   sizeof (txid) +    /* txid */     \
-   sizeof (lsn) +     /* prev */     \
-   sizeof (pgno) +    /* pg */       \
-   sizeof (p_size) +  /* bit */      \
-   sizeof (u8) +      /* undo */     \
-   sizeof (u8) +      /* redo */     \
-   sizeof (u32)       /* checksum */ \
+  (2 * sizeof(wlh) + /* header */                                              \
+   sizeof(txid) +    /* txid */                                                \
+   sizeof(lsn) +     /* prev */                                                \
+   sizeof(pgno) +    /* pg */                                                  \
+   sizeof(p_size) +  /* bit */                                                 \
+   sizeof(u8) +      /* undo */                                                \
+   sizeof(u8) +      /* redo */                                                \
+   sizeof(u32)       /* checksum */                                            \
   )
 
 // Size of FILE EXTENT UPDATE entry
 #define WL_FILE_EXT_LEN \
-  (2 * sizeof (wlh) + /* header */   \
-   sizeof (txid) +    /* txid */     \
-   sizeof (lsn) +     /* prev */     \
-   sizeof (pgno) +    /* undo */     \
-   sizeof (pgno) +    /* redo */     \
-   sizeof (u32)       /* checksum */ \
+  (2 * sizeof(wlh) + /* header */                                              \
+   sizeof(txid) +    /* txid */                                                \
+   sizeof(lsn) +     /* prev */                                                \
+   sizeof(pgno) +    /* undo */                                                \
+   sizeof(pgno) +    /* redo */                                                \
+   sizeof(u32)       /* checksum */                                            \
   )
 
 // Size of physical CLR entry
 #define WL_CLR_LEN \
-  (2 * sizeof (wlh) + /* header */    \
-   sizeof (txid) +    /* txid */      \
-   sizeof (lsn) +     /* prev */      \
-   sizeof (pgno) +    /* pg */        \
-   sizeof (lsn) +     /* undo_next */ \
-   NS_PAGE_SIZE +     /* redo */      \
-   sizeof (u32)       /* checksum */  \
+  (2 * sizeof(wlh) + /* header */                                              \
+   sizeof(txid) +    /* txid */                                                \
+   sizeof(lsn) +     /* prev */                                                \
+   sizeof(pgno) +    /* pg */                                                  \
+   sizeof(lsn) +     /* undo_next */                                           \
+   NS_PAGE_SIZE +    /* redo */                                                \
+   sizeof(u32)       /* checksum */                                            \
   )
 
 // Size of FSM CLR entry
 #define WL_FSM_CLR_LEN \
-  (2 * sizeof (wlh) + /* header */    \
-   sizeof (txid) +    /* txid */      \
-   sizeof (lsn) +     /* prev */      \
-   sizeof (pgno) +    /* pg */        \
-   sizeof (lsn) +     /* undo_next */ \
-   sizeof (p_size) +  /* bit */       \
-   sizeof (u8) +      /* redo */      \
-   sizeof (u32)       /* checksum */  \
+  (2 * sizeof(wlh) + /* header */                                              \
+   sizeof(txid) +    /* txid */                                                \
+   sizeof(lsn) +     /* prev */                                                \
+   sizeof(pgno) +    /* pg */                                                  \
+   sizeof(lsn) +     /* undo_next */                                           \
+   sizeof(p_size) +  /* bit */                                                 \
+   sizeof(u8) +      /* redo */                                                \
+   sizeof(u32)       /* checksum */                                            \
   )
 // Size of DUMMY_CLR entry
-#define WL_DUMMY_CLR_LEN                                          \
-  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) \
-   + sizeof (u32))
+#define WL_DUMMY_CLR_LEN \
+  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
 
 // Utils
 stxid wrh_get_tid (const struct wal_rec_hdr_read *h);
@@ -277,48 +275,19 @@ slsn  wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
 bool  wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool  wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno  wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
-void  i_print_wal_rec_hdr_read_light (
-    int                            log_level,
-    const struct wal_rec_hdr_read *w,
-    lsn                            l
-);
-struct wal_clr_write wrh_undo (
-    struct wal_rec_hdr_read *h,
-    struct txn              *tx,
-    page_h                  *ph
-);
-void wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
+void  i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
+struct wal_clr_write wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
+void                 wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
 
 // DECODE
-void walf_decode_physical_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_UPDATE_LEN]
-);
-void walf_decode_fsm_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FSM_UPDATE_LEN]
-);
-void walf_decode_file_extend_update (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FILE_EXT_LEN]
-);
-void walf_decode_physical_clr (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_CLR_LEN]
-);
-void walf_decode_fsm_clr (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_FSM_CLR_LEN]
-);
-void walf_decode_dummy_clr (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_DUMMY_CLR_LEN]
-);
+void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN]);
+void walf_decode_fsm_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_UPDATE_LEN]);
+void walf_decode_file_extend_update (struct wal_rec_hdr_read *r, const u8 buf[WL_FILE_EXT_LEN]);
+void walf_decode_physical_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_CLR_LEN]);
+void walf_decode_fsm_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_FSM_CLR_LEN]);
+void walf_decode_dummy_clr (struct wal_rec_hdr_read *r, const u8 buf[WL_DUMMY_CLR_LEN]);
 void walf_decode_begin (struct wal_rec_hdr_read *r, const u8 buf[WL_BEGIN_LEN]);
-void walf_decode_commit (
-    struct wal_rec_hdr_read *r,
-    const u8                 buf[WL_COMMIT_LEN]
-);
+void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]);
 void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 
 #ifdef TESTING

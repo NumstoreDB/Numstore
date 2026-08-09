@@ -1,13 +1,31 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_PAGE_DATA_LIST_H
+#define NS_PAGE_DATA_LIST_H
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/page/ns_page.h"
+#include "numstore.h"
+
 /******************************************************************************
  * SECTION: Data List
  * ----------------------------------------------------------------------------
- * @brief
- *
- *
- ******************************************************************************/
-
-/*
- * Data List Page (R+Tree leaf / data node)
+ * @brief Data List Page (R+Tree leaf / data node)
  *
  * Data-list pages form the leaf level of the R+Tree.  They are doubly-linked
  * across the entire leaf chain so that sequential reads and writes can walk
@@ -27,7 +45,7 @@
  * A lone data-list page with no siblings (next == prev == PGNO_NULL) acts as
  * the root of a single-page R+Tree.  Once data grows beyond DL_DATA_SIZE,
  * the R+Tree insert algorithm allocates additional pages and links them here.
- */
+ ******************************************************************************/
 
 DEFINE_DBG_ASSERT (page, data_list, d, { ASSERT (d); })
 
@@ -183,9 +201,7 @@ dl_dl_memmove_permissive (
     }
   }
 
-  memmove (
-      (u8 *)dl_get_data (dest) + didx,
-      (u8 *)dl_get_data (src) + sidx,
-      nbytes
-  );
+  memmove ((u8 *)dl_get_data (dest) + didx, (u8 *)dl_get_data (src) + sidx, nbytes);
 }
+
+#endif

@@ -12,11 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "csx_assert.h"
-#include "htable.h"
-#include "numerics.h" // randu32
-#include "os.h"       // i_malloc
-#include "testing.h"
+#include "core/ns_htable.h"
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_numerics.h" // randu32
+#include "core/os/ns_os.h"    // i_malloc
+#include "core/testing/ns_testing.h"
 
 DEFINE_DBG_ASSERT (struct htable, htable, t, {
   ASSERT (t);
@@ -27,8 +28,7 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
 struct htable *
 htable_create (const u32 n, error *e)
 {
-  struct htable *ret =
-      i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
+  struct htable *ret = i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
 
   if (ret == NULL)
   {
@@ -145,11 +145,7 @@ htable_random (struct htable *t)
 }
 
 void
-htable_foreach (
-    const struct htable *t,
-    void (*action) (struct hnode *v, void *ctx),
-    void *ctx
-)
+htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx)
 {
   latch_lock (&((struct htable *)t)->latch);
 

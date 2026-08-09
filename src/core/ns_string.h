@@ -17,50 +17,28 @@
  * @brief Functions and data structures on bytes or strings
  */
 
-#ifndef SERIAL_H
-#define SERIAL_H
+#ifndef STRING_H
+#define STRING_H
 
-#include "collections.h"
-#include "concurrency.h" // latch
-#include "error.h"       // error
-#include "stdtypes.h"    // u32 ...etc
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 
-struct string strfcstr (const char *cstr);
-
-u64 line_length (const char *buf, u64 max);
-
-int strings_all_unique (const struct string *strs, u32 count);
-
-bool string_equal (const struct string s1, const struct string s2);
-
+struct string        strfcstr (const char *cstr);
+u64                  line_length (const char *buf, u64 max);
+int                  strings_all_unique (const struct string *strs, u32 count);
+bool                 string_equal (const struct string s1, const struct string s2);
 const struct string *strings_are_disjoint (
     const struct string *left,
     u32                  llen,
     const struct string *right,
     u32                  rlen
 );
-
-bool string_contains (const struct string superset, const struct string subset);
-
-bool string_less_string (const struct string left, const struct string right);
-
-bool string_greater_string (
-    const struct string left,
-    const struct string right
-);
-
-bool string_less_equal_string (
-    const struct string left,
-    const struct string right
-);
-
-bool string_greater_equal_string (
-    const struct string left,
-    const struct string right
-);
-
+bool  string_contains (const struct string superset, const struct string subset);
+bool  string_less_string (const struct string left, const struct string right);
+bool  string_greater_string (const struct string left, const struct string right);
+bool  string_less_equal_string (const struct string left, const struct string right);
+bool  string_greater_equal_string (const struct string left, const struct string right);
 err_t string_copy (struct string *dest, struct string src, error *e);
-
 #define strfmt(str) (str)->len, (str)->data
 
 #endif

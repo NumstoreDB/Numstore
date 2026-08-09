@@ -12,11 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_numerics.h"
+
 #include <string.h>
 
-#include "csx_assert.h"
-#include "numerics.h"
-#include "testing.h"
+#include "core/ns_bounds.h"
+#include "core/ns_csx_assert.h"
+#include "core/testing/ns_testing.h"
 
 float
 f16_to_f32 (const u16 h)
@@ -697,10 +699,7 @@ TEST (parse_i32_expect)
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_assert_int_equal (
-      parse_i32_expect (&out, big, strlen (big), &e),
-      ERR_ARITH
-  );
+  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &e), ERR_ARITH);
 }
 #endif
 

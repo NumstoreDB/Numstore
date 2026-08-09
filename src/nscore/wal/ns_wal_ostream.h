@@ -12,14 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef WAL_H
-#define WAL_H
+#ifndef NS_WAL_OSTREAM_H
+#define NS_WAL_OSTREAM_H
 
-#include "collections.h" // cbuffer
-#include "numstore.h"    // lsn
-#include "page.h"        // fsm_page
-#include "page_h.h"      // page_h
-#include "txn_table.h"   // txn
+#include "core/ns_cbuffer.h"
+#include "core/ns_concurrency.h"
+#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Wal Output Stream
@@ -45,15 +43,9 @@ err_t               walos_close (struct wal_ostream *w, error *e);
 err_t walos_flush_all (struct wal_ostream *w, error *e);
 
 // Write
-err_t walos_write_all (
-    struct wal_ostream *w,
-    u32                *checksum,
-    const void         *data,
-    u32                 len,
-    error              *e
-);
-lsn  walos_get_next_lsn (struct wal_ostream *w);
-slsn walos_truncate (struct wal_ostream *w, error *e);
+err_t walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len, error *e);
+lsn   walos_get_next_lsn (struct wal_ostream *w);
+slsn  walos_truncate (struct wal_ostream *w, error *e);
 
 err_t walos_crash (struct wal_ostream *w, error *e);
 

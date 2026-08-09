@@ -12,16 +12,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_slab_alloc.h"
+
 #include <stdatomic.h>
 #include <string.h>
 
-#include "alloc.h"
-#include "concurrency.h"
-#include "csx_assert.h"
-#include "error.h"
-#include "numerics.h"
-#include "os.h"
-#include "testing.h"
+#include "core/ns_concurrency.h"
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
 
 /******************************************************************************
  * SECTION: Slab Allocator

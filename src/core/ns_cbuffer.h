@@ -15,13 +15,11 @@
 #ifndef COLLECTIONS_H
 #define COLLECTIONS_H
 
-#include "alloc.h"       // slab alloc
-#include "concurrency.h" // latch
-#include "csx_assert.h"
-#include "error.h"    // err_t
-#include "os.h"       // i_file
-#include "platform.h" // HEADER_FUNC
-#include "stdtypes.h" // u32 ...etc
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
+#include "core/os/ns_os.h"
 
 /******************************************************************************
  * SECTION: Circular Buffer
@@ -96,16 +94,14 @@ struct cbuffer
  * @brief Creates a cbuffer over an existing array, treating it as full.
  * @param data Pointer to the backing array (already filled).
  */
-#define cbuffer_create_full_from(data) \
-  cbuffer_create_with (data, sizeof data, sizeof data)
+#define cbuffer_create_full_from(data) cbuffer_create_with (data, sizeof data, sizeof data)
 
 /**
  * @def cbuffer_create_from_cstr
  * @brief Creates a cbuffer from a C string, treating the string bytes as data.
  * @param cstr Null-terminated string to wrap (length is strlen(cstr)).
  */
-#define cbuffer_create_from_cstr(cstr) \
-  cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
+#define cbuffer_create_from_cstr(cstr) cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
 
 /**
  * @fn struct cbuffer cbuffer_create(void *data, u32 cap)
@@ -368,12 +364,7 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
  * @param src Source ring buffer generator.
  * @return Total elements moved.
  */
-u32 cbuffer_cbuffer_move (
-    struct cbuffer *dest,
-    u32             size,
-    u32             n,
-    struct cbuffer *src
-);
+u32 cbuffer_cbuffer_move (struct cbuffer *dest, u32 size, u32 n, struct cbuffer *src);
 
 /**
  * @fn u32 cbuffer_cbuffer_copy(struct cbuffer *dest, u32 size, u32 n, const
@@ -387,27 +378,20 @@ u32 cbuffer_cbuffer_move (
  * @param src Source ring buffer reference container.
  * @return Total elements copied.
  */
-u32 cbuffer_cbuffer_copy (
-    struct cbuffer       *dest,
-    u32                   size,
-    u32                   n,
-    const struct cbuffer *src
-);
+u32 cbuffer_cbuffer_copy (struct cbuffer *dest, u32 size, u32 n, const struct cbuffer *src);
 
 /**
  * @def cbuffer_cbuffer_move_max
  * @brief Evicts and moves all tracked active data elements safely between
  * contexts.
  */
-#define cbuffer_cbuffer_move_max(dest, src) \
-  cbuffer_cbuffer_move (dest, 1, cbuffer_len (src), src)
+#define cbuffer_cbuffer_move_max(dest, src) cbuffer_cbuffer_move (dest, 1, cbuffer_len (src), src)
 
 /**
  * @def cbuffer_cbuffer_copy_max
  * @brief Copies all tracked active data elements safely between contexts.
  */
-#define cbuffer_cbuffer_copy_max(dest, src) \
-  cbuffer_cbuffer_copy (dest, 1, cbuffer_len (src), src)
+#define cbuffer_cbuffer_copy_max(dest, src) cbuffer_cbuffer_copy (dest, 1, cbuffer_len (src), src)
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: IO Read / Writing
@@ -426,12 +410,7 @@ u32 cbuffer_cbuffer_copy (
  * @param e Error reporting instance container.
  * @return Tracked metric status representing processed fields.
  */
-i32 cbuffer_write_to_file_1 (
-    i_file               *dest,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+i32 cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn err_t cbuffer_write_to_file_1_expect(i_file *dest, const struct cbuffer
@@ -444,12 +423,7 @@ i32 cbuffer_write_to_file_1 (
  * @param e Error reporting instance container.
  * @return Code validation metrics verifying the operation.
  */
-err_t cbuffer_write_to_file_1_expect (
-    i_file               *dest,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+err_t cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn void cbuffer_write_to_file_2(struct cbuffer *b, u32 nwritten)
@@ -487,12 +461,7 @@ i32 cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
  * @param e Error tracking storage.
  * @return Read verification data loops.
  */
-i32 cbuffer_read_from_file_1 (
-    i_file               *src,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+i32 cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn err_t cbuffer_read_from_file_1_expect(i_file *src, const struct cbuffer
@@ -506,12 +475,7 @@ i32 cbuffer_read_from_file_1 (
  * @param e Error tracking storage.
  * @return Validation context verification fields.
  */
-err_t cbuffer_read_from_file_1_expect (
-    i_file               *src,
-    const struct cbuffer *b,
-    u32                   len,
-    error                *e
-);
+err_t cbuffer_read_from_file_1_expect (i_file *src, const struct cbuffer *b, u32 len, error *e);
 
 /**
  * @fn void cbuffer_read_from_file_2(struct cbuffer *b, u32 nread)

@@ -12,18 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
-#include "node_updates.h"
-#include "numerics.h"
+#include "core/ns_error.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "serial.h"
-#include "testing.h"
 
 /******************************************************************************
  * SECTION: ns_seek
@@ -80,11 +74,7 @@ ns_seek (struct ns_seek_params *a, error *e)
         // Stack overflow
         if (a->sp == 20)
         {
-          error_causef (
-              e,
-              ERR_RPTREE_PAGE_STACK_OVERFLOW,
-              "page stack overflow (depth 20)"
-          );
+          error_causef (e, ERR_RPTREE_PAGE_STACK_OVERFLOW, "page stack overflow (depth 20)");
           goto failed;
         }
 

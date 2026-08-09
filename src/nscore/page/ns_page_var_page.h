@@ -1,32 +1,48 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_PAGE_VAR_PAGE_H
+#define NS_PAGE_VAR_PAGE_H
+
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "nscore/page/ns_page.h"
+#include "numstore.h"
+
 /******************************************************************************
+ *
  * SECTION: Var Page
  * ----------------------------------------------------------------------------
- * @brief
- *
- *
+ * ============ PAGE START
+ * HEADER
+ * NEXT     [pgno]      - Next var page in the hash table chain
+ * OVNEXT   [pgno]      - Next Overflow page for name / serialized type
+ * VLEN     [2 bytes]   - Length of the name string in bytes
+ * TLEN     [2 bytes]   - Length of the type in bytes
+ * ROOT     [pgno]      - Root page of the rptree chain
+ * NBYTES   [b_size]    - Root page of the rptree chain
+ * NBYTES   [b_size]    - Root page of the rptree chain
+ * VNAME
+ * VNAME
+ * VNAME
+ * ...
+ * TSTR
+ * TSTR
+ * TSTR
+ * ...
+ * ============ PAGE END
  ******************************************************************************/
-
-////////////////////////////////////////////////////////////
-/////// VAR PAGE
-
-// ============ PAGE START
-// HEADER
-// NEXT     [pgno]      - Next var page in the hash table chain
-// OVNEXT   [pgno]      - Next Overflow page for name / serialized type
-// VLEN     [2 bytes]   - Length of the name string in bytes
-// TLEN     [2 bytes]   - Length of the type in bytes
-// ROOT     [pgno]      - Root page of the rptree chain
-// NBYTES   [b_size]    - Root page of the rptree chain
-// NBYTES   [b_size]    - Root page of the rptree chain
-// VNAME
-// VNAME
-// VNAME
-// ...
-// TSTR
-// TSTR
-// TSTR
-// ...
-// ============ PAGE END
 
 // OFFSETS and _Static_asserts
 #define VP_NEXT_OFST PG_COMMN_END
@@ -67,3 +83,5 @@ err_t vp_validate_for_db (const page *p, error *e);
 
 // Utils
 void i_log_vp (int level, const page *vp);
+
+#endif

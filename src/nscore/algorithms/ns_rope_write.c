@@ -12,18 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
-#include "node_updates.h"
-#include "numerics.h"
+#include "core/ns_error.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "serial.h"
-#include "testing.h"
 
 /******************************************************************************
  * SECTION: ns_write
@@ -141,14 +135,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
   while (max_bwrite == 0 || total_bwrite < max_bwrite)
   {
-    p_size next_amount = ns_write_next_amount (
-        curp,
-        lidx,
-        bnext,
-        max_bwrite,
-        total_bwrite,
-        state
-    );
+    p_size next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
 
     if (next_amount == 0)
     {
@@ -160,14 +147,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         if (npg != PGNO_NULL)
         {
-          WRAP (pgr_get_writable (
-              &next,
-              params.tx,
-              PG_DATA_LIST,
-              npg,
-              params.p,
-              e
-          ));
+          WRAP (pgr_get_writable (&next, params.tx, PG_DATA_LIST, npg, params.p, e));
         }
 
         // Reached EOF
@@ -184,14 +164,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
         curp = page_h_w (&cur);
 
-        next_amount = ns_write_next_amount (
-            curp,
-            lidx,
-            bnext,
-            max_bwrite,
-            total_bwrite,
-            state
-        );
+        next_amount = ns_write_next_amount (curp, lidx, bnext, max_bwrite, total_bwrite, state);
 
         ASSERT (next_amount > 0);
       }
@@ -210,13 +183,8 @@ ns_write_forward (const struct ns_write_params params, error *e)
         {
           // Pull bytes from caller's source stream and
           // stamp them into the page
-          const sp_size write = stream_bread (
-              (u8 *)dl_get_data (curp) + lidx,
-              1,
-              next_amount,
-              params.src,
-              e
-          );
+          const sp_size write =
+              stream_bread ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.src, e);
 
           if (write < 0)
           {
@@ -313,11 +281,7 @@ failed:
 static sb_size
 ns_write_backward (const struct ns_write_params params, error *e)
 {
-  return error_causef (
-      e,
-      ERR_INVALID_ARGUMENT,
-      "Negative strides are not implemented (yet)"
-  );
+  return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
 }
 
 sb_size

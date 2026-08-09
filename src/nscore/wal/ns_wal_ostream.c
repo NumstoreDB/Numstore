@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
+#include "nscore/wal/ns_wal_ostream.h"
+
+#include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
 #include "numstore.h"
-#include "os.h"
-#include "serial.h"
-#include "testing.h"
-#include "txn_table.h"
-#include "wal.h"
 
 /******************************************************************************
  * SECTION: WAL OStream
@@ -84,12 +84,8 @@ TEST (walos_open)
 
   TEST_CASE ("Red Path - can't open file")
   {
-    err_t (*backup) (
-        i_file_system_vtable *vfs,
-        i_file               *dest,
-        const char           *fname,
-        error                *e
-    ) = default_fsvtable.i_open_w;
+    err_t (*backup) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) =
+        default_fsvtable.i_open_w;
 
     default_fsvtable.i_open_w = i_open_errio;
 
@@ -103,9 +99,8 @@ TEST (walos_open)
 
   TEST_CASE ("Red Path - can't seek")
   {
-    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) =
-        default_fvtable.i_seek;
-    default_fvtable.i_seek = i_seek_errio;
+    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) = default_fvtable.i_seek;
+    default_fvtable.i_seek                                                = i_seek_errio;
 
     struct wal_ostream *wos = walos_open ("foo", &e);
     test_assert (wos == NULL);
@@ -171,13 +166,7 @@ walos_flush_all (struct wal_ostream *w, error *e)
 }
 
 err_t
-walos_write_all (
-    struct wal_ostream *w,
-    u32                *checksum,
-    const void         *data,
-    const u32           len,
-    error              *e
-)
+walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u32 len, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
 

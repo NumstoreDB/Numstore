@@ -12,18 +12,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "error.h"
-#include "node_updates.h"
-#include "numerics.h"
+#include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/ns_stream.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/ns_node_updates.h"
+#include "nscore/ns_page_fixture.h"
+#include "nscore/ns_page_h.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os.h"
-#include "page.h"
-#include "page_fixture.h"
-#include "page_h.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "serial.h"
-#include "testing.h"
 
 /******************************************************************************
  * SECTION: ns_insert
@@ -140,13 +139,7 @@ ns_insert (struct ns_insert_params *params, error *e)
       next_amount = MIN (avail, (p_size)(params->bytes - total_written));
     }
 
-    i32 written = stream_bread (
-        dl_avail_data (page_h_w (&cur)),
-        1,
-        next_amount,
-        params->src,
-        e
-    );
+    i32 written = stream_bread (dl_avail_data (page_h_w (&cur)), 1, next_amount, params->src, e);
     if (written < 0)
     {
       goto failed;
@@ -341,43 +334,38 @@ TEST (ns_insert)
    * SUBSECTION: Testing that sizeof(stream) and provided bytes behaves
    *----------------------------------------------------------------------------*/
 
-#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected) \
-    do                                                            \
-    {                                                             \
-      TEST_CASE (                                                 \
-          "Bytes: %d Stream: %d => %d",                           \
-          byte_size,                                              \
-          stream_size,                                            \
-          expected                                                \
-      )                                                           \
-      {                                                           \
-        u8                     buffer[4096];                      \
-        struct stream          input;                             \
-        struct stream_ibuf_ctx ctx;                               \
-        stream_ibuf_init (&input, &ctx, buffer, stream_size);     \
-                                                                  \
-        struct ns_insert_params params = {                        \
-            .p     = f.p,                                         \
-            .src   = &input,                                      \
-            .tx    = &f.tx,                                       \
-            .root  = PGNO_NULL,                                   \
-            .bofst = 0,                                           \
-            .bytes = byte_size,                                   \
-        };                                                        \
-                                                                  \
-        sb_size nelems = ns_insert (&params, &f.e);               \
-                                                                  \
-        test_assert_int_equal (nelems, expected);                 \
-        if (expected > 0)                                         \
-        {                                                         \
-          test_assert (params.root != PGNO_NULL);                 \
-        }                                                         \
-        else                                                      \
-        {                                                         \
-          test_assert (params.root == PGNO_NULL);                 \
-        }                                                         \
-      }                                                           \
-    }                                                             \
+#  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected)                \
+    do                                                                           \
+    {                                                                            \
+      TEST_CASE ("Bytes: %d Stream: %d => %d", byte_size, stream_size, expected) \
+      {                                                                          \
+        u8                     buffer[4096];                                     \
+        struct stream          input;                                            \
+        struct stream_ibuf_ctx ctx;                                              \
+        stream_ibuf_init (&input, &ctx, buffer, stream_size);                    \
+                                                                                 \
+        struct ns_insert_params params = {                                       \
+            .p     = f.p,                                                        \
+            .src   = &input,                                                     \
+            .tx    = &f.tx,                                                      \
+            .root  = PGNO_NULL,                                                  \
+            .bofst = 0,                                                          \
+            .bytes = byte_size,                                                  \
+        };                                                                       \
+                                                                                 \
+        sb_size nelems = ns_insert (&params, &f.e);                              \
+                                                                                 \
+        test_assert_int_equal (nelems, expected);                                \
+        if (expected > 0)                                                        \
+        {                                                                        \
+          test_assert (params.root != PGNO_NULL);                                \
+        }                                                                        \
+        else                                                                     \
+        {                                                                        \
+          test_assert (params.root == PGNO_NULL);                                \
+        }                                                                        \
+      }                                                                          \
+    }                                                                            \
     while (0)
 
   BYTE_STREAM_SIZE_TEST (0, 2048, 2048);
@@ -437,23 +425,16 @@ TEST (ns_insert)
     }                                                \
     while (0)
 
-#  define TEST_DATA_LIST(pgno, expected_data)         \
-    do                                                \
-    {                                                 \
-      page_h root = page_h_create ();                 \
-      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e); \
-      test_assert_int_equal (                         \
-          dl_used (page_h_ro (&root)),                \
-          sizeof (expected_data)                      \
-      );                                              \
-      int equal = memcmp (                            \
-          dl_get_data (page_h_ro (&root)),            \
-          expected_data,                              \
-          sizeof (expected_data)                      \
-      );                                              \
-      test_assert_int_equal (equal, 0);               \
-      pgr_release (f.p, &root, PG_DATA_LIST, &f.e);   \
-    }                                                 \
+#  define TEST_DATA_LIST(pgno, expected_data)                                                      \
+    do                                                                                             \
+    {                                                                                              \
+      page_h root = page_h_create ();                                                              \
+      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e);                                              \
+      test_assert_int_equal (dl_used (page_h_ro (&root)), sizeof (expected_data));                 \
+      int equal = memcmp (dl_get_data (page_h_ro (&root)), expected_data, sizeof (expected_data)); \
+      test_assert_int_equal (equal, 0);                                                            \
+      pgr_release (f.p, &root, PG_DATA_LIST, &f.e);                                                \
+    }                                                                                              \
     while (0)
 
 TEST (ns_insert_from_empty)

@@ -12,16 +12,16 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "alloc.h"
-#include "error.h"
-#include "nsdb.h"
+#include "core/ns_alloc.h"
+#include "core/ns_error.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
+#include "nscore/algorithms/ns_rope_algorithms.h"
+#include "nscore/algorithms/ns_var_algorithms.h"
+#include "nscore/ns_nsdb.h"
+#include "nscore/ns_variables.h"
+#include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os.h"
-#include "pager.h"
-#include "rope_algorithms.h"
-#include "testing.h"
-#include "var_algorithms.h"
-#include "variables.h"
 
 int
 smfile_perror (smfile_t *ns, const char *prefix)
@@ -61,9 +61,7 @@ TEST (smfile_strerror)
 
   // stride == 0 => ERROR
   test_assert (smfile_read (s, buffer, 10, 0, 0, 10) < 0);
-  test_assert (
-      string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0"))
-  );
+  test_assert (string_contains (strfcstr (smfile_strerror (s)), strfcstr ("stride == 0")));
 
   smfile_close (s);
 }
@@ -443,14 +441,7 @@ TEST (smfile_insert)
 ////// Read
 
 sb_size
-smfile_read (
-    smfile_t *_smf,
-    void     *dest,
-    t_size    size,
-    sb_size   bofst,
-    sb_size   stride,
-    b_size    nelem
-)
+smfile_read (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
 {
   struct nsdb *smf = (struct nsdb *)_smf;
 
@@ -472,19 +463,11 @@ smfile_read (
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Negative strides aren't supported yet"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
   if (stride == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot read with stride == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with stride == 0");
   }
   if (size == 0)
   {
@@ -586,14 +569,7 @@ TEST (smfile_read)
 ////// Remove
 
 sb_size
-smfile_remove (
-    smfile_t *_smf,
-    void     *dest,
-    t_size    size,
-    sb_size   bofst,
-    sb_size   stride,
-    b_size    nelem
-)
+smfile_remove (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
 {
   struct nsdb *smf = (struct nsdb *)_smf;
 
@@ -616,27 +592,15 @@ smfile_remove (
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Negative strides aren't supported yet"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
   if (stride == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot remove with stride == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
   }
   if (size == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot remove with size == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0");
   }
   if (nelem == 0)
   {
@@ -770,42 +734,30 @@ smfile_write (
 
   ALLOC_INIT (temp);
 
-  sb_size                ret;          // Return value
-  sb_size                inserted;     // Number of bytes inserted
-  b_size                 ofst;         // Resolved offset
-  b_size                 write_nelem;  // Elements that fit in existing variable
-  b_size                 insert_nelem; // Remainder to insert past the end
-  struct stream          _input;       // Input stream
-  struct stream_ibuf_ctx ctx;          // Context for input stream
-  struct ns_var_get_params    gparams; // Get or create operation
-  struct ns_write_params      wparams; // Write operation
-  struct ns_insert_params     iparams; // Insert operation
-  struct ns_var_update_params uparams; // Update operation
+  sb_size                     ret;          // Return value
+  sb_size                     inserted;     // Number of bytes inserted
+  b_size                      ofst;         // Resolved offset
+  b_size                      write_nelem;  // Elements that fit in existing variable
+  b_size                      insert_nelem; // Remainder to insert past the end
+  struct stream               _input;       // Input stream
+  struct stream_ibuf_ctx      ctx;          // Context for input stream
+  struct ns_var_get_params    gparams;      // Get or create operation
+  struct ns_write_params      wparams;      // Write operation
+  struct ns_insert_params     iparams;      // Insert operation
+  struct ns_var_update_params uparams;      // Update operation
 
   // Parameter validation
   if (stride < 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Negative strides aren't supported yet"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
   if (stride == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot write with stride == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
   }
   if (size == 0)
   {
-    return error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "Cannot write with size == 0"
-    );
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0");
   }
   if (nelem == 0)
   {
@@ -833,11 +785,7 @@ smfile_write (
     insert_nelem = nelem - write_nelem;
     if (insert_nelem > 0 && stride != 1)
     {
-      error_causef (
-          e,
-          ERR_INVALID_ARGUMENT,
-          "Cannot write past end with stride != 1"
-      );
+      error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
       goto failed_rollback;
     }
   }
@@ -866,12 +814,7 @@ smfile_write (
   {
     // INSERT
     {
-      stream_ibuf_init (
-          &_input,
-          &ctx,
-          (u8 *)src + write_nelem * size,
-          insert_nelem * size
-      );
+      stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
 
       iparams = (struct ns_insert_params){
           .p     = smf->root->p,
@@ -929,7 +872,7 @@ TEST (smfile_pwrite)
 
   // Overwrite the first 4 bytes in place.
   u8      overwrite[4] = {9, 9, 9, 9};
-  sb_size n = smfile_write (s, overwrite, 1, 0, 1, sizeof (overwrite));
+  sb_size n            = smfile_write (s, overwrite, 1, 0, 1, sizeof (overwrite));
 
   test_assert_equal (n, sizeof (overwrite));
   test_assert_equal (smfile_size (s), sizeof (buffer));
@@ -942,7 +885,7 @@ TEST (smfile_pwrite)
 
   // Writing past the end should append (insert the remainder).
   u8 append[4] = {11, 12, 13, 14};
-  n = smfile_write (s, append, 1, sizeof (buffer), 1, sizeof (append));
+  n            = smfile_write (s, append, 1, sizeof (buffer), 1, sizeof (append));
 
   test_assert_equal (n, sizeof (append));
   test_assert_equal (smfile_size (s), sizeof (buffer) + sizeof (append));

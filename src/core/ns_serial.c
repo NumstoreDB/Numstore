@@ -12,11 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "collections.h"
-#include "csx_assert.h"
-#include "error.h"
-#include "serial.h"
-#include "testing.h"
+#include "core/ns_serial.h"
+
+#include "core/ns_csx_assert.h"
 
 DEFINE_DBG_ASSERT (struct serializer, serializer, s, {
   ASSERT (s);

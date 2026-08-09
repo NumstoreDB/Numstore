@@ -12,14 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_linked_list.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-#include "alloc.h"
-#include "collections.h"
-#include "csx_assert.h"
-#include "numerics.h"
-#include "testing.h"
+#include "core/testing/ns_testing.h"
 
 struct int_node
 {

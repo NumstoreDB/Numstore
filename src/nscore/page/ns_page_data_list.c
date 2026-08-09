@@ -1,3 +1,7 @@
+#include "nscore/page/ns_page_data_list.h"
+
+#include "core/testing/ns_testing.h"
+
 /******************************************************************************
  * SECTION: Data List
  ******************************************************************************/
@@ -341,10 +345,7 @@ TEST (dl_read_out_from)
 
   TEST_CASE ("Read some from middle")
   {
-    _Static_assert (
-        DL_DATA_SIZE / 2 > 1,
-        "DL_DATA_SIZE is too small. Increase page size"
-    );
+    _Static_assert (DL_DATA_SIZE / 2 > 1, "DL_DATA_SIZE is too small. Increase page size");
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, 1);
@@ -364,10 +365,7 @@ TEST (dl_read_out_from)
 
   TEST_CASE ("Read some later in the middle")
   {
-    _Static_assert (
-        DL_DATA_SIZE / 2 > 10,
-        "DL_DATA_SIZE is too small. Increase page size"
-    );
+    _Static_assert (DL_DATA_SIZE / 2 > 10, "DL_DATA_SIZE is too small. Increase page size");
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, 10);
@@ -387,10 +385,7 @@ TEST (dl_read_out_from)
 
   TEST_CASE ("Read some from the end")
   {
-    _Static_assert (
-        DL_DATA_SIZE / 2 > 10,
-        "DL_DATA_SIZE is too small. Increase page size"
-    );
+    _Static_assert (DL_DATA_SIZE / 2 > 10, "DL_DATA_SIZE is too small. Increase page size");
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, DL_DATA_SIZE / 2);
@@ -406,10 +401,7 @@ TEST (dl_read_out_from)
 
   TEST_CASE ("Read full middle")
   {
-    _Static_assert (
-        DL_DATA_SIZE > 1,
-        "DL_DATA_SIZE is too small. Increase page size"
-    );
+    _Static_assert (DL_DATA_SIZE > 1, "DL_DATA_SIZE is too small. Increase page size");
 
     dl_append (&dl, alldata, DL_DATA_SIZE);
     p_size ret = dl_read_out_from (&dl, dest, 1);
@@ -429,10 +421,7 @@ TEST (dl_read_out_from)
 
   TEST_CASE ("Read full later middle")
   {
-    _Static_assert (
-        DL_DATA_SIZE > 10,
-        "DL_DATA_SIZE is too small. Increase page size"
-    );
+    _Static_assert (DL_DATA_SIZE > 10, "DL_DATA_SIZE is too small. Increase page size");
 
     dl_append (&dl, alldata, DL_DATA_SIZE);
     p_size ret = dl_read_out_from (&dl, dest, 10);
@@ -557,12 +546,7 @@ TEST (dl_append)
 #endif
 
 p_size
-dl_write (
-    const page  *d,
-    const u8    *src,
-    const p_size offset,
-    const p_size nbytes
-)
+dl_write (const page *d, const u8 *src, const p_size offset, const p_size nbytes)
 {
   DBG_ASSERT (data_list, d);
   ASSERT (nbytes > 0);
@@ -629,11 +613,7 @@ TEST (dl_write)
     const p_size off = 32;
     const p_size got = dl_write (&p, newdata, off, sizeof newdata);
     test_assert_int_equal (got, sizeof newdata);
-    test_assert_memequal (
-        (u8 *)dl_get_data (&p) + off,
-        newdata,
-        sizeof newdata
-    );
+    test_assert_memequal ((u8 *)dl_get_data (&p) + off, newdata, sizeof newdata);
   }
 
   TEST_CASE ("overwrite near end, clipped")
@@ -947,11 +927,7 @@ TEST (dl_move_right)
     test_assert_int_equal (dl_used (&dest), dest_before + 16);
 
     // the 16 bytes moved should equal the last 16 of srcbuf
-    test_assert_memequal (
-        dl_get_data (&dest),
-        srcbuf + (sizeof srcbuf - 16),
-        16
-    );
+    test_assert_memequal (dl_get_data (&dest), srcbuf + (sizeof srcbuf - 16), 16);
   }
 
   TEST_CASE ("request more than src has → only available moves")
