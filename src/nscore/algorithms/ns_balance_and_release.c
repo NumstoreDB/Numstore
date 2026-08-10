@@ -19,7 +19,7 @@
 #include "nscore/ns_page_fixture.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: ns_balance_and_release

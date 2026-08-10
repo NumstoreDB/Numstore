@@ -18,7 +18,7 @@
 #include "nscore/ns_txn_table.h"
 #include "nscore/page/ns_page_fsm.h"
 #include "nscore/page/ns_page_h.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: WAL Records

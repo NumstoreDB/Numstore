@@ -18,7 +18,7 @@
 #include "core/ns_numerics.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: WAL OStream

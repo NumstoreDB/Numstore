@@ -16,7 +16,7 @@
 #define NS_WAL_ISTREAM_H
 
 #include "core/ns_error.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: Wal Input Stream

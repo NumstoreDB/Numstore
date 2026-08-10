@@ -16,8 +16,8 @@
 #define SMFILE_TEST_FIXTURE_H
 
 #include "core/ns_data_writer.h"
-#include "numstore.h" // t_size ...etc
-#include "numstore.h" // smfile
+#include "core/ns_stdtypes.h" // smfile
+#include "core/ns_stdtypes.h"
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);

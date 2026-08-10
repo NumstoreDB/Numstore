@@ -17,8 +17,8 @@
 
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
+#include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Query

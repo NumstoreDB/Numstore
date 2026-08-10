@@ -20,7 +20,7 @@
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h" // pgno ...etc
+ // pgno ...etc
 
 err_t struct_t_create (
     struct struct_t  *dest,

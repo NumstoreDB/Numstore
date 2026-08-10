@@ -20,7 +20,7 @@
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_var_hash_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 /*
  * Delete a variable and reclaim all its storage.

@@ -17,7 +17,7 @@
 #include "core/ns_error.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/page/ns_page.h"
-#include "numstore.h"
+
 
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)

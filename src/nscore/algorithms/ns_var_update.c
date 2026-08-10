@@ -17,7 +17,7 @@
 #include "nscore/ns_page_h.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 /*
  * Update rpt_root and nbytes on a variable page addressed by page number.

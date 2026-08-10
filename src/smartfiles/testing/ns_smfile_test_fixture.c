@@ -18,7 +18,7 @@
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+#include "smartfiles/smartfiles.h"
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)

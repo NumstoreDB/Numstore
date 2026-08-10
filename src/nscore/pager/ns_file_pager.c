@@ -19,7 +19,7 @@
 #include "core/ns_error.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
-#include "numstore.h" // pgno ...etc
+ // pgno ...etc
 
 enum file_pager_flags
 {

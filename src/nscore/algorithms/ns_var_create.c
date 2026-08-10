@@ -18,7 +18,7 @@
 #include "nscore/ns_variables.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 /*
  * Create a new variable record in the variable hash table.

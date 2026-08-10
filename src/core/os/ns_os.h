@@ -15,6 +15,7 @@
 #ifndef OS_H
 #define OS_H
 
+#include "core/ns_bytes.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 

@@ -25,7 +25,7 @@
 
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32
-#include "numstore.h"         // pgno ...etc
+         // pgno ...etc
 
 /******************************************************************************
  * SECTION: File Pager

@@ -1,5 +1,5 @@
 CC      := gcc
-CFLAGS  := -Wall -Wextra -std=c11 -Iinclude -Isrc -DTESTING -Wno-unused-parameter
+CFLAGS  := -Wall -Wextra -std=c11 -Isrc -DTESTING -Wno-unused-parameter
 LDFLAGS :=
 
 # Recursively find all .c files under src/

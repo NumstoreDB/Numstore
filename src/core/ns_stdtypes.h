@@ -15,7 +15,7 @@
 #ifndef STDTYPES_H
 #define STDTYPES_H
 
-#include "core/ns_platform.h" // stdint.h
+#include <stdint.h>
 
 /******************************************************************************
  * SECTION: Shorthands for c standard types
@@ -71,6 +71,56 @@ typedef u32 cu64[2];
 typedef u64 cu128[2];
 
 /******************************************************************************
+ * SECTION: Numstore type aliases
+ ******************************************************************************/
+
+#ifndef NS_TYPE_ALIASES
+
+#  define NS_PAGE_SIZE    4096
+#  define MEMORY_PAGE_LEN 4096
+#  define WAL_BUFFER_CAP  1048576
+#  define MAX_OPEN_FILES  20
+
+#  define NS_END  INT64_MAX
+#  define SMF_END INT64_MAX
+
+typedef uint32_t t_size;  // Represents the size of a single type in bytes
+typedef int32_t  st_size; // Signed t_size
+typedef uint32_t p_size;  // To index inside a page
+typedef int32_t  sp_size; // Signed p_size
+typedef uint64_t b_size;  // Bytes size to index into a contiguous rope bytes
+typedef int64_t  sb_size; // Signed b_size
+typedef uint64_t pgno;    // Page number
+typedef int64_t  spgno;   // Signed page number
+typedef uint64_t txid;    // Transaction id
+typedef int64_t  stxid;   // Signed transaction id
+typedef int64_t  slsn;    // Wall index (often called LSN)
+typedef uint64_t lsn;     // Wall index (often called LSN)
+typedef uint8_t  pgh;     // Page header
+typedef uint8_t  wlh;     // WAL header
+
+#  define PGNO_NULL U64_MAX
+#  define LSN_NULL  U64_MAX
+#  define WLH_NULL  U8_MAX
+
+#  define PRt_size  PRIu32
+#  define PRst_size PRId32
+#  define PRp_size  PRIu32
+#  define PRsp_size PRId32
+#  define PRb_size  PRIu64
+#  define PRsb_size PRId64
+#  define PRpgno    PRIu64
+#  define PRspgno   PRId64
+#  define PRtxid    PRIu64
+#  define PRstxid   PRId64
+#  define PRlsn     PRIu64
+#  define PRslsn    PRId64
+#  define PRpgh     PRIu8
+#  define PRwlh     PRIu8
+
+#endif
+
+/******************************************************************************
  * SECTION: Limits
  ******************************************************************************/
 
@@ -109,47 +159,5 @@ typedef u64 cu128[2];
 #define F64_MIN  (-1.7976931348623157e+308)
 #define F128_MIN FLT128_MIN
 #define F256_MIN (-1.6113e+78913L)
-
-/******************************************************************************
- * SECTION: Bytes
- * ----------------------------------------------------------------------------
- * @brief A sized byte array
- *
- * Used all throughout the code - a collection of bytes that has a size
- ******************************************************************************/
-
-struct bytes
-{
-  u8 *head;
-  u32 len;
-};
-
-struct cbytes
-{
-  const u8 *head;
-  u32       len;
-};
-
-#define bytes_from(buffer)                 \
-  (struct bytes)                           \
-  {                                        \
-    .head = buffer, .len = sizeof (buffer) \
-  }
-
-#define bytes_null() (struct bytes){.head = NULL, .len = 0}
-
-/******************************************************************************
- * SECTION: String
- * ----------------------------------------------------------------------------
- * @brief A sized constant string
- *
- * Avoids the heavy usage of c - strings
- ******************************************************************************/
-
-struct string
-{
-  u32         len;
-  const char *data;
-};
 
 #endif // STDTYPES_H

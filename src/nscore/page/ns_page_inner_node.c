@@ -19,7 +19,7 @@
 #include "core/ns_stdtypes.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/page/ns_page.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: Inner Node

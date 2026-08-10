@@ -21,7 +21,7 @@
 #include "nscore/page/ns_page.h"   // dl_data
 #include "nscore/pager/ns_pager.h" // page_h
 #include "nscore/pager/ns_pager.h" // pager
-#include "numstore.h"              // pgno ...etc
+              // pgno ...etc
 
 /******************************************************************************
  * SECTION: Page Fixture

@@ -23,7 +23,7 @@
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_var_hash_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: ns_find_var_page

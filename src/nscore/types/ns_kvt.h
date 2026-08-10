@@ -19,6 +19,7 @@
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_stdtypes.h"
+#include "core/ns_string.h"
 
 /******************************************************************************
  * SECTION: Key Value Type List
