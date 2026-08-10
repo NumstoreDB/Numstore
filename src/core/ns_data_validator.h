@@ -17,6 +17,7 @@
 
 #include "core/ns_data_writer.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 
 /******************************************************************************
  * SECTION: Data Validator

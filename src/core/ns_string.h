@@ -20,6 +20,8 @@
 #ifndef STRING_H
 #define STRING_H
 
+#include <stdbool.h>
+
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 

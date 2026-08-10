@@ -26,7 +26,8 @@
 #define LALLOC_H
 
 #include "core/ns_concurrency.h" // latch
-#include "core/ns_stdtypes.h"    // u32
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h" // u32
 
 /******************************************************************************
  * SECTION: Slab Allocator

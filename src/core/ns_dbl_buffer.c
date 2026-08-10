@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
 

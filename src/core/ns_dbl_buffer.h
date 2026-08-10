@@ -20,6 +20,8 @@
 #include "core/ns_error.h"       // err_t
 #include "core/ns_stdtypes.h"    // u32 ...etc
 
+struct allocator;
+
 struct dbl_buffer
 {
   latch             latch;

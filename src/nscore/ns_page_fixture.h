@@ -15,13 +15,21 @@
 #ifndef NS_PAGE_FIXTURE_H
 #define NS_PAGE_FIXTURE_H
 
-#include "core/ns_alloc.h"         // allocator
-#include "core/ns_error.h"         // error
-#include "core/ns_stdtypes.h"      // u32 ...etc
-#include "nscore/page/ns_page.h"   // dl_data
+#include <stddef.h>
+
+#include "core/ns_alloc.h"    // allocator
+#include "core/ns_error.h"    // error
+#include "core/ns_stdtypes.h" // u32 ...etc
+#include "nscore/ns_txn_table.h"
+#include "nscore/page/ns_page.h" // dl_data
+#include "nscore/page/ns_page_data_list.h"
+#include "nscore/page/ns_page_h.h"
+#include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h" // page_h
 #include "nscore/pager/ns_pager.h" // pager
-              // pgno ...etc
+
+struct pager;
+// pgno ...etc
 
 /******************************************************************************
  * SECTION: Page Fixture

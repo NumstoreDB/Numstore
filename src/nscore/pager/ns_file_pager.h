@@ -23,9 +23,11 @@
 #ifndef FILE_PAGER_H
 #define FILE_PAGER_H
 
+#include <stdbool.h>
+
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32
-         // pgno ...etc
+                              // pgno ...etc
 
 /******************************************************************************
  * SECTION: File Pager

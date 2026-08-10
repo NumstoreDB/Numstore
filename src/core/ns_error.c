@@ -14,11 +14,13 @@
 
 #include "core/ns_error.h"
 
-#include "core/ns_csx_assert.h"
-#include "core/testing/ns_testing.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
-#ifdef ERR_T_FAIL_FAST
-#endif
+#include "core/ns_csx_assert.h"
+#include "core/ns_logging.h"
+#include "core/testing/ns_testing.h"
 
 DEFINE_DBG_ASSERT (error, error, e, {
   ASSERT (e);

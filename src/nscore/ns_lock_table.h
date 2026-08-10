@@ -24,6 +24,8 @@
 #ifndef LOCK_TABLE_H
 #define LOCK_TABLE_H
 
+#include <stdbool.h>
+
 #include "core/ns_concurrency.h"
 #include "core/ns_error.h"
 #include "core/ns_htable.h"

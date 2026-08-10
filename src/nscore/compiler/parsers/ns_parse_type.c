@@ -12,16 +12,22 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <string.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/compiler/ns_lexer.h"
+#include "nscore/compiler/ns_tokens.h"
 #include "nscore/compiler/parsers/ns_parser.h"
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_sarray_t.h"
 #include "nscore/types/ns_struct_t.h"
+#include "nscore/types/ns_types.h"
 #include "nscore/types/ns_union_t.h"
 
 /******************************************************************************

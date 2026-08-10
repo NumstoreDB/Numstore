@@ -15,8 +15,16 @@
 #ifndef VARIABLES_H
 #define VARIABLES_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "core/ns_error.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
+
+struct allocator;
 
 /******************************************************************************
  * SECTION: Variables

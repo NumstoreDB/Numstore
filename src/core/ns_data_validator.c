@@ -1,6 +1,12 @@
 #include "core/ns_data_validator.h"
 
+#include <inttypes.h>
+#include <string.h>
+
 #include "core/ns_numerics.h"
+#include "core/ns_stride.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 
 /******************************************************************************
  * SECTION: Data Validator

@@ -14,12 +14,15 @@
 
 #include "nscore/page/ns_page_inner_node.h"
 
+#include <stdio.h>
+
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_htable.h"
+#include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/page/ns_page.h"
-
 
 /******************************************************************************
  * SECTION: Inner Node
@@ -96,6 +99,7 @@ test_assert_inner_node_equal (
 #define KTYPE  pgno
 #define SUFFIX pgno
 #include "core/ns_robin_hood_ht.h"
+
 #undef VTYPE
 #undef KTYPE
 #undef SUFFIX

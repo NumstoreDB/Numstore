@@ -12,12 +12,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stdbool.h>
+
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_utils.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/ns_page_h.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_data_list.h"
+#include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
-
 
 /******************************************************************************
  * SECTION: ns_seek

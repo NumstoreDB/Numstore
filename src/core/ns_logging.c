@@ -14,6 +14,8 @@
 
 #include "core/ns_logging.h"
 
+#include <stdarg.h>
+
 #include "core/testing/ns_testing.h"
 
 ////////////////////////////////////////////////////////////

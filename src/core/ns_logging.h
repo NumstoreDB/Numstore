@@ -23,6 +23,8 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+#include <stdio.h>
+
 #include "core/ns_platform.h" // PRINTF_ATTR
 
 /******************************************************************************

@@ -20,11 +20,26 @@
 #ifndef NSHANDLE_H
 #define NSHANDLE_H
 
+#include "core/ns_alloc.h"
+#include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_string.h"
 #include "nscore/ns_txn_table.h"
 #include "nscore/ns_variables.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
+
+struct delete_query;
+struct get_query;
+struct insert_query;
+struct query;
+struct read_query;
+struct remove_query;
+struct stream;
+struct type;
+struct variable;
+struct write_query;
 
 /******************************************************************************
  * SECTION: nsdb

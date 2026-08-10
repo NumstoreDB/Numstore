@@ -14,9 +14,14 @@
 
 #include "nscore/ns_dirty_page_table.h"
 
-#include "core/ns_csx_assert.h"
-#include "core/testing/ns_testing.h"
+#include <stddef.h>
 
+#include "core/ns_concurrency.h"
+#include "core/ns_csx_assert.h"
+#include "core/ns_htable.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
+#include "core/testing/ns_testing.h"
 
 /*
  * Dirty page table entry.

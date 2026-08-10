@@ -15,11 +15,20 @@
 #ifndef NS_SARRAY_T_H
 #define NS_SARRAY_T_H
 
+#include <stdbool.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/types/ns_types.h"
+
+struct allocator;
+struct builder;
+struct deserializer;
+struct sarray_t;
+struct serializer;
+struct type;
 
 /******************************************************************************
  * SECTION: SArray Builder

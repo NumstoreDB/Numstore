@@ -15,6 +15,8 @@
 #ifndef PAGE_H
 #define PAGE_H
 
+#include <string.h>
+
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"

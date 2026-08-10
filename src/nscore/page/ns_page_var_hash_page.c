@@ -14,6 +14,8 @@
 
 #include "nscore/page/ns_page_var_hash_page.h"
 
+#include <stdbool.h>
+
 #include "core/testing/ns_testing.h"
 
 /******************************************************************************

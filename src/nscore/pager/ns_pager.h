@@ -15,16 +15,23 @@
 #ifndef PAGER_H
 #define PAGER_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "core/ns_alloc.h"
 #include "core/ns_concurrency.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
+#include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/ns_dirty_page_table.h"
 #include "nscore/ns_txn_table.h"
+#include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_file_pager.h"
 #include "nscore/wal/ns_wal.h"
-
 
 /******************************************************************************
  * SECTION: Database structure
@@ -161,6 +168,10 @@ struct pager_header
 #define VTYPE  u32
 #define SUFFIX idx
 #include "core/ns_robin_hood_ht.h"
+
+struct txn;
+struct wal_update_write;
+
 #undef KTYPE
 #undef VTYPE
 #undef SUFFIX

@@ -15,8 +15,14 @@
 #ifndef WAL_H
 #define WAL_H
 
-#include "nscore/wal/ns_wal_record.h"
+#include <stdbool.h>
 
+#include "core/ns_concurrency.h"
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_string.h"
+#include "nscore/wal/ns_wal_record.h"
 
 /******************************************************************************
  * SECTION: WAL

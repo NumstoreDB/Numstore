@@ -26,6 +26,7 @@
 #define NS_CHUNK_ALLOC_H
 
 #include "core/ns_concurrency.h"
+#include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 
 struct chunk_alloc_settings

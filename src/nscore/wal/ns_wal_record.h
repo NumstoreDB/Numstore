@@ -15,10 +15,14 @@
 #ifndef NS_WAL_RECORD_H
 #define NS_WAL_RECORD_H
 
+#include <stdbool.h>
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
 #include "nscore/ns_txn_table.h"
 #include "nscore/page/ns_page_fsm.h"
 #include "nscore/page/ns_page_h.h"
-
 
 /******************************************************************************
  * SECTION: WAL Records

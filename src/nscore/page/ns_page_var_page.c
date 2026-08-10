@@ -1,7 +1,10 @@
 #include "nscore/page/ns_page_var_page.h"
 
-#include "core/ns_cbuffer.h"
+#include "core/ns_csx_assert.h"
+#include "core/ns_numerics.h"
 #include "core/testing/ns_testing.h"
+
+struct cbuffer;
 
 /******************************************************************************
  * SECTION: Var Page

@@ -15,6 +15,9 @@
 #ifndef NS_LINKED_LIST_H
 #define NS_LINKED_LIST_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 

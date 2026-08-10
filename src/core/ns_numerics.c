@@ -14,6 +14,8 @@
 
 #include "core/ns_numerics.h"
 
+#include <inttypes.h>
+#include <math.h>
 #include <string.h>
 
 #include "core/ns_bounds.h"

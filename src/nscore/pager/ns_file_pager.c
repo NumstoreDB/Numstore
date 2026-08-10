@@ -14,12 +14,15 @@
 
 #include "nscore/pager/ns_file_pager.h"
 
+#include <stdatomic.h>
+#include <string.h>
+
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
- // pgno ...etc
+// pgno ...etc
 
 enum file_pager_flags
 {

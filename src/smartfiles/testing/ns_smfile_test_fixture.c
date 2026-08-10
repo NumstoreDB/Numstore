@@ -14,7 +14,16 @@
 
 #include "smartfiles/testing/ns_smfile_test_fixture.h"
 
+#include <stddef.h>
+
 #include "core/ns_data_validator.h"
+#include "core/ns_data_writer.h"
+#include "core/ns_error.h"
+#include "core/ns_ext_array.h"
+#include "core/ns_logging.h"
+#include "core/ns_stride.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"

@@ -25,7 +25,6 @@
 #include "nscore/ns_node_updates.h"
 #include "nscore/pager/ns_pager.h"
 
-
 enum stride_phase
 {
   ACTIVE,

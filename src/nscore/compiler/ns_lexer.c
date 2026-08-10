@@ -14,12 +14,17 @@
 
 #include "nscore/compiler/ns_lexer.h"
 
+#include <stdbool.h>
+#include <string.h>
+
 #include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"    // error
 #include "core/ns_numerics.h" // parse_i32_expect
 #include "core/ns_utils.h"    // case_ENUM_RETURN_STRING
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_tokens.h"
+#include "nscore/types/ns_types.h"
 
 static bool
 is_at_end (struct lexer *lex)

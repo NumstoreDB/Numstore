@@ -14,11 +14,14 @@
 
 #include "nscore/wal/ns_wal_ostream.h"
 
+#include <stddef.h>
+
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
+#include "core/ns_utils.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
-
 
 /******************************************************************************
  * SECTION: WAL OStream

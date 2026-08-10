@@ -13,6 +13,9 @@
 /// limitations under the License.
 
 #include <errno.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "core/ns_bounds.h"
 #include "core/ns_csx_assert.h"

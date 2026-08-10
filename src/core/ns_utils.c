@@ -14,6 +14,8 @@
 
 #include "core/ns_utils.h"
 
+#include <string.h>
+
 #include "core/testing/ns_testing.h"
 
 const char *

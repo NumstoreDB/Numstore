@@ -24,6 +24,8 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+#include <stdbool.h>
+
 #include "core/ns_platform.h" // PRINTF_ATTR / unlikely
 #include "core/ns_stdtypes.h" // u32
 #include "core/ns_utils.h"    // FPREFIX_STR

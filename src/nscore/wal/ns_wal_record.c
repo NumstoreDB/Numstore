@@ -14,9 +14,12 @@
 
 #include "nscore/wal/ns_wal_record.h"
 
+#include <stdio.h>
+#include <string.h>
+
+#include "core/ns_numerics.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_txn_table.h"
-
 
 /******************************************************************************
  * SECTION: WAL Decoding

@@ -20,6 +20,9 @@
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
 
+struct data_writer;
+struct stride;
+
 /******************************************************************************
  * SECTION: Extending array
  * ----------------------------------------------------------------------------

@@ -14,9 +14,13 @@
 
 #include "core/ns_htable.h"
 
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
 #include "core/ns_numerics.h" // randu32
-#include "core/os/ns_os.h"    // i_malloc
+#include "core/ns_string.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h" // i_malloc
 #include "core/testing/ns_testing.h"
 
 DEFINE_DBG_ASSERT (struct htable, htable, t, {

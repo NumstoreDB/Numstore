@@ -12,10 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <limits.h>
-#include <stdatomic.h>
-#include <stdlib.h>
-
 #include "core/ns_error.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"

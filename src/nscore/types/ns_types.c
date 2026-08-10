@@ -14,15 +14,24 @@
 
 #include "nscore/types/ns_types.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_linked_list.h"
 #include "core/ns_numerics.h"
 #include "core/ns_serial.h"
+#include "core/ns_stream.h"
 #include "core/ns_string.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/compiler/ns_compiler.h"
+#include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_sarray_t.h"
 #include "nscore/types/ns_struct_t.h"
+#include "nscore/types/ns_type_ref.h"
 #include "nscore/types/ns_union_t.h"
 
 /******************************************************************************

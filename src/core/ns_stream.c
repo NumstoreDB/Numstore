@@ -14,9 +14,11 @@
 
 #include "core/ns_stream.h"
 
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_serial.h"
+#include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
 
 /////////////////////////////////////////////////////////////////////

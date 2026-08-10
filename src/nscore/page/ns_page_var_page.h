@@ -15,10 +15,12 @@
 #ifndef NS_PAGE_VAR_PAGE_H
 #define NS_PAGE_VAR_PAGE_H
 
+#include <stdbool.h>
+
+#include "core/ns_bytes.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
-
 
 /******************************************************************************
  *

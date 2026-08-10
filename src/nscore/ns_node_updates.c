@@ -14,10 +14,14 @@
 
 #include "nscore/ns_node_updates.h"
 
+#include <string.h>
+
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/page/ns_page.h"
-
 
 #define MAX_INNER_NODES_PER_NUPD 6
 #define NUPD_LENGTH              (MAX_INNER_NODES_PER_NUPD * IN_MAX_KEYS)
