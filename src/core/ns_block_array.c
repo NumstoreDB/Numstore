@@ -1,9 +1,18 @@
 #include "core/ns_block_array.h"
 
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
 #include "core/ns_data_validator.h"
+#include "core/ns_data_writer.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
+#include "core/ns_logging.h"
+#include "core/ns_stride.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 
 struct block_array *

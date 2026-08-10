@@ -14,7 +14,8 @@
 
 #include "core/ns_slab_alloc.h"
 
-#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "core/ns_concurrency.h"

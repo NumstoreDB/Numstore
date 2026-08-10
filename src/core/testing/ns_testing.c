@@ -14,6 +14,8 @@
 
 #include "core/testing/ns_testing.h"
 
+#include <string.h>
+
 #ifdef TESTING
 
 int  test_ret = 0;

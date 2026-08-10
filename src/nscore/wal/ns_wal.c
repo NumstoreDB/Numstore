@@ -14,13 +14,18 @@
 
 #include "nscore/wal/ns_wal.h"
 
+#include <stdatomic.h>
+#include <string.h>
+
 #include "core/ns_error.h"
+#include "core/ns_logging.h"
+#include "core/ns_numerics.h"
 #include "core/ns_string.h"
+#include "core/ns_utils.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/wal/ns_wal_istream.h"
 #include "nscore/wal/ns_wal_ostream.h"
-
 
 /******************************************************************************
  * SECTION: WAL

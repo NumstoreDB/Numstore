@@ -12,13 +12,22 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stdarg.h>
+#include <stdio.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_string.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_nsdb.h"
+#include "nscore/ns_variables.h"
 #include "nscore/types/ns_query.h"
+#include "nscore/types/ns_types.h"
 #include "numstore/numstore.h"
 
 /******************************************************************************

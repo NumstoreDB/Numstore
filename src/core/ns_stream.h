@@ -20,6 +20,9 @@
 #ifndef NS_STREAM_H
 #define NS_STREAM_H
 
+#include <stdatomic.h>
+#include <stdbool.h>
+
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
 #include "core/ns_stdtypes.h"

@@ -14,8 +14,12 @@
 
 #include "core/ns_concurrency.h"
 
+#include <stdint.h>
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_logging.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 

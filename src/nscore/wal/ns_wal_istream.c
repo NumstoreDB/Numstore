@@ -12,11 +12,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stdbool.h>
+#include <stddef.h>
+
+#include "core/ns_concurrency.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_numerics.h"
+#include "core/ns_stdtypes.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/wal/ns_wal.h"
 
+struct wal_istream;
 
 /******************************************************************************
  * SECTION: WAL Input Stream

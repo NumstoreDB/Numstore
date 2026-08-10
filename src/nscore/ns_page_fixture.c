@@ -14,12 +14,18 @@
 
 #include "nscore/ns_page_fixture.h"
 
+#include <string.h>
+
+#include "core/ns_csx_assert.h"
+#include "core/ns_numerics.h"
+#include "core/ns_platform.h"
+#include "nscore/page/ns_page_delegate.h"
+
 #ifdef TESTING
 #  include "core/ns_alloc.h"
 #  include "core/ns_error.h"
 #  include "core/testing/ns_testing.h"
 #  include "nscore/algorithms/ns_var_algorithms.h"
-#  include "nscore/ns_page_h.h"
 #  include "nscore/page/ns_page.h"
 #  include "nscore/pager/ns_pager.h"
 

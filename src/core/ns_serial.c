@@ -14,6 +14,8 @@
 
 #include "core/ns_serial.h"
 
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
 
 DEFINE_DBG_ASSERT (struct serializer, serializer, s, {

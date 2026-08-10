@@ -14,13 +14,28 @@
 
 #include "nscore/ns_nsdb.h"
 
+#include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_stdtypes.h"
+#include "core/ns_ext_array.h"
+#include "core/ns_logging.h"
+#include "core/ns_platform.h"
+#include "core/ns_stream.h"
+#include "core/ns_stride.h"
+#include "core/os/ns_os.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
+#include "nscore/ns_variables.h"
+#include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_query.h"
+#include "nscore/types/ns_types.h"
 #include "numstore/numstore.h"
 
 int

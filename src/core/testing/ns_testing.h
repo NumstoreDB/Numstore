@@ -15,6 +15,8 @@
 #ifndef TESTING_H
 #define TESTING_H
 
+#include <inttypes.h>
+#include <stdbool.h>
 #ifdef TESTING
 #  include "core/ns_csx_assert.h" // ASSERT
 #  include "core/ns_logging.h"    // i_log_info

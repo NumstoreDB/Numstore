@@ -14,11 +14,19 @@
 
 #include "nscore/ns_mem_vhmap.h"
 
+#include <stdbool.h>
+#include <stdio.h>
+
 #include "core/ns_alloc.h"
-#include "core/ns_numerics.h"        // randu32
+#include "core/ns_csx_assert.h"
+#include "core/ns_htable.h"
+#include "core/ns_numerics.h" // randu32
+#include "core/ns_string.h"
+#include "core/ns_utils.h"
 #include "core/os/ns_os.h"           // i_malloc
 #include "core/testing/ns_testing.h" // TEST
 #include "nscore/ns_variables.h"     // variable
+#include "nscore/types/ns_types.h"
 
 struct var_frame
 {

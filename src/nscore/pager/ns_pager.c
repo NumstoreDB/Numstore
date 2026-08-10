@@ -16,21 +16,27 @@
 
 #include <limits.h>
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
-#include "core/ns_logging.h"
+#include "core/ns_htable.h"
+#include "core/ns_numerics.h"
+#include "core/ns_utils.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_dirty_page_table.h"
 #include "nscore/ns_lock_table.h"
 #include "nscore/ns_page_fixture.h"
-#include "nscore/ns_page_h.h"
 #include "nscore/ns_txn_table.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_data_list.h"
+#include "nscore/page/ns_page_fsm.h"
 #include "nscore/pager/ns_file_pager.h"
 #include "nscore/wal/ns_wal.h"
+#include "nscore/wal/ns_wal_record.h"
 
 /******************************************************************************
  * SECTION: Pager Simple Functions
@@ -2234,192 +2240,6 @@ pgr_get_writable (
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
-
-#ifdef TESTING
-
-/**
-struct thread_ctx
-{
-  struct wal   *w;
-  struct pager *p;
-  i_semaphore  *begin;
-  pgno          a;
-  pgno          b;
-  pgno          c;
-  pgno          d;
-  bool          success;
-  err_t         ret;
-};
-
-static void *
-simple_pager_ops (void *_ctx)
-{
-  struct thread_ctx *ctx = _ctx;
-  struct pager      *p   = ctx->p;
-  struct txn         tx;
-  error              e = error_create ();
-
-  page_h a = page_h_create ();
-  page_h b = page_h_create ();
-  page_h c = page_h_create ();
-  page_h d = page_h_create ();
-
-  // Create some random data
-  decl_rand_buffer (abytes, u8, DL_DATA_SIZE);
-  decl_rand_buffer (bbytes, u8, DL_DATA_SIZE);
-  decl_rand_buffer (cbytes, u8, DL_DATA_SIZE);
-  decl_rand_buffer (dbytes, u8, DL_DATA_SIZE);
-
-  i_semaphore_wait (ctx->begin);
-
-  pgr_begin_txn (&tx, p, &e);
-
-  // Create 4 new pages
-  pgr_new (&a, p, &tx, PG_DATA_LIST, &e);
-  pgr_new (&b, p, &tx, PG_DATA_LIST, &e);
-  pgr_new (&c, p, &tx, PG_DATA_LIST, &e);
-  pgr_new (&d, p, &tx, PG_DATA_LIST, &e);
-
-  dl_memset (page_h_w (&a), abytes, DL_DATA_SIZE);
-  dl_memset (page_h_w (&b), bbytes, DL_DATA_SIZE);
-  dl_memset (page_h_w (&c), cbytes, DL_DATA_SIZE);
-  dl_memset (page_h_w (&d), dbytes, DL_DATA_SIZE);
-
-  // Get their page numbers
-  pgno ap = page_h_pgno (&a);
-  pgno bp = page_h_pgno (&b);
-  pgno cp = page_h_pgno (&c);
-  pgno dp = page_h_pgno (&d);
-
-  // Release all of them
-  pgr_release (p, &a, PG_DATA_LIST, &e);
-  pgr_release (p, &b, PG_DATA_LIST, &e);
-  pgr_release (p, &c, PG_DATA_LIST, &e);
-  pgr_release (p, &d, PG_DATA_LIST, &e);
-
-  // Get them
-  pgr_get (&a, PG_DATA_LIST, ap, p, &e);
-  pgr_get (&b, PG_DATA_LIST, bp, p, &e);
-  pgr_get (&c, PG_DATA_LIST, cp, p, &e);
-  pgr_get (&d, PG_DATA_LIST, dp, p, &e);
-
-  // Check data
-  ctx->success = memcmp (dl_get_data (page_h_ro (&a)), abytes, DL_DATA_SIZE) ==
-0; ctx->success = ctx->success && memcmp (dl_get_data (page_h_ro (&b)), bbytes,
-DL_DATA_SIZE) == 0; ctx->success = ctx->success && memcmp (dl_get_data
-(page_h_ro (&c)), cbytes, DL_DATA_SIZE) == 0; ctx->success = ctx->success &&
-memcmp (dl_get_data (page_h_ro (&d)), dbytes, DL_DATA_SIZE) == 0;
-
-  // Release them all
-  pgr_release (p, &a, PG_DATA_LIST, &e);
-  pgr_release (p, &b, PG_DATA_LIST, &e);
-  pgr_release (p, &c, PG_DATA_LIST, &e);
-  pgr_release (p, &d, PG_DATA_LIST, &e);
-
-  ctx->ret = e.cause_code;
-
-  ctx->a = ap;
-  ctx->b = bp;
-  ctx->c = cp;
-  ctx->d = dp;
-
-  return NULL;
-}
-
-// Robin hood hash table for buffer pool
-#  define KTYPE  pgno
-#  define VTYPE  bool
-#  define SUFFIX pg
-#  include "common.h"
-#  undef KTYPE
-#  undef VTYPE
-#  undef SUFFIX
-
-TEST_DISABLED (pager_mt)
-{
-  struct pgr_fixture pf;
-  pgr_fixture_create (&pf);
-
-  i_semaphore begin;
-
-  struct thread_ctx ctx[] = {
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-      {.p = pf.p, .begin = &begin, .success = false},
-  };
-
-  i_thread threads[arrlen (ctx)];
-
-  i_semaphore_create (&begin, arrlen (threads), &pf.e);
-
-  // Create all threads
-  for (u32 i = 0; i < arrlen (threads); ++i)
-  {
-    i_thread_create (&threads[i], simple_pager_ops, &ctx[i], &pf.e);
-  }
-
-  // Post semaphore for the number of threads there are
-  for (u32 i = 0; i < arrlen (threads); ++i) { i_semaphore_post (&begin); }
-
-  // Join them all
-  for (u32 i = 0; i < arrlen (threads); ++i) { i_thread_join (&threads[i],
-&pf.e); }
-
-  hash_table_pg unique_set;
-  hentry_pg     _hdata[4 * arrlen (threads)];
-  ht_init_pg (&unique_set, _hdata, arrlen (_hdata));
-
-  // Check results
-  for (u32 i = 0; i < arrlen (threads); ++i)
-  {
-    test_assert (ctx[i].success);
-
-    test_assert_int_equal (ctx[i].ret, SUCCESS);
-    hdata_pg data = {
-        .key   = ctx[i].a,
-        .value = 0,
-    };
-    hti_res res = ht_insert_pg (&unique_set, data);
-    test_assert_int_equal (res, HTIR_SUCCESS);
-
-    data = (hdata_pg){
-        .key   = ctx[i].b,
-        .value = 0,
-    };
-    res = ht_insert_pg (&unique_set, data);
-    test_assert_int_equal (res, HTIR_SUCCESS);
-
-    data = (hdata_pg){
-        .key   = ctx[i].c,
-        .value = 0,
-    };
-    res = ht_insert_pg (&unique_set, data);
-    test_assert_int_equal (res, HTIR_SUCCESS);
-
-    data = (hdata_pg){
-        .key   = ctx[i].d,
-        .value = 0,
-    };
-    res = ht_insert_pg (&unique_set, data);
-    test_assert_int_equal (res, HTIR_SUCCESS);
-  }
-
-  pgr_fixture_teardown (&pf);
-}
-*/
-#endif
 
 /******************************************************************************
  * SECTION: pgr_new

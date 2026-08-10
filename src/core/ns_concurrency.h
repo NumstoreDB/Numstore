@@ -15,6 +15,9 @@
 #ifndef CONCURRENCY_H
 #define CONCURRENCY_H
 
+#include <stdatomic.h>
+#include <stdbool.h>
+
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"

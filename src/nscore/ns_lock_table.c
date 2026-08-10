@@ -14,7 +14,12 @@
 
 #include "nscore/ns_lock_table.h"
 
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
+#include "core/ns_htable.h"
+#include "core/ns_string.h"
+#include "core/ns_utils.h"
 #include "nscore/ns_txn_table.h"
 
 /******************************************************************************

@@ -20,8 +20,8 @@
 #include "core/ns_htable.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+#include "core/ns_string.h"
 #include "nscore/page/ns_page.h"
-
 
 /******************************************************************************
  * SECTION: var_hash_page

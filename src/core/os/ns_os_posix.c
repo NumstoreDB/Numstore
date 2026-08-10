@@ -12,7 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <inttypes.h>
+#include <stdbool.h>
+#include <sys/types.h>
+
+#include "core/ns_bytes.h"
+#include "core/ns_logging.h"
 #include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
 
 #if PLATFORM_POSIX
 
@@ -21,10 +28,7 @@
 #  include <fcntl.h>
 #  include <limits.h>
 #  include <pthread.h>
-#  include <stdarg.h>
-#  include <stddef.h>
 #  include <stdio.h>
-#  include <stdlib.h>
 #  include <string.h>
 #  include <sys/stat.h>
 #  include <sys/uio.h>

@@ -12,15 +12,20 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stddef.h>
+
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/ns_page_h.h"
 #include "nscore/ns_variables.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_delegate.h"
 #include "nscore/page/ns_page_var_hash_page.h"
+#include "nscore/page/ns_page_var_page.h"
 #include "nscore/pager/ns_pager.h"
-
 
 /*
  * Delete a variable and reclaim all its storage.

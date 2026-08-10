@@ -12,15 +12,23 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stdbool.h>
+#include <string.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_stream.h"
+#include "core/ns_string.h"
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/ns_nsdb.h"
+#include "nscore/ns_txn_table.h"
 #include "nscore/ns_variables.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_types.h"
 #include "smartfiles/smartfiles.h"
 
 int

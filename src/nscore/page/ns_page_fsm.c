@@ -1,5 +1,7 @@
 #include "nscore/page/ns_page_fsm.h"
 
+#include <string.h>
+
 #include "core/testing/ns_testing.h"
 
 /******************************************************************************

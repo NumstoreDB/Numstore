@@ -15,10 +15,17 @@
 #ifndef TXN_TABLE_H
 #define TXN_TABLE_H
 
+#include <stdbool.h>
+
+#include "core/ns_concurrency.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h" // error
 #include "core/ns_htable.h"
+#include "core/ns_slab_alloc.h"
+#include "core/ns_stdtypes.h"
 #include "nscore/ns_lock_table.h"
+
+struct dbl_buffer;
 
 /******************************************************************************
  * SECTION: Transaction

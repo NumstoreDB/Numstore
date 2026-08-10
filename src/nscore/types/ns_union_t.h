@@ -15,11 +15,20 @@
 #ifndef NS_UNION_T_H
 #define NS_UNION_T_H
 
+#include <stdbool.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
+
+struct allocator;
+struct deserializer;
+struct kvt_list;
+struct serializer;
+struct string;
+struct union_t;
 
 struct type *union_t_resolve_key (struct union_t *t, struct string key);
 

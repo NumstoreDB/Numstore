@@ -14,10 +14,16 @@
 
 #include "nscore/types/ns_sarray_t.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_serial.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/types/ns_types.h"
 

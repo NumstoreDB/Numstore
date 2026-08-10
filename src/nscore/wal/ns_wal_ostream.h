@@ -17,7 +17,9 @@
 
 #include "core/ns_cbuffer.h"
 #include "core/ns_concurrency.h"
-
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/os/ns_os.h"
 
 /******************************************************************************
  * SECTION: Wal Output Stream

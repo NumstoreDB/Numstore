@@ -16,6 +16,7 @@
 #define NS_ALLOC_H
 
 #include "core/ns_chunk_alloc.h"
+#include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 
 /******************************************************************************

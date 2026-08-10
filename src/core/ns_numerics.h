@@ -25,8 +25,11 @@
 #ifndef NUMERICS_H
 #define NUMERICS_H
 
+#include <stdbool.h>
+
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
+#include "core/ns_utils.h"
 
 /******************************************************************************
  * SECTION: Checksums

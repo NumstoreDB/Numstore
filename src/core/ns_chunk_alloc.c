@@ -14,7 +14,7 @@
 
 #include "core/ns_chunk_alloc.h"
 
-#include <stdatomic.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "core/ns_bounds.h"

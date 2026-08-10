@@ -15,6 +15,9 @@
 #ifndef COLLECTIONS_H
 #define COLLECTIONS_H
 
+#include <stdbool.h>
+
+#include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"

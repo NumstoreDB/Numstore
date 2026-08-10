@@ -12,10 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "core/ns_error.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
-#include "nscore/ns_page_h.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
 
 err_t

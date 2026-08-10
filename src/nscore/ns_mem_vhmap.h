@@ -23,9 +23,14 @@
 #ifndef MEM_VHMAP_H
 #define MEM_VHMAP_H
 
+#include "core/ns_error.h"
 #include "core/ns_htable.h"
 #include "core/ns_slab_alloc.h"
+#include "core/ns_stdtypes.h"
 #include "nscore/ns_variables.h"
+
+struct string;
+struct variable;
 
 /******************************************************************************
  * SECTION: Memory Variable Hash Map

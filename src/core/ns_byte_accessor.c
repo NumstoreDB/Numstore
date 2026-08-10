@@ -1,5 +1,7 @@
 #include "core/ns_byte_accessor.h"
 
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
 

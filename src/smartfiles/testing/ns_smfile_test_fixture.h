@@ -19,6 +19,8 @@
 #include "core/ns_stdtypes.h" // smfile
 #include "core/ns_stdtypes.h"
 
+struct data_writer;
+
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);
 int                 smfile_data_writer_close (struct data_writer *w);

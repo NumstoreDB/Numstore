@@ -1,5 +1,7 @@
 #include "nscore/page/ns_page_data_list.h"
 
+#include "core/ns_numerics.h"
+#include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
 
 /******************************************************************************

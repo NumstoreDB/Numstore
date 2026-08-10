@@ -15,7 +15,12 @@
 #ifndef NS_PAGE_INNER_NODE_H
 #define NS_PAGE_INNER_NODE_H
 
+#include <stdbool.h>
+#include <string.h>
+
 #include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
 

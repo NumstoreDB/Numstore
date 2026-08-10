@@ -14,9 +14,7 @@
 
 #include "core/ns_linked_list.h"
 
-#include <stdlib.h>
-#include <string.h>
-
+#include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
 
 struct int_node

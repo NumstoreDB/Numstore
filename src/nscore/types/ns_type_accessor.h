@@ -15,11 +15,20 @@
 #ifndef NS_TYPE_ACCESSOR_H
 #define NS_TYPE_ACCESSOR_H
 
+#include <stdbool.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_byte_accessor.h"
 #include "core/ns_error.h"
+#include "core/ns_linked_list.h"
+#include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+#include "core/ns_stride.h"
 #include "core/ns_string.h"
+
+struct allocator;
+struct builder;
+struct type;
 
 /******************************************************************************
  * SECTION: Type Accessor
@@ -67,27 +76,25 @@ struct byte_accessor *type_to_byte_accessor (
 
 #define ta_take() ((struct type_accessor){.type = TA_TAKE})
 
-#define ta_select(_key, _sub_ta)   \
-  ((struct type_accessor){         \
-      .type = TA_SELECT,           \
-      .select =                    \
-          {                        \
-              .key    = (_key),    \
-              .sub_ta = (_sub_ta), \
-          },                       \
+#define ta_select(_key, _sub_ta) \
+  ((struct type_accessor){       \
+      .type   = TA_SELECT,       \
+      .select = {                \
+          .key    = (_key),      \
+          .sub_ta = (_sub_ta),   \
+      },                         \
   })
 
 HEADER_FUNC struct type_accessor
 ta_range (struct user_stride *dim_accessors, u16 dlen, struct type_accessor *sub_ta)
 {
   return (struct type_accessor){
-      .type = TA_RANGE,
-      .range =
-          (struct range_ta){
-              .dim_accessors = dim_accessors,
-              .dlen          = dlen,
-              .sub_ta        = sub_ta,
-          },
+      .type  = TA_RANGE,
+      .range = (struct range_ta){
+          .dim_accessors = dim_accessors,
+          .dlen          = dlen,
+          .sub_ta        = sub_ta,
+      },
   };
 }
 

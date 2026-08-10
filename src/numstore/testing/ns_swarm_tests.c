@@ -16,22 +16,24 @@
 #include "numstore/testing/ns_swarm_tests.h"
 
 #include <signal.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include "core/ns_alloc.h"
+#include "core/ns_block_array.h"
 #include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
 #include "core/ns_logging.h"
 #include "core/ns_numerics.h"
+#include "core/ns_platform.h"
+#include "core/ns_stride.h"
+#include "core/ns_string.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_mem_vhmap.h"
 #include "nscore/ns_variables.h"
 #include "nscore/types/ns_types.h"
-
 
 /******************************************************************************
  * SECTION: Diagnostics

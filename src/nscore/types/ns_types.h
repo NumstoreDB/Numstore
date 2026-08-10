@@ -15,11 +15,19 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdbool.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "core/ns_serial.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stream.h"
+
+struct allocator;
+struct deserializer;
+struct serializer;
+struct stream;
 
 struct type
 {

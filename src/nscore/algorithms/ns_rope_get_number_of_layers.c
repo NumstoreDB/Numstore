@@ -12,12 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <stdbool.h>
+
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/ns_page_h.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
-
 
 i32
 ns_get_number_of_layers (struct pager *p, pgno root, error *e)

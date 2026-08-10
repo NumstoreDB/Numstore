@@ -14,10 +14,14 @@
 
 #include "nscore/page/ns_page.h"
 
+#include "core/ns_logging.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/page/ns_page_delegate.h"
+#include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_fsm.h"
+#include "nscore/page/ns_page_inner_node.h"
 #include "nscore/page/ns_page_var_hash_page.h"
+#include "nscore/page/ns_page_var_page.h"
+#include "nscore/page/ns_page_var_tail.h"
 
 /******************************************************************************
  * SECTION: Page Common

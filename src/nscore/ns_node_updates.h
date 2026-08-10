@@ -24,9 +24,14 @@
 #ifndef NS_NODE_UPDATES_H
 #define NS_NODE_UPDATES_H
 
-#include "core/ns_error.h"    // error
+#include <stdbool.h>
+
+#include "core/ns_error.h" // error
+#include "core/ns_stdtypes.h"
+#include "core/ns_utils.h"
 #include "nscore/ns_page_h.h" // page_h
-         // pgno b_size ...etc
+#include "nscore/page/ns_page_inner_node.h"
+// pgno b_size ...etc
 
 /******************************************************************************
  * SECTION: Node Updates

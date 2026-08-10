@@ -12,12 +12,21 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include <inttypes.h>
+#include <math.h>
+#include <stdbool.h>
+#include <string.h>
+
 #include "core/ns_cbuffer.h"
+#include "core/ns_error.h"
 #include "core/ns_ext_array.h" // ext_array
-#include "core/ns_numerics.h"  // f16_to_f32
+#include "core/ns_linked_list.h"
+#include "core/ns_numerics.h" // f16_to_f32
 #include "core/ns_serial.h"
 #include "core/ns_stdtypes.h" // u32
+#include "core/ns_stride.h"
 #include "core/ns_string.h"
+#include "core/ns_utils.h"
 #include "core/testing/ns_testing.h" // TEST
 
 #ifdef TESTING

@@ -14,10 +14,17 @@
 
 #include "nscore/types/ns_union_t.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
+#include "core/ns_platform.h"
 #include "core/ns_serial.h"
+#include "core/ns_string.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_variables.h"

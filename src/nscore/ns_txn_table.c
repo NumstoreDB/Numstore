@@ -14,7 +14,13 @@
 
 #include "nscore/ns_txn_table.h"
 
+#include <stddef.h>
+
+#include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
+#include "core/ns_platform.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_lock_table.h"
 
@@ -1496,6 +1502,7 @@ txnt_crash (struct txn_table *t)
 
 #ifdef TESTING
 #  include <stdatomic.h>
+
 struct txnt_thread_ctx
 {
   struct txn_table *table;

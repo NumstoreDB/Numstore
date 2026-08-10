@@ -15,11 +15,15 @@
 #ifndef NS_STRIDE_H
 #define NS_STRIDE_H
 
+#include <stdbool.h>
+
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+
+struct builder;
 
 /******************************************************************************
  * SECTION: Stride

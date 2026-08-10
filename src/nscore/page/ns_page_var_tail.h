@@ -15,12 +15,12 @@
 #ifndef NS_PAGE_VAR_TAIL_H
 #define NS_PAGE_VAR_TAIL_H
 
+#include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
-
 
 /******************************************************************************
  * SECTION: var_tail

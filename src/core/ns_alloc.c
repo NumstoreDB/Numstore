@@ -14,7 +14,6 @@
 
 #include "core/ns_alloc.h"
 
-#include <stdatomic.h>
 #include <string.h>
 
 #include "core/ns_chunk_alloc.h"

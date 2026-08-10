@@ -14,12 +14,19 @@
 
 #include "nscore/ns_variables.h"
 
+#include <string.h>
+
 #include "core/ns_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_logging.h"
 #include "core/ns_numerics.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/page/ns_page_var_hash_page.h"
+#include "nscore/types/ns_types.h"
 
 // TODO - pull out all printing to the
 // top level - and print status ok in

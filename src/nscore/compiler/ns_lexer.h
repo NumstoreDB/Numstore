@@ -17,7 +17,10 @@
 
 #include "core/ns_alloc.h"
 #include "core/ns_dbl_buffer.h"
+#include "core/ns_error.h"
 #include "core/ns_stdtypes.h" // u32 ...etc
+
+struct allocator;
 
 struct lexer
 {
