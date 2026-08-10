@@ -23,6 +23,20 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 
+/******************************************************************************
+ * SECTION: String
+ * ----------------------------------------------------------------------------
+ * @brief A sized constant string
+ *
+ * Avoids the heavy usage of c - strings
+ ******************************************************************************/
+
+struct string
+{
+  u32         len;
+  const char *data;
+};
+
 struct string        strfcstr (const char *cstr);
 u64                  line_length (const char *buf, u64 max);
 int                  strings_all_unique (const struct string *strs, u32 count);

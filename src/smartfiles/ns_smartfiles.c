@@ -21,7 +21,7 @@
 #include "nscore/ns_nsdb.h"
 #include "nscore/ns_variables.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+#include "smartfiles/smartfiles.h"
 
 int
 smfile_perror (smfile_t *ns, const char *prefix)

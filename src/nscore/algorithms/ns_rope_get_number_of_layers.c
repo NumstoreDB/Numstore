@@ -17,7 +17,7 @@
 #include "nscore/ns_page_h.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 i32
 ns_get_number_of_layers (struct pager *p, pgno root, error *e)

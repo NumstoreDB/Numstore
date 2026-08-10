@@ -19,7 +19,7 @@
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
-#include "numstore.h"
+#include "numstore/numstore.h"
 
 /******************************************************************************
  * SECTION: Library exposed nsdb_execute

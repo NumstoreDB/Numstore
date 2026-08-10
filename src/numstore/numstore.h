@@ -12,67 +12,33 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef STDTYPES_H
-#define STDTYPES_H
+#ifndef NUMSTORE_H
+#define NUMSTORE_H
 
+#include <inttypes.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /******************************************************************************
- * SECTION: Shorthands for c standard types
+ * SECTION: Compiler specified constants
  * ----------------------------------------------------------------------------
- * @brief Rust / zig like type declarations
+ * @brief Pass compiler flags to override these constants
  ******************************************************************************/
 
-// Unsigned shorthands
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-// Signed shorthands
-typedef int8_t  i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
-// Float shorthands
-typedef u16         f16;
-typedef float       f32;
-typedef double      f64;
-typedef long double f128;
-
-// Complex floats
-
-#ifdef _MSC_VER
-
-typedef _Fcomplex cf32;
-typedef _Dcomplex cf64;
-typedef _Lcomplex cf128;
-
+#if defined(__GNUC__) || defined(__clang__)
+#  define NSDB_PRINTF(fmt_idx, vargs_idx) __attribute__ ((format (printf, fmt_idx, vargs_idx)))
 #else
-
-typedef u16 cf32[2];
-typedef u32 cf64[2];
-typedef u64 cf128[2];
-// #if defined(__SIZEOF_FLOAT128__)
-//     typedef __float128 _Complex cf256;
-//  #endif
-
+#  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
 
-typedef i8  ci16[2];
-typedef i16 ci32[2];
-typedef i32 ci64[2];
-typedef i64 ci128[2];
-
-typedef u8  cu16[2];
-typedef u16 cu32[2];
-typedef u32 cu64[2];
-typedef u64 cu128[2];
-
 /******************************************************************************
- * SECTION: Numstore type aliases
+ * SECTION: Opaque Types and constants
+ * ----------------------------------------------------------------------------
+ * @brief Opaque handles and types to pass into numstore functions
  ******************************************************************************/
+
+typedef struct nsdb     nsdb_t;
+typedef struct nsdb_var nsdb_var_t;
 
 #ifndef NS_TYPE_ALIASES
 
@@ -121,43 +87,28 @@ typedef uint8_t  wlh;     // WAL header
 #endif
 
 /******************************************************************************
- * SECTION: Limits
- ******************************************************************************/
+ * SECTION: Numstore
+ * ----------------------------------------------------------------------------
+ * @brief A database for numerical arrays
+ * ******************************************************************************/
 
-// Maximum unsigned
-#define U8_MAX  ((u8) ~(u8)0)
-#define U16_MAX ((u16) ~(u16)0)
-#define U32_MAX ((u32) ~(u32)0)
-#define U64_MAX ((u64) ~(u64)0)
+nsdb_t *nsdb_open (const char *path);
+int     nsdb_cleanup (const char *path);
+int     nsdb_close (nsdb_t *ns);
+int     nsdb_crash (nsdb_t *ns);
 
-// Maximum signed
-#define I8_MAX  ((i8)(U8_MAX >> 1))
-#define I16_MAX ((i16)(U16_MAX >> 1))
-#define I32_MAX ((i32)(U32_MAX >> 1))
-#define I64_MAX ((i64)(U64_MAX >> 1))
+b_size nsdb_var_len (nsdb_var_t *var);
+void   nsdb_var_free (nsdb_var_t *var);
 
-// Max of both negative and positive
-#define I8_ABS_MAX  ((u8)(I8_MAX) + 1)
-#define I16_ABS_MAX ((u16)(I16_MAX) + 1)
-#define I32_ABS_MAX ((u32)(I32_MAX) + 1)
-#define I64_ABS_MAX ((u64)(I64_MAX) + 1)
+const char *nsdb_strerror (nsdb_t *ns);
+int         nsdb_perror (nsdb_t *ns, const char *prefix);
 
-// Minimum signed
-#define I8_MIN  ((i8)(~I8_MAX))
-#define I16_MIN ((i16)(~I16_MAX))
-#define I32_MIN ((i32)(~I32_MAX))
-#define I64_MIN ((i64)(~I64_MAX))
+int nsdb_begin (nsdb_t *ns);
+int nsdb_commit (nsdb_t *ns);
+int nsdb_rollback (nsdb_t *ns);
 
-#define F16_MAX  65504.0f
-#define F32_MAX  3.4028235e+38f
-#define F64_MAX  1.7976931348623157e+308
-#define F128_MAX FLT128_MAX
-#define F256_MAX 1.6113e+78913L
+sb_size nsdb_fexecute (nsdb_t *ns, const char *query_fmt, void *data, ...) NSDB_PRINTF (2, 4);
 
-#define F16_MIN  (-65504.0f)
-#define F32_MIN  (-3.4028235e+38f)
-#define F64_MIN  (-1.7976931348623157e+308)
-#define F128_MIN FLT128_MIN
-#define F256_MIN (-1.6113e+78913L)
+void *nsdb_fexecute_malloc (nsdb_t *ns, const char *query_fmt, ...) NSDB_PRINTF (2, 3);
 
-#endif // STDTYPES_H
+#endif

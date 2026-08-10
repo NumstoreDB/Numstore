@@ -15,12 +15,12 @@
 #ifndef PAGE_H
 #define PAGE_H
 
+#include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Page Common

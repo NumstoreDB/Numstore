@@ -24,7 +24,7 @@
 #include "core/ns_stream.h"
 #include "nscore/ns_node_updates.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 enum stride_phase
 {

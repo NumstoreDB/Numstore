@@ -20,7 +20,7 @@
 #include "core/testing/ns_testing.h"
 #include "nscore/wal/ns_wal_istream.h"
 #include "nscore/wal/ns_wal_ostream.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: WAL

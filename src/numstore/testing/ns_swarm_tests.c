@@ -31,7 +31,7 @@
 #include "nscore/ns_mem_vhmap.h"
 #include "nscore/ns_variables.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: Diagnostics

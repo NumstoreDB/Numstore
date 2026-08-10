@@ -16,7 +16,7 @@
 
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_txn_table.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: WAL Decoding

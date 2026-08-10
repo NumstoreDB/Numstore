@@ -14,11 +14,11 @@
 
 #ifndef TXN_TABLE_H
 #define TXN_TABLE_H
+
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h" // error
 #include "core/ns_htable.h"
 #include "nscore/ns_lock_table.h"
-#include "numstore.h" // lsn ...etc
 
 /******************************************************************************
  * SECTION: Transaction

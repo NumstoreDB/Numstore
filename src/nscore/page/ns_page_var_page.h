@@ -18,7 +18,7 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  *

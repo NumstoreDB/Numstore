@@ -16,7 +16,7 @@
 #define WAL_H
 
 #include "nscore/wal/ns_wal_record.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: WAL

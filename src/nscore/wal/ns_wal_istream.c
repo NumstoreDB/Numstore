@@ -16,7 +16,7 @@
 #include "core/os/ns_os.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/wal/ns_wal.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: WAL Input Stream

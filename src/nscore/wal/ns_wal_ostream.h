@@ -17,7 +17,7 @@
 
 #include "core/ns_cbuffer.h"
 #include "core/ns_concurrency.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: Wal Output Stream

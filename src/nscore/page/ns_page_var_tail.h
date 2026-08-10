@@ -20,7 +20,7 @@
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: var_tail

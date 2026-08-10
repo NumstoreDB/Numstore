@@ -26,7 +26,7 @@
 
 #include "core/ns_error.h"    // error
 #include "nscore/ns_page_h.h" // page_h
-#include "numstore.h"         // pgno b_size ...etc
+         // pgno b_size ...etc
 
 /******************************************************************************
  * SECTION: Node Updates

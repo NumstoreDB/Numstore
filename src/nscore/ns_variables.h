@@ -17,7 +17,6 @@
 
 #include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Variables

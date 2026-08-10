@@ -24,7 +24,7 @@
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_file_pager.h"
 #include "nscore/wal/ns_wal.h"
-#include "numstore.h"
+
 
 /******************************************************************************
  * SECTION: Database structure

@@ -12,46 +12,37 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef NS_KVT_H
-#define NS_KVT_H
+#ifndef NS_BYTES_H
+#define NS_BYTES_H
 
-#include "core/ns_alloc.h"
-#include "core/ns_error.h"
-#include "core/ns_linked_list.h"
 #include "core/ns_stdtypes.h"
-#include "core/ns_string.h"
 
 /******************************************************************************
- * SECTION: Key Value Type List
+ * SECTION: Bytes
  * ----------------------------------------------------------------------------
- * @brief A list of string key type value
+ * @brief A sized byte array
+ *
+ * Used all throughout the code - a collection of bytes that has a size
  ******************************************************************************/
 
-struct kvt_list
+struct bytes
 {
-  u16            len;
-  struct string *keys;
-  struct type  **types;
+  u8 *head;
+  u32 len;
 };
 
-struct kv_llnode
+struct cbytes
 {
-  struct string key;
-  struct type  *value;
-  struct llnode link;
+  const u8 *head;
+  u32       len;
 };
 
-struct kvt_list_builder
-{
-  struct llnode  *head;
-  u16             klen;
-  u16             tlen;
-  struct builder *b;
-};
+#define bytes_from(buffer)                 \
+  (struct bytes)                           \
+  {                                        \
+    .head = buffer, .len = sizeof (buffer) \
+  }
 
-struct kvt_list_builder kvlb_create (struct builder *b);
-err_t                   kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
-err_t                   kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
-err_t                   kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
+#define bytes_null() (struct bytes){.head = NULL, .len = 0}
 
 #endif

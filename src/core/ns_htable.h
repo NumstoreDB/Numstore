@@ -19,6 +19,7 @@
 #include "core/ns_error.h"       // error
 #include "core/ns_platform.h"    // HEADER_FUNC
 #include "core/ns_stdtypes.h"    // u32 ...etc
+#include "core/ns_string.h"
 
 /******************************************************************************
  * SECTION: Hash Table Models

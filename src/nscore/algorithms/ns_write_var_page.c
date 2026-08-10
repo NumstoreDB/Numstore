@@ -20,7 +20,7 @@
 #include "nscore/page/ns_page.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
+
 
 static err_t
 ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)

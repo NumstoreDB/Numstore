@@ -18,7 +18,7 @@
 #include "nscore/ns_page_h.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "numstore.h"
+
 
 /*
  * Advance params->vp from the current PG_VAR_PAGE or PG_VAR_TAIL to the

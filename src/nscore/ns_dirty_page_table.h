@@ -29,7 +29,6 @@
 #include "core/ns_htable.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
-#include "numstore.h"
 
 /******************************************************************************
  * SECTION: Dirty Page Table

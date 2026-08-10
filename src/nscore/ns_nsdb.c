@@ -16,10 +16,12 @@
 
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/pager/ns_pager.h"
+#include "numstore/numstore.h"
 
 int
 nsdb_perror (struct nsdb *ns, const char *prefix)

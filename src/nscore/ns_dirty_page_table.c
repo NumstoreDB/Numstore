@@ -16,7 +16,7 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
-#include "numstore.h"
+
 
 /*
  * Dirty page table entry.
