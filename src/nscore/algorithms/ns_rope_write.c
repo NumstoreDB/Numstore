@@ -134,12 +134,14 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
   page *curp = page_h_w (&cur);
 
+  /*
   enum
   {
     HIT_MAX_WRITE,
     SRC_DONE_WRITING,
     DATA_EXHAUSTED,
   } termination = HIT_MAX_WRITE;
+  */
 
   while (max_bwrite == 0 || total_bwrite < max_bwrite)
   {
@@ -161,7 +163,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
         // Reached EOF
         else
         {
-          termination = DATA_EXHAUSTED;
+          // termination = DATA_EXHAUSTED;
           goto done;
         }
 
@@ -253,7 +255,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
     // Caller's source exhausted before we hit the byte limit
     if (stream_isdone (params.src))
     {
-      termination = SRC_DONE_WRITING;
+      // termination = SRC_DONE_WRITING;
       break;
     }
   }

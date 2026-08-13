@@ -113,12 +113,14 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
   const page *curp = page_h_ro (&cur);
 
+  /*
   enum
   {
     HIT_MAX_READ,
     DEST_DONE_READING,
     DATA_EXHAUSTED,
   } termination = HIT_MAX_READ;
+  */
 
   while (max_bread == 0 || total_bread < max_bread)
   {
@@ -133,7 +135,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
         if (npg == PGNO_NULL)
         {
-          termination = DATA_EXHAUSTED;
+          // termination = DATA_EXHAUSTED;
           break;
         }
 
@@ -208,7 +210,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
     if (stream_isdone (params.dest))
     {
-      termination = DEST_DONE_READING;
+      // termination = DEST_DONE_READING;
       break;
     }
   }

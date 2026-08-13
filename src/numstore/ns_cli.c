@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "numstore/numstore.h"
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "numstore/numstore.h"
 
 #ifdef TESTING
 #  include "core/ns_logging.h"

@@ -20,7 +20,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
@@ -5061,21 +5060,21 @@ run_unit_tests (int seed, const char* filter)
     ntests++;
   }
 
-  if (!filter || strstr("aries_crash", filter))
+  if (!filter || strstr("kvt_list_builder", filter))
   {
-    extern void __test__aries_crash(void);
-    i_log_info("========================= TEST CASE: %s\n", "aries_crash");
+    extern void __test__kvt_list_builder(void);
+    i_log_info("========================= TEST CASE: %s\n", "kvt_list_builder");
     int prev = test_ret;
     test_ret = 0;
-    __test__aries_crash();
+    __test__kvt_list_builder();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "aries_crash");
+      i_log_passed("%s\n", "kvt_list_builder");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "aries_crash";
+      failed_names[failed++] = "kvt_list_builder";
     }
     ntests++;
   }
@@ -5608,25 +5607,6 @@ run_unit_tests (int seed, const char* filter)
     else
     {
       failed_names[failed++] = "prim_t_random";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("kvt_list_builder", filter))
-  {
-    extern void __test__kvt_list_builder(void);
-    i_log_info("========================= TEST CASE: %s\n", "kvt_list_builder");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__kvt_list_builder();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "kvt_list_builder");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "kvt_list_builder";
     }
     ntests++;
   }
@@ -6425,6 +6405,25 @@ run_unit_tests (int seed, const char* filter)
     else
     {
       failed_names[failed++] = "smfile_pwrite";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("aries_crash", filter))
+  {
+    extern void __test__aries_crash(void);
+    i_log_info("========================= TEST CASE: %s\n", "aries_crash");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__aries_crash();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "aries_crash");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "aries_crash";
     }
     ntests++;
   }

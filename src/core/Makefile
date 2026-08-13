@@ -30,7 +30,6 @@ C_OBJS := $(C_SRCS:.c=.o)
 
 LIB_TARGET := $(LIB_DIR)/libcore.a
 
-
 .PHONY: all clean
 all: $(LIB_TARGET)
 

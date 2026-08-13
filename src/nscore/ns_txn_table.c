@@ -232,10 +232,6 @@ txn_foreach_lock (struct txn *t, const lock_func func, void *ctx)
 static void *
 txn_newlock_test (void *_tx)
 {
-  error          e  = error_create ();
-  struct txn    *tx = _tx;
-  struct lt_lock lock;
-
 #  define MAYBE_ADD_LOCK(type, r)                                            \
     lock = r;                                                                \
     if (txn_newlock (tx, lock, LM_X, &e))                                    \
@@ -1516,7 +1512,6 @@ static void *
 txnt_insert_thread (void *arg)
 {
   struct txnt_thread_ctx *ctx = arg;
-  error                   e   = error_create ();
 
   for (int i = 0; i < ctx->count; i++)
   {

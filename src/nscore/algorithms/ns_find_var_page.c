@@ -428,8 +428,6 @@ TEST (ns_find_var_page)
   {
     pgr_fixture_create_with_var_hash_map (&f);
 
-    pgno pg1;
-
     // Create a variable
     {
       pgr_begin_txn (&f.tx, f.p, &f.e);
@@ -480,7 +478,6 @@ TEST (ns_find_var_page)
   TEST_CASE ("Fault 4")
   {
     pgr_fixture_create_with_var_hash_map (&f);
-    pgno pg1;
 
     // Create a variable
     {
@@ -493,7 +490,6 @@ TEST (ns_find_var_page)
           .alloc = &f.alloc,
       };
       ns_var_get_or_create (&cparams, &f.e);
-      pg1 = cparams.dest.var_root;
       pgr_commit (f.p, &f.tx, &f.e);
     }
 
@@ -628,7 +624,6 @@ TEST (ns_find_var_page)
   TEST_CASE ("Create same variable throws")
   {
     pgr_fixture_create_with_var_hash_map (&f);
-    pgno pg1;
 
     // Create a variable
     {
@@ -641,7 +636,6 @@ TEST (ns_find_var_page)
           .alloc = &f.alloc,
       };
       ns_var_get_or_create (&cparams, &f.e);
-      pg1 = cparams.dest.var_root;
       pgr_commit (f.p, &f.tx, &f.e);
     }
 

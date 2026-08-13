@@ -70,7 +70,7 @@ pgr_unfix (struct pager *p, page_h *h, int flags)
   // Need to save this page
   if (h->mode == PHM_X)
   {
-    spgno page_lsn = 0;
+    // spgno page_lsn = 0;
 
     // Can only save valid pages
     ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL));
@@ -223,7 +223,6 @@ TEST (pager_fill_ht)
   pgr_begin_txn (&tx, f.p, &f.e);
 
   page_h pgs[MEMORY_PAGE_LEN];
-  page_h bad = page_h_create ();
 
   {
     // Fill up - there is already one page in the pool, the root
@@ -974,7 +973,6 @@ failed:
 static err_t
 pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
 {
-  err_t ret = SUCCESS;
   p->flags |= PGR_ISRESTARTING;
 
   // ANALYSIS
@@ -1815,7 +1813,7 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
       // it's flushed to disk
       // Remember:
       //    page_lsn = latest log page that modified this page
-      const lsn plsn = page_get_page_lsn (&mp->page);
+      // const lsn plsn = page_get_page_lsn (&mp->page);
       if (wal_flush_all (p->ww, e))
       {
         goto theend;
@@ -2060,7 +2058,6 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 TEST (pgr_get_invalid_checksum)
 {
   page_h             pg = page_h_create ();
-  error              e  = error_create ();
   struct pgr_fixture pf;
   pgr_fixture_create (&pf);
 
@@ -2353,7 +2350,6 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
 err_t
 pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e)
 {
-  int    r     = rand ();
   page_h fsm   = page_h_create ();
   pgno   fsmpg = 0;
 
@@ -2657,12 +2653,12 @@ pgr_release_with_log (
 err_t
 pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
-  struct wal_rec_hdr_read *log_rec = NULL;                  // Next record to read
-  struct wal_clr_write     clr;                             // Next record to write
+  struct wal_rec_hdr_read *log_rec      = NULL;             // Next record to read
   page_h                   ph           = page_h_create (); // The page handle used for all undo's
   lsn                      undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
   slsn                     prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
-  txid                     tid          = tx->tid;      // The transaction id
+  // struct wal_clr_write     clr;                             // Next record to write
+  // txid                     tid          = tx->tid;      // The transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
   if (undo_nxt_lsn > 0)

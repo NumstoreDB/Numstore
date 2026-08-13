@@ -1185,6 +1185,7 @@ wal_test_free_batch (const struct wal_rec_hdr_read *batch, const u32 len)
   for (u32 i = 0; i < len; i++)
   {
     const struct wal_rec_hdr_read *r = &batch[i];
+    test_assert (r != NULL);
   }
 }
 
@@ -1243,6 +1244,7 @@ run_wal_test (const struct wal_test_params *p)
     {
       struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch2[i]);
       l                            = wal_append_log (ww, &out, &e);
+      test_assert (l > 0);
     }
     wal_flush_all (ww, &e);
   }
