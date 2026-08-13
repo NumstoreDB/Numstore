@@ -1,27 +1,27 @@
 CC      := gcc
-CFLAGS  := -Wall -Wextra -std=c11 -Isrc -DTESTING -Wno-unused-parameter
-LDFLAGS :=
+CFLAGS  := -Wall -Wextra -std=c11 -I$(shell pwd)/src -DTESTING -Wno-unused-parameter -g
 
-# Recursively find all .c files under src/
-SRCS := $(shell find src -name '*.c')
-OBJS := $(patsubst src/%.c,build/%.o,$(SRCS))
+RUSTC     := rustc
+RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
-# All headers and sources, for the format target
-FMT_FILES := $(shell find apps src include -type f \( -name '*.c' -o -name '*.h' \) 2>/dev/null)
+SUBDIRS := src/core src/nscore src/nsserver
 
-.PHONY: all clean format
+OUT_DIR := $(CURDIR)/build
+BIN_DIR := $(OUT_DIR)/bin
+LIB_DIR := $(OUT_DIR)/lib
 
-all: numstore
+export CC CFLAGS LIB_DIR BIN_DIR RUSTC RUSTFLAGS
 
-numstore: $(OBJS)
-	$(CC) $(OBJS) apps/numstore.c -o $@ $(LDFLAGS) $(CFLAGS)
+.PHONY: all $(SUBDIRS) clean
 
-build/%.o: src/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+all: $(SUBDIRS)
+
+$(SUBDIRS):
+	mkdir -p $(LIB_DIR)
+	mkdir -p $(BIN_DIR)
+	$(MAKE) -C $@
 
 clean:
-	rm -rf build app
-
-format:
-	clang-format -i $(FMT_FILES)
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done

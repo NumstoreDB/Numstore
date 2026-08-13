@@ -1,4 +1,5 @@
 *.o
+*.a
 *.DS_Store
 *.d
 .clang

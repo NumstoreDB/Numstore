@@ -30,15 +30,6 @@ struct stride;
  *
  * @brief A [data_writer] that extends by allocating chunks and linking nodes
  * together
- *
- * TODO - a diagram here
- *
- * @par Usage:
- * @code
- *
- * TODO
- *
- * @endcode
  ******************************************************************************/
 
 /**
