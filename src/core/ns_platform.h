@@ -71,7 +71,6 @@
 ////////////////////////////////////////////////////////////
 // Apple
 #if defined(__APPLE__) && defined(__MACH__)
-#  include "TargetConditionals.h"
 
 ////////////////////////////////////////////////////////////
 // IOS
@@ -227,7 +226,6 @@ platformstr (void)
 
 #include <complex.h>
 #include <inttypes.h>
-#include <math.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdbool.h>

@@ -32,7 +32,6 @@
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_variables.h"
-#include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
@@ -301,8 +300,6 @@ nsdb_open (const char *path)
 
   struct nsdb_root *ret = i_malloc (1, sizeof *ret, &e);
 
-  page_h hp = page_h_create ();
-
   if (ret == NULL)
   {
     return NULL;
@@ -485,8 +482,6 @@ failed:
 err_t
 nsdb_delete (struct nsdb *db, struct delete_query *query)
 {
-  struct txn auto_txn;
-
   // BEGIN TXN
   WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
 
@@ -856,7 +851,6 @@ nsdb_remove (
 )
 {
   sb_size                     ret;     // Return value
-  b_size                      ofst;    // Resolved offset
   t_size                      tsize;   // Size of  the variable
   b_size                      len;     // Length of the variable
   struct ns_var_get_params    gparams; // Get operation
@@ -1007,7 +1001,6 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
   sb_size                  ret;     // Return value
   t_size                   tsize;   // Size of  the variable
   b_size                   len;     // Length of the variable
-  b_size                   ofst;    // Resolved offset
   struct ns_var_get_params gparams; // Get or create operation
   struct ns_write_params   wparams; // Write operation
   struct stride            stride;  // Resolved stride

@@ -205,6 +205,7 @@ TEST (htable)
   for (int i = 0; i < 1000; ++i)
   {
     struct hnode **node = htable_random (t);
+    test_assert (node != NULL);
   }
 
   for (int i = 0; i < 1000; ++i)

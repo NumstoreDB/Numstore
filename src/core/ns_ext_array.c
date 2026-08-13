@@ -659,8 +659,7 @@ TEST (ext_array_remove)
 
 TEST (ext_array_random)
 {
-  error e    = error_create ();
-  u32   size = 1;
+  error e = error_create ();
 
   /**
   struct ext_array ext_arr_1 = ext_array_create ();

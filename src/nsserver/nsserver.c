@@ -178,6 +178,7 @@ main ()
           {
             ssize_t sent =
                 send (events[i].ident, conn->buffer + conn->wlen, conn->rlen - conn->wlen, 0);
+            printf ("Sent: %ld\n", sent);
             err_check (sent >= 0, "send");
             conn->wlen += sent;
           }
@@ -190,6 +191,7 @@ main ()
 
           u32     len   = conn_read_prefix (conn);
           ssize_t recvd = recv (events[i].ident, conn->buffer + conn->rlen, len - conn->rlen, 0);
+          printf ("Recv: %ld\n", recvd);
           err_check (recvd >= 0, "recv");
           conn->rlen += recvd;
           ASSERT (conn->rlen <= len);

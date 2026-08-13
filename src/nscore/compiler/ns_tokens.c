@@ -18,7 +18,6 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_string.h"
-#include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
 
 bool
@@ -67,7 +66,9 @@ tt_tostr (enum token_t t)
 #ifdef TESTING
 TEST (tt_tostr)
 {
-#  define TC_TTTOSTR(x) const char *x##_str = tt_tostr (x);
+#  define TC_TTTOSTR(x)                 \
+    const char *x##_str = tt_tostr (x); \
+    i_log_info ("%s\n", x##_str);
   TT_FOREACH (TC_TTTOSTR);
 }
 #endif

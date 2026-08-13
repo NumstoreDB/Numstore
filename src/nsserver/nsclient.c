@@ -23,11 +23,13 @@ recv_buf (int socket, void *dest, size_t max_size, int flags)
 {
   u32     len    = 0;
   ssize_t result = recv (socket, &len, 4, 0);
+  printf ("Recv (prefix): %ld\n", result);
   err_check (result == 4, "recv");
   len = ntohl (len);
   err_check (len > 4 && len <= max_size + 4, "len");
 
   result = recv (socket, dest, len - 4, flags);
+  printf ("Recv %s: %ld\n", (char *)dest, result);
   err_check (result == (ssize_t)(len - 4), "recv");
 }
 
@@ -38,10 +40,12 @@ send_str (int socket, const char *src, int flags)
   u32 len        = strlen (src) + 4;
   len            = htonl (len);
   ssize_t result = send (socket, &len, 4, flags);
+  printf ("Sent (prefix): %ld\n", result);
   err_check (result == (ssize_t)4, "send");
 
   len    = ntohl (len) - 4;
   result = send (socket, src, len, flags);
+  printf ("Sent %s: %ld\n", src, result);
   err_check (result == (ssize_t)(len), "send");
 }
 

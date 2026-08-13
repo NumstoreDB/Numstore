@@ -18,8 +18,7 @@
 #include <stdbool.h>
 
 #include "core/ns_alloc.h"
-#include "core/ns_error.h"    // error
-#include "core/ns_stdtypes.h" // u32 ...etc
+#include "core/ns_error.h" // error
 #include "core/ns_string.h"
 #include "nscore/types/ns_type_accessor.h"
 

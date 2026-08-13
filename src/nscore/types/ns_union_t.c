@@ -176,10 +176,6 @@ TEST (union_t_resolve_key)
   struct type *t =
       compile_type_alloc ("union { a struct { a u32, b [10]f32 }, b f32 }", &alloc, &e);
 
-  struct type *subtype0 = compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e);
-
-  struct type *subtype1 = compile_type_alloc ("[10]f32", &alloc, &e);
-
   test_assert (type_equal (
       compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e),
       union_t_resolve_key (&t->un, strfcstr ("a"))

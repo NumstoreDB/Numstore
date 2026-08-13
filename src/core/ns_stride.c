@@ -268,11 +268,13 @@ TEST (stride_resolve)
   TEST_CASE ("Invalid step = 0 ")
   {
     struct user_stride zero_step = {.step = 0, .present = STEP_PRESENT};
+    test_err_t_check (stride_resolve (&result, zero_step, 0, &e), ERR_INVALID_ARGUMENT, &e);
   }
 
   TEST_CASE ("Invalid negative step ")
   {
     struct user_stride neg_step = {.step = -1, .present = STEP_PRESENT};
+    test_err_t_check (stride_resolve (&result, neg_step, 0, &e), ERR_INVALID_ARGUMENT, &e);
   }
 }
 #endif

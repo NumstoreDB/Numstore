@@ -17,7 +17,6 @@
 
 #include <stdbool.h>
 
-#include "core/ns_concurrency.h"
 #include "core/ns_platform.h" // HEADER_FUNC
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "nscore/types/ns_types.h"
