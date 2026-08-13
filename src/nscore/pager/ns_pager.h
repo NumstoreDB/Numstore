@@ -339,6 +339,7 @@ err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
  *----------------------------------------------------------------------------*/
 
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
+
 err_t pgr_get_writable (
     page_h       *dest,
     struct txn   *tx,
@@ -347,8 +348,11 @@ err_t pgr_get_writable (
     struct pager *p,
     error        *e
 );
+
 err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
+
 err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
+
 err_t pgr_release_with_log (
     struct pager            *p,
     page_h                  *h,
@@ -356,6 +360,7 @@ err_t pgr_release_with_log (
     struct wal_update_write *record,
     error                   *e
 );
+
 void pgr_cancel (const struct pager *p, page_h *h);
 
 /*-----------------------------------------------------------------------------
