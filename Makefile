@@ -5,7 +5,7 @@ CFLAGS  			:= -Wall -Wextra -std=c11 -I$(shell pwd)/src -DTESTING -Wno-unused-pa
 RUSTC     := rustc
 RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
-SUBDIRS := src/core src/nscore src/nsserver src/numstore src/smartfiles docs
+SUBDIRS := src/core src/nscore src/nsserver src/numstore src/smartfiles
 
 OUT_DIR 	:= $(CURDIR)/build
 BIN_DIR 	:= $(OUT_DIR)/bin
@@ -17,6 +17,9 @@ export CC CFLAGS LIB_DIR BIN_DIR RUSTC RUSTFLAGS HTML_DIR
 .PHONY: all $(SUBDIRS) clean format
 
 all: $(SUBDIRS)
+
+documentation: 
+	$(MAKE) -C docs
 
 src/unit_tests.c: apps/scripts/gen_tests.py 
 	python3 apps/scripts/gen_tests.py
@@ -34,6 +37,7 @@ clean:
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
+	$(MAKE) -C docs clean;
 
 clean-all: clean 
 	rm -rf build
