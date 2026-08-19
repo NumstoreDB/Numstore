@@ -1,3 +1,5 @@
+#include "core/ns_stdtypes.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -9,11 +11,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "core/ns_stdtypes.h"
-
 #define err_check(condition, op) \
-  if (!(condition))              \
-  {                              \
+  if (!(condition)) {            \
     perror (op);                 \
     exit (-1);                   \
   }
@@ -67,7 +66,7 @@ main ()
 
   char recv_buffer[2048];
 
-  int result = connect (client, (struct sockaddr *)&addr, sizeof (addr));
+  int  result = connect (client, (struct sockaddr *)&addr, sizeof (addr));
   err_check (result >= 0, "connect");
 
   {

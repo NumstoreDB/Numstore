@@ -12,39 +12,35 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "wal.h"
+
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "wal.h"
 
 static void
 walf_print (const char *fname)
 {
-  error e = error_create ();
+  error       e  = error_create ();
 
   struct wal *wf = wal_open (fname, &e);
 
-  if (wf == NULL)
-  {
+  if (wf == NULL) {
     error_log_consume (&e);
     return;
   }
 
-  while (true)
-  {
+  while (true) {
     lsn                      rlsn;
     struct wal_rec_hdr_read *out = wal_read_next (wf, &rlsn, &e);
 
-    if (out == NULL)
-    {
+    if (out == NULL) {
       error_log_consume (&e);
       goto theend;
     }
 
     i_print_wal_rec_hdr_read_light (LOG_INFO, out, rlsn);
 
-    if (out->type == WL_EOF)
-    {
+    if (out->type == WL_EOF) {
       break;
     }
   }
@@ -56,8 +52,7 @@ theend:
 int
 main (const int argc, char **argv)
 {
-  if (argc != 2)
-  {
+  if (argc != 2) {
     printf ("USAGE: walfprint FNAME\n");
     return -1;
   }

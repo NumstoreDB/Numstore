@@ -14,8 +14,6 @@
 
 #include "nscore/wal/ns_wal_ostream.h"
 
-#include <stddef.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -23,6 +21,8 @@
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: WAL OStream
@@ -38,21 +38,18 @@ struct wal_ostream *
 walos_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
 {
   struct wal_ostream *ret = i_malloc (mem, 1, sizeof *ret, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
   ret->mem = mem;
 
-  if (i_open_w (fs, &ret->fd, fname, e))
-  {
+  if (i_open_w (fs, &ret->fd, fname, e)) {
     goto err_free;
   }
 
   const i64 len = i_seek (&ret->fd, 0, I_SEEK_END, e);
-  if (len < 0)
-  {
+  if (len < 0) {
     goto err_close;
   }
 
@@ -109,19 +106,16 @@ static err_t
 walos_flush_impl (struct wal_ostream *w, error *e)
 {
   const u32 towrite = cbuffer_len (&w->buffer);
-  if (towrite == 0)
-  {
+  if (towrite == 0) {
     return SUCCESS;
   }
 
-  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e))
-  {
+  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e)) {
     panic ("Wal write failed");
   }
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
-  if (i_fsync (&w->fd, e))
-  {
+  if (i_fsync (&w->fd, e)) {
     panic ("Wal fsync failed");
   }
 
@@ -144,8 +138,7 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
 {
   DBG_ASSERT (wal_ostream, w);
 
-  if (checksum)
-  {
+  if (checksum) {
     checksum_execute (checksum, data, len);
   }
 
@@ -154,20 +147,16 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
 
   latch_lock (&w->l);
 
-  while (written < len)
-  {
-    if (cbuffer_avail (&w->buffer) == 0)
-    {
-      if (walos_flush_impl (w, e))
-      {
+  while (written < len) {
+    if (cbuffer_avail (&w->buffer) == 0) {
+      if (walos_flush_impl (w, e)) {
         latch_unlock (&w->l);
         return error_trace (e);
       }
     }
 
     const u32 towrite = MIN (len - written, cbuffer_avail (&w->buffer));
-    if (towrite > 0)
-    {
+    if (towrite > 0) {
       cbuffer_write_expect (src + written, 1, towrite, &w->buffer);
       written += towrite;
     }
@@ -190,12 +179,10 @@ slsn
 walos_truncate (struct wal_ostream *w, error *e)
 {
   latch_lock (&w->l);
-  if (i_truncate (&w->fd, 0, e))
-  {
+  if (i_truncate (&w->fd, 0, e)) {
     goto theend;
   }
-  if (i_seek (&w->fd, 0, I_SEEK_SET, e))
-  {
+  if (i_seek (&w->fd, 0, I_SEEK_SET, e)) {
     goto theend;
   }
 

@@ -43,10 +43,9 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
   error_unsilence (e);
 
   // Variable doesn't exist - so create it
-  if (err == ERR_VARIABLE_NE)
-  {
-    e->cause_code = SUCCESS;
-    e->cmlen      = 0;
+  if (err == ERR_VARIABLE_NE) {
+    e->cause_code                       = SUCCESS;
+    e->cmlen                            = 0;
 
     // Create the variable
     struct ns_var_create_params cparams = {
@@ -55,24 +54,19 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
         .vname = params->vname,
         .type  = params->type,
     };
-    if (ns_var_create (cparams, e))
-    {
+    if (ns_var_create (cparams, e)) {
       goto failed;
     }
 
     // Try again
-    if (ns_var_get (&gparams, e))
-    {
+    if (ns_var_get (&gparams, e)) {
       goto failed;
     }
-  }
-  else if (err < 0)
-  {
+  } else if (err < 0) {
     goto failed;
   }
 
-  if (!type_equal (params->type, gparams.dest.dtype))
-  {
+  if (!type_equal (params->type, gparams.dest.dtype)) {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
@@ -107,8 +101,8 @@ TEST (ns_var_get_or_create)
       pgr_begin_txn (&tx, f.p, &f.e);
 
       struct ns_var_get_or_create_params params = {
-          .p  = f.p,
-          .tx = &tx,
+          .p     = f.p,
+          .tx    = &tx,
 
           .vname = strfcstr ("foo"),
           .type  = &(struct type){.type = T_PRIM, .p = U32},
@@ -137,8 +131,8 @@ TEST (ns_var_get_or_create)
       pgr_begin_txn (&tx, f.p, &f.e);
 
       struct ns_var_get_or_create_params params = {
-          .p  = f.p,
-          .tx = &tx,
+          .p     = f.p,
+          .tx    = &tx,
 
           .vname = strfcstr ("foo"),
           .type  = &(struct type){.type = T_PRIM, .p = U32},
@@ -163,8 +157,7 @@ TEST (ns_var_get_or_create)
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
 
-    for (u32 i = 0; i < 100; ++i)
-    {
+    for (u32 i = 0; i < 100; ++i) {
       struct txn tx;
 
       // Long variable name
@@ -173,15 +166,14 @@ TEST (ns_var_get_or_create)
 
         u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
         char *name = i_malloc (f.mem, len, 1, &f.e);
-        for (u32 k = 0; k < len - 1; ++k)
-        {
+        for (u32 k = 0; k < len - 1; ++k) {
           name[k] = 'a' + randu32r (0, 26);
         }
-        name[len - 1] = '\0';
+        name[len - 1]                             = '\0';
 
         struct ns_var_get_or_create_params params = {
-            .p  = f.p,
-            .tx = &tx,
+            .p     = f.p,
+            .tx    = &tx,
 
             .vname = strfcstr (name),
             .type  = &(struct type){.type = T_PRIM, .p = U32},
@@ -207,8 +199,7 @@ TEST (ns_var_get_or_create)
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
 
-    for (u32 i = 0; i < 100; ++i)
-    {
+    for (u32 i = 0; i < 100; ++i) {
       struct txn tx;
 
       // Long variable name
@@ -220,8 +211,7 @@ TEST (ns_var_get_or_create)
         {
           u32 len = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
           name    = i_malloc (f.mem, len, 1, &f.e);
-          for (u32 k = 0; k < len - 1; ++k)
-          {
+          for (u32 k = 0; k < len - 1; ++k) {
             name[k] = 'a' + randu32r (0, 26);
           }
           name[len - 1] = '\0';
@@ -232,8 +222,8 @@ TEST (ns_var_get_or_create)
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
-            .p  = f.p,
-            .tx = &tx,
+            .p     = f.p,
+            .tx    = &tx,
 
             .vname = strfcstr (name),
             .type  = t,
@@ -255,8 +245,7 @@ TEST (ns_var_get_or_create)
 
   TEST_CASE ("Big type short variable name")
   {
-    for (int i = 0; i < 100; ++i)
-    {
+    for (int i = 0; i < 100; ++i) {
       struct pgr_fixture f;
       pgr_fixture_create (&f);
       ns_init_var_hash_map (f.p, &f.e);
@@ -270,8 +259,8 @@ TEST (ns_var_get_or_create)
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
-            .p  = f.p,
-            .tx = &tx,
+            .p     = f.p,
+            .tx    = &tx,
 
             .vname = strfcstr ("foo"),
             .type  = t,

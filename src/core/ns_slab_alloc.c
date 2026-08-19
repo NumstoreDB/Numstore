@@ -14,16 +14,16 @@
 
 #include "core/ns_slab_alloc.h"
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Slab Allocator
@@ -46,7 +46,7 @@ slab_alloc_init (struct slab_alloc *dest, struct i_mem mem, u32 size, const u32 
   ASSERT (cap_per_slab > 0);
 
   // Align size to pointer boundary for better performance
-  size = (size + sizeof (void *) - 1) & ~(sizeof (void *) - 1);
+  size  = (size + sizeof (void *) - 1) & ~(sizeof (void *) - 1);
 
   *dest = (struct slab_alloc){
       .mem          = mem,
@@ -64,8 +64,7 @@ slab_alloc_destroy (struct slab_alloc *alloc)
   ASSERT (alloc);
 
   struct slab *s = alloc->head;
-  while (s)
-  {
+  while (s) {
     struct slab *next = s->next;
     i_free (alloc->mem, s);
     s = next;
@@ -78,33 +77,30 @@ slab_alloc_destroy (struct slab_alloc *alloc)
 static struct slab *
 slab_alloc_extend (struct slab_alloc *alloc, error *e)
 {
-  const u32 data_size  = alloc->size * alloc->cap_per_slab;
-  const u32 total_size = data_size + sizeof (struct slab);
+  const u32    data_size  = alloc->size * alloc->cap_per_slab;
+  const u32    total_size = data_size + sizeof (struct slab);
 
-  struct slab *slab = i_malloc (alloc->mem, 1, total_size, e);
-  if (slab == NULL)
-  {
+  struct slab *slab       = i_malloc (alloc->mem, 1, total_size, e);
+  if (slab == NULL) {
     return NULL;
   }
 
   slab->total_size = total_size;
 
   // Link at head
-  slab->prev = NULL;
-  slab->next = alloc->head;
-  if (alloc->head)
-  {
+  slab->prev       = NULL;
+  slab->next       = alloc->head;
+  if (alloc->head) {
     ASSERT (alloc->head->prev == NULL);
     alloc->head->prev = slab;
   }
-  alloc->head = slab;
-  slab->used  = 0;
+  alloc->head    = slab;
+  slab->used     = 0;
 
   // Initialize freelist
   slab->freelist = slab->data;
   u8 *cur        = slab->data;
-  for (u32 i = 0; i < alloc->cap_per_slab - 1; ++i)
-  {
+  for (u32 i = 0; i < alloc->cap_per_slab - 1; ++i) {
     u8 *next      = cur + alloc->size;
     *(void **)cur = next;
     cur           = next;
@@ -125,8 +121,7 @@ slab_alloc_alloc (struct slab_alloc *alloc, error *e)
   struct slab *s = alloc->current;
 
   // HOT PATH: Try cached current slab first
-  if (s && s->freelist)
-  {
+  if (s && s->freelist) {
     ret         = s->freelist;
     s->freelist = *(void **)ret;
     s->used++;
@@ -135,16 +130,13 @@ slab_alloc_alloc (struct slab_alloc *alloc, error *e)
 
   // SLOW PATH: Find or create slab with space
   s = alloc->head;
-  while (s && !s->freelist)
-  {
+  while (s && !s->freelist) {
     s = s->next;
   }
 
-  if (!s)
-  {
+  if (!s) {
     s = slab_alloc_extend (alloc, e);
-    if (s == NULL)
-    {
+    if (s == NULL) {
       goto theend;
     }
   }
@@ -152,8 +144,8 @@ slab_alloc_alloc (struct slab_alloc *alloc, error *e)
   // Update cache
   alloc->current = s;
 
-  ret         = s->freelist;
-  s->freelist = *(void **)ret;
+  ret            = s->freelist;
+  s->freelist    = *(void **)ret;
   s->used++;
 
 theend:
@@ -174,17 +166,14 @@ slab_from_ptr (struct slab_alloc *alloc, void *ptr)
 {
   // Try the cached slab
   struct slab *s = alloc->current;
-  if (s && slab_contains (alloc, s, ptr))
-  {
+  if (s && slab_contains (alloc, s, ptr)) {
     return s;
   }
 
   // Try remaining slabs
   s = alloc->head;
-  while (s)
-  {
-    if (slab_contains (alloc, s, ptr))
-    {
+  while (s) {
+    if (slab_contains (alloc, s, ptr)) {
       return s;
     }
     s = s->next;
@@ -211,34 +200,27 @@ slab_alloc_free (struct slab_alloc *alloc, void *ptr)
   s->used--;
 
   // Update current cache if this slab now has space
-  if (alloc->current == NULL || alloc->current->freelist == NULL)
-  {
+  if (alloc->current == NULL || alloc->current->freelist == NULL) {
     alloc->current = s;
   }
 
   // Free empty slabs
-  if (s->used == 0)
-  {
-    if (s->next || s->prev)
-    {
+  if (s->used == 0) {
+    if (s->next || s->prev) {
       // Clear cache if we're freeing it
-      if (alloc->current == s)
-      {
+      if (alloc->current == s) {
         alloc->current = NULL;
       }
 
       // Update head if we're freeing it
-      if (s == alloc->head)
-      {
+      if (s == alloc->head) {
         alloc->head = s->next;
       }
 
-      if (s->prev)
-      {
+      if (s->prev) {
         s->prev->next = s->next;
       }
-      if (s->next)
-      {
+      if (s->next) {
         s->next->prev = s->prev;
       }
 
@@ -263,8 +245,7 @@ test_item_init (struct test_item *item, const i32 value)
 {
   item->a = value;
   item->b = (u64)value * 1000;
-  for (int i = 0; i < 10; i++)
-  {
+  for (int i = 0; i < 10; i++) {
     item->data[i] = (char)(value + i);
   }
 }
@@ -274,8 +255,7 @@ test_item_verify (const struct test_item *item, const i32 expected)
 {
   test_assert_equal (item->a, expected);
   test_assert_equal (item->b, (u64)expected * 1000);
-  for (int i = 0; i < 10; i++)
-  {
+  for (int i = 0; i < 10; i++) {
     test_assert_equal (item->data[i], (char)(expected + i));
   }
 }
@@ -289,106 +269,89 @@ TEST (slab_alloc_simple)
 
   // Allocate 20 items (will span 4 slabs)
   struct test_item *items[20];
-  for (int i = 0; i < 20; i++)
-  {
+  for (int i = 0; i < 20; i++) {
     items[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (items[i] != NULL);
     test_item_init (items[i], i);
   }
 
   // Verify all items
-  for (int i = 0; i < 20; i++)
-  {
+  for (int i = 0; i < 20; i++) {
     test_item_verify (items[i], i);
   }
 
   // Free every other item (indices 0, 2, 4, ... 18)
-  for (int i = 0; i < 20; i += 2)
-  {
+  for (int i = 0; i < 20; i += 2) {
     slab_alloc_free (&alloc, items[i]);
     items[i] = NULL;
   }
 
   // Verify remaining items (indices 1, 3, 5, ... 19)
-  for (int i = 1; i < 20; i += 2)
-  {
+  for (int i = 1; i < 20; i += 2) {
     test_item_verify (items[i], i);
   }
 
   // Allocate 10 new items (should reuse freed slots)
   struct test_item *new_items[10];
-  for (int i = 0; i < 10; i++)
-  {
+  for (int i = 0; i < 10; i++) {
     new_items[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (new_items[i] != NULL);
     test_item_init (new_items[i], 100 + i);
   }
 
   // Verify old items still intact
-  for (int i = 1; i < 20; i += 2)
-  {
+  for (int i = 1; i < 20; i += 2) {
     test_item_verify (items[i], i);
   }
 
   // Verify new items
-  for (int i = 0; i < 10; i++)
-  {
+  for (int i = 0; i < 10; i++) {
     test_item_verify (new_items[i], 100 + i);
   }
 
   // Free first half of new items (indices 0-4)
-  for (int i = 0; i < 5; i++)
-  {
+  for (int i = 0; i < 5; i++) {
     slab_alloc_free (&alloc, new_items[i]);
     new_items[i] = NULL;
   }
 
   // Verify remaining new items (indices 5-9)
-  for (int i = 5; i < 10; i++)
-  {
+  for (int i = 5; i < 10; i++) {
     test_item_verify (new_items[i], 100 + i);
   }
 
   // Verify old items still intact
-  for (int i = 1; i < 20; i += 2)
-  {
+  for (int i = 1; i < 20; i += 2) {
     test_item_verify (items[i], i);
   }
 
   // Allocate another batch
   struct test_item *batch3[15];
-  for (int i = 0; i < 15; i++)
-  {
+  for (int i = 0; i < 15; i++) {
     batch3[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (batch3[i] != NULL);
     test_item_init (batch3[i], 200 + i);
   }
 
   // Verify all three batches
-  for (int i = 1; i < 20; i += 2)
-  {
+  for (int i = 1; i < 20; i += 2) {
     test_item_verify (items[i], i);
   }
-  for (int i = 5; i < 10; i++)
-  {
+  for (int i = 5; i < 10; i++) {
     test_item_verify (new_items[i], 100 + i);
   }
-  for (int i = 0; i < 15; i++)
-  {
+  for (int i = 0; i < 15; i++) {
     test_item_verify (batch3[i], 200 + i);
   }
 
   // Free everything
-  for (int i = 1; i < 20; i += 2)
-  {
+  for (int i = 1; i < 20; i += 2) {
     slab_alloc_free (&alloc, items[i]);
   }
-  for (int i = 5; i < 10; i++)
-  {
+  for (int i = 5; i < 10; i++) {
     slab_alloc_free (&alloc, new_items[i]);
   }
-  for (int i = 0; i < 15; i++)
-  {
+  for (int i = 0; i < 15; i++) {
     slab_alloc_free (&alloc, batch3[i]);
   }
 
@@ -441,20 +404,17 @@ TEST (slab_alloc_no_duplicates)
   slab_alloc_init (&alloc, mem, sizeof (struct test_item), 7);
 
   void *ptrs[100];
-  for (int i = 0; i < N; i++)
-  {
+  for (int i = 0; i < N; i++) {
     ptrs[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (ptrs[i] != NULL);
 
     // Verify no duplicate with any prior pointer
-    for (int j = 0; j < i; j++)
-    {
+    for (int j = 0; j < i; j++) {
       test_assert (ptrs[i] != ptrs[j]);
     }
   }
 
-  for (int i = 0; i < N; i++)
-  {
+  for (int i = 0; i < N; i++) {
     slab_alloc_free (&alloc, ptrs[i]);
   }
   slab_alloc_destroy (&alloc);
@@ -470,34 +430,29 @@ TEST (slab_alloc_free_all_realloc)
 
   // Fill 3 slabs (12 items)
   struct test_item *ptrs[12];
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     ptrs[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], i);
   }
 
   // Free all - should reclaim slabs down to 1
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     slab_alloc_free (&alloc, ptrs[i]);
   }
 
   // Reallocate - should work, extending as needed
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     ptrs[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], 500 + i);
   }
 
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     test_item_verify (ptrs[i], 500 + i);
   }
 
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     slab_alloc_free (&alloc, ptrs[i]);
   }
   slab_alloc_destroy (&alloc);
@@ -513,27 +468,23 @@ TEST (slab_alloc_interleaved_patterns)
 
   // Pattern 1: alloc 8, free LIFO (stack order)
   struct test_item *ptrs[8];
-  for (int i = 0; i < 8; i++)
-  {
+  for (int i = 0; i < 8; i++) {
     ptrs[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], i);
   }
-  for (int i = 7; i >= 0; i--)
-  {
+  for (int i = 7; i >= 0; i--) {
     test_item_verify (ptrs[i], i);
     slab_alloc_free (&alloc, ptrs[i]);
   }
 
   // Pattern 2: alloc 8, free FIFO (queue order)
-  for (int i = 0; i < 8; i++)
-  {
+  for (int i = 0; i < 8; i++) {
     ptrs[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], 100 + i);
   }
-  for (int i = 0; i < 8; i++)
-  {
+  for (int i = 0; i < 8; i++) {
     test_item_verify (ptrs[i], 100 + i);
     slab_alloc_free (&alloc, ptrs[i]);
   }
@@ -616,8 +567,7 @@ TEST (slab_alloc_free_middle_slab)
   s3[0] = slab_alloc_alloc (&alloc, &e);
   s3[1] = slab_alloc_alloc (&alloc, &e);
 
-  for (int i = 0; i < 2; i++)
-  {
+  for (int i = 0; i < 2; i++) {
     test_item_init (s1[i], 10 + i);
     test_item_init (s2[i], 20 + i);
     test_item_init (s3[i], 30 + i);
@@ -654,21 +604,18 @@ TEST (slab_alloc_minimum_size)
   slab_alloc_init (&alloc, mem, sizeof (void *), 10);
 
   void *ptrs[20];
-  for (int i = 0; i < 20; i++)
-  {
+  for (int i = 0; i < 20; i++) {
     ptrs[i] = slab_alloc_alloc (&alloc, &e);
     test_assert (ptrs[i] != NULL);
     // Write a known pattern to detect corruption
     *(uintptr_t *)ptrs[i] = (uintptr_t)(0xDEAD0000 + i);
   }
 
-  for (int i = 0; i < 20; i++)
-  {
+  for (int i = 0; i < 20; i++) {
     test_assert_equal (*(uintptr_t *)ptrs[i], (uintptr_t)(0xDEAD0000 + i));
   }
 
-  for (int i = 0; i < 20; i++)
-  {
+  for (int i = 0; i < 20; i++) {
     slab_alloc_free (&alloc, ptrs[i]);
   }
   slab_alloc_destroy (&alloc);
@@ -687,24 +634,19 @@ TEST (slab_alloc_stress_random)
   i32               values[256] = {0};
   int               active      = 0;
 
-  for (int round = 0; round < 5000; round++)
-  {
+  for (int round = 0; round < 5000; round++) {
     bool do_alloc = (active == 0) || (active < POOL && randu32r (0, 2) != 0);
 
-    if (do_alloc)
-    {
+    if (do_alloc) {
       // Find free slot
       int idx = randu32r (0, POOL + 1);
-      for (int i = 0; i < POOL; i++)
-      {
-        if (pool[(idx + i) % POOL] == NULL)
-        {
+      for (int i = 0; i < POOL; i++) {
+        if (pool[(idx + i) % POOL] == NULL) {
           idx = (idx + i) % POOL;
           break;
         }
       }
-      if (pool[idx] != NULL)
-      {
+      if (pool[idx] != NULL) {
         continue;
       }
 
@@ -713,21 +655,16 @@ TEST (slab_alloc_stress_random)
       values[idx] = round;
       test_item_init (pool[idx], round);
       active++;
-    }
-    else
-    {
+    } else {
       // Find active slot
       int idx = randu32r (0, POOL + 1);
-      for (int i = 0; i < POOL; i++)
-      {
-        if (pool[(idx + i) % POOL] != NULL)
-        {
+      for (int i = 0; i < POOL; i++) {
+        if (pool[(idx + i) % POOL] != NULL) {
           idx = (idx + i) % POOL;
           break;
         }
       }
-      if (pool[idx] == NULL)
-      {
+      if (pool[idx] == NULL) {
         continue;
       }
 
@@ -738,12 +675,9 @@ TEST (slab_alloc_stress_random)
     }
 
     // Periodic full verification
-    if (round % 500 == 0)
-    {
-      for (int i = 0; i < POOL; i++)
-      {
-        if (pool[i])
-        {
+    if (round % 500 == 0) {
+      for (int i = 0; i < POOL; i++) {
+        if (pool[i]) {
           test_item_verify (pool[i], values[i]);
         }
       }
@@ -751,10 +685,8 @@ TEST (slab_alloc_stress_random)
   }
 
   // Cleanup
-  for (int i = 0; i < POOL; i++)
-  {
-    if (pool[i])
-    {
+  for (int i = 0; i < POOL; i++) {
+    if (pool[i]) {
       slab_alloc_free (&alloc, pool[i]);
     }
   }

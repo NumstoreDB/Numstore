@@ -14,13 +14,13 @@
 
 #include "core/ns_stride.h"
 
-#include <stddef.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
+
+#include <stddef.h>
 
 void
 stride_resolve_expect (struct stride *dest, const struct user_stride src, const u64 arrlen)
@@ -29,8 +29,7 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
 
   ASSERT (step > 0);
 
-  if (arrlen == 0)
-  {
+  if (arrlen == 0) {
     dest->start  = 0;
     dest->stride = (u32)step;
     dest->nelems = 0;
@@ -39,59 +38,44 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
 
   i64 start, stop;
 
-  if (src.present & START_PRESENT)
-  {
+  if (src.present & START_PRESENT) {
     start = src.start;
-    if (start < 0)
-    {
+    if (start < 0) {
       start += arrlen;
     }
 
     // Clamp [0, arrlen]
-    if (start < 0)
-    {
+    if (start < 0) {
       start = 0;
     }
-    if (start > (i64)arrlen)
-    {
+    if (start > (i64)arrlen) {
       start = arrlen;
     }
-  }
-  else
-  {
+  } else {
     start = 0;
   }
 
-  if (src.present & STOP_PRESENT)
-  {
+  if (src.present & STOP_PRESENT) {
     stop = src.stop;
-    if (stop < 0)
-    {
+    if (stop < 0) {
       stop += arrlen;
     }
 
     // Clamp [0, arrlen]
-    if (stop < 0)
-    {
+    if (stop < 0) {
       stop = 0;
     }
-    if (stop > (i64)arrlen)
-    {
+    if (stop > (i64)arrlen) {
       stop = arrlen;
     }
-  }
-  else
-  {
+  } else {
     stop = arrlen;
   }
 
   u64 nelems;
-  if (stop <= start)
-  {
+  if (stop <= start) {
     nelems = 0;
-  }
-  else
-  {
+  } else {
     nelems = (stop - start + step - 1) / step;
   }
 
@@ -108,8 +92,7 @@ stride_resolve (struct stride *dest, const struct user_stride src, const u64 arr
 {
   const i64 step = (src.present & STEP_PRESENT) ? src.step : 1;
 
-  if (step <= 0)
-  {
+  if (step <= 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "stride step must be positive");
   }
 
@@ -266,20 +249,16 @@ musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error 
   DBG_ASSERT (mus_builder, eb);
 
   struct mus_llnode *node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
-  if (!node)
-  {
+  if (!node) {
     return error_trace (e);
   }
 
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!eb->head)
-  {
+  if (!eb->head) {
     eb->head = &node->link;
-  }
-  else
-  {
+  } else {
     list_append (&eb->head, &node->link);
   }
 
@@ -293,22 +272,19 @@ musb_build (struct multi_user_stride *dest, struct mus_builder *eb, error *e)
   ASSERT (dest);
 
   const u32 len = list_length (eb->head);
-  if (len == 0)
-  {
+  if (len == 0) {
     dest->strides = NULL;
     dest->len     = 0;
     goto theend;
   }
 
   struct user_stride *strides = builder_malloc_persist (eb->b, len, sizeof *strides, e);
-  if (!strides)
-  {
+  if (!strides) {
     goto theend;
   }
 
   u32 i = 0;
-  for (struct llnode *it = eb->head; it; it = it->next)
-  {
+  for (struct llnode *it = eb->head; it; it = it->next) {
     const struct mus_llnode *mn = container_of (it, struct mus_llnode, link);
     strides[i++]                = mn->stride;
   }

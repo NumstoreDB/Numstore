@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -31,6 +28,9 @@
 #include "nscore/page/ns_page_delegate.h"
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: ns_insert
@@ -52,23 +52,23 @@
 sb_size
 ns_insert (struct ns_insert_params *params, error *e)
 {
-  page_h prev = page_h_create ();
-  page_h cur  = page_h_create ();
-  page_h next = page_h_create ();
+  page_h                prev = page_h_create ();
+  page_h                cur  = page_h_create ();
+  page_h                next = page_h_create ();
 
-  u8     temp_buf[DL_DATA_SIZE];
-  p_size tbw = 0;
-  p_size tbl = 0;
+  u8                    temp_buf[DL_DATA_SIZE];
+  p_size                tbw      = 0;
+  p_size                tbl      = 0;
 
-  struct node_updates *output   = NULL;
-  struct node_updates *rb_nupd2 = NULL;
-  struct three_in_pair tip_out;
-  struct root_update   root;
+  struct node_updates  *output   = NULL;
+  struct node_updates  *rb_nupd2 = NULL;
+  struct three_in_pair  tip_out;
+  struct root_update    root;
 
-  p_size lidx          = 0;
-  b_size total_written = 0;
+  p_size                lidx          = 0;
+  b_size                total_written = 0;
 
-  struct ns_seek_params seek = {
+  struct ns_seek_params seek          = {
       .p          = params->p,
       .tx         = params->tx,
       .root       = params->root,
@@ -77,19 +77,14 @@ ns_insert (struct ns_insert_params *params, error *e)
       .sp         = 0,
   };
 
-  if (params->root == PGNO_NULL)
-  {
-    if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e))
-    {
+  if (params->root == PGNO_NULL) {
+    if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e)) {
       goto failed;
     }
 
     params->root = page_h_pgno (&cur);
-  }
-  else
-  {
-    if (ns_seek (&seek, e))
-    {
+  } else {
+    if (ns_seek (&seek, e)) {
       goto failed;
     }
 
@@ -100,34 +95,28 @@ ns_insert (struct ns_insert_params *params, error *e)
   pgno last = dl_get_next (page_h_ro (&cur));
   tbl       = dl_read_out_from (page_h_w (&cur), temp_buf, lidx);
   output    = nupd_init (page_h_pgno (&cur), 0, params->p->mem, e);
-  if (output == NULL)
-  {
+  if (output == NULL) {
     goto failed;
   }
 
-  while (params->bytes == 0 || total_written < params->bytes)
-  {
+  while (params->bytes == 0 || total_written < params->bytes) {
     p_size avail = dl_avail (page_h_ro (&cur));
 
-    if (avail == 0)
-    {
+    if (avail == 0) {
       ASSERT (lidx == DL_DATA_SIZE);
 
-      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e))
-      {
+      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) {
         goto failed;
       }
 
       dl_set_next (page_h_w (&cur), page_h_pgno (&next));
       dl_set_prev (page_h_w (&next), page_h_pgno (&cur));
 
-      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e))
-      {
+      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e)) {
         goto failed;
       }
 
-      if (pgr_release (params->p, &cur, PG_DATA_LIST, e))
-      {
+      if (pgr_release (params->p, &cur, PG_DATA_LIST, e)) {
         goto failed;
       }
 
@@ -137,24 +126,19 @@ ns_insert (struct ns_insert_params *params, error *e)
     }
 
     p_size next_amount;
-    if (params->bytes == 0)
-    {
+    if (params->bytes == 0) {
       next_amount = avail;
-    }
-    else
-    {
+    } else {
       ASSERT (params->bytes >= total_written);
       next_amount = MIN (avail, (p_size)(params->bytes - total_written));
     }
 
     i32 written = stream_bread (dl_avail_data (page_h_w (&cur)), 1, next_amount, params->src, e);
-    if (written < 0)
-    {
+    if (written < 0) {
       goto failed;
     }
 
-    if (written == 0 && stream_isdone (params->src))
-    {
+    if (written == 0 && stream_isdone (params->src)) {
       break;
     }
 
@@ -163,32 +147,27 @@ ns_insert (struct ns_insert_params *params, error *e)
     total_written += (b_size)written;
   }
 
-  while (tbw < tbl)
-  {
+  while (tbw < tbl) {
     p_size written = dl_append (page_h_w (&cur), temp_buf + tbw, tbl - tbw);
 
     lidx += written;
     tbw += written;
 
-    if (lidx == DL_DATA_SIZE && tbw < tbl)
-    {
+    if (lidx == DL_DATA_SIZE && tbw < tbl) {
       ASSERT (lidx == DL_DATA_SIZE);
 
-      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e))
-      {
+      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) {
         goto failed;
       }
 
       dl_set_next (page_h_w (&cur), page_h_pgno (&next));
       dl_set_prev (page_h_w (&next), page_h_pgno (&cur));
 
-      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e))
-      {
+      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e)) {
         goto failed;
       }
 
-      if (pgr_release (params->p, &cur, PG_DATA_LIST, e))
-      {
+      if (pgr_release (params->p, &cur, PG_DATA_LIST, e)) {
         goto failed;
       }
 
@@ -197,10 +176,8 @@ ns_insert (struct ns_insert_params *params, error *e)
     }
   }
 
-  if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur)))
-  {
-    if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e))
-    {
+  if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur))) {
+    if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e)) {
       goto failed;
     }
 
@@ -217,13 +194,11 @@ ns_insert (struct ns_insert_params *params, error *e)
       .next   = &next,
   };
 
-  if (ns_balance_and_release (bparams, e))
-  {
+  if (ns_balance_and_release (bparams, e)) {
     goto failed;
   }
 
-  if (nupd_append_tip_right (output, tip_out, e))
-  {
+  if (nupd_append_tip_right (output, tip_out, e)) {
     goto failed;
   }
 
@@ -238,22 +213,19 @@ ns_insert (struct ns_insert_params *params, error *e)
       .layer_root = root,
   };
 
-  output   = NULL;
-  rb_nupd2 = NULL;
+  output    = NULL;
+  rb_nupd2  = NULL;
 
   err_t ret = ns_rebalance (&rebalance, e);
 
-  if (rebalance.output)
-  {
+  if (rebalance.output) {
     nupd_free (rebalance.output);
   }
-  if (rebalance.input)
-  {
+  if (rebalance.input) {
     nupd_free (rebalance.input);
   }
 
-  if (ret)
-  {
+  if (ret) {
     goto failed;
   }
 
@@ -266,17 +238,14 @@ failed:
   pgr_cancel_if_exists (params->p, &cur);
   pgr_cancel_if_exists (params->p, &next);
 
-  if (output)
-  {
+  if (output) {
     nupd_free (output);
   }
-  if (rb_nupd2)
-  {
+  if (rb_nupd2) {
     nupd_free (rb_nupd2);
   }
 
-  for (u32 i = 0; i < seek.sp; ++i)
-  {
+  for (u32 i = 0; i < seek.sp; ++i) {
     pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
   }
 
@@ -343,8 +312,7 @@ TEST (ns_insert)
    *----------------------------------------------------------------------------*/
 
 #  define BYTE_STREAM_SIZE_TEST(byte_size, stream_size, expected)                \
-    do                                                                           \
-    {                                                                            \
+    do {                                                                         \
       TEST_CASE ("Bytes: %d Stream: %d => %d", byte_size, stream_size, expected) \
       {                                                                          \
         u8                     buffer[4096];                                     \
@@ -364,12 +332,9 @@ TEST (ns_insert)
         sb_size nelems = ns_insert (&params, &f.e);                              \
                                                                                  \
         test_assert_int_equal (nelems, expected);                                \
-        if (expected > 0)                                                        \
-        {                                                                        \
+        if (expected > 0) {                                                      \
           test_assert (params.root != PGNO_NULL);                                \
-        }                                                                        \
-        else                                                                     \
-        {                                                                        \
+        } else {                                                                 \
           test_assert (params.root == PGNO_NULL);                                \
         }                                                                        \
       }                                                                          \
@@ -386,8 +351,7 @@ TEST (ns_insert)
 }
 
 #  define DO_INSERT(f, _root, _bofst, data, params)       \
-    do                                                    \
-    {                                                     \
+    do {                                                  \
       u32_arr_rand (data);                                \
       struct stream          src;                         \
       struct stream_ibuf_ctx ctx;                         \
@@ -413,8 +377,7 @@ TEST (ns_insert)
     while (0)
 
 #  define DO_REMOVE(f, _root, _bofst, _size, params) \
-    do                                               \
-    {                                                \
+    do {                                             \
       pgr_begin_txn (&f.tx, f.p, &f.e);              \
                                                      \
       params = (struct ns_remove_params){            \
@@ -434,8 +397,7 @@ TEST (ns_insert)
     while (0)
 
 #  define TEST_DATA_LIST(pgno, expected_data)                                                      \
-    do                                                                                             \
-    {                                                                                              \
+    do {                                                                                           \
       page_h root = page_h_create ();                                                              \
       pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e);                                              \
       test_assert_int_equal (dl_used (page_h_ro (&root)), sizeof (expected_data));                 \
@@ -528,7 +490,7 @@ TEST (ns_insert_from_empty)
     u8                      data3[1];
     u8                      data4[1];
 
-    u8 expected[DL_DATA_SIZE];
+    u8                      expected[DL_DATA_SIZE];
 
     DO_INSERT (f, PGNO_NULL, 0, data1, params);
     DO_INSERT (f, params.root, 1, data2, params);

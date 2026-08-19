@@ -24,6 +24,7 @@
 
 #ifdef TESTING
 #  define TEST_TABLE_LEN 1000
+
 TEST (ht_insert_test_regression_trigger_swap)
 {
   // Although this used to work, it would skip over
@@ -32,8 +33,7 @@ TEST (ht_insert_test_regression_trigger_swap)
   hentry_test     entries[TEST_TABLE_LEN];
   ht_init_test (&ht, entries, TEST_TABLE_LEN);
 
-  for (u32 i = 0; i < TEST_TABLE_LEN; ++i)
-  {
+  for (u32 i = 0; i < TEST_TABLE_LEN; ++i) {
     test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = i, .value = i}), HTIR_SUCCESS);
   }
 
@@ -54,8 +54,7 @@ TEST (ht_insert_test_regression_trigger_swap)
 
   bool has_bug = false;
 
-  if (has_bug)
-  {
+  if (has_bug) {
     test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
     test_assert_int_equal (ht.elems[0].dib, 0);
     test_assert_int_equal (ht.elems[0].present, 1);
@@ -70,9 +69,7 @@ TEST (ht_insert_test_regression_trigger_swap)
 
     // Everything else is really unpredictable because the
     // +i just screws up everything
-  }
-  else
-  {
+  } else {
     test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
     test_assert_int_equal (ht.elems[0].dib, 0);
     test_assert_int_equal (ht.elems[0].present, 1);
@@ -85,8 +82,7 @@ TEST (ht_insert_test_regression_trigger_swap)
     test_assert_int_equal (ht.elems[2].dib, 1);
     test_assert_int_equal (ht.elems[2].present, 1);
 
-    for (u32 i = 3; i < TEST_TABLE_LEN; ++i)
-    {
+    for (u32 i = 3; i < TEST_TABLE_LEN; ++i) {
       test_assert_int_equal (ht.elems[i].data.key, i);
       test_assert_int_equal (ht.elems[i].dib, 0);
       test_assert_int_equal (ht.elems[i].present, 1);
@@ -175,8 +171,7 @@ TEST (robin_hood_ht)
     hentry_test     _tiny[4];
     ht_init_test (&tiny, _tiny, 4);
 
-    for (u32 k = 0; k < 4; ++k)
-    {
+    for (u32 k = 0; k < 4; ++k) {
       test_assert_int_equal (
           ht_insert_test (&tiny, (hdata_test){.key = k, .value = k}),
           HTIR_SUCCESS

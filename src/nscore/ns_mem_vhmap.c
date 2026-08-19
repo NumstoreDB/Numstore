@@ -14,9 +14,6 @@
 
 #include "nscore/ns_mem_vhmap.h"
 
-#include <stdbool.h>
-#include <stdio.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_htable.h"
@@ -27,6 +24,9 @@
 #include "core/testing/ns_testing.h" // TEST
 #include "nscore/ns_variables.h"     // variable
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
+#include <stdio.h>
 
 struct var_frame
 {
@@ -40,14 +40,12 @@ struct mem_vhmap *
 mem_vhmap_create (error *e)
 {
   struct mem_vhmap *ret = i_malloc (default_mem (), 1, sizeof *ret, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
   ret->vhasht = htable_create (256, default_mem (), e);
-  if (ret->vhasht == NULL)
-  {
+  if (ret->vhasht == NULL) {
     i_free (default_mem (), ret);
     return NULL;
   }
@@ -84,8 +82,7 @@ static void
 move_data (struct hnode *node, void *ctx)
 {
   struct copy_ctx *_ctx = ctx;
-  if (_ctx->e->cause_code < 0)
-  {
+  if (_ctx->e->cause_code < 0) {
     return;
   }
 
@@ -97,8 +94,7 @@ struct mem_vhmap *
 mem_vhmap_clone (const struct mem_vhmap *src, error *e)
 {
   struct mem_vhmap *ret = mem_vhmap_create (e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
@@ -109,8 +105,7 @@ mem_vhmap_clone (const struct mem_vhmap *src, error *e)
 
   htable_foreach (src->vhasht, move_data, &ctx);
 
-  if (ctx.e->cause_code)
-  {
+  if (ctx.e->cause_code) {
     mem_vhmap_free (ret);
     return NULL;
   }
@@ -137,15 +132,11 @@ mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
   };
   hnode_init (&key.node, fnv1a_hash (var->vname));
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
-  if (found)
-  {
+  if (found) {
     return error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
-  }
-  else
-  {
+  } else {
     struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
-    if (frame == NULL)
-    {
+    if (frame == NULL) {
       return error_trace (e);
     }
 
@@ -163,8 +154,7 @@ mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
     frame->var.rpt_root  = var->rpt_root;
     frame->var.nbytes    = var->nbytes;
 
-    if (frame->var.vname.data == NULL || frame->var.dtype == NULL)
-    {
+    if (frame->var.vname.data == NULL || frame->var.dtype == NULL) {
       allocator_free (&frame->alloc);
       slab_alloc_free (&db->alloc, frame);
       return error_trace (e);
@@ -188,12 +178,9 @@ mem_vhmap_get_var (struct mem_vhmap *db, struct string name)
   hnode_init (&key.node, fnv1a_hash (name));
 
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
-  if (found)
-  {
+  if (found) {
     return &container_of (*found, struct var_frame, node)->var;
-  }
-  else
-  {
+  } else {
     return NULL;
   }
 }
@@ -234,13 +221,11 @@ random_iter (struct hnode *node, void *_ctx)
   struct rand_ctx *ctx = _ctx;
 
   // Already done
-  if (ctx->dest)
-  {
+  if (ctx->dest) {
     return;
   }
 
-  if (ctx->index == ctx->target)
-  {
+  if (ctx->index == ctx->target) {
     ctx->dest = &container_of (node, struct var_frame, node)->var;
   }
 
@@ -262,10 +247,10 @@ mem_vhmap_random (struct mem_vhmap *db)
 #ifdef TESTING
 TEST (mem_vhmap)
 {
-  error             e = error_create ();
-  struct mem_vhmap *v = mem_vhmap_create (&e);
+  error             e       = error_create ();
+  struct mem_vhmap *v       = mem_vhmap_create (&e);
 
-  struct type deftype = {
+  struct type       deftype = {
       .type = T_PRIM,
       .p    = U32,
   };
@@ -273,8 +258,7 @@ TEST (mem_vhmap)
 
   TEST_CASE ("every added var is immediately retrievable with correct data")
   {
-    for (int i = 0; i < 10000; ++i)
-    {
+    for (int i = 0; i < 10000; ++i) {
       snprintf (buf, sizeof buf, "var_%d", i);
       struct variable var = {
           .vname  = strfcstr (buf),
@@ -310,16 +294,14 @@ TEST (mem_vhmap)
 
   TEST_CASE ("remove makes the var unretrievable; others unaffected")
   {
-    for (int i = 0; i < 10000; ++i)
-    {
+    for (int i = 0; i < 10000; ++i) {
       snprintf (buf, sizeof buf, "var_%d", i);
       struct string name = strfcstr (buf);
       mem_vhmap_remove_var (v, name);
       ASSERT (mem_vhmap_get_var (v, name) == NULL);
 
       // spot-check that the next var (if any) is still there
-      if (i + 1 < 10000)
-      {
+      if (i + 1 < 10000) {
         snprintf (buf, sizeof buf, "var_%d", i + 1);
         ASSERT (mem_vhmap_get_var (v, strfcstr (buf)) != NULL);
       }
@@ -328,8 +310,7 @@ TEST (mem_vhmap)
 
   TEST_CASE ("clone captures state; mutations in clone don't affect original")
   {
-    for (int i = 0; i < 128; ++i)
-    {
+    for (int i = 0; i < 128; ++i) {
       snprintf (buf, sizeof buf, "cv_%d", i);
       struct variable var = {
           .vname  = strfcstr (buf),
@@ -342,8 +323,7 @@ TEST (mem_vhmap)
     struct mem_vhmap *c = mem_vhmap_clone (v, &e);
     ASSERT (c != NULL);
 
-    for (int i = 0; i < 128; ++i)
-    {
+    for (int i = 0; i < 128; ++i) {
       snprintf (buf, sizeof buf, "cv_%d", i);
       struct variable *got = mem_vhmap_get_var (c, strfcstr (buf));
       ASSERT (got != NULL);

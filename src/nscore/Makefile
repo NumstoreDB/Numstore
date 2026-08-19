@@ -1,4 +1,4 @@
-C_SRCS := 
+C_SRCS :=
 
 # Algorithms
 C_SRCS += algorithms/ns_balance_and_release.c
@@ -69,7 +69,8 @@ C_SRCS += ns_page_fixture.c
 C_SRCS += ns_txn_table.c
 C_SRCS += ns_variables.c
 
-C_OBJS := $(C_SRCS:.c=.o)
+OBJ_DIR := $(OBJ_DIR)/nscore
+C_OBJS  := $(addprefix $(OBJ_DIR)/,$(C_SRCS:.c=.o))
 
 LIB_TARGET := $(LIB_DIR)/libnscore.a
 
@@ -79,8 +80,10 @@ all: $(LIB_TARGET)
 $(LIB_TARGET): $(C_OBJS)
 	$(AR) rcs $@ $(C_OBJS)
 
-%.o: %.c
+$(OBJ_DIR)/%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(C_OBJS) $(LIB_TARGET)
+	rm -rf $(OBJ_DIR)
+	rm -f $(LIB_TARGET)

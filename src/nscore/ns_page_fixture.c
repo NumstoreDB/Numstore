@@ -14,13 +14,13 @@
 
 #include "nscore/ns_page_fixture.h"
 
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_numerics.h"
 #include "core/ns_platform.h"
 #include "core/os/ns_memory.h"
 #include "nscore/page/ns_page_delegate.h"
+
+#include <string.h>
 
 #ifdef TESTING
 #  include "core/ns_alloc.h"
@@ -46,12 +46,9 @@ DEFINE_DBG_ASSERT (struct dl_page_builder, dl_page_builder, in, {
   ASSERT (in);
   ASSERT (in->dclen <= DL_DATA_SIZE);
   ASSERT (in->data.blen <= in->dclen);
-  if (in->data.blen == 0)
-  {
+  if (in->data.blen == 0) {
     ASSERT (in->data.data == NULL);
-  }
-  else
-  {
+  } else {
     ASSERT (in->data.data != NULL);
   }
 })
@@ -62,17 +59,15 @@ pgr_fixture_create (struct pgr_fixture *dest)
   ASSERT (dest);
   dest->e = error_create ();
 
-  if (unlikely (pgr_delete_single_file ("testdb", &dest->e) < SUCCESS))
-  {
+  if (unlikely (pgr_delete_single_file ("testdb", &dest->e) < SUCCESS)) {
     return error_trace (&dest->e);
   }
 
-  dest->mem = default_mem ();
-  dest->fs  = default_filesystem ();
+  dest->mem       = default_mem ();
+  dest->fs        = default_filesystem ();
 
   struct pager *p = pgr_open ("testdb", dest->mem, dest->fs, &dest->e);
-  if (p == NULL)
-  {
+  if (p == NULL) {
     return dest->e.cause_code;
   }
 
@@ -91,8 +86,7 @@ err_t
 pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest)
 {
   pgr_fixture_create (dest);
-  if (ns_init_var_hash_map (dest->p, &dest->e))
-  {
+  if (ns_init_var_hash_map (dest->p, &dest->e)) {
     pgr_fixture_teardown (dest);
     return error_trace (&dest->e);
   }
@@ -126,30 +120,23 @@ build_tree_from_descr_inner (
 {
   page_h cur = page_h_create ();
 
-  if (descr.next == NULL)
-  {
+  if (descr.next == NULL) {
     // Data List
-    if (pgr_new (&cur, p, tx, PG_DATA_LIST, e))
-    {
+    if (pgr_new (&cur, p, tx, PG_DATA_LIST, e)) {
       goto failed;
     }
 
     dl_set_data (page_h_w (&cur), (struct dl_data){.data = descr.data, .blen = descr.dlen});
-  }
-  else
-  {
+  } else {
     // Inner Node
-    if (pgr_new (&cur, p, tx, PG_INNER_NODE, e))
-    {
+    if (pgr_new (&cur, p, tx, PG_INNER_NODE, e)) {
       goto failed;
     }
 
-    for (u32 i = 0; i < descr.nlen; ++i)
-    {
+    for (u32 i = 0; i < descr.nlen; ++i) {
       struct tree_result result;
 
-      if (build_tree_from_descr_inner (&result, p, tx, descr.next[i], e))
-      {
+      if (build_tree_from_descr_inner (&result, p, tx, descr.next[i], e)) {
         goto failed;
       }
 
@@ -171,8 +158,7 @@ spgno
 build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr descr, error *e)
 {
   struct tree_result result;
-  if (build_tree_from_descr_inner (&result, p, tx, descr, e))
-  {
+  if (build_tree_from_descr_inner (&result, p, tx, descr, e)) {
     return error_trace (e);
   }
   return result.root;
@@ -186,13 +172,11 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
   WRAP (pgr_new (dest, b.pager, b.txn, PG_INNER_NODE, e));
 
   // Create or link
-  if (b.prev)
-  {
+  if (b.prev) {
     dlgt_link (page_h_w (b.prev), page_h_w (dest));
   }
 
-  if (b.next)
-  {
+  if (b.next) {
     dlgt_link (page_h_w (dest), page_h_w (b.next));
   }
 
@@ -200,18 +184,15 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
   struct in_pair data[IN_MAX_KEYS];
 
   // Copy explicit children
-  if (b.children.nodes)
-  {
+  if (b.children.nodes) {
     memcpy (data, b.children.nodes, b.children.len * sizeof (struct in_pair));
   }
 
   static pgno pg = 99999;
 
   // Fill rest with random
-  if (b.children.len < b.dclen)
-  {
-    for (u32 i = b.children.len; i < b.dclen; ++i)
-    {
+  if (b.children.len < b.dclen) {
+    for (u32 i = b.children.len; i < b.dclen; ++i) {
       // Can't duplicate nodes - I'm assuming
       // user supplied nodes will be < 99999
       data[i].pg  = pg++;
@@ -232,13 +213,11 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
   WRAP (pgr_new (dest, b.pager, b.txn, PG_DATA_LIST, e));
 
   // Create or link
-  if (b.prev)
-  {
+  if (b.prev) {
     dlgt_link (page_h_w (b.prev), page_h_w (dest));
   }
 
-  if (b.next)
-  {
+  if (b.next) {
     dlgt_link (page_h_w (dest), page_h_w (b.next));
   }
 
@@ -246,14 +225,12 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
   u8 data[DL_DATA_SIZE];
 
   // Copy explicit children
-  if (b.data.data)
-  {
+  if (b.data.data) {
     memcpy (data, b.data.data, b.data.blen);
   }
 
   // Fill rest with random
-  if (b.data.blen < b.dclen)
-  {
+  if (b.data.blen < b.dclen) {
     rand_bytes (&data[b.data.blen], (b.dclen - b.data.blen));
   }
 
@@ -281,27 +258,23 @@ build_page_tree (struct page_tree_builder *builder, error *e)
 static err_t
 build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e)
 {
-  switch (desc->type)
-  {
-    case PG_INNER_NODE:
-    {
+  switch (desc->type) {
+    case PG_INNER_NODE: {
       // Build children nodes first
       const page_h  *prev = NULL;
       struct in_pair children[IN_MAX_KEYS];
 
-      for (u32 i = 0; i < desc->inner.clen; i++)
-      {
+      for (u32 i = 0; i < desc->inner.clen; i++) {
         page_h *cur = &desc->inner.children[i].out;
         ASSERT (cur->mode == PHM_NONE);
 
         WRAP (build_page_desc (&desc->inner.children[i], pager, txn, e));
 
-        if (prev)
-        {
+        if (prev) {
           dlgt_link (page_h_w (prev), page_h_w (cur));
         }
 
-        prev = cur;
+        prev        = cur;
 
         children[i] = (struct in_pair){
             .pg  = page_h_pgno (&desc->inner.children[i].out),
@@ -329,8 +302,7 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
       return SUCCESS;
     }
 
-    case PG_DATA_LIST:
-    {
+    case PG_DATA_LIST: {
       // Build data list page
       const struct dl_page_builder builder = {
           .pager = pager,
@@ -344,8 +316,7 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
       return build_fake_data_list (&desc->out, builder, e);
     }
 
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }

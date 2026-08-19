@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -26,6 +23,9 @@
 #include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_delegate.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: ns_read
@@ -60,12 +60,11 @@ ns_read_next_amount (
 
   // Capped by how far into this element/stride window we still need to
   // go.
-  next_amount = MIN (next_amount, bnext);
+  next_amount        = MIN (next_amount, bnext);
 
   // Capped by the global read limit (only in ACTIVE state; skip bytes do
   // not count toward max_bread).
-  if (max_bread > 0 && state == ACTIVE)
-  {
+  if (max_bread > 0 && state == ACTIVE) {
     next_amount = MIN (next_amount, max_bread - total_bread);
   }
 
@@ -79,14 +78,14 @@ ns_read_forward (const struct ns_read_params params, error *e)
 {
   ASSERT (params.stride > 0);
 
-  page_h       cur         = page_h_create ();
-  page_h       next        = page_h_create ();
-  p_size       lidx        = 0;
-  b_size       total_bread = 0;
-  const b_size max_bread   = params.size * params.nelem;
-  b_size       bnext       = params.size; // bytes remaining in the current read/skip window
+  page_h                cur         = page_h_create ();
+  page_h                next        = page_h_create ();
+  p_size                lidx        = 0;
+  b_size                total_bread = 0;
+  const b_size          max_bread   = params.size * params.nelem;
+  b_size                bnext = params.size; // bytes remaining in the current read/skip window
 
-  struct ns_seek_params seek = {
+  struct ns_seek_params seek  = {
       .p          = params.p,
       .tx         = params.tx,
       .root       = params.root,
@@ -98,18 +97,16 @@ ns_read_forward (const struct ns_read_params params, error *e)
   enum stride_phase state = ACTIVE;
 
   // Nothing to read from an empty tree.
-  if (params.root == PGNO_NULL)
-  {
+  if (params.root == PGNO_NULL) {
     return 0;
   }
 
-  if (ns_seek (&seek, e))
-  {
+  if (ns_seek (&seek, e)) {
     goto failed;
   }
 
-  cur  = page_h_xfer_ownership (&seek.pg);
-  lidx = seek.lidx;
+  cur              = page_h_xfer_ownership (&seek.pg);
+  lidx             = seek.lidx;
 
   const page *curp = page_h_ro (&cur);
 
@@ -122,30 +119,24 @@ ns_read_forward (const struct ns_read_params params, error *e)
   } termination = HIT_MAX_READ;
   */
 
-  while (max_bread == 0 || total_bread < max_bread)
-  {
+  while (max_bread == 0 || total_bread < max_bread) {
     t_size next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
-    if (next_amount == 0)
-    {
+    if (next_amount == 0) {
       ASSERT (lidx <= dl_used (curp));
-      if (lidx == dl_used (curp))
-      {
+      if (lidx == dl_used (curp)) {
         const pgno npg = dlgt_get_next (curp);
 
-        if (npg == PGNO_NULL)
-        {
+        if (npg == PGNO_NULL) {
           // termination = DATA_EXHAUSTED;
           break;
         }
 
-        if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e))
-        {
+        if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e)) {
           goto failed;
         }
 
-        if (pgr_release (params.p, &cur, PG_DATA_LIST, e))
-        {
+        if (pgr_release (params.p, &cur, PG_DATA_LIST, e)) {
           goto failed;
         }
 
@@ -156,22 +147,17 @@ ns_read_forward (const struct ns_read_params params, error *e)
         next_amount = ns_read_next_amount (curp, lidx, bnext, max_bread, total_bread, state);
 
         ASSERT (next_amount > 0);
-      }
-      else
-      {
+      } else {
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
 
-    switch (state)
-    {
-      case ACTIVE:
-      {
+    switch (state) {
+      case ACTIVE: {
         const sp_size read =
             stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
-        if (read < 0)
-        {
+        if (read < 0) {
           goto failed;
         }
 
@@ -179,13 +165,11 @@ ns_read_forward (const struct ns_read_params params, error *e)
         total_bread += (b_size)read;
         bnext -= (b_size)read;
 
-        if (bnext == 0)
-        {
+        if (bnext == 0) {
           bnext = (b_size)(params.stride - 1) * params.size;
           state = SKIPPING;
 
-          if (bnext == 0)
-          {
+          if (bnext == 0) {
             bnext = params.size;
             state = ACTIVE;
           }
@@ -193,14 +177,12 @@ ns_read_forward (const struct ns_read_params params, error *e)
         break;
       }
 
-      case SKIPPING:
-      {
+      case SKIPPING: {
         const p_size read = dl_read (curp, NULL, lidx, next_amount);
         lidx += read;
         bnext -= read;
 
-        if (bnext == 0)
-        {
+        if (bnext == 0) {
           bnext = params.size;
           state = ACTIVE;
         }
@@ -208,8 +190,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
       }
     }
 
-    if (stream_isdone (params.dest))
-    {
+    if (stream_isdone (params.dest)) {
       // termination = DEST_DONE_READING;
       break;
     }
@@ -219,8 +200,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
   WRAP (pgr_release (params.p, &cur, page_get_type (curp), e));
 
   // Verify that we always stopped on a complete element boundary.
-  if (total_bread % params.size != 0)
-  {
+  if (total_bread % params.size != 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -250,13 +230,11 @@ ns_read_backward (const struct ns_read_params params, error *e)
 sb_size
 ns_read (const struct ns_read_params params, error *e)
 {
-  if (params.stride > 0)
-  {
+  if (params.stride > 0) {
     return ns_read_forward (params, e);
   }
 
-  if (params.stride < 0)
-  {
+  if (params.stride < 0) {
     return ns_read_backward (params, e);
   }
 

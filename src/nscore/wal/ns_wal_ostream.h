@@ -30,10 +30,10 @@
 
 struct wal_ostream
 {
-  struct i_mem mem;
-  i_file       fd;
-  latch        l;
-  lsn          flushed_lsn;
+  struct i_mem   mem;
+  i_file         fd;
+  latch          l;
+  lsn            flushed_lsn;
 
   struct cbuffer buffer;
   u8             _buffer[WAL_BUFFER_CAP];
@@ -53,8 +53,8 @@ err_t walos_flush_all (struct wal_ostream *w, error *e);
 
 // Write
 err_t walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len, error *e);
-lsn   walos_get_next_lsn (struct wal_ostream *w);
-slsn  walos_truncate (struct wal_ostream *w, error *e);
+lsn walos_get_next_lsn (struct wal_ostream *w);
+slsn walos_truncate (struct wal_ostream *w, error *e);
 
 err_t walos_crash (struct wal_ostream *w, error *e);
 

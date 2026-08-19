@@ -15,8 +15,6 @@
 #ifndef NS_TYPE_REF_H
 #define NS_TYPE_REF_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h" // error
 #include "core/ns_linked_list.h"
@@ -24,6 +22,8 @@
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "core/ns_string.h"
 #include "nscore/types/ns_type_accessor.h"
+
+#include <stdbool.h>
 
 struct allocator;
 struct builder;
@@ -59,7 +59,7 @@ struct type_ref
   };
 };
 
-bool         type_ref_equal (struct type_ref left, const struct type_ref right);
+bool type_ref_equal (struct type_ref left, const struct type_ref right);
 struct type *tr_construct (
     struct type      *reftype,
     struct type_ref  *tr,
@@ -118,10 +118,10 @@ struct kv_ref_llnode
 
 struct kvt_ref_list_builder
 {
-  struct llnode *head;
+  struct llnode  *head;
 
-  u16 klen;
-  u16 tlen;
+  u16             klen;
+  u16             tlen;
 
   struct builder *b;
 };

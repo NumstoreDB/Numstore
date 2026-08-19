@@ -210,8 +210,7 @@
 HEADER_FUNC err_t
 safe_add_u64_err (u64 *dest, const u64 a, const u64 b, error *e)
 {
-  if (!safe_add_u64 (dest, a, b))
-  {
+  if (!safe_add_u64 (dest, a, b)) {
     return error_causef (e, ERR_ARITH, "Overflow");
   }
   return SUCCESS;

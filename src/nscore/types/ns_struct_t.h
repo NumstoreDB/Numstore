@@ -28,11 +28,11 @@ err_t struct_t_create (
     struct allocator *dalloc,
     error            *e
 );
-bool         struct_t_equal (const struct struct_t *left, const struct struct_t *right);
+bool struct_t_equal (const struct struct_t *left, const struct struct_t *right);
 struct type *struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key);
 
-u32   struct_t_get_serial_size (const struct struct_t *t);
-void  struct_t_serialize (struct serializer *dest, const struct struct_t *src);
+u32 struct_t_get_serial_size (const struct struct_t *t);
+void struct_t_serialize (struct serializer *dest, const struct struct_t *src);
 err_t struct_t_deserialize (
     struct struct_t     *dest,
     struct deserializer *src,
@@ -40,8 +40,8 @@ err_t struct_t_deserialize (
     error               *e
 );
 err_t struct_t_validate (const struct struct_t *s, error *e);
-i32   struct_t_snprintf (char *str, u32 size, const struct struct_t *st);
-u32   struct_t_byte_size (const struct struct_t *t);
+i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st);
+u32 struct_t_byte_size (const struct struct_t *t);
 err_t struct_t_random (struct struct_t *st, struct allocator *alloc, u32 depth, error *e);
 
 #endif

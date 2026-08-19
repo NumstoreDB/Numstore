@@ -44,8 +44,7 @@ TEST (vt_init_empty)
 err_t
 vt_validate_for_db (const page *p, error *e)
 {
-  if (page_get_type (p) != PG_VAR_TAIL)
-  {
+  if (page_get_type (p) != PG_VAR_TAIL) {
     return error_causef (e, ERR_CORRUPT, "wrong page type for var tail node");
   }
   return SUCCESS;
@@ -74,12 +73,9 @@ i_log_vt (const int level, const page *vp)
   i_log (level, "=== VARIABLE TAIL START ===\n");
 
   i_log_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
-  if (vt_get_next (vp) == PGNO_NULL)
-  {
+  if (vt_get_next (vp) == PGNO_NULL) {
     i_log_printf (level, "NEXT:   NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "NEXT:   %" PRpgno "\n", vt_get_next (vp));
   }
 

@@ -15,11 +15,11 @@
 #ifndef NS_LINKED_LIST_H
 #define NS_LINKED_LIST_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: Linked List
@@ -68,8 +68,7 @@ HEADER_FUNC u32
 list_length (const struct llnode *head)
 {
   u32 len = 0;
-  for (const struct llnode *cur = head; cur; cur = cur->next)
-  {
+  for (const struct llnode *cur = head; cur; cur = cur->next) {
     len++;
   }
   return len;
@@ -86,15 +85,11 @@ HEADER_FUNC void
 list_append (struct llnode **head, struct llnode *n)
 {
   n->next = NULL;
-  if (!*head)
-  {
+  if (!*head) {
     *head = n;
-  }
-  else
-  {
+  } else {
     struct llnode *cur = *head;
-    while (cur->next)
-    {
+    while (cur->next) {
       cur = cur->next;
     }
     cur->next = n;
@@ -104,8 +99,7 @@ list_append (struct llnode **head, struct llnode *n)
 HEADER_FUNC struct llnode *
 list_pop (struct llnode **head)
 {
-  if (!*head)
-  {
+  if (!*head) {
     return NULL;
   }
 
@@ -125,10 +119,8 @@ list_find (
 )
 {
   *didx = 0;
-  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1)
-  {
-    if (eq (iter, node))
-    {
+  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1) {
+    if (eq (iter, node)) {
       return iter;
     }
   }
@@ -139,12 +131,10 @@ HEADER_FUNC void
 list_remove (struct llnode **head, struct llnode *n)
 {
   struct llnode **cur = head;
-  while (*cur && *cur != n)
-  {
+  while (*cur && *cur != n) {
     cur = &(*cur)->next;
   }
-  if (*cur)
-  {
+  if (*cur) {
     *cur    = n->next;
     n->next = NULL;
   }
@@ -154,8 +144,7 @@ HEADER_FUNC struct llnode *
 llnode_get_n (struct llnode *head, const u32 index)
 {
   struct llnode *cur = head;
-  for (u32 i = 0; cur && i < index; ++i)
-  {
+  for (u32 i = 0; cur && i < index; ++i) {
     cur = cur->next;
   }
   return cur;

@@ -7,7 +7,7 @@ UseTab: Never
 
 # Function parameters & arguments layout
 AlignAfterOpenBracket: BlockIndent                  
-BinPackParameters: false                            
+BinPackParameters: OnePerLine
 BinPackArguments: false                             
 AllowAllParametersOfDeclarationOnNextLine: false   
 AllowAllArgumentsOnNextLine: false                  
@@ -21,16 +21,16 @@ IndentWrappedFunctionNames: false
 # Brace placement rules
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: true                              
-  AfterControlStatement: Always                     
-  AfterEnum: true                                   
-  AfterFunction: true                               
-  AfterStruct: true                                 
-  BeforeElse: true                                  
-  BeforeWhile: true                                 
-  SplitEmptyFunction: false                         
-  SplitEmptyRecord: false                           
-  SplitEmptyNamespace: false                        
+  AfterCaseLabel: false
+  AfterControlStatement: Never
+  AfterEnum: true
+  AfterFunction: true
+  AfterStruct: true
+  BeforeElse: false
+  BeforeWhile: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
 
 # Inline short code blocks
 AllowShortFunctionsOnASingleLine: None              
@@ -39,6 +39,31 @@ AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLoopsOnASingleLine: true                 
 AllowShortCaseLabelsOnASingleLine: true             
 AllowShortEnumsOnASingleLine: true                  
+
+# Include Rules 
+# File Foo.c:
+# #include "foo.h"
+#
+# #include "bar.h"
+# #include "biz.h"
+#
+# #include <stdlib.h>
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+
+# Categorize includes by priority
+IncludeCategories:
+  # Category 0 is automatically reserved by 
+  # clang-format for the matching main header 
+  # (e.g., foo.h in foo.c)
+  
+  # Category 1: Quotes/Local headers
+  - Regex: '^"'
+    Priority: 1
+
+  # Category 2: Angle brackets/System headers
+  - Regex: '^<'
+    Priority: 2
 
 # Auto-insert braces for control statements
 InsertBraces: true                                  
@@ -57,17 +82,39 @@ SpaceAfterCStyleCast: false
 SpaceBeforeAssignmentOperators: true                
 SpacesBeforeTrailingComments: 1                    
 DerivePointerAlignment: false                       
-PointerAlignment: Right                             
 Cpp11BracedListStyle: true                          
+PointerAlignment: Right
 
 # Consecutive block alignment
 AlignConsecutiveMacros: Consecutive                
-AlignConsecutiveAssignments: Consecutive           
-AlignConsecutiveDeclarations: Consecutive          
-AlignConsecutiveBitFields: Consecutive             
-AlignTrailingComments: true                         
+
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+
 AlignEscapedNewlines: Left                          
 AlignOperands: Align                                
+
+# Align Struct fields (not functions)
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignFunctionDeclarations: false
+
+# Align bit fields
+AlignConsecutiveBitFields:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+
+AlignTrailingComments:
+  Kind: Always
+
+# Keep a line between different 
+# function declarations and structs
+SeparateDefinitionBlocks: Always
 
 # Line wraps inside expressions
 BreakBeforeBinaryOperators: NonAssignment           

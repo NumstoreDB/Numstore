@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
@@ -22,11 +20,12 @@
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
 
+#include <stdbool.h>
+
 i32
 ns_get_number_of_layers (struct pager *p, pgno root, error *e)
 {
-  if (root == PGNO_NULL)
-  {
+  if (root == PGNO_NULL) {
     return 0;
   }
 
@@ -34,28 +33,21 @@ ns_get_number_of_layers (struct pager *p, pgno root, error *e)
   i32    ret  = 0;
   pgno   next = root;
 
-  while (true)
-  {
-    if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e))
-    {
+  while (true) {
+    if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e)) {
       goto failed;
     }
 
     ret++;
 
-    if (page_h_type (&cur) == PG_DATA_LIST)
-    {
-      if (pgr_release (p, &cur, PG_DATA_LIST, e))
-      {
+    if (page_h_type (&cur) == PG_DATA_LIST) {
+      if (pgr_release (p, &cur, PG_DATA_LIST, e)) {
         goto failed;
       }
       return ret;
-    }
-    else if (page_h_type (&cur) == PG_INNER_NODE)
-    {
+    } else if (page_h_type (&cur) == PG_INNER_NODE) {
       next = in_get_leaf (page_h_ro (&cur), 0);
-      if (pgr_release (p, &cur, PG_DATA_LIST, e))
-      {
+      if (pgr_release (p, &cur, PG_DATA_LIST, e)) {
         goto failed;
       }
     }

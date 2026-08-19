@@ -53,18 +53,18 @@ struct irwr_swarm_test
   struct block_array *committed;
   struct block_array *working;
 
-  int enabled[IRWR_AT_LEN];
-  int allowed[IRWR_AT_LEN];
+  int                 enabled[IRWR_AT_LEN];
+  int                 allowed[IRWR_AT_LEN];
 
-  nsdb_t     *db;
-  int         in_txn;
-  const char *dbname;
-  const char *varname;
-  const char *vartype;
-  u32         esize;
-  int         max_insert_len;
-  b_size      len;
-  float       sample_space_prob;
+  nsdb_t             *db;
+  int                 in_txn;
+  const char         *dbname;
+  const char         *varname;
+  const char         *vartype;
+  u32                 esize;
+  int                 max_insert_len;
+  b_size              len;
+  float               sample_space_prob;
 };
 
 struct irwr_swarm_test *irwr_swmt_open (
@@ -126,15 +126,15 @@ struct cgd_swarm_test
   struct mem_vhmap *committed;
   struct mem_vhmap *working;
 
-  struct variable *cur;
+  struct variable  *cur;
 
-  int enabled[CDS_AT_LEN];
-  int allowed[CDS_AT_LEN];
+  int               enabled[CDS_AT_LEN];
+  int               allowed[CDS_AT_LEN];
 
-  nsdb_t     *db;
-  int         in_txn;
-  const char *dbname;
-  float       sample_space_prob;
+  nsdb_t           *db;
+  int               in_txn;
+  const char       *dbname;
+  float             sample_space_prob;
 };
 
 // Main API

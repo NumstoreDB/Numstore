@@ -5,7 +5,7 @@
 
 struct connection
 {
-  u8 buffer[4096];
+  u8  buffer[4096];
 
   u32 rlen;
   u32 wlen;

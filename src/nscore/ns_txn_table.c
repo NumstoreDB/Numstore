@@ -14,8 +14,6 @@
 
 #include "nscore/ns_txn_table.h"
 
-#include <stddef.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_utils.h"
@@ -24,6 +22,8 @@
 #include "core/os/ns_time.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_lock_table.h"
+
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: Transaction
@@ -83,9 +83,9 @@ txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right
 {
   bool equal = true;
 
-  equal = equal && left->last_lsn == right->last_lsn;
-  equal = equal && left->undo_next_lsn == right->undo_next_lsn;
-  equal = equal && left->state == right->state;
+  equal      = equal && left->last_lsn == right->last_lsn;
+  equal      = equal && left->undo_next_lsn == right->undo_next_lsn;
+  equal      = equal && left->state == right->state;
 
   return equal;
 }
@@ -93,13 +93,11 @@ txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right
 static bool
 txn_haslock_unsafe (const struct txn *t, const struct lt_lock lock)
 {
-  bool ret = false;
+  bool                   ret  = false;
 
   const struct txn_lock *curr = t->locks;
-  while (curr != NULL)
-  {
-    if (lt_lock_equal (curr->lock, lock))
-    {
+  while (curr != NULL) {
+    if (lt_lock_equal (curr->lock, lock)) {
       ret = true;
       goto theend;
     }
@@ -115,15 +113,13 @@ txn_newlock (struct txn *t, const struct lt_lock lock, const enum lock_mode mode
 {
   latch_lock (&t->l);
 
-  if (txn_haslock_unsafe (t, lock))
-  {
+  if (txn_haslock_unsafe (t, lock)) {
     latch_unlock (&t->l);
     return SUCCESS;
   }
 
   struct txn_lock *next = slab_alloc_alloc (&t->lock_alloc, e);
-  if (next == NULL)
-  {
+  if (next == NULL) {
     latch_unlock (&t->l);
     return error_trace (e);
   }
@@ -143,13 +139,11 @@ txn_haslock (struct txn *t, const struct lt_lock lock)
 {
   latch_lock (&t->l);
 
-  bool ret = false;
+  bool                   ret  = false;
 
   const struct txn_lock *curr = t->locks;
-  while (curr != NULL)
-  {
-    if (lt_lock_equal (curr->lock, lock))
-    {
+  while (curr != NULL) {
+    if (lt_lock_equal (curr->lock, lock)) {
       ret = true;
       goto theend;
     }
@@ -167,8 +161,7 @@ txn_close (struct txn *t)
   latch_lock (&t->l);
 
   struct txn_lock *curr = t->locks;
-  while (curr != NULL)
-  {
+  while (curr != NULL) {
     struct txn_lock *next = curr->next;
     slab_alloc_free (&t->lock_alloc, curr);
     curr = next;
@@ -185,8 +178,7 @@ txn_foreach_lock (struct txn *t, const lock_func func, void *ctx)
   latch_lock (&t->l);
 
   const struct txn_lock *curr = t->locks;
-  while (curr != NULL)
-  {
+  while (curr != NULL) {
     func (curr->lock, curr->mode, ctx);
     curr = curr->next;
   }
@@ -201,12 +193,10 @@ txn_newlock_test (void *_tx)
 {
 #  define MAYBE_ADD_LOCK(type, r)                                            \
     lock = r;                                                                \
-    if (txn_newlock (tx, lock, LM_X, &e))                                    \
-    {                                                                        \
+    if (txn_newlock (tx, lock, LM_X, &e)) {                                  \
       goto failed;                                                           \
     }                                                                        \
-    if (!txn_haslock (tx, lock))                                             \
-    {                                                                        \
+    if (!txn_haslock (tx, lock)) {                                           \
       error_causef (&e, ERR_INVALID_ARGUMENT, "Transaction must have lock"); \
       goto failed;                                                           \
     }
@@ -232,8 +222,7 @@ TEST (txn_basic)
         mem
     );
 
-    for (u32 i = 0; i < 1000; ++i)
-    {
+    for (u32 i = 0; i < 1000; ++i) {
       txn_newlock_test (&tx);
     }
 
@@ -256,14 +245,12 @@ TEST (txn_basic)
 
     i_thread threads[100];
 
-    for (u32 i = 0; i < 100; ++i)
-    {
+    for (u32 i = 0; i < 100; ++i) {
       default_threading
           .i_thread_create (&default_threading, &threads[i], txn_newlock_test, &tx, &e);
     }
 
-    for (u32 i = 0; i < 100; ++i)
-    {
+    for (u32 i = 0; i < 100; ++i) {
       default_threading.i_thread_join (&default_threading, &threads[i], &e);
     }
 
@@ -286,22 +273,20 @@ struct txn_table
   latch          l;
   struct htable *t;
 
-  bool isfrozen;
+  bool           isfrozen;
 };
 
 struct txn_table *
 txnt_open (struct i_mem mem, error *e)
 {
   struct txn_table *dest = i_malloc (mem, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     goto failed;
   }
 
   dest->mem = mem;
   dest->t   = htable_create (512, mem, e);
-  if (dest->t == NULL)
-  {
+  if (dest->t == NULL) {
     goto dest_failed;
   }
 
@@ -339,8 +324,7 @@ TEST (txnt_open)
   TEST_CASE ("open multiple")
   {
     error e = error_create ();
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
       struct txn_table *t = txnt_open (mem, &e);
       txnt_close (t);
     }
@@ -364,16 +348,14 @@ merge_txn (struct txn *tx, void *vctx)
   ASSERT (ctx->txn_dest == NULL || ctx->txn_dest->size == sizeof (struct txn));
 
   // Fail fast on an error
-  if (ctx->e->cause_code)
-  {
+  if (ctx->e->cause_code) {
     return;
   }
 
   latch_lock (&tx->l);
 
   // Skip duplicate transactions
-  if (txn_exists (ctx->dest, tx->tid))
-  {
+  if (txn_exists (ctx->dest, tx->tid)) {
     goto theend;
   }
 
@@ -381,15 +363,12 @@ merge_txn (struct txn *tx, void *vctx)
   struct txn *target_txn = tx;
 
   // If provided, allocate a new transaction to copy over
-  if (ctx->txn_dest && ctx->alloc)
-  {
+  if (ctx->txn_dest && ctx->alloc) {
     target_txn = slab_alloc_alloc (ctx->alloc, ctx->e);
-    if (target_txn == NULL)
-    {
+    if (target_txn == NULL) {
       goto theend;
     }
-    if (dblb_append (ctx->txn_dest, &target_txn, 1, ctx->e))
-    {
+    if (dblb_append (ctx->txn_dest, &target_txn, 1, ctx->e)) {
       goto theend;
     }
     txn_init (target_txn, tx->tid, tx->data, ctx->mem);
@@ -448,9 +427,8 @@ TEST (txnt_merge_into)
     struct txn_table *dest = txnt_open (mem, &e);
     struct txn_table *src  = txnt_open (mem, &e);
     // Add to dest
-    struct txn dest_txns[5];
-    for (int i = 0; i < 5; i++)
-    {
+    struct txn        dest_txns[5];
+    for (int i = 0; i < 5; i++) {
       txn_init (
           &dest_txns[i],
           i + 1,
@@ -466,8 +444,7 @@ TEST (txnt_merge_into)
 
     // Add to src (different tids)
     struct txn src_txns[5];
-    for (int i = 0; i < 5; i++)
-    {
+    for (int i = 0; i < 5; i++) {
       txn_init (
           &src_txns[i],
           i + 6,
@@ -485,8 +462,7 @@ TEST (txnt_merge_into)
     test_assert (result == SUCCESS);
 
     // Verify all exist in dest
-    for (txid tid = 1; tid <= 10; tid++)
-    {
+    for (txid tid = 1; tid <= 10; tid++) {
       test_assert (txn_exists (dest, tid));
     }
 
@@ -496,12 +472,12 @@ TEST (txnt_merge_into)
 
   TEST_CASE ("no duplicate insert")
   {
-    error e = error_create ();
+    error             e    = error_create ();
 
     struct txn_table *dest = txnt_open (mem, &e);
     struct txn_table *src  = txnt_open (mem, &e);
     // Add same tid to both with different values
-    struct txn dest_tx;
+    struct txn        dest_tx;
     txn_init (
         &dest_tx,
         42,
@@ -549,10 +525,8 @@ find_max_undo (struct txn *tx, void *vctx)
 
   latch_lock (&tx->l);
 
-  if (tx->data.state == TX_CANDIDATE_FOR_UNDO)
-  {
-    if ((slsn)tx->data.undo_next_lsn > *max)
-    {
+  if (tx->data.state == TX_CANDIDATE_FOR_UNDO) {
+    if ((slsn)tx->data.undo_next_lsn > *max) {
       *max = tx->data.undo_next_lsn;
     }
   }
@@ -673,8 +647,7 @@ find_min_lsn (struct txn *tx, void *vctx)
 
   latch_lock (&tx->l);
 
-  if (*min == -1 || (slsn)tx->data.min_lsn < *min)
-  {
+  if (*min == -1 || (slsn)tx->data.min_lsn < *min) {
     *min = tx->data.min_lsn;
   }
 
@@ -763,14 +736,12 @@ static bool
 txn_equals_for_exists (const struct hnode *left, const struct hnode *right)
 {
   // Might have passed the exact same ref as exists in the htable
-  if (left == right)
-  {
+  if (left == right) {
     return true;
   }
 
   // Otherwise, passed a key with just relevant information
-  else
-  {
+  else {
     struct txn *_left  = container_of (left, struct txn, node);
     struct txn *_right = container_of (right, struct txn, node);
 
@@ -844,8 +815,7 @@ txnt_insert_txn_if_not_exists (struct txn_table *t, struct txn *tx)
 
   latch_lock (&t->l);
 
-  if (txn_exists (t, tx->tid))
-  {
+  if (txn_exists (t, tx->tid)) {
     goto theend;
   }
 
@@ -981,8 +951,7 @@ txnt_get (struct txn **dest, struct txn_table *t, const txid tid)
   latch_lock (&t->l);
 
   struct hnode **node = htable_lookup (t->t, &key.node, txn_equals_for_exists);
-  if (node)
-  {
+  if (node) {
     *dest = container_of (*node, struct txn, node);
   }
 
@@ -1166,8 +1135,7 @@ txnt_remove_txn (bool *exists, struct txn_table *t, const struct txn *tx)
 
   struct hnode **node = htable_lookup (t->t, &tx->node, txn_equals_for_exists);
 
-  if (node == NULL)
-  {
+  if (node == NULL) {
     *exists = false;
     goto theend;
   }
@@ -1312,8 +1280,7 @@ static void
 txnt_eq_foreach (struct hnode *node, void *_ctx)
 {
   struct txnt_eq_ctx *ctx = _ctx;
-  if (ctx->ret == false)
-  {
+  if (ctx->ret == false) {
     return;
   }
 
@@ -1327,8 +1294,7 @@ txnt_eq_foreach (struct hnode *node, void *_ctx)
     struct hnode **other_node =
         htable_lookup (ctx->other->t, &candidate.node, txn_equals_for_exists);
 
-    if (other_node == NULL)
-    {
+    if (other_node == NULL) {
       ctx->ret = false;
       latch_unlock (&tx->l);
       return;
@@ -1340,10 +1306,10 @@ txnt_eq_foreach (struct hnode *node, void *_ctx)
     {
       bool equal = true;
 
-      equal = equal && tx->data.last_lsn == other_tx->data.last_lsn;
-      equal = equal && tx->data.undo_next_lsn == other_tx->data.undo_next_lsn;
+      equal      = equal && tx->data.last_lsn == other_tx->data.last_lsn;
+      equal      = equal && tx->data.undo_next_lsn == other_tx->data.undo_next_lsn;
 
-      ctx->ret = equal;
+      ctx->ret   = equal;
     }
     latch_unlock (&other_tx->l);
   }
@@ -1356,8 +1322,7 @@ txnt_equal_ignore_state (struct txn_table *left, struct txn_table *right)
   latch_lock (&left->l);
   latch_lock (&right->l);
 
-  if (htable_size (left->t) != htable_size (right->t))
-  {
+  if (htable_size (left->t) != htable_size (right->t)) {
     latch_unlock (&right->l);
     latch_unlock (&left->l);
     return false;
@@ -1395,8 +1360,7 @@ TEST (txnt_equal_ignore_state)
     struct txn_table *t1 = txnt_open (mem, &e);
     struct txn_table *t2 = txnt_open (mem, &e);
     struct txn        t1_txns[5], t2_txns[5];
-    for (int i = 0; i < 5; i++)
-    {
+    for (int i = 0; i < 5; i++) {
       txn_init (
           &t1_txns[i],
           i + 1,
@@ -1484,8 +1448,7 @@ txnt_insert_thread (void *arg)
 {
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     txn_init (
         &ctx->txn_bank[i],
         ctx->start_tid + i,
@@ -1510,11 +1473,9 @@ txnt_reader_thread (void *arg)
 {
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     struct txn *retrieved;
-    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i))
-    {
+    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i)) {
       atomic_fetch_add (&ctx->counter, 1);
     }
   }
@@ -1527,11 +1488,9 @@ txnt_updater_thread (void *arg)
 {
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     struct txn *retrieved;
-    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i))
-    {
+    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i)) {
       struct txn_data new_data = retrieved->data;
       new_data.last_lsn        = ctx->start_tid + i + 1000;
       txn_update_data (retrieved, new_data);
@@ -1547,11 +1506,9 @@ txnt_state_transition_thread (void *arg)
 {
   struct txnt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     struct txn *retrieved;
-    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i))
-    {
+    if (txnt_get (&retrieved, ctx->table, ctx->start_tid + i)) {
       // TX_RUNNING -> TX_CANDIDATE_FOR_UNDO
       struct txn_data new_data = retrieved->data;
       new_data.state           = TX_CANDIDATE_FOR_UNDO;
@@ -1573,9 +1530,9 @@ TEST (txnt_concurrent)
 {
   TEST_CASE ("txnt_concurrent_inserts")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
-    struct txn        txn_bank1[100], txn_bank2[100], txn_bank3[100];
+    error                  e = error_create ();
+    struct txn_table      *t = txnt_open (mem, &e);
+    struct txn             txn_bank1[100], txn_bank2[100], txn_bank3[100];
 
     struct txnt_thread_ctx ctx1 = {
         .table     = t,
@@ -1623,8 +1580,7 @@ TEST (txnt_concurrent)
     int total_inserts = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_inserts, 300);
 
-    for (txid tid = 0; tid < 300; tid++)
-    {
+    for (txid tid = 0; tid < 300; tid++) {
       test_assert (txn_exists (t, tid));
     }
 
@@ -1636,9 +1592,8 @@ TEST (txnt_concurrent)
     error             e = error_create ();
     struct txn_table *t = txnt_open (mem, &e);
     // Pre-populate
-    struct txn txns[200];
-    for (int i = 0; i < 200; i++)
-    {
+    struct txn        txns[200];
+    for (int i = 0; i < 200; i++) {
       txn_init (
           &txns[i],
           i,
@@ -1769,9 +1724,8 @@ TEST (txnt_concurrent)
     error             e = error_create ();
     struct txn_table *t = txnt_open (mem, &e);
     // Pre-populate
-    struct txn txns[300];
-    for (int i = 0; i < 300; i++)
-    {
+    struct txn        txns[300];
+    for (int i = 0; i < 300; i++) {
       txn_init (
           &txns[i],
           i,
@@ -1829,8 +1783,7 @@ TEST (txnt_concurrent)
     test_assert_equal (total_updates, 300);
 
     // Verify updates
-    for (txid tid = 0; tid < 300; tid++)
-    {
+    for (txid tid = 0; tid < 300; tid++) {
       struct txn *retrieved;
       test_assert (txnt_get (&retrieved, t, tid));
       test_assert_equal (retrieved->data.last_lsn, tid + 1000);
@@ -1844,9 +1797,8 @@ TEST (txnt_concurrent)
     error             e = error_create ();
     struct txn_table *t = txnt_open (mem, &e);
     // Pre-populate with running transactions
-    struct txn txns[150];
-    for (int i = 0; i < 150; i++)
-    {
+    struct txn        txns[150];
+    for (int i = 0; i < 150; i++) {
       txn_init (
           &txns[i],
           i,
@@ -1907,8 +1859,7 @@ TEST (txnt_concurrent)
     test_assert_equal (total_transitions, 150);
 
     // Verify all are committed
-    for (txid tid = 0; tid < 150; tid++)
-    {
+    for (txid tid = 0; tid < 150; tid++) {
       struct txn *retrieved;
       test_assert (txnt_get (&retrieved, t, tid));
       test_assert_equal (retrieved->data.state, TX_COMMITTED);

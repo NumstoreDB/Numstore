@@ -14,9 +14,9 @@
 
 #include "core/ns_serial.h"
 
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
+
+#include <string.h>
 
 DEFINE_DBG_ASSERT (struct serializer, serializer, s, {
   ASSERT (s);
@@ -47,8 +47,7 @@ srlizr_write (struct serializer *dest, const void *src, const u32 len)
 
   DBG_ASSERT (serializer, dest);
 
-  if (dest->dlen + len > dest->dcap)
-  {
+  if (dest->dlen + len > dest->dcap) {
     latch_unlock (&dest->latch);
     return false;
   }
@@ -91,8 +90,7 @@ dsrlizr_read (void *dest, const u32 dlen, struct deserializer *src)
 
   DBG_ASSERT (deserializer, src);
 
-  if (src->head + dlen > src->dlen)
-  {
+  if (src->head + dlen > src->dlen) {
     latch_unlock (&src->latch);
     return false;
   }

@@ -177,8 +177,7 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
 
-    for (int i = 0; i < 26; i++)
-    {
+    for (int i = 0; i < 26; i++) {
       char c = (char)('A' + i);
       smfile_begin (smf);
       smfile_insert (smf, &c, i, 1);
@@ -286,12 +285,12 @@ TEST (aries_crash)
     {
       BIG_SIZE = 16384
     };
+
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
 
     char *big = i_malloc (mem, BIG_SIZE, 1, &e);
-    for (int i = 0; i < BIG_SIZE; i++)
-    {
+    for (int i = 0; i < BIG_SIZE; i++) {
       big[i] = (char)('A' + (i % 26));
     }
 

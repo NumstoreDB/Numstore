@@ -14,8 +14,6 @@
 
 #include "smartfiles/testing/ns_smfile_test_fixture.h"
 
-#include <stddef.h>
-
 #include "core/ns_data_validator.h"
 #include "core/ns_data_writer.h"
 #include "core/ns_error.h"
@@ -28,6 +26,8 @@
 #include "nscore/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
 #include "smartfiles/smartfiles.h"
+
+#include <stddef.h>
 
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
@@ -72,14 +72,12 @@ struct data_writer *
 smfile_data_writer_open (const char *path)
 {
   smfile_t *smf = smfile_open (path);
-  if (smf == NULL)
-  {
+  if (smf == NULL) {
     return NULL;
   }
   struct data_writer *writer =
       i_malloc (default_mem (), 1, sizeof *writer, &((struct nsdb *)smf)->e);
-  if (writer == NULL)
-  {
+  if (writer == NULL) {
     smfile_close (smf);
     return NULL;
   }
@@ -99,7 +97,7 @@ smfile_data_writer_close (struct data_writer *w)
 #ifdef TESTING
 TEST (smfile_data_writer)
 {
-  error e = error_create ();
+  error     e        = error_create ();
 
   const u32 niters[] = {
       100,
@@ -107,11 +105,10 @@ TEST (smfile_data_writer)
       // 10000,
   };
 
-  for (u32 i = 0; i < arrlen (niters); ++i)
-  {
+  for (u32 i = 0; i < arrlen (niters); ++i) {
     i_log_info ("smfile data validator test: %d\n", i);
 
-    struct ext_array ext_arr_1 = ext_array_create ();
+    struct ext_array   ext_arr_1 = ext_array_create ();
 
     struct data_writer ref;
     ext_array_data_writer (&ref, &ext_arr_1);
@@ -119,7 +116,7 @@ TEST (smfile_data_writer)
     pgr_delete_single_file ("test", &e);
     struct data_writer *sut = smfile_data_writer_open ("test");
 
-    struct dvalidtr d = {
+    struct dvalidtr     d   = {
         .mem     = default_mem (),
         .sut     = *sut,
         .ref     = ref,

@@ -15,14 +15,14 @@
 #ifndef NS_PAGE_INNER_NODE_H
 #define NS_PAGE_INNER_NODE_H
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Inner Node
@@ -78,20 +78,20 @@ _Static_assert (
 
 _Static_assert (IN_MAX_KEYS > 5, "Inner Node: IN_MAX_KEYS must be > 5");
 
-void           in_init_empty (page *in);
-err_t          in_validate_for_db (const page *in, error *e);
-p_size         in_page_memcpy_right (pgno *dest, const page *src, p_size ofst);
-p_size         in_key_memcpy_right (b_size *dest, const page *src, p_size ofst);
-void           in_push_left (page *in, p_size len);
-void           in_push_left_permissive (page *in, p_size len);
-void           in_cut_left (page *in, p_size end);
-void           in_set_data (page *p, struct in_data data);
+void in_init_empty (page *in);
+err_t in_validate_for_db (const page *in, error *e);
+p_size in_page_memcpy_right (pgno *dest, const page *src, p_size ofst);
+p_size in_key_memcpy_right (b_size *dest, const page *src, p_size ofst);
+void in_push_left (page *in, p_size len);
+void in_push_left_permissive (page *in, p_size len);
+void in_cut_left (page *in, p_size end);
+void in_set_data (page *p, struct in_data data);
 struct in_data in_get_data (const page *p, struct in_pair nodes[IN_MAX_KEYS]);
-void           in_move_left (page *dest, page *src, p_size len);
-void           in_move_right (page *src, page *dest, p_size len);
-void           in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
-void           i_log_in (int level, const page *in);
-void           in_make_valid (page *in);
+void in_move_left (page *dest, page *src, p_size len);
+void in_move_right (page *src, page *dest, p_size len);
+void in_choose_lidx (p_size *idx, b_size *nleft, const page *node, b_size loc);
+void i_log_in (int level, const page *in);
+void in_make_valid (page *in);
 
 ////////////////////////////////////////////////////////////
 // GETTERS
@@ -108,13 +108,11 @@ in_get_backwards_keys_imut (const page *in)
   const p_size n      = in_get_len (in);
   const p_size nbytes = n * sizeof (b_size);
   ASSERT (nbytes <= NS_PAGE_SIZE);
-  if (nbytes > NS_PAGE_SIZE)
-  {
+  if (nbytes > NS_PAGE_SIZE) {
     UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
   }
 
-  if (nbytes == 0)
-  {
+  if (nbytes == 0) {
     return NULL;
   }
 
@@ -131,7 +129,7 @@ in_get_key (const page *in, const p_size idx)
   const p_size offset_elems = n - 1 - idx;
   const p_size offset_bytes = offset_elems * sizeof (b_size);
 
-  b_size ret;
+  b_size       ret;
   memcpy (&ret, base + offset_bytes, sizeof ret);
 
   return ret;
@@ -143,8 +141,7 @@ in_get_size (const page *in)
   b_size ret = 0;
   // TODO - (17) this could be cached
 
-  for (p_size i = 0; i < in_get_len (in); ++i)
-  {
+  for (p_size i = 0; i < in_get_len (in); ++i) {
     ret += in_get_key (in, i);
   }
 
@@ -195,7 +192,7 @@ in_get_leaf (const page *in, const p_size idx)
   const p_size n = in_get_len (in);
   ASSERT (idx < n);
 
-  pgno leaf;
+  pgno      leaf;
 
   const u8 *head = in_get_leafs_imut (in);
   memcpy (&leaf, head + idx * sizeof (pgno), sizeof (leaf));
@@ -319,12 +316,10 @@ in_link (page *left, page *right)
 {
   const pgno lpg = left ? left->pg : PGNO_NULL;
   const pgno rpg = right ? right->pg : PGNO_NULL;
-  if (left)
-  {
+  if (left) {
     in_set_next (left, rpg);
   }
-  if (right)
-  {
+  if (right) {
     in_set_prev (right, lpg);
   }
 }

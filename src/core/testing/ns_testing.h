@@ -43,7 +43,7 @@ enum
 
 #  define TEST(name)                                                             \
     static void __test_body__##name (struct i_mem mem, struct i_file_system fs); \
-    void        __test__##name (void)                                            \
+    void __test__##name (void)                                                   \
     {                                                                            \
       __test_body__##name (default_mem (), default_filesystem ());               \
     }                                                                            \
@@ -90,28 +90,22 @@ extern int  test_marks_count;
 HEADER_FUNC bool
 test_mark_match (const char *pat, const char *str)
 {
-  while (*pat)
-  {
-    if (*pat == '*')
-    {
+  while (*pat) {
+    if (*pat == '*') {
       pat++;
-      if (!*pat)
-      {
+      if (!*pat) {
         return true;
       }
 
-      while (*str)
-      {
-        if (test_mark_match (pat, str))
-        {
+      while (*str) {
+        if (test_mark_match (pat, str)) {
           return true;
         }
         str++;
       }
       return false;
     }
-    if (*str != *pat)
-    {
+    if (*str != *pat) {
       return false;
     }
     pat++;
@@ -127,27 +121,23 @@ __test_mark (const char *_src)
   char *_dst = test_marks[test_marks_count++];
   int   _i   = 0;
 
-  while (_i < test_mark_len - 1 && _src[_i])
-  {
+  while (_i < test_mark_len - 1 && _src[_i]) {
     _dst[_i] = _src[_i];
     _i++;
   }
   _dst[_i] = '\0';
 }
 
-#  define TEST_MARK(label)          \
-    do                              \
-    {                               \
-      if (!__test_mark_hit (label)) \
-      {                             \
-        __test_mark (label);        \
-      }                             \
-    }                               \
+#  define TEST_MARK(label)            \
+    do {                              \
+      if (!__test_mark_hit (label)) { \
+        __test_mark (label);          \
+      }                               \
+    }                                 \
     while (0)
 
 #  define test_reset_marks() \
-    do                       \
-    {                        \
+    do {                     \
       test_marks_count = 0;  \
     }                        \
     while (0)
@@ -159,8 +149,7 @@ __test_mark (const char *_src)
  ******************************************************************************/
 
 #  define fail_test(fmt, ...)                                     \
-    do                                                            \
-    {                                                             \
+    do {                                                          \
       i_log_failure (FPREFIX_STR fmt, FPREFIX_ARGS, __VA_ARGS__); \
       test_ret = -1;                                              \
       return;                                                     \
@@ -168,10 +157,8 @@ __test_mark (const char *_src)
     while (0)
 
 #  define test_assert_equal(left, right)         \
-    do                                           \
-    {                                            \
-      if ((left) != (right))                     \
-      {                                          \
+    do {                                         \
+      if ((left) != (right)) {                   \
         fail_test ("%s != %s\n", #left, #right); \
       }                                          \
     }                                            \
@@ -180,12 +167,10 @@ __test_mark (const char *_src)
 #  define test_assert_int_equal(left, right) test_assert_type_equal (left, right, i32, PRId32)
 
 #  define test_assert_type_equal(left, right, type, fmt) \
-    do                                                   \
-    {                                                    \
+    do {                                                 \
       type _left  = left;                                \
       type _right = right;                               \
-      if ((_left) != (_right))                           \
-      {                                                  \
+      if ((_left) != (_right)) {                         \
         fail_test (                                      \
             "Expression: %s != %s values: "              \
             "(%" fmt ") != (%" fmt ")\n",                \
@@ -201,28 +186,23 @@ __test_mark (const char *_src)
 #  define test_assert_ptr_equal(left, right) test_assert_equal ((void *)left, (void *)right)
 
 #  define test_assert(expr)                  \
-    do                                       \
-    {                                        \
-      if (!(expr))                           \
-      {                                      \
+    do {                                     \
+      if (!(expr)) {                         \
         fail_test ("Expected: %s\n", #expr); \
       }                                      \
     }                                        \
     while (0)
 
 #  define test_fail_if(expr)                   \
-    do                                         \
-    {                                          \
-      if (expr)                                \
-      {                                        \
+    do {                                       \
+      if (expr) {                              \
         fail_test ("Unexpected: %s\n", #expr); \
       }                                        \
     }                                          \
     while (0)
 
 #  define test_err_t_check(expr, exp, ename) \
-    do                                       \
-    {                                        \
+    do {                                     \
       err_t __ret = (err_t)expr;             \
       test_assert_int_equal (__ret, exp);    \
       (ename)->cause_code = SUCCESS;         \
@@ -235,10 +215,8 @@ HEADER_FUNC bool
 __test_mark_hit (const char *_pat)
 {
   bool _hit = false;
-  for (int _i = 0; _i < test_marks_count; _i++)
-  {
-    if (test_mark_match (_pat, test_marks[_i]))
-    {
+  for (int _i = 0; _i < test_marks_count; _i++) {
+    if (test_mark_match (_pat, test_marks[_i])) {
       _hit = true;
       break;
     }
@@ -247,20 +225,16 @@ __test_mark_hit (const char *_pat)
 }
 
 #  define test_assert_mark_hit(pattern)                       \
-    do                                                        \
-    {                                                         \
-      if (!__test_mark_hit (pattern))                         \
-      {                                                       \
+    do {                                                      \
+      if (!__test_mark_hit (pattern)) {                       \
         fail_test ("No mark matched pattern: %s\n", pattern); \
       }                                                       \
     }                                                         \
     while (0)
 
 #  define test_assert_mark_not_hit(pattern)                \
-    do                                                     \
-    {                                                      \
-      if (__test_mark_hit (pattern))                       \
-      {                                                    \
+    do {                                                   \
+      if (__test_mark_hit (pattern)) {                     \
         fail_test ("Mark matched pattern: %s\n", pattern); \
       }                                                    \
     }                                                      \

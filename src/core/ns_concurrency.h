@@ -15,13 +15,13 @@
 #ifndef CONCURRENCY_H
 #define CONCURRENCY_H
 
-#include <stdatomic.h>
-#include <stdbool.h>
-
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_threading.h"
+
+#include <stdatomic.h>
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: GRLock
@@ -78,9 +78,9 @@ err_t gr_lock_init (struct gr_lock *l, error *e);
 void gr_lock_destroy (struct gr_lock *l);
 
 err_t gr_lock (struct gr_lock *l, enum lock_mode mode, error *e);
-void  gr_unlock (struct gr_lock *l, enum lock_mode mode);
+void gr_unlock (struct gr_lock *l, enum lock_mode mode);
 
-const char    *gr_lock_mode_name (enum lock_mode mode);
+const char *gr_lock_mode_name (enum lock_mode mode);
 enum lock_mode get_parent_mode (enum lock_mode child_mode);
 
 /******************************************************************************
@@ -167,8 +167,7 @@ latch_trylock (latch *l)
           1,
           memory_order_acquire,
           memory_order_relaxed
-      )))
-  {
+      ))) {
     return true;
   }
   return false;
@@ -187,15 +186,12 @@ latch_lock (latch *l)
           1,
           memory_order_acquire,
           memory_order_relaxed
-      )))
-  {
+      ))) {
     return;
   }
 
-  do
-  {
-    do
-    {
+  do {
+    do {
       // let the CPU breath
       spin_pause ();
 
@@ -249,8 +245,7 @@ spx_trylock_s (sx_latch *l)
 {
   u32 val = atomic_load_explicit (l, memory_order_relaxed);
 
-  if (unlikely (XLOCKED (val)))
-  {
+  if (unlikely (XLOCKED (val))) {
     return false;
   }
 
@@ -268,11 +263,9 @@ spx_lock_s (sx_latch *l)
 {
   u32 val = atomic_load_explicit (l, memory_order_relaxed);
 
-  while (true)
-  {
+  while (true) {
     // Wait for X to clear before attempting the CAS.
-    while (unlikely (XLOCKED (val)))
-    {
+    while (unlikely (XLOCKED (val))) {
       spin_pause ();
       val = atomic_load_explicit (l, memory_order_relaxed);
     }
@@ -283,8 +276,7 @@ spx_lock_s (sx_latch *l)
             val + 1,
             memory_order_acquire,
             memory_order_relaxed
-        )))
-    {
+        ))) {
       return;
     }
   }
@@ -316,26 +308,22 @@ spx_lock_x (sx_latch *l)
   // Phase 1: claim the X bit.  This blocks new S acquirers
   // (spx_lock_s spins while XLOCKED is set) but does not yet
   // wait for in-flight readers.
-  while (true)
-  {
-    if (likely (!XLOCKED (val)))
-    {
+  while (true) {
+    if (likely (!XLOCKED (val))) {
       if (atomic_compare_exchange_weak_explicit (
               l,
               &val,
               val | X,
               memory_order_acquire,
               memory_order_relaxed
-          ))
-      {
+          )) {
         break;
       }
       // CAS failed; val is refreshed, retry without spinning.
       continue;
     }
     // Another writer holds X.  Wait for them to release.
-    do
-    {
+    do {
       spin_pause ();
       val = atomic_load_explicit (l, memory_order_relaxed);
     }
@@ -343,8 +331,7 @@ spx_lock_x (sx_latch *l)
   }
   // Phase 2: drain remaining readers.  No new readers can arrive
   // because XLOCKED is now true.
-  while (SLOCKED (atomic_load_explicit (l, memory_order_acquire)))
-  {
+  while (SLOCKED (atomic_load_explicit (l, memory_order_acquire))) {
     spin_pause ();
   }
 }

@@ -12,36 +12,24 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef NS_LEXER_H
-#define NS_LEXER_H
+#include "numstore/testing/ns_swarm_tests.h"
 
-#include "core/ns_alloc.h"
-#include "core/ns_dbl_buffer.h"
-#include "core/ns_error.h"
-#include "core/ns_stdtypes.h" // u32 ...etc
+#include <stdio.h>
+#include <stdlib.h>
 
-struct allocator;
-
-struct lexer
+int
+main (int argc, char **argv)
 {
-  const char       *src;
-  u32               src_len;
-  u32               start;
-  u32               current;
+  if (argc != 4) {
+    fprintf (stderr, "Usage: %s DB DURATION SEED\n", argv[0]);
+    return EXIT_FAILURE;
+  }
 
-  struct token     *tokens;
+  const char *db       = argv[1];
+  int         duration = atoi (argv[2]);
+  unsigned    seed     = (unsigned)strtoul (argv[3], NULL, 10);
 
-  u32               ntokens;
-  struct dbl_buffer _tokens;
-  struct allocator *alloc;
-};
+  irwr_swarm_test (db, duration, seed);
 
-err_t lex_tokens (
-    const char       *src,
-    struct allocator *alloc,
-    u32               src_len,
-    struct lexer     *lex,
-    error            *e
-);
-
-#endif
+  return EXIT_SUCCESS;
+}

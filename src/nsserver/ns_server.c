@@ -1,5 +1,12 @@
 #include "nsserver/ns_server.h"
 
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_utils.h"
+#include "nsserver/ns_connection.h"
+#include "nsserver/os/ns_net_darwin.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -11,13 +18,6 @@
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#include "core/ns_csx_assert.h"
-#include "core/ns_error.h"
-#include "core/ns_stdtypes.h"
-#include "core/ns_utils.h"
-#include "nsserver/ns_connection.h"
-#include "nsserver/os/ns_net_darwin.h"
 
 struct connection_frame
 {
@@ -47,15 +47,13 @@ struct ns_server *
 server_create (error *e)
 {
   struct ns_server *server = i_malloc (default_mem (), 1, sizeof *server, e);
-  if (server == NULL)
-  {
+  if (server == NULL) {
     return NULL;
   }
 
   // Open the socket
   int fd = net_darwin.funcs->i_socket (&net_darwin, PF_INET, SOCK_STREAM, 0, e);
-  if (fd < 0)
-  {
+  if (fd < 0) {
     i_free (default_mem (), server);
     return NULL;
   }
@@ -67,9 +65,8 @@ server_create (error *e)
   addr.sin_addr.s_addr = INADDR_ANY;
 
   // Allow reuse
-  int result = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof (int));
-  if (result < 0)
-  {
+  int result           = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof (int));
+  if (result < 0) {
     error_causef (e, ERR_IO, "setsockopt failed: %s", strerror (errno));
     close (fd);
     i_free (default_mem (), server);
@@ -78,8 +75,7 @@ server_create (error *e)
 
   // Bind to socket
   result = bind (fd, (struct sockaddr *)&addr, sizeof (addr));
-  if (result < 0)
-  {
+  if (result < 0) {
     error_causef (e, ERR_IO, "bind failed: %s", strerror (errno));
     close (fd);
     i_free (default_mem (), server);
@@ -87,8 +83,7 @@ server_create (error *e)
   }
 
   result = listen (fd, 1);
-  if (result < 0)
-  {
+  if (result < 0) {
     error_causef (e, ERR_IO, "listen failed: %s", strerror (errno));
     close (fd);
     i_free (default_mem (), server);
@@ -97,8 +92,7 @@ server_create (error *e)
 
   // Set to non blocking mode
   int flags = fcntl (fd, F_GETFL, 0);
-  if (flags < 0)
-  {
+  if (flags < 0) {
     error_causef (e, ERR_IO, "fcntl (F_GETFL) failed: %s", strerror (errno));
     close (fd);
     i_free (default_mem (), server);
@@ -106,8 +100,7 @@ server_create (error *e)
   }
 
   result = fcntl (fd, F_SETFL, flags | O_NONBLOCK);
-  if (result < 0)
-  {
+  if (result < 0) {
     error_causef (e, ERR_IO, "fcntl (F_SETFL) failed: %s", strerror (errno));
     close (fd);
     i_free (default_mem (), server);
@@ -116,8 +109,7 @@ server_create (error *e)
 
   // Create a kqueue
   int kq = kqueue ();
-  if (kq < 0)
-  {
+  if (kq < 0) {
     error_causef (e, ERR_IO, "kqueue failed: %s", strerror (errno));
     close (fd);
     i_free (default_mem (), server);
@@ -128,8 +120,7 @@ server_create (error *e)
   struct kevent change;
   EV_SET (&change, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
   result = kevent (kq, &change, 1, NULL, 0, NULL);
-  if (result < 0)
-  {
+  if (result < 0) {
     error_causef (e, ERR_IO, "kevent failed: %s", strerror (errno));
     close (kq);
     close (fd);
@@ -149,28 +140,24 @@ err_t
 nsserver_execute (struct ns_server *server, error *e)
 {
   // Block on a new event
-  int n = kevent (server->kq, NULL, 0, server->events, 200, NULL); // block until ready
+  int n = kevent (server->kq, NULL, 0, server->events, 200,
+                  NULL); // block until ready
 
-  if (n < 0)
-  {
+  if (n < 0) {
   }
   err_check (n >= 0, "kevent");
 
   // Iterate through all events
-  for (int i = 0; i < n; ++i)
-  {
+  for (int i = 0; i < n; ++i) {
     // Server
-    if (server->events[i].ident == (uintptr_t)server)
-    {
+    if (server->events[i].ident == (uintptr_t)server) {
       // Accept a connection
       int client = accept (server->fd, NULL, NULL);
       err_check (client >= 0, "accept");
 
       // Reserve space in the connection pool
-      for (u32 k = 0; k < arrlen (server->conns); ++k)
-      {
-        if (!server->conns[k].present)
-        {
+      for (u32 k = 0; k < arrlen (server->conns); ++k) {
+        if (!server->conns[k].present) {
           server->conns[k].present = true;
 
           ht_insert_expect_conn (
@@ -195,19 +182,15 @@ nsserver_execute (struct ns_server *server, error *e)
           break;
         }
       }
-    }
-    else
-    {
+    } else {
       hdata_conn data;
       ht_get_expect_conn (&server->socket_to_index, &data, server->events[i].ident);
       struct connection *conn = &server->conns[data.value].conn;
 
       // Writing
-      if (conn->rlen >= 4 && conn->rlen == conn_read_prefix (conn))
-      {
+      if (conn->rlen >= 4 && conn->rlen == conn_read_prefix (conn)) {
         ASSERT (conn->rlen >= conn->wlen);
-        if (conn->rlen == conn->wlen)
-        {
+        if (conn->rlen == conn->wlen) {
           // Done writing - transition to reading
           conn->wlen = 0;
           conn->rlen = 0;
@@ -226,9 +209,7 @@ nsserver_execute (struct ns_server *server, error *e)
               NULL
           );
           kevent (server->kq, changes, 2, NULL, 0, NULL);
-        }
-        else
-        {
+        } else {
           ssize_t sent =
               send (server->events[i].ident, conn->buffer + conn->wlen, conn->rlen - conn->wlen, 0);
           printf ("Sent: %ld\n", sent);
@@ -238,8 +219,7 @@ nsserver_execute (struct ns_server *server, error *e)
       }
 
       // Reading
-      else if (conn->rlen < 4 || conn->rlen < conn_read_prefix (conn))
-      {
+      else if (conn->rlen < 4 || conn->rlen < conn_read_prefix (conn)) {
         ASSERT (conn->wlen == 0);
 
         u32     len = conn_read_prefix (conn);
@@ -251,8 +231,7 @@ nsserver_execute (struct ns_server *server, error *e)
         ASSERT (conn->rlen <= len);
 
         // Done reading
-        if (conn->rlen == len)
-        {
+        if (conn->rlen == len) {
           len = htonl (6);
           memcpy (&conn->buffer, &len, 4);
           memcpy (&conn->buffer + 4, "OK", 2);

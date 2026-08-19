@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -30,6 +27,9 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 #include "smartfiles/smartfiles.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 int
 smfile_perror (smfile_t *ns, const char *prefix)
@@ -90,7 +90,7 @@ TEST (smfile_cleanup)
   smfile_close (s);
   error e = error_create ();
 
-  bool exists;
+  bool  exists;
   i_file_exists (fs, "test", &exists, &e);
   test_assert (exists);
 
@@ -103,20 +103,19 @@ TEST (smfile_cleanup)
 sb_size
 smfile_size (smfile_t *_smf)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  struct nsdb *smf  = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  error *e = &smf->e;
+  error *e          = &smf->e;
 
   ALLOC_INIT (temp);
 
   b_size ret;
 
   // BEGIN TXN
-  if (nsdb_auto_begin_txn (smf, e) < 0)
-  {
+  if (nsdb_auto_begin_txn (smf, e) < 0) {
     goto failed;
   }
 
@@ -127,16 +126,14 @@ smfile_size (smfile_t *_smf)
       .vname = strfcstr (DEFAULT_VARIABLE),
       .alloc = &temp,
   };
-  if (ns_var_get (&gparams, e))
-  {
+  if (ns_var_get (&gparams, e)) {
     goto failed;
   }
 
   ret = gparams.dest.nbytes;
 
   // COMMIT
-  if (nsdb_auto_commit (smf, e) < 0)
-  {
+  if (nsdb_auto_commit (smf, e) < 0) {
     goto failed_rollback;
   }
 
@@ -273,18 +270,15 @@ smfile_open (const char *path)
 {
   struct nsdb *ret = nsdb_open (path);
 
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
   // Create the default variable
-  if (pgr_isnew (ret->root->p))
-  {
+  if (pgr_isnew (ret->root->p)) {
     // BEGIN TXN
     struct txn tx;
-    if (pgr_begin_txn (&tx, ret->root->p, &ret->e))
-    {
+    if (pgr_begin_txn (&tx, ret->root->p, &ret->e)) {
       goto failed;
     }
 
@@ -294,14 +288,12 @@ smfile_open (const char *path)
         .vname = strfcstr (DEFAULT_VARIABLE),
         .type  = &(struct type){.type = T_PRIM, .p = U8},
     };
-    if (ns_var_create (params, &ret->e))
-    {
+    if (ns_var_create (params, &ret->e)) {
       goto failed;
     }
 
     // COMMIT
-    if (pgr_commit (ret->root->p, &tx, &ret->e))
-    {
+    if (pgr_commit (ret->root->p, &tx, &ret->e)) {
       goto failed;
     }
   }
@@ -340,12 +332,12 @@ TEST (smfile_open)
 sb_size
 smfile_insert (smfile_t *_smf, const void *src, sb_size bofst, b_size slen)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  struct nsdb *smf  = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  error *e = &smf->e;
+  error *e          = &smf->e;
 
   ALLOC_INIT (temp);
 
@@ -358,8 +350,7 @@ smfile_insert (smfile_t *_smf, const void *src, sb_size bofst, b_size slen)
   struct ns_var_update_params uparams; // Update operation
 
   // Parameter validation
-  if (slen == 0)
-  {
+  if (slen == 0) {
     return 0;
   }
 
@@ -451,12 +442,12 @@ TEST (smfile_insert)
 sb_size
 smfile_read (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  struct nsdb *smf  = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  error *e = &smf->e;
+  error *e          = &smf->e;
 
   ALLOC_INIT (temp);
 
@@ -469,20 +460,16 @@ smfile_read (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size str
   struct ns_read_params    rparams;       // Read operation
 
   // Parameter validation
-  if (stride < 0)
-  {
+  if (stride < 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
-  if (stride == 0)
-  {
+  if (stride == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with stride == 0");
   }
-  if (size == 0)
-  {
+  if (size == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with size == 0");
   }
-  if (nelem == 0)
-  {
+  if (nelem == 0) {
     return 0;
   }
 
@@ -505,13 +492,11 @@ smfile_read (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size str
   {
     ofst  = var_resolve_index (&gparams.dest, bofst);
     nelem = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
-    if (nelem == 0)
-    {
+    if (nelem == 0) {
       ret = 0;
       goto commit;
     }
-    if (dest)
-    {
+    if (dest) {
       stream_obuf_init (&_output, &ctx, dest, size * nelem);
       output = &_output;
     }
@@ -556,8 +541,7 @@ TEST (smfile_read)
 
   struct smfile *s = smfile_open ("test");
   u8             buffer[16];
-  for (u32 i = 0; i < sizeof (buffer); i++)
-  {
+  for (u32 i = 0; i < sizeof (buffer); i++) {
     buffer[i] = (u8)i;
   }
 
@@ -579,12 +563,12 @@ TEST (smfile_read)
 sb_size
 smfile_remove (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  struct nsdb *smf  = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  error *e = &smf->e;
+  error *e          = &smf->e;
 
   ALLOC_INIT (temp);
 
@@ -598,20 +582,16 @@ smfile_remove (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size s
   struct ns_var_update_params uparams;       // Update operation
 
   // Parameter validation
-  if (stride < 0)
-  {
+  if (stride < 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
-  if (stride == 0)
-  {
+  if (stride == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
   }
-  if (size == 0)
-  {
+  if (size == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0");
   }
-  if (nelem == 0)
-  {
+  if (nelem == 0) {
     return 0;
   }
 
@@ -634,13 +614,11 @@ smfile_remove (smfile_t *_smf, void *dest, t_size size, sb_size bofst, sb_size s
   {
     ofst  = var_resolve_index (&gparams.dest, bofst);
     nelem = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
-    if (nelem == 0)
-    {
+    if (nelem == 0) {
       ret = 0;
       goto commit;
     }
-    if (dest)
-    {
+    if (dest) {
       stream_obuf_init (&_output, &ctx, dest, size * nelem);
       output = &_output;
     }
@@ -701,8 +679,7 @@ TEST (smfile_remove)
 
   struct smfile *s = smfile_open ("test");
   u8             buffer[16];
-  for (u32 i = 0; i < sizeof (buffer); i++)
-  {
+  for (u32 i = 0; i < sizeof (buffer); i++) {
     buffer[i] = (u8)i;
   }
 
@@ -733,12 +710,12 @@ smfile_write (
     b_size      nelem
 )
 {
-  struct nsdb *smf = (struct nsdb *)_smf;
+  struct nsdb *smf  = (struct nsdb *)_smf;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  error *e = &smf->e;
+  error *e          = &smf->e;
 
   ALLOC_INIT (temp);
 
@@ -755,20 +732,16 @@ smfile_write (
   struct ns_var_update_params uparams;      // Update operation
 
   // Parameter validation
-  if (stride < 0)
-  {
+  if (stride < 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
   }
-  if (stride == 0)
-  {
+  if (stride == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
   }
-  if (size == 0)
-  {
+  if (size == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0");
   }
-  if (nelem == 0)
-  {
+  if (nelem == 0) {
     return 0;
   }
 
@@ -791,8 +764,7 @@ smfile_write (
     ofst         = var_resolve_index (&gparams.dest, bofst);
     write_nelem  = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
     insert_nelem = nelem - write_nelem;
-    if (insert_nelem > 0 && stride != 1)
-    {
+    if (insert_nelem > 0 && stride != 1) {
       error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
       goto failed_rollback;
     }
@@ -818,8 +790,7 @@ smfile_write (
   }
 
   // INSERT REMAINDER
-  if (insert_nelem > 0)
-  {
+  if (insert_nelem > 0) {
     // INSERT
     {
       stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);

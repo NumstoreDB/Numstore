@@ -14,15 +14,15 @@
 
 #include "core/ns_concurrency.h"
 
-#include <stdint.h>
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
 #include "core/os/ns_threading.h"
 #include "core/os/ns_time.h"
 #include "core/testing/ns_testing.h"
+
+#include <stdint.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: GR Lock
@@ -45,8 +45,7 @@ err_t
 gr_lock_init (struct gr_lock *l, error *e)
 {
   const err_t result = default_threading.i_mutex_create (&default_threading, &l->mutex, e);
-  if (result != SUCCESS)
-  {
+  if (result != SUCCESS) {
     return result;
   }
 
@@ -79,8 +78,7 @@ gr_lock_destroy (struct gr_lock *l)
 
   default_threading.i_mutex_free (&default_threading, &l->mutex);
 
-  while (l->head)
-  {
+  while (l->head) {
     struct gr_lock_waiter *w = l->head;
     l->head                  = w->next;
     default_threading.i_cond_free (&default_threading, &w->cond);
@@ -123,10 +121,8 @@ TEST (gr_lock_destroy)
 static bool
 is_compatible (const struct gr_lock *l, const enum lock_mode mode)
 {
-  for (int i = 0; i < LM_COUNT; i++)
-  {
-    if (l->holder_counts[i] > 0 && !compatible[mode][i])
-    {
+  for (int i = 0; i < LM_COUNT; i++) {
+    if (l->holder_counts[i] > 0 && !compatible[mode][i]) {
       return false;
     }
   }
@@ -201,8 +197,7 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
   default_threading.i_mutex_lock (&default_threading, &l->mutex);
 
   // If it's compatible - just increment mode count and move on
-  if (is_compatible (l, mode))
-  {
+  if (is_compatible (l, mode)) {
     TEST_MARK ("gr_lock:gr_lock:immediate_acquire");
     goto acquire;
   }
@@ -213,23 +208,18 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
       .prev = NULL,
       .next = NULL,
   };
-  if (default_threading.i_cond_create (&default_threading, &waiter.cond, e))
-  {
+  if (default_threading.i_cond_create (&default_threading, &waiter.cond, e)) {
     // Ok here - we just failed and everything is unlocked
     default_threading.i_mutex_unlock (&default_threading, &l->mutex);
     return error_trace (e);
   }
 
   // Append waiter to the linked list of waiters
-  if (l->head == NULL)
-  {
+  if (l->head == NULL) {
     l->head = &waiter;
-  }
-  else
-  {
+  } else {
     struct gr_lock_waiter *end = l->head;
-    while (end->next != NULL)
-    {
+    while (end->next != NULL) {
       end = end->next;
     }
 
@@ -238,24 +228,19 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
   }
 
   // Wait for someone to signal my condition variable - main wait code
-  while (!is_compatible (l, mode))
-  {
+  while (!is_compatible (l, mode)) {
     TEST_MARK ("gr_lock:gr_lock:wait");
     default_threading.i_cond_wait (&default_threading, &waiter.cond, &l->mutex);
   }
 
   // Remove from waiters list
-  if (waiter.prev != NULL)
-  {
+  if (waiter.prev != NULL) {
     waiter.prev->next = waiter.next;
-  }
-  else
-  {
+  } else {
     ASSERT (l->head == &waiter);
     l->head = waiter.next;
   }
-  if (waiter.next != NULL)
-  {
+  if (waiter.next != NULL) {
     waiter.next->prev = waiter.prev;
   }
 
@@ -279,10 +264,8 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
   l->holder_counts[mode]--;
 
   // Wake any compatible waiters
-  if (l->head)
-  {
-    for (struct gr_lock_waiter *w = l->head; w; w = w->next)
-    {
+  if (l->head) {
+    for (struct gr_lock_waiter *w = l->head; w; w = w->next) {
       // signal all waiters - they do the compatability check - it's ok
       default_threading.i_cond_signal (&default_threading, &w->cond);
     }
@@ -307,8 +290,7 @@ thread1 (void *_ctx)
 {
   struct thread_ctx *ctx = _ctx;
 
-  while (!atomic_load (&ctx->gate))
-  {
+  while (!atomic_load (&ctx->gate)) {
     spin_pause ();
   }
 
@@ -325,14 +307,12 @@ thread2 (void *_ctx)
 {
   struct thread_ctx *ctx = _ctx;
 
-  while (!atomic_load (&ctx->gate))
-  {
+  while (!atomic_load (&ctx->gate)) {
     spin_pause ();
   }
 
   // Wait until thread 1 issued the lock
-  while (!atomic_load (&ctx->locked1))
-  {
+  while (!atomic_load (&ctx->locked1)) {
     spin_pause ();
   }
 
@@ -352,10 +332,8 @@ TEST (gr_lock_unlock)
   gr_lock_init (&l, &e);
 
   // Cartesion product
-  for (int m1 = 0; m1 < LM_COUNT; ++m1)
-  {
-    for (int m2 = 0; m2 < LM_COUNT; ++m2)
-    {
+  for (int m1 = 0; m1 < LM_COUNT; ++m1) {
+    for (int m2 = 0; m2 < LM_COUNT; ++m2) {
       TEST_CASE ("%s + %s", mode_names[m1], mode_names[m2])
       {
         test_reset_marks ();
@@ -375,11 +353,9 @@ TEST (gr_lock_unlock)
         // Launch both threads
         atomic_store (&ctx.gate, 1);
 
-        if (compatible[m1][m2])
-        {
+        if (compatible[m1][m2]) {
           // 2 finishes without unlocking anything
-          while (!atomic_load (&ctx.locked2))
-          {
+          while (!atomic_load (&ctx.locked2)) {
             spin_pause ();
           }
 
@@ -391,12 +367,9 @@ TEST (gr_lock_unlock)
 
           test_assert_mark_hit ("gr_lock:gr_lock:immediate_acquire");
           test_assert_mark_not_hit ("gr_lock:gr_lock:wait");
-        }
-        else
-        {
+        } else {
           // 1 finishes fine
-          while (!atomic_load (&ctx.locked1))
-          {
+          while (!atomic_load (&ctx.locked1)) {
             spin_pause ();
           }
 
@@ -409,8 +382,7 @@ TEST (gr_lock_unlock)
 
           // Unlock 2
           gr_unlock (&l, m1);
-          while (!atomic_load (&ctx.locked2))
-          {
+          while (!atomic_load (&ctx.locked2)) {
             spin_pause ();
           }
 
@@ -434,8 +406,7 @@ TEST (gr_lock_unlock)
 const char *
 gr_lock_mode_name (const enum lock_mode mode)
 {
-  if (mode >= 0 && mode < LM_COUNT)
-  {
+  if (mode >= 0 && mode < LM_COUNT) {
     return mode_names[mode];
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
@@ -455,21 +426,17 @@ TEST (gr_lock_mode_name)
 enum lock_mode
 get_parent_mode (const enum lock_mode child_mode)
 {
-  switch (child_mode)
-  {
+  switch (child_mode) {
     case LM_IS:
-    case LM_S:
-    {
+    case LM_S: {
       return LM_IS;
     }
     case LM_IX:
     case LM_SIX:
-    case LM_X:
-    {
+    case LM_X: {
       return LM_IX;
     }
-    case LM_COUNT:
-    {
+    case LM_COUNT: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -485,18 +452,18 @@ struct lock_test_ctx
   struct gr_lock *lock;
 
   // Coordination Primitives
-  i_mutex gate_mtx;
-  i_cond  gate_cv;
-  bool    gate_open;
+  i_mutex         gate_mtx;
+  i_cond          gate_cv;
+  bool            gate_open;
 
   // Counters and State
-  atomic_int t1_acquired;
-  atomic_int t2_blocked;
-  atomic_int t2_acquired;
-  atomic_int counter;
+  atomic_int      t1_acquired;
+  atomic_int      t2_blocked;
+  atomic_int      t2_acquired;
+  atomic_int      counter;
 
-  enum lock_mode mode1;
-  enum lock_mode mode2;
+  enum lock_mode  mode1;
+  enum lock_mode  mode2;
 };
 
 static void
@@ -549,8 +516,7 @@ thread_wait_and_try (void *arg)
 
   // Wait for Thread 1 to confirm it holds the lock
   default_threading.i_mutex_lock (&default_threading, &ctx->gate_mtx);
-  while (!ctx->gate_open)
-  {
+  while (!ctx->gate_open) {
     default_threading.i_cond_wait (&default_threading, &ctx->gate_cv, &ctx->gate_mtx);
   }
   default_threading.i_mutex_unlock (&default_threading, &ctx->gate_mtx);
@@ -573,8 +539,7 @@ random_stress_worker (void *arg)
   error                 e    = error_create ();
   uint32_t              seed = (uint32_t)(uintptr_t)arg;
 
-  for (int i = 0; i < 1000; i++)
-  {
+  for (int i = 0; i < 1000; i++) {
     // Fast thread-local random
     seed                = seed * 1103515245 + 12345;
     enum lock_mode mode = (seed % LM_COUNT);
@@ -582,15 +547,13 @@ random_stress_worker (void *arg)
     gr_lock (ctx->lock, mode, &e);
 
     // If Exclusive or Shared-Intent-Exclusive, verify atomicity
-    if (mode == LM_X || mode == LM_SIX)
-    {
+    if (mode == LM_X || mode == LM_SIX) {
       int val = atomic_load (&ctx->counter);
       atomic_store (&ctx->counter, val + 1);
     }
 
     // Integrity check: current mode must have at least one holder
-    if (ctx->lock->holder_counts[mode] == 0)
-    {
+    if (ctx->lock->holder_counts[mode] == 0) {
       panic ("Failed test");
     }
 
@@ -607,8 +570,7 @@ TEST (gr_lock_basic_sanity)
   error          e = error_create ();
   gr_lock_init (&lock, &e);
 
-  for (int mode = 0; mode < LM_COUNT; mode++)
-  {
+  for (int mode = 0; mode < LM_COUNT; mode++) {
     gr_lock (&lock, mode, &e);
     test_assert_equal (lock.holder_counts[mode], 1);
     gr_unlock (&lock, mode);
@@ -656,8 +618,9 @@ TEST_DISABLED (gr_lock_is_x_blocks)
   ctx.mode2 = LM_X;
 
   i_thread t1, t2;
-  default_threading.i_thread_create (&default_threading, &t1, thread_hold_and_signal, &ctx, &e);
-  default_threading.i_thread_create (&default_threading, &t2, thread_wait_and_try, &ctx, &e);
+  default_threading.i_thread_create (&default_threading, &t1,
+thread_hold_and_signal, &ctx, &e); default_threading.i_thread_create
+(&default_threading, &t2, thread_wait_and_try, &ctx, &e);
 
   // Wait slightly to let T2 hit the block, then check status
   i_sleep_ms (50);
@@ -685,20 +648,17 @@ TEST (gr_lock_high_pressure_random)
 
   i_thread threads[12];
 
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     default_threading
         .i_thread_create (&default_threading, &threads[i], random_stress_worker, &ctx, &e);
   }
 
-  for (int i = 0; i < 12; i++)
-  {
+  for (int i = 0; i < 12; i++) {
     default_threading.i_thread_join (&default_threading, &threads[i], &e);
   }
 
   // Final Validation
-  for (int m = 0; m < LM_COUNT; m++)
-  {
+  for (int m = 0; m < LM_COUNT; m++) {
     test_assert_equal (lock.holder_counts[m], 0);
   }
 
@@ -720,16 +680,13 @@ periodic_task_init (struct periodic_task *t, error *e)
   t->done           = false;
   t->running        = false;
 
-  if (default_threading.i_mutex_create (&default_threading, &t->mutex, e))
-  {
+  if (default_threading.i_mutex_create (&default_threading, &t->mutex, e)) {
     goto theend;
   }
-  if (default_threading.i_cond_create (&default_threading, &t->wake_cond, e))
-  {
+  if (default_threading.i_cond_create (&default_threading, &t->wake_cond, e)) {
     goto fail_mutex;
   }
-  if (default_threading.i_cond_create (&default_threading, &t->done_cond, e))
-  {
+  if (default_threading.i_cond_create (&default_threading, &t->done_cond, e)) {
     goto fail_wake_cond;
   }
 
@@ -749,20 +706,17 @@ periodic_task_thread (void *_ctx)
 {
   struct periodic_task *t = _ctx;
 
-  while (true)
-  {
+  while (true) {
     default_threading.i_mutex_lock (&default_threading, &t->mutex);
     // TODO - spurrious wakeups
-    if (!t->wake_requested && !t->stop)
-    {
+    if (!t->wake_requested && !t->stop) {
       default_threading.i_cond_timed_wait (&default_threading, &t->wake_cond, &t->mutex, t->msec);
     }
     t->wake_requested = false;
     bool should_stop  = t->stop;
     default_threading.i_mutex_unlock (&default_threading, &t->mutex);
 
-    if (should_stop)
-    {
+    if (should_stop) {
       break;
     }
 
@@ -785,8 +739,7 @@ periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, voi
   t->ctx  = ctx;
 
   if (default_threading
-          .i_thread_create (&default_threading, &t->thread, periodic_task_thread, t, e))
-  {
+          .i_thread_create (&default_threading, &t->thread, periodic_task_thread, t, e)) {
     return error_trace (e);
   }
 
@@ -798,8 +751,7 @@ periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, voi
 err_t
 periodic_task_stop (struct periodic_task *t, error *e)
 {
-  if (!t->running)
-  {
+  if (!t->running) {
     return SUCCESS;
   }
 
@@ -809,8 +761,7 @@ periodic_task_stop (struct periodic_task *t, error *e)
   default_threading.i_mutex_unlock (&default_threading, &t->mutex);
 
   default_threading.i_mutex_lock (&default_threading, &t->mutex);
-  while (!t->done)
-  {
+  while (!t->done) {
     default_threading.i_cond_wait (&default_threading, &t->done_cond, &t->mutex);
   }
   default_threading.i_mutex_unlock (&default_threading, &t->mutex);
@@ -841,8 +792,7 @@ data_thread (void *_data)
 {
   struct data *d = _data;
 
-  for (u32 i = 0; i < d->iters; ++i)
-  {
+  for (u32 i = 0; i < d->iters; ++i) {
     latch_lock (&d->l);
     d->value += 1;
     latch_unlock (&d->l);
@@ -853,7 +803,7 @@ data_thread (void *_data)
 
 TEST (latch)
 {
-  error e = error_create ();
+  error       e = error_create ();
 
   struct data d = {
       .iters = 1000,
@@ -863,13 +813,11 @@ TEST (latch)
 
   i_thread threads[10];
 
-  for (u32 i = 0; i < 10; ++i)
-  {
+  for (u32 i = 0; i < 10; ++i) {
     default_threading.i_thread_create (&default_threading, &threads[i], data_thread, &d, &e);
   }
 
-  for (u32 i = 0; i < 10; ++i)
-  {
+  for (u32 i = 0; i < 10; ++i) {
     default_threading.i_thread_join (&default_threading, &threads[i], &e);
   }
 

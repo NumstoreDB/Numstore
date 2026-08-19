@@ -14,12 +14,12 @@
 
 #include "core/ns_stream.h"
 
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
+
+#include <string.h>
 
 /////////////////////////////////////////////////////////////////////
 ////// Stream
@@ -123,8 +123,7 @@ TEST (stream_isdone)
 void
 stream_close (const struct stream *s)
 {
-  if (s->ops->close)
-  {
+  if (s->ops->close) {
     s->ops->close (s->ctx);
   }
 }
@@ -178,14 +177,13 @@ struct test_pull_ctx
 static i32
 test_pull_fn (struct stream *s, void *vctx, void *dest, const u32 size, const u32 n, error *e)
 {
-  struct test_pull_ctx *ctx = (struct test_pull_ctx *)vctx;
+  struct test_pull_ctx *ctx   = (struct test_pull_ctx *)vctx;
 
-  const u32 avail = ctx->len - ctx->pos;
-  const u32 want  = size * n;
-  const u32 next  = MIN (avail, want);
+  const u32             avail = ctx->len - ctx->pos;
+  const u32             want  = size * n;
+  const u32             next  = MIN (avail, want);
 
-  if (next == 0)
-  {
+  if (next == 0) {
     stream_finish (s);
     return 0;
   }
@@ -215,7 +213,7 @@ TEST (stream_bread)
     u8    buf[4] = {0};
     error e      = error_create ();
 
-    i32 got = stream_bread (buf, 1, 4, &src, &e);
+    i32   got    = stream_bread (buf, 1, 4, &src, &e);
 
     test_assert_int_equal (got, 4);
     test_assert (memcmp (buf, data, 4) == 0);
@@ -233,7 +231,7 @@ TEST (stream_bread)
     u8    buf[10] = {0};
     error e       = error_create ();
 
-    i32 got = stream_bread (buf, 1, 10, &src, &e);
+    i32   got     = stream_bread (buf, 1, 10, &src, &e);
     test_assert_int_equal (got, 3);
     test_assert (memcmp (buf, data, 3) == 0);
 
@@ -263,14 +261,13 @@ struct test_push_ctx
 static i32
 test_push_fn (struct stream *s, void *vctx, const void *src, const u32 size, const u32 n, error *e)
 {
-  struct test_push_ctx *ctx = (struct test_push_ctx *)vctx;
+  struct test_push_ctx *ctx   = (struct test_push_ctx *)vctx;
 
-  const u32 avail = ctx->cap - ctx->pos;
-  const u32 want  = size * n;
-  const u32 next  = MIN (avail, want);
+  const u32             avail = ctx->cap - ctx->pos;
+  const u32             want  = size * n;
+  const u32             next  = MIN (avail, want);
 
-  if (next == 0)
-  {
+  if (next == 0) {
     stream_finish (s);
     return 0;
   }
@@ -300,7 +297,7 @@ TEST (stream_bwrite)
     const u8 src[4] = {10, 20, 30, 40};
     error    e      = error_create ();
 
-    i32 put = stream_bwrite (src, 1, 4, &dest, &e);
+    i32      put    = stream_bwrite (src, 1, 4, &dest, &e);
 
     test_assert_int_equal (put, 4);
     test_assert (memcmp (out, src, 4) == 0);
@@ -318,7 +315,7 @@ TEST (stream_bwrite)
     const u8 src[5] = {1, 2, 3, 4, 5};
     error    e      = error_create ();
 
-    i32 put = stream_bwrite (src, 1, 5, &dest, &e);
+    i32      put    = stream_bwrite (src, 1, 5, &dest, &e);
     test_assert_int_equal (put, 3);
     test_assert (memcmp (out, src, 3) == 0);
 
@@ -341,35 +338,28 @@ stream_read (struct stream *dest, const u32 size, const u32 n, struct stream *sr
   u32 remaining = n;
   u32 batch_max = sizeof (buf) / size;
 
-  if (batch_max == 0)
-  {
+  if (batch_max == 0) {
     batch_max = 1;
   }
 
-  while (remaining > 0)
-  {
+  while (remaining > 0) {
     const u32 batch = remaining < batch_max ? remaining : batch_max;
 
-    const i32 got = src->ops->pull (src, src->ctx, buf, size, batch, e);
-    if (got < 0)
-    {
+    const i32 got   = src->ops->pull (src, src->ctx, buf, size, batch, e);
+    if (got < 0) {
       return got;
     }
-    if (got == 0)
-    {
+    if (got == 0) {
       break;
     }
 
     u32 pushed = 0;
-    while (pushed < (u32)got)
-    {
+    while (pushed < (u32)got) {
       const i32 w = dest->ops->push (dest, dest->ctx, buf + (pushed * size), size, got - pushed, e);
-      if (w < 0)
-      {
+      if (w < 0) {
         return w;
       }
-      if (w == 0)
-      {
+      if (w == 0) {
         break;
       }
       pushed += w;
@@ -378,8 +368,7 @@ stream_read (struct stream *dest, const u32 size, const u32 n, struct stream *sr
     total += pushed;
     remaining -= pushed;
 
-    if (pushed < (u32)got)
-    {
+    if (pushed < (u32)got) {
       break;
     }
   }
@@ -424,8 +413,7 @@ TEST (stream_read)
     static u8 data[N];
     static u8 out[N];
 
-    for (u32 i = 0; i < N; i++)
-    {
+    for (u32 i = 0; i < N; i++) {
       data[i] = (u8)(i & 0xFF);
     }
     memset (out, 0, N);
@@ -500,14 +488,11 @@ stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, cons
 {
   struct stream_ibuf_ctx *ctx = (struct stream_ibuf_ctx *)vctx;
 
-  u32 avail;
+  u32                     avail;
 
-  if (ctx->size == 0)
-  {
+  if (ctx->size == 0) {
     avail = size * n;
-  }
-  else
-  {
+  } else {
     avail = ctx->size - ctx->pos;
   }
 
@@ -515,10 +500,8 @@ stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, cons
 
   u32 next = MIN (avail, want);
 
-  if (next == 0)
-  {
-    if (avail == 0)
-    {
+  if (next == 0) {
+    if (avail == 0) {
       stream_finish (s);
     }
     return 0;
@@ -542,14 +525,11 @@ stream_obuf_push (
 {
   struct stream_obuf_ctx *ctx = (struct stream_obuf_ctx *)vctx;
 
-  u32 avail;
+  u32                     avail;
 
-  if (ctx->cap == 0)
-  {
+  if (ctx->cap == 0) {
     avail = size * n;
-  }
-  else
-  {
+  } else {
     avail = ctx->cap - ctx->pos;
   }
 
@@ -557,10 +537,8 @@ stream_obuf_push (
 
   u32 next = MIN (avail, want);
 
-  if (next == 0)
-  {
-    if (avail == 0)
-    {
+  if (next == 0) {
+    if (avail == 0) {
       stream_finish (s);
     }
     return 0;
@@ -582,23 +560,19 @@ stream_dyn_obuf_push (
     error         *e
 )
 {
-  struct stream_dyn_obuf_ctx *ctx = (struct stream_dyn_obuf_ctx *)vctx;
+  struct stream_dyn_obuf_ctx *ctx  = (struct stream_dyn_obuf_ctx *)vctx;
 
   // Minimum available space
-  u32 next = 0;
+  u32                         next = 0;
 
-  if (ctx->limit == 0)
-  {
+  if (ctx->limit == 0) {
     next = size * n;
-  }
-  else
-  {
+  } else {
     next = MIN (size * n, ctx->limit - ctx->buffer.len);
   }
 
   // Do append
-  if (ext_array_insert (&ctx->buffer, ctx->buffer.len, src, n * size, e) < 0)
-  {
+  if (ext_array_insert (&ctx->buffer, ctx->buffer.len, src, n * size, e) < 0) {
     return error_trace (e);
   }
 
@@ -638,7 +612,7 @@ TEST (stream_ibuf)
 {
   TEST_CASE ("reads sequential chunks")
   {
-    const u8 data[5] = {1, 2, 3, 4, 5};
+    const u8               data[5] = {1, 2, 3, 4, 5};
 
     struct stream          s;
     struct stream_ibuf_ctx ctx;
@@ -646,9 +620,9 @@ TEST (stream_ibuf)
     stream_ibuf_init (&s, &ctx, data, sizeof (data));
 
     u8    buf[2];
-    error e = error_create ();
+    error e   = error_create ();
 
-    i32 got = stream_bread (buf, 1, 2, &s, &e);
+    i32   got = stream_bread (buf, 1, 2, &s, &e);
     test_assert_int_equal (got, 2);
     test_assert (memcmp (buf, data, 2) == 0);
     test_assert (!stream_isdone (&s));
@@ -676,7 +650,7 @@ TEST (stream_ibuf)
 
   TEST_CASE ("zero n request does not finish")
   {
-    const u8 data[3] = {1, 2, 3};
+    const u8               data[3] = {1, 2, 3};
 
     struct stream          s;
     struct stream_ibuf_ctx ctx;
@@ -684,9 +658,9 @@ TEST (stream_ibuf)
     stream_ibuf_init (&s, &ctx, data, sizeof (data));
 
     u8    buf[1];
-    error e = error_create ();
+    error e   = error_create ();
 
-    i32 got = stream_bread (buf, 1, 0, &s, &e);
+    i32   got = stream_bread (buf, 1, 0, &s, &e);
 
     test_assert_int_equal (got, 0);
     test_assert (!stream_isdone (&s));
@@ -699,8 +673,7 @@ TEST (stream_ibuf)
     // happily satisfy pulls up to whatever the real backing memory
     // allows; it never reports exhaustion on its own.
     static u8 data[16];
-    for (u32 i = 0; i < 16; i++)
-    {
+    for (u32 i = 0; i < 16; i++) {
       data[i] = (u8)(i + 1);
     }
 
@@ -712,7 +685,7 @@ TEST (stream_ibuf)
     u8    buf[16] = {0};
     error e       = error_create ();
 
-    i32 got = stream_bread (buf, 1, 16, &s, &e);
+    i32   got     = stream_bread (buf, 1, 16, &s, &e);
 
     test_assert_int_equal (got, 16);
     test_assert (memcmp (buf, data, 16) == 0);
@@ -737,7 +710,7 @@ TEST (stream_obuf)
 {
   TEST_CASE ("writes sequential chunks")
   {
-    u8 out[5] = {0};
+    u8                     out[5] = {0};
 
     struct stream          s;
     struct stream_obuf_ctx ctx;
@@ -748,9 +721,9 @@ TEST (stream_obuf)
     const u8 chunk2[2] = {3, 4};
     const u8 chunk3[2] = {5, 6}; // only 1 byte of capacity remains
 
-    error e = error_create ();
+    error    e         = error_create ();
 
-    i32 put = stream_bwrite (chunk1, 1, 2, &s, &e);
+    i32      put       = stream_bwrite (chunk1, 1, 2, &s, &e);
     test_assert_int_equal (put, 2);
 
     put = stream_bwrite (chunk2, 1, 2, &s, &e);
@@ -771,7 +744,7 @@ TEST (stream_obuf)
 
   TEST_CASE ("exact fill then exhausted")
   {
-    u8 out[2] = {0};
+    u8                     out[2] = {0};
 
     struct stream          s;
     struct stream_obuf_ctx ctx;
@@ -781,7 +754,7 @@ TEST (stream_obuf)
     const u8 chunk[2] = {9, 9};
     error    e        = error_create ();
 
-    i32 put = stream_bwrite (chunk, 1, 2, &s, &e);
+    i32      put      = stream_bwrite (chunk, 1, 2, &s, &e);
     test_assert_int_equal (put, 2);
     test_assert (!stream_isdone (&s)); // exactly filled, not yet probed again
 
@@ -803,8 +776,7 @@ TEST (stream_obuf)
     stream_obuf_init (&s, &ctx, out, 0);
 
     u8 chunk[16];
-    for (u32 i = 0; i < 16; i++)
-    {
+    for (u32 i = 0; i < 16; i++) {
       chunk[i] = (u8)(i + 1);
     }
 
@@ -824,7 +796,7 @@ TEST (stream_read_ibuf_to_obuf)
     // Exercises stream_read driving a real ibuf source into a real
     // obuf destination end-to-end, rather than the bread/bwrite mocks
     // used above.
-    const u8 data[6] = {1, 2, 3, 4, 5, 6};
+    const u8               data[6] = {1, 2, 3, 4, 5, 6};
 
     struct stream          ibuf_s;
     struct stream_ibuf_ctx ibuf_ctx;
@@ -855,7 +827,7 @@ TEST (stream_read_ibuf_to_obuf)
     // source has data, stream_read should stop short and mark dest
     // finished, mirroring stream_read's "dest has insufficient
     // capacity" test but through the real ibuf/obuf implementations.
-    const u8 data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    const u8               data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
     struct stream          ibuf_s;
     struct stream_ibuf_ctx ibuf_ctx;

@@ -20,10 +20,10 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include <stdbool.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_stdtypes.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Serializer
@@ -43,8 +43,7 @@ struct serializer srlizr_create (u8 *data, u32 dcap);
 
 bool srlizr_write (struct serializer *dest, const void *src, u32 len);
 #define srlizr_write_expect(dest, src, len)   \
-  do                                          \
-  {                                           \
+  do {                                        \
     bool ret = srlizr_write (dest, src, len); \
     ASSERT (ret);                             \
   }                                           \
@@ -68,8 +67,7 @@ struct deserializer dsrlizr_create (const u8 *data, u32 dlen);
 
 bool dsrlizr_read (void *dest, u32 dlen, struct deserializer *src);
 #define dsrlizr_read_expect(dest, dlen, src)   \
-  do                                           \
-  {                                            \
+  do {                                         \
     bool ret = dsrlizr_read (dest, dlen, src); \
     ASSERT (ret);                              \
   }                                            \

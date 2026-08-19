@@ -14,16 +14,16 @@
 
 #include "core/os/ns_memory.h"
 
-#include <errno.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "core/ns_bounds.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/testing/ns_testing.h"
+
+#include <errno.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Memory
@@ -38,22 +38,17 @@ def_malloc (void *v, const u32 nelem, const u32 size, error *e)
   ASSERT (size > 0);
 
   u32 bytes;
-  if (!safe_mul_u32 (&bytes, nelem, size))
-  {
+  if (!safe_mul_u32 (&bytes, nelem, size)) {
     error_causef (e, ERR_NOMEM, "malloc %d*%d: overflow", nelem, size);
     return NULL;
   }
 
   errno     = 0;
   void *ret = malloc ((size_t)bytes);
-  if (ret == NULL)
-  {
-    if (errno == ENOMEM)
-    {
+  if (ret == NULL) {
+    if (errno == ENOMEM) {
       error_causef (e, ERR_NOMEM, "malloc %d*%d: %s", nelem, size, strerror (errno));
-    }
-    else
-    {
+    } else {
       error_causef (e, ERR_NOMEM, "malloc: %s", strerror (errno));
     }
   }
@@ -69,8 +64,7 @@ def_calloc (void *v, const u32 nelem, const u32 size, error *e)
   ASSERT (size > 0);
 
   u32 bytes = 0;
-  if (!safe_mul_u32 (&bytes, nelem, size))
-  {
+  if (!safe_mul_u32 (&bytes, nelem, size)) {
     error_causef (e, ERR_NOMEM, "malloc %d*%d: overflow", nelem, size);
     return NULL;
   }
@@ -79,14 +73,10 @@ def_calloc (void *v, const u32 nelem, const u32 size, error *e)
 
   errno     = 0;
   void *ret = calloc ((size_t)nelem, (size_t)size);
-  if (ret == NULL)
-  {
-    if (errno == ENOMEM)
-    {
+  if (ret == NULL) {
+    if (errno == ENOMEM) {
       error_causef (e, ERR_NOMEM, "calloc %d*%d: %s", nelem, size, strerror (errno));
-    }
-    else
-    {
+    } else {
       error_causef (e, ERR_NOMEM, "calloc: %s", strerror (errno));
     }
   }
@@ -105,8 +95,7 @@ def_realloc (void *v, void *ptr, const u32 nelem, const u32 size, error *e)
   {
     bool ok = safe_mul_u32 (&bytes, nelem, size);
     ASSERT (ok);
-    if (!ok)
-    {
+    if (!ok) {
       error_causef (e, ERR_NOMEM, "realloc %u*%u: overflow", nelem, size);
       return NULL;
     }
@@ -114,8 +103,7 @@ def_realloc (void *v, void *ptr, const u32 nelem, const u32 size, error *e)
 
   errno     = 0;
   void *ret = realloc (ptr, (size_t)bytes);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     error_causef (e, ERR_NOMEM, "realloc %u bytes: %s", bytes, strerror (errno));
     return NULL;
   }
@@ -127,15 +115,13 @@ TEST (i_realloc_basic)
 {
   error e = error_create ();
 
-  u32 *a = i_realloc (mem, NULL, 10, sizeof *a, &e); // behaves like malloc
-  for (u32 i = 0; i < 10; i++)
-  {
+  u32  *a = i_realloc (mem, NULL, 10, sizeof *a, &e); // behaves like malloc
+  for (u32 i = 0; i < 10; i++) {
     a[i] = i;
   }
 
   u32 *b = i_realloc (mem, a, 20, sizeof *b, &e);
-  for (u32 i = 0; i < 10; i++)
-  {
+  for (u32 i = 0; i < 10; i++) {
     test_assert (b[i] == i);
   }
 

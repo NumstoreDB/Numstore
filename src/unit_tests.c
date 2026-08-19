@@ -1,4 +1,4 @@
-/// Copyright 2026 Theo Lincke
+/// Copyright 2026 Theo Linck/// Copyright 2026 Theo Lincke
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -11,38 +11,36 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
-
 // clang-format off
-
-#ifdef TESTING 
-
 // AUTO GENERATED - DO NOT MODIFY
-
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
 #include "core/os/ns_time.h"
 #include "core/testing/ns_testing.h"
-#include "core/testing/ns_unit_tests.h"
 
 int
-run_unit_tests (int seed, const char* filter)
+main (int argc, char **argv)
 {
-  srand(seed);
-  int ntests = 0;
+  if (argc > 2)
+  {
+    fprintf (stderr, "Usage: %s [FILTER]\n", argv[0]);
+    return EXIT_FAILURE;
+  }
+  const char *filter = (argc == 2) ? argv[1] : NULL;
 
+  srand (1234);
+  int ntests = 0;
   error   e = error_create ();
   i_timer timer;
   if (i_timer_create (&timer, &e) != SUCCESS)
   {
     return -1;
   }
-
   int         failed = 0;
   const char *failed_names[332];
-
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -6352,10 +6350,8 @@ run_unit_tests (int seed, const char* filter)
     ntests++;
   }
 
-
   printf ("Time: %llu ms\n", (unsigned long long)i_timer_now_ms (&timer));
   i_timer_free (&timer);
-
   if (failed)
   {
     i_log_failure ("FAILED TESTS (%d):\n", failed);
@@ -6368,14 +6364,6 @@ run_unit_tests (int seed, const char* filter)
   {
     i_log_passed ("ALL %d TESTS PASSED\n", ntests);
   }
-
   return test_ret;
 }
-
-#else
-
-typedef int make_compiler_happy;
-
-#endif
-
 // clang-format on

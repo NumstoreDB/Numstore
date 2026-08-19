@@ -14,9 +14,6 @@
 
 #include "nscore/compiler/ns_lexer.h"
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"    // error
@@ -25,6 +22,9 @@
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_tokens.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 static bool
 is_at_end (struct lexer *lex)
@@ -35,8 +35,7 @@ is_at_end (struct lexer *lex)
 static char
 peek (struct lexer *lex)
 {
-  if (is_at_end (lex))
-  {
+  if (is_at_end (lex)) {
     return '\0';
   }
   return lex->src[lex->current];
@@ -61,8 +60,7 @@ match (struct lexer *lex, char expected)
 {
   ASSERT (!is_at_end (lex));
 
-  if (lex->src[lex->current] != expected)
-  {
+  if (lex->src[lex->current] != expected) {
     return false;
   }
 
@@ -141,75 +139,58 @@ add_token_prim (struct lexer *lex, enum prim_t prim, error *e)
 static enum token_t
 check_keyword (const char *text, u32 len)
 {
-  if (len == sizeof ("create") - 1 && strncmp (text, "create", len) == 0)
-  {
+  if (len == sizeof ("create") - 1 && strncmp (text, "create", len) == 0) {
     return TT_CREATE;
   }
-  if (len == sizeof ("delete") - 1 && strncmp (text, "delete", len) == 0)
-  {
+  if (len == sizeof ("delete") - 1 && strncmp (text, "delete", len) == 0) {
     return TT_DELETE;
   }
-  if (len == sizeof ("get") - 1 && strncmp (text, "get", len) == 0)
-  {
+  if (len == sizeof ("get") - 1 && strncmp (text, "get", len) == 0) {
     return TT_GET;
   }
-  if (len == sizeof ("exit") - 1 && strncmp (text, "exit", len) == 0)
-  {
+  if (len == sizeof ("exit") - 1 && strncmp (text, "exit", len) == 0) {
     return TT_EXIT;
   }
-  if (len == sizeof ("help") - 1 && strncmp (text, "help", len) == 0)
-  {
+  if (len == sizeof ("help") - 1 && strncmp (text, "help", len) == 0) {
     return TT_HELP;
   }
-  if (len == sizeof ("insert") - 1 && strncmp (text, "insert", len) == 0)
-  {
+  if (len == sizeof ("insert") - 1 && strncmp (text, "insert", len) == 0) {
     return TT_INSERT;
   }
-  if (len == sizeof ("read") - 1 && strncmp (text, "read", len) == 0)
-  {
+  if (len == sizeof ("read") - 1 && strncmp (text, "read", len) == 0) {
     return TT_READ;
   }
-  if (len == sizeof ("write") - 1 && strncmp (text, "write", len) == 0)
-  {
+  if (len == sizeof ("write") - 1 && strncmp (text, "write", len) == 0) {
     return TT_WRITE;
   }
-  if (len == sizeof ("remove") - 1 && strncmp (text, "remove", len) == 0)
-  {
+  if (len == sizeof ("remove") - 1 && strncmp (text, "remove", len) == 0) {
     return TT_REMOVE;
   }
 
-  if (len == sizeof ("if") - 1 && strncmp (text, "if", len) == 0)
-  {
+  if (len == sizeof ("if") - 1 && strncmp (text, "if", len) == 0) {
     return TT_IF;
   }
-  if (len == sizeof ("exists") - 1 && strncmp (text, "exists", len) == 0)
-  {
+  if (len == sizeof ("exists") - 1 && strncmp (text, "exists", len) == 0) {
     return TT_EXISTS;
   }
-  if (len == sizeof ("blimit") - 1 && strncmp (text, "blimit", len) == 0)
-  {
+  if (len == sizeof ("blimit") - 1 && strncmp (text, "blimit", len) == 0) {
     return TT_BLIMIT;
   }
-  if (len == sizeof ("limit") - 1 && strncmp (text, "limit", len) == 0)
-  {
+  if (len == sizeof ("limit") - 1 && strncmp (text, "limit", len) == 0) {
     return TT_LIMIT;
   }
 
-  if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0)
-  {
+  if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0) {
     return TT_STRUCT;
   }
-  if (len == sizeof ("union") - 1 && strncmp (text, "union", len) == 0)
-  {
+  if (len == sizeof ("union") - 1 && strncmp (text, "union", len) == 0) {
     return TT_UNION;
   }
 
-  if (len == sizeof ("true") - 1 && strncmp (text, "true", len) == 0)
-  {
+  if (len == sizeof ("true") - 1 && strncmp (text, "true", len) == 0) {
     return TT_TRUE;
   }
-  if (len == sizeof ("false") - 1 && strncmp (text, "false", len) == 0)
-  {
+  if (len == sizeof ("false") - 1 && strncmp (text, "false", len) == 0) {
     return TT_FALSE;
   }
 
@@ -219,13 +200,11 @@ check_keyword (const char *text, u32 len)
 static err_t
 scan_string (struct lexer *lex, error *e)
 {
-  while (!is_at_end (lex) && peek (lex) != '"')
-  {
+  while (!is_at_end (lex) && peek (lex) != '"') {
     advance (lex);
   }
 
-  if (is_at_end (lex))
-  {
+  if (is_at_end (lex)) {
     return error_causef (e, ERR_SYNTAX, "Unterminated string at position %u", lex->start);
   }
 
@@ -243,19 +222,16 @@ scan_string (struct lexer *lex, error *e)
 static err_t
 scan_number (struct lexer *lex, error *e)
 {
-  while (!is_at_end (lex) && is_num (peek (lex)))
-  {
+  while (!is_at_end (lex) && is_num (peek (lex))) {
     advance (lex);
   }
 
   bool is_float = false;
-  if (peek (lex) == '.' && is_num (peek_next (lex)))
-  {
+  if (peek (lex) == '.' && is_num (peek_next (lex))) {
     is_float = true;
     advance (lex);
 
-    while (!is_at_end (lex) && is_num (peek (lex)))
-    {
+    while (!is_at_end (lex) && is_num (peek (lex))) {
       advance (lex);
     }
   }
@@ -263,14 +239,11 @@ scan_number (struct lexer *lex, error *e)
   const char *text = &lex->src[lex->start];
   u32         len  = lex->current - lex->start;
 
-  if (is_float)
-  {
+  if (is_float) {
     f32 value;
     WRAP (parse_f32_expect (&value, text, len, e));
     return add_token_float (lex, value, e);
-  }
-  else
-  {
+  } else {
     i32 value;
     WRAP (parse_i32_expect (&value, text, len, e));
     return add_token_int (lex, value, e);
@@ -282,8 +255,7 @@ scan_number (struct lexer *lex, error *e)
 static err_t
 scan_identifier (struct lexer *lex, error *e)
 {
-  while (!is_at_end (lex) && is_alpha_num (peek (lex)))
-  {
+  while (!is_at_end (lex) && is_alpha_num (peek (lex))) {
     advance (lex);
   }
 
@@ -292,20 +264,16 @@ scan_identifier (struct lexer *lex, error *e)
 
   // Check for primitive types first
   enum prim_t prim = strtoprim (text, len);
-  if (prim != (enum prim_t) - 1)
-  {
+  if (prim != (enum prim_t) - 1) {
     return add_token_prim (lex, prim, e);
   }
 
   // Check for keywords
   enum token_t type = check_keyword (text, len);
 
-  if (type == TT_IDENTIFIER)
-  {
+  if (type == TT_IDENTIFIER) {
     return add_token_str (lex, TT_IDENTIFIER, text, len, e);
-  }
-  else
-  {
+  } else {
     return add_token (lex, type, e);
   }
 }
@@ -315,92 +283,70 @@ scan_token (struct lexer *lex, error *e)
 {
   char c = advance (lex);
 
-  switch (c)
-  {
+  switch (c) {
     case ' ':
     case '\r':
     case '\t':
-    case '\n':
-    {
+    case '\n': {
       return SUCCESS;
     }
-    case '+':
-    {
+    case '+': {
       return add_token (lex, TT_PLUS, e);
     }
-    case '-':
-    {
+    case '-': {
       return add_token (lex, TT_MINUS, e);
     }
-    case '/':
-    {
+    case '/': {
       return add_token (lex, TT_SLASH, e);
     }
-    case '*':
-    {
+    case '*': {
       return add_token (lex, TT_STAR, e);
     }
-    case '~':
-    {
+    case '~': {
       return add_token (lex, TT_NOT, e);
     }
-    case '^':
-    {
+    case '^': {
       return add_token (lex, TT_CARET, e);
     }
-    case '%':
-    {
+    case '%': {
       return add_token (lex, TT_PERCENT, e);
     }
-    case ';':
-    {
+    case ';': {
       return add_token (lex, TT_SEMICOLON, e);
     }
-    case ':':
-    {
+    case ':': {
       return add_token (lex, TT_COLON, e);
     }
-    case '[':
-    {
+    case '[': {
       return add_token (lex, TT_LEFT_BRACKET, e);
     }
-    case ']':
-    {
+    case ']': {
       return add_token (lex, TT_RIGHT_BRACKET, e);
     }
-    case '{':
-    {
+    case '{': {
       return add_token (lex, TT_LEFT_BRACE, e);
     }
-    case '}':
-    {
+    case '}': {
       return add_token (lex, TT_RIGHT_BRACE, e);
     }
-    case '(':
-    {
+    case '(': {
       return add_token (lex, TT_LEFT_PAREN, e);
     }
-    case ')':
-    {
+    case ')': {
       return add_token (lex, TT_RIGHT_PAREN, e);
     }
-    case ',':
-    {
+    case ',': {
       return add_token (lex, TT_COMMA, e);
     }
-    case '.':
-    {
+    case '.': {
       return add_token (lex, TT_DOT, e);
     }
-    case '!':
-    {
+    case '!': {
       add_token (lex, match (lex, '=') ? TT_BANG_EQUAL : TT_BANG, e);
       return SUCCESS;
     }
-    case '=':
-    {
-      if (!match (lex, '='))
-      {
+    case '=': {
+      if (!match (lex, '=')) {
         return error_causef (
             e,
             ERR_SYNTAX,
@@ -412,36 +358,28 @@ scan_token (struct lexer *lex, error *e)
       }
       return add_token (lex, TT_EQUAL_EQUAL, e);
     }
-    case '>':
-    {
+    case '>': {
       return add_token (lex, match (lex, '=') ? TT_GREATER_EQUAL : TT_GREATER, e);
     }
-    case '<':
-    {
+    case '<': {
       return add_token (lex, match (lex, '=') ? TT_LESS_EQUAL : TT_LESS, e);
     }
-    case '|':
-    {
+    case '|': {
       return add_token (lex, match (lex, '|') ? TT_PIPE_PIPE : TT_PIPE, e);
     }
-    case '&':
-    {
+    case '&': {
       return add_token (lex, match (lex, '&') ? TT_AMPERSAND_AMPERSAND : TT_AMPERSAND, e);
     }
-    case '"':
-    {
+    case '"': {
       return scan_string (lex, e);
     }
 
-    default:
-    {
-      if (is_num (c))
-      {
+    default: {
+      if (is_num (c)) {
         return scan_number (lex, e);
       }
 
-      if (is_alpha (c))
-      {
+      if (is_alpha (c)) {
         return scan_identifier (lex, e);
       }
 
@@ -466,17 +404,14 @@ lex_tokens (const char *src, struct allocator *alloc, u32 src_len, struct lexer 
   lex->current = 0;
   WRAP (dblb_create (&lex->_tokens, alloc, sizeof (struct token), 256, e));
 
-  while (!is_at_end (lex))
-  {
+  while (!is_at_end (lex)) {
     lex->start = lex->current;
-    if (scan_token (lex, e))
-    {
+    if (scan_token (lex, e)) {
       goto failed;
     }
   }
 
-  if (add_token (lex, TT_EOF, e))
-  {
+  if (add_token (lex, TT_EOF, e)) {
     goto failed;
   }
 
@@ -497,13 +432,12 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
   ALLOC_INIT (alloc);
 
   struct lexer lex;
-  error        e = error_create ();
+  error        e      = error_create ();
 
-  err_t result = lex_tokens (input, &alloc, strlen (input), &lex, &e);
+  err_t        result = lex_tokens (input, &alloc, strlen (input), &lex, &e);
 
   // Check for expected errors
-  if (nexpected == 0)
-  {
+  if (nexpected == 0) {
     test_assert (result != SUCCESS);
     goto theend;
   }
@@ -515,8 +449,7 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
   test_assert_int_equal (lex.ntokens, nexpected + 1);
 
   // Compare each token
-  for (u32 i = 0; i < nexpected; i++)
-  {
+  for (u32 i = 0; i < nexpected; i++) {
     struct token       *left  = &lex.tokens[i];
     const struct token *right = &expected[i];
 
@@ -529,7 +462,7 @@ theend:
 
 TEST (lexer_two_char_tokens)
 {
-  const char *src = "! ! != != == ! < <= > >= || && , ! , !=";
+  const char  *src        = "! ! != != == ! < <= > >= || && , ! , !=";
 
   struct token expected[] = {
       quick_tok (TT_BANG),
@@ -555,7 +488,7 @@ TEST (lexer_two_char_tokens)
 
 TEST (lexer_single_char_operators)
 {
-  const char *src = "+ - / * ~ ^ % | & ; : [ ] { } ( ) ,";
+  const char  *src        = "+ - / * ~ ^ % | & ; : [ ] { } ( ) ,";
 
   struct token expected[] = {
       quick_tok (TT_PLUS),
@@ -583,7 +516,7 @@ TEST (lexer_single_char_operators)
 
 TEST (lexer_strings)
 {
-  const char *src = "\"hello\" \"world\" \"foo bar\"";
+  const char  *src        = "\"hello\" \"world\" \"foo bar\"";
 
   struct token expected[] = {
       tt_string ("hello", sizeof ("hello") - 1),
@@ -596,7 +529,7 @@ TEST (lexer_strings)
 
 TEST (lexer_identifiers)
 {
-  const char *src = "foo bar baz_qux hello123";
+  const char  *src        = "foo bar baz_qux hello123";
 
   struct token expected[] = {
       tt_ident ("foo", sizeof ("foo") - 1),
@@ -610,7 +543,7 @@ TEST (lexer_identifiers)
 
 TEST (lexer_numbers)
 {
-  const char *src = "0 123 456 1.0 3.14 0.5";
+  const char  *src        = "0 123 456 1.0 3.14 0.5";
 
   struct token expected[] = {
       tt_integer (0),
@@ -653,7 +586,7 @@ TEST (lexer_keywords)
 
 TEST (lexer_primitives)
 {
-  const char *src = "u8 u16 u32 u64 i8 i16 i32 i64 f32 f64";
+  const char  *src        = "u8 u16 u32 u64 i8 i16 i32 i64 f32 f64";
 
   struct token expected[] = {
       tt_prim (U8),
@@ -674,9 +607,9 @@ TEST (lexer_primitives)
 TEST (lexer_whitespace_handling)
 {
   // Test that whitespace is properly ignored
-  const char *src1 = "a+b";
-  const char *src2 = "a + b";
-  const char *src3 = "  a  +  b  ";
+  const char  *src1       = "a+b";
+  const char  *src2       = "a + b";
+  const char  *src3       = "  a  +  b  ";
 
   struct token expected[] = {
       tt_ident ("a", sizeof ("a") - 1),
@@ -691,7 +624,7 @@ TEST (lexer_whitespace_handling)
 
 TEST (lexer_complex_expression)
 {
-  const char *src = "create foo { x: u32, y: f32 };";
+  const char  *src        = "create foo { x: u32, y: f32 };";
 
   struct token expected[] = {
       quick_tok (TT_CREATE),
@@ -714,7 +647,7 @@ TEST (lexer_complex_expression)
 TEST (lexer_keyword_prefix)
 {
   // Keywords shouldn't match if they're prefixes
-  const char *src = "create crate createx truex falsey";
+  const char  *src        = "create crate createx truex falsey";
 
   struct token expected[] = {
       quick_tok (TT_CREATE),
@@ -741,7 +674,7 @@ TEST (lexer_errors)
 
 TEST (lexer_empty_string)
 {
-  const char *src = "\"\"";
+  const char  *src        = "\"\"";
 
   struct token expected[] = {
       tt_string ("", 0),
@@ -752,7 +685,7 @@ TEST (lexer_empty_string)
 
 TEST (lexer_numbers_in_sequence)
 {
-  const char *src = "123 456.78 9";
+  const char  *src        = "123 456.78 9";
 
   struct token expected[] = {
       tt_integer (123),

@@ -74,28 +74,22 @@ fsm_next_freebit (const page *p, const p_size frombit)
   const p_size frombyte = frombit / 8;
 
   // TODO - (25) optimize using u64's or u32's
-  for (p_size byte_i = frombyte; byte_i < FS_BTMP_SIZE; ++byte_i)
-  {
+  for (p_size byte_i = frombyte; byte_i < FS_BTMP_SIZE; ++byte_i) {
     u8 b = ~((u8 *)data)[byte_i];
-    if (b == 0)
-    {
+    if (b == 0) {
       continue;
     }
 
-    if (byte_i == frombyte)
-    {
+    if (byte_i == frombyte) {
       b &= ~((1 << (frombit % 8)) - 1);
     }
 
-    if (!b)
-    {
+    if (!b) {
       continue;
     }
 
-    for (p_size bit = 0; bit < 8; ++bit)
-    {
-      if ((b >> bit) & 1)
-      {
+    for (p_size bit = 0; bit < 8; ++bit) {
+      if ((b >> bit) & 1) {
         return byte_i * 8 + bit;
       }
     }

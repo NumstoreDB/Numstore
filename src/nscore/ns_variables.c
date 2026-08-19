@@ -14,8 +14,6 @@
 
 #include "nscore/ns_variables.h"
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -27,6 +25,8 @@
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/page/ns_page_var_hash_page.h"
 #include "nscore/types/ns_types.h"
+
+#include <string.h>
 
 // TODO - pull out all printing to the
 // top level - and print status ok in
@@ -40,8 +40,7 @@ i_print_variable (struct variable *v, error *e)
 
   u32   len;
   char *var_str = get_var_str (v->dtype, &len, e);
-  if (var_str == NULL)
-  {
+  if (var_str == NULL) {
     return error_trace (e);
   }
   i_printf ("    \"DType\"  : \"%.*s\",\n", len, var_str);
@@ -54,12 +53,9 @@ i_print_variable (struct variable *v, error *e)
   i_printf ("    \"Bytes\"  : %" PRb_size ",\n", v->nbytes);
 
   /* JSON strictly requires lowercase 'null' */
-  if (v->var_root == PGNO_NULL)
-  {
+  if (v->var_root == PGNO_NULL) {
     i_printf ("    \"Root\"   : NULL\n");
-  }
-  else
-  {
+  } else {
     i_printf ("    \"Root\"   : %" PRpgno "\n", v->var_root);
   }
 
@@ -73,7 +69,7 @@ TEST (i_print_variable)
 {
   ALLOC_INIT (alloc);
 
-  error e = error_create ();
+  error           e = error_create ();
 
   struct variable v = {
       .vname    = strfcstr ("foo"),
@@ -93,24 +89,19 @@ TEST (i_print_variable)
 bool
 variable_equal (const struct variable *left, const struct variable *right)
 {
-  if (!string_equal (left->vname, right->vname))
-  {
+  if (!string_equal (left->vname, right->vname)) {
     return false;
   }
-  if (!type_equal (left->dtype, right->dtype))
-  {
+  if (!type_equal (left->dtype, right->dtype)) {
     return false;
   }
-  if (left->var_root != right->var_root)
-  {
+  if (left->var_root != right->var_root) {
     return false;
   }
-  if (left->rpt_root != right->rpt_root)
-  {
+  if (left->rpt_root != right->rpt_root) {
     return false;
   }
-  if (left->nbytes != right->nbytes)
-  {
+  if (left->nbytes != right->nbytes) {
     return false;
   }
 
@@ -122,7 +113,7 @@ TEST (variable_equal)
 {
   ALLOC_INIT (alloc);
 
-  error e = error_create ();
+  error           e = error_create ();
 
   struct variable a = {
       .vname    = strfcstr ("foo"),
@@ -148,7 +139,7 @@ TEST (variable_equal)
 
   a.dtype = compile_type_alloc ("u32", &alloc, &e);
   test_assert (!variable_equal (&a, &b));
-  a.dtype = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e);
+  a.dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e);
 
   a.var_root = 987;
   test_assert (!variable_equal (&a, &b));
@@ -158,7 +149,7 @@ TEST (variable_equal)
   test_assert (!variable_equal (&a, &b));
   a.rpt_root = 456;
 
-  a.nbytes = 111;
+  a.nbytes   = 111;
   test_assert (!variable_equal (&a, &b));
   a.nbytes = 789;
 
@@ -169,18 +160,15 @@ TEST (variable_equal)
 err_t
 validate_vname (struct string vname, error *e)
 {
-  if (vname.len == 0)
-  {
+  if (vname.len == 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "variable name is empty");
   }
 
-  if (vname.len >= 4096)
-  {
+  if (vname.len >= 4096) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "variable name exceeds 4096 chars");
   }
 
-  if (!is_alpha (vname.data[0]))
-  {
+  if (!is_alpha (vname.data[0])) {
     return error_causef (
         e,
         ERR_INVALID_ARGUMENT,
@@ -190,11 +178,9 @@ validate_vname (struct string vname, error *e)
     );
   }
 
-  for (u32 i = 1; i < vname.len; ++i)
-  {
+  for (u32 i = 1; i < vname.len; ++i) {
     char c = vname.data[i];
-    if (!is_alpha_num_generous (c))
-    {
+    if (!is_alpha_num_generous (c)) {
       return error_causef (
           e,
           ERR_INVALID_ARGUMENT,
@@ -254,8 +240,7 @@ const char generous_pool[] =
 void
 var_random_name (char *buffer, int length)
 {
-  if (length <= 0)
-  {
+  if (length <= 0) {
     return;
   }
 
@@ -263,11 +248,10 @@ var_random_name (char *buffer, int length)
   int generous_size = sizeof (generous_pool) - 1;
 
   // First char must strictly be an alpha or underscore
-  buffer[0] = alpha_pool[randu32 () % alpha_size];
+  buffer[0]         = alpha_pool[randu32 () % alpha_size];
 
   // Remaining chars can use the generous pool
-  for (int i = 1; i < length - 1; i++)
-  {
+  for (int i = 1; i < length - 1; i++) {
     buffer[i] = generous_pool[randu32 () % generous_size];
   }
   buffer[length - 1] = '\0';
@@ -278,10 +262,8 @@ var_random_name (char *buffer, int length)
 static bool
 test_char_in_pool (char c, const char *pool, int pool_size)
 {
-  for (int i = 0; i < pool_size; i++)
-  {
-    if (pool[i] == c)
-    {
+  for (int i = 0; i < pool_size; i++) {
+    if (pool[i] == c) {
       return true;
     }
   }
@@ -292,16 +274,14 @@ TEST (var_random_name)
 {
   // First char is always from alpha_pool, and the last is always the
   // null terminator, with everything in between from generous_pool.
-  for (int trial = 0; trial < 10; trial++)
-  {
+  for (int trial = 0; trial < 10; trial++) {
     char buf[16];
     var_random_name (buf, sizeof (buf));
 
     test_assert (test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1));
     test_assert_int_equal (buf[sizeof (buf) - 1], '\0');
 
-    for (u32 i = 1; i < sizeof (buf) - 1; i++)
-    {
+    for (u32 i = 1; i < sizeof (buf) - 1; i++) {
       test_assert (test_char_in_pool (buf[i], generous_pool, sizeof (generous_pool) - 1));
     }
   }
@@ -339,8 +319,7 @@ rand_varname (
 
   u32   len    = randu32r (minlen, maxlen);
   char *buffer = allocate (alloc, len, 1, e);
-  if (buffer == NULL)
-  {
+  if (buffer == NULL) {
     return error_trace (e);
   }
   var_random_name (buffer, len);
@@ -358,8 +337,7 @@ TEST (rand_varname)
 
   error e = error_create ();
 
-  for (int i = 0; i < 10; ++i)
-  {
+  for (int i = 0; i < 10; ++i) {
     struct string name;
     err_t         ret = rand_varname (&name, &alloc, 5, 10, &e);
 
@@ -387,8 +365,7 @@ rand_varname_same_hash (
 
   char temp[20];
 
-  while (true)
-  {
+  while (true) {
     // Random sizes
     u32 len1 = randu32r (5, 10);
     u32 len2 = randu32r (5, 10);
@@ -398,22 +375,20 @@ rand_varname_same_hash (
     var_random_name (temp + len1, len2);
 
     // Assign them
-    name1->data = temp;
-    name2->data = temp + len1;
-    name1->len  = len1;
-    name2->len  = len2;
+    name1->data  = temp;
+    name2->data  = temp + len1;
+    name1->len   = len1;
+    name2->len   = len2;
 
     // Get hash positions
     p_size hpos1 = vh_get_hash_pos (*name1);
     p_size hpos2 = vh_get_hash_pos (*name2);
 
     // Check if they are good
-    if (hpos1 == hpos2)
-    {
+    if (hpos1 == hpos2) {
       // commit strings - copy them to dest
       char *data = allocate (alloc, len1 + len2, 1, e);
-      if (data == NULL)
-      {
+      if (data == NULL) {
         goto failed;
       }
       memcpy (data, name1->data, len1);
@@ -444,8 +419,7 @@ rand_varname_different_hash (
 
   char temp[20];
 
-  while (true)
-  {
+  while (true) {
     // Random sizes
     u32 len1 = randu32r (5, 10);
     u32 len2 = randu32r (5, 10);
@@ -455,22 +429,20 @@ rand_varname_different_hash (
     var_random_name (temp + len1, len2);
 
     // Assign them
-    name1->data = temp;
-    name2->data = temp + len1;
-    name1->len  = len1;
-    name2->len  = len2;
+    name1->data  = temp;
+    name2->data  = temp + len1;
+    name1->len   = len1;
+    name2->len   = len2;
 
     // Get hash positions
     p_size hpos1 = vh_get_hash_pos (*name1);
     p_size hpos2 = vh_get_hash_pos (*name2);
 
     // Check if they are good
-    if (hpos1 != hpos2)
-    {
+    if (hpos1 != hpos2) {
       // commit strings - copy them to dest
       char *data = allocate (alloc, len1 + len2, 1, e);
-      if (data == NULL)
-      {
+      if (data == NULL) {
         goto failed;
       }
       memcpy (data, name1->data, len1);
@@ -494,8 +466,7 @@ TEST (rand_varname_same_hash)
 
   error e = error_create ();
 
-  for (int i = 0; i < 10; ++i)
-  {
+  for (int i = 0; i < 10; ++i) {
     struct string name1;
     struct string name2;
     rand_varname_same_hash (&name1, &name2, &alloc, &e);
@@ -511,8 +482,7 @@ TEST (rand_varname_different_hash)
 
   error e = error_create ();
 
-  for (int i = 0; i < 10; ++i)
-  {
+  for (int i = 0; i < 10; ++i) {
     struct string name1;
     struct string name2;
     rand_varname_different_hash (&name1, &name2, &alloc, &e);

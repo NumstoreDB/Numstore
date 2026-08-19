@@ -39,12 +39,12 @@
 
 struct page_frame
 {
-  page page;
+  page     page;
 
   // Locked by the pager lock
-  u32 pin;
-  u32 flags;
-  i32 wsibling; // index of the paired write frame, or -1
+  u32      pin;
+  u32      flags;
+  i32      wsibling; // index of the paired write frame, or -1
 
   sx_latch data;
   latch    ctrl;
@@ -101,24 +101,20 @@ typedef struct
 DEFINE_DBG_ASSERT (page_h, page_h, h, {
   ASSERT (h);
 
-  switch (h->mode)
-  {
-    case PHM_S:
-    {
+  switch (h->mode) {
+    case PHM_S: {
       ASSERT (h->pgr);
       ASSERT (h->pgw == NULL);
       // ASSERT (h->pgr->wsibling == -1);
       break;
     }
-    case PHM_X:
-    {
+    case PHM_X: {
       ASSERT (h->pgr);
       ASSERT (h->pgw);
       ASSERT (h->pgr->wsibling >= 0);
       break;
     }
-    case PHM_NONE:
-    {
+    case PHM_NONE: {
       ASSERT (h->pgr == NULL);
       ASSERT (h->pgw == NULL);
       break;
@@ -137,8 +133,7 @@ page_h_xfer_ownership_ptr (page_h *dest, page_h *src)
 {
   DBG_ASSERT (page_h, dest);
   DBG_ASSERT (page_h, src);
-  if (dest->mode != PHM_NONE)
-  {
+  if (dest->mode != PHM_NONE) {
     ASSERT (dest->mode == PHM_NONE);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -163,8 +158,7 @@ HEADER_FUNC const page *
 page_h_r (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode != PHM_S)
-  {
+  if (h->mode != PHM_S) {
     ASSERT (h->mode == PHM_S);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -175,8 +169,7 @@ HEADER_FUNC page *
 page_h_w (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode != PHM_X)
-  {
+  if (h->mode != PHM_X) {
     ASSERT (h->mode == PHM_X);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -187,12 +180,10 @@ HEADER_FUNC page *
 page_h_w_or_null (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_NONE)
-  {
+  if (h->mode == PHM_NONE) {
     return NULL;
   }
-  if (h->mode != PHM_X)
-  {
+  if (h->mode != PHM_X) {
     ASSERT (h->mode == PHM_X);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -203,12 +194,9 @@ HEADER_FUNC const page *
 page_h_ro (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_X)
-  {
+  if (h->mode == PHM_X) {
     return &h->pgw->page;
-  }
-  else if (h->mode == PHM_S)
-  {
+  } else if (h->mode == PHM_S) {
     return &h->pgr->page;
   }
 
@@ -220,8 +208,7 @@ HEADER_FUNC const page *
 page_h_ro_or_null (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
-  if (h->mode == PHM_NONE)
-  {
+  if (h->mode == PHM_NONE) {
     return NULL;
   }
   return page_h_ro (h);
@@ -232,16 +219,11 @@ page_h_pgno (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
   const page *p = NULL;
-  if (h->mode == PHM_X)
-  {
+  if (h->mode == PHM_X) {
     p = &h->pgw->page;
-  }
-  else if (h->mode == PHM_S)
-  {
+  } else if (h->mode == PHM_S) {
     p = &h->pgr->page;
-  }
-  else
-  {
+  } else {
     ASSERT (h->mode != PHM_NONE);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -251,8 +233,7 @@ page_h_pgno (const page_h *h)
 HEADER_FUNC pgno
 page_h_pgno_or_null (const page_h *h)
 {
-  if (h->mode == PHM_NONE)
-  {
+  if (h->mode == PHM_NONE) {
     return PGNO_NULL;
   }
   return page_h_pgno (h);
@@ -263,16 +244,11 @@ page_h_type (const page_h *h)
 {
   DBG_ASSERT (page_h, h);
   const page *p = NULL;
-  if (h->mode == PHM_X)
-  {
+  if (h->mode == PHM_X) {
     p = &h->pgw->page;
-  }
-  else if (h->mode == PHM_S)
-  {
+  } else if (h->mode == PHM_S) {
     p = &h->pgr->page;
-  }
-  else
-  {
+  } else {
     ASSERT (h->mode != PHM_NONE);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -282,8 +258,7 @@ page_h_type (const page_h *h)
 HEADER_FUNC struct in_pair
 in_pair_from_pgh (const page_h *pg)
 {
-  if (pg->mode == PHM_NONE)
-  {
+  if (pg->mode == PHM_NONE) {
     return in_pair_empty;
   }
   return (struct in_pair){

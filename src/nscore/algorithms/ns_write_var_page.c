@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
@@ -31,14 +29,15 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 
+#include <string.h>
+
 static err_t
 ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
 {
   page_h next = page_h_create ();
 
   // Create a tail page
-  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e))
-  {
+  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e)) {
     goto failed;
   }
 
@@ -46,8 +45,7 @@ ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
   dlgtovlink (page_h_w (params->vp), page_h_w (&next));
 
   // Release current
-  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
-  {
+  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e))) {
     goto failed;
   }
 
@@ -84,13 +82,10 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   u16 tlen             = type_get_serial_size (params->var->dtype);
   u8 *dtype_serialized = allocate (&temp, tlen, 1, e);
 
-  if (dtype_serialized == NULL)
-  {
+  if (dtype_serialized == NULL) {
     // Allocation failed
     return error_trace (e);
-  }
-  else
-  {
+  } else {
     // Serialize type
     struct serializer srlzr = srlizr_create (dtype_serialized, tlen);
     type_serialize (&srlzr, params->var->dtype);
@@ -107,21 +102,18 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   vp_set_nbytes (page_h_w (params->vp), params->var->nbytes);
 
   // The bytes iterator - available bytes to write to
-  struct bytes head = dlgt_get_bytes (page_h_w (params->vp));
+  struct bytes head     = dlgt_get_bytes (page_h_w (params->vp));
 
   // Total number of variable and type bytes written so far
-  p_size vwritten = 0;
-  p_size twritten = 0;
+  p_size       vwritten = 0;
+  p_size       twritten = 0;
 
   // First, write the variable name
-  p_size lwritten = 0; // Local number of bytes written so far - resets on every new page
-  while (vwritten < params->var->vname.len)
-  {
+  p_size       lwritten = 0; // Local number of bytes written so far - resets on every new page
+  while (vwritten < params->var->vname.len) {
     // Advance forward one new node and reset local written and head
-    if (lwritten == head.len)
-    {
-      if (ns_write_var_page_advance (params, e))
-      {
+    if (lwritten == head.len) {
+      if (ns_write_var_page_advance (params, e)) {
         goto failed;
       }
       lwritten = 0;
@@ -139,13 +131,10 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   }
 
   // Then, write the type (pretty much the same algorithm)
-  while (twritten < tlen)
-  {
+  while (twritten < tlen) {
     // Advance forward one new node and reset local written and head
-    if (lwritten == head.len)
-    {
-      if (ns_write_var_page_advance (params, e))
-      {
+    if (lwritten == head.len) {
+      if (ns_write_var_page_advance (params, e)) {
         goto failed;
       }
       lwritten = 0;
@@ -170,29 +159,22 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
    * This might be an extra call that I could end up
    * removing - it's kind of bad practice
    */
-  if (page_h_pgno (params->vp) != start)
-  {
+  if (page_h_pgno (params->vp) != start) {
     // Release the tail (must be a tail because we're not at the starting page)
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e)))
-    {
+    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) {
       goto theend;
     }
 
     // Get the starting node
-    if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)))
-    {
+    if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) {
       goto theend;
     }
-  }
-  else
-  {
+  } else {
     // Release and get the page in read mode
-    if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e))
-    {
+    if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e)) {
       goto theend;
     }
-    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))
-    {
+    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)) {
       goto theend;
     }
   }

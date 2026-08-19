@@ -24,14 +24,14 @@
 #ifndef NS_NODE_UPDATES_H
 #define NS_NODE_UPDATES_H
 
-#include <stdbool.h>
-
 #include "core/ns_error.h" // error
 #include "core/ns_stdtypes.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"
 #include "nscore/ns_page_h.h" // page_h
 #include "nscore/page/ns_page_inner_node.h"
+
+#include <stdbool.h>
 // pgno b_size ...etc
 
 /******************************************************************************

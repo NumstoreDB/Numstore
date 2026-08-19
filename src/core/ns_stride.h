@@ -15,13 +15,13 @@
 #ifndef NS_STRIDE_H
 #define NS_STRIDE_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+
+#include <stdbool.h>
 
 struct builder;
 
@@ -114,8 +114,8 @@ struct multi_user_stride
       .present = STEP_PRESENT | START_PRESENT, \
   })
 
-bool  user_stride_equal (const struct user_stride *left, const struct user_stride *right);
-void  stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
+bool user_stride_equal (const struct user_stride *left, const struct user_stride *right);
+void stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
 err_t stride_resolve (struct stride *dest, struct user_stride src, u64 arrlen, error *e);
 
 /*-----------------------------------------------------------------------------
@@ -222,7 +222,7 @@ struct mus_builder
 };
 
 struct mus_builder musb_create (struct builder *b);
-err_t              musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
-err_t              musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
+err_t musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
+err_t musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
 
 #endif // NS_STRIDE_H

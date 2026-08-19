@@ -47,10 +47,8 @@ struct i_mem default_mem (void);
 #define i_realloc(mem, ptr, nelem, size, e) (mem).table->realloc ((mem).data, ptr, nelem, size, e)
 #define i_free(mem, ptr)                    (mem).table->free ((mem).data, ptr)
 #define i_cfree(mem, ptr) \
-  do                      \
-  {                       \
-    if (ptr)              \
-    {                     \
+  do {                    \
+    if (ptr) {            \
       i_free (mem, ptr);  \
     }                     \
   }                       \

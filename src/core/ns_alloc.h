@@ -38,10 +38,10 @@ struct allocator
   };
 };
 
-void             create_default_allocator (struct allocator *alloc);
-void            *allocate (struct allocator *alloc, u32 nelem, u32 size, error *e);
-void            *allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e);
-void             allocator_free (struct allocator *alloc);
+void create_default_allocator (struct allocator *alloc);
+void *allocate (struct allocator *alloc, u32 nelem, u32 size, error *e);
+void *allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e);
+void allocator_free (struct allocator *alloc);
 struct allocator g_malloc;
 
 #define ALLOC_INIT(name) \
@@ -65,10 +65,10 @@ struct builder
   struct allocator  temp;
 };
 
-void  builder_init (struct builder *b, struct allocator *alloc);
+void builder_init (struct builder *b, struct allocator *alloc);
 void *builder_malloc_temp (struct builder *b, u32 nelem, u32 size, error *e);
 void *builder_malloc_persist (struct builder *b, u32 nelem, u32 size, error *e);
-void  builder_free (struct builder *b);
+void builder_free (struct builder *b);
 
 #define BUILDER_INIT(name, alloc) \
   struct builder name;            \

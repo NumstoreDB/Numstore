@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "smartfiles.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "numstore.h"
 
 /**
  * This example shows basic first class operations of smart files
@@ -32,8 +32,7 @@ main (void)
 {
   // Open a new data file
   smfile_t *smf = smfile_open ("sample1_crud");
-  if (smf == NULL)
-  {
+  if (smf == NULL) {
     return -1;
   }
 

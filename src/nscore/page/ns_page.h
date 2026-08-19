@@ -15,14 +15,14 @@
 #ifndef PAGE_H
 #define PAGE_H
 
-#include <string.h>
-
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Page Common
@@ -57,13 +57,13 @@ enum page_type
   PG_FREE_SPACE_MAP = (1 << 0), // A free space map page
 
   // Rptree page types
-  PG_DATA_LIST  = (1 << 2), // r+tree data node
-  PG_INNER_NODE = (1 << 3), // r+tree Inner node
+  PG_DATA_LIST      = (1 << 2), // r+tree data node
+  PG_INNER_NODE     = (1 << 3), // r+tree Inner node
 
   // Variable page types
-  PG_VAR_HASH_PAGE = (1 << 4), // A Hash Table for variable names - links to a linked list
-  PG_VAR_PAGE      = (1 << 5), // A Single link in the hash table linked list
-  PG_VAR_TAIL      = (1 << 6), // Overflow to a VAR_PAGE
+  PG_VAR_HASH_PAGE  = (1 << 4), // A Hash Table for variable names - links to a linked list
+  PG_VAR_PAGE       = (1 << 5), // A Single link in the hash table linked list
+  PG_VAR_TAIL       = (1 << 6), // Overflow to a VAR_PAGE
 };
 
 #define PG_PERMISSIVE    (1 << 7)
@@ -96,8 +96,7 @@ err_t page_validate_for_db (const page *p, int page_types, error *e);
 /////// Utility Macros
 
 #define PAGE_SIMPLE_GET_IMPL(v, type, ofst)         \
-  do                                                \
-  {                                                 \
+  do {                                              \
     ASSERT ((ofst) + sizeof (type) < NS_PAGE_SIZE); \
     type ret;                                       \
     memcpy (&(ret), &(v)->raw[ofst], sizeof (ret)); \
@@ -106,8 +105,7 @@ err_t page_validate_for_db (const page *p, int page_types, error *e);
   while (0)
 
 #define PAGE_SIMPLE_SET_IMPL(v, val, ofst)          \
-  do                                                \
-  {                                                 \
+  do {                                              \
     ASSERT ((ofst) + sizeof (val) < NS_PAGE_SIZE);  \
     memcpy (&(v)->raw[ofst], &(val), sizeof (val)); \
   }                                                 \

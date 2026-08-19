@@ -15,13 +15,13 @@
 #ifndef NS_UNION_T_H
 #define NS_UNION_T_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
 
 struct allocator;
 struct deserializer;
@@ -39,8 +39,8 @@ err_t union_t_create (
     error            *e
 );
 
-u32   union_t_get_serial_size (const struct union_t *t);
-void  union_t_serialize (struct serializer *dest, const struct union_t *src);
+u32 union_t_get_serial_size (const struct union_t *t);
+void union_t_serialize (struct serializer *dest, const struct union_t *src);
 err_t union_t_deserialize (
     struct union_t      *dest,
     struct deserializer *src,
@@ -48,9 +48,9 @@ err_t union_t_deserialize (
     error               *e
 );
 err_t union_t_validate (const struct union_t *s, error *e);
-i32   union_t_snprintf (char *str, u32 size, const struct union_t *st);
-u32   union_t_byte_size (const struct union_t *t);
+i32 union_t_snprintf (char *str, u32 size, const struct union_t *st);
+u32 union_t_byte_size (const struct union_t *t);
 err_t union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e);
-bool  union_t_equal (const struct union_t *left, const struct union_t *right);
+bool union_t_equal (const struct union_t *left, const struct union_t *right);
 
 #endif

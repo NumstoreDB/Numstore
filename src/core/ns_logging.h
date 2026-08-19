@@ -23,9 +23,9 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
-#include <stdio.h>
-
 #include "core/ns_platform.h" // PRINTF_ATTR
+
+#include <stdio.h>
 
 /******************************************************************************
  * SECTION: Logging
@@ -154,68 +154,40 @@ void i_log_flush (void);
 #endif
 
 // Programatically choose the log level
-#define i_log(lvl, ...)          \
-  do                             \
-  {                              \
-    if ((lvl) == LOG_TRACE)      \
-    {                            \
-      i_log_trace (__VA_ARGS__); \
-    }                            \
-    else if ((lvl) == LOG_DEBUG) \
-    {                            \
-      i_log_debug (__VA_ARGS__); \
-    }                            \
-    else if ((lvl) == LOG_INFO)  \
-    {                            \
-      i_log_info (__VA_ARGS__);  \
-    }                            \
-    else if ((lvl) == LOG_WARN)  \
-    {                            \
-      i_log_warn (__VA_ARGS__);  \
-    }                            \
-    else if ((lvl) == LOG_ERROR) \
-    {                            \
-      i_log_error (__VA_ARGS__); \
-    }                            \
-    else if ((lvl) == LOG_NONE)  \
-    {                            \
-    }                            \
-    else                         \
-    {                            \
-      UNREACHABLE ();            \
-    }                            \
-  }                              \
+#define i_log(lvl, ...)              \
+  do {                               \
+    if ((lvl) == LOG_TRACE) {        \
+      i_log_trace (__VA_ARGS__);     \
+    } else if ((lvl) == LOG_DEBUG) { \
+      i_log_debug (__VA_ARGS__);     \
+    } else if ((lvl) == LOG_INFO) {  \
+      i_log_info (__VA_ARGS__);      \
+    } else if ((lvl) == LOG_WARN) {  \
+      i_log_warn (__VA_ARGS__);      \
+    } else if ((lvl) == LOG_ERROR) { \
+      i_log_error (__VA_ARGS__);     \
+    } else if ((lvl) == LOG_NONE) {  \
+    } else {                         \
+      UNREACHABLE ();                \
+    }                                \
+  }                                  \
   while (0)
 
 // Print instead of log at a certain logging level
 #define i_log_printf(lvl, ...)          \
-  do                                    \
-  {                                     \
-    if ((lvl) == LOG_TRACE)             \
-    {                                   \
+  do {                                  \
+    if ((lvl) == LOG_TRACE) {           \
       i_log_printf_trace (__VA_ARGS__); \
-    }                                   \
-    else if ((lvl) == LOG_DEBUG)        \
-    {                                   \
+    } else if ((lvl) == LOG_DEBUG) {    \
       i_log_printf_debug (__VA_ARGS__); \
-    }                                   \
-    else if ((lvl) == LOG_INFO)         \
-    {                                   \
+    } else if ((lvl) == LOG_INFO) {     \
       i_log_printf_info (__VA_ARGS__);  \
-    }                                   \
-    else if ((lvl) == LOG_WARN)         \
-    {                                   \
+    } else if ((lvl) == LOG_WARN) {     \
       i_log_printf_warn (__VA_ARGS__);  \
-    }                                   \
-    else if ((lvl) == LOG_ERROR)        \
-    {                                   \
+    } else if ((lvl) == LOG_ERROR) {    \
       i_log_printf_error (__VA_ARGS__); \
-    }                                   \
-    else if ((lvl) == LOG_NONE)         \
-    {                                   \
-    }                                   \
-    else                                \
-    {                                   \
+    } else if ((lvl) == LOG_NONE) {     \
+    } else {                            \
       UNREACHABLE ();                   \
     }                                   \
   }                                     \

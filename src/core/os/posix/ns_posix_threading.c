@@ -12,15 +12,19 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <inttypes.h>
-#include <stdbool.h>
-#include <sys/types.h>
-
 #include "core/ns_logging.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 
+#include <inttypes.h>
+#include <stdbool.h>
+#include <sys/types.h>
+
 #if PLATFORM_POSIX
+
+#  include "core/ns_csx_assert.h"
+#  include "core/ns_error.h"
+#  include "core/os/ns_threading.h"
 
 #  include <dirent.h>
 #  include <errno.h>
@@ -33,10 +37,6 @@
 #  include <sys/uio.h>
 #  include <time.h>
 #  include <unistd.h>
-
-#  include "core/ns_csx_assert.h"
-#  include "core/ns_error.h"
-#  include "core/os/ns_threading.h"
 
 /******************************************************************************
  * SECTION: Threading
@@ -56,12 +56,12 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
   pthread_condattr_t attr;
 
   // I just don't want to handle errors for debug code
-  int r1 = pthread_condattr_init (&attr);
+  int                r1 = pthread_condattr_init (&attr);
   ASSERT (r1 == 0);
 
   const int r2 = pthread_cond_init (&c->cond, &attr);
 
-  r1 = pthread_condattr_destroy (&attr);
+  r1           = pthread_condattr_destroy (&attr);
   ASSERT (r1 == 0);
 
   if (r2)
@@ -69,20 +69,16 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
   if (pthread_cond_init (&c->cond, NULL))
 #  endif
   {
-    switch (errno)
-    {
-      case EAGAIN:
-      {
+    switch (errno) {
+      case EAGAIN: {
         return error_causef (e, ERR_IO, "pthread_cond_init: %s", strerror (errno));
       }
 
-      case ENOMEM:
-      {
+      case ENOMEM: {
         return error_causef (e, ERR_NOMEM, "pthread_cond_init: %s", strerror (errno));
       }
 
-      case EBUSY:
-      {
+      case EBUSY: {
         i_log_error (
             "cond_create: cond "
             "already initialized: "
@@ -92,8 +88,7 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      case EINVAL:
-      {
+      case EINVAL: {
         i_log_error (
             "cond_create: invalid "
             "attributes or cond: %s\n",
@@ -102,8 +97,7 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      default:
-      {
+      default: {
         i_log_error (
             "cond_create: unknown "
             "error: %s\n",
@@ -124,12 +118,9 @@ posix_cond_free (i_threading *t, i_cond *c)
   ASSERT (c);
 
   errno = 0;
-  if (pthread_cond_destroy (&c->cond))
-  {
-    switch (errno)
-    {
-      case EBUSY:
-      {
+  if (pthread_cond_destroy (&c->cond)) {
+    switch (errno) {
+      case EBUSY: {
         i_log_error (
             "cond_free: cond has "
             "active waiters: %s\n",
@@ -138,8 +129,7 @@ posix_cond_free (i_threading *t, i_cond *c)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      case EINVAL:
-      {
+      case EINVAL: {
         i_log_error (
             "cond_free: invalid or "
             "uninitialized cond: %s\n",
@@ -148,8 +138,7 @@ posix_cond_free (i_threading *t, i_cond *c)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      default:
-      {
+      default: {
         i_log_error (
             "cond_free: unknown "
             "error: %s\n",
@@ -169,12 +158,9 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
   ASSERT (m);
 
   errno = 0;
-  if (pthread_cond_wait (&c->cond, &m->m))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
+  if (pthread_cond_wait (&c->cond, &m->m)) {
+    switch (errno) {
+      case EINVAL: {
         i_log_error (
             "cond_wait: invalid cond "
             "or mutex: %s\n",
@@ -183,8 +169,7 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      case EPERM:
-      {
+      case EPERM: {
         i_log_error (
             "cond_wait: mutex not "
             "owned by thread: %s\n",
@@ -193,8 +178,7 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      default:
-      {
+      default: {
         i_log_error (
             "cond_wait: unknown "
             "error: %s\n",
@@ -217,20 +201,16 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
   clock_gettime (CLOCK_REALTIME, &ts);
   ts.tv_sec += msec / 1000;
   ts.tv_nsec += (msec % 1000) * 1000000LL;
-  if (ts.tv_nsec >= 1000000000LL)
-  {
+  if (ts.tv_nsec >= 1000000000LL) {
     ts.tv_sec += 1;
     ts.tv_nsec -= 1000000000LL;
   }
 
   errno   = 0;
   int ret = pthread_cond_timedwait (&c->cond, &m->m, &ts);
-  if (ret && ret != ETIMEDOUT)
-  {
-    switch (ret)
-    {
-      case EINVAL:
-      {
+  if (ret && ret != ETIMEDOUT) {
+    switch (ret) {
+      case EINVAL: {
         i_log_error (
             "cond_timed_wait: invalid cond, "
             "mutex, or abstime: %s\n",
@@ -238,8 +218,7 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EPERM:
-      {
+      case EPERM: {
         i_log_error (
             "cond_timed_wait: mutex not "
             "owned by thread: %s\n",
@@ -247,8 +226,7 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         i_log_error (
             "cond_timed_wait: unknown "
             "error: %s\n",
@@ -267,12 +245,9 @@ posix_cond_signal (i_threading *t, i_cond *c)
   ASSERT (c);
 
   errno = 0;
-  if (pthread_cond_signal (&c->cond))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
+  if (pthread_cond_signal (&c->cond)) {
+    switch (errno) {
+      case EINVAL: {
         i_log_error (
             "cond_signal: invalid or "
             "uninitialized cond: %s\n",
@@ -281,8 +256,7 @@ posix_cond_signal (i_threading *t, i_cond *c)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      default:
-      {
+      default: {
         i_log_error (
             "cond_signal: unknown "
             "error: %s\n",
@@ -301,12 +275,9 @@ posix_cond_broadcast (i_threading *t, i_cond *c)
   ASSERT (c);
 
   errno = 0;
-  if (pthread_cond_broadcast (&c->cond))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
+  if (pthread_cond_broadcast (&c->cond)) {
+    switch (errno) {
+      case EINVAL: {
         i_log_error (
             "cond_broadcast: invalid "
             "or uninitialized cond: "
@@ -316,8 +287,7 @@ posix_cond_broadcast (i_threading *t, i_cond *c)
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
 
-      default:
-      {
+      default: {
         i_log_error (
             "cond_broadcast: unknown "
             "error: %s\n",
@@ -347,7 +317,7 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
   pthread_mutexattr_t attr;
 
   // I just don't want to handle errors for debug code
-  int r1 = pthread_mutexattr_init (&attr);
+  int                 r1 = pthread_mutexattr_init (&attr);
   ASSERT (!r1);
 
   r1 = pthread_mutexattr_settype (&attr, PTHREAD_MUTEX_ERRORCHECK);
@@ -355,25 +325,21 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
 
   const int r2 = pthread_mutex_init (&dest->m, NULL);
 
-  r1 = pthread_mutexattr_destroy (&attr);
+  r1           = pthread_mutexattr_destroy (&attr);
   ASSERT (!r1);
   if (r2)
 #  else
   if (pthread_mutex_init (&dest->m, NULL))
 #  endif
   {
-    switch (errno)
-    {
-      case EAGAIN:
-      {
+    switch (errno) {
+      case EAGAIN: {
         return error_causef (e, ERR_IO, "mutex_init: %s", strerror (errno));
       }
-      case ENOMEM:
-      {
+      case ENOMEM: {
         return error_causef (e, ERR_NOMEM, "mutex_init: %s", strerror (errno));
       }
-      case EPERM:
-      {
+      case EPERM: {
         i_log_error (
             "mutex_init: insufficient "
             "permissions: %s\n",
@@ -381,8 +347,7 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
@@ -399,12 +364,9 @@ posix_mutex_free (i_threading *t, i_mutex *m)
 
   errno = 0;
 
-  if (pthread_mutex_destroy (&m->m))
-  {
-    switch (errno)
-    {
-      case EBUSY:
-      {
+  if (pthread_mutex_destroy (&m->m)) {
+    switch (errno) {
+      case EBUSY: {
         i_log_error (
             "mutex_destroy: still "
             "locked: %s\n",
@@ -412,8 +374,7 @@ posix_mutex_free (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EINVAL:
-      {
+      case EINVAL: {
         i_log_error (
             "mutex_destroy: "
             "invalid: %s\n",
@@ -421,8 +382,7 @@ posix_mutex_free (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
@@ -436,12 +396,9 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
   ASSERT (m);
 
   int ret = pthread_mutex_lock (&m->m);
-  if (ret)
-  {
-    switch (ret)
-    {
-      case EINVAL:
-      {
+  if (ret) {
+    switch (ret) {
+      case EINVAL: {
         i_log_error (
             "mutex_lock: "
             "invalid: %s\n",
@@ -449,8 +406,7 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EAGAIN:
-      {
+      case EAGAIN: {
         i_log_error (
             "mutex_lock: recursive "
             "lock: %s\n",
@@ -458,8 +414,7 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EDEADLK:
-      {
+      case EDEADLK: {
         i_log_error (
             "mutex_lock: "
             "deadlock: %s\n",
@@ -467,8 +422,7 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         i_log_error ("mutex_lock: %s\n", strerror (ret));
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
@@ -483,12 +437,9 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
   ASSERT (m);
 
   errno = 0;
-  if (pthread_mutex_unlock (&m->m))
-  {
-    switch (errno)
-    {
-      case EINVAL:
-      {
+  if (pthread_mutex_unlock (&m->m)) {
+    switch (errno) {
+      case EINVAL: {
         i_log_error (
             "mutex_unlock: "
             "invalid: %s\n",
@@ -496,8 +447,7 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EAGAIN:
-      {
+      case EAGAIN: {
         i_log_error (
             "mutex_unlock: recursive "
             "lock: %s\n",
@@ -505,8 +455,7 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EPERM:
-      {
+      case EPERM: {
         i_log_error (
             "mutex_unlock: "
             "not owner: %s\n",
@@ -514,8 +463,7 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         i_log_error ("mutex_unlock: %s\n", strerror (errno));
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
@@ -554,21 +502,18 @@ posix_thread_create (
 
   const int r2 = pthread_create (&dest->thread, &attr, func, context);
 
-  r1 = pthread_attr_destroy (&attr);
+  r1           = pthread_attr_destroy (&attr);
   ASSERT (!r1);
   if (r2)
 #  else
   if (pthread_create (&dest->thread, NULL, func, context))
 #  endif
   {
-    switch (errno)
-    {
-      case EAGAIN:
-      {
+    switch (errno) {
+      case EAGAIN: {
         return error_causef (e, ERR_IO, "pthread_create: %s", strerror (errno));
       }
-      case EINVAL:
-      {
+      case EINVAL: {
         i_log_error (
             "pthread_create: invalid "
             "attributes: %s\n",
@@ -576,8 +521,7 @@ posix_thread_create (
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EPERM:
-      {
+      case EPERM: {
         i_log_error (
             "pthread_create: "
             "insufficient "
@@ -586,8 +530,7 @@ posix_thread_create (
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
@@ -604,12 +547,9 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
 
   const int r = pthread_join (th->thread, NULL);
 
-  if (r != 0)
-  {
-    switch (r)
-    {
-      case EDEADLK:
-      {
+  if (r != 0) {
+    switch (r) {
+      case EDEADLK: {
         i_log_error (
             "pthread_join: "
             "deadlock: %s\n",
@@ -617,8 +557,7 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case EINVAL:
-      {
+      case EINVAL: {
         i_log_error (
             "pthread_join: not "
             "joinable: %s\n",
@@ -626,8 +565,7 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      case ESRCH:
-      {
+      case ESRCH: {
         i_log_error (
             "pthread_join: no such "
             "thread: %s\n",
@@ -635,8 +573,7 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
         );
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
-      default:
-      {
+      default: {
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
@@ -650,13 +587,13 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
  *----------------------------------------------------------------------------*/
 
 struct i_threading default_threading = {
-    .i_thread_create = posix_thread_create,
-    .i_thread_join   = posix_thread_join,
+    .i_thread_create   = posix_thread_create,
+    .i_thread_join     = posix_thread_join,
 
-    .i_mutex_create = posix_mutex_create,
-    .i_mutex_free   = posix_mutex_free,
-    .i_mutex_lock   = posix_mutex_lock,
-    .i_mutex_unlock = posix_mutex_unlock,
+    .i_mutex_create    = posix_mutex_create,
+    .i_mutex_free      = posix_mutex_free,
+    .i_mutex_lock      = posix_mutex_lock,
+    .i_mutex_unlock    = posix_mutex_unlock,
 
     .i_cond_create     = posix_cond_create,
     .i_cond_free       = posix_cond_free,

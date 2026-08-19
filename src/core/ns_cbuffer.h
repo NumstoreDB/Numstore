@@ -15,14 +15,14 @@
 #ifndef COLLECTIONS_H
 #define COLLECTIONS_H
 
-#include <stdbool.h>
-
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_file.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Circular Buffer
@@ -144,16 +144,11 @@ HEADER_FUNC u32
 cbuffer_len (const struct cbuffer *b)
 {
   u32 len;
-  if (b->isfull)
-  {
+  if (b->isfull) {
     len = b->cap;
-  }
-  else if (b->head >= b->tail)
-  {
+  } else if (b->head >= b->tail) {
     len = b->head - b->tail;
-  }
-  else
-  {
+  } else {
     len = b->cap - (b->tail - b->head);
   }
   return len;
@@ -163,8 +158,7 @@ DEFINE_DBG_ASSERT (struct cbuffer, cbuffer, b, {
   ASSERT (b);
   ASSERT (b->cap > 0);
   ASSERT (b->data);
-  if (b->isfull)
-  {
+  if (b->isfull) {
     ASSERT (b->tail == b->head);
   }
   ASSERT (cbuffer_len (b) <= b->cap);
@@ -330,8 +324,7 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
  * data.
  */
 #define cbuffer_read_expect(dest, size, n, b)     \
-  do                                              \
-  {                                               \
+  do {                                            \
     u32 __read = cbuffer_read (dest, size, n, b); \
     ASSERT (__read == n);                         \
   }                                               \
@@ -343,8 +336,7 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
  * space.
  */
 #define cbuffer_write_expect(src, size, n, b)        \
-  do                                                 \
-  {                                                  \
+  do {                                               \
     u32 __written = cbuffer_write (src, size, n, b); \
     ASSERT (__written == n);                         \
   }                                                  \
@@ -593,8 +585,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * @brief Pushes an item to the trailing boundary edge - ASSERTs if full.
  */
 #define cbuffer_push_back_expect(src, size, b)     \
-  do                                               \
-  {                                                \
+  do {                                             \
     bool __ret = cbuffer_push_back (src, size, b); \
     ASSERT (__ret);                                \
   }                                                \
@@ -605,8 +596,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * @brief Pushes an item to the leading boundary edge - ASSERTs if full.
  */
 #define cbuffer_push_front_expect(src, size, b)     \
-  do                                                \
-  {                                                 \
+  do {                                              \
     bool __ret = cbuffer_push_front (src, size, b); \
     ASSERT (__ret);                                 \
   }                                                 \
@@ -617,8 +607,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * @brief Pops an item from the trailing boundary edge - ASSERTs if empty.
  */
 #define cbuffer_pop_back_expect(dest, size, b)     \
-  do                                               \
-  {                                                \
+  do {                                             \
     bool __ret = cbuffer_pop_back (dest, size, b); \
     ASSERT (__ret);                                \
   }                                                \
@@ -629,8 +618,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * @brief Pops an item from the leading boundary edge - ASSERTs if empty.
  */
 #define cbuffer_pop_front_expect(dest, size, b)     \
-  do                                                \
-  {                                                 \
+  do {                                              \
     bool __ret = cbuffer_pop_front (dest, size, b); \
     ASSERT (__ret);                                 \
   }                                                 \
@@ -641,8 +629,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * @brief Peeks at the trailing boundary edge - ASSERTs if empty.
  */
 #define cbuffer_peek_back_expect(dest, size, b)     \
-  do                                                \
-  {                                                 \
+  do {                                              \
     bool __ret = cbuffer_peek_back (dest, size, b); \
     ASSERT (__ret);                                 \
   }                                                 \
@@ -653,8 +640,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * @brief Peeks at the leading boundary edge - ASSERTs if empty.
  */
 #define cbuffer_peek_front_expect(dest, size, b)     \
-  do                                                 \
-  {                                                  \
+  do {                                               \
     bool __ret = cbuffer_peek_front (dest, size, b); \
     ASSERT (__ret);                                  \
   }                                                  \
@@ -666,8 +652,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * buffer.
  */
 #define cbuffer_pushb_back_expect(src, b)         \
-  do                                              \
-  {                                               \
+  do {                                            \
     u8   _src  = src;                             \
     bool __ret = cbuffer_push_back (&_src, 1, b); \
     ASSERT (__ret);                               \
@@ -680,8 +665,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
  * buffer.
  */
 #define cbuffer_pushb_front_expect(src, b)         \
-  do                                               \
-  {                                                \
+  do {                                             \
     u8   _src  = src;                              \
     bool __ret = cbuffer_push_front (&_src, 1, b); \
     ASSERT (__ret);                                \

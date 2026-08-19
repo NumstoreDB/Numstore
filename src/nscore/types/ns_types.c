@@ -14,9 +14,6 @@
 
 #include "nscore/types/ns_types.h"
 
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -31,6 +28,9 @@
 #include "nscore/types/ns_struct_t.h"
 #include "nscore/types/ns_type_ref.h"
 #include "nscore/types/ns_union_t.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Types
@@ -54,8 +54,7 @@ static inline err_t
 prim_t_validate (const enum prim_t *t, error *e)
 {
   ASSERT (t);
-  if (!(*t <= CU128 && *t >= U8))
-  {
+  if (!(*t <= CU128 && *t >= U8)) {
     return error_causef (e, ERR_INTERP, "invalid prim type %d (valid range %d..%d)", *t, U8, CU128);
   }
 
@@ -71,16 +70,16 @@ DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
 #ifdef TESTING
 TEST (prim_t_validate)
 {
-  error err = error_create ();
+  error       err = error_create ();
 
   // 1.1 happy path – legal value
-  enum prim_t ok = U32;
+  enum prim_t ok  = U32;
   test_assert_int_equal (prim_t_validate (&ok, &err), SUCCESS);
 
   // 1.2 too‑small → ERR_INTERP
   enum prim_t bad_lo = (enum prim_t) (U8 - 1);
   test_assert_int_equal (prim_t_validate (&bad_lo, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  err.cause_code     = SUCCESS;
 
   // 1.3 too‑large → ERR_INTERP
   enum prim_t bad_hi = (enum prim_t) (CU128 + 1);
@@ -93,26 +92,20 @@ err_t
 type_validate (const struct type *t, error *e)
 {
   DBG_ASSERT (unchecked_type, t);
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       return prim_t_validate (&t->p, e);
     }
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       return struct_t_validate (&t->st, e);
     }
-    case T_UNION:
-    {
+    case T_UNION: {
       return union_t_validate (&t->un, e);
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       return sarray_t_validate (&t->sa, e);
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;       // LCOV_EXCL_LINE
     }
@@ -128,8 +121,7 @@ static const char *
 prim_to_str (enum prim_t p)
 {
   DBG_ASSERT (prim_t, &p);
-  switch (p)
-  {
+  switch (p) {
     case U8: return "u8";
     case U16: return "u16";
     case U32: return "u32";
@@ -175,9 +167,8 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
   int         n;
   const char *name = prim_to_str (p);
 
-  n = snprintf (out, avail, "%s", name);
-  if (n < 0)
-  {
+  n                = snprintf (out, avail, "%s", name);
+  if (n < 0) {
     return n;
   }
   len += n;
@@ -241,26 +232,20 @@ type_snprintf (char *str, u32 size, struct type *t)
 {
   DBG_ASSERT (valid_type, t);
 
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       return prim_t_snprintf (str, size, t->p);
     }
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       return struct_t_snprintf (str, size, &t->st);
     }
-    case T_UNION:
-    {
+    case T_UNION: {
       return union_t_snprintf (str, size, &t->un);
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       return sarray_t_snprintf (str, size, &t->sa);
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return -1;      // LCOV_EXCL_LINE
     }
@@ -271,25 +256,23 @@ char *
 type_tostr (struct type *t)
 {
   int len = type_snprintf (NULL, 0, t);
-  if (len < 0)
-  {
+  if (len < 0) {
     return NULL;
   }
 
   char *msg = i_malloc (default_mem (), len + 1, 1, NULL);
-  if (msg == NULL)
-  {
+  if (msg == NULL) {
     return NULL;
   }
 
-  if (type_snprintf (msg, len + 1, t) < 0)
-  {
+  if (type_snprintf (msg, len + 1, t) < 0) {
     i_free (default_mem (), msg);
     return NULL;
   }
 
   return msg;
 }
+
 /*-----------------------------------------------------------------------------
  * SUBSECTION: type_byte_size
  * @brief Calculate how many bytes a type takes up
@@ -300,8 +283,7 @@ prim_t_byte_size (const enum prim_t *t)
 {
   DBG_ASSERT (prim_t, t);
 
-  switch (*t)
-  {
+  switch (*t) {
     case U8:
     case I8: return 1;
 
@@ -356,30 +338,24 @@ type_byte_size (const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
 
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       return prim_t_byte_size (&t->p);
     }
 
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       return struct_t_byte_size (&t->st);
     }
 
-    case T_UNION:
-    {
+    case T_UNION: {
       return union_t_byte_size (&t->un);
     }
 
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       return sarray_t_byte_size (&t->sa);
     }
 
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;       // LCOV_EXCL_LINE
     }
@@ -391,43 +367,36 @@ type_get_string_size (const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
 
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       // Room for largest primitive name (e.g., "cf128") + 1 null terminator
       return sizeof ("cf128");
     }
 
     case T_STRUCT:
-    case T_UNION:
-    {
+    case T_UNION: {
       // "struct { }" or "union { }"
       u32 base_len = (t->type == T_STRUCT) ? sizeof ("struct { }") : sizeof ("union { }");
       u32 sublen   = 0;
 
       // Accessing st or un identically since they share identical structural
       // layouts
-      u16 len = t->st.len;
-      for (u16 i = 0; i < len; ++i)
-      {
+      u16 len      = t->st.len;
+      for (u16 i = 0; i < len; ++i) {
         // Size of the key text + " " + string length of subtype
         sublen += t->st.keys[i].len + 1 + type_get_string_size (t->st.types[i]);
 
-        if (i < len - 1)
-        {
+        if (i < len - 1) {
           sublen += sizeof (", ") - 1;
         }
       }
       return base_len + sublen;
     }
 
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       u32 sublen = 0;
       // Calculate brackets layout string overhead "[10][200]..."
-      for (u32 i = 0; i < t->sa.rank; ++i)
-      {
+      for (u32 i = 0; i < t->sa.rank; ++i) {
         // Accounts for digits up to 4 billion + brackets '[' and ']'
         sublen += sizeof ("[4294967295]") - 1;
       }
@@ -435,8 +404,7 @@ type_get_string_size (const struct type *t)
       return sublen + 1 + type_get_string_size (t->sa.t);
     }
 
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;       // LCOV_EXCL_LINE
     }
@@ -446,30 +414,25 @@ type_get_string_size (const struct type *t)
 static char *
 type_generate_string_rec (char *dest, char *end, const struct type *t)
 {
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       int n = snprintf (dest, (size_t)(end - dest), "%s", prim_to_str (t->p));
       return dest + (n > 0 ? n : 0);
     }
     case T_STRUCT:
-    case T_UNION:
-    {
+    case T_UNION: {
       char *p = dest;
       int n = snprintf (p, (size_t)(end - p), "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
       p += (n > 0 ? n : 0);
 
       u16 len = t->st.len;
-      for (u16 i = 0; i < len; ++i)
-      {
+      for (u16 i = 0; i < len; ++i) {
         n = snprintf (p, (size_t)(end - p), "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
         p += (n > 0 ? n : 0);
 
         p = type_generate_string_rec (p, end, t->st.types[i]);
 
-        if (i < len - 1)
-        {
+        if (i < len - 1) {
           n = snprintf (p, (size_t)(end - p), ", ");
           p += (n > 0 ? n : 0);
         }
@@ -478,11 +441,9 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
       p += (n > 0 ? n : 0);
       return p;
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       char *p = dest;
-      for (u16 i = 0; i < t->sa.rank; ++i)
-      {
+      for (u16 i = 0; i < t->sa.rank; ++i) {
         int n = snprintf (p, (size_t)(end - p), "[%u]", t->sa.dims[i]);
         p += (n > 0 ? n : 0);
       }
@@ -490,8 +451,7 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
       p += (n > 0 ? n : 0);
       return type_generate_string_rec (p, end, t->sa.t);
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return dest;    // LCOV_EXCL_LINE
     }
@@ -503,8 +463,7 @@ void
 type_generate_string (char *dest, const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
-  if (dest)
-  {
+  if (dest) {
     type_generate_string_rec (dest, dest + type_get_string_size (t), t);
   }
 }
@@ -518,7 +477,7 @@ TEST (type_generate_string)
     const char *expected     = "cf128";
     u32         expected_len = (u32)strlen (expected);
 
-    char buf[64];
+    char        buf[64];
     type_generate_string (buf, &t);
 
     test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
@@ -532,7 +491,7 @@ TEST (type_generate_string)
     const char *expected     = "[5][20][100] i32";
     u32         expected_len = (u32)strlen (expected);
 
-    char buf[64];
+    char        buf[64];
     type_generate_string (buf, &t);
 
     test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
@@ -540,16 +499,16 @@ TEST (type_generate_string)
 
   TEST_CASE ("struct")
   {
-    struct string keys[2]  = {{.data = "x", .len = 1}, {.data = "y", .len = 1}};
-    struct type   f1       = {.type = T_PRIM, .p = F32};
-    struct type   f2       = {.type = T_PRIM, .p = F32};
-    struct type  *types[2] = {&f1, &f2};
+    struct string keys[2]      = {{.data = "x", .len = 1}, {.data = "y", .len = 1}};
+    struct type   f1           = {.type = T_PRIM, .p = F32};
+    struct type   f2           = {.type = T_PRIM, .p = F32};
+    struct type  *types[2]     = {&f1, &f2};
 
-    struct type t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
-    const char *expected     = "struct { x f32, y f32 }";
-    u32         expected_len = (u32)strlen (expected);
+    struct type   t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
+    const char   *expected     = "struct { x f32, y f32 }";
+    u32           expected_len = (u32)strlen (expected);
 
-    char buf[64];
+    char          buf[64];
     type_generate_string (buf, &t);
 
     test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
@@ -562,14 +521,14 @@ TEST (type_generate_string)
     struct type   f2       = {.type = T_PRIM, .p = U64};
     struct type  *types[2] = {&f1, &f2};
 
-    struct type t = {
+    struct type   t        = {
         .type = T_UNION,
         .un   = {.len = 2, .keys = keys, .types = types} // Using .un overlay explicitly
     };
     const char *expected     = "union { as_int i64, as_ptr u64 }";
     u32         expected_len = (u32)strlen (expected);
 
-    char buf[128];
+    char        buf[128];
     type_generate_string (buf, &t);
 
     test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
@@ -614,7 +573,7 @@ TEST (type_generate_string)
     u32         expected_len = (u32)strlen (expected);
 
     // Verify type_get_string_size returns enough space for safe serialization
-    u32 calculated_size = type_get_string_size (&root_type);
+    u32         calculated_size = type_get_string_size (&root_type);
     test_assert_int_equal (calculated_size >= expected_len + 1, 1);
 
     char buf[256];
@@ -638,26 +597,20 @@ type_get_serial_size (const struct type *t)
   // LABEL TYPE
   u32 ret = sizeof (u8);
 
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       return ret + sizeof (u8);
     }
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       return ret + struct_t_get_serial_size (&t->st);
     }
-    case T_UNION:
-    {
+    case T_UNION: {
       return ret + union_t_get_serial_size (&t->un);
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       return ret + sarray_t_get_serial_size (&t->sa);
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;       // LCOV_EXCL_LINE
     }
@@ -671,8 +624,8 @@ prim_t_serialize (struct serializer *dest, const enum prim_t *src)
   bool ret;
 
   // PRIM
-  u8 prim_val = (u8)*src;
-  ret         = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
+  u8   prim_val = (u8)*src;
+  ret           = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
   ASSERT (ret);
 }
 
@@ -696,34 +649,28 @@ type_serialize (struct serializer *dest, const struct type *src)
   DBG_ASSERT (valid_type, src);
   bool ret;
 
-  u8 type_val = (u8)src->type;
-  ret         = srlizr_write (dest, &type_val, sizeof (u8));
+  u8   type_val = (u8)src->type;
+  ret           = srlizr_write (dest, &type_val, sizeof (u8));
   ASSERT (ret);
 
-  switch (src->type)
-  {
-    case T_PRIM:
-    {
+  switch (src->type) {
+    case T_PRIM: {
       prim_t_serialize (dest, &src->p);
       break;
     }
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       struct_t_serialize (dest, &src->st);
       break;
     }
-    case T_UNION:
-    {
+    case T_UNION: {
       union_t_serialize (dest, &src->un);
       break;
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       sarray_t_serialize (dest, &src->sa);
       break;
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       break;          // LCOV_EXCL_LINE
     }
@@ -742,8 +689,7 @@ prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
 
   u8   p;
   bool ret = dsrlizr_read ((u8 *)&p, sizeof (u8), src);
-  if (!ret)
-  {
+  if (!ret) {
     return error_causef (e, ERR_CORRUPT, "prim: missing length header");
   }
 
@@ -783,51 +729,39 @@ type_deserialize (struct deserializer *src, struct allocator *alloc, error *e)
 {
   u8           header;
   struct type *dest = allocate (alloc, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     return NULL;
   }
   bool ret   = dsrlizr_read (&header, sizeof (u8), src);
   dest->type = (enum type_t)header;
 
-  switch (header)
-  {
-    case T_PRIM:
-    {
-      if (prim_t_deserialize (&dest->p, src, e))
-      {
+  switch (header) {
+    case T_PRIM: {
+      if (prim_t_deserialize (&dest->p, src, e)) {
         return NULL;
       }
       return dest;
     }
-    case T_STRUCT:
-    {
-      if (struct_t_deserialize (&dest->st, src, alloc, e))
-      {
+    case T_STRUCT: {
+      if (struct_t_deserialize (&dest->st, src, alloc, e)) {
         return NULL;
       }
       return dest;
     }
-    case T_UNION:
-    {
-      if (union_t_deserialize (&dest->un, src, alloc, e))
-      {
+    case T_UNION: {
+      if (union_t_deserialize (&dest->un, src, alloc, e)) {
         return NULL;
       }
       return dest;
     }
-    case T_SARRAY:
-    {
-      if (sarray_t_deserialize (&dest->sa, src, alloc, e))
-      {
+    case T_SARRAY: {
+      if (sarray_t_deserialize (&dest->sa, src, alloc, e)) {
         return NULL;
       }
       return dest;
     }
-    default:
-    {
-      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret))
-      {
+    default: {
+      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret)) {
         return NULL;
       }
       return dest;
@@ -850,8 +784,7 @@ prim_t_random (void)
 TEST (prim_t_random)
 {
   error err = error_create ();
-  for (u32 i = 0; i < 1000; ++i)
-  {
+  for (u32 i = 0; i < 1000; ++i) {
     enum prim_t p = prim_t_random ();
     test_assert_int_equal (prim_t_validate (&p, &err), SUCCESS);
   }
@@ -862,13 +795,11 @@ struct type *
 type_random (struct allocator *alloc, u32 depth, error *e)
 {
   struct type *dest = allocate (alloc, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     return NULL;
   }
 
-  if (depth == 0)
-  {
+  if (depth == 0) {
     dest->type = T_PRIM;
     dest->p    = prim_t_random ();
     return dest;
@@ -876,45 +807,36 @@ type_random (struct allocator *alloc, u32 depth, error *e)
 
   static const enum type_t weighted[] = {T_PRIM, T_STRUCT, T_UNION, T_SARRAY};
 
-  dest->type = weighted[randu32r (0, arrlen (weighted) - 1)];
+  dest->type                          = weighted[randu32r (0, arrlen (weighted) - 1)];
 
-  switch (dest->type)
-  {
-    case T_PRIM:
-    {
+  switch (dest->type) {
+    case T_PRIM: {
       dest->p = prim_t_random ();
       return dest;
     }
 
-    case T_STRUCT:
-    {
-      if (struct_t_random (&dest->st, alloc, depth, e))
-      {
+    case T_STRUCT: {
+      if (struct_t_random (&dest->st, alloc, depth, e)) {
         return NULL;
       }
       return dest;
     }
 
-    case T_UNION:
-    {
-      if (union_t_random (&dest->un, alloc, depth, e))
-      {
+    case T_UNION: {
+      if (union_t_random (&dest->un, alloc, depth, e)) {
         return NULL;
       }
       return dest;
     }
 
-    case T_SARRAY:
-    {
-      if (sarray_t_random (&dest->sa, alloc, depth, e))
-      {
+    case T_SARRAY: {
+      if (sarray_t_random (&dest->sa, alloc, depth, e)) {
         return NULL;
       }
       return dest;
     }
 
-    default:
-    {
+    default: {
       error_causef (e, ERR_NOMEM, "invalid type tag");
       return NULL;
     }
@@ -930,31 +852,24 @@ type_random (struct allocator *alloc, u32 depth, error *e)
 bool
 type_equal (const struct type *left, const struct type *right)
 {
-  if (left->type != right->type)
-  {
+  if (left->type != right->type) {
     return false;
   }
 
-  switch (left->type)
-  {
-    case T_PRIM:
-    {
+  switch (left->type) {
+    case T_PRIM: {
       return left->p == right->p;
     }
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       return struct_t_equal (&left->st, &right->st);
     }
-    case T_UNION:
-    {
+    case T_UNION: {
       return union_t_equal (&left->un, &right->un);
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       return sarray_t_equal (&left->sa, &right->sa);
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;       // LCOV_EXCL_LINE
     }
@@ -965,22 +880,19 @@ char *
 get_var_str (struct type *t, u32 *dlen, error *e)
 {
   i32 len = type_snprintf (NULL, 0, t);
-  if (len < 0)
-  {
+  if (len < 0) {
     error_causef (e, ERR_IO, "snprintf failed");
     return NULL;
   }
 
   char *dest = i_malloc (default_mem (), len + 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     error_causef (e, ERR_NOMEM, "alloc failed for type log string");
     return NULL;
   }
 
   len = type_snprintf (dest, len + 1, t);
-  if (len < 0)
-  {
+  if (len < 0) {
     i_free (default_mem (), dest);
     error_causef (e, ERR_IO, "snprintf failed");
     return NULL;
@@ -996,8 +908,7 @@ i_log_type (struct type *t, error *e)
 {
   u32   len;
   char *var_str = get_var_str (t, &len, e);
-  if (var_str == NULL)
-  {
+  if (var_str == NULL) {
     return error_trace (e);
   }
 
@@ -1011,8 +922,7 @@ static struct string
 string_movemem (struct string src, struct allocator *alloc, error *e)
 {
   char *data = allocator_copy (alloc, src.data, src.len, e);
-  if (!data)
-  {
+  if (!data) {
     return (struct string){0};
   }
   return (struct string){.data = data, .len = src.len};
@@ -1022,16 +932,13 @@ static struct string *
 keylist_movemem (struct string *src, u32 len, struct allocator *alloc, error *e)
 {
   struct string *keys = allocate (alloc, len, sizeof *keys, e);
-  if (!keys)
-  {
+  if (!keys) {
     return NULL;
   }
 
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     keys[i] = string_movemem (src[i], alloc, e);
-    if (!keys[i].data)
-    {
+    if (!keys[i].data) {
       return NULL;
     }
   }
@@ -1042,16 +949,13 @@ static struct type **
 typelist_movemem (struct type **src, u32 len, struct allocator *alloc, error *e)
 {
   struct type **types = allocate (alloc, len, sizeof (struct type *), e);
-  if (!types)
-  {
+  if (!types) {
     return NULL;
   }
 
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     types[i] = type_movemem (src[i], alloc, e);
-    if (!types[i])
-    {
+    if (!types[i]) {
       return NULL;
     }
   }
@@ -1062,61 +966,49 @@ struct type *
 type_movemem (struct type *src, struct allocator *alloc, error *e)
 {
   struct type *ret = allocate (alloc, 1, sizeof *ret, e);
-  if (!ret)
-  {
+  if (!ret) {
     return NULL;
   }
 
   ret->type = src->type;
 
-  switch (src->type)
-  {
-    case T_PRIM:
-    {
+  switch (src->type) {
+    case T_PRIM: {
       ret->p = src->p;
       break;
     }
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       ret->st.len  = src->st.len;
       ret->st.keys = keylist_movemem (src->st.keys, src->st.len, alloc, e);
-      if (!ret->st.keys)
-      {
+      if (!ret->st.keys) {
         return NULL;
       }
       ret->st.types = typelist_movemem (src->st.types, src->st.len, alloc, e);
-      if (!ret->st.types)
-      {
+      if (!ret->st.types) {
         return NULL;
       }
       break;
     }
-    case T_UNION:
-    {
+    case T_UNION: {
       ret->un.len  = src->un.len;
       ret->un.keys = keylist_movemem (src->un.keys, src->un.len, alloc, e);
-      if (!ret->un.keys)
-      {
+      if (!ret->un.keys) {
         return NULL;
       }
       ret->un.types = typelist_movemem (src->un.types, src->un.len, alloc, e);
-      if (!ret->un.types)
-      {
+      if (!ret->un.types) {
         return NULL;
       }
       break;
     }
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       ret->sa.rank = src->sa.rank;
       ret->sa.t    = type_movemem (src->sa.t, alloc, e);
-      if (ret->sa.t == NULL)
-      {
+      if (ret->sa.t == NULL) {
         return NULL;
       }
       ret->sa.dims = allocate (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
-      if (!ret->sa.dims)
-      {
+      if (!ret->sa.dims) {
         return NULL;
       }
       memcpy (ret->sa.dims, src->sa.dims, src->sa.rank * sizeof *ret->sa.dims);
@@ -1136,100 +1028,76 @@ strtoprim (const char *text, u32 len)
 {
   struct string str = {.data = (char *)text, .len = len};
 
-  if (string_equal (str, strfcstr ("u8")))
-  {
+  if (string_equal (str, strfcstr ("u8"))) {
     return U8;
   }
-  if (string_equal (str, strfcstr ("u16")))
-  {
+  if (string_equal (str, strfcstr ("u16"))) {
     return U16;
   }
-  if (string_equal (str, strfcstr ("u32")))
-  {
+  if (string_equal (str, strfcstr ("u32"))) {
     return U32;
   }
-  if (string_equal (str, strfcstr ("u64")))
-  {
+  if (string_equal (str, strfcstr ("u64"))) {
     return U64;
   }
-  if (string_equal (str, strfcstr ("i8")))
-  {
+  if (string_equal (str, strfcstr ("i8"))) {
     return I8;
   }
-  if (string_equal (str, strfcstr ("i16")))
-  {
+  if (string_equal (str, strfcstr ("i16"))) {
     return I16;
   }
-  if (string_equal (str, strfcstr ("i32")))
-  {
+  if (string_equal (str, strfcstr ("i32"))) {
     return I32;
   }
-  if (string_equal (str, strfcstr ("i64")))
-  {
+  if (string_equal (str, strfcstr ("i64"))) {
     return I64;
   }
-  if (string_equal (str, strfcstr ("f16")))
-  {
+  if (string_equal (str, strfcstr ("f16"))) {
     return F16;
   }
-  if (string_equal (str, strfcstr ("f32")))
-  {
+  if (string_equal (str, strfcstr ("f32"))) {
     return F32;
   }
-  if (string_equal (str, strfcstr ("f64")))
-  {
+  if (string_equal (str, strfcstr ("f64"))) {
     return F64;
   }
-  if (string_equal (str, strfcstr ("f128")))
-  {
+  if (string_equal (str, strfcstr ("f128"))) {
     return F128;
   }
-  if (string_equal (str, strfcstr ("cf32")))
-  {
+  if (string_equal (str, strfcstr ("cf32"))) {
     return CF32;
   }
-  if (string_equal (str, strfcstr ("cf64")))
-  {
+  if (string_equal (str, strfcstr ("cf64"))) {
     return CF64;
   }
-  if (string_equal (str, strfcstr ("cf128")))
-  {
+  if (string_equal (str, strfcstr ("cf128"))) {
     return CF128;
   }
-  if (string_equal (str, strfcstr ("cf256")))
-  {
+  if (string_equal (str, strfcstr ("cf256"))) {
     return CF256;
   }
-  if (string_equal (str, strfcstr ("ci16")))
-  {
+  if (string_equal (str, strfcstr ("ci16"))) {
     return CI16;
   }
-  if (string_equal (str, strfcstr ("ci32")))
-  {
+  if (string_equal (str, strfcstr ("ci32"))) {
     return CI32;
   }
-  if (string_equal (str, strfcstr ("ci64")))
-  {
+  if (string_equal (str, strfcstr ("ci64"))) {
     return CI64;
   }
-  if (string_equal (str, strfcstr ("ci128")))
-  {
+  if (string_equal (str, strfcstr ("ci128"))) {
     return CI128;
   }
-  if (string_equal (str, strfcstr ("cu16")))
-  {
+  if (string_equal (str, strfcstr ("cu16"))) {
     return CU16;
   }
-  if (string_equal (str, strfcstr ("cu32")))
-  {
+  if (string_equal (str, strfcstr ("cu32"))) {
     return CU32;
   }
-  if (string_equal (str, strfcstr ("cu64")))
-  {
+  if (string_equal (str, strfcstr ("cu64"))) {
     return CU64;
   }
-  if (string_equal (str, strfcstr ("cu128")))
-  {
+  if (string_equal (str, strfcstr ("cu128"))) {
     return CU128;
   }
 
@@ -1257,8 +1125,7 @@ static void print_type_inner (
 static void
 print_indent (int level, u32 spaces)
 {
-  for (u32 i = 0; i < spaces; ++i)
-  {
+  for (u32 i = 0; i < spaces; ++i) {
     i_log_printf (level, " ");
   }
 }
@@ -1276,119 +1143,102 @@ TEST (print_indent)
 static void
 print_prim_value (int level, const u8 *buf, enum prim_t p)
 {
-  switch (p)
-  {
-    case U8:
-    {
+  switch (p) {
+    case U8: {
       u8 v;
       memcpy (&v, buf, 1);
       i_log_printf (level, "%u", (unsigned)v);
       return;
     }
-    case U16:
-    {
+    case U16: {
       u16 v;
       memcpy (&v, buf, 2);
       i_log_printf (level, "%u", (unsigned)v);
       return;
     }
-    case U32:
-    {
+    case U32: {
       u32 v;
       memcpy (&v, buf, 4);
       i_log_printf (level, "%u", (unsigned)v);
       return;
     }
-    case U64:
-    {
+    case U64: {
       u64 v;
       memcpy (&v, buf, 8);
       i_log_printf (level, "%lu", (unsigned long)v);
       return;
     }
-    case I8:
-    {
+    case I8: {
       i8 v;
       memcpy (&v, buf, 1);
       i_log_printf (level, "%d", (int)v);
       return;
     }
-    case I16:
-    {
+    case I16: {
       i16 v;
       memcpy (&v, buf, 2);
       i_log_printf (level, "%d", (int)v);
       return;
     }
-    case I32:
-    {
+    case I32: {
       i32 v;
       memcpy (&v, buf, 4);
       i_log_printf (level, "%d", (int)v);
       return;
     }
-    case I64:
-    {
+    case I64: {
       i64 v;
       memcpy (&v, buf, 8);
       i_log_printf (level, "%ld", (long)v);
       return;
     }
-    case F16:
-    {
+    case F16: {
       u16 h;
       memcpy (&h, buf, 2);
       i_log_printf (level, "%g", (double)f16_to_f32 (h));
       return;
     }
-    case F32:
-    {
+    case F32: {
       float v;
       memcpy (&v, buf, 4);
       i_log_printf (level, "%g", (double)v);
       return;
     }
-    case F64:
-    {
+    case F64: {
       double v;
       memcpy (&v, buf, 8);
       i_log_printf (level, "%g", v);
       return;
     }
-    case F128:
-    {
+    case F128: {
       u64 lo, hi;
       memcpy (&lo, buf, 8);
       memcpy (&hi, buf + 8, 8);
       i_log_printf (level, "<f128:0x%016lx%016lx>", (unsigned long)hi, (unsigned long)lo);
       return;
     }
-    case CF32:
-    {
+    case CF32: {
       u16 rh, ih;
       memcpy (&rh, buf, 2);
       memcpy (&ih, buf + 2, 2);
       i_log_printf (level, "(%g, %g)", (double)f16_to_f32 (rh), (double)f16_to_f32 (ih));
       return;
     }
-    case CF64:
-    {
+    case CF64: {
       float r, im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
       i_log_printf (level, "(%g, %g)", (double)r, (double)im);
       return;
     }
-    case CF128:
-    {
+    case CF128: {
       double r, im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
       i_log_printf (level, "(%g, %g)", r, im);
       return;
     }
-    case CF256:
-    {
+    case CF256: {
 #if SIZEOF_LONG_DOUBLE >= 16
       long double r, im;
       memcpy (&r, buf, 16);
@@ -1412,64 +1262,56 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
 #endif
       return;
     }
-    case CI16:
-    {
+    case CI16: {
       i8 r, im;
       memcpy (&r, buf, 1);
       memcpy (&im, buf + 1, 1);
       i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
-    case CI32:
-    {
+    case CI32: {
       i16 r, im;
       memcpy (&r, buf, 2);
       memcpy (&im, buf + 2, 2);
       i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
-    case CI64:
-    {
+    case CI64: {
       i32 r, im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
       i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
-    case CI128:
-    {
+    case CI128: {
       i64 r, im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
       i_log_printf (level, "(%ld, %ld)", (long)r, (long)im);
       return;
     }
-    case CU16:
-    {
+    case CU16: {
       u8 r, im;
       memcpy (&r, buf, 1);
       memcpy (&im, buf + 1, 1);
       i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
-    case CU32:
-    {
+    case CU32: {
       u16 r, im;
       memcpy (&r, buf, 2);
       memcpy (&im, buf + 2, 2);
       i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
-    case CU64:
-    {
+    case CU64: {
       u32 r, im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
       i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
-    case CU128:
-    {
+    case CU128: {
       u64 r, im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
@@ -1615,8 +1457,7 @@ static u32
 sarray_sub_size (const struct sarray_t *sa, u16 dim_idx)
 {
   u32 sub = type_byte_size (sa->t);
-  for (u16 i = dim_idx + 1; i < sa->rank; ++i)
-  {
+  for (u16 i = dim_idx + 1; i < sa->rank; ++i) {
     sub *= sa->dims[i];
   }
   return sub;
@@ -1655,36 +1496,27 @@ print_sarray_dim (
 
   i_log_printf (level, "[");
 
-  if (dim_idx == sa->rank - 1)
-  {
+  if (dim_idx == sa->rank - 1) {
     // Innermost dimension: elements inline
-    for (u32 i = 0; i < show; ++i)
-    {
-      if (i > 0)
-      {
+    for (u32 i = 0; i < show; ++i) {
+      if (i > 0) {
         i_log_printf (level, ", ");
       }
       print_type_inner (level, buf + i * sub_size, sa->t, max_elems, indent + 1);
     }
-    if (dim_len > max_elems)
-    {
+    if (dim_len > max_elems) {
       i_log_printf (level, ", ...");
     }
-  }
-  else
-  {
+  } else {
     // Outer dimension: each sub-array on its own line
-    for (u32 i = 0; i < show; ++i)
-    {
-      if (i > 0)
-      {
+    for (u32 i = 0; i < show; ++i) {
+      if (i > 0) {
         i_log_printf (level, ",\n");
         print_indent (level, col + 1);
       }
       print_sarray_dim (level, buf + i * sub_size, sa, dim_idx + 1, max_elems, indent + 1, col + 1);
     }
-    if (dim_len > max_elems)
-    {
+    if (dim_len > max_elems) {
       i_log_printf (level, ",\n");
       print_indent (level, col + 1);
       i_log_printf (level, "...");
@@ -1711,38 +1543,30 @@ TEST (print_sarray_dim)
 static void
 print_type_inner (int level, const u8 *buf, const struct type *t, u32 max_elems, u32 indent)
 {
-  switch (t->type)
-  {
-    case T_PRIM:
-    {
+  switch (t->type) {
+    case T_PRIM: {
       print_prim_value (level, buf, t->p);
       return;
     }
 
-    case T_STRUCT:
-    {
+    case T_STRUCT: {
       i_log_printf (level, "{\n");
       u32 offset = 0;
-      for (u16 i = 0; i < t->st.len; ++i)
-      {
+      for (u16 i = 0; i < t->st.len; ++i) {
         u32 field_indent = indent + 4;
         print_indent (level, field_indent);
         i_log_printf (level, "%.*s = ", (int)t->st.keys[i].len, t->st.keys[i].data);
 
         const struct type *ft = t->st.types[i];
-        if (ft->type == T_SARRAY)
-        {
+        if (ft->type == T_SARRAY) {
           u32 col = field_indent + t->st.keys[i].len + 3;
           print_sarray_dim (level, buf + offset, &ft->sa, 0, max_elems, field_indent, col);
-        }
-        else
-        {
+        } else {
           print_type_inner (level, buf + offset, ft, max_elems, field_indent);
         }
 
         offset += type_byte_size (ft);
-        if (i + 1 < t->st.len)
-        {
+        if (i + 1 < t->st.len) {
           i_log_printf (level, ",");
         }
         i_log_printf (level, "\n");
@@ -1752,24 +1576,19 @@ print_type_inner (int level, const u8 *buf, const struct type *t, u32 max_elems,
       return;
     }
 
-    case T_UNION:
-    {
+    case T_UNION: {
       i_log_printf (level, "<union[0]: ");
-      if (t->un.len > 0)
-      {
+      if (t->un.len > 0) {
         i_log_printf (level, "%.*s = ", (int)t->un.keys[0].len, t->un.keys[0].data);
         print_type_inner (level, buf, t->un.types[0], max_elems, indent);
-      }
-      else
-      {
+      } else {
         i_log_printf (level, "empty");
       }
       i_log_printf (level, ">");
       return;
     }
 
-    case T_SARRAY:
-    {
+    case T_SARRAY: {
       print_sarray_dim (level, buf, &t->sa, 0, max_elems, indent, indent);
       return;
     }
@@ -1881,21 +1700,19 @@ static i32
 type_print_os_sink (struct stream *s, void *vctx, const void *src, u32 size, u32 n, error *e)
 {
   ASSERT (size == 1);
-  struct type_printer_ostream_ctx *ctx = (struct type_printer_ostream_ctx *)vctx;
+  struct type_printer_ostream_ctx *ctx   = (struct type_printer_ostream_ctx *)vctx;
 
-  u32 avail = ctx->size - ctx->pos;
-  u32 next  = MIN (avail, n);
+  u32                              avail = ctx->size - ctx->pos;
+  u32                              next  = MIN (avail, n);
 
-  if (next == 0)
-  {
+  if (next == 0) {
     return 0;
   }
 
   memcpy (ctx->buf + ctx->pos, src, next);
   ctx->pos += next;
 
-  if (ctx->pos == ctx->size)
-  {
+  if (ctx->pos == ctx->size) {
     type_print_data (LOG_INFO, ctx->buf, ctx->t, 3);
     ctx->pos = 0;
   }
@@ -1952,8 +1769,7 @@ type_stream_printer_init (struct stream *s, struct type *t, error *e)
 {
   t_size                           size = type_byte_size (t);
   struct type_printer_ostream_ctx *ctx  = i_malloc (default_mem (), 1, sizeof *ctx + size, e);
-  if (ctx == NULL)
-  {
+  if (ctx == NULL) {
     return error_trace (e);
   }
 

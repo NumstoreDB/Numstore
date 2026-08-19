@@ -35,11 +35,11 @@
 ///
 /// Phases 4 (no-commit crash) and 5 (rollback) leave their slots as 'A'.
 
+#include "smartfiles.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "numstore.h"
 
 #ifdef _WIN32
 #  include "windows.h"
@@ -92,8 +92,7 @@ run_phase (int phase_num, int crash, const char *exe)
   snprintf (cmd, sizeof (cmd), "\"%s\" %s", exe, arg);
   STARTUPINFOA        si = {sizeof (si)};
   PROCESS_INFORMATION pi;
-  if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-  {
+  if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
     fprintf (stderr, "CreateProcess failed: %lu\n", GetLastError ());
     exit (1);
   }
@@ -103,12 +102,10 @@ run_phase (int phase_num, int crash, const char *exe)
   (void)crash;
 #else
   pid_t pid = fork ();
-  if (pid == 0)
-  {
+  if (pid == 0) {
     smfile_t *smf = smfile_open (PATH);
     phases[phase_num](smf);
-    if (crash)
-    {
+    if (crash) {
       _Exit (1); // Simulate crash: no smfile_close(), no WAL flush
     }
     smfile_close (smf);
@@ -240,14 +237,12 @@ main (int argc, char *argv[])
 {
 #ifdef _WIN32
   // Windows child: re-execed with a phase number, run that phase and exit.
-  if (argc == 2)
-  {
+  if (argc == 2) {
     int       phase_num = atoi (argv[1]);
     int       crash     = (phase_num == 3 || phase_num == 4);
     smfile_t *smf       = smfile_open (PATH);
     phases[phase_num](smf);
-    if (crash)
-    {
+    if (crash) {
       exit (1);
     }
     smfile_close (smf);

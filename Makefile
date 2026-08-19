@@ -1,51 +1,101 @@
-CC      			:= gcc
-CLANG_FORMAT 	:= clang-format
-CFLAGS  			:= -Wall -Wextra -std=c11 -I$(shell pwd)/src -DTESTING -Wno-unused-parameter -g -fsanitize=address
+############ C Compiler
+CC           := gcc
+CLANG_FORMAT := clang-format
+TARGET       ?= debug
 
+############ Rust compiler
 RUSTC     := rustc
 RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
-SUBDIRS := src/core src/nscore src/nsserver src/smartfiles src/numstore
+############ Sub make modules to build
+SUBDIRS := src/core src/nscore src/smartfiles src/nsserver src/numstore
 
-OUT_DIR 	:= $(CURDIR)/build
-BIN_DIR 	:= $(OUT_DIR)/bin
-LIB_DIR 	:= $(OUT_DIR)/lib
-HTML_DIR  := $(OUT_DIR)/html
+############ Compile Options
+CFLAGS := 
+CFLAGS += -Wall
+CFLAGS += -Wextra 
+CFLAGS += -std=c11 
+CFLAGS += -I$(shell pwd)/src 
+CFLAGS += -Wno-unused-parameter 
+ifeq ($(TARGET),release)
+CFLAGS += -DNDEBUG 
+CFLAGS += -DNLOG 
+CFLAGS += -O3
+else ifeq ($(TARGET),debug)
+CFLAGS += -DTESTING 
+CFLAGS += -g 
+CFLAGS += -fsanitize=address
+else
+    $(error Invalid TARGET '$(TARGET)' - must be 'debug' or 'release')
+endif
 
-export CC CFLAGS LIB_DIR BIN_DIR RUSTC RUSTFLAGS HTML_DIR
+############ All the Output Directories
+OUT_DIR  := $(CURDIR)/build/$(TARGET)
+BIN_DIR  := $(OUT_DIR)/bin
+LIB_DIR  := $(OUT_DIR)/lib
+INC_DIR  := $(OUT_DIR)/include
+HTML_DIR := $(OUT_DIR)/html
+OBJ_DIR  := $(OUT_DIR)/objs
 
-.PHONY: all $(SUBDIRS) clean format
+############ All the libraries
+ALL_LIBS :=
+ALL_LIBS += $(LIB_DIR)/libcore.a
+ALL_LIBS += $(LIB_DIR)/libnscore.a
+ALL_LIBS += $(LIB_DIR)/libsmartfiles.a
+ALL_LIBS += $(LIB_DIR)/libnumstore.a
 
-all: $(SUBDIRS)
+############ All the link flags
+ALL_LD :=
+ALL_LD += -lnumstore
+ALL_LD += -lsmartfiles
+ALL_LD += -lnscore
+ALL_LD += -lcore
 
-documentation: 
-	$(MAKE) -C docs
+############ Test Targets (Debug only)
+TEST_BINS      := unit_tests cgd_swarm_test irwr_swarm_test
+TEST_BIN_PATHS := $(addprefix $(BIN_DIR)/,$(TEST_BINS))
 
-src/unit_tests.c: apps/scripts/gen_tests.py 
-	python3 apps/scripts/gen_tests.py
+############ Everything to build
+ALL :=
+ALL += $(SUBDIRS)
+ifeq ($(TARGET),debug)
+ALL += $(TEST_BIN_PATHS)
+endif
 
-$(SUBDIRS): $(LIB_DIR) $(BIN_DIR)
+############ Exports
+export CC CFLAGS LIB_DIR BIN_DIR RUSTC RUSTFLAGS HTML_DIR INC_DIR TARGET OBJ_DIR
+
+############ PHONY
+.PHONY: all $(SUBDIRS) clean clean-all format format-check
+
+############ DEFAULT
+all: $(ALL)
+
+############ Build Tests
+$(BIN_DIR)/unit_tests: scripts/gen_tests.py $(ALL_LIBS) | $(BIN_DIR)
+	python3 scripts/gen_tests.py
+	$(CC) $(CFLAGS) -I$(INC_DIR) src/unit_tests.c -o $@ -L$(LIB_DIR) $(ALL_LD)
+
+$(BIN_DIR)/cgd_swarm_test: $(ALL_LIBS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I$(INC_DIR) src/cgd_swarm_test.c -o $@ -L$(LIB_DIR) $(ALL_LD)
+
+$(BIN_DIR)/irwr_swarm_test: $(ALL_LIBS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I$(INC_DIR) src/irwr_swarm_test.c -o $@ -L$(LIB_DIR) $(ALL_LD)
+
+############ Build Sub Modules
+$(SUBDIRS): $(LIB_DIR) $(BIN_DIR) $(INC_DIR)
 	$(MAKE) -C $@
 
-$(LIB_DIR):
+############ Directories
+$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR):
 	mkdir -p $@
 
-$(BIN_DIR):
-	mkdir -p $@
-
+############ House keeping
 clean:
-	for dir in $(SUBDIRS); do \
+	@for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
-	$(MAKE) -C docs clean;
-
-clean-all: clean 
-	rm -rf build
-
-FORMAT_DIR   := src
-
-.PHONY: format format-check
 
 format:
-	find $(FORMAT_DIR) -type f \( -name '*.c' -o -name '*.h' \) -print0 \
+	find src -type f \( -name '*.c' -o -name '*.h' \) -print0 \
 		| xargs -0 $(CLANG_FORMAT) -i

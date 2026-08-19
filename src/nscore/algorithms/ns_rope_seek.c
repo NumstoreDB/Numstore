@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -24,6 +22,8 @@
 #include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: ns_seek
@@ -66,20 +66,15 @@ ns_seek (struct ns_seek_params *a, error *e)
           a->p,
           a->save_stack,
           e
-      ))
-  {
+      )) {
     goto failed;
   }
 
-  while (true)
-  {
-    switch (page_h_type (&a->pg))
-    {
-      case PG_INNER_NODE:
-      {
+  while (true) {
+    switch (page_h_type (&a->pg)) {
+      case PG_INNER_NODE: {
         // Stack overflow
-        if (a->sp == 20)
-        {
+        if (a->sp == 20) {
           error_causef (e, ERR_RPTREE_PAGE_STACK_OVERFLOW, "page stack overflow (depth 20)");
           goto failed;
         }
@@ -100,23 +95,18 @@ ns_seek (struct ns_seek_params *a, error *e)
                 a->p,
                 a->save_stack,
                 e
-            ))
-        {
+            )) {
           goto failed;
         }
 
         // Append a->pg to the stack
-        if (a->save_stack)
-        {
+        if (a->save_stack) {
           a->pstack[(a->sp)++] = (struct seek_v){
               .pg   = page_h_xfer_ownership (&a->pg),
               .lidx = a->lidx,
           };
-        }
-        else
-        {
-          if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e))
-          {
+        } else {
+          if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e)) {
             goto failed;
           }
         }
@@ -126,15 +116,13 @@ ns_seek (struct ns_seek_params *a, error *e)
         break;
       }
 
-      case PG_DATA_LIST:
-      {
+      case PG_DATA_LIST: {
         const p_size used = dl_used (page_h_ro (&a->pg));
         a->lidx           = MIN (a->bofst, used);
         return SUCCESS;
       }
 
-      default:
-      {
+      default: {
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
     }
@@ -144,8 +132,7 @@ failed:
   // Release used pages
   pgr_cancel_if_exists (a->p, &a->pg);
   pgr_cancel_if_exists (a->p, &next);
-  for (u32 i = 0; i < a->sp; ++i)
-  {
+  for (u32 i = 0; i < a->sp; ++i) {
     pgr_cancel_if_exists (a->p, &a->pstack[i].pg);
   }
   a->sp = 0;

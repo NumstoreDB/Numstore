@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stddef.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -22,6 +20,8 @@
 #include "nscore/page/ns_page_h.h"
 #include "nscore/page/ns_page_var_page.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stddef.h>
 
 /*
  * Update rpt_root and nbytes on a variable page addressed by page number.
@@ -34,28 +34,23 @@ ns_update_by_id (struct ns_var_update_params params, error *e)
 {
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e))
-  {
+  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e)) {
     goto failed;
   }
 
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e))
-  {
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) {
     goto failed;
   }
 
   goto failed;
 
 failed:
-  if (error_trace (e))
-  {
+  if (error_trace (e)) {
     return error_trace (e);
-  }
-  else
-  {
+  } else {
     return SUCCESS;
   }
 }
@@ -69,31 +64,29 @@ failed:
 static err_t
 ns_update_by_name (struct ns_var_update_params params, error *e)
 {
-  page_h cur = page_h_create ();
+  page_h                         cur     = page_h_create ();
 
   struct ns_find_var_page_params fparams = {
-      .p  = params.p,
-      .tx = params.tx,
+      .p     = params.p,
+      .tx    = params.tx,
 
       .vname = params.retr.vname,
       .dvar  = NULL,
       .mode  = FP_FIND,
 
-      .hpos = PGNO_NULL,
-      .prev = NULL,
-      .cur  = &cur,
+      .hpos  = PGNO_NULL,
+      .prev  = NULL,
+      .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e))
-  {
+  if (ns_find_var_page (&fparams, e)) {
     goto failed;
   }
 
   vp_set_root (page_h_w (&cur), params.newpg);
   vp_set_nbytes (page_h_w (&cur), params.nbytes);
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e))
-  {
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) {
     goto failed;
   }
 
@@ -107,14 +100,11 @@ failed:
 err_t
 ns_var_update (struct ns_var_update_params params, error *e)
 {
-  switch (params.retr.type)
-  {
-    case VR_NAME:
-    {
+  switch (params.retr.type) {
+    case VR_NAME: {
       return ns_update_by_name (params, e);
     }
-    case VR_PG:
-    {
+    case VR_PG: {
       return ns_update_by_id (params, e);
     }
   }

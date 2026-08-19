@@ -14,12 +14,12 @@
 
 #include "core/ns_string.h"
 
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+
+#include <string.h>
 
 /////////////////////////////////////////////////////////////////////
 ////// String
@@ -50,12 +50,9 @@ line_length (const char *buf, const u64 max)
   const char *nl = memchr (buf, '\n', max);
   u64         ret;
 
-  if (nl != NULL)
-  {
+  if (nl != NULL) {
     ret = (u64)(nl - buf);
-  }
-  else
-  {
+  } else {
     ret = max;
   }
 
@@ -65,16 +62,12 @@ line_length (const char *buf, const u64 max)
 int
 strings_all_unique (const struct string *strs, const u32 count)
 {
-  for (u32 i = 0; i < count; ++i)
-  {
-    for (u32 j = i + 1; j < count; ++j)
-    {
-      if (strs[i].len != strs[j].len)
-      {
+  for (u32 i = 0; i < count; ++i) {
+    for (u32 j = i + 1; j < count; ++j) {
+      if (strs[i].len != strs[j].len) {
         continue;
       }
-      if (memcmp (strs[i].data, strs[j].data, strs[i].len) == 0)
-      {
+      if (memcmp (strs[i].data, strs[j].data, strs[i].len) == 0) {
         return 0;
       }
     }
@@ -146,8 +139,7 @@ TEST (strings_all_unique)
 bool
 string_equal (const struct string s1, const struct string s2)
 {
-  if (s1.len != s2.len)
-  {
+  if (s1.len != s2.len) {
     return false;
   }
   return strncmp (s1.data, s2.data, s1.len) == 0;
@@ -161,12 +153,9 @@ strings_are_disjoint (
     const u32            rlen
 )
 {
-  for (u32 i = 0; i < llen; ++i)
-  {
-    for (u32 j = 0; j < rlen; ++j)
-    {
-      if (string_equal (left[i], right[j]))
-      {
+  for (u32 i = 0; i < llen; ++i) {
+    for (u32 j = 0; j < rlen; ++j) {
+      if (string_equal (left[i], right[j])) {
         return &left[i];
       }
     }
@@ -178,16 +167,13 @@ strings_are_disjoint (
 bool
 string_contains (const struct string superset, const struct string subset)
 {
-  if (superset.len == 0 && subset.len == 0)
-  {
+  if (superset.len == 0 && subset.len == 0) {
     return true;
   }
 
-  for (u32 i = 0; i < superset.len; ++i)
-  {
+  for (u32 i = 0; i < superset.len; ++i) {
     const u32 len = superset.len - i;
-    if (len < subset.len)
-    {
+    if (len < subset.len) {
       return false;
     }
 
@@ -195,8 +181,7 @@ string_contains (const struct string superset, const struct string subset)
         .data = &superset.data[i],
         .len  = subset.len,
     };
-    if (string_equal (_superset, subset))
-    {
+    if (string_equal (_superset, subset)) {
       return true;
     }
   }
@@ -222,12 +207,10 @@ string_less_string (const struct string left, const struct string right)
 {
   const u32 min_len = (left.len < right.len) ? left.len : right.len;
   const int cmp     = memcmp (left.data, right.data, min_len);
-  if (cmp < 0)
-  {
+  if (cmp < 0) {
     return true;
   }
-  if (cmp > 0)
-  {
+  if (cmp > 0) {
     return false;
   }
   return left.len < right.len;
@@ -238,12 +221,10 @@ string_greater_string (const struct string left, const struct string right)
 {
   const u32 min_len = (left.len < right.len) ? left.len : right.len;
   const int cmp     = memcmp (left.data, right.data, min_len);
-  if (cmp > 0)
-  {
+  if (cmp > 0) {
     return true;
   }
-  if (cmp < 0)
-  {
+  if (cmp < 0) {
     return false;
   }
   return left.len > right.len;
@@ -265,8 +246,7 @@ err_t
 string_copy (struct string *dest, struct string src, struct i_mem mem, error *e)
 {
   char *data = i_calloc (mem, src.len + 1, 1, e);
-  if (data == NULL)
-  {
+  if (data == NULL) {
     return error_trace (e);
   }
   memcpy (data, src.data, src.len);

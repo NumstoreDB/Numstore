@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stddef.h>
-
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
@@ -21,6 +19,8 @@
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stddef.h>
 
 /*
  * Create a new variable record in the variable hash table.
@@ -34,7 +34,7 @@
 spgno
 ns_var_create (const struct ns_var_create_params params, error *e)
 {
-  page_h cur = page_h_create ();
+  page_h                         cur     = page_h_create ();
 
   struct ns_find_var_page_params fparams = {
       .tx    = params.tx,
@@ -45,13 +45,12 @@ ns_var_create (const struct ns_var_create_params params, error *e)
       .dvar  = NULL,
       .mode  = FP_CREATE,
 
-      .hpos = PGNO_NULL,
-      .prev = NULL,
-      .cur  = &cur,
+      .hpos  = PGNO_NULL,
+      .prev  = NULL,
+      .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e))
-  {
+  if (ns_find_var_page (&fparams, e)) {
     goto failed;
   }
 
@@ -63,20 +62,18 @@ ns_var_create (const struct ns_var_create_params params, error *e)
   };
 
   struct ns_write_var_page_params write_params = {
-      .p  = params.p,
-      .tx = params.tx,
+      .p   = params.p,
+      .tx  = params.tx,
 
       .vp  = &cur,
       .var = &var,
   };
 
-  if (ns_write_var_page (&write_params, e))
-  {
+  if (ns_write_var_page (&write_params, e)) {
     goto failed;
   }
 
-  if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e)))
-  {
+  if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e))) {
     goto failed;
   }
 

@@ -14,9 +14,6 @@
 
 #include "nscore/types/ns_sarray_t.h"
 
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -26,6 +23,9 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Strict Array Builder
@@ -64,14 +64,11 @@ static err_t
 sarray_t_validate_shallow (const struct sarray_t *t, error *e)
 {
   DBG_ASSERT (unchecked_sarray_t, t);
-  if (t->rank == 0)
-  {
+  if (t->rank == 0) {
     return sarray_t_type_err ("Rank must be > 0", e);
   }
-  for (u32 i = 0; i < t->rank; ++i)
-  {
-    if (t->dims[i] == 0)
-    {
+  for (u32 i = 0; i < t->rank; ++i) {
+    if (t->dims[i] == 0) {
       return sarray_t_type_err ("dimensions cannot be 0", e);
     }
   }
@@ -137,31 +134,24 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
   int   len   = 0;
   int   n;
 
-  for (u16 i = 0; i < p->rank; ++i)
-  {
+  for (u16 i = 0; i < p->rank; ++i) {
     n = snprintf (out, avail, "[%u]", p->dims[i]);
-    if (n < 0)
-    {
+    if (n < 0) {
       return n;
     }
     len += n;
-    if (out)
-    {
+    if (out) {
       out += n;
-      if ((u32)n < avail)
-      {
+      if ((u32)n < avail) {
         avail -= n;
-      }
-      else
-      {
+      } else {
         avail = 0;
       }
     }
   }
 
   n = type_snprintf (out, avail, p->t);
-  if (n < 0)
-  {
+  if (n < 0) {
     return n;
   }
   len += n;
@@ -186,8 +176,8 @@ TEST (sarray_t_snprintf)
 
   const char *expected = "[10][11][12]u32";
 
-  char *ret = type_tostr (&s);
-  error e   = error_create ();
+  char       *ret      = type_tostr (&s);
+  error       e        = error_create ();
   i_log_type (&s, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (default_mem (), ret);
@@ -201,8 +191,7 @@ sarray_t_byte_size (const struct sarray_t *t)
   u32 ret = 1;
 
   // multiply up all ranks and multiply by size of type
-  for (u32 i = 0; i < t->rank; ++i)
-  {
+  for (u32 i = 0; i < t->rank; ++i) {
     ret *= t->dims[i];
   }
 
@@ -254,8 +243,7 @@ sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
   ret = srlizr_write (persistent, (const u8 *)&src->rank, sizeof (u16));
   ASSERT (ret);
 
-  for (u32 i = 0; i < src->rank; ++i)
-  {
+  for (u32 i = 0; i < src->rank; ++i) {
     // DIMi
     ret = srlizr_write (persistent, (const u8 *)&src->dims[i], sizeof (u32));
     ASSERT (ret);
@@ -324,34 +312,29 @@ sarray_t_deserialize (
   struct sarray_t sa = {0};
 
   // RANK
-  if (!dsrlizr_read ((u8 *)&sa.rank, sizeof (u16), src))
-  {
+  if (!dsrlizr_read ((u8 *)&sa.rank, sizeof (u16), src)) {
     goto early_terimination;
   }
 
   // Allocate dimensions buffer
   u32 *dims = allocate (a, sa.rank, sizeof *dims, e);
-  if (dims == NULL)
-  {
+  if (dims == NULL) {
     return error_trace (e);
   }
-  sa.dims = dims;
+  sa.dims        = dims;
 
   // Allocate type
   struct type *t = allocate (a, 1, sizeof *t, e);
-  if (t == NULL)
-  {
+  if (t == NULL) {
     return error_trace (e);
   }
   sa.t = t;
 
-  for (u32 i = 0; i < sa.rank; ++i)
-  {
+  for (u32 i = 0; i < sa.rank; ++i) {
     u32 dim;
 
     // DIMi
-    if (!dsrlizr_read ((u8 *)&dim, sizeof (u32), src))
-    {
+    if (!dsrlizr_read ((u8 *)&dim, sizeof (u32), src)) {
       goto early_terimination;
     }
 
@@ -360,8 +343,7 @@ sarray_t_deserialize (
 
   // (TYPE)
   sa.t = type_deserialize (src, a, e);
-  if (sa.t == NULL)
-  {
+  if (sa.t == NULL) {
     return error_trace (e);
   }
   WRAP (sarray_t_validate_shallow (&sa, e));
@@ -388,12 +370,12 @@ TEST (sarray_t_deserialize_green_path)
   memcpy (data + 6, &d1, 4);
   memcpy (data + 10, &d2, 4);
 
-  struct deserializer d = dsrlizr_create (data, sizeof (data));
+  struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
-  error e = error_create ();
+  error               e    = error_create ();
 
-  struct sarray_t sret = {0};
-  err_t           ret  = sarray_t_deserialize (&sret, &d, &sab_temp, &e);
+  struct sarray_t     sret = {0};
+  err_t               ret  = sarray_t_deserialize (&sret, &d, &sab_temp, &e);
 
   test_assert_int_equal (ret, SUCCESS);
 
@@ -423,10 +405,10 @@ TEST (sarray_t_deserialize_red_path)
   memcpy (data + 10, &d2, 4);
 
   struct sarray_t     eret;
-  struct deserializer d = dsrlizr_create (data, sizeof (data));
+  struct deserializer d   = dsrlizr_create (data, sizeof (data));
 
-  error e   = error_create ();
-  err_t ret = sarray_t_deserialize (&eret, &d, &alloc, &e);
+  error               e   = error_create ();
+  err_t               ret = sarray_t_deserialize (&eret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, ERR_INTERP); // 0 value
 
@@ -442,25 +424,21 @@ sarray_t_random (struct sarray_t *sa, struct allocator *temp, u32 depth, error *
   sa->rank = (u16)randu32r (1, 4);
 
   sa->dims = (u32 *)allocate (temp, sa->rank, sizeof (u32), e);
-  if (!sa->dims)
-  {
+  if (!sa->dims) {
     return error_trace (e);
   }
 
-  for (u16 i = 0; i < sa->rank; ++i)
-  {
+  for (u16 i = 0; i < sa->rank; ++i) {
     sa->dims[i] = randu32r (1, 11);
   }
 
   sa->t = (struct type *)allocate (temp, 1, sizeof (struct type), e);
-  if (!sa->t)
-  {
+  if (!sa->t) {
     return error_trace (e);
   }
 
   sa->t = type_random (temp, depth - 1, e);
-  if (sa->t == NULL)
-  {
+  if (sa->t == NULL) {
     return error_trace (e);
   }
 
@@ -470,15 +448,12 @@ sarray_t_random (struct sarray_t *sa, struct allocator *temp, u32 depth, error *
 bool
 sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right)
 {
-  if (left->rank != right->rank)
-  {
+  if (left->rank != right->rank) {
     return false;
   }
 
-  for (u32 i = 0; i < left->rank; ++i)
-  {
-    if (left->dims[i] != right->dims[i])
-    {
+  for (u32 i = 0; i < left->rank; ++i) {
+    if (left->dims[i] != right->dims[i]) {
       return false;
     }
   }
@@ -491,8 +466,7 @@ sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
 {
   DBG_ASSERT (sarray_builder, eb);
 
-  if (dim <= 0)
-  {
+  if (dim <= 0) {
     return error_causef (e, ERR_SYNTAX, "sarray dimension must be > 0");
   }
 
@@ -500,24 +474,17 @@ sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
   struct llnode     *slot = llnode_get_n (eb->head, idx);
   struct dim_llnode *node;
 
-  if (slot)
-  {
+  if (slot) {
     node = container_of (slot, struct dim_llnode, link);
-  }
-  else
-  {
+  } else {
     node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
-    if (!node)
-    {
+    if (!node) {
       return error_trace (e);
     }
     llnode_init (&node->link);
-    if (!eb->head)
-    {
+    if (!eb->head) {
       eb->head = &node->link;
-    }
-    else
-    {
+    } else {
       list_append (&eb->head, &node->link);
     }
   }
@@ -531,8 +498,7 @@ sab_accept_type (struct sarray_builder *eb, struct type *t, error *e)
 {
   DBG_ASSERT (sarray_builder, eb);
 
-  if (eb->type)
-  {
+  if (eb->type) {
     return error_causef (e, ERR_INTERP, "type already set");
   }
 
@@ -547,15 +513,13 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
   DBG_ASSERT (sarray_builder, eb);
   ASSERT (persistent);
 
-  if (!eb->type)
-  {
+  if (!eb->type) {
     error_causef (e, ERR_INTERP, "type not set");
     goto theend;
   }
 
   u16 rank = (u16)list_length (eb->head);
-  if (rank == 0)
-  {
+  if (rank == 0) {
     error_causef (e, ERR_INTERP, "no dims to build");
     goto theend;
   }
@@ -565,35 +529,30 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
   // the sub-array's (already-flat) element type.
   struct sarray_t *sub      = NULL;
   u16              sub_rank = 0;
-  if (eb->type->type == T_SARRAY)
-  {
+  if (eb->type->type == T_SARRAY) {
     sub      = &eb->type->sa;
     sub_rank = sub->rank;
   }
 
   u16  total_rank = rank + sub_rank;
   u32 *dims       = builder_malloc_persist (eb->b, total_rank, sizeof *dims, e);
-  if (!dims)
-  {
+  if (!dims) {
     goto theend;
   }
 
   // Copy type to persistent memory (eb->type is on temp)
   struct type *t = builder_malloc_persist (eb->b, 1, sizeof *t, e);
-  if (!t)
-  {
+  if (!t) {
     goto theend;
   }
-  *t = sub ? *sub->t : *eb->type;
+  *t    = sub ? *sub->t : *eb->type;
 
   u16 i = 0;
-  for (struct llnode *it = eb->head; it; it = it->next)
-  {
+  for (struct llnode *it = eb->head; it; it = it->next) {
     struct dim_llnode *dn = container_of (it, struct dim_llnode, link);
     dims[i++]             = dn->dim;
   }
-  for (u16 j = 0; j < sub_rank; j++)
-  {
+  for (u16 j = 0; j < sub_rank; j++) {
     dims[i++] = sub->dims[j];
   }
 
@@ -611,19 +570,19 @@ TEST (sarray_builder)
   ALLOC_INIT (persistent);
   BUILDER_INIT (b, &persistent);
 
-  error err = error_create ();
+  error                 err = error_create ();
 
   // provide two fixed-size allocators for nodes + dims array
 
   // 0. freshly-created builder must be clean
-  struct sarray_builder sb = sab_create (&b);
+  struct sarray_builder sb  = sab_create (&b);
   test_fail_if (sb.head != NULL);
   test_fail_if (sb.type != NULL);
 
   // 1. build without type -> ERR_INTERP
   struct sarray_t sar = {0};
   test_assert_int_equal (sab_build (&sar, &sb, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  err.cause_code    = SUCCESS;
 
   // 2. set type but no dims -> still ERR_INTERP
   struct type t_u32 = (struct type){.type = T_PRIM, .p = U32};
@@ -655,11 +614,11 @@ TEST (sarray_builder)
 
   // 7. element type that is itself an sarray must be flattened into the
   //    top-level sarray (dims concatenated, element type collapsed)
-  struct sarray_builder nb = sab_create (&b);
+  struct sarray_builder nb          = sab_create (&b);
 
-  struct type inner_elem  = (struct type){.type = T_PRIM, .p = U32};
-  u32         sub_dims[2] = {3, 5};
-  struct type sub_ty      = (struct type){
+  struct type           inner_elem  = (struct type){.type = T_PRIM, .p = U32};
+  u32                   sub_dims[2] = {3, 5};
+  struct type           sub_ty      = (struct type){
       .type = T_SARRAY,
       .sa   = {.rank = 2, .dims = sub_dims, .t = &inner_elem},
   };

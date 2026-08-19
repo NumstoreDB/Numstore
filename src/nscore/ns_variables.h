@@ -15,14 +15,14 @@
 #ifndef VARIABLES_H
 #define VARIABLES_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 struct allocator;
 
@@ -84,12 +84,9 @@ err_t i_print_variable (struct variable *v, error *e);
 static inline struct string
 vname_or_default (const char *name)
 {
-  if (name != NULL)
-  {
+  if (name != NULL) {
     return strfcstr (name);
-  }
-  else
-  {
+  } else {
     return strfcstr (DEFAULT_VARIABLE);
   }
 }
@@ -99,9 +96,10 @@ struct nsdb_var
   struct variable  *var;
   struct allocator *alloc;
 };
-bool  variable_equal (const struct variable *left, const struct variable *right);
+
+bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
-void  var_random_name (char *buffer, int length);
+void var_random_name (char *buffer, int length);
 err_t rand_varname (
     struct string    *dest,
     struct allocator *alloc,
@@ -126,14 +124,12 @@ HEADER_FUNC b_size
 var_resolve_index (struct variable *v, sb_size bofst)
 {
   // Translate negative
-  if (bofst < 0)
-  {
+  if (bofst < 0) {
     bofst = v->nbytes + bofst;
   }
 
   // was so negative it's still negative after conversion
-  if (bofst < 0)
-  {
+  if (bofst < 0) {
     bofst = 0;
   }
 
@@ -150,8 +146,7 @@ HEADER_FUNC b_size
 var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
 {
   b_size remainder = (v->nbytes - bofst) / size;
-  if (nelem > remainder)
-  {
+  if (nelem > remainder) {
     nelem = remainder;
   }
   return nelem;

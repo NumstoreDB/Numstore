@@ -14,10 +14,6 @@
 
 #include "core/ns_block_array.h"
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_data_validator.h"
 #include "core/ns_data_writer.h"
@@ -29,14 +25,17 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
 struct block_array *
 block_array_create (const u32 cap_per_node, struct i_mem mem, error *e)
 {
   ASSERT (cap_per_node > 0);
 
   struct block_array *ret = i_malloc (mem, 1, sizeof (struct block_array) + cap_per_node, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return ret;
   }
 
@@ -53,20 +52,17 @@ struct block_array *
 block_array_clone (const struct block_array *src, error *e)
 {
   struct block_array *dst = block_array_create (src->cap_per_node, src->mem, e);
-  if (!dst)
-  {
+  if (!dst) {
     return NULL;
   }
 
   u64 total_bytes = block_array_getlen (src);
-  if (total_bytes == 0)
-  {
+  if (total_bytes == 0) {
     return dst;
   }
 
   void *buf = malloc ((size_t)total_bytes);
-  if (!buf)
-  {
+  if (!buf) {
     block_array_free (dst);
     return NULL;
   }
@@ -76,8 +72,7 @@ block_array_clone (const struct block_array *src, error *e)
   err_t err = block_array_insert (dst, 0, buf, (u32)total_bytes, e);
   free (buf);
 
-  if (err != 0)
-  {
+  if (err != 0) {
     block_array_free (dst);
     return NULL;
   }
@@ -96,23 +91,18 @@ static struct block *
 block_alloc_empty (struct block_array *r, struct block *prev, error *e)
 {
   struct block *ret = slab_alloc_alloc (&r->block_alloc, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
   ret->len = 0;
-  if (prev)
-  {
+  if (prev) {
     ret->next  = prev->next;
     prev->next = ret;
-    if (ret->next)
-    {
+    if (ret->next) {
       ret->next->prev = ret;
     }
-  }
-  else
-  {
+  } else {
     ret->next = NULL;
   }
   ret->prev = prev;
@@ -128,19 +118,16 @@ block_array_insert (struct block_array *r, u32 ofst, const void *_src, u32 slen,
   const u8 *src = _src;
 
   // Allocate head if it's empty
-  if (r->head == NULL)
-  {
+  if (r->head == NULL) {
     r->head = block_alloc_empty (r, r->head, e);
-    if (r->head == NULL)
-    {
+    if (r->head == NULL) {
       panic ("ROLLBACK");
     }
   }
 
   // Seek
   struct block *cur = r->head;
-  while (ofst > cur->len)
-  {
+  while (ofst > cur->len) {
     ASSERT (cur->next != NULL); // Don't allow buffer overflows
     ofst -= cur->len;
     cur = cur->next;
@@ -148,8 +135,7 @@ block_array_insert (struct block_array *r, u32 ofst, const void *_src, u32 slen,
 
   // Save the tail
   r->tlen = cur->len - ofst;
-  if (r->tlen > 0)
-  {
+  if (r->tlen > 0) {
     memcpy (r->tail, cur->data + ofst, r->tlen);
     cur->len = ofst;
   }
@@ -157,14 +143,11 @@ block_array_insert (struct block_array *r, u32 ofst, const void *_src, u32 slen,
   struct block *last = cur->next;
 
   // Write out source data
-  while (slen > 0)
-  {
+  while (slen > 0) {
     // Advance forward
-    if (cur->len == r->cap_per_node)
-    {
+    if (cur->len == r->cap_per_node) {
       cur = block_alloc_empty (r, cur, e);
-      if (cur == NULL)
-      {
+      if (cur == NULL) {
         panic ("ROLLBACK");
       }
     }
@@ -183,14 +166,11 @@ block_array_insert (struct block_array *r, u32 ofst, const void *_src, u32 slen,
 
   // Write out tail data
   u32 twritten = 0;
-  while (twritten < r->tlen)
-  {
+  while (twritten < r->tlen) {
     // Advance forward
-    if (cur->len == r->cap_per_node)
-    {
+    if (cur->len == r->cap_per_node) {
       cur = block_alloc_empty (r, cur, e);
-      if (cur == NULL)
-      {
+      if (cur == NULL) {
         panic ("ROLLBACK");
       }
     }
@@ -220,25 +200,19 @@ struct stride_state
 u64
 block_array_read (const struct block_array *r, const struct stride str, const u32 size, void *_dest)
 {
-  u8 *dest = _dest;
+  u8                 *dest = _dest;
 
   // Seek
   const struct block *cur  = r->head;
   u32                 bidx = str.start * size;
 
-  while (true)
-  {
-    if (cur == NULL)
-    {
+  while (true) {
+    if (cur == NULL) {
       return 0;
-    }
-    else if (bidx >= cur->len)
-    {
+    } else if (bidx >= cur->len) {
       bidx -= cur->len;
       cur = cur->next;
-    }
-    else
-    {
+    } else {
       break;
     }
   }
@@ -250,57 +224,45 @@ block_array_read (const struct block_array *r, const struct stride str, const u3
 
   u32 total_read = 0;
 
-  while (total_read < str.nelems)
-  {
-    if (state.active)
-    {
+  while (total_read < str.nelems) {
+    if (state.active) {
       const u32 next_read = MIN (state.next, cur->len - bidx);
-      if (next_read > 0)
-      {
+      if (next_read > 0) {
         memcpy (dest, &cur->data[bidx], next_read);
         dest += next_read;
       }
       bidx += next_read;
       state.next -= next_read;
 
-      if (state.next == 0)
-      {
+      if (state.next == 0) {
         total_read++;
 
-        if (str.stride == 1)
-        {
+        if (str.stride == 1) {
           state = (struct stride_state){
               .next   = size,
               .active = true,
           };
-        }
-        else
-        {
+        } else {
           state = (struct stride_state){
               .next   = (str.stride - 1) * size,
               .active = false,
           };
         }
       }
-    }
-    else
-    {
+    } else {
       const u32 next = MIN (state.next, cur->len - bidx);
       bidx += next;
       state.next -= next;
 
-      if (state.next == 0)
-      {
+      if (state.next == 0) {
         state = (struct stride_state){.next = size, .active = true};
       }
     }
 
-    if (bidx == cur->len)
-    {
+    if (bidx == cur->len) {
       cur  = cur->next;
       bidx = 0;
-      if (cur == NULL)
-      {
+      if (cur == NULL) {
         return total_read;
       }
     }
@@ -317,25 +279,19 @@ block_array_write (
     const void               *_src
 )
 {
-  const u8 *src = _src;
+  const u8     *src  = _src;
 
   // Seek
   struct block *cur  = r->head;
   u32           bidx = str.start * size;
 
-  while (true)
-  {
-    if (cur == NULL)
-    {
+  while (true) {
+    if (cur == NULL) {
       return 0;
-    }
-    else if (bidx >= cur->len)
-    {
+    } else if (bidx >= cur->len) {
       bidx -= cur->len;
       cur = cur->next;
-    }
-    else
-    {
+    } else {
       break;
     }
   }
@@ -347,57 +303,45 @@ block_array_write (
 
   u32 total_written = 0;
 
-  while (total_written < str.nelems)
-  {
-    if (state.active)
-    {
+  while (total_written < str.nelems) {
+    if (state.active) {
       const u32 next = MIN (state.next, cur->len - bidx);
-      if (next > 0)
-      {
+      if (next > 0) {
         memcpy (&cur->data[bidx], src, next);
       }
       src += next;
       bidx += next;
       state.next -= next;
 
-      if (state.next == 0)
-      {
+      if (state.next == 0) {
         total_written++;
 
-        if (str.stride == 1)
-        {
+        if (str.stride == 1) {
           state = (struct stride_state){
               .next   = size,
               .active = true,
           };
-        }
-        else
-        {
+        } else {
           state = (struct stride_state){
               .next   = (str.stride - 1) * size,
               .active = false,
           };
         }
       }
-    }
-    else
-    {
+    } else {
       const u32 next = MIN (state.next, cur->len - bidx);
       bidx += next;
       state.next -= next;
 
-      if (state.next == 0)
-      {
+      if (state.next == 0) {
         state = (struct stride_state){.next = size, .active = true};
       }
     }
 
-    if (bidx == cur->len)
-    {
+    if (bidx == cur->len) {
       cur  = cur->next;
       bidx = 0;
-      if (cur == NULL)
-      {
+      if (cur == NULL) {
         return total_written;
       }
     }
@@ -415,31 +359,25 @@ block_array_remove (
     error              *e
 )
 {
-  u8 *dest = _dest;
+  u8           *dest  = _dest;
 
   // Seek
   struct block *rcur  = r->head;          // Read block
   u32           rbidx = str.start * size; // Read idx
 
-  while (true)
-  {
-    if (rcur == NULL)
-    {
+  while (true) {
+    if (rcur == NULL) {
       return 0;
-    }
-    else if (rbidx >= rcur->len)
-    {
+    } else if (rbidx >= rcur->len) {
       rbidx -= rcur->len;
       rcur = rcur->next;
-    }
-    else
-    {
+    } else {
       break;
     }
   }
 
-  struct block *wcur  = rcur;  // Write block
-  u32           wbidx = rbidx; // Wride idx
+  struct block       *wcur  = rcur;  // Write block
+  u32                 wbidx = rbidx; // Wride idx
 
   struct stride_state state = {
       .next   = size,
@@ -447,49 +385,39 @@ block_array_remove (
   };
   u32 total_removed = 0;
 
-  while (total_removed < str.nelems)
-  {
-    if (state.active)
-    {
+  while (total_removed < str.nelems) {
+    if (state.active) {
       const u32 next = MIN (state.next, rcur->len - rbidx);
-      if (next > 0 && dest)
-      {
+      if (next > 0 && dest) {
         memcpy (dest, &rcur->data[rbidx], next);
         dest += next;
       }
       rbidx += next;
       state.next -= next;
 
-      if (state.next == 0)
-      {
+      if (state.next == 0) {
         total_removed++;
 
-        if (str.stride == 1)
-        {
+        if (str.stride == 1) {
           state = (struct stride_state){
               .next   = size,
               .active = true,
           };
-        }
-        else
-        {
+        } else {
           state = (struct stride_state){
               .next   = (str.stride - 1) * size,
               .active = false,
           };
         }
       }
-    }
-    else
-    {
+    } else {
       u32 next = state.next;
       next     = MIN (next,
                       r->cap_per_node - wbidx); // Writable
       next     = MIN (next,
                       rcur->len - rbidx); // Readable
 
-      if (next > 0)
-      {
+      if (next > 0) {
         memmove (&wcur->data[wbidx], &rcur->data[rbidx], next);
       }
 
@@ -498,16 +426,14 @@ block_array_remove (
       state.next -= next;
 
       // Write node is full
-      if (wbidx == r->cap_per_node)
-      {
+      if (wbidx == r->cap_per_node) {
         wcur->len = r->cap_per_node;
         wcur      = wcur->next;
         ASSERT (wcur == rcur);
         wbidx = 0;
       }
 
-      if (state.next == 0)
-      {
+      if (state.next == 0) {
         state = (struct stride_state){
             .next   = size,
             .active = true,
@@ -515,19 +441,15 @@ block_array_remove (
       }
     }
 
-    if (rbidx == rcur->len)
-    {
+    if (rbidx == rcur->len) {
       struct block *next = rcur->next;
 
-      if (rcur != wcur)
-      {
+      if (rcur != wcur) {
         // Delete rcur
-        if (rcur->prev)
-        {
+        if (rcur->prev) {
           rcur->prev->next = rcur->next;
         }
-        if (rcur->next)
-        {
+        if (rcur->next) {
           rcur->next->prev = rcur->prev;
         }
 
@@ -536,25 +458,21 @@ block_array_remove (
 
       rcur  = next;
       rbidx = 0;
-      if (rcur == NULL)
-      {
+      if (rcur == NULL) {
         break;
       }
     }
   }
 
-  if (rcur != NULL)
-  {
-    while (true)
-    {
+  if (rcur != NULL) {
+    while (true) {
       // Basically the same as inactive block
       // except without state
       u32 next = r->cap_per_node - wbidx; // Writable
       next     = MIN (next,
                       rcur->len - rbidx); // Readable
 
-      if (next > 0)
-      {
+      if (next > 0) {
         memmove (&wcur->data[wbidx], &rcur->data[rbidx], next);
       }
 
@@ -562,26 +480,21 @@ block_array_remove (
       rbidx += next;
 
       // Write node is full
-      if (wbidx == r->cap_per_node)
-      {
+      if (wbidx == r->cap_per_node) {
         wcur->len = r->cap_per_node;
         wcur      = wcur->next;
         ASSERT (wcur == rcur);
         wbidx = 0;
       }
 
-      if (rbidx == rcur->len)
-      {
-        if (rcur != wcur)
-        {
+      if (rbidx == rcur->len) {
+        if (rcur != wcur) {
           // Delete
           // rcur
-          if (rcur->prev)
-          {
+          if (rcur->prev) {
             rcur->prev->next = rcur->next;
           }
-          if (rcur->next)
-          {
+          if (rcur->next) {
             rcur->next->prev = rcur->prev;
           }
 
@@ -602,8 +515,7 @@ block_array_getlen (const struct block_array *r)
 {
   u64                 len = 0;
   const struct block *cur = r->head;
-  while (cur != NULL)
-  {
+  while (cur != NULL) {
     len += cur->len;
     cur = cur->next;
   }
@@ -616,12 +528,14 @@ block_array_insert_func (void *ctx, const u32 ofst, const void *src, const u32 s
   struct block_array *arr = ctx;
   return block_array_insert (arr, ofst, src, slen, e);
 }
+
 static i64
 block_array_read_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
 {
   struct block_array *arr = ctx;
   return block_array_read (arr, str, size, dest);
 }
+
 static i64
 block_array_write_func (
     void               *ctx,
@@ -634,12 +548,14 @@ block_array_write_func (
   struct block_array *arr = ctx;
   return block_array_write (arr, str, size, src);
 }
+
 static i64
 block_array_remove_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
 {
   struct block_array *arr = ctx;
   return block_array_remove (arr, str, size, dest, e);
 }
+
 static i64
 block_array_getlen_func (void *ctx, error *e)
 {
@@ -667,11 +583,11 @@ TEST (block_insert_read)
 {
   TEST_CASE ("basic")
   {
-    error e = error_create ();
+    error               e     = error_create ();
 
-    struct block_array *b = block_array_create (2, mem, &e);
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    u32 src[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    u32                 src[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32 dest[arrlen (src)] = {0};
@@ -696,10 +612,10 @@ TEST (block_insert_read)
   // Read all elements sequentially (stride=1, start=0)
   TEST_CASE ("block_array_read_all")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    u32 src[] = {10, 20, 30, 40, 50};
+    u32                 src[] = {10, 20, 30, 40, 50};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32 dest[arrlen (src)] = {0};
@@ -721,10 +637,10 @@ TEST (block_insert_read)
   // Read a single element from the middle
   TEST_CASE ("block_array_read_single_middle")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (4, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (4, mem, &e);
 
-    u32 src[] = {100, 200, 300, 400};
+    u32                 src[] = {100, 200, 300, 400};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32 dest = 0;
@@ -747,10 +663,10 @@ TEST (block_insert_read)
   // Read every 3rd element
   TEST_CASE ("block_array_read_stride3")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    u32 src[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    u32                 src[] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32 dest[3] = {0};
@@ -773,11 +689,11 @@ TEST (block_insert_read)
   // Insert two disjoint chunks then read across both
   TEST_CASE ("block_array_insert_two_chunks")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (4, mem, &e);
+    error               e        = error_create ();
+    struct block_array *b        = block_array_create (4, mem, &e);
 
-    u32 first[]  = {1, 2, 3};
-    u32 second[] = {4, 5, 6};
+    u32                 first[]  = {1, 2, 3};
+    u32                 second[] = {4, 5, 6};
     block_array_insert (b, 0, first, sizeof (first), &e);
     block_array_insert (b, sizeof (first), second, sizeof (second), &e);
 
@@ -801,11 +717,11 @@ TEST (block_insert_read)
   // Insert in the middle of existing data
   TEST_CASE ("block_array_insert_middle")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e          = error_create ();
+    struct block_array *b          = block_array_create (2, mem, &e);
 
-    u32 initial[]  = {1, 3, 4};
-    u32 inserted[] = {2};
+    u32                 initial[]  = {1, 3, 4};
+    u32                 inserted[] = {2};
     block_array_insert (b, 0, initial, sizeof (initial), &e);
     // Insert 2 after the first element (byte offset = sizeof u32)
     block_array_insert (b, sizeof (u32), inserted, sizeof (inserted), &e);
@@ -830,10 +746,10 @@ TEST (block_insert_read)
   // cap_per_node larger than the entire payload - single block case
   TEST_CASE ("block_array_single_block")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (256, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (256, mem, &e);
 
-    u32 src[] = {7, 14, 21};
+    u32                 src[] = {7, 14, 21};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32 dest[arrlen (src)] = {0};
@@ -855,10 +771,10 @@ TEST (block_insert_read)
   // Read past end returns fewer elements than requested
   TEST_CASE ("block_array_read_past_end")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    u32 src[] = {1, 2, 3};
+    u32                 src[] = {1, 2, 3};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32 dest[6] = {0};
@@ -885,18 +801,16 @@ TEST (block_insert_read)
   {
     error e = error_create ();
 
-    for (int trial = 0; trial < 64; trial++)
-    {
+    for (int trial = 0; trial < 64; trial++) {
       // cap_per_node: 1–15 bytes (forces many
       // different block-boundary patterns)
-      u32                 cap = (rand () % 15) + 1;
-      struct block_array *b   = block_array_create (cap, mem, &e);
+      u32                 cap    = (rand () % 15) + 1;
+      struct block_array *b      = block_array_create (cap, mem, &e);
 
       // number of u32 elements: 1–127
-      u32 nelems = (rand () % 127) + 1;
-      u32 src[128];
-      for (u32 i = 0; i < nelems; i++)
-      {
+      u32                 nelems = (rand () % 127) + 1;
+      u32                 src[128];
+      for (u32 i = 0; i < nelems; i++) {
         src[i] = (u32)rand ();
       }
 
@@ -926,10 +840,10 @@ TEST (block_insert_remove_read)
 {
   TEST_CASE ("remove_from_middle")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (4, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (4, mem, &e);
 
-    const u32 src[] = {1, 2, 3, 4, 5};
+    const u32           src[] = {1, 2, 3, 4, 5};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     // Remove the middle element (index 2)
@@ -957,10 +871,10 @@ TEST (block_insert_remove_read)
 
   TEST_CASE ("remove_first")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    const u32 src[] = {10, 20, 30};
+    const u32           src[] = {10, 20, 30};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32       removed = 0;
@@ -987,10 +901,10 @@ TEST (block_insert_remove_read)
 
   TEST_CASE ("remove_last")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    const u32 src[] = {10, 20, 30};
+    const u32           src[] = {10, 20, 30};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32       removed = 0;
@@ -1017,11 +931,11 @@ TEST (block_insert_remove_read)
 
   TEST_CASE ("remove_strided")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
     // Remove every other element: 1, 3, 5 - leaving 2, 4, 6
-    const u32 src[] = {1, 2, 3, 4, 5, 6};
+    const u32           src[] = {1, 2, 3, 4, 5, 6};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     u32       removed[3] = {0};
@@ -1051,10 +965,10 @@ TEST (block_insert_write_read)
 {
   TEST_CASE ("overwrite_middle")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (4, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (4, mem, &e);
 
-    const u32 src[] = {1, 2, 3, 4, 5};
+    const u32           src[] = {1, 2, 3, 4, 5};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     const u32 patch[] = {99};
@@ -1091,10 +1005,10 @@ TEST (block_insert_write_read)
 
   TEST_CASE ("overwrite_all")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    const u32 src[] = {0, 0, 0, 0};
+    const u32           src[] = {0, 0, 0, 0};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     const u32 patch[] = {10, 20, 30, 40};
@@ -1130,10 +1044,10 @@ TEST (block_insert_write_read)
 
   TEST_CASE ("overwrite_strided")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    const u32 src[] = {1, 2, 3, 4, 5, 6};
+    const u32           src[] = {1, 2, 3, 4, 5, 6};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     // Overwrite even indices (0, 2, 4) with 0
@@ -1171,10 +1085,10 @@ TEST (block_insert_write_read)
 
   TEST_CASE ("overwrite_last")
   {
-    error               e = error_create ();
-    struct block_array *b = block_array_create (2, mem, &e);
+    error               e     = error_create ();
+    struct block_array *b     = block_array_create (2, mem, &e);
 
-    const u32 src[] = {1, 2, 3};
+    const u32           src[] = {1, 2, 3};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     const u32 patch[] = {42};
@@ -1212,13 +1126,12 @@ TEST (block_insert_write_read)
 
 TEST (block_random)
 {
-  error e = error_create ();
+  error     e        = error_create ();
   // Block sizes to test
   const u32 sizes[]  = {1, 2, 3, 4, 5, 10, 100, 500, 1000, 5000, 10000};
   const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
 
-  for (u32 i = 0; i < arrlen (sizes); ++i)
-  {
+  for (u32 i = 0; i < arrlen (sizes); ++i) {
     i_log_info ("Block random test: %d\n", i);
 
     struct ext_array    ext_arr   = ext_array_create ();

@@ -14,8 +14,6 @@
 
 #include "nscore/page/ns_page_inner_node.h"
 
-#include <stdio.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_htable.h"
@@ -23,6 +21,8 @@
 #include "core/ns_stdtypes.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/page/ns_page.h"
+
+#include <stdio.h>
 
 /******************************************************************************
  * SECTION: Inner Node
@@ -35,8 +35,7 @@ inner_node_init_for_testing (page *in, const pgno *pgs, const b_size *keys, cons
   page_init_empty (in, PG_INNER_NODE);
   in_set_len (in, 0);
 
-  for (p_size i = 0; i < len; ++i)
-  {
+  for (p_size i = 0; i < len; ++i) {
     in_push_end (in, keys[i], pgs[i]);
   }
 }
@@ -44,8 +43,7 @@ inner_node_init_for_testing (page *in, const pgno *pgs, const b_size *keys, cons
 static void
 in_print (const page *in)
 {
-  for (p_size i = 0; i < in_get_len (in); ++i)
-  {
+  for (p_size i = 0; i < in_get_len (in); ++i) {
     const pgno   pg  = in_get_leaf (in, i);
     const b_size key = in_get_key (in, i);
     printf ("(%" PRpgno " %" PRb_size "), ", pg, key);
@@ -56,8 +54,7 @@ in_print (const page *in)
 static void
 in_print_as_arrays (const pgno *pgs, const b_size *keys, const p_size len)
 {
-  for (p_size i = 0; i < len; ++i)
-  {
+  for (p_size i = 0; i < len; ++i) {
     const pgno   pg  = pgs[i];
     const b_size key = keys[i];
     printf ("(%" PRpgno " %" PRb_size "), ", pg, key);
@@ -75,13 +72,11 @@ test_assert_inner_node_equal (
 {
   test_assert_int_equal (len, in_get_len (actual));
 
-  for (p_size i = 0; i < len; ++i)
-  {
+  for (p_size i = 0; i < len; ++i) {
     const pgno   pg  = in_get_leaf (actual, i);
     const b_size key = in_get_key (actual, i);
 
-    if (pg != e_pgs[i] || e_keys[i] != key)
-    {
+    if (pg != e_pgs[i] || e_keys[i] != key) {
       i_log_failure ("Inner Nodes were not equal:\n");
       i_log_failure ("Expected:\n");
       in_print_as_arrays (e_pgs, e_keys, len);
@@ -121,8 +116,7 @@ in_validate_for_db (const page *in, error *e)
   const pgh header = page_get_type (in);
 
   // Has the correct header
-  if (header != (pgh)PG_INNER_NODE)
-  {
+  if (header != (pgh)PG_INNER_NODE) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -133,8 +127,7 @@ in_validate_for_db (const page *in, error *e)
   }
 
   // Len is less than Max Keys
-  if (in_get_len (in) > IN_MAX_KEYS)
-  {
+  if (in_get_len (in) > IN_MAX_KEYS) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -150,23 +143,19 @@ in_validate_for_db (const page *in, error *e)
   hentry_pgno     data[IN_MAX_KEYS];
   ht_init_pgno (&ht, data, IN_MAX_KEYS);
 
-  for (p_size i = 0; i < in_get_len (in); ++i)
-  {
+  for (p_size i = 0; i < in_get_len (in); ++i) {
     const hdata_pgno _data = {
         .key   = in_get_leaf (in, i),
         .value = 0,
     };
     const hti_res res = ht_insert_pgno (&ht, _data);
-    if (res != HTIR_SUCCESS)
-    {
+    if (res != HTIR_SUCCESS) {
       return error_causef (e, ERR_CORRUPT, "duplicate leaf %" PRpgno " in inner node", _data.key);
     }
   }
 
-  if (in_is_root (in))
-  {
-    if (in_get_len (in) == 0)
-    {
+  if (in_is_root (in)) {
+    if (in_get_len (in) == 0) {
       return error_causef (
           e,
           ERR_CORRUPT,
@@ -174,11 +163,8 @@ in_validate_for_db (const page *in, error *e)
           "element"
       );
     }
-  }
-  else
-  {
-    if (in_get_len (in) < IN_MAX_KEYS / 2)
-    {
+  } else {
+    if (in_get_len (in) < IN_MAX_KEYS / 2) {
       return error_causef (
           e,
           ERR_CORRUPT,
@@ -347,8 +333,7 @@ p_size
 in_page_memcpy_right (pgno *dest, const page *src, const p_size ofst)
 {
   ASSERT (ofst <= in_get_len (src));
-  if (ofst == in_get_len (src))
-  {
+  if (ofst == in_get_len (src)) {
     return 0;
   }
 
@@ -364,13 +349,11 @@ in_key_memcpy_right (b_size *dest, const page *src, const p_size ofst)
 {
   ASSERT (ofst <= in_get_len (src));
 
-  if (ofst == in_get_len (src))
-  {
+  if (ofst == in_get_len (src)) {
     return 0;
   }
 
-  for (u32 i = ofst; i < in_get_len (src); ++i)
-  {
+  for (u32 i = ofst; i < in_get_len (src); ++i) {
     dest[i - ofst] = in_get_key (src, i);
   }
 
@@ -380,7 +363,7 @@ in_key_memcpy_right (b_size *dest, const page *src, const p_size ofst)
 #ifdef TESTING
 TEST (in_memcpy)
 {
-  page in;
+  page   in;
 
   pgno   dest_page[NS_PAGE_SIZE];
   b_size dest_key[NS_PAGE_SIZE];
@@ -472,8 +455,7 @@ in_set_data (page *p, const struct in_data data)
 
   in_set_len (p, 0);
 
-  for (p_size i = 0; i < data.len; ++i)
-  {
+  for (p_size i = 0; i < data.len; ++i) {
     in_push_end (p, data.nodes[i].key, data.nodes[i].pg);
   }
 }
@@ -484,8 +466,7 @@ in_move_left (page *dest, page *src, const p_size len)
   ASSERT (len <= in_get_len (src));
   ASSERT (len <= in_get_avail (dest));
 
-  for (p_size i = 0; i < len; ++i)
-  {
+  for (p_size i = 0; i < len; ++i) {
     const pgno   pg  = in_get_leaf (src, i);
     const b_size key = in_get_key (src, i);
     in_push_end (dest, key, pg);
@@ -571,16 +552,14 @@ in_push_left (page *in, const p_size len)
 {
   ASSERT (len + in_get_len (in) <= IN_MAX_KEYS);
 
-  if (len == 0)
-  {
+  if (len == 0) {
     return;
   }
 
   const p_size len0 = in_get_len (in);
   in_set_len (in, len + in_get_len (in));
 
-  for (p_size i = len0; i > 0; --i)
-  {
+  for (p_size i = len0; i > 0; --i) {
     const pgno   pg  = in_get_leaf (in, i - 1);
     const b_size key = in_get_key (in, i - 1);
     in_set_key_leaf (in, i + len - 1, key, pg);
@@ -593,8 +572,7 @@ in_push_left_permissive (page *in, const p_size amnt)
   ASSERT (in_get_len (in) == IN_MAX_KEYS);
   ASSERT (amnt <= IN_MAX_KEYS);
 
-  for (p_size i = amnt, k = IN_MAX_KEYS; i > 0; --i, --k)
-  {
+  for (p_size i = amnt, k = IN_MAX_KEYS; i > 0; --i, --k) {
     const pgno   pg  = in_get_leaf (in, i - 1);
     const b_size key = in_get_key (in, i - 1);
     in_set_key_leaf (in, k - 1, key, pg);
@@ -638,14 +616,13 @@ TEST (in_push_left_into_empty)
 #  ifdef TESTING
 TEST (in_push_left_to_full)
 {
-  page in;
+  page   in;
 
   // Start with IN_MAX_KEYS - 1 keys
   b_size keys[IN_MAX_KEYS - 1];
   pgno   pages[IN_MAX_KEYS - 1];
 
-  for (u32 i = 0; i < IN_MAX_KEYS - 1; ++i)
-  {
+  for (u32 i = 0; i < IN_MAX_KEYS - 1; ++i) {
     keys[i]  = i;
     pages[i] = i;
   }
@@ -658,8 +635,7 @@ TEST (in_push_left_to_full)
   pgno   new_pages[IN_MAX_KEYS];
   new_keys[0]  = 0;
   new_pages[0] = 0;
-  for (u32 i = 1; i < IN_MAX_KEYS; ++i)
-  {
+  for (u32 i = 1; i < IN_MAX_KEYS; ++i) {
     new_keys[i]  = i - 1;
     new_pages[i] = i - 1;
   }
@@ -676,16 +652,14 @@ in_move_right (page *src, page *dest, const p_size len)
   ASSERT (len <= in_get_len (src));
   ASSERT (len <= in_get_avail (dest));
 
-  if (len == 0)
-  {
+  if (len == 0) {
     return;
   }
 
   in_push_left (dest, len);
 
   b_size key = 0;
-  for (p_size di = 0, si = in_get_len (src) - len; di < len; ++di, ++si)
-  {
+  for (p_size di = 0, si = in_get_len (src) - len; di < len; ++di, ++si) {
     const pgno pg = in_get_leaf (src, si);
     key           = in_get_key (src, si);
 
@@ -778,14 +752,12 @@ in_choose_lidx (p_size *idx, b_size *nleft, const page *node, const b_size loc)
   b_size key_total = 0;
   *nleft           = 0;
 
-  p_size i = 0;
-  for (; i < n - 1; ++i)
-  {
+  p_size i         = 0;
+  for (; i < n - 1; ++i) {
     const b_size key = in_get_key (node, i);
     key_total += key;
 
-    if (loc < key_total)
-    {
+    if (loc < key_total) {
       *idx = i;
       return;
     }
@@ -878,13 +850,11 @@ in_cut_left (page *in, const p_size end)
 {
   ASSERT (end <= in_get_len (in));
 
-  if (end == 0)
-  {
+  if (end == 0) {
     return;
   }
 
-  for (p_size i = 0; i < in_get_len (in) - end; ++i)
-  {
+  for (p_size i = 0; i < in_get_len (in) - end; ++i) {
     const pgno   pg  = in_get_leaf (in, end + i);
     const b_size key = in_get_key (in, end + i);
 
@@ -960,8 +930,7 @@ void
 in_make_valid (page *d)
 {
   in_set_len (d, IN_MAX_KEYS);
-  for (p_size i = 0; i < IN_MAX_KEYS; ++i)
-  {
+  for (p_size i = 0; i < IN_MAX_KEYS; ++i) {
     in_set_key_leaf (d, i, i, i);
   }
 }
@@ -972,28 +941,21 @@ i_log_in (const int level, const page *in)
   i_log (level, "=== INNER NODE PAGE START ===\n");
 
   i_log_printf (level, "PGNO: %" PRpgno "\n", in->pg);
-  if (in_get_next (in) == PGNO_NULL)
-  {
+  if (in_get_next (in) == PGNO_NULL) {
     i_log_printf (level, "NEXT: NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "NEXT: %" PRpgno "\n", in_get_next (in));
   }
-  if (in_get_prev (in) == PGNO_NULL)
-  {
+  if (in_get_prev (in) == PGNO_NULL) {
     i_log_printf (level, "PREV: NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "PREV: %" PRpgno "\n", in_get_prev (in));
   }
   i_log_printf (level, "SIZE: %" PRb_size "\n", in_get_size (in));
   i_log_printf (level, "LEN:  %u\n", in_get_len (in));
 
   const u32 len = in_get_len (in);
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     char line[128] = {0};
     int  pos       = 0;
     pos += snprintf (

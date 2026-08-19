@@ -12,15 +12,19 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <inttypes.h>
-#include <stdbool.h>
-#include <sys/types.h>
-
 #include "core/ns_bytes.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 
+#include <inttypes.h>
+#include <stdbool.h>
+#include <sys/types.h>
+
 #if PLATFORM_POSIX
+
+#  include "core/ns_csx_assert.h"
+#  include "core/ns_error.h"
+#  include "core/os/ns_file.h"
 
 #  include <dirent.h>
 #  include <errno.h>
@@ -33,10 +37,6 @@
 #  include <sys/uio.h>
 #  include <time.h>
 #  include <unistd.h>
-
-#  include "core/ns_csx_assert.h"
-#  include "core/ns_error.h"
-#  include "core/os/ns_file.h"
 
 /******************************************************************************
  * SECTION: File System
@@ -65,8 +65,7 @@ _posix_close (void *_fp, error *e)
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
 
-  if (unlikely (close (fp->fd)))
-  {
+  if (unlikely (close (fp->fd))) {
     return error_causef (e, ERR_IO, "close: %s", strerror (errno));
   }
 
@@ -79,8 +78,7 @@ posix_fsync (void *_fp, error *e)
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
 
-  if (unlikely (fsync (fp->fd)))
-  {
+  if (unlikely (fsync (fp->fd))) {
     return error_causef (e, ERR_IO, "fsync: %s", strerror (errno));
   }
 
@@ -95,8 +93,7 @@ posix_file_size (void *_fp, error *e)
 
   struct stat st;
 
-  if (unlikely (fstat (fp->fd, &st) == -1))
-  {
+  if (unlikely (fstat (fp->fd, &st) == -1)) {
     error_causef (e, ERR_IO, "fstat: %s", strerror (errno));
     return error_trace (e);
   }
@@ -115,16 +112,13 @@ posix_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
   u8 *_dest = (u8 *)dest;
   u64 nread = 0;
 
-  while (nread < n)
-  {
+  while (nread < n) {
     ASSERT (n > nread);
     const ssize_t _nread = pread (fp->fd, _dest + nread, n - nread, (off_t)(offset + nread));
-    if (_nread == 0)
-    {
+    if (_nread == 0) {
       return (i64)nread;
     }
-    if (unlikely (_nread < 0 && errno != EINTR))
-    {
+    if (unlikely (_nread < 0 && errno != EINTR)) {
       return error_causef (e, ERR_IO, "pread: %s", strerror (errno));
     }
     nread += (u64)_nread;
@@ -146,14 +140,12 @@ posix_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, err
   const u8 *_src     = (const u8 *)src;
   u64       nwritten = 0;
 
-  while (nwritten < n)
-  {
+  while (nwritten < n) {
     ASSERT (n > nwritten);
 
     const ssize_t _nw = pwrite (fp->fd, _src + nwritten, n - nwritten, (off_t)(offset + nwritten));
 
-    if (unlikely (_nw < 0 && errno != EINTR))
-    {
+    if (unlikely (_nw < 0 && errno != EINTR)) {
       return error_causef (e, ERR_IO, "pwrite: %s", strerror (errno));
     }
     nwritten += (u64)_nw;
@@ -175,8 +167,7 @@ posix_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
   ASSERT (iovcnt > 0 && iovcnt <= 2);
 
   u64 total = 0;
-  for (int i = 0; i < iovcnt; i++)
-  {
+  for (int i = 0; i < iovcnt; i++) {
     total += iov[i].len;
   }
 
@@ -186,39 +177,31 @@ posix_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
   struct bytes *cur       = iov;
   int           remaining = iovcnt;
 
-  while (nwritten < total)
-  {
+  while (nwritten < total) {
     struct iovec sys_iov[2];
-    for (int i = 0; i < remaining; i++)
-    {
+    for (int i = 0; i < remaining; i++) {
       sys_iov[i].iov_base = cur[i].head;
       sys_iov[i].iov_len  = cur[i].len;
     }
 
     const ssize_t ret = writev (fp->fd, sys_iov, remaining);
 
-    if (unlikely (ret < 0 && errno != EINTR))
-    {
+    if (unlikely (ret < 0 && errno != EINTR)) {
       return error_causef (e, ERR_IO, "writev: %s", strerror (errno));
     }
 
-    if (ret <= 0)
-    {
+    if (ret <= 0) {
       continue;
     }
 
     nwritten += (u64)ret;
     u64 skip = (u64)ret;
-    while (skip > 0 && remaining > 0)
-    {
-      if (skip >= cur->len)
-      {
+    while (skip > 0 && remaining > 0) {
+      if (skip >= cur->len) {
         skip -= cur->len;
         cur++;
         remaining--;
-      }
-      else
-      {
+      } else {
         cur->head = (u8 *)cur->head + skip;
         cur->len -= skip;
         skip = 0;
@@ -244,20 +227,16 @@ posix_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
   u8 *_dest = (u8 *)dest;
   u64 nread = 0;
 
-  while (nread < nbytes)
-  {
+  while (nread < nbytes) {
     ASSERT (nbytes > nread);
     const ssize_t _nread = read (fp->fd, _dest + nread, nbytes - nread);
 
-    if (_nread == 0)
-    {
+    if (_nread == 0) {
       return (i64)nread;
     }
 
-    if (unlikely (_nread < 0))
-    {
-      if (likely (errno == EINTR || errno == EWOULDBLOCK))
-      {
+    if (unlikely (_nread < 0)) {
+      if (likely (errno == EINTR || errno == EWOULDBLOCK)) {
         return 0;
       }
       return error_causef (e, ERR_IO, "read: %s", strerror (errno));
@@ -281,13 +260,11 @@ posix_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
   const u8 *_src     = (const u8 *)src;
   u64       nwritten = 0;
 
-  while (nwritten < nbytes)
-  {
+  while (nwritten < nbytes) {
     ASSERT (nbytes > nwritten);
 
     const ssize_t _nw = write (fp->fd, _src + nwritten, nbytes - nwritten);
-    if (unlikely (_nw < 0 && errno != EINTR))
-    {
+    if (unlikely (_nw < 0 && errno != EINTR)) {
       return error_causef (e, ERR_IO, "write: %s", strerror (errno));
     }
 
@@ -307,8 +284,7 @@ posix_truncate (void *_fp, const u64 bytes, error *e)
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
 
-  if (unlikely (ftruncate (fp->fd, (off_t)bytes) == -1))
-  {
+  if (unlikely (ftruncate (fp->fd, (off_t)bytes) == -1)) {
     return error_causef (e, ERR_IO, "ftruncate: %s", strerror (errno));
   }
 
@@ -328,23 +304,19 @@ _posix_fallocate (void *_fp, const u64 bytes, error *e)
       .fst_offset  = 0,
       .fst_length  = (off_t)bytes,
   };
-  if (unlikely (fcntl (fp->fd, F_PREALLOCATE, &store) == -1))
-  {
+  if (unlikely (fcntl (fp->fd, F_PREALLOCATE, &store) == -1)) {
     store.fst_flags = F_ALLOCATEALL;
-    if (unlikely (fcntl (fp->fd, F_PREALLOCATE, &store) == -1))
-    {
+    if (unlikely (fcntl (fp->fd, F_PREALLOCATE, &store) == -1)) {
       return error_causef (e, ERR_IO, "F_PREALLOCATE: %s", strerror (errno));
     }
   }
-  if (unlikely (ftruncate (fp->fd, (off_t)bytes) == -1))
-  {
+  if (unlikely (ftruncate (fp->fd, (off_t)bytes) == -1)) {
     return error_causef (e, ERR_IO, "ftruncate: %s", strerror (errno));
   }
 #  else
   const int ret = posix_fallocate (fp->fd, 0, (off_t)bytes);
 
-  if (unlikely (ret != 0))
-  {
+  if (unlikely (ret != 0)) {
     return error_causef (e, ERR_IO, "posix_fallocate: %s", strerror (ret));
   }
 #  endif
@@ -359,25 +331,20 @@ posix_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
   DBG_ASSERT (i_file, fp);
 
   int w;
-  switch (whence)
-  {
-    case I_SEEK_SET:
-    {
+  switch (whence) {
+    case I_SEEK_SET: {
       w = SEEK_SET;
       break;
     }
-    case I_SEEK_CUR:
-    {
+    case I_SEEK_CUR: {
       w = SEEK_CUR;
       break;
     }
-    case I_SEEK_END:
-    {
+    case I_SEEK_END: {
       w = SEEK_END;
       break;
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -385,8 +352,7 @@ posix_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
   errno           = 0;
   const off_t ret = lseek (fp->fd, (off_t)offset, w);
 
-  if (unlikely (ret == (off_t)-1))
-  {
+  if (unlikely (ret == (off_t)-1)) {
     error_causef (e, ERR_IO, "lseek: %s", strerror (errno));
     return error_trace (e);
   }

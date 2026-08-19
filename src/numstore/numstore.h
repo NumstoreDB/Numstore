@@ -93,15 +93,15 @@ typedef uint8_t  wlh;     // WAL header
  * ******************************************************************************/
 
 nsdb_t *nsdb_open (const char *path);
-int     nsdb_cleanup (const char *path);
-int     nsdb_close (nsdb_t *ns);
-int     nsdb_crash (nsdb_t *ns);
+int nsdb_cleanup (const char *path);
+int nsdb_close (nsdb_t *ns);
+int nsdb_crash (nsdb_t *ns);
 
 b_size nsdb_var_len (nsdb_var_t *var);
-void   nsdb_var_free (nsdb_var_t *var);
+void nsdb_var_free (nsdb_var_t *var);
 
 const char *nsdb_strerror (nsdb_t *ns);
-int         nsdb_perror (nsdb_t *ns, const char *prefix);
+int nsdb_perror (nsdb_t *ns, const char *prefix);
 
 int nsdb_begin (nsdb_t *ns);
 int nsdb_commit (nsdb_t *ns);

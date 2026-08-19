@@ -51,8 +51,8 @@ struct chunk_alloc
   u32                         total_used;
 };
 
-void  chunk_alloc_create_default (struct chunk_alloc *dest);
+void chunk_alloc_create_default (struct chunk_alloc *dest);
 void *chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e);
-void  chunk_alloc_free_all (struct chunk_alloc *ca);
+void chunk_alloc_free_all (struct chunk_alloc *ca);
 
 #endif

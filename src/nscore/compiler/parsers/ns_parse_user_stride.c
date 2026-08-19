@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -23,6 +21,8 @@
 #include "nscore/compiler/ns_lexer.h"
 #include "nscore/compiler/ns_tokens.h"
 #include "nscore/compiler/parsers/ns_parser.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: User Stride
@@ -36,8 +36,7 @@
 static err_t
 parse_us_step (struct parser *base, struct user_stride *s, error *e)
 {
-  if (!parser_match (base, TT_COLON))
-  {
+  if (!parser_match (base, TT_COLON)) {
     return SUCCESS;
   }
 
@@ -45,8 +44,7 @@ parse_us_step (struct parser *base, struct user_stride *s, error *e)
   parser_advance (base);
 
   i32 num;
-  if (parser_maybe_parse_integer (base, &num))
-  {
+  if (parser_maybe_parse_integer (base, &num)) {
     s->step = num;
     s->present |= STEP_PRESENT;
   }
@@ -59,8 +57,7 @@ static err_t
 parse_us_stop (struct parser *base, struct user_stride *s, error *e)
 {
   i32 num;
-  if (parser_maybe_parse_integer (base, &num))
-  {
+  if (parser_maybe_parse_integer (base, &num)) {
     s->stop = num;
     s->present |= STOP_PRESENT;
   }
@@ -76,30 +73,24 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
   WRAP (parser_expect (parser, TT_LEFT_BRACKET, e));
 
   int num;
-  if (parser_maybe_parse_integer (parser, &num))
-  {
+  if (parser_maybe_parse_integer (parser, &num)) {
     // Leading integer: start
     s.start = num;
     s.present |= START_PRESENT;
 
-    if (parser_match (parser, TT_COLON))
-    {
+    if (parser_match (parser, TT_COLON)) {
       // start ':' ...
       s.present |= COLON_PRESENT;
       parser_advance (parser);
       WRAP (parse_us_stop (parser, &s, e));
     }
     // else: bare integer â€” single index, nothing more to parse
-  }
-  else if (parser_match (parser, TT_COLON))
-  {
+  } else if (parser_match (parser, TT_COLON)) {
     // No leading integer: ':' ...
     s.present |= COLON_PRESENT;
     parser_advance (parser);
     WRAP (parse_us_stop (parser, &s, e));
-  }
-  else
-  {
+  } else {
     return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->pos);
   }
 
@@ -113,15 +104,13 @@ compile_user_stride (struct user_stride *dest, const char *text, error *e)
   ALLOC_INIT (alloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &alloc, strlen (text), &lex, e) < 0)
-  {
+  if (lex_tokens (text, &alloc, strlen (text), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, NULL, lex.ntokens);
 
-  if (parse_user_stride (&parser, dest, e))
-  {
+  if (parse_user_stride (&parser, dest, e)) {
     goto theend;
   }
 

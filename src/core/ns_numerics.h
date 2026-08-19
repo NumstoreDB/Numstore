@@ -25,17 +25,17 @@
 #ifndef NUMERICS_H
 #define NUMERICS_H
 
-#include <stdbool.h>
-
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_utils.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Checksums
  ******************************************************************************/
 
-u32  checksum_init (void);
+u32 checksum_init (void);
 void checksum_execute (u32 *dest, const u8 *data, u32 len);
 
 /******************************************************************************
@@ -45,14 +45,20 @@ void checksum_execute (u32 *dest, const u8 *data, u32 len);
 u8 randu8 (void);
 
 u32 randu32 (void);
-u32 randu32r (u32 lower, u32 upper); // [lower, upper]
-i32 randi32r (i32 lower, i32 upper); // [lower, upper]
+u32 randu32r (u32 lower,
+              u32 upper); // [lower, upper]
+i32 randi32r (i32 lower,
+              i32 upper); // [lower, upper]
 
 u64 randu64 (void);
-u64 randu64r (u64 lower, u64 upper); // [lower, upper]
-u64 randu64e (u64 lower, u64 upper); // [lower, upper)
-i64 randi64r (i64 lower, i64 upper); // [lower, upper]
-i64 randi64e (i64 lower, i64 upper); // [lower, upper)
+u64 randu64r (u64 lower,
+              u64 upper); // [lower, upper]
+u64 randu64e (u64 lower,
+              u64 upper); // [lower, upper)
+i64 randi64r (i64 lower,
+              i64 upper); // [lower, upper]
+i64 randi64e (i64 lower,
+              i64 upper); // [lower, upper)
 
 f32 randf (void); // [0, 1]
 
@@ -68,8 +74,8 @@ void rand_bytes (void *dest, u32 len);
 err_t parse_i32_expect (i32 *dest, const char *data, u32 len, error *e);
 err_t parse_i64_expect (i64 *dest, const char *data, u32 len, error *e);
 err_t parse_f32_expect (f32 *dest, const char *s, u32 len, error *e);
-f32   py_mod_f32 (f32 num, f32 denom);
-i32   py_mod_i32 (i32 num, i32 denom);
+f32 py_mod_f32 (f32 num, f32 denom);
+i32 py_mod_i32 (i32 num, i32 denom);
 
 /******************************************************************************
  * SECTION: Math
@@ -82,50 +88,41 @@ i32   py_mod_i32 (i32 num, i32 denom);
 #define i_cabs_64(f)      cabsf (f)
 #define i_fabs_32(f)      fabsf (f)
 
-#define arr_range(arr)                     \
-  do                                       \
-  {                                        \
-    for (u32 i = 0; i < arrlen (arr); ++i) \
-    {                                      \
-      arr[i] = i;                          \
-    }                                      \
-  }                                        \
+#define arr_range(arr)                       \
+  do {                                       \
+    for (u32 i = 0; i < arrlen (arr); ++i) { \
+      arr[i] = i;                            \
+    }                                        \
+  }                                          \
   while (0)
 
-#define ptr_range(arr, size)          \
-  do                                  \
-  {                                   \
-    for (u32 _i = 0; _i < size; ++_i) \
-    {                                 \
-      arr[_i] = _i;                   \
-    }                                 \
-  }                                   \
+#define ptr_range(arr, size)            \
+  do {                                  \
+    for (u32 _i = 0; _i < size; ++_i) { \
+      arr[_i] = _i;                     \
+    }                                   \
+  }                                     \
   while (0)
 
-#define u32_arr_rand(arr)                  \
-  do                                       \
-  {                                        \
-    for (u32 i = 0; i < arrlen (arr); ++i) \
-    {                                      \
-      arr[i] = randu32 ();                 \
-    }                                      \
-  }                                        \
+#define u32_arr_rand(arr)                    \
+  do {                                       \
+    for (u32 i = 0; i < arrlen (arr); ++i) { \
+      arr[i] = randu32 ();                   \
+    }                                        \
+  }                                          \
   while (0)
 
-#define arr_contains(arr, len, val, ret)   \
-  do                                       \
-  {                                        \
-    ret = false;                           \
-    for (u32 ___i = 0; ___i < len; ++___i) \
-    {                                      \
-      if (arr[___i] == val)                \
-      {                                    \
-        ret = arr[___i];                   \
-        ret = true;                        \
-        break;                             \
-      }                                    \
-    }                                      \
-  }                                        \
+#define arr_contains(arr, len, val, ret)     \
+  do {                                       \
+    ret = false;                             \
+    for (u32 ___i = 0; ___i < len; ++___i) { \
+      if (arr[___i] == val) {                \
+        ret = arr[___i];                     \
+        ret = true;                          \
+        break;                               \
+      }                                      \
+    }                                        \
+  }                                          \
   while (0)
 
 float f16_to_f32 (u16 h);

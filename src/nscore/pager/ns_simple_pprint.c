@@ -12,13 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "file_pager.h"
 #include "page.h"
 #include "pager.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static void
 _simple_page_print (struct file_pager *p, const pgno pg, error *e)
@@ -26,8 +26,7 @@ _simple_page_print (struct file_pager *p, const pgno pg, error *e)
   page raw;
   raw.pg = pg;
 
-  if (fpgr_read (p, raw.raw, pg, e))
-  {
+  if (fpgr_read (p, raw.raw, pg, e)) {
     error_log_consume (e);
     return;
   }
@@ -38,12 +37,11 @@ _simple_page_print (struct file_pager *p, const pgno pg, error *e)
 static void
 simple_page_print (const char *fname)
 {
-  error e = error_create ();
+  error              e  = error_create ();
 
   struct file_pager *fp = fpgr_open (fname, 0, &e);
 
-  for (u32 i = 0; i < fpgr_get_npages (fp); ++i)
-  {
+  for (u32 i = 0; i < fpgr_get_npages (fp); ++i) {
     _simple_page_print (fp, i, &e);
   }
 
@@ -53,8 +51,7 @@ simple_page_print (const char *fname)
 int
 main (const int argc, char **argv)
 {
-  if (argc != 2)
-  {
+  if (argc != 2) {
     printf ("USAGE: simple_nspprint FNAME\n");
     return -1;
   }

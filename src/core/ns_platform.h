@@ -189,32 +189,19 @@
 HEADER_FUNC const char *
 platformstr (void)
 {
-  if (PLATFORM_WINDOWS)
-  {
+  if (PLATFORM_WINDOWS) {
     return "Windows";
-  }
-  else if (PLATFORM_LINUX)
-  {
+  } else if (PLATFORM_LINUX) {
     return "Linux";
-  }
-  else if (PLATFORM_ANDROID)
-  {
+  } else if (PLATFORM_ANDROID) {
     return "Android";
-  }
-  else if (PLATFORM_MAC)
-  {
+  } else if (PLATFORM_MAC) {
     return "macOS";
-  }
-  else if (PLATFORM_IOS)
-  {
+  } else if (PLATFORM_IOS) {
     return "iOS";
-  }
-  else if (PLATFORM_BSD)
-  {
+  } else if (PLATFORM_BSD) {
     return "BSD";
-  }
-  else if (PLATFORM_EMSCRIPTEN)
-  {
+  } else if (PLATFORM_EMSCRIPTEN) {
     return "Emscripten/WebAssembly";
   }
 

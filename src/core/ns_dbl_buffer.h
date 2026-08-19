@@ -42,6 +42,6 @@ err_t dblb_create (
 err_t dblb_append (struct dbl_buffer *d, const void *data, u32 nelem, error *e);
 err_t dblb_ensure_space (struct dbl_buffer *d, u32 nelem, error *e);
 void *dblb_append_alloc (struct dbl_buffer *d, u32 nelem, error *e);
-void  dblb_reset (struct dbl_buffer *d); // Target buffer
+void dblb_reset (struct dbl_buffer *d); // Target buffer
 
 #endif

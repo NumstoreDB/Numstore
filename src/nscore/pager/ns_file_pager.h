@@ -23,12 +23,12 @@
 #ifndef FILE_PAGER_H
 #define FILE_PAGER_H
 
-#include <stdbool.h>
-
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: File Pager
@@ -59,13 +59,13 @@ struct file_pager *fpgr_open (
 
 err_t fpgr_close (struct file_pager *f, error *e);
 err_t fpgr_reset (struct file_pager *f, error *e);
-bool  fpgr_isnew (struct file_pager *f);
+bool fpgr_isnew (struct file_pager *f);
 
 p_size fpgr_get_npages (const struct file_pager *fp);
-err_t  fpgr_extend (struct file_pager *p, pgno pgno, error *e);
-err_t  fpgr_read (struct file_pager *p, u8 *dest, pgno pgno, error *e);
-err_t  fpgr_write (struct file_pager *p, const u8 *src, pgno pgno, error *e);
-err_t  fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e);
+err_t fpgr_extend (struct file_pager *p, pgno pgno, error *e);
+err_t fpgr_read (struct file_pager *p, u8 *dest, pgno pgno, error *e);
+err_t fpgr_write (struct file_pager *p, const u8 *src, pgno pgno, error *e);
+err_t fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e);
 
 err_t fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e);
 

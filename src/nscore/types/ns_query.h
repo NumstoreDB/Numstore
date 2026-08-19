@@ -15,12 +15,12 @@
 #ifndef NS_QUERY_H
 #define NS_QUERY_H
 
-#include <stdbool.h>
-
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Query

@@ -14,18 +14,17 @@
 
 #include "core/ns_error.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_logging.h"
 #include "core/testing/ns_testing.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
 DEFINE_DBG_ASSERT (error, error, e, {
   ASSERT (e);
-  if (e->cause_code != SUCCESS)
-  {
+  if (e->cause_code != SUCCESS) {
     ASSERT (e->cmlen > 0);
   }
 })
@@ -58,8 +57,7 @@ error_unsilence (error *e)
 err_t
 error_causef (error *e, const err_t c, const char *fmt, ...)
 {
-  if (e == NULL)
-  {
+  if (e == NULL) {
     return c;
   }
 
@@ -75,23 +73,19 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
   cmlen     = MIN (cmlen, 255);
   va_end (ap_copy);
 
-  if (e->cause_code != SUCCESS)
-  {
-    if (!e->disable_log)
-    {
+  if (e->cause_code != SUCCESS) {
+    if (!e->disable_log) {
       i_log_error ("TRACE: %s\n", tmpbuf);
     }
   }
 
-  if (e->cause_code == SUCCESS)
-  {
+  if (e->cause_code == SUCCESS) {
     memcpy (e->cause_msg, tmpbuf, cmlen);
     e->cause_code       = c;
     e->cause_msg[cmlen] = '\0';
     e->cmlen            = cmlen;
 
-    if (!e->disable_log)
-    {
+    if (!e->disable_log) {
       i_log_error ("%.*s\n", e->cmlen, e->cause_msg);
     }
   }

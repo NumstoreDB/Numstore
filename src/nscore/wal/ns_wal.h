@@ -15,8 +15,6 @@
 #ifndef WAL_H
 #define WAL_H
 
-#include <stdbool.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -25,6 +23,8 @@
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "nscore/wal/ns_wal_record.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: WAL
@@ -37,39 +37,39 @@ enum wal_flags
 
 struct wal
 {
-  struct i_mem         mem;
-  struct i_file_system fs;
+  struct i_mem             mem;
+  struct i_file_system     fs;
 
   // The file that's open
-  struct string fname;
+  struct string            fname;
 
   // Input and / or output streams
-  struct wal_ostream *ostream;
-  struct wal_istream *istream;
+  struct wal_ostream      *ostream;
+  struct wal_istream      *istream;
 
   // Headers to read and write
   struct wal_rec_hdr_read  rhdr;
   struct wal_rec_hdr_write whdr;
 
-  int flags;
-  lsn start_lsn;
+  int                      flags;
+  lsn                      start_lsn;
 
-  latch latch;
+  latch                    latch;
 };
 
 DEFINE_DBG_ASSERT (struct wal, wal, w, { ASSERT (w); })
 
 // Lifecycle
 struct wal *wal_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e);
-err_t       wal_close (struct wal *w, error *e);
-err_t       wal_close_and_delete (struct wal *w, error *e);
-err_t       wal_delete_and_reopen (struct wal *w, error *e);
-err_t       wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e);
+err_t wal_close (struct wal *w, error *e);
+err_t wal_close_and_delete (struct wal *w, error *e);
+err_t wal_delete_and_reopen (struct wal *w, error *e);
+err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e);
 
 // Getters
 bool wal_isnew (const struct wal *w);
-lsn  wal_start_lsn (struct wal *w);
-lsn  wal_size (struct wal *w);
+lsn wal_start_lsn (struct wal *w);
+lsn wal_size (struct wal *w);
 
 /**
  * Flushes the wal to a certain lsn

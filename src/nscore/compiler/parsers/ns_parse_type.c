@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
@@ -29,6 +27,8 @@
 #include "nscore/types/ns_struct_t.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/types/ns_union_t.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Type
@@ -52,8 +52,7 @@ static err_t parse_type_inner (struct type_parser *parser, struct type *out, err
 static err_t
 parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
 {
-  if (!parser_match (parser->base, TT_PRIM))
-  {
+  if (!parser_match (parser->base, TT_PRIM)) {
     return error_causef (
         e,
         ERR_SYNTAX,
@@ -75,13 +74,11 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
   struct sarray_builder builder = sab_create (parser->base->b);
 
   // Parse all [N] brackets
-  while (parser_match (parser->base, TT_LEFT_BRACKET))
-  {
+  while (parser_match (parser->base, TT_LEFT_BRACKET)) {
     WRAP (parser_expect (parser->base, TT_LEFT_BRACKET, e));
 
     i32 num;
-    if (!parser_maybe_parse_integer (parser->base, &num))
-    {
+    if (!parser_maybe_parse_integer (parser->base, &num)) {
       return error_causef (
           e,
           ERR_SYNTAX,
@@ -97,8 +94,7 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
 
   // Inner most type
   struct type *inner = builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
-  if (inner == NULL)
-  {
+  if (inner == NULL) {
     return error_trace (e);
   }
   WRAP (parse_type_inner (parser, inner, e));
@@ -112,8 +108,7 @@ static err_t
 parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error *e)
 {
   // IDENT
-  if (!parser_match (parser->base, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser->base, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
   }
 
@@ -129,8 +124,7 @@ parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error
 
   // Type
   struct type *inner = builder_malloc_persist (parser->base->b, 1, sizeof *inner, e);
-  if (inner == NULL)
-  {
+  if (inner == NULL) {
     return error_trace (e);
   }
   WRAP (parse_type_inner (parser, inner, e));
@@ -152,8 +146,7 @@ parse_struct_type (struct type_parser *parser, struct type *out, error *e)
 
   WRAP (parse_field (&builder, parser, e));
 
-  while (parser_match (parser->base, TT_COMMA))
-  {
+  while (parser_match (parser->base, TT_COMMA)) {
     parser_advance (parser->base);
     WRAP (parse_field (&builder, parser, e));
   }
@@ -182,8 +175,7 @@ parse_union_type (struct type_parser *parser, struct type *out, error *e)
 
   WRAP (parse_field (&builder, parser, e));
 
-  while (parser_match (parser->base, TT_COMMA))
-  {
+  while (parser_match (parser->base, TT_COMMA)) {
     parser_advance (parser->base);
     WRAP (parse_field (&builder, parser, e));
   }
@@ -204,26 +196,20 @@ parse_type_inner (struct type_parser *parser, struct type *out, error *e)
 {
   struct token *tok = parser_peek (parser->base);
 
-  switch (tok->type)
-  {
-    case TT_STRUCT:
-    {
+  switch (tok->type) {
+    case TT_STRUCT: {
       return parse_struct_type (parser, out, e);
     }
-    case TT_UNION:
-    {
+    case TT_UNION: {
       return parse_union_type (parser, out, e);
     }
-    case TT_LEFT_BRACKET:
-    {
+    case TT_LEFT_BRACKET: {
       return parse_sarray_type (parser, out, e);
     }
-    case TT_PRIM:
-    {
+    case TT_PRIM: {
       return parse_primitive_type (parser, out, e);
     }
-    default:
-    {
+    default: {
       return error_causef (
           e,
           ERR_SYNTAX,
@@ -244,8 +230,7 @@ parse_type (struct parser *p, struct type *dest, error *e)
       .dest = dest,
   };
 
-  if (unlikely ((parse_type_inner (&parser, parser.dest, e)) < SUCCESS))
-  {
+  if (unlikely ((parse_type_inner (&parser, parser.dest, e)) < SUCCESS)) {
     goto theend;
   }
 
@@ -259,15 +244,13 @@ compile_type (struct type *dest, const char *text, struct allocator *dalloc, err
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e))
-  {
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e)) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_type (&parser, dest, e))
-  {
+  if (parse_type (&parser, dest, e)) {
     goto theend;
   }
 

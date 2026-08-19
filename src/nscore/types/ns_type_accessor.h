@@ -15,8 +15,6 @@
 #ifndef NS_TYPE_ACCESSOR_H
 #define NS_TYPE_ACCESSOR_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_byte_accessor.h"
 #include "core/ns_error.h"
@@ -25,6 +23,8 @@
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
+
+#include <stdbool.h>
 
 struct allocator;
 struct builder;
