@@ -9,16 +9,16 @@ in C with no dependencies.
 Conceptually, it's an ACID file with 
 [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
 
-Outputs are:
+Main outputs are:
 
-1. numstore executable:
-    - Used for examining a database (this is a work in progress)
-2. libnumstore:
-    - An embedded database for numerical arrays. See `src/numstore/numstore.h`
-      or `src/numstore/samples/*`
-2. libsmartfiles
-    - An embedded database for files. See `src/smartfiles/smartfiles.h` or
-      `src/smartfiles/samples/*`
+1. `build/bin/numstore` executable: Used for examining a database (this is a
+   work in progress)
+2. `build/lib/libnumstore.a` and `build/include/numstore.h`: An embedded
+   database for numerical arrays. See `src/numstore/numstore.h` or
+   `src/numstore/samples/*`
+2. `build/lib/libsmartfiles.a` and `build/include/smartfiles.h`: An embedded
+   database for files. See `src/smartfiles/smartfiles.h` or
+   `src/smartfiles/samples/*`
 
 Quick Start
 ===========
@@ -41,11 +41,9 @@ Linux / MacOS
        make TARGET=release
        ./build/release/bin/numstore foo.db
 
-4. run the unit tests / swarm tests (debug only)
+4. run the unit tests
 
        ./build/debug/bin/unit_tests
-       ./build/debug/bin/irwr_swarm_test foo.db 60 1234
-       ./build/debug/bin/cgd_swarm_test foo.db 60 1234
 
 5. build and run a sample program (using the numstore or smartfiles library)
 
@@ -54,8 +52,7 @@ Linux / MacOS
 
 6. clean up
 
-       make clean        # per subdir build artifacts
-       make clean-all     # wipe the whole build/ dir
+       make clean
 
 headers and libs land in build/<target>/include and build/<target>/lib if you
 want to link against numstore/smartfiles/core yourself
