@@ -88,22 +88,4 @@ struct i_threading
 
 extern struct i_threading default_threading;
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Fault Injection
- *----------------------------------------------------------------------------*/
-
-/**
- * @brief Returns ERR_IO on mutex creation
- *
- * @return Garunteed error
- */
-err_t i_mutex_create_errio (i_threading *t, i_mutex *m, error *e);
-
-/**
- * @brief Returns ERR_IO on condition variable creation
- *
- * @return Garunteed error
- */
-err_t i_cond_create_errio (i_threading *t, i_cond *m, error *e);
-
 #endif

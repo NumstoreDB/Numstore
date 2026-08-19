@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "smartfiles.h"
+
 #include <stdint.h>
 #include <stdio.h>
-
-#include "numstore.h"
 
 /**
  * Showing off the power user functionality of strides.
@@ -41,8 +41,7 @@ main (void)
 
   // Insert some data
   float data[16];
-  for (int i = 0; i < 16; ++i)
-  {
+  for (int i = 0; i < 16; ++i) {
     data[i] = (float)i;
   }
   smfile_insert (smf, data, 0, sizeof (data));
@@ -51,16 +50,14 @@ main (void)
   float   evens[8];
   sb_size n = smfile_read (smf, evens, sizeof (float), 0, 2, 8);
   printf ("every other float (expect 0 2 4 6 8 10 12 14):\n");
-  for (int i = 0; i < (int)n; ++i)
-  {
+  for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, evens[i]);
   }
 
   // Write negative elements starting at byte offset 4 (1 float in) - with
   // stride 2 and 8 total elements
   float neg[8];
-  for (int i = 0; i < 8; ++i)
-  {
+  for (int i = 0; i < 8; ++i) {
     neg[i] = -1.0f;
   }
   smfile_write (smf, neg, sizeof (float), 4, 2, 8);
@@ -69,8 +66,7 @@ main (void)
   float readback[16];
   n = smfile_read (smf, readback, sizeof (float), 0, 1, 16);
   printf ("after stride write (odd positions -> -1):\n");
-  for (int i = 0; i < (int)n; ++i)
-  {
+  for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, readback[i]);
   }
 
@@ -78,16 +74,14 @@ main (void)
   float removed[8];
   n = smfile_remove (smf, removed, sizeof (float), 0, 2, 8);
   printf ("removed even positions (expect 0 2 4 6 8 10 12 14):\n");
-  for (int i = 0; i < (int)n; ++i)
-  {
+  for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, removed[i]);
   }
 
   // Read data
   n = smfile_read (smf, readback, sizeof (float), 0, 1, 8);
   printf ("remaining floats (expect all -1):\n");
-  for (int i = 0; i < (int)n; ++i)
-  {
+  for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, readback[i]);
   }
 

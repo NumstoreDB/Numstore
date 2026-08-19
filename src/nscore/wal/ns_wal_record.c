@@ -14,12 +14,12 @@
 
 #include "nscore/wal/ns_wal_record.h"
 
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_numerics.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_txn_table.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: WAL Decoding
@@ -240,49 +240,40 @@ void
 wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
 {
   dest->type = randu32r (WL_BEGIN, WL_CLR);
-  switch (dest->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (dest->type) {
+    case WL_BEGIN: {
       dest->begin.tid = randu32 ();
       break;
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       dest->commit.tid  = randu32 ();
       dest->commit.prev = randu32 ();
       break;
     }
-    case WL_END:
-    {
+    case WL_END: {
       dest->end.tid  = randu32 ();
       dest->end.prev = randu32 ();
       break;
     }
-    case WL_UPDATE:
-    {
+    case WL_UPDATE: {
       dest->update.type = randu32r (WUP_PHYSICAL, WUP_FEXT);
       dest->update.tid  = randu32 ();
       dest->update.prev = randu32 ();
-      switch (dest->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+      switch (dest->update.type) {
+        case WUP_PHYSICAL: {
           dest->update.phys.pg = randu32 ();
           rand_bytes (dest->update.phys.undo, NS_PAGE_SIZE);
           rand_bytes (dest->update.phys.redo, NS_PAGE_SIZE);
           break;
         }
-        case WUP_FSM:
-        {
+        case WUP_FSM: {
           dest->update.fsm.pg   = randu32 ();
           dest->update.fsm.bit  = randu32 ();
           dest->update.fsm.undo = randu8 ();
           dest->update.fsm.redo = randu8 ();
           break;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           dest->update.fext.undo = randu32 ();
           dest->update.fext.redo = randu32 ();
           break;
@@ -290,36 +281,30 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
       }
       break;
     }
-    case WL_CLR:
-    {
+    case WL_CLR: {
       dest->clr.type      = randu32r (WCLR_PHYSICAL, WCLR_DUMMY);
       dest->clr.tid       = randu32 ();
       dest->clr.prev      = randu32 ();
       dest->clr.undo_next = randu32 ();
-      switch (dest->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+      switch (dest->clr.type) {
+        case WCLR_PHYSICAL: {
           dest->clr.phys.pg = randu32 ();
           rand_bytes (dest->clr.phys.redo, NS_PAGE_SIZE);
           break;
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           dest->clr.fsm.pg   = randu32 ();
           dest->clr.fsm.bit  = randu32 ();
           dest->clr.fsm.redo = randu8 ();
           break;
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           break;
         }
       }
       break;
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       ASSERT (false);
     }
   }
@@ -328,30 +313,23 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
 const char *
 wal_rec_hdr_type_tostr (const enum wal_rec_hdr_type type)
 {
-  switch (type)
-  {
-    case WL_UPDATE:
-    {
+  switch (type) {
+    case WL_UPDATE: {
       return "WL_UPDATE";
     }
-    case WL_CLR:
-    {
+    case WL_CLR: {
       return "WL_CLR";
     }
-    case WL_BEGIN:
-    {
+    case WL_BEGIN: {
       return "WL_BEGIN";
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       return "WL_COMMIT";
     }
-    case WL_END:
-    {
+    case WL_END: {
       return "WL_END";
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       return "WL_EOF";
     }
   }
@@ -374,35 +352,28 @@ TEST (wal_rec_hdr_type_tostr)
 struct wal_rec_hdr_write
 wrhw_from_wrhr (struct wal_rec_hdr_read *src)
 {
-  switch (src->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (src->type) {
+    case WL_BEGIN: {
       return (struct wal_rec_hdr_write){
           .type  = WL_BEGIN,
           .begin = src->begin,
       };
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       return (struct wal_rec_hdr_write){
           .type   = WL_COMMIT,
           .commit = src->commit,
       };
     }
-    case WL_END:
-    {
+    case WL_END: {
       return (struct wal_rec_hdr_write){
           .type = WL_END,
           .end  = src->end,
       };
     }
-    case WL_UPDATE:
-    {
-      switch (src->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+    case WL_UPDATE: {
+      switch (src->update.type) {
+        case WUP_PHYSICAL: {
           return (struct wal_rec_hdr_write){
               .type   = WL_UPDATE,
               .update = {
@@ -417,8 +388,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
               },
           };
         }
-        case WUP_FSM:
-        {
+        case WUP_FSM: {
           return (struct wal_rec_hdr_write){
               .type   = WL_UPDATE,
               .update = {
@@ -429,8 +399,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
               },
           };
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           return (struct wal_rec_hdr_write){
               .type   = WL_UPDATE,
               .update = {
@@ -444,12 +413,9 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
       }
       break;
     }
-    case WL_CLR:
-    {
-      switch (src->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+    case WL_CLR: {
+      switch (src->clr.type) {
+        case WCLR_PHYSICAL: {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
               .clr  = {
@@ -464,8 +430,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
               },
           };
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
               .clr  = {
@@ -477,8 +442,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
               },
           };
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           return (struct wal_rec_hdr_write){
               .type = WL_CLR,
               .clr  = {
@@ -492,8 +456,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
       }
       break;
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -503,30 +466,23 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
 stxid
 wrh_get_tid (const struct wal_rec_hdr_read *h)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       return h->begin.tid;
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       return h->commit.tid;
     }
-    case WL_END:
-    {
+    case WL_END: {
       return h->end.tid;
     }
-    case WL_UPDATE:
-    {
+    case WL_UPDATE: {
       return h->update.tid;
     }
-    case WL_CLR:
-    {
+    case WL_CLR: {
       return h->clr.tid;
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -536,30 +492,23 @@ wrh_get_tid (const struct wal_rec_hdr_read *h)
 slsn
 wrh_get_prev_lsn (const struct wal_rec_hdr_read *h)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       return 0;
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       return h->commit.prev;
     }
-    case WL_END:
-    {
+    case WL_END: {
       return h->end.prev;
     }
-    case WL_UPDATE:
-    {
+    case WL_UPDATE: {
       return h->update.prev;
     }
-    case WL_CLR:
-    {
+    case WL_CLR: {
       return h->clr.prev;
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -569,45 +518,34 @@ wrh_get_prev_lsn (const struct wal_rec_hdr_read *h)
 bool
 wrh_is_undoable (const struct wal_rec_hdr_read *h)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       return false;
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       return false;
     }
-    case WL_END:
-    {
+    case WL_END: {
       return false;
     }
-    case WL_UPDATE:
-    {
-      switch (h->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+    case WL_UPDATE: {
+      switch (h->update.type) {
+        case WUP_PHYSICAL: {
           return true;
         }
-        case WUP_FSM:
-        {
+        case WUP_FSM: {
           return true;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           return false;
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_CLR:
-    {
+    case WL_CLR: {
       return false;
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -617,60 +555,45 @@ wrh_is_undoable (const struct wal_rec_hdr_read *h)
 bool
 wrh_is_redoable (const struct wal_rec_hdr_read *h)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       return false;
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       return false;
     }
-    case WL_END:
-    {
+    case WL_END: {
       return false;
     }
-    case WL_UPDATE:
-    {
-      switch (h->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+    case WL_UPDATE: {
+      switch (h->update.type) {
+        case WUP_PHYSICAL: {
           return true;
         }
-        case WUP_FSM:
-        {
+        case WUP_FSM: {
           return true;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           return false;
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_CLR:
-    {
-      switch (h->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+    case WL_CLR: {
+      switch (h->clr.type) {
+        case WCLR_PHYSICAL: {
           return true;
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           return true;
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           return false;
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -680,60 +603,45 @@ wrh_is_redoable (const struct wal_rec_hdr_read *h)
 pgno
 wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_END:
-    {
+    case WL_END: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_UPDATE:
-    {
-      switch (h->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+    case WL_UPDATE: {
+      switch (h->update.type) {
+        case WUP_PHYSICAL: {
           return h->update.phys.pg;
         }
-        case WUP_FSM:
-        {
+        case WUP_FSM: {
           return h->update.fsm.pg;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_CLR:
-    {
-      switch (h->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+    case WL_CLR: {
+      switch (h->clr.type) {
+        case WCLR_PHYSICAL: {
           return h->clr.phys.pg;
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           return h->clr.fsm.pg;
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -744,36 +652,29 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
 bool
 wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right)
 {
-  if (left->type != right->type)
-  {
+  if (left->type != right->type) {
     return false;
   }
 
   bool match = true;
 
-  switch (left->type)
-  {
-    case WL_UPDATE:
-    {
-      if (left->update.type != right->update.type)
-      {
+  switch (left->type) {
+    case WL_UPDATE: {
+      if (left->update.type != right->update.type) {
         return false;
       }
 
       match = match && left->update.tid == right->update.tid;
       match = match && left->update.prev == right->update.prev;
 
-      switch (left->update.type)
-      {
-        case WUP_FSM:
-        {
+      switch (left->update.type) {
+        case WUP_FSM: {
           match = match && left->update.fsm.pg == right->update.fsm.pg;
           match = match && left->update.fsm.undo == right->update.fsm.undo;
           match = match && left->update.fsm.redo == right->update.fsm.redo;
           break;
         }
-        case WUP_PHYSICAL:
-        {
+        case WUP_PHYSICAL: {
           match = match && left->update.phys.pg == right->update.phys.pg;
           match =
               match && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
@@ -781,8 +682,7 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
               match && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
           break;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           match = match && left->update.fext.undo == right->update.fext.undo;
           match = match && left->update.fext.redo == right->update.fext.redo;
           break;
@@ -791,10 +691,8 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
       break;
     }
 
-    case WL_CLR:
-    {
-      if (left->clr.type != right->clr.type)
-      {
+    case WL_CLR: {
+      if (left->clr.type != right->clr.type) {
         return false;
       }
 
@@ -802,22 +700,18 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
       match = match && left->clr.prev == right->clr.prev;
       match = match && left->clr.undo_next == right->clr.undo_next;
 
-      switch (left->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+      switch (left->clr.type) {
+        case WCLR_PHYSICAL: {
           match = match && left->clr.phys.pg == right->clr.phys.pg;
           match = match && memcmp (left->clr.phys.redo, right->clr.phys.redo, NS_PAGE_SIZE) == 0;
           break;
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           match = match && left->clr.fsm.pg == right->clr.fsm.pg;
           match = match && left->clr.fsm.redo == right->clr.fsm.redo;
           break;
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           break;
         }
       }
@@ -825,28 +719,24 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
       break;
     }
 
-    case WL_BEGIN:
-    {
+    case WL_BEGIN: {
       match = match && left->begin.tid == right->begin.tid;
       break;
     }
 
-    case WL_END:
-    {
+    case WL_END: {
       match = match && left->end.tid == right->end.tid;
       match = match && left->end.prev == right->end.prev;
       break;
     }
 
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       match = match && left->commit.tid == right->commit.tid;
       match = match && left->commit.prev == right->commit.prev;
       break;
     }
 
-    case WL_EOF:
-    {
+    case WL_EOF: {
       return true;
     }
   }
@@ -862,13 +752,10 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
   const char *name = "?";
   const lsn  *prev = NULL;
 
-  switch (r->type)
-  {
+  switch (r->type) {
     case WL_UPDATE:
-      switch (r->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+      switch (r->update.type) {
+        case WUP_PHYSICAL: {
           name = "UPDATE PHYS";
           snprintf (
               fields,
@@ -880,8 +767,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           prev = &r->update.prev;
           break;
         }
-        case WUP_FSM:
-        {
+        case WUP_FSM: {
           name = "UPDATE FSM";
           snprintf (
               fields,
@@ -895,8 +781,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           prev = &r->update.prev;
           break;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           name = "UPDATE FEXT";
           snprintf (
               fields,
@@ -913,10 +798,8 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
       break;
 
     case WL_CLR:
-      switch (r->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+      switch (r->clr.type) {
+        case WCLR_PHYSICAL: {
           name = "CLR PHYS";
           snprintf (
               fields,
@@ -929,8 +812,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           prev = &r->clr.prev;
           break;
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           name = "CLR FSM";
           snprintf (
               fields,
@@ -944,8 +826,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
           prev = &r->clr.prev;
           break;
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           name = "CLR DUMMY";
           snprintf (
               fields,
@@ -960,31 +841,27 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
       }
       break;
 
-    case WL_BEGIN:
-    {
+    case WL_BEGIN: {
       name = "BEGIN";
       snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->begin.tid);
       break;
     }
 
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       name = "COMMIT";
       snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->commit.tid);
       prev = &r->commit.prev;
       break;
     }
 
-    case WL_END:
-    {
+    case WL_END: {
       name = "END";
       snprintf (fields, sizeof fields, "txid = %8" PRtxid, r->end.tid);
       prev = &r->end.prev;
       break;
     }
 
-    case WL_EOF:
-    {
+    case WL_EOF: {
       i_log_printf (log_level, "%15" PRlsn "  WL_EOF\n", l);
       return;
     }
@@ -994,8 +871,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
        11 = strlen("UPDATE FEXT")  -- widest type name
        72 = widest fields line     -- "CLR FSM" case
      Bump them if a new record type pushes past these. */
-  if (prev)
-  {
+  if (prev) {
     i_log_printf (
         log_level,
         "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
@@ -1004,9 +880,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
         fields,
         *prev
     );
-  }
-  else
-  {
+  } else {
     i_log_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
   }
 }
@@ -1014,26 +888,19 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
 struct wal_clr_write
 wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_END:
-    {
+    case WL_END: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_UPDATE:
-    {
-      switch (h->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+    case WL_UPDATE: {
+      switch (h->update.type) {
+        case WUP_PHYSICAL: {
           memcpy (page_h_w (ph), h->update.phys.undo, NS_PAGE_SIZE);
           return (struct wal_clr_write){
               .type      = WCLR_PHYSICAL,
@@ -1046,14 +913,10 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
               },
           };
         }
-        case WUP_FSM:
-        {
-          if (h->update.fsm.undo)
-          {
+        case WUP_FSM: {
+          if (h->update.fsm.undo) {
             fsm_set_bit (page_h_w (ph), h->update.fsm.bit);
-          }
-          else
-          {
+          } else {
             fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
           }
           return (struct wal_clr_write){
@@ -1068,34 +931,27 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
               },
           };
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_CLR:
-    {
-      switch (h->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+    case WL_CLR: {
+      switch (h->clr.type) {
+        case WCLR_PHYSICAL: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
-        case WCLR_FSM:
-        {
+        case WCLR_FSM: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -1105,78 +961,57 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
 void
 wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
 {
-  switch (h->type)
-  {
-    case WL_BEGIN:
-    {
+  switch (h->type) {
+    case WL_BEGIN: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_COMMIT:
-    {
+    case WL_COMMIT: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_END:
-    {
+    case WL_END: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_UPDATE:
-    {
-      switch (h->update.type)
-      {
-        case WUP_PHYSICAL:
-        {
+    case WL_UPDATE: {
+      switch (h->update.type) {
+        case WUP_PHYSICAL: {
           memcpy (page_h_w (ph)->raw, h->update.phys.redo, NS_PAGE_SIZE);
           return;
         }
-        case WUP_FSM:
-        {
-          if (h->update.fsm.redo)
-          {
+        case WUP_FSM: {
+          if (h->update.fsm.redo) {
             fsm_set_bit (page_h_w (ph), h->update.fsm.bit);
-          }
-          else
-          {
+          } else {
             fsm_clr_bit (page_h_w (ph), h->update.fsm.bit);
           }
           return;
         }
-        case WUP_FEXT:
-        {
+        case WUP_FEXT: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_CLR:
-    {
-      switch (h->clr.type)
-      {
-        case WCLR_PHYSICAL:
-        {
+    case WL_CLR: {
+      switch (h->clr.type) {
+        case WCLR_PHYSICAL: {
           memcpy (page_h_w (ph)->raw, h->clr.phys.redo, NS_PAGE_SIZE);
           return;
         }
-        case WCLR_FSM:
-        {
-          if (h->clr.fsm.redo)
-          {
+        case WCLR_FSM: {
+          if (h->clr.fsm.redo) {
             fsm_set_bit (page_h_w (ph), h->clr.fsm.bit);
-          }
-          else
-          {
+          } else {
             fsm_clr_bit (page_h_w (ph), h->clr.fsm.bit);
           }
           return;
         }
-        case WCLR_DUMMY:
-        {
+        case WCLR_DUMMY: {
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_EOF:
-    {
+    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }

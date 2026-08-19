@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -27,6 +24,9 @@
 #include "nscore/compiler/parsers/ns_parser.h"
 #include "nscore/types/ns_subtype.h"
 #include "nscore/types/ns_type_accessor.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Sub Type
@@ -43,36 +43,30 @@ struct sub_type_parser
 static err_t
 parse_sub_type_inner (struct sub_type_parser *parser, error *e)
 {
-  if (!parser_match (parser->base, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser->base, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected variable name at position %u", parser->base->pos);
   }
 
   // VNAME
-  struct token *tok  = parser_advance (parser->base);
-  struct string name = {.data = tok->str.data, .len = tok->str.len};
+  struct token                *tok  = parser_advance (parser->base);
+  struct string                name = {.data = tok->str.data, .len = tok->str.len};
 
   // Type accessors
-  struct type_accessor_builder tab = tab_create (parser->base->b);
-  while (true)
-  {
+  struct type_accessor_builder tab  = tab_create (parser->base->b);
+  while (true) {
     // Stride
-    if (parser_match (parser->base, TT_LEFT_BRACKET))
-    {
+    if (parser_match (parser->base, TT_LEFT_BRACKET)) {
       struct multi_user_stride stride;
       WRAP (parse_multi_user_stride (parser->base, &stride, e));
-      for (u32 i = 0; i < stride.len; ++i)
-      {
+      for (u32 i = 0; i < stride.len; ++i) {
         WRAP (tab_accept_stride (&tab, stride.strides[i], e));
       }
     }
 
     // Dot
-    else if (parser_match (parser->base, TT_DOT))
-    {
+    else if (parser_match (parser->base, TT_DOT)) {
       parser_advance (parser->base);
-      if (!parser_match (parser->base, TT_IDENTIFIER))
-      {
+      if (!parser_match (parser->base, TT_IDENTIFIER)) {
         return error_causef (
             e,
             ERR_SYNTAX,
@@ -92,8 +86,7 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
     }
 
     // Done
-    else
-    {
+    else {
       break;
     }
   }
@@ -125,15 +118,13 @@ compile_subtype (struct subtype *dest, const char *text, struct allocator *dallo
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e))
-  {
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e)) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_subtype (&parser, dest, e))
-  {
+  if (parse_subtype (&parser, dest, e)) {
     goto theend;
   }
 

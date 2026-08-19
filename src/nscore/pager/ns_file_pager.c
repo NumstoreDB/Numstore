@@ -14,15 +14,16 @@
 
 #include "nscore/pager/ns_file_pager.h"
 
-#include <stdatomic.h>
-#include <string.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+
+#include <stdatomic.h>
+#include <string.h>
+
 // pgno ...etc
 
 enum file_pager_flags
@@ -47,8 +48,7 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
 {
   // Allocate space for the pager
   struct file_pager *dest = i_malloc (mem, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     return NULL;
   }
 
@@ -58,8 +58,7 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
   dest->flags = 0;
 
   // Open the database in read write mode
-  if (i_open_rw (fs, &dest->f, dbname, e))
-  {
+  if (i_open_rw (fs, &dest->f, dbname, e)) {
     goto failed;
   }
 
@@ -67,21 +66,17 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
   i64 size = i_file_size (&dest->f, e);
 
   // Failed
-  if (size < 0)
-  {
+  if (size < 0) {
     goto fp_failed;
   }
 
   // No header or a newly created file (just a header)
-  if (size == 0 || size == header_len)
-  {
+  if (size == 0 || size == header_len) {
     dest->flags |= FP_ISNEW;
 
     // extend the file to the header length
-    if (size == 0)
-    {
-      if (i_truncate (&dest->f, header_len, e))
-      {
+    if (size == 0) {
+      if (i_truncate (&dest->f, header_len, e)) {
         goto fp_failed;
       }
     }
@@ -90,15 +85,13 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
   }
 
   // This file has a header that is less than the length of the file
-  else if (size < header_len)
-  {
+  else if (size < header_len) {
     error_causef (e, ERR_CORRUPT, "Invalid file pager header\n");
     goto fp_failed;
   }
 
   // Corrupt database - not a multiple of NS_PAGE_SIZE
-  if ((size - header_len) % NS_PAGE_SIZE != 0)
-  {
+  if ((size - header_len) % NS_PAGE_SIZE != 0) {
     error_causef (e, ERR_CORRUPT, "File pager does not contain contiguous pagers\n");
     goto fp_failed;
   }
@@ -172,8 +165,7 @@ fpgr_reset (struct file_pager *f, error *e)
   DBG_ASSERT (file_pager, f);
 
   latch_lock (&f->l);
-  if (i_truncate (&f->f, f->header_len, e))
-  {
+  if (i_truncate (&f->f, f->header_len, e)) {
     latch_unlock (&f->l);
     return error_trace (e);
   }
@@ -204,14 +196,12 @@ fpgr_extend (struct file_pager *p, pgno dest, error *e)
 
   latch_lock (&p->l);
 
-  if (dest < atomic_load (&p->npages))
-  {
+  if (dest < atomic_load (&p->npages)) {
     latch_unlock (&p->l);
     return SUCCESS;
   }
 
-  if (i_truncate (&p->f, p->header_len + NS_PAGE_SIZE * (dest), e))
-  {
+  if (i_truncate (&p->f, p->header_len + NS_PAGE_SIZE * (dest), e)) {
     latch_unlock (&p->l);
     goto failed;
   }
@@ -268,8 +258,7 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
 
   DBG_ASSERT (file_pager, p);
 
-  if (pg >= atomic_load (&p->npages))
-  {
+  if (pg >= atomic_load (&p->npages)) {
     error_causef (
         e,
         ERR_PG_OUT_OF_RANGE,
@@ -283,14 +272,12 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
   // Read all from file
   const i64 nread = i_pread_all (&p->f, dest, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e);
 
-  if (nread == 0)
-  {
+  if (nread == 0) {
     error_causef (e, ERR_CORRUPT, "pread returned 0 bytes at page %" PRpgno, pg);
     goto theend;
   }
 
-  if (nread < 0)
-  {
+  if (nread < 0) {
     goto theend;
   }
 
@@ -311,8 +298,7 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (i_pwrite_all (&p->f, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e))
-  {
+  if (i_pwrite_all (&p->f, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e)) {
     goto theend;
   }
 
@@ -333,13 +319,11 @@ fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, erro
 
   DBG_ASSERT (file_pager, p);
 
-  if (i_pwrite_all (&p->f, src, size, ofst, e))
-  {
+  if (i_pwrite_all (&p->f, src, size, ofst, e)) {
     goto theend;
   }
 
-  if (i_fsync (&p->f, e))
-  {
+  if (i_fsync (&p->f, e)) {
     goto theend;
   }
 
@@ -361,8 +345,7 @@ fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
   DBG_ASSERT (file_pager, p);
 
   // Read all from file
-  if (i_pread_all_expect (&p->f, dest, size, ofst, e))
-  {
+  if (i_pread_all_expect (&p->f, dest, size, ofst, e)) {
     goto theend;
   }
 
@@ -377,7 +360,7 @@ theend:
 TEST (fpgr_read_write)
 {
   // The raw page bytes
-  u8 _page[NS_PAGE_SIZE];
+  u8     _page[NS_PAGE_SIZE];
 
   // Create a temporary file
   i_file fp = {0};
@@ -395,8 +378,7 @@ TEST (fpgr_read_write)
   test_fail_if (fpgr_extend (pager, 2, &e));
 
   // Write 0 : NS_PAGE_SIZE to each byte (overflow fine, it's just data)
-  for (u32 i = 0; i < NS_PAGE_SIZE; i++)
-  {
+  for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
     _page[i] = (u8)i;
   }
   // Write it out
@@ -407,8 +389,7 @@ TEST (fpgr_read_write)
   test_fail_if (fpgr_read (pager, _page, 1, &e));
 
   // Iterate and check that it matches what we expect
-  for (u32 i = 0; i < NS_PAGE_SIZE; i++)
-  {
+  for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
     test_assert_int_equal (_page[i], (u8)i);
   }
 

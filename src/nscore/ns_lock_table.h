@@ -24,8 +24,6 @@
 #ifndef LOCK_TABLE_H
 #define LOCK_TABLE_H
 
-#include <stdbool.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_error.h"
 #include "core/ns_htable.h"
@@ -33,6 +31,8 @@
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_memory.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: LT Lock
@@ -124,8 +124,8 @@ struct lockt
 };
 
 err_t lockt_init (struct lockt *t, struct i_mem mem, error *e);
-void  lockt_destroy (struct lockt *t);
-void  lockt_crash (struct lockt *t);
+void lockt_destroy (struct lockt *t);
+void lockt_crash (struct lockt *t);
 
 err_t lockt_lock (
     struct lockt  *t,

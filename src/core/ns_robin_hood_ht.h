@@ -24,15 +24,15 @@
  * SUFFIX: What to suffix all the methods and structs with
  */
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_concurrency.h" // latch
 #include "core/ns_csx_assert.h"
 #include "core/ns_htable.h"   // hti_res etc
 #include "core/ns_platform.h" // string.h
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "core/ns_utils.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Robin Hood Hash Table
@@ -110,14 +110,12 @@ HT_INSERT (HASH_TABLE_T *ht, HDATA_T data)
 
   latch_lock (&ht->l);
 
-  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn)
-  {
+  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn) {
     // Mapped index after probing
     KTYPE _i = (data.key + dibn) % (KTYPE)ht->cap;
 
     // If not present, insert
-    if (!ht->elems[_i].present)
-    {
+    if (!ht->elems[_i].present) {
       ht->elems[_i].data    = data;
       ht->elems[_i].dib     = dibn;
       ht->elems[_i].present = true;
@@ -126,21 +124,19 @@ HT_INSERT (HASH_TABLE_T *ht, HDATA_T data)
     }
 
     // Swap (lt means dib != dibn, therefore key != key)
-    if (ht->elems[_i].dib < dibn)
-    {
-      HDATA_T temp_data = ht->elems[_i].data;
-      KTYPE   temp_dib  = ht->elems[_i].dib;
+    if (ht->elems[_i].dib < dibn) {
+      HDATA_T temp_data  = ht->elems[_i].data;
+      KTYPE   temp_dib   = ht->elems[_i].dib;
 
       ht->elems[_i].data = data;
       ht->elems[_i].dib  = dibn;
 
-      dibn = temp_dib;
-      data = temp_data;
+      dibn               = temp_dib;
+      data               = temp_data;
     }
 
     // Compare keys for duplicates
-    if (ht->elems[_i].data.key == data.key)
-    {
+    if (ht->elems[_i].data.key == data.key) {
       ret = HTIR_EXISTS;
       goto theend;
     }
@@ -164,36 +160,31 @@ HT_GET (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
-  KTYPE dibn = 0;
+  KTYPE   dibn = 0;
 
-  hta_res ret = HTAR_DOESNT_EXIST;
+  hta_res ret  = HTAR_DOESNT_EXIST;
 
   latch_lock (&ht->l);
 
-  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn)
-  {
+  for (KTYPE i = 0; i < (KTYPE)ht->cap; ++i, ++dibn) {
     // Mapped index after probing
     KTYPE _i = (key + i) % (KTYPE)ht->cap;
 
     // If not present, return
-    if (!ht->elems[_i].present)
-    {
+    if (!ht->elems[_i].present) {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Short cut - DIB invariant is broken
-    if (ht->elems[_i].dib < dibn)
-    {
+    if (ht->elems[_i].dib < dibn) {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Check for key
-    if (ht->elems[_i].data.key == key)
-    {
-      if (dest)
-      {
+    if (ht->elems[_i].data.key == key) {
+      if (dest) {
         *dest = (HDATA_T){
             .value = ht->elems[_i].data.value,
             .key   = ht->elems[_i].data.key,
@@ -222,37 +213,32 @@ HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
   ASSERT (ht);
   ASSERT (ht->cap > 0);
 
-  KTYPE dibn = 0;
-  KTYPE i    = 0;
+  KTYPE   dibn = 0;
+  KTYPE   i    = 0;
 
-  hta_res ret = HTAR_DOESNT_EXIST;
+  hta_res ret  = HTAR_DOESNT_EXIST;
 
   latch_lock (&ht->l);
 
-  for (i = 0; i < (KTYPE)ht->cap; ++i, ++dibn)
-  {
+  for (i = 0; i < (KTYPE)ht->cap; ++i, ++dibn) {
     // Mapped index after probing
     KTYPE _i = (key + i) % (KTYPE)ht->cap;
 
     // If not present, return
-    if (!ht->elems[_i].present)
-    {
+    if (!ht->elems[_i].present) {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Short cut - DIB invariant is broken
-    if (ht->elems[_i].dib < dibn)
-    {
+    if (ht->elems[_i].dib < dibn) {
       ret = HTAR_DOESNT_EXIST;
       goto theend;
     }
 
     // Check for key
-    if (ht->elems[_i].data.key == key)
-    {
-      if (dest)
-      {
+    if (ht->elems[_i].data.key == key) {
+      if (dest) {
         *dest = ht->elems[_i].data;
       }
       break;
@@ -260,15 +246,13 @@ HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
   }
 
   // Shift all full elements to the left
-  for (; i < (KTYPE)ht->cap; ++i)
-  {
+  for (; i < (KTYPE)ht->cap; ++i) {
     // Mapped index after probing
     KTYPE hole = (key + i) % (KTYPE)ht->cap;
     KTYPE next = (key + i + 1) % (KTYPE)ht->cap;
 
     // Right value is empty, set this to empty and return
-    if (!ht->elems[next].present || ht->elems[next].dib == 0)
-    {
+    if (!ht->elems[next].present || ht->elems[next].dib == 0) {
       ht->elems[hole].present = false;
       ret                     = HTAR_SUCCESS;
       goto theend;
@@ -296,10 +280,8 @@ HT_COUNT (HASH_TABLE_T *ht)
 
   latch_lock (&ht->l);
 
-  for (u32 i = 0; i < ht->cap; ++i)
-  {
-    if (ht->elems[i].present)
-    {
+  for (u32 i = 0; i < ht->cap; ++i) {
+    if (ht->elems[i].present) {
       ret++;
     }
   }

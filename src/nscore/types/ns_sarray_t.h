@@ -15,13 +15,13 @@
 #ifndef NS_SARRAY_T_H
 #define NS_SARRAY_T_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
 
 struct allocator;
 struct builder;
@@ -50,11 +50,11 @@ struct sarray_builder
 };
 
 struct sarray_builder sab_create (struct builder *b);
-err_t                 sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
-err_t                 sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
-err_t                 sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
+err_t sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e);
+err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
+err_t sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
 
-u32   sarray_t_get_serial_size (const struct sarray_t *t);
+u32 sarray_t_get_serial_size (const struct sarray_t *t);
 err_t sarray_t_deserialize (
     struct sarray_t     *persistent,
     struct deserializer *src,
@@ -65,9 +65,9 @@ err_t sarray_t_deserialize (
 void sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src);
 
 err_t sarray_t_validate (const struct sarray_t *t, error *e);
-i32   sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p);
-u32   sarray_t_byte_size (const struct sarray_t *t);
+i32 sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p);
+u32 sarray_t_byte_size (const struct sarray_t *t);
 err_t sarray_t_random (struct sarray_t *sa, struct allocator *temp, u32 depth, error *e);
-bool  sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right);
+bool sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right);
 
 #endif

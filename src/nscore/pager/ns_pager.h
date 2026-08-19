@@ -15,9 +15,6 @@
 #ifndef PAGER_H
 #define PAGER_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
@@ -33,6 +30,9 @@
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_file_pager.h"
 #include "nscore/wal/ns_wal.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: Database structure
@@ -250,11 +250,11 @@ struct wal_update_write;
  */
 struct pager
 {
-  struct i_mem         mem;
-  struct i_file_system fs;
+  struct i_mem             mem;
+  struct i_file_system     fs;
 
-  struct pager_header header;
-  u8                  _header[PAGE_HEADER_LEN];
+  struct pager_header      header;
+  u8                       _header[PAGE_HEADER_LEN];
 
   // Resources / Systems
   struct file_pager *const fp;
@@ -264,19 +264,19 @@ struct pager
   struct txn_table *const  tnxt;
 
   // Flags and concurrency
-  _Atomic int  flags;
-  _Atomic u32  clock;
-  _Atomic txid next_tid;
+  _Atomic int              flags;
+  _Atomic u32              clock;
+  _Atomic txid             next_tid;
 
   // Properties
-  latch                pgrnew_lock;
-  struct periodic_task checkpoint_task;
+  latch                    pgrnew_lock;
+  struct periodic_task     checkpoint_task;
 
   // Data
-  hash_table_idx    pgno_to_value;
-  hentry_idx        _hdata[MEMORY_PAGE_LEN];
-  latch             htable_lock;
-  struct page_frame pages[MEMORY_PAGE_LEN];
+  hash_table_idx           pgno_to_value;
+  hentry_idx               _hdata[MEMORY_PAGE_LEN];
+  latch                    htable_lock;
+  struct page_frame        pages[MEMORY_PAGE_LEN];
 };
 
 DEFINE_DBG_ASSERT (struct pager, pager, p, {
@@ -294,7 +294,7 @@ DEFINE_DBG_ASSERT (struct pager, pager, p, {
  *----------------------------------------------------------------------------*/
 
 struct pager *pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *e);
-err_t         pgr_delete_single_file (const char *dbname, error *e);
+err_t pgr_delete_single_file (const char *dbname, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lifecycle
@@ -310,8 +310,8 @@ err_t pgr_crash (struct pager *p, error *e);
  *----------------------------------------------------------------------------*/
 
 p_size pgr_get_npages (struct pager *p);
-bool   pgr_isnew (const struct pager *p);
-void   i_log_page_table (int log_level, bool only_present, struct pager *p);
+bool pgr_isnew (const struct pager *p);
+void i_log_page_table (int log_level, bool only_present, struct pager *p);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Transaction Control
@@ -381,14 +381,14 @@ struct aries_ctx
    * It's the minimum page we need to read first in
    * the restart phase on recovery
    */
-  lsn redo_lsn;
+  lsn               redo_lsn;
 
   /**
    * We keep track of the maximum transaction id that
    * we see in the database in order to pick up where we left
    * off
    */
-  txid max_tid;
+  txid              max_tid;
 
   /**
    * These are the reconstruction of the active
@@ -413,8 +413,8 @@ struct aries_ctx
   struct allocator  backing_alloc;
 };
 
-err_t       aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);
-void        aries_ctx_free (struct aries_ctx *ctx);
+err_t aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);
+void aries_ctx_free (struct aries_ctx *ctx);
 struct txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e);
 
 /*-----------------------------------------------------------------------------
@@ -433,12 +433,9 @@ pgr_get_maybe_writable (
     error        *e
 )
 {
-  if (!writable)
-  {
+  if (!writable) {
     return pgr_get (dest, flags, pg, p, e);
-  }
-  else
-  {
+  } else {
     return pgr_get_writable (dest, tx, flags, pg, p, e);
   }
 }
@@ -452,8 +449,7 @@ pgr_release (struct pager *p, page_h *h, const int flags, error *e)
 HEADER_FUNC err_t
 pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e)
 {
-  if (h->mode != PHM_NONE)
-  {
+  if (h->mode != PHM_NONE) {
     return pgr_release (p, h, flags, e);
   }
   return SUCCESS;
@@ -464,12 +460,10 @@ pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
 {
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e))
-  {
+  if (pgr_release (p, h, flags, e)) {
     return error_trace (e);
   }
-  if (pgr_flush_unsafe (p, pgr, e))
-  {
+  if (pgr_flush_unsafe (p, pgr, e)) {
     return error_trace (e);
   }
   return SUCCESS;
@@ -480,12 +474,10 @@ pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
 {
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e))
-  {
+  if (pgr_release (p, h, flags, e)) {
     return error_trace (e);
   }
-  if (pgr_evict_unsafe (p, pgr, e))
-  {
+  if (pgr_evict_unsafe (p, pgr, e)) {
     return error_trace (e);
   }
   return SUCCESS;
@@ -494,14 +486,12 @@ pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
 HEADER_FUNC err_t
 pgr_flush_all_pages (struct pager *p, error *e)
 {
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
-  {
+  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
     struct page_frame *mp = &p->pages[i];
 
     latch_lock (&mp->ctrl);
 
-    if (mp->flags & PW_PRESENT && !(mp->flags & PW_X))
-    {
+    if (mp->flags & PW_PRESENT && !(mp->flags & PW_X)) {
       ASSERT (!(mp->flags & PW_X));
       pgr_flush_unsafe (p, mp, e);
     }
@@ -515,14 +505,12 @@ pgr_flush_all_pages (struct pager *p, error *e)
 HEADER_FUNC err_t
 pgr_evict_all_pages (struct pager *p, error *e)
 {
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i)
-  {
+  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
     struct page_frame *mp = &p->pages[i];
 
     latch_lock (&mp->ctrl);
 
-    if (mp->flags & PW_PRESENT)
-    {
+    if (mp->flags & PW_PRESENT) {
       ASSERT (!(mp->flags & PW_X));
       pgr_evict_unsafe (p, mp, e);
     }
@@ -536,8 +524,7 @@ pgr_evict_all_pages (struct pager *p, error *e)
 HEADER_FUNC void
 pgr_cancel_if_exists (struct pager *p, page_h *h)
 {
-  if (h->mode == PHM_NONE)
-  {
+  if (h->mode == PHM_NONE) {
     return;
   }
 

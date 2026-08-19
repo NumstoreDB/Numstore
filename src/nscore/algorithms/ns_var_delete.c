@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stddef.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -26,6 +24,8 @@
 #include "nscore/page/ns_page_var_hash_page.h"
 #include "nscore/page/ns_page_var_page.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stddef.h>
 
 /*
  * Delete a variable and reclaim all its storage.
@@ -48,27 +48,26 @@
 err_t
 ns_var_delete (struct ns_var_delete_params params, error *e)
 {
-  page_h prev   = page_h_create ();
-  page_h cur    = page_h_create ();
-  page_h ovnext = page_h_create ();
+  page_h                         prev   = page_h_create ();
+  page_h                         cur    = page_h_create ();
+  page_h                         ovnext = page_h_create ();
 
-  struct variable var;
+  struct variable                var;
 
   struct ns_find_var_page_params fparams = {
-      .p  = params.p,
-      .tx = params.tx,
+      .p     = params.p,
+      .tx    = params.tx,
 
       .vname = params.vname,
       .dvar  = &var,
       .mode  = FP_FIND,
 
-      .hpos = PGNO_NULL,
-      .prev = &prev,
-      .cur  = &cur,
+      .hpos  = PGNO_NULL,
+      .prev  = &prev,
+      .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e))
-  {
+  if (ns_find_var_page (&fparams, e)) {
     goto failed;
   }
   pgr_upgrade (&prev, params.tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, params.p, e);
@@ -86,22 +85,18 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   };
 
   sb_size removed = ns_remove (&rparams, e);
-  if (removed < 0)
-  {
+  if (removed < 0) {
     goto failed;
   }
 
   ASSERT (rparams.root == PGNO_NULL);
 
-  switch (page_h_type (&prev))
-  {
+  switch (page_h_type (&prev)) {
       // Previous is the root hash page
-    case PG_VAR_HASH_PAGE:
-    {
+    case PG_VAR_HASH_PAGE: {
       vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e))
-      {
+      if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e)) {
         goto failed;
       }
 
@@ -109,37 +104,30 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
     }
 
       // Otherwise, we just need to link prev->cur
-    case PG_VAR_PAGE:
-    {
+    case PG_VAR_PAGE: {
       vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (params.p, &prev, PG_VAR_PAGE, e))
-      {
+      if (pgr_release (params.p, &prev, PG_VAR_PAGE, e)) {
         goto failed;
       }
 
       break;
     }
-    default:
-    {
+    default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 
   // Delete all overflow pages
-  while (cur.mode != PHM_NONE)
-  {
+  while (cur.mode != PHM_NONE) {
     pgno npg = dlgt_get_ovnext (page_h_ro (&cur));
-    if (npg != PGNO_NULL)
-    {
-      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e))
-      {
+    if (npg != PGNO_NULL) {
+      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e)) {
         goto failed;
       }
     }
 
-    if (pgr_delete_and_release (params.p, params.tx, &cur, e))
-    {
+    if (pgr_delete_and_release (params.p, params.tx, &cur, e)) {
       goto failed;
     }
 

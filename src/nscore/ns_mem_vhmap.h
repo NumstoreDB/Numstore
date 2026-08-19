@@ -48,7 +48,7 @@ struct mem_vhmap
  *----------------------------------------------------------------------------*/
 
 struct mem_vhmap *mem_vhmap_create (error *e);
-void              mem_vhmap_free (struct mem_vhmap *db);
+void mem_vhmap_free (struct mem_vhmap *db);
 struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
 
 /*-----------------------------------------------------------------------------
@@ -56,16 +56,16 @@ struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
  * @brief Get Remove Delete
  *----------------------------------------------------------------------------*/
 
-err_t            mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
+err_t mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
 struct variable *mem_vhmap_get_var (struct mem_vhmap *db, struct string name);
-void             mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
+void mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Utilities
  * @brief Random and count
  *----------------------------------------------------------------------------*/
 
-u32              mem_vhmap_count (struct mem_vhmap *db);
+u32 mem_vhmap_count (struct mem_vhmap *db);
 struct variable *mem_vhmap_random (struct mem_vhmap *db);
 
 #endif // MEM_VHMAP_H

@@ -15,14 +15,14 @@
 #ifndef NS_PAGE_DATA_LIST_H
 #define NS_PAGE_DATA_LIST_H
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Data List
@@ -72,18 +72,18 @@ struct dl_data
   u32   blen;
 };
 
-err_t  dl_validate_for_db (const page *d, error *e);
+err_t dl_validate_for_db (const page *d, error *e);
 p_size dl_append (page *d, const u8 *src, p_size bytes);
 p_size dl_write (const page *d, const u8 *src, p_size offset, p_size bytes);
-void   dl_memset (page *d, const u8 *buf, p_size len);
-void   dl_set_data (page *p, struct dl_data d);
-void   dl_move_left (page *dest, page *src, p_size len);
-void   dl_move_right (page *src, page *dest, p_size len);
-void   i_log_dl (int level, const page *d);
+void dl_memset (page *d, const u8 *buf, p_size len);
+void dl_set_data (page *p, struct dl_data d);
+void dl_move_left (page *dest, page *src, p_size len);
+void dl_move_right (page *src, page *dest, p_size len);
+void i_log_dl (int level, const page *d);
 p_size dl_read (const page *d, u8 *dest, p_size offset, p_size bytes);
 p_size dl_read_out_from (page *d, u8 *dest, p_size offset);
-void   dl_shift_right (page *d, p_size len);
-void   dl_make_valid (page *d);
+void dl_shift_right (page *d, p_size len);
+void dl_make_valid (page *d);
 
 ////////////////////////////////////////////////////////////
 // GETTERS
@@ -194,11 +194,9 @@ dl_dl_memmove_permissive (
   ASSERT (sidx < DL_DATA_SIZE);
   ASSERT (sidx + nbytes <= DL_DATA_SIZE);
 
-  if (dest->pg == src->pg)
-  {
+  if (dest->pg == src->pg) {
     ASSERT (sidx >= didx); // Nothing to do on same ptr
-    if (didx == sidx)
-    {
+    if (didx == sidx) {
       return;
     }
   }

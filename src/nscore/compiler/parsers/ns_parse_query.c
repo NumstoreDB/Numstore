@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -28,6 +25,9 @@
 #include "nscore/compiler/parsers/ns_parser.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Query
@@ -50,49 +50,41 @@ parse_query_help (struct parser *parser, struct query *dest, error *e)
   WRAP (parser_expect (parser, TT_HELP, e));
   dest->type = QT_HELP;
 
-  if (parser_match (parser, TT_READ))
-  {
+  if (parser_match (parser, TT_READ)) {
     dest->help.command     = QT_READ;
     dest->help.has_command = true;
     parser_advance (parser);
   }
 
-  else if (parser_match (parser, TT_CREATE))
-  {
+  else if (parser_match (parser, TT_CREATE)) {
     dest->help.command     = QT_CREATE;
     dest->help.has_command = true;
     parser_advance (parser);
   }
 
-  else if (parser_match (parser, TT_DELETE))
-  {
+  else if (parser_match (parser, TT_DELETE)) {
     dest->help.command     = QT_DELETE;
     dest->help.has_command = true;
     parser_advance (parser);
   }
 
-  else if (parser_match (parser, TT_GET))
-  {
+  else if (parser_match (parser, TT_GET)) {
     dest->help.command     = QT_GET;
     dest->help.has_command = true;
     parser_advance (parser);
   }
 
-  else if (parser_match (parser, TT_EXIT))
-  {
+  else if (parser_match (parser, TT_EXIT)) {
     dest->help.command     = QT_EXIT;
     dest->help.has_command = true;
     parser_advance (parser);
   }
 
-  else if (parser_match (parser, TT_HELP))
-  {
+  else if (parser_match (parser, TT_HELP)) {
     dest->help.command     = QT_HELP;
     dest->help.has_command = true;
     parser_advance (parser);
-  }
-  else
-  {
+  } else {
     dest->help.has_command = false;
   }
 
@@ -120,21 +112,19 @@ parse_query_get (struct parser *parser, struct query *dest, error *e)
 
   // IF EXISTS
   bool if_exists = false;
-  if (parser_match (parser, TT_IF))
-  {
+  if (parser_match (parser, TT_IF)) {
     parser_advance (parser);
     WRAP (parser_expect (parser, TT_EXISTS, e));
     if_exists = true;
   }
 
   // IDENT
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
   struct token *tok = parser_advance (parser);
 
-  *dest = (struct query){
+  *dest             = (struct query){
       .type = QT_GET,
       .get  = {
           .name =
@@ -157,21 +147,19 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
 
   // IF EXISTS
   bool if_exists = false;
-  if (parser_match (parser, TT_IF))
-  {
+  if (parser_match (parser, TT_IF)) {
     parser_advance (parser);
     WRAP (parser_expect (parser, TT_EXISTS, e));
     if_exists = true;
   }
 
   // IDENT
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
   struct token *tok = parser_advance (parser);
 
-  *dest = (struct query){
+  *dest             = (struct query){
       .type   = QT_DELETE,
       .delete = {
           .name =
@@ -191,14 +179,13 @@ parse_query_create (struct parser *parser, struct query *dest, error *e)
 {
   WRAP (parser_expect (parser, TT_CREATE, e));
 
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
 
   struct token *tok = parser_advance (parser);
 
-  *dest = (struct query){
+  *dest             = (struct query){
       .type   = QT_CREATE,
       .create = {
           .name =
@@ -220,22 +207,19 @@ parse_query_insert (struct parser *parser, struct query *dest, error *e)
 {
   WRAP (parser_expect (parser, TT_INSERT, e));
 
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
   struct token *ident = parser_advance (parser);
   ASSERT (ident->type == TT_IDENTIFIER);
 
   i32 ofst;
-  if (!parser_maybe_parse_integer (parser, &ofst))
-  {
+  if (!parser_maybe_parse_integer (parser, &ofst)) {
     return error_causef (e, ERR_SYNTAX, "Expected integer at position %u", parser->pos);
   }
 
   i32 len;
-  if (!parser_maybe_parse_integer (parser, &len))
-  {
+  if (!parser_maybe_parse_integer (parser, &len)) {
     return error_causef (e, ERR_SYNTAX, "Expected integer at position %u", parser->pos);
   }
 
@@ -262,38 +246,31 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
   WRAP (parser_expect (parser, TT_READ, e));
 
   // IDENT
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
-  struct token *tok = parser_advance (parser);
+  struct token      *tok  = parser_advance (parser);
 
   // USER_STRIDE
   struct user_stride ustr = ustride ();
 
-  if (parser_match (parser, TT_LEFT_BRACKET))
-  {
+  if (parser_match (parser, TT_LEFT_BRACKET)) {
     WRAP (parse_user_stride (parser, &ustr, e));
   }
 
   // LIMIT / BLIMIT
   u32  limit  = 0;
   bool blimit = false;
-  if (parser_match (parser, TT_LIMIT))
-  {
+  if (parser_match (parser, TT_LIMIT)) {
     parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER))
-    {
+    if (!parser_match (parser, TT_INTEGER)) {
       return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = false;
-  }
-  else if (parser_match (parser, TT_BLIMIT))
-  {
+  } else if (parser_match (parser, TT_BLIMIT)) {
     parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER))
-    {
+    if (!parser_match (parser, TT_INTEGER)) {
       return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
@@ -324,38 +301,31 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
   WRAP (parser_expect (parser, TT_REMOVE, e));
 
   // IDENT
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
-  struct token *tok = parser_advance (parser);
+  struct token      *tok  = parser_advance (parser);
 
   // USER_STRIDE
   struct user_stride ustr = ustride ();
 
-  if (parser_match (parser, TT_LEFT_BRACKET))
-  {
+  if (parser_match (parser, TT_LEFT_BRACKET)) {
     WRAP (parse_user_stride (parser, &ustr, e));
   }
 
   // LIMIT / BLIMIT
   u32  limit  = 0;
   bool blimit = false;
-  if (parser_match (parser, TT_LIMIT))
-  {
+  if (parser_match (parser, TT_LIMIT)) {
     parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER))
-    {
+    if (!parser_match (parser, TT_INTEGER)) {
       return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = false;
-  }
-  else if (parser_match (parser, TT_BLIMIT))
-  {
+  } else if (parser_match (parser, TT_BLIMIT)) {
     parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER))
-    {
+    if (!parser_match (parser, TT_INTEGER)) {
       return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
@@ -386,38 +356,31 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
   WRAP (parser_expect (parser, TT_WRITE, e));
 
   // IDENT
-  if (!parser_match (parser, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
   }
-  struct token *tok = parser_advance (parser);
+  struct token      *tok  = parser_advance (parser);
 
   // USER_STRIDE
   struct user_stride ustr = ustride ();
 
-  if (parser_match (parser, TT_LEFT_BRACKET))
-  {
+  if (parser_match (parser, TT_LEFT_BRACKET)) {
     WRAP (parse_user_stride (parser, &ustr, e));
   }
 
   // LIMIT / BLIMIT
   u32  limit  = 0;
   bool blimit = false;
-  if (parser_match (parser, TT_LIMIT))
-  {
+  if (parser_match (parser, TT_LIMIT)) {
     parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER))
-    {
+    if (!parser_match (parser, TT_INTEGER)) {
       return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
     blimit = false;
-  }
-  else if (parser_match (parser, TT_BLIMIT))
-  {
+  } else if (parser_match (parser, TT_BLIMIT)) {
     parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER))
-    {
+    if (!parser_match (parser, TT_INTEGER)) {
       return error_causef (e, ERR_SYNTAX, "Expected number after limit");
     }
     limit  = parser_advance (parser)->integer;
@@ -444,44 +407,25 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
 err_t
 parse_query (struct parser *parser, struct query *dest, struct allocator *dalloc, error *e)
 {
-  if (parser_match (parser, TT_HELP))
-  {
+  if (parser_match (parser, TT_HELP)) {
     WRAP (parse_query_help (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_EXIT))
-  {
+  } else if (parser_match (parser, TT_EXIT)) {
     WRAP (parse_query_exit (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_GET))
-  {
+  } else if (parser_match (parser, TT_GET)) {
     WRAP (parse_query_get (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_DELETE))
-  {
+  } else if (parser_match (parser, TT_DELETE)) {
     WRAP (parse_query_delete (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_CREATE))
-  {
+  } else if (parser_match (parser, TT_CREATE)) {
     WRAP (parse_query_create (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_INSERT))
-  {
+  } else if (parser_match (parser, TT_INSERT)) {
     WRAP (parse_query_insert (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_READ))
-  {
+  } else if (parser_match (parser, TT_READ)) {
     WRAP (parse_query_read (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_REMOVE))
-  {
+  } else if (parser_match (parser, TT_REMOVE)) {
     WRAP (parse_query_remove (parser, dest, e));
-  }
-  else if (parser_match (parser, TT_WRITE))
-  {
+  } else if (parser_match (parser, TT_WRITE)) {
     WRAP (parse_query_write (parser, dest, e));
-  }
-  else
-  {
+  } else {
     return error_causef (e, ERR_SYNTAX, "Expected a valid operation at pos: %u", parser->pos);
   }
 
@@ -494,15 +438,13 @@ compile_query (struct query *dest, const char *text, struct allocator *dalloc, e
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e))
-  {
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e)) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_query (&parser, dest, dalloc, e))
-  {
+  if (parse_query (&parser, dest, dalloc, e)) {
     goto theend;
   }
 
@@ -825,8 +767,8 @@ TEST (compile_query)
     test_query_red_path ("create foo 1", ERR_SYNTAX);
 
     // Sarray
-    u32         dims[2] = {10, 20};
-    struct type t0      = {.type = T_SARRAY, .sa = {.rank = 2, .dims = dims, .t = &TF32}};
+    u32           dims[2]   = {10, 20};
+    struct type   t0        = {.type = T_SARRAY, .sa = {.rank = 2, .dims = dims, .t = &TF32}};
 
     // Union
     struct type  *utypes[2] = {&TI32, &t0};

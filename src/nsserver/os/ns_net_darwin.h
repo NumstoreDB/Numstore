@@ -1,11 +1,11 @@
 #ifndef NS_DARWIN_H
 #define NS_DARWIN_H
 
+#include "core/ns_error.h"
+
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
-#include "core/ns_error.h"
 
 typedef struct i_net_darwin i_net_darwin;
 

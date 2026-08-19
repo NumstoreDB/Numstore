@@ -50,8 +50,8 @@ struct kvt_list_builder
 };
 
 struct kvt_list_builder kvlb_create (struct builder *b);
-err_t                   kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
-err_t                   kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
-err_t                   kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
+err_t kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e);
+err_t kvlb_accept_type (struct kvt_list_builder *eb, struct type *t, error *e);
+err_t kvlb_build (struct kvt_list *dest, struct kvt_list_builder *eb, error *e);
 
 #endif

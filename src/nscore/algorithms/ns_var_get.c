@@ -12,19 +12,19 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_error.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
 
+#include <stdbool.h>
+#include <stddef.h>
+
 err_t
 ns_var_get (struct ns_var_get_params *params, error *e)
 {
-  page_h cur = page_h_create ();
+  page_h                         cur     = page_h_create ();
 
   // Find variable first
   struct ns_find_var_page_params fparams = {
@@ -36,38 +36,35 @@ ns_var_get (struct ns_var_get_params *params, error *e)
       .dvar  = &params->dest, // Dest
       .mode  = FP_FIND,
 
-      .prev = NULL,
-      .cur  = &cur,
+      .prev  = NULL,
+      .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e))
-  {
+  if (ns_find_var_page (&fparams, e)) {
     goto theend;
   }
 
   // Read the variable here
   struct ns_read_var_page_params rparams = {
-      .p  = params->p,
-      .tx = params->tx,
+      .p          = params->p,
+      .tx         = params->tx,
 
-      .vp    = &cur,
-      .alloc = params->alloc,
+      .vp         = &cur,
+      .alloc      = params->alloc,
 
-      .matches = true,
-      .check   = NULL,
+      .matches    = true,
+      .check      = NULL,
 
-      .dest = &params->dest,
+      .dest       = &params->dest,
 
       .save_vname = false,
       .save_type  = true,
   };
-  if (ns_read_var_page (&rparams, e))
-  {
+  if (ns_read_var_page (&rparams, e)) {
     goto theend;
   }
 
-  if (pgr_release (params->p, &cur, PG_VAR_PAGE, e))
-  {
+  if (pgr_release (params->p, &cur, PG_VAR_PAGE, e)) {
     goto theend;
   }
 

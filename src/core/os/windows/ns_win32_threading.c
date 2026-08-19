@@ -16,14 +16,14 @@
 
 #if PLATFORM_WINDOWS
 
-#  include <stddef.h>
-#  include <stdio.h>
-#  include <string.h>
-
 #  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h" // error
 #  include "core/ns_serial.h"
 #  include "core/os/ns_threading.h"
+
+#  include <stddef.h>
+#  include <stdio.h>
+#  include <string.h>
 
 #  define WIN32_LEAN_AND_MEAN
 #  include "windows.h"
@@ -61,8 +61,7 @@ win32_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
   ASSERT (c);
   ASSERT (m);
 
-  if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE))
-  {
+  if (!SleepConditionVariableCS (&c->cond, &m->m, INFINITE)) {
     i_log_error ("cond_wait: SleepConditionVariableCS failed: %lu\n", GetLastError ());
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -74,11 +73,9 @@ win32_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
   (void)t;
   ASSERT (c);
   ASSERT (m);
-  if (!SleepConditionVariableCS (&c->cond, &m->m, (DWORD)msec))
-  {
+  if (!SleepConditionVariableCS (&c->cond, &m->m, (DWORD)msec)) {
     DWORD err = GetLastError ();
-    if (err != ERROR_TIMEOUT)
-    {
+    if (err != ERROR_TIMEOUT) {
       i_log_error ("cond_timed_wait: SleepConditionVariableCS failed: %lu\n", err);
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
@@ -134,8 +131,7 @@ win32_mutex_free (i_threading *t, i_mutex *m)
   ASSERT (m);
 #  ifndef NDEBUG
   DWORD owner = cs_owner (m);
-  if (owner != 0)
-  {
+  if (owner != 0) {
     i_log_error ("mutex_destroy: still locked by thread %lu\n", owner);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -150,8 +146,7 @@ win32_mutex_lock (i_threading *t, i_mutex *m)
   ASSERT (m);
 #  ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
-  if (cs_owner (m) == tid)
-  {
+  if (cs_owner (m) == tid) {
     i_log_error ("mutex_lock: deadlock - thread %lu already owns mutex\n", tid);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -166,8 +161,7 @@ win32_mutex_unlock (i_threading *t, i_mutex *m)
   ASSERT (m);
 #  ifndef NDEBUG
   DWORD tid = GetCurrentThreadId ();
-  if (cs_owner (m) != tid)
-  {
+  if (cs_owner (m) != tid) {
     i_log_error ("mutex_unlock: thread %lu does not own mutex\n", tid);
     UNREACHABLE (); // LCOV_EXCL_LINE
   }
@@ -209,17 +203,15 @@ win32_thread_create (
   ASSERT (dest);
 
   thread_trampoline_args *args = HeapAlloc (GetProcessHeap (), 0, sizeof *args);
-  if (!args)
-  {
+  if (!args) {
     return error_causef (e, ERR_NOMEM, "thread_create: HeapAlloc failed");
   }
 
-  args->func = func;
-  args->arg  = context;
+  args->func   = func;
+  args->arg    = context;
 
   dest->handle = CreateThread (NULL, 0, thread_trampoline, args, 0, &dest->id);
-  if (!dest->handle)
-  {
+  if (!dest->handle) {
     HeapFree (GetProcessHeap (), 0, args);
     char buf[256];
     FormatMessageA (
@@ -245,8 +237,7 @@ win32_thread_join (i_threading *t, i_thread *th, error *e)
   ASSERT (th->handle);
 
   DWORD ret = WaitForSingleObject (th->handle, INFINITE);
-  if (ret != WAIT_OBJECT_0)
-  {
+  if (ret != WAIT_OBJECT_0) {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -269,13 +260,13 @@ win32_thread_join (i_threading *t, i_thread *th, error *e)
 // Default threading vtable
 
 struct i_threading default_threading = {
-    .i_thread_create = win32_thread_create,
-    .i_thread_join   = win32_thread_join,
+    .i_thread_create   = win32_thread_create,
+    .i_thread_join     = win32_thread_join,
 
-    .i_mutex_create = win32_mutex_create,
-    .i_mutex_free   = win32_mutex_free,
-    .i_mutex_lock   = win32_mutex_lock,
-    .i_mutex_unlock = win32_mutex_unlock,
+    .i_mutex_create    = win32_mutex_create,
+    .i_mutex_free      = win32_mutex_free,
+    .i_mutex_lock      = win32_mutex_lock,
+    .i_mutex_unlock    = win32_mutex_unlock,
 
     .i_cond_create     = win32_cond_create,
     .i_cond_free       = win32_cond_free,

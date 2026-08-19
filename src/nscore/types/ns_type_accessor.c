@@ -14,9 +14,6 @@
 
 #include "nscore/types/ns_type_accessor.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_byte_accessor.h"
 #include "core/ns_csx_assert.h"
@@ -34,6 +31,9 @@
 #include "nscore/types/ns_types.h"
 #include "nscore/types/ns_union_t.h"
 
+#include <stdbool.h>
+#include <stddef.h>
+
 /******************************************************************************
  * SECTION: Type Accessor
  ******************************************************************************/
@@ -42,16 +42,13 @@ static bool
 range_ta_equal (const struct range_ta *left, const struct range_ta *right)
 {
   // Quick check that rank is the same
-  if (left->dlen != right->dlen)
-  {
+  if (left->dlen != right->dlen) {
     return false;
   }
 
   // Iterate through each supplied accessor
-  for (u32 i = 0; i < left->dlen; ++i)
-  {
-    if (!user_stride_equal (&left->dim_accessors[i], &right->dim_accessors[i]))
-    {
+  for (u32 i = 0; i < left->dlen; ++i) {
+    if (!user_stride_equal (&left->dim_accessors[i], &right->dim_accessors[i])) {
       return false;
     }
   }
@@ -61,27 +58,21 @@ range_ta_equal (const struct range_ta *left, const struct range_ta *right)
 bool
 type_accessor_equal (const struct type_accessor left, const struct type_accessor right)
 {
-  if (left.type != right.type)
-  {
+  if (left.type != right.type) {
     return false;
   }
 
-  switch (left.type)
-  {
-    case TA_TAKE:
-    {
+  switch (left.type) {
+    case TA_TAKE: {
       return true;
     }
-    case TA_SELECT:
-    {
-      if (!string_equal (left.select.key, right.select.key))
-      {
+    case TA_SELECT: {
+      if (!string_equal (left.select.key, right.select.key)) {
         return false;
       }
       return type_accessor_equal (*left.select.sub_ta, *right.select.sub_ta);
     }
-    case TA_RANGE:
-    {
+    case TA_RANGE: {
       return range_ta_equal (&left.range, &right.range);
     }
   }
@@ -93,8 +84,7 @@ static struct type *
 ta_select_struct (struct type *ref, struct type_accessor *ta, struct allocator *alloc, error *e)
 {
   struct type *sub = struct_t_resolve_key (NULL, &ref->st, ta->select.key);
-  if (sub == NULL)
-  {
+  if (sub == NULL) {
     error_causef (e, ERR_INTERP, "Failed to find sub key in struct");
     return NULL;
   }
@@ -105,8 +95,7 @@ static struct type *
 ta_select_union (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
 {
   struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key);
-  if (subtype == NULL)
-  {
+  if (subtype == NULL) {
     error_causef (e, ERR_INTERP, "Failed to resolve subtype");
     return NULL;
   }
@@ -119,35 +108,29 @@ ta_select_sarray (struct type *reftype, struct type_accessor *ta, struct allocat
   BUILDER_INIT (b, alloc);
 
   struct type *ret = allocate (alloc, 1, sizeof *ret, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     goto failed;
   }
 
   struct sarray_builder builder = sab_create (&b);
 
-  for (u32 i = 0; i < reftype->sa.rank; ++i)
-  {
-    if (sab_accept_dim (&builder, reftype->sa.dims[i], e))
-    {
+  for (u32 i = 0; i < reftype->sa.rank; ++i) {
+    if (sab_accept_dim (&builder, reftype->sa.dims[i], e)) {
       goto failed;
     }
   }
 
   struct type *t = ta_subtype (reftype->sa.t, ta, alloc, e);
-  if (t == NULL)
-  {
+  if (t == NULL) {
     goto failed;
   }
 
-  if (sab_accept_type (&builder, t, e))
-  {
+  if (sab_accept_type (&builder, t, e)) {
     goto failed;
   }
 
   ret->type = T_SARRAY;
-  if (sab_build (&ret->sa, &builder, e))
-  {
+  if (sab_build (&ret->sa, &builder, e)) {
     goto failed;
   }
 
@@ -165,35 +148,26 @@ ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocato
   BUILDER_INIT (b, alloc);
   struct sarray_builder builder = sab_create (&b);
 
-  bool isarray = false;
+  bool                  isarray = false;
 
-  for (u32 i = 0; i < reftype->sa.rank; ++i)
-  {
-    if (i >= ta->range.dlen)
-    {
+  for (u32 i = 0; i < reftype->sa.rank; ++i) {
+    if (i >= ta->range.dlen) {
       isarray = true;
       struct stride str;
-      if (stride_resolve (&str, USER_STRIDE_ALL, reftype->sa.dims[i], e))
-      {
+      if (stride_resolve (&str, USER_STRIDE_ALL, reftype->sa.dims[i], e)) {
         goto failure;
       }
-      if (sab_accept_dim (&builder, str.nelems, e))
-      {
+      if (sab_accept_dim (&builder, str.nelems, e)) {
         goto failure;
       }
-    }
-    else
-    {
+    } else {
       isarray = isarray || ta->range.dim_accessors[i].present & COLON_PRESENT;
       struct stride str;
-      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e))
-      {
+      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e)) {
         goto failure;
       }
-      if (ta->range.dim_accessors[i].present & COLON_PRESENT)
-      {
-        if (sab_accept_dim (&builder, str.nelems, e))
-        {
+      if (ta->range.dim_accessors[i].present & COLON_PRESENT) {
+        if (sab_accept_dim (&builder, str.nelems, e)) {
           goto failure;
         }
       }
@@ -202,32 +176,25 @@ ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocato
 
   struct type *ret = NULL;
   struct type *t   = ta_subtype (reftype->sa.t, ta->range.sub_ta, alloc, e);
-  if (t == NULL)
-  {
+  if (t == NULL) {
     goto failure;
   }
 
-  if (isarray)
-  {
-    if (sab_accept_type (&builder, t, e))
-    {
+  if (isarray) {
+    if (sab_accept_type (&builder, t, e)) {
       goto failure;
     }
 
     ret = allocate (alloc, 1, sizeof *ret, e);
-    if (ret == NULL)
-    {
+    if (ret == NULL) {
       return NULL;
     }
 
     ret->type = T_SARRAY;
-    if (sab_build (&ret->sa, &builder, e))
-    {
+    if (sab_build (&ret->sa, &builder, e)) {
       goto failure;
     }
-  }
-  else
-  {
+  } else {
     ret = t;
   }
 
@@ -242,31 +209,23 @@ failure:
 struct type *
 ta_subtype (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
 {
-  switch (ta->type)
-  {
-    case TA_TAKE:
-    {
+  switch (ta->type) {
+    case TA_TAKE: {
       // Just copy the type over
       return reftype;
     }
-    case TA_SELECT:
-    {
-      switch (reftype->type)
-      {
-        case T_STRUCT:
-        {
+    case TA_SELECT: {
+      switch (reftype->type) {
+        case T_STRUCT: {
           return ta_select_struct (reftype, ta, alloc, e);
         }
-        case T_UNION:
-        {
+        case T_UNION: {
           return ta_select_union (reftype, ta, alloc, e);
         }
-        case T_SARRAY:
-        {
+        case T_SARRAY: {
           return ta_select_sarray (reftype, ta, alloc, e);
         }
-        case T_PRIM:
-        {
+        case T_PRIM: {
           error_causef (
               e,
               ERR_INVALID_ARGUMENT,
@@ -278,18 +237,14 @@ ta_subtype (struct type *reftype, struct type_accessor *ta, struct allocator *al
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case TA_RANGE:
-    {
-      switch (reftype->type)
-      {
-        case T_SARRAY:
-        {
+    case TA_RANGE: {
+      switch (reftype->type) {
+        case T_SARRAY: {
           return ta_range_sarray (reftype, ta, alloc, e);
         }
         case T_STRUCT:
         case T_UNION:
-        case T_PRIM:
-        {
+        case T_PRIM: {
           error_causef (
               e,
               ERR_INVALID_ARGUMENT,
@@ -314,7 +269,7 @@ test_ta_subtype_case (const char *typestr, const char *accessor, const char *exp
 {
   ALLOC_INIT (alloc);
 
-  error e = error_create ();
+  error          e = error_create ();
 
   struct type    reftype;
   struct type    expected;
@@ -405,8 +360,7 @@ TEST (ta_subtype)
       {"struct { a i32, b f64, c [10] i8 }", "a.c[0:10:2]", "[5] i8"},
   };
 
-  for (u32 i = 0; i < arrlen (entries); ++i)
-  {
+  for (u32 i = 0; i < arrlen (entries); ++i) {
     TEST_CASE ("%s :: %s :: %s", entries[i].typestr, entries[i].accessor, entries[i].expected_type)
     {
       test_ta_subtype_case (entries[i].typestr, entries[i].accessor, entries[i].expected_type);
@@ -444,20 +398,16 @@ rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e)
   DBG_ASSERT (range_builder, rb);
 
   struct rb_llnode *node = builder_malloc_temp (rb->b, 1, sizeof *node, e);
-  if (!node)
-  {
+  if (!node) {
     return error_trace (e);
   }
 
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!rb->head)
-  {
+  if (!rb->head) {
     rb->head = &node->link;
-  }
-  else
-  {
+  } else {
     list_append (&rb->head, &node->link);
   }
 
@@ -470,21 +420,18 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
 {
   DBG_ASSERT (range_builder, rb);
 
-  if (rb->len == 0)
-  {
+  if (rb->len == 0) {
     error_causef (e, ERR_INTERP, "range: no dimensions");
     goto theend;
   }
 
   struct user_stride *dims = builder_malloc_persist (rb->b, rb->len, sizeof *dims, e);
-  if (!dims)
-  {
+  if (!dims) {
     goto theend;
   }
 
   u32 i = 0;
-  for (struct llnode *it = rb->head; it; it = it->next)
-  {
+  for (struct llnode *it = rb->head; it; it = it->next) {
     struct rb_llnode *rn = container_of (it, struct rb_llnode, link);
     dims[i]              = rn->stride;
     i++;
@@ -502,8 +449,7 @@ DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, { ASS
 static struct type_accessor *
 tab_alloc (struct type_accessor_builder *builder, error *e)
 {
-  if (builder->head == NULL)
-  {
+  if (builder->head == NULL) {
     return &builder->ret;
   }
 
@@ -514,18 +460,12 @@ tab_alloc (struct type_accessor_builder *builder, error *e)
 static void
 tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 {
-  if (!builder->head)
-  {
+  if (!builder->head) {
     builder->head = ta;
-  }
-  else
-  {
-    if (builder->tail->type == TA_SELECT)
-    {
+  } else {
+    if (builder->tail->type == TA_SELECT) {
       builder->tail->select.sub_ta = ta;
-    }
-    else if (builder->tail->type == TA_RANGE)
-    {
+    } else if (builder->tail->type == TA_RANGE) {
       builder->tail->range.sub_ta = ta;
     }
   }
@@ -535,14 +475,12 @@ tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 static err_t
 tab_flush_range (struct type_accessor_builder *builder, error *e)
 {
-  if (!builder->in_range)
-  {
+  if (!builder->in_range) {
     return SUCCESS;
   }
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta)
-  {
+  if (!ta) {
     return error_trace (e);
   }
 
@@ -560,8 +498,7 @@ tab_flush_range (struct type_accessor_builder *builder, error *e)
 static void
 tab_ensure_range (struct type_accessor_builder *builder)
 {
-  if (!builder->in_range)
-  {
+  if (!builder->in_range) {
     builder->rb       = rb_create (builder->b);
     builder->in_range = true;
   }
@@ -586,14 +523,12 @@ tab_accept_select (struct type_accessor_builder *builder, struct string key, err
   WRAP (tab_flush_range (builder, e));
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta)
-  {
+  if (!ta) {
     return error_trace (e);
   }
 
   key.data = allocator_copy (builder->b->persistent, key.data, key.len, e);
-  if (!key.data)
-  {
+  if (!key.data) {
     return error_trace (e);
   }
 
@@ -622,8 +557,7 @@ tab_accept_take (struct type_accessor_builder *builder, error *e)
   WRAP (tab_flush_range (builder, e));
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta)
-  {
+  if (!ta) {
     return error_trace (e);
   }
 
@@ -639,8 +573,7 @@ tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, er
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
-  if (tab_accept_take (builder, e))
-  {
+  if (tab_accept_take (builder, e)) {
     goto theend;
   }
 
@@ -656,7 +589,7 @@ TEST (type_accessor_builder)
   ALLOC_INIT (alloc);
   BUILDER_INIT (b, &alloc);
 
-  error e = error_create ();
+  error                        e       = error_create ();
 
   // 0. freshly-created builder must be clean
   struct type_accessor_builder builder = tab_create (&b);
@@ -667,7 +600,7 @@ TEST (type_accessor_builder)
   tab_build (&acc, &builder, &e);
   test_assert_int_equal (acc.type, TA_TAKE);
 
-  builder = tab_create (&b);
+  builder            = tab_create (&b);
 
   // 2. accept a select accessor
   struct string key1 = strfcstr ("field1");

@@ -15,15 +15,15 @@
 #ifndef HTABLE_H
 #define HTABLE_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_concurrency.h" // latch
 #include "core/ns_error.h"       // error
 #include "core/ns_platform.h"    // HEADER_FUNC
 #include "core/ns_stdtypes.h"    // u32 ...etc
 #include "core/ns_string.h"
 #include "core/os/ns_memory.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 struct string;
 
@@ -87,15 +87,15 @@ struct htable
 };
 
 struct htable *htable_create (u32 n, struct i_mem mem, error *e);
-void           htable_free (struct htable *t);
+void htable_free (struct htable *t);
 
-void           htable_insert (struct htable *t, struct hnode *node);
+void htable_insert (struct htable *t, struct hnode *node);
 struct hnode **htable_lookup (
     struct htable      *t,
     const struct hnode *key,
     bool (*eq) (const struct hnode *, const struct hnode *)
 );
-struct hnode  *htable_delete (struct htable *t, struct hnode **from);
+struct hnode *htable_delete (struct htable *t, struct hnode **from);
 struct hnode **htable_random (struct htable *t);
 
 HEADER_FUNC u32

@@ -19,8 +19,7 @@
 #include "core/ns_platform.h" // UNREACHABLE_HINT, HEADER_FUNC
 
 #define crash()             \
-  do                        \
-  {                         \
+  do {                      \
     *(volatile int *)0 = 1; \
     UNREACHABLE_HINT ();    \
   }                         \
@@ -29,8 +28,7 @@
 #define UNIMPLEMENTED() UNREACHABLE ()
 
 #define UNREACHABLE() \
-  do                  \
-  {                   \
+  do {                \
     crash ();         \
   }                   \
   while (0)
@@ -41,8 +39,7 @@
 /// PANIC
 
 #  define panic(msg)                    \
-    do                                  \
-    {                                   \
+    do {                                \
       i_log_error ("PANIC! %s\n", msg); \
       i_log_flush ();                   \
       crash ();                         \
@@ -53,10 +50,8 @@
 /// ASSERT
 
 #  define ASSERT(expr)                                                                   \
-    do                                                                                   \
-    {                                                                                    \
-      if (!(expr))                                                                       \
-      {                                                                                  \
+    do {                                                                                 \
+      if (!(expr)) {                                                                     \
         i_log_assert ("%s failed at %s:%d (%s)\n", #expr, __FILE__, __LINE__, __func__); \
         i_log_flush ();                                                                  \
         crash ();                                                                        \

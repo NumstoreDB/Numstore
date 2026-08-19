@@ -16,14 +16,14 @@
 
 #if PLATFORM_WINDOWS
 
-#  include <stddef.h>
-#  include <stdio.h>
-#  include <string.h>
-
 #  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h" // error
 #  include "core/ns_serial.h"
 #  include "core/os/ns_time.h"
+
+#  include <stddef.h>
+#  include <stdio.h>
+#  include <string.h>
 
 #  define WIN32_LEAN_AND_MEAN
 #  include "windows.h"
@@ -40,8 +40,7 @@ i_timer_create (i_timer *timer, error *e)
 {
   ASSERT (timer);
 
-  if (!QueryPerformanceFrequency (&timer->frequency))
-  {
+  if (!QueryPerformanceFrequency (&timer->frequency)) {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -55,8 +54,7 @@ i_timer_create (i_timer *timer, error *e)
     return error_causef (e, ERR_IO, "QueryPerformanceFrequency: %s", buf);
   }
 
-  if (!QueryPerformanceCounter (&timer->start))
-  {
+  if (!QueryPerformanceCounter (&timer->start)) {
     char buf[256];
     FormatMessageA (
         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -96,9 +94,9 @@ i_timer_now_ns (i_timer *timer)
   // before overflow. For long-running timers use the 128-bit path below.
   //
   // Safe path: scale to ns using (elapsed / freq) * 1e9 + remainder.
-  LONGLONG freq = timer->frequency.QuadPart;
-  LONGLONG sec  = elapsed / freq;
-  LONGLONG rem  = elapsed % freq;
+  LONGLONG freq    = timer->frequency.QuadPart;
+  LONGLONG sec     = elapsed / freq;
+  LONGLONG rem     = elapsed % freq;
   return (u64)(sec * 1000000000LL + (rem * 1000000000LL) / freq);
 }
 

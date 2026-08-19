@@ -15,12 +15,12 @@
 #ifndef NS_PAGE_VAR_PAGE_H
 #define NS_PAGE_VAR_PAGE_H
 
-#include <stdbool.h>
-
 #include "core/ns_bytes.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  *
@@ -68,16 +68,16 @@ void vp_set_root (page *p, pgno root);
 void vp_set_nbytes (page *p, b_size nbytes);
 
 // Getters
-pgno   vp_get_next (const page *p);
-pgno   vp_get_ovnext (const page *p);
-u16    vp_get_vlen (const page *p);
-u16    vp_get_tlen (const page *p);
-pgno   vp_get_root (const page *p);
+pgno vp_get_next (const page *p);
+pgno vp_get_ovnext (const page *p);
+u16 vp_get_vlen (const page *p);
+u16 vp_get_tlen (const page *p);
+pgno vp_get_root (const page *p);
 b_size vp_get_nbytes (const page *p);
 
-b_size        vp_calc_tofst (const page *p);
-bool          vp_is_overflow (const page *p);
-struct bytes  vp_get_bytes (page *p);
+b_size vp_calc_tofst (const page *p);
+bool vp_is_overflow (const page *p);
+struct bytes vp_get_bytes (page *p);
 struct cbytes vp_get_bytes_imut (const page *p);
 
 // Validation

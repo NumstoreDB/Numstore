@@ -14,9 +14,6 @@
 
 #include "nscore/types/ns_union_t.h"
 
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -30,6 +27,9 @@
 #include "nscore/ns_variables.h"
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdio.h>
+#include <string.h>
 
 DEFINE_DBG_ASSERT (struct union_t, unchecked_union_t, s, {
   ASSERT (s);
@@ -54,22 +54,18 @@ union_t_validate_shallow (const struct union_t *s, error *e)
 {
   DBG_ASSERT (unchecked_union_t, s);
 
-  if (s->len == 0)
-  {
+  if (s->len == 0) {
     return union_t_type_err ("Keys length must be > 0", e);
   }
 
-  for (u32 i = 0; i < s->len; ++i)
-  {
-    if (s->keys[i].len == 0)
-    {
+  for (u32 i = 0; i < s->len; ++i) {
+    if (s->keys[i].len == 0) {
       return union_t_type_err ("Key length must be > 0", e);
     }
     ASSERT (s->keys[i].data);
   }
 
-  if (!strings_all_unique (s->keys, s->len))
-  {
+  if (!strings_all_unique (s->keys, s->len)) {
     return union_t_type_err ("Duplicate keys", e);
   }
 
@@ -143,8 +139,7 @@ union_t_validate (const struct union_t *s, error *e)
   {
     return false;
   }
-  for (u32 i = 0; i < s->len; ++i)
-  {
+  for (u32 i = 0; i < s->len; ++i) {
     WRAP (type_validate (s->types[i], e));
     {
       return false;
@@ -156,10 +151,8 @@ union_t_validate (const struct union_t *s, error *e)
 struct type *
 union_t_resolve_key (struct union_t *t, struct string key)
 {
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    if (string_equal (t->keys[i], key))
-    {
+  for (u32 i = 0; i < t->len; ++i) {
+    if (string_equal (t->keys[i], key)) {
       return t->types[i];
     }
   }
@@ -171,7 +164,7 @@ union_t_resolve_key (struct union_t *t, struct string key)
 TEST (union_t_resolve_key)
 {
   ALLOC_INIT (alloc);
-  error e = error_create ();
+  error        e = error_create ();
 
   struct type *t =
       compile_type_alloc ("union { a struct { a u32, b [10]f32 }, b f32 }", &alloc, &e);
@@ -194,31 +187,26 @@ TEST (union_t_resolve_key)
 err_t
 union_t_create (struct union_t *dest, struct kvt_list list, struct allocator *dalloc, error *e)
 {
-  if (list.len == 0)
-  {
+  if (list.len == 0) {
     return union_t_type_err ("union must have greater than 0 keys", e);
   }
 
   // Copy stuff over
-  if (dalloc)
-  {
+  if (dalloc) {
     dest->len  = list.len;
     dest->keys = allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
-    if (dest->keys == NULL)
-    {
+    if (dest->keys == NULL) {
       return error_trace (e);
     }
 
     dest->types = allocator_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
-    if (dest->keys == NULL)
-    {
+    if (dest->keys == NULL) {
       return error_trace (e);
     }
   }
 
   // Don't copy
-  else
-  {
+  else {
     dest->len   = list.len;
     dest->keys  = list.keys;
     dest->types = list.types;
@@ -238,82 +226,60 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
   int   n;
 
   n = snprintf (out, avail, "union { ");
-  if (n < 0)
-  {
+  if (n < 0) {
     return n;
   }
   len += n;
-  if (out)
-  {
+  if (out) {
     out += n;
-    if ((u32)n < avail)
-    {
+    if ((u32)n < avail) {
       avail -= n;
-    }
-    else
-    {
+    } else {
       avail = 0;
     }
   }
 
-  for (u32 i = 0; i < st->len; ++i)
-  {
+  for (u32 i = 0; i < st->len; ++i) {
     struct string key = st->keys[i];
     n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
-    if (n < 0)
-    {
+    if (n < 0) {
       return n;
     }
     len += n;
-    if (out)
-    {
+    if (out) {
       out += n;
-      if ((u32)n < avail)
-      {
+      if ((u32)n < avail) {
         avail -= n;
-      }
-      else
-      {
+      } else {
         avail = 0;
       }
     }
 
     n = type_snprintf (out, avail, st->types[i]);
-    if (n < 0)
-    {
+    if (n < 0) {
       return n;
     }
     len += n;
-    if (out)
-    {
+    if (out) {
       out += n;
-      if ((u32)n < avail)
-      {
+      if ((u32)n < avail) {
         avail -= n;
-      }
-      else
-      {
+      } else {
         avail = 0;
       }
     }
 
-    if (i + 1 < st->len)
-    {
+    if (i + 1 < st->len) {
       n = snprintf (out, avail, ", ");
-      if (n < 0)
-      {
+      if (n < 0) {
         return n;
       }
       len += n;
-      if (out)
-      {
+      if (out) {
         out += n;
-        if ((u32)n < avail)
-        {
+        if ((u32)n < avail) {
           avail -= n;
-        }
-        else
-        {
+        } else {
           avail = 0;
         }
       }
@@ -321,8 +287,7 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
   }
 
   n = snprintf (out, avail, " }");
-  if (n < 0)
-  {
+  if (n < 0) {
     return n;
   }
   len += n;
@@ -392,11 +357,9 @@ union_t_byte_size (const struct union_t *t)
   DBG_ASSERT (valid_union_t, t);
   u32 ret = 0;
 
-  for (u32 i = 0; i < t->len; ++i)
-  {
+  for (u32 i = 0; i < t->len; ++i) {
     u32 next = type_byte_size (t->types[i]);
-    if (next > ret)
-    {
+    if (next > ret) {
       ret = next;
     }
   }
@@ -466,8 +429,7 @@ union_t_get_serial_size (const struct union_t *t)
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
   ret += sizeof (u16);
 
-  for (u32 i = 0; i < t->len; ++i)
-  {
+  for (u32 i = 0; i < t->len; ++i) {
     ret += sizeof (u16);
     ret += t->keys[i].len;
     ret += type_get_serial_size (t->types[i]);
@@ -535,8 +497,7 @@ union_t_serialize (struct serializer *dest, const struct union_t *src)
   ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));
   ASSERT (ret);
 
-  for (u32 i = 0; i < src->len; ++i)
-  {
+  for (u32 i = 0; i < src->len; ++i) {
     // (KLEN
     struct string next = src->keys[i];
     ret                = srlizr_write (dest, (const u8 *)&next.len, sizeof (u16));
@@ -627,17 +588,14 @@ union_t_deserialize (struct union_t *dest, struct deserializer *src, struct allo
   struct kvt_list_builder unb = kvlb_create (&b);
 
   // LEN
-  u16 len;
-  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src))
-  {
+  u16                     len;
+  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src)) {
     goto early_termination;
   }
 
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     u16 klen;
-    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src))
-    {
+    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src)) {
       goto early_termination;
     }
 
@@ -645,39 +603,32 @@ union_t_deserialize (struct union_t *dest, struct deserializer *src, struct allo
         .len  = klen,
         .data = allocate (a, klen, 1, e),
     };
-    if (key.data == NULL)
-    {
+    if (key.data == NULL) {
       goto theend;
     }
 
-    if (!dsrlizr_read ((u8 *)key.data, key.len, src))
-    {
+    if (!dsrlizr_read ((u8 *)key.data, key.len, src)) {
       goto early_termination;
     }
 
     struct type *t = type_deserialize (src, a, e);
-    if (t == NULL)
-    {
+    if (t == NULL) {
       goto theend;
     }
 
-    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS))
-    {
+    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS)) {
       goto theend;
     }
-    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS))
-    {
+    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS)) {
       goto theend;
     }
   }
 
   struct kvt_list list;
-  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS))
-  {
+  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS)) {
     goto theend;
   }
-  if (unlikely ((union_t_create (dest, list, NULL, e)) < SUCCESS))
-  {
+  if (unlikely ((union_t_create (dest, list, NULL, e)) < SUCCESS)) {
     goto theend;
   }
 
@@ -712,10 +663,10 @@ TEST (union_t_deserialize_green_path)
 
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
-  error e = error_create ();
+  error               e = error_create ();
 
-  struct union_t eret;
-  err_t          ret = union_t_deserialize (&eret, &d, &alloc, &e);
+  struct union_t      eret;
+  err_t               ret = union_t_deserialize (&eret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, SUCCESS);
 
@@ -768,8 +719,8 @@ TEST (union_t_deserialize_red_path)
   struct union_t      sret = {0};
   struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
-  error e   = error_create ();
-  err_t ret = union_t_deserialize (&sret, &d, &alloc, &e);
+  error               e    = error_create ();
+  err_t               ret  = union_t_deserialize (&sret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, ERR_INTERP); // Duplicate
   ALLOC_CLOSE (alloc);
@@ -781,26 +732,22 @@ union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e
 {
   ASSERT (un);
 
-  un->len = (u16)randu32r (1, 5);
+  un->len  = (u16)randu32r (1, 5);
 
   un->keys = (struct string *)allocate (alloc, un->len, sizeof (struct string), e);
-  if (!un->keys)
-  {
+  if (!un->keys) {
     return error_trace (e);
   }
 
   un->types = (struct type **)allocate (alloc, un->len, sizeof (struct type *), e);
-  if (!un->types)
-  {
+  if (!un->types) {
     return error_trace (e);
   }
 
-  for (u16 i = 0; i < un->len; ++i)
-  {
+  for (u16 i = 0; i < un->len; ++i) {
     WRAP (rand_varname (&un->keys[i], alloc, 5, 11, e));
     un->types[i] = type_random (alloc, depth - 1, e);
-    if (un->types[i] == NULL)
-    {
+    if (un->types[i] == NULL) {
       return error_trace (e);
     }
   }
@@ -811,19 +758,15 @@ union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e
 bool
 union_t_equal (const struct union_t *left, const struct union_t *right)
 {
-  if (left->len != right->len)
-  {
+  if (left->len != right->len) {
     return false;
   }
 
-  for (u32 i = 0; i < left->len; ++i)
-  {
-    if (!string_equal (left->keys[i], right->keys[i]))
-    {
+  for (u32 i = 0; i < left->len; ++i) {
+    if (!string_equal (left->keys[i], right->keys[i])) {
       return false;
     }
-    if (!type_equal (left->types[i], right->types[i]))
-    {
+    if (!type_equal (left->types[i], right->types[i])) {
       return false;
     }
   }

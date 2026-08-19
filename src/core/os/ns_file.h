@@ -90,8 +90,7 @@ i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error
   const i64 ret = i_pread_all (fp, dest, n, offset, e);
   WRAP (ret);
 
-  if (unlikely ((u64)ret != n))
-  {
+  if (unlikely ((u64)ret != n)) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -110,8 +109,7 @@ i_read_all_expect (i_file *fp, void *dest, const u64 nbytes, error *e)
   const i64 ret = i_read_all (fp, dest, nbytes, e);
   WRAP (ret);
 
-  if (unlikely ((u64)ret != nbytes))
-  {
+  if (unlikely ((u64)ret != nbytes)) {
     return error_causef (
         e,
         ERR_CORRUPT,

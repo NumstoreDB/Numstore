@@ -14,14 +14,14 @@
 
 #include "core/ns_htable.h"
 
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_numerics.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+
+#include <string.h>
 
 DEFINE_DBG_ASSERT (struct htable, htable, t, {
   ASSERT (t);
@@ -34,8 +34,7 @@ htable_create (const u32 n, struct i_mem mem, error *e)
 {
   struct htable *ret = i_malloc (mem, 1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
 
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return ret;
   }
 
@@ -87,14 +86,12 @@ htable_lookup (
 
   DBG_ASSERT (htable, t);
 
-  const u32 pos = key->hcode % t->cap;
+  const u32      pos  = key->hcode % t->cap;
 
   struct hnode **from = &t->table[pos];
 
-  for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next)
-  {
-    if (cur->hcode == key->hcode && eq (cur, key))
-    {
+  for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next) {
+    if (cur->hcode == key->hcode && eq (cur, key)) {
       latch_unlock (&t->latch);
       return from;
     }
@@ -130,14 +127,11 @@ htable_random (struct htable *t)
 
   DBG_ASSERT (htable, t);
 
-  for (u32 pos = 0; pos < t->cap; ++pos)
-  {
+  for (u32 pos = 0; pos < t->cap; ++pos) {
     struct hnode **from = &t->table[pos];
 
-    for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next)
-    {
-      if (idx == target_idx)
-      {
+    for (struct hnode *cur; (cur = *from) != NULL; from = &cur->next) {
+      if (idx == target_idx) {
         latch_unlock (&t->latch);
         return from;
       }
@@ -154,11 +148,9 @@ htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *c
 {
   latch_lock (&((struct htable *)t)->latch);
 
-  for (u32 i = 0; i < t->cap; ++i)
-  {
+  for (u32 i = 0; i < t->cap; ++i) {
     struct hnode *cur = t->table[i];
-    while (cur)
-    {
+    while (cur) {
       struct hnode *next = cur->next;
       action (cur, ctx);
       cur = next;
@@ -191,9 +183,8 @@ TEST (htable)
   struct htable *t = htable_create (100, mem, &e);
   struct hdata   data[1000];
 
-  int k = 0;
-  for (int i = 0; i < 1000; ++i)
-  {
+  int            k = 0;
+  for (int i = 0; i < 1000; ++i) {
     k += randu32r (1, 10000);
     data[i].data       = k;
     data[i].value      = randu32 ();
@@ -203,19 +194,17 @@ TEST (htable)
 
   test_assert_int_equal (t->size, 1000);
 
-  for (int i = 0; i < 1000; ++i)
-  {
+  for (int i = 0; i < 1000; ++i) {
     struct hnode **node = htable_random (t);
     test_assert (node != NULL);
   }
 
-  for (int i = 0; i < 1000; ++i)
-  {
+  for (int i = 0; i < 1000; ++i) {
     struct hdata key;
-    key.data       = data[i].data;
-    key.node.hcode = data[i].node.hcode;
-    key.value      = data[i].value; // Expected value (normally
-                                    // we wouldn't have this)
+    key.data                   = data[i].data;
+    key.node.hcode             = data[i].node.hcode;
+    key.value                  = data[i].value; // Expected value (normally
+                                                // we wouldn't have this)
 
     ////// LOOKUP
     struct hnode      **found  = htable_lookup (t, &key.node, hdata_eq);
@@ -252,8 +241,7 @@ fnv1a_hash (const struct string s)
 {
   u32         hash = 2166136261u;
   const char *str  = s.data;
-  for (u32 i = 0; i < s.len; ++i)
-  {
+  for (u32 i = 0; i < s.len; ++i) {
     hash ^= (u8)*str++;
     hash *= 16777619u;
   }
@@ -271,10 +259,10 @@ TEST (fnv1a_hash_empty)
 
 TEST (fnv1a_hash_single_char)
 {
-  const struct string s    = {.data = "a", .len = 1};
-  const u32           hash = fnv1a_hash (s);
+  const struct string s        = {.data = "a", .len = 1};
+  const u32           hash     = fnv1a_hash (s);
   // "a" should hash to (2166136261 ^ 'a') * 16777619
-  const u32 expected = (2166136261u ^ 'a') * 16777619u;
+  const u32           expected = (2166136261u ^ 'a') * 16777619u;
   test_assert_equal (hash, expected);
 }
 

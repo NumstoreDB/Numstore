@@ -23,7 +23,7 @@ struct data_writer;
 
 // Data writer fixture
 struct data_writer *smfile_data_writer_open (const char *path);
-int                 smfile_data_writer_close (struct data_writer *w);
+int smfile_data_writer_close (struct data_writer *w);
 
 // Specialty fixture for smfile
 typedef sb_size (*pinsert_func) (
@@ -90,6 +90,6 @@ struct smfile_test_fixture
 };
 
 struct smfile_test_fixture smfile_test_fixture_open (const char *path);
-int                        smfile_test_fixture_close (struct smfile_test_fixture *f);
+int smfile_test_fixture_close (struct smfile_test_fixture *f);
 
 #endif // SMFILE_TEST_FIXTURE_H

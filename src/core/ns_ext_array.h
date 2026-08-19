@@ -38,7 +38,7 @@ struct ext_array
 };
 
 struct ext_array ext_array_create ();
-void             ext_array_free (struct ext_array *r);
+void ext_array_free (struct ext_array *r);
 
 i64 ext_array_insert (struct ext_array *r, u32 ofst, const void *src, u32 slen, error *e);
 i64 ext_array_read (const struct ext_array *r, struct stride str, u32 size, void *dest, error *e);

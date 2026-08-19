@@ -92,13 +92,13 @@ typedef uint8_t  wlh;     // WAL header
  ******************************************************************************/
 
 smfile_t *smfile_open (const char *path);
-int       smfile_cleanup (const char *path);
-int       smfile_close (smfile_t *ns);
-int       smfile_crash (smfile_t *ns);
+int smfile_cleanup (const char *path);
+int smfile_close (smfile_t *ns);
+int smfile_crash (smfile_t *ns);
 
 const char *smfile_strerror (smfile_t *ns);
-int         smfile_perror (smfile_t *ns, const char *prefix);
-sb_size     smfile_size (smfile_t *smf);
+int smfile_perror (smfile_t *ns, const char *prefix);
+sb_size smfile_size (smfile_t *smf);
 
 int smfile_begin (smfile_t *smf);
 int smfile_commit (smfile_t *smf);

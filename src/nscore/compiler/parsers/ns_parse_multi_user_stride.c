@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
@@ -24,6 +22,8 @@
 #include "nscore/compiler/ns_lexer.h"
 #include "nscore/compiler/ns_tokens.h"
 #include "nscore/compiler/parsers/ns_parser.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Multi User Stride
@@ -44,8 +44,7 @@ struct multi_user_stride_parser
 static err_t
 parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
 {
-  if (!parser_match (parser->base, TT_COLON))
-  {
+  if (!parser_match (parser->base, TT_COLON)) {
     return SUCCESS;
   }
 
@@ -53,8 +52,7 @@ parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s, 
   parser_advance (parser->base);
 
   i32 num;
-  if (parser_maybe_parse_integer (parser->base, &num))
-  {
+  if (parser_maybe_parse_integer (parser->base, &num)) {
     s->step = num;
     s->present |= STEP_PRESENT;
   }
@@ -66,8 +64,7 @@ static err_t
 parse_mus_stop (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
 {
   i32 num;
-  if (parser_maybe_parse_integer (parser->base, &num))
-  {
+  if (parser_maybe_parse_integer (parser->base, &num)) {
     s->stop = num;
     s->present |= STOP_PRESENT;
   }
@@ -81,15 +78,13 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
   struct user_stride s = {0};
 
   // Optional start integer
-  i32 num;
-  if (parser_maybe_parse_integer (parser->base, &num))
-  {
+  i32                num;
+  if (parser_maybe_parse_integer (parser->base, &num)) {
     s.start = num;
     s.present |= START_PRESENT;
 
     // Bare number with no colon â†’ single index
-    if (!parser_match (parser->base, TT_COLON))
-    {
+    if (!parser_match (parser->base, TT_COLON)) {
       return musb_accept_key (&parser->builder, s, e);
     }
 
@@ -100,8 +95,7 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
   }
 
   // No leading number â€” must be ':'
-  if (parser_match (parser->base, TT_COLON))
-  {
+  if (parser_match (parser->base, TT_COLON)) {
     s.present |= COLON_PRESENT;
     parser_advance (parser->base);
     WRAP (parse_mus_stop (parser, &s, e));
@@ -115,15 +109,13 @@ static err_t
 parse_multi_user_stride_inner (struct multi_user_stride_parser *parser, error *e)
 {
   // Check for empty: []
-  if (parser_match (parser->base, TT_RIGHT_BRACKET))
-  {
+  if (parser_match (parser->base, TT_RIGHT_BRACKET)) {
     return SUCCESS;
   }
 
   WRAP (parse_entry (parser, e));
 
-  while (parser_match (parser->base, TT_COMMA))
-  {
+  while (parser_match (parser->base, TT_COMMA)) {
     parser_advance (parser->base);
     WRAP (parse_entry (parser, e));
   }
@@ -139,20 +131,16 @@ parse_multi_user_stride (struct parser *parser, struct multi_user_stride *dest, 
       .builder = musb_create (parser->b),
   };
 
-  if (unlikely ((parser_expect (p.base, TT_LEFT_BRACKET, e)) < SUCCESS))
-  {
+  if (unlikely ((parser_expect (p.base, TT_LEFT_BRACKET, e)) < SUCCESS)) {
     goto theend;
   }
-  if (unlikely ((parse_multi_user_stride_inner (&p, e)) < SUCCESS))
-  {
+  if (unlikely ((parse_multi_user_stride_inner (&p, e)) < SUCCESS)) {
     goto theend;
   }
-  if (unlikely ((parser_expect (p.base, TT_RIGHT_BRACKET, e)) < SUCCESS))
-  {
+  if (unlikely ((parser_expect (p.base, TT_RIGHT_BRACKET, e)) < SUCCESS)) {
     goto theend;
   }
-  if (unlikely ((musb_build (dest, &p.builder, e)) < SUCCESS))
-  {
+  if (unlikely ((musb_build (dest, &p.builder, e)) < SUCCESS)) {
     goto theend;
   }
 
@@ -171,15 +159,13 @@ compile_multi_user_stride (
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0)
-  {
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_multi_user_stride (&parser, dest, e))
-  {
+  if (parse_multi_user_stride (&parser, dest, e)) {
     goto theend;
   }
 

@@ -42,44 +42,45 @@ struct var_retrieval
 
 struct ns_var_get_params
 {
-  struct pager *p;
-  struct txn   *tx;
+  struct pager     *p;
+  struct txn       *tx;
 
   struct string     vname;
   struct allocator *alloc;
 
-  struct variable dest;
+  struct variable   dest;
 };
 
 err_t ns_var_get (struct ns_var_get_params *params, error *e);
 
 struct ns_read_var_page_params
 {
-  struct pager *p;
-  struct txn   *tx;
+  struct pager        *p;
+  struct txn          *tx;
 
-  page_h           *vp;    // The currently loaded variable page
-  struct allocator *alloc; // Where to allocate stuff
-  struct variable  *dest;  // Output variable
+  page_h              *vp;    // The currently loaded variable page
+  struct allocator    *alloc; // Where to allocate stuff
+  struct variable     *dest;  // Output variable
 
   bool                 matches;
   const struct string *check;
 
-  bool save_vname;
-  bool save_type;
+  bool                 save_vname;
+  bool                 save_type;
 };
+
 err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e);
 
 struct ns_var_get_or_create_params
 {
-  struct pager *p;
-  struct txn   *tx;
+  struct pager     *p;
+  struct txn       *tx;
 
   struct string     vname;
   struct type      *type;
   struct allocator *alloc;
 
-  struct variable dest;
+  struct variable   dest;
 };
 
 err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);
@@ -105,14 +106,14 @@ spgno ns_var_create (struct ns_var_create_params params, error *e);
 
 struct ns_var_update_params
 {
-  struct pager *p;
-  struct txn   *tx;
+  struct pager        *p;
+  struct txn          *tx;
 
   struct var_retrieval retr;
 
   // New values
-  pgno   newpg;
-  b_size nbytes;
+  pgno                 newpg;
+  b_size               nbytes;
 };
 
 err_t ns_var_update (struct ns_var_update_params params, error *e);
@@ -143,8 +144,9 @@ struct ns_find_var_page_params
   struct txn       *tx;
   struct allocator *alloc;
 
-  struct string    vname;
-  struct variable *dvar;
+  struct string     vname;
+  struct variable  *dvar;
+
   enum
   {
     FP_CREATE,

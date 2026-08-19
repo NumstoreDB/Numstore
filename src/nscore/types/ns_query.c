@@ -21,61 +21,48 @@
 bool
 query_equal (const struct query *left, const struct query *right)
 {
-  if (left->type != right->type)
-  {
+  if (left->type != right->type) {
     return false;
   }
 
-  switch (left->type)
-  {
-    case QT_READ:
-    {
+  switch (left->type) {
+    case QT_READ: {
       return string_equal (left->read.name, right->read.name)
              && user_stride_equal (&left->read.ustr, &right->read.ustr);
     }
-    case QT_WRITE:
-    {
+    case QT_WRITE: {
       return string_equal (left->write.name, right->write.name)
              && user_stride_equal (&left->write.ustr, &right->write.ustr);
     }
-    case QT_REMOVE:
-    {
+    case QT_REMOVE: {
       return string_equal (left->remove.name, right->remove.name)
              && user_stride_equal (&left->remove.ustr, &right->remove.ustr);
     }
-    case QT_INSERT:
-    {
+    case QT_INSERT: {
       return string_equal (left->insert.name, right->insert.name)
              && left->insert.ofst == right->insert.ofst && left->insert.len == right->insert.len;
     }
 
-    case QT_CREATE:
-    {
+    case QT_CREATE: {
       return string_equal (left->create.name, right->create.name)
              && type_equal (&left->create.type, &right->create.type);
     }
-    case QT_DELETE:
-    {
+    case QT_DELETE: {
       return string_equal (left->delete.name, right->delete.name);
     }
-    case QT_GET:
-    {
+    case QT_GET: {
       return string_equal (left->get.name, right->get.name)
              && left->get.if_exists == right->get.if_exists;
     }
 
-    case QT_EXIT:
-    {
+    case QT_EXIT: {
       return true;
     }
-    case QT_HELP:
-    {
-      if (left->help.has_command != right->help.has_command)
-      {
+    case QT_HELP: {
+      if (left->help.has_command != right->help.has_command) {
         return false;
       }
-      if (left->help.has_command)
-      {
+      if (left->help.has_command) {
         return left->help.command == right->help.command;
       }
       return true;
@@ -88,55 +75,45 @@ query_equal (const struct query *left, const struct query *right)
 void
 i_log_query (int log_level, struct query *q)
 {
-  switch (q->type)
-  {
+  switch (q->type) {
     // Array Operations
-    case QT_READ:
-    {
+    case QT_READ: {
       i_log (log_level, "READ\n");
       break;
     }
-    case QT_WRITE:
-    {
+    case QT_WRITE: {
       i_log (log_level, "WRITE\n");
       break;
     }
-    case QT_INSERT:
-    {
+    case QT_INSERT: {
       i_log (log_level, "INSERT\n");
       break;
     }
-    case QT_REMOVE:
-    {
+    case QT_REMOVE: {
       i_log (log_level, "REMOVE\n");
       break;
     }
 
     // Variable Operations
-    case QT_CREATE:
-    {
+    case QT_CREATE: {
       i_log (log_level, "CREATE\n");
       break;
     }
-    case QT_DELETE:
-    {
+    case QT_DELETE: {
       i_log (log_level, "DELETE\n");
       break;
     }
-    case QT_GET:
-    {
+    case QT_GET: {
       i_log (log_level, "GET\n");
       break;
     }
 
     // Meta Operations
-    case QT_EXIT:
-    {
+    case QT_EXIT: {
       i_log (log_level, "EXIT\n");
       break;
     }
-    case QT_HELP:
-    {
+    case QT_HELP: {
       i_log (log_level, "HELP\n");
       break;
     }

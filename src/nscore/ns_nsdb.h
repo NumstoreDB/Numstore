@@ -30,17 +30,6 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
 
-struct delete_query;
-struct get_query;
-struct insert_query;
-struct query;
-struct read_query;
-struct remove_query;
-struct stream;
-struct type;
-struct variable;
-struct write_query;
-
 /******************************************************************************
  * SECTION: nsdb
  * ----------------------------------------------------------------------------
@@ -81,12 +70,12 @@ int nsdb_crash (struct nsdb *ns);
  *----------------------------------------------------------------------------*/
 
 struct nsdb *nsdb_open (const char *path);
-int          nsdb_cleanup (const char *path);
-int          nsdb_close (struct nsdb *ns);
+int nsdb_cleanup (const char *path);
+int nsdb_close (struct nsdb *ns);
 
-err_t        nsdb_root_close (struct nsdb_root *root, error *e);
+err_t nsdb_root_close (struct nsdb_root *root, error *e);
 struct nsdb *nsdb_root_load (struct nsdb_root *root, error *e);
-void         nsdb_root_release (struct nsdb_root *root, struct nsdb *sm);
+void nsdb_root_release (struct nsdb_root *root, struct nsdb *sm);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Error reporting
@@ -94,7 +83,7 @@ void         nsdb_root_release (struct nsdb_root *root, struct nsdb *sm);
  *----------------------------------------------------------------------------*/
 
 const char *nsdb_strerror (struct nsdb *ns);
-int         nsdb_perror (struct nsdb *ns, const char *prefix);
+int nsdb_perror (struct nsdb *ns, const char *prefix);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Transaction Control
@@ -113,7 +102,7 @@ int nsdb_rollback (struct nsdb *smf);
 
 err_t nsdb_auto_begin_txn (struct nsdb *sm, error *e);
 err_t nsdb_auto_commit (struct nsdb *sm, error *e);
-void  nsdb_auto_rollback (struct nsdb *sm);
+void nsdb_auto_rollback (struct nsdb *sm);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Execute Internal
@@ -140,7 +129,7 @@ err_t nsdb_get (
     struct allocator *alloc,
     struct variable **dest
 );
-err_t   nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc);
+err_t nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc);
 sb_size nsdb_insert (
     struct nsdb         *db,
     struct insert_query *query,

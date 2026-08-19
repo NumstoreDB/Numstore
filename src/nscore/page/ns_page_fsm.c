@@ -14,9 +14,9 @@
 
 #include "nscore/page/ns_page_fsm.h"
 
-#include <string.h>
-
 #include "core/testing/ns_testing.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Free Space Map
@@ -35,8 +35,7 @@ fsm_validate_for_db (const page *hl, error *e)
 {
   const pgh header = page_get_type (hl);
 
-  if (header != (pgh)PG_FREE_SPACE_MAP)
-  {
+  if (header != (pgh)PG_FREE_SPACE_MAP) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -54,10 +53,8 @@ void
 i_log_fsm (const int level, const page *t)
 {
   i_log (level, "=== FREE SPACE PAGE START ===\n");
-  for (p_size i = 0; i < FS_BTMP_NPGS; ++i)
-  {
-    if (fsm_get_bit (t, i))
-    {
+  for (p_size i = 0; i < FS_BTMP_NPGS; ++i) {
+    if (fsm_get_bit (t, i)) {
       i_log_printf (level, "|%" PRp_size "| -- Occupied\n", i);
     }
   }

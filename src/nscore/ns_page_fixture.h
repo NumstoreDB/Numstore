@@ -15,8 +15,6 @@
 #ifndef NS_PAGE_FIXTURE_H
 #define NS_PAGE_FIXTURE_H
 
-#include <stddef.h>
-
 #include "core/ns_alloc.h"    // allocator
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32 ...etc
@@ -30,7 +28,10 @@
 #include "nscore/pager/ns_pager.h" // page_h
 #include "nscore/pager/ns_pager.h" // pager
 
+#include <stddef.h>
+
 struct pager;
+
 // pgno ...etc
 
 /******************************************************************************
@@ -62,8 +63,8 @@ err_t pgr_fixture_teardown (struct pgr_fixture *f);
 
 struct tree_descr
 {
-  u8 *data;
-  u32 dlen;
+  u8                *data;
+  u32                dlen;
 
   struct tree_descr *next;
   u32                nlen;
@@ -79,30 +80,30 @@ spgno build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr 
 
 struct in_page_builder
 {
-  struct pager *pager;
-  struct txn   *txn;
+  struct pager  *pager;
+  struct txn    *txn;
 
   // NULL = no linking, else link to this page
-  page_h *prev;
-  page_h *next;
+  page_h        *prev;
+  page_h        *next;
 
   struct in_data children;
 
-  u32 dclen; // desired len of [children] (fills the rest with random)
+  u32            dclen; // desired len of [children] (fills the rest with random)
 };
 
 struct dl_page_builder
 {
-  struct pager *pager;
-  struct txn   *txn;
+  struct pager  *pager;
+  struct txn    *txn;
 
   // NULL = no linking, else link to this page
-  page_h *prev;
-  page_h *next;
+  page_h        *prev;
+  page_h        *next;
 
   struct dl_data data; // NULL = all random, else use these first
 
-  u32 dclen; // desired len of [children] (fills the rest with random)
+  u32            dclen; // desired len of [children] (fills the rest with random)
 };
 
 err_t build_fake_inner_node (page_h *dest, struct in_page_builder b, error *e);

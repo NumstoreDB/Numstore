@@ -12,14 +12,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
+
 #include <inttypes.h>
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include "core/ns_platform.h"
-#include "core/ns_stdtypes.h"
-
 #if PLATFORM_POSIX
+
+#  include "core/ns_csx_assert.h"
+#  include "core/ns_error.h"
+#  include "core/os/ns_time.h"
 
 #  include <dirent.h>
 #  include <errno.h>
@@ -33,10 +37,6 @@
 #  include <time.h>
 #  include <unistd.h>
 
-#  include "core/ns_csx_assert.h"
-#  include "core/ns_error.h"
-#  include "core/os/ns_time.h"
-
 /******************************************************************************
  * SECTION: Timing
  ******************************************************************************/
@@ -46,8 +46,7 @@ i_timer_create (i_timer *timer, error *e)
 {
   ASSERT (timer);
 
-  if (clock_gettime (CLOCK_MONOTONIC, &timer->start) != 0)
-  {
+  if (clock_gettime (CLOCK_MONOTONIC, &timer->start) != 0) {
     return error_causef (e, ERR_IO, "clock_gettime: %s", strerror (errno));
   }
 

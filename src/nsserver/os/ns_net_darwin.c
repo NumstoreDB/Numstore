@@ -12,8 +12,7 @@ static int
 posix_socket (void *self, int domain, int type, int protocol, error *e)
 {
   const int fd = socket (domain, type, protocol);
-  if (unlikely (fd == -1))
-  {
+  if (unlikely (fd == -1)) {
     error_causef (e, ERR_IO, "socket: %s", strerror (errno));
     return error_trace (e);
   }
@@ -31,8 +30,7 @@ posix_setsockopt (
     error      *e
 )
 {
-  if (unlikely (setsockopt (fd, level, optname, optval, optlen) == -1))
-  {
+  if (unlikely (setsockopt (fd, level, optname, optval, optlen) == -1)) {
     error_causef (e, ERR_IO, "setsockopt: %s", strerror (errno));
     return error_trace (e);
   }
@@ -42,8 +40,7 @@ posix_setsockopt (
 static err_t
 posix_bind (void *self, int fd, const struct sockaddr *addr, socklen_t addrlen, error *e)
 {
-  if (unlikely (bind (fd, addr, addrlen) == -1))
-  {
+  if (unlikely (bind (fd, addr, addrlen) == -1)) {
     error_causef (e, ERR_IO, "bind: %s", strerror (errno));
     return error_trace (e);
   }
@@ -53,8 +50,7 @@ posix_bind (void *self, int fd, const struct sockaddr *addr, socklen_t addrlen, 
 static err_t
 posix_listen (void *self, int fd, int backlog, error *e)
 {
-  if (unlikely (listen (fd, backlog) == -1))
-  {
+  if (unlikely (listen (fd, backlog) == -1)) {
     error_causef (e, ERR_IO, "listen: %s", strerror (errno));
     return error_trace (e);
   }
@@ -65,8 +61,7 @@ static int
 posix_fcntl_get (void *self, int fd, int cmd, error *e)
 {
   const int flags = fcntl (fd, cmd);
-  if (unlikely (flags == -1))
-  {
+  if (unlikely (flags == -1)) {
     error_causef (e, ERR_IO, "fcntl_get: %s", strerror (errno));
     return error_trace (e);
   }
@@ -76,8 +71,7 @@ posix_fcntl_get (void *self, int fd, int cmd, error *e)
 static err_t
 posix_fcntl_set (void *self, int fd, int cmd, int flags, error *e)
 {
-  if (unlikely (fcntl (fd, cmd, flags) == -1))
-  {
+  if (unlikely (fcntl (fd, cmd, flags) == -1)) {
     error_causef (e, ERR_IO, "fcntl_set: %s", strerror (errno));
     return error_trace (e);
   }
@@ -88,8 +82,7 @@ static err_t
 posix_kqueue (void *self, int *dest, error *e)
 {
   const int kq = kqueue ();
-  if (unlikely (kq == -1))
-  {
+  if (unlikely (kq == -1)) {
     error_causef (e, ERR_IO, "kqueue: %s", strerror (errno));
     return error_trace (e);
   }
@@ -110,8 +103,7 @@ posix_kevent (
 )
 {
   const int n = kevent (kq, changelist, nchanges, eventlist, nevents, timeout);
-  if (unlikely (n == -1))
-  {
+  if (unlikely (n == -1)) {
     error_causef (e, ERR_IO, "kevent: %s", strerror (errno));
     return error_trace (e);
   }
@@ -122,8 +114,7 @@ static int
 posix_accept (void *self, int fd, struct sockaddr *addr, socklen_t *addrlen, error *e)
 {
   const int client = accept (fd, addr, addrlen);
-  if (unlikely (client == -1))
-  {
+  if (unlikely (client == -1)) {
     error_causef (e, ERR_IO, "accept: %s", strerror (errno));
     return error_trace (e);
   }
@@ -134,8 +125,7 @@ static ssize_t
 posix_send (void *self, int fd, const void *buf, size_t len, int flags, error *e)
 {
   const ssize_t sent = send (fd, buf, len, flags);
-  if (unlikely (sent == -1))
-  {
+  if (unlikely (sent == -1)) {
     error_causef (e, ERR_IO, "send: %s", strerror (errno));
     return error_trace (e);
   }
@@ -146,8 +136,7 @@ static ssize_t
 posix_recv (void *self, int fd, void *buf, size_t len, int flags, error *e)
 {
   const ssize_t recvd = recv (fd, buf, len, flags);
-  if (unlikely (recvd == -1))
-  {
+  if (unlikely (recvd == -1)) {
     error_causef (e, ERR_IO, "recv: %s", strerror (errno));
     return error_trace (e);
   }
@@ -157,8 +146,7 @@ posix_recv (void *self, int fd, void *buf, size_t len, int flags, error *e)
 static err_t
 posix_close (void *self, int fd, error *e)
 {
-  if (unlikely (close (fd) == -1))
-  {
+  if (unlikely (close (fd) == -1)) {
     error_causef (e, ERR_IO, "close: %s", strerror (errno));
     return error_trace (e);
   }

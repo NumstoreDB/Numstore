@@ -14,14 +14,14 @@
 
 #include "nscore/types/ns_subtype.h"
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_string.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_type_accessor.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Sub Type
@@ -57,12 +57,9 @@ TEST (subtype_equal)
       compile_subtype (&leftst, left, &alloc, &e);                \
       compile_subtype (&rightst, right, &alloc, &e);              \
                                                                   \
-      if (expected)                                               \
-      {                                                           \
+      if (expected) {                                             \
         test_assert (subtype_equal (&leftst, &rightst));          \
-      }                                                           \
-      else                                                        \
-      {                                                           \
+      } else {                                                    \
         test_assert (subtype_equal (&leftst, &rightst) == false); \
       }                                                           \
     }

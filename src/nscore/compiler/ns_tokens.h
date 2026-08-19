@@ -15,11 +15,11 @@
 #ifndef NS_TOKENS_H
 #define NS_TOKENS_H
 
-#include <stdbool.h>
-
 #include "core/ns_platform.h" // HEADER_FUNC
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Tokens
@@ -156,6 +156,7 @@ struct token
       const char *data;
       u32         len;
     } str;
+
     i32         integer;
     f32         floating;
     enum prim_t prim;
@@ -173,14 +174,11 @@ case TT_INSERT
 HEADER_FUNC bool
 tt_is_opcode (enum token_t ttype)
 {
-  switch (ttype)
-  {
-    case case_OPCODE:
-    {
+  switch (ttype) {
+    case case_OPCODE: {
       return true;
     }
-    default:
-    {
+    default: {
       return false;
     }
   }

@@ -31,18 +31,21 @@ C_SRCS += os/windows/ns_win32_timing.c
 C_SRCS += testing/ns_testing.c
 C_SRCS += testing/ns_tests.c
 
-C_OBJS := $(C_SRCS:.c=.o)
+OBJ_DIR := $(OBJ_DIR)/core
+C_OBJS  := $(addprefix $(OBJ_DIR)/,$(C_SRCS:.c=.o))
 
 LIB_TARGET := $(LIB_DIR)/libcore.a
 
 .PHONY: all clean
 all: $(LIB_TARGET)
 
-$(LIB_TARGET): $(C_OBJS) 
+$(LIB_TARGET): $(C_OBJS)
 	$(AR) rcs $@ $(C_OBJS)
 
-%.o: %.c
+$(OBJ_DIR)/%.o: %.c
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(C_OBJS) $(LIB_TARGET) 
+	rm -rf $(OBJ_DIR)
+	rm -f $(LIB_TARGET)

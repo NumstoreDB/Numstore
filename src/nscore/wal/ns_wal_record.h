@@ -15,14 +15,14 @@
 #ifndef NS_WAL_RECORD_H
 #define NS_WAL_RECORD_H
 
-#include <stdbool.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/ns_txn_table.h"
 #include "nscore/page/ns_page_fsm.h"
 #include "nscore/page/ns_page_h.h"
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: WAL Records
@@ -68,8 +68,8 @@ struct wal_update_write
 {
   enum wal_update_type type;
 
-  txid tid;
-  lsn  prev;
+  txid                 tid;
+  lsn                  prev;
 
   union {
     struct physical_write_update
@@ -81,7 +81,7 @@ struct wal_update_write
 
     struct fsm_update fsm;
 
-    struct file_ext fext;
+    struct file_ext   fext;
   };
 };
 
@@ -136,9 +136,9 @@ struct wal_clr_write
 {
   enum wal_clr_type type;
 
-  txid tid;
-  lsn  prev;
-  lsn  undo_next;
+  txid              tid;
+  lsn               prev;
+  lsn               undo_next;
 
   union {
     struct physical_write_clr
@@ -187,8 +187,8 @@ struct wal_rec_hdr_write
   };
 };
 
-void                     wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
-const char              *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
+void wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest);
+const char *wal_rec_hdr_type_tostr (enum wal_rec_hdr_type type);
 struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Size of BEGIN entry
@@ -275,13 +275,13 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 
 // Utils
 stxid wrh_get_tid (const struct wal_rec_hdr_read *h);
-slsn  wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
-bool  wrh_is_undoable (const struct wal_rec_hdr_read *h);
-bool  wrh_is_redoable (const struct wal_rec_hdr_read *h);
-pgno  wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
-void  i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
+slsn wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
+bool wrh_is_undoable (const struct wal_rec_hdr_read *h);
+bool wrh_is_redoable (const struct wal_rec_hdr_read *h);
+pgno wrh_get_affected_pg (const struct wal_rec_hdr_read *h);
+void i_print_wal_rec_hdr_read_light (int log_level, const struct wal_rec_hdr_read *w, lsn l);
 struct wal_clr_write wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph);
-void                 wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
+void wrh_redo (struct wal_rec_hdr_read *h, page_h *ph);
 
 // DECODE
 void walf_decode_physical_update (struct wal_rec_hdr_read *r, const u8 buf[WL_UPDATE_LEN]);

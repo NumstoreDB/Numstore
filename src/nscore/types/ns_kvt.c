@@ -14,9 +14,6 @@
 
 #include "nscore/types/ns_kvt.h"
 
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -28,6 +25,9 @@
 #include "nscore/types/ns_type_ref.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/types/ns_union_t.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Key Value Type Builder
@@ -53,11 +53,9 @@ kvlb_create (struct builder *b)
 static bool
 kvlb_has_key_been_used (const struct kvt_list_builder *ub, struct string key)
 {
-  for (struct llnode *it = ub->head; it; it = it->next)
-  {
+  for (struct llnode *it = ub->head; it; it = it->next) {
     struct kv_llnode *kn = container_of (it, struct kv_llnode, link);
-    if (string_equal (kn->key, key))
-    {
+    if (string_equal (kn->key, key)) {
       return true;
     }
   }
@@ -70,15 +68,13 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   DBG_ASSERT (kvt_list_builder, ub);
 
   // Check for duplicate keys
-  if (kvlb_has_key_been_used (ub, key))
-  {
+  if (kvlb_has_key_been_used (ub, key)) {
     return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
   }
 
   // Copy key data to persistent memory
   key.data = allocator_copy (ub->b->persistent, key.data, key.len, e);
-  if (key.data == NULL)
-  {
+  if (key.data == NULL) {
     return error_trace (e);
   }
 
@@ -86,30 +82,24 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   struct llnode    *slot = llnode_get_n (ub->head, ub->klen);
   struct kv_llnode *node;
 
-  if (slot)
-  {
+  if (slot) {
     node = container_of (slot, struct kv_llnode, link);
-  }
-  else
-  {
+  } else {
     // Allocate new node onto temp
     node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
-    if (!node)
-    {
+    if (!node) {
       return error_trace (e);
     }
     llnode_init (&node->link);
     node->value = NULL;
 
     // Set the head if it doesn't exist
-    if (!ub->head)
-    {
+    if (!ub->head) {
       ub->head = &node->link;
     }
 
     // Otherwise, append to the list
-    else
-    {
+    else {
       list_append (&ub->head, &node->link);
     }
   }
@@ -128,25 +118,18 @@ kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e)
 
   struct llnode    *slot = llnode_get_n (ub->head, ub->tlen);
   struct kv_llnode *node;
-  if (slot)
-  {
+  if (slot) {
     node = container_of (slot, struct kv_llnode, link);
-  }
-  else
-  {
+  } else {
     node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
-    if (!node)
-    {
+    if (!node) {
       return error_trace (e);
     }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head)
-    {
+    if (!ub->head) {
       ub->head = &node->link;
-    }
-    else
-    {
+    } else {
       list_append (&ub->head, &node->link);
     }
   }
@@ -161,30 +144,25 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
 {
   ASSERT (dest);
 
-  if (ub->klen == 0)
-  {
+  if (ub->klen == 0) {
     return error_causef (e, ERR_INTERP, "no keys");
   }
-  if (ub->klen != ub->tlen)
-  {
+  if (ub->klen != ub->tlen) {
     return error_causef (e, ERR_INTERP, "key/value count mismatch");
   }
 
   struct string *keys = builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
-  if (!keys)
-  {
+  if (!keys) {
     return error_trace (e);
   }
 
   struct type **types = builder_malloc_persist (ub->b, ub->tlen, sizeof (struct type *), e);
-  if (!types)
-  {
+  if (!types) {
     return error_trace (e);
   }
 
   size_t i = 0;
-  for (struct llnode *it = ub->head; it; it = it->next)
-  {
+  for (struct llnode *it = ub->head; it; it = it->next) {
     struct kv_llnode *kn = container_of (it, struct kv_llnode, link);
     keys[i]              = kn->key;
     types[i]             = kn->value;
@@ -204,10 +182,10 @@ TEST (kvt_list_builder)
   ALLOC_INIT (alloc);
   BUILDER_INIT (b, &alloc);
 
-  error err = error_create ();
+  error                   err = error_create ();
 
   // 0. freshly-created builder must be clean
-  struct kvt_list_builder kb = kvlb_create (&b);
+  struct kvt_list_builder kb  = kvlb_create (&b);
   test_assert_int_equal (kb.klen, 0);
   test_assert_int_equal (kb.tlen, 0);
   test_fail_if (kb.head != NULL);
@@ -218,7 +196,7 @@ TEST (kvt_list_builder)
 
   // 2. duplicate key "id" must fail
   test_assert_int_equal (kvlb_accept_key (&kb, key_id, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  err.cause_code    = SUCCESS;
 
   // 3. accept a type for that key (u32)
   struct type t_u32 = (struct type){.type = T_PRIM, .p = U32};
@@ -236,7 +214,7 @@ TEST (kvt_list_builder)
                          SUCCESS); // klen=3, tlen=2
   struct kvt_list list_fail = {0};
   test_assert_int_equal (kvlb_build (&list_fail, &kb, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  err.cause_code    = SUCCESS;
 
   // 6. add matching type so counts align
   struct type t_f32 = (struct type){.type = T_PRIM, .p = F32};
@@ -285,11 +263,9 @@ kvrlb_create (struct builder *b)
 static bool
 kvrlb_has_key_been_used (const struct kvt_ref_list_builder *ub, struct string key)
 {
-  for (struct llnode *it = ub->head; it; it = it->next)
-  {
+  for (struct llnode *it = ub->head; it; it = it->next) {
     struct kv_ref_llnode *kn = container_of (it, struct kv_ref_llnode, link);
-    if (string_equal (kn->key, key))
-    {
+    if (string_equal (kn->key, key)) {
       return true;
     }
   }
@@ -302,44 +278,36 @@ kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
   DBG_ASSERT (kvt_ref_list_builder, ub);
 
   // Check for duplicate keys
-  if (kvrlb_has_key_been_used (ub, key))
-  {
+  if (kvrlb_has_key_been_used (ub, key)) {
     return error_causef (e, ERR_INTERP, "duplicate key: %.*s", key.len, key.data);
   }
 
   // Copy key data to persistent memory
   key.data = allocator_copy (ub->b->persistent, key.data, key.len, e);
-  if (key.data == NULL)
-  {
+  if (key.data == NULL) {
     return error_trace (e);
   }
 
   // Find where to insert this new key in the linked list
   struct llnode        *slot = llnode_get_n (ub->head, ub->klen);
   struct kv_ref_llnode *node;
-  if (slot)
-  {
+  if (slot) {
     node = container_of (slot, struct kv_ref_llnode, link);
-  }
-  else
-  {
+  } else {
     // Allocate new node onto temp
     node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
-    if (!node)
-    {
+    if (!node) {
       return error_trace (e);
     }
     llnode_init (&node->link);
     node->value = (struct type_ref){0};
 
     // Set the head if it doesn't exist
-    if (!ub->head)
-    {
+    if (!ub->head) {
       ub->head = &node->link;
     }
     // Otherwise, append to the list
-    else
-    {
+    else {
       list_append (&ub->head, &node->link);
     }
   }
@@ -358,25 +326,18 @@ kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e)
 
   struct llnode        *slot = llnode_get_n (ub->head, ub->tlen);
   struct kv_ref_llnode *node;
-  if (slot)
-  {
+  if (slot) {
     node = container_of (slot, struct kv_ref_llnode, link);
-  }
-  else
-  {
+  } else {
     node = builder_malloc_temp (ub->b, 1, sizeof *node, e);
-    if (!node)
-    {
+    if (!node) {
       return error_trace (e);
     }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head)
-    {
+    if (!ub->head) {
       ub->head = &node->link;
-    }
-    else
-    {
+    } else {
       list_append (&ub->head, &node->link);
     }
   }
@@ -391,33 +352,28 @@ kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *
 {
   ASSERT (dest);
 
-  if (ub->klen == 0)
-  {
+  if (ub->klen == 0) {
     error_causef (e, ERR_INTERP, "no keys");
     goto theend;
   }
-  if (ub->klen != ub->tlen)
-  {
+  if (ub->klen != ub->tlen) {
     error_causef (e, ERR_INTERP, "key/value count mismatch");
     goto theend;
   }
 
   struct string *keys = builder_malloc_persist (ub->b, ub->klen, sizeof *keys, e);
-  if (!keys)
-  {
+  if (!keys) {
     goto theend;
   }
 
   struct type_ref *types = builder_malloc_persist (ub->b, ub->tlen, sizeof *types, e);
 
-  if (!types)
-  {
+  if (!types) {
     goto theend;
   }
 
   size_t i = 0;
-  for (struct llnode *it = ub->head; it; it = it->next)
-  {
+  for (struct llnode *it = ub->head; it; it = it->next) {
     struct kv_ref_llnode *kn = container_of (it, struct kv_ref_llnode, link);
     keys[i]                  = kn->key;
     types[i]                 = kn->value;

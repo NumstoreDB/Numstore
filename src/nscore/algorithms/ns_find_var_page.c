@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -30,6 +27,9 @@
 #include "nscore/page/ns_page_var_page.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: ns_find_var_page
@@ -52,12 +52,9 @@
 static err_t
 err_var_doesnt_exist (const struct string vname, error *e)
 {
-  if (vname.len > 10)
-  {
+  if (vname.len > 10) {
     return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s... doesn't exist", 7, vname.data);
-  }
-  else
-  {
+  } else {
     return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s doesn't exist", vname.len, vname.data);
   }
 }
@@ -73,8 +70,7 @@ err_var_doesnt_exist (const struct string vname, error *e)
 static err_t
 err_var_already_exists (const struct string vname, error *e)
 {
-  if (vname.len > 10)
-  {
+  if (vname.len > 10) {
     return error_causef (
         e,
         ERR_DUPLICATE_VARIABLE,
@@ -82,9 +78,7 @@ err_var_already_exists (const struct string vname, error *e)
         7,
         vname.data
     );
-  }
-  else
-  {
+  } else {
     return error_causef (
         e,
         ERR_DUPLICATE_VARIABLE,
@@ -98,14 +92,10 @@ err_var_already_exists (const struct string vname, error *e)
 static err_t
 xfer_or_release (struct pager *p, page_h *dest, page_h *src, error *e)
 {
-  if (dest)
-  {
+  if (dest) {
     page_h_xfer_ownership_ptr (dest, src);
-  }
-  else
-  {
-    if (pgr_release (p, src, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e))
-    {
+  } else {
+    if (pgr_release (p, src, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e)) {
       goto theend;
     }
   }
@@ -117,12 +107,12 @@ theend:
 err_t
 ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 {
-  page_h prev = page_h_create ();
-  page_h cur  = page_h_create ();
-  page_h npg  = page_h_create ();
+  page_h prev     = page_h_create ();
+  page_h cur      = page_h_create ();
+  page_h npg      = page_h_create ();
 
   // If create mode - we need to read everything in X
-  bool writable = pms->mode == FP_CREATE;
+  bool   writable = pms->mode == FP_CREATE;
 
   // Temporary allocator while scanning nodes
   ALLOC_INIT (temp);
@@ -142,8 +132,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
               e
           ),
           "ns_find_var_page:1"
-      ))
-  {
+      )) {
     goto failed;
   }
   // state:
@@ -154,20 +143,15 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   pgno head = vh_get_hash_value (page_h_ro (&prev), pms->hpos);
 
   // Hash Chain Doesn't Exist
-  if (head == PGNO_NULL)
-  {
-    switch (pms->mode)
-    {
-      case FP_FIND:
-      {
+  if (head == PGNO_NULL) {
+    switch (pms->mode) {
+      case FP_FIND: {
         err_var_doesnt_exist (pms->vname, e);
         goto failed;
       }
-      case FP_CREATE:
-      {
+      case FP_CREATE: {
         // Create a new variable page
-        if (FAULT (pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e), "ns_find_var_page:2"))
-        {
+        if (FAULT (pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e), "ns_find_var_page:2")) {
           goto failed;
         }
         // state:
@@ -182,14 +166,12 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   }
 
   // That hash chain exists
-  else
-  {
+  else {
     // Fetch start hash chain
     if (FAULT (
             pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e),
             "ns_find_var_page:3"
-        ))
-    {
+        )) {
       goto failed;
     }
     // state:
@@ -197,8 +179,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
     //    cur  = VP
 
     // Find the end of the list
-    while (true)
-    {
+    while (true) {
       // Check if this var page matches
       struct ns_read_var_page_params get_params = {
           .p          = pms->p,
@@ -211,31 +192,25 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           .save_type  = false,
           .save_vname = false,
       };
-      if (FAULT (ns_read_var_page (&get_params, e), "ns_find_var_page:4"))
-      {
+      if (FAULT (ns_read_var_page (&get_params, e), "ns_find_var_page:4")) {
         goto failed;
       }
 
       // Found it
-      if (get_params.matches)
-      {
-        switch (pms->mode)
-        {
-          case FP_CREATE:
-          {
+      if (get_params.matches) {
+        switch (pms->mode) {
+          case FP_CREATE: {
             err_var_already_exists (pms->vname, e);
             goto failed;
           }
-          case FP_FIND:
-          {
+          case FP_FIND: {
             goto foundit;
           }
         }
       }
 
       // Need to advance
-      else
-      {
+      else {
         ALLOC_RESET (temp);
 
         // Continue
@@ -243,15 +218,11 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
         // End of the chain -
         // Doesn't exist
-        if (next == PGNO_NULL)
-        {
-          switch (pms->mode)
-          {
-            case FP_CREATE:
-            {
+        if (next == PGNO_NULL) {
+          switch (pms->mode) {
+            case FP_CREATE: {
               // Create the next page
-              if (pgr_new (&npg, pms->p, pms->tx, PG_VAR_PAGE, e))
-              {
+              if (pgr_new (&npg, pms->p, pms->tx, PG_VAR_PAGE, e)) {
                 goto failed;
               }
 
@@ -261,8 +232,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
               // Advance
               {
                 // free(prev)
-                if ((pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e)))
-                {
+                if ((pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e))) {
                   goto failed;
                 }
 
@@ -274,8 +244,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
               // Finish
               goto foundit;
             }
-            case FP_FIND:
-            {
+            case FP_FIND: {
               err_var_doesnt_exist (pms->vname, e);
               goto failed;
             }
@@ -283,11 +252,9 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
         }
 
         // Normal Advance
-        else
-        {
+        else {
           // free(prev)
-          if ((pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e)))
-          {
+          if ((pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e))) {
             goto failed;
           }
 
@@ -295,8 +262,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           prev = page_h_xfer_ownership (&cur);
 
           // cur = cur->next
-          if ((pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e)))
-          {
+          if ((pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e))) {
             goto failed;
           }
         }
@@ -306,30 +272,25 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
 foundit:
 
-  if (pms->dvar && pms->alloc)
-  {
+  if (pms->dvar && pms->alloc) {
     // Transfer variable name and type to persistent allocator
     pms->dvar->vname.data = allocator_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
     pms->dvar->vname.len  = pms->vname.len;
 
     // Error check
-    if (pms->dvar->vname.data == NULL)
-    {
+    if (pms->dvar->vname.data == NULL) {
       goto failed;
     }
   }
 
   // Transfer nodes to params
-  if (page_h_type (&prev) == PG_VAR_TAIL)
-  {
+  if (page_h_type (&prev) == PG_VAR_TAIL) {
     panic ("HERE");
   }
-  if (xfer_or_release (pms->p, pms->prev, &prev, e))
-  {
+  if (xfer_or_release (pms->p, pms->prev, &prev, e)) {
     goto failed;
   }
-  if (xfer_or_release (pms->p, pms->cur, &cur, e))
-  {
+  if (xfer_or_release (pms->p, pms->cur, &cur, e)) {
     goto failed;
   }
 

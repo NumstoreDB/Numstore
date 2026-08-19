@@ -15,14 +15,14 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_serial.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stream.h"
+
+#include <stdbool.h>
 
 struct allocator;
 struct deserializer;
@@ -92,24 +92,25 @@ struct type
 };
 
 // Core api
-err_t        type_validate (const struct type *t, error *e);
-i32          type_snprintf (char *str, u32 size, struct type *t);
-char        *type_tostr (struct type *t);
-u32          type_byte_size (const struct type *t);
-u32          type_get_string_size (const struct type *t);
-void         type_generate_string (char *dest, const struct type *t);
-u32          type_get_serial_size (const struct type *t);
-void         type_serialize (struct serializer *dest, const struct type *src);
+err_t type_validate (const struct type *t, error *e);
+i32 type_snprintf (char *str, u32 size, struct type *t);
+char *type_tostr (struct type *t);
+u32 type_byte_size (const struct type *t);
+u32 type_get_string_size (const struct type *t);
+void type_generate_string (char *dest, const struct type *t);
+u32 type_get_serial_size (const struct type *t);
+void type_serialize (struct serializer *dest, const struct type *src);
 struct type *type_deserialize (struct deserializer *src, struct allocator *alloc, error *e);
 struct type *type_random (struct allocator *alloc, u32 depth, error *e);
-bool         type_equal (const struct type *left, const struct type *right);
-char        *get_var_str (struct type *t, u32 *dlen, error *e);
-err_t        i_log_type (struct type *t, error *e);
+bool type_equal (const struct type *left, const struct type *right);
+char *get_var_str (struct type *t, u32 *dlen, error *e);
+err_t i_log_type (struct type *t, error *e);
 struct type *type_movemem (struct type *src, struct allocator *alloc, error *e);
-void         type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems);
-err_t        type_stream_printer_init (struct stream *s, struct type *t, error *e);
+void type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems);
+err_t type_stream_printer_init (struct stream *s, struct type *t, error *e);
 
 #define _mk_prim(_p) {.type = T_PRIM, .p = _p}
+
 HEADER_FUNC struct type
 mk_prim (enum prim_t p)
 {

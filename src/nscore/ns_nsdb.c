@@ -14,11 +14,6 @@
 
 #include "nscore/ns_nsdb.h"
 
-#include <inttypes.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -36,16 +31,18 @@
 #include "nscore/types/ns_types.h"
 #include "numstore/numstore.h"
 
+#include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
 int
 nsdb_perror (struct nsdb *ns, const char *prefix)
 {
   const char *err = nsdb_strerror (ns);
-  if (err)
-  {
+  if (err) {
     return fprintf (stderr, "%s: %s\n", prefix, nsdb_strerror (ns));
-  }
-  else
-  {
+  } else {
     return fprintf (stderr, "%s: success\n", prefix);
   }
 }
@@ -53,12 +50,9 @@ nsdb_perror (struct nsdb *ns, const char *prefix)
 const char *
 nsdb_strerror (struct nsdb *ns)
 {
-  if (ns->e.cause_code < 0)
-  {
+  if (ns->e.cause_code < 0) {
     return ns->e.cause_msg;
-  }
-  else
-  {
+  } else {
     return NULL;
   }
 }
@@ -89,8 +83,7 @@ struct nsdb *
 nsdb_root_load (struct nsdb_root *ns, error *e)
 {
   struct nsdb *ret = i_malloc (default_mem (), 1, sizeof *ret, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
@@ -118,8 +111,7 @@ nsdb_root_release (struct nsdb_root *root, struct nsdb *sm)
 err_t
 nsdb_auto_begin_txn (struct nsdb *sm, error *e)
 {
-  if (sm->atx == NULL)
-  {
+  if (sm->atx == NULL) {
     WRAP (pgr_begin_txn (&sm->tx, sm->root->p, e));
     sm->is_auto_txn = 1;
     sm->atx         = &sm->tx;
@@ -131,8 +123,7 @@ nsdb_auto_begin_txn (struct nsdb *sm, error *e)
 err_t
 nsdb_auto_commit (struct nsdb *sm, error *e)
 {
-  if (sm->is_auto_txn)
-  {
+  if (sm->is_auto_txn) {
     ASSERT (sm->atx);
     WRAP (pgr_commit (sm->root->p, sm->atx, e));
     sm->atx = NULL;
@@ -143,8 +134,7 @@ nsdb_auto_commit (struct nsdb *sm, error *e)
 void
 nsdb_auto_rollback (struct nsdb *sm)
 {
-  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e))
-  {
+  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e)) {
     panic ("Failed to rollback");
   }
   sm->atx = NULL;
@@ -162,8 +152,7 @@ nsdb_begin (struct nsdb *smf)
   smf->e.cause_code = 0;
   smf->e.cmlen      = 0;
 
-  if (smf->atx)
-  {
+  if (smf->atx) {
     return error_causef (
         &smf->e,
         ERR_INVALID_ARGUMENT,
@@ -173,8 +162,7 @@ nsdb_begin (struct nsdb *smf)
     );
   }
 
-  if (pgr_begin_txn (&smf->tx, smf->root->p, &smf->e))
-  {
+  if (pgr_begin_txn (&smf->tx, smf->root->p, &smf->e)) {
     return error_trace (&smf->e);
   }
 
@@ -195,8 +183,7 @@ nsdb_close (struct nsdb *n)
 {
   struct nsdb_root *root = n->root;
   nsdb_root_release (root, n);
-  if (root->count == 0)
-  {
+  if (root->count == 0) {
     return nsdb_root_close (root, &root->e);
   }
   return SUCCESS;
@@ -214,8 +201,7 @@ nsdb_commit (struct nsdb *smf)
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  if (smf->atx == NULL)
-  {
+  if (smf->atx == NULL) {
     return error_causef (
         &smf->e,
         ERR_INVALID_ARGUMENT,
@@ -223,8 +209,7 @@ nsdb_commit (struct nsdb *smf)
     );
   }
 
-  if (pgr_commit (smf->root->p, smf->atx, &smf->e))
-  {
+  if (pgr_commit (smf->root->p, smf->atx, &smf->e)) {
     return error_trace (&smf->e);
   }
 
@@ -245,8 +230,7 @@ nsdb_rollback (struct nsdb *smf)
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
 
-  if (smf->atx == NULL)
-  {
+  if (smf->atx == NULL) {
     return error_causef (
         &smf->e,
         ERR_INVALID_ARGUMENT,
@@ -254,8 +238,7 @@ nsdb_rollback (struct nsdb *smf)
     );
   }
 
-  if (pgr_rollback (smf->root->p, smf->atx, 0, &smf->e))
-  {
+  if (pgr_rollback (smf->root->p, smf->atx, 0, &smf->e)) {
     return error_trace (&smf->e);
   }
 
@@ -273,12 +256,12 @@ nsdb_rollback (struct nsdb *smf)
 err_t
 nsdb_crash (struct nsdb *n)
 {
-  n->e.cause_code = SUCCESS;
-  n->e.cmlen      = 0;
+  n->e.cause_code        = SUCCESS;
+  n->e.cmlen             = 0;
 
   struct nsdb_root *root = n->root;
 
-  err_t err = pgr_crash (root->p, &n->e);
+  err_t             err  = pgr_crash (root->p, &n->e);
   i_free (default_mem (), (void *)root->path.data);
   i_free (default_mem (), n);
   i_free (default_mem (), root);
@@ -295,49 +278,43 @@ nsdb_crash (struct nsdb *n)
 struct nsdb *
 nsdb_open (const char *path)
 {
-  error e = error_create ();
+  error             e   = error_create ();
 
   struct nsdb_root *ret = i_malloc (default_mem (), 1, sizeof *ret, &e);
 
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
 
   // Initialize inner values
   {
-    ret->e     = error_create ();
-    ret->count = 0;
+    ret->e         = error_create ();
+    ret->count     = 0;
 
     // path
     ret->path.len  = strlen (path);
     ret->path.data = i_malloc (default_mem (), ret->path.len, 1, &e);
-    if (ret->path.data == NULL)
-    {
+    if (ret->path.data == NULL) {
       goto failed;
     }
 
     // db
     ret->p = pgr_open (path, default_mem (), default_filesystem (), &e);
-    if (ret->p == NULL)
-    {
+    if (ret->p == NULL) {
       goto failed;
     }
   }
 
   // Upfront initialization
-  if (pgr_isnew (ret->p))
-  {
+  if (pgr_isnew (ret->p)) {
     // Initialize the upfront hash page
-    if (ns_init_var_hash_map (ret->p, &e))
-    {
+    if (ns_init_var_hash_map (ret->p, &e)) {
       goto failed;
     }
   }
 
   // Launch the checkpoint writer thread
-  if (pgr_launch_checkpoint_thread (ret->p, 5000, &e))
-  {
+  if (pgr_launch_checkpoint_thread (ret->p, 5000, &e)) {
     goto failed;
   }
 
@@ -381,8 +358,7 @@ nsdb_get (struct nsdb *db, struct get_query *query, struct allocator *alloc, str
   struct ns_var_get_params gparams; // Get or create operation
 
   *dest = allocate (alloc, 1, sizeof (struct variable), &db->e);
-  if (*dest == NULL)
-  {
+  if (*dest == NULL) {
     return error_trace (&db->e);
   }
 
@@ -406,8 +382,7 @@ nsdb_get (struct nsdb *db, struct get_query *query, struct allocator *alloc, str
         .alloc = alloc,
     };
     err_t err = ns_var_get (&gparams, &db->e);
-    if (query->if_exists && err == ERR_VARIABLE_NE)
-    {
+    if (query->if_exists && err == ERR_VARIABLE_NE) {
       db->e.cause_code = SUCCESS;
       db->e.cmlen      = 0;
       *dest            = NULL;
@@ -420,8 +395,7 @@ nsdb_get (struct nsdb *db, struct get_query *query, struct allocator *alloc, str
 
 commit:
   // COMMIT
-  if (nsdb_auto_commit (db, &db->e))
-  {
+  if (nsdb_auto_commit (db, &db->e)) {
     goto failed_rollback;
   }
 
@@ -494,22 +468,19 @@ nsdb_delete (struct nsdb *db, struct delete_query *query)
         .vname = query->name,
     };
     err_t err = ns_var_delete (params, &db->e);
-    if (query->if_exists && err == ERR_VARIABLE_NE)
-    {
+    if (query->if_exists && err == ERR_VARIABLE_NE) {
       db->e.cause_code = SUCCESS;
       db->e.cmlen      = 0;
       goto commit;
     }
     WRAP_GOTO (err, failed_rollback);
-    if (err < SUCCESS)
-    {
+    if (err < SUCCESS) {
       goto failed_rollback;
     }
   }
 
 commit:
-  if (nsdb_auto_commit (db, &db->e))
-  {
+  if (nsdb_auto_commit (db, &db->e)) {
     goto failed_rollback;
   }
   return error_trace (&db->e);
@@ -541,8 +512,7 @@ nsdb_insert (
   struct ns_var_update_params uparams; // Update operation
 
   // Parameter validation
-  if (query->len == 0)
-  {
+  if (query->len == 0) {
     return 0;
   }
 
@@ -600,8 +570,7 @@ nsdb_insert (
         .bytes = query->len * tsize,
     };
     ret = ns_insert (&iparams, &db->e);
-    if (ret != (sb_size)(query->len * tsize))
-    {
+    if (ret != (sb_size)(query->len * tsize)) {
       goto failed_rollback;
     }
   }
@@ -676,11 +645,10 @@ nsdb_read (
     tsize = type_byte_size (gparams.dest.dtype);
 
     // Total size in bytes of the variable
-    len = gparams.dest.nbytes;
+    len   = gparams.dest.nbytes;
 
     // A consistent database has this be a multiple of tsize
-    if (len % tsize != 0)
-    {
+    if (len % tsize != 0) {
       error_causef (
           &db->e,
           ERR_CORRUPT,
@@ -692,25 +660,18 @@ nsdb_read (
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e))
-    {
+    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
       goto failed_rollback;
     }
 
     // Check limit
-    if (query->limit > 0)
-    {
-      if (query->blimit)
-      {
+    if (query->limit > 0) {
+      if (query->blimit) {
         stride.nelems = query->limit / tsize;
-      }
-      else
-      {
+      } else {
         stride.nelems = query->limit;
       }
-    }
-    else
-    {
+    } else {
       ASSERT (!query->blimit);
     }
   }
@@ -813,11 +774,10 @@ nsdb_remove (
     tsize = type_byte_size (gparams.dest.dtype);
 
     // Total size in bytes of the variable
-    len = gparams.dest.nbytes;
+    len   = gparams.dest.nbytes;
 
     // A consistent database has this be a multiple of tsize
-    if (len % tsize != 0)
-    {
+    if (len % tsize != 0) {
       error_causef (
           &db->e,
           ERR_CORRUPT,
@@ -829,25 +789,18 @@ nsdb_remove (
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e))
-    {
+    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
       goto failed_rollback;
     }
 
     // Check limit
-    if (query->limit > 0)
-    {
-      if (query->blimit)
-      {
+    if (query->limit > 0) {
+      if (query->blimit) {
         stride.nelems = query->limit / tsize;
-      }
-      else
-      {
+      } else {
         stride.nelems = query->limit;
       }
-    }
-    else
-    {
+    } else {
       ASSERT (!query->blimit);
     }
   }
@@ -960,11 +913,10 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
     tsize = type_byte_size (gparams.dest.dtype);
 
     // Total size in bytes of the variable
-    len = gparams.dest.nbytes;
+    len   = gparams.dest.nbytes;
 
     // A consistent database has this be a multiple of tsize
-    if (len % tsize != 0)
-    {
+    if (len % tsize != 0) {
       error_causef (
           &db->e,
           ERR_CORRUPT,
@@ -976,27 +928,20 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e))
-    {
+    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
       goto failed_rollback;
     }
 
     // Check limit
-    if (query->limit > 0)
-    {
-      if (query->blimit)
-      {
+    if (query->limit > 0) {
+      if (query->blimit) {
         // byte limit
         stride.nelems = query->limit / tsize;
-      }
-      else
-      {
+      } else {
         // element limit
         stride.nelems = query->limit;
       }
-    }
-    else
-    {
+    } else {
       ASSERT (!query->blimit);
     }
   }
@@ -1066,125 +1011,88 @@ failed:
 sb_size
 nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct allocator *alc)
 {
-  sb_size          ret = SUCCESS;
-  struct variable *var;
+  sb_size                ret = SUCCESS;
+  struct variable       *var;
 
   struct stream          stream;
   struct stream_obuf_ctx octx;
   struct stream_ibuf_ctx ictx;
 
-  switch (q->type)
-  {
-    case QT_READ:
-    {
+  switch (q->type) {
+    case QT_READ: {
       // Destination pointer is required
-      if (data == NULL)
-      {
+      if (data == NULL) {
         error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a read operation");
         goto failed;
       }
 
-      if (q->read.limit && q->read.blimit)
-      {
+      if (q->read.limit && q->read.blimit) {
         stream_obuf_init (&stream, &octx, data, q->read.limit);
-      }
-      else
-      {
+      } else {
         stream_obuf_init (&stream, &octx, data, 0);
       }
       ret = nsdb_read (ns, &q->read, alc, &stream);
-      if (ret < 0)
-      {
+      if (ret < 0) {
         goto failed;
       }
 
       break;
     }
-    case QT_WRITE:
-    {
+    case QT_WRITE: {
       // Source pointer is required
-      if (data == NULL)
-      {
+      if (data == NULL) {
         error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a write operation");
         goto failed;
       }
 
-      if (q->write.limit && q->write.blimit)
-      {
+      if (q->write.limit && q->write.blimit) {
         stream_ibuf_init (&stream, &ictx, data, q->write.limit);
-      }
-      else
-      {
+      } else {
         stream_ibuf_init (&stream, &ictx, data, 0);
       }
       ret = nsdb_write (ns, &q->write, alc, &stream);
-      if (ret < 0)
-      {
+      if (ret < 0) {
         goto failed;
       }
 
       break;
     }
-    case QT_REMOVE:
-    {
-      if (data)
-      {
-        if (q->remove.limit && q->remove.blimit)
-        {
+    case QT_REMOVE: {
+      if (data) {
+        if (q->remove.limit && q->remove.blimit) {
           stream_obuf_init (&stream, &octx, data, q->remove.limit);
-        }
-        else
-        {
+        } else {
           stream_obuf_init (&stream, &octx, data, 0);
         }
 
         ret = nsdb_remove (ns, &q->remove, alc, &stream);
-      }
-      else
-      {
+      } else {
         ret = nsdb_remove (ns, &q->remove, alc, NULL);
       }
-      if (ret < 0)
-      {
+      if (ret < 0) {
         goto failed;
       }
 
       break;
     }
-    case QT_INSERT:
-    {
+    case QT_INSERT: {
       // Source pointer is required
-      if (data == NULL)
-      {
+      if (data == NULL) {
         error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a insert operation");
         goto failed;
       }
 
       stream_ibuf_init (&stream, &ictx, data, 0);
       ret = nsdb_insert (ns, &q->insert, alc, &stream);
-      if (ret < 0)
-      {
+      if (ret < 0) {
         goto failed;
       }
 
       break;
     }
 
-    case QT_CREATE:
-    {
-      if (nsdb_create (ns, alc, q->create.name, q->create.type))
-      {
-        goto failed;
-      }
-
-      ret = SUCCESS;
-
-      break;
-    }
-    case QT_DELETE:
-    {
-      if (nsdb_delete (ns, &q->delete))
-      {
+    case QT_CREATE: {
+      if (nsdb_create (ns, alc, q->create.name, q->create.type)) {
         goto failed;
       }
 
@@ -1192,13 +1100,20 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
 
       break;
     }
-    case QT_GET:
-    {
+    case QT_DELETE: {
+      if (nsdb_delete (ns, &q->delete)) {
+        goto failed;
+      }
+
+      ret = SUCCESS;
+
+      break;
+    }
+    case QT_GET: {
       struct nsdb_var **_data = data;
 
       // Destination pointer is required
-      if (data == NULL)
-      {
+      if (data == NULL) {
         error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
         goto failed;
       }
@@ -1206,22 +1121,19 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
       // Variables get their own allocator
       // context that gets freed on nsdb_var_free
       struct allocator *valloc = i_malloc (default_mem (), 1, sizeof *valloc, &ns->e);
-      if (valloc == NULL)
-      {
+      if (valloc == NULL) {
         goto failed;
       }
       create_default_allocator (valloc);
 
       // Get the variable
-      if (nsdb_get (ns, &q->get, valloc, &var) < 0)
-      {
+      if (nsdb_get (ns, &q->get, valloc, &var) < 0) {
         allocator_free (valloc);
         i_free (default_mem (), valloc);
         goto failed;
       }
 
-      if (var == NULL)
-      {
+      if (var == NULL) {
         *_data = NULL;
         allocator_free (valloc);
         i_free (default_mem (), valloc);
@@ -1232,8 +1144,7 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
       // Transfer over to a variable handle (that can be free'd)
       *_data = allocate (valloc, 1, sizeof (struct nsdb_var), &ns->e);
 
-      if (*_data == NULL)
-      {
+      if (*_data == NULL) {
         allocator_free (valloc);
         i_free (default_mem (), valloc);
         goto failed;
@@ -1242,19 +1153,17 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
       (*_data)->var   = var;
       (*_data)->alloc = valloc;
 
-      ret = SUCCESS;
+      ret             = SUCCESS;
 
       break;
     }
 
-    case QT_EXIT:
-    {
+    case QT_EXIT: {
       ret = SUCCESS;
       break;
     }
 
-    case QT_HELP:
-    {
+    case QT_HELP: {
       ret = SUCCESS;
       break;
     }
@@ -1296,8 +1205,7 @@ nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *
         .alloc = alloc,
     };
     err_t err = ns_var_get (&gparams, &db->e);
-    if (query->if_exists && err == ERR_VARIABLE_NE)
-    {
+    if (query->if_exists && err == ERR_VARIABLE_NE) {
       db->e.cause_code = SUCCESS;
       db->e.cmlen      = 0;
       fprintf (stderr, "Variable: %.*s doesn't exist\n", strfmt (&query->name));
@@ -1361,11 +1269,10 @@ nsdb_read_and_print (
     tsize = type_byte_size (gparams.dest.dtype);
 
     // Total size in bytes of the variable
-    len = gparams.dest.nbytes;
+    len   = gparams.dest.nbytes;
 
     // A consistent database has this be a multiple of tsize
-    if (len % tsize != 0)
-    {
+    if (len % tsize != 0) {
       error_causef (
           &db->e,
           ERR_CORRUPT,
@@ -1377,31 +1284,23 @@ nsdb_read_and_print (
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e))
-    {
+    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
       goto failed_rollback;
     }
 
     // Check limit
-    if (query->limit > 0)
-    {
-      if (query->blimit)
-      {
+    if (query->limit > 0) {
+      if (query->blimit) {
         stride.nelems = query->limit / tsize;
-      }
-      else
-      {
+      } else {
         stride.nelems = query->limit;
       }
-    }
-    else
-    {
+    } else {
       ASSERT (!query->blimit);
     }
 
     // Create the destination stream to print to the console
-    if (type_stream_printer_init (&dest, gparams.dest.dtype, &db->e))
-    {
+    if (type_stream_printer_init (&dest, gparams.dest.dtype, &db->e)) {
       goto failed_rollback;
     }
   }
@@ -1473,35 +1372,27 @@ nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc
 {
   sb_size ret = SUCCESS;
 
-  switch (q->type)
-  {
-    case QT_READ:
-    {
+  switch (q->type) {
+    case QT_READ: {
       ret = nsdb_read_and_print (ns, &q->read, alc);
-      if (ret < 0)
-      {
+      if (ret < 0) {
         goto failed;
       }
 
       break;
     }
-    case QT_WRITE:
-    {
+    case QT_WRITE: {
       break;
     }
-    case QT_REMOVE:
-    {
+    case QT_REMOVE: {
       break;
     }
-    case QT_INSERT:
-    {
+    case QT_INSERT: {
       break;
     }
 
-    case QT_CREATE:
-    {
-      if (nsdb_create (ns, alc, q->create.name, q->create.type))
-      {
+    case QT_CREATE: {
+      if (nsdb_create (ns, alc, q->create.name, q->create.type)) {
         goto failed;
       }
 
@@ -1511,27 +1402,22 @@ nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc
 
       break;
     }
-    case QT_DELETE:
-    {
+    case QT_DELETE: {
       break;
     }
-    case QT_GET:
-    {
+    case QT_GET: {
       ret = nsdb_get_and_print (ns, &q->get, alc);
-      if (ret < 0)
-      {
+      if (ret < 0) {
         goto failed;
       }
       break;
     }
 
-    case QT_EXIT:
-    {
+    case QT_EXIT: {
       break;
     }
 
-    case QT_HELP:
-    {
+    case QT_HELP: {
       break;
     }
   }
@@ -1552,8 +1438,7 @@ nscli_init (struct nscli *cli, const char *dbname)
 {
   cli->db = nsdb_open (dbname);
 
-  if (cli->db == NULL)
-  {
+  if (cli->db == NULL) {
     return -1;
   }
 
@@ -1565,8 +1450,7 @@ nscli_step_init (struct nscli *cli)
 {
   create_default_allocator (&cli->step_alloc);
 
-  if (dblb_create (&cli->stmt, &cli->step_alloc, 1, 128, &cli->db->e))
-  {
+  if (dblb_create (&cli->stmt, &cli->step_alloc, 1, 128, &cli->db->e)) {
     allocator_free (&cli->step_alloc);
     return error_trace (&cli->db->e);
   }
@@ -1584,14 +1468,12 @@ append_line (struct dbl_buffer *b, FILE *stream, error *e)
   int    c;
   size_t before = b->nelem;
 
-  while ((c = fgetc (stream)) != EOF && c != '\n')
-  {
+  while ((c = fgetc (stream)) != EOF && c != '\n') {
     char _c = (char)c;
     WRAP (dblb_append (b, &_c, 1, e));
   }
 
-  if (c == EOF && b->nelem == before)
-  {
+  if (c == EOF && b->nelem == before) {
     return 0;
   }
 
@@ -1607,10 +1489,8 @@ has_terminator (const struct dbl_buffer *b)
 static int
 is_blank (const struct dbl_buffer *b)
 {
-  for (size_t i = 0; i < b->nelem; i++)
-  {
-    if (((char *)b->data)[i] != ' ' && ((char *)b->data)[i] != '\t')
-    {
+  for (size_t i = 0; i < b->nelem; i++) {
+    if (((char *)b->data)[i] != ' ' && ((char *)b->data)[i] != '\t') {
       return 0;
     }
   }
@@ -1625,41 +1505,34 @@ nscli_step_read_stdin (struct nscli *cli)
   fflush (stdout);
 
   // Accumulate lines until a ';' appears or EOF.
-  while (true)
-  {
+  while (true) {
     // Read a whole line
     int r = append_line (&cli->stmt, stdin, &cli->db->e);
 
     // handle error
-    if (r < 0)
-    {
+    if (r < 0) {
       return CMD_FATAL;
     }
 
     // nothing - got eof
-    if (r == 0)
-    {
+    if (r == 0) {
       fputc ('\n', stdout);
       return CMD_NOTHING_TO_DO;
     }
 
     // Check if this line is the last one
-    if (has_terminator (&cli->stmt))
-    {
+    if (has_terminator (&cli->stmt)) {
       char c = '\0';
-      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e))
-      {
+      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e)) {
         return CMD_FATAL;
       }
       break;
     }
 
-    if (cli->stmt.nelem > 0)
-    {
+    if (cli->stmt.nelem > 0) {
       /* Separate lines with a space so tokens don't merge. */
       char c = ' ';
-      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e))
-      {
+      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e)) {
         return CMD_FATAL;
       }
     }
@@ -1668,8 +1541,7 @@ nscli_step_read_stdin (struct nscli *cli)
     fflush (stdout);
   }
 
-  if (is_blank (&cli->stmt))
-  {
+  if (is_blank (&cli->stmt)) {
     return CMD_NOTHING_TO_DO;
   }
 
@@ -1683,23 +1555,20 @@ nscli_step_execute (struct nscli *cli)
   struct query              q;
 
   // compile the query
-  if (compile_query (&q, cli->stmt.data, &cli->step_alloc, &cli->db->e))
-  {
+  if (compile_query (&q, cli->stmt.data, &cli->step_alloc, &cli->db->e)) {
     ret = EXE_ERROR;
     goto theend;
   }
 
   i_log_query (LOG_INFO, &q);
 
-  if (q.type == QT_EXIT)
-  {
+  if (q.type == QT_EXIT) {
     ret = EXE_EXIT;
     goto theend;
   }
 
   // Execute the query
-  if (nsdb_execute_in_console (cli->db, &q, &cli->step_alloc) < 0)
-  {
+  if (nsdb_execute_in_console (cli->db, &q, &cli->step_alloc) < 0) {
     ret = EXE_ERROR;
     goto theend;
   }

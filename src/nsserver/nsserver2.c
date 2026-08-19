@@ -27,8 +27,7 @@ make_listener (int port)
    * Open up a new ipv4 socket with stream mode
    */
   int fd = socket (AF_INET, SOCK_STREAM, 0);
-  if (fd == -1)
-  {
+  if (fd == -1) {
     perror ("socket");
     exit (1);
   }
@@ -41,13 +40,11 @@ make_listener (int port)
   addr.sin_addr.s_addr    = INADDR_ANY;
   addr.sin_port           = htons (port);
 
-  if (bind (fd, (struct sockaddr *)&addr, sizeof (addr)) == -1)
-  {
+  if (bind (fd, (struct sockaddr *)&addr, sizeof (addr)) == -1) {
     perror ("bind");
     exit (1);
   }
-  if (listen (fd, SOMAXCONN) == -1)
-  {
+  if (listen (fd, SOMAXCONN) == -1) {
     perror ("listen");
     exit (1);
   }
@@ -85,9 +82,8 @@ main (void)
 {
   int listen_fd = make_listener (PORT);
 
-  int kq = kqueue ();
-  if (kq == -1)
-  {
+  int kq        = kqueue ();
+  if (kq == -1) {
     perror ("kqueue");
     exit (1);
   }
@@ -99,42 +95,33 @@ main (void)
 
   printf ("listening on port %d\n", PORT);
 
-  for (;;)
-  {
+  for (;;) {
     int n = kevent (kq, NULL, 0, events, MAX_EVENTS, NULL);
-    if (n == -1)
-    {
-      if (errno == EINTR)
-      {
+    if (n == -1) {
+      if (errno == EINTR) {
         continue;
       }
       perror ("kevent");
       break;
     }
 
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
       int fd = (int)events[i].ident;
 
       // Error / EOF conditions come back as flags on the event
-      if (events[i].flags & EV_EOF)
-      {
+      if (events[i].flags & EV_EOF) {
         close_conn (kq, fd);
         continue;
       }
 
-      if (fd == listen_fd)
-      {
+      if (fd == listen_fd) {
         // Accept as many pending connections as are ready
-        for (;;)
-        {
+        for (;;) {
           struct sockaddr_in client_addr;
           socklen_t          client_len = sizeof (client_addr);
           int client_fd = accept (listen_fd, (struct sockaddr *)&client_addr, &client_len);
-          if (client_fd == -1)
-          {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
+          if (client_fd == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
               break;
             }
             perror ("accept");
@@ -144,13 +131,10 @@ main (void)
           kq_add (kq, client_fd, EVFILT_READ);
           printf ("accepted fd %d from %s\n", client_fd, inet_ntoa (client_addr.sin_addr));
         }
-      }
-      else
-      {
+      } else {
         // Readable client socket — echo back
         ssize_t r = read (fd, buf, sizeof (buf));
-        if (r <= 0)
-        {
+        if (r <= 0) {
           // r == 0: client closed. r < 0: real error (already
           // filtered EAGAIN wouldn't show up here since kqueue
           // only told us it's readable).
@@ -158,8 +142,7 @@ main (void)
           continue;
         }
         ssize_t written = write (fd, buf, r);
-        if (written == -1)
-        {
+        if (written == -1) {
           perror ("write");
           close_conn (kq, fd);
         }

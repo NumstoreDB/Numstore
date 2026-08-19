@@ -24,11 +24,11 @@
 #ifndef ERROR_H
 #define ERROR_H
 
-#include <stdbool.h>
-
 #include "core/ns_platform.h" // PRINTF_ATTR / unlikely
 #include "core/ns_stdtypes.h" // u32
 #include "core/ns_utils.h"    // FPREFIX_STR
+
+#include <stdbool.h>
 
 /******************************************************************************
  * SECTION: Error Handler
@@ -38,12 +38,12 @@ typedef int err_t;
 
 typedef struct
 {
-  err_t cause_code;    // Machine-readable error code. @c SUCCESS when no error is
-                       // pending.
-  char cause_msg[256]; // Null-terminated human-readable description of the
-                       // failure.
-  u32  cmlen;          // Length of @c cause_msg in bytes, excluding the null terminator.
-  bool disable_log;    // disable the error log temporarily
+  err_t cause_code;     // Machine-readable error code. @c SUCCESS when no error is
+                        // pending.
+  char  cause_msg[256]; // Null-terminated human-readable description of the
+                        // failure.
+  u32   cmlen;          // Length of @c cause_msg in bytes, excluding the null terminator.
+  bool  disable_log;    // disable the error log temporarily
 } error;
 
 typedef err_t (*isvalid_func) (void *ctx, error *e);
@@ -63,33 +63,29 @@ typedef err_t (*isvalid_func) (void *ctx, error *e);
 #define ERR_DUPLICATE_COMMIT           -12
 
 error error_create (void);
-void  error_silence (error *e);
-void  error_unsilence (error *e);
+void error_silence (error *e);
+void error_unsilence (error *e);
 err_t error_causef (error *e, err_t c, const char *fmt, ...) PRINTF_ATTR (3, 4);
-void  error_log_consume (error *e);
+void error_log_consume (error *e);
 
 #define error_trace(e)                                                               \
   (e)->cause_code < 0 ? error_causef (e, (e)->cause_code, FPREFIX_STR, FPREFIX_ARGS) \
                       : (e)->cause_code
 
-#define WRAP(expr)                   \
-  do                                 \
-  {                                  \
-    if (unlikely ((expr) < SUCCESS)) \
-    {                                \
-      return error_trace (e);        \
-    }                                \
-  }                                  \
+#define WRAP(expr)                     \
+  do {                                 \
+    if (unlikely ((expr) < SUCCESS)) { \
+      return error_trace (e);          \
+    }                                  \
+  }                                    \
   while (0)
 
-#define WRAP_GOTO(expr, label)       \
-  do                                 \
-  {                                  \
-    if (unlikely ((expr) < SUCCESS)) \
-    {                                \
-      goto label;                    \
-    }                                \
-  }                                  \
+#define WRAP_GOTO(expr, label)         \
+  do {                                 \
+    if (unlikely ((expr) < SUCCESS)) { \
+      goto label;                      \
+    }                                  \
+  }                                    \
   while (0)
 
 #ifndef TESTING

@@ -37,8 +37,7 @@ HEADER_FUNC struct type *
 compile_type_alloc (const char *text, struct allocator *dalloc, error *e)
 {
   struct type *ret = allocate (dalloc, 1, sizeof *ret, e);
-  if (ret)
-  {
+  if (ret) {
     compile_type (ret, text, dalloc, e);
   }
   return ret;

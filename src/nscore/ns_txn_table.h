@@ -15,8 +15,6 @@
 #ifndef TXN_TABLE_H
 #define TXN_TABLE_H
 
-#include <stdbool.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h" // error
@@ -24,6 +22,8 @@
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/ns_lock_table.h"
+
+#include <stdbool.h>
 
 struct dbl_buffer;
 
@@ -143,7 +143,8 @@ struct txn
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn void txn_init(struct txn *dest, txid tid, struct txn_data data, struct i_mem mem)
+ * @fn void txn_init(struct txn *dest, txid tid, struct txn_data data, struct
+ * i_mem mem)
  * @brief Allocates and maps tracking fields to complete initialization loops.
  */
 void txn_init (struct txn *dest, txid tid, struct txn_data data, struct i_mem mem);

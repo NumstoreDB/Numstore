@@ -12,12 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "numstore.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "numstore.h"
 
 // 1. Define the packing macros based on the compiler
 #if defined(_MSC_VER)
@@ -37,12 +37,14 @@
 
 // 2. Apply the macros to your struct
 PACKED_STRUCT_START
+
 struct example
 {
   float    a;
   int32_t  b;
   uint32_t d[5][10];
 } PACKED_ATTR;
+
 PACKED_STRUCT_END
 
 // Two utility functions to print and seed an example struct array
@@ -68,8 +70,7 @@ main (void)
   // Open a new data file
   nsdb_cleanup ("sample1_crud");
   nsdb_t *ns = nsdb_open ("sample1_crud");
-  if (ns == NULL)
-  {
+  if (ns == NULL) {
     return -1;
   }
 
@@ -90,7 +91,7 @@ main (void)
   sb_size n = nsdb_fexecute (ns, "insert example 0 %d", src, 200);
 
   // Read (most of) data with a stride of 3
-  n = nsdb_fexecute (ns, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
+  n         = nsdb_fexecute (ns, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
@@ -115,8 +116,7 @@ print_example (const char *label, struct example *ex, int size)
   int show = size > 10 ? 10 : size;
 
   printf ("%s: examples (%d):\n", label, size);
-  for (int i = 0; i < show; i++)
-  {
+  for (int i = 0; i < show; i++) {
     printf (
         "%s:   [%d] a=%g  b=%d  d=[[%u, %u ...], [%u, %u ...], "
         "...]\n",
@@ -130,8 +130,7 @@ print_example (const char *label, struct example *ex, int size)
         ex[i].d[1][1]
     );
   }
-  if (size > show)
-  {
+  if (size > show) {
     printf ("%s:   ... (%d more)\n", label, size - show);
   }
 }
@@ -139,14 +138,11 @@ print_example (const char *label, struct example *ex, int size)
 static void
 init_example (struct example *ex, int size)
 {
-  for (int i = 0; i < size; i++)
-  {
+  for (int i = 0; i < size; i++) {
     ex[i].a = i;
     ex[i].b = i + 1;
-    for (int r = 0; r < 5; r++)
-    {
-      for (int c = 0; c < 10; c++)
-      {
+    for (int r = 0; r < 5; r++) {
+      for (int c = 0; c < 10; c++) {
         ex[i].d[r][c] = i + r * 10 + c;
       }
     }

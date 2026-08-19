@@ -14,8 +14,6 @@
 
 #include "nscore/ns_dirty_page_table.h"
 
-#include <stddef.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_htable.h"
@@ -23,6 +21,8 @@
 #include "core/os/ns_memory.h"
 #include "core/os/ns_threading.h"
 #include "core/testing/ns_testing.h"
+
+#include <stddef.h>
 
 /*
  * Dirty page table entry.
@@ -66,14 +66,12 @@ static bool
 dpge_equals (const struct hnode *left, const struct hnode *right)
 {
   // Might have passed the exact same ref as exists in the htable
-  if (left == right)
-  {
+  if (left == right) {
     return true;
   }
 
   // Otherwise, passed a key with just relevant information
-  else
-  {
+  else {
     struct dpg_entry *_left  = container_of (left, struct dpg_entry, node);
     struct dpg_entry *_right = container_of (right, struct dpg_entry, node);
 
@@ -96,16 +94,14 @@ struct dpg_table *
 dpgt_open (struct i_mem mem, error *e)
 {
   struct dpg_table *dest = i_malloc (mem, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     goto failed;
   }
   dest->mem = mem;
   slab_alloc_init (&dest->alloc, mem, sizeof (struct dpg_entry), 1000);
 
   dest->t = htable_create (512, mem, e);
-  if (dest->t == NULL)
-  {
+  if (dest->t == NULL) {
     goto dest_failed;
   }
 
@@ -138,13 +134,11 @@ merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx)
 {
   const struct dpgt_merge_ctx *ctx = vctx;
 
-  if (ctx->e->cause_code)
-  {
+  if (ctx->e->cause_code) {
     return;
   }
 
-  if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e))
-  {
+  if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e)) {
     return;
   }
 }
@@ -167,8 +161,7 @@ dpge_max (pgno pg, const lsn rec_lsn, void *ctx)
 {
   lsn *min = ctx;
 
-  if (rec_lsn < *min)
-  {
+  if (rec_lsn < *min) {
     *min = rec_lsn;
   }
 }
@@ -243,8 +236,7 @@ dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e)
   DBG_ASSERT (dirty_pg_table, t);
 
   struct dpg_entry *v = slab_alloc_alloc (&t->alloc, e);
-  if (v == NULL)
-  {
+  if (v == NULL) {
     goto theend;
   }
 
@@ -259,8 +251,7 @@ theend:
 err_t
 dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e)
 {
-  if (!dpgt_exists (t, pg))
-  {
+  if (!dpgt_exists (t, pg)) {
     return dpgt_add (t, pg, rec_lsn, e);
   }
   return SUCCESS;
@@ -275,8 +266,7 @@ dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg)
   dpge_key_init (&key, pg);
 
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
-  if (node)
-  {
+  if (node) {
     *dest = container_of (*node, struct dpg_entry, node)->rec_lsn;
   }
 
@@ -293,8 +283,7 @@ dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg)
 
   struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
 
-  if (node == NULL)
-  {
+  if (node == NULL) {
     *exists = false;
     return;
   }
@@ -346,8 +335,7 @@ static void
 dpgt_eq_foreach (struct hnode *node, void *_ctx)
 {
   struct dpgt_eq_ctx *ctx = _ctx;
-  if (ctx->ret == false)
-  {
+  if (ctx->ret == false) {
     return;
   }
 
@@ -360,8 +348,7 @@ dpgt_eq_foreach (struct hnode *node, void *_ctx)
 
     struct hnode **other_node = htable_lookup (ctx->other->t, &candidate.node, dpge_equals);
 
-    if (other_node == NULL)
-    {
+    if (other_node == NULL) {
       ctx->ret = false;
       goto theend;
     }
@@ -385,8 +372,7 @@ dpgt_equal (struct dpg_table *left, struct dpg_table *right)
 {
   bool ret = false;
 
-  if (htable_size (left->t) != htable_size (right->t))
-  {
+  if (htable_size (left->t) != htable_size (right->t)) {
     goto theend;
   }
 
@@ -425,8 +411,7 @@ TEST (dpgt_open)
   TEST_CASE ("open multiple")
   {
     error e = error_create ();
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
       struct dpg_table *t = dpgt_open (mem, &e);
       dpgt_close (t);
     }
@@ -453,14 +438,12 @@ TEST (dpgt_merge_into)
     struct dpg_table *dest = dpgt_open (mem, &e);
     struct dpg_table *src  = dpgt_open (mem, &e);
     // Add to dest (pages 1-5)
-    for (pgno pg = 1; pg <= 5; pg++)
-    {
+    for (pgno pg = 1; pg <= 5; pg++) {
       dpgt_add (dest, pg, pg * 10, &e);
     }
 
     // Add to src (pages 6-10)
-    for (pgno pg = 6; pg <= 10; pg++)
-    {
+    for (pgno pg = 6; pg <= 10; pg++) {
       dpgt_add (src, pg, pg * 10, &e);
     }
 
@@ -468,8 +451,7 @@ TEST (dpgt_merge_into)
     test_assert (result == SUCCESS);
 
     // Verify all pages exist in dest
-    for (pgno pg = 1; pg <= 10; pg++)
-    {
+    for (pgno pg = 1; pg <= 10; pg++) {
       test_assert (dpgt_exists (dest, pg));
     }
 
@@ -571,13 +553,11 @@ TEST (dpgt_add)
   {
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (mem, &e);
-    for (pgno pg = 1; pg <= 5; pg++)
-    {
+    for (pgno pg = 1; pg <= 5; pg++) {
       dpgt_add (t, pg, pg * 10, &e);
     }
 
-    for (pgno pg = 1; pg <= 5; pg++)
-    {
+    for (pgno pg = 1; pg <= 5; pg++) {
       lsn  rec_lsn;
       bool found = dpgt_get (&rec_lsn, t, pg);
       test_assert (found);
@@ -736,8 +716,7 @@ TEST (dpgt_equal)
     error             e  = error_create ();
     struct dpg_table *t1 = dpgt_open (mem, &e);
     struct dpg_table *t2 = dpgt_open (mem, &e);
-    for (pgno pg = 1; pg <= 5; pg++)
-    {
+    for (pgno pg = 1; pg <= 5; pg++) {
       dpgt_add (t1, pg, pg * 10, &e);
       dpgt_add (t2, pg, pg * 10, &e);
     }
@@ -808,13 +787,11 @@ dpgt_insert_thread (void *arg)
   struct dpgt_thread_ctx *ctx = arg;
   error                   e   = error_create ();
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     const pgno pg      = ctx->start_pg + i;
     const lsn  rec_lsn = ctx->start_pg + i;
 
-    if (dpgt_add (ctx->table, pg, rec_lsn, &e) == SUCCESS)
-    {
+    if (dpgt_add (ctx->table, pg, rec_lsn, &e) == SUCCESS) {
       ctx->counter += 1;
     }
   }
@@ -826,11 +803,9 @@ dpgt_reader_thread (void *arg)
 {
   struct dpgt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     lsn rec_lsn;
-    if (dpgt_get (&rec_lsn, ctx->table, ctx->start_pg + i))
-    {
+    if (dpgt_get (&rec_lsn, ctx->table, ctx->start_pg + i)) {
       ctx->counter += 1;
     }
   }
@@ -842,12 +817,10 @@ dpgt_updater_thread (void *arg)
 {
   struct dpgt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     const pgno pg = ctx->start_pg + i;
 
-    if (dpgt_exists (ctx->table, pg))
-    {
+    if (dpgt_exists (ctx->table, pg)) {
       dpgt_update (ctx->table, pg, ctx->start_pg + i + 1000);
       ctx->counter += 1;
     }
@@ -861,13 +834,11 @@ dpgt_remove_thread (void *arg)
 {
   struct dpgt_thread_ctx *ctx = arg;
 
-  for (int i = 0; i < ctx->count; i++)
-  {
+  for (int i = 0; i < ctx->count; i++) {
     bool removed;
     dpgt_remove (&removed, ctx->table, ctx->start_pg + i);
 
-    if (removed)
-    {
+    if (removed) {
       ctx->counter += 1;
     }
   }
@@ -921,8 +892,7 @@ TEST (dpgt_concurrent)
     int total_inserts = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_inserts, 300);
 
-    for (pgno pg = 0; pg < 300; pg++)
-    {
+    for (pgno pg = 0; pg < 300; pg++) {
       test_assert (dpgt_exists (t, pg));
     }
 
@@ -934,8 +904,7 @@ TEST (dpgt_concurrent)
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (mem, &e);
     // Pre-populate
-    for (pgno pg = 0; pg < 200; pg++)
-    {
+    for (pgno pg = 0; pg < 200; pg++) {
       dpgt_add (t, pg, pg * 10, &e);
     }
 
@@ -987,8 +956,7 @@ TEST (dpgt_concurrent)
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (mem, &e);
     // Pre-populate
-    for (pgno pg = 0; pg < 300; pg++)
-    {
+    for (pgno pg = 0; pg < 300; pg++) {
       dpgt_add (t, pg, pg * 10, &e);
     }
 
@@ -1033,8 +1001,7 @@ TEST (dpgt_concurrent)
     test_assert_equal (total_updates, 300);
 
     // Verify updates
-    for (pgno pg = 0; pg < 300; pg++)
-    {
+    for (pgno pg = 0; pg < 300; pg++) {
       lsn rec_lsn;
       test_assert (dpgt_get (&rec_lsn, t, pg));
       test_assert_equal (rec_lsn, pg + 1000);
@@ -1048,8 +1015,7 @@ TEST (dpgt_concurrent)
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (mem, &e);
     // Pre-populate
-    for (pgno pg = 0; pg < 300; pg++)
-    {
+    for (pgno pg = 0; pg < 300; pg++) {
       dpgt_add (t, pg, pg * 10, &e);
     }
 
@@ -1093,8 +1059,7 @@ TEST (dpgt_concurrent)
     int total_removes = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_removes, 300);
 
-    for (pgno pg = 0; pg < 300; pg++)
-    {
+    for (pgno pg = 0; pg < 300; pg++) {
       test_assert (!dpgt_exists (t, pg));
     }
 
@@ -1106,8 +1071,7 @@ TEST (dpgt_concurrent)
     error             e = error_create ();
     struct dpg_table *t = dpgt_open (mem, &e);
     // Pre-populate half so readers have something to find
-    for (pgno pg = 0; pg < 100; pg++)
-    {
+    for (pgno pg = 0; pg < 100; pg++) {
       dpgt_add (t, pg, pg * 10, &e);
     }
 
@@ -1155,14 +1119,12 @@ TEST (dpgt_concurrent)
     test_assert_equal (insert_ctx.counter, 100);
 
     // All pre-populated pages must still be present
-    for (pgno pg = 0; pg < 100; pg++)
-    {
+    for (pgno pg = 0; pg < 100; pg++) {
       test_assert (dpgt_exists (t, pg));
     }
 
     // All inserted pages must be present
-    for (pgno pg = 100; pg < 200; pg++)
-    {
+    for (pgno pg = 100; pg < 200; pg++) {
       test_assert (dpgt_exists (t, pg));
     }
 

@@ -14,14 +14,14 @@
 
 #include "core/ns_chunk_alloc.h"
 
-#include <stdint.h>
-#include <string.h>
-
 #include "core/ns_bounds.h"
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/os/ns_memory.h"
+
+#include <stdint.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Local Linear Allocator
@@ -86,16 +86,14 @@ lmalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
   ASSERT (size > 0);
 
   u32 total;
-  if (!safe_mul_u32 (&total, req, size))
-  {
+  if (!safe_mul_u32 (&total, req, size)) {
     error_causef (e, ERR_NOMEM, "alloc %d*%d: overflow", req, size);
     latch_unlock (&a->latch);
     return NULL;
   }
 
   const u32 avail = a->limit - a->used;
-  if (avail <= total)
-  {
+  if (avail <= total) {
     error_causef (e, ERR_NOMEM, "linear alloc %d bytes: only %d remaining", total, avail);
     latch_unlock (&a->latch);
     return NULL;
@@ -158,8 +156,7 @@ DEFINE_DBG_ASSERT (struct chunk_alloc, chunk_alloc, ca, {
   u32 counted_allocated = 0;
   u32 counted_used      = 0;
 
-  for (const struct chunk *c = ca->head; c != NULL; c = c->next)
-  {
+  for (const struct chunk *c = ca->head; c != NULL; c = c->next) {
     DBG_ASSERT (chunk, c);
 
     counted_chunks++;
@@ -180,8 +177,7 @@ static struct chunk *
 chunk_create (const u32 size, struct i_mem mem, error *e)
 {
   struct chunk *ret = i_malloc (mem, sizeof (struct chunk) + size, 1, e);
-  if (ret == NULL)
-  {
+  if (ret == NULL) {
     return NULL;
   }
   ret->alloc = lalloc_create (ret->data, size);
@@ -236,20 +232,17 @@ compute_new_chunk_size (const struct chunk_alloc *ca, const u32 alloc_size)
   u32 new_chunk_size = (u32)(alloc_size * ca->settings.target_chunk_mult);
 
   // Clamp to minimum
-  if (new_chunk_size < ca->settings.min_chunk_size)
-  {
+  if (new_chunk_size < ca->settings.min_chunk_size) {
     new_chunk_size = ca->settings.min_chunk_size;
   }
 
   // Clamp to maximum
-  if (ca->settings.max_chunk_size > 0 && new_chunk_size > ca->settings.max_chunk_size)
-  {
+  if (ca->settings.max_chunk_size > 0 && new_chunk_size > ca->settings.max_chunk_size) {
     new_chunk_size = ca->settings.max_chunk_size;
   }
 
   // Ensure it fits the current allocation
-  if (new_chunk_size < alloc_size)
-  {
+  if (new_chunk_size < alloc_size) {
     new_chunk_size = alloc_size;
   }
 
@@ -264,8 +257,7 @@ chunk_alloc_free_all (struct chunk_alloc *ca)
   DBG_ASSERT (chunk_alloc, ca);
 
   struct chunk *cur = ca->head;
-  while (cur != NULL)
-  {
+  while (cur != NULL) {
     struct chunk *next = cur->next;
     DBG_ASSERT (chunk, cur);
     i_free (ca->settings.mem, cur);
@@ -286,8 +278,7 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
   DBG_ASSERT (chunk_alloc, ca);
 
   // Check chunk count limit
-  if (ca->settings.max_chunks > 0 && ca->num_chunks >= ca->settings.max_chunks)
-  {
+  if (ca->settings.max_chunks > 0 && ca->num_chunks >= ca->settings.max_chunks) {
     return error_causef (
         e,
         ERR_NOMEM,
@@ -302,10 +293,8 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
   ASSERT (ca->settings.max_chunk_size == 0 || size <= ca->settings.max_chunk_size);
 
   // Check total memory limit
-  if (ca->settings.max_total_size > 0)
-  {
-    if (ca->total_allocated + size > ca->settings.max_total_size)
-    {
+  if (ca->settings.max_total_size > 0) {
+    if (ca->total_allocated + size > ca->settings.max_total_size) {
       return error_causef (
           e,
           ERR_NOMEM,
@@ -320,8 +309,7 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
 
   // Create chunk
   struct chunk *new_chunk = chunk_create (size, ca->settings.mem, e);
-  if (new_chunk == NULL)
-  {
+  if (new_chunk == NULL) {
     return error_trace (e);
   }
 
@@ -342,8 +330,7 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   DBG_ASSERT (chunk_alloc, ca);
 
   // Check for overflow
-  if (req > 0 && size > UINT32_MAX / req)
-  {
+  if (req > 0 && size > UINT32_MAX / req) {
     error_causef (e, ERR_NOMEM, "alloc overflow: %u * %u", req, size);
     latch_unlock (&ca->latch);
     return NULL;
@@ -352,8 +339,7 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   const u32 alloc_size = req * size;
 
   // Check single allocation limit
-  if (ca->settings.max_alloc_size > 0 && alloc_size > ca->settings.max_alloc_size)
-  {
+  if (ca->settings.max_alloc_size > 0 && alloc_size > ca->settings.max_alloc_size) {
     error_causef (
         e,
         ERR_NOMEM,
@@ -366,11 +352,9 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   }
 
   // Try current chunk first
-  if (ca->head != NULL)
-  {
+  if (ca->head != NULL) {
     void *ptr = lmalloc (&ca->head->alloc, req, size, NULL);
-    if (ptr != NULL)
-    {
+    if (ptr != NULL) {
       ca->total_used += alloc_size;
       latch_unlock (&ca->latch);
       return ptr;
@@ -381,16 +365,14 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   const u32 new_chunk_size = compute_new_chunk_size (ca, alloc_size);
 
   // Create new chunk
-  if (chunk_alloc_add_new_chunk (ca, new_chunk_size, e) != SUCCESS)
-  {
+  if (chunk_alloc_add_new_chunk (ca, new_chunk_size, e) != SUCCESS) {
     latch_unlock (&ca->latch);
     return NULL;
   }
 
   // Allocate from new chunk
   void *ptr = lmalloc (&ca->head->alloc, req, size, e);
-  if (ptr != NULL)
-  {
+  if (ptr != NULL) {
     ca->total_used += alloc_size;
   }
 

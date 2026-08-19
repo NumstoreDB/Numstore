@@ -14,9 +14,6 @@
 
 #include "nscore/wal/ns_wal_istream.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -25,6 +22,9 @@
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+
+#include <stdbool.h>
+#include <stddef.h>
 
 /******************************************************************************
  * SECTION: WAL Input Stream
@@ -51,7 +51,7 @@ struct wal_istream
   lsn          curlsn; // Where we are within the entire log file
   lsn          lsnidx; // Where we are within the current log
 
-  latch latch;
+  latch        latch;
 };
 
 ////////////////////////////////////////////////////////////
@@ -61,8 +61,7 @@ struct wal_istream *
 walis_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
 {
   struct wal_istream *dest = i_malloc (mem, 1, sizeof *dest, e);
-  if (dest == NULL)
-  {
+  if (dest == NULL) {
     return NULL;
   }
 
@@ -75,22 +74,19 @@ walis_open (const char *fname, struct i_mem mem, struct i_file_system fs, error 
    *
    * In the future I forsee this going away.
    */
-  if (i_open_r (fs, &dest->fd, fname, e))
-  {
+  if (i_open_r (fs, &dest->fd, fname, e)) {
     i_free (mem, dest);
     return NULL;
   }
 
   const i64 len = i_file_size (&dest->fd, e);
-  if (len < 0)
-  {
+  if (len < 0) {
     i_close (&dest->fd, e);
     i_free (mem, dest);
     return NULL;
   }
 
-  if (i_seek (&dest->fd, 0, I_SEEK_SET, e) < 0)
-  {
+  if (i_seek (&dest->fd, 0, I_SEEK_SET, e) < 0) {
     i_close (&dest->fd, e);
     i_free (mem, dest);
     return NULL;
@@ -142,14 +138,12 @@ walis_seek (struct wal_istream *w, const lsn pos, error *e)
   DBG_ASSERT (wal_istream, w);
 
   const i64 res = i_seek (&w->fd, pos, I_SEEK_SET, e);
-  if (res < 0)
-  {
+  if (res < 0) {
     latch_unlock (&w->latch);
     return error_trace (e);
   }
 
-  if ((u64)res != pos)
-  {
+  if ((u64)res != pos) {
     latch_unlock (&w->latch);
     return error_causef (e, ERR_CORRUPT, "seek to invalid offset");
   }
@@ -177,28 +171,23 @@ walis_read_all (
   DBG_ASSERT (wal_istream, w);
 
   *iseof = false;
-  if (rlsn)
-  {
+  if (rlsn) {
     *rlsn = w->curlsn;
   }
 
   const i64 bread = i_read_all (&w->fd, data, len, e);
-  if (bread < 0)
-  {
+  if (bread < 0) {
     latch_unlock (&w->latch);
     return error_trace (e);
   }
 
-  if (bread < len)
-  {
+  if (bread < len) {
     // Hit EOF - incomplete record (torn write at end of WAL)
-    if (bread > 0)
-    {
+    if (bread > 0) {
       // Partial read: seek back so the file position is at the
       // record start, leaving it at the last fully-written
       // record boundary
-      if (walis_seek (w, w->curlsn, e))
-      {
+      if (walis_seek (w, w->curlsn, e)) {
         latch_unlock (&w->latch);
         return error_trace (e);
       }
@@ -208,8 +197,7 @@ walis_read_all (
     return SUCCESS;
   }
 
-  if (checksum)
-  {
+  if (checksum) {
     checksum_execute (checksum, data, len);
   }
 

@@ -15,12 +15,12 @@
 #ifndef NS_SUBTYPE_H
 #define NS_SUBTYPE_H
 
-#include <stdbool.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h" // error
 #include "core/ns_string.h"
 #include "nscore/types/ns_type_accessor.h"
+
+#include <stdbool.h>
 
 struct allocator;
 struct type;
@@ -38,8 +38,8 @@ struct subtype
 };
 
 struct subtype subtype_create (struct string vname, struct type_accessor ta);
-bool           subtype_equal (const struct subtype *left, const struct subtype *right);
-struct type   *subtype_get_type (
+bool subtype_equal (const struct subtype *left, const struct subtype *right);
+struct type *subtype_get_type (
     struct type          *stype,
     struct type_accessor *ta,
     struct allocator     *alloc,

@@ -12,10 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -30,6 +26,10 @@
 #include "nscore/ns_variables.h"
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
 
 DEFINE_DBG_ASSERT (struct struct_t, unchecked_struct_t, s, {
   ASSERT (s);
@@ -54,22 +54,18 @@ struct_t_validate_shallow (const struct struct_t *s, error *e)
 {
   DBG_ASSERT (unchecked_struct_t, s);
 
-  if (s->len == 0)
-  {
+  if (s->len == 0) {
     return struct_t_type_err ("Keys length must be > 0", e);
   }
 
-  for (u32 i = 0; i < s->len; ++i)
-  {
-    if (s->keys[i].len == 0)
-    {
+  for (u32 i = 0; i < s->len; ++i) {
+    if (s->keys[i].len == 0) {
       return struct_t_type_err ("Key length must be > 0", e);
     }
     ASSERT (s->keys[i].data);
   }
 
-  if (!strings_all_unique (s->keys, s->len))
-  {
+  if (!strings_all_unique (s->keys, s->len)) {
     return struct_t_type_err ("Duplicate keys", e);
   }
 
@@ -143,8 +139,7 @@ struct_t_validate (const struct struct_t *s, error *e)
   {
     return false;
   }
-  for (u32 i = 0; i < s->len; ++i)
-  {
+  for (u32 i = 0; i < s->len; ++i) {
     WRAP (type_validate (s->types[i], e));
     {
       return false;
@@ -152,16 +147,14 @@ struct_t_validate (const struct struct_t *s, error *e)
   }
   return true;
 }
+
 struct type *
 struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key)
 {
   t_size roffset = 0;
-  for (u32 i = 0; i < t->len; ++i)
-  {
-    if (string_equal (t->keys[i], key))
-    {
-      if (offset)
-      {
+  for (u32 i = 0; i < t->len; ++i) {
+    if (string_equal (t->keys[i], key)) {
+      if (offset) {
         *offset = roffset;
       }
       return t->types[i];
@@ -176,8 +169,8 @@ struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key)
 TEST (struct_t_resolve_key)
 {
   ALLOC_INIT (alloc);
-  error  e = error_create ();
-  t_size ofst;
+  error        e = error_create ();
+  t_size       ofst;
 
   struct type *t = compile_type_alloc (
       "struct { "
@@ -238,31 +231,26 @@ TEST (struct_t_resolve_key)
 err_t
 struct_t_create (struct struct_t *dest, struct kvt_list list, struct allocator *dalloc, error *e)
 {
-  if (list.len == 0)
-  {
+  if (list.len == 0) {
     return struct_t_type_err ("struct must have greater than 0 keys", e);
   }
 
   // Copy stuff over
-  if (dalloc)
-  {
+  if (dalloc) {
     dest->len  = list.len;
     dest->keys = allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
-    if (dest->keys == NULL)
-    {
+    if (dest->keys == NULL) {
       return error_trace (e);
     }
 
     dest->types = allocator_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
-    if (dest->keys == NULL)
-    {
+    if (dest->keys == NULL) {
       return error_trace (e);
     }
   }
 
   // Don't copy
-  else
-  {
+  else {
     dest->len   = list.len;
     dest->keys  = list.keys;
     dest->types = list.types;
@@ -282,82 +270,60 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
   int   n;
 
   n = snprintf (out, avail, "struct { ");
-  if (n < 0)
-  {
+  if (n < 0) {
     return n;
   }
   len += n;
-  if (out)
-  {
+  if (out) {
     out += n;
-    if ((u32)n < avail)
-    {
+    if ((u32)n < avail) {
       avail -= n;
-    }
-    else
-    {
+    } else {
       avail = 0;
     }
   }
 
-  for (u32 i = 0; i < st->len; ++i)
-  {
+  for (u32 i = 0; i < st->len; ++i) {
     struct string key = st->keys[i];
     n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
-    if (n < 0)
-    {
+    if (n < 0) {
       return n;
     }
     len += n;
-    if (out)
-    {
+    if (out) {
       out += n;
-      if ((u32)n < avail)
-      {
+      if ((u32)n < avail) {
         avail -= n;
-      }
-      else
-      {
+      } else {
         avail = 0;
       }
     }
 
     n = type_snprintf (out, avail, st->types[i]);
-    if (n < 0)
-    {
+    if (n < 0) {
       return n;
     }
     len += n;
-    if (out)
-    {
+    if (out) {
       out += n;
-      if ((u32)n < avail)
-      {
+      if ((u32)n < avail) {
         avail -= n;
-      }
-      else
-      {
+      } else {
         avail = 0;
       }
     }
 
-    if (i + 1 < st->len)
-    {
+    if (i + 1 < st->len) {
       n = snprintf (out, avail, ", ");
-      if (n < 0)
-      {
+      if (n < 0) {
         return n;
       }
       len += n;
-      if (out)
-      {
+      if (out) {
         out += n;
-        if ((u32)n < avail)
-        {
+        if ((u32)n < avail) {
           avail -= n;
-        }
-        else
-        {
+        } else {
           avail = 0;
         }
       }
@@ -365,8 +331,7 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
   }
 
   n = snprintf (out, avail, " }");
-  if (n < 0)
-  {
+  if (n < 0) {
     return n;
   }
   len += n;
@@ -423,8 +388,8 @@ TEST (struct_t_snprintf)
 
   const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
 
-  char *ret = type_tostr (&t);
-  error e   = error_create ();
+  char       *ret      = type_tostr (&t);
+  error       e        = error_create ();
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
   i_free (default_mem (), ret);
@@ -438,8 +403,7 @@ struct_t_byte_size (const struct struct_t *t)
   u32 ret = 0;
 
   // Each type is layed out contiguously
-  for (u32 i = 0; i < t->len; ++i)
-  {
+  for (u32 i = 0; i < t->len; ++i) {
     ret += type_byte_size (t->types[i]);
   }
 
@@ -508,8 +472,7 @@ struct_t_get_serial_size (const struct struct_t *t)
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
   ret += sizeof (u16);
 
-  for (u32 i = 0; i < t->len; ++i)
-  {
+  for (u32 i = 0; i < t->len; ++i) {
     ret += sizeof (u16);
     ret += t->keys[i].len;
     ret += type_get_serial_size (t->types[i]);
@@ -577,8 +540,7 @@ struct_t_serialize (struct serializer *dest, const struct struct_t *src)
   ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));
   ASSERT (ret);
 
-  for (u32 i = 0; i < src->len; ++i)
-  {
+  for (u32 i = 0; i < src->len; ++i) {
     // (KLEN
     struct string key = src->keys[i];
     ret               = srlizr_write (dest, (const u8 *)&key.len, sizeof (u16));
@@ -674,18 +636,15 @@ struct_t_deserialize (
   struct kvt_list_builder unb = kvlb_create (&b);
 
   // LEN
-  u16 len;
-  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src))
-  {
+  u16                     len;
+  if (!dsrlizr_read ((u8 *)&len, sizeof (u16), src)) {
     goto early_termination;
   }
 
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     // Read the string key length
     u16 klen;
-    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src))
-    {
+    if (!dsrlizr_read ((u8 *)&klen, sizeof (u16), src)) {
       goto early_termination;
     }
 
@@ -694,40 +653,33 @@ struct_t_deserialize (
         .data = allocate (a, key.len, 1, e),
     };
     // Read the string data
-    if (key.data == NULL)
-    {
+    if (key.data == NULL) {
       goto theend;
     }
-    if (!dsrlizr_read ((u8 *)key.data, key.len, src))
-    {
+    if (!dsrlizr_read ((u8 *)key.data, key.len, src)) {
       goto early_termination;
     }
 
     // Deserialize sub type
     struct type *t = type_deserialize (src, a, e);
-    if (t == NULL)
-    {
+    if (t == NULL) {
       goto theend;
     }
 
-    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS))
-    {
+    if (unlikely ((kvlb_accept_key (&unb, key, e)) < SUCCESS)) {
       goto theend;
     }
-    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS))
-    {
+    if (unlikely ((kvlb_accept_type (&unb, t, e)) < SUCCESS)) {
       goto theend;
     }
   }
 
   struct kvt_list list;
-  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS))
-  {
+  if (unlikely ((kvlb_build (&list, &unb, e)) < SUCCESS)) {
     goto theend;
   }
 
-  if (unlikely ((struct_t_create (dest, list, NULL, e)) < SUCCESS))
-  {
+  if (unlikely ((struct_t_create (dest, list, NULL, e)) < SUCCESS)) {
     goto theend;
   }
 
@@ -762,10 +714,10 @@ TEST (struct_t_deserialize_green_path)
 
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
-  error e = error_create ();
+  error               e = error_create ();
 
-  struct struct_t eret;
-  err_t           ret = struct_t_deserialize (&eret, &d, &st_alloc, &e);
+  struct struct_t     eret;
+  err_t               ret = struct_t_deserialize (&eret, &d, &st_alloc, &e);
 
   test_assert_int_equal (ret, SUCCESS);
 
@@ -850,8 +802,8 @@ TEST (struct_t_deserialize_red_path)
   struct struct_t     sret = {0};
   struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
-  error e   = error_create ();
-  err_t ret = struct_t_deserialize (&sret, &d, &alloc, &e);
+  error               e    = error_create ();
+  err_t               ret  = struct_t_deserialize (&sret, &d, &alloc, &e);
 
   test_assert_int_equal (ret, ERR_INTERP); // Duplicate
 
@@ -864,26 +816,22 @@ struct_t_random (struct struct_t *st, struct allocator *alloc, u32 depth, error 
 {
   ASSERT (st);
 
-  st->len = (u16)randu32r (1, 5);
+  st->len  = (u16)randu32r (1, 5);
 
   st->keys = allocate (alloc, st->len, sizeof (struct string), e);
-  if (!st->keys)
-  {
+  if (!st->keys) {
     return error_trace (e);
   }
 
   st->types = allocate (alloc, st->len, sizeof (struct type *), e);
-  if (!st->types)
-  {
+  if (!st->types) {
     return error_trace (e);
   }
 
-  for (u16 i = 0; i < st->len; ++i)
-  {
+  for (u16 i = 0; i < st->len; ++i) {
     WRAP (rand_varname (&st->keys[i], alloc, 5, 11, e));
     st->types[i] = type_random (alloc, depth - 1, e);
-    if (st->types[i] == NULL)
-    {
+    if (st->types[i] == NULL) {
       return error_trace (e);
     }
   }
@@ -894,19 +842,15 @@ struct_t_random (struct struct_t *st, struct allocator *alloc, u32 depth, error 
 bool
 struct_t_equal (const struct struct_t *left, const struct struct_t *right)
 {
-  if (left->len != right->len)
-  {
+  if (left->len != right->len) {
     return false;
   }
 
-  for (u32 i = 0; i < left->len; ++i)
-  {
-    if (!string_equal (left->keys[i], right->keys[i]))
-    {
+  for (u32 i = 0; i < left->len; ++i) {
+    if (!string_equal (left->keys[i], right->keys[i])) {
       return false;
     }
-    if (!type_equal (left->types[i], right->types[i]))
-    {
+    if (!type_equal (left->types[i], right->types[i])) {
       return false;
     }
   }

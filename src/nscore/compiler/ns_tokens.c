@@ -14,26 +14,23 @@
 
 #include "nscore/compiler/ns_tokens.h"
 
-#include <stddef.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/ns_string.h"
 #include "core/testing/ns_testing.h"
 
+#include <stddef.h>
+
 bool
 token_equal (const struct token *left, const struct token *right)
 {
-  if (left->type != right->type)
-  {
+  if (left->type != right->type) {
     return false;
   }
 
-  switch (left->type)
-  {
+  switch (left->type) {
       // Other
     case TT_STRING:
-    case TT_IDENTIFIER:
-    {
+    case TT_IDENTIFIER: {
       return string_equal (
           (struct string){left->str.len, (char *)left->str.data},
           (struct string){left->str.len, (char *)right->str.data}
@@ -44,8 +41,7 @@ token_equal (const struct token *left, const struct token *right)
     case TT_INTEGER: return left->integer == right->integer;
     case TT_FLOAT: return left->floating == right->floating;
 
-    default:
-    {
+    default: {
       return true;
     }
   }
@@ -54,8 +50,7 @@ token_equal (const struct token *left, const struct token *right)
 const char *
 tt_tostr (enum token_t t)
 {
-  switch (t)
-  {
+  switch (t) {
     TT_FOREACH (case_ENUM_RETURN_STRING)
   }
 

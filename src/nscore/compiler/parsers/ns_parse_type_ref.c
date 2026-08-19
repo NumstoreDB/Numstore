@@ -12,8 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
@@ -27,6 +25,8 @@
 #include "nscore/types/ns_subtype.h"
 #include "nscore/types/ns_type_accessor.h"
 #include "nscore/types/ns_type_ref.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Type Ref
@@ -62,8 +62,7 @@ static err_t
 parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *parser, error *e)
 {
   // IDENT
-  if (!parser_match (parser->base, TT_IDENTIFIER))
-  {
+  if (!parser_match (parser->base, TT_IDENTIFIER)) {
     return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
   }
 
@@ -98,8 +97,7 @@ parse_struct_type_ref (struct type_ref_parser *parser, struct type_ref *out, err
 
   WRAP (parse_field_ref (&builder, parser, e));
 
-  while (parser_match (parser->base, TT_COMMA))
-  {
+  while (parser_match (parser->base, TT_COMMA)) {
     parser_advance (parser->base);
     WRAP (parse_field_ref (&builder, parser, e));
   }
@@ -125,18 +123,14 @@ parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, erro
 {
   struct token *tok = parser_peek (parser->base);
 
-  switch (tok->type)
-  {
-    case TT_STRUCT:
-    {
+  switch (tok->type) {
+    case TT_STRUCT: {
       return parse_struct_type_ref (parser, out, e);
     }
-    case TT_IDENTIFIER:
-    {
+    case TT_IDENTIFIER: {
       return parse_take_type_ref (parser, out, e);
     }
-    default:
-    {
+    default: {
       return error_causef (
           e,
           ERR_SYNTAX,
@@ -158,8 +152,7 @@ parse_type_ref (struct parser *p, struct type_ref *dest, error *e)
       .dest = dest,
   };
 
-  if (unlikely ((parse_type_ref_inner (&parser, parser.dest, e)) < SUCCESS))
-  {
+  if (unlikely ((parse_type_ref_inner (&parser, parser.dest, e)) < SUCCESS)) {
     goto theend;
   }
 
@@ -173,15 +166,13 @@ compile_type_ref (struct type_ref *dest, const char *text, struct allocator *dal
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0)
-  {
+  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_type_ref (&parser, dest, e))
-  {
+  if (parse_type_ref (&parser, dest, e)) {
     goto theend;
   }
 

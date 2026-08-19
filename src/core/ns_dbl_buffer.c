@@ -14,11 +14,11 @@
 
 #include "core/ns_dbl_buffer.h"
 
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
+
+#include <string.h>
 
 DEFINE_DBG_ASSERT (struct dbl_buffer, dbl_buffer, d, {
   ASSERT (d);
@@ -39,8 +39,7 @@ dblb_create (
   ASSERT (size > 0);
 
   void *data = allocate (alloc, initial_cap, size, e);
-  if (data == NULL)
-  {
+  if (data == NULL) {
     return error_trace (e);
   }
 
@@ -63,8 +62,7 @@ dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
   DBG_ASSERT (dbl_buffer, d);
 
   void *head = dblb_append_alloc (d, nelem, e);
-  if (head == NULL)
-  {
+  if (head == NULL) {
     return error_trace (e);
   }
 
@@ -76,11 +74,9 @@ dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
 err_t
 dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e)
 {
-  if (nelem >= d->nelem_cap)
-  {
+  if (nelem >= d->nelem_cap) {
     void *newdata = allocate (d->alloc, d->size * d->nelem_cap, 2 * nelem, e);
-    if (newdata == NULL)
-    {
+    if (newdata == NULL) {
       return error_trace (e);
     }
     memcpy (newdata, d->data, d->size * d->nelem);
@@ -97,8 +93,7 @@ dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e)
 
   const u32 newnelem_cap = d->nelem + nelem;
 
-  if (dblb_ensure_space (d, newnelem_cap, e))
-  {
+  if (dblb_ensure_space (d, newnelem_cap, e)) {
     return NULL;
   }
 
@@ -123,10 +118,10 @@ TEST (dblb_create_basic)
   ALLOC_INIT (alloc);
 
   struct dbl_buffer db;
-  error             e = error_create ();
+  error             e   = error_create ();
 
   // Create buffer with size=4, initial_cap=2
-  const err_t err = dblb_create (&db, &alloc, 4, 2, &e);
+  const err_t       err = dblb_create (&db, &alloc, 4, 2, &e);
   test_assert_int_equal (err, SUCCESS);
   test_assert_int_equal (db.size, 4);
   test_assert_int_equal (db.nelem, 0);
@@ -237,9 +232,9 @@ TEST (dblb_append_alloc_basic)
   test_assert_int_equal (db.nelem, 2);
 
   // Write directly to allocated space
-  u32 *data = (u32 *)ptr;
-  data[0]   = 0x1111;
-  data[1]   = 0x2222;
+  u32 *data       = (u32 *)ptr;
+  data[0]         = 0x1111;
+  data[1]         = 0x2222;
 
   // Verify
   const u32 *base = (u32 *)db.data;
@@ -261,15 +256,15 @@ TEST (dblb_append_alloc_sequential)
   // First allocation
   u32 *ptr1 = (u32 *)dblb_append_alloc (&db, 2, &e);
   test_assert (ptr1 != NULL);
-  ptr1[0] = 0xAA;
-  ptr1[1] = 0xBB;
+  ptr1[0]   = 0xAA;
+  ptr1[1]   = 0xBB;
 
   // Second allocation - should be right after first
   u32 *ptr2 = (u32 *)dblb_append_alloc (&db, 2, &e);
   test_assert (ptr2 != NULL);
   test_assert_int_equal ((u8 *)ptr2 - (u8 *)ptr1, 2 * sizeof (u32));
-  ptr2[0] = 0xCC;
-  ptr2[1] = 0xDD;
+  ptr2[0]         = 0xCC;
+  ptr2[1]         = 0xDD;
 
   // Verify all data
   const u32 *base = (u32 *)db.data;
@@ -384,8 +379,7 @@ TEST (dblb_large_append)
 
   // Append many elements at once
   u32 vals[100];
-  for (u32 i = 0; i < 100; i++)
-  {
+  for (u32 i = 0; i < 100; i++) {
     vals[i] = i;
   }
 
@@ -394,8 +388,7 @@ TEST (dblb_large_append)
 
   // Verify data
   const u32 *data = (u32 *)db.data;
-  for (u32 i = 0; i < 100; i++)
-  {
+  for (u32 i = 0; i < 100; i++) {
     test_assert_int_equal (data[i], i);
   }
 

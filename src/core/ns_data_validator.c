@@ -14,13 +14,13 @@
 
 #include "core/ns_data_validator.h"
 
-#include <inttypes.h>
-#include <string.h>
-
 #include "core/ns_numerics.h"
 #include "core/ns_stride.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"
+
+#include <inttypes.h>
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Data Validator
@@ -30,19 +30,16 @@ static err_t
 dvalidtr_light_validate (const struct dvalidtr *d, error *e)
 {
   const i64 sut_len = d->sut.functions.getlen (d->sut.ctx, e);
-  if (sut_len < 0)
-  {
+  if (sut_len < 0) {
     return error_trace (e);
   }
 
   const i64 ref_len = d->ref.functions.getlen (d->ref.ctx, e);
-  if (ref_len < 0)
-  {
+  if (ref_len < 0) {
     return error_trace (e);
   }
 
-  if (sut_len != ref_len)
-  {
+  if (sut_len != ref_len) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -68,24 +65,20 @@ dvalidtr_read (
   void *ref  = i_malloc (d->mem, str.nelems, size, e);
   void *dest = _dest;
 
-  if (ref == NULL)
-  {
+  if (ref == NULL) {
     goto theend;
   }
 
-  if (_dest == NULL)
-  {
+  if (_dest == NULL) {
     dest = i_malloc (d->mem, str.nelems, size, e);
-    if (dest == NULL)
-    {
+    if (dest == NULL) {
       goto theend;
     }
   }
 
   // Read from the ref
   const i64 ref_read = d->ref.functions.read (d->ref.ctx, str, size, ref, e);
-  if (ref_read < 0)
-  {
+  if (ref_read < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -100,8 +93,7 @@ dvalidtr_read (
 
   // Read from the system under test
   const i64 sut_read = d->sut.functions.read (d->sut.ctx, str, size, dest, e);
-  if (sut_read < 0)
-  {
+  if (sut_read < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -114,8 +106,7 @@ dvalidtr_read (
     goto theend;
   }
 
-  if (ref_read != sut_read)
-  {
+  if (ref_read != sut_read) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -131,8 +122,7 @@ dvalidtr_read (
     goto theend;
   }
 
-  if (memcmp (dest, ref, (u64)sut_read * size) != 0)
-  {
+  if (memcmp (dest, ref, (u64)sut_read * size) != 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -148,12 +138,10 @@ dvalidtr_read (
   }
 
 theend:
-  if (ref)
-  {
+  if (ref) {
     i_free (d->mem, ref);
   }
-  if (_dest == NULL && dest)
-  {
+  if (_dest == NULL && dest) {
     i_free (d->mem, dest);
   }
   return error_trace (e);
@@ -163,11 +151,9 @@ static err_t
 dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32 slen, error *e)
 {
   u8 *src = (u8 *)_src;
-  if (_src == NULL)
-  {
+  if (_src == NULL) {
     src = i_malloc (d->mem, slen, 1, e);
-    if (src == NULL)
-    {
+    if (src == NULL) {
       goto theend;
     }
     ptr_range (src, slen);
@@ -175,8 +161,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
 
   // Insert into ref
   const i64 ref_written = d->ref.functions.insert (d->ref.ctx, ofst, src, slen, e);
-  if (ref_written < 0)
-  {
+  if (ref_written < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -190,8 +175,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
 
   // Insert into system under test
   const i64 sut_written = d->sut.functions.insert (d->sut.ctx, ofst, src, slen, e);
-  if (sut_written < 0)
-  {
+  if (sut_written < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -203,8 +187,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
     goto theend;
   }
 
-  if (ref_written != sut_written)
-  {
+  if (ref_written != sut_written) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -228,8 +211,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
       NULL,
       e
   );
-  if (sut_read < 0)
-  {
+  if (sut_read < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -241,8 +223,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
     goto theend;
   }
 
-  if (dvalidtr_light_validate (d, e))
-  {
+  if (dvalidtr_light_validate (d, e)) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -254,17 +235,14 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
     goto theend;
   }
 
-  if (d->isvalid)
-  {
-    if (d->isvalid (d->sut.ctx, e))
-    {
+  if (d->isvalid) {
+    if (d->isvalid (d->sut.ctx, e)) {
       goto theend;
     }
   }
 
 theend:
-  if (_src == NULL)
-  {
+  if (_src == NULL) {
     i_free (d->mem, src);
   }
   return error_trace (e);
@@ -280,19 +258,16 @@ dvalidtr_write (
 )
 {
   u8 *src = (u8 *)_src;
-  if (_src == NULL)
-  {
+  if (_src == NULL) {
     src = i_malloc (d->mem, str.nelems, size, e);
-    if (src == NULL)
-    {
+    if (src == NULL) {
       goto theend;
     }
     ptr_range (src, str.nelems * size);
   }
 
   const i64 sut_written = d->sut.functions.write (d->sut.ctx, str, size, src, e);
-  if (sut_written < 0)
-  {
+  if (sut_written < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -306,8 +281,7 @@ dvalidtr_write (
   }
 
   const i64 ref_written = d->ref.functions.write (d->ref.ctx, str, size, src, e);
-  if (ref_written < 0)
-  {
+  if (ref_written < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -320,8 +294,7 @@ dvalidtr_write (
     goto theend;
   }
 
-  if (ref_written != sut_written)
-  {
+  if (ref_written != sut_written) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -338,8 +311,7 @@ dvalidtr_write (
   }
 
   // Read back what we just wrote
-  if (dvalidtr_read (d, str, size, NULL, e))
-  {
+  if (dvalidtr_read (d, str, size, NULL, e)) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -353,17 +325,14 @@ dvalidtr_write (
     goto theend;
   }
 
-  if (d->isvalid)
-  {
-    if (d->isvalid (d->sut.ctx, e))
-    {
+  if (d->isvalid) {
+    if (d->isvalid (d->sut.ctx, e)) {
       goto theend;
     }
   }
 
 theend:
-  if (_src == NULL && src)
-  {
+  if (_src == NULL && src) {
     i_free (d->mem, src);
   }
   return error_trace (e);
@@ -375,24 +344,20 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
   void *ref  = i_malloc (d->mem, str.nelems, size, e);
   void *dest = _dest;
 
-  if (ref == NULL)
-  {
+  if (ref == NULL) {
     goto theend;
   }
 
-  if (_dest == NULL)
-  {
+  if (_dest == NULL) {
     dest = i_malloc (d->mem, str.nelems, size, e);
-    if (dest == NULL)
-    {
+    if (dest == NULL) {
       goto theend;
     }
   }
 
   // Remove from the ref
   const i64 ref_read = d->ref.functions.remove (d->ref.ctx, str, size, ref, e);
-  if (ref_read < 0)
-  {
+  if (ref_read < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -407,8 +372,7 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
 
   // Remove from the system under test
   const i64 sut_read = d->sut.functions.remove (d->sut.ctx, str, size, dest, e);
-  if (sut_read < 0)
-  {
+  if (sut_read < 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -421,8 +385,7 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     goto theend;
   }
 
-  if (ref_read != sut_read)
-  {
+  if (ref_read != sut_read) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -438,8 +401,7 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     goto theend;
   }
 
-  if (memcmp (dest, ref, (u64)sut_read * size) != 0)
-  {
+  if (memcmp (dest, ref, (u64)sut_read * size) != 0) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -454,8 +416,7 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     goto theend;
   }
 
-  if (dvalidtr_light_validate (d, e))
-  {
+  if (dvalidtr_light_validate (d, e)) {
     error_causef (
         e,
         ERR_CORRUPT,
@@ -469,21 +430,17 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     goto theend;
   }
 
-  if (d->isvalid)
-  {
-    if (d->isvalid (d->sut.ctx, e))
-    {
+  if (d->isvalid) {
+    if (d->isvalid (d->sut.ctx, e)) {
       goto theend;
     }
   }
 
 theend:
-  if (ref)
-  {
+  if (ref) {
     i_free (d->mem, ref);
   }
-  if (_dest == NULL && dest)
-  {
+  if (_dest == NULL && dest) {
     i_free (d->mem, dest);
   }
   return error_trace (e);
@@ -498,14 +455,12 @@ dvalidtr_getlen (const struct dvalidtr *d, error *e)
 static err_t
 dvalidtr_validate (struct dvalidtr *d, error *e)
 {
-  if (dvalidtr_light_validate (d, e))
-  {
+  if (dvalidtr_light_validate (d, e)) {
     return error_trace (e);
   }
 
   const i64 len = d->ref.functions.getlen (d->ref.ctx, e);
-  if (len < 0)
-  {
+  if (len < 0) {
     return error_trace (e);
   }
 
@@ -519,8 +474,7 @@ dvalidtr_validate (struct dvalidtr *d, error *e)
           1,
           NULL,
           e
-      ))
-  {
+      )) {
     error_causef (e, ERR_CORRUPT, "full read validation failed (len=%" PRIu64 ")", len);
     return error_trace (e);
   }
@@ -537,11 +491,9 @@ dvalidtr_random_test (
     error           *e
 )
 {
-  for (u32 k = 0; k < niters; ++k)
-  {
+  for (u32 k = 0; k < niters; ++k) {
     i64 len = dvalidtr_getlen (d, e);
-    if (len < 0)
-    {
+    if (len < 0) {
       return error_trace (e);
     }
     len /= size;
@@ -553,29 +505,26 @@ dvalidtr_random_test (
       C_REMOVE,
       C_WRITE,
     } choice = randu32r (0, 3);
-    if (len == 0)
-    {
+
+    if (len == 0) {
       choice = C_INSERT;
     }
 
-    const u64 start   = len > 0 ? randu32r (0, (u32)len - 1) : 0;
-    const u64 stride  = randu32r (1, 8);
-    const u32 max_n   = len > 0 ? ((u32)len - 1 - start) / stride + 1 : 0;
-    const u64 nelems  = max_n > 0 ? randu32r (1, MIN (max_n, max_insert)) : 0;
-    const u32 ninsert = randu32r (1, (u32)max_insert);
+    const u64           start   = len > 0 ? randu32r (0, (u32)len - 1) : 0;
+    const u64           stride  = randu32r (1, 8);
+    const u32           max_n   = len > 0 ? ((u32)len - 1 - start) / stride + 1 : 0;
+    const u64           nelems  = max_n > 0 ? randu32r (1, MIN (max_n, max_insert)) : 0;
+    const u32           ninsert = randu32r (1, (u32)max_insert);
 
-    const struct stride str = {
+    const struct stride str     = {
         .start  = start,
         .stride = stride,
         .nelems = nelems,
     };
 
-    switch (choice)
-    {
-      case C_INSERT:
-      {
-        if (dvalidtr_insert (d, start * size, NULL, ninsert * size, e))
-        {
+    switch (choice) {
+      case C_INSERT: {
+        if (dvalidtr_insert (d, start * size, NULL, ninsert * size, e)) {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -590,10 +539,8 @@ dvalidtr_random_test (
         }
         break;
       }
-      case C_READ:
-      {
-        if (dvalidtr_read (d, str, size, NULL, e))
-        {
+      case C_READ: {
+        if (dvalidtr_read (d, str, size, NULL, e)) {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -609,10 +556,8 @@ dvalidtr_random_test (
         }
         break;
       }
-      case C_REMOVE:
-      {
-        if (dvalidtr_remove (d, str, size, NULL, e))
-        {
+      case C_REMOVE: {
+        if (dvalidtr_remove (d, str, size, NULL, e)) {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -628,10 +573,8 @@ dvalidtr_random_test (
         }
         break;
       }
-      case C_WRITE:
-      {
-        if (dvalidtr_write (d, str, size, NULL, e))
-        {
+      case C_WRITE: {
+        if (dvalidtr_write (d, str, size, NULL, e)) {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -650,8 +593,7 @@ dvalidtr_random_test (
     }
   }
 
-  if (dvalidtr_validate (d, e))
-  {
+  if (dvalidtr_validate (d, e)) {
     return error_causef (e, ERR_CORRUPT, "random test failed to validate data at the end");
   }
 

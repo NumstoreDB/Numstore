@@ -15,12 +15,6 @@
 
 #include "numstore/testing/ns_swarm_tests.h"
 
-#include <signal.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_block_array.h"
 #include "core/ns_csx_assert.h"
@@ -34,6 +28,12 @@
 #include "nscore/ns_mem_vhmap.h"
 #include "nscore/ns_variables.h"
 #include "nscore/types/ns_types.h"
+
+#include <signal.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 /******************************************************************************
  * SECTION: Diagnostics
@@ -65,10 +65,8 @@ static void irwr_swmt_print_state (const struct irwr_swarm_test *meta);
  * Use when there's no extra context worth printing.
  */
 #define IRWR_SWMT_ASSERT(expr)                                                 \
-  do                                                                           \
-  {                                                                            \
-    if (!(expr))                                                               \
-    {                                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
       i_log_failure ("IRWR swarm test FAILED\n");                              \
       i_log_failure ("  expr: %s\n", #expr);                                   \
       i_log_failure ("  loc:  %s:%d in %s()\n", __FILE__, __LINE__, __func__); \
@@ -83,10 +81,8 @@ static void irwr_swmt_print_state (const struct irwr_swarm_test *meta);
  * (offsets, lengths, names, return codes).
  */
 #define IRWR_SWMT_ASSERTF(expr, fmt, ...)                                      \
-  do                                                                           \
-  {                                                                            \
-    if (!(expr))                                                               \
-    {                                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
       i_log_failure ("IRWR swarm test FAILED\n");                              \
       i_log_failure ("  expr: %s\n", #expr);                                   \
       i_log_failure ("  loc:  %s:%d in %s()\n", __FILE__, __LINE__, __func__); \
@@ -102,10 +98,8 @@ static void irwr_swmt_print_state (const struct irwr_swarm_test *meta);
  * txn boundaries) where the surrounding state matters for triage.
  */
 #define IRWR_SWMT_ASSERT_STATE(meta, expr, fmt, ...)                           \
-  do                                                                           \
-  {                                                                            \
-    if (!(expr))                                                               \
-    {                                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
       i_log_failure ("IRWR swarm test FAILED\n");                              \
       i_log_failure ("  expr: %s\n", #expr);                                   \
       i_log_failure ("  loc:  %s:%d in %s()\n", __FILE__, __LINE__, __func__); \
@@ -124,8 +118,7 @@ static void
 irwr_swmt_print_state (const struct irwr_swarm_test *meta)
 {
   i_log_info ("=== IRWR Swarm Test State ===\n");
-  if (meta == NULL)
-  {
+  if (meta == NULL) {
     i_log_info ("  (meta is NULL)\n");
     return;
   }
@@ -140,8 +133,7 @@ irwr_swmt_print_state (const struct irwr_swarm_test *meta)
   i_log_info ("  working:        %s\n", meta->working ? "present" : "<null>");
   i_log_info ("  sample_space_p: %.3f\n", (double)meta->sample_space_prob);
   i_log_info ("  Actions             enabled   allowed\n");
-  for (int i = 0; i < IRWR_AT_LEN; ++i)
-  {
+  for (int i = 0; i < IRWR_AT_LEN; ++i) {
     i_log_info (
         "    %-18s   %-3s       %-3s\n",
         irwr_action_names[i],
@@ -170,8 +162,8 @@ irwr_swmt_random_slice (int total, int *ofst, int *stride, int *len)
   int remaining = total - *ofst;
   *stride       = randu32r (1, remaining);
 
-  int max_len = (remaining + *stride - 1) / *stride;
-  *len        = randu32r (1, max_len);
+  int max_len   = (remaining + *stride - 1) / *stride;
+  *len          = randu32r (1, max_len);
 }
 
 static struct stride
@@ -188,8 +180,7 @@ static void
 irwr_swmt_set_random_enabled (struct irwr_swarm_test *meta)
 {
   int mask = rand () % ((1 << IRWR_AT_LEN) - 1) + 1;
-  for (int i = 0; i < IRWR_AT_LEN; ++i)
-  {
+  for (int i = 0; i < IRWR_AT_LEN; ++i) {
     meta->enabled[i] = (mask >> i) & 1;
   }
 }
@@ -205,20 +196,16 @@ irwr_swmt_set_allowed (struct irwr_swarm_test *meta)
 
   meta->allowed[IRWR_CRASH_AND_REOPEN] = meta->enabled[IRWR_CRASH_AND_REOPEN];
 
-  if (!meta->in_txn)
-  {
+  if (!meta->in_txn) {
     meta->allowed[IRWR_BEGIN_TXN]        = meta->enabled[IRWR_BEGIN_TXN];
     meta->allowed[IRWR_CLOSE_AND_REOPEN] = meta->enabled[IRWR_CLOSE_AND_REOPEN];
-  }
-  else
-  {
+  } else {
     meta->allowed[IRWR_COMMIT_TXN]   = meta->enabled[IRWR_COMMIT_TXN];
     meta->allowed[IRWR_ROLLBACK_TXN] = meta->enabled[IRWR_ROLLBACK_TXN];
   }
 
   meta->allowed[IRWR_INSERT] = meta->enabled[IRWR_INSERT];
-  if (meta->len > 0)
-  {
+  if (meta->len > 0) {
     meta->allowed[IRWR_REMOVE] = meta->enabled[IRWR_REMOVE];
     meta->allowed[IRWR_READ]   = meta->enabled[IRWR_READ];
     meta->allowed[IRWR_WRITE]  = meta->enabled[IRWR_WRITE];
@@ -294,8 +281,7 @@ irwr_swmt_crash_and_reopen (struct irwr_swarm_test *meta)
       meta->dbname
   );
 
-  if (meta->working)
-  {
+  if (meta->working) {
     block_array_free (meta->working);
     meta->working = NULL;
   }
@@ -320,8 +306,8 @@ irwr_swmt_close_and_reopen (struct irwr_swarm_test *meta)
 static void
 irwr_swmt_insert (struct irwr_swarm_test *meta)
 {
-  int len  = (rand () % meta->max_insert_len) + 1;
-  int ofst = rand () % (meta->len + 1);
+  int      len  = (rand () % meta->max_insert_len) + 1;
+  int      ofst = rand () % (meta->len + 1);
 
   int      blen = len * (int)meta->esize;
   uint8_t *data = malloc ((size_t)blen);
@@ -332,8 +318,7 @@ irwr_swmt_insert (struct irwr_swarm_test *meta)
       len,
       (unsigned)meta->esize
   );
-  for (int i = 0; i < blen; ++i)
-  {
+  for (int i = 0; i < blen; ++i) {
     data[i] = (uint8_t)rand ();
   }
 
@@ -525,8 +510,7 @@ irwr_swmt_write (struct irwr_swarm_test *meta)
       len,
       (unsigned)meta->esize
   );
-  for (int i = 0; i < blen; ++i)
-  {
+  for (int i = 0; i < blen; ++i) {
     data[i] = (uint8_t)rand ();
   }
 
@@ -646,18 +630,15 @@ irwr_swmt_open (
 void
 irwr_swmt_close (struct irwr_swarm_test *meta)
 {
-  if (meta->in_txn)
-  {
+  if (meta->in_txn) {
     irwr_swmt_commit_txn (meta);
   }
   IRWR_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
-  if (meta->committed)
-  {
+  if (meta->committed) {
     block_array_free (meta->committed);
   }
-  if (meta->working)
-  {
+  if (meta->working) {
     block_array_free (meta->working);
   }
   free (meta);
@@ -670,15 +651,13 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
 
   /* Count allowed actions */
   int len = 0;
-  for (int i = 0; i < IRWR_AT_LEN; ++i)
-  {
+  for (int i = 0; i < IRWR_AT_LEN; ++i) {
     len += meta->allowed[i];
   }
 
   /* If the irwr_swarm has masked everything off, re-roll and try again next
    * step rather than divide by zero. */
-  if (len == 0)
-  {
+  if (len == 0) {
     i_log_info ("No allowed actions - re-rolling enabled mask\n");
     irwr_swmt_set_random_enabled (meta);
     irwr_swmt_set_allowed (meta);
@@ -689,16 +668,11 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
   int next   = rand () % len;
   int index  = 0;
   int choice = 0;
-  for (; index < IRWR_AT_LEN; ++index)
-  {
-    if (meta->allowed[index])
-    {
-      if (choice == next)
-      {
+  for (; index < IRWR_AT_LEN; ++index) {
+    if (meta->allowed[index]) {
+      if (choice == next) {
         break;
-      }
-      else
-      {
+      } else {
         choice++;
       }
     }
@@ -707,8 +681,7 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
   enum irwr_action_type action = (enum irwr_action_type)index;
   i_log_info ("-> %s\n", irwr_action_names[action]);
 
-  switch (action)
-  {
+  switch (action) {
     case IRWR_BEGIN_TXN: irwr_swmt_begin_txn (meta); break;
     case IRWR_COMMIT_TXN: irwr_swmt_commit_txn (meta); break;
     case IRWR_ROLLBACK_TXN: irwr_swmt_rollback_txn (meta); break;
@@ -730,8 +703,7 @@ irwr_swmt_step (struct irwr_swarm_test *meta)
   }
 
   // Choose a set of randomized actions
-  if (randf () <= meta->sample_space_prob)
-  {
+  if (randf () <= meta->sample_space_prob) {
     irwr_swmt_set_random_enabled (meta);
     i_log_info ("Changing Enabled. After:\n");
     irwr_swmt_print_state (meta);
@@ -759,8 +731,7 @@ irwr_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
   srand (seed);
 
   int start_enabled[IRWR_AT_LEN];
-  for (int i = 0; i < IRWR_AT_LEN; ++i)
-  {
+  for (int i = 0; i < IRWR_AT_LEN; ++i) {
     start_enabled[i] = 1;
   }
 
@@ -768,8 +739,7 @@ irwr_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
       irwr_swmt_open (start_enabled, dbname, 100000, "testvar", "u32", 0.01f);
 
 #if PLATFORM_WINDOWS
-  if (signal (SIGINT, irwr_handle_sigint) == SIG_ERR)
-  {
+  if (signal (SIGINT, irwr_handle_sigint) == SIG_ERR) {
     irwr_swmt_close (meta);
     return 0;
   }
@@ -778,8 +748,7 @@ irwr_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
   sa.sa_handler = irwr_handle_sigint;
   sigemptyset (&sa.sa_mask);
   sa.sa_flags = 0;
-  if (sigaction (SIGINT, &sa, NULL) == -1)
-  {
+  if (sigaction (SIGINT, &sa, NULL) == -1) {
     irwr_swmt_close (meta);
     return;
   }
@@ -787,10 +756,8 @@ irwr_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
 
   time_t start = time (NULL);
 
-  while (irwr_keep_running)
-  {
-    if (time (NULL) - start >= timeout_seconds)
-    {
+  while (irwr_keep_running) {
+    if (time (NULL) - start >= timeout_seconds) {
       break;
     }
     irwr_swmt_step (meta);
@@ -823,10 +790,8 @@ static void cgd_swmt_print_state (const struct cgd_swarm_test *meta);
  * Bare ASSERTion: prints the failing expression and source location.
  */
 #define CGD_SWMT_ASSERT(expr)                                                  \
-  do                                                                           \
-  {                                                                            \
-    if (!(expr))                                                               \
-    {                                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
       i_log_failure ("CGD swarm test FAILED\n");                               \
       i_log_failure ("  expr: %s\n", #expr);                                   \
       i_log_failure ("  loc:  %s:%d in %s()\n", __FILE__, __LINE__, __func__); \
@@ -839,10 +804,8 @@ static void cgd_swmt_print_state (const struct cgd_swarm_test *meta);
  * Formatted ASSERTion: adds a printf-style context line.
  */
 #define CGD_SWMT_ASSERTF(expr, fmt, ...)                                       \
-  do                                                                           \
-  {                                                                            \
-    if (!(expr))                                                               \
-    {                                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
       i_log_failure ("CGD swarm test FAILED\n");                               \
       i_log_failure ("  expr: %s\n", #expr);                                   \
       i_log_failure ("  loc:  %s:%d in %s()\n", __FILE__, __LINE__, __func__); \
@@ -856,10 +819,8 @@ static void cgd_swmt_print_state (const struct cgd_swarm_test *meta);
  * As CGD_SWMT_ASSERTF, but also dumps full fixture state on failure.
  */
 #define CGD_SWMT_ASSERT_STATE(meta, expr, fmt, ...)                            \
-  do                                                                           \
-  {                                                                            \
-    if (!(expr))                                                               \
-    {                                                                          \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
       i_log_failure ("CGD swarm test FAILED\n");                               \
       i_log_failure ("  expr: %s\n", #expr);                                   \
       i_log_failure ("  loc:  %s:%d in %s()\n", __FILE__, __LINE__, __func__); \
@@ -878,8 +839,7 @@ static void
 cgd_swmt_print_state (const struct cgd_swarm_test *meta)
 {
   i_log_info ("=== CGD Swarm Test State ===\n");
-  if (meta == NULL)
-  {
+  if (meta == NULL) {
     i_log_info ("  (meta is NULL)\n");
     return;
   }
@@ -898,8 +858,7 @@ cgd_swmt_print_state (const struct cgd_swarm_test *meta)
   i_log_info ("  cur:            %s\n", meta->cur ? meta->cur->vname.data : "<null>");
   i_log_info ("  sample_space_p: %.3f\n", (double)meta->sample_space_prob);
   i_log_info ("  Actions             enabled   allowed\n");
-  for (int i = 0; i < CDS_AT_LEN; ++i)
-  {
+  for (int i = 0; i < CDS_AT_LEN; ++i) {
     i_log_info (
         "    %-18s   %-3s       %-3s\n",
         cgd_action_names[i],
@@ -923,8 +882,7 @@ rebind_cur (struct cgd_swarm_test *meta, const char *preferred_name)
 {
   struct mem_vhmap *db = cgd_active_db (meta);
   meta->cur            = preferred_name ? mem_vhmap_get_var (db, strfcstr (preferred_name)) : NULL;
-  if (!meta->cur && mem_vhmap_count (db) > 0)
-  {
+  if (!meta->cur && mem_vhmap_count (db) > 0) {
     meta->cur = mem_vhmap_random (db);
   }
 }
@@ -933,8 +891,7 @@ static void
 cgd_swmt_set_random_enabled (struct cgd_swarm_test *meta)
 {
   int mask = rand () % ((1 << CDS_AT_LEN) - 1) + 1;
-  for (int i = 0; i < CDS_AT_LEN; ++i)
-  {
+  for (int i = 0; i < CDS_AT_LEN; ++i) {
     meta->enabled[i] = (mask >> i) & 1;
   }
 }
@@ -948,25 +905,21 @@ cgd_swmt_set_allowed (struct cgd_swarm_test *meta)
 
   memset (meta->allowed, 0, sizeof (meta->allowed));
 
-  struct mem_vhmap *db    = cgd_active_db (meta);
-  int               nvars = mem_vhmap_count (db);
+  struct mem_vhmap *db                = cgd_active_db (meta);
+  int               nvars             = mem_vhmap_count (db);
 
   meta->allowed[CDS_CRASH_AND_REOPEN] = meta->enabled[CDS_CRASH_AND_REOPEN];
   meta->allowed[CDS_CREATE]           = meta->enabled[CDS_CREATE];
 
-  if (!meta->in_txn)
-  {
+  if (!meta->in_txn) {
     meta->allowed[CDS_BEGIN_TXN]        = meta->enabled[CDS_BEGIN_TXN];
     meta->allowed[CDS_CLOSE_AND_REOPEN] = meta->enabled[CDS_CLOSE_AND_REOPEN];
-  }
-  else
-  {
+  } else {
     meta->allowed[CDS_COMMIT_TXN]   = meta->enabled[CDS_COMMIT_TXN];
     meta->allowed[CDS_ROLLBACK_TXN] = meta->enabled[CDS_ROLLBACK_TXN];
   }
 
-  if (nvars > 1)
-  {
+  if (nvars > 1) {
     meta->allowed[CDS_DELETE] = meta->enabled[CDS_DELETE];
     meta->allowed[CDS_SWITCH] = meta->enabled[CDS_SWITCH];
   }
@@ -977,13 +930,11 @@ get_random_name_len (void)
 {
   u32 roll = randu32r (1, 100);
 
-  if (roll <= 90)
-  {
+  if (roll <= 90) {
     return randu32r (2, 10);
   }
 
-  if (roll <= 95)
-  {
+  if (roll <= 95) {
     return randu32r (10, NS_PAGE_SIZE);
   }
 
@@ -1005,8 +956,7 @@ get_random_type_depth (void)
 {
   u32 roll = randu32r (1, 100);
 
-  if (roll <= 95)
-  {
+  if (roll <= 95) {
     return randu32r (1, 3);
   }
 
@@ -1096,8 +1046,7 @@ cgd_swmt_crash_and_reopen (struct cgd_swarm_test *meta)
       meta->dbname
   );
 
-  if (meta->working)
-  {
+  if (meta->working) {
     mem_vhmap_free (meta->working);
     meta->working = NULL;
   }
@@ -1127,8 +1076,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
   struct mem_vhmap *db = cgd_active_db (meta);
 
   // Loop until you get a unique variable name
-  for (;;)
-  {
+  for (;;) {
     ALLOC_INIT (temp);
 
     error        e       = error_create ();
@@ -1137,8 +1085,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     char        *typestr = type_str (type);
 
     // Already exists - try again
-    if (mem_vhmap_get_var (db, strfcstr (name)) != NULL)
-    {
+    if (mem_vhmap_get_var (db, strfcstr (name)) != NULL) {
       free (name);
       free (typestr);
       ALLOC_CLOSE (temp);
@@ -1175,8 +1122,7 @@ cgd_swmt_create (struct cgd_swarm_test *meta)
     );
 
     /* First variable becomes the current one */
-    if (meta->cur == NULL)
-    {
+    if (meta->cur == NULL) {
       meta->cur = mem_vhmap_get_var (db, var.vname);
     }
 
@@ -1265,18 +1211,15 @@ cgd_swmt_open (int start_enabled[CDS_AT_LEN], const char *dbname, float sample_s
 void
 cgd_swmt_close (struct cgd_swarm_test *meta)
 {
-  if (meta->in_txn)
-  {
+  if (meta->in_txn) {
     cgd_swmt_commit_txn (meta);
   }
   CGD_SWMT_ASSERTF (nsdb_close (meta->db) == 0, "nsdb_close failed on db='%s'", meta->dbname);
 
-  if (meta->committed)
-  {
+  if (meta->committed) {
     mem_vhmap_free (meta->committed);
   }
-  if (meta->working)
-  {
+  if (meta->working) {
     mem_vhmap_free (meta->working);
   }
 
@@ -1290,15 +1233,13 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
 
   /* Count allowed actions */
   int len = 0;
-  for (int i = 0; i < CDS_AT_LEN; ++i)
-  {
+  for (int i = 0; i < CDS_AT_LEN; ++i) {
     len += meta->allowed[i];
   }
 
   /* If the cgd_swarm has masked everything off, re-roll and try again next
    * step rather than divide by zero. */
-  if (len == 0)
-  {
+  if (len == 0) {
     i_log_info ("No allowed actions - re-rolling enabled mask\n");
     cgd_swmt_set_random_enabled (meta);
     cgd_swmt_set_allowed (meta);
@@ -1309,16 +1250,11 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
   int next   = rand () % len;
   int index  = 0;
   int choice = 0;
-  for (; index < CDS_AT_LEN; ++index)
-  {
-    if (meta->allowed[index])
-    {
-      if (choice == next)
-      {
+  for (; index < CDS_AT_LEN; ++index) {
+    if (meta->allowed[index]) {
+      if (choice == next) {
         break;
-      }
-      else
-      {
+      } else {
         choice++;
       }
     }
@@ -1327,8 +1263,7 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
   enum cgd_action_type action = (enum cgd_action_type)index;
   i_log_info ("-> %s\n", cgd_action_names[action]);
 
-  switch (action)
-  {
+  switch (action) {
     case CDS_BEGIN_TXN: cgd_swmt_begin_txn (meta); break;
     case CDS_COMMIT_TXN: cgd_swmt_commit_txn (meta); break;
     case CDS_ROLLBACK_TXN: cgd_swmt_rollback_txn (meta); break;
@@ -1349,8 +1284,7 @@ cgd_swmt_step (struct cgd_swarm_test *meta)
   }
 
   // Choose a set of randomized actions
-  if (randf () <= meta->sample_space_prob)
-  {
+  if (randf () <= meta->sample_space_prob) {
     cgd_swmt_set_random_enabled (meta);
     i_log_info ("Changing state space. After:\n");
     cgd_swmt_print_state (meta);
@@ -1378,16 +1312,14 @@ cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
   srand (seed);
 
   int start_enabled[CDS_AT_LEN];
-  for (int i = 0; i < CDS_AT_LEN; ++i)
-  {
+  for (int i = 0; i < CDS_AT_LEN; ++i) {
     start_enabled[i] = 1;
   }
 
   struct cgd_swarm_test *meta = cgd_swmt_open (start_enabled, dbname, 0.01f);
 
 #if PLATFORM_WINDOWS
-  if (signal (SIGINT, cgd_handle_sigint) == SIG_ERR)
-  {
+  if (signal (SIGINT, cgd_handle_sigint) == SIG_ERR) {
     cgd_swmt_close (meta);
     return 0;
   }
@@ -1396,8 +1328,7 @@ cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
   sa.sa_handler = cgd_handle_sigint;
   sigemptyset (&sa.sa_mask);
   sa.sa_flags = 0;
-  if (sigaction (SIGINT, &sa, NULL) == -1)
-  {
+  if (sigaction (SIGINT, &sa, NULL) == -1) {
     cgd_swmt_close (meta);
     return;
   }
@@ -1405,10 +1336,8 @@ cgd_swarm_test (const char *dbname, int timeout_seconds, unsigned seed)
 
   time_t start = time (NULL);
 
-  while (cgd_keep_running)
-  {
-    if (time (NULL) - start >= timeout_seconds)
-    {
+  while (cgd_keep_running) {
+    if (time (NULL) - start >= timeout_seconds) {
       break;
     }
     cgd_swmt_step (meta);

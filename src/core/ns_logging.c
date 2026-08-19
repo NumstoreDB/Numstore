@@ -14,9 +14,9 @@
 
 #include "core/ns_logging.h"
 
-#include <stdarg.h>
-
 #include "core/testing/ns_testing.h"
+
+#include <stdarg.h>
 
 ////////////////////////////////////////////////////////////
 // LOGGING
@@ -56,6 +56,7 @@ TEST (i_log)
     i_log_flush ();
   }
 }
+
 TEST (i_printf)
 {
   // Just make sure it doesn't crash

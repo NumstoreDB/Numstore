@@ -112,18 +112,13 @@ HEADER_FUNC bool
 parser_maybe_parse_integer (struct parser *p, i32 *dest)
 {
   struct token *tok1 = parser_peek (p);
-  if (tok1->type == TT_INTEGER)
-  {
+  if (tok1->type == TT_INTEGER) {
     *dest = parser_advance (p)->integer;
     return true;
-  }
-  else if (tok1->type == TT_MINUS)
-  {
-    if (p->pos + 1 < p->src_len)
-    {
+  } else if (tok1->type == TT_MINUS) {
+    if (p->pos + 1 < p->src_len) {
       struct token *tok2 = parser_peek_n (p, 1);
-      if (tok2->type == TT_INTEGER)
-      {
+      if (tok2->type == TT_INTEGER) {
         parser_advance (p);
         *dest = -parser_advance (p)->integer;
         return true;
@@ -139,8 +134,7 @@ parser_expect (struct parser *p, enum token_t type, error *e)
 {
   struct token *tok = parser_peek (p);
 
-  if (tok->type != type)
-  {
+  if (tok->type != type) {
     return error_causef (
         e,
         ERR_SYNTAX,
@@ -165,8 +159,7 @@ parser_at_end (struct parser *p)
 HEADER_FUNC err_t
 parser_check_end (struct parser *p, error *e)
 {
-  if (!parser_at_end (p))
-  {
+  if (!parser_at_end (p)) {
     return error_causef (
         e,
         ERR_SYNTAX,

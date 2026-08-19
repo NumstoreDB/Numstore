@@ -24,12 +24,12 @@ struct allocator;
 
 struct lexer
 {
-  const char *src;
-  u32         src_len;
-  u32         start;
-  u32         current;
+  const char       *src;
+  u32               src_len;
+  u32               start;
+  u32               current;
 
-  struct token *tokens;
+  struct token     *tokens;
 
   u32               ntokens;
   struct dbl_buffer _tokens;

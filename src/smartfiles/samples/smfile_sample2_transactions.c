@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "smartfiles.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-#include "numstore.h"
 
 /**
  * This demo shows the basics of transactions
@@ -47,8 +47,7 @@ main (void)
     uint8_t footer[8];
 
     memset (header, 1, sizeof (header));
-    for (int i = 0; i < 64; ++i)
-    {
+    for (int i = 0; i < 64; ++i) {
       body[i] = (uint8_t)i;
     }
     memset (footer, 99, sizeof (footer));
@@ -79,8 +78,7 @@ main (void)
     n = smfile_read (smf, verify, 1, 68, 1, 12);
 
     printf ("bytes [68..79] after rollback:\n");
-    for (sb_size i = 0; i < n; ++i)
-    {
+    for (sb_size i = 0; i < n; ++i) {
       printf ("  [%" PRId64 "] = %d\n", 68 + i, verify[i]);
     }
   }
@@ -110,8 +108,7 @@ main (void)
     n = smfile_read (smf, tail, 1, 80, 1, 4);
 
     printf ("bytes [80..83]: ");
-    for (sb_size i = 0; i < n; ++i)
-    {
+    for (sb_size i = 0; i < n; ++i) {
       printf ("%d ", tail[i]);
     }
     printf ("\n");

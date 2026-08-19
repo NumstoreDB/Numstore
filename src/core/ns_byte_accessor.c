@@ -14,10 +14,10 @@
 
 #include "core/ns_byte_accessor.h"
 
-#include <string.h>
-
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
+
+#include <string.h>
 
 /******************************************************************************
  * SECTION: Byte Accessor
@@ -26,26 +26,21 @@
 static u32
 ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 {
-  switch (acc->type)
-  {
-    case TA_TAKE:
-    {
+  switch (acc->type) {
+    case TA_TAKE: {
       memcpy (dest, src, acc->src_size);
       return acc->src_size;
     }
-    case TA_SELECT:
-    {
+    case TA_SELECT: {
       return ba_memcpy_from_recursive (dest, src + acc->select.bofst, acc->select.sub_ba);
     }
-    case TA_RANGE:
-    {
+    case TA_RANGE: {
       u32 elem_size = acc->range.sub_ba->src_size;
       u32 pos       = acc->range.stride.start;
       u32 written   = 0;
       u32 i         = 0;
 
-      while (i < acc->range.stride.nelems)
-      {
+      while (i < acc->range.stride.nelems) {
         written +=
             ba_memcpy_from_recursive (dest + written, src + pos * elem_size, acc->range.sub_ba);
 
@@ -352,25 +347,20 @@ TEST (ba_memcpy_from_basic)
 static u32
 ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 {
-  switch (acc->type)
-  {
-    case TA_TAKE:
-    {
+  switch (acc->type) {
+    case TA_TAKE: {
       memcpy (dest, src, acc->src_size);
       return acc->src_size;
     }
-    case TA_SELECT:
-    {
+    case TA_SELECT: {
       return ba_memcpy_to_recursive (dest + acc->select.bofst, src, acc->select.sub_ba);
     }
-    case TA_RANGE:
-    {
+    case TA_RANGE: {
       u32 elem_size = acc->range.sub_ba->src_size;
       u32 pos       = acc->range.stride.start;
       u32 read      = 0;
 
-      while (pos < acc->range.stride.nelems)
-      {
+      while (pos < acc->range.stride.nelems) {
         read += ba_memcpy_to_recursive (dest + pos * elem_size, src + read, acc->range.sub_ba);
         pos += acc->range.stride.stride;
       }

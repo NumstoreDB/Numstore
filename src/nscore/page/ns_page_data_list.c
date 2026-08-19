@@ -29,8 +29,7 @@ dl_validate_for_db (const page *d, error *e)
 
   const enum page_type type = page_get_type (d);
 
-  if (type != (u8)PG_DATA_LIST)
-  {
+  if (type != (u8)PG_DATA_LIST) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -42,8 +41,7 @@ dl_validate_for_db (const page *d, error *e)
 
   const p_size used = dl_used (d);
 
-  if (used > DL_DATA_SIZE)
-  {
+  if (used > DL_DATA_SIZE) {
     return error_causef (
         e,
         ERR_CORRUPT,
@@ -55,10 +53,8 @@ dl_validate_for_db (const page *d, error *e)
   }
 
   // Root check
-  if (dl_is_root (d))
-  {
-    if (dl_used (d) == 0)
-    {
+  if (dl_is_root (d)) {
+    if (dl_used (d) == 0) {
       return error_causef (
           e,
           ERR_CORRUPT,
@@ -66,11 +62,8 @@ dl_validate_for_db (const page *d, error *e)
           "element"
       );
     }
-  }
-  else
-  {
-    if (dl_used (d) < DL_DATA_SIZE / 2)
-    {
+  } else {
+    if (dl_used (d) < DL_DATA_SIZE / 2) {
       return error_causef (
           e,
           ERR_CORRUPT,
@@ -212,16 +205,14 @@ dl_read (const page *d, u8 *dest, const p_size offset, const p_size nbytes)
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen)
-  {
+  if (offset == dlen) {
     return 0;
   }
 
   const p_size avail  = dlen - offset;
   const p_size toread = MIN (avail, nbytes);
 
-  if (toread > 0 && dest)
-  {
+  if (toread > 0 && dest) {
     memcpy (dest, base + offset, toread);
   }
 
@@ -306,8 +297,7 @@ dl_read_out_from (page *d, u8 *dest, const p_size offset)
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen)
-  {
+  if (offset == dlen) {
     return 0;
   }
 
@@ -316,8 +306,7 @@ dl_read_out_from (page *d, u8 *dest, const p_size offset)
   head += offset;
   dlen -= offset;
 
-  if (dlen > 0)
-  {
+  if (dlen > 0) {
     memcpy (dest, head, dlen);
     dl_set_used (d, dl_used (d) - dlen);
   }
@@ -352,8 +341,7 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, DL_DATA_SIZE / 2);
     test_assert_int_equal (dl_used (&dl), 0);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE / 2; ++i) {
       test_assert_int_equal (dest[i], somedata[i]);
     }
     dl_set_used (&dl, 0);
@@ -368,12 +356,10 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, DL_DATA_SIZE / 2 - 1);
     test_assert_int_equal (dl_used (&dl), 1);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2 - 1; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE / 2 - 1; ++i) {
       test_assert_int_equal (dest[i], somedata[i + 1]);
     }
-    for (p_size i = 0; i < 1; ++i)
-    {
+    for (p_size i = 0; i < 1; ++i) {
       test_assert_int_equal (dl_get_byte (&dl, i), i);
     }
     dl_set_used (&dl, 0);
@@ -388,12 +374,10 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, DL_DATA_SIZE / 2 - 10);
     test_assert_int_equal (dl_used (&dl), 10);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2 - 10; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE / 2 - 10; ++i) {
       test_assert_int_equal (dest[i], somedata[i + 10]);
     }
-    for (p_size i = 0; i < 10; ++i)
-    {
+    for (p_size i = 0; i < 10; ++i) {
       test_assert_int_equal (dl_get_byte (&dl, i), i);
     }
     dl_set_used (&dl, 0);
@@ -408,8 +392,7 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, 0);
     test_assert_int_equal (dl_used (&dl), DL_DATA_SIZE / 2);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE / 2; ++i) {
       test_assert_int_equal (dl_get_byte (&dl, i), somedata[i]);
     }
     dl_set_used (&dl, 0);
@@ -424,12 +407,10 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, DL_DATA_SIZE - 1);
     test_assert_int_equal (dl_used (&dl), 1);
 
-    for (p_size i = 0; i < DL_DATA_SIZE - 1; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE - 1; ++i) {
       test_assert_int_equal (dest[i], alldata[i + 1]);
     }
-    for (p_size i = 0; i < 1; ++i)
-    {
+    for (p_size i = 0; i < 1; ++i) {
       test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]);
     }
     dl_set_used (&dl, 0);
@@ -444,12 +425,10 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, DL_DATA_SIZE - 10);
     test_assert_int_equal (dl_used (&dl), 10);
 
-    for (p_size i = 0; i < DL_DATA_SIZE - 10; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE - 10; ++i) {
       test_assert_int_equal (dest[i], alldata[i + 10]);
     }
-    for (p_size i = 0; i < 10; ++i)
-    {
+    for (p_size i = 0; i < 10; ++i) {
       test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]);
     }
     dl_set_used (&dl, 0);
@@ -462,8 +441,7 @@ TEST (dl_read_out_from)
     test_assert_int_equal (ret, 0);
     test_assert_int_equal (dl_used (&dl), DL_DATA_SIZE);
 
-    for (p_size i = 0; i < DL_DATA_SIZE; ++i)
-    {
+    for (p_size i = 0; i < DL_DATA_SIZE; ++i) {
       test_assert_int_equal (dl_get_byte (&dl, i), alldata[i]);
     }
     dl_set_used (&dl, 0);
@@ -481,10 +459,9 @@ dl_append (page *d, const u8 *src, const p_size nbytes)
   const p_size avail = DL_DATA_SIZE - dl_used (d);
   const p_size next  = MIN (avail, nbytes);
 
-  u8 *data = dl_get_data (d);
+  u8          *data  = dl_get_data (d);
 
-  if (next > 0)
-  {
+  if (next > 0) {
     u8 *tail = data + dl_used (d);
 
     memcpy (tail, src, next);
@@ -521,8 +498,8 @@ TEST (dl_append)
     rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
-    const p_size n1 = 8;
-    const p_size n2 = 12;
+    const p_size n1   = 8;
+    const p_size n2   = 12;
 
     const p_size got1 = dl_append (&p, src, n1);
     const p_size got2 = dl_append (&p, src + n1, n2);
@@ -572,16 +549,14 @@ dl_write (const page *d, const u8 *src, const p_size offset, const p_size nbytes
 
   ASSERT (offset <= dlen);
 
-  if (offset == dlen)
-  {
+  if (offset == dlen) {
     return 0;
   }
 
   const p_size avail  = dlen - offset;
   const p_size toread = MIN (avail, nbytes);
 
-  if (toread > 0 && src)
-  {
+  if (toread > 0 && src) {
     memcpy (base + offset, src, toread);
   }
 
@@ -733,8 +708,7 @@ dl_move_left (page *dest, page *src, const p_size len)
   i_log_trace ("%" PRp_size " %" PRp_size "\n", dl_used (src), dl_used (dest));
 
   const p_size actual = MIN (len, dl_used (src));
-  if (actual > 0)
-  {
+  if (actual > 0) {
     dl_append (dest, dl_get_data (src), actual);
     dl_memset (src, (u8 *)dl_get_data (src) + actual, dl_used (src) - actual);
   }
@@ -895,8 +869,7 @@ dl_move_right (page *src, page *dest, const p_size len)
   ASSERT (len <= dl_avail (dest));
 
   const p_size actual = MIN (len, dl_used (src));
-  if (actual == 0)
-  {
+  if (actual == 0) {
     return;
   }
 
@@ -997,20 +970,14 @@ i_log_dl (const int level, const page *d)
   i_log (level, "=== DATA LIST PAGE START ===\n");
 
   i_log_printf (level, "PGNO: %" PRpgno "\n", d->pg);
-  if (dl_get_next (d) == PGNO_NULL)
-  {
+  if (dl_get_next (d) == PGNO_NULL) {
     i_log_printf (level, "NEXT: NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "NEXT: %" PRpgno "\n", dl_get_next (d));
   }
-  if (dl_get_prev (d) == PGNO_NULL)
-  {
+  if (dl_get_prev (d) == PGNO_NULL) {
     i_log_printf (level, "PREV: NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "PREV: %" PRpgno "\n", dl_get_prev (d));
   }
   i_log_printf (level, "BLEN: %u\n", dl_used (d));

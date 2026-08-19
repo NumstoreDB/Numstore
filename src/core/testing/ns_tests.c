@@ -12,11 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <inttypes.h>
-#include <math.h>
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_cbuffer.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h" // ext_array
@@ -28,6 +23,11 @@
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
 #include "core/testing/ns_testing.h" // TEST
+
+#include <inttypes.h>
+#include <math.h>
+#include <stdbool.h>
+#include <string.h>
 
 #ifdef TESTING
 
@@ -63,8 +63,7 @@ static const struct
 
 TEST (f16_to_f32_normals_and_specials)
 {
-  for (u32 i = 0; i < arrlen (f16_f32_cases); ++i)
-  {
+  for (u32 i = 0; i < arrlen (f16_f32_cases); ++i) {
     TEST_CASE ("%s", f16_f32_cases[i].name)
     {
       float result = f16_to_f32 (f16_f32_cases[i].h16);
@@ -119,19 +118,15 @@ TEST (parse_i32_boundary_values)
   error e   = error_create ();
   i32   out = 0;
 
-  for (u32 i = 0; i < arrlen (parse_i32_cases); ++i)
-  {
+  for (u32 i = 0; i < arrlen (parse_i32_cases); ++i) {
     TEST_CASE ("%s", parse_i32_cases[i].name)
     {
       const err_t ret =
           parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
       test_assert_int_equal (ret, parse_i32_cases[i].expected_ret);
-      if (ret == SUCCESS)
-      {
+      if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
-      }
-      else
-      {
+      } else {
         e.cause_code = SUCCESS; // reset for next iteration
       }
     }
@@ -164,19 +159,15 @@ TEST (parse_i64_boundary_values)
   error e   = error_create ();
   i64   out = 0;
 
-  for (u32 i = 0; i < arrlen (parse_i64_cases); ++i)
-  {
+  for (u32 i = 0; i < arrlen (parse_i64_cases); ++i) {
     TEST_CASE ("%s", parse_i64_cases[i].name)
     {
       const err_t ret =
           parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
       test_assert_int_equal (ret, parse_i64_cases[i].expected_ret);
-      if (ret == SUCCESS)
-      {
+      if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
-      }
-      else
-      {
+      } else {
         e.cause_code = SUCCESS;
       }
     }
@@ -187,19 +178,18 @@ TEST (parse_i64_boundary_values)
 // capacity at least doubles (catching regressions to the doubling formula).
 TEST (ext_array_capacity_doubles_on_growth)
 {
-  error            e = error_create ();
-  struct ext_array a = ext_array_create ();
+  error            e    = error_create ();
+  struct ext_array a    = ext_array_create ();
 
   // Seed with one byte to force the first allocation (cap → 2).
-  const u8 seed = 0x01;
+  const u8         seed = 0x01;
   ext_array_insert (&a, 0, &seed, 1, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
   test_assert (a.cap >= 2u);
 
   // Fill to capacity.
   const u32 orig_cap = a.cap;
-  for (u32 i = a.len; i < orig_cap; ++i)
-  {
+  for (u32 i = a.len; i < orig_cap; ++i) {
     u8 b = (u8)(i & 0xFF);
     ext_array_insert (&a, a.len, &b, 1, &e);
     test_assert_int_equal (e.cause_code, SUCCESS);
@@ -218,10 +208,10 @@ TEST (ext_array_capacity_doubles_on_growth)
 // Removing every element via stride must leave an empty array.
 TEST (ext_array_remove_all_produces_empty)
 {
-  error            e = error_create ();
-  struct ext_array a = ext_array_create ();
+  error            e      = error_create ();
+  struct ext_array a      = ext_array_create ();
 
-  const u8 src[5] = {10, 20, 30, 40, 50};
+  const u8         src[5] = {10, 20, 30, 40, 50};
   ext_array_insert (&a, 0, src, sizeof src, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
 
@@ -255,8 +245,7 @@ TEST (llist_append_maintaififo_order)
   struct llt_node nodes[5];
   struct llnode  *head = NULL;
 
-  for (int i = 0; i < 5; ++i)
-  {
+  for (int i = 0; i < 5; ++i) {
     nodes[i].value = i;
     llnode_init (&nodes[i].link);
     list_append (&head, &nodes[i].link);
@@ -264,8 +253,7 @@ TEST (llist_append_maintaififo_order)
 
   test_assert_int_equal ((int)list_length (head), 5);
 
-  for (int i = 0; i < 5; ++i)
-  {
+  for (int i = 0; i < 5; ++i) {
     struct llnode *n = list_pop (&head);
     test_assert (n != NULL);
     test_assert_int_equal (container_of (n, struct llt_node, link)->value, i);
@@ -279,8 +267,7 @@ TEST (llist_find_returnode_and_index)
   struct llt_node nodes[3];
   struct llnode  *head = NULL;
 
-  for (int i = 0; i < 3; ++i)
-  {
+  for (int i = 0; i < 3; ++i) {
     nodes[i].value = i * 10; // 0, 10, 20
     llnode_init (&nodes[i].link);
     list_append (&head, &nodes[i].link);
@@ -313,8 +300,7 @@ TEST (llist_remove_from_head_middle_tail)
   struct llt_node nodes[4];
   struct llnode  *head = NULL;
 
-  for (int i = 0; i < 4; ++i)
-  {
+  for (int i = 0; i < 4; ++i) {
     nodes[i].value = i;
     llnode_init (&nodes[i].link);
     list_append (&head, &nodes[i].link);
@@ -392,9 +378,9 @@ TEST (checksum_distinct_bytes_differ)
 TEST (serializer_write_at_capacity_then_overflow)
 {
   u8                buf[8];
-  struct serializer s = srlizr_create (buf, sizeof buf);
+  struct serializer s       = srlizr_create (buf, sizeof buf);
 
-  const u8 full[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+  const u8          full[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
   test_assert (srlizr_write (&s, full, sizeof full));
   test_assert_int_equal (s.dlen, 8);
 
@@ -411,10 +397,10 @@ TEST (serializer_write_at_capacity_then_overflow)
 TEST (serializer_incremental_write_overflow)
 {
   u8                buf[6];
-  struct serializer s = srlizr_create (buf, sizeof buf);
+  struct serializer s         = srlizr_create (buf, sizeof buf);
 
-  const u8 part_a[3] = {0xAA, 0xBB, 0xCC};
-  const u8 part_b[3] = {0xDD, 0xEE, 0xFF};
+  const u8          part_a[3] = {0xAA, 0xBB, 0xCC};
+  const u8          part_b[3] = {0xDD, 0xEE, 0xFF};
 
   test_assert (srlizr_write (&s, part_a, 3));
   test_assert (srlizr_write (&s, part_b, 3));
@@ -691,9 +677,9 @@ TEST (cbuffer_discard_all_resets_state)
   TEST_CASE ("discard non-empty buffer produces empty buffer at position zero")
   {
     u8             buf[4];
-    struct cbuffer b = cbuffer_create (buf, 4);
+    struct cbuffer b       = cbuffer_create (buf, 4);
 
-    const u8 vals[3] = {1, 2, 3};
+    const u8       vals[3] = {1, 2, 3};
     cbuffer_write (vals, 1, 3, &b);
     test_assert_type_equal (cbuffer_len (&b), (u32)3, u32, PRIu32);
 
@@ -710,7 +696,7 @@ TEST (cbuffer_discard_all_resets_state)
     u8             buf[2];
     struct cbuffer b = cbuffer_create (buf, 2);
 
-    u8 x = 0xAA;
+    u8             x = 0xAA;
     cbuffer_push_back (&x, 1, &b);
     x = 0xBB;
     cbuffer_push_back (&x, 1, &b);
@@ -731,10 +717,10 @@ TEST (cbuffer_read_write_wraparound)
   TEST_CASE ("write wraps around, read yields original bytes in order")
   {
     u8             buf[4];
-    struct cbuffer b = cbuffer_create (buf, 4);
+    struct cbuffer b      = cbuffer_create (buf, 4);
 
     // Write 3 bytes: [A B C _]  head=3, tail=0
-    const u8 src[4] = {0xAA, 0xBB, 0xCC, 0xDD};
+    const u8       src[4] = {0xAA, 0xBB, 0xCC, 0xDD};
     cbuffer_write (src, 1, 3, &b);
     test_assert_type_equal (cbuffer_len (&b), (u32)3, u32, PRIu32);
 
@@ -764,9 +750,9 @@ TEST (cbuffer_read_write_wraparound)
   TEST_CASE ("copy does not advance tail")
   {
     u8             buf[4];
-    struct cbuffer b = cbuffer_create (buf, 4);
+    struct cbuffer b      = cbuffer_create (buf, 4);
 
-    const u8 src[4] = {10, 20, 30, 40};
+    const u8       src[4] = {10, 20, 30, 40};
     cbuffer_write (src, 1, 4, &b);
 
     u8        out1[4] = {0};
@@ -787,10 +773,10 @@ TEST (cbuffer_cbuffer_move_transfers_bytes)
   TEST_CASE ("move all bytes from src to dst")
   {
     u8             sbuf[4], dbuf[8];
-    struct cbuffer src = cbuffer_create (sbuf, 4);
-    struct cbuffer dst = cbuffer_create (dbuf, 8);
+    struct cbuffer src     = cbuffer_create (sbuf, 4);
+    struct cbuffer dst     = cbuffer_create (dbuf, 8);
 
-    const u8 data[4] = {1, 2, 3, 4};
+    const u8       data[4] = {1, 2, 3, 4};
     cbuffer_write (data, 1, 4, &src);
 
     const u32 moved = cbuffer_cbuffer_move (&dst, 1, 4, &src);
@@ -806,10 +792,10 @@ TEST (cbuffer_cbuffer_move_transfers_bytes)
   TEST_CASE ("move is limited by available src bytes")
   {
     u8             sbuf[4], dbuf[8];
-    struct cbuffer src = cbuffer_create (sbuf, 4);
-    struct cbuffer dst = cbuffer_create (dbuf, 8);
+    struct cbuffer src     = cbuffer_create (sbuf, 4);
+    struct cbuffer dst     = cbuffer_create (dbuf, 8);
 
-    const u8 data[2] = {0xAB, 0xCD};
+    const u8       data[2] = {0xAB, 0xCD};
     cbuffer_write (data, 1, 2, &src);
 
     // Request 4 but only 2 available

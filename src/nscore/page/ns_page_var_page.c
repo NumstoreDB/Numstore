@@ -175,20 +175,16 @@ vp_get_bytes_imut (const page *p)
 err_t
 vp_validate_for_db (const page *p, error *e)
 {
-  if (page_get_type (p) != PG_VAR_PAGE)
-  {
+  if (page_get_type (p) != PG_VAR_PAGE) {
     return error_causef (e, ERR_CORRUPT, "wrong page type for var page");
   }
-  if (vp_get_vlen (p) == 0)
-  {
+  if (vp_get_vlen (p) == 0) {
     return error_causef (e, ERR_CORRUPT, "var length is 0");
   }
-  if (vp_get_tlen (p) == 0)
-  {
+  if (vp_get_tlen (p) == 0) {
     return error_causef (e, ERR_CORRUPT, "type length is 0");
   }
-  if (vp_is_overflow (p) && vp_get_ovnext (p) == PGNO_NULL)
-  {
+  if (vp_is_overflow (p) && vp_get_ovnext (p) == PGNO_NULL) {
     return error_causef (e, ERR_CORRUPT, "overflow required but next pointer is null");
   }
   return SUCCESS;
@@ -263,28 +259,19 @@ i_log_vp (const int level, const page *vp)
   i_log_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
   i_log_printf (level, "VLEN:   %u\n", vp_get_vlen (vp));
   i_log_printf (level, "TLEN:   %u\n", vp_get_tlen (vp));
-  if (vp_get_root (vp) == PGNO_NULL)
-  {
+  if (vp_get_root (vp) == PGNO_NULL) {
     i_log_printf (level, "ROOT:  NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "ROOT:  %" PRpgno "\n", vp_get_root (vp));
   }
-  if (vp_get_next (vp) == PGNO_NULL)
-  {
+  if (vp_get_next (vp) == PGNO_NULL) {
     i_log_printf (level, "NEXT:  NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "NEXT:  %" PRpgno "\n", vp_get_next (vp));
   }
-  if (vp_get_ovnext (vp) == PGNO_NULL)
-  {
+  if (vp_get_ovnext (vp) == PGNO_NULL) {
     i_log_printf (level, "OVNEXT:  NULL\n");
-  }
-  else
-  {
+  } else {
     i_log_printf (level, "OVNEXT:  %" PRpgno "\n", vp_get_ovnext (vp));
   }
   i_log_printf (level, "TOFST:  %" PRb_size "\n", vp_calc_tofst (vp));

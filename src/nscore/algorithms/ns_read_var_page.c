@@ -12,9 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include <stdbool.h>
-#include <string.h>
-
 #include "core/ns_alloc.h"
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
@@ -32,6 +29,9 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 
+#include <stdbool.h>
+#include <string.h>
+
 /*
  * Advance params->vp from the current PG_VAR_PAGE or PG_VAR_TAIL to the
  * next overflow page in the chain.  Used when a variable's serialised name
@@ -42,18 +42,16 @@ ns_read_var_page_advance (struct ns_read_var_page_params *params, error *e)
 {
   page_h next = page_h_create ();
 
-  pgno npg = dlgt_get_ovnext (page_h_ro (params->vp));
+  pgno   npg  = dlgt_get_ovnext (page_h_ro (params->vp));
 
-  if (npg == PGNO_NULL)
-  {
+  if (npg == PGNO_NULL) {
     error_causef (e, ERR_CORRUPT, "var page missing overflow pointer");
     goto failed;
   }
 
   WRAP (pgr_get_writable (&next, params->tx, PG_VAR_TAIL, npg, params->p, e));
 
-  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)))
-  {
+  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e))) {
     goto failed;
   }
 
@@ -74,12 +72,12 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 
   p_size        lread = 0;
   struct cbytes head;
-  char         *vstr = NULL;
-  u8           *tstr = NULL;
+  char         *vstr     = NULL;
+  u8           *tstr     = NULL;
 
   // Save for the end to reset var page
-  pgno start    = page_h_pgno (params->vp);
-  bool writable = params->vp->mode == PHM_X;
+  pgno          start    = page_h_pgno (params->vp);
+  bool          writable = params->vp->mode == PHM_X;
 
   // Temporary allocator
   ALLOC_INIT (temp);
@@ -92,56 +90,42 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   pgno   var_root = page_h_pgno (params->vp);
 
   // Quick check on the length
-  if (params->check)
-  {
-    if (vlen != params->check->len)
-    {
+  if (params->check) {
+    if (vlen != params->check->len) {
       params->matches = false;
       goto theend;
     }
   }
 
   // Allocate variable name
-  if (params->save_vname)
-  {
+  if (params->save_vname) {
     vstr = allocate (params->alloc, 1, vlen, e);
-    if (vstr == NULL)
-    {
+    if (vstr == NULL) {
       goto failed;
     }
-  }
-  else
-  {
+  } else {
     vstr = allocate (&temp, 1, vlen, e);
-    if (vstr == NULL)
-    {
+    if (vstr == NULL) {
       goto failed;
     }
   }
 
-  if (params->save_type)
-  {
+  if (params->save_type) {
     tstr = allocate (&temp, 1, tlen, e);
-    if (tstr == NULL)
-    {
+    if (tstr == NULL) {
       goto failed;
     }
-  }
-  else
-  {
+  } else {
     tstr = NULL; // We don't event touch this
   }
 
   // Read the variable name
   u16 rread = 0;
   head      = dlgt_get_bytes_imut (page_h_ro (params->vp));
-  while (rread < vlen)
-  {
+  while (rread < vlen) {
     // We exhausted this page - move forward one
-    if (lread == head.len)
-    {
-      if (ns_read_var_page_advance (params, e))
-      {
+    if (lread == head.len) {
+      if (ns_read_var_page_advance (params, e)) {
         goto failed;
       }
 
@@ -160,27 +144,21 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
 
   // Quick termination on string data
-  if (params->check)
-  {
-    if (memcmp (params->check->data, vstr, vlen) != 0)
-    {
+  if (params->check) {
+    if (memcmp (params->check->data, vstr, vlen) != 0) {
       params->matches = false;
       goto theend;
     }
   }
 
-  if (params->save_type)
-  {
+  if (params->save_type) {
     // Read the type bytes
     rread = 0;
-    while (rread < tlen)
-    {
+    while (rread < tlen) {
       // We exhausted this page - move forward one
-      if (lread == head.len)
-      {
+      if (lread == head.len) {
         // Advance forward one node and reset local and head
-        if (ns_read_var_page_advance (params, e))
-        {
+        if (ns_read_var_page_advance (params, e)) {
           goto failed;
         }
         lread = 0;
@@ -199,8 +177,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
     }
 
     // We just finished reading everything - expect us to be done
-    if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL)
-    {
+    if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL) {
       error_causef (
           e,
           ERR_CORRUPT,
@@ -215,19 +192,16 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   params->dest->nbytes   = nbytes;
   params->dest->var_root = var_root;
 
-  if (params->save_type)
-  {
+  if (params->save_type) {
     struct deserializer d     = dsrlizr_create (tstr, tlen);
     struct type        *dtype = type_deserialize (&d, params->alloc, e);
-    if (dtype == NULL)
-    {
+    if (dtype == NULL) {
       goto failed;
     }
     params->dest->dtype = dtype;
   }
 
-  if (params->save_vname)
-  {
+  if (params->save_vname) {
     params->dest->vname = (struct string){.data = NULL, .len = 0};
   }
 
@@ -235,10 +209,8 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 
 theend:
   // Reset back to head page
-  if (page_h_pgno (params->vp) != start)
-  {
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e)))
-    {
+  if (page_h_pgno (params->vp) != start) {
+    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) {
       goto failed;
     }
     if ((pgr_get_maybe_writable (
@@ -249,8 +221,7 @@ theend:
             params->p,
             writable,
             e
-        )))
-    {
+        ))) {
       goto failed;
     }
   }

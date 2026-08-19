@@ -6,68 +6,61 @@ Numstore
 Numstore is a single file embedded ACID database built for arrays written entirely
 in C with no dependencies.
 
-Conceptually, it's an ACID file with [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
+Conceptually, it's an ACID file with 
+[faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
 
-Getting Started 
-===============
+Outputs are:
 
-To get started, pick a platform and follow the steps:
+1. numstore executable:
+    - Used for examining a database (this is a work in progress)
+2. libnumstore:
+    - An embedded database for numerical arrays. See `src/numstore/numstore.h`
+      or `src/numstore/samples/*`
+2. libsmartfiles
+    - An embedded database for files. See `src/smartfiles/smartfiles.h` or
+      `src/smartfiles/samples/*`
 
-<details>
-<summary><strong>Linux / MacOS</strong></summary>
+Quick Start
+===========
 
-1. Amalgamte numstore into one source file:
-    
-        python3 src/scripts/amalgamate.py 
+pick a platform, follow the steps
 
-2. Compile the executable (by adding the NUMSTORE_EXE macro)
+Linux / MacOS
+-------------
 
-        gcc -o numstore -DNUMSTORE_EXE numstore.c
-        ./numstore foo.db
+1. build everything (debug is default)
 
-3. You can remove all those debug logs and make it release worthy:
+       make
 
-        # Hint - you can get rid of all that logging with:
-        gcc -o numstore -O3 -DNDEBUG -DNUMSTORE_EXE -DNLOG numstore.c
-        ./numstore foo.db
+2. run numstore
 
-4. You can use numstore as a library by removing NUMSTORE_EXE flag:
+       ./build/debug/bin/numstore foo.db
 
-        # Build sample apps by adding NUMSTORE_LIB
-        gcc -o sample numstore.c src/samples/ns_sample1_basic_crud.c -Isrc -DNLOG -DNEBUG -O3
-        ./sample
+3. build a release version instead (no asserts, no logs, -O3)
 
-</details>
+       make TARGET=release
+       ./build/release/bin/numstore foo.db
 
-<details>
-<summary><strong>Windows (MSVC)</strong></summary>
+4. run the unit tests / swarm tests (debug only)
 
-Run these from a Developer Command Prompt for VS (or after running
-vcvars64.bat), so that `cl` is on your PATH.
+       ./build/debug/bin/unit_tests
+       ./build/debug/bin/irwr_swarm_test foo.db 60 1234
+       ./build/debug/bin/cgd_swarm_test foo.db 60 1234
 
-1. Amalgamate numstore into one source file:
+5. build and run a sample program (using the numstore or smartfiles library)
 
-       python src\scripts\amalgamate.py
+       ls build/debug/bin | grep sample
+       ./build/debug/bin/smfile_sample1_basic_crud
 
-2. Compile the executable (by adding the NUMSTORE_EXE macro):
+6. clean up
 
-       cl /Fe:numstore.exe /DNUMSTORE_EXE numstore.c
-       numstore.exe foo.db
+       make clean        # per subdir build artifacts
+       make clean-all     # wipe the whole build/ dir
 
-3. Remove all those debug logs and make it release worthy:
+headers and libs land in build/<target>/include and build/<target>/lib if you
+want to link against numstore/smartfiles/core yourself
 
-       cl /Fe:numstore.exe /O2 /DNDEBUG /DNUMSTORE_EXE /DNLOG numstore.c
-       numstore.exe foo.db
-
-4. Use numstore as a library by removing the NUMSTORE_EXE flag
-   (build sample apps by adding NUMSTORE_LIB):
-
-       cl /Fe:sample.exe numstore.c src\samples\ns_sample1_basic_crud.c /Isrc /DNLOG /DNDEBUG /O2
-       sample.exe
-
-</details>
-
-For more information, refer to the [Documentation](docs/index.md).
+more info: [Documentation](docs/index.md)
 
 AI Usage Policy
 ===============

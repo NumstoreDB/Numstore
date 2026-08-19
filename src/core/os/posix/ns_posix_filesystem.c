@@ -12,14 +12,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_platform.h"
+#include "core/os/ns_file.h"
+
 #include <inttypes.h>
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include "core/ns_platform.h"
-#include "core/os/ns_file.h"
-
 #if PLATFORM_POSIX
+
+#  include "core/ns_error.h"
+#  include "core/os/ns_filesystem.h"
 
 #  include <dirent.h>
 #  include <errno.h>
@@ -33,9 +36,6 @@
 #  include <time.h>
 #  include <unistd.h>
 
-#  include "core/ns_error.h"
-#  include "core/os/ns_filesystem.h"
-
 /******************************************************************************
  * SECTION: File System
  ******************************************************************************/
@@ -46,8 +46,7 @@ posix_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
   (void)vfs;
   const int fd = open (fname, O_RDWR | O_CREAT, 0644);
 
-  if (unlikely (fd == -1))
-  {
+  if (unlikely (fd == -1)) {
     error_causef (e, ERR_IO, "open_rw %s: %s", fname, strerror (errno));
     return error_trace (e);
   }
@@ -63,8 +62,7 @@ posix_open_r (void *vfs, i_file *dest, const char *fname, error *e)
   (void)vfs;
   const int fd = open (fname, O_RDONLY, 0644);
 
-  if (unlikely (fd == -1))
-  {
+  if (unlikely (fd == -1)) {
     error_causef (e, ERR_IO, "open_r %s: %s", fname, strerror (errno));
     return error_trace (e);
   }
@@ -80,8 +78,7 @@ posix_open_w (void *vfs, i_file *dest, const char *fname, error *e)
   (void)vfs;
   const int fd = open (fname, O_WRONLY | O_CREAT, 0644);
 
-  if (unlikely (fd == -1))
-  {
+  if (unlikely (fd == -1)) {
     error_causef (e, ERR_IO, "open_w %s: %s", fname, strerror (errno));
     return error_trace (e);
   }
@@ -96,8 +93,7 @@ posix_remove_quiet (void *vfs, const char *fname, error *e)
 {
   (void)vfs;
 
-  if (unlikely (remove (fname) && errno != ENOENT))
-  {
+  if (unlikely (remove (fname) && errno != ENOENT)) {
     error_causef (e, ERR_IO, "remove: %s", strerror (errno));
     return error_trace (e);
   }
@@ -110,8 +106,7 @@ posix_unlink (void *vfs, const char *name, error *e)
 {
   (void)vfs;
 
-  if (unlikely (unlink (name)))
-  {
+  if (unlikely (unlink (name))) {
     error_causef (e, ERR_IO, "unlink: %s", strerror (errno));
     return error_trace (e);
   }
@@ -126,10 +121,8 @@ posix_file_exists (void *vfs, const char *fname, bool *dest, error *e)
 
   struct stat st;
 
-  if (stat (fname, &st) != 0)
-  {
-    if (likely (errno == ENOENT))
-    {
+  if (stat (fname, &st) != 0) {
+    if (likely (errno == ENOENT)) {
       *dest = false;
       return SUCCESS;
     }

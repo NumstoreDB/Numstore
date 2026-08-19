@@ -14,13 +14,13 @@
 
 #include "core/ns_numerics.h"
 
-#include <inttypes.h>
-#include <math.h>
-#include <string.h>
-
 #include "core/ns_bounds.h"
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
+
+#include <inttypes.h>
+#include <math.h>
+#include <string.h>
 
 float
 f16_to_f32 (const u16 h)
@@ -30,20 +30,15 @@ f16_to_f32 (const u16 h)
   u32       mant = (u32)(h) & 0x3FFu;
   u32       f;
 
-  if (exp == 0)
-  {
-    if (mant == 0)
-    {
+  if (exp == 0) {
+    if (mant == 0) {
       // Signed Zero
       f = (sign << 31);
-    }
-    else
-    {
+    } else {
       // Subnormal f16 becomes a Normal f32
       // Shift mantissa until the first set bit is at position 10
       u32 e = 0;
-      while (!(mant & 0x400u))
-      {
+      while (!(mant & 0x400u)) {
         mant <<= 1;
         e++;
       }
@@ -52,14 +47,10 @@ f16_to_f32 (const u16 h)
       // New exponent = bias offset (112) + 1 - shifts
       f = (sign << 31) | ((113 - e) << 23) | (mant << 13);
     }
-  }
-  else if (exp == 31)
-  {
+  } else if (exp == 31) {
     // Inf or NaN
     f = (sign << 31) | 0x7F800000u | (mant << 13);
-  }
-  else
-  {
+  } else {
     // Normal numbers
     f = (sign << 31) | ((exp + 112) << 23) | (mant << 13);
   }
@@ -75,11 +66,9 @@ static int _crc32c_inited = 0;
 static void
 _crc32c_init (void)
 {
-  for (u32 i = 0; i < 256; ++i)
-  {
+  for (u32 i = 0; i < 256; ++i) {
     u32 c = i;
-    for (int k = 0; k < 8; ++k)
-    {
+    for (int k = 0; k < 8; ++k) {
       c = (c >> 1) ^ (0x82F63B78u & -((int)(c & 1)));
     }
     _crc32c_tbl[i] = c;
@@ -100,14 +89,12 @@ checksum_execute (u32 *state, const u8 *data, const u32 len)
   ASSERT (data);
   ASSERT (len > 0);
 
-  if (!_crc32c_inited)
-  {
+  if (!_crc32c_inited) {
     _crc32c_init ();
   }
 
   u32 c = ~(*state);
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     c = (c >> 8) ^ _crc32c_tbl[(c ^ data[i]) & 0xFF];
   }
   *state = ~c;
@@ -142,7 +129,7 @@ TEST (checksum_execute_incremental)
   const u8 data[] = {1, 2, 3, 4, 5, 6};
 
   // All at once
-  u32 state1 = checksum_init ();
+  u32      state1 = checksum_init ();
   checksum_execute (&state1, data, 6);
 
   // Incremental
@@ -171,8 +158,7 @@ randu32 (void)
 #ifdef TESTING
 TEST (randu32)
 {
-  for (int i = 0; i < 1000; ++i)
-  {
+  for (int i = 0; i < 1000; ++i) {
     const u32 v = randu32 ();
     test_assert (v <= (u32)RAND_MAX);
   }
@@ -184,8 +170,7 @@ randu32r (const u32 lower, const u32 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower)
-  {
+  if (upper == lower) {
     return lower;
   }
 
@@ -204,16 +189,13 @@ TEST (randu32r)
   {
     bool saw_lo = false;
     bool saw_hi = false;
-    for (int i = 0; i < 1000; ++i)
-    {
+    for (int i = 0; i < 1000; ++i) {
       const u32 v = randu32r (10, 11);
       test_assert (v == 10u || v == 11u);
-      if (v == 10u)
-      {
+      if (v == 10u) {
         saw_lo = true;
       }
-      if (v == 11u)
-      {
+      if (v == 11u) {
         saw_hi = true;
       }
     }
@@ -222,15 +204,13 @@ TEST (randu32r)
   }
 
   // full 32-bit range
-  for (int i = 0; i < 10; ++i)
-  {
+  for (int i = 0; i < 10; ++i) {
     const u32 v = randu32r (0u, U32_MAX);
     test_assert (v <= U32_MAX);
   }
 
   // random ranges
-  for (int i = 0; i < 10; ++i)
-  {
+  for (int i = 0; i < 10; ++i) {
     const u32 lo = (u32)(rand () % 10000);
     const u32 hi = lo + (u32)(rand () % 10000);
     const u32 v  = randu32r (lo, hi);
@@ -245,8 +225,7 @@ randi32r (const i32 lower, const i32 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower)
-  {
+  if (upper == lower) {
     return lower;
   }
 
@@ -261,21 +240,18 @@ TEST (randi32r)
   test_assert_int_equal (randi32r (I32_MIN, I32_MIN), I32_MIN);
   test_assert_int_equal (randi32r (I32_MAX, I32_MAX), I32_MAX);
 
-  for (int i = 0; i < 100; ++i)
-  {
+  for (int i = 0; i < 100; ++i) {
     const i32 v = randi32r (-10, -9);
     test_assert (v == -10 || v == -9);
   }
 
-  for (int i = 0; i < 100; ++i)
-  {
+  for (int i = 0; i < 100; ++i) {
     const i32 v = randi32r (I32_MIN, I32_MAX);
     test_assert (v >= I32_MIN);
     test_assert (v <= I32_MAX);
   }
 
-  for (int i = 0; i < 100; ++i)
-  {
+  for (int i = 0; i < 100; ++i) {
     const i32 lo = (i32)(rand () % 10000) - 5000;
     const i32 hi = lo + (i32)(rand () % 10000);
     const i32 v  = randi32r (lo, hi);
@@ -291,8 +267,7 @@ randu64 (void)
   const u64 base     = (u64)RAND_MAX + 1u;
   u64       r        = (u64)rand ();
   u64       capacity = base;
-  while (capacity <= (U64_MAX / base))
-  {
+  while (capacity <= (U64_MAX / base)) {
     r = r * base + (u64)rand ();
     capacity *= base;
   }
@@ -304,12 +279,10 @@ u64
 randu64r (const u64 lower, const u64 upper)
 {
   ASSERT (upper >= lower);
-  if (upper == lower)
-  {
+  if (upper == lower) {
     return lower;
   }
-  if (lower == 0 && upper == U64_MAX)
-  {
+  if (lower == 0 && upper == U64_MAX) {
     return randu64 ();
   }
   const u64 range = upper - lower + 1u;
@@ -319,11 +292,9 @@ randu64r (const u64 lower, const u64 upper)
   u64 x = randu64 ();
   u64 hi;
   u64 lo = _umul128 (x, range, &hi);
-  if (lo < range)
-  {
+  if (lo < range) {
     const u64 t = (-range) % range;
-    while (lo < t)
-    {
+    while (lo < t) {
       x  = randu64 ();
       lo = _umul128 (x, range, &hi);
     }
@@ -335,11 +306,9 @@ randu64r (const u64 lower, const u64 upper)
   u64         x = randu64 ();
   __uint128_t m = (__uint128_t)x * range;
   u64         l = (u64)m;
-  if (l < range)
-  {
+  if (l < range) {
     const u64 t = (-range) % range;
-    while (l < t)
-    {
+    while (l < t) {
       x = randu64 ();
       m = (__uint128_t)x * range;
       l = (u64)m;
@@ -353,18 +322,16 @@ randu64r (const u64 lower, const u64 upper)
 #  define HI32(v) ((u64)((v) >> 32))
 #  define LO32(v) ((u64)(u32)(v))
 
-  u64 x = randu64 ();
+  u64 x  = randu64 ();
   // compute hi = upper 64 bits of x * range
   u64 hi = HI32 (x) * HI32 (range)
            + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range)))
               + HI32 (LO32 (x) * HI32 (range)));
   u64 lo = x * range; // lower 64 bits (natural wraparound)
 
-  if (lo < range)
-  {
+  if (lo < range) {
     const u64 t = (-range) % range;
-    while (lo < t)
-    {
+    while (lo < t) {
       x  = randu64 ();
       hi = HI32 (x) * HI32 (range)
            + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range)))
@@ -402,16 +369,13 @@ TEST (randu64r)
   {
     bool saw_lo = false;
     bool saw_hi = false;
-    for (int i = 0; i < 1000; ++i)
-    {
+    for (int i = 0; i < 1000; ++i) {
       const u64 v = randu64r (1000ull, 1001ull);
       test_assert (v == 1000ull || v == 1001ull);
-      if (v == 1000ull)
-      {
+      if (v == 1000ull) {
         saw_lo = true;
       }
-      if (v == 1001ull)
-      {
+      if (v == 1001ull) {
         saw_hi = true;
       }
     }
@@ -420,14 +384,12 @@ TEST (randu64r)
   }
 
   // Full range
-  for (int i = 0; i < 100; ++i)
-  {
+  for (int i = 0; i < 100; ++i) {
     const u64 v = randu64r (0ull, U64_MAX);
     test_assert (v <= U64_MAX);
   }
 
-  for (int i = 0; i < 50; ++i)
-  {
+  for (int i = 0; i < 50; ++i) {
     const u64 lo = ((u64)randu32 () << 16);
     const u64 hi = lo + (u64)(randu32 () % 100000);
     const u64 v  = randu64r (lo, hi);
@@ -442,16 +404,13 @@ TEST (randu64e)
   {
     bool saw_lo = false;
     bool saw_hi = false;
-    for (int i = 0; i < 1000; ++i)
-    {
+    for (int i = 0; i < 1000; ++i) {
       const u64 v = randu64e (10ull, 12ull);
       test_assert (v == 10ull || v == 11ull);
-      if (v == 10ull)
-      {
+      if (v == 10ull) {
         saw_lo = true;
       }
-      if (v == 11ull)
-      {
+      if (v == 11ull) {
         saw_hi = true;
       }
     }
@@ -459,8 +418,7 @@ TEST (randu64e)
     test_assert (saw_hi);
   }
 
-  for (int i = 0; i < 50; ++i)
-  {
+  for (int i = 0; i < 50; ++i) {
     const u64 lo = (u64)(randu32 () % 1000);
     const u64 hi = lo + (u64)(randu32 () % 1000) + 1u;
     const u64 v  = randu64e (lo, hi);
@@ -474,16 +432,14 @@ randi64r (const i64 lower, const i64 upper)
 {
   ASSERT (upper >= lower);
 
-  if (upper == lower)
-  {
+  if (upper == lower) {
     return lower;
   }
 
   // range via u64 subtraction. Overflows to 0 only for lower=I64_MIN,
   // upper=I64_MAX.
   const u64 range = (u64)upper - (u64)lower + 1u;
-  if (range == 0)
-  {
+  if (range == 0) {
     return (i64)randu64 ();
   }
 
@@ -505,14 +461,12 @@ TEST (randi64r)
   test_assert_type_equal (randi64r (I64_MAX, I64_MAX), I64_MAX, i64, PRId64);
 
   // Full i64 range
-  for (int i = 0; i < 100; ++i)
-  {
+  for (int i = 0; i < 100; ++i) {
     const i64 v = randi64r (I64_MIN, I64_MAX);
     test_assert (v >= I64_MIN && v <= I64_MAX);
   }
 
-  for (int i = 0; i < 10; ++i)
-  {
+  for (int i = 0; i < 10; ++i) {
     const i64 lo = (i64)(rand () % 100000) - 50000;
     const i64 hi = lo + (i64)(rand () % 100000);
     const i64 v  = randi64r (lo, hi);
@@ -525,16 +479,13 @@ TEST (randi64e)
   {
     bool saw_lo = false;
     bool saw_hi = false;
-    for (int i = 0; i < 1000; ++i)
-    {
+    for (int i = 0; i < 1000; ++i) {
       const i64 v = randi64e (-5, -3);
       test_assert (v == -5 || v == -4);
-      if (v == -5)
-      {
+      if (v == -5) {
         saw_lo = true;
       }
-      if (v == -4)
-      {
+      if (v == -4) {
         saw_hi = true;
       }
     }
@@ -542,8 +493,7 @@ TEST (randi64e)
     test_assert (saw_hi);
   }
 
-  for (int i = 0; i < 50; ++i)
-  {
+  for (int i = 0; i < 50; ++i) {
     const i64 lo = (i64)(rand () % 1000) - 500;
     const i64 hi = lo + (i64)(rand () % 1000) + 1;
     const i64 v  = randi64e (lo, hi);
@@ -561,8 +511,7 @@ randf (void)
 #ifdef TESTING
 TEST (randf)
 {
-  for (int i = 0; i < 1000; ++i)
-  {
+  for (int i = 0; i < 1000; ++i) {
     f32 f = randf ();
     test_assert (f >= 0 && f <= 1);
   }
@@ -576,8 +525,7 @@ rand_bytes (void *dest, const u32 len)
   ASSERT (len > 0);
 
   u8 *p = (u8 *)dest;
-  for (u32 i = 0; i < len; ++i)
-  {
+  for (u32 i = 0; i < len; ++i) {
     p[i] = (u8)(rand () & 0xFF);
   }
 }
@@ -592,8 +540,7 @@ parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e)
   u32  i   = 0;
   bool neg = false;
 
-  if (data[i] == '+' || data[i] == '-')
-  {
+  if (data[i] == '+' || data[i] == '-') {
     neg = (data[i] == '-');
     i++;
     ASSERT (i < len);
@@ -601,28 +548,23 @@ parse_i64_expect (i64 *dest, const char *data, const u32 len, error *e)
 
   i64 acc = 0;
 
-  for (; i < len; i++)
-  {
+  for (; i < len; i++) {
     const char c = data[i];
     ASSERT (is_num (c));
 
     const i64 digit = c - '0';
 
-    if (!safe_mul_i64 (&acc, acc, 10L))
-    {
+    if (!safe_mul_i64 (&acc, acc, 10L)) {
       goto failed;
     }
 
-    if (!safe_sub_i64 (&acc, acc, digit))
-    {
+    if (!safe_sub_i64 (&acc, acc, digit)) {
       goto failed;
     }
   }
 
-  if (!neg)
-  {
-    if (acc == I64_MIN)
-    {
+  if (!neg) {
+    if (acc == I64_MIN) {
       goto failed;
     }
     acc = -acc;
@@ -645,8 +587,7 @@ parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e)
   u32  i   = 0;
   bool neg = false;
 
-  if (data[i] == '+' || data[i] == '-')
-  {
+  if (data[i] == '+' || data[i] == '-') {
     neg = (data[i] == '-');
     i++;
     ASSERT (i < len); // We expect string to be valid
@@ -654,28 +595,23 @@ parse_i32_expect (i32 *dest, const char *data, const u32 len, error *e)
 
   i32 acc = 0;
 
-  for (; i < len; i++)
-  {
+  for (; i < len; i++) {
     const char c = data[i];
     ASSERT (is_num (c));
 
     const i32 digit = c - '0';
 
-    if (!safe_mul_i32 (&acc, acc, 10))
-    {
+    if (!safe_mul_i32 (&acc, acc, 10)) {
       goto failed;
     }
 
-    if (!safe_sub_i32 (&acc, acc, digit))
-    {
+    if (!safe_sub_i32 (&acc, acc, digit)) {
       goto failed;
     }
   }
 
-  if (!neg)
-  {
-    if (acc == I32_MIN)
-    {
+  if (!neg) {
+    if (acc == I32_MIN) {
       goto failed;
     }
     acc = -acc;
@@ -715,8 +651,7 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   u32  i   = 0;
   bool neg = false;
 
-  if (s[i] == '+' || s[i] == '-')
-  {
+  if (s[i] == '+' || s[i] == '-') {
     neg = (s[i] == '-');
     i++;
     ASSERT (i < len);
@@ -725,15 +660,12 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   // Integer part
   f32  acc       = 0.0f;
   bool saw_digit = false;
-  while (i < len && s[i] >= '0' && s[i] <= '9')
-  {
+  while (i < len && s[i] >= '0' && s[i] <= '9') {
     const f32 d = (f32)(s[i] - '0');
-    if (!safe_mul_f32 (&acc, acc, 10.0f))
-    {
+    if (!safe_mul_f32 (&acc, acc, 10.0f)) {
       goto failed;
     }
-    if (!safe_add_f32 (&acc, acc, d))
-    {
+    if (!safe_add_f32 (&acc, acc, d)) {
       goto failed;
     }
     i++;
@@ -741,36 +673,29 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   }
 
   // Fractional part
-  if (i < len && s[i] == '.')
-  {
+  if (i < len && s[i] == '.') {
     i++;
     ASSERT (i < len); // cannot end with '.'
     f32 frac = 0.0f, scale = 1.0f;
-    while (i < len && s[i] >= '0' && s[i] <= '9')
-    {
+    while (i < len && s[i] >= '0' && s[i] <= '9') {
       const f32 d = (f32)(s[i] - '0');
-      if (!safe_mul_f32 (&frac, frac, 10.0f))
-      {
+      if (!safe_mul_f32 (&frac, frac, 10.0f)) {
         goto failed;
       }
-      if (!safe_add_f32 (&frac, frac, d))
-      {
+      if (!safe_add_f32 (&frac, frac, d)) {
         goto failed;
       }
-      if (!safe_mul_f32 (&scale, scale, 10.0f))
-      {
+      if (!safe_mul_f32 (&scale, scale, 10.0f)) {
         goto failed;
       }
       i++;
       saw_digit = true;
     }
     f32 tmp;
-    if (!safe_div_f32 (&tmp, frac, scale))
-    {
+    if (!safe_div_f32 (&tmp, frac, scale)) {
       goto failed;
     }
-    if (!safe_add_f32 (&acc, acc, tmp))
-    {
+    if (!safe_add_f32 (&acc, acc, tmp)) {
       goto failed;
     }
   }
@@ -778,21 +703,18 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   ASSERT (saw_digit);
 
   // Exponent part
-  if (i < len && (s[i] == 'e' || s[i] == 'E'))
-  {
+  if (i < len && (s[i] == 'e' || s[i] == 'E')) {
     i++;
     ASSERT (i < len); // must have exponent digits
     bool exp_neg = false;
-    if (s[i] == '+' || s[i] == '-')
-    {
+    if (s[i] == '+' || s[i] == '-') {
       exp_neg = (s[i] == '-');
       i++;
       ASSERT (i < len);
     }
     u32  exp     = 0;
     bool saw_exp = false;
-    while (i < len && s[i] >= '0' && s[i] <= '9')
-    {
+    while (i < len && s[i] >= '0' && s[i] <= '9') {
       const u32 d = (u32)(s[i] - '0');
       ASSERT (exp <= (UINT32_MAX - d) / 10);
       exp = exp * 10 + d;
@@ -802,19 +724,13 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
     ASSERT (saw_exp);
 
     // Apply exponent
-    for (u32 k = 0; k < exp; k++)
-    {
-      if (exp_neg)
-      {
-        if (!safe_div_f32 (&acc, acc, 10.0f))
-        {
+    for (u32 k = 0; k < exp; k++) {
+      if (exp_neg) {
+        if (!safe_div_f32 (&acc, acc, 10.0f)) {
           goto failed;
         }
-      }
-      else
-      {
-        if (!safe_mul_f32 (&acc, acc, 10.0f))
-        {
+      } else {
+        if (!safe_mul_f32 (&acc, acc, 10.0f)) {
           goto failed;
         }
       }
@@ -823,8 +739,7 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
 
   ASSERT (i == len); // no extra characters
 
-  if (neg)
-  {
+  if (neg) {
     acc = -acc;
   }
   *dest = acc;
@@ -861,15 +776,13 @@ TEST (parse_f32_expect)
 float
 py_mod_f32 (const float num, const float denom)
 {
-  if (denom == 0.0f)
-  {
+  if (denom == 0.0f) {
     return INFINITY;
   }
 
   float rem = num - denom * (int)(num / denom);
 
-  if ((rem < 0.0f && denom > 0.0f) || (rem > 0.0f && denom < 0.0f))
-  {
+  if ((rem < 0.0f && denom > 0.0f) || (rem > 0.0f && denom < 0.0f)) {
     rem += denom;
   }
 
@@ -906,8 +819,7 @@ i32
 py_mod_i32 (const i32 num, const i32 denom)
 {
   i32 r = num % denom;
-  if ((r != 0) && ((r < 0) != (denom < 0)))
-  {
+  if ((r != 0) && ((r < 0) != (denom < 0))) {
     r += denom;
   }
   return r;
