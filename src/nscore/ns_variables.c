@@ -22,7 +22,7 @@
 #include "core/ns_logging.h"
 #include "core/ns_numerics.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/page/ns_page_var_hash_page.h"
@@ -45,7 +45,7 @@ i_print_variable (struct variable *v, error *e)
     return error_trace (e);
   }
   i_printf ("    \"DType\"  : \"%.*s\",\n", len, var_str);
-  i_free (var_str);
+  default_mem.i_free (&default_mem, var_str);
   i_printf ("    \"DSize\"  : %u,\n", type_byte_size (v->dtype));
 
   /* Assuming Nelems is derived from bytes / size, or replace with v->nelems if

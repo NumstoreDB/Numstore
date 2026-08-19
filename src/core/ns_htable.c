@@ -17,10 +17,10 @@
 #include <string.h>
 
 #include "core/ns_csx_assert.h"
-#include "core/ns_numerics.h" // randu32
+#include "core/ns_numerics.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h" // i_malloc
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 
 DEFINE_DBG_ASSERT (struct htable, htable, t, {
@@ -30,9 +30,9 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
 })
 
 struct htable *
-htable_create (const u32 n, error *e)
+htable_create (const u32 n, struct i_mem mem, error *e)
 {
-  struct htable *ret = i_malloc (1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
+  struct htable *ret = i_malloc (mem, 1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
 
   if (ret == NULL)
   {
@@ -41,6 +41,7 @@ htable_create (const u32 n, error *e)
 
   memset (ret->table, 0, n * sizeof (struct hnode *));
 
+  ret->mem  = mem;
   ret->cap  = n;
   ret->size = 0;
   latch_init (&ret->latch);
@@ -55,7 +56,7 @@ htable_free (struct htable *t)
 {
   DBG_ASSERT (htable, t);
 
-  i_free (t);
+  i_free (t->mem, t);
 }
 
 void
@@ -187,7 +188,7 @@ hdata_eq (const struct hnode *left, const struct hnode *right)
 TEST (htable)
 {
   error          e = error_create ();
-  struct htable *t = htable_create (100, &e);
+  struct htable *t = htable_create (100, default_mem (), &e);
   struct hdata   data[1000];
 
   int k = 0;

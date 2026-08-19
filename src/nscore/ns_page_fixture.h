@@ -44,6 +44,7 @@ struct pgr_fixture
   struct pager    *p;
   struct allocator alloc;
   struct txn       tx;
+  struct i_mem     mem;
 };
 
 err_t pgr_fixture_create (struct pgr_fixture *dest);

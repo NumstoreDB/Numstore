@@ -20,7 +20,7 @@
 #include "core/ns_stdtypes.h"
 #include "core/ns_stream.h"
 #include "core/ns_string.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_filesystem.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
@@ -91,11 +91,11 @@ TEST (smfile_cleanup)
   error e = error_create ();
 
   bool exists;
-  i_file_exists ("test", &exists, &e);
+  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
   test_assert (exists);
 
   smfile_cleanup ("test");
-  i_file_exists ("test", &exists, &e);
+  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
   test_assert (!exists);
 }
 #endif
@@ -191,9 +191,9 @@ TEST (smfile_close)
   smfile_close (s);
 
   bool exists;
-  i_file_exists ("test", &exists, &e);
+  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
   test_assert (exists);
-  i_file_exists ("test.wal", &exists, &e);
+  default_fsvtable.i_file_exists (&default_fsvtable, "test.wal", &exists, &e);
   test_assert (!exists);
 }
 #endif
@@ -214,9 +214,9 @@ TEST (smfile_crash)
   smfile_crash (s);
 
   bool exists;
-  i_file_exists ("test", &exists, &e);
+  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
   test_assert (exists);
-  i_file_exists ("test.wal", &exists, &e);
+  default_fsvtable.i_file_exists (&default_fsvtable, "test.wal", &exists, &e);
   test_assert (exists);
 }
 #endif

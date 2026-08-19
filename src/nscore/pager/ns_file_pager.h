@@ -25,9 +25,10 @@
 
 #include <stdbool.h>
 
-#include "core/ns_error.h"    // error
-#include "core/ns_stdtypes.h" // u32
-                              // pgno ...etc
+#include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 
 /******************************************************************************
  * SECTION: File Pager
@@ -48,7 +49,13 @@
 
 struct file_pager;
 
-struct file_pager *fpgr_open (const char *dbname, u32 header_len, error *e);
+struct file_pager *fpgr_open (
+    const char          *dbname,
+    struct i_mem         mem,
+    struct i_file_system fs,
+    u32                  header_len,
+    error               *e
+);
 
 err_t fpgr_close (struct file_pager *f, error *e);
 err_t fpgr_reset (struct file_pager *f, error *e);

@@ -20,7 +20,8 @@
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 // pgno ...etc
 
@@ -31,6 +32,7 @@ enum file_pager_flags
 
 struct file_pager
 {
+  struct i_mem mem;
   _Atomic pgno npages;
   i_file       f;
   u32          header_len;
@@ -40,14 +42,11 @@ struct file_pager
 
 DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
 
-////////////////////////////////////////////////////////////
-/// Regular functions
-
 struct file_pager *
-fpgr_open (const char *dbname, u32 header_len, error *e)
+fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 header_len, error *e)
 {
   // Allocate space for the pager
-  struct file_pager *dest = i_malloc (1, sizeof *dest, e);
+  struct file_pager *dest = i_malloc (mem, 1, sizeof *dest, e);
   if (dest == NULL)
   {
     return NULL;
@@ -58,7 +57,7 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
   dest->flags = 0;
 
   // Open the database in read write mode
-  if (i_open_rw (&dest->f, dbname, e))
+  if (i_open_rw (fs, &dest->f, dbname, e))
   {
     goto failed;
   }
@@ -112,7 +111,7 @@ fpgr_open (const char *dbname, u32 header_len, error *e)
 
 fp_failed:
   i_close (&dest->f, e);
-  i_free (dest);
+  i_free (mem, dest);
 
 failed:
   return NULL;
@@ -121,37 +120,40 @@ failed:
 #ifdef TESTING
 TEST (fpgr_open)
 {
-  error e = error_create ();
+  error                e   = error_create ();
+  struct i_mem         mem = default_mem ();
+  struct i_file_system fs  = default_filesystem ();
+
   _Static_assert (NS_PAGE_SIZE > 2, "NS_PAGE_SIZE should be > 2 for file_pager test");
 
   i_file fp = {0};
-  i_open_rw (&fp, "test.db", &e);
+  i_open_rw (fs, &fp, "test.db", &e);
 
   // edge case: file shorter than header
   test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
-  struct file_pager *pager = fpgr_open ("test.db", 0, &e);
+  struct file_pager *pager = fpgr_open ("test.db", mem, fs, 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // edge case: file size = half a page
   test_fail_if (i_truncate (&fp, NS_PAGE_SIZE / 2, &e));
-  pager = fpgr_open ("test.db", 0, &e);
+  pager = fpgr_open ("test.db", mem, fs, 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // happy path: file exactly header size, zero pages
   test_fail_if (i_truncate (&fp, 0, &e));
-  pager = fpgr_open ("test.db", 0, &e);
+  pager = fpgr_open ("test.db", mem, fs, 0, &e);
   test_assert_int_equal ((int)atomic_load (&pager->npages), 0);
   test_fail_if (fpgr_close (pager, &e));
 
   // happy path: file exactly header size, more pages
   test_fail_if (i_truncate (&fp, 3 * NS_PAGE_SIZE, &e));
-  pager = fpgr_open ("test.db", 0, &e);
+  pager = fpgr_open ("test.db", mem, fs, 0, &e);
   test_assert_equal (atomic_load (&pager->npages), 3);
   test_fail_if (fpgr_close (pager, &e));
 
   // There were 2 refs to file - close it here too
   test_fail_if (i_close (&fp, &e));
-  test_fail_if (i_unlink ("test.db", &e));
+  test_fail_if (i_unlink (fs, "test.db", &e));
 }
 #endif
 
@@ -161,7 +163,7 @@ fpgr_close (struct file_pager *f, error *e)
   DBG_ASSERT (file_pager, f);
   latch_lock (&f->l); // Never release this
   i_close (&f->f, e);
-  i_free (f);
+  i_free (f->mem, f);
   return error_trace (e);
 }
 
@@ -227,13 +229,16 @@ failed:
 #ifdef TESTING
 TEST (fpgr_new)
 {
-  i_file fp = {0};
-  error  e  = error_create ();
-  test_fail_if (i_open_rw (&fp, "test.db", &e));
+  i_file               fp  = {0};
+  error                e   = error_create ();
+  struct i_mem         mem = default_mem ();
+  struct i_file_system fs  = default_filesystem ();
+
+  test_fail_if (i_open_rw (fs, &fp, "test.db", &e));
 
   test_fail_if (i_truncate (&fp, 0, &e));
 
-  struct file_pager *pager = fpgr_open ("test.db", 0, &e);
+  struct file_pager *pager = fpgr_open ("test.db", mem, fs, 0, &e);
 
   // Create a new page
   test_fail_if (fpgr_extend (pager, 1, &e));
@@ -253,7 +258,7 @@ TEST (fpgr_new)
 
   // There were 2 refs to file - close it here too
   test_fail_if (i_close (&fp, &e));
-  test_fail_if (i_unlink ("test.db", &e));
+  test_fail_if (i_unlink (fs, "test.db", &e));
 }
 #endif
 
@@ -378,15 +383,18 @@ TEST (fpgr_read_write)
   u8 _page[NS_PAGE_SIZE];
 
   // Create a temporary file
-  i_file fp = {0};
-  error  e  = error_create ();
-  test_fail_if (i_open_rw (&fp, "test.db", &e));
+  i_file               fp  = {0};
+  error                e   = error_create ();
+  struct i_mem         mem = default_mem ();
+  struct i_file_system fs  = default_filesystem ();
+
+  test_fail_if (i_open_rw (fs, &fp, "test.db", &e));
 
   // File should be size 0
   test_fail_if (i_truncate (&fp, 0, &e));
 
   // Open a new pager
-  struct file_pager *pager = fpgr_open ("test.db", 0, &e);
+  struct file_pager *pager = fpgr_open ("test.db", mem, fs, 0, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
   // happy path: new page, write, then read back
   test_fail_if (fpgr_extend (pager, 2, &e));
@@ -412,7 +420,7 @@ TEST (fpgr_read_write)
   // There's 2 refs to this file, close the other one
   test_fail_if (fpgr_close (pager, &e));
   test_fail_if (i_close (&fp, &e));
-  test_fail_if (i_unlink ("test.db", &e));
+  test_fail_if (i_unlink (fs, "test.db", &e));
 }
 #endif
 
@@ -422,6 +430,6 @@ fpgr_crash (struct file_pager *p, error *e)
   DBG_ASSERT (file_pager, p);
   latch_lock (&p->l);
   i_close (&p->f, e);
-  i_free (p);
+  i_free (p->mem, p);
   return error_trace (e);
 }

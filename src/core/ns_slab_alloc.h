@@ -28,6 +28,7 @@
 #include "core/ns_concurrency.h" // latch
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h" // u32
+#include "core/os/ns_memory.h"
 
 /******************************************************************************
  * SECTION: Slab Allocator
@@ -68,6 +69,7 @@ struct slab;
  */
 struct slab_alloc
 {
+  struct i_mem      mem;
   struct slab      *head;
   struct slab      *current;
   latch             l;
@@ -87,7 +89,7 @@ struct slab_alloc
  * @param cap_per_slab Target threshold limit tracking maximum items stored per
  * slab.
  */
-void slab_alloc_init (struct slab_alloc *dest, u32 size, u32 cap_per_slab);
+void slab_alloc_init (struct slab_alloc *dest, struct i_mem mem, u32 size, u32 cap_per_slab);
 
 /**
  * @brief Releases every individual backing slab pool assigned to an allocator

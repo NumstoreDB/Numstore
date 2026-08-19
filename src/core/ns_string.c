@@ -18,7 +18,7 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 
 /////////////////////////////////////////////////////////////////////
@@ -262,9 +262,9 @@ string_greater_equal_string (const struct string left, const struct string right
 }
 
 err_t
-string_copy (struct string *dest, struct string src, error *e)
+string_copy (struct string *dest, struct string src, struct i_mem mem, error *e)
 {
-  char *data = i_calloc (src.len + 1, 1, e);
+  char *data = i_calloc (mem, src.len + 1, 1, e);
   if (data == NULL)
   {
     return error_trace (e);

@@ -25,7 +25,7 @@
 #include "core/ns_stream.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/types/ns_sarray_t.h"
 #include "nscore/types/ns_struct_t.h"
@@ -201,7 +201,7 @@ TEST (prim_t_snprintf)
       error       e      = error_create ();                              \
       i_log_type (&t, &e);                                               \
       test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0); \
-      i_free (ret);                                                      \
+      default_mem.i_free (&default_mem, ret);                          \
     }
 
   CASE_PRIM (U8, "u8");
@@ -276,7 +276,7 @@ type_tostr (struct type *t)
     return NULL;
   }
 
-  char *msg = i_malloc (len + 1, 1, NULL);
+  char *msg = default_mem.i_malloc (&default_mem, len + 1, 1, NULL);
   if (msg == NULL)
   {
     return NULL;
@@ -284,7 +284,7 @@ type_tostr (struct type *t)
 
   if (type_snprintf (msg, len + 1, t) < 0)
   {
-    i_free (msg);
+    default_mem.i_free (&default_mem, msg);
     return NULL;
   }
 
@@ -971,7 +971,7 @@ get_var_str (struct type *t, u32 *dlen, error *e)
     return NULL;
   }
 
-  char *dest = i_malloc (len + 1, sizeof *dest, e);
+  char *dest = default_mem.i_malloc (&default_mem, len + 1, sizeof *dest, e);
   if (dest == NULL)
   {
     error_causef (e, ERR_NOMEM, "alloc failed for type log string");
@@ -981,7 +981,7 @@ get_var_str (struct type *t, u32 *dlen, error *e)
   len = type_snprintf (dest, len + 1, t);
   if (len < 0)
   {
-    i_free (dest);
+    default_mem.i_free (&default_mem, dest);
     error_causef (e, ERR_IO, "snprintf failed");
     return NULL;
   }
@@ -1002,7 +1002,7 @@ i_print_type (struct type *t, error *e)
   }
 
   i_printf ("%.*s", len, var_str);
-  i_free (var_str);
+  default_mem.i_free (&default_mem, var_str);
 
   return SUCCESS;
 }
@@ -1018,7 +1018,7 @@ i_log_type (struct type *t, error *e)
   }
 
   i_log_info ("%.*s\n", len, var_str);
-  i_free (var_str);
+  default_mem.i_free (&default_mem, var_str);
 
   return SUCCESS;
 }
@@ -1927,14 +1927,15 @@ TEST (type_print_os_sink)
     struct type                      t    = {.type = T_PRIM, .p = U32};
     error                            e    = {0};
     t_size                           size = type_byte_size (&t);
-    struct type_printer_ostream_ctx *ctx  = i_malloc (1, sizeof *ctx + size, &e);
-    ctx->t                                = &t;
-    ctx->pos                              = 0;
-    ctx->size                             = size;
-    struct stream s                       = {0};
-    u32           v                       = 0xDEADBEEF;
+    struct type_printer_ostream_ctx *ctx =
+        default_mem.i_malloc (&default_mem, 1, sizeof *ctx + size, &e);
+    ctx->t          = &t;
+    ctx->pos        = 0;
+    ctx->size       = size;
+    struct stream s = {0};
+    u32           v = 0xDEADBEEF;
     type_print_os_sink (&s, ctx, &v, 1, sizeof v, &e);
-    i_free (ctx);
+    default_mem.i_free (&default_mem, ctx);
   }
 }
 #endif
@@ -1942,7 +1943,7 @@ TEST (type_print_os_sink)
 static void
 type_print_os_close (void *ctx)
 {
-  i_free ((struct type_printer_ostream_ctx *)ctx);
+  default_mem.i_free (&default_mem, (struct type_printer_ostream_ctx *)ctx);
 }
 
 #ifdef TESTING
@@ -1950,8 +1951,9 @@ TEST (type_print_os_close)
 {
   TEST_CASE ("smoke test")
   {
-    error                            e   = {0};
-    struct type_printer_ostream_ctx *ctx = i_malloc (1, sizeof *ctx, &e);
+    error                            e = {0};
+    struct type_printer_ostream_ctx *ctx =
+        default_mem.i_malloc (&default_mem, 1, sizeof *ctx, &e);
     type_print_os_close (ctx);
   }
 }
@@ -1967,7 +1969,8 @@ err_t
 type_stream_printer_init (struct stream *s, struct type *t, error *e)
 {
   t_size                           size = type_byte_size (t);
-  struct type_printer_ostream_ctx *ctx  = i_malloc (1, sizeof *ctx + size, e);
+  struct type_printer_ostream_ctx *ctx =
+      default_mem.i_malloc (&default_mem, 1, sizeof *ctx + size, e);
   if (ctx == NULL)
   {
     return error_trace (e);

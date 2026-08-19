@@ -27,7 +27,7 @@
 #include "core/ns_platform.h"
 #include "core/ns_stream.h"
 #include "core/ns_stride.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/algorithms/ns_var_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
@@ -81,15 +81,15 @@ nsdb_root_close (struct nsdb_root *root, error *e)
 {
   ASSERT (root->count == 0);
   err_t err = pgr_close (root->p, e);
-  i_free ((void *)root->path.data);
-  i_free (root);
+  default_mem.i_free (&default_mem, (void *)root->path.data);
+  default_mem.i_free (&default_mem, root);
   return err;
 }
 
 struct nsdb *
 nsdb_root_load (struct nsdb_root *ns, error *e)
 {
-  struct nsdb *ret = i_malloc (1, sizeof *ret, e);
+  struct nsdb *ret = default_mem.i_malloc (&default_mem, 1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
@@ -108,7 +108,7 @@ void
 nsdb_root_release (struct nsdb_root *root, struct nsdb *sm)
 {
   ASSERT (root->count > 0);
-  i_free (sm);
+  default_mem.i_free (&default_mem, sm);
   root->count -= 1;
 }
 
@@ -280,9 +280,9 @@ nsdb_crash (struct nsdb *n)
   struct nsdb_root *root = n->root;
 
   err_t err = pgr_crash (root->p, &n->e);
-  i_free ((void *)root->path.data);
-  i_free (n);
-  i_free (root);
+  default_mem.i_free (&default_mem, (void *)root->path.data);
+  default_mem.i_free (&default_mem, n);
+  default_mem.i_free (&default_mem, root);
 
   return err;
 }
@@ -298,7 +298,7 @@ nsdb_open (const char *path)
 {
   error e = error_create ();
 
-  struct nsdb_root *ret = i_malloc (1, sizeof *ret, &e);
+  struct nsdb_root *ret = default_mem.i_malloc (&default_mem, 1, sizeof *ret, &e);
 
   if (ret == NULL)
   {
@@ -312,7 +312,7 @@ nsdb_open (const char *path)
 
     // path
     ret->path.len  = strlen (path);
-    ret->path.data = i_malloc (ret->path.len, 1, &e);
+    ret->path.data = default_mem.i_malloc (&default_mem, ret->path.len, 1, &e);
     if (ret->path.data == NULL)
     {
       goto failed;
@@ -349,7 +349,7 @@ nsdb_open (const char *path)
 
 failed:
   // TODO just delete the file
-  i_free (ret);
+  default_mem.i_free (&default_mem, ret);
   return NULL;
 }
 
@@ -368,7 +368,7 @@ nsdb_var_free (nsdb_var_t *var)
 {
   struct allocator *alloc = var->alloc;
   allocator_free (alloc);
-  i_free (alloc);
+  default_mem.i_free (&default_mem, alloc);
 }
 
 /******************************************************************************
@@ -1270,7 +1270,7 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
 
       // Variables get their own allocator
       // context that gets freed on nsdb_var_free
-      struct allocator *valloc = i_malloc (1, sizeof *valloc, &ns->e);
+      struct allocator *valloc = default_mem.i_malloc (&default_mem, 1, sizeof *valloc, &ns->e);
       if (valloc == NULL)
       {
         goto failed;
@@ -1281,7 +1281,7 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
       if (nsdb_get (ns, &q->get, valloc, &var) < 0)
       {
         allocator_free (valloc);
-        i_free (valloc);
+        default_mem.i_free (&default_mem, valloc);
         goto failed;
       }
 
@@ -1289,7 +1289,7 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
       {
         *_data = NULL;
         allocator_free (valloc);
-        i_free (valloc);
+        default_mem.i_free (&default_mem, valloc);
         ret = SUCCESS;
         break;
       }
@@ -1300,7 +1300,7 @@ nsdb_execute_on_buffer (struct nsdb *ns, struct query *q, void *data, struct all
       if (*_data == NULL)
       {
         allocator_free (valloc);
-        i_free (valloc);
+        default_mem.i_free (&default_mem, valloc);
         goto failed;
       }
 
@@ -1465,7 +1465,7 @@ nsdb_execute_malloc (struct nsdb *ns, struct query *q, const void *data, struct 
 
       // Variables get their own allocator
       // context that gets freed on nsdb_var_free
-      struct allocator *valloc = i_malloc (1, sizeof *valloc, &ns->e);
+      struct allocator *valloc = default_mem.i_malloc (&default_mem, 1, sizeof *valloc, &ns->e);
       if (valloc == NULL)
       {
         goto failed;
@@ -1476,7 +1476,7 @@ nsdb_execute_malloc (struct nsdb *ns, struct query *q, const void *data, struct 
       if (nsdb_get (ns, &q->get, valloc, &var) < 0)
       {
         allocator_free (valloc);
-        i_free (valloc);
+        default_mem.i_free (&default_mem, valloc);
         goto failed;
       }
 
@@ -1484,7 +1484,7 @@ nsdb_execute_malloc (struct nsdb *ns, struct query *q, const void *data, struct 
       {
         _data = NULL;
         allocator_free (valloc);
-        i_free (valloc);
+        default_mem.i_free (&default_mem, valloc);
         ret = SUCCESS;
         break;
       }
@@ -1495,7 +1495,7 @@ nsdb_execute_malloc (struct nsdb *ns, struct query *q, const void *data, struct 
       if (_data == NULL)
       {
         allocator_free (valloc);
-        i_free (valloc);
+        default_mem.i_free (&default_mem, valloc);
         goto failed;
       }
 

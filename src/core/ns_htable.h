@@ -23,6 +23,7 @@
 #include "core/ns_platform.h"    // HEADER_FUNC
 #include "core/ns_stdtypes.h"    // u32 ...etc
 #include "core/ns_string.h"
+#include "core/os/ns_memory.h"
 
 struct string;
 
@@ -78,13 +79,14 @@ hnode_init (struct hnode *dest, const u32 hcode)
 
 struct htable
 {
+  struct i_mem  mem;
   u32           cap;
   u32           size;
   latch         latch;
   struct hnode *table[];
 };
 
-struct htable *htable_create (u32 n, error *e);
+struct htable *htable_create (u32 n, struct i_mem mem, error *e);
 void           htable_free (struct htable *t);
 
 void           htable_insert (struct htable *t, struct hnode *node);

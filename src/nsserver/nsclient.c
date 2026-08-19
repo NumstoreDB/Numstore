@@ -21,6 +21,7 @@
 void
 recv_buf (int socket, void *dest, size_t max_size, int flags)
 {
+  // Read the length prefix
   u32     len    = 0;
   ssize_t result = recv (socket, &len, 4, 0);
   printf ("Recv (prefix): %ld\n", result);
@@ -28,6 +29,7 @@ recv_buf (int socket, void *dest, size_t max_size, int flags)
   len = ntohl (len);
   err_check (len > 4 && len <= max_size + 4, "len");
 
+  // Read the rest
   result = recv (socket, dest, len - 4, flags);
   printf ("Recv %s: %ld\n", (char *)dest, result);
   err_check (result == (ssize_t)(len - 4), "recv");
@@ -36,13 +38,14 @@ recv_buf (int socket, void *dest, size_t max_size, int flags)
 void
 send_str (int socket, const char *src, int flags)
 {
-  // Prefix
+  // Send the length prefix
   u32 len        = strlen (src) + 4;
   len            = htonl (len);
   ssize_t result = send (socket, &len, 4, flags);
   printf ("Sent (prefix): %ld\n", result);
   err_check (result == (ssize_t)4, "send");
 
+  // Send the rest
   len    = ntohl (len) - 4;
   result = send (socket, src, len, flags);
   printf ("Sent %s: %ld\n", src, result);

@@ -25,7 +25,10 @@
 #include "core/ns_htable.h"
 #include "core/ns_numerics.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
+#include "core/os/ns_threading.h"
+#include "core/os/ns_time.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_dirty_page_table.h"
 #include "nscore/ns_lock_table.h"
@@ -352,10 +355,10 @@ pgr_refresh_wal (struct pager *p, error *e)
  *----------------------------------------------------------------------------*/
 
 err_t
-aries_ctx_create (struct aries_ctx *dest, error *e)
+aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
 {
   dest->max_tid = 0;
-  slab_alloc_init (&dest->alloc, sizeof (struct txn), 1000);
+  slab_alloc_init (&dest->alloc, mem, sizeof (struct txn), 1000);
   create_default_allocator (&dest->backing_alloc);
 
   dest->txt = txnt_open (e);
@@ -1012,7 +1015,7 @@ pgr_recover (struct pager *p, error *e)
 {
   // Run ARIES recovery
   struct aries_ctx ctx;
-  if (aries_ctx_create (&ctx, e))
+  if (aries_ctx_create (&ctx, p->mem, e))
   {
     return error_trace (e);
   }
@@ -1070,13 +1073,16 @@ pgr_open (const char *dbname, error *e)
     return NULL;
   }
 
+  struct i_mem         mem = default_mem ();
+  struct i_file_system fs  = default_filesystem ();
+
   char fname[NS_NAME_MAX];
   char walname[NS_NAME_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
   // File pager
-  struct file_pager *fp = fpgr_open (fname, PAGE_HEADER_LEN, e);
+  struct file_pager *fp = fpgr_open (fname, mem, fs, PAGE_HEADER_LEN, e);
   if (fp == NULL)
   {
     return NULL;
@@ -1089,7 +1095,7 @@ pgr_open (const char *dbname, error *e)
     return NULL;
   }
 
-  struct lockt *lt = i_malloc (1, sizeof *lt, e);
+  struct lockt *lt = i_malloc (mem, 1, sizeof *lt, e);
   if (lt == NULL)
   {
     fpgr_close (fp, e);
@@ -1100,7 +1106,7 @@ pgr_open (const char *dbname, error *e)
   {
     fpgr_close (fp, e);
     wal_close_and_delete (ww, e);
-    i_free (lt);
+    i_free (mem, lt);
     lockt_destroy (lt);
     return NULL;
   }
@@ -1108,12 +1114,14 @@ pgr_open (const char *dbname, error *e)
   page_h        root = page_h_create ();
   struct pager *ret  = NULL;
 
-  if ((ret = i_calloc (1, sizeof *ret, e)) == NULL)
+  if ((ret = i_calloc (mem, 1, sizeof *ret, e)) == NULL)
   {
     goto failed;
   }
 
   // Initialize "easy" things
+  ret->mem                        = mem;
+  ret->fs                         = fs;
   *(struct file_pager **)&ret->fp = fp;
   *(struct wal **)&ret->ww        = ww;
   ret->lt                         = lt;
@@ -1261,7 +1269,7 @@ failed:
     {
       txnt_close (ret->tnxt);
     }
-    i_free (ret);
+    i_free (mem, ret);
   }
 
   if (ww)
@@ -1296,7 +1304,9 @@ TEST (pager_open)
 
   TEST_CASE ("dbname is too long")
   {
-    char *name = i_malloc (NS_NAME_MAX, 1, &e);
+    struct i_mem mem = default_mem ();
+
+    char *name = i_malloc (mem, NS_NAME_MAX, 1, &e);
     for (int i = 0; i < NS_NAME_MAX; ++i)
     {
       name[i] = 'c';
@@ -1317,7 +1327,7 @@ TEST (pager_open)
     // Delete the obtuse name
     pgr_delete_single_file (name, &e);
 
-    i_free (name);
+    i_free (mem, name);
   }
 }
 #endif
@@ -1325,11 +1335,13 @@ TEST (pager_open)
 #ifdef TESTING
 TEST (pgr_open_basic)
 {
-  error e = error_create ();
+  error                e  = error_create ();
+  struct i_file_system fs = default_filesystem ();
+
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   i_file fp = {0};
-  i_open_rw (&fp, "testdb", &e);
+  i_open_rw (fs, &fp, "testdb", &e);
 
   // File is shorter than page size
   test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
@@ -1403,12 +1415,12 @@ pgr_close (struct pager *p, error *e)
   fpgr_close (p->fp, e);
   lockt_unlock (p->lt, lock_db (), LM_X, e);
   lockt_destroy (p->lt);
-  i_free (p->lt);
+  i_free (p->mem, p->lt);
 
   txnt_close (p->tnxt);
   dpgt_close (p->dpt);
 
-  i_free (p);
+  i_free (p->mem, p);
 
   return error_trace (e);
 }
@@ -1446,9 +1458,8 @@ pgr_crash (struct pager *p, error *e)
   txnt_crash (p->tnxt);
   dpgt_crash (p->dpt);
   lockt_destroy (p->lt);
-  i_free (p->lt);
-
-  i_free (p);
+  i_free (p->mem, p->lt);
+  i_free (p->mem, p);
 
   return error_trace (e);
 }
@@ -1603,8 +1614,8 @@ pgr_delete_single_file (const char *dbname, error *e)
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
-  i_remove_quiet (fname, e);
-  i_remove_quiet (walname, e);
+  i_remove_quiet (default_filesystem (), fname, e);
+  i_remove_quiet (default_filesystem (), walname, e);
 
   return error_trace (e);
 }
@@ -2519,12 +2530,12 @@ TEST (pgr_checkpoint)
     };
 
     i_thread producer;
-    i_thread_create (&producer, producer_thread, &args, &f.e);
+    default_threading.i_thread_create (&default_threading, &producer, producer_thread, &args, &f.e);
     i_sleep_ms (1000);
 
     args.done = 1;
 
-    i_thread_join (&producer, &f.e);
+    default_threading.i_thread_join (&default_threading, &producer, &f.e);
 
     pgr_fixture_teardown (&f);
   }

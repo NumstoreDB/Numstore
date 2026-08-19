@@ -33,6 +33,7 @@
  */
 struct dvalidtr
 {
+  struct i_mem       mem;
   struct data_writer ref;
   struct data_writer sut;
   isvalid_func       isvalid;

@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/pager/ns_pager.h"
 #include "smartfiles/smartfiles.h"
@@ -289,7 +289,7 @@ TEST (aries_crash)
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
 
-    char *big = i_malloc (BIG_SIZE, 1, &e);
+    char *big = default_mem.i_malloc (&default_mem, BIG_SIZE, 1, &e);
     for (int i = 0; i < BIG_SIZE; i++)
     {
       big[i] = (char)('A' + (i % 26));
@@ -302,12 +302,12 @@ TEST (aries_crash)
     smfile_crash (smf);
 
     smf          = smfile_open ("testdb");
-    char *actual = i_malloc (BIG_SIZE, 1, &e);
+    char *actual = default_mem.i_malloc (&default_mem, BIG_SIZE, 1, &e);
     smfile_read (smf, actual, 1, 0, 1, BIG_SIZE);
     test_assert_memequal (big, actual, BIG_SIZE);
     smfile_close (smf);
-    i_free (big);
-    i_free (actual);
+    default_mem.i_free (&default_mem, big);
+    default_mem.i_free (&default_mem, actual);
   }
 
   /**

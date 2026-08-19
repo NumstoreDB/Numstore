@@ -19,6 +19,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_numerics.h"
 #include "core/ns_platform.h"
+#include "core/os/ns_memory.h"
 #include "nscore/page/ns_page_delegate.h"
 
 #ifdef TESTING
@@ -72,7 +73,8 @@ pgr_fixture_create (struct pgr_fixture *dest)
     return dest->e.cause_code;
   }
 
-  dest->p = p;
+  dest->mem = default_mem ();
+  dest->p   = p;
 
   DBG_ASSERT (pgr_fixture, dest);
 
