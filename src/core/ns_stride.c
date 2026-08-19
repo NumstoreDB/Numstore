@@ -22,36 +22,6 @@
 #include "core/ns_utils.h"
 #include "core/testing/ns_testing.h"
 
-bool
-ustride_equal (const struct user_stride left, const struct user_stride right)
-{
-  const int mask          = STOP_PRESENT | STEP_PRESENT | START_PRESENT;
-  const int left_present  = left.present & mask;
-  const int right_present = right.present & mask;
-
-  if (left_present != right_present)
-  {
-    return false;
-  }
-
-  if ((left_present & START_PRESENT) && left.start != right.start)
-  {
-    return false;
-  }
-
-  if ((left_present & STEP_PRESENT) && left.step != right.step)
-  {
-    return false;
-  }
-
-  if ((left_present & STOP_PRESENT) && left.stop != right.stop)
-  {
-    return false;
-  }
-
-  return true;
-}
-
 void
 stride_resolve_expect (struct stride *dest, const struct user_stride src, const u64 arrlen)
 {

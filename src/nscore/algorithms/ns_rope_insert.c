@@ -99,7 +99,7 @@ ns_insert (struct ns_insert_params *params, error *e)
 
   pgno last = dl_get_next (page_h_ro (&cur));
   tbl       = dl_read_out_from (page_h_w (&cur), temp_buf, lidx);
-  output    = nupd_init (page_h_pgno (&cur), 0, e);
+  output    = nupd_init (page_h_pgno (&cur), 0, params->p->mem, e);
   if (output == NULL)
   {
     goto failed;

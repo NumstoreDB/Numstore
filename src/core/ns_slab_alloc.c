@@ -285,7 +285,7 @@ TEST (slab_alloc_simple)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 5);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 5);
 
   // Allocate 20 items (will span 4 slabs)
   struct test_item *items[20];
@@ -401,7 +401,7 @@ TEST (slab_alloc_cap_one)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 1);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 1);
 
   struct test_item *a = slab_alloc_alloc (&alloc, &e);
   test_assert (a != NULL);
@@ -438,7 +438,7 @@ TEST (slab_alloc_no_duplicates)
   error             e = error_create ();
   const int         N = 100;
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 7);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 7);
 
   void *ptrs[100];
   for (int i = 0; i < N; i++)
@@ -466,7 +466,7 @@ TEST (slab_alloc_free_all_realloc)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 4);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 4);
 
   // Fill 3 slabs (12 items)
   struct test_item *ptrs[12];
@@ -509,7 +509,7 @@ TEST (slab_alloc_interleaved_patterns)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 4);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 4);
 
   // Pattern 1: alloc 8, free LIFO (stack order)
   struct test_item *ptrs[8];
@@ -561,7 +561,7 @@ TEST (slab_alloc_free_head_slab)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 2);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 2);
 
   // slab1 created (becomes head)
   struct test_item *a = slab_alloc_alloc (&alloc, &e);
@@ -605,7 +605,7 @@ TEST (slab_alloc_free_middle_slab)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 2);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 2);
 
   // Create 3 slabs: head -> slab3 -> slab2 -> slab1
   struct test_item *s1[2], *s2[2], *s3[2];
@@ -651,7 +651,7 @@ TEST (slab_alloc_minimum_size)
   struct slab_alloc alloc;
   error             e = error_create ();
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (void *), 10);
+  slab_alloc_init (&alloc, mem, sizeof (void *), 10);
 
   void *ptrs[20];
   for (int i = 0; i < 20; i++)
@@ -681,7 +681,7 @@ TEST (slab_alloc_stress_random)
   error             e    = error_create ();
   const int         POOL = 256;
 
-  slab_alloc_init (&alloc, default_mem (), sizeof (struct test_item), 8);
+  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 8);
 
   struct test_item *pool[256]   = {0};
   i32               values[256] = {0};

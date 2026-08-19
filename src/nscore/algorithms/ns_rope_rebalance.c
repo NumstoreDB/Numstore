@@ -987,8 +987,8 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
   }
 
   // Create random node updates
-  struct node_updates *output = nupd_random_from (left, llen, pivot, right, rlen, &f->e);
-  struct node_updates *input  = nupd_init (0, 0, &f->e);
+  struct node_updates *output = nupd_random_from (left, llen, pivot, right, rlen, f->mem, &f->e);
+  struct node_updates *input  = nupd_init (0, 0, f->mem, &f->e);
   ASSERT (output != NULL);
 
   // Do rebalance
@@ -1184,7 +1184,8 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
        *
        * So this line is hit one the first loop always
        */
-      pms->output = nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e);
+      pms->output =
+          nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), pms->p->mem, e);
       if (pms->output == NULL)
       {
         goto failed;

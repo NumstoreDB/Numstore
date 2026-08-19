@@ -46,7 +46,7 @@ struct ns_server
 struct ns_server *
 server_create (error *e)
 {
-  struct ns_server *server = default_mem.i_malloc (&default_mem, 1, sizeof *server, e);
+  struct ns_server *server = i_malloc (default_mem (), 1, sizeof *server, e);
   if (server == NULL)
   {
     return NULL;
@@ -56,7 +56,7 @@ server_create (error *e)
   int fd = net_darwin.funcs->i_socket (&net_darwin, PF_INET, SOCK_STREAM, 0, e);
   if (fd < 0)
   {
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -72,7 +72,7 @@ server_create (error *e)
   {
     error_causef (e, ERR_IO, "setsockopt failed: %s", strerror (errno));
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -82,7 +82,7 @@ server_create (error *e)
   {
     error_causef (e, ERR_IO, "bind failed: %s", strerror (errno));
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -91,7 +91,7 @@ server_create (error *e)
   {
     error_causef (e, ERR_IO, "listen failed: %s", strerror (errno));
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -101,7 +101,7 @@ server_create (error *e)
   {
     error_causef (e, ERR_IO, "fcntl (F_GETFL) failed: %s", strerror (errno));
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -110,7 +110,7 @@ server_create (error *e)
   {
     error_causef (e, ERR_IO, "fcntl (F_SETFL) failed: %s", strerror (errno));
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -120,7 +120,7 @@ server_create (error *e)
   {
     error_causef (e, ERR_IO, "kqueue failed: %s", strerror (errno));
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 
@@ -133,7 +133,7 @@ server_create (error *e)
     error_causef (e, ERR_IO, "kevent failed: %s", strerror (errno));
     close (kq);
     close (fd);
-    default_mem.i_free (&default_mem, server);
+    i_free (default_mem (), server);
     return NULL;
   }
 

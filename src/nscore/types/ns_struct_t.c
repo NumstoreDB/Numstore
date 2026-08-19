@@ -427,7 +427,7 @@ TEST (struct_t_snprintf)
   error e   = error_create ();
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  default_mem.i_free (&default_mem, ret);
+  i_free (default_mem (), ret);
 }
 #endif
 

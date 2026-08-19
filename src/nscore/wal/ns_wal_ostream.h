@@ -20,6 +20,7 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 
 /******************************************************************************
  * SECTION: Wal Output Stream
@@ -29,17 +30,23 @@
 
 struct wal_ostream
 {
-  i_file fd;
-  latch  l;
-  lsn    flushed_lsn;
+  struct i_mem mem;
+  i_file       fd;
+  latch        l;
+  lsn          flushed_lsn;
 
   struct cbuffer buffer;
   u8             _buffer[WAL_BUFFER_CAP];
 };
 
 // Lifecycle
-struct wal_ostream *walos_open (const char *fname, error *e);
-err_t               walos_close (struct wal_ostream *w, error *e);
+struct wal_ostream *walos_open (
+    const char          *fname,
+    struct i_mem         mem,
+    struct i_file_system fs,
+    error               *e
+);
+err_t walos_close (struct wal_ostream *w, error *e);
 
 // Flush
 err_t walos_flush_all (struct wal_ostream *w, error *e);

@@ -104,7 +104,6 @@ struct type *type_deserialize (struct deserializer *src, struct allocator *alloc
 struct type *type_random (struct allocator *alloc, u32 depth, error *e);
 bool         type_equal (const struct type *left, const struct type *right);
 char        *get_var_str (struct type *t, u32 *dlen, error *e);
-err_t        i_print_type (struct type *t, error *e);
 err_t        i_log_type (struct type *t, error *e);
 struct type *type_movemem (struct type *src, struct allocator *alloc, error *e);
 void         type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems);

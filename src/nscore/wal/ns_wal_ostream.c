@@ -35,20 +35,22 @@
 DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, { ASSERT (w); })
 
 struct wal_ostream *
-walos_open (const char *fname, error *e)
+walos_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
 {
-  struct wal_ostream *ret = default_mem.i_malloc (&default_mem, 1, sizeof *ret, e);
+  struct wal_ostream *ret = i_malloc (mem, 1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
   }
 
-  if (default_fsvtable.i_open_w (&default_fsvtable, &ret->fd, fname, e))
+  ret->mem = mem;
+
+  if (i_open_w (fs, &ret->fd, fname, e))
   {
     goto err_free;
   }
 
-  const i64 len = ret->fd.fvtable->i_seek (&ret->fd, 0, I_SEEK_END, e);
+  const i64 len = i_seek (&ret->fd, 0, I_SEEK_END, e);
   if (len < 0)
   {
     goto err_close;
@@ -62,9 +64,9 @@ walos_open (const char *fname, error *e)
   return ret;
 
 err_close:
-  ret->fd.fvtable->i_close (&ret->fd, e);
+  i_close (&ret->fd, e);
 err_free:
-  default_mem.i_free (&default_mem, ret);
+  i_free (mem, ret);
   return NULL;
 }
 
@@ -73,45 +75,13 @@ TEST (walos_open)
 {
   error e = error_create ();
 
-  TEST_CASE ("Red Path - No Memory")
+  TEST_CASE ("happy path")
   {
-    void *(*backup) (i_mem *, u32, u32, error *) = default_mem.i_malloc;
-    default_mem.i_malloc                         = i_malloc_nomem;
-
-    struct wal_ostream *wos = walos_open ("foo", &e);
-    test_assert (wos == NULL);
-    e.cause_code = SUCCESS;
-    e.cmlen      = 0;
-
-    default_mem.i_malloc = backup;
-  }
-
-  TEST_CASE ("Red Path - can't open file")
-  {
-    err_t (*backup) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) =
-        default_fsvtable.i_open_w;
-
-    default_fsvtable.i_open_w = i_open_errio;
-
-    struct wal_ostream *wos = walos_open ("foo", &e);
-    test_assert (wos == NULL);
-    e.cause_code = SUCCESS;
-    e.cmlen      = 0;
-
-    default_fsvtable.i_open_w = backup;
-  }
-
-  TEST_CASE ("Red Path - can't seek")
-  {
-    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) = default_fvtable.i_seek;
-    default_fvtable.i_seek                                                = i_seek_errio;
-
-    struct wal_ostream *wos = walos_open ("foo", &e);
-    test_assert (wos == NULL);
-    e.cause_code = SUCCESS;
-    e.cmlen      = 0;
-
-    default_fvtable.i_seek = backup;
+    i_remove_quiet (fs, "foo", &e);
+    struct wal_ostream *wos = walos_open ("foo", mem, fs, &e);
+    test_assert (wos != NULL);
+    walos_close (wos, &e);
+    i_remove_quiet (fs, "foo", &e);
   }
 }
 #endif
@@ -121,8 +91,8 @@ walos_close (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
   walos_flush_all (w, e);
-  w->fd.fvtable->i_close (&w->fd, e);
-  default_mem.i_free (&default_mem, w);
+  i_close (&w->fd, e);
+  i_free (w->mem, w);
   return error_trace (e);
 }
 
@@ -130,8 +100,8 @@ err_t
 walos_crash (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
-  w->fd.fvtable->i_close (&w->fd, e);
-  default_mem.i_free (&default_mem, w);
+  i_close (&w->fd, e);
+  i_free (w->mem, w);
   return error_trace (e);
 }
 
@@ -150,7 +120,7 @@ walos_flush_impl (struct wal_ostream *w, error *e)
   }
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
-  if (w->fd.fvtable->i_fsync (&w->fd, e))
+  if (i_fsync (&w->fd, e))
   {
     panic ("Wal fsync failed");
   }
@@ -220,11 +190,11 @@ slsn
 walos_truncate (struct wal_ostream *w, error *e)
 {
   latch_lock (&w->l);
-  if (w->fd.fvtable->i_truncate (&w->fd, 0, e))
+  if (i_truncate (&w->fd, 0, e))
   {
     goto theend;
   }
-  if (w->fd.fvtable->i_seek (&w->fd, 0, I_SEEK_SET, e))
+  if (i_seek (&w->fd, 0, I_SEEK_SET, e))
   {
     goto theend;
   }

@@ -43,17 +43,17 @@ wal_init (struct wal *dest, error *e)
   dest->flags   = 0;
   latch_init (&dest->latch);
 
-  dest->ostream = walos_open (dest->fname.data, e);
+  dest->ostream = walos_open (dest->fname.data, dest->mem, dest->fs, e);
   if (dest->ostream == NULL)
   {
-    default_mem.i_free (&default_mem, (char *)dest->fname.data);
+    i_free (dest->mem, (char *)dest->fname.data);
     return error_trace (e);
   }
 
-  dest->istream = walis_open (dest->fname.data, e);
+  dest->istream = walis_open (dest->fname.data, dest->mem, dest->fs, e);
   if (dest->istream == NULL)
   {
-    default_mem.i_free (&default_mem, (char *)dest->fname.data);
+    i_free (dest->mem, (char *)dest->fname.data);
     walos_close (dest->ostream, e);
     return error_trace (e);
   }
@@ -67,7 +67,7 @@ wal_init (struct wal *dest, error *e)
 
   if (walis_read_all (dest->istream, &iseof, NULL, &checksum, &start_lsn, sizeof (start_lsn), e))
   {
-    default_mem.i_free (&default_mem, (char *)dest->fname.data);
+    i_free (dest->mem, (char *)dest->fname.data);
     walos_close (dest->ostream, e);
     walis_close (dest->istream, e);
     return error_trace (e);
@@ -82,7 +82,7 @@ wal_init (struct wal *dest, error *e)
     // Truncate the output wal
     if (walos_truncate (dest->ostream, e))
     {
-      default_mem.i_free (&default_mem, (char *)dest->fname.data);
+      i_free (dest->mem, (char *)dest->fname.data);
       walos_close (dest->ostream, e);
       walis_close (dest->istream, e);
       return error_trace (e);
@@ -115,24 +115,27 @@ wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
 }
 
 static struct wal *
-wal_open_internal (const char *fname, error *e)
+wal_open_internal (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
 {
-  struct wal *dest = default_mem.i_malloc (&default_mem, 1, sizeof *dest, e);
+  struct wal *dest = i_malloc (mem, 1, sizeof *dest, e);
   if (dest == NULL)
   {
     return NULL;
   }
 
-  if (string_copy (&dest->fname, strfcstr (fname), e))
+  dest->mem = mem;
+  dest->fs  = fs;
+
+  if (string_copy (&dest->fname, strfcstr (fname), mem, e))
   {
-    default_mem.i_free (&default_mem, dest);
+    i_free (mem, dest);
     return NULL;
   }
 
   if (wal_init (dest, e))
   {
-    default_mem.i_free (&default_mem, (char *)dest->fname.data);
-    default_mem.i_free (&default_mem, dest);
+    i_free (mem, (char *)dest->fname.data);
+    i_free (mem, dest);
     return NULL;
   }
 
@@ -140,9 +143,9 @@ wal_open_internal (const char *fname, error *e)
 }
 
 struct wal *
-wal_open (const char *fname, error *e)
+wal_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
 {
-  return wal_open_internal (fname, e);
+  return wal_open_internal (fname, mem, fs, e);
 }
 
 static inline err_t
@@ -154,7 +157,7 @@ wal_destroy (struct wal *w, error *e)
 
   if (w->fname.data)
   {
-    default_mem.i_free (&default_mem, (void *)w->fname.data);
+    i_free (w->mem, (void *)w->fname.data);
   }
   return error_trace (e);
 }
@@ -162,22 +165,25 @@ wal_destroy (struct wal *w, error *e)
 err_t
 wal_close (struct wal *w, error *e)
 {
+  struct i_mem mem = w->mem;
   wal_destroy (w, e);
-  default_mem.i_free (&default_mem, w);
+  i_free (mem, w);
   return error_trace (e);
 }
 
 err_t
 wal_close_and_delete (struct wal *w, error *e)
 {
-  struct string fname = w->fname;
-  w->fname.data       = NULL;
+  struct i_mem         mem   = w->mem;
+  struct i_file_system fs    = w->fs;
+  struct string        fname = w->fname;
+  w->fname.data              = NULL;
 
   wal_destroy (w, e);
-  default_mem.i_free (&default_mem, w);
+  i_free (mem, w);
 
-  default_fsvtable.i_remove_quiet (&default_fsvtable, fname.data, e);
-  default_mem.i_free (&default_mem, (char *)fname.data);
+  i_remove_quiet (fs, fname.data, e);
+  i_free (mem, (char *)fname.data);
 
   return error_trace (e);
 }
@@ -199,7 +205,7 @@ wal_delete_and_reopen (struct wal *w, error *e)
     return error_trace (e);
   }
 
-  if (default_fsvtable.i_remove_quiet (&default_fsvtable, fname.data, e))
+  if (i_remove_quiet (w->fs, fname.data, e))
   {
     latch_unlock (&w->latch);
     return error_trace (e);
@@ -241,13 +247,15 @@ wal_crash (struct wal *w, error *e)
 {
   DBG_ASSERT (wal, w);
 
+  struct i_mem mem = w->mem;
+
   walos_close (w->ostream, e);
   walis_close (w->istream, e);
   if (w->fname.data)
   {
-    default_mem.i_free (&default_mem, (void *)w->fname.data);
+    i_free (mem, (void *)w->fname.data);
   }
-  default_mem.i_free (&default_mem, w);
+  i_free (mem, w);
 
   return SUCCESS;
 }
@@ -1072,13 +1080,13 @@ wal_thread (void *ctx)
 TEST (wal_multi_threaded)
 {
   error e = error_create ();
-  default_fsvtable.i_remove_quiet (&default_fsvtable, "test.wal", &e);
-  struct wal *ww = wal_open ("test.wal", &e);
+  i_remove_quiet (fs, "test.wal", &e);
+  struct wal *ww = wal_open ("test.wal", mem, fs, &e);
   wal_write_start_lsn (ww, 0, &e);
 
   const u32 N = 5000;
 
-  struct wal_rec_hdr_read *read = default_mem.i_malloc (&default_mem, N, sizeof *read, &e);
+  struct wal_rec_hdr_read *read = i_malloc (mem, N, sizeof *read, &e);
 
   for (u32 i = 0; i < N; ++i)
   {
@@ -1142,7 +1150,7 @@ TEST (wal_multi_threaded)
   test_assert_int_equal (actual->type, WL_EOF);
 
   wal_close (ww, &e);
-  default_mem.i_free (&default_mem, read);
+  i_free (mem, read);
 }
 
 struct wal_test_params
@@ -1195,10 +1203,12 @@ wal_test_free_batch (const struct wal_rec_hdr_read *batch, const u32 len)
 static void
 run_wal_test (const struct wal_test_params *p)
 {
-  error e = error_create ();
+  error                e   = error_create ();
+  struct i_mem         mem = default_mem ();
+  struct i_file_system fs  = default_filesystem ();
 
-  default_fsvtable.i_remove_quiet (&default_fsvtable, p->fname, &e);
-  struct wal *ww = wal_open (p->fname, &e);
+  i_remove_quiet (fs, p->fname, &e);
+  struct wal *ww = wal_open (p->fname, mem, fs, &e);
   wal_write_start_lsn (ww, 0, &e);
   /**
    * Write all the input logs
@@ -1425,8 +1435,8 @@ TEST (wal_single_entry)
 
       wal_test_fill_batch (c, 1, &e);
 
-      default_fsvtable.i_remove_quiet (&default_fsvtable, "test_single_entry.wal", &e);
-      struct wal *ww = wal_open ("test_single_entry.wal", &e);
+      i_remove_quiet (fs, "test_single_entry.wal", &e);
+      struct wal *ww = wal_open ("test_single_entry.wal", mem, fs, &e);
       wal_write_start_lsn (ww, 0, &e);
 
       // WRITE

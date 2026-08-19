@@ -39,20 +39,20 @@ struct var_frame
 struct mem_vhmap *
 mem_vhmap_create (error *e)
 {
-  struct mem_vhmap *ret = default_mem.i_malloc (&default_mem, 1, sizeof *ret, e);
+  struct mem_vhmap *ret = i_malloc (default_mem (), 1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
   }
 
-  ret->vhasht = htable_create (256, e);
+  ret->vhasht = htable_create (256, default_mem (), e);
   if (ret->vhasht == NULL)
   {
-    default_mem.i_free (&default_mem, ret);
+    i_free (default_mem (), ret);
     return NULL;
   }
 
-  slab_alloc_init (&ret->alloc, sizeof (struct var_frame), 256);
+  slab_alloc_init (&ret->alloc, default_mem (), sizeof (struct var_frame), 256);
 
   return ret;
 }
@@ -71,7 +71,7 @@ mem_vhmap_free (struct mem_vhmap *db)
   htable_foreach (db->vhasht, var_frame_free, NULL);
   slab_alloc_destroy (&db->alloc);
   htable_free (db->vhasht);
-  default_mem.i_free (&default_mem, db);
+  i_free (default_mem (), db);
 }
 
 struct copy_ctx

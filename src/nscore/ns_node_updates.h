@@ -29,6 +29,7 @@
 #include "core/ns_error.h" // error
 #include "core/ns_stdtypes.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_memory.h"
 #include "nscore/ns_page_h.h" // page_h
 #include "nscore/page/ns_page_inner_node.h"
 // pgno b_size ...etc
@@ -56,7 +57,7 @@
  * @param e    The error object
  * @return     A heap-allocated node_updates, or NULL on error
  */
-struct node_updates *nupd_init (pgno pg, b_size size, error *e);
+struct node_updates *nupd_init (pgno pg, b_size size, struct i_mem mem, error *e);
 
 struct node_updates *nupd_create_from (
     struct in_pair *left,
@@ -64,25 +65,28 @@ struct node_updates *nupd_create_from (
     struct in_pair  pivot,
     struct in_pair *right,
     u32             rlen,
+    struct i_mem    mem,
     error          *e
 );
 
 struct node_updates *nupd_random_from (
-    pgno  *left,
-    u32    llen,
-    pgno   pivot,
-    pgno  *right,
-    u32    rlen,
-    error *e
+    pgno        *left,
+    u32          llen,
+    pgno         pivot,
+    pgno        *right,
+    u32          rlen,
+    struct i_mem mem,
+    error       *e
 );
 
-#define nupd_random_fromb(left, pivot, right) \
-  nupd_random_from (                          \
-      left,                                   \
-      left ? arrlen (((pgno *)left)) : 0,     \
-      pivot,                                  \
-      right,                                  \
-      right ? arrlen (((pgno *)right)) : 0    \
+#define nupd_random_fromb(left, pivot, right, mem) \
+  nupd_random_from (                               \
+      left,                                        \
+      left ? arrlen (((pgno *)left)) : 0,          \
+      pivot,                                       \
+      right,                                       \
+      right ? arrlen (((pgno *)right)) : 0,        \
+      mem                                          \
   )
 
 /**

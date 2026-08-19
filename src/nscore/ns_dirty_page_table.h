@@ -32,6 +32,7 @@
 #include "core/ns_htable.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_memory.h"
 
 /******************************************************************************
  * SECTION: Dirty Page Table
@@ -39,11 +40,12 @@
 
 struct dpg_table
 {
+  struct i_mem      mem;
   struct htable    *t;     // Hash table pg -> entry
   struct slab_alloc alloc; // Allocator for dpgt frames
 };
 
-struct dpg_table *dpgt_open (error *e);
+struct dpg_table *dpgt_open (struct i_mem mem, error *e);
 void              dpgt_close (struct dpg_table *t);
 err_t             dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e);
 lsn               dpgt_min_rec_lsn (struct dpg_table *d);

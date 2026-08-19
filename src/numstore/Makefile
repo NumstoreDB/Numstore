@@ -2,6 +2,7 @@ C_SRCS :=
 
 C_SRCS += ns_cli.c
 C_SRCS += ns_numstore.c
+C_SRCS += testing/ns_swarm_tests.c
 
 C_OBJS := $(C_SRCS:.c=.o)
 

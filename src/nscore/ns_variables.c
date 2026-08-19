@@ -45,7 +45,7 @@ i_print_variable (struct variable *v, error *e)
     return error_trace (e);
   }
   i_printf ("    \"DType\"  : \"%.*s\",\n", len, var_str);
-  default_mem.i_free (&default_mem, var_str);
+  i_free (default_mem (), var_str);
   i_printf ("    \"DSize\"  : %u,\n", type_byte_size (v->dtype));
 
   /* Assuming Nelems is derived from bytes / size, or replace with v->nelems if

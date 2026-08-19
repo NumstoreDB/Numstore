@@ -126,13 +126,6 @@ sb_size nsdb_execute_on_buffer (
     struct allocator *alc
 );
 
-void *nsdb_execute_malloc (
-    struct nsdb      *ns,
-    struct query     *q,
-    const void       *data,
-    struct allocator *alc
-);
-
 /******************************************************************************
  * SECTION: Query literal routines
  * ----------------------------------------------------------------------------
