@@ -9,16 +9,36 @@ in C with no dependencies.
 Conceptually, it's an ACID file with 
 [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
 
-Main outputs are:
+Main Outputs
+============
 
-1. `build/bin/numstore` executable: Used for examining a database (this is a
-   work in progress)
-2. `build/lib/libnumstore.a` and `build/include/numstore.h`: An embedded
-   database for numerical arrays. See `src/numstore/numstore.h` or
-   `src/numstore/samples/*`
-2. `build/lib/libsmartfiles.a` and `build/include/smartfiles.h`: An embedded
-   database for files. See `src/smartfiles/smartfiles.h` or
-   `src/smartfiles/samples/*`
+Numstore Executable
+--------------------
+
+    build/bin/numstore
+
+A cli app used for examining a database (work in progress)
+
+
+Numstore Library
+-----------------
+
+    build/lib/libnumstore.a
+    build/include/numstore.h
+
+An embedded database for numerical arrays see `src/numstore/numstore.h` or
+`src/numstore/samples/*`
+
+
+Smartfiles Library
+--------------------
+
+    build/lib/libsmartfiles.a
+    build/include/smartfiles.h
+
+An embedded database for files see `src/smartfiles/smartfiles.h` or
+`src/smartfiles/samples/*`
+
 
 Quick Start
 ===========
