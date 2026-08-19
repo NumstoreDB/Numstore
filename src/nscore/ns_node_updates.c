@@ -19,7 +19,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/page/ns_page.h"
 
@@ -114,7 +114,7 @@ nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error
   {
     if (slab->next == NULL)
     {
-      slab->next = i_malloc (1, sizeof *slab->next, e);
+      slab->next = default_mem.i_malloc (&default_mem, 1, sizeof *slab->next, e);
       if (slab->next == NULL)
       {
         return NULL;
@@ -140,7 +140,7 @@ nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error 
   {
     if (slab->next == NULL)
     {
-      slab->next = i_malloc (1, sizeof *slab->next, e);
+      slab->next = default_mem.i_malloc (&default_mem, 1, sizeof *slab->next, e);
       if (slab->next == NULL)
       {
         return NULL;
@@ -163,7 +163,7 @@ slab_free_chain (const struct in_pair_slab *head)
   while (cur != NULL)
   {
     struct in_pair_slab *next = cur->next;
-    i_free (cur);
+    default_mem.i_free (&default_mem, cur);
     cur = next;
   }
 }
@@ -171,7 +171,7 @@ slab_free_chain (const struct in_pair_slab *head)
 struct node_updates *
 nupd_init (const pgno pg, const b_size size, error *e)
 {
-  struct node_updates *ret = i_calloc (1, sizeof *ret, e);
+  struct node_updates *ret = default_mem.i_calloc (&default_mem, 1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
@@ -278,7 +278,7 @@ nupd_free (struct node_updates *n)
   }
   slab_free_chain (&n->right);
   slab_free_chain (&n->left);
-  i_free (n);
+  default_mem.i_free (&default_mem, n);
 }
 
 pgno

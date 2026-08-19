@@ -4,7 +4,7 @@ ROOTS = ["src"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-    "#include \"numstore.h\"": "",
+        "mem" : "mem",
 }
 
 for ROOT in ROOTS:

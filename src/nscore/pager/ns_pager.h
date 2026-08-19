@@ -26,6 +26,7 @@
 #include "core/ns_platform.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_filesystem.h"
 #include "nscore/ns_dirty_page_table.h"
 #include "nscore/ns_txn_table.h"
 #include "nscore/page/ns_page.h"
@@ -249,6 +250,9 @@ struct wal_update_write;
  */
 struct pager
 {
+  struct i_mem         mem;
+  struct i_file_system fs;
+
   struct pager_header header;
   u8                  _header[PAGE_HEADER_LEN];
 
@@ -409,7 +413,7 @@ struct aries_ctx
   struct allocator  backing_alloc;
 };
 
-err_t       aries_ctx_create (struct aries_ctx *dest, error *e);
+err_t       aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);
 void        aries_ctx_free (struct aries_ctx *ctx);
 struct txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e);
 

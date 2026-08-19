@@ -28,15 +28,17 @@
 #include "core/ns_concurrency.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_memory.h"
 
 struct chunk_alloc_settings
 {
-  u32   max_alloc_size;
-  u32   max_total_size;
-  float target_chunk_mult;
-  u32   min_chunk_size;
-  u32   max_chunk_size;
-  u32   max_chunks;
+  u32          max_alloc_size;
+  u32          max_total_size;
+  float        target_chunk_mult;
+  u32          min_chunk_size;
+  u32          max_chunk_size;
+  u32          max_chunks;
+  struct i_mem mem;
 };
 
 struct chunk_alloc
@@ -49,10 +51,7 @@ struct chunk_alloc
   u32                         total_used;
 };
 
-void chunk_alloc_create (struct chunk_alloc *dest, const struct chunk_alloc_settings settings);
-
-void chunk_alloc_create_default (struct chunk_alloc *dest);
-
+void  chunk_alloc_create_default (struct chunk_alloc *dest);
 void *chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e);
 void  chunk_alloc_free_all (struct chunk_alloc *ca);
 

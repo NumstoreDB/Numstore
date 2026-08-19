@@ -23,7 +23,7 @@
 #include "core/ns_numerics.h"
 #include "core/ns_serial.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/types/ns_types.h"
 
@@ -190,7 +190,7 @@ TEST (sarray_t_snprintf)
   error e   = error_create ();
   i_log_type (&s, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (ret);
+  default_mem.i_free (&default_mem, ret);
 }
 #endif
 

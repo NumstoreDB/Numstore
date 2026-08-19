@@ -21,7 +21,7 @@
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 
 /******************************************************************************
  * SECTION: Local Linear Allocator
@@ -177,9 +177,9 @@ DEFINE_DBG_ASSERT (struct chunk_alloc, chunk_alloc, ca, {
 })
 
 static struct chunk *
-chunk_create (const u32 size, error *e)
+chunk_create (const u32 size, struct i_mem mem, error *e)
 {
-  struct chunk *ret = i_malloc (sizeof (struct chunk) + size, 1, e);
+  struct chunk *ret = i_malloc (mem, sizeof (struct chunk) + size, 1, e);
   if (ret == NULL)
   {
     return NULL;
@@ -190,7 +190,7 @@ chunk_create (const u32 size, error *e)
   return ret;
 }
 
-void
+static void
 chunk_alloc_create (struct chunk_alloc *dest, const struct chunk_alloc_settings settings)
 {
   ASSERT (settings.target_chunk_mult >= 1.0f);
@@ -267,7 +267,7 @@ chunk_alloc_free_all (struct chunk_alloc *ca)
   {
     struct chunk *next = cur->next;
     DBG_ASSERT (chunk, cur);
-    i_free (cur);
+    i_free (ca->settings.mem, cur);
     cur = next;
   }
 
@@ -318,7 +318,7 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
   }
 
   // Create chunk
-  struct chunk *new_chunk = chunk_create (size, e);
+  struct chunk *new_chunk = chunk_create (size, ca->settings.mem, e);
   if (new_chunk == NULL)
   {
     return error_trace (e);

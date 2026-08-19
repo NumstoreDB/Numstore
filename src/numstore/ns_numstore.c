@@ -21,7 +21,7 @@
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_nsdb.h"
@@ -205,14 +205,14 @@ TEST (regression_irwr_rollback_invalid_wal_header)
 
   // TXN 4 (auto): INSERT ofst=0 nelem=53797
   {
-    u32 *data = i_malloc (53797 * sizeof (u32), 1, NULL);
+    u32 *data = default_mem.i_malloc (&default_mem, 53797 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     for (int i = 0; i < 53797; ++i)
     {
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert testvar %d %d", data, 0, 53797), 53797);
-    i_free (data);
+    default_mem.i_free (&default_mem, data);
   }
 
   // TXN 5 (auto): WRITE start=23070 stride=7888 stop=54622 nelems=4
@@ -280,14 +280,14 @@ TEST (regression_irwr_rollback_invalid_wal_header)
 
   // INSERT ofst=22727 nelem=73857
   {
-    u32 *data = i_malloc (73857 * sizeof (u32), 1, NULL);
+    u32 *data = default_mem.i_malloc (&default_mem, 73857 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     for (int i = 0; i < 73857; ++i)
     {
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert testvar %d %d", data, 22727, 73857), 73857);
-    i_free (data);
+    default_mem.i_free (&default_mem, data);
   }
 
   // REMOVE start=5509 stride=92363 stop=190235 nelems=2
@@ -298,14 +298,14 @@ TEST (regression_irwr_rollback_invalid_wal_header)
 
   // INSERT ofst=8986 nelem=15959
   {
-    u32 *data = i_malloc (15959 * sizeof (u32), 1, NULL);
+    u32 *data = default_mem.i_malloc (&default_mem, 15959 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     for (int i = 0; i < 15959; ++i)
     {
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert testvar %d %d", data, 8986, 15959), 15959);
-    i_free (data);
+    default_mem.i_free (&default_mem, data);
   }
 
   // READ start=118059 stride=13676 stop=145411 nelems=2
@@ -326,14 +326,14 @@ TEST (regression_irwr_rollback_invalid_wal_header)
 
   // INSERT ofst=29193 nelem=27045
   {
-    u32 *data = i_malloc (27045 * sizeof (u32), 1, NULL);
+    u32 *data = default_mem.i_malloc (&default_mem, 27045 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     for (int i = 0; i < 27045; ++i)
     {
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert testvar %d %d", data, 29193, 27045), 27045);
-    i_free (data);
+    default_mem.i_free (&default_mem, data);
   }
 
   // READ start=39413 stride=49536 stop=88949 nelems=1
@@ -558,7 +558,7 @@ TEST (nsdb_delete_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *src = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *src = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       src[i] = (u32)randu32 ();
@@ -576,15 +576,15 @@ TEST (nsdb_delete_txn)
       test_assert_int_equal (nsdb_var_len (var), ITERS);
       nsdb_var_free (var);
 
-      u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+      u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
       nsdb_fexecute (db, "read foo[:]", dst);
       for (int j = 0; j < ITERS; ++j)
       {
         test_assert_int_equal (dst[j], src[j]);
       }
-      i_free (dst);
+      default_mem.i_free (&default_mem, dst);
     }
-    i_free (src);
+    default_mem.i_free (&default_mem, src);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -625,7 +625,7 @@ TEST (nsdb_insert_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *src = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *src = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       src[i] = (u32)randu32 ();
@@ -640,14 +640,14 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_var_len (var), ITERS);
     nsdb_var_free (var);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], src[i]);
     }
-    i_free (src);
-    i_free (dst);
+    default_mem.i_free (&default_mem, src);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -663,7 +663,7 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
 
-    u32 *src = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *src = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       src[i] = (u32)randu32 ();
@@ -677,7 +677,7 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_var_len (var), 0);
     nsdb_var_free (var);
 
-    i_free (src);
+    default_mem.i_free (&default_mem, src);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -688,14 +688,14 @@ TEST (nsdb_insert_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *initial = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       initial[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS), ITERS);
 
-    u32 *extra = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *extra = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       extra[i] = (u32)randu32 ();
@@ -715,15 +715,15 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_var_len (var), ITERS);
     nsdb_var_free (var);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], initial[i]);
     }
-    i_free (initial);
-    i_free (extra);
-    i_free (dst);
+    default_mem.i_free (&default_mem, initial);
+    default_mem.i_free (&default_mem, extra);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -753,7 +753,7 @@ TEST (nsdb_insert_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *vals = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *vals = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       vals[i] = (u32)randu32 ();
@@ -768,14 +768,14 @@ TEST (nsdb_insert_txn)
     test_assert_int_equal (nsdb_var_len (var), ITERS);
     nsdb_var_free (var);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], vals[i]);
     }
-    i_free (vals);
-    i_free (dst);
+    default_mem.i_free (&default_mem, vals);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -786,14 +786,14 @@ TEST (nsdb_insert_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *initial = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       initial[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS), ITERS);
 
-    u32 *extra = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *extra = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       extra[i] = (u32)randu32 ();
@@ -807,15 +807,15 @@ TEST (nsdb_insert_txn)
       nsdb_var_free (var);
     }
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], initial[i]);
     }
-    i_free (initial);
-    i_free (extra);
-    i_free (dst);
+    default_mem.i_free (&default_mem, initial);
+    default_mem.i_free (&default_mem, extra);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -825,7 +825,7 @@ TEST (nsdb_insert_txn)
     nsdb_t *db = nsdb_open ("test");
     test_assert (db != NULL);
 
-    u32 *vals = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *vals = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       vals[i] = (u32)randu32 ();
@@ -843,7 +843,7 @@ TEST (nsdb_insert_txn)
       nsdb_fexecute (db, "read var_%d[:]", &dst, i);
       test_assert_int_equal (dst, vals[i]);
     }
-    i_free (vals);
+    default_mem.i_free (&default_mem, vals);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 }
@@ -857,8 +857,8 @@ TEST (nsdb_write_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    u32 *patch   = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *initial = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
+    u32 *patch   = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       initial[i] = (u32)randu32 ();
@@ -870,15 +870,15 @@ TEST (nsdb_write_txn)
     nsdb_fexecute (db, "write foo[0:%d:1]", patch, ITERS);
     test_assert_int_equal (nsdb_commit (db), 0);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], patch[i]);
     }
-    i_free (initial);
-    i_free (patch);
-    i_free (dst);
+    default_mem.i_free (&default_mem, initial);
+    default_mem.i_free (&default_mem, patch);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -889,8 +889,8 @@ TEST (nsdb_write_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
-    u32 *patch   = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *initial = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
+    u32 *patch   = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       initial[i] = (u32)randu32 ();
@@ -902,15 +902,15 @@ TEST (nsdb_write_txn)
     nsdb_fexecute (db, "write foo[0:%d:1]", patch, ITERS);
     test_assert_int_equal (nsdb_rollback (db), 0);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     nsdb_fexecute (db, "read foo[:]", dst);
     for (int i = 0; i < ITERS; ++i)
     {
       test_assert_int_equal (dst[i], initial[i]);
     }
-    i_free (initial);
-    i_free (patch);
-    i_free (dst);
+    default_mem.i_free (&default_mem, initial);
+    default_mem.i_free (&default_mem, patch);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -921,13 +921,13 @@ TEST (nsdb_write_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *data = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *data = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       data[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert foo %d %d", data, 0, ITERS), ITERS);
-    i_free (data);
+    default_mem.i_free (&default_mem, data);
 
     for (int i = 0; i < ITERS; ++i)
     {
@@ -949,14 +949,14 @@ TEST (nsdb_write_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *shadow = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *shadow = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       shadow[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert foo %d %d", shadow, 0, ITERS), ITERS);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       int idx     = randu32 () % ITERS;
@@ -969,8 +969,8 @@ TEST (nsdb_write_txn)
         test_assert_int_equal (dst[j], shadow[j]);
       }
     }
-    i_free (shadow);
-    i_free (dst);
+    default_mem.i_free (&default_mem, shadow);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -981,14 +981,14 @@ TEST (nsdb_write_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *initial = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *initial = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       initial[i] = (u32)randu32 ();
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert foo %d %d", initial, 0, ITERS), ITERS);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       int idx = randu32 () % ITERS;
@@ -1002,8 +1002,8 @@ TEST (nsdb_write_txn)
         test_assert_int_equal (dst[j], initial[j]);
       }
     }
-    i_free (initial);
-    i_free (dst);
+    default_mem.i_free (&default_mem, initial);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 
@@ -1014,14 +1014,14 @@ TEST (nsdb_write_txn)
     test_assert (db != NULL);
     test_assert_int_equal (nsdb_fexecute (db, "create foo u32", NULL), 0);
 
-    u32 *data = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *data = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < ITERS; ++i)
     {
       data[i] = 0;
     }
     test_assert_int_equal (nsdb_fexecute (db, "insert foo %d %d", data, 0, ITERS), ITERS);
 
-    u32 *dst = i_malloc (ITERS * sizeof (u32), 1, NULL);
+    u32 *dst = default_mem.i_malloc (&default_mem, ITERS * sizeof (u32), 1, NULL);
     for (int i = 0; i < REOPEN_ITERS; ++i)
     {
       u32 val   = (u32)randu32 ();
@@ -1041,8 +1041,8 @@ TEST (nsdb_write_txn)
         test_assert_int_equal (dst[j], data[j]);
       }
     }
-    i_free (data);
-    i_free (dst);
+    default_mem.i_free (&default_mem, data);
+    default_mem.i_free (&default_mem, dst);
     test_assert_int_equal (nsdb_close (db), 0);
   }
 }

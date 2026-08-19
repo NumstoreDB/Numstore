@@ -5,7 +5,7 @@ CFLAGS  			:= -Wall -Wextra -std=c11 -I$(shell pwd)/src -DTESTING -Wno-unused-pa
 RUSTC     := rustc
 RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
-SUBDIRS := src/core src/nscore src/nsserver src/numstore src/smartfiles
+SUBDIRS := src/core src/nscore src/nsserver src/smartfiles src/numstore
 
 OUT_DIR 	:= $(CURDIR)/build
 BIN_DIR 	:= $(OUT_DIR)/bin

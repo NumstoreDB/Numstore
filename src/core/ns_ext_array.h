@@ -31,12 +31,13 @@ struct stride;
 
 struct ext_array
 {
-  u8 *data;
-  u32 len;
-  u32 cap;
+  struct i_mem mem;
+  u8          *data;
+  u32          len;
+  u32          cap;
 };
 
-struct ext_array ext_array_create (void);
+struct ext_array ext_array_create ();
 void             ext_array_free (struct ext_array *r);
 
 i64 ext_array_insert (struct ext_array *r, u32 ofst, const void *src, u32 slen, error *e);

@@ -19,7 +19,7 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/ns_rope_algorithms.h"
 #include "nscore/ns_node_updates.h"
@@ -966,7 +966,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
 
   if (rlen > 0)
   {
-    right = i_malloc (rlen, sizeof *right, &f->e);
+    right = i_malloc (f->mem, rlen, sizeof *right, &f->e);
 
     // Ensure they are unique - TODO - make this better
     for (u32 i = 0; i < rlen; ++i)
@@ -977,7 +977,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
 
   if (llen > 0)
   {
-    left = i_malloc (llen, sizeof *left, &f->e);
+    left = i_malloc (f->mem, llen, sizeof *left, &f->e);
 
     // Ensure they are unique
     for (u32 i = 0; i < llen; ++i)
@@ -1011,8 +1011,8 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
 
   ns_rebalance (&rebalance, &f->e);
 
-  i_cfree (right);
-  i_cfree (left);
+  i_cfree (f->mem, right);
+  i_cfree (f->mem, left);
   nupd_free (output);
   nupd_free (input);
 

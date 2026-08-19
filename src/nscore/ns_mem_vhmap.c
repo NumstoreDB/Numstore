@@ -23,7 +23,7 @@
 #include "core/ns_numerics.h" // randu32
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"           // i_malloc
+#include "core/os/ns_memory.h"       // i_malloc
 #include "core/testing/ns_testing.h" // TEST
 #include "nscore/ns_variables.h"     // variable
 #include "nscore/types/ns_types.h"
@@ -39,7 +39,7 @@ struct var_frame
 struct mem_vhmap *
 mem_vhmap_create (error *e)
 {
-  struct mem_vhmap *ret = i_malloc (1, sizeof *ret, e);
+  struct mem_vhmap *ret = default_mem.i_malloc (&default_mem, 1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
@@ -48,7 +48,7 @@ mem_vhmap_create (error *e)
   ret->vhasht = htable_create (256, e);
   if (ret->vhasht == NULL)
   {
-    i_free (ret);
+    default_mem.i_free (&default_mem, ret);
     return NULL;
   }
 
@@ -71,7 +71,7 @@ mem_vhmap_free (struct mem_vhmap *db)
   htable_foreach (db->vhasht, var_frame_free, NULL);
   slab_alloc_destroy (&db->alloc);
   htable_free (db->vhasht);
-  i_free (db);
+  default_mem.i_free (&default_mem, db);
 }
 
 struct copy_ctx

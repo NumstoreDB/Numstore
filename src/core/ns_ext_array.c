@@ -22,13 +22,14 @@
 #include "core/ns_logging.h"
 #include "core/ns_stride.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 
 struct ext_array
 ext_array_create (void)
 {
   return (struct ext_array){
+      .mem  = default_mem (),
       .data = NULL,
       .len  = 0,
       .cap  = 0,
@@ -40,7 +41,7 @@ ext_array_free (struct ext_array *r)
 {
   if (r->data)
   {
-    i_free (r->data);
+    i_free (r->mem, r->data);
   }
   r->data = NULL;
   r->len  = 0;
@@ -52,7 +53,7 @@ ext_array_reserve (struct ext_array *r, const u32 cap, error *e)
 {
   if (cap > r->cap)
   {
-    u8 *data = i_realloc_right (r->data, r->cap, cap * 2, 1, e);
+    u8 *data = i_realloc (r->mem, r->data, cap * 2, 1, e);
     if (data == NULL)
     {
       return error_trace (e);
@@ -75,7 +76,7 @@ ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u3
   const u32 tlen = r->len - ofst;
   if (tlen > 0)
   {
-    u8 *tail = i_malloc (tlen, 1, e);
+    u8 *tail = i_malloc (r->mem, tlen, 1, e);
     if (tail == NULL)
     {
       return error_trace (e);
@@ -83,7 +84,7 @@ ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u3
     memcpy (tail, r->data + ofst, tlen);
     memcpy (r->data + ofst, src, slen);
     memcpy (r->data + ofst + slen, tail, tlen);
-    i_free (tail);
+    i_free (r->mem, tail);
   }
   else
   {
@@ -259,9 +260,9 @@ TEST (ext_array_insert_read)
     const i64 n       = ext_array_read (
         &a,
         (struct stride){
-            .start  = 0,
-            .stride = 1,
-            .nelems = 5,
+                  .start  = 0,
+                  .stride = 1,
+                  .nelems = 5,
         },
         sizeof (u32),
         dest,
@@ -341,9 +342,9 @@ TEST (ext_array_insert_read)
     const i64 n       = ext_array_read (
         &a,
         (struct stride){
-            .start  = 0,
-            .stride = 2,
-            .nelems = 3,
+                  .start  = 0,
+                  .stride = 2,
+                  .nelems = 3,
         },
         sizeof (u32),
         dest,
@@ -368,9 +369,9 @@ TEST (ext_array_insert_read)
     const i64 n        = ext_array_read (
         &a,
         (struct stride){
-            .start  = 1,
-            .stride = 1,
-            .nelems = 10,
+                   .start  = 1,
+                   .stride = 1,
+                   .nelems = 10,
         },
         sizeof (u32),
         dest,
@@ -398,9 +399,9 @@ TEST (ext_array_write)
     const i64 n       = ext_array_write (
         &a,
         (struct stride){
-            .start  = 2,
-            .stride = 1,
-            .nelems = 1,
+                  .start  = 2,
+                  .stride = 1,
+                  .nelems = 1,
         },
         sizeof (u32),
         patch,
@@ -435,9 +436,9 @@ TEST (ext_array_write)
     const i64 n       = ext_array_write (
         &a,
         (struct stride){
-            .start  = 0,
-            .stride = 2,
-            .nelems = 3,
+                  .start  = 0,
+                  .stride = 2,
+                  .nelems = 3,
         },
         sizeof (u32),
         patch,
@@ -476,9 +477,9 @@ TEST (ext_array_write)
     const i64 n       = ext_array_write (
         &a,
         (struct stride){
-            .start  = 2,
-            .stride = 1,
-            .nelems = 3,
+                  .start  = 2,
+                  .stride = 1,
+                  .nelems = 3,
         },
         sizeof (u32),
         patch,
@@ -504,9 +505,9 @@ TEST (ext_array_remove)
     const i64 n       = ext_array_remove (
         &a,
         (struct stride){
-            .start  = 2,
-            .stride = 1,
-            .nelems = 1,
+                  .start  = 2,
+                  .stride = 1,
+                  .nelems = 1,
         },
         sizeof (u32),
         &removed,
@@ -625,9 +626,9 @@ TEST (ext_array_remove)
     const i64 n          = ext_array_remove (
         &a,
         (struct stride){
-            .start  = 0,
-            .stride = 2,
-            .nelems = 3,
+                     .start  = 0,
+                     .stride = 2,
+                     .nelems = 3,
         },
         sizeof (u32),
         removed,

@@ -23,7 +23,7 @@
 #include "core/ns_logging.h"
 #include "core/ns_stride.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
@@ -76,7 +76,8 @@ smfile_data_writer_open (const char *path)
   {
     return NULL;
   }
-  struct data_writer *writer = i_malloc (1, sizeof *writer, &((struct nsdb *)smf)->e);
+  struct data_writer *writer =
+      default_mem.i_malloc (&default_mem, 1, sizeof *writer, &((struct nsdb *)smf)->e);
   if (writer == NULL)
   {
     smfile_close (smf);
@@ -91,7 +92,7 @@ int
 smfile_data_writer_close (struct data_writer *w)
 {
   int ret = smfile_close (w->ctx);
-  i_free (w);
+  default_mem.i_free (&default_mem, w);
   return ret;
 }
 

@@ -20,7 +20,8 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 
 /******************************************************************************
@@ -36,18 +37,18 @@ DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, { ASSERT (w); })
 struct wal_ostream *
 walos_open (const char *fname, error *e)
 {
-  struct wal_ostream *ret = i_malloc (1, sizeof *ret, e);
+  struct wal_ostream *ret = default_mem.i_malloc (&default_mem, 1, sizeof *ret, e);
   if (ret == NULL)
   {
     return NULL;
   }
 
-  if (i_open_w (&ret->fd, fname, e))
+  if (default_fsvtable.i_open_w (&default_fsvtable, &ret->fd, fname, e))
   {
     goto err_free;
   }
 
-  const i64 len = i_seek (&ret->fd, 0, I_SEEK_END, e);
+  const i64 len = ret->fd.fvtable->i_seek (&ret->fd, 0, I_SEEK_END, e);
   if (len < 0)
   {
     goto err_close;
@@ -61,9 +62,9 @@ walos_open (const char *fname, error *e)
   return ret;
 
 err_close:
-  i_close (&ret->fd, e);
+  ret->fd.fvtable->i_close (&ret->fd, e);
 err_free:
-  i_free (ret);
+  default_mem.i_free (&default_mem, ret);
   return NULL;
 }
 
@@ -74,15 +75,15 @@ TEST (walos_open)
 
   TEST_CASE ("Red Path - No Memory")
   {
-    void *(*backup) (i_vmem *, u32, u32, error *) = default_vmem.i_malloc;
-    default_vmem.i_malloc                         = i_malloc_nomem;
+    void *(*backup) (i_mem *, u32, u32, error *) = default_mem.i_malloc;
+    default_mem.i_malloc                         = i_malloc_nomem;
 
     struct wal_ostream *wos = walos_open ("foo", &e);
     test_assert (wos == NULL);
     e.cause_code = SUCCESS;
     e.cmlen      = 0;
 
-    default_vmem.i_malloc = backup;
+    default_mem.i_malloc = backup;
   }
 
   TEST_CASE ("Red Path - can't open file")
@@ -120,8 +121,8 @@ walos_close (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
   walos_flush_all (w, e);
-  i_close (&w->fd, e);
-  i_free (w);
+  w->fd.fvtable->i_close (&w->fd, e);
+  default_mem.i_free (&default_mem, w);
   return error_trace (e);
 }
 
@@ -129,8 +130,8 @@ err_t
 walos_crash (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
-  i_close (&w->fd, e);
-  i_free (w);
+  w->fd.fvtable->i_close (&w->fd, e);
+  default_mem.i_free (&default_mem, w);
   return error_trace (e);
 }
 
@@ -149,7 +150,7 @@ walos_flush_impl (struct wal_ostream *w, error *e)
   }
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
-  if (i_fsync (&w->fd, e))
+  if (w->fd.fvtable->i_fsync (&w->fd, e))
   {
     panic ("Wal fsync failed");
   }
@@ -219,11 +220,11 @@ slsn
 walos_truncate (struct wal_ostream *w, error *e)
 {
   latch_lock (&w->l);
-  if (i_truncate (&w->fd, 0, e))
+  if (w->fd.fvtable->i_truncate (&w->fd, 0, e))
   {
     goto theend;
   }
-  if (i_seek (&w->fd, 0, I_SEEK_SET, e))
+  if (w->fd.fvtable->i_seek (&w->fd, 0, I_SEEK_SET, e))
   {
     goto theend;
   }

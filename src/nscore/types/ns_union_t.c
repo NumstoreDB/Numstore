@@ -24,7 +24,7 @@
 #include "core/ns_platform.h"
 #include "core/ns_serial.h"
 #include "core/ns_string.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/ns_variables.h"
@@ -382,7 +382,7 @@ TEST (union_t_snprintf)
   error       e        = error_create ();
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (ret);
+  default_mem.i_free (&default_mem, ret);
 }
 #endif
 
