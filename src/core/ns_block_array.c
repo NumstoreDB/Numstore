@@ -40,7 +40,8 @@ block_array_create (const u32 cap_per_node, struct i_mem mem, error *e)
     return ret;
   }
 
-  slab_alloc_init (&ret->block_alloc, sizeof (struct block) + cap_per_node, 512);
+  ret->mem = mem;
+  slab_alloc_init (&ret->block_alloc, mem, sizeof (struct block) + cap_per_node, 512);
   ret->cap_per_node = cap_per_node;
   ret->head         = NULL;
   ret->tlen         = 0;
@@ -483,9 +484,9 @@ block_array_remove (
     {
       u32 next = state.next;
       next     = MIN (next,
-                  r->cap_per_node - wbidx); // Writable
+                      r->cap_per_node - wbidx); // Writable
       next     = MIN (next,
-                  rcur->len - rbidx); // Readable
+                      rcur->len - rbidx); // Readable
 
       if (next > 0)
       {
@@ -550,7 +551,7 @@ block_array_remove (
       // except without state
       u32 next = r->cap_per_node - wbidx; // Writable
       next     = MIN (next,
-                  rcur->len - rbidx); // Readable
+                      rcur->len - rbidx); // Readable
 
       if (next > 0)
       {
@@ -664,8 +665,6 @@ block_array_data_writer (struct data_writer *dest, struct block_array *arr)
 #ifdef TESTING
 TEST (block_insert_read)
 {
-  struct i_mem mem = default_mem ();
-
   TEST_CASE ("basic")
   {
     error e = error_create ();
@@ -866,9 +865,9 @@ TEST (block_insert_read)
     i64 nread   = block_array_read (
         b,
         (struct stride){
-              .start  = 1,
-              .stride = 1,
-              .nelems = 6,
+            .start  = 1,
+            .stride = 1,
+            .nelems = 6,
         },
         sizeof (u32),
         dest
@@ -907,9 +906,9 @@ TEST (block_insert_read)
       i64 nread     = block_array_read (
           b,
           (struct stride){
-                  .start  = 0,
-                  .stride = 1,
-                  .nelems = nelems,
+              .start  = 0,
+              .stride = 1,
+              .nelems = nelems,
           },
           sizeof (u32),
           dest
@@ -925,8 +924,6 @@ TEST (block_insert_read)
 
 TEST (block_insert_remove_read)
 {
-  struct i_mem mem = default_mem ();
-
   TEST_CASE ("remove_from_middle")
   {
     error               e = error_create ();
@@ -1052,8 +1049,6 @@ TEST (block_insert_remove_read)
 
 TEST (block_insert_write_read)
 {
-  struct i_mem mem = default_mem ();
-
   TEST_CASE ("overwrite_middle")
   {
     error               e = error_create ();
@@ -1066,9 +1061,9 @@ TEST (block_insert_write_read)
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 1,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 1,
         },
         sizeof (u32),
         patch
@@ -1106,9 +1101,9 @@ TEST (block_insert_write_read)
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 0,
-                  .stride = 1,
-                  .nelems = 4,
+            .start  = 0,
+            .stride = 1,
+            .nelems = 4,
         },
         sizeof (u32),
         patch
@@ -1146,9 +1141,9 @@ TEST (block_insert_write_read)
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 0,
-                  .stride = 2,
-                  .nelems = 3,
+            .start  = 0,
+            .stride = 2,
+            .nelems = 3,
         },
         sizeof (u32),
         patch
@@ -1186,9 +1181,9 @@ TEST (block_insert_write_read)
     const i64 n       = block_array_write (
         b,
         (struct stride){
-                  .start  = 2,
-                  .stride = 1,
-                  .nelems = 1,
+            .start  = 2,
+            .stride = 1,
+            .nelems = 1,
         },
         sizeof (u32),
         patch
@@ -1217,9 +1212,7 @@ TEST (block_insert_write_read)
 
 TEST (block_random)
 {
-  error        e   = error_create ();
-  struct i_mem mem = default_mem ();
-
+  error e = error_create ();
   // Block sizes to test
   const u32 sizes[]  = {1, 2, 3, 4, 5, 10, 100, 500, 1000, 5000, 10000};
   const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
@@ -1237,6 +1230,7 @@ TEST (block_random)
     block_array_data_writer (&sut, block_arr);
 
     struct dvalidtr d = {
+        .mem     = mem,
         .sut     = sut,
         .ref     = ref,
         .isvalid = NULL,

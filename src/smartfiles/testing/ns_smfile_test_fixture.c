@@ -77,7 +77,7 @@ smfile_data_writer_open (const char *path)
     return NULL;
   }
   struct data_writer *writer =
-      default_mem.i_malloc (&default_mem, 1, sizeof *writer, &((struct nsdb *)smf)->e);
+      i_malloc (default_mem (), 1, sizeof *writer, &((struct nsdb *)smf)->e);
   if (writer == NULL)
   {
     smfile_close (smf);
@@ -92,7 +92,7 @@ int
 smfile_data_writer_close (struct data_writer *w)
 {
   int ret = smfile_close (w->ctx);
-  default_mem.i_free (&default_mem, w);
+  i_free (default_mem (), w);
   return ret;
 }
 
@@ -120,6 +120,7 @@ TEST (smfile_data_writer)
     struct data_writer *sut = smfile_data_writer_open ("test");
 
     struct dvalidtr d = {
+        .mem     = default_mem (),
         .sut     = *sut,
         .ref     = ref,
         .isvalid = NULL,

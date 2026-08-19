@@ -303,7 +303,7 @@ ns_remove (struct ns_remove_params *params, error *e)
   s.writer    = page_h_xfer_ownership (&seek.pg);
   s.write_idx = seek.lidx;
 
-  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), e);
+  s.output = nupd_init (page_h_pgno (&s.writer), dl_used (page_h_ro (&s.writer)), s.p->mem, e);
   if (s.output == NULL)
   {
     goto failed;

@@ -152,11 +152,11 @@ frame_unref (struct lockt *t, struct lockt_frame *frame)
 }
 
 err_t
-lockt_init (struct lockt *t, error *e)
+lockt_init (struct lockt *t, struct i_mem mem, error *e)
 {
-  slab_alloc_init (&t->lock_alloc, sizeof (struct lockt_frame), 1000);
+  slab_alloc_init (&t->lock_alloc, mem, sizeof (struct lockt_frame), 1000);
 
-  t->table = htable_create (1000, e);
+  t->table = htable_create (1000, mem, e);
   if (t->table == NULL)
   {
     return error_trace (e);

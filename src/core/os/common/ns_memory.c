@@ -125,8 +125,7 @@ def_realloc (void *v, void *ptr, const u32 nelem, const u32 size, error *e)
 #ifdef TESTING
 TEST (i_realloc_basic)
 {
-  error        e   = error_create ();
-  struct i_mem mem = default_mem ();
+  error e = error_create ();
 
   u32 *a = i_realloc (mem, NULL, 10, sizeof *a, &e); // behaves like malloc
   for (u32 i = 0; i < 10; i++)
@@ -140,9 +139,6 @@ TEST (i_realloc_basic)
     test_assert (b[i] == i);
   }
 
-  // BEFORE default_mem.i_free (&default_mem, b);
-
-  // AFTER:
   i_free (mem, b);
 }
 #endif
@@ -161,3 +157,12 @@ static const struct i_mem_table default_mem_table = {
     .realloc = def_realloc,
     .free    = def_free,
 };
+
+struct i_mem
+default_mem (void)
+{
+  return (struct i_mem){
+      .table = &default_mem_table,
+      .data  = NULL,
+  };
+}

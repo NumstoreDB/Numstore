@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "nscore/wal/ns_wal_istream.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -23,8 +25,6 @@
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
-
-struct wal_istream;
 
 /******************************************************************************
  * SECTION: WAL Input Stream
@@ -46,9 +46,10 @@ DEFINE_DBG_ASSERT (struct wal_istream, wal_istream, w, { ASSERT (w); })
 
 struct wal_istream
 {
-  i_file fd;     // The file we're reading
-  lsn    curlsn; // Where we are within the entire log file
-  lsn    lsnidx; // Where we are within the current log
+  struct i_mem mem;
+  i_file       fd;     // The file we're reading
+  lsn          curlsn; // Where we are within the entire log file
+  lsn          lsnidx; // Where we are within the current log
 
   latch latch;
 };
@@ -57,13 +58,15 @@ struct wal_istream
 /// LOGR Mode
 
 struct wal_istream *
-walis_open (const char *fname, error *e)
+walis_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
 {
-  struct wal_istream *dest = default_mem.i_malloc (&default_mem, 1, sizeof *dest, e);
+  struct wal_istream *dest = i_malloc (mem, 1, sizeof *dest, e);
   if (dest == NULL)
   {
     return NULL;
   }
+
+  dest->mem = mem;
 
   /**
    * We'll open in write mode too
@@ -72,24 +75,24 @@ walis_open (const char *fname, error *e)
    *
    * In the future I forsee this going away.
    */
-  if (default_fsvtable.i_open_r (&default_fsvtable, &dest->fd, fname, e))
+  if (i_open_r (fs, &dest->fd, fname, e))
   {
-    default_mem.i_free (&default_mem, dest);
+    i_free (mem, dest);
     return NULL;
   }
 
-  const i64 len = dest->fd.fvtable->i_file_size (&dest->fd, e);
+  const i64 len = i_file_size (&dest->fd, e);
   if (len < 0)
   {
-    dest->fd.fvtable->i_close (&dest->fd, e);
-    default_mem.i_free (&default_mem, dest);
+    i_close (&dest->fd, e);
+    i_free (mem, dest);
     return NULL;
   }
 
-  if (dest->fd.fvtable->i_seek (&dest->fd, 0, I_SEEK_SET, e) < 0)
+  if (i_seek (&dest->fd, 0, I_SEEK_SET, e) < 0)
   {
-    dest->fd.fvtable->i_close (&dest->fd, e);
-    default_mem.i_free (&default_mem, dest);
+    i_close (&dest->fd, e);
+    i_free (mem, dest);
     return NULL;
   }
 
@@ -107,32 +110,17 @@ TEST (walis_open)
 {
   error e = error_create ();
 
-  TEST_CASE ("Red Path - can't open file")
+  TEST_CASE ("happy path")
   {
-    err_t (*backup) (i_file_system_vtable *vfs, i_file *dest, const char *fname, error *e) =
-        default_fsvtable.i_open_r;
+    i_remove_quiet (fs, "foo", &e);
+    i_file fp = {0};
+    i_open_w (fs, &fp, "foo", &e);
+    i_close (&fp, &e);
 
-    default_fsvtable.i_open_r = i_open_errio;
-
-    struct wal_istream *wis = walis_open ("foo", &e);
-    test_assert (wis == NULL);
-    e.cause_code = SUCCESS;
-    e.cmlen      = 0;
-
-    default_fsvtable.i_open_r = backup;
-  }
-
-  TEST_CASE ("Red Path - can't seek")
-  {
-    i64 (*backup) (const i_file *fp, u64 offset, seek_t whence, error *e) = default_fvtable.i_seek;
-    default_fvtable.i_seek                                                = i_seek_errio;
-
-    struct wal_istream *wis = walis_open ("foo", &e);
-    test_assert (wis == NULL);
-    e.cause_code = SUCCESS;
-    e.cmlen      = 0;
-
-    default_fvtable.i_seek = backup;
+    struct wal_istream *wis = walis_open ("foo", mem, fs, &e);
+    test_assert (wis != NULL);
+    walis_close (wis, &e);
+    i_remove_quiet (fs, "foo", &e);
   }
 }
 #endif
@@ -141,8 +129,8 @@ err_t
 walis_close (struct wal_istream *w, error *e)
 {
   DBG_ASSERT (wal_istream, w);
-  w->fd.fvtable->i_close (&w->fd, e);
-  default_mem.i_free (&default_mem, w);
+  i_close (&w->fd, e);
+  i_free (w->mem, w);
   return error_trace (e);
 }
 
@@ -153,7 +141,7 @@ walis_seek (struct wal_istream *w, const lsn pos, error *e)
 
   DBG_ASSERT (wal_istream, w);
 
-  const i64 res = w->fd.fvtable->i_seek (&w->fd, pos, I_SEEK_SET, e);
+  const i64 res = i_seek (&w->fd, pos, I_SEEK_SET, e);
   if (res < 0)
   {
     latch_unlock (&w->latch);
@@ -194,7 +182,7 @@ walis_read_all (
     *rlsn = w->curlsn;
   }
 
-  const i64 bread = w->fd.fvtable->i_read_all (&w->fd, data, len, e);
+  const i64 bread = i_read_all (&w->fd, data, len, e);
   if (bread < 0)
   {
     latch_unlock (&w->latch);
@@ -252,7 +240,7 @@ err_t
 walis_crash (struct wal_istream *w, error *e)
 {
   DBG_ASSERT (wal_istream, w);
-  w->fd.fvtable->i_close (&w->fd, e);
-  default_mem.i_free (&default_mem, w);
+  i_close (&w->fd, e);
+  i_free (w->mem, w);
   return error_trace (e);
 }

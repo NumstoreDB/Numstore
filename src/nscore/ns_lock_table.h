@@ -32,6 +32,7 @@
 #include "core/ns_platform.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_memory.h"
 
 /******************************************************************************
  * SECTION: LT Lock
@@ -122,7 +123,7 @@ struct lockt
   latch             l;          // Latch for modifications
 };
 
-err_t lockt_init (struct lockt *t, error *e);
+err_t lockt_init (struct lockt *t, struct i_mem mem, error *e);
 void  lockt_destroy (struct lockt *t);
 void  lockt_crash (struct lockt *t);
 

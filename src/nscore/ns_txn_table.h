@@ -143,10 +143,10 @@ struct txn
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn void txn_init(struct txn *dest, txid tid, struct txn_data data)
+ * @fn void txn_init(struct txn *dest, txid tid, struct txn_data data, struct i_mem mem)
  * @brief Allocates and maps tracking fields to complete initialization loops.
  */
-void txn_init (struct txn *dest, txid tid, struct txn_data data);
+void txn_init (struct txn *dest, txid tid, struct txn_data data, struct i_mem mem);
 
 /**
  * @fn void txn_key_init(struct txn *dest, txid tid)
@@ -176,31 +176,6 @@ void txn_update (struct txn *t, enum tx_state state, lsn last, lsn undo_next);
  * @brief Single field updates altering the tracked ARIES lifecycle path.
  */
 void txn_update_state (struct txn *t, enum tx_state new_state);
-
-/**
- * @fn void txn_update_last_undo(struct txn *t, lsn last_lsn, lsn undo_next_lsn)
- * @brief Simultaneously resets active operational log pointer boundaries.
- */
-void txn_update_last_undo (struct txn *t, lsn last_lsn, lsn undo_next_lsn);
-
-/**
- * @fn void txn_update_last_state(struct txn *t, lsn last_lsn, enum tx_state
- * new_state)
- * @brief Explicit atomic mutation matching state changes with sequence numbers.
- */
-void txn_update_last_state (struct txn *t, lsn last_lsn, enum tx_state new_state);
-
-/**
- * @fn void txn_update_last(struct txn *t, lsn last_lsn)
- * @brief Extends maximum sequence tracking lines as logs append messages.
- */
-void txn_update_last (struct txn *t, lsn last_lsn);
-
-/**
- * @fn void txn_update_undo_next(struct txn *t, lsn undo_next)
- * @brief Alters retrospective scan tracking offsets during rollback phases.
- */
-void txn_update_undo_next (struct txn *t, lsn undo_next);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Equality Evaluation
@@ -285,10 +260,10 @@ struct txn_table;
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn struct txn_table *txnt_open(error *e)
+ * @fn struct txn_table *txnt_open(struct i_mem mem, error *e)
  * @brief Instantiates and prepares the active transaction table context.
  */
-struct txn_table *txnt_open (error *e);
+struct txn_table *txnt_open (struct i_mem mem, error *e);
 
 /**
  * @fn void txnt_close(struct txn_table *t)
@@ -344,12 +319,6 @@ slsn txnt_max_u_undo_lsn (struct txn_table *t);
  */
 slsn txnt_min_lsn (struct txn_table *t);
 
-/**
- * @fn void i_log_txnt(int log_level, struct txn_table *t)
- * @brief Traces structural diagnostic outputs for the transaction table.
- */
-void i_log_txnt (int log_level, struct txn_table *t);
-
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Iteration & State Queries
  *----------------------------------------------------------------------------*/
@@ -380,7 +349,8 @@ bool txn_exists (const struct txn_table *t, txid tid);
 
 /**
  * @fn err_t txnt_merge_into(struct txn_table *dest, struct txn_table *src,
- * struct dbl_buffer *txn_dest, struct slab_alloc *alloc, error *e)
+ * struct dbl_buffer *txn_dest, struct slab_alloc *alloc, struct i_mem mem,
+ * error *e)
  * @brief Merges txn table [src] into [dest]
  *
  * Duplicate strategy:
@@ -395,6 +365,7 @@ err_t txnt_merge_into (
     struct txn_table  *src,
     struct dbl_buffer *txn_dest,
     struct slab_alloc *alloc,
+    struct i_mem       mem,
     error             *e
 );
 

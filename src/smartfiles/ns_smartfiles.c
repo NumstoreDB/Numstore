@@ -91,11 +91,11 @@ TEST (smfile_cleanup)
   error e = error_create ();
 
   bool exists;
-  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
+  i_file_exists (fs, "test", &exists, &e);
   test_assert (exists);
 
   smfile_cleanup ("test");
-  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
+  i_file_exists (fs, "test", &exists, &e);
   test_assert (!exists);
 }
 #endif
@@ -191,9 +191,9 @@ TEST (smfile_close)
   smfile_close (s);
 
   bool exists;
-  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
+  i_file_exists (fs, "test", &exists, &e);
   test_assert (exists);
-  default_fsvtable.i_file_exists (&default_fsvtable, "test.wal", &exists, &e);
+  i_file_exists (fs, "test.wal", &exists, &e);
   test_assert (!exists);
 }
 #endif
@@ -214,9 +214,9 @@ TEST (smfile_crash)
   smfile_crash (s);
 
   bool exists;
-  default_fsvtable.i_file_exists (&default_fsvtable, "test", &exists, &e);
+  i_file_exists (fs, "test", &exists, &e);
   test_assert (exists);
-  default_fsvtable.i_file_exists (&default_fsvtable, "test.wal", &exists, &e);
+  i_file_exists (fs, "test.wal", &exists, &e);
   test_assert (exists);
 }
 #endif

@@ -222,6 +222,7 @@ chunk_alloc_create_default (struct chunk_alloc *dest)
           .min_chunk_size    = 10,
           .max_chunk_size    = 0,
           .max_chunks        = 0,
+          .mem               = default_mem (),
       }
   );
 }

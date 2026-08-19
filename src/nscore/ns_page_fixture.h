@@ -20,6 +20,8 @@
 #include "core/ns_alloc.h"    // allocator
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32 ...etc
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 #include "nscore/ns_txn_table.h"
 #include "nscore/page/ns_page.h" // dl_data
 #include "nscore/page/ns_page_data_list.h"
@@ -40,11 +42,12 @@ struct pager;
 
 struct pgr_fixture
 {
-  error            e;
-  struct pager    *p;
-  struct allocator alloc;
-  struct txn       tx;
-  struct i_mem     mem;
+  error                e;
+  struct pager        *p;
+  struct allocator     alloc;
+  struct txn           tx;
+  struct i_mem         mem;
+  struct i_file_system fs;
 };
 
 err_t pgr_fixture_create (struct pgr_fixture *dest);
@@ -139,7 +142,6 @@ struct page_tree_builder
  *----------------------------------------------------------------------------*/
 
 err_t build_page_tree (struct page_tree_builder *builder, error *e);
-err_t page_tree_builder_release_all (struct page_tree_builder *b, error *e);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Common Trees

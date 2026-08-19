@@ -609,7 +609,7 @@ irwr_swmt_open (
   ALLOC_CLOSE (alloc);
 
   *ret = (struct irwr_swarm_test){
-      .committed         = block_array_create (512, NULL),
+      .committed         = block_array_create (512, default_mem (), NULL),
       .working           = NULL,
       .db                = nsdb_open (dbname),
       .in_txn            = 0,

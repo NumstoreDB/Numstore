@@ -1,6 +1,6 @@
 CC      			:= gcc
 CLANG_FORMAT 	:= clang-format
-CFLAGS  			:= -Wall -Wextra -std=c11 -I$(shell pwd)/src -DTESTING -Wno-unused-parameter -g
+CFLAGS  			:= -Wall -Wextra -std=c11 -I$(shell pwd)/src -DTESTING -Wno-unused-parameter -g -fsanitize=address
 
 RUSTC     := rustc
 RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort

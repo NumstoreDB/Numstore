@@ -53,6 +53,7 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
   }
 
   // Basic initialization
+  dest->mem = mem;
   latch_init (&dest->l);
   dest->flags = 0;
 
@@ -120,9 +121,7 @@ failed:
 #ifdef TESTING
 TEST (fpgr_open)
 {
-  error                e   = error_create ();
-  struct i_mem         mem = default_mem ();
-  struct i_file_system fs  = default_filesystem ();
+  error e = error_create ();
 
   _Static_assert (NS_PAGE_SIZE > 2, "NS_PAGE_SIZE should be > 2 for file_pager test");
 
@@ -229,10 +228,8 @@ failed:
 #ifdef TESTING
 TEST (fpgr_new)
 {
-  i_file               fp  = {0};
-  error                e   = error_create ();
-  struct i_mem         mem = default_mem ();
-  struct i_file_system fs  = default_filesystem ();
+  i_file fp = {0};
+  error  e  = error_create ();
 
   test_fail_if (i_open_rw (fs, &fp, "test.db", &e));
 
@@ -383,10 +380,8 @@ TEST (fpgr_read_write)
   u8 _page[NS_PAGE_SIZE];
 
   // Create a temporary file
-  i_file               fp  = {0};
-  error                e   = error_create ();
-  struct i_mem         mem = default_mem ();
-  struct i_file_system fs  = default_filesystem ();
+  i_file fp = {0};
+  error  e  = error_create ();
 
   test_fail_if (i_open_rw (fs, &fp, "test.db", &e));
 

@@ -18,10 +18,12 @@
 #include <inttypes.h>
 #include <stdbool.h>
 #ifdef TESTING
-#  include "core/ns_csx_assert.h" // ASSERT
-#  include "core/ns_logging.h"    // i_log_info
-#  include "core/ns_platform.h"   // HEADER_FUNC
-#  include "core/ns_utils.h"      // FPREFIX_STR
+#  include "core/ns_csx_assert.h"    // ASSERT
+#  include "core/ns_logging.h"       // i_log_info
+#  include "core/ns_platform.h"      // HEADER_FUNC
+#  include "core/ns_utils.h"         // FPREFIX_STR
+#  include "core/os/ns_filesystem.h" // struct i_file_system, default_filesystem
+#  include "core/os/ns_memory.h"     // struct i_mem, default_mem
 
 extern int test_ret;
 
@@ -39,9 +41,13 @@ enum
  * @brief Macro for defining new tests
  ******************************************************************************/
 
-#  define TEST(name)            \
-    void __test__##name (void); \
-    void __test__##name (void)
+#  define TEST(name)                                                             \
+    static void __test_body__##name (struct i_mem mem, struct i_file_system fs); \
+    void        __test__##name (void)                                            \
+    {                                                                            \
+      __test_body__##name (default_mem (), default_filesystem ());               \
+    }                                                                            \
+    static void __test_body__##name (struct i_mem mem, struct i_file_system fs)
 
 #  define TEST_CASE(fmt, ...)                                                                \
     for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1), _tc_prev = test_ret; \

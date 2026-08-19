@@ -41,7 +41,7 @@ run_unit_tests (int seed, const char* filter)
   }
 
   int         failed = 0;
-  const char *failed_names[337];
+  const char *failed_names[332];
 
   
   if (!filter || strstr("block_insert_read", filter))
@@ -1925,25 +1925,6 @@ run_unit_tests (int seed, const char* filter)
     ntests++;
   }
 
-  if (!filter || strstr("i_malloc_injection", filter))
-  {
-    extern void __test__i_malloc_injection(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_malloc_injection");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__i_malloc_injection();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "i_malloc_injection");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "i_malloc_injection";
-    }
-    ntests++;
-  }
-
   if (!filter || strstr("i_realloc_basic", filter))
   {
     extern void __test__i_realloc_basic(void);
@@ -1959,82 +1940,6 @@ run_unit_tests (int seed, const char* filter)
     else
     {
       failed_names[failed++] = "i_realloc_basic";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("i_realloc_right", filter))
-  {
-    extern void __test__i_realloc_right(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_realloc_right");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__i_realloc_right();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "i_realloc_right");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "i_realloc_right";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("i_realloc_left", filter))
-  {
-    extern void __test__i_realloc_left(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_realloc_left");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__i_realloc_left();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "i_realloc_left");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "i_realloc_left";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("i_crealloc_right", filter))
-  {
-    extern void __test__i_crealloc_right(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_crealloc_right");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__i_crealloc_right();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "i_crealloc_right");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "i_crealloc_right";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("i_crealloc_left", filter))
-  {
-    extern void __test__i_crealloc_left(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_crealloc_left");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__i_crealloc_left();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "i_crealloc_left");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "i_crealloc_left";
     }
     ntests++;
   }

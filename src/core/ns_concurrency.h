@@ -119,7 +119,6 @@ err_t periodic_task_start (
 );
 
 err_t periodic_task_stop (struct periodic_task *t, error *e);
-void  periodic_task_wake (struct periodic_task *t);
 
 /******************************************************************************
  * SECTION: Latch

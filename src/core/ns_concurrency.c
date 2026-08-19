@@ -824,15 +824,6 @@ periodic_task_stop (struct periodic_task *t, error *e)
   return error_trace (e);
 }
 
-void
-periodic_task_wake (struct periodic_task *t)
-{
-  default_threading.i_mutex_lock (&default_threading, &t->mutex);
-  t->wake_requested = true;
-  default_threading.i_cond_signal (&default_threading, &t->wake_cond);
-  default_threading.i_mutex_unlock (&default_threading, &t->mutex);
-}
-
 /******************************************************************************
  * SECTION: Latch (tests)
  ******************************************************************************/

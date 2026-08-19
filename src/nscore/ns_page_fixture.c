@@ -67,14 +67,16 @@ pgr_fixture_create (struct pgr_fixture *dest)
     return error_trace (&dest->e);
   }
 
-  struct pager *p = pgr_open ("testdb", &dest->e);
+  dest->mem = default_mem ();
+  dest->fs  = default_filesystem ();
+
+  struct pager *p = pgr_open ("testdb", dest->mem, dest->fs, &dest->e);
   if (p == NULL)
   {
     return dest->e.cause_code;
   }
 
-  dest->mem = default_mem ();
-  dest->p   = p;
+  dest->p = p;
 
   DBG_ASSERT (pgr_fixture, dest);
 
@@ -349,28 +351,6 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
   }
 
   return 0;
-}
-
-static err_t
-page_desc_release_all (struct page_desc *b, struct pager *p, error *e)
-{
-  pgr_release (p, &b->out, b->type, e);
-
-  if (b->type == PG_INNER_NODE)
-  {
-    for (u32 i = 0; i < b->inner.clen; ++i)
-    {
-      page_desc_release_all (&b->inner.children[i], p, e);
-    }
-  }
-
-  return error_trace (e);
-}
-
-err_t
-page_tree_builder_release_all (struct page_tree_builder *b, error *e)
-{
-  return page_desc_release_all (&b->root, b->pager, e);
 }
 
 TEST (build_page_tree)
