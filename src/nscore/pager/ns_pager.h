@@ -24,11 +24,11 @@
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_filesystem.h"
-#include "nscore/ns_dirty_page_table.h"
-#include "nscore/ns_txn_table.h"
+#include "nscore/disk_pager/ns_file_pager.h"
+#include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
-#include "nscore/pager/ns_file_pager.h"
+#include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/wal/ns_wal.h"
 
 #include <stdbool.h>

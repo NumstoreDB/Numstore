@@ -23,7 +23,7 @@
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/ns_nsdb.h"
+#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
 #include "smartfiles/smartfiles.h"
 

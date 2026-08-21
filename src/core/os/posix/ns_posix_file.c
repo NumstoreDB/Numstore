@@ -15,6 +15,7 @@
 #include "core/ns_bytes.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/test/ns_test_file.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -63,6 +64,9 @@ static err_t
 _posix_close (void *_fp, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, close_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
 
   if (unlikely (close (fp->fd))) {
@@ -76,6 +80,9 @@ static err_t
 posix_fsync (void *_fp, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, fsync_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
 
   if (unlikely (fsync (fp->fd))) {
@@ -89,6 +96,9 @@ static i64
 posix_file_size (void *_fp, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, file_size_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
 
   struct stat st;
@@ -105,6 +115,9 @@ static i64
 posix_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, pread_once_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
   ASSERT (n > 0);
@@ -114,7 +127,12 @@ posix_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
 
   while (nread < n) {
     ASSERT (n > nread);
-    const ssize_t _nread = pread (fp->fd, _dest + nread, n - nread, (off_t)(offset + nread));
+
+    u64 toread = n - nread;
+    I_FILE_FAULT (fp, pread_once_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, pread_once_some_prob, toread);
+
+    const ssize_t _nread = pread (fp->fd, _dest + nread, toread, (off_t)(offset + nread));
     if (_nread == 0) {
       return (i64)nread;
     }
@@ -133,6 +151,7 @@ static err_t
 posix_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, error *e)
 {
   i_file *fp = _fp;
+
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (n > 0);
@@ -142,6 +161,14 @@ posix_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, err
 
   while (nwritten < n) {
     ASSERT (n > nwritten);
+
+    u64 towrite = n - nwritten;
+
+    // Mayb fault on write
+    I_FILE_FAULT (fp, pwrite_once_fail_prob, e);
+
+    // Or maybe only write some data
+    I_FILE_CONDITION_AMOUNT (fp, pwrite_once_some_prob, towrite);
 
     const ssize_t _nw = pwrite (fp->fd, _src + nwritten, n - nwritten, (off_t)(offset + nwritten));
 
@@ -162,6 +189,9 @@ static err_t
 posix_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, writev_all_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
   ASSERT (iovcnt > 0 && iovcnt <= 2);
@@ -220,6 +250,7 @@ static i64
 posix_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
 {
   i_file *fp = _fp;
+
   DBG_ASSERT (i_file, fp);
   ASSERT (dest);
   ASSERT (nbytes > 0);
@@ -229,7 +260,12 @@ posix_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
 
   while (nread < nbytes) {
     ASSERT (nbytes > nread);
-    const ssize_t _nread = read (fp->fd, _dest + nread, nbytes - nread);
+
+    u64 toread = nbytes - nread;
+    I_FILE_FAULT (fp, read_once_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, read_once_some_prob, toread);
+
+    const ssize_t _nread = read (fp->fd, _dest + nread, toread);
 
     if (_nread == 0) {
       return (i64)nread;
@@ -253,6 +289,7 @@ static err_t
 posix_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
 {
   i_file *fp = _fp;
+
   DBG_ASSERT (i_file, fp);
   ASSERT (src);
   ASSERT (nbytes > 0);
@@ -263,7 +300,11 @@ posix_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
   while (nwritten < nbytes) {
     ASSERT (nbytes > nwritten);
 
-    const ssize_t _nw = write (fp->fd, _src + nwritten, nbytes - nwritten);
+    u64 towrite = nbytes - nwritten;
+    I_FILE_FAULT (fp, write_once_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, write_once_some_prob, towrite);
+
+    const ssize_t _nw = write (fp->fd, _src + nwritten, towrite);
     if (unlikely (_nw < 0 && errno != EINTR)) {
       return error_causef (e, ERR_IO, "write: %s", strerror (errno));
     }
@@ -282,6 +323,9 @@ static err_t
 posix_truncate (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, truncate_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
 
   if (unlikely (ftruncate (fp->fd, (off_t)bytes) == -1)) {
@@ -295,6 +339,9 @@ static err_t
 _posix_fallocate (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, fallocate_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
 
 #  if defined(__APPLE__)
@@ -328,6 +375,9 @@ static i64
 posix_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
 {
   i_file *fp = _fp;
+
+  I_FILE_FAULT (fp, seek_fail_prob, e);
+
   DBG_ASSERT (i_file, fp);
 
   int w;
@@ -360,7 +410,7 @@ posix_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
   return (i64)ret;
 }
 
-static const struct i_file_vtable posix_file_vtable = {
+static struct i_file_vtable posix_file_vtable = {
     .close      = _posix_close,
     .fsync      = posix_fsync,
     .file_size  = posix_file_size,
@@ -372,6 +422,9 @@ static const struct i_file_vtable posix_file_vtable = {
     .truncate   = posix_truncate,
     .fallocate  = _posix_fallocate,
     .seek       = posix_seek,
+#  ifdef TESTING
+    .test_data = NULL,
+#  endif
 };
 
 i_file
@@ -381,6 +434,12 @@ create_default_file (int fd)
       .fd    = fd,
       .table = &posix_file_vtable,
   };
+}
+
+void
+register_test_file_data (struct test_file_data *data)
+{
+  posix_file_vtable.test_data = data;
 }
 
 #endif

@@ -21,10 +21,10 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
-#include "nscore/ns_nsdb.h"
-#include "nscore/ns_variables.h"
+#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
+#include "nscore/types/ns_variables.h"
 #include "numstore/numstore.h"
 
 #include <stdarg.h>
