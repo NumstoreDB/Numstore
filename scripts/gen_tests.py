@@ -24,7 +24,7 @@ def gen_tests():
                 line = content.count("\n", 0, m.start()) + 1
                 tests.append((m.group(1), path, line))
 
-    template = Path("src/unit_tests.c.in").read_text()
+    template = Path("src/tests/unit_tests.c.in").read_text()
 
     calls = ""
     for name, filepath, line in tests:
@@ -52,7 +52,7 @@ def gen_tests():
 
     out = template.replace("%CALLS%", calls)
     out = out.replace("%TEST_COUNT%", str(len(tests)))
-    Path("src/unit_tests.c").write_text(out)
-    print(f"Generated src/unit_tests.c with {len(tests)} tests.")
+    Path("src/tests/unit_tests.c").write_text(out)
+    print(f"Generated src/tests/unit_tests.c with {len(tests)} tests.")
 
 gen_tests()

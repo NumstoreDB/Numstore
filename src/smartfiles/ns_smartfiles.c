@@ -19,13 +19,13 @@
 #include "core/ns_string.h"
 #include "core/os/ns_filesystem.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/algorithms/ns_rope_algorithms.h"
-#include "nscore/algorithms/ns_var_algorithms.h"
-#include "nscore/ns_nsdb.h"
-#include "nscore/ns_txn_table.h"
-#include "nscore/ns_variables.h"
+#include "nscore/algorithms/rope/ns_rope_algorithms.h"
+#include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/types/ns_types.h"
+#include "nscore/types/ns_variables.h"
 #include "smartfiles/smartfiles.h"
 
 #include <stdbool.h>
@@ -872,6 +872,3 @@ TEST (smfile_pwrite)
   smfile_close (s);
 }
 #endif
-
-/////////////////////////////////////////////////////////////////////
-////// Size

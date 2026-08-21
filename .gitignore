@@ -69,3 +69,5 @@ zig-out/
 zig-pkg
 sample1_crud
 
+test 
+testdb

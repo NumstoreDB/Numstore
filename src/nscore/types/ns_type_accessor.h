@@ -34,6 +34,23 @@ struct type;
  * SECTION: Type Accessor
  * ----------------------------------------------------------------------------
  * @brief How to access an individual type
+ *
+ * Let's say you have a type:
+ *    create a struct { a u32, b struct { c [10][20] f32 } }
+ *
+ * A type accessor describes the rules to get a sub type of a
+ *    TAKE:
+ *
+ *        TAKE = struct { a u32, b f32 }
+ *
+ *    SELECT:
+ *
+ *        SELECT("a", TAKE) = u32
+ *        SELECT("b", SELECT("c", TAKE)) = [10][20]f32
+ *
+ *    RANGE
+ *
+ *        SELECT("a", RANGE("c", [{0, 2, 10}, {0, 2, 4}], TAKE)) = [5][2] f32
  ******************************************************************************/
 
 struct type_accessor

@@ -16,7 +16,7 @@
 
 #include "core/ns_numerics.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/ns_txn_table.h"
+#include "nscore/txn_table/ns_txn_table.h"
 
 #include <stdio.h>
 #include <string.h>

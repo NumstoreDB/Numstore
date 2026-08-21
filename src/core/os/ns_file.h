@@ -47,6 +47,10 @@ struct i_file_vtable
   err_t (*truncate) (void *fp, u64 bytes, error *e);
   err_t (*fallocate) (void *fp, u64 bytes, error *e);
   i64 (*seek) (void *fp, u64 offset, seek_t whence, error *e);
+
+#ifdef TESTING
+  void *test_data;
+#endif
 };
 
 typedef struct

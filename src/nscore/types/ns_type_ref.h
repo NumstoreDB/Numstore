@@ -33,6 +33,20 @@ struct type;
  * SECTION: Type Reference
  * ----------------------------------------------------------------------------
  * @brief A reference to a specific type
+ *
+ *
+ * Let's say you have a type:
+ *    create a struct { a u32, b f32 }
+ *
+ * You can build a type ref by either:
+ *    Referencing the type:
+ *
+ *        a.a is a u32
+ *        a.b is a f32
+ *
+ *    Or building a new type composed of types:
+ *
+ *        struct { f a.a, g a.a, h a.b } is a struct { f u32, g u32, h f32 }
  ******************************************************************************/
 
 struct type_ref
