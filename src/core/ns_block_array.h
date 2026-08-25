@@ -15,7 +15,6 @@
 #ifndef NS_BLOCK_ARRAY_H
 #define NS_BLOCK_ARRAY_H
 
-
 #include "core/ns_data_writer.h"
 #include "core/ns_error.h"
 #include "core/ns_slab_alloc.h"
