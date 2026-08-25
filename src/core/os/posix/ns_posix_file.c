@@ -17,39 +17,36 @@
 #include "core/ns_stdtypes.h"
 // #include "core/os/test/ns_test_file.h"
 
+#include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
+#include "core/os/ns_file.h"
+
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <pthread.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
-
-#if PLATFORM_POSIX
-
-#  include "core/ns_csx_assert.h"
-#  include "core/ns_error.h"
-#  include "core/os/ns_file.h"
-
-#  include <dirent.h>
-#  include <errno.h>
-#  include <fcntl.h>
-#  include <limits.h>
-#  include <pthread.h>
-#  include <stdio.h>
-#  include <string.h>
-#  include <sys/stat.h>
-#  include <sys/uio.h>
-#  include <time.h>
-#  include <unistd.h>
+#include <sys/uio.h>
+#include <time.h>
+#include <unistd.h>
 
 /******************************************************************************
  * SECTION: File System
  ******************************************************************************/
 
-#  ifndef NDEBUG
+#ifndef NDEBUG
 static bool
 fd_is_open (const int fd)
 {
   return fcntl (fd, F_GETFD) != -1 || errno != EBADF;
 }
-#  endif
+#endif
 
 DEFINE_DBG_ASSERT (i_file, i_file, fp, {
   ASSERT (fp);
@@ -344,7 +341,7 @@ _posix_fallocate (void *_fp, const u64 bytes, error *e)
 
   DBG_ASSERT (i_file, fp);
 
-#  if defined(__APPLE__)
+#if defined(__APPLE__)
   fstore_t store = {
       .fst_flags   = F_ALLOCATECONTIG,
       .fst_posmode = F_PEOFPOSMODE,
@@ -360,13 +357,13 @@ _posix_fallocate (void *_fp, const u64 bytes, error *e)
   if (unlikely (ftruncate (fp->fd, (off_t)bytes) == -1)) {
     return error_causef (e, ERR_IO, "ftruncate: %s", strerror (errno));
   }
-#  else
+#else
   const int ret = posix_fallocate (fp->fd, 0, (off_t)bytes);
 
   if (unlikely (ret != 0)) {
     return error_causef (e, ERR_IO, "posix_fallocate: %s", strerror (ret));
   }
-#  endif
+#endif
 
   return SUCCESS;
 }
@@ -422,9 +419,9 @@ static struct i_file_vtable posix_file_vtable = {
     .truncate   = posix_truncate,
     .fallocate  = _posix_fallocate,
     .seek       = posix_seek,
-#  ifdef TESTING
+#ifdef TESTING
     .test_data = NULL,
-#  endif
+#endif
 };
 
 i_file
@@ -441,5 +438,3 @@ void register_test_file_data(struct test_file_data *data) {
   posix_file_vtable.test_data = data;
 }
 */
-
-#endif
