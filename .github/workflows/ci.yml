@@ -18,6 +18,8 @@ jobs:
             suffix: linux-arm64
           - os: macos-latest
             suffix: macos-arm64
+          - os: macos-13
+            suffix: macos-x64
 
     runs-on: ${{ matrix.os }}
 
@@ -27,6 +29,9 @@ jobs:
       - uses: r-lib/actions/setup-pandoc@v2
         with:
           pandoc-version: '3.1'
+
+      - name: Build release package (Linux/macOS)
+        run: make release-package
 
       - name: Rename artifacts
         if: startsWith(github.ref, 'refs/tags/')
