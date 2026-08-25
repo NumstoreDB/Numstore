@@ -54,7 +54,6 @@ include src/nscore/module.mk
 include src/numstore/module.mk
 include src/smartfiles/module.mk
 ifeq ($(TARGET),debug)
-include src/nsserver/module.mk
 include src/tests/module.mk
 endif
 
