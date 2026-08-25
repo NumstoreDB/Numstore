@@ -39,6 +39,7 @@ allocate (struct allocator *alloc, u32 nelem, u32 size, error *e)
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
+  return NULL;
 }
 
 void *

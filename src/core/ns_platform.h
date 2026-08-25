@@ -139,7 +139,7 @@
 ////////////////////////////////////////////////////////////
 // UNREACHABLE
 #if PLATFORM_WINDOWS
-#  define UNREACHABLE_HINT() __assume (0)
+#  define UNREACHABLE_HINT()
 #elif PLATFORM_POSIX
 #  define UNREACHABLE_HINT() __builtin_unreachable ()
 #endif
