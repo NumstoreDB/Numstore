@@ -62,7 +62,7 @@ jobs:
       # notes to stdout.
       - name: Extract latest changelog entry
         shell: bash
-        run: python3 changelog.py > release_notes.md
+        run: python3 scripts/changelog.py > release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
