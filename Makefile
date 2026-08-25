@@ -13,6 +13,7 @@ CFLAGS += -Wall
 CFLAGS += -Wextra
 CFLAGS += -I$(CURDIR)/src
 CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-unused-variable
 ifeq ($(TARGET),release)
 CFLAGS += -DNDEBUG
 CFLAGS += -DNLOG
