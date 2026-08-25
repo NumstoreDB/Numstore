@@ -107,6 +107,7 @@ move_data (struct hnode *node, void *ctx)
   }
 
   // Copy the data over
+  block_array_free (frame->var.data);
   var->data = block_array_clone (frame->var.data, _ctx->e);
 }
 
