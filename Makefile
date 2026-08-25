@@ -11,7 +11,6 @@ RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 CFLAGS :=
 CFLAGS += -Wall
 CFLAGS += -Wextra
-CFLAGS += -std=c11
 CFLAGS += -I$(CURDIR)/src
 CFLAGS += -Wno-unused-parameter
 ifeq ($(TARGET),release)
