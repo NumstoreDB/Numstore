@@ -42,7 +42,6 @@ void create_default_allocator (struct allocator *alloc);
 void *allocate (struct allocator *alloc, u32 nelem, u32 size, error *e);
 void *allocator_copy (struct allocator *alloc, const void *ptr, u32 size, error *e);
 void allocator_free (struct allocator *alloc);
-struct allocator g_malloc;
 
 #define ALLOC_INIT(name) \
   struct allocator name; \
