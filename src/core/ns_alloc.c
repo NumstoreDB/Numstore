@@ -94,7 +94,3 @@ builder_free (struct builder *b)
 {
   allocator_free (&b->temp);
 }
-
-struct allocator g_malloc = {
-    .type = AT_MALLOC,
-};
