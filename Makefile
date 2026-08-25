@@ -111,7 +111,7 @@ release-package:
 	$(MAKE) TARGET=release
 	cp docs/release_docs.md build/release/target/README.md
 	tar -czf build/release.tar.gz -C build/release target
-	cd build/release && zip -r release.zip target
+	cd build/release && zip -r ../release.zip target
 
 ############ Directories
 $(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR):
