@@ -12,6 +12,14 @@ called libnumstore.a. This release is all about usability.
       `SARRAY(10, 5, TYPE)`
 - CI is lightweight on the develop branch and heavy weight on master branch 
 - Column limit from 80 to 100
+- Reorganizes src into modules - core, nscore, numstore, smartfiles, nsserver
+    - Merges smartfiles into numstore - it's no longer a separate library
+      wrapped around numstore
+- Memory, filesystem, threading, and timing all go through injected os
+  interfaces now (posix / windows / test backends) instead of calling straight
+  through to the syscalls
+- Github release workflow only builds linux x64, linux arm64, and macos arm64
+  for now - pulled windows and macos 13 out temporarily
 
 ## Added 
 - Lots of rebalance tests
@@ -19,9 +27,9 @@ called libnumstore.a. This release is all about usability.
   file
 - The ability to compile queries directly into nsdb_execute rather than
   seperate utilities for each
-
-## Removed 
-- Public smfile api - users can just make types u8
+- Github workflow that builds release binaries and publishes them on tagged
+  releases, pulling release notes straight out of this file
+- More var hash map tests
 
 ## [v1.1.3] - 2026-06-09
 
