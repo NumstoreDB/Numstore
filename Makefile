@@ -1,5 +1,6 @@
 ############ C Compiler
 CC           := gcc
+PANDOC 			 := pandoc
 CLANG_FORMAT := clang-format
 TARGET       ?= debug
 
@@ -66,8 +67,37 @@ $(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
 $(TARGET_LIB): $(ALL_OBJS) | $(LIB_DIR)
 	$(AR) rcs $@ $(ALL_OBJS)
 
+############ Docs
+
+PANDOC_LUA      := docs/pandoc/md-links.lua
+PANDOC_CSS      := docs/pandoc/style.css
+PANDOC_TEMPLATE := docs/pandoc/template.html
+PANDOC_SIDEBAR  := docs/pandoc/_sidebar.html
+
+PANDOC_ARGS := \
+	--from=markdown \
+	--to=html5 \
+	--standalone \
+	--embed-resources \
+	--lua-filter=$(PANDOC_LUA) \
+	--css=$(PANDOC_CSS) \
+	--template=$(PANDOC_TEMPLATE) \
+	--include-before-body=$(PANDOC_SIDEBAR)
+
+PANDOC_DEPS := $(PANDOC_CSS) $(PANDOC_TEMPLATE) $(PANDOC_LUA) $(PANDOC_SIDEBAR)
+
+# Map src/foo/bar.md -> build/html/foo/bar.html
+MD_FILES := $(shell find docs -name '*.md' | sed 's|^\./||')
+HTML_OUTPUTS := $(patsubst docs/%.md,$(HTML_DIR)/%.html,$(MD_FILES))
+
+$(info $(HTML_OUTPUTS))
+
+$(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
+	mkdir -p $(dir $@)
+	$(PANDOC) $(PANDOC_ARGS) --output $@ $<
+
 ############ Everything to build
-ALL := $(TARGET_LIB) $(ALL_BINS) $(ALL_HEADERS) $(ALL_SAMPLES) 
+ALL := $(TARGET_LIB) $(ALL_BINS) $(ALL_HEADERS) $(ALL_SAMPLES) $(HTML_OUTPUTS)
 
 .PHONY: all clean format format-check
 
@@ -84,8 +114,9 @@ release-package:
 	cd build/release && zip -r release.zip target
 
 ############ Directories
-$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(AMAL_DIR) $(SMP_DIR):
+$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR):
 	mkdir -p $@
+
 
 ############ House keeping
 clean:

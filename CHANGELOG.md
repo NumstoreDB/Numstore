@@ -2,24 +2,23 @@
 
 ## [v1.3.0] - 2026-08-24
 
-## Changed 
-
-## Added 
-
-## Removed
-
-## [v1.2.0] - 2026-08-03
+Major overhaul of build system and numstore. Broken into a single library
+called libnumstore.a. This release is all about usability.
 
 ## Changed 
-- When you build sarrays, it flattens dimensions instead of creating nested dimensions 
-    - `[10][5] TYPE` gets reduced from `SARRAY(10, SARRAY(5, TYPE))` to `SARRAY(10, 5, TYPE)`
+- When you build sarrays, it flattens dimensions instead of creating nested
+  dimensions 
+    - `[10][5] TYPE` gets reduced from `SARRAY(10, SARRAY(5, TYPE))` to
+      `SARRAY(10, 5, TYPE)`
 - CI is lightweight on the develop branch and heavy weight on master branch 
 - Column limit from 80 to 100
 
 ## Added 
 - Lots of rebalance tests
-- nscli - a command line tool for numstore that reads data from the numstore file
-- The ability to compile queries directly into nsdb_execute rather than seperate utilities for each
+- nscli - a command line tool for numstore that reads data from the numstore
+  file
+- The ability to compile queries directly into nsdb_execute rather than
+  seperate utilities for each
 
 ## Removed 
 - Public smfile api - users can just make types u8
@@ -27,8 +26,8 @@
 ## [v1.1.3] - 2026-06-09
 
 ### Changed 
-- Big changes to the readability and organization of the code to make it more friendly for open 
-  source developers
+- Big changes to the readability and organization of the code to make it more
+  friendly for open source developers
     - Removes all the excess libraries - now there's just one: Numstore 
     - Adds a consistent comment and documentation scheme
 
@@ -47,11 +46,10 @@
     - smartfiles: A filesystem in a file 
     - nscore: Core numstore algorithms
     - numstore: smartfiles with a type system built in 
-- Unit tests are now auto generated using python to remove the 
-  dependency on any type of constructor attributes to maintain 
-  portability
-- Renames PAGE_SIZE to NS_PAGE_SIZE because some x86_64 compilers 
-  reserve PAGE_SIZE in limits.h
+- Unit tests are now auto generated using python to remove the dependency on
+  any type of constructor attributes to maintain portability
+- Renames PAGE_SIZE to NS_PAGE_SIZE because some x86_64 compilers reserve
+  PAGE_SIZE in limits.h
 
 ### Removed 
 
@@ -60,7 +58,8 @@
 ### Added
 
 - pynumstore - A Python binding for numstore written in CPython
-- numstore - a typed smartfiles - which constricts the variables to typed values
+- numstore - a typed smartfiles - which constricts the variables to typed
+  values
     - `prim` - A primitive type
     - `struct` - A Product type
     - `union`  - A Summation type
@@ -88,17 +87,21 @@
 
 ### Added
 
-- `smfile_open` / `smfile_close` — open and close a smart file in read/write mode
+- `smfile_open` / `smfile_close` — open and close a smart file in read/write
+  mode
 - `smfile_cleanup` — release all on-disk resources associated with a file path
-- `smfile_new_context` — create an independent transaction context from an existing smart file
-- `smfile_strerror` / `smfile_perror` — error introspection in the style of the C standard library
+- `smfile_new_context` — create an independent transaction context from an
+  existing smart file
+- `smfile_strerror` / `smfile_perror` — error introspection in the style of the
+  C standard library
 
 **Simple API** — treats the file as a flat byte sequence:
 - `smfile_size` — query total file size in bytes
 - `smfile_read` — read elements from a byte offset
 - `smfile_write` — overwrite elements at a byte offset (atomic)
 - `smfile_insert` — insert bytes into the middle of a file
-- `smfile_remove` — remove elements and close the gap (atomic, with optional capture)
+- `smfile_remove` — remove elements and close the gap (atomic, with optional
+  capture)
 - `smfile_delete` — delete a named variable
 
 **Power API** — named variables and strided element access:
@@ -106,7 +109,8 @@
 - `smfile_pread` — strided read from a named variable
 - `smfile_pwrite` — strided write into a named variable
 - `smfile_pinsert` — insert into a named variable at a byte offset
-- `smfile_premove` — strided remove from a named variable (atomic, with optional capture)
+- `smfile_premove` — strided remove from a named variable (atomic, with
+  optional capture)
 
 **Transactions** — WAL-backed, two-phase locking:
 - `smfile_begin` — begin an explicit transaction
@@ -116,11 +120,13 @@
 ### Notes
 
 - All simple and power operations are individually atomic by default
-- Explicit transactions promote a sequence of operations to a single atomic unit
+- Explicit transactions promote a sequence of operations to a single atomic
+  unit
 - Negative byte offsets are interpreted relative to end of file
 - Explicit-width types used throughout for deterministic on-disk layout
 
-[v1.1.4]: https://github.com/lincketheo/smartfiles/compare/v1.1.3...HEAD
+[v1.3.0]: https://github.com/lincketheo/smartfiles/compare/v1.3.0...v1.2.0
+[v1.2.0]: https://github.com/lincketheo/smartfiles/compare/v1.2.0...v1.1.3
 [v1.1.3]: https://github.com/lincketheo/smartfiles/compare/v1.1.2...v1.1.3
 [v1.1.2]: https://github.com/lincketheo/smartfiles/compare/v1.1.1...v1.1.2
 [v1.1.1]: https://github.com/lincketheo/smartfiles/compare/v1.1.0...v1.1.1
