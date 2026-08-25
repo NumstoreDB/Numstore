@@ -3,8 +3,6 @@ ifeq ($(PANDOC),)
 $(error pandoc not found. Install it or set PANDOC explicitly, e.g. make PANDOC=/path/to/pandoc)
 endif
 
-$(info Using pandoc: $(PANDOC))
-
 PANDOC_LUA      := pandoc/md-links.lua
 PANDOC_CSS      := pandoc/style.css
 PANDOC_TEMPLATE := pandoc/template.html

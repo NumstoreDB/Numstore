@@ -26,32 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Windows runners don't ship make/gcc/tar/zip -- pull them in via MSYS2.
-      - name: Set up MSYS2 (Windows only)
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
+      - uses: r-lib/actions/setup-pandoc@v2
         with:
-          msystem: UCRT64
-          update: true
-          install: >-
-            make
-            mingw-w64-ucrt-x86_64-gcc
-            zip
-            tar
+          pandoc-version: '3.1'
 
-      - name: Build release package (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: make release-package
-
-      - name: Build release package (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: make release-package
-
-      # each matrix leg produces build/release.tar.gz / build/release.zip
-      # with the same filenames -- rename before upload so they don't
-      # collide when everything lands in one release. Only needed on tag
-      # pushes; ordinary commits just validate the build compiles.
       - name: Rename artifacts
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
@@ -79,10 +57,16 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # Keep a Changelog format: changelog.py prints the latest release's
+      # notes to stdout.
+      - name: Extract latest changelog entry
+        shell: bash
+        run: python3 changelog.py > release_notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          body_path: CHANGELOG.md
+          body_path: release_notes.md
           files: dist/*
