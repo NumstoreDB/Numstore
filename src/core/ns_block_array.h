@@ -12,8 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef COLLECTIONS_H
-#define COLLECTIONS_H
+#ifndef NS_BLOCK_ARRAY_H
+#define NS_BLOCK_ARRAY_H
+
 
 #include "core/ns_data_writer.h"
 #include "core/ns_error.h"

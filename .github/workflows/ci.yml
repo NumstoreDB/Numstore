@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            suffix: linux-x64
+          - os: ubuntu-24.04-arm
+            suffix: linux-arm64
+          - os: macos-latest
+            suffix: macos-arm64
+          - os: macos-13
+            suffix: macos-x64
+          - os: windows-latest
+            suffix: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Windows runners don't ship make/gcc/tar/zip -- pull them in via MSYS2.
+      - name: Set up MSYS2 (Windows only)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            make
+            mingw-w64-ucrt-x86_64-gcc
+            zip
+            tar
+
+      - name: Build release package (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: make release-package
+
+      - name: Build release package (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: make release-package
+
+      # each matrix leg produces build/release.tar.gz / build/release.zip
+      # with the same filenames -- rename before upload so they don't
+      # collide when everything lands in one release. Only needed on tag
+      # pushes; ordinary commits just validate the build compiles.
+      - name: Rename artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/release.tar.gz "dist/release-${{ matrix.suffix }}.tar.gz"
+          cp build/release.zip   "dist/release-${{ matrix.suffix }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: release-${{ matrix.suffix }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: dist/*

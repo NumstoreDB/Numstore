@@ -20,6 +20,7 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+
 struct cbuffer
 cbuffer_create (void *data, const u32 cap)
 {

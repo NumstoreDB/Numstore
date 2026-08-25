@@ -28,16 +28,18 @@ endif
 
 ############ Output Directories
 OUT_DIR  := $(CURDIR)/build/$(TARGET)
-BIN_DIR  := $(OUT_DIR)/bin
-LIB_DIR  := $(OUT_DIR)/lib
-INC_DIR  := $(OUT_DIR)/include
-HTML_DIR := $(OUT_DIR)/html
+BIN_DIR  := $(OUT_DIR)/target/bin
+LIB_DIR  := $(OUT_DIR)/target/lib
+INC_DIR  := $(OUT_DIR)/target/include
+HTML_DIR := $(OUT_DIR)/target/html
 OBJ_DIR  := $(OUT_DIR)/objs
+SMP_DIR  := $(OUT_DIR)/target/samples
 
 ############ Accumulators - each module.mk appends to these
 ALL_SRCS    :=
 ALL_BINS    :=
 ALL_HEADERS :=
+ALL_SAMPLES :=
 
 ############ Targets
 TARGET_LIB := $(LIB_DIR)/libnumstore.a
@@ -65,14 +67,24 @@ $(TARGET_LIB): $(ALL_OBJS) | $(LIB_DIR)
 	$(AR) rcs $@ $(ALL_OBJS)
 
 ############ Everything to build
-ALL := $(TARGET_LIB) $(ALL_BINS) $(ALL_HEADERS)
+ALL := $(TARGET_LIB) $(ALL_BINS) $(ALL_HEADERS) $(ALL_SAMPLES) 
 
 .PHONY: all clean format format-check
 
 all: $(ALL)
 
+release-package:
+	$(MAKE) TARGET=debug clean
+	$(MAKE) TARGET=debug
+	./build/debug/target/bin/unit_tests
+	$(MAKE) TARGET=release clean
+	$(MAKE) TARGET=release
+	cp docs/release_docs.md build/release/target/README.md
+	tar -czf build/release.tar.gz -C build/release target
+	cd build/release && zip -r release.zip target
+
 ############ Directories
-$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR):
+$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(AMAL_DIR) $(SMP_DIR):
 	mkdir -p $@
 
 ############ House keeping
