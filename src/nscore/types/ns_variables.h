@@ -120,6 +120,13 @@ err_t rand_varname_different_hash (
     error            *e
 );
 
+err_t variable_copy (
+    struct variable       *dest,
+    const struct variable *src,
+    struct allocator      *alloc,
+    error                 *e
+);
+
 HEADER_FUNC b_size
 var_resolve_index (struct variable *v, sb_size bofst)
 {

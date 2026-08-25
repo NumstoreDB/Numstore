@@ -5,25 +5,29 @@ ALL_SRCS += src/smartfiles/testing/ns_smfile_test_fixture.c
 ALL_SRCS += src/smartfiles/testing/ns_smfile_simulation.c
 
 ############ Includes
+
 $(INC_DIR)/smartfiles.h: src/smartfiles/smartfiles.h | $(INC_DIR)
 	cp $< $@
 
-ALL_HDRS += $(INC_DIR)/smartfiles.h
+ALL_HEADERS += $(INC_DIR)/smartfiles.h
 
-############ Bins
-$(BIN_DIR)/smfile_sample1_basic_crud: src/smartfiles/samples/smfile_sample1_basic_crud.c $(TARGET_LIB) $(INC_DIR)/smartfiles.h | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+############ Samples (bins + copied sources), one name list drives both
 
-$(BIN_DIR)/smfile_sample2_transactions: src/smartfiles/samples/smfile_sample2_transactions.c $(TARGET_LIB) $(INC_DIR)/smartfiles.h | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+SMFILE_SAMPLES := 
+SMFILE_SAMPLES += smfile_sample1_basic_crud
+SMFILE_SAMPLES += smfile_sample2_transactions
+SMFILE_SAMPLES += smfile_sample3_stride
+SMFILE_SAMPLES += smfile_sample4_rollback_commit
 
-$(BIN_DIR)/smfile_sample3_stride: src/smartfiles/samples/smfile_sample3_stride.c $(TARGET_LIB) $(INC_DIR)/smartfiles.h | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+define SMFILE_SAMPLE_RULES
+$(BIN_DIR)/$(1): src/smartfiles/samples/$(1).c $$(TARGET_LIB) $$(INC_DIR)/smartfiles.h | $$(BIN_DIR)
+	$$(CC) $$(CFLAGS) -I$$(INC_DIR) $$< -o $$@ $$(TARGET_LIB)
 
-$(BIN_DIR)/smfile_sample4_rollback_commit: src/smartfiles/samples/smfile_sample4_rollback_commit.c $(TARGET_LIB) $(INC_DIR)/smartfiles.h | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+$(SMP_DIR)/$(1).c: src/smartfiles/samples/$(1).c | $$(SMP_DIR)
+	cp $$< $$@
 
-ALL_BINS += $(BIN_DIR)/smfile_sample1_basic_crud
-ALL_BINS += $(BIN_DIR)/smfile_sample2_transactions
-ALL_BINS += $(BIN_DIR)/smfile_sample3_stride
-ALL_BINS += $(BIN_DIR)/smfile_sample4_rollback_commit
+ALL_BINS += $(BIN_DIR)/$(1)
+ALL_SAMPLES += $(SMP_DIR)/$(1).c
+endef
+
+$(foreach s,$(SMFILE_SAMPLES),$(eval $(call SMFILE_SAMPLE_RULES,$(s))))

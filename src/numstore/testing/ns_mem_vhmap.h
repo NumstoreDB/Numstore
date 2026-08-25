@@ -23,6 +23,7 @@
 #ifndef MEM_VHMAP_H
 #define MEM_VHMAP_H
 
+#include "core/ns_block_array.h"
 #include "core/ns_error.h"
 #include "core/ns_htable.h"
 #include "core/ns_slab_alloc.h"
@@ -38,34 +39,29 @@ struct variable;
 
 struct mem_vhmap
 {
+  struct i_mem      mem;
   struct htable    *vhasht; // Hash table of variables
   struct slab_alloc alloc;  // Allocator for variable frames
 };
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Lifecycle
- * @brief Creation and deletion
- *----------------------------------------------------------------------------*/
+struct var_with_data
+{
+  struct variable     var;
+  struct block_array *data;
+};
 
-struct mem_vhmap *mem_vhmap_create (error *e);
+// Lifecycle
+struct mem_vhmap *mem_vhmap_create (struct i_mem mem, error *e);
 void mem_vhmap_free (struct mem_vhmap *db);
 struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Primary API
- * @brief Get Remove Delete
- *----------------------------------------------------------------------------*/
+// Create Get Remove
+struct var_with_data *mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e);
+struct var_with_data *mem_vhmap_get (struct mem_vhmap *db, struct string name);
+void mem_vhmap_remove (struct mem_vhmap *db, struct string name);
 
-err_t mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e);
-struct variable *mem_vhmap_get_var (struct mem_vhmap *db, struct string name);
-void mem_vhmap_remove_var (struct mem_vhmap *db, struct string name);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Utilities
- * @brief Random and count
- *----------------------------------------------------------------------------*/
-
+// Utilities
 u32 mem_vhmap_count (struct mem_vhmap *db);
-struct variable *mem_vhmap_random (struct mem_vhmap *db);
+struct var_with_data *mem_vhmap_random (struct mem_vhmap *db);
 
 #endif // MEM_VHMAP_H

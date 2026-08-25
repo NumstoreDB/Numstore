@@ -4545,25 +4545,6 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("mem_vhmap", filter))
-  {
-    extern void __test__mem_vhmap(void);
-    i_log_info("========================= TEST CASE: %s\n", "mem_vhmap");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__mem_vhmap();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "mem_vhmap");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "mem_vhmap";
-    }
-    ntests++;
-  }
-
   if (!filter || strstr("build_page_tree", filter))
   {
     extern void __test__build_page_tree(void);
@@ -6084,6 +6065,25 @@ main (int argc, char **argv)
     ntests++;
   }
 
+  if (!filter || strstr("mem_vhmap", filter))
+  {
+    extern void __test__mem_vhmap(void);
+    i_log_info("========================= TEST CASE: %s\n", "mem_vhmap");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__mem_vhmap();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "mem_vhmap");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "mem_vhmap";
+    }
+    ntests++;
+  }
+
   if (!filter || strstr("smfile_perror", filter))
   {
     extern void __test__smfile_perror(void);
@@ -6366,5 +6366,4 @@ main (int argc, char **argv)
   }
   return test_ret;
 }
-
 // clang-format on

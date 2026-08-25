@@ -12,12 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/testing/ns_mem_vhmap.h"
+#include "numstore/testing/ns_mem_vhmap.h"
 
 #include "core/ns_alloc.h"
+#include "core/ns_block_array.h"
 #include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
 #include "core/ns_htable.h"
 #include "core/ns_numerics.h" // randu32
+#include "core/ns_slab_alloc.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"       // i_malloc
@@ -30,46 +33,54 @@
 
 struct var_frame
 {
-  struct variable  var;
-  struct hnode     node;
-  struct allocator alloc;
+  struct var_with_data var;
+  struct hnode         node;
+  struct allocator     alloc;
 };
 
 // Lifecycle
 struct mem_vhmap *
-mem_vhmap_create (error *e)
+mem_vhmap_create (struct i_mem mem, error *e)
 {
-  struct mem_vhmap *ret = i_malloc (default_mem (), 1, sizeof *ret, e);
+  struct mem_vhmap *ret = i_malloc (mem, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
 
-  ret->vhasht = htable_create (256, default_mem (), e);
+  ret->vhasht = htable_create (256, mem, e);
   if (ret->vhasht == NULL) {
-    i_free (default_mem (), ret);
+    i_free (mem, ret);
     return NULL;
   }
 
-  slab_alloc_init (&ret->alloc, default_mem (), sizeof (struct var_frame), 256);
+  ret->mem = mem;
+  slab_alloc_init (&ret->alloc, mem, sizeof (struct var_frame), 256);
 
   return ret;
 }
 
 static void
-var_frame_free (struct hnode *node, void *ctx)
+var_frame_free (struct var_frame *frame)
+{
+  allocator_free (&frame->alloc);
+  block_array_free (frame->var.data);
+}
+
+static void
+var_frame_free_hnode (struct hnode *node, void *ctx)
 {
   struct var_frame *frame = container_of (node, struct var_frame, node);
-  allocator_free (&frame->alloc);
+  var_frame_free (frame);
 }
 
 void
 mem_vhmap_free (struct mem_vhmap *db)
 {
   ASSERT (db);
-  htable_foreach (db->vhasht, var_frame_free, NULL);
+  htable_foreach (db->vhasht, var_frame_free_hnode, NULL);
   slab_alloc_destroy (&db->alloc);
   htable_free (db->vhasht);
-  i_free (default_mem (), db);
+  i_free (db->mem, db);
 }
 
 struct copy_ctx
@@ -86,25 +97,36 @@ move_data (struct hnode *node, void *ctx)
     return;
   }
 
-  struct var_frame *frame = container_of (node, struct var_frame, node);
-  mem_vhmap_add_var (_ctx->dest, &frame->var, _ctx->e);
+  // Fetch the next variable
+  struct var_frame     *frame = container_of (node, struct var_frame, node);
+
+  // Insert it into the destination
+  struct var_with_data *var   = mem_vhmap_add (_ctx->dest, &frame->var.var, _ctx->e);
+  if (var == NULL) {
+    return;
+  }
+
+  // Copy the data over
+  var->data = block_array_clone (frame->var.data, _ctx->e);
 }
 
 struct mem_vhmap *
 mem_vhmap_clone (const struct mem_vhmap *src, error *e)
 {
-  struct mem_vhmap *ret = mem_vhmap_create (e);
+  // Create a new var hash map
+  struct mem_vhmap *ret = mem_vhmap_create (src->mem, e);
   if (ret == NULL) {
     return NULL;
   }
 
+  // Run copy for each variable in src
   struct copy_ctx ctx = {
       .dest = ret,
       .e    = e,
   };
-
   htable_foreach (src->vhasht, move_data, &ctx);
 
+  // Error
   if (ctx.e->cause_code) {
     mem_vhmap_free (ret);
     return NULL;
@@ -118,68 +140,92 @@ vframe_eq (const struct hnode *left, const struct hnode *right)
 {
   struct var_frame *_left  = container_of (left, struct var_frame, node);
   struct var_frame *_right = container_of (right, struct var_frame, node);
-  return string_equal (_left->var.vname, _right->var.vname);
+  return string_equal (_left->var.var.vname, _right->var.var.vname);
 }
 
-// Create
-err_t
-mem_vhmap_add_var (struct mem_vhmap *db, struct variable *var, error *e)
+static err_t
+var_frame_init (struct mem_vhmap *db, struct var_frame *frame, struct variable *var, error *e)
 {
+  // Create an allocator for this variable
+  create_default_allocator (&frame->alloc);
+
+  // Copy variable data over to
+  if (variable_copy (&frame->var.var, var, &frame->alloc, e)) {
+    goto failed;
+  }
+
+  // Create the block array
+  frame->var.data = block_array_create (512, db->mem, e);
+  if (frame->var.data == NULL) {
+    goto failed;
+  }
+
+  return SUCCESS;
+
+failed:
+  allocator_free (&frame->alloc);
+  return error_trace (e);
+}
+
+struct var_with_data *
+mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
+{
+  // Look up to see if there are
+  // any conflicts
   struct var_frame key = {
-      .var = (struct variable){
-          .vname = var->vname,
+      .var = (struct var_with_data){
+          .var =
+              (struct variable){
+                  .vname = var->vname,
+              },
+          .data = NULL, // Not used in hnode lookup
       },
   };
   hnode_init (&key.node, fnv1a_hash (var->vname));
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
+
   if (found) {
-    return error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
+    error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
+    return NULL;
   } else {
+    // Create a new variable frame
     struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
     if (frame == NULL) {
-      return error_trace (e);
+      return NULL;
     }
 
-    create_default_allocator (&frame->alloc);
-
-    frame->var.vname.data = allocator_copy (
-        &frame->alloc,
-        var->vname.data,
-        var->vname.len + 1, // TODO - this is awful - remove +1
-        e
-    );
-    frame->var.vname.len = var->vname.len;
-    frame->var.dtype     = type_movemem (var->dtype, &frame->alloc, e);
-    frame->var.var_root  = var->var_root;
-    frame->var.rpt_root  = var->rpt_root;
-    frame->var.nbytes    = var->nbytes;
-
-    if (frame->var.vname.data == NULL || frame->var.dtype == NULL) {
-      allocator_free (&frame->alloc);
+    // Initialize this frame
+    if (var_frame_init (db, frame, var, e)) {
       slab_alloc_free (&db->alloc, frame);
-      return error_trace (e);
+      return NULL;
     }
 
+    // Add this frame to the table
     hnode_init (&frame->node, fnv1a_hash (var->vname));
     htable_insert (db->vhasht, &frame->node);
 
-    return SUCCESS;
+    return &frame->var;
   }
 }
 
-struct variable *
-mem_vhmap_get_var (struct mem_vhmap *db, struct string name)
+struct var_with_data *
+mem_vhmap_get (struct mem_vhmap *db, struct string name)
 {
+  // Lookup this variable
   struct var_frame key = {
-      .var = (struct variable){
-          .vname = name,
+      .var = (struct var_with_data){
+          .var =
+              (struct variable){
+                  .vname = name,
+              },
+          .data = NULL, // Not used in hnode lookup
       },
   };
   hnode_init (&key.node, fnv1a_hash (name));
-
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
   if (found) {
-    return &container_of (*found, struct var_frame, node)->var;
+    struct var_frame *var = container_of (*found, struct var_frame, node);
+    return &var->var;
   } else {
     return NULL;
   }
@@ -188,18 +234,29 @@ mem_vhmap_get_var (struct mem_vhmap *db, struct string name)
 void
 mem_vhmap_remove_var (struct mem_vhmap *db, struct string name)
 {
+  // Lookup this variable
   struct var_frame key = {
-      .var = (struct variable){
-          .vname = name,
+      .var = (struct var_with_data){
+          .var =
+              (struct variable){
+                  .vname = name,
+              },
+          .data = NULL, // Not used in hnode lookup
       },
   };
   hnode_init (&key.node, fnv1a_hash (name));
 
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
+
   ASSERT (found);
+
+  // Free the variable frame
   struct var_frame *frame = container_of (*found, struct var_frame, node);
-  allocator_free (&frame->alloc);
+  var_frame_free (frame);
+
   htable_delete (db->vhasht, found);
+
+  slab_alloc_free (&db->alloc, frame);
 }
 
 u32
@@ -210,9 +267,9 @@ mem_vhmap_count (struct mem_vhmap *db)
 
 struct rand_ctx
 {
-  u32              index;
-  u32              target;
-  struct variable *dest;
+  u32                   index;
+  u32                   target;
+  struct var_with_data *dest;
 };
 
 static void
@@ -232,7 +289,7 @@ random_iter (struct hnode *node, void *_ctx)
   ctx->index++;
 }
 
-struct variable *
+struct var_with_data *
 mem_vhmap_random (struct mem_vhmap *db)
 {
   struct rand_ctx ctx = {
@@ -248,7 +305,7 @@ mem_vhmap_random (struct mem_vhmap *db)
 TEST (mem_vhmap)
 {
   error             e       = error_create ();
-  struct mem_vhmap *v       = mem_vhmap_create (&e);
+  struct mem_vhmap *v       = mem_vhmap_create (mem, &e);
 
   struct type       deftype = {
       .type = T_PRIM,
@@ -265,12 +322,12 @@ TEST (mem_vhmap)
           .dtype  = &deftype,
           .nbytes = (b_size)i,
       };
-      err_t err = mem_vhmap_add_var (v, &var, &e);
-      ASSERT (err == 0);
+      struct var_with_data *vwd = mem_vhmap_add (v, &var, &e);
+      ASSERT (vwd != NULL);
 
-      struct variable *got = mem_vhmap_get_var (v, strfcstr (buf));
+      struct var_with_data *got = mem_vhmap_get (v, strfcstr (buf));
       ASSERT (got != NULL);
-      ASSERT (got->nbytes == (b_size)i);
+      ASSERT (got->var.nbytes == (b_size)i);
     }
   }
 
@@ -281,7 +338,7 @@ TEST (mem_vhmap)
           .vname = strfcstr ("var_0"),
           .dtype = &deftype,
       };
-      ASSERT (mem_vhmap_add_var (v, &dup, &e) != 0);
+      ASSERT (mem_vhmap_add (v, &dup, &e) == NULL);
       e.cause_code = 0;
       e.cmlen      = 0;
     }
@@ -289,7 +346,7 @@ TEST (mem_vhmap)
 
   TEST_CASE ("get on unknown name returns NULL")
   {
-    ASSERT (mem_vhmap_get_var (v, strfcstr ("__no_such_var__")) == NULL);
+    ASSERT (mem_vhmap_get (v, strfcstr ("__no_such_var__")) == NULL);
   }
 
   TEST_CASE ("remove makes the var unretrievable; others unaffected")
@@ -298,12 +355,12 @@ TEST (mem_vhmap)
       snprintf (buf, sizeof buf, "var_%d", i);
       struct string name = strfcstr (buf);
       mem_vhmap_remove_var (v, name);
-      ASSERT (mem_vhmap_get_var (v, name) == NULL);
+      ASSERT (mem_vhmap_get (v, name) == NULL);
 
       // spot-check that the next var (if any) is still there
       if (i + 1 < 10000) {
         snprintf (buf, sizeof buf, "var_%d", i + 1);
-        ASSERT (mem_vhmap_get_var (v, strfcstr (buf)) != NULL);
+        ASSERT (mem_vhmap_get (v, strfcstr (buf)) != NULL);
       }
     }
   }
@@ -317,7 +374,8 @@ TEST (mem_vhmap)
           .nbytes = (b_size)(i * 3),
           .dtype  = &deftype,
       };
-      mem_vhmap_add_var (v, &var, &e);
+      struct var_with_data *vwd = mem_vhmap_add (v, &var, &e);
+      test_assert (vwd != NULL);
     }
 
     struct mem_vhmap *c = mem_vhmap_clone (v, &e);
@@ -325,14 +383,14 @@ TEST (mem_vhmap)
 
     for (int i = 0; i < 128; ++i) {
       snprintf (buf, sizeof buf, "cv_%d", i);
-      struct variable *got = mem_vhmap_get_var (c, strfcstr (buf));
+      struct var_with_data *got = mem_vhmap_get (c, strfcstr (buf));
       ASSERT (got != NULL);
-      ASSERT (got->nbytes == (b_size)(i * 3));
+      ASSERT (got->var.nbytes == (b_size)(i * 3));
     }
 
     mem_vhmap_remove_var (c, strfcstr ("cv_0"));
-    ASSERT (mem_vhmap_get_var (c, strfcstr ("cv_0")) == NULL); // removed in clone
-    ASSERT (mem_vhmap_get_var (v, strfcstr ("cv_0")) != NULL); // original intact
+    ASSERT (mem_vhmap_get (c, strfcstr ("cv_0")) == NULL); // removed in clone
+    ASSERT (mem_vhmap_get (v, strfcstr ("cv_0")) != NULL); // original intact
 
     mem_vhmap_free (c);
   }

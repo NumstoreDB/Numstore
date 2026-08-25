@@ -12,8 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef COLLECTIONS_H
-#define COLLECTIONS_H
+#ifndef NS_CBUFFER_H
+#define NS_CBUFFER_H
 
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"

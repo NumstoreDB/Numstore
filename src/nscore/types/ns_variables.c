@@ -546,3 +546,25 @@ TEST (var_resolve_nelem)
   test_assert_int_equal (var_resolve_nelem (&v, 100, 5, 1), 0);
 }
 #endif
+
+err_t
+variable_copy (struct variable *dest, const struct variable *src, struct allocator *alloc, error *e)
+{
+  // Copy over the variable name
+  // TODO - this is awful - remove +1
+  dest->vname.data = allocator_copy (alloc, src->vname.data, src->vname.len + 1, e);
+  dest->dtype      = type_movemem (src->dtype, alloc, e);
+  if (dest->vname.data == NULL) {
+    return error_trace (e);
+  }
+  if (dest->dtype == NULL) {
+    return error_trace (e);
+  }
+
+  dest->vname.len = src->vname.len;
+  dest->var_root  = src->var_root;
+  dest->rpt_root  = src->rpt_root;
+  dest->nbytes    = src->nbytes;
+
+  return SUCCESS;
+}

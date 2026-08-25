@@ -19,35 +19,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-// 1. Define the packing macros based on the compiler
-#if defined(_MSC_VER)
-#  define PACKED_STRUCT_START __pragma (pack (push, 1))
-#  define PACKED_STRUCT_END
-#  define PACKED_ATTR
-#elif defined(__GNUC__) || defined(__clang__)
-#  define PACKED_STRUCT_START
-#  define PACKED_STRUCT_END
-#  define PACKED_ATTR __attribute__ ((packed))
-#else
-#  define PACKED_STRUCT_START
-#  define PACKED_STRUCT_END
-#  define PACKED_ATTR
-#  warning "Compiler packing not supported on this platform. Alignment issues may occur."
-#endif
-
-// 2. Apply the macros to your struct
-PACKED_STRUCT_START
-
 struct example
 {
   float    a;
   int32_t  b;
   uint32_t d[5][10];
-} PACKED_ATTR;
+} __attribute__ ((packed));
 
-PACKED_STRUCT_END
-
-// Two utility functions to print and seed an example struct array
+// Little utils
 static void print_example (const char *label, struct example *ex, int size);
 static void init_example (struct example *ex, int size);
 

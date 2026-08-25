@@ -53,7 +53,6 @@ ALL_SRCS += src/nscore/disk_pager/ns_file_pager.c
 ALL_SRCS += src/nscore/pager/ns_pager.c
 
 # Testing
-ALL_SRCS += src/nscore/testing/ns_mem_vhmap.c
 ALL_SRCS += src/nscore/testing/ns_page_fixture.c
 
 # Txn Table
