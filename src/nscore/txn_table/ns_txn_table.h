@@ -67,7 +67,7 @@ enum tx_state
 };
 
 /**
- * @struct txn_data
+ * @struct ns_txn_data
  * @brief Internal structural metric properties tracking ARIES log sequences.
  *
  * @var txn_data::state
@@ -84,7 +84,7 @@ enum tx_state
  * rollback or recovery This number decreases as we work our way backwards
  * through the log records of this transaction.
  */
-struct txn_data
+struct ns_txn_data
 {
   enum tx_state state;
   lsn           min_lsn;
@@ -93,7 +93,7 @@ struct txn_data
 };
 
 /**
- * @struct txn_lock
+ * @struct ns_txn_lock
  * @brief Intrusive linked-list node tracking an acquired lock constraint.
  *
  * @var txn_lock::lock
@@ -103,15 +103,15 @@ struct txn_data
  * @var txn_lock::next
  * @brief Pointer link reference to the next held transaction lock node.
  */
-struct txn_lock
+struct ns_txn_lock
 {
-  struct lt_lock   lock;
-  enum lock_mode   mode;
-  struct txn_lock *next;
+  struct lt_lock      lock;
+  enum lock_mode      mode;
+  struct ns_txn_lock *next;
 };
 
 /**
- * @struct txn
+ * @struct ns_txn
  * @brief High-level transaction descriptor context managing locks and state
  * metadata.
  *
@@ -128,14 +128,14 @@ struct txn_lock
  * @var txn::l
  * @brief Thread safety
  */
-struct txn
+struct ns_txn
 {
-  txid              tid;
-  struct txn_data   data;
-  struct hnode      node;
-  struct txn_lock  *locks;
-  struct slab_alloc lock_alloc;
-  latch             l;
+  txid                tid;
+  struct ns_txn_data  data;
+  struct hnode        node;
+  struct ns_txn_lock *locks;
+  struct slab_alloc   lock_alloc;
+  latch               l;
 };
 
 /*-----------------------------------------------------------------------------
@@ -143,52 +143,52 @@ struct txn
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn void txn_init(struct txn *dest, txid tid, struct txn_data data, struct
+ * @fn void txn_init(struct ns_txn *dest, txid tid, struct ns_txn_data data, struct
  * i_mem mem)
  * @brief Allocates and maps tracking fields to complete initialization loops.
  */
-void txn_init (struct txn *dest, txid tid, struct txn_data data, struct i_mem mem);
+void txn_init (struct ns_txn *dest, txid tid, struct ns_txn_data data, struct i_mem mem);
 
 /**
- * @fn void txn_key_init(struct txn *dest, txid tid)
+ * @fn void txn_key_init(struct ns_txn *dest, txid tid)
  * @brief Allocates tracking context maps matching explicit keys alone.
  */
-void txn_key_init (struct txn *dest, txid tid);
+void txn_key_init (struct ns_txn *dest, txid tid);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Atomic Updates
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn void txn_update_data(struct txn *t, struct txn_data data)
+ * @fn void txn_update_data(struct ns_txn *t, struct ns_txn_data data)
  * @brief Swaps the complete underlying internal telemetry block in-place.
  */
-void txn_update_data (struct txn *t, struct txn_data data);
+void txn_update_data (struct ns_txn *t, struct ns_txn_data data);
 
 /**
- * @fn void txn_update(struct txn *t, enum tx_state state, lsn last, lsn
+ * @fn void txn_update(struct ns_txn *t, enum tx_state state, lsn last, lsn
  * undo_next)
  * @brief Comprehensive mutation field overlay editing active properties.
  */
-void txn_update (struct txn *t, enum tx_state state, lsn last, lsn undo_next);
+void txn_update (struct ns_txn *t, enum tx_state state, lsn last, lsn undo_next);
 
 /**
- * @fn void txn_update_state(struct txn *t, enum tx_state new_state)
+ * @fn void txn_update_state(struct ns_txn *t, enum tx_state new_state)
  * @brief Single field updates altering the tracked ARIES lifecycle path.
  */
-void txn_update_state (struct txn *t, enum tx_state new_state);
+void txn_update_state (struct ns_txn *t, enum tx_state new_state);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Equality Evaluation
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn bool txn_data_equal_unsafe(const struct txn_data *left, const struct
+ * @fn bool txn_data_equal_unsafe(const struct ns_txn_data *left, const struct
  * txn_data *right)
  * @brief Direct memory validation check evaluating differences without
  * acquiring latches.
  */
-bool txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right);
+bool txn_data_equal_unsafe (const struct ns_txn_data *left, const struct ns_txn_data *right);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lock Management
@@ -202,30 +202,30 @@ bool txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *
 typedef void (*lock_func) (struct lt_lock lock, enum lock_mode mode, void *ctx);
 
 /**
- * @fn err_t txn_newlock(struct txn *t, struct lt_lock lock, enum lock_mode
+ * @fn err_t txn_newlock(struct ns_txn *t, struct lt_lock lock, enum lock_mode
  * mode, error *e)
  * @brief Attaches a newly tracked lock resource allocation context container.
  */
-err_t txn_newlock (struct txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
+err_t txn_newlock (struct ns_txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
 
 /**
- * @fn bool txn_haslock(struct txn *t, struct lt_lock lock)
+ * @fn bool txn_haslock(struct ns_txn *t, struct lt_lock lock)
  * @brief Validation lookup checking whether target identifiers are actively
  * retained.
  */
-bool txn_haslock (struct txn *t, struct lt_lock lock);
+bool txn_haslock (struct ns_txn *t, struct lt_lock lock);
 
 /**
- * @fn void txn_close(struct txn *t)
+ * @fn void txn_close(struct ns_txn *t)
  * @brief Deallocates memory spaces and releases all tracking properties.
  */
-void txn_close (struct txn *t);
+void txn_close (struct ns_txn *t);
 
 /**
- * @fn void txn_foreach_lock(struct txn *t, lock_func func, void *ctx)
+ * @fn void txn_foreach_lock(struct ns_txn *t, lock_func func, void *ctx)
  * @brief Loops over the complete active list of managed resource descriptors.
  */
-void txn_foreach_lock (struct txn *t, lock_func func, void *ctx);
+void txn_foreach_lock (struct ns_txn *t, lock_func func, void *ctx);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Utilities
@@ -254,23 +254,23 @@ void txn_foreach_lock (struct txn *t, lock_func func, void *ctx);
  * each transaction has been serialized into the checkpoint END record.
  ******************************************************************************/
 
-struct txn_table;
+struct ns_txn_table;
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lifecycle
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn struct txn_table *txnt_open(struct i_mem mem, error *e)
+ * @fn struct ns_txn_table *txnt_open(struct i_mem mem, error *e)
  * @brief Instantiates and prepares the active transaction table context.
  */
-struct txn_table *txnt_open (struct i_mem mem, error *e);
+struct ns_txn_table *txnt_open (struct i_mem mem, error *e);
 
 /**
- * @fn void txnt_close(struct txn_table *t)
+ * @fn void txnt_close(struct ns_txn_table *t)
  * @brief Tears down the transaction table context and releases held handles.
  */
-void txnt_close (struct txn_table *t);
+void txnt_close (struct ns_txn_table *t);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Locking / Unlocking and Serializing
@@ -294,7 +294,7 @@ void txnt_close (struct txn_table *t);
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn slsn txnt_max_u_undo_lsn(struct txn_table *t)
+ * @fn slsn txnt_max_u_undo_lsn(struct ns_txn_table *t)
  * @brief Returns the maximum undo lsn for any entries in the candidate for
  * undo state.
  *
@@ -307,10 +307,10 @@ void txnt_close (struct txn_table *t);
  * (Later optimization - keep a list of these internally so that I don't
  * re search every time I run this - this method is run in a loop)
  */
-slsn txnt_max_u_undo_lsn (struct txn_table *t);
+slsn txnt_max_u_undo_lsn (struct ns_txn_table *t);
 
 /**
- * @fn slsn txnt_min_lsn(struct txn_table *t)
+ * @fn slsn txnt_min_lsn(struct ns_txn_table *t)
  * @brief Returns the transaction low water mark.
  *
  * The lowest lsn in the transaction table is the lowest lsn we need to
@@ -318,38 +318,42 @@ slsn txnt_max_u_undo_lsn (struct txn_table *t);
  *
  * If the transaction table is empty, this method returns -1.
  */
-slsn txnt_min_lsn (struct txn_table *t);
+slsn txnt_min_lsn (struct ns_txn_table *t);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Iteration & State Queries
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn void txnt_foreach(const struct txn_table *t, void (*action)(struct txn *,
+ * @fn void txnt_foreach(const struct ns_txn_table *t, void (*action)(struct ns_txn *,
  * void *ctx), void *ctx)
  * @brief Executes a function on each open transaction. This does not lock
  * internal transactions.
  */
-void txnt_foreach (const struct txn_table *t, void (*action) (struct txn *, void *ctx), void *ctx);
+void txnt_foreach (
+    const struct ns_txn_table *t,
+    void (*action) (struct ns_txn *, void *ctx),
+    void *ctx
+);
 
 /**
- * @fn u32 txnt_get_size(const struct txn_table *dest)
+ * @fn u32 txnt_get_size(const struct ns_txn_table *dest)
  * @brief Returns the number of transactions active.
  */
-u32 txnt_get_size (const struct txn_table *dest);
+u32 txnt_get_size (const struct ns_txn_table *dest);
 
 /**
- * @fn bool txn_exists(const struct txn_table *t, txid tid)
+ * @fn bool txn_exists(const struct ns_txn_table *t, txid tid)
  * @brief Fast path exists check.
  */
-bool txn_exists (const struct txn_table *t, txid tid);
+bool txn_exists (const struct ns_txn_table *t, txid tid);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Table Merging
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn err_t txnt_merge_into(struct txn_table *dest, struct txn_table *src,
+ * @fn err_t txnt_merge_into(struct ns_txn_table *dest, struct ns_txn_table *src,
  * struct dbl_buffer *txn_dest, struct slab_alloc *alloc, struct i_mem mem,
  * error *e)
  * @brief Merges txn table [src] into [dest]
@@ -362,12 +366,12 @@ bool txn_exists (const struct txn_table *t, txid tid);
  * stay managed by whatever mechanism managed [src]'s memory.
  */
 err_t txnt_merge_into (
-    struct txn_table  *dest,
-    struct txn_table  *src,
-    struct dbl_buffer *txn_dest,
-    struct slab_alloc *alloc,
-    struct i_mem       mem,
-    error             *e
+    struct ns_txn_table *dest,
+    struct ns_txn_table *src,
+    struct dbl_buffer   *txn_dest,
+    struct slab_alloc   *alloc,
+    struct i_mem         mem,
+    error               *e
 );
 
 /*-----------------------------------------------------------------------------
@@ -375,64 +379,64 @@ err_t txnt_merge_into (
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn void txnt_insert_txn(struct txn_table *t, struct txn *tx)
+ * @fn void txnt_insert_txn(struct ns_txn_table *t, struct ns_txn *tx)
  * @brief Unconditionally maps an active transaction instance into the table
  * layout.
  */
-void txnt_insert_txn (struct txn_table *t, struct txn *tx);
+void txnt_insert_txn (struct ns_txn_table *t, struct ns_txn *tx);
 
 /**
- * @fn void txnt_insert_txn_if_not_exists(struct txn_table *t, struct txn *tx)
+ * @fn void txnt_insert_txn_if_not_exists(struct ns_txn_table *t, struct ns_txn *tx)
  * @brief Checks for preexisting identifiers before executing safe table
  * insertions.
  */
-void txnt_insert_txn_if_not_exists (struct txn_table *t, struct txn *tx);
+void txnt_insert_txn_if_not_exists (struct ns_txn_table *t, struct ns_txn *tx);
 
 /**
- * @fn bool txnt_get(struct txn **dest, struct txn_table *t, txid tid)
+ * @fn bool txnt_get(struct ns_txn **dest, struct ns_txn_table *t, txid tid)
  * @brief Searches the hash map key structure and extracts matching references
  * if present.
  */
-bool txnt_get (struct txn **dest, struct txn_table *t, txid tid);
+bool txnt_get (struct ns_txn **dest, struct ns_txn_table *t, txid tid);
 
 /**
- * @fn void txnt_get_expect(struct txn **dest, struct txn_table *t, txid tid)
+ * @fn void txnt_get_expect(struct ns_txn **dest, struct ns_txn_table *t, txid tid)
  * @brief Asserts that the requested transaction id is actively tracked in the
  * table maps.
  */
-void txnt_get_expect (struct txn **dest, struct txn_table *t, txid tid);
+void txnt_get_expect (struct ns_txn **dest, struct ns_txn_table *t, txid tid);
 
 /**
- * @fn void txnt_remove_txn(bool *exists, struct txn_table *t, const struct txn
+ * @fn void txnt_remove_txn(bool *exists, struct ns_txn_table *t, const struct ns_txn
  * *tx)
  * @brief Evicts target tracking details and passes safety check metrics back.
  */
-void txnt_remove_txn (bool *exists, struct txn_table *t, const struct txn *tx);
+void txnt_remove_txn (bool *exists, struct ns_txn_table *t, const struct ns_txn *tx);
 
 /**
- * @fn void txnt_remove_txn_expect(struct txn_table *t, const struct txn
+ * @fn void txnt_remove_txn_expect(struct ns_txn_table *t, const struct ns_txn
  * *unsafe_tx)
  * @brief Evicts target tracking details, asserting that the record was found.
  */
-void txnt_remove_txn_expect (struct txn_table *t, const struct txn *unsafe_tx);
+void txnt_remove_txn_expect (struct ns_txn_table *t, const struct ns_txn *unsafe_tx);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Test & Validation Helpers
  *----------------------------------------------------------------------------*/
 
 /**
- * @fn bool txnt_equal_ignore_state(struct txn_table *left, struct txn_table
+ * @fn bool txnt_equal_ignore_state(struct ns_txn_table *left, struct ns_txn_table
  * *right)
  * @brief Checks structural data parity across two tables ignoring active
  * lifecycle markers.
  */
-bool txnt_equal_ignore_state (struct txn_table *left, struct txn_table *right);
+bool txnt_equal_ignore_state (struct ns_txn_table *left, struct ns_txn_table *right);
 
 /**
- * @fn void txnt_crash(struct txn_table *t)
+ * @fn void txnt_crash(struct ns_txn_table *t)
  * @brief Simulates an ungraceful toolchain crash boundary discarding ephemeral
  * structures.
  */
-void txnt_crash (struct txn_table *t);
+void txnt_crash (struct ns_txn_table *t);
 
 #endif // TXN_TABLE_H

@@ -15,7 +15,7 @@
 #ifndef NS_ALLOC_H
 #define NS_ALLOC_H
 
-#include "core/ns_chunk_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 
@@ -34,7 +34,7 @@ struct allocator
   } type;
 
   union {
-    struct chunk_alloc calloc;
+    struct arena_alloc calloc;
   };
 };
 

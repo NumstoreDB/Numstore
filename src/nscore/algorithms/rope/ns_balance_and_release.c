@@ -89,7 +89,7 @@ TEST (dlgt_balance_with_prev)
   u32_arr_rand (_prev);
   u32_arr_rand (_cur);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   struct page_tree_builder builder = {
@@ -258,7 +258,7 @@ TEST (dlgt_balance_with_next)
   u32_arr_rand (_next);
   u32_arr_rand (_cur);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   struct page_tree_builder builder = {
@@ -421,7 +421,7 @@ ns_balance_with_next_or_prev (
     page_h               *cur,
     page_h               *next,
     struct pager         *p,
-    struct txn           *tx,
+    struct ns_txn        *tx,
     struct three_in_pair *output,
     error                *e
 )
@@ -485,7 +485,7 @@ ns_maybe_delete_cur (
     page_h             *cur,
     page_h             *next,
     struct pager       *p,
-    struct txn         *tx,
+    struct ns_txn      *tx,
     struct root_update *root,
     error              *e
 )

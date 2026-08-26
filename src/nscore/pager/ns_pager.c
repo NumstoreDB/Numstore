@@ -215,7 +215,7 @@ TEST (pager_fill_ht)
   struct pgr_fixture f;
   pgr_fixture_create (&f);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   page_h pgs[MEMORY_PAGE_LEN];
@@ -265,7 +265,7 @@ TEST (wal_int)
   page_h             h = page_h_create ();
   pgr_fixture_create (&f);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   pgr_new (&h, f.p, &tx, PG_DATA_LIST, &f.e);
@@ -343,7 +343,7 @@ err_t
 aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
 {
   dest->max_tid = 0;
-  slab_alloc_init (&dest->alloc, mem, sizeof (struct txn), 1000);
+  slab_alloc_init (&dest->alloc, mem, sizeof (struct ns_txn), 1000);
   create_default_allocator (&dest->backing_alloc);
 
   dest->txt = txnt_open (mem, e);
@@ -356,7 +356,7 @@ aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
     goto txt_failed;
   }
 
-  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct txn *), 100, e)) {
+  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct ns_txn *), 100, e)) {
     goto dpt_failed;
   }
 
@@ -382,10 +382,10 @@ aries_ctx_free (struct aries_ctx *ctx)
   allocator_free (&ctx->backing_alloc);
 }
 
-struct txn *
+struct ns_txn *
 aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
 {
-  struct txn *tx = slab_alloc_alloc (&ctx->alloc, e);
+  struct ns_txn *tx = slab_alloc_alloc (&ctx->alloc, e);
   if (tx == NULL) {
     return NULL;
   }
@@ -405,7 +405,7 @@ aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
  ******************************************************************************/
 
 err_t
-pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
+pgr_begin_txn (struct ns_txn *tx, struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
   slsn l   = 0;
@@ -417,7 +417,7 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   txn_init (
       tx,
       tid,
-      (struct txn_data){
+      (struct ns_txn_data){
           .min_lsn       = 0,
           .last_lsn      = 0,
           .undo_next_lsn = 0,
@@ -445,7 +445,7 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   // Update transaction meta data
   txn_update_data (
       tx,
-      (struct txn_data){
+      (struct ns_txn_data){
           .min_lsn       = l,
           .last_lsn      = l,
           .undo_next_lsn = 0,
@@ -466,7 +466,7 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
  ******************************************************************************/
 
 err_t
-pgr_commit (struct pager *p, struct txn *tx, error *e)
+pgr_commit (struct pager *p, struct ns_txn *tx, error *e)
 {
   DBG_ASSERT (pager, p);
 
@@ -585,8 +585,8 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   }
 
   while (log_rec->type != WL_EOF) {
-    stxid       tid = wrh_get_tid (log_rec);
-    struct txn *tx  = NULL;
+    stxid          tid = wrh_get_tid (log_rec);
+    struct ns_txn *tx  = NULL;
 
     if (tid >= 0) {
       if (tid > (stxid)ctx->max_tid) {
@@ -607,7 +607,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
         txn_init (
             tx,
             tid,
-            (struct txn_data){
+            (struct ns_txn_data){
                 .state         = TX_CANDIDATE_FOR_UNDO,
                 .last_lsn      = read_lsn,
                 .undo_next_lsn = prev_lsn,
@@ -672,7 +672,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
   // Append end logs and remove rolled back and committed txns
   for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i) {
-    struct txn *tx     = ((struct txn **)ctx->txn_ptrs.data)[i];
+    struct ns_txn *tx  = ((struct ns_txn **)ctx->txn_ptrs.data)[i];
 
     bool nothing_to_do = tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
     bool committed     = tx->data.state == TX_COMMITTED;
@@ -804,7 +804,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
 
     switch (log_rec->type) {
       case WL_UPDATE: {
-        struct txn *tx;
+        struct ns_txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->update.tid);
 
         if (wrh_is_undoable (log_rec)) {
@@ -844,14 +844,14 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
       }
 
       case WL_CLR: {
-        struct txn *tx;
+        struct ns_txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->clr.tid);
         tx->data.undo_next_lsn = log_rec->clr.undo_next;
         break;
       }
 
       case WL_BEGIN: {
-        struct txn *tx;
+        struct ns_txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
         slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
@@ -1042,7 +1042,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
   }
 
   // Open the transaction table
-  *(struct txn_table **)&ret->tnxt = txnt_open (mem, e);
+  *(struct ns_txn_table **)&ret->tnxt = txnt_open (mem, e);
   if (ret->tnxt == NULL) {
     goto failed;
   }
@@ -1302,7 +1302,7 @@ TEST (pgr_close_success)
 #endif
 
 static void
-txntforeach (struct txn *tx, void *ctx)
+txntforeach (struct ns_txn *tx, void *ctx)
 {
   // Unlock all locks from the txn (2PL shrinking phase)
   lockt_unlock_tx (((struct pager *)ctx)->lt, tx);
@@ -1351,7 +1351,7 @@ pgr_crash (struct pager *p, error *e)
  * FS_BTMP_NPGS, and the bit index within that FSM page is pgno % FS_BTMP_NPGS.
  */
 err_t
-pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
+pgr_delete_and_release (struct pager *p, struct ns_txn *tx, page_h *h, error *e)
 {
   DBG_ASSERT (pager, p);
   page_h     fsm   = page_h_create ();
@@ -1398,7 +1398,7 @@ TEST (pgr_delete)
   error             *e = &f.e;
   pgr_fixture_create (&f);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, e);
 
   page_h a = page_h_create ();
@@ -1606,7 +1606,7 @@ failed:
  *   5. Actually extend the file on disk.
  */
 static err_t
-pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
+pgr_extend_file (const struct pager *p, const pgno npages, struct ns_txn *tx, error *e)
 {
   // Do a Nested Top Action
 
@@ -1906,7 +1906,7 @@ TEST (pgr_get_invalid_checksum)
   struct pgr_fixture pf;
   pgr_fixture_create (&pf);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, pf.p, &pf.e);
 
   pgr_new (&pg, pf.p, &tx, PG_DATA_LIST, &pf.e);
@@ -1949,12 +1949,12 @@ TEST (pgr_get_invalid_checksum)
 
 err_t
 pgr_get_writable (
-    page_h       *dest,
-    struct txn   *tx,
-    const int     flags,
-    const pgno    pg,
-    struct pager *p,
-    error        *e
+    page_h        *dest,
+    struct ns_txn *tx,
+    const int      flags,
+    const pgno     pg,
+    struct pager  *p,
+    error         *e
 )
 {
   struct page_frame *pgr = NULL; // Read frame
@@ -2085,7 +2085,7 @@ static err_t
 pgr_new_impl (
     page_h              *dest,
     struct pager        *p,
-    struct txn          *tx,
+    struct ns_txn       *tx,
     const enum page_type type,
     const pgno           pg,
     error               *e
@@ -2151,7 +2151,7 @@ theend:
 }
 
 static inline err_t
-pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
+pgr_new_fsmpg (page_h *fsm, struct pager *p, struct ns_txn *tx, error *e)
 {
   pgno fsmpg = pgr_get_npages (p);
 
@@ -2179,7 +2179,7 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
 }
 
 err_t
-pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e)
+pgr_new (page_h *dest, struct pager *p, struct ns_txn *tx, const enum page_type type, error *e)
 {
   page_h fsm   = page_h_create ();
   pgno   fsmpg = 0;
@@ -2258,7 +2258,7 @@ TEST (pgr_new_get_save)
   page_h             h = page_h_create ();
   pgr_fixture_create (&f);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   pgr_new (&h, f.p, &tx, PG_DATA_LIST, &f.e);
@@ -2307,10 +2307,10 @@ struct args
 static void *
 producer_thread (void *_args)
 {
-  struct args *args = _args;
-  error        e    = error_create ();
-  page_h       a    = page_h_create ();
-  struct txn   tx;
+  struct args  *args = _args;
+  error         e    = error_create ();
+  page_h        a    = page_h_create ();
+  struct ns_txn tx;
 
   while (!args->done) {
     pgr_begin_txn (&tx, args->p, &e);
@@ -2462,7 +2462,7 @@ pgr_release_with_log (
  ******************************************************************************/
 
 err_t
-pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
+pgr_rollback (struct pager *p, struct ns_txn *tx, lsn save_lsn, error *e)
 {
   struct wal_rec_hdr_read *log_rec      = NULL;             // Next record to read
   page_h                   ph           = page_h_create (); // The page handle used for all undo's
@@ -2578,7 +2578,7 @@ TEST (aries_rollback_basic)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct txn    tx;
+  struct ns_txn tx;
   page_h        fsm = page_h_create ();
   page_h        pg  = page_h_create ();
 
@@ -2644,8 +2644,8 @@ TEST (aries_rollback_multiple_updates)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct txn    tx;
-  struct txn    tx2;
+  struct ns_txn tx;
+  struct ns_txn tx2;
   page_h        dl_page = page_h_create ();
   pgno          pgno1;
   u8            initial_data[DL_DATA_SIZE];
@@ -2707,8 +2707,8 @@ TEST (aries_rollback_with_crash_recovery)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct txn    tx;
-  struct txn    tx2;
+  struct ns_txn tx;
+  struct ns_txn tx2;
   page_h        dl_page = page_h_create ();
   pgno          pgno1;
   u8            committed_data[DL_DATA_SIZE];
@@ -2765,8 +2765,8 @@ TEST (aries_rollback_clr_not_undone)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct txn    tx;
-  struct txn    tx2;
+  struct ns_txn tx;
+  struct ns_txn tx2;
   page_h        dl_page = page_h_create ();
   pgno          pgno1;
   u8            initial_data[DL_DATA_SIZE];

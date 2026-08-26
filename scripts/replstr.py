@@ -4,8 +4,7 @@ ROOTS = ["src"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "nscore/ns_page_h" : "nscore/page/ns_page_h",
-        "nscore/ns_nsdb" : "nscore/nsdb/ns_nsdb",
+        "struct txn" : "struct ns_txn",
 }
 
 for ROOT in ROOTS:

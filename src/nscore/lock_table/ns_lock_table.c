@@ -170,7 +170,7 @@ lockt_lock_once (
     struct lockt        *t,
     const struct lt_lock lock,
     const enum lock_mode mode,
-    struct txn          *tx,
+    struct ns_txn       *tx,
     error               *e
 )
 {
@@ -241,7 +241,7 @@ lockt_lock (
     struct lockt        *t,
     const struct lt_lock lock,
     const enum lock_mode mode,
-    struct txn          *tx,
+    struct ns_txn       *tx,
     error               *e
 )
 {
@@ -317,7 +317,7 @@ unlock_single_lock (const struct lt_lock lock, const enum lock_mode mode, void *
 }
 
 void
-lockt_unlock_tx (struct lockt *t, struct txn *tx)
+lockt_unlock_tx (struct lockt *t, struct ns_txn *tx)
 {
   ASSERT (t);
   ASSERT (tx);

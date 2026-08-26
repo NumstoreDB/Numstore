@@ -277,7 +277,7 @@ smfile_open (const char *path)
   // Create the default variable
   if (pgr_isnew (ret->root->p)) {
     // BEGIN TXN
-    struct txn tx;
+    struct ns_txn tx;
     if (pgr_begin_txn (&tx, ret->root->p, &ret->e)) {
       goto failed;
     }

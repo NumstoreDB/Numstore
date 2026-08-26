@@ -29,10 +29,10 @@
 err_t
 ns_init_var_hash_map (struct pager *p, error *e)
 {
-  page_h     hp = page_h_create ();
+  page_h        hp = page_h_create ();
 
   // BEGIN TXN
-  struct txn tx;
+  struct ns_txn tx;
   if (pgr_begin_txn (&tx, p, e)) {
     goto failed;
   }

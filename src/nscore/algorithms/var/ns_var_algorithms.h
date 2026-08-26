@@ -42,7 +42,7 @@ struct var_retrieval
 struct ns_var_get_params
 {
   struct pager     *p;
-  struct txn       *tx;
+  struct ns_txn    *tx;
 
   struct string     vname;
   struct allocator *alloc;
@@ -55,7 +55,7 @@ err_t ns_var_get (struct ns_var_get_params *params, error *e);
 struct ns_var_get_or_create_params
 {
   struct pager     *p;
-  struct txn       *tx;
+  struct ns_txn    *tx;
 
   struct string     vname;
   struct type      *type;
@@ -72,11 +72,11 @@ err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e
 
 struct ns_var_create_params
 {
-  struct pager *p;
-  struct txn   *tx;
+  struct pager  *p;
+  struct ns_txn *tx;
 
-  struct string vname;
-  struct type  *type;
+  struct string  vname;
+  struct type   *type;
 };
 
 spgno ns_var_create (struct ns_var_create_params params, error *e);
@@ -88,7 +88,7 @@ spgno ns_var_create (struct ns_var_create_params params, error *e);
 struct ns_var_update_params
 {
   struct pager        *p;
-  struct txn          *tx;
+  struct ns_txn       *tx;
 
   struct var_retrieval retr;
 
@@ -105,10 +105,10 @@ err_t ns_var_update (struct ns_var_update_params params, error *e);
 
 struct ns_var_delete_params
 {
-  struct pager *p;
-  struct txn   *tx;
+  struct pager  *p;
+  struct ns_txn *tx;
 
-  struct string vname;
+  struct string  vname;
 };
 
 err_t ns_var_delete (struct ns_var_delete_params params, error *e);

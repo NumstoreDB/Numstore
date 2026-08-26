@@ -38,6 +38,7 @@
  ******************************************************************************/
 
 typedef struct nsdb     nsdb_t;
+typedef struct ns_txn   ns_txn_t;
 typedef struct nsdb_var nsdb_var_t;
 
 #ifndef NS_TYPE_ALIASES
@@ -103,12 +104,20 @@ void nsdb_var_free (nsdb_var_t *var);
 const char *nsdb_strerror (nsdb_t *ns);
 int nsdb_perror (nsdb_t *ns, const char *prefix);
 
-int nsdb_begin (nsdb_t *ns);
-int nsdb_commit (nsdb_t *ns);
-int nsdb_rollback (nsdb_t *ns);
+ns_txn_t *nsdb_begin (nsdb_t *ns);
+int nsdb_commit (nsdb_t *ns, ns_txn_t *txn);
+int nsdb_rollback (nsdb_t *ns, ns_txn_t *txn);
 
-sb_size nsdb_fexecute (nsdb_t *ns, const char *query_fmt, void *data, ...) NSDB_PRINTF (2, 4);
-
-void *nsdb_fexecute_malloc (nsdb_t *ns, const char *query_fmt, ...) NSDB_PRINTF (2, 3);
+sb_size nsdb_fexecute (
+    nsdb_t     *ns,
+    ns_txn_t   *txn,
+    const char *query_fmt,
+    void       *data,
+    ...
+) NSDB_PRINTF (3, 5);
+void *nsdb_fexecute_malloc (nsdb_t *ns, ns_txn_t *txn, const char *query_fmt, ...) NSDB_PRINTF (
+    3,
+    4
+);
 
 #endif

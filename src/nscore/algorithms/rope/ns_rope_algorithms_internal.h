@@ -32,15 +32,15 @@ struct seek_v
 
 struct ns_seek_params
 {
-  struct pager *p;
-  struct txn   *tx;
-  pgno          root;
-  b_size        bofst;
-  bool          save_stack;
-  struct seek_v pstack[20];
-  u32           sp;
-  page_h        pg;
-  p_size        lidx;
+  struct pager  *p;
+  struct ns_txn *tx;
+  pgno           root;
+  b_size         bofst;
+  bool           save_stack;
+  struct seek_v  pstack[20];
+  u32            sp;
+  page_h         pg;
+  p_size         lidx;
 };
 
 err_t ns_seek (struct ns_seek_params *a, error *e);
@@ -54,7 +54,7 @@ struct root_update
 struct ns_balance_and_release_params
 {
   struct pager         *p;
-  struct txn           *tx;
+  struct ns_txn        *tx;
   struct three_in_pair *output;
   struct root_update   *root;
   page_h               *prev;
@@ -67,7 +67,7 @@ err_t ns_balance_and_release (struct ns_balance_and_release_params params, error
 struct ns_rebalance_params
 {
   struct pager        *p;
-  struct txn          *tx;
+  struct ns_txn       *tx;
   pgno                 root;
   struct seek_v       *pstack;
   u32                  sp;
