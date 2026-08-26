@@ -27,7 +27,7 @@ err_t ns_variable_valid (struct pager *p, pgno var_root, error *e);
 struct ns_read_var_page_params
 {
   struct pager        *p;
-  struct txn          *tx;
+  struct ns_txn       *tx;
 
   page_h              *vp;    // The currently loaded variable page
   struct allocator    *alloc; // Where to allocate stuff
@@ -45,7 +45,7 @@ err_t ns_read_var_page (struct ns_read_var_page_params *params, error *e);
 struct ns_write_var_page_params
 {
   struct pager          *p;
-  struct txn            *tx;
+  struct ns_txn         *tx;
   page_h                *vp;  // The currently loaded variable page
   const struct variable *var; // The variable to write
 };
@@ -55,7 +55,7 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e);
 struct ns_find_var_page_params
 {
   struct pager     *p;
-  struct txn       *tx;
+  struct ns_txn    *tx;
   struct allocator *alloc;
 
   struct string     vname;

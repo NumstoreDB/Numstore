@@ -94,7 +94,7 @@ TEST (ns_var_get_or_create)
     struct pgr_fixture f;
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
-    struct txn tx;
+    struct ns_txn tx;
 
     // Create
     {
@@ -124,7 +124,7 @@ TEST (ns_var_get_or_create)
     struct pgr_fixture f;
     pgr_fixture_create (&f);
     ns_init_var_hash_map (f.p, &f.e);
-    struct txn tx;
+    struct ns_txn tx;
 
     // Create
     {
@@ -158,7 +158,7 @@ TEST (ns_var_get_or_create)
     ns_init_var_hash_map (f.p, &f.e);
 
     for (u32 i = 0; i < 100; ++i) {
-      struct txn tx;
+      struct ns_txn tx;
 
       // Long variable name
       {
@@ -200,7 +200,7 @@ TEST (ns_var_get_or_create)
     ns_init_var_hash_map (f.p, &f.e);
 
     for (u32 i = 0; i < 100; ++i) {
-      struct txn tx;
+      struct ns_txn tx;
 
       // Long variable name
       {
@@ -249,7 +249,7 @@ TEST (ns_var_get_or_create)
       struct pgr_fixture f;
       pgr_fixture_create (&f);
       ns_init_var_hash_map (f.p, &f.e);
-      struct txn tx;
+      struct ns_txn tx;
 
       // Long variable name
       {

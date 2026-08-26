@@ -46,7 +46,7 @@ struct pgr_fixture
   error                e;
   struct pager        *p;
   struct allocator     alloc;
-  struct txn           tx;
+  struct ns_txn        tx;
   struct i_mem         mem;
   struct i_file_system fs;
 };
@@ -70,7 +70,7 @@ struct tree_descr
   u32                nlen;
 };
 
-spgno build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr descr, error *e);
+spgno build_tree_from_descr (struct pager *p, struct ns_txn *tx, struct tree_descr descr, error *e);
 
 /******************************************************************************
  * SECTION: Fake Database Building
@@ -81,7 +81,7 @@ spgno build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr 
 struct in_page_builder
 {
   struct pager  *pager;
-  struct txn    *txn;
+  struct ns_txn *txn;
 
   // NULL = no linking, else link to this page
   page_h        *prev;
@@ -95,7 +95,7 @@ struct in_page_builder
 struct dl_page_builder
 {
   struct pager  *pager;
-  struct txn    *txn;
+  struct ns_txn *txn;
 
   // NULL = no linking, else link to this page
   page_h        *prev;
@@ -135,7 +135,7 @@ struct page_tree_builder
 {
   struct pager    *pager;
   struct page_desc root;
-  struct txn      *txn;
+  struct ns_txn   *txn;
 };
 
 /*-----------------------------------------------------------------------------

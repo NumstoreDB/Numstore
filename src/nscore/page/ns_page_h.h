@@ -95,7 +95,7 @@ typedef struct
   struct
   {
     struct page_frame *pgw;
-    struct txn        *tx;
+    struct ns_txn     *tx;
   };
 } page_h;
 

@@ -886,7 +886,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
 }
 
 struct wal_clr_write
-wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
+wrh_undo (struct wal_rec_hdr_read *h, struct ns_txn *tx, page_h *ph)
 {
   switch (h->type) {
     case WL_BEGIN: {

@@ -113,7 +113,7 @@ static err_t
 build_tree_from_descr_inner (
     struct tree_result *dest,
     struct pager       *p,
-    struct txn         *tx,
+    struct ns_txn      *tx,
     struct tree_descr   descr,
     error              *e
 )
@@ -155,7 +155,7 @@ failed:
 }
 
 spgno
-build_tree_from_descr (struct pager *p, struct txn *tx, struct tree_descr descr, error *e)
+build_tree_from_descr (struct pager *p, struct ns_txn *tx, struct tree_descr descr, error *e)
 {
   struct tree_result result;
   if (build_tree_from_descr_inner (&result, p, tx, descr, e)) {
@@ -245,7 +245,7 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
 static err_t build_page_desc (
     struct page_desc *desc,
     struct pager     *pager,
-    struct txn       *txn,
+    struct ns_txn    *txn,
     error            *e
 );
 
@@ -256,7 +256,7 @@ build_page_tree (struct page_tree_builder *builder, error *e)
 }
 
 static err_t
-build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e)
+build_page_desc (struct page_desc *desc, struct pager *pager, struct ns_txn *txn, error *e)
 {
   switch (desc->type) {
     case PG_INNER_NODE: {
@@ -329,7 +329,7 @@ TEST (build_page_tree)
   struct pgr_fixture f;
   pgr_fixture_create (&f);
 
-  struct txn tx;
+  struct ns_txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   struct page_tree_builder builder = {

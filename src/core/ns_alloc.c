@@ -14,7 +14,7 @@
 
 #include "core/ns_alloc.h"
 
-#include "core/ns_chunk_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 
@@ -24,7 +24,7 @@ void
 create_default_allocator (struct allocator *alloc)
 {
   alloc->type = AT_CHUNK_ALLOCATOR;
-  chunk_alloc_create_default (&alloc->calloc);
+  arena_alloc_create_default (&alloc->calloc);
 }
 
 void *
@@ -61,7 +61,7 @@ allocator_free (struct allocator *alloc)
 {
   switch (alloc->type) {
     case AT_CHUNK_ALLOCATOR: {
-      chunk_alloc_free_all (&alloc->calloc);
+      arena_alloc_free_all (&alloc->calloc);
       return;
     }
     default: {

@@ -30,7 +30,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct txn;
+struct ns_txn;
 
 /******************************************************************************
  * SECTION: ns_rebalance
@@ -99,7 +99,7 @@ struct txn;
  * sibling pages must be freed so their slots return to the FSM.
  */
 static err_t
-in_delete_chain (page_h *cur, struct txn *tx, struct pager *p, error *e)
+in_delete_chain (page_h *cur, struct ns_txn *tx, struct pager *p, error *e)
 {
   page_h next_next = page_h_create ();
   page_h next      = page_h_create ();

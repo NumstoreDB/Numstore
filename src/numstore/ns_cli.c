@@ -37,6 +37,7 @@ main (int argc, char **argv)
     if (nscli_step_init (&cli)) {
       goto fatal;
     }
+
     // Read input
     switch (nscli_step_read_stdin (&cli)) {
       case CMD_FATAL: {

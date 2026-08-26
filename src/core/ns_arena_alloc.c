@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_chunk_alloc.h"
+#include "core/ns_arena_alloc.h"
 
 #include "core/ns_bounds.h"
 #include "core/ns_concurrency.h"
@@ -140,7 +140,7 @@ DEFINE_DBG_ASSERT (struct chunk, chunk, c, {
   ASSERT (c->alloc.data == (u8 *)c + sizeof (struct chunk));
 })
 
-DEFINE_DBG_ASSERT (struct chunk_alloc, chunk_alloc, ca, {
+DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, {
   ASSERT (ca);
   ASSERT (ca->settings.target_chunk_mult >= 1.0f);
   ASSERT (ca->settings.min_chunk_size > 0);
@@ -187,13 +187,13 @@ chunk_create (const u32 size, struct i_mem mem, error *e)
 }
 
 static void
-chunk_alloc_create (struct chunk_alloc *dest, const struct chunk_alloc_settings settings)
+arena_alloc_create (struct arena_alloc *dest, const struct arena_alloc_settings settings)
 {
   ASSERT (settings.target_chunk_mult >= 1.0f);
   ASSERT (settings.min_chunk_size > 0);
   ASSERT (settings.max_chunk_size == 0 || settings.max_chunk_size >= settings.min_chunk_size);
 
-  *dest = (struct chunk_alloc){
+  *dest = (struct arena_alloc){
       .settings        = settings,
       .head            = NULL,
       .num_chunks      = 0,
@@ -203,15 +203,15 @@ chunk_alloc_create (struct chunk_alloc *dest, const struct chunk_alloc_settings 
 
   latch_init (&dest->latch);
 
-  DBG_ASSERT (chunk_alloc, dest);
+  DBG_ASSERT (arena_alloc, dest);
 }
 
 void
-chunk_alloc_create_default (struct chunk_alloc *dest)
+arena_alloc_create_default (struct arena_alloc *dest)
 {
-  chunk_alloc_create (
+  arena_alloc_create (
       dest,
-      (struct chunk_alloc_settings){
+      (struct arena_alloc_settings){
           .max_alloc_size    = 0,
           .max_total_size    = 0,
           .target_chunk_mult = 10,
@@ -224,9 +224,9 @@ chunk_alloc_create_default (struct chunk_alloc *dest)
 }
 
 static u32
-compute_new_chunk_size (const struct chunk_alloc *ca, const u32 alloc_size)
+compute_new_chunk_size (const struct arena_alloc *ca, const u32 alloc_size)
 {
-  DBG_ASSERT (chunk_alloc, ca);
+  DBG_ASSERT (arena_alloc, ca);
 
   // Target chunk size based on multiplier
   u32 new_chunk_size = (u32)(alloc_size * ca->settings.target_chunk_mult);
@@ -250,11 +250,11 @@ compute_new_chunk_size (const struct chunk_alloc *ca, const u32 alloc_size)
 }
 
 void
-chunk_alloc_free_all (struct chunk_alloc *ca)
+arena_alloc_free_all (struct arena_alloc *ca)
 {
   latch_lock (&ca->latch);
 
-  DBG_ASSERT (chunk_alloc, ca);
+  DBG_ASSERT (arena_alloc, ca);
 
   struct chunk *cur = ca->head;
   while (cur != NULL) {
@@ -273,9 +273,9 @@ chunk_alloc_free_all (struct chunk_alloc *ca)
 }
 
 static err_t
-chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
+arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
 {
-  DBG_ASSERT (chunk_alloc, ca);
+  DBG_ASSERT (arena_alloc, ca);
 
   // Check chunk count limit
   if (ca->settings.max_chunks > 0 && ca->num_chunks >= ca->settings.max_chunks) {
@@ -323,11 +323,11 @@ chunk_alloc_add_new_chunk (struct chunk_alloc *ca, const u32 size, error *e)
 }
 
 void *
-chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
+chunk_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
 {
   latch_lock (&ca->latch);
 
-  DBG_ASSERT (chunk_alloc, ca);
+  DBG_ASSERT (arena_alloc, ca);
 
   // Check for overflow
   if (req > 0 && size > UINT32_MAX / req) {
@@ -365,7 +365,7 @@ chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e)
   const u32 new_chunk_size = compute_new_chunk_size (ca, alloc_size);
 
   // Create new chunk
-  if (chunk_alloc_add_new_chunk (ca, new_chunk_size, e) != SUCCESS) {
+  if (arena_alloc_add_new_chunk (ca, new_chunk_size, e) != SUCCESS) {
     latch_unlock (&ca->latch);
     return NULL;
   }

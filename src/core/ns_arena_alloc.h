@@ -30,7 +30,7 @@
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_memory.h"
 
-struct chunk_alloc_settings
+struct arena_alloc_settings
 {
   u32          max_alloc_size;
   u32          max_total_size;
@@ -41,18 +41,18 @@ struct chunk_alloc_settings
   struct i_mem mem;
 };
 
-struct chunk_alloc
+struct arena_alloc
 {
   latch                       latch;
-  struct chunk_alloc_settings settings;
+  struct arena_alloc_settings settings;
   struct chunk               *head;
   u32                         num_chunks;
   u32                         total_allocated;
   u32                         total_used;
 };
 
-void chunk_alloc_create_default (struct chunk_alloc *dest);
-void *chunk_malloc (struct chunk_alloc *ca, const u32 req, const u32 size, error *e);
-void chunk_alloc_free_all (struct chunk_alloc *ca);
+void arena_alloc_create_default (struct arena_alloc *dest);
+void *chunk_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e);
+void arena_alloc_free_all (struct arena_alloc *ca);
 
 #endif
