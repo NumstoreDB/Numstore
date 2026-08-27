@@ -8,7 +8,14 @@ RUSTC        := rustc
 
 ############ User Config
 
-TARGET       ?= debug
+TARGET ?= debug
+ASAN   ?= 0
+NLOG   ?= 0
+
+# Extra flags a user can inject into any build without editing the Makefile,
+# e.g. `make CFLAGS_USER=-DFOO`. Applied last, after every other CFLAGS_*
+# variable, so it can override them.
+CFLAGS_USER ?=
 
 ############ Output Directories
 
@@ -25,34 +32,60 @@ PY_TARGET_DIR := $(PY_OUT_DIR)/target
 PY_OBJ_DIR    := $(PY_OUT_DIR)/objs
 
 ############ C Flags
+#
+# Flags are split by where they apply, then combined into CFLAGS below:
+#   CFLAGS_COMMON  - always applied, regardless of TARGET/ASAN/NLOG
+#   CFLAGS_DEBUG   - only when TARGET=debug
+#   CFLAGS_RELEASE - only when TARGET=release
+#   CFLAGS_ASAN    - only when ASAN=1 (layers on top of either TARGET)
+#   CFLAGS_NLOG    - only when NLOG=1 (layers on top of either TARGET)
+#   CFLAGS_USER    - user-supplied, applied last so it can override the rest
 
 # -MMD -MP makes gcc emit a per-object .d file
 # listing every header it actually pulled in; see the `-include` of those
 # files near the bottom of this Makefile.
-CFLAGS :=
-CFLAGS += -MMD
-CFLAGS += -MP
-CFLAGS += -Wall
-CFLAGS += -Wextra
-CFLAGS += -I$(CURDIR)/src
-CFLAGS += -Wno-unused-parameter
-CFLAGS += -Wno-unused-variable
-CFLAGS += -Wno-unused-but-set-variable
+CFLAGS_COMMON :=
+CFLAGS_COMMON += -MMD
+CFLAGS_COMMON += -MP
+CFLAGS_COMMON += -Wall
+CFLAGS_COMMON += -Wextra
+CFLAGS_COMMON += -I$(CURDIR)/src
+CFLAGS_COMMON += -Wno-unused-parameter
+CFLAGS_COMMON += -Wno-unused-variable
+CFLAGS_COMMON += -Wno-unused-but-set-variable
+
+CFLAGS_DEBUG :=
+CFLAGS_DEBUG += -DTESTING
+CFLAGS_DEBUG += -g
+
+CFLAGS_RELEASE :=
+CFLAGS_RELEASE += -DNDEBUG
+CFLAGS_RELEASE += -O3
+
+CFLAGS_ASAN :=
+CFLAGS_ASAN += -g
+CFLAGS_ASAN += -fsanitize=address,undefined
+CFLAGS_ASAN += -fno-omit-frame-pointer
+
+CFLAGS_NLOG := -DNLOG
+
 ifeq ($(TARGET),release)
-CFLAGS += -DNDEBUG
-CFLAGS += -DNLOG
-CFLAGS += -O3
+CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_RELEASE)
 else ifeq ($(TARGET),debug)
-CFLAGS += -DTESTING
-CFLAGS += -g
-else ifeq ($(TARGET),asan)
-CFLAGS += -DTESTING
-CFLAGS += -g
-CFLAGS += -fsanitize=address,undefined
-CFLAGS += -fno-omit-frame-pointer
+CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_DEBUG)
 else
-    $(error Invalid TARGET '$(TARGET)' - must be 'debug', 'release', or 'asan')
+    $(error Invalid TARGET '$(TARGET)' - must be 'debug' or 'release')
 endif
+
+ifeq ($(ASAN),1)
+CFLAGS += $(CFLAGS_ASAN)
+endif
+
+ifeq ($(NLOG),1)
+CFLAGS += $(CFLAGS_NLOG)
+endif
+
+CFLAGS += $(CFLAGS_USER)
 
 ############ Rust Flags
 
@@ -60,23 +93,29 @@ RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
 ############ Python Flags
 #
-# PY_CFLAGS   - flags needed to *compile* against Python/numpy headers
-# PY_LDFLAGS  - flags needed to *link* a Python extension module (must come
-#               after the object files on the command line so the linker
-#               can resolve symbols against them correctly)
+# CFLAGS_PYTHON - flags needed to *compile* against Python/numpy headers
+# PY_LDFLAGS    - flags needed to *link* a Python extension module (must come
+#                 after the object files on the command line so the linker
+#                 can resolve symbols against them correctly)
+#
+# Combined into PY_CFLAGS below, same pattern as CFLAGS above: CFLAGS_NLOG
+# layers in when NLOG=1, and CFLAGS_USER is applied last.
 
 ifneq (,$(filter python,$(MAKECMDGOALS)))
-PY_CFLAGS  := $(shell $(PYTHON)-config --includes)
-PY_CFLAGS  += -MMD
-PY_CFLAGS  += -MP
-PY_CFLAGS  += -fPIC
-PY_CFLAGS  += -DNLOG
-PY_CFLAGS  += -DNDEBUG
-PY_CFLAGS  += -I$(CURDIR)/src
-PY_CFLAGS  += -I$(CURDIR)/src/numstore
-PY_CFLAGS  += -I$(shell \
+CFLAGS_PYTHON := $(shell $(PYTHON)-config --includes)
+CFLAGS_PYTHON += -MMD
+CFLAGS_PYTHON += -MP
+CFLAGS_PYTHON += -fPIC
+CFLAGS_PYTHON += -DNDEBUG
+CFLAGS_PYTHON += -I$(CURDIR)/src
+CFLAGS_PYTHON += -I$(CURDIR)/src/numstore
+CFLAGS_PYTHON += -I$(shell \
 	$(PYTHON) -c "import numpy; print(numpy.get_include())" \
 )
+
+PY_CFLAGS := $(CFLAGS_PYTHON)
+PY_CFLAGS += $(CFLAGS_NLOG)
+PY_CFLAGS += $(CFLAGS_USER)
 
 PY_LDFLAGS := -shared
 PY_LDFLAGS += $(shell \
@@ -103,7 +142,9 @@ include src/nscore/module.mk
 include src/numstore/module.mk
 include src/smartfiles/module.mk
 include bindings/python/module.mk
-ifneq (,$(filter debug asan,$(TARGET)))
+ifeq ($(TARGET),debug)
+include src/tests/module.mk
+else ifeq ($(ASAN),1)
 include src/tests/module.mk
 endif
 
@@ -172,15 +213,19 @@ $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
 #
 # make                  - debug numstore library and binaries
 # make TARGET=release   - release numstore library and binaries
-# make TARGET=asan      - debug build + unit tests, instrumented with
-#                         AddressSanitizer/UBSan
+# make ASAN=1           - layer AddressSanitizer/UBSan on top of either
+#                         TARGET; unit tests are included whenever ASAN=1,
+#                         even under TARGET=release
+# make NLOG=1           - strip logging (-DNLOG) from either TARGET
+# make CFLAGS_USER=...  - append extra, user-defined flags to any build
 # make docs             - build docs
 # make python           - build the raw _pynumstore extension module
 # make python-package   - build the installable pynumstore wheel
 # make python-test      - build the wheel, install it, and run the pytest suite
 # make release-package-windows-cross
 #                       - cross-compile the release package for Windows from
-#                         Linux using mingw-w64 (CC/AR overridden by caller)
+#                         Linux using mingw-w64 (CC/AR overridden by caller);
+#                         add WINE=wine64 to also run unit_tests.exe under Wine
 
 .PHONY: all clean format docs python python-package python-test
 
@@ -223,14 +268,24 @@ release-package:
 # Cross-compiles the C library/binaries for Windows from Linux (see
 # docker/windows-x64.Dockerfile) by pointing CC/AR at the mingw-w64
 # toolchain, e.g.:
-#   make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar release-package-windows-cross
-# The resulting .exe binaries can't run on the Linux host that built them,
-# so unlike release-package this only proves the build compiles/links --
-# it doesn't execute unit_tests, and it skips the Python extension (which
-# would need Windows Python headers/import libs to cross-compile against).
+#   make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar \
+#        WINE=wine64 release-package-windows-cross
+# WINE is optional: leave it unset to just prove the cross build compiles/
+# links. Set it to run unit_tests.exe under Wine -- it's copied to a scratch
+# dir first and run from there rather than in place, since running it
+# straight out of a bind-mounted source tree is flaky (WAL/db fixture files
+# racing against the host filesystem bridge). Skips the Python extension
+# either way, since that would need Windows Python headers/import libs to
+# cross-compile against.
 release-package-windows-cross:
 	$(MAKE) TARGET=debug clean
 	$(MAKE) TARGET=debug
+	@if [ -n "$(WINE)" ]; then \
+		rundir=$$(mktemp -d) && \
+		cp build/debug/target/bin/unit_tests.exe $$rundir/ && \
+		(cd $$rundir && $(WINE) unit_tests.exe) && \
+		rm -rf $$rundir; \
+	fi
 	$(MAKE) TARGET=release clean
 	$(MAKE) TARGET=release
 	cp docs/release_docs.md build/release/target/README.md

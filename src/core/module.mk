@@ -24,6 +24,7 @@ ALL_SRCS += src/core/os/posix/ns_posix_file.c
 ALL_SRCS += src/core/os/posix/ns_posix_filesystem.c
 ALL_SRCS += src/core/os/posix/ns_posix_threading.c
 ALL_SRCS += src/core/os/posix/ns_posix_timing.c
+ALL_SRCS += src/core/os/windows/ns_win32_file.c
 ALL_SRCS += src/core/os/windows/ns_win32_filesystem.c
 ALL_SRCS += src/core/os/windows/ns_win32_threading.c
 ALL_SRCS += src/core/os/windows/ns_win32_timing.c

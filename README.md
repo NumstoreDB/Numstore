@@ -33,11 +33,13 @@ An embedded database for numerical arrays see `src/numstore/numstore.h` or
 Smartfiles Library
 --------------------
 
-    build/lib/libsmartfiles.a
+    build/lib/libnumstore.a
     build/include/smartfiles.h
 
 An embedded database for files see `src/smartfiles/smartfiles.h` or
-`src/smartfiles/samples/*`
+`src/smartfiles/samples/*`. Smartfiles is compiled into the same
+`libnumstore.a` as the numstore library above; there is only one static
+library.
 
 
 Quick Start
@@ -76,6 +78,42 @@ Linux / MacOS
 
 headers and libs land in build/<target>/include and build/<target>/lib if you
 want to link against numstore/smartfiles/core yourself
+
+Calling Make
+============
+
+    make                              debug build of the library, binaries, and samples (default)
+
+    make TARGET=release               release build (no asserts, -O3)
+
+    make ASAN=1                       layer AddressSanitizer/UBSan on top of either TARGET; unit
+                                      tests are included whenever ASAN=1, even under TARGET=release
+
+    make NLOG=1                       strip logging (-DNLOG) from either TARGET
+
+    make CFLAGS_USER=-DFOO             append extra, user-defined flags to any build
+
+    make docs                         build the HTML docs from docs/*.md
+
+    make python                       build the raw _pynumstore extension module
+
+    make python-package               build the installable pynumstore wheel
+
+    make python-test                  build the wheel, install it, and run the pytest suite
+
+    make release-package              build and package a full release (runs unit tests, tars/zips
+                                      build/release/target, and builds the python package)
+
+    make release-package-window       cross-compile the release package for Windows from Linux via
+                                      mingw-w64 (pass CC/AR for the cross toolchain; add WINE=wine64
+                                      to also run unit_tests.exe under Wine)
+    make format                       run clang-format over src and bindings
+
+    make clean                        remove build output for the current TARGET
+
+`TARGET` defaults to `debug` and can be set to `debug` or `release`. `ASAN`
+and `NLOG` default to `0` and can be set to `1` independently of `TARGET`,
+e.g. `make TARGET=release ASAN=1 NLOG=1`.
 
 more info: [Documentation](docs/index.md)
 
