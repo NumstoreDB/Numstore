@@ -51,7 +51,8 @@ jobs:
         run: |
           docker build -t numstore-win-cross -f docker/windows-x64.Dockerfile docker
           docker run --rm -v "$PWD":/work -w /work numstore-win-cross \
-            make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar release-package-windows-cross
+            make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar \
+                 WINE=wine64 release-package-windows-cross
 
       - name: Rename artifacts
         if: startsWith(github.ref, 'refs/tags/')

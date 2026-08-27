@@ -13,8 +13,14 @@ RUN apt-get update \
         make \
         mingw-w64 \
         python3 \
+        wine64 \
         zip \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # wine64's own package doesn't put a `wine64` binary on PATH (that
+    # normally comes from the much heavier `wine` metapackage's
+    # update-alternatives setup) -- symlink the real one so the Makefile
+    # can just invoke `wine64`.
+    && ln -s /usr/lib/wine/wine64 /usr/local/bin/wine64
 
 # CC/AR aren't set here as ENV: Make's `:=` assignments in the Makefile
 # take precedence over inherited environment variables, so the toolchain
