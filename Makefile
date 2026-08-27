@@ -275,9 +275,11 @@ release-package:
 	$(MAKE) TARGET=release clean
 	$(MAKE) TARGET=release
 	cp docs/release_docs.md build/release/target/README.md
+	$(MAKE) python-test
+	mkdir -p build/release/target/python
+	cp $(PY_TARGET_DIR)/pynumstore-*.whl build/release/target/python/
 	tar -czf build/release.tar.gz -C build/release target
 	cd build/release && zip -r ../release.zip target
-	$(MAKE) python-test
 
 # Cross-compiles the C library/binaries for Windows from Linux (see
 # docker/windows-x64.Dockerfile) by pointing CC/AR at the mingw-w64
