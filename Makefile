@@ -177,8 +177,12 @@ $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
 # make docs             - build docs
 # make python           - build the raw _pynumstore extension module
 # make python-package   - build the installable pynumstore wheel
+# make python-test      - build the wheel, install it, and run the pytest suite
+# make release-package-windows-cross
+#                       - cross-compile the release package for Windows from
+#                         Linux using mingw-w64 (CC/AR overridden by caller)
 
-.PHONY: all clean format docs python python-package
+.PHONY: all clean format docs python python-package python-test
 
 .DEFAULT_GOAL := all
 
@@ -193,6 +197,11 @@ python: $(TARGET_PYLIB)
 python-package:
 	$(PYTHON) -m pip wheel $(CURDIR)/bindings/python --no-deps -w $(PY_TARGET_DIR)
 
+python-test: python-package
+	$(PYTHON) -m pip install --force-reinstall $(PY_TARGET_DIR)/pynumstore-*.whl
+	$(PYTHON) -m pip install pytest
+	$(PYTHON) -m pytest $(CURDIR)/bindings/python/tests
+
 ############ Directories
 
 $(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(PY_TARGET_DIR) $(PY_OBJ_DIR):
@@ -204,6 +213,24 @@ release-package:
 	$(MAKE) TARGET=debug clean
 	$(MAKE) TARGET=debug
 	./build/debug/target/bin/unit_tests
+	$(MAKE) TARGET=release clean
+	$(MAKE) TARGET=release
+	cp docs/release_docs.md build/release/target/README.md
+	tar -czf build/release.tar.gz -C build/release target
+	cd build/release && zip -r ../release.zip target
+	$(MAKE) python-test
+
+# Cross-compiles the C library/binaries for Windows from Linux (see
+# docker/windows-x64.Dockerfile) by pointing CC/AR at the mingw-w64
+# toolchain, e.g.:
+#   make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar release-package-windows-cross
+# The resulting .exe binaries can't run on the Linux host that built them,
+# so unlike release-package this only proves the build compiles/links --
+# it doesn't execute unit_tests, and it skips the Python extension (which
+# would need Windows Python headers/import libs to cross-compile against).
+release-package-windows-cross:
+	$(MAKE) TARGET=debug clean
+	$(MAKE) TARGET=debug
 	$(MAKE) TARGET=release clean
 	$(MAKE) TARGET=release
 	cp docs/release_docs.md build/release/target/README.md
