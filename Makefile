@@ -188,7 +188,7 @@ $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
 # make docs             - build docs
 # make python           - build python extension
 
-.PHONY: all clean format format-check docs python
+.PHONY: all clean format docs python
 
 .DEFAULT_GOAL := all
 
@@ -223,5 +223,5 @@ clean:
 	rm -rf $(OUT_DIR) $(PY_OUT_DIR)
 
 format:
-	find src -type f \( -name '*.c' -o -name '*.h' \) -print0 \
+	find src bindings -type f \( -name '*.c' -o -name '*.h' \) -print0 \
 		| xargs -0 $(CLANG_FORMAT) -i

@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "nscore/nsdb/ns_nsdb.h"
+#include "nscore/nsdb/ns_nsdb_cli.h"
 #include "numstore/numstore.h"
 
 #include <stdbool.h>

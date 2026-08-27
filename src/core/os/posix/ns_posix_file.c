@@ -13,10 +13,10 @@
 /// limitations under the License.
 
 #include "core/ns_bytes.h"
-#include "core/ns_platform.h"
-#include "core/ns_stdtypes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
+#include "core/ns_stdtypes.h"
 #include "core/os/ns_file.h"
 
 #include <dirent.h>

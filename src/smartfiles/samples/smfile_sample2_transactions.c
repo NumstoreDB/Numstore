@@ -36,15 +36,15 @@ main (void)
   smfile_t *smf = smfile_open ("sample2_txn");
 
   // Start from scratch (remove all data)
-  smfile_remove (smf, NULL, 1, 0, 1, SMF_END);
+  smfile_remove (smf, NULL, NULL, 1, 0, 1, SMF_END);
 
   // Do 1 full committed transaction
   {
-    smfile_begin (smf);
+    sm_txn_t *tx = smfile_begin (smf);
 
-    uint8_t header[8];
-    uint8_t body[64];
-    uint8_t footer[8];
+    uint8_t   header[8];
+    uint8_t   body[64];
+    uint8_t   footer[8];
 
     memset (header, 1, sizeof (header));
     for (int i = 0; i < 64; ++i) {
@@ -53,29 +53,30 @@ main (void)
     memset (footer, 99, sizeof (footer));
 
     // Three inserts in a row
-    smfile_insert (smf, header, 0, sizeof (header));  // [0..7]   = 1
-    smfile_insert (smf, body, 8, sizeof (body));      // [8..71]  = 0...64
-    smfile_insert (smf, footer, 72, sizeof (footer)); // [72..79] = 99
+    smfile_insert (smf, tx, header, 0, sizeof (header));  // [0..7]   = 1
+    smfile_insert (smf, tx, body, 8, sizeof (body));      // [8..71]  = 0...64
+    smfile_insert (smf, tx, footer, 72, sizeof (footer)); // [72..79] = 99
 
-    smfile_commit (smf);
+    smfile_commit (smf, tx);
   }
 
   // Do 1 full roll'ed back transaction
   {
-    smfile_begin (smf);
+    sm_txn_t *tx = smfile_begin (smf);
 
-    uint8_t zeros[80];
+    uint8_t   zeros[80];
     memset (zeros, 0, sizeof (zeros));
-    smfile_write (smf, zeros, 1, 0, 1,
-                  sizeof (zeros)); // overwrite everything with 0x00
 
-    smfile_rollback (smf);
+    // overwrite everything with 0x00
+    smfile_write (smf, tx, zeros, 1, 0, 1, sizeof (zeros));
+
+    smfile_rollback (smf, tx);
   }
 
   // Do a read of the roll'ed back data
   {
     uint8_t verify[12];
-    n = smfile_read (smf, verify, 1, 68, 1, 12);
+    n = smfile_read (smf, NULL, verify, 1, 68, 1, 12);
 
     printf ("bytes [68..79] after rollback:\n");
     for (sb_size i = 0; i < n; ++i) {
@@ -85,27 +86,27 @@ main (void)
 
   // A committed transaction
   {
-    smfile_begin (smf);
+    sm_txn_t *tx = smfile_begin (smf);
 
-    uint8_t extra[4];
+    uint8_t   extra[4];
     memset (extra, 0xCC, sizeof (extra));
-    smfile_insert (smf, extra, 80, sizeof (extra)); // append 4 bytes of 0xcc
+    smfile_insert (smf, tx, extra, 80, sizeof (extra)); // append 4 bytes of 0xcc
 
-    smfile_commit (smf);
+    smfile_commit (smf, tx);
   }
 
   // A roll'ed back transaction
   {
-    smfile_begin (smf);
-    smfile_remove (smf, NULL, 1, 80, 1, 4); // attempt to remove what we just
-                                            // appended
-    smfile_rollback (smf);
+    sm_txn_t *tx = smfile_begin (smf);
+    smfile_remove (smf, tx, NULL, 1, 80, 1, 4); // attempt to remove what we just
+                                                // appended
+    smfile_rollback (smf, tx);
   }
 
   // Final read
   {
     uint8_t tail[4];
-    n = smfile_read (smf, tail, 1, 80, 1, 4);
+    n = smfile_read (smf, NULL, tail, 1, 80, 1, 4);
 
     printf ("bytes [80..83]: ");
     for (sb_size i = 0; i < n; ++i) {

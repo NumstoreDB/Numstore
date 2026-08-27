@@ -15,16 +15,18 @@
 #include "nscore/nsdb/ns_nsdb.h"
 
 #include "core/ns_alloc.h"
+#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
 #include "core/ns_logging.h"
+#include "core/ns_slab_alloc.h"
 #include "core/ns_stream.h"
 #include "core/ns_stride.h"
+#include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
-#include "nscore/compiler/ns_compiler.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
@@ -36,15 +38,99 @@
 #include <stdio.h>
 #include <string.h>
 
-int
-nsdb_perror (struct nsdb *ns, const char *prefix)
+struct nsdb *
+nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_system fs)
 {
-  const char *err = nsdb_strerror (ns);
-  if (err) {
-    return fprintf (stderr, "%s: %s\n", prefix, nsdb_strerror (ns));
-  } else {
-    return fprintf (stderr, "%s: success\n", prefix);
+  error        e   = error_create ();
+  struct nsdb *ret = i_malloc (mem, 1, sizeof *ret, &e);
+
+  if (ret == NULL) {
+    // TODO - what to do with the error?
+    return NULL;
   }
+
+  // Initialize inner values
+  {
+    // Trivial initializers
+    ret->e = error_create ();
+    slab_alloc_init (&ret->txn_alloc, mem, sizeof (struct ns_txn), 512);
+    latch_init (&ret->l);
+    ret->mem       = mem;
+    ret->fs        = fs;
+
+    // Path
+    ret->path.len  = strlen (path);
+    ret->path.data = i_malloc (mem, ret->path.len, 1, &e);
+    if (ret->path.data == NULL) {
+      goto failed;
+    }
+
+    // Pager
+    ret->p = pgr_open (path, mem, fs, &e);
+    if (ret->p == NULL) {
+      goto failed;
+    }
+  }
+
+  // New pager - initialze the upfront hash map
+  if (pgr_isnew (ret->p)) {
+    // Initialize the upfront hash page
+    if (ns_init_var_hash_map (ret->p, &e)) {
+      goto failed;
+    }
+  }
+
+  // Launch the checkpoint writer thread
+  if (pgr_launch_checkpoint_thread (ret->p, 5000, &e)) {
+    goto failed;
+  }
+
+  return ret;
+
+failed:
+  i_free (mem, ret);
+  pgr_delete_single_file (path, &e);
+  return NULL;
+}
+
+int
+nsdb_cleanup (const char *path)
+{
+  error e = error_create ();
+  pgr_delete_single_file (path, &e);
+  return error_trace (&e);
+}
+
+err_t
+nsdb_close (struct nsdb *n)
+{
+  n->e.cause_code = SUCCESS;
+  n->e.cmlen      = 0;
+
+  err_t ret       = pgr_close (n->p, &n->e);
+  slab_alloc_destroy (&n->txn_alloc);
+
+  struct i_mem mem = n->mem;
+  i_free (mem, (void *)n->path.data);
+  i_free (mem, n);
+
+  return ret;
+}
+
+err_t
+nsdb_crash (struct nsdb *n)
+{
+  n->e.cause_code = SUCCESS;
+  n->e.cmlen      = 0;
+
+  err_t err       = pgr_crash (n->p, &n->e);
+  slab_alloc_destroy (&n->txn_alloc);
+
+  struct i_mem mem = n->mem;
+  i_free (mem, (void *)n->path.data);
+  i_free (mem, n);
+
+  return err;
 }
 
 const char *
@@ -58,329 +144,173 @@ nsdb_strerror (struct nsdb *ns)
 }
 
 int
-nsdb_cleanup (const char *path)
+nsdb_perror (struct nsdb *ns, const char *prefix)
 {
-  error e = error_create ();
-  pgr_delete_single_file (path, &e);
-  return error_trace (&e);
-}
-
-/******************************************************************************
- * SECTION: nsdb_root functions
- ******************************************************************************/
-
-err_t
-nsdb_root_close (struct nsdb_root *root, error *e)
-{
-  ASSERT (root->count == 0);
-  err_t err = pgr_close (root->p, e);
-  i_free (default_mem (), (void *)root->path.data);
-  i_free (default_mem (), root);
-  return err;
-}
-
-struct nsdb *
-nsdb_root_load (struct nsdb_root *ns, error *e)
-{
-  struct nsdb *ret = i_malloc (default_mem (), 1, sizeof *ret, e);
-  if (ret == NULL) {
-    return NULL;
+  const char *err = nsdb_strerror (ns);
+  if (err) {
+    return fprintf (stderr, "%s: %s\n", prefix, nsdb_strerror (ns));
+  } else {
+    return fprintf (stderr, "%s: success\n", prefix);
   }
-
-  ret->root        = ns;
-  ret->is_auto_txn = 0;
-  ret->atx         = NULL;
-  ret->e           = error_create ();
-  ns->count++;
-
-  return ret;
 }
 
-void
-nsdb_root_release (struct nsdb_root *root, struct nsdb *sm)
-{
-  ASSERT (root->count > 0);
-  i_free (default_mem (), sm);
-  root->count -= 1;
-}
-
-/******************************************************************************
- * SECTION: Auto transaction behavior
- ******************************************************************************/
-
-err_t
-nsdb_auto_begin_txn (struct nsdb *sm, error *e)
-{
-  if (sm->atx == NULL) {
-    WRAP (pgr_begin_txn (&sm->tx, sm->root->p, e));
-    sm->is_auto_txn = 1;
-    sm->atx         = &sm->tx;
-  }
-
-  return SUCCESS;
-}
-
-err_t
-nsdb_auto_commit (struct nsdb *sm, error *e)
-{
-  if (sm->is_auto_txn) {
-    ASSERT (sm->atx);
-    WRAP (pgr_commit (sm->root->p, sm->atx, e));
-    sm->atx = NULL;
-  }
-  return SUCCESS;
-}
-
-void
-nsdb_auto_rollback (struct nsdb *sm)
-{
-  if (pgr_rollback (sm->root->p, sm->atx, 0, &sm->e)) {
-    panic ("Failed to rollback");
-  }
-  sm->atx = NULL;
-}
-
-/******************************************************************************
- * SECTION: nsdb_begin
- * ----------------------------------------------------------------------------
- * @brief Begin a new transaction
- ******************************************************************************/
-
-err_t
+struct ns_txn *
 nsdb_begin (struct nsdb *smf)
 {
   smf->e.cause_code = 0;
   smf->e.cmlen      = 0;
 
-  if (smf->atx) {
-    return error_causef (
-        &smf->e,
-        ERR_INVALID_ARGUMENT,
-        "Can't start another transaction, already a part of an existing "
-        "transaction: %" PRtxid ". Either commit or rollback first",
-        smf->atx->tid
-    );
-  }
-
-  if (pgr_begin_txn (&smf->tx, smf->root->p, &smf->e)) {
-    return error_trace (&smf->e);
-  }
-
-  smf->is_auto_txn = 0;
-  smf->atx         = &smf->tx;
-
-  return SUCCESS;
-}
-
-/******************************************************************************
- * SECTION: nsdb_close
- * ----------------------------------------------------------------------------
- * @brief Closes a database
- ******************************************************************************/
-
-err_t
-nsdb_close (struct nsdb *n)
-{
-  struct nsdb_root *root = n->root;
-  nsdb_root_release (root, n);
-  if (root->count == 0) {
-    return nsdb_root_close (root, &root->e);
-  }
-  return SUCCESS;
-}
-
-/******************************************************************************
- * SECTION: nsdb_commit
- * ----------------------------------------------------------------------------
- * @brief Commits a transaction
- ******************************************************************************/
-
-err_t
-nsdb_commit (struct nsdb *smf)
-{
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  if (smf->atx == NULL) {
-    return error_causef (
-        &smf->e,
-        ERR_INVALID_ARGUMENT,
-        "Can't commit transaction, not a part of an existing transaction"
-    );
-  }
-
-  if (pgr_commit (smf->root->p, smf->atx, &smf->e)) {
-    return error_trace (&smf->e);
-  }
-
-  smf->atx = NULL;
-
-  return SUCCESS;
-}
-
-/******************************************************************************
- * SECTION: nsdb_rollback
- * ----------------------------------------------------------------------------
- * @brief Rolls back a transaction
- ******************************************************************************/
-
-err_t
-nsdb_rollback (struct nsdb *smf)
-{
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  if (smf->atx == NULL) {
-    return error_causef (
-        &smf->e,
-        ERR_INVALID_ARGUMENT,
-        "Can't rollback transaction, not a part of an existing transaction"
-    );
-  }
-
-  if (pgr_rollback (smf->root->p, smf->atx, 0, &smf->e)) {
-    return error_trace (&smf->e);
-  }
-
-  smf->atx = NULL;
-
-  return SUCCESS;
-}
-
-/******************************************************************************
- * SECTION: nsdb_crash
- * ----------------------------------------------------------------------------
- * @brief Simulate a database crash
- ******************************************************************************/
-
-err_t
-nsdb_crash (struct nsdb *n)
-{
-  n->e.cause_code        = SUCCESS;
-  n->e.cmlen             = 0;
-
-  struct nsdb_root *root = n->root;
-
-  err_t             err  = pgr_crash (root->p, &n->e);
-  i_free (default_mem (), (void *)root->path.data);
-  i_free (default_mem (), n);
-  i_free (default_mem (), root);
-
-  return err;
-}
-
-/******************************************************************************
- * SECTION: nsdb_open
- * ----------------------------------------------------------------------------
- * @brief Opens a new database
- ******************************************************************************/
-
-struct nsdb *
-nsdb_open (const char *path)
-{
-  error             e   = error_create ();
-
-  struct nsdb_root *ret = i_malloc (default_mem (), 1, sizeof *ret, &e);
-
-  if (ret == NULL) {
+  struct ns_txn *tx = slab_alloc_alloc (&smf->txn_alloc, &smf->e);
+  if (tx == NULL) {
     return NULL;
   }
 
-  // Initialize inner values
-  {
-    ret->e         = error_create ();
-    ret->count     = 0;
-
-    // path
-    ret->path.len  = strlen (path);
-    ret->path.data = i_malloc (default_mem (), ret->path.len, 1, &e);
-    if (ret->path.data == NULL) {
-      goto failed;
-    }
-
-    // db
-    ret->p = pgr_open (path, default_mem (), default_filesystem (), &e);
-    if (ret->p == NULL) {
-      goto failed;
-    }
+  if (pgr_begin_txn (tx, smf->p, &smf->e)) {
+    slab_alloc_free (&smf->txn_alloc, tx);
+    return NULL;
   }
 
-  // Upfront initialization
-  if (pgr_isnew (ret->p)) {
-    // Initialize the upfront hash page
-    if (ns_init_var_hash_map (ret->p, &e)) {
-      goto failed;
-    }
-  }
-
-  // Launch the checkpoint writer thread
-  if (pgr_launch_checkpoint_thread (ret->p, 5000, &e)) {
-    goto failed;
-  }
-
-  // Load the default context
-  struct nsdb *sret = nsdb_root_load (ret, &e);
-
-  return sret;
-
-failed:
-  // TODO just delete the file
-  i_free (default_mem (), ret);
-  return NULL;
+  return tx;
 }
-
-/******************************************************************************
- * SECTION: Variable stuff
- ******************************************************************************/
-
-b_size
-nsdb_var_len (nsdb_var_t *var)
-{
-  return var->var->nbytes / type_byte_size (var->var->dtype);
-}
-
-void
-nsdb_var_free (nsdb_var_t *var)
-{
-  struct allocator *alloc = var->alloc;
-  allocator_free (alloc);
-  i_free (default_mem (), alloc);
-}
-
-/******************************************************************************
- * SECTION: nsdb_get
- ******************************************************************************/
 
 err_t
-nsdb_get (struct nsdb *db, struct get_query *query, struct allocator *alloc, struct variable **dest)
+nsdb_commit (struct nsdb *smf, struct ns_txn *tx)
+{
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  if (pgr_commit (smf->p, tx, &smf->e)) {
+    slab_alloc_free (&smf->txn_alloc, tx);
+    return error_trace (&smf->e);
+  }
+
+  slab_alloc_free (&smf->txn_alloc, tx);
+  return SUCCESS;
+}
+
+err_t
+nsdb_rollback (struct nsdb *smf, struct ns_txn *tx)
+{
+  smf->e.cause_code = SUCCESS;
+  smf->e.cmlen      = 0;
+
+  if (pgr_rollback (smf->p, tx, 0, &smf->e)) {
+    slab_alloc_free (&smf->txn_alloc, tx);
+    return error_trace (&smf->e);
+  }
+
+  slab_alloc_free (&smf->txn_alloc, tx);
+  return SUCCESS;
+}
+
+err_t
+nsdb_create (
+    struct nsdb      *db,
+    struct ns_txn    *tx,
+    struct allocator *alloc,
+    struct string     vname,
+    struct type       dtype
+)
+{
+  AUTO_BEGIN (db, tx);
+
+  // Log the call
+  i_log_debug ("CREATE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&vname));
+
+  // Get or create
+  {
+    struct ns_var_get_or_create_params gparams = {
+        .p     = db->p,
+        .tx    = tx,
+        .vname = vname,
+        .type  = &dtype,
+        .alloc = alloc,
+    };
+    if (ns_var_get_or_create (&gparams, &db->e)) {
+      goto failed_rollback;
+    }
+  }
+
+  AUTO_COMMIT (db, tx);
+
+  return SUCCESS;
+
+failed_rollback:
+  nsdb_rollback (db, tx);
+
+failed:
+  return error_trace (&db->e);
+}
+
+err_t
+nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *query)
+{
+  AUTO_BEGIN (db, tx);
+
+  i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&query->name));
+
+  {
+    // DELETE
+    struct ns_var_delete_params params = {
+        .p     = db->p,
+        .tx    = tx,
+        .vname = query->name,
+    };
+
+    err_t err = ns_var_delete (params, &db->e);
+    if (query->if_exists && err == ERR_VARIABLE_NE) {
+      db->e.cause_code = SUCCESS;
+      db->e.cmlen      = 0;
+      goto commit;
+    }
+
+    if (err < SUCCESS) {
+      goto failed_rollback;
+    }
+  }
+
+commit:
+
+  AUTO_COMMIT (db, tx);
+
+  return error_trace (&db->e);
+
+failed_rollback:
+  nsdb_rollback (db, tx);
+
+failed:
+  return error_trace (&db->e);
+}
+
+err_t
+nsdb_get (
+    struct nsdb      *db,
+    struct ns_txn    *tx,
+    struct get_query *query,
+    struct allocator *alloc,
+    struct variable **dest
+)
 {
   ASSERT (dest);
-  struct ns_var_get_params gparams; // Get or create operation
 
   *dest = allocate (alloc, 1, sizeof (struct variable), &db->e);
   if (*dest == NULL) {
     return error_trace (&db->e);
   }
 
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  AUTO_BEGIN (db, tx);
 
-  i_log_debug (
-      "GET (txn = %" PRtxid
-      ")"
-      " - %.*s\n",
-      db->atx->tid,
-      strfmt (&query->name)
-  );
+  i_log_debug ("GET (txn = %" PRtxid ") - %.*s\n", tx->tid, strfmt (&query->name));
 
-  // GET VARIABLE
+  // Get Variable
   {
-    gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+    struct ns_var_get_params gparams = {
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
+
     err_t err = ns_var_get (&gparams, &db->e);
     if (query->if_exists && err == ERR_VARIABLE_NE) {
       db->e.cause_code = SUCCESS;
@@ -388,118 +318,30 @@ nsdb_get (struct nsdb *db, struct get_query *query, struct allocator *alloc, str
       *dest            = NULL;
       goto commit;
     }
-    WRAP_GOTO (err, failed_rollback);
+
+    if (err < 0) {
+      goto failed_rollback;
+    }
 
     *(*dest) = gparams.dest;
   }
 
 commit:
-  // COMMIT
-  if (nsdb_auto_commit (db, &db->e)) {
-    goto failed_rollback;
-  }
+  AUTO_COMMIT (db, tx);
 
   return SUCCESS;
 
 failed_rollback:
-
-  nsdb_auto_rollback (db);
-
-failed:
-  return error_trace (&db->e);
-}
-
-/******************************************************************************
- * SECTION: nsdb_create
- ******************************************************************************/
-
-int
-nsdb_create (struct nsdb *db, struct allocator *alloc, struct string vname, struct type dtype)
-{
-  struct ns_var_get_or_create_params gparams; // Get or create operation
-
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
-
-  i_log_debug ("CREATE (txn = %" PRtxid "): %.*s\n", db->atx->tid, strfmt (&vname));
-
-  // GET OR CREATE VARIABLE
-  {
-    gparams = (struct ns_var_get_or_create_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = vname,
-        .type  = &dtype,
-        .alloc = alloc,
-    };
-    WRAP_GOTO (ns_var_get_or_create (&gparams, &db->e), failed_rollback);
-  }
-
-  // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
-
-  return SUCCESS;
-
-failed_rollback:
-
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);
 }
-
-/******************************************************************************
- * SECTION: nsdb_delete
- ******************************************************************************/
-
-err_t
-nsdb_delete (struct nsdb *db, struct delete_query *query)
-{
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
-
-  i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", db->atx->tid, strfmt (&query->name));
-
-  {
-    // DELETE
-    struct ns_var_delete_params params = {
-        .p     = db->root->p,
-        .tx    = db->atx,
-        .vname = query->name,
-    };
-    err_t err = ns_var_delete (params, &db->e);
-    if (query->if_exists && err == ERR_VARIABLE_NE) {
-      db->e.cause_code = SUCCESS;
-      db->e.cmlen      = 0;
-      goto commit;
-    }
-    WRAP_GOTO (err, failed_rollback);
-    if (err < SUCCESS) {
-      goto failed_rollback;
-    }
-  }
-
-commit:
-  if (nsdb_auto_commit (db, &db->e)) {
-    goto failed_rollback;
-  }
-  return error_trace (&db->e);
-
-failed_rollback:
-
-  nsdb_auto_rollback (db);
-
-failed:
-  return error_trace (&db->e);
-}
-
-/******************************************************************************
- * SECTION: nsdb_insert
- ******************************************************************************/
 
 sb_size
 nsdb_insert (
     struct nsdb         *db,
+    struct ns_txn       *tx,
     struct insert_query *query,
     struct allocator    *alloc,
     struct stream       *src
@@ -511,19 +353,19 @@ nsdb_insert (
   struct ns_insert_params     iparams; // Insert operation
   struct ns_var_update_params uparams; // Update operation
 
-  // Parameter validation
+  // Skip len 0 inserts
   if (query->len == 0) {
     return 0;
   }
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  AUTO_BEGIN (db, tx);
 
-  // GET VARIABLE
+  // Get Variable
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
@@ -544,7 +386,7 @@ nsdb_insert (
       " Granted: "
       " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
       " granted (bytes): %" PRIu64 "\n",
-      db->atx->tid,
+      tx->tid,
       strfmt (&query->name),
       tsize,
       gparams.dest.nbytes / tsize,
@@ -559,12 +401,12 @@ nsdb_insert (
       query->len * tsize
   );
 
-  // INSERT
+  // Insert
   {
     iparams = (struct ns_insert_params){
-        .p     = db->root->p,
+        .p     = db->p,
         .src   = src,
-        .tx    = db->atx,
+        .tx    = tx,
         .root  = gparams.dest.rpt_root,
         .bofst = bofst,
         .bytes = query->len * tsize,
@@ -575,11 +417,11 @@ nsdb_insert (
     }
   }
 
-  // UPDATE VARIABLE
+  // Update Varible
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->root->p,
-        .tx = db->atx,
+        .p  = db->p,
+        .tx = tx,
         .retr =
             (struct var_retrieval){
                 .type = VR_PG,
@@ -594,13 +436,11 @@ nsdb_insert (
   ASSERT (ret % tsize == 0);
   ret /= tsize;
 
-  // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  AUTO_COMMIT (db, tx);
   return ret;
 
 failed_rollback:
-
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -612,10 +452,11 @@ failed:
 
 sb_size
 nsdb_read (
-    struct nsdb       *db,    // The database handle
-    struct read_query *query, // The query that got parsed
-    struct allocator  *alloc, // Where to allocate stuff
-    struct stream     *dest   // destination stream
+    struct nsdb       *db,
+    struct ns_txn     *tx,
+    struct read_query *query,
+    struct allocator  *alloc,
+    struct stream     *dest
 )
 {
   sb_size                  ret;     // Return value
@@ -625,14 +466,13 @@ nsdb_read (
   struct ns_read_params    rparams; // Read operation
   struct stride            stride;  // Resolved stride
 
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  AUTO_BEGIN (db, tx);
 
-  // GET VARIABLE
+  // Get variable
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
@@ -687,7 +527,7 @@ nsdb_read (
       " Granted: "
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
-      db->atx->tid,
+      tx->tid,
       strfmt (&query->name),
       tsize,
       len,
@@ -709,9 +549,9 @@ nsdb_read (
   // READ
   {
     rparams = (struct ns_read_params){
-        .p      = db->root->p,
+        .p      = db->p,
         .dest   = dest,
-        .tx     = db->atx,
+        .tx     = tx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
         .bofst  = tsize * stride.start,
@@ -722,25 +562,20 @@ nsdb_read (
     WRAP_GOTO (ret, failed_rollback);
   }
 
-  // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  AUTO_COMMIT (db, tx);
   return ret;
 
 failed_rollback:
-
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);
 }
 
-/******************************************************************************
- * SECTION: nsdb_remove
- ******************************************************************************/
-
 sb_size
 nsdb_remove (
     struct nsdb         *db,
+    struct ns_txn       *tx,
     struct remove_query *query,
     struct allocator    *alloc,
     struct stream       *dest
@@ -755,17 +590,20 @@ nsdb_remove (
   struct stride               stride;  // Resolved stride
 
   // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  AUTO_BEGIN (db, tx);
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
-    WRAP_GOTO (ns_var_get (&gparams, &db->e), failed_rollback);
+
+    if (ns_var_get (&gparams, &db->e)) {
+      goto failed_rollback;
+    }
   }
 
   // Resolve sizes
@@ -816,7 +654,7 @@ nsdb_remove (
       " Granted: "
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
-      db->atx->tid,
+      tx->tid,
       strfmt (&query->name),
       tsize,
       len,
@@ -838,9 +676,9 @@ nsdb_remove (
   // REMOVE
   {
     rparams = (struct ns_remove_params){
-        .p      = db->root->p,
+        .p      = db->p,
         .dest   = dest,
-        .tx     = db->atx,
+        .tx     = tx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
         .bofst  = tsize * stride.start,
@@ -854,8 +692,8 @@ nsdb_remove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->root->p,
-        .tx = db->atx,
+        .p  = db->p,
+        .tx = tx,
         .retr =
             (struct var_retrieval){
                 .type = VR_PG,
@@ -864,27 +702,29 @@ nsdb_remove (
         .newpg  = rparams.root,
         .nbytes = gparams.dest.nbytes - ret * tsize,
     };
-    WRAP_GOTO (ns_var_update (uparams, &db->e), failed_rollback);
+    if (ns_var_update (uparams, &db->e) < 0) {
+      goto failed_rollback;
+    }
   }
 
-  // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  AUTO_COMMIT (db, tx);
   return ret;
 
 failed_rollback:
-
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);
 }
 
-/******************************************************************************
- * SECTION: nsdb_write
- ******************************************************************************/
-
 sb_size
-nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc, struct stream *src)
+nsdb_write (
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct write_query *query,
+    struct allocator   *alloc,
+    struct stream      *src
+)
 {
   sb_size                  ret;     // Return value
   t_size                   tsize;   // Size of  the variable
@@ -893,14 +733,13 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
   struct ns_write_params   wparams; // Write operation
   struct stride            stride;  // Resolved stride
 
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  AUTO_BEGIN (db, tx);
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
@@ -957,7 +796,7 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
       " Granted: "
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
-      db->atx->tid,
+      tx->tid,
       strfmt (&query->name),
       tsize,
       len,
@@ -979,9 +818,9 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
   // WRITE
   {
     wparams = (struct ns_write_params){
-        .p      = db->root->p,
+        .p      = db->p,
         .src    = src,
-        .tx     = db->atx,
+        .tx     = tx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
         .bofst  = tsize * stride.start,
@@ -992,13 +831,12 @@ nsdb_write (struct nsdb *db, struct write_query *query, struct allocator *alloc,
     WRAP_GOTO (ret, failed_rollback);
   }
 
-  // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  AUTO_COMMIT (db, tx);
   return ret;
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);

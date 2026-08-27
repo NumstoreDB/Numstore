@@ -93,21 +93,26 @@ typedef uint8_t  wlh;     // WAL header
  * @brief A database for numerical arrays
  * ******************************************************************************/
 
+// Lifecycle
 nsdb_t *nsdb_open (const char *path);
 int nsdb_cleanup (const char *path);
 int nsdb_close (nsdb_t *ns);
 int nsdb_crash (nsdb_t *ns);
 
+// Variables
 b_size nsdb_var_len (nsdb_var_t *var);
-void nsdb_var_free (nsdb_var_t *var);
+void nsdb_var_free (nsdb_t *db, nsdb_var_t *var);
 
+// Errors
 const char *nsdb_strerror (nsdb_t *ns);
 int nsdb_perror (nsdb_t *ns, const char *prefix);
 
+// Transactions
 ns_txn_t *nsdb_begin (nsdb_t *ns);
 int nsdb_commit (nsdb_t *ns, ns_txn_t *txn);
 int nsdb_rollback (nsdb_t *ns, ns_txn_t *txn);
 
+// Execute - uses [data] if it needs it
 sb_size nsdb_fexecute (
     nsdb_t     *ns,
     ns_txn_t   *txn,
@@ -115,9 +120,14 @@ sb_size nsdb_fexecute (
     void       *data,
     ...
 ) NSDB_PRINTF (3, 5);
-void *nsdb_fexecute_malloc (nsdb_t *ns, ns_txn_t *txn, const char *query_fmt, ...) NSDB_PRINTF (
-    3,
-    4
-);
+
+// Execute - allocates data if it needs it
+void *nsdb_fexecute_malloc (
+    nsdb_t     *ns,
+    ns_txn_t   *txn,
+    const char *query_fmt,
+    void       *data,
+    ...
+) NSDB_PRINTF (3, 5);
 
 #endif

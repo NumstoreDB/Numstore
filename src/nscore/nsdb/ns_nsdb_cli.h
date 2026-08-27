@@ -12,17 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef NS_EXECUTE_H
-#define NS_EXECUTE_H
+#ifndef NS_NSDB_CLI_H
+#define NS_NSDB_CLI_H
 
 #include "core/ns_alloc.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
-#include "core/ns_stdtypes.h"
-#include "core/ns_string.h"
-#include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
-#include "nscore/types/ns_query.h"
 #include "nscore/types/ns_variables.h"
 
 /******************************************************************************

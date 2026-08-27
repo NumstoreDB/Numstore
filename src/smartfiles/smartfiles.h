@@ -38,6 +38,7 @@
  ******************************************************************************/
 
 typedef struct smfile smfile_t;
+typedef struct ns_txn sm_txn_t;
 
 #ifndef NS_TYPE_ALIASES
 
@@ -98,16 +99,17 @@ int smfile_crash (smfile_t *ns);
 
 const char *smfile_strerror (smfile_t *ns);
 int smfile_perror (smfile_t *ns, const char *prefix);
-sb_size smfile_size (smfile_t *smf);
+sb_size smfile_size (smfile_t *smf, sm_txn_t *tx);
 
-int smfile_begin (smfile_t *smf);
-int smfile_commit (smfile_t *smf);
-int smfile_rollback (smfile_t *smf);
+sm_txn_t *smfile_begin (smfile_t *smf);
+int smfile_commit (smfile_t *smf, sm_txn_t *tx);
+int smfile_rollback (smfile_t *smf, sm_txn_t *tx);
 
-sb_size smfile_insert (smfile_t *smf, const void *src, sb_size bofst, b_size slen);
+sb_size smfile_insert (smfile_t *smf, sm_txn_t *tx, const void *src, sb_size bofst, b_size slen);
 
 sb_size smfile_write (
     smfile_t   *smf,
+    sm_txn_t   *tx,
     const void *src,
     t_size      size,
     b_size      bofst,
@@ -117,6 +119,7 @@ sb_size smfile_write (
 
 sb_size smfile_read (
     smfile_t *smf,
+    sm_txn_t *tx,
     void     *dest,
     t_size    size,
     sb_size   bofst,
@@ -126,6 +129,7 @@ sb_size smfile_read (
 
 sb_size smfile_remove (
     smfile_t *smf,
+    sm_txn_t *tx,
     void     *dest,
     t_size    size,
     sb_size   bofst,

@@ -39,6 +39,7 @@ main (void)
   // Remove all data from the file
   smfile_remove (
       smf,
+      NULL,   // The transaction pointer - see transaction example
       NULL,   // You can optionally supply a destination for the data - we'll just
       1,      // The size of each element to remove
       0,      // The starting offset to remove
@@ -50,6 +51,7 @@ main (void)
   const char *initial = "The quick brown fox jumps over the lazy dog";
   smfile_insert (
       smf,
+      NULL,
       initial,         // The data we want to write
       0,               // The starting offset to write to
       strlen (initial) // The length of the data we're writing
@@ -59,6 +61,7 @@ main (void)
   const char *adverb = " really";
   smfile_insert (
       smf,
+      NULL,
       adverb,
       34, // Inserting in the middle is a first class operation
       strlen (adverb)
@@ -66,26 +69,26 @@ main (void)
 
   // Read the entire array
   char    buf[64];
-  sb_size n = smfile_read (smf, buf, 1, 0, 1, SMF_END);
+  sb_size n = smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
   buf[n]    = '\0';
   printf ("after insert:  \"%s\"\n", buf);
 
   // Writing in the middle is a first class operation
-  smfile_write (smf, "cat", 1, 16, 1, 3);
+  smfile_write (smf, NULL, "cat", 1, 16, 1, 3);
 
   // Read the entire array
-  n      = smfile_read (smf, buf, 1, 0, 1, SMF_END);
+  n      = smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
   buf[n] = '\0';
   printf ("after write:   \"%s\"\n", buf);
 
   // Removing in the middle of the array is first class
   char evicted[8];
-  n          = smfile_remove (smf, evicted, 1, 34, 1, 7);
+  n          = smfile_remove (smf, NULL, evicted, 1, 34, 1, 7);
   evicted[n] = '\0';
   printf ("removed:       \"%s\"\n", evicted);
 
   // Read the result
-  n      = smfile_read (smf, buf, 1, 0, 1, SMF_END);
+  n      = smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
   buf[n] = '\0';
   printf ("after remove:  \"%s\"\n", buf);
 

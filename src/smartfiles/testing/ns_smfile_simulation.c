@@ -21,7 +21,7 @@ struct smfile_simulation
   int                 allowed[SMF_AT_LEN];
 
   smfile_t           *db;
-  int                 in_txn;
+  struct ns_txn      *tx;
   const char         *dbname;
   int                 max_insert_len;
   int                 max_size;
@@ -32,7 +32,7 @@ struct smfile_simulation
 static struct block_array *
 active_db (struct smfile_simulation *meta)
 {
-  return meta->in_txn ? meta->working : meta->committed;
+  return meta->tx ? meta->working : meta->committed;
 }
 
 static void
@@ -83,7 +83,7 @@ smfile_simul_set_allowed (struct smfile_simulation *meta)
 
   meta->allowed[SMF_CRASH_REOPEN] = meta->enabled[SMF_CRASH_REOPEN];
 
-  if (!meta->in_txn) {
+  if (!meta->tx) {
     meta->allowed[SMF_BEGIN_TXN]    = meta->enabled[SMF_BEGIN_TXN];
     meta->allowed[SMF_CLOSE_REOPEN] = meta->enabled[SMF_CLOSE_REOPEN];
   } else {
@@ -107,10 +107,11 @@ smfile_simul_set_allowed (struct smfile_simulation *meta)
 static int
 smfile_simul_begin_txn (struct smfile_simulation *meta)
 {
-  ASSERT (!meta->in_txn);
+  ASSERT (!meta->tx);
   ASSERT (meta->working == NULL);
 
-  if (smfile_begin (meta->db) < 0) {
+  meta->tx = smfile_begin (meta->db);
+  if (meta->tx == NULL) {
     i_log_failure ("smfile_begin failed: %s\n", meta->dbname);
     return -1;
   }
@@ -121,11 +122,10 @@ smfile_simul_begin_txn (struct smfile_simulation *meta)
     i_log_failure ("block_array_clone failed: %s\n", meta->dbname);
     /* db is now mid-transaction but meta->in_txn is still 0 - abort the
      * real txn too so the two stay in sync. */
-    smfile_rollback (meta->db);
+    smfile_rollback (meta->db, meta->tx);
+    meta->tx = NULL;
     return -1;
   }
-
-  meta->in_txn = 1;
 
   return 0;
 }
@@ -133,18 +133,19 @@ smfile_simul_begin_txn (struct smfile_simulation *meta)
 static int
 smfile_simul_commit_txn (struct smfile_simulation *meta)
 {
-  ASSERT (meta->in_txn);
+  ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
 
-  if (smfile_commit (meta->db) < 0) {
+  if (smfile_commit (meta->db, meta->tx) < 0) {
     i_log_failure ("smfile_commit failed: %s\n", meta->dbname);
+    meta->tx = NULL;
     return -1;
   }
 
   block_array_free (meta->committed);
   meta->committed = meta->working;
   meta->working   = NULL;
-  meta->in_txn    = 0;
+  meta->tx        = NULL;
 
   return 0;
 }
@@ -152,17 +153,18 @@ smfile_simul_commit_txn (struct smfile_simulation *meta)
 static int
 smfile_simul_rollback_txn (struct smfile_simulation *meta)
 {
-  ASSERT (meta->in_txn);
+  ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
 
-  if (smfile_rollback (meta->db) < 0) {
+  if (smfile_rollback (meta->db, meta->tx) < 0) {
     i_log_failure ("smfile_rollback failed: %s\n", meta->dbname);
+    meta->tx = NULL;
     return -1;
   }
 
   block_array_free (meta->working);
   meta->working = NULL;
-  meta->in_txn  = 0;
+  meta->tx      = 0;
   meta->len     = block_array_getlen (meta->committed);
 
   return 0;
@@ -187,8 +189,8 @@ smfile_simul_crash_and_reopen (struct smfile_simulation *meta)
     meta->working = NULL;
   }
 
-  meta->in_txn = 0;
-  meta->len    = block_array_getlen (meta->committed);
+  meta->tx  = NULL;
+  meta->len = block_array_getlen (meta->committed);
 
   return 0;
 }
@@ -196,7 +198,7 @@ smfile_simul_crash_and_reopen (struct smfile_simulation *meta)
 static int
 smfile_simul_close_and_reopen (struct smfile_simulation *meta)
 {
-  ASSERT (!meta->in_txn);
+  ASSERT (!meta->tx);
 
   if (smfile_close (meta->db) < 0) {
     i_log_failure ("smfile_close failed: %s\n", meta->dbname);
@@ -214,8 +216,8 @@ smfile_simul_close_and_reopen (struct smfile_simulation *meta)
     meta->working = NULL;
   }
 
-  meta->in_txn = 0;
-  meta->len    = block_array_getlen (meta->committed);
+  meta->tx  = 0;
+  meta->len = block_array_getlen (meta->committed);
 
   return 0;
 }
@@ -240,7 +242,7 @@ smfile_simul_insert (struct smfile_simulation *meta)
   }
 
   // Do real insert
-  sb_size got = smfile_insert (meta->db, data, ofst, len);
+  sb_size got = smfile_insert (meta->db, meta->tx, data, ofst, len);
   if (got < 0) {
     i_log_failure ("smfile_insert failed: ofst=%d len=%d\n", ofst, len);
     free (data);
@@ -287,7 +289,7 @@ smfile_simul_remove (struct smfile_simulation *meta)
   }
 
   // Do real remove
-  sb_size got = smfile_remove (meta->db, db_buf, 1, ofst, stride, len);
+  sb_size got = smfile_remove (meta->db, meta->tx, db_buf, 1, ofst, stride, len);
   if (got < 0) {
     i_log_failure ("smfile_remove failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
     free (db_buf);
@@ -349,7 +351,7 @@ smfile_simul_read (struct smfile_simulation *meta)
   }
 
   // Do real read
-  sb_size got = smfile_read (meta->db, db_buf, 1, ofst, stride, len);
+  sb_size got = smfile_read (meta->db, meta->tx, db_buf, 1, ofst, stride, len);
   if (got < 0) {
     i_log_failure ("smfile_read failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
     free (db_buf);
@@ -408,7 +410,7 @@ smfile_simul_write (struct smfile_simulation *meta)
   }
 
   // Do real write
-  sb_size got = smfile_write (meta->db, data, 1, ofst, stride, len);
+  sb_size got = smfile_write (meta->db, meta->tx, data, 1, ofst, stride, len);
   if (got < 0) {
     i_log_failure ("smfile_write failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
     free (data);
@@ -471,7 +473,7 @@ smf_simul_open (
       .committed         = block_array_create (512, default_mem (), NULL),
       .working           = NULL,
       .db                = smfile_open (dbname),
-      .in_txn            = 0,
+      .tx                = NULL,
       .dbname            = dbname,
       .max_insert_len    = max_insert_len,
       .max_size          = max_size,
@@ -498,7 +500,7 @@ smf_simul_open (
 int
 smfile_simul_close (struct smfile_simulation *meta)
 {
-  if (meta->in_txn) {
+  if (meta->tx) {
     if (smfile_simul_commit_txn (meta) < 0) {
       i_log_failure ("final commit failed on close: %s\n", meta->dbname);
       return -1;
@@ -545,7 +547,7 @@ smfile_simul_print_state (const struct smfile_simulation *meta)
   i_log_info ("  len:            %" PRb_size " elems\n", meta->len);
   i_log_info ("  max_insert_len: %d\n", meta->max_insert_len);
   i_log_info ("  max_size:       %d\n", meta->max_size);
-  i_log_info ("  in_txn:         %s\n", meta->in_txn ? "yes" : "no");
+  i_log_info ("  in_txn:         %s\n", meta->tx ? "yes" : "no");
   i_log_info ("  committed:      %s\n", meta->committed ? "present" : "<null>");
   i_log_info ("  working:        %s\n", meta->working ? "present" : "<null>");
   i_log_info ("  sample_space_p: %.3f\n", (double)meta->sample_space_prob);
