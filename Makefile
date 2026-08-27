@@ -11,15 +11,6 @@ RUSTC        := rustc
 TARGET       ?= debug
 
 ############ Output Directories
-#
-# C/C++ build tree, keyed by TARGET (debug/release):
-#   build/<target>/target/{bin,lib,include,html,samples}
-#   build/<target>/objs
-#
-# Python build tree is independent of TARGET - it always lives under
-# build/python, mirroring the same target/objs split:
-#   build/python/target   - the built extension module (release-related output)
-#   build/python/objs     - object files used to build it
 
 OUT_DIR  := $(CURDIR)/build/$(TARGET)
 BIN_DIR  := $(OUT_DIR)/target/bin
@@ -35,7 +26,12 @@ PY_OBJ_DIR    := $(PY_OUT_DIR)/objs
 
 ############ C Flags
 
+# -MMD -MP makes gcc emit a per-object .d file
+# listing every header it actually pulled in; see the `-include` of those
+# files near the bottom of this Makefile.
 CFLAGS :=
+CFLAGS += -MMD
+CFLAGS += -MP
 CFLAGS += -Wall
 CFLAGS += -Wextra
 CFLAGS += -I$(CURDIR)/src
@@ -49,9 +45,13 @@ CFLAGS += -O3
 else ifeq ($(TARGET),debug)
 CFLAGS += -DTESTING
 CFLAGS += -g
-#CFLAGS += -fsanitize=address
+else ifeq ($(TARGET),asan)
+CFLAGS += -DTESTING
+CFLAGS += -g
+CFLAGS += -fsanitize=address,undefined
+CFLAGS += -fno-omit-frame-pointer
 else
-    $(error Invalid TARGET '$(TARGET)' - must be 'debug' or 'release')
+    $(error Invalid TARGET '$(TARGET)' - must be 'debug', 'release', or 'asan')
 endif
 
 ############ Rust Flags
@@ -64,13 +64,11 @@ RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 # PY_LDFLAGS  - flags needed to *link* a Python extension module (must come
 #               after the object files on the command line so the linker
 #               can resolve symbols against them correctly)
-#
-# These call out to python3-config / python3 -c ..., which is real work and
-# requires a working python environment. Only pay that cost when 'python' is
-# actually one of the goals being built.
 
 ifneq (,$(filter python,$(MAKECMDGOALS)))
 PY_CFLAGS  := $(shell $(PYTHON)-config --includes)
+PY_CFLAGS  += -MMD
+PY_CFLAGS  += -MP
 PY_CFLAGS  += -fPIC
 PY_CFLAGS  += -DNLOG
 PY_CFLAGS  += -DNDEBUG
@@ -105,7 +103,7 @@ include src/nscore/module.mk
 include src/numstore/module.mk
 include src/smartfiles/module.mk
 include bindings/python/module.mk
-ifeq ($(TARGET),debug)
+ifneq (,$(filter debug asan,$(TARGET)))
 include src/tests/module.mk
 endif
 
@@ -113,17 +111,13 @@ endif
 ALL_OBJS := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(ALL_SRCS))
 
 # PIC objects for the Python extension: the core sources must be recompiled
-# with -fPIC before they can be linked into a shared object; the plain
-# ALL_OBJS above are not safe to reuse here. These, plus the python binding
-# objects, both live under PY_OBJ_DIR.
+# with -fPIC before they can be linked into a shared object
 ALL_PIC_OBJS := $(patsubst src/%.c,$(PY_OBJ_DIR)/%.o,$(ALL_SRCS))
 ALL_PYOBJS   := $(patsubst %.c,$(PY_OBJ_DIR)/%.o,$(ALL_PYSRCS))
 
 ############ Targets
 
 TARGET_LIB := $(LIB_DIR)/libnumstore.a
-
-############ Default is all
 
 $(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
@@ -132,10 +126,6 @@ $(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
 $(TARGET_LIB): $(ALL_OBJS) | $(LIB_DIR)
 	$(AR) rcs $@ $(ALL_OBJS)
 
-# These rules reference PY_CFLAGS/PY_LDFLAGS/TARGET_PYLIB, which are only
-# defined (see Python Flags above) when 'python' is one of the goals - so
-# the rules themselves must be guarded the same way, otherwise the
-# $(TARGET_PYLIB) rule below would expand to a rule with an empty target.
 ifneq (,$(filter python,$(MAKECMDGOALS)))
 $(PY_OBJ_DIR)/%.o: src/%.c | $(PY_OBJ_DIR)
 	@mkdir -p $(dir $@)
@@ -169,9 +159,6 @@ PANDOC_ARGS := \
 PANDOC_DEPS := $(PANDOC_CSS) $(PANDOC_TEMPLATE) $(PANDOC_LUA) $(PANDOC_SIDEBAR)
 
 # Map docs/foo/bar.md -> build/<target>/target/html/foo/bar.html
-#
-# The 'find' below is real filesystem work, so only run it when 'docs' is
-# actually one of the goals being built.
 ifneq (,$(filter docs,$(MAKECMDGOALS)))
 MD_FILES     := $(shell find docs -name '*.md' | sed 's|^\./||')
 HTML_OUTPUTS := $(patsubst docs/%.md,$(HTML_DIR)/%.html,$(MD_FILES))
@@ -185,10 +172,13 @@ $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
 #
 # make                  - debug numstore library and binaries
 # make TARGET=release   - release numstore library and binaries
+# make TARGET=asan      - debug build + unit tests, instrumented with
+#                         AddressSanitizer/UBSan
 # make docs             - build docs
-# make python           - build python extension
+# make python           - build the raw _pynumstore extension module
+# make python-package   - build the installable pynumstore wheel
 
-.PHONY: all clean format docs python
+.PHONY: all clean format docs python python-package
 
 .DEFAULT_GOAL := all
 
@@ -199,6 +189,9 @@ all: $(ALL)
 docs: $(HTML_OUTPUTS)
 
 python: $(TARGET_PYLIB)
+
+python-package:
+	$(PYTHON) -m pip wheel $(CURDIR)/bindings/python --no-deps -w $(PY_TARGET_DIR)
 
 ############ Directories
 
@@ -225,3 +218,9 @@ clean:
 format:
 	find src bindings -type f \( -name '*.c' -o -name '*.h' \) -print0 \
 		| xargs -0 $(CLANG_FORMAT) -i
+
+############ Header dependencies
+
+-include $(ALL_OBJS:.o=.d)
+-include $(ALL_PIC_OBJS:.o=.d)
+-include $(ALL_PYOBJS:.o=.d)

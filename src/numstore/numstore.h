@@ -121,7 +121,14 @@ sb_size nsdb_fexecute (
     ...
 ) NSDB_PRINTF (3, 5);
 
-// Execute - allocates data if it needs it
+// Execute - for a read/remove query, allocates and returns a buffer sized
+// to the named variable's current length instead of requiring the caller to
+// pass one in `data` (still required for insert/write, which need source
+// data only the caller has). Every other query type passes `data` straight
+// through, exactly like nsdb_fexecute(). See the implementation for the
+// full contract - notably, the returned pointer carries no count, so it
+// only tells you "big enough for everything currently in the variable",
+// not how many bytes are meaningful.
 void *nsdb_fexecute_malloc (
     nsdb_t     *ns,
     ns_txn_t   *txn,

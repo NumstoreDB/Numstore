@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "numpy>=1.23"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pynumstore"
+version = "0.1.0"
+description = "Python bindings for numstore, an embedded ACID database for arrays"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Theo Lincke" }]
+dependencies = ["numpy>=1.23"]
+
+[project.urls]
+Homepage = "https://github.com/NumstoreDB/Numstore"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pynumstore = ["py.typed", "_pynumstore.pyi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

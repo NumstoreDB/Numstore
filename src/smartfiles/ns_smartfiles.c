@@ -125,7 +125,7 @@ smfile_size (smfile_t *_smf, sm_txn_t *tx)
       .alloc = &temp,
   };
   if (ns_var_get (&gparams, e)) {
-    goto failed;
+    goto failed_rollback;
   }
 
   ret = gparams.dest.nbytes;
@@ -136,7 +136,8 @@ smfile_size (smfile_t *_smf, sm_txn_t *tx)
 
   return ret;
 
-  nsdb_rollback (smf, tx);
+failed_rollback:
+  ROLLBACK_PRESERVING_ERROR (smf, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -239,16 +240,16 @@ TEST (smfile_txns)
 
   test_assert_equal (smfile_size (s, NULL), 0);
 
-  smfile_begin (s);
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
-  smfile_commit (s, NULL);
+  struct ns_txn *tx = smfile_begin (s);
+  smfile_insert (s, tx, buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_size (s, tx), sizeof (buffer));
+  smfile_commit (s, tx);
   test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
 
-  smfile_begin (s);
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_size (s, NULL), 2 * sizeof (buffer));
-  smfile_rollback (s, NULL);
+  tx = smfile_begin (s);
+  smfile_insert (s, tx, buffer, 0, sizeof (buffer));
+  test_assert_equal (smfile_size (s, tx), 2 * sizeof (buffer));
+  smfile_rollback (s, tx);
   test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
 
   smfile_close (s);
@@ -400,7 +401,7 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
 
 failed_rollback:
 
-  nsdb_rollback (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (smf, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -522,7 +523,7 @@ commit:
 
 failed_rollback:
 
-  nsdb_rollback (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (smf, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -668,7 +669,7 @@ commit:
 
 failed_rollback:
 
-  nsdb_rollback (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (smf, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -709,7 +710,7 @@ smfile_write (
     struct ns_txn *tx,
     const void    *src,
     t_size         size,
-    b_size         bofst,
+    sb_size        bofst,
     sb_size        stride,
     b_size         nelem
 )
@@ -809,7 +810,7 @@ smfile_write (
 
       inserted = ns_insert (&iparams, e);
       WRAP_GOTO (inserted, failed_rollback);
-      ret += inserted;
+      ret += inserted / size;
     }
 
     // UPDATE VARIABLE
@@ -836,7 +837,7 @@ smfile_write (
 
 failed_rollback:
 
-  nsdb_rollback (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (smf, tx);
 
 failed:
   ALLOC_CLOSE (temp);
