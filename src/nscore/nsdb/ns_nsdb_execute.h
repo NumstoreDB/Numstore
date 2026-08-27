@@ -19,15 +19,13 @@
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
-#include "core/ns_string.h"
-#include "nscore/pager/ns_pager.h"
-#include "nscore/txn_table/ns_txn_table.h"
+#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_variables.h"
 
-// Execute Internal
 sb_size nsdb_execute_on_buffer (
     struct nsdb      *ns,
+    struct ns_txn    *txn,
     struct query     *q,
     void             *data,
     struct allocator *alc
@@ -39,39 +37,12 @@ sb_size nsdb_execute_on_buffer (
  * @brief Individual actions you can take on a numstore database
  ******************************************************************************/
 
-int nsdb_create (struct nsdb *db, struct allocator *alloc, struct string vname, struct type dtype);
-err_t nsdb_delete (struct nsdb *db, struct delete_query *query);
-err_t nsdb_get (
-    struct nsdb      *db,
-    struct get_query *query,
-    struct allocator *alloc,
-    struct variable **dest
-);
+// Get a variable and print it to the console
 err_t nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc);
-sb_size nsdb_insert (
-    struct nsdb         *db,
-    struct insert_query *query,
-    struct allocator    *alloc,
-    struct stream       *src
-);
-sb_size nsdb_read (
-    struct nsdb       *db,
-    struct read_query *query,
-    struct allocator  *alloc,
-    struct stream     *dest
-);
+
+// Read data from a variable and print it to the console
 sb_size nsdb_read_and_print (struct nsdb *db, struct read_query *query, struct allocator *alloc);
-sb_size nsdb_write (
-    struct nsdb        *db,
-    struct write_query *query,
-    struct allocator   *alloc,
-    struct stream      *src
-);
-sb_size nsdb_remove (
-    struct nsdb         *db,
-    struct remove_query *query,
-    struct allocator    *alloc,
-    struct stream       *dest
-);
+
+err_t nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc);
 
 #endif

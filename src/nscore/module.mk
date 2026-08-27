@@ -38,6 +38,8 @@ ALL_SRCS += src/nscore/lock_table/ns_lock_table.c
 
 # NSDB
 ALL_SRCS += src/nscore/nsdb/ns_nsdb.c
+ALL_SRCS += src/nscore/nsdb/ns_nsdb_cli.c
+ALL_SRCS += src/nscore/nsdb/ns_nsdb_execute.c
 
 # Page
 ALL_SRCS += src/nscore/page/ns_page.c

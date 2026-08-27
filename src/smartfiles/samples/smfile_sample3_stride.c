@@ -37,18 +37,18 @@ main (void)
 
   // Remove all the data (this might error - that's ok - just says there's no
   // dataset with that name)
-  smfile_remove (smf, NULL, 1, 0, 1, SMF_END);
+  smfile_remove (smf, NULL, NULL, 1, 0, 1, SMF_END);
 
   // Insert some data
   float data[16];
   for (int i = 0; i < 16; ++i) {
     data[i] = (float)i;
   }
-  smfile_insert (smf, data, 0, sizeof (data));
+  smfile_insert (smf, NULL, data, 0, sizeof (data));
 
   // Read just the even numbers (stride = 2)
   float   evens[8];
-  sb_size n = smfile_read (smf, evens, sizeof (float), 0, 2, 8);
+  sb_size n = smfile_read (smf, NULL, evens, sizeof (float), 0, 2, 8);
   printf ("every other float (expect 0 2 4 6 8 10 12 14):\n");
   for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, evens[i]);
@@ -60,11 +60,11 @@ main (void)
   for (int i = 0; i < 8; ++i) {
     neg[i] = -1.0f;
   }
-  smfile_write (smf, neg, sizeof (float), 4, 2, 8);
+  smfile_write (smf, NULL, neg, sizeof (float), 4, 2, 8);
 
   // Read back 16 elements - stride = 1
   float readback[16];
-  n = smfile_read (smf, readback, sizeof (float), 0, 1, 16);
+  n = smfile_read (smf, NULL, readback, sizeof (float), 0, 1, 16);
   printf ("after stride write (odd positions -> -1):\n");
   for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, readback[i]);
@@ -72,14 +72,14 @@ main (void)
 
   // Remove 8 elements - stride = 2
   float removed[8];
-  n = smfile_remove (smf, removed, sizeof (float), 0, 2, 8);
+  n = smfile_remove (smf, NULL, removed, sizeof (float), 0, 2, 8);
   printf ("removed even positions (expect 0 2 4 6 8 10 12 14):\n");
   for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, removed[i]);
   }
 
   // Read data
-  n = smfile_read (smf, readback, sizeof (float), 0, 1, 8);
+  n = smfile_read (smf, NULL, readback, sizeof (float), 0, 1, 8);
   printf ("remaining floats (expect all -1):\n");
   for (int i = 0; i < (int)n; ++i) {
     printf ("  [%d] = %.1f\n", i, readback[i]);

@@ -22,18 +22,24 @@
 
 #include "core/ns_error.h"
 #include "core/ns_string.h"
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_query.h"
+#include "nscore/types/ns_variables.h"
 
 struct nsdb
 {
-  error              e;
-  struct pager      *p;
-  struct string      path;
-  struct slab_alloc *txn_alloc;
-  latch              l;
+  error                e;
+  struct slab_alloc    txn_alloc;
+  latch                l;
+  struct i_mem         mem;
+  struct i_file_system fs;
+  struct string        path;
+  struct pager        *p;
 };
 
-struct nsdb *nsdb_open (const char *path);
+struct nsdb *nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_system fs);
 int nsdb_cleanup (const char *path);
 int nsdb_close (struct nsdb *ns);
 int nsdb_crash (struct nsdb *ns);
@@ -43,13 +49,88 @@ const char *nsdb_strerror (struct nsdb *ns);
 int nsdb_perror (struct nsdb *ns, const char *prefix);
 
 // Transaction Control
-int nsdb_begin (struct nsdb *smf);
-int nsdb_commit (struct nsdb *smf);
-int nsdb_rollback (struct nsdb *smf);
+struct ns_txn *nsdb_begin (struct nsdb *smf);
+int nsdb_commit (struct nsdb *smf, struct ns_txn *txn);
+int nsdb_rollback (struct nsdb *smf, struct ns_txn *txn);
 
-// Auto Transaction
-err_t nsdb_auto_begin_txn (struct nsdb *sm, error *e);
-err_t nsdb_auto_commit (struct nsdb *sm, error *e);
-void nsdb_auto_rollback (struct nsdb *sm);
+// Create a variable
+int nsdb_create (
+    struct nsdb      *db,
+    struct ns_txn    *tx,
+    struct allocator *alloc,
+    struct string     vname,
+    struct type       dtype
+);
+
+// Delete a variable
+err_t nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *query);
+
+// Get a variable
+err_t nsdb_get (
+    struct nsdb      *db,
+    struct ns_txn    *tx,
+    struct get_query *query,
+    struct allocator *alloc,
+    struct variable **dest
+);
+
+// Insert
+sb_size nsdb_insert (
+    struct nsdb         *db,
+    struct ns_txn       *tx,
+    struct insert_query *query,
+    struct allocator    *alloc,
+    struct stream       *src
+);
+
+// Read
+sb_size nsdb_read (
+    struct nsdb       *db,
+    struct ns_txn     *tx,
+    struct read_query *query,
+    struct allocator  *alloc,
+    struct stream     *dest
+);
+
+// Write
+sb_size nsdb_write (
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct write_query *query,
+    struct allocator   *alloc,
+    struct stream      *src
+);
+
+// Remove
+sb_size nsdb_remove (
+    struct nsdb         *db,
+    struct ns_txn       *tx,
+    struct remove_query *query,
+    struct allocator    *alloc,
+    struct stream       *dest
+);
+
+#define AUTO_BEGIN(db, tx)  \
+  bool auto_txn = false;    \
+  do {                      \
+    if (tx == NULL) {       \
+      tx = nsdb_begin (db); \
+      if (tx == NULL) {     \
+        goto failed;        \
+      }                     \
+      auto_txn = true;      \
+    }                       \
+  }                         \
+  while (0)
+
+#define AUTO_COMMIT(db, tx)       \
+  do {                            \
+    if (auto_txn) {               \
+      if (nsdb_commit (db, tx)) { \
+        goto failed;              \
+      }                           \
+    }                             \
+  }                               \
+  while (0)
 
 #endif // NSHANDLE_H

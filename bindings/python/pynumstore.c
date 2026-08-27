@@ -13,9 +13,9 @@
 /// limitations under the License.
 
 // Python
-#include <numpy/ndarrayobject.h>
-
 #include "core/ns_alloc.h"
+
+#include <numpy/ndarrayobject.h>
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
@@ -28,15 +28,12 @@
 #include <string.h>
 
 // Numstore
-#include "nscore/compiler/ns_compiler.h"
-#include "numstore.h"
-#include "nscore/types/ns_types.h"
 #include "core/ns_csx_assert.h"
+#include "nscore/compiler/ns_compiler.h"
+#include "nscore/types/ns_types.h"
+#include "numstore.h"
 
-/******************************************************************************
- * SECTION: Forward Declaration
- ******************************************************************************/
-
+// Forward declarations
 PyObject *pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg);
 PyObject *pyns_open (PyObject *Py_UNUSED (m), PyObject *arg);
 PyObject *pyns_close (PyObject *Py_UNUSED (m), PyObject *arg);
@@ -48,55 +45,46 @@ PyObject *pyns_execute (PyObject *Py_UNUSED (m), PyObject *args);
 static const char DB_CAPSULE[]  = "numstore.db";
 static const char TXN_CAPSULE[] = "numstore.txn";
 
-/******************************************************************************
- * SECTION: Utils
- ******************************************************************************/
-
-static inline PyObject* 
-_verify_capsule(PyObject* obj) {
-  if (!PyCapsule_CheckExact(obj)) {
-      PyErr_SetString(PyExc_TypeError, "expected nstxn capsule or None");
-      return NULL;
+static inline PyObject *
+_verify_capsule (PyObject *obj)
+{
+  if (!PyCapsule_CheckExact (obj)) {
+    PyErr_SetString (PyExc_TypeError, "expected nstxn capsule or None");
+    return NULL;
   }
   return obj;
 }
 
-// Get the underlying database object from the capsule
+#define ENSURE_CAPSULE(obj, ret)                                           \
+  do {                                                                     \
+    if (!PyCapsule_CheckExact (obj)) {                                     \
+      PyErr_SetString (PyExc_TypeError, "expected nstxn capsule or None"); \
+      return ret;                                                          \
+    }                                                                      \
+  }                                                                        \
+  while (0)
+
 static inline nsdb_t *
 _unwrap_db (PyObject *capsule)
 {
+  ENSURE_CAPSULE (capsule, NULL);
   return (nsdb_t *)PyCapsule_GetPointer (capsule, DB_CAPSULE);
 }
 
-// Release a database - stored
 static inline void
 _nspy_release_db (PyObject *capsule)
 {
-  nsdb_t *ns = _unwrap_db(capsule);
+  ENSURE_CAPSULE (capsule, );
+  nsdb_t *ns = _unwrap_db (capsule);
   ASSERT (ns);
   nsdb_close (ns);
 }
 
-// Returns nsdb_t * from txn capsule, or NULL (without setting error) if None.
-static inline nsdb_t *
+static inline ns_txn_t *
 _unwrap_txn (PyObject *txn_capsule)
 {
-  if (txn_capsule == Py_None)
-  {
-    return NULL;
-  }
-  return (nsdb_t *)PyCapsule_GetPointer (txn_capsule, TXN_CAPSULE);
-}
-
-// Returns the active nsdb_t *: from txn if present, otherwise from db.
-static inline nsdb_t *
-_active_ns (PyObject *db_capsule, PyObject *txn_capsule)
-{
-  if (txn_capsule != Py_None)
-  {
-    return (nsdb_t *)PyCapsule_GetPointer (txn_capsule, TXN_CAPSULE);
-  }
-  return (nsdb_t *)PyCapsule_GetPointer (db_capsule, DB_CAPSULE);
+  ENSURE_CAPSULE (txn_capsule, NULL);
+  return (ns_txn_t *)PyCapsule_GetPointer (txn_capsule, TXN_CAPSULE);
 }
 
 // Sets a Python RuntimeError from the nsdb error string.
@@ -104,12 +92,9 @@ static inline void
 _pyns_set_error (nsdb_t *ns)
 {
   const char *err = nsdb_strerror (ns);
-  if (err)
-  {
+  if (err) {
     PyErr_SetString (PyExc_RuntimeError, err);
-  }
-  else
-  {
+  } else {
     PyErr_SetString (PyExc_RuntimeError, "numstore operation failed");
   }
 }
@@ -124,10 +109,6 @@ elsize (PyArray_Descr *type)
 #endif
 }
 
-/******************************************************************************
- * SECTION: Utils
- ******************************************************************************/
-
 // Build a complex valued struct
 static PyArray_Descr *
 build_complex_struct (int component_typenum)
@@ -139,24 +120,21 @@ build_complex_struct (int component_typenum)
   PyObject      *tup    = NULL;
 
   // Internal type
-  comp   = PyArray_DescrFromType (component_typenum);
-  fields = PyList_New (2);
+  comp                  = PyArray_DescrFromType (component_typenum);
+  fields                = PyList_New (2);
 
-  if (comp == NULL || fields == NULL)
-  {
+  if (comp == NULL || fields == NULL) {
     goto fail;
   }
 
   // Names
   static const char *names[2] = {"re", "im"};
-  for (int i = 0; i < 2; i++)
-  {
+  for (int i = 0; i < 2; i++) {
     // Generate python string
     name = PyUnicode_FromString (names[i]);
     tup  = PyTuple_New (2);
 
-    if (name == NULL || tup == NULL)
-    {
+    if (name == NULL || tup == NULL) {
       goto fail;
     }
 
@@ -172,8 +150,7 @@ build_complex_struct (int component_typenum)
     tup  = NULL;
   }
 
-  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED)
-  {
+  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED) {
     goto fail;
   }
 
@@ -199,8 +176,7 @@ static PyArray_Descr *
 primitive_to_dtype (enum prim_t p)
 {
   int typenum;
-  switch (p)
-  {
+  switch (p) {
     case U8: typenum = NPY_UINT8; break;
     case U16: typenum = NPY_UINT16; break;
     case U32: typenum = NPY_UINT32; break;
@@ -225,14 +201,11 @@ primitive_to_dtype (enum prim_t p)
     case CU32: return build_complex_struct (NPY_UINT16);
     case CU64: return build_complex_struct (NPY_UINT32);
     case CU128: return build_complex_struct (NPY_UINT64);
-    default:
-      PyErr_Format (PyExc_ValueError, "unknown numstore primitive: %d", (int)p);
-      return NULL;
+    default: PyErr_Format (PyExc_ValueError, "unknown numstore primitive: %d", (int)p); return NULL;
   }
 
   PyArray_Descr *d = PyArray_DescrFromType (typenum);
-  if (d == NULL)
-  {
+  if (d == NULL) {
     return NULL;
   }
 
@@ -249,23 +222,17 @@ struct_to_dtype (const struct struct_t *st)
   PyObject      *tup    = NULL; // the wrapper of (name, sub)
   PyArray_Descr *out    = NULL; // The result
 
-  fields = PyList_New (st->len);
-  if (fields == NULL)
-  {
+  fields                = PyList_New (st->len);
+  if (fields == NULL) {
     goto fail;
   }
 
-  for (u16 i = 0; i < st->len; i++)
-  {
-    name = PyUnicode_FromStringAndSize (
-        st->keys[i].data,
-        (Py_ssize_t)st->keys[i].len
-    );
-    sub = pyns_type_to_dtype (st->types[i]);
-    tup = PyTuple_New (2);
+  for (u16 i = 0; i < st->len; i++) {
+    name = PyUnicode_FromStringAndSize (st->keys[i].data, (Py_ssize_t)st->keys[i].len);
+    sub  = pyns_type_to_dtype (st->types[i]);
+    tup  = PyTuple_New (2);
 
-    if (name == NULL || sub == NULL || tup == NULL)
-    {
+    if (name == NULL || sub == NULL || tup == NULL) {
       goto fail;
     }
 
@@ -277,8 +244,7 @@ struct_to_dtype (const struct struct_t *st)
     tup = NULL;
   }
 
-  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED)
-  {
+  if (PyArray_DescrConverter (fields, &out) != NPY_SUCCEED) {
     goto fail;
   }
 
@@ -308,33 +274,26 @@ union_to_dtype (const struct union_t *un)
   PyObject      *spec     = NULL;
   PyArray_Descr *out      = NULL;
 
-  names   = PyList_New (un->len);
-  formats = PyList_New (un->len);
-  offsets = PyList_New (un->len);
-  if (names == NULL || formats == NULL || offsets == NULL)
-  {
+  names                   = PyList_New (un->len);
+  formats                 = PyList_New (un->len);
+  offsets                 = PyList_New (un->len);
+  if (names == NULL || formats == NULL || offsets == NULL) {
     goto fail;
   }
 
   Py_ssize_t max_size = 0;
-  for (u16 i = 0; i < un->len; i++)
-  {
-    name = PyUnicode_FromStringAndSize (
-        un->keys[i].data,
-        (Py_ssize_t)un->keys[i].len
-    );
-    sub = pyns_type_to_dtype (un->types[i]);
-    off = PyLong_FromLong (0);
+  for (u16 i = 0; i < un->len; i++) {
+    name = PyUnicode_FromStringAndSize (un->keys[i].data, (Py_ssize_t)un->keys[i].len);
+    sub  = pyns_type_to_dtype (un->types[i]);
+    off  = PyLong_FromLong (0);
 
-    if (name == NULL || sub == NULL || off == NULL)
-    {
+    if (name == NULL || sub == NULL || off == NULL) {
       goto fail;
     }
 
     Py_ssize_t isize = elsize (sub);
 
-    if (isize > max_size)
-    {
+    if (isize > max_size) {
       max_size = isize;
     }
 
@@ -349,25 +308,20 @@ union_to_dtype (const struct union_t *un)
   itemsize = PyLong_FromSsize_t (max_size);
   spec     = PyDict_New ();
 
-  if (itemsize == NULL || spec == NULL)
-  {
+  if (itemsize == NULL || spec == NULL) {
     goto fail;
   }
 
-  if (PyDict_SetItemString (spec, "names", names) != 0)
-  {
+  if (PyDict_SetItemString (spec, "names", names) != 0) {
     goto fail;
   }
-  if (PyDict_SetItemString (spec, "formats", formats) != 0)
-  {
+  if (PyDict_SetItemString (spec, "formats", formats) != 0) {
     goto fail;
   }
-  if (PyDict_SetItemString (spec, "offsets", offsets) != 0)
-  {
+  if (PyDict_SetItemString (spec, "offsets", offsets) != 0) {
     goto fail;
   }
-  if (PyDict_SetItemString (spec, "itemsize", itemsize) != 0)
-  {
+  if (PyDict_SetItemString (spec, "itemsize", itemsize) != 0) {
     goto fail;
   }
 
@@ -380,8 +334,7 @@ union_to_dtype (const struct union_t *un)
   Py_DECREF (itemsize);
   itemsize = NULL;
 
-  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED)
-  {
+  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) {
     goto fail;
   }
 
@@ -410,20 +363,17 @@ sarray_to_dtype (const struct sarray_t *sa)
   PyObject      *spec  = NULL;
   PyArray_Descr *out   = NULL;
 
-  sub   = pyns_type_to_dtype (sa->t);
-  shape = PyTuple_New (sa->rank);
+  sub                  = pyns_type_to_dtype (sa->t);
+  shape                = PyTuple_New (sa->rank);
 
-  if (sub == NULL || shape == NULL)
-  {
+  if (sub == NULL || shape == NULL) {
     goto fail;
   }
 
-  for (u16 i = 0; i < sa->rank; i++)
-  {
+  for (u16 i = 0; i < sa->rank; i++) {
     d = PyLong_FromUnsignedLong ((unsigned long)sa->dims[i]);
 
-    if (d == NULL)
-    {
+    if (d == NULL) {
       goto fail;
     }
 
@@ -432,8 +382,7 @@ sarray_to_dtype (const struct sarray_t *sa)
   }
 
   spec = PyTuple_New (2);
-  if (spec == NULL)
-  {
+  if (spec == NULL) {
     goto fail;
   }
 
@@ -442,8 +391,7 @@ sarray_to_dtype (const struct sarray_t *sa)
   PyTuple_SET_ITEM (spec, 1, shape);
   shape = NULL;
 
-  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED)
-  {
+  if (PyArray_DescrConverter (spec, &out) != NPY_SUCCEED) {
     goto fail;
   }
 
@@ -463,14 +411,12 @@ pyns_type_to_dtype (const struct type *t)
 {
   ASSERT (t);
 
-  switch (t->type)
-  {
+  switch (t->type) {
     case T_PRIM: return primitive_to_dtype (t->p);
     case T_STRUCT: return struct_to_dtype (&t->st);
     case T_UNION: return union_to_dtype (&t->un);
     case T_SARRAY: return sarray_to_dtype (&t->sa);
-    default:
-    {
+    default: {
       UNREACHABLE ();
     }
   }
@@ -485,15 +431,13 @@ pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg)
   PyArray_Descr *ret = NULL;
 
   // Extract utf8 string from argument
-  const char *src = PyUnicode_AsUTF8 (arg);
-  if (!src)
-  {
+  const char    *src = PyUnicode_AsUTF8 (arg);
+  if (!src) {
     return NULL;
   }
 
   // compile the type string
-  if (compile_type (&t, src, &alloc, &e))
-  {
+  if (compile_type (&t, src, &alloc, &e)) {
     PyErr_Format (PyExc_ValueError, "Error: %.*s", e.cmlen, e.cause_msg);
     goto theend;
   }
@@ -511,14 +455,12 @@ pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   // Get the wrapped database
   nsdb_t *ns = _unwrap_db (arg);
-  if (!ns)
-  {
+  if (!ns) {
     return NULL;
   }
 
   // BEGIN TXN
-  if (nsdb_begin (ns) < 0)
-  {
+  if (nsdb_begin (ns) < 0) {
     _pyns_set_error (ns);
     return NULL;
   }
@@ -530,15 +472,13 @@ PyObject *
 pyns_close (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   nsdb_t *ns = _unwrap_db (arg);
-  if (!ns)
-  {
+  if (!ns) {
     return NULL;
   }
 
   PyCapsule_SetDestructor (arg, NULL);
 
-  if (nsdb_close (ns) < 0)
-  {
+  if (nsdb_close (ns) < 0) {
     PyErr_SetString (PyExc_RuntimeError, "Failed to close numstore database");
     return NULL;
   }
@@ -549,21 +489,18 @@ pyns_close (PyObject *Py_UNUSED (m), PyObject *arg)
 PyObject *
 pyns_open (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  if (!PyUnicode_Check (arg))
-  {
+  if (!PyUnicode_Check (arg)) {
     PyErr_SetString (PyExc_TypeError, "path must be str");
     return NULL;
   }
 
   const char *path = PyUnicode_AsUTF8 (arg);
-  if (!path)
-  {
+  if (!path) {
     return NULL;
   }
 
   nsdb_t *ns = nsdb_open (path);
-  if (!ns)
-  {
+  if (!ns) {
     PyErr_SetString (PyExc_RuntimeError, "Failed to open numstore database");
     return NULL;
   }
@@ -572,38 +509,70 @@ pyns_open (PyObject *Py_UNUSED (m), PyObject *arg)
 }
 
 PyObject *
-pyns_commit (PyObject *Py_UNUSED (m), PyObject *arg)
+pyns_commit (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!ns)
-  {
+  PyObject *_db;
+  PyObject *_txn;
+
+  /* commit(db, txn) */
+  if (!PyArg_ParseTuple (args, "OO", &_db, &_txn)) {
     return NULL;
   }
 
-  // COMMIT
-  if (nsdb_commit (ns) < 0)
-  {
-    _pyns_set_error (ns);
+  nsdb_t *db = _unwrap_db (_db);
+  if (db == NULL) {
+    return NULL; /* error already set by _unwrap_db */
+  }
+
+  ns_txn_t *txn = _unwrap_txn (_txn);
+  if (txn == NULL) {
+    return NULL; /* error already set by _unwrap_txn */
+  }
+
+  if (nsdb_commit (db, txn) < 0) {
+    _pyns_set_error (db);
     return NULL;
+  }
+
+  // txn is now invalid in memory
+  if (PyCapsule_SetPointer (_txn, NULL) < 0) {
+    // Commit already succeeded - don't fail again
+    PyErr_Clear ();
   }
 
   Py_RETURN_NONE;
 }
 
 PyObject *
-pyns_rollback (PyObject *Py_UNUSED (m), PyObject *arg)
+pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  nsdb_t *ns = (nsdb_t *)PyCapsule_GetPointer (arg, TXN_CAPSULE);
-  if (!ns)
-  {
+  PyObject *_db;
+  PyObject *_txn;
+
+  /* rollback(db, txn) */
+  if (!PyArg_ParseTuple (args, "OO", &_db, &_txn)) {
     return NULL;
   }
 
-  // ROLLBACK
-  if (nsdb_rollback (ns) < 0)
-  {
-    _pyns_set_error (ns);
+  nsdb_t *db = _unwrap_db (_db);
+  if (db == NULL) {
+    return NULL; /* error already set by _unwrap_db */
+  }
+
+  ns_txn_t *txn = _unwrap_txn (_txn);
+  if (txn == NULL) {
+    return NULL; /* error already set by _unwrap_txn */
+  }
+
+  if (nsdb_rollback (db, txn) < 0) {
+    _pyns_set_error (db);
     return NULL;
+  }
+
+  // txn is now invalid in memory
+  if (PyCapsule_SetPointer (_txn, NULL) < 0) {
+    // Commit already succeeded - don't fail again
+    PyErr_Clear ();
   }
 
   Py_RETURN_NONE;
@@ -612,64 +581,67 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *arg)
 PyObject *
 pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  PyObject      *db;
-  PyObject      *txn;
-  char          *query;
-  PyObject      *data_obj = Py_None;
-  PyArrayObject *contig   = NULL;
-  PyObject      *result   = NULL;
+  PyObject *_db;
+  PyObject *_txn;
+  char     *query;
+  PyObject *data_obj;
 
   // Parse arguments
-  //    execute(db, txn, query, data | None)
-  if (!PyArg_ParseTuple (args, "OOs|O", &db, &txn, &query, &data_obj))
-  {
+  //    execute(db, txn | None, query, data | None)
+  if (!PyArg_ParseTuple (args, "OOsO", &_db, &_txn, &query, &data_obj)) {
     return NULL;
   }
 
-  if (data_obj != Py_None)
-  {
-    if (!PyArray_Check (data_obj))
-    {
+  // The underlying data buffer of data if it's present
+  PyArrayObject *contig = NULL;
+
+  // The result
+  PyObject      *result = NULL;
+
+  if (data_obj != Py_None) {
+    // Check that it's an array
+    if (!PyArray_Check (data_obj)) {
       PyErr_SetString (PyExc_TypeError, "data must be a numpy array or None");
       return NULL;
     }
 
-    contig = (PyArrayObject *)PyArray_FROM_OTF (
-        data_obj,
-        NPY_NOTYPE,
-        NPY_ARRAY_IN_ARRAY | NPY_ARRAY_FORCECAST
-    );
-
-    if (contig == NULL)
-    {
+    // Get the data backing the array
+    contig = (PyArrayObject *)
+        PyArray_FROM_OTF (data_obj, NPY_NOTYPE, NPY_ARRAY_IN_ARRAY | NPY_ARRAY_FORCECAST);
+    if (contig == NULL) {
       return NULL;
     }
   }
 
   // Fetch active handle
-  nsdb_t *ns = _active_ns (db, txn);
-  if (ns == NULL)
-  {
-    PyErr_SetString (PyExc_RuntimeError, "no active namespace for db/txn");
+  nsdb_t *db = _unwrap_db (_db);
+  if (db == NULL) {
     Py_XDECREF (contig);
     return NULL;
+  }
+
+  ns_txn_t *txn = NULL;
+  if (_txn != Py_None) {
+    txn = _unwrap_txn (_txn);
+    if (txn == NULL) {
+      Py_XDECREF (contig);
+      return NULL;
+    }
   }
 
   // Get bytes
   char    *bytes  = contig ? PyArray_BYTES (contig) : NULL;
   npy_intp nbytes = contig ? PyArray_NBYTES (contig) : 0;
-  if (contig != NULL && bytes == NULL)
-  {
+  if (contig != NULL && bytes == NULL) {
     PyErr_SetString (PyExc_RuntimeError, "array has no underlying buffer");
     Py_XDECREF (contig);
     return NULL;
   }
 
   // Execute the query
-  sb_size ret = nsdb_fexecute (ns, "%s", bytes, query);
-  if (ret < 0)
-  {
-    _pyns_set_error (ns);
+  sb_size ret = nsdb_fexecute (db, txn, "%s", bytes, query);
+  if (ret < 0) {
+    _pyns_set_error (db);
     Py_XDECREF (contig);
     return NULL;
   }
@@ -738,10 +710,9 @@ static PyMethodDef pynumstore_methods[] = {
 };
 
 static PyModuleDef pynumstore_module = {
-    .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "_pynumstore",
-    .m_doc =
-        "Thin C wrapper around smfile operations for the pynumstore package.",
+    .m_base    = PyModuleDef_HEAD_INIT,
+    .m_name    = "_pynumstore",
+    .m_doc     = "Thin C wrapper around smfile operations for the pynumstore package.",
     .m_size    = -1,
     .m_methods = pynumstore_methods,
 };

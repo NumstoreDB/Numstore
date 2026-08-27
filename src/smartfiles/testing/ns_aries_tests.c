@@ -29,26 +29,26 @@ TEST (aries_crash)
     smfile_t *smf = smfile_open ("testdb");
 
     smfile_begin (smf);
-    smfile_insert (smf, "AAAAAAAAAA", 0, 10);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "AAAAAAAAAA", 0, 10);
+    smfile_commit (smf, NULL);
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "BB", 3, 2);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "BB", 3, 2);
+    smfile_commit (smf, NULL);
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "CC", 7, 2);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "CC", 7, 2);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "AAABBAACCAAAAA";
     char        actual[sizeof ("AAABBAACCAAAAA") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -62,20 +62,20 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "AAAAAAAAAA", 0, 10);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "AAAAAAAAAA", 0, 10);
+    smfile_commit (smf, NULL);
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "ZZ", 3, 2);
+    smfile_insert (smf, NULL, "ZZ", 3, 2);
     /* deliberately no commit */
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "AAAAAAAAAA";
     char        actual[sizeof ("AAAAAAAAAA") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -91,17 +91,17 @@ TEST (aries_crash)
     smfile_t *smf = smfile_open ("testdb");
 
     smfile_begin (smf);
-    smfile_insert (smf, "HELLO", 0, 5);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "HELLO", 0, 5);
+    smfile_commit (smf, NULL);
 
     smfile_begin (smf);
-    smfile_insert (smf, "XX", 1, 2);
+    smfile_insert (smf, NULL, "XX", 1, 2);
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "HELLO";
     char        actual[sizeof ("HELLO") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -117,26 +117,26 @@ TEST (aries_crash)
 
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "ONE", 0, 3);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "ONE", 0, 3);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "TWO", 3, 3);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "TWO", 3, 3);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "THREE", 6, 5);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "THREE", 6, 5);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "ONETWOTHREE";
     char        actual[sizeof ("ONETWOTHREE") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -151,8 +151,8 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "STABLE", 0, 6);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "STABLE", 0, 6);
+    smfile_commit (smf, NULL);
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
@@ -162,7 +162,7 @@ TEST (aries_crash)
     smf                  = smfile_open ("testdb");
     const char *expected = "STABLE";
     char        actual[sizeof ("STABLE") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -180,15 +180,15 @@ TEST (aries_crash)
     for (int i = 0; i < 26; i++) {
       char c = (char)('A' + i);
       smfile_begin (smf);
-      smfile_insert (smf, &c, i, 1);
-      smfile_commit (smf);
+      smfile_insert (smf, NULL, &c, i, 1);
+      smfile_commit (smf, NULL);
     }
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     char        actual[sizeof ("ABCDEFGHIJKLMNOPQRSTUVWXYZ") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -204,17 +204,17 @@ TEST (aries_crash)
     smfile_t *smf = smfile_open ("testdb");
 
     smfile_begin (smf);
-    smfile_insert (smf, "AAAA", 0, 4);
-    smfile_insert (smf, "BB", 2, 2);
-    smfile_insert (smf, "CC", 0, 2);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "AAAA", 0, 4);
+    smfile_insert (smf, NULL, "BB", 2, 2);
+    smfile_insert (smf, NULL, "CC", 0, 2);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     /* AAAA -> AABBAA -> CCAABBAA */
     smf                  = smfile_open ("testdb");
     const char *expected = "CCAABBAA";
     char        actual[sizeof ("CCAABBAA") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -229,20 +229,20 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "ABCDE", 0, 5);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "ABCDE", 0, 5);
+    smfile_commit (smf, NULL);
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "FGH", 5, 3); /* offset == current length */
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "FGH", 5, 3); /* offset == current length */
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "ABCDEFGH";
     char        actual[sizeof ("ABCDEFGH") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -257,20 +257,20 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "WORLD", 0, 5);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "WORLD", 0, 5);
+    smfile_commit (smf, NULL);
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "HELLO ", 0, 6);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "HELLO ", 0, 6);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
     const char *expected = "HELLO WORLD";
     char        actual[sizeof ("HELLO WORLD") - 1];
-    smfile_read (smf, actual, 1, 0, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 0, 1, sizeof (actual));
     test_assert_memequal (expected, actual, sizeof (actual));
     smfile_close (smf);
   }
@@ -296,13 +296,13 @@ TEST (aries_crash)
 
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, big, 0, BIG_SIZE);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, big, 0, BIG_SIZE);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf          = smfile_open ("testdb");
     char *actual = i_malloc (mem, BIG_SIZE, 1, &e);
-    smfile_read (smf, actual, 1, 0, 1, BIG_SIZE);
+    smfile_read (smf, NULL, actual, 1, 0, 1, BIG_SIZE);
     test_assert_memequal (big, actual, BIG_SIZE);
     smfile_close (smf);
     i_free (mem, big);
@@ -320,14 +320,14 @@ TEST (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t *smf = smfile_open ("testdb");
     smfile_begin (smf);
-    smfile_insert (smf, "0123456789", 0, 10);
-    smfile_commit (smf);
+    smfile_insert (smf, NULL, "0123456789", 0, 10);
+    smfile_commit (smf, NULL);
     smfile_crash (smf);
 
     smf = smfile_open ("testdb");
     /* read the last 4 bytes */
     char actual[4];
-    smfile_read (smf, actual, 1, 6, 1, sizeof (actual));
+    smfile_read (smf, NULL, actual, 1, 6, 1, sizeof (actual));
     test_assert_memequal ("6789", actual, sizeof (actual));
     smfile_close (smf);
   }

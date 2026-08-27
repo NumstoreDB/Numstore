@@ -12,6 +12,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "nscore/nsdb/ns_nsdb_execute.h"
+
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -23,7 +25,6 @@
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/types/ns_variables.h"
@@ -37,7 +38,7 @@
 sb_size
 nsdb_execute_on_buffer (
     struct nsdb      *ns,
-    struct nstxn_t   *txn,
+    struct ns_txn    *txn,
     struct query     *q,
     void             *data,
     struct allocator *alc
@@ -58,12 +59,15 @@ nsdb_execute_on_buffer (
         goto failed;
       }
 
+      // Create output stream
       if (q->read.limit && q->read.blimit) {
         stream_obuf_init (&stream, &octx, data, q->read.limit);
       } else {
         stream_obuf_init (&stream, &octx, data, 0);
       }
-      ret = nsdb_read (ns, &q->read, alc, &stream);
+
+      // Execute read
+      ret = nsdb_read (ns, txn, &q->read, alc, &stream);
       if (ret < 0) {
         goto failed;
       }
@@ -77,12 +81,15 @@ nsdb_execute_on_buffer (
         goto failed;
       }
 
+      // Initialize stream
       if (q->write.limit && q->write.blimit) {
         stream_ibuf_init (&stream, &ictx, data, q->write.limit);
       } else {
         stream_ibuf_init (&stream, &ictx, data, 0);
       }
-      ret = nsdb_write (ns, &q->write, alc, &stream);
+
+      // Execute write
+      ret = nsdb_write (ns, txn, &q->write, alc, &stream);
       if (ret < 0) {
         goto failed;
       }
@@ -91,16 +98,20 @@ nsdb_execute_on_buffer (
     }
     case QT_REMOVE: {
       if (data) {
+        // Initialize stream
         if (q->remove.limit && q->remove.blimit) {
           stream_obuf_init (&stream, &octx, data, q->remove.limit);
         } else {
           stream_obuf_init (&stream, &octx, data, 0);
         }
 
-        ret = nsdb_remove (ns, &q->remove, alc, &stream);
+        // Execute remove
+        ret = nsdb_remove (ns, txn, &q->remove, alc, &stream);
       } else {
-        ret = nsdb_remove (ns, &q->remove, alc, NULL);
+        // Just execute remove
+        ret = nsdb_remove (ns, txn, &q->remove, alc, NULL);
       }
+
       if (ret < 0) {
         goto failed;
       }
@@ -114,8 +125,11 @@ nsdb_execute_on_buffer (
         goto failed;
       }
 
+      // Initialize the input stream
       stream_ibuf_init (&stream, &ictx, data, 0);
-      ret = nsdb_insert (ns, &q->insert, alc, &stream);
+
+      // Do the insert
+      ret = nsdb_insert (ns, txn, &q->insert, alc, &stream);
       if (ret < 0) {
         goto failed;
       }
@@ -124,7 +138,8 @@ nsdb_execute_on_buffer (
     }
 
     case QT_CREATE: {
-      if (nsdb_create (ns, alc, q->create.name, q->create.type)) {
+      // Execute create
+      if (nsdb_create (ns, txn, alc, q->create.name, q->create.type)) {
         goto failed;
       }
 
@@ -133,7 +148,8 @@ nsdb_execute_on_buffer (
       break;
     }
     case QT_DELETE: {
-      if (nsdb_delete (ns, &q->delete)) {
+      // Execute delete
+      if (nsdb_delete (ns, txn, &q->delete)) {
         goto failed;
       }
 
@@ -150,16 +166,15 @@ nsdb_execute_on_buffer (
         goto failed;
       }
 
-      // Variables get their own allocator
-      // context that gets freed on nsdb_var_free
-      struct allocator *valloc = i_malloc (default_mem (), 1, sizeof *valloc, &ns->e);
+      // Variables get their own allocator that gets freed on nsdb_var_free
+      struct allocator *valloc = i_malloc (ns->mem, 1, sizeof *valloc, &ns->e);
       if (valloc == NULL) {
         goto failed;
       }
       create_default_allocator (valloc);
 
       // Get the variable
-      if (nsdb_get (ns, &q->get, valloc, &var) < 0) {
+      if (nsdb_get (ns, txn, &q->get, valloc, &var) < 0) {
         allocator_free (valloc);
         i_free (default_mem (), valloc);
         goto failed;
@@ -168,20 +183,20 @@ nsdb_execute_on_buffer (
       if (var == NULL) {
         *_data = NULL;
         allocator_free (valloc);
-        i_free (default_mem (), valloc);
+        i_free (ns->mem, valloc);
         ret = SUCCESS;
         break;
       }
 
       // Transfer over to a variable handle (that can be free'd)
       *_data = allocate (valloc, 1, sizeof (struct nsdb_var), &ns->e);
-
       if (*_data == NULL) {
         allocator_free (valloc);
         i_free (default_mem (), valloc);
         goto failed;
       }
 
+      // Return value
       (*_data)->var   = var;
       (*_data)->alloc = valloc;
 
@@ -217,22 +232,24 @@ nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *
 {
   struct ns_var_get_params gparams; // Get or create operation
 
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  struct ns_txn           *tx = nsdb_begin (db);
+  if (tx == NULL) {
+    goto failed;
+  }
 
   i_log_debug (
       "GET (txn = %" PRtxid
       ")"
       " - %.*s\n",
-      db->atx->tid,
+      tx->tid,
       strfmt (&query->name)
   );
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
@@ -247,22 +264,17 @@ nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *
   }
 
 commit:
-  // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
-
+  if (nsdb_commit (db, tx) < 0) {
+    goto failed;
+  }
   return SUCCESS;
 
 failed_rollback:
-
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);
 }
-
-/******************************************************************************
- * SECTION: nsdb_read_and_print
- ******************************************************************************/
 
 sb_size
 nsdb_read_and_print (
@@ -279,14 +291,16 @@ nsdb_read_and_print (
   struct stride            stride;  // Resolved stride
   struct stream            dest;    // Output stream
 
-  // BEGIN TXN
-  WRAP_GOTO (nsdb_auto_begin_txn (db, &db->e), failed);
+  struct ns_txn           *tx = nsdb_begin (db);
+  if (tx == NULL) {
+    goto failed;
+  }
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = db->root->p,
-        .tx    = db->atx,
+        .p     = db->p,
+        .tx    = tx,
         .vname = query->name,
         .alloc = alloc,
     };
@@ -346,7 +360,7 @@ nsdb_read_and_print (
       " Granted: "
       " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
       " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
-      db->atx->tid,
+      tx->tid,
       strfmt (&query->name),
       tsize,
       len,
@@ -368,9 +382,9 @@ nsdb_read_and_print (
   // READ
   {
     rparams = (struct ns_read_params){
-        .p      = db->root->p,
+        .p      = db->p,
         .dest   = &dest,
-        .tx     = db->atx,
+        .tx     = tx,
         .root   = gparams.dest.rpt_root,
         .size   = tsize,
         .bofst  = tsize * stride.start,
@@ -382,22 +396,20 @@ nsdb_read_and_print (
   }
 
   // COMMIT
-  WRAP_GOTO (nsdb_auto_commit (db, &db->e), failed_rollback);
+  if (nsdb_commit (db, tx)) {
+    goto failed;
+  }
   return ret;
 
 failed_rollback:
 
-  nsdb_auto_rollback (db);
+  nsdb_rollback (db, tx);
 
 failed:
   return error_trace (&db->e);
 }
 
-/******************************************************************************
- * SECTION: nsdb_execute on console
- ******************************************************************************/
-
-static err_t
+err_t
 nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc)
 {
   sb_size ret = SUCCESS;
@@ -422,7 +434,7 @@ nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc
     }
 
     case QT_CREATE: {
-      if (nsdb_create (ns, alc, q->create.name, q->create.type)) {
+      if (nsdb_create (ns, NULL, alc, q->create.name, q->create.type)) {
         goto failed;
       }
 

@@ -12,22 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "nscore/nsdb/ns_nsdb_cli.h"
+
 #include "core/ns_alloc.h"
-#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_ext_array.h"
 #include "core/ns_logging.h"
-#include "core/ns_stream.h"
-#include "core/ns_stride.h"
-#include "core/os/ns_memory.h"
-#include "nscore/algorithms/rope/ns_rope_algorithms.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/pager/ns_pager.h"
+#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
-#include "nscore/types/ns_types.h"
-#include "nscore/types/ns_variables.h"
 #include "numstore/numstore.h"
 
 #include <inttypes.h>

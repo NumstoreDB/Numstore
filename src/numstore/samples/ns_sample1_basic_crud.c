@@ -56,6 +56,7 @@ main (void)
   // Create a new variable
   nsdb_fexecute (
       ns,
+      NULL,
       "create example struct {\n"
       "  a f32,\n"
       "  b i32,\n"
@@ -67,23 +68,23 @@ main (void)
   init_example (src, 200);
 
   // Insert data at offset 0
-  sb_size n = nsdb_fexecute (ns, "insert example 0 %d", src, 200);
+  sb_size n = nsdb_fexecute (ns, NULL, "insert example 0 %d", src, 200);
 
   // Read (most of) data with a stride of 3
-  n         = nsdb_fexecute (ns, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
+  n         = nsdb_fexecute (ns, NULL, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
-  n = nsdb_fexecute (ns, "remove example[0:-10:2] blimit %ld", dest, sizeof (dest));
+  n = nsdb_fexecute (ns, NULL, "remove example[0:-10:2] blimit %ld", dest, sizeof (dest));
   print_example ("Removed elements: ", dest, n);
 
   // Read all of data
-  n = nsdb_fexecute (ns, "read example[0:] blimit %ld", dest, sizeof (dest));
+  n = nsdb_fexecute (ns, NULL, "read example[0:] blimit %ld", dest, sizeof (dest));
   print_example ("After Remove: ", dest, n);
 
   // Write all of data with src
-  n = nsdb_fexecute (ns, "write example[0::] blimit %ld", src, sizeof (src));
-  n = nsdb_fexecute (ns, "read example[0:] blimit %ld", dest, sizeof (dest));
+  n = nsdb_fexecute (ns, NULL, "write example[0::] blimit %ld", src, sizeof (src));
+  n = nsdb_fexecute (ns, NULL, "read example[0:] blimit %ld", dest, sizeof (dest));
   print_example ("After write: ", dest, n);
 
   return nsdb_close (ns);

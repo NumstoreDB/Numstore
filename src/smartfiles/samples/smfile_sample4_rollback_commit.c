@@ -129,9 +129,9 @@ run_phase (int phase_num, int crash, const char *exe)
 static void
 phase1_populate (smfile_t *smf)
 {
-  smfile_begin (smf);
-  smfile_insert (smf, "AAAAAAAAAA", 0, 10);
-  smfile_commit (smf);
+  sm_txn_t *tx = smfile_begin (smf);
+  smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
+  smfile_commit (smf, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -147,9 +147,9 @@ phase1_populate (smfile_t *smf)
 static void
 phase2_commit_clean (smfile_t *smf)
 {
-  smfile_begin (smf);
-  smfile_insert (smf, "BB", 3, 2);
-  smfile_commit (smf);
+  sm_txn_t *tx = smfile_begin (smf);
+  smfile_insert (smf, tx, "BB", 3, 2);
+  smfile_commit (smf, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -166,9 +166,9 @@ phase2_commit_clean (smfile_t *smf)
 static void
 phase3_commit_then_crash (smfile_t *smf)
 {
-  smfile_begin (smf);
-  smfile_insert (smf, "CC", 7, 2);
-  smfile_commit (smf);
+  sm_txn_t *tx = smfile_begin (smf);
+  smfile_insert (smf, tx, "CC", 7, 2);
+  smfile_commit (smf, tx);
   // _Exit() called by run_phase - crash happens here
 }
 
@@ -186,8 +186,8 @@ phase3_commit_then_crash (smfile_t *smf)
 static void
 phase4_no_commit_crash (smfile_t *smf)
 {
-  smfile_begin (smf);
-  smfile_insert (smf, "DD", 11, 2);
+  sm_txn_t *tx = smfile_begin (smf);
+  smfile_insert (smf, tx, "DD", 11, 2);
   // No smfile_commit() - _Exit() called by run_phase
 }
 
@@ -205,9 +205,9 @@ phase4_no_commit_crash (smfile_t *smf)
 static void
 phase5_rollback (smfile_t *smf)
 {
-  smfile_begin (smf);
-  smfile_insert (smf, "EE", 5, 2);
-  smfile_rollback (smf);
+  sm_txn_t *tx = smfile_begin (smf);
+  smfile_insert (smf, tx, "EE", 5, 2);
+  smfile_rollback (smf, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ static void
 check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected)
 {
   char    buf[64];
-  sb_size n = smfile_read (smf, buf, 1, bofst, 1, nelem);
+  sb_size n = smfile_read (smf, NULL, buf, 1, bofst, 1, nelem);
   buf[n]    = '\0';
   printf ("%s\n", label);
   printf ("  expected: \"%s\"\n", expected);

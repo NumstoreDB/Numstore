@@ -255,7 +255,7 @@ nss_commit_txn (struct nss_swarm_test *meta)
   ASSERT (meta->in_txn);
   ASSERT (meta->working != NULL);
 
-  if (nsdb_commit (meta->db) < 0) {
+  if (nsdb_commit (meta->db, NULL) < 0) {
     return -1;
   }
 
@@ -274,7 +274,7 @@ nss_rollback_txn (struct nss_swarm_test *meta)
 {
   ASSERT (meta->in_txn);
 
-  if (nsdb_rollback (meta->db) < 0) {
+  if (nsdb_rollback (meta->db, NULL) < 0) {
     return -1;
   }
 
