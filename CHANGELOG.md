@@ -1,6 +1,14 @@
 # Changelog
 
-## [v1.4.0] - 2026-08-27
+## [v1.4.1] - 2026-08-27 
+
+## Changed
+- Removed logging from python and release builds
+
+## Added
+- Adds release to the release package
+
+## [v1.4.1] - 2026-08-27
 
 Explicit transaction handles, Python package, and Windows/Docker build support.
 
