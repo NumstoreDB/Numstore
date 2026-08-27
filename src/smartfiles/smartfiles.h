@@ -112,7 +112,7 @@ sb_size smfile_write (
     sm_txn_t   *tx,
     const void *src,
     t_size      size,
-    b_size      bofst,
+    sb_size     bofst,
     sb_size     stride,
     b_size      nelem
 );

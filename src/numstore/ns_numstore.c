@@ -88,6 +88,101 @@ theend:
   return ret;
 }
 
+void *
+nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, ...)
+{
+  ALLOC_INIT (alloc);
+
+  void   *ret      = NULL;
+  bool    auto_txn = false;
+  va_list ap, ap2;
+
+  nh->e.cause_code = 0;
+  nh->e.cmlen      = 0;
+
+  va_start (ap, data);
+  va_copy (ap2, ap);
+  i32 qlen = vsnprintf (NULL, 0, query, ap);
+  va_end (ap);
+  if (qlen < 0) {
+    va_end (ap2);
+    error_causef (&nh->e, ERR_INVALID_ARGUMENT, "Invalid printf argument");
+    goto theend;
+  }
+
+  char *buf = allocate (&alloc, (size_t)qlen + 1, 1, &nh->e);
+  if (!buf) {
+    va_end (ap2);
+    goto theend;
+  }
+
+  qlen = vsnprintf (buf, (size_t)qlen + 1, query, ap2);
+  ASSERT (qlen >= 0);
+  va_end (ap2);
+
+  struct query q;
+  if (compile_query (&q, buf, &alloc, &nh->e)) {
+    goto theend;
+  }
+
+  // Everything except read/remove: no allocation to do, just delegate.
+  if (q.type != QT_READ && q.type != QT_REMOVE) {
+    if (nsdb_execute_on_buffer (nh, txn, &q, data, &alloc) < 0) {
+      goto theend;
+    }
+    ret = data;
+    goto theend;
+  }
+
+  if (txn == NULL) {
+    txn = nsdb_begin (nh);
+    if (txn == NULL) {
+      goto theend;
+    }
+    auto_txn = true;
+  }
+
+  struct string    vname = (q.type == QT_READ) ? q.read.name : q.remove.name;
+
+  struct variable *var;
+  struct get_query gq = {.name = vname, .if_exists = false};
+  if (nsdb_get (nh, txn, &gq, &alloc, &var) < 0) {
+    goto theend_rollback;
+  }
+
+  t_size tsize  = type_byte_size (var->dtype);
+  b_size nbytes = var->nbytes;
+
+  void  *buf2   = i_malloc (nh->mem, nbytes > 0 ? nbytes : 1, 1, &nh->e);
+  if (buf2 == NULL) {
+    goto theend_rollback;
+  }
+
+  if (nbytes > 0 && nsdb_execute_on_buffer (nh, txn, &q, buf2, &alloc) < 0) {
+    i_free (nh->mem, buf2);
+    goto theend_rollback;
+  }
+
+  if (auto_txn && nsdb_commit (nh, txn) < 0) {
+    i_free (nh->mem, buf2);
+    goto theend;
+  }
+
+  ret = buf2;
+  goto theend;
+
+theend_rollback:
+  if (auto_txn) {
+    error saved = nh->e;
+    nsdb_rollback (nh, txn);
+    nh->e = saved;
+  }
+
+theend:
+  ALLOC_CLOSE (alloc);
+  return ret;
+}
+
 #ifdef TESTING
 TEST (nsdb_fexecute)
 {
@@ -113,6 +208,43 @@ TEST (nsdb_fexecute)
   nsdb_close (db);
   ALLOC_CLOSE (alloc);
 }
+
+TEST (nsdb_fexecute_malloc)
+{
+  nsdb_cleanup ("test");
+  struct nsdb *db = nsdb_open ("test");
+
+  test_assert_int_equal (nsdb_fexecute (db, NULL, "create foo u32", NULL), 0);
+
+  u32 src[5] = {10, 11, 12, 13, 14};
+  test_assert_int_equal (nsdb_fexecute (db, NULL, "insert foo 0 5", src), 5);
+
+  // read with no destination buffer allocates one sized to the variable
+  u32 *read_back = nsdb_fexecute_malloc (db, NULL, "read foo[0:]", NULL);
+  test_assert (read_back != NULL);
+  test_assert (memcmp (read_back, src, sizeof (src)) == 0);
+  i_free (mem, read_back);
+
+  // remove with no destination buffer returns the removed data
+  u32 *removed = nsdb_fexecute_malloc (db, NULL, "remove foo[0:2]", NULL);
+  test_assert (removed != NULL);
+  test_assert_equal (removed[0], 10u);
+  test_assert_equal (removed[1], 11u);
+  i_free (mem, removed);
+
+  u32 *remaining = nsdb_fexecute_malloc (db, NULL, "read foo[0:]", NULL);
+  test_assert (remaining != NULL);
+  test_assert_equal (remaining[0], 12u);
+  test_assert_equal (remaining[1], 13u);
+  test_assert_equal (remaining[2], 14u);
+  i_free (mem, remaining);
+
+  // insert/write still require the caller's own source data
+  u32 more[1] = {99};
+  test_assert (nsdb_fexecute_malloc (db, NULL, "insert foo 0 1", more) != NULL);
+
+  nsdb_close (db);
+}
 #endif
 
 b_size
@@ -124,6 +256,12 @@ nsdb_var_len (nsdb_var_t *var)
 void
 nsdb_var_free (nsdb_t *db, nsdb_var_t *var)
 {
+  // `get if exists` returns var == NULL on success
+  // TODO - I think I should remove this
+  if (var == NULL) {
+    return;
+  }
+
   struct allocator *alloc = var->alloc;
   allocator_free (alloc);
   i_free (db->mem, alloc);
@@ -571,6 +709,7 @@ TEST (nsdb_delete_txn)
       test_assert_int_equal (nsdb_fexecute (db, tx, "delete var", NULL), ERR_VARIABLE_NE);
       nsdb_var_t *var;
       test_assert (nsdb_fexecute (db, tx, "get var", &var) != 0);
+      test_assert_int_equal (nsdb_rollback (db, tx), 0);
     }
     test_assert_int_equal (nsdb_close (db), 0);
   }

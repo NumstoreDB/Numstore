@@ -133,4 +133,14 @@ sb_size nsdb_remove (
   }                               \
   while (0)
 
+#define ROLLBACK_PRESERVING_ERROR(db, tx) \
+  do {                                    \
+    if (auto_txn) {                       \
+      error _saved_e = (db)->e;           \
+      nsdb_rollback ((db), (tx));         \
+      (db)->e = _saved_e;                 \
+    }                                     \
+  }                                       \
+  while (0)
+
 #endif // NSHANDLE_H

@@ -30,6 +30,7 @@
 // Numstore
 #include "core/ns_csx_assert.h"
 #include "nscore/compiler/ns_compiler.h"
+#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_types.h"
 #include "numstore.h"
 
@@ -45,15 +46,11 @@ PyObject *pyns_execute (PyObject *Py_UNUSED (m), PyObject *args);
 static const char DB_CAPSULE[]  = "numstore.db";
 static const char TXN_CAPSULE[] = "numstore.txn";
 
-static inline PyObject *
-_verify_capsule (PyObject *obj)
-{
-  if (!PyCapsule_CheckExact (obj)) {
-    PyErr_SetString (PyExc_TypeError, "expected nstxn capsule or None");
-    return NULL;
-  }
-  return obj;
-}
+// PyCapsule_SetPointer() forbids NULL, so a committed/rolled-back txn capsule
+// (or a closed db capsule, see DB_CLOSED_SENTINEL) is repointed here instead
+// of being nulled out, to mark it as spent.
+static char       TXN_CLOSED_SENTINEL;
+static char       DB_CLOSED_SENTINEL;
 
 #define ENSURE_CAPSULE(obj, ret)                                           \
   do {                                                                     \
@@ -68,7 +65,15 @@ static inline nsdb_t *
 _unwrap_db (PyObject *capsule)
 {
   ENSURE_CAPSULE (capsule, NULL);
-  return (nsdb_t *)PyCapsule_GetPointer (capsule, DB_CAPSULE);
+  void *ptr = PyCapsule_GetPointer (capsule, DB_CAPSULE);
+  if (ptr == NULL) {
+    return NULL; // error already set by PyCapsule_GetPointer
+  }
+  if (ptr == &DB_CLOSED_SENTINEL) {
+    PyErr_SetString (PyExc_RuntimeError, "database is already closed");
+    return NULL;
+  }
+  return (nsdb_t *)ptr;
 }
 
 static inline void
@@ -84,7 +89,15 @@ static inline ns_txn_t *
 _unwrap_txn (PyObject *txn_capsule)
 {
   ENSURE_CAPSULE (txn_capsule, NULL);
-  return (ns_txn_t *)PyCapsule_GetPointer (txn_capsule, TXN_CAPSULE);
+  void *ptr = PyCapsule_GetPointer (txn_capsule, TXN_CAPSULE);
+  if (ptr == NULL) {
+    return NULL; // error already set by PyCapsule_GetPointer
+  }
+  if (ptr == &TXN_CLOSED_SENTINEL) {
+    PyErr_SetString (PyExc_RuntimeError, "transaction was already committed or rolled back");
+    return NULL;
+  }
+  return (ns_txn_t *)ptr;
 }
 
 // Sets a Python RuntimeError from the nsdb error string.
@@ -460,12 +473,13 @@ pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
   }
 
   // BEGIN TXN
-  if (nsdb_begin (ns) < 0) {
+  ns_txn_t *txn = nsdb_begin (ns);
+  if (!txn) {
     _pyns_set_error (ns);
     return NULL;
   }
 
-  return PyCapsule_New ((void *)ns, TXN_CAPSULE, NULL);
+  return PyCapsule_New ((void *)txn, TXN_CAPSULE, NULL);
 }
 
 PyObject *
@@ -478,7 +492,12 @@ pyns_close (PyObject *Py_UNUSED (m), PyObject *arg)
 
   PyCapsule_SetDestructor (arg, NULL);
 
-  if (nsdb_close (ns) < 0) {
+  err_t ret = nsdb_close (ns);
+  if (PyCapsule_SetPointer (arg, &DB_CLOSED_SENTINEL) < 0) {
+    PyErr_Clear ();
+  }
+
+  if (ret < 0) {
     PyErr_SetString (PyExc_RuntimeError, "Failed to close numstore database");
     return NULL;
   }
@@ -534,9 +553,9 @@ pyns_commit (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  // txn is now invalid in memory
-  if (PyCapsule_SetPointer (_txn, NULL) < 0) {
-    // Commit already succeeded - don't fail again
+  // txn is now invalid in memory - mark the capsule so reuse raises cleanly
+  // instead of dereferencing a freed pointer
+  if (PyCapsule_SetPointer (_txn, &TXN_CLOSED_SENTINEL) < 0) {
     PyErr_Clear ();
   }
 
@@ -569,13 +588,126 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  // txn is now invalid in memory
-  if (PyCapsule_SetPointer (_txn, NULL) < 0) {
-    // Commit already succeeded - don't fail again
+  // txn is now invalid in memory - mark the capsule so reuse raises cleanly
+  // instead of dereferencing a freed pointer
+  if (PyCapsule_SetPointer (_txn, &TXN_CLOSED_SENTINEL) < 0) {
     PyErr_Clear ();
   }
 
   Py_RETURN_NONE;
+}
+
+// Handles execute(db, txn, query, None) for read/remove queries: allocates a
+// numpy array sized to the variable's current full length (a simple, always
+// -safe upper bound for anything a read/remove range can produce) and
+// returns it trimmed to however many elements the operation actually
+// produced, instead of requiring the caller to pre-size a buffer. There's no
+// way to ask the Python C API "is this return value about to be assigned or
+// discarded" - a function call always returns a value regardless of what the
+// caller does with it - so this is driven entirely by whether the caller
+// passed a destination buffer.
+//
+// *handled is set to true if this query type is one we own (read/remove),
+// regardless of success; the caller should fall back to its own data=NULL
+// handling (which works fine for create/delete/get/exit/help) when false.
+static PyObject *
+pyns_execute_malloc (nsdb_t *db, ns_txn_t *txn, const char *query_str, bool *handled)
+{
+  *handled = false;
+
+  ALLOC_INIT (alloc);
+  error        e        = error_create ();
+  PyObject    *result   = NULL;
+  bool         auto_txn = false;
+
+  struct query q;
+  if (compile_query (&q, query_str, &alloc, &e)) {
+    // Not handled: let the caller's normal nsdb_fexecute() path recompile
+    // and fail the same way it would have without this function existing,
+    // so a bad query always raises the same RuntimeError regardless of
+    // whether `data` happened to be None.
+    goto theend;
+  }
+
+  if (q.type != QT_READ && q.type != QT_REMOVE) {
+    goto theend;
+  }
+  *handled = true;
+
+  // Holding one transaction across both the size lookup below and the
+  // actual read/remove closes the only race in this function: this engine
+  // takes an exclusive lock for the lifetime of a transaction (auto or
+  // explicit), so nothing else can grow the variable out from under a
+  // buffer sized for its old, smaller length in between. If the caller
+  // already had a transaction open, their lock already covers both calls.
+  if (txn == NULL) {
+    txn = nsdb_begin (db);
+    if (txn == NULL) {
+      _pyns_set_error (db);
+      goto theend;
+    }
+    auto_txn = true;
+  }
+
+  struct string    vname = (q.type == QT_READ) ? q.read.name : q.remove.name;
+
+  struct variable *var;
+  struct get_query gq = {.name = vname, .if_exists = false};
+  if (nsdb_get (db, txn, &gq, &alloc, &var) < 0) {
+    _pyns_set_error (db);
+    goto theend_rollback;
+  }
+
+  t_size         tsize = type_byte_size (var->dtype);
+  npy_intp       nelem = (npy_intp)(tsize ? var->nbytes / tsize : 0);
+
+  PyArray_Descr *descr = pyns_type_to_dtype (var->dtype);
+  if (descr == NULL) {
+    goto theend_rollback;
+  }
+
+  // Steals `descr`.
+  PyObject *arr = PyArray_SimpleNewFromDescr (1, &nelem, descr);
+  if (arr == NULL) {
+    goto theend_rollback;
+  }
+
+  sb_size n =
+      nelem == 0
+          ? 0
+          : nsdb_execute_on_buffer (db, txn, &q, PyArray_BYTES ((PyArrayObject *)arr), &alloc);
+  if (n < 0) {
+    _pyns_set_error (db);
+    Py_DECREF (arr);
+    goto theend_rollback;
+  }
+
+  npy_intp     new_dims[1] = {n};
+  PyArray_Dims newshape    = {new_dims, 1};
+  PyObject    *resize_ret  = PyArray_Resize ((PyArrayObject *)arr, &newshape, 0, NPY_ANYORDER);
+  if (resize_ret == NULL) {
+    Py_DECREF (arr);
+    goto theend_rollback;
+  }
+  Py_DECREF (resize_ret);
+
+  if (auto_txn && nsdb_commit (db, txn) < 0) {
+    _pyns_set_error (db);
+    Py_DECREF (arr);
+    goto theend;
+  }
+
+  result = arr;
+  goto theend;
+
+theend_rollback:
+  if (auto_txn) {
+    nsdb_rollback (db, txn);
+  }
+
+theend:
+  ALLOC_CLOSE (alloc);
+  return result;
 }
 
 PyObject *
@@ -594,9 +726,6 @@ pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
 
   // The underlying data buffer of data if it's present
   PyArrayObject *contig = NULL;
-
-  // The result
-  PyObject      *result = NULL;
 
   if (data_obj != Py_None) {
     // Check that it's an array
@@ -629,9 +758,17 @@ pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
     }
   }
 
-  // Get bytes
+  if (contig == NULL && data_obj == Py_None) {
+    bool      handled = false;
+    PyObject *result  = pyns_execute_malloc (db, txn, query, &handled);
+    if (handled) {
+      return result;
+    }
+  }
+
   char    *bytes  = contig ? PyArray_BYTES (contig) : NULL;
   npy_intp nbytes = contig ? PyArray_NBYTES (contig) : 0;
+  (void)nbytes;
   if (contig != NULL && bytes == NULL) {
     PyErr_SetString (PyExc_RuntimeError, "array has no underlying buffer");
     Py_XDECREF (contig);
@@ -687,14 +824,14 @@ static PyMethodDef pynumstore_methods[] = {
     {
         "pyns_commit",
         pyns_commit,
-        METH_O,
-        "txn_commit(txn) -> None",
+        METH_VARARGS,
+        "txn_commit(db, txn) -> None",
     },
     {
         "pyns_rollback",
         pyns_rollback,
-        METH_O,
-        "txn_rollback(txn) -> None",
+        METH_VARARGS,
+        "txn_rollback(db, txn) -> None",
     },
 
     // Variable management

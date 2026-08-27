@@ -57,6 +57,8 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
     latch_init (&ret->l);
     ret->mem       = mem;
     ret->fs        = fs;
+    ret->path.data = NULL;
+    ret->p         = NULL;
 
     // Path
     ret->path.len  = strlen (path);
@@ -88,6 +90,10 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
   return ret;
 
 failed:
+  if (ret->p) {
+    pgr_close (ret->p, &e);
+  }
+  i_free (mem, (void *)ret->path.data);
   i_free (mem, ret);
   pgr_delete_single_file (path, &e);
   return NULL;
@@ -212,6 +218,9 @@ nsdb_create (
     struct type       dtype
 )
 {
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
+
   AUTO_BEGIN (db, tx);
 
   // Log the call
@@ -236,7 +245,7 @@ nsdb_create (
   return SUCCESS;
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -245,6 +254,9 @@ failed:
 err_t
 nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *query)
 {
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
+
   AUTO_BEGIN (db, tx);
 
   i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&query->name));
@@ -276,7 +288,7 @@ commit:
   return error_trace (&db->e);
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -293,7 +305,10 @@ nsdb_get (
 {
   ASSERT (dest);
 
-  *dest = allocate (alloc, 1, sizeof (struct variable), &db->e);
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
+
+  *dest            = allocate (alloc, 1, sizeof (struct variable), &db->e);
   if (*dest == NULL) {
     return error_trace (&db->e);
   }
@@ -332,7 +347,7 @@ commit:
   return SUCCESS;
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -352,6 +367,9 @@ nsdb_insert (
   struct ns_var_get_params    gparams; // Get or create operation
   struct ns_insert_params     iparams; // Insert operation
   struct ns_var_update_params uparams; // Update operation
+
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
 
   // Skip len 0 inserts
   if (query->len == 0) {
@@ -440,7 +458,7 @@ nsdb_insert (
   return ret;
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -465,6 +483,9 @@ nsdb_read (
   struct ns_var_get_params gparams; // Get operation
   struct ns_read_params    rparams; // Read operation
   struct stride            stride;  // Resolved stride
+
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
 
   AUTO_BEGIN (db, tx);
 
@@ -566,7 +587,7 @@ nsdb_read (
   return ret;
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -588,6 +609,9 @@ nsdb_remove (
   struct ns_remove_params     rparams; // Remove operation
   struct ns_var_update_params uparams; // Update operation
   struct stride               stride;  // Resolved stride
+
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
 
   // BEGIN TXN
   AUTO_BEGIN (db, tx);
@@ -711,7 +735,7 @@ nsdb_remove (
   return ret;
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);
@@ -732,6 +756,9 @@ nsdb_write (
   struct ns_var_get_params gparams; // Get or create operation
   struct ns_write_params   wparams; // Write operation
   struct stride            stride;  // Resolved stride
+
+  db->e.cause_code = SUCCESS;
+  db->e.cmlen      = 0;
 
   AUTO_BEGIN (db, tx);
 
@@ -836,7 +863,7 @@ nsdb_write (
 
 failed_rollback:
 
-  nsdb_rollback (db, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   return error_trace (&db->e);

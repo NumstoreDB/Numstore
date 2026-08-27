@@ -40,7 +40,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[341];
+  const char *failed_names[342];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -6099,6 +6099,25 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "nsdb_fexecute";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("nsdb_fexecute_malloc", filter))
+  {
+    extern void __test__nsdb_fexecute_malloc(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_fexecute_malloc");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__nsdb_fexecute_malloc();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "nsdb_fexecute_malloc");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "nsdb_fexecute_malloc";
     }
     ntests++;
   }
