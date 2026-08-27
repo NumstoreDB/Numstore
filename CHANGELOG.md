@@ -1,5 +1,46 @@
 # Changelog
 
+## [v1.4.0] - 2026-08-27
+
+Explicit transaction handles, Python package, and Windows/Docker build support.
+
+## Changed
+- Transactions are now first-class handles instead of implicit per-db state
+    - `nsdb_begin` returns an `ns_txn_t *` instead of mutating hidden state on
+      `nsdb_t`
+    - `nsdb_commit` / `nsdb_rollback` / `nsdb_fexecute` /
+      `nsdb_fexecute_malloc` all take that `ns_txn_t *` (or `NULL` for
+      auto-commit) instead of always operating against a single active
+      transaction on the db
+    - `nsdb_var_free` now also takes the owning `nsdb_t *`
+    - Lets multiple transactions be open against the same database at once
+- Split `ns_nsdb.c` into `ns_nsdb_cli.c` (query parsing) and
+  `ns_nsdb_execute.c` (query execution) instead of one file doing both
+- Renamed `ns_chunk_alloc` to `ns_arena_alloc` to match what it actually is
+- Rewrote the Windows filesystem backend, splitting file ops out of
+  `ns_win32_filesystem.c` into a dedicated `ns_win32_file.c`
+- POSIX file, filesystem, threading, and timing backends cleaned up and
+  hardened
+- `pynumstore` is now a proper installable package (`pip install
+  ./bindings/python`) instead of a loose `.c`/`.pyi` pair
+    - Extension source lives under `bindings/python/csrc/`, wrapper under
+      `bindings/python/src/pynumstore/`, with `pyproject.toml` / `setup.py` /
+      `py.typed`
+    - Updated to the new explicit-transaction API - `db.begin()` returns a
+      `Transaction` context manager that commits on clean exit and rolls back
+      on exception
+
+## Added
+- New `variables` module (`src/nscore/variables/`) - in-memory representation
+  of a variable, pulled out of nsdb
+- Windows cross-compiled release build, built via a
+  `docker/windows-x64.Dockerfile` image (mingw + wine) and wired into
+  CI/release packaging
+- pynumstore test suite (`bindings/python/tests/`) and README with install and
+  usage docs
+- `bindings/python/src/pynumstore/_pynumstore.pyi` type stub, plus `py.typed`
+  marker
+
 ## [v1.3.0] - 2026-08-24
 
 Major overhaul of build system and numstore. Broken into a single library
@@ -133,6 +174,7 @@ called libnumstore.a. This release is all about usability.
 - Negative byte offsets are interpreted relative to end of file
 - Explicit-width types used throughout for deterministic on-disk layout
 
+[v1.4.0]: https://github.com/lincketheo/smartfiles/compare/v1.4.0...v1.3.0
 [v1.3.0]: https://github.com/lincketheo/smartfiles/compare/v1.3.0...v1.2.0
 [v1.2.0]: https://github.com/lincketheo/smartfiles/compare/v1.2.0...v1.1.3
 [v1.1.3]: https://github.com/lincketheo/smartfiles/compare/v1.1.2...v1.1.3

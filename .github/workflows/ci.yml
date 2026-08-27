@@ -18,11 +18,6 @@ jobs:
             suffix: linux-arm64
           - os: macos-latest
             suffix: macos-arm64
-          - os: macos-13
-            suffix: macos-x64
-          # No Windows runner needed: mingw-w64 running in Docker on Linux
-          # cross-compiles the whole project (see docker/windows-x64.Dockerfile),
-          # the same approach sqlite-jdbc uses for its native builds.
           - os: ubuntu-latest
             suffix: windows-x64
             cross: windows
