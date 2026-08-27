@@ -10,7 +10,17 @@ RUSTC        := rustc
 
 TARGET ?= debug
 ASAN   ?= 0
-NLOG   ?= 0
+
+# NLOG defaults on for release builds and for the python module (either can
+# still be forced off with `make NLOG=0 ...`); debug otherwise defaults off.
+NLOG_DEFAULT := 0
+ifeq ($(TARGET),release)
+NLOG_DEFAULT := 1
+endif
+ifneq (,$(filter python python-package python-test,$(MAKECMDGOALS)))
+NLOG_DEFAULT := 1
+endif
+NLOG ?= $(NLOG_DEFAULT)
 
 # Extra flags a user can inject into any build without editing the Makefile,
 # e.g. `make CFLAGS_USER=-DFOO`. Applied last, after every other CFLAGS_*
@@ -114,7 +124,9 @@ CFLAGS_PYTHON += -I$(shell \
 )
 
 PY_CFLAGS := $(CFLAGS_PYTHON)
+ifeq ($(NLOG),1)
 PY_CFLAGS += $(CFLAGS_NLOG)
+endif
 PY_CFLAGS += $(CFLAGS_USER)
 
 PY_LDFLAGS := -shared
@@ -216,7 +228,9 @@ $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
 # make ASAN=1           - layer AddressSanitizer/UBSan on top of either
 #                         TARGET; unit tests are included whenever ASAN=1,
 #                         even under TARGET=release
-# make NLOG=1           - strip logging (-DNLOG) from either TARGET
+# make NLOG=0/1         - strip logging (-DNLOG); on by default for
+#                         TARGET=release and for python/python-package/
+#                         python-test, off by default otherwise
 # make CFLAGS_USER=...  - append extra, user-defined flags to any build
 # make docs             - build docs
 # make python           - build the raw _pynumstore extension module
