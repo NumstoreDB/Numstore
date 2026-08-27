@@ -56,6 +56,9 @@ jobs:
           mkdir -p dist
           cp build/release.tar.gz "dist/release-${{ matrix.suffix }}.tar.gz"
           cp build/release.zip   "dist/release-${{ matrix.suffix }}.zip"
+          if ls build/python/target/pynumstore-*.whl >/dev/null 2>&1; then
+            cp build/python/target/pynumstore-*.whl dist/
+          fi
 
       - uses: actions/upload-artifact@v4
         if: startsWith(github.ref, 'refs/tags/')
