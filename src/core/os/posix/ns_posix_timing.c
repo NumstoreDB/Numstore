@@ -12,26 +12,29 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_csx_assert.h"
-#include "core/ns_error.h"
 #include "core/ns_platform.h"
-#include "core/ns_stdtypes.h"
-#include "core/os/ns_time.h"
 
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <limits.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <time.h>
-#include <unistd.h>
+#if PLATFORM_POSIX
+
+#  include "core/ns_csx_assert.h"
+#  include "core/ns_error.h"
+#  include "core/ns_stdtypes.h"
+#  include "core/os/ns_time.h"
+
+#  include <dirent.h>
+#  include <errno.h>
+#  include <fcntl.h>
+#  include <inttypes.h>
+#  include <limits.h>
+#  include <pthread.h>
+#  include <stdbool.h>
+#  include <stdio.h>
+#  include <string.h>
+#  include <sys/stat.h>
+#  include <sys/types.h>
+#  include <sys/uio.h>
+#  include <time.h>
+#  include <unistd.h>
 
 /******************************************************************************
  * SECTION: Timing
@@ -97,3 +100,5 @@ i_sleep_us (const u64 us)
   };
   nanosleep (&ts, NULL);
 }
+
+#endif // PLATFORM_POSIX

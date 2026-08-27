@@ -597,19 +597,6 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
   Py_RETURN_NONE;
 }
 
-// Handles execute(db, txn, query, None) for read/remove queries: allocates a
-// numpy array sized to the variable's current full length (a simple, always
-// -safe upper bound for anything a read/remove range can produce) and
-// returns it trimmed to however many elements the operation actually
-// produced, instead of requiring the caller to pre-size a buffer. There's no
-// way to ask the Python C API "is this return value about to be assigned or
-// discarded" - a function call always returns a value regardless of what the
-// caller does with it - so this is driven entirely by whether the caller
-// passed a destination buffer.
-//
-// *handled is set to true if this query type is one we own (read/remove),
-// regardless of success; the caller should fall back to its own data=NULL
-// handling (which works fine for create/delete/get/exit/help) when false.
 static PyObject *
 pyns_execute_malloc (nsdb_t *db, ns_txn_t *txn, const char *query_str, bool *handled)
 {
@@ -622,10 +609,6 @@ pyns_execute_malloc (nsdb_t *db, ns_txn_t *txn, const char *query_str, bool *han
 
   struct query q;
   if (compile_query (&q, query_str, &alloc, &e)) {
-    // Not handled: let the caller's normal nsdb_fexecute() path recompile
-    // and fail the same way it would have without this function existing,
-    // so a bad query always raises the same RuntimeError regardless of
-    // whether `data` happened to be None.
     goto theend;
   }
 
@@ -634,12 +617,6 @@ pyns_execute_malloc (nsdb_t *db, ns_txn_t *txn, const char *query_str, bool *han
   }
   *handled = true;
 
-  // Holding one transaction across both the size lookup below and the
-  // actual read/remove closes the only race in this function: this engine
-  // takes an exclusive lock for the lifetime of a transaction (auto or
-  // explicit), so nothing else can grow the variable out from under a
-  // buffer sized for its old, smaller length in between. If the caller
-  // already had a transaction open, their lock already covers both calls.
   if (txn == NULL) {
     txn = nsdb_begin (db);
     if (txn == NULL) {

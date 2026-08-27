@@ -12,27 +12,30 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_csx_assert.h"
-#include "core/ns_error.h"
-#include "core/ns_logging.h"
 #include "core/ns_platform.h"
-#include "core/ns_stdtypes.h"
-#include "core/os/ns_threading.h"
 
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <inttypes.h>
-#include <limits.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <time.h>
-#include <unistd.h>
+#if PLATFORM_POSIX
+
+#  include "core/ns_csx_assert.h"
+#  include "core/ns_error.h"
+#  include "core/ns_logging.h"
+#  include "core/ns_stdtypes.h"
+#  include "core/os/ns_threading.h"
+
+#  include <dirent.h>
+#  include <errno.h>
+#  include <fcntl.h>
+#  include <inttypes.h>
+#  include <limits.h>
+#  include <pthread.h>
+#  include <stdbool.h>
+#  include <stdio.h>
+#  include <string.h>
+#  include <sys/stat.h>
+#  include <sys/types.h>
+#  include <sys/uio.h>
+#  include <time.h>
+#  include <unistd.h>
 
 /******************************************************************************
  * SECTION: Threading
@@ -48,7 +51,7 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
   (void)t;
   ASSERT (c);
 
-#ifndef NDEBUG
+#  ifndef NDEBUG
   pthread_condattr_t attr;
 
   // I just don't want to handle errors for debug code
@@ -61,9 +64,9 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
   ASSERT (r1 == 0);
 
   if (r2)
-#else
+#  else
   if (pthread_cond_init (&c->cond, NULL))
-#endif
+#  endif
   {
     switch (errno) {
       case EAGAIN: {
@@ -309,7 +312,7 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
 {
   (void)t;
   errno = 0;
-#ifndef NDEBUG
+#  ifndef NDEBUG
   pthread_mutexattr_t attr;
 
   // I just don't want to handle errors for debug code
@@ -324,9 +327,9 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
   r1           = pthread_mutexattr_destroy (&attr);
   ASSERT (!r1);
   if (r2)
-#else
+#  else
   if (pthread_mutex_init (&dest->m, NULL))
-#endif
+#  endif
   {
     switch (errno) {
       case EAGAIN: {
@@ -483,7 +486,7 @@ posix_thread_create (
   (void)t;
   ASSERT (dest);
 
-#ifndef NDEBUG
+#  ifndef NDEBUG
   pthread_attr_t attr;
   int            r1 = pthread_attr_init (&attr);
   ASSERT (!r1);
@@ -501,9 +504,9 @@ posix_thread_create (
   r1           = pthread_attr_destroy (&attr);
   ASSERT (!r1);
   if (r2)
-#else
+#  else
   if (pthread_create (&dest->thread, NULL, func, context))
-#endif
+#  endif
   {
     switch (errno) {
       case EAGAIN: {
@@ -598,3 +601,5 @@ struct i_threading default_threading = {
     .i_cond_signal     = posix_cond_signal,
     .i_cond_broadcast  = posix_cond_broadcast,
 };
+
+#endif // PLATFORM_POSIX
