@@ -27,32 +27,38 @@ query_equal (const struct query *left, const struct query *right)
 
   switch (left->type) {
     case QT_READ: {
-      return string_equal (left->read.name, right->read.name)
-             && user_stride_equal (&left->read.ustr, &right->read.ustr);
+      return (string_equal (left->read.name, right->read.name)
+              && user_stride_equal (&left->read.ustr, &right->read.ustr))
+             != 0;
     }
     case QT_WRITE: {
-      return string_equal (left->write.name, right->write.name)
-             && user_stride_equal (&left->write.ustr, &right->write.ustr);
+      return (string_equal (left->write.name, right->write.name)
+              && user_stride_equal (&left->write.ustr, &right->write.ustr))
+             != 0;
     }
     case QT_REMOVE: {
-      return string_equal (left->remove.name, right->remove.name)
-             && user_stride_equal (&left->remove.ustr, &right->remove.ustr);
+      return (string_equal (left->remove.name, right->remove.name)
+              && user_stride_equal (&left->remove.ustr, &right->remove.ustr))
+             != 0;
     }
     case QT_INSERT: {
-      return string_equal (left->insert.name, right->insert.name)
-             && left->insert.ofst == right->insert.ofst && left->insert.len == right->insert.len;
+      return (string_equal (left->insert.name, right->insert.name)
+              && left->insert.ofst == right->insert.ofst && left->insert.len == right->insert.len)
+             != 0;
     }
 
     case QT_CREATE: {
-      return string_equal (left->create.name, right->create.name)
-             && type_equal (&left->create.type, &right->create.type);
+      return (string_equal (left->create.name, right->create.name)
+              && type_equal (&left->create.type, &right->create.type))
+             != 0;
     }
     case QT_DELETE: {
       return string_equal (left->delete.name, right->delete.name);
     }
     case QT_GET: {
-      return string_equal (left->get.name, right->get.name)
-             && left->get.if_exists == right->get.if_exists;
+      return (string_equal (left->get.name, right->get.name)
+              && left->get.if_exists == right->get.if_exists)
+             != 0;
     }
 
     case QT_EXIT: {

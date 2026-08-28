@@ -405,7 +405,7 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
 }
 
 err_t
-parse_query (struct parser *parser, struct query *dest, struct allocator *dalloc, error *e)
+parse_query (struct parser *parser, struct query *dest, error *e)
 {
   if (parser_match (parser, TT_HELP)) {
     WRAP (parse_query_help (parser, dest, e));
@@ -444,7 +444,7 @@ compile_query (struct query *dest, const char *text, struct allocator *dalloc, e
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_query (&parser, dest, dalloc, e)) {
+  if (parse_query (&parser, dest, e)) {
     goto theend;
   }
 

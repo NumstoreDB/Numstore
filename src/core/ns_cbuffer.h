@@ -90,14 +90,14 @@ struct cbuffer
  * @brief Creates a cbuffer over an existing array with zero initial length.
  * @param data Pointer to the backing array.
  */
-#define cbuffer_create_from(data) cbuffer_create (data, sizeof data)
+#define cbuffer_create_from(data) cbuffer_create (data, sizeof (data))
 
 /**
  * @def cbuffer_create_full_from
  * @brief Creates a cbuffer over an existing array, treating it as full.
  * @param data Pointer to the backing array (already filled).
  */
-#define cbuffer_create_full_from(data) cbuffer_create_with (data, sizeof data, sizeof data)
+#define cbuffer_create_full_from(data) cbuffer_create_with (data, sizeof (data), sizeof (data))
 
 /**
  * @def cbuffer_create_from_cstr
@@ -175,7 +175,7 @@ HEADER_FUNC bool
 cbuffer_isempty (const struct cbuffer *b)
 {
   DBG_ASSERT (cbuffer, b);
-  return (!b->isfull && b->head == b->tail);
+  return (!b->isfull && b->head == b->tail) != 0;
 }
 
 /**
@@ -326,7 +326,7 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
 #define cbuffer_read_expect(dest, size, n, b)     \
   do {                                            \
     u32 __read = cbuffer_read (dest, size, n, b); \
-    ASSERT (__read == n);                         \
+    ASSERT (__read == (n));                       \
   }                                               \
   while (0)
 
@@ -338,7 +338,8 @@ u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
 #define cbuffer_write_expect(src, size, n, b)        \
   do {                                               \
     u32 __written = cbuffer_write (src, size, n, b); \
-    ASSERT (__written == n);                         \
+    (void)__written; /* Unused in release */         \
+    ASSERT (__written == (n));                       \
   }                                                  \
   while (0)
 

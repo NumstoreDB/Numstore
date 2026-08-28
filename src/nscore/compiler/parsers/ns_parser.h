@@ -115,16 +115,16 @@ parser_maybe_parse_integer (struct parser *p, i32 *dest)
   if (tok1->type == TT_INTEGER) {
     *dest = parser_advance (p)->integer;
     return true;
-  } else if (tok1->type == TT_MINUS) {
-    if (p->pos + 1 < p->src_len) {
-      struct token *tok2 = parser_peek_n (p, 1);
-      if (tok2->type == TT_INTEGER) {
-        parser_advance (p);
-        *dest = -parser_advance (p)->integer;
-        return true;
-      }
+  }
+  if ((tok1->type == TT_MINUS) && (p->pos + 1 < p->src_len)) {
+    struct token *tok2 = parser_peek_n (p, 1);
+    if (tok2->type == TT_INTEGER) {
+      parser_advance (p);
+      *dest = -parser_advance (p)->integer;
+      return true;
     }
   }
+
   return false;
 }
 
@@ -175,7 +175,7 @@ parser_check_end (struct parser *p, error *e)
 // Parsers
 
 err_t parse_multi_user_stride (struct parser *parser, struct multi_user_stride *dest, error *e);
-err_t parse_query (struct parser *parser, struct query *dest, struct allocator *dalloc, error *e);
+err_t parse_query (struct parser *parser, struct query *dest, error *e);
 err_t parse_type (struct parser *p, struct type *dest, error *e);
 err_t parse_subtype (struct parser *p, struct subtype *dest, error *e);
 err_t parse_type_ref (struct parser *p, struct type_ref *dest, error *e);

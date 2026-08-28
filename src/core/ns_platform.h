@@ -15,6 +15,24 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
+//   target            PLATFORM_*  set to 1
+//   ----------------  ------------------------------------------------
+//   Windows           WINDOWS
+//   Linux             LINUX
+//   Android           ANDROID                 (LINUX explicitly forced 0)
+//   macOS             MAC, APPLE
+//   iOS               IOS, APPLE
+//   FreeBSD/NetBSD/
+//   OpenBSD/DragonFly/
+//   BSDi               BSD
+//   other Unix         (UNIX/POSIX only - no more specific macro set)
+//   Emscripten/Wasm    EMSCRIPTEN              (POSIX set, UNIX is NOT)
+//
+// Derived/composite macros:
+//   PLATFORM_APPLE  = (MAC || IOS),
+//   PLATFORM_MOBILE = (ANDROID || IOS)
+//   PLATFORM_DESKTOP (WINDOWS || LINUX || MAC || BSD).
+
 ////////////////////////////////////////////////////////////
 // DEV / SYSTEM
 
@@ -46,7 +64,7 @@
 
 ////////////////////////////////////////////////////////////
 // Android
-#if defined(__ANDROID__)
+#ifdef __ANDROID__
 #  undef PLATFORM_ANDROID
 #  define PLATFORM_ANDROID 1
 #  undef PLATFORM_LINUX
@@ -71,6 +89,7 @@
 ////////////////////////////////////////////////////////////
 // Apple
 #if defined(__APPLE__) && defined(__MACH__)
+#  include <TargetConditionals.h>
 
 ////////////////////////////////////////////////////////////
 // IOS
@@ -145,6 +164,24 @@
 #endif
 
 ////////////////////////////////////////////////////////////
+// UNREACHABLE_WARN_PUSH / UNREACHABLE_WARN_POP
+//
+// Wraps whatever follows UNREACHABLE_HINT() (e.g. a trailing return/abort
+// added to satisfy -Wreturn-type on paths the compiler can't otherwise
+// prove terminate) so mingw's gcc doesn't flag it under -Wunreachable-code
+// -Werror. This branches on compiler identity, not PLATFORM_*, since
+// mingw is GCC targeting Windows - PLATFORM_WINDOWS would be true there
+// even though the pragma is GCC/Clang-specific syntax MSVC can't parse.
+#if defined(__GNUC__) || defined(__clang__)
+#  define UNREACHABLE_WARN_PUSH() \
+    _Pragma ("GCC diagnostic push") _Pragma ("GCC diagnostic ignored \"-Wunreachable-code\"")
+#  define UNREACHABLE_WARN_POP() _Pragma ("GCC diagnostic pop")
+#else
+#  define UNREACHABLE_WARN_PUSH()
+#  define UNREACHABLE_WARN_POP()
+#endif
+
+////////////////////////////////////////////////////////////
 // NORETURN
 #if PLATFORM_WINDOWS
 #  define NORETURN __declspec (noreturn)
@@ -170,7 +207,7 @@
 
 ////////////////////////////////////////////////////////////
 // ANSI_COLORS
-#if defined(_WIN32)
+#if PLATFORM_WINDOWS
 #  define ANSI_COLORS 0
 #else
 #  define ANSI_COLORS 1
@@ -191,7 +228,8 @@ platformstr (void)
 {
   if (PLATFORM_WINDOWS) {
     return "Windows";
-  } else if (PLATFORM_LINUX) {
+  }
+  if (PLATFORM_LINUX) {
     return "Linux";
   } else if (PLATFORM_ANDROID) {
     return "Android";
@@ -224,7 +262,7 @@ platformstr (void)
 
 #if PLATFORM_WINDOWS
 #  define WIN32_LEAN_AND_MEAN
-#  include "windows.h"
+#  include <windows.h>
 #elif PLATFORM_POSIX
 #  include <pthread.h>
 #  include <semaphore.h>

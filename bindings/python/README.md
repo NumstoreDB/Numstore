@@ -1,66 +1,83 @@
-# pynumstore
+Pynumstore
+==========
 
-Python bindings for [numstore](https://github.com/NumstoreDB/Numstore), an embedded
-ACID database for arrays.
+Python wrapper around the `numstore` C extension - a transactional store for
+numpy arrays and structured types.
 
-## Install
-
-From a checkout of the numstore repo (this package compiles the C extension by
-shelling out to the top-level `Makefile`, so it needs the full source tree, not
-just `bindings/python`):
-
-```
-pip install ./bindings/python
-```
-
-For development, install it editable so edits to the wrapper are picked up
-without reinstalling:
-
-```
-pip install -e ./bindings/python
-```
-
-## Usage
+Quick start
+-----------
 
 ```python
 import numpy as np
 import pynumstore as ns
 
-with ns.Database("mydb.nsdb") as db:
-    db.execute("create foo u32")
-
-    src = np.arange(5, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
-
-    dest = np.zeros(5, dtype=np.uint32)
-    n = db.execute(f"read foo[0:] blimit {dest.nbytes}", dest)
-
-    with db.begin() as txn:
-        txn.execute("insert foo 5 3", np.array([10, 11, 12], dtype=np.uint32))
-        # commits on a clean exit, rolls back if an exception is raised
+with ns.Database("data.db") as db:
+    db.execute("create prices f64")
+    db.execute("insert prices 0 3", np.array([1.5, 2.25, 3.75]))
+    dest = db.execute("read prices[0:]")
 ```
 
-`Database.execute` and `Transaction.execute` both take a fully-formed query
-string plus an optional numpy array used as the data payload (source data for
-`insert`/`write`, destination buffer for `read`/`remove`). See
-[docs/index.md](../../docs/index.md) in the main repo for the query language.
+API
+---
 
-`ns.to_dtype("u32")` converts a numstore type string to the matching numpy
-`dtype`.
+### `Database(path)`
 
-## Testing
+- `.execute(query, data=None) -> int | ndarray` Runs a query. `data` is the
+  source for `insert`, or the destination buffer for `read`/`remove`. Omit it
+  on read/remove to auto-allocate and return an array; with `data` given, the
+  element count is returned instead.
+- `.begin() -> Transaction`
+- `.close()`
+- Context manager: closes on `__exit__`.
+
+### `Transaction` (from `db.begin()`)
+
+- `.execute(query, data=None)` - same semantics as `Database.execute`
+- `.commit()`
+- `.rollback()`
+- Context manager: commits on clean exit, rolls back on exception. Double
+  commit/rollback is a no-op. Using after close raises `RuntimeError`.
+
+### `to_dtype(type_str) -> np.dtype`
+
+Converts a numstore type string to a numpy dtype. Raises `ValueError` on an
+unknown type.
+
+## Query language
 
 ```
-pip install -e ./bindings/python[test]
-pytest bindings/python/tests
+create <name> <type>              # define a variable
+insert <name> <offset> <count>    # write count elements from data
+read <name>[start:end]            # read into data, or return new array
+remove <name>[start:end]          # delete range; returns removed elements
 ```
 
-## Building a wheel
+Slices support a step: `name[start:end:step]`.
+
+### Types
+
+Scalars: `u8 i8 u32 i32 f64 ...` (numstore integer/float types)
+
+Composite:
 
 ```
-make python-package
+struct {
+    id     u32,
+    name   [10]u8,
+    height u32
+}
 ```
 
-builds the extension and packages it into a wheel under `build/python/target/`.
-This currently only builds for the host platform - cross-platform wheels are a
-later step.
+Structured data maps directly onto `numpy` structured arrays - build with
+`to_dtype()` and construct via `np.array([...], dtype=record_dtype)`.
+
+## Transactions
+
+```python
+with db.begin() as txn:
+    txn.execute("insert log 0 2", data)
+# committed automatically on clean exit, rolled back on exception
+```
+
+Committed writes are WAL-durable: they survive a crash immediately after
+`commit()`. Uncommitted or rolled-back writes never persist, crash or not.

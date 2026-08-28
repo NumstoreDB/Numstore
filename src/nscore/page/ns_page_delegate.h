@@ -202,7 +202,7 @@ dlgt_get_max_len (const page *p)
 HEADER_FUNC bool
 dlgt_is_root (const page *p)
 {
-  return dlgt_get_prev (p) == PGNO_NULL && dlgt_get_next (p) == PGNO_NULL;
+  return (dlgt_get_prev (p) == PGNO_NULL && dlgt_get_next (p) == PGNO_NULL) != 0;
 }
 
 HEADER_FUNC bool
@@ -364,11 +364,11 @@ dlgt_valid_neighbors (const page *left, const page *right)
   bool ret = true;
 
   if (left) {
-    ret = ret && dlgt_get_next (left) == rpg;
+    ret = ((ret && dlgt_get_next (left) == rpg) != 0);
   }
 
   if (right) {
-    ret = ret && lpg == dlgt_get_prev (right);
+    ret = ((ret && lpg == dlgt_get_prev (right)) != 0);
   }
 
   return ret;

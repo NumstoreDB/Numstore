@@ -66,7 +66,7 @@ to_block_stride (int ofst, int stride, int len)
 static void
 smfile_simul_set_random_enabled (struct smfile_simulation *meta)
 {
-  int mask = rand () % ((1 << SMF_AT_LEN) - 1) + 1;
+  int mask = (rand () % ((1 << SMF_AT_LEN) - 1)) + 1;
   for (int i = 0; i < SMF_AT_LEN; ++i) {
     meta->enabled[i] = (mask >> i) & 1;
   }
@@ -274,7 +274,9 @@ smfile_simul_insert (struct smfile_simulation *meta)
 static int
 smfile_simul_remove (struct smfile_simulation *meta)
 {
-  int ofst, stride, len;
+  int ofst;
+  int stride;
+  int len;
   smfile_simul_random_slice (meta->len, meta->max_size, &ofst, &stride, &len);
 
   size_t   buf_sz  = (size_t)len;
@@ -336,7 +338,9 @@ smfile_simul_remove (struct smfile_simulation *meta)
 static int
 smfile_simul_read (struct smfile_simulation *meta)
 {
-  int ofst, stride, len;
+  int ofst;
+  int stride;
+  int len;
   smfile_simul_random_slice (meta->len, meta->max_size, &ofst, &stride, &len);
 
   size_t   buf_sz  = (size_t)len;
@@ -396,7 +400,9 @@ smfile_simul_read (struct smfile_simulation *meta)
 static int
 smfile_simul_write (struct smfile_simulation *meta)
 {
-  int ofst, stride, len;
+  int ofst;
+  int stride;
+  int len;
   smfile_simul_random_slice (meta->len, meta->max_size, &ofst, &stride, &len);
 
   uint8_t *data = malloc ((size_t)len);
@@ -500,11 +506,9 @@ smf_simul_open (
 int
 smfile_simul_close (struct smfile_simulation *meta)
 {
-  if (meta->tx) {
-    if (smfile_simul_commit_txn (meta) < 0) {
-      i_log_failure ("final commit failed on close: %s\n", meta->dbname);
-      return -1;
-    }
+  if ((meta->tx) && (smfile_simul_commit_txn (meta) < 0)) {
+    i_log_failure ("final commit failed on close: %s\n", meta->dbname);
+    return -1;
   }
 
   if (smfile_close (meta->db) < 0) {
@@ -591,9 +595,8 @@ smfile_simul_step (struct smfile_simulation *meta)
     if (meta->allowed[index]) {
       if (choice == next) {
         break;
-      } else {
-        choice++;
       }
+      choice++;
     }
   }
 

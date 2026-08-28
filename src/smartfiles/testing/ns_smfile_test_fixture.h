@@ -17,7 +17,6 @@
 
 #include "core/ns_data_writer.h"
 #include "core/ns_stdtypes.h" // smfile
-#include "core/ns_stdtypes.h"
 
 struct data_writer;
 

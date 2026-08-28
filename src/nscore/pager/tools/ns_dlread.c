@@ -21,7 +21,7 @@
 #include <stdlib.h>
 
 static void
-dl_contents_one_page (FILE *out, struct pager *p, const page_h *cur, error *e)
+dl_contents_one_page (FILE *out, const page_h *cur)
 {
   fprintf (stderr, "============================= %" PRpgno "\n", page_h_pgno (cur));
   fprintf (stderr, "DATA_LIST\n");
@@ -72,7 +72,7 @@ dl_contents (FILE *out, const char *fname, const pgno pg)
       return;
     }
 
-    dl_contents_one_page (out, p, &cur, &e);
+    dl_contents_one_page (out, &cur);
 
     const pgno           npg  = dlgt_get_next (page_h_ro (&cur));
     const enum page_type type = page_get_type (page_h_ro (&cur));

@@ -217,14 +217,15 @@ ns_read_forward (const struct ns_read_params params, error *e)
   return total_bread / params.size;
 
 failed:
-  pgr_cancel_if_exists (params.p, &cur);
-  pgr_cancel_if_exists (params.p, &next);
+  pgr_cancel_if_exists (&cur);
+  pgr_cancel_if_exists (&next);
   return error_trace (e);
 }
 
 static sb_size
 ns_read_backward (const struct ns_read_params params, error *e)
 {
+  (void)params; // Unused
   return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
 }
 

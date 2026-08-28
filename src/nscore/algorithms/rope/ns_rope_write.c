@@ -113,19 +113,18 @@ ns_write_forward (const struct ns_write_params params, error *e)
   }
 
   // Otherwise seek
-  else {
-    if (ns_seek (&seek, e)) {
-      goto failed;
-    }
 
-    // Transition from Seeked -> inserting
-    cur  = page_h_xfer_ownership (&seek.pg);
-    lidx = seek.lidx;
+  if (ns_seek (&seek, e)) {
+    goto failed;
+  }
 
-    // Upgrade to X lock
-    if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e)) {
-      goto failed;
-    }
+  // Transition from Seeked -> inserting
+  cur  = page_h_xfer_ownership (&seek.pg);
+  lidx = seek.lidx;
+
+  // Upgrade to X lock
+  if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e)) {
+    goto failed;
   }
 
   page *curp = page_h_w (&cur);
@@ -261,14 +260,15 @@ done:
   return total_bwrite / params.size;
 
 failed:
-  pgr_cancel_if_exists (params.p, &cur);
-  pgr_cancel_if_exists (params.p, &next);
+  pgr_cancel_if_exists (&cur);
+  pgr_cancel_if_exists (&next);
   return error_trace (e);
 }
 
 static sb_size
 ns_write_backward (const struct ns_write_params params, error *e)
 {
+  (void)params; // Unused
   return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
 }
 
@@ -277,7 +277,8 @@ ns_write (const struct ns_write_params params, error *e)
 {
   if (params.stride > 0) {
     return ns_write_forward (params, e);
-  } else if (params.stride < 0) {
+  }
+  if (params.stride < 0) {
     return ns_write_backward (params, e);
   } else {
     return error_causef (e, ERR_INVALID_ARGUMENT, "write stride is 0");

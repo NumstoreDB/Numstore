@@ -23,11 +23,14 @@
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"
-#include "core/testing/ns_testing.h"
 #include "nscore/types/ns_sarray_t.h"
 #include "nscore/types/ns_struct_t.h"
 #include "nscore/types/ns_type_ref.h"
 #include "nscore/types/ns_union_t.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -622,10 +625,11 @@ prim_t_serialize (struct serializer *dest, const enum prim_t *src)
 {
   DBG_ASSERT (prim_t, src);
   bool ret;
+  (void)ret; // Unused in release
 
   // PRIM
-  u8   prim_val = (u8)*src;
-  ret           = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
+  u8 prim_val = (u8)*src;
+  ret         = srlizr_write (dest, (const u8 *)&prim_val, sizeof (u8));
   ASSERT (ret);
 }
 
@@ -648,9 +652,10 @@ type_serialize (struct serializer *dest, const struct type *src)
 {
   DBG_ASSERT (valid_type, src);
   bool ret;
+  (void)ret; // Unused in release
 
-  u8   type_val = (u8)src->type;
-  ret           = srlizr_write (dest, &type_val, sizeof (u8));
+  u8 type_val = (u8)src->type;
+  ret         = srlizr_write (dest, &type_val, sizeof (u8));
   ASSERT (ret);
 
   switch (src->type) {
@@ -688,7 +693,7 @@ prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
   ASSERT (dest);
 
   u8   p;
-  bool ret = dsrlizr_read ((u8 *)&p, sizeof (u8), src);
+  bool ret = dsrlizr_read ((&p), sizeof (u8), src);
   if (!ret) {
     return error_causef (e, ERR_CORRUPT, "prim: missing length header");
   }
@@ -761,7 +766,7 @@ type_deserialize (struct deserializer *src, struct allocator *alloc, error *e)
       return dest;
     }
     default: {
-      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", ret)) {
+      if (error_causef (e, ERR_INTERP, "Unknown type code: %d", (int)ret)) {
         return NULL;
       }
       return dest;
@@ -871,7 +876,7 @@ type_equal (const struct type *left, const struct type *right)
     }
     default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
-      return 0;       // LCOV_EXCL_LINE
+      return false;   // LCOV_EXCL_LINE
     }
   }
 }
@@ -1211,28 +1216,32 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       return;
     }
     case F128: {
-      u64 lo, hi;
+      u64 lo;
+      u64 hi;
       memcpy (&lo, buf, 8);
       memcpy (&hi, buf + 8, 8);
       i_log_printf (level, "<f128:0x%016lx%016lx>", (unsigned long)hi, (unsigned long)lo);
       return;
     }
     case CF32: {
-      u16 rh, ih;
+      u16 rh;
+      u16 ih;
       memcpy (&rh, buf, 2);
       memcpy (&ih, buf + 2, 2);
       i_log_printf (level, "(%g, %g)", (double)f16_to_f32 (rh), (double)f16_to_f32 (ih));
       return;
     }
     case CF64: {
-      float r, im;
+      float r;
+      float im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
       i_log_printf (level, "(%g, %g)", (double)r, (double)im);
       return;
     }
     case CF128: {
-      double r, im;
+      double r;
+      double im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
       i_log_printf (level, "(%g, %g)", r, im);
@@ -1245,7 +1254,10 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       memcpy (&im, buf + 16, 16);
       i_log_printf (level, "(%Lg, %Lg)", r, im);
 #else
-      u64 r_lo, r_hi, im_lo, im_hi;
+      u64 r_lo;
+      u64 r_hi;
+      u64 im_lo;
+      u64 im_hi;
       memcpy (&r_lo, buf, 8);
       memcpy (&r_hi, buf + 8, 8);
       memcpy (&im_lo, buf + 16, 8);
@@ -1263,56 +1275,64 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       return;
     }
     case CI16: {
-      i8 r, im;
+      i8 r;
+      i8 im;
       memcpy (&r, buf, 1);
       memcpy (&im, buf + 1, 1);
       i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
     case CI32: {
-      i16 r, im;
+      i16 r;
+      i16 im;
       memcpy (&r, buf, 2);
       memcpy (&im, buf + 2, 2);
       i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
     case CI64: {
-      i32 r, im;
+      i32 r;
+      i32 im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
       i_log_printf (level, "(%d, %d)", (int)r, (int)im);
       return;
     }
     case CI128: {
-      i64 r, im;
+      i64 r;
+      i64 im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
       i_log_printf (level, "(%ld, %ld)", (long)r, (long)im);
       return;
     }
     case CU16: {
-      u8 r, im;
+      u8 r;
+      u8 im;
       memcpy (&r, buf, 1);
       memcpy (&im, buf + 1, 1);
       i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
     case CU32: {
-      u16 r, im;
+      u16 r;
+      u16 im;
       memcpy (&r, buf, 2);
       memcpy (&im, buf + 2, 2);
       i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
     case CU64: {
-      u32 r, im;
+      u32 r;
+      u32 im;
       memcpy (&r, buf, 4);
       memcpy (&im, buf + 4, 4);
       i_log_printf (level, "(%u, %u)", (unsigned)r, (unsigned)im);
       return;
     }
     case CU128: {
-      u64 r, im;
+      u64 r;
+      u64 im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
       i_log_printf (level, "(%lu, %lu)", (unsigned long)r, (unsigned long)im);
@@ -1502,7 +1522,7 @@ print_sarray_dim (
       if (i > 0) {
         i_log_printf (level, ", ");
       }
-      print_type_inner (level, buf + i * sub_size, sa->t, max_elems, indent + 1);
+      print_type_inner (level, buf + (i * sub_size), sa->t, max_elems, indent + 1);
     }
     if (dim_len > max_elems) {
       i_log_printf (level, ", ...");
@@ -1514,7 +1534,15 @@ print_sarray_dim (
         i_log_printf (level, ",\n");
         print_indent (level, col + 1);
       }
-      print_sarray_dim (level, buf + i * sub_size, sa, dim_idx + 1, max_elems, indent + 1, col + 1);
+      print_sarray_dim (
+          level,
+          buf + (i * sub_size),
+          sa,
+          dim_idx + 1,
+          max_elems,
+          indent + 1,
+          col + 1
+      );
     }
     if (dim_len > max_elems) {
       i_log_printf (level, ",\n");
@@ -1699,6 +1727,9 @@ struct type_printer_ostream_ctx
 static i32
 type_print_os_sink (struct stream *s, void *vctx, const void *src, u32 size, u32 n, error *e)
 {
+  (void)s;    // Unused
+  (void)e;    // Unused
+  (void)size; // Unused
   ASSERT (size == 1);
   struct type_printer_ostream_ctx *ctx   = (struct type_printer_ostream_ctx *)vctx;
 

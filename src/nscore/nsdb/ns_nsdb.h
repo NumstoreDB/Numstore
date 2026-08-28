@@ -110,17 +110,17 @@ sb_size nsdb_remove (
     struct stream       *dest
 );
 
-#define AUTO_BEGIN(db, tx)  \
-  bool auto_txn = false;    \
-  do {                      \
-    if (tx == NULL) {       \
-      tx = nsdb_begin (db); \
-      if (tx == NULL) {     \
-        goto failed;        \
-      }                     \
-      auto_txn = true;      \
-    }                       \
-  }                         \
+#define AUTO_BEGIN(db, tx)    \
+  bool auto_txn = false;      \
+  do {                        \
+    if ((tx) == NULL) {       \
+      (tx) = nsdb_begin (db); \
+      if ((tx) == NULL) {     \
+        goto failed;          \
+      }                       \
+      auto_txn = true;        \
+    }                         \
+  }                           \
   while (0)
 
 #define AUTO_COMMIT(db, tx)       \

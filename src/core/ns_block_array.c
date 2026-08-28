@@ -209,7 +209,8 @@ block_array_read (const struct block_array *r, const struct stride str, const u3
   while (true) {
     if (cur == NULL) {
       return 0;
-    } else if (bidx >= cur->len) {
+    }
+    if (bidx >= cur->len) {
       bidx -= cur->len;
       cur = cur->next;
     } else {
@@ -288,7 +289,8 @@ block_array_write (
   while (true) {
     if (cur == NULL) {
       return 0;
-    } else if (bidx >= cur->len) {
+    }
+    if (bidx >= cur->len) {
       bidx -= cur->len;
       cur = cur->next;
     } else {
@@ -359,6 +361,7 @@ block_array_remove (
     error              *e
 )
 {
+  (void)e; // Unused
   u8           *dest  = _dest;
 
   // Seek
@@ -368,7 +371,8 @@ block_array_remove (
   while (true) {
     if (rcur == NULL) {
       return 0;
-    } else if (rbidx >= rcur->len) {
+    }
+    if (rbidx >= rcur->len) {
       rbidx -= rcur->len;
       rcur = rcur->next;
     } else {
@@ -532,6 +536,7 @@ block_array_insert_func (void *ctx, const u32 ofst, const void *src, const u32 s
 static i64
 block_array_read_func (void *ctx, const struct stride str, const u32 size, void *dest, error *e)
 {
+  (void)e; // Unused
   struct block_array *arr = ctx;
   return block_array_read (arr, str, size, dest);
 }
@@ -545,6 +550,7 @@ block_array_write_func (
     error              *e
 )
 {
+  (void)e; // Unused
   struct block_array *arr = ctx;
   return block_array_write (arr, str, size, src);
 }
@@ -559,6 +565,7 @@ block_array_remove_func (void *ctx, const struct stride str, const u32 size, voi
 static i64
 block_array_getlen_func (void *ctx, error *e)
 {
+  (void)e; // Unused
   struct block_array *arr = ctx;
   return block_array_getlen (arr);
 }

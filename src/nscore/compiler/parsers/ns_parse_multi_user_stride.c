@@ -41,11 +41,11 @@ struct multi_user_stride_parser
 };
 
 // Parse optional ':' NUMBER (step)
-static err_t
-parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+static void
+parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s)
 {
   if (!parser_match (parser->base, TT_COLON)) {
-    return SUCCESS;
+    return;
   }
 
   s->present |= COLON_PRESENT;
@@ -56,12 +56,10 @@ parse_mus_step (struct multi_user_stride_parser *parser, struct user_stride *s, 
     s->step = num;
     s->present |= STEP_PRESENT;
   }
-
-  return SUCCESS;
 }
 
-static err_t
-parse_mus_stop (struct multi_user_stride_parser *parser, struct user_stride *s, error *e)
+static void
+parse_mus_stop (struct multi_user_stride_parser *parser, struct user_stride *s)
 {
   i32 num;
   if (parser_maybe_parse_integer (parser->base, &num)) {
@@ -69,7 +67,7 @@ parse_mus_stop (struct multi_user_stride_parser *parser, struct user_stride *s, 
     s->present |= STOP_PRESENT;
   }
 
-  return parse_mus_step (parser, s, e);
+  parse_mus_step (parser, s);
 }
 
 static err_t
@@ -90,7 +88,7 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
 
     s.present |= COLON_PRESENT;
     parser_advance (parser->base);
-    WRAP (parse_mus_stop (parser, &s, e));
+    parse_mus_stop (parser, &s);
     return musb_accept_key (&parser->builder, s, e);
   }
 
@@ -98,7 +96,7 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
   if (parser_match (parser->base, TT_COLON)) {
     s.present |= COLON_PRESENT;
     parser_advance (parser->base);
-    WRAP (parse_mus_stop (parser, &s, e));
+    parse_mus_stop (parser, &s);
     return musb_accept_key (&parser->builder, s, e);
   }
 

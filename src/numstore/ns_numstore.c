@@ -45,7 +45,8 @@ nsdb_fexecute (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, ...)
   ALLOC_INIT (alloc);
 
   sb_size ret; // return variable
-  va_list ap, ap2;
+  va_list ap;
+  va_list ap2;
 
   // Reset errors before proceeding
   nh->e.cause_code = 0;
@@ -95,7 +96,8 @@ nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, 
 
   void   *ret      = NULL;
   bool    auto_txn = false;
-  va_list ap, ap2;
+  va_list ap;
+  va_list ap2;
 
   nh->e.cause_code = 0;
   nh->e.cmlen      = 0;
@@ -150,7 +152,9 @@ nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, 
     goto theend_rollback;
   }
 
-  t_size tsize  = type_byte_size (var->dtype);
+  // I just commented this out because it wasn't being used -
+  // no other reason - maybe breaks
+  // t_size tsize  = type_byte_size (var->dtype);
   b_size nbytes = var->nbytes;
 
   void  *buf2   = i_malloc (nh->mem, nbytes > 0 ? nbytes : 1, 1, &nh->e);

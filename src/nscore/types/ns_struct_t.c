@@ -20,12 +20,15 @@
 #include "core/ns_serial.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
-#include "core/os/ns_memory.h"
-#include "core/testing/ns_testing.h"
-#include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/types/ns_variables.h"
+
+#ifdef TESTING
+#  include "core/os/ns_memory.h"
+#  include "core/testing/ns_testing.h"
+#  include "nscore/compiler/ns_compiler.h"
+#endif
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -136,16 +139,10 @@ err_t
 struct_t_validate (const struct struct_t *s, error *e)
 {
   WRAP (struct_t_validate_shallow (s, e));
-  {
-    return false;
-  }
   for (u32 i = 0; i < s->len; ++i) {
     WRAP (type_validate (s->types[i], e));
-    {
-      return false;
-    }
   }
-  return true;
+  return SUCCESS;
 }
 
 struct type *
@@ -535,6 +532,7 @@ struct_t_serialize (struct serializer *dest, const struct struct_t *src)
 {
   DBG_ASSERT (valid_struct_t, src);
   bool ret;
+  (void)ret; // Unused in prod
 
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
   ret = srlizr_write (dest, (const u8 *)&src->len, sizeof (u16));

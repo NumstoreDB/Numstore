@@ -74,7 +74,7 @@ add_token (struct lexer *lex, enum token_t type, error *e)
   struct token next = {
       .type       = type,
       .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
+      .text_len   = lex->current - lex->start,
   };
 
   return dblb_append (&lex->_tokens, &next, 1, e);
@@ -87,7 +87,7 @@ add_token_int (struct lexer *lex, i32 value, error *e)
       .type       = TT_INTEGER,
       .integer    = value,
       .text_start = &lex->src[lex->start],
-      .text_len   = lex->current - lex->start
+      .text_len   = lex->current - lex->start,
   };
 
   return dblb_append (&lex->_tokens, &next, 1, e);
@@ -273,9 +273,8 @@ scan_identifier (struct lexer *lex, error *e)
 
   if (type == TT_IDENTIFIER) {
     return add_token_str (lex, TT_IDENTIFIER, text, len, e);
-  } else {
-    return add_token (lex, type, e);
   }
+  return add_token (lex, type, e);
 }
 
 static err_t

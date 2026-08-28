@@ -36,7 +36,8 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
     return;
   }
 
-  i64 start, stop;
+  i64 start;
+  i64 stop;
 
   if (src.present & START_PRESENT) {
     start = src.start;
@@ -83,8 +84,6 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
   dest->start  = (u64)start;
   dest->stride = (u32)step;
   dest->nelems = nelems;
-
-  return;
 }
 
 err_t

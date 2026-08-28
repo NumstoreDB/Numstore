@@ -30,7 +30,7 @@
 
 typedef struct
 {
-#if defined(_WIN32)
+#ifdef _WIN32
   CRITICAL_SECTION m;
 #else
   pthread_mutex_t m;
@@ -39,7 +39,7 @@ typedef struct
 
 typedef struct
 {
-#if defined(_WIN32)
+#ifdef _WIN32
   CONDITION_VARIABLE cond;
 #else
   pthread_cond_t cond;
@@ -48,7 +48,7 @@ typedef struct
 
 typedef struct
 {
-#if defined(_WIN32)
+#ifdef _WIN32
   HANDLE handle;
   DWORD  id;
 #else

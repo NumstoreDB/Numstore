@@ -39,7 +39,8 @@ subtype_create (struct string vname, struct type_accessor ta)
 bool
 subtype_equal (const struct subtype *left, const struct subtype *right)
 {
-  return string_equal (left->vname, right->vname) && type_accessor_equal (left->ta, right->ta);
+  return (string_equal (left->vname, right->vname) && type_accessor_equal (left->ta, right->ta))
+         != 0;
 }
 
 #ifdef TESTING

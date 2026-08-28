@@ -178,7 +178,7 @@ fpgr_reset (struct file_pager *f, error *e)
 bool
 fpgr_isnew (struct file_pager *f)
 {
-  return f->flags & FP_ISNEW;
+  return (f->flags & FP_ISNEW) != 0;
 }
 
 p_size

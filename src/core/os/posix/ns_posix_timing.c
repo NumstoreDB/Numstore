@@ -55,6 +55,7 @@ i_timer_create (i_timer *timer, error *e)
 void
 i_timer_free (i_timer *timer)
 {
+  (void)timer; // Unused in release
   ASSERT (timer);
 }
 
@@ -70,7 +71,7 @@ i_timer_now_ns (i_timer *timer)
   const i64 sec_diff  = (i64)now.tv_sec - (i64)timer->start.tv_sec;
   const i64 nsec_diff = (i64)now.tv_nsec - (i64)timer->start.tv_nsec;
 
-  return (u64)(sec_diff * 1000000000LL + nsec_diff);
+  return (u64)((sec_diff * 1000000000LL) + nsec_diff);
 }
 
 u64

@@ -73,7 +73,7 @@ def inline(path, out, stack):
 def amalgamate(sources_file):
     files = [f for f in Path(sources_file).read_text().split() if f]
     if not files:
-        raise RuntimeError(f"{sources_file} was empty -- check ALL_SRCS in the Makefile")
+        raise RuntimeError(f"{sources_file} was empty -- check LIBNS_SRCS in the Makefile")
     out = sys.stdout
     for path in files:
         if path in emitted:

@@ -45,7 +45,8 @@ ns_get_number_of_layers (struct pager *p, pgno root, error *e)
         goto failed;
       }
       return ret;
-    } else if (page_h_type (&cur) == PG_INNER_NODE) {
+    }
+    if (page_h_type (&cur) == PG_INNER_NODE) {
       next = in_get_leaf (page_h_ro (&cur), 0);
       if (pgr_release (p, &cur, PG_DATA_LIST, e)) {
         goto failed;
@@ -56,7 +57,7 @@ ns_get_number_of_layers (struct pager *p, pgno root, error *e)
   return ret;
 
 failed:
-  pgr_cancel_if_exists (p, &cur);
+  pgr_cancel_if_exists (&cur);
   return error_trace (e);
 }
 
@@ -107,7 +108,7 @@ ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e)
   return ret;
 
 failed:
-  pgr_cancel_if_exists (p, &cur);
+  pgr_cancel_if_exists ( &cur);
   return error_trace (e);
 }
 
@@ -153,7 +154,7 @@ ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e)
   return ret;
 
 failed:
-  pgr_cancel_if_exists (p, &cur);
+  pgr_cancel_if_exists ( &cur);
   return error_trace (e);
 }
 

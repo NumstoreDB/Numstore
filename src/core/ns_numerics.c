@@ -16,7 +16,10 @@
 
 #include "core/ns_bounds.h"
 #include "core/ns_csx_assert.h"
-#include "core/testing/ns_testing.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <inttypes.h>
 #include <math.h>
@@ -25,9 +28,9 @@
 float
 f16_to_f32 (const u16 h)
 {
-  const u32 sign = (u32)(h >> 15) & 1u;
-  u32       exp  = (u32)(h >> 10) & 0x1Fu;
-  u32       mant = (u32)(h) & 0x3FFu;
+  const u32 sign = (u32)(h >> 15) & 1U;
+  u32       exp  = (u32)(h >> 10) & 0x1FU;
+  u32       mant = (u32)h & 0x3FFU;
   u32       f;
 
   if (exp == 0) {
@@ -38,18 +41,18 @@ f16_to_f32 (const u16 h)
       // Subnormal f16 becomes a Normal f32
       // Shift mantissa until the first set bit is at position 10
       u32 e = 0;
-      while (!(mant & 0x400u)) {
+      while (!(mant & 0x400U)) {
         mant <<= 1;
         e++;
       }
       // Remove the now-implicit leading bit (bit 10)
-      mant &= 0x3FFu;
+      mant &= 0x3FFU;
       // New exponent = bias offset (112) + 1 - shifts
       f = (sign << 31) | ((113 - e) << 23) | (mant << 13);
     }
   } else if (exp == 31) {
     // Inf or NaN
-    f = (sign << 31) | 0x7F800000u | (mant << 13);
+    f = (sign << 31) | 0x7F800000U | (mant << 13);
   } else {
     // Normal numbers
     f = (sign << 31) | ((exp + 112) << 23) | (mant << 13);
@@ -60,20 +63,20 @@ f16_to_f32 (const u16 h)
   return result;
 }
 
-static u32 _crc32c_tbl[256];
-static int _crc32c_inited = 0;
+static u32 crc32c_tbl[256];
+static int crc32c_inited = 0;
 
 static void
-_crc32c_init (void)
+crc32c_init (void)
 {
   for (u32 i = 0; i < 256; ++i) {
     u32 c = i;
     for (int k = 0; k < 8; ++k) {
-      c = (c >> 1) ^ (0x82F63B78u & -((int)(c & 1)));
+      c = (c >> 1) ^ (0x82F63B78U & -((int)(c & 1)));
     }
-    _crc32c_tbl[i] = c;
+    crc32c_tbl[i] = c;
   }
-  _crc32c_inited = 1;
+  crc32c_inited = 1;
 }
 
 u32
@@ -89,13 +92,13 @@ checksum_execute (u32 *state, const u8 *data, const u32 len)
   ASSERT (data);
   ASSERT (len > 0);
 
-  if (!_crc32c_inited) {
-    _crc32c_init ();
+  if (!crc32c_inited) {
+    crc32c_init ();
   }
 
   u32 c = ~(*state);
   for (u32 i = 0; i < len; ++i) {
-    c = (c >> 8) ^ _crc32c_tbl[(c ^ data[i]) & 0xFF];
+    c = (c >> 8) ^ crc32c_tbl[(c ^ data[i]) & 0xFF];
   }
   *state = ~c;
 }
@@ -229,7 +232,7 @@ randi32r (const i32 lower, const i32 upper)
     return lower;
   }
 
-  const u64 range = (u64)((i64)upper - (i64)lower) + 1u;
+  const u64 range = (u64)((i64)upper - (i64)lower) + 1U;
   return (i32)((u32)lower + (u32)randu64r (0, range - 1));
 }
 
@@ -268,10 +271,10 @@ randu64 (void)
   u64       r        = (u64)rand ();
   u64       capacity = base;
   while (capacity <= (U64_MAX / base)) {
-    r = r * base + (u64)rand ();
+    r = (r * base) + (u64)rand ();
     capacity *= base;
   }
-  r = r * base + (u64)rand ();
+  r = (r * base) + (u64)rand ();
   return r;
 }
 
@@ -285,7 +288,7 @@ randu64r (const u64 lower, const u64 upper)
   if (lower == 0 && upper == U64_MAX) {
     return randu64 ();
   }
-  const u64 range = upper - lower + 1u;
+  const u64 range = upper - lower + 1U;
 
 #if defined(_MSC_VER) && defined(_M_X64)
   // 64-bit MSVC: _umul128 intrinsic available
@@ -438,7 +441,7 @@ randi64r (const i64 lower, const i64 upper)
 
   // range via u64 subtraction. Overflows to 0 only for lower=I64_MIN,
   // upper=I64_MAX.
-  const u64 range = (u64)upper - (u64)lower + 1u;
+  const u64 range = (u64)upper - (u64)lower + 1U;
   if (range == 0) {
     return (i64)randu64 ();
   }
@@ -658,11 +661,12 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   }
 
   // Integer part
-  f32  acc       = 0.0f;
+  f32  acc       = 0.0F;
   bool saw_digit = false;
+  (void)saw_digit; // Unused in release
   while (i < len && s[i] >= '0' && s[i] <= '9') {
     const f32 d = (f32)(s[i] - '0');
-    if (!safe_mul_f32 (&acc, acc, 10.0f)) {
+    if (!safe_mul_f32 (&acc, acc, 10.0F)) {
       goto failed;
     }
     if (!safe_add_f32 (&acc, acc, d)) {
@@ -676,16 +680,17 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   if (i < len && s[i] == '.') {
     i++;
     ASSERT (i < len); // cannot end with '.'
-    f32 frac = 0.0f, scale = 1.0f;
+    f32 frac  = 0.0f;
+    f32 scale = 1.0f;
     while (i < len && s[i] >= '0' && s[i] <= '9') {
       const f32 d = (f32)(s[i] - '0');
-      if (!safe_mul_f32 (&frac, frac, 10.0f)) {
+      if (!safe_mul_f32 (&frac, frac, 10.0F)) {
         goto failed;
       }
       if (!safe_add_f32 (&frac, frac, d)) {
         goto failed;
       }
-      if (!safe_mul_f32 (&scale, scale, 10.0f)) {
+      if (!safe_mul_f32 (&scale, scale, 10.0F)) {
         goto failed;
       }
       i++;
@@ -714,10 +719,11 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
     }
     u32  exp     = 0;
     bool saw_exp = false;
+    (void)saw_exp; // Unused in release
     while (i < len && s[i] >= '0' && s[i] <= '9') {
       const u32 d = (u32)(s[i] - '0');
       ASSERT (exp <= (UINT32_MAX - d) / 10);
-      exp = exp * 10 + d;
+      exp = (exp * 10) + d;
       i++;
       saw_exp = true;
     }
@@ -726,11 +732,11 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
     // Apply exponent
     for (u32 k = 0; k < exp; k++) {
       if (exp_neg) {
-        if (!safe_div_f32 (&acc, acc, 10.0f)) {
+        if (!safe_div_f32 (&acc, acc, 10.0F)) {
           goto failed;
         }
       } else {
-        if (!safe_mul_f32 (&acc, acc, 10.0f)) {
+        if (!safe_mul_f32 (&acc, acc, 10.0F)) {
           goto failed;
         }
       }
@@ -776,13 +782,13 @@ TEST (parse_f32_expect)
 float
 py_mod_f32 (const float num, const float denom)
 {
-  if (denom == 0.0f) {
+  if (denom == 0.0F) {
     return INFINITY;
   }
 
-  float rem = num - denom * (int)(num / denom);
+  float rem = num - (denom * (int)(num / denom));
 
-  if ((rem < 0.0f && denom > 0.0f) || (rem > 0.0f && denom < 0.0f)) {
+  if ((rem < 0.0F && denom > 0.0F) || (rem > 0.0F && denom < 0.0F)) {
     rem += denom;
   }
 

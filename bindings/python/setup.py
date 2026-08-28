@@ -1,33 +1,50 @@
-from __future__ import annotations
-
-import shutil
-import subprocess
-import sysconfig
+import os
+import sys
 from pathlib import Path
 
+import numpy as np
 from setuptools import Extension, setup
-from setuptools.command.build_ext import build_ext
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+HERE = Path(__file__).resolve().parent
+SOURCES_FILE = HERE / "sources.txt"
 
 
-class MakeBuildExt(build_ext):
-    """Delegates the actual C compilation to the repo's top-level Makefile."""
+def read_sources(path: Path) -> list[str]:
+    if not path.exists():
+        sys.exit(
+            f"error: {path.name} not found.\n"
+            "Run `make python-sources` from the repository root first."
+        )
 
-    def build_extension(self, ext: Extension) -> None:
-        subprocess.check_call(["make", "python"], cwd=REPO_ROOT)
+    lines = [
+        line.strip()
+        for line in path.read_text().splitlines()
+        if line.strip() and "IGNORE" not in line
+    ]
 
-        soabi = sysconfig.get_config_var("EXT_SUFFIX")
-        built = REPO_ROOT / "build" / "python" / "target" / f"_pynumstore{soabi}"
-        if not built.exists():
-            raise FileNotFoundError(f"expected build output at {built}")
+    if not lines:
+        sys.exit(
+            f"error: {path.name} is empty.\n"
+            "Run `make python-sources` from the repository root first."
+        )
 
-        dest = Path(self.get_ext_fullpath(ext.name))
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(built, dest)
+    return lines
 
+
+ext = Extension(
+    name="pynumstore._pynumstore",
+    sources=read_sources(SOURCES_FILE),
+    include_dirs=["../../src", "./src/c", np.get_include()],
+    define_macros=[
+        ("NDEBUG", None),
+        ("NLOG", None),
+    ],
+)
 
 setup(
-    ext_modules=[Extension("pynumstore._pynumstore", sources=[])],
-    cmdclass={"build_ext": MakeBuildExt},
+    name="pynumstore",
+    packages=["pynumstore"],
+    package_dir={"pynumstore": "src/pynumstore"},
+    ext_modules=[ext],
+    options={"build": {"build_base": os.environ.get("PYNUMSTORE_BUILD_BASE", "build")}},
 )

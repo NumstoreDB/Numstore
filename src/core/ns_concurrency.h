@@ -36,7 +36,7 @@ enum lock_mode
   LM_S     = 2,
   LM_SIX   = 3,
   LM_X     = 4,
-  LM_COUNT = 5
+  LM_COUNT = 5,
 };
 
 /**
@@ -229,10 +229,10 @@ latch_unlock (latch *l)
 typedef _Atomic (unsigned int) sx_latch;
 
 #define S_MASK 0x0000FFFFu // [15:0]
-#define X      0x00010000u // [16]
+#define X      0x00010000U // [16]
 
-#define SLOCKED(val) (val & S_MASK)
-#define XLOCKED(val) (val & X)
+#define SLOCKED(val) ((val) & S_MASK)
+#define XLOCKED(val) ((val) & X)
 
 HEADER_FUNC void
 spx_latch_init (sx_latch *l)

@@ -20,7 +20,10 @@
 #include "core/ns_utils.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
-#include "core/testing/ns_testing.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <stddef.h>
 
@@ -148,11 +151,9 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
   latch_lock (&w->l);
 
   while (written < len) {
-    if (cbuffer_avail (&w->buffer) == 0) {
-      if (walos_flush_impl (w, e)) {
-        latch_unlock (&w->l);
-        return error_trace (e);
-      }
+    if ((cbuffer_avail (&w->buffer) == 0) && (walos_flush_impl (w, e))) {
+      latch_unlock (&w->l);
+      return error_trace (e);
     }
 
     const u32 towrite = MIN (len - written, cbuffer_avail (&w->buffer));

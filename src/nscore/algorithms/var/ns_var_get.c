@@ -70,7 +70,7 @@ ns_var_get (struct ns_var_get_params *params, error *e)
   }
 
 theend:
-  pgr_cancel_if_exists (params->p, &cur);
+  pgr_cancel_if_exists (&cur);
 
   return error_trace (e);
 }

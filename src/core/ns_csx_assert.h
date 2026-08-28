@@ -18,11 +18,13 @@
 #include "core/ns_logging.h"  // i_log...
 #include "core/ns_platform.h" // UNREACHABLE_HINT, HEADER_FUNC
 
-#define crash()             \
-  do {                      \
-    *(volatile int *)0 = 1; \
-    UNREACHABLE_HINT ();    \
-  }                         \
+#define crash()              \
+  do {                       \
+    UNREACHABLE_WARN_PUSH () \
+    *(volatile int *)0 = 1;  \
+    UNREACHABLE_HINT ();     \
+    UNREACHABLE_WARN_POP ()  \
+  }                          \
   while (0)
 
 #define UNIMPLEMENTED() UNREACHABLE ()
@@ -88,13 +90,13 @@ gte0 (int val)
                                // PANIC_in_release_mode_is_not_allowed[-1]
 
 // Release doesn't allow these two
-#  define panic(msg) NOT_FOR_PRODUCTION ()
+#  define panic(msg)           NOT_FOR_PRODUCTION ()
 #  define ASSERT(expr)
 
-#  define DEFINE_DBG_ASSERT(type, name, var, body)   \
-    HEADER_FUNC void name##_assert (const type *var) \
-    {                                                \
-      (void)var;                                     \
+#  define DEFINE_DBG_ASSERT(type, name, var, body)     \
+    HEADER_FUNC void name##_assert (const type *(var)) \
+    {                                                  \
+      (void)(var);                                     \
     }
 
 #  define ASSERT_NN(ptr) ptr

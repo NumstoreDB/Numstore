@@ -21,19 +21,22 @@
 #include "core/ns_utils.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
-#include "core/os/ns_threading.h"
-#include "core/os/ns_time.h"
-#include "core/testing/ns_testing.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/lock_table/ns_lock_table.h"
 #include "nscore/page/ns_page.h"
-#include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_fsm.h"
 #include "nscore/testing/ns_page_fixture.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/wal/ns_wal.h"
 #include "nscore/wal/ns_wal_record.h"
+
+#ifdef TESTING
+#  include "core/os/ns_threading.h"
+#  include "core/os/ns_time.h"
+#  include "core/testing/ns_testing.h"
+#  include "nscore/page/ns_page_data_list.h"
+#endif
 
 #include <limits.h>
 #include <stdatomic.h>
@@ -62,8 +65,9 @@ pgr_get_npages (struct pager *p)
 }
 
 static void
-pgr_unfix (struct pager *p, page_h *h, int flags)
+pgr_unfix (page_h *h, int flags)
 {
+  (void)flags; // Unused for now
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
 
   latch_lock (&h->pgr->ctrl);
@@ -203,9 +207,8 @@ pgr_write_next_lsn (struct pager *p, lsn l, error *e)
 {
   if (p->header.lsn0 > p->header.lsn1) {
     return pgr_write_lsn1 (p, l, e);
-  } else {
-    return pgr_write_lsn0 (p, l, e);
   }
+  return pgr_write_lsn0 (p, l, e);
 }
 
 #ifdef TESTING
@@ -541,10 +544,8 @@ theend:
  * no WAL record is written for cancelled mutations.
  */
 void
-pgr_cancel (const struct pager *p, page_h *h)
+pgr_cancel (page_h *h)
 {
-  DBG_ASSERT (pager, p);
-
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
@@ -635,10 +636,9 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
           tx->data.undo_next_lsn = log_rec->clr.undo_next;
         }
 
-        if (wrh_is_redoable (log_rec)) {
-          if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e)) {
-            goto failed;
-          }
+        if ((wrh_is_redoable (log_rec))
+            && (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e))) {
+          goto failed;
         }
 
         break;
@@ -668,14 +668,16 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   }
 
   u32 before = txnt_get_size (ctx->txt);
+  (void)before; // Unused in release
   i_log_info ("Analysis phase, txns in table: %d\n", before);
 
   // Append end logs and remove rolled back and committed txns
   for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i) {
-    struct ns_txn *tx  = ((struct ns_txn **)ctx->txn_ptrs.data)[i];
+    struct ns_txn *tx = ((struct ns_txn **)ctx->txn_ptrs.data)[i];
 
-    bool nothing_to_do = tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0;
-    bool committed     = tx->data.state == TX_COMMITTED;
+    bool           nothing_to_do =
+        (tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0) != 0;
+    bool committed = tx->data.state == TX_COMMITTED;
 
     if (nothing_to_do || committed) {
       // Append an end log
@@ -724,6 +726,7 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
   }
 
   u32 nredone = 0;
+  (void)nredone; // Unused in release
 
   while (log_rec->type != WL_EOF) {
     switch (log_rec->type) {
@@ -755,7 +758,7 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
             dpgt_update (ctx->dpt, pg, page_lsn + 1);
           }
 
-          pgr_unfix (p, &ph, PG_PERMISSIVE);
+          pgr_unfix (&ph, PG_PERMISSIVE);
         }
         break;
       }
@@ -826,7 +829,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
           tx->data.last_lsn = l;
 
           // Release this page
-          pgr_unfix (p, &ph, PG_PERMISSIVE);
+          pgr_unfix (&ph, PG_PERMISSIVE);
         }
 
         // Update undo next page
@@ -1132,7 +1135,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
 failed:
   ASSERT (error_trace (e));
   if (ret) {
-    pgr_cancel_if_exists (ret, &root);
+    pgr_cancel_if_exists (&root);
     if (ret->dpt) {
       dpgt_close (ret->dpt);
     }
@@ -1386,7 +1389,7 @@ pgr_delete_and_release (struct pager *p, struct ns_txn *tx, page_h *h, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (p, &fsm);
+  pgr_cancel_if_exists (&fsm);
 
   return error_trace (e);
 }
@@ -1670,15 +1673,14 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
 
   // Only need to write it out if it's dirty
   if (dpgt_exists (p->dpt, mp->page.pg)) {
-    if (!(p->flags & PGR_ISRESTARTING) && p->ww) {
-      // WAL invariant: always flush page to wal before
-      // it's flushed to disk
-      // Remember:
-      //    page_lsn = latest log page that modified this page
-      // const lsn plsn = page_get_page_lsn (&mp->page);
-      if (wal_flush_all (p->ww, e)) {
-        goto theend;
-      }
+    if ((!(p->flags & PGR_ISRESTARTING) && p->ww) && (wal_flush_all (p->ww, e)))
+    // WAL invariant: always flush page to wal before
+    // it's flushed to disk
+    // Remember:
+    //    page_lsn = latest log page that modified this page
+    // const lsn plsn = page_get_page_lsn (&mp->page);
+    {
+      goto theend;
     }
 
     // Set page checksum before flushing
@@ -2171,7 +2173,7 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct ns_txn *tx, error *e)
 
   // Creating a new FSM means we are tracking this many pages
   if (pgr_extend_file (p, fsmpg + FS_BTMP_NPGS, tx, e)) {
-    pgr_cancel (p, fsm);
+    pgr_cancel (fsm);
     return error_trace (e);
   }
 
@@ -2198,7 +2200,7 @@ retry:
 
     // No free pages available - move on
     if (next == -1) {
-      pgr_cancel (p, &fsm);
+      pgr_cancel (&fsm);
       continue;
     }
 
@@ -2208,7 +2210,7 @@ retry:
     // Save with (special) log
     struct wal_update_write log = wup_fsm (page_h_pgno (&fsm), tx, next, 0, 1);
     if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) {
-      pgr_cancel (p, &fsm);
+      pgr_cancel (&fsm);
       return error_trace (e);
     }
 
@@ -2243,8 +2245,8 @@ retry:
 
   struct wal_update_write log = wup_fsm (fsmpg, tx, 1, 0, 1);
   if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) {
-    pgr_cancel (p, &fsm);
-    pgr_cancel (p, dest);
+    pgr_cancel (&fsm);
+    pgr_cancel (dest);
     return error_trace (e);
   }
 
@@ -2367,6 +2369,7 @@ pgr_release_with_log (
     error                   *e
 )
 {
+  (void)flags; // Unused for now
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
@@ -2414,10 +2417,9 @@ pgr_release_with_log (
 
     // Add page to DPT if this is the first update (RecLSN = LSN of first
     // update)
-    if (!dpgt_exists (p->dpt, page_h_pgno (h))) {
-      if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e)) {
-        return error_trace (e);
-      }
+    if ((!dpgt_exists (p->dpt, page_h_pgno (h)))
+        && (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e))) {
+      return error_trace (e);
     }
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
@@ -2473,10 +2475,8 @@ pgr_rollback (struct pager *p, struct ns_txn *tx, lsn save_lsn, error *e)
   // transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
-  if (undo_nxt_lsn > 0) {
-    if (wal_flush_all (p->ww, e)) {
-      goto failed;
-    }
+  if ((undo_nxt_lsn > 0) && (wal_flush_all (p->ww, e))) {
+    goto failed;
   }
 
   while (save_lsn < undo_nxt_lsn) {
@@ -2511,7 +2511,7 @@ pgr_rollback (struct pager *p, struct ns_txn *tx, lsn save_lsn, error *e)
           // Set the update lsn
           tx->data.last_lsn = prev_lsn;
 
-          pgr_unfix (p, &ph, PG_PERMISSIVE);
+          pgr_unfix (&ph, PG_PERMISSIVE);
         }
 
         undo_nxt_lsn = log_rec->update.prev;
@@ -2556,10 +2556,8 @@ pgr_rollback (struct pager *p, struct ns_txn *tx, lsn save_lsn, error *e)
 theend:
   lockt_unlock_tx (p->lt, tx);
 
-  if (undo_nxt_lsn > 0) {
-    if (wal_flush_all (p->ww, e)) {
-      goto failed;
-    }
+  if ((undo_nxt_lsn > 0) && (wal_flush_all (p->ww, e))) {
+    goto failed;
   }
 
   txnt_remove_txn_expect (p->tnxt, tx);

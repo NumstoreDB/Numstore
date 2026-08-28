@@ -14,11 +14,9 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stream.h"
 #include "core/ns_utils.h"
-#include "core/testing/ns_testing.h"
 #include "nscore/algorithms/ns_node_updates.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms_internal.h"
@@ -29,6 +27,11 @@
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/testing/ns_page_fixture.h"
+
+#ifdef TESTING
+#  include "core/ns_numerics.h"
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <stdbool.h>
 #include <string.h>
@@ -235,9 +238,9 @@ ns_insert (struct ns_insert_params *params, error *e)
   return (sb_size)total_written;
 
 failed:
-  pgr_cancel_if_exists (params->p, &prev);
-  pgr_cancel_if_exists (params->p, &cur);
-  pgr_cancel_if_exists (params->p, &next);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&cur);
+  pgr_cancel_if_exists (&next);
 
   if (output) {
     nupd_free (output);
@@ -247,7 +250,7 @@ failed:
   }
 
   for (u32 i = 0; i < seek.sp; ++i) {
-    pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
+    pgr_cancel_if_exists (&seek.pstack[i].pg);
   }
 
   return error_trace (e);

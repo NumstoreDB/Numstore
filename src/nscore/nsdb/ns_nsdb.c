@@ -75,11 +75,10 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
   }
 
   // New pager - initialze the upfront hash map
-  if (pgr_isnew (ret->p)) {
-    // Initialize the upfront hash page
-    if (ns_init_var_hash_map (ret->p, &e)) {
-      goto failed;
-    }
+  if ((pgr_isnew (ret->p)) && (ns_init_var_hash_map (ret->p, &e)))
+  // Initialize the upfront hash page
+  {
+    goto failed;
   }
 
   // Launch the checkpoint writer thread
@@ -144,9 +143,8 @@ nsdb_strerror (struct nsdb *ns)
 {
   if (ns->e.cause_code < 0) {
     return ns->e.cause_msg;
-  } else {
-    return NULL;
   }
+  return NULL;
 }
 
 int
@@ -155,9 +153,8 @@ nsdb_perror (struct nsdb *ns, const char *prefix)
   const char *err = nsdb_strerror (ns);
   if (err) {
     return fprintf (stderr, "%s: %s\n", prefix, nsdb_strerror (ns));
-  } else {
-    return fprintf (stderr, "%s: success\n", prefix);
   }
+  return fprintf (stderr, "%s: success\n", prefix);
 }
 
 struct ns_txn *
@@ -438,13 +435,9 @@ nsdb_insert (
   // Update Varible
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->p,
-        .tx = tx,
-        .retr =
-            (struct var_retrieval){
-                .type = VR_PG,
-                .root = gparams.dest.var_root,
-            },
+        .p      = db->p,
+        .tx     = tx,
+        .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
         .newpg  = iparams.root,
         .nbytes = gparams.dest.nbytes + ret,
     };
@@ -716,15 +709,11 @@ nsdb_remove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = db->p,
-        .tx = tx,
-        .retr =
-            (struct var_retrieval){
-                .type = VR_PG,
-                .root = gparams.dest.var_root,
-            },
+        .p      = db->p,
+        .tx     = tx,
+        .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
         .newpg  = rparams.root,
-        .nbytes = gparams.dest.nbytes - ret * tsize,
+        .nbytes = gparams.dest.nbytes - (ret * tsize),
     };
     if (ns_var_update (uparams, &db->e) < 0) {
       goto failed_rollback;

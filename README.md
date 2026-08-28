@@ -3,11 +3,78 @@ Numstore
 
 **A database for arrays**
 
-Numstore is a single file embedded ACID database built for arrays written entirely
-in C with no dependencies.
+Numstore is a single file embedded ACID database built for arrays written
+entirely in C with no dependencies.
 
 Conceptually, it's an ACID file with 
+
 [faster inner file mutations](https://theolincke.com/blog/13_inner_inserts)
+
+Thinking about it like a file - I've created a "smart files" interface, where
+it's just an ACID file
+
+But the original reason I wrote it was to store numerical arrays (arrays of
+bytes where every 4 bytes is an int or every 8 bytes is a u64...)
+
+Therefore, there are two interfaces - smartfiles (a simple ACID transactional
+file) and numstore (an embedded database for numerical arrays).
+
+more info: [Documentation](docs/index.md)
+
+Quick Start
+===========
+
+I want to use Numstore python
+-----------------------------
+
+Although Numstore is not strictly a python library, it is easiest to use in
+it's python form. Try out any of the samples in binginds/python/samples:
+
+        make python-package
+        pip3 install build/python/target/*.whl --force-reinstall
+        python3 bindings/python/samples/sample1_basic.py 
+
+I want to use the numstore embedded C Library
+---------------------------------------------
+
+This is the more advanced case - but numstore is primarily a C - library
+with `numstore.h` and `smartfiles.h` being the two main points of entry
+
+* build everything (debug is default)
+
+       make
+
+* Populate some data
+
+        make python-package
+        pip3 install build/python/target/*.whl --force-reinstall
+        python3 bindings/python/samples/sample1*
+
+* run numstore (the cli / repl is a work in progress)
+
+       ./build/debug/target/bin/numstore example.db
+       > get prices;
+
+* build a release version instead (no asserts, no logs, -O3)
+
+       make TARGET=release
+       ./build/release/target/bin/numstore example.db
+
+* run the unit tests
+
+       ./build/debug/target/bin/unit_tests
+
+* build and run a sample program (using the numstore or smartfiles library)
+
+       ls build/debug/target/bin | grep sample
+       ./build/debug/target/bin/smfile_sample1_basic_crud
+
+* clean up
+
+       make clean
+
+headers and libs land in build/<target>/include and build/<target>/lib if you
+want to link against numstore/smartfiles/core yourself
 
 Main Outputs
 ============
@@ -42,93 +109,20 @@ An embedded database for files see `src/smartfiles/smartfiles.h` or
 library.
 
 
-Quick Start
-===========
-
-pick a platform, follow the steps
-
-Linux / MacOS
--------------
-
-1. build everything (debug is default)
-
-       make
-
-2. run numstore
-
-       ./build/debug/bin/numstore foo.db
-
-3. build a release version instead (no asserts, no logs, -O3)
-
-       make TARGET=release
-       ./build/release/bin/numstore foo.db
-
-4. run the unit tests
-
-       ./build/debug/bin/unit_tests
-
-5. build and run a sample program (using the numstore or smartfiles library)
-
-       ls build/debug/bin | grep sample
-       ./build/debug/bin/smfile_sample1_basic_crud
-
-6. clean up
-
-       make clean
-
-headers and libs land in build/<target>/include and build/<target>/lib if you
-want to link against numstore/smartfiles/core yourself
-
-Calling Make
-============
-
-    make                              debug build of the library, binaries, and samples (default)
-
-    make TARGET=release               release build (no asserts, -O3)
-
-    make ASAN=1                       layer AddressSanitizer/UBSan on top of either TARGET; unit
-                                      tests are included whenever ASAN=1, even under TARGET=release
-
-    make NLOG=1                       strip logging (-DNLOG) from either TARGET
-
-    make CFLAGS_USER=-DFOO             append extra, user-defined flags to any build
-
-    make docs                         build the HTML docs from docs/*.md
-
-    make python                       build the raw _pynumstore extension module
-
-    make python-package               build the installable pynumstore wheel
-
-    make python-test                  build the wheel, install it, and run the pytest suite
-
-    make release-package              build and package a full release (runs unit tests, tars/zips
-                                      build/release/target, and builds the python package)
-
-    make release-package-window       cross-compile the release package for Windows from Linux via
-                                      mingw-w64 (pass CC/AR for the cross toolchain; add WINE=wine64
-                                      to also run unit_tests.exe under Wine)
-    make format                       run clang-format over src and bindings
-
-    make clean                        remove build output for the current TARGET
-
-`TARGET` defaults to `debug` and can be set to `debug` or `release`. `ASAN`
-and `NLOG` default to `0` and can be set to `1` independently of `TARGET`,
-e.g. `make TARGET=release ASAN=1 NLOG=1`.
-
-more info: [Documentation](docs/index.md)
 
 AI Usage Policy
 ===============
 
-I use AI the way I use a language server: as a tool, not a co-author. AI usage is fine
-but not for heavy tasks.
+I use AI the way I use a language server: as a tool, not a co-author. AI usage
+is fine but not for heavy tasks.
 
 Things I ask AI to do:
 
-- Add edge-case test scenarios to existing unit tests (reviewed before committing).
+- Add edge-case test scenarios to existing unit tests (reviewed before
+  committing).
 - Review an algorithm I've written and flag anything that looks wrong.
-- Write formatting scripts, CI/CD glue, and other boilerplate I could write myself
-  but would rather not.
+- Write formatting scripts, CI/CD glue, and other boilerplate I could write
+  myself but would rather not.
 
 Things I don't ask AI to do:
 
@@ -136,8 +130,9 @@ Things I don't ask AI to do:
 - Delete or replace code I've written.
 - Read a paper and implement the algorithm.
 
-In practice, AI is useful for ideation, code review, and generating mundane code I'll
-immediately refactor. Every algorithm in this codebase was written by me.
+In practice, AI is useful for ideation, code review, and generating mundane
+code I'll immediately refactor. Every algorithm in this codebase was written by
+me.
 
 Contributing
 ============

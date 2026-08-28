@@ -1,73 +1,70 @@
-**.o
+############ Build outputs
+
+build/
+build_coverage/
+docs/build/
+build/doxygen/
+docs/api/
+_build/
+/release/
+/debug/
+bindings/java/jnumstore/build/
+bindings/python/sources.txt
+
+############ Compiled objects / binaries
+
+**/*.o
 *.a
-*.DS_Store
 *.d
-.clang
-.cache
-compile_commands.json
-**tags**
-*.db
-*.nsdb
-*.wal
+*.so
 *.bin
 *.dat
-*node_modules*
-*dist*
-history.txt
-.idea
-build_coverage
-build
-create
-dlread
-nspprint
-walfprint
-thread_pool
-read
-write
-.gdbinit
-*_example
-gmon.out
-*.gcda
-*.gcno
-*.gcov
-docs/build/
-.clangd
 
-# Python
+############ Python
+
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 *.egg
 *.egg-info/
 dist/
 .Python
-vgcore.*
-thirdparty/openssl
-thirdparty/zstd
-thirdparty/linenoise
+bindings/python/.pytest_cache/
 
-# Java
+############ Java
+
 *.class
 *.jar
-bindings/java/jnumstore/build/
 .gradle/
-build/doxygen/
-docs/api/
-testdb/
-_build/
 
-# Claude Code agent worktrees
-.claude/
+############ Data / debug artifacts
 
-
-.zig-cache/
-zig-out/
-/release/
-/debug/
-/docgen_tmp/
-zig-pkg
-sample1_crud
-
-test 
+*.db
+*.nsdb
+*.wal
 testdb
+history.txt
+vgcore.*
+gmon.out
+*.gcda
+*.gcno
+*.gcov
+*_example
+sample1_crud
+docgen_tmp/
+
+############ Editor / tool caches
+
+.DS_Store
+.clang
+.clangd
+.cache
+.idea
+.gdbinit
+compile_commands.json
+tags
+
+############ Misc
+
+*node_modules*
+.claude/

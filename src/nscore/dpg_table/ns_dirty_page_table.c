@@ -71,20 +71,19 @@ dpge_equals (const struct hnode *left, const struct hnode *right)
   }
 
   // Otherwise, passed a key with just relevant information
-  else {
-    struct dpg_entry *_left  = container_of (left, struct dpg_entry, node);
-    struct dpg_entry *_right = container_of (right, struct dpg_entry, node);
 
-    latch_lock (&_left->l);
-    latch_lock (&_right->l);
+  struct dpg_entry *_left  = container_of (left, struct dpg_entry, node);
+  struct dpg_entry *_right = container_of (right, struct dpg_entry, node);
 
-    bool ret = _left->pg == _right->pg;
+  latch_lock (&_left->l);
+  latch_lock (&_right->l);
 
-    latch_unlock (&_right->l);
-    latch_unlock (&_left->l);
+  bool ret = _left->pg == _right->pg;
 
-    return ret;
-  }
+  latch_unlock (&_right->l);
+  latch_unlock (&_left->l);
+
+  return ret;
 }
 
 DEFINE_DBG_ASSERT (struct dpg_table, dirty_pg_table, d, { ASSERT (d); })
@@ -159,6 +158,7 @@ dpgt_merge_into (struct dpg_table *dest, struct dpg_table *src, error *e)
 static void
 dpge_max (pgno pg, const lsn rec_lsn, void *ctx)
 {
+  (void)pg; // Unused
   lsn *min = ctx;
 
   if (rec_lsn < *min) {
@@ -335,7 +335,7 @@ static void
 dpgt_eq_foreach (struct hnode *node, void *_ctx)
 {
   struct dpgt_eq_ctx *ctx = _ctx;
-  if (ctx->ret == false) {
+  if ((int)ctx->ret == false) {
     return;
   }
 

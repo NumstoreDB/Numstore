@@ -32,7 +32,7 @@
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
+#include "numstore/numstore.h"
 
 // Forward declarations
 PyObject *pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg);

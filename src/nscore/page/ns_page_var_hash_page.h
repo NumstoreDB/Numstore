@@ -57,7 +57,7 @@
 #define VH_HASH_LEN  ((NS_PAGE_SIZE - VH_HASH_OFST) / sizeof (pgno))
 
 _Static_assert (
-    NS_PAGE_SIZE > VH_HASH_OFST + 10 * sizeof (pgno),
+    NS_PAGE_SIZE > VH_HASH_OFST + (10 * sizeof (pgno)),
     "Root Page: NS_PAGE_SIZE must be > RN_HASH_OFST plus at least 10 "
     "extra hashes"
 );

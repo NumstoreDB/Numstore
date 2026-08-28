@@ -97,7 +97,7 @@ dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e)
     return NULL;
   }
 
-  void *ret = (u8 *)d->data + d->nelem * d->size;
+  void *ret = (u8 *)d->data + (d->nelem * d->size);
   d->nelem += nelem;
 
   return ret;

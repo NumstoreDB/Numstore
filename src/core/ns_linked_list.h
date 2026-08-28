@@ -119,7 +119,7 @@ list_find (
 )
 {
   *didx = 0;
-  for (struct llnode *iter = (head); iter; iter = iter->next, *didx = *didx + 1) {
+  for (struct llnode *iter = head; iter; iter = iter->next, *didx = *didx + 1) {
     if (eq (iter, node)) {
       return iter;
     }
@@ -151,6 +151,6 @@ llnode_get_n (struct llnode *head, const u32 index)
 }
 
 // Iterate over list
-#define LLIST_FOR_EACH(head, iter) for (llnode *iter = (head); iter; iter = iter->next)
+#define LLIST_FOR_EACH(head, iter) for (llnode * (iter) = (head); iter; (iter) = (iter)->next)
 
 #endif

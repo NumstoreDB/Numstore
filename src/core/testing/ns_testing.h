@@ -30,9 +30,9 @@ extern int test_ret;
 // Limits
 enum
 {
-  test_faults_max = 256,
-  test_marks_max  = 256,
-  test_mark_len   = 128,
+  test_faults_max = 100,
+  test_marks_max  = 100,
+  test_mark_len   = 100,
 };
 
 /******************************************************************************
@@ -47,7 +47,10 @@ enum
     {                                                                            \
       __test_body__##name (default_mem (), default_filesystem ());               \
     }                                                                            \
-    static void __test_body__##name (struct i_mem mem, struct i_file_system fs)
+    static void __test_body__##name (                                            \
+        MAYBE_UNUSED struct i_mem         mem,                                   \
+        MAYBE_UNUSED struct i_file_system fs                                     \
+    )
 
 #  define TEST_CASE(fmt, ...)                                                                \
     for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1), _tc_prev = test_ret; \

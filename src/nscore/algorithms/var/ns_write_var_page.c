@@ -45,7 +45,7 @@ ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
   dlgtovlink (page_h_w (params->vp), page_h_w (&next));
 
   // Release current
-  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e))) {
+  if (pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)) {
     goto failed;
   }
 
@@ -161,12 +161,12 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
    */
   if (page_h_pgno (params->vp) != start) {
     // Release the tail (must be a tail because we're not at the starting page)
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) {
+    if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e)) {
       goto theend;
     }
 
     // Get the starting node
-    if ((pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e))) {
+    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)) {
       goto theend;
     }
   } else {

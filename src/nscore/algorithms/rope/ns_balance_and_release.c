@@ -69,7 +69,7 @@ dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
 
   // There's enough data to balaance max / 2 for each node
   if (prev_len + cur_len >= maxlen) {
-    dlgt_move_right (page_h_w (prev), page_h_w (cur), maxlen / 2 - cur_len);
+    dlgt_move_right (page_h_w (prev), page_h_w (cur), (maxlen / 2) - cur_len);
     return;
   }
 
@@ -239,7 +239,7 @@ dlgt_balance_with_next (const page_h *cur, const page_h *next)
   }
 
   if (next_len + cur_len >= maxlen) {
-    dlgt_move_left (page_h_w (cur), page_h_w (next), maxlen / 2 - cur_len);
+    dlgt_move_left (page_h_w (cur), page_h_w (next), (maxlen / 2) - cur_len);
     return;
   }
 

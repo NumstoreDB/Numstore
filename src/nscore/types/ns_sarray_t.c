@@ -20,9 +20,12 @@
 #include "core/ns_numerics.h"
 #include "core/ns_serial.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_memory.h"
-#include "core/testing/ns_testing.h"
 #include "nscore/types/ns_types.h"
+
+#ifdef TESTING
+#  include "core/os/ns_memory.h"
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -238,6 +241,7 @@ sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
 {
   DBG_ASSERT (valid_sarray_t, src);
   bool ret;
+  (void)ret; // Unused in release
 
   // RANK DIM0 DIM1 DIM2 ... TYPE
   ret = srlizr_write (persistent, (const u8 *)&src->rank, sizeof (u16));

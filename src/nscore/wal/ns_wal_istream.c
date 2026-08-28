@@ -183,15 +183,15 @@ walis_read_all (
 
   if (bread < len) {
     // Hit EOF - incomplete record (torn write at end of WAL)
-    if (bread > 0) {
-      // Partial read: seek back so the file position is at the
-      // record start, leaving it at the last fully-written
-      // record boundary
-      if (walis_seek (w, w->curlsn, e)) {
-        latch_unlock (&w->latch);
-        return error_trace (e);
-      }
+    if ((bread > 0) && (walis_seek (w, w->curlsn, e)))
+    // Partial read: seek back so the file position is at the
+    // record start, leaving it at the last fully-written
+    // record boundary
+    {
+      latch_unlock (&w->latch);
+      return error_trace (e);
     }
+
     *iseof = true;
     latch_unlock (&w->latch);
     return SUCCESS;
