@@ -69,7 +69,7 @@ u32 lt_lock_key (struct lt_lock lock);
  * @param right The right lock to compare
  * @return if left or right are equal
  */
-bool lt_lock_equal (const struct lt_lock left, const struct lt_lock right);
+bool lt_lock_equal (struct lt_lock left, struct lt_lock right);
 
 /**
  * @brief Gets the parent lt_lock in heirarchial locking

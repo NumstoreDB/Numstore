@@ -69,6 +69,7 @@ var_frame_free (struct var_frame *frame)
 static void
 var_frame_free_hnode (struct hnode *node, void *ctx)
 {
+  (void)ctx; // Unused
   struct var_frame *frame = container_of (node, struct var_frame, node);
   var_frame_free (frame);
 }
@@ -188,25 +189,24 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
   if (found) {
     error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
     return NULL;
-  } else {
-    // Create a new variable frame
-    struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
-    if (frame == NULL) {
-      return NULL;
-    }
-
-    // Initialize this frame
-    if (var_frame_init (db, frame, var, e)) {
-      slab_alloc_free (&db->alloc, frame);
-      return NULL;
-    }
-
-    // Add this frame to the table
-    hnode_init (&frame->node, fnv1a_hash (var->vname));
-    htable_insert (db->vhasht, &frame->node);
-
-    return &frame->var;
   }
+  // Create a new variable frame
+  struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
+  if (frame == NULL) {
+    return NULL;
+  }
+
+  // Initialize this frame
+  if (var_frame_init (db, frame, var, e)) {
+    slab_alloc_free (&db->alloc, frame);
+    return NULL;
+  }
+
+  // Add this frame to the table
+  hnode_init (&frame->node, fnv1a_hash (var->vname));
+  htable_insert (db->vhasht, &frame->node);
+
+  return &frame->var;
 }
 
 struct var_with_data *
@@ -227,9 +227,8 @@ mem_vhmap_get (struct mem_vhmap *db, struct string name)
   if (found) {
     struct var_frame *var = container_of (*found, struct var_frame, node);
     return &var->var;
-  } else {
-    return NULL;
   }
+  return NULL;
 }
 
 void

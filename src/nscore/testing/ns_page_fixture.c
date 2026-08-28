@@ -14,20 +14,19 @@
 
 #include "nscore/testing/ns_page_fixture.h"
 
-#include "core/ns_csx_assert.h"
-#include "core/ns_numerics.h"
-#include "core/ns_platform.h"
-#include "core/os/ns_memory.h"
-#include "nscore/page/ns_page_delegate.h"
-
 #include <string.h>
 
 #ifdef TESTING
 #  include "core/ns_alloc.h"
+#  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h"
+#  include "core/ns_numerics.h"
+#  include "core/ns_platform.h"
+#  include "core/os/ns_memory.h"
 #  include "core/testing/ns_testing.h"
 #  include "nscore/algorithms/var/ns_var_algorithms.h"
 #  include "nscore/page/ns_page.h"
+#  include "nscore/page/ns_page_delegate.h"
 #  include "nscore/pager/ns_pager.h"
 
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {
@@ -150,7 +149,7 @@ build_tree_from_descr_inner (
   return pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e);
 
 failed:
-  pgr_cancel_if_exists (p, &cur);
+  pgr_cancel_if_exists (&cur);
   return error_trace (e);
 }
 

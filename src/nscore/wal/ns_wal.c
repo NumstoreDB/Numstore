@@ -206,7 +206,7 @@ wal_delete_and_reopen (struct wal *w, error *e)
 bool
 wal_isnew (const struct wal *w)
 {
-  return w->flags & WAL_ISNEW;
+  return (w->flags & WAL_ISNEW) != 0;
 }
 
 lsn
@@ -1082,8 +1082,11 @@ struct wal_test_params
 };
 
 static void
-wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len, error *e)
+wal_test_fill_batch (struct wal_rec_hdr_read *batch, const u32 len)
 {
+  // I just removed error for this because it wasn't being used -
+  // no other reason - maybe breaks
+
   for (u32 i = 0; i < len; i++) {
     struct wal_rec_hdr_read *r = &batch[i];
 
@@ -1199,8 +1202,6 @@ run_wal_test (const struct wal_test_params *p)
 
 TEST (wal)
 {
-  error                   e             = error_create ();
-
   struct wal_rec_hdr_read batch1_full[] = {
       {.type = WL_BEGIN, .begin = {.tid = 1}},
       {.type = WL_COMMIT, .commit = {.tid = 3, .prev = 20}},
@@ -1303,8 +1304,8 @@ TEST (wal)
     {
       const struct wal_test_params *c = &cases[i];
 
-      wal_test_fill_batch (c->batch1, c->batch1_len, &e);
-      wal_test_fill_batch (c->batch2, c->batch2_len, &e);
+      wal_test_fill_batch (c->batch1, c->batch1_len);
+      wal_test_fill_batch (c->batch2, c->batch2_len);
 
       run_wal_test (c);
 
@@ -1333,7 +1334,7 @@ TEST (wal_single_entry)
     {
       struct wal_rec_hdr_read *c = &cases[i];
 
-      wal_test_fill_batch (c, 1, &e);
+      wal_test_fill_batch (c, 1);
 
       i_remove_quiet (fs, "test_single_entry.wal", &e);
       struct wal *ww = wal_open ("test_single_entry.wal", mem, fs, &e);

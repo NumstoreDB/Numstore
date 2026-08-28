@@ -158,7 +158,7 @@ slab_contains (const struct slab_alloc *alloc, struct slab *s, const void *ptr)
 {
   void       *start = s->data;
   const void *end   = (u8 *)start + (alloc->cap_per_slab * alloc->size);
-  return ptr >= start && ptr < end;
+  return (ptr >= start && ptr < end) != 0;
 }
 
 static struct slab *
@@ -205,27 +205,25 @@ slab_alloc_free (struct slab_alloc *alloc, void *ptr)
   }
 
   // Free empty slabs
-  if (s->used == 0) {
-    if (s->next || s->prev) {
-      // Clear cache if we're freeing it
-      if (alloc->current == s) {
-        alloc->current = NULL;
-      }
-
-      // Update head if we're freeing it
-      if (s == alloc->head) {
-        alloc->head = s->next;
-      }
-
-      if (s->prev) {
-        s->prev->next = s->next;
-      }
-      if (s->next) {
-        s->next->prev = s->prev;
-      }
-
-      i_free (alloc->mem, s);
+  if ((s->used == 0) && (s->next || s->prev)) {
+    // Clear cache if we're freeing it
+    if (alloc->current == s) {
+      alloc->current = NULL;
     }
+
+    // Update head if we're freeing it
+    if (s == alloc->head) {
+      alloc->head = s->next;
+    }
+
+    if (s->prev) {
+      s->prev->next = s->next;
+    }
+    if (s->next) {
+      s->next->prev = s->prev;
+    }
+
+    i_free (alloc->mem, s);
   }
 
   latch_unlock (&alloc->l);

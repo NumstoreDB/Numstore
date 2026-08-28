@@ -73,7 +73,7 @@ struct type_ref
   };
 };
 
-bool type_ref_equal (struct type_ref left, const struct type_ref right);
+bool type_ref_equal (struct type_ref left, struct type_ref right);
 struct type *tr_construct (
     struct type      *reftype,
     struct type_ref  *tr,
@@ -103,7 +103,7 @@ tr_struct (u16 len, struct string *keys, struct type_ref *types)
   return (struct type_ref){
       .type = TR_STRUCT,
       .st   = {
-          .len   = (len),
+          .len   = len,
           .keys  = keys,
           .types = types,
       },

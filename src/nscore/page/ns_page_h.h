@@ -197,7 +197,8 @@ page_h_ro (const page_h *h)
   DBG_ASSERT (page_h, h);
   if (h->mode == PHM_X) {
     return &h->pgw->page;
-  } else if (h->mode == PHM_S) {
+  }
+  if (h->mode == PHM_S) {
     return &h->pgr->page;
   }
 

@@ -59,7 +59,7 @@ DEFINE_DBG_ASSERT (i_file, i_file, fp, {
  ******************************************************************************/
 
 static err_t
-_posix_close (void *_fp, error *e)
+posix_close (void *_fp, error *e)
 {
   i_file *fp = _fp;
 
@@ -160,7 +160,8 @@ posix_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, err
   while (nwritten < n) {
     ASSERT (n > nwritten);
 
-    u64           towrite = n - nwritten;
+    u64 towrite = n - nwritten;
+    (void)towrite; // Unused in non testing
 
     // Mayb fault on write
     // I_FILE_FAULT (fp, // pwrite_once_fail_prob, e);
@@ -230,7 +231,7 @@ posix_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
         cur++;
         remaining--;
       } else {
-        cur->head = (u8 *)cur->head + skip;
+        cur->head = cur->head + skip;
         cur->len -= skip;
         skip = 0;
       }
@@ -334,7 +335,7 @@ posix_truncate (void *_fp, const u64 bytes, error *e)
 }
 
 static err_t
-_posix_fallocate (void *_fp, const u64 bytes, error *e)
+posix_fallocate (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
 
@@ -342,7 +343,7 @@ _posix_fallocate (void *_fp, const u64 bytes, error *e)
 
   DBG_ASSERT (i_file, fp);
 
-#  if defined(__APPLE__)
+#  ifdef __APPLE__
   fstore_t store = {
       .fst_flags   = F_ALLOCATECONTIG,
       .fst_posmode = F_PEOFPOSMODE,
@@ -409,7 +410,7 @@ posix_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
 }
 
 static struct i_file_vtable posix_file_vtable = {
-    .close      = _posix_close,
+    .close      = posix_close,
     .fsync      = posix_fsync,
     .file_size  = posix_file_size,
     .read_all   = posix_read_all,
@@ -418,7 +419,7 @@ static struct i_file_vtable posix_file_vtable = {
     .pwrite_all = posix_pwrite_all,
     .writev_all = posix_writev_all,
     .truncate   = posix_truncate,
-    .fallocate  = _posix_fallocate,
+    .fallocate  = posix_fallocate,
     .seek       = posix_seek,
 #  ifdef TESTING
     .test_data = NULL,

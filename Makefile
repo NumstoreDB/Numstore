@@ -1,84 +1,80 @@
 ############ Executables
 
-CC           := gcc
-PANDOC       := pandoc
-CLANG_FORMAT := clang-format
-PYTHON       := python3
-RUSTC        := rustc
+CC           		:= gcc
+PANDOC       		:= pandoc
+CLANG_FORMAT 		:= clang-format
+PYTHON       		:= python3
+RUSTC        		:= rustc
+CLANG_TIDY 			:= clang-tidy
+BEAR       			:= bear
 
 ############ User Config
 
-TARGET ?= debug
-ASAN   ?= 0
+TARGET 				?= debug
+PLATFORM 			?=
+CROSS_GOAL 	  ?= all
 
-# NLOG defaults on for release builds and for the python module (either can
-# still be forced off with `make NLOG=0 ...`); debug otherwise defaults off.
+# Default to 1 on release builds 0 on debug builds
 NLOG_DEFAULT := 0
 ifeq ($(TARGET),release)
 NLOG_DEFAULT := 1
 endif
-ifneq (,$(filter python python-package python-test,$(MAKECMDGOALS)))
-NLOG_DEFAULT := 1
-endif
-NLOG ?= $(NLOG_DEFAULT)
 
-# Extra flags a user can inject into any build without editing the Makefile,
-# e.g. `make CFLAGS_USER=-DFOO`. Applied last, after every other CFLAGS_*
-# variable, so it can override them.
-CFLAGS_USER ?=
+ASAN   				?= 0
+NLOG 					?= $(NLOG_DEFAULT)
+CFLAGS_USER 	?=
 
 ############ Output Directories
 
-OUT_DIR  := $(CURDIR)/build/$(TARGET)
-BIN_DIR  := $(OUT_DIR)/target/bin
-LIB_DIR  := $(OUT_DIR)/target/lib
-INC_DIR  := $(OUT_DIR)/target/include
-HTML_DIR := $(OUT_DIR)/target/html
-OBJ_DIR  := $(OUT_DIR)/objs
-SMP_DIR  := $(OUT_DIR)/target/samples
+CROSS_SUFFIX := $(if $(PLATFORM),-$(PLATFORM))
+OUT_DIR  		 := $(CURDIR)/build/$(TARGET)$(CROSS_SUFFIX)
 
-PY_OUT_DIR    := $(CURDIR)/build/python
+# Not included in the output
+OBJ_DIR  		 := $(OUT_DIR)/objs
+
+# Included in the output
+BIN_DIR  		 := $(OUT_DIR)/target/bin
+LIB_DIR  		 := $(OUT_DIR)/target/lib
+INC_DIR  		 := $(OUT_DIR)/target/include
+HTML_DIR 		 := $(OUT_DIR)/target/html
+SMP_DIR  		 := $(OUT_DIR)/target/samples
+
+# Python directory
+PY_OUT_DIR    := $(CURDIR)/build/python$(CROSS_SUFFIX)
 PY_TARGET_DIR := $(PY_OUT_DIR)/target
 PY_OBJ_DIR    := $(PY_OUT_DIR)/objs
 
 ############ C Flags
-#
-# Flags are split by where they apply, then combined into CFLAGS below:
-#   CFLAGS_COMMON  - always applied, regardless of TARGET/ASAN/NLOG
-#   CFLAGS_DEBUG   - only when TARGET=debug
-#   CFLAGS_RELEASE - only when TARGET=release
-#   CFLAGS_ASAN    - only when ASAN=1 (layers on top of either TARGET)
-#   CFLAGS_NLOG    - only when NLOG=1 (layers on top of either TARGET)
-#   CFLAGS_USER    - user-supplied, applied last so it can override the rest
 
-# -MMD -MP makes gcc emit a per-object .d file
-# listing every header it actually pulled in; see the `-include` of those
-# files near the bottom of this Makefile.
+# Common Flags
 CFLAGS_COMMON :=
 CFLAGS_COMMON += -MMD
 CFLAGS_COMMON += -MP
 CFLAGS_COMMON += -Wall
 CFLAGS_COMMON += -Wextra
+# CFLAGS_COMMON += -Werror
 CFLAGS_COMMON += -I$(CURDIR)/src
-CFLAGS_COMMON += -Wno-unused-parameter
-CFLAGS_COMMON += -Wno-unused-variable
-CFLAGS_COMMON += -Wno-unused-but-set-variable
 
+# Debug flags
 CFLAGS_DEBUG :=
 CFLAGS_DEBUG += -DTESTING
 CFLAGS_DEBUG += -g
 
+# Release flags
 CFLAGS_RELEASE :=
 CFLAGS_RELEASE += -DNDEBUG
 CFLAGS_RELEASE += -O3
 
+# Asan flags
 CFLAGS_ASAN :=
 CFLAGS_ASAN += -g
 CFLAGS_ASAN += -fsanitize=address,undefined
 CFLAGS_ASAN += -fno-omit-frame-pointer
 
+# No Logs
 CFLAGS_NLOG := -DNLOG
 
+# Combine all of them
 ifeq ($(TARGET),release)
 CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_RELEASE)
 else ifeq ($(TARGET),debug)
@@ -87,68 +83,31 @@ else
     $(error Invalid TARGET '$(TARGET)' - must be 'debug' or 'release')
 endif
 
+# Address sanitizer
 ifeq ($(ASAN),1)
 CFLAGS += $(CFLAGS_ASAN)
 endif
 
+# No logs
 ifeq ($(NLOG),1)
 CFLAGS += $(CFLAGS_NLOG)
 endif
 
+# Add user flags
 CFLAGS += $(CFLAGS_USER)
 
 ############ Rust Flags
 
 RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
-############ Python Flags
-#
-# CFLAGS_PYTHON - flags needed to *compile* against Python/numpy headers
-# PY_LDFLAGS    - flags needed to *link* a Python extension module (must come
-#                 after the object files on the command line so the linker
-#                 can resolve symbols against them correctly)
-#
-# Combined into PY_CFLAGS below, same pattern as CFLAGS above: CFLAGS_NLOG
-# layers in when NLOG=1, and CFLAGS_USER is applied last.
-
-ifneq (,$(filter python,$(MAKECMDGOALS)))
-CFLAGS_PYTHON := $(shell $(PYTHON)-config --includes)
-CFLAGS_PYTHON += -MMD
-CFLAGS_PYTHON += -MP
-CFLAGS_PYTHON += -fPIC
-CFLAGS_PYTHON += -DNDEBUG
-CFLAGS_PYTHON += -I$(CURDIR)/src
-CFLAGS_PYTHON += -I$(CURDIR)/src/numstore
-CFLAGS_PYTHON += -I$(shell \
-	$(PYTHON) -c "import numpy; print(numpy.get_include())" \
-)
-
-PY_CFLAGS := $(CFLAGS_PYTHON)
-ifeq ($(NLOG),1)
-PY_CFLAGS += $(CFLAGS_NLOG)
-endif
-PY_CFLAGS += $(CFLAGS_USER)
-
-PY_LDFLAGS := -shared
-PY_LDFLAGS += $(shell \
-	$(PYTHON)-config --ldflags --embed 2>/dev/null || $(PYTHON)-config --ldflags \
-)
-
-PY_SOABI     := $(shell \
-	$(PYTHON) -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX'))" \
-)
-TARGET_PYLIB := $(PY_TARGET_DIR)/_pynumstore$(PY_SOABI)
-endif
-
 ############ Accumulators - each module.mk appends to these
 
-ALL_SRCS    :=
-ALL_BINS    :=
-ALL_HEADERS :=
-ALL_SAMPLES :=
-ALL_PYSRCS  :=
+TARGET_LIB := $(LIB_DIR)/libnumstore.a
+LIBNS_SRCS    :=
+ALL_PYSRCS  	:=
+ALL 					:= $(TARGET_LIB)
 
-# Accumulate all modules
+# Each module appends to these lists
 include src/core/module.mk
 include src/nscore/module.mk
 include src/numstore/module.mk
@@ -160,37 +119,48 @@ else ifeq ($(ASAN),1)
 include src/tests/module.mk
 endif
 
-# Objects for the static library (built from ALL_SRCS, plain CFLAGS)
-ALL_OBJS := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(ALL_SRCS))
+# Derived from sources above
+LIBNS_OBJS := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(LIBNS_SRCS))
 
-# PIC objects for the Python extension: the core sources must be recompiled
-# with -fPIC before they can be linked into a shared object
-ALL_PIC_OBJS := $(patsubst src/%.c,$(PY_OBJ_DIR)/%.o,$(ALL_SRCS))
-ALL_PYOBJS   := $(patsubst %.c,$(PY_OBJ_DIR)/%.o,$(ALL_PYSRCS))
+# Default target
+.DEFAULT_GOAL := all
+
+############ Python Flags
+
+PY_SOURCES_FILE := bindings/python/sources.txt
+
+$(PY_SOURCES_FILE): $(LIBNS_SRCS) $(ALL_PYSRCS)
+	@rm -f $@
+	@echo "# IGNORE: Sources for pynumstore" >> $@
+	@echo "# IGNORE: Generate with make python-sources" >> $@
+	@for f in $(LIBNS_SRCS); do echo "../../$$f" >> $@; done
+	@for f in $(ALL_PYSRCS); do echo "../../$$f" >> $@; done
+
+.PHONY: python-sources
+python-sources: $(PY_SOURCES_FILE) $(PY_HEADERS_FILE)
+
+python-package: python-sources | $(PY_TARGET_DIR)
+	PYNUMSTORE_BUILD_BASE=$(PY_OBJ_DIR) \
+		$(PYTHON) -m build $(CURDIR)/bindings/python \
+			--wheel \
+			--no-isolation \
+			--outdir $(PY_TARGET_DIR)
+
+python-test: python-package
+	$(PYTHON) -m pip install --force-reinstall --no-build-isolation $(PY_TARGET_DIR)/pynumstore-*.whl
+	$(PYTHON) -m pip install pytest
+	$(PYTHON) -m pytest $(CURDIR)/bindings/python/tests
 
 ############ Targets
 
-TARGET_LIB := $(LIB_DIR)/libnumstore.a
-
 $(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "  CC       $< -> $(patsubst $(CURDIR)/%,%,$@)"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
-$(TARGET_LIB): $(ALL_OBJS) | $(LIB_DIR)
-	$(AR) rcs $@ $(ALL_OBJS)
-
-ifneq (,$(filter python,$(MAKECMDGOALS)))
-$(PY_OBJ_DIR)/%.o: src/%.c | $(PY_OBJ_DIR)
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -fPIC -c $< -o $@
-
-$(PY_OBJ_DIR)/bindings/python/%.o: bindings/python/%.c | $(PY_OBJ_DIR)
-	@mkdir -p $(dir $@)
-	$(CC) $(PY_CFLAGS) -c $< -o $@
-
-$(TARGET_PYLIB): $(ALL_PIC_OBJS) $(ALL_PYOBJS) | $(PY_TARGET_DIR)
-	$(CC) $(PY_CFLAGS) -o $@ $(ALL_PIC_OBJS) $(ALL_PYOBJS) $(PY_LDFLAGS)
-endif
+$(TARGET_LIB): $(LIBNS_OBJS) | $(LIB_DIR)
+	@echo "  AR       $(patsubst $(CURDIR)/%,%,$(TARGET_LIB)) ($(words $(LIBNS_OBJS)) objs)"
+	@$(AR) rcs $@ $(LIBNS_OBJS)
 
 ############ Docs
 
@@ -218,34 +188,12 @@ HTML_OUTPUTS := $(patsubst docs/%.md,$(HTML_DIR)/%.html,$(MD_FILES))
 endif
 
 $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
-	mkdir -p $(dir $@)
-	$(PANDOC) $(PANDOC_ARGS) --output $@ $<
+	@mkdir -p $(dir $@)
+	$(PANDOC) $(PANDOC_ARGS) --output $@ $
 
 ############ Default target
-#
-# make                  - debug numstore library and binaries
-# make TARGET=release   - release numstore library and binaries
-# make ASAN=1           - layer AddressSanitizer/UBSan on top of either
-#                         TARGET; unit tests are included whenever ASAN=1,
-#                         even under TARGET=release
-# make NLOG=0/1         - strip logging (-DNLOG); on by default for
-#                         TARGET=release and for python/python-package/
-#                         python-test, off by default otherwise
-# make CFLAGS_USER=...  - append extra, user-defined flags to any build
-# make docs             - build docs
-# make python           - build the raw _pynumstore extension module
-# make python-package   - build the installable pynumstore wheel
-# make python-test      - build the wheel, install it, and run the pytest suite
-# make release-package-windows-cross
-#                       - cross-compile the release package for Windows from
-#                         Linux using mingw-w64 (CC/AR overridden by caller);
-#                         add WINE=wine64 to also run unit_tests.exe under Wine
 
 .PHONY: all clean format docs python python-package python-test
-
-.DEFAULT_GOAL := all
-
-ALL := $(TARGET_LIB) $(ALL_BINS) $(ALL_HEADERS) $(ALL_SAMPLES)
 
 all: $(ALL)
 
@@ -253,65 +201,92 @@ docs: $(HTML_OUTPUTS)
 
 python: $(TARGET_PYLIB)
 
-python-package:
-	$(PYTHON) -m pip wheel $(CURDIR)/bindings/python --no-deps -w $(PY_TARGET_DIR)
-
-python-test: python-package
-	$(PYTHON) -m pip install --force-reinstall $(PY_TARGET_DIR)/pynumstore-*.whl
-	$(PYTHON) -m pip install pytest
-	$(PYTHON) -m pytest $(CURDIR)/bindings/python/tests
-
 ############ Directories
 
-$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(PY_TARGET_DIR) $(PY_OBJ_DIR):
-	mkdir -p $@
+$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(PY_TARGET_DIR) $(PY_OBJ_DIR): 
+	@mkdir -p $@
 
 ############ Package Management
 
 release-package:
-	$(MAKE) TARGET=debug clean
+	$(MAKE) clean
 	$(MAKE) TARGET=debug
 	./build/debug/target/bin/unit_tests
-	$(MAKE) TARGET=release clean
 	$(MAKE) TARGET=release
 	cp docs/release_docs.md build/release/target/README.md
-	$(MAKE) python-test
-	mkdir -p build/release/target/python
-	cp $(PY_TARGET_DIR)/pynumstore-*.whl build/release/target/python/
 	tar -czf build/release.tar.gz -C build/release target
 	cd build/release && zip -r ../release.zip target
 
-# Cross-compiles the C library/binaries for Windows from Linux (see
-# docker/windows-x64.Dockerfile) by pointing CC/AR at the mingw-w64
-# toolchain, e.g.:
-#   make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar \
-#        WINE=wine64 release-package-windows-cross
-# WINE is optional: leave it unset to just prove the cross build compiles/
-# links. Set it to run unit_tests.exe under Wine -- it's copied to a scratch
-# dir first and run from there rather than in place, since running it
-# straight out of a bind-mounted source tree is flaky (WAL/db fixture files
-# racing against the host filesystem bridge). Skips the Python extension
-# either way, since that would need Windows Python headers/import libs to
-# cross-compile against.
-release-package-windows-cross:
-	$(MAKE) TARGET=debug clean
-	$(MAKE) TARGET=debug
-	@if [ -n "$(WINE)" ]; then \
-		rundir=$$(mktemp -d) && \
-		cp build/debug/target/bin/unit_tests.exe $$rundir/ && \
-		(cd $$rundir && $(WINE) unit_tests.exe) && \
-		rm -rf $$rundir; \
-	fi
-	$(MAKE) TARGET=release clean
-	$(MAKE) TARGET=release
-	cp docs/release_docs.md build/release/target/README.md
-	tar -czf build/release.tar.gz -C build/release target
-	cd build/release && zip -r ../release.zip target
+############ Cross-compilation via dockcross
+# Examples:
+# 	make cross PLATFORM=windows-static-x64
+# 	make cross PLATFORM=windows-static-x64 CROSS_GOAL=release-package-windows-cross
+# 	make cross PLATFORM=linux-arm64 CROSS_GOAL="TARGET=release all"
+
+docker/dockcross-%: 
+	@echo "  DOCKCROSS $*"
+	@docker run --rm dockcross/$* > $@
+	@chmod u+x $@
+
+ifneq ($(filter cross,$(MAKECMDGOALS)),)
+ifeq ($(PLATFORM),)
+$(error PLATFORM is required, e.g. make cross PLATFORM=windows-static-x64)
+endif
+endif
+
+.PHONY: cross
+cross: docker/dockcross-$(PLATFORM)
+	./$< bash -c 'make $(CROSS_GOAL) PLATFORM=$(PLATFORM) CC=$$CC AR=$$AR'
+
+# Just a list of platforms to try
+PACKAGE_PLATFORMS := \
+	windows-static-x64 \
+	windows-static-x86 \
+	linux-x64 \
+	linux-x86 \
+	linux-arm64 \
+	linux-armv6 \
+	linux-armv7a \
+	manylinux2014-x64 \
+	manylinux2014-x86
+
+.PHONY: package-release-all-platforms
+package-release-all-platforms:
+	@for p in $(PACKAGE_PLATFORMS); do \
+		echo "  RELEASE  $$p"; \
+		$(MAKE) cross PLATFORM=$$p CROSS_GOAL=release-package-windows-cross || exit 1; \
+	done
+	@echo "  DONE     built $(words $(PACKAGE_PLATFORMS)) platform(s):"
+	@for p in $(PACKAGE_PLATFORMS); do echo "             - build/release-$$p"; done
+
+############ Housekeeping
+
+compile_commands.json:
+	@echo "  BEAR     compile_commands.json"
+	@$(BEAR) -- $(MAKE) TARGET=debug clean all > /dev/null
+
+.PHONY: lint
+lint: compile_commands.json
+	@echo "  TIDY     $(words $(LIBNS_SRCS))"
+	$(CLANG_TIDY) -p . $(LIBNS_SRCS)
+
+.PHONY: lint-fix
+lint-fix: compile_commands.json
+	@echo "  TIDY-FIX $(words $(LIBNS_SRCS)) files"
+	@$(CLANG_TIDY) -p . --fix --fix-errors $(LIBNS_SRCS)
 
 ############ Housekeeping
 
 clean:
-	rm -rf $(OUT_DIR) $(PY_OUT_DIR)
+	rm -rf build
+	rm -rf bindings/python/build bindings/python/dist
+	rm -rf bindings/python/*.egg-info bindings/python/src/*.egg-info
+	rm -rf bindings/python/.pytest_cache
+	find bindings/python -type d -name __pycache__ -prune -exec rm -rf {} +
+	rm -f *.wal 
+	rm -f *test*
+	rm -f *sample*
+	rm -f *.db
 
 format:
 	find src bindings -type f \( -name '*.c' -o -name '*.h' \) -print0 \
@@ -319,6 +294,5 @@ format:
 
 ############ Header dependencies
 
--include $(ALL_OBJS:.o=.d)
--include $(ALL_PIC_OBJS:.o=.d)
+-include $(LIBNS_OBJS:.o=.d)
 -include $(ALL_PYOBJS:.o=.d)

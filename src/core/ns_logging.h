@@ -100,7 +100,7 @@ void i_log_flush (void);
  * SUBSECTION: Wrappers
  *----------------------------------------------------------------------------*/
 
-#if defined(NLOG)
+#ifdef NLOG
 #  define SHOULD_LOG_AT(lvl) 0
 #else
 #  define SHOULD_LOG_AT(lvl) ((I_LOG_LEVEL) >= (lvl))

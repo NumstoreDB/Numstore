@@ -52,7 +52,7 @@ struct arena_alloc
 };
 
 void arena_alloc_create_default (struct arena_alloc *dest);
-void *chunk_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e);
+void *chunk_malloc (struct arena_alloc *ca, u32 req, u32 size, error *e);
 void arena_alloc_free_all (struct arena_alloc *ca);
 
 #endif

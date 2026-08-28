@@ -40,7 +40,7 @@ struct in_pair
     .pg = (_pg), .key = (_key), \
   }
 
-#define in_pair_is_empty(o) (o.pg == PGNO_NULL)
+#define in_pair_is_empty(o) ((o).pg == PGNO_NULL)
 
 struct three_in_pair
 {
@@ -69,7 +69,7 @@ struct in_data
 #define IN_LEAF_OFST ((p_size)(IN_NLEN_OFST + sizeof (p_size)))
 
 _Static_assert (
-    NS_PAGE_SIZE > IN_LEAF_OFST + 5 * sizeof (b_size) + 6 * sizeof (pgno),
+    NS_PAGE_SIZE > IN_LEAF_OFST + (5 * sizeof (b_size)) + (6 * sizeof (pgno)),
     "Inner Node: NS_PAGE_SIZE must be > IN_LEAF_OFST plus at least 5 keys"
 );
 
@@ -190,12 +190,13 @@ HEADER_FUNC pgno
 in_get_leaf (const page *in, const p_size idx)
 {
   const p_size n = in_get_len (in);
+  (void)n; // Unused in release
   ASSERT (idx < n);
 
   pgno      leaf;
 
   const u8 *head = in_get_leafs_imut (in);
-  memcpy (&leaf, head + idx * sizeof (pgno), sizeof (leaf));
+  memcpy (&leaf, head + (idx * sizeof (pgno)), sizeof (leaf));
 
   return leaf;
 }
@@ -216,7 +217,7 @@ HEADER_FUNC bool
 in_is_root (const page *in)
 {
   DBG_ASSERT (inner_node, in);
-  return in_get_next (in) == PGNO_NULL && in_get_prev (in) == PGNO_NULL;
+  return (in_get_next (in) == PGNO_NULL && in_get_prev (in) == PGNO_NULL) != 0;
 }
 
 // Shorthands

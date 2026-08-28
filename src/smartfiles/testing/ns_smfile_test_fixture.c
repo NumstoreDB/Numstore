@@ -32,30 +32,35 @@
 static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
 {
+  (void)e; // Unused
   return smfile_insert (ctx, NULL, src, ofst, slen);
 }
 
 static i64
 smfile_read_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
+  (void)e; // Unused
   return smfile_read (ctx, NULL, dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
 smfile_write_func (void *ctx, struct stride str, u32 size, const void *src, error *e)
 {
+  (void)e; // Unused
   return smfile_write (ctx, NULL, src, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
 smfile_remove_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
+  (void)e; // Unused
   return smfile_remove (ctx, NULL, dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
 smfile_get_len_func (void *ctx, error *e)
 {
+  (void)e; // Unused
   return smfile_size (ctx, NULL);
 }
 

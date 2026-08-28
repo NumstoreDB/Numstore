@@ -541,6 +541,7 @@ posix_thread_create (
 static err_t
 posix_thread_join (i_threading *t, i_thread *th, error *e)
 {
+  (void)e; // Unused
   (void)t;
   ASSERT (th);
 

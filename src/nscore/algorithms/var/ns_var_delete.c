@@ -138,9 +138,9 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   return error_trace (e);
 
 failed:
-  pgr_cancel_if_exists (params.p, &prev);
-  pgr_cancel_if_exists (params.p, &cur);
-  pgr_cancel_if_exists (params.p, &ovnext);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&cur);
+  pgr_cancel_if_exists (&ovnext);
 
   return error_trace (e);
 }

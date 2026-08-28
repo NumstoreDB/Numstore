@@ -65,7 +65,7 @@ f32 randf (void); // [0, 1]
 void rand_bytes (void *dest, u32 len);
 #define decl_rand_buffer(name, type, len) \
   type name[len];                         \
-  rand_bytes (name, sizeof (type) * len);
+  rand_bytes (name, sizeof (type) * (len));
 
 /******************************************************************************
  * SECTION: Parsing and numeric truncation
@@ -91,38 +91,38 @@ i32 py_mod_i32 (i32 num, i32 denom);
 #define arr_range(arr)                       \
   do {                                       \
     for (u32 i = 0; i < arrlen (arr); ++i) { \
-      arr[i] = i;                            \
+      (arr)[i] = i;                          \
     }                                        \
   }                                          \
   while (0)
 
-#define ptr_range(arr, size)            \
-  do {                                  \
-    for (u32 _i = 0; _i < size; ++_i) { \
-      arr[_i] = _i;                     \
-    }                                   \
-  }                                     \
+#define ptr_range(arr, size)              \
+  do {                                    \
+    for (u32 _i = 0; _i < (size); ++_i) { \
+      (arr)[_i] = _i;                     \
+    }                                     \
+  }                                       \
   while (0)
 
 #define u32_arr_rand(arr)                    \
   do {                                       \
     for (u32 i = 0; i < arrlen (arr); ++i) { \
-      arr[i] = randu32 ();                   \
+      (arr)[i] = randu32 ();                 \
     }                                        \
   }                                          \
   while (0)
 
-#define arr_contains(arr, len, val, ret)     \
-  do {                                       \
-    ret = false;                             \
-    for (u32 ___i = 0; ___i < len; ++___i) { \
-      if (arr[___i] == val) {                \
-        ret = arr[___i];                     \
-        ret = true;                          \
-        break;                               \
-      }                                      \
-    }                                        \
-  }                                          \
+#define arr_contains(arr, len, val, ret)       \
+  do {                                         \
+    (ret) = false;                             \
+    for (u32 ___i = 0; ___i < (len); ++___i) { \
+      if ((arr)[___i] == (val)) {              \
+        (ret) = (arr)[___i];                   \
+        (ret) = true;                          \
+        break;                                 \
+      }                                        \
+    }                                          \
+  }                                            \
   while (0)
 
 float f16_to_f32 (u16 h);

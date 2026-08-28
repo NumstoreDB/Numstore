@@ -48,19 +48,19 @@ typedef struct
 
 typedef err_t (*isvalid_func) (void *ctx, error *e);
 
-#define SUCCESS                        0  // Operation completed successfully.
-#define ERR_IO                         -1 // Generic I/O error (read, write, or fsync failure).
-#define ERR_NOMEM                      -2 // Memory allocation failed.
-#define ERR_ARITH                      -3 // Integer arithmetic overflow detected.
-#define ERR_CORRUPT                    -4 // Corrupted data - user might've tampered with something
-#define ERR_INVALID_ARGUMENT           -5 // User provided an invalid argument
-#define ERR_PG_OUT_OF_RANGE            -6
-#define ERR_SYNTAX                     -7
-#define ERR_INTERP                     -8
-#define ERR_RPTREE_PAGE_STACK_OVERFLOW -9
-#define ERR_DUPLICATE_VARIABLE         -10
-#define ERR_VARIABLE_NE                -11
-#define ERR_DUPLICATE_COMMIT           -12
+#define SUCCESS              0    // Operation completed successfully.
+#define ERR_IO               (-1) // Generic I/O error (read, write, or fsync failure).
+#define ERR_NOMEM            (-2) // Memory allocation failed.
+#define ERR_ARITH            (-3) // Integer arithmetic overflow detected.
+#define ERR_CORRUPT          (-4) // Corrupted data - user might've tampered with something
+#define ERR_INVALID_ARGUMENT (-5) // User provided an invalid argument
+#define ERR_PG_OUT_OF_RANGE  (-6)
+#define ERR_SYNTAX           (-7)
+#define ERR_INTERP           (-8)
+#define ERR_RPTREE_PAGE_STACK_OVERFLOW (-9)
+#define ERR_DUPLICATE_VARIABLE         (-10)
+#define ERR_VARIABLE_NE                (-11)
+#define ERR_DUPLICATE_COMMIT           (-12)
 
 error error_create (void);
 void error_silence (error *e);

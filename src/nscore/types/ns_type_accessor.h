@@ -73,7 +73,7 @@ struct type_accessor
   };
 };
 
-bool type_accessor_equal (const struct type_accessor left, const struct type_accessor right);
+bool type_accessor_equal (struct type_accessor left, struct type_accessor right);
 struct type *ta_subtype (
     struct type          *reftype,
     struct type_accessor *ta,

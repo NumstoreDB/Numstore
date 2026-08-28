@@ -235,10 +235,8 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
     goto theend;
   }
 
-  if (d->isvalid) {
-    if (d->isvalid (d->sut.ctx, e)) {
-      goto theend;
-    }
+  if ((d->isvalid) && (d->isvalid (d->sut.ctx, e))) {
+    goto theend;
   }
 
 theend:
@@ -325,10 +323,8 @@ dvalidtr_write (
     goto theend;
   }
 
-  if (d->isvalid) {
-    if (d->isvalid (d->sut.ctx, e)) {
-      goto theend;
-    }
+  if ((d->isvalid) && (d->isvalid (d->sut.ctx, e))) {
+    goto theend;
   }
 
 theend:
@@ -430,10 +426,8 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     goto theend;
   }
 
-  if (d->isvalid) {
-    if (d->isvalid (d->sut.ctx, e)) {
-      goto theend;
-    }
+  if ((d->isvalid) && (d->isvalid (d->sut.ctx, e))) {
+    goto theend;
   }
 
 theend:
@@ -512,7 +506,7 @@ dvalidtr_random_test (
 
     const u64           start   = len > 0 ? randu32r (0, (u32)len - 1) : 0;
     const u64           stride  = randu32r (1, 8);
-    const u32           max_n   = len > 0 ? ((u32)len - 1 - start) / stride + 1 : 0;
+    const u32           max_n   = len > 0 ? (((u32)len - 1 - start) / stride) + 1 : 0;
     const u64           nelems  = max_n > 0 ? randu32r (1, MIN (max_n, max_insert)) : 0;
     const u32           ninsert = randu32r (1, (u32)max_insert);
 

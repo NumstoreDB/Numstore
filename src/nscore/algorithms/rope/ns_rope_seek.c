@@ -101,7 +101,7 @@ ns_seek (struct ns_seek_params *a, error *e)
 
         // Append a->pg to the stack
         if (a->save_stack) {
-          a->pstack[(a->sp)++] = (struct seek_v){
+          a->pstack[a->sp++] = (struct seek_v){
               .pg   = page_h_xfer_ownership (&a->pg),
               .lidx = a->lidx,
           };
@@ -130,10 +130,10 @@ ns_seek (struct ns_seek_params *a, error *e)
 
 failed:
   // Release used pages
-  pgr_cancel_if_exists (a->p, &a->pg);
-  pgr_cancel_if_exists (a->p, &next);
+  pgr_cancel_if_exists (&a->pg);
+  pgr_cancel_if_exists (&next);
   for (u32 i = 0; i < a->sp; ++i) {
-    pgr_cancel_if_exists (a->p, &a->pstack[i].pg);
+    pgr_cancel_if_exists (&a->pstack[i].pg);
   }
   a->sp = 0;
   return error_trace (e);

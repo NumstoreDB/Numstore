@@ -92,9 +92,9 @@
  */
 enum
 {
-  PW_ACCESS  = 1u << 0,
-  PW_PRESENT = 1u << 2,
-  PW_X       = 1u << 3,
+  PW_ACCESS  = 1U << 0,
+  PW_PRESENT = 1U << 2,
+  PW_X       = 1U << 3,
 };
 
 /**
@@ -108,8 +108,8 @@ enum
  */
 enum
 {
-  PGR_ISNEW        = 1u << 0,
-  PGR_ISRESTARTING = 1u << 1,
+  PGR_ISNEW        = 1U << 0,
+  PGR_ISRESTARTING = 1U << 1,
 };
 
 /*-----------------------------------------------------------------------------
@@ -138,11 +138,11 @@ enum
  * LSN.
  *----------------------------------------------------------------------------*/
 
-#define PAGE_HEADER_LEN                   \
-  sizeof (u32) +     /* checksum(lsn0) */ \
-      sizeof (lsn) + /* lsn0 */           \
-      sizeof (u32) + /* checksum(lsn1) */ \
-      sizeof (lsn)   /* lsn1 */
+#define PAGE_HEADER_LEN                \
+  (sizeof (u32) + /* checksum(lsn0) */ \
+   sizeof (lsn) + /* lsn0 */           \
+   sizeof (u32) + /* checksum(lsn1) */ \
+   sizeof (lsn))  /* lsn1 */
 
 struct pager_header
 {
@@ -365,7 +365,7 @@ err_t pgr_release_with_log (
     error                   *e
 );
 
-void pgr_cancel (const struct pager *p, page_h *h);
+void pgr_cancel (page_h *h);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: ARIES Recovery
@@ -435,9 +435,8 @@ pgr_get_maybe_writable (
 {
   if (!writable) {
     return pgr_get (dest, flags, pg, p, e);
-  } else {
-    return pgr_get_writable (dest, tx, flags, pg, p, e);
   }
+  return pgr_get_writable (dest, tx, flags, pg, p, e);
 }
 
 HEADER_FUNC err_t
@@ -522,13 +521,13 @@ pgr_evict_all_pages (struct pager *p, error *e)
 }
 
 HEADER_FUNC void
-pgr_cancel_if_exists (struct pager *p, page_h *h)
+pgr_cancel_if_exists (page_h *h)
 {
   if (h->mode == PHM_NONE) {
     return;
   }
 
-  pgr_cancel (p, h);
+  pgr_cancel (h);
 }
 
 HEADER_FUNC err_t

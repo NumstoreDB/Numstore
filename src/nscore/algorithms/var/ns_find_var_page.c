@@ -17,8 +17,6 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
-#include "core/testing/ns_testing.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms_internal.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
@@ -27,6 +25,11 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/testing/ns_page_fixture.h"
 #include "nscore/types/ns_variables.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#  include "nscore/algorithms/var/ns_var_algorithms.h"
+#endif
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -54,9 +57,8 @@ err_var_doesnt_exist (const struct string vname, error *e)
 {
   if (vname.len > 10) {
     return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s... doesn't exist", 7, vname.data);
-  } else {
-    return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s doesn't exist", vname.len, vname.data);
   }
+  return error_causef (e, ERR_VARIABLE_NE, "Variable: %.*s doesn't exist", vname.len, vname.data);
 }
 
 /**
@@ -78,15 +80,14 @@ err_var_already_exists (const struct string vname, error *e)
         7,
         vname.data
     );
-  } else {
-    return error_causef (
-        e,
-        ERR_DUPLICATE_VARIABLE,
-        "Variable: %.*s already exists",
-        vname.len,
-        vname.data
-    );
   }
+  return error_causef (
+      e,
+      ERR_DUPLICATE_VARIABLE,
+      "Variable: %.*s already exists",
+      vname.len,
+      vname.data
+  );
 }
 
 static err_t
@@ -232,7 +233,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
               // Advance
               {
                 // free(prev)
-                if ((pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e))) {
+                if (pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e)) {
                   goto failed;
                 }
 
@@ -254,7 +255,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
         // Normal Advance
         else {
           // free(prev)
-          if ((pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e))) {
+          if (pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e)) {
             goto failed;
           }
 
@@ -262,7 +263,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           prev = page_h_xfer_ownership (&cur);
 
           // cur = cur->next
-          if ((pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e))) {
+          if (pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e)) {
             goto failed;
           }
         }
@@ -301,9 +302,9 @@ foundit:
 failed:
   ALLOC_CLOSE (temp);
 
-  pgr_cancel_if_exists (pms->p, &prev);
-  pgr_cancel_if_exists (pms->p, &cur);
-  pgr_cancel_if_exists (pms->p, &npg);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&cur);
+  pgr_cancel_if_exists (&npg);
 
   return error_trace (e);
 }

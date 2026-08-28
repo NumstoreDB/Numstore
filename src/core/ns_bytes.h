@@ -37,10 +37,10 @@ struct cbytes
   u32       len;
 };
 
-#define bytes_from(buffer)                 \
-  (struct bytes)                           \
-  {                                        \
-    .head = buffer, .len = sizeof (buffer) \
+#define bytes_from(buffer)                   \
+  (struct bytes)                             \
+  {                                          \
+    .head = (buffer), .len = sizeof (buffer) \
   }
 
 #define bytes_null() (struct bytes){.head = NULL, .len = 0}

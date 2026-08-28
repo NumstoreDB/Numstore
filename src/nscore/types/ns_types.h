@@ -109,7 +109,7 @@ struct type *type_movemem (struct type *src, struct allocator *alloc, error *e);
 void type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems);
 err_t type_stream_printer_init (struct stream *s, struct type *t, error *e);
 
-#define _mk_prim(_p) {.type = T_PRIM, .p = _p}
+#define _mk_prim(_p) {.type = T_PRIM, .p = (_p)}
 
 HEADER_FUNC struct type
 mk_prim (enum prim_t p)

@@ -16,7 +16,10 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_string.h"
-#include "core/testing/ns_testing.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <stddef.h>
 
@@ -63,6 +66,7 @@ TEST (tt_tostr)
 {
 #  define TC_TTTOSTR(x)                 \
     const char *x##_str = tt_tostr (x); \
+    (void)x##_str; /* Unused */         \
     i_log_info ("%s\n", x##_str);
   TT_FOREACH (TC_TTTOSTR);
 }

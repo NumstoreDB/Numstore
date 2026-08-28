@@ -15,8 +15,11 @@
 #include "nscore/wal/ns_wal_record.h"
 
 #include "core/ns_numerics.h"
-#include "core/testing/ns_testing.h"
 #include "nscore/txn_table/ns_txn_table.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -354,22 +357,13 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
 {
   switch (src->type) {
     case WL_BEGIN: {
-      return (struct wal_rec_hdr_write){
-          .type  = WL_BEGIN,
-          .begin = src->begin,
-      };
+      return (struct wal_rec_hdr_write){.type = WL_BEGIN, .begin = src->begin};
     }
     case WL_COMMIT: {
-      return (struct wal_rec_hdr_write){
-          .type   = WL_COMMIT,
-          .commit = src->commit,
-      };
+      return (struct wal_rec_hdr_write){.type = WL_COMMIT, .commit = src->commit};
     }
     case WL_END: {
-      return (struct wal_rec_hdr_write){
-          .type = WL_END,
-          .end  = src->end,
-      };
+      return (struct wal_rec_hdr_write){.type = WL_END, .end = src->end};
     }
     case WL_UPDATE: {
       switch (src->update.type) {
@@ -395,7 +389,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
                   .type = WUP_FSM,
                   .tid  = src->update.tid,
                   .prev = src->update.prev,
-                  .fsm  = src->update.fsm,
+                  .fsm  = src->update.fsm
               },
           };
         }
@@ -406,7 +400,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
                   .type = WUP_FEXT,
                   .tid  = src->update.tid,
                   .prev = src->update.prev,
-                  .fext = src->update.fext,
+                  .fext = src->update.fext
               },
           };
         }
@@ -438,7 +432,7 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
                   .tid       = src->clr.tid,
                   .prev      = src->clr.prev,
                   .undo_next = src->clr.undo_next,
-                  .fsm       = src->clr.fsm,
+                  .fsm       = src->clr.fsm
               },
           };
         }
@@ -751,6 +745,9 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
   char        fields[128];
   const char *name = "?";
   const lsn  *prev = NULL;
+
+  (void)l;    // Unused
+  (void)name; // Unused
 
   switch (r->type) {
     case WL_UPDATE:

@@ -18,8 +18,11 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/os/ns_memory.h"
-#include "core/testing/ns_testing.h"
-#include "nscore/page/ns_page.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#  include "nscore/page/ns_page.h"
+#endif
 
 #include <string.h>
 
@@ -1024,11 +1027,10 @@ nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx, error
   if (nupd_observe_right_from (s, pg, lidx, e)) {
     return error_trace (e);
   }
-  if (lidx > 0) {
-    if (nupd_observe_left_from (s, pg, lidx, e)) {
-      return error_trace (e);
-    }
+  if ((lidx > 0) && nupd_observe_left_from (s, pg, lidx, e)) {
+    return error_trace (e);
   }
+
   return SUCCESS;
 }
 
@@ -1464,7 +1466,7 @@ TEST (nupd_done_consuming_right)
 bool
 nupd_done_left (struct node_updates *s)
 {
-  return nupd_done_observing_left (s) && nupd_done_consuming_left (s);
+  return (nupd_done_observing_left (s) && nupd_done_consuming_left (s)) != 0;
 }
 
 #ifdef TESTING
@@ -1518,7 +1520,7 @@ TEST (nupd_done_left)
 bool
 nupd_done_right (struct node_updates *s)
 {
-  return nupd_done_observing_right (s) && nupd_done_consuming_right (s);
+  return (nupd_done_observing_right (s) && nupd_done_consuming_right (s)) != 0;
 }
 
 #ifdef TESTING

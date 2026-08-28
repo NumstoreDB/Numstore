@@ -29,8 +29,6 @@
  * SECTION: Transaction
  ******************************************************************************/
 
-void txn_key_init (struct ns_txn *dest, txid tid);
-
 void
 txn_init (struct ns_txn *dest, const txid tid, const struct ns_txn_data data, struct i_mem mem)
 {
@@ -61,6 +59,7 @@ txn_update_data (struct ns_txn *t, const struct ns_txn_data data)
 void
 txn_update (struct ns_txn *t, enum tx_state state, const lsn last, const lsn undo_next)
 {
+  (void)state; // TODO - I think this needs to be used - fix it
   latch_lock (&t->l);
   t->data = (struct ns_txn_data){
       .state         = TX_CANDIDATE_FOR_UNDO,
@@ -83,9 +82,9 @@ txn_data_equal_unsafe (const struct ns_txn_data *left, const struct ns_txn_data 
 {
   bool equal = true;
 
-  equal      = equal && left->last_lsn == right->last_lsn;
-  equal      = equal && left->undo_next_lsn == right->undo_next_lsn;
-  equal      = equal && left->state == right->state;
+  equal      = ((equal && left->last_lsn == right->last_lsn) != 0);
+  equal      = ((equal && left->undo_next_lsn == right->undo_next_lsn) != 0);
+  equal      = ((equal && left->state == right->state) != 0);
 
   return equal;
 }
@@ -191,6 +190,7 @@ txn_foreach_lock (struct ns_txn *t, const lock_func func, void *ctx)
 static void *
 txn_newlock_test (void *_tx)
 {
+  (void)_tx; // Unused
 #  define MAYBE_ADD_LOCK(type, r)                                            \
     lock = r;                                                                \
     if (txn_newlock (tx, lock, LM_X, &e)) {                                  \
@@ -525,10 +525,8 @@ find_max_undo (struct ns_txn *tx, void *vctx)
 
   latch_lock (&tx->l);
 
-  if (tx->data.state == TX_CANDIDATE_FOR_UNDO) {
-    if ((slsn)tx->data.undo_next_lsn > *max) {
-      *max = tx->data.undo_next_lsn;
-    }
+  if ((tx->data.state == TX_CANDIDATE_FOR_UNDO) && ((slsn)tx->data.undo_next_lsn > *max)) {
+    *max = tx->data.undo_next_lsn;
   }
 
   latch_unlock (&tx->l);
@@ -741,20 +739,19 @@ txn_equals_for_exists (const struct hnode *left, const struct hnode *right)
   }
 
   // Otherwise, passed a key with just relevant information
-  else {
-    struct ns_txn *_left  = container_of (left, struct ns_txn, node);
-    struct ns_txn *_right = container_of (right, struct ns_txn, node);
 
-    latch_lock (&_left->l);
-    latch_lock (&_right->l);
+  struct ns_txn *_left  = container_of (left, struct ns_txn, node);
+  struct ns_txn *_right = container_of (right, struct ns_txn, node);
 
-    bool ret = _left->tid == _right->tid;
+  latch_lock (&_left->l);
+  latch_lock (&_right->l);
 
-    latch_unlock (&_right->l);
-    latch_unlock (&_left->l);
+  bool ret = _left->tid == _right->tid;
 
-    return ret;
-  }
+  latch_unlock (&_right->l);
+  latch_unlock (&_left->l);
+
+  return ret;
 }
 
 bool
@@ -1280,7 +1277,7 @@ static void
 txnt_eq_foreach (struct hnode *node, void *_ctx)
 {
   struct ns_txnt_eq_ctx *ctx = _ctx;
-  if (ctx->ret == false) {
+  if ((int)ctx->ret == false) {
     return;
   }
 
@@ -1306,8 +1303,8 @@ txnt_eq_foreach (struct hnode *node, void *_ctx)
     {
       bool equal = true;
 
-      equal      = equal && tx->data.last_lsn == other_tx->data.last_lsn;
-      equal      = equal && tx->data.undo_next_lsn == other_tx->data.undo_next_lsn;
+      equal      = ((equal && tx->data.last_lsn == other_tx->data.last_lsn) != 0);
+      equal      = ((equal && tx->data.undo_next_lsn == other_tx->data.undo_next_lsn) != 0);
 
       ctx->ret   = equal;
     }

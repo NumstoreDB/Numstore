@@ -15,7 +15,10 @@
 #include "core/ns_byte_accessor.h"
 
 #include "core/ns_csx_assert.h"
-#include "core/testing/ns_testing.h"
+
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <string.h>
 
@@ -42,7 +45,7 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 
       while (i < acc->range.stride.nelems) {
         written +=
-            ba_memcpy_from_recursive (dest + written, src + pos * elem_size, acc->range.sub_ba);
+            ba_memcpy_from_recursive (dest + written, src + (pos * elem_size), acc->range.sub_ba);
 
         pos += acc->range.stride.stride;
         i++;
@@ -361,7 +364,7 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
       u32 read      = 0;
 
       while (pos < acc->range.stride.nelems) {
-        read += ba_memcpy_to_recursive (dest + pos * elem_size, src + read, acc->range.sub_ba);
+        read += ba_memcpy_to_recursive (dest + (pos * elem_size), src + read, acc->range.sub_ba);
         pos += acc->range.stride.stride;
       }
 

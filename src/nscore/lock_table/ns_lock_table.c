@@ -69,6 +69,7 @@ lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
 bool
 get_parent (struct lt_lock *parent, const struct lt_lock lock)
 {
+  (void)parent; // Unused
   switch (lock.type) {
     case LOCK_DB: {
       return false;

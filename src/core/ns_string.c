@@ -233,13 +233,13 @@ string_greater_string (const struct string left, const struct string right)
 bool
 string_less_equal_string (const struct string left, const struct string right)
 {
-  return !string_greater_string (left, right);
+  return (!string_greater_string (left, right)) != 0;
 }
 
 bool
 string_greater_equal_string (const struct string left, const struct string right)
 {
-  return !string_less_string (left, right);
+  return (!string_less_string (left, right)) != 0;
 }
 
 err_t

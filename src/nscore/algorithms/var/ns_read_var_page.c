@@ -51,7 +51,7 @@ ns_read_var_page_advance (struct ns_read_var_page_params *params, error *e)
 
   WRAP (pgr_get_writable (&next, params->tx, PG_VAR_TAIL, npg, params->p, e));
 
-  if ((pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e))) {
+  if (pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)) {
     goto failed;
   }
 
@@ -90,11 +90,9 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   pgno   var_root = page_h_pgno (params->vp);
 
   // Quick check on the length
-  if (params->check) {
-    if (vlen != params->check->len) {
-      params->matches = false;
-      goto theend;
-    }
+  if ((params->check) && (vlen != params->check->len)) {
+    params->matches = false;
+    goto theend;
   }
 
   // Allocate variable name
@@ -144,11 +142,9 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
 
   // Quick termination on string data
-  if (params->check) {
-    if (memcmp (params->check->data, vstr, vlen) != 0) {
-      params->matches = false;
-      goto theend;
-    }
+  if ((params->check) && (memcmp (params->check->data, vstr, vlen) != 0)) {
+    params->matches = false;
+    goto theend;
   }
 
   if (params->save_type) {
@@ -210,10 +206,10 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 theend:
   // Reset back to head page
   if (page_h_pgno (params->vp) != start) {
-    if ((pgr_release (params->p, params->vp, PG_VAR_TAIL, e))) {
+    if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e)) {
       goto failed;
     }
-    if ((pgr_get_maybe_writable (
+    if (pgr_get_maybe_writable (
             params->vp,
             params->tx,
             PG_VAR_PAGE,
@@ -221,7 +217,7 @@ theend:
             params->p,
             writable,
             e
-        ))) {
+        )) {
       goto failed;
     }
   }

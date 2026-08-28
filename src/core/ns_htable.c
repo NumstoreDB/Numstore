@@ -239,11 +239,11 @@ TEST (htable)
 u32
 fnv1a_hash (const struct string s)
 {
-  u32         hash = 2166136261u;
+  u32         hash = 2166136261U;
   const char *str  = s.data;
   for (u32 i = 0; i < s.len; ++i) {
     hash ^= (u8)*str++;
-    hash *= 16777619u;
+    hash *= 16777619U;
   }
   return hash;
 }

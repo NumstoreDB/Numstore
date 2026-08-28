@@ -4,7 +4,7 @@ ROOTS = ["src"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "struct txn" : "struct ns_txn",
+        ".nsdb" : ".db"
 }
 
 for ROOT in ROOTS:

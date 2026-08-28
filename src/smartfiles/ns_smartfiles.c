@@ -379,13 +379,9 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = smf->p,
-        .tx = tx,
-        .retr =
-            (struct var_retrieval){
-                .type = VR_PG,
-                .root = gparams.dest.var_root,
-            },
+        .p      = smf->p,
+        .tx     = tx,
+        .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
         .newpg  = iparams.root,
         .nbytes = gparams.dest.nbytes + ret,
     };
@@ -647,15 +643,11 @@ smfile_remove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p  = smf->p,
-        .tx = tx,
-        .retr =
-            (struct var_retrieval){
-                .type = VR_PG,
-                .root = gparams.dest.var_root,
-            },
+        .p      = smf->p,
+        .tx     = tx,
+        .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
         .newpg  = rparams.root,
-        .nbytes = gparams.dest.nbytes - ret * size,
+        .nbytes = gparams.dest.nbytes - (ret * size),
     };
     WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
@@ -798,7 +790,7 @@ smfile_write (
   if (insert_nelem > 0) {
     // INSERT
     {
-      stream_ibuf_init (&_input, &ctx, (u8 *)src + write_nelem * size, insert_nelem * size);
+      stream_ibuf_init (&_input, &ctx, (u8 *)src + (write_nelem * size), insert_nelem * size);
 
       iparams = (struct ns_insert_params){
           .p     = smf->p,
@@ -816,13 +808,9 @@ smfile_write (
     // UPDATE VARIABLE
     {
       uparams = (struct ns_var_update_params){
-          .p  = smf->p,
-          .tx = tx,
-          .retr =
-              (struct var_retrieval){
-                  .type = VR_PG,
-                  .root = gparams.dest.var_root,
-              },
+          .p      = smf->p,
+          .tx     = tx,
+          .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
           .newpg  = iparams.root,
           .nbytes = gparams.dest.nbytes + inserted,
       };

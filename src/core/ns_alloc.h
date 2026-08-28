@@ -45,12 +45,12 @@ void allocator_free (struct allocator *alloc);
 
 #define ALLOC_INIT(name) \
   struct allocator name; \
-  create_default_allocator (&name)
+  create_default_allocator (&(name))
 
-#define ALLOC_CLOSE(name) allocator_free (&name)
-#define ALLOC_RESET(name) \
-  allocator_free (&name); \
-  create_default_allocator (&name)
+#define ALLOC_CLOSE(name) allocator_free (&(name))
+#define ALLOC_RESET(name)   \
+  allocator_free (&(name)); \
+  create_default_allocator (&(name))
 
 /******************************************************************************
  * SECTION: Builder Pattern
@@ -71,8 +71,8 @@ void builder_free (struct builder *b);
 
 #define BUILDER_INIT(name, alloc) \
   struct builder name;            \
-  builder_init (&name, alloc)
+  builder_init (&(name), alloc)
 
-#define BUILDER_CLOSE(name) builder_free (&name)
+#define BUILDER_CLOSE(name) builder_free (&(name))
 
 #endif // NS_ALLOC_H

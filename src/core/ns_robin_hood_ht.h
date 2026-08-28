@@ -151,6 +151,7 @@ HEADER_FUNC void
 HT_INSERT_EXPECT (HASH_TABLE_T *ht, HDATA_T data)
 {
   const hti_res ret = HT_INSERT (ht, data);
+  (void)ret; // Unused in release
   ASSERT (ret == HTIR_SUCCESS);
 }
 
@@ -204,6 +205,7 @@ HEADER_FUNC void
 HT_GET_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
 {
   const hta_res ret = HT_GET (ht, dest, key);
+  (void)ret; // Unused in release
   ASSERT (ret == HTAR_SUCCESS);
 }
 
@@ -295,6 +297,7 @@ HEADER_FUNC void
 HT_DELETE_EXPECT (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
 {
   const hta_res ret = HT_DELETE (ht, dest, key);
+  (void)ret; // Unused in release
   ASSERT (ret == HTAR_SUCCESS);
 }
 

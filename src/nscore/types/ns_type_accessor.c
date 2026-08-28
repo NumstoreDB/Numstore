@@ -161,15 +161,14 @@ ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocato
         goto failure;
       }
     } else {
-      isarray = isarray || ta->range.dim_accessors[i].present & COLON_PRESENT;
+      isarray = ((isarray || ta->range.dim_accessors[i].present & COLON_PRESENT) != 0);
       struct stride str;
       if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e)) {
         goto failure;
       }
-      if (ta->range.dim_accessors[i].present & COLON_PRESENT) {
-        if (sab_accept_dim (&builder, str.nelems, e)) {
-          goto failure;
-        }
+      if ((ta->range.dim_accessors[i].present & COLON_PRESENT)
+          && (sab_accept_dim (&builder, str.nelems, e))) {
+        goto failure;
       }
     }
   }
@@ -376,8 +375,9 @@ TEST (ta_subtype)
 bool
 user_stride_equal (const struct user_stride *left, const struct user_stride *right)
 {
-  return left->start == right->start && left->step == right->step && left->stop == right->stop
-         && left->present == right->present;
+  return (left->start == right->start && left->step == right->step && left->stop == right->stop
+          && left->present == right->present)
+         != 0;
 }
 
 DEFINE_DBG_ASSERT (struct range_builder, range_builder, s, { ASSERT (s); })

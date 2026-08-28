@@ -202,7 +202,7 @@ ustride (void)
 HEADER_FUNC struct user_stride
 usfrms (const struct stride str)
 {
-  return ustride012 (str.start, str.start + str.stride * str.nelems, str.stride);
+  return ustride012 (str.start, str.start + (str.stride * str.nelems), str.stride);
 }
 
 /*-----------------------------------------------------------------------------

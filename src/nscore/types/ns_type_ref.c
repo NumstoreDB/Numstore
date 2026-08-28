@@ -42,8 +42,9 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
 
   switch (left.type) {
     case TR_TAKE: {
-      return string_equal (left.tk.vname, right.tk.vname)
-             && type_accessor_equal (left.tk.ta, right.tk.ta);
+      return (string_equal (left.tk.vname, right.tk.vname)
+              && type_accessor_equal (left.tk.ta, right.tk.ta))
+             != 0;
     }
 
     case TR_STRUCT: {

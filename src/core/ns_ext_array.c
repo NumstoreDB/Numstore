@@ -96,6 +96,7 @@ ext_array_read (
     error                  *e
 )
 {
+  (void)e; // Unused
   u8 *dest       = _dest;
   u32 total_read = 0;
   u32 bidx       = str.start * size;
@@ -122,6 +123,7 @@ ext_array_write (
     error                  *e
 )
 {
+  (void)e; // Unused
   const u8 *src           = _src;
   u32       total_written = 0;
   u32       bidx          = str.start * size;
@@ -148,6 +150,7 @@ ext_array_remove (
     error              *e
 )
 {
+  (void)e; // Unused
   u8 *dest          = _dest;
   u32 total_removed = 0;
   u32 wpos          = 0;
@@ -157,14 +160,14 @@ ext_array_remove (
   while (rpos * size < r->len) {
     if (total_removed < str.nelems && rpos == next_remove) {
       if (dest) {
-        memcpy (dest, r->data + rpos * size, size);
+        memcpy (dest, r->data + (rpos * size), size);
         dest += size;
       }
       total_removed++;
       next_remove += str.stride;
     } else {
       if (wpos != rpos) {
-        memmove (r->data + wpos * size, r->data + rpos * size, size);
+        memmove (r->data + (wpos * size), r->data + (rpos * size), size);
       }
       wpos++;
     }
@@ -212,6 +215,7 @@ ext_array_remove_func (void *ctx, const struct stride str, const u32 size, void 
 static i64
 ext_array_getlen_func (void *ctx, error *e)
 {
+  (void)e; // Unused
   struct ext_array *arr = ctx;
   return ext_array_get_len (arr);
 }

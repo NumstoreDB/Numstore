@@ -14,18 +14,21 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
-#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/ns_node_updates.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms_internal.h"
 #include "nscore/page/ns_page.h"
-#include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/testing/ns_page_fixture.h"
+
+#ifdef TESTING
+#  include "core/ns_numerics.h"
+#  include "core/os/ns_memory.h"
+#  include "nscore/page/ns_page_data_list.h"
+#endif
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -153,11 +156,11 @@ in_delete_chain (page_h *cur, struct ns_txn *tx, struct pager *p, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (p, cur);
-  pgr_cancel_if_exists (p, &prev);
-  pgr_cancel_if_exists (p, &next);
-  pgr_cancel_if_exists (p, &prev_prev);
-  pgr_cancel_if_exists (p, &next_next);
+  pgr_cancel_if_exists (cur);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&next);
+  pgr_cancel_if_exists (&prev_prev);
+  pgr_cancel_if_exists (&next_next);
 
   return error_trace (e);
 }
@@ -196,8 +199,8 @@ rb_right_to_left (struct ns_rebalance_params *pms, error *e)
   UNREACHABLE (); // LCOV_EXCL_LINE
 
 failed:
-  pgr_cancel_if_exists (pms->p, &prev);
-  pgr_cancel_if_exists (pms->p, &next);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&next);
   return error_trace (e);
 }
 
@@ -274,17 +277,16 @@ rb_left_to_right (struct ns_rebalance_params *pms, error *e)
   in_set_len (page_h_w (&pms->cur), IN_MAX_KEYS);
 
   const pgno npg = in_get_next (page_h_ro (&pms->cur));
-  if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE) {
-    if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e)) {
-      goto failed;
-    }
+  if ((npg != PGNO_NULL && pms->limit.mode == PHM_NONE)
+      && (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e))) {
+    goto failed;
   }
 
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (pms->p, &prev);
-  pgr_cancel_if_exists (pms->p, &next);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&next);
   return error_trace (e);
 }
 
@@ -348,14 +350,14 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         pms->lidx = 0;
 
         continue;
-      } else {
-        // [++++++++----------]
-        //          ^
-        //         lidx
-        // [++++++++__________]
-        in_set_len (page_h_w (&pms->cur), pms->lidx);
-        return rb_right_to_left (pms, e);
       }
+      // [++++++++----------]
+      //          ^
+      //         lidx
+      // [++++++++__________]
+      in_set_len (page_h_w (&pms->cur), pms->lidx);
+      return rb_right_to_left (pms, e);
+
     }
 
     // [+++++++++++_______]
@@ -428,11 +430,11 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
 
         // Shift right
         const pgno npg = in_get_next (page_h_ro (&pms->cur));
-        if (npg != PGNO_NULL && pms->limit.mode == PHM_NONE) {
-          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e)) {
-            goto failed;
-          }
+        if ((npg != PGNO_NULL && pms->limit.mode == PHM_NONE)
+            && (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, npg, pms->p, e))) {
+          goto failed;
         }
+
       }
 
       // [++++++____________]
@@ -482,8 +484,8 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
   }
 
 failed:
-  pgr_cancel_if_exists (pms->p, &next);
-  pgr_cancel_if_exists (pms->p, &next_next);
+  pgr_cancel_if_exists (&next);
+  pgr_cancel_if_exists (&next_next);
   return error_trace (e);
 }
 
@@ -542,15 +544,15 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         pms->lidx = IN_MAX_KEYS;
 
         continue;
-      } else {
-        // [----------++++++++]
-        // ^
-        // lidx
-        // [++++++++__________]
-        in_cut_left (page_h_w (&pms->cur), pms->lidx);
-        pms->lidx = in_get_len (page_h_ro (&pms->cur));
-        return rb_left_to_right (pms, e);
       }
+      // [----------++++++++]
+      // ^
+      // lidx
+      // [++++++++__________]
+      in_cut_left (page_h_w (&pms->cur), pms->lidx);
+      pms->lidx = in_get_len (page_h_ro (&pms->cur));
+      return rb_left_to_right (pms, e);
+
     }
 
     // [_______+++++++++++]
@@ -621,11 +623,11 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
 
         // Shift left
         const pgno ppg = in_get_prev (page_h_ro (&pms->cur));
-        if (ppg != PGNO_NULL && pms->limit.mode == PHM_NONE) {
-          if (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, ppg, pms->p, e)) {
-            goto failed;
-          }
+        if ((ppg != PGNO_NULL && pms->limit.mode == PHM_NONE)
+            && (pgr_get_writable (&pms->limit, pms->tx, PG_INNER_NODE, ppg, pms->p, e))) {
+          goto failed;
         }
+
       }
 
       // [___________+++++++]
@@ -673,25 +675,24 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
   }
 
 failed:
-  pgr_cancel_if_exists (pms->p, &prev);
-  pgr_cancel_if_exists (pms->p, &prev_prev);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&prev_prev);
   return error_trace (e);
 }
 
 static err_t
 ns_pop_stack (struct ns_rebalance_params *pms, error *e)
 {
-  struct seek_v *ref = &pms->pstack[--(pms->sp)];
+  struct seek_v *ref = &pms->pstack[--pms->sp];
 
   struct seek_v  v   = {
       .pg   = page_h_xfer_ownership (&ref->pg),
       .lidx = ref->lidx,
   };
 
-  if (pms->cur.mode != PHM_NONE) {
-    if (pgr_release (pms->p, &pms->cur, PG_INNER_NODE | PG_DATA_LIST, e)) {
-      goto failed;
-    }
+  if ((pms->cur.mode != PHM_NONE)
+      && (pgr_release (pms->p, &pms->cur, PG_INNER_NODE | PG_DATA_LIST, e))) {
+    goto failed;
   }
 
   pms->cur  = page_h_xfer_ownership (&v.pg);
@@ -700,7 +701,7 @@ ns_pop_stack (struct ns_rebalance_params *pms, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (pms->p, &v.pg);
+  pgr_cancel_if_exists (&v.pg);
   return error_trace (e);
 }
 
@@ -795,8 +796,8 @@ ns_rebalance_apply_to_pivot (struct ns_rebalance_params *pms, error *e)
   }
 
 failed:
-  pgr_cancel_if_exists (pms->p, &prev);
-  pgr_cancel_if_exists (pms->p, &next);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&next);
   return error_trace (e);
 }
 
@@ -1153,7 +1154,7 @@ ns_rebalance (struct ns_rebalance_params *pms, error *e)
   }
 
 failed:
-  pgr_cancel_if_exists (pms->p, &pms->cur);
-  pgr_cancel_if_exists (pms->p, &pms->limit);
+  pgr_cancel_if_exists (&pms->cur);
+  pgr_cancel_if_exists (&pms->limit);
   return error_trace (e);
 }

@@ -16,10 +16,13 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_logging.h"
 #include "core/os/ns_threading.h"
-#include "core/os/ns_time.h"
 #include "core/testing/ns_testing.h"
+
+#ifdef TESTING
+#  include "core/ns_logging.h"
+#  include "core/os/ns_time.h"
+#endif
 
 #include <stdint.h>
 #include <string.h>
@@ -692,7 +695,8 @@ periodic_task_init (struct periodic_task *t, error *e)
 
   goto theend;
 
-  default_threading.i_cond_free (&default_threading, &t->done_cond);
+  // Commented this out - I am pretty sure I can - but it was on a whim
+  // default_threading.i_cond_free (&default_threading, &t->done_cond);
 fail_wake_cond:
   default_threading.i_cond_free (&default_threading, &t->wake_cond);
 fail_mutex:

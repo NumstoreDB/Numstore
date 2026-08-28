@@ -33,11 +33,11 @@
  ******************************************************************************/
 
 // Parse optional ':' NUMBER (step)
-static err_t
-parse_us_step (struct parser *base, struct user_stride *s, error *e)
+static void
+parse_us_step (struct parser *base, struct user_stride *s)
 {
   if (!parser_match (base, TT_COLON)) {
-    return SUCCESS;
+    return;
   }
 
   s->present |= COLON_PRESENT;
@@ -48,13 +48,11 @@ parse_us_step (struct parser *base, struct user_stride *s, error *e)
     s->step = num;
     s->present |= STEP_PRESENT;
   }
-
-  return SUCCESS;
 }
 
 // Parse optional NUMBER (stop), then optional ':' NUMBER (step)
-static err_t
-parse_us_stop (struct parser *base, struct user_stride *s, error *e)
+static void
+parse_us_stop (struct parser *base, struct user_stride *s)
 {
   i32 num;
   if (parser_maybe_parse_integer (base, &num)) {
@@ -62,7 +60,7 @@ parse_us_stop (struct parser *base, struct user_stride *s, error *e)
     s->present |= STOP_PRESENT;
   }
 
-  return parse_us_step (base, s, e);
+  parse_us_step (base, s);
 }
 
 err_t
@@ -82,14 +80,14 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
       // start ':' ...
       s.present |= COLON_PRESENT;
       parser_advance (parser);
-      WRAP (parse_us_stop (parser, &s, e));
+      parse_us_stop (parser, &s);
     }
     // else: bare integer â€” single index, nothing more to parse
   } else if (parser_match (parser, TT_COLON)) {
     // No leading integer: ':' ...
     s.present |= COLON_PRESENT;
     parser_advance (parser);
-    WRAP (parse_us_stop (parser, &s, e));
+    parse_us_stop (parser, &s);
   } else {
     return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->pos);
   }

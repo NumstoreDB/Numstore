@@ -58,7 +58,7 @@ u64 i_timer_now_us (i_timer *timer);
 u64 i_timer_now_ms (i_timer *timer);
 f64 i_timer_now_s (i_timer *timer);
 void i_sleep_us (u64 us);
-#define i_sleep_ms(ms) i_sleep_us (1000 * ms)
-#define i_sleep_s(s)   i_sleep_us (1000000 * s)
+#define i_sleep_ms(ms) i_sleep_us (1000 * (ms))
+#define i_sleep_s(s)   i_sleep_us (1000000 * (s))
 
 #endif

@@ -14,7 +14,9 @@
 
 #include "core/ns_cbuffer.h"
 
-#include "core/testing/ns_testing.h"
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 #include <string.h>
 
@@ -30,7 +32,7 @@ cbuffer_create (void *data, const u32 cap)
       .tail   = 0,
       .cap    = cap,
       .data   = data,
-      .isfull = 0,
+      .isfull = false,
   };
   return ret;
 }
@@ -76,7 +78,7 @@ cbuffer_discard_all (struct cbuffer *b)
 
   b->tail   = 0;
   b->head   = 0;
-  b->isfull = 0;
+  b->isfull = false;
 }
 
 struct bytes
@@ -96,12 +98,11 @@ cbuffer_get_next_data_bytes (const struct cbuffer *b)
         .head = &b->data[b->tail],
         .len  = b->head - b->tail,
     };
-  } else {
-    return (struct bytes){
-        .head = &b->data[b->tail],
-        .len  = b->cap - b->tail,
-    };
   }
+  return (struct bytes){
+      .head = &b->data[b->tail],
+      .len  = b->cap - b->tail,
+  };
 }
 
 #ifdef TESTING
@@ -166,12 +167,11 @@ cbuffer_get_next_avail_bytes (const struct cbuffer *b)
         .head = &b->data[b->head],
         .len  = b->cap - b->head,
     };
-  } else {
-    return (struct bytes){
-        .head = &b->data[b->head],
-        .len  = b->tail - b->head,
-    };
   }
+  return (struct bytes){
+      .head = &b->data[b->head],
+      .len  = b->tail - b->head,
+  };
 }
 
 #ifdef TESTING
@@ -433,7 +433,7 @@ cbuffer_read (void *dest, const u32 size, const u32 n, struct cbuffer *b)
     }
     b->tail = (b->tail + next) % b->cap;
     bread += next;
-    b->isfull = 0;
+    b->isfull = false;
   }
 
   ASSERT (ntoread * size == bread);
@@ -500,7 +500,7 @@ cbuffer_copy (void *dest, const u32 size, const u32 n, const struct cbuffer *b)
     }
     tail = (tail + next) % b->cap;
     bread += next;
-    isfull = 0;
+    isfull = false;
   }
 
   ASSERT (ntoread * size == bread);
@@ -581,7 +581,7 @@ cbuffer_write (const void *src, const u32 size, const u32 n, struct cbuffer *b)
     bwrite += next;
 
     if (b->head == b->tail) {
-      b->isfull = 1;
+      b->isfull = true;
     }
   }
 
@@ -866,7 +866,7 @@ cbuffer_write_to_file_2 (struct cbuffer *b, const u32 nwritten)
   b->tail = (b->tail + nwritten) % b->cap;
 
   if (nwritten > 0) {
-    b->isfull = 0;
+    b->isfull = false;
   }
 }
 
@@ -880,10 +880,11 @@ cbuffer_get_no_check (void *dest, const u32 size, const u32 idx, const struct cb
   ASSERT (idx * size < b->cap);
 
   const u32 len = cbuffer_len (b) / size;
+  (void)len;
   ASSERT (idx < len);
 
   if (dest) {
-    const u32 offset = (b->tail + idx * size) % b->cap;
+    const u32 offset = (b->tail + (idx * size)) % b->cap;
 
     if (offset + size <= b->cap) {
       memcpy (dest, b->data + offset, size);

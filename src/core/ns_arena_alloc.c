@@ -293,18 +293,17 @@ arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
   ASSERT (ca->settings.max_chunk_size == 0 || size <= ca->settings.max_chunk_size);
 
   // Check total memory limit
-  if (ca->settings.max_total_size > 0) {
-    if (ca->total_allocated + size > ca->settings.max_total_size) {
-      return error_causef (
-          e,
-          ERR_NOMEM,
-          "alloc %u bytes would exceed %u "
-          "byte limit (%u allocated)",
-          size,
-          ca->settings.max_total_size,
-          ca->total_allocated
-      );
-    }
+  if ((ca->settings.max_total_size > 0)
+      && (ca->total_allocated + size > ca->settings.max_total_size)) {
+    return error_causef (
+        e,
+        ERR_NOMEM,
+        "alloc %u bytes would exceed %u "
+        "byte limit (%u allocated)",
+        size,
+        ca->settings.max_total_size,
+        ca->total_allocated
+    );
   }
 
   // Create chunk

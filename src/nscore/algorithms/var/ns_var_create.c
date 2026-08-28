@@ -74,7 +74,7 @@ ns_var_create (const struct ns_var_create_params params, error *e)
     goto failed;
   }
 
-  if ((pgr_release (params.p, &cur, PG_VAR_PAGE, e))) {
+  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) {
     goto failed;
   }
 
@@ -82,7 +82,7 @@ ns_var_create (const struct ns_var_create_params params, error *e)
 
 failed:
 
-  pgr_cancel_if_exists (params.p, &cur);
+  pgr_cancel_if_exists (&cur);
 
   return error_trace (e);
 }

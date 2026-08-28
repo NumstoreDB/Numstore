@@ -90,7 +90,7 @@ fsm_next_freebit (const page *p, const p_size frombit)
 
     for (p_size bit = 0; bit < 8; ++bit) {
       if ((b >> bit) & 1) {
-        return byte_i * 8 + bit;
+        return (byte_i * 8) + bit;
       }
     }
   }

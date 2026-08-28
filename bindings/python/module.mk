@@ -1,1 +1,9 @@
-ALL_PYSRCS += bindings/python/csrc/pynumstore.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_begin.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_close.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_commit.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_execute.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_ns_to_np.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_open.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_rollback.c
+ALL_PYSRCS += bindings/python/src/c/ns_pyns_type_to_dtype.c
+ALL_PYSRCS += bindings/python/src/c/ns_pynumstore.c

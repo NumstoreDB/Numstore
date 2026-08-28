@@ -157,8 +157,6 @@ TEST (stream_close)
 
 #endif // TESTING
 
-i32 stream_read (struct stream *dest, u32 size, u32 n, struct stream *src, error *e);
-
 i32
 stream_bread (void *dest, const u32 size, const u32 n, struct stream *src, error *e)
 {
@@ -177,6 +175,7 @@ struct test_pull_ctx
 static i32
 test_pull_fn (struct stream *s, void *vctx, void *dest, const u32 size, const u32 n, error *e)
 {
+  (void)e; // Unused
   struct test_pull_ctx *ctx   = (struct test_pull_ctx *)vctx;
 
   const u32             avail = ctx->len - ctx->pos;
@@ -261,6 +260,7 @@ struct test_push_ctx
 static i32
 test_push_fn (struct stream *s, void *vctx, const void *src, const u32 size, const u32 n, error *e)
 {
+  (void)e; // Unused
   struct test_push_ctx *ctx   = (struct test_push_ctx *)vctx;
 
   const u32             avail = ctx->cap - ctx->pos;
@@ -486,6 +486,7 @@ TEST (stream_read)
 static i32
 stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, const u32 n, error *e)
 {
+  (void)e; // Unused
   struct stream_ibuf_ctx *ctx = (struct stream_ibuf_ctx *)vctx;
 
   u32                     avail;
@@ -523,6 +524,7 @@ stream_obuf_push (
     error         *e
 )
 {
+  (void)e; // Unused
   struct stream_obuf_ctx *ctx = (struct stream_obuf_ctx *)vctx;
 
   u32                     avail;
@@ -560,6 +562,7 @@ stream_dyn_obuf_push (
     error         *e
 )
 {
+  (void)s; // Unused
   struct stream_dyn_obuf_ctx *ctx  = (struct stream_dyn_obuf_ctx *)vctx;
 
   // Minimum available space

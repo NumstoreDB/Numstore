@@ -135,7 +135,7 @@ HEADER_FUNC bool
 dl_is_root (const page *p)
 {
   DBG_ASSERT (data_list, p);
-  return dl_get_next (p) == PGNO_NULL && dl_get_prev (p) == PGNO_NULL;
+  return (dl_get_next (p) == PGNO_NULL && dl_get_prev (p) == PGNO_NULL) != 0;
 }
 
 // Shorthands

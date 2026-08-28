@@ -51,9 +51,8 @@ ns_update_by_id (struct ns_var_update_params params, error *e)
 failed:
   if (error_trace (e)) {
     return error_trace (e);
-  } else {
-    return SUCCESS;
   }
+  return SUCCESS;
 }
 
 /*
@@ -94,7 +93,7 @@ ns_update_by_name (struct ns_var_update_params params, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (params.p, &cur);
+  pgr_cancel_if_exists (&cur);
   return error_trace (e);
 }
 

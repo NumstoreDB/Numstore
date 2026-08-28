@@ -188,7 +188,7 @@ advance_reader (struct remove_state *s, bool *iseof, error *e)
   return SUCCESS;
 
 failed:
-  pgr_cancel_if_exists (s->p, &next);
+  pgr_cancel_if_exists (&next);
   return error_trace (e);
 }
 
@@ -348,7 +348,8 @@ ns_remove (struct ns_remove_params *params, error *e)
             }
 
             continue;
-          } else if (s.write_idx == DL_DATA_SIZE) {
+          }
+          if (s.write_idx == DL_DATA_SIZE) {
             if (advance_writer (&s, e)) {
               goto failed;
             }
@@ -425,9 +426,9 @@ drain:
           }
 
           continue;
-        } else {
-          break;
         }
+        break;
+
       } else if (s.write_idx >= DL_DATA_SIZE) {
         if (advance_writer (&s, e)) {
           goto failed;
@@ -515,10 +516,10 @@ drain:
   return (sb_size)(s.total_removed / params->size);
 
 failed:
-  pgr_cancel_if_exists (params->p, &prev);
-  pgr_cancel_if_exists (params->p, &s.writer);
-  pgr_cancel_if_exists (params->p, &next);
-  pgr_cancel_if_exists (params->p, &s.reader);
+  pgr_cancel_if_exists (&prev);
+  pgr_cancel_if_exists (&s.writer);
+  pgr_cancel_if_exists (&next);
+  pgr_cancel_if_exists (&s.reader);
 
   if (rb_nupd2) {
     nupd_free (rb_nupd2);
@@ -528,7 +529,7 @@ failed:
   }
 
   for (u32 i = 0; i < seek.sp; ++i) {
-    pgr_cancel_if_exists (params->p, &seek.pstack[i].pg);
+    pgr_cancel_if_exists (&seek.pstack[i].pg);
   }
 
   return error_trace (e);
