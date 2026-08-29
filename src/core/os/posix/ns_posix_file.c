@@ -335,7 +335,7 @@ posix_truncate (void *_fp, const u64 bytes, error *e)
 }
 
 static err_t
-posix_fallocate (void *_fp, const u64 bytes, error *e)
+_posix_fallocate (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
 
@@ -419,7 +419,7 @@ static struct i_file_vtable posix_file_vtable = {
     .pwrite_all = posix_pwrite_all,
     .writev_all = posix_writev_all,
     .truncate   = posix_truncate,
-    .fallocate  = posix_fallocate,
+    .fallocate  = _posix_fallocate,
     .seek       = posix_seek,
 #  ifdef TESTING
     .test_data = NULL,
