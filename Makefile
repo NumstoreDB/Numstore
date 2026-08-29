@@ -208,14 +208,16 @@ $(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(PY_TARGET_D
 
 ############ Package Management
 
+TEST_BIN := build/debug$(CROSS_SUFFIX)/target/bin/unit_tests$(if $(findstring windows,$(PLATFORM)),.exe)
+
 release-package:
 	$(MAKE) clean
 	$(MAKE) TARGET=debug
-	./build/debug/target/bin/unit_tests
+	./$(TEST_BIN)
 	$(MAKE) TARGET=release
-	cp docs/release_docs.md build/release/target/README.md
-	tar -czf build/release.tar.gz -C build/release target
-	cd build/release && zip -r ../release.zip target
+	cp docs/release_docs.md build/release$(CROSS_SUFFIX)/target/README.md
+	tar -czf build/release$(CROSS_SUFFIX).tar.gz -C build/release$(CROSS_SUFFIX) target
+	cd build/release$(CROSS_SUFFIX) && zip -r ../release$(CROSS_SUFFIX).zip target
 
 ############ Cross-compilation via dockcross
 # Examples:
