@@ -873,21 +873,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t1, dpgt_insert_thread, &ctx1, &e),
+        i_thread_create (default_threading (), &t1, dpgt_insert_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t2, dpgt_insert_thread, &ctx2, &e),
+        i_thread_create (default_threading (), &t2, dpgt_insert_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t3, dpgt_insert_thread, &ctx3, &e),
+        i_thread_create (default_threading (), &t3, dpgt_insert_thread, &ctx3, &e),
         SUCCESS
     );
 
-    default_threading.i_thread_join (&default_threading, &t1, &e);
-    default_threading.i_thread_join (&default_threading, &t2, &e);
-    default_threading.i_thread_join (&default_threading, &t3, &e);
+    i_thread_join (default_threading (), &t1, &e);
+    i_thread_join (default_threading (), &t2, &e);
+    i_thread_join (default_threading (), &t3, &e);
 
     int total_inserts = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_inserts, 300);
@@ -929,21 +929,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t1, dpgt_reader_thread, &ctx1, &e),
+        i_thread_create (default_threading (), &t1, dpgt_reader_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t2, dpgt_reader_thread, &ctx2, &e),
+        i_thread_create (default_threading (), &t2, dpgt_reader_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t3, dpgt_reader_thread, &ctx3, &e),
+        i_thread_create (default_threading (), &t3, dpgt_reader_thread, &ctx3, &e),
         SUCCESS
     );
 
-    default_threading.i_thread_join (&default_threading, &t1, &e);
-    default_threading.i_thread_join (&default_threading, &t2, &e);
-    default_threading.i_thread_join (&default_threading, &t3, &e);
+    i_thread_join (default_threading (), &t1, &e);
+    i_thread_join (default_threading (), &t2, &e);
+    i_thread_join (default_threading (), &t3, &e);
 
     int total_reads = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_reads, 300);
@@ -981,21 +981,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t1, dpgt_updater_thread, &ctx1, &e),
+        i_thread_create (default_threading (), &t1, dpgt_updater_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t2, dpgt_updater_thread, &ctx2, &e),
+        i_thread_create (default_threading (), &t2, dpgt_updater_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t3, dpgt_updater_thread, &ctx3, &e),
+        i_thread_create (default_threading (), &t3, dpgt_updater_thread, &ctx3, &e),
         SUCCESS
     );
 
-    default_threading.i_thread_join (&default_threading, &t1, &e);
-    default_threading.i_thread_join (&default_threading, &t2, &e);
-    default_threading.i_thread_join (&default_threading, &t3, &e);
+    i_thread_join (default_threading (), &t1, &e);
+    i_thread_join (default_threading (), &t2, &e);
+    i_thread_join (default_threading (), &t3, &e);
 
     int total_updates = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_updates, 300);
@@ -1040,21 +1040,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t1, dpgt_remove_thread, &ctx1, &e),
+        i_thread_create (default_threading (), &t1, dpgt_remove_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t2, dpgt_remove_thread, &ctx2, &e),
+        i_thread_create (default_threading (), &t2, dpgt_remove_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading.i_thread_create (&default_threading, &t3, dpgt_remove_thread, &ctx3, &e),
+        i_thread_create (default_threading (), &t3, dpgt_remove_thread, &ctx3, &e),
         SUCCESS
     );
 
-    default_threading.i_thread_join (&default_threading, &t1, &e);
-    default_threading.i_thread_join (&default_threading, &t2, &e);
-    default_threading.i_thread_join (&default_threading, &t3, &e);
+    i_thread_join (default_threading (), &t1, &e);
+    i_thread_join (default_threading (), &t2, &e);
+    i_thread_join (default_threading (), &t3, &e);
 
     int total_removes = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_removes, 300);
@@ -1096,24 +1096,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        default_threading
-            .i_thread_create (&default_threading, &t1, dpgt_insert_thread, &insert_ctx, &e),
+        i_thread_create (default_threading (), &t1, dpgt_insert_thread, &insert_ctx, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading
-            .i_thread_create (&default_threading, &t2, dpgt_reader_thread, &read_ctx1, &e),
+        i_thread_create (default_threading (), &t2, dpgt_reader_thread, &read_ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        default_threading
-            .i_thread_create (&default_threading, &t3, dpgt_reader_thread, &read_ctx2, &e),
+        i_thread_create (default_threading (), &t3, dpgt_reader_thread, &read_ctx2, &e),
         SUCCESS
     );
 
-    default_threading.i_thread_join (&default_threading, &t1, &e);
-    default_threading.i_thread_join (&default_threading, &t2, &e);
-    default_threading.i_thread_join (&default_threading, &t3, &e);
+    i_thread_join (default_threading (), &t1, &e);
+    i_thread_join (default_threading (), &t2, &e);
+    i_thread_join (default_threading (), &t3, &e);
 
     // All inserts must have succeeded
     test_assert_equal (insert_ctx.counter, 100);

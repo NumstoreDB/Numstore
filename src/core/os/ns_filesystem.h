@@ -15,23 +15,12 @@
 #ifndef NS_FILESYSTEM_H
 #define NS_FILESYSTEM_H
 
-#include "core/ns_error.h"
-#include "core/os/ns_file.h"
-
-struct i_file_system_vtable
-{
-  err_t (*open_rw) (void *vfs, i_file *dest, const char *fname, error *e);
-  err_t (*open_r) (void *vfs, i_file *dest, const char *fname, error *e);
-  err_t (*open_w) (void *vfs, i_file *dest, const char *fname, error *e);
-  err_t (*remove_quiet) (void *vfs, const char *fname, error *e);
-  err_t (*unlink) (void *vfs, const char *name, error *e);
-  err_t (*file_exists) (void *vfs, const char *fname, bool *dest, error *e);
-};
+#include "core/os/ns_os_vtable.h"
 
 struct i_file_system
 {
-  const struct i_file_system_vtable *table;
-  void                              *data;
+  const struct os_vtable *table;
+  void                   *data;
 };
 
 struct i_file_system default_filesystem (void);

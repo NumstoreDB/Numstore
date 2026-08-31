@@ -19,6 +19,7 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_file.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"

@@ -54,8 +54,8 @@ win32_strerror (DWORD err, char *buf, DWORD buflen)
  ******************************************************************************/
 // vfs parameter unused; Win32 FS operations are stateless.
 
-static err_t
-win32_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
+err_t
+impl_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
   HANDLE h = CreateFileA (
@@ -77,8 +77,8 @@ win32_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_open_r (void *vfs, i_file *dest, const char *fname, error *e)
+err_t
+impl_open_r (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
   HANDLE h = CreateFileA (
@@ -100,8 +100,8 @@ win32_open_r (void *vfs, i_file *dest, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_open_w (void *vfs, i_file *dest, const char *fname, error *e)
+err_t
+impl_open_w (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
   HANDLE h = CreateFileA (
@@ -123,8 +123,8 @@ win32_open_w (void *vfs, i_file *dest, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_remove_quiet (void *vfs, const char *fname, error *e)
+err_t
+impl_remove_quiet (void *vfs, const char *fname, error *e)
 {
   (void)vfs;
   if (unlikely (!DeleteFileA (fname))) {
@@ -139,8 +139,8 @@ win32_remove_quiet (void *vfs, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_unlink (void *vfs, const char *name, error *e)
+err_t
+impl_unlink (void *vfs, const char *name, error *e)
 {
   (void)vfs;
   if (unlikely (!DeleteFileA (name))) {
@@ -151,8 +151,8 @@ win32_unlink (void *vfs, const char *name, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_file_exists (void *vfs, const char *fname, bool *dest, error *e)
+err_t
+impl_file_exists (void *vfs, const char *fname, bool *dest, error *e)
 {
   (void)vfs;
   DWORD attrs = GetFileAttributesA (fname);
@@ -174,24 +174,6 @@ win32_file_exists (void *vfs, const char *fname, bool *dest, error *e)
   *dest = !(attrs & FILE_ATTRIBUTE_DIRECTORY);
 
   return SUCCESS;
-}
-
-static const struct i_file_system_vtable win32_fsvtable = {
-    .open_rw      = win32_open_rw,
-    .open_r       = win32_open_r,
-    .open_w       = win32_open_w,
-    .remove_quiet = win32_remove_quiet,
-    .unlink       = win32_unlink,
-    .file_exists  = win32_file_exists,
-};
-
-struct i_file_system
-default_filesystem (void)
-{
-  return (struct i_file_system){
-      .table = &win32_fsvtable,
-      .data  = NULL,
-  };
 }
 
 #endif // PLATFORM_WINDOWS

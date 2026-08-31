@@ -15,53 +15,19 @@
 #ifndef NS_FILE_H
 #define NS_FILE_H
 
-#include "core/ns_bytes.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_os_vtable.h"
 
-typedef enum
+struct i_file
 {
-  I_SEEK_END,
-  I_SEEK_CUR,
-  I_SEEK_SET,
-} seek_t;
-
-struct i_file_vtable
-{
-  // Properties
-  err_t (*close) (void *fp, error *e);
-  err_t (*eof) (void *fp, error *e);
-  err_t (*fsync) (void *fp, error *e);
-  i64 (*file_size) (void *fp, error *e);
-
-  // Read
-  i64 (*read_all) (void *fp, void *dest, u64 nbytes, error *e);
-  i64 (*pread_all) (void *fp, void *dest, u64 n, u64 offset, error *e);
-
-  // Write
-  err_t (*write_all) (void *fp, const void *src, u64 nbytes, error *e);
-  err_t (*pwrite_all) (void *fp, const void *src, u64 n, u64 offset, error *e);
-  err_t (*writev_all) (void *fp, struct bytes *arrs, int iovcnt, error *e);
-
-  // Other
-  err_t (*truncate) (void *fp, u64 bytes, error *e);
-  err_t (*fallocate) (void *fp, u64 bytes, error *e);
-  i64 (*seek) (void *fp, u64 offset, seek_t whence, error *e);
-
-#ifdef TESTING
-  void *test_data;
-#endif
-};
-
-typedef struct
-{
-  const struct i_file_vtable *table;
+  const struct os_vtable *table;
 #if PLATFORM_WINDOWS
   HANDLE handle;
 #else
   int fd;
 #endif
-} i_file;
+};
 
 #if PLATFORM_WINDOWS
 i_file create_default_file (HANDLE h);
@@ -85,7 +51,7 @@ i_file create_default_file (int fd);
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Default Methods
  * ----------------------------------------------------------------------------
- * @brief Composite helpers built entirely from i_file_vtable primitives
+ * @brief Composite helpers built entirely from os_vtable file primitives
  *----------------------------------------------------------------------------*/
 
 HEADER_FUNC err_t

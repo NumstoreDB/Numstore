@@ -20,6 +20,7 @@
 #  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h"
 #  include "core/os/ns_file.h"
+#  include "core/os/test/ns_dst.h"
 
 #  include <stddef.h>
 #  include <stdio.h>
@@ -76,10 +77,11 @@ DEFINE_DBG_ASSERT (i_file, i_file, fp, {
  * SECTION: File
  ******************************************************************************/
 
-static err_t
-win32_close (void *_fp, error *e)
+err_t
+impl_close (void *_fp, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.close_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   if (unlikely (!CloseHandle (fp->handle))) {
@@ -91,10 +93,11 @@ win32_close (void *_fp, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_fsync (void *_fp, error *e)
+err_t
+impl_fsync (void *_fp, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.fsync_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   if (unlikely (!FlushFileBuffers (fp->handle))) {
@@ -105,10 +108,11 @@ win32_fsync (void *_fp, error *e)
   return SUCCESS;
 }
 
-static i64
-win32_file_size (void *_fp, error *e)
+i64
+impl_file_size (void *_fp, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.file_size_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER size;
@@ -125,8 +129,8 @@ win32_file_size (void *_fp, error *e)
 ////////////////////////////////////////////////////////////
 // Positional Read / Write
 
-static i64
-win32_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
+i64
+impl_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
 {
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
@@ -137,9 +141,13 @@ win32_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
   u64 nread = 0;
 
   while (nread < n) {
+    u64 toread = n - nread;
+    I_FILE_FAULT (fp, file.pread_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, file.pread_short_prob, toread);
+
     OVERLAPPED ov    = make_overlapped (offset + nread);
     DWORD      chunk = 0;
-    DWORD      want  = (DWORD)((n - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nread));
+    DWORD      want  = (DWORD)(toread > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : toread);
 
     if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, &ov))) {
       DWORD err = GetLastError ();
@@ -164,8 +172,8 @@ win32_pread_all (void *_fp, void *dest, const u64 n, const u64 offset, error *e)
   return (i64)nread;
 }
 
-static err_t
-win32_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, error *e)
+err_t
+impl_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, error *e)
 {
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
@@ -176,9 +184,13 @@ win32_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, err
   u64       nwrite = 0;
 
   while (nwrite < n) {
+    u64 towrite = n - nwrite;
+    I_FILE_FAULT (fp, file.pwrite_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, file.pwrite_short_prob, towrite);
+
     OVERLAPPED ov    = make_overlapped (offset + nwrite);
     DWORD      chunk = 0;
-    DWORD      want  = (DWORD)((n - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (n - nwrite));
+    DWORD      want  = (DWORD)(towrite > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : towrite);
 
     if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, &ov))) {
       char buf[WIN_ERR_BUF];
@@ -194,10 +206,11 @@ win32_pwrite_all (void *_fp, const void *src, const u64 n, const u64 offset, err
 ////////////////////////////////////////////////////////////
 // IO Vec (no scatter-gather on Windows for regular files - loop per buffer)
 
-static err_t
-win32_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
+err_t
+impl_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.writev_fail_prob, e);
   DBG_ASSERT (i_file, fp);
   ASSERT (iov);
   ASSERT (iovcnt > 0 && iovcnt <= 2);
@@ -222,8 +235,8 @@ win32_writev_all (void *_fp, struct bytes *iov, const int iovcnt, error *e)
 ////////////////////////////////////////////////////////////
 // Stream Read / Write
 
-static i64
-win32_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
+i64
+impl_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
 {
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
@@ -234,8 +247,12 @@ win32_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
   u64 nread = 0;
 
   while (nread < nbytes) {
+    u64 toread = nbytes - nread;
+    I_FILE_FAULT (fp, file.read_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, file.read_short_prob, toread);
+
     DWORD chunk = 0;
-    DWORD want  = (DWORD)((nbytes - nread) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (nbytes - nread));
+    DWORD want  = (DWORD)(toread > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : toread);
 
     if (unlikely (!ReadFile (fp->handle, _dest + nread, want, &chunk, NULL))) {
       DWORD err = GetLastError ();
@@ -257,8 +274,8 @@ win32_read_all (void *_fp, void *dest, const u64 nbytes, error *e)
   return (i64)nread;
 }
 
-static err_t
-win32_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
+err_t
+impl_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
 {
   i_file *fp = _fp;
   DBG_ASSERT (i_file, fp);
@@ -269,8 +286,12 @@ win32_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
   u64       nwrite = 0;
 
   while (nwrite < nbytes) {
+    u64 towrite = nbytes - nwrite;
+    I_FILE_FAULT (fp, file.write_fail_prob, e);
+    I_FILE_CONDITION_AMOUNT (fp, file.write_short_prob, towrite);
+
     DWORD chunk = 0;
-    DWORD want  = (DWORD)((nbytes - nwrite) > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : (nbytes - nwrite));
+    DWORD want  = (DWORD)(towrite > 0xFFFFFFFFULL ? 0xFFFFFFFFUL : towrite);
 
     if (unlikely (!WriteFile (fp->handle, _src + nwrite, want, &chunk, NULL))) {
       char buf[WIN_ERR_BUF];
@@ -287,10 +308,11 @@ win32_write_all (void *_fp, const void *src, const u64 nbytes, error *e)
 ////////////////////////////////////////////////////////////
 // Other file ops
 
-static err_t
-win32_truncate (void *_fp, const u64 bytes, error *e)
+err_t
+impl_truncate (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.truncate_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER li;
@@ -308,10 +330,11 @@ win32_truncate (void *_fp, const u64 bytes, error *e)
   return SUCCESS;
 }
 
-static err_t
-win32_fallocate (void *_fp, const u64 bytes, error *e)
+err_t
+impl_fallocate (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.fallocate_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER li;
@@ -330,10 +353,11 @@ win32_fallocate (void *_fp, const u64 bytes, error *e)
   return SUCCESS;
 }
 
-static i64
-win32_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
+i64
+impl_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
 {
   i_file *fp = _fp;
+  I_FILE_FAULT (fp, file.seek_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   DWORD method;
@@ -367,29 +391,12 @@ win32_seek (void *_fp, const u64 offset, const seek_t whence, error *e)
   return (i64)result.QuadPart;
 }
 
-static struct i_file_vtable win32_file_vtable = {
-    .close      = win32_close,
-    .fsync      = win32_fsync,
-    .file_size  = win32_file_size,
-    .read_all   = win32_read_all,
-    .pread_all  = win32_pread_all,
-    .write_all  = win32_write_all,
-    .pwrite_all = win32_pwrite_all,
-    .writev_all = win32_writev_all,
-    .truncate   = win32_truncate,
-    .fallocate  = win32_fallocate,
-    .seek       = win32_seek,
-#  ifdef TESTING
-    .test_data = NULL,
-#  endif
-};
-
 i_file
 create_default_file (HANDLE h)
 {
   return (i_file){
       .handle = h,
-      .table  = &win32_file_vtable,
+      .table  = &default_os_vtable,
   };
 }
 

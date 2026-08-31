@@ -29,8 +29,8 @@
  * SECTION: Memory
  ******************************************************************************/
 
-static void *
-def_malloc (void *v, const u32 nelem, const u32 size, error *e)
+void *
+impl_malloc (void *v, const u32 nelem, const u32 size, error *e)
 {
   (void)v;
 
@@ -55,8 +55,8 @@ def_malloc (void *v, const u32 nelem, const u32 size, error *e)
   return ret;
 }
 
-static void *
-def_calloc (void *v, const u32 nelem, const u32 size, error *e)
+void *
+impl_calloc (void *v, const u32 nelem, const u32 size, error *e)
 {
   (void)v;
 
@@ -83,8 +83,8 @@ def_calloc (void *v, const u32 nelem, const u32 size, error *e)
   return ret;
 }
 
-static void *
-def_realloc (void *v, void *ptr, const u32 nelem, const u32 size, error *e)
+void *
+impl_realloc (void *v, void *ptr, const u32 nelem, const u32 size, error *e)
 {
   (void)v;
 
@@ -129,26 +129,10 @@ TEST (i_realloc_basic)
 }
 #endif
 
-static void
-def_free (void *v, void *ptr)
+void
+impl_free (void *v, void *ptr)
 {
   (void)v;
   ASSERT (ptr);
   free (ptr);
-}
-
-static const struct i_mem_table default_mem_table = {
-    .malloc  = def_malloc,
-    .calloc  = def_calloc,
-    .realloc = def_realloc,
-    .free    = def_free,
-};
-
-struct i_mem
-default_mem (void)
-{
-  return (struct i_mem){
-      .table = &default_mem_table,
-      .data  = NULL,
-  };
 }

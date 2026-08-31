@@ -36,8 +36,8 @@
  * SUBSECTION: Condition Variable
  *----------------------------------------------------------------------------*/
 
-static err_t
-win32_cond_create (i_threading *t, i_cond *c, error *e)
+err_t
+impl_cond_create (void *t, i_cond *c, error *e)
 {
   (void)t;
   ASSERT (c);
@@ -46,16 +46,16 @@ win32_cond_create (i_threading *t, i_cond *c, error *e)
   return SUCCESS;
 }
 
-static void
-win32_cond_free (i_threading *t, i_cond *c)
+void
+impl_cond_free (void *t, i_cond *c)
 {
   (void)t;
   ASSERT (c);
   // No-op: CONDITION_VARIABLE has no destroy function.
 }
 
-static void
-win32_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
+void
+impl_cond_wait (void *t, i_cond *c, i_mutex *m)
 {
   (void)t;
   ASSERT (c);
@@ -67,8 +67,8 @@ win32_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
   }
 }
 
-static void
-win32_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
+void
+impl_cond_timed_wait (void *t, i_cond *c, i_mutex *m, u64 msec)
 {
   (void)t;
   ASSERT (c);
@@ -82,16 +82,16 @@ win32_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
   }
 }
 
-static void
-win32_cond_signal (i_threading *t, i_cond *c)
+void
+impl_cond_signal (void *t, i_cond *c)
 {
   (void)t;
   ASSERT (c);
   WakeConditionVariable (&c->cond);
 }
 
-static void
-win32_cond_broadcast (i_threading *t, i_cond *c)
+void
+impl_cond_broadcast (void *t, i_cond *c)
 {
   (void)t;
   ASSERT (c);
@@ -112,8 +112,8 @@ cs_owner (i_mutex *m)
 }
 #  endif
 
-static err_t
-win32_mutex_create (i_threading *t, i_mutex *dest, error *e)
+err_t
+impl_mutex_create (void *t, i_mutex *dest, error *e)
 {
   (void)t;
   ASSERT (dest);
@@ -124,8 +124,8 @@ win32_mutex_create (i_threading *t, i_mutex *dest, error *e)
   return SUCCESS;
 }
 
-static void
-win32_mutex_free (i_threading *t, i_mutex *m)
+void
+impl_mutex_free (void *t, i_mutex *m)
 {
   (void)t;
   ASSERT (m);
@@ -139,8 +139,8 @@ win32_mutex_free (i_threading *t, i_mutex *m)
   DeleteCriticalSection (&m->m);
 }
 
-static void
-win32_mutex_lock (i_threading *t, i_mutex *m)
+void
+impl_mutex_lock (void *t, i_mutex *m)
 {
   (void)t;
   ASSERT (m);
@@ -154,8 +154,8 @@ win32_mutex_lock (i_threading *t, i_mutex *m)
   EnterCriticalSection (&m->m);
 }
 
-static void
-win32_mutex_unlock (i_threading *t, i_mutex *m)
+void
+impl_mutex_unlock (void *t, i_mutex *m)
 {
   (void)t;
   ASSERT (m);
@@ -190,14 +190,8 @@ thread_trampoline (LPVOID param)
   return 0;
 }
 
-static err_t
-win32_thread_create (
-    i_threading *t,
-    i_thread    *dest,
-    void *(*func) (void *),
-    void  *context,
-    error *e
-)
+err_t
+impl_thread_create (void *t, i_thread *dest, void *(*func) (void *), void *context, error *e)
 {
   (void)t;
   ASSERT (dest);
@@ -229,8 +223,8 @@ win32_thread_create (
   return SUCCESS;
 }
 
-static err_t
-win32_thread_join (i_threading *t, i_thread *th, error *e)
+err_t
+impl_thread_join (void *t, i_thread *th, error *e)
 {
   (void)t;
   ASSERT (th);
@@ -255,25 +249,5 @@ win32_thread_join (i_threading *t, i_thread *th, error *e)
   th->handle = NULL;
   return SUCCESS;
 }
-
-////////////////////////////////////////////////////////////
-// Default threading vtable
-
-struct i_threading default_threading = {
-    .i_thread_create   = win32_thread_create,
-    .i_thread_join     = win32_thread_join,
-
-    .i_mutex_create    = win32_mutex_create,
-    .i_mutex_free      = win32_mutex_free,
-    .i_mutex_lock      = win32_mutex_lock,
-    .i_mutex_unlock    = win32_mutex_unlock,
-
-    .i_cond_create     = win32_cond_create,
-    .i_cond_free       = win32_cond_free,
-    .i_cond_wait       = win32_cond_wait,
-    .i_cond_timed_wait = win32_cond_timed_wait,
-    .i_cond_signal     = win32_cond_signal,
-    .i_cond_broadcast  = win32_cond_broadcast,
-};
 
 #endif

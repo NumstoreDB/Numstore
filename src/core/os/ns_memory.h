@@ -15,24 +15,15 @@
 #ifndef NS_MEMORY_H
 #define NS_MEMORY_H
 
-#include "core/ns_error.h"
-#include "core/ns_stdtypes.h"
+#include "core/os/ns_os_vtable.h"
 
 /**
  * An interface for global memory allocation
  */
-struct i_mem_table
-{
-  void *(*malloc) (void *v, u32 nelem, u32 size, error *e);
-  void *(*calloc) (void *v, u32 nelem, u32 size, error *e);
-  void *(*realloc) (void *v, void *ptr, u32 nelem, u32 size, error *e);
-  void (*free) (void *v, void *ptr);
-};
-
 struct i_mem
 {
-  const struct i_mem_table *table;
-  void                     *data;
+  const struct os_vtable *table;
+  void                   *data;
 };
 
 // Default global allocator
