@@ -39,8 +39,8 @@
  * SECTION: File System
  ******************************************************************************/
 
-static err_t
-posix_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
+err_t
+impl_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
   const int fd = open (fname, O_RDWR | O_CREAT, 0644);
@@ -55,8 +55,8 @@ posix_open_rw (void *vfs, i_file *dest, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-posix_open_r (void *vfs, i_file *dest, const char *fname, error *e)
+err_t
+impl_open_r (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
   const int fd = open (fname, O_RDONLY, 0644);
@@ -71,8 +71,8 @@ posix_open_r (void *vfs, i_file *dest, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-posix_open_w (void *vfs, i_file *dest, const char *fname, error *e)
+err_t
+impl_open_w (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
   const int fd = open (fname, O_WRONLY | O_CREAT, 0644);
@@ -87,8 +87,8 @@ posix_open_w (void *vfs, i_file *dest, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-posix_remove_quiet (void *vfs, const char *fname, error *e)
+err_t
+impl_remove_quiet (void *vfs, const char *fname, error *e)
 {
   (void)vfs;
 
@@ -100,8 +100,8 @@ posix_remove_quiet (void *vfs, const char *fname, error *e)
   return SUCCESS;
 }
 
-static err_t
-posix_unlink (void *vfs, const char *name, error *e)
+err_t
+impl_unlink (void *vfs, const char *name, error *e)
 {
   (void)vfs;
 
@@ -113,8 +113,8 @@ posix_unlink (void *vfs, const char *name, error *e)
   return SUCCESS;
 }
 
-static err_t
-posix_file_exists (void *vfs, const char *fname, bool *dest, error *e)
+err_t
+impl_file_exists (void *vfs, const char *fname, bool *dest, error *e)
 {
   (void)vfs;
 
@@ -131,27 +131,6 @@ posix_file_exists (void *vfs, const char *fname, bool *dest, error *e)
 
   *dest = S_ISREG (st.st_mode);
   return SUCCESS;
-}
-
-////////////////////////////////////////////////////////////
-// Default file system vtable
-
-static const struct i_file_system_vtable default_fsvtable = {
-    .open_rw      = posix_open_rw,
-    .open_r       = posix_open_r,
-    .open_w       = posix_open_w,
-    .remove_quiet = posix_remove_quiet,
-    .unlink       = posix_unlink,
-    .file_exists  = posix_file_exists,
-};
-
-struct i_file_system
-default_filesystem (void)
-{
-  return (struct i_file_system){
-      .table = &default_fsvtable,
-      .data  = NULL,
-  };
 }
 
 #endif // PLATFORM_POSIX

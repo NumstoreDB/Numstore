@@ -45,8 +45,8 @@
  * SUBSECTION: Condition Variables
  *----------------------------------------------------------------------------*/
 
-static err_t
-posix_cond_create (i_threading *t, i_cond *c, error *e)
+err_t
+impl_cond_create (void *t, i_cond *c, error *e)
 {
   (void)t;
   ASSERT (c);
@@ -110,8 +110,8 @@ posix_cond_create (i_threading *t, i_cond *c, error *e)
   return SUCCESS;
 }
 
-static void
-posix_cond_free (i_threading *t, i_cond *c)
+void
+impl_cond_free (void *t, i_cond *c)
 {
   (void)t;
   ASSERT (c);
@@ -149,8 +149,8 @@ posix_cond_free (i_threading *t, i_cond *c)
   }
 }
 
-static void
-posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
+void
+impl_cond_wait (void *t, i_cond *c, i_mutex *m)
 {
   (void)t;
   ASSERT (c);
@@ -189,8 +189,8 @@ posix_cond_wait (i_threading *t, i_cond *c, i_mutex *m)
   }
 }
 
-static void
-posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
+void
+impl_cond_timed_wait (void *t, i_cond *c, i_mutex *m, u64 msec)
 {
   (void)t;
   ASSERT (c);
@@ -237,8 +237,8 @@ posix_cond_timed_wait (i_threading *t, i_cond *c, i_mutex *m, u64 msec)
   }
 }
 
-static void
-posix_cond_signal (i_threading *t, i_cond *c)
+void
+impl_cond_signal (void *t, i_cond *c)
 {
   (void)t;
   ASSERT (c);
@@ -267,8 +267,8 @@ posix_cond_signal (i_threading *t, i_cond *c)
   }
 }
 
-static void
-posix_cond_broadcast (i_threading *t, i_cond *c)
+void
+impl_cond_broadcast (void *t, i_cond *c)
 {
   (void)t;
   ASSERT (c);
@@ -307,8 +307,8 @@ struct i_mutex_s
   pthread_mutex_t mutex;
 };
 
-static err_t
-posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
+err_t
+impl_mutex_create (void *t, i_mutex *dest, error *e)
 {
   (void)t;
   errno = 0;
@@ -355,8 +355,8 @@ posix_mutex_create (i_threading *t, i_mutex *dest, error *e)
   return SUCCESS;
 }
 
-static void
-posix_mutex_free (i_threading *t, i_mutex *m)
+void
+impl_mutex_free (void *t, i_mutex *m)
 {
   (void)t;
   ASSERT (m);
@@ -388,8 +388,8 @@ posix_mutex_free (i_threading *t, i_mutex *m)
   }
 }
 
-static void
-posix_mutex_lock (i_threading *t, i_mutex *m)
+void
+impl_mutex_lock (void *t, i_mutex *m)
 {
   (void)t;
   ASSERT (m);
@@ -429,8 +429,8 @@ posix_mutex_lock (i_threading *t, i_mutex *m)
   }
 }
 
-static void
-posix_mutex_unlock (i_threading *t, i_mutex *m)
+void
+impl_mutex_unlock (void *t, i_mutex *m)
 {
   (void)t;
   ASSERT (m);
@@ -474,14 +474,8 @@ posix_mutex_unlock (i_threading *t, i_mutex *m)
  * SUBSECTION: Thread
  *----------------------------------------------------------------------------*/
 
-static err_t
-posix_thread_create (
-    i_threading *t,
-    i_thread    *dest,
-    void *(*func) (void *),
-    void  *context,
-    error *e
-)
+err_t
+impl_thread_create (void *t, i_thread *dest, void *(*func) (void *), void *context, error *e)
 {
   (void)t;
   ASSERT (dest);
@@ -538,8 +532,8 @@ posix_thread_create (
   return SUCCESS;
 }
 
-static err_t
-posix_thread_join (i_threading *t, i_thread *th, error *e)
+err_t
+impl_thread_join (void *t, i_thread *th, error *e)
 {
   (void)e; // Unused
   (void)t;
@@ -581,26 +575,5 @@ posix_thread_join (i_threading *t, i_thread *th, error *e)
 
   return SUCCESS;
 }
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Abstraction
- *----------------------------------------------------------------------------*/
-
-struct i_threading default_threading = {
-    .i_thread_create   = posix_thread_create,
-    .i_thread_join     = posix_thread_join,
-
-    .i_mutex_create    = posix_mutex_create,
-    .i_mutex_free      = posix_mutex_free,
-    .i_mutex_lock      = posix_mutex_lock,
-    .i_mutex_unlock    = posix_mutex_unlock,
-
-    .i_cond_create     = posix_cond_create,
-    .i_cond_free       = posix_cond_free,
-    .i_cond_wait       = posix_cond_wait,
-    .i_cond_timed_wait = posix_cond_timed_wait,
-    .i_cond_signal     = posix_cond_signal,
-    .i_cond_broadcast  = posix_cond_broadcast,
-};
 
 #endif // PLATFORM_POSIX

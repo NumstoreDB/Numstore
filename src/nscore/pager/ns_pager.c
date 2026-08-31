@@ -19,6 +19,7 @@
 #include "core/ns_htable.h"
 #include "core/ns_numerics.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_file.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "nscore/disk_pager/ns_file_pager.h"
@@ -2341,12 +2342,12 @@ TEST (pgr_checkpoint)
     };
 
     i_thread producer;
-    default_threading.i_thread_create (&default_threading, &producer, producer_thread, &args, &f.e);
+    i_thread_create (default_threading (), &producer, producer_thread, &args, &f.e);
     i_sleep_ms (1000);
 
     args.done = 1;
 
-    default_threading.i_thread_join (&default_threading, &producer, &f.e);
+    i_thread_join (default_threading (), &producer, &f.e);
 
     pgr_fixture_teardown (&f);
   }

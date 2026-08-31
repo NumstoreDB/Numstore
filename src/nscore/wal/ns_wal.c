@@ -1028,8 +1028,7 @@ TEST (wal_multi_threaded)
   u32      nthreads;
   i_thread threads[10];
   for (nthreads = 0; nthreads < arrlen (threads); ++nthreads) {
-    default_threading
-        .i_thread_create (&default_threading, &threads[nthreads], wal_thread, &ctx, &e);
+    i_thread_create (default_threading (), &threads[nthreads], wal_thread, &ctx, &e);
   }
 
   // launch
@@ -1038,7 +1037,7 @@ TEST (wal_multi_threaded)
   i_log_info ("Threads active\n");
 
   for (; nthreads > 0; --nthreads) {
-    default_threading.i_thread_join (&default_threading, &threads[nthreads - 1], &e);
+    i_thread_join (default_threading (), &threads[nthreads - 1], &e);
   }
 
   // To speed up searches, keep a "finger" which is "near" the

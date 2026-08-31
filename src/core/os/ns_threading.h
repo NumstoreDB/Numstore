@@ -15,8 +15,7 @@
 #ifndef NS_THREADING_H
 #define NS_THREADING_H
 
-#include "core/ns_error.h"
-#include "core/ns_stdtypes.h"
+#include "core/os/ns_os_vtable.h"
 
 /******************************************************************************
  * SECTION: Threading
@@ -28,25 +27,25 @@
  * routines
  ******************************************************************************/
 
-typedef struct
+struct i_mutex
 {
 #ifdef _WIN32
   CRITICAL_SECTION m;
 #else
   pthread_mutex_t m;
 #endif
-} i_mutex;
+};
 
-typedef struct
+struct i_cond
 {
 #ifdef _WIN32
   CONDITION_VARIABLE cond;
 #else
   pthread_cond_t cond;
 #endif
-} i_cond;
+};
 
-typedef struct
+struct i_thread
 {
 #ifdef _WIN32
   HANDLE handle;
@@ -54,38 +53,34 @@ typedef struct
 #else
   pthread_t thread;
 #endif
-} i_thread;
+};
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Abstraction
  *----------------------------------------------------------------------------*/
 
-typedef struct i_threading i_threading;
-
 struct i_threading
 {
-  err_t (*i_thread_create) (
-      i_threading *t,
-      i_thread    *th,
-      void *(*start_routine) (void *),
-      void  *arg,
-      error *e
-  );
-  err_t (*i_thread_join) (i_threading *t, i_thread *th, error *e);
-
-  err_t (*i_mutex_create) (i_threading *t, i_mutex *m, error *e);
-  void (*i_mutex_free) (i_threading *t, i_mutex *m);
-  void (*i_mutex_lock) (i_threading *t, i_mutex *m);
-  void (*i_mutex_unlock) (i_threading *t, i_mutex *m);
-
-  err_t (*i_cond_create) (i_threading *t, i_cond *c, error *e);
-  void (*i_cond_free) (i_threading *t, i_cond *c);
-  void (*i_cond_wait) (i_threading *t, i_cond *c, i_mutex *m);
-  void (*i_cond_timed_wait) (i_threading *t, i_cond *c, i_mutex *m, u64 msec);
-  void (*i_cond_signal) (i_threading *t, i_cond *c);
-  void (*i_cond_broadcast) (i_threading *t, i_cond *c);
+  const struct os_vtable *table;
+  void                   *data;
 };
 
-extern struct i_threading default_threading;
+struct i_threading default_threading (void);
+
+#define i_thread_create(th, dest, start_routine, arg, e) \
+  (th).table->thread_create ((th).data, dest, start_routine, arg, e)
+#define i_thread_join(th, dest, e) (th).table->thread_join ((th).data, dest, e)
+
+#define i_mutex_create(th, m, e) (th).table->mutex_create ((th).data, m, e)
+#define i_mutex_free(th, m)      (th).table->mutex_free ((th).data, m)
+#define i_mutex_lock(th, m)      (th).table->mutex_lock ((th).data, m)
+#define i_mutex_unlock(th, m)    (th).table->mutex_unlock ((th).data, m)
+
+#define i_cond_create(th, c, e)         (th).table->cond_create ((th).data, c, e)
+#define i_cond_free(th, c)              (th).table->cond_free ((th).data, c)
+#define i_cond_wait(th, c, m)           (th).table->cond_wait ((th).data, c, m)
+#define i_cond_timed_wait(th, c, m, ms) (th).table->cond_timed_wait ((th).data, c, m, ms)
+#define i_cond_signal(th, c)            (th).table->cond_signal ((th).data, c)
+#define i_cond_broadcast(th, c)         (th).table->cond_broadcast ((th).data, c)
 
 #endif

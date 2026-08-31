@@ -40,7 +40,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[342];
+  const char *failed_names[347];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -1938,6 +1938,101 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "i_realloc_basic";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("dst_malloc_passthrough_when_prob_zero", filter))
+  {
+    extern void __test__dst_malloc_passthrough_when_prob_zero(void);
+    i_log_info("========================= TEST CASE: %s\n", "dst_malloc_passthrough_when_prob_zero");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__dst_malloc_passthrough_when_prob_zero();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "dst_malloc_passthrough_when_prob_zero");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "dst_malloc_passthrough_when_prob_zero";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("dst_malloc_always_fails_when_prob_one", filter))
+  {
+    extern void __test__dst_malloc_always_fails_when_prob_one(void);
+    i_log_info("========================= TEST CASE: %s\n", "dst_malloc_always_fails_when_prob_one");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__dst_malloc_always_fails_when_prob_one();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "dst_malloc_always_fails_when_prob_one");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "dst_malloc_always_fails_when_prob_one";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("dst_filesystem_open_r_always_fails_when_prob_one", filter))
+  {
+    extern void __test__dst_filesystem_open_r_always_fails_when_prob_one(void);
+    i_log_info("========================= TEST CASE: %s\n", "dst_filesystem_open_r_always_fails_when_prob_one");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__dst_filesystem_open_r_always_fails_when_prob_one();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "dst_filesystem_open_r_always_fails_when_prob_one");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "dst_filesystem_open_r_always_fails_when_prob_one";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("dst_read_short_still_reads_everything", filter))
+  {
+    extern void __test__dst_read_short_still_reads_everything(void);
+    i_log_info("========================= TEST CASE: %s\n", "dst_read_short_still_reads_everything");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__dst_read_short_still_reads_everything();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "dst_read_short_still_reads_everything");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "dst_read_short_still_reads_everything";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("dst_read_always_fails_when_prob_one", filter))
+  {
+    extern void __test__dst_read_always_fails_when_prob_one(void);
+    i_log_info("========================= TEST CASE: %s\n", "dst_read_always_fails_when_prob_one");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__dst_read_always_fails_when_prob_one();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "dst_read_always_fails_when_prob_one");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "dst_read_always_fails_when_prob_one";
     }
     ntests++;
   }

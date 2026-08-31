@@ -13,8 +13,8 @@ Conceptually, it's an ACID file with
 Thinking about it like a file - I've created a "smart files" interface, where
 it's just an ACID file
 
-But the original reason I wrote it was to store numerical arrays (arrays of
-bytes where every 4 bytes is an int or every 8 bytes is a u64...)
+But the original reason I wrote Numstore was to store numerical arrays (arrays
+of bytes where every 4 bytes is an int or every 8 bytes is a u64...)
 
 Therefore, there are two interfaces - smartfiles (a simple ACID transactional
 file) and numstore (an embedded database for numerical arrays).
