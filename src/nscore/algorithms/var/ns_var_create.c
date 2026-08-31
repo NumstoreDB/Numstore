@@ -19,7 +19,7 @@
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 #include <stddef.h>
 

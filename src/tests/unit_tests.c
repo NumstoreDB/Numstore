@@ -31,7 +31,6 @@ main (int argc, char **argv)
   }
   const char *filter = (argc == 2) ? argv[1] : NULL;
 
-  srand (1234);
   int ntests = 0;
   error   e = error_create ();
   i_timer timer;
@@ -40,7 +39,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[342];
+  const char *failed_names[333];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -5799,177 +5798,6 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("i_print_variable", filter))
-  {
-    extern void __test__i_print_variable(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_print_variable");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__i_print_variable();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "i_print_variable");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "i_print_variable";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("variable_equal", filter))
-  {
-    extern void __test__variable_equal(void);
-    i_log_info("========================= TEST CASE: %s\n", "variable_equal");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__variable_equal();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "variable_equal");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "variable_equal";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("validate_vname", filter))
-  {
-    extern void __test__validate_vname(void);
-    i_log_info("========================= TEST CASE: %s\n", "validate_vname");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__validate_vname();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "validate_vname");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "validate_vname";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("var_random_name", filter))
-  {
-    extern void __test__var_random_name(void);
-    i_log_info("========================= TEST CASE: %s\n", "var_random_name");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__var_random_name();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "var_random_name");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "var_random_name";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("rand_varname", filter))
-  {
-    extern void __test__rand_varname(void);
-    i_log_info("========================= TEST CASE: %s\n", "rand_varname");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__rand_varname();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "rand_varname");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "rand_varname";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("rand_varname_same_hash", filter))
-  {
-    extern void __test__rand_varname_same_hash(void);
-    i_log_info("========================= TEST CASE: %s\n", "rand_varname_same_hash");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__rand_varname_same_hash();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "rand_varname_same_hash");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "rand_varname_same_hash";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("rand_varname_different_hash", filter))
-  {
-    extern void __test__rand_varname_different_hash(void);
-    i_log_info("========================= TEST CASE: %s\n", "rand_varname_different_hash");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__rand_varname_different_hash();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "rand_varname_different_hash");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "rand_varname_different_hash";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("var_resolve_index", filter))
-  {
-    extern void __test__var_resolve_index(void);
-    i_log_info("========================= TEST CASE: %s\n", "var_resolve_index");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__var_resolve_index();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "var_resolve_index");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "var_resolve_index";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("var_resolve_nelem", filter))
-  {
-    extern void __test__var_resolve_nelem(void);
-    i_log_info("========================= TEST CASE: %s\n", "var_resolve_nelem");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__var_resolve_nelem();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "var_resolve_nelem");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "var_resolve_nelem";
-    }
-    ntests++;
-  }
-
   if (!filter || strstr("wal_multi_threaded", filter))
   {
     extern void __test__wal_multi_threaded(void);
@@ -6556,5 +6384,4 @@ main (int argc, char **argv)
   }
   return test_ret;
 }
-
 // clang-format on

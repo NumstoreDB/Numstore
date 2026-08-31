@@ -2,7 +2,7 @@
 
 LIBNS_SRCS += src/numstore/ns_numstore.c
 LIBNS_SRCS += src/numstore/testing/ns_mem_vhmap.c
-#LIBNS_SRCS += src/numstore/testing/ns_numstore_simulation.c
+LIBNS_SRCS += src/numstore/testing/ns_numstore_simulation.c
 
 ############ Includes
 
@@ -22,6 +22,7 @@ ALL += $(BIN_DIR)/numstore
 ############ Samples (bins + copied sources), one name list drives both
 
 NS_SAMPLES := ns_sample1_basic_crud
+NS_SAMPLES += ns_big_file
 
 define NS_SAMPLE_RULES
 

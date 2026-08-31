@@ -26,7 +26,7 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/types/ns_types.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 #include "smartfiles/smartfiles.h"
 
 #include <stdbool.h>

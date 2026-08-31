@@ -20,7 +20,7 @@
 #include "core/ns_stdtypes.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 err_t ns_init_var_hash_map (struct pager *p, error *e);
 err_t ns_valid (struct pager *p, error *e);
