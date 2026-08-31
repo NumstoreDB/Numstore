@@ -26,7 +26,7 @@
 #include "core/os/ns_memory.h"       // i_malloc
 #include "core/testing/ns_testing.h" // TEST
 #include "nscore/types/ns_types.h"
-#include "nscore/types/ns_variables.h" // variable
+#include "nscore/variables/ns_variables.h" // variable
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -232,7 +232,7 @@ mem_vhmap_get (struct mem_vhmap *db, struct string name)
 }
 
 void
-mem_vhmap_remove_var (struct mem_vhmap *db, struct string name)
+mem_vhmap_remove (struct mem_vhmap *db, struct string name)
 {
   // Lookup this variable
   struct var_frame key = {
@@ -354,7 +354,7 @@ TEST (mem_vhmap)
     for (int i = 0; i < 10000; ++i) {
       snprintf (buf, sizeof buf, "var_%d", i);
       struct string name = strfcstr (buf);
-      mem_vhmap_remove_var (v, name);
+      mem_vhmap_remove (v, name);
       ASSERT (mem_vhmap_get (v, name) == NULL);
 
       // spot-check that the next var (if any) is still there
@@ -388,7 +388,7 @@ TEST (mem_vhmap)
       ASSERT (got->var.nbytes == (b_size)(i * 3));
     }
 
-    mem_vhmap_remove_var (c, strfcstr ("cv_0"));
+    mem_vhmap_remove (c, strfcstr ("cv_0"));
     ASSERT (mem_vhmap_get (c, strfcstr ("cv_0")) == NULL); // removed in clone
     ASSERT (mem_vhmap_get (v, strfcstr ("cv_0")) != NULL); // original intact
 

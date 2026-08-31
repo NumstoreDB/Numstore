@@ -16,20 +16,26 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int
 main (int argc, char **argv)
 {
-  if (argc != 4) {
-    fprintf (stderr, "Usage: %s DB DURATION SEED\n", argv[0]);
+  if (argc != 6) {
+    fprintf (stderr, "Usage: %s DB DURATION SEED COMMIT_HASH UUID\n", argv[0]);
     return EXIT_FAILURE;
   }
 
-  const char *db       = argv[1];
-  int         duration = atoi (argv[2]);
-  unsigned    seed     = (unsigned)strtoul (argv[3], NULL, 10);
+  const char           *db          = argv[1];
+  int                   duration    = atoi (argv[2]);
+  unsigned              seed        = (unsigned)strtoul (argv[3], NULL, 10);
+  const char           *commit_hash = argv[4];
+  unsigned              sequence_id = (unsigned)strtoul (argv[5], NULL, 10);
 
-  irwr_swarm_test (db, duration, seed);
+  struct ns_simulation *simul = ns_simul_open (seed, commit_hash, sequence_id, db, 10000000, 0.1);
+
+  ns_simul_prepare (simul);
+  ns_simul_execute (simul);
 
   return EXIT_SUCCESS;
 }

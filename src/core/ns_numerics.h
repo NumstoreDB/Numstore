@@ -45,10 +45,8 @@ void checksum_execute (u32 *dest, const u8 *data, u32 len);
 u8 randu8 (void);
 
 u32 randu32 (void);
-u32 randu32r (u32 lower,
-              u32 upper); // [lower, upper]
-i32 randi32r (i32 lower,
-              i32 upper); // [lower, upper]
+u32 randu32r (u32 lower, u32 upper); // [lower, upper]
+i32 randi32r (i32 lower, i32 upper); // [lower, upper]
 
 u64 randu64 (void);
 u64 randu64r (u64 lower,

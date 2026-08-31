@@ -18,41 +18,79 @@
 #include "core/ns_block_array.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_logging.h"
 #include "core/ns_numerics.h"
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
 #include "core/os/ns_memory.h"
+#include "core/os/ns_time.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_types.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 #include "numstore/numstore.h"
 #include "numstore/testing/ns_mem_vhmap.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
-struct nss_swarm_test
+struct ns_simulation
 {
-  int                   enabled[NSS_AT_LEN];
-  int                   allowed[NSS_AT_LEN];
+  // Fake database semantics
+  //    While in a txn, working is the source of truth
+  //    While not in a txn, committed is the source of truth
+  //    On commit - committed = deep_copy(working)
+  //    On rollback - free(working)
+  struct mem_vhmap      *committed;
+  struct mem_vhmap      *working;
 
-  nsdb_t               *db;
-  int                   in_txn;
-  const char           *dbname;
-  const char           *varname;
-  const char           *vartype;
-  int                   max_insert_len;
-  float                 sample_space_prob;
+  // The current variable to work with
+  // On switch, this variable gets swapped
+  // out.
+  //    Same transaction flow as above
+  struct var_with_data  *cur_committed;
+  struct var_with_data  *cur_working;
 
-  // Fake database transaction semantics
-  struct mem_vhmap     *committed;
-  struct mem_vhmap     *working;
+  // Which actions are turned on
+  int                    enabled[NSS_AT_LEN];
 
-  struct var_with_data *cur;
+  // Which logical actions are available
+  int                    allowed[NSS_AT_LEN];
+
+  nsdb_t                *db;
+  struct ns_txn         *tx;
+  const char            *dbname;
+  int                    max_insert_len;
+  float                  sample_space_prob;
+
+  struct ns_simul_record results;
+  i_timer                timer;
+  u64                    start_time;
+  struct allocator       alloc;
 };
+
+static struct mem_vhmap *
+active_db (const struct ns_simulation *meta)
+{
+  return meta->tx ? meta->working : meta->committed;
+}
+
+static struct var_with_data *
+active_var (const struct ns_simulation *meta)
+{
+  return meta->tx ? meta->cur_working : meta->cur_committed;
+}
+
+static void
+set_active_var (struct ns_simulation *meta, struct var_with_data *var)
+{
+  if (meta->tx) {
+    meta->cur_working = var;
+  } else {
+    meta->cur_committed = var;
+  }
+}
 
 /******************************************************************************
  * SECTION: Utilities
@@ -60,20 +98,6 @@ struct nss_swarm_test
  * @brief Assertion macros, action-name table, and state dumper used by every
  *        failure path in this fixture.
  ******************************************************************************/
-
-static const char *const nss_action_names[NSS_AT_LEN] = {
-    [NSS_BEGIN_TXN]        = "BEGIN_TXN",
-    [NSS_COMMIT_TXN]       = "COMMIT_TXN",
-    [NSS_ROLLBACK_TXN]     = "ROLLBACK_TXN",
-
-    [NSS_CRASH_AND_REOPEN] = "CRASH_AND_REOPEN",
-    [NSS_CLOSE_AND_REOPEN] = "CLOSE_AND_REOPEN",
-
-    [NSS_INSERT]           = "INSERT",
-    [NSS_REMOVE]           = "REMOVE",
-    [NSS_READ]             = "READ",
-    [NSS_WRITE]            = "WRITE",
-};
 
 static u32
 get_random_name_len (void)
@@ -94,6 +118,7 @@ get_random_name_len (void)
 static char *
 random_name (void)
 {
+  // TODO - use i_malloc
   u32   length = get_random_name_len ();
   char *buffer = malloc (length * sizeof (char));
   var_random_name (buffer, length);
@@ -113,66 +138,65 @@ get_random_type_depth (void)
   return randu32r (3, 10);
 }
 
-/**
- * Dump the entire fixture state in a human-readable form. Safe to call
- * with NULL.
- */
 static void
-nss_print_state (const struct nss_swarm_test *meta)
-{
-  i_log_info ("=== NSS Swarm Test State ===\n");
-  if (meta == NULL) {
-    i_log_info ("  (meta is NULL)\n");
-    return;
-  }
-  i_log_info ("  dbname:         %s\n", meta->dbname);
-  i_log_info ("  varname:        %s\n", meta->varname);
-  i_log_info ("  vartype:        %s\n", meta->vartype);
-  i_log_info ("  esize:          %u bytes/elem\n", (unsigned)type_byte_size (meta->cur->var.dtype));
-  i_log_info ("  len:            %" PRb_size " elems\n", block_array_getlen (meta->cur->data));
-  i_log_info ("  max_insert_len: %d\n", meta->max_insert_len);
-  i_log_info ("  in_txn:         %s\n", meta->in_txn ? "yes" : "no");
-  i_log_info ("  committed:      %s\n", meta->committed ? "present" : "<null>");
-  i_log_info ("  working:        %s\n", meta->working ? "present" : "<null>");
-  i_log_info ("  sample_space_p: %.3f\n", (double)meta->sample_space_prob);
-  i_log_info ("  Actions             enabled   allowed\n");
-  for (int i = 0; i < NSS_AT_LEN; ++i) {
-    i_log_info (
-        "    %-18s   %-3s       %-3s\n",
-        nss_action_names[i],
-        meta->enabled[i] ? "yes" : "no",
-        meta->allowed[i] ? "yes" : "no"
-    );
-  }
-}
-
-static struct mem_vhmap *
-active_db (struct nss_swarm_test *meta)
-{
-  return meta->in_txn ? meta->working : meta->committed;
-}
-
-static void
-refresh_cur (struct nss_swarm_test *meta)
+refresh_cur (struct ns_simulation *meta)
 {
   // Replace cur with the variable in working
-  if (meta->cur) {
-    meta->cur = mem_vhmap_get (active_db (meta), meta->cur->var.vname);
-    ASSERT (meta->cur);
+  if (active_var (meta)) {
+    set_active_var (meta, mem_vhmap_get (active_db (meta), active_var (meta)->var.vname));
+    ASSERT (active_var (meta));
   }
 }
 
 static void
-nss_random_slice (int total, int *ofst, int *stride, int *len)
+nss_random_slice (b_size len, b_size *ofst, b_size *stride, b_size *nelems)
 {
-  ASSERT (total > 0);
+  ASSERT (len > 0);
 
-  *ofst         = randu32r (0, total - 1);
-  int remaining = total - *ofst;
-  *stride       = randu32r (1, remaining);
+  // Offset is any value between [0, len - 1]
+  *ofst            = randu32r (0, len - 1);
 
-  int max_len   = (remaining + *stride - 1) / *stride;
-  *len          = randu32r (1, max_len);
+  // Stride is anything between [1, len - offset]
+  b_size remaining = len - *ofst;
+  *stride          = randu32r (1, remaining);
+
+  // Elements is between [1, (len - offset + stride - 1) / stride
+  int max_len      = (remaining + *stride - 1) / *stride;
+  *nelems          = randu32r (1, max_len);
+}
+
+static err_t
+gen_new_var (struct ns_simulation *meta, struct create_op *dest, error *e)
+{
+  while (true) {
+    create_default_allocator (&meta->alloc);
+
+    char        *name = random_name (); // TODO - fix this
+
+    // Generate a random type
+    struct type *type = type_random (&meta->alloc, get_random_type_depth (), e);
+    if (type == NULL) {
+      return error_trace (e);
+    }
+
+    // Get the type string for that type
+    char *typestr = type_tostr (type);
+    if (typestr == NULL) {
+      return error_trace (e);
+    }
+
+    // Already exists - try again
+    if (mem_vhmap_get (active_db (meta), strfcstr (name)) != NULL) {
+      free (name);
+      free (typestr);
+      allocator_free (&meta->alloc);
+      continue;
+    }
+
+    dest->vname   = name;
+    dest->type    = type;
+    dest->typestr = typestr;
+  }
 }
 
 static struct stride
@@ -186,7 +210,7 @@ to_block_stride (int ofst, int stride, int len)
 }
 
 static void
-nss_set_random_enabled (struct nss_swarm_test *meta)
+nss_set_random_enabled (struct ns_simulation *meta)
 {
   int mask = rand () % ((1 << NSS_AT_LEN) - 1) + 1;
   for (int i = 0; i < NSS_AT_LEN; ++i) {
@@ -195,7 +219,7 @@ nss_set_random_enabled (struct nss_swarm_test *meta)
 }
 
 static void
-nss_set_allowed (struct nss_swarm_test *meta)
+nss_set_allowed (struct ns_simulation *meta)
 {
   ASSERT (meta);
   ASSERT (meta->db);
@@ -205,7 +229,7 @@ nss_set_allowed (struct nss_swarm_test *meta)
 
   meta->allowed[NSS_CRASH_AND_REOPEN] = meta->enabled[NSS_CRASH_AND_REOPEN];
 
-  if (!meta->in_txn) {
+  if (!meta->tx) {
     meta->allowed[NSS_BEGIN_TXN]        = meta->enabled[NSS_BEGIN_TXN];
     meta->allowed[NSS_CLOSE_AND_REOPEN] = meta->enabled[NSS_CLOSE_AND_REOPEN];
   } else {
@@ -213,396 +237,536 @@ nss_set_allowed (struct nss_swarm_test *meta)
     meta->allowed[NSS_ROLLBACK_TXN] = meta->enabled[NSS_ROLLBACK_TXN];
   }
 
-  meta->allowed[NSS_INSERT] = meta->enabled[NSS_INSERT];
-  if (block_array_getlen (meta->cur->data) > 0) {
-    meta->allowed[NSS_REMOVE] = meta->enabled[NSS_REMOVE];
-    meta->allowed[NSS_READ]   = meta->enabled[NSS_READ];
-    meta->allowed[NSS_WRITE]  = meta->enabled[NSS_WRITE];
+  meta->allowed[NSS_CREATE] = meta->enabled[NSS_CREATE];
+  if (meta->results.nvars > 1) {
+    meta->allowed[NSS_SWITCH] = meta->enabled[NSS_SWITCH];
+  }
+  if (meta->results.nvars > 0) {
+    meta->allowed[NSS_DELETE] = meta->enabled[NSS_DELETE];
+  }
+
+  if (active_var (meta) != NULL) {
+    meta->allowed[NSS_INSERT] = meta->enabled[NSS_INSERT];
+
+    if (block_array_getlen (active_var (meta)->data) > 0) {
+      meta->allowed[NSS_REMOVE] = meta->enabled[NSS_REMOVE];
+      meta->allowed[NSS_READ]   = meta->enabled[NSS_READ];
+      meta->allowed[NSS_WRITE]  = meta->enabled[NSS_WRITE];
+    }
   }
 }
 
 /******************************************************************************
  * SECTION: Concrete Actions
+ * ----------------------------------------------------------------------------
+ * @brief Each of these executes the action whose parameters were already
+ *        decided in nssr_pre_op(). They must not re-roll their own random
+ *        parameters - they only reach into
+ *        meta->results.inner.operation.<action> for what pre already chose.
  ******************************************************************************/
 
-static int
-nss_begin_txn (struct nss_swarm_test *meta)
+// TODO - put this in fs layer
+long
+get_file_size (const char *filename)
 {
-  ASSERT (!meta->in_txn);
+  struct stat st;
+  if (stat (filename, &st) == 0) {
+    return st.st_size;
+  }
+  crash ();
+}
+
+static struct ns_simul_record
+create_nssr (const char *dbname, u64 seed, const char *commit_hash, u64 sequence_id, error *e)
+{
+  (void)e; // TODO - use this
+  return (struct ns_simul_record){
+      .seed          = seed,
+      .commit_hash   = commit_hash,
+      .sequence_id   = sequence_id,
+      .step_number   = 0,
+      .clock         = 0,
+      .working_clock = 0,
+      .db_total_size = get_file_size (dbname),
+      .nvars         = 0,
+      .tracked_bytes = 0,
+      .inner         = {0},
+  };
+}
+
+static inline u64
+nss_clock_step (struct ns_simulation *meta)
+{
+  u64 now             = i_timer_now_ms (&meta->timer);
+  u64 prev            = meta->results.clock;
+  meta->results.clock = now;
+  ASSERT (now > prev);
+  return now - prev;
+}
+
+static inline void
+nss_succeeded (struct ns_simulation *meta)
+{
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
+  meta->results.inner.record_type    = RS_SUCCESS;
+}
+
+static inline void
+nss_failed (struct ns_simulation *meta)
+{
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
+  meta->results.inner.record_type    = RS_FAILURE;
+}
+
+static void
+nss_begin_txn (struct ns_simulation *meta)
+{
+  ASSERT (!meta->tx);
   ASSERT (meta->working == NULL);
 
-  // Begin Transaction
-  if (nsdb_begin (meta->db) < 0) {
-    return -1;
+  nss_clock_step (meta);
+  meta->tx                           = nsdb_begin (meta->db);
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
+
+  if (meta->tx == NULL) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  } else {
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
-  // Copy on write
   meta->working = mem_vhmap_clone (meta->committed, NULL);
+
   if (meta->working == NULL) {
-    return -1;
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
   }
 
   refresh_cur (meta);
 
-  meta->in_txn = 1;
-
-  return 0;
+  return;
 }
 
-static int
-nss_commit_txn (struct nss_swarm_test *meta)
+static void
+nss_commit_txn (struct ns_simulation *meta)
 {
-  ASSERT (meta->in_txn);
+  ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
 
-  if (nsdb_commit (meta->db, NULL) < 0) {
-    return -1;
+  nss_clock_step (meta);
+  err_t ret                          = nsdb_commit (meta->db, meta->tx);
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
+
+  if (ret < 0) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  } else {
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
   mem_vhmap_free (meta->committed);
   meta->committed = meta->working;
   meta->working   = NULL;
-  meta->in_txn    = 0;
+  meta->tx        = NULL;
 
   refresh_cur (meta);
 
-  return 0;
+  return;
 }
 
-static int
-nss_rollback_txn (struct nss_swarm_test *meta)
+static void
+nss_rollback_txn (struct ns_simulation *meta)
 {
-  ASSERT (meta->in_txn);
+  ASSERT (meta->tx);
+  ASSERT (meta->working != NULL);
+  ASSERT (meta->cur_working != NULL);
 
-  if (nsdb_rollback (meta->db, NULL) < 0) {
-    return -1;
+  nss_clock_step (meta);
+  err_t ret                          = nsdb_rollback (meta->db, NULL);
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
+
+  if (ret < 0) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  } else {
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
   mem_vhmap_free (meta->working);
   meta->working = NULL;
-  meta->in_txn  = 0;
+  meta->tx      = NULL;
 
   refresh_cur (meta);
 
-  return 0;
+  return;
 }
 
-static int
-nss_crash_and_reopen (struct nss_swarm_test *meta)
+static void
+nss_crash_and_reopen (struct ns_simulation *meta)
 {
-  if (nsdb_crash (meta->db) < 0) {
-    return -1;
+  nss_clock_step (meta);
+  err_t ret = nsdb_crash (meta->db);
+  if (ret == 0) {
+    meta->db = nsdb_open (meta->dbname);
   }
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
-  // Re open
-  meta->db = nsdb_open (meta->dbname);
-  if (meta->db == NULL) {
-    return -1;
+  if (ret < 0 || meta->db == NULL) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  } else {
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
   // If we were in the middle of a transaction
   // revert back to the previous one
   if (meta->working) {
-    ASSERT (meta->in_txn);
+    ASSERT (meta->tx);
 
     mem_vhmap_free (meta->working);
     meta->working = NULL;
 
     refresh_cur (meta);
+  }
 
-    meta->in_txn = 0;
+  meta->tx = NULL;
+
+  return;
+}
+
+static void
+nss_close_and_reopen (struct ns_simulation *meta)
+{
+  ASSERT (!meta->tx);
+
+  nss_clock_step (meta);
+  err_t ret = nsdb_close (meta->db);
+  if (ret == 0) {
+    meta->db = nsdb_open (meta->dbname);
+  }
+  meta->results.inner.op_duration_ms = nss_clock_step (meta);
+
+  if (ret < 0 || meta->db == NULL) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
   } else {
-    ASSERT (!meta->in_txn);
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
-  return 0;
+  if (meta->working) {
+    ASSERT (meta->tx);
+
+    mem_vhmap_free (meta->working);
+    meta->working = NULL;
+
+    refresh_cur (meta);
+  }
+
+  meta->tx = NULL;
+
+  return;
 }
 
-static int
-nss_close_and_reopen (struct nss_swarm_test *meta)
+static void
+nss_create (struct ns_simulation *meta)
 {
-  ASSERT (!meta->in_txn);
+  struct mem_vhmap *db     = active_db (meta);
+  struct create_op  create = meta->results.inner.operation.create;
 
-  // Close the database
-  if (nsdb_close (meta->db) < 0) {
-    return -1;
+  // Create the variable
+  struct variable   var    = {
+      .vname    = strfcstr (create.vname),
+      .dtype    = create.type,
+      .nbytes   = 0,
+      .rpt_root = 0,
+      .var_root = 0,
+  };
+
+  // Create the variable in the database
+  if (nsdb_fexecute (meta->db, NULL, "create %s %s", NULL, create.vname, create.typestr) < 0) {
+    nss_failed (meta);
+    return;
   }
 
-  // Re open
-  meta->db = nsdb_open (meta->dbname);
-  if (meta->db == NULL) {
-    return -1;
+  // Create the variable in the reference side
+  if (mem_vhmap_add (db, &var, NULL) < 0) {
+    nss_failed (meta);
+    return;
   }
 
-  return 0;
+  // If there is no variable - then set it to this one
+  if (active_var (meta) == NULL) {
+    set_active_var (meta, mem_vhmap_get (db, var.vname));
+  }
+
+  free (meta->results.inner.operation.create.vname);
+  free (meta->results.inner.operation.create.typestr);
+  allocator_free (&meta->alloc);
+
+  meta->results.nvars += 1;
+
+  nss_succeeded (meta);
 }
 
-static int
-nss_create (struct nss_swarm_test *meta)
-{
-  struct mem_vhmap *db = active_db (meta);
-
-  // Loop until you get a unique variable name
-  while (true) {
-    ALLOC_INIT (temp);
-
-    error        e    = error_create ();
-    char        *name = random_name ();
-
-    struct type *type = type_random (&temp, get_random_type_depth (), &e);
-    if (type == NULL) {
-      return -1;
-    }
-
-    char *typestr = type_tostr (type);
-    if (typestr == NULL) {
-      return -1;
-    }
-
-    // Already exists - try again
-    if (mem_vhmap_get (db, strfcstr (name)) != NULL) {
-      free (name);
-      free (typestr);
-      ALLOC_CLOSE (temp);
-      continue;
-    }
-
-    struct variable var = {
-        .vname    = strfcstr (name),
-        .dtype    = type,
-        .nbytes   = 0,
-        .rpt_root = 0,
-        .var_root = 0,
-    };
-
-    // Create the variable in the database
-    if (nsdb_fexecute (meta->db, "create %s %s", NULL, name, typestr) < 0) {
-      return -1;
-    }
-
-    // Create the variable in the reference side
-    if (mem_vhmap_add (db, &var, &e) < 0) {
-      return -1;
-    }
-
-    // If there is no variable - then set it to this one
-    if (meta->cur == NULL) {
-      meta->cur = mem_vhmap_get (db, var.vname);
-    }
-
-    free (name);
-    free (typestr);
-    ALLOC_CLOSE (temp);
-
-    return 0;
-  }
-}
-
-static int
-cgd_switch (struct nss_swarm_test *meta)
+static void
+nss_switch (struct ns_simulation *meta)
 {
   struct mem_vhmap *db = active_db (meta);
-  meta->cur            = mem_vhmap_random (db);
-  if (meta->cur == NULL) {
-    return -1;
+  set_active_var (meta, mem_vhmap_random (db));
+  if (active_var (meta) == NULL) {
+    nss_failed (meta);
+    return;
   }
 
-  return 0;
+  nss_succeeded (meta);
 }
 
-static int
-cgd_delete (struct nss_swarm_test *meta)
+static void
+nss_delete (struct ns_simulation *meta)
 {
-  ASSERT (meta->cur != NULL);
+  ASSERT (active_var (meta) != NULL);
 
-  const char *name = meta->cur->var.vname.data;
-  if (nsdb_fexecute (meta->db, "delete %s", NULL, name) < 0) {
-    return -1;
+  const char *name = active_var (meta)->var.vname.data;
+  if (nsdb_fexecute (meta->db, meta->tx, "delete %s", NULL, name) < 0) {
+    nss_failed (meta);
+    return;
   }
 
-  mem_vhmap_remove (active_db (meta), meta->cur->var.vname);
-  meta->cur = mem_vhmap_random (active_db (meta));
+  mem_vhmap_remove (active_db (meta), active_var (meta)->var.vname);
+  set_active_var (meta, mem_vhmap_random (active_db (meta)));
 
-  return 0;
+  nss_succeeded (meta);
 }
 
-static int
-nss_insert (struct nss_swarm_test *meta)
+static void
+nss_insert (struct ns_simulation *meta)
 {
-  // Choose a random length
-  int      len  = randu32r (1, meta->max_insert_len);
-  int      ofst = randu32r (1, block_array_getlen (meta->cur->data));
+  struct insert_op op    = meta->results.inner.operation.insert;
+  b_size           ofst  = op.ofst;
+  b_size           len   = op.nelems;
+  t_size           tsize = op.tsize;
 
   // Create the data to insert
-  int      blen = len * (int)type_byte_size (meta->cur->var.dtype);
-  uint8_t *data = malloc ((size_t)blen);
+  int              blen  = len * (int)tsize;
+  uint8_t         *data  = malloc ((size_t)blen);
   if (data == NULL) {
-    return -1;
+    nss_failed (meta);
+    return;
   }
   for (int i = 0; i < blen; ++i) {
     data[i] = (uint8_t)rand ();
   }
 
-  // Do the database side
-  if (nsdb_fexecute (meta->db, "insert %s %d %d", data, meta->varname, ofst, len) != len) {
-    free (data);
-    return -1;
-  }
-
-  // Do the reference side
-  int ba = block_array_insert (
-      meta->cur->data,
-      (u32)(ofst * (int)type_byte_size (meta->cur->var.dtype)),
+  // Start the clock
+  nss_clock_step (meta);
+  err_t ret = nsdb_fexecute (
+      meta->db,
+      meta->tx,
+      "insert %.*s %" PRb_size " %" PRb_size "",
       data,
-      (u32)blen,
-      NULL
+      strfmt (&active_var (meta)->var.vname),
+      ofst,
+      len
   );
-  if (ba != 0) {
+  u64 tdiff = nss_clock_step (meta);
+
+  if (ret != (sb_size)len) {
     free (data);
-    return -1;
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.tracked_bytes += len * tsize;
+    meta->results.db_total_size     = get_file_size (meta->dbname);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  } else {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.tracked_bytes += len * tsize;
+    meta->results.db_total_size     = get_file_size (meta->dbname);
+    meta->results.inner.record_type = RS_SUCCESS;
+
+    // Do the reference side
+    int ba                          = block_array_insert (
+        active_var (meta)->data,
+        (u32)(ofst * (int)tsize),
+        data,
+        (u32)blen,
+        NULL
+    );
+    if (ba != 0) {
+      free (data);
+      nss_failed (meta);
+      return;
+    }
+
+    free (data);
   }
-
-  free (data);
-
-  return 0;
 }
 
-static int
-nss_remove (struct nss_swarm_test *meta)
+static void
+nss_remove (struct ns_simulation *meta)
 {
-  // Generate a random slice
-  int ofst, stride, len;
-  nss_random_slice (block_array_getlen (meta->cur->data), &ofst, &stride, &len);
+  // Parameters were already decided in nssr_pre_op - reach into them
+  // instead of re-rolling.
+  struct remove_op op     = meta->results.inner.operation.remove;
+  int              ofst   = op.ofst;
+  int              stride = op.stride;
+  int              len    = op.nelems;
+  size_t           tsize  = op.tsize;
 
   // Get the true size of the buffer
-  size_t   buf_sz = (size_t)len * (size_t)type_byte_size (meta->cur->var.dtype);
+  size_t           buf_sz = (size_t)len * tsize;
 
   // Output database buffer
-  uint8_t *db_buf = calloc (1, buf_sz);
+  uint8_t         *db_buf = calloc (1, buf_sz);
   if (db_buf == NULL) {
-    return -1;
+    nss_failed (meta);
+    return;
   }
 
   // Output reference buffer
   uint8_t *ref_buf = calloc (1, buf_sz);
   if (ref_buf == NULL) {
-    return -1;
+    free (db_buf);
+    nss_failed (meta);
+    return;
   }
 
   // Do the database remove
   int exec_ret = nsdb_fexecute (
       meta->db,
-      "remove %s[%d:%d:%d]",
+      meta->tx,
+      "remove %.*s[%d:%d:%d]",
       db_buf,
-      meta->varname,
+      strfmt (&active_var (meta)->var.vname),
       ofst,
       ofst + len * stride,
       stride
   );
   if (exec_ret < 0) {
-    return -1;
+    free (db_buf);
+    free (ref_buf);
+    nss_failed (meta);
+    return;
   }
 
   /* Reference side */
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got = block_array_remove (
-      meta->cur->data,
-      str,
-      type_byte_size (meta->cur->var.dtype),
-      ref_buf,
-      NULL
-  );
+  i64           got = block_array_remove (active_var (meta)->data, str, tsize, ref_buf, NULL);
 
   // Check that we got the same amount of data
   if (got != len) {
-    return -1;
+    free (db_buf);
+    free (ref_buf);
+    nss_failed (meta);
+    return;
   }
 
   // Check that the two buffers are the same
   if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
-    return -1;
+    free (db_buf);
+    free (ref_buf);
+    nss_failed (meta);
+    return;
   }
 
   free (db_buf);
   free (ref_buf);
 
-  return 0;
+  nss_succeeded (meta);
 }
 
-static int
-nss_read (struct nss_swarm_test *meta)
+static void
+nss_read (struct ns_simulation *meta)
 {
-  int ofst, stride, len;
-  nss_random_slice (block_array_getlen (meta->cur->data), &ofst, &stride, &len);
+  // Parameters were already decided in nssr_pre_op - reach into them
+  // instead of re-rolling.
+  struct read_op op     = meta->results.inner.operation.read;
+  int            ofst   = op.ofst;
+  int            stride = op.stride;
+  int            len    = op.nelems;
+  size_t         tsize  = op.tsize;
 
   // Get the true size of the buffer
-  size_t   buf_sz = (size_t)len * (size_t)type_byte_size (meta->cur->var.dtype);
+  size_t         buf_sz = (size_t)len * tsize;
 
   // Output database buffer
-  uint8_t *db_buf = calloc (1, buf_sz);
+  uint8_t       *db_buf = calloc (1, buf_sz);
   if (db_buf == NULL) {
-    return -1;
+    nss_failed (meta);
+    return;
   }
 
   // Output reference buffer
   uint8_t *ref_buf = calloc (1, buf_sz);
   if (ref_buf == NULL) {
-    return -1;
+    free (db_buf);
+    nss_failed (meta);
+    return;
   }
 
   /* DB side */
   int exec_ret = nsdb_fexecute (
       meta->db,
-      "read %s[%d:%d:%d]",
+      meta->tx,
+      "read %.*s[%d:%d:%d]",
       db_buf,
-      meta->varname,
+      strfmt (&active_var (meta)->var.vname),
       ofst,
       ofst + len * stride,
       stride
   );
 
   if (exec_ret < 0) {
-    return -1;
+    free (db_buf);
+    free (ref_buf);
+    nss_failed (meta);
+    return;
   }
 
   /* Reference side */
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got = block_array_remove (
-      meta->cur->data,
-      str,
-      type_byte_size (meta->cur->var.dtype),
-      ref_buf,
-      NULL
-  );
+  i64           got = block_array_remove (active_var (meta)->data, str, tsize, ref_buf, NULL);
 
   // Check that we got the same amount of data
   if (got != len) {
-    return -1;
+    free (db_buf);
+    free (ref_buf);
+    nss_failed (meta);
+    return;
   }
 
   // Check that the two buffers are the same
   if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
-    return -1;
+    free (db_buf);
+    free (ref_buf);
+    nss_failed (meta);
+    return;
   }
 
   free (db_buf);
   free (ref_buf);
 
-  return 0;
+  nss_succeeded (meta);
 }
 
-static int
-nss_write (struct nss_swarm_test *meta)
+static void
+nss_write (struct ns_simulation *meta)
 {
-  // Generate a random slice
-  int ofst, stride, len;
-  nss_random_slice (block_array_getlen (meta->cur->data), &ofst, &stride, &len);
+  // Parameters were already decided in nssr_pre_op - reach into them
+  // instead of re-rolling.
+  struct write_op op     = meta->results.inner.operation.write;
+  int             ofst   = op.ofst;
+  int             stride = op.stride;
+  int             len    = op.nelems;
+  size_t          tsize  = op.tsize;
 
   // Initialize the data to insert
-  int      blen = len * (int)type_byte_size (meta->cur->var.dtype);
-  uint8_t *data = malloc ((size_t)blen);
+  int             blen   = len * (int)tsize;
+  uint8_t        *data   = malloc ((size_t)blen);
   if (data == NULL) {
-    return -1;
+    nss_failed (meta);
+    return;
   }
   for (int i = 0; i < blen; ++i) {
     data[i] = (uint8_t)rand ();
@@ -611,80 +775,99 @@ nss_write (struct nss_swarm_test *meta)
   // Database side
   int exec_ret = nsdb_fexecute (
       meta->db,
-      "write %s[%d:%d:%d]",
+      meta->tx,
+      "write %.*s[%d:%d:%d]",
       data,
-      meta->varname,
+      strfmt (&active_var (meta)->var.vname),
       ofst,
       ofst + len * stride,
       stride
   );
   if (exec_ret < 0) {
-    return -1;
+    free (data);
+    nss_failed (meta);
+    return;
   }
 
   struct stride str = to_block_stride (ofst, stride, len);
-  u64 got = block_array_write (meta->cur->data, str, type_byte_size (meta->cur->var.dtype), data);
+  u64           got = block_array_write (active_var (meta)->data, str, tsize, data);
   if (got != (u64)len) {
-    return -1;
+    free (data);
+    nss_failed (meta);
+    return;
   }
 
   free (data);
 
-  return 0;
+  nss_succeeded (meta);
 }
 
 /******************************************************************************
  * SECTION: Main Api
  ******************************************************************************/
 
-struct nss_swarm_test *
-nss_open (
-    int         initial_enabled[NSS_AT_LEN],
+struct ns_simulation *
+ns_simul_open (
+    u64         seed,
+    const char *commit_hash,
+    u64         sequence_id,
     const char *dbname,
     int         max_insert_len,
-    const char *varname,
-    const char *vartype,
     float       sample_space_prob
 )
 {
   ASSERT (sample_space_prob >= 0 && sample_space_prob <= 1);
 
+  error e = error_create ();
+
   if (nsdb_cleanup (dbname) < 0) {
     return NULL;
   }
 
-  struct nss_swarm_test *ret = malloc (sizeof *ret);
+  struct ns_simulation *ret = malloc (sizeof *ret);
   if (ret == NULL) {
     return NULL;
   }
 
-  *ret = (struct nss_swarm_test){
+  *ret = (struct ns_simulation){
       .committed         = mem_vhmap_create (default_mem (), NULL),
       .working           = NULL,
+      .cur_committed     = NULL,
+      .cur_working       = NULL,
       .db                = nsdb_open (dbname),
-      .in_txn            = 0,
+      .tx                = 0,
       .dbname            = dbname,
       .max_insert_len    = max_insert_len,
       .sample_space_prob = sample_space_prob,
   };
 
+  // Error handling
   if (ret->committed == NULL) {
-    return NULL;
-  }
-  if (ret->db == NULL) {
+    free (ret);
     return NULL;
   }
 
-  memcpy (ret->enabled, initial_enabled, NSS_AT_LEN * sizeof (int));
+  if (ret->db == NULL) {
+    mem_vhmap_free (ret->committed);
+    free (ret);
+    return NULL;
+  }
+
+  ret->results = create_nssr (dbname, seed, commit_hash, sequence_id, &e);
+
+  for (int i = 0; i < NSS_AT_LEN; ++i) {
+    ret->enabled[i] = 1;
+  }
+
   nss_set_allowed (ret);
 
   return ret;
 }
 
 int
-nss_close (struct nss_swarm_test *meta)
+ns_simul_close (struct ns_simulation *meta)
 {
-  if (meta->in_txn) {
+  if (meta->tx) {
     nss_commit_txn (meta);
   }
 
@@ -703,8 +886,8 @@ nss_close (struct nss_swarm_test *meta)
   return 0;
 }
 
-enum ns_action_type
-nss_get_random_action (struct nss_swarm_test *meta)
+static enum ns_action_type
+nss_get_random_action (struct ns_simulation *meta)
 {
   while (true) {
     // Count the number of allowed actions
@@ -736,38 +919,192 @@ nss_get_random_action (struct nss_swarm_test *meta)
     }
 
     enum ns_action_type action = (enum ns_action_type)index;
-    i_log_info ("-> %s\n", nss_action_names[action]);
 
     return action;
   }
 }
 
-void
-nss_step (struct nss_swarm_test *meta)
+static void
+nssr_pre_op (struct ns_simulation *meta)
 {
-  nss_print_state (meta);
+  // Set to 0
+  memset (&meta->results.inner, 0, sizeof (meta->results.inner));
 
-  enum ns_action_type action = nss_get_random_action (meta);
+  // Choose a random action
+  enum ns_action_type action      = nss_get_random_action (meta);
+  meta->results.inner.record_type = RS_PRE;
 
   switch (action) {
-    case NSS_BEGIN_TXN: nss_begin_txn (meta); break;
-    case NSS_COMMIT_TXN: nss_commit_txn (meta); break;
-    case NSS_ROLLBACK_TXN: nss_rollback_txn (meta); break;
-    case NSS_CRASH_AND_REOPEN: nss_crash_and_reopen (meta); break;
-    case NSS_CLOSE_AND_REOPEN: nss_close_and_reopen (meta); break;
-    case NSS_CREATE: break;
-    case NSS_SWITCH: break;
-    case NSS_DELETE: break;
-    case NSS_INSERT: nss_insert (meta); break;
-    case NSS_REMOVE: nss_remove (meta); break;
-    case NSS_READ: nss_read (meta); break;
-    case NSS_WRITE: nss_write (meta); break;
+    case NSS_BEGIN_TXN: {
+      meta->results.inner.operation.op_type = NSS_BEGIN_TXN;
+      break;
+    }
+    case NSS_COMMIT_TXN: {
+      meta->results.inner.operation.op_type = NSS_COMMIT_TXN;
+      break;
+    }
+    case NSS_ROLLBACK_TXN: {
+      meta->results.inner.operation.op_type = NSS_ROLLBACK_TXN;
+      break;
+    }
+    case NSS_CRASH_AND_REOPEN: {
+      meta->results.inner.operation.op_type = NSS_CRASH_AND_REOPEN;
+      break;
+    }
+    case NSS_CLOSE_AND_REOPEN: {
+      meta->results.inner.operation.op_type = NSS_CLOSE_AND_REOPEN;
+      break;
+    }
+    case NSS_CREATE: {
+      meta->results.inner.operation.op_type = NSS_CREATE;
+      error e                               = error_create ();
+
+      // Generate the variable name
+      if (gen_new_var (meta, &meta->results.inner.operation.create, &e)) {
+        panic ("TODO - error on pre");
+      }
+      break;
+    }
+    case NSS_SWITCH: {
+      meta->results.inner.operation.op_type = NSS_SWITCH;
+      break;
+    }
+    case NSS_DELETE: {
+      meta->results.inner.operation.op_type = NSS_DELETE;
+      break;
+    }
+    case NSS_INSERT: {
+      meta->results.inner.operation.op_type = NSS_INSERT;
+
+      t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
+      b_size blen                           = block_array_getlen (active_var (meta)->data);
+
+      ASSERT (blen % tsize == 0);
+
+      meta->results.inner.operation.insert = (struct insert_op){
+          .tsize  = tsize,
+          .ofst   = randu32r (0, blen / tsize),
+          .nelems = randu32r (1, meta->max_insert_len / tsize),
+          .len    = blen / tsize,
+      };
+      break;
+    }
+    case NSS_REMOVE: {
+      meta->results.inner.operation.op_type = NSS_REMOVE;
+
+      t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
+      b_size ofst, stride, len;
+      b_size blen = block_array_getlen (active_var (meta)->data);
+
+      ASSERT (blen % tsize == 0);
+
+      nss_random_slice (blen / tsize, &ofst, &stride, &len);
+
+      meta->results.inner.operation.remove = (struct remove_op){
+          .tsize  = tsize,
+          .ofst   = ofst,
+          .stride = stride,
+          .nelems = len,
+          .len    = blen / tsize,
+      };
+
+      break;
+    }
+    case NSS_READ: {
+      meta->results.inner.operation.op_type = NSS_READ;
+
+      t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
+      b_size ofst, stride, len;
+      b_size blen = block_array_getlen (active_var (meta)->data);
+
+      ASSERT (blen % tsize == 0);
+
+      nss_random_slice (blen / tsize, &ofst, &stride, &len);
+
+      meta->results.inner.operation.read = (struct read_op){
+          .tsize  = tsize,
+          .ofst   = ofst,
+          .stride = stride,
+          .nelems = len,
+          .len    = blen / tsize,
+      };
+
+      break;
+    }
+    case NSS_WRITE: {
+      meta->results.inner.operation.op_type = NSS_WRITE;
+
+      t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
+      b_size ofst, stride, len;
+      b_size blen = block_array_getlen (active_var (meta)->data);
+
+      ASSERT (blen % tsize == 0);
+
+      nss_random_slice (blen / tsize, &ofst, &stride, &len);
+
+      meta->results.inner.operation.write = (struct write_op){
+          .tsize  = tsize,
+          .ofst   = ofst,
+          .stride = stride,
+          .nelems = len,
+          .len    = blen / tsize,
+      };
+
+      break;
+    }
     default: UNREACHABLE ();
   }
 
+  meta->results.clock = i_timer_now_ns (&meta->timer) - meta->start_time;
+}
+
+static void
+nssr_post_op (struct ns_simulation *meta)
+{
+  enum ns_action_type action = meta->results.inner.operation.op_type;
+
+  switch (action) {
+    case NSS_BEGIN_TXN: nss_begin_txn (meta); return;
+    case NSS_COMMIT_TXN: nss_commit_txn (meta); return;
+    case NSS_ROLLBACK_TXN: nss_rollback_txn (meta); return;
+    case NSS_CRASH_AND_REOPEN: nss_crash_and_reopen (meta); return;
+    case NSS_CLOSE_AND_REOPEN: nss_close_and_reopen (meta); return;
+    case NSS_CREATE: nss_create (meta); return;
+    case NSS_SWITCH: nss_switch (meta); return;
+    case NSS_DELETE: nss_delete (meta); return;
+    case NSS_INSERT: nss_insert (meta); return;
+    case NSS_REMOVE: nss_remove (meta); return;
+    case NSS_READ: nss_read (meta); return;
+    case NSS_WRITE: nss_write (meta); return;
+    default: UNREACHABLE ();
+  }
+}
+
+struct ns_simul_record *
+ns_simul_prepare (struct ns_simulation *meta)
+{
+  // Set which actions are allowed
+  nss_set_allowed (meta);
+
+  // Do the pre operation
+  nssr_pre_op (meta);
+
+  return &meta->results;
+}
+
+struct ns_simul_record *
+ns_simul_execute (struct ns_simulation *meta)
+{
+  // Do the post operation
+  nssr_post_op (meta);
+
+  // Increment step
+  meta->results.step_number++;
+
   // Choose a set of randomized actions
   if (randf () <= meta->sample_space_prob) {
+    nss_set_random_enabled (meta);
   }
 
-  nss_set_allowed (meta);
+  return &meta->results;
 }

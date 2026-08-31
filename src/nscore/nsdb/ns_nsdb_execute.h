@@ -21,7 +21,7 @@
 #include "core/ns_stdtypes.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 sb_size nsdb_execute_on_buffer (
     struct nsdb      *ns,

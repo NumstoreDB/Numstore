@@ -24,7 +24,7 @@
 #include "nscore/testing/ns_page_fixture.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/types/ns_types.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 err_t
 ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
