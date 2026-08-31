@@ -31,7 +31,6 @@ main (int argc, char **argv)
   }
   const char *filter = (argc == 2) ? argv[1] : NULL;
 
-  srand (1234);
   int ntests = 0;
   error   e = error_create ();
   i_timer timer;

@@ -99,14 +99,8 @@ struct nsdb_var
 
 bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
-void var_random_name (char *buffer, int length);
-err_t rand_varname (
-    struct string    *dest,
-    struct allocator *alloc,
-    const u32         minlen,
-    const u32         maxlen,
-    error            *e
-);
+void var_random_name (char *buffer, u32 length);
+err_t rand_varname (struct string *dest, struct allocator *alloc, u32 minlen, u32 maxlen, error *e);
 err_t rand_varname_same_hash (
     struct string    *name1,
     struct string    *name2,

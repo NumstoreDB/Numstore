@@ -20,7 +20,7 @@
 #include "core/ns_stdtypes.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 err_t ns_variable_valid (struct pager *p, pgno var_root, error *e);
 

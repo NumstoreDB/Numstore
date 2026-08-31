@@ -24,7 +24,7 @@
 #include "nscore/page/ns_page_var_page.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/testing/ns_page_fixture.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"

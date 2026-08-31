@@ -22,7 +22,7 @@
 #include "core/ns_string.h"
 #include "nscore/types/ns_kvt.h"
 #include "nscore/types/ns_types.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 #ifdef TESTING
 #  include "core/os/ns_memory.h"

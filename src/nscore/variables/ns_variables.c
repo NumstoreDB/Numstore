@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 #include "core/ns_alloc.h"
 #include "core/ns_csx_assert.h"
@@ -238,9 +238,9 @@ const char generous_pool[] =
     "_";
 
 void
-var_random_name (char *buffer, int length)
+var_random_name (char *buffer, u32 length)
 {
-  if (length <= 0) {
+  if (length == 0) {
     return;
   }
 
@@ -251,7 +251,7 @@ var_random_name (char *buffer, int length)
   buffer[0]         = alpha_pool[randu32 () % alpha_size];
 
   // Remaining chars can use the generous pool
-  for (int i = 1; i < length - 1; i++) {
+  for (u32 i = 1; i < length - 1; i++) {
     buffer[i] = generous_pool[randu32 () % generous_size];
   }
   buffer[length - 1] = '\0';
@@ -279,7 +279,7 @@ TEST (var_random_name)
     var_random_name (buf, sizeof (buf));
 
     test_assert (test_char_in_pool (buf[0], alpha_pool, sizeof (alpha_pool) - 1));
-    test_assert_int_equal (buf[sizeof (buf) - 1], '\0');
+    test_assert_int_equal ((int)buf[sizeof (buf) - 1], '\0');
 
     for (u32 i = 1; i < sizeof (buf) - 1; i++) {
       test_assert (test_char_in_pool (buf[i], generous_pool, sizeof (generous_pool) - 1));
@@ -290,15 +290,13 @@ TEST (var_random_name)
   char sentinel[4] = {'x', 'x', 'x', 'x'};
   var_random_name (sentinel, 0);
   test_assert (memcmp (sentinel, "xxxx", 4) == 0);
-  var_random_name (sentinel, -1);
-  test_assert (memcmp (sentinel, "xxxx", 4) == 0);
 
   // NOTE: with length == 1, the null terminator write at
   // buffer[length - 1] overwrites the alpha char written moments
   // before, so the "name" ends up being just '\0'.
   char single[1];
   var_random_name (single, 1);
-  test_assert_int_equal (single[0], '\0');
+  test_assert_int_equal ((int)single[0], '\0');
 }
 
 #endif // TESTING

@@ -26,7 +26,7 @@
 #include "core/os/ns_memory.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
-#include "nscore/types/ns_variables.h"
+#include "nscore/variables/ns_variables.h"
 
 struct nsdb
 {

@@ -70,7 +70,7 @@ LIBNS_SRCS += src/nscore/types/ns_type_accessor.c
 LIBNS_SRCS += src/nscore/types/ns_type_ref.c
 LIBNS_SRCS += src/nscore/types/ns_types.c
 LIBNS_SRCS += src/nscore/types/ns_union_t.c
-LIBNS_SRCS += src/nscore/types/ns_variables.c
+LIBNS_SRCS += src/nscore/variables/ns_variables.c
 
 # WAL
 LIBNS_SRCS += src/nscore/wal/ns_wal.c

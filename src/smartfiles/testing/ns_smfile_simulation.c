@@ -164,7 +164,7 @@ smfile_simul_rollback_txn (struct smfile_simulation *meta)
 
   block_array_free (meta->working);
   meta->working = NULL;
-  meta->tx      = 0;
+  meta->tx      = NULL;
   meta->len     = block_array_getlen (meta->committed);
 
   return 0;
