@@ -23,17 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: ${{ matrix.qemu }}
-
       - run: make clean
 
       - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=debug"
 
-      - name: Run unit tests under QEMU
-        run: ./build/debug-${{ matrix.dockcross }}/target/bin/unit_tests
+      - run: ./docker/dockcross-${{ matrix.dockcross }} ./build/debug-${{ matrix.dockcross }}/target/bin/unit_tests
 
       - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=release"
 
