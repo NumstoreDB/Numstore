@@ -33,14 +33,14 @@ jobs:
       - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=debug"
 
       - name: Run unit tests under QEMU
-        run: qemu-${{ matrix.qemu }} ./build/debug/target-${{ matrix.dockcross }}/bin/unit_tests
+        run: ./build/debug/target-${{ matrix.dockcross }}/bin/unit_tests
 
       - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=release"
 
-      - run: cp ./docs/release_docs.md build/release/target/README.md
+      - run: cp ./docs/release_docs.md build/release-${{ matrix.dockcross }}/target/README.md
 
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:
-          folder: ./build/release/target
+          folder: ./build/release-${{ matrix.dockcross }}/target
           artifact-name: release-${{ matrix.dockcross }}
