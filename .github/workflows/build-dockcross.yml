@@ -37,4 +37,3 @@ jobs:
         uses: ./.github/actions/compress-and-upload
         with:
           folder: ${{ matrix.folder }}
-          artifact-name: folder-dockcross-${{ matrix.platform }}-${{ matrix.goal }}

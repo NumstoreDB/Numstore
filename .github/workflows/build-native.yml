@@ -32,4 +32,3 @@ jobs:
         uses: ./.github/actions/compress-and-upload
         with:
           folder: ${{ matrix.folder }}
-          artifact-name: folder-${{ matrix.platform }}-${{ matrix.goal }}
