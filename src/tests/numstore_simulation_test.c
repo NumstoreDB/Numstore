@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "nscore/nsdb/ns_nsdb.h"
 #include "numstore/testing/ns_numstore_simulation.h"
 
 #include <stdio.h>
@@ -26,16 +27,29 @@ main (int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  const char           *db          = argv[1];
-  int                   duration    = atoi (argv[2]);
-  unsigned              seed        = (unsigned)strtoul (argv[3], NULL, 10);
-  const char           *commit_hash = argv[4];
-  unsigned              sequence_id = (unsigned)strtoul (argv[5], NULL, 10);
+  const char *db          = argv[1];
+  int         duration    = atoi (argv[2]);
+  unsigned    seed        = (unsigned)strtoul (argv[3], NULL, 10);
+  const char *commit_hash = argv[4];
+  unsigned    sequence_id = (unsigned)strtoul (argv[5], NULL, 10);
 
-  struct ns_simulation *simul = ns_simul_open (seed, commit_hash, sequence_id, db, 10000000, 0.1);
+  nsdb_cleanup (db);
+  struct ns_simulation   *simul = ns_simul_open (seed, commit_hash, sequence_id, db, 10000, 0);
 
-  ns_simul_prepare (simul);
-  ns_simul_execute (simul);
+  struct ns_simul_record *record;
+
+  while (true) {
+    record = ns_simul_prepare (simul);
+    print_ns_simul_record (record);
+    if (record->inner.record_type == RS_FAILURE) {
+      return -1;
+    }
+    record = ns_simul_execute (simul);
+    print_ns_simul_record (record);
+    if (record->inner.record_type == RS_FAILURE) {
+      return -1;
+    }
+  }
 
   return EXIT_SUCCESS;
 }

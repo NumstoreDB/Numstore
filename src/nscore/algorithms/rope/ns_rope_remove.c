@@ -305,8 +305,13 @@ ns_remove (struct ns_remove_params *params, error *e)
         }
 
         if (params->dest) {
-          i32 written =
-              stream_bwrite ((u8 *)dl_get_data (sro) + s.read_idx, 1, next_amount, params->dest, e);
+          i32 written = stream_bwrite (
+              (u8 *)dl_get_data (sro) + s.read_idx,
+              1,
+              next_amount,
+              params->dest,
+              e
+          );
 
           if (written < 0) {
             goto failed;

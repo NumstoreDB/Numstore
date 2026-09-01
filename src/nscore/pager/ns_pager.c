@@ -674,11 +674,11 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
   // Append end logs and remove rolled back and committed txns
   for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i) {
-    struct ns_txn *tx = ((struct ns_txn **)ctx->txn_ptrs.data)[i];
+    struct ns_txn *tx  = ((struct ns_txn **)ctx->txn_ptrs.data)[i];
 
-    bool           nothing_to_do =
-        (tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0) != 0;
-    bool committed = tx->data.state == TX_COMMITTED;
+    bool nothing_to_do = (tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0)
+                         != 0;
+    bool committed     = tx->data.state == TX_COMMITTED;
 
     if (nothing_to_do || committed) {
       // Append an end log

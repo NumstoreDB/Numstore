@@ -670,10 +670,10 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
         }
         case WUP_PHYSICAL: {
           match = match && left->update.phys.pg == right->update.phys.pg;
-          match =
-              match && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
-          match =
-              match && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
           break;
         }
         case WUP_FEXT: {

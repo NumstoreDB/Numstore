@@ -7,10 +7,13 @@ UseTab: Never
 
 # Function parameters & arguments layout
 AlignAfterOpenBracket: BlockIndent                  
-BinPackParameters: OnePerLine
 BinPackArguments: false                             
 AllowAllParametersOfDeclarationOnNextLine: false   
 AllowAllArgumentsOnNextLine: false                  
+
+BinPackParameters: false              
+AlwaysBreakAfterDefinitionReturnType: All   
+PenaltyBreakAssignment: 500           
 
 # Break return type on definitions, keep on declarations
 BreakAfterReturnType: AllDefinitions                
@@ -84,6 +87,7 @@ SpacesBeforeTrailingComments: 1
 DerivePointerAlignment: false                       
 Cpp11BracedListStyle: true                          
 PointerAlignment: Right
+PenaltyBreakBeforeFirstCallParameter: 1
 
 # Consecutive block alignment
 AlignConsecutiveMacros: Consecutive                

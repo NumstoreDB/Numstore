@@ -233,8 +233,11 @@ TEST (compile_type_ref)
       tr_take (strfcstr ("myvar"), ta_select (strfcstr ("field"), &ta_take ()))
   );
 
-  struct type_accessor subrange =
-      ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ());
+  struct type_accessor subrange = ta_range (
+      (struct user_stride[]){ustride_single (0)},
+      1,
+      &ta_take ()
+  );
   test_compile_type_ref_green_path (
       "myvar.a[0]",
       tr_take (strfcstr ("myvar"), ta_select (strfcstr ("a"), &subrange))

@@ -80,8 +80,8 @@ smfile_data_writer_open (const char *path)
   if (smf == NULL) {
     return NULL;
   }
-  struct data_writer *writer =
-      i_malloc (default_mem (), 1, sizeof *writer, &((struct nsdb *)smf)->e);
+  struct data_writer
+      *writer = i_malloc (default_mem (), 1, sizeof *writer, &((struct nsdb *)smf)->e);
   if (writer == NULL) {
     smfile_close (smf);
     return NULL;
