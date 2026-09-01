@@ -33,7 +33,7 @@ jobs:
       - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=debug"
 
       - name: Run unit tests under QEMU
-        run: ./build/debug/target-${{ matrix.dockcross }}/bin/unit_tests
+        run: ./build/debug-${{ matrix.dockcross }}/target/bin/unit_tests
 
       - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=release"
 
