@@ -1,41 +1,33 @@
 name: Compress and Upload
-description: Compresses a folder (zip on Windows, tar.gz elsewhere) and uploads it as an artifact named after the folder's basename.
+description: Compresses a folder (zip on Windows, tar.gz elsewhere) and uploads it as an artifact under the given name.
 
 inputs:
   folder:
     description: 'Folder to compress and upload. Skipped entirely if empty.'
     required: false
     default: ''
-
-outputs:
   artifact-name:
-    description: 'The name of the artifact that was uploaded (empty if folder was not provided)'
-    value: ${{ steps.resolve.outputs.name }}
+    description: 'Name to give the uploaded artifact'
+    required: true
 
 runs:
   using: composite
   steps:
-    - name: Resolve folder name
-      if: inputs.folder != ''
-      id: resolve
-      shell: bash
-      run: echo "name=$(basename "${{ inputs.folder }}")" >> "$GITHUB_OUTPUT"
-
     - name: Compress artifact folder (zip, Windows)
       if: inputs.folder != '' && runner.os == 'Windows'
       shell: bash
-      run: 7z a "${{ steps.resolve.outputs.name }}.zip" "./${{ inputs.folder }}/*"
+      run: 7z a "${{ inputs.artifact-name }}.zip" "./${{ inputs.folder }}/*"
 
     - name: Compress artifact folder (tar.gz, non-Windows)
       if: inputs.folder != '' && runner.os != 'Windows'
       shell: bash
-      run: tar -czf "${{ steps.resolve.outputs.name }}.tar.gz" -C "${{ inputs.folder }}" .
+      run: tar -czf "${{ inputs.artifact-name }}.tar.gz" -C "${{ inputs.folder }}" .
 
     - name: Upload artifact
       if: inputs.folder != ''
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.resolve.outputs.name }}
+        name: ${{ inputs.artifact-name }}
         path: |
           *.zip
           *.tar.gz
