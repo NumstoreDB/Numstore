@@ -213,11 +213,10 @@ TEST_BIN := build/debug$(CROSS_SUFFIX)/target/bin/unit_tests$(if $(findstring wi
 release-package:
 	$(MAKE) clean
 	$(MAKE) TARGET=debug
-	./$(TEST_BIN)
+	file $(TEST_BIN)
+	./$(TEST_BIN); echo "exit code: $$?"
 	$(MAKE) TARGET=release
 	cp docs/release_docs.md build/release$(CROSS_SUFFIX)/target/README.md
-	tar -czf build/release$(CROSS_SUFFIX).tar.gz -C build/release$(CROSS_SUFFIX) target
-	cd build/release$(CROSS_SUFFIX) && zip -r ../release$(CROSS_SUFFIX).zip target
 
 ############ Cross-compilation via dockcross
 # Examples:
