@@ -1,0 +1,39 @@
+name: Compress and Upload
+description: Compresses a folder (zip on Windows, tar.gz elsewhere) and uploads it as an artifact.
+
+inputs:
+  folder:
+    description: 'Folder to compress and upload. Skipped entirely if empty.'
+    required: false
+    default: ''
+  artifact-name:
+    description: 'Name to give the uploaded artifact'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Compress artifact folder (zip, Windows)
+      if: inputs.folder != '' && runner.os == 'Windows'
+      shell: bash
+      run: |
+        folder_name=$(basename "${{ inputs.folder }}")
+        7z a "${folder_name}.zip" "./${{ inputs.folder }}/*"
+
+    - name: Compress artifact folder (tar.gz, non-Windows)
+      if: inputs.folder != '' && runner.os != 'Windows'
+      shell: bash
+      run: |
+        folder_name=$(basename "${{ inputs.folder }}")
+        tar -czf "${folder_name}.tar.gz" -C "${{ inputs.folder }}" .
+
+    - name: Upload artifact
+      if: inputs.folder != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          *.zip
+          *.tar.gz
+        if-no-files-found: error
+        retention-days: 7

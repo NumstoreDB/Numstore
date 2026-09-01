@@ -2,11 +2,25 @@ name: CI
 
 on:
   push:
+    branches: [main]
+  pull_request:
 
 jobs:
-  build:
-    uses: ./.github/workflows/build.yml
+  # Native targets
+  build-native:
+    uses: ./.github/workflows/build-native.yml
     with:
-      platforms: '["ubuntu-latest","windows-latest","macos-latest","dockcross-android-x86_64"]'
-      goal: '["example"]'
-      default_runner: 'ubuntu-latest'
+      builds: |
+        [
+          {"platform": "ubuntu-latest", "goal": "release", "folder": "build/release/target"},
+          {"platform": "macos-latest", "goal": "release", "folder": "build/release/target"}
+        ]
+
+  # Dock Cross targets
+  build-dockcross:
+    uses: ./.github/workflows/build-dockcross.yml
+    with:
+      builds: |
+        [
+          {"platform": "linux-arm64", "goal": "release", "folder": "build/release-linux-arm64/target"}
+        ]

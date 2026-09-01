@@ -1,0 +1,40 @@
+name: Build (dockcross)
+
+on:
+  workflow_call:
+    inputs:
+      builds:
+        description: >
+          JSON array of build definitions, each with platform, goal, and folder.
+          e.g. [{"platform":"linux-arm64","goal":"all","folder":"dist/linux-arm64"}]
+        required: true
+        type: string
+      runner:
+        description: 'GitHub runner to build on (dockcross cross-compiles for the target platform here)'
+        required: false
+        default: 'ubuntu-latest'
+        type: string
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.builds) }}
+    name: dockcross-${{ matrix.platform }} (${{ matrix.goal }})
+    runs-on: ${{ inputs.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run using dockcross
+        run: |
+          make cross PLATFORM="${{ matrix.platform }}" CROSS_GOAL="${{ matrix.goal }}"
+
+      - name: Compress and upload
+        uses: ./.github/actions/compress-and-upload
+        with:
+          folder: ${{ matrix.folder }}
+          artifact-name: folder-dockcross-${{ matrix.platform }}-${{ matrix.goal }}

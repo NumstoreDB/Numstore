@@ -1,0 +1,35 @@
+name: Build (Native)
+
+on:
+  workflow_call:
+    inputs:
+      builds:
+        description: >
+          JSON array of build definitions, each with platform, goal, and folder.
+          e.g. [{"platform":"ubuntu-latest","goal":"all","folder":"dist/linux-x64"},
+                {"platform":"windows-latest","goal":"test","folder":"dist/windows-x64"}]
+        required: true
+        type: string
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.builds) }}
+    name: ${{ matrix.platform }} (${{ matrix.goal }})
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run build
+        run: make ${{ matrix.goal }}
+
+      - name: Compress and upload
+        uses: ./.github/actions/compress-and-upload
+        with:
+          folder: ${{ matrix.folder }}
+          artifact-name: folder-${{ matrix.platform }}-${{ matrix.goal }}
