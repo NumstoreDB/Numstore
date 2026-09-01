@@ -210,8 +210,12 @@ nsserver_execute (struct ns_server *server, error *e)
           );
           kevent (server->kq, changes, 2, NULL, 0, NULL);
         } else {
-          ssize_t sent =
-              send (server->events[i].ident, conn->buffer + conn->wlen, conn->rlen - conn->wlen, 0);
+          ssize_t sent = send (
+              server->events[i].ident,
+              conn->buffer + conn->wlen,
+              conn->rlen - conn->wlen,
+              0
+          );
           printf ("Sent: %ld\n", sent);
           err_check (sent >= 0, "send");
           conn->wlen += sent;
@@ -222,9 +226,9 @@ nsserver_execute (struct ns_server *server, error *e)
       else if (conn->rlen < 4 || conn->rlen < conn_read_prefix (conn)) {
         ASSERT (conn->wlen == 0);
 
-        u32     len = conn_read_prefix (conn);
-        ssize_t recvd =
-            recv (server->events[i].ident, conn->buffer + conn->rlen, len - conn->rlen, 0);
+        u32 len = conn_read_prefix (conn);
+        ssize_t
+            recvd = recv (server->events[i].ident, conn->buffer + conn->rlen, len - conn->rlen, 0);
         printf ("Recv: %ld\n", recvd);
         err_check (recvd >= 0, "recv");
         conn->rlen += recvd;

@@ -164,8 +164,12 @@ main ()
             EV_SET (&changes[1], events[i].ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
             kevent (kq, changes, 2, NULL, 0, NULL);
           } else {
-            ssize_t sent =
-                send (events[i].ident, conn->buffer + conn->wlen, conn->rlen - conn->wlen, 0);
+            ssize_t sent = send (
+                events[i].ident,
+                conn->buffer + conn->wlen,
+                conn->rlen - conn->wlen,
+                0
+            );
             printf ("Sent: %ld\n", sent);
             err_check (sent >= 0, "send");
             conn->wlen += sent;

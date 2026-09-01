@@ -1072,8 +1072,12 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
        *
        * So this line is hit one the first loop always
        */
-      pms->output =
-          nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), pms->p->mem, e);
+      pms->output = nupd_init (
+          page_h_pgno (&pms->cur),
+          in_get_size (page_h_ro (&pms->cur)),
+          pms->p->mem,
+          e
+      );
       if (pms->output == NULL) {
         goto failed;
       }

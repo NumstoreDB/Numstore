@@ -155,8 +155,8 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
     switch (state) {
       case ACTIVE: {
-        const sp_size read =
-            stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
+        const sp_size
+            read = stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
         if (read < 0) {
           goto failed;

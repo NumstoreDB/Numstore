@@ -179,8 +179,8 @@ ns_write_forward (const struct ns_write_params params, error *e)
         if (next_amount > 0) {
           // Pull bytes from caller's source stream and
           // stamp them into the page
-          const sp_size write =
-              stream_bread ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.src, e);
+          const sp_size
+              write = stream_bread ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.src, e);
 
           if (write < 0) {
             goto failed;

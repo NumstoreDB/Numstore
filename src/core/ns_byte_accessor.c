@@ -44,8 +44,11 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
       u32 i         = 0;
 
       while (i < acc->range.stride.nelems) {
-        written +=
-            ba_memcpy_from_recursive (dest + written, src + (pos * elem_size), acc->range.sub_ba);
+        written += ba_memcpy_from_recursive (
+            dest + written,
+            src + (pos * elem_size),
+            acc->range.sub_ba
+        );
 
         pos += acc->range.stride.stride;
         i++;

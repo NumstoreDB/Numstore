@@ -121,8 +121,8 @@ TEST (parse_i32_boundary_values)
   for (u32 i = 0; i < arrlen (parse_i32_cases); ++i) {
     TEST_CASE ("%s", parse_i32_cases[i].name)
     {
-      const err_t ret =
-          parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
+      const err_t
+          ret = parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
       test_assert_int_equal (ret, parse_i32_cases[i].expected_ret);
       if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
@@ -162,8 +162,8 @@ TEST (parse_i64_boundary_values)
   for (u32 i = 0; i < arrlen (parse_i64_cases); ++i) {
     TEST_CASE ("%s", parse_i64_cases[i].name)
     {
-      const err_t ret =
-          parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
+      const err_t
+          ret = parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
       test_assert_int_equal (ret, parse_i64_cases[i].expected_ret);
       if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
@@ -215,9 +215,9 @@ TEST (ext_array_remove_all_produces_empty)
   ext_array_insert (&a, 0, src, sizeof src, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
 
-  u8        out[5] = {0};
-  const i64 n =
-      ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out, &e);
+  u8 out[5] = {0};
+  const i64
+      n = ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out, &e);
 
   test_assert_type_equal (n, (i64)5, i64, PRId64);
   test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);

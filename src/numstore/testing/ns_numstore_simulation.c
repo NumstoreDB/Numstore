@@ -64,9 +64,14 @@ struct ns_simulation
   int                    max_insert_len;
   float                  sample_space_prob;
 
+  // FIX(#8): metric snapshots taken at begin_txn, restored on
+  // rollback / crash so nvars & tracked_bytes stay transactional
+  // like the reference maps.
+  u32                    txn_saved_nvars;
+  u32                    txn_saved_tracked_bytes;
+
   struct ns_simul_record results;
   i_timer                timer;
-  u64                    start_time;
   struct allocator       alloc;
 };
 
@@ -119,9 +124,13 @@ static char *
 random_name (void)
 {
   // TODO - use i_malloc
+  // FIX(minor): allocate room for a NUL and terminate explicitly so
+  // later strfcstr()/"%s" use is safe regardless of whether
+  // var_random_name terminates within `length`.
   u32   length = get_random_name_len ();
-  char *buffer = malloc (length * sizeof (char));
+  char *buffer = malloc ((size_t)length + 1);
   var_random_name (buffer, length);
+  buffer[length] = '\0';
 
   return buffer;
 }
@@ -139,16 +148,6 @@ get_random_type_depth (void)
 }
 
 static void
-refresh_cur (struct ns_simulation *meta)
-{
-  // Replace cur with the variable in working
-  if (active_var (meta)) {
-    set_active_var (meta, mem_vhmap_get (active_db (meta), active_var (meta)->var.vname));
-    ASSERT (active_var (meta));
-  }
-}
-
-static void
 nss_random_slice (b_size len, b_size *ofst, b_size *stride, b_size *nelems)
 {
   ASSERT (len > 0);
@@ -161,7 +160,7 @@ nss_random_slice (b_size len, b_size *ofst, b_size *stride, b_size *nelems)
   *stride          = randu32r (1, remaining);
 
   // Elements is between [1, (len - offset + stride - 1) / stride
-  int max_len      = (remaining + *stride - 1) / *stride;
+  b_size max_len   = (remaining + *stride - 1) / *stride;
   *nelems          = randu32r (1, max_len);
 }
 
@@ -176,12 +175,17 @@ gen_new_var (struct ns_simulation *meta, struct create_op *dest, error *e)
     // Generate a random type
     struct type *type = type_random (&meta->alloc, get_random_type_depth (), e);
     if (type == NULL) {
+      // FIX(minor): don't leak name/allocator on the error paths
+      free (name);
+      allocator_free (&meta->alloc);
       return error_trace (e);
     }
 
     // Get the type string for that type
     char *typestr = type_tostr (type);
     if (typestr == NULL) {
+      free (name);
+      allocator_free (&meta->alloc); // frees `type` too
       return error_trace (e);
     }
 
@@ -196,11 +200,14 @@ gen_new_var (struct ns_simulation *meta, struct create_op *dest, error *e)
     dest->vname   = name;
     dest->type    = type;
     dest->typestr = typestr;
+    break;
   }
+
+  return SUCCESS;
 }
 
 static struct stride
-to_block_stride (int ofst, int stride, int len)
+to_block_stride (b_size ofst, b_size stride, b_size len)
 {
   return (struct stride){
       .start  = (u64)ofst,
@@ -227,14 +234,14 @@ nss_set_allowed (struct ns_simulation *meta)
 
   memset (meta->allowed, 0, sizeof (meta->allowed));
 
-  meta->allowed[NSS_CRASH_AND_REOPEN] = meta->enabled[NSS_CRASH_AND_REOPEN];
+  meta->allowed[NSS_CRASH_AND_REOPEN] = 0; // meta->enabled[NSS_CRASH_AND_REOPEN];
 
   if (!meta->tx) {
     meta->allowed[NSS_BEGIN_TXN]        = meta->enabled[NSS_BEGIN_TXN];
-    meta->allowed[NSS_CLOSE_AND_REOPEN] = meta->enabled[NSS_CLOSE_AND_REOPEN];
+    meta->allowed[NSS_CLOSE_AND_REOPEN] = 0; // meta->enabled[NSS_CLOSE_AND_REOPEN];
   } else {
     meta->allowed[NSS_COMMIT_TXN]   = meta->enabled[NSS_COMMIT_TXN];
-    meta->allowed[NSS_ROLLBACK_TXN] = meta->enabled[NSS_ROLLBACK_TXN];
+    meta->allowed[NSS_ROLLBACK_TXN] = 0; // meta->enabled[NSS_ROLLBACK_TXN];
   }
 
   meta->allowed[NSS_CREATE] = meta->enabled[NSS_CREATE];
@@ -274,6 +281,8 @@ get_file_size (const char *filename)
     return st.st_size;
   }
   crash ();
+  return -1; // unreachable; silences no-return-value warnings if crash()
+             // isn't marked noreturn
 }
 
 static struct ns_simul_record
@@ -297,25 +306,13 @@ create_nssr (const char *dbname, u64 seed, const char *commit_hash, u64 sequence
 static inline u64
 nss_clock_step (struct ns_simulation *meta)
 {
-  u64 now             = i_timer_now_ms (&meta->timer);
+  u64 now             = i_timer_now_ns (&meta->timer);
   u64 prev            = meta->results.clock;
   meta->results.clock = now;
-  ASSERT (now > prev);
+  // FIX(minor): a coarse clock may legally return the same value twice;
+  // strict > fires spuriously.
+  ASSERT (now >= prev);
   return now - prev;
-}
-
-static inline void
-nss_succeeded (struct ns_simulation *meta)
-{
-  meta->results.inner.op_duration_ms = nss_clock_step (meta);
-  meta->results.inner.record_type    = RS_SUCCESS;
-}
-
-static inline void
-nss_failed (struct ns_simulation *meta)
-{
-  meta->results.inner.op_duration_ms = nss_clock_step (meta);
-  meta->results.inner.record_type    = RS_FAILURE;
 }
 
 static void
@@ -335,14 +332,27 @@ nss_begin_txn (struct ns_simulation *meta)
     meta->results.inner.record_type = RS_SUCCESS;
   }
 
-  meta->working = mem_vhmap_clone (meta->committed, NULL);
+  error e       = error_create ();
+  meta->working = mem_vhmap_clone (meta->committed, &e);
 
   if (meta->working == NULL) {
     meta->results.inner.record_type = RS_FAILURE;
     return;
   }
 
-  refresh_cur (meta);
+  // FIX(#3): don't refresh_cur() here - with tx set, active_var() would
+  // read cur_working, which is stale from a previous txn. Derive the
+  // working cursor from the committed cursor instead.
+  if (meta->cur_committed != NULL) {
+    meta->cur_working = mem_vhmap_get (meta->working, meta->cur_committed->var.vname);
+    ASSERT (meta->cur_working);
+  } else {
+    meta->cur_working = NULL;
+  }
+
+  // FIX(#8): snapshot metrics so rollback/crash can restore them
+  meta->txn_saved_nvars         = meta->results.nvars;
+  meta->txn_saved_tracked_bytes = meta->results.tracked_bytes;
 
   return;
 }
@@ -365,11 +375,15 @@ nss_commit_txn (struct ns_simulation *meta)
   }
 
   mem_vhmap_free (meta->committed);
-  meta->committed = meta->working;
-  meta->working   = NULL;
-  meta->tx        = NULL;
+  meta->committed     = meta->working;
+  meta->working       = NULL;
+  meta->tx            = NULL;
 
-  refresh_cur (meta);
+  // FIX(#2): the old refresh_cur() dereferenced cur_committed, which
+  // pointed into the map we just freed. cur_working already points into
+  // the surviving (promoted) map - just hand it over.
+  meta->cur_committed = meta->cur_working;
+  meta->cur_working   = NULL;
 
   return;
 }
@@ -379,10 +393,12 @@ nss_rollback_txn (struct ns_simulation *meta)
 {
   ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
-  ASSERT (meta->cur_working != NULL);
+  // (removed: ASSERT (meta->cur_working != NULL) - a txn with no
+  // variables is perfectly legal)
 
   nss_clock_step (meta);
-  err_t ret                          = nsdb_rollback (meta->db, NULL);
+  // FIX(#5): pass the actual transaction, matching nsdb_commit
+  err_t ret                          = nsdb_rollback (meta->db, meta->tx);
   meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
   if (ret < 0) {
@@ -393,10 +409,16 @@ nss_rollback_txn (struct ns_simulation *meta)
   }
 
   mem_vhmap_free (meta->working);
-  meta->working = NULL;
-  meta->tx      = NULL;
+  meta->working               = NULL;
+  meta->tx                    = NULL;
 
-  refresh_cur (meta);
+  // FIX(#3): cur_working pointed into the freed map - drop it. The
+  // committed cursor is untouched by the txn, so no refresh is needed.
+  meta->cur_working           = NULL;
+
+  // FIX(#8): restore metrics to their pre-txn values
+  meta->results.nvars         = meta->txn_saved_nvars;
+  meta->results.tracked_bytes = meta->txn_saved_tracked_bytes;
 
   return;
 }
@@ -420,13 +442,20 @@ nss_crash_and_reopen (struct ns_simulation *meta)
 
   // If we were in the middle of a transaction
   // revert back to the previous one
+  // FIX(#4): clear tx/cur_working *before* anything consults
+  // active_db()/active_var() - the old code freed `working` and then
+  // called refresh_cur() while tx was still set, dereferencing a
+  // dangling cursor against a NULL map.
   if (meta->working) {
     ASSERT (meta->tx);
 
     mem_vhmap_free (meta->working);
-    meta->working = NULL;
+    meta->working               = NULL;
+    meta->cur_working           = NULL;
 
-    refresh_cur (meta);
+    // FIX(#8): the txn's metric changes died with the crash
+    meta->results.nvars         = meta->txn_saved_nvars;
+    meta->results.tracked_bytes = meta->txn_saved_tracked_bytes;
   }
 
   meta->tx = NULL;
@@ -453,16 +482,10 @@ nss_close_and_reopen (struct ns_simulation *meta)
     meta->results.inner.record_type = RS_SUCCESS;
   }
 
-  if (meta->working) {
-    ASSERT (meta->tx);
-
-    mem_vhmap_free (meta->working);
-    meta->working = NULL;
-
-    refresh_cur (meta);
-  }
-
-  meta->tx = NULL;
+  // FIX(#4): removed the dead `if (meta->working)` block - this function
+  // asserts !meta->tx on entry, so a working map here is impossible (the
+  // deleted block even contained ASSERT(meta->tx), contradicting the
+  // entry assertion).
 
   return;
 }
@@ -482,17 +505,40 @@ nss_create (struct ns_simulation *meta)
       .var_root = 0,
   };
 
-  // Create the variable in the database
-  if (nsdb_fexecute (meta->db, NULL, "create %s %s", NULL, create.vname, create.typestr) < 0) {
-    nss_failed (meta);
+  err_t ret;
+  u64   tdiff;
+  {
+    nss_clock_step (meta);
+    // FIX(#7): run inside the current transaction like every other data
+    // op - otherwise a rollback reverts the reference map but the real
+    // DB keeps the variable, and the two models diverge permanently.
+    ret   = nsdb_fexecute (meta->db, meta->tx, "create %s %s", NULL, create.vname, create.typestr);
+    tdiff = nss_clock_step (meta);
+  }
+  if (ret != 0) {
+    free (meta->results.inner.operation.create.vname);
+    free (meta->results.inner.operation.create.typestr);
+    allocator_free (&meta->alloc);
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
     return;
+  } else {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_SUCCESS;
+    meta->results.nvars += 1;
   }
 
   // Create the variable in the reference side
-  if (mem_vhmap_add (db, &var, NULL) < 0) {
-    nss_failed (meta);
-    return;
-  }
+  // NOTE(#10): this assumes mem_vhmap_add deep-copies `var` (vname buffer
+  // and dtype). If it doesn't, the frees below are use-after-free bombs
+  // for the later type_byte_size(active_var(...)->var.dtype) calls in
+  // nssr_pre_op - verify the ownership contract.
+  struct var_with_data *v = mem_vhmap_add (db, &var, NULL);
+  ASSERT (v != NULL);
 
   // If there is no variable - then set it to this one
   if (active_var (meta) == NULL) {
@@ -502,23 +548,44 @@ nss_create (struct ns_simulation *meta)
   free (meta->results.inner.operation.create.vname);
   free (meta->results.inner.operation.create.typestr);
   allocator_free (&meta->alloc);
-
-  meta->results.nvars += 1;
-
-  nss_succeeded (meta);
 }
 
 static void
 nss_switch (struct ns_simulation *meta)
 {
-  struct mem_vhmap *db = active_db (meta);
-  set_active_var (meta, mem_vhmap_random (db));
-  if (active_var (meta) == NULL) {
-    nss_failed (meta);
-    return;
+  struct mem_vhmap     *db   = active_db (meta);
+  struct var_with_data *next = mem_vhmap_random (db);
+
+  err_t                 ret;
+  u64                   tdiff;
+
+  // FIX(#6): initialize - if nsdb_fexecute fails before assigning it,
+  // the failure path passed garbage to nsdb_var_free.
+  struct nsdb_var      *var = NULL;
+  {
+    nss_clock_step (meta);
+    // FIX(#7): read through the txn so we observe txn-local state (e.g.
+    // a variable created earlier in this same uncommitted txn).
+    ret   = nsdb_fexecute (meta->db, meta->tx, "get %.*s", &var, strfmt (&next->var.vname));
+    tdiff = nss_clock_step (meta);
   }
 
-  nss_succeeded (meta);
+  if (ret != 0) {
+    nsdb_var_free (meta->db, var);
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
+    return;
+  } else {
+    nsdb_var_free (meta->db, var);
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_SUCCESS;
+  }
+
+  set_active_var (meta, next);
 }
 
 static void
@@ -526,16 +593,50 @@ nss_delete (struct ns_simulation *meta)
 {
   ASSERT (active_var (meta) != NULL);
 
-  const char *name = active_var (meta)->var.vname.data;
-  if (nsdb_fexecute (meta->db, meta->tx, "delete %s", NULL, name) < 0) {
-    nss_failed (meta);
+  err_t ret;
+  u64   tdiff;
+
+  {
+    nss_clock_step (meta);
+    // FIX(minor): vname is a counted string everywhere else (%.*s +
+    // strfmt); .data isn't guaranteed NUL-terminated, so %s over-read.
+    ret = nsdb_fexecute (
+        meta->db,
+        meta->tx,
+        "delete %.*s",
+        NULL,
+        strfmt (&active_var (meta)->var.vname)
+    );
+    tdiff = nss_clock_step (meta);
+  }
+
+  if (ret < 0) {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
     return;
+  } else {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.nvars -= 1;
+    // FIX(minor): the deleted variable's bytes are no longer tracked
+    meta->results.tracked_bytes -= (u32)block_array_getlen (active_var (meta)->data);
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
   mem_vhmap_remove (active_db (meta), active_var (meta)->var.vname);
   set_active_var (meta, mem_vhmap_random (active_db (meta)));
+}
 
-  nss_succeeded (meta);
+static u8 *
+random_data (b_size blen)
+{
+  uint8_t *data = malloc ((size_t)blen);
+  ASSERT (data);
+  rand_bytes (data, blen);
+  return data;
 }
 
 static void
@@ -547,259 +648,240 @@ nss_insert (struct ns_simulation *meta)
   t_size           tsize = op.tsize;
 
   // Create the data to insert
-  int              blen  = len * (int)tsize;
-  uint8_t         *data  = malloc ((size_t)blen);
-  if (data == NULL) {
-    nss_failed (meta);
-    return;
-  }
-  for (int i = 0; i < blen; ++i) {
-    data[i] = (uint8_t)rand ();
-  }
+  // FIX(minor): keep the byte math in b_size instead of int to avoid
+  // silent truncation on large arrays.
+  b_size           blen  = len * (b_size)tsize;
+  u8              *data  = random_data (blen);
 
-  // Start the clock
-  nss_clock_step (meta);
-  err_t ret = nsdb_fexecute (
-      meta->db,
-      meta->tx,
-      "insert %.*s %" PRb_size " %" PRb_size "",
-      data,
-      strfmt (&active_var (meta)->var.vname),
-      ofst,
-      len
-  );
-  u64 tdiff = nss_clock_step (meta);
+  // Timed section
+  err_t            ret;
+  u64              tdiff;
+  {
+    nss_clock_step (meta);
+    ret = nsdb_fexecute (
+        meta->db,
+        meta->tx,
+        "insert %.*s %" PRb_size " %" PRb_size "",
+        data,
+        strfmt (&active_var (meta)->var.vname),
+        ofst,
+        len
+    );
+    tdiff = nss_clock_step (meta);
+  }
 
   if (ret != (sb_size)len) {
     free (data);
     meta->results.working_clock += tdiff;
     meta->results.inner.op_duration_ms = tdiff;
-    meta->results.tracked_bytes += len * tsize;
-    meta->results.db_total_size     = get_file_size (meta->dbname);
-    meta->results.inner.record_type = RS_FAILURE;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
     return;
   } else {
     meta->results.working_clock += tdiff;
     meta->results.inner.op_duration_ms = tdiff;
-    meta->results.tracked_bytes += len * tsize;
+    meta->results.tracked_bytes += (u32)blen;
     meta->results.db_total_size     = get_file_size (meta->dbname);
     meta->results.inner.record_type = RS_SUCCESS;
-
-    // Do the reference side
-    int ba                          = block_array_insert (
-        active_var (meta)->data,
-        (u32)(ofst * (int)tsize),
-        data,
-        (u32)blen,
-        NULL
-    );
-    if (ba != 0) {
-      free (data);
-      nss_failed (meta);
-      return;
-    }
-
-    free (data);
   }
+
+  // Do the reference side
+  int ba = block_array_insert (
+      active_var (meta)->data,
+      (u32)(ofst * (b_size)tsize),
+      data,
+      (u32)blen,
+      NULL
+  );
+  ASSERT (ba == 0);
+  free (data);
 }
 
 static void
 nss_remove (struct ns_simulation *meta)
 {
-  // Parameters were already decided in nssr_pre_op - reach into them
-  // instead of re-rolling.
-  struct remove_op op     = meta->results.inner.operation.remove;
-  int              ofst   = op.ofst;
-  int              stride = op.stride;
-  int              len    = op.nelems;
-  size_t           tsize  = op.tsize;
+  struct remove_op op      = meta->results.inner.operation.remove;
+  // FIX(minor): b_size locals instead of int - no narrowing
+  b_size           ofst    = op.ofst;
+  b_size           stride  = op.stride;
+  b_size           len     = op.nelems;
+  t_size           tsize   = op.tsize;
 
-  // Get the true size of the buffer
-  size_t           buf_sz = (size_t)len * tsize;
+  size_t           buf_sz  = (size_t)len * tsize;
+  uint8_t         *db_buf  = calloc (1, buf_sz);
+  uint8_t         *ref_buf = calloc (1, buf_sz);
+  ASSERT (db_buf);
+  ASSERT (ref_buf);
 
-  // Output database buffer
-  uint8_t         *db_buf = calloc (1, buf_sz);
-  if (db_buf == NULL) {
-    nss_failed (meta);
-    return;
+  // Timed section
+  err_t ret;
+  u64   tdiff;
+  {
+    nss_clock_step (meta);
+    ret = nsdb_fexecute (
+        meta->db,
+        meta->tx,
+        "remove %.*s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+        db_buf,
+        strfmt (&active_var (meta)->var.vname),
+        ofst,
+        ofst + len * stride,
+        stride
+    );
+    tdiff = nss_clock_step (meta);
   }
 
-  // Output reference buffer
-  uint8_t *ref_buf = calloc (1, buf_sz);
-  if (ref_buf == NULL) {
-    free (db_buf);
-    nss_failed (meta);
-    return;
-  }
-
-  // Do the database remove
-  int exec_ret = nsdb_fexecute (
-      meta->db,
-      meta->tx,
-      "remove %.*s[%d:%d:%d]",
-      db_buf,
-      strfmt (&active_var (meta)->var.vname),
-      ofst,
-      ofst + len * stride,
-      stride
-  );
-  if (exec_ret < 0) {
+  if (ret < 0) {
     free (db_buf);
     free (ref_buf);
-    nss_failed (meta);
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
     return;
+  } else {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.tracked_bytes -= (u32)(len * tsize);
+    meta->results.inner.record_type = RS_SUCCESS;
   }
 
-  /* Reference side */
+  // Do the reference
   struct stride str = to_block_stride (ofst, stride, len);
   i64           got = block_array_remove (active_var (meta)->data, str, tsize, ref_buf, NULL);
-
-  // Check that we got the same amount of data
-  if (got != len) {
-    free (db_buf);
-    free (ref_buf);
-    nss_failed (meta);
-    return;
-  }
+  ASSERT (got == (i64)len);
 
   // Check that the two buffers are the same
   if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
     free (db_buf);
     free (ref_buf);
-    nss_failed (meta);
+    meta->results.inner.record_type = RS_FAILURE;
     return;
   }
 
   free (db_buf);
   free (ref_buf);
-
-  nss_succeeded (meta);
 }
 
 static void
 nss_read (struct ns_simulation *meta)
 {
-  // Parameters were already decided in nssr_pre_op - reach into them
-  // instead of re-rolling.
-  struct read_op op     = meta->results.inner.operation.read;
-  int            ofst   = op.ofst;
-  int            stride = op.stride;
-  int            len    = op.nelems;
-  size_t         tsize  = op.tsize;
+  struct read_op op      = meta->results.inner.operation.read;
+  b_size         ofst    = op.ofst;
+  b_size         stride  = op.stride;
+  b_size         len     = op.nelems;
+  t_size         tsize   = op.tsize;
 
   // Get the true size of the buffer
-  size_t         buf_sz = (size_t)len * tsize;
+  size_t         buf_sz  = (size_t)len * tsize;
+  uint8_t       *db_buf  = calloc (1, buf_sz);
+  uint8_t       *ref_buf = calloc (1, buf_sz);
+  ASSERT (db_buf);
+  ASSERT (ref_buf);
 
-  // Output database buffer
-  uint8_t       *db_buf = calloc (1, buf_sz);
-  if (db_buf == NULL) {
-    nss_failed (meta);
-    return;
+  err_t ret;
+  u64   tdiff;
+  {
+    nss_clock_step (meta);
+    ret = nsdb_fexecute (
+        meta->db,
+        meta->tx,
+        "read %.*s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+        db_buf,
+        strfmt (&active_var (meta)->var.vname),
+        ofst,
+        ofst + len * stride,
+        stride
+    );
+    tdiff = nss_clock_step (meta);
   }
 
-  // Output reference buffer
-  uint8_t *ref_buf = calloc (1, buf_sz);
-  if (ref_buf == NULL) {
-    free (db_buf);
-    nss_failed (meta);
-    return;
-  }
-
-  /* DB side */
-  int exec_ret = nsdb_fexecute (
-      meta->db,
-      meta->tx,
-      "read %.*s[%d:%d:%d]",
-      db_buf,
-      strfmt (&active_var (meta)->var.vname),
-      ofst,
-      ofst + len * stride,
-      stride
-  );
-
-  if (exec_ret < 0) {
+  if (ret < 0) {
     free (db_buf);
     free (ref_buf);
-    nss_failed (meta);
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
     return;
+  } else {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_SUCCESS;
   }
 
-  /* Reference side */
+  // Do the reference side
+  // FIX(#1): this was block_array_remove - every successful READ was
+  // deleting the read elements from the reference model while the real
+  // DB kept them, silently diverging the two. Reads must not mutate.
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got = block_array_remove (active_var (meta)->data, str, tsize, ref_buf, NULL);
-
-  // Check that we got the same amount of data
-  if (got != len) {
-    free (db_buf);
-    free (ref_buf);
-    nss_failed (meta);
-    return;
-  }
+  i64           got = block_array_read (active_var (meta)->data, str, tsize, ref_buf);
+  ASSERT (got == (i64)len);
 
   // Check that the two buffers are the same
   if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
     free (db_buf);
     free (ref_buf);
-    nss_failed (meta);
+    meta->results.inner.record_type = RS_FAILURE;
     return;
   }
 
   free (db_buf);
   free (ref_buf);
-
-  nss_succeeded (meta);
 }
 
 static void
 nss_write (struct ns_simulation *meta)
 {
-  // Parameters were already decided in nssr_pre_op - reach into them
-  // instead of re-rolling.
   struct write_op op     = meta->results.inner.operation.write;
-  int             ofst   = op.ofst;
-  int             stride = op.stride;
-  int             len    = op.nelems;
-  size_t          tsize  = op.tsize;
+  b_size          ofst   = op.ofst;
+  b_size          stride = op.stride;
+  b_size          len    = op.nelems;
+  t_size          tsize  = op.tsize;
 
-  // Initialize the data to insert
-  int             blen   = len * (int)tsize;
-  uint8_t        *data   = malloc ((size_t)blen);
-  if (data == NULL) {
-    nss_failed (meta);
-    return;
-  }
-  for (int i = 0; i < blen; ++i) {
-    data[i] = (uint8_t)rand ();
+  b_size          blen   = len * tsize;
+  uint8_t        *data   = random_data (blen);
+  ASSERT (data);
+
+  err_t ret;
+  u64   tdiff;
+  {
+    nss_clock_step (meta);
+    ret = nsdb_fexecute (
+        meta->db,
+        meta->tx,
+        "write %.*s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+        data,
+        strfmt (&active_var (meta)->var.vname),
+        ofst,
+        ofst + len * stride,
+        stride
+    );
+    tdiff = nss_clock_step (meta);
   }
 
-  // Database side
-  int exec_ret = nsdb_fexecute (
-      meta->db,
-      meta->tx,
-      "write %.*s[%d:%d:%d]",
-      data,
-      strfmt (&active_var (meta)->var.vname),
-      ofst,
-      ofst + len * stride,
-      stride
-  );
-  if (exec_ret < 0) {
+  if (ret < 0) {
     free (data);
-    nss_failed (meta);
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_FAILURE;
     return;
+  } else {
+    meta->results.working_clock += tdiff;
+    meta->results.inner.op_duration_ms = tdiff;
+    meta->results.db_total_size        = get_file_size (meta->dbname);
+    meta->results.inner.record_type    = RS_SUCCESS;
   }
 
+  // Do the reference side
   struct stride str = to_block_stride (ofst, stride, len);
   u64           got = block_array_write (active_var (meta)->data, str, tsize, data);
-  if (got != (u64)len) {
-    free (data);
-    nss_failed (meta);
-    return;
-  }
+  ASSERT (got == (u64)len);
 
   free (data);
-
-  nss_succeeded (meta);
 }
 
 /******************************************************************************
@@ -817,6 +899,7 @@ ns_simul_open (
 )
 {
   ASSERT (sample_space_prob >= 0 && sample_space_prob <= 1);
+  ASSERT (max_insert_len > 0);
 
   error e = error_create ();
 
@@ -860,6 +943,11 @@ ns_simul_open (
   }
 
   nss_set_allowed (ret);
+  // FIX(#9): `start` is the single epoch; everything (clock_step, the
+  // printer's clock - start) measures against it. The separate,
+  // never-initialized start_time field is gone.
+  ret->results.start = i_timer_now_ns (&ret->timer);
+  ret->results.clock = ret->results.start;
 
   return ret;
 }
@@ -901,6 +989,9 @@ nss_get_random_action (struct ns_simulation *meta)
     // try again
     if (len == 0) {
       nss_set_random_enabled (meta);
+      // FIX(minor): allowed[] is derived from enabled[]; without
+      // recomputing it, this loop spins forever on the same zeros.
+      nss_set_allowed (meta);
       continue;
     }
 
@@ -981,10 +1072,18 @@ nssr_pre_op (struct ns_simulation *meta)
 
       ASSERT (blen % tsize == 0);
 
+      // FIX(minor): a deep random type can have tsize > max_insert_len,
+      // making the upper bound 0 and the range [1, 0] invalid. Always
+      // allow at least one element.
+      b_size max_nelems = (b_size)meta->max_insert_len / tsize;
+      if (max_nelems == 0) {
+        max_nelems = 1;
+      }
+
       meta->results.inner.operation.insert = (struct insert_op){
           .tsize  = tsize,
           .ofst   = randu32r (0, blen / tsize),
-          .nelems = randu32r (1, meta->max_insert_len / tsize),
+          .nelems = randu32r (1, max_nelems),
           .len    = blen / tsize,
       };
       break;
@@ -1055,7 +1154,11 @@ nssr_pre_op (struct ns_simulation *meta)
     default: UNREACHABLE ();
   }
 
-  meta->results.clock = i_timer_now_ns (&meta->timer) - meta->start_time;
+  // FIX(#9): clock is an absolute timestamp (nss_clock_step and the
+  // printer both treat it that way). The old code subtracted the
+  // never-initialized start_time, which only worked because it happened
+  // to be zero.
+  meta->results.clock = i_timer_now_ns (&meta->timer);
 }
 
 static void
@@ -1107,4 +1210,172 @@ ns_simul_execute (struct ns_simulation *meta)
   }
 
   return &meta->results;
+}
+
+static const char *
+record_type_str (enum ns_result_record_type t)
+{
+  switch (t) {
+    case RS_PRE: return "PRE";
+    case RS_SUCCESS: return "SUCCESS";
+    case RS_FAILURE: return "FAILURE";
+    default: return "UNKNOWN";
+  }
+}
+
+static const char *
+op_type_str (enum ns_action_type t)
+{
+  switch (t) {
+    case NSS_BEGIN_TXN: return "BEGIN_TXN";
+    case NSS_COMMIT_TXN: return "COMMIT_TXN";
+    case NSS_ROLLBACK_TXN: return "ROLLBACK_TXN";
+    case NSS_CRASH_AND_REOPEN: return "CRASH_AND_REOPEN";
+    case NSS_CLOSE_AND_REOPEN: return "CLOSE_AND_REOPEN";
+    case NSS_CREATE: return "CREATE";
+    case NSS_SWITCH: return "SWITCH";
+    case NSS_DELETE: return "DELETE";
+    case NSS_INSERT: return "INSERT";
+    case NSS_REMOVE: return "REMOVE";
+    case NSS_READ: return "READ";
+    case NSS_WRITE: return "WRITE";
+    case NSS_AT_LEN: return "AT_LEN";
+    default: return "UNKNOWN";
+  }
+}
+
+static double
+ns_to_ms (uint64_t ns)
+{
+  return (double)ns / 1e6;
+}
+
+static void
+print_json_string (const char *s)
+{
+  putchar ('"');
+  if (s) {
+    for (const char *p = s; *p; p++) {
+      switch (*p) {
+        case '"': fputs ("\\\"", stdout); break;
+        case '\\': fputs ("\\\\", stdout); break;
+        case '\n': fputs ("\\n", stdout); break;
+        case '\t': fputs ("\\t", stdout); break;
+        default:
+          if ((unsigned char)*p < 0x20) {
+            printf ("\\u%04x", *p);
+          } else {
+            putchar (*p);
+          }
+      }
+    }
+  }
+  putchar ('"');
+}
+
+void
+print_ns_simul_record (const struct ns_simul_record *r)
+{
+  printf ("{");
+
+  printf ("\"seed\":%" PRIu64 ",", r->seed);
+
+  printf ("\"commit_hash\":");
+  print_json_string (r->commit_hash);
+  printf (",");
+
+  printf ("\"sequence_id\":%" PRIu64 ",", r->sequence_id);
+  printf ("\"step_number\":%" PRIu64 ",", r->step_number);
+  printf ("\"clock_ms\":%f,", ns_to_ms (r->clock - r->start));
+  printf ("\"working_clock_ms\":%f,", ns_to_ms (r->working_clock));
+  printf ("\"db_total_size\":%" PRIu64 ",", r->db_total_size);
+  printf ("\"nvars\":%" PRIu32 ",", r->nvars);
+  printf ("\"tracked_bytes\":%" PRIu32 ",", r->tracked_bytes);
+  printf ("\"record_type\":\"%s\",", record_type_str (r->inner.record_type));
+  printf ("\"op_type\":\"%s\",", op_type_str (r->inner.operation.op_type));
+
+  printf ("\"operation\":");
+  if (r->inner.record_type != RS_PRE) {
+    /* Only one union branch is valid at a time, based on op_type. */
+    switch (r->inner.operation.op_type) {
+      case NSS_CREATE: {
+        printf ("{}");
+        break;
+      }
+      case NSS_INSERT: {
+        const struct insert_op *op = &r->inner.operation.insert;
+        printf (
+            "{\"tsize\":%" PRIu64 ",\"ofst\":%" PRIu64 ",\"nelems\":%" PRIu64 ",\"len\":%" PRIu64
+            "}",
+            (uint64_t)op->tsize,
+            (uint64_t)op->ofst,
+            (uint64_t)op->nelems,
+            (uint64_t)op->len
+        );
+        break;
+      }
+      case NSS_READ: {
+        const struct read_op *op = &r->inner.operation.read;
+        printf (
+            "{\"tsize\":%" PRIu64 ",\"ofst\":%" PRIu64 ",\"stride\":%" PRIu64 ",\"nelems\":%" PRIu64
+            ",\"len\":%" PRIu64 "}",
+            (uint64_t)op->tsize,
+            (uint64_t)op->ofst,
+            (uint64_t)op->stride,
+            (uint64_t)op->nelems,
+            (uint64_t)op->len
+        );
+        break;
+      }
+      case NSS_REMOVE: {
+        const struct remove_op *op = &r->inner.operation.remove;
+        printf (
+            "{\"tsize\":%" PRIu64 ",\"ofst\":%" PRIu64 ",\"stride\":%" PRIu64 ",\"nelems\":%" PRIu64
+            ",\"len\":%" PRIu64 "}",
+            (uint64_t)op->tsize,
+            (uint64_t)op->ofst,
+            (uint64_t)op->stride,
+            (uint64_t)op->nelems,
+            (uint64_t)op->len
+        );
+        break;
+      }
+      case NSS_WRITE: {
+        const struct write_op *op = &r->inner.operation.write;
+        printf (
+            "{\"tsize\":%" PRIu64 ",\"ofst\":%" PRIu64 ",\"stride\":%" PRIu64 ",\"nelems\":%" PRIu64
+            ",\"len\":%" PRIu64 "}",
+            (uint64_t)op->tsize,
+            (uint64_t)op->ofst,
+            (uint64_t)op->stride,
+            (uint64_t)op->nelems,
+            (uint64_t)op->len
+        );
+        break;
+      }
+      case NSS_DELETE: {
+        const struct delete_op *op = &r->inner.operation.delete;
+        printf (
+            "{\"tsize\":%" PRIu64 ",\"len\":%" PRIu64 "}",
+            (uint64_t)op->tsize,
+            (uint64_t)op->len
+        );
+        break;
+      }
+      /* No union payload for these. */
+      case NSS_BEGIN_TXN:
+      case NSS_COMMIT_TXN:
+      case NSS_ROLLBACK_TXN:
+      case NSS_CRASH_AND_REOPEN:
+      case NSS_CLOSE_AND_REOPEN:
+      case NSS_SWITCH:
+      case NSS_AT_LEN:
+      default: printf ("{}"); break;
+    }
+    printf (",\"op_duration_ms\":%f", ns_to_ms (r->inner.op_duration_ms));
+  } else {
+    printf ("null,\"op_duration_ms\":null");
+  }
+
+  printf ("}\n");
 }

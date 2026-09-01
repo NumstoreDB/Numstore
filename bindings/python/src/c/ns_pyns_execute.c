@@ -69,10 +69,10 @@ pyns_execute_malloc (nsdb_t *db, ns_txn_t *txn, const char *query_str, bool *han
     goto theend_rollback;
   }
 
-  sb_size n =
-      nelem == 0
-          ? 0
-          : nsdb_execute_on_buffer (db, txn, &q, PyArray_BYTES ((PyArrayObject *)arr), &alloc);
+  sb_size
+      n = nelem == 0
+              ? 0
+              : nsdb_execute_on_buffer (db, txn, &q, PyArray_BYTES ((PyArrayObject *)arr), &alloc);
   if (n < 0) {
     _pyns_set_error (db);
     Py_DECREF (arr);

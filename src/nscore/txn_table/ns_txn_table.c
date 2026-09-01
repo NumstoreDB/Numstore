@@ -1287,8 +1287,11 @@ txnt_eq_foreach (struct hnode *node, void *_ctx)
   {
     txn_key_init (&candidate, tx->tid);
 
-    struct hnode **other_node =
-        htable_lookup (ctx->other->t, &candidate.node, txn_equals_for_exists);
+    struct hnode **other_node = htable_lookup (
+        ctx->other->t,
+        &candidate.node,
+        txn_equals_for_exists
+    );
 
     if (other_node == NULL) {
       ctx->ret = false;

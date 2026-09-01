@@ -54,6 +54,7 @@ struct ns_simul_record
   uint64_t    seed;        // Random seed
   const char *commit_hash; // Commit Hash
   uint64_t    sequence_id; // I forget
+  uint64_t    start;
 
   // Run metrics
   uint64_t    step_number;   // Which step is the test in
@@ -136,5 +137,6 @@ struct ns_simul_record
 
 struct ns_simul_record *ns_simul_prepare (struct ns_simulation *meta);
 struct ns_simul_record *ns_simul_execute (struct ns_simulation *meta);
+void print_ns_simul_record (const struct ns_simul_record *r);
 
 #endif // NSS_SWARM_TEST_FIXTURE_H
