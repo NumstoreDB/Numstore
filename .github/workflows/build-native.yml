@@ -1,13 +1,12 @@
-name: Build (Native)
+name: Build And Test
 
 on:
   workflow_call:
     inputs:
-      builds:
+      platforms:
         description: >
-          JSON array of build definitions, each with platform, goal, and folder.
-          e.g. [{"platform":"ubuntu-latest","goal":"all","folder":"dist/linux-x64"},
-                {"platform":"windows-latest","goal":"test","folder":"dist/windows-x64"}]
+          Comma or newline separated list of platforms.
+          e.g. ubuntu-latest, windows-latest
         required: true
         type: string
 
@@ -16,8 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.builds) }}
-    name: ${{ matrix.platform }} (${{ matrix.goal }})
+        platform: ${{ fromJSON(format('["{0}"]', join(split(inputs.platforms, ','), '","'))) }}
+    name: ${{ matrix.platform }}
     runs-on: ${{ matrix.platform }}
     defaults:
       run:
@@ -25,11 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run build
-        run: make ${{ matrix.goal }}
+      - run: make clean
+      - run: make TARGET=debug
+      - run: ./build/debug/target/bin/unit_tests
+      - run: make TARGET=release
+      - run: cp ./docs/release_docs.md build/release/target/README.md
 
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:
-          folder: ${{ matrix.folder }}
-          artifact-name: ${{ matrix.folder }}-${{ matrix.platform }}
+          folder: ./build/release/target
+          artifact-name: release-${{ matrix.platform }}
