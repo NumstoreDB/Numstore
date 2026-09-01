@@ -1,19 +1,14 @@
 name: CI
-
 on:
   push:
   pull_request:
-
 jobs:
+
   # Native targets
   build-native:
     uses: ./.github/workflows/build-native.yml
     with:
-      builds: |
-        [
-          {"platform": "ubuntu-latest", "goal": "TARGET=release", "folder": "build/release/target"},
-          {"platform": "macos-latest", "goal": "TARGET=release", "folder": "build/release/target"}
-        ]
+      platforms: ubuntu-latest, macos-latest
 
   # Dock Cross targets
   build-dockcross:
@@ -21,5 +16,5 @@ jobs:
     with:
       builds: |
         [
-          {"platform": "linux-arm64", "goal": "TARGET=release", "folder": "build/release-linux-arm64/target"}
+          {"dockcross": "linux-arm64", "qemu": "aarch64"}
         ]

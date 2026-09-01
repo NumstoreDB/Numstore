@@ -1,40 +1,46 @@
-name: Build (dockcross)
-
+name: Build And Test (Qemu)
 on:
   workflow_call:
     inputs:
       builds:
         description: >
-          JSON array of build definitions, each with platform, goal, and folder.
-          e.g. [{"platform":"linux-arm64","goal":"all","folder":"dist/linux-arm64"}]
+          JSON array of build definitions, each with dockcross and qemu.
+          e.g. [{"dockcross":"linux-arm64","qemu":"aarch64"},
+                {"dockcross":"linux-armv7","qemu":"arm"}]
         required: true
         type: string
-      runner:
-        description: 'GitHub runner to build on (dockcross cross-compiles for the target platform here)'
-        required: false
-        default: 'ubuntu-latest'
-        type: string
-
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(inputs.builds) }}
-    name: dockcross-${{ matrix.platform }} (${{ matrix.goal }})
-    runs-on: ${{ inputs.runner }}
+    name: ${{ matrix.dockcross }}
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run using dockcross
-        run: |
-          make cross PLATFORM="${{ matrix.platform }}" CROSS_GOAL="${{ matrix.goal }}"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.qemu }}
+
+      - run: make clean
+
+      - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=debug"
+
+      - name: Run unit tests under QEMU
+        run: qemu-${{ matrix.qemu }} ./build/debug/target/bin/unit_tests
+
+      - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=release"
+
+      - run: cp ./docs/release_docs.md build/release/target/README.md
 
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:
-          folder: ${{ matrix.folder }}
-          artifact-name: ${{ matrix.folder }}-${{ matrix.platform }}
+          folder: ./build/release/target
+          artifact-name: release-${{ matrix.dockcross }}
