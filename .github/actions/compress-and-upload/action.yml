@@ -13,15 +13,23 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Sanitize artifact name for filesystem use
+      if: inputs.folder != ''
+      id: sanitize
+      shell: bash
+      run: |
+        safe_name=$(echo "${{ inputs.artifact-name }}" | tr '/' '-')
+        echo "safe-name=$safe_name" >> "$GITHUB_OUTPUT"
+
     - name: Compress artifact folder (zip, Windows)
       if: inputs.folder != '' && runner.os == 'Windows'
       shell: bash
-      run: 7z a "${{ inputs.artifact-name }}.zip" "./${{ inputs.folder }}/*"
+      run: 7z a "${{ steps.sanitize.outputs.safe-name }}.zip" "./${{ inputs.folder }}/*"
 
     - name: Compress artifact folder (tar.gz, non-Windows)
       if: inputs.folder != '' && runner.os != 'Windows'
       shell: bash
-      run: tar -czf "${{ inputs.artifact-name }}.tar.gz" -C "${{ inputs.folder }}" .
+      run: tar -czf "${{ steps.sanitize.outputs.safe-name }}.tar.gz" -C "${{ inputs.folder }}" .
 
     - name: Upload artifact
       if: inputs.folder != ''
