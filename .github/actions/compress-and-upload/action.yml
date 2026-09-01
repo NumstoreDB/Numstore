@@ -13,12 +13,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Sanitize artifact name for filesystem use
+    - name: Sanitize artifact name
       if: inputs.folder != ''
       id: sanitize
       shell: bash
       run: |
-        safe_name=$(echo "${{ inputs.artifact-name }}" | tr '/' '-')
+        safe_name=$(echo "${{ inputs.artifact-name }}" | tr '/\\:*?"<>|' '-')
         echo "safe-name=$safe_name" >> "$GITHUB_OUTPUT"
 
     - name: Compress artifact folder (zip, Windows)
@@ -35,7 +35,7 @@ runs:
       if: inputs.folder != ''
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ inputs.artifact-name }}
+        name: ${{ steps.sanitize.outputs.safe-name }}
         path: |
           *.zip
           *.tar.gz
