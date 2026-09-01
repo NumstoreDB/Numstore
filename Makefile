@@ -294,6 +294,9 @@ format:
 	find src bindings -type f \( -name '*.c' -o -name '*.h' \) -print0 \
 		| xargs -0 $(CLANG_FORMAT) -i
 
+example:
+	echo "Testing CI JOB - this will be deleted"
+
 ############ Header dependencies
 
 -include $(LIBNS_OBJS:.o=.d)
