@@ -17,6 +17,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 
 #include <string.h>
@@ -867,7 +868,7 @@ TEST (stream_read_ibuf_to_obuf)
 void
 stream_dyn_obuf_init (struct stream *s, struct stream_dyn_obuf_ctx *ctx, u32 limit)
 {
-  ctx->buffer = ext_array_create ();
+  ctx->buffer = ext_array_create (default_mem ());
   ctx->limit  = limit;
   stream_init (s, &stream_dyn_obuf_ops, ctx);
 }

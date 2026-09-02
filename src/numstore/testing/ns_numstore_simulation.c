@@ -15,9 +15,9 @@
 #include "numstore/testing/ns_numstore_simulation.h"
 
 #include "core/ns_alloc.h"
-#include "core/ns_block_array.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_ext_array.h"
 #include "core/ns_numerics.h"
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
@@ -34,6 +34,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+
+/* CONTRACT: once any step records RS_FAILURE, the caller must not call
+ * ns_simul_prepare / ns_simul_execute again. Failure paths therefore only
+ * do the minimum needed to (a) not leak, (b) not leave dangling pointers
+ * that would confuse ns_simul_close, and (c) log why. They do not try to
+ * restore a runnable state. */
 
 struct ns_simulation
 {
@@ -74,6 +80,29 @@ struct ns_simulation
   i_timer                timer;
   struct allocator       alloc;
 };
+
+DEFINE_DBG_ASSERT (struct ns_simulation, ns_simulation, n, {
+  ASSERT (n);
+  ASSERT (n->committed);
+
+  if (n->tx) {
+    ASSERT (n->working);
+    if (n->results.nvars > 0) {
+      ASSERT (n->cur_working);
+    } else {
+      ASSERT (n->cur_working == NULL);
+    }
+  } else {
+    ASSERT (n->working == NULL);
+    if (n->results.nvars > 0) {
+      ASSERT (n->cur_committed);
+      ASSERT (n->cur_working == NULL);
+    } else {
+      ASSERT (n->cur_committed == NULL);
+      ASSERT (n->cur_working == NULL);
+    }
+  }
+})
 
 static struct mem_vhmap *
 active_db (const struct ns_simulation *meta)
@@ -120,6 +149,7 @@ get_random_name_len (void)
   return randu32r (NS_PAGE_SIZE, 10 * NS_PAGE_SIZE);
 }
 
+// Returns NULL on allocation failure
 static char *
 random_name (void)
 {
@@ -129,6 +159,10 @@ random_name (void)
   // var_random_name terminates within `length`.
   u32   length = get_random_name_len ();
   char *buffer = malloc ((size_t)length + 1);
+  if (buffer == NULL) {
+    i_log_failure ("random_name: malloc failed, length=%u\n", length + 1);
+    return NULL;
+  }
   var_random_name (buffer, length);
   buffer[length] = '\0';
 
@@ -138,13 +172,7 @@ random_name (void)
 static u32
 get_random_type_depth (void)
 {
-  u32 roll = randu32r (1, 100);
-
-  if (roll <= 95) {
-    return randu32r (1, 3);
-  }
-
-  return randu32r (3, 10);
+  return randu32r (1, 3);
 }
 
 static void
@@ -170,12 +198,15 @@ gen_new_var (struct ns_simulation *meta, struct create_op *dest, error *e)
   while (true) {
     create_default_allocator (&meta->alloc);
 
-    char        *name = random_name (); // TODO - fix this
+    char *name = random_name ();
+    if (name == NULL) {
+      allocator_free (&meta->alloc);
+      return error_causef (e, ERR_NOMEM, "gen_new_var: name allocation failed");
+    }
 
     // Generate a random type
     struct type *type = type_random (&meta->alloc, get_random_type_depth (), e);
     if (type == NULL) {
-      // FIX(minor): don't leak name/allocator on the error paths
       free (name);
       allocator_free (&meta->alloc);
       return error_trace (e);
@@ -216,6 +247,19 @@ to_block_stride (b_size ofst, b_size stride, b_size len)
   };
 }
 
+// Returns NULL on allocation failure
+static u8 *
+random_data (b_size blen)
+{
+  uint8_t *data = malloc ((size_t)blen);
+  if (data == NULL) {
+    i_log_failure ("random_data: malloc failed, blen=%" PRb_size "\n", blen);
+    return NULL;
+  }
+  rand_bytes (data, blen);
+  return data;
+}
+
 static void
 nss_set_random_enabled (struct ns_simulation *meta)
 {
@@ -238,10 +282,10 @@ nss_set_allowed (struct ns_simulation *meta)
 
   if (!meta->tx) {
     meta->allowed[NSS_BEGIN_TXN]        = meta->enabled[NSS_BEGIN_TXN];
-    meta->allowed[NSS_CLOSE_AND_REOPEN] = 0; // meta->enabled[NSS_CLOSE_AND_REOPEN];
+    meta->allowed[NSS_CLOSE_AND_REOPEN] = meta->enabled[NSS_CLOSE_AND_REOPEN];
   } else {
     meta->allowed[NSS_COMMIT_TXN]   = meta->enabled[NSS_COMMIT_TXN];
-    meta->allowed[NSS_ROLLBACK_TXN] = 0; // meta->enabled[NSS_ROLLBACK_TXN];
+    meta->allowed[NSS_ROLLBACK_TXN] = meta->enabled[NSS_ROLLBACK_TXN];
   }
 
   meta->allowed[NSS_CREATE] = meta->enabled[NSS_CREATE];
@@ -255,7 +299,7 @@ nss_set_allowed (struct ns_simulation *meta)
   if (active_var (meta) != NULL) {
     meta->allowed[NSS_INSERT] = meta->enabled[NSS_INSERT];
 
-    if (block_array_getlen (active_var (meta)->data) > 0) {
+    if (ext_array_get_len (&active_var (meta)->data) > 0) {
       meta->allowed[NSS_REMOVE] = meta->enabled[NSS_REMOVE];
       meta->allowed[NSS_READ]   = meta->enabled[NSS_READ];
       meta->allowed[NSS_WRITE]  = meta->enabled[NSS_WRITE];
@@ -264,12 +308,7 @@ nss_set_allowed (struct ns_simulation *meta)
 }
 
 /******************************************************************************
- * SECTION: Concrete Actions
- * ----------------------------------------------------------------------------
- * @brief Each of these executes the action whose parameters were already
- *        decided in nssr_pre_op(). They must not re-roll their own random
- *        parameters - they only reach into
- *        meta->results.inner.operation.<action> for what pre already chose.
+ * SECTION: Timing / Records
  ******************************************************************************/
 
 // TODO - put this in fs layer
@@ -280,9 +319,8 @@ get_file_size (const char *filename)
   if (stat (filename, &st) == 0) {
     return st.st_size;
   }
-  crash ();
-  return -1; // unreachable; silences no-return-value warnings if crash()
-             // isn't marked noreturn
+  i_log_failure ("get_file_size: stat failed: %s\n", filename);
+  return -1;
 }
 
 static struct ns_simul_record
@@ -315,9 +353,331 @@ nss_clock_step (struct ns_simulation *meta)
   return now - prev;
 }
 
+/* Bookkeeping shared by every timed action's exit path. */
+static void
+nss_finish_op (struct ns_simulation *meta, u64 tdiff, enum ns_result_record_type rt)
+{
+  meta->results.working_clock += tdiff;
+  meta->results.inner.op_duration_ms = tdiff;
+  meta->results.db_total_size        = get_file_size (meta->dbname);
+  meta->results.inner.record_type    = rt;
+}
+
+/******************************************************************************
+ * SECTION: Op-Effect Verification
+ * ----------------------------------------------------------------------------
+ * @brief Checks that an operation which *reported* success actually had its
+ *        effect on the real db:
+ *          - length agreement after every size-changing op (INSERT/REMOVE/
+ *            CREATE), via `get`
+ *          - immediate readback of the exact slice after INSERT and WRITE,
+ *            compared against the data we just sent
+ *          - existence checks: CREATE must make `get` succeed with 0 bytes,
+ *            DELETE must make `get` fail
+ *
+ *        These verify the db against *itself* (did the op land?), while the
+ *        read-all check below verifies the db against the *reference model*
+ *        (is the data right?). A write bug is caught here at the WRITE step
+ *        even if READ_ALL is disabled.
+ *
+ *        Enable with -DVERIFY_OP_EFFECTS; compiles out otherwise.
+ ******************************************************************************/
+
+#define READ_ALL_AFTER_EXECUTION
+#define VERIFY_OP_EFFECTS
+
+#if defined(READ_ALL_AFTER_EXECUTION) || defined(VERIFY_OP_EFFECTS)
+
+/* Compare the real db's byte count for `v` against the reference model's.
+ * Also serves as an existence check: `get` failing on a variable the model
+ * thinks exists is itself a divergence. */
+static int
+nss_verify_len (struct ns_simulation *meta, struct var_with_data *v)
+{
+  struct nsdb_var *dbvar = NULL;
+  err_t ret = nsdb_fexecute (meta->db, meta->tx, "get %.*s", &dbvar, strfmt (&v->var.vname));
+  if (ret != 0) {
+    nsdb_var_free (meta->db, dbvar);
+    i_log_failure (
+        "verify-len: get failed for %.*s (model says it exists)\n",
+        strfmt (&v->var.vname)
+    );
+    return -1;
+  }
+
+  b_size ref_nbytes = ext_array_get_len (&v->data);
+  // NOTE: adjust this accessor to however nsdb_var exposes the byte count
+  b_size db_nbytes  = dbvar->var->nbytes;
+  nsdb_var_free (meta->db, dbvar);
+
+  if (db_nbytes != ref_nbytes) {
+    i_log_failure (
+        "verify-len mismatch: var=%.*s db=%" PRb_size " bytes, ref=%" PRb_size " bytes\n",
+        strfmt (&v->var.vname),
+        db_nbytes,
+        ref_nbytes
+    );
+    return -1;
+  }
+
+  return 0;
+}
+
+#endif /* READ_ALL_AFTER_EXECUTION || VERIFY_OP_EFFECTS */
+
+#ifdef VERIFY_OP_EFFECTS
+
+/* Read the given slice of the active variable back from the real db and
+ * compare it byte-for-byte against `expect` (the buffer the op just sent).
+ * Catches "op reported success but the bytes never landed / landed at the
+ * wrong strided positions". */
+static int
+nss_verify_readback (
+    struct ns_simulation *meta,
+    b_size                ofst,
+    b_size                stride,
+    b_size                nelems,
+    t_size                tsize,
+    const uint8_t        *expect
+)
+{
+  struct var_with_data *v      = active_var (meta);
+  size_t                buf_sz = (size_t)nelems * tsize;
+  uint8_t              *buf    = malloc (buf_sz);
+  if (buf == NULL) {
+    i_log_failure ("verify-readback: malloc failed, buf_sz=%zu\n", buf_sz);
+    return -1;
+  }
+
+  err_t ret = nsdb_fexecute (
+      meta->db,
+      meta->tx,
+      "read %.*s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
+      buf,
+      strfmt (&v->var.vname),
+      ofst,
+      ofst + nelems * stride,
+      stride
+  );
+  if (ret != (sb_size)nelems) {
+    i_log_failure (
+        "verify-readback: read returned %lld, expected %" PRb_size " (ofst=%" PRb_size
+        " stride=%" PRb_size ")\n",
+        (long long)ret,
+        nelems,
+        ofst,
+        stride
+    );
+    free (buf);
+    return -1;
+  }
+
+  if (memcmp (buf, expect, buf_sz) != 0) {
+    size_t i = 0;
+    while (i < buf_sz && buf[i] == expect[i]) {
+      ++i;
+    }
+    i_log_failure (
+        "verify-readback mismatch: op reported success but byte %zu (elem %zu) "
+        "reads 0x%02x, wrote 0x%02x (ofst=%" PRb_size " stride=%" PRb_size " nelems=%" PRb_size
+        " tsize=%" PRIu64 ")\n",
+        i,
+        i / tsize,
+        buf[i],
+        expect[i],
+        ofst,
+        stride,
+        nelems,
+        (u64)tsize
+    );
+    free (buf);
+    return -1;
+  }
+
+  free (buf);
+  return 0;
+}
+
+/* After a successful DELETE, `get` on the deleted name must fail. */
+static int
+nss_verify_gone (struct ns_simulation *meta, struct var_with_data *v)
+{
+  struct nsdb_var *dbvar = NULL;
+  err_t ret = nsdb_fexecute (meta->db, meta->tx, "get %.*s", &dbvar, strfmt (&v->var.vname));
+  nsdb_var_free (meta->db, dbvar);
+
+  if (ret == 0) {
+    i_log_failure (
+        "verify-gone: delete reported success but %.*s still exists in db\n",
+        strfmt (&v->var.vname)
+    );
+    return -1;
+  }
+
+  return 0;
+}
+
+#  define VERIFY_EFFECT(meta, call)                     \
+    do {                                                \
+      if ((call) < 0) {                                 \
+        (meta)->results.inner.record_type = RS_FAILURE; \
+      }                                                 \
+    }                                                   \
+    while (0)
+
+#else
+
+/* Arguments are discarded unexpanded, so the guarded helpers may be
+ * referenced at call sites without existing in this configuration. */
+#  define VERIFY_EFFECT(meta, call) ((void)0)
+
+#endif /* VERIFY_OP_EFFECTS */
+
+/******************************************************************************
+ * SECTION: Read-All Verification
+ * ----------------------------------------------------------------------------
+ * @brief After every successful action, read the entire active variable from
+ *        the real db and from the reference model and compare byte-for-byte.
+ *        Catches divergence at the step that caused it (e.g. an unverified
+ *        WRITE) instead of N steps later at the next overlapping READ.
+ *
+ *        Enable with -DREAD_ALL_AFTER_EXECUTION; compiles out otherwise.
+ ******************************************************************************/
+
+#ifdef READ_ALL_AFTER_EXECUTION
+
+static const char *op_type_str (enum ns_action_type t); // defined below
+
+static int
+nss_read_all_verify_var (struct ns_simulation *meta, struct var_with_data *v)
+{
+  /* Length agreement first. This is not just another check - db_buf below is
+   * sized from the *reference* length, so if the real db thinks the variable
+   * is longer, the open-ended [0:] read would overflow the buffer. */
+  if (nss_verify_len (meta, v) < 0) {
+    return -1;
+  }
+
+  b_size blen = ext_array_get_len (&v->data);
+  if (blen == 0) {
+    return 0;
+  }
+
+  t_size tsize = type_byte_size (v->var.dtype);
+  ASSERT (tsize > 0);
+  ASSERT (blen % tsize == 0);
+  b_size   nelems  = blen / tsize;
+
+  uint8_t *db_buf  = malloc ((size_t)blen);
+  uint8_t *ref_buf = malloc ((size_t)blen);
+  if (db_buf == NULL || ref_buf == NULL) {
+    i_log_failure ("read-all: malloc failed, blen=%" PRb_size "\n", blen);
+    free (db_buf);
+    free (ref_buf);
+    return -1;
+  }
+
+  // read var[0:] - full read of the real db, through the current txn so
+  // mid-txn state is compared against the working map, not the committed one
+  err_t ret = nsdb_fexecute (meta->db, meta->tx, "read %.*s[0:]", db_buf, strfmt (&v->var.vname));
+  if (ret != (sb_size)nelems) {
+    i_log_failure (
+        "read-all: db read returned %lld, expected %" PRb_size ": %.*s\n",
+        (long long)ret,
+        nelems,
+        strfmt (&v->var.vname)
+    );
+    free (db_buf);
+    free (ref_buf);
+    return -1;
+  }
+
+  // Same read against the reference
+  struct stride all = to_block_stride (0, 1, nelems);
+  i64           got = ext_array_read (&v->data, all, tsize, ref_buf);
+  if (got != (i64)nelems) {
+    i_log_failure (
+        "read-all: reference read returned %lld, expected %" PRb_size "\n",
+        (long long)got,
+        nelems
+    );
+    free (db_buf);
+    free (ref_buf);
+    return -1;
+  }
+
+  int rc = 0;
+  if (memcmp (db_buf, ref_buf, (size_t)blen) != 0) {
+    // Find and report the first divergent byte / element
+    b_size i = 0;
+    while (i < blen && db_buf[i] == ref_buf[i]) {
+      ++i;
+    }
+    i_log_failure (
+        "read-all mismatch: var=%.*s byte=%" PRb_size " (elem %" PRb_size ", tsize=%" PRIu64
+        "): db=0x%02x ref=0x%02x blen=%" PRb_size "\n",
+        strfmt (&v->var.vname),
+        i,
+        i / tsize,
+        (u64)tsize,
+        db_buf[i],
+        ref_buf[i],
+        blen
+    );
+    rc = -1;
+  }
+
+  free (db_buf);
+  free (ref_buf);
+  return rc;
+}
+
+static int
+nss_read_all_verify (struct ns_simulation *meta)
+{
+  // TODO: when mem_vhmap grows an iterator, verify every variable here -
+  // that also catches ops that corrupt a *neighboring* variable's pages.
+  struct var_with_data *v = active_var (meta);
+  if (v == NULL) {
+    return 0;
+  }
+  return nss_read_all_verify_var (meta, v);
+}
+
+/* Only meaningful after a successful op - after a failure the caller stops
+ * anyway (see CONTRACT above) and the state is not guaranteed comparable. */
+#  define READ_ALL_VERIFY(meta, action)                                                        \
+    do {                                                                                       \
+      if ((meta)->results.inner.record_type == RS_SUCCESS && nss_read_all_verify (meta) < 0) { \
+        i_log_failure (                                                                        \
+            "read-all verify failed after %s (step %" PRIu64 ")\n",                            \
+            op_type_str (action),                                                              \
+            (meta)->results.step_number                                                        \
+        );                                                                                     \
+        (meta)->results.inner.record_type = RS_FAILURE;                                        \
+      }                                                                                        \
+    }                                                                                          \
+    while (0)
+
+#else
+
+#  define READ_ALL_VERIFY(meta, action) ((void)0)
+
+#endif /* READ_ALL_AFTER_EXECUTION */
+
+/******************************************************************************
+ * SECTION: Concrete Actions
+ * ----------------------------------------------------------------------------
+ * @brief Each of these executes the action whose parameters were already
+ *        decided in nssr_pre_op(). They must not re-roll their own random
+ *        parameters - they only reach into
+ *        meta->results.inner.operation.<action> for what pre already chose.
+ ******************************************************************************/
+
 static void
 nss_begin_txn (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   ASSERT (!meta->tx);
   ASSERT (meta->working == NULL);
 
@@ -326,19 +686,26 @@ nss_begin_txn (struct ns_simulation *meta)
   meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
   if (meta->tx == NULL) {
+    i_log_failure ("nsdb_begin failed: %s\n", meta->dbname);
     meta->results.inner.record_type = RS_FAILURE;
     return;
-  } else {
-    meta->results.inner.record_type = RS_SUCCESS;
   }
 
   error e       = error_create ();
   meta->working = mem_vhmap_clone (meta->committed, &e);
 
   if (meta->working == NULL) {
+    i_log_failure ("mem_vhmap_clone failed: %s\n", meta->dbname);
+    /* Real db is mid-transaction but the model isn't - abort the real txn
+     * so ns_simul_close doesn't trip over a half-open txn. Result of the
+     * rollback is irrelevant: we're failing either way. */
+    nsdb_rollback (meta->db, meta->tx);
+    meta->tx                        = NULL;
     meta->results.inner.record_type = RS_FAILURE;
     return;
   }
+
+  meta->results.inner.record_type = RS_SUCCESS;
 
   // FIX(#3): don't refresh_cur() here - with tx set, active_var() would
   // read cur_working, which is stale from a previous txn. Derive the
@@ -353,13 +720,12 @@ nss_begin_txn (struct ns_simulation *meta)
   // FIX(#8): snapshot metrics so rollback/crash can restore them
   meta->txn_saved_nvars         = meta->results.nvars;
   meta->txn_saved_tracked_bytes = meta->results.tracked_bytes;
-
-  return;
 }
 
 static void
 nss_commit_txn (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
 
@@ -368,11 +734,19 @@ nss_commit_txn (struct ns_simulation *meta)
   meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
   if (ret < 0) {
+    i_log_failure ("nsdb_commit failed: %s\n", meta->dbname);
+    /* No further steps will run - just drop the working map so close()
+     * doesn't double-account, and clear tx so close() doesn't try to
+     * commit a dead txn again. */
+    mem_vhmap_free (meta->working);
+    meta->working                   = NULL;
+    meta->tx                        = NULL;
+    meta->cur_working               = NULL;
     meta->results.inner.record_type = RS_FAILURE;
     return;
-  } else {
-    meta->results.inner.record_type = RS_SUCCESS;
   }
+
+  meta->results.inner.record_type = RS_SUCCESS;
 
   mem_vhmap_free (meta->committed);
   meta->committed     = meta->working;
@@ -385,29 +759,26 @@ nss_commit_txn (struct ns_simulation *meta)
   meta->cur_committed = meta->cur_working;
   meta->cur_working   = NULL;
 
-  return;
+  // Did the commit actually persist the txn's size changes? (Data content
+  // is READ_ALL's job; this catches a commit that dropped a tail insert.)
+  VERIFY_EFFECT (meta, active_var (meta) == NULL ? 0 : nss_verify_len (meta, active_var (meta)));
 }
 
 static void
 nss_rollback_txn (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
-  // (removed: ASSERT (meta->cur_working != NULL) - a txn with no
-  // variables is perfectly legal)
 
   nss_clock_step (meta);
   // FIX(#5): pass the actual transaction, matching nsdb_commit
   err_t ret                          = nsdb_rollback (meta->db, meta->tx);
   meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
-  if (ret < 0) {
-    meta->results.inner.record_type = RS_FAILURE;
-    return;
-  } else {
-    meta->results.inner.record_type = RS_SUCCESS;
-  }
-
+  /* Failed or not, the txn is over from the harness's perspective - free
+   * the working map and clear tx either way so close() sees sane state.
+   * Only the record_type differs. */
   mem_vhmap_free (meta->working);
   meta->working               = NULL;
   meta->tx                    = NULL;
@@ -420,12 +791,23 @@ nss_rollback_txn (struct ns_simulation *meta)
   meta->results.nvars         = meta->txn_saved_nvars;
   meta->results.tracked_bytes = meta->txn_saved_tracked_bytes;
 
-  return;
+  if (ret < 0) {
+    i_log_failure ("nsdb_rollback failed: %s\n", meta->dbname);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
+
+  meta->results.inner.record_type = RS_SUCCESS;
+
+  // Did the rollback actually revert? The db's size for the active variable
+  // must now match the *committed* reference again.
+  VERIFY_EFFECT (meta, active_var (meta) == NULL ? 0 : nss_verify_len (meta, active_var (meta)));
 }
 
 static void
 nss_crash_and_reopen (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   nss_clock_step (meta);
   err_t ret = nsdb_crash (meta->db);
   if (ret == 0) {
@@ -434,11 +816,16 @@ nss_crash_and_reopen (struct ns_simulation *meta)
   meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
   if (ret < 0 || meta->db == NULL) {
+    i_log_failure (
+        "crash_and_reopen failed (%s): %s\n",
+        ret < 0 ? "crash" : "reopen",
+        meta->dbname
+    );
     meta->results.inner.record_type = RS_FAILURE;
     return;
-  } else {
-    meta->results.inner.record_type = RS_SUCCESS;
   }
+
+  meta->results.inner.record_type = RS_SUCCESS;
 
   // If we were in the middle of a transaction
   // revert back to the previous one
@@ -459,13 +846,12 @@ nss_crash_and_reopen (struct ns_simulation *meta)
   }
 
   meta->tx = NULL;
-
-  return;
 }
 
 static void
 nss_close_and_reopen (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   ASSERT (!meta->tx);
 
   nss_clock_step (meta);
@@ -476,23 +862,25 @@ nss_close_and_reopen (struct ns_simulation *meta)
   meta->results.inner.op_duration_ms = nss_clock_step (meta);
 
   if (ret < 0 || meta->db == NULL) {
+    i_log_failure (
+        "close_and_reopen failed (%s): %s\n",
+        ret < 0 ? "close" : "reopen",
+        meta->dbname
+    );
     meta->results.inner.record_type = RS_FAILURE;
     return;
-  } else {
-    meta->results.inner.record_type = RS_SUCCESS;
   }
 
-  // FIX(#4): removed the dead `if (meta->working)` block - this function
-  // asserts !meta->tx on entry, so a working map here is impossible (the
-  // deleted block even contained ASSERT(meta->tx), contradicting the
-  // entry assertion).
+  meta->results.inner.record_type = RS_SUCCESS;
 
-  return;
+  // FIX(#4): removed the dead `if (meta->working)` block - this function
+  // asserts !meta->tx on entry, so a working map here is impossible.
 }
 
 static void
 nss_create (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   struct mem_vhmap *db     = active_db (meta);
   struct create_op  create = meta->results.inner.operation.create;
 
@@ -519,18 +907,12 @@ nss_create (struct ns_simulation *meta)
     free (meta->results.inner.operation.create.vname);
     free (meta->results.inner.operation.create.typestr);
     allocator_free (&meta->alloc);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_SUCCESS;
-    meta->results.nvars += 1;
   }
+
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
+  meta->results.nvars += 1;
 
   // Create the variable in the reference side
   // NOTE(#10): this assumes mem_vhmap_add deep-copies `var` (vname buffer
@@ -538,12 +920,25 @@ nss_create (struct ns_simulation *meta)
   // for the later type_byte_size(active_var(...)->var.dtype) calls in
   // nssr_pre_op - verify the ownership contract.
   struct var_with_data *v = mem_vhmap_add (db, &var, NULL);
-  ASSERT (v != NULL);
+  if (v == NULL) {
+    // Real db has the variable, the model doesn't - permanent divergence,
+    // but the contract says nothing runs after a failure anyway.
+    i_log_failure ("mem_vhmap_add failed: %s\n", create.vname);
+    free (meta->results.inner.operation.create.vname);
+    free (meta->results.inner.operation.create.typestr);
+    allocator_free (&meta->alloc);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
 
   // If there is no variable - then set it to this one
   if (active_var (meta) == NULL) {
     set_active_var (meta, mem_vhmap_get (db, var.vname));
   }
+
+  // Did the create actually land? `get` must succeed and report the same
+  // byte count as the (empty) reference entry.
+  VERIFY_EFFECT (meta, nss_verify_len (meta, v));
 
   free (meta->results.inner.operation.create.vname);
   free (meta->results.inner.operation.create.typestr);
@@ -553,6 +948,7 @@ nss_create (struct ns_simulation *meta)
 static void
 nss_switch (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   struct mem_vhmap     *db   = active_db (meta);
   struct var_with_data *next = mem_vhmap_random (db);
 
@@ -570,27 +966,27 @@ nss_switch (struct ns_simulation *meta)
     tdiff = nss_clock_step (meta);
   }
 
+  nsdb_var_free (meta->db, var);
+
   if (ret != 0) {
-    nsdb_var_free (meta->db, var);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    i_log_failure ("switch: get failed: %.*s\n", strfmt (&next->var.vname));
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    nsdb_var_free (meta->db, var);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_SUCCESS;
   }
 
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
   set_active_var (meta, next);
+
+  // The `get` above proved existence but its payload was discarded - check
+  // the db's idea of this variable's size against the reference entry we
+  // just switched to.
+  VERIFY_EFFECT (meta, nss_verify_len (meta, next));
 }
 
 static void
 nss_delete (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   ASSERT (active_var (meta) != NULL);
 
   err_t ret;
@@ -611,37 +1007,28 @@ nss_delete (struct ns_simulation *meta)
   }
 
   if (ret < 0) {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    i_log_failure ("delete failed: %.*s\n", strfmt (&active_var (meta)->var.vname));
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.nvars -= 1;
-    // FIX(minor): the deleted variable's bytes are no longer tracked
-    meta->results.tracked_bytes -= (u32)block_array_getlen (active_var (meta)->data);
-    meta->results.inner.record_type = RS_SUCCESS;
   }
+
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
+  meta->results.nvars -= 1;
+  // FIX(minor): the deleted variable's bytes are no longer tracked
+  meta->results.tracked_bytes -= (u32)ext_array_get_len (&active_var (meta)->data);
+
+  // Did the delete actually land? `get` must now fail. Checked *before*
+  // mem_vhmap_remove because the name string lives in the map entry.
+  VERIFY_EFFECT (meta, nss_verify_gone (meta, active_var (meta)));
 
   mem_vhmap_remove (active_db (meta), active_var (meta)->var.vname);
   set_active_var (meta, mem_vhmap_random (active_db (meta)));
 }
 
-static u8 *
-random_data (b_size blen)
-{
-  uint8_t *data = malloc ((size_t)blen);
-  ASSERT (data);
-  rand_bytes (data, blen);
-  return data;
-}
-
 static void
 nss_insert (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   struct insert_op op    = meta->results.inner.operation.insert;
   b_size           ofst  = op.ofst;
   b_size           len   = op.nelems;
@@ -652,10 +1039,14 @@ nss_insert (struct ns_simulation *meta)
   // silent truncation on large arrays.
   b_size           blen  = len * (b_size)tsize;
   u8              *data  = random_data (blen);
+  if (data == NULL) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
 
   // Timed section
-  err_t            ret;
-  u64              tdiff;
+  err_t ret;
+  u64   tdiff;
   {
     nss_clock_step (meta);
     ret = nsdb_fexecute (
@@ -671,35 +1062,52 @@ nss_insert (struct ns_simulation *meta)
   }
 
   if (ret != (sb_size)len) {
+    i_log_failure (
+        "insert failed: ofst=%" PRb_size " nelems=%" PRb_size " ret=%lld\n",
+        ofst,
+        len,
+        (long long)ret
+    );
     free (data);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.tracked_bytes += (u32)blen;
-    meta->results.db_total_size     = get_file_size (meta->dbname);
-    meta->results.inner.record_type = RS_SUCCESS;
   }
 
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
+  meta->results.tracked_bytes += (u32)blen;
+
   // Do the reference side
-  int ba = block_array_insert (
-      active_var (meta)->data,
-      (u32)(ofst * (b_size)tsize),
-      data,
-      (u32)blen,
-      NULL
-  );
-  ASSERT (ba == 0);
+  if (ext_array_insert (
+          &active_var (meta)->data,
+          (u32)(ofst * (b_size)tsize),
+          data,
+          (u32)blen,
+          NULL
+      )
+      != (i64)blen) {
+    i_log_failure (
+        "insert: reference ext_array_insert failed: ofst=%" PRb_size " blen=%" PRb_size "\n",
+        ofst,
+        blen
+    );
+    meta->results.inner.record_type = RS_FAILURE;
+    free (data);
+    return;
+  }
+
+  // Did the insert actually land? Length must have grown by nelems, and the
+  // inserted range must read back as the bytes we sent (stride 1: inserts
+  // are contiguous).
+  VERIFY_EFFECT (meta, nss_verify_len (meta, active_var (meta)));
+  VERIFY_EFFECT (meta, nss_verify_readback (meta, ofst, 1, len, tsize, data));
+
   free (data);
 }
 
 static void
 nss_remove (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   struct remove_op op      = meta->results.inner.operation.remove;
   // FIX(minor): b_size locals instead of int - no narrowing
   b_size           ofst    = op.ofst;
@@ -710,8 +1118,13 @@ nss_remove (struct ns_simulation *meta)
   size_t           buf_sz  = (size_t)len * tsize;
   uint8_t         *db_buf  = calloc (1, buf_sz);
   uint8_t         *ref_buf = calloc (1, buf_sz);
-  ASSERT (db_buf);
-  ASSERT (ref_buf);
+  if (db_buf == NULL || ref_buf == NULL) {
+    i_log_failure ("remove: calloc failed, buf_sz=%zu\n", buf_sz);
+    free (db_buf);
+    free (ref_buf);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
 
   // Timed section
   err_t ret;
@@ -731,34 +1144,75 @@ nss_remove (struct ns_simulation *meta)
     tdiff = nss_clock_step (meta);
   }
 
-  if (ret < 0) {
+  /* ret < 0 is an error; 0 <= ret < len is a *short remove* - the db only
+   * removed part of the slice while claiming overall success. Both are
+   * failures. The old `ret < 0` check let short ops through, leaving the
+   * tail of db_buf as calloc zeros - which then showed up downstream as
+   * "the last element read back wrong". */
+  if (ret != (sb_size)len) {
+    i_log_failure (
+        "remove %s: ret=%lld expected=%" PRb_size " (ofst=%" PRb_size " stride=%" PRb_size ")\n",
+        ret < 0 ? "failed" : "was short",
+        (long long)ret,
+        len,
+        ofst,
+        stride
+    );
     free (db_buf);
     free (ref_buf);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.tracked_bytes -= (u32)(len * tsize);
-    meta->results.inner.record_type = RS_SUCCESS;
   }
+
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
+  meta->results.tracked_bytes -= (u32)(len * tsize);
 
   // Do the reference
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got = block_array_remove (active_var (meta)->data, str, tsize, ref_buf, NULL);
-  ASSERT (got == (i64)len);
-
-  // Check that the two buffers are the same
-  if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
+  u64           got = ext_array_remove (&active_var (meta)->data, str, tsize, ref_buf);
+  if (got != len) {
+    i_log_failure (
+        "remove: reference removed %lld, expected %" PRb_size " (ofst=%" PRb_size
+        " stride=%" PRb_size ")\n",
+        (long long)got,
+        len,
+        ofst,
+        stride
+    );
     free (db_buf);
     free (ref_buf);
     meta->results.inner.record_type = RS_FAILURE;
     return;
   }
+
+  // Check that the two buffers are the same
+  if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
+    size_t i = 0;
+    while (i < buf_sz && db_buf[i] == ref_buf[i]) {
+      ++i;
+    }
+    i_log_failure (
+        "remove data mismatch at byte %zu (elem %zu): db=0x%02x ref=0x%02x "
+        "(ofst=%" PRb_size " stride=%" PRb_size " nelems=%" PRb_size " tsize=%" PRIu64 ")\n",
+        i,
+        i / tsize,
+        db_buf[i],
+        ref_buf[i],
+        ofst,
+        stride,
+        len,
+        (u64)tsize
+    );
+    free (db_buf);
+    free (ref_buf);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
+
+  // The removed bytes matched - but did the db actually *shrink* by the
+  // same amount? (Comparing extracted bytes says nothing about the
+  // residual array.)
+  VERIFY_EFFECT (meta, nss_verify_len (meta, active_var (meta)));
 
   free (db_buf);
   free (ref_buf);
@@ -767,6 +1221,7 @@ nss_remove (struct ns_simulation *meta)
 static void
 nss_read (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   struct read_op op      = meta->results.inner.operation.read;
   b_size         ofst    = op.ofst;
   b_size         stride  = op.stride;
@@ -777,8 +1232,13 @@ nss_read (struct ns_simulation *meta)
   size_t         buf_sz  = (size_t)len * tsize;
   uint8_t       *db_buf  = calloc (1, buf_sz);
   uint8_t       *ref_buf = calloc (1, buf_sz);
-  ASSERT (db_buf);
-  ASSERT (ref_buf);
+  if (db_buf == NULL || ref_buf == NULL) {
+    i_log_failure ("read: calloc failed, buf_sz=%zu\n", buf_sz);
+    free (db_buf);
+    free (ref_buf);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
 
   err_t ret;
   u64   tdiff;
@@ -797,31 +1257,59 @@ nss_read (struct ns_simulation *meta)
     tdiff = nss_clock_step (meta);
   }
 
-  if (ret < 0) {
+  /* Same short-op logic as remove: a read that fills 2 of 3 elements and
+   * returns 2 used to pass the old `ret < 0` check, leaving element 3 as
+   * calloc zeros in db_buf and getting reported as a *data* mismatch on
+   * the last element instead of a short read. */
+  if (ret != (sb_size)len) {
+    i_log_failure (
+        "read %s: ret=%lld expected=%" PRb_size " (ofst=%" PRb_size " stride=%" PRb_size ")\n",
+        ret < 0 ? "failed" : "was short",
+        (long long)ret,
+        len,
+        ofst,
+        stride
+    );
     free (db_buf);
     free (ref_buf);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_SUCCESS;
   }
 
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
+
   // Do the reference side
-  // FIX(#1): this was block_array_remove - every successful READ was
+  // FIX(#1): this was ext_array_remove - every successful READ was
   // deleting the read elements from the reference model while the real
   // DB kept them, silently diverging the two. Reads must not mutate.
   struct stride str = to_block_stride (ofst, stride, len);
-  i64           got = block_array_read (active_var (meta)->data, str, tsize, ref_buf);
-  ASSERT (got == (i64)len);
+  i64           got = ext_array_read (&active_var (meta)->data, str, tsize, ref_buf);
+  if (got != (i64)len) {
+    i_log_failure ("read: reference read %lld, expected %" PRb_size "\n", (long long)got, len);
+    free (db_buf);
+    free (ref_buf);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
 
   // Check that the two buffers are the same
   if (memcmp (db_buf, ref_buf, buf_sz) != 0) {
+    size_t i = 0;
+    while (i < buf_sz && db_buf[i] == ref_buf[i]) {
+      ++i;
+    }
+    i_log_failure (
+        "read data mismatch at byte %zu (elem %zu): db=0x%02x ref=0x%02x "
+        "(ofst=%" PRb_size " stride=%" PRb_size " nelems=%" PRb_size " tsize=%" PRIu64 ")\n",
+        i,
+        i / tsize,
+        db_buf[i],
+        ref_buf[i],
+        ofst,
+        stride,
+        len,
+        (u64)tsize
+    );
     free (db_buf);
     free (ref_buf);
     meta->results.inner.record_type = RS_FAILURE;
@@ -835,6 +1323,7 @@ nss_read (struct ns_simulation *meta)
 static void
 nss_write (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   struct write_op op     = meta->results.inner.operation.write;
   b_size          ofst   = op.ofst;
   b_size          stride = op.stride;
@@ -843,7 +1332,10 @@ nss_write (struct ns_simulation *meta)
 
   b_size          blen   = len * tsize;
   uint8_t        *data   = random_data (blen);
-  ASSERT (data);
+  if (data == NULL) {
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
 
   err_t ret;
   u64   tdiff;
@@ -862,24 +1354,43 @@ nss_write (struct ns_simulation *meta)
     tdiff = nss_clock_step (meta);
   }
 
-  if (ret < 0) {
+  /* A short write is the nastiest of the three: the db claims success, the
+   * missing tail elements keep their OLD values, and nothing notices until
+   * a later READ overlaps them. This is the exact signature of "read of a
+   * 3-element slice returns an invalid 3rd element". */
+  if (ret != (sb_size)len) {
+    i_log_failure (
+        "write %s: ret=%lld expected=%" PRb_size " (ofst=%" PRb_size " stride=%" PRb_size ")\n",
+        ret < 0 ? "failed" : "was short",
+        (long long)ret,
+        len,
+        ofst,
+        stride
+    );
     free (data);
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_FAILURE;
+    nss_finish_op (meta, tdiff, RS_FAILURE);
     return;
-  } else {
-    meta->results.working_clock += tdiff;
-    meta->results.inner.op_duration_ms = tdiff;
-    meta->results.db_total_size        = get_file_size (meta->dbname);
-    meta->results.inner.record_type    = RS_SUCCESS;
   }
+
+  nss_finish_op (meta, tdiff, RS_SUCCESS);
 
   // Do the reference side
   struct stride str = to_block_stride (ofst, stride, len);
-  u64           got = block_array_write (active_var (meta)->data, str, tsize, data);
-  ASSERT (got == (u64)len);
+  u64           got = ext_array_write (&active_var (meta)->data, str, tsize, data);
+  if (got != (u64)len) {
+    i_log_failure (
+        "write: reference wrote %llu, expected %" PRb_size "\n",
+        (unsigned long long)got,
+        len
+    );
+    free (data);
+    meta->results.inner.record_type = RS_FAILURE;
+    return;
+  }
+
+  // Did the write actually land? Read the same slice back and compare
+  // against the buffer we just sent.
+  VERIFY_EFFECT (meta, nss_verify_readback (meta, ofst, stride, len, tsize, data));
 
   free (data);
 }
@@ -904,11 +1415,13 @@ ns_simul_open (
   error e = error_create ();
 
   if (nsdb_cleanup (dbname) < 0) {
+    i_log_failure ("nsdb_cleanup failed: %s\n", dbname);
     return NULL;
   }
 
   struct ns_simulation *ret = malloc (sizeof *ret);
   if (ret == NULL) {
+    i_log_failure ("malloc failed for simulation state\n");
     return NULL;
   }
 
@@ -918,7 +1431,7 @@ ns_simul_open (
       .cur_committed     = NULL,
       .cur_working       = NULL,
       .db                = nsdb_open (dbname),
-      .tx                = 0,
+      .tx                = NULL,
       .dbname            = dbname,
       .max_insert_len    = max_insert_len,
       .sample_space_prob = sample_space_prob,
@@ -926,11 +1439,16 @@ ns_simul_open (
 
   // Error handling
   if (ret->committed == NULL) {
+    i_log_failure ("mem_vhmap_create failed: %s\n", dbname);
+    if (ret->db) {
+      nsdb_close (ret->db);
+    }
     free (ret);
     return NULL;
   }
 
   if (ret->db == NULL) {
+    i_log_failure ("nsdb_open failed: %s\n", dbname);
     mem_vhmap_free (ret->committed);
     free (ret);
     return NULL;
@@ -955,12 +1473,21 @@ ns_simul_open (
 int
 ns_simul_close (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
+  int rc = 0;
+
   if (meta->tx) {
     nss_commit_txn (meta);
+    if (meta->results.inner.record_type == RS_FAILURE) {
+      i_log_failure ("final commit failed on close: %s\n", meta->dbname);
+      rc = -1;
+      /* keep going - still release everything */
+    }
   }
 
   if (nsdb_close (meta->db) < 0) {
-    return -1;
+    i_log_failure ("nsdb_close failed: %s\n", meta->dbname);
+    rc = -1;
   }
 
   if (meta->committed) {
@@ -971,12 +1498,13 @@ ns_simul_close (struct ns_simulation *meta)
   }
   free (meta);
 
-  return 0;
+  return rc;
 }
 
 static enum ns_action_type
 nss_get_random_action (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   while (true) {
     // Count the number of allowed actions
     int len = 0;
@@ -1018,6 +1546,7 @@ nss_get_random_action (struct ns_simulation *meta)
 static void
 nssr_pre_op (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   // Set to 0
   memset (&meta->results.inner, 0, sizeof (meta->results.inner));
 
@@ -1052,7 +1581,13 @@ nssr_pre_op (struct ns_simulation *meta)
 
       // Generate the variable name
       if (gen_new_var (meta, &meta->results.inner.operation.create, &e)) {
-        panic ("TODO - error on pre");
+        // Pre-op failure: record it and let the caller stop, same
+        // contract as an execution failure. Nothing was created on
+        // either side so no cleanup beyond gen_new_var's own.
+        i_log_failure ("gen_new_var failed\n");
+        error_log_consume (&e);
+        meta->results.inner.record_type = RS_FAILURE;
+        return;
       }
       break;
     }
@@ -1062,13 +1597,23 @@ nssr_pre_op (struct ns_simulation *meta)
     }
     case NSS_DELETE: {
       meta->results.inner.operation.op_type = NSS_DELETE;
+
+      // Fill the payload - the JSON printer reads tsize/len for DELETE
+      t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
+      b_size blen                           = ext_array_get_len (&active_var (meta)->data);
+      ASSERT (blen % tsize == 0);
+
+      meta->results.inner.operation.delete = (struct delete_op){
+          .tsize = tsize,
+          .len   = blen / tsize,
+      };
       break;
     }
     case NSS_INSERT: {
       meta->results.inner.operation.op_type = NSS_INSERT;
 
       t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
-      b_size blen                           = block_array_getlen (active_var (meta)->data);
+      b_size blen                           = ext_array_get_len (&active_var (meta)->data);
 
       ASSERT (blen % tsize == 0);
 
@@ -1093,7 +1638,7 @@ nssr_pre_op (struct ns_simulation *meta)
 
       t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
       b_size ofst, stride, len;
-      b_size blen = block_array_getlen (active_var (meta)->data);
+      b_size blen = ext_array_get_len (&active_var (meta)->data);
 
       ASSERT (blen % tsize == 0);
 
@@ -1114,7 +1659,7 @@ nssr_pre_op (struct ns_simulation *meta)
 
       t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
       b_size ofst, stride, len;
-      b_size blen = block_array_getlen (active_var (meta)->data);
+      b_size blen = ext_array_get_len (&active_var (meta)->data);
 
       ASSERT (blen % tsize == 0);
 
@@ -1135,7 +1680,7 @@ nssr_pre_op (struct ns_simulation *meta)
 
       t_size tsize                          = type_byte_size (active_var (meta)->var.dtype);
       b_size ofst, stride, len;
-      b_size blen = block_array_getlen (active_var (meta)->data);
+      b_size blen = ext_array_get_len (&active_var (meta)->data);
 
       ASSERT (blen % tsize == 0);
 
@@ -1164,28 +1709,32 @@ nssr_pre_op (struct ns_simulation *meta)
 static void
 nssr_post_op (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   enum ns_action_type action = meta->results.inner.operation.op_type;
 
   switch (action) {
-    case NSS_BEGIN_TXN: nss_begin_txn (meta); return;
-    case NSS_COMMIT_TXN: nss_commit_txn (meta); return;
-    case NSS_ROLLBACK_TXN: nss_rollback_txn (meta); return;
-    case NSS_CRASH_AND_REOPEN: nss_crash_and_reopen (meta); return;
-    case NSS_CLOSE_AND_REOPEN: nss_close_and_reopen (meta); return;
-    case NSS_CREATE: nss_create (meta); return;
-    case NSS_SWITCH: nss_switch (meta); return;
-    case NSS_DELETE: nss_delete (meta); return;
-    case NSS_INSERT: nss_insert (meta); return;
-    case NSS_REMOVE: nss_remove (meta); return;
-    case NSS_READ: nss_read (meta); return;
-    case NSS_WRITE: nss_write (meta); return;
+    case NSS_BEGIN_TXN: nss_begin_txn (meta); break;
+    case NSS_COMMIT_TXN: nss_commit_txn (meta); break;
+    case NSS_ROLLBACK_TXN: nss_rollback_txn (meta); break;
+    case NSS_CRASH_AND_REOPEN: nss_crash_and_reopen (meta); break;
+    case NSS_CLOSE_AND_REOPEN: nss_close_and_reopen (meta); break;
+    case NSS_CREATE: nss_create (meta); break;
+    case NSS_SWITCH: nss_switch (meta); break;
+    case NSS_DELETE: nss_delete (meta); break;
+    case NSS_INSERT: nss_insert (meta); break;
+    case NSS_REMOVE: nss_remove (meta); break;
+    case NSS_READ: nss_read (meta); break;
+    case NSS_WRITE: nss_write (meta); break;
     default: UNREACHABLE ();
   }
+
+  READ_ALL_VERIFY (meta, action);
 }
 
 struct ns_simul_record *
 ns_simul_prepare (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   // Set which actions are allowed
   nss_set_allowed (meta);
 
@@ -1198,6 +1747,7 @@ ns_simul_prepare (struct ns_simulation *meta)
 struct ns_simul_record *
 ns_simul_execute (struct ns_simulation *meta)
 {
+  DBG_ASSERT (ns_simulation, meta);
   // Do the post operation
   nssr_post_op (meta);
 

@@ -15,9 +15,9 @@
 #include "numstore/testing/ns_mem_vhmap.h"
 
 #include "core/ns_alloc.h"
-#include "core/ns_block_array.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_ext_array.h"
 #include "core/ns_htable.h"
 #include "core/ns_numerics.h" // randu32
 #include "core/ns_slab_alloc.h"
@@ -63,7 +63,7 @@ static void
 var_frame_free (struct var_frame *frame)
 {
   allocator_free (&frame->alloc);
-  block_array_free (frame->var.data);
+  ext_array_free (&frame->var.data);
 }
 
 static void
@@ -108,8 +108,8 @@ move_data (struct hnode *node, void *ctx)
   }
 
   // Copy the data over
-  block_array_free (var->data);
-  var->data = block_array_clone (frame->var.data, _ctx->e);
+  ext_array_free (&var->data);
+  ext_array_clone (&var->data, &frame->var.data, _ctx->e);
 }
 
 struct mem_vhmap *
@@ -157,10 +157,7 @@ var_frame_init (struct mem_vhmap *db, struct var_frame *frame, struct variable *
   }
 
   // Create the block array
-  frame->var.data = block_array_create (512, db->mem, e);
-  if (frame->var.data == NULL) {
-    goto failed;
-  }
+  frame->var.data = ext_array_create (db->mem);
 
   return SUCCESS;
 
@@ -180,7 +177,7 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
               (struct variable){
                   .vname = var->vname,
               },
-          .data = NULL, // Not used in hnode lookup
+          .data = {0}, // Not used in hnode lookup
       },
   };
   hnode_init (&key.node, fnv1a_hash (var->vname));
@@ -219,7 +216,7 @@ mem_vhmap_get (struct mem_vhmap *db, struct string name)
               (struct variable){
                   .vname = name,
               },
-          .data = NULL, // Not used in hnode lookup
+          .data = {0}, // Not used in hnode lookup
       },
   };
   hnode_init (&key.node, fnv1a_hash (name));
@@ -241,7 +238,7 @@ mem_vhmap_remove (struct mem_vhmap *db, struct string name)
               (struct variable){
                   .vname = name,
               },
-          .data = NULL, // Not used in hnode lookup
+          .data = {0}, // Not used in hnode lookup
       },
   };
   hnode_init (&key.node, fnv1a_hash (name));

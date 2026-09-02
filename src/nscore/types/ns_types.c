@@ -183,7 +183,7 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 TEST (prim_t_snprintf)
 {
 #  define CASE_PRIM(prim_type, exp)                                      \
-    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, #exp)            \
+    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)             \
     {                                                                    \
       struct type t = {                                                  \
           .type = T_PRIM,                                                \

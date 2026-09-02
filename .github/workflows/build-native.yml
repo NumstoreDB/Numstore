@@ -1,18 +1,21 @@
 name: Build And Test
+
 on:
   workflow_call:
     inputs:
       platforms:
         description: >
-          JSON array of platforms, e.g. ["ubuntu-latest", "windows-latest"]
+          Comma or newline separated list of platforms.
+          e.g. ubuntu-latest, windows-latest
         required: true
         type: string
+
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
-        platform: ${{ fromJSON(inputs.platforms) }}
+        platform: ${{ fromJSON(format('["{0}"]', join(split(inputs.platforms, ','), '","'))) }}
     name: ${{ matrix.platform }}
     runs-on: ${{ matrix.platform }}
     defaults:
@@ -20,11 +23,13 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+
       - run: make clean
       - run: make TARGET=debug
       - run: ./build/debug/target/bin/unit_tests
       - run: make TARGET=release
       - run: cp ./docs/release_docs.md build/release/target/README.md
+
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:

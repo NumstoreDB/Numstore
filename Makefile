@@ -206,18 +206,6 @@ python: $(TARGET_PYLIB)
 $(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(PY_TARGET_DIR) $(PY_OBJ_DIR): 
 	@mkdir -p $@
 
-############ Package Management
-
-TEST_BIN := build/debug$(CROSS_SUFFIX)/target/bin/unit_tests$(if $(findstring windows,$(PLATFORM)),.exe)
-
-release-package:
-	$(MAKE) clean
-	$(MAKE) TARGET=debug
-	file $(TEST_BIN)
-	./$(TEST_BIN); echo "exit code: $$?"
-	$(MAKE) TARGET=release
-	cp docs/release_docs.md build/release$(CROSS_SUFFIX)/target/README.md
-
 ############ Cross-compilation via dockcross
 # Examples:
 # 	make cross PLATFORM=windows-static-x64

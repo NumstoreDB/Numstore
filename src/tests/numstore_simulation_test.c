@@ -33,6 +33,8 @@ main (int argc, char **argv)
   const char *commit_hash = argv[4];
   unsigned    sequence_id = (unsigned)strtoul (argv[5], NULL, 10);
 
+  srand (seed);
+
   nsdb_cleanup (db);
   struct ns_simulation   *simul = ns_simul_open (seed, commit_hash, sequence_id, db, 10000, 0);
 

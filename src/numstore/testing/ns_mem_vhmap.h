@@ -23,8 +23,8 @@
 #ifndef MEM_VHMAP_H
 #define MEM_VHMAP_H
 
-#include "core/ns_block_array.h"
 #include "core/ns_error.h"
+#include "core/ns_ext_array.h"
 #include "core/ns_htable.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
@@ -46,8 +46,8 @@ struct mem_vhmap
 
 struct var_with_data
 {
-  struct variable     var;
-  struct block_array *data;
+  struct variable  var;
+  struct ext_array data;
 };
 
 // Lifecycle
