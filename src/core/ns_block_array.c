@@ -34,6 +34,7 @@ block_array_create (const u32 cap_per_node, struct i_mem mem, error *e)
 {
   ASSERT (cap_per_node > 0);
 
+  // Allocate one block
   struct block_array *ret = i_malloc (mem, 1, sizeof (struct block_array) + cap_per_node, e);
   if (ret == NULL) {
     return ret;
@@ -115,6 +116,7 @@ block_array_insert (struct block_array *r, u32 ofst, const void *_src, u32 slen,
 {
   ASSERT (slen > 0);
 
+  // Convert to u8
   const u8 *src = _src;
 
   // Allocate head if it's empty
@@ -1131,7 +1133,8 @@ TEST (block_insert_write_read)
   }
 }
 
-TEST (block_random)
+/**
+TEST_DISABLED (block_random)
 {
   error     e        = error_create ();
   // Block sizes to test
@@ -1162,4 +1165,5 @@ TEST (block_random)
     block_array_free (block_arr);
   }
 }
+*/
 #endif

@@ -179,7 +179,7 @@ TEST (parse_i64_boundary_values)
 TEST (ext_array_capacity_doubles_on_growth)
 {
   error            e    = error_create ();
-  struct ext_array a    = ext_array_create ();
+  struct ext_array a    = ext_array_create (mem);
 
   // Seed with one byte to force the first allocation (cap → 2).
   const u8         seed = 0x01;
@@ -209,15 +209,15 @@ TEST (ext_array_capacity_doubles_on_growth)
 TEST (ext_array_remove_all_produces_empty)
 {
   error            e      = error_create ();
-  struct ext_array a      = ext_array_create ();
+  struct ext_array a      = ext_array_create (mem);
 
   const u8         src[5] = {10, 20, 30, 40, 50};
   ext_array_insert (&a, 0, src, sizeof src, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
 
   u8 out[5] = {0};
-  const i64
-      n = ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out, &e);
+  const u64
+      n = ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out);
 
   test_assert_type_equal (n, (i64)5, i64, PRId64);
   test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);
@@ -496,7 +496,7 @@ TEST (string_ordering_operators)
   const struct string xyz1 = {.data = "xyz", .len = 3};
   const struct string xyz2 = {.data = "xyz", .len = 3};
 
-  TEST_CASE ("'abc' < 'abd': less, not greater")
+  TEST_CASE ("'abc' lt 'abd': less, not greater")
   {
     test_assert (string_less_string (abc, abd));
     test_assert (!string_greater_string (abc, abd));

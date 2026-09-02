@@ -193,7 +193,7 @@ TEST (cbuffer_get_nbytes)
     test_assert_int_equal (out.len, 16);
   }
 
-  TEST_CASE ("Head < Tail, normal case")
+  TEST_CASE ("Head lt Tail, normal case")
   {
     b.head                 = 2;
     b.tail                 = 6;

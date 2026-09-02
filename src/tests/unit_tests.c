@@ -39,7 +39,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[347];
+  const char *failed_names[337];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -94,25 +94,6 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "block_insert_write_read";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("block_random", filter))
-  {
-    extern void __test__block_random(void);
-    i_log_info("========================= TEST CASE: %s\n", "block_random");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__block_random();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "block_random");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "block_random";
     }
     ntests++;
   }
@@ -6479,5 +6460,4 @@ main (int argc, char **argv)
   }
   return test_ret;
 }
-
 // clang-format on

@@ -113,7 +113,7 @@ TEST (smfile_data_writer)
   for (u32 i = 0; i < arrlen (niters); ++i) {
     i_log_info ("smfile data validator test: %d\n", i);
 
-    struct ext_array   ext_arr_1 = ext_array_create ();
+    struct ext_array   ext_arr_1 = ext_array_create (mem);
 
     struct data_writer ref;
     ext_array_data_writer (&ref, &ext_arr_1);
