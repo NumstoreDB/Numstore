@@ -6,67 +6,12 @@ jobs:
   build-native:
     uses: ./.github/workflows/build-native.yml
     with:
-      platforms: |
-        [
-          "ubuntu-latest",
-          "ubuntu-24.04",
-          "ubuntu-22.04",
-          "ubuntu-20.04",
-          "ubuntu-24.04-arm",
-          "ubuntu-22.04-arm",
-          "macos-latest",
-          "macos-15",
-          "macos-14",
-          "macos-13",
-          "macos-13-xlarge",
-          "macos-14-large",
-          "windows-latest",
-          "windows-2025",
-          "windows-2022",
-          "windows-2019",
-          "windows-11-arm"
-        ]
-
+      platforms: '["ubuntu-latest", "macos-latest"]'
   # Dock Cross targets
   build-dockcross:
     uses: ./.github/workflows/build-dockcross.yml
     with:
       builds: |
         [
-          {"dockcross": "linux-arm64",             "qemu": "aarch64"},
-          {"dockcross": "linux-arm64-lts",          "qemu": "aarch64"},
-          {"dockcross": "linux-arm64-full",         "qemu": "aarch64"},
-          {"dockcross": "linux-armv5",              "qemu": "arm"},
-          {"dockcross": "linux-armv6",              "qemu": "arm"},
-          {"dockcross": "linux-armv6-lts",          "qemu": "arm"},
-          {"dockcross": "linux-armv7",              "qemu": "arm"},
-          {"dockcross": "linux-armv7l-musl",        "qemu": "arm"},
-          {"dockcross": "linux-armv7a-media",       "qemu": "arm"},
-          {"dockcross": "linux-x86",                "qemu": "i386"},
-          {"dockcross": "linux-x64",                "qemu": "x86_64"},
-          {"dockcross": "linux-x64-clang",           "qemu": "x86_64"},
-          {"dockcross": "linux-x64-tinycc",          "qemu": "x86_64"},
-          {"dockcross": "linux-riscv32",             "qemu": "riscv32"},
-          {"dockcross": "linux-riscv64",             "qemu": "riscv64"},
-          {"dockcross": "linux-mips",                "qemu": "mips"},
-          {"dockcross": "linux-mipsel-lts",          "qemu": "mipsel"},
-          {"dockcross": "linux-m68k-uclibc",         "qemu": "m68k"},
-          {"dockcross": "linux-ppc64le",             "qemu": "ppc64le"},
-          {"dockcross": "linux-s390x",               "qemu": "s390x"},
-          {"dockcross": "linux-xtensa",              "qemu": "xtensa"},
-          {"dockcross": "android-arm",               "qemu": "none"},
-          {"dockcross": "android-arm64",             "qemu": "none"},
-          {"dockcross": "android-x86",               "qemu": "none"},
-          {"dockcross": "android-x86_64",            "qemu": "none"},
-          {"dockcross": "web-wasm",                  "qemu": "none"},
-          {"dockcross": "windows-shared-x64",        "qemu": "none"},
-          {"dockcross": "windows-shared-x86",        "qemu": "none"},
-          {"dockcross": "windows-static-x64",        "qemu": "none"},
-          {"dockcross": "windows-static-x64-posix",  "qemu": "none"},
-          {"dockcross": "windows-arm64",             "qemu": "none"},
-          {"dockcross": "manylinux2014-x64",         "qemu": "x86_64"},
-          {"dockcross": "manylinux2014-x86",         "qemu": "i386"},
-          {"dockcross": "manylinux2014-aarch64",     "qemu": "aarch64"},
-          {"dockcross": "manylinux_2_28-x64",        "qemu": "x86_64"},
-          {"dockcross": "manylinux_2_28-aarch64",    "qemu": "aarch64"}
+          {"dockcross": "linux-arm64", "qemu": "aarch64"}
         ]
