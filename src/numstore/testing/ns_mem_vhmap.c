@@ -113,10 +113,10 @@ move_data (struct hnode *node, void *ctx)
 }
 
 struct mem_vhmap *
-mem_vhmap_clone (const struct mem_vhmap *src, error *e)
+mem_vhmap_clone (struct i_mem mem, const struct mem_vhmap *src, error *e)
 {
   // Create a new var hash map
-  struct mem_vhmap *ret = mem_vhmap_create (src->mem, e);
+  struct mem_vhmap *ret = mem_vhmap_create (mem, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -187,6 +187,7 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
     error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
     return NULL;
   }
+
   // Create a new variable frame
   struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
   if (frame == NULL) {
@@ -375,7 +376,7 @@ TEST (mem_vhmap)
       test_assert (vwd != NULL);
     }
 
-    struct mem_vhmap *c = mem_vhmap_clone (v, &e);
+    struct mem_vhmap *c = mem_vhmap_clone (mem, v, &e);
     ASSERT (c != NULL);
 
     for (int i = 0; i < 128; ++i) {

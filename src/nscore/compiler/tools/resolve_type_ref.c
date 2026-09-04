@@ -54,7 +54,7 @@ main (int argc, char **argv)
     goto theend;
   }
 
-  char *str = type_tostr (generated);
+  char *str = type_tostr (&alloc, generated, &e);
   if (str == NULL) {
     fprintf (stderr, "error: failed to allocate type string: %s\n", type_str);
     rc = EXIT_FAILURE;

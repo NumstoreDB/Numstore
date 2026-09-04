@@ -7,6 +7,11 @@ on:
           JSON array of platforms, e.g. ["ubuntu-latest", "windows-latest"]
         required: true
         type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -20,11 +25,33 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - run: make clean
-      - run: make TARGET=debug
-      - run: ./build/debug/target/bin/unit_tests
-      - run: make TARGET=release
-      - run: cp ./docs/release_docs.md build/release/target/README.md
+
+      - name: Build Code
+        run: |
+          make clean
+          make TARGET=debug NLOG=1
+
+      - name: Run Unit Tests
+        run: |
+          seed=$(shuf -i 10-500000000 -n 1)
+          ./build/debug/target/bin/unit_tests $seed
+
+      # Disabled as swarm tests are in development
+      # - name: Run swarm tests
+      #   run: |
+      #     dbname=swarm_test_${{ matrix.platform }}.db 
+      #     duration=10 
+      #     seed=$(shuf -i 10-500000000 -n 1)
+      #     commit_hash=${{ github.sha }}
+      #     seq_id=$(shuf -i 10-500000000 -n 1)
+      #     exe=./build/debug/target/bin/numstore_simulation_test
+      #     $exe $dbname $duration $seed $commit_hash $seq_id
+
+      - name: Build release targets
+        run: |
+          make TARGET=release
+          cp ./docs/release_docs.md build/release/target/README.md
+
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:

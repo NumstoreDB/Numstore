@@ -182,6 +182,8 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 #ifdef TESTING
 TEST (prim_t_snprintf)
 {
+  ALLOC_INIT (alloc);
+
 #  define CASE_PRIM(prim_type, exp)                                      \
     TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)             \
     {                                                                    \
@@ -191,11 +193,10 @@ TEST (prim_t_snprintf)
       };                                                                 \
                                                                          \
       const char *expect = exp;                                          \
-      char       *ret    = type_tostr (&t);                              \
       error       e      = error_create ();                              \
+      char       *ret    = type_tostr (&alloc, &t, &e);                  \
       i_log_type (&t, &e);                                               \
       test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0); \
-      i_free (default_mem (), ret);                                      \
     }
 
   CASE_PRIM (U8, "u8");
@@ -227,6 +228,8 @@ TEST (prim_t_snprintf)
   CASE_PRIM (CU32, "cu32");
   CASE_PRIM (CU64, "cu64");
   CASE_PRIM (CU128, "cu128");
+
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -256,20 +259,19 @@ type_snprintf (char *str, u32 size, struct type *t)
 }
 
 char *
-type_tostr (struct type *t)
+type_tostr (struct allocator *alloc, struct type *t, error *e)
 {
   int len = type_snprintf (NULL, 0, t);
   if (len < 0) {
     return NULL;
   }
 
-  char *msg = i_malloc (default_mem (), len + 1, 1, NULL);
+  char *msg = allocate (alloc, len + 1, 1, e);
   if (msg == NULL) {
     return NULL;
   }
 
   if (type_snprintf (msg, len + 1, t) < 0) {
-    i_free (default_mem (), msg);
     return NULL;
   }
 

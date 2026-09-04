@@ -23,32 +23,6 @@
 
 #include <stdbool.h>
 
-struct builder;
-
-/******************************************************************************
- * SECTION: Stride
- * ----------------------------------------------------------------------------
- *
- * @brief Stride is a pattern for iterating through an array
- ******************************************************************************/
-
-/**
- * @struct stride
- * @brief A more tight stride than user_stride that restricts to the domain of
- * an array
- *
- * Stride is the main point of entry for any strided operation. User stride is
- * just the user facing version - user strides are "resolved" into strides
- *
- * @var stride::start
- * @brief The start index
- *
- * @var stride::stride
- * @brief The step between each element
- *
- * @var stride::nelems
- * @brief The number of elements to touch
- */
 struct stride
 {
   u64 start;
@@ -63,31 +37,6 @@ enum
   STOP_PRESENT  = (1 << 2),
   COLON_PRESENT = (1 << 3),
 };
-
-/**
- * @struct user_stride
- * @brief The user stride is an easy way for the user to define a stride based
- * on the variable
- *
- * In normal stride operations, queries like [0:-1] or [0::] or [:-1] etc are
- * all valid queries. User stride encodes this property and there's a single
- * function to convert a user stride into a stride for more rigorous stride
- * operations
- *
- * @var user_stride::start
- * @brief The start element - meaningless if present & START_PRESENT is 0
- * Negative means from the end
- *
- * @var user_stride::step
- * @brief The step - equivalent to stride::stride
- * meaningless if present & STEP_PRESENT is 0
- *
- * @var user_stride::end
- * @brief The end element - meaningless if present & STOP_PRESENT is 0
- *
- * @var user_stride::present
- * @brief A set of flags on which value is present.
- */
 
 struct user_stride
 {

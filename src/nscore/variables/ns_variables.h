@@ -24,36 +24,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct allocator;
+#define DEFAULT_VARIABLE    "."
+#define MAX_VARIABLE_LENGTH 4096
 
-/******************************************************************************
- * SECTION: Variables
- * ----------------------------------------------------------------------------
- * @brief In Memory representation of a variable
- ******************************************************************************/
-
-/**
- * @struct variable
- * @brief The main Representation of a variable inside Numstore
- *
- * @var variable::vname
- * @brief The variable name as a sized string
- *
- * @var variable::dtype
- * @brief A pointer to the variable data type
- *        allocation is agnostic
- *
- * @var variable::var_root
- * @brief The root page for the variable - this remains
- *        constant throughout the variable's lifecycle
- *
- * @param variable::rpt_root
- * @brief The root page for the variable data - this changes
- *        constantly during rebalances
- *
- * @var variable::nbytes
- * @brief The number of bytes in a variable
- */
 struct variable
 {
   struct string vname;
@@ -63,40 +36,16 @@ struct variable
   b_size        nbytes;
 };
 
-err_t i_print_variable (struct variable *v, error *e);
-
-/**
- * @def DEFAULT_VARIABLE
- * @brief The default variable name for application level libraries
- *
- * Certain libraries (E.g. smartfiles) use a default variable - this
- * is the name of the default variable
- */
-#define DEFAULT_VARIABLE "."
-
-/**
- * @fn string vname_or_default(const char *name)
- * @brief Fetch a string representing the variable name in [name]
- * or else
- *
- * @param name
- */
-static inline struct string
-vname_or_default (const char *name)
-{
-  if (name != NULL) {
-    return strfcstr (name);
-  } else {
-    return strfcstr (DEFAULT_VARIABLE);
-  }
-}
-
 struct nsdb_var
 {
   struct variable  *var;
   struct allocator *alloc;
 };
 
+err_t i_print_variable (struct variable *v, error *e);
+
+// If name is NULL - returns default variable name
+struct string vname_or_default (const char *name);
 bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
 void var_random_name (char *buffer, u32 length);
@@ -113,43 +62,13 @@ err_t rand_varname_different_hash (
     struct allocator *alloc,
     error            *e
 );
-
 err_t variable_copy (
     struct variable       *dest,
     const struct variable *src,
     struct allocator      *alloc,
     error                 *e
 );
+b_size var_resolve_index (struct variable *v, sb_size bofst);
+b_size var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size);
 
-HEADER_FUNC b_size
-var_resolve_index (struct variable *v, sb_size bofst)
-{
-  // Translate negative
-  if (bofst < 0) {
-    bofst = v->nbytes + bofst;
-  }
-
-  // was so negative it's still negative after conversion
-  if (bofst < 0) {
-    bofst = 0;
-  }
-
-  // Translate indexes past nybtes
-  if ((b_size)bofst > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
-  {
-    bofst = v->nbytes;
-  }
-
-  return bofst;
-}
-
-HEADER_FUNC b_size
-var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
-{
-  b_size remainder = (v->nbytes - bofst) / size;
-  if (nelem > remainder) {
-    nelem = remainder;
-  }
-  return nelem;
-}
 #endif // VARIABLES_H

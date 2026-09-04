@@ -62,7 +62,7 @@ with `numstore.h` and `smartfiles.h` being the two main points of entry
 
 * run the unit tests
 
-       ./build/debug/target/bin/unit_tests
+       ./build/debug/target/bin/unit_tests SEED <filter>
 
 * build and run a sample program (using the numstore or smartfiles library)
 

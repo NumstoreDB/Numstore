@@ -28,9 +28,6 @@
 
 #include <string.h>
 
-// TODO - pull out all printing to the
-// top level - and print status ok in
-// it's own module
 err_t
 i_print_variable (struct variable *v, error *e)
 {
@@ -491,6 +488,28 @@ TEST (rand_varname_different_hash)
 }
 #endif
 
+b_size
+var_resolve_index (struct variable *v, sb_size bofst)
+{
+  // Translate negative
+  if (bofst < 0) {
+    bofst = v->nbytes + bofst;
+  }
+
+  // was so negative it's still negative after conversion
+  if (bofst < 0) {
+    bofst = 0;
+  }
+
+  // Translate indexes past nybtes
+  if ((b_size)bofst > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
+  {
+    bofst = v->nbytes;
+  }
+
+  return bofst;
+}
+
 #ifdef TESTING
 TEST (var_resolve_index)
 {
@@ -518,6 +537,16 @@ TEST (var_resolve_index)
   test_assert_int_equal (var_resolve_index (&v, -150), 0);
 }
 #endif
+
+b_size
+var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
+{
+  b_size remainder = (v->nbytes - bofst) / size;
+  if (nelem > remainder) {
+    nelem = remainder;
+  }
+  return nelem;
+}
 
 #ifdef TESTING
 TEST (var_resolve_nelem)
@@ -565,4 +594,14 @@ variable_copy (struct variable *dest, const struct variable *src, struct allocat
   dest->nbytes    = src->nbytes;
 
   return SUCCESS;
+}
+
+struct string
+vname_or_default (const char *name)
+{
+  if (name != NULL) {
+    return strfcstr (name);
+  } else {
+    return strfcstr (DEFAULT_VARIABLE);
+  }
 }

@@ -23,7 +23,6 @@
 #include "nscore/types/ns_types.h"
 
 #ifdef TESTING
-#  include "core/os/ns_memory.h"
 #  include "core/testing/ns_testing.h"
 #endif
 
@@ -165,6 +164,7 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
 #ifdef TESTING
 TEST (sarray_t_snprintf)
 {
+  ALLOC_INIT (alloc);
   struct type s = (struct type){
       .type = T_SARRAY,
       .sa   = {
@@ -179,11 +179,11 @@ TEST (sarray_t_snprintf)
 
   const char *expected = "[10][11][12]u32";
 
-  char       *ret      = type_tostr (&s);
   error       e        = error_create ();
+  char       *ret      = type_tostr (&alloc, &s, &e);
   i_log_type (&s, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (default_mem (), ret);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 

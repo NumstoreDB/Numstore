@@ -26,7 +26,6 @@
 #include "nscore/variables/ns_variables.h"
 
 #ifdef TESTING
-#  include "core/os/ns_memory.h"
 #  include "core/testing/ns_testing.h"
 #  include "nscore/compiler/ns_compiler.h"
 #endif
@@ -298,6 +297,8 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
 #ifdef TESTING
 TEST (union_t_snprintf)
 {
+  ALLOC_INIT (alloc);
+
   struct union_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -343,11 +344,11 @@ TEST (union_t_snprintf)
   };
 
   const char *expected = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
-  char       *ret      = type_tostr (&t);
   error       e        = error_create ();
+  char       *ret      = type_tostr (&alloc, &t, &e);
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (default_mem (), ret);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 

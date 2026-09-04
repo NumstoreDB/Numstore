@@ -30,13 +30,6 @@
 #include "core/ns_stdtypes.h"
 #include "nscore/variables/ns_variables.h"
 
-struct string;
-struct variable;
-
-/******************************************************************************
- * SECTION: Memory Variable Hash Map
- ******************************************************************************/
-
 struct mem_vhmap
 {
   struct i_mem      mem;
@@ -53,7 +46,7 @@ struct var_with_data
 // Lifecycle
 struct mem_vhmap *mem_vhmap_create (struct i_mem mem, error *e);
 void mem_vhmap_free (struct mem_vhmap *db);
-struct mem_vhmap *mem_vhmap_clone (const struct mem_vhmap *src, error *e);
+struct mem_vhmap *mem_vhmap_clone (struct i_mem mem, const struct mem_vhmap *src, error *e);
 
 // Create Get Remove
 struct var_with_data *mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e);

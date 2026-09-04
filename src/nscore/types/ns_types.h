@@ -94,7 +94,7 @@ struct type
 // Core api
 err_t type_validate (const struct type *t, error *e);
 i32 type_snprintf (char *str, u32 size, struct type *t);
-char *type_tostr (struct type *t);
+char *type_tostr (struct allocator *alloc, struct type *t, error *e);
 u32 type_byte_size (const struct type *t);
 u32 type_get_string_size (const struct type *t);
 void type_generate_string (char *dest, const struct type *t);
