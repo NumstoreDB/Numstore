@@ -15,7 +15,7 @@
 #ifndef PAGER_H
 #define PAGER_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
@@ -410,7 +410,7 @@ struct aries_ctx
    */
   struct dbl_buffer    txn_ptrs;
   struct slab_alloc    alloc;
-  struct allocator     backing_alloc;
+  struct arena_alloc   backing_alloc;
 };
 
 err_t aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);

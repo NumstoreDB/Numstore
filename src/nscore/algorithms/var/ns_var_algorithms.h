@@ -15,7 +15,7 @@
 #ifndef NS_VAR_ALGORITHMS_H
 #define NS_VAR_ALGORITHMS_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/pager/ns_pager.h"
@@ -41,27 +41,27 @@ struct var_retrieval
 
 struct ns_var_get_params
 {
-  struct pager     *p;
-  struct ns_txn    *tx;
+  struct pager       *p;
+  struct ns_txn      *tx;
 
-  struct string     vname;
-  struct allocator *alloc;
+  struct string       vname;
+  struct arena_alloc *alloc;
 
-  struct variable   dest;
+  struct variable     dest;
 };
 
 err_t ns_var_get (struct ns_var_get_params *params, error *e);
 
 struct ns_var_get_or_create_params
 {
-  struct pager     *p;
-  struct ns_txn    *tx;
+  struct pager       *p;
+  struct ns_txn      *tx;
 
-  struct string     vname;
-  struct type      *type;
-  struct allocator *alloc;
+  struct string       vname;
+  struct type        *type;
+  struct arena_alloc *alloc;
 
-  struct variable   dest;
+  struct variable     dest;
 };
 
 err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);

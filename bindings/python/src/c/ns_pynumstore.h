@@ -15,8 +15,6 @@
 #ifndef NS_PYMODULE_COMMON_H
 #define NS_PYMODULE_COMMON_H
 
-#include "core/ns_alloc.h"
-
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
@@ -26,8 +24,6 @@
 #  define NO_IMPORT_ARRAY
 #endif
 #include "core/ns_csx_assert.h"
-#include "nscore/compiler/ns_compiler.h"
-#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_types.h"
 #include "numstore/numstore.h"
 

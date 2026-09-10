@@ -14,7 +14,7 @@
 
 #include "nscore/nsdb/ns_nsdb.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -208,11 +208,11 @@ nsdb_rollback (struct nsdb *smf, struct ns_txn *tx)
 
 err_t
 nsdb_create (
-    struct nsdb      *db,
-    struct ns_txn    *tx,
-    struct allocator *alloc,
-    struct string     vname,
-    struct type       dtype
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct arena_alloc *alloc,
+    struct string       vname,
+    struct type         dtype
 )
 {
   db->e.cause_code = SUCCESS;
@@ -293,11 +293,11 @@ failed:
 
 err_t
 nsdb_get (
-    struct nsdb      *db,
-    struct ns_txn    *tx,
-    struct get_query *query,
-    struct allocator *alloc,
-    struct variable **dest
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct get_query   *query,
+    struct arena_alloc *alloc,
+    struct variable   **dest
 )
 {
   ASSERT (dest);
@@ -305,7 +305,7 @@ nsdb_get (
   db->e.cause_code = SUCCESS;
   db->e.cmlen      = 0;
 
-  *dest            = allocate (alloc, 1, sizeof (struct variable), &db->e);
+  *dest            = arena_malloc (alloc, 1, sizeof (struct variable), &db->e);
   if (*dest == NULL) {
     return error_trace (&db->e);
   }
@@ -355,7 +355,7 @@ nsdb_insert (
     struct nsdb         *db,
     struct ns_txn       *tx,
     struct insert_query *query,
-    struct allocator    *alloc,
+    struct arena_alloc  *alloc,
     struct stream       *src
 )
 {
@@ -463,11 +463,11 @@ failed:
 
 sb_size
 nsdb_read (
-    struct nsdb       *db,
-    struct ns_txn     *tx,
-    struct read_query *query,
-    struct allocator  *alloc,
-    struct stream     *dest
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct read_query  *query,
+    struct arena_alloc *alloc,
+    struct stream      *dest
 )
 {
   sb_size                  ret;     // Return value
@@ -591,7 +591,7 @@ nsdb_remove (
     struct nsdb         *db,
     struct ns_txn       *tx,
     struct remove_query *query,
-    struct allocator    *alloc,
+    struct arena_alloc  *alloc,
     struct stream       *dest
 )
 {
@@ -735,7 +735,7 @@ nsdb_write (
     struct nsdb        *db,
     struct ns_txn      *tx,
     struct write_query *query,
-    struct allocator   *alloc,
+    struct arena_alloc *alloc,
     struct stream      *src
 )
 {

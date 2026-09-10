@@ -13,8 +13,6 @@
 /// limitations under the License.
 
 // Python
-#include "core/ns_alloc.h"
-
 #include <numpy/ndarrayobject.h>
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>

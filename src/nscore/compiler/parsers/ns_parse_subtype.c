@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
@@ -113,7 +113,7 @@ parse_subtype (struct parser *p, struct subtype *dest, error *e)
 }
 
 err_t
-compile_subtype (struct subtype *dest, const char *text, struct allocator *dalloc, error *e)
+compile_subtype (struct subtype *dest, const char *text, struct arena_alloc *dalloc, error *e)
 {
   BUILDER_INIT (b, dalloc);
 

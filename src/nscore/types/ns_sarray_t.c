@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_sarray_t.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -23,7 +23,6 @@
 #include "nscore/types/ns_types.h"
 
 #ifdef TESTING
-#  include "core/os/ns_memory.h"
 #  include "core/testing/ns_testing.h"
 #endif
 
@@ -165,6 +164,7 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
 #ifdef TESTING
 TEST (sarray_t_snprintf)
 {
+  ALLOC_INIT (alloc);
   struct type s = (struct type){
       .type = T_SARRAY,
       .sa   = {
@@ -179,11 +179,11 @@ TEST (sarray_t_snprintf)
 
   const char *expected = "[10][11][12]u32";
 
-  char       *ret      = type_tostr (&s);
   error       e        = error_create ();
+  char       *ret      = type_tostr (&alloc, &s, &e);
   i_log_type (&s, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (default_mem (), ret);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -222,16 +222,20 @@ TEST (sarray_t_byte_size)
 }
 #endif
 
-u32
-sarray_t_get_serial_size (const struct sarray_t *t)
+err_t
+sarray_t_get_serial_size (u16 *dest, const struct sarray_t *t, error *e)
 {
   DBG_ASSERT (valid_sarray_t, t);
-  u32 ret = 0;
 
   // RANK DIM0 DIM1 DIM2 ... TYPE
-  ret += sizeof (u16);
-  ret += sizeof (u32) * t->rank;
-  ret += type_get_serial_size (t->t);
+  u16 ret = sizeof (u16);
+  WRAP (safe_add_mul_u16 (&ret, sizeof (u32), t->rank, e));
+
+  u16 sub_size;
+  WRAP (type_get_serial_size (&sub_size, t->t, e));
+  WRAP (safe_add_u16 (&ret, sub_size, e));
+
+  *dest = ret;
 
   return ret;
 }
@@ -299,7 +303,12 @@ TEST (sarray_t_get_serial_size)
           .p    = U32,
       },
   };
-  test_assert_int_equal (sarray_t_get_serial_size (&s), 3 * 4 + 2 + 2);
+
+  error e = error_create ();
+  u16   dest;
+  sarray_t_get_serial_size (&dest, &s, &e);
+
+  test_assert_int_equal (dest, 3 * 4 + 2 + 2);
 }
 #endif
 
@@ -307,7 +316,7 @@ err_t
 sarray_t_deserialize (
     struct sarray_t     *persistent,
     struct deserializer *src,
-    struct allocator    *a,
+    struct arena_alloc  *a,
     error               *e
 )
 {
@@ -321,14 +330,14 @@ sarray_t_deserialize (
   }
 
   // Allocate dimensions buffer
-  u32 *dims = allocate (a, sa.rank, sizeof *dims, e);
+  u32 *dims = arena_malloc (a, sa.rank, sizeof *dims, e);
   if (dims == NULL) {
     return error_trace (e);
   }
   sa.dims        = dims;
 
   // Allocate type
-  struct type *t = allocate (a, 1, sizeof *t, e);
+  struct type *t = arena_malloc (a, 1, sizeof *t, e);
   if (t == NULL) {
     return error_trace (e);
   }
@@ -421,13 +430,13 @@ TEST (sarray_t_deserialize_red_path)
 #endif
 
 err_t
-sarray_t_random (struct sarray_t *sa, struct allocator *temp, u32 depth, error *e)
+sarray_t_random (struct sarray_t *sa, struct arena_alloc *temp, u32 depth, error *e)
 {
   ASSERT (sa);
 
   sa->rank = (u16)randu32r (1, 4);
 
-  sa->dims = (u32 *)allocate (temp, sa->rank, sizeof (u32), e);
+  sa->dims = (u32 *)arena_malloc (temp, sa->rank, sizeof (u32), e);
   if (!sa->dims) {
     return error_trace (e);
   }
@@ -436,7 +445,7 @@ sarray_t_random (struct sarray_t *sa, struct allocator *temp, u32 depth, error *
     sa->dims[i] = randu32r (1, 11);
   }
 
-  sa->t = (struct type *)allocate (temp, 1, sizeof (struct type), e);
+  sa->t = (struct type *)arena_malloc (temp, 1, sizeof (struct type), e);
   if (!sa->t) {
     return error_trace (e);
   }

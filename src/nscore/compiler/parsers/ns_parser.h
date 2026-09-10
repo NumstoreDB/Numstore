@@ -15,7 +15,7 @@
 #ifndef NS_PARSER_H
 #define NS_PARSER_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h" // DEFINE_DBG_ASSERT
 #include "core/ns_platform.h"   // HEADER_FUNC
 #include "core/ns_stdtypes.h"   // u32 ...etc

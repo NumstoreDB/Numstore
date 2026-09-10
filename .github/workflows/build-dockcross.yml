@@ -9,6 +9,11 @@ on:
                 {"dockcross":"linux-armv7","qemu":"arm"}]
         required: true
         type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -28,19 +33,36 @@ jobs:
         with:
           platforms: ${{ matrix.qemu }}
 
-      - run: make clean
+      - name: Build Code with Dockcross
+        run: |
+          make clean
+          make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=debug"
 
-      - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=debug"
+      - name: Run Unit Tests Under QEMU
+        run: |
+          exe=$(find build/debug-${{ matrix.dockcross }} -type f -maxdepth 3 -mindepth 3 -name unit_tests)
+          dockcross_exe=./docker/dockcross-${{ matrix.dockcross }}
+          $dockcross_exe $exe
 
-      - name: Run unit tests under QEMU
-        run: ./docker/dockcross-${{ matrix.dockcross }} ./build/debug-${{ matrix.dockcross }}/target/bin/unit_tests
+      - name: Run Swarm Tests Under QEMU
+        run: |
+          dbname=swarm_test_${{ matrix.dockcross }}.db
+          duration=10
+          seed=$(shuf -i 10-500000000 -n 1)
+          commit_hash=${{ github.sha }}
+          seq_id=$(shuf -i 10-500000000 -n 1)
+          exe=$(find build/debug-${{ matrix.dockcross }} -type f -maxdepth 3 -mindepth 3 -name numstore_simulation_test)
+          dockcross_exe=./docker/dockcross-${{ matrix.dockcross }}
+          $dockcross_exe $exe $dbname $duration $seed $commit_hash $seq_id
 
-      - run: make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=release"
-
-      - run: cp ./docs/release_docs.md build/release-${{ matrix.dockcross }}/target/README.md
+      - name: Build release package
+        run: |
+          make cross PLATFORM=${{ matrix.dockcross }} CROSS_GOAL="TARGET=release release-package"
+          pkg_dir=$(find build/release-${{ matrix.dockcross }} -mindepth 1 -maxdepth 1 -type d)
+          echo "PKG_DIR=$pkg_dir" >> "$GITHUB_ENV"
 
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:
-          folder: ./build/release-${{ matrix.dockcross }}/target
+          folder: ${{ env.PKG_DIR }}
           artifact-name: release-${{ matrix.dockcross }}

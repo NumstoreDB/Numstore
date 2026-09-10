@@ -69,13 +69,13 @@ struct slab;
  */
 struct slab_alloc
 {
-  struct i_mem      mem;
-  struct slab      *head;
-  struct slab      *current;
-  latch             l;
-  u32               size;
-  u32               cap_per_slab;
-  struct allocator *alloc;
+  struct i_mem        mem;
+  struct slab        *head;
+  struct slab        *current;
+  latch               l;
+  u32                 size;
+  u32                 cap_per_slab;
+  struct arena_alloc *alloc;
 };
 
 /**

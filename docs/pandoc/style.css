@@ -1,9 +1,3 @@
-/* ──────────────────────────────────────────────────────────────
-   docs_styles.css — design system port
-   Dark-first. Inter (sans), Space Grotesk (display), JetBrains Mono (mono).
-   Translated from the Tailwind tokens; pandoc-compatible (no build step).
-   ────────────────────────────────────────────────────────────── */
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400&display=swap');
 
 /* ── Tokens ──────────────────────────────────────────────────── */
@@ -327,7 +321,7 @@ main {
 /* ── Collapsible nav (details/summary) ──────────────────────── */
 .docs-nav details { margin: 0; }
 
-/* Top-level dropdown headers — match .top-link weight/sizing */
+/* Top-level dropdown headers - match .top-link weight/sizing */
 .docs-nav .section > details > summary {
     display: flex;
     align-items: center;
@@ -354,7 +348,7 @@ main {
     color: var(--fg);
 }
 
-/* Chevron — pure CSS, rotates on open */
+/* Chevron - pure CSS, rotates on open */
 .docs-nav details > summary::before {
     content: "";
     flex-shrink: 0;
@@ -397,7 +391,7 @@ main {
     font-weight: 600;
 }
 
-/* Nested subsection summaries — slightly lighter */
+/* Nested subsection summaries - slightly lighter */
 .docs-nav .subsection > details > summary {
     display: flex;
     align-items: center;

@@ -20,7 +20,7 @@
  *     passed by address into compile_query().
  */
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_logging.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_query.h"

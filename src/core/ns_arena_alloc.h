@@ -52,7 +52,41 @@ struct arena_alloc
 };
 
 void arena_alloc_create_default (struct arena_alloc *dest);
-void *chunk_malloc (struct arena_alloc *ca, u32 req, u32 size, error *e);
+void *arena_malloc (struct arena_alloc *ca, u32 req, u32 size, error *e);
 void arena_alloc_free_all (struct arena_alloc *ca);
+void *arena_alloc_copy (struct arena_alloc *alloc, const void *ptr, u32 size, error *e);
+
+#define ALLOC_INIT(name)   \
+  struct arena_alloc name; \
+  arena_alloc_create_default (&(name))
+
+#define ALLOC_CLOSE(name) arena_alloc_free_all (&(name))
+
+#define ALLOC_RESET(name)         \
+  arena_alloc_free_all (&(name)); \
+  arena_alloc_create_default (&(name))
+
+/******************************************************************************
+ * SECTION: Builder Pattern
+ * ----------------------------------------------------------------------------
+ * @brief Contains two allocators - a persistent allocator and a temp
+ ******************************************************************************/
+
+struct builder
+{
+  struct arena_alloc *persistent;
+  struct arena_alloc  temp;
+};
+
+void builder_init (struct builder *b, struct arena_alloc *alloc);
+void *builder_malloc_temp (struct builder *b, u32 nelem, u32 size, error *e);
+void *builder_malloc_persist (struct builder *b, u32 nelem, u32 size, error *e);
+void builder_free (struct builder *b);
+
+#define BUILDER_INIT(name, alloc) \
+  struct builder name;            \
+  builder_init (&(name), alloc)
+
+#define BUILDER_CLOSE(name) builder_free (&(name))
 
 #endif

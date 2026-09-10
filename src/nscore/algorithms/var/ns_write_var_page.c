@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -79,8 +79,11 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   ALLOC_INIT (temp);
 
   // The serialized data
-  u16 tlen             = type_get_serial_size (params->var->dtype);
-  u8 *dtype_serialized = allocate (&temp, tlen, 1, e);
+  u16 tlen;
+  if (type_get_serial_size (&tlen, params->var->dtype, e)) {
+    return error_trace (e);
+  }
+  u8 *dtype_serialized = arena_malloc (&temp, tlen, 1, e);
 
   if (dtype_serialized == NULL) {
     // Allocation failed

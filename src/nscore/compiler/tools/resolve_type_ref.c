@@ -8,7 +8,7 @@
  *   ./resolve_type_ref a "struct { a u32, b f32 }" "struct { f a.a, g a }"
  */
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_type_ref.h"
@@ -54,7 +54,7 @@ main (int argc, char **argv)
     goto theend;
   }
 
-  char *str = type_tostr (generated);
+  char *str = type_tostr (&alloc, generated, &e);
   if (str == NULL) {
     fprintf (stderr, "error: failed to allocate type string: %s\n", type_str);
     rc = EXIT_FAILURE;

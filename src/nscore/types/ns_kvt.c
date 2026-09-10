@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_kvt.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
@@ -73,7 +73,7 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
   }
 
   // Copy key data to persistent memory
-  key.data = allocator_copy (ub->b->persistent, key.data, key.len, e);
+  key.data = arena_alloc_copy (ub->b->persistent, key.data, key.len, e);
   if (key.data == NULL) {
     return error_trace (e);
   }
@@ -283,7 +283,7 @@ kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
   }
 
   // Copy key data to persistent memory
-  key.data = allocator_copy (ub->b->persistent, key.data, key.len, e);
+  key.data = arena_alloc_copy (ub->b->persistent, key.data, key.len, e);
   if (key.data == NULL) {
     return error_trace (e);
   }

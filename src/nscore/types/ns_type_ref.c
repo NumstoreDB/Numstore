@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_type_ref.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -182,7 +182,7 @@ tr_construct_inner (struct type *reftype, struct type_ref *tr, struct builder *b
 }
 
 struct type *
-tr_construct (struct type *reftype, struct type_ref *tr, struct allocator *alloc, error *e)
+tr_construct (struct type *reftype, struct type_ref *tr, struct arena_alloc *alloc, error *e)
 {
   BUILDER_INIT (b, alloc);
   struct type *ret = tr_construct_inner (reftype, tr, &b, e);

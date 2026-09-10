@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
@@ -150,7 +150,7 @@ err_t
 compile_multi_user_stride (
     struct multi_user_stride *dest,
     const char               *text,
-    struct allocator         *dalloc,
+    struct arena_alloc       *dalloc,
     error                    *e
 )
 {

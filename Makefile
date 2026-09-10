@@ -1,3 +1,43 @@
+############ Targets Reference
+#
+# make 																		build lib + tool binaries (default)
+# make all                          			build lib + tool binaries (default)
+# make docs                         			build docs/*.md -> html
+# make python                       			alias for python-package
+# make python-sources               			regen bindings/python/sources.txt
+# make python-package               			build wheel
+# make python-test                  			build + install + pytest
+# make release-package              			assemble SDK folder (bin/lib/include/docs/samples)
+# make release-tarball              			release-package + tar.gz/zip
+# make cross                        			run goal inside dockcross container
+# make package-release-all-platforms			cross + release-tarball for every platform
+# make compile_commands.json        			generate via bear
+# make lint                         			clang-tidy (check only)
+# make lint-fix                     			clang-tidy --fix
+# make clean                        			rm build/ + py artifacts + stray files
+# make format                       			clang-format -i src/ bindings/
+#
+# Examples:
+#   make
+#   make TARGET=release
+#   make ASAN=1
+#   make NLOG=1
+#   make CFLAGS_USER="-Wpedantic"
+#   make docs
+#   make python-test
+#   make TARGET=release release-tarball
+#   make cross PLATFORM=windows-static-x64
+#   make cross PLATFORM=linux-arm64 CROSS_GOAL="TARGET=release all"
+# 	make cross PLATFORM=windows-static-x64
+# 	make cross PLATFORM=windows-static-x64 CROSS_GOAL=release-package-windows-cross
+# 	make cross PLATFORM=linux-arm64 CROSS_GOAL="TARGET=release all"
+#   make package-release-all-platforms
+#   make lint
+#   make lint-fix
+#   make clean
+#   make format
+############
+
 ############ Executables
 
 CC           		:= gcc
@@ -13,31 +53,85 @@ BEAR       			:= bear
 TARGET 				?= debug
 PLATFORM 			?=
 CROSS_GOAL 	  ?= all
+ASAN   				?= 0
+NLOG 					?= 1
+CFLAGS_USER 	?=
 
-# Default to 1 on release builds 0 on debug builds
-NLOG_DEFAULT := 0
-ifeq ($(TARGET),release)
-NLOG_DEFAULT := 1
+
+############ Project Name / Identity 
+
+PROJECT_NAME	:= numstore
+VERSION 			:= $(shell cat version.txt)
+
+############ Platform -> release os/arch mapping (infers from dockcross PLATFORM)
+
+ifeq ($(PLATFORM),)
+  # Native build - fall back to uname
+  UNAME_S      := $(shell uname -s)
+  UNAME_M      := $(shell uname -m)
+
+  ifeq ($(UNAME_S),Linux)
+    RELEASE_OS := linux
+  else ifeq ($(UNAME_S),Darwin)
+    RELEASE_OS := macos
+  else
+    RELEASE_OS := $(UNAME_S)
+  endif
+
+  RELEASE_ARCH := $(UNAME_M)
+else
+  # dockcross platform names: 
+	# linux-x64
+	# linux-x86
+	# linux-arm64
+	# linux-armv6
+	# linux-armv7a
+	# windows-static-x64
+	# windows-static-x86
+	# manylinux2014-x64
+	# manylinux2014-x86
+  ifneq (,$(findstring windows,$(PLATFORM)))
+    RELEASE_OS := windows
+  else
+    RELEASE_OS := linux
+  endif
+
+  PLATFORM_ARCH := $(subst windows-static-,,$(subst manylinux2014-,,$(subst linux-,,$(PLATFORM))))
+
+  ifeq ($(PLATFORM_ARCH),x64)
+    RELEASE_ARCH := x86_64
+  else ifeq ($(PLATFORM_ARCH),x86)
+    RELEASE_ARCH := i686
+  else
+    RELEASE_ARCH := $(PLATFORM_ARCH)
+  endif
 endif
 
-ASAN   				?= 0
-NLOG 					?= $(NLOG_DEFAULT)
-CFLAGS_USER 	?=
+ARTIFACT_NAME := $(PROJECT_NAME)-$(VERSION)-$(RELEASE_OS)-$(RELEASE_ARCH)
+
+ARCHIVE_EXT := tar.gz
+ifeq ($(RELEASE_OS),windows)
+ARCHIVE_EXT := zip
+endif
 
 ############ Output Directories
 
 CROSS_SUFFIX := $(if $(PLATFORM),-$(PLATFORM))
-OUT_DIR  		 := $(CURDIR)/build/$(TARGET)$(CROSS_SUFFIX)
+BUILD_NAME	 := $(TARGET)$(CROSS_SUFFIX)
+OUT_DIR  		 := $(CURDIR)/build/$(BUILD_NAME)
 
 # Not included in the output
 OBJ_DIR  		 := $(OUT_DIR)/objs
 
 # Included in the output
-BIN_DIR  		 := $(OUT_DIR)/target/bin
-LIB_DIR  		 := $(OUT_DIR)/target/lib
-INC_DIR  		 := $(OUT_DIR)/target/include
-HTML_DIR 		 := $(OUT_DIR)/target/html
-SMP_DIR  		 := $(OUT_DIR)/target/samples
+PKG_DIR      := $(OUT_DIR)/$(ARTIFACT_NAME)
+BIN_DIR      := $(PKG_DIR)/bin
+LIB_DIR      := $(PKG_DIR)/lib
+PC_DIR       := $(LIB_DIR)/pkgconfig
+INC_DIR      := $(PKG_DIR)/include
+DOC_DIR      := $(PKG_DIR)/share/doc/$(PROJECT_NAME)
+HTML_DIR     := $(DOC_DIR)/html
+SMP_DIR      := $(PKG_DIR)/share/$(PROJECT_NAME)/examples
 
 # Python directory
 PY_OUT_DIR    := $(CURDIR)/build/python$(CROSS_SUFFIX)
@@ -102,7 +196,7 @@ RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
 
 ############ Accumulators - each module.mk appends to these
 
-TARGET_LIB := $(LIB_DIR)/libnumstore.a
+TARGET_LIB 		:= $(LIB_DIR)/libnumstore.a
 LIBNS_SRCS    :=
 ALL_PYSRCS  	:=
 ALL 					:= $(TARGET_LIB)
@@ -137,7 +231,7 @@ $(PY_SOURCES_FILE): $(LIBNS_SRCS) $(ALL_PYSRCS)
 	@for f in $(ALL_PYSRCS); do echo "../../$$f" >> $@; done
 
 .PHONY: python-sources
-python-sources: $(PY_SOURCES_FILE) $(PY_HEADERS_FILE)
+python-sources: $(PY_SOURCES_FILE) 
 
 python-package: python-sources | $(PY_TARGET_DIR)
 	PYNUMSTORE_BUILD_BASE=$(PY_OBJ_DIR) \
@@ -181,15 +275,78 @@ PANDOC_ARGS := \
 
 PANDOC_DEPS := $(PANDOC_CSS) $(PANDOC_TEMPLATE) $(PANDOC_LUA) $(PANDOC_SIDEBAR)
 
-# Map docs/foo/bar.md -> build/<target>/target/html/foo/bar.html
-ifneq (,$(filter docs,$(MAKECMDGOALS)))
-MD_FILES     := $(shell find docs -name '*.md' | sed 's|^\./||')
+MD_DIR := $(DOC_DIR)/markdown
+
+# docs/foo/bar.md -> $(HTML_DIR)/foo/bar.html and $(MD_DIR)/foo/bar.md
+MD_FILES     := $(shell find docs -name '*.md' -not -path 'docs/pandoc/*')
 HTML_OUTPUTS := $(patsubst docs/%.md,$(HTML_DIR)/%.html,$(MD_FILES))
-endif
+MD_OUTPUTS   := $(patsubst docs/%.md,$(MD_DIR)/%.md,$(MD_FILES))
 
 $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
 	@mkdir -p $(dir $@)
-	$(PANDOC) $(PANDOC_ARGS) --output $@ $
+	@echo "  PANDOC   $< -> $(patsubst $(CURDIR)/%,%,$@)"
+	@PANDOC_SRC_REL=$(patsubst docs/%,%,$<) $(PANDOC) $(PANDOC_ARGS) --output $@ $<
+
+$(MD_DIR)/%.md: docs/%.md | $(MD_DIR)
+	@mkdir -p $(dir $@)
+	@echo "  CP       $< -> $(patsubst $(CURDIR)/%,%,$@)"
+	@cp $< $@
+
+MAN_DIR  := $(PKG_DIR)/share/man
+MAN_SRCS := $(shell find docs/man -name '*.md')
+
+PANDOC_MAN_ARGS := \
+	--from=markdown \
+	--to=man \
+	--standalone
+
+MAN_OUTPUTS := $(patsubst docs/man/%.md,$(MAN_DIR)/%,$(MAN_SRCS))
+
+$(MAN_DIR)/%: docs/man/%.md
+	@mkdir -p $(dir $@)
+	@echo "  MAN      $< -> $(patsubst $(CURDIR)/%,%,$@)"
+	@PANDOC_SRC_REL=man/$(patsubst docs/man/%,%,$<) $(PANDOC) $(PANDOC_MAN_ARGS) --output $@ $<
+
+.PHONY: docs
+docs: $(HTML_OUTPUTS) $(MD_OUTPUTS) $(MAN_OUTPUTS)
+
+############ Packaging Targets
+
+PKG_TEMPLATES_DIR := $(CURDIR)/packaging
+
+PC_TEMPLATES := \
+	$(PKG_TEMPLATES_DIR)/pkgconfig/numstore.pc.in \
+	$(PKG_TEMPLATES_DIR)/pkgconfig/smartfiles.pc.in
+
+SAMPLES_MAKEFILE_IN := $(PKG_TEMPLATES_DIR)/samples/Makefile.in
+
+PKG_SUBST := \
+	-e 's|@VERSION@|$(VERSION)|g' \
+	-e 's|@PROJECT_NAME@|$(PROJECT_NAME)|g'
+
+.PHONY: release-package
+release-package: all docs | $(PC_DIR) $(SMP_DIR)
+	@echo "  PKG      $(ARTIFACT_NAME)"
+	@cp $(CURDIR)/LICENSE $(PKG_DIR)/LICENSE
+	@cp $(CURDIR)/CHANGELOG.md $(PKG_DIR)/CHANGELOG.md
+	@cp $(CURDIR)/docs/release_docs.md $(PKG_DIR)/README.md
+	@for t in $(PC_TEMPLATES); do \
+		out=$(PC_DIR)/$$(basename $$t .in); \
+		sed $(PKG_SUBST) $$t > $$out; \
+	done
+	@sed $(PKG_SUBST) $(SAMPLES_MAKEFILE_IN) > $(SMP_DIR)/Makefile
+	@cp samples/*.c $(SMP_DIR)/ 2>/dev/null || true
+	@echo "  DONE     $(PKG_DIR)"
+
+.PHONY: release-tarball
+release-tarball: release-package
+ifeq ($(ARCHIVE_EXT),zip)
+	cd $(OUT_DIR) && zip -r -q $(ARTIFACT_NAME).zip $(ARTIFACT_NAME)
+	@echo "  ZIP      $(OUT_DIR)/$(ARTIFACT_NAME).zip"
+else
+	tar -C $(OUT_DIR) -czf $(OUT_DIR)/$(ARTIFACT_NAME).tar.gz $(ARTIFACT_NAME)
+	@echo "  TAR      $(OUT_DIR)/$(ARTIFACT_NAME).tar.gz"
+endif
 
 ############ Default target
 
@@ -203,16 +360,15 @@ python: $(TARGET_PYLIB)
 
 ############ Directories
 
-$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(PY_TARGET_DIR) $(PY_OBJ_DIR): 
+$(INC_DIR) $(BIN_DIR) $(LIB_DIR) $(PC_DIR) $(OBJ_DIR) $(SMP_DIR) $(HTML_DIR) $(MD_DIR) $(DOC_DIR) $(PY_TARGET_DIR) $(PY_OBJ_DIR):
+	@mkdir -p $@
+
+$(MAN_DIR)/man%:
 	@mkdir -p $@
 
 ############ Cross-compilation via dockcross
-# Examples:
-# 	make cross PLATFORM=windows-static-x64
-# 	make cross PLATFORM=windows-static-x64 CROSS_GOAL=release-package-windows-cross
-# 	make cross PLATFORM=linux-arm64 CROSS_GOAL="TARGET=release all"
 
-docker/dockcross-%: 
+docker/dockcross-%:
 	@echo "  DOCKCROSS $*"
 	@docker run --rm dockcross/$* > $@
 	@chmod u+x $@
@@ -227,7 +383,6 @@ endif
 cross: docker/dockcross-$(PLATFORM)
 	./$< bash -c 'make $(CROSS_GOAL) PLATFORM=$(PLATFORM) CC=$$CC AR=$$AR'
 
-# Just a list of platforms to try
 PACKAGE_PLATFORMS := \
 	windows-static-x64 \
 	windows-static-x86 \
@@ -243,10 +398,9 @@ PACKAGE_PLATFORMS := \
 package-release-all-platforms:
 	@for p in $(PACKAGE_PLATFORMS); do \
 		echo "  RELEASE  $$p"; \
-		$(MAKE) cross PLATFORM=$$p CROSS_GOAL=release-package-windows-cross || exit 1; \
+		$(MAKE) cross PLATFORM=$$p CROSS_GOAL="TARGET=release release-tarball" || exit 1; \
 	done
-	@echo "  DONE     built $(words $(PACKAGE_PLATFORMS)) platform(s):"
-	@for p in $(PACKAGE_PLATFORMS); do echo "             - build/release-$$p"; done
+	@echo "  DONE     built $(words $(PACKAGE_PLATFORMS)) platform(s) under build/release-*/"
 
 ############ Housekeeping
 

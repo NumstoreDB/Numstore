@@ -14,7 +14,7 @@
 
 #include "nscore/nsdb/ns_nsdb_execute.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
@@ -37,11 +37,11 @@
 
 sb_size
 nsdb_execute_on_buffer (
-    struct nsdb      *ns,
-    struct ns_txn    *txn,
-    struct query     *q,
-    void             *data,
-    struct allocator *alc
+    struct nsdb        *ns,
+    struct ns_txn      *txn,
+    struct query       *q,
+    void               *data,
+    struct arena_alloc *alc
 )
 {
   sb_size                ret = SUCCESS;
@@ -167,31 +167,31 @@ nsdb_execute_on_buffer (
       }
 
       // Variables get their own allocator that gets freed on nsdb_var_free
-      struct allocator *valloc = i_malloc (ns->mem, 1, sizeof *valloc, &ns->e);
+      struct arena_alloc *valloc = i_malloc (ns->mem, 1, sizeof *valloc, &ns->e);
       if (valloc == NULL) {
         goto failed;
       }
-      create_default_allocator (valloc);
+      arena_alloc_create_default (valloc);
 
       // Get the variable
       if (nsdb_get (ns, txn, &q->get, valloc, &var) < 0) {
-        allocator_free (valloc);
+        arena_alloc_free_all (valloc);
         i_free (default_mem (), valloc);
         goto failed;
       }
 
       if (var == NULL) {
         *_data = NULL;
-        allocator_free (valloc);
+        arena_alloc_free_all (valloc);
         i_free (ns->mem, valloc);
         ret = SUCCESS;
         break;
       }
 
       // Transfer over to a variable handle (that can be free'd)
-      *_data = allocate (valloc, 1, sizeof (struct nsdb_var), &ns->e);
+      *_data = arena_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
       if (*_data == NULL) {
-        allocator_free (valloc);
+        arena_alloc_free_all (valloc);
         i_free (default_mem (), valloc);
         goto failed;
       }
@@ -228,7 +228,7 @@ failed:
  ******************************************************************************/
 
 err_t
-nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc)
+nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc)
 {
   struct ns_var_get_params gparams; // Get or create operation
 
@@ -278,9 +278,9 @@ failed:
 
 sb_size
 nsdb_read_and_print (
-    struct nsdb       *db,    // The database handle
-    struct read_query *query, // The query that got parsed
-    struct allocator  *alloc  // Where to allocate stuff
+    struct nsdb        *db,    // The database handle
+    struct read_query  *query, // The query that got parsed
+    struct arena_alloc *alloc  // Where to allocate stuff
 )
 {
   sb_size                  ret;     // Return value
@@ -410,7 +410,7 @@ failed:
 }
 
 err_t
-nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc)
+nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *alc)
 {
   sb_size ret = SUCCESS;
 

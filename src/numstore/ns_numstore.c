@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -64,7 +64,7 @@ nsdb_fexecute (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, ...)
   }
 
   // Allocate buffer for the query
-  char *buf = allocate (&alloc, (size_t)qlen + 1, 1, &nh->e);
+  char *buf = arena_malloc (&alloc, (size_t)qlen + 1, 1, &nh->e);
   if (!buf) {
     va_end (ap2);
     ret = error_trace (&nh->e);
@@ -112,7 +112,7 @@ nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, 
     goto theend;
   }
 
-  char *buf = allocate (&alloc, (size_t)qlen + 1, 1, &nh->e);
+  char *buf = arena_malloc (&alloc, (size_t)qlen + 1, 1, &nh->e);
   if (!buf) {
     va_end (ap2);
     goto theend;
@@ -266,8 +266,8 @@ nsdb_var_free (nsdb_t *db, nsdb_var_t *var)
     return;
   }
 
-  struct allocator *alloc = var->alloc;
-  allocator_free (alloc);
+  struct arena_alloc *alloc = var->alloc;
+  arena_alloc_free_all (alloc);
   i_free (db->mem, alloc);
 }
 

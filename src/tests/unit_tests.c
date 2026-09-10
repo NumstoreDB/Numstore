@@ -11,6 +11,7 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
+
 // clang-format off
 // AUTO GENERATED - DO NOT MODIFY
 #include <stdio.h>
@@ -24,12 +25,15 @@
 int
 main (int argc, char **argv)
 {
-  if (argc > 2)
+  if (!(argc == 2 || argc == 3))
   {
-    fprintf (stderr, "Usage: %s [FILTER]\n", argv[0]);
+    fprintf (stderr, "Usage: %s seed [FILTER]\n", argv[0]);
     return EXIT_FAILURE;
   }
-  const char *filter = (argc == 2) ? argv[1] : NULL;
+  u64 seed = strtoul(argv[1], NULL, 10);
+  const char *filter = (argc == 3) ? argv[2] : NULL;
+
+  srand(seed);
 
   int ntests = 0;
   error   e = error_create ();

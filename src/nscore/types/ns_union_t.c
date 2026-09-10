@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_union_t.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -26,7 +26,6 @@
 #include "nscore/variables/ns_variables.h"
 
 #ifdef TESTING
-#  include "core/os/ns_memory.h"
 #  include "core/testing/ns_testing.h"
 #  include "nscore/compiler/ns_compiler.h"
 #endif
@@ -185,7 +184,7 @@ TEST (union_t_resolve_key)
 #endif
 
 err_t
-union_t_create (struct union_t *dest, struct kvt_list list, struct allocator *dalloc, error *e)
+union_t_create (struct union_t *dest, struct kvt_list list, struct arena_alloc *dalloc, error *e)
 {
   if (list.len == 0) {
     return union_t_type_err ("union must have greater than 0 keys", e);
@@ -194,12 +193,12 @@ union_t_create (struct union_t *dest, struct kvt_list list, struct allocator *da
   // Copy stuff over
   if (dalloc) {
     dest->len  = list.len;
-    dest->keys = allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
+    dest->keys = arena_alloc_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL) {
       return error_trace (e);
     }
 
-    dest->types = allocator_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
+    dest->types = arena_alloc_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
     if (dest->keys == NULL) {
       return error_trace (e);
     }
@@ -298,6 +297,8 @@ union_t_snprintf (char *str, u32 size, const struct union_t *st)
 #ifdef TESTING
 TEST (union_t_snprintf)
 {
+  ALLOC_INIT (alloc);
+
   struct union_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -343,11 +344,11 @@ TEST (union_t_snprintf)
   };
 
   const char *expected = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
-  char       *ret      = type_tostr (&t);
   error       e        = error_create ();
+  char       *ret      = type_tostr (&alloc, &t, &e);
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (default_mem (), ret);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -420,22 +421,26 @@ TEST (union_t_byte_size)
 }
 #endif
 
-u32
-union_t_get_serial_size (const struct union_t *t)
+err_t
+union_t_get_serial_size (u16 *dest, const struct union_t *t, error *e)
 {
   DBG_ASSERT (valid_union_t, t);
-  u32 ret = 0;
 
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
-  ret += sizeof (u16);
+  u16 ret = sizeof (u16);
 
-  for (u32 i = 0; i < t->len; ++i) {
-    ret += sizeof (u16);
-    ret += t->keys[i].len;
-    ret += type_get_serial_size (t->types[i]);
+  for (u16 i = 0; i < t->len; ++i) {
+    WRAP (safe_add_u16 (&ret, sizeof (u16), e));
+    WRAP (safe_add_u16 (&ret, t->keys[i].len, e));
+
+    u16 sub_size;
+    WRAP (type_get_serial_size (&sub_size, t->types[i], e));
+    WRAP (safe_add_u16 (&ret, sub_size, e));
   }
 
-  return ret;
+  *dest = ret;
+
+  return SUCCESS;
 }
 
 #ifdef TESTING
@@ -480,7 +485,9 @@ TEST (union_t_get_serial_size)
       },
   };
 
-  u64 act = union_t_get_serial_size (&st);
+  error e = error_create ();
+  u16   act;
+  union_t_get_serial_size (&act, &st, &e);
   u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
 
   test_assert_int_equal (exp, act);
@@ -581,7 +588,12 @@ TEST (union_t_serialize)
 #endif
 
 err_t
-union_t_deserialize (struct union_t *dest, struct deserializer *src, struct allocator *a, error *e)
+union_t_deserialize (
+    struct union_t      *dest,
+    struct deserializer *src,
+    struct arena_alloc  *a,
+    error               *e
+)
 {
   ASSERT (dest);
   BUILDER_INIT (b, a);
@@ -602,7 +614,7 @@ union_t_deserialize (struct union_t *dest, struct deserializer *src, struct allo
 
     struct string key = {
         .len  = klen,
-        .data = allocate (a, klen, 1, e),
+        .data = arena_malloc (a, klen, 1, e),
     };
     if (key.data == NULL) {
       goto theend;
@@ -729,18 +741,18 @@ TEST (union_t_deserialize_red_path)
 #endif
 
 err_t
-union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e)
+union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, error *e)
 {
   ASSERT (un);
 
   un->len  = (u16)randu32r (1, 5);
 
-  un->keys = (struct string *)allocate (alloc, un->len, sizeof (struct string), e);
+  un->keys = (struct string *)arena_malloc (alloc, un->len, sizeof (struct string), e);
   if (!un->keys) {
     return error_trace (e);
   }
 
-  un->types = (struct type **)allocate (alloc, un->len, sizeof (struct type *), e);
+  un->types = (struct type **)arena_malloc (alloc, un->len, sizeof (struct type *), e);
   if (!un->types) {
     return error_trace (e);
   }

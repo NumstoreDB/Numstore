@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stride.h"
@@ -161,7 +161,7 @@ theend:
 }
 
 err_t
-compile_type_ref (struct type_ref *dest, const char *text, struct allocator *dalloc, error *e)
+compile_type_ref (struct type_ref *dest, const char *text, struct arena_alloc *dalloc, error *e)
 {
   BUILDER_INIT (b, dalloc);
 

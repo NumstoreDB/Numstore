@@ -15,7 +15,7 @@
 #ifndef NS_NSDB_CLI_H
 #define NS_NSDB_CLI_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
 #include "nscore/txn_table/ns_txn_table.h"
@@ -65,9 +65,9 @@
 
 struct nscli
 {
-  struct nsdb      *db;         // The Database
-  struct dbl_buffer stmt;       // Statement
-  struct allocator  step_alloc; // Allocator for anything per step
+  struct nsdb       *db;         // The Database
+  struct dbl_buffer  stmt;       // Statement
+  struct arena_alloc step_alloc; // Allocator for anything per step
 };
 
 err_t nscli_init (struct nscli *cli, const char *dbname);

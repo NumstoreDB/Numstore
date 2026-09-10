@@ -32,7 +32,7 @@ Why me: I've invested 5 years of my life working with long numerical arrays. I
 worked with JSOC (stanford)'s dataset of ....
 
 
-I'm raising a [pre-seed/seed] round to [specific next milestone — e.g. "harden the storage layer and land 3 design partners"]. Would love 20 minutes to walk you through the architecture and get your read.
+I'm raising a [pre-seed/seed] round to [specific next milestone - e.g. "harden the storage layer and land 3 design partners"]. Would love 20 minutes to walk you through the architecture and get your read.
 
 Deck attached. Happy to send a demo video or repo access if useful.
 

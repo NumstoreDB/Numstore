@@ -55,11 +55,11 @@ int nsdb_rollback (struct nsdb *smf, struct ns_txn *txn);
 
 // Create a variable
 int nsdb_create (
-    struct nsdb      *db,
-    struct ns_txn    *tx,
-    struct allocator *alloc,
-    struct string     vname,
-    struct type       dtype
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct arena_alloc *alloc,
+    struct string       vname,
+    struct type         dtype
 );
 
 // Delete a variable
@@ -67,11 +67,11 @@ err_t nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *quer
 
 // Get a variable
 err_t nsdb_get (
-    struct nsdb      *db,
-    struct ns_txn    *tx,
-    struct get_query *query,
-    struct allocator *alloc,
-    struct variable **dest
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct get_query   *query,
+    struct arena_alloc *alloc,
+    struct variable   **dest
 );
 
 // Insert
@@ -79,17 +79,17 @@ sb_size nsdb_insert (
     struct nsdb         *db,
     struct ns_txn       *tx,
     struct insert_query *query,
-    struct allocator    *alloc,
+    struct arena_alloc  *alloc,
     struct stream       *src
 );
 
 // Read
 sb_size nsdb_read (
-    struct nsdb       *db,
-    struct ns_txn     *tx,
-    struct read_query *query,
-    struct allocator  *alloc,
-    struct stream     *dest
+    struct nsdb        *db,
+    struct ns_txn      *tx,
+    struct read_query  *query,
+    struct arena_alloc *alloc,
+    struct stream      *dest
 );
 
 // Write
@@ -97,7 +97,7 @@ sb_size nsdb_write (
     struct nsdb        *db,
     struct ns_txn      *tx,
     struct write_query *query,
-    struct allocator   *alloc,
+    struct arena_alloc *alloc,
     struct stream      *src
 );
 
@@ -106,7 +106,7 @@ sb_size nsdb_remove (
     struct nsdb         *db,
     struct ns_txn       *tx,
     struct remove_query *query,
-    struct allocator    *alloc,
+    struct arena_alloc  *alloc,
     struct stream       *dest
 );
 

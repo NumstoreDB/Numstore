@@ -15,7 +15,7 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_platform.h"
 #include "core/ns_stride.h"
 #include "nscore/types/ns_query.h"
@@ -31,36 +31,41 @@
  * Allocates types on the provided dalloc if provided
  ******************************************************************************/
 
-err_t compile_type (struct type *dest, const char *text, struct allocator *dalloc, error *e);
+err_t compile_type (struct type *dest, const char *text, struct arena_alloc *dalloc, error *e);
 
 HEADER_FUNC struct type *
-compile_type_alloc (const char *text, struct allocator *dalloc, error *e)
+compile_type_alloc (const char *text, struct arena_alloc *dalloc, error *e)
 {
-  struct type *ret = allocate (dalloc, 1, sizeof *ret, e);
+  struct type *ret = arena_malloc (dalloc, 1, sizeof *ret, e);
   if (ret) {
     compile_type (ret, text, dalloc, e);
   }
   return ret;
 }
 
-err_t compile_subtype (struct subtype *dest, const char *text, struct allocator *dalloc, error *e);
+err_t compile_subtype (
+    struct subtype     *dest,
+    const char         *text,
+    struct arena_alloc *dalloc,
+    error              *e
+);
 
 err_t compile_multi_user_stride (
     struct multi_user_stride *dest,
     const char               *text,
-    struct allocator         *dalloc,
+    struct arena_alloc       *dalloc,
     error                    *e
 );
 
 err_t compile_user_stride (struct user_stride *dest, const char *text, error *e);
 
 err_t compile_type_ref (
-    struct type_ref  *dest,
-    const char       *text,
-    struct allocator *dalloc,
-    error            *e
+    struct type_ref    *dest,
+    const char         *text,
+    struct arena_alloc *dalloc,
+    error              *e
 );
 
-err_t compile_query (struct query *dest, const char *text, struct allocator *dalloc, error *e);
+err_t compile_query (struct query *dest, const char *text, struct arena_alloc *dalloc, error *e);
 
 #endif // COMPILER_H

@@ -3,12 +3,10 @@ on:
   push:
   pull_request:
 jobs:
-
   build-native:
     uses: ./.github/workflows/build-native.yml
     with:
       platforms: '["ubuntu-latest", "macos-latest"]'
-
   # Dock Cross targets
   build-dockcross:
     uses: ./.github/workflows/build-dockcross.yml

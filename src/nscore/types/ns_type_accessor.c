@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_type_accessor.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_byte_accessor.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -81,7 +81,7 @@ type_accessor_equal (const struct type_accessor left, const struct type_accessor
 }
 
 static struct type *
-ta_select_struct (struct type *ref, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_select_struct (struct type *ref, struct type_accessor *ta, struct arena_alloc *alloc, error *e)
 {
   struct type *sub = struct_t_resolve_key (NULL, &ref->st, ta->select.key);
   if (sub == NULL) {
@@ -92,7 +92,12 @@ ta_select_struct (struct type *ref, struct type_accessor *ta, struct allocator *
 }
 
 static struct type *
-ta_select_union (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_select_union (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+)
 {
   struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key);
   if (subtype == NULL) {
@@ -103,11 +108,16 @@ ta_select_union (struct type *reftype, struct type_accessor *ta, struct allocato
 }
 
 static struct type *
-ta_select_sarray (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_select_sarray (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+)
 {
   BUILDER_INIT (b, alloc);
 
-  struct type *ret = allocate (alloc, 1, sizeof *ret, e);
+  struct type *ret = arena_malloc (alloc, 1, sizeof *ret, e);
   if (ret == NULL) {
     goto failed;
   }
@@ -143,7 +153,12 @@ failed:
 }
 
 static struct type *
-ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_range_sarray (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+)
 {
   BUILDER_INIT (b, alloc);
   struct sarray_builder builder = sab_create (&b);
@@ -184,7 +199,7 @@ ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct allocato
       goto failure;
     }
 
-    ret = allocate (alloc, 1, sizeof *ret, e);
+    ret = arena_malloc (alloc, 1, sizeof *ret, e);
     if (ret == NULL) {
       return NULL;
     }
@@ -206,7 +221,7 @@ failure:
 }
 
 struct type *
-ta_subtype (struct type *reftype, struct type_accessor *ta, struct allocator *alloc, error *e)
+ta_subtype (struct type *reftype, struct type_accessor *ta, struct arena_alloc *alloc, error *e)
 {
   switch (ta->type) {
     case TA_TAKE: {
@@ -527,7 +542,7 @@ tab_accept_select (struct type_accessor_builder *builder, struct string key, err
     return error_trace (e);
   }
 
-  key.data = allocator_copy (builder->b->persistent, key.data, key.len, e);
+  key.data = arena_alloc_copy (builder->b->persistent, key.data, key.len, e);
   if (!key.data) {
     return error_trace (e);
   }

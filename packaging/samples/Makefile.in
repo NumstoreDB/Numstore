@@ -1,0 +1,18 @@
+CC      := gcc
+CFLAGS  := -I../../../include
+LDFLAGS := -L../../../lib -lnumstore
+
+SRCS := $(wildcard *.c)
+BINS := $(SRCS:.c=)
+
+all: $(BINS)
+
+%: %.c
+	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+
+clean:
+	rm -f $(BINS)
+	rm -rf sample*
+	rm -rf *.wal
+
+.PHONY: all clean

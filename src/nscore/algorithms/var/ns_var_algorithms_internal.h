@@ -15,7 +15,7 @@
 #ifndef NS_VAR_ALGORITHMS_INTERNAL_H
 #define NS_VAR_ALGORITHMS_INTERNAL_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/pager/ns_pager.h"
@@ -30,7 +30,7 @@ struct ns_read_var_page_params
   struct ns_txn       *tx;
 
   page_h              *vp;    // The currently loaded variable page
-  struct allocator    *alloc; // Where to allocate stuff
+  struct arena_alloc  *alloc; // Where to allocate stuff
   struct variable     *dest;  // Output variable
 
   bool                 matches;
@@ -54,12 +54,12 @@ err_t ns_write_var_page (struct ns_write_var_page_params *params, error *e);
 
 struct ns_find_var_page_params
 {
-  struct pager     *p;
-  struct ns_txn    *tx;
-  struct allocator *alloc;
+  struct pager       *p;
+  struct ns_txn      *tx;
+  struct arena_alloc *alloc;
 
-  struct string     vname;
-  struct variable  *dvar;
+  struct string       vname;
+  struct variable    *dvar;
 
   enum
   {

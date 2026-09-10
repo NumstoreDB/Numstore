@@ -1,10 +1,10 @@
 import os
 
-ROOTS = ["src"]
+ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        ".nsdb" : ".db"
+        "—" : "-"
 }
 
 for ROOT in ROOTS:

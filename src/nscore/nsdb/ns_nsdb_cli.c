@@ -14,7 +14,7 @@
 
 #include "nscore/nsdb/ns_nsdb_cli.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
 #include "nscore/compiler/ns_compiler.h"
@@ -43,10 +43,10 @@ nscli_init (struct nscli *cli, const char *dbname)
 err_t
 nscli_step_init (struct nscli *cli)
 {
-  create_default_allocator (&cli->step_alloc);
+  arena_alloc_create_default (&cli->step_alloc);
 
   if (dblb_create (&cli->stmt, &cli->step_alloc, 1, 128, &cli->db->e)) {
-    allocator_free (&cli->step_alloc);
+    arena_alloc_free_all (&cli->step_alloc);
     return error_trace (&cli->db->e);
   }
 
@@ -176,7 +176,7 @@ theend:
 void
 nscli_step_clean (struct nscli *cli)
 {
-  allocator_free (&cli->step_alloc);
+  arena_alloc_free_all (&cli->step_alloc);
   dblb_reset (&cli->stmt);
   cli->db->e.cause_code = SUCCESS;
   cli->db->e.cmlen      = 0;
@@ -185,6 +185,6 @@ nscli_step_clean (struct nscli *cli)
 void
 nscli_close (struct nscli *cli)
 {
-  allocator_free (&cli->step_alloc);
+  arena_alloc_free_all (&cli->step_alloc);
   nsdb_close (cli->db);
 }

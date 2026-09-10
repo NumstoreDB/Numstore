@@ -256,6 +256,7 @@ TEST (ns_var_get_or_create)
         pgr_begin_txn (&tx, f.p, &f.e);
 
         struct type *t = type_random (&f.alloc, randu32r (0, 10), &f.e);
+
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {

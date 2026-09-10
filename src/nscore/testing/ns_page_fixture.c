@@ -17,7 +17,7 @@
 #include <string.h>
 
 #ifdef TESTING
-#  include "core/ns_alloc.h"
+#  include "core/ns_arena_alloc.h"
 #  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h"
 #  include "core/ns_numerics.h"
@@ -74,7 +74,7 @@ pgr_fixture_create (struct pgr_fixture *dest)
 
   DBG_ASSERT (pgr_fixture, dest);
 
-  create_default_allocator (&dest->alloc);
+  arena_alloc_create_default (&dest->alloc);
 
   return SUCCESS;
 
@@ -97,7 +97,7 @@ err_t
 pgr_fixture_teardown (struct pgr_fixture *f)
 {
   pgr_close (f->p, &f->e);
-  allocator_free (&f->alloc);
+  arena_alloc_free_all (&f->alloc);
   return f->e.cause_code;
 }
 

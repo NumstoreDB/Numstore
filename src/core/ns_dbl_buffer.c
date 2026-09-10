@@ -14,7 +14,7 @@
 
 #include "core/ns_dbl_buffer.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/testing/ns_testing.h"
 
@@ -28,17 +28,17 @@ DEFINE_DBG_ASSERT (struct dbl_buffer, dbl_buffer, d, {
 
 err_t
 dblb_create (
-    struct dbl_buffer *dest,
-    struct allocator  *alloc,
-    const u32          size,
-    const u32          initial_cap,
-    error             *e
+    struct dbl_buffer  *dest,
+    struct arena_alloc *alloc,
+    const u32           size,
+    const u32           initial_cap,
+    error              *e
 )
 {
   ASSERT (initial_cap > 0);
   ASSERT (size > 0);
 
-  void *data = allocate (alloc, initial_cap, size, e);
+  void *data = arena_malloc (alloc, initial_cap, size, e);
   if (data == NULL) {
     return error_trace (e);
   }
@@ -75,7 +75,7 @@ err_t
 dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e)
 {
   if (nelem >= d->nelem_cap) {
-    void *newdata = allocate (d->alloc, d->size * d->nelem_cap, 2 * nelem, e);
+    void *newdata = arena_malloc (d->alloc, d->size * d->nelem_cap, 2 * nelem, e);
     if (newdata == NULL) {
       return error_trace (e);
     }

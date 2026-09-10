@@ -354,7 +354,7 @@ impl_fallocate (void *_fp, const u64 bytes, error *e)
     return error_causef (e, ERR_IO, "ftruncate: %s", strerror (errno));
   }
 #  else
-  const int ret = posix_fallocate (fp->fd, 0, (off_t)bytes);
+  const int ret = posix_farena_malloc (fp->fd, 0, (off_t)bytes);
 
   if (unlikely (ret != 0)) {
     return error_causef (e, ERR_IO, "posix_fallocate: %s", strerror (ret));

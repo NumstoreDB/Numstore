@@ -132,7 +132,7 @@ main (void)
           printf ("accepted fd %d from %s\n", client_fd, inet_ntoa (client_addr.sin_addr));
         }
       } else {
-        // Readable client socket — echo back
+        // Readable client socket - echo back
         ssize_t r = read (fd, buf, sizeof (buf));
         if (r <= 0) {
           // r == 0: client closed. r < 0: real error (already
