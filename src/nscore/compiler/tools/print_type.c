@@ -7,7 +7,7 @@
  * Compiles the given type string and prints the compiled type to stdout.
  */
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_types.h"
 
@@ -36,7 +36,7 @@ main (int argc, char **argv)
     goto theend;
   }
 
-  char *str = type_tostr (&q);
+  char *str = type_tostr (&alloc, &q, &e);
 
   if (str == NULL) {
     fprintf (stderr, "error: failed to allocate type string: %s\n", type_str);

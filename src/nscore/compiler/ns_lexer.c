@@ -14,7 +14,7 @@
 
 #include "nscore/compiler/ns_lexer.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"    // error
 #include "core/ns_numerics.h" // parse_i32_expect
@@ -394,7 +394,7 @@ scan_token (struct lexer *lex, error *e)
 }
 
 err_t
-lex_tokens (const char *src, struct allocator *alloc, u32 src_len, struct lexer *lex, error *e)
+lex_tokens (const char *src, struct arena_alloc *alloc, u32 src_len, struct lexer *lex, error *e)
 {
   memset (lex, 0, sizeof (*lex));
   lex->src     = src;

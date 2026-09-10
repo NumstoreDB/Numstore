@@ -15,7 +15,7 @@
 #ifndef NS_UNION_T_H
 #define NS_UNION_T_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"    // error
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "nscore/types/ns_kvt.h"
@@ -23,7 +23,7 @@
 
 #include <stdbool.h>
 
-struct allocator;
+struct arena_alloc;
 struct deserializer;
 struct kvt_list;
 struct serializer;
@@ -33,24 +33,24 @@ struct union_t;
 struct type *union_t_resolve_key (struct union_t *t, struct string key);
 
 err_t union_t_create (
-    struct union_t   *dest,
-    struct kvt_list   list,
-    struct allocator *dalloc,
-    error            *e
+    struct union_t     *dest,
+    struct kvt_list     list,
+    struct arena_alloc *dalloc,
+    error              *e
 );
 
-u32 union_t_get_serial_size (const struct union_t *t);
+err_t union_t_get_serial_size (u16 *dest, const struct union_t *t, error *e);
 void union_t_serialize (struct serializer *dest, const struct union_t *src);
 err_t union_t_deserialize (
     struct union_t      *dest,
     struct deserializer *src,
-    struct allocator    *a,
+    struct arena_alloc  *a,
     error               *e
 );
 err_t union_t_validate (const struct union_t *s, error *e);
 i32 union_t_snprintf (char *str, u32 size, const struct union_t *st);
 u32 union_t_byte_size (const struct union_t *t);
-err_t union_t_random (struct union_t *un, struct allocator *alloc, u32 depth, error *e);
+err_t union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, error *e);
 bool union_t_equal (const struct union_t *left, const struct union_t *right);
 
 #endif

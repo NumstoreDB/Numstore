@@ -15,7 +15,7 @@
 #ifndef NS_TYPE_REF_H
 #define NS_TYPE_REF_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h" // error
 #include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
@@ -25,7 +25,7 @@
 
 #include <stdbool.h>
 
-struct allocator;
+struct arena_alloc;
 struct builder;
 struct type;
 
@@ -75,10 +75,10 @@ struct type_ref
 
 bool type_ref_equal (struct type_ref left, struct type_ref right);
 struct type *tr_construct (
-    struct type      *reftype,
-    struct type_ref  *tr,
-    struct allocator *alloc,
-    error            *e
+    struct type        *reftype,
+    struct type_ref    *tr,
+    struct arena_alloc *alloc,
+    error              *e
 );
 
 /*-----------------------------------------------------------------------------

@@ -15,7 +15,7 @@
 #ifndef NS_TYPE_ACCESSOR_H
 #define NS_TYPE_ACCESSOR_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_byte_accessor.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 
-struct allocator;
+struct arena_alloc;
 struct builder;
 struct type;
 
@@ -77,13 +77,13 @@ bool type_accessor_equal (struct type_accessor left, struct type_accessor right)
 struct type *ta_subtype (
     struct type          *reftype,
     struct type_accessor *ta,
-    struct allocator     *alloc,
+    struct arena_alloc   *alloc,
     error                *e
 );
 struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
     struct type          *reftype,
-    struct allocator     *dalloc,
+    struct arena_alloc   *dalloc,
     error                *e
 );
 

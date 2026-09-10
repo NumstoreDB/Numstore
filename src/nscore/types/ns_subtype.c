@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_subtype.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_string.h"
 #include "core/testing/ns_testing.h"

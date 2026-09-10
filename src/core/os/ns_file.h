@@ -45,7 +45,7 @@ i_file create_default_file (int fd);
 #define i_pwrite_all(fp, src, n, offset, e) (fp)->table->pwrite_all (fp, src, n, offset, e)
 #define i_writev_all(fp, arrs, iovcnt, e)   (fp)->table->writev_all (fp, arrs, iovcnt, e)
 #define i_truncate(fp, bytes, e)            (fp)->table->truncate (fp, bytes, e)
-#define i_fallocate(fp, bytes, e)           (fp)->table->fallocate (fp, bytes, e)
+#define i_fallocate(fp, bytes, e)           (fp)->table->farena_malloc (fp, bytes, e)
 #define i_seek(fp, offset, whence, e)       (fp)->table->seek (fp, offset, whence, e)
 
 /*-----------------------------------------------------------------------------

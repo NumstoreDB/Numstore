@@ -1,7 +1,10 @@
 An Introduction to Rope+Trees
 =============================
 
-A Rope+Tree is a tree data structure optimized for array data. More generally, a Rope+Tree is a B+Tree (REF) but instead of storing inner node values pointing to index locations on the lowest layer, Rope+Tree's store the count of elements of their child nodes. 
+A Rope+Tree is a tree data structure optimized for array data. More generally,
+a Rope+Tree is a B+Tree (REF) but instead of storing inner node values pointing
+to index locations on the lowest layer, Rope+Tree's store the count of elements
+of their child nodes. 
 
 Basic Operations
 ----------------
@@ -15,15 +18,16 @@ There are four first class operations on a rope+tree:
 
 Insert(byte offset, data)
 -------------------------
-The insert operation takes an input array of bytes of length n, and "pushes" it into the index "byte offset" of an array of length m. 
+The insert operation takes an input array of bytes of length n, and "pushes" it
+into the index "byte offset" of an array of length m. 
 
 Write(byte offset, stride, data) 
 --------------------------------
-The write operation takes an input array of bytes of length n, and "overwrites" data in an array of length m. 
+The write operation takes an input array of bytes of length n, and "overwrites"
+data in an array of length m. 
 
- Write Overflow
-  It's up to the developer how they want to implement overflow. 
-  Smart Files implement overflow using the following algorithm:
+ Write Overflow It's up to the developer how they want to implement overflow.
+ Smart Files implement overflow using the following algorithm:
 
      If offset + n > m then:
        If stride == 1 then:
@@ -31,40 +35,42 @@ The write operation takes an input array of bytes of length n, and "overwrites" 
          insert(-1, data[(offset + n) - m: n])   // Insert the remaining data
        else: raise error("Index out of bounds")
 
-  However, from this point on, the "write" algorithm will strictly refer to in bounds 
-  writes. That is, offset + n will always be < m from here on out
+  However, from this point on, the "write" algorithm will strictly refer to in
+  bounds writes. That is, offset + n will always be < m from here on out
 
 Read(byte offset, stride, number of elements, destination buffer)
 -----------------------------------------------------------------
 
-The read operation reads data from the source buffer into the destination buffer
+The read operation reads data from the source buffer into the destination
+buffer
 
 Remove(byte offset, stride, number of elements, destination buffer)
 -------------------------------------------------------------------
 
-The remove operation removes data from the source buffer into the destination buffer. 
-You may also optionally pass a destination buffer that keeps track of the data that was removed 
+The remove operation removes data from the source buffer into the destination
+buffer. You may also optionally pass a destination buffer that keeps track of
+the data that was removed 
 
 Algorithms For Basic Operations 
 ===============================
 
-We begin with the read and write algorithms because they do not modify the internals 
-of the rope+tree. That's because neither read nor write change the existing structure of 
-the underlying binary tree.
+We begin with the read and write algorithms because they do not modify the
+internals of the rope+tree. That's because neither read nor write change the
+existing structure of the underlying binary tree.
 
 Seek
 ----
 The first step of every algorithm is to seek to the desired byte offset.
 
-Seek takes a byte offset and walks the tree from the root down to the leaf level. 
-At each inner node, it computes prefix sums of the child byte-counts and finds 
-the smallest child index whose cumulative sum exceeds the offset. It subtracts 
-the preceding sum from the offset and descends into that child, optionally saving 
-the current page onto a stack for later rebalancing. This repeats until a leaf 
-page is reached, at which point the remaining offset is clamped to the number 
-of bytes used on that page, giving the local index within the leaf. The result 
-is a page handle and a local index representing the exact position in the data 
-corresponding to the original byte offset.
+Seek takes a byte offset and walks the tree from the root down to the leaf
+level. At each inner node, it computes prefix sums of the child byte-counts and
+finds the smallest child index whose cumulative sum exceeds the offset. It
+subtracts the preceding sum from the offset and descends into that child,
+optionally saving the current page onto a stack for later rebalancing. This
+repeats until a leaf page is reached, at which point the remaining offset is
+clamped to the number of bytes used on that page, giving the local index within
+the leaf. The result is a page handle and a local index representing the exact
+position in the data corresponding to the original byte offset.
 
 ```
 FUNCTION Seek(byteOffset, saveStack):
@@ -111,16 +117,16 @@ FUNCTION Seek(byteOffset, saveStack):
 Write
 -----
 
-Write takes a byte offset, an element size, a stride, and a count. It seeks to 
-the starting position in the leaf chain, upgrades the page to writable, then 
-enters a loop alternating between two phases. In the ACTIVE phase it stamps 
-bytes from the caller's source stream directly into the page at the current index, 
-advancing until one element's worth of bytes has been written. It then enters 
-the SKIPPING phase, where it advances the index by (stride-1) elements without 
-touching those bytes, leaving them unchanged. When a page is exhausted the writer 
-follows the next-page pointer and continues. The loop terminates when the byte 
-limit is reached, the source is exhausted, or the chain ends. Size changes 
-are propagated up the tree as described in section SEC.
+Write takes a byte offset, an element size, a stride, and a count. It seeks to
+the starting position in the leaf chain, upgrades the page to writable, then
+enters a loop alternating between two phases. In the ACTIVE phase it stamps
+bytes from the caller's source stream directly into the page at the current
+index, advancing until one element's worth of bytes has been written. It then
+enters the SKIPPING phase, where it advances the index by (stride-1) elements
+without touching those bytes, leaving them unchanged. When a page is exhausted
+the writer follows the next-page pointer and continues. The loop terminates
+when the byte limit is reached, the source is exhausted, or the chain ends.
+Size changes are propagated up the tree as described in section SEC.
 
 ```
 FUNCTION WriteForward(root, size, stride, nelem, byteOffset):
@@ -212,15 +218,16 @@ done:
 Read
 ----
 
-Read takes a byte offset, an element size, a stride, and a count. It seeks to 
-the starting position in the leaf chain, then enters a loop alternating between 
-two phases. In the ACTIVE phase it copies bytes from the current page into the 
-caller's destination stream, advancing the local index until one element's 
-worth of bytes has been read. It then enters the SKIPPING phase, where it advances 
-the index by (stride-1) elements without copying them, leaving a gap in the 
-output corresponding to the strided elements. When a page is exhausted the reader 
-follows the next-page pointer and continues. The loop terminates when the byte 
-limit is reached, the destination is exhausted, or the chain ends.
+Read takes a byte offset, an element size, a stride, and a count. It seeks to
+the starting position in the leaf chain, then enters a loop alternating between
+two phases. In the ACTIVE phase it copies bytes from the current page into the
+caller's destination stream, advancing the local index until one element's
+worth of bytes has been read. It then enters the SKIPPING phase, where it
+advances the index by (stride-1) elements without copying them, leaving a gap
+in the output corresponding to the strided elements. When a page is exhausted
+the reader follows the next-page pointer and continues. The loop terminates
+when the byte limit is reached, the destination is exhausted, or the chain
+ends.
 
 ```
 FUNCTION ReadForward(root, size, stride, nelem, byteOffset):
@@ -381,18 +388,18 @@ FUNCTION Insert(root, size, nelem, byteOffset, src):
 Remove
 ------
 
-Remove takes a byte offset, an element size, a stride, and a count. It seeks 
-to the starting position then compacts the leaf chain in place using two cursors: 
-a writer and a reader. Initially they share the same page. The reader advances 
-through the chain in two alternating phases — in the REMOVING phase it skips 
-over one element's worth of bytes without copying them, optionally streaming 
-them out to the caller; in the SKIPPING phase it copies (stride-1) elements' 
-worth of bytes from the reader position into the writer position, closing the 
-gap left by the removed elements. When the reader exhausts a page that has 
-separated from the writer, that page is deleted and the chain is re-linked. 
-Once all targeted elements are removed, any remaining reader data is drained 
-into the writer pages and all spent reader pages are deleted. Size changes 
-are propagated up the tree as described in section SEC.
+Remove takes a byte offset, an element size, a stride, and a count. It seeks to
+the starting position then compacts the leaf chain in place using two cursors:
+a writer and a reader. Initially they share the same page. The reader advances
+through the chain in two alternating phases - in the REMOVING phase it skips
+over one element's worth of bytes without copying them, optionally streaming
+them out to the caller; in the SKIPPING phase it copies (stride-1) elements'
+worth of bytes from the reader position into the writer position, closing the
+gap left by the removed elements. When the reader exhausts a page that has
+separated from the writer, that page is deleted and the chain is re-linked.
+Once all targeted elements are removed, any remaining reader data is drained
+into the writer pages and all spent reader pages are deleted. Size changes are
+propagated up the tree as described in section SEC.
 
 ```
 FUNCTION Remove(root, size, stride, nelem, byteOffset, dest):

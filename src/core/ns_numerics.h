@@ -26,10 +26,12 @@
 #define NUMERICS_H
 
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_utils.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /******************************************************************************
  * SECTION: Checksums
@@ -43,22 +45,19 @@ void checksum_execute (u32 *dest, const u8 *data, u32 len);
  ******************************************************************************/
 
 u8 randu8 (void);
-
 u32 randu32 (void);
-u32 randu32r (u32 lower, u32 upper); // [lower, upper]
-i32 randi32r (i32 lower, i32 upper); // [lower, upper]
-
 u64 randu64 (void);
-u64 randu64r (u64 lower,
-              u64 upper); // [lower, upper]
-u64 randu64e (u64 lower,
-              u64 upper); // [lower, upper)
-i64 randi64r (i64 lower,
-              i64 upper); // [lower, upper]
-i64 randi64e (i64 lower,
-              i64 upper); // [lower, upper)
 
+// [lower, upper]
+u32 randu32r (u32 lower, u32 upper);
+i32 randi32r (i32 lower, i32 upper);
+u64 randu64r (u64 lower, u64 upper);
+i64 randi64r (i64 lower, i64 upper);
 f32 randf (void); // [0, 1]
+
+// [lower, upper)
+u64 randu64e (u64 lower, u64 upper);
+i64 randi64e (i64 lower, i64 upper);
 
 void rand_bytes (void *dest, u32 len);
 #define decl_rand_buffer(name, type, len) \
@@ -124,5 +123,45 @@ i32 py_mod_i32 (i32 num, i32 denom);
   while (0)
 
 float f16_to_f32 (u16 h);
+
+/******************************************************************************
+ * SECTION: Safe Arithmetic
+ ******************************************************************************/
+
+// dest = dest + arg
+HEADER_FUNC err_t
+safe_add_u16 (u16 *dest, u16 arg, error *e)
+{
+  if (arg > (u16)(UINT16_MAX - *dest)) {
+    return error_causef (
+        e,
+        ERR_ARITH,
+        "Arithmetic overflow: %d + %d > %d\n",
+        *dest,
+        arg,
+        UINT16_MAX
+    );
+  }
+  *dest += arg;
+  return SUCCESS;
+}
+
+// dest = dest + (arg1 * arg2)
+HEADER_FUNC err_t
+safe_add_mul_u16 (u16 *dest, u16 arg1, u16 arg2, error *e)
+{
+  u32 product = (u32)arg1 * (u32)arg2;
+  if (product > (u32)UINT16_MAX) {
+    return error_causef (
+        e,
+        ERR_ARITH,
+        "Arithmetic overflow: %d * %d > %d\n",
+        arg1,
+        arg2,
+        UINT16_MAX
+    );
+  }
+  return safe_add_u16 (dest, product, e);
+}
 
 #endif // NUMERICS_H

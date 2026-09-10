@@ -15,7 +15,7 @@
 #ifndef NS_EXECUTE_H
 #define NS_EXECUTE_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -24,11 +24,11 @@
 #include "nscore/variables/ns_variables.h"
 
 sb_size nsdb_execute_on_buffer (
-    struct nsdb      *ns,
-    struct ns_txn    *txn,
-    struct query     *q,
-    void             *data,
-    struct allocator *alc
+    struct nsdb        *ns,
+    struct ns_txn      *txn,
+    struct query       *q,
+    void               *data,
+    struct arena_alloc *alc
 );
 
 /******************************************************************************
@@ -38,11 +38,11 @@ sb_size nsdb_execute_on_buffer (
  ******************************************************************************/
 
 // Get a variable and print it to the console
-err_t nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct allocator *alloc);
+err_t nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc);
 
 // Read data from a variable and print it to the console
-sb_size nsdb_read_and_print (struct nsdb *db, struct read_query *query, struct allocator *alloc);
+sb_size nsdb_read_and_print (struct nsdb *db, struct read_query *query, struct arena_alloc *alloc);
 
-err_t nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct allocator *alc);
+err_t nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *alc);
 
 #endif

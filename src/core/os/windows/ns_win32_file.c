@@ -342,7 +342,7 @@ impl_fallocate (void *_fp, const u64 bytes, error *e)
 
   if (unlikely (!SetFilePointerEx (fp->handle, li, NULL, FILE_BEGIN))) {
     char buf[WIN_ERR_BUF];
-    return error_causef (e, ERR_IO, "fallocate (seek): %s", WIN_ERRMSG (buf));
+    return error_causef (e, ERR_IO, "farena_malloc (seek): %s", WIN_ERRMSG (buf));
   }
 
   if (unlikely (!SetEndOfFile (fp->handle))) {

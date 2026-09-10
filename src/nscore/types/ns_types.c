@@ -14,7 +14,7 @@
 
 #include "nscore/types/ns_types.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -45,7 +45,8 @@ DEFINE_DBG_ASSERT (struct type, unchecked_type, t, { ASSERT (t); })
 
 DEFINE_DBG_ASSERT (struct type, valid_type, t, {
   ASSERT (t);
-  ASSERT (type_validate (t, NULL) == SUCCESS);
+  error e = error_create ();
+  ASSERT (type_validate (t, &e) == SUCCESS);
 })
 
 /*-----------------------------------------------------------------------------
@@ -97,22 +98,30 @@ type_validate (const struct type *t, error *e)
   DBG_ASSERT (unchecked_type, t);
   switch (t->type) {
     case T_PRIM: {
-      return prim_t_validate (&t->p, e);
+      WRAP (prim_t_validate (&t->p, e));
+      break;
     }
     case T_STRUCT: {
-      return struct_t_validate (&t->st, e);
+      WRAP (struct_t_validate (&t->st, e));
+      break;
     }
     case T_UNION: {
-      return union_t_validate (&t->un, e);
+      WRAP (union_t_validate (&t->un, e));
+      break;
     }
     case T_SARRAY: {
-      return sarray_t_validate (&t->sa, e);
+      WRAP (sarray_t_validate (&t->sa, e));
+      break;
     }
     default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
       return 0;       // LCOV_EXCL_LINE
     }
   }
+
+  // Check that it can be written to a serial buffer
+  u16 size;
+  return type_get_serial_size (&size, t, e);
 }
 
 /*-----------------------------------------------------------------------------
@@ -182,6 +191,8 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 #ifdef TESTING
 TEST (prim_t_snprintf)
 {
+  ALLOC_INIT (alloc);
+
 #  define CASE_PRIM(prim_type, exp)                                      \
     TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)             \
     {                                                                    \
@@ -191,11 +202,10 @@ TEST (prim_t_snprintf)
       };                                                                 \
                                                                          \
       const char *expect = exp;                                          \
-      char       *ret    = type_tostr (&t);                              \
       error       e      = error_create ();                              \
+      char       *ret    = type_tostr (&alloc, &t, &e);                  \
       i_log_type (&t, &e);                                               \
       test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0); \
-      i_free (default_mem (), ret);                                      \
     }
 
   CASE_PRIM (U8, "u8");
@@ -227,6 +237,8 @@ TEST (prim_t_snprintf)
   CASE_PRIM (CU32, "cu32");
   CASE_PRIM (CU64, "cu64");
   CASE_PRIM (CU128, "cu128");
+
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -256,20 +268,19 @@ type_snprintf (char *str, u32 size, struct type *t)
 }
 
 char *
-type_tostr (struct type *t)
+type_tostr (struct arena_alloc *alloc, struct type *t, error *e)
 {
   int len = type_snprintf (NULL, 0, t);
   if (len < 0) {
     return NULL;
   }
 
-  char *msg = i_malloc (default_mem (), len + 1, 1, NULL);
+  char *msg = arena_malloc (alloc, len + 1, 1, e);
   if (msg == NULL) {
     return NULL;
   }
 
   if (type_snprintf (msg, len + 1, t) < 0) {
-    i_free (default_mem (), msg);
     return NULL;
   }
 
@@ -592,26 +603,40 @@ TEST (type_generate_string)
  * @brief Get the amount of bytes needed to serialize a type
  *----------------------------------------------------------------------------*/
 
-u32
-type_get_serial_size (const struct type *t)
+err_t
+type_get_serial_size (u16 *dest, const struct type *t, error *e)
 {
-  DBG_ASSERT (valid_type, t);
+  // DBG_ASSERT (valid_type, t);
 
   // LABEL TYPE
-  u32 ret = sizeof (u8);
+  u16 ret = sizeof (u8);
 
   switch (t->type) {
     case T_PRIM: {
-      return ret + sizeof (u8);
+      WRAP (safe_add_u16 (&ret, sizeof (u8), e));
+      *dest = ret;
+      return SUCCESS;
     }
     case T_STRUCT: {
-      return ret + struct_t_get_serial_size (&t->st);
+      u16 sub_size;
+      WRAP (struct_t_get_serial_size (&sub_size, &t->st, e));
+      WRAP (safe_add_u16 (&ret, sub_size, e));
+      *dest = ret;
+      return SUCCESS;
     }
     case T_UNION: {
-      return ret + union_t_get_serial_size (&t->un);
+      u16 sub_size;
+      WRAP (union_t_get_serial_size (&sub_size, &t->un, e));
+      WRAP (safe_add_u16 (&ret, sub_size, e));
+      *dest = ret;
+      return SUCCESS;
     }
     case T_SARRAY: {
-      return ret + sarray_t_get_serial_size (&t->sa);
+      u16 sub_size;
+      WRAP (sarray_t_get_serial_size (&sub_size, &t->sa, e));
+      WRAP (safe_add_u16 (&ret, sub_size, e));
+      *dest = ret;
+      return SUCCESS;
     }
     default: {
       UNREACHABLE (); // LCOV_EXCL_LINE
@@ -730,10 +755,10 @@ TEST (prim_t_deserialize)
 #endif
 
 struct type *
-type_deserialize (struct deserializer *src, struct allocator *alloc, error *e)
+type_deserialize (struct deserializer *src, struct arena_alloc *alloc, error *e)
 {
   u8           header;
-  struct type *dest = allocate (alloc, 1, sizeof *dest, e);
+  struct type *dest = arena_malloc (alloc, 1, sizeof *dest, e);
   if (dest == NULL) {
     return NULL;
   }
@@ -796,10 +821,10 @@ TEST (prim_t_random)
 }
 #endif
 
-struct type *
-type_random (struct allocator *alloc, u32 depth, error *e)
+static struct type *
+type_random_once (struct arena_alloc *alloc, u32 depth, error *e)
 {
-  struct type *dest = allocate (alloc, 1, sizeof *dest, e);
+  struct type *dest = arena_malloc (alloc, 1, sizeof *dest, e);
   if (dest == NULL) {
     return NULL;
   }
@@ -847,6 +872,36 @@ type_random (struct allocator *alloc, u32 depth, error *e)
     }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
+}
+
+struct type *
+type_random (struct arena_alloc *alloc, u32 depth, error *e)
+{
+  ALLOC_INIT (temp);
+
+  struct type *t = NULL;
+
+  /**
+   * Try a maximum of 100 times
+   *  1. try to create a type
+   *  2. if it's valid - return it
+   *  3. otherwise, keep trying
+   */
+  for (int i = 0; i < 100; ++i) {
+    t = type_random_once (&temp, depth, e);
+
+    if (type_validate (t, e) == SUCCESS) {
+      t = type_movemem (t, alloc, e);
+      ALLOC_CLOSE (temp);
+      return t;
+    }
+
+    e->cause_code = 0;
+    e->cmlen      = 0;
+  }
+
+  ALLOC_CLOSE (temp);
+  return NULL;
 }
 
 /*-----------------------------------------------------------------------------
@@ -924,9 +979,9 @@ i_log_type (struct type *t, error *e)
 }
 
 static struct string
-string_movemem (struct string src, struct allocator *alloc, error *e)
+string_movemem (struct string src, struct arena_alloc *alloc, error *e)
 {
-  char *data = allocator_copy (alloc, src.data, src.len, e);
+  char *data = arena_alloc_copy (alloc, src.data, src.len, e);
   if (!data) {
     return (struct string){0};
   }
@@ -934,9 +989,9 @@ string_movemem (struct string src, struct allocator *alloc, error *e)
 }
 
 static struct string *
-keylist_movemem (struct string *src, u32 len, struct allocator *alloc, error *e)
+keylist_movemem (struct string *src, u32 len, struct arena_alloc *alloc, error *e)
 {
-  struct string *keys = allocate (alloc, len, sizeof *keys, e);
+  struct string *keys = arena_malloc (alloc, len, sizeof *keys, e);
   if (!keys) {
     return NULL;
   }
@@ -951,9 +1006,9 @@ keylist_movemem (struct string *src, u32 len, struct allocator *alloc, error *e)
 }
 
 static struct type **
-typelist_movemem (struct type **src, u32 len, struct allocator *alloc, error *e)
+typelist_movemem (struct type **src, u32 len, struct arena_alloc *alloc, error *e)
 {
-  struct type **types = allocate (alloc, len, sizeof (struct type *), e);
+  struct type **types = arena_malloc (alloc, len, sizeof (struct type *), e);
   if (!types) {
     return NULL;
   }
@@ -968,9 +1023,9 @@ typelist_movemem (struct type **src, u32 len, struct allocator *alloc, error *e)
 }
 
 struct type *
-type_movemem (struct type *src, struct allocator *alloc, error *e)
+type_movemem (struct type *src, struct arena_alloc *alloc, error *e)
 {
-  struct type *ret = allocate (alloc, 1, sizeof *ret, e);
+  struct type *ret = arena_malloc (alloc, 1, sizeof *ret, e);
   if (!ret) {
     return NULL;
   }
@@ -1012,7 +1067,7 @@ type_movemem (struct type *src, struct allocator *alloc, error *e)
       if (ret->sa.t == NULL) {
         return NULL;
       }
-      ret->sa.dims = allocate (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
+      ret->sa.dims = arena_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
       if (!ret->sa.dims) {
         return NULL;
       }

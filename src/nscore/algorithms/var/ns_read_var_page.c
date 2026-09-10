@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_bytes.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
@@ -97,19 +97,19 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 
   // Allocate variable name
   if (params->save_vname) {
-    vstr = allocate (params->alloc, 1, vlen, e);
+    vstr = arena_malloc (params->alloc, 1, vlen, e);
     if (vstr == NULL) {
       goto failed;
     }
   } else {
-    vstr = allocate (&temp, 1, vlen, e);
+    vstr = arena_malloc (&temp, 1, vlen, e);
     if (vstr == NULL) {
       goto failed;
     }
   }
 
   if (params->save_type) {
-    tstr = allocate (&temp, 1, tlen, e);
+    tstr = arena_malloc (&temp, 1, tlen, e);
     if (tstr == NULL) {
       goto failed;
     }

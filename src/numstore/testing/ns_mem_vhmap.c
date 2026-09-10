@@ -14,7 +14,7 @@
 
 #include "numstore/testing/ns_mem_vhmap.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
@@ -35,7 +35,7 @@ struct var_frame
 {
   struct var_with_data var;
   struct hnode         node;
-  struct allocator     alloc;
+  struct arena_alloc   alloc;
 };
 
 // Lifecycle
@@ -62,7 +62,7 @@ mem_vhmap_create (struct i_mem mem, error *e)
 static void
 var_frame_free (struct var_frame *frame)
 {
-  allocator_free (&frame->alloc);
+  arena_alloc_free_all (&frame->alloc);
   ext_array_free (&frame->var.data);
 }
 
@@ -113,10 +113,10 @@ move_data (struct hnode *node, void *ctx)
 }
 
 struct mem_vhmap *
-mem_vhmap_clone (const struct mem_vhmap *src, error *e)
+mem_vhmap_clone (struct i_mem mem, const struct mem_vhmap *src, error *e)
 {
   // Create a new var hash map
-  struct mem_vhmap *ret = mem_vhmap_create (src->mem, e);
+  struct mem_vhmap *ret = mem_vhmap_create (mem, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -149,7 +149,7 @@ static err_t
 var_frame_init (struct mem_vhmap *db, struct var_frame *frame, struct variable *var, error *e)
 {
   // Create an allocator for this variable
-  create_default_allocator (&frame->alloc);
+  arena_alloc_create_default (&frame->alloc);
 
   // Copy variable data over to
   if (variable_copy (&frame->var.var, var, &frame->alloc, e)) {
@@ -162,7 +162,7 @@ var_frame_init (struct mem_vhmap *db, struct var_frame *frame, struct variable *
   return SUCCESS;
 
 failed:
-  allocator_free (&frame->alloc);
+  arena_alloc_free_all (&frame->alloc);
   return error_trace (e);
 }
 
@@ -187,6 +187,7 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
     error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable already exists");
     return NULL;
   }
+
   // Create a new variable frame
   struct var_frame *frame = slab_alloc_alloc (&db->alloc, e);
   if (frame == NULL) {
@@ -375,7 +376,7 @@ TEST (mem_vhmap)
       test_assert (vwd != NULL);
     }
 
-    struct mem_vhmap *c = mem_vhmap_clone (v, &e);
+    struct mem_vhmap *c = mem_vhmap_clone (mem, v, &e);
     ASSERT (c != NULL);
 
     for (int i = 0; i < 128; ++i) {

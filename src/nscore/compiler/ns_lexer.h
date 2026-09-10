@@ -15,33 +15,33 @@
 #ifndef NS_LEXER_H
 #define NS_LEXER_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h" // u32 ...etc
 
-struct allocator;
+struct arena_alloc;
 
 struct lexer
 {
-  const char       *src;
-  u32               src_len;
-  u32               start;
-  u32               current;
+  const char         *src;
+  u32                 src_len;
+  u32                 start;
+  u32                 current;
 
-  struct token     *tokens;
+  struct token       *tokens;
 
-  u32               ntokens;
-  struct dbl_buffer _tokens;
-  struct allocator *alloc;
+  u32                 ntokens;
+  struct dbl_buffer   _tokens;
+  struct arena_alloc *alloc;
 };
 
 err_t lex_tokens (
-    const char       *src,
-    struct allocator *alloc,
-    u32               src_len,
-    struct lexer     *lex,
-    error            *e
+    const char         *src,
+    struct arena_alloc *alloc,
+    u32                 src_len,
+    struct lexer       *lex,
+    error              *e
 );
 
 #endif

@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -433,7 +433,7 @@ parse_query (struct parser *parser, struct query *dest, error *e)
 }
 
 err_t
-compile_query (struct query *dest, const char *text, struct allocator *dalloc, error *e)
+compile_query (struct query *dest, const char *text, struct arena_alloc *dalloc, error *e)
 {
   BUILDER_INIT (b, dalloc);
 

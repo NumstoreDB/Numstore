@@ -14,7 +14,7 @@
 
 #include "nscore/pager/ns_pager.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_htable.h"
 #include "core/ns_numerics.h"
@@ -348,7 +348,7 @@ aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
 {
   dest->max_tid = 0;
   slab_alloc_init (&dest->alloc, mem, sizeof (struct ns_txn), 1000);
-  create_default_allocator (&dest->backing_alloc);
+  arena_alloc_create_default (&dest->backing_alloc);
 
   dest->txt = txnt_open (mem, e);
   if (dest->txt == NULL) {
@@ -383,7 +383,7 @@ aries_ctx_free (struct aries_ctx *ctx)
   slab_alloc_destroy (&ctx->alloc);
   txnt_close (ctx->txt);
   dpgt_close (ctx->dpt);
-  allocator_free (&ctx->backing_alloc);
+  arena_alloc_free_all (&ctx->backing_alloc);
 }
 
 struct ns_txn *

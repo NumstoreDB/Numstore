@@ -1,72 +1,101 @@
-Numstore Release Docs
-=====================
+Numstore
+========
 
-Layout 
+Numstore is a single-file, embedded, ACID database for numerical arrays,
+written in C with no dependencies. This archive contains the `numstore` CLI,
+the `numstore`/`smartfiles` C libraries, headers, documentation, man pages,
+and sample code - everything needed to link against Numstore or use it from
+the command line.
+
+Layout
 ------
 
-`bin` - Contains pre compiled binaries, tools, and samples
 ```
-bin/
-    # The main numstore cli tool (A wip repl)
-    numstore                       
-
-    # Tools for debugging a numstore database
-    print_query                    
-    dlread                         
-    nsspprint                      
-    nspprint                       
-    print_type                     
-    resolve_type_ref               
-    walpprint
-
-    # Compiled samples (see samples/*)
-    smfile_sample2_transactions
-    smfile_sample1_basic_crud
-    ns_sample1_basic_crud          
-    smfile_sample3_stride
-    smfile_sample4_rollback_commit
-```
-
-`include` - Contains numstore and smartfiles headers
-```
-include/
-    # A database for numerical arrays 
-    numstore.h
-
-    # A database for just bytes 
-    smartfiles.h
+.
+├── bin/                    precompiled tools and sample binaries
+├── include/
+│   ├── numstore/           numstore.h  - database for numerical arrays
+│   └── smartfiles/         smartfiles.h - plain ACID transactional file
+├── lib/
+│   ├── libnumstore.a       static library (numstore + smartfiles, one archive)
+│   └── pkgconfig/
+│       ├── numstore.pc
+│       └── smartfiles.pc
+└── share/
+    ├── doc/numstore/
+    │   ├── html/           browsable documentation (open html/index.html)
+    │   └── markdown/       the same docs as plain markdown
+    ├── man/
+    │   ├── man1/           numstore(1), and other CLI tool pages
+    │   └── man3/           library function pages, e.g. ns_var_get(3)
+    └── numstore/examples/
+        ├── Makefile        builds every sample below
+        └── *.c             sample source (ns_*.c, smfile_*.c)
 ```
 
-`lib` - Contains the numstore library
+### `bin/`
+
+| Binary                                | Purpose                            |
+|---------------------------------------|------------------------------------|
+| `numstore`                            | Main CLI / REPL (work in progress) |
+| `nspprint`                            | Inspect a numstore page            |
+| `nsspprint`                           | Inspect a numstore super-page      |
+| `dlread`                              | Read a data-list page              |
+| `walpprint`                           | Inspect a WAL record               |
+| `print_query`                         | Parse and print a query AST        |
+| `print_type`                          | Parse and print a type expression  |
+| `resolve_type_ref`                    | Resolve a type reference           |
+| `ns_sample1_basic_crud`               | Compiled numstore sample           |
+| `smfile_sample1_basic_crud`           | Compiled smartfiles sample         |
+| `smfile_sample2_transactions`         | Compiled smartfiles sample         |
+| `smfile_sample3_stride`               | Compiled smartfiles sample         |
+| `smfile_sample4_rollback_commit`      | Compiled smartfiles sample         |
+
+Compiling Against the Library
+------------------------------
+
+### Manually
+
 ```
-lib/
-    # Compile against this to use numstore
-    libnumstore.a 
+$ gcc samples/ns_sample1_basic_crud.c -I include -L lib -lnumstore \
+    -o ns_sample1_basic_crud
 ```
 
-`samples` - Contains source sample files
-```
-samples/
-    # Numstore samples
-    ns_....c 
+`smartfiles.h` works the same way - link against the same `libnumstore.a`:
 
-    # Smartfiles samples
-    smfile_...c 
+```
+$ gcc samples/smfile_sample1_basic_crud.c -I include -L lib -lnumstore \
+    -o smfile_sample1_basic_crud
 ```
 
+### With pkg-config
 
-Compiling against the Numstore library
---------------------------------------
-
-Just link against `libnumstore.a` and include the `include` directory 
 ```
-$ gcc samples/ns_sample1_basic_crud.c -I include -Llib -lnumstore
+$ export PKG_CONFIG_PATH="$PWD/lib/pkgconfig:$PKG_CONFIG_PATH"
+$ gcc samples/ns_sample1_basic_crud.c $(pkg-config --cflags --libs numstore) \
+    -o ns_sample1_basic_crud
 ```
 
-Using the Numstore REPL 
------------------------
+The `.pc` files locate themselves automatically, so no extra flags are
+needed regardless of where you extract this archive. If `pkg-config` reports
+an unresolved variable, your installed pkg-config is too old for this - pass
+the prefix explicitly instead:
 
-This is a work in progress
+```
+$ pkg-config --define-variable=prefix=$PWD --cflags --libs numstore
+```
+
+### With the bundled sample Makefile
+
+```
+$ cd share/numstore/examples
+$ make
+```
+
+Using the Numstore REPL
+------------------------
+
+This is a work in progress.
 
 ```
 $ ./bin/numstore mydb.db
@@ -96,3 +125,25 @@ numstore> get b;
 }
 numstore> exit;
 ```
+
+Documentation
+-------------
+
+Open `share/doc/numstore/html/index.html` in a browser - it works whether
+you double-click it directly or serve the folder over HTTP, no setup
+required. Plain markdown versions of the same docs are in
+`share/doc/numstore/markdown/`.
+
+Man Pages
+---------
+
+```
+$ export MANPATH="$PWD/share/man:$MANPATH"
+$ man numstore
+$ man ns_var_get
+```
+
+License
+-------
+
+Apache 2.0. See `LICENSE`. See `CHANGELOG.md` for release history.

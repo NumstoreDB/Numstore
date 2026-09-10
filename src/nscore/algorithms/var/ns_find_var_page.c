@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
@@ -275,7 +275,7 @@ foundit:
 
   if (pms->dvar && pms->alloc) {
     // Transfer variable name and type to persistent allocator
-    pms->dvar->vname.data = allocator_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
+    pms->dvar->vname.data = arena_alloc_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
     pms->dvar->vname.len  = pms->vname.len;
 
     // Error check

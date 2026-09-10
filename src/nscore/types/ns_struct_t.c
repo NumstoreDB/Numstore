@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
@@ -25,7 +25,6 @@
 #include "nscore/variables/ns_variables.h"
 
 #ifdef TESTING
-#  include "core/os/ns_memory.h"
 #  include "core/testing/ns_testing.h"
 #  include "nscore/compiler/ns_compiler.h"
 #endif
@@ -226,7 +225,7 @@ TEST (struct_t_resolve_key)
 #endif
 
 err_t
-struct_t_create (struct struct_t *dest, struct kvt_list list, struct allocator *dalloc, error *e)
+struct_t_create (struct struct_t *dest, struct kvt_list list, struct arena_alloc *dalloc, error *e)
 {
   if (list.len == 0) {
     return struct_t_type_err ("struct must have greater than 0 keys", e);
@@ -235,12 +234,12 @@ struct_t_create (struct struct_t *dest, struct kvt_list list, struct allocator *
   // Copy stuff over
   if (dalloc) {
     dest->len  = list.len;
-    dest->keys = allocator_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
+    dest->keys = arena_alloc_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL) {
       return error_trace (e);
     }
 
-    dest->types = allocator_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
+    dest->types = arena_alloc_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
     if (dest->keys == NULL) {
       return error_trace (e);
     }
@@ -339,6 +338,8 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
 #ifdef TESTING
 TEST (struct_t_snprintf)
 {
+  ALLOC_INIT (alloc);
+
   struct struct_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -385,11 +386,11 @@ TEST (struct_t_snprintf)
 
   const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
 
-  char       *ret      = type_tostr (&t);
   error       e        = error_create ();
+  char       *ret      = type_tostr (&alloc, &t, &e);
   i_log_type (&t, &e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  i_free (default_mem (), ret);
+  ALLOC_CLOSE (alloc);
 }
 #endif
 
@@ -460,22 +461,26 @@ TEST (struct_t_byte_size)
 }
 #endif
 
-u32
-struct_t_get_serial_size (const struct struct_t *t)
+err_t
+struct_t_get_serial_size (u16 *dest, const struct struct_t *t, error *e)
 {
   DBG_ASSERT (valid_struct_t, t);
-  u32 ret = 0;
 
   // LEN (KLEN KEY) (TYPE) (KLEN KEY) (TYPE) ....
-  ret += sizeof (u16);
+  u16 ret = sizeof (u16);
 
-  for (u32 i = 0; i < t->len; ++i) {
-    ret += sizeof (u16);
-    ret += t->keys[i].len;
-    ret += type_get_serial_size (t->types[i]);
+  for (u16 i = 0; i < t->len; ++i) {
+    WRAP (safe_add_u16 (&ret, sizeof (u16), e));
+    WRAP (safe_add_u16 (&ret, t->keys[i].len, e));
+
+    u16 sub_size;
+    WRAP (type_get_serial_size (&sub_size, t->types[i], e));
+    WRAP (safe_add_u16 (&ret, sub_size, e));
   }
 
-  return ret;
+  *dest = ret;
+
+  return SUCCESS;
 }
 
 #ifdef TESTING
@@ -520,8 +525,11 @@ TEST (struct_t_get_serial_size)
       },
   };
 
-  u64 act = struct_t_get_serial_size (&st);
-  u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
+  error e = error_create ();
+  u16   act;
+  struct_t_get_serial_size (&act, &st, &e);
+  u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
+  // u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
 
   test_assert_int_equal (exp, act);
 }
@@ -624,7 +632,7 @@ err_t
 struct_t_deserialize (
     struct struct_t     *dest,
     struct deserializer *src,
-    struct allocator    *a,
+    struct arena_alloc  *a,
     error               *e
 )
 {
@@ -648,7 +656,7 @@ struct_t_deserialize (
 
     struct string key = {
         .len  = klen,
-        .data = allocate (a, key.len, 1, e),
+        .data = arena_malloc (a, key.len, 1, e),
     };
     // Read the string data
     if (key.data == NULL) {
@@ -810,18 +818,18 @@ TEST (struct_t_deserialize_red_path)
 #endif
 
 err_t
-struct_t_random (struct struct_t *st, struct allocator *alloc, u32 depth, error *e)
+struct_t_random (struct struct_t *st, struct arena_alloc *alloc, u32 depth, error *e)
 {
   ASSERT (st);
 
   st->len  = (u16)randu32r (1, 5);
 
-  st->keys = allocate (alloc, st->len, sizeof (struct string), e);
+  st->keys = arena_malloc (alloc, st->len, sizeof (struct string), e);
   if (!st->keys) {
     return error_trace (e);
   }
 
-  st->types = allocate (alloc, st->len, sizeof (struct type *), e);
+  st->types = arena_malloc (alloc, st->len, sizeof (struct type *), e);
   if (!st->types) {
     return error_trace (e);
   }

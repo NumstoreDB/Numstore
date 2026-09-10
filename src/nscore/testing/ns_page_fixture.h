@@ -15,9 +15,9 @@
 #ifndef NS_PAGE_FIXTURE_H
 #define NS_PAGE_FIXTURE_H
 
-#include "core/ns_alloc.h"    // allocator
-#include "core/ns_error.h"    // error
-#include "core/ns_stdtypes.h" // u32 ...etc
+#include "core/ns_arena_alloc.h" // allocator
+#include "core/ns_error.h"       // error
+#include "core/ns_stdtypes.h"    // u32 ...etc
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "nscore/page/ns_page.h" // dl_data
@@ -44,7 +44,7 @@ struct pgr_fixture
 {
   error                e;
   struct pager        *p;
-  struct allocator     alloc;
+  struct arena_alloc   alloc;
   struct ns_txn        tx;
   struct i_mem         mem;
   struct i_file_system fs;

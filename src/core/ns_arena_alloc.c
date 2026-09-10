@@ -272,6 +272,20 @@ arena_alloc_free_all (struct arena_alloc *ca)
   latch_unlock (&ca->latch);
 }
 
+void *
+arena_alloc_copy (struct arena_alloc *alloc, const void *ptr, u32 size, error *e)
+{
+  void *dest = arena_malloc (alloc, size, 1, e);
+
+  if (dest == NULL) {
+    return NULL;
+  }
+
+  memcpy (dest, ptr, size);
+
+  return dest;
+}
+
 static err_t
 arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
 {
@@ -322,7 +336,7 @@ arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
 }
 
 void *
-chunk_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
+arena_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
 {
   latch_lock (&ca->latch);
 
@@ -378,4 +392,29 @@ chunk_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
   latch_unlock (&ca->latch);
 
   return ptr;
+}
+
+void
+builder_init (struct builder *b, struct arena_alloc *alloc)
+{
+  b->persistent = alloc;
+  arena_alloc_create_default (&b->temp);
+}
+
+void *
+builder_malloc_temp (struct builder *b, u32 nelem, u32 size, error *e)
+{
+  return arena_malloc (&b->temp, nelem, size, e);
+}
+
+void *
+builder_malloc_persist (struct builder *b, u32 nelem, u32 size, error *e)
+{
+  return arena_malloc (b->persistent, nelem, size, e);
+}
+
+void
+builder_free (struct builder *b)
+{
+  arena_alloc_free_all (&b->temp);
 }

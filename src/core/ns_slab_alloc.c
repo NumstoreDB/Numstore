@@ -533,7 +533,7 @@ TEST (slab_alloc_free_head_slab)
   test_item_verify (a, 1);
   test_item_verify (b, 2);
 
-  // Should still be able to allocate (extends or reuses slab1 if space)
+  // Should still be able to arena_malloc (extends or reuses slab1 if space)
   struct test_item *f = slab_alloc_alloc (&alloc, &e);
   test_assert (f != NULL);
   test_item_init (f, 5);

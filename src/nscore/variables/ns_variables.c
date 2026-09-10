@@ -14,7 +14,7 @@
 
 #include "nscore/variables/ns_variables.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
@@ -28,9 +28,6 @@
 
 #include <string.h>
 
-// TODO - pull out all printing to the
-// top level - and print status ok in
-// it's own module
 err_t
 i_print_variable (struct variable *v, error *e)
 {
@@ -303,11 +300,11 @@ TEST (var_random_name)
 
 err_t
 rand_varname (
-    struct string    *dest,
-    struct allocator *alloc,
-    const u32         minlen,
-    const u32         maxlen,
-    error            *e
+    struct string      *dest,
+    struct arena_alloc *alloc,
+    const u32           minlen,
+    const u32           maxlen,
+    error              *e
 )
 {
   ASSERT (dest);
@@ -316,7 +313,7 @@ rand_varname (
   ASSERT (minlen <= maxlen);
 
   u32   len    = randu32r (minlen, maxlen);
-  char *buffer = allocate (alloc, len, 1, e);
+  char *buffer = arena_malloc (alloc, len, 1, e);
   if (buffer == NULL) {
     return error_trace (e);
   }
@@ -351,10 +348,10 @@ TEST (rand_varname)
 
 err_t
 rand_varname_same_hash (
-    struct string    *name1,
-    struct string    *name2,
-    struct allocator *alloc,
-    error            *e
+    struct string      *name1,
+    struct string      *name2,
+    struct arena_alloc *alloc,
+    error              *e
 )
 {
   ASSERT (name1);
@@ -385,7 +382,7 @@ rand_varname_same_hash (
     // Check if they are good
     if (hpos1 == hpos2) {
       // commit strings - copy them to dest
-      char *data = allocate (alloc, len1 + len2, 1, e);
+      char *data = arena_malloc (alloc, len1 + len2, 1, e);
       if (data == NULL) {
         goto failed;
       }
@@ -405,10 +402,10 @@ failed:
 
 err_t
 rand_varname_different_hash (
-    struct string    *name1,
-    struct string    *name2,
-    struct allocator *alloc,
-    error            *e
+    struct string      *name1,
+    struct string      *name2,
+    struct arena_alloc *alloc,
+    error              *e
 )
 {
   ASSERT (name1);
@@ -439,7 +436,7 @@ rand_varname_different_hash (
     // Check if they are good
     if (hpos1 != hpos2) {
       // commit strings - copy them to dest
-      char *data = allocate (alloc, len1 + len2, 1, e);
+      char *data = arena_malloc (alloc, len1 + len2, 1, e);
       if (data == NULL) {
         goto failed;
       }
@@ -491,6 +488,28 @@ TEST (rand_varname_different_hash)
 }
 #endif
 
+b_size
+var_resolve_index (struct variable *v, sb_size bofst)
+{
+  // Translate negative
+  if (bofst < 0) {
+    bofst = v->nbytes + bofst;
+  }
+
+  // was so negative it's still negative after conversion
+  if (bofst < 0) {
+    bofst = 0;
+  }
+
+  // Translate indexes past nybtes
+  if ((b_size)bofst > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
+  {
+    bofst = v->nbytes;
+  }
+
+  return bofst;
+}
+
 #ifdef TESTING
 TEST (var_resolve_index)
 {
@@ -519,6 +538,16 @@ TEST (var_resolve_index)
 }
 #endif
 
+b_size
+var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
+{
+  b_size remainder = (v->nbytes - bofst) / size;
+  if (nelem > remainder) {
+    nelem = remainder;
+  }
+  return nelem;
+}
+
 #ifdef TESTING
 TEST (var_resolve_nelem)
 {
@@ -546,11 +575,16 @@ TEST (var_resolve_nelem)
 #endif
 
 err_t
-variable_copy (struct variable *dest, const struct variable *src, struct allocator *alloc, error *e)
+variable_copy (
+    struct variable       *dest,
+    const struct variable *src,
+    struct arena_alloc    *alloc,
+    error                 *e
+)
 {
   // Copy over the variable name
   // TODO - this is awful - remove +1
-  dest->vname.data = allocator_copy (alloc, src->vname.data, src->vname.len + 1, e);
+  dest->vname.data = arena_alloc_copy (alloc, src->vname.data, src->vname.len + 1, e);
   dest->dtype      = type_movemem (src->dtype, alloc, e);
   if (dest->vname.data == NULL) {
     return error_trace (e);
@@ -565,4 +599,14 @@ variable_copy (struct variable *dest, const struct variable *src, struct allocat
   dest->nbytes    = src->nbytes;
 
   return SUCCESS;
+}
+
+struct string
+vname_or_default (const char *name)
+{
+  if (name != NULL) {
+    return strfcstr (name);
+  } else {
+    return strfcstr (DEFAULT_VARIABLE);
+  }
 }

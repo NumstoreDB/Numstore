@@ -14,7 +14,7 @@
 
 #include "core/ns_stride.h"
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_utils.h"

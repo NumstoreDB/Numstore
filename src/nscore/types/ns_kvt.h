@@ -15,7 +15,7 @@
 #ifndef NS_KVT_H
 #define NS_KVT_H
 
-#include "core/ns_alloc.h"
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_stdtypes.h"

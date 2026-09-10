@@ -1,4 +1,3 @@
-LIBNS_SRCS += src/core/ns_alloc.c
 LIBNS_SRCS += src/core/ns_block_array.c
 LIBNS_SRCS += src/core/ns_byte_accessor.c
 LIBNS_SRCS += src/core/ns_cbuffer.c

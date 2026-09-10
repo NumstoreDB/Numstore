@@ -93,7 +93,7 @@ void i_log_internal (const char *prefix, const char *color, const char *fmt, ...
 void i_log_flush (void);
 
 #ifndef I_LOG_LEVEL
-#  define I_LOG_LEVEL LOG_TRACE
+#  define I_LOG_LEVEL LOG_ERROR
 #endif
 
 /*-----------------------------------------------------------------------------
