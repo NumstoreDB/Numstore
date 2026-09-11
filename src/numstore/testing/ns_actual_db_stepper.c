@@ -4,7 +4,6 @@
 #include "core/os/ns_memory.h"
 #include "core/os/ns_os_vtable.h"
 #include "core/os/ns_time.h"
-#include "core/testing/ns_testing.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "numstore/numstore.h"
 
@@ -60,7 +59,6 @@ ns_db_new (
       .total_working_ns    = 0,
       .prev_op_duration_ns = 0,
       .db_size_bytes       = 0,
-      .op_status           = PO_NONE,
   };
 
   if (ns_db_set_file_size (ret, e)) {
@@ -93,38 +91,38 @@ ns_db_close (struct ns_db *db)
   do {                                                           \
     db->prev_op_duration_ns = i_timer_now_ns (&db->timer) - now; \
     db->total_working_ns += db->prev_op_duration_ns;             \
-    db->op_status = PO_SUCCESS;                                  \
   }                                                              \
   while (0)
 
-static inline void
-end_method (struct ns_db *db)
+static inline char *
+ns_db_copy_name (struct ns_db *db, char *src, error *e)
 {
-  // Set the database file size after the operation
-  if (ns_db_set_file_size (db, &db->db->e) < 0) {
-    // DB_FAILED takes precedence over other operation failing
-    if (db->op_status != PO_DB_FAILED) {
-      db->op_status = PO_FAILED_OTHER_REASONS;
+  ASSERT (db->tx == NULL);
+  ASSERT (db->var_working == NULL);
+
+  char *copy = NULL;
+
+  if (src) {
+    copy = i_malloc (db->reliable_mem, strlen (src), 1, e);
+    if (copy == NULL) {
+      return NULL;
     }
+    memcpy (copy, src, strlen (src));
   }
+
+  return copy;
 }
 
-void
-ns_db_begin_txn (struct ns_db *db)
+err_t
+ns_db_begin_txn (struct ns_db *db, error *e)
 {
   ASSERT (db);
   ASSERT (db->tx == NULL);
   ASSERT (db->var_working == NULL);
 
-  // Copy over a committed variable to working variable
-  char *var_working = NULL;
-  if (db->var_committed) {
-    var_working = i_malloc (db->reliable_mem, strlen (db->var_committed), 1, &db->db->e);
-    if (var_working == NULL) {
-      db->op_status = PO_FAILED_OTHER_REASONS;
-      goto theend;
-    }
-    memcpy (var_working, db->var_committed, strlen (db->var_committed));
+  char *var_working = ns_db_copy_name (db, db->var_committed, e);
+  if (var_working == NULL) {
+    return error_trace (e);
   }
 
   // Do the operation
@@ -134,19 +132,17 @@ ns_db_begin_txn (struct ns_db *db)
 
   if (tx == NULL) {
     i_cfree (db->reliable_mem, var_working);
-    db->op_status = PO_DB_FAILED;
+    return error_trace (e);
 
   } else {
     db->tx          = tx;
     db->var_working = var_working;
+    return ns_db_set_file_size (db, &db->db->e);
   }
-
-theend:
-  end_method (db);
 }
 
-void
-ns_db_rollback_txn (struct ns_db *db)
+err_t
+ns_db_rollback_txn (struct ns_db *db, error *e)
 {
   ASSERT (db);
   ASSERT (db->tx);
@@ -157,32 +153,25 @@ ns_db_rollback_txn (struct ns_db *db)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    return error_trace (e);
 
   } else {
     i_cfree (db->reliable_mem, db->var_working);
     db->tx          = NULL;
     db->var_working = NULL;
+    return ns_db_set_file_size (db, e);
   }
-
-  end_method (db);
 }
 
-void
-ns_db_commit_txn (struct ns_db *db)
+err_t
+ns_db_commit_txn (struct ns_db *db, error *e)
 {
   ASSERT (db);
   ASSERT (db->tx);
 
-  // Copy over the working variable name
-  char *new_committed = NULL;
-  if (db->var_working) {
-    new_committed = i_malloc (db->reliable_mem, strlen (db->var_working), 1, &db->db->e);
-    if (new_committed == NULL) {
-      db->op_status = PO_FAILED_OTHER_REASONS;
-      goto theend;
-    }
-    memcpy (new_committed, db->var_working, strlen (db->var_working));
+  char *new_committed = ns_db_copy_name (db, db->var_working, e);
+  if (new_committed == NULL) {
+    return error_trace (e);
   }
 
   // Do the operation
@@ -192,7 +181,7 @@ ns_db_commit_txn (struct ns_db *db)
 
   if (ret < 0) {
     i_cfree (db->reliable_mem, new_committed);
-    db->op_status = PO_DB_FAILED;
+    return error_trace (e);
 
   } else {
     // Transfer state
@@ -201,33 +190,30 @@ ns_db_commit_txn (struct ns_db *db)
     db->var_committed = new_committed;
     db->tx            = NULL;
     db->var_working   = NULL;
+    return ns_db_set_file_size (db, e);
   }
-
-theend:
-  end_method (db);
 }
 
-void
-ns_db_crash_and_reopen (struct ns_db *db)
+err_t
+ns_db_crash_and_reopen (struct ns_db *db, error *e)
 {
   pre_op (db);
   err_t ret = nsdb_crash (db->db);
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    return error_trace (e);
 
   } else {
     i_cfree (db->reliable_mem, db->var_working);
     db->tx          = NULL;
     db->var_working = NULL;
+    return ns_db_set_file_size (db, e);
   }
-
-  end_method (db);
 }
 
-void
-ns_db_close_and_reopen (struct ns_db *db)
+err_t
+ns_db_close_and_reopen (struct ns_db *db, error *e)
 {
   ASSERT (db->tx == NULL);
   ASSERT (db->var_working == NULL);
@@ -237,10 +223,11 @@ ns_db_close_and_reopen (struct ns_db *db)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
-  }
+    return error_trace (e);
 
-  end_method (db);
+  } else {
+    return ns_db_set_file_size (db, e);
+  }
 }
 
 static inline char *
@@ -267,10 +254,10 @@ ns_db_set_cur (struct ns_db *db, char *vname)
 }
 
 static inline err_t
-ns_db_copy_cur (struct ns_db *db, const char *vname)
+ns_db_copy_cur (struct ns_db *db, const char *vname, error *e)
 {
   // Copy the variable to a new location
-  char *copy = i_malloc (db->reliable_mem, strlen (vname), 1, &db->db->e);
+  char *copy = i_malloc (db->reliable_mem, strlen (vname), 1, e);
   if (copy == NULL) {
     return error_trace (&db->db->e);
   }
@@ -281,43 +268,39 @@ ns_db_copy_cur (struct ns_db *db, const char *vname)
   return SUCCESS;
 }
 
-void
-ns_db_create (struct ns_db *db, const char *vname, const char *type_str)
+err_t
+ns_db_create_and_maybe_switch (struct ns_db *db, const char *vname, const char *type_str, error *e)
 {
   pre_op (db);
   sb_size ret = nsdb_fexecute (db->db, db->tx, "create %s %s", NULL, vname, type_str);
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    return error_trace (e);
 
   } else {
     if (ns_db_cur (db) == NULL) {
-      if (ns_db_copy_cur (db, vname) < 0) {
-        db->op_status = PO_FAILED_OTHER_REASONS;
-      }
+      WRAP (ns_db_copy_cur (db, vname, e));
     }
-  }
 
-  end_method (db);
+    return ns_db_set_file_size (db, e);
+  }
 }
 
-void
-ns_db_switch (struct ns_db *db, const char *next)
+err_t
+ns_db_switch (struct ns_db *db, const char *next, error *e)
 {
   pre_op (db);
   // Do nothing
   post_op (db);
 
-  if (ns_db_copy_cur (db, next) < 0) {
-    db->op_status = PO_FAILED_OTHER_REASONS;
-  }
+  WRAP (ns_db_copy_cur (db, next, e));
 
-  end_method (db);
+  return ns_db_set_file_size (db, e);
 }
 
-void
-ns_db_delete (struct ns_db *db, const char *next)
+err_t
+ns_db_delete_cur_and_switch (struct ns_db *db, const char *next, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
@@ -325,8 +308,7 @@ ns_db_delete (struct ns_db *db, const char *next)
   // Copy next to a new destination
   char *copy = i_malloc (db->reliable_mem, strlen (next), 1, &db->db->e);
   if (copy == NULL) {
-    db->op_status = PO_FAILED_OTHER_REASONS;
-    goto theend;
+    return error_trace (e);
   }
   memcpy (copy, next, strlen (next));
 
@@ -336,19 +318,17 @@ ns_db_delete (struct ns_db *db, const char *next)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
     i_free (db->reliable_mem, copy);
+    return error_trace (e);
 
   } else {
     ns_db_set_cur (db, copy);
+    return ns_db_set_file_size (db, e);
   }
-
-theend:
-  end_method (db);
 }
 
-void
-ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len)
+err_t
+ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
@@ -367,14 +347,15 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    memcpy (e, &db->db->e, sizeof (error));
+    return error_trace (e);
   }
 
-  end_method (db);
+  return ns_db_set_file_size (db, e);
 }
 
-void
-ns_db_remove (struct ns_db *db, void *dest, struct stride str)
+err_t
+ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
@@ -394,14 +375,15 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    memcpy (e, &db->db->e, sizeof (error));
+    return error_trace (e);
   }
 
-  end_method (db);
+  return ns_db_set_file_size (db, e);
 }
 
-void
-ns_db_read (struct ns_db *db, void *dest, struct stride str)
+err_t
+ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
@@ -421,14 +403,15 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    memcpy (e, &db->db->e, sizeof (error));
+    return error_trace (e);
   }
 
-  end_method (db);
+  return ns_db_set_file_size (db, e);
 }
 
-void
-ns_db_write (struct ns_db *db, void *data, struct stride str)
+err_t
+ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
@@ -448,10 +431,11 @@ ns_db_write (struct ns_db *db, void *data, struct stride str)
   post_op (db);
 
   if (ret < 0) {
-    db->op_status = PO_DB_FAILED;
+    memcpy (e, &db->db->e, sizeof (error));
+    return error_trace (e);
   }
 
-  end_method (db);
+  return ns_db_set_file_size (db, e);
 }
 
 /**
@@ -466,9 +450,9 @@ TEST_DISABLED (ns_db)
   {
     // create at least 3 vars
     // (create only auto-switches if cur is NULL, i.e. on the very first create)
-    ns_db_create (db, "test_var", "u32"); // auto-switches here, cur was NULL
-    ns_db_create (db, "var2", "u32");     // cur is now test_var, no auto-switch
-    ns_db_create (db, "var3", "u32");     // cur still test_var, no auto-switch
+    ns_db_create_and_maybe_switch (db, "test_var", "u32"); // auto-switches here, cur was NULL
+    ns_db_create_and_maybe_switch (db, "var2", "u32");     // cur is now test_var, no auto-switch
+    ns_db_create_and_maybe_switch (db, "var3", "u32");     // cur still test_var, no auto-switch
 
     // already on test_var due to the first create's auto-switch
     ns_db_begin_txn (db);
@@ -517,7 +501,7 @@ TEST_DISABLED (ns_db)
     ns_db_commit_txn (db);
 
     // delete one of the three vars
-    ns_db_delete (db, "var2");
+    ns_db_delete_cur_and_switch (db, "var2");
   }
 
   TEST_CASE ("rollback restores prior state, including current variable")

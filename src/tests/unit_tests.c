@@ -43,7 +43,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[337];
+  const char *failed_names[339];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -6178,6 +6178,44 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "mem_vhmap";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("opg", filter))
+  {
+    extern void __test__opg(void);
+    i_log_info("========================= TEST CASE: %s\n", "opg");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__opg();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "opg");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "opg";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("ns_ref", filter))
+  {
+    extern void __test__ns_ref(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_ref");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_ref();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_ref");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_ref";
     }
     ntests++;
   }

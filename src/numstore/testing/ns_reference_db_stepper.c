@@ -247,7 +247,7 @@ ns_ref_close_and_reopen (struct ns_ref *ref)
 }
 
 err_t
-ns_ref_create (struct ns_ref *ref, const char *vname, struct type *type, error *e)
+ns_ref_create_and_maybe_switch (struct ns_ref *ref, const char *vname, struct type *type, error *e)
 {
   struct db_state *state = ns_ref_cur (ref);
 
@@ -285,12 +285,12 @@ ns_ref_switch (struct ns_ref *ref, const char *next)
 }
 
 void
-ns_ref_delete (struct ns_ref *ref, const char *next)
+ns_ref_delete_cur_and_switch (struct ns_ref *ref, const char *next)
 {
   struct db_state      *state = ns_ref_cur (ref);
   struct var_with_data *data  = NULL;
   if (next != NULL) {
-    mem_vhmap_get (state->db_data, strfcstr (next));
+    data = mem_vhmap_get (state->db_data, strfcstr (next));
   }
 
   // Shouldn't pass the same variable
@@ -298,9 +298,12 @@ ns_ref_delete (struct ns_ref *ref, const char *next)
   ASSERT (data != state->cur);
   ASSERT (state->nvars > 0);
 
+  u64 len = ext_array_get_len (&state->cur->data);
+
   mem_vhmap_remove (state->db_data, state->cur->var.vname);
   state->cur = data;
   state->nvars -= 1;
+  state->tracked_bytes -= len;
 }
 
 err_t
@@ -309,12 +312,13 @@ ns_ref_insert (struct ns_ref *ref, void *data, b_size ofst, b_size len, error *e
   struct db_state *state = ns_ref_cur (ref);
   ASSERT (state->cur);
 
-  t_size size = type_byte_size (state->cur->var.dtype);
-  if (ext_array_insert (&state->cur->data, ofst, data, len * size, e) < 0) {
+  t_size size     = type_byte_size (state->cur->var.dtype);
+  i64    inserted = ext_array_insert (&state->cur->data, ofst * size, data, len * size, e);
+  if (inserted < 0) {
     return error_trace (e);
   }
 
-  state->tracked_bytes += len * size;
+  state->tracked_bytes += inserted;
 
   return SUCCESS;
 }
@@ -326,9 +330,9 @@ ns_ref_remove (struct ns_ref *ref, void *dest, struct stride str)
   struct var_with_data *cur   = state->cur;
   ASSERT (cur);
 
-  t_size size = type_byte_size (cur->var.dtype);
-  ext_array_remove (&cur->data, str, size, dest);
-  state->tracked_bytes -= size;
+  t_size size    = type_byte_size (cur->var.dtype);
+  u64    removed = ext_array_remove (&cur->data, str, size, dest);
+  state->tracked_bytes -= removed * size;
 }
 
 void
@@ -347,134 +351,137 @@ ns_ref_write (struct ns_ref *ref, void *data, struct stride str)
   ext_array_write (&cur->data, str, type_byte_size (cur->var.dtype), data);
 }
 
-/**
 #ifdef TESTING
 
-TEST_DISABLED (ns_ref)
+TEST (ns_ref)
 {
   error          e   = error_create ();
   struct ns_ref *ref = ns_ref_new (mem, &e);
   ALLOC_INIT (alloc);
+
+  u32 dest[20];
+
+#  define validate(expected)                                                           \
+    do {                                                                               \
+      ns_ref_read (ref, dest, (struct stride){.start = 0, .stride = 1, .nelems = 20}); \
+      test_assert_memequal (expected, dest, sizeof (expected));                        \
+    }                                                                                  \
+    while (0)
+
+#  define check_state(_nvars, _tracked_bytes)                                  \
+    do {                                                                       \
+      test_assert_int_equal (ns_ref_cur (ref)->nvars, _nvars);                 \
+      test_assert_int_equal (ns_ref_cur (ref)->tracked_bytes, _tracked_bytes); \
+    }                                                                          \
+    while (0)
 
   TEST_CASE ("create, switch, write, read, insert, remove, delete")
   {
     struct type type;
     compile_type (&type, "u32", &alloc, &e);
 
-    ns_ref_create (ref, "test_var", &type, &e);
-    ns_ref_create (ref, "var2", &type, &e);
-    ns_ref_create (ref, "var3", &type, &e);
+    check_state (0, 0);
+    ns_ref_create_and_maybe_switch (ref, "var1", &type, &e);
+    check_state (1, 0);
+    ns_ref_create_and_maybe_switch (ref, "var2", &type, &e);
+    check_state (2, 0);
+    ns_ref_create_and_maybe_switch (ref, "var3", &type, &e);
+    check_state (3, 0);
+
+    // Current variable is var1
 
     ns_ref_begin_txn (ref, &e);
     {
-      u32           write_buf[4] = {10, 20, 30, 40};
-      struct stride str          = {.start = 0, .stride = 1, .nelems = 4};
-      ns_ref_write (ref, write_buf, str);
+      ns_ref_insert (ref, (u32[]){10, 20, 30, 40}, 0, 4, &e);
+      validate (((u32[]){10, 20, 30, 40}));
+      check_state (3, 4 * sizeof (u32));
 
-      u32 read_buf[4] = {0};
-      ns_ref_read (ref, read_buf, str);
-      for (int i = 0; i < 4; i++) {
-        test_assert_int_equal (write_buf[i], read_buf[i]);
-      }
+      ns_ref_insert (ref, (u32[]){50, 60}, 4, 2, &e);
+      validate (((u32[]){10, 20, 30, 40, 50, 60}));
+      check_state (3, 6 * sizeof (u32));
 
-      // insert 2 more elements right after (offset = 4 elements in, len = 2 elements)
-      u32   insert_buf[2] = {50, 60};
-      err_t rc            = ns_ref_insert (ref, insert_buf, 4, 2, &e);
-      (void)rc; // ignoring error return values
+      ns_ref_insert (ref, (u32[]){70}, 6, 1, &e);
+      validate (((u32[]){10, 20, 30, 40, 50, 60, 70}));
+      check_state (3, 7 * sizeof (u32));
 
-      struct stride insert_str         = {.start = 4, .stride = 1, .nelems = 2};
-      u32           insert_read_buf[2] = {0};
-      ns_ref_read (ref, insert_read_buf, insert_str);
-      for (int i = 0; i < 2; i++) {
-        test_assert_int_equal (insert_buf[i], insert_read_buf[i]);
-      }
+      // 100 20 200 40 300 60 400
+      ns_ref_write (
+          ref,
+          (u32[]){100, 200, 300, 400},
+          (struct stride){.start = 0, .stride = 2, .nelems = 4}
+      );
+      validate (((u32[]){100, 20, 200, 40, 300, 60, 400}));
+      check_state (3, 7 * sizeof (u32));
 
-      // strided write/read over the first 8 elements, touching every other one
-      u32           stride_write_buf[4] = {100, 200, 300, 400};
-      struct stride stride_str          = {.start = 0, .stride = 2, .nelems = 4};
-      ns_ref_write (ref, stride_write_buf, stride_str);
-
-      u32 stride_read_buf[4] = {0};
-      ns_ref_read (ref, stride_read_buf, stride_str);
-      for (int i = 0; i < 4; i++) {
-        test_assert_int_equal (stride_write_buf[i], stride_read_buf[i]);
-      }
-
-      // remove the originally inserted elements
-      u32 remove_dest[2] = {0};
-      ns_ref_remove (ref, remove_dest, insert_str);
-      for (int i = 0; i < 2; i++) {
-        test_assert_int_equal (insert_buf[i], remove_dest[i]);
-      }
+      // 20 40 60
+      ns_ref_remove (ref, dest, (struct stride){.start = 0, .stride = 2, .nelems = 4});
+      test_assert_memequal (((u32[]){100, 200, 300, 400}), dest, 4 * sizeof (u32));
+      validate (((u32[]){20, 40, 60}));
+      check_state (3, 3 * sizeof (u32));
     }
     ns_ref_commit_txn (ref, &e);
-
-    ns_ref_delete (ref, "var2");
   }
 
   TEST_CASE ("rollback restores prior state, including current variable")
   {
-    struct stride str              = {.start = 0, .stride = 1, .nelems = 4};
+    ns_ref_switch (ref, "var2");
+    ns_ref_insert (ref, (u32[]){10, 20, 30, 40}, 0, 4, &e);
+    check_state (3, 7 * sizeof (u32));
 
-    // still on test_var with the committed baseline data
-    u32           baseline_read[4] = {0};
-    ns_ref_read (ref, baseline_read, str);
-    u32 expected_baseline[4] = {10, 20, 30, 40};
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (expected_baseline[i], baseline_read[i]);
-    }
+    ns_ref_switch (ref, "var3");
+    ns_ref_insert (ref, (u32[]){100, 200, 300, 400}, 0, 4, &e);
+    check_state (3, 11 * sizeof (u32));
+
+    ns_ref_switch (ref, "var1");
+
+    // deletes var1 and switches to var2
+    ns_ref_delete_cur_and_switch (ref, "var2");
+    validate (((u32[]){10, 20, 30, 40}));
+    check_state (2, 8 * sizeof (u32));
 
     ns_ref_begin_txn (ref, &e);
     {
       ns_ref_switch (ref, "var3");
-      u32 var3_write[4] = {111, 222, 333, 444};
-      ns_ref_write (ref, var3_write, str);
-
-      u32 var3_read[4] = {0};
-      ns_ref_read (ref, var3_read, str);
-      for (int i = 0; i < 4; i++) {
-        test_assert_int_equal (var3_write[i], var3_read[i]);
-      }
+      ns_ref_insert (ref, (u32[]){111, 222, 333, 444}, 0, 4, &e);
+      validate (((u32[]){111, 222, 333, 444, 100, 200, 300, 400}));
+      check_state (2, 12 * sizeof (u32));
     }
     ns_ref_rollback_txn (ref);
 
-    // Still test_var - not var3
-    u32 post_rollback_read[4] = {0};
-    ns_ref_read (ref, post_rollback_read, str);
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (expected_baseline[i], post_rollback_read[i]);
-    }
+    // Still var2
+    validate (((u32[]){10, 20, 30, 40}));
+    check_state (2, 8 * sizeof (u32));
 
-    // var3 itself should not have the rolled-back write either
+    // var3 didn't get changes
     ns_ref_switch (ref, "var3");
-    u32 var3_post_rollback[4] = {0};
-    ns_ref_read (ref, var3_post_rollback, str);
-    u32 expected_var3_untouched[4] = {0, 0, 0, 0};
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (expected_var3_untouched[i], var3_post_rollback[i]);
-    }
+    validate (((u32[]){100, 200, 300, 400}));
+    check_state (2, 8 * sizeof (u32));
   }
 
   TEST_CASE ("commit persists the switch and the write")
   {
-    struct stride str           = {.start = 0, .stride = 1, .nelems = 4};
-    u32           var3_write[4] = {111, 222, 333, 444};
-
     ns_ref_begin_txn (ref, &e);
     {
-      ns_ref_switch (ref, "var3");
-      ns_ref_write (ref, var3_write, str);
+      ns_ref_switch (ref, "var2");
+      ns_ref_write (
+          ref,
+          (u32[]){111, 222, 333, 444},
+          (struct stride){.start = 0, .stride = 1, .nelems = 4}
+      );
+      check_state (2, 8 * sizeof (u32));
+      validate (((u32[]){111, 222, 333, 444}));
     }
     ns_ref_commit_txn (ref, &e);
 
-    // still on var3 after commit, with the committed data
-    u32 post_commit_read[4] = {0};
-    ns_ref_read (ref, post_commit_read, str);
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (var3_write[i], post_commit_read[i]);
-    }
+    // Still on var2
+    validate (((u32[]){111, 222, 333, 444}));
+    check_state (2, 8 * sizeof (u32));
+
+    // var3 didn't get changes
+    ns_ref_switch (ref, "var3");
+    validate (((u32[]){100, 200, 300, 400}));
+    check_state (2, 8 * sizeof (u32));
   }
 }
 
 #endif
-*/

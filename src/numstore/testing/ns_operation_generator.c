@@ -41,9 +41,9 @@ get_allowed (struct ns_ref *ref, u8 allowed[NSS_AT_LEN], const u8 enabled[NSS_AT
   }
 
   // You can always create a new variable
-  allowed[NSS_CREATE] = enabled[NSS_CREATE];
+  allowed[NSS_CREATE_AND_SWAP_IF_EMPTY] = enabled[NSS_CREATE_AND_SWAP_IF_EMPTY];
 
-  u32 nvars           = ns_ref_nvars (ref);
+  u32 nvars                             = ns_ref_nvars (ref);
 
   if (nvars > 1) {
     // You can switch if there's another variable
@@ -51,7 +51,8 @@ get_allowed (struct ns_ref *ref, u8 allowed[NSS_AT_LEN], const u8 enabled[NSS_AT
   }
 
   if (nvars > 0) {
-    allowed[NSS_DELETE] = enabled[NSS_DELETE];
+    allowed[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH] = enabled
+        [NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH];
 
     // You're always guaranteed to have an active
     // variable if there's more than 0 variables
@@ -440,7 +441,7 @@ opg_random (struct rand_op_params params, error *e)
       return ret;
     }
 
-    case NSS_CREATE: {
+    case NSS_CREATE_AND_SWAP_IF_EMPTY: {
       if (build_create (ret, params, e) < 0) {
         goto failed;
       }
@@ -452,7 +453,7 @@ opg_random (struct rand_op_params params, error *e)
       }
       return ret;
     }
-    case NSS_DELETE: {
+    case NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH: {
       if (build_delete (ret, params, e) < 0) {
         goto failed;
       }
@@ -501,16 +502,16 @@ opg_free (struct operation *op)
   i_free (op->mem, op);
 }
 
-/**
 #ifdef TESTING
 
-TEST_DISABLED (opg)
+TEST (opg)
 {
   error                 e      = error_create ();
   struct ns_ref        *ref    = ns_ref_new (mem, &e);
   struct rand_op_params params = {
       .ref        = ref,
       .max_nelems = 64,
+      .mem        = mem,
   };
   memset (params.enabled, 1, NSS_AT_LEN);
 
@@ -528,4 +529,3 @@ TEST_DISABLED (opg)
 }
 
 #endif
-*/

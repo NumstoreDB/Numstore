@@ -4,7 +4,8 @@ ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "—" : "-"
+        "ns_db_create" : "ns_db_create_and_maybe_switch",
+        "ns_db_delete" : "ns_db_delete_cur_and_switch",
 }
 
 for ROOT in ROOTS:

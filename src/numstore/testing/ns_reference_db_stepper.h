@@ -39,9 +39,14 @@ void ns_ref_rollback_txn (struct ns_ref *ref);
 err_t ns_ref_commit_txn (struct ns_ref *ref, error *e);
 void ns_ref_crash_and_reopen (struct ns_ref *ref);
 void ns_ref_close_and_reopen (struct ns_ref *ref);
-err_t ns_ref_create (struct ns_ref *ref, const char *vname, struct type *type, error *e);
+err_t ns_ref_create_and_maybe_switch (
+    struct ns_ref *ref,
+    const char    *vname,
+    struct type   *type,
+    error         *e
+);
 void ns_ref_switch (struct ns_ref *ref, const char *next);
-void ns_ref_delete (struct ns_ref *ref, const char *next);
+void ns_ref_delete_cur_and_switch (struct ns_ref *ref, const char *next);
 err_t ns_ref_insert (struct ns_ref *ref, void *data, b_size ofst, b_size len, error *e);
 void ns_ref_remove (struct ns_ref *ref, void *dest, struct stride str);
 void ns_ref_read (struct ns_ref *ref, void *dest, struct stride str);
