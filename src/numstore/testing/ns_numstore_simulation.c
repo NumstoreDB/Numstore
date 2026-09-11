@@ -61,96 +61,84 @@ struct ns_simulation
 
   struct i_mem       reliable_mem;
   struct i_mem       test_mem;
-
-  error              e;
 };
 
 ////////// ACTIONS
 
-static int
-nss_begin_txn (struct ns_simulation *meta)
+static err_t
+nss_begin_txn (struct ns_simulation *meta, error *e)
 {
-  if (ns_ref_begin_txn (meta->ref, &meta->e)) {
-    return -1;
-  }
-  ns_db_begin_txn (meta->db);
-  return 0;
+  WRAP (ns_ref_begin_txn (meta->ref, e));
+  WRAP (ns_db_begin_txn (meta->db, e));
+  return SUCCESS;
 }
 
-static int
-nss_commit_txn (struct ns_simulation *meta)
+static err_t
+nss_commit_txn (struct ns_simulation *meta, error *e)
 {
-  if (ns_ref_commit_txn (meta->ref, &meta->e)) {
-    return -1;
-  }
-  ns_db_commit_txn (meta->db);
-  return 0;
+  WRAP (ns_ref_commit_txn (meta->ref, e));
+  WRAP (ns_db_commit_txn (meta->db, e));
+  return SUCCESS;
 }
 
-static int
-nss_rollback_txn (struct ns_simulation *meta)
+static err_t
+nss_rollback_txn (struct ns_simulation *meta, error *e)
 {
   ns_ref_rollback_txn (meta->ref);
-  ns_db_rollback_txn (meta->db);
-  return 0;
+  WRAP (ns_db_rollback_txn (meta->db, e));
+  return SUCCESS;
 }
 
-static void
-nss_crash_and_reopen (struct ns_simulation *meta)
+static err_t
+nss_crash_and_reopen (struct ns_simulation *meta, error *e)
 {
   ns_ref_crash_and_reopen (meta->ref);
-  ns_db_crash_and_reopen (meta->db);
+  WRAP (ns_db_crash_and_reopen (meta->db, e));
+  return SUCCESS;
 }
 
-static void
-nss_close_and_reopen (struct ns_simulation *meta)
+static err_t
+nss_close_and_reopen (struct ns_simulation *meta, error *e)
 {
   ns_ref_close_and_reopen (meta->ref);
-  ns_db_close_and_reopen (meta->db);
+  WRAP (ns_db_close_and_reopen (meta->db, e));
+  return SUCCESS;
 }
 
-static int
-nss_create (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_create (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  if (ns_ref_create (meta->ref, op->op_create.vname, op->op_create.t, &meta->e)) {
-    return -1;
-  }
-  ns_db_create (meta->db, op->op_create.vname, op->op_create.typestr);
-  return 0;
+  WRAP (ns_ref_create_and_maybe_switch (meta->ref, op->op_create.vname, op->op_create.t, e));
+  WRAP (ns_db_create_and_maybe_switch (meta->db, op->op_create.vname, op->op_create.typestr, e));
+  return SUCCESS;
 }
 
-static void
-nss_switch (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_switch (struct ns_simulation *meta, struct operation *op, error *e)
 {
   ns_ref_switch (meta->ref, op->op_switch.vname);
-  ns_db_switch (meta->db, op->op_switch.vname);
+  WRAP (ns_db_switch (meta->db, op->op_switch.vname, e));
+  return SUCCESS;
 }
 
-static void
-nss_delete (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_delete (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  ns_ref_delete (meta->ref, op->op_delete.next);
-  ns_db_delete (meta->db, op->op_delete.next);
+  ns_ref_delete_cur_and_switch (meta->ref, op->op_delete.next);
+  WRAP (ns_db_delete_cur_and_switch (meta->db, op->op_delete.next, e));
+  return SUCCESS;
 }
 
-static int
-nss_insert (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_insert (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  if (ns_ref_insert (
-          meta->ref,
-          op->op_insert.data,
-          op->op_insert.ofst,
-          op->op_insert.nelems,
-          &meta->e
-      )) {
-    return -1;
-  }
-  ns_db_insert (meta->db, op->op_insert.data, op->op_insert.ofst, op->op_insert.nelems);
-  return 0;
+  WRAP (ns_ref_insert (meta->ref, op->op_insert.data, op->op_insert.ofst, op->op_insert.nelems, e));
+  WRAP (ns_db_insert (meta->db, op->op_insert.data, op->op_insert.ofst, op->op_insert.nelems, e));
+  return SUCCESS;
 }
 
-static void
-nss_remove (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_remove (struct ns_simulation *meta, struct operation *op, error *e)
 {
   ns_ref_remove (
       meta->ref,
@@ -161,19 +149,21 @@ nss_remove (struct ns_simulation *meta, struct operation *op)
           .nelems = op->op_remove.nelems,
       }
   );
-  ns_db_remove (
+  WRAP (ns_db_remove (
       meta->db,
       op->op_remove.db_dest,
       (struct stride){
           .start  = op->op_remove.start,
           .stride = op->op_remove.stride,
           .nelems = op->op_remove.nelems,
-      }
-  );
+      },
+      e
+  ));
+  return SUCCESS;
 }
 
-static void
-nss_read (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_read (struct ns_simulation *meta, struct operation *op, error *e)
 {
   ns_ref_read (
       meta->ref,
@@ -184,19 +174,21 @@ nss_read (struct ns_simulation *meta, struct operation *op)
           .nelems = op->op_read.nelems,
       }
   );
-  ns_db_read (
+  WRAP (ns_db_read (
       meta->db,
       op->op_read.db_dest,
       (struct stride){
           .start  = op->op_read.start,
           .stride = op->op_read.stride,
           .nelems = op->op_read.nelems,
-      }
-  );
+      },
+      e
+  ));
+  return SUCCESS;
 }
 
-static void
-nss_write (struct ns_simulation *meta, struct operation *op)
+static err_t
+nss_write (struct ns_simulation *meta, struct operation *op, error *e)
 {
   ns_ref_write (
       meta->ref,
@@ -207,15 +199,17 @@ nss_write (struct ns_simulation *meta, struct operation *op)
           .nelems = op->op_write.nelems,
       }
   );
-  ns_db_write (
+  WRAP (ns_db_write (
       meta->db,
       op->op_write.data,
       (struct stride){
           .start  = op->op_write.start,
           .stride = op->op_write.stride,
           .nelems = op->op_write.nelems,
-      }
-  );
+      },
+      e
+  ));
+  return SUCCESS;
 }
 
 /******************************************************************************
@@ -305,24 +299,31 @@ ns_simul_close (struct ns_simulation *meta, error *e)
 err_t
 ns_simul_step (struct ns_simulation *meta, error *e)
 {
-  struct operation *op = opg_random ((struct rand_op_params){}, e);
+  struct rand_op_params params = {
+      .ref        = meta->ref,
+      .enabled    = meta->enabled,
+      .max_nelems = meta->max_insert_len,
+      .mem        = meta->reliable_mem,
+  };
+
+  struct operation *op = opg_random (params, e);
   if (op == NULL) {
     return error_trace (e);
   }
 
   switch (op->type) {
-    case NSS_BEGIN_TXN: nss_begin_txn (meta); break;
-    case NSS_COMMIT_TXN: nss_commit_txn (meta); break;
-    case NSS_ROLLBACK_TXN: nss_rollback_txn (meta); break;
-    case NSS_CRASH_AND_REOPEN: nss_crash_and_reopen (meta); break;
-    case NSS_CLOSE_AND_REOPEN: nss_close_and_reopen (meta); break;
-    case NSS_CREATE: nss_create (meta, op); break;
-    case NSS_SWITCH: nss_switch (meta, op); break;
-    case NSS_DELETE: nss_delete (meta, op); break;
-    case NSS_INSERT: nss_insert (meta, op); break;
-    case NSS_REMOVE: nss_remove (meta, op); break;
-    case NSS_READ: nss_read (meta, op); break;
-    case NSS_WRITE: nss_write (meta, op); break;
+    case NSS_BEGIN_TXN: WRAP (nss_begin_txn (meta, e)); break;
+    case NSS_COMMIT_TXN: WRAP (nss_commit_txn (meta, e)); break;
+    case NSS_ROLLBACK_TXN: WRAP (nss_rollback_txn (meta, e)); break;
+    case NSS_CRASH_AND_REOPEN: WRAP (nss_crash_and_reopen (meta, e)); break;
+    case NSS_CLOSE_AND_REOPEN: WRAP (nss_close_and_reopen (meta, e)); break;
+    case NSS_CREATE_AND_SWAP_IF_EMPTY: WRAP (nss_create (meta, op, e)); break;
+    case NSS_SWITCH: WRAP (nss_switch (meta, op, e)); break;
+    case NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH: WRAP (nss_delete (meta, op, e)); break;
+    case NSS_INSERT: WRAP (nss_insert (meta, op, e)); break;
+    case NSS_REMOVE: WRAP (nss_remove (meta, op, e)); break;
+    case NSS_READ: WRAP (nss_read (meta, op, e)); break;
+    case NSS_WRITE: WRAP (nss_write (meta, op, e)); break;
     case NSS_NONE_AVAILABLE: break;
     default: UNREACHABLE (); return -1;
   }

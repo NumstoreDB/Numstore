@@ -13,9 +13,9 @@ enum ns_action_type
   NSS_CRASH_AND_REOPEN,
   NSS_CLOSE_AND_REOPEN,
 
-  NSS_CREATE, // Create a new variable (don't swap unless it's the first one)
-  NSS_SWITCH, // Swap to an existing variable
-  NSS_DELETE, // Delete current variable and swap to a different one
+  NSS_CREATE_AND_SWAP_IF_EMPTY, // Create a new variable (don't swap unless it's the first one)
+  NSS_SWITCH,                   // Swap to an existing variable
+  NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH, // Delete current variable and swap to a different one
 
   NSS_INSERT, // Insert data into this one
   NSS_REMOVE, // remove data from this one
@@ -93,7 +93,7 @@ struct rand_op_params
   struct ns_ref *ref;
 
   // Operations that are enabled
-  u8             enabled[NSS_AT_LEN];
+  u8            *enabled;
 
   // Maximum insert length
   b_size         max_nelems;
