@@ -10,19 +10,24 @@
 
 struct ns_db
 {
-  struct nsdb   *db;
-  struct ns_txn *tx;
+  struct nsdb         *db;
+  struct ns_txn       *tx;
 
-  char          *var_committed; // Current variable we act on
-  char          *var_working;   // For rollback
+  char                *var_committed; // Current variable we act on
+  char                *var_working;   // For rollback
 
-  struct i_mem   reliable_mem;
+  struct i_mem         reliable_mem;
 
   // Metrics
-  struct i_timer timer;
-  u64            total_working_ns;
-  u64            prev_op_duration_ns;
-  u64            db_size_bytes;
+  struct i_timer       timer;
+  u64                  total_working_ns;
+  u64                  prev_op_duration_ns;
+  u64                  db_size_bytes;
+
+  // Open parameters
+  const char          *dbname;
+  struct i_mem         test_mem;
+  struct i_file_system test_fs;
 };
 
 struct ns_db *ns_db_new (
