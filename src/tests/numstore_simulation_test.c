@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/os/ns_filesystem.h"
 #include "core/os/ns_time.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "numstore/testing/ns_numstore_simulation.h"
@@ -67,6 +68,7 @@ main (int argc, char **argv)
       .sample_space_prob = 0,
       .reliable_mem      = default_mem (),
       .test_mem          = default_mem (),
+      .test_filesystem   = default_filesystem (),
   };
   memset (&params.enabled, 1, sizeof (params.enabled));
   struct ns_simulation *simul = ns_simul_open (params, &e);
@@ -86,7 +88,7 @@ main (int argc, char **argv)
     return 1;
   }
 
-  while (running) {
+  while (true) {
     if (ns_simul_step (simul, &e) < 0) {
       return -1;
     }

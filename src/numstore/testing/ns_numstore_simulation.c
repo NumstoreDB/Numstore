@@ -36,31 +36,38 @@
 
 struct ns_simulation
 {
-  struct ns_ref     *ref;
-  struct ns_db      *db;
+  struct ns_ref       *ref;
+  struct ns_db        *db;
 
   // Which actions are turned on
-  u8                 enabled[NSS_AT_LEN];
+  u8                   enabled[NSS_AT_LEN];
 
-  const char        *dbname;
-  int                max_insert_len;
-  float              sample_space_prob;
+  const char          *dbname;
+  int                  max_insert_len;
+  float                sample_space_prob;
 
   // Run identity
-  u64                seed;
-  const char        *commit_hash;
-  u64                sequence_id;
+  u64                  seed;
+  const char          *commit_hash;
+  u64                  sequence_id;
 
   // Run metrics
-  u64                start;       // Epoch for everything below
-  u64                step_number; // Which step is the test in
-  u64                clock;       // Absolute timestamp of the last observation
+  u64                  start;       // Epoch for everything below
+  u64                  step_number; // Which step is the test in
+  u64                  clock;       // Absolute timestamp of the last observation
 
-  i_timer            timer;
-  struct arena_alloc alloc;
+  i_timer              timer;
+  struct arena_alloc   alloc;
 
-  struct i_mem       reliable_mem;
-  struct i_mem       test_mem;
+  // The file system used by the system under test
+  // (can be faulty)
+  struct i_file_system test_filesystem;
+
+  // Memory used by the test (can be faulty)
+  struct i_mem         test_mem;
+
+  // Memory used for things that aren't being tested
+  struct i_mem         reliable_mem;
 };
 
 ////////// ACTIONS
@@ -249,7 +256,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
   struct ns_db *db = ns_db_new (
       params.reliable_mem,
       params.test_mem,
-      default_filesystem (),
+      params.test_filesystem,
       params.dbname,
       e
   );
@@ -277,6 +284,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
 
       .reliable_mem      = params.reliable_mem,
       .test_mem          = params.test_mem,
+      .test_filesystem   = params.test_filesystem,
   };
 
   memcpy (ret->enabled, params.enabled, sizeof (params.enabled));

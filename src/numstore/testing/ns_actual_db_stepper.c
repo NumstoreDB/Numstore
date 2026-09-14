@@ -27,7 +27,7 @@ struct ns_db *
 ns_db_new (
     struct i_mem         reliable_mem,
     struct i_mem         test_mem,
-    struct i_file_system fs,
+    struct i_file_system test_fs,
     const char          *dbname,
     error               *e
 )
@@ -42,7 +42,7 @@ ns_db_new (
     return NULL;
   }
 
-  struct nsdb *db = nsdb_open_with_resources (dbname, test_mem, fs);
+  struct nsdb *db = nsdb_open_with_resources (dbname, test_mem, test_fs);
   if (db == NULL) {
     i_timer_free (&ret->timer);
     i_free (reliable_mem, ret);
@@ -59,6 +59,10 @@ ns_db_new (
       .total_working_ns    = 0,
       .prev_op_duration_ns = 0,
       .db_size_bytes       = 0,
+
+      .test_mem            = test_mem,
+      .test_fs             = test_fs,
+      .dbname              = dbname,
   };
 
   if (ns_db_set_file_size (ret, e)) {
@@ -198,7 +202,24 @@ err_t
 ns_db_crash_and_reopen (struct ns_db *db, error *e)
 {
   pre_op (db);
+
+  // Crash the database
   err_t ret = nsdb_crash (db->db);
+
+  // Re open
+  if (ret == SUCCESS) {
+    db->db = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs);
+
+    // TODO - fix this now that nsdb_passes in an error - remove it
+    if (db->db == NULL) {
+      ret = error_causef (
+          e,
+          ERR_CORRUPT,
+          "TODO - once nsdb_open_with_resources takes in an error type, remove this line"
+      );
+    }
+  }
+
   post_op (db);
 
   if (ret < 0) {
@@ -219,7 +240,23 @@ ns_db_close_and_reopen (struct ns_db *db, error *e)
   ASSERT (db->var_working == NULL);
 
   pre_op (db);
+
   err_t ret = nsdb_close (db->db);
+
+  // Re open
+  if (ret == SUCCESS) {
+    db->db = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs);
+
+    // TODO - fix this now that nsdb_passes in an error - remove it
+    if (db->db == NULL) {
+      ret = error_causef (
+          e,
+          ERR_CORRUPT,
+          "TODO - once nsdb_open_with_resources takes in an error type, remove this line"
+      );
+    }
+  }
+
   post_op (db);
 
   if (ret < 0) {

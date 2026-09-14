@@ -32,6 +32,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+/**
+ * TODO - add nsdb_t type definition here which just has an
+ * struct nsdb and an error here
+ */
+
 struct nsdb *
 nsdb_open (const char *path)
 {

@@ -32,6 +32,11 @@
 #include <stdbool.h>
 #include <string.h>
 
+/**
+ * TODO - add smfile_t type definition here which just has an
+ * struct nsdb and an error here
+ */
+
 int
 smfile_perror (smfile_t *ns, const char *prefix)
 {

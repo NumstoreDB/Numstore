@@ -39,19 +39,24 @@ struct nsdb
   struct pager        *p;
 };
 
-struct nsdb *nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_system fs);
-int nsdb_cleanup (const char *path);
-int nsdb_close (struct nsdb *ns);
-int nsdb_crash (struct nsdb *ns);
+struct nsdb *nsdb_open_with_resources (
+    const char          *path,
+    struct i_mem         mem,
+    struct i_file_system fs
+    // TODO - add error *e here
+);
+int nsdb_cleanup (const char *path /* TODO add error *e here */);
+int nsdb_close (struct nsdb *ns /* TODO add error *e here */);
+int nsdb_crash (struct nsdb *ns /* TODO add error *e here */);
 
 // Error reporting
-const char *nsdb_strerror (struct nsdb *ns);
-int nsdb_perror (struct nsdb *ns, const char *prefix);
+const char *nsdb_strerror (struct nsdb *ns /* TODO add error *e here */);
+int nsdb_perror (struct nsdb *ns, const char *prefix /* TODO add error *e here */);
 
 // Transaction Control
-struct ns_txn *nsdb_begin (struct nsdb *smf);
-int nsdb_commit (struct nsdb *smf, struct ns_txn *txn);
-int nsdb_rollback (struct nsdb *smf, struct ns_txn *txn);
+struct ns_txn *nsdb_begin (struct nsdb *smf /* TODO add error *e here */);
+int nsdb_commit (struct nsdb *smf, struct ns_txn *txn /* TODO add error *e here */);
+int nsdb_rollback (struct nsdb *smf, struct ns_txn *txn /* TODO add error *e here */);
 
 // Create a variable
 int nsdb_create (
@@ -60,6 +65,7 @@ int nsdb_create (
     struct arena_alloc *alloc,
     struct string       vname,
     struct type         dtype
+    /* TODO - add error* e here */
 );
 
 // Delete a variable
@@ -72,6 +78,7 @@ err_t nsdb_get (
     struct get_query   *query,
     struct arena_alloc *alloc,
     struct variable   **dest
+    /* TODO - add error* e here */
 );
 
 // Insert
@@ -81,6 +88,7 @@ sb_size nsdb_insert (
     struct insert_query *query,
     struct arena_alloc  *alloc,
     struct stream       *src
+    /* TODO - add error* e here */
 );
 
 // Read
@@ -90,6 +98,7 @@ sb_size nsdb_read (
     struct read_query  *query,
     struct arena_alloc *alloc,
     struct stream      *dest
+    /* TODO - add error* e here */
 );
 
 // Write
@@ -99,6 +108,7 @@ sb_size nsdb_write (
     struct write_query *query,
     struct arena_alloc *alloc,
     struct stream      *src
+    /* TODO - add error* e here */
 );
 
 // Remove
@@ -108,6 +118,7 @@ sb_size nsdb_remove (
     struct remove_query *query,
     struct arena_alloc  *alloc,
     struct stream       *dest
+    /* TODO - add error* e here */
 );
 
 #define AUTO_BEGIN(db, tx)    \
