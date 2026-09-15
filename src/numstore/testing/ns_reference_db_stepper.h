@@ -27,6 +27,7 @@ void ns_ref_free (struct ns_ref *ref);
 
 // Utils
 u32 ns_ref_nvars (struct ns_ref *ref);
+u32 ns_ref_tracked_bytes (struct ns_ref *ref);
 const char *ns_ref_cur_name (struct ns_ref *ref);
 b_size ns_ref_cur_len (struct ns_ref *ref);
 t_size ns_ref_cur_tsize (struct ns_ref *ref);

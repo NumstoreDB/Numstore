@@ -138,6 +138,12 @@ ns_ref_nvars (struct ns_ref *ref)
   return ns_ref_cur (ref)->nvars;
 }
 
+u32
+ns_ref_tracked_bytes (struct ns_ref *ref)
+{
+  return ns_ref_cur (ref)->tracked_bytes;
+}
+
 const char *
 ns_ref_cur_name (struct ns_ref *ref)
 {
@@ -151,7 +157,8 @@ ns_ref_cur_len (struct ns_ref *ref)
 {
   struct db_state *state = ns_ref_cur (ref);
   ASSERT (state->cur);
-  return ext_array_get_len (&state->cur->data);
+  t_size size = type_byte_size (state->cur->var.dtype);
+  return ext_array_get_len (&state->cur->data) / size;
 }
 
 t_size

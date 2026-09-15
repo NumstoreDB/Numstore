@@ -90,7 +90,7 @@ gte0 (int val)
                                // PANIC_in_release_mode_is_not_allowed[-1]
 
 // Release doesn't allow these two
-#  define panic(msg)           NOT_FOR_PRODUCTION ()
+#  define panic(msg) NOT_FOR_PRODUCTION ()
 #  define ASSERT(expr)
 
 #  define DEFINE_DBG_ASSERT(type, name, var, body)     \

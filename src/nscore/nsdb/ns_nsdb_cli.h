@@ -36,7 +36,7 @@
  *
  *    switch(nscli_step_read_stdin(&cli)) {
  *        case CMD_FATAL: {
- *            nsdb_perror(cli.db, "error: ");
+ *            nscli_perror(&cli, "error: ");
  *            goto complete;
  *        }
  *
@@ -47,7 +47,7 @@
  *        case CMD_RUN: {
  *          switch(nscli_step_execute(&cli)) {
  *            case EXE_ERROR: {
- *                nsdb_perror(cli.db, "error: ");
+ *                nscli_perror(&cli, "error: ");
  *                break;
  *            }
  *            case EXE_SUCCESS: {
@@ -66,12 +66,17 @@
 struct nscli
 {
   struct nsdb       *db;         // The Database
+  error              e;          // Error state for this session
   struct dbl_buffer  stmt;       // Statement
   struct arena_alloc step_alloc; // Allocator for anything per step
 };
 
 err_t nscli_init (struct nscli *cli, const char *dbname);
 err_t nscli_step_init (struct nscli *cli);
+
+// Error reporting
+const char *nscli_strerror (struct nscli *cli);
+int nscli_perror (struct nscli *cli, const char *prefix);
 
 enum nscli_read_result
 {

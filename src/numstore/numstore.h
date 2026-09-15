@@ -37,7 +37,7 @@
  * @brief Opaque handles and types to pass into numstore functions
  ******************************************************************************/
 
-typedef struct nsdb     nsdb_t;
+typedef struct nsdb_t   nsdb_t;
 typedef struct ns_txn   ns_txn_t;
 typedef struct nsdb_var nsdb_var_t;
 

@@ -15,7 +15,7 @@
 #include "core/ns_error.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_time.h"
-#include "nscore/nsdb/ns_nsdb.h"
+#include "numstore/numstore.h"
 #include "numstore/testing/ns_numstore_simulation.h"
 
 #include <signal.h>
@@ -47,8 +47,8 @@ main (int argc, char **argv)
 
   // Parse arguments
   const char *dbname      = "foo"; // = argv[1];
-  int         duration    = 5;     // = atoi (argv[2]);
-  u64         seed        = 5;     // = strtoul (argv[3], NULL, 10);
+  int         duration    = 50;    // = atoi (argv[2]);
+  u64         seed        = 512;   // = strtoul (argv[3], NULL, 10);
   const char *commit_hash = "foo"; // = argv[4];
   u32         seqid       = 10;    // = strtoul (argv[5], NULL, 10);
 
@@ -64,7 +64,7 @@ main (int argc, char **argv)
       // .enabled[NSS_AT_LEN] = 0,
       .sequence_id       = seqid,
       .dbname            = dbname,
-      .max_insert_len    = 10000,
+      .max_insert_len    = 100,
       .sample_space_prob = 0,
       .reliable_mem      = default_mem (),
       .test_mem          = default_mem (),
@@ -88,8 +88,9 @@ main (int argc, char **argv)
     return 1;
   }
 
-  while (true) {
+  while (running) {
     if (ns_simul_step (simul, &e) < 0) {
+      error_log_consume (&e);
       return -1;
     }
 

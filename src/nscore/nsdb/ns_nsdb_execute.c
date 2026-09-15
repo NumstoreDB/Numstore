@@ -28,7 +28,6 @@
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "numstore/numstore.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -41,7 +40,8 @@ nsdb_execute_on_buffer (
     struct ns_txn      *txn,
     struct query       *q,
     void               *data,
-    struct arena_alloc *alc
+    struct arena_alloc *alc,
+    error              *e
 )
 {
   sb_size                ret = SUCCESS;
@@ -55,7 +55,7 @@ nsdb_execute_on_buffer (
     case QT_READ: {
       // Destination pointer is required
       if (data == NULL) {
-        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a read operation");
+        error_causef (e, ERR_INVALID_ARGUMENT, "data is required for a read operation");
         goto failed;
       }
 
@@ -67,7 +67,7 @@ nsdb_execute_on_buffer (
       }
 
       // Execute read
-      ret = nsdb_read (ns, txn, &q->read, alc, &stream);
+      ret = ns_nsdb_read (ns, txn, &q->read, alc, &stream, e);
       if (ret < 0) {
         goto failed;
       }
@@ -77,7 +77,7 @@ nsdb_execute_on_buffer (
     case QT_WRITE: {
       // Source pointer is required
       if (data == NULL) {
-        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a write operation");
+        error_causef (e, ERR_INVALID_ARGUMENT, "data is required for a write operation");
         goto failed;
       }
 
@@ -89,7 +89,7 @@ nsdb_execute_on_buffer (
       }
 
       // Execute write
-      ret = nsdb_write (ns, txn, &q->write, alc, &stream);
+      ret = ns_nsdb_write (ns, txn, &q->write, alc, &stream, e);
       if (ret < 0) {
         goto failed;
       }
@@ -106,10 +106,10 @@ nsdb_execute_on_buffer (
         }
 
         // Execute remove
-        ret = nsdb_remove (ns, txn, &q->remove, alc, &stream);
+        ret = ns_nsdb_remove (ns, txn, &q->remove, alc, &stream, e);
       } else {
         // Just execute remove
-        ret = nsdb_remove (ns, txn, &q->remove, alc, NULL);
+        ret = ns_nsdb_remove (ns, txn, &q->remove, alc, NULL, e);
       }
 
       if (ret < 0) {
@@ -121,7 +121,7 @@ nsdb_execute_on_buffer (
     case QT_INSERT: {
       // Source pointer is required
       if (data == NULL) {
-        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a insert operation");
+        error_causef (e, ERR_INVALID_ARGUMENT, "data is required for a insert operation");
         goto failed;
       }
 
@@ -129,7 +129,7 @@ nsdb_execute_on_buffer (
       stream_ibuf_init (&stream, &ictx, data, 0);
 
       // Do the insert
-      ret = nsdb_insert (ns, txn, &q->insert, alc, &stream);
+      ret = ns_nsdb_insert (ns, txn, &q->insert, alc, &stream, e);
       if (ret < 0) {
         goto failed;
       }
@@ -139,7 +139,7 @@ nsdb_execute_on_buffer (
 
     case QT_CREATE: {
       // Execute create
-      if (nsdb_create (ns, txn, alc, q->create.name, q->create.type)) {
+      if (ns_nsdb_create (ns, txn, &q->create, alc, e)) {
         goto failed;
       }
 
@@ -149,7 +149,7 @@ nsdb_execute_on_buffer (
     }
     case QT_DELETE: {
       // Execute delete
-      if (nsdb_delete (ns, txn, &q->delete)) {
+      if (ns_nsdb_delete (ns, txn, &q->delete, e)) {
         goto failed;
       }
 
@@ -162,19 +162,19 @@ nsdb_execute_on_buffer (
 
       // Destination pointer is required
       if (data == NULL) {
-        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
+        error_causef (e, ERR_INVALID_ARGUMENT, "data is required for a get operation");
         goto failed;
       }
 
       // Variables get their own allocator that gets freed on nsdb_var_free
-      struct arena_alloc *valloc = i_malloc (ns->mem, 1, sizeof *valloc, &ns->e);
+      struct arena_alloc *valloc = i_malloc (ns->mem, 1, sizeof *valloc, e);
       if (valloc == NULL) {
         goto failed;
       }
       arena_alloc_create_default (valloc);
 
       // Get the variable
-      if (nsdb_get (ns, txn, &q->get, valloc, &var) < 0) {
+      if (ns_nsdb_get (ns, txn, &q->get, valloc, &var, e) < 0) {
         arena_alloc_free_all (valloc);
         i_free (default_mem (), valloc);
         goto failed;
@@ -189,7 +189,7 @@ nsdb_execute_on_buffer (
       }
 
       // Transfer over to a variable handle (that can be free'd)
-      *_data = arena_malloc (valloc, 1, sizeof (struct nsdb_var), &ns->e);
+      *_data = arena_malloc (valloc, 1, sizeof (struct nsdb_var), e);
       if (*_data == NULL) {
         arena_alloc_free_all (valloc);
         i_free (default_mem (), valloc);
@@ -220,7 +220,7 @@ nsdb_execute_on_buffer (
 
 failed:
 
-  return error_trace (&ns->e);
+  return error_trace (e);
 }
 
 /******************************************************************************
@@ -228,11 +228,11 @@ failed:
  ******************************************************************************/
 
 err_t
-nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc)
+nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc, error *e)
 {
   struct ns_var_get_params gparams; // Get or create operation
 
-  struct ns_txn           *tx = nsdb_begin (db);
+  struct ns_txn           *tx = ns_nsdb_begin (db, e);
   if (tx == NULL) {
     goto failed;
   }
@@ -253,10 +253,10 @@ nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc
         .vname = query->name,
         .alloc = alloc,
     };
-    err_t err = ns_var_get (&gparams, &db->e);
+    err_t err = ns_var_get (&gparams, e);
     if (query->if_exists && err == ERR_VARIABLE_NE) {
-      db->e.cause_code = SUCCESS;
-      db->e.cmlen      = 0;
+      e->cause_code = SUCCESS;
+      e->cmlen      = 0;
       fprintf (stderr, "Variable: %.*s doesn't exist\n", strfmt (&query->name));
       goto commit;
     }
@@ -264,23 +264,24 @@ nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc
   }
 
 commit:
-  if (nsdb_commit (db, tx) < 0) {
+  if (ns_nsdb_commit (db, tx, e) < 0) {
     goto failed;
   }
   return SUCCESS;
 
 failed_rollback:
-  nsdb_rollback (db, tx);
+  ns_nsdb_rollback (db, tx, e);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 sb_size
 nsdb_read_and_print (
     struct nsdb        *db,    // The database handle
     struct read_query  *query, // The query that got parsed
-    struct arena_alloc *alloc  // Where to allocate stuff
+    struct arena_alloc *alloc, // Where to allocate stuff
+    error              *e
 )
 {
   sb_size                  ret;     // Return value
@@ -291,7 +292,7 @@ nsdb_read_and_print (
   struct stride            stride;  // Resolved stride
   struct stream            dest;    // Output stream
 
-  struct ns_txn           *tx = nsdb_begin (db);
+  struct ns_txn           *tx = ns_nsdb_begin (db, e);
   if (tx == NULL) {
     goto failed;
   }
@@ -304,7 +305,7 @@ nsdb_read_and_print (
         .vname = query->name,
         .alloc = alloc,
     };
-    WRAP_GOTO (ns_var_get (&gparams, &db->e), failed_rollback);
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
   }
 
   // Resolve sizes
@@ -317,18 +318,13 @@ nsdb_read_and_print (
 
     // A consistent database has this be a multiple of tsize
     if (len % tsize != 0) {
-      error_causef (
-          &db->e,
-          ERR_CORRUPT,
-          "Variable: %.*s has invalid byte size",
-          strfmt (&query->name)
-      );
+      error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&query->name));
       goto failed_rollback;
     }
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
+    if (stride_resolve (&stride, query->ustr, len, e)) {
       goto failed_rollback;
     }
 
@@ -344,7 +340,7 @@ nsdb_read_and_print (
     }
 
     // Create the destination stream to print to the console
-    if (type_stream_printer_init (&dest, gparams.dest.dtype, &db->e)) {
+    if (type_stream_printer_init (&dest, gparams.dest.dtype, e)) {
       goto failed_rollback;
     }
   }
@@ -391,32 +387,32 @@ nsdb_read_and_print (
         .stride = stride.stride,
         .nelem  = stride.nelems,
     };
-    ret = ns_read (rparams, &db->e);
+    ret = ns_read (rparams, e);
     WRAP_GOTO (ret, failed_rollback);
   }
 
   // COMMIT
-  if (nsdb_commit (db, tx)) {
+  if (ns_nsdb_commit (db, tx, e)) {
     goto failed;
   }
   return ret;
 
 failed_rollback:
 
-  nsdb_rollback (db, tx);
+  ns_nsdb_rollback (db, tx, e);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 err_t
-nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *alc)
+nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error *e)
 {
   sb_size ret = SUCCESS;
 
   switch (q->type) {
     case QT_READ: {
-      ret = nsdb_read_and_print (ns, &q->read, alc);
+      ret = nsdb_read_and_print (ns, &q->read, alc, e);
       if (ret < 0) {
         goto failed;
       }
@@ -434,7 +430,7 @@ nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *a
     }
 
     case QT_CREATE: {
-      if (nsdb_create (ns, NULL, alc, q->create.name, q->create.type)) {
+      if (ns_nsdb_create (ns, NULL, &q->create, alc, e)) {
         goto failed;
       }
 
@@ -448,7 +444,7 @@ nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *a
       break;
     }
     case QT_GET: {
-      ret = nsdb_get_and_print (ns, &q->get, alc);
+      ret = nsdb_get_and_print (ns, &q->get, alc, e);
       if (ret < 0) {
         goto failed;
       }
@@ -468,5 +464,5 @@ nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *a
 
 failed:
 
-  return error_trace (&ns->e);
+  return error_trace (e);
 }

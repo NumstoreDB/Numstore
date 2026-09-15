@@ -42,7 +42,7 @@ main (int argc, char **argv)
     // Read input
     switch (nscli_step_read_stdin (&cli)) {
       case CMD_FATAL: {
-        nsdb_perror (cli.db, "Error: ");
+        nscli_perror (&cli, "Error: ");
         goto complete;
       }
       case CMD_NOTHING_TO_DO: {
@@ -51,7 +51,7 @@ main (int argc, char **argv)
       case CMD_RUN: {
         switch (nscli_step_execute (&cli)) {
           case EXE_ERROR: {
-            nsdb_perror (cli.db, "Error: ");
+            nscli_perror (&cli, "Error: ");
             break;
           }
           case EXE_SUCCESS: {

@@ -1,10 +1,14 @@
 #include "numstore/testing/ns_actual_db_stepper.h"
 
+#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
+#include "core/ns_stride.h"
 #include "core/os/ns_memory.h"
 #include "core/os/ns_os_vtable.h"
 #include "core/os/ns_time.h"
+#include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/nsdb/ns_nsdb.h"
+#include "nscore/types/ns_query.h"
 #include "numstore/numstore.h"
 
 #include <string.h>
@@ -12,14 +16,25 @@
 err_t
 ns_db_set_file_size (struct ns_db *db, error *e)
 {
-  // TODO - change this
-  i64 ret = impl_file_size (db->db->p->fp, e);
-  if (ret < 0) {
+  (void)e;
+
+  // p->fp is a `struct file_pager *`, not an `i_file *` - going through
+  // impl_file_size() reinterpreted the wrong type via void* and always
+  // reported 0. fpgr_get_npages() is the public accessor for this.
+  db->db_size_bytes = (u64)fpgr_get_npages (db->db->p->fp) * NS_PAGE_SIZE;
+
+  return SUCCESS;
+}
+
+static err_t
+ns_db_reopen_handle (struct ns_db *db, error *e)
+{
+  struct nsdb *ns = ns_nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs, e);
+  if (ns == NULL) {
     return error_trace (e);
   }
 
-  db->db_size_bytes = ret;
-
+  db->db = ns;
   return SUCCESS;
 }
 
@@ -42,15 +57,8 @@ ns_db_new (
     return NULL;
   }
 
-  struct nsdb *db = nsdb_open_with_resources (dbname, test_mem, test_fs);
-  if (db == NULL) {
-    i_timer_free (&ret->timer);
-    i_free (reliable_mem, ret);
-    return NULL;
-  }
-
   *ret = (struct ns_db){
-      .db                  = db,
+      .db                  = NULL,
       .tx                  = NULL,
       .var_committed       = NULL,
       .var_working         = NULL,
@@ -65,8 +73,14 @@ ns_db_new (
       .dbname              = dbname,
   };
 
+  if (ns_db_reopen_handle (ret, e)) {
+    i_timer_free (&ret->timer);
+    i_free (reliable_mem, ret);
+    return NULL;
+  }
+
   if (ns_db_set_file_size (ret, e)) {
-    nsdb_close (db);
+    ns_nsdb_close (ret->db, e);
     i_timer_free (&ret->timer);
     i_free (reliable_mem, ret);
     return NULL;
@@ -76,14 +90,14 @@ ns_db_new (
 }
 
 err_t
-ns_db_close (struct ns_db *db)
+ns_db_close (struct ns_db *db, error *e)
 {
   ASSERT (db->tx == NULL);
   ASSERT (db->var_working == NULL);
 
   i_cfree (db->reliable_mem, db->var_committed);
 
-  err_t ret = nsdb_close (db->db);
+  err_t ret = ns_nsdb_close (db->db, e);
   i_free (db->reliable_mem, db);
 
   return ret;
@@ -101,17 +115,16 @@ ns_db_close (struct ns_db *db)
 static inline char *
 ns_db_copy_name (struct ns_db *db, char *src, error *e)
 {
-  ASSERT (db->tx == NULL);
-  ASSERT (db->var_working == NULL);
-
   char *copy = NULL;
 
   if (src) {
-    copy = i_malloc (db->reliable_mem, strlen (src), 1, e);
+    // +1 so the copy stays NUL terminated - it's handed to strfcstr(), which
+    // calls strlen() on it.
+    copy = i_malloc (db->reliable_mem, strlen (src) + 1, 1, e);
     if (copy == NULL) {
       return NULL;
     }
-    memcpy (copy, src, strlen (src));
+    memcpy (copy, src, strlen (src) + 1);
   }
 
   return copy;
@@ -125,13 +138,13 @@ ns_db_begin_txn (struct ns_db *db, error *e)
   ASSERT (db->var_working == NULL);
 
   char *var_working = ns_db_copy_name (db, db->var_committed, e);
-  if (var_working == NULL) {
+  if (var_working == NULL && db->var_committed != NULL) {
     return error_trace (e);
   }
 
   // Do the operation
   pre_op (db);
-  struct ns_txn *tx = nsdb_begin (db->db);
+  struct ns_txn *tx = ns_nsdb_begin (db->db, e);
   post_op (db);
 
   if (tx == NULL) {
@@ -141,7 +154,7 @@ ns_db_begin_txn (struct ns_db *db, error *e)
   } else {
     db->tx          = tx;
     db->var_working = var_working;
-    return ns_db_set_file_size (db, &db->db->e);
+    return ns_db_set_file_size (db, e);
   }
 }
 
@@ -153,7 +166,7 @@ ns_db_rollback_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = nsdb_rollback (db->db, db->tx);
+  err_t ret = ns_nsdb_rollback (db->db, db->tx, e);
   post_op (db);
 
   if (ret < 0) {
@@ -174,13 +187,13 @@ ns_db_commit_txn (struct ns_db *db, error *e)
   ASSERT (db->tx);
 
   char *new_committed = ns_db_copy_name (db, db->var_working, e);
-  if (new_committed == NULL) {
+  if (new_committed == NULL && db->var_working != NULL) {
     return error_trace (e);
   }
 
   // Do the operation
   pre_op (db);
-  err_t ret = nsdb_commit (db->db, db->tx);
+  err_t ret = ns_nsdb_commit (db->db, db->tx, e);
   post_op (db);
 
   if (ret < 0) {
@@ -204,20 +217,12 @@ ns_db_crash_and_reopen (struct ns_db *db, error *e)
   pre_op (db);
 
   // Crash the database
-  err_t ret = nsdb_crash (db->db);
+  err_t ret = ns_nsdb_crash (db->db, e);
+  db->db    = NULL;
 
   // Re open
   if (ret == SUCCESS) {
-    db->db = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs);
-
-    // TODO - fix this now that nsdb_passes in an error - remove it
-    if (db->db == NULL) {
-      ret = error_causef (
-          e,
-          ERR_CORRUPT,
-          "TODO - once nsdb_open_with_resources takes in an error type, remove this line"
-      );
-    }
+    ret = ns_db_reopen_handle (db, e);
   }
 
   post_op (db);
@@ -241,20 +246,12 @@ ns_db_close_and_reopen (struct ns_db *db, error *e)
 
   pre_op (db);
 
-  err_t ret = nsdb_close (db->db);
+  err_t ret = ns_nsdb_close (db->db, e);
+  db->db    = NULL;
 
   // Re open
   if (ret == SUCCESS) {
-    db->db = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs);
-
-    // TODO - fix this now that nsdb_passes in an error - remove it
-    if (db->db == NULL) {
-      ret = error_causef (
-          e,
-          ERR_CORRUPT,
-          "TODO - once nsdb_open_with_resources takes in an error type, remove this line"
-      );
-    }
+    ret = ns_db_reopen_handle (db, e);
   }
 
   post_op (db);
@@ -293,12 +290,12 @@ ns_db_set_cur (struct ns_db *db, char *vname)
 static inline err_t
 ns_db_copy_cur (struct ns_db *db, const char *vname, error *e)
 {
-  // Copy the variable to a new location
-  char *copy = i_malloc (db->reliable_mem, strlen (vname), 1, e);
+  // Copy the variable to a new location (+1 to keep the NUL terminator)
+  char *copy = i_malloc (db->reliable_mem, strlen (vname) + 1, 1, e);
   if (copy == NULL) {
-    return error_trace (&db->db->e);
+    return error_trace (e);
   }
-  memcpy (copy, vname, strlen (vname));
+  memcpy (copy, vname, strlen (vname) + 1);
 
   ns_db_set_cur (db, copy);
 
@@ -306,11 +303,22 @@ ns_db_copy_cur (struct ns_db *db, const char *vname, error *e)
 }
 
 err_t
-ns_db_create_and_maybe_switch (struct ns_db *db, const char *vname, const char *type_str, error *e)
+ns_db_create_and_maybe_switch (struct ns_db *db, const char *vname, struct type dtype, error *e)
 {
+  ALLOC_INIT (alloc);
   pre_op (db);
-  sb_size ret = nsdb_fexecute (db->db, db->tx, "create %s %s", NULL, vname, type_str);
+  sb_size ret = ns_nsdb_create (
+      db->db,
+      db->tx,
+      &(struct create_query){
+          .name = strfcstr (vname),
+          .type = dtype,
+      },
+      &alloc,
+      e
+  );
   post_op (db);
+  ALLOC_CLOSE (alloc);
 
   if (ret < 0) {
     return error_trace (e);
@@ -342,20 +350,32 @@ ns_db_delete_cur_and_switch (struct ns_db *db, const char *next, error *e)
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
-  // Copy next to a new destination
-  char *copy = i_malloc (db->reliable_mem, strlen (next), 1, &db->db->e);
-  if (copy == NULL) {
-    return error_trace (e);
+  // Copy next to a new destination (next is NULL when deleting the last
+  // remaining variable - there's nothing to switch to)
+  char *copy = NULL;
+  if (next != NULL) {
+    copy = i_malloc (db->reliable_mem, strlen (next) + 1, 1, e);
+    if (copy == NULL) {
+      return error_trace (e);
+    }
+    memcpy (copy, next, strlen (next) + 1);
   }
-  memcpy (copy, next, strlen (next));
 
   // Do the operation
   pre_op (db);
-  sb_size ret = nsdb_fexecute (db->db, db->tx, "delete %s", NULL, cur);
+  sb_size ret = ns_nsdb_delete (
+      db->db,
+      db->tx,
+      &(struct delete_query){
+          .name      = strfcstr (cur),
+          .if_exists = false,
+      },
+      e
+  );
   post_op (db);
 
   if (ret < 0) {
-    i_free (db->reliable_mem, copy);
+    i_cfree (db->reliable_mem, copy);
     return error_trace (e);
 
   } else {
@@ -370,21 +390,30 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
+  ALLOC_INIT (alloc);
+  struct stream          stream;
+  struct stream_ibuf_ctx ictx;
+  stream_ibuf_init (&stream, &ictx, data, 0);
+
   // Do operation
   pre_op (db);
-  sb_size ret = nsdb_fexecute (
+  sb_size ret = ns_nsdb_insert (
       db->db,
       db->tx,
-      "insert %s %" PRb_size " %" PRb_size,
-      data,
-      cur,
-      ofst,
-      len
+      &(struct insert_query){
+          .name = strfcstr (cur),
+          .len  = len,
+          .ofst = ofst,
+      },
+      &alloc,
+      &stream,
+      e
   );
   post_op (db);
 
+  ALLOC_CLOSE (alloc);
+
   if (ret < 0) {
-    memcpy (e, &db->db->e, sizeof (error));
     return error_trace (e);
   }
 
@@ -397,22 +426,30 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
+  ALLOC_INIT (alloc);
+  struct stream          stream;
+  struct stream_obuf_ctx ictx;
+  stream_obuf_init (&stream, &ictx, dest, 0);
+
   // Do operation
   pre_op (db);
-  sb_size ret = nsdb_fexecute (
+  sb_size ret = ns_nsdb_remove (
       db->db,
       db->tx,
-      "remove %s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
-      dest,
-      cur,
-      str.start,
-      str.start + str.nelems * str.stride,
-      str.stride
+      &(struct remove_query){
+          .name   = strfcstr (cur),
+          .blimit = 0,
+          .limit  = 0,
+          .ustr   = usfrms (str),
+      },
+      &alloc,
+      &stream,
+      e
   );
   post_op (db);
+  ALLOC_CLOSE (alloc);
 
   if (ret < 0) {
-    memcpy (e, &db->db->e, sizeof (error));
     return error_trace (e);
   }
 
@@ -425,22 +462,30 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
+  ALLOC_INIT (alloc);
+  struct stream          stream;
+  struct stream_obuf_ctx ictx;
+  stream_obuf_init (&stream, &ictx, dest, 0);
+
   // Do operation
   pre_op (db);
-  sb_size ret = nsdb_fexecute (
+  sb_size ret = ns_nsdb_read (
       db->db,
       db->tx,
-      "read %s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
-      dest,
-      cur,
-      str.start,
-      str.start + str.nelems * str.stride,
-      str.stride
+      &(struct read_query){
+          .name   = strfcstr (cur),
+          .blimit = 0,
+          .limit  = 0,
+          .ustr   = usfrms (str),
+      },
+      &alloc,
+      &stream,
+      e
   );
   post_op (db);
+  ALLOC_CLOSE (alloc);
 
   if (ret < 0) {
-    memcpy (e, &db->db->e, sizeof (error));
     return error_trace (e);
   }
 
@@ -453,22 +498,30 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
+  ALLOC_INIT (alloc);
+  struct stream          stream;
+  struct stream_ibuf_ctx ictx;
+  stream_ibuf_init (&stream, &ictx, data, 0);
+
   // Do operation
   pre_op (db);
-  sb_size ret = nsdb_fexecute (
+  sb_size ret = ns_nsdb_write (
       db->db,
       db->tx,
-      "write %s[%" PRb_size ":%" PRb_size ":%" PRb_size "]",
-      data,
-      cur,
-      str.start,
-      str.start + str.nelems * str.stride,
-      str.stride
+      &(struct write_query){
+          .name   = strfcstr (cur),
+          .blimit = 0,
+          .limit  = 0,
+          .ustr   = usfrms (str),
+      },
+      &alloc,
+      &stream,
+      e
   );
   post_op (db);
+  ALLOC_CLOSE (alloc);
 
   if (ret < 0) {
-    memcpy (e, &db->db->e, sizeof (error));
     return error_trace (e);
   }
 
@@ -605,7 +658,7 @@ TEST_DISABLED (ns_db)
     }
   }
 
-  ns_db_close (db);
+  ns_db_close (db, &e);
 }
 
 #endif

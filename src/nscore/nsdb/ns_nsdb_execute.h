@@ -28,7 +28,8 @@ sb_size nsdb_execute_on_buffer (
     struct ns_txn      *txn,
     struct query       *q,
     void               *data,
-    struct arena_alloc *alc
+    struct arena_alloc *alc,
+    error              *e
 );
 
 /******************************************************************************
@@ -38,11 +39,21 @@ sb_size nsdb_execute_on_buffer (
  ******************************************************************************/
 
 // Get a variable and print it to the console
-err_t nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc);
+err_t nsdb_get_and_print (
+    struct nsdb        *db,
+    struct get_query   *query,
+    struct arena_alloc *alloc,
+    error              *e
+);
 
 // Read data from a variable and print it to the console
-sb_size nsdb_read_and_print (struct nsdb *db, struct read_query *query, struct arena_alloc *alloc);
+sb_size nsdb_read_and_print (
+    struct nsdb        *db,
+    struct read_query  *query,
+    struct arena_alloc *alloc,
+    error              *e
+);
 
-err_t nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *alc);
+err_t nsdb_execute_in_console (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error *e);
 
 #endif
