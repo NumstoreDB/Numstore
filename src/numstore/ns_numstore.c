@@ -32,15 +32,89 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-/**
- * TODO - add nsdb_t type definition here which just has an
- * struct nsdb and an error here
- */
+struct nsdb_t
+{
+  struct nsdb *db;
+  error        e;
+};
 
-struct nsdb *
+nsdb_t *
 nsdb_open (const char *path)
 {
-  return nsdb_open_with_resources (path, default_mem (), default_filesystem ());
+  error   e   = error_create ();
+  nsdb_t *ret = i_malloc (default_mem (), 1, sizeof *ret, &e);
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  ret->e  = error_create ();
+  ret->db = ns_nsdb_open_with_resources (path, default_mem (), default_filesystem (), &ret->e);
+  if (ret->db == NULL) {
+    i_free (default_mem (), ret);
+    return NULL;
+  }
+
+  return ret;
+}
+
+int
+nsdb_cleanup (const char *path)
+{
+  error e = error_create ();
+  return ns_nsdb_cleanup (path, &e);
+}
+
+int
+nsdb_close (nsdb_t *ns)
+{
+  int ret = ns_nsdb_close (ns->db, &ns->e);
+  i_free (default_mem (), ns);
+  return ret;
+}
+
+int
+nsdb_crash (nsdb_t *ns)
+{
+  int ret = ns_nsdb_crash (ns->db, &ns->e);
+  i_free (default_mem (), ns);
+  return ret;
+}
+
+const char *
+nsdb_strerror (nsdb_t *ns)
+{
+  if (ns->e.cause_code < 0) {
+    return ns->e.cause_msg;
+  }
+  return NULL;
+}
+
+int
+nsdb_perror (nsdb_t *ns, const char *prefix)
+{
+  const char *err = nsdb_strerror (ns);
+  if (err) {
+    return fprintf (stderr, "%s: %s\n", prefix, err);
+  }
+  return fprintf (stderr, "%s: success\n", prefix);
+}
+
+ns_txn_t *
+nsdb_begin (nsdb_t *ns)
+{
+  return ns_nsdb_begin (ns->db, &ns->e);
+}
+
+int
+nsdb_commit (nsdb_t *ns, ns_txn_t *txn)
+{
+  return ns_nsdb_commit (ns->db, txn, &ns->e);
+}
+
+int
+nsdb_rollback (nsdb_t *ns, ns_txn_t *txn)
+{
+  return ns_nsdb_rollback (ns->db, txn, &ns->e);
 }
 
 sb_size
@@ -87,7 +161,7 @@ nsdb_fexecute (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, ...)
     ret = error_trace (&nh->e);
     goto theend;
   }
-  ret = nsdb_execute_on_buffer (nh, txn, &q, data, &alloc);
+  ret = nsdb_execute_on_buffer (nh->db, txn, &q, data, &alloc, &nh->e);
 
 theend:
   ALLOC_CLOSE (alloc);
@@ -134,7 +208,7 @@ nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, 
 
   // Everything except read/remove: no allocation to do, just delegate.
   if (q.type != QT_READ && q.type != QT_REMOVE) {
-    if (nsdb_execute_on_buffer (nh, txn, &q, data, &alloc) < 0) {
+    if (nsdb_execute_on_buffer (nh->db, txn, &q, data, &alloc, &nh->e) < 0) {
       goto theend;
     }
     ret = data;
@@ -153,7 +227,7 @@ nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, 
 
   struct variable *var;
   struct get_query gq = {.name = vname, .if_exists = false};
-  if (nsdb_get (nh, txn, &gq, &alloc, &var) < 0) {
+  if (ns_nsdb_get (nh->db, txn, &gq, &alloc, &var, &nh->e) < 0) {
     goto theend_rollback;
   }
 
@@ -162,18 +236,18 @@ nsdb_fexecute_malloc (nsdb_t *nh, ns_txn_t *txn, const char *query, void *data, 
   // t_size tsize  = type_byte_size (var->dtype);
   b_size nbytes = var->nbytes;
 
-  void  *buf2   = i_malloc (nh->mem, nbytes > 0 ? nbytes : 1, 1, &nh->e);
+  void  *buf2   = i_malloc (nh->db->mem, nbytes > 0 ? nbytes : 1, 1, &nh->e);
   if (buf2 == NULL) {
     goto theend_rollback;
   }
 
-  if (nbytes > 0 && nsdb_execute_on_buffer (nh, txn, &q, buf2, &alloc) < 0) {
-    i_free (nh->mem, buf2);
+  if (nbytes > 0 && nsdb_execute_on_buffer (nh->db, txn, &q, buf2, &alloc, &nh->e) < 0) {
+    i_free (nh->db->mem, buf2);
     goto theend_rollback;
   }
 
   if (auto_txn && nsdb_commit (nh, txn) < 0) {
-    i_free (nh->mem, buf2);
+    i_free (nh->db->mem, buf2);
     goto theend;
   }
 
@@ -199,7 +273,7 @@ TEST (nsdb_fexecute)
   error e = error_create ();
 
   nsdb_cleanup ("test");
-  struct nsdb     *db  = nsdb_open ("test");
+  nsdb_t          *db  = nsdb_open ("test");
   struct nsdb_var *var = NULL;
 
   nsdb_fexecute (db, NULL, "get %s", &var, "a");
@@ -221,7 +295,7 @@ TEST (nsdb_fexecute)
 TEST (nsdb_fexecute_malloc)
 {
   nsdb_cleanup ("test");
-  struct nsdb *db = nsdb_open ("test");
+  nsdb_t *db = nsdb_open ("test");
 
   test_assert_int_equal (nsdb_fexecute (db, NULL, "create foo u32", NULL), 0);
 
@@ -273,7 +347,7 @@ nsdb_var_free (nsdb_t *db, nsdb_var_t *var)
 
   struct arena_alloc *alloc = var->alloc;
   arena_alloc_free_all (alloc);
-  i_free (db->mem, alloc);
+  i_free (db->db->mem, alloc);
 }
 
 #ifdef TESTING

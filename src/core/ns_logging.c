@@ -46,6 +46,37 @@ i_log_flush (void)
   fflush (stdout);
 }
 
+////////////////////////////////////////////////////////////
+// JSON PRINTING
+
+void
+print_json (const char *first, ...)
+{
+  va_list args;
+  va_start (args, first);
+
+  fputs ("{ ", stdout);
+
+  bool        is_first = true;
+  const char *key      = first;
+  while (key != NULL) {
+    const char *value = va_arg (args, const char *);
+
+    if (!is_first) {
+      fputs (", ", stdout);
+    }
+    is_first = false;
+
+    fprintf (stdout, "\"%s\": %s", key, value);
+
+    key = va_arg (args, const char *);
+  }
+
+  fputs (" }\n", stdout);
+
+  va_end (args);
+}
+
 #ifdef TESTING
 TEST (i_log)
 {

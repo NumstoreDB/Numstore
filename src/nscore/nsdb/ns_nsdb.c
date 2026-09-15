@@ -31,7 +31,6 @@
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "numstore/numstore.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -39,20 +38,17 @@
 #include <string.h>
 
 struct nsdb *
-nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_system fs)
+ns_nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_system fs, error *e)
 {
-  error        e   = error_create ();
-  struct nsdb *ret = i_malloc (mem, 1, sizeof *ret, &e);
+  struct nsdb *ret = i_malloc (mem, 1, sizeof *ret, e);
 
   if (ret == NULL) {
-    // TODO - what to do with the error?
     return NULL;
   }
 
   // Initialize inner values
   {
     // Trivial initializers
-    ret->e = error_create ();
     slab_alloc_init (&ret->txn_alloc, mem, sizeof (struct ns_txn), 512);
     latch_init (&ret->l);
     ret->mem       = mem;
@@ -62,27 +58,27 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
 
     // Path
     ret->path.len  = strlen (path);
-    ret->path.data = i_malloc (mem, ret->path.len, 1, &e);
+    ret->path.data = i_malloc (mem, ret->path.len, 1, e);
     if (ret->path.data == NULL) {
       goto failed;
     }
 
     // Pager
-    ret->p = pgr_open (path, mem, fs, &e);
+    ret->p = pgr_open (path, mem, fs, e);
     if (ret->p == NULL) {
       goto failed;
     }
   }
 
   // New pager - initialze the upfront hash map
-  if ((pgr_isnew (ret->p)) && (ns_init_var_hash_map (ret->p, &e)))
+  if ((pgr_isnew (ret->p)) && (ns_init_var_hash_map (ret->p, e)))
   // Initialize the upfront hash page
   {
     goto failed;
   }
 
   // Launch the checkpoint writer thread
-  if (pgr_launch_checkpoint_thread (ret->p, 5000, &e)) {
+  if (pgr_launch_checkpoint_thread (ret->p, 5000, e)) {
     goto failed;
   }
 
@@ -90,29 +86,28 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
 
 failed:
   if (ret->p) {
-    pgr_close (ret->p, &e);
+    pgr_close (ret->p, e);
   }
   i_free (mem, (void *)ret->path.data);
   i_free (mem, ret);
-  pgr_delete_single_file (path, &e);
+  pgr_delete_single_file (path, e);
   return NULL;
 }
 
 int
-nsdb_cleanup (const char *path)
+ns_nsdb_cleanup (const char *path, error *e)
 {
-  error e = error_create ();
-  pgr_delete_single_file (path, &e);
-  return error_trace (&e);
+  pgr_delete_single_file (path, e);
+  return error_trace (e);
 }
 
 err_t
-nsdb_close (struct nsdb *n)
+ns_nsdb_close (struct nsdb *n, error *e)
 {
-  n->e.cause_code = SUCCESS;
-  n->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
-  err_t ret       = pgr_close (n->p, &n->e);
+  err_t ret     = pgr_close (n->p, e);
   slab_alloc_destroy (&n->txn_alloc);
 
   struct i_mem mem = n->mem;
@@ -123,12 +118,12 @@ nsdb_close (struct nsdb *n)
 }
 
 err_t
-nsdb_crash (struct nsdb *n)
+ns_nsdb_crash (struct nsdb *n, error *e)
 {
-  n->e.cause_code = SUCCESS;
-  n->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
-  err_t err       = pgr_crash (n->p, &n->e);
+  err_t err     = pgr_crash (n->p, e);
   slab_alloc_destroy (&n->txn_alloc);
 
   struct i_mem mem = n->mem;
@@ -138,37 +133,18 @@ nsdb_crash (struct nsdb *n)
   return err;
 }
 
-const char *
-nsdb_strerror (struct nsdb *ns)
-{
-  if (ns->e.cause_code < 0) {
-    return ns->e.cause_msg;
-  }
-  return NULL;
-}
-
-int
-nsdb_perror (struct nsdb *ns, const char *prefix)
-{
-  const char *err = nsdb_strerror (ns);
-  if (err) {
-    return fprintf (stderr, "%s: %s\n", prefix, nsdb_strerror (ns));
-  }
-  return fprintf (stderr, "%s: success\n", prefix);
-}
-
 struct ns_txn *
-nsdb_begin (struct nsdb *smf)
+ns_nsdb_begin (struct nsdb *smf, error *e)
 {
-  smf->e.cause_code = 0;
-  smf->e.cmlen      = 0;
+  e->cause_code     = 0;
+  e->cmlen          = 0;
 
-  struct ns_txn *tx = slab_alloc_alloc (&smf->txn_alloc, &smf->e);
+  struct ns_txn *tx = slab_alloc_alloc (&smf->txn_alloc, e);
   if (tx == NULL) {
     return NULL;
   }
 
-  if (pgr_begin_txn (tx, smf->p, &smf->e)) {
+  if (pgr_begin_txn (tx, smf->p, e)) {
     slab_alloc_free (&smf->txn_alloc, tx);
     return NULL;
   }
@@ -177,14 +153,14 @@ nsdb_begin (struct nsdb *smf)
 }
 
 err_t
-nsdb_commit (struct nsdb *smf, struct ns_txn *tx)
+ns_nsdb_commit (struct nsdb *smf, struct ns_txn *tx, error *e)
 {
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
-  if (pgr_commit (smf->p, tx, &smf->e)) {
+  if (pgr_commit (smf->p, tx, e)) {
     slab_alloc_free (&smf->txn_alloc, tx);
-    return error_trace (&smf->e);
+    return error_trace (e);
   }
 
   slab_alloc_free (&smf->txn_alloc, tx);
@@ -192,14 +168,14 @@ nsdb_commit (struct nsdb *smf, struct ns_txn *tx)
 }
 
 err_t
-nsdb_rollback (struct nsdb *smf, struct ns_txn *tx)
+ns_nsdb_rollback (struct nsdb *smf, struct ns_txn *tx, error *e)
 {
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
-  if (pgr_rollback (smf->p, tx, 0, &smf->e)) {
+  if (pgr_rollback (smf->p, tx, 0, e)) {
     slab_alloc_free (&smf->txn_alloc, tx);
-    return error_trace (&smf->e);
+    return error_trace (e);
   }
 
   slab_alloc_free (&smf->txn_alloc, tx);
@@ -207,16 +183,16 @@ nsdb_rollback (struct nsdb *smf, struct ns_txn *tx)
 }
 
 err_t
-nsdb_create (
-    struct nsdb        *db,
-    struct ns_txn      *tx,
-    struct arena_alloc *alloc,
-    struct string       vname,
-    struct type         dtype
+ns_nsdb_create (
+    struct nsdb         *db,
+    struct ns_txn       *tx,
+    struct create_query *query,
+    struct arena_alloc  *alloc,
+    error               *e
 )
 {
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
   AUTO_BEGIN (db, tx);
 
@@ -228,11 +204,11 @@ nsdb_create (
     struct ns_var_get_or_create_params gparams = {
         .p     = db->p,
         .tx    = tx,
-        .vname = vname,
-        .type  = &dtype,
+        .vname = query->name,
+        .type  = &query->type,
         .alloc = alloc,
     };
-    if (ns_var_get_or_create (&gparams, &db->e)) {
+    if (ns_var_get_or_create (&gparams, e)) {
       goto failed_rollback;
     }
   }
@@ -245,14 +221,14 @@ failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 err_t
-nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *query)
+ns_nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *query, error *e)
 {
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
   AUTO_BEGIN (db, tx);
 
@@ -266,10 +242,10 @@ nsdb_delete (struct nsdb *db, struct ns_txn *tx, struct delete_query *query)
         .vname = query->name,
     };
 
-    err_t err = ns_var_delete (params, &db->e);
+    err_t err = ns_var_delete (params, e);
     if (query->if_exists && err == ERR_VARIABLE_NE) {
-      db->e.cause_code = SUCCESS;
-      db->e.cmlen      = 0;
+      e->cause_code = SUCCESS;
+      e->cmlen      = 0;
       goto commit;
     }
 
@@ -282,32 +258,33 @@ commit:
 
   AUTO_COMMIT (db, tx);
 
-  return error_trace (&db->e);
+  return error_trace (e);
 
 failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 err_t
-nsdb_get (
+ns_nsdb_get (
     struct nsdb        *db,
     struct ns_txn      *tx,
     struct get_query   *query,
     struct arena_alloc *alloc,
-    struct variable   **dest
+    struct variable   **dest,
+    error              *e
 )
 {
   ASSERT (dest);
 
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
-  *dest            = arena_malloc (alloc, 1, sizeof (struct variable), &db->e);
+  *dest         = arena_malloc (alloc, 1, sizeof (struct variable), e);
   if (*dest == NULL) {
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
   AUTO_BEGIN (db, tx);
@@ -323,11 +300,11 @@ nsdb_get (
         .alloc = alloc,
     };
 
-    err_t err = ns_var_get (&gparams, &db->e);
+    err_t err = ns_var_get (&gparams, e);
     if (query->if_exists && err == ERR_VARIABLE_NE) {
-      db->e.cause_code = SUCCESS;
-      db->e.cmlen      = 0;
-      *dest            = NULL;
+      e->cause_code = SUCCESS;
+      e->cmlen      = 0;
+      *dest         = NULL;
       goto commit;
     }
 
@@ -347,16 +324,17 @@ failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 sb_size
-nsdb_insert (
+ns_nsdb_insert (
     struct nsdb         *db,
     struct ns_txn       *tx,
     struct insert_query *query,
     struct arena_alloc  *alloc,
-    struct stream       *src
+    struct stream       *src,
+    error               *e
 )
 {
   sb_size                     ret;     // Return value
@@ -365,8 +343,8 @@ nsdb_insert (
   struct ns_insert_params     iparams; // Insert operation
   struct ns_var_update_params uparams; // Update operation
 
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
   // Skip len 0 inserts
   if (query->len == 0) {
@@ -384,7 +362,7 @@ nsdb_insert (
         .vname = query->name,
         .alloc = alloc,
     };
-    WRAP_GOTO (ns_var_get (&gparams, &db->e), failed_rollback);
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
   }
 
   // Resolve sizes
@@ -426,7 +404,7 @@ nsdb_insert (
         .bofst = bofst,
         .bytes = query->len * tsize,
     };
-    ret = ns_insert (&iparams, &db->e);
+    ret = ns_insert (&iparams, e);
     if (ret != (sb_size)(query->len * tsize)) {
       goto failed_rollback;
     }
@@ -441,7 +419,7 @@ nsdb_insert (
         .newpg  = iparams.root,
         .nbytes = gparams.dest.nbytes + ret,
     };
-    WRAP_GOTO (ns_var_update (uparams, &db->e), failed_rollback);
+    WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
   }
 
   ASSERT (ret % tsize == 0);
@@ -454,20 +432,21 @@ failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 /******************************************************************************
- * SECTION: nsdb_read
+ * SECTION: ns_nsdb_read
  ******************************************************************************/
 
 sb_size
-nsdb_read (
+ns_nsdb_read (
     struct nsdb        *db,
     struct ns_txn      *tx,
     struct read_query  *query,
     struct arena_alloc *alloc,
-    struct stream      *dest
+    struct stream      *dest,
+    error              *e
 )
 {
   sb_size                  ret;     // Return value
@@ -477,8 +456,8 @@ nsdb_read (
   struct ns_read_params    rparams; // Read operation
   struct stride            stride;  // Resolved stride
 
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
   AUTO_BEGIN (db, tx);
 
@@ -490,7 +469,7 @@ nsdb_read (
         .vname = query->name,
         .alloc = alloc,
     };
-    WRAP_GOTO (ns_var_get (&gparams, &db->e), failed_rollback);
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
   }
 
   // Resolve sizes
@@ -503,18 +482,13 @@ nsdb_read (
 
     // A consistent database has this be a multiple of tsize
     if (len % tsize != 0) {
-      error_causef (
-          &db->e,
-          ERR_CORRUPT,
-          "Variable: %.*s has invalid byte size",
-          strfmt (&query->name)
-      );
+      error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&query->name));
       goto failed_rollback;
     }
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
+    if (stride_resolve (&stride, query->ustr, len, e)) {
       goto failed_rollback;
     }
 
@@ -572,7 +546,7 @@ nsdb_read (
         .stride = stride.stride,
         .nelem  = stride.nelems,
     };
-    ret = ns_read (rparams, &db->e);
+    ret = ns_read (rparams, e);
     WRAP_GOTO (ret, failed_rollback);
   }
 
@@ -583,16 +557,17 @@ failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 sb_size
-nsdb_remove (
+ns_nsdb_remove (
     struct nsdb         *db,
     struct ns_txn       *tx,
     struct remove_query *query,
     struct arena_alloc  *alloc,
-    struct stream       *dest
+    struct stream       *dest,
+    error               *e
 )
 {
   sb_size                     ret;     // Return value
@@ -603,8 +578,8 @@ nsdb_remove (
   struct ns_var_update_params uparams; // Update operation
   struct stride               stride;  // Resolved stride
 
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
   // BEGIN TXN
   AUTO_BEGIN (db, tx);
@@ -618,7 +593,7 @@ nsdb_remove (
         .alloc = alloc,
     };
 
-    if (ns_var_get (&gparams, &db->e)) {
+    if (ns_var_get (&gparams, e)) {
       goto failed_rollback;
     }
   }
@@ -633,18 +608,13 @@ nsdb_remove (
 
     // A consistent database has this be a multiple of tsize
     if (len % tsize != 0) {
-      error_causef (
-          &db->e,
-          ERR_CORRUPT,
-          "Variable: %.*s has invalid byte size",
-          strfmt (&query->name)
-      );
+      error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&query->name));
       goto failed_rollback;
     }
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
+    if (stride_resolve (&stride, query->ustr, len, e)) {
       goto failed_rollback;
     }
 
@@ -702,7 +672,7 @@ nsdb_remove (
         .stride = stride.stride,
         .nelem  = stride.nelems,
     };
-    ret = ns_remove (&rparams, &db->e);
+    ret = ns_remove (&rparams, e);
     WRAP_GOTO (ret, failed_rollback);
   }
 
@@ -715,7 +685,7 @@ nsdb_remove (
         .newpg  = rparams.root,
         .nbytes = gparams.dest.nbytes - (ret * tsize),
     };
-    if (ns_var_update (uparams, &db->e) < 0) {
+    if (ns_var_update (uparams, e) < 0) {
       goto failed_rollback;
     }
   }
@@ -727,16 +697,17 @@ failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }
 
 sb_size
-nsdb_write (
+ns_nsdb_write (
     struct nsdb        *db,
     struct ns_txn      *tx,
     struct write_query *query,
     struct arena_alloc *alloc,
-    struct stream      *src
+    struct stream      *src,
+    error              *e
 )
 {
   sb_size                  ret;     // Return value
@@ -746,8 +717,8 @@ nsdb_write (
   struct ns_write_params   wparams; // Write operation
   struct stride            stride;  // Resolved stride
 
-  db->e.cause_code = SUCCESS;
-  db->e.cmlen      = 0;
+  e->cause_code = SUCCESS;
+  e->cmlen      = 0;
 
   AUTO_BEGIN (db, tx);
 
@@ -759,7 +730,7 @@ nsdb_write (
         .vname = query->name,
         .alloc = alloc,
     };
-    WRAP_GOTO (ns_var_get (&gparams, &db->e), failed_rollback);
+    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
   }
 
   // Resolve sizes
@@ -772,18 +743,13 @@ nsdb_write (
 
     // A consistent database has this be a multiple of tsize
     if (len % tsize != 0) {
-      error_causef (
-          &db->e,
-          ERR_CORRUPT,
-          "Variable: %.*s has invalid byte size",
-          strfmt (&query->name)
-      );
+      error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&query->name));
       goto failed_rollback;
     }
     len /= tsize;
 
     // Resolve length based on the stride
-    if (stride_resolve (&stride, query->ustr, len, &db->e)) {
+    if (stride_resolve (&stride, query->ustr, len, e)) {
       goto failed_rollback;
     }
 
@@ -843,7 +809,7 @@ nsdb_write (
         .stride = stride.stride,
         .nelem  = stride.nelems,
     };
-    ret = ns_write (wparams, &db->e);
+    ret = ns_write (wparams, e);
     WRAP_GOTO (ret, failed_rollback);
   }
 
@@ -855,5 +821,5 @@ failed_rollback:
   ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
-  return error_trace (&db->e);
+  return error_trace (e);
 }

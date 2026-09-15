@@ -17,11 +17,12 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
+#include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
-#include "numstore/numstore.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -31,7 +32,8 @@
 err_t
 nscli_init (struct nscli *cli, const char *dbname)
 {
-  cli->db = nsdb_open (dbname);
+  cli->e  = error_create ();
+  cli->db = ns_nsdb_open_with_resources (dbname, default_mem (), default_filesystem (), &cli->e);
 
   if (cli->db == NULL) {
     return -1;
@@ -40,14 +42,33 @@ nscli_init (struct nscli *cli, const char *dbname)
   return SUCCESS;
 }
 
+const char *
+nscli_strerror (struct nscli *cli)
+{
+  if (cli->e.cause_code < 0) {
+    return cli->e.cause_msg;
+  }
+  return NULL;
+}
+
+int
+nscli_perror (struct nscli *cli, const char *prefix)
+{
+  const char *err = nscli_strerror (cli);
+  if (err) {
+    return fprintf (stderr, "%s: %s\n", prefix, err);
+  }
+  return fprintf (stderr, "%s: success\n", prefix);
+}
+
 err_t
 nscli_step_init (struct nscli *cli)
 {
   arena_alloc_create_default (&cli->step_alloc);
 
-  if (dblb_create (&cli->stmt, &cli->step_alloc, 1, 128, &cli->db->e)) {
+  if (dblb_create (&cli->stmt, &cli->step_alloc, 1, 128, &cli->e)) {
     arena_alloc_free_all (&cli->step_alloc);
-    return error_trace (&cli->db->e);
+    return error_trace (&cli->e);
   }
 
   return SUCCESS;
@@ -102,7 +123,7 @@ nscli_step_read_stdin (struct nscli *cli)
   // Accumulate lines until a ';' appears or EOF.
   while (true) {
     // Read a whole line
-    int r = append_line (&cli->stmt, stdin, &cli->db->e);
+    int r = append_line (&cli->stmt, stdin, &cli->e);
 
     // handle error
     if (r < 0) {
@@ -118,7 +139,7 @@ nscli_step_read_stdin (struct nscli *cli)
     // Check if this line is the last one
     if (has_terminator (&cli->stmt)) {
       char c = '\0';
-      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e)) {
+      if (dblb_append (&cli->stmt, &c, 1, &cli->e)) {
         return CMD_FATAL;
       }
       break;
@@ -127,7 +148,7 @@ nscli_step_read_stdin (struct nscli *cli)
     if (cli->stmt.nelem > 0) {
       /* Separate lines with a space so tokens don't merge. */
       char c = ' ';
-      if (dblb_append (&cli->stmt, &c, 1, &cli->db->e)) {
+      if (dblb_append (&cli->stmt, &c, 1, &cli->e)) {
         return CMD_FATAL;
       }
     }
@@ -150,7 +171,7 @@ nscli_step_execute (struct nscli *cli)
   struct query              q;
 
   // compile the query
-  if (compile_query (&q, cli->stmt.data, &cli->step_alloc, &cli->db->e)) {
+  if (compile_query (&q, cli->stmt.data, &cli->step_alloc, &cli->e)) {
     ret = EXE_ERROR;
     goto theend;
   }
@@ -164,7 +185,7 @@ nscli_step_execute (struct nscli *cli)
   }
 
   // Execute the query
-  if (nsdb_execute_in_console (cli->db, &q, &cli->step_alloc) < 0) {
+  if (nsdb_execute_in_console (cli->db, &q, &cli->step_alloc, &cli->e) < 0) {
     ret = EXE_ERROR;
     goto theend;
   }
@@ -178,13 +199,13 @@ nscli_step_clean (struct nscli *cli)
 {
   arena_alloc_free_all (&cli->step_alloc);
   dblb_reset (&cli->stmt);
-  cli->db->e.cause_code = SUCCESS;
-  cli->db->e.cmlen      = 0;
+  cli->e.cause_code = SUCCESS;
+  cli->e.cmlen      = 0;
 }
 
 void
 nscli_close (struct nscli *cli)
 {
   arena_alloc_free_all (&cli->step_alloc);
-  nsdb_close (cli->db);
+  ns_nsdb_close (cli->db, &cli->e);
 }

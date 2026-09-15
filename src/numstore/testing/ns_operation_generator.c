@@ -212,6 +212,26 @@ get_random_type (struct arena_alloc *alloc, error *e)
   return type_random (alloc, depth, e);
 }
 
+/**
+ * A single randomly generated element type can be tens of megabytes wide, so an
+ * element count on its own doesn't bound the buffer an operation needs. Cap
+ * every generated payload to this many bytes and derive the element ceiling
+ * from the current variable's type size.
+ */
+#define OPG_MAX_PAYLOAD_BYTES ((b_size)1 << 20) // 1 MiB
+
+static b_size
+get_max_elems (struct ns_ref *ref)
+{
+  t_size size = ns_ref_cur_tsize (ref);
+  ASSERT (size > 0);
+
+  b_size max = OPG_MAX_PAYLOAD_BYTES / size;
+
+  // Always allow at least one element, even for absurdly wide types
+  return max > 0 ? max : 1;
+}
+
 static void
 get_random_slice (struct ns_ref *ref, b_size *ofst, b_size *stride, b_size *nelems)
 {
@@ -228,7 +248,14 @@ get_random_slice (struct ns_ref *ref, b_size *ofst, b_size *stride, b_size *nele
 
   // Elements is between [1, (len - offset + stride - 1) / stride]
   b_size max_len   = (remaining + *stride - 1) / *stride;
-  *nelems          = randu64r (1, max_len);
+
+  // Keep the destination buffer bounded
+  b_size budget    = get_max_elems (ref);
+  if (max_len > budget) {
+    max_len = budget;
+  }
+
+  *nelems = randu64r (1, max_len);
 }
 
 static u8 *
@@ -314,8 +341,16 @@ build_delete (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_insert (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst   = randu64r (0, ns_ref_cur_len (params.ref));
-  b_size nelems = randu64r (1, params.max_nelems);
+  b_size ofst       = randu64r (0, ns_ref_cur_len (params.ref));
+
+  // Keep the payload bounded - max_nelems alone doesn't bound the buffer
+  b_size max_nelems = params.max_nelems;
+  b_size budget     = get_max_elems (params.ref);
+  if (max_nelems > budget) {
+    max_nelems = budget;
+  }
+
+  b_size nelems = randu64r (1, max_nelems);
   u8    *data   = get_random_data (params.ref, &dest->alloc, nelems, e);
 
   if (data == NULL) {
@@ -506,11 +541,13 @@ opg_free (struct operation *op)
 
 TEST (opg)
 {
-  error                 e      = error_create ();
-  struct ns_ref        *ref    = ns_ref_new (mem, &e);
+  error                 e   = error_create ();
+  struct ns_ref        *ref = ns_ref_new (mem, &e);
+  u8                    enabled[NSS_AT_LEN];
   struct rand_op_params params = {
       .ref        = ref,
       .max_nelems = 64,
+      .enabled    = enabled,
       .mem        = mem,
   };
   memset (params.enabled, 1, NSS_AT_LEN);

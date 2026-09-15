@@ -32,15 +32,20 @@
 #include <stdbool.h>
 #include <string.h>
 
-/**
- * TODO - add smfile_t type definition here which just has an
- * struct nsdb and an error here
- */
+struct smfile
+{
+  struct nsdb *db;
+  error        e;
+};
 
 int
-smfile_perror (smfile_t *ns, const char *prefix)
+smfile_perror (smfile_t *smf, const char *prefix)
 {
-  return nsdb_perror ((struct nsdb *)ns, prefix);
+  const char *err = smfile_strerror (smf);
+  if (err) {
+    return fprintf (stderr, "%s: %s\n", prefix, err);
+  }
+  return fprintf (stderr, "%s: success\n", prefix);
 }
 
 #ifdef TESTING
@@ -60,9 +65,12 @@ TEST (smfile_perror)
 #endif
 
 const char *
-smfile_strerror (smfile_t *ns)
+smfile_strerror (smfile_t *smf)
 {
-  return nsdb_strerror ((struct nsdb *)ns);
+  if (smf->e.cause_code < 0) {
+    return smf->e.cause_msg;
+  }
+  return NULL;
 }
 
 #ifdef TESTING
@@ -84,7 +92,8 @@ TEST (smfile_strerror)
 int
 smfile_cleanup (const char *path)
 {
-  return nsdb_cleanup (path);
+  error e = error_create ();
+  return ns_nsdb_cleanup (path, &e);
 }
 
 #ifdef TESTING
@@ -107,9 +116,9 @@ TEST (smfile_cleanup)
 #endif
 
 sb_size
-smfile_size (smfile_t *_smf, sm_txn_t *tx)
+smfile_size (smfile_t *smf, sm_txn_t *tx)
 {
-  struct nsdb *smf  = (struct nsdb *)_smf;
+  struct nsdb *db   = smf->db;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -120,11 +129,11 @@ smfile_size (smfile_t *_smf, sm_txn_t *tx)
 
   b_size ret;
 
-  AUTO_BEGIN (smf, tx);
+  AUTO_BEGIN (db, tx);
 
   // GET
   struct ns_var_get_params gparams = {
-      .p     = smf->p,
+      .p     = db->p,
       .tx    = tx,
       .vname = strfcstr (DEFAULT_VARIABLE),
       .alloc = &temp,
@@ -135,14 +144,14 @@ smfile_size (smfile_t *_smf, sm_txn_t *tx)
 
   ret = gparams.dest.nbytes;
 
-  AUTO_COMMIT (smf, tx);
+  AUTO_COMMIT (db, tx);
 
   ALLOC_CLOSE (temp);
 
   return ret;
 
 failed_rollback:
-  ROLLBACK_PRESERVING_ERROR (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -172,9 +181,11 @@ TEST (smfile_size)
 #endif
 
 int
-smfile_close (smfile_t *ns)
+smfile_close (smfile_t *smf)
 {
-  return nsdb_close ((struct nsdb *)ns);
+  int ret = ns_nsdb_close (smf->db, &smf->e);
+  i_free (default_mem (), smf);
+  return ret;
 }
 
 #ifdef TESTING
@@ -195,9 +206,11 @@ TEST (smfile_close)
 #endif
 
 int
-smfile_crash (smfile_t *ns)
+smfile_crash (smfile_t *smf)
 {
-  return nsdb_crash ((struct nsdb *)ns);
+  int ret = ns_nsdb_crash (smf->db, &smf->e);
+  i_free (default_mem (), smf);
+  return ret;
 }
 
 #ifdef TESTING
@@ -218,21 +231,21 @@ TEST (smfile_crash)
 #endif
 
 struct ns_txn *
-smfile_begin (smfile_t *_smf)
+smfile_begin (smfile_t *smf)
 {
-  return nsdb_begin ((struct nsdb *)_smf);
+  return ns_nsdb_begin (smf->db, &smf->e);
 }
 
 int
-smfile_commit (smfile_t *_smf, struct ns_txn *tx)
+smfile_commit (smfile_t *smf, struct ns_txn *tx)
 {
-  return nsdb_commit ((struct nsdb *)_smf, tx);
+  return ns_nsdb_commit (smf->db, tx, &smf->e);
 }
 
 int
 smfile_rollback (smfile_t *smf, struct ns_txn *tx)
 {
-  return nsdb_rollback ((struct nsdb *)smf, tx);
+  return ns_nsdb_rollback (smf->db, tx, &smf->e);
 }
 
 #ifdef TESTING
@@ -264,21 +277,28 @@ TEST (smfile_txns)
 smfile_t *
 smfile_open (const char *path)
 {
-  struct nsdb *ret = nsdb_open_with_resources (path, default_mem (), default_filesystem ());
-
+  error     e   = error_create ();
+  smfile_t *ret = i_malloc (default_mem (), 1, sizeof *ret, &e);
   if (ret == NULL) {
     return NULL;
   }
 
+  ret->e  = error_create ();
+  ret->db = ns_nsdb_open_with_resources (path, default_mem (), default_filesystem (), &ret->e);
+  if (ret->db == NULL) {
+    i_free (default_mem (), ret);
+    return NULL;
+  }
+
   // Create the default variable
-  if (pgr_isnew (ret->p)) {
+  if (pgr_isnew (ret->db->p)) {
     struct ns_txn tx;
-    if (pgr_begin_txn (&tx, ret->p, &ret->e)) {
+    if (pgr_begin_txn (&tx, ret->db->p, &ret->e)) {
       goto failed;
     }
 
     struct ns_var_create_params params = {
-        .p     = ret->p,
+        .p     = ret->db->p,
         .tx    = &tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
         .type  = &(struct type){.type = T_PRIM, .p = U8},
@@ -287,15 +307,16 @@ smfile_open (const char *path)
       goto failed;
     }
 
-    if (pgr_commit (ret->p, &tx, &ret->e)) {
+    if (pgr_commit (ret->db->p, &tx, &ret->e)) {
       goto failed;
     }
   }
 
-  return (smfile_t *)ret;
+  return ret;
 
 failed:
-  nsdb_close (ret);
+  ns_nsdb_close (ret->db, &ret->e);
+  i_free (default_mem (), ret);
 
   return NULL;
 }
@@ -324,9 +345,9 @@ TEST (smfile_open)
 ////// Insert
 
 sb_size
-smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst, b_size slen)
+smfile_insert (smfile_t *smf, struct ns_txn *tx, const void *src, sb_size bofst, b_size slen)
 {
-  struct nsdb *smf  = (struct nsdb *)_smf;
+  struct nsdb *db   = smf->db;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -350,12 +371,12 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
 
   stream_ibuf_init (&_input, &ctx, src, slen);
 
-  AUTO_BEGIN (smf, tx);
+  AUTO_BEGIN (db, tx);
 
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = smf->p,
+        .p     = db->p,
         .tx    = tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
@@ -371,7 +392,7 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
   // INSERT
   {
     iparams = (struct ns_insert_params){
-        .p     = smf->p,
+        .p     = db->p,
         .src   = &_input,
         .tx    = tx,
         .root  = gparams.dest.rpt_root,
@@ -384,7 +405,7 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p      = smf->p,
+        .p      = db->p,
         .tx     = tx,
         .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
         .newpg  = iparams.root,
@@ -394,7 +415,7 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
   }
 
   // COMMIT
-  AUTO_COMMIT (smf, tx);
+  AUTO_COMMIT (db, tx);
 
   ALLOC_CLOSE (temp);
 
@@ -402,7 +423,7 @@ smfile_insert (smfile_t *_smf, struct ns_txn *tx, const void *src, sb_size bofst
 
 failed_rollback:
 
-  ROLLBACK_PRESERVING_ERROR (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -430,7 +451,7 @@ TEST (smfile_insert)
 
 sb_size
 smfile_read (
-    smfile_t      *_smf,
+    smfile_t      *smf,
     struct ns_txn *tx,
     void          *dest,
     t_size         size,
@@ -439,7 +460,7 @@ smfile_read (
     b_size         nelem
 )
 {
-  struct nsdb *smf  = (struct nsdb *)_smf;
+  struct nsdb *db   = smf->db;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -471,12 +492,12 @@ smfile_read (
   }
 
   // BEGIN TXN
-  AUTO_BEGIN (smf, tx);
+  AUTO_BEGIN (db, tx);
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = smf->p,
+        .p     = db->p,
         .tx    = tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
@@ -502,7 +523,7 @@ smfile_read (
   // READ
   {
     rparams = (struct ns_read_params){
-        .p      = smf->p,
+        .p      = db->p,
         .dest   = output,
         .tx     = tx,
         .root   = gparams.dest.rpt_root,
@@ -518,13 +539,13 @@ smfile_read (
 commit:
 
   // COMMIT
-  AUTO_COMMIT (smf, tx);
+  AUTO_COMMIT (db, tx);
   ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
 
-  ROLLBACK_PRESERVING_ERROR (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -559,7 +580,7 @@ TEST (smfile_read)
 
 sb_size
 smfile_remove (
-    smfile_t      *_smf,
+    smfile_t      *smf,
     struct ns_txn *tx,
     void          *dest,
     t_size         size,
@@ -568,7 +589,7 @@ smfile_remove (
     b_size         nelem
 )
 {
-  struct nsdb *smf  = (struct nsdb *)_smf;
+  struct nsdb *db   = smf->db;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -601,12 +622,12 @@ smfile_remove (
   }
 
   // BEGIN TXN
-  AUTO_BEGIN (smf, tx);
+  AUTO_BEGIN (db, tx);
 
   // GET VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = smf->p,
+        .p     = db->p,
         .tx    = tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
@@ -632,7 +653,7 @@ smfile_remove (
   // REMOVE
   {
     rparams = (struct ns_remove_params){
-        .p      = smf->p,
+        .p      = db->p,
         .dest   = output,
         .tx     = tx,
         .root   = gparams.dest.rpt_root,
@@ -648,7 +669,7 @@ smfile_remove (
   // UPDATE VARIABLE
   {
     uparams = (struct ns_var_update_params){
-        .p      = smf->p,
+        .p      = db->p,
         .tx     = tx,
         .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
         .newpg  = rparams.root,
@@ -660,13 +681,13 @@ smfile_remove (
 commit:
 
   // COMMIT
-  AUTO_COMMIT (smf, tx);
+  AUTO_COMMIT (db, tx);
   ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
 
-  ROLLBACK_PRESERVING_ERROR (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   ALLOC_CLOSE (temp);
@@ -703,7 +724,7 @@ TEST (smfile_remove)
 
 sb_size
 smfile_write (
-    smfile_t      *_smf,
+    smfile_t      *smf,
     struct ns_txn *tx,
     const void    *src,
     t_size         size,
@@ -712,7 +733,7 @@ smfile_write (
     b_size         nelem
 )
 {
-  struct nsdb *smf  = (struct nsdb *)_smf;
+  struct nsdb *db   = smf->db;
 
   smf->e.cause_code = SUCCESS;
   smf->e.cmlen      = 0;
@@ -748,12 +769,12 @@ smfile_write (
   }
 
   // BEGIN TXN
-  AUTO_BEGIN (smf, tx);
+  AUTO_BEGIN (db, tx);
 
   // GET OR CREATE VARIABLE
   {
     gparams = (struct ns_var_get_params){
-        .p     = smf->p,
+        .p     = db->p,
         .tx    = tx,
         .vname = strfcstr (DEFAULT_VARIABLE),
         .alloc = &temp,
@@ -777,7 +798,7 @@ smfile_write (
     stream_ibuf_init (&_input, &ctx, src, size * write_nelem);
 
     wparams = (struct ns_write_params){
-        .p      = smf->p,
+        .p      = db->p,
         .src    = &_input,
         .tx     = tx,
         .root   = gparams.dest.rpt_root,
@@ -798,7 +819,7 @@ smfile_write (
       stream_ibuf_init (&_input, &ctx, (u8 *)src + (write_nelem * size), insert_nelem * size);
 
       iparams = (struct ns_insert_params){
-          .p     = smf->p,
+          .p     = db->p,
           .src   = &_input,
           .tx    = tx,
           .root  = wparams.root,
@@ -813,7 +834,7 @@ smfile_write (
     // UPDATE VARIABLE
     {
       uparams = (struct ns_var_update_params){
-          .p      = smf->p,
+          .p      = db->p,
           .tx     = tx,
           .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
           .newpg  = iparams.root,
@@ -824,13 +845,13 @@ smfile_write (
   }
 
   // COMMIT
-  AUTO_COMMIT (smf, tx);
+  AUTO_COMMIT (db, tx);
   ALLOC_CLOSE (temp);
   return ret;
 
 failed_rollback:
 
-  ROLLBACK_PRESERVING_ERROR (smf, tx);
+  ROLLBACK_PRESERVING_ERROR (db, tx);
 
 failed:
   ALLOC_CLOSE (temp);

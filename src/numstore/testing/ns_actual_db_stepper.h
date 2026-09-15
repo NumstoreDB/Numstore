@@ -7,6 +7,8 @@
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/os/ns_time.h"
+#include "nscore/types/ns_types.h"
+#include "numstore/numstore.h"
 
 struct ns_db
 {
@@ -37,7 +39,7 @@ struct ns_db *ns_db_new (
     const char          *dbname,
     error               *e
 );
-err_t ns_db_close (struct ns_db *db);
+err_t ns_db_close (struct ns_db *db, error *e);
 
 err_t ns_db_begin_txn (struct ns_db *db, error *e);
 err_t ns_db_rollback_txn (struct ns_db *db, error *e);
@@ -47,7 +49,7 @@ err_t ns_db_close_and_reopen (struct ns_db *db, error *e);
 err_t ns_db_create_and_maybe_switch (
     struct ns_db *db,
     const char   *vname,
-    const char   *type_str,
+    struct type   dtype,
     error        *e
 );
 err_t ns_db_switch (struct ns_db *db, const char *next, error *e);
