@@ -20,30 +20,31 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
   PyObject *_db;
   PyObject *_txn;
 
-  /* rollback(db, txn) */
+  // pyns_rollback(db: capsule, txn: capsule)
   if (!PyArg_ParseTuple (args, "OO", &_db, &_txn)) {
     return NULL;
   }
 
-  nsdb_t *db = _unwrap_db (_db);
+  numstore_t *db = _unwrap_db (_db);
   if (db == NULL) {
-    return NULL; /* error already set by _unwrap_db */
+    return NULL; // error already set by _unwrap_db
   }
 
   ns_txn_t *txn = _unwrap_txn (_txn);
   if (txn == NULL) {
-    return NULL; /* error already set by _unwrap_txn */
+    return NULL; // error already set by _unwrap_txn
   }
 
-  if (nsdb_rollback (db, txn) < 0) {
-    _pyns_set_error (db);
+  // Do rollback
+  if (numstore_rollback (db, txn) < 0) {
+    _pyns_set_error_from_nsdb (db);
     return NULL;
   }
 
-  // txn is now invalid in memory - mark the capsule so reuse raises cleanly
-  // instead of dereferencing a freed pointer
+  // txn is now "closed"
   if (PyCapsule_SetPointer (_txn, &TXN_CLOSED_SENTINEL) < 0) {
-    PyErr_Clear ();
+    // PyErr_Clear ();
+    return NULL;
   }
 
   Py_RETURN_NONE;

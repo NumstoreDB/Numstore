@@ -258,25 +258,6 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
     WRAP (parse_user_stride (parser, &ustr, e));
   }
 
-  // LIMIT / BLIMIT
-  u32  limit  = 0;
-  bool blimit = false;
-  if (parser_match (parser, TT_LIMIT)) {
-    parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER)) {
-      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
-    }
-    limit  = parser_advance (parser)->integer;
-    blimit = false;
-  } else if (parser_match (parser, TT_BLIMIT)) {
-    parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER)) {
-      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
-    }
-    limit  = parser_advance (parser)->integer;
-    blimit = true;
-  }
-
   *dest = (struct query){
       .type = QT_READ,
       .read = {
@@ -285,9 +266,7 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
                   .data = (char *)tok->str.data,
                   .len  = tok->str.len,
               },
-          .ustr   = ustr,
-          .limit  = limit,
-          .blimit = blimit,
+          .ustr = ustr,
       },
   };
 
@@ -313,25 +292,6 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
     WRAP (parse_user_stride (parser, &ustr, e));
   }
 
-  // LIMIT / BLIMIT
-  u32  limit  = 0;
-  bool blimit = false;
-  if (parser_match (parser, TT_LIMIT)) {
-    parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER)) {
-      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
-    }
-    limit  = parser_advance (parser)->integer;
-    blimit = false;
-  } else if (parser_match (parser, TT_BLIMIT)) {
-    parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER)) {
-      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
-    }
-    limit  = parser_advance (parser)->integer;
-    blimit = true;
-  }
-
   *dest = (struct query){
       .type   = QT_REMOVE,
       .remove = {
@@ -340,9 +300,7 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
                   .data = (char *)tok->str.data,
                   .len  = tok->str.len,
               },
-          .ustr   = ustr,
-          .limit  = limit,
-          .blimit = blimit,
+          .ustr = ustr,
       },
   };
 
@@ -368,25 +326,6 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
     WRAP (parse_user_stride (parser, &ustr, e));
   }
 
-  // LIMIT / BLIMIT
-  u32  limit  = 0;
-  bool blimit = false;
-  if (parser_match (parser, TT_LIMIT)) {
-    parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER)) {
-      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
-    }
-    limit  = parser_advance (parser)->integer;
-    blimit = false;
-  } else if (parser_match (parser, TT_BLIMIT)) {
-    parser_advance (parser);
-    if (!parser_match (parser, TT_INTEGER)) {
-      return error_causef (e, ERR_SYNTAX, "Expected number after limit");
-    }
-    limit  = parser_advance (parser)->integer;
-    blimit = true;
-  }
-
   *dest = (struct query){
       .type  = QT_WRITE,
       .write = {
@@ -395,9 +334,7 @@ parse_query_write (struct parser *parser, struct query *dest, error *e)
                   .data = (char *)tok->str.data,
                   .len  = tok->str.len,
               },
-          .ustr   = ustr,
-          .limit  = limit,
-          .blimit = blimit,
+          .ustr = ustr,
       },
   };
 
@@ -493,47 +430,14 @@ TEST (compile_query)
   // READ
   {
     test_query_red_path ("read", ERR_SYNTAX);
-    test_query_red_path ("read limit", ERR_SYNTAX);
-    test_query_red_path ("read blimit", ERR_SYNTAX);
     test_query_red_path ("read 10", ERR_SYNTAX);
-    test_query_red_path ("read foo limit", ERR_SYNTAX);
-    test_query_red_path ("read foo blimit", ERR_SYNTAX);
-    test_query_red_path ("read foo limit -10", ERR_SYNTAX);
-    test_query_red_path ("read foo blimit -10", ERR_SYNTAX);
-    test_query_red_path ("read foo[0:10] limit -10", ERR_SYNTAX);
-    test_query_red_path ("read foo[0:10] blimit -10", ERR_SYNTAX);
     test_query_green_path (
         "read foo",
         (struct query){
             .type = QT_READ,
             .read = {
-                .name  = strfcstr ("foo"),
-                .ustr  = ustride (),
-                .limit = -1,
-            },
-        }
-    );
-    test_query_green_path (
-        "read foo limit 10",
-        (struct query){
-            .type = QT_READ,
-            .read = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride (),
-                .limit  = 10,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "read foo blimit 10",
-        (struct query){
-            .type = QT_READ,
-            .read = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride (),
-                .limit  = 10,
-                .blimit = true,
+                .name = strfcstr ("foo"),
+                .ustr = ustride (),
             },
         }
     );
@@ -542,34 +446,8 @@ TEST (compile_query)
         (struct query){
             .type = QT_READ,
             .read = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = -1,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "read foo[0:10:20] limit 40",
-        (struct query){
-            .type = QT_READ,
-            .read = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = 40,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "read foo[0:10:20] blimit 40",
-        (struct query){
-            .type = QT_READ,
-            .read = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = 40,
-                .blimit = true,
+                .name = strfcstr ("foo"),
+                .ustr = ustride012 (0, 10, 20),
             },
         }
     );
@@ -578,47 +456,14 @@ TEST (compile_query)
   // REMOVE
   {
     test_query_red_path ("remove", ERR_SYNTAX);
-    test_query_red_path ("remove limit", ERR_SYNTAX);
-    test_query_red_path ("remove blimit", ERR_SYNTAX);
     test_query_red_path ("remove 10", ERR_SYNTAX);
-    test_query_red_path ("remove foo limit", ERR_SYNTAX);
-    test_query_red_path ("remove foo blimit", ERR_SYNTAX);
-    test_query_red_path ("remove foo limit -10", ERR_SYNTAX);
-    test_query_red_path ("remove foo blimit -10", ERR_SYNTAX);
-    test_query_red_path ("remove foo[0:10] limit -10", ERR_SYNTAX);
-    test_query_red_path ("remove foo[0:10] blimit -10", ERR_SYNTAX);
     test_query_green_path (
         "remove foo",
         (struct query){
             .type   = QT_REMOVE,
             .remove = {
-                .name  = strfcstr ("foo"),
-                .ustr  = ustride (),
-                .limit = -1,
-            },
-        }
-    );
-    test_query_green_path (
-        "remove foo limit 10",
-        (struct query){
-            .type   = QT_REMOVE,
-            .remove = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride (),
-                .limit  = 10,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "remove foo blimit 10",
-        (struct query){
-            .type   = QT_REMOVE,
-            .remove = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride (),
-                .limit  = 10,
-                .blimit = true,
+                .name = strfcstr ("foo"),
+                .ustr = ustride (),
             },
         }
     );
@@ -627,34 +472,8 @@ TEST (compile_query)
         (struct query){
             .type   = QT_REMOVE,
             .remove = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = -1,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "remove foo[0:10:20] limit 40",
-        (struct query){
-            .type   = QT_REMOVE,
-            .remove = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = 40,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "remove foo[0:10:20] blimit 40",
-        (struct query){
-            .type   = QT_REMOVE,
-            .remove = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = 40,
-                .blimit = true,
+                .name = strfcstr ("foo"),
+                .ustr = ustride012 (0, 10, 20),
             },
         }
     );
@@ -663,47 +482,14 @@ TEST (compile_query)
   // WRITE
   {
     test_query_red_path ("write", ERR_SYNTAX);
-    test_query_red_path ("write limit", ERR_SYNTAX);
-    test_query_red_path ("write blimit", ERR_SYNTAX);
     test_query_red_path ("write 10", ERR_SYNTAX);
-    test_query_red_path ("write foo limit", ERR_SYNTAX);
-    test_query_red_path ("write foo blimit", ERR_SYNTAX);
-    test_query_red_path ("write foo limit -10", ERR_SYNTAX);
-    test_query_red_path ("write foo blimit -10", ERR_SYNTAX);
-    test_query_red_path ("write foo[0:10] limit -10", ERR_SYNTAX);
-    test_query_red_path ("write foo[0:10] blimit -10", ERR_SYNTAX);
     test_query_green_path (
         "write foo",
         (struct query){
             .type  = QT_WRITE,
             .write = {
-                .name  = strfcstr ("foo"),
-                .ustr  = ustride (),
-                .limit = -1,
-            },
-        }
-    );
-    test_query_green_path (
-        "write foo limit 10",
-        (struct query){
-            .type  = QT_WRITE,
-            .write = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride (),
-                .limit  = 10,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "write foo blimit 10",
-        (struct query){
-            .type  = QT_WRITE,
-            .write = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride (),
-                .limit  = 10,
-                .blimit = true,
+                .name = strfcstr ("foo"),
+                .ustr = ustride (),
             },
         }
     );
@@ -712,34 +498,8 @@ TEST (compile_query)
         (struct query){
             .type  = QT_WRITE,
             .write = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = -1,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "write foo[0:10:20] limit 40",
-        (struct query){
-            .type  = QT_WRITE,
-            .write = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = 40,
-                .blimit = false,
-            },
-        }
-    );
-    test_query_green_path (
-        "write foo[0:10:20] blimit 40",
-        (struct query){
-            .type  = QT_WRITE,
-            .write = {
-                .name   = strfcstr ("foo"),
-                .ustr   = ustride012 (0, 10, 20),
-                .limit  = 40,
-                .blimit = true,
+                .name = strfcstr ("foo"),
+                .ustr = ustride012 (0, 10, 20),
             },
         }
     );

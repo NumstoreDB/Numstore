@@ -173,12 +173,6 @@ check_keyword (const char *text, u32 len)
   if (len == sizeof ("exists") - 1 && strncmp (text, "exists", len) == 0) {
     return TT_EXISTS;
   }
-  if (len == sizeof ("blimit") - 1 && strncmp (text, "blimit", len) == 0) {
-    return TT_BLIMIT;
-  }
-  if (len == sizeof ("limit") - 1 && strncmp (text, "limit", len) == 0) {
-    return TT_LIMIT;
-  }
 
   if (len == sizeof ("struct") - 1 && strncmp (text, "struct", len) == 0) {
     return TT_STRUCT;
@@ -572,8 +566,6 @@ TEST (lexer_keywords)
       quick_tok (TT_INSERT),
       quick_tok (TT_IF),
       quick_tok (TT_EXISTS),
-      quick_tok (TT_BLIMIT),
-      quick_tok (TT_LIMIT),
       quick_tok (TT_STRUCT),
       quick_tok (TT_UNION),
       quick_tok (TT_TRUE),

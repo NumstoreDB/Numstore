@@ -57,14 +57,14 @@ main (int argc, char **argv)
   srand (seed);
 
   // Clean up any remnants of the database
-  nsdb_cleanup (dbname);
+  numstore_cleanup (dbname);
   struct ns_simulation_params params = {
       .seed              = seed,
       .commit_hash       = commit_hash,
       // .enabled[NSS_AT_LEN] = 0,
       .sequence_id       = seqid,
       .dbname            = dbname,
-      .max_insert_len    = 100,
+      .max_insert_len    = 100000,
       .sample_space_prob = 0,
       .reliable_mem      = default_mem (),
       .test_mem          = default_mem (),
@@ -99,6 +99,8 @@ main (int argc, char **argv)
       running = false;
     }
   }
+
+  ns_simul_close (simul, &e);
 
   return EXIT_SUCCESS;
 }

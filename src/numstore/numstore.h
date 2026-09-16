@@ -37,9 +37,9 @@
  * @brief Opaque handles and types to pass into numstore functions
  ******************************************************************************/
 
-typedef struct nsdb_t   nsdb_t;
-typedef struct ns_txn   ns_txn_t;
-typedef struct nsdb_var nsdb_var_t;
+typedef struct numstore     numstore_t;
+typedef struct ns_txn       ns_txn_t;
+typedef struct numstore_var numstore_var_t;
 
 #ifndef NS_TYPE_ALIASES
 
@@ -94,47 +94,48 @@ typedef uint8_t  wlh;     // WAL header
  * ******************************************************************************/
 
 // Lifecycle
-nsdb_t *nsdb_open (const char *path);
-int nsdb_cleanup (const char *path);
-int nsdb_close (nsdb_t *ns);
-int nsdb_crash (nsdb_t *ns);
+numstore_t *numstore_open (const char *path);
+int numstore_cleanup (const char *path);
+int numstore_close (numstore_t *ns);
+int numstore_crash (numstore_t *ns);
 
 // Variables
-b_size nsdb_var_len (nsdb_var_t *var);
-void nsdb_var_free (nsdb_t *db, nsdb_var_t *var);
+b_size numstore_var_len (numstore_var_t *var);
+void numstore_var_free (numstore_var_t *var);
 
 // Errors
-const char *nsdb_strerror (nsdb_t *ns);
-int nsdb_perror (nsdb_t *ns, const char *prefix);
+const char *numstore_strerror (numstore_t *ns);
+int numstore_perror (numstore_t *ns, const char *prefix);
 
 // Transactions
-ns_txn_t *nsdb_begin (nsdb_t *ns);
-int nsdb_commit (nsdb_t *ns, ns_txn_t *txn);
-int nsdb_rollback (nsdb_t *ns, ns_txn_t *txn);
+ns_txn_t *numstore_begin (numstore_t *ns);
+int numstore_commit (numstore_t *ns, ns_txn_t *txn);
+int numstore_rollback (numstore_t *ns, ns_txn_t *txn);
 
-// Execute - uses [data] if it needs it
-sb_size nsdb_fexecute (
-    nsdb_t     *ns,
-    ns_txn_t   *txn,
-    const char *query_fmt,
-    void       *data,
-    ...
-) NSDB_PRINTF (3, 5);
+typedef enum
+{
+  NSDB_PLAN_OPT_NONE          = 0,
+  NSDB_PLAN_OPT_ALLOCATE_DATA = 1u << 0,
+  NSDB_PLAN_OPT_CAPTURE_VAR   = 1u << 1,
+} numstore_plan_opt_t;
 
-// Execute - for a read/remove query, allocates and returns a buffer sized
-// to the named variable's current length instead of requiring the caller to
-// pass one in `data` (still required for insert/write, which need source
-// data only the caller has). Every other query type passes `data` straight
-// through, exactly like nsdb_fexecute(). See the implementation for the
-// full contract - notably, the returned pointer carries no count, so it
-// only tells you "big enough for everything currently in the variable",
-// not how many bytes are meaningful.
-void *nsdb_fexecute_malloc (
-    nsdb_t     *ns,
-    ns_txn_t   *txn,
-    const char *query_fmt,
-    void       *data,
+struct numstore_plan
+{
+  void           *data;
+  b_size          dlen;
+  numstore_var_t *var;
+  uint32_t        options;
+};
+
+int numstore_plan_setopt (struct numstore_plan *plan, numstore_plan_opt_t flag);
+
+// Executes a data operation
+sb_size numstore_fexecute (
+    numstore_t           *ns,
+    ns_txn_t             *txn,
+    struct numstore_plan *plan,
+    const char           *query_fmt,
     ...
-) NSDB_PRINTF (3, 5);
+) NSDB_PRINTF (4, 5);
 
 #endif

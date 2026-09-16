@@ -40,9 +40,11 @@ struct ns_simulation_params
   struct i_mem         reliable_mem;
 };
 
-// Open a new irwr simulation
+// Open a new simulation
 struct ns_simulation *ns_simul_open (struct ns_simulation_params params, error *e);
 
+// Close a simulation
+// Can error on ns_db_close
 err_t ns_simul_close (struct ns_simulation *meta, error *e);
 
 /*

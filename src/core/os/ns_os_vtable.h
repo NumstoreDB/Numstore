@@ -19,18 +19,6 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 
-/******************************************************************************
- * SECTION: OS Virtual Table
- * ----------------------------------------------------------------------------
- * @brief Single virtual table shape for every os subsystem (file, filesystem,
- * memory, threading). There is exactly one instance of this table -
- * `default_os_vtable`, defined in os/common/ns_os_vtable.c - wired to the
- * impl_<name> functions declared below. Each impl_<name> symbol is provided
- * by exactly one platform's os/posix or os/windows sources (guarded by
- * PLATFORM_POSIX / PLATFORM_WINDOWS) or by os/common sources for subsystems
- * that don't vary by platform (memory).
- ******************************************************************************/
-
 typedef enum
 {
   I_SEEK_END,
@@ -64,10 +52,6 @@ struct os_vtable
   err_t (*truncate) (void *fp, u64 bytes, error *e);
   err_t (*fallocate) (void *fp, u64 bytes, error *e);
   i64 (*seek) (void *fp, u64 offset, seek_t whence, error *e);
-
-#ifdef TESTING
-  void *test_data;
-#endif
 
   // File System
   err_t (*open_rw) (void *vfs, i_file *dest, const char *fname, error *e);
@@ -104,11 +88,11 @@ struct os_vtable
   void (*cond_timed_wait) (void *t, i_cond *c, i_mutex *m, u64 msec);
   void (*cond_signal) (void *t, i_cond *c);
   void (*cond_broadcast) (void *t, i_cond *c);
-};
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Default implementation
- *----------------------------------------------------------------------------*/
+#ifdef TESTING
+  void *test_data;
+#endif
+};
 
 err_t impl_close (void *fp, error *e);
 err_t impl_fsync (void *fp, error *e);

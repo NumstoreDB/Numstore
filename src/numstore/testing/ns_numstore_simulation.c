@@ -28,13 +28,9 @@
 #include "numstore/testing/ns_operation_generator.h"
 #include "numstore/testing/ns_reference_db_stepper.h"
 
-#include <inttypes.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <time.h>
+#ifdef TESTING
+#  include "core/testing/ns_testing.h"
+#endif
 
 struct ns_simulation
 {
@@ -227,809 +223,363 @@ nss_write (struct ns_simulation *meta, struct operation *op, error *e)
 ////////// LOGGING
 
 static void
+format_quoted_str (char *buf, size_t bufsize, const char *str)
+{
+  size_t maxlen    = bufsize - 6; /* was -5: off by one, ate the closing quote */
+  size_t len       = strlen (str);
+  bool   truncated = len > maxlen;
+  snprintf (
+      buf,
+      bufsize,
+      "\"%.*s%s\"",
+      (int)(truncated ? maxlen : len),
+      str,
+      truncated ? "..." : ""
+  );
+}
+
+static void
 nss_log_operation (struct ns_simulation *meta, struct operation *op, bool completed)
 {
-  char step_buf[32];
-  char seed_buf[32];
-  char commit_hash_buf[256];
-  char sequence_id_buf[32];
-  char dbname_buf[256];
-  char max_insert_len_buf[32];
-  char sample_space_prob_buf[32];
-  char op_duration_ms_buf[32];
-  char total_working_ms_buf[32];
-  char db_size_gb_buf[32];
-  char elapsed_ms_buf[32];
-  char ref_nvars_buf[32];
-  char ref_tracked_gb_buf[32];
-  char cur_var_buf[256];
-  char cur_var_len_buf[32];
-  char cur_var_tsize_buf[32];
-  char bytes_moved_buf[32];
-  char bytes_per_ms_buf[32];
-  char total_bytes_moved_buf[32];
-  char avg_bytes_per_ms_buf[32];
-
-  // Throughput accounting: how many bytes this operation actually moved.
-  // Only the data operations move bytes - the rest move zero.
-  u64  bytes_moved = 0;
-  if (ns_ref_nvars (meta->ref) > 0) {
-    t_size tsize = ns_ref_cur_tsize (meta->ref);
-    switch (op->type) {
-      case NSS_INSERT: bytes_moved = op->op_insert.nelems * tsize; break;
-      case NSS_REMOVE: bytes_moved = op->op_remove.nelems * tsize; break;
-      case NSS_READ: bytes_moved = op->op_read.nelems * tsize; break;
-      case NSS_WRITE: bytes_moved = op->op_write.nelems * tsize; break;
-      default: break;
-    }
-  }
-  meta->total_bytes_moved += bytes_moved;
-
-  const double op_ms    = (double)meta->db->prev_op_duration_ns / 1e6;
-  const double total_ms = (double)meta->db->total_working_ns / 1e6;
-
-  snprintf (bytes_moved_buf, sizeof (bytes_moved_buf), "%" PRIu64, bytes_moved);
-  snprintf (
-      total_bytes_moved_buf,
-      sizeof (total_bytes_moved_buf),
-      "%" PRIu64,
-      meta->total_bytes_moved
-  );
-
-  if (op_ms > 0) {
-    snprintf (bytes_per_ms_buf, sizeof (bytes_per_ms_buf), "%.3f", (double)bytes_moved / op_ms);
-  } else {
-    snprintf (bytes_per_ms_buf, sizeof (bytes_per_ms_buf), "null");
-  }
-
-  if (total_ms > 0) {
-    snprintf (
-        avg_bytes_per_ms_buf,
-        sizeof (avg_bytes_per_ms_buf),
-        "%.3f",
-        (double)meta->total_bytes_moved / total_ms
-    );
-  } else {
-    snprintf (avg_bytes_per_ms_buf, sizeof (avg_bytes_per_ms_buf), "null");
-  }
-
-  snprintf (step_buf, sizeof (step_buf), "%" PRIu64, meta->step_number);
-  snprintf (seed_buf, sizeof (seed_buf), "%" PRIu64, meta->seed);
-  snprintf (commit_hash_buf, sizeof (commit_hash_buf), "\"%s\"", meta->commit_hash);
-  snprintf (sequence_id_buf, sizeof (sequence_id_buf), "%" PRIu64, meta->sequence_id);
-  snprintf (dbname_buf, sizeof (dbname_buf), "\"%s\"", meta->dbname);
-  snprintf (max_insert_len_buf, sizeof (max_insert_len_buf), "%d", meta->max_insert_len);
-  snprintf (
-      sample_space_prob_buf,
-      sizeof (sample_space_prob_buf),
-      "%g",
-      (double)meta->sample_space_prob
-  );
-  snprintf (
-      op_duration_ms_buf,
-      sizeof (op_duration_ms_buf),
-      "%.6f",
-      (double)meta->db->prev_op_duration_ns / 1e6
-  );
-  snprintf (
-      total_working_ms_buf,
-      sizeof (total_working_ms_buf),
-      "%.6f",
-      (double)meta->db->total_working_ns / 1e6
-  );
-  snprintf (db_size_gb_buf, sizeof (db_size_gb_buf), "%.9f", (double)meta->db->db_size_bytes / 1e9);
-  snprintf (
-      elapsed_ms_buf,
-      sizeof (elapsed_ms_buf),
-      "%.6f",
-      (double)(i_timer_now_ns (&meta->timer) - meta->start) / 1e6
-  );
-  snprintf (ref_nvars_buf, sizeof (ref_nvars_buf), "%" PRIu32, ns_ref_nvars (meta->ref));
-  snprintf (
-      ref_tracked_gb_buf,
-      sizeof (ref_tracked_gb_buf),
-      "%.9f",
-      (double)ns_ref_tracked_bytes (meta->ref) / 1e9
-  );
-
-  if (ns_ref_nvars (meta->ref) > 0) {
-    snprintf (cur_var_buf, sizeof (cur_var_buf), "\"%s\"", ns_ref_cur_name (meta->ref));
-    snprintf (cur_var_len_buf, sizeof (cur_var_len_buf), "%" PRb_size, ns_ref_cur_len (meta->ref));
-    snprintf (
-        cur_var_tsize_buf,
-        sizeof (cur_var_tsize_buf),
-        "%" PRt_size,
-        ns_ref_cur_tsize (meta->ref)
-    );
-  } else {
-    snprintf (cur_var_buf, sizeof (cur_var_buf), "null");
-    snprintf (cur_var_len_buf, sizeof (cur_var_len_buf), "null");
-    snprintf (cur_var_tsize_buf, sizeof (cur_var_tsize_buf), "null");
-  }
-
   const char *completed_str = completed ? "true" : "false";
   const char *in_txn_str    = meta->ref->in_txn ? "true" : "false";
+  const bool  has_var       = ns_ref_nvars (meta->ref) > 0;
+
+  print_json_start ();
+
+  switch (op->type) {
+    case NSS_BEGIN_TXN: print_entry ("action", "\"begin_txn\""); break;
+    case NSS_COMMIT_TXN: print_entry ("action", "\"commit_txn\""); break;
+    case NSS_ROLLBACK_TXN: print_entry ("action", "\"rollback_txn\""); break;
+    case NSS_CRASH_AND_REOPEN: print_entry ("action", "\"crash_and_reopen\""); break;
+    case NSS_CLOSE_AND_REOPEN: print_entry ("action", "\"close_and_reopen\""); break;
+    case NSS_CREATE_AND_SWAP_IF_EMPTY: print_entry ("action", "\"create\""); break;
+    case NSS_SWITCH: print_entry ("action", "\"switch\""); break;
+    case NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH: print_entry ("action", "\"delete\""); break;
+    case NSS_INSERT: print_entry ("action", "\"insert\""); break;
+    case NSS_REMOVE: print_entry ("action", "\"remove\""); break;
+    case NSS_READ: print_entry ("action", "\"read\""); break;
+    case NSS_WRITE: print_entry ("action", "\"write\""); break;
+    case NSS_NONE_AVAILABLE: print_entry ("action", "\"none_available\""); break;
+    case NSS_AT_LEN: UNREACHABLE (); break;
+  }
+
+  print_entry ("completed", completed_str);
+  print_entry ("in_txn", in_txn_str);
+
+  // Step number
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%" PRIu64, meta->step_number);
+    print_entry ("step", buf);
+  }
+
+  // Seed
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%" PRIu64, meta->seed);
+    print_entry ("seed", buf);
+  }
+
+  // Commit Hash
+  {
+    char buf[256];
+    format_quoted_str (buf, sizeof (buf), meta->commit_hash);
+    print_entry ("commit_hash", buf);
+  }
+
+  // Sequence Id
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%" PRIu64, meta->sequence_id);
+    print_entry ("sequence_id", buf);
+  }
+
+  // Database Name
+  {
+    char buf[256];
+    format_quoted_str (buf, sizeof (buf), meta->dbname);
+    print_entry ("dbname", buf);
+  }
+
+  // Max Insert Length
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%d", meta->max_insert_len);
+    print_entry ("max_insert_len", buf);
+  }
+
+  // Sample Space Probability
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%g", (double)meta->sample_space_prob);
+    print_entry ("sample_space_prob", buf);
+  }
+
+  // Operation Duration Ms
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%.6f", (double)meta->db->prev_op_duration_ns / 1e6);
+    print_entry ("op_duration_ms", buf);
+  }
+
+  // Total Working Ms
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%.6f", (double)meta->db->total_working_ns / 1e6);
+    print_entry ("total_working_ms", buf);
+  }
+
+  // Database Size
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%.9f", (double)meta->db->db_size_bytes / 1e9);
+    print_entry ("db_size_gb", buf);
+  }
+
+  // Elapsed time
+  {
+    char buf[32];
+    snprintf (
+        buf,
+        sizeof (buf),
+        "%.6f",
+        (double)(i_timer_now_ns (&meta->timer) - meta->start) / 1e6
+    );
+    print_entry ("elapsed_ms", buf);
+  }
+
+  // number of variables
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%" PRIu32, ns_ref_nvars (meta->ref));
+    print_entry ("nvars", buf);
+  }
+
+  // Tracked gb
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%.9f", (double)ns_ref_tracked_bytes (meta->ref) / 1e9);
+    print_entry ("tracked_gb", buf);
+  }
+
+  if (has_var) {
+    // Current variable name
+    {
+      char buf[256];
+      format_quoted_str (buf, sizeof (buf), ns_ref_cur_name (meta->ref));
+      print_entry ("cur_var", buf);
+    }
+
+    // Current variable length
+    {
+      char buf[32];
+      snprintf (buf, sizeof (buf), "%" PRb_size, ns_ref_cur_len (meta->ref));
+      print_entry ("cur_var_len", buf);
+    }
+
+    // Current variable tsize
+    {
+      char buf[32];
+      snprintf (buf, sizeof (buf), "%" PRt_size, ns_ref_cur_tsize (meta->ref));
+      print_entry ("cur_var_tsize", buf);
+    }
+  }
 
   switch (op->type) {
     case NSS_BEGIN_TXN:
-      print_json (
-          "action",
-          "\"begin_txn\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          NULL
-      );
-      break;
-
     case NSS_COMMIT_TXN:
-      print_json (
-          "action",
-          "\"commit_txn\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          NULL
-      );
-      break;
-
     case NSS_ROLLBACK_TXN:
-      print_json (
-          "action",
-          "\"rollback_txn\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          NULL
-      );
-      break;
-
     case NSS_CRASH_AND_REOPEN:
-      print_json (
-          "action",
-          "\"crash_and_reopen\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          NULL
-      );
-      break;
-
     case NSS_CLOSE_AND_REOPEN:
-      print_json (
-          "action",
-          "\"close_and_reopen\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          NULL
-      );
+    case NSS_NONE_AVAILABLE: {
       break;
+    }
 
     case NSS_CREATE_AND_SWAP_IF_EMPTY: {
-      char vname_buf[256];
-      char type_buf[256];
-      snprintf (vname_buf, sizeof (vname_buf), "\"%s\"", op->op_create.vname);
-      snprintf (type_buf, sizeof (type_buf), "\"%s\"", op->op_create.typestr);
-      print_json (
-          "action",
-          "\"create\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "vname",
-          vname_buf,
-          "type",
-          type_buf,
-          NULL
-      );
+      // Variable name
+      {
+        char buf[256];
+        format_quoted_str (buf, sizeof (buf), op->op_create.vname);
+        print_entry ("vname", buf);
+      }
+
+      // Variable type
+      {
+        char buf[256];
+        format_quoted_str (buf, sizeof (buf), op->op_create.typestr);
+        print_entry ("type", buf);
+      }
       break;
     }
 
     case NSS_SWITCH: {
-      char vname_buf[256];
-      snprintf (vname_buf, sizeof (vname_buf), "\"%s\"", op->op_switch.vname);
-      print_json (
-          "action",
-          "\"switch\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "vname",
-          vname_buf,
-          NULL
-      );
+      // Variable name
+      {
+        char buf[256];
+        format_quoted_str (buf, sizeof (buf), op->op_switch.vname);
+        print_entry ("vname", buf);
+      }
       break;
     }
 
     case NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH: {
-      char        next_buf[256];
-      const char *next_val;
-      if (op->op_delete.next) {
-        snprintf (next_buf, sizeof (next_buf), "\"%s\"", op->op_delete.next);
-        next_val = next_buf;
-      } else {
-        next_val = "null";
+      // Delete current variable
+      {
+        char        buf[256];
+        const char *val = "null";
+        if (op->op_delete.next) {
+          format_quoted_str (buf, sizeof (buf), op->op_delete.next);
+          val = buf;
+        }
+        print_entry ("next", val);
       }
-      print_json (
-          "action",
-          "\"delete\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "next",
-          next_val,
-          NULL
-      );
       break;
     }
 
-    case NSS_INSERT: {
-      char ofst_buf[32];
-      char nelems_buf[32];
-      snprintf (ofst_buf, sizeof (ofst_buf), "%" PRb_size, op->op_insert.ofst);
-      snprintf (nelems_buf, sizeof (nelems_buf), "%" PRb_size, op->op_insert.nelems);
-      print_json (
-          "action",
-          "\"insert\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "ofst",
-          ofst_buf,
-          "nelems",
-          nelems_buf,
-          "bytes_moved",
-          bytes_moved_buf,
-          "bytes_per_ms",
-          bytes_per_ms_buf,
-          "total_bytes_moved",
-          total_bytes_moved_buf,
-          "avg_bytes_per_ms",
-          avg_bytes_per_ms_buf,
-          NULL
-      );
-      break;
-    }
-
-    case NSS_REMOVE: {
-      char start_buf[32];
-      char stride_buf[32];
-      char nelems_buf[32];
-      snprintf (start_buf, sizeof (start_buf), "%" PRb_size, op->op_remove.start);
-      snprintf (stride_buf, sizeof (stride_buf), "%" PRb_size, op->op_remove.stride);
-      snprintf (nelems_buf, sizeof (nelems_buf), "%" PRb_size, op->op_remove.nelems);
-      print_json (
-          "action",
-          "\"remove\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "start",
-          start_buf,
-          "stride",
-          stride_buf,
-          "nelems",
-          nelems_buf,
-          "bytes_moved",
-          bytes_moved_buf,
-          "bytes_per_ms",
-          bytes_per_ms_buf,
-          "total_bytes_moved",
-          total_bytes_moved_buf,
-          "avg_bytes_per_ms",
-          avg_bytes_per_ms_buf,
-          NULL
-      );
-      break;
-    }
-
-    case NSS_READ: {
-      char start_buf[32];
-      char stride_buf[32];
-      char nelems_buf[32];
-      snprintf (start_buf, sizeof (start_buf), "%" PRb_size, op->op_read.start);
-      snprintf (stride_buf, sizeof (stride_buf), "%" PRb_size, op->op_read.stride);
-      snprintf (nelems_buf, sizeof (nelems_buf), "%" PRb_size, op->op_read.nelems);
-      print_json (
-          "action",
-          "\"read\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "start",
-          start_buf,
-          "stride",
-          stride_buf,
-          "nelems",
-          nelems_buf,
-          "bytes_moved",
-          bytes_moved_buf,
-          "bytes_per_ms",
-          bytes_per_ms_buf,
-          "total_bytes_moved",
-          total_bytes_moved_buf,
-          "avg_bytes_per_ms",
-          avg_bytes_per_ms_buf,
-          NULL
-      );
-      break;
-    }
-
+    case NSS_INSERT:
+    case NSS_REMOVE:
+    case NSS_READ:
     case NSS_WRITE: {
-      char start_buf[32];
-      char stride_buf[32];
-      char nelems_buf[32];
-      snprintf (start_buf, sizeof (start_buf), "%" PRb_size, op->op_write.start);
-      snprintf (stride_buf, sizeof (stride_buf), "%" PRb_size, op->op_write.stride);
-      snprintf (nelems_buf, sizeof (nelems_buf), "%" PRb_size, op->op_write.nelems);
-      print_json (
-          "action",
-          "\"write\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          "start",
-          start_buf,
-          "stride",
-          stride_buf,
-          "nelems",
-          nelems_buf,
-          "bytes_moved",
-          bytes_moved_buf,
-          "bytes_per_ms",
-          bytes_per_ms_buf,
-          "total_bytes_moved",
-          total_bytes_moved_buf,
-          "avg_bytes_per_ms",
-          avg_bytes_per_ms_buf,
-          NULL
-      );
+      u64 bytes_moved = 0;
+      if (has_var) {
+        t_size tsize = ns_ref_cur_tsize (meta->ref);
+        switch (op->type) {
+          case NSS_INSERT: bytes_moved = op->op_insert.nelems * tsize; break;
+          case NSS_REMOVE: bytes_moved = op->op_remove.nelems * tsize; break;
+          case NSS_READ: bytes_moved = op->op_read.nelems * tsize; break;
+          case NSS_WRITE: bytes_moved = op->op_write.nelems * tsize; break;
+          default: break;
+        }
+      }
+      meta->total_bytes_moved += bytes_moved;
+
+      const double op_ms    = (double)meta->db->prev_op_duration_ns / 1e6;
+      const double total_ms = (double)meta->db->total_working_ns / 1e6;
+
+      if (op->type == NSS_INSERT) {
+        // Offset
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_insert.ofst);
+          print_entry ("ofst", buf);
+        }
+        // Number of elements
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_insert.nelems);
+          print_entry ("nelems", buf);
+        }
+      } else if (op->type == NSS_REMOVE) {
+        // Start
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.start);
+          print_entry ("start", buf);
+        }
+        // stride
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.stride);
+          print_entry ("stride", buf);
+        }
+        // nelems
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.nelems);
+          print_entry ("nelems", buf);
+        }
+      } else if (op->type == NSS_READ) {
+        // start
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.start);
+          print_entry ("start", buf);
+        }
+
+        // stride
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.stride);
+          print_entry ("stride", buf);
+        }
+
+        // nelems
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.nelems);
+          print_entry ("nelems", buf);
+        }
+      } else if (op->type == NSS_WRITE) { /* NSS_WRITE */
+
+        // start
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.start);
+          print_entry ("start", buf);
+        }
+
+        // stride
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.stride);
+          print_entry ("stride", buf);
+        }
+
+        // nelems
+        {
+          char buf[32];
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.nelems);
+          print_entry ("nelems", buf);
+        }
+      } else {
+        UNREACHABLE ();
+      }
+
+      // bytes moved
+      {
+        char buf[32];
+        snprintf (buf, sizeof (buf), "%" PRIu64, bytes_moved);
+        print_entry ("bytes_moved", buf);
+      }
+
+      // bytes per ms
+      {
+        char buf[32];
+        if (op_ms > 0) {
+          snprintf (buf, sizeof (buf), "%.3f", (double)bytes_moved / op_ms);
+        } else {
+          snprintf (buf, sizeof (buf), "null");
+        }
+        print_entry ("bytes_per_ms", buf);
+      }
+
+      // total bytes moved
+      {
+        char buf[32];
+        snprintf (buf, sizeof (buf), "%" PRIu64, meta->total_bytes_moved);
+        print_entry ("total_bytes_moved", buf);
+      }
+
+      // average bytes moved per ms
+      {
+        char buf[32];
+        if (total_ms > 0) {
+          snprintf (buf, sizeof (buf), "%.3f", (double)meta->total_bytes_moved / total_ms);
+        } else {
+          snprintf (buf, sizeof (buf), "null");
+        }
+        print_entry ("avg_bytes_per_ms", buf);
+      }
       break;
     }
-
-    case NSS_NONE_AVAILABLE:
-      print_json (
-          "action",
-          "\"none_available\"",
-          "completed",
-          completed_str,
-          "step",
-          step_buf,
-          "seed",
-          seed_buf,
-          "commit_hash",
-          commit_hash_buf,
-          "sequence_id",
-          sequence_id_buf,
-          "dbname",
-          dbname_buf,
-          "max_insert_len",
-          max_insert_len_buf,
-          "sample_space_prob",
-          sample_space_prob_buf,
-          "in_txn",
-          in_txn_str,
-          "op_duration_ms",
-          op_duration_ms_buf,
-          "total_working_ms",
-          total_working_ms_buf,
-          "db_size_gb",
-          db_size_gb_buf,
-          "elapsed_ms",
-          elapsed_ms_buf,
-          "ref_nvars",
-          ref_nvars_buf,
-          "ref_tracked_gb",
-          ref_tracked_gb_buf,
-          "cur_var",
-          cur_var_buf,
-          "cur_var_len",
-          cur_var_len_buf,
-          "cur_var_tsize",
-          cur_var_tsize_buf,
-          NULL
-      );
-      break;
 
     case NSS_AT_LEN: UNREACHABLE (); break;
   }
+
+  print_last_entry ("placeholder", "null");
+
+  print_json_end ();
 }
 
 /******************************************************************************
@@ -1051,7 +601,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
   DBG_ASSERT (ns_simulation_params, &params);
 
   // Clean up the database before starting
-  if (nsdb_cleanup (params.dbname) < 0) {
+  if (numstore_cleanup (params.dbname) < 0) {
     return NULL;
   }
 
@@ -1169,3 +719,33 @@ ns_simul_step (struct ns_simulation *meta, error *e)
 
   return SUCCESS;
 }
+
+#ifdef TESTING
+TEST (ns_simul)
+{
+  error e = error_create ();
+
+  TEST_CASE ("Smoke test")
+  {
+    struct ns_simulation_params params = {
+        .seed              = 1234,
+        .commit_hash       = "abcd",
+        // .enabled
+        .sequence_id       = 10,
+        .dbname            = "foo",
+        .max_insert_len    = 1000,
+        .sample_space_prob = 1,
+        .test_filesystem   = fs,
+        .test_mem          = mem,
+        .reliable_mem      = mem,
+    };
+    struct ns_simulation *simul = ns_simul_open (params, &e);
+
+    ns_simul_step (simul, &e);
+    ns_simul_step (simul, &e);
+    ns_simul_step (simul, &e);
+
+    ns_simul_close (simul, &e);
+  }
+}
+#endif

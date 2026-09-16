@@ -50,31 +50,27 @@ i_log_flush (void)
 // JSON PRINTING
 
 void
-print_json (const char *first, ...)
+print_json_start (void)
 {
-  va_list args;
-  va_start (args, first);
+  fputs ("{", stdout);
+}
 
-  fputs ("{ ", stdout);
+void
+print_entry (const char *key, const char *value)
+{
+  printf ("\"%s\":%s,", key, value);
+}
 
-  bool        is_first = true;
-  const char *key      = first;
-  while (key != NULL) {
-    const char *value = va_arg (args, const char *);
+void
+print_last_entry (const char *key, const char *value)
+{
+  printf ("\"%s\":%s", key, value);
+}
 
-    if (!is_first) {
-      fputs (", ", stdout);
-    }
-    is_first = false;
-
-    fprintf (stdout, "\"%s\": %s", key, value);
-
-    key = va_arg (args, const char *);
-  }
-
-  fputs (" }\n", stdout);
-
-  va_end (args);
+void
+print_json_end (void)
+{
+  fputs ("}\n", stdout);
 }
 
 #ifdef TESTING

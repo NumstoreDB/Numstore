@@ -7,8 +7,7 @@ LIBNS_SRCS += src/smartfiles/testing/ns_smfile_simulation.c
 ############ Includes
 
 $(INC_DIR)/smartfiles.h: src/smartfiles/smartfiles.h | $(INC_DIR)
-	@echo "  CP       $(patsubst $(CURDIR)/%,%,$<) -> $(patsubst $(CURDIR)/%,%,$@)"
-	@cp $< $@
+	cp $< $@
 
 ALL += $(INC_DIR)/smartfiles.h
 
@@ -22,12 +21,10 @@ SMFILE_SAMPLES += smfile_sample4_rollback_commit
 
 define SMFILE_SAMPLE_RULES
 $(BIN_DIR)/$(1): src/smartfiles/samples/$(1).c $$(TARGET_LIB) $$(INC_DIR)/smartfiles.h | $$(BIN_DIR)
-	@echo "  CC       $$< -> $$(patsubst $$(CURDIR)/%,%,$$@)"
-	@$$(CC) $$(CFLAGS) -I$$(INC_DIR) $$< -o $$@ $$(TARGET_LIB)
+	$$(CC) $$(CFLAGS) -I$$(INC_DIR) $$< -o $$@ $$(TARGET_LIB)
 
 $(SMP_DIR)/$(1).c: src/smartfiles/samples/$(1).c | $$(SMP_DIR)
-	@echo "  CP       $$(patsubst $$(CURDIR)/%,%,$$<) -> $$(patsubst $$(CURDIR)/%,%,$$@)"
-	@cp $$< $$@
+	cp $$< $$@
 
 ALL += $(BIN_DIR)/$(1)
 ALL += $(SMP_DIR)/$(1).c

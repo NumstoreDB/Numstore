@@ -19,7 +19,6 @@
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
 #include "nscore/txn_table/ns_txn_table.h"
-#include "nscore/variables/ns_variables.h"
 
 /******************************************************************************
  * SECTION: NSDB CLI

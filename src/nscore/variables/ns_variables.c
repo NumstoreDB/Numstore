@@ -610,3 +610,45 @@ vname_or_default (const char *name)
     return strfcstr (DEFAULT_VARIABLE);
   }
 }
+
+struct numstore_var *
+nsdb_var_create (struct i_mem mem, error *e)
+{
+  struct arena_alloc *valloc;
+
+  // Allocate the arena allocator
+  valloc = i_malloc (mem, 1, sizeof *valloc, e);
+  if (valloc == NULL) {
+    return NULL;
+  }
+  arena_alloc_create_default (valloc);
+
+  // Allocate the container on the arena (yes, this is kind of weird)
+  // The parent belongs to the child allocator, just need
+  // to be careful about free
+  struct numstore_var *dest = arena_malloc (valloc, 1, sizeof (struct numstore_var), e);
+  if (dest == NULL) {
+    arena_alloc_free_all (valloc);
+    i_free (default_mem (), valloc);
+    return NULL;
+  }
+
+  dest->var   = (struct variable){0};
+  dest->alloc = valloc;
+  dest->mem   = mem;
+
+  return dest;
+}
+
+void
+nsdb_var_free (struct numstore_var *var)
+{
+  // First, grab the child arena allocator
+  struct arena_alloc *alloc = var->alloc;
+
+  // Then free everything in the arena allocator
+  arena_alloc_free_all (alloc);
+
+  // Free the container
+  i_free (var->mem, alloc);
+}

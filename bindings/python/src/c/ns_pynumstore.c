@@ -12,8 +12,105 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_csx_assert.h"
 #define PYNUMSTORE_MODULE_MAIN
 #include "ns_pynumstore.h"
+
+numstore_t *
+_unwrap_db (PyObject *capsule)
+{
+  // Ensure that the object is a capsule, or else return NULL
+  if (!PyCapsule_CheckExact (capsule)) {
+    PyErr_SetString (PyExc_TypeError, "expected nsdb capsule or None");
+    return NULL;
+  }
+
+  // Get the database pointer from the capsule
+  void *ptr = PyCapsule_GetPointer (capsule, DB_CAPSULE);
+  if (ptr == NULL) {
+    return NULL; // error already set by PyCapsule_GetPointer
+  }
+
+  // Check if the database is closed
+  if (ptr == &DB_CLOSED_SENTINEL) {
+    PyErr_SetString (PyExc_RuntimeError, "database is already closed");
+    return NULL;
+  }
+
+  // Return the database
+  return (numstore_t *)ptr;
+}
+
+ns_txn_t *
+_unwrap_txn (PyObject *txn_capsule)
+{
+  // Ensure that the object is a capsule, or else return NULL
+  if (!PyCapsule_CheckExact (txn_capsule)) {
+    PyErr_SetString (PyExc_TypeError, "expected nstxn capsule or None");
+    return NULL;
+  }
+
+  // Get the transaction pointer from the capsule
+  void *ptr = PyCapsule_GetPointer (txn_capsule, TXN_CAPSULE);
+  if (ptr == NULL) {
+    return NULL; // error already set by PyCapsule_GetPointer
+  }
+
+  // Check if the transaction is closed
+  if (ptr == &TXN_CLOSED_SENTINEL) {
+    PyErr_SetString (PyExc_RuntimeError, "transaction was already committed or rolled back");
+    return NULL;
+  }
+
+  // Return the transaction object
+  return (ns_txn_t *)ptr;
+}
+
+void
+_nspy_release_db (PyObject *capsule)
+{
+  // Ensure that the object is a capsule, or else do nothing
+  if (!PyCapsule_CheckExact (capsule)) {
+    PyErr_SetString (PyExc_TypeError, "expected nsdb capsule or None");
+    return;
+  }
+
+  // Grab the database handle
+  numstore_t *ns = _unwrap_db (capsule);
+  if (ns == NULL) {
+    return;
+  }
+
+  // Close the database
+  if (numstore_close (ns) < 0) {
+    PyErr_SetString (PyExc_RuntimeError, "Failed to close database");
+  }
+}
+
+void
+_pyns_set_error_from_nsdb (numstore_t *ns)
+{
+  const char *err = numstore_strerror (ns);
+  ASSERT (err);
+  PyErr_SetString (PyExc_RuntimeError, err);
+}
+
+void
+_pyns_set_error_from_e (error *e)
+{
+  ASSERT (e->cause_code < 0);
+  PyErr_SetString (PyExc_RuntimeError, e->cause_msg);
+}
+
+Py_ssize_t
+elsize (PyArray_Descr *type)
+{
+#if NPY_FEATURE_VERSION >= NPY_2_0_API_VERSION
+  return (type)->elsize;
+#else
+  return PyDataType_ELSIZE (type);
+#endif
+}
 
 const char         DB_CAPSULE[]  = "numstore.db";
 const char         TXN_CAPSULE[] = "numstore.txn";

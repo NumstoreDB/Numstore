@@ -22,21 +22,18 @@
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/variables/ns_variables.h"
+#include "numstore/numstore.h"
 
 sb_size nsdb_execute_on_buffer (
     struct nsdb        *ns,
     struct ns_txn      *txn,
     struct query       *q,
+    struct variable    *var,
     void               *data,
+    b_size              dlen,
     struct arena_alloc *alc,
     error              *e
 );
-
-/******************************************************************************
- * SECTION: Query literal routines
- * ----------------------------------------------------------------------------
- * @brief Individual actions you can take on a numstore database
- ******************************************************************************/
 
 // Get a variable and print it to the console
 err_t nsdb_get_and_print (

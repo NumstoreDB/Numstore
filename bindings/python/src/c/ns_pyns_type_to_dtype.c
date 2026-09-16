@@ -19,6 +19,7 @@
 /// ns_pymodule_common.h) - the primitive/struct/union/array builders below
 /// are internal recursion helpers.
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_string.h"
 #include "ns_pynumstore.h"
 

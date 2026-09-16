@@ -4,11 +4,10 @@
 #include "core/ns_error.h"
 #include "core/ns_stride.h"
 #include "core/os/ns_memory.h"
-#include "core/os/ns_os_vtable.h"
 #include "core/os/ns_time.h"
+#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/types/ns_query.h"
 #include "numstore/numstore.h"
 
 #include <string.h>
@@ -29,7 +28,7 @@ ns_db_set_file_size (struct ns_db *db, error *e)
 static err_t
 ns_db_reopen_handle (struct ns_db *db, error *e)
 {
-  struct nsdb *ns = ns_nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs, e);
+  struct nsdb *ns = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs, e);
   if (ns == NULL) {
     return error_trace (e);
   }
@@ -80,7 +79,7 @@ ns_db_new (
   }
 
   if (ns_db_set_file_size (ret, e)) {
-    ns_nsdb_close (ret->db, e);
+    nsdb_close (ret->db, e);
     i_timer_free (&ret->timer);
     i_free (reliable_mem, ret);
     return NULL;
@@ -97,7 +96,7 @@ ns_db_close (struct ns_db *db, error *e)
 
   i_cfree (db->reliable_mem, db->var_committed);
 
-  err_t ret = ns_nsdb_close (db->db, e);
+  err_t ret = nsdb_close (db->db, e);
   i_free (db->reliable_mem, db);
 
   return ret;
@@ -144,7 +143,7 @@ ns_db_begin_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  struct ns_txn *tx = ns_nsdb_begin (db->db, e);
+  struct ns_txn *tx = nsdb_begin (db->db, e);
   post_op (db);
 
   if (tx == NULL) {
@@ -166,7 +165,7 @@ ns_db_rollback_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = ns_nsdb_rollback (db->db, db->tx, e);
+  err_t ret = nsdb_rollback (db->db, db->tx, e);
   post_op (db);
 
   if (ret < 0) {
@@ -193,7 +192,7 @@ ns_db_commit_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = ns_nsdb_commit (db->db, db->tx, e);
+  err_t ret = nsdb_commit (db->db, db->tx, e);
   post_op (db);
 
   if (ret < 0) {
@@ -217,7 +216,7 @@ ns_db_crash_and_reopen (struct ns_db *db, error *e)
   pre_op (db);
 
   // Crash the database
-  err_t ret = ns_nsdb_crash (db->db, e);
+  err_t ret = nsdb_crash (db->db, e);
   db->db    = NULL;
 
   // Re open
@@ -246,7 +245,7 @@ ns_db_close_and_reopen (struct ns_db *db, error *e)
 
   pre_op (db);
 
-  err_t ret = ns_nsdb_close (db->db, e);
+  err_t ret = nsdb_close (db->db, e);
   db->db    = NULL;
 
   // Re open
@@ -307,16 +306,7 @@ ns_db_create_and_maybe_switch (struct ns_db *db, const char *vname, struct type 
 {
   ALLOC_INIT (alloc);
   pre_op (db);
-  sb_size ret = ns_nsdb_create (
-      db->db,
-      db->tx,
-      &(struct create_query){
-          .name = strfcstr (vname),
-          .type = dtype,
-      },
-      &alloc,
-      e
-  );
+  err_t ret = numstore_create (db->db->p, db->tx, strfcstr (vname), dtype, &alloc, NULL, e);
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -363,15 +353,7 @@ ns_db_delete_cur_and_switch (struct ns_db *db, const char *next, error *e)
 
   // Do the operation
   pre_op (db);
-  sb_size ret = ns_nsdb_delete (
-      db->db,
-      db->tx,
-      &(struct delete_query){
-          .name      = strfcstr (cur),
-          .if_exists = false,
-      },
-      e
-  );
+  err_t ret = numstore_delete (db->db->p, db->tx, strfcstr (cur), false, e);
   post_op (db);
 
   if (ret < 0) {
@@ -397,15 +379,14 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = ns_nsdb_insert (
-      db->db,
+  sb_size ret = numstore_insert (
+      db->db->p,
       db->tx,
-      &(struct insert_query){
-          .name = strfcstr (cur),
-          .len  = len,
-          .ofst = ofst,
-      },
+      strfcstr (cur),
+      ofst,
+      len,
       &alloc,
+      NULL,
       &stream,
       e
   );
@@ -433,16 +414,13 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = ns_nsdb_remove (
-      db->db,
+  sb_size ret = numstore_remove (
+      db->db->p,
       db->tx,
-      &(struct remove_query){
-          .name   = strfcstr (cur),
-          .blimit = 0,
-          .limit  = 0,
-          .ustr   = usfrms (str),
-      },
+      strfcstr (cur),
+      usfrms (str),
       &alloc,
+      NULL,
       &stream,
       e
   );
@@ -469,16 +447,13 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = ns_nsdb_read (
-      db->db,
+  sb_size ret = numstore_read (
+      db->db->p,
       db->tx,
-      &(struct read_query){
-          .name   = strfcstr (cur),
-          .blimit = 0,
-          .limit  = 0,
-          .ustr   = usfrms (str),
-      },
+      strfcstr (cur),
+      usfrms (str),
       &alloc,
+      NULL,
       &stream,
       e
   );
@@ -505,16 +480,13 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = ns_nsdb_write (
-      db->db,
+  sb_size ret = numstore_write (
+      db->db->p,
       db->tx,
-      &(struct write_query){
-          .name   = strfcstr (cur),
-          .blimit = 0,
-          .limit  = 0,
-          .ustr   = usfrms (str),
-      },
+      strfcstr (cur),
+      usfrms (str),
       &alloc,
+      NULL,
       &stream,
       e
   );

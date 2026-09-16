@@ -12,13 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/nsdb/ns_nsdb_cli.h"
-#include "numstore/numstore.h"
-
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 int
 main (int argc, char **argv)

@@ -84,8 +84,6 @@ enum token_t
   // Modifiers
   TT_IF,
   TT_EXISTS,
-  TT_BLIMIT,
-  TT_LIMIT,
 
   TT_TRUE,
   TT_FALSE,
@@ -140,8 +138,6 @@ enum token_t
   X (TT_PRIM);                \
   X (TT_IF);                  \
   X (TT_EXISTS);              \
-  X (TT_BLIMIT);              \
-  X (TT_LIMIT);               \
   X (TT_TRUE);                \
   X (TT_FALSE);               \
   X (TT_EOF);

@@ -4,8 +4,10 @@ ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "ns_db_create" : "ns_db_create_and_maybe_switch",
-        "ns_db_delete" : "ns_db_delete_cur_and_switch",
+        "numstore_execute_on_buffer" : "nsdb_execute_on_buffer",
+        "numstore_get_and_print" : "nsdb_get_and_print",
+        "numstore_read_and_print" : "nsdb_read_and_print",
+        "numstore_execute_in_console" : "nsdb_execute_in_console",
 }
 
 for ROOT in ROOTS:

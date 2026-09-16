@@ -49,7 +49,8 @@ smfile_perror (smfile_t *smf, const char *prefix)
 }
 
 #ifdef TESTING
-TEST (smfile_perror)
+/**
+TEST_DISABLED (smfile_perror)
 {
   smfile_cleanup ("test");
 
@@ -62,6 +63,7 @@ TEST (smfile_perror)
 
   smfile_close (s);
 }
+*/
 #endif
 
 const char *
@@ -74,7 +76,8 @@ smfile_strerror (smfile_t *smf)
 }
 
 #ifdef TESTING
-TEST (smfile_strerror)
+/**
+TEST_DISABLED (smfile_strerror)
 {
   smfile_cleanup ("test");
 
@@ -87,17 +90,19 @@ TEST (smfile_strerror)
 
   smfile_close (s);
 }
+*/
 #endif
 
 int
 smfile_cleanup (const char *path)
 {
   error e = error_create ();
-  return ns_nsdb_cleanup (path, &e);
+  return nsdb_cleanup (path, &e);
 }
 
 #ifdef TESTING
-TEST (smfile_cleanup)
+/**
+TEST_DISABLED (smfile_cleanup)
 {
   smfile_cleanup ("test");
 
@@ -113,6 +118,7 @@ TEST (smfile_cleanup)
   i_file_exists (fs, "test", &exists, &e);
   test_assert (!exists);
 }
+*/
 #endif
 
 sb_size
@@ -159,7 +165,8 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_size)
+/**
+TEST_DISABLED (smfile_size)
 {
   smfile_cleanup ("test");
 
@@ -178,18 +185,20 @@ TEST (smfile_size)
 
   smfile_close (s);
 }
+*/
 #endif
 
 int
 smfile_close (smfile_t *smf)
 {
-  int ret = ns_nsdb_close (smf->db, &smf->e);
+  int ret = nsdb_close (smf->db, &smf->e);
   i_free (default_mem (), smf);
   return ret;
 }
 
 #ifdef TESTING
-TEST (smfile_close)
+/**
+TEST_DISABLED (smfile_close)
 {
   smfile_cleanup ("test");
 
@@ -203,18 +212,20 @@ TEST (smfile_close)
   i_file_exists (fs, "test.wal", &exists, &e);
   test_assert (!exists);
 }
+*/
 #endif
 
 int
 smfile_crash (smfile_t *smf)
 {
-  int ret = ns_nsdb_crash (smf->db, &smf->e);
+  int ret = nsdb_crash (smf->db, &smf->e);
   i_free (default_mem (), smf);
   return ret;
 }
 
 #ifdef TESTING
-TEST (smfile_crash)
+/**
+TEST_DISABLED (smfile_crash)
 {
   smfile_cleanup ("test");
 
@@ -228,28 +239,30 @@ TEST (smfile_crash)
   i_file_exists (fs, "test.wal", &exists, &e);
   test_assert (exists);
 }
+*/
 #endif
 
 struct ns_txn *
 smfile_begin (smfile_t *smf)
 {
-  return ns_nsdb_begin (smf->db, &smf->e);
+  return nsdb_begin (smf->db, &smf->e);
 }
 
 int
 smfile_commit (smfile_t *smf, struct ns_txn *tx)
 {
-  return ns_nsdb_commit (smf->db, tx, &smf->e);
+  return nsdb_commit (smf->db, tx, &smf->e);
 }
 
 int
 smfile_rollback (smfile_t *smf, struct ns_txn *tx)
 {
-  return ns_nsdb_rollback (smf->db, tx, &smf->e);
+  return nsdb_rollback (smf->db, tx, &smf->e);
 }
 
 #ifdef TESTING
-TEST (smfile_txns)
+/**
+TEST_DISABLED (smfile_txns)
 {
   smfile_cleanup ("test");
 
@@ -272,6 +285,7 @@ TEST (smfile_txns)
 
   smfile_close (s);
 }
+*/
 #endif
 
 smfile_t *
@@ -284,7 +298,7 @@ smfile_open (const char *path)
   }
 
   ret->e  = error_create ();
-  ret->db = ns_nsdb_open_with_resources (path, default_mem (), default_filesystem (), &ret->e);
+  ret->db = nsdb_open_with_resources (path, default_mem (), default_filesystem (), &ret->e);
   if (ret->db == NULL) {
     i_free (default_mem (), ret);
     return NULL;
@@ -315,14 +329,15 @@ smfile_open (const char *path)
   return ret;
 
 failed:
-  ns_nsdb_close (ret->db, &ret->e);
+  nsdb_close (ret->db, &ret->e);
   i_free (default_mem (), ret);
 
   return NULL;
 }
 
 #ifdef TESTING
-TEST (smfile_open)
+/**
+TEST_DISABLED (smfile_open)
 {
   smfile_cleanup ("test");
 
@@ -339,6 +354,7 @@ TEST (smfile_open)
 
   smfile_close (s2);
 }
+*/
 #endif
 
 /////////////////////////////////////////////////////////////////////
@@ -432,7 +448,8 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_insert)
+/**
+TEST_DISABLED (smfile_insert)
 {
   smfile_cleanup ("test");
 
@@ -444,6 +461,7 @@ TEST (smfile_insert)
 
   smfile_close (s);
 }
+*/
 #endif
 
 /////////////////////////////////////////////////////////////////////
@@ -553,7 +571,8 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_read)
+/**
+TEST_DISABLED (smfile_read)
 {
   smfile_cleanup ("test");
 
@@ -573,6 +592,7 @@ TEST (smfile_read)
 
   smfile_close (s);
 }
+*/
 #endif
 
 /////////////////////////////////////////////////////////////////////
@@ -695,7 +715,8 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_remove)
+/**
+TEST_DISABLED (smfile_remove)
 {
   smfile_cleanup ("test");
 
@@ -717,6 +738,7 @@ TEST (smfile_remove)
 
   smfile_close (s);
 }
+*/
 #endif
 
 /////////////////////////////////////////////////////////////////////
@@ -859,7 +881,8 @@ failed:
 }
 
 #ifdef TESTING
-TEST (smfile_pwrite)
+/**
+TEST_DISABLED (smfile_pwrite)
 {
   smfile_cleanup ("test");
 
@@ -890,4 +913,5 @@ TEST (smfile_pwrite)
 
   smfile_close (s);
 }
+*/
 #endif

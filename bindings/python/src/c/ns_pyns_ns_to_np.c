@@ -12,12 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-/// pyns_ns_to_np.c
-///
-/// pyns_ns_to_np(str) -> np.dtype
-/// Compiles a numstore type string and converts it into a numpy dtype via
-/// pyns_type_to_dtype() (ns_type_convert.c).
-
 #include "ns_pynumstore.h"
 #include "nscore/compiler/ns_compiler.h"
 
@@ -32,12 +26,12 @@ pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg)
   // Extract utf8 string from argument
   const char    *src = PyUnicode_AsUTF8 (arg);
   if (!src) {
-    return NULL;
+    goto theend;
   }
 
   // compile the type string
   if (compile_type (&t, src, &alloc, &e)) {
-    PyErr_Format (PyExc_ValueError, "Error: %.*s", e.cmlen, e.cause_msg);
+    _pyns_set_error_from_e (&e);
     goto theend;
   }
 

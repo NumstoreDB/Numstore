@@ -199,14 +199,12 @@ void i_printf (const char *fmt, ...) PRINTF_ATTR (1, 2);
  * SUBSECTION: JSON printing
  *----------------------------------------------------------------------------*/
 
-/**
- * Prints { "key1": value1, "key2": value2, ... } to stdout.
- *
- * Takes an even number of (key, value) string pairs, terminated by a NULL
- * sentinel. Keys are always wrapped in quotes; values are printed verbatim,
- * so callers must wrap a value in \"...\" themselves if it should be a JSON
- * string (e.g. print_json ("name", "\"bob\"", "age", "42", NULL)).
- */
-void print_json (const char *first, ...);
+void print_json_start (void);
+
+void print_entry (const char *key, const char *value);
+
+void print_last_entry (const char *key, const char *value);
+
+void print_json_end (void);
 
 #endif // LOGGING_H

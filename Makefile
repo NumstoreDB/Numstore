@@ -4,7 +4,6 @@
 # make all                          			build lib + tool binaries (default)
 # make docs                         			build docs/*.md -> html
 # make python                       			alias for python-package
-# make python-sources               			regen bindings/python/sources.txt
 # make python-package               			build wheel
 # make python-test                  			build + install + pytest
 # make release-package              			assemble SDK folder (bin/lib/include/docs/samples)
@@ -20,7 +19,6 @@
 # Examples:
 #   make
 #   make TARGET=release
-#   make ASAN=1
 #   make NLOG=1
 #   make CFLAGS_USER="-Wpedantic"
 #   make docs
@@ -40,7 +38,7 @@
 
 ############ Executables
 
-CC           		:= gcc
+CC           		:= clang
 PANDOC       		:= pandoc
 CLANG_FORMAT 		:= clang-format
 PYTHON       		:= python3
@@ -48,12 +46,12 @@ RUSTC        		:= rustc
 CLANG_TIDY 			:= clang-tidy
 BEAR       			:= bear
 
+
 ############ User Config
 
 TARGET 				?= debug
 PLATFORM 			?=
 CROSS_GOAL 	  ?= all
-ASAN   				?= 0
 NLOG 					?= 1
 CFLAGS_USER 	?=
 
@@ -159,12 +157,6 @@ CFLAGS_RELEASE :=
 CFLAGS_RELEASE += -DNDEBUG
 CFLAGS_RELEASE += -O3
 
-# Asan flags
-CFLAGS_ASAN :=
-CFLAGS_ASAN += -g
-CFLAGS_ASAN += -fsanitize=address,undefined
-CFLAGS_ASAN += -fno-omit-frame-pointer
-
 # No Logs
 CFLAGS_NLOG := -DNLOG
 
@@ -175,11 +167,6 @@ else ifeq ($(TARGET),debug)
 CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_DEBUG)
 else
     $(error Invalid TARGET '$(TARGET)' - must be 'debug' or 'release')
-endif
-
-# Address sanitizer
-ifeq ($(ASAN),1)
-CFLAGS += $(CFLAGS_ASAN)
 endif
 
 # No logs
@@ -205,11 +192,9 @@ ALL 					:= $(TARGET_LIB)
 include src/core/module.mk
 include src/nscore/module.mk
 include src/numstore/module.mk
-include src/smartfiles/module.mk
+# include src/smartfiles/module.mk
 include bindings/python/module.mk
 ifeq ($(TARGET),debug)
-include src/tests/module.mk
-else ifeq ($(ASAN),1)
 include src/tests/module.mk
 endif
 
@@ -224,11 +209,9 @@ LIBNS_OBJS := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(LIBNS_SRCS))
 PY_SOURCES_FILE := bindings/python/sources.txt
 
 $(PY_SOURCES_FILE): $(LIBNS_SRCS) $(ALL_PYSRCS)
-	@rm -f $@
-	@echo "# IGNORE: Sources for pynumstore" >> $@
-	@echo "# IGNORE: Generate with make python-sources" >> $@
-	@for f in $(LIBNS_SRCS); do echo "../../$$f" >> $@; done
-	@for f in $(ALL_PYSRCS); do echo "../../$$f" >> $@; done
+	rm -f $@
+	for f in $(LIBNS_SRCS); do echo "../../$$f" >> $@; done
+	for f in $(ALL_PYSRCS); do echo "../../$$f" >> $@; done
 
 .PHONY: python-sources
 python-sources: $(PY_SOURCES_FILE) 
@@ -248,13 +231,11 @@ python-test: python-package
 ############ Targets
 
 $(OBJ_DIR)/%.o: src/%.c | $(OBJ_DIR)
-	@mkdir -p $(dir $@)
-	@echo "  CC       $< -> $(patsubst $(CURDIR)/%,%,$@)"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(TARGET_LIB): $(LIBNS_OBJS) | $(LIB_DIR)
-	@echo "  AR       $(patsubst $(CURDIR)/%,%,$(TARGET_LIB)) ($(words $(LIBNS_OBJS)) objs)"
-	@$(AR) rcs $@ $(LIBNS_OBJS)
+	$(AR) rcs $@ $(LIBNS_OBJS)
 
 ############ Docs
 
@@ -283,14 +264,12 @@ HTML_OUTPUTS := $(patsubst docs/%.md,$(HTML_DIR)/%.html,$(MD_FILES))
 MD_OUTPUTS   := $(patsubst docs/%.md,$(MD_DIR)/%.md,$(MD_FILES))
 
 $(HTML_DIR)/%.html: docs/%.md $(PANDOC_DEPS) | $(HTML_DIR)
-	@mkdir -p $(dir $@)
-	@echo "  PANDOC   $< -> $(patsubst $(CURDIR)/%,%,$@)"
-	@PANDOC_SRC_REL=$(patsubst docs/%,%,$<) $(PANDOC) $(PANDOC_ARGS) --output $@ $<
+	mkdir -p $(dir $@)
+	PANDOC_SRC_REL=$(patsubst docs/%,%,$<) $(PANDOC) $(PANDOC_ARGS) --output $@ $<
 
 $(MD_DIR)/%.md: docs/%.md | $(MD_DIR)
-	@mkdir -p $(dir $@)
-	@echo "  CP       $< -> $(patsubst $(CURDIR)/%,%,$@)"
-	@cp $< $@
+	mkdir -p $(dir $@)
+	cp $< $@
 
 MAN_DIR  := $(PKG_DIR)/share/man
 MAN_SRCS := $(shell find docs/man -name '*.md')
@@ -303,9 +282,8 @@ PANDOC_MAN_ARGS := \
 MAN_OUTPUTS := $(patsubst docs/man/%.md,$(MAN_DIR)/%,$(MAN_SRCS))
 
 $(MAN_DIR)/%: docs/man/%.md
-	@mkdir -p $(dir $@)
-	@echo "  MAN      $< -> $(patsubst $(CURDIR)/%,%,$@)"
-	@PANDOC_SRC_REL=man/$(patsubst docs/man/%,%,$<) $(PANDOC) $(PANDOC_MAN_ARGS) --output $@ $<
+	mkdir -p $(dir $@)
+	PANDOC_SRC_REL=man/$(patsubst docs/man/%,%,$<) $(PANDOC) $(PANDOC_MAN_ARGS) --output $@ $<
 
 .PHONY: docs
 docs: $(HTML_OUTPUTS) $(MD_OUTPUTS) $(MAN_OUTPUTS)
@@ -316,7 +294,7 @@ PKG_TEMPLATES_DIR := $(CURDIR)/packaging
 
 PC_TEMPLATES := \
 	$(PKG_TEMPLATES_DIR)/pkgconfig/numstore.pc.in \
-	$(PKG_TEMPLATES_DIR)/pkgconfig/smartfiles.pc.in
+	# $(PKG_TEMPLATES_DIR)/pkgconfig/smartfiles.pc.in
 
 SAMPLES_MAKEFILE_IN := $(PKG_TEMPLATES_DIR)/samples/Makefile.in
 
@@ -326,26 +304,22 @@ PKG_SUBST := \
 
 .PHONY: release-package
 release-package: all docs | $(PC_DIR) $(SMP_DIR)
-	@echo "  PKG      $(ARTIFACT_NAME)"
-	@cp $(CURDIR)/LICENSE $(PKG_DIR)/LICENSE
-	@cp $(CURDIR)/CHANGELOG.md $(PKG_DIR)/CHANGELOG.md
-	@cp $(CURDIR)/docs/release_docs.md $(PKG_DIR)/README.md
-	@for t in $(PC_TEMPLATES); do \
+	cp $(CURDIR)/LICENSE $(PKG_DIR)/LICENSE
+	cp $(CURDIR)/CHANGELOG.md $(PKG_DIR)/CHANGELOG.md
+	cp $(CURDIR)/docs/release_docs.md $(PKG_DIR)/README.md
+	for t in $(PC_TEMPLATES); do \
 		out=$(PC_DIR)/$$(basename $$t .in); \
 		sed $(PKG_SUBST) $$t > $$out; \
 	done
-	@sed $(PKG_SUBST) $(SAMPLES_MAKEFILE_IN) > $(SMP_DIR)/Makefile
-	@cp samples/*.c $(SMP_DIR)/ 2>/dev/null || true
-	@echo "  DONE     $(PKG_DIR)"
+	sed $(PKG_SUBST) $(SAMPLES_MAKEFILE_IN) > $(SMP_DIR)/Makefile
+	cp samples/*.c $(SMP_DIR)/ 2>/dev/null || true
 
 .PHONY: release-tarball
 release-tarball: release-package
 ifeq ($(ARCHIVE_EXT),zip)
 	cd $(OUT_DIR) && zip -r -q $(ARTIFACT_NAME).zip $(ARTIFACT_NAME)
-	@echo "  ZIP      $(OUT_DIR)/$(ARTIFACT_NAME).zip"
 else
 	tar -C $(OUT_DIR) -czf $(OUT_DIR)/$(ARTIFACT_NAME).tar.gz $(ARTIFACT_NAME)
-	@echo "  TAR      $(OUT_DIR)/$(ARTIFACT_NAME).tar.gz"
 endif
 
 ############ Default target
@@ -355,8 +329,6 @@ endif
 all: $(ALL)
 
 docs: $(HTML_OUTPUTS)
-
-python: $(TARGET_PYLIB)
 
 ############ Directories
 
@@ -369,9 +341,8 @@ $(MAN_DIR)/man%:
 ############ Cross-compilation via dockcross
 
 docker/dockcross-%:
-	@echo "  DOCKCROSS $*"
-	@docker run --rm dockcross/$* > $@
-	@chmod u+x $@
+	docker run --rm dockcross/$* > $@
+	chmod u+x $@
 
 ifneq ($(filter cross,$(MAKECMDGOALS)),)
 ifeq ($(PLATFORM),)
@@ -396,27 +367,22 @@ PACKAGE_PLATFORMS := \
 
 .PHONY: package-release-all-platforms
 package-release-all-platforms:
-	@for p in $(PACKAGE_PLATFORMS); do \
-		echo "  RELEASE  $$p"; \
+	for p in $(PACKAGE_PLATFORMS); do \
 		$(MAKE) cross PLATFORM=$$p CROSS_GOAL="TARGET=release release-tarball" || exit 1; \
 	done
-	@echo "  DONE     built $(words $(PACKAGE_PLATFORMS)) platform(s) under build/release-*/"
 
 ############ Housekeeping
 
 compile_commands.json:
-	@echo "  BEAR     compile_commands.json"
-	@$(BEAR) -- $(MAKE) TARGET=debug clean all > /dev/null
+	$(BEAR) -- $(MAKE) TARGET=debug clean all > /dev/null
 
 .PHONY: lint
 lint: compile_commands.json
-	@echo "  TIDY     $(words $(LIBNS_SRCS))"
 	$(CLANG_TIDY) -p . $(LIBNS_SRCS)
 
 .PHONY: lint-fix
 lint-fix: compile_commands.json
-	@echo "  TIDY-FIX $(words $(LIBNS_SRCS)) files"
-	@$(CLANG_TIDY) -p . --fix --fix-errors $(LIBNS_SRCS)
+	$(CLANG_TIDY) -p . --fix --fix-errors $(LIBNS_SRCS)
 
 ############ Housekeeping
 
@@ -434,9 +400,6 @@ clean:
 format:
 	find src bindings -type f \( -name '*.c' -o -name '*.h' \) -print0 \
 		| xargs -0 $(CLANG_FORMAT) -i
-
-example:
-	echo "Testing CI JOB - this will be deleted"
 
 ############ Header dependencies
 
