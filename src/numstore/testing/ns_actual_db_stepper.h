@@ -10,6 +10,11 @@
 #include "nscore/types/ns_types.h"
 #include "numstore/numstore.h"
 
+/**
+ * A database stepper is a little state machine that
+ * holds onto a variable and operates a bunch of operations
+ * on that variable
+ */
 struct ns_db
 {
   struct nsdb         *db;
@@ -33,9 +38,10 @@ struct ns_db
 };
 
 struct ns_db *ns_db_new (
-    struct i_mem         reliable_mem,
-    struct i_mem         test_mem,
-    struct i_file_system fs,
+    struct i_mem reliable_mem, // Memory used for allocating internal data structures etc
+    struct i_mem
+        test_mem, // Memory used for allocating data within test (Can be intentionally faulty)
+    struct i_file_system fs, // File system used for database
     const char          *dbname,
     error               *e
 );

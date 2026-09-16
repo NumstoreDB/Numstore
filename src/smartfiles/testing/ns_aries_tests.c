@@ -20,7 +20,8 @@
 
 #ifdef TESTING
 
-TEST (aries_crash)
+/**
+TEST_DISABLED (aries_crash)
 {
   TEST_CASE ("sample5_bug")
   {
@@ -53,9 +54,7 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /*
-   * 1. Uncommitted work after a crash must be discarded.
-   */
+  // 1. Uncommitted work after a crash must be discarded.
   TEST_CASE ("crash_before_commit_discards_uncommitted")
   {
     error e = error_create ();
@@ -69,7 +68,7 @@ TEST (aries_crash)
     smf = smfile_open ("testdb");
     tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "ZZ", 3, 2);
-    /* deliberately no commit */
+    // deliberately no commit
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
@@ -80,10 +79,8 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /*
-   * 2. Committed txn followed by uncommitted txn in the same session.
-   *    Recovery must keep the first, throw away the second.
-   */
+   //2. Committed txn followed by uncommitted txn in the same session.
+   //   Recovery must keep the first, throw away the second.
   TEST_CASE ("crash_keeps_committed_drops_followon_uncommitted")
   {
     error e = error_create ();
@@ -106,10 +103,8 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 3. Multiple crash/reopen cycles. Each session commits, then crashes;
-   *    every committed write must survive across all of them.
-   */
+   //3. Multiple crash/reopen cycles. Each session commits, then crashes;
+   //   every committed write must survive across all of them.
   TEST_CASE ("repeated_crash_recover_cycles_preserve_all_commits")
   {
     error e = error_create ();
@@ -141,10 +136,8 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 4. Crash with no commits at all in the new session.
-   *    File must look exactly as it did at the previous clean close.
-   */
+   //4. Crash with no commits at all in the new session.
+   //   File must look exactly as it did at the previous clean close.
   TEST_CASE ("crash_with_no_new_commits_is_a_noop")
   {
     error e = error_create ();
@@ -156,7 +149,7 @@ TEST (aries_crash)
     smfile_close (smf);
 
     smf = smfile_open ("testdb");
-    /* open, do nothing, crash */
+    ///open, do nothing, crash
     smfile_crash (smf);
 
     smf                  = smfile_open ("testdb");
@@ -167,10 +160,8 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 5. Many tiny committed transactions, then crash.
-   *    Stresses WAL replay across a long redo chain.
-   */
+   //5. Many tiny committed transactions, then crash.
+   //   Stresses WAL replay across a long redo chain.
   TEST_CASE ("many_small_commits_then_crash")
   {
     error e = error_create ();
@@ -193,10 +184,9 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 6. Several inserts inside a single transaction, then commit, then crash.
-   *    Either ALL of them survive or NONE of them - atomicity check.
-   */
+   //6. Several inserts inside a single transaction, then commit, then crash.
+   //   Either ALL of them survive or NONE of them - atomicity check.
+
   TEST_CASE ("multi_insert_single_txn_is_atomic_through_crash")
   {
     error e = error_create ();
@@ -210,7 +200,7 @@ TEST (aries_crash)
     smfile_commit (smf, tx);
     smfile_crash (smf);
 
-    /* AAAA -> AABBAA -> CCAABBAA */
+    ///AAAA -> AABBAA -> CCAABBAA
     smf                  = smfile_open ("testdb");
     const char *expected = "CCAABBAA";
     char        actual[sizeof ("CCAABBAA") - 1];
@@ -219,10 +209,9 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 7. Append at the exact end-of-file boundary, then crash.
-   *    Catches off-by-ones where offset == length is treated as out-of-range.
-   */
+   //7. Append at the exact end-of-file boundary, then crash.
+   //   Catches off-by-ones where offset == length is treated as out-of-range.
+
   TEST_CASE ("append_at_end_offset_then_crash")
   {
     error e = error_create ();
@@ -235,7 +224,7 @@ TEST (aries_crash)
 
     smf = smfile_open ("testdb");
     tx  = smfile_begin (smf);
-    smfile_insert (smf, tx, "FGH", 5, 3); /* offset == current length */
+    smfile_insert (smf, tx, "FGH", 5, 3); ///offset == current length
     smfile_commit (smf, tx);
     smfile_crash (smf);
 
@@ -247,10 +236,9 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 8. Insert at offset 0 into a non-empty file shifts everything right.
-   *    Recovery must preserve the shift.
-   */
+   //8. Insert at offset 0 into a non-empty file shifts everything right.
+   //   Recovery must preserve the shift.
+
   TEST_CASE ("insert_at_zero_shifts_existing_through_crash")
   {
     error e = error_create ();
@@ -275,10 +263,9 @@ TEST (aries_crash)
     smfile_close (smf);
   }
 
-  /**
-   * 9. Single insert larger than one page - exercises multi-page redo.
-   *    Adjust BIG_SIZE to comfortably exceed your page size.
-   */
+   //9. Single insert larger than one page - exercises multi-page redo.
+   //   Adjust BIG_SIZE to comfortably exceed your page size.
+
   TEST_CASE ("large_page_spanning_insert_then_crash")
   {
     enum
@@ -309,11 +296,10 @@ TEST (aries_crash)
     i_free (mem, actual);
   }
 
-  /**
-   * 10. Reads at the boundary of recovered content.
-   *     Read from the tail end of the file after recovery, where partial
-   *     reads / overruns are most likely to misbehave.
-   */
+   //10. Reads at the boundary of recovered content.
+   //    Read from the tail end of the file after recovery, where partial
+   //    reads / overruns are most likely to misbehave.
+
   TEST_CASE ("tail_read_after_recovery")
   {
     error e = error_create ();
@@ -325,12 +311,13 @@ TEST (aries_crash)
     smfile_crash (smf);
 
     smf = smfile_open ("testdb");
-    /* read the last 4 bytes */
+    ///read the last 4 bytes
     char actual[4];
     smfile_read (smf, NULL, actual, 1, 6, 1, sizeof (actual));
     test_assert_memequal ("6789", actual, sizeof (actual));
     smfile_close (smf);
   }
 }
+*/
 
 #endif

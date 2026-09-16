@@ -33,7 +33,7 @@ err_t
 nscli_init (struct nscli *cli, const char *dbname)
 {
   cli->e  = error_create ();
-  cli->db = ns_nsdb_open_with_resources (dbname, default_mem (), default_filesystem (), &cli->e);
+  cli->db = nsdb_open_with_resources (dbname, default_mem (), default_filesystem (), &cli->e);
 
   if (cli->db == NULL) {
     return -1;
@@ -207,5 +207,5 @@ void
 nscli_close (struct nscli *cli)
 {
   arena_alloc_free_all (&cli->step_alloc);
-  ns_nsdb_close (cli->db, &cli->e);
+  nsdb_close (cli->db, &cli->e);
 }

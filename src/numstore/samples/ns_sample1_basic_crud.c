@@ -47,47 +47,58 @@ int
 main (void)
 {
   // Open a new data file
-  nsdb_cleanup ("sample1_crud");
-  nsdb_t *ns = nsdb_open ("sample1_crud");
+  numstore_cleanup ("sample1_crud");
+  numstore_t *ns = numstore_open ("sample1_crud");
   if (ns == NULL) {
     return -1;
   }
 
-  // Create a new variable
-  nsdb_fexecute (
+  // Create a new variable (no data buffer involved)
+  struct numstore_plan create_plan = {0};
+  numstore_fexecute (
       ns,
       NULL,
+      &create_plan,
       "create example struct {\n"
       "  a f32,\n"
       "  b i32,\n"
       "  d [5][10] u32\n"
-      "}",
-      NULL
+      "}"
   );
 
   init_example (src, 200);
 
   // Insert data at offset 0
-  sb_size n = nsdb_fexecute (ns, NULL, "insert example 0 %d", src, 200);
+  struct numstore_plan insert_plan = {.data = src, .dlen = sizeof (src)};
+  sb_size              n = numstore_fexecute (ns, NULL, &insert_plan, "insert example 0 %d", 200);
 
   // Read (most of) data with a stride of 3
-  n         = nsdb_fexecute (ns, NULL, "read example[0:-10:3] blimit %ld", dest, sizeof (dest));
+  struct numstore_plan read_plan = {.data = dest, .dlen = sizeof (dest)};
+  n = numstore_fexecute (ns, NULL, &read_plan, "read example[0:-10:3] blimit %ld", sizeof (dest));
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2
-  n = nsdb_fexecute (ns, NULL, "remove example[0:-10:2] blimit %ld", dest, sizeof (dest));
+  struct numstore_plan remove_plan = {.data = dest, .dlen = sizeof (dest)};
+  n                                = numstore_fexecute (
+      ns,
+      NULL,
+      &remove_plan,
+      "remove example[0:-10:2] blimit %ld",
+      sizeof (dest)
+  );
   print_example ("Removed elements: ", dest, n);
 
   // Read all of data
-  n = nsdb_fexecute (ns, NULL, "read example[0:] blimit %ld", dest, sizeof (dest));
+  n = numstore_fexecute (ns, NULL, &read_plan, "read example[0:] blimit %ld", sizeof (dest));
   print_example ("After Remove: ", dest, n);
 
   // Write all of data with src
-  n = nsdb_fexecute (ns, NULL, "write example[0::] blimit %ld", src, sizeof (src));
-  n = nsdb_fexecute (ns, NULL, "read example[0:] blimit %ld", dest, sizeof (dest));
+  struct numstore_plan write_plan = {.data = src, .dlen = sizeof (src)};
+  n = numstore_fexecute (ns, NULL, &write_plan, "write example[0::] blimit %ld", sizeof (src));
+  n = numstore_fexecute (ns, NULL, &read_plan, "read example[0:] blimit %ld", sizeof (dest));
   print_example ("After write: ", dest, n);
 
-  return nsdb_close (ns);
+  return numstore_close (ns);
 }
 
 static void

@@ -42,23 +42,27 @@ main (int argc, char **argv)
   double          ns_result, naive_result;
   {
     // Set up - build the backing file first
-    nsdb_cleanup ("sample_big_file");
-    nsdb_t *ns = nsdb_open ("sample_big_file");
-    nsdb_fexecute (ns, NULL, "create example u8", NULL);
+    numstore_cleanup ("sample_big_file");
+    numstore_t          *ns          = numstore_open ("sample_big_file");
+
+    struct numstore_plan create_plan = {0};
+    numstore_fexecute (ns, NULL, &create_plan, "create example u8");
 
     // Do one big insert at offset 0
-    nsdb_fexecute (ns, NULL, "insert example 0 %ld", backing_data, b_size);
+    struct numstore_plan backing_plan = {.data = backing_data, .dlen = b_size};
+    numstore_fexecute (ns, NULL, &backing_plan, "insert example 0 %ld", b_size);
 
     // Timed Section
     //    Inner insert is first class
+    struct numstore_plan insert_plan = {.data = insert_data, .dlen = i_size};
     {
       clock_gettime (CLOCK_MONOTONIC, &start);
-      nsdb_fexecute (ns, NULL, "insert example 10 %ld", insert_data, i_size);
+      numstore_fexecute (ns, NULL, &insert_plan, "insert example 10 %ld", i_size);
       clock_gettime (CLOCK_MONOTONIC, &end);
       ns_result = elapsed_sec (start, end);
     }
 
-    nsdb_close (ns);
+    numstore_close (ns);
   }
 
   {

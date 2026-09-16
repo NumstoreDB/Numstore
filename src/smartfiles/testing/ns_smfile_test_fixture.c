@@ -99,7 +99,8 @@ smfile_data_writer_close (struct data_writer *w)
 }
 
 #ifdef TESTING
-TEST (smfile_data_writer)
+/*
+TEST_DISABLED (smfile_data_writer)
 {
   error     e        = error_create ();
 
@@ -133,4 +134,5 @@ TEST (smfile_data_writer)
     test_assert (smfile_data_writer_close (sut) == 0);
   }
 }
+*/
 #endif

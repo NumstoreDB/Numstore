@@ -55,16 +55,12 @@ struct query
     {
       struct string      name;
       struct user_stride ustr;
-      b_size             limit;
-      bool               blimit;
     } read;
 
     struct write_query
     {
       struct string      name;
       struct user_stride ustr;
-      b_size             limit;
-      bool               blimit;
     } write;
 
     struct insert_query
@@ -78,8 +74,6 @@ struct query
     {
       struct string      name;
       struct user_stride ustr;
-      b_size             limit;
-      bool               blimit;
     } remove;
 
     // Variable Operations
@@ -113,5 +107,16 @@ struct query
 bool query_equal (const struct query *left, const struct query *right);
 
 void i_log_query (int LOG_LEVEL, struct query *q);
+
+struct string query_vname_of_interest (const struct query *q);
+struct user_stride query_ustr_of_interest (const struct query *q);
+
+sb_size ns_query_fcompile (
+    struct arena_alloc *alloc, // Where to allocate query
+    const char         *fmt,   // Format string
+    va_list             ap,    // Var args
+    struct query       *q,     // destination
+    error              *e
+);
 
 #endif

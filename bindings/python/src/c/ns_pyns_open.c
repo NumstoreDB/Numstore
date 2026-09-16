@@ -24,21 +24,25 @@
 PyObject *
 pyns_open (PyObject *Py_UNUSED (m), PyObject *arg)
 {
+  // Check that the object is a string
   if (!PyUnicode_Check (arg)) {
     PyErr_SetString (PyExc_TypeError, "path must be str");
     return NULL;
   }
 
+  // Get the path as a utf8 string
   const char *path = PyUnicode_AsUTF8 (arg);
   if (!path) {
     return NULL;
   }
 
-  nsdb_t *ns = nsdb_open (path);
+  // Open the database
+  numstore_t *ns = numstore_open (path);
   if (!ns) {
     PyErr_SetString (PyExc_RuntimeError, "Failed to open numstore database");
     return NULL;
   }
 
+  // Wrap it in a capsule
   return PyCapsule_New ((void *)ns, DB_CAPSULE, _nspy_release_db);
 }

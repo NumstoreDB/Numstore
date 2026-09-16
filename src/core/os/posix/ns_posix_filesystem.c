@@ -18,7 +18,6 @@
 
 #  include "core/ns_error.h"
 #  include "core/os/ns_file.h"
-#  include "core/os/ns_filesystem.h"
 
 #  include <dirent.h>
 #  include <errno.h>

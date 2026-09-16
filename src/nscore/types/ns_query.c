@@ -16,6 +16,7 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_string.h"
+#include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_types.h"
 
 bool
@@ -124,4 +125,97 @@ i_log_query (int log_level, struct query *q)
       break;
     }
   }
+}
+
+struct string
+query_vname_of_interest (const struct query *q)
+{
+  switch (q->type) {
+    case QT_READ: {
+      return q->read.name;
+    }
+    case QT_WRITE: {
+      return q->write.name;
+    }
+    case QT_INSERT: {
+      return q->insert.name;
+    }
+    case QT_REMOVE: {
+      return q->remove.name;
+    }
+
+    // Variable Operations
+    case QT_CREATE: {
+      return q->create.name;
+    }
+    case QT_DELETE: {
+      return q->delete.name;
+    }
+    case QT_GET: {
+      return q->get.name;
+    }
+
+    default: {
+      UNREACHABLE ();
+    }
+  }
+}
+
+struct user_stride
+query_ustr_of_interest (const struct query *q)
+{
+  switch (q->type) {
+    case QT_READ: {
+      return q->read.ustr;
+    }
+    case QT_WRITE: {
+      return q->write.ustr;
+    }
+    case QT_REMOVE: {
+      return q->remove.ustr;
+    }
+
+    default: {
+      UNREACHABLE ();
+    }
+  }
+}
+
+sb_size
+ns_query_fcompile (
+    struct arena_alloc *alloc, // Where to allocate query
+    const char         *fmt,   // Format string
+    va_list             ap,    // Var args
+    struct query       *q,     // destination
+    error              *e
+)
+{
+  va_list ap2;
+  va_copy (ap2, ap);
+
+  // Compute the length the formatted query needs, without writing anything.
+  i32 qlen = vsnprintf (NULL, 0, fmt, ap);
+  if (qlen < 0) {
+    va_end (ap2);
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Invalid printf argument");
+  }
+
+  // Allocate buffer for the query
+  char *buf = arena_malloc (alloc, (size_t)qlen + 1, 1, e);
+  if (!buf) {
+    va_end (ap2);
+    return error_trace (e);
+  }
+
+  // Actually write the formatted query into buf.
+  qlen = vsnprintf (buf, (size_t)qlen + 1, fmt, ap2);
+  ASSERT (qlen >= 0);
+  va_end (ap2);
+
+  // Compile the query
+  if (compile_query (q, buf, alloc, e)) {
+    return error_trace (e);
+  }
+
+  return SUCCESS;
 }

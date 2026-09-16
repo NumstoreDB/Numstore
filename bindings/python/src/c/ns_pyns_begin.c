@@ -25,17 +25,18 @@ PyObject *
 pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   // Get the wrapped database
-  nsdb_t *ns = _unwrap_db (arg);
+  numstore_t *ns = _unwrap_db (arg);
   if (!ns) {
     return NULL;
   }
 
-  // BEGIN TXN
-  ns_txn_t *txn = nsdb_begin (ns);
-  if (!txn) {
-    _pyns_set_error (ns);
+  // Begin transaction
+  ns_txn_t *txn = numstore_begin (ns);
+  if (txn == NULL) {
+    _pyns_set_error_from_nsdb (ns);
     return NULL;
   }
 
+  // Wrap the transaction in a capsule
   return PyCapsule_New ((void *)txn, TXN_CAPSULE, NULL);
 }
