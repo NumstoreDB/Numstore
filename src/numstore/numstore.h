@@ -16,6 +16,7 @@
 #define NUMSTORE_H
 
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -137,5 +138,13 @@ sb_size numstore_fexecute (
     const char           *query_fmt,
     ...
 ) NSDB_PRINTF (4, 5);
+
+sb_size numstore_vexecute (
+    numstore_t           *ns,
+    ns_txn_t             *txn,
+    struct numstore_plan *plan,
+    const char           *query_fmt,
+    va_list               args
+);
 
 #endif

@@ -46,33 +46,8 @@ numstore_insert (
   }
 
   // Resolve sizes
-  t_size tsize = type_byte_size (gparams.dest.dtype);
-  b_size bofst = var_resolve_index (&gparams.dest, tsize * ofst);
-
-  i_log_debug (
-      "INSERT (txn = %" PRtxid
-      ")"
-      " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
-      " Requested: "
-      " ofst: %" PRId64 " ofst (bytes): %" PRId64 " nelem: %" PRId64 " nbytes (bytes): %" PRId64
-      " Granted: "
-      " start: %" PRIu64 " start (bytes): %" PRIu64 " granted: %" PRIu64
-      " granted (bytes): %" PRIu64 "\n",
-      tx->tid,
-      strfmt (&name),
-      tsize,
-      gparams.dest.nbytes / tsize,
-      gparams.dest.nbytes,
-      ofst,
-      ofst * tsize,
-      len,
-      len * tsize,
-      bofst / tsize,
-      bofst,
-      len,
-      len * tsize
-  );
+  t_size                  tsize   = type_byte_size (gparams.dest.dtype);
+  b_size                  bofst   = var_resolve_index (&gparams.dest, tsize * ofst);
 
   // Insert
   struct ns_insert_params iparams = {

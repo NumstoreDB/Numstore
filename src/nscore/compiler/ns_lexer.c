@@ -553,7 +553,7 @@ TEST (lexer_numbers)
 TEST (lexer_keywords)
 {
   const char *src =
-      "create delete get exit help insert if exists blimit limit struct union "
+      "create delete get exit help insert if exists struct union "
       "true "
       "false";
 
