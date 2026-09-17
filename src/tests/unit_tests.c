@@ -43,7 +43,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[326];
+  const char *failed_names[325];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -6140,25 +6140,6 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "numstore_fexecute";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("numstore_fexecute_allocate", filter))
-  {
-    extern void __test__numstore_fexecute_allocate(void);
-    i_log_info("========================= TEST CASE: %s\n", "numstore_fexecute_allocate");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__numstore_fexecute_allocate();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "numstore_fexecute_allocate");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "numstore_fexecute_allocate";
     }
     ntests++;
   }

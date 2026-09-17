@@ -306,7 +306,14 @@ ns_db_create_and_maybe_switch (struct ns_db *db, const char *vname, struct type 
 {
   ALLOC_INIT (alloc);
   pre_op (db);
-  err_t ret = numstore_create (db->db->p, db->tx, strfcstr (vname), dtype, &alloc, NULL, e);
+  struct auto_txn auto_tx;
+  err_t           ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
+  if (ret == SUCCESS) {
+    ret = numstore_create (db->db->p, auto_tx.tx, strfcstr (vname), dtype, &alloc, NULL, e);
+    if (ret >= 0) {
+      nsdb_auto_commit (db->db, &auto_tx, e);
+    }
+  }
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -353,7 +360,14 @@ ns_db_delete_cur_and_switch (struct ns_db *db, const char *next, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = numstore_delete (db->db->p, db->tx, strfcstr (cur), false, e);
+  struct auto_txn auto_tx;
+  err_t           ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
+  if (ret == SUCCESS) {
+    ret = numstore_delete (db->db->p, auto_tx.tx, strfcstr (cur), false, e);
+    if (ret >= 0) {
+      nsdb_auto_commit (db->db, &auto_tx, e);
+    }
+  }
   post_op (db);
 
   if (ret < 0) {
@@ -379,17 +393,24 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = numstore_insert (
-      db->db->p,
-      db->tx,
-      strfcstr (cur),
-      ofst,
-      len,
-      &alloc,
-      NULL,
-      &stream,
-      e
-  );
+  struct auto_txn auto_tx;
+  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
+  if (ret == SUCCESS) {
+    ret = numstore_insert (
+        db->db->p,
+        auto_tx.tx,
+        strfcstr (cur),
+        ofst,
+        len,
+        &alloc,
+        NULL,
+        &stream,
+        e
+    );
+    if (ret >= 0) {
+      nsdb_auto_commit (db->db, &auto_tx, e);
+    }
+  }
   post_op (db);
 
   ALLOC_CLOSE (alloc);
@@ -414,16 +435,23 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = numstore_remove (
-      db->db->p,
-      db->tx,
-      strfcstr (cur),
-      usfrms (str),
-      &alloc,
-      NULL,
-      &stream,
-      e
-  );
+  struct auto_txn auto_tx;
+  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
+  if (ret == SUCCESS) {
+    ret = numstore_remove (
+        db->db->p,
+        auto_tx.tx,
+        strfcstr (cur),
+        usfrms (str),
+        &alloc,
+        NULL,
+        &stream,
+        e
+    );
+    if (ret >= 0) {
+      nsdb_auto_commit (db->db, &auto_tx, e);
+    }
+  }
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -447,16 +475,23 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = numstore_read (
-      db->db->p,
-      db->tx,
-      strfcstr (cur),
-      usfrms (str),
-      &alloc,
-      NULL,
-      &stream,
-      e
-  );
+  struct auto_txn auto_tx;
+  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
+  if (ret == SUCCESS) {
+    ret = numstore_read (
+        db->db->p,
+        auto_tx.tx,
+        strfcstr (cur),
+        usfrms (str),
+        &alloc,
+        NULL,
+        &stream,
+        e
+    );
+    if (ret >= 0) {
+      nsdb_auto_commit (db->db, &auto_tx, e);
+    }
+  }
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -480,16 +515,23 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  sb_size ret = numstore_write (
-      db->db->p,
-      db->tx,
-      strfcstr (cur),
-      usfrms (str),
-      &alloc,
-      NULL,
-      &stream,
-      e
-  );
+  struct auto_txn auto_tx;
+  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
+  if (ret == SUCCESS) {
+    sb_size ret = numstore_write (
+        db->db->p,
+        auto_tx.tx,
+        strfcstr (cur),
+        usfrms (str),
+        &alloc,
+        NULL,
+        &stream,
+        e
+    );
+    if (ret >= 0) {
+      nsdb_auto_commit (db->db, &auto_tx, e);
+    }
+  }
   post_op (db);
   ALLOC_CLOSE (alloc);
 

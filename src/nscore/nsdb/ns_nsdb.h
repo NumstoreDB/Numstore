@@ -56,9 +56,51 @@ struct ns_txn *nsdb_begin (struct nsdb *smf, error *e);
 int nsdb_commit (struct nsdb *smf, struct ns_txn *txn, error *e);
 int nsdb_rollback (struct nsdb *smf, struct ns_txn *txn, error *e);
 
-#define NSDB_AUTO_TXN(condition, txname) \
-  struct txn *txname = NULL;             \
-  do {                                   \
-    if (condition) { txname = nsdb_begin(
+struct auto_txn
+{
+  struct ns_txn *tx;
+  bool           is_auto_txn;
+};
+
+static inline err_t
+nsdb_auto_begin (struct nsdb *db, struct ns_txn *tx, struct auto_txn *auto_tx, error *e)
+{
+  auto_tx->tx          = tx;
+  auto_tx->is_auto_txn = false;
+
+  if (tx == NULL) {
+    auto_tx->tx = nsdb_begin (db, e);
+    if (auto_tx->tx == NULL) {
+      return error_trace (e);
+    }
+    auto_tx->is_auto_txn = true;
+  }
+
+  return SUCCESS;
+}
+
+static inline err_t
+nsdb_auto_commit (struct nsdb *db, struct auto_txn *auto_tx, error *e)
+{
+  ASSERT (auto_tx->tx);
+  if (auto_tx->is_auto_txn) {
+    struct ns_txn *tx = auto_tx->tx;
+    auto_tx->tx       = NULL;
+    return nsdb_commit (db, tx, e);
+  }
+  return SUCCESS;
+}
+
+static inline err_t
+nsdb_auto_rollback (struct nsdb *db, struct auto_txn *auto_tx, error *e)
+{
+  ASSERT (auto_tx->tx);
+  if (auto_tx->is_auto_txn) {
+    struct ns_txn *tx = auto_tx->tx;
+    auto_tx->tx       = NULL;
+    return nsdb_rollback (db, tx, e);
+  }
+  return SUCCESS;
+}
 
 #endif // NSHANDLE_H

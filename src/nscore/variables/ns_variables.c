@@ -614,41 +614,24 @@ vname_or_default (const char *name)
 struct numstore_var *
 nsdb_var_create (struct i_mem mem, error *e)
 {
-  struct arena_alloc *valloc;
-
-  // Allocate the arena allocator
-  valloc = i_malloc (mem, 1, sizeof *valloc, e);
-  if (valloc == NULL) {
+  struct numstore_var *ret = i_malloc (mem, 1, sizeof *ret, e);
+  if (ret == NULL) {
     return NULL;
   }
-  arena_alloc_create_default (valloc);
+  arena_alloc_create_default (&ret->alloc);
 
-  // Allocate the container on the arena (yes, this is kind of weird)
-  // The parent belongs to the child allocator, just need
-  // to be careful about free
-  struct numstore_var *dest = arena_malloc (valloc, 1, sizeof (struct numstore_var), e);
-  if (dest == NULL) {
-    arena_alloc_free_all (valloc);
-    i_free (default_mem (), valloc);
-    return NULL;
-  }
+  ret->var = (struct variable){0};
+  ret->mem = mem;
 
-  dest->var   = (struct variable){0};
-  dest->alloc = valloc;
-  dest->mem   = mem;
-
-  return dest;
+  return ret;
 }
 
 void
 nsdb_var_free (struct numstore_var *var)
 {
-  // First, grab the child arena allocator
-  struct arena_alloc *alloc = var->alloc;
-
   // Then free everything in the arena allocator
-  arena_alloc_free_all (alloc);
+  arena_alloc_free_all (&var->alloc);
 
   // Free the container
-  i_free (var->mem, alloc);
+  i_free (var->mem, var);
 }

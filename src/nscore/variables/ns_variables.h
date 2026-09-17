@@ -72,9 +72,9 @@ b_size var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size
 
 struct numstore_var
 {
-  struct variable     var;
-  struct arena_alloc *alloc;
-  struct i_mem        mem;
+  struct variable    var;
+  struct arena_alloc alloc;
+  struct i_mem       mem;
 };
 
 struct numstore_var *nsdb_var_create (struct i_mem mem, error *e);
