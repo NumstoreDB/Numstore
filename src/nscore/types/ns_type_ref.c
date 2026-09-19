@@ -224,8 +224,7 @@ TEST (tr_construct)
       struct type *actual = tr_construct (&base_type, &tr, &alloc, &e); \
                                                                         \
       test_assert (actual == NULL);                                     \
-      e.cause_code = SUCCESS;                                           \
-      e.cmlen      = 0;                                                 \
+      error_reset (&e);                                                 \
     }
 
   TRC_TC ("u8", "foo", "u8");

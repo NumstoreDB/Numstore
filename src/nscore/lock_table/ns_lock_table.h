@@ -1,4 +1,4 @@
-/// Copyright 2026 Theo Lincke
+/// Copyright 2026 Theo Linckelock_ta
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -138,5 +138,7 @@ err_t lockt_lock (
 err_t lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, error *e);
 
 void lockt_unlock_tx (struct lockt *t, struct ns_txn *tx);
+
+void i_log_lockt (int log_level, struct lockt *t);
 
 #endif // LOCK_TABLE_H

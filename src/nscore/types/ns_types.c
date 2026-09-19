@@ -88,7 +88,7 @@ TEST (prim_t_validate)
   // 1.3 too‑large → ERR_INTERP
   enum prim_t bad_hi = (enum prim_t) (CU128 + 1);
   test_assert_int_equal (prim_t_validate (&bad_hi, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  error_reset (&err);
 }
 #endif
 
@@ -750,7 +750,7 @@ TEST (prim_t_deserialize)
   u8                  bad[] = {(u8)(CU128 + 1)};
   struct deserializer d2    = dsrlizr_create (bad, sizeof bad);
   test_assert_int_equal (prim_t_deserialize (&out, &d2, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  error_reset (&err);
 }
 #endif
 
@@ -896,8 +896,8 @@ type_random (struct arena_alloc *alloc, u32 depth, error *e)
       return t;
     }
 
-    e->cause_code = 0;
-    e->cmlen      = 0;
+    // Didn't match, move on
+    error_reset (e);
   }
 
   ALLOC_CLOSE (temp);

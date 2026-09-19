@@ -16,14 +16,33 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
+#include "numstore/ns_numstore_internal.h"
 #include "numstore/numstore.h"
 
-// Executes a data operation
+static inline sb_size
+numstore_vexecute_query (
+    numstore_t           *ns,
+    ns_txn_t             *tx,
+    struct numstore_plan *plan,
+    struct query         *q,
+    struct arena_alloc   *valloc,
+    struct variable      *vdest
+)
+{
+  ASSERT (tx);
+
+  if (plan->options & NSDB_PLAN_OPT_ALLOCATE_DATA) {
+    ASSERT (plan->data == NULL); // Is a valid plan
+    return nsdb_execute_malloc (ns->db, tx, q, vdest, valloc, &plan->data, &ns->e);
+  } else {
+    return nsdb_execute_on_buffer (ns->db, tx, q, vdest, plan->data, plan->dlen, valloc, &ns->e);
+  }
+}
+
 sb_size
 numstore_vexecute (
     numstore_t           *ns,
@@ -33,123 +52,49 @@ numstore_vexecute (
     va_list               args
 )
 {
-  // TODO - validate plan
-  ALLOC_INIT (alloc);
+  // Validate numstore plan
+  if (numstore_plan_validate (plan, &ns->e) < 0) {
+    return error_trace (&ns->e);
+  }
 
-  sb_size      ret;
-  struct query q;
-
-  ns->e.cause_code = 0;
-  ns->e.cmlen      = 0;
+  ALLOC_INIT (temp);
 
   // Compile the query
-  ret              = ns_query_fcompile (&alloc, query_fmt, args, &q, &ns->e);
+  struct query q;
+  sb_size      ret = ns_query_fcompile (&temp, query_fmt, args, &q, &ns->e);
   if (ret < 0) {
     goto theend;
   }
 
-  struct arena_alloc *valloc = &alloc;
+  // Allocator to use for the variable (depends on if we're keeping it)
+  struct arena_alloc *valloc = &temp;
   struct variable    *vdest  = NULL;
 
-  // Create a destination variable for capture
   if (plan->options & NSDB_PLAN_OPT_CAPTURE_VAR) {
+    // Create a variable reference to save
     plan->var = nsdb_var_create (ns->db->mem, &ns->e);
-    vdest     = &plan->var->var;
     if (plan->var == NULL) {
       ret = error_trace (&ns->e);
       goto theend;
     }
+
+    // Set the allocator to the persistent allocator
+    // used in the variable reference
     valloc = &plan->var->alloc;
+    vdest  = &plan->var->var;
   }
 
-  struct auto_txn auto_tx;
-  if (nsdb_auto_begin (ns->db, txn, &auto_tx, &ns->e)) {
-    goto theend;
-  }
-
-  if (plan->options & NSDB_PLAN_OPT_ALLOCATE_DATA) {
-    switch (q.type) {
-      case QT_READ: {
-        panic ("TODO");
-        return 0;
-      }
-      case QT_REMOVE: {
-        panic ("TODO");
-        return 0;
-      }
-      case QT_CREATE: {
-        if (numstore_create (
-                ns->db->p,
-                auto_tx.tx,
-                q.create.name,
-                q.create.type,
-                valloc,
-                vdest,
-                &ns->e
-            )) {
-          nsdb_auto_rollback (ns->db, &auto_tx, &ns->e);
-          goto theend;
-        }
-        break;
-      }
-      case QT_DELETE: {
-        if (numstore_delete (ns->db->p, auto_tx.tx, q.delete.name, q.delete.if_exists, &ns->e)) {
-          nsdb_auto_rollback (ns->db, &auto_tx, &ns->e);
-          goto theend;
-        }
-        break;
-      }
-      case QT_GET: {
-        if (numstore_get (
-                ns->db->p,
-                auto_tx.tx,
-                q.get.if_exists,
-                q.get.name,
-                valloc,
-                vdest,
-                &ns->e
-            )) {
-          nsdb_auto_rollback (ns->db, &auto_tx, &ns->e);
-          goto theend;
-        }
-        break;
-      }
-      case QT_EXIT:
-      case QT_HELP: {
-        // Nothing to do - maybe throw
-        goto theend;
-      }
-      case QT_INSERT:
-      case QT_WRITE: {
-        error_causef (&ns->e, ERR_INVALID_ARGUMENT, "Must provide data for insert/write");
-        goto theend;
-      }
-    }
-  } else {
-    // Execute query
-    ret = nsdb_execute_on_buffer (
-        ns->db,
-        auto_tx.tx,
-        &q,
-        vdest,
-        plan->data,
-        plan->dlen,
-        valloc,
-        &ns->e
-    );
-    if (ret < 0) {
-      nsdb_auto_rollback (ns->db, &auto_tx, &ns->e);
-      goto theend;
-    }
-  }
-
-  if (nsdb_auto_commit (ns->db, &auto_tx, &ns->e)) {
-    ret = error_trace (&ns->e);
-    goto theend;
-  }
+  // Do the execution step in an auto transaction
+  WITH_AUTO_TXN (
+      ret,
+      ns->db,
+      txn,
+      numstore_vexecute_query (ns, txn, plan, &q, valloc, vdest),
+      &ns->e
+  );
 
 theend:
-  ALLOC_CLOSE (alloc);
+  ALLOC_CLOSE (temp);
   return ret;
 }
 
@@ -173,84 +118,106 @@ numstore_fexecute (
 #ifdef TESTING
 TEST (numstore_fexecute)
 {
-  ALLOC_INIT (alloc);
-  error e = error_create ();
+  TEST_CASE ("Get a non existent variable, create then get")
+  {
+    ALLOC_INIT (alloc);
+    error e = error_create ();
 
-  numstore_cleanup ("test");
-  numstore_t          *db       = numstore_open ("test");
+    numstore_cleanup ("test");
+    numstore_t          *db       = numstore_open ("test");
 
-  // "get" without "if exists" on a missing var fails, leaving plan.var
-  // untouched (still NULL from the {0} init) - matches the original test's
-  // implicit expectation that the call doesn't populate var here.
-  struct numstore_plan get_plan = {0};
-  numstore_plan_setopt (&get_plan, NSDB_PLAN_OPT_CAPTURE_VAR);
-  numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
-  test_assert_equal (get_plan.var->var.dtype, NULL);
+    // Get a variable that doesn't exist
+    struct numstore_plan get_plan = {0};
+    numstore_plan_setopt (&get_plan, NSDB_PLAN_OPT_CAPTURE_VAR);
+    sb_size res = numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
+    test_assert_int_equal (res, ERR_VARIABLE_NE);
+    numstore_perror (db, "get");
+    test_assert_equal (get_plan.var->var.dtype, NULL);
 
-  struct numstore_plan create_plan = {0};
-  numstore_fexecute (db, NULL, &create_plan, "create %s %s", "a", "u32");
+    // Create the variable now
+    struct numstore_plan create_plan = {0};
+    res = numstore_fexecute (db, NULL, &create_plan, "create %s %s", "a", "u32");
+    test_assert_int_equal (res, SUCCESS);
 
-  numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
-  test_assert (get_plan.var->var.dtype != NULL);
+    // Get it - should return this time
+    memset (&get_plan, 0, sizeof (get_plan));
+    numstore_plan_setopt (&get_plan, NSDB_PLAN_OPT_CAPTURE_VAR);
+    res = numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
+    test_assert_int_equal (res, SUCCESS);
+    test_assert (get_plan.var->var.dtype != NULL);
 
-  test_assert (string_equal (get_plan.var->var.vname, strfcstr ("a")));
-  test_assert (type_equal (get_plan.var->var.dtype, compile_type_alloc ("u32", &alloc, &e)));
-  test_assert_equal (numstore_var_len (get_plan.var), 0);
-  numstore_var_free (get_plan.var);
+    // Variable name the same
+    test_assert (string_equal (get_plan.var->var.vname, strfcstr ("a")));
 
-  numstore_close (db);
-  ALLOC_CLOSE (alloc);
+    // Variable type is the same
+    struct type *expected = compile_type_alloc ("u32", &alloc, &e);
+    test_assert (type_equal (get_plan.var->var.dtype, expected));
+
+    // Variable length is the same
+    test_assert_equal (numstore_var_len (get_plan.var), 0);
+
+    // Clean up
+    numstore_var_free (get_plan.var);
+    numstore_close (db);
+
+    ALLOC_CLOSE (alloc);
+  }
 }
 
-/**
-TEST_DISABLED (numstore_fexecute_allocate)
+TEST (numstore_fexecute_allocate)
 {
+  // Clean up and open
   numstore_cleanup ("test");
   numstore_t          *db          = numstore_open ("test");
 
+  // Create a variable
   struct numstore_plan create_plan = {0};
-  test_assert_int_equal (numstore_fexecute (db, NULL, &create_plan, "create foo u32"), 0);
+  sb_size              ret         = numstore_fexecute (db, NULL, &create_plan, "create foo u32");
+  test_assert_int_equal (ret, 0);
 
+  // Insert some data
   u32                  src[5]      = {10, 11, 12, 13, 14};
   struct numstore_plan insert_plan = {.data = src, .dlen = sizeof (src)};
-  test_assert_int_equal (numstore_fexecute (db, NULL, &insert_plan, "insert foo 0 5"), 5);
+  ret                              = numstore_fexecute (db, NULL, &insert_plan, "insert foo 0 5");
+  test_assert_int_equal (ret, 5);
 
-  // read with data/dlen unset + ALLOCATE_DATA: library allocates the
-  // destination buffer itself and hands it back via plan.data
+  // Read with allocate
   struct numstore_plan read_plan = {0};
   numstore_plan_setopt (&read_plan, NSDB_PLAN_OPT_ALLOCATE_DATA);
-  test_assert (numstore_fexecute (db, NULL, &read_plan, "read foo[0:]") >= 0);
+  ret = numstore_fexecute (db, NULL, &read_plan, "read foo[0:]");
+  test_assert_int_equal (ret, 5);
   test_assert (read_plan.data != NULL);
   test_assert (memcmp (read_plan.data, src, sizeof (src)) == 0);
-  i_free (mem, read_plan.data);
+  i_free (db->db->mem, read_plan.data);
 
-  // remove with ALLOCATE_DATA returns the removed data the same way
+  // Remove with allocate
   struct numstore_plan remove_plan = {0};
   numstore_plan_setopt (&remove_plan, NSDB_PLAN_OPT_ALLOCATE_DATA);
-  test_assert (numstore_fexecute (db, NULL, &remove_plan, "remove foo[0:2]") >= 0);
+  ret = numstore_fexecute (db, NULL, &remove_plan, "remove foo[0:2]");
+  test_assert_int_equal (ret, 2);
   test_assert (remove_plan.data != NULL);
   u32 *removed = remove_plan.data;
   test_assert_equal (removed[0], 10u);
   test_assert_equal (removed[1], 11u);
-  i_free (mem, remove_plan.data);
+  i_free (db->db->mem, remove_plan.data);
 
+  // Read with allocate
   struct numstore_plan remaining_plan = {0};
   numstore_plan_setopt (&remaining_plan, NSDB_PLAN_OPT_ALLOCATE_DATA);
-  test_assert (numstore_fexecute (db, NULL, &remaining_plan, "read foo[0:]") >= 0);
+  ret = numstore_fexecute (db, NULL, &remaining_plan, "read foo[0:]");
+  test_assert_int_equal (ret, 3);
   test_assert (remaining_plan.data != NULL);
   u32 *remaining = remaining_plan.data;
   test_assert_equal (remaining[0], 12u);
   test_assert_equal (remaining[1], 13u);
   test_assert_equal (remaining[2], 14u);
-  i_free (mem, remaining_plan.data);
+  i_free (db->db->mem, remaining_plan.data);
 
-  // insert/write still require the caller's own source data - no
-  // ALLOCATE_DATA here, just a plain caller-supplied buffer
+  // Insert some more
   u32                  more[1]   = {99};
   struct numstore_plan more_plan = {.data = more, .dlen = sizeof (more)};
   test_assert (numstore_fexecute (db, NULL, &more_plan, "insert foo 0 1") >= 0);
 
   numstore_close (db);
 }
-*/
 #endif

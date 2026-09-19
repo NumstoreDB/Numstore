@@ -4,10 +4,7 @@ ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "numstore_execute_on_buffer" : "nsdb_execute_on_buffer",
-        "numstore_get_and_print" : "nsdb_get_and_print",
-        "numstore_read_and_print" : "nsdb_read_and_print",
-        "numstore_execute_in_console" : "nsdb_execute_in_console",
+        "testing/ns_page_fixture" : "page/ns_page_fixture",
 }
 
 for ROOT in ROOTS:

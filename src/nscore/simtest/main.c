@@ -15,8 +15,7 @@
 #include "core/ns_error.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_time.h"
-#include "numstore/numstore.h"
-#include "numstore/testing/ns_numstore_simulation.h"
+#include "nscore/simtest/ns_numstore_simulation.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -57,7 +56,6 @@ main (int argc, char **argv)
   srand (seed);
 
   // Clean up any remnants of the database
-  numstore_cleanup (dbname);
   struct ns_simulation_params params = {
       .seed              = seed,
       .commit_hash       = commit_hash,

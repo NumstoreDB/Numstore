@@ -19,7 +19,6 @@
 #include "core/ns_slab_alloc.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/pager/ns_pager.h"
 
 struct nsdb *
@@ -31,34 +30,24 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
     return NULL;
   }
 
-  // Initialize inner values
-  {
-    // Trivial initializers
-    slab_alloc_init (&ret->txn_alloc, mem, sizeof (struct ns_txn), 512);
-    latch_init (&ret->l);
-    ret->mem       = mem;
-    ret->fs        = fs;
-    ret->path.data = NULL;
-    ret->p         = NULL;
+  // Trivial initializers
+  slab_alloc_init (&ret->txn_alloc, mem, sizeof (struct ns_txn), 512);
+  latch_init (&ret->l);
+  ret->mem       = mem;
+  ret->fs        = fs;
+  ret->path.data = NULL;
+  ret->p         = NULL;
 
-    // Path
-    ret->path.len  = strlen (path);
-    ret->path.data = i_malloc (mem, ret->path.len, 1, e);
-    if (ret->path.data == NULL) {
-      goto failed;
-    }
-
-    // Pager
-    ret->p = pgr_open (path, mem, fs, e);
-    if (ret->p == NULL) {
-      goto failed;
-    }
+  // Path
+  ret->path.len  = strlen (path);
+  ret->path.data = i_malloc (mem, ret->path.len, 1, e);
+  if (ret->path.data == NULL) {
+    goto failed;
   }
 
-  // New pager - initialze the upfront hash map
-  if ((pgr_isnew (ret->p)) && (ns_init_var_hash_map (ret->p, e)))
-  // Initialize the upfront hash page
-  {
+  // Pager
+  ret->p = pgr_open (path, mem, fs, e);
+  if (ret->p == NULL) {
     goto failed;
   }
 
@@ -89,10 +78,7 @@ nsdb_cleanup (const char *path, error *e)
 err_t
 nsdb_close (struct nsdb *n, error *e)
 {
-  e->cause_code = SUCCESS;
-  e->cmlen      = 0;
-
-  err_t ret     = pgr_close (n->p, e);
+  err_t ret = pgr_close (n->p, e);
   slab_alloc_destroy (&n->txn_alloc);
 
   struct i_mem mem = n->mem;
@@ -105,10 +91,7 @@ nsdb_close (struct nsdb *n, error *e)
 err_t
 nsdb_crash (struct nsdb *n, error *e)
 {
-  e->cause_code = SUCCESS;
-  e->cmlen      = 0;
-
-  err_t err     = pgr_crash (n->p, e);
+  err_t err = pgr_crash (n->p, e);
   slab_alloc_destroy (&n->txn_alloc);
 
   struct i_mem mem = n->mem;
@@ -121,9 +104,6 @@ nsdb_crash (struct nsdb *n, error *e)
 struct ns_txn *
 nsdb_begin (struct nsdb *smf, error *e)
 {
-  e->cause_code     = 0;
-  e->cmlen          = 0;
-
   struct ns_txn *tx = slab_alloc_alloc (&smf->txn_alloc, e);
   if (tx == NULL) {
     return NULL;
@@ -140,9 +120,6 @@ nsdb_begin (struct nsdb *smf, error *e)
 err_t
 nsdb_commit (struct nsdb *smf, struct ns_txn *tx, error *e)
 {
-  e->cause_code = SUCCESS;
-  e->cmlen      = 0;
-
   if (pgr_commit (smf->p, tx, e)) {
     slab_alloc_free (&smf->txn_alloc, tx);
     return error_trace (e);
@@ -155,9 +132,6 @@ nsdb_commit (struct nsdb *smf, struct ns_txn *tx, error *e)
 err_t
 nsdb_rollback (struct nsdb *smf, struct ns_txn *tx, error *e)
 {
-  e->cause_code = SUCCESS;
-  e->cmlen      = 0;
-
   if (pgr_rollback (smf->p, tx, 0, e)) {
     slab_alloc_free (&smf->txn_alloc, tx);
     return error_trace (e);

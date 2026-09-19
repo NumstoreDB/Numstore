@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/variables/ns_variables.h"
@@ -38,11 +39,12 @@ numstore_get (
   };
 
   err_t err = ns_var_get (&gparams, e);
+
+  // If the variable doesn't exist, it's ok
   if (if_exists && err == ERR_VARIABLE_NE) {
-    e->cause_code = SUCCESS;
-    e->cmlen      = 0;
-    var->dtype    = NULL;
-    *var          = (struct variable){0};
+    error_reset (e);
+    var->dtype = NULL;
+    *var       = (struct variable){0};
     goto theend;
   }
 

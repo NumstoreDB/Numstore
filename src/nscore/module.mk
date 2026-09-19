@@ -8,6 +8,7 @@ LIBNS_SRCS += src/nscore/algorithms/rope/ns_rope_rebalance.c
 LIBNS_SRCS += src/nscore/algorithms/rope/ns_rope_remove.c
 LIBNS_SRCS += src/nscore/algorithms/rope/ns_rope_seek.c
 LIBNS_SRCS += src/nscore/algorithms/rope/ns_rope_write.c
+
 LIBNS_SRCS += src/nscore/algorithms/var/ns_find_var_page.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_init_var_hash_map.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_read_var_page.c
@@ -17,6 +18,8 @@ LIBNS_SRCS += src/nscore/algorithms/var/ns_var_get.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_get_or_create.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_update.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_write_var_page.c
+
+LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_init_pager.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_get.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_insert.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_read.c
@@ -26,6 +29,19 @@ LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_remove_malloc.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_write.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_create.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_delete.c
+
+LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_init_pager.c
+LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_insert.c
+LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_read.c
+LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_remove.c
+LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_size.c
+LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_write.c
+
+LIBNS_SRCS += src/nscore/simtest/ns_db_state_machine.c
+LIBNS_SRCS += src/nscore/simtest/ns_mem_vhmap.c
+LIBNS_SRCS += src/nscore/simtest/ns_numstore_simulation.c
+LIBNS_SRCS += src/nscore/simtest/ns_operation_generator.c
+LIBNS_SRCS += src/nscore/simtest/ns_ref_state_machine.c
 
 # Compiler
 LIBNS_SRCS += src/nscore/compiler/ns_lexer.c
@@ -49,6 +65,7 @@ LIBNS_SRCS += src/nscore/lock_table/ns_lock_table.c
 LIBNS_SRCS += src/nscore/nsdb/ns_nsdb.c
 LIBNS_SRCS += src/nscore/nsdb/ns_nsdb_cli.c
 LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_execute_on_buffer.c
+LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_execute_malloc.c
 LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_execute_in_console.c
 LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_get_and_print.c
 LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_read_and_print.c
@@ -62,12 +79,34 @@ LIBNS_SRCS += src/nscore/page/ns_page_var_hash_page.c
 LIBNS_SRCS += src/nscore/page/ns_page_var_page.c
 LIBNS_SRCS += src/nscore/page/ns_page_var_tail.c
 
-# Pager
+# File Pager
 LIBNS_SRCS += src/nscore/disk_pager/ns_file_pager.c
+
+# Pager
 LIBNS_SRCS += src/nscore/pager/ns_pager.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_begin_txn.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_cancel.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_checkpoint.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_close.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_commit.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_crash.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_delete.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_evict.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_flush.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_get.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_get_writable.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_logging.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_new.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_open.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_recover.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_release.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_reserve.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_rollback.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_unfix.c
+LIBNS_SRCS += src/nscore/pager/ns_pgr_write_header.c
 
 # Testing
-LIBNS_SRCS += src/nscore/testing/ns_page_fixture.c
+LIBNS_SRCS += src/nscore/page/ns_page_fixture.c
 
 # Txn Table
 LIBNS_SRCS += src/nscore/txn_table/ns_txn_table.c
@@ -113,6 +152,9 @@ $(BIN_DIR)/print_type: src/nscore/compiler/tools/print_type.c $(TARGET_LIB) | $(
 $(BIN_DIR)/resolve_type_ref: src/nscore/compiler/tools/resolve_type_ref.c $(TARGET_LIB) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
 
+$(BIN_DIR)/numstore_simtest: src/nscore/simtest/main.c $(TARGET_LIB) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+
 ALL += $(BIN_DIR)/nspprint
 ALL += $(BIN_DIR)/nsspprint
 ALL += $(BIN_DIR)/walpprint
@@ -120,3 +162,4 @@ ALL += $(BIN_DIR)/dlread
 ALL += $(BIN_DIR)/print_query
 ALL += $(BIN_DIR)/print_type
 ALL += $(BIN_DIR)/resolve_type_ref
+ALL += $(BIN_DIR)/numstore_simtest

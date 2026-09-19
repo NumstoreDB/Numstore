@@ -398,8 +398,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "0, 1]", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Missing closing bracket
@@ -408,8 +407,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "[0, 1", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Empty input
@@ -418,8 +416,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Trailing comma with no entry after it  â†’  parse_entry gets ']', not a
@@ -429,8 +426,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "[0,]", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Leading comma parse_entry gets ',' which is neither number nor ':'
@@ -439,8 +435,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "[,0]", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Bare comma between two commas
@@ -449,8 +444,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "[0,,1]", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Garbage token (not number, colon, comma, or bracket)
@@ -459,8 +453,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "[abc]", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   // Completely wrong structure
@@ -469,8 +462,7 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "42", &alloc, &e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    e.cause_code = 0;
-    e.cmlen      = 0;
+    error_reset (&e);
   }
 
   ALLOC_CLOSE (alloc);

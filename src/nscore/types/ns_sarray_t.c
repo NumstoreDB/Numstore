@@ -601,11 +601,11 @@ TEST (sarray_builder)
   struct type t_u32 = (struct type){.type = T_PRIM, .p = U32};
   test_assert_int_equal (sab_accept_type (&sb, &t_u32, &err), SUCCESS);
   test_assert_int_equal (sab_build (&sar, &sb, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  error_reset (&err);
 
   // 3. duplicate type must fail
   test_assert_int_equal (sab_accept_type (&sb, &t_u32, &err), ERR_INTERP);
-  err.cause_code = SUCCESS;
+  error_reset (&err);
 
   // 4. accept first dim 10
   test_assert_int_equal (sab_accept_dim (&sb, 10, &err), SUCCESS);

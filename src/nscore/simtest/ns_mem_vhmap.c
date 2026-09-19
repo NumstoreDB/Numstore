@@ -12,24 +12,21 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "numstore/testing/ns_mem_vhmap.h"
+#include "nscore/simtest/ns_mem_vhmap.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
 #include "core/ns_htable.h"
-#include "core/ns_numerics.h" // randu32
+#include "core/ns_numerics.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
-#include "core/os/ns_memory.h"       // i_malloc
-#include "core/testing/ns_testing.h" // TEST
+#include "core/os/ns_memory.h"
+#include "core/testing/ns_testing.h"
 #include "nscore/types/ns_types.h"
-#include "nscore/variables/ns_variables.h" // variable
-
-#include <stdbool.h>
-#include <stdio.h>
+#include "nscore/variables/ns_variables.h"
 
 struct var_frame
 {
@@ -337,8 +334,7 @@ TEST (mem_vhmap)
           .dtype = &deftype,
       };
       ASSERT (mem_vhmap_add (v, &dup, &e) == NULL);
-      e.cause_code = 0;
-      e.cmlen      = 0;
+      error_reset (&e);
     }
   }
 

@@ -30,7 +30,7 @@ numstore_execute_qt_read_on_buffer (
     struct variable    *var,
     void               *data,
     b_size              dlen,
-    struct arena_alloc *alc,
+    struct arena_alloc *valloc,
     error              *e
 )
 {
@@ -45,7 +45,7 @@ numstore_execute_qt_read_on_buffer (
   stream_obuf_init (&stream, &octx, data, dlen);
 
   // Execute read
-  sb_size ret = numstore_read (ns->p, txn, q->read.name, q->read.ustr, alc, var, &stream, e);
+  sb_size ret = numstore_read (ns->p, txn, q->read.name, q->read.ustr, valloc, var, &stream, e);
 
   if (ret < 0) {
     return error_trace (e);
@@ -62,7 +62,7 @@ numstore_execute_qt_write_on_buffer (
     struct variable    *var,
     void               *data,
     b_size              dlen,
-    struct arena_alloc *alc,
+    struct arena_alloc *valloc,
     error              *e
 )
 {
@@ -76,7 +76,7 @@ numstore_execute_qt_write_on_buffer (
   struct stream_ibuf_ctx ictx;
   stream_ibuf_init (&stream, &ictx, data, dlen);
 
-  sb_size ret = numstore_write (ns->p, txn, q->write.name, q->write.ustr, alc, var, &stream, e);
+  sb_size ret = numstore_write (ns->p, txn, q->write.name, q->write.ustr, valloc, var, &stream, e);
 
   if (ret < 0) {
     return error_trace (e);
@@ -93,7 +93,7 @@ numstore_execute_qt_remove_on_buffer (
     struct variable    *var,
     void               *data,
     b_size              dlen,
-    struct arena_alloc *alc,
+    struct arena_alloc *valloc,
     error              *e
 )
 {
@@ -108,7 +108,8 @@ numstore_execute_qt_remove_on_buffer (
     stream = NULL;
   }
 
-  sb_size ret = numstore_remove (ns->p, txn, q->remove.name, q->remove.ustr, alc, var, stream, e);
+  sb_size
+      ret = numstore_remove (ns->p, txn, q->remove.name, q->remove.ustr, valloc, var, stream, e);
 
   if (ret < 0) {
     return error_trace (e);
@@ -125,7 +126,7 @@ numstore_execute_qt_insert_on_buffer (
     struct variable    *var,
     void               *data,
     b_size              dlen,
-    struct arena_alloc *alc,
+    struct arena_alloc *valloc,
     error              *e
 )
 {
@@ -145,7 +146,7 @@ numstore_execute_qt_insert_on_buffer (
       q->insert.name,
       q->insert.len,
       q->insert.ofst,
-      alc,
+      valloc,
       var,
       &stream,
       e
@@ -166,31 +167,31 @@ nsdb_execute_on_buffer (
     struct variable    *var,
     void               *data,
     b_size              dlen,
-    struct arena_alloc *alc,
+    struct arena_alloc *valloc,
     error              *e
 )
 {
   switch (q->type) {
     case QT_READ: {
-      return numstore_execute_qt_read_on_buffer (ns, txn, q, var, data, dlen, alc, e);
+      return numstore_execute_qt_read_on_buffer (ns, txn, q, var, data, dlen, valloc, e);
     }
     case QT_WRITE: {
-      return numstore_execute_qt_write_on_buffer (ns, txn, q, var, data, dlen, alc, e);
+      return numstore_execute_qt_write_on_buffer (ns, txn, q, var, data, dlen, valloc, e);
     }
     case QT_REMOVE: {
-      return numstore_execute_qt_remove_on_buffer (ns, txn, q, var, data, dlen, alc, e);
+      return numstore_execute_qt_remove_on_buffer (ns, txn, q, var, data, dlen, valloc, e);
     }
     case QT_INSERT: {
-      return numstore_execute_qt_insert_on_buffer (ns, txn, q, var, data, dlen, alc, e);
+      return numstore_execute_qt_insert_on_buffer (ns, txn, q, var, data, dlen, valloc, e);
     }
     case QT_CREATE: {
-      return numstore_create (ns->p, txn, q->create.name, q->create.type, alc, var, e);
+      return numstore_create (ns->p, txn, q->create.name, q->create.type, valloc, var, e);
     }
     case QT_DELETE: {
       return numstore_delete (ns->p, txn, q->delete.name, q->delete.if_exists, e);
     }
     case QT_GET: {
-      return numstore_get (ns->p, txn, q->get.if_exists, q->get.name, alc, var, e);
+      return numstore_get (ns->p, txn, q->get.if_exists, q->get.name, valloc, var, e);
     }
     case QT_EXIT: {
       return SUCCESS;

@@ -208,7 +208,7 @@ __test_mark (const char *_src)
     do {                                     \
       err_t __ret = (err_t)expr;             \
       test_assert_int_equal (__ret, exp);    \
-      (ename)->cause_code = SUCCESS;         \
+      error_reset (ename);                   \
     }                                        \
     while (0)
 

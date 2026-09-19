@@ -12,24 +12,28 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "numstore/testing/ns_numstore_simulation.h"
+#include "core/ns_error.h"
+#include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_fixture.h"
+#include "nscore/pager/ns_pager.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
-int
-main (int argc, char **argv)
+err_t
+pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e)
 {
-  if (argc != 4) {
-    fprintf (stderr, "Usage: %s DB DURATION SEED\n", argv[0]);
-    return EXIT_FAILURE;
+  ASSERT ((mp->flags & PW_PRESENT));
+  ASSERT (!(mp->flags & PW_X));
+  ASSERT (mp->pin == 0);
+
+  // Caller holds mp->latch, so use the unsafe (no-latch) flush variant
+  if (pgr_flush_unsafe (p, mp, e)) {
+    goto failed;
   }
 
-  const char *db       = argv[1];
-  int         duration = atoi (argv[2]);
-  unsigned    seed     = (unsigned)strtoul (argv[3], NULL, 10);
+  ht_delete_expect_idx (&p->pgno_to_value, NULL, mp->page.pg);
+  mp->flags = 0;
 
-  cgd_swarm_test (db, duration, seed);
+  return SUCCESS;
 
-  return EXIT_SUCCESS;
+failed:
+  return error_trace (e);
 }

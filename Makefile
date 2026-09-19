@@ -52,7 +52,7 @@ BEAR       			:= bear
 TARGET 				?= debug
 PLATFORM 			?=
 CROSS_GOAL 	  ?= all
-NLOG 					?= 1
+NLOG 					?= 0
 CFLAGS_USER 	?=
 
 
@@ -192,7 +192,7 @@ ALL 					:= $(TARGET_LIB)
 include src/core/module.mk
 include src/nscore/module.mk
 include src/numstore/module.mk
-# include src/smartfiles/module.mk
+include src/smartfiles/module.mk
 include bindings/python/module.mk
 ifeq ($(TARGET),debug)
 include src/tests/module.mk
@@ -374,7 +374,7 @@ package-release-all-platforms:
 ############ Housekeeping
 
 compile_commands.json:
-	$(BEAR) -- $(MAKE) TARGET=debug clean all > /dev/null
+	$(BEAR) -- $(MAKE) TARGET=debug clean all 
 
 .PHONY: lint
 lint: compile_commands.json
@@ -396,6 +396,7 @@ clean:
 	rm -f *test*
 	rm -f *sample*
 	rm -f *.db
+	rm -f foo
 
 format:
 	find src bindings -type f \( -name '*.c' -o -name '*.h' \) -print0 \

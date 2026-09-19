@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "numstore/testing/ns_numstore_simulation.h"
+#include "nscore/simtest/ns_numstore_simulation.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
@@ -22,11 +22,11 @@
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/os/ns_time.h"
+#include "nscore/nsdb/ns_nsdb.h"
+#include "nscore/simtest/ns_db_state_machine.h"
+#include "nscore/simtest/ns_operation_generator.h"
+#include "nscore/simtest/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
-#include "numstore/numstore.h"
-#include "numstore/testing/ns_actual_db_stepper.h"
-#include "numstore/testing/ns_operation_generator.h"
-#include "numstore/testing/ns_reference_db_stepper.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -116,8 +116,8 @@ nss_close_and_reopen (struct ns_simulation *meta, error *e)
 static err_t
 nss_create (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  WRAP (ns_ref_create_and_maybe_switch (meta->ref, op->op_create.vname, op->op_create.t, e));
-  WRAP (ns_db_create_and_maybe_switch (meta->db, op->op_create.vname, *op->op_create.t, e));
+  WRAP (ns_ref_create (meta->ref, op->op_create.vname, op->op_create.t, e));
+  WRAP (ns_db_create (meta->db, op->op_create.vname, *op->op_create.t, e));
   return SUCCESS;
 }
 
@@ -132,8 +132,8 @@ nss_switch (struct ns_simulation *meta, struct operation *op, error *e)
 static err_t
 nss_delete (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  ns_ref_delete_cur_and_switch (meta->ref, op->op_delete.next);
-  WRAP (ns_db_delete_cur_and_switch (meta->db, op->op_delete.next, e));
+  ns_ref_delete_and_switch (meta->ref, op->op_delete.next);
+  WRAP (ns_db_delete_and_switch (meta->db, op->op_delete.next, e));
   return SUCCESS;
 }
 
@@ -601,7 +601,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
   DBG_ASSERT (ns_simulation_params, &params);
 
   // Clean up the database before starting
-  if (numstore_cleanup (params.dbname) < 0) {
+  if (nsdb_cleanup (params.dbname, e) < 0) {
     return NULL;
   }
 

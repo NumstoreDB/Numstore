@@ -1,4 +1,4 @@
-#include "numstore/testing/ns_actual_db_stepper.h"
+#include "nscore/simtest/ns_db_state_machine.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
@@ -31,6 +31,12 @@ ns_db_reopen_handle (struct ns_db *db, error *e)
   struct nsdb *ns = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs, e);
   if (ns == NULL) {
     return error_trace (e);
+  }
+
+  // Initialize numstore database
+  if (numstore_init_pager (ns->p, e)) {
+    nsdb_close (ns, e);
+    return -1;
   }
 
   db->db = ns;
@@ -302,18 +308,18 @@ ns_db_copy_cur (struct ns_db *db, const char *vname, error *e)
 }
 
 err_t
-ns_db_create_and_maybe_switch (struct ns_db *db, const char *vname, struct type dtype, error *e)
+ns_db_create (struct ns_db *db, const char *vname, struct type dtype, error *e)
 {
   ALLOC_INIT (alloc);
   pre_op (db);
-  struct auto_txn auto_tx;
-  err_t           ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
-  if (ret == SUCCESS) {
-    ret = numstore_create (db->db->p, auto_tx.tx, strfcstr (vname), dtype, &alloc, NULL, e);
-    if (ret >= 0) {
-      nsdb_auto_commit (db->db, &auto_tx, e);
-    }
-  }
+  err_t ret;
+  WITH_AUTO_TXN (
+      ret,
+      db->db,
+      db->tx,
+      numstore_create (db->db->p, db->tx, strfcstr (vname), dtype, &alloc, NULL, e),
+      e
+  );
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -342,7 +348,7 @@ ns_db_switch (struct ns_db *db, const char *next, error *e)
 }
 
 err_t
-ns_db_delete_cur_and_switch (struct ns_db *db, const char *next, error *e)
+ns_db_delete_and_switch (struct ns_db *db, const char *next, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
@@ -360,14 +366,14 @@ ns_db_delete_cur_and_switch (struct ns_db *db, const char *next, error *e)
 
   // Do the operation
   pre_op (db);
-  struct auto_txn auto_tx;
-  err_t           ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
-  if (ret == SUCCESS) {
-    ret = numstore_delete (db->db->p, auto_tx.tx, strfcstr (cur), false, e);
-    if (ret >= 0) {
-      nsdb_auto_commit (db->db, &auto_tx, e);
-    }
-  }
+  err_t ret;
+  WITH_AUTO_TXN (
+      ret,
+      db->db,
+      db->tx,
+      numstore_delete (db->db->p, db->tx, strfcstr (cur), false, e),
+      e
+  );
   post_op (db);
 
   if (ret < 0) {
@@ -393,24 +399,14 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
 
   // Do operation
   pre_op (db);
-  struct auto_txn auto_tx;
-  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
-  if (ret == SUCCESS) {
-    ret = numstore_insert (
-        db->db->p,
-        auto_tx.tx,
-        strfcstr (cur),
-        ofst,
-        len,
-        &alloc,
-        NULL,
-        &stream,
-        e
-    );
-    if (ret >= 0) {
-      nsdb_auto_commit (db->db, &auto_tx, e);
-    }
-  }
+  sb_size ret;
+  WITH_AUTO_TXN (
+      ret,
+      db->db,
+      db->tx,
+      numstore_insert (db->db->p, db->tx, strfcstr (cur), ofst, len, &alloc, NULL, &stream, e),
+      e
+  );
   post_op (db);
 
   ALLOC_CLOSE (alloc);
@@ -435,23 +431,14 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  struct auto_txn auto_tx;
-  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
-  if (ret == SUCCESS) {
-    ret = numstore_remove (
-        db->db->p,
-        auto_tx.tx,
-        strfcstr (cur),
-        usfrms (str),
-        &alloc,
-        NULL,
-        &stream,
-        e
-    );
-    if (ret >= 0) {
-      nsdb_auto_commit (db->db, &auto_tx, e);
-    }
-  }
+  sb_size ret;
+  WITH_AUTO_TXN (
+      ret,
+      db->db,
+      db->tx,
+      numstore_remove (db->db->p, db->tx, strfcstr (cur), usfrms (str), &alloc, NULL, &stream, e),
+      e
+  );
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -475,23 +462,14 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  struct auto_txn auto_tx;
-  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
-  if (ret == SUCCESS) {
-    ret = numstore_read (
-        db->db->p,
-        auto_tx.tx,
-        strfcstr (cur),
-        usfrms (str),
-        &alloc,
-        NULL,
-        &stream,
-        e
-    );
-    if (ret >= 0) {
-      nsdb_auto_commit (db->db, &auto_tx, e);
-    }
-  }
+  sb_size ret;
+  WITH_AUTO_TXN (
+      ret,
+      db->db,
+      db->tx,
+      numstore_read (db->db->p, db->tx, strfcstr (cur), usfrms (str), &alloc, NULL, &stream, e),
+      e
+  );
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -515,23 +493,14 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
 
   // Do operation
   pre_op (db);
-  struct auto_txn auto_tx;
-  sb_size         ret = nsdb_auto_begin (db->db, db->tx, &auto_tx, e);
-  if (ret == SUCCESS) {
-    sb_size ret = numstore_write (
-        db->db->p,
-        auto_tx.tx,
-        strfcstr (cur),
-        usfrms (str),
-        &alloc,
-        NULL,
-        &stream,
-        e
-    );
-    if (ret >= 0) {
-      nsdb_auto_commit (db->db, &auto_tx, e);
-    }
-  }
+  sb_size ret;
+  WITH_AUTO_TXN (
+      ret,
+      db->db,
+      db->tx,
+      numstore_write (db->db->p, db->tx, strfcstr (cur), usfrms (str), &alloc, NULL, &stream, e),
+      e
+  );
   post_op (db);
   ALLOC_CLOSE (alloc);
 
@@ -554,9 +523,9 @@ TEST_DISABLED (ns_db)
   {
     // create at least 3 vars
     // (create only auto-switches if cur is NULL, i.e. on the very first create)
-    ns_db_create_and_maybe_switch (db, "test_var", "u32"); // auto-switches here, cur was NULL
-    ns_db_create_and_maybe_switch (db, "var2", "u32");     // cur is now test_var, no auto-switch
-    ns_db_create_and_maybe_switch (db, "var3", "u32");     // cur still test_var, no auto-switch
+    ns_db_create (db, "test_var", "u32"); // auto-switches here, cur was NULL
+    ns_db_create (db, "var2", "u32");     // cur is now test_var, no auto-switch
+    ns_db_create (db, "var3", "u32");     // cur still test_var, no auto-switch
 
     // already on test_var due to the first create's auto-switch
     ns_db_begin_txn (db);
@@ -605,7 +574,7 @@ TEST_DISABLED (ns_db)
     ns_db_commit_txn (db);
 
     // delete one of the three vars
-    ns_db_delete_cur_and_switch (db, "var2");
+    ns_db_delete_and_switch (db, "var2");
   }
 
   TEST_CASE ("rollback restores prior state, including current variable")

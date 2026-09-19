@@ -17,6 +17,62 @@
 #include "numpy/ndarraytypes.h"
 #include "numstore/numstore.h"
 
+#include <stdlib.h>
+
+#define PYNS_DATA_CAPSULE_NAME "numstore.data"
+
+static void
+pyns_data_capsule_destructor (PyObject *capsule)
+{
+  void *data = PyCapsule_GetPointer (capsule, PYNS_DATA_CAPSULE_NAME);
+  free (data);
+}
+
+/// Wrap a numstore-allocated buffer in a 1-D uint8 numpy array without
+/// copying. The array takes ownership: the buffer is freed when the array
+/// (and every view of it) is garbage collected. On failure the buffer is
+/// freed and NULL is returned with an exception set.
+static inline PyObject *
+pyns_wrap_owned_bytes (void *data, b_size dlen)
+{
+  // Nothing returned -> empty array
+  if (data == NULL || dlen == 0) {
+    free (data);
+    npy_intp dims[1] = {0};
+    return PyArray_SimpleNew (1, dims, NPY_UINT8);
+  }
+
+  if ((unsigned long long)dlen > (unsigned long long)NPY_MAX_INTP) {
+    free (data);
+    PyErr_SetString (PyExc_OverflowError, "result too large for a numpy array");
+    return NULL;
+  }
+
+  npy_intp  dims[1] = {(npy_intp)dlen};
+  PyObject *arr     = PyArray_SimpleNewFromData (1, dims, NPY_UINT8, data);
+  if (arr == NULL) {
+    free (data);
+    return NULL;
+  }
+
+  // The capsule owns the buffer; the array keeps the capsule alive
+  PyObject *base = PyCapsule_New (data, PYNS_DATA_CAPSULE_NAME, pyns_data_capsule_destructor);
+  if (base == NULL) {
+    Py_DECREF (arr);
+    free (data);
+    return NULL;
+  }
+
+  // Steals the reference to base even on failure, so the capsule
+  // destructor frees data in that case
+  if (PyArray_SetBaseObject ((PyArrayObject *)arr, base) < 0) {
+    Py_DECREF (arr);
+    return NULL;
+  }
+
+  return arr;
+}
+
 static inline PyArrayObject *
 get_bytes_from_nparray (PyObject *data_obj)
 {
@@ -26,14 +82,10 @@ get_bytes_from_nparray (PyObject *data_obj)
     return NULL;
   }
 
-  // Get the data backing the array
-  PyArrayObject *contig = (PyArrayObject *)
-      PyArray_FROM_OTF (data_obj, NPY_NOTYPE, NPY_ARRAY_IN_ARRAY | NPY_ARRAY_FORCECAST);
-  if (contig == NULL) {
-    return NULL;
-  }
-
-  return contig;
+  // Get a C-contiguous, aligned view (or copy) of the array
+  return (
+      PyArrayObject *
+  )PyArray_FROM_OTF (data_obj, NPY_NOTYPE, NPY_ARRAY_IN_ARRAY | NPY_ARRAY_FORCECAST);
 }
 
 static inline PyObject *
@@ -42,13 +94,10 @@ pyns_execute_data_present (numstore_t *db, ns_txn_t *txn, char *query, PyObject 
   ASSERT (data_obj);
   ASSERT (data_obj != Py_None);
 
-  // Return Value
-  PyObject      *ret    = NULL;
-
   // Get the contiguous array underlying the numpy array
   PyArrayObject *contig = get_bytes_from_nparray (data_obj);
   if (contig == NULL) {
-    goto theend;
+    return NULL;
   }
 
   // Convert numpy array to a raw byte buffer
@@ -56,35 +105,44 @@ pyns_execute_data_present (numstore_t *db, ns_txn_t *txn, char *query, PyObject 
   npy_intp nbytes = PyArray_NBYTES (contig);
   if (bytes == NULL) {
     PyErr_SetString (PyExc_RuntimeError, "array has no underlying buffer");
-    goto theend;
+    Py_DECREF (contig);
+    return NULL;
   }
 
   // Execute query
-  if (numstore_fexecute (db, txn, bytes, nbytes, "%s", query)) {
-    goto theend;
+  struct numstore_plan plan = {0};
+  plan.data                 = bytes;
+  plan.dlen                 = nbytes;
+  sb_size ret               = numstore_fexecute (db, txn, &plan, "%s", query);
+
+  // Done with the buffer either way (was leaked on success before)
+  Py_DECREF (contig);
+
+  if (ret < 0) {
+    _pyns_set_error_from_nsdb (db);
+    return NULL;
   }
 
-  ret = PyLong_FromSsize_t ((Py_ssize_t)ret);
-
-theend:
-  Py_XDECREF (contig);
-  return NULL;
+  return PyLong_FromSsize_t ((Py_ssize_t)ret);
 }
 
 static inline PyObject *
 pyns_execute_data_not_present (numstore_t *db, ns_txn_t *txn, char *query)
 {
-  // Return Value
-  PyObject *ret = NULL;
+  // Create the plan and let numstore allocate the output buffer
+  struct numstore_plan plan = {0};
+  if (numstore_plan_setopt (&plan, NSDB_PLAN_OPT_ALLOCATE_DATA) < 0) {
+    _pyns_set_error_from_nsdb (db);
+    return NULL;
+  }
 
-  b_size    dlen;
-  void     *ret = numstore_fexecute_malloc (db, txn, &dlen, "%s", query);
+  sb_size ret = numstore_fexecute (db, txn, &plan, "%s", query);
+  if (ret < 0) {
+    _pyns_set_error_from_nsdb (db);
+    return NULL;
+  }
 
-  ret           = PyLong_FromSsize_t ((Py_ssize_t)ret);
-
-theend:
-  Py_XDECREF (contig);
-  return NULL;
+  return pyns_wrap_owned_bytes (plan.data, plan.dlen);
 }
 
 PyObject *
@@ -94,17 +152,16 @@ pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
   PyObject *_txn;     // Transaction capsule
   char     *query;    // Query string
   PyObject *data_obj; // Data object
-  sb_size   ret = -1;
 
   // pyns_execute(db: capsule, txn: capsule | None, query: str, data: array | None)
   if (!PyArg_ParseTuple (args, "OOsO", &_db, &_txn, &query, &data_obj)) {
-    goto theend;
+    return NULL;
   }
 
   // Fetch the database
   numstore_t *db = _unwrap_db (_db);
   if (db == NULL) {
-    goto theend;
+    return NULL;
   }
 
   // Fetch the transaction
@@ -112,34 +169,13 @@ pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
   if (_txn != Py_None) {
     txn = _unwrap_txn (_txn);
     if (txn == NULL) {
-      goto theend;
+      return NULL;
     }
   }
 
-  // Grab the bytes from the numpy array
   if (data_obj != Py_None) {
     return pyns_execute_data_present (db, txn, query, data_obj);
   } else {
-    bool handled = false;
-    ret          = pyns_execute_malloc (db, txn, query, &handled);
-    if (handled) {
-      goto theend;
-    }
-  }
-
-  // Execute the query
-  ret = numstore_fexecute (db, txn, "%s", bytes, query);
-  if (ret < 0) {
-    _pyns_set_error_from_nsdb (db);
-    goto theend;
-  }
-
-theend:
-  Py_XDECREF (contig);
-
-  if (ret < 0) {
-    return NULL;
-  } else {
-    return PyLong_FromSsize_t ((Py_ssize_t)ret);
+    return pyns_execute_data_not_present (db, txn, query);
   }
 }

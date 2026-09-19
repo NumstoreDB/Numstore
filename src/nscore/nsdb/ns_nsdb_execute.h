@@ -28,10 +28,20 @@ sb_size nsdb_execute_on_buffer (
     struct nsdb        *ns,
     struct ns_txn      *txn,
     struct query       *q,
-    struct variable    *var,
-    void               *data,
-    b_size              dlen,
-    struct arena_alloc *alc,
+    struct variable    *var,    // Optionally pass a variable to capture the affected variable
+    void               *data,   // Data - either input or output - or ignored if unused
+    b_size              dlen,   // Length of Data buffer
+    struct arena_alloc *valloc, // Where to allocate the variable when we read it
+    error              *e
+);
+
+sb_size nsdb_execute_malloc (
+    struct nsdb        *ns,
+    struct ns_txn      *txn,
+    struct query       *q,
+    struct variable    *var,    // Optionally pass a variable to capture the affected variable
+    struct arena_alloc *valloc, // Where to allocate the variable when we read it
+    void              **data,   // Destination for data
     error              *e
 );
 

@@ -19,11 +19,11 @@
 #include "core/ns_string.h"
 #include "nscore/algorithms/var/ns_var_algorithms_internal.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_fixture.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/page/ns_page_var_hash_page.h"
 #include "nscore/page/ns_page_var_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "nscore/testing/ns_page_fixture.h"
 #include "nscore/variables/ns_variables.h"
 
 #ifdef TESTING
@@ -339,8 +339,7 @@ TEST (ns_find_var_page)
       fault_set ("ns_find_var_page:1");
 
       ns_find_var_page (&fparams, &f.e);
-      f.e.cause_code = 0;
-      f.e.cmlen      = 0;
+      error_reset (&f.e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
@@ -373,8 +372,7 @@ TEST (ns_find_var_page)
       fault_set ("ns_find_var_page:2");
 
       ns_find_var_page (&fparams, &f.e);
-      f.e.cause_code = 0;
-      f.e.cmlen      = 0;
+      error_reset (&f.e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
@@ -424,8 +422,7 @@ TEST (ns_find_var_page)
 
       test_assert (ns_find_var_page (&fparams, &f.e) != SUCCESS);
 
-      f.e.cause_code = 0;
-      f.e.cmlen      = 0;
+      error_reset (&f.e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
@@ -473,8 +470,7 @@ TEST (ns_find_var_page)
       fault_set ("ns_find_var_page:4");
 
       ns_find_var_page (&fparams, &f.e);
-      f.e.cause_code = 0;
-      f.e.cmlen      = 0;
+      error_reset (&f.e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);

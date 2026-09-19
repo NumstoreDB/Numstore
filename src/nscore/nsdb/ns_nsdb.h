@@ -103,4 +103,23 @@ nsdb_auto_rollback (struct nsdb *db, struct auto_txn *auto_tx, error *e)
   return SUCCESS;
 }
 
+#define WITH_AUTO_TXN(res, db, _tx, expr, e)                    \
+  do {                                                          \
+    struct ns_txn  *_saved_tx = (_tx);                          \
+    struct auto_txn _auto_tx;                                   \
+    if (nsdb_auto_begin ((db), (_tx), &_auto_tx, (e))) {        \
+      (res) = error_trace (e);                                  \
+    } else {                                                    \
+      (_tx) = _auto_tx.tx;                                      \
+      (res) = (expr);                                           \
+      if ((res) < 0) {                                          \
+        nsdb_auto_rollback ((db), &_auto_tx, (e));              \
+      } else if (nsdb_auto_commit ((db), &_auto_tx, (e)) < 0) { \
+        (res) = error_trace (e);                                \
+      }                                                         \
+      (_tx) = _saved_tx;                                        \
+    }                                                           \
+  }                                                             \
+  while (0)
+
 #endif // NSHANDLE_H

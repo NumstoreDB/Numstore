@@ -1,4 +1,4 @@
-#include "numstore/testing/ns_operation_generator.h"
+#include "nscore/simtest/ns_operation_generator.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
@@ -6,9 +6,9 @@
 #include "core/ns_numerics.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
+#include "nscore/simtest/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "numstore/testing/ns_reference_db_stepper.h"
 
 /******************************************************************************
  *                                  Getters                                   *
