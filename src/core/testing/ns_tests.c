@@ -127,7 +127,7 @@ TEST (parse_i32_boundary_values)
       if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
       } else {
-        e.cause_code = SUCCESS; // reset for next iteration
+        error_reset (&e);
       }
     }
   }
@@ -168,7 +168,7 @@ TEST (parse_i64_boundary_values)
       if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
       } else {
-        e.cause_code = SUCCESS;
+        error_reset (&e);
       }
     }
   }

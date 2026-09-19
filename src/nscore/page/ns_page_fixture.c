@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/testing/ns_page_fixture.h"
+#include "nscore/page/ns_page_fixture.h"
 
 #include <string.h>
 

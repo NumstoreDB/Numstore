@@ -43,7 +43,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[325];
+  const char *failed_names[338];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -2857,6 +2857,101 @@ main (int argc, char **argv)
     ntests++;
   }
 
+  if (!filter || strstr("smartfiles_insert", filter))
+  {
+    extern void __test__smartfiles_insert(void);
+    i_log_info("========================= TEST CASE: %s\n", "smartfiles_insert");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smartfiles_insert();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smartfiles_insert");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smartfiles_insert";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smartfiles_read", filter))
+  {
+    extern void __test__smartfiles_read(void);
+    i_log_info("========================= TEST CASE: %s\n", "smartfiles_read");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smartfiles_read();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smartfiles_read");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smartfiles_read";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smartfiles_remove", filter))
+  {
+    extern void __test__smartfiles_remove(void);
+    i_log_info("========================= TEST CASE: %s\n", "smartfiles_remove");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smartfiles_remove();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smartfiles_remove");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smartfiles_remove";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smartfiles_size", filter))
+  {
+    extern void __test__smartfiles_size(void);
+    i_log_info("========================= TEST CASE: %s\n", "smartfiles_size");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smartfiles_size();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smartfiles_size");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smartfiles_size";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smartfiles_pwrite", filter))
+  {
+    extern void __test__smartfiles_pwrite(void);
+    i_log_info("========================= TEST CASE: %s\n", "smartfiles_pwrite");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smartfiles_pwrite();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smartfiles_pwrite");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smartfiles_pwrite";
+    }
+    ntests++;
+  }
+
   if (!filter || strstr("ns_find_var_page", filter))
   {
     extern void __test__ns_find_var_page(void);
@@ -3788,6 +3883,25 @@ main (int argc, char **argv)
     ntests++;
   }
 
+  if (!filter || strstr("build_page_tree", filter))
+  {
+    extern void __test__build_page_tree(void);
+    i_log_info("========================= TEST CASE: %s\n", "build_page_tree");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__build_page_tree();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "build_page_tree");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "build_page_tree";
+    }
+    ntests++;
+  }
+
   if (!filter || strstr("i_log_fsm", filter))
   {
     extern void __test__i_log_fsm(void);
@@ -4377,59 +4491,21 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("i_log_page_table", filter))
+  if (!filter || strstr("pgr_checkpoint", filter))
   {
-    extern void __test__i_log_page_table(void);
-    i_log_info("========================= TEST CASE: %s\n", "i_log_page_table");
+    extern void __test__pgr_checkpoint(void);
+    i_log_info("========================= TEST CASE: %s\n", "pgr_checkpoint");
     int prev = test_ret;
     test_ret = 0;
-    __test__i_log_page_table();
+    __test__pgr_checkpoint();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "i_log_page_table");
+      i_log_passed("%s\n", "pgr_checkpoint");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "i_log_page_table";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("pager_open", filter))
-  {
-    extern void __test__pager_open(void);
-    i_log_info("========================= TEST CASE: %s\n", "pager_open");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__pager_open();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "pager_open");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "pager_open";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("pgr_open_basic", filter))
-  {
-    extern void __test__pgr_open_basic(void);
-    i_log_info("========================= TEST CASE: %s\n", "pgr_open_basic");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__pgr_open_basic();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "pgr_open_basic");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "pgr_open_basic";
+      failed_names[failed++] = "pgr_checkpoint";
     }
     ntests++;
   }
@@ -4472,25 +4548,6 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("pgr_reserve_and_ctrl_lock_st", filter))
-  {
-    extern void __test__pgr_reserve_and_ctrl_lock_st(void);
-    i_log_info("========================= TEST CASE: %s\n", "pgr_reserve_and_ctrl_lock_st");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__pgr_reserve_and_ctrl_lock_st();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "pgr_reserve_and_ctrl_lock_st");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "pgr_reserve_and_ctrl_lock_st";
-    }
-    ntests++;
-  }
-
   if (!filter || strstr("pgr_get_invalid_checksum", filter))
   {
     extern void __test__pgr_get_invalid_checksum(void);
@@ -4506,6 +4563,25 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "pgr_get_invalid_checksum";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("i_log_page_table", filter))
+  {
+    extern void __test__i_log_page_table(void);
+    i_log_info("========================= TEST CASE: %s\n", "i_log_page_table");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__i_log_page_table();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "i_log_page_table");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "i_log_page_table";
     }
     ntests++;
   }
@@ -4529,21 +4605,59 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("pgr_checkpoint", filter))
+  if (!filter || strstr("pager_open", filter))
   {
-    extern void __test__pgr_checkpoint(void);
-    i_log_info("========================= TEST CASE: %s\n", "pgr_checkpoint");
+    extern void __test__pager_open(void);
+    i_log_info("========================= TEST CASE: %s\n", "pager_open");
     int prev = test_ret;
     test_ret = 0;
-    __test__pgr_checkpoint();
+    __test__pager_open();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "pgr_checkpoint");
+      i_log_passed("%s\n", "pager_open");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "pgr_checkpoint";
+      failed_names[failed++] = "pager_open";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("pgr_open_basic", filter))
+  {
+    extern void __test__pgr_open_basic(void);
+    i_log_info("========================= TEST CASE: %s\n", "pgr_open_basic");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__pgr_open_basic();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "pgr_open_basic");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "pgr_open_basic";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("pgr_reserve_and_ctrl_lock_st", filter))
+  {
+    extern void __test__pgr_reserve_and_ctrl_lock_st(void);
+    i_log_info("========================= TEST CASE: %s\n", "pgr_reserve_and_ctrl_lock_st");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__pgr_reserve_and_ctrl_lock_st();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "pgr_reserve_and_ctrl_lock_st");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "pgr_reserve_and_ctrl_lock_st";
     }
     ntests++;
   }
@@ -4624,21 +4738,78 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("build_page_tree", filter))
+  if (!filter || strstr("mem_vhmap", filter))
   {
-    extern void __test__build_page_tree(void);
-    i_log_info("========================= TEST CASE: %s\n", "build_page_tree");
+    extern void __test__mem_vhmap(void);
+    i_log_info("========================= TEST CASE: %s\n", "mem_vhmap");
     int prev = test_ret;
     test_ret = 0;
-    __test__build_page_tree();
+    __test__mem_vhmap();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "build_page_tree");
+      i_log_passed("%s\n", "mem_vhmap");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "build_page_tree";
+      failed_names[failed++] = "mem_vhmap";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("ns_simul", filter))
+  {
+    extern void __test__ns_simul(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_simul");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_simul();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_simul");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_simul";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("opg", filter))
+  {
+    extern void __test__opg(void);
+    i_log_info("========================= TEST CASE: %s\n", "opg");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__opg();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "opg");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "opg";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("ns_ref", filter))
+  {
+    extern void __test__ns_ref(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_ref");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_ref();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_ref");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_ref";
     }
     ntests++;
   }
@@ -6144,78 +6315,154 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("mem_vhmap", filter))
+  if (!filter || strstr("numstore_fexecute_allocate", filter))
   {
-    extern void __test__mem_vhmap(void);
-    i_log_info("========================= TEST CASE: %s\n", "mem_vhmap");
+    extern void __test__numstore_fexecute_allocate(void);
+    i_log_info("========================= TEST CASE: %s\n", "numstore_fexecute_allocate");
     int prev = test_ret;
     test_ret = 0;
-    __test__mem_vhmap();
+    __test__numstore_fexecute_allocate();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "mem_vhmap");
+      i_log_passed("%s\n", "numstore_fexecute_allocate");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "mem_vhmap";
+      failed_names[failed++] = "numstore_fexecute_allocate";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_simul", filter))
+  if (!filter || strstr("smfile_perror", filter))
   {
-    extern void __test__ns_simul(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_simul");
+    extern void __test__smfile_perror(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_perror");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_simul();
+    __test__smfile_perror();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_simul");
+      i_log_passed("%s\n", "smfile_perror");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_simul";
+      failed_names[failed++] = "smfile_perror";
     }
     ntests++;
   }
 
-  if (!filter || strstr("opg", filter))
+  if (!filter || strstr("smfile_strerror", filter))
   {
-    extern void __test__opg(void);
-    i_log_info("========================= TEST CASE: %s\n", "opg");
+    extern void __test__smfile_strerror(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_strerror");
     int prev = test_ret;
     test_ret = 0;
-    __test__opg();
+    __test__smfile_strerror();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "opg");
+      i_log_passed("%s\n", "smfile_strerror");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "opg";
+      failed_names[failed++] = "smfile_strerror";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_ref", filter))
+  if (!filter || strstr("smfile_cleanup", filter))
   {
-    extern void __test__ns_ref(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_ref");
+    extern void __test__smfile_cleanup(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_cleanup");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_ref();
+    __test__smfile_cleanup();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_ref");
+      i_log_passed("%s\n", "smfile_cleanup");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_ref";
+      failed_names[failed++] = "smfile_cleanup";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smfile_close", filter))
+  {
+    extern void __test__smfile_close(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_close");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_close();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_close");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_close";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smfile_crash", filter))
+  {
+    extern void __test__smfile_crash(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_crash");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_crash();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_crash");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_crash";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smfile_txns", filter))
+  {
+    extern void __test__smfile_txns(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_txns");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_txns();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_txns");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_txns";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("smfile_open", filter))
+  {
+    extern void __test__smfile_open(void);
+    i_log_info("========================= TEST CASE: %s\n", "smfile_open");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__smfile_open();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "smfile_open");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "smfile_open";
     }
     ntests++;
   }

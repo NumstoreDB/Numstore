@@ -12,15 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 err_t
 numstore_delete (struct pager *p, struct ns_txn *tx, struct string name, bool if_exists, error *e)
 {
-  e->cause_code = SUCCESS;
-  e->cmlen      = 0;
-
   i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&name));
 
   err_t err = ns_var_delete (
@@ -34,8 +32,7 @@ numstore_delete (struct pager *p, struct ns_txn *tx, struct string name, bool if
 
   // If the variable doesn't exist it's ok
   if (if_exists && err == ERR_VARIABLE_NE) {
-    e->cause_code = SUCCESS;
-    e->cmlen      = 0;
+    error_reset (e);
     goto theend;
   }
 

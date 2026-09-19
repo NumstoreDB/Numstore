@@ -24,6 +24,8 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/variables/ns_variables.h"
 
+err_t numstore_init_pager (struct pager *p, error *e);
+
 sb_size numstore_insert (
     struct pager       *p,
     struct ns_txn      *tx,

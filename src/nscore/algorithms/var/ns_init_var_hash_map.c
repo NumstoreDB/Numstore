@@ -17,9 +17,9 @@
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/page/ns_page.h"
+#include "nscore/page/ns_page_fixture.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
-#include "nscore/testing/ns_page_fixture.h"
 #include "nscore/txn_table/ns_txn_table.h"
 
 /******************************************************************************

@@ -61,6 +61,7 @@ typedef err_t (*isvalid_func) (void *ctx, error *e);
 #define ERR_DUPLICATE_VARIABLE         (-10)
 #define ERR_VARIABLE_NE                (-11)
 #define ERR_DUPLICATE_COMMIT           (-12)
+#define ERR_UNHANDLED                  (-13)
 
 error error_create (void);
 void error_silence (error *e);
@@ -86,6 +87,28 @@ void error_log_consume (error *e);
       goto label;                      \
     }                                  \
   }                                    \
+  while (0)
+
+#define CHECK_UNHANDLED_ERROR(e)      \
+  do {                                \
+    if ((e)->cause_code < 0) {        \
+      return error_causef (           \
+          (e),                        \
+          ERR_UNHANDLED,              \
+          "Unhandled error: %d %.*s", \
+          (e)->cause_code,            \
+          (e)->cmlen,                 \
+          (e)->cause_msg              \
+      );                              \
+    }                                 \
+  }                                   \
+  while (0)
+
+#define error_reset(e)   \
+  do {                   \
+    (e)->cause_code = 0; \
+    (e)->cmlen      = 0; \
+  }                      \
   while (0)
 
 #ifndef TESTING

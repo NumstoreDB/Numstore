@@ -20,7 +20,6 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
-#include "core/ns_platform.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_filesystem.h"
@@ -65,31 +64,8 @@
  * ...
  ******************************************************************************/
 
-/**
- * @def The page number of the variable hash page
- * @brief The variable hash page is always located at the same place
- *
- * It starts right after the first free space map
- */
 #define VHASH_PGNO ((pgno)1)
 
-/**
- * @brief Flags to help the buffer manager know which pages are occupied,
- * accessed or writable
- *
- * @var ::PW_ACCESS
- * @brief The Access bit - set to 1 anytime the pager "accesses" it e.g. invokes
- * an operation that touches this page outside of allocation.
- * Meaningfless for X type pages
- *
- * @var ::PW_PRESENT
- * @brief The present bit - Set to 1 if the page is present - This is the first
- * bit to check when reserving pages
- *
- * @var ::PW_X
- * @brief Exclusive bit - locked in write mode - only one thread is accessing
- * this page at a time
- */
 enum
 {
   PW_ACCESS  = 1U << 0,
@@ -97,47 +73,13 @@ enum
   PW_X       = 1U << 3,
 };
 
-/**
- * @brief Global pager property flags
- *
- * @var ::PGR_ISNEW
- * @brief Set to true if this is the first time the pager was created
- *
- * @var ::PGR_ISRESTARTING
- * @brief Set to true if the pager is in the recover stages
- */
 enum
 {
   PGR_ISNEW        = 1U << 0,
   PGR_ISRESTARTING = 1U << 1,
 };
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Page Header
- * @brief First few bytes of a database file
- *
- * The first bytes of a database file include the header. The header
- * contains two lsns - start and end lsn. These are the lsn's that the
- * WAL starts at. The bigger one is usually the source of truth. There is
- * two of them to ensure that the WAL is deleted durably.
- *
- * 1. FLUSH PAGES: Flush all dirty database pages to disk to guarantee data is
- * safe.
- *
- * 2. CHOOSE SLOT: Get the new start LSN and identify the database header slot
- * with the minimum LSN value (the low slot).
- *
- * 3. WRITE & SYNC: Write the new LSN into that low slot and `fsync` the header.
- * (The old high slot remains intact as a rollback fallback if we crash here).
- *
- * 4. ATOMIC DELETE: Delete the WAL file from disk.
- * (At this moment, the newly written LSN becomes the highest on disk and the
- * new truth).
- *
- * 5. REOPEN WAL: Create and initialize a new empty WAL file matching the new
- * LSN.
- *----------------------------------------------------------------------------*/
-
+// Header
 #define PAGE_HEADER_LEN                \
   (sizeof (u32) + /* checksum(lsn0) */ \
    sizeof (lsn) + /* lsn0 */           \
@@ -159,95 +101,15 @@ struct pager_header
 #define LSN1_OFST     (LSN0_CSM_OFST + sizeof (u32))
 #define LSN1_CSM_OFST (LSN1_OFST + sizeof (lsn))
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Pager Data
- * @brief The pager struct and data
- *----------------------------------------------------------------------------*/
-
 // Robin hood hash table for buffer pool
 #define KTYPE  pgno
 #define VTYPE  u32
 #define SUFFIX idx
 #include "core/ns_robin_hood_ht.h"
-
-struct ns_txn;
-struct wal_update_write;
-
 #undef KTYPE
 #undef VTYPE
 #undef SUFFIX
 
-/**
- * @struct pager
- *
- * @brief The system responsible for reading and writing pages durably.
- *
- * Manages the in-memory buffer pool, interfaces with the underlying file
- * system and write-ahead log (WAL), handles concurrency/latching, and
- * coordinates the transaction and dirty page tables for ARIES recovery.
- *
- * @var pager::header
- * @brief Structured, parsed representation of the database file header.
- *
- * @var pager::_header
- * @brief Raw byte buffer containing the serialized representation of the page
- * header.
- *
- * @var pager::fp
- * @brief The file pager reads and writes pages from the actual file.
- *
- * @var pager::ww
- * @brief The write-ahead log (WAL) abstraction for durability and crash
- * recovery.
- *
- * @var pager::lt
- * @brief Pointer to the system-wide lock table for concurrency control.
- *
- * @var pager::flags
- * @brief Atomic bit-flags denoting internal runtime state (e.g., closing,
- * dirty).
- *
- * @var pager::clock
- * @brief Atomic logical clock counter used for page eviction policies (e.g.,
- * Clock Sweep).
- *
- * @var pager::pgrnew_lock
- * @brief Latch used to synchronize internal pager operations when creating new
- * pages.
- *
- * @var pager::pgno_to_value
- * @brief A static hash table mapping a page number (`pgno`) to its buffer pool
- * index.
- *
- * @var pager::_hdata
- * @brief Backing memory array for the `pgno_to_value` static hash table.
- * @var pager::htable_lock
- *
- * @brief Synchronizes multi-threaded access and modifications to the hash
- * table.
- *
- * @var pager::dpt
- * @brief Dirty Page Table tracker containing the `page_lsn` references needed
- * for ARIES.
- *
- * @var pager::tnxt
- * @brief Transaction Table tracking active transactions and their last LSN
- * status.
- *
- * @var pager::checkpoint_task
- * @brief Periodic background engine state capturing checkpoints to safely
- * truncate/delete the WAL.
- *
- * @var pager::next_tid
- * @brief Monotonically increasing atomic tracker for issuing the next
- * Transaction ID.
- *
- * @var pager::pages
- * @brief The actual large in-memory buffer pool frame array.
- *
- * @note This is very large; the pager structure should never be allocated on
- * the thread stack.
- */
 struct pager
 {
   struct i_mem               mem;
@@ -288,62 +150,16 @@ DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p->tnxt);
 })
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Specializations
- * @brief Initialization and destruction of single-file database engines
- *----------------------------------------------------------------------------*/
-
 struct pager *pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *e);
 err_t pgr_delete_single_file (const char *dbname, error *e);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Lifecycle
- * @brief Management of active pager context resources and shutdown states
- *----------------------------------------------------------------------------*/
-
 err_t pgr_close (struct pager *p, error *e);
 err_t pgr_crash (struct pager *p, error *e);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Utils
- * @brief Inspection utilities and low-level header serialization helpers
- *----------------------------------------------------------------------------*/
-
-p_size pgr_get_npages (struct pager *p);
-bool pgr_isnew (const struct pager *p);
-void i_log_page_table (int log_level, bool only_present, struct pager *p);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Transaction Control
- * @brief Boundary boundaries and log flushing mechanics for transactions
- *----------------------------------------------------------------------------*/
 
 err_t pgr_begin_txn (struct ns_txn *tx, struct pager *p, error *e);
 err_t pgr_commit (struct pager *p, struct ns_txn *tx, error *e);
 err_t pgr_rollback (struct pager *p, struct ns_txn *tx, lsn save_lsn, error *e);
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Inner Utils
- * @brief Internal structural maintenance, unsafe flushes, and file sizing
- *----------------------------------------------------------------------------*/
-
-err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e);
-err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Checkpoints
- * @brief Synchronization barriers to flush dirty state and truncate the WAL
- *----------------------------------------------------------------------------*/
-
-err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Primary API
- * @brief Main engine interfaces for page lookup, reservation, and lifecycle
- *----------------------------------------------------------------------------*/
-
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
-
 err_t pgr_get_writable (
     page_h        *dest,
     struct ns_txn *tx,
@@ -352,11 +168,18 @@ err_t pgr_get_writable (
     struct pager  *p,
     error         *e
 );
+err_t pgr_get_maybe_writable (
+    page_h        *dest,
+    struct ns_txn *tx,
+    int            flags,
+    pgno           pg,
+    struct pager  *p,
+    bool           writable,
+    error         *e
+);
 
 err_t pgr_new (page_h *dest, struct pager *p, struct ns_txn *tx, enum page_type ptype, error *e);
-
 err_t pgr_delete_and_release (struct pager *p, struct ns_txn *tx, page_h *h, error *e);
-
 err_t pgr_release_with_log (
     struct pager            *p,
     page_h                  *h,
@@ -364,13 +187,35 @@ err_t pgr_release_with_log (
     struct wal_update_write *record,
     error                   *e
 );
+err_t pgr_release (struct pager *p, page_h *h, const int flags, error *e);
+err_t pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e);
+err_t pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e);
+err_t pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e);
+
+void pgr_unfix (page_h *h, int flags);
+i32 pgr_reserve_and_ctrl_lock (struct pager *p, error *e);
+
+err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e);
+err_t pgr_evict_all_pages (struct pager *p, error *e);
+
+err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e);
+err_t pgr_flush_all_pages (struct pager *p, error *e);
+
+err_t pgr_upgrade (page_h *_pg, struct ns_txn *tx, int flags, struct pager *p, error *e);
+err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
 
 void pgr_cancel (page_h *h);
+void pgr_cancel_if_exists (page_h *h);
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: ARIES Recovery
- * @brief Classic ARIES Recovery algorithms
- *----------------------------------------------------------------------------*/
+p_size pgr_get_npages (struct pager *p);
+bool pgr_isnew (const struct pager *p);
+void i_log_page_table (int log_level, bool only_present, struct pager *p);
+
+// Header writing
+err_t pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e);
+err_t pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e);
+err_t pgr_write_next_lsn (struct pager *p, lsn l, error *e);
+err_t pgr_write_header (struct pager *p, error *e);
 
 struct aries_ctx
 {
@@ -416,126 +261,6 @@ struct aries_ctx
 err_t aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);
 void aries_ctx_free (struct aries_ctx *ctx);
 struct ns_txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Short Hands
- * @brief Inline wrappers combining pin, unpin, flush, and eviction pipelines
- *----------------------------------------------------------------------------*/
-
-HEADER_FUNC err_t
-pgr_get_maybe_writable (
-    page_h        *dest,
-    struct ns_txn *tx,
-    int            flags,
-    pgno           pg,
-    struct pager  *p,
-    bool           writable,
-    error         *e
-)
-{
-  if (!writable) {
-    return pgr_get (dest, flags, pg, p, e);
-  }
-  return pgr_get_writable (dest, tx, flags, pg, p, e);
-}
-
-HEADER_FUNC err_t
-pgr_release (struct pager *p, page_h *h, const int flags, error *e)
-{
-  return pgr_release_with_log (p, h, flags, NULL, e);
-}
-
-HEADER_FUNC err_t
-pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e)
-{
-  if (h->mode != PHM_NONE) {
-    return pgr_release (p, h, flags, e);
-  }
-  return SUCCESS;
-}
-
-HEADER_FUNC err_t
-pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
-{
-  struct page_frame *pgr = h->pgr;
-
-  if (pgr_release (p, h, flags, e)) {
-    return error_trace (e);
-  }
-  if (pgr_flush_unsafe (p, pgr, e)) {
-    return error_trace (e);
-  }
-  return SUCCESS;
-}
-
-HEADER_FUNC err_t
-pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
-{
-  struct page_frame *pgr = h->pgr;
-
-  if (pgr_release (p, h, flags, e)) {
-    return error_trace (e);
-  }
-  if (pgr_evict_unsafe (p, pgr, e)) {
-    return error_trace (e);
-  }
-  return SUCCESS;
-}
-
-HEADER_FUNC err_t
-pgr_flush_all_pages (struct pager *p, error *e)
-{
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
-    struct page_frame *mp = &p->pages[i];
-
-    latch_lock (&mp->ctrl);
-
-    if (mp->flags & PW_PRESENT && !(mp->flags & PW_X)) {
-      ASSERT (!(mp->flags & PW_X));
-      pgr_flush_unsafe (p, mp, e);
-    }
-
-    latch_unlock (&mp->ctrl);
-  }
-
-  return error_trace (e);
-}
-
-HEADER_FUNC err_t
-pgr_evict_all_pages (struct pager *p, error *e)
-{
-  for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
-    struct page_frame *mp = &p->pages[i];
-
-    latch_lock (&mp->ctrl);
-
-    if (mp->flags & PW_PRESENT) {
-      ASSERT (!(mp->flags & PW_X));
-      pgr_evict_unsafe (p, mp, e);
-    }
-
-    latch_unlock (&mp->ctrl);
-  }
-
-  return error_trace (e);
-}
-
-HEADER_FUNC void
-pgr_cancel_if_exists (page_h *h)
-{
-  if (h->mode == PHM_NONE) {
-    return;
-  }
-
-  pgr_cancel (h);
-}
-
-HEADER_FUNC err_t
-pgr_upgrade (page_h *_pg, struct ns_txn *tx, int flags, struct pager *p, error *e)
-{
-  pgno pg = page_h_pgno (_pg);
-  pgr_release (p, _pg, flags, e);
-  return pgr_get_writable (_pg, tx, flags, pg, p, e);
-}
+err_t pgr_recover (struct pager *p, error *e);
 
 #endif // PAGER_H

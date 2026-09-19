@@ -14,6 +14,7 @@
 
 #include "nscore/lock_table/ns_lock_table.h"
 
+#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_htable.h"
 #include "core/ns_string.h"
@@ -330,4 +331,24 @@ lockt_unlock_tx (struct lockt *t, struct ns_txn *tx)
 
   latch_unlock (&t->l);
   txn_close (tx);
+}
+
+static void
+i_log_lockt_entry (struct hnode *node, void *ctx)
+{
+  int                *log_level = ctx;
+  struct lockt_frame *frame     = container_of (node, struct lockt_frame, node);
+  switch (frame->key.type) {
+    case LOCK_DB: {
+      i_log (*log_level, "LOCK_DB\n");
+    }
+  }
+}
+
+void
+i_log_lockt (int log_level, struct lockt *t)
+{
+  latch_lock (&t->l);
+  htable_foreach (t->table, i_log_lockt_entry, &log_level);
+  latch_unlock (&t->l);
 }

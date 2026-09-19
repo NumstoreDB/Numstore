@@ -24,9 +24,7 @@
 err_t
 nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc, error *e)
 {
-  struct ns_var_get_params gparams; // Get or create operation
-
-  struct ns_txn           *tx = nsdb_begin (db, e);
+  struct ns_txn *tx = nsdb_begin (db, e);
   if (tx == NULL) {
     goto failed;
   }
@@ -40,21 +38,23 @@ nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc
   );
 
   // GET VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->p,
-        .tx    = tx,
-        .vname = query->name,
-        .alloc = alloc,
-    };
-    err_t err = ns_var_get (&gparams, e);
-    if (query->if_exists && err == ERR_VARIABLE_NE) {
-      e->cause_code = SUCCESS;
-      e->cmlen      = 0;
-      fprintf (stderr, "Variable: %.*s doesn't exist\n", strfmt (&query->name));
-      goto commit;
-    }
-    WRAP_GOTO (err, failed_rollback);
+  struct ns_var_get_params gparams = (struct ns_var_get_params){
+      .p     = db->p,
+      .tx    = tx,
+      .vname = query->name,
+      .alloc = alloc,
+  };
+  err_t err = ns_var_get (&gparams, e);
+
+  // If the variable doesn't exist - it's ok
+  if (query->if_exists && err == ERR_VARIABLE_NE) {
+    error_reset (e);
+    fprintf (stderr, "Variable: %.*s doesn't exist\n", strfmt (&query->name));
+    goto commit;
+  }
+
+  if (err < 0) {
+    goto failed_rollback;
   }
 
 commit:

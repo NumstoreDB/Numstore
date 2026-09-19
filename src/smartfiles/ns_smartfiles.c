@@ -16,17 +16,13 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stream.h"
-#include "core/ns_string.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/algorithms/rope/ns_rope_algorithms.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/algorithms/smartfiles/ns_smartfiles_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
-#include "nscore/types/ns_types.h"
-#include "nscore/variables/ns_variables.h"
 #include "smartfiles/smartfiles.h"
 
 #include <stdbool.h>
@@ -49,8 +45,7 @@ smfile_perror (smfile_t *smf, const char *prefix)
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_perror)
+TEST (smfile_perror)
 {
   smfile_cleanup ("test");
 
@@ -63,21 +58,21 @@ TEST_DISABLED (smfile_perror)
 
   smfile_close (s);
 }
-*/
 #endif
 
 const char *
 smfile_strerror (smfile_t *smf)
 {
   if (smf->e.cause_code < 0) {
+    // Consume
+    error_reset (&smf->e);
     return smf->e.cause_msg;
   }
   return NULL;
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_strerror)
+TEST (smfile_strerror)
 {
   smfile_cleanup ("test");
 
@@ -90,7 +85,6 @@ TEST_DISABLED (smfile_strerror)
 
   smfile_close (s);
 }
-*/
 #endif
 
 int
@@ -101,8 +95,7 @@ smfile_cleanup (const char *path)
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_cleanup)
+TEST (smfile_cleanup)
 {
   smfile_cleanup ("test");
 
@@ -118,75 +111,20 @@ TEST_DISABLED (smfile_cleanup)
   i_file_exists (fs, "test", &exists, &e);
   test_assert (!exists);
 }
-*/
 #endif
 
 sb_size
 smfile_size (smfile_t *smf, sm_txn_t *tx)
 {
-  struct nsdb *db   = smf->db;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e          = &smf->e;
+  CHECK_UNHANDLED_ERROR (&smf->e);
 
   ALLOC_INIT (temp);
-
-  b_size ret;
-
-  AUTO_BEGIN (db, tx);
-
-  // GET
-  struct ns_var_get_params gparams = {
-      .p     = db->p,
-      .tx    = tx,
-      .vname = strfcstr (DEFAULT_VARIABLE),
-      .alloc = &temp,
-  };
-  if (ns_var_get (&gparams, e)) {
-    goto failed_rollback;
-  }
-
-  ret = gparams.dest.nbytes;
-
-  AUTO_COMMIT (db, tx);
-
+  sb_size ret;
+  WITH_AUTO_TXN (ret, smf->db, tx, smartfiles_size (smf->db->p, tx, &temp, &smf->e), &smf->e);
   ALLOC_CLOSE (temp);
 
   return ret;
-
-failed_rollback:
-  ROLLBACK_PRESERVING_ERROR (db, tx);
-
-failed:
-  ALLOC_CLOSE (temp);
-  return error_trace (e);
 }
-
-#ifdef TESTING
-/**
-TEST_DISABLED (smfile_size)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-
-  test_assert_equal (smfile_size (s, NULL), 0);
-
-  u8 buffer[2048];
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-
-  test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
-
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-
-  test_assert_equal (smfile_size (s, NULL), 2 * sizeof (buffer));
-
-  smfile_close (s);
-}
-*/
-#endif
 
 int
 smfile_close (smfile_t *smf)
@@ -197,8 +135,7 @@ smfile_close (smfile_t *smf)
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_close)
+TEST (smfile_close)
 {
   smfile_cleanup ("test");
 
@@ -212,7 +149,6 @@ TEST_DISABLED (smfile_close)
   i_file_exists (fs, "test.wal", &exists, &e);
   test_assert (!exists);
 }
-*/
 #endif
 
 int
@@ -224,8 +160,7 @@ smfile_crash (smfile_t *smf)
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_crash)
+TEST (smfile_crash)
 {
   smfile_cleanup ("test");
 
@@ -239,7 +174,6 @@ TEST_DISABLED (smfile_crash)
   i_file_exists (fs, "test.wal", &exists, &e);
   test_assert (exists);
 }
-*/
 #endif
 
 struct ns_txn *
@@ -261,8 +195,7 @@ smfile_rollback (smfile_t *smf, struct ns_txn *tx)
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_txns)
+TEST (smfile_txns)
 {
   smfile_cleanup ("test");
 
@@ -285,7 +218,6 @@ TEST_DISABLED (smfile_txns)
 
   smfile_close (s);
 }
-*/
 #endif
 
 smfile_t *
@@ -304,26 +236,8 @@ smfile_open (const char *path)
     return NULL;
   }
 
-  // Create the default variable
-  if (pgr_isnew (ret->db->p)) {
-    struct ns_txn tx;
-    if (pgr_begin_txn (&tx, ret->db->p, &ret->e)) {
-      goto failed;
-    }
-
-    struct ns_var_create_params params = {
-        .p     = ret->db->p,
-        .tx    = &tx,
-        .vname = strfcstr (DEFAULT_VARIABLE),
-        .type  = &(struct type){.type = T_PRIM, .p = U8},
-    };
-    if (ns_var_create (params, &ret->e)) {
-      goto failed;
-    }
-
-    if (pgr_commit (ret->db->p, &tx, &ret->e)) {
-      goto failed;
-    }
+  if (smartfiles_init_pager (ret->db->p, &ret->e)) {
+    goto failed;
   }
 
   return ret;
@@ -336,8 +250,7 @@ failed:
 }
 
 #ifdef TESTING
-/**
-TEST_DISABLED (smfile_open)
+TEST (smfile_open)
 {
   smfile_cleanup ("test");
 
@@ -354,7 +267,6 @@ TEST_DISABLED (smfile_open)
 
   smfile_close (s2);
 }
-*/
 #endif
 
 /////////////////////////////////////////////////////////////////////
@@ -363,109 +275,22 @@ TEST_DISABLED (smfile_open)
 sb_size
 smfile_insert (smfile_t *smf, struct ns_txn *tx, const void *src, sb_size bofst, b_size slen)
 {
-  struct nsdb *db   = smf->db;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e          = &smf->e;
+  CHECK_UNHANDLED_ERROR (&smf->e);
 
   ALLOC_INIT (temp);
-
-  sb_size                     ret;     // Return value
-  b_size                      ofst;    // Resolved offset
-  struct stream               _input;  // Input stream
-  struct stream_ibuf_ctx      ctx;     // Context for input stream
-  struct ns_var_get_params    gparams; // Get or create operation
-  struct ns_insert_params     iparams; // Insert operation
-  struct ns_var_update_params uparams; // Update operation
-
-  // Parameter validation
-  if (slen == 0) {
-    return 0;
-  }
-
-  stream_ibuf_init (&_input, &ctx, src, slen);
-
-  AUTO_BEGIN (db, tx);
-
-  // GET OR CREATE VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->p,
-        .tx    = tx,
-        .vname = strfcstr (DEFAULT_VARIABLE),
-        .alloc = &temp,
-    };
-    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
-  }
-
-  // Resolve sizes
-  {
-    ofst = var_resolve_index (&gparams.dest, bofst);
-  }
-
-  // INSERT
-  {
-    iparams = (struct ns_insert_params){
-        .p     = db->p,
-        .src   = &_input,
-        .tx    = tx,
-        .root  = gparams.dest.rpt_root,
-        .bofst = ofst,
-    };
-    ret = ns_insert (&iparams, e);
-    WRAP_GOTO (ret, failed_rollback);
-  }
-
-  // UPDATE VARIABLE
-  {
-    uparams = (struct ns_var_update_params){
-        .p      = db->p,
-        .tx     = tx,
-        .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
-        .newpg  = iparams.root,
-        .nbytes = gparams.dest.nbytes + ret,
-    };
-    WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
-  }
-
-  // COMMIT
-  AUTO_COMMIT (db, tx);
-
+  sb_size ret;
+  istream_create_from (input, src, slen);
+  WITH_AUTO_TXN (
+      ret,
+      smf->db,
+      tx,
+      smartfiles_insert (smf->db->p, tx, &input, bofst, slen, &temp, &smf->e),
+      &smf->e
+  );
   ALLOC_CLOSE (temp);
 
   return ret;
-
-failed_rollback:
-
-  ROLLBACK_PRESERVING_ERROR (db, tx);
-
-failed:
-  ALLOC_CLOSE (temp);
-
-  return error_trace (e);
 }
-
-#ifdef TESTING
-/**
-TEST_DISABLED (smfile_insert)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[2048];
-
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
-
-  smfile_close (s);
-}
-*/
-#endif
-
-/////////////////////////////////////////////////////////////////////
-////// Read
 
 sb_size
 smfile_read (
@@ -478,125 +303,22 @@ smfile_read (
     b_size         nelem
 )
 {
-  struct nsdb *db   = smf->db;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e          = &smf->e;
+  CHECK_UNHANDLED_ERROR (&smf->e);
 
   ALLOC_INIT (temp);
-
-  sb_size                  ret;           // Return value
-  b_size                   ofst;          // Resolved offset
-  struct stream            _output;       // Output stream if present
-  struct stream_obuf_ctx   ctx;           // Context for output stream
-  struct stream           *output = NULL; // Pointer to output stream
-  struct ns_var_get_params gparams;       // Get operation
-  struct ns_read_params    rparams;       // Read operation
-
-  // Parameter validation
-  if (stride < 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
-  }
-  if (stride == 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with stride == 0");
-  }
-  if (size == 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot read with size == 0");
-  }
-  if (nelem == 0) {
-    return 0;
-  }
-
-  // BEGIN TXN
-  AUTO_BEGIN (db, tx);
-
-  // GET VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->p,
-        .tx    = tx,
-        .vname = strfcstr (DEFAULT_VARIABLE),
-        .alloc = &temp,
-    };
-    err_t err = ns_var_get (&gparams, e);
-    WRAP_GOTO (err, failed_rollback);
-  }
-
-  // Resolve sizes
-  {
-    ofst  = var_resolve_index (&gparams.dest, bofst);
-    nelem = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
-    if (nelem == 0) {
-      ret = 0;
-      goto commit;
-    }
-    if (dest) {
-      stream_obuf_init (&_output, &ctx, dest, size * nelem);
-      output = &_output;
-    }
-  }
-
-  // READ
-  {
-    rparams = (struct ns_read_params){
-        .p      = db->p,
-        .dest   = output,
-        .tx     = tx,
-        .root   = gparams.dest.rpt_root,
-        .size   = size,
-        .bofst  = ofst,
-        .stride = stride,
-        .nelem  = nelem,
-    };
-    ret = ns_read (rparams, e);
-    WRAP_GOTO (ret, failed_rollback);
-  }
-
-commit:
-
-  // COMMIT
-  AUTO_COMMIT (db, tx);
+  sb_size ret;
+  ostream_create_from (output, dest, size * nelem);
+  WITH_AUTO_TXN (
+      ret,
+      smf->db,
+      tx,
+      smartfiles_read (smf->db->p, tx, &output, size, bofst, stride, nelem, &temp, &smf->e),
+      &smf->e
+  );
   ALLOC_CLOSE (temp);
+
   return ret;
-
-failed_rollback:
-
-  ROLLBACK_PRESERVING_ERROR (db, tx);
-
-failed:
-  ALLOC_CLOSE (temp);
-  return error_trace (e);
 }
-
-#ifdef TESTING
-/**
-TEST_DISABLED (smfile_read)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[16];
-  for (u32 i = 0; i < sizeof (buffer); i++) {
-    buffer[i] = (u8)i;
-  }
-
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-
-  u8      out[16] = {0};
-  sb_size n       = smfile_read (s, NULL, out, 1, 0, 1, sizeof (buffer));
-
-  test_assert_equal (n, sizeof (buffer));
-  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
-
-  smfile_close (s);
-}
-*/
-#endif
-
-/////////////////////////////////////////////////////////////////////
-////// Remove
 
 sb_size
 smfile_remove (
@@ -609,140 +331,22 @@ smfile_remove (
     b_size         nelem
 )
 {
-  struct nsdb *db   = smf->db;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e          = &smf->e;
+  CHECK_UNHANDLED_ERROR (&smf->e);
 
   ALLOC_INIT (temp);
-
-  sb_size                     ret;           // Return value
-  b_size                      ofst;          // Resolved offset
-  struct stream               _output;       // Output stream if present
-  struct stream_obuf_ctx      ctx;           // Context for output stream
-  struct stream              *output = NULL; // Pointer to output stream
-  struct ns_var_get_params    gparams;       // Get operation
-  struct ns_remove_params     rparams;       // Remove operation
-  struct ns_var_update_params uparams;       // Update operation
-
-  // Parameter validation
-  if (stride < 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
-  }
-  if (stride == 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with stride == 0");
-  }
-  if (size == 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot remove with size == 0");
-  }
-  if (nelem == 0) {
-    return 0;
-  }
-
-  // BEGIN TXN
-  AUTO_BEGIN (db, tx);
-
-  // GET VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->p,
-        .tx    = tx,
-        .vname = strfcstr (DEFAULT_VARIABLE),
-        .alloc = &temp,
-    };
-    err_t err = ns_var_get (&gparams, e);
-    WRAP_GOTO (err, failed_rollback);
-  }
-
-  // Resolve sizes
-  {
-    ofst  = var_resolve_index (&gparams.dest, bofst);
-    nelem = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
-    if (nelem == 0) {
-      ret = 0;
-      goto commit;
-    }
-    if (dest) {
-      stream_obuf_init (&_output, &ctx, dest, size * nelem);
-      output = &_output;
-    }
-  }
-
-  // REMOVE
-  {
-    rparams = (struct ns_remove_params){
-        .p      = db->p,
-        .dest   = output,
-        .tx     = tx,
-        .root   = gparams.dest.rpt_root,
-        .size   = size,
-        .bofst  = ofst,
-        .stride = stride,
-        .nelem  = nelem,
-    };
-    ret = ns_remove (&rparams, e);
-    WRAP_GOTO (ret, failed_rollback);
-  }
-
-  // UPDATE VARIABLE
-  {
-    uparams = (struct ns_var_update_params){
-        .p      = db->p,
-        .tx     = tx,
-        .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
-        .newpg  = rparams.root,
-        .nbytes = gparams.dest.nbytes - (ret * size),
-    };
-    WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
-  }
-
-commit:
-
-  // COMMIT
-  AUTO_COMMIT (db, tx);
+  sb_size ret;
+  ostream_create_from (output, dest, size * nelem);
+  WITH_AUTO_TXN (
+      ret,
+      smf->db,
+      tx,
+      smartfiles_remove (smf->db->p, tx, &output, size, bofst, stride, nelem, &temp, &smf->e),
+      &smf->e
+  );
   ALLOC_CLOSE (temp);
+
   return ret;
-
-failed_rollback:
-
-  ROLLBACK_PRESERVING_ERROR (db, tx);
-
-failed:
-  ALLOC_CLOSE (temp);
-  return error_trace (e);
 }
-
-#ifdef TESTING
-/**
-TEST_DISABLED (smfile_remove)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[16];
-  for (u32 i = 0; i < sizeof (buffer); i++) {
-    buffer[i] = (u8)i;
-  }
-
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-  test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
-
-  u8      out[16] = {0};
-  sb_size n       = smfile_remove (s, NULL, out, 1, 0, 1, sizeof (buffer));
-
-  test_assert_equal (n, sizeof (buffer));
-  test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
-  test_assert_equal (smfile_size (s, NULL), 0);
-
-  smfile_close (s);
-}
-*/
-#endif
-
-/////////////////////////////////////////////////////////////////////
-////// Write
 
 sb_size
 smfile_write (
@@ -755,163 +359,19 @@ smfile_write (
     b_size         nelem
 )
 {
-  struct nsdb *db   = smf->db;
-
-  smf->e.cause_code = SUCCESS;
-  smf->e.cmlen      = 0;
-
-  error *e          = &smf->e;
+  CHECK_UNHANDLED_ERROR (&smf->e);
 
   ALLOC_INIT (temp);
-
-  sb_size                     ret;          // Return value
-  sb_size                     inserted;     // Number of bytes inserted
-  b_size                      ofst;         // Resolved offset
-  b_size                      write_nelem;  // Elements that fit in existing variable
-  b_size                      insert_nelem; // Remainder to insert past the end
-  struct stream               _input;       // Input stream
-  struct stream_ibuf_ctx      ctx;          // Context for input stream
-  struct ns_var_get_params    gparams;      // Get or create operation
-  struct ns_write_params      wparams;      // Write operation
-  struct ns_insert_params     iparams;      // Insert operation
-  struct ns_var_update_params uparams;      // Update operation
-
-  // Parameter validation
-  if (stride < 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides aren't supported yet");
-  }
-  if (stride == 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with stride == 0");
-  }
-  if (size == 0) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write with size == 0");
-  }
-  if (nelem == 0) {
-    return 0;
-  }
-
-  // BEGIN TXN
-  AUTO_BEGIN (db, tx);
-
-  // GET OR CREATE VARIABLE
-  {
-    gparams = (struct ns_var_get_params){
-        .p     = db->p,
-        .tx    = tx,
-        .vname = strfcstr (DEFAULT_VARIABLE),
-        .alloc = &temp,
-    };
-    WRAP_GOTO (ns_var_get (&gparams, e), failed_rollback);
-  }
-
-  // Resolve sizes
-  {
-    ofst         = var_resolve_index (&gparams.dest, bofst);
-    write_nelem  = var_resolve_nelem (&gparams.dest, ofst, nelem, size);
-    insert_nelem = nelem - write_nelem;
-    if (insert_nelem > 0 && stride != 1) {
-      error_causef (e, ERR_INVALID_ARGUMENT, "Cannot write past end with stride != 1");
-      goto failed_rollback;
-    }
-  }
-
-  // WRITE
-  {
-    stream_ibuf_init (&_input, &ctx, src, size * write_nelem);
-
-    wparams = (struct ns_write_params){
-        .p      = db->p,
-        .src    = &_input,
-        .tx     = tx,
-        .root   = gparams.dest.rpt_root,
-        .size   = size,
-        .bofst  = ofst,
-        .stride = stride,
-        .nelem  = write_nelem,
-    };
-
-    ret = ns_write (wparams, e);
-    WRAP_GOTO (ret, failed_rollback);
-  }
-
-  // INSERT REMAINDER
-  if (insert_nelem > 0) {
-    // INSERT
-    {
-      stream_ibuf_init (&_input, &ctx, (u8 *)src + (write_nelem * size), insert_nelem * size);
-
-      iparams = (struct ns_insert_params){
-          .p     = db->p,
-          .src   = &_input,
-          .tx    = tx,
-          .root  = wparams.root,
-          .bofst = gparams.dest.nbytes, // Append
-      };
-
-      inserted = ns_insert (&iparams, e);
-      WRAP_GOTO (inserted, failed_rollback);
-      ret += inserted / size;
-    }
-
-    // UPDATE VARIABLE
-    {
-      uparams = (struct ns_var_update_params){
-          .p      = db->p,
-          .tx     = tx,
-          .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
-          .newpg  = iparams.root,
-          .nbytes = gparams.dest.nbytes + inserted,
-      };
-      WRAP_GOTO (ns_var_update (uparams, e), failed_rollback);
-    }
-  }
-
-  // COMMIT
-  AUTO_COMMIT (db, tx);
+  sb_size ret;
+  istream_create_from (input, src, nelem * size);
+  WITH_AUTO_TXN (
+      ret,
+      smf->db,
+      tx,
+      smartfiles_write (smf->db->p, tx, &input, size, bofst, stride, nelem, &temp, &smf->e),
+      &smf->e
+  );
   ALLOC_CLOSE (temp);
+
   return ret;
-
-failed_rollback:
-
-  ROLLBACK_PRESERVING_ERROR (db, tx);
-
-failed:
-  ALLOC_CLOSE (temp);
-  return error_trace (e);
 }
-
-#ifdef TESTING
-/**
-TEST_DISABLED (smfile_pwrite)
-{
-  smfile_cleanup ("test");
-
-  struct smfile *s         = smfile_open ("test");
-  u8             buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-
-  smfile_insert (s, NULL, buffer, 0, sizeof (buffer));
-
-  // Overwrite the first 4 bytes in place.
-  u8      overwrite[4] = {9, 9, 9, 9};
-  sb_size n            = smfile_write (s, NULL, overwrite, 1, 0, 1, sizeof (overwrite));
-
-  test_assert_equal (n, sizeof (overwrite));
-  test_assert_equal (smfile_size (s, NULL), sizeof (buffer));
-
-  u8 out[8] = {0};
-  smfile_read (s, NULL, out, 1, 0, 1, sizeof (out));
-
-  u8 expected[8] = {9, 9, 9, 9, 5, 6, 7, 8};
-  test_assert (memcmp (out, expected, sizeof (expected)) == 0);
-
-  // Writing past the end should append (insert the remainder).
-  u8 append[4] = {11, 12, 13, 14};
-  n            = smfile_write (s, NULL, append, 1, sizeof (buffer), 1, sizeof (append));
-
-  test_assert_equal (n, sizeof (append));
-  test_assert_equal (smfile_size (s, NULL), sizeof (buffer) + sizeof (append));
-
-  smfile_close (s);
-}
-*/
-#endif

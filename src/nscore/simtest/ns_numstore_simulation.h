@@ -18,7 +18,7 @@
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
-#include "numstore/testing/ns_operation_generator.h"
+#include "nscore/simtest/ns_operation_generator.h"
 
 struct ns_simulation_params
 {

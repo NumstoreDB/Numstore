@@ -1,4 +1,4 @@
-#include "numstore/testing/ns_reference_db_stepper.h"
+#include "nscore/simtest/ns_ref_state_machine.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
@@ -8,8 +8,8 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
+#include "nscore/simtest/ns_mem_vhmap.h"
 #include "nscore/types/ns_types.h"
-#include "numstore/testing/ns_mem_vhmap.h"
 
 #include <string.h>
 
@@ -254,7 +254,7 @@ ns_ref_close_and_reopen (struct ns_ref *ref)
 }
 
 err_t
-ns_ref_create_and_maybe_switch (struct ns_ref *ref, const char *vname, struct type *type, error *e)
+ns_ref_create (struct ns_ref *ref, const char *vname, struct type *type, error *e)
 {
   struct db_state *state = ns_ref_cur (ref);
 
@@ -292,7 +292,7 @@ ns_ref_switch (struct ns_ref *ref, const char *next)
 }
 
 void
-ns_ref_delete_cur_and_switch (struct ns_ref *ref, const char *next)
+ns_ref_delete_and_switch (struct ns_ref *ref, const char *next)
 {
   struct db_state      *state = ns_ref_cur (ref);
   struct var_with_data *data  = NULL;
@@ -388,11 +388,11 @@ TEST (ns_ref)
     compile_type (&type, "u32", &alloc, &e);
 
     check_state (0, 0);
-    ns_ref_create_and_maybe_switch (ref, "var1", &type, &e);
+    ns_ref_create (ref, "var1", &type, &e);
     check_state (1, 0);
-    ns_ref_create_and_maybe_switch (ref, "var2", &type, &e);
+    ns_ref_create (ref, "var2", &type, &e);
     check_state (2, 0);
-    ns_ref_create_and_maybe_switch (ref, "var3", &type, &e);
+    ns_ref_create (ref, "var3", &type, &e);
     check_state (3, 0);
 
     // Current variable is var1
@@ -442,7 +442,7 @@ TEST (ns_ref)
     ns_ref_switch (ref, "var1");
 
     // deletes var1 and switches to var2
-    ns_ref_delete_cur_and_switch (ref, "var2");
+    ns_ref_delete_and_switch (ref, "var2");
     validate (((u32[]){10, 20, 30, 40}));
     check_state (2, 8 * sizeof (u32));
 

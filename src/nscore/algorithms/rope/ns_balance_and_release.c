@@ -21,10 +21,10 @@
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_delegate.h"
+#include "nscore/page/ns_page_fixture.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
-#include "nscore/testing/ns_page_fixture.h"
 #include "nscore/txn_table/ns_txn_table.h"
 
 #include <stdbool.h>

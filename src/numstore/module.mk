@@ -2,11 +2,6 @@
 
 LIBNS_SRCS += src/numstore/ns_numstore.c
 LIBNS_SRCS += src/numstore/ns_numstore_fexecute.c
-LIBNS_SRCS += src/numstore/testing/ns_mem_vhmap.c
-LIBNS_SRCS += src/numstore/testing/ns_actual_db_stepper.c
-LIBNS_SRCS += src/numstore/testing/ns_reference_db_stepper.c
-LIBNS_SRCS += src/numstore/testing/ns_operation_generator.c
-LIBNS_SRCS += src/numstore/testing/ns_numstore_simulation.c
 
 ############ Includes
 

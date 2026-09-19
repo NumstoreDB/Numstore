@@ -19,6 +19,7 @@
 #include "core/ns_logging.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
+#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/nsdb/ns_nsdb_execute.h"
@@ -36,6 +37,12 @@ nscli_init (struct nscli *cli, const char *dbname)
   cli->db = nsdb_open_with_resources (dbname, default_mem (), default_filesystem (), &cli->e);
 
   if (cli->db == NULL) {
+    return -1;
+  }
+
+  // Initialize numstore database
+  if (numstore_init_pager (cli->db->p, &cli->e)) {
+    nsdb_close (cli->db, &cli->e);
     return -1;
   }
 
@@ -199,8 +206,7 @@ nscli_step_clean (struct nscli *cli)
 {
   arena_alloc_free_all (&cli->step_alloc);
   dblb_reset (&cli->stmt);
-  cli->e.cause_code = SUCCESS;
-  cli->e.cmlen      = 0;
+  error_reset (&cli->e);
 }
 
 void
