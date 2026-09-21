@@ -28,47 +28,53 @@
 #include "nscore/simtest/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
 
+#include <string.h>
+
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
 #endif
 
 struct ns_simulation
 {
-  struct ns_ref       *ref;
-  struct ns_db        *db;
+  struct ns_ref             *ref;
+  struct ns_db              *db;
 
   // Which actions are turned on
-  u8                   enabled[NSS_AT_LEN];
+  u8                         enabled[NSS_AT_LEN];
 
-  const char          *dbname;
-  int                  max_insert_len;
-  float                sample_space_prob;
+  const char                *dbname;
+  b_size                     max_insert_len;
+  t_size                     max_tsize;
+  float                      sample_space_prob;
 
   // Run identity
-  u64                  seed;
-  const char          *commit_hash;
-  u64                  sequence_id;
+  u64                        seed;
+  const char                *commit_hash;
+  u64                        sequence_id;
 
   // Run metrics
-  u64                  start;       // Epoch for everything below
-  u64                  step_number; // Which step is the test in
-  u64                  clock;       // Absolute timestamp of the last observation
+  u64                        start;       // Epoch for everything below
+  u64                        step_number; // Which step is the test in
+  u64                        clock;       // Absolute timestamp of the last observation
 
   // Throughput: every byte inserted, removed, read or written over the run
-  u64                  total_bytes_moved;
+  u64                        total_bytes_moved;
 
-  i_timer              timer;
-  struct arena_alloc   alloc;
+  i_timer                    timer;
+  struct arena_alloc         alloc;
 
   // The file system used by the system under test
   // (can be faulty)
-  struct i_file_system test_filesystem;
+  struct i_file_system       test_filesystem;
 
   // Memory used by the test (can be faulty)
-  struct i_mem         test_mem;
+  struct i_mem               test_mem;
 
   // Memory used for things that aren't being tested
-  struct i_mem         reliable_mem;
+  struct i_mem               reliable_mem;
+
+  // Configuration
+  enum write_validation_mode write_validation;
 };
 
 ////////// ACTIONS
@@ -138,86 +144,237 @@ nss_delete (struct ns_simulation *meta, struct operation *op, error *e)
 }
 
 static err_t
+nss_read_compare (
+    struct ns_simulation *meta,
+    void                 *ref_buf,
+    void                 *db_buf,
+    struct stride         stride,
+    error                *e
+)
+{
+  b_size  ref_read = ns_ref_read (meta->ref, ref_buf, stride);
+
+  sb_size db_read  = ns_db_read (meta->db, db_buf, stride, e);
+  if (db_read < 0) {
+    return error_trace (e);
+  }
+
+  if (ref_read != (b_size)db_read) {
+    return error_causef (e, ERR_CORRUPT, "Database read lengths don't match");
+  }
+
+  // operation ensures no overflow
+  ASSERT (ref_read == stride.nelems);
+
+  // Nothing was read, so there is nothing to compare
+  if (ref_read == 0) {
+    return SUCCESS;
+  }
+
+  b_size size = ref_read * ns_ref_cur_tsize (meta->ref);
+  if (memcmp (db_buf, ref_buf, size)) {
+    return error_causef (e, ERR_CORRUPT, "Database doesn't match reference");
+  }
+
+  return SUCCESS;
+}
+
+/**
+ * Reads [start, start + nelems) with stride 1 from both, and compares.
+ */
+static err_t
+nss_validate_range (
+    struct ns_simulation *meta,
+    b_size                start,
+    b_size                nelems,
+    u8                   *db_buf,
+    u8                   *ref_buf,
+    error                *e
+)
+{
+  if (nelems == 0) {
+    return SUCCESS;
+  }
+
+  struct stride stride = {.start = start, .stride = 1, .nelems = nelems};
+
+  return nss_read_compare (meta, ref_buf, db_buf, stride, e);
+}
+
+static err_t
+nss_validate_after_write (
+    struct ns_simulation *meta,
+    b_size                effected_start,
+    b_size                effected_nelems,
+    u8                   *db_buf,
+    u8                   *ref_buf,
+    error                *e
+)
+{
+  // Empty variable, nothing to validate
+  if (ns_ref_cur_len (meta->ref) == 0) {
+    return SUCCESS;
+  }
+
+  switch (meta->write_validation) {
+    case NSS_READ_EFFECTED_DATA_AFTER_WRITES: {
+      return nss_validate_range (meta, effected_start, effected_nelems, db_buf, ref_buf, e);
+    }
+    case NSS_READ_ALL_AFTER_WRITES: {
+      return nss_validate_range (meta, 0, ns_ref_cur_len (meta->ref), db_buf, ref_buf, e);
+    }
+    case NSS_READ_NONE_AFTER_WRITES: {
+      return SUCCESS;
+    }
+  }
+
+  ASSERT (0);
+  return SUCCESS;
+}
+
+static err_t
 nss_insert (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  WRAP (ns_ref_insert (meta->ref, op->op_insert.data, op->op_insert.ofst, op->op_insert.nelems, e));
-  WRAP (ns_db_insert (meta->db, op->op_insert.data, op->op_insert.ofst, op->op_insert.nelems, e));
-  return SUCCESS;
+  sb_size ref_inserted = ns_ref_insert (
+      meta->ref,
+      op->op_insert.data,
+      op->op_insert.ofst,
+      op->op_insert.nelems,
+      e
+  );
+  if (ref_inserted < 0) {
+    return error_trace (e);
+  }
+
+  sb_size db_inserted = ns_db_insert (
+      meta->db,
+      op->op_insert.data,
+      op->op_insert.ofst,
+      op->op_insert.nelems,
+      e
+  );
+  if (db_inserted < 0) {
+    return error_trace (e);
+  }
+
+  if (ref_inserted != db_inserted) {
+    return error_causef (e, ERR_CORRUPT, "Database inserted lengths don't match");
+  }
+
+  ASSERT ((b_size)ref_inserted == op->op_insert.nelems);
+
+  return nss_validate_after_write (
+      meta,
+      op->op_insert.ofst,
+      op->op_insert.nelems,
+      op->op_insert.db_buf,
+      op->op_insert.ref_buf,
+      e
+  );
 }
 
 static err_t
 nss_remove (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  ns_ref_remove (
-      meta->ref,
-      op->op_remove.ref_dest,
-      (struct stride){
-          .start  = op->op_remove.start,
-          .stride = op->op_remove.stride,
-          .nelems = op->op_remove.nelems,
-      }
-  );
-  WRAP (ns_db_remove (
-      meta->db,
-      op->op_remove.db_dest,
-      (struct stride){
-          .start  = op->op_remove.start,
-          .stride = op->op_remove.stride,
-          .nelems = op->op_remove.nelems,
-      },
+  struct stride stride = {
+      .start  = op->op_remove.start,
+      .stride = op->op_remove.stride,
+      .nelems = op->op_remove.nelems,
+  };
+
+  b_size  ref_removed = ns_ref_remove (meta->ref, op->op_remove.ref_buf, stride);
+
+  sb_size db_removed  = ns_db_remove (meta->db, op->op_remove.db_buf, stride, e);
+  if (db_removed < 0) {
+    return error_trace (e);
+  }
+
+  if (ref_removed != (b_size)db_removed) {
+    return error_causef (e, ERR_CORRUPT, "Database removed lengths don't match");
+  }
+
+  ASSERT (ref_removed == op->op_remove.nelems);
+
+  // Zero-length removal: nothing was removed, nothing to compare or revalidate
+  if (ref_removed == 0) {
+    return SUCCESS;
+  }
+
+  // Check that the removed data was the same
+  b_size size = ref_removed * ns_ref_cur_tsize (meta->ref);
+  if (memcmp (op->op_remove.db_buf, op->op_remove.ref_buf, size)) {
+    return error_causef (e, ERR_CORRUPT, "Database doesn't match reference");
+  }
+
+  // Variable is now empty
+  b_size len = ns_ref_cur_len (meta->ref);
+  if (len == 0) {
+    return SUCCESS;
+  }
+
+  // Everything from start onwards has shifted, so the effected region is
+  // start to the end of the variable
+  b_size start = op->op_remove.start;
+  if (op->op_remove.stride == 0 || start >= len) {
+    return SUCCESS;
+  }
+
+  return nss_validate_after_write (
+      meta,
+      start,
+      len - start,
+      op->op_remove.db_buf,
+      op->op_remove.ref_buf,
       e
-  ));
-  return SUCCESS;
+  );
 }
 
 static err_t
 nss_read (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  ns_ref_read (
-      meta->ref,
-      op->op_read.ref_dest,
-      (struct stride){
-          .start  = op->op_read.start,
-          .stride = op->op_read.stride,
-          .nelems = op->op_read.nelems,
-      }
-  );
-  WRAP (ns_db_read (
-      meta->db,
-      op->op_read.db_dest,
-      (struct stride){
-          .start  = op->op_read.start,
-          .stride = op->op_read.stride,
-          .nelems = op->op_read.nelems,
-      },
-      e
-  ));
-  return SUCCESS;
+  struct stride stride = {
+      .start  = op->op_read.start,
+      .stride = op->op_read.stride,
+      .nelems = op->op_read.nelems,
+  };
+
+  return nss_read_compare (meta, op->op_read.ref_buf, op->op_read.db_buf, stride, e);
 }
 
 static err_t
 nss_write (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  ns_ref_write (
-      meta->ref,
-      op->op_write.data,
-      (struct stride){
-          .start  = op->op_write.start,
-          .stride = op->op_write.stride,
-          .nelems = op->op_write.nelems,
-      }
-  );
-  WRAP (ns_db_write (
-      meta->db,
-      op->op_write.data,
-      (struct stride){
-          .start  = op->op_write.start,
-          .stride = op->op_write.stride,
-          .nelems = op->op_write.nelems,
-      },
+  struct stride stride = {
+      .start  = op->op_write.start,
+      .stride = op->op_write.stride,
+      .nelems = op->op_write.nelems,
+  };
+
+  b_size  ref_written = ns_ref_write (meta->ref, op->op_write.data, stride);
+
+  sb_size db_written  = ns_db_write (meta->db, op->op_write.data, stride, e);
+  if (db_written < 0) {
+    return error_trace (e);
+  }
+
+  if (ref_written != (b_size)db_written) {
+    return error_causef (e, ERR_CORRUPT, "Database written lengths don't match");
+  }
+
+  ASSERT (ref_written == op->op_write.nelems);
+
+  // A strided write touches start, start + stride, ...; read the whole span
+  // (with stride 1) so every touched element is covered
+  b_size span = op->op_write.nelems == 0 ? 0 : (op->op_write.nelems - 1) * op->op_write.stride + 1;
+
+  return nss_validate_after_write (
+      meta,
+      op->op_write.start,
+      span,
+      op->op_write.db_buf,
+      op->op_write.ref_buf,
       e
-  ));
-  return SUCCESS;
+  );
 }
 
 ////////// LOGGING
@@ -302,10 +459,17 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
     print_entry ("dbname", buf);
   }
 
+  // Max type size
+  {
+    char buf[32];
+    snprintf (buf, sizeof (buf), "%d", meta->max_tsize);
+    print_entry ("max_tsize", buf);
+  }
+
   // Max Insert Length
   {
     char buf[32];
-    snprintf (buf, sizeof (buf), "%d", meta->max_insert_len);
+    snprintf (buf, sizeof (buf), "%lld", meta->max_insert_len);
     print_entry ("max_insert_len", buf);
   }
 
@@ -557,8 +721,8 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
       // total bytes moved
       {
         char buf[32];
-        snprintf (buf, sizeof (buf), "%" PRIu64, meta->total_bytes_moved);
-        print_entry ("total_bytes_moved", buf);
+        snprintf (buf, sizeof (buf), "%.9f", meta->total_bytes_moved / 1e9);
+        print_entry ("total_gb_moved", buf);
       }
 
       // average bytes moved per ms
@@ -591,6 +755,7 @@ DEFINE_DBG_ASSERT (struct ns_simulation_params, ns_simulation_params, p, {
   ASSERT (p->commit_hash);
   ASSERT (p->dbname);
   ASSERT (p->max_insert_len > 0);
+  ASSERT (p->max_tsize > 0);
   ASSERT (p->sample_space_prob <= 1);
   ASSERT (p->sample_space_prob >= 0);
 })
@@ -635,6 +800,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
 
       .dbname            = params.dbname,
       .max_insert_len    = params.max_insert_len,
+      .max_tsize         = params.max_tsize,
       .sample_space_prob = params.sample_space_prob,
 
       .seed              = params.seed,
@@ -649,6 +815,8 @@ ns_simul_open (struct ns_simulation_params params, error *e)
       .reliable_mem      = params.reliable_mem,
       .test_mem          = params.test_mem,
       .test_filesystem   = params.test_filesystem,
+
+      .write_validation  = params.write_validation,
   };
 
   memcpy (ret->enabled, params.enabled, sizeof (params.enabled));
@@ -675,6 +843,7 @@ ns_simul_step (struct ns_simulation *meta, error *e)
       .ref        = meta->ref,
       .enabled    = meta->enabled,
       .max_nelems = meta->max_insert_len,
+      .max_tsize  = meta->max_tsize,
       .mem        = meta->reliable_mem,
   };
 
@@ -734,6 +903,7 @@ TEST (ns_simul)
         .sequence_id       = 10,
         .dbname            = "foo",
         .max_insert_len    = 1000,
+        .max_tsize         = 1000,
         .sample_space_prob = 1,
         .test_filesystem   = fs,
         .test_mem          = mem,

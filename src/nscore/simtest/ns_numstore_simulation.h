@@ -27,7 +27,8 @@ struct ns_simulation_params
   u8                   enabled[NSS_AT_LEN];
   u64                  sequence_id;
   const char          *dbname;
-  int                  max_insert_len;
+  b_size               max_insert_len;
+  t_size               max_tsize;
   float                sample_space_prob;
   // The file system used by the system under test
   // (can be faulty)
@@ -38,6 +39,14 @@ struct ns_simulation_params
 
   // Memory used for things that aren't being tested
   struct i_mem         reliable_mem;
+
+  // Configuration
+  enum write_validation_mode
+  {
+    NSS_READ_EFFECTED_DATA_AFTER_WRITES,
+    NSS_READ_ALL_AFTER_WRITES,
+    NSS_READ_NONE_AFTER_WRITES,
+  } write_validation;
 };
 
 // Open a new simulation

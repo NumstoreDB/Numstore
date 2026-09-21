@@ -28,6 +28,8 @@
 #include "nscore/types/ns_type_ref.h"
 #include "nscore/types/ns_union_t.h"
 
+#include <stddef.h>
+
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
 #endif
@@ -822,7 +824,7 @@ TEST (prim_t_random)
 #endif
 
 static struct type *
-type_random_once (struct arena_alloc *alloc, u32 depth, error *e)
+type_random_once (struct arena_alloc *alloc, u32 depth, t_size max_tsize, error *e)
 {
   struct type *dest = arena_malloc (alloc, 1, sizeof *dest, e);
   if (dest == NULL) {
@@ -846,21 +848,21 @@ type_random_once (struct arena_alloc *alloc, u32 depth, error *e)
     }
 
     case T_STRUCT: {
-      if (struct_t_random (&dest->st, alloc, depth, e)) {
+      if (struct_t_random (&dest->st, alloc, depth, max_tsize, e)) {
         return NULL;
       }
       return dest;
     }
 
     case T_UNION: {
-      if (union_t_random (&dest->un, alloc, depth, e)) {
+      if (union_t_random (&dest->un, alloc, depth, max_tsize, e)) {
         return NULL;
       }
       return dest;
     }
 
     case T_SARRAY: {
-      if (sarray_t_random (&dest->sa, alloc, depth, e)) {
+      if (sarray_t_random (&dest->sa, alloc, depth, max_tsize, e)) {
         return NULL;
       }
       return dest;
@@ -875,34 +877,78 @@ type_random_once (struct arena_alloc *alloc, u32 depth, error *e)
 }
 
 struct type *
-type_random (struct arena_alloc *alloc, u32 depth, error *e)
+type_random (struct arena_alloc *alloc, u32 depth, t_size max_size, error *e)
 {
   ALLOC_INIT (temp);
 
-  struct type *t = NULL;
+  struct type *ret = NULL;
 
   /**
    * Try a maximum of 100 times
    *  1. try to create a type
-   *  2. if it's valid - return it
+   *  2. if it's valid and within the size limit - return it
    *  3. otherwise, keep trying
+   *
+   * (100 is arbitrary - just an upperbound)
    */
   for (int i = 0; i < 100; ++i) {
-    t = type_random_once (&temp, depth, e);
+    struct type *t = type_random_once (&temp, depth, max_size, e);
 
-    if (type_validate (t, e) == SUCCESS) {
-      t = type_movemem (t, alloc, e);
-      ALLOC_CLOSE (temp);
-      return t;
+    if (t == NULL) {
+      error_reset (e);
+      continue;
     }
 
-    // Didn't match, move on
-    error_reset (e);
+    // Random doesn't check string uniqueness
+    // or any other valid type properties, so
+    // random_once could return an invalid type
+    // might be worth it to fix it, but not a big
+    // deal
+    if (type_validate (t, e) != SUCCESS) {
+      error_reset (e);
+      continue;
+    }
+
+    // Too wide, move on
+    if (type_byte_size (t) > max_size) {
+      continue;
+    }
+
+    ret = type_movemem (t, alloc, e);
+    ALLOC_CLOSE (temp);
+    return ret;
   }
 
   ALLOC_CLOSE (temp);
+
+  error_causef (
+      e,
+      ERR_INVALID_ARGUMENT,
+      "Failed to generate a valid type of at most %u bytes",
+      max_size
+  );
   return NULL;
 }
+
+#ifdef TESTING
+TEST (type_random)
+{
+  ALLOC_INIT (alloc);
+  error e     = error_create ();
+
+  int   iters = 0;
+  while (iters < 100) {
+    t_size       max_tsize = randu32r (10, 4096);
+    struct type *t         = type_random (&alloc, 5, max_tsize, &e);
+    if (t != NULL) {
+      iters++;
+      test_assert (type_byte_size (t) <= max_tsize);
+    }
+  }
+
+  ALLOC_CLOSE (alloc);
+}
+#endif
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: type_equal

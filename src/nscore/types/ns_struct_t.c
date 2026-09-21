@@ -818,7 +818,13 @@ TEST (struct_t_deserialize_red_path)
 #endif
 
 err_t
-struct_t_random (struct struct_t *st, struct arena_alloc *alloc, u32 depth, error *e)
+struct_t_random (
+    struct struct_t    *st,
+    struct arena_alloc *alloc,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+)
 {
   ASSERT (st);
 
@@ -836,7 +842,7 @@ struct_t_random (struct struct_t *st, struct arena_alloc *alloc, u32 depth, erro
 
   for (u16 i = 0; i < st->len; ++i) {
     WRAP (rand_varname (&st->keys[i], alloc, 5, 11, e));
-    st->types[i] = type_random (alloc, depth - 1, e);
+    st->types[i] = type_random (alloc, depth - 1, max_tsize, e);
     if (st->types[i] == NULL) {
       return error_trace (e);
     }

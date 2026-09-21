@@ -42,6 +42,12 @@ err_t struct_t_deserialize (
 err_t struct_t_validate (const struct struct_t *s, error *e);
 i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st);
 u32 struct_t_byte_size (const struct struct_t *t);
-err_t struct_t_random (struct struct_t *st, struct arena_alloc *alloc, u32 depth, error *e);
+err_t struct_t_random (
+    struct struct_t    *st,
+    struct arena_alloc *alloc,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+);
 
 #endif

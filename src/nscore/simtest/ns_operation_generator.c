@@ -206,10 +206,10 @@ get_random_other_existing_name_or_null (struct ns_ref *ref, struct arena_alloc *
 }
 
 static struct type *
-get_random_type (struct arena_alloc *alloc, error *e)
+get_random_type (struct arena_alloc *alloc, t_size max_size, error *e)
 {
   u32 depth = randu32r (1, 3);
-  return type_random (alloc, depth, e);
+  return type_random (alloc, depth, max_size, e);
 }
 
 /**
@@ -259,21 +259,6 @@ get_random_slice (struct ns_ref *ref, b_size *ofst, b_size *stride, b_size *nele
 }
 
 static u8 *
-get_random_empty_data (struct ns_ref *ref, struct arena_alloc *alloc, b_size nelems, error *e)
-{
-  t_size size = ns_ref_cur_tsize (ref);
-
-  u8    *data = arena_malloc (alloc, nelems, size, e);
-  if (data == NULL) {
-    return NULL;
-  }
-
-  memset (data, 0, nelems * size);
-
-  return data;
-}
-
-static u8 *
 get_random_data (struct ns_ref *ref, struct arena_alloc *alloc, b_size nelems, error *e)
 {
   t_size size = ns_ref_cur_tsize (ref);
@@ -296,7 +281,7 @@ static inline err_t
 build_create (struct operation *dest, struct rand_op_params params, error *e)
 {
   char        *vname   = get_random_unique_name (params.ref, &dest->alloc, e);
-  struct type *t       = get_random_type (&dest->alloc, e);
+  struct type *t       = get_random_type (&dest->alloc, params.max_tsize, e);
   char        *typestr = type_tostr (&dest->alloc, t, e);
 
   if (vname == NULL || t == NULL || typestr == NULL) {
@@ -339,9 +324,42 @@ build_delete (struct operation *dest, struct rand_op_params params, error *e)
 }
 
 static inline err_t
+alloc_op_bufs (
+    struct operation     *dest,
+    struct rand_op_params params,
+    b_size                nelems,
+    u8                  **db_buf,
+    u8                  **ref_buf,
+    error                *e
+)
+{
+  ASSERT (dest->buf == NULL);
+
+  b_size bytes = nelems * ns_ref_cur_tsize (params.ref);
+  if (bytes == 0) {
+    *db_buf  = NULL;
+    *ref_buf = NULL;
+    return SUCCESS;
+  }
+
+  // Two halves of [bytes] each, in one allocation
+  u8 *buf = arena_malloc (&dest->alloc, 2, bytes, e);
+  if (buf == NULL) {
+    return error_trace (e);
+  }
+
+  dest->buf = buf;
+  *db_buf   = buf;
+  *ref_buf  = buf + bytes;
+
+  return SUCCESS;
+}
+
+static inline err_t
 build_insert (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst       = randu64r (0, ns_ref_cur_len (params.ref));
+  b_size len        = ns_ref_cur_len (params.ref);
+  b_size ofst       = randu64r (0, len);
 
   // Keep the payload bounded - max_nelems alone doesn't bound the buffer
   b_size max_nelems = params.max_nelems;
@@ -352,14 +370,23 @@ build_insert (struct operation *dest, struct rand_op_params params, error *e)
 
   b_size nelems = randu64r (1, max_nelems);
   u8    *data   = get_random_data (params.ref, &dest->alloc, nelems, e);
-
   if (data == NULL) {
     return error_trace (e);
   }
 
-  dest->op_insert.ofst   = ofst;
-  dest->op_insert.nelems = nelems;
-  dest->op_insert.data   = data;
+  // After the insert the variable is len + nelems long, and
+  // NSS_READ_ALL_AFTER_WRITES reads all of it back, so size for that
+  u8 *db_buf;
+  u8 *ref_buf;
+  if (alloc_op_bufs (dest, params, len + nelems, &db_buf, &ref_buf, e) < 0) {
+    return error_trace (e);
+  }
+
+  dest->op_insert.ofst    = ofst;
+  dest->op_insert.nelems  = nelems;
+  dest->op_insert.data    = data;
+  dest->op_insert.db_buf  = db_buf;
+  dest->op_insert.ref_buf = ref_buf;
 
   return SUCCESS;
 }
@@ -372,18 +399,17 @@ build_remove (struct operation *dest, struct rand_op_params params, error *e)
   b_size nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
-  u8 *db_dest  = get_random_empty_data (params.ref, &dest->alloc, nelems, e);
-  u8 *ref_dest = get_random_empty_data (params.ref, &dest->alloc, nelems, e);
-
-  if (db_dest == NULL || ref_dest == NULL) {
+  u8 *db_buf;
+  u8 *ref_buf;
+  if (alloc_op_bufs (dest, params, ns_ref_cur_len (params.ref), &db_buf, &ref_buf, e) < 0) {
     return error_trace (e);
   }
 
-  dest->op_remove.start    = ofst;
-  dest->op_remove.stride   = stride;
-  dest->op_remove.nelems   = nelems;
-  dest->op_remove.db_dest  = db_dest;
-  dest->op_remove.ref_dest = ref_dest;
+  dest->op_remove.start   = ofst;
+  dest->op_remove.stride  = stride;
+  dest->op_remove.nelems  = nelems;
+  dest->op_remove.db_buf  = db_buf;
+  dest->op_remove.ref_buf = ref_buf;
 
   return SUCCESS;
 }
@@ -396,18 +422,17 @@ build_read (struct operation *dest, struct rand_op_params params, error *e)
   b_size nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
-  u8 *db_dest  = get_random_empty_data (params.ref, &dest->alloc, nelems, e);
-  u8 *ref_dest = get_random_empty_data (params.ref, &dest->alloc, nelems, e);
-
-  if (db_dest == NULL || ref_dest == NULL) {
+  u8 *db_buf;
+  u8 *ref_buf;
+  if (alloc_op_bufs (dest, params, ns_ref_cur_len (params.ref), &db_buf, &ref_buf, e) < 0) {
     return error_trace (e);
   }
 
-  dest->op_read.start    = ofst;
-  dest->op_read.stride   = stride;
-  dest->op_read.nelems   = nelems;
-  dest->op_read.db_dest  = db_dest;
-  dest->op_read.ref_dest = ref_dest;
+  dest->op_read.start   = ofst;
+  dest->op_read.stride  = stride;
+  dest->op_read.nelems  = nelems;
+  dest->op_read.db_buf  = db_buf;
+  dest->op_read.ref_buf = ref_buf;
 
   return SUCCESS;
 }
@@ -425,10 +450,18 @@ build_write (struct operation *dest, struct rand_op_params params, error *e)
     return error_trace (e);
   }
 
-  dest->op_write.start  = ofst;
-  dest->op_write.stride = stride;
-  dest->op_write.nelems = nelems;
-  dest->op_write.data   = data;
+  u8 *db_buf;
+  u8 *ref_buf;
+  if (alloc_op_bufs (dest, params, ns_ref_cur_len (params.ref), &db_buf, &ref_buf, e) < 0) {
+    return error_trace (e);
+  }
+
+  dest->op_write.start   = ofst;
+  dest->op_write.stride  = stride;
+  dest->op_write.nelems  = nelems;
+  dest->op_write.data    = data;
+  dest->op_write.db_buf  = db_buf;
+  dest->op_write.ref_buf = ref_buf;
 
   return SUCCESS;
 }
@@ -461,6 +494,7 @@ opg_random (struct rand_op_params params, error *e)
   enum ns_action_type type = get_random_action_type (allowed);
 
   // Build common parameters
+  ret->buf                 = NULL;
   ret->type                = type;
   ret->mem                 = params.mem;
   arena_alloc_create_default (&ret->alloc);

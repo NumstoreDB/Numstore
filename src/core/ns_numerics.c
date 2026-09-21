@@ -63,6 +63,7 @@ f16_to_f32 (const u16 h)
   return result;
 }
 
+/**
 static u32 crc32c_tbl[256];
 static int crc32c_inited = 0;
 
@@ -103,48 +104,7 @@ checksum_execute (u32 *state, const u8 *data, const u32 len)
   *state = ~c;
 }
 
-#ifdef TESTING
-TEST (checksum_execute_simple)
-{
-  const u8 data[] = {1, 2, 3, 4};
-  u32      state  = checksum_init ();
-  checksum_execute (&state, data, 4);
-
-  // Should produce some non-zero checksum
-
-  test_assert (state != 0);
-}
-
-TEST (checksum_execute_deterministic)
-{
-  const u8 data[] = {5, 10, 15, 20};
-  u32      state1 = checksum_init ();
-  u32      state2 = checksum_init ();
-
-  checksum_execute (&state1, data, 4);
-  checksum_execute (&state2, data, 4);
-
-  test_assert_equal (state1, state2);
-}
-
-TEST (checksum_execute_incremental)
-{
-  const u8 data[] = {1, 2, 3, 4, 5, 6};
-
-  // All at once
-  u32      state1 = checksum_init ();
-  checksum_execute (&state1, data, 6);
-
-  // Incremental
-  u32 state2 = checksum_init ();
-  checksum_execute (&state2, data, 3);
-  checksum_execute (&state2, data + 3, 3);
-
-  test_assert_equal (state1, state2);
-}
-#endif
-
-#include <stdlib.h>
+*/
 
 u8
 randu8 (void)
@@ -522,14 +482,21 @@ TEST (randf)
 #endif
 
 void
-rand_bytes (void *dest, const u32 len)
+rand_bytes (void *dst, const u32 n)
 {
-  ASSERT (dest);
-  ASSERT (len > 0);
-
-  u8 *p = (u8 *)dest;
-  for (u32 i = 0; i < len; ++i) {
-    p[i] = (u8)(rand () & 0xFF);
+  u64    s = (((u64)rand () << 32) ^ (u64)rand ()) | 1;
+  b_size i = 0;
+  for (; i + 8 <= n; i += 8) {
+    s ^= s << 13;
+    s ^= s >> 7;
+    s ^= s << 17;
+    memcpy (dst + i, &s, 8);
+  }
+  if (i < n) {
+    s ^= s << 13;
+    s ^= s >> 7;
+    s ^= s << 17;
+    memcpy (dst + i, &s, n - i);
   }
 }
 
