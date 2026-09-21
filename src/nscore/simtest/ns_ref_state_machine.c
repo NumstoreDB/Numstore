@@ -313,7 +313,7 @@ ns_ref_delete_and_switch (struct ns_ref *ref, const char *next)
   state->tracked_bytes -= len;
 }
 
-err_t
+sb_size
 ns_ref_insert (struct ns_ref *ref, void *data, b_size ofst, b_size len, error *e)
 {
   struct db_state *state = ns_ref_cur (ref);
@@ -327,10 +327,10 @@ ns_ref_insert (struct ns_ref *ref, void *data, b_size ofst, b_size len, error *e
 
   state->tracked_bytes += inserted;
 
-  return SUCCESS;
+  return inserted / size;
 }
 
-void
+b_size
 ns_ref_remove (struct ns_ref *ref, void *dest, struct stride str)
 {
   struct db_state      *state = ns_ref_cur (ref);
@@ -340,22 +340,24 @@ ns_ref_remove (struct ns_ref *ref, void *dest, struct stride str)
   t_size size    = type_byte_size (cur->var.dtype);
   u64    removed = ext_array_remove (&cur->data, str, size, dest);
   state->tracked_bytes -= removed * size;
+
+  return removed;
 }
 
-void
+b_size
 ns_ref_read (struct ns_ref *ref, void *dest, struct stride str)
 {
   struct var_with_data *cur = ns_ref_cur (ref)->cur;
   ASSERT (cur);
-  ext_array_read (&cur->data, str, type_byte_size (cur->var.dtype), dest);
+  return ext_array_read (&cur->data, str, type_byte_size (cur->var.dtype), dest);
 }
 
-void
+b_size
 ns_ref_write (struct ns_ref *ref, void *data, struct stride str)
 {
   struct var_with_data *cur = ns_ref_cur (ref)->cur;
   ASSERT (cur);
-  ext_array_write (&cur->data, str, type_byte_size (cur->var.dtype), data);
+  return ext_array_write (&cur->data, str, type_byte_size (cur->var.dtype), data);
 }
 
 #ifdef TESTING

@@ -430,7 +430,13 @@ TEST (sarray_t_deserialize_red_path)
 #endif
 
 err_t
-sarray_t_random (struct sarray_t *sa, struct arena_alloc *temp, u32 depth, error *e)
+sarray_t_random (
+    struct sarray_t    *sa,
+    struct arena_alloc *temp,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+)
 {
   ASSERT (sa);
 
@@ -450,7 +456,7 @@ sarray_t_random (struct sarray_t *sa, struct arena_alloc *temp, u32 depth, error
     return error_trace (e);
   }
 
-  sa->t = type_random (temp, depth - 1, e);
+  sa->t = type_random (temp, depth - 1, max_tsize, e);
   if (sa->t == NULL) {
     return error_trace (e);
   }

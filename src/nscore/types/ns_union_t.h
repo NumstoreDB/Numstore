@@ -50,7 +50,13 @@ err_t union_t_deserialize (
 err_t union_t_validate (const struct union_t *s, error *e);
 i32 union_t_snprintf (char *str, u32 size, const struct union_t *st);
 u32 union_t_byte_size (const struct union_t *t);
-err_t union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, error *e);
+err_t union_t_random (
+    struct union_t     *un,
+    struct arena_alloc *alloc,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+);
 bool union_t_equal (const struct union_t *left, const struct union_t *right);
 
 #endif

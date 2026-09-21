@@ -25,6 +25,7 @@
 #ifndef NUMERICS_H
 #define NUMERICS_H
 
+#include "core/ns_crc.h"
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
@@ -32,13 +33,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-/******************************************************************************
- * SECTION: Checksums
- ******************************************************************************/
-
-u32 checksum_init (void);
-void checksum_execute (u32 *dest, const u8 *data, u32 len);
 
 /******************************************************************************
  * SECTION: Random

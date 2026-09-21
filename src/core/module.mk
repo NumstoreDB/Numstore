@@ -11,6 +11,7 @@ LIBNS_SRCS += src/core/ns_htable.c
 LIBNS_SRCS += src/core/ns_linked_list.c
 LIBNS_SRCS += src/core/ns_logging.c
 LIBNS_SRCS += src/core/ns_numerics.c
+LIBNS_SRCS += src/core/ns_crc.c
 LIBNS_SRCS += src/core/ns_robin_hood_ht.c
 LIBNS_SRCS += src/core/ns_serial.c
 LIBNS_SRCS += src/core/ns_slab_alloc.c

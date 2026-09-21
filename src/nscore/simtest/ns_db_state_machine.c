@@ -386,7 +386,7 @@ ns_db_delete_and_switch (struct ns_db *db, const char *next, error *e)
   }
 }
 
-err_t
+sb_size
 ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
 {
   char *cur = ns_db_cur (db);
@@ -404,7 +404,7 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
       ret,
       db->db,
       db->tx,
-      numstore_insert (db->db->p, db->tx, strfcstr (cur), ofst, len, &alloc, NULL, &stream, e),
+      numstore_insert (db->db->p, db->tx, strfcstr (cur), len, ofst, &alloc, NULL, &stream, e),
       e
   );
   post_op (db);
@@ -415,10 +415,14 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
     return error_trace (e);
   }
 
-  return ns_db_set_file_size (db, e);
+  if (ns_db_set_file_size (db, e) < 0) {
+    return error_trace (e);
+  }
+
+  return ret;
 }
 
-err_t
+sb_size
 ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
@@ -446,10 +450,14 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
     return error_trace (e);
   }
 
-  return ns_db_set_file_size (db, e);
+  if (ns_db_set_file_size (db, e) < 0) {
+    return error_trace (e);
+  }
+
+  return ret;
 }
 
-err_t
+sb_size
 ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
@@ -477,10 +485,14 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
     return error_trace (e);
   }
 
-  return ns_db_set_file_size (db, e);
+  if (ns_db_set_file_size (db, e) < 0) {
+    return error_trace (e);
+  }
+
+  return ret;
 }
 
-err_t
+sb_size
 ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
@@ -508,7 +520,11 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
     return error_trace (e);
   }
 
-  return ns_db_set_file_size (db, e);
+  if (ns_db_set_file_size (db, e) < 0) {
+    return error_trace (e);
+  }
+
+  return ret;
 }
 
 /**

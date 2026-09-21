@@ -101,7 +101,7 @@ void type_generate_string (char *dest, const struct type *t);
 err_t type_get_serial_size (u16 *dest, const struct type *t, error *e);
 void type_serialize (struct serializer *dest, const struct type *src);
 struct type *type_deserialize (struct deserializer *src, struct arena_alloc *alloc, error *e);
-struct type *type_random (struct arena_alloc *alloc, u32 depth, error *e);
+struct type *type_random (struct arena_alloc *alloc, u32 depth, t_size max_size, error *e);
 bool type_equal (const struct type *left, const struct type *right);
 char *get_var_str (struct type *t, u32 *dlen, error *e);
 err_t i_log_type (struct type *t, error *e);

@@ -62,11 +62,13 @@ main (int argc, char **argv)
       // .enabled[NSS_AT_LEN] = 0,
       .sequence_id       = seqid,
       .dbname            = dbname,
-      .max_insert_len    = 100000,
+      .max_insert_len    = 1000000,
+      .max_tsize         = 4096,
       .sample_space_prob = 0,
       .reliable_mem      = default_mem (),
       .test_mem          = default_mem (),
       .test_filesystem   = default_filesystem (),
+      .write_validation  = NSS_READ_ALL_AFTER_WRITES,
   };
   memset (&params.enabled, 1, sizeof (params.enabled));
   struct ns_simulation *simul = ns_simul_open (params, &e);

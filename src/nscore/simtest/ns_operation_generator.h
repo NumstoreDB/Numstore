@@ -54,6 +54,8 @@ struct operation
       b_size ofst;
       b_size nelems;
       u8    *data;
+      u8    *db_buf;
+      u8    *ref_buf;
     } op_insert;
 
     struct
@@ -61,8 +63,8 @@ struct operation
       b_size start;
       b_size stride;
       b_size nelems;
-      u8    *db_dest;
-      u8    *ref_dest;
+      u8    *db_buf;
+      u8    *ref_buf;
     } op_remove;
 
     struct
@@ -70,8 +72,8 @@ struct operation
       b_size start;
       b_size stride;
       b_size nelems;
-      u8    *db_dest;
-      u8    *ref_dest;
+      u8    *db_buf;
+      u8    *ref_buf;
     } op_read;
 
     struct
@@ -80,11 +82,14 @@ struct operation
       b_size stride;
       b_size nelems;
       u8    *data;
+      u8    *db_buf;
+      u8    *ref_buf;
     } op_write;
   };
 
   struct arena_alloc alloc;
   struct i_mem       mem;
+  u8                *buf;
 };
 
 struct rand_op_params
@@ -97,6 +102,7 @@ struct rand_op_params
 
   // Maximum insert length
   b_size         max_nelems;
+  t_size         max_tsize;
   struct i_mem   mem;
 };
 

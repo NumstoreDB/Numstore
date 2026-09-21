@@ -741,7 +741,13 @@ TEST (union_t_deserialize_red_path)
 #endif
 
 err_t
-union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, error *e)
+union_t_random (
+    struct union_t     *un,
+    struct arena_alloc *alloc,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+)
 {
   ASSERT (un);
 
@@ -759,7 +765,7 @@ union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, error 
 
   for (u16 i = 0; i < un->len; ++i) {
     WRAP (rand_varname (&un->keys[i], alloc, 5, 11, e));
-    un->types[i] = type_random (alloc, depth - 1, e);
+    un->types[i] = type_random (alloc, depth - 1, max_tsize, e);
     if (un->types[i] == NULL) {
       return error_trace (e);
     }
