@@ -20,8 +20,9 @@
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "numstore/ns_numstore_internal.h"
 #include "numstore/numstore.h"
+
+#include <string.h>
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -120,18 +121,55 @@ numstore_var_len (numstore_var_t *var)
   return var->var.nbytes / type_byte_size (var->var.dtype);
 }
 
+t_size
+numstore_var_tsize (numstore_var_t *var)
+{
+  return type_byte_size (var->var.dtype);
+}
+
+sb_size
+numstore_var_name (numstore_var_t *var, char *dest, size_t size)
+{
+  size_t needed = (size_t)var->var.vname.len + 1;
+
+  // If you pass null to dest - return
+  // the size (like snprintf)
+  if (dest == NULL || size == 0) {
+    return (sb_size)needed;
+  }
+
+  if (size < needed) {
+    return ERR_NOMEM;
+  }
+
+  memcpy (dest, var->var.vname.data, var->var.vname.len);
+  dest[var->var.vname.len] = '\0';
+  return (sb_size)var->var.vname.len;
+}
+
+sb_size
+numstore_var_type (numstore_var_t *var, char *dest, size_t size)
+{
+  size_t needed = type_get_string_size (var->var.dtype);
+
+  // If you pass null to dest - return
+  // the size (like snprintf)
+  if (dest == NULL || size == 0) {
+    return (sb_size)needed;
+  }
+
+  if (size < needed) {
+    return ERR_NOMEM;
+  }
+
+  type_generate_string (dest, var->var.dtype);
+  return (sb_size)strlen (dest);
+}
+
 void
 numstore_var_free (numstore_var_t *var)
 {
   nsdb_var_free (var);
-}
-
-int
-numstore_plan_setopt (struct numstore_plan *plan, numstore_plan_opt_t flag)
-{
-  plan->options |= flag;
-  error e = error_create ();
-  return numstore_plan_validate (plan, &e);
 }
 
 #ifdef TESTING
@@ -154,11 +192,8 @@ _numstore_fexecute_simple_with_data (
   va_list ap;
   va_start (ap, query);
 
-  struct numstore_plan plan;
-  memset (&plan, 0, sizeof (plan));
-  plan.data   = data;
-  plan.dlen   = dlen;
-  sb_size ret = numstore_vexecute (ns, txn, &plan, query, ap);
+  struct numstore_plan plan = {.data = data, .dlen = dlen};
+  sb_size              ret  = numstore_vexecute (ns, txn, &plan, query, ap);
 
   va_end (ap);
   return ret;
@@ -180,10 +215,8 @@ _numstore_fexecute_simple_with_var (
   va_list ap;
   va_start (ap, query);
 
-  struct numstore_plan plan;
-  memset (&plan, 0, sizeof (plan));
-  numstore_plan_setopt (&plan, NSDB_PLAN_OPT_CAPTURE_VAR);
-  sb_size ret = numstore_vexecute (ns, txn, &plan, query, ap);
+  struct numstore_plan plan = {.options = NSDB_PLAN_OPT_CAPTURE_VAR};
+  sb_size              ret  = numstore_vexecute (ns, txn, &plan, query, ap);
 
   va_end (ap);
 

@@ -20,8 +20,35 @@
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
-#include "numstore/ns_numstore_internal.h"
 #include "numstore/numstore.h"
+
+// A plan is built by hand at the call site, so the only place its flags and
+// fields can be cross-checked is right here, on the way in.
+static err_t
+numstore_plan_validate (const struct numstore_plan *plan, error *e)
+{
+  if (plan->options & NSDB_PLAN_OPT_ALLOCATE_DATA) {
+    if (plan->data != NULL || plan->dlen != 0) {
+      return error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "data/dlen must be NULL/0 when allocate-data mode is enabled"
+      );
+    }
+  }
+
+  if (plan->options & NSDB_PLAN_OPT_CAPTURE_VAR) {
+    if (plan->var != NULL) {
+      return error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "var must be NULL when capture-var mode is enabled"
+      );
+    }
+  }
+
+  return SUCCESS;
+}
 
 static inline sb_size
 numstore_vexecute_query (
@@ -127,9 +154,8 @@ TEST (numstore_fexecute)
     numstore_t          *db       = numstore_open ("test");
 
     // Get a variable that doesn't exist
-    struct numstore_plan get_plan = {0};
-    numstore_plan_setopt (&get_plan, NSDB_PLAN_OPT_CAPTURE_VAR);
-    sb_size res = numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
+    struct numstore_plan get_plan = {.options = NSDB_PLAN_OPT_CAPTURE_VAR};
+    sb_size              res      = numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
     test_assert_int_equal (res, ERR_VARIABLE_NE);
     numstore_perror (db, "get");
     test_assert_equal (get_plan.var->var.dtype, NULL);
@@ -140,9 +166,8 @@ TEST (numstore_fexecute)
     test_assert_int_equal (res, SUCCESS);
 
     // Get it - should return this time
-    memset (&get_plan, 0, sizeof (get_plan));
-    numstore_plan_setopt (&get_plan, NSDB_PLAN_OPT_CAPTURE_VAR);
-    res = numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
+    get_plan = (struct numstore_plan){.options = NSDB_PLAN_OPT_CAPTURE_VAR};
+    res      = numstore_fexecute (db, NULL, &get_plan, "get %s", "a");
     test_assert_int_equal (res, SUCCESS);
     test_assert (get_plan.var->var.dtype != NULL);
 
@@ -182,18 +207,16 @@ TEST (numstore_fexecute_allocate)
   test_assert_int_equal (ret, 5);
 
   // Read with allocate
-  struct numstore_plan read_plan = {0};
-  numstore_plan_setopt (&read_plan, NSDB_PLAN_OPT_ALLOCATE_DATA);
-  ret = numstore_fexecute (db, NULL, &read_plan, "read foo[0:]");
+  struct numstore_plan read_plan = {.options = NSDB_PLAN_OPT_ALLOCATE_DATA};
+  ret                            = numstore_fexecute (db, NULL, &read_plan, "read foo[0:]");
   test_assert_int_equal (ret, 5);
   test_assert (read_plan.data != NULL);
   test_assert (memcmp (read_plan.data, src, sizeof (src)) == 0);
   i_free (db->db->mem, read_plan.data);
 
   // Remove with allocate
-  struct numstore_plan remove_plan = {0};
-  numstore_plan_setopt (&remove_plan, NSDB_PLAN_OPT_ALLOCATE_DATA);
-  ret = numstore_fexecute (db, NULL, &remove_plan, "remove foo[0:2]");
+  struct numstore_plan remove_plan = {.options = NSDB_PLAN_OPT_ALLOCATE_DATA};
+  ret                              = numstore_fexecute (db, NULL, &remove_plan, "remove foo[0:2]");
   test_assert_int_equal (ret, 2);
   test_assert (remove_plan.data != NULL);
   u32 *removed = remove_plan.data;
@@ -202,8 +225,7 @@ TEST (numstore_fexecute_allocate)
   i_free (db->db->mem, remove_plan.data);
 
   // Read with allocate
-  struct numstore_plan remaining_plan = {0};
-  numstore_plan_setopt (&remaining_plan, NSDB_PLAN_OPT_ALLOCATE_DATA);
+  struct numstore_plan remaining_plan = {.options = NSDB_PLAN_OPT_ALLOCATE_DATA};
   ret = numstore_fexecute (db, NULL, &remaining_plan, "read foo[0:]");
   test_assert_int_equal (ret, 3);
   test_assert (remaining_plan.data != NULL);

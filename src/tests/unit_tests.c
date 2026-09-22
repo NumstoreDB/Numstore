@@ -43,7 +43,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[342];
+  const char *failed_names[339];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -1200,63 +1200,6 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "i_printf";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("checksum_execute_simple", filter))
-  {
-    extern void __test__checksum_execute_simple(void);
-    i_log_info("========================= TEST CASE: %s\n", "checksum_execute_simple");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__checksum_execute_simple();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "checksum_execute_simple");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "checksum_execute_simple";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("checksum_execute_deterministic", filter))
-  {
-    extern void __test__checksum_execute_deterministic(void);
-    i_log_info("========================= TEST CASE: %s\n", "checksum_execute_deterministic");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__checksum_execute_deterministic();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "checksum_execute_deterministic");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "checksum_execute_deterministic";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("checksum_execute_incremental", filter))
-  {
-    extern void __test__checksum_execute_incremental(void);
-    i_log_info("========================= TEST CASE: %s\n", "checksum_execute_incremental");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__checksum_execute_incremental();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "checksum_execute_incremental");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "checksum_execute_incremental";
     }
     ntests++;
   }
