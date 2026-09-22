@@ -101,7 +101,15 @@ int numstore_close (numstore_t *ns);
 int numstore_crash (numstore_t *ns);
 
 // Variables
+//
+// A captured variable owns its own arena, so every accessor below stays valid
+// until numstore_var_free. numstore_var_name and numstore_var_type write into
+// `dest` and return the length written, or a negative error code when `dest`
+// is too small - pass NULL/0 to ask for the size first.
 b_size numstore_var_len (numstore_var_t *var);
+t_size numstore_var_tsize (numstore_var_t *var);
+sb_size numstore_var_name (numstore_var_t *var, char *dest, size_t size);
+sb_size numstore_var_type (numstore_var_t *var, char *dest, size_t size);
 void numstore_var_free (numstore_var_t *var);
 
 // Errors
@@ -120,6 +128,15 @@ typedef enum
   NSDB_PLAN_OPT_CAPTURE_VAR   = 1u << 1,
 } numstore_plan_opt_t;
 
+// Build one of these directly at the call site - a plan is plain data:
+//
+//   struct numstore_plan plan = {.data = buf, .dlen = sizeof (buf)};
+//   struct numstore_plan plan = {.options = NSDB_PLAN_OPT_CAPTURE_VAR};
+//
+// `data`/`dlen` must be NULL/0 under NSDB_PLAN_OPT_ALLOCATE_DATA and `var`
+// must be NULL under NSDB_PLAN_OPT_CAPTURE_VAR; execute rejects the plan
+// otherwise. On return, an allocated `data` and a captured `var` both belong
+// to the caller (free them with i_free and numstore_var_free).
 struct numstore_plan
 {
   void           *data;
@@ -127,8 +144,6 @@ struct numstore_plan
   numstore_var_t *var;
   uint32_t        options;
 };
-
-int numstore_plan_setopt (struct numstore_plan *plan, numstore_plan_opt_t flag);
 
 // Executes a data operation
 sb_size numstore_fexecute (

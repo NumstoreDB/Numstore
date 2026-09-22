@@ -29,9 +29,10 @@ pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg)
     goto theend;
   }
 
-  // compile the type string
+  // compile the type string - a type that won't compile is a bad argument
+  // value, not a database failure
   if (compile_type (&t, src, &alloc, &e)) {
-    _pyns_set_error_from_e (&e);
+    _pyns_set_error_from_e (PyExc_ValueError, &e);
     goto theend;
   }
 

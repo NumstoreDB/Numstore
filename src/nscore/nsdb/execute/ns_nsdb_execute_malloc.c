@@ -44,7 +44,7 @@ nsdb_execute_malloc (
           ns->mem,
           e
       );
-      if (data == NULL) {
+      if (*data == NULL) {
         return error_trace (e);
       }
       return len;
@@ -62,7 +62,7 @@ nsdb_execute_malloc (
           ns->mem,
           e
       );
-      if (data == NULL) {
+      if (*data == NULL) {
         return error_trace (e);
       }
       return len;
