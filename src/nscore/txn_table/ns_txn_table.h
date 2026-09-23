@@ -16,6 +16,7 @@
 #define TXN_TABLE_H
 
 #include "core/ns_concurrency.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h" // error
 #include "core/ns_htable.h"
@@ -27,37 +28,6 @@
 
 struct dbl_buffer;
 
-/******************************************************************************
- * SECTION: Transaction
- * ----------------------------------------------------------------------------
- * @brief A transaction object is stack allocated and should keep the same
- * lifetime as the transaction table it belongs to
- *
- * Transactions MUST NOT BE COPIED
- ******************************************************************************/
-
-/**
- * @enum tx_state
- * @brief Transaction state lifecycle management.
- *
- * In the ARIES paper:
- * - P (prepared / in doubt) - Transaction has completed it's prepare phase in
- * two phase commit but hasn't yet received a commit / abort decision
- * - U (unprepared) - Transaction is active and hasn't prepared yet
- *
- * @var tx_state::TX_RUNNING
- * @brief Not in the original ARIES paper, using this for a placeholder during
- * normal execution, generally, it's just removed once it's committed
- * @var tx_state::TX_CANDIDATE_FOR_UNDO
- * @brief During restart, this just says we haven't received a commit record
- * yet, so we'll need to remove it if it stays like this (U)
- * @var tx_state::TX_COMMITTED
- * @brief Never actually set in normal processing - use this in the restart
- * recovery algorithm to know which tx's to append end to (P)
- * @var tx_state::TX_DONE
- * @brief Just a special case for done transactions with end record appended.
- * You'd just remove the transaction from the table when done
- */
 enum tx_state
 {
   TX_RUNNING,
@@ -66,24 +36,6 @@ enum tx_state
   TX_DONE,
 };
 
-/**
- * @struct ns_txn_data
- * @brief Internal structural metric properties tracking ARIES log sequences.
- *
- * @var txn_data::state
- * @brief The transaction state tracking variant.
- * @var txn_data::min_lsn
- * @brief The minimum lsn of this transaction. This is the BEGIN record of the
- * transaction.
- * @var txn_data::last_lsn
- * @brief The maximum lsn of this transaction. This is the most recent log
- * message recorded on the log.
- * @var txn_data::undo_next_lsn
- * @brief During regular operation - this is just equivalent to last_lsn.
- * It's the next lsn we need to read in the process of undoing. So during
- * rollback or recovery This number decreases as we work our way backwards
- * through the log records of this transaction.
- */
 struct ns_txn_data
 {
   enum tx_state state;
@@ -92,17 +44,6 @@ struct ns_txn_data
   lsn           undo_next_lsn;
 };
 
-/**
- * @struct ns_txn_lock
- * @brief Intrusive linked-list node tracking an acquired lock constraint.
- *
- * @var txn_lock::lock
- * @brief The underlying lock abstraction.
- * @var txn_lock::mode
- * @brief Concurrency isolation lock mode.
- * @var txn_lock::next
- * @brief Pointer link reference to the next held transaction lock node.
- */
 struct ns_txn_lock
 {
   struct lt_lock      lock;
@@ -110,24 +51,6 @@ struct ns_txn_lock
   struct ns_txn_lock *next;
 };
 
-/**
- * @struct ns_txn
- * @brief High-level transaction descriptor context managing locks and state
- * metadata.
- *
- * @var txn::tid
- * @brief Transaction id
- * @var txn::data
- * @brief The transaction data
- * @var txn::node
- * @brief The node that indicates where this txn is in the att
- * @var txn::locks
- * @brief All held locks for this transaction
- * @var txn::lock_alloc
- * @brief Allocates txn_locks
- * @var txn::l
- * @brief Thread safety
- */
 struct ns_txn
 {
   txid                tid;
@@ -137,6 +60,13 @@ struct ns_txn
   struct slab_alloc   lock_alloc;
   latch               l;
 };
+
+DEFINE_DBG_ASSERT (struct ns_txn, ns_txn, t, {
+  ASSERT (t);
+  ASSERT (t->data.undo_next_lsn >= t->data.min_lsn);
+  ASSERT (t->data.last_lsn >= t->data.min_lsn);
+  ASSERT (t->data.last_lsn >= t->data.undo_next_lsn);
+})
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Lifecycle Initialization

@@ -24,29 +24,12 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_platform.h" // PRINTF_ATTR / unlikely
 #include "core/ns_stdtypes.h" // u32
 #include "core/ns_utils.h"    // FPREFIX_STR
 
 #include <stdbool.h>
-
-/******************************************************************************
- * SECTION: Error Handler
- ******************************************************************************/
-
-typedef int err_t;
-
-typedef struct
-{
-  err_t cause_code;     // Machine-readable error code. @c SUCCESS when no error is
-                        // pending.
-  char  cause_msg[256]; // Null-terminated human-readable description of the
-                        // failure.
-  u32   cmlen;          // Length of @c cause_msg in bytes, excluding the null terminator.
-  bool  disable_log;    // disable the error log temporarily
-} error;
-
-typedef err_t (*isvalid_func) (void *ctx, error *e);
 
 #define SUCCESS              0    // Operation completed successfully.
 #define ERR_IO               (-1) // Generic I/O error (read, write, or fsync failure).
@@ -62,6 +45,26 @@ typedef err_t (*isvalid_func) (void *ctx, error *e);
 #define ERR_VARIABLE_NE                (-11)
 #define ERR_DUPLICATE_COMMIT           (-12)
 #define ERR_UNHANDLED                  (-13)
+
+typedef int err_t;
+
+typedef struct
+{
+  err_t cause_code;     // Machine-readable error code. @c SUCCESS when no error is
+                        // pending.
+  char  cause_msg[256]; // Null-terminated human-readable description of the
+                        // failure.
+  u32   cmlen;          // Length of @c cause_msg in bytes, excluding the null terminator.
+  bool  disable_log;    // disable the error log temporarily
+} error;
+
+DEFINE_DBG_ASSERT (error, clean_error, e, {
+  ASSERT (e);
+  ASSERT (e->cause_code == SUCCESS);
+  ASSERT (e->cmlen == 0);
+})
+
+typedef err_t (*isvalid_func) (void *ctx, error *e);
 
 error error_create (void);
 void error_silence (error *e);

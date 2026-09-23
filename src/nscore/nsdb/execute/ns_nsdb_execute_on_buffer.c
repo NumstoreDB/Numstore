@@ -17,7 +17,6 @@
 #include "core/ns_stream.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"

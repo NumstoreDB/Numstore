@@ -15,6 +15,7 @@
 #ifndef VARIABLES_H
 #define VARIABLES_H
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
@@ -34,6 +35,14 @@ struct variable
   pgno          rpt_root;
   b_size        nbytes;
 };
+
+DEFINE_DBG_ASSERT(struct variable, variable, v, {
+  ASSERT(v);
+  ASSERT(v->vname.data != NULL);
+  ASSERT(v->vname.len > 0);
+  t_size tsize = type_byte_size(v->dtype);
+  ASSERT(v->nbytes % tsize == 0);
+});
 
 err_t i_print_variable (struct variable *v, error *e);
 
@@ -69,26 +78,5 @@ err_t variable_copy (
 );
 b_size var_resolve_index (struct variable *v, sb_size bofst);
 b_size var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size);
-
-struct numstore_var
-{
-  struct variable    var;
-  struct arena_alloc alloc;
-  struct i_mem       mem;
-};
-
-struct numstore_var *nsdb_var_create (struct i_mem mem, error *e);
-void nsdb_var_free (struct numstore_var *var);
-
-struct numstore_var_data
-{
-  struct variable    *var;
-
-  // Allocates data
-  struct arena_alloc *alloc;
-
-  // Allocates var and container
-  struct i_mem        mem;
-};
 
 #endif // VARIABLES_H

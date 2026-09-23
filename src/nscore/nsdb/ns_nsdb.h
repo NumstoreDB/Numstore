@@ -20,27 +20,40 @@
 #ifndef NSHANDLE_H
 #define NSHANDLE_H
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_string.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/types/ns_query.h"
+
+/////////////////////////////////////// NSDB
 
 struct nsdb
 {
+  // Allocates transaction objects
   struct slab_alloc    txn_alloc;
-  latch                l;
+
+  // Allocates plans
+  struct slab_alloc    plan_alloc;
+
+  struct pager        *p;
+
+  // Database path
+  struct string        path;
+
+  // OS Resources
   struct i_mem         mem;
   struct i_file_system fs;
-  struct string        path;
-  struct pager        *p;
 };
 
-struct numstore
-{
-  struct nsdb *db;
-  error        e;
-};
+DEFINE_DBG_ASSERT (struct nsdb, nsdb, n, {
+  ASSERT (n);
+  ASSERT (n->p);
+  ASSERT (n->path.data != NULL);
+  ASSERT (n->path.len > 0);
+})
 
 struct nsdb *nsdb_open_with_resources (
     const char          *path,
@@ -55,6 +68,229 @@ int nsdb_crash (struct nsdb *ns, error *e);
 struct ns_txn *nsdb_begin (struct nsdb *smf, error *e);
 int nsdb_commit (struct nsdb *smf, struct ns_txn *txn, error *e);
 int nsdb_rollback (struct nsdb *smf, struct ns_txn *txn, error *e);
+
+/////////////////////////////////////// Numstore Var
+
+struct nsdb_var;
+
+struct nsdb_var *nsdb_var_create (struct i_mem mem, error *e);
+void nsdb_var_free (struct nsdb_var *var);
+
+struct arena_alloc *nsdb_var_alloc(struct nsdb_var *var);
+struct variable* nsdb_var_var(struct nsdb_var *var);
+
+b_size nsdb_var_len (struct nsdb_var *var);
+b_size nsdb_var_nbytes (struct nsdb_var *var);
+pgno nsdb_var_var_root (struct nsdb_var *var);
+pgno nsdb_var_rpt_root (struct nsdb_var *var);
+struct string nsdb_var_name(struct nsdb_var *var);
+struct type* nsdb_var_type(struct nsdb_var *var);
+
+/////////////////////////////////////// Plan
+
+struct ns_plan
+{
+  struct pager        *p;     // The database to use
+  struct i_mem        mem;   // Memory to malloc variables in plan_malloc
+  struct arena_alloc  alloc; // Allocator for stuff in this variable
+  struct query        q;     // The active query
+};
+
+DEFINE_DBG_ASSERT (struct ns_plan, ns_plan, n, {
+  ASSERT (n);
+  ASSERT (n->p);
+})
+
+struct ns_plan *ns_plan_create (struct nsdb *db, const char *query, error *e);
+void ns_plan_free (struct nsdb *db, struct ns_plan *plan);
+
+// Execute the plan
+err_t ns_plan_execute (struct ns_plan *ns, struct ns_txn *tx, error *e);
+struct nsdb_var *ns_plan_get_var (struct ns_plan *st, struct ns_txn *tx, error *e);
+sb_size ns_plan_read (struct ns_plan *st, struct ns_txn *tx, void *dest, b_size dlen, error *e);
+void *ns_plan_read_malloc (struct ns_plan *st, struct ns_txn *tx, b_size *dlen, error *e);
+sb_size ns_plan_write (
+    struct ns_plan *st,
+    struct ns_txn  *tx,
+    const void     *src,
+    b_size          dlen,
+    error          *e
+);
+err_t ns_plan_execute_in_console (struct ns_plan *st, struct ns_txn *tx, error *e);
+
+/////////////////////////////////////// Auto Plan
+
+HEADER_FUNC err_t
+nsdb_exec (struct nsdb *db, struct ns_txn *tx, const char *query, error *e)
+{
+  DBG_ASSERT (nsdb, db);
+  DBG_ASSERT (ns_txn, tx);
+  ASSERT (query);
+  DBG_ASSERT (clean_error, e);
+
+  struct ns_plan *plan = ns_plan_create (db, query, e);
+  if (plan == NULL) {
+    return error_trace (e);
+  }
+
+  sb_size ret = ns_plan_execute (plan, tx, e);
+  if (ret < 0) {
+    ns_plan_free (db, plan);
+    return ret;
+  }
+
+  ns_plan_free (db, plan);
+
+  return ret;
+}
+
+HEADER_FUNC struct nsdb_var* 
+nsdb_get_var_exec (struct nsdb *db, struct ns_txn *tx, const char *query, error *e)
+{
+  DBG_ASSERT (nsdb, db);
+  DBG_ASSERT (ns_txn, tx);
+  ASSERT (query);
+  DBG_ASSERT (clean_error, e);
+
+  struct ns_plan *plan = ns_plan_create (db, query, e);
+  if (plan == NULL) {
+    return NULL;
+  }
+
+  struct nsdb_var* var = ns_plan_get_var(plan, tx, e);
+  if (var == NULL) {
+    ns_plan_free (db, plan);
+    return NULL;
+  }
+
+  ns_plan_free (db, plan);
+
+  return var;
+}
+
+
+HEADER_FUNC sb_size
+nsdb_read_exec (
+    struct nsdb   *db,
+    struct ns_txn *txn,
+    void          *dest,
+    b_size         dlen,
+    const char    *query,
+    error         *e
+)
+{
+  DBG_ASSERT (nsdb, db);
+  DBG_ASSERT (ns_txn, txn);
+  ASSERT (query);
+  ASSERT (dest);
+  ASSERT (dlen > 0);
+  DBG_ASSERT (clean_error, e);
+
+  struct ns_plan *plan = ns_plan_create (db, query, e);
+  if (plan == NULL) {
+    return error_trace (e);
+  }
+
+  sb_size ret = ns_plan_read (plan, txn, dest, dlen, e);
+  if (ret < 0) {
+    ns_plan_free (db, plan);
+    return ret;
+  }
+
+  ns_plan_free (db, plan);
+
+  return ret;
+}
+
+HEADER_FUNC void *
+nsdb_read_malloc_exec (
+    struct nsdb   *db,
+    struct ns_txn *txn,
+    b_size        *dlen,
+    const char    *query,
+    error         *e
+)
+{
+  DBG_ASSERT (nsdb, db);
+  DBG_ASSERT (ns_txn, txn);
+  ASSERT (query);
+  ASSERT (dlen);
+  DBG_ASSERT (clean_error, e);
+
+  struct ns_plan *plan = ns_plan_create (db, query, e);
+  if (plan == NULL) {
+    return NULL;
+  }
+
+  void *data = ns_plan_read_malloc (plan, txn, dlen, e);
+  if (data == NULL) {
+    ns_plan_free (db, plan);
+    return NULL;
+  }
+
+  ns_plan_free (db, plan);
+
+  return data;
+}
+
+HEADER_FUNC sb_size
+nsdb_write_exec (
+    struct nsdb   *db,
+    struct ns_txn *txn,
+    const void    *src,
+    b_size         dlen,
+    const char    *query,
+    error         *e
+)
+{
+  DBG_ASSERT (nsdb, db);
+  DBG_ASSERT (ns_txn, txn);
+  ASSERT (query);
+  ASSERT (src);
+  ASSERT (dlen > 0);
+  DBG_ASSERT (clean_error, e);
+
+  struct ns_plan *plan = ns_plan_create (db, query, e);
+  if (plan == NULL) {
+    return error_trace (e);
+  }
+
+  sb_size ret = ns_plan_write (plan, txn, src, dlen, e);
+  if (ret < 0) {
+    ns_plan_free (db, plan);
+    return ret;
+  }
+
+  ns_plan_free (db, plan);
+
+  return ret;
+}
+
+HEADER_FUNC err_t
+ns_plan_execute_in_console_exec (struct nsdb *db, struct ns_txn *txn, const char *query, error *e)
+{
+  DBG_ASSERT (nsdb, db);
+  DBG_ASSERT (ns_txn, txn);
+  ASSERT (query);
+  DBG_ASSERT (clean_error, e);
+
+  struct ns_plan *plan = ns_plan_create (db, query, e);
+  if (plan == NULL) {
+    return error_trace (e);
+  }
+
+  err_t ret = ns_plan_execute_in_console (plan, txn, e);
+  if (ret < 0) {
+    ns_plan_free (db, plan);
+    return ret;
+  }
+
+  ns_plan_free (db, plan);
+
+  return ret;
+}
+
+/////////////////////////////////////// Auto Transaction
 
 struct auto_txn
 {

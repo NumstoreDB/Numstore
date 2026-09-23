@@ -611,27 +611,3 @@ vname_or_default (const char *name)
   }
 }
 
-struct numstore_var *
-nsdb_var_create (struct i_mem mem, error *e)
-{
-  struct numstore_var *ret = i_malloc (mem, 1, sizeof *ret, e);
-  if (ret == NULL) {
-    return NULL;
-  }
-  arena_alloc_create_default (&ret->alloc);
-
-  ret->var = (struct variable){0};
-  ret->mem = mem;
-
-  return ret;
-}
-
-void
-nsdb_var_free (struct numstore_var *var)
-{
-  // Then free everything in the arena allocator
-  arena_alloc_free_all (&var->alloc);
-
-  // Free the container
-  i_free (var->mem, var);
-}
