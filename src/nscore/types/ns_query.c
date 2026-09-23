@@ -15,6 +15,7 @@
 #include "nscore/types/ns_query.h"
 
 #include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
 #include "core/ns_string.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/types/ns_types.h"
@@ -127,56 +128,72 @@ i_log_query (int log_level, struct query *q)
   }
 }
 
-struct string
-query_vname_of_interest (const struct query *q)
+err_t
+query_vname_of_interest (struct string *dest, const struct query *q, error *e)
 {
+  ASSERT (dest);
+
   switch (q->type) {
     case QT_READ: {
-      return q->read.name;
+      *dest = q->read.name;
+      return SUCCESS;
     }
     case QT_WRITE: {
-      return q->write.name;
+      *dest = q->write.name;
+      return SUCCESS;
     }
     case QT_INSERT: {
-      return q->insert.name;
+      *dest = q->insert.name;
+      return SUCCESS;
     }
     case QT_REMOVE: {
-      return q->remove.name;
+      *dest = q->remove.name;
+      return SUCCESS;
     }
 
     // Variable Operations
     case QT_CREATE: {
-      return q->create.name;
+      *dest = q->create.name;
+      return SUCCESS;
     }
     case QT_DELETE: {
-      return q->delete.name;
+      *dest = q->delete.name;
+      return SUCCESS;
     }
     case QT_GET: {
-      return q->get.name;
+      *dest = q->get.name;
+      return SUCCESS;
     }
 
     default: {
-      UNREACHABLE ();
+      return error_causef (e, ERR_INVALID_ARGUMENT, "Unsupported query type - no variable exists");
     }
   }
 }
 
-struct user_stride
-query_ustr_of_interest (const struct query *q)
+err_t
+query_ustr_of_interest (struct user_stride *dest, const struct query *q, error *e)
 {
   switch (q->type) {
     case QT_READ: {
-      return q->read.ustr;
+      *dest = q->read.ustr;
+      return SUCCESS;
     }
     case QT_WRITE: {
-      return q->write.ustr;
+      *dest = q->write.ustr;
+      return SUCCESS;
     }
     case QT_REMOVE: {
-      return q->remove.ustr;
+      *dest = q->remove.ustr;
+      return SUCCESS;
     }
 
     default: {
-      UNREACHABLE ();
+      return error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "Unsupported query type - ustride is not applicable"
+      );
     }
   }
 }

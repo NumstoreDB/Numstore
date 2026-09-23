@@ -17,7 +17,6 @@
 #include "core/ns_logging.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 

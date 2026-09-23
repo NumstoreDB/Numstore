@@ -21,7 +21,6 @@
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"

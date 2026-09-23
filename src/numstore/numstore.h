@@ -113,22 +113,7 @@ ns_txn_t *numstore_begin (numstore_t *ns);
 int numstore_commit (numstore_t *ns, ns_txn_t *txn);
 int numstore_rollback (numstore_t *ns, ns_txn_t *txn);
 
-typedef enum
-{
-  NSDB_PLAN_OPT_NONE          = 0,
-  NSDB_PLAN_OPT_ALLOCATE_DATA = 1u << 0,
-  NSDB_PLAN_OPT_CAPTURE_VAR   = 1u << 1,
-} numstore_plan_opt_t;
 
-struct numstore_plan
-{
-  void           *data;
-  b_size          dlen;
-  numstore_var_t *var;
-  uint32_t        options;
-};
-
-int numstore_plan_setopt (struct numstore_plan *plan, numstore_plan_opt_t flag);
 
 // Executes a data operation
 sb_size numstore_fexecute (

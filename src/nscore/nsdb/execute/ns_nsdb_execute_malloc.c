@@ -14,7 +14,7 @@
 
 #include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
-#include "nscore/nsdb/ns_nsdb_execute.h"
+#include "nscore/nsdb/ns_nsdb.h"
 
 sb_size
 nsdb_execute_malloc (
