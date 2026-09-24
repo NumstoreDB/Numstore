@@ -33,30 +33,41 @@
 // for the transaction and database handle
 extern const char DB_CAPSULE[];
 extern const char TXN_CAPSULE[];
+extern const char VAR_CAPSULE[];
 
-// When a database or transaction is closed - it's value is set to
-// one of these sentinels.
-extern char       TXN_CLOSED_SENTINEL;
-extern char       DB_CLOSED_SENTINEL;
+struct dims_vec
+{
+  npy_intp *data;
+  int       len;
+  int       cap;
+};
+
+// When a database or transaction is closed
+// - it's value is set to one of these sentinels.
+extern char TXN_CLOSED_SENTINEL;
+extern char DB_CLOSED_SENTINEL;
 
 ////////////// Private methods
 
 // Get numstore objects from python capsules
 numstore_t *_unwrap_db (PyObject *capsule);
 ns_txn_t *_unwrap_txn (PyObject *txn_capsule);
+numstore_var_t *_unwrap_var (PyObject *var_capsule);
 
-// Release a database
+PyObject *pyns_var_capsule_new (numstore_var_t *var);
 void _nspy_release_db (PyObject *capsule);
-
-// Set the error string from numstore error
-void _pyns_set_error_from_e (error *e);
+void _pyns_set_error_from_e (PyObject *exc_type, error *e);
 void _pyns_set_error_from_nsdb (numstore_t *e);
 
 // Numpy compatible elsize
 Py_ssize_t elsize (PyArray_Descr *type);
 
-// Convert a numstore type to a numpy type
 PyArray_Descr *pyns_type_to_dtype (const struct type *t);
+PyArray_Descr *pyns_type_to_dtype_flatten_sarray (
+    const struct type *t,
+    b_size             top,
+    struct dims_vec   *vec
+);
 
 ////////////// Main Methods
 
@@ -80,5 +91,31 @@ PyObject *pyns_rollback (PyObject *m, PyObject *args);
 
 // pyns_rollback(db: capsule, txn: capsule) -> None
 PyObject *pyns_execute (PyObject *m, PyObject *args);
+PyObject *pyns_execute_data_present (
+    numstore_t *db,
+    ns_txn_t   *txn,
+    char       *query,
+    PyObject   *data_obj
+);
+PyObject *pyns_execute_data_not_present (numstore_t *db, ns_txn_t *txn, char *query);
+
+// Variables
+//
+// pyns_var_*(var: capsule) -> int | str
+PyObject *pyns_var_length (PyObject *m, PyObject *arg);
+PyObject *pyns_var_tsize (PyObject *m, PyObject *arg);
+PyObject *pyns_var_type (PyObject *m, PyObject *arg);
+PyObject *pyns_var_name (PyObject *m, PyObject *arg);
+
+// Render one of the variable's size-then-fill string accessors (name, type)
+// into a Python str. `what` names the field for the error messages.
+typedef sb_size (*pyns_var_render_fn) (numstore_var_t *var, char *dest, size_t size);
+PyObject *pyns_var_string (numstore_var_t *var, pyns_var_render_fn render, const char *what);
+
+// Dims - just a list of dimensions to construct a shape
+void dims_vec_create (struct dims_vec *v);
+int dims_vec_append (struct dims_vec *v, npy_intp dim);
+int dims_vec_append_many (struct dims_vec *v, const u32 *dims, u32 count);
+void dims_vec_free (struct dims_vec *v);
 
 #endif // NS_PYMODULE_COMMON_H
