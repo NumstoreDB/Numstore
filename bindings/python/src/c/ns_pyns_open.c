@@ -37,7 +37,7 @@ pyns_open (PyObject *Py_UNUSED (m), PyObject *arg)
   }
 
   // Open the database
-  numstore_t *ns = numstore_open (path);
+  nsdb_t *ns = ns_open (path);
   if (!ns) {
     PyErr_SetString (PyExc_RuntimeError, "Failed to open numstore database");
     return NULL;

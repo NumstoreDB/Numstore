@@ -23,6 +23,7 @@
 #ifndef PYNUMSTORE_MODULE_MAIN
 #  define NO_IMPORT_ARRAY
 #endif
+#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_types.h"
 #include "numstore/numstore.h"
 
@@ -50,14 +51,14 @@ extern char DB_CLOSED_SENTINEL;
 ////////////// Private methods
 
 // Get numstore objects from python capsules
-numstore_t *_unwrap_db (PyObject *capsule);
-ns_txn_t *_unwrap_txn (PyObject *txn_capsule);
-numstore_var_t *_unwrap_var (PyObject *var_capsule);
+nsdb_t *_unwrap_db (PyObject *capsule);
+txn_t *_unwrap_txn (PyObject *txn_capsule);
+nsdb_var_t *_unwrap_var (PyObject *var_capsule);
 
-PyObject *pyns_var_capsule_new (numstore_var_t *var);
+PyObject *pyns_var_capsule_new (nsdb_var_t *var);
 void _nspy_release_db (PyObject *capsule);
 void _pyns_set_error_from_e (PyObject *exc_type, error *e);
-void _pyns_set_error_from_nsdb (numstore_t *e);
+void _pyns_set_error_from_nsdb (nsdb_t *e);
 
 // Numpy compatible elsize
 Py_ssize_t elsize (PyArray_Descr *type);
@@ -91,13 +92,8 @@ PyObject *pyns_rollback (PyObject *m, PyObject *args);
 
 // pyns_rollback(db: capsule, txn: capsule) -> None
 PyObject *pyns_execute (PyObject *m, PyObject *args);
-PyObject *pyns_execute_data_present (
-    numstore_t *db,
-    ns_txn_t   *txn,
-    char       *query,
-    PyObject   *data_obj
-);
-PyObject *pyns_execute_data_not_present (numstore_t *db, ns_txn_t *txn, char *query);
+PyObject *pyns_execute_data_present (nsdb_t *db, txn_t *txn, char *query, PyObject *data_obj);
+PyObject *pyns_execute_data_not_present (nsdb_t *db, txn_t *txn, char *query);
 
 // Variables
 //
@@ -107,10 +103,10 @@ PyObject *pyns_var_tsize (PyObject *m, PyObject *arg);
 PyObject *pyns_var_type (PyObject *m, PyObject *arg);
 PyObject *pyns_var_name (PyObject *m, PyObject *arg);
 
-// Render one of the variable's size-then-fill string accessors (name, type)
-// into a Python str. `what` names the field for the error messages.
-typedef sb_size (*pyns_var_render_fn) (numstore_var_t *var, char *dest, size_t size);
-PyObject *pyns_var_string (numstore_var_t *var, pyns_var_render_fn render, const char *what);
+// Render a numstore type into a Python str. A variable now hands its type back
+// as a `struct type *`, so the sizing pass goes through type_snprintf rather
+// than through a size-then-fill accessor on the variable itself.
+PyObject *pyns_type_string (struct type *t);
 
 // Dims - just a list of dimensions to construct a shape
 void dims_vec_create (struct dims_vec *v);

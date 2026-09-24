@@ -18,9 +18,9 @@
 PyObject *
 pyns_var_length (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  numstore_var_t *var = _unwrap_var (arg);
+  nsdb_var_t *var = _unwrap_var (arg);
   if (var == NULL) {
     return NULL;
   }
-  return PyLong_FromUnsignedLongLong ((unsigned long long)numstore_var_len (var));
+  return PyLong_FromUnsignedLongLong ((unsigned long long)ns_var_len (var));
 }

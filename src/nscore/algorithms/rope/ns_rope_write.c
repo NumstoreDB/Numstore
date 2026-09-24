@@ -29,7 +29,7 @@
 #include <stddef.h>
 
 /******************************************************************************
- * SECTION: ns_write
+ * SECTION: ns_rope_write
  * ----------------------------------------------------------------------------
  * @brief Overwrite data - don't insert
  ******************************************************************************/
@@ -273,7 +273,7 @@ ns_write_backward (const struct ns_write_params params, error *e)
 }
 
 sb_size
-ns_write (const struct ns_write_params params, error *e)
+ns_rope_write (const struct ns_write_params params, error *e)
 {
   if (params.stride > 0) {
     return ns_write_forward (params, e);

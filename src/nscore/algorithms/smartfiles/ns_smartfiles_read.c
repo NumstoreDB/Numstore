@@ -83,7 +83,7 @@ smartfiles_read (
       .stride = stride,
       .nelem  = nelem,
   };
-  sb_size ret = ns_read (rparams, e);
+  sb_size ret = ns_rope_read (rparams, e);
   if (ret < 0) {
     return error_trace (e);
   }

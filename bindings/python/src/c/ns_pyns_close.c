@@ -18,7 +18,7 @@ PyObject *
 pyns_close (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   // Unwrap the database capsule
-  numstore_t *ns = _unwrap_db (arg);
+  nsdb_t *ns = _unwrap_db (arg);
   if (!ns) {
     return NULL;
   }
@@ -27,7 +27,7 @@ pyns_close (PyObject *Py_UNUSED (m), PyObject *arg)
   PyCapsule_SetDestructor (arg, NULL);
 
   // Close the database manually and set the capsule to closed
-  err_t ret = numstore_close (ns);
+  err_t ret = ns_close (ns);
   if (PyCapsule_SetPointer (arg, &DB_CLOSED_SENTINEL) < 0) {
     PyErr_Clear ();
   }

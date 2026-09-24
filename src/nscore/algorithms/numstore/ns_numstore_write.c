@@ -59,7 +59,7 @@ numstore_write (
     goto failed;
   }
 
-  sb_size ret = ns_write (
+  sb_size ret = ns_rope_write (
       (struct ns_write_params){
           .p      = p,
           .src    = src,

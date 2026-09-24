@@ -78,8 +78,8 @@ struct ns_remove_params
 };
 
 sb_size ns_insert (struct ns_insert_params *params, error *e);
-sb_size ns_write (struct ns_write_params params, error *e);
-sb_size ns_read (struct ns_read_params params, error *e);
+sb_size ns_rope_write (struct ns_write_params params, error *e);
+sb_size ns_rope_read (struct ns_read_params params, error *e);
 sb_size ns_remove (struct ns_remove_params *params, error *e);
 
 #endif // NS_ROPE_ALGORITHMS_H

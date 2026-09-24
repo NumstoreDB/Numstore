@@ -25,18 +25,18 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  numstore_t *db = _unwrap_db (_db);
+  nsdb_t *db = _unwrap_db (_db);
   if (db == NULL) {
     return NULL; // error already set by _unwrap_db
   }
 
-  ns_txn_t *txn = _unwrap_txn (_txn);
+  txn_t *txn = _unwrap_txn (_txn);
   if (txn == NULL) {
     return NULL; // error already set by _unwrap_txn
   }
 
   // Do rollback
-  if (numstore_rollback (db, txn) < 0) {
+  if (ns_rollback (db, txn) < 0) {
     _pyns_set_error_from_nsdb (db);
     return NULL;
   }
