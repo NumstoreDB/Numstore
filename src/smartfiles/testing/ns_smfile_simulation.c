@@ -21,7 +21,7 @@ struct smfile_simulation
   int                 allowed[SMF_AT_LEN];
 
   smfile_t           *db;
-  struct ns_txn      *tx;
+  struct txn         *tx;
   const char         *dbname;
   int                 max_insert_len;
   int                 max_size;

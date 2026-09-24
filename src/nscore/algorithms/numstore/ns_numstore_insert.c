@@ -18,15 +18,13 @@
 
 sb_size
 numstore_insert (
-    struct pager       *p,
-    struct ns_txn      *tx,
-    struct string       vname,
-    b_size              len,
-    b_size              ofst,
-    struct arena_alloc *valloc,
-    struct variable    *var,
-    struct stream      *src,
-    error              *e
+    struct pager    *p,
+    struct txn      *tx,
+    struct variable *var,
+    b_size           ofst,
+    b_size           len,
+    struct stream   *src,
+    error           *e
 )
 {
   // Skip len 0 inserts
@@ -34,27 +32,16 @@ numstore_insert (
     return 0;
   }
 
-  // Get Variable
-  struct ns_var_get_params gparams = (struct ns_var_get_params){
-      .p     = p,
-      .tx    = tx,
-      .vname = vname,
-      .alloc = valloc,
-  };
-  if (ns_var_get (&gparams, e) < 0) {
-    goto failed;
-  }
-
   // Resolve sizes
-  t_size                  tsize   = type_byte_size (gparams.dest.dtype);
-  b_size                  bofst   = var_resolve_index (&gparams.dest, tsize * ofst);
+  t_size                  tsize   = type_byte_size (var->dtype);
+  b_size                  bofst   = var_resolve_index (var, tsize * ofst);
 
   // Insert
   struct ns_insert_params iparams = {
       .p     = p,
       .src   = src,
       .tx    = tx,
-      .root  = gparams.dest.rpt_root,
+      .root  = var->rpt_root,
       .bofst = bofst,
       .bytes = len * tsize,
   };
@@ -71,10 +58,10 @@ numstore_insert (
               .retr =
                   (struct var_retrieval){
                       .type = VR_PG,
-                      .root = gparams.dest.var_root,
+                      .root = var->var_root,
                   },
               .newpg  = iparams.root,
-              .nbytes = gparams.dest.nbytes + ret,
+              .nbytes = var->nbytes + ret,
           },
           e
       )
@@ -84,11 +71,6 @@ numstore_insert (
 
   ASSERT (ret % tsize == 0);
   ret /= tsize;
-
-  // save the variable
-  if (var) {
-    *var = gparams.dest;
-  }
 
   return ret;
 

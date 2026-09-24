@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/simtest/ns_mem_vhmap.h"
+#include "nscore/testing/simulation/ns_mem_vhmap.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"

@@ -18,7 +18,7 @@
 err_t
 numstore_create (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct string       name,
     struct type         type,
     struct arena_alloc *valloc,

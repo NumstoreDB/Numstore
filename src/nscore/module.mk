@@ -37,11 +37,15 @@ LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_remove.c
 LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_size.c
 LIBNS_SRCS += src/nscore/algorithms/smartfiles/ns_smartfiles_write.c
 
-LIBNS_SRCS += src/nscore/simtest/ns_db_state_machine.c
-LIBNS_SRCS += src/nscore/simtest/ns_mem_vhmap.c
-LIBNS_SRCS += src/nscore/simtest/ns_numstore_simulation.c
-LIBNS_SRCS += src/nscore/simtest/ns_operation_generator.c
-LIBNS_SRCS += src/nscore/simtest/ns_ref_state_machine.c
+LIBNS_SRCS += src/nscore/testing/simulation/ns_db_state_machine.c
+LIBNS_SRCS += src/nscore/testing/simulation/ns_mem_vhmap.c
+LIBNS_SRCS += src/nscore/testing/simulation/ns_numstore_simulation.c
+LIBNS_SRCS += src/nscore/testing/simulation/ns_operation_generator.c
+LIBNS_SRCS += src/nscore/testing/simulation/ns_ref_state_machine.c
+
+LIBNS_SRCS += src/nscore/testing/regressions/0001_create_delete_rollback_delete.c
+LIBNS_SRCS += src/nscore/testing/regressions/0002_create_crash_close_delete.c
+LIBNS_SRCS += src/nscore/testing/regressions/0003_rollback_invald_wal_header.c
 
 # Compiler
 LIBNS_SRCS += src/nscore/compiler/ns_lexer.c
@@ -152,7 +156,7 @@ $(BIN_DIR)/print_type: src/nscore/compiler/tools/print_type.c $(TARGET_LIB) | $(
 $(BIN_DIR)/resolve_type_ref: src/nscore/compiler/tools/resolve_type_ref.c $(TARGET_LIB) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
 
-$(BIN_DIR)/numstore_simtest: src/nscore/simtest/main.c $(TARGET_LIB) | $(BIN_DIR)
+$(BIN_DIR)/numstore_simtest: src/nscore/testing/simulation/main.c $(TARGET_LIB) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
 
 ALL += $(BIN_DIR)/nspprint

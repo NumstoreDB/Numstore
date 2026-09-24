@@ -17,7 +17,7 @@
 struct ns_db
 {
   struct nsdb         *db; // The system under test
-  struct ns_txn       *tx; // The active transaction
+  struct txn          *tx; // The active transaction
 
   char                *var_committed; // Current variable we act on
   char                *var_working;   // For rollback

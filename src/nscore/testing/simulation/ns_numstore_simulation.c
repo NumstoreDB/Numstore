@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "nscore/simtest/ns_numstore_simulation.h"
+#include "nscore/testing/simulation/ns_numstore_simulation.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
@@ -23,9 +23,9 @@
 #include "core/os/ns_memory.h"
 #include "core/os/ns_time.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/simtest/ns_db_state_machine.h"
-#include "nscore/simtest/ns_operation_generator.h"
-#include "nscore/simtest/ns_ref_state_machine.h"
+#include "nscore/testing/simulation/ns_db_state_machine.h"
+#include "nscore/testing/simulation/ns_operation_generator.h"
+#include "nscore/testing/simulation/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
 
 #include <string.h>

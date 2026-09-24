@@ -1,7 +1,6 @@
 ############ Sources
 
-LIBNS_SRCS += src/numstore/ns_numstore.c
-LIBNS_SRCS += src/numstore/ns_numstore_fexecute.c
+LIBNS_SRCS += src/numstore/numstore.c
 
 ############ Includes
 

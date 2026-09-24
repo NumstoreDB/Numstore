@@ -24,7 +24,7 @@ err_t
 aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
 {
   dest->max_tid = 0;
-  slab_alloc_init (&dest->alloc, mem, sizeof (struct ns_txn), 1000);
+  slab_alloc_init (&dest->alloc, mem, sizeof (struct txn), 1000);
   arena_alloc_create_default (&dest->backing_alloc);
 
   dest->txt = txnt_open (mem, e);
@@ -37,7 +37,7 @@ aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
     goto txt_failed;
   }
 
-  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct ns_txn *), 100, e)) {
+  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct txn *), 100, e)) {
     goto dpt_failed;
   }
 
@@ -63,10 +63,10 @@ aries_ctx_free (struct aries_ctx *ctx)
   arena_alloc_free_all (&ctx->backing_alloc);
 }
 
-struct ns_txn *
+struct txn *
 aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
 {
-  struct ns_txn *tx = slab_alloc_alloc (&ctx->alloc, e);
+  struct txn *tx = slab_alloc_alloc (&ctx->alloc, e);
   if (tx == NULL) {
     return NULL;
   }
@@ -93,8 +93,8 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   }
 
   while (log_rec->type != WL_EOF) {
-    stxid          tid = wrh_get_tid (log_rec);
-    struct ns_txn *tx  = NULL;
+    stxid       tid = wrh_get_tid (log_rec);
+    struct txn *tx  = NULL;
 
     if (tid >= 0) {
       if (tid > (stxid)ctx->max_tid) {
@@ -115,7 +115,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
         txn_init (
             tx,
             tid,
-            (struct ns_txn_data){
+            (struct txn_data){
                 .state         = TX_CANDIDATE_FOR_UNDO,
                 .last_lsn      = read_lsn,
                 .undo_next_lsn = prev_lsn,
@@ -180,7 +180,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
   // Append end logs and remove rolled back and committed txns
   for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i) {
-    struct ns_txn *tx  = ((struct ns_txn **)ctx->txn_ptrs.data)[i];
+    struct txn *tx     = ((struct txn **)ctx->txn_ptrs.data)[i];
 
     bool nothing_to_do = (tx->data.state == TX_CANDIDATE_FOR_UNDO && tx->data.undo_next_lsn == 0)
                          != 0;
@@ -302,7 +302,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
 
     switch (log_rec->type) {
       case WL_UPDATE: {
-        struct ns_txn *tx;
+        struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->update.tid);
 
         if (wrh_is_undoable (log_rec)) {
@@ -342,14 +342,14 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
       }
 
       case WL_CLR: {
-        struct ns_txn *tx;
+        struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->clr.tid);
         tx->data.undo_next_lsn = log_rec->clr.undo_next;
         break;
       }
 
       case WL_BEGIN: {
-        struct ns_txn *tx;
+        struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
         slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);

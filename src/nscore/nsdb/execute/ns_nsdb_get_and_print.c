@@ -23,7 +23,7 @@
 err_t
 nsdb_get_and_print (struct nsdb *db, struct get_query *query, struct arena_alloc *alloc, error *e)
 {
-  struct ns_txn *tx = nsdb_begin (db, e);
+  struct txn *tx = nsdb_begin (db, e);
   if (tx == NULL) {
     goto failed;
   }

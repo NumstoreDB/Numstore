@@ -102,10 +102,10 @@ struct args
 static void *
 producer_thread (void *_args)
 {
-  struct args  *args = _args;
-  error         e    = error_create ();
-  page_h        a    = page_h_create ();
-  struct ns_txn tx;
+  struct args *args = _args;
+  error        e    = error_create ();
+  page_h       a    = page_h_create ();
+  struct txn   tx;
 
   while (!args->done) {
     pgr_begin_txn (&tx, args->p, &e);

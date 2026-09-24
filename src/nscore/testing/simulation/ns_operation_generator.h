@@ -1,7 +1,7 @@
 #ifndef NS_OPERATION_GENERATOR
 #define NS_OPERATION_GENERATOR
 
-#include "nscore/simtest/ns_ref_state_machine.h"
+#include "nscore/testing/simulation/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
 
 enum ns_action_type

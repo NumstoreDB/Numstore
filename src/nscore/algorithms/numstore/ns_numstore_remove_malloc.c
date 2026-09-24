@@ -18,38 +18,24 @@
 
 void *
 numstore_remove_malloc (
-    struct pager       *p,
-    struct ns_txn      *tx,
-    struct string       name,
-    struct user_stride  ustr,
-    struct arena_alloc *alloc,
-    struct variable    *var,
-    b_size             *dlen,
-    struct i_mem        mem,
-    error              *e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    b_size            *dlen,
+    struct i_mem       mem,
+    error             *e
 )
 {
-  // GET VARIABLE
-  struct ns_var_get_params gparams = {
-      .p     = p,
-      .tx    = tx,
-      .vname = name,
-      .alloc = alloc,
-  };
-
-  if (ns_var_get (&gparams, e)) {
-    goto failed;
-  }
-
   // Resolve sizes
-  t_size tsize = type_byte_size (gparams.dest.dtype);
+  t_size tsize = type_byte_size (var->dtype);
 
   // Total size in bytes of the variable
-  b_size len   = gparams.dest.nbytes;
+  b_size len   = var->nbytes;
 
   // A consistent database has this be a multiple of tsize
   if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&name));
+    error_causef (e, ERR_CORRUPT, "Variable has invalid byte size");
     goto failed;
   }
   len /= tsize;
@@ -74,7 +60,7 @@ numstore_remove_malloc (
       .p      = p,
       .dest   = &stream,
       .tx     = tx,
-      .root   = gparams.dest.rpt_root,
+      .root   = var->rpt_root,
       .size   = tsize,
       .bofst  = tsize * stride.start,
       .stride = stride.stride,
@@ -91,20 +77,15 @@ numstore_remove_malloc (
           (struct ns_var_update_params){
               .p      = p,
               .tx     = tx,
-              .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
+              .retr   = (struct var_retrieval){.type = VR_PG, .root = var->var_root},
               .newpg  = rparams.root,
-              .nbytes = gparams.dest.nbytes - (ret * tsize),
+              .nbytes = var->nbytes - (ret * tsize),
           },
           e
       )
       < 0) {
     i_free (mem, buffer);
     goto failed;
-  }
-
-  // Maybe save the variable
-  if (var) {
-    *var = gparams.dest;
   }
 
   if (dlen) {

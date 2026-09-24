@@ -51,7 +51,7 @@ struct remove_state
 
   // Pager / transaction context
   struct pager        *p;
-  struct ns_txn       *tx;
+  struct txn          *tx;
 
   // Remove progress
   b_size               total_removed;

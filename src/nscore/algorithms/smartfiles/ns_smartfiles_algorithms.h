@@ -22,11 +22,11 @@
 
 err_t smartfiles_init_pager (struct pager *p, error *e);
 
-sb_size smartfiles_size (struct pager *p, struct ns_txn *tx, struct arena_alloc *alloc, error *e);
+sb_size smartfiles_size (struct pager *p, struct txn *tx, struct arena_alloc *alloc, error *e);
 
 sb_size smartfiles_insert (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct stream      *src,
     sb_size             bofst,
     b_size              slen,
@@ -36,7 +36,7 @@ sb_size smartfiles_insert (
 
 sb_size smartfiles_write (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct stream      *src,
     t_size              size,
     sb_size             bofst,
@@ -48,7 +48,7 @@ sb_size smartfiles_write (
 
 sb_size smartfiles_read (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct stream      *dest,
     t_size              size,
     sb_size             bofst,
@@ -60,7 +60,7 @@ sb_size smartfiles_read (
 
 sb_size smartfiles_remove (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct stream      *dest,
     t_size              size,
     sb_size             bofst,

@@ -610,4 +610,3 @@ vname_or_default (const char *name)
     return strfcstr (DEFAULT_VARIABLE);
   }
 }
-

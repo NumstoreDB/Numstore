@@ -21,23 +21,16 @@
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/smartfiles/ns_smartfiles_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "smartfiles/smartfiles.h"
 
 #include <stdbool.h>
 #include <string.h>
 
-struct smfile
-{
-  struct nsdb *db;
-  error        e;
-};
-
 int
-smfile_perror (smfile_t *smf, const char *prefix)
+smfile_perror (struct nsdb *db, const char *prefix)
 {
-  const char *err = smfile_strerror (smf);
+  const char *err = smfile_strerror (db);
   if (err) {
     return fprintf (stderr, "%s: %s\n", prefix, err);
   }
@@ -49,8 +42,8 @@ TEST (smfile_perror)
 {
   smfile_cleanup ("test");
 
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[2048];
+  struct nsdb *s = smfile_open ("test");
+  u8           buffer[2048];
 
   // stride == 0 => ERROR
   test_assert (smfile_read (s, NULL, buffer, 10, 0, 0, 10) < 0);
@@ -61,12 +54,12 @@ TEST (smfile_perror)
 #endif
 
 const char *
-smfile_strerror (smfile_t *smf)
+smfile_strerror (struct nsdb *db)
 {
-  if (smf->e.cause_code < 0) {
+  if (db->e.cause_code < 0) {
     // Consume
-    error_reset (&smf->e);
-    return smf->e.cause_msg;
+    error_reset (&db->e);
+    return db->e.cause_msg;
   }
   return NULL;
 }
@@ -76,8 +69,8 @@ TEST (smfile_strerror)
 {
   smfile_cleanup ("test");
 
-  struct smfile *s = smfile_open ("test");
-  u8             buffer[2048];
+  struct nsdb *s = smfile_open ("test");
+  u8           buffer[2048];
 
   // stride == 0 => ERROR
   test_assert (smfile_read (s, NULL, buffer, 10, 0, 0, 10) < 0);
@@ -99,7 +92,7 @@ TEST (smfile_cleanup)
 {
   smfile_cleanup ("test");
 
-  struct smfile *s = smfile_open ("test");
+  struct nsdb *s = smfile_open ("test");
   smfile_close (s);
   error e = error_create ();
 
@@ -114,23 +107,23 @@ TEST (smfile_cleanup)
 #endif
 
 sb_size
-smfile_size (smfile_t *smf, sm_txn_t *tx)
+smfile_size (struct nsdb *db, sm_txn_t *tx)
 {
-  CHECK_UNHANDLED_ERROR (&smf->e);
+  CHECK_UNHANDLED_ERROR (&db->e);
 
   ALLOC_INIT (temp);
   sb_size ret;
-  WITH_AUTO_TXN (ret, smf->db, tx, smartfiles_size (smf->db->p, tx, &temp, &smf->e), &smf->e);
+  WITH_AUTO_TXN (ret, db, tx, smartfiles_size (db->p, tx, &temp, &db->e), &db->e);
   ALLOC_CLOSE (temp);
 
   return ret;
 }
 
 int
-smfile_close (smfile_t *smf)
+smfile_close (struct nsdb *db)
 {
-  int ret = nsdb_close (smf->db, &smf->e);
-  i_free (default_mem (), smf);
+  int ret = nsdb_close (db, &db->e);
+  i_free (default_mem (), db);
   return ret;
 }
 
@@ -139,8 +132,8 @@ TEST (smfile_close)
 {
   smfile_cleanup ("test");
 
-  error          e = error_create ();
-  struct smfile *s = smfile_open ("test");
+  error        e = error_create ();
+  struct nsdb *s = smfile_open ("test");
   smfile_close (s);
 
   bool exists;
@@ -152,10 +145,10 @@ TEST (smfile_close)
 #endif
 
 int
-smfile_crash (smfile_t *smf)
+smfile_crash (struct nsdb *db)
 {
-  int ret = nsdb_crash (smf->db, &smf->e);
-  i_free (default_mem (), smf);
+  int ret = nsdb_crash (db, &db->e);
+  i_free (default_mem (), db);
   return ret;
 }
 
@@ -164,8 +157,8 @@ TEST (smfile_crash)
 {
   smfile_cleanup ("test");
 
-  error          e = error_create ();
-  struct smfile *s = smfile_open ("test");
+  error        e = error_create ();
+  struct nsdb *s = smfile_open ("test");
   smfile_crash (s);
 
   bool exists;
@@ -176,35 +169,35 @@ TEST (smfile_crash)
 }
 #endif
 
-struct ns_txn *
-smfile_begin (smfile_t *smf)
+struct txn *
+smfile_begin (struct nsdb *db)
 {
-  return nsdb_begin (smf->db, &smf->e);
+  return nsdb_begin (db);
 }
 
 int
-smfile_commit (smfile_t *smf, struct ns_txn *tx)
+smfile_commit (struct nsdb *db, struct txn *tx)
 {
-  return nsdb_commit (smf->db, tx, &smf->e);
+  return nsdb_commit (db, tx);
 }
 
 int
-smfile_rollback (smfile_t *smf, struct ns_txn *tx)
+smfile_rollback (struct nsdb *db, struct txn *tx)
 {
-  return nsdb_rollback (smf->db, tx, &smf->e);
+  return nsdb_rollback (db, tx);
 }
 
 #ifdef TESTING
-TEST (smfile_txns)
+TEST (smfile)
 {
   smfile_cleanup ("test");
 
-  u8             buffer[2048];
-  struct smfile *s = smfile_open ("test");
+  u8           buffer[2048];
+  struct nsdb *s = smfile_open ("test");
 
   test_assert_equal (smfile_size (s, NULL), 0);
 
-  struct ns_txn *tx = smfile_begin (s);
+  struct txn *tx = smfile_begin (s);
   smfile_insert (s, tx, buffer, 0, sizeof (buffer));
   test_assert_equal (smfile_size (s, tx), sizeof (buffer));
   smfile_commit (s, tx);
@@ -220,30 +213,29 @@ TEST (smfile_txns)
 }
 #endif
 
-smfile_t *
+struct nsdb *
 smfile_open (const char *path)
 {
-  error     e   = error_create ();
-  smfile_t *ret = i_malloc (default_mem (), 1, sizeof *ret, &e);
+  error        e   = error_create ();
+  struct nsdb *ret = i_malloc (default_mem (), 1, sizeof *ret, &e);
   if (ret == NULL) {
     return NULL;
   }
 
-  ret->e  = error_create ();
-  ret->db = nsdb_open_with_resources (path, default_mem (), default_filesystem (), &ret->e);
-  if (ret->db == NULL) {
+  ret = nsdb_open_with_resources (path, default_mem (), default_filesystem (), &ret->e);
+  if (ret == NULL) {
     i_free (default_mem (), ret);
     return NULL;
   }
 
-  if (smartfiles_init_pager (ret->db->p, &ret->e)) {
+  if (smartfiles_init_pager (ret->p, &ret->e)) {
     goto failed;
   }
 
   return ret;
 
 failed:
-  nsdb_close (ret->db, &ret->e);
+  nsdb_close (ret, &ret->e);
   i_free (default_mem (), ret);
 
   return NULL;
@@ -254,14 +246,14 @@ TEST (smfile_open)
 {
   smfile_cleanup ("test");
 
-  struct smfile *s = smfile_open ("test");
+  struct nsdb *s = smfile_open ("test");
   test_assert (s != NULL);
   test_assert_equal (smfile_size (s, NULL), 0);
 
   smfile_close (s);
 
   // Reopening an existing file should succeed and preserve its data.
-  struct smfile *s2 = smfile_open ("test");
+  struct nsdb *s2 = smfile_open ("test");
   test_assert (s2 != NULL);
   test_assert_equal (smfile_size (s2, NULL), 0);
 
@@ -273,19 +265,19 @@ TEST (smfile_open)
 ////// Insert
 
 sb_size
-smfile_insert (smfile_t *smf, struct ns_txn *tx, const void *src, sb_size bofst, b_size slen)
+smfile_insert (struct nsdb *db, struct txn *tx, const void *src, sb_size bofst, b_size slen)
 {
-  CHECK_UNHANDLED_ERROR (&smf->e);
+  CHECK_UNHANDLED_ERROR (&db->e);
 
   ALLOC_INIT (temp);
   sb_size ret;
   istream_create_from (input, src, slen);
   WITH_AUTO_TXN (
       ret,
-      smf->db,
+      db,
       tx,
-      smartfiles_insert (smf->db->p, tx, &input, bofst, slen, &temp, &smf->e),
-      &smf->e
+      smartfiles_insert (db->p, tx, &input, bofst, slen, &temp, &db->e),
+      &db->e
   );
   ALLOC_CLOSE (temp);
 
@@ -294,26 +286,26 @@ smfile_insert (smfile_t *smf, struct ns_txn *tx, const void *src, sb_size bofst,
 
 sb_size
 smfile_read (
-    smfile_t      *smf,
-    struct ns_txn *tx,
-    void          *dest,
-    t_size         size,
-    sb_size        bofst,
-    sb_size        stride,
-    b_size         nelem
+    struct nsdb *db,
+    struct txn  *tx,
+    void        *dest,
+    t_size       size,
+    sb_size      bofst,
+    sb_size      stride,
+    b_size       nelem
 )
 {
-  CHECK_UNHANDLED_ERROR (&smf->e);
+  CHECK_UNHANDLED_ERROR (&db->e);
 
   ALLOC_INIT (temp);
   sb_size ret;
   ostream_create_from (output, dest, size * nelem);
   WITH_AUTO_TXN (
       ret,
-      smf->db,
+      db,
       tx,
-      smartfiles_read (smf->db->p, tx, &output, size, bofst, stride, nelem, &temp, &smf->e),
-      &smf->e
+      smartfiles_read (db->p, tx, &output, size, bofst, stride, nelem, &temp, &db->e),
+      &db->e
   );
   ALLOC_CLOSE (temp);
 
@@ -322,26 +314,26 @@ smfile_read (
 
 sb_size
 smfile_remove (
-    smfile_t      *smf,
-    struct ns_txn *tx,
-    void          *dest,
-    t_size         size,
-    sb_size        bofst,
-    sb_size        stride,
-    b_size         nelem
+    struct nsdb *db,
+    struct txn  *tx,
+    void        *dest,
+    t_size       size,
+    sb_size      bofst,
+    sb_size      stride,
+    b_size       nelem
 )
 {
-  CHECK_UNHANDLED_ERROR (&smf->e);
+  CHECK_UNHANDLED_ERROR (&db->e);
 
   ALLOC_INIT (temp);
   sb_size ret;
   ostream_create_from (output, dest, size * nelem);
   WITH_AUTO_TXN (
       ret,
-      smf->db,
+      db,
       tx,
-      smartfiles_remove (smf->db->p, tx, &output, size, bofst, stride, nelem, &temp, &smf->e),
-      &smf->e
+      smartfiles_remove (db->p, tx, &output, size, bofst, stride, nelem, &temp, &db->e),
+      &db->e
   );
   ALLOC_CLOSE (temp);
 
@@ -350,26 +342,26 @@ smfile_remove (
 
 sb_size
 smfile_write (
-    smfile_t      *smf,
-    struct ns_txn *tx,
-    const void    *src,
-    t_size         size,
-    sb_size        bofst,
-    sb_size        stride,
-    b_size         nelem
+    struct nsdb *db,
+    struct txn  *tx,
+    const void  *src,
+    t_size       size,
+    sb_size      bofst,
+    sb_size      stride,
+    b_size       nelem
 )
 {
-  CHECK_UNHANDLED_ERROR (&smf->e);
+  CHECK_UNHANDLED_ERROR (&db->e);
 
   ALLOC_INIT (temp);
   sb_size ret;
   istream_create_from (input, src, nelem * size);
   WITH_AUTO_TXN (
       ret,
-      smf->db,
+      db,
       tx,
-      smartfiles_write (smf->db->p, tx, &input, size, bofst, stride, nelem, &temp, &smf->e),
-      &smf->e
+      smartfiles_write (db->p, tx, &input, size, bofst, stride, nelem, &temp, &db->e),
+      &db->e
   );
   ALLOC_CLOSE (temp);
 

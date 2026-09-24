@@ -17,7 +17,7 @@
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 err_t
-numstore_delete (struct pager *p, struct ns_txn *tx, struct string name, bool if_exists, error *e)
+numstore_delete (struct pager *p, struct txn *tx, struct string name, bool if_exists, error *e)
 {
   i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&name));
 

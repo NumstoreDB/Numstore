@@ -29,7 +29,7 @@
 sb_size
 smartfiles_write (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct stream      *src,
     t_size              size,
     sb_size             bofst,
@@ -130,7 +130,7 @@ TEST (smartfiles_pwrite)
 
   ALLOC_INIT (temp);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   u8 buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};

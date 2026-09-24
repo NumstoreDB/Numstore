@@ -25,7 +25,7 @@ static err_t
 pgr_new_impl (
     page_h              *dest,
     struct pager        *p,
-    struct ns_txn       *tx,
+    struct txn          *tx,
     const enum page_type type,
     const pgno           pg,
     error               *e
@@ -118,7 +118,7 @@ theend:
  *   5. Actually extend the file on disk.
  */
 static err_t
-pgr_extend_file (const struct pager *p, const pgno npages, struct ns_txn *tx, error *e)
+pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
 {
   // Do a Nested Top Action
 
@@ -168,7 +168,7 @@ pgr_extend_file (const struct pager *p, const pgno npages, struct ns_txn *tx, er
 }
 
 static inline err_t
-pgr_new_fsmpg (page_h *fsm, struct pager *p, struct ns_txn *tx, error *e)
+pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
 {
   pgno fsmpg = pgr_get_npages (p);
 
@@ -196,7 +196,7 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct ns_txn *tx, error *e)
 }
 
 err_t
-pgr_new (page_h *dest, struct pager *p, struct ns_txn *tx, const enum page_type type, error *e)
+pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e)
 {
   page_h fsm   = page_h_create ();
   pgno   fsmpg = 0;
@@ -275,7 +275,7 @@ TEST (pgr_new_get_save)
   page_h             h = page_h_create ();
   pgr_fixture_create (&f);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   pgr_new (&h, f.p, &tx, PG_DATA_LIST, &f.e);
