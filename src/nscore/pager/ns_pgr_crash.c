@@ -17,7 +17,7 @@
 #include "nscore/pager/ns_pager.h"
 
 static void
-txntforeach (struct ns_txn *tx, void *ctx)
+txntforeach (struct txn *tx, void *ctx)
 {
   // Unlock all locks from the txn (2PL shrinking phase)
   lockt_unlock_tx (((struct pager *)ctx)->lt, tx);

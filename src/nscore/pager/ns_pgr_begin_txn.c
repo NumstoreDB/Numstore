@@ -17,7 +17,7 @@
 #include "nscore/pager/ns_pager.h"
 
 err_t
-pgr_begin_txn (struct ns_txn *tx, struct pager *p, error *e)
+pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
   slsn l   = 0;
@@ -29,7 +29,7 @@ pgr_begin_txn (struct ns_txn *tx, struct pager *p, error *e)
   txn_init (
       tx,
       tid,
-      (struct ns_txn_data){
+      (struct txn_data){
           .min_lsn       = 0,
           .last_lsn      = 0,
           .undo_next_lsn = 0,
@@ -57,7 +57,7 @@ pgr_begin_txn (struct ns_txn *tx, struct pager *p, error *e)
   // Update transaction meta data
   txn_update_data (
       tx,
-      (struct ns_txn_data){
+      (struct txn_data){
           .min_lsn       = l,
           .last_lsn      = l,
           .undo_next_lsn = 0,

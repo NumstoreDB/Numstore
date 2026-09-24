@@ -24,7 +24,7 @@
 static inline sb_size
 numstore_execute_qt_read_on_buffer (
     struct nsdb        *ns,
-    struct ns_txn      *txn,
+    struct txn         *txn,
     struct query       *q,
     struct variable    *var,
     void               *data,
@@ -56,7 +56,7 @@ numstore_execute_qt_read_on_buffer (
 sb_size
 numstore_execute_qt_write_on_buffer (
     struct nsdb        *ns,
-    struct ns_txn      *txn,
+    struct txn         *txn,
     struct query       *q,
     struct variable    *var,
     void               *data,
@@ -87,7 +87,7 @@ numstore_execute_qt_write_on_buffer (
 sb_size
 numstore_execute_qt_remove_on_buffer (
     struct nsdb        *ns,
-    struct ns_txn      *txn,
+    struct txn         *txn,
     struct query       *q,
     struct variable    *var,
     void               *data,
@@ -120,7 +120,7 @@ numstore_execute_qt_remove_on_buffer (
 static inline sb_size
 numstore_execute_qt_insert_on_buffer (
     struct nsdb        *ns,
-    struct ns_txn      *txn,
+    struct txn         *txn,
     struct query       *q,
     struct variable    *var,
     void               *data,
@@ -161,7 +161,7 @@ numstore_execute_qt_insert_on_buffer (
 sb_size
 nsdb_execute_on_buffer (
     struct nsdb        *ns,
-    struct ns_txn      *txn,
+    struct txn         *txn,
     struct query       *q,
     struct variable    *var,
     void               *data,

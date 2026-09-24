@@ -107,7 +107,7 @@ TEST (pgr_get_invalid_checksum)
   struct pgr_fixture pf;
   pgr_fixture_create (&pf);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, pf.p, &pf.e);
 
   pgr_new (&pg, pf.p, &tx, PG_DATA_LIST, &pf.e);

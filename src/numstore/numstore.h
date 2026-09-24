@@ -20,27 +20,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/******************************************************************************
- * SECTION: Compiler specified constants
- * ----------------------------------------------------------------------------
- * @brief Pass compiler flags to override these constants
- ******************************************************************************/
-
 #if defined(__GNUC__) || defined(__clang__)
 #  define NSDB_PRINTF(fmt_idx, vargs_idx) __attribute__ ((format (printf, fmt_idx, vargs_idx)))
 #else
 #  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
 
-/******************************************************************************
- * SECTION: Opaque Types and constants
- * ----------------------------------------------------------------------------
- * @brief Opaque handles and types to pass into numstore functions
- ******************************************************************************/
-
-typedef struct numstore     numstore_t;
-typedef struct ns_txn       ns_txn_t;
-typedef struct numstore_var numstore_var_t;
+typedef struct nsdb     nsdb_t;
+typedef struct txn      txn_t;
+typedef struct nsdb_var nsdb_var_t;
 
 #ifndef NS_TYPE_ALIASES
 
@@ -88,48 +76,90 @@ typedef uint8_t  wlh;     // WAL header
 
 #endif
 
-/******************************************************************************
- * SECTION: Numstore
- * ----------------------------------------------------------------------------
- * @brief A database for numerical arrays
- * ******************************************************************************/
-
 // Lifecycle
-numstore_t *numstore_open (const char *path);
-int numstore_cleanup (const char *path);
-int numstore_close (numstore_t *ns);
-int numstore_crash (numstore_t *ns);
+nsdb_t *ns_open (const char *path);
+int ns_cleanup (const char *path);
+int ns_close (nsdb_t *ns);
+int ns_crash (nsdb_t *ns);
 
 // Variables
-b_size numstore_var_len (numstore_var_t *var);
-void numstore_var_free (numstore_var_t *var);
+b_size ns_var_len (nsdb_var_t *var);
+void ns_var_free (nsdb_var_t *var);
 
 // Errors
-const char *numstore_strerror (numstore_t *ns);
-int numstore_perror (numstore_t *ns, const char *prefix);
+const char *ns_strerror (nsdb_t *ns);
+int ns_perror (nsdb_t *ns, const char *prefix);
 
 // Transactions
-ns_txn_t *numstore_begin (numstore_t *ns);
-int numstore_commit (numstore_t *ns, ns_txn_t *txn);
-int numstore_rollback (numstore_t *ns, ns_txn_t *txn);
+txn_t *ns_begin (nsdb_t *ns);
+int ns_commit (nsdb_t *ns, txn_t *txn);
+int ns_rollback (nsdb_t *ns, txn_t *txn);
 
+// Execution
 
+/**
+ * Execute a single query.
+ * Must be any query that doesn't take in parameters
+ *
+ * Example:
+ *    ns_exec(db, tx, "create foo u32");
+ *    ns_exec(db, tx, "remove foo[0:]");
+ *    ns_exec(db, tx, "insert foo 0 10");       X FAILS
+ *    ns_exec(db, tx, "read foo[0:10]");        X FAILS
+ *    ns_exec(db, tx, "write foo[0:10]");       X FAILS
+ */
+int ns_exec (nsdb_t *db, struct txn *tx, const char *fmt, ...);
 
-// Executes a data operation
-sb_size numstore_fexecute (
-    numstore_t           *ns,
-    ns_txn_t             *txn,
-    struct numstore_plan *plan,
-    const char           *query_fmt,
-    ...
-) NSDB_PRINTF (4, 5);
+/**
+ * Get the variable associated with a query
+ * Doesn't every actually execute anything
+ *
+ * Example:
+ *    nsdb_var_t* var = ns_get_var(db, tx, "get foo");
+ *    nsdb_var_t* var = ns_get_var(db, tx, "insert foo[0:10]");
+ *    nsdb_var_t* var = ns_get_var(db, tx, "delete foo");
+ */
+nsdb_var_t *ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...);
 
-sb_size numstore_vexecute (
-    numstore_t           *ns,
-    ns_txn_t             *txn,
-    struct numstore_plan *plan,
-    const char           *query_fmt,
-    va_list               args
-);
+/**
+ * Execute a query and read into a fixed sized buffer
+ * Must be a "readable" query (READ/REMOVE only)
+ *
+ * Example:
+ *    u32 dest[10];
+ *    sb_size read = ns_read(db, tx, dest, sizeof(dest), "read foo[0:10]");
+ *    sb_size removed = ns_read(db, tx, dest, sizeof(dest), "remove foo[0:10]");
+ *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "insert foo 0 10");   X FAILS
+ *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "get foo");           X FAILS
+ */
+sb_size ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...);
+
+/**
+ * Execute a query and malloc an output buffer
+ * Must be a "readable" query (READ/REMOVE only)
+ *
+ * Example:
+ *    b_size len;
+ *    void* data = ns_read_malloc(db, tx, &len, "read foo[0:10]");
+ *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_read_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
+ *    void* data = ns_read_malloc(db, tx, &len, "delete foo");        X FAILS
+ */
+void *ns_read_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...);
+
+/**
+ * Execute a query and write out of a fixed sized buffer
+ * Must be a "writable" query (INSERT/WRITE only)
+ *
+ * Example:
+ *    b_size len;
+ *    void* data = ns_read_malloc(db, tx, &len, "read foo[0:10]");
+ *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_read_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
+ *    void* data = ns_read_malloc(db, tx, &len, "delete foo");        X FAILS
+ */
+sb_size ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt, ...);
 
 #endif

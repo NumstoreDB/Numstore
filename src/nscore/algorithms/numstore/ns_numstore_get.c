@@ -20,7 +20,7 @@
 err_t
 numstore_get (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     bool                if_exists,
     struct string       name,   // Name of the variable
     struct arena_alloc *valloc, // Allocator for variable in get

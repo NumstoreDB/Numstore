@@ -26,7 +26,7 @@
 #include "nscore/variables/ns_variables.h"
 
 sb_size
-smartfiles_size (struct pager *p, struct ns_txn *tx, struct arena_alloc *alloc, error *e)
+smartfiles_size (struct pager *p, struct txn *tx, struct arena_alloc *alloc, error *e)
 {
   ASSERT (tx != NULL);
 
@@ -52,7 +52,7 @@ TEST (smartfiles_size)
 
   ALLOC_INIT (temp);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), 0);

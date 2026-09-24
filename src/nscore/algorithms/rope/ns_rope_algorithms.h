@@ -35,7 +35,7 @@ struct ns_insert_params
   // Parameters
   struct pager  *p;
   struct stream *src;
-  struct ns_txn *tx;
+  struct txn    *tx;
   pgno           root;
   b_size         bofst;
   b_size         bytes;
@@ -45,7 +45,7 @@ struct ns_write_params
 {
   struct pager  *p;
   struct stream *src;
-  struct ns_txn *tx;
+  struct txn    *tx;
   pgno           root;
   t_size         size;
   b_size         bofst;
@@ -57,7 +57,7 @@ struct ns_read_params
 {
   struct pager  *p;
   struct stream *dest;
-  struct ns_txn *tx;
+  struct txn    *tx;
   pgno           root;
   t_size         size;
   b_size         bofst;
@@ -69,7 +69,7 @@ struct ns_remove_params
 {
   struct pager  *p;
   struct stream *dest;
-  struct ns_txn *tx;
+  struct txn    *tx;
   pgno           root;
   b_size         size;
   b_size         bofst;

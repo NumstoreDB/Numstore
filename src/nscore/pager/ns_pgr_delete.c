@@ -41,7 +41,7 @@
  * FS_BTMP_NPGS, and the bit index within that FSM page is pgno % FS_BTMP_NPGS.
  */
 err_t
-pgr_delete_and_release (struct pager *p, struct ns_txn *tx, page_h *h, error *e)
+pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
 {
   DBG_ASSERT (pager, p);
   page_h     fsm   = page_h_create ();
@@ -88,7 +88,7 @@ TEST (pgr_delete)
   error             *e = &f.e;
   pgr_fixture_create (&f);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, e);
 
   page_h a = page_h_create ();

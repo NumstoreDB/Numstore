@@ -29,7 +29,7 @@ TEST_DISABLED (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
 
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
     smfile_commit (smf, tx);
     smfile_close (smf);
@@ -60,7 +60,7 @@ TEST_DISABLED (aries_crash)
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
     smfile_commit (smf, tx);
     smfile_close (smf);
@@ -87,7 +87,7 @@ TEST_DISABLED (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
 
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "HELLO", 0, 5);
     smfile_commit (smf, tx);
 
@@ -111,7 +111,7 @@ TEST_DISABLED (aries_crash)
     pgr_delete_single_file ("testdb", &e);
 
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "ONE", 0, 3);
     smfile_commit (smf, tx);
     smfile_crash (smf);
@@ -143,7 +143,7 @@ TEST_DISABLED (aries_crash)
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "STABLE", 0, 6);
     smfile_commit (smf, tx);
     smfile_close (smf);
@@ -170,7 +170,7 @@ TEST_DISABLED (aries_crash)
 
     for (int i = 0; i < 26; i++) {
       char           c  = (char)('A' + i);
-      struct ns_txn *tx = smfile_begin (smf);
+      struct txn *tx = smfile_begin (smf);
       smfile_insert (smf, tx, &c, i, 1);
       smfile_commit (smf, tx);
     }
@@ -193,7 +193,7 @@ TEST_DISABLED (aries_crash)
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
 
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "AAAA", 0, 4);
     smfile_insert (smf, tx, "BB", 2, 2);
     smfile_insert (smf, tx, "CC", 0, 2);
@@ -217,7 +217,7 @@ TEST_DISABLED (aries_crash)
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "ABCDE", 0, 5);
     smfile_commit (smf, tx);
     smfile_close (smf);
@@ -244,7 +244,7 @@ TEST_DISABLED (aries_crash)
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "WORLD", 0, 5);
     smfile_commit (smf, tx);
     smfile_close (smf);
@@ -282,7 +282,7 @@ TEST_DISABLED (aries_crash)
     }
 
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, big, 0, BIG_SIZE);
     smfile_commit (smf, tx);
     smfile_crash (smf);
@@ -305,7 +305,7 @@ TEST_DISABLED (aries_crash)
     error e = error_create ();
     pgr_delete_single_file ("testdb", &e);
     smfile_t      *smf = smfile_open ("testdb");
-    struct ns_txn *tx  = smfile_begin (smf);
+    struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "0123456789", 0, 10);
     smfile_commit (smf, tx);
     smfile_crash (smf);

@@ -28,7 +28,7 @@ err_t numstore_init_pager (struct pager *p, error *e);
 
 sb_size numstore_insert (
     struct pager    *p,
-    struct ns_txn   *tx,
+    struct txn      *tx,
     struct variable *var,
     b_size           ofst,
     b_size           len,
@@ -38,7 +38,7 @@ sb_size numstore_insert (
 
 sb_size numstore_read (
     struct pager      *p,
-    struct ns_txn     *tx,
+    struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
     struct stream     *dest,
@@ -47,7 +47,7 @@ sb_size numstore_read (
 
 void *numstore_read_malloc (
     struct pager      *p,
-    struct ns_txn     *tx,
+    struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
     b_size            *dlen,
@@ -57,7 +57,7 @@ void *numstore_read_malloc (
 
 sb_size numstore_write (
     struct pager      *p,
-    struct ns_txn     *tx,
+    struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
     struct stream     *src,
@@ -66,7 +66,7 @@ sb_size numstore_write (
 
 sb_size numstore_remove (
     struct pager      *p,
-    struct ns_txn     *tx,
+    struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
     struct stream     *dest,
@@ -75,7 +75,7 @@ sb_size numstore_remove (
 
 void *numstore_remove_malloc (
     struct pager      *p,
-    struct ns_txn     *tx,
+    struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
     b_size            *dlen,
@@ -85,7 +85,7 @@ void *numstore_remove_malloc (
 
 err_t numstore_get (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     bool                if_exists,
     struct string       name,
     struct arena_alloc *alloc,
@@ -94,16 +94,16 @@ err_t numstore_get (
 );
 
 err_t numstore_delete (
-    struct pager  *p,
-    struct ns_txn *tx,
-    struct string  name,
-    bool           if_exists,
-    error         *e
+    struct pager *p,
+    struct txn   *tx,
+    struct string name,
+    bool          if_exists,
+    error        *e
 );
 
 err_t numstore_create (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct string       name,
     struct type         type,
     struct arena_alloc *valloc,

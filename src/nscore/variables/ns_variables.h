@@ -36,12 +36,12 @@ struct variable
   b_size        nbytes;
 };
 
-DEFINE_DBG_ASSERT(struct variable, variable, v, {
-  ASSERT(v);
-  ASSERT(v->vname.data != NULL);
-  ASSERT(v->vname.len > 0);
-  t_size tsize = type_byte_size(v->dtype);
-  ASSERT(v->nbytes % tsize == 0);
+DEFINE_DBG_ASSERT (struct variable, variable, v, {
+  ASSERT (v);
+  ASSERT (v->vname.data != NULL);
+  ASSERT (v->vname.len > 0);
+  t_size tsize = type_byte_size (v->dtype);
+  ASSERT (v->nbytes % tsize == 0);
 });
 
 err_t i_print_variable (struct variable *v, error *e);

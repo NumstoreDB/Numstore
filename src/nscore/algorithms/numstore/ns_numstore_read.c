@@ -14,39 +14,25 @@
 
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
 
 sb_size
 numstore_read (
-    struct pager       *p,
-    struct ns_txn      *tx,
-    struct string       name,
-    struct user_stride  ustr,
-    struct arena_alloc *valloc,
-    struct variable    *var,
-    struct stream      *dest,
-    error              *e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *dest,
+    error             *e
 )
 {
-  // Get variable
-  struct ns_var_get_params gparams = {
-      .p     = p,
-      .tx    = tx,
-      .vname = name,
-      .alloc = valloc,
-  };
-  if (ns_var_get (&gparams, e) < 0) {
-    goto failed;
-  }
-
   // Resolve sizes
-  t_size tsize = type_byte_size (gparams.dest.dtype);
+  t_size tsize = type_byte_size (var->dtype);
 
-  b_size len   = gparams.dest.nbytes;
+  b_size len   = var->nbytes;
 
   // A consistent database has this be a multiple of tsize
   if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&name));
+    error_causef (e, ERR_CORRUPT, "Variable: invalid byte size");
     goto failed;
   }
   len /= tsize;
@@ -57,43 +43,13 @@ numstore_read (
     goto failed;
   }
 
-  i_log_debug (
-      "READ (txn = %" PRtxid
-      ")"
-      " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
-      " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
-      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
-      " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
-      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
-      tx->tid,
-      strfmt (&name),
-      tsize,
-      len,
-      gparams.dest.nbytes,
-      ustr.present & START_PRESENT ? ustr.start : 0,
-      ustr.present & STEP_PRESENT ? ustr.step : 0,
-      ustr.present & STOP_PRESENT ? ustr.stop : 0,
-      ustr.present & START_PRESENT ? tsize * ustr.start : 0,
-      ustr.present & STEP_PRESENT ? tsize * ustr.step : 0,
-      ustr.present & STOP_PRESENT ? tsize * ustr.stop : 0,
-      stride.start,
-      stride.stride,
-      stride.nelems,
-      tsize * stride.start,
-      tsize * stride.stride,
-      tsize * stride.nelems
-  );
-
   // READ
   sb_size ret = ns_read (
       (struct ns_read_params){
           .p      = p,
           .dest   = dest,
           .tx     = tx,
-          .root   = gparams.dest.rpt_root,
+          .root   = var->rpt_root,
           .size   = tsize,
           .bofst  = tsize * stride.start,
           .stride = stride.stride,
@@ -103,11 +59,6 @@ numstore_read (
   );
   if (ret < 0) {
     goto failed;
-  }
-
-  // Maybe save the variable
-  if (var) {
-    *var = gparams.dest;
   }
 
   return ret;

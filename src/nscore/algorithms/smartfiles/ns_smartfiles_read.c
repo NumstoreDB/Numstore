@@ -29,7 +29,7 @@
 sb_size
 smartfiles_read (
     struct pager       *p,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct stream      *dest,
     t_size              size,
     sb_size             bofst,
@@ -100,7 +100,7 @@ TEST (smartfiles_read)
 
   ALLOC_INIT (temp);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   u8 buffer[16];

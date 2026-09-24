@@ -47,13 +47,13 @@ pgr_get_npages (struct pager *p)
 
 err_t
 pgr_get_maybe_writable (
-    page_h        *dest,
-    struct ns_txn *tx,
-    int            flags,
-    pgno           pg,
-    struct pager  *p,
-    bool           writable,
-    error         *e
+    page_h       *dest,
+    struct txn   *tx,
+    int           flags,
+    pgno          pg,
+    struct pager *p,
+    bool          writable,
+    error        *e
 )
 {
   if (!writable) {
@@ -154,7 +154,7 @@ pgr_cancel_if_exists (page_h *h)
 }
 
 err_t
-pgr_upgrade (page_h *_pg, struct ns_txn *tx, int flags, struct pager *p, error *e)
+pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e)
 {
   pgno pg = page_h_pgno (_pg);
   pgr_release (p, _pg, flags, e);
@@ -168,7 +168,7 @@ TEST (pager_fill_ht)
   struct pgr_fixture f;
   pgr_fixture_create (&f);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   page_h pgs[MEMORY_PAGE_LEN];
@@ -218,7 +218,7 @@ TEST (wal_int)
   page_h             h = page_h_create ();
   pgr_fixture_create (&f);
 
-  struct ns_txn tx;
+  struct txn tx;
   pgr_begin_txn (&tx, f.p, &f.e);
 
   pgr_new (&h, f.p, &tx, PG_DATA_LIST, &f.e);

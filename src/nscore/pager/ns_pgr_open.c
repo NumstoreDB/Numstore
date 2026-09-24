@@ -183,7 +183,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
   }
 
   // Open the transaction table
-  *(struct ns_txn_table **)&ret->tnxt = txnt_open (mem, e);
+  *(struct txn_table **)&ret->tnxt = txnt_open (mem, e);
   if (ret->tnxt == NULL) {
     goto failed;
   }

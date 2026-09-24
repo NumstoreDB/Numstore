@@ -18,12 +18,12 @@
 
 err_t
 pgr_get_writable (
-    page_h        *dest,
-    struct ns_txn *tx,
-    const int      flags,
-    const pgno     pg,
-    struct pager  *p,
-    error         *e
+    page_h       *dest,
+    struct txn   *tx,
+    const int     flags,
+    const pgno    pg,
+    struct pager *p,
+    error        *e
 )
 {
   struct page_frame *pgr = NULL; // Read frame

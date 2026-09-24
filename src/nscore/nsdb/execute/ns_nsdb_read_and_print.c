@@ -41,7 +41,7 @@ nsdb_read_and_print (
   struct stride            stride;  // Resolved stride
   struct stream            dest;    // Output stream
 
-  struct ns_txn           *tx = nsdb_begin (db, e);
+  struct txn              *tx = nsdb_begin (db, e);
   if (tx == NULL) {
     goto failed;
   }

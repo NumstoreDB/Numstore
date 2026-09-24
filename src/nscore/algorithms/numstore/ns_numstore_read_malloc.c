@@ -15,40 +15,26 @@
 #include "core/os/ns_memory.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
 
 void *
 numstore_read_malloc (
-    struct pager       *p,
-    struct ns_txn      *tx,
-    struct string       name,
-    struct user_stride  ustr,
-    struct arena_alloc *valloc,
-    struct variable    *var,
-    b_size             *dlen,
-    struct i_mem        mem,
-    error              *e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    b_size            *dlen,
+    struct i_mem       mem,
+    error             *e
 )
 {
-  // Get variable
-  struct ns_var_get_params gparams = {
-      .p     = p,
-      .tx    = tx,
-      .vname = name,
-      .alloc = valloc,
-  };
-  if (ns_var_get (&gparams, e) < 0) {
-    goto failed;
-  }
-
   // Resolve sizes
-  t_size tsize = type_byte_size (gparams.dest.dtype);
+  t_size tsize = type_byte_size (var->dtype);
 
-  b_size len   = gparams.dest.nbytes;
+  b_size len   = var->nbytes;
 
   // A consistent database has this be a multiple of tsize
   if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&name));
+    error_causef (e, ERR_CORRUPT, "Variable: has invalid byte size");
     goto failed;
   }
   len /= tsize;
@@ -74,7 +60,7 @@ numstore_read_malloc (
           .p      = p,
           .dest   = &stream,
           .tx     = tx,
-          .root   = gparams.dest.rpt_root,
+          .root   = var->rpt_root,
           .size   = tsize,
           .bofst  = tsize * stride.start,
           .stride = stride.stride,
@@ -85,11 +71,6 @@ numstore_read_malloc (
   if (ret < 0) {
     i_free (mem, buffer);
     goto failed;
-  }
-
-  // Maybe save the variable
-  if (var) {
-    *var = gparams.dest;
   }
 
   if (dlen) {

@@ -1,4 +1,4 @@
-#include "nscore/simtest/ns_db_state_machine.h"
+#include "nscore/testing/simulation/ns_db_state_machine.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
@@ -149,7 +149,7 @@ ns_db_begin_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  struct ns_txn *tx = nsdb_begin (db->db, e);
+  struct txn *tx = nsdb_begin (db->db, e);
   post_op (db);
 
   if (tx == NULL) {

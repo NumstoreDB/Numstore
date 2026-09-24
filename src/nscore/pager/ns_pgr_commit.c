@@ -17,7 +17,7 @@
 #include "nscore/pager/ns_pager.h"
 
 err_t
-pgr_commit (struct pager *p, struct ns_txn *tx, error *e)
+pgr_commit (struct pager *p, struct txn *tx, error *e)
 {
   DBG_ASSERT (pager, p);
 

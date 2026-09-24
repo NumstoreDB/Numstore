@@ -34,7 +34,7 @@ smartfiles_init_pager (struct pager *p, error *e)
   }
 
   // Create the default variable
-  struct ns_txn tx;
+  struct txn tx;
   if (pgr_begin_txn (&tx, p, e)) {
     return error_trace (e);
   }

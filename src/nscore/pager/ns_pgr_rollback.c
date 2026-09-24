@@ -26,7 +26,7 @@ pgr_flush_wall (struct pager *p, error *e)
 #endif
 
 err_t
-pgr_rollback (struct pager *p, struct ns_txn *tx, lsn save_lsn, error *e)
+pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
   struct wal_rec_hdr_read *log_rec      = NULL;             // Next record to read
   page_h                   ph           = page_h_create (); // The page handle used for all undo's
@@ -138,7 +138,7 @@ TEST (aries_rollback_basic)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct ns_txn tx;
+  struct txn    tx;
   page_h        fsm = page_h_create ();
   page_h        pg  = page_h_create ();
 
@@ -204,8 +204,8 @@ TEST (aries_rollback_multiple_updates)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct ns_txn tx;
-  struct ns_txn tx2;
+  struct txn    tx;
+  struct txn    tx2;
   page_h        dl_page = page_h_create ();
   pgno          pgno1;
   u8            initial_data[DL_DATA_SIZE];
@@ -267,8 +267,8 @@ TEST (aries_rollback_with_crash_recovery)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct ns_txn tx;
-  struct ns_txn tx2;
+  struct txn    tx;
+  struct txn    tx2;
   page_h        dl_page = page_h_create ();
   pgno          pgno1;
   u8            committed_data[DL_DATA_SIZE];
@@ -325,8 +325,8 @@ TEST (aries_rollback_clr_not_undone)
   test_fail_if (pgr_delete_single_file ("testdb", &e));
 
   struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  struct ns_txn tx;
-  struct ns_txn tx2;
+  struct txn    tx;
+  struct txn    tx2;
   page_h        dl_page = page_h_create ();
   pgno          pgno1;
   u8            initial_data[DL_DATA_SIZE];

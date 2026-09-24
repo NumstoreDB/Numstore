@@ -15,7 +15,7 @@
 #include "core/ns_error.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_time.h"
-#include "nscore/simtest/ns_numstore_simulation.h"
+#include "nscore/testing/simulation/ns_numstore_simulation.h"
 
 #include <signal.h>
 #include <stdio.h>

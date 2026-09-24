@@ -18,37 +18,23 @@
 
 sb_size
 numstore_remove (
-    struct pager       *p,
-    struct ns_txn      *tx,
-    struct string       name,  // Name of the variable
-    struct user_stride  ustr,  // Stride to remove
-    struct arena_alloc *alloc, // Allocator for variable in get
-    struct variable    *var,   // If not null - save the variable
-    struct stream      *dest,  // Output stream (can be null)
-    error              *e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *dest,
+    error             *e
 )
 {
-  // GET VARIABLE
-  struct ns_var_get_params gparams = {
-      .p     = p,
-      .tx    = tx,
-      .vname = name,
-      .alloc = alloc,
-  };
-
-  if (ns_var_get (&gparams, e)) {
-    goto failed;
-  }
-
   // Resolve sizes
-  t_size tsize = type_byte_size (gparams.dest.dtype);
+  t_size tsize = type_byte_size (var->dtype);
 
   // Total size in bytes of the variable
-  b_size len   = gparams.dest.nbytes;
+  b_size len   = var->nbytes;
 
   // A consistent database has this be a multiple of tsize
   if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable: %.*s has invalid byte size", strfmt (&name));
+    error_causef (e, ERR_CORRUPT, "Variable: has invalid byte size");
     goto failed;
   }
   len /= tsize;
@@ -59,42 +45,12 @@ numstore_remove (
     goto failed;
   }
 
-  i_log_debug (
-      "REMOVE (txn = %" PRtxid
-      ")"
-      " - %.*s"
-      " size (bytes): %" PRt_size " curlen: %" PRb_size " curlen (bytes): %" PRb_size
-      " Requested: "
-      " start: %" PRId64 " stride: %" PRId64 " stop: %" PRId64 " start (bytes): %" PRId64
-      " stride (bytes): %" PRId64 " stop (bytes): %" PRId64
-      " Granted: "
-      " start: %" PRIu64 " stride: %" PRIu64 " nelems: %" PRIu64 " start (bytes): %" PRIu64
-      " stride (bytes): %" PRIu64 " nelems (bytes): %" PRIu64 "\n",
-      tx->tid,
-      strfmt (&name),
-      tsize,
-      len,
-      gparams.dest.nbytes,
-      ustr.present & START_PRESENT ? ustr.start : 0,
-      ustr.present & STEP_PRESENT ? ustr.step : 0,
-      ustr.present & STOP_PRESENT ? ustr.stop : 0,
-      ustr.present & START_PRESENT ? tsize * ustr.start : 0,
-      ustr.present & STEP_PRESENT ? tsize * ustr.step : 0,
-      ustr.present & STOP_PRESENT ? tsize * ustr.stop : 0,
-      stride.start,
-      stride.stride,
-      stride.nelems,
-      tsize * stride.start,
-      tsize * stride.stride,
-      tsize * stride.nelems
-  );
-
   // REMOVE
   struct ns_remove_params rparams = {
       .p      = p,
       .dest   = dest,
       .tx     = tx,
-      .root   = gparams.dest.rpt_root,
+      .root   = var->rpt_root,
       .size   = tsize,
       .bofst  = tsize * stride.start,
       .stride = stride.stride,
@@ -110,18 +66,14 @@ numstore_remove (
           (struct ns_var_update_params){
               .p      = p,
               .tx     = tx,
-              .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
+              .retr   = (struct var_retrieval){.type = VR_PG, .root = var->var_root},
               .newpg  = rparams.root,
-              .nbytes = gparams.dest.nbytes - (ret * tsize),
+              .nbytes = var->nbytes - (ret * tsize),
           },
           e
       )
       < 0) {
     goto failed;
-  }
-
-  if (var) {
-    *var = gparams.dest;
   }
 
   return ret;

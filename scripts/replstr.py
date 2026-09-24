@@ -4,7 +4,7 @@ ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "testing/ns_page_fixture" : "page/ns_page_fixture",
+        "nscore/simtest" : "nscore/testing/simulation",
 }
 
 for ROOT in ROOTS:

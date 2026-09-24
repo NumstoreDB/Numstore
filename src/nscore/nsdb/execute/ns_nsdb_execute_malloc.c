@@ -19,7 +19,7 @@
 sb_size
 nsdb_execute_malloc (
     struct nsdb        *ns,
-    struct ns_txn      *tx,
+    struct txn         *tx,
     struct query       *q,
     struct variable    *var,
     struct arena_alloc *valloc,

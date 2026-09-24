@@ -1,4 +1,4 @@
-#include "nscore/simtest/ns_ref_state_machine.h"
+#include "nscore/testing/simulation/ns_ref_state_machine.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
@@ -8,7 +8,7 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/compiler/ns_compiler.h"
-#include "nscore/simtest/ns_mem_vhmap.h"
+#include "nscore/testing/simulation/ns_mem_vhmap.h"
 #include "nscore/types/ns_types.h"
 
 #include <string.h>
