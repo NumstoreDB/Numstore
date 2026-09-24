@@ -290,6 +290,56 @@ TEST (ns_plan_create)
 }
 #endif
 
+sb_size
+ns_plan_execute (struct ns_plan *ns, struct txn *tx)
+{
+  DBG_ASSERT (ns_plan, ns);
+  DBG_ASSERT (ns_txn, tx);
+
+  ALLOC_INIT (temp);
+  sb_size ret;
+
+  switch (ns->q.type) {
+      // Array Operations
+    case QT_REMOVE: {
+      ret = numstore_remove_from_name (
+          ns->p,
+          tx,
+          ns->q.remove.name,
+          ns->q.remove.ustr,
+          &temp,
+          NULL,
+          NULL,
+          ns->e
+      );
+      break;
+    }
+      // Variable Operations
+    case QT_CREATE: {
+      ret = numstore_create (ns->p, tx, ns->q.create.name, ns->q.create.type, &temp, NULL, ns->e);
+      break;
+    }
+    case QT_DELETE: {
+      ret = numstore_delete (ns->p, tx, ns->q.delete.name, false, ns->e);
+      break;
+    }
+
+    case QT_GET:
+    case QT_EXIT:
+    case QT_HELP:
+    case QT_READ:
+    case QT_WRITE:
+    case QT_INSERT:
+      return error_causef (
+          ns->e,
+          ERR_INVALID_ARGUMENT,
+          "Only supported exec commands are REMOVE/CREATE/DELETE"
+      );
+  }
+
+  return ret;
+}
+
 struct nsdb_var *
 ns_plan_get_var (struct ns_plan *ns, struct txn *tx)
 {

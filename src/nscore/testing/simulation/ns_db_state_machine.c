@@ -149,12 +149,12 @@ ns_db_begin_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  struct txn *tx = nsdb_begin (db->db, e);
+  struct txn *tx = nsdb_begin (db->db);
   post_op (db);
 
   if (tx == NULL) {
     i_cfree (db->reliable_mem, var_working);
-    return error_trace (e);
+    return error_trace (&db->db->e);
 
   } else {
     db->tx          = tx;
@@ -171,11 +171,11 @@ ns_db_rollback_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = nsdb_rollback (db->db, db->tx, e);
+  err_t ret = nsdb_rollback (db->db, db->tx);
   post_op (db);
 
   if (ret < 0) {
-    return error_trace (e);
+    return error_trace (&db->db->e);
 
   } else {
     i_cfree (db->reliable_mem, db->var_working);
@@ -198,12 +198,12 @@ ns_db_commit_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = nsdb_commit (db->db, db->tx, e);
+  err_t ret = nsdb_commit (db->db, db->tx);
   post_op (db);
 
   if (ret < 0) {
     i_cfree (db->reliable_mem, new_committed);
-    return error_trace (e);
+    return error_trace (&db->db->e);
 
   } else {
     // Transfer state
@@ -400,11 +400,22 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
   // Do operation
   pre_op (db);
   sb_size ret;
+
   WITH_AUTO_TXN (
       ret,
       db->db,
       db->tx,
-      numstore_insert (db->db->p, db->tx, strfcstr (cur), len, ofst, &alloc, NULL, &stream, e),
+      numstore_insert_from_name (
+          db->db->p,
+          db->tx,
+          strfcstr (cur),
+          len,
+          ofst,
+          &alloc,
+          NULL,
+          &stream,
+          e
+      ),
       e
   );
   post_op (db);
@@ -440,7 +451,16 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
       ret,
       db->db,
       db->tx,
-      numstore_remove (db->db->p, db->tx, strfcstr (cur), usfrms (str), &alloc, NULL, &stream, e),
+      numstore_remove_from_name (
+          db->db->p,
+          db->tx,
+          strfcstr (cur),
+          usfrms (str),
+          &alloc,
+          NULL,
+          &stream,
+          e
+      ),
       e
   );
   post_op (db);
@@ -475,7 +495,16 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
       ret,
       db->db,
       db->tx,
-      numstore_read (db->db->p, db->tx, strfcstr (cur), usfrms (str), &alloc, NULL, &stream, e),
+      numstore_read_from_name (
+          db->db->p,
+          db->tx,
+          strfcstr (cur),
+          usfrms (str),
+          &alloc,
+          NULL,
+          &stream,
+          e
+      ),
       e
   );
   post_op (db);
@@ -510,7 +539,16 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
       ret,
       db->db,
       db->tx,
-      numstore_write (db->db->p, db->tx, strfcstr (cur), usfrms (str), &alloc, NULL, &stream, e),
+      numstore_write_from_name (
+          db->db->p,
+          db->tx,
+          strfcstr (cur),
+          usfrms (str),
+          &alloc,
+          NULL,
+          &stream,
+          e
+      ),
       e
   );
   post_op (db);

@@ -17,6 +17,30 @@
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 void *
+numstore_remove_malloc_from_name (
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,  // Name of the variable
+    struct user_stride  ustr,  // Stride to remove
+    struct arena_alloc *alloc, // Allocator for variable in get
+    struct variable    *var,   // If not null - save the variable
+    b_size             *dlen,  // Output stream (can be null)
+    struct i_mem        mem,   // Where to allocate on
+    error              *e
+)
+{
+  WITH_OPT_VARIABLE_PTR (
+      p,
+      tx,
+      name,
+      alloc,
+      var,
+      e,
+      numstore_remove_malloc (p, tx, var, ustr, dlen, mem, e)
+  );
+}
+
+void *
 numstore_remove_malloc (
     struct pager      *p,
     struct txn        *tx,

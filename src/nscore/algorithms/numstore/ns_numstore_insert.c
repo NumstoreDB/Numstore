@@ -12,9 +12,26 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
+
+sb_size
+numstore_insert_from_name (
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       vname,  // Name of the variable
+    b_size              ofst,   // Offset (in elements)
+    b_size              len,    // Length of the data
+    struct arena_alloc *valloc, // Where to allocate the variable
+    struct variable    *var,    // If not null - save the variable
+    struct stream      *src,    // Input stream
+    error              *e
+)
+{
+  WITH_OPT_VARIABLE (p, tx, vname, valloc, var, e, numstore_insert (p, tx, var, ofst, len, src, e));
+}
 
 sb_size
 numstore_insert (

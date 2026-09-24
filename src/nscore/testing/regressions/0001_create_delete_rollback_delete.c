@@ -13,15 +13,8 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
-#include "core/os/ns_filesystem.h"
-#include "core/os/ns_memory.h"
-#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/types/ns_types.h"
-#include "nscore/variables/ns_variables.h"
-#include "numstore/ns_numstore_internal.h"
 #include "numstore/numstore.h"
 
 #ifdef TESTING
@@ -34,45 +27,37 @@ TEST (0001_create_delete_rollback_delete)
   sb_size res;
 
   // Clean re open database
-  test_assert_int_equal (numstore_cleanup ("test"), 0);
-  numstore_t *db = numstore_open ("test");
+  test_assert_int_equal (ns_cleanup ("test"), 0);
+  nsdb_t *db = ns_open ("test");
   test_assert (db != NULL);
 
   // Create the variable
-  res = _numstore_fexecute_simple_with_data (
-      db,
-      NULL,
-      NULL,
-      0,
-      "create n8Si3C union { tok6UW u32, YGhr cf128, LDzpWVm f16 }"
-  );
+  res = ns_exec (db, NULL, "create n8Si3C union { tok6UW u32, YGhr cf128, LDzpWVm f16 }");
   test_assert_int_equal (res, 0);
 
   // The culprit txn: delete the variable, then roll it back
-  struct txn *tx = numstore_begin (db);
+  struct txn *tx = nsdb_begin (db);
   test_assert (tx != NULL);
 
-  res = _numstore_fexecute_simple_with_data (db, tx, NULL, 0, "delete n8Si3C");
+  res = ns_exec (db, tx, "delete n8Si3C");
   test_assert_int_equal (res, 0);
 
-  test_assert_int_equal (numstore_rollback (db, tx), 0);
+  test_assert_int_equal (nsdb_rollback (db, tx), 0);
 
   // Do something (seemingly unrelated)
-  tx = numstore_begin (db);
+  tx = nsdb_begin (db);
   test_assert (tx != NULL);
 
-  res = _numstore_fexecute_simple_with_data (
+  res = ns_exec (
       db,
       tx,
-      NULL,
-      0,
       "create yJIF "
       "struct { sQf8W7t6 struct { ukc7C4 cf256, CHbmDuiD6 union { aVmHRo "
       "cf64, FeVvpnN u64 } } }"
   );
   test_assert_int_equal (res, 0);
 
-  test_assert_int_equal (numstore_commit (db, tx), 0);
+  test_assert_int_equal (nsdb_commit (db, tx), 0);
 
   // Delete the variable again
   //
@@ -82,10 +67,10 @@ TEST (0001_create_delete_rollback_delete)
   //          to the page being released, not the fsm - this came from a
   //          refactor - I used to do that
   //          also it never included the bit in the log
-  res = _numstore_fexecute_simple_with_data (db, NULL, NULL, 0, "delete n8Si3C");
+  res = ns_exec (db, NULL, "delete n8Si3C");
   test_assert_int_equal (res, 0);
 
   // Close database
-  test_assert_int_equal (numstore_close (db), 0);
+  test_assert_int_equal (ns_close (db), 0);
 }
 #endif
