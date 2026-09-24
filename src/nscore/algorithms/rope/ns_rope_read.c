@@ -29,7 +29,7 @@
 #include <stddef.h>
 
 /******************************************************************************
- * SECTION: ns_read
+ * SECTION: ns_rope_read
  * ----------------------------------------------------------------------------
  * @brief Main read implementation
  ******************************************************************************/
@@ -230,7 +230,7 @@ ns_read_backward (const struct ns_read_params params, error *e)
 }
 
 sb_size
-ns_read (const struct ns_read_params params, error *e)
+ns_rope_read (const struct ns_read_params params, error *e)
 {
   if (params.stride > 0) {
     return ns_read_forward (params, e);

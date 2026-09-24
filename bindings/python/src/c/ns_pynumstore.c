@@ -16,7 +16,7 @@
 #define PYNUMSTORE_MODULE_MAIN
 #include "ns_pynumstore.h"
 
-numstore_t *
+nsdb_t *
 _unwrap_db (PyObject *capsule)
 {
   // Ensure that the object is a capsule, or else return NULL
@@ -38,10 +38,10 @@ _unwrap_db (PyObject *capsule)
   }
 
   // Return the database
-  return (numstore_t *)ptr;
+  return (nsdb_t *)ptr;
 }
 
-ns_txn_t *
+txn_t *
 _unwrap_txn (PyObject *txn_capsule)
 {
   // Ensure that the object is a capsule, or else return NULL
@@ -63,7 +63,7 @@ _unwrap_txn (PyObject *txn_capsule)
   }
 
   // Return the transaction object
-  return (ns_txn_t *)ptr;
+  return (txn_t *)ptr;
 }
 
 void
@@ -76,23 +76,23 @@ _nspy_release_db (PyObject *capsule)
   }
 
   // Grab the database handle
-  numstore_t *ns = _unwrap_db (capsule);
+  nsdb_t *ns = _unwrap_db (capsule);
   if (ns == NULL) {
     return;
   }
 
   // Close the database
-  if (numstore_close (ns) < 0) {
+  if (ns_close (ns) < 0) {
     PyErr_SetString (PyExc_RuntimeError, "Failed to close database");
   }
 }
 
 void
-_pyns_set_error_from_nsdb (numstore_t *ns)
+_pyns_set_error_from_nsdb (nsdb_t *ns)
 {
   // A failing call always leaves an error behind, but never trust that
   // enough to hand PyErr_SetString a NULL - it segfaults on one.
-  const char *err = numstore_strerror (ns);
+  const char *err = ns_strerror (ns);
   PyErr_SetString (PyExc_RuntimeError, err ? err : "numstore operation failed");
 }
 
@@ -100,7 +100,9 @@ void
 _pyns_set_error_from_e (PyObject *exc_type, error *e)
 {
   ASSERT (e->cause_code < 0);
-  PyErr_SetString (exc_type, (e->cause_msg != NULL) ? e->cause_msg : "numstore operation failed");
+  // cause_msg is an inline buffer now, so an empty message - not a NULL one -
+  // is what "no detail" looks like.
+  PyErr_SetString (exc_type, (e->cmlen > 0) ? e->cause_msg : "numstore operation failed");
 }
 
 Py_ssize_t

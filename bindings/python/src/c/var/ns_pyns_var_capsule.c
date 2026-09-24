@@ -24,7 +24,7 @@
 
 #include <stdlib.h>
 
-numstore_var_t *
+nsdb_var_t *
 _unwrap_var (PyObject *capsule)
 {
   // Ensure that the object is a capsule, or else return NULL
@@ -40,7 +40,7 @@ _unwrap_var (PyObject *capsule)
   }
 
   // Return the variable
-  return (numstore_var_t *)ptr;
+  return (nsdb_var_t *)ptr;
 }
 
 // The only place a captured variable is ever released
@@ -52,43 +52,48 @@ pyns_var_capsule_destructor (PyObject *capsule)
     PyErr_Clear ();
     return;
   }
-  numstore_var_free ((numstore_var_t *)ptr);
+  ns_var_free ((nsdb_var_t *)ptr);
 }
 
 PyObject *
-pyns_var_capsule_new (numstore_var_t *var)
+pyns_var_capsule_new (nsdb_var_t *var)
 {
   ASSERT (var);
 
   PyObject *capsule = PyCapsule_New (var, VAR_CAPSULE, pyns_var_capsule_destructor);
   if (capsule == NULL) {
     // Ownership never transferred, so the variable is still ours to release
-    numstore_var_free (var);
+    ns_var_free (var);
     return NULL;
   }
   return capsule;
 }
 
 PyObject *
-pyns_var_string (numstore_var_t *var, pyns_var_render_fn render, const char *what)
+pyns_type_string (struct type *t)
 {
-  // Ask for the buffer size first - neither a name nor a struct/union type
-  // has a bound worth hard coding here.
-  sb_size needed = render (var, NULL, 0);
-  if (needed < 0) {
-    PyErr_Format (PyExc_RuntimeError, "variable has no %s", what);
+  if (t == NULL) {
+    PyErr_SetString (PyExc_RuntimeError, "variable has no type");
     return NULL;
   }
 
-  char *buf = malloc ((size_t)needed);
+  // Ask for the buffer size first - a struct/union type has no bound worth
+  // hard coding here.
+  i32 needed = type_snprintf (NULL, 0, t);
+  if (needed < 0) {
+    PyErr_SetString (PyExc_RuntimeError, "failed to measure variable type");
+    return NULL;
+  }
+
+  char *buf = malloc ((size_t)needed + 1);
   if (buf == NULL) {
     return PyErr_NoMemory ();
   }
 
-  sb_size len = render (var, buf, (size_t)needed);
+  i32 len = type_snprintf (buf, (u32)needed + 1, t);
   if (len < 0) {
     free (buf);
-    PyErr_Format (PyExc_RuntimeError, "failed to render variable %s", what);
+    PyErr_SetString (PyExc_RuntimeError, "failed to render variable type");
     return NULL;
   }
 

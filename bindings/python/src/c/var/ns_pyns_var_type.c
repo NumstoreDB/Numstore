@@ -18,9 +18,9 @@
 PyObject *
 pyns_var_type (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  numstore_var_t *var = _unwrap_var (arg);
+  nsdb_var_t *var = _unwrap_var (arg);
   if (var == NULL) {
     return NULL;
   }
-  return pyns_var_string (var, numstore_var_type, "type");
+  return pyns_type_string (nsdb_var_type (var));
 }

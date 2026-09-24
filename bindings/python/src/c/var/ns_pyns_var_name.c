@@ -18,9 +18,10 @@
 PyObject *
 pyns_var_name (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  numstore_var_t *var = _unwrap_var (arg);
+  nsdb_var_t *var = _unwrap_var (arg);
   if (var == NULL) {
     return NULL;
   }
-  return pyns_var_string (var, numstore_var_name, "name");
+  struct string name = nsdb_var_name (var);
+  return PyUnicode_FromStringAndSize (name.data, (Py_ssize_t)name.len);
 }

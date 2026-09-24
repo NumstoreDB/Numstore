@@ -29,13 +29,13 @@ pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
   }
 
   // Fetch the database
-  numstore_t *db = _unwrap_db (_db);
+  nsdb_t *db = _unwrap_db (_db);
   if (db == NULL) {
     return NULL;
   }
 
   // Fetch the transaction
-  ns_txn_t *txn = NULL;
+  txn_t *txn = NULL;
   if (_txn != Py_None) {
     txn = _unwrap_txn (_txn);
     if (txn == NULL) {

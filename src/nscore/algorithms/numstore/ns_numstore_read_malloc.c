@@ -79,7 +79,7 @@ numstore_read_malloc (
   stream_obuf_init (&stream, &octx, buffer, stride.nelems * tsize);
 
   // READ
-  sb_size ret = ns_read (
+  sb_size ret = ns_rope_read (
       (struct ns_read_params){
           .p      = p,
           .dest   = &stream,

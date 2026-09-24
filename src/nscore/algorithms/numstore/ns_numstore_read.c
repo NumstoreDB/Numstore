@@ -59,7 +59,7 @@ numstore_read (
   }
 
   // READ
-  sb_size ret = ns_read (
+  sb_size ret = ns_rope_read (
       (struct ns_read_params){
           .p      = p,
           .dest   = dest,

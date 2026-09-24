@@ -33,7 +33,7 @@ get_bytes_from_nparray (PyObject *data_obj)
 }
 
 PyObject *
-pyns_execute_data_present (numstore_t *db, ns_txn_t *txn, char *query, PyObject *data_obj)
+pyns_execute_data_present (nsdb_t *db, txn_t *txn, char *query, PyObject *data_obj)
 {
   ASSERT (data_obj);
   ASSERT (data_obj != Py_None);
@@ -53,12 +53,8 @@ pyns_execute_data_present (numstore_t *db, ns_txn_t *txn, char *query, PyObject 
     return NULL;
   }
 
-  struct numstore_plan plan = {
-      .data = bytes,
-      .dlen = (b_size)nbytes,
-  };
-
-  sb_size ret = numstore_fexecute (db, txn, &plan, "%s", query);
+  // Data in hand means an insert/write - ns_write rejects anything else
+  sb_size ret = ns_write (db, txn, bytes, (b_size)nbytes, "%s", query);
   Py_DECREF (contig);
 
   if (ret < 0) {

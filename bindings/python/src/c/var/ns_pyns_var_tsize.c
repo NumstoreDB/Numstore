@@ -18,9 +18,11 @@
 PyObject *
 pyns_var_tsize (PyObject *Py_UNUSED (m), PyObject *arg)
 {
-  numstore_var_t *var = _unwrap_var (arg);
+  nsdb_var_t *var = _unwrap_var (arg);
   if (var == NULL) {
     return NULL;
   }
-  return PyLong_FromUnsignedLong ((unsigned long)numstore_var_tsize (var));
+  // The public API no longer exposes an element size directly - it comes
+  // off the variable's type.
+  return PyLong_FromUnsignedLong ((unsigned long)type_byte_size (nsdb_var_type (var)));
 }

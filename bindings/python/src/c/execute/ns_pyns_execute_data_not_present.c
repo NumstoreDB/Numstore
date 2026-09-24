@@ -12,9 +12,12 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
 #include "core/os/ns_memory.h"
 #include "ns_pynumstore.h"
+#include "nscore/compiler/ns_compiler.h"
 #include "nscore/variables/ns_variables.h"
 #include "numpy/ndarraytypes.h"
 #include "numstore/numstore.h"
@@ -84,41 +87,92 @@ pyns_wrap_owned_bytes (const struct type *dtype, void *data, b_size nelems)
   return arr;
 }
 
-PyObject *
-pyns_execute_data_not_present (numstore_t *db, ns_txn_t *txn, char *query)
+// The API no longer has one "execute anything" entry point: a query goes to
+// ns_exec, ns_get_var or ns_read_malloc depending on what it is. Compile it
+// once here purely to pick the branch - the chosen call compiles it again.
+static int
+pyns_query_type (const char *query, enum query_type *dest)
 {
-  // Ask for both outputs
-  struct numstore_plan plan = {
-      .data    = NULL,
-      .dlen    = 0,
-      .options = NSDB_PLAN_OPT_ALLOCATE_DATA | NSDB_PLAN_OPT_CAPTURE_VAR,
-      .var     = NULL,
-  };
+  struct query q;
+  error        e = error_create ();
 
-  // Do the execute
-  sb_size nelems = numstore_fexecute (db, txn, &plan, "%s", query);
-  if (nelems < 0) {
-    _pyns_set_error_from_nsdb (db);
+  ALLOC_INIT (temp);
+  if (compile_query (&q, query, &temp, &e) < 0) {
+    ALLOC_CLOSE (temp);
+    _pyns_set_error_from_e (PyExc_RuntimeError, &e);
+    return -1;
+  }
+  *dest = q.type;
+  ALLOC_CLOSE (temp);
+
+  return 0;
+}
+
+PyObject *
+pyns_execute_data_not_present (nsdb_t *db, txn_t *txn, char *query)
+{
+  enum query_type qt;
+  if (pyns_query_type (query, &qt) < 0) {
     return NULL;
   }
 
-  if (plan.data != NULL) {
-    // Query returned data - we should also have touched a variable
-    ASSERT (plan.var);
+  switch (qt) {
+      // Readable queries - the bytes come from ns_read_malloc, and the type to
+      // hand numpy comes off the variable the query touches.
+    case QT_READ:
+    case QT_REMOVE: {
+      nsdb_var_t *var = ns_get_var (db, txn, "%s", query);
+      if (var == NULL) {
+        _pyns_set_error_from_nsdb (db);
+        return NULL;
+      }
 
-    // Take ownership of plan.data
-    PyObject *arr = pyns_wrap_owned_bytes (plan.var->var.dtype, plan.data, (b_size)nelems);
-    numstore_var_free (plan.var);
-    return arr;
-  } else if (plan.var != NULL && plan.var->var.dtype != NULL) {
-    // Query returned a variable
-    return pyns_var_capsule_new (plan.var);
-  } else {
-    // Query resolved no variable (delete, exit) - the capture is an empty
-    // shell that no accessor can read, so it goes no further than here
-    if (plan.var != NULL) {
-      numstore_var_free (plan.var);
+      b_size nelems = 0;
+      void  *data   = ns_read_malloc (db, txn, &nelems, "%s", query);
+      if (data == NULL) {
+        ns_var_free (var);
+        _pyns_set_error_from_nsdb (db);
+        return NULL;
+      }
+
+      // Takes ownership of data
+      PyObject *arr = pyns_wrap_owned_bytes (nsdb_var_type (var), data, nelems);
+      ns_var_free (var);
+      return arr;
     }
-    Py_RETURN_NONE;
+
+      // Resolves a variable without executing anything
+    case QT_GET: {
+      nsdb_var_t *var = ns_get_var (db, txn, "%s", query);
+      if (var == NULL) {
+        _pyns_set_error_from_nsdb (db);
+        return NULL;
+      }
+      return pyns_var_capsule_new (var);
+    }
+
+      // Runs to completion and yields no variable of its own
+    case QT_CREATE:
+    case QT_DELETE: {
+      if (ns_exec (db, txn, "%s", query) < 0) {
+        _pyns_set_error_from_nsdb (db);
+        return NULL;
+      }
+      Py_RETURN_NONE;
+    }
+
+      // Writable queries have nothing to write without a data argument
+    case QT_INSERT:
+    case QT_WRITE: {
+      PyErr_SetString (PyExc_ValueError, "insert/write queries require a data argument");
+      return NULL;
+    }
+
+      // Console-only queries carry nothing back into Python
+    case QT_EXIT:
+    case QT_HELP:
+    default: {
+      Py_RETURN_NONE;
+    }
   }
 }

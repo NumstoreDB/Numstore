@@ -25,13 +25,13 @@ PyObject *
 pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 {
   // Get the wrapped database
-  numstore_t *ns = _unwrap_db (arg);
+  nsdb_t *ns = _unwrap_db (arg);
   if (!ns) {
     return NULL;
   }
 
   // Begin transaction
-  ns_txn_t *txn = numstore_begin (ns);
+  txn_t *txn = ns_begin (ns);
   if (txn == NULL) {
     _pyns_set_error_from_nsdb (ns);
     return NULL;

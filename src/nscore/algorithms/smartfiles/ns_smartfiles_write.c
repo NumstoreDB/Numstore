@@ -84,13 +84,13 @@ smartfiles_write (
       .stride = stride,
       .nelem  = write_nelem,
   };
-  sb_size ret = ns_write (wparams, e);
+  sb_size ret = ns_rope_write (wparams, e);
   if (ret < 0) {
     return error_trace (e);
   }
 
   // INSERT REMAINDER
-  // src is sequential: ns_write consumed the first write_nelem elements,
+  // src is sequential: ns_rope_write consumed the first write_nelem elements,
   // so ns_insert continues reading from where it left off.
   if (insert_nelem > 0) {
     struct ns_insert_params iparams = {
