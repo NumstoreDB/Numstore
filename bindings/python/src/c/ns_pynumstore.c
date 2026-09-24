@@ -90,16 +90,17 @@ _nspy_release_db (PyObject *capsule)
 void
 _pyns_set_error_from_nsdb (numstore_t *ns)
 {
+  // A failing call always leaves an error behind, but never trust that
+  // enough to hand PyErr_SetString a NULL - it segfaults on one.
   const char *err = numstore_strerror (ns);
-  ASSERT (err);
-  PyErr_SetString (PyExc_RuntimeError, err);
+  PyErr_SetString (PyExc_RuntimeError, err ? err : "numstore operation failed");
 }
 
 void
-_pyns_set_error_from_e (error *e)
+_pyns_set_error_from_e (PyObject *exc_type, error *e)
 {
   ASSERT (e->cause_code < 0);
-  PyErr_SetString (PyExc_RuntimeError, e->cause_msg);
+  PyErr_SetString (exc_type, (e->cause_msg != NULL) ? e->cause_msg : "numstore operation failed");
 }
 
 Py_ssize_t
@@ -114,6 +115,7 @@ elsize (PyArray_Descr *type)
 
 const char         DB_CAPSULE[]  = "numstore.db";
 const char         TXN_CAPSULE[] = "numstore.txn";
+const char         VAR_CAPSULE[] = "numstore.var";
 
 char               TXN_CLOSED_SENTINEL;
 char               DB_CLOSED_SENTINEL;
@@ -166,7 +168,33 @@ static PyMethodDef pynumstore_methods[] = {
         "pyns_execute",
         pyns_execute,
         METH_VARARGS,
-        "var_create(db, txn_or_none, name, type_str) -> None",
+        "pyns_execute(db, txn_or_none, query, data) -> int | array | var | None",
+    },
+
+    // Variables
+    {
+        "pyns_var_length",
+        pyns_var_length,
+        METH_O,
+        "pyns_var_length(var) -> int",
+    },
+    {
+        "pyns_var_tsize",
+        pyns_var_tsize,
+        METH_O,
+        "pyns_var_tsize(var) -> int",
+    },
+    {
+        "pyns_var_type",
+        pyns_var_type,
+        METH_O,
+        "pyns_var_type(var) -> str",
+    },
+    {
+        "pyns_var_name",
+        pyns_var_name,
+        METH_O,
+        "pyns_var_name(var) -> str",
     },
 
     // End
