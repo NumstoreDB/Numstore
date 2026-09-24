@@ -119,7 +119,7 @@ struct ns_plan *ns_plan_create (struct nsdb *db, const char *query);
 void ns_plan_free (struct nsdb *db, struct ns_plan *plan);
 
 // Execute the plan
-err_t ns_plan_execute (struct ns_plan *ns, struct txn *tx);
+sb_size ns_plan_execute (struct ns_plan *ns, struct txn *tx);
 struct nsdb_var *ns_plan_get_var (struct ns_plan *st, struct txn *tx);
 sb_size ns_plan_read (struct ns_plan *st, struct txn *tx, void *dest, b_size dlen);
 void *ns_plan_read_malloc (struct ns_plan *st, struct txn *tx, b_size *dlen);

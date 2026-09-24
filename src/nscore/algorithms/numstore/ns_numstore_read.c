@@ -16,6 +16,21 @@
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 
 sb_size
+numstore_read_from_name (
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,   // Name of the variable
+    struct user_stride  ustr,   // Stride to read
+    struct arena_alloc *valloc, // Allocator for variable in get
+    struct variable    *var,    // If not null - save the variable
+    struct stream      *dest,   // Output stream
+    error              *e
+)
+{
+  WITH_OPT_VARIABLE (p, tx, name, valloc, var, e, numstore_read (p, tx, var, ustr, dest, e));
+}
+
+sb_size
 numstore_read (
     struct pager      *p,
     struct txn        *tx,

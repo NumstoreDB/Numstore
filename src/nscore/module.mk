@@ -47,6 +47,11 @@ LIBNS_SRCS += src/nscore/testing/regressions/0001_create_delete_rollback_delete.
 LIBNS_SRCS += src/nscore/testing/regressions/0002_create_crash_close_delete.c
 LIBNS_SRCS += src/nscore/testing/regressions/0003_rollback_invald_wal_header.c
 
+LIBNS_SRCS += src/nscore/testing/numstore/0001_insert_txn.c
+LIBNS_SRCS += src/nscore/testing/numstore/0002_write_txn.c
+LIBNS_SRCS += src/nscore/testing/numstore/0003_create_txn.c
+LIBNS_SRCS += src/nscore/testing/numstore/0004_delete_txn.c
+
 # Compiler
 LIBNS_SRCS += src/nscore/compiler/ns_lexer.c
 LIBNS_SRCS += src/nscore/compiler/ns_tokens.c
@@ -68,11 +73,6 @@ LIBNS_SRCS += src/nscore/lock_table/ns_lock_table.c
 # NSDB
 LIBNS_SRCS += src/nscore/nsdb/ns_nsdb.c
 LIBNS_SRCS += src/nscore/nsdb/ns_nsdb_cli.c
-LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_execute_on_buffer.c
-LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_execute_malloc.c
-LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_execute_in_console.c
-LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_get_and_print.c
-LIBNS_SRCS += src/nscore/nsdb/execute/ns_nsdb_read_and_print.c
 
 # Page
 LIBNS_SRCS += src/nscore/page/ns_page.c

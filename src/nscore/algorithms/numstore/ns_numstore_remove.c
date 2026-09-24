@@ -17,6 +17,21 @@
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 sb_size
+numstore_remove_from_name (
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,  // Name of the variable
+    struct user_stride  ustr,  // Stride to remove
+    struct arena_alloc *alloc, // Allocator for variable in get
+    struct variable    *var,   // If not null - save the variable
+    struct stream      *dest,  // Output stream (can be null)
+    error              *e
+)
+{
+  WITH_OPT_VARIABLE (p, tx, name, alloc, var, e, numstore_remove (p, tx, var, ustr, dest, e));
+}
+
+sb_size
 numstore_remove (
     struct pager      *p,
     struct txn        *tx,

@@ -22,7 +22,6 @@
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/nsdb/ns_nsdb_execute.h"
 #include "nscore/types/ns_query.h"
 
 #include <inttypes.h>
@@ -192,7 +191,11 @@ nscli_step_execute (struct nscli *cli)
   }
 
   // Execute the query
-  if (nsdb_execute_in_console (cli->db, &q, &cli->step_alloc, &cli->e) < 0) {
+  struct txn *tx = NULL;
+  err_t       res;
+  WITH_AUTO_TXN (res, cli->db, tx, nsdb_console (cli->db, tx, cli->stmt.data), &cli->e);
+
+  if (res < 0) {
     ret = EXE_ERROR;
     goto theend;
   }

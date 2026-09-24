@@ -17,6 +17,30 @@
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 
 void *
+numstore_read_malloc_from_name (
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,   // Name of the variable
+    struct user_stride  ustr,   // Stride to read
+    struct arena_alloc *valloc, // Allocator for variable in get
+    struct variable    *var,    // If not null - save the variable
+    b_size             *dlen,   // If not null - save output len
+    struct i_mem        mem,    // Where to allocate on
+    error              *e
+)
+{
+  WITH_OPT_VARIABLE_PTR (
+      p,
+      tx,
+      name,
+      valloc,
+      var,
+      e,
+      numstore_read_malloc (p, tx, var, ustr, dlen, mem, e)
+  );
+}
+
+void *
 numstore_read_malloc (
     struct pager      *p,
     struct txn        *tx,

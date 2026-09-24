@@ -12,15 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_error.h"
+#include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
-#include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
-#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
-#include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/types/ns_types.h"
-#include "nscore/variables/ns_variables.h"
-#include "numstore/ns_numstore_internal.h"
 #include "numstore/numstore.h"
 
 #ifdef TESTING
@@ -35,41 +29,31 @@ TEST (0003_rollback_invalid_wal_header)
   struct txn *tx;
 
   // Clean re open database
-  test_assert_int_equal (numstore_cleanup ("test"), 0);
-  numstore_t *db = numstore_open ("test");
+  test_assert_int_equal (ns_cleanup ("test"), 0);
+  nsdb_t *db = ns_open ("test");
   test_assert (db != NULL);
 
   // TXN 1 (auto): create the variable
-  res = _numstore_fexecute_simple_with_data (db, NULL, NULL, 0, "create testvar u32");
+  res = ns_exec (db, NULL, "create testvar u32");
   test_assert_int_equal (res, 0);
 
   // TXN 2: empty, rolled back
-  tx = numstore_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
-  test_assert_int_equal (numstore_rollback (db, tx), 0);
+  test_assert_int_equal (ns_rollback (db, tx), 0);
 
   // TXN 3: empty, committed
-  tx = numstore_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
-  test_assert_int_equal (numstore_commit (db, tx), 0);
+  test_assert_int_equal (ns_commit (db, tx), 0);
 
   // TXN 4 (auto): INSERT ofst=0 nelem=53797
   {
     u32 *data = i_malloc (mem, 53797 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
-    for (int i = 0; i < 53797; ++i) {
-      data[i] = (u32)randu32 ();
-    }
+    rand_bytes (data, 53797 * sizeof (u32));
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        NULL,
-        data,
-        53797 * sizeof (u32),
-        "insert testvar %d %d",
-        0,
-        53797
-    );
+    res = ns_write (db, NULL, data, 53797 * sizeof (u32), "insert testvar %d %d", 0, 53797);
     test_assert_int_equal (res, 53797);
 
     i_free (mem, data);
@@ -82,32 +66,20 @@ TEST (0003_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        NULL,
-        data,
-        0,
-        "write testvar[23070:54622:7888]"
-    );
+    res = ns_write (db, NULL, data, 4 * sizeof (u32), "write testvar[23070:54622:7888]");
     test_assert_int_equal (res, 4);
   }
 
   // TXN 6: REMOVE start=5512 stride=13648 stop=32808 nelems=2 -> COMMIT
-  tx = numstore_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
   {
     u32 removed[2];
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        tx,
-        removed,
-        0,
-        "remove testvar[5512:32808:13648]"
-    );
+    res = ns_read (db, tx, removed, 2 * sizeof (u32), "remove testvar[5512:32808:13648]");
     test_assert_int_equal (res, 2);
   }
-  test_assert_int_equal (numstore_commit (db, tx), 0);
+  test_assert_int_equal (ns_commit (db, tx), 0);
 
   // TXN 7 (auto): WRITE start=50236 stride=283 stop=51085 nelems=3
   {
@@ -116,26 +88,20 @@ TEST (0003_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
 
-    res = _numstore_fexecute_simple_with_data (db, NULL, data, 0, "write testvar[50236:51085:283]");
+    res = ns_write (db, NULL, data, 0, "write testvar[50236:51085:283]");
     test_assert_int_equal (res, 3);
   }
 
   // TXN 8: empty, rolled back
-  tx = numstore_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
-  test_assert_int_equal (numstore_rollback (db, tx), 0);
+  test_assert_int_equal (ns_rollback (db, tx), 0);
 
   // TXN 9 (auto): REMOVE start=51429 stride=1931 stop=55291 nelems=2
   {
     u32 removed[2];
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        NULL,
-        removed,
-        0,
-        "remove testvar[51429:55291:1931]"
-    );
+    res = ns_read (db, NULL, removed, 2 * sizeof (u32), "remove testvar[51429:55291:1931]");
     test_assert_int_equal (res, 2);
   }
 
@@ -143,7 +109,7 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 buf[2];
 
-    res = _numstore_fexecute_simple_with_data (db, NULL, buf, 0, "read testvar[1632:20878:9623]");
+    res = ns_read (db, NULL, buf, 2 * sizeof (u32), "read testvar[1632:20878:9623]");
     test_assert_int_equal (res, 2);
   }
 
@@ -151,24 +117,24 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 buf[2];
 
-    res = _numstore_fexecute_simple_with_data (db, NULL, buf, 0, "read testvar[48723:56795:4036]");
+    res = ns_read (db, NULL, buf, 2 * sizeof (u32), "read testvar[48723:56795:4036]");
     test_assert_int_equal (res, 2);
   }
 
   // TXN 12: empty, committed
-  tx = numstore_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
-  test_assert_int_equal (numstore_commit (db, tx), 0);
+  test_assert_int_equal (ns_commit (db, tx), 0);
 
   // TXN 13: many operations, then ROLLBACK triggers the invalid wal header bug
-  tx = numstore_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
 
   // WRITE start=49014 stride=3051 stop=52065 nelems=1
   {
     u32 data[1] = {(u32)randu32 ()};
 
-    res = _numstore_fexecute_simple_with_data (db, tx, data, 0, "write testvar[49014:52065:3051]");
+    res         = ns_read (db, tx, data, 1 * sizeof (u32), "write testvar[49014:52065:3051]");
     test_assert_int_equal (res, 1);
   }
 
@@ -176,19 +142,9 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 *data = i_malloc (mem, 73857 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
-    for (int i = 0; i < 73857; ++i) {
-      data[i] = (u32)randu32 ();
-    }
+    rand_bytes (data, 73857 * sizeof (u32));
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        tx,
-        data,
-        0,
-        "insert testvar %d %d",
-        22727,
-        73857
-    );
+    res = ns_write (db, tx, data, 73857 * sizeof (u32), "insert testvar %d %d", 22727, 73857);
     test_assert_int_equal (res, 73857);
 
     i_free (mem, data);
@@ -198,13 +154,7 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 removed[2];
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        tx,
-        removed,
-        0,
-        "remove testvar[5509:190235:92363]"
-    );
+    res = ns_read (db, tx, removed, 2 * sizeof (u32), "remove testvar[5509:190235:92363]");
     test_assert_int_equal (res, 2);
   }
 
@@ -212,19 +162,9 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 *data = i_malloc (mem, 15959 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
-    for (int i = 0; i < 15959; ++i) {
-      data[i] = (u32)randu32 ();
-    }
+    rand_bytes (data, 15959 * sizeof (u32));
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        tx,
-        data,
-        0,
-        "insert testvar %d %d",
-        8986,
-        15959
-    );
+    res = ns_write (db, tx, data, 15959 * sizeof (u32), "insert testvar %d %d", 8986, 15959);
     test_assert_int_equal (res, 15959);
 
     i_free (mem, data);
@@ -234,7 +174,7 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 buf[2];
 
-    res = _numstore_fexecute_simple_with_data (db, tx, buf, 0, "read testvar[118059:145411:13676]");
+    res = ns_read (db, tx, buf, 2 * sizeof (u32), "read testvar[118059:145411:13676]");
     test_assert_int_equal (res, 2);
   }
 
@@ -245,13 +185,7 @@ TEST (0003_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        tx,
-        data,
-        0,
-        "write testvar[58530:103424:22447]"
-    );
+    res = ns_write (db, tx, data, sizeof (data), "write testvar[58530:103424:22447]");
     test_assert_int_equal (res, 2);
   }
 
@@ -259,19 +193,9 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 *data = i_malloc (mem, 27045 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
-    for (int i = 0; i < 27045; ++i) {
-      data[i] = (u32)randu32 ();
-    }
+    rand_bytes (data, 27045 * sizeof (u32));
 
-    res = _numstore_fexecute_simple_with_data (
-        db,
-        tx,
-        data,
-        0,
-        "insert testvar %d %d",
-        29193,
-        27045
-    );
+    res = ns_write (db, tx, data, 27045 * sizeof (u32), "insert testvar %d %d", 29193, 27045);
     test_assert_int_equal (res, 27045);
 
     i_free (mem, data);
@@ -281,7 +205,7 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 buf[1];
 
-    res = _numstore_fexecute_simple_with_data (db, tx, buf, 0, "read testvar[39413:88949:49536]");
+    res = ns_read (db, tx, buf, sizeof (buf), "read testvar[39413:88949:49536]");
     test_assert_int_equal (res, 1);
   }
 
@@ -291,10 +215,10 @@ TEST (0003_rollback_invalid_wal_header)
   //      CAUSE:
   //          The threading logic was wrong - I just made the WAL single
   //          threaded instead
-  test_assert_int_equal (numstore_rollback (db, tx), 0);
+  test_assert_int_equal (ns_rollback (db, tx), 0);
 
   // Close database
-  test_assert_int_equal (numstore_close (db), 0);
+  test_assert_int_equal (ns_close (db), 0);
 }
 
 #endif

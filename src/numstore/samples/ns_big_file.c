@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 #include "numstore.h"
+#include "numstore/numstore.h"
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -42,27 +43,24 @@ main (int argc, char **argv)
   double          ns_result, naive_result;
   {
     // Set up - build the backing file first
-    numstore_cleanup ("sample_big_file");
-    numstore_t          *ns          = numstore_open ("sample_big_file");
+    ns_cleanup ("sample_big_file");
+    nsdb_t *ns = ns_open ("sample_big_file");
 
-    struct numstore_plan create_plan = {0};
-    numstore_fexecute (ns, NULL, &create_plan, "create example u8");
+    ns_exec (ns, NULL, "create example u8");
 
     // Do one big insert at offset 0
-    struct numstore_plan backing_plan = {.data = backing_data, .dlen = b_size};
-    numstore_fexecute (ns, NULL, &backing_plan, "insert example 0 %ld", b_size);
+    ns_write (ns, NULL, backing_data, b_size, "insert example 0 %ld", b_size);
 
     // Timed Section
     //    Inner insert is first class
-    struct numstore_plan insert_plan = {.data = insert_data, .dlen = i_size};
     {
       clock_gettime (CLOCK_MONOTONIC, &start);
-      numstore_fexecute (ns, NULL, &insert_plan, "insert example 10 %ld", i_size);
+      ns_write (ns, NULL, insert_data, i_size, "insert example 0 %ld", i_size);
       clock_gettime (CLOCK_MONOTONIC, &end);
       ns_result = elapsed_sec (start, end);
     }
 
-    numstore_close (ns);
+    ns_close (ns);
   }
 
   {
