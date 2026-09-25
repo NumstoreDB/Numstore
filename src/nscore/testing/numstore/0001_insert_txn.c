@@ -168,7 +168,10 @@ TEST (ns_insert_txn)
     test_assert_int_equal (ns_close (db), 0);
   }
 
-  TEST_CASE ("Each single element insert returns one and grows the variable length by one")
+  TEST_CASE (
+      "Each single element insert returns one and grows the variable length by "
+      "one"
+  )
   {
     sb_size res;
 

@@ -34,9 +34,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/******************************************************************************
- * SECTION: ns_find_var_page
- ******************************************************************************/
 /**
  * Simply finds or creates the new page where vname should exist.
  * If this is a create operation - then the page is found and

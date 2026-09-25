@@ -316,6 +316,12 @@ ns_remove (struct ns_remove_params *params, error *e)
           if (written < 0) {
             goto failed;
           }
+
+          // Limit the actual remove by the
+          // size of the buffer
+          // Equivalent to read doing
+          // read = stream_bwrite(..., read, ...);
+          next_amount = written;
         }
 
         s.read_idx += next_amount;

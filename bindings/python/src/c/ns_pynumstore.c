@@ -170,7 +170,8 @@ static PyMethodDef pynumstore_methods[] = {
         "pyns_execute",
         pyns_execute,
         METH_VARARGS,
-        "pyns_execute(db, txn_or_none, query, data) -> int | array | var | None",
+        "pyns_execute(db, txn_or_none, query, data) -> int | array | var | "
+        "None",
     },
 
     // Variables

@@ -43,7 +43,8 @@ pyns_commit (PyObject *Py_UNUSED (m), PyObject *args)
 
   // txn is now "closed"
   if (PyCapsule_SetPointer (_txn, &TXN_CLOSED_SENTINEL) < 0) {
-    // PyErr_Clear (); // TODO - this used to clear error, I don't think it should
+    // PyErr_Clear (); // TODO - this used to clear error, I don't think it
+    // should
     return NULL;
   }
 

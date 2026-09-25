@@ -44,17 +44,11 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
 
   // Variable doesn't exist - so create it
   if (err == ERR_VARIABLE_NE) {
-    e->cause_code                       = SUCCESS;
-    e->cmlen                            = 0;
+    e->cause_code = SUCCESS;
+    e->cmlen      = 0;
 
     // Create the variable
-    struct ns_var_create_params cparams = {
-        .p     = params->p,
-        .tx    = params->tx,
-        .vname = params->vname,
-        .type  = params->type,
-    };
-    if (ns_var_create (cparams, e)) {
+    if (ns_var_create (params->p, params->tx, params->vname, params->type, e)) {
       goto failed;
     }
 

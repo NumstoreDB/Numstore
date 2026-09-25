@@ -13,12 +13,10 @@
 /// limitations under the License.
 
 #include "core/ns_arena_alloc.h"
-#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/os/ns_memory.h"
 #include "ns_pynumstore.h"
 #include "nscore/compiler/ns_compiler.h"
-#include "nscore/variables/ns_variables.h"
 #include "numpy/ndarraytypes.h"
 #include "numstore/numstore.h"
 

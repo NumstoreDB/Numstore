@@ -18,6 +18,7 @@ LIBNS_SRCS += src/nscore/algorithms/var/ns_var_get.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_get_or_create.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_update.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_write_var_page.c
+LIBNS_SRCS += src/nscore/algorithms/var/ns_visit_variables.c
 
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_init_pager.c
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_get.c
@@ -159,6 +160,9 @@ $(BIN_DIR)/resolve_type_ref: src/nscore/compiler/tools/resolve_type_ref.c $(TARG
 $(BIN_DIR)/numstore_simtest: src/nscore/testing/simulation/main.c $(TARGET_LIB) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
 
+$(BIN_DIR)/print_all_vars: src/nscore/tools/print_all_vars.c $(TARGET_LIB) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+
 ALL += $(BIN_DIR)/nspprint
 ALL += $(BIN_DIR)/nsspprint
 ALL += $(BIN_DIR)/walpprint
@@ -167,3 +171,4 @@ ALL += $(BIN_DIR)/print_query
 ALL += $(BIN_DIR)/print_type
 ALL += $(BIN_DIR)/resolve_type_ref
 ALL += $(BIN_DIR)/numstore_simtest
+ALL += $(BIN_DIR)/print_all_vars

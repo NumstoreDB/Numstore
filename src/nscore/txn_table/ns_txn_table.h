@@ -63,9 +63,19 @@ struct txn
 
 DEFINE_DBG_ASSERT (struct txn, ns_txn, t, {
   ASSERT (t);
-  ASSERT (t->data.undo_next_lsn >= t->data.min_lsn);
+
+  /**
+   * min_lsn <= undo_next_lsn <= last_lsn
+   *
+   * or undo_next_lsn = 0
+   */
+
   ASSERT (t->data.last_lsn >= t->data.min_lsn);
   ASSERT (t->data.last_lsn >= t->data.undo_next_lsn);
+
+  if (t->data.undo_next_lsn != 0) {
+    ASSERT (t->data.undo_next_lsn >= t->data.min_lsn);
+  }
 })
 
 /*-----------------------------------------------------------------------------

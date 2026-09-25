@@ -89,14 +89,15 @@ smartfiles_remove (
   }
 
   // UPDATE VARIABLE
-  struct ns_var_update_params uparams = {
-      .p      = p,
-      .tx     = tx,
-      .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
-      .newpg  = rparams.root,
-      .nbytes = gparams.dest.nbytes - (ret * size),
-  };
-  if (ns_var_update (uparams, e)) {
+  if (ns_var_update_by_var_root (
+          p,
+          tx,
+          gparams.dest.var_root,
+          rparams.root,
+          gparams.dest.nbytes - (ret * size),
+          e
+      )
+      < 0) {
     return error_trace (e);
   }
 

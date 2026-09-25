@@ -581,6 +581,7 @@ TEST (opg)
   struct rand_op_params params = {
       .ref        = ref,
       .max_nelems = 64,
+      .max_tsize  = 4096,
       .enabled    = enabled,
       .mem        = mem,
   };

@@ -21,14 +21,7 @@ numstore_delete (struct pager *p, struct txn *tx, struct string name, bool if_ex
 {
   i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&name));
 
-  err_t err = ns_var_delete (
-      (struct ns_var_delete_params){
-          .p     = p,
-          .tx    = tx,
-          .vname = name,
-      },
-      e
-  );
+  err_t err = ns_var_delete (p, tx, name, e);
 
   // If the variable doesn't exist it's ok
   if (if_exists && err == ERR_VARIABLE_NE) {

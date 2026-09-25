@@ -213,7 +213,8 @@ TEST (ns_write_txn)
     res = ns_write (db, NULL, initial, 10 * sizeof (u32), "insert foo %d %d", 0, 10);
     test_assert_int_equal (res, 10);
 
-    // Overwrite a random element in a transaction and roll it back, over and over
+    // Overwrite a random element in a transaction and roll it back, over and
+    // over
     u32 *dst = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
     for (int i = 0; i < 10; ++i) {
       int idx = randu32 () % 10;

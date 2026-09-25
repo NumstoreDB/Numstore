@@ -1,5 +1,5 @@
 ############ Sources
-LIBNS_SRCS += src/smartfiles/ns_smartfiles.c
+LIBNS_SRCS += src/smartfiles/smartfiles.c
 LIBNS_SRCS += src/smartfiles/testing/ns_aries_tests.c
 LIBNS_SRCS += src/smartfiles/testing/ns_smfile_test_fixture.c
 LIBNS_SRCS += src/smartfiles/testing/ns_smfile_simulation.c

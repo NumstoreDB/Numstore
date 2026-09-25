@@ -14,7 +14,6 @@
 /// limitations under the License.
 
 #include "core/ns_stdtypes.h"
-#include "nscore/nsdb/ns_nsdb.h"
 #include "numstore/numstore.h"
 
 #ifdef TESTING
@@ -36,16 +35,16 @@ TEST (0001_create_delete_rollback_delete)
   test_assert_int_equal (res, 0);
 
   // The culprit txn: delete the variable, then roll it back
-  struct txn *tx = nsdb_begin (db);
+  struct txn *tx = ns_begin (db);
   test_assert (tx != NULL);
 
   res = ns_exec (db, tx, "delete n8Si3C");
   test_assert_int_equal (res, 0);
 
-  test_assert_int_equal (nsdb_rollback (db, tx), 0);
+  test_assert_int_equal (ns_rollback (db, tx), 0);
 
   // Do something (seemingly unrelated)
-  tx = nsdb_begin (db);
+  tx = ns_begin (db);
   test_assert (tx != NULL);
 
   res = ns_exec (
@@ -57,7 +56,7 @@ TEST (0001_create_delete_rollback_delete)
   );
   test_assert_int_equal (res, 0);
 
-  test_assert_int_equal (nsdb_commit (db, tx), 0);
+  test_assert_int_equal (ns_commit (db, tx), 0);
 
   // Delete the variable again
   //

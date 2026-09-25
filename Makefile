@@ -272,21 +272,21 @@ $(MD_DIR)/%.md: docs/%.md | $(MD_DIR)
 	cp $< $@
 
 MAN_DIR  := $(PKG_DIR)/share/man
-MAN_SRCS := $(shell find docs/man -name '*.md')
+# MAN_SRCS := $(shell find docs/man -name '*.md')
 
 PANDOC_MAN_ARGS := \
 	--from=markdown \
 	--to=man \
 	--standalone
 
-MAN_OUTPUTS := $(patsubst docs/man/%.md,$(MAN_DIR)/%,$(MAN_SRCS))
+# MAN_OUTPUTS := $(patsubst docs/man/%.md,$(MAN_DIR)/%,$(MAN_SRCS))
 
-$(MAN_DIR)/%: docs/man/%.md
-	mkdir -p $(dir $@)
-	PANDOC_SRC_REL=man/$(patsubst docs/man/%,%,$<) $(PANDOC) $(PANDOC_MAN_ARGS) --output $@ $<
+# $(MAN_DIR)/%: docs/man/%.md
+# 	mkdir -p $(dir $@)
+# 	PANDOC_SRC_REL=man/$(patsubst docs/man/%,%,$<) $(PANDOC) $(PANDOC_MAN_ARGS) --output $@ $<
 
 .PHONY: docs
-docs: $(HTML_OUTPUTS) $(MD_OUTPUTS) $(MAN_OUTPUTS)
+docs: $(HTML_OUTPUTS) $(MD_OUTPUTS) #  $(MAN_OUTPUTS)
 
 ############ Packaging Targets
 

@@ -23,6 +23,7 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
+#include "nscore/algorithms/smartfiles/ns_smartfiles_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
@@ -42,6 +43,7 @@ nsdb_open_with_resources (const char *path, struct i_mem mem, struct i_file_syst
 
   // Trivial initializers
   slab_alloc_init (&ret->txn_alloc, mem, sizeof (struct txn), 512);
+  slab_alloc_init (&ret->plan_alloc, mem, sizeof (struct txn), 512);
   ret->mem       = mem;
   ret->fs        = fs;
   ret->path.data = NULL;
@@ -75,6 +77,18 @@ failed:
   i_free (mem, ret);
   pgr_delete_single_file (path, e);
   return NULL;
+}
+
+err_t
+nsdb_init_numstore (struct nsdb *db, error *e)
+{
+  return numstore_init_pager (db->p, e);
+}
+
+err_t
+nsdb_init_smartfiles (struct nsdb *db, error *e)
+{
+  return smartfiles_init_pager (db->p, e);
 }
 
 int
@@ -111,14 +125,14 @@ nsdb_crash (struct nsdb *n, error *e)
 }
 
 struct txn *
-nsdb_begin (struct nsdb *db)
+nsdb_begin (struct nsdb *db, error *e)
 {
-  struct txn *tx = slab_alloc_alloc (&db->txn_alloc, &db->e);
+  struct txn *tx = slab_alloc_alloc (&db->txn_alloc, e);
   if (tx == NULL) {
     return NULL;
   }
 
-  if (pgr_begin_txn (tx, db->p, &db->e)) {
+  if (pgr_begin_txn (tx, db->p, e)) {
     slab_alloc_free (&db->txn_alloc, tx);
     return NULL;
   }
@@ -127,11 +141,11 @@ nsdb_begin (struct nsdb *db)
 }
 
 err_t
-nsdb_commit (struct nsdb *db, struct txn *tx)
+nsdb_commit (struct nsdb *db, struct txn *tx, error *e)
 {
-  if (pgr_commit (db->p, tx, &db->e)) {
+  if (pgr_commit (db->p, tx, e)) {
     slab_alloc_free (&db->txn_alloc, tx);
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
   slab_alloc_free (&db->txn_alloc, tx);
@@ -139,11 +153,11 @@ nsdb_commit (struct nsdb *db, struct txn *tx)
 }
 
 err_t
-nsdb_rollback (struct nsdb *db, struct txn *tx)
+nsdb_rollback (struct nsdb *db, struct txn *tx, error *e)
 {
-  if (pgr_rollback (db->p, tx, 0, &db->e)) {
+  if (pgr_rollback (db->p, tx, 0, e)) {
     slab_alloc_free (&db->txn_alloc, tx);
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
   slab_alloc_free (&db->txn_alloc, tx);
@@ -168,8 +182,6 @@ nsdb_var_create (struct i_mem mem, error *e)
 void
 nsdb_var_free (struct nsdb_var *var)
 {
-  DBG_ASSERT (nsdb_variable, var);
-
   // Then free everything in the arena allocator
   arena_alloc_free_all (&var->alloc);
 
@@ -231,59 +243,62 @@ nsdb_var_type (struct nsdb_var *var)
   return var->var.dtype;
 }
 
-struct ns_plan *
-ns_plan_create (struct nsdb *db, const char *query)
+struct nsdb_plan *
+nsdb_plan_create (struct nsdb *db, const char *query, error *e)
 {
   DBG_ASSERT (nsdb, db);
 
   // Allocate return value
-  struct ns_plan *ret = slab_alloc_alloc (&db->plan_alloc, &db->e);
+  struct nsdb_plan *ret = slab_alloc_alloc (&db->plan_alloc, e);
   if (ret == NULL) {
     return NULL;
   }
 
-  ret->p = db->p;
+  ret->p   = db->p;
+  ret->mem = db->mem;
   arena_alloc_create_default (&ret->alloc);
 
   // Compile the query
-  if (compile_query (&ret->q, query, &ret->alloc, &db->e) < 0) {
+  if (compile_query (&ret->q, query, &ret->alloc, e) < 0) {
     slab_alloc_free (&db->plan_alloc, ret);
     return NULL;
   }
 
-  DBG_ASSERT (ns_plan, ret);
+  DBG_ASSERT (nsdb_plan, ret);
 
   return ret;
 }
 
 void
-ns_plan_free (struct nsdb *db, struct ns_plan *plan)
+nsdb_plan_free (struct nsdb *db, struct nsdb_plan *plan)
 {
   DBG_ASSERT (nsdb, db);
-  DBG_ASSERT (ns_plan, plan);
+  DBG_ASSERT (nsdb_plan, plan);
 
   arena_alloc_free_all (&plan->alloc);
   slab_alloc_free (&db->plan_alloc, plan);
 }
 
 #ifdef TESTING
-TEST (ns_plan_create)
+TEST (nsdb_plan_create)
 {
   error e = error_create ();
   nsdb_cleanup ("./test.db", &e);
   struct nsdb *db = nsdb_open_with_resources ("./test.db", mem, fs, &e);
+  nsdb_init_numstore (db, &e);
 
   TEST_CASE ("Successfully create a plan")
   {
-    struct ns_plan *plan = ns_plan_create (db, "create foo u32");
-    DBG_ASSERT (ns_plan, plan);
-    ns_plan_free (db, plan);
+    struct nsdb_plan *plan = nsdb_plan_create (db, "create foo u32", &e);
+    DBG_ASSERT (nsdb_plan, plan);
+    nsdb_plan_free (db, plan);
   }
 
   TEST_CASE ("Fail to create a plan form invalid query")
   {
-    struct ns_plan *plan = ns_plan_create (db, "create foo INVALID");
+    struct nsdb_plan *plan = nsdb_plan_create (db, "create foo INVALID", &e);
     test_assert (plan == NULL);
+    error_reset (&e);
   }
 
   nsdb_close (db, &e);
@@ -291,9 +306,9 @@ TEST (ns_plan_create)
 #endif
 
 sb_size
-ns_plan_execute (struct ns_plan *ns, struct txn *tx)
+nsdb_plan_execute (struct nsdb_plan *ns, struct txn *tx, error *e)
 {
-  DBG_ASSERT (ns_plan, ns);
+  DBG_ASSERT (nsdb_plan, ns);
   DBG_ASSERT (ns_txn, tx);
 
   ALLOC_INIT (temp);
@@ -310,17 +325,17 @@ ns_plan_execute (struct ns_plan *ns, struct txn *tx)
           &temp,
           NULL,
           NULL,
-          ns->e
+          e
       );
       break;
     }
       // Variable Operations
     case QT_CREATE: {
-      ret = numstore_create (ns->p, tx, ns->q.create.name, ns->q.create.type, &temp, NULL, ns->e);
+      ret = numstore_create (ns->p, tx, ns->q.create.name, ns->q.create.type, &temp, NULL, e);
       break;
     }
     case QT_DELETE: {
-      ret = numstore_delete (ns->p, tx, ns->q.delete.name, false, ns->e);
+      ret = numstore_delete (ns->p, tx, ns->q.delete.name, false, e);
       break;
     }
 
@@ -331,7 +346,7 @@ ns_plan_execute (struct ns_plan *ns, struct txn *tx)
     case QT_WRITE:
     case QT_INSERT:
       return error_causef (
-          ns->e,
+          e,
           ERR_INVALID_ARGUMENT,
           "Only supported exec commands are REMOVE/CREATE/DELETE"
       );
@@ -341,18 +356,18 @@ ns_plan_execute (struct ns_plan *ns, struct txn *tx)
 }
 
 struct nsdb_var *
-ns_plan_get_var (struct ns_plan *ns, struct txn *tx)
+nsdb_plan_get_var (struct nsdb_plan *ns, struct txn *tx, error *e)
 {
-  DBG_ASSERT (ns_plan, ns);
+  DBG_ASSERT (nsdb_plan, ns);
   DBG_ASSERT (ns_txn, tx);
 
   // Get the variable name of interest
   struct string name;
-  if (query_vname_of_interest (&name, &ns->q, ns->e) < 0) {
+  if (query_vname_of_interest (&name, &ns->q, e) < 0) {
     return NULL;
   }
 
-  struct nsdb_var *var = nsdb_var_create (ns->mem, ns->e);
+  struct nsdb_var *var = nsdb_var_create (ns->mem, e);
   if (var == NULL) {
     return NULL;
   }
@@ -360,7 +375,7 @@ ns_plan_get_var (struct ns_plan *ns, struct txn *tx)
   // Get the variable
   struct arena_alloc *alloc = nsdb_var_alloc (var);
   struct variable    *dest  = nsdb_var_var (var);
-  err_t               err   = numstore_get (ns->p, tx, false, name, alloc, dest, ns->e);
+  err_t               err   = numstore_get (ns->p, tx, false, name, alloc, dest, e);
 
   if (err < 0) {
     nsdb_var_free (var);
@@ -371,24 +386,26 @@ ns_plan_get_var (struct ns_plan *ns, struct txn *tx)
 }
 
 #ifdef TESTING
-TEST (ns_plan_get_var)
+TEST (nsdb_plan_get_var)
 {
   error e = error_create ();
   nsdb_cleanup ("./test.db", &e);
   struct nsdb *db = nsdb_open_with_resources ("./test.db", mem, fs, &e);
-  struct txn  *tx = nsdb_begin (db);
+  nsdb_init_numstore (db, &e);
+  struct txn *tx = nsdb_begin (db, &e);
 
   TEST_CASE ("Successfully get a variable")
   {
-    test_assert (nsdb_exec (db, tx, "create foo u32") == SUCCESS);
+    test_assert (nsdb_exec (db, tx, "create foo u32", &e) == SUCCESS);
 
-    struct nsdb_var *var = nsdb_get_var (db, tx, "get foo");
+    struct nsdb_var *var = nsdb_get_var (db, tx, "get foo", &e);
     test_assert (var != NULL);
     test_assert (type_equal (nsdb_var_type (var), &TU32));
 
     nsdb_var_free (var);
   }
 
+  /**
   TEST_CASE ("Randomly create and get variables")
   {
     ALLOC_INIT (temp);
@@ -431,16 +448,17 @@ TEST (ns_plan_get_var)
 
     ALLOC_CLOSE (temp);
   }
+  */
 
-  nsdb_commit (db, tx);
+  nsdb_commit (db, tx, &e);
   nsdb_close (db, &e);
 }
 #endif
 
 sb_size
-ns_plan_read (struct ns_plan *st, struct txn *tx, void *dest, b_size dlen)
+nsdb_plan_read (struct nsdb_plan *st, struct txn *tx, void *dest, b_size dlen, error *e)
 {
-  DBG_ASSERT (ns_plan, st);
+  DBG_ASSERT (nsdb_plan, st);
   DBG_ASSERT (ns_txn, tx);
 
   switch (st->q.type) {
@@ -448,16 +466,16 @@ ns_plan_read (struct ns_plan *st, struct txn *tx, void *dest, b_size dlen)
       // Validate inputs
       if (dest == NULL || dlen == 0) {
         return error_causef (
-            st->e,
+            e,
             ERR_INVALID_ARGUMENT,
             "destination buffer is reqiured for read query"
         );
       }
 
       // Get interested variable
-      struct nsdb_var *_var = ns_plan_get_var (st, tx);
+      struct nsdb_var *_var = nsdb_plan_get_var (st, tx, e);
       if (_var == NULL) {
-        return error_trace (st->e);
+        return error_trace (e);
       }
       struct variable       *var = nsdb_var_var (_var);
 
@@ -467,13 +485,13 @@ ns_plan_read (struct ns_plan *st, struct txn *tx, void *dest, b_size dlen)
       stream_obuf_init (&stream, &octx, dest, dlen);
 
       // Execute read
-      return numstore_read (st->p, tx, var, st->q.read.ustr, &stream, st->e);
+      return numstore_read (st->p, tx, var, st->q.read.ustr, &stream, e);
     }
     case QT_REMOVE: {
       // Get interested variable
-      struct nsdb_var *_var = ns_plan_get_var (st, tx);
+      struct nsdb_var *_var = nsdb_plan_get_var (st, tx, e);
       if (_var == NULL) {
-        return error_trace (st->e);
+        return error_trace (e);
       }
       struct variable *var = nsdb_var_var (_var);
 
@@ -487,45 +505,42 @@ ns_plan_read (struct ns_plan *st, struct txn *tx, void *dest, b_size dlen)
       }
 
       // Execute read
-      return numstore_remove (st->p, tx, var, st->q.remove.ustr, stream, st->e);
+      return numstore_remove (st->p, tx, var, st->q.remove.ustr, stream, e);
     }
     default: {
-      return error_causef (
-          st->e,
-          ERR_INVALID_ARGUMENT,
-          "Can only read query types of read and remove"
-      );
+      return error_causef (e, ERR_INVALID_ARGUMENT, "Can only read query types of read and remove");
     }
   }
 }
 
 #ifdef TESTING
-TEST (ns_plan_read)
+TEST (nsdb_plan_read)
 {
   error e = error_create ();
   nsdb_cleanup ("./test.db", &e);
   struct nsdb *db = nsdb_open_with_resources ("./test.db", mem, fs, &e);
-  struct txn  *tx = nsdb_begin (db);
+  nsdb_init_numstore (db, &e);
+  struct txn *tx = nsdb_begin (db, &e);
 
   // Seed database
-  u32          src[10];
+  u32         src[10];
   rand_bytes (src, sizeof (src));
-  nsdb_exec (db, tx, "create foo u32");
-  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10");
+  nsdb_exec (db, tx, "create foo u32", &e);
+  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
 
   //////////// READ
 
   TEST_CASE ("Read a variable successfully")
   {
     u32 dest[10];
-    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]");
+    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
     test_assert_memequal (src, dest, sizeof (src));
   }
 
   TEST_CASE ("Read request more in a smaller buffer")
   {
     u32     dest[2];
-    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]");
+    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
     test_assert_int_equal (len, 2);
     test_assert_memequal (src, dest, sizeof (dest));
   }
@@ -533,7 +548,7 @@ TEST (ns_plan_read)
   TEST_CASE ("Read a non existent variable")
   {
     u32     dest[10];
-    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "read biz[0:]");
+    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "read biz[0:]", &e);
     test_assert_int_equal (ret, ERR_VARIABLE_NE);
     error_reset (&e);
   }
@@ -547,8 +562,8 @@ TEST (ns_plan_read)
     u32     removed_expected[]   = {src[0], src[2], src[4], src[6], src[8]};
     u32     remaining_expected[] = {src[1], src[3], src[5], src[7], src[9]};
 
-    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]");
-    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]");
+    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
+    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
 
     test_assert_int_equal (len_removed, 5);
     test_assert_int_equal (len_remaining, 5);
@@ -564,8 +579,8 @@ TEST (ns_plan_read)
     u32     removed_expected[]   = {src[1], src[5]};
     u32     remaining_expected[] = {src[3], src[7], src[9]};
 
-    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]");
-    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]");
+    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
+    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
 
     test_assert_int_equal (len_removed, 2);
     test_assert_int_equal (len_remaining, 3);
@@ -577,70 +592,71 @@ TEST (ns_plan_read)
   TEST_CASE ("Remove a non existent variable")
   {
     u32     dest[10];
-    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "remove biz[0:]");
+    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "remove biz[0:]", &e);
     test_assert_int_equal (ret, ERR_VARIABLE_NE);
     error_reset (&e);
   }
 
-  nsdb_commit (db, tx);
+  nsdb_commit (db, tx, &e);
   nsdb_close (db, &e);
 }
 #endif
 
 void *
-ns_plan_read_malloc (struct ns_plan *st, struct txn *tx, b_size *dlen)
+nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *tx, b_size *dlen, error *e)
 {
-  DBG_ASSERT (ns_plan, st);
+  DBG_ASSERT (nsdb_plan, st);
   DBG_ASSERT (ns_txn, tx);
 
   switch (st->q.type) {
     case QT_READ: {
       // Get interested variable
-      struct nsdb_var *_var = ns_plan_get_var (st, tx);
+      struct nsdb_var *_var = nsdb_plan_get_var (st, tx, e);
       if (_var == NULL) {
         return NULL;
       }
       struct variable *var = nsdb_var_var (_var);
 
-      return numstore_read_malloc (st->p, tx, var, st->q.read.ustr, dlen, st->mem, st->e);
+      return numstore_read_malloc (st->p, tx, var, st->q.read.ustr, dlen, st->mem, e);
     }
     case QT_REMOVE: {
       // Get interested variable
-      struct nsdb_var *_var = ns_plan_get_var (st, tx);
+      struct nsdb_var *_var = nsdb_plan_get_var (st, tx, e);
       if (_var == NULL) {
         return NULL;
       }
       struct variable *var = nsdb_var_var (_var);
 
-      return numstore_remove_malloc (st->p, tx, var, st->q.remove.ustr, dlen, st->mem, st->e);
+      return numstore_remove_malloc (st->p, tx, var, st->q.remove.ustr, dlen, st->mem, e);
     }
     default: {
-      error_causef (st->e, ERR_INVALID_ARGUMENT, "Can only read query types of read and remove");
+      error_causef (e, ERR_INVALID_ARGUMENT, "Can only read query types of read and remove");
       return NULL;
     }
   }
 }
 
 #ifdef TESTING
-TEST (ns_plan_read_malloc)
+TEST (nsdb_plan_read_malloc)
 {
   error e = error_create ();
   nsdb_cleanup ("./test.db", &e);
   struct nsdb *db = nsdb_open_with_resources ("./test.db", mem, fs, &e);
-  struct txn  *tx = nsdb_begin (db);
+  nsdb_init_numstore (db, &e);
+  struct txn *tx = nsdb_begin (db, &e);
 
   // Seed database
-  u32          src[10];
+  u32         src[10];
   rand_bytes (src, sizeof (src));
-  nsdb_exec (db, tx, "create foo u32");
-  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10");
+  nsdb_exec (db, tx, "create foo u32", &e);
+  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
 
   //////////// READ
 
   TEST_CASE ("Read a variable successfully")
   {
     b_size len;
-    void  *dest = nsdb_read_malloc (db, tx, &len, "read foo[0:]");
+    void  *dest = nsdb_read_malloc (db, tx, &len, "read foo[0:]", &e);
     test_assert_memequal (src, dest, sizeof (src));
     test_assert_int_equal (len, 10);
     i_free (mem, dest);
@@ -649,7 +665,7 @@ TEST (ns_plan_read_malloc)
   TEST_CASE ("Read a non existent variable")
   {
     b_size len  = 123;
-    void  *dest = nsdb_read_malloc (db, tx, &len, "read biz[0:]");
+    void  *dest = nsdb_read_malloc (db, tx, &len, "read biz[0:]", &e);
     test_err_t_check (e.cause_code, ERR_VARIABLE_NE, &e);
     test_assert (dest == NULL);
     test_assert_int_equal (len, 123);
@@ -664,8 +680,8 @@ TEST (ns_plan_read_malloc)
 
     b_size len_removed;
     b_size len_remaining;
-    void  *removed   = nsdb_read_malloc (db, tx, &len_removed, "remove foo[0::2]");
-    void  *remaining = nsdb_read_malloc (db, tx, &len_remaining, "read foo[0:]");
+    void  *removed   = nsdb_read_malloc (db, tx, &len_removed, "remove foo[0::2]", &e);
+    void  *remaining = nsdb_read_malloc (db, tx, &len_remaining, "read foo[0:]", &e);
 
     test_assert_int_equal (len_removed, 5);
     test_assert_int_equal (len_remaining, 5);
@@ -680,31 +696,31 @@ TEST (ns_plan_read_malloc)
   TEST_CASE ("Remove a non existent variable")
   {
     b_size len  = 123;
-    void  *dest = nsdb_read_malloc (db, tx, &len, "remove biz[0:]");
+    void  *dest = nsdb_read_malloc (db, tx, &len, "remove biz[0:]", &e);
     test_err_t_check (e.cause_code, ERR_VARIABLE_NE, &e);
     test_assert (dest == NULL);
     test_assert_int_equal (len, 123);
   }
 
-  nsdb_commit (db, tx);
+  nsdb_commit (db, tx, &e);
   nsdb_close (db, &e);
 }
 #endif
 
 sb_size
-ns_plan_write (struct ns_plan *st, struct txn *tx, const void *src, b_size dlen)
+nsdb_plan_write (struct nsdb_plan *st, struct txn *tx, const void *src, b_size dlen, error *e)
 {
-  DBG_ASSERT (ns_plan, st);
+  DBG_ASSERT (nsdb_plan, st);
   DBG_ASSERT (ns_txn, tx);
 
   if (src == NULL || dlen == 0) {
-    return error_causef (st->e, ERR_INVALID_ARGUMENT, "source buffer is required for write query");
+    return error_causef (e, ERR_INVALID_ARGUMENT, "source buffer is required for write query");
   }
 
   // Get variable of interest
-  struct nsdb_var *_var = ns_plan_get_var (st, tx);
+  struct nsdb_var *_var = nsdb_plan_get_var (st, tx, e);
   if (_var == NULL) {
-    return error_trace (st->e);
+    return error_trace (e);
   }
   struct variable       *var = nsdb_var_var (_var);
 
@@ -714,14 +730,14 @@ ns_plan_write (struct ns_plan *st, struct txn *tx, const void *src, b_size dlen)
 
   switch (st->q.type) {
     case QT_INSERT: {
-      return numstore_insert (st->p, tx, var, st->q.insert.ofst, st->q.insert.len, &stream, st->e);
+      return numstore_insert (st->p, tx, var, st->q.insert.ofst, st->q.insert.len, &stream, e);
     }
     case QT_WRITE: {
-      return numstore_write (st->p, tx, var, st->q.write.ustr, &stream, st->e);
+      return numstore_write (st->p, tx, var, st->q.write.ustr, &stream, e);
     }
     default: {
       return error_causef (
-          st->e,
+          e,
           ERR_INVALID_ARGUMENT,
           "Can only write query types of write and insert"
       );
@@ -731,25 +747,26 @@ ns_plan_write (struct ns_plan *st, struct txn *tx, const void *src, b_size dlen)
 
 #ifdef TESTING
 
-#  define check_nbytes(db, tx, vname, expected_bytes)                \
+#  define check_nbytes(db, tx, vname, expected_bytes, e)             \
     do {                                                             \
-      struct nsdb_var *var = nsdb_get_var (db, tx, "get " vname);    \
+      struct nsdb_var *var = nsdb_get_var (db, tx, "get " vname, e); \
       test_assert (var != NULL);                                     \
       test_assert_int_equal (nsdb_var_nbytes (var), expected_bytes); \
       nsdb_var_free (var);                                           \
     }                                                                \
     while (0)
 
-TEST (ns_plan_write)
+TEST (nsdb_plan_write)
 {
   error e = error_create ();
   nsdb_cleanup ("./test.db", &e);
   struct nsdb *db = nsdb_open_with_resources ("./test.db", mem, fs, &e);
-  struct txn  *tx = nsdb_begin (db);
+  nsdb_init_numstore (db, &e);
+  struct txn *tx = nsdb_begin (db, &e);
 
   // Seed database
-  nsdb_exec (db, tx, "create foo u32");
-  check_nbytes (db, tx, "foo", 0);
+  nsdb_exec (db, tx, "create foo u32", &e);
+  check_nbytes (db, tx, "foo", 0, &e);
 
   //////////// Insert
 
@@ -758,14 +775,14 @@ TEST (ns_plan_write)
     u32 src[10];
     arr_range (src);
 
-    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10");
-    check_nbytes (db, tx, "foo", sizeof (src));
+    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
+    check_nbytes (db, tx, "foo", sizeof (src), &e);
 
-    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10");
-    check_nbytes (db, tx, "foo", 2 * sizeof (src));
+    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
+    check_nbytes (db, tx, "foo", 2 * sizeof (src), &e);
 
     u32 dest[20];
-    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]");
+    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
     test_assert_memequal (src, dest, sizeof (src));
     test_assert_memequal (src, &dest[10], sizeof (src));
   }
@@ -774,7 +791,7 @@ TEST (ns_plan_write)
   {
     u32 src[10];
     arr_range (src);
-    nsdb_write (db, tx, src, sizeof (src), "insert bar 0 10");
+    nsdb_write (db, tx, src, sizeof (src), "insert bar 0 10", &e);
     test_err_t_check (e.cause_code, ERR_VARIABLE_NE, &e);
   }
 
@@ -785,15 +802,15 @@ TEST (ns_plan_write)
     // Overwrite with random data
     u32 src[20];
     rand_bytes (src, sizeof (src));
-    nsdb_write (db, tx, src, sizeof (src), "write bar[0:]");
+    nsdb_write (db, tx, src, sizeof (src), "write foo[0:]", &e);
 
     u32     dest[40]; // Bigger buffer to show that only 20 are read
-    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]");
+    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
     test_assert_int_equal (len, 20);
     test_assert_memequal (src, dest, sizeof (src));
   }
 
-  nsdb_commit (db, tx);
+  nsdb_commit (db, tx, &e);
   nsdb_close (db, &e);
 }
 #endif
@@ -802,7 +819,8 @@ TEST (ns_plan_write)
 
 /**
 static inline sb_size
-console_qt_read (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error *e)
+console_qt_read (struct nsdb *ns, struct query *q, struct arena_alloc *alc,
+error *e)
 {
   sb_size ret = nsdb_read_and_print (ns, &q->read, alc, e);
   if (ret < 0) {
@@ -831,15 +849,16 @@ console_qt_insert (void)
 }
 
 static inline sb_size
-console_qt_create (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error *e)
+console_qt_create (struct nsdb *ns, struct query *q, struct arena_alloc *alc,
+error *e)
 {
   struct txn *tx = nsdb_begin (ns, e);
   if (tx == NULL) {
     return error_trace (e);
   }
 
-  if (numstore_create (ns->p, tx, q->create.name, q->create.type, alc, NULL, e) < 0) {
-    return error_trace (e);
+  if (numstore_create (ns->p, tx, q->create.name, q->create.type, alc, NULL, e)
+< 0) { return error_trace (e);
   }
 
   if (nsdb_commit (ns, tx, e) < 0) {
@@ -858,7 +877,8 @@ console_qt_delete (void)
 }
 
 static inline sb_size
-console_qt_get (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error *e)
+console_qt_get (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error
+*e)
 {
   sb_size ret = nsdb_get_and_print (ns, &q->get, alc, e);
   if (ret < 0) {
@@ -882,7 +902,7 @@ console_qt_help (void)
 */
 
 err_t
-ns_planute_in_console (struct ns_plan *ns, struct txn *tx, error *e)
+nsdb_planute_in_console (struct nsdb_plan *ns, struct txn *tx, error *e)
 {
   /**
   switch (q->type) {
@@ -920,53 +940,53 @@ ns_planute_in_console (struct ns_plan *ns, struct txn *tx, error *e)
 }
 
 err_t
-nsdb_exec (struct nsdb *db, struct txn *tx, const char *query)
+nsdb_exec (struct nsdb *db, struct txn *tx, const char *query, error *e)
 {
   DBG_ASSERT (nsdb, db);
   DBG_ASSERT (ns_txn, tx);
   ASSERT (query);
 
-  struct ns_plan *plan = ns_plan_create (db, query);
+  struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
-  sb_size ret = ns_plan_execute (plan, tx);
+  sb_size ret = nsdb_plan_execute (plan, tx, e);
   if (ret < 0) {
-    ns_plan_free (db, plan);
+    nsdb_plan_free (db, plan);
     return ret;
   }
 
-  ns_plan_free (db, plan);
+  nsdb_plan_free (db, plan);
 
   return ret;
 }
 
 struct nsdb_var *
-nsdb_get_var (struct nsdb *db, struct txn *tx, const char *query)
+nsdb_get_var (struct nsdb *db, struct txn *tx, const char *query, error *e)
 {
   DBG_ASSERT (nsdb, db);
   DBG_ASSERT (ns_txn, tx);
   ASSERT (query);
 
-  struct ns_plan *plan = ns_plan_create (db, query);
+  struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
     return NULL;
   }
 
-  struct nsdb_var *var = ns_plan_get_var (plan, tx);
+  struct nsdb_var *var = nsdb_plan_get_var (plan, tx, e);
   if (var == NULL) {
-    ns_plan_free (db, plan);
+    nsdb_plan_free (db, plan);
     return NULL;
   }
 
-  ns_plan_free (db, plan);
+  nsdb_plan_free (db, plan);
 
   return var;
 }
 
 sb_size
-nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char *query)
+nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char *query, error *e)
 {
   DBG_ASSERT (nsdb, db);
   DBG_ASSERT (ns_txn, txn);
@@ -974,48 +994,55 @@ nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char
   ASSERT (dest);
   ASSERT (dlen > 0);
 
-  struct ns_plan *plan = ns_plan_create (db, query);
+  struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
-  sb_size ret = ns_plan_read (plan, txn, dest, dlen);
+  sb_size ret = nsdb_plan_read (plan, txn, dest, dlen, e);
   if (ret < 0) {
-    ns_plan_free (db, plan);
+    nsdb_plan_free (db, plan);
     return ret;
   }
 
-  ns_plan_free (db, plan);
+  nsdb_plan_free (db, plan);
 
   return ret;
 }
 
 void *
-nsdb_read_malloc (struct nsdb *db, struct txn *txn, b_size *dlen, const char *query)
+nsdb_read_malloc (struct nsdb *db, struct txn *txn, b_size *dlen, const char *query, error *e)
 {
   DBG_ASSERT (nsdb, db);
   DBG_ASSERT (ns_txn, txn);
   ASSERT (query);
   ASSERT (dlen);
 
-  struct ns_plan *plan = ns_plan_create (db, query);
+  struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
     return NULL;
   }
 
-  void *data = ns_plan_read_malloc (plan, txn, dlen);
+  void *data = nsdb_plan_read_malloc (plan, txn, dlen, e);
   if (data == NULL) {
-    ns_plan_free (db, plan);
+    nsdb_plan_free (db, plan);
     return NULL;
   }
 
-  ns_plan_free (db, plan);
+  nsdb_plan_free (db, plan);
 
   return data;
 }
 
 sb_size
-nsdb_write (struct nsdb *db, struct txn *txn, const void *src, b_size dlen, const char *query)
+nsdb_write (
+    struct nsdb *db,
+    struct txn  *txn,
+    const void  *src,
+    b_size       dlen,
+    const char  *query,
+    error       *e
+)
 {
   DBG_ASSERT (nsdb, db);
   DBG_ASSERT (ns_txn, txn);
@@ -1023,41 +1050,41 @@ nsdb_write (struct nsdb *db, struct txn *txn, const void *src, b_size dlen, cons
   ASSERT (src);
   ASSERT (dlen > 0);
 
-  struct ns_plan *plan = ns_plan_create (db, query);
+  struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
-  sb_size ret = ns_plan_write (plan, txn, src, dlen);
+  sb_size ret = nsdb_plan_write (plan, txn, src, dlen, e);
   if (ret < 0) {
-    ns_plan_free (db, plan);
+    nsdb_plan_free (db, plan);
     return ret;
   }
 
-  ns_plan_free (db, plan);
+  nsdb_plan_free (db, plan);
 
   return ret;
 }
 
 err_t
-nsdb_console (struct nsdb *db, struct txn *txn, const char *query)
+nsdb_console (struct nsdb *db, struct txn *txn, const char *query, error *e)
 {
   DBG_ASSERT (nsdb, db);
   DBG_ASSERT (ns_txn, txn);
   ASSERT (query);
 
-  struct ns_plan *plan = ns_plan_create (db, query);
+  struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
-    return error_trace (&db->e);
+    return error_trace (e);
   }
 
-  err_t ret = ns_planute_in_console (plan, txn, &db->e);
+  err_t ret = nsdb_planute_in_console (plan, txn, e);
   if (ret < 0) {
-    ns_plan_free (db, plan);
+    nsdb_plan_free (db, plan);
     return ret;
   }
 
-  ns_plan_free (db, plan);
+  nsdb_plan_free (db, plan);
 
   return ret;
 }

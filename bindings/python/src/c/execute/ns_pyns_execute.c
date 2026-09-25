@@ -23,7 +23,8 @@ pyns_execute (PyObject *Py_UNUSED (m), PyObject *args)
   char     *query;    // Query string
   PyObject *data_obj; // Data object
 
-  // pyns_execute(db: capsule, txn: capsule | None, query: str, data: array | None)
+  // pyns_execute(db: capsule, txn: capsule | None, query: str, data: array |
+  // None)
   if (!PyArg_ParseTuple (args, "OOsO", &_db, &_txn, &query, &data_obj)) {
     return NULL;
   }
