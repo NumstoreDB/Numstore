@@ -39,13 +39,9 @@ smartfiles_init_pager (struct pager *p, error *e)
     return error_trace (e);
   }
 
-  struct ns_var_create_params params = {
-      .p     = p,
-      .tx    = &tx,
-      .vname = strfcstr (DEFAULT_VARIABLE),
-      .type  = &(struct type){.type = T_PRIM, .p = U8},
-  };
-  if (ns_var_create (params, e)) {
+  struct string name = strfcstr (DEFAULT_VARIABLE);
+  struct type   type = (struct type){.type = T_PRIM, .p = U8};
+  if (ns_var_create (p, &tx, name, &type, e)) {
     return error_trace (e);
   }
 

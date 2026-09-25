@@ -32,7 +32,6 @@ enum stride_phase
 
 struct ns_insert_params
 {
-  // Parameters
   struct pager  *p;
   struct stream *src;
   struct txn    *tx;

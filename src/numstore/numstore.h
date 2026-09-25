@@ -26,9 +26,10 @@
 #  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
 
-typedef struct nsdb     nsdb_t;
-typedef struct txn      txn_t;
-typedef struct nsdb_var nsdb_var_t;
+typedef struct nsdb_wrapper nsdb_t;
+typedef struct txn          txn_t;
+typedef struct nsdb_var     nsdb_var_t;
+typedef struct ns_plan      nsdb_plan_t;
 
 #ifndef NS_TYPE_ALIASES
 

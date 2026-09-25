@@ -75,7 +75,7 @@ ns_read_next_amount (
 // TODO - (4) tighten up the while loop to loop inside a page - rather than one
 // read per loop
 static sb_size
-ns_read_forward (const struct ns_read_params params, error *e)
+ns_read_forward (struct ns_read_params params, error *e)
 {
   ASSERT (params.stride > 0);
 
@@ -83,7 +83,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
   page_h                next        = page_h_create ();
   p_size                lidx        = 0;
   b_size                total_bread = 0;
-  const b_size          max_bread   = params.size * params.nelem;
+  b_size                max_bread   = params.size * params.nelem;
   b_size                bnext = params.size; // bytes remaining in the current read/skip window
 
   struct ns_seek_params seek  = {
@@ -126,7 +126,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
     if (next_amount == 0) {
       ASSERT (lidx <= dl_used (curp));
       if (lidx == dl_used (curp)) {
-        const pgno npg = dlgt_get_next (curp);
+        pgno npg = dlgt_get_next (curp);
 
         if (npg == PGNO_NULL) {
           // termination = DATA_EXHAUSTED;
@@ -155,7 +155,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
 
     switch (state) {
       case ACTIVE: {
-        const sp_size
+        sp_size
             read = stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
         if (read < 0) {
@@ -179,7 +179,7 @@ ns_read_forward (const struct ns_read_params params, error *e)
       }
 
       case SKIPPING: {
-        const p_size read = dl_read (curp, NULL, lidx, next_amount);
+        p_size read = dl_read (curp, NULL, lidx, next_amount);
         lidx += read;
         bnext -= read;
 

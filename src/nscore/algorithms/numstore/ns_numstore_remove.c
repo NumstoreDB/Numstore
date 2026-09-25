@@ -76,17 +76,7 @@ numstore_remove (
     goto failed;
   }
 
-  // UPDATE VARIABLE
-  if (ns_var_update (
-          (struct ns_var_update_params){
-              .p      = p,
-              .tx     = tx,
-              .retr   = (struct var_retrieval){.type = VR_PG, .root = var->var_root},
-              .newpg  = rparams.root,
-              .nbytes = var->nbytes - (ret * tsize),
-          },
-          e
-      )
+  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e)
       < 0) {
     goto failed;
   }

@@ -193,7 +193,7 @@ nscli_step_execute (struct nscli *cli)
   // Execute the query
   struct txn *tx = NULL;
   err_t       res;
-  WITH_AUTO_TXN (res, cli->db, tx, nsdb_console (cli->db, tx, cli->stmt.data), &cli->e);
+  WITH_AUTO_TXN (res, cli->db, tx, nsdb_console (cli->db, tx, cli->stmt.data, &cli->e), &cli->e);
 
   if (res < 0) {
     ret = EXE_ERROR;

@@ -37,8 +37,8 @@
  * @brief Opaque handles and types to pass into numstore functions
  ******************************************************************************/
 
-typedef struct nsdb smfile_t;
-typedef struct txn  sm_txn_t;
+typedef struct nsdb_wrapper smfile_t;
+typedef struct txn          sm_txn_t;
 
 #ifndef NS_TYPE_ALIASES
 

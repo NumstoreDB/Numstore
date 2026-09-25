@@ -47,7 +47,7 @@
  *      deleted in sequence.
  */
 err_t
-ns_var_delete (struct ns_var_delete_params params, error *e)
+ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e)
 {
   page_h                         prev   = page_h_create ();
   page_h                         cur    = page_h_create ();
@@ -56,10 +56,10 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   struct variable                var;
 
   struct ns_find_var_page_params fparams = {
-      .p     = params.p,
-      .tx    = params.tx,
+      .p     = p,
+      .tx    = tx,
 
-      .vname = params.vname,
+      .vname = vname,
       .dvar  = &var,
       .mode  = FP_FIND,
 
@@ -71,13 +71,13 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   if (ns_find_var_page (&fparams, e)) {
     goto failed;
   }
-  pgr_upgrade (&prev, params.tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, params.p, e);
-  pgr_upgrade (&cur, params.tx, PG_VAR_PAGE, params.p, e);
+  pgr_upgrade (&prev, tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, p, e);
+  pgr_upgrade (&cur, tx, PG_VAR_PAGE, p, e);
 
   struct ns_remove_params rparams = {
-      .p      = params.p,
+      .p      = p,
       .dest   = NULL,
-      .tx     = params.tx,
+      .tx     = tx,
       .root   = fparams.dvar->rpt_root,
       .size   = 1,
       .bofst  = 0,
@@ -97,7 +97,7 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
     case PG_VAR_HASH_PAGE: {
       vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (params.p, &prev, PG_VAR_HASH_PAGE, e)) {
+      if (pgr_release (p, &prev, PG_VAR_HASH_PAGE, e)) {
         goto failed;
       }
 
@@ -108,7 +108,7 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
     case PG_VAR_PAGE: {
       vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (params.p, &prev, PG_VAR_PAGE, e)) {
+      if (pgr_release (p, &prev, PG_VAR_PAGE, e)) {
         goto failed;
       }
 
@@ -123,12 +123,12 @@ ns_var_delete (struct ns_var_delete_params params, error *e)
   while (cur.mode != PHM_NONE) {
     pgno npg = dlgt_get_ovnext (page_h_ro (&cur));
     if (npg != PGNO_NULL) {
-      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, params.p, e)) {
+      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, p, e)) {
         goto failed;
       }
     }
 
-    if (pgr_delete_and_release (params.p, params.tx, &cur, e)) {
+    if (pgr_delete_and_release (p, tx, &cur, e)) {
       goto failed;
     }
 

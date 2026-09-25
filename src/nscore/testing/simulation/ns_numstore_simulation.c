@@ -830,6 +830,11 @@ ns_simul_open (struct ns_simulation_params params, error *e)
 err_t
 ns_simul_close (struct ns_simulation *meta, error *e)
 {
+  // If we're in a transaction - we need to finish
+  // that transaction some how
+  if (meta->ref->in_txn) {
+    nss_commit_txn (meta, e);
+  }
   ns_ref_free (meta->ref);
   ns_db_close (meta->db, e);
   i_free (meta->reliable_mem, meta);
@@ -839,6 +844,9 @@ ns_simul_close (struct ns_simulation *meta, error *e)
 err_t
 ns_simul_step (struct ns_simulation *meta, error *e)
 {
+  if (meta->step_number == 7168) {
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Terminating early");
+  }
   struct rand_op_params params = {
       .ref        = meta->ref,
       .enabled    = meta->enabled,

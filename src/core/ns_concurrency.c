@@ -622,8 +622,8 @@ TEST_DISABLED (gr_lock_is_x_blocks)
 
   i_thread t1, t2;
   i_thread_create (default_threading (), &t1,
-thread_hold_and_signal, &ctx, &e); i_thread_create (default_threading (), &t2, thread_wait_and_try,
-&ctx, &e);
+thread_hold_and_signal, &ctx, &e); i_thread_create (default_threading (), &t2,
+thread_wait_and_try, &ctx, &e);
 
   // Wait slightly to let T2 hit the block, then check status
   i_sleep_ms (50);

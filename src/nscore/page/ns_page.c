@@ -75,7 +75,13 @@ page_validate_for_db (const page *p, const int flags, error *e)
   const pgh header = page_get_type (p);
 
   if (!(header & flags)) {
-    return error_causef (e, ERR_CORRUPT, "expected page type %d, got %d", flags, header);
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "expected page type %s, got %s",
+        page_type_str_from_flags (flags),
+        page_type_str_from_flags (header)
+    );
   }
 
   if (!(flags & PG_SKIP_CHECKSUM)) {

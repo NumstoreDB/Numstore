@@ -15,11 +15,9 @@
 #include "core/ns_block_array.h"
 
 #include "core/ns_csx_assert.h"
-#include "core/ns_data_validator.h"
 #include "core/ns_data_writer.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
-#include "core/ns_logging.h"
 #include "core/ns_stride.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_memory.h"
@@ -1139,7 +1137,8 @@ TEST_DISABLED (block_random)
   error     e        = error_create ();
   // Block sizes to test
   const u32 sizes[]  = {1, 2, 3, 4, 5, 10, 100, 500, 1000, 5000, 10000};
-  const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000, 10000};
+  const u32 niters[] = {100, 100, 100, 100, 100, 100, 1000, 1000, 1000, 1000,
+10000};
 
   for (u32 i = 0; i < arrlen (sizes); ++i) {
     i_log_info ("Block random test: %d\n", i);

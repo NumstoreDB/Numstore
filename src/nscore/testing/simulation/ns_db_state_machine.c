@@ -5,6 +5,7 @@
 #include "core/ns_stride.h"
 #include "core/os/ns_memory.h"
 #include "core/os/ns_time.h"
+#include "core/testing/ns_testing.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/nsdb/ns_nsdb.h"
@@ -149,12 +150,12 @@ ns_db_begin_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  struct txn *tx = nsdb_begin (db->db);
+  struct txn *tx = nsdb_begin (db->db, e);
   post_op (db);
 
   if (tx == NULL) {
     i_cfree (db->reliable_mem, var_working);
-    return error_trace (&db->db->e);
+    return error_trace (e);
 
   } else {
     db->tx          = tx;
@@ -171,11 +172,11 @@ ns_db_rollback_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = nsdb_rollback (db->db, db->tx);
+  err_t ret = nsdb_rollback (db->db, db->tx, e);
   post_op (db);
 
   if (ret < 0) {
-    return error_trace (&db->db->e);
+    return error_trace (e);
 
   } else {
     i_cfree (db->reliable_mem, db->var_working);
@@ -198,12 +199,12 @@ ns_db_commit_txn (struct ns_db *db, error *e)
 
   // Do the operation
   pre_op (db);
-  err_t ret = nsdb_commit (db->db, db->tx);
+  err_t ret = nsdb_commit (db->db, db->tx, e);
   post_op (db);
 
   if (ret < 0) {
     i_cfree (db->reliable_mem, new_committed);
-    return error_trace (&db->db->e);
+    return error_trace (e);
 
   } else {
     // Transfer state
@@ -409,8 +410,8 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
           db->db->p,
           db->tx,
           strfcstr (cur),
-          len,
           ofst,
+          len,
           &alloc,
           NULL,
           &stream,
@@ -565,9 +566,9 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
   return ret;
 }
 
-/**
 #ifdef TESTING
 
+/**
 TEST_DISABLED (ns_db)
 {
   error         e  = error_create ();
@@ -577,58 +578,59 @@ TEST_DISABLED (ns_db)
   {
     // create at least 3 vars
     // (create only auto-switches if cur is NULL, i.e. on the very first create)
-    ns_db_create (db, "test_var", "u32"); // auto-switches here, cur was NULL
-    ns_db_create (db, "var2", "u32");     // cur is now test_var, no auto-switch
-    ns_db_create (db, "var3", "u32");     // cur still test_var, no auto-switch
+    ns_db_create (db, "test_var", TU32, &e); // auto-switches here, cur was NULL
+    ns_db_create (db, "var2", TU32, &e); // cur is now test_var, no auto-switch
+    ns_db_create (db, "var3", TU32, &e); // cur still test_var, no auto-switch
 
     // already on test_var due to the first create's auto-switch
-    ns_db_begin_txn (db);
+    ns_db_begin_txn (db, &e);
 
     // write 4 contiguous u32 elements
-    u32           write_buf[4] = {10, 20, 30, 40};
-    struct stride str          = {.start = 0, .stride = 1, .nelems = 4};
-    ns_db_write (db, write_buf, str);
+    u32 write_buf[4] = {10, 20, 30, 40};
+    ns_db_insert (db, write_buf, 0, 4, &e);
 
-    u32 read_buf[4] = {0};
-    ns_db_read (db, read_buf, str);
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (write_buf[i], read_buf[i]);
-    }
+    u32           read_buf[4] = {0};
+    struct stride str         = {.start = 0, .stride = 1, .nelems = 4};
+    ns_db_read (db, read_buf, str, &e);
+    test_assert_memequal (write_buf, read_buf, sizeof (read_buf));
 
-    // insert 2 more elements right after (offset = 4 elements in, len = 2 elements)
+    // insert 2 more elements right after (offset = 4 elements in, len = 2
+    // elements)
     u32 insert_buf[2] = {50, 60};
-    ns_db_insert (db, insert_buf, 4, 2);
+    ns_db_insert (db, insert_buf, 4, 2, &e);
 
     struct stride insert_str         = {.start = 4, .stride = 1, .nelems = 2};
     u32           insert_read_buf[2] = {0};
-    ns_db_read (db, insert_read_buf, insert_str);
-    for (int i = 0; i < 2; i++) {
-      test_assert_int_equal (insert_buf[i], insert_read_buf[i]);
-    }
+    ns_db_read (db, insert_read_buf, insert_str, &e);
+    test_assert_memequal (
+        insert_buf,
+        insert_read_buf,
+        sizeof (insert_read_buf)
+    );
 
     // strided write/read over the first 8 elements, touching every other one
     u32           stride_write_buf[4] = {100, 200, 300, 400};
     struct stride stride_str          = {.start = 0, .stride = 2, .nelems = 4};
-    ns_db_write (db, stride_write_buf, stride_str);
+    ns_db_write (db, stride_write_buf, stride_str, &e);
 
     u32 stride_read_buf[4] = {0};
-    ns_db_read (db, stride_read_buf, stride_str);
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (stride_write_buf[i], stride_read_buf[i]);
-    }
+    ns_db_read (db, stride_read_buf, stride_str, &e);
+    test_assert_memequal (
+        stride_write_buf,
+        stride_read_buf,
+        sizeof (stride_read_buf)
+    );
 
     // remove the originally inserted elements
     u32 remove_dest[2] = {0};
-    ns_db_remove (db, remove_dest, insert_str);
-    for (int i = 0; i < 2; i++) {
-      test_assert_int_equal (insert_buf[i], remove_dest[i]);
-    }
+    ns_db_remove (db, remove_dest, insert_str, &e);
+    test_assert_memequal (insert_buf, remove_dest, sizeof (remove_dest));
 
     // commit this baseline txn so it's the durable state to roll back to
-    ns_db_commit_txn (db);
+    ns_db_commit_txn (db, &e);
 
     // delete one of the three vars
-    ns_db_delete_and_switch (db, "var2");
+    ns_db_delete_and_switch (db, "var2", &e);
   }
 
   TEST_CASE ("rollback restores prior state, including current variable")
@@ -637,66 +639,72 @@ TEST_DISABLED (ns_db)
 
     // still on test_var with the committed baseline data
     u32           baseline_read[4] = {0};
-    ns_db_read (db, baseline_read, str);
+    ns_db_read (db, baseline_read, str, &e);
     u32 expected_baseline[4] = {10, 20, 30, 40};
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (expected_baseline[i], baseline_read[i]);
-    }
+    test_assert_memequal (
+        expected_baseline,
+        baseline_read,
+        sizeof (baseline_read)
+    );
 
-    ns_db_begin_txn (db);
+    ns_db_begin_txn (db, &e);
     {
-      ns_db_switch (db, "var3");
+      ns_db_switch (db, "var3", &e);
       u32 var3_write[4] = {111, 222, 333, 444};
-      ns_db_write (db, var3_write, str);
+      ns_db_write (db, var3_write, str, &e);
 
       u32 var3_read[4] = {0};
-      ns_db_read (db, var3_read, str);
-      for (int i = 0; i < 4; i++) {
-        test_assert_int_equal (var3_write[i], var3_read[i]);
-      }
+      ns_db_read (db, var3_read, str, &e);
+      test_assert_memequal (var3_write, var3_read, sizeof (var3_read));
     }
-    ns_db_rollback_txn (db);
+    ns_db_rollback_txn (db, &e);
 
     // Still test_var - not var3
     u32 post_rollback_read[4] = {0};
-    ns_db_read (db, post_rollback_read, str);
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (expected_baseline[i], post_rollback_read[i]);
-    }
+    ns_db_read (db, post_rollback_read, str, &e);
+    test_assert_memequal (
+        expected_baseline,
+        post_rollback_read,
+        sizeof (post_rollback_read)
+    );
 
     // var3 itself should not have the rolled-back write either
-    ns_db_switch (db, "var3");
+    ns_db_switch (db, "var3", &e);
     u32 var3_post_rollback[4] = {0};
-    ns_db_read (db, var3_post_rollback, str);
+    ns_db_read (db, var3_post_rollback, str, &e);
     u32 expected_var3_untouched[4] = {0, 0, 0, 0};
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (expected_var3_untouched[i], var3_post_rollback[i]);
-    }
+    test_assert_memequal (
+        expected_var3_untouched,
+        var3_post_rollback,
+        sizeof (var3_post_rollback)
+    );
   }
 
   TEST_CASE ("commit persists the switch and the write")
   {
     struct stride str = {.start = 0, .stride = 1, .nelems = 4};
 
-    ns_db_begin_txn (db);
+    ns_db_begin_txn (db, &e);
 
     // switch to var3 and write different data
-    ns_db_switch (db, "var3");
+    ns_db_switch (db, "var3", &e);
     u32 var3_write[4] = {111, 222, 333, 444};
-    ns_db_write (db, var3_write, str);
+    ns_db_write (db, var3_write, str, &e);
 
-    ns_db_commit_txn (db);
+    ns_db_commit_txn (db, &e);
 
     // still on var3 after commit, with the committed data
     u32 post_commit_read[4] = {0};
-    ns_db_read (db, post_commit_read, str);
-    for (int i = 0; i < 4; i++) {
-      test_assert_int_equal (var3_write[i], post_commit_read[i]);
-    }
+    ns_db_read (db, post_commit_read, str, &e);
+    test_assert_memequal (
+        var3_write,
+        post_commit_read,
+        sizeof (post_commit_read)
+    );
   }
 
   ns_db_close (db, &e);
 }
+*/
 
 #endif
-*/

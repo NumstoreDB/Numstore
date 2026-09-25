@@ -29,13 +29,30 @@ struct ns_read_var_page_params
   struct pager        *p;
   struct txn          *tx;
 
-  page_h              *vp;    // The currently loaded variable page
-  struct arena_alloc  *alloc; // Where to allocate stuff
-  struct variable     *dest;  // Output variable
+  // The loaded root PG_VAR_PAGE. It may be released to walk the
+  // overflow chain, but on SUCCESS it is re-acquired, so it points
+  // at the same page in the same mode (S / X) going out as coming in.
+  page_h              *vp;
 
+  // Where the variable name and type are allocated when
+  // save_vname / save_type is set. Must be non-NULL if either
+  // is true; ignored if both are false.
+  struct arena_alloc  *alloc;
+
+  // Output. rpt_root, nbytes and var_root are ALWAYS written.
+  // vname / dtype are written only if matches is true and the
+  // corresponding save_* flag is set.
+  struct variable     *dest;
+
+  // Optional. If check is non-NULL, the variable name is compared
+  // against it. If it differs, matches is set to false and the
+  // function returns early (nothing past the name is read or saved).
+  // Otherwise (equal, or check == NULL) matches is set to true and
+  // the function continues, saving vname / dtype per the flags below.
   bool                 matches;
   const struct string *check;
 
+  // Which things to save onto [alloc]
   bool                 save_vname;
   bool                 save_type;
 };

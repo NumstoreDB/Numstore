@@ -112,7 +112,8 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   p_size       twritten = 0;
 
   // First, write the variable name
-  p_size       lwritten = 0; // Local number of bytes written so far - resets on every new page
+  p_size       lwritten = 0; // Local number of bytes written so far - resets on every
+                             // new page
   while (vwritten < params->var->vname.len) {
     // Advance forward one new node and reset local written and head
     if (lwritten == head.len) {

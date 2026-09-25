@@ -25,20 +25,6 @@
 err_t ns_init_var_hash_map (struct pager *p, error *e);
 err_t ns_valid (struct pager *p, error *e);
 
-struct var_retrieval
-{
-  enum
-  {
-    VR_PG,
-    VR_NAME,
-  } type;
-
-  union {
-    struct string vname;
-    pgno          root;
-  };
-};
-
 struct ns_var_get_params
 {
   struct pager       *p;
@@ -50,6 +36,7 @@ struct ns_var_get_params
   struct variable     dest;
 };
 
+// create and get
 err_t ns_var_get (struct ns_var_get_params *params, error *e);
 
 struct ns_var_get_or_create_params
@@ -65,52 +52,38 @@ struct ns_var_get_or_create_params
 };
 
 err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);
+spgno ns_var_create (
+    struct pager *p,
+    struct txn   *tx,
+    struct string vname,
+    struct type  *type,
+    error        *e
+);
 
-/******************************************************************************
- * SECTION: Creating Variables
- ******************************************************************************/
+// Delete
+err_t ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e);
 
-struct ns_var_create_params
-{
-  struct pager *p;
-  struct txn   *tx;
+// Visit
+typedef err_t (*var_consumer) (struct variable *v, void *ctx, error *e);
+err_t ns_visit_variables (struct pager *p, var_consumer var, void *ctx, error *e);
 
-  struct string vname;
-  struct type  *type;
-};
+// Update
+err_t ns_var_update_by_var_root (
+    struct pager *p,
+    struct txn   *tx,
+    pgno          root,
+    pgno          newpg,
+    b_size        nbytes,
+    error        *e
+);
 
-spgno ns_var_create (struct ns_var_create_params params, error *e);
-
-/******************************************************************************
- * SECTION: Updating Variables
- ******************************************************************************/
-
-struct ns_var_update_params
-{
-  struct pager        *p;
-  struct txn          *tx;
-
-  struct var_retrieval retr;
-
-  // New values
-  pgno                 newpg;
-  b_size               nbytes;
-};
-
-err_t ns_var_update (struct ns_var_update_params params, error *e);
-
-/******************************************************************************
- * SECTION: Deleting Variables
- ******************************************************************************/
-
-struct ns_var_delete_params
-{
-  struct pager *p;
-  struct txn   *tx;
-
-  struct string vname;
-};
-
-err_t ns_var_delete (struct ns_var_delete_params params, error *e);
+err_t ns_var_update_by_name (
+    struct pager *p,
+    struct txn   *tx,
+    struct string name,
+    pgno          newpg,
+    b_size        nbytes,
+    error        *e
+);
 
 #endif

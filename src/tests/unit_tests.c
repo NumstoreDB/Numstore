@@ -43,7 +43,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[342];
+  const char *failed_names[344];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -2990,6 +2990,25 @@ main (int argc, char **argv)
     ntests++;
   }
 
+  if (!filter || strstr("ns_read_var_page", filter))
+  {
+    extern void __test__ns_read_var_page(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_read_var_page");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_read_var_page();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_read_var_page");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_read_var_page";
+    }
+    ntests++;
+  }
+
   if (!filter || strstr("ns_var_get_or_create", filter))
   {
     extern void __test__ns_var_get_or_create(void);
@@ -3005,6 +3024,25 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "ns_var_get_or_create";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("ns_visit_variables", filter))
+  {
+    extern void __test__ns_visit_variables(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_visit_variables");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_visit_variables();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_visit_variables");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_visit_variables";
     }
     ntests++;
   }
@@ -3617,97 +3655,97 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("ns_plan_create", filter))
+  if (!filter || strstr("nsdb_plan_create", filter))
   {
-    extern void __test__ns_plan_create(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_plan_create");
+    extern void __test__nsdb_plan_create(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_plan_create");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_plan_create();
+    __test__nsdb_plan_create();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_plan_create");
+      i_log_passed("%s\n", "nsdb_plan_create");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_plan_create";
+      failed_names[failed++] = "nsdb_plan_create";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_plan_get_var", filter))
+  if (!filter || strstr("nsdb_plan_get_var", filter))
   {
-    extern void __test__ns_plan_get_var(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_plan_get_var");
+    extern void __test__nsdb_plan_get_var(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_plan_get_var");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_plan_get_var();
+    __test__nsdb_plan_get_var();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_plan_get_var");
+      i_log_passed("%s\n", "nsdb_plan_get_var");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_plan_get_var";
+      failed_names[failed++] = "nsdb_plan_get_var";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_plan_read", filter))
+  if (!filter || strstr("nsdb_plan_read", filter))
   {
-    extern void __test__ns_plan_read(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_plan_read");
+    extern void __test__nsdb_plan_read(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_plan_read");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_plan_read();
+    __test__nsdb_plan_read();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_plan_read");
+      i_log_passed("%s\n", "nsdb_plan_read");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_plan_read";
+      failed_names[failed++] = "nsdb_plan_read";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_plan_read_malloc", filter))
+  if (!filter || strstr("nsdb_plan_read_malloc", filter))
   {
-    extern void __test__ns_plan_read_malloc(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_plan_read_malloc");
+    extern void __test__nsdb_plan_read_malloc(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_plan_read_malloc");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_plan_read_malloc();
+    __test__nsdb_plan_read_malloc();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_plan_read_malloc");
+      i_log_passed("%s\n", "nsdb_plan_read_malloc");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_plan_read_malloc";
+      failed_names[failed++] = "nsdb_plan_read_malloc";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_plan_write", filter))
+  if (!filter || strstr("nsdb_plan_write", filter))
   {
-    extern void __test__ns_plan_write(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_plan_write");
+    extern void __test__nsdb_plan_write(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_plan_write");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_plan_write();
+    __test__nsdb_plan_write();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_plan_write");
+      i_log_passed("%s\n", "nsdb_plan_write");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_plan_write";
+      failed_names[failed++] = "nsdb_plan_write";
     }
     ntests++;
   }

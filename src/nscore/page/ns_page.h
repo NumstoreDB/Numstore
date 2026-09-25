@@ -66,6 +66,41 @@ enum page_type
   PG_VAR_TAIL       = (1 << 6), // Overflow to a VAR_PAGE
 };
 
+HEADER_FUNC enum page_type
+flags_to_page_type (int flags)
+{
+  return (enum page_type) (flags & ((PG_VAR_TAIL << 1) - 1));
+}
+
+HEADER_FUNC const char *
+page_type_str_from_flags (int flags)
+{
+  enum page_type type = flags_to_page_type (flags);
+  switch (type) {
+    case PG_FREE_SPACE_MAP: {
+      return "PG_FREE_SPACE_MAP";
+    }
+    case PG_DATA_LIST: {
+      return "PG_DATA_LIST";
+    }
+    case PG_INNER_NODE: {
+      return "PG_INNER_NODE";
+    }
+    case PG_VAR_HASH_PAGE: {
+      return "PG_VAR_HASH_PAGE";
+    }
+    case PG_VAR_PAGE: {
+      return "PG_VAR_PAGE";
+    }
+    case PG_VAR_TAIL: {
+      return "PG_VAR_TAIL";
+    }
+    default: {
+      return "UNKNOWN";
+    }
+  }
+}
+
 #define PG_PERMISSIVE    (1 << 7)
 #define PG_SKIP_CHECKSUM (1 << 8)
 #define PG_TRASH         ((u8) ~((u8)0))

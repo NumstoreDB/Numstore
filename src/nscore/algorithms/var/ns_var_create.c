@@ -33,16 +33,16 @@
  * Returns ERR_DUPLICATE_VARIABLE if a variable with this name already exists.
  */
 spgno
-ns_var_create (const struct ns_var_create_params params, error *e)
+ns_var_create (struct pager *p, struct txn *tx, struct string vname, struct type *type, error *e)
 {
   page_h                         cur     = page_h_create ();
 
   struct ns_find_var_page_params fparams = {
-      .tx    = params.tx,
-      .p     = params.p,
+      .tx    = tx,
+      .p     = p,
       .alloc = NULL,
 
-      .vname = params.vname,
+      .vname = vname,
       .dvar  = NULL,
       .mode  = FP_CREATE,
 
@@ -56,15 +56,15 @@ ns_var_create (const struct ns_var_create_params params, error *e)
   }
 
   struct variable var = {
-      .vname    = params.vname,
-      .dtype    = params.type,
+      .vname    = vname,
+      .dtype    = type,
       .nbytes   = 0,
       .rpt_root = PGNO_NULL,
   };
 
   struct ns_write_var_page_params write_params = {
-      .p   = params.p,
-      .tx  = params.tx,
+      .p   = p,
+      .tx  = tx,
 
       .vp  = &cur,
       .var = &var,
@@ -74,7 +74,7 @@ ns_var_create (const struct ns_var_create_params params, error *e)
     goto failed;
   }
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) {
+  if (pgr_release (p, &cur, PG_VAR_PAGE, e)) {
     goto failed;
   }
 

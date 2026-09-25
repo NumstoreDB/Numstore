@@ -70,14 +70,15 @@ smartfiles_insert (
   }
 
   // UPDATE VARIABLE
-  struct ns_var_update_params uparams = {
-      .p      = p,
-      .tx     = tx,
-      .retr   = (struct var_retrieval){.type = VR_PG, .root = gparams.dest.var_root},
-      .newpg  = iparams.root,
-      .nbytes = gparams.dest.nbytes + ret,
-  };
-  if (ns_var_update (uparams, e)) {
+  if (ns_var_update_by_var_root (
+          p,
+          tx,
+          gparams.dest.var_root,
+          iparams.root,
+          gparams.dest.nbytes + ret,
+          e
+      )
+      < 0) {
     return error_trace (e);
   }
 

@@ -30,19 +30,26 @@
  * Used when the caller already holds the variable page's pgno from an
  * earlier _find_var_page() call, avoiding a second hash-chain traversal.
  */
-static err_t
-ns_update_by_id (struct ns_var_update_params params, error *e)
+err_t
+ns_var_update_by_var_root (
+    struct pager *p,
+    struct txn   *tx,
+    pgno          root,
+    pgno          newpg,
+    b_size        nbytes,
+    error        *e
+)
 {
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (&cur, params.tx, PG_VAR_PAGE, params.retr.root, params.p, e)) {
+  if (pgr_get_writable (&cur, tx, PG_VAR_PAGE, root, p, e)) {
     goto failed;
   }
 
-  vp_set_root (page_h_w (&cur), params.newpg);
-  vp_set_nbytes (page_h_w (&cur), params.nbytes);
+  vp_set_root (page_h_w (&cur), newpg);
+  vp_set_nbytes (page_h_w (&cur), nbytes);
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) {
+  if (pgr_release (p, &cur, PG_VAR_PAGE, e)) {
     goto failed;
   }
 
@@ -61,16 +68,23 @@ failed:
  * Walks the hash chain via _find_var_page() in FP_FIND mode, then upgrades
  * the page to writable and stamps the new root pgno and byte count.
  */
-static err_t
-ns_update_by_name (struct ns_var_update_params params, error *e)
+err_t
+ns_var_update_by_name (
+    struct pager *p,
+    struct txn   *tx,
+    struct string name,
+    pgno          newpg,
+    b_size        nbytes,
+    error        *e
+)
 {
   page_h                         cur     = page_h_create ();
 
   struct ns_find_var_page_params fparams = {
-      .p     = params.p,
-      .tx    = params.tx,
+      .p     = p,
+      .tx    = tx,
 
-      .vname = params.retr.vname,
+      .vname = name,
       .dvar  = NULL,
       .mode  = FP_FIND,
 
@@ -83,10 +97,10 @@ ns_update_by_name (struct ns_var_update_params params, error *e)
     goto failed;
   }
 
-  vp_set_root (page_h_w (&cur), params.newpg);
-  vp_set_nbytes (page_h_w (&cur), params.nbytes);
+  vp_set_root (page_h_w (&cur), newpg);
+  vp_set_nbytes (page_h_w (&cur), nbytes);
 
-  if (pgr_release (params.p, &cur, PG_VAR_PAGE, e)) {
+  if (pgr_release (p, &cur, PG_VAR_PAGE, e)) {
     goto failed;
   }
 
@@ -95,18 +109,4 @@ ns_update_by_name (struct ns_var_update_params params, error *e)
 failed:
   pgr_cancel_if_exists (&cur);
   return error_trace (e);
-}
-
-err_t
-ns_var_update (struct ns_var_update_params params, error *e)
-{
-  switch (params.retr.type) {
-    case VR_NAME: {
-      return ns_update_by_name (params, e);
-    }
-    case VR_PG: {
-      return ns_update_by_id (params, e);
-    }
-  }
-  UNREACHABLE (); // LCOV_EXCL_LINE
 }

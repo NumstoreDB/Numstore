@@ -20,7 +20,10 @@
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_memory.h"
+#include "core/testing/ns_testing.h"
 #include "nscore/algorithms/var/ns_var_algorithms_internal.h"
+#include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_delegate.h"
 #include "nscore/page/ns_page_h.h"
@@ -28,8 +31,10 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
+#include "numstore/numstore.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 /*
@@ -67,17 +72,12 @@ err_t
 ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 {
   ASSERT (params->vp->mode != PHM_NONE);
-  ASSERT (params->tx);
   ASSERT (page_h_type (params->vp) == PG_VAR_PAGE);
 
-  p_size        lread = 0;
-  struct cbytes head;
-  char         *vstr     = NULL;
-  u8           *tstr     = NULL;
-
   // Save for the end to reset var page
-  pgno          start    = page_h_pgno (params->vp);
-  bool          writable = params->vp->mode == PHM_X;
+  pgno start    = page_h_pgno (params->vp);
+  bool writable = params->vp->mode == PHM_X;
+  ASSERT (!writable || params->tx);
 
   // Temporary allocator
   ALLOC_INIT (temp);
@@ -89,90 +89,105 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   b_size nbytes   = vp_get_nbytes (page_h_ro (params->vp));
   pgno   var_root = page_h_pgno (params->vp);
 
+  if (params->dest) {
+    params->dest->rpt_root = rpt_root;
+    params->dest->nbytes   = nbytes;
+    params->dest->var_root = var_root;
+  }
+
   // Quick check on the length
   if ((params->check) && (vlen != params->check->len)) {
     params->matches = false;
     goto theend;
   }
 
-  // Allocate variable name
-  if (params->save_vname) {
-    vstr = arena_malloc (params->alloc, 1, vlen, e);
-    if (vstr == NULL) {
-      goto failed;
-    }
-  } else {
-    vstr = arena_malloc (&temp, 1, vlen, e);
-    if (vstr == NULL) {
-      goto failed;
-    }
+  // This is the "scanning string" if save_vname is true, it'll
+  // be memcpy'ed at the end to the persistent params->alloc
+  // It is one extra memcpy - but if you allocate this on
+  // persistent, then the all variable names in the chain
+  // will live on the passed memory, but it'd be a tiny
+  // bit faster, but not worth the speed up
+  //
+  // TODO - in the future, an arena_malloc_commit
+  // would be good for this - allowing the arena allocator
+  // have a rollback
+  char *vstr = arena_malloc (&temp, 1, vlen, e);
+  if (vstr == NULL) {
+    goto failed;
   }
 
+  // This is the type string, it's only ever lives on
+  // the temporary allocator and it's only ever used
+  // if save type is true
+  u8 *tstr = NULL;
   if (params->save_type) {
     tstr = arena_malloc (&temp, 1, tlen, e);
     if (tstr == NULL) {
       goto failed;
     }
-  } else {
-    tstr = NULL; // We don't event touch this
   }
 
   // Read the variable name
-  u16 rread = 0;
-  head      = dlgt_get_bytes_imut (page_h_ro (params->vp));
-  while (rread < vlen) {
+  u16           total_read = 0; // Total read for the whole variable name
+  p_size        local_read = 0; // Just the number of bytes read on each page
+  struct cbytes head       = dlgt_get_bytes_imut (page_h_ro (params->vp));
+  while (total_read < vlen) {
     // We exhausted this page - move forward one
-    if (lread == head.len) {
+    if (local_read == head.len) {
       if (ns_read_var_page_advance (params, e)) {
         goto failed;
       }
 
-      lread = 0;
-      head  = dlgt_get_bytes_imut (page_h_ro (params->vp));
+      local_read = 0;
+      head       = dlgt_get_bytes_imut (page_h_ro (params->vp));
     }
 
-    // NAME READ
-    u16 toread = vlen - rread;
-    u16 bavail = head.len - lread;
+    // Do the read of the name
+    u16 toread = vlen - total_read;
+    u16 bavail = head.len - local_read;
     u16 next   = MIN (bavail, toread);
 
-    memcpy (&vstr[rread], &head.head[lread], next);
-    rread += next;
-    lread += next;
+    memcpy (&vstr[total_read], &head.head[local_read], next);
+    total_read += next;
+    local_read += next;
   }
 
   // Quick termination on string data
-  if ((params->check) && (memcmp (params->check->data, vstr, vlen) != 0)) {
+  if (params->check && (memcmp (params->check->data, vstr, vlen) != 0)) {
     params->matches = false;
     goto theend;
   }
 
+  // Only execute this next block if we want to save the
+  // type. This is because the type is tail data
   if (params->save_type) {
     // Read the type bytes
-    rread = 0;
-    while (rread < tlen) {
+    total_read = 0;
+    while (total_read < tlen) {
       // We exhausted this page - move forward one
-      if (lread == head.len) {
+      if (local_read == head.len) {
         // Advance forward one node and reset local and head
         if (ns_read_var_page_advance (params, e)) {
           goto failed;
         }
-        lread = 0;
-        head  = dlgt_get_bytes_imut (page_h_ro (params->vp));
+        local_read = 0;
+        head       = dlgt_get_bytes_imut (page_h_ro (params->vp));
       }
 
       // MIN(available in this node, available to be read left)
-      u16 avail = head.len - lread;
-      u16 left  = tlen - rread;
+      u16 avail = head.len - local_read;
+      u16 left  = tlen - total_read;
       u16 next  = MIN (avail, left);
 
       // Do the read
-      memcpy (&tstr[rread], &head.head[lread], next);
-      rread += next;
-      lread += next;
+      memcpy (&tstr[total_read], &head.head[local_read], next);
+      total_read += next;
+      local_read += next;
     }
 
-    // We just finished reading everything - expect us to be done
+    // This check ensures that this page is truly the last
+    // page of the chain. The last page should point next
+    // to NULL, if it doesn't then it's an invalid variable
     if (dlgt_get_ovnext (page_h_ro (params->vp)) != PGNO_NULL) {
       error_causef (
           e,
@@ -184,11 +199,10 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
     }
   }
 
-  params->dest->rpt_root = rpt_root;
-  params->dest->nbytes   = nbytes;
-  params->dest->var_root = var_root;
+  // Set the values
 
   if (params->save_type) {
+    // Copy the type onto the persistent allocator
     struct deserializer d     = dsrlizr_create (tstr, tlen);
     struct type        *dtype = type_deserialize (&d, params->alloc, e);
     if (dtype == NULL) {
@@ -198,7 +212,12 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
 
   if (params->save_vname) {
-    params->dest->vname = (struct string){.data = NULL, .len = 0};
+    char *vstr_permanent = arena_malloc (params->alloc, vlen, 1, e);
+    if (vstr_permanent == NULL) {
+      goto failed;
+    }
+    memcpy (vstr_permanent, vstr, vlen);
+    params->dest->vname = (struct string){.data = vstr_permanent, .len = vlen};
   }
 
   params->matches = true;
@@ -229,3 +248,1531 @@ failed:
   ALLOC_CLOSE (temp);
   return error_trace (e);
 }
+
+#ifdef TESTING
+
+// Must be big enough that the name spills past the first PG_VAR_PAGE
+// into at least one PG_VAR_TAIL (and must fit in a u16)
+#  define LONG_VNAME_LEN (3 * NS_PAGE_SIZE)
+_Static_assert (LONG_VNAME_LEN == (u32)(3 * NS_PAGE_SIZE), "u16 overflow");
+
+static inline void
+fill_long_name (char *buf, size_t len, char tag)
+{
+  memset (buf, 'n', len);
+  buf[len - 1] = tag; // only the last byte differs between names
+  buf[len]     = '\0';
+}
+
+static inline void
+create_and_get_root (
+    page_h      *dest,
+    bool         writable,
+    struct nsdb *db,
+    struct txn  *tx,
+    const char  *name,
+    struct i_mem mem,
+    error       *e
+)
+{
+  // Build the query
+  int   n     = snprintf (NULL, 0, "create %s u32", name);
+  char *query = i_malloc (mem, n + 1, 1, e);
+
+  // Create the variable
+  snprintf (query, n + 1, "create %s u32", name);
+  nsdb_exec (db, tx, query, e);
+
+  // Get the variable
+  snprintf (query, n, "get %s", name);
+  struct nsdb_var *var  = nsdb_get_var (db, tx, query, e);
+
+  // Get the root
+  pgno             root = var->var.var_root;
+  nsdb_var_free (var);
+
+  if (writable) {
+    pgr_get_writable (dest, tx, PG_VAR_PAGE, root, db->p, e);
+  } else {
+    pgr_get (dest, PG_VAR_PAGE, root, db->p, e);
+  }
+}
+
+TEST (ns_read_var_page)
+{
+  error e = error_create ();
+
+  /* Create a new database */
+  nsdb_cleanup ("test", &e);
+  struct nsdb *db = nsdb_open_with_resources ("test", mem, fs, &e);
+  nsdb_init_numstore (db, &e);
+
+  struct txn *tx = nsdb_begin (db, &e);
+
+  /* Long names - every test creates its own variable, so each needs a unique name */
+  char        long_a[LONG_VNAME_LEN + 1];
+  fill_long_name (long_a, LONG_VNAME_LEN, 'a');
+  char long_b[LONG_VNAME_LEN + 1];
+  fill_long_name (long_b, LONG_VNAME_LEN, 'b');
+  char long_c[LONG_VNAME_LEN + 1];
+  fill_long_name (long_c, LONG_VNAME_LEN, 'c');
+  char long_d[LONG_VNAME_LEN + 1];
+  fill_long_name (long_d, LONG_VNAME_LEN, 'd');
+  char long_e[LONG_VNAME_LEN + 1];
+  fill_long_name (long_e, LONG_VNAME_LEN, 'e');
+  char long_f[LONG_VNAME_LEN + 1];
+  fill_long_name (long_f, LONG_VNAME_LEN, 'f');
+  char long_y[LONG_VNAME_LEN + 1];
+  fill_long_name (long_y, LONG_VNAME_LEN, 'y'); // never created
+  char long_z[LONG_VNAME_LEN + 1];
+  fill_long_name (long_z, LONG_VNAME_LEN, 'z'); // never created
+
+  TEST_CASE ("Handle stays in X mode if it starts in X mode")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (
+        &cur,
+        true, // IMPORTANT
+        db,
+        tx,
+        "mode_x_plain",
+        mem,
+        &e
+    );
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_X); // IMPORTANT
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data == NULL); // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Handle stays in S mode if it starts in S mode")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (
+        &cur,
+        false, // IMPORTANT
+        db,
+        tx,
+        "mode_s_plain",
+        mem,
+        &e
+    );
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S); // IMPORTANT
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data == NULL); // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Handle stays in X mode with save_vname and save_type")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (
+        &cur,
+        true, // IMPORTANT
+        db,
+        tx,
+        "mode_x_saves",
+        mem,
+        &e
+    );
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = true,
+        .save_type  = true,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_X); // IMPORTANT
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data != NULL); // save_vname == true, matches == true
+    test_assert_int_equal (var.vname.len, strlen ("mode_x_saves"));
+    test_assert (memcmp (var.vname.data, "mode_x_saves", strlen ("mode_x_saves")) == 0);
+    test_assert (var.dtype != NULL); // save_type == true, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Handle stays in X mode when vname doesn't match")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (
+        &cur,
+        true, // IMPORTANT
+        db,
+        tx,
+        "mode_x_nomatch",
+        mem,
+        &e
+    );
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("mode_x_nomatcX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check,
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_X); // IMPORTANT
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false);
+    test_assert (var.vname.data == NULL); // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Matches is true when check is NULL")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "match_null", mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Matches is true when vname matches")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "match_eq", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("match_eq");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Matches is false when vname differs in content (same length)")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "match_diff", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("match_difX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Matches is false when check is shorter than vname")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "match_short", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("match_shor");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Matches is false when check is longer than vname")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "match_long", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("match_longX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("vname is saved when save_vname and check is NULL")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "sv_null", mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL, // IMPORTANT
+        .save_vname = true, // IMPORTANT
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
+    test_assert_int_equal (var.vname.len, strlen ("sv_null"));
+    test_assert (memcmp (var.vname.data, "sv_null", strlen ("sv_null")) == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("vname is saved when save_vname and vname matches")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "sv_eq", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("sv_eq");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
+    test_assert_int_equal (var.vname.len, strlen ("sv_eq"));
+    test_assert (memcmp (var.vname.data, "sv_eq", strlen ("sv_eq")) == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("vname isn't saved when save_vname and vname content differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "sv_diff", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("sv_difX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("vname isn't saved when save_vname and vname length differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "sv_len", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("sv_lenXX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("dtype is saved (vname isn't) when save_type and check is NULL")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "st_null", mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL, // IMPORTANT
+        .save_vname = false,
+        .save_type  = true, // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("dtype is saved (vname isn't) when save_type and vname matches")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "st_eq", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("st_eq");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = true, // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("dtype isn't saved when save_type and vname content differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "st_diff", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("st_difX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = true, // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("dtype isn't saved when save_type and vname length differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "st_len", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("st_lenXX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = true, // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("vname and dtype are saved when both flags set and check is NULL")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "both_null", mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL, // IMPORTANT
+        .save_vname = true, // IMPORTANT
+        .save_type  = true, // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
+    test_assert_int_equal (var.vname.len, strlen ("both_null"));
+    test_assert (memcmp (var.vname.data, "both_null", strlen ("both_null")) == 0);
+    test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("vname and dtype are saved when both flags set and vname matches")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "both_eq", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("both_eq");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = true,   // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
+    test_assert_int_equal (var.vname.len, strlen ("both_eq"));
+    test_assert (memcmp (var.vname.data, "both_eq", strlen ("both_eq")) == 0);
+    test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Neither is saved when both flags set and vname content differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "both_diff", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("both_difX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = true,   // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Neither is saved when both flags set and vname length differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "both_len", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("both_lenXX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = true,   // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Long vname: handle returns to the root var page")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_a, mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data == NULL); // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Long vname: saved in full when save_vname")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_b, mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = true, // IMPORTANT
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data != NULL); // IMPORTANT (save_vname == true, matches == true)
+    test_assert_int_equal (var.vname.len, strlen (long_b));
+    test_assert (memcmp (var.vname.data, long_b, strlen (long_b)) == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Long vname: X mode handle returns to root with both flags set")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (
+        &cur,
+        true, // IMPORTANT
+        db,
+        tx,
+        long_c,
+        mem,
+        &e
+    );
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = true, // IMPORTANT
+        .save_type  = true, // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_X); // IMPORTANT
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data != NULL); // IMPORTANT (save_vname == true, matches == true)
+    test_assert_int_equal (var.vname.len, strlen (long_c));
+    test_assert (memcmp (var.vname.data, long_c, strlen (long_c)) == 0);
+    test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Long vname: matches when check is equal")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_d, mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr (long_d);
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // save_vname == false, matches == true
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == true
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Long vname: doesn't match when only the last byte differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_e, mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr (long_z);
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // save_vname == false, matches == false
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // save_type == false, matches == false
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("Long vname: nothing saved when last byte differs and both flags set")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_f, mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr (long_y);
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = &var,
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = true,   // IMPORTANT
+        .save_type  = true,   // IMPORTANT
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
+    test_assert (var.rpt_root == PGNO_NULL);
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  /* Add next to the other long_* declarations */
+  char long_g[LONG_VNAME_LEN + 1];
+  fill_long_name (long_g, LONG_VNAME_LEN, 'g');
+  char long_h[LONG_VNAME_LEN + 1];
+  fill_long_name (long_h, LONG_VNAME_LEN, 'h');
+  char long_x[LONG_VNAME_LEN + 1];
+  fill_long_name (long_x, LONG_VNAME_LEN, 'x'); // never created
+
+  TEST_CASE ("NULL dest: succeeds with no check (S mode)")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "dn_plain", mem, &e);
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("NULL dest: succeeds with no check (X mode)")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (
+        &cur,
+        true, // IMPORTANT
+        db,
+        tx,
+        "dn_x",
+        mem,
+        &e
+    );
+
+    struct variable                var    = {0};
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = false,
+        .check      = NULL,
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_X); // IMPORTANT
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true);
+    test_assert (var.vname.data == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("NULL dest: matches is true when vname matches")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "dn_eq", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("dn_eq");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("NULL dest: matches is false when vname content differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "dn_diff", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("dn_difX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("NULL dest: matches is false when vname length differs")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, "dn_len", mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr ("dn_lenXX");
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("NULL dest: long vname matches and handle returns to root")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_g, mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr (long_g);
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = false,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, true); // IMPORTANT
+    test_assert (var.vname.data == NULL);         // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("NULL dest: long vname doesn't match on last byte")
+  {
+    ALLOC_INIT (alloc);
+    page_h cur = page_h_create ();
+    create_and_get_root (&cur, false, db, tx, long_h, mem, &e);
+
+    struct variable                var    = {0};
+    struct string                  check  = strfcstr (long_x);
+    struct ns_read_var_page_params params = {
+        .p          = db->p,
+        .tx         = tx,
+
+        .vp         = &cur,
+        .alloc      = &alloc,
+
+        .dest       = NULL, // IMPORTANT
+        .matches    = true,
+        .check      = &check, // IMPORTANT
+        .save_vname = false,
+        .save_type  = false,
+    };
+    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+
+    // Variable is in the same mode as before
+    test_assert (cur.mode == PHM_S);
+
+    // Handle is back on the root var page
+    test_assert (var.var_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert (page_h_type (&cur) == PG_VAR_PAGE);
+
+    test_assert_int_equal (params.matches, false); // IMPORTANT
+    test_assert (var.vname.data == NULL);          // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.vname.len == 0);
+    test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
+    test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
+    test_assert_int_equal (var.nbytes, 0);
+
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
+    ALLOC_CLOSE (alloc);
+  }
+
+  nsdb_commit (db, tx, &e);
+}
+
+#endif

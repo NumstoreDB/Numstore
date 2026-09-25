@@ -88,7 +88,7 @@ TEST (0003_rollback_invalid_wal_header)
       data[i] = (u32)randu32 ();
     }
 
-    res = ns_write (db, NULL, data, 0, "write testvar[50236:51085:283]");
+    res = ns_write (db, NULL, data, sizeof (data), "write testvar[50236:51085:283]");
     test_assert_int_equal (res, 3);
   }
 
@@ -134,7 +134,7 @@ TEST (0003_rollback_invalid_wal_header)
   {
     u32 data[1] = {(u32)randu32 ()};
 
-    res         = ns_read (db, tx, data, 1 * sizeof (u32), "write testvar[49014:52065:3051]");
+    res         = ns_write (db, tx, data, 1 * sizeof (u32), "write testvar[49014:52065:3051]");
     test_assert_int_equal (res, 1);
   }
 

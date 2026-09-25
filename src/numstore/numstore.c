@@ -3,14 +3,39 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/os/ns_filesystem.h"
+#include "core/os/ns_memory.h"
+#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
 
 // Lifecycle
 nsdb_t *
 ns_open (const char *path)
 {
-  error e = error_create ();
-  return nsdb_open_with_resources (path, default_mem (), default_filesystem (), &e);
+  error                e       = error_create ();
+
+  // Allocate wrapper
+  struct nsdb_wrapper *wrapper = i_malloc (default_mem (), 1, sizeof *wrapper, &e);
+  if (wrapper == NULL) {
+    return NULL;
+  }
+
+  // Allocate database
+  wrapper->db = nsdb_open_with_resources (path, default_mem (), default_filesystem (), &e);
+  if (wrapper->db == NULL) {
+    i_free (default_mem (), wrapper);
+    return NULL;
+  }
+
+  // Initialize pager
+  if (numstore_init_pager (wrapper->db->p, &e)) {
+    nsdb_close (wrapper->db, &e);
+    i_free (default_mem (), wrapper);
+    return NULL;
+  }
+
+  wrapper->e = error_create ();
+
+  return wrapper;
 }
 
 int
@@ -23,15 +48,19 @@ ns_cleanup (const char *path)
 int
 ns_close (nsdb_t *ns)
 {
-  error e = error_create ();
-  return nsdb_close (ns, &e);
+  error_reset (&ns->e);
+  err_t ret = nsdb_close (ns->db, &ns->e);
+  i_free (default_mem (), ns);
+  return ret;
 }
 
 int
 ns_crash (nsdb_t *ns)
 {
-  error e = error_create ();
-  return nsdb_crash (ns, &e);
+  error_reset (&ns->e);
+  err_t ret = nsdb_crash (ns->db, &ns->e);
+  i_free (default_mem (), ns);
+  return ret;
 }
 
 // Variables
@@ -72,19 +101,22 @@ ns_perror (nsdb_t *ns, const char *prefix)
 txn_t *
 ns_begin (nsdb_t *ns)
 {
-  return nsdb_begin (ns);
+  error_reset (&ns->e);
+  return nsdb_begin (ns->db, &ns->e);
 }
 
 int
 ns_commit (nsdb_t *ns, txn_t *txn)
 {
-  return nsdb_commit (ns, txn);
+  error_reset (&ns->e);
+  return nsdb_commit (ns->db, txn, &ns->e);
 }
 
 int
 ns_rollback (nsdb_t *ns, txn_t *txn)
 {
-  return nsdb_rollback (ns, txn);
+  error_reset (&ns->e);
+  return nsdb_rollback (ns->db, txn, &ns->e);
 }
 
 static inline char *
@@ -129,17 +161,17 @@ ns_exec (nsdb_t *db, struct txn *tx, const char *fmt, ...)
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
   if (query == NULL) {
-    goto theend;
+    goto failed;
   }
 
   err_t ret;
-  WITH_AUTO_TXN (ret, db, tx, nsdb_exec (db, tx, query), &db->e);
+  WITH_AUTO_TXN (ret, db->db, tx, nsdb_exec (db->db, tx, query, &db->e), &db->e);
 
   if (ret < 0) {
-    goto theend;
+    goto failed;
   }
 
-theend:
+failed:
   ALLOC_CLOSE (temp);
   return error_trace (&db->e);
 }
@@ -156,15 +188,15 @@ ns_get_var (nsdb_t *db, struct txn *tx, const char *fmt, ...)
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
   if (query == NULL) {
-    goto theend;
+    goto failed;
   }
 
-  WITH_AUTO_TXN_PTR (ret, db, tx, nsdb_get_var (db, tx, query));
+  WITH_AUTO_TXN_PTR (ret, db->db, tx, nsdb_get_var (db->db, tx, query, &db->e), &db->e);
   if (ret == NULL) {
-    goto theend;
+    goto failed;
   }
 
-theend:
+failed:
   ALLOC_CLOSE (temp);
   return ret;
 }
@@ -180,17 +212,19 @@ ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...)
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
   if (query == NULL) {
-    goto theend;
+    goto failed;
   }
 
   err_t ret;
-  WITH_AUTO_TXN (ret, db, txn, nsdb_read (db, txn, dest, dlen, query), &db->e);
+  WITH_AUTO_TXN (ret, db->db, txn, nsdb_read (db->db, txn, dest, dlen, query, &db->e), &db->e);
 
   if (ret < 0) {
-    goto theend;
+    goto failed;
   }
 
-theend:
+  return ret;
+
+failed:
   ALLOC_CLOSE (temp);
   return error_trace (&db->e);
 }
@@ -210,7 +244,7 @@ ns_read_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...)
     goto theend;
   }
 
-  WITH_AUTO_TXN_PTR (ret, db, txn, nsdb_read_malloc (db, txn, dlen, query));
+  WITH_AUTO_TXN_PTR (ret, db->db, txn, nsdb_read_malloc (db->db, txn, dlen, query, &db->e), &db->e);
   if (ret == NULL) {
     goto theend;
   }
@@ -231,17 +265,19 @@ ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt,
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
   if (query == NULL) {
-    goto theend;
+    goto failed;
   }
 
   err_t ret;
-  WITH_AUTO_TXN (ret, db, txn, nsdb_write (db, txn, src, dlen, query), &db->e);
+  WITH_AUTO_TXN (ret, db->db, txn, nsdb_write (db->db, txn, src, dlen, query, &db->e), &db->e);
 
   if (ret < 0) {
-    goto theend;
+    goto failed;
   }
 
-theend:
+  return ret;
+
+failed:
   ALLOC_CLOSE (temp);
   return error_trace (&db->e);
 }

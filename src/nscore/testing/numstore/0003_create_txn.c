@@ -84,7 +84,8 @@ TEST (ns_create_txn)
   }
 
   TEST_CASE (
-      "Creating a variable succeeds after an earlier create of the same name was rolled back"
+      "Creating a variable succeeds after an earlier create of the same name "
+      "was rolled back"
   )
   {
     int res;
@@ -111,7 +112,11 @@ TEST (ns_create_txn)
     test_assert_int_equal (ns_close (db), 0);
   }
 
-  TEST_CASE ("Creating %d variables in separate committed transactions makes them all persist", 10)
+  TEST_CASE (
+      "Creating %d variables in separate committed transactions makes them all "
+      "persist",
+      10
+  )
   {
     int res;
 
@@ -144,7 +149,8 @@ TEST (ns_create_txn)
   }
 
   TEST_CASE (
-      "Only committed creates persist when %d transactions alternate commit and rollback",
+      "Only committed creates persist when %d transactions alternate commit "
+      "and rollback",
       10
   )
   {
@@ -226,8 +232,9 @@ TEST (ns_create_txn)
       test_assert_int_equal (res, 0);
 
       // Create the same variable again (should fail)
-      res = ns_exec (db, NULL, "create var_%d u32", i);
+      res = ns_exec (db, NULL, "create var_%d f32", i);
       test_assert (res != 0);
+      ns_strerror (db);
     }
 
     // Close database
@@ -235,7 +242,8 @@ TEST (ns_create_txn)
   }
 
   TEST_CASE (
-      "Rolling back a create %d times and then committing it once leaves the variable empty",
+      "Rolling back a create %d times and then committing it once leaves the "
+      "variable empty",
       10
   )
   {
@@ -259,6 +267,7 @@ TEST (ns_create_txn)
       // The variable should not exist
       nsdb_var_t *var = ns_get_var (db, NULL, "get foo");
       test_assert (var == NULL);
+      ns_strerror (db);
     }
 
     // Finally create the variable and commit it
