@@ -70,21 +70,9 @@ static err_t
 err_var_already_exists (const struct string vname, error *e)
 {
   if (vname.len > 10) {
-    return error_causef (
-        e,
-        ERR_DUPLICATE_VARIABLE,
-        "Variable: %.*s... already exists",
-        7,
-        vname.data
-    );
+    return error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable: %.*s... already exists", 7, vname.data);
   }
-  return error_causef (
-      e,
-      ERR_DUPLICATE_VARIABLE,
-      "Variable: %.*s already exists",
-      vname.len,
-      vname.data
-  );
+  return error_causef (e, ERR_DUPLICATE_VARIABLE, "Variable: %.*s already exists", vname.len, vname.data);
 }
 
 static err_t
@@ -120,15 +108,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
   // Fetch the variable hash page (put it in prev)
   if (FAULT (
-          pgr_get_maybe_writable (
-              &prev,
-              pms->tx,
-              PG_VAR_HASH_PAGE,
-              VHASH_PGNO,
-              pms->p,
-              writable,
-              e
-          ),
+          pgr_get_maybe_writable (&prev, pms->tx, PG_VAR_HASH_PAGE, VHASH_PGNO, pms->p, writable, e),
           "ns_find_var_page:1"
       )) {
     goto failed;
@@ -166,10 +146,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   // That hash chain exists
   else {
     // Fetch start hash chain
-    if (FAULT (
-            pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e),
-            "ns_find_var_page:3"
-        )) {
+    if (FAULT (pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e), "ns_find_var_page:3")) {
       goto failed;
     }
     // state:

@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -30,7 +30,7 @@ TEST (0002_create_crash_close_delete)
   test_assert (db != NULL);
 
   // Create the variable
-  res = ns_exec (db, NULL, "create MkWMJ9a [8][9][3][3] i16");
+  res = ns_execute (db, NULL, "create MkWMJ9a [8][9][3][3] i16");
   test_assert_int_equal (res, 0);
 
   // Crash, then re open
@@ -51,7 +51,7 @@ TEST (0002_create_crash_close_delete)
   //          uninitialized, therefore it needs one upfront physical log first
   //          before it can be used - log a physical update log then continue on
   //          with fsm specific logs
-  res = ns_exec (db, NULL, "delete MkWMJ9a");
+  res = ns_execute (db, NULL, "delete MkWMJ9a");
   test_assert_int_equal (res, 0);
 
   // Close database

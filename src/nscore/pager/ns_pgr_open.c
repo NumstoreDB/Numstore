@@ -116,13 +116,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
 {
   u32 len = strlen (dbname);
   if (len > (NS_NAME_MAX - 4)) {
-    error_causef (
-        e,
-        ERR_INVALID_ARGUMENT,
-        "DBName is too big. Supported max: %d actual len: %d",
-        NS_NAME_MAX - 4,
-        len
-    );
+    error_causef (e, ERR_INVALID_ARGUMENT, "DBName is too big. Supported max: %d actual len: %d", NS_NAME_MAX - 4, len);
     return NULL;
   }
 
@@ -237,10 +231,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
           WRAP_GOTO (pgr_recover (ret, e), failed);
         } else if (start_lsn == MIN (ret->header.lsn0, ret->header.lsn1)) {
           WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
-          WRAP_GOTO (
-              wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e),
-              failed
-          );
+          WRAP_GOTO (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e), failed);
         } else {
           error_causef (e, ERR_CORRUPT, "Existing WAL doesn't match database");
           goto failed;

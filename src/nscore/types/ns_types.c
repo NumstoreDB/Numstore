@@ -438,7 +438,7 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
     case T_STRUCT:
     case T_UNION: {
       char *p = dest;
-      int n = snprintf (p, (size_t)(end - p), "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
+      int   n = snprintf (p, (size_t)(end - p), "%s { ", (t->type == T_STRUCT) ? "struct" : "union");
       p += (n > 0 ? n : 0);
 
       u16 len = t->st.len;
@@ -553,43 +553,31 @@ TEST (type_generate_string)
   TEST_CASE ("complex_nested")
   {
     // Sub-component A: union { raw u8, state i32 }
-    struct string un_keys[2]  = {{.data = "raw", .len = 3}, {.data = "state", .len = 5}};
-    struct type   prim_u8     = {.type = T_PRIM, .p = U8};
-    struct type   prim_i32    = {.type = T_PRIM, .p = I32};
-    struct type  *un_types[2] = {&prim_u8, &prim_i32};
-    struct type   inner_union = {
-        .type = T_UNION,
-        .un   = {.len = 2, .keys = un_keys, .types = un_types}
-    };
+    struct string un_keys[2]        = {{.data = "raw", .len = 3}, {.data = "state", .len = 5}};
+    struct type   prim_u8           = {.type = T_PRIM, .p = U8};
+    struct type   prim_i32          = {.type = T_PRIM, .p = I32};
+    struct type  *un_types[2]       = {&prim_u8, &prim_i32};
+    struct type   inner_union       = {.type = T_UNION, .un = {.len = 2, .keys = un_keys, .types = un_types}};
 
     // Sub-component B: [5] cf32
-    struct type prim_cf32         = {.type = T_PRIM, .p = CF32};
-    u32         inner_arr_dims[1] = {5};
-    struct type inner_array       = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = inner_arr_dims, .t = &prim_cf32}
-    };
+    struct type   prim_cf32         = {.type = T_PRIM, .p = CF32};
+    u32           inner_arr_dims[1] = {5};
+    struct type   inner_array       = {.type = T_SARRAY, .sa = {.rank = 1, .dims = inner_arr_dims, .t = &prim_cf32}};
 
     // Parent Struct: struct { payload <union>, tags <array> }
-    struct string st_keys[2]    = {{.data = "payload", .len = 7}, {.data = "tags", .len = 4}};
-    struct type  *st_types[2]   = {&inner_union, &inner_array};
-    struct type   parent_struct = {
-        .type = T_STRUCT,
-        .st   = {.len = 2, .keys = st_keys, .types = st_types}
-    };
+    struct string st_keys[2]        = {{.data = "payload", .len = 7}, {.data = "tags", .len = 4}};
+    struct type  *st_types[2]       = {&inner_union, &inner_array};
+    struct type   parent_struct     = {.type = T_STRUCT, .st = {.len = 2, .keys = st_keys, .types = st_types}};
 
     // Root Array: [2] <struct>
-    u32         root_dims[1] = {2};
-    struct type root_type    = {
-        .type = T_SARRAY,
-        .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
-    };
+    u32           root_dims[1]      = {2};
+    struct type   root_type         = {.type = T_SARRAY, .sa = {.rank = 1, .dims = root_dims, .t = &parent_struct}};
 
-    const char *expected     = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
-    u32         expected_len = (u32)strlen (expected);
+    const char   *expected          = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
+    u32           expected_len      = (u32)strlen (expected);
 
     // Verify type_get_string_size returns enough space for safe serialization
-    u32         calculated_size = type_get_string_size (&root_type);
+    u32           calculated_size   = type_get_string_size (&root_type);
     test_assert_int_equal (calculated_size >= expected_len + 1, 1);
 
     char buf[256];
@@ -921,12 +909,7 @@ type_random (struct arena_alloc *alloc, u32 depth, t_size max_size, error *e)
 
   ALLOC_CLOSE (temp);
 
-  error_causef (
-      e,
-      ERR_INVALID_ARGUMENT,
-      "Failed to generate a valid type of at most %u bytes",
-      max_size
-  );
+  error_causef (e, ERR_INVALID_ARGUMENT, "Failed to generate a valid type of at most %u bytes", max_size);
   return NULL;
 }
 
@@ -1220,13 +1203,7 @@ strtoprim (const char *text, u32 len)
  * SECTION: Print Type
  ******************************************************************************/
 
-static void print_type_inner (
-    int                level,
-    const u8          *buf,
-    const struct type *t,
-    u32                max_elems,
-    u32                indent
-);
+static void print_type_inner (int level, const u8 *buf, const struct type *t, u32 max_elems, u32 indent);
 
 static void
 print_indent (int level, u32 spaces)
@@ -1601,15 +1578,7 @@ TEST (sarray_sub_size)
 // col: visual column of the '[' just printed at this dimension,
 // used to align continuation rows under it.
 static void
-print_sarray_dim (
-    int                    level,
-    const u8              *buf,
-    const struct sarray_t *sa,
-    u16                    dim_idx,
-    u32                    max_elems,
-    u32                    indent,
-    u32                    col
-)
+print_sarray_dim (int level, const u8 *buf, const struct sarray_t *sa, u16 dim_idx, u32 max_elems, u32 indent, u32 col)
 {
   u32 dim_len  = sa->dims[dim_idx];
   u32 show     = dim_len < max_elems ? dim_len : max_elems;
@@ -1635,15 +1604,7 @@ print_sarray_dim (
         i_log_printf (level, ",\n");
         print_indent (level, col + 1);
       }
-      print_sarray_dim (
-          level,
-          buf + (i * sub_size),
-          sa,
-          dim_idx + 1,
-          max_elems,
-          indent + 1,
-          col + 1
-      );
+      print_sarray_dim (level, buf + (i * sub_size), sa, dim_idx + 1, max_elems, indent + 1, col + 1);
     }
     if (dim_len > max_elems) {
       i_log_printf (level, ",\n");

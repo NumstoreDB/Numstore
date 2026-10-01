@@ -74,12 +74,7 @@ struct type_accessor
 };
 
 bool type_accessor_equal (struct type_accessor left, struct type_accessor right);
-struct type *ta_subtype (
-    struct type          *reftype,
-    struct type_accessor *ta,
-    struct arena_alloc   *alloc,
-    error                *e
-);
+struct type *ta_subtype (struct type *reftype, struct type_accessor *ta, struct arena_alloc *alloc, error *e);
 struct byte_accessor *type_to_byte_accessor (
     struct type_accessor *src,
     struct type          *reftype,
@@ -147,11 +142,7 @@ struct type_accessor_builder
 
 struct type_accessor_builder tab_create (struct builder *b);
 err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e);
-err_t tab_accept_stride (
-    struct type_accessor_builder *builder,
-    struct user_stride            stride,
-    error                        *e
-);
+err_t tab_accept_stride (struct type_accessor_builder *builder, struct user_stride stride, error *e);
 err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
 err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e);
 

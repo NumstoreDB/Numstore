@@ -35,7 +35,7 @@
 ///
 /// Phases 4 (no-commit crash) and 5 (rollback) leave their slots as 'A'.
 
-#include "smartfiles.h"
+#include "numstore.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -54,13 +54,13 @@
 // Phase functions - each represents one transaction scenario
 // ---------------------------------------------------------------------------
 
-static void phase1_populate (smfile_t *smf);
-static void phase2_commit_clean (smfile_t *smf);
-static void phase3_commit_then_crash (smfile_t *smf);
-static void phase4_no_commit_crash (smfile_t *smf);
-static void phase5_rollback (smfile_t *smf);
+static void phase1_populate (nsdb_t *smf);
+static void phase2_commit_clean (nsdb_t *smf);
+static void phase3_commit_then_crash (nsdb_t *smf);
+static void phase4_no_commit_crash (nsdb_t *smf);
+static void phase5_rollback (nsdb_t *smf);
 
-typedef void (*phase_fn) (smfile_t *);
+typedef void (*phase_fn) (nsdb_t *);
 static phase_fn phases[] = {
     NULL,
     phase1_populate,
@@ -103,12 +103,12 @@ run_phase (int phase_num, int crash, const char *exe)
 #else
   pid_t pid = fork ();
   if (pid == 0) {
-    smfile_t *smf = smfile_open (PATH);
+    nsdb_t *smf = ns_smfile_open (PATH);
     phases[phase_num](smf);
     if (crash) {
       _Exit (1); // Simulate crash: no smfile_close(), no WAL flush
     }
-    smfile_close (smf);
+    ns_close (smf);
     _Exit (0);
   }
   waitpid (pid, NULL, 0);
@@ -127,11 +127,11 @@ run_phase (int phase_num, int crash, const char *exe)
 // ---------------------------------------------------------------------------
 
 static void
-phase1_populate (smfile_t *smf)
+phase1_populate (nsdb_t *smf)
 {
-  sm_txn_t *tx = smfile_begin (smf);
-  smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
-  smfile_commit (smf, tx);
+  txn_t *tx = ns_begin (smf);
+  ns_smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
+  ns_commit (smf, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -145,11 +145,11 @@ phase1_populate (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-phase2_commit_clean (smfile_t *smf)
+phase2_commit_clean (nsdb_t *smf)
 {
-  sm_txn_t *tx = smfile_begin (smf);
-  smfile_insert (smf, tx, "BB", 3, 2);
-  smfile_commit (smf, tx);
+  txn_t *tx = ns_begin (smf);
+  ns_smfile_insert (smf, tx, "BB", 3, 2);
+  ns_commit (smf, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -164,11 +164,11 @@ phase2_commit_clean (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-phase3_commit_then_crash (smfile_t *smf)
+phase3_commit_then_crash (nsdb_t *smf)
 {
-  sm_txn_t *tx = smfile_begin (smf);
-  smfile_insert (smf, tx, "CC", 7, 2);
-  smfile_commit (smf, tx);
+  txn_t *tx = ns_begin (smf);
+  ns_smfile_insert (smf, tx, "CC", 7, 2);
+  ns_commit (smf, tx);
   // _Exit() called by run_phase - crash happens here
 }
 
@@ -184,10 +184,10 @@ phase3_commit_then_crash (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-phase4_no_commit_crash (smfile_t *smf)
+phase4_no_commit_crash (nsdb_t *smf)
 {
-  sm_txn_t *tx = smfile_begin (smf);
-  smfile_insert (smf, tx, "DD", 11, 2);
+  txn_t *tx = ns_begin (smf);
+  ns_smfile_insert (smf, tx, "DD", 11, 2);
   // No smfile_commit() - _Exit() called by run_phase
 }
 
@@ -203,11 +203,11 @@ phase4_no_commit_crash (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-phase5_rollback (smfile_t *smf)
+phase5_rollback (nsdb_t *smf)
 {
-  sm_txn_t *tx = smfile_begin (smf);
-  smfile_insert (smf, tx, "EE", 5, 2);
-  smfile_rollback (smf, tx);
+  txn_t *tx = ns_begin (smf);
+  ns_smfile_insert (smf, tx, "EE", 5, 2);
+  ns_rollback (smf, tx);
 }
 
 // ---------------------------------------------------------------------------
@@ -218,10 +218,10 @@ phase5_rollback (smfile_t *smf)
 // ---------------------------------------------------------------------------
 
 static void
-check_zone (smfile_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected)
+check_zone (nsdb_t *smf, const char *label, b_size bofst, b_size nelem, const char *expected)
 {
   char    buf[64];
-  sb_size n = smfile_read (smf, NULL, buf, 1, bofst, 1, nelem);
+  sb_size n = ns_smfile_read (smf, NULL, buf, 1, bofst, 1, nelem);
   buf[n]    = '\0';
   printf ("%s\n", label);
   printf ("  expected: \"%s\"\n", expected);
@@ -238,9 +238,9 @@ main (int argc, char *argv[])
 #ifdef _WIN32
   // Windows child: re-execed with a phase number, run that phase and exit.
   if (argc == 2) {
-    int       phase_num = atoi (argv[1]);
-    int       crash     = (phase_num == 3 || phase_num == 4);
-    smfile_t *smf       = smfile_open (PATH);
+    int     phase_num = atoi (argv[1]);
+    int     crash     = (phase_num == 3 || phase_num == 4);
+    nsdb_t *smf       = smfile_open (PATH);
     phases[phase_num](smf);
     if (crash) {
       exit (1);
@@ -275,7 +275,7 @@ main (int argc, char *argv[])
 
   // Open the file fresh - this triggers WAL replay for any committed-but-
   // unwritten entries (i.e. phase 3's "CC").
-  smfile_t *smf = smfile_open (PATH);
+  nsdb_t *smf = ns_smfile_open (PATH);
 
   printf ("\n--- Phase 6: verification ---\n\n");
   check_zone (smf, "full contents (ph2 + ph3 visible, ph4 + ph5 gone):", 0, 14, "AAABBAACCAAAAA");
@@ -284,5 +284,5 @@ main (int argc, char *argv[])
   check_zone (smf, "ph4 - DD no commit + crash (must still be A):", 11, 1, "A");
   check_zone (smf, "ph5 - EE rolled back (must still be A):", 5, 1, "A");
 
-  return smfile_close (smf);
+  return ns_close (smf);
 }

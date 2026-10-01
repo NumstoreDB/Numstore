@@ -43,7 +43,7 @@ main (int argc, char **argv)
     return -1;
   }
   int         failed = 0;
-  const char *failed_names[344];
+  const char *failed_names[339];
   
   if (!filter || strstr("block_insert_read", filter))
   {
@@ -2781,40 +2781,40 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("ns_insert", filter))
+  if (!filter || strstr("ns_writesert", filter))
   {
-    extern void __test__ns_insert(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_insert");
+    extern void __test__ns_writesert(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_writesert");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_insert();
+    __test__ns_writesert();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_insert");
+      i_log_passed("%s\n", "ns_writesert");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_insert";
+      failed_names[failed++] = "ns_writesert";
     }
     ntests++;
   }
 
-  if (!filter || strstr("ns_insert_from_empty", filter))
+  if (!filter || strstr("ns_writesert_from_empty", filter))
   {
-    extern void __test__ns_insert_from_empty(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_insert_from_empty");
+    extern void __test__ns_writesert_from_empty(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_writesert_from_empty");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_insert_from_empty();
+    __test__ns_writesert_from_empty();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_insert_from_empty");
+      i_log_passed("%s\n", "ns_writesert_from_empty");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_insert_from_empty";
+      failed_names[failed++] = "ns_writesert_from_empty";
     }
     ntests++;
   }
@@ -3746,6 +3746,25 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "nsdb_plan_write";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("nsdb_auto_txn", filter))
+  {
+    extern void __test__nsdb_auto_txn(void);
+    i_log_info("========================= TEST CASE: %s\n", "nsdb_auto_txn");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__nsdb_auto_txn();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "nsdb_auto_txn");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "nsdb_auto_txn";
     }
     ntests++;
   }
@@ -4871,21 +4890,21 @@ main (int argc, char **argv)
     ntests++;
   }
 
-  if (!filter || strstr("ns_insert_txn", filter))
+  if (!filter || strstr("ns_writesert_txn", filter))
   {
-    extern void __test__ns_insert_txn(void);
-    i_log_info("========================= TEST CASE: %s\n", "ns_insert_txn");
+    extern void __test__ns_writesert_txn(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_writesert_txn");
     int prev = test_ret;
     test_ret = 0;
-    __test__ns_insert_txn();
+    __test__ns_writesert_txn();
     if (!test_ret)
     {
-      i_log_passed("%s\n", "ns_insert_txn");
+      i_log_passed("%s\n", "ns_writesert_txn");
       test_ret = prev;
     }
     else
     {
-      failed_names[failed++] = "ns_insert_txn";
+      failed_names[failed++] = "ns_writesert_txn";
     }
     ntests++;
   }
@@ -5000,6 +5019,25 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "0003_rollback_invalid_wal_header";
+    }
+    ntests++;
+  }
+
+  if (!filter || strstr("ns_db", filter))
+  {
+    extern void __test__ns_db(void);
+    i_log_info("========================= TEST CASE: %s\n", "ns_db");
+    int prev = test_ret;
+    test_ret = 0;
+    __test__ns_db();
+    if (!test_ret)
+    {
+      i_log_passed("%s\n", "ns_db");
+      test_ret = prev;
+    }
+    else
+    {
+      failed_names[failed++] = "ns_db";
     }
     ntests++;
   }
@@ -6444,139 +6482,6 @@ main (int argc, char **argv)
     else
     {
       failed_names[failed++] = "wal_rec_hdr_type_tostr";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile_perror", filter))
-  {
-    extern void __test__smfile_perror(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile_perror");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile_perror();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile_perror");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile_perror";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile_strerror", filter))
-  {
-    extern void __test__smfile_strerror(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile_strerror");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile_strerror();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile_strerror");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile_strerror";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile_cleanup", filter))
-  {
-    extern void __test__smfile_cleanup(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile_cleanup");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile_cleanup();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile_cleanup");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile_cleanup";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile_close", filter))
-  {
-    extern void __test__smfile_close(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile_close");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile_close();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile_close");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile_close";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile_crash", filter))
-  {
-    extern void __test__smfile_crash(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile_crash");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile_crash();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile_crash");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile_crash";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile", filter))
-  {
-    extern void __test__smfile(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile";
-    }
-    ntests++;
-  }
-
-  if (!filter || strstr("smfile_open", filter))
-  {
-    extern void __test__smfile_open(void);
-    i_log_info("========================= TEST CASE: %s\n", "smfile_open");
-    int prev = test_ret;
-    test_ret = 0;
-    __test__smfile_open();
-    if (!test_ret)
-    {
-      i_log_passed("%s\n", "smfile_open");
-      test_ret = prev;
-    }
-    else
-    {
-      failed_names[failed++] = "smfile_open";
     }
     ntests++;
   }

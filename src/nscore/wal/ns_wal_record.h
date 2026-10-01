@@ -270,8 +270,7 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
    sizeof(u32)       /* checksum */                                            \
   )
 // Size of DUMMY_CLR entry
-#define WL_DUMMY_CLR_LEN \
-  (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
+#define WL_DUMMY_CLR_LEN (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
 
 // Utils
 stxid wrh_get_tid (const struct wal_rec_hdr_read *h);
@@ -295,10 +294,7 @@ void walf_decode_commit (struct wal_rec_hdr_read *r, const u8 buf[WL_COMMIT_LEN]
 void walf_decode_end (struct wal_rec_hdr_read *r, const u8 buf[WL_END_LEN]);
 
 #ifdef TESTING
-bool wal_rec_hdr_read_equal (
-    const struct wal_rec_hdr_read *left,
-    const struct wal_rec_hdr_read *right
-);
+bool wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_rec_hdr_read *right);
 #endif
 
 HEADER_FUNC struct wal_update_write

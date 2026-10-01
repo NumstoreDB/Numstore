@@ -50,11 +50,11 @@ numstore_insert (
   }
 
   // Resolve sizes
-  t_size                  tsize   = type_byte_size (var->dtype);
-  b_size                  bofst   = var_resolve_index (var, tsize * ofst);
+  t_size                     tsize   = type_byte_size (var->dtype);
+  b_size                     bofst   = var_resolve_index (var, tsize * ofst);
 
   // Insert
-  struct ns_insert_params iparams = {
+  struct ns_writesert_params iparams = {
       .p     = p,
       .src   = src,
       .tx    = tx,
@@ -62,7 +62,7 @@ numstore_insert (
       .bofst = bofst,
       .bytes = len * tsize,
   };
-  sb_size ret = ns_insert (&iparams, e);
+  sb_size ret = ns_writesert (&iparams, e);
   if (ret != (sb_size)(len * tsize)) {
     goto failed;
   }

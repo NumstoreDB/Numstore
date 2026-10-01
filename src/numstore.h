@@ -26,10 +26,10 @@
 #  define NSDB_PRINTF(fmt_idx, vargs_idx)
 #endif
 
-typedef struct nsdb_wrapper nsdb_t;
-typedef struct txn          txn_t;
-typedef struct nsdb_var     nsdb_var_t;
-typedef struct ns_plan      nsdb_plan_t;
+typedef struct nsdb      nsdb_t;
+typedef struct txn       txn_t;
+typedef struct nsdb_var  nsdb_var_t;
+typedef struct nsdb_plan nsdb_plan_t;
 
 #ifndef NS_TYPE_ALIASES
 
@@ -79,6 +79,7 @@ typedef uint8_t  wlh;     // WAL header
 
 // Lifecycle
 nsdb_t *ns_open (const char *path);
+nsdb_t *ns_smfile_open (const char *path);
 int ns_cleanup (const char *path);
 int ns_close (nsdb_t *ns);
 int ns_crash (nsdb_t *ns);
@@ -89,7 +90,7 @@ void ns_var_free (nsdb_var_t *var);
 
 // Errors
 const char *ns_strerror (nsdb_t *ns);
-int ns_perror (nsdb_t *ns, const char *prefix);
+const char *ns_plan_strerror (nsdb_plan_t *plan);
 
 // Transactions
 txn_t *ns_begin (nsdb_t *ns);
@@ -98,18 +99,22 @@ int ns_rollback (nsdb_t *ns, txn_t *txn);
 
 // Execution
 
+nsdb_plan_t *ns_plan_fcreate (nsdb_t *db, const char *fmt, ...);
+void ns_plan_free (nsdb_plan_t *plan);
+
 /**
  * Execute a single query.
  * Must be any query that doesn't take in parameters
  *
  * Example:
- *    ns_exec(db, tx, "create foo u32");
- *    ns_exec(db, tx, "remove foo[0:]");
- *    ns_exec(db, tx, "insert foo 0 10");       X FAILS
- *    ns_exec(db, tx, "read foo[0:10]");        X FAILS
- *    ns_exec(db, tx, "write foo[0:10]");       X FAILS
+ *    ns_execute(db, tx, "create foo u32");
+ *    ns_execute(db, tx, "remove foo[0:]");
+ *    ns_execute(db, tx, "insert foo 0 10");       X FAILS
+ *    ns_execute(db, tx, "read foo[0:10]");        X FAILS
+ *    ns_execute(db, tx, "write foo[0:10]");       X FAILS
  */
-int ns_exec (nsdb_t *db, struct txn *tx, const char *fmt, ...);
+int ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...);
+int ns_plan_execute (nsdb_plan_t *plan, struct txn *tx);
 
 /**
  * Get the variable associated with a query
@@ -121,6 +126,7 @@ int ns_exec (nsdb_t *db, struct txn *tx, const char *fmt, ...);
  *    nsdb_var_t* var = ns_get_var(db, tx, "delete foo");
  */
 nsdb_var_t *ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...);
+nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, struct txn *tx);
 
 /**
  * Execute a query and read into a fixed sized buffer
@@ -134,20 +140,7 @@ nsdb_var_t *ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...);
  *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "get foo");           X FAILS
  */
 sb_size ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...);
-
-/**
- * Execute a query and malloc an output buffer
- * Must be a "readable" query (READ/REMOVE only)
- *
- * Example:
- *    b_size len;
- *    void* data = ns_read_malloc(db, tx, &len, "read foo[0:10]");
- *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
- *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
- *    void* data = ns_read_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
- *    void* data = ns_read_malloc(db, tx, &len, "delete foo");        X FAILS
- */
-void *ns_read_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...);
+sb_size ns_plan_read (nsdb_plan_t *plan, txn_t *txn, void *dest, b_size dlen);
 
 /**
  * Execute a query and write out of a fixed sized buffer
@@ -155,12 +148,43 @@ void *ns_read_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...
  *
  * Example:
  *    b_size len;
- *    void* data = ns_read_malloc(db, tx, &len, "read foo[0:10]");
- *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
- *    void* data = ns_read_malloc(db, tx, &len, "remove foo[0:10]");
- *    void* data = ns_read_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
- *    void* data = ns_read_malloc(db, tx, &len, "delete foo");        X FAILS
+ *    void* data = ns_malloc(db, tx, &len, "read foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
+ *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
  */
 sb_size ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt, ...);
+sb_size ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dlen);
+
+/**
+ * Execute a query and malloc an output buffer
+ * Must be a "readable" query (READ/REMOVE only)
+ *
+ * Example:
+ *    b_size len;
+ *    void* data = ns_malloc(db, tx, &len, "read foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
+ *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
+ */
+void *ns_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...);
+void *ns_plan_malloc (nsdb_plan_t *plan, txn_t *tx, b_size *dlen);
+
+// Smart files execution patterns
+sb_size ns_smfile_size (nsdb_t *smf, txn_t *tx);
+sb_size ns_smfile_insert (nsdb_t *smf, txn_t *tx, const void *src, sb_size bofst, b_size slen);
+sb_size ns_smfile_write (
+    nsdb_t     *smf,
+    txn_t      *tx,
+    const void *src,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+);
+sb_size ns_smfile_read (nsdb_t *smf, txn_t *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem);
+sb_size ns_smfile_remove (nsdb_t *smf, txn_t *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem);
 
 #endif

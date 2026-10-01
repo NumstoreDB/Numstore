@@ -13,15 +13,7 @@ struct i_net_darwin_vtable
 {
   int (*i_socket) (void *self, int domain, int type, int protocol, error *e);
 
-  err_t (*i_setsockopt) (
-      void       *self,
-      int         fd,
-      int         level,
-      int         optname,
-      const void *optval,
-      socklen_t   optlen,
-      error      *e
-  );
+  err_t (*i_setsockopt) (void *self, int fd, int level, int optname, const void *optval, socklen_t optlen, error *e);
 
   err_t (*i_bind) (void *self, int fd, const struct sockaddr *addr, socklen_t addrlen, error *e);
   err_t (*i_listen) (void *self, int fd, int backlog, error *e);

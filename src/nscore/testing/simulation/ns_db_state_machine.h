@@ -52,12 +52,12 @@ err_t ns_db_rollback_txn (struct ns_db *db, error *e);
 err_t ns_db_commit_txn (struct ns_db *db, error *e);
 err_t ns_db_crash_and_reopen (struct ns_db *db, error *e);
 err_t ns_db_close_and_reopen (struct ns_db *db, error *e);
-err_t ns_db_create (struct ns_db *db, const char *vname, struct type dtype, error *e);
+err_t ns_db_create (struct ns_db *db, const char *vname, const char *typestr, error *e);
 err_t ns_db_switch (struct ns_db *db, const char *next, error *e);
 err_t ns_db_delete_and_switch (struct ns_db *db, const char *next, error *e);
-sb_size ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e);
-sb_size ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e);
-sb_size ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e);
-sb_size ns_db_write (struct ns_db *db, void *data, struct stride str, error *e);
+sb_size ns_db_insert (struct ns_db *db, const void *data, b_size dlen, b_size ofst, b_size nelems, error *e);
+sb_size ns_db_remove (struct ns_db *db, void *dest, b_size dlen, struct stride str, error *e);
+sb_size ns_db_read (struct ns_db *db, void *dest, b_size dlen, struct stride str, error *e);
+sb_size ns_db_write (struct ns_db *db, const void *data, b_size dlen, struct stride str, error *e);
 
 #endif

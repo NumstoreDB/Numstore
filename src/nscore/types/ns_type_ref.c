@@ -42,9 +42,7 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
 
   switch (left.type) {
     case TR_TAKE: {
-      return (string_equal (left.tk.vname, right.tk.vname)
-              && type_accessor_equal (left.tk.ta, right.tk.ta))
-             != 0;
+      return (string_equal (left.tk.vname, right.tk.vname) && type_accessor_equal (left.tk.ta, right.tk.ta)) != 0;
     }
 
     case TR_STRUCT: {
@@ -109,11 +107,7 @@ TEST (type_ref_equal)
   TRE_TC ("struct { a bar }", "struct { a foo }", false);
   TRE_TC ("struct { b foo }", "struct { a foo }", false);
   TRE_TC ("struct { a foo.bar }", "struct { a foo.biz }", false);
-  TRE_TC (
-      "struct { a foo.bar, b struct { c foo, d bar } }",
-      "struct { a foo.bar, b struct { c foo, d biz } }",
-      false
-  );
+  TRE_TC ("struct { a foo.bar, b struct { c foo, d bar } }", "struct { a foo.bar, b struct { c foo, d biz } }", false);
 
   ALLOC_CLOSE (alloc);
 }
@@ -239,11 +233,7 @@ TEST (tr_construct)
 
   TRC_TC ("struct { a u8, b [10][20]u16 }", "foo.b", "[10][20]u16");
 
-  TRC_TC (
-      "struct { a u8, b struct { c u16 } }",
-      "struct { a foo.b, b foo.a }",
-      "struct { a struct { c u16 }, b u8 }"
-  );
+  TRC_TC ("struct { a u8, b struct { c u16 } }", "struct { a foo.b, b foo.a }", "struct { a struct { c u16 }, b u8 }");
 
   ALLOC_CLOSE (alloc);
 }

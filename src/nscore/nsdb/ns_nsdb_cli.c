@@ -33,17 +33,18 @@ err_t
 nscli_init (struct nscli *cli, const char *dbname)
 {
   cli->e  = error_create ();
-  cli->db = nsdb_open_with_resources (dbname, default_mem (), default_filesystem (), &cli->e);
+  cli->db = nsdb_open (dbname, default_mem (), default_filesystem (), &cli->e);
 
   if (cli->db == NULL) {
     return -1;
   }
 
-  // Initialize numstore database
-  if (numstore_init_pager (cli->db->p, &cli->e)) {
+  if (nsdb_writeit_numstore (cli->db, &cli->e) < 0) {
     nsdb_close (cli->db, &cli->e);
-    return -1;
+    return error_trace (&cli->e);
   }
+
+  nsdb_allow_auto_txn (cli->db);
 
   return SUCCESS;
 }
@@ -191,9 +192,8 @@ nscli_step_execute (struct nscli *cli)
   }
 
   // Execute the query
-  struct txn *tx = NULL;
-  err_t       res;
-  WITH_AUTO_TXN (res, cli->db, tx, nsdb_console (cli->db, tx, cli->stmt.data, &cli->e), &cli->e);
+  struct txn *tx  = NULL;
+  err_t       res = nsdb_console (cli->db, tx, cli->stmt.data, &cli->e);
 
   if (res < 0) {
     ret = EXE_ERROR;

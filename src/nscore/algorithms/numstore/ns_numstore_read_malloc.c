@@ -29,15 +29,7 @@ numstore_read_malloc_from_name (
     error              *e
 )
 {
-  WITH_OPT_VARIABLE_PTR (
-      p,
-      tx,
-      name,
-      valloc,
-      var,
-      e,
-      numstore_read_malloc (p, tx, var, ustr, dlen, mem, e)
-  );
+  WITH_OPT_VARIABLE_PTR (p, tx, name, valloc, var, e, numstore_read_malloc (p, tx, var, ustr, dlen, mem, e));
 }
 
 void *
@@ -98,7 +90,7 @@ numstore_read_malloc (
   }
 
   if (dlen) {
-    *dlen = ret;
+    *dlen = ret * tsize;
   }
 
   return buffer;

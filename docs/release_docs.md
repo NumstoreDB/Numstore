@@ -15,7 +15,7 @@ Layout
 ├── bin/                    precompiled tools and sample binaries
 ├── include/
 │   ├── numstore/           numstore.h  - database for numerical arrays
-│   └── smartfiles/         smartfiles.h - plain ACID transactional file
+│   └── smartfiles/         numstore.h - plain ACID transactional file
 ├── lib/
 │   ├── libnumstore.a       static library (numstore + smartfiles, one archive)
 │   └── pkgconfig/
@@ -61,7 +61,7 @@ $ gcc samples/ns_sample1_basic_crud.c -I include -L lib -lnumstore \
     -o ns_sample1_basic_crud
 ```
 
-`smartfiles.h` works the same way - link against the same `libnumstore.a`:
+`numstore.h` works the same way - link against the same `libnumstore.a`:
 
 ```
 $ gcc samples/smfile_sample1_basic_crud.c -I include -L lib -lnumstore \

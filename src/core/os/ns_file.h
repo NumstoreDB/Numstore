@@ -61,13 +61,7 @@ i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error
   WRAP (ret);
 
   if (unlikely ((u64)ret != n)) {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
-        ret,
-        (i64)n
-    );
+    return error_causef (e, ERR_CORRUPT, "pread: short read (got %" PRId64 " of %" PRId64 " bytes)", ret, (i64)n);
   }
 
   return SUCCESS;
@@ -80,13 +74,7 @@ i_read_all_expect (i_file *fp, void *dest, const u64 nbytes, error *e)
   WRAP (ret);
 
   if (unlikely ((u64)ret != nbytes)) {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "read: short read (got %" PRId64 " of %" PRId64 " bytes)",
-        ret,
-        (i64)nbytes
-    );
+    return error_causef (e, ERR_CORRUPT, "read: short read (got %" PRId64 " of %" PRId64 " bytes)", ret, (i64)nbytes);
   }
 
   return SUCCESS;

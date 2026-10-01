@@ -12,7 +12,7 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 err_t
 ns_consume_one_var (struct pager *p, page_h *cur, var_consumer var, void *ctx, error *e)
@@ -158,8 +158,8 @@ TEST (ns_visit_variables)
 {
   error e = error_create ();
   nsdb_cleanup ("test", &e);
-  struct nsdb *db = nsdb_open_with_resources ("test", mem, fs, &e);
-  nsdb_init_numstore (db, &e);
+  struct nsdb *db = nsdb_open ("test", mem, fs, &e);
+  nsdb_writeit_numstore (db, &e);
 
   TEST_CASE ("no variables")
   {
@@ -182,16 +182,16 @@ TEST (ns_visit_variables)
   {
     struct txn *tx = nsdb_begin (db, &e);
 
-    nsdb_exec (db, tx, "create var0 u32", &e);
-    nsdb_exec (db, tx, "create var1 u32", &e);
-    nsdb_exec (db, tx, "create var2 u32", &e);
-    nsdb_exec (db, tx, "create var3 u32", &e);
-    nsdb_exec (db, tx, "create var4 u32", &e);
-    nsdb_exec (db, tx, "create var5 u32", &e);
-    nsdb_exec (db, tx, "create var6 u32", &e);
-    nsdb_exec (db, tx, "create var7 u32", &e);
-    nsdb_exec (db, tx, "create var8 u32", &e);
-    nsdb_exec (db, tx, "create var9 u32", &e);
+    nsdb_execute (db, tx, "create var0 u32", &e);
+    nsdb_execute (db, tx, "create var1 u32", &e);
+    nsdb_execute (db, tx, "create var2 u32", &e);
+    nsdb_execute (db, tx, "create var3 u32", &e);
+    nsdb_execute (db, tx, "create var4 u32", &e);
+    nsdb_execute (db, tx, "create var5 u32", &e);
+    nsdb_execute (db, tx, "create var6 u32", &e);
+    nsdb_execute (db, tx, "create var7 u32", &e);
+    nsdb_execute (db, tx, "create var8 u32", &e);
+    nsdb_execute (db, tx, "create var9 u32", &e);
 
     nsdb_commit (db, tx, &e);
 

@@ -4,7 +4,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_numerics.h"
 #include "core/ns_stride.h"
-#include "smartfiles/smartfiles.h"
+#include "numstore.h"
 
 struct smfile_simulation
 {
@@ -20,7 +20,7 @@ struct smfile_simulation
   // commit a non open txn)
   int                 allowed[SMF_AT_LEN];
 
-  smfile_t           *db;
+  nsdb_t             *db;
   struct txn         *tx;
   const char         *dbname;
   int                 max_insert_len;
@@ -110,9 +110,9 @@ smfile_simul_begin_txn (struct smfile_simulation *meta)
   ASSERT (!meta->tx);
   ASSERT (meta->working == NULL);
 
-  meta->tx = smfile_begin (meta->db);
+  meta->tx = ns_begin (meta->db);
   if (meta->tx == NULL) {
-    i_log_failure ("smfile_begin failed: %s\n", meta->dbname);
+    i_log_failure ("ns_begin failed: %s\n", meta->dbname);
     return -1;
   }
 
@@ -122,7 +122,7 @@ smfile_simul_begin_txn (struct smfile_simulation *meta)
     i_log_failure ("block_array_clone failed: %s\n", meta->dbname);
     /* db is now mid-transaction but meta->in_txn is still 0 - abort the
      * real txn too so the two stay in sync. */
-    smfile_rollback (meta->db, meta->tx);
+    ns_rollback (meta->db, meta->tx);
     meta->tx = NULL;
     return -1;
   }
@@ -136,8 +136,8 @@ smfile_simul_commit_txn (struct smfile_simulation *meta)
   ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
 
-  if (smfile_commit (meta->db, meta->tx) < 0) {
-    i_log_failure ("smfile_commit failed: %s\n", meta->dbname);
+  if (ns_commit (meta->db, meta->tx) < 0) {
+    i_log_failure ("ns_commit failed: %s\n", meta->dbname);
     meta->tx = NULL;
     return -1;
   }
@@ -156,8 +156,8 @@ smfile_simul_rollback_txn (struct smfile_simulation *meta)
   ASSERT (meta->tx);
   ASSERT (meta->working != NULL);
 
-  if (smfile_rollback (meta->db, meta->tx) < 0) {
-    i_log_failure ("smfile_rollback failed: %s\n", meta->dbname);
+  if (ns_rollback (meta->db, meta->tx) < 0) {
+    i_log_failure ("ns_rollback failed: %s\n", meta->dbname);
     meta->tx = NULL;
     return -1;
   }
@@ -173,14 +173,14 @@ smfile_simul_rollback_txn (struct smfile_simulation *meta)
 static int
 smfile_simul_crash_and_reopen (struct smfile_simulation *meta)
 {
-  if (smfile_crash (meta->db) < 0) {
-    i_log_failure ("smfile_crash failed: %s\n", meta->dbname);
+  if (ns_crash (meta->db) < 0) {
+    i_log_failure ("ns_crash failed: %s\n", meta->dbname);
     return -1;
   }
 
-  meta->db = smfile_open (meta->dbname);
+  meta->db = ns_smfile_open (meta->dbname);
   if (meta->db == NULL) {
-    i_log_failure ("smfile_open failed after crash: %s\n", meta->dbname);
+    i_log_failure ("ns_smfile_open failed after crash: %s\n", meta->dbname);
     return -1;
   }
 
@@ -200,14 +200,14 @@ smfile_simul_close_and_reopen (struct smfile_simulation *meta)
 {
   ASSERT (!meta->tx);
 
-  if (smfile_close (meta->db) < 0) {
-    i_log_failure ("smfile_close failed: %s\n", meta->dbname);
+  if (ns_close (meta->db) < 0) {
+    i_log_failure ("ns_close failed: %s\n", meta->dbname);
     return -1;
   }
 
-  meta->db = smfile_open (meta->dbname);
+  meta->db = ns_smfile_open (meta->dbname);
   if (meta->db == NULL) {
-    i_log_failure ("smfile_open failed after close: %s\n", meta->dbname);
+    i_log_failure ("ns_smfile_open failed after close: %s\n", meta->dbname);
     return -1;
   }
 
@@ -242,9 +242,9 @@ smfile_simul_insert (struct smfile_simulation *meta)
   }
 
   // Do real insert
-  sb_size got = smfile_insert (meta->db, meta->tx, data, ofst, len);
+  sb_size got = ns_smfile_insert (meta->db, meta->tx, data, ofst, len);
   if (got < 0) {
-    i_log_failure ("smfile_insert failed: ofst=%d len=%d\n", ofst, len);
+    i_log_failure ("ns_smfile_insert failed: ofst=%d len=%d\n", ofst, len);
     free (data);
     return -1;
   }
@@ -291,9 +291,9 @@ smfile_simul_remove (struct smfile_simulation *meta)
   }
 
   // Do real remove
-  sb_size got = smfile_remove (meta->db, meta->tx, db_buf, 1, ofst, stride, len);
+  sb_size got = ns_smfile_remove (meta->db, meta->tx, db_buf, 1, ofst, stride, len);
   if (got < 0) {
-    i_log_failure ("smfile_remove failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
+    i_log_failure ("ns_smfile_remove failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
     free (db_buf);
     free (ref_buf);
     return -1;
@@ -311,11 +311,7 @@ smfile_simul_remove (struct smfile_simulation *meta)
 
   // compare the two
   if (got != actual) {
-    i_log_failure (
-        "remove count mismatch: got=%lld actual=%lld\n",
-        (long long)got,
-        (long long)actual
-    );
+    i_log_failure ("remove count mismatch: got=%lld actual=%lld\n", (long long)got, (long long)actual);
     free (db_buf);
     free (ref_buf);
     return -1;
@@ -355,9 +351,9 @@ smfile_simul_read (struct smfile_simulation *meta)
   }
 
   // Do real read
-  sb_size got = smfile_read (meta->db, meta->tx, db_buf, 1, ofst, stride, len);
+  sb_size got = ns_smfile_read (meta->db, meta->tx, db_buf, 1, ofst, stride, len);
   if (got < 0) {
-    i_log_failure ("smfile_read failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
+    i_log_failure ("ns_smfile_read failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
     free (db_buf);
     free (ref_buf);
     return -1;
@@ -375,11 +371,7 @@ smfile_simul_read (struct smfile_simulation *meta)
 
   // compare the two
   if (got != actual) {
-    i_log_failure (
-        "read count mismatch: got=%lld actual=%lld\n",
-        (long long)got,
-        (long long)actual
-    );
+    i_log_failure ("read count mismatch: got=%lld actual=%lld\n", (long long)got, (long long)actual);
     free (db_buf);
     free (ref_buf);
     return -1;
@@ -416,9 +408,9 @@ smfile_simul_write (struct smfile_simulation *meta)
   }
 
   // Do real write
-  sb_size got = smfile_write (meta->db, meta->tx, data, 1, ofst, stride, len);
+  sb_size got = ns_smfile_write (meta->db, meta->tx, data, 1, ofst, stride, len);
   if (got < 0) {
-    i_log_failure ("smfile_write failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
+    i_log_failure ("ns_smfile_write failed: ofst=%d stride=%d len=%d\n", ofst, stride, len);
     free (data);
     return -1;
   }
@@ -433,11 +425,7 @@ smfile_simul_write (struct smfile_simulation *meta)
   }
 
   if (got != (i64)actual) {
-    i_log_failure (
-        "write count mismatch: got=%lld actual=%lld\n",
-        (long long)got,
-        (long long)actual
-    );
+    i_log_failure ("write count mismatch: got=%lld actual=%lld\n", (long long)got, (long long)actual);
     free (data);
     return -1;
   }
@@ -469,8 +457,8 @@ smf_simul_open (
     return NULL;
   }
 
-  if (smfile_cleanup (dbname) < 0) {
-    i_log_failure ("smfile_cleanup failed: %s\n", dbname);
+  if (ns_cleanup (dbname) < 0) {
+    i_log_failure ("ns_cleanup failed: %s\n", dbname);
     free (ret);
     return NULL;
   }
@@ -478,7 +466,7 @@ smf_simul_open (
   *ret = (struct smfile_simulation){
       .committed         = block_array_create (512, default_mem (), NULL),
       .working           = NULL,
-      .db                = smfile_open (dbname),
+      .db                = ns_smfile_open (dbname),
       .tx                = NULL,
       .dbname            = dbname,
       .max_insert_len    = max_insert_len,
@@ -493,7 +481,7 @@ smf_simul_open (
   }
 
   if (ret->db == NULL) {
-    i_log_failure ("smfile_open failed: %s\n", dbname);
+    i_log_failure ("ns_smfile_open failed: %s\n", dbname);
     panic ("Failed to initialize");
   }
 
@@ -511,8 +499,8 @@ smfile_simul_close (struct smfile_simulation *meta)
     return -1;
   }
 
-  if (smfile_close (meta->db) < 0) {
-    i_log_failure ("smfile_close failed: %s\n", meta->dbname);
+  if (ns_close (meta->db) < 0) {
+    i_log_failure ("ns_close failed: %s\n", meta->dbname);
     return -1;
   }
 

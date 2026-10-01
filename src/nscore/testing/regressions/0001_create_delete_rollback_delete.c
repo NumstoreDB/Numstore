@@ -14,7 +14,7 @@
 /// limitations under the License.
 
 #include "core/ns_stdtypes.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -31,14 +31,14 @@ TEST (0001_create_delete_rollback_delete)
   test_assert (db != NULL);
 
   // Create the variable
-  res = ns_exec (db, NULL, "create n8Si3C union { tok6UW u32, YGhr cf128, LDzpWVm f16 }");
+  res = ns_execute (db, NULL, "create n8Si3C union { tok6UW u32, YGhr cf128, LDzpWVm f16 }");
   test_assert_int_equal (res, 0);
 
   // The culprit txn: delete the variable, then roll it back
   struct txn *tx = ns_begin (db);
   test_assert (tx != NULL);
 
-  res = ns_exec (db, tx, "delete n8Si3C");
+  res = ns_execute (db, tx, "delete n8Si3C");
   test_assert_int_equal (res, 0);
 
   test_assert_int_equal (ns_rollback (db, tx), 0);
@@ -47,7 +47,7 @@ TEST (0001_create_delete_rollback_delete)
   tx = ns_begin (db);
   test_assert (tx != NULL);
 
-  res = ns_exec (
+  res = ns_execute (
       db,
       tx,
       "create yJIF "
@@ -66,7 +66,7 @@ TEST (0001_create_delete_rollback_delete)
   //          to the page being released, not the fsm - this came from a
   //          refactor - I used to do that
   //          also it never included the bit in the log
-  res = ns_exec (db, NULL, "delete n8Si3C");
+  res = ns_execute (db, NULL, "delete n8Si3C");
   test_assert_int_equal (res, 0);
 
   // Close database

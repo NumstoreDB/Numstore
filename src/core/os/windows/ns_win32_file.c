@@ -36,15 +36,7 @@
 static char *
 win32_strerror (DWORD err, char *buf, DWORD buflen)
 {
-  FormatMessageA (
-      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL,
-      err,
-      0,
-      buf,
-      buflen,
-      NULL
-  );
+  FormatMessageA (FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err, 0, buf, buflen, NULL);
   return buf;
 }
 

@@ -51,12 +51,11 @@ get_allowed (struct ns_ref *ref, u8 allowed[NSS_AT_LEN], const u8 enabled[NSS_AT
   }
 
   if (nvars > 0) {
-    allowed[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH] = enabled
-        [NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH];
+    allowed[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH] = enabled[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH];
 
     // You're always guaranteed to have an active
     // variable if there's more than 0 variables
-    allowed[NSS_INSERT] = enabled[NSS_INSERT];
+    allowed[NSS_INSERT]                             = enabled[NSS_INSERT];
 
     // Can remove, read and write if length > 0
     if (ns_ref_cur_len (ref) > 0) {
@@ -200,9 +199,7 @@ get_random_other_existing_name_or_null (struct ns_ref *ref, struct arena_alloc *
     return NULL;
   }
 
-  char *ret = get_random_other_existing_name (ref, alloc, e);
-
-  return ret;
+  return get_random_other_existing_name (ref, alloc, e);
 }
 
 static struct type *
@@ -258,19 +255,61 @@ get_random_slice (struct ns_ref *ref, b_size *ofst, b_size *stride, b_size *nele
   *nelems = randu64r (1, max_len);
 }
 
-static u8 *
-get_random_data (struct ns_ref *ref, struct arena_alloc *alloc, b_size nelems, error *e)
-{
-  t_size size = ns_ref_cur_tsize (ref);
+/******************************************************************************
+ *                              Buffer Allocation                             *
+ ******************************************************************************/
 
-  u8    *data = arena_malloc (alloc, nelems, size, e);
-  if (data == NULL) {
-    return NULL;
+/**
+ * Fill op->data / op->data_size with nelems random elements of the current
+ * variable's type.
+ */
+static err_t
+alloc_data (struct operation *op, struct ns_ref *ref, b_size nelems, error *e)
+{
+  ASSERT (op->data == NULL);
+
+  b_size bytes = nelems * ns_ref_cur_tsize (ref);
+  if (bytes == 0) {
+    return SUCCESS;
   }
 
-  rand_bytes (data, nelems * size);
+  u8 *data = arena_malloc (&op->alloc, bytes, 1, e);
+  if (data == NULL) {
+    return error_trace (e);
+  }
 
-  return data;
+  rand_bytes (data, bytes);
+
+  op->data      = data;
+  op->data_size = bytes;
+
+  return SUCCESS;
+}
+
+/**
+ * Allocate op->db_buf and op->ref_buf, each big enough to hold nelems
+ * elements of the current variable's type. Both come from one allocation.
+ */
+static err_t
+alloc_read_bufs (struct operation *op, struct ns_ref *ref, b_size nelems, error *e)
+{
+  ASSERT (op->db_buf == NULL && op->ref_buf == NULL);
+
+  b_size bytes = nelems * ns_ref_cur_tsize (ref);
+  if (bytes == 0) {
+    return SUCCESS;
+  }
+
+  u8 *buf = arena_malloc (&op->alloc, 2, bytes, e);
+  if (buf == NULL) {
+    return error_trace (e);
+  }
+
+  op->db_buf   = buf;
+  op->ref_buf  = buf + bytes;
+  op->buf_size = bytes;
+
+  return SUCCESS;
 }
 
 /******************************************************************************
@@ -280,11 +319,18 @@ get_random_data (struct ns_ref *ref, struct arena_alloc *alloc, b_size nelems, e
 static inline err_t
 build_create (struct operation *dest, struct rand_op_params params, error *e)
 {
-  char        *vname   = get_random_unique_name (params.ref, &dest->alloc, e);
-  struct type *t       = get_random_type (&dest->alloc, params.max_tsize, e);
-  char        *typestr = type_tostr (&dest->alloc, t, e);
+  char *vname = get_random_unique_name (params.ref, &dest->alloc, e);
+  if (vname == NULL) {
+    return error_trace (e);
+  }
 
-  if (vname == NULL || t == NULL || typestr == NULL) {
+  struct type *t = get_random_type (&dest->alloc, params.max_tsize, e);
+  if (t == NULL) {
+    return error_trace (e);
+  }
+
+  char *typestr = type_tostr (&dest->alloc, t, e);
+  if (typestr == NULL) {
     return error_trace (e);
   }
 
@@ -299,12 +345,11 @@ static inline err_t
 build_switch (struct operation *dest, struct rand_op_params params, error *e)
 {
   char *vname = get_random_other_existing_name (params.ref, &dest->alloc, e);
-
   if (vname == NULL) {
     return error_trace (e);
   }
 
-  dest->op_switch.vname = vname;
+  dest->op_switch.next = vname;
 
   return SUCCESS;
 }
@@ -313,44 +358,11 @@ static inline err_t
 build_delete (struct operation *dest, struct rand_op_params params, error *e)
 {
   char *next = get_random_other_existing_name_or_null (params.ref, &dest->alloc, e);
-
   if (e->cause_code) {
     return error_trace (e);
   }
 
   dest->op_delete.next = next;
-
-  return SUCCESS;
-}
-
-static inline err_t
-alloc_op_bufs (
-    struct operation     *dest,
-    struct rand_op_params params,
-    b_size                nelems,
-    u8                  **db_buf,
-    u8                  **ref_buf,
-    error                *e
-)
-{
-  ASSERT (dest->buf == NULL);
-
-  b_size bytes = nelems * ns_ref_cur_tsize (params.ref);
-  if (bytes == 0) {
-    *db_buf  = NULL;
-    *ref_buf = NULL;
-    return SUCCESS;
-  }
-
-  // Two halves of [bytes] each, in one allocation
-  u8 *buf = arena_malloc (&dest->alloc, 2, bytes, e);
-  if (buf == NULL) {
-    return error_trace (e);
-  }
-
-  dest->buf = buf;
-  *db_buf   = buf;
-  *ref_buf  = buf + bytes;
 
   return SUCCESS;
 }
@@ -367,26 +379,20 @@ build_insert (struct operation *dest, struct rand_op_params params, error *e)
   if (max_nelems > budget) {
     max_nelems = budget;
   }
-
   b_size nelems = randu64r (1, max_nelems);
-  u8    *data   = get_random_data (params.ref, &dest->alloc, nelems, e);
-  if (data == NULL) {
+
+  if (alloc_data (dest, params.ref, nelems, e) < 0) {
     return error_trace (e);
   }
 
   // After the insert the variable is len + nelems long, and
   // NSS_READ_ALL_AFTER_WRITES reads all of it back, so size for that
-  u8 *db_buf;
-  u8 *ref_buf;
-  if (alloc_op_bufs (dest, params, len + nelems, &db_buf, &ref_buf, e) < 0) {
+  if (alloc_read_bufs (dest, params.ref, len + nelems, e) < 0) {
     return error_trace (e);
   }
 
-  dest->op_insert.ofst    = ofst;
-  dest->op_insert.nelems  = nelems;
-  dest->op_insert.data    = data;
-  dest->op_insert.db_buf  = db_buf;
-  dest->op_insert.ref_buf = ref_buf;
+  dest->op_insert.ofst   = ofst;
+  dest->op_insert.nelems = nelems;
 
   return SUCCESS;
 }
@@ -394,22 +400,19 @@ build_insert (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_remove (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst;
-  b_size stride;
-  b_size nelems;
+  b_size ofst, stride, nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
-  u8 *db_buf;
-  u8 *ref_buf;
-  if (alloc_op_bufs (dest, params, ns_ref_cur_len (params.ref), &db_buf, &ref_buf, e) < 0) {
+  // Sized for the whole variable so the executor can read it all back
+  if (alloc_read_bufs (dest, params.ref, ns_ref_cur_len (params.ref), e) < 0) {
     return error_trace (e);
   }
 
-  dest->op_remove.start   = ofst;
-  dest->op_remove.stride  = stride;
-  dest->op_remove.nelems  = nelems;
-  dest->op_remove.db_buf  = db_buf;
-  dest->op_remove.ref_buf = ref_buf;
+  dest->op_remove.str = (struct stride){
+      .start  = ofst,
+      .stride = stride,
+      .nelems = nelems,
+  };
 
   return SUCCESS;
 }
@@ -417,22 +420,18 @@ build_remove (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_read (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst;
-  b_size stride;
-  b_size nelems;
+  b_size ofst, stride, nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
-  u8 *db_buf;
-  u8 *ref_buf;
-  if (alloc_op_bufs (dest, params, ns_ref_cur_len (params.ref), &db_buf, &ref_buf, e) < 0) {
+  if (alloc_read_bufs (dest, params.ref, ns_ref_cur_len (params.ref), e) < 0) {
     return error_trace (e);
   }
 
-  dest->op_read.start   = ofst;
-  dest->op_read.stride  = stride;
-  dest->op_read.nelems  = nelems;
-  dest->op_read.db_buf  = db_buf;
-  dest->op_read.ref_buf = ref_buf;
+  dest->op_read.str = (struct stride){
+      .start  = ofst,
+      .stride = stride,
+      .nelems = nelems,
+  };
 
   return SUCCESS;
 }
@@ -440,28 +439,22 @@ build_read (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_write (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst;
-  b_size stride;
-  b_size nelems;
+  b_size ofst, stride, nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
-  u8 *data = get_random_data (params.ref, &dest->alloc, nelems, e);
-  if (data == NULL) {
+  if (alloc_data (dest, params.ref, nelems, e) < 0) {
     return error_trace (e);
   }
 
-  u8 *db_buf;
-  u8 *ref_buf;
-  if (alloc_op_bufs (dest, params, ns_ref_cur_len (params.ref), &db_buf, &ref_buf, e) < 0) {
+  if (alloc_read_bufs (dest, params.ref, ns_ref_cur_len (params.ref), e) < 0) {
     return error_trace (e);
   }
 
-  dest->op_write.start   = ofst;
-  dest->op_write.stride  = stride;
-  dest->op_write.nelems  = nelems;
-  dest->op_write.data    = data;
-  dest->op_write.db_buf  = db_buf;
-  dest->op_write.ref_buf = ref_buf;
+  dest->op_write.str = (struct stride){
+      .start  = ofst,
+      .stride = stride,
+      .nelems = nelems,
+  };
 
   return SUCCESS;
 }
@@ -490,16 +483,16 @@ opg_random (struct rand_op_params params, error *e)
   u8 allowed[NSS_AT_LEN];
   get_allowed (params.ref, allowed, params.enabled);
 
-  // Generate a random action (might be none)
-  enum ns_action_type type = get_random_action_type (allowed);
-
-  // Build common parameters
-  ret->buf                 = NULL;
-  ret->type                = type;
-  ret->mem                 = params.mem;
+  // Common fields - buffers start empty, builders fill in what they need
+  *ret = (struct operation){
+      .type = get_random_action_type (allowed),
+      .mem  = params.mem,
+  };
   arena_alloc_create_default (&ret->alloc);
 
-  switch (type) {
+  err_t err = SUCCESS;
+
+  switch (ret->type) {
       // Nothing to build
     case NSS_BEGIN_TXN:
     case NSS_COMMIT_TXN:
@@ -507,50 +500,36 @@ opg_random (struct rand_op_params params, error *e)
     case NSS_CRASH_AND_REOPEN:
     case NSS_CLOSE_AND_REOPEN:
     case NSS_NONE_AVAILABLE: {
-      return ret;
+      break;
     }
 
     case NSS_CREATE_AND_SWAP_IF_EMPTY: {
-      if (build_create (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_create (ret, params, e);
+      break;
     }
     case NSS_SWITCH: {
-      if (build_switch (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_switch (ret, params, e);
+      break;
     }
     case NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH: {
-      if (build_delete (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_delete (ret, params, e);
+      break;
     }
     case NSS_INSERT: {
-      if (build_insert (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_insert (ret, params, e);
+      break;
     }
     case NSS_REMOVE: {
-      if (build_remove (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_remove (ret, params, e);
+      break;
     }
     case NSS_READ: {
-      if (build_read (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_read (ret, params, e);
+      break;
     }
     case NSS_WRITE: {
-      if (build_write (ret, params, e) < 0) {
-        goto failed;
-      }
-      return ret;
+      err = build_write (ret, params, e);
+      break;
     }
 
     case NSS_AT_LEN: {
@@ -558,10 +537,12 @@ opg_random (struct rand_op_params params, error *e)
     }
   }
 
-failed:
-  arena_alloc_free_all (&ret->alloc);
-  i_free (params.mem, ret);
-  return NULL;
+  if (err < 0) {
+    opg_free (ret);
+    return NULL;
+  }
+
+  return ret;
 }
 
 void
@@ -594,6 +575,11 @@ TEST (opg)
 
       test_assert_int_equal (1, op != NULL);
       test_assert_int_equal (1, params.enabled[op->type] != 0);
+
+      // Buffers are either both set with a size, or both empty
+      test_assert_int_equal (op->db_buf == NULL, op->ref_buf == NULL);
+      test_assert_int_equal (op->db_buf == NULL, op->buf_size == 0);
+      test_assert_int_equal (op->data == NULL, op->data_size == 0);
 
       opg_free (op);
     }

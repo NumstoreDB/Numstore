@@ -46,7 +46,6 @@ RUSTC        		:= rustc
 CLANG_TIDY 			:= clang-tidy
 BEAR       			:= bear
 
-
 ############ User Config
 
 TARGET 				?= debug

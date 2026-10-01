@@ -21,27 +21,27 @@ with ns.Database("example.db") as db:
 
     # Insert 3 elements at index 0. 
     src = rng.random((3, 10, 20), dtype=np.float64)
-    db.execute(f"insert prices 0 {src.shape[0]}", src)
+    db.write(f"insert prices 0 {src.shape[0]}", src)
 
     # Read the data we wrote
-    dest = db.execute("read prices[0:]")
+    dest = db.read("read prices[0:]")
     show("Prices", dest)
 
     # Insert 3 more elements starting at index 2
     src = rng.random((3, 10, 20), dtype=np.float64)
-    db.execute(f"insert prices 2 {src.shape[0]}", src)
+    db.write(f"insert prices 2 {src.shape[0]}", src)
 
     # Read the whole array back
-    dest = db.execute("read prices[0:]")
+    dest = db.read("read prices[0:]")
     show("Prices", dest)
 
     # Delete every 3rd element of the array
-    removed = db.execute("remove prices[0::3]")
+    removed = db.read("remove prices[0::3]")
     show("Removed", removed)
 
     # Read what's left
-    dest = db.execute("read prices[0:]")
+    dest = db.read("read prices[0:]")
     show("Remaining", dest)
 
-    var = db.execute("get prices")
+    var = db.get("get prices")
     print(var)

@@ -22,32 +22,16 @@
 #include "nscore/types/ns_types.h"
 // pgno ...etc
 
-err_t struct_t_create (
-    struct struct_t    *dest,
-    struct kvt_list     list,
-    struct arena_alloc *dalloc,
-    error              *e
-);
+err_t struct_t_create (struct struct_t *dest, struct kvt_list list, struct arena_alloc *dalloc, error *e);
 bool struct_t_equal (const struct struct_t *left, const struct struct_t *right);
 struct type *struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key);
 
 err_t struct_t_get_serial_size (u16 *dest, const struct struct_t *t, error *e);
 void struct_t_serialize (struct serializer *dest, const struct struct_t *src);
-err_t struct_t_deserialize (
-    struct struct_t     *dest,
-    struct deserializer *src,
-    struct arena_alloc  *a,
-    error               *e
-);
+err_t struct_t_deserialize (struct struct_t *dest, struct deserializer *src, struct arena_alloc *a, error *e);
 err_t struct_t_validate (const struct struct_t *s, error *e);
 i32 struct_t_snprintf (char *str, u32 size, const struct struct_t *st);
 u32 struct_t_byte_size (const struct struct_t *t);
-err_t struct_t_random (
-    struct struct_t    *st,
-    struct arena_alloc *alloc,
-    u32                 depth,
-    t_size              max_tsize,
-    error              *e
-);
+err_t struct_t_random (struct struct_t *st, struct arena_alloc *alloc, u32 depth, t_size max_tsize, error *e);
 
 #endif

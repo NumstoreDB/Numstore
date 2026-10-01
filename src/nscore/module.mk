@@ -11,13 +11,13 @@ LIBNS_SRCS += src/nscore/algorithms/rope/ns_rope_write.c
 
 LIBNS_SRCS += src/nscore/algorithms/var/ns_find_var_page.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_init_var_hash_map.c
-LIBNS_SRCS += src/nscore/algorithms/var/ns_read_var_page.c
+LIBNS_SRCS += src/nscore/algorithms/var/ns_write_var_page.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_create.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_delete.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_get.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_get_or_create.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_var_update.c
-LIBNS_SRCS += src/nscore/algorithms/var/ns_write_var_page.c
+LIBNS_SRCS += src/nscore/algorithms/var/ns_read_var_page.c
 LIBNS_SRCS += src/nscore/algorithms/var/ns_visit_variables.c
 
 LIBNS_SRCS += src/nscore/algorithms/numstore/ns_numstore_init_pager.c

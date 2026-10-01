@@ -52,13 +52,7 @@ struct ns_var_get_or_create_params
 };
 
 err_t ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e);
-spgno ns_var_create (
-    struct pager *p,
-    struct txn   *tx,
-    struct string vname,
-    struct type  *type,
-    error        *e
-);
+spgno ns_var_create (struct pager *p, struct txn *tx, struct string vname, struct type *type, error *e);
 
 // Delete
 err_t ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e);
@@ -68,22 +62,8 @@ typedef err_t (*var_consumer) (struct variable *v, void *ctx, error *e);
 err_t ns_visit_variables (struct pager *p, var_consumer var, void *ctx, error *e);
 
 // Update
-err_t ns_var_update_by_var_root (
-    struct pager *p,
-    struct txn   *tx,
-    pgno          root,
-    pgno          newpg,
-    b_size        nbytes,
-    error        *e
-);
+err_t ns_var_update_by_var_root (struct pager *p, struct txn *tx, pgno root, pgno newpg, b_size nbytes, error *e);
 
-err_t ns_var_update_by_name (
-    struct pager *p,
-    struct txn   *tx,
-    struct string name,
-    pgno          newpg,
-    b_size        nbytes,
-    error        *e
-);
+err_t ns_var_update_by_name (struct pager *p, struct txn *tx, struct string name, pgno newpg, b_size nbytes, error *e);
 
 #endif

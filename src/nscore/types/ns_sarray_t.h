@@ -55,25 +55,14 @@ err_t sab_accept_type (struct sarray_builder *eb, struct type *t, error *e);
 err_t sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e);
 
 err_t sarray_t_get_serial_size (u16 *dest, const struct sarray_t *t, error *e);
-err_t sarray_t_deserialize (
-    struct sarray_t     *persistent,
-    struct deserializer *src,
-    struct arena_alloc  *a,
-    error               *e
-);
+err_t sarray_t_deserialize (struct sarray_t *persistent, struct deserializer *src, struct arena_alloc *a, error *e);
 
 void sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src);
 
 err_t sarray_t_validate (const struct sarray_t *t, error *e);
 i32 sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p);
 u32 sarray_t_byte_size (const struct sarray_t *t);
-err_t sarray_t_random (
-    struct sarray_t    *sa,
-    struct arena_alloc *temp,
-    u32                 depth,
-    t_size              max_tsize,
-    error              *e
-);
+err_t sarray_t_random (struct sarray_t *sa, struct arena_alloc *temp, u32 depth, t_size max_tsize, error *e);
 bool sarray_t_equal (const struct sarray_t *left, const struct sarray_t *right);
 
 #endif

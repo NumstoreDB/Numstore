@@ -23,13 +23,7 @@
 #include "nscore/wal/ns_wal_record.h"
 
 err_t
-pgr_release_with_log (
-    struct pager            *p,
-    page_h                  *h,
-    int                      flags,
-    struct wal_update_write *record,
-    error                   *e
-)
+pgr_release_with_log (struct pager *p, page_h *h, int flags, struct wal_update_write *record, error *e)
 {
   (void)flags; // Unused for now
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
@@ -79,8 +73,7 @@ pgr_release_with_log (
 
     // Add page to DPT if this is the first update (RecLSN = LSN of first
     // update)
-    if ((!dpgt_exists (p->dpt, page_h_pgno (h)))
-        && (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e))) {
+    if ((!dpgt_exists (p->dpt, page_h_pgno (h))) && (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e))) {
       return error_trace (e);
     }
 

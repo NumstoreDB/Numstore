@@ -1,41 +1,73 @@
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_memory.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
+#include "nscore/algorithms/smartfiles/ns_smartfiles_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
 
-// Lifecycle
+#include <stdarg.h>
+
 nsdb_t *
 ns_open (const char *path)
 {
-  error                e       = error_create ();
+  error        e  = error_create ();
+  struct nsdb *db = nsdb_open (path, default_mem (), default_filesystem (), &e);
 
-  // Allocate wrapper
-  struct nsdb_wrapper *wrapper = i_malloc (default_mem (), 1, sizeof *wrapper, &e);
-  if (wrapper == NULL) {
-    return NULL;
-  }
-
-  // Allocate database
-  wrapper->db = nsdb_open_with_resources (path, default_mem (), default_filesystem (), &e);
-  if (wrapper->db == NULL) {
-    i_free (default_mem (), wrapper);
+  if (db == NULL) {
     return NULL;
   }
 
   // Initialize pager
-  if (numstore_init_pager (wrapper->db->p, &e)) {
-    nsdb_close (wrapper->db, &e);
-    i_free (default_mem (), wrapper);
+  if (numstore_init_pager (db->p, &e)) {
+    nsdb_close (db, &e);
     return NULL;
   }
 
-  wrapper->e = error_create ();
+  // Allocate an error for the database
+  error *persistent_e = i_malloc (default_mem (), 1, sizeof *persistent_e, &e);
+  *persistent_e       = error_create ();
+  if (persistent_e == NULL) {
+    nsdb_close (db, &e);
+    return NULL;
+  }
 
-  return wrapper;
+  nsdb_set_error (db, persistent_e);
+  nsdb_allow_auto_txn (db);
+
+  return db;
+}
+
+nsdb_t *
+ns_smfile_open (const char *path)
+{
+  error        e  = error_create ();
+  struct nsdb *db = nsdb_open (path, default_mem (), default_filesystem (), &e);
+
+  if (db == NULL) {
+    return NULL;
+  }
+
+  // Initialize pager
+  if (smartfiles_init_pager (db->p, &e)) {
+    nsdb_close (db, &e);
+    return NULL;
+  }
+
+  // Allocate an error for the database
+  error *persistent_e = i_malloc (default_mem (), 1, sizeof *persistent_e, &e);
+  *persistent_e       = error_create ();
+  if (persistent_e == NULL) {
+    nsdb_close (db, &e);
+    return NULL;
+  }
+
+  nsdb_set_error (db, persistent_e);
+  nsdb_allow_auto_txn (db);
+
+  return db;
 }
 
 int
@@ -48,19 +80,15 @@ ns_cleanup (const char *path)
 int
 ns_close (nsdb_t *ns)
 {
-  error_reset (&ns->e);
-  err_t ret = nsdb_close (ns->db, &ns->e);
-  i_free (default_mem (), ns);
-  return ret;
+  error_reset (ns->e);
+  return nsdb_close (ns, ns->e);
 }
 
 int
 ns_crash (nsdb_t *ns)
 {
-  error_reset (&ns->e);
-  err_t ret = nsdb_crash (ns->db, &ns->e);
-  i_free (default_mem (), ns);
-  return ret;
+  error_reset (ns->e);
+  return nsdb_crash (ns, ns->e);
 }
 
 // Variables
@@ -80,43 +108,39 @@ ns_var_free (nsdb_var_t *var)
 const char *
 ns_strerror (nsdb_t *ns)
 {
-  if (ns->e.cause_code < 0) {
-    error_reset (&ns->e);
-    return ns->e.cause_msg;
+  if (ns->e->cause_code < 0) {
+    error_reset (ns->e);
+    return ns->e->cause_msg;
   }
   return NULL;
 }
 
-int
-ns_perror (nsdb_t *ns, const char *prefix)
+const char *
+ns_plan_strerror (nsdb_plan_t *plan)
 {
-  const char *err = ns_strerror (ns);
-  if (err) {
-    return fprintf (stderr, "%s: %s\n", prefix, err);
-  }
-  return fprintf (stderr, "%s: success\n", prefix);
+  return ns_strerror (plan->parent);
 }
 
 // Transactions
 txn_t *
 ns_begin (nsdb_t *ns)
 {
-  error_reset (&ns->e);
-  return nsdb_begin (ns->db, &ns->e);
+  error_reset (ns->e);
+  return nsdb_begin (ns, ns->e);
 }
 
 int
 ns_commit (nsdb_t *ns, txn_t *txn)
 {
-  error_reset (&ns->e);
-  return nsdb_commit (ns->db, txn, &ns->e);
+  error_reset (ns->e);
+  return nsdb_commit (ns, txn, ns->e);
 }
 
 int
 ns_rollback (nsdb_t *ns, txn_t *txn)
 {
-  error_reset (&ns->e);
-  return nsdb_rollback (ns->db, txn, &ns->e);
+  error_reset (ns->e);
+  return nsdb_rollback (ns, txn, ns->e);
 }
 
 static inline char *
@@ -150,134 +174,189 @@ query_vsnprintf (const char *fmt, va_list ap, struct arena_alloc *alloc, error *
 
 /////////////////////////////////////// Execution
 
-int
-ns_exec (nsdb_t *db, struct txn *tx, const char *fmt, ...)
+nsdb_plan_t *
+ns_plan_fcreate (nsdb_t *db, const char *fmt, ...)
 {
-  error_reset (&db->e);
+  va_list args;
+  va_start (args, fmt);
+  nsdb_plan_t *ret = nsdb_plan_vcreate (db, fmt, NULL, args);
+  va_end (args);
+  return ret;
+}
+
+void
+ns_plan_free (nsdb_plan_t *plan)
+{
+  nsdb_plan_free (plan);
+}
+
+int
+ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...)
+{
+  error_reset (db->e);
 
   va_list ap;
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
+  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
   if (query == NULL) {
-    goto failed;
+    ALLOC_CLOSE (temp);
+    return error_trace (db->e);
   }
 
-  err_t ret;
-  WITH_AUTO_TXN (ret, db->db, tx, nsdb_exec (db->db, tx, query, &db->e), &db->e);
-
-  if (ret < 0) {
-    goto failed;
-  }
-
-failed:
+  err_t ret = nsdb_execute (db, tx, query, NULL);
   ALLOC_CLOSE (temp);
-  return error_trace (&db->e);
+  return ret;
+}
+
+int
+ns_plan_execute (nsdb_plan_t *plan, struct txn *tx)
+{
+  return nsdb_plan_execute (plan, tx, plan->parent->e);
 }
 
 nsdb_var_t *
 ns_get_var (nsdb_t *db, struct txn *tx, const char *fmt, ...)
 {
-  error_reset (&db->e);
+  error_reset (db->e);
 
-  nsdb_var_t *ret = NULL;
-  va_list     ap;
+  va_list ap;
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
+  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
   if (query == NULL) {
-    goto failed;
+    ALLOC_CLOSE (temp);
+    return NULL;
   }
 
-  WITH_AUTO_TXN_PTR (ret, db->db, tx, nsdb_get_var (db->db, tx, query, &db->e), &db->e);
+  nsdb_var_t *ret = nsdb_get_var (db, tx, query, NULL);
   if (ret == NULL) {
-    goto failed;
+    ALLOC_CLOSE (temp);
+    return NULL;
   }
 
-failed:
-  ALLOC_CLOSE (temp);
   return ret;
+}
+
+nsdb_var_t *
+ns_plan_get_var (nsdb_plan_t *plan, struct txn *tx)
+{
+  return nsdb_plan_get_var (plan, tx, plan->parent->e);
 }
 
 sb_size
 ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...)
 {
-  error_reset (&db->e);
+  error_reset (db->e);
 
   va_list ap;
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
+  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
   if (query == NULL) {
-    goto failed;
+    ALLOC_CLOSE (temp);
+    return error_trace (db->e);
   }
 
-  err_t ret;
-  WITH_AUTO_TXN (ret, db->db, txn, nsdb_read (db->db, txn, dest, dlen, query, &db->e), &db->e);
-
+  err_t ret = nsdb_read (db, txn, dest, dlen, query, NULL);
   if (ret < 0) {
-    goto failed;
+    ALLOC_CLOSE (temp);
+    return ret;
   }
 
-  return ret;
-
-failed:
-  ALLOC_CLOSE (temp);
-  return error_trace (&db->e);
-}
-
-void *
-ns_read_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...)
-{
-  error_reset (&db->e);
-
-  nsdb_var_t *ret = NULL;
-  va_list     ap;
-  va_start (ap, fmt);
-
-  ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
-  if (query == NULL) {
-    goto theend;
-  }
-
-  WITH_AUTO_TXN_PTR (ret, db->db, txn, nsdb_read_malloc (db->db, txn, dlen, query, &db->e), &db->e);
-  if (ret == NULL) {
-    goto theend;
-  }
-
-theend:
   ALLOC_CLOSE (temp);
   return ret;
 }
 
 sb_size
-ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt, ...)
+ns_plan_read (nsdb_plan_t *plan, txn_t *tx, void *dest, b_size dlen)
 {
-  error_reset (&db->e);
+  return nsdb_plan_read (plan, tx, dest, dlen, plan->parent->e);
+}
+
+void *
+ns_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...)
+{
+  error_reset (db->e);
 
   va_list ap;
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, &db->e);
+  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
   if (query == NULL) {
-    goto failed;
+    ALLOC_CLOSE (temp);
+    return NULL;
   }
 
-  err_t ret;
-  WITH_AUTO_TXN (ret, db->db, txn, nsdb_write (db->db, txn, src, dlen, query, &db->e), &db->e);
-
-  if (ret < 0) {
-    goto failed;
+  nsdb_var_t *ret = nsdb_read_malloc (db, txn, dlen, query, NULL);
+  if (ret == NULL) {
+    ALLOC_CLOSE (temp);
+    return NULL;
   }
 
   return ret;
+}
 
-failed:
+void *
+ns_plan_malloc (nsdb_plan_t *plan, struct txn *tx, b_size *dlen)
+{
+  return nsdb_plan_read_malloc (plan, tx, dlen, plan->parent->e);
+}
+
+sb_size
+ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt, ...)
+{
+  error_reset (db->e);
+
+  va_list ap;
+  va_start (ap, fmt);
+
+  ALLOC_INIT (temp);
+  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  if (query == NULL) {
+    ALLOC_CLOSE (temp);
+    return error_trace (db->e);
+  }
+
+  err_t ret = nsdb_write (db, txn, src, dlen, query, NULL);
   ALLOC_CLOSE (temp);
-  return error_trace (&db->e);
+  return ret;
+}
+
+sb_size
+ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dlen)
+{
+  return nsdb_plan_write (plan, tx, src, dlen, plan->parent->e);
+}
+
+sb_size
+ns_smfile_insert (nsdb_t *db, struct txn *tx, const void *src, sb_size bofst, b_size slen)
+{
+  error_reset (db->e);
+  return nsdb_smfile_insert (db, tx, src, bofst, slen, NULL);
+}
+
+sb_size
+ns_smfile_read (nsdb_t *db, struct txn *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
+{
+  error_reset (db->e);
+  return nsdb_smfile_read (db, tx, dest, size, bofst, stride, nelem, NULL);
+}
+
+sb_size
+ns_smfile_remove (nsdb_t *db, struct txn *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
+{
+  error_reset (db->e);
+  return nsdb_smfile_remove (db, tx, dest, size, bofst, stride, nelem, NULL);
+}
+
+sb_size
+ns_smfile_write (nsdb_t *db, struct txn *tx, const void *src, t_size size, sb_size bofst, sb_size stride, b_size nelem)
+{
+  error_reset (db->e);
+  return nsdb_smfile_write (db, tx, src, size, bofst, stride, nelem, NULL);
 }

@@ -30,14 +30,7 @@
 struct stream;
 
 typedef i32 (*stream_pull_fn) (struct stream *s, void *ctx, void *buf, u32 size, u32 n, error *e);
-typedef i32 (*stream_push_fn) (
-    struct stream *s,
-    void          *ctx,
-    const void    *buf,
-    u32            size,
-    u32            n,
-    error         *e
-);
+typedef i32 (*stream_push_fn) (struct stream *s, void *ctx, const void *buf, u32 size, u32 n, error *e);
 typedef void (*stream_close_fn) (void *ctx);
 
 struct stream_ops
@@ -91,15 +84,13 @@ void stream_dyn_obuf_init (struct stream *s, struct stream_dyn_obuf_ctx *ctx, u3
   struct stream_ibuf_ctx name##_ctx;            \
   stream_ibuf_init (&name, &name##_ctx, (buffer), (size))
 
-#define istream_create_from_array(name, buffer) \
-  istream_create_from (name, (buffer), sizeof (buffer))
+#define istream_create_from_array(name, buffer) istream_create_from (name, (buffer), sizeof (buffer))
 
 #define ostream_create_from(name, buffer, size) \
   struct stream          name;                  \
   struct stream_obuf_ctx name##_ctx;            \
   stream_obuf_init (&name, &name##_ctx, (buffer), (size))
 
-#define ostream_create_from_array(name, buffer) \
-  ostream_create_from (name, (buffer), sizeof (buffer))
+#define ostream_create_from_array(name, buffer) ostream_create_from (name, (buffer), sizeof (buffer))
 
 #endif

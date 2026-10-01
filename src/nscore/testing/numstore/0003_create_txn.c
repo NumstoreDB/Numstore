@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -35,7 +35,7 @@ TEST (ns_create_txn)
     struct txn *tx = ns_begin (db);
     test_assert (tx != NULL);
 
-    res = ns_exec (db, tx, "create foo u32");
+    res = ns_execute (db, tx, "create foo u32");
     test_assert_int_equal (res, 0);
 
     test_assert_int_equal (ns_commit (db, tx), 0);
@@ -69,7 +69,7 @@ TEST (ns_create_txn)
     test_assert (tx != NULL);
 
     // Create a new variable
-    res = ns_exec (db, tx, "create foo u32");
+    res = ns_execute (db, tx, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Rollback
@@ -99,13 +99,13 @@ TEST (ns_create_txn)
     struct txn *tx = ns_begin (db);
     test_assert (tx != NULL);
 
-    res = ns_exec (db, tx, "create foo u32");
+    res = ns_execute (db, tx, "create foo u32");
     test_assert_int_equal (res, 0);
 
     test_assert_int_equal (ns_rollback (db, tx), 0);
 
     // Create a variable with the same name outside of a transaction
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Close database
@@ -130,7 +130,7 @@ TEST (ns_create_txn)
       struct txn *tx = ns_begin (db);
       test_assert (tx != NULL);
 
-      res = ns_exec (db, tx, "create var_%d u32", i);
+      res = ns_execute (db, tx, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
 
       test_assert_int_equal (ns_commit (db, tx), 0);
@@ -166,7 +166,7 @@ TEST (ns_create_txn)
       struct txn *tx = ns_begin (db);
       test_assert (tx != NULL);
 
-      res = ns_exec (db, tx, "create var_%d u32", i);
+      res = ns_execute (db, tx, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
 
       if (i % 2 == 0) {
@@ -203,7 +203,7 @@ TEST (ns_create_txn)
 
     for (int i = 0; i < 10; ++i) {
       // Create a variable
-      res = ns_exec (db, NULL, "create var_%d u32", i);
+      res = ns_execute (db, NULL, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
 
       // Check that it is empty
@@ -228,11 +228,11 @@ TEST (ns_create_txn)
 
     for (int i = 0; i < 10; ++i) {
       // Create a variable
-      res = ns_exec (db, NULL, "create var_%d u32", i);
+      res = ns_execute (db, NULL, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
 
       // Create the same variable again (should fail)
-      res = ns_exec (db, NULL, "create var_%d f32", i);
+      res = ns_execute (db, NULL, "create var_%d f32", i);
       test_assert (res != 0);
       ns_strerror (db);
     }
@@ -259,7 +259,7 @@ TEST (ns_create_txn)
       struct txn *tx = ns_begin (db);
       test_assert (tx != NULL);
 
-      res = ns_exec (db, tx, "create foo u32");
+      res = ns_execute (db, tx, "create foo u32");
       test_assert_int_equal (res, 0);
 
       test_assert_int_equal (ns_rollback (db, tx), 0);
@@ -274,7 +274,7 @@ TEST (ns_create_txn)
     struct txn *tx = ns_begin (db);
     test_assert (tx != NULL);
 
-    res = ns_exec (db, tx, "create foo u32");
+    res = ns_execute (db, tx, "create foo u32");
     test_assert_int_equal (res, 0);
 
     test_assert_int_equal (ns_commit (db, tx), 0);

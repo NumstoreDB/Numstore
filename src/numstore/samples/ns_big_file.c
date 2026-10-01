@@ -12,7 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 #include "numstore.h"
-#include "numstore/numstore.h"
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -46,7 +45,7 @@ main (int argc, char **argv)
     ns_cleanup ("sample_big_file");
     nsdb_t *ns = ns_open ("sample_big_file");
 
-    ns_exec (ns, NULL, "create example u8");
+    ns_execute (ns, NULL, "create example u8");
 
     // Do one big insert at offset 0
     ns_write (ns, NULL, backing_data, b_size, "insert example 0 %ld", b_size);

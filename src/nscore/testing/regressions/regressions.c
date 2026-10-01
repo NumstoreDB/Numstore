@@ -20,8 +20,8 @@
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
+#include "numstore.h"
 #include "numstore/ns_numstore_internal.h"
-#include "numstore/numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -34,14 +34,7 @@
  * or write
  */
 static inline sb_size
-_numstore_fexecute_simple_with_data (
-    numstore_t *ns,
-    ns_txn_t   *txn,
-    void       *data,
-    b_size      dlen,
-    const char *query,
-    ...
-)
+_numstore_fexecute_simple_with_data (numstore_t *ns, ns_txn_t *txn, void *data, b_size dlen, const char *query, ...)
 {
   va_list ap;
   va_start (ap, query);
@@ -61,13 +54,7 @@ _numstore_fexecute_simple_with_data (
  * returns a variable
  */
 static inline err_t
-_numstore_fexecute_simple_with_var (
-    numstore_var_t **dest,
-    numstore_t      *ns,
-    ns_txn_t        *txn,
-    const char      *query,
-    ...
-)
+_numstore_fexecute_simple_with_var (numstore_var_t **dest, numstore_t *ns, ns_txn_t *txn, const char *query, ...)
 {
   va_list ap;
   va_start (ap, query);

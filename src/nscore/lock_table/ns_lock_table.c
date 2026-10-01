@@ -168,13 +168,7 @@ lockt_destroy (struct lockt *t)
 }
 
 static err_t
-lockt_lock_once (
-    struct lockt        *t,
-    const struct lt_lock lock,
-    const enum lock_mode mode,
-    struct txn          *tx,
-    error               *e
-)
+lockt_lock_once (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode, struct txn *tx, error *e)
 {
   /**
   // Fast path: if this transaction already holds this lock, skip.
@@ -239,13 +233,7 @@ lockt_lock_once (
 }
 
 err_t
-lockt_lock (
-    struct lockt        *t,
-    const struct lt_lock lock,
-    const enum lock_mode mode,
-    struct txn          *tx,
-    error               *e
-)
+lockt_lock (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode, struct txn *tx, error *e)
 {
   // Fetch and lock the parent lock first if there is one
   struct lt_lock parent;

@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_numerics.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -21,7 +21,7 @@
 
 #ifdef TESTING
 
-TEST (ns_insert_txn)
+TEST (ns_writesert_txn)
 {
   TEST_CASE ("Committing an insert makes the data persist")
   {
@@ -33,7 +33,7 @@ TEST (ns_insert_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Generate random data to insert
@@ -77,7 +77,7 @@ TEST (ns_insert_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // The variable starts out empty
@@ -120,7 +120,7 @@ TEST (ns_insert_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert the initial data
@@ -181,7 +181,7 @@ TEST (ns_insert_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     for (int i = 0; i < 10; ++i) {
@@ -212,7 +212,7 @@ TEST (ns_insert_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Generate the values we expect to end up with
@@ -253,7 +253,7 @@ TEST (ns_insert_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert the initial data
@@ -310,7 +310,7 @@ TEST (ns_insert_txn)
 
     // Create 10 variables, each with a single element
     for (int i = 0; i < 10; ++i) {
-      res = ns_exec (db, NULL, "create var_%d u32", i);
+      res = ns_execute (db, NULL, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
 
       res = ns_write (db, NULL, &vals[i], sizeof (u32), "insert var_%d %d %d", i, 0, 1);

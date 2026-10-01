@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_numerics.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -33,7 +33,7 @@ TEST (ns_write_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Generate the initial data and the data we will write over it
@@ -78,7 +78,7 @@ TEST (ns_write_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Generate the initial data and the data we will write over it
@@ -123,7 +123,7 @@ TEST (ns_write_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert the initial data
@@ -161,7 +161,7 @@ TEST (ns_write_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert the initial data - shadow tracks what the variable should contain
@@ -204,7 +204,7 @@ TEST (ns_write_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert the initial data
@@ -252,7 +252,7 @@ TEST (ns_write_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert the initial data - data tracks what the variable should contain

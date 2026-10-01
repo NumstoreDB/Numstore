@@ -53,23 +53,23 @@ with ns.Database("example.db") as db:
     db.execute("remove readings[0:]")
 
     # Insert data into index 0
-    db.execute(f"insert readings 0 {src.size}", src)
+    db.write(f"insert readings 0 {src.size}", src)
 
     # Read the data we wrote
-    dest = db.execute("read readings[0:]")
+    dest = db.read("read readings[0:]")
     print_records(dest, "readings[0:]")
 
     # Insert another record starting at index 10
-    db.execute(f"insert readings 2 {more.size}", more)
+    db.write(f"insert readings 2 {more.size}", more)
 
     # Read every record back
-    dest = db.execute("read readings[0:]")
+    dest = db.read("read readings[0:]")
     print_records(dest, "readings[0:] (after insert at index 2)")
 
     # Delete every 3rd record
-    removed = db.execute("remove readings[0::3]")
+    removed = db.read("remove readings[0::3]")
     print_records(removed, "removed readings[0::3] (these are the values that were removed)")
 
     # Read what's left
-    dest = db.execute("read readings[0:]")
+    dest = db.read("read readings[0:]")
     print_records(dest, "remaining after remove")

@@ -123,15 +123,15 @@ static err_t
 nss_create (struct ns_simulation *meta, struct operation *op, error *e)
 {
   WRAP (ns_ref_create (meta->ref, op->op_create.vname, op->op_create.t, e));
-  WRAP (ns_db_create (meta->db, op->op_create.vname, *op->op_create.t, e));
+  WRAP (ns_db_create (meta->db, op->op_create.vname, op->op_create.typestr, e));
   return SUCCESS;
 }
 
 static err_t
 nss_switch (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  ns_ref_switch (meta->ref, op->op_switch.vname);
-  WRAP (ns_db_switch (meta->db, op->op_switch.vname, e));
+  ns_ref_switch (meta->ref, op->op_switch.next);
+  WRAP (ns_db_switch (meta->db, op->op_switch.next, e));
   return SUCCESS;
 }
 
@@ -148,13 +148,14 @@ nss_read_compare (
     struct ns_simulation *meta,
     void                 *ref_buf,
     void                 *db_buf,
+    b_size                buf_size,
     struct stride         stride,
     error                *e
 )
 {
   b_size  ref_read = ns_ref_read (meta->ref, ref_buf, stride);
 
-  sb_size db_read  = ns_db_read (meta->db, db_buf, stride, e);
+  sb_size db_read  = ns_db_read (meta->db, db_buf, buf_size, stride, e);
   if (db_read < 0) {
     return error_trace (e);
   }
@@ -189,6 +190,7 @@ nss_validate_range (
     b_size                nelems,
     u8                   *db_buf,
     u8                   *ref_buf,
+    b_size                buf_size,
     error                *e
 )
 {
@@ -198,7 +200,7 @@ nss_validate_range (
 
   struct stride stride = {.start = start, .stride = 1, .nelems = nelems};
 
-  return nss_read_compare (meta, ref_buf, db_buf, stride, e);
+  return nss_read_compare (meta, ref_buf, db_buf, buf_size, stride, e);
 }
 
 static err_t
@@ -208,6 +210,7 @@ nss_validate_after_write (
     b_size                effected_nelems,
     u8                   *db_buf,
     u8                   *ref_buf,
+    b_size                buf_size,
     error                *e
 )
 {
@@ -218,10 +221,10 @@ nss_validate_after_write (
 
   switch (meta->write_validation) {
     case NSS_READ_EFFECTED_DATA_AFTER_WRITES: {
-      return nss_validate_range (meta, effected_start, effected_nelems, db_buf, ref_buf, e);
+      return nss_validate_range (meta, effected_start, effected_nelems, db_buf, ref_buf, buf_size, e);
     }
     case NSS_READ_ALL_AFTER_WRITES: {
-      return nss_validate_range (meta, 0, ns_ref_cur_len (meta->ref), db_buf, ref_buf, e);
+      return nss_validate_range (meta, 0, ns_ref_cur_len (meta->ref), db_buf, ref_buf, buf_size, e);
     }
     case NSS_READ_NONE_AFTER_WRITES: {
       return SUCCESS;
@@ -235,24 +238,12 @@ nss_validate_after_write (
 static err_t
 nss_insert (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  sb_size ref_inserted = ns_ref_insert (
-      meta->ref,
-      op->op_insert.data,
-      op->op_insert.ofst,
-      op->op_insert.nelems,
-      e
-  );
+  sb_size ref_inserted = ns_ref_insert (meta->ref, op->data, op->op_insert.ofst, op->op_insert.nelems, e);
   if (ref_inserted < 0) {
     return error_trace (e);
   }
 
-  sb_size db_inserted = ns_db_insert (
-      meta->db,
-      op->op_insert.data,
-      op->op_insert.ofst,
-      op->op_insert.nelems,
-      e
-  );
+  sb_size db_inserted = ns_db_insert (meta->db, op->data, op->data_size, op->op_insert.ofst, op->op_insert.nelems, e);
   if (db_inserted < 0) {
     return error_trace (e);
   }
@@ -267,8 +258,9 @@ nss_insert (struct ns_simulation *meta, struct operation *op, error *e)
       meta,
       op->op_insert.ofst,
       op->op_insert.nelems,
-      op->op_insert.db_buf,
-      op->op_insert.ref_buf,
+      op->db_buf,
+      op->ref_buf,
+      op->buf_size,
       e
   );
 }
@@ -276,15 +268,9 @@ nss_insert (struct ns_simulation *meta, struct operation *op, error *e)
 static err_t
 nss_remove (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  struct stride stride = {
-      .start  = op->op_remove.start,
-      .stride = op->op_remove.stride,
-      .nelems = op->op_remove.nelems,
-  };
+  b_size  ref_removed = ns_ref_remove (meta->ref, op->ref_buf, op->op_remove.str);
 
-  b_size  ref_removed = ns_ref_remove (meta->ref, op->op_remove.ref_buf, stride);
-
-  sb_size db_removed  = ns_db_remove (meta->db, op->op_remove.db_buf, stride, e);
+  sb_size db_removed  = ns_db_remove (meta->db, op->db_buf, op->buf_size, op->op_remove.str, e);
   if (db_removed < 0) {
     return error_trace (e);
   }
@@ -293,7 +279,7 @@ nss_remove (struct ns_simulation *meta, struct operation *op, error *e)
     return error_causef (e, ERR_CORRUPT, "Database removed lengths don't match");
   }
 
-  ASSERT (ref_removed == op->op_remove.nelems);
+  ASSERT (ref_removed == op->op_remove.str.nelems);
 
   // Zero-length removal: nothing was removed, nothing to compare or revalidate
   if (ref_removed == 0) {
@@ -302,7 +288,7 @@ nss_remove (struct ns_simulation *meta, struct operation *op, error *e)
 
   // Check that the removed data was the same
   b_size size = ref_removed * ns_ref_cur_tsize (meta->ref);
-  if (memcmp (op->op_remove.db_buf, op->op_remove.ref_buf, size)) {
+  if (memcmp (op->db_buf, op->ref_buf, size)) {
     return error_causef (e, ERR_CORRUPT, "Database doesn't match reference");
   }
 
@@ -314,45 +300,26 @@ nss_remove (struct ns_simulation *meta, struct operation *op, error *e)
 
   // Everything from start onwards has shifted, so the effected region is
   // start to the end of the variable
-  b_size start = op->op_remove.start;
-  if (op->op_remove.stride == 0 || start >= len) {
+  b_size start = op->op_remove.str.start;
+  if (op->op_remove.str.stride == 0 || start >= len) {
     return SUCCESS;
   }
 
-  return nss_validate_after_write (
-      meta,
-      start,
-      len - start,
-      op->op_remove.db_buf,
-      op->op_remove.ref_buf,
-      e
-  );
+  return nss_validate_after_write (meta, start, len - start, op->db_buf, op->ref_buf, op->buf_size, e);
 }
 
 static err_t
 nss_read (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  struct stride stride = {
-      .start  = op->op_read.start,
-      .stride = op->op_read.stride,
-      .nelems = op->op_read.nelems,
-  };
-
-  return nss_read_compare (meta, op->op_read.ref_buf, op->op_read.db_buf, stride, e);
+  return nss_read_compare (meta, op->ref_buf, op->db_buf, op->buf_size, op->op_read.str, e);
 }
 
 static err_t
 nss_write (struct ns_simulation *meta, struct operation *op, error *e)
 {
-  struct stride stride = {
-      .start  = op->op_write.start,
-      .stride = op->op_write.stride,
-      .nelems = op->op_write.nelems,
-  };
+  b_size  ref_written = ns_ref_write (meta->ref, op->data, op->op_write.str);
 
-  b_size  ref_written = ns_ref_write (meta->ref, op->op_write.data, stride);
-
-  sb_size db_written  = ns_db_write (meta->db, op->op_write.data, stride, e);
+  sb_size db_written  = ns_db_write (meta->db, op->data, op->data_size, op->op_write.str, e);
   if (db_written < 0) {
     return error_trace (e);
   }
@@ -361,20 +328,13 @@ nss_write (struct ns_simulation *meta, struct operation *op, error *e)
     return error_causef (e, ERR_CORRUPT, "Database written lengths don't match");
   }
 
-  ASSERT (ref_written == op->op_write.nelems);
+  ASSERT (ref_written == op->op_write.str.nelems);
 
   // A strided write touches start, start + stride, ...; read the whole span
   // (with stride 1) so every touched element is covered
-  b_size span = op->op_write.nelems == 0 ? 0 : (op->op_write.nelems - 1) * op->op_write.stride + 1;
+  b_size span = op->op_write.str.nelems == 0 ? 0 : (op->op_write.str.nelems - 1) * op->op_write.str.stride + 1;
 
-  return nss_validate_after_write (
-      meta,
-      op->op_write.start,
-      span,
-      op->op_write.db_buf,
-      op->op_write.ref_buf,
-      e
-  );
+  return nss_validate_after_write (meta, op->op_write.str.start, span, op->db_buf, op->ref_buf, op->buf_size, e);
 }
 
 ////////// LOGGING
@@ -385,14 +345,7 @@ format_quoted_str (char *buf, size_t bufsize, const char *str)
   size_t maxlen    = bufsize - 6; /* was -5: off by one, ate the closing quote */
   size_t len       = strlen (str);
   bool   truncated = len > maxlen;
-  snprintf (
-      buf,
-      bufsize,
-      "\"%.*s%s\"",
-      (int)(truncated ? maxlen : len),
-      str,
-      truncated ? "..." : ""
-  );
+  snprintf (buf, bufsize, "\"%.*s%s\"", (int)(truncated ? maxlen : len), str, truncated ? "..." : "");
 }
 
 static void
@@ -504,12 +457,7 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
   // Elapsed time
   {
     char buf[32];
-    snprintf (
-        buf,
-        sizeof (buf),
-        "%.6f",
-        (double)(i_timer_now_ns (&meta->timer) - meta->start) / 1e6
-    );
+    snprintf (buf, sizeof (buf), "%.6f", (double)(i_timer_now_ns (&meta->timer) - meta->start) / 1e6);
     print_entry ("elapsed_ms", buf);
   }
 
@@ -581,7 +529,7 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
       // Variable name
       {
         char buf[256];
-        format_quoted_str (buf, sizeof (buf), op->op_switch.vname);
+        format_quoted_str (buf, sizeof (buf), op->op_switch.next);
         print_entry ("vname", buf);
       }
       break;
@@ -610,9 +558,9 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
         t_size tsize = ns_ref_cur_tsize (meta->ref);
         switch (op->type) {
           case NSS_INSERT: bytes_moved = op->op_insert.nelems * tsize; break;
-          case NSS_REMOVE: bytes_moved = op->op_remove.nelems * tsize; break;
-          case NSS_READ: bytes_moved = op->op_read.nelems * tsize; break;
-          case NSS_WRITE: bytes_moved = op->op_write.nelems * tsize; break;
+          case NSS_REMOVE: bytes_moved = op->op_remove.str.nelems * tsize; break;
+          case NSS_READ: bytes_moved = op->op_read.str.nelems * tsize; break;
+          case NSS_WRITE: bytes_moved = op->op_write.str.nelems * tsize; break;
           default: break;
         }
       }
@@ -638,40 +586,40 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
         // Start
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.start);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.str.start);
           print_entry ("start", buf);
         }
         // stride
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.stride);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.str.stride);
           print_entry ("stride", buf);
         }
         // nelems
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.nelems);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_remove.str.nelems);
           print_entry ("nelems", buf);
         }
       } else if (op->type == NSS_READ) {
         // start
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.start);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.str.start);
           print_entry ("start", buf);
         }
 
         // stride
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.stride);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.str.stride);
           print_entry ("stride", buf);
         }
 
         // nelems
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.nelems);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_read.str.nelems);
           print_entry ("nelems", buf);
         }
       } else if (op->type == NSS_WRITE) { /* NSS_WRITE */
@@ -679,21 +627,21 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
         // start
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.start);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.str.start);
           print_entry ("start", buf);
         }
 
         // stride
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.stride);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.str.stride);
           print_entry ("stride", buf);
         }
 
         // nelems
         {
           char buf[32];
-          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.nelems);
+          snprintf (buf, sizeof (buf), "%" PRb_size, op->op_write.str.nelems);
           print_entry ("nelems", buf);
         }
       } else {
@@ -781,13 +729,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
     return NULL;
   }
 
-  struct ns_db *db = ns_db_new (
-      params.reliable_mem,
-      params.test_mem,
-      params.test_filesystem,
-      params.dbname,
-      e
-  );
+  struct ns_db *db = ns_db_new (params.reliable_mem, params.test_mem, params.test_filesystem, params.dbname, e);
   if (db == NULL) {
     ns_ref_free (ref);
     i_free (params.reliable_mem, ret);
@@ -844,8 +786,8 @@ ns_simul_close (struct ns_simulation *meta, error *e)
 err_t
 ns_simul_step (struct ns_simulation *meta, error *e)
 {
-  if (meta->step_number == 7168) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "Terminating early");
+  if (meta->step_number == 74) {
+    // return error_causef (e, ERR_INVALID_ARGUMENT, "Terminating early");
   }
   struct rand_op_params params = {
       .ref        = meta->ref,

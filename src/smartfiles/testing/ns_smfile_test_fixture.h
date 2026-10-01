@@ -25,13 +25,7 @@ struct data_writer *smfile_data_writer_open (const char *path);
 int smfile_data_writer_close (struct data_writer *w);
 
 // Specialty fixture for smfile
-typedef sb_size (*pinsert_func) (
-    void       *ctx,
-    const char *name,
-    const void *src,
-    sb_size     bofst,
-    b_size      slen
-);
+typedef sb_size (*pinsert_func) (void *ctx, const char *name, const void *src, sb_size bofst, b_size slen);
 typedef sb_size (*pwrite_func) (
     void       *ctx,
     const char *name,

@@ -20,15 +20,7 @@ posix_socket (void *self, int domain, int type, int protocol, error *e)
 }
 
 static err_t
-posix_setsockopt (
-    void       *self,
-    int         fd,
-    int         level,
-    int         optname,
-    const void *optval,
-    socklen_t   optlen,
-    error      *e
-)
+posix_setsockopt (void *self, int fd, int level, int optname, const void *optval, socklen_t optlen, error *e)
 {
   if (unlikely (setsockopt (fd, level, optname, optval, optlen) == -1)) {
     error_causef (e, ERR_IO, "setsockopt: %s", strerror (errno));
