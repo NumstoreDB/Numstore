@@ -563,32 +563,12 @@ TEST (txnt_max_u_undo_lsn)
     struct txn        tx1, tx2, tx3, tx4;
 
     // Running - should be ignored
-    txn_init (
-        &tx1,
-        1,
-        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING},
-        mem
-    );
+    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING}, mem);
 
     // Candidates
-    txn_init (
-        &tx2,
-        2,
-        (struct txn_data){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
-    );
-    txn_init (
-        &tx3,
-        3,
-        (struct txn_data){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
-    );
-    txn_init (
-        &tx4,
-        4,
-        (struct txn_data){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
-    );
+    txn_init (&tx2, 2, (struct txn_data){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO}, mem);
+    txn_init (&tx3, 3, (struct txn_data){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO}, mem);
+    txn_init (&tx4, 4, (struct txn_data){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO}, mem);
 
     txnt_insert_txn (t, &tx1);
     txnt_insert_txn (t, &tx2);
@@ -606,24 +586,9 @@ TEST (txnt_max_u_undo_lsn)
     error             e = error_create ();
     struct txn_table *t = txnt_open (mem, &e);
     struct txn        tx1, tx2, tx3;
-    txn_init (
-        &tx1,
-        1,
-        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING},
-        mem
-    );
-    txn_init (
-        &tx2,
-        2,
-        (struct txn_data){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING},
-        mem
-    );
-    txn_init (
-        &tx3,
-        3,
-        (struct txn_data){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED},
-        mem
-    );
+    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING}, mem);
+    txn_init (&tx2, 2, (struct txn_data){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING}, mem);
+    txn_init (&tx3, 3, (struct txn_data){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED}, mem);
 
     txnt_insert_txn (t, &tx1);
     txnt_insert_txn (t, &tx2);
@@ -897,24 +862,9 @@ TEST (txnt_insert)
     struct txn_table *t = txnt_open (mem, &e);
     struct txn        tx1, tx2, tx3;
 
-    txn_init (
-        &tx1,
-        1,
-        (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING},
-        mem
-    );
-    txn_init (
-        &tx2,
-        2,
-        (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
-    );
-    txn_init (
-        &tx3,
-        3,
-        (struct txn_data){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED},
-        mem
-    );
+    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING}, mem);
+    txn_init (&tx2, 2, (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO}, mem);
+    txn_init (&tx3, 3, (struct txn_data){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED}, mem);
 
     txnt_insert_txn (t, &tx1);
     txnt_insert_txn (t, &tx2);
@@ -1287,11 +1237,7 @@ txnt_eq_foreach (struct hnode *node, void *_ctx)
   {
     txn_key_init (&candidate, tx->tid);
 
-    struct hnode **other_node = htable_lookup (
-        ctx->other->t,
-        &candidate.node,
-        txn_equals_for_exists
-    );
+    struct hnode **other_node = htable_lookup (ctx->other->t, &candidate.node, txn_equals_for_exists);
 
     if (other_node == NULL) {
       ctx->ret = false;
@@ -1396,18 +1342,8 @@ TEST (txnt_equal_ignore_state)
     struct txn_table *t1 = txnt_open (mem, &e);
     struct txn_table *t2 = txnt_open (mem, &e);
     struct txn        tx1, tx2;
-    txn_init (
-        &tx1,
-        1,
-        (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING},
-        mem
-    );
-    txn_init (
-        &tx2,
-        1,
-        (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING},
-        mem
-    );
+    txn_init (&tx1, 1, (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING}, mem);
+    txn_init (&tx2, 1, (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING}, mem);
 
     txnt_insert_txn (t1, &tx1);
     txnt_insert_txn (t2, &tx2);
@@ -1559,18 +1495,9 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (default_threading (), &t1, txnt_insert_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t2, txnt_insert_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t3, txnt_insert_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (default_threading (), &t1, txnt_insert_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t2, txnt_insert_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t3, txnt_insert_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -1629,18 +1556,9 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (default_threading (), &t1, txnt_reader_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t2, txnt_reader_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t3, txnt_reader_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (default_threading (), &t1, txnt_reader_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t2, txnt_reader_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t3, txnt_reader_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -1761,18 +1679,9 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (default_threading (), &t1, txnt_updater_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t2, txnt_updater_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t3, txnt_updater_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (default_threading (), &t1, txnt_updater_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t2, txnt_updater_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t3, txnt_updater_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -1834,18 +1743,9 @@ TEST (txnt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (
-        i_thread_create (default_threading (), &t1, txnt_state_transition_thread, &ctx1, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t2, txnt_state_transition_thread, &ctx2, &e),
-        SUCCESS
-    );
-    test_assert_equal (
-        i_thread_create (default_threading (), &t3, txnt_state_transition_thread, &ctx3, &e),
-        SUCCESS
-    );
+    test_assert_equal (i_thread_create (default_threading (), &t1, txnt_state_transition_thread, &ctx1, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t2, txnt_state_transition_thread, &ctx2, &e), SUCCESS);
+    test_assert_equal (i_thread_create (default_threading (), &t3, txnt_state_transition_thread, &ctx3, &e), SUCCESS);
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);

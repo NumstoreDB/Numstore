@@ -46,15 +46,7 @@ pgr_get_npages (struct pager *p)
 }
 
 err_t
-pgr_get_maybe_writable (
-    page_h       *dest,
-    struct txn   *tx,
-    int           flags,
-    pgno          pg,
-    struct pager *p,
-    bool          writable,
-    error        *e
-)
+pgr_get_maybe_writable (page_h *dest, struct txn *tx, int flags, pgno pg, struct pager *p, bool writable, error *e)
 {
   if (!writable) {
     return pgr_get (dest, flags, pg, p, e);

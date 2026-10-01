@@ -91,31 +91,23 @@ smartfiles_write (
 
   // INSERT REMAINDER
   // src is sequential: ns_rope_write consumed the first write_nelem elements,
-  // so ns_insert continues reading from where it left off.
+  // so ns_writesert continues reading from where it left off.
   if (insert_nelem > 0) {
-    struct ns_insert_params iparams = {
+    struct ns_writesert_params iparams = {
         .p     = p,
         .src   = src,
         .tx    = tx,
         .root  = wparams.root,
         .bofst = gparams.dest.nbytes, // Append
     };
-    sb_size inserted = ns_insert (&iparams, e);
+    sb_size inserted = ns_writesert (&iparams, e);
     if (inserted < 0) {
       return error_trace (e);
     }
     ret += inserted / size;
 
     // UPDATE VARIABLE
-    if (ns_var_update_by_var_root (
-            p,
-            tx,
-            gparams.dest.var_root,
-            iparams.root,
-            gparams.dest.nbytes + inserted,
-            e
-        )
-        < 0) {
+    if (ns_var_update_by_var_root (p, tx, gparams.dest.var_root, iparams.root, gparams.dest.nbytes + inserted, e) < 0) {
       return error_trace (e);
     }
   }

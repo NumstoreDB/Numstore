@@ -40,12 +40,7 @@ struct wal_ostream
 };
 
 // Lifecycle
-struct wal_ostream *walos_open (
-    const char          *fname,
-    struct i_mem         mem,
-    struct i_file_system fs,
-    error               *e
-);
+struct wal_ostream *walos_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e);
 err_t walos_close (struct wal_ostream *w, error *e);
 
 // Flush

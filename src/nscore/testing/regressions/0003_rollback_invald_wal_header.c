@@ -15,7 +15,7 @@
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_memory.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -34,7 +34,7 @@ TEST (0003_rollback_invalid_wal_header)
   test_assert (db != NULL);
 
   // TXN 1 (auto): create the variable
-  res = ns_exec (db, NULL, "create testvar u32");
+  res = ns_execute (db, NULL, "create testvar u32");
   test_assert_int_equal (res, 0);
 
   // TXN 2: empty, rolled back

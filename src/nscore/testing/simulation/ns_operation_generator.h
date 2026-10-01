@@ -1,7 +1,7 @@
 #ifndef NS_OPERATION_GENERATOR
 #define NS_OPERATION_GENERATOR
 
-#include "nscore/testing/simulation/ns_ref_state_machine.h"
+#include "core/ns_stride.h"
 #include "nscore/types/ns_types.h"
 
 enum ns_action_type
@@ -33,6 +33,7 @@ struct operation
 {
   enum ns_action_type type;
 
+  // Per action parameters
   union {
     struct
     {
@@ -43,7 +44,7 @@ struct operation
 
     struct
     {
-      char *vname;
+      char *next;
     } op_switch;
 
     struct
@@ -55,43 +56,41 @@ struct operation
     {
       b_size ofst;
       b_size nelems;
-      u8    *data;
-      u8    *db_buf;
-      u8    *ref_buf;
     } op_insert;
 
     struct
     {
-      b_size start;
-      b_size stride;
-      b_size nelems;
-      u8    *db_buf;
-      u8    *ref_buf;
+      struct stride str;
     } op_remove;
 
     struct
     {
-      b_size start;
-      b_size stride;
-      b_size nelems;
-      u8    *db_buf;
-      u8    *ref_buf;
+      struct stride str;
     } op_read;
 
     struct
     {
-      b_size start;
-      b_size stride;
-      b_size nelems;
-      u8    *data;
-      u8    *db_buf;
-      u8    *ref_buf;
+      struct stride str;
     } op_write;
   };
 
+  // Buffers shared by every action type. NULL / 0 when the action doesn't
+  // need them.
+  //
+  //   data     - source bytes for INSERT / WRITE
+  //   db_buf   - destination for reading back from the database
+  //   ref_buf  - destination for reading back from the reference model
+  //
+  // db_buf and ref_buf are always the same size (buf_size).
+  u8                *data;
+  b_size             data_size;
+
+  u8                *db_buf;
+  u8                *ref_buf;
+  b_size             buf_size;
+
   struct arena_alloc alloc;
   struct i_mem       mem;
-  u8                *buf;
 };
 
 struct rand_op_params
@@ -112,5 +111,92 @@ struct rand_op_params
 void opg_spin_enabled (u8 enabled[NSS_AT_LEN]);
 struct operation *opg_random (struct rand_op_params params, error *e);
 void opg_free (struct operation *op);
+
+#define OP_CREATE(_name, _type)                  \
+  ((struct operation){                           \
+      .type      = NSS_CREATE_AND_SWAP_IF_EMPTY, \
+      .op_create = {                             \
+          .vname = (char *)(_name),              \
+          .t     = (_type),                      \
+      },                                         \
+  })
+
+#define OP_SWITCH(_name)           \
+  ((struct operation){             \
+      .type      = NSS_SWITCH,     \
+      .op_switch = {               \
+          .next = (char *)(_name), \
+      },                           \
+  })
+
+#define OP_DELETE(_next)                                   \
+  ((struct operation){                                     \
+      .type      = NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH, \
+      .op_delete = {                                       \
+          .next = (char *)(_next),                         \
+      },                                                   \
+  })
+
+#define OP_INSERT(_data, _dlen, _ofst, _n) \
+  ((struct operation){                     \
+      .type = NSS_INSERT,                  \
+      .op_insert =                         \
+          {                                \
+              .ofst   = (_ofst),           \
+              .nelems = (_n),              \
+          },                               \
+      .data      = (_data),                \
+      .data_size = (_dlen),                \
+  })
+
+#define OP_WRITE(_data, _dlen, _start, _stride, _nelems) \
+  ((struct operation){                                   \
+      .type = NSS_WRITE,                                 \
+      .op_write =                                        \
+          {                                              \
+              .str =                                     \
+                  (struct stride){                       \
+                      .start  = (_start),                \
+                      .stride = (_stride),               \
+                      .nelems = (_nelems),               \
+                  },                                     \
+          },                                             \
+      .data      = (_data),                              \
+      .data_size = (_dlen),                              \
+  })
+
+#define OP_READ(_db_buf, _ref_buf, _dlen, _start, _stride, _nelems) \
+  ((struct operation){                                              \
+      .type = NSS_READ,                                             \
+      .op_read =                                                    \
+          {                                                         \
+              .str =                                                \
+                  (struct stride){                                  \
+                      .start  = (_start),                           \
+                      .stride = (_stride),                          \
+                      .nelems = (_nelems),                          \
+                  },                                                \
+          },                                                        \
+      .ref_buf  = (_ref_buf),                                       \
+      .db_buf   = (_db_buf),                                        \
+      .buf_size = (_dlen),                                          \
+  })
+
+#define OP_REMOVE(_db_buf, _ref_buf, _dlen, _start, _stride, _nelems) \
+  ((struct operation){                                                \
+      .type = NSS_REMOVE,                                             \
+      .op_remove =                                                    \
+          {                                                           \
+              .str =                                                  \
+                  (struct stride){                                    \
+                      .start  = (_start),                             \
+                      .stride = (_stride),                            \
+                      .nelems = (_nelems),                            \
+                  },                                                  \
+          },                                                          \
+      .ref_buf  = (_ref_buf),                                         \
+      .db_buf   = (_db_buf),                                          \
+      .buf_size = (_dlen),                                            \
+  })
 
 #endif

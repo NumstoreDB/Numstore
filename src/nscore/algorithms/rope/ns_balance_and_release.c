@@ -552,28 +552,12 @@ ns_balance_and_release (struct ns_balance_and_release_params params, error *e)
   // First - do the balance -
   // e.g. transfer data between prev / cur / next
   // to make all nodes valid
-  if (ns_balance_with_next_or_prev (
-          params.prev,
-          params.cur,
-          params.next,
-          params.p,
-          params.tx,
-          params.output,
-          e
-      )) {
+  if (ns_balance_with_next_or_prev (params.prev, params.cur, params.next, params.p, params.tx, params.output, e)) {
     return error_trace (e);
   }
 
   // Clean up - delete cur if needed
-  if (ns_maybe_delete_cur (
-          params.prev,
-          params.cur,
-          params.next,
-          params.p,
-          params.tx,
-          params.root,
-          e
-      )) {
+  if (ns_maybe_delete_cur (params.prev, params.cur, params.next, params.p, params.tx, params.root, e)) {
     return error_trace (e);
   }
 

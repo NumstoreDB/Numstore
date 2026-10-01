@@ -15,27 +15,27 @@ with ns.Database("example.db") as db:
 
     # Normal transaction with commit
     with db.begin() as txn:
-        txn.execute("insert events 0 3", np.array([1, 2, 3], dtype=np.uint32))
-    show("Committed", db.execute("read events[0:]"))
+        txn.write("insert events 0 3", np.array([1, 2, 3], dtype=np.uint32))
+    show("Committed", db.read("read events[0:]"))
 
     # Transaction with manual rollback
     with db.begin() as txn:
-        txn.execute("insert events 1 2", np.array([4, 5], dtype=np.uint32))
-        show("Inside txn before rollback", txn.execute("read events[0:]"))
+        txn.write("insert events 1 2", np.array([4, 5], dtype=np.uint32))
+        show("Inside txn before rollback", txn.read("read events[0:]"))
         txn.rollback()
-    show("Explicit rollback", db.execute("read events[0:]"))
+    show("Explicit rollback", db.read("read events[0:]"))
 
     # Transaction with exception based rollback
     try:
         with db.begin() as txn:
-            txn.execute("insert events 1 2", np.array([9, 9], dtype=np.uint32))
-            show("Inside txn before failure", txn.execute("read events[0:]"))
+            txn.write("insert events 1 2", np.array([9, 9], dtype=np.uint32))
+            show("Inside txn before failure", txn.read("read events[0:]"))
             raise RuntimeError("simulated validation failure")
     except RuntimeError:
         pass
-    show("Exception rollback", db.execute("read events[0:]"))
+    show("Exception rollback", db.read("read events[0:]"))
 
     # Final committed transaction
     with db.begin() as txn:
-        txn.execute("insert events 3 2", np.array([6, 7], dtype=np.uint32))
-    show("Clean transaction", db.execute("read events[0:]"))
+        txn.write("insert events 3 2", np.array([6, 7], dtype=np.uint32))
+    show("Clean transaction", db.read("read events[0:]"))

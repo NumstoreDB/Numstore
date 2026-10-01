@@ -189,35 +189,25 @@ TEST (struct_t_resolve_key)
   ));
   test_assert_int_equal (ofst, 0);
 
-  test_assert (type_equal (
-      compile_type_alloc ("f32", &alloc, &e),
-      struct_t_resolve_key (&ofst, &t->st, strfcstr ("b"))
-  ));
+  test_assert (
+      type_equal (compile_type_alloc ("f32", &alloc, &e), struct_t_resolve_key (&ofst, &t->st, strfcstr ("b")))
+  );
   test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32));
 
-  test_assert (type_equal (
-      compile_type_alloc ("[10][20]f32", &alloc, &e),
-      struct_t_resolve_key (&ofst, &t->st, strfcstr ("c"))
-  ));
+  test_assert (
+      type_equal (compile_type_alloc ("[10][20]f32", &alloc, &e), struct_t_resolve_key (&ofst, &t->st, strfcstr ("c")))
+  );
   test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32) + sizeof (f32));
 
-  test_assert (type_equal (
-      compile_type_alloc ("i8", &alloc, &e),
-      struct_t_resolve_key (&ofst, &t->st, strfcstr ("d"))
-  ));
-  test_assert_int_equal (
-      ofst,
-      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32)
+  test_assert (
+      type_equal (compile_type_alloc ("i8", &alloc, &e), struct_t_resolve_key (&ofst, &t->st, strfcstr ("d")))
   );
+  test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32));
 
-  test_assert (type_equal (
-      compile_type_alloc ("cf256", &alloc, &e),
-      struct_t_resolve_key (&ofst, &t->st, strfcstr ("e"))
-  ));
-  test_assert_int_equal (
-      ofst,
-      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32) + sizeof (i8)
+  test_assert (
+      type_equal (compile_type_alloc ("cf256", &alloc, &e), struct_t_resolve_key (&ofst, &t->st, strfcstr ("e")))
   );
+  test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32) + sizeof (i8));
 
   ALLOC_CLOSE (alloc);
 }
@@ -604,10 +594,9 @@ TEST (struct_t_serialize)
   };
 
   u8  act[200]; // Sloppy sizing
-  u8  exp[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
-               (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
-               0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
-               0,       'b', 'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
+  u8  exp[] = {0,       0,   0,          0,      'f', 'o', 'o', (u8)T_PRIM, (u8)U32,    0,        0,
+               'f',     'o', (u8)T_PRIM, (u8)U8, 0,   0,   'b', 'a',        'r',        'o',      (u8)T_PRIM,
+               (u8)U16, 0,   0,          'b',    'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
   u16 len   = 4;
   u16 l0    = 3;
   u16 l2    = 2;
@@ -629,12 +618,7 @@ TEST (struct_t_serialize)
 #endif
 
 err_t
-struct_t_deserialize (
-    struct struct_t     *dest,
-    struct deserializer *src,
-    struct arena_alloc  *a,
-    error               *e
-)
+struct_t_deserialize (struct struct_t *dest, struct deserializer *src, struct arena_alloc *a, error *e)
 {
   ASSERT (dest);
   BUILDER_INIT (b, a);
@@ -703,10 +687,9 @@ TEST (struct_t_deserialize_green_path)
 {
   ALLOC_INIT (st_alloc);
 
-  u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
-                (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
-                0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
-                0,       'b', 'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
+  u8  data[] = {0,       0,   0,          0,      'f', 'o', 'o', (u8)T_PRIM, (u8)U32,    0,        0,
+                'f',     'o', (u8)T_PRIM, (u8)U8, 0,   0,   'b', 'a',        'r',        'o',      (u8)T_PRIM,
+                (u8)U16, 0,   0,          'b',    'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
   u16 len    = 4;
   u16 l0     = 3;
   u16 l2     = 2;
@@ -818,13 +801,7 @@ TEST (struct_t_deserialize_red_path)
 #endif
 
 err_t
-struct_t_random (
-    struct struct_t    *st,
-    struct arena_alloc *alloc,
-    u32                 depth,
-    t_size              max_tsize,
-    error              *e
-)
+struct_t_random (struct struct_t *st, struct arena_alloc *alloc, u32 depth, t_size max_tsize, error *e)
 {
   ASSERT (st);
 

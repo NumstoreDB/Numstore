@@ -4,7 +4,7 @@ ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-        "testing/ns_page_fixture" : "page/ns_page_fixture",
+          "smartfiles.h" : "numstore.h",
 }
 
 for ROOT in ROOTS:

@@ -60,9 +60,5 @@ void dpgt_update (struct dpg_table *d, pgno pg, lsn new_rec_lsn);
 bool dpgt_equal (struct dpg_table *left, struct dpg_table *right);
 void dpgt_crash (struct dpg_table *t);
 
-void dpgt_foreach (
-    const struct dpg_table *t,
-    void (*action) (pgno pg, lsn rec_lsn, void *ctx),
-    void *ctx
-);
+void dpgt_foreach (const struct dpg_table *t, void (*action) (pgno pg, lsn rec_lsn, void *ctx), void *ctx);
 #endif // DIRTY_PAGE_TABLE_H

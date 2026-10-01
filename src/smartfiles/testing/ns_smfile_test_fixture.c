@@ -25,7 +25,7 @@
 #include "core/testing/ns_testing.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/pager/ns_pager.h"
-#include "smartfiles/smartfiles.h"
+#include "numstore.h"
 
 #include <stddef.h>
 
@@ -33,35 +33,35 @@ static err_t
 smfile_insert_func (void *ctx, u32 ofst, const void *src, u32 slen, error *e)
 {
   (void)e; // Unused
-  return smfile_insert (ctx, NULL, src, ofst, slen);
+  return ns_smfile_insert (ctx, NULL, src, ofst, slen);
 }
 
 static i64
 smfile_read_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
   (void)e; // Unused
-  return smfile_read (ctx, NULL, dest, size, str.start * size, str.stride * size, str.nelems);
+  return ns_smfile_read (ctx, NULL, dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
 smfile_write_func (void *ctx, struct stride str, u32 size, const void *src, error *e)
 {
   (void)e; // Unused
-  return smfile_write (ctx, NULL, src, size, str.start * size, str.stride * size, str.nelems);
+  return ns_smfile_write (ctx, NULL, src, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
 smfile_remove_func (void *ctx, struct stride str, u32 size, void *dest, error *e)
 {
   (void)e; // Unused
-  return smfile_remove (ctx, NULL, dest, size, str.start * size, str.stride * size, str.nelems);
+  return ns_smfile_remove (ctx, NULL, dest, size, str.start * size, str.stride * size, str.nelems);
 }
 
 static i64
 smfile_get_len_func (void *ctx, error *e)
 {
   (void)e; // Unused
-  return smfile_size (ctx, NULL);
+  return ns_smfile_size (ctx, NULL);
 }
 
 static const struct data_writer_functions smfile_functions = {
@@ -76,13 +76,13 @@ static const struct data_writer_functions smfile_functions = {
 struct data_writer *
 smfile_data_writer_open (const char *path)
 {
-  smfile_t *smf = smfile_open (path);
+  nsdb_t *smf = ns_smfile_open (path);
   if (smf == NULL) {
     return NULL;
   }
   struct data_writer *writer = i_malloc (default_mem (), 1, sizeof *writer, NULL /* todo */);
   if (writer == NULL) {
-    smfile_close (smf);
+    ns_close (smf);
     return NULL;
   }
   writer->ctx       = smf;
@@ -93,7 +93,7 @@ smfile_data_writer_open (const char *path)
 int
 smfile_data_writer_close (struct data_writer *w)
 {
-  int ret = smfile_close (w->ctx);
+  int ret = ns_close (w->ctx);
   i_free (default_mem (), w);
   return ret;
 }

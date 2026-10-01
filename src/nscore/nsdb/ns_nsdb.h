@@ -47,12 +47,17 @@ struct nsdb
   // OS Resources
   struct i_mem         mem;
   struct i_file_system fs;
-};
 
-struct nsdb_wrapper
-{
-  struct nsdb *db;
-  error        e;
+  // Optionally supply an error for error handling
+  error               *e;
+
+  // Auto transaction mode
+  struct
+  {
+    bool       allow;
+    bool       in_auto_txn;
+    struct txn tx;
+  } auto_tx;
 };
 
 DEFINE_DBG_ASSERT (struct nsdb, nsdb, n, {
@@ -62,29 +67,35 @@ DEFINE_DBG_ASSERT (struct nsdb, nsdb, n, {
   ASSERT (n->path.len > 0);
 })
 
-struct nsdb *nsdb_open_with_resources (
-    const char          *path,
-    struct i_mem         mem,
-    struct i_file_system fs,
-    error               *e
-);
-err_t nsdb_init_numstore (struct nsdb *db, error *e);
-err_t nsdb_init_smartfiles (struct nsdb *db, error *e);
+// Lifecycle
+struct nsdb *nsdb_open (const char *path, struct i_mem mem, struct i_file_system fs, error *e);
 err_t nsdb_cleanup (const char *path, error *e);
 err_t nsdb_close (struct nsdb *ns, error *e);
 err_t nsdb_crash (struct nsdb *ns, error *e);
+
+// Options / configuration
+void nsdb_allow_auto_txn (struct nsdb *db);
+void nsdb_set_error (struct nsdb *db, error *e);
+err_t nsdb_writeit_numstore (struct nsdb *db, error *e);
+err_t nsdb_writeit_smartfiles (struct nsdb *db, error *e);
+
+/////////////////////////////////////// Transaction Control
 
 struct txn *nsdb_begin (struct nsdb *db, error *e);
 err_t nsdb_commit (struct nsdb *db, struct txn *txn, error *e);
 err_t nsdb_rollback (struct nsdb *db, struct txn *txn, error *e);
 
-/////////////////////////////////////// Numstore Var
+/////////////////////////////////////// Variables - immutable variable data from the database
 
+/**
+ * A variable has it's own memory space - and has a lifecycle
+ * that's decoupled from nsdb
+ */
 struct nsdb_var
 {
-  struct variable    var;
-  struct arena_alloc alloc;
-  struct i_mem       mem;
+  struct variable    var;   // the actual variable
+  struct arena_alloc alloc; // the allocator for the variable
+  struct i_mem       mem;   // The memory used to allocate this struct
 };
 
 DEFINE_DBG_ASSERT (struct nsdb_var, nsdb_variable, v, {
@@ -92,12 +103,13 @@ DEFINE_DBG_ASSERT (struct nsdb_var, nsdb_variable, v, {
   DBG_ASSERT (variable, &v->var);
 });
 
+// Lifecycle
 struct nsdb_var *nsdb_var_create (struct i_mem mem, error *e);
 void nsdb_var_free (struct nsdb_var *var);
 
+// Getters
 struct arena_alloc *nsdb_var_alloc (struct nsdb_var *var);
 struct variable *nsdb_var_var (struct nsdb_var *var);
-
 b_size nsdb_var_len (struct nsdb_var *var);
 b_size nsdb_var_nbytes (struct nsdb_var *var);
 pgno nsdb_var_var_root (struct nsdb_var *var);
@@ -105,153 +117,139 @@ pgno nsdb_var_rpt_root (struct nsdb_var *var);
 struct string nsdb_var_name (struct nsdb_var *var);
 struct type *nsdb_var_type (struct nsdb_var *var);
 
-/////////////////////////////////////// Plan
+/////////////////////////////////////// Nsdb Plan - a pre compiled statement that can be executed
 
 struct nsdb_plan
 {
-  struct pager      *p;     // The database to use
-  struct i_mem       mem;   // Memory to malloc variables in plan_malloc
-  struct arena_alloc alloc; // Allocator for stuff in this variable
-  struct query       q;     // The active query
+  struct arena_alloc alloc; // Allocator for [q] and [copied_query]
+
+  // The compiled query
+  struct query       q;
+
+  struct nsdb       *parent;
 };
 
 DEFINE_DBG_ASSERT (struct nsdb_plan, nsdb_plan, n, {
   ASSERT (n);
-  ASSERT (n->p);
+  DBG_ASSERT (nsdb, n->parent);
 })
 
-struct nsdb_plan *nsdb_plan_fcreate (struct nsdb *db, const char *query, error *e, ...);
+// Lifecycle
 struct nsdb_plan *nsdb_plan_create (struct nsdb *db, const char *query, error *e);
-void nsdb_plan_free (struct nsdb *db, struct nsdb_plan *plan);
+struct nsdb_plan *nsdb_plan_fcreate (struct nsdb *db, const char *query, error *e, ...);
+struct nsdb_plan *nsdb_plan_vcreate (struct nsdb *db, const char *query, error *e, va_list args);
+void nsdb_plan_free (struct nsdb_plan *plan);
 
-// Execute the plan
+/////////////////////////////////////// Executions
+
+/**
+ * Execute a single query.
+ * Must be any query that doesn't take in parameters
+ *
+ * Example:
+ *    ns_execute(db, tx, "create foo u32");
+ *    ns_execute(db, tx, "remove foo[0:]");
+ *    ns_execute(db, tx, "insert foo 0 10");       X FAILS
+ *    ns_execute(db, tx, "read foo[0:10]");        X FAILS
+ *    ns_execute(db, tx, "write foo[0:10]");       X FAILS
+ */
+err_t nsdb_execute (struct nsdb *db, struct txn *tx, const char *query, error *e);
 sb_size nsdb_plan_execute (struct nsdb_plan *ns, struct txn *tx, error *e);
-struct nsdb_var *nsdb_plan_get_var (struct nsdb_plan *st, struct txn *tx, error *e);
-sb_size nsdb_plan_read (struct nsdb_plan *st, struct txn *tx, void *dest, b_size dlen, error *e);
-void *nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *tx, b_size *dlen, error *e);
-sb_size nsdb_plan_write (
-    struct nsdb_plan *st,
-    struct txn       *tx,
-    const void       *src,
-    b_size            dlen,
-    error            *e
-);
-err_t nsdb_plan_execute_in_console (struct nsdb_plan *st, struct txn *tx, error *e);
 
-/////////////////////////////////////// Auto Plan
-
-err_t nsdb_exec (struct nsdb *db, struct txn *tx, const char *query, error *e);
+/**
+ * Get the variable associated with a query
+ * Doesn't every actually execute anything
+ *
+ * Example:
+ *    nsdb_var_t* var = ns_get_var(db, tx, "get foo");
+ *    nsdb_var_t* var = ns_get_var(db, tx, "insert foo[0:10]");
+ *    nsdb_var_t* var = ns_get_var(db, tx, "delete foo");
+ */
 struct nsdb_var *nsdb_get_var (struct nsdb *db, struct txn *tx, const char *query, error *e);
-sb_size nsdb_read (
-    struct nsdb *db,
-    struct txn  *txn,
-    void        *dest,
-    b_size       dlen,
-    const char  *query,
-    error       *e
-);
-void *nsdb_read_malloc (
-    struct nsdb *db,
-    struct txn  *txn,
-    b_size      *dlen,
-    const char  *query,
-    error       *e
-);
-sb_size nsdb_write (
-    struct nsdb *db,
-    struct txn  *txn,
-    const void  *src,
-    b_size       dlen,
-    const char  *query,
-    error       *e
-);
+struct nsdb_var *nsdb_plan_get_var (struct nsdb_plan *st, struct txn *tx, error *e);
+
+/**
+ * Execute a query and read into a fixed sized buffer
+ * Must be a "readable" query (READ/REMOVE only)
+ *
+ * Example:
+ *    u32 dest[10];
+ *    sb_size read = ns_read(db, tx, dest, sizeof(dest), "read foo[0:10]");
+ *    sb_size removed = ns_read(db, tx, dest, sizeof(dest), "remove foo[0:10]");
+ *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "insert foo 0 10");   X FAILS
+ *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "get foo");           X FAILS
+ */
+sb_size nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char *query, error *e);
+sb_size nsdb_plan_read (struct nsdb_plan *st, struct txn *tx, void *dest, b_size dlen, error *e);
+
+/**
+ * Execute a query and malloc an output buffer
+ * Must be a "readable" query (READ/REMOVE only)
+ *
+ * Example:
+ *    b_size len;
+ *    void* data = ns_malloc(db, tx, &len, "read foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
+ *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
+ */
+void *nsdb_read_malloc (struct nsdb *db, struct txn *txn, b_size *dlen, const char *query, error *e);
+void *nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *tx, b_size *dlen, error *e);
+
+/**
+ * Execute a query and write out of a fixed sized buffer
+ * Must be a "writable" query (INSERT/WRITE only)
+ *
+ * Example:
+ *    b_size len;
+ *    void* data = ns_malloc(db, tx, &len, "read foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "remove foo[0:10]");
+ *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
+ *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
+ */
+sb_size nsdb_write (struct nsdb *db, struct txn *txn, const void *src, b_size dlen, const char *query, error *e);
+sb_size nsdb_plan_write (struct nsdb_plan *st, struct txn *tx, const void *src, b_size dlen, error *e);
+
+/**
+ * Execute a query and output to the terminal
+ */
 err_t nsdb_console (struct nsdb *db, struct txn *txn, const char *query, error *e);
+err_t nsdb_plan_console (struct nsdb_plan *st, struct txn *tx, error *e);
 
-/////////////////////////////////////// Auto Transaction
-
-struct auto_txn
-{
-  struct txn *tx;
-  bool        is_auto_txn;
-};
-
-static inline err_t
-nsdb_auto_begin (struct nsdb *db, struct txn *tx, struct auto_txn *auto_tx, error *e)
-{
-  auto_tx->tx          = tx;
-  auto_tx->is_auto_txn = false;
-
-  if (tx == NULL) {
-    auto_tx->tx = nsdb_begin (db, e);
-    if (auto_tx->tx == NULL) {
-      return error_trace (e);
-    }
-    auto_tx->is_auto_txn = true;
-  }
-
-  return SUCCESS;
-}
-
-static inline err_t
-nsdb_auto_commit (struct nsdb *db, struct auto_txn *auto_tx, error *e)
-{
-  ASSERT (auto_tx->tx);
-  if (auto_tx->is_auto_txn) {
-    struct txn *tx = auto_tx->tx;
-    auto_tx->tx    = NULL;
-    return nsdb_commit (db, tx, e);
-  }
-  return SUCCESS;
-}
-
-static inline err_t
-nsdb_auto_rollback (struct nsdb *db, struct auto_txn *auto_tx, error *e)
-{
-  ASSERT (auto_tx->tx);
-  if (auto_tx->is_auto_txn) {
-    struct txn *tx = auto_tx->tx;
-    auto_tx->tx    = NULL;
-    return nsdb_rollback (db, tx, e);
-  }
-  return SUCCESS;
-}
-
-#define WITH_AUTO_TXN(res, db, _tx, expr, e)                    \
-  do {                                                          \
-    struct txn     *_saved_tx = (_tx);                          \
-    struct auto_txn _auto_tx;                                   \
-    if (nsdb_auto_begin ((db), (_tx), &_auto_tx, (e))) {        \
-      (res) = error_trace (e);                                  \
-    } else {                                                    \
-      (_tx) = _auto_tx.tx;                                      \
-      (res) = (expr);                                           \
-      if ((res) < 0) {                                          \
-        nsdb_auto_rollback ((db), &_auto_tx, (e));              \
-      } else if (nsdb_auto_commit ((db), &_auto_tx, (e)) < 0) { \
-        (res) = error_trace (e);                                \
-      }                                                         \
-      (_tx) = _saved_tx;                                        \
-    }                                                           \
-  }                                                             \
-  while (0)
-
-#define WITH_AUTO_TXN_PTR(res, db, _tx, expr, e)                \
-  do {                                                          \
-    struct txn     *_saved_tx = (_tx);                          \
-    struct auto_txn _auto_tx;                                   \
-    if (nsdb_auto_begin ((db), (_tx), &_auto_tx, (e))) {        \
-      (res) = NULL;                                             \
-    } else {                                                    \
-      (_tx) = _auto_tx.tx;                                      \
-      (res) = (expr);                                           \
-      if ((res) == NULL) {                                      \
-        nsdb_auto_rollback ((db), &_auto_tx, (e));              \
-      } else if (nsdb_auto_commit ((db), &_auto_tx, (e)) < 0) { \
-        (res) = NULL;                                           \
-      }                                                         \
-      (_tx) = _saved_tx;                                        \
-    }                                                           \
-  }                                                             \
-  while (0)
+// Smart files patterns
+sb_size nsdb_smfile_size (struct nsdb *smf, struct txn *tx, error *e);
+sb_size nsdb_smfile_insert (struct nsdb *smf, struct txn *tx, const void *src, sb_size bofst, b_size slen, error *e);
+sb_size nsdb_smfile_write (
+    struct nsdb *smf,
+    struct txn  *tx,
+    const void  *src,
+    t_size       size,
+    sb_size      bofst,
+    sb_size      stride,
+    b_size       nelem,
+    error       *e
+);
+sb_size nsdb_smfile_read (
+    struct nsdb *smf,
+    struct txn  *tx,
+    void        *dest,
+    t_size       size,
+    sb_size      bofst,
+    sb_size      stride,
+    b_size       nelem,
+    error       *e
+);
+sb_size nsdb_smfile_remove (
+    struct nsdb *smf,
+    struct txn  *tx,
+    void        *dest,
+    t_size       size,
+    sb_size      bofst,
+    sb_size      stride,
+    b_size       nelem,
+    error       *e
+);
 
 #endif // NSHANDLE_H

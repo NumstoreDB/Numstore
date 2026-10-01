@@ -45,11 +45,11 @@ main (int argc, char **argv)
   */
 
   // Parse arguments
-  const char *dbname      = "foo"; // = argv[1];
-  int         duration    = 50;    // = atoi (argv[2]);
-  u64         seed        = 512;   // = strtoul (argv[3], NULL, 10);
-  const char *commit_hash = "foo"; // = argv[4];
-  u32         seqid       = 10;    // = strtoul (argv[5], NULL, 10);
+  const char *dbname      = "foo";      // = argv[1];
+  int         duration    = 50;         // = atoi (argv[2]);
+  u64         seed        = 1231241123; // = strtoul (argv[3], NULL, 10);
+  const char *commit_hash = "foo";      // = argv[4];
+  u32         seqid       = 10;         // = strtoul (argv[5], NULL, 10);
 
   // TODO - validate arguments
 

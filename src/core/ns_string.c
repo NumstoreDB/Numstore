@@ -146,12 +146,7 @@ string_equal (const struct string s1, const struct string s2)
 }
 
 const struct string *
-strings_are_disjoint (
-    const struct string *left,
-    const u32            llen,
-    const struct string *right,
-    const u32            rlen
-)
+strings_are_disjoint (const struct string *left, const u32 llen, const struct string *right, const u32 rlen)
 {
   for (u32 i = 0; i < llen; ++i) {
     for (u32 j = 0; j < rlen; ++j) {

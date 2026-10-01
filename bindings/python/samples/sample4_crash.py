@@ -8,13 +8,13 @@ PATH = "durability.db"
 def phase1_populate():
     with ns.Database(PATH) as db:
         db.execute("create log u8")
-        db.execute("insert log 0 10", np.frombuffer(b"AAAAAAAAAA", dtype=np.uint8))
+        db.write("insert log 0 10", np.frombuffer(b"AAAAAAAAAA", dtype=np.uint8))
 
 
 def phase2_commit_then_crash():
     db = ns.Database(PATH)
     txn = db.begin()
-    txn.execute("insert log 3 2", np.frombuffer(b"BB", dtype=np.uint8))
+    txn.write("insert log 3 2", np.frombuffer(b"BB", dtype=np.uint8))
     txn.commit()
     os._exit(1)  # simulate crash - this data is durable because commit was called
 
@@ -22,7 +22,7 @@ def phase2_commit_then_crash():
 def phase3_crash():
     db = ns.Database(PATH)
     txn = db.begin()
-    txn.execute("insert log 7 2", np.frombuffer(b"CC", dtype=np.uint8))
+    txn.write("insert log 7 2", np.frombuffer(b"CC", dtype=np.uint8))
     os._exit(1)  # simulate crash - this data is not durable because commit was never called 
 
 
@@ -54,6 +54,6 @@ if __name__ == "__main__":
 
     # Final step
     with ns.Database(PATH) as db:
-        show("full contents", db.execute("read log[0:]"))
-        show("phase 2 - commit + crash      (expect BB)", db.execute("read log[3:5]"))
-        show("phase 3 - no commit + crash   (expect AA)", db.execute("read log[7:9]"))
+        show("full contents", db.read("read log[0:]"))
+        show("phase 2 - commit + crash      (expect BB)", db.read("read log[3:5]"))
+        show("phase 3 - no commit + crash   (expect AA)", db.read("read log[7:9]"))

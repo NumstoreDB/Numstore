@@ -160,14 +160,7 @@ err_t pgr_commit (struct pager *p, struct txn *tx, error *e);
 err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e);
 
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
-err_t pgr_get_writable (
-    page_h       *dest,
-    struct txn   *tx,
-    int           flags,
-    pgno          pg,
-    struct pager *p,
-    error        *e
-);
+err_t pgr_get_writable (page_h *dest, struct txn *tx, int flags, pgno pg, struct pager *p, error *e);
 err_t pgr_get_maybe_writable (
     page_h       *dest,
     struct txn   *tx,
@@ -180,13 +173,7 @@ err_t pgr_get_maybe_writable (
 
 err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
 err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
-err_t pgr_release_with_log (
-    struct pager            *p,
-    page_h                  *h,
-    int                      flags,
-    struct wal_update_write *record,
-    error                   *e
-);
+err_t pgr_release_with_log (struct pager *p, page_h *h, int flags, struct wal_update_write *record, error *e);
 err_t pgr_release (struct pager *p, page_h *h, const int flags, error *e);
 err_t pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e);
 err_t pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e);

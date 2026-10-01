@@ -27,12 +27,7 @@
 
 struct wal_istream;
 
-struct wal_istream *walis_open (
-    const char          *fname,
-    struct i_mem         mem,
-    struct i_file_system fs,
-    error               *e
-);
+struct wal_istream *walis_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e);
 err_t walis_close (struct wal_istream *w, error *e);
 err_t walis_crash (struct wal_istream *w, error *e);
 

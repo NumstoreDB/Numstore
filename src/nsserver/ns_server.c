@@ -199,23 +199,10 @@ nsserver_execute (struct ns_server *server, error *e)
           // Write -> Read
           struct kevent changes[2];
           EV_SET (&changes[0], server->events[i].ident, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-          EV_SET (
-              &changes[1],
-              server->events[i].ident,
-              EVFILT_READ,
-              EV_ADD | EV_ENABLE,
-              0,
-              0,
-              NULL
-          );
+          EV_SET (&changes[1], server->events[i].ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
           kevent (server->kq, changes, 2, NULL, 0, NULL);
         } else {
-          ssize_t sent = send (
-              server->events[i].ident,
-              conn->buffer + conn->wlen,
-              conn->rlen - conn->wlen,
-              0
-          );
+          ssize_t sent = send (server->events[i].ident, conn->buffer + conn->wlen, conn->rlen - conn->wlen, 0);
           printf ("Sent: %ld\n", sent);
           err_check (sent >= 0, "send");
           conn->wlen += sent;
@@ -226,9 +213,8 @@ nsserver_execute (struct ns_server *server, error *e)
       else if (conn->rlen < 4 || conn->rlen < conn_read_prefix (conn)) {
         ASSERT (conn->wlen == 0);
 
-        u32 len = conn_read_prefix (conn);
-        ssize_t
-            recvd = recv (server->events[i].ident, conn->buffer + conn->rlen, len - conn->rlen, 0);
+        u32     len   = conn_read_prefix (conn);
+        ssize_t recvd = recv (server->events[i].ident, conn->buffer + conn->rlen, len - conn->rlen, 0);
         printf ("Recv: %ld\n", recvd);
         err_check (recvd >= 0, "recv");
         conn->rlen += recvd;
@@ -244,15 +230,7 @@ nsserver_execute (struct ns_server *server, error *e)
           // Read -> Write
           struct kevent changes[2];
           EV_SET (&changes[0], server->events[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-          EV_SET (
-              &changes[1],
-              server->events[i].ident,
-              EVFILT_WRITE,
-              EV_ADD | EV_ENABLE,
-              0,
-              0,
-              NULL
-          );
+          EV_SET (&changes[1], server->events[i].ident, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
           kevent (server->kq, changes, 2, NULL, 0, NULL);
         }
       }

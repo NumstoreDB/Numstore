@@ -119,10 +119,7 @@ TEST (pgr_get_invalid_checksum)
   pgr_commit (pf.p, &tx, &pf.e);
 
   pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e);
-  test_assert_int_equal (
-      page_get_checksum (page_h_ro (&pg)),
-      page_compute_checksum (page_h_ro (&pg))
-  );
+  test_assert_int_equal (page_get_checksum (page_h_ro (&pg)), page_compute_checksum (page_h_ro (&pg)));
 
   // Force checksum to be different
   page fake_page;

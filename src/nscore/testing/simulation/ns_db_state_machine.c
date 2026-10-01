@@ -1,15 +1,12 @@
 #include "nscore/testing/simulation/ns_db_state_machine.h"
 
-#include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_stride.h"
 #include "core/os/ns_memory.h"
 #include "core/os/ns_time.h"
 #include "core/testing/ns_testing.h"
-#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "numstore/numstore.h"
 
 #include <string.h>
 
@@ -29,37 +26,28 @@ ns_db_set_file_size (struct ns_db *db, error *e)
 static err_t
 ns_db_reopen_handle (struct ns_db *db, error *e)
 {
-  struct nsdb *ns = nsdb_open_with_resources (db->dbname, db->test_mem, db->test_fs, e);
+  struct nsdb *ns = nsdb_open (db->dbname, db->test_mem, db->test_fs, e);
   if (ns == NULL) {
     return error_trace (e);
   }
 
-  // Initialize numstore database
-  if (numstore_init_pager (ns->p, e)) {
+  if (nsdb_writeit_numstore (ns, e)) {
     nsdb_close (ns, e);
-    return -1;
+    return error_trace (e);
   }
+
+  // Operations outside a transaction (db->tx == NULL) run in an auto txn
+  nsdb_allow_auto_txn (ns);
 
   db->db = ns;
   return SUCCESS;
 }
 
 struct ns_db *
-ns_db_new (
-    struct i_mem         reliable_mem,
-    struct i_mem         test_mem,
-    struct i_file_system test_fs,
-    const char          *dbname,
-    error               *e
-)
+ns_db_new (struct i_mem reliable_mem, struct i_mem test_mem, struct i_file_system test_fs, const char *dbname, error *e)
 {
   struct ns_db *ret = i_malloc (reliable_mem, 1, sizeof *ret, e);
   if (ret == NULL) {
-    return NULL;
-  }
-
-  if (i_timer_create (&ret->timer, e) < 0) {
-    i_free (reliable_mem, ret);
     return NULL;
   }
 
@@ -69,7 +57,6 @@ ns_db_new (
       .var_committed       = NULL,
       .var_working         = NULL,
       .reliable_mem        = reliable_mem,
-      // .timer ,
       .total_working_ns    = 0,
       .prev_op_duration_ns = 0,
       .db_size_bytes       = 0,
@@ -78,6 +65,12 @@ ns_db_new (
       .test_fs             = test_fs,
       .dbname              = dbname,
   };
+
+  // After the struct assignment above, otherwise it wipes the timer
+  if (i_timer_create (&ret->timer, e) < 0) {
+    i_free (reliable_mem, ret);
+    return NULL;
+  }
 
   if (ns_db_reopen_handle (ret, e)) {
     i_timer_free (&ret->timer);
@@ -104,6 +97,7 @@ ns_db_close (struct ns_db *db, error *e)
   i_cfree (db->reliable_mem, db->var_committed);
 
   err_t ret = nsdb_close (db->db, e);
+  i_timer_free (&db->timer);
   i_free (db->reliable_mem, db);
 
   return ret;
@@ -118,20 +112,23 @@ ns_db_close (struct ns_db *db, error *e)
   }                                                              \
   while (0)
 
+// Returns a reliable_mem copy of src, or NULL if src is NULL.
+// Check (ret == NULL && src != NULL) for allocation failure.
 static inline char *
-ns_db_copy_name (struct ns_db *db, char *src, error *e)
+ns_db_copy_name (struct ns_db *db, const char *src, error *e)
 {
-  char *copy = NULL;
-
-  if (src) {
-    // +1 so the copy stays NUL terminated - it's handed to strfcstr(), which
-    // calls strlen() on it.
-    copy = i_malloc (db->reliable_mem, strlen (src) + 1, 1, e);
-    if (copy == NULL) {
-      return NULL;
-    }
-    memcpy (copy, src, strlen (src) + 1);
+  if (src == NULL) {
+    return NULL;
   }
+
+  // +1 so the copy stays NUL terminated - it's handed to strfcstr(), which
+  // calls strlen() on it.
+  size_t len  = strlen (src) + 1;
+  char  *copy = i_malloc (db->reliable_mem, len, 1, e);
+  if (copy == NULL) {
+    return NULL;
+  }
+  memcpy (copy, src, len);
 
   return copy;
 }
@@ -156,12 +153,11 @@ ns_db_begin_txn (struct ns_db *db, error *e)
   if (tx == NULL) {
     i_cfree (db->reliable_mem, var_working);
     return error_trace (e);
-
-  } else {
-    db->tx          = tx;
-    db->var_working = var_working;
-    return ns_db_set_file_size (db, e);
   }
+
+  db->tx          = tx;
+  db->var_working = var_working;
+  return ns_db_set_file_size (db, e);
 }
 
 err_t
@@ -177,13 +173,12 @@ ns_db_rollback_txn (struct ns_db *db, error *e)
 
   if (ret < 0) {
     return error_trace (e);
-
-  } else {
-    i_cfree (db->reliable_mem, db->var_working);
-    db->tx          = NULL;
-    db->var_working = NULL;
-    return ns_db_set_file_size (db, e);
   }
+
+  i_cfree (db->reliable_mem, db->var_working);
+  db->tx          = NULL;
+  db->var_working = NULL;
+  return ns_db_set_file_size (db, e);
 }
 
 err_t
@@ -205,16 +200,15 @@ ns_db_commit_txn (struct ns_db *db, error *e)
   if (ret < 0) {
     i_cfree (db->reliable_mem, new_committed);
     return error_trace (e);
-
-  } else {
-    // Transfer state
-    i_cfree (db->reliable_mem, db->var_working);
-    i_cfree (db->reliable_mem, db->var_committed);
-    db->var_committed = new_committed;
-    db->tx            = NULL;
-    db->var_working   = NULL;
-    return ns_db_set_file_size (db, e);
   }
+
+  // Transfer state
+  i_cfree (db->reliable_mem, db->var_working);
+  i_cfree (db->reliable_mem, db->var_committed);
+  db->var_committed = new_committed;
+  db->tx            = NULL;
+  db->var_working   = NULL;
+  return ns_db_set_file_size (db, e);
 }
 
 err_t
@@ -235,13 +229,12 @@ ns_db_crash_and_reopen (struct ns_db *db, error *e)
 
   if (ret < 0) {
     return error_trace (e);
-
-  } else {
-    i_cfree (db->reliable_mem, db->var_working);
-    db->tx          = NULL;
-    db->var_working = NULL;
-    return ns_db_set_file_size (db, e);
   }
+
+  i_cfree (db->reliable_mem, db->var_working);
+  db->tx          = NULL;
+  db->var_working = NULL;
+  return ns_db_set_file_size (db, e);
 }
 
 err_t
@@ -264,10 +257,9 @@ ns_db_close_and_reopen (struct ns_db *db, error *e)
 
   if (ret < 0) {
     return error_trace (e);
-
-  } else {
-    return ns_db_set_file_size (db, e);
   }
+
+  return ns_db_set_file_size (db, e);
 }
 
 static inline char *
@@ -280,10 +272,10 @@ ns_db_cur (struct ns_db *db)
   }
 }
 
+// Takes ownership of vname (may be NULL)
 static inline void
 ns_db_set_cur (struct ns_db *db, char *vname)
 {
-  // Copy it to either destination
   if (db->tx) {
     i_cfree (db->reliable_mem, db->var_working);
     db->var_working = vname;
@@ -296,12 +288,12 @@ ns_db_set_cur (struct ns_db *db, char *vname)
 static inline err_t
 ns_db_copy_cur (struct ns_db *db, const char *vname, error *e)
 {
-  // Copy the variable to a new location (+1 to keep the NUL terminator)
-  char *copy = i_malloc (db->reliable_mem, strlen (vname) + 1, 1, e);
+  ASSERT (vname);
+
+  char *copy = ns_db_copy_name (db, vname, e);
   if (copy == NULL) {
     return error_trace (e);
   }
-  memcpy (copy, vname, strlen (vname) + 1);
 
   ns_db_set_cur (db, copy);
 
@@ -309,31 +301,34 @@ ns_db_copy_cur (struct ns_db *db, const char *vname, error *e)
 }
 
 err_t
-ns_db_create (struct ns_db *db, const char *vname, struct type dtype, error *e)
+ns_db_create (struct ns_db *db, const char *vname, const char *typestr, error *e)
 {
-  ALLOC_INIT (alloc);
+  ASSERT (vname);
+  ASSERT (typestr);
+
+  // Construct the query
+  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "create %s %s", e, vname, typestr);
+  if (plan == NULL) {
+    return error_trace (e);
+  }
+
+  // Execute under a timer
   pre_op (db);
-  err_t ret;
-  WITH_AUTO_TXN (
-      ret,
-      db->db,
-      db->tx,
-      numstore_create (db->db->p, db->tx, strfcstr (vname), dtype, &alloc, NULL, e),
-      e
-  );
+  err_t ret = nsdb_plan_execute (plan, db->tx, e);
   post_op (db);
-  ALLOC_CLOSE (alloc);
+
+  nsdb_plan_free (plan);
 
   if (ret < 0) {
     return error_trace (e);
-
-  } else {
-    if (ns_db_cur (db) == NULL) {
-      WRAP (ns_db_copy_cur (db, vname, e));
-    }
-
-    return ns_db_set_file_size (db, e);
   }
+
+  // First variable becomes the current one
+  if (ns_db_cur (db) == NULL) {
+    WRAP (ns_db_copy_cur (db, vname, e));
+  }
+
+  return ns_db_set_file_size (db, e);
 }
 
 err_t
@@ -354,74 +349,61 @@ ns_db_delete_and_switch (struct ns_db *db, const char *next, error *e)
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
-  // Copy next to a new destination (next is NULL when deleting the last
-  // remaining variable - there's nothing to switch to)
-  char *copy = NULL;
-  if (next != NULL) {
-    copy = i_malloc (db->reliable_mem, strlen (next) + 1, 1, e);
-    if (copy == NULL) {
-      return error_trace (e);
-    }
-    memcpy (copy, next, strlen (next) + 1);
+  // Construct the query
+  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "delete %s", e, cur);
+  if (plan == NULL) {
+    return error_trace (e);
   }
 
-  // Do the operation
+  // Copy next (NULL when deleting the last remaining variable - there's
+  // nothing to switch to)
+  char *copy = ns_db_copy_name (db, next, e);
+  if (copy == NULL && next != NULL) {
+    nsdb_plan_free (plan);
+    return error_trace (e);
+  }
+
+  // Do the operation under a timer
   pre_op (db);
-  err_t ret;
-  WITH_AUTO_TXN (
-      ret,
-      db->db,
-      db->tx,
-      numstore_delete (db->db->p, db->tx, strfcstr (cur), false, e),
-      e
-  );
+  err_t ret = nsdb_plan_execute (plan, db->tx, e);
   post_op (db);
+
+  nsdb_plan_free (plan);
 
   if (ret < 0) {
     i_cfree (db->reliable_mem, copy);
     return error_trace (e);
-
-  } else {
-    ns_db_set_cur (db, copy);
-    return ns_db_set_file_size (db, e);
   }
+
+  ns_db_set_cur (db, copy);
+  return ns_db_set_file_size (db, e);
 }
 
 sb_size
-ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
+ns_db_insert (struct ns_db *db, const void *data, b_size dlen, b_size ofst, b_size nelems, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
-  ALLOC_INIT (alloc);
-  struct stream          stream;
-  struct stream_ibuf_ctx ictx;
-  stream_ibuf_init (&stream, &ictx, data, 0);
+  // Construct the query
+  struct nsdb_plan *plan = nsdb_plan_fcreate (
+      db->db,
+      "insert %s %llu %llu",
+      e,
+      cur,
+      (unsigned long long)ofst,
+      (unsigned long long)nelems
+  );
+  if (plan == NULL) {
+    return error_trace (e);
+  }
 
   // Do operation
   pre_op (db);
-  sb_size ret;
-
-  WITH_AUTO_TXN (
-      ret,
-      db->db,
-      db->tx,
-      numstore_insert_from_name (
-          db->db->p,
-          db->tx,
-          strfcstr (cur),
-          ofst,
-          len,
-          &alloc,
-          NULL,
-          &stream,
-          e
-      ),
-      e
-  );
+  sb_size ret = nsdb_plan_write (plan, db->tx, data, dlen, e);
   post_op (db);
 
-  ALLOC_CLOSE (alloc);
+  nsdb_plan_free (plan);
 
   if (ret < 0) {
     return error_trace (e);
@@ -435,37 +417,23 @@ ns_db_insert (struct ns_db *db, void *data, b_size ofst, b_size len, error *e)
 }
 
 sb_size
-ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
+ns_db_remove (struct ns_db *db, void *dest, b_size dlen, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
-  ALLOC_INIT (alloc);
-  struct stream          stream;
-  struct stream_obuf_ctx ictx;
-  stream_obuf_init (&stream, &ictx, dest, 0);
+  // Construct the query
+  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "remove %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  if (plan == NULL) {
+    return error_trace (e);
+  }
 
   // Do operation
   pre_op (db);
-  sb_size ret;
-  WITH_AUTO_TXN (
-      ret,
-      db->db,
-      db->tx,
-      numstore_remove_from_name (
-          db->db->p,
-          db->tx,
-          strfcstr (cur),
-          usfrms (str),
-          &alloc,
-          NULL,
-          &stream,
-          e
-      ),
-      e
-  );
+  sb_size ret = nsdb_plan_read (plan, db->tx, dest, dlen, e);
   post_op (db);
-  ALLOC_CLOSE (alloc);
+
+  nsdb_plan_free (plan);
 
   if (ret < 0) {
     return error_trace (e);
@@ -479,37 +447,23 @@ ns_db_remove (struct ns_db *db, void *dest, struct stride str, error *e)
 }
 
 sb_size
-ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
+ns_db_read (struct ns_db *db, void *dest, b_size dlen, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
-  ALLOC_INIT (alloc);
-  struct stream          stream;
-  struct stream_obuf_ctx ictx;
-  stream_obuf_init (&stream, &ictx, dest, 0);
+  // Construct the query
+  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "read %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  if (plan == NULL) {
+    return error_trace (e);
+  }
 
   // Do operation
   pre_op (db);
-  sb_size ret;
-  WITH_AUTO_TXN (
-      ret,
-      db->db,
-      db->tx,
-      numstore_read_from_name (
-          db->db->p,
-          db->tx,
-          strfcstr (cur),
-          usfrms (str),
-          &alloc,
-          NULL,
-          &stream,
-          e
-      ),
-      e
-  );
+  sb_size ret = nsdb_plan_read (plan, db->tx, dest, dlen, e);
   post_op (db);
-  ALLOC_CLOSE (alloc);
+
+  nsdb_plan_free (plan);
 
   if (ret < 0) {
     return error_trace (e);
@@ -523,37 +477,23 @@ ns_db_read (struct ns_db *db, void *dest, struct stride str, error *e)
 }
 
 sb_size
-ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
+ns_db_write (struct ns_db *db, const void *data, b_size dlen, struct stride str, error *e)
 {
   char *cur = ns_db_cur (db);
   ASSERT (cur);
 
-  ALLOC_INIT (alloc);
-  struct stream          stream;
-  struct stream_ibuf_ctx ictx;
-  stream_ibuf_init (&stream, &ictx, data, 0);
+  // Construct the query
+  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "write %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  if (plan == NULL) {
+    return error_trace (e);
+  }
 
   // Do operation
   pre_op (db);
-  sb_size ret;
-  WITH_AUTO_TXN (
-      ret,
-      db->db,
-      db->tx,
-      numstore_write_from_name (
-          db->db->p,
-          db->tx,
-          strfcstr (cur),
-          usfrms (str),
-          &alloc,
-          NULL,
-          &stream,
-          e
-      ),
-      e
-  );
+  sb_size ret = nsdb_plan_write (plan, db->tx, data, dlen, e);
   post_op (db);
-  ALLOC_CLOSE (alloc);
+
+  nsdb_plan_free (plan);
 
   if (ret < 0) {
     return error_trace (e);
@@ -568,143 +508,165 @@ ns_db_write (struct ns_db *db, void *data, struct stride str, error *e)
 
 #ifdef TESTING
 
-/**
-TEST_DISABLED (ns_db)
+TEST (ns_db)
 {
-  error         e  = error_create ();
-  struct ns_db *db = ns_db_new (mem, mem, fs, "test_db", &e);
+  error e = error_create ();
+  nsdb_cleanup ("./test_db.db", &e);
+  struct ns_db *db = ns_db_new (mem, mem, fs, "./test_db.db", &e);
+  test_assert (db != NULL);
+
+  u32 dest[20];
+
+#  define STR(_start, _stride, _nelems) ((struct stride){.start = (_start), .stride = (_stride), .nelems = (_nelems)})
+
+  // Reads the whole current variable and checks both the length and the contents
+#  define validate(expected)                                                 \
+    do {                                                                     \
+      sb_size _n = ns_db_read (db, dest, sizeof (dest), STR (0, 1, 20), &e); \
+      test_assert_int_equal (_n, sizeof (expected) / sizeof (u32));          \
+      test_assert_memequal (expected, dest, sizeof (expected));              \
+    }                                                                        \
+    while (0)
+
+  // Checks which variable is current (works in and out of a transaction)
+#  define check_cur(_name)                                       \
+    do {                                                         \
+      test_assert (ns_db_cur (db) != NULL);                      \
+      test_assert_int_equal (strcmp (ns_db_cur (db), _name), 0); \
+    }                                                            \
+    while (0)
 
   TEST_CASE ("create, switch, write, read, insert, remove, delete")
   {
-    // create at least 3 vars
-    // (create only auto-switches if cur is NULL, i.e. on the very first create)
-    ns_db_create (db, "test_var", TU32, &e); // auto-switches here, cur was NULL
-    ns_db_create (db, "var2", TU32, &e); // cur is now test_var, no auto-switch
-    ns_db_create (db, "var3", TU32, &e); // cur still test_var, no auto-switch
+    test_assert (ns_db_cur (db) == NULL);
 
-    // already on test_var due to the first create's auto-switch
+    // First create auto-switches (cur was NULL), the rest don't
+    test_assert_int_equal (ns_db_create (db, "var1", "u32", &e), SUCCESS);
+    check_cur ("var1");
+    test_assert_int_equal (ns_db_create (db, "var2", "u32", &e), SUCCESS);
+    check_cur ("var1");
+    test_assert_int_equal (ns_db_create (db, "var3", "u32", &e), SUCCESS);
+    check_cur ("var1");
+
     ns_db_begin_txn (db, &e);
+    {
+      u32 a[] = {10, 20, 30, 40};
+      test_assert_int_equal (ns_db_insert (db, a, sizeof (a), 0, 4, &e), 4);
+      validate (((u32[]){10, 20, 30, 40}));
 
-    // write 4 contiguous u32 elements
-    u32 write_buf[4] = {10, 20, 30, 40};
-    ns_db_insert (db, write_buf, 0, 4, &e);
+      u32 b[] = {50, 60};
+      test_assert_int_equal (ns_db_insert (db, b, sizeof (b), 4, 2, &e), 2);
+      validate (((u32[]){10, 20, 30, 40, 50, 60}));
 
-    u32           read_buf[4] = {0};
-    struct stride str         = {.start = 0, .stride = 1, .nelems = 4};
-    ns_db_read (db, read_buf, str, &e);
-    test_assert_memequal (write_buf, read_buf, sizeof (read_buf));
+      u32 c[] = {70};
+      test_assert_int_equal (ns_db_insert (db, c, sizeof (c), 6, 1, &e), 1);
+      validate (((u32[]){10, 20, 30, 40, 50, 60, 70}));
 
-    // insert 2 more elements right after (offset = 4 elements in, len = 2
-    // elements)
-    u32 insert_buf[2] = {50, 60};
-    ns_db_insert (db, insert_buf, 4, 2, &e);
+      // 100 20 200 40 300 60 400
+      u32 w[] = {100, 200, 300, 400};
+      test_assert_int_equal (ns_db_write (db, w, sizeof (w), STR (0, 2, 4), &e), 4);
+      validate (((u32[]){100, 20, 200, 40, 300, 60, 400}));
 
-    struct stride insert_str         = {.start = 4, .stride = 1, .nelems = 2};
-    u32           insert_read_buf[2] = {0};
-    ns_db_read (db, insert_read_buf, insert_str, &e);
-    test_assert_memequal (
-        insert_buf,
-        insert_read_buf,
-        sizeof (insert_read_buf)
-    );
+      // 20 40 60
+      u32 removed[4] = {0};
+      test_assert_int_equal (ns_db_remove (db, removed, sizeof (removed), STR (0, 2, 4), &e), 4);
+      test_assert_memequal (((u32[]){100, 200, 300, 400}), removed, sizeof (removed));
+      validate (((u32[]){20, 40, 60}));
+    }
+    test_assert_int_equal (ns_db_commit_txn (db, &e), SUCCESS);
 
-    // strided write/read over the first 8 elements, touching every other one
-    u32           stride_write_buf[4] = {100, 200, 300, 400};
-    struct stride stride_str          = {.start = 0, .stride = 2, .nelems = 4};
-    ns_db_write (db, stride_write_buf, stride_str, &e);
-
-    u32 stride_read_buf[4] = {0};
-    ns_db_read (db, stride_read_buf, stride_str, &e);
-    test_assert_memequal (
-        stride_write_buf,
-        stride_read_buf,
-        sizeof (stride_read_buf)
-    );
-
-    // remove the originally inserted elements
-    u32 remove_dest[2] = {0};
-    ns_db_remove (db, remove_dest, insert_str, &e);
-    test_assert_memequal (insert_buf, remove_dest, sizeof (remove_dest));
-
-    // commit this baseline txn so it's the durable state to roll back to
-    ns_db_commit_txn (db, &e);
-
-    // delete one of the three vars
-    ns_db_delete_and_switch (db, "var2", &e);
+    check_cur ("var1");
+    validate (((u32[]){20, 40, 60}));
   }
 
   TEST_CASE ("rollback restores prior state, including current variable")
   {
-    struct stride str              = {.start = 0, .stride = 1, .nelems = 4};
+    // Outside a transaction - these go through nsdb's auto transactions
+    ns_db_switch (db, "var2", &e);
+    u32 a[] = {10, 20, 30, 40};
+    test_assert_int_equal (ns_db_insert (db, a, sizeof (a), 0, 4, &e), 4);
 
-    // still on test_var with the committed baseline data
-    u32           baseline_read[4] = {0};
-    ns_db_read (db, baseline_read, str, &e);
-    u32 expected_baseline[4] = {10, 20, 30, 40};
-    test_assert_memequal (
-        expected_baseline,
-        baseline_read,
-        sizeof (baseline_read)
-    );
+    ns_db_switch (db, "var3", &e);
+    u32 b[] = {100, 200, 300, 400};
+    test_assert_int_equal (ns_db_insert (db, b, sizeof (b), 0, 4, &e), 4);
+
+    ns_db_switch (db, "var1", &e);
+
+    // deletes var1 and switches to var2
+    test_assert_int_equal (ns_db_delete_and_switch (db, "var2", &e), SUCCESS);
+    check_cur ("var2");
+    validate (((u32[]){10, 20, 30, 40}));
 
     ns_db_begin_txn (db, &e);
     {
       ns_db_switch (db, "var3", &e);
-      u32 var3_write[4] = {111, 222, 333, 444};
-      ns_db_write (db, var3_write, str, &e);
+      check_cur ("var3");
 
-      u32 var3_read[4] = {0};
-      ns_db_read (db, var3_read, str, &e);
-      test_assert_memequal (var3_write, var3_read, sizeof (var3_read));
+      u32 c[] = {111, 222, 333, 444};
+      test_assert_int_equal (ns_db_insert (db, c, sizeof (c), 0, 4, &e), 4);
+      validate (((u32[]){111, 222, 333, 444, 100, 200, 300, 400}));
     }
-    ns_db_rollback_txn (db, &e);
+    test_assert_int_equal (ns_db_rollback_txn (db, &e), SUCCESS);
 
-    // Still test_var - not var3
-    u32 post_rollback_read[4] = {0};
-    ns_db_read (db, post_rollback_read, str, &e);
-    test_assert_memequal (
-        expected_baseline,
-        post_rollback_read,
-        sizeof (post_rollback_read)
-    );
+    // Still var2
+    check_cur ("var2");
+    validate (((u32[]){10, 20, 30, 40}));
 
-    // var3 itself should not have the rolled-back write either
+    // var3 didn't get changes
     ns_db_switch (db, "var3", &e);
-    u32 var3_post_rollback[4] = {0};
-    ns_db_read (db, var3_post_rollback, str, &e);
-    u32 expected_var3_untouched[4] = {0, 0, 0, 0};
-    test_assert_memequal (
-        expected_var3_untouched,
-        var3_post_rollback,
-        sizeof (var3_post_rollback)
-    );
+    validate (((u32[]){100, 200, 300, 400}));
   }
 
   TEST_CASE ("commit persists the switch and the write")
   {
-    struct stride str = {.start = 0, .stride = 1, .nelems = 4};
-
     ns_db_begin_txn (db, &e);
+    {
+      ns_db_switch (db, "var2", &e);
+      u32 w[] = {111, 222, 333, 444};
+      test_assert_int_equal (ns_db_write (db, w, sizeof (w), STR (0, 1, 4), &e), 4);
+      validate (((u32[]){111, 222, 333, 444}));
+    }
+    test_assert_int_equal (ns_db_commit_txn (db, &e), SUCCESS);
 
-    // switch to var3 and write different data
+    // Still on var2
+    check_cur ("var2");
+    validate (((u32[]){111, 222, 333, 444}));
+
+    // var3 didn't get changes
     ns_db_switch (db, "var3", &e);
-    u32 var3_write[4] = {111, 222, 333, 444};
-    ns_db_write (db, var3_write, str, &e);
+    validate (((u32[]){100, 200, 300, 400}));
+  }
 
-    ns_db_commit_txn (db, &e);
+  TEST_CASE ("close and reopen keeps committed data and current variable")
+  {
+    test_assert_int_equal (ns_db_close_and_reopen (db, &e), SUCCESS);
+    check_cur ("var3");
+    validate (((u32[]){100, 200, 300, 400}));
 
-    // still on var3 after commit, with the committed data
-    u32 post_commit_read[4] = {0};
-    ns_db_read (db, post_commit_read, str, &e);
-    test_assert_memequal (
-        var3_write,
-        post_commit_read,
-        sizeof (post_commit_read)
-    );
+    ns_db_switch (db, "var2", &e);
+    validate (((u32[]){111, 222, 333, 444}));
+  }
+
+  TEST_CASE ("crash drops the open transaction")
+  {
+    ns_db_begin_txn (db, &e);
+    {
+      u32 w[] = {9, 9, 9, 9};
+      ns_db_write (db, w, sizeof (w), STR (0, 1, 4), &e);
+      validate (((u32[]){9, 9, 9, 9}));
+    }
+    test_assert_int_equal (ns_db_crash_and_reopen (db, &e), SUCCESS);
+
+    check_cur ("var2");
+    validate (((u32[]){111, 222, 333, 444}));
   }
 
   ns_db_close (db, &e);
+  nsdb_cleanup ("./test_db.db", &e);
+
+#  undef STR
+#  undef validate
+#  undef check_cur
 }
-*/
 
 #endif

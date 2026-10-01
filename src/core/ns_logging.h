@@ -85,10 +85,7 @@
 #define LOG_DEBUG 4
 #define LOG_TRACE 5
 
-void i_log_internal (const char *prefix, const char *color, const char *fmt, ...) PRINTF_ATTR (
-    3,
-    4
-);
+void i_log_internal (const char *prefix, const char *color, const char *fmt, ...) PRINTF_ATTR (3, 4);
 
 void i_log_flush (void);
 

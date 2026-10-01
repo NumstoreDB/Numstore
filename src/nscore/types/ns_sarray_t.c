@@ -313,12 +313,7 @@ TEST (sarray_t_get_serial_size)
 #endif
 
 err_t
-sarray_t_deserialize (
-    struct sarray_t     *persistent,
-    struct deserializer *src,
-    struct arena_alloc  *a,
-    error               *e
-)
+sarray_t_deserialize (struct sarray_t *persistent, struct deserializer *src, struct arena_alloc *a, error *e)
 {
   ASSERT (persistent);
 
@@ -430,13 +425,7 @@ TEST (sarray_t_deserialize_red_path)
 #endif
 
 err_t
-sarray_t_random (
-    struct sarray_t    *sa,
-    struct arena_alloc *temp,
-    u32                 depth,
-    t_size              max_tsize,
-    error              *e
-)
+sarray_t_random (struct sarray_t *sa, struct arena_alloc *temp, u32 depth, t_size max_tsize, error *e)
 {
   ASSERT (sa);
 

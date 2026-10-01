@@ -1,43 +1,49 @@
-from typing import Any
+from typing import Any, NewType
 
 import numpy as np
-import numpy.typing as npt
 
-type nsdb = Any
-type nstxn = Any
-type nsvar = Any
+from typing_extensions import Buffer, CapsuleType
 
-# Convert a numstore type (a string) to a numpy dtype
-def pyns_ns_to_np(s: str) -> np.dtype[Any]: ...
+nsdb = NewType("nsdb", CapsuleType)
+nstxn = NewType("nstxn", CapsuleType)
+nsvar = NewType("nsvar", CapsuleType)
+nsplan = NewType("nsplan", CapsuleType)
 
-# Open and close a database
-def pyns_open(path: str) -> nsdb: ...
-def pyns_close(db: nsdb) -> None: ...
+# ---------------------------------------------------------------- Types
 
-# Transaction control
-def pyns_begin(db: nsdb) -> nstxn: ...
-def pyns_commit(db: nsdb, txn: nstxn) -> None: ...
-def pyns_rollback(db: nsdb, txn: nstxn) -> None: ...
+def _pyns_ns_to_np(s: str, /) -> np.dtype[Any]:
+def _pyns_ns_to_np_flatten(s: str, n: int, /) -> tuple[tuple[int, ...], np.dtype[Any]]:
 
-# The main method of execution
-#   db: The database connection to run on
-#   txn: An open transaction or none for auto transaction
-#   query: The query to run
-#   data: source (insert/write) or destination (read/remove) buffer, or None
+# ---------------------------------------------------------------- Lifecycle
+
+def _pyns_open(path: str, /) -> nsdb:
+def _pyns_close(db: nsdb, /) -> None:
+
+# ---------------------------------------------------------------- Transactions
+
+def _pyns_begin(db: nsdb, /) -> nstxn:
+def _pyns_commit(db: nsdb, txn: nstxn, /) -> None:
+def _pyns_rollback(db: nsdb, txn: nstxn, /) -> None:
+
+# ---------------------------------------------------------------- Plans
 #
-# With `data` given, the element count comes back. With `data` None the result
-# is whatever the query produced: an array when it allocated one (read,
-# remove), a capsule owning a numstore_var when it resolved a variable (get),
-# and None when it produced neither (create, delete). The capsule releases the
-# variable itself once the last reference to it goes away.
-def pyns_execute(
-    db: nsdb, txn: nstxn | None, query: str, data: npt.NDArray[Any] | None
-) -> int | npt.NDArray[Any] | nsvar | None: ...
+# A plan is a compiled query that can be run many times. Passing txn=None
+# runs it in an automatic transaction.
 
-# Thin accessors over a captured variable capsule. The capsule's destructor
-# releases the variable when the last reference to it goes away - there is no
-# free to call.
-def pyns_var_name(var: nsvar) -> str: ...
-def pyns_var_length(var: nsvar) -> int: ...
-def pyns_var_tsize(var: nsvar) -> int: ...
-def pyns_var_type(var: nsvar) -> str: ...
+def _pyns_plan_create(db: nsdb, query: str, /) -> nsplan:
+def _pyns_plan_close(plan: nsplan, /) -> None:
+def _pyns_plan_execute(plan: nsplan, txn: nstxn | None, /) -> int:
+def _pyns_plan_get_var(plan: nsplan, txn: nstxn | None, /) -> nsvar:
+def _pyns_plan_read(plan: nsplan, txn: nstxn | None, dest: Buffer, /) -> int:
+def _pyns_plan_malloc(plan: nsplan, txn: nstxn | None, /) -> bytes:
+def _pyns_plan_write(plan: nsplan, txn: nstxn | None, src: Buffer, /) -> int:
+
+# ---------------------------------------------------------------- Variables
+#
+# Variables own their memory and outlive the database they came from.
+
+def _pyns_var_free(var: nsvar, /) -> None:
+def _pyns_var_name(var: nsvar, /) -> str: ...
+def _pyns_var_length(var: nsvar, /) -> int:
+def _pyns_var_tsize(var: nsvar, /) -> int:
+def _pyns_var_type(var: nsvar, /) -> str:

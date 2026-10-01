@@ -30,6 +30,8 @@ struct stride
   u64 nelems;
 };
 
+#define stride_ustr_args(s) (s).start, (s).start + ((s).stride * (s).nelems), (s).stride
+
 enum
 {
   START_PRESENT = (1 << 0),
@@ -126,12 +128,7 @@ ustride02 (i64 start, i64 step)
 HEADER_FUNC struct user_stride
 ustride012 (i64 start, i64 stop, i64 step)
 {
-  return make_ustride (
-      start,
-      stop,
-      step,
-      STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT
-  );
+  return make_ustride (start, stop, step, STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT);
 }
 
 // [start]  - bare index, no colon
@@ -151,7 +148,7 @@ ustride (void)
 HEADER_FUNC struct user_stride
 usfrms (const struct stride str)
 {
-  return ustride012 (str.start, str.start + (str.stride * str.nelems), str.stride);
+  return ustride012 (stride_ustr_args (str));
 }
 
 /*-----------------------------------------------------------------------------

@@ -68,13 +68,7 @@ struct os_vtable
   void (*free) (void *v, void *ptr);
 
   // Threading
-  err_t (*thread_create) (
-      void     *t,
-      i_thread *th,
-      void *(*start_routine) (void *),
-      void  *arg,
-      error *e
-  );
+  err_t (*thread_create) (void *t, i_thread *th, void *(*start_routine) (void *), void *arg, error *e);
   err_t (*thread_join) (void *t, i_thread *th, error *e);
 
   err_t (*mutex_create) (void *t, i_mutex *m, error *e);
@@ -118,13 +112,7 @@ void *impl_calloc (void *v, u32 nelem, u32 size, error *e);
 void *impl_realloc (void *v, void *ptr, u32 nelem, u32 size, error *e);
 void impl_free (void *v, void *ptr);
 
-err_t impl_thread_create (
-    void     *t,
-    i_thread *th,
-    void *(*start_routine) (void *),
-    void  *arg,
-    error *e
-);
+err_t impl_thread_create (void *t, i_thread *th, void *(*start_routine) (void *), void *arg, error *e);
 err_t impl_thread_join (void *t, i_thread *th, error *e);
 
 err_t impl_mutex_create (void *t, i_mutex *m, error *e);

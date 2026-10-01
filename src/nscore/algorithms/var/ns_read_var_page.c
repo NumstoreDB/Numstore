@@ -31,7 +31,7 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -228,15 +228,7 @@ theend:
     if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e)) {
       goto failed;
     }
-    if (pgr_get_maybe_writable (
-            params->vp,
-            params->tx,
-            PG_VAR_PAGE,
-            start,
-            params->p,
-            writable,
-            e
-        )) {
+    if (pgr_get_maybe_writable (params->vp, params->tx, PG_VAR_PAGE, start, params->p, writable, e)) {
       goto failed;
     }
   }
@@ -281,7 +273,7 @@ create_and_get_root (
 
   // Create the variable
   snprintf (query, n + 1, "create %s u32", name);
-  nsdb_exec (db, tx, query, e);
+  nsdb_execute (db, tx, query, e);
 
   // Get the variable
   snprintf (query, n, "get %s", name);
@@ -304,8 +296,8 @@ TEST (ns_read_var_page)
 
   /* Create a new database */
   nsdb_cleanup ("test", &e);
-  struct nsdb *db = nsdb_open_with_resources ("test", mem, fs, &e);
-  nsdb_init_numstore (db, &e);
+  struct nsdb *db = nsdb_open ("test", mem, fs, &e);
+  nsdb_writeit_numstore (db, &e);
 
   struct txn *tx = nsdb_begin (db, &e);
 
@@ -839,7 +831,7 @@ TEST (ns_read_var_page)
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
-    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.data == NULL);          // IMPORTANT (save_vname == true, matches == false)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
@@ -880,7 +872,7 @@ TEST (ns_read_var_page)
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
-    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.data == NULL);          // IMPORTANT (save_vname == true, matches == false)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
@@ -1167,7 +1159,7 @@ TEST (ns_read_var_page)
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
-    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.data == NULL);          // IMPORTANT (save_vname == true, matches == false)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
@@ -1208,7 +1200,7 @@ TEST (ns_read_var_page)
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
-    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.data == NULL);          // IMPORTANT (save_vname == true, matches == false)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
@@ -1461,7 +1453,7 @@ TEST (ns_read_var_page)
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
-    test_assert (var.vname.data == NULL); // IMPORTANT (save_vname == true, matches == false)
+    test_assert (var.vname.data == NULL);          // IMPORTANT (save_vname == true, matches == false)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);

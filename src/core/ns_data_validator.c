@@ -54,13 +54,7 @@ dvalidtr_light_validate (const struct dvalidtr *d, error *e)
 }
 
 static err_t
-dvalidtr_read (
-    const struct dvalidtr *d,
-    const struct stride    str,
-    const u32              size,
-    void                  *_dest,
-    error                 *e
-)
+dvalidtr_read (const struct dvalidtr *d, const struct stride str, const u32 size, void *_dest, error *e)
 {
   void *ref  = i_malloc (d->mem, str.nelems, size, e);
   void *dest = _dest;
@@ -110,8 +104,8 @@ dvalidtr_read (
     error_causef (
         e,
         ERR_CORRUPT,
-        "read count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "read count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
+        " size=%u)",
         ref_read,
         sut_read,
         str.start,
@@ -188,13 +182,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
   }
 
   if (ref_written != sut_written) {
-    error_causef (
-        e,
-        ERR_CORRUPT,
-        "insert count mismatch: ref=%" PRIu64 " sut=%" PRIu64,
-        ref_written,
-        sut_written
-    );
+    error_causef (e, ERR_CORRUPT, "insert count mismatch: ref=%" PRIu64 " sut=%" PRIu64, ref_written, sut_written);
     goto theend;
   }
 
@@ -247,13 +235,7 @@ theend:
 }
 
 static err_t
-dvalidtr_write (
-    struct dvalidtr    *d,
-    const struct stride str,
-    const u32           size,
-    const void         *_src,
-    error              *e
-)
+dvalidtr_write (struct dvalidtr *d, const struct stride str, const u32 size, const void *_src, error *e)
 {
   u8 *src = (u8 *)_src;
   if (_src == NULL) {
@@ -296,8 +278,8 @@ dvalidtr_write (
     error_causef (
         e,
         ERR_CORRUPT,
-        "write count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "write count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
+        " size=%u)",
         ref_written,
         sut_written,
         str.start,
@@ -313,8 +295,7 @@ dvalidtr_write (
     error_causef (
         e,
         ERR_CORRUPT,
-        "read-back after write failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
-        " size=%u)",
+        "read-back after write failed (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
         str.start,
         str.stride,
         str.nelems,
@@ -385,8 +366,8 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     error_causef (
         e,
         ERR_CORRUPT,
-        "remove count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64
-        " nelems=%" PRIu64 " size=%u)",
+        "remove count mismatch: ref=%" PRIu64 " sut=%" PRIu64 " (start=%" PRIu64 " stride=%" PRIu64 " nelems=%" PRIu64
+        " size=%u)",
         ref_read,
         sut_read,
         str.start,
@@ -477,13 +458,7 @@ dvalidtr_validate (struct dvalidtr *d, error *e)
 }
 
 err_t
-dvalidtr_random_test (
-    struct dvalidtr *d,
-    const u32        size,
-    const u32        niters,
-    const u64        max_insert,
-    error           *e
-)
+dvalidtr_random_test (struct dvalidtr *d, const u32 size, const u32 niters, const u64 max_insert, error *e)
 {
   for (u32 k = 0; k < niters; ++k) {
     i64 len = dvalidtr_getlen (d, e);
@@ -538,8 +513,8 @@ dvalidtr_random_test (
           return error_causef (
               e,
               ERR_CORRUPT,
-              "random test failed on iter %u: read (len=%" PRIu64 " start=%" PRIu64
-              " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
+              "random test failed on iter %u: read (len=%" PRIu64 " start=%" PRIu64 " stride=%" PRIu64
+              " nelems=%" PRIu64 " size=%u)",
               k,
               len,
               start,
@@ -555,8 +530,8 @@ dvalidtr_random_test (
           return error_causef (
               e,
               ERR_CORRUPT,
-              "random test failed on iter %u: remove (len=%" PRIu64 " start=%" PRIu64
-              " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
+              "random test failed on iter %u: remove (len=%" PRIu64 " start=%" PRIu64 " stride=%" PRIu64
+              " nelems=%" PRIu64 " size=%u)",
               k,
               len,
               start,
@@ -572,8 +547,8 @@ dvalidtr_random_test (
           return error_causef (
               e,
               ERR_CORRUPT,
-              "random test failed on iter %u: write (len=%" PRIu64 " start=%" PRIu64
-              " stride=%" PRIu64 " nelems=%" PRIu64 " size=%u)",
+              "random test failed on iter %u: write (len=%" PRIu64 " start=%" PRIu64 " stride=%" PRIu64
+              " nelems=%" PRIu64 " size=%u)",
               k,
               len,
               start,

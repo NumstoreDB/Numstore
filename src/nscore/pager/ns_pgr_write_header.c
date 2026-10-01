@@ -40,13 +40,7 @@ pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
   memcpy (p->_header + LSN1_OFST, &p->header.lsn1, sizeof (lsn));
   memcpy (p->_header + LSN1_CSM_OFST, &p->header.lsn1csm, sizeof (u32));
 
-  return fpgr_write_header (
-      p->fp,
-      p->_header + LSN1_OFST,
-      LSN1_OFST,
-      sizeof (lsn) + sizeof (u32),
-      e
-  );
+  return fpgr_write_header (p->fp, p->_header + LSN1_OFST, LSN1_OFST, sizeof (lsn) + sizeof (u32), e);
 }
 
 err_t

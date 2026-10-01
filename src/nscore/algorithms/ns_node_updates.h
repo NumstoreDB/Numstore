@@ -124,22 +124,8 @@ p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, p_
 p_size nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg);
 err_t nupd_append_tip_right (struct node_updates *s, struct three_in_pair output, error *e);
 err_t nupd_append_tip_left (struct node_updates *s, struct three_in_pair output, error *e);
-err_t nupd_append_2nd_right (
-    struct node_updates *s,
-    pgno                 pg1,
-    b_size               size1,
-    pgno                 pg2,
-    b_size               size2,
-    error               *e
-);
-err_t nupd_append_2nd_left (
-    struct node_updates *s,
-    pgno                 pg1,
-    b_size               size1,
-    pgno                 pg2,
-    b_size               size2,
-    error               *e
-);
+err_t nupd_append_2nd_right (struct node_updates *s, pgno pg1, b_size size1, pgno pg2, b_size size2, error *e);
+err_t nupd_append_2nd_left (struct node_updates *s, pgno pg1, b_size size1, pgno pg2, b_size size2, error *e);
 
 /**
  * Observe(pg, key)

@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "smartfiles.h"
+#include "numstore.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -30,21 +30,21 @@ main (void)
 {
   sb_size n;
 
-  smfile_cleanup ("sample2_txn");
+  ns_cleanup ("sample2_txn");
 
   // Open a new smart file
-  smfile_t *smf = smfile_open ("sample2_txn");
+  nsdb_t *smf = ns_smfile_open ("sample2_txn");
 
   // Start from scratch (remove all data)
-  smfile_remove (smf, NULL, NULL, 1, 0, 1, SMF_END);
+  ns_smfile_remove (smf, NULL, NULL, 1, 0, 1, SMF_END);
 
   // Do 1 full committed transaction
   {
-    sm_txn_t *tx = smfile_begin (smf);
+    txn_t  *tx = ns_begin (smf);
 
-    uint8_t   header[8];
-    uint8_t   body[64];
-    uint8_t   footer[8];
+    uint8_t header[8];
+    uint8_t body[64];
+    uint8_t footer[8];
 
     memset (header, 1, sizeof (header));
     for (int i = 0; i < 64; ++i) {
@@ -53,30 +53,30 @@ main (void)
     memset (footer, 99, sizeof (footer));
 
     // Three inserts in a row
-    smfile_insert (smf, tx, header, 0, sizeof (header));  // [0..7]   = 1
-    smfile_insert (smf, tx, body, 8, sizeof (body));      // [8..71]  = 0...64
-    smfile_insert (smf, tx, footer, 72, sizeof (footer)); // [72..79] = 99
+    ns_smfile_insert (smf, tx, header, 0, sizeof (header));  // [0..7]   = 1
+    ns_smfile_insert (smf, tx, body, 8, sizeof (body));      // [8..71]  = 0...64
+    ns_smfile_insert (smf, tx, footer, 72, sizeof (footer)); // [72..79] = 99
 
-    smfile_commit (smf, tx);
+    ns_commit (smf, tx);
   }
 
   // Do 1 full roll'ed back transaction
   {
-    sm_txn_t *tx = smfile_begin (smf);
+    txn_t  *tx = ns_begin (smf);
 
-    uint8_t   zeros[80];
+    uint8_t zeros[80];
     memset (zeros, 0, sizeof (zeros));
 
     // overwrite everything with 0x00
-    smfile_write (smf, tx, zeros, 1, 0, 1, sizeof (zeros));
+    ns_smfile_write (smf, tx, zeros, 1, 0, 1, sizeof (zeros));
 
-    smfile_rollback (smf, tx);
+    ns_rollback (smf, tx);
   }
 
   // Do a read of the roll'ed back data
   {
     uint8_t verify[12];
-    n = smfile_read (smf, NULL, verify, 1, 68, 1, 12);
+    n = ns_smfile_read (smf, NULL, verify, 1, 68, 1, 12);
 
     printf ("bytes [68..79] after rollback:\n");
     for (sb_size i = 0; i < n; ++i) {
@@ -86,27 +86,27 @@ main (void)
 
   // A committed transaction
   {
-    sm_txn_t *tx = smfile_begin (smf);
+    txn_t  *tx = ns_begin (smf);
 
-    uint8_t   extra[4];
+    uint8_t extra[4];
     memset (extra, 0xCC, sizeof (extra));
-    smfile_insert (smf, tx, extra, 80, sizeof (extra)); // append 4 bytes of 0xcc
+    ns_smfile_insert (smf, tx, extra, 80, sizeof (extra)); // append 4 bytes of 0xcc
 
-    smfile_commit (smf, tx);
+    ns_commit (smf, tx);
   }
 
   // A roll'ed back transaction
   {
-    sm_txn_t *tx = smfile_begin (smf);
-    smfile_remove (smf, tx, NULL, 1, 80, 1, 4); // attempt to remove what we just
-                                                // appended
-    smfile_rollback (smf, tx);
+    txn_t *tx = ns_begin (smf);
+    ns_smfile_remove (smf, tx, NULL, 1, 80, 1, 4); // attempt to remove what we just
+                                                   // appended
+    ns_rollback (smf, tx);
   }
 
   // Final read
   {
     uint8_t tail[4];
-    n = smfile_read (smf, NULL, tail, 1, 80, 1, 4);
+    n = ns_smfile_read (smf, NULL, tail, 1, 80, 1, 4);
 
     printf ("bytes [80..83]: ");
     for (sb_size i = 0; i < n; ++i) {
@@ -115,5 +115,5 @@ main (void)
     printf ("\n");
   }
 
-  return smfile_close (smf);
+  return ns_close (smf);
 }

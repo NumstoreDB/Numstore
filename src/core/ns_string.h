@@ -44,12 +44,7 @@ struct string strfcstr (const char *cstr);
 u64 line_length (const char *buf, u64 max);
 int strings_all_unique (const struct string *strs, u32 count);
 bool string_equal (struct string s1, struct string s2);
-const struct string *strings_are_disjoint (
-    const struct string *left,
-    u32                  llen,
-    const struct string *right,
-    u32                  rlen
-);
+const struct string *strings_are_disjoint (const struct string *left, u32 llen, const struct string *right, u32 rlen);
 bool string_contains (struct string superset, struct string subset);
 bool string_less_string (struct string left, struct string right);
 bool string_greater_string (struct string left, struct string right);

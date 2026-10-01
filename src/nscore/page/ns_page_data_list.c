@@ -30,13 +30,7 @@ dl_validate_for_db (const page *d, error *e)
   const enum page_type type = page_get_type (d);
 
   if (type != (u8)PG_DATA_LIST) {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "expected header: %" PRpgh " but got: %" PRpgh,
-        (pgh)PG_DATA_LIST,
-        (pgh)type
-    );
+    return error_causef (e, ERR_CORRUPT, "expected header: %" PRpgh " but got: %" PRpgh, (pgh)PG_DATA_LIST, (pgh)type);
   }
 
   const p_size used = dl_used (d);
@@ -589,11 +583,7 @@ TEST (dl_write)
     const p_size got = dl_write (&p, newdata, 0, sizeof newdata);
     test_assert_int_equal (got, sizeof newdata);
     test_assert_memequal (dl_get_data (&p), newdata, sizeof newdata);
-    test_assert_memequal (
-        (u8 *)dl_get_data (&p) + sizeof newdata,
-        src + sizeof newdata,
-        DL_DATA_SIZE - sizeof newdata
-    );
+    test_assert_memequal ((u8 *)dl_get_data (&p) + sizeof newdata, src + sizeof newdata, DL_DATA_SIZE - sizeof newdata);
   }
 
   TEST_CASE ("overwrite middle")

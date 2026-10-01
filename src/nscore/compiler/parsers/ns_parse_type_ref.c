@@ -222,10 +222,7 @@ TEST (compile_type_ref)
 
   test_compile_type_ref_green_path (
       "myvar[9]",
-      tr_take (
-          strfcstr ("myvar"),
-          ta_range ((struct user_stride[]){ustride_single (9)}, 1, &ta_take ())
-      )
+      tr_take (strfcstr ("myvar"), ta_range ((struct user_stride[]){ustride_single (9)}, 1, &ta_take ()))
   );
 
   test_compile_type_ref_green_path (
@@ -233,23 +230,12 @@ TEST (compile_type_ref)
       tr_take (strfcstr ("myvar"), ta_select (strfcstr ("field"), &ta_take ()))
   );
 
-  struct type_accessor subrange = ta_range (
-      (struct user_stride[]){ustride_single (0)},
-      1,
-      &ta_take ()
-  );
-  test_compile_type_ref_green_path (
-      "myvar.a[0]",
-      tr_take (strfcstr ("myvar"), ta_select (strfcstr ("a"), &subrange))
-  );
+  struct type_accessor subrange = ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ());
+  test_compile_type_ref_green_path ("myvar.a[0]", tr_take (strfcstr ("myvar"), ta_select (strfcstr ("a"), &subrange)));
 
   test_compile_type_ref_green_path (
       "struct { a myvar }",
-      tr_struct (
-          1,
-          (struct string[]){strfcstr ("a")},
-          (struct type_ref[]){tr_take (strfcstr ("myvar"), ta_take ())}
-      )
+      tr_struct (1, (struct string[]){strfcstr ("a")}, (struct type_ref[]){tr_take (strfcstr ("myvar"), ta_take ())})
   );
 
   test_compile_type_ref_green_path (
@@ -297,10 +283,9 @@ TEST (compile_type_ref)
       tr_struct (
           1,
           (struct string[]){strfcstr ("a")},
-          (struct type_ref[]){tr_take (
-              strfcstr ("myvar"),
-              ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ())
-          )}
+          (struct type_ref[]){
+              tr_take (strfcstr ("myvar"), ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ()))
+          }
       )
   );
 

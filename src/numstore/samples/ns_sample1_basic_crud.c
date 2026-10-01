@@ -54,7 +54,7 @@ main (void)
   }
 
   // Create a new variable (no data buffer involved)
-  ns_exec (
+  ns_execute (
       ns,
       NULL,
       "create example struct {\n"
@@ -70,7 +70,7 @@ main (void)
   sb_size n = ns_write (ns, NULL, src, sizeof (src), "insert example 0 %d", 200);
 
   // Read (most of) data with a stride of 3
-  n = ns_read (ns, NULL, dest, sizeof (dest), "read example[0:-10:3] blimit %ld", sizeof (dest));
+  n         = ns_read (ns, NULL, dest, sizeof (dest), "read example[0:-10:3] blimit %ld", sizeof (dest));
   print_example ("Read elements: ", dest, n);
 
   // Remove (most of) data with a stride of 2

@@ -15,7 +15,7 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
-#include "numstore/numstore.h"
+#include "numstore.h"
 
 #ifdef TESTING
 #  include "core/testing/ns_testing.h"
@@ -37,20 +37,20 @@ TEST (ns_delete_txn)
     test_assert (db != NULL);
 
     // Create the variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Delete the variable inside a transaction, then roll it back
     struct txn *tx = ns_begin (db);
     test_assert (tx != NULL);
 
-    res = ns_exec (db, tx, "delete foo");
+    res = ns_execute (db, tx, "delete foo");
     test_assert_int_equal (res, 0);
 
     test_assert_int_equal (ns_rollback (db, tx), 0);
 
     // Delete the variable again, outside of a transaction
-    res = ns_exec (db, NULL, "delete foo");
+    res = ns_execute (db, NULL, "delete foo");
     test_assert_int_equal (res, 0);
 
     // Close database
@@ -68,7 +68,7 @@ TEST (ns_delete_txn)
 
     // Create ITERS variables
     for (int i = 0; i < ITERS; ++i) {
-      res = ns_exec (db, NULL, "create var_%d u32", i);
+      res = ns_execute (db, NULL, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
     }
 
@@ -79,7 +79,7 @@ TEST (ns_delete_txn)
       test_assert (tx != NULL);
 
       // Delete the variable
-      res = ns_exec (db, tx, "delete var_%d", i);
+      res = ns_execute (db, tx, "delete var_%d", i);
       test_assert_int_equal (res, 0);
 
       // Inside the transaction the variable should be gone
@@ -109,7 +109,7 @@ TEST (ns_delete_txn)
     test_assert (db != NULL);
 
     // Create one variable
-    res = ns_exec (db, NULL, "create foo u32");
+    res = ns_execute (db, NULL, "create foo u32");
     test_assert_int_equal (res, 0);
 
     // Insert an array into the variable
@@ -124,7 +124,7 @@ TEST (ns_delete_txn)
         struct txn *tx = ns_begin (db);
         test_assert (tx != NULL);
 
-        res = ns_exec (db, tx, "delete foo");
+        res = ns_execute (db, tx, "delete foo");
         test_assert_int_equal (res, 0);
 
         test_assert_int_equal (ns_rollback (db, tx), 0);
@@ -162,7 +162,7 @@ TEST (ns_delete_txn)
 
     for (int i = 0; i < ITERS; ++i) {
       // Try to delete a non existent variable
-      res = ns_exec (db, NULL, "delete var_%d", i);
+      res = ns_execute (db, NULL, "delete var_%d", i);
       test_assert_int_equal (res, ERR_VARIABLE_NE);
     }
 
@@ -181,19 +181,19 @@ TEST (ns_delete_txn)
 
     for (int i = 0; i < ITERS; ++i) {
       // Create a variable
-      res = ns_exec (db, NULL, "create var_%d u32", i);
+      res = ns_execute (db, NULL, "create var_%d u32", i);
       test_assert_int_equal (res, 0);
 
       // Delete a non existent variable
-      res = ns_exec (db, NULL, "delete var");
+      res = ns_execute (db, NULL, "delete var");
       test_assert_int_equal (res, ERR_VARIABLE_NE);
 
       // Delete the variable we created
-      res = ns_exec (db, NULL, "delete var_%d", i);
+      res = ns_execute (db, NULL, "delete var_%d", i);
       test_assert_int_equal (res, SUCCESS);
 
       // Delete the variable again - should fail
-      res = ns_exec (db, NULL, "delete var_%d", i);
+      res = ns_execute (db, NULL, "delete var_%d", i);
       test_assert_int_equal (res, ERR_VARIABLE_NE);
     }
 

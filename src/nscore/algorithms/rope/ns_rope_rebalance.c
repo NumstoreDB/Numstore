@@ -321,12 +321,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
 
         ASSERT (pms->lidx == IN_MAX_KEYS);
 
-        if (nupd_commit_1st_right (
-                pms->output,
-                page_h_pgno (&pms->cur),
-                in_get_size (page_h_ro (&pms->cur)),
-                e
-            )) {
+        if (nupd_commit_1st_right (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e)) {
           goto failed;
         }
 
@@ -408,12 +403,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         //        lidx
         in_set_len (page_h_w (&pms->cur), pms->lidx);
 
-        if (nupd_commit_1st_right (
-                pms->output,
-                page_h_pgno (&pms->cur),
-                in_get_size (page_h_ro (&pms->cur)),
-                e
-            )) {
+        if (nupd_commit_1st_right (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e)) {
           goto failed;
         }
 
@@ -518,12 +508,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         TEST_MARK ("rebalance:left:done_observing:not_done_consuming");
 
         ASSERT (pms->lidx == 0);
-        if (nupd_commit_1st_left (
-                pms->output,
-                page_h_pgno (&pms->cur),
-                in_get_size (page_h_ro (&pms->cur)),
-                e
-            )) {
+        if (nupd_commit_1st_left (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e)) {
           goto failed;
         }
 
@@ -601,12 +586,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         // lidx
         // [++++++++__________]
         in_cut_left (page_h_w (&pms->cur), pms->lidx);
-        if (nupd_commit_1st_left (
-                pms->output,
-                page_h_pgno (&pms->cur),
-                in_get_size (page_h_ro (&pms->cur)),
-                e
-            )) {
+        if (nupd_commit_1st_left (pms->output, page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), e)) {
           goto failed;
         }
 
@@ -690,8 +670,7 @@ ns_pop_stack (struct ns_rebalance_params *pms, error *e)
       .lidx = ref->lidx,
   };
 
-  if ((pms->cur.mode != PHM_NONE)
-      && (pgr_release (pms->p, &pms->cur, PG_INNER_NODE | PG_DATA_LIST, e))) {
+  if ((pms->cur.mode != PHM_NONE) && (pgr_release (pms->p, &pms->cur, PG_INNER_NODE | PG_DATA_LIST, e))) {
     goto failed;
   }
 
@@ -1072,12 +1051,7 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
        *
        * So this line is hit one the first loop always
        */
-      pms->output = nupd_init (
-          page_h_pgno (&pms->cur),
-          in_get_size (page_h_ro (&pms->cur)),
-          pms->p->mem,
-          e
-      );
+      pms->output = nupd_init (page_h_pgno (&pms->cur), in_get_size (page_h_ro (&pms->cur)), pms->p->mem, e);
       if (pms->output == NULL) {
         goto failed;
       }

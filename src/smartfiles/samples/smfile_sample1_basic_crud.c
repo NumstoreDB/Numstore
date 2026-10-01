@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "smartfiles.h"
+#include "numstore.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -31,13 +31,13 @@ int
 main (void)
 {
   // Open a new data file
-  smfile_t *smf = smfile_open ("sample1_crud");
+  nsdb_t *smf = ns_smfile_open ("sample1_crud");
   if (smf == NULL) {
     return -1;
   }
 
   // Remove all data from the file
-  smfile_remove (
+  ns_smfile_remove (
       smf,
       NULL,   // The transaction pointer - see transaction example
       NULL,   // You can optionally supply a destination for the data - we'll just
@@ -49,7 +49,7 @@ main (void)
 
   // Insert out initial sentence
   const char *initial = "The quick brown fox jumps over the lazy dog";
-  smfile_insert (
+  ns_smfile_insert (
       smf,
       NULL,
       initial,         // The data we want to write
@@ -59,7 +59,7 @@ main (void)
 
   // Inserting in the middle is a first class operation
   const char *adverb = " really";
-  smfile_insert (
+  ns_smfile_insert (
       smf,
       NULL,
       adverb,
@@ -69,28 +69,28 @@ main (void)
 
   // Read the entire array
   char    buf[64];
-  sb_size n = smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
+  sb_size n = ns_smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
   buf[n]    = '\0';
   printf ("after insert:  \"%s\"\n", buf);
 
   // Writing in the middle is a first class operation
-  smfile_write (smf, NULL, "cat", 1, 16, 1, 3);
+  ns_smfile_write (smf, NULL, "cat", 1, 16, 1, 3);
 
   // Read the entire array
-  n      = smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
+  n      = ns_smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
   buf[n] = '\0';
   printf ("after write:   \"%s\"\n", buf);
 
   // Removing in the middle of the array is first class
   char evicted[8];
-  n          = smfile_remove (smf, NULL, evicted, 1, 34, 1, 7);
+  n          = ns_smfile_remove (smf, NULL, evicted, 1, 34, 1, 7);
   evicted[n] = '\0';
   printf ("removed:       \"%s\"\n", evicted);
 
   // Read the result
-  n      = smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
+  n      = ns_smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
   buf[n] = '\0';
   printf ("after remove:  \"%s\"\n", buf);
 
-  return smfile_close (smf);
+  return ns_close (smf);
 }

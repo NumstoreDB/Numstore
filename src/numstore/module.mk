@@ -4,7 +4,7 @@ LIBNS_SRCS += src/numstore/numstore.c
 
 ############ Includes
 
-$(INC_DIR)/numstore.h: src/numstore/numstore.h | $(INC_DIR)
+$(INC_DIR)/numstore.h: src/numstore.h | $(INC_DIR)
 	cp $< $@
 
 ############ Bins

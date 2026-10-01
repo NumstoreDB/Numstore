@@ -16,7 +16,7 @@
 #include "core/os/ns_memory.h"
 #include "core/testing/ns_testing.h"
 #include "nscore/pager/ns_pager.h"
-#include "smartfiles/smartfiles.h"
+#include "numstore.h"
 
 #ifdef TESTING
 
