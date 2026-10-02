@@ -1,0 +1,16 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_db_state_machine.c
+        ns_db_state_machine.h
+        ns_mem_vhmap.c
+        ns_mem_vhmap.h
+        ns_numstore_simulation.c
+        ns_numstore_simulation.h
+        ns_operation_generator.c
+        ns_operation_generator.h
+        ns_ref_state_machine.c
+        ns_ref_state_machine.h
+        ns_smfile_simulation.c
+        ns_smfile_simulation.h
+)

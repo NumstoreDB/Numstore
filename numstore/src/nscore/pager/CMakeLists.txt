@@ -1,0 +1,26 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_pager.c
+        ns_pager.h
+        ns_pgr_begin_txn.c
+        ns_pgr_cancel.c
+        ns_pgr_checkpoint.c
+        ns_pgr_close.c
+        ns_pgr_commit.c
+        ns_pgr_crash.c
+        ns_pgr_delete.c
+        ns_pgr_evict.c
+        ns_pgr_flush.c
+        ns_pgr_get.c
+        ns_pgr_get_writable.c
+        ns_pgr_logging.c
+        ns_pgr_new.c
+        ns_pgr_open.c
+        ns_pgr_recover.c
+        ns_pgr_release.c
+        ns_pgr_reserve.c
+        ns_pgr_rollback.c
+        ns_pgr_unfix.c
+        ns_pgr_write_header.c
+)

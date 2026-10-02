@@ -1,4 +1,5 @@
 """Showing numstores type system"""
+
 import numpy as np
 import pynumstore as ns
 
@@ -31,6 +32,7 @@ more = np.array(
     dtype=record_dtype,
 )
 
+
 def print_records(arr: np.ndarray, title: str = "Records") -> None:
     """Pretty-print a structured array as a simple table, decoding the
     raw `name` byte array back to a string for display.
@@ -47,7 +49,7 @@ def print_records(arr: np.ndarray, title: str = "Records") -> None:
 
 with ns.Database("example.db") as db:
     # Create a new variable using the struct/array type
-    db.execute(f"create readings {datatype}")  
+    db.execute(f"create readings {datatype}")
 
     # Delete everything if it exists
     db.execute("remove readings[0:]")
@@ -68,7 +70,9 @@ with ns.Database("example.db") as db:
 
     # Delete every 3rd record
     removed = db.read("remove readings[0::3]")
-    print_records(removed, "removed readings[0::3] (these are the values that were removed)")
+    print_records(
+        removed, "removed readings[0::3] (these are the values that were removed)"
+    )
 
     # Read what's left
     dest = db.read("read readings[0:]")

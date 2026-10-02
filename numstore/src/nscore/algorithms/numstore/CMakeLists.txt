@@ -1,0 +1,15 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_numstore_algorithms.h
+        ns_numstore_create.c
+        ns_numstore_delete.c
+        ns_numstore_get.c
+        ns_numstore_init_pager.c
+        ns_numstore_insert.c
+        ns_numstore_read.c
+        ns_numstore_read_malloc.c
+        ns_numstore_remove.c
+        ns_numstore_remove_malloc.c
+        ns_numstore_write.c
+)

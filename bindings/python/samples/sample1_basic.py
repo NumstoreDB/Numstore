@@ -1,4 +1,5 @@
 """Basic operations on an array of [10][20]f64's"""
+
 import numpy as np
 
 import pynumstore as ns
@@ -19,7 +20,7 @@ with ns.Database("example.db") as db:
     # Delete everything if it exists
     db.execute("remove prices[0:]")
 
-    # Insert 3 elements at index 0. 
+    # Insert 3 elements at index 0.
     src = rng.random((3, 10, 20), dtype=np.float64)
     db.write(f"insert prices 0 {src.shape[0]}", src)
 

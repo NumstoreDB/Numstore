@@ -1,0 +1,16 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_find_var_page.c
+        ns_init_var_hash_map.c
+        ns_read_var_page.c
+        ns_var_algorithms.h
+        ns_var_algorithms_internal.h
+        ns_var_create.c
+        ns_var_delete.c
+        ns_var_get.c
+        ns_var_get_or_create.c
+        ns_var_update.c
+        ns_visit_variables.c
+        ns_write_var_page.c
+)

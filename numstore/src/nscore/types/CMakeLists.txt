@@ -1,0 +1,22 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_kvt.c
+        ns_kvt.h
+        ns_query.c
+        ns_query.h
+        ns_sarray_t.c
+        ns_sarray_t.h
+        ns_struct_t.c
+        ns_struct_t.h
+        ns_subtype.c
+        ns_subtype.h
+        ns_type_accessor.c
+        ns_type_accessor.h
+        ns_type_ref.c
+        ns_type_ref.h
+        ns_types.c
+        ns_types.h
+        ns_union_t.c
+        ns_union_t.h
+)

@@ -1,0 +1,14 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_balance_and_release.c
+        ns_rope_algorithms.h
+        ns_rope_algorithms_internal.h
+        ns_rope_get_number_of_layers.c
+        ns_rope_insert.c
+        ns_rope_read.c
+        ns_rope_rebalance.c
+        ns_rope_remove.c
+        ns_rope_seek.c
+        ns_rope_write.c
+)
