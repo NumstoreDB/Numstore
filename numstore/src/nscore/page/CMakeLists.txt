@@ -1,0 +1,22 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_page.c
+        ns_page.h
+        ns_page_data_list.c
+        ns_page_data_list.h
+        ns_page_delegate.h
+        ns_page_fixture.c
+        ns_page_fixture.h
+        ns_page_fsm.c
+        ns_page_fsm.h
+        ns_page_h.h
+        ns_page_inner_node.c
+        ns_page_inner_node.h
+        ns_page_var_hash_page.c
+        ns_page_var_hash_page.h
+        ns_page_var_page.c
+        ns_page_var_page.h
+        ns_page_var_tail.c
+        ns_page_var_tail.h
+)

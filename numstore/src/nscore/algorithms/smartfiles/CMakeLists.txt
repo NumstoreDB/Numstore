@@ -1,0 +1,11 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_smartfiles_algorithms.h
+        ns_smartfiles_init_pager.c
+        ns_smartfiles_insert.c
+        ns_smartfiles_read.c
+        ns_smartfiles_remove.c
+        ns_smartfiles_size.c
+        ns_smartfiles_write.c
+)

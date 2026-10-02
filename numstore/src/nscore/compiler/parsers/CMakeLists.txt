@@ -1,0 +1,11 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_parse_multi_user_stride.c
+        ns_parse_query.c
+        ns_parse_subtype.c
+        ns_parse_type.c
+        ns_parse_type_ref.c
+        ns_parse_user_stride.c
+        ns_parser.h
+)

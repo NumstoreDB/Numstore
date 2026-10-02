@@ -1,0 +1,12 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_wal.c
+        ns_wal.h
+        ns_wal_istream.c
+        ns_wal_istream.h
+        ns_wal_ostream.c
+        ns_wal_ostream.h
+        ns_wal_record.c
+        ns_wal_record.h
+)

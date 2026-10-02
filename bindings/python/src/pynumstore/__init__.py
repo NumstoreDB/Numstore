@@ -110,12 +110,14 @@ def _layout(var: Var) -> tuple[np.dtype[Any], tuple[int, ...]]:
 
 
 def _check_dims(shape: tuple[int, ...], dims: tuple[int, ...], what: str) -> None:
-    if dims and tuple(shape[-len(dims):]) != dims:
+    if dims and tuple(shape[-len(dims) :]) != dims:
         expected = ", ".join(["n", *map(str, dims)])
         raise ValueError(f"{what} has shape {shape}, expected ({expected})")
 
 
-def _as_source(data: npt.ArrayLike, dtype: np.dtype[Any], dims: tuple[int, ...]) -> npt.NDArray[Any]:
+def _as_source(
+    data: npt.ArrayLike, dtype: np.dtype[Any], dims: tuple[int, ...]
+) -> npt.NDArray[Any]:
     """Turn `data` into a C-contiguous, native-byte-order array of `dtype`."""
     if isinstance(data, np.ma.MaskedArray):
         # The mask lives outside the data buffer, so it would be silently dropped
@@ -182,7 +184,9 @@ class Plan:
 
         raw = _ns._pyns_plan_malloc(plan, txh)
         if var.tsize == 0 or len(raw) % var.tsize != 0:
-            raise RuntimeError(f"read returned {len(raw)} bytes, not a multiple of {var.tsize}")
+            raise RuntimeError(
+                f"read returned {len(raw)} bytes, not a multiple of {var.tsize}"
+            )
 
         arr = np.frombuffer(raw, dtype).reshape(-1, *dims)
 

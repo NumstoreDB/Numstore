@@ -1,9 +1,11 @@
 """durability across simulated process crash"""
+
 import os
 import numpy as np
 import pynumstore as ns
 
 PATH = "durability.db"
+
 
 def phase1_populate():
     with ns.Database(PATH) as db:
@@ -23,7 +25,9 @@ def phase3_crash():
     db = ns.Database(PATH)
     txn = db.begin()
     txn.write("insert log 7 2", np.frombuffer(b"CC", dtype=np.uint8))
-    os._exit(1)  # simulate crash - this data is not durable because commit was never called 
+    os._exit(
+        1
+    )  # simulate crash - this data is not durable because commit was never called
 
 
 def run_in_child(fn) -> None:
@@ -36,7 +40,7 @@ def run_in_child(fn) -> None:
     pid = os.fork()
     if pid == 0:
         fn()
-        os._exit(0)  
+        os._exit(0)
     os.waitpid(pid, 0)
 
 

@@ -9,7 +9,7 @@ git clone https://github.com/NumstoreDB/Numstore
 cd Numstore 
 make python-package
 pip3 install build/python/target/*.whl --force-reinstall
-python3 bindings/python/samples/sample1_basic.py 
+python3 src/pynumstore/samples/sample1_basic.py 
 ```
 
 Don't do `pip3 install pynumstore` (yet) - I published an older beta version to

@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package numstore.v1;
+
+service Numstore {
+  // Transactions
+  rpc Begin(BeginRequest) returns (BeginResponse);
+  rpc Commit(TxnRequest) returns (Status);
+  rpc Rollback(TxnRequest) returns (Status);
+
+  rpc Execute(ExecuteRequest) returns (Status);
+
+  rpc WriteStart(WriteStartRequest) returns (Status);
+  rpc Write(WriteChunk) returns (Status);
+
+  rpc ReadStart(ReadStartRequest) returns (Status);
+  rpc Read(ReadMoreRequest) returns (ReadChunk);
+}
+
+////////////////////////////////// Status
+message Status {
+  int32 code = 1;
+  string message = 2;
+}
+
+////////////////////////////////// Transactions
+message BeginRequest { }
+message BeginResponse {
+  Status status = 1;
+  uint32 txid   = 2;
+}
+
+message TxnRequest {
+  uint32 txid   = 1;
+}
+
+////////////////////////////////// Execute
+message ExecuteRequest {
+  string query = 1;
+  uint32 txid  = 2;
+}
+
+////////////////////////////////// Write
+message WriteStartRequest {
+  string query  = 1;
+  uint32 txid   = 2;
+}
+
+message WriteChunk {
+  bytes data    = 1;
+  bool eof      = 2;
+}
+
+////////////////////////////////// Read
+message ReadStartRequest {
+  string query  = 1;
+  uint32 txid   = 2;
+}
+
+message ReadMoreRequest { }
+
+message ReadChunk {
+  bytes data    = 1;
+  bool eof      = 2;
+}

@@ -1,0 +1,27 @@
+target_sources(
+    numstore.library
+    PRIVATE
+        ns_arena_alloc.c
+        ns_block_array.c
+        ns_byte_accessor.c
+        ns_cbuffer.c
+        ns_concurrency.c
+        ns_crc.c
+        ns_data_validator.c
+        ns_dbl_buffer.c
+        ns_error.c
+        ns_ext_array.c
+        ns_htable.c
+        ns_linked_list.c
+        ns_logging.c
+        ns_numerics.c
+        ns_robin_hood_ht.c
+        ns_serial.c
+        ns_slab_alloc.c
+        ns_stream.c
+        ns_stride.c
+        ns_string.c
+        ns_utils.c
+        ns_testing.c
+        ns_tests.c
+)

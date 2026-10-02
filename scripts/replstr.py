@@ -4,7 +4,7 @@ ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
 REPLACEMENTS = {
-          "smartfiles.h" : "numstore.h",
+        "bindings/python": "src/pynumstore"
 }
 
 for ROOT in ROOTS:

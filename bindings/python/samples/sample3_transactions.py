@@ -1,4 +1,5 @@
 """transactions and rollbacks"""
+
 import numpy as np
 import pynumstore as ns
 
@@ -6,6 +7,7 @@ import pynumstore as ns
 def show(label: str, arr: np.ndarray) -> None:
     print(label)
     print(arr)
+
 
 with ns.Database("example.db") as db:
     db.execute("create events u32")

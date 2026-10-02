@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68", "numpy>=1.23"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core>=0.10", "numpy>=1.23"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "pynumstore"
@@ -18,11 +18,12 @@ Homepage = "https://github.com/NumstoreDB/Numstore"
 [project.optional-dependencies]
 test = ["pytest>=7"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-pynumstore = ["py.typed", "_pynumstore.pyi"]
+[tool.scikit-build]
+cmake.source-dir = "."     # The numstore library dependency
+cmake.build-type = "Release"            # gives you NDEBUG
+wheel.packages = ["src/pynumstore"]     # pure-Python files, incl. py.typed and .pyi
+install.components = ["python"]         # only package the extension, not the C SDK
+build-dir = "build/{wheel_tag}"         # reuse the build between runs
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

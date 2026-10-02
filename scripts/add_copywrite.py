@@ -31,7 +31,9 @@ def add_copyright(root_dir: str = "."):
 
     for root, dirs, files in os.walk(root_dir):
         # Prune hidden and skipped directories in-place, recursively at every level
-        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS)
+        dirs[:] = sorted(
+            d for d in dirs if not d.startswith(".") and d not in SKIP_DIRS
+        )
 
         for fname in sorted(files):
             if not fname.endswith((".c", ".h")):

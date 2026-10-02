@@ -136,7 +136,9 @@ def test_with_block_over_a_hand_committed_transaction_is_fine(db):
         txn.execute("insert foo 0 3", np.arange(3, dtype=np.uint32))
         txn.commit()
 
-    np.testing.assert_array_equal(db.execute("read foo[0:]"), np.arange(3, dtype=np.uint32))
+    np.testing.assert_array_equal(
+        db.execute("read foo[0:]"), np.arange(3, dtype=np.uint32)
+    )
 
 
 def test_with_block_over_a_hand_rolled_back_transaction_is_fine(db):
