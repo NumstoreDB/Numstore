@@ -10,6 +10,14 @@ Publish pynumstore to pypi and post an announcement on reddit
 - [ ] Docs
 - [ ] Basic github actions with code coverage reported on the main repo for
   numstore library
+- [ ] Fix broken seeds 
+    - seed=53529417 seqid=7642841
+      "$exe" \
+        --dbname "simtest_macos-latest.db" \
+        --duration 10 \
+        --seed "$seed" \
+        --commit-hash "ab8b955c1f890852b1a9d5f21e81d5366de73e18" \
+        --seqid "$seqid"
 
 Supported Architectures
 =======================

@@ -6,4 +6,14 @@ jobs:
   build-native:
     uses: ./.github/workflows/build-native.yml
     with:
-      platforms: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      # Runner labels are pinned rather than using -latest so a target's
+      # architecture can't silently change under us.
+      targets: >-
+        [
+          {"target": "linux-x86_64",    "runner": "ubuntu-24.04"},
+          {"target": "linux-aarch64",   "runner": "ubuntu-24.04-arm"},
+          {"target": "macos-arm64",     "runner": "macos-15"},
+          {"target": "macos-x86_64",    "runner": "macos-15-intel"},
+          {"target": "windows-x86_64",  "runner": "windows-2025",   "msvc_arch": "x64"},
+          {"target": "windows-aarch64", "runner": "windows-11-arm", "msvc_arch": "arm64"}
+        ]

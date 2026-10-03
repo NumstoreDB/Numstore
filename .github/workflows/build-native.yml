@@ -2,8 +2,13 @@ name: Build And Test
 on:
   workflow_call:
     inputs:
-      platforms:
-        description: Array of platforms, e.g. ["ubuntu-latest", "windows-latest"]
+      targets:
+        description: >
+          JSON array of build targets. Each entry needs `target` (a descriptive
+          os-arch name, used for the job name, the simtest db and the release
+          artifact) and `runner` (the runs-on label). Windows entries may set
+          `msvc_arch` to pick the MSVC target architecture (default x64).
+          e.g. [{"target":"linux-x86_64","runner":"ubuntu-24.04"}]
         required: true
         type: string
       duration:
@@ -21,9 +26,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ${{ fromJSON(inputs.platforms) }}
-    name: ${{ matrix.platform }}
-    runs-on: ${{ matrix.platform }}
+        include: ${{ fromJSON(inputs.targets) }}
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: bash
@@ -36,10 +41,21 @@ jobs:
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch || 'x64' }}
 
       - name: Use Ninja on Windows
         if: runner.os == 'Windows'
         run: echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
+
+      # The point of this matrix is architecture coverage, so record which
+      # architecture actually ran rather than trusting the runner label.
+      - name: Report toolchain
+        run: |
+          echo "target:  ${{ matrix.target }}"
+          echo "runner:  ${{ matrix.runner }} ($RUNNER_OS/$RUNNER_ARCH)"
+          echo "machine: $(uname -m 2>/dev/null || echo unknown)"
+          cmake --version | head -1
 
       - name: Build debug
         run: make
@@ -47,7 +63,7 @@ jobs:
       - name: Run unit tests
         run: |
           seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          echo "::notice title=unit_tests seed::$seed"
+          echo "::notice title=unit_tests seed (${{ matrix.target }})::$seed"
           exe=build/debug/bin/unit_tests
           [ -f "$exe" ] || exe="$exe.exe"
           "$exe" "$seed"
@@ -56,11 +72,11 @@ jobs:
         run: |
           seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
           seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          echo "::notice title=ns_simtest seed::seed=$seed seqid=$seqid"
+          echo "::notice title=ns_simtest seed (${{ matrix.target }})::seed=$seed seqid=$seqid"
           exe=build/debug/bin/ns_simtest
           [ -f "$exe" ] || exe="$exe.exe"
           "$exe" \
-            --dbname "simtest_${{ matrix.platform }}.db" \
+            --dbname "simtest_${{ matrix.target }}.db" \
             --duration ${{ inputs.duration }} \
             --seed "$seed" \
             --commit-hash "${{ github.sha }}" \
@@ -73,4 +89,4 @@ jobs:
         uses: ./.github/actions/compress-and-upload
         with:
           folder: build/release/package
-          artifact-name: release-${{ matrix.platform }}
+          artifact-name: release-${{ matrix.target }}
