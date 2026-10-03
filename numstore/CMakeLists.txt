@@ -3,6 +3,11 @@ project(numstore LANGUAGES C)
 
 include(GNUInstallDirs)
 
+# ns_platform.h pulls in <stdatomic.h> and <complex.h>, so C11 is the floor.
+# GCC/Clang default above it, but MSVC defaults to C89 and needs /std:c11.
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

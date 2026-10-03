@@ -6,6 +6,11 @@ on:
         description: Array of platforms, e.g. ["ubuntu-latest", "windows-latest"]
         required: true
         type: string
+      duration:
+        description: Seconds to run ns_simtest for
+        required: false
+        type: number
+        default: 10
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The unit_tests target only exists when CMAKE_BUILD_TYPE is Debug, which
-      # multi-config generators ignore. Force Ninja (and the matching compiler
-      # environment) so Windows gets a single-config build like everyone else.
+      # unit_tests and ns_simtest only exist when CMAKE_BUILD_TYPE is Debug,
+      # which multi-config generators ignore. Force Ninja (and the matching
+      # compiler environment) so Windows gets a single-config build too.
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -36,27 +41,27 @@ jobs:
         if: runner.os == 'Windows'
         run: echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
 
-      - name: Build Code
+      - name: Build debug
         run: make
 
-      - name: Run Unit Tests
+      - name: Run unit tests
         run: |
           seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          echo "::notice title=unit_tests seed::$seed"
           exe=build/debug/bin/unit_tests
           [ -f "$exe" ] || exe="$exe.exe"
           "$exe" "$seed"
 
-      # Disabled as swarm tests are in development
-      - name: Run swarm tests
-        if: false
+      - name: Run simulation test
         run: |
           seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
           seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          echo "::notice title=ns_simtest seed::seed=$seed seqid=$seqid"
           exe=build/debug/bin/ns_simtest
           [ -f "$exe" ] || exe="$exe.exe"
           "$exe" \
-            --dbname "swarm_test_${{ matrix.platform }}.db" \
-            --duration 10 \
+            --dbname "simtest_${{ matrix.platform }}.db" \
+            --duration ${{ inputs.duration }} \
             --seed "$seed" \
             --commit-hash "${{ github.sha }}" \
             --seqid "$seqid"
