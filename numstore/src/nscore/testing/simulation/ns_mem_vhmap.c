@@ -28,6 +28,8 @@
 #include "nscore/variables/ns_variables.h"
 #include "os/ns_memory.h"
 
+#include <string.h>
+
 struct var_frame
 {
   struct var_with_data var;
@@ -168,15 +170,13 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
 {
   // Look up to see if there are
   // any conflicts
-  struct var_frame key = {
-      .var = (struct var_with_data){
-          .var =
-              (struct variable){
-                  .vname = var->vname,
-              },
-          .data = {0}, // Not used in hnode lookup
-      },
-  };
+  // Only vname participates in the hnode lookup; the rest of the key has to be
+  // zeroed, and memset does that without tripping -Wmissing-braces (clang) or
+  // -Wmissing-field-initializers (older GCC) the way a partial initializer list
+  // does.
+  struct var_frame key;
+  memset (&key, 0, sizeof (key));
+  key.var.var.vname = var->vname;
   hnode_init (&key.node, fnv1a_hash (var->vname));
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
 
@@ -208,15 +208,13 @@ struct var_with_data *
 mem_vhmap_get (struct mem_vhmap *db, struct string name)
 {
   // Lookup this variable
-  struct var_frame key = {
-      .var = (struct var_with_data){
-          .var =
-              (struct variable){
-                  .vname = name,
-              },
-          .data = {0}, // Not used in hnode lookup
-      },
-  };
+  // Only vname participates in the hnode lookup; the rest of the key has to be
+  // zeroed, and memset does that without tripping -Wmissing-braces (clang) or
+  // -Wmissing-field-initializers (older GCC) the way a partial initializer list
+  // does.
+  struct var_frame key;
+  memset (&key, 0, sizeof (key));
+  key.var.var.vname = name;
   hnode_init (&key.node, fnv1a_hash (name));
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);
   if (found) {
@@ -230,15 +228,13 @@ void
 mem_vhmap_remove (struct mem_vhmap *db, struct string name)
 {
   // Lookup this variable
-  struct var_frame key = {
-      .var = (struct var_with_data){
-          .var =
-              (struct variable){
-                  .vname = name,
-              },
-          .data = {0}, // Not used in hnode lookup
-      },
-  };
+  // Only vname participates in the hnode lookup; the rest of the key has to be
+  // zeroed, and memset does that without tripping -Wmissing-braces (clang) or
+  // -Wmissing-field-initializers (older GCC) the way a partial initializer list
+  // does.
+  struct var_frame key;
+  memset (&key, 0, sizeof (key));
+  key.var.var.vname = name;
   hnode_init (&key.node, fnv1a_hash (name));
 
   struct hnode **found = htable_lookup (db->vhasht, &key.node, vframe_eq);

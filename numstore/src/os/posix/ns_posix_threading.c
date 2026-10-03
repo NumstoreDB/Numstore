@@ -576,4 +576,17 @@ impl_thread_join (void *t, i_thread *th, error *e)
   return SUCCESS;
 }
 
+/******************************************************************************
+ * SECTION: One-Time Initialization
+ ******************************************************************************/
+
+void
+i_once_run (i_once *once, void (*fn) (void))
+{
+  ASSERT (once);
+  ASSERT (fn);
+
+  pthread_once (once, fn);
+}
+
 #endif // PLATFORM_POSIX

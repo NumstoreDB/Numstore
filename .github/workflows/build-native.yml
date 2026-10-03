@@ -3,8 +3,7 @@ on:
   workflow_call:
     inputs:
       platforms:
-        description: >
-          JSON array of platforms, e.g. ["ubuntu-latest", "windows-latest"]
+        description: Array of platforms, e.g. ["ubuntu-latest", "windows-latest"]
         required: true
         type: string
 
@@ -38,15 +37,15 @@ jobs:
           $exe $seed
 
       # Disabled as swarm tests are in development
-      # - name: Run swarm tests
-      #   run: |
-      #     dbname=swarm_test_${{ matrix.platform }}.db
-      #     duration=10
-      #     seed=$(shuf -i 10-500000000 -n 1)
-      #     commit_hash=${{ github.sha }}
-      #     seq_id=$(shuf -i 10-500000000 -n 1)
-      #     exe=$(find build/debug -type f -name numstore_simulation_test)
-      #     $exe $dbname $duration $seed $commit_hash $seq_id
+      - name: Run swarm tests
+         run: |
+           dbname=swarm_test_${{ matrix.platform }}.db
+           duration=10
+           seed=$(shuf -i 10-500000000 -n 1)
+           commit_hash=${{ github.sha }}
+           seq_id=$(shuf -i 10-500000000 -n 1)
+           exe=$(find build/debug -type f -name ns_simtest)
+           $exe $dbname $duration $seed $commit_hash $seq_id
 
       - name: Build release package
         run: |

@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "nscore/testing/simulation/ns_numstore_simulation.h"
 #include "nscore/testing/simulation/ns_operation_generator.h"
 #include "os/ns_filesystem.h"
@@ -274,7 +275,16 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  // Register SIGINT
+  // Register SIGINT. Windows has no sigaction(2) - its CRT only offers the
+  // ANSI signal(), which is enough for flipping the `running` flag.
+#if PLATFORM_WINDOWS
+  if (signal (SIGINT, exit_handler) == SIG_ERR)
+    {
+      perror ("signal");
+      ns_simul_close (simul, &e);
+      return EXIT_FAILURE;
+    }
+#else
   struct sigaction sa;
   memset (&sa, 0, sizeof (sa));
   sa.sa_handler = exit_handler;
@@ -287,6 +297,7 @@ main (int argc, char **argv)
       ns_simul_close (simul, &e);
       return EXIT_FAILURE;
     }
+#endif
 
   int rc = EXIT_SUCCESS;
 

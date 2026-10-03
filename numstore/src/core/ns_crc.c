@@ -2,8 +2,8 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_testing.h"
+#include "os/ns_threading.h"
 
-#include <pthread.h>
 #include <string.h>
 
 /******************************************************************************
@@ -29,8 +29,8 @@
 // Bytes per interleaved stream (multiple of 8). Blocks are 3 * CRC_K.
 #define CRC_K 1024
 
-static u32            crc_sw_tbl[8][256];
-static pthread_once_t crc_once = PTHREAD_ONCE_INIT;
+static u32    crc_sw_tbl[8][256];
+static i_once crc_once = I_ONCE_INIT;
 
 #ifdef CRC_HW
 static u32 crc_shift_tbl[4][256]; // operator: advance a raw crc by CRC_K zero bytes
@@ -179,7 +179,7 @@ checksum_execute (u32 *state, const u8 *data, const u32 len)
     return;
   }
 
-  pthread_once (&crc_once, crc_init);
+  i_once_run (&crc_once, crc_init);
 
   u32 c = ~(*state);
 

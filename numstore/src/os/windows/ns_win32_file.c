@@ -323,10 +323,10 @@ impl_truncate (void *_fp, const u64 bytes, error *e)
 }
 
 err_t
-impl_fallocate (void *_fp, const u64 bytes, error *e)
+impl_prealloc (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
-  I_FILE_FAULT (fp, file.fallocate_fail_prob, e);
+  I_FILE_FAULT (fp, file.prealloc_fail_prob, e);
   DBG_ASSERT (i_file, fp);
 
   LARGE_INTEGER li;
@@ -334,12 +334,12 @@ impl_fallocate (void *_fp, const u64 bytes, error *e)
 
   if (unlikely (!SetFilePointerEx (fp->handle, li, NULL, FILE_BEGIN))) {
     char buf[WIN_ERR_BUF];
-    return error_causef (e, ERR_IO, "farena_malloc (seek): %s", WIN_ERRMSG (buf));
+    return error_causef (e, ERR_IO, "prealloc (seek): %s", WIN_ERRMSG (buf));
   }
 
   if (unlikely (!SetEndOfFile (fp->handle))) {
     char buf[WIN_ERR_BUF];
-    return error_causef (e, ERR_IO, "fallocate: %s", WIN_ERRMSG (buf));
+    return error_causef (e, ERR_IO, "prealloc: %s", WIN_ERRMSG (buf));
   }
 
   return SUCCESS;

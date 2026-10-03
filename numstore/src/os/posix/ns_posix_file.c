@@ -329,11 +329,11 @@ impl_truncate (void *_fp, const u64 bytes, error *e)
 }
 
 err_t
-impl_fallocate (void *_fp, const u64 bytes, error *e)
+impl_prealloc (void *_fp, const u64 bytes, error *e)
 {
   i_file *fp = _fp;
 
-  I_FILE_FAULT (fp, file.fallocate_fail_prob, e);
+  I_FILE_FAULT (fp, file.prealloc_fail_prob, e);
 
   DBG_ASSERT (i_file, fp);
 
@@ -354,7 +354,13 @@ impl_fallocate (void *_fp, const u64 bytes, error *e)
     return error_causef (e, ERR_IO, "ftruncate: %s", strerror (errno));
   }
 #  else
-  const int ret = posix_farena_malloc (fp->fd, 0, (off_t)bytes);
+  // NOTE: posix_fallocate(3) is a libc symbol, not ours - leave it out of any
+  // project-wide symbol rename. A past `alloc` -> `arena_malloc` sweep turned
+  // it into `posix_farena_malloc`, which only broke the non-Apple builds since
+  // macOS takes the F_PREALLOCATE branch above. The project's own spelling of
+  // this operation is `prealloc`, deliberately distinct from both `fallocate`
+  // and `posix_fallocate`.
+  const int ret = posix_fallocate (fp->fd, 0, (off_t)bytes);
 
   if (unlikely (ret != 0)) {
     return error_causef (e, ERR_IO, "posix_fallocate: %s", strerror (ret));

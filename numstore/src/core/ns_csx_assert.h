@@ -90,7 +90,14 @@ gte0 (int val)
 
 // Release doesn't allow these two
 #  define panic(msg)           NOT_FOR_PRODUCTION ()
-#  define ASSERT(expr)
+
+// The expression is placed in an unevaluated sizeof so it still counts as a
+// *use* of whatever it names. Expanding to nothing meant any parameter or
+// local whose only reader was an ASSERT became unused under NDEBUG, which
+// -Wunused-parameter then flagged across the release builds (the Win32
+// cond/timer no-op destructors being the visible cases). The ternary keeps
+// sizeof away from void-typed and bitfield operands.
+#  define ASSERT(expr)         ((void)sizeof ((expr) ? 1 : 0))
 
 #  define DEFINE_DBG_ASSERT(type, name, var, body)     \
     HEADER_FUNC void name##_assert (const type *(var)) \
@@ -101,7 +108,7 @@ gte0 (int val)
 #  define ASSERT_NN(ptr) ptr
 #  define ASSERT_GTE0(v) v
 
-#  define DBG_ASSERT(name, expr) ((void)0)
+#  define DBG_ASSERT(name, expr) ((void)sizeof ((expr)))
 #endif
 
 #endif // CSX_ASSERT_H
