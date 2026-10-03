@@ -5,6 +5,9 @@
 # make docs                         			build docs/*.md -> html
 # make python                       			alias for python-package
 # make python-package               			build wheel
+# make python-wheels                			cibuildwheel wheels for this host's platform
+# make all-libs                     			release archives: native + every cross platform
+# make all-wheels                   			every wheel this host can build
 # make python-test                  			build + install + pytest
 # make release-package              			assemble SDK folder (bin/lib/include/docs/samples)
 # make release-tarball              			release-package + tar.gz/zip
@@ -30,11 +33,19 @@
 # 	make cross PLATFORM=windows-static-x64 CROSS_GOAL=release-package-windows-cross
 # 	make cross PLATFORM=linux-arm64 CROSS_GOAL="TARGET=release all"
 #   make package-release-all-platforms
+#   make all-libs
+#   make all-wheels
+#   scripts/build_all_libs.sh -t debug -g all
+#   scripts/build_all_wheels.sh -b 'cp312-*'
 #   make lint
 #   make lint-fix
 #   make clean
 #   make format
 ############
+
+# Remove a target whose recipe failed. Without this a partially written file
+# counts as up to date on the next run.
+.DELETE_ON_ERROR:
 
 ############ Executables
 
@@ -176,6 +187,29 @@ endif
 # Add user flags
 CFLAGS += $(CFLAGS_USER)
 
+############ Linker Flags
+
+# On glibc older than 2.34 the pthread entry points live in libpthread rather
+# than libc, so anything pulling in libnumstore has to ask for them. Only the
+# oldest target exposed this (manylinux2014 is CentOS 7 / glibc 2.17, and it
+# failed to link pthread_once and pthread_join); newer glibc resolves them from
+# libc and hid the omission. -pthread is correct on every POSIX target.
+# Windows uses the Win32 threading backend and needs neither flag.
+LDFLAGS_COMMON :=
+LDLIBS_COMMON  :=
+
+ifneq ($(RELEASE_OS),windows)
+LDFLAGS_COMMON += -pthread
+LDLIBS_COMMON  += -lm
+endif
+
+LDFLAGS := $(LDFLAGS_COMMON)
+LDLIBS  := $(LDLIBS_COMMON)
+
+# Shared recipe for every tool/sample/test binary. The static library has to
+# precede the system libraries it depends on.
+LINK_BIN = $(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB) $(LDFLAGS) $(LDLIBS)
+
 ############ Rust Flags
 
 RUSTFLAGS := --edition 2021 --crate-type staticlib -C panic=abort
@@ -205,17 +239,14 @@ LIBNS_OBJS := $(patsubst src/%.c,$(OBJ_DIR)/%.o,$(LIBNS_SRCS))
 
 ############ Python Flags
 
-PY_SOURCES_FILE := bindings/python/sources.txt
+# setup.py reads the module.mk fragments directly, so there is no generated
+# source list to keep in sync (bindings/python/sources.txt used to serve that
+# role and went stale across a refactor).
 
-$(PY_SOURCES_FILE): $(LIBNS_SRCS) $(ALL_PYSRCS)
-	rm -f $@
-	for f in $(LIBNS_SRCS); do echo "../../$$f" >> $@; done
-	for f in $(ALL_PYSRCS); do echo "../../$$f" >> $@; done
+# Documented in the target reference at the top of this file, but never defined.
+python: python-package
 
-.PHONY: python-sources
-python-sources: $(PY_SOURCES_FILE) 
-
-python-package: python-sources | $(PY_TARGET_DIR)
+python-package: | $(PY_TARGET_DIR)
 	PYNUMSTORE_BUILD_BASE=$(PY_OBJ_DIR) \
 		$(PYTHON) -m build $(CURDIR)/bindings/python \
 			--wheel \
@@ -226,6 +257,12 @@ python-test: python-package
 	$(PYTHON) -m pip install --force-reinstall --no-build-isolation $(PY_TARGET_DIR)/pynumstore-*.whl
 	$(PYTHON) -m pip install pytest
 	$(PYTHON) -m pytest $(CURDIR)/bindings/python/tests
+
+# Redistributable wheels for this host's platform. Must run from the repository
+# root: cibuildwheel copies the invocation directory into its build
+# environment, and setup.py reaches up to ../../src for the C sources.
+python-wheels:
+	$(PYTHON) -m cibuildwheel --output-dir $(PY_TARGET_DIR)/wheelhouse bindings/python
 
 ############ Targets
 
@@ -284,8 +321,23 @@ PANDOC_MAN_ARGS := \
 # 	mkdir -p $(dir $@)
 # 	PANDOC_SRC_REL=man/$(patsubst docs/man/%,%,$<) $(PANDOC) $(PANDOC_MAN_ARGS) --output $@ $<
 
+# The dockcross images have no pandoc, so a cross release-package could never
+# build the HTML docs - it failed with "pandoc: not found" on every platform.
+# The markdown docs are plain copies and always ship; HTML is included only
+# where pandoc is available.
+PANDOC_FOUND := $(shell command -v $(PANDOC) >/dev/null 2>&1 && echo 1)
+
+ifeq ($(PANDOC_FOUND),1)
+DOC_OUTPUTS := $(HTML_OUTPUTS) $(MD_OUTPUTS)
+else
+DOC_OUTPUTS := $(MD_OUTPUTS)
+endif
+
 .PHONY: docs
-docs: $(HTML_OUTPUTS) $(MD_OUTPUTS) #  $(MAN_OUTPUTS)
+docs: $(DOC_OUTPUTS) #  $(MAN_OUTPUTS)
+ifneq ($(PANDOC_FOUND),1)
+	@echo "note: $(PANDOC) not found - shipping markdown docs only, no HTML"
+endif
 
 ############ Packaging Targets
 
@@ -323,11 +375,9 @@ endif
 
 ############ Default target
 
-.PHONY: all clean format docs python python-package python-test
+.PHONY: all clean format docs python python-package python-test python-wheels
 
 all: $(ALL)
-
-docs: $(HTML_OUTPUTS)
 
 ############ Directories
 
@@ -339,8 +389,16 @@ $(MAN_DIR)/man%:
 
 ############ Cross-compilation via dockcross
 
+# Write via a temp file: `> $@` truncates before docker run executes, so a
+# failed image pull used to leave a 0-byte launcher behind. Because the file
+# then existed, make never regenerated it and `make cross` silently ran an
+# empty script - reporting success while building nothing. Two launchers
+# (linux-x86, web-wasm32) were committed in exactly that state.
 docker/dockcross-%:
-	docker run --rm dockcross/$* > $@
+	@rm -f $@.tmp
+	docker run --rm dockcross/$* > $@.tmp || { rm -f $@.tmp; exit 1; }
+	@[ -s $@.tmp ] || { rm -f $@.tmp; echo "error: dockcross/$* produced no launcher"; exit 1; }
+	mv $@.tmp $@
 	chmod u+x $@
 
 ifneq ($(filter cross,$(MAKECMDGOALS)),)
@@ -351,6 +409,14 @@ endif
 
 .PHONY: cross
 cross: docker/dockcross-$(PLATFORM)
+	@[ -s ./$< ] || { \
+		echo "error: ./$< is empty, so it would build nothing."; \
+		echo "       Delete it and retry: rm ./$< && make cross PLATFORM=$(PLATFORM)"; \
+		echo "       The 32-bit x86 targets (linux-x86, manylinux2014-x86) only"; \
+		echo "       work on an x86_64 host - their entrypoint runs linux32,"; \
+		echo "       which cannot set a 32-bit personality under arm64 emulation."; \
+		exit 1; \
+	}
 	./$< bash -c 'make $(CROSS_GOAL) PLATFORM=$(PLATFORM) CC=$$CC AR=$$AR'
 
 PACKAGE_PLATFORMS := \
@@ -364,11 +430,28 @@ PACKAGE_PLATFORMS := \
 	manylinux2014-x64 \
 	manylinux2014-x86
 
+# Single source of truth for the shipped platform list, so
+# scripts/build_all_libs.sh cannot drift from it.
+.PHONY: print-package-platforms
+print-package-platforms:
+	@echo $(PACKAGE_PLATFORMS)
+
 .PHONY: package-release-all-platforms
 package-release-all-platforms:
 	for p in $(PACKAGE_PLATFORMS); do \
 		$(MAKE) cross PLATFORM=$$p CROSS_GOAL="TARGET=release release-tarball" || exit 1; \
 	done
+
+############ Build everything
+
+# Thin wrappers around the scripts, which (unlike a make loop) attempt every
+# platform, report host-incompatible targets as skips, and print a matrix.
+.PHONY: all-libs all-wheels
+all-libs:
+	./scripts/build_all_libs.sh
+
+all-wheels:
+	./scripts/build_all_wheels.sh
 
 ############ Housekeeping
 

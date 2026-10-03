@@ -50,7 +50,7 @@ struct os_vtable
 
   // File - Other
   err_t (*truncate) (void *fp, u64 bytes, error *e);
-  err_t (*fallocate) (void *fp, u64 bytes, error *e);
+  err_t (*prealloc) (void *fp, u64 bytes, error *e);
   i64 (*seek) (void *fp, u64 offset, seek_t whence, error *e);
 
   // File System
@@ -97,7 +97,7 @@ err_t impl_write_all (void *fp, const void *src, u64 nbytes, error *e);
 err_t impl_pwrite_all (void *fp, const void *src, u64 n, u64 offset, error *e);
 err_t impl_writev_all (void *fp, struct bytes *arrs, int iovcnt, error *e);
 err_t impl_truncate (void *fp, u64 bytes, error *e);
-err_t impl_fallocate (void *fp, u64 bytes, error *e);
+err_t impl_prealloc (void *fp, u64 bytes, error *e);
 i64 impl_seek (void *fp, u64 offset, seek_t whence, error *e);
 
 err_t impl_open_rw (void *vfs, i_file *dest, const char *fname, error *e);

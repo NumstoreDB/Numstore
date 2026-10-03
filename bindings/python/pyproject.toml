@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "numpy>=1.23"]
+requires = ["setuptools>=68", "numpy>=2.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -20,9 +20,44 @@ test = ["pytest>=7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["pynumstore*"]
+namespaces = false
 
 [tool.setuptools.package-data]
 pynumstore = ["py.typed", "_pynumstore.pyi"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+############################################################################
+# Wheel building (cibuildwheel)
+#
+# Run from the REPOSITORY ROOT, not from this directory:
+#
+#     cibuildwheel --output-dir wheelhouse bindings/python
+#
+# cibuildwheel copies the whole invocation directory into its build
+# environment and builds the subdirectory given as the package. That matters
+# here because setup.py reaches up to ../../src for the C sources, so the
+# repository root has to be what gets copied in.
+############################################################################
+
+[tool.cibuildwheel]
+build-frontend = "build"
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+
+# i686 and win32: NumPy publishes no 32-bit wheels, so the build dependency
+# cannot be resolved there. PyPy is untested against this extension.
+skip = ["*_i686", "*-win32", "pp*"]
+
+# Smoke-tests the installed wheel rather than running tests/: that suite is
+# still written against the older combined execute(query, data) API and does
+# not pass. wheel_smoketest.py checks what is actually platform-specific -
+# that the compiled extension loads and round-trips data.
+test-command = "python {package}/wheel_smoketest.py"
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

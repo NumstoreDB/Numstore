@@ -28,7 +28,7 @@ const struct os_vtable default_os_vtable = {
     .pwrite_all      = impl_pwrite_all,
     .writev_all      = impl_writev_all,
     .truncate        = impl_truncate,
-    .fallocate       = impl_fallocate,
+    .prealloc        = impl_prealloc,
     .seek            = impl_seek,
 
     .open_rw         = impl_open_rw,

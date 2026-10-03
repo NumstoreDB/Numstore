@@ -9,7 +9,8 @@ _build/
 /release/
 /debug/
 bindings/java/jnumstore/build/
-bindings/python/sources.txt
+
+docker/dockcross-*.tmp
 
 ############ Compiled objects / binaries
 
@@ -28,6 +29,7 @@ __pycache__/
 *.egg
 *.egg-info/
 dist/
+wheelhouse/
 .Python
 bindings/python/.pytest_cache/
 

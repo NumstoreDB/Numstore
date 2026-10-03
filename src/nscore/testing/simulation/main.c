@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "core/os/ns_filesystem.h"
 #include "core/os/ns_time.h"
 #include "nscore/testing/simulation/ns_numstore_simulation.h"
@@ -76,7 +77,14 @@ main (int argc, char **argv)
   i_timer               timer;
   i_timer_create (&timer, &e);
 
-  // Register SIGINT
+  // Register SIGINT. Windows has no sigaction(2) - its CRT only offers the
+  // ANSI signal(), which is enough for flipping the `running` flag.
+#if PLATFORM_WINDOWS
+  if (signal (SIGINT, exit_handler) == SIG_ERR) {
+    perror ("signal");
+    return 1;
+  }
+#else
   struct sigaction sa;
   memset (&sa, 0, sizeof (sa));
   sa.sa_handler = exit_handler;
@@ -87,6 +95,7 @@ main (int argc, char **argv)
     perror ("sigaction");
     return 1;
   }
+#endif
 
   while (running) {
     if (ns_simul_step (simul, &e) < 0) {

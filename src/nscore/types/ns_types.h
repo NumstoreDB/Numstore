@@ -159,30 +159,33 @@ mk_sarray (u16 rank, u32 *dims, struct type *sub)
 enum prim_t strtoprim (const char *text, u32 len);
 
 #ifdef TESTING
-static struct type TU8    = _mk_prim (U8);
-static struct type TU16   = _mk_prim (U16);
-static struct type TU32   = _mk_prim (U32);
-static struct type TU64   = _mk_prim (U64);
-static struct type TI8    = _mk_prim (I8);
-static struct type TI16   = _mk_prim (I16);
-static struct type TI32   = _mk_prim (I32);
-static struct type TI64   = _mk_prim (I64);
-static struct type TF16   = _mk_prim (F16);
-static struct type TF32   = _mk_prim (F32);
-static struct type TF64   = _mk_prim (F64);
-static struct type TF128  = _mk_prim (F128);
-static struct type TCF32  = _mk_prim (CF32);
-static struct type TCF64  = _mk_prim (CF64);
-static struct type TCF128 = _mk_prim (CF128);
-static struct type TCF256 = _mk_prim (CF256);
-static struct type TCI16  = _mk_prim (CI16);
-static struct type TCI32  = _mk_prim (CI32);
-static struct type TCI64  = _mk_prim (CI64);
-static struct type TCI128 = _mk_prim (CI128);
-static struct type TCU16  = _mk_prim (CU16);
-static struct type TCU32  = _mk_prim (CU32);
-static struct type TCU64  = _mk_prim (CU64);
-static struct type TCU128 = _mk_prim (CU128);
+// Shared primitive-type fixtures for TEST blocks. MAYBE_UNUSED because every
+// translation unit that includes this header gets all of them while using at
+// most a few, which GCC otherwise reports as 'defined but not used'.
+static struct type MAYBE_UNUSED TU8    = _mk_prim (U8);
+static struct type MAYBE_UNUSED TU16   = _mk_prim (U16);
+static struct type MAYBE_UNUSED TU32   = _mk_prim (U32);
+static struct type MAYBE_UNUSED TU64   = _mk_prim (U64);
+static struct type MAYBE_UNUSED TI8    = _mk_prim (I8);
+static struct type MAYBE_UNUSED TI16   = _mk_prim (I16);
+static struct type MAYBE_UNUSED TI32   = _mk_prim (I32);
+static struct type MAYBE_UNUSED TI64   = _mk_prim (I64);
+static struct type MAYBE_UNUSED TF16   = _mk_prim (F16);
+static struct type MAYBE_UNUSED TF32   = _mk_prim (F32);
+static struct type MAYBE_UNUSED TF64   = _mk_prim (F64);
+static struct type MAYBE_UNUSED TF128  = _mk_prim (F128);
+static struct type MAYBE_UNUSED TCF32  = _mk_prim (CF32);
+static struct type MAYBE_UNUSED TCF64  = _mk_prim (CF64);
+static struct type MAYBE_UNUSED TCF128 = _mk_prim (CF128);
+static struct type MAYBE_UNUSED TCF256 = _mk_prim (CF256);
+static struct type MAYBE_UNUSED TCI16  = _mk_prim (CI16);
+static struct type MAYBE_UNUSED TCI32  = _mk_prim (CI32);
+static struct type MAYBE_UNUSED TCI64  = _mk_prim (CI64);
+static struct type MAYBE_UNUSED TCI128 = _mk_prim (CI128);
+static struct type MAYBE_UNUSED TCU16  = _mk_prim (CU16);
+static struct type MAYBE_UNUSED TCU32  = _mk_prim (CU32);
+static struct type MAYBE_UNUSED TCU64  = _mk_prim (CU64);
+static struct type MAYBE_UNUSED TCU128 = _mk_prim (CU128);
 #endif
 
 #endif // TYPES_H

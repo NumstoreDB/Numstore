@@ -137,31 +137,31 @@ LIBNS_SRCS += src/nscore/wal/ns_wal_record.c
 ############ Bins
 
 $(BIN_DIR)/nspprint: src/nscore/pager/tools/ns_nspprint.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/nsspprint: src/nscore/pager/tools/ns_nsspprint.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/dlread: src/nscore/pager/tools/ns_dlread.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/walpprint: src/nscore/wal/tools/ns_walpprint.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/print_query: src/nscore/compiler/tools/print_query.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/print_type: src/nscore/compiler/tools/print_type.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/resolve_type_ref: src/nscore/compiler/tools/resolve_type_ref.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/numstore_simtest: src/nscore/testing/simulation/main.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 $(BIN_DIR)/print_all_vars: src/nscore/tools/print_all_vars.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 ALL += $(BIN_DIR)/nspprint
 ALL += $(BIN_DIR)/nsspprint

@@ -10,7 +10,7 @@ $(INC_DIR)/numstore.h: src/numstore.h | $(INC_DIR)
 ############ Bins
 
 $(BIN_DIR)/numstore: src/numstore/ns_cli.c $(TARGET_LIB) | $(BIN_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) $< -o $@ $(TARGET_LIB)
+	$(LINK_BIN)
 
 ALL += $(INC_DIR)/numstore.h
 ALL += $(BIN_DIR)/numstore
@@ -23,7 +23,7 @@ NS_SAMPLES += ns_big_file
 define NS_SAMPLE_RULES
 
 $(BIN_DIR)/$(1): src/numstore/samples/$(1).c $$(TARGET_LIB) $$(INC_DIR)/numstore.h | $$(BIN_DIR)
-	$$(CC) $$(CFLAGS) -I$$(INC_DIR) $$< -o $$@ $$(TARGET_LIB)
+	$$(LINK_BIN)
 
 $(SMP_DIR)/$(1).c: src/numstore/samples/$(1).c | $$(SMP_DIR)
 	cp $$< $$@

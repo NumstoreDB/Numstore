@@ -1,0 +1,67 @@
+name: Build Wheels
+
+# Builds redistributable pynumstore wheels with cibuildwheel, plus an sdist.
+#
+# cibuildwheel is pointed at bindings/python but invoked from the repository
+# root, because setup.py reaches up to ../../src for the C sources and
+# cibuildwheel copies the invocation directory into its build environment.
+#
+# Per-platform build settings (CPython versions, skips, architectures, the
+# post-build smoke test) all live in bindings/python/pyproject.toml under
+# [tool.cibuildwheel] so that a local `make python-wheels` behaves the same.
+#
+# No sdist is published. setup.py compiles the C library from ../../src, which
+# is outside the package directory and therefore cannot be carried in an sdist
+# rooted at bindings/python - the resulting tarball builds nothing. Shipping one
+# would be worse than shipping none, since pip falls back to the sdist on any
+# platform with no matching wheel. Publishing an sdist needs the package to
+# vendor or relocate the C sources first.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheels:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: manylinux/musllinux x86_64
+            os: ubuntu-latest
+          # Native arm runner - avoids QEMU, which is far slower for a build
+          # this size.
+          - name: manylinux/musllinux aarch64
+            os: ubuntu-24.04-arm
+          - name: macOS (x86_64 + arm64)
+            os: macos-14
+          - name: Windows AMD64
+            os: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21.3
+        with:
+          package-dir: bindings/python
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+          if-no-files-found: error
+

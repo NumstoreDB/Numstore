@@ -5,11 +5,8 @@ LIBNS_SRCS += src/smartfiles/testing/ns_smfile_test_fixture.c
 LIBNS_SRCS += src/smartfiles/testing/ns_smfile_simulation.c
 
 ############ Includes
-
-$(INC_DIR)/numstore.h: src/numstore.h | $(INC_DIR)
-	cp $< $@
-
-ALL += $(INC_DIR)/numstore.h
+# numstore.h is installed by src/numstore/module.mk - declaring the same
+# recipe here too made make warn about overriding it on every invocation.
 
 ############ Samples (bins + copied sources), one name list drives both
 
@@ -21,7 +18,7 @@ SMFILE_SAMPLES += smfile_sample4_rollback_commit
 
 define SMFILE_SAMPLE_RULES
 $(BIN_DIR)/$(1): src/smartfiles/samples/$(1).c $$(TARGET_LIB) $$(INC_DIR)/numstore.h | $$(BIN_DIR)
-	$$(CC) $$(CFLAGS) -I$$(INC_DIR) $$< -o $$@ $$(TARGET_LIB)
+	$$(LINK_BIN)
 
 $(SMP_DIR)/$(1).c: src/smartfiles/samples/$(1).c | $$(SMP_DIR)
 	cp $$< $$@
