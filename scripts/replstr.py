@@ -3,9 +3,7 @@ import os
 ROOTS = ["src", "bindings", "docs", "packaging"]
 
 # Map of OLD -> NEW replacements
-REPLACEMENTS = {
-        "bindings/python": "src/pynumstore"
-}
+REPLACEMENTS = {"bindings/python": "src/pynumstore"}
 
 for ROOT in ROOTS:
     for dirpath, _, filenames in os.walk(ROOT):

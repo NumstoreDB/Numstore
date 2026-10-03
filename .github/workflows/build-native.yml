@@ -25,36 +25,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The unit_tests target only exists when CMAKE_BUILD_TYPE is Debug, which
+      # multi-config generators ignore. Force Ninja (and the matching compiler
+      # environment) so Windows gets a single-config build like everyone else.
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Use Ninja on Windows
+        if: runner.os == 'Windows'
+        run: echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
+
       - name: Build Code
-        run: |
-          make clean
-          make TARGET=debug NLOG=1
+        run: make
 
       - name: Run Unit Tests
         run: |
-          seed=$(shuf -i 10-500000000 -n 1)
-          exe=$(find build/debug -type f -maxdepth 3 -mindepth 3 -name unit_tests)
-          $exe $seed
+          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          exe=build/debug/bin/unit_tests
+          [ -f "$exe" ] || exe="$exe.exe"
+          "$exe" "$seed"
 
       # Disabled as swarm tests are in development
       - name: Run swarm tests
-         run: |
-           dbname=swarm_test_${{ matrix.platform }}.db
-           duration=10
-           seed=$(shuf -i 10-500000000 -n 1)
-           commit_hash=${{ github.sha }}
-           seq_id=$(shuf -i 10-500000000 -n 1)
-           exe=$(find build/debug -type f -name ns_simtest)
-           $exe $dbname $duration $seed $commit_hash $seq_id
+        if: false
+        run: |
+          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          exe=build/debug/bin/ns_simtest
+          [ -f "$exe" ] || exe="$exe.exe"
+          "$exe" \
+            --dbname "swarm_test_${{ matrix.platform }}.db" \
+            --duration 10 \
+            --seed "$seed" \
+            --commit-hash "${{ github.sha }}" \
+            --seqid "$seqid"
 
       - name: Build release package
-        run: |
-          make TARGET=release release-package
-          pkg_dir=$(find build/release -mindepth 1 -maxdepth 1 -type d)
-          echo "PKG_DIR=$pkg_dir" >> "$GITHUB_ENV"
+        run: make release-package
 
       - name: Compress and upload
         uses: ./.github/actions/compress-and-upload
         with:
-          folder: ${{ env.PKG_DIR }}
+          folder: build/release/package
           artifact-name: release-${{ matrix.platform }}
