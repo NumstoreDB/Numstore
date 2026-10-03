@@ -139,6 +139,30 @@
 #endif
 
 ////////////////////////////////////////////////////////////
+// COMPILER
+//
+// Platform and compiler are independent axes and must not be conflated: mingw
+// is GCC targeting Windows, so PLATFORM_WINDOWS is true there even though
+// every GCC extension below is available. Gating extensions on PLATFORM_*
+// silently degraded them to no-ops under mingw - which is how the Windows
+// cross build ended up with a flood of -Wreturn-type and
+// -Wimplicit-fallthrough warnings on paths UNREACHABLE() should have proven
+// terminal. Anything that is a property of the *compiler* belongs here.
+
+#define COMPILER_GNUC 0
+#define COMPILER_MSVC 0
+
+#if defined(__GNUC__) || defined(__clang__)
+#  undef COMPILER_GNUC
+#  define COMPILER_GNUC 1
+#endif
+
+#if defined(_MSC_VER) && !COMPILER_GNUC
+#  undef COMPILER_MSVC
+#  define COMPILER_MSVC 1
+#endif
+
+////////////////////////////////////////////////////////////
 // Utils
 #define PLATFORM_APPLE   (PLATFORM_MAC || PLATFORM_IOS)
 #define PLATFORM_MOBILE  (PLATFORM_ANDROID || PLATFORM_IOS)
@@ -146,20 +170,22 @@
 
 ////////////////////////////////////////////////////////////
 // Branch Prediction
-#if PLATFORM_WINDOWS
-#  define likely(x)   (x)
-#  define unlikely(x) (x)
-#elif PLATFORM_POSIX
+#if COMPILER_GNUC
 #  define likely(x)   __builtin_expect (!!(x), 1)
 #  define unlikely(x) __builtin_expect (!!(x), 0)
+#else
+#  define likely(x)   (x)
+#  define unlikely(x) (x)
 #endif
 
 ////////////////////////////////////////////////////////////
 // UNREACHABLE
-#if PLATFORM_WINDOWS
-#  define UNREACHABLE_HINT()
-#elif PLATFORM_POSIX
+#if COMPILER_GNUC
 #  define UNREACHABLE_HINT() __builtin_unreachable ()
+#elif COMPILER_MSVC
+#  define UNREACHABLE_HINT() __assume (0)
+#else
+#  define UNREACHABLE_HINT()
 #endif
 
 ////////////////////////////////////////////////////////////
@@ -182,26 +208,30 @@
 
 ////////////////////////////////////////////////////////////
 // NORETURN
-#if PLATFORM_WINDOWS
-#  define NORETURN __declspec (noreturn)
-#elif PLATFORM_POSIX
+#if COMPILER_GNUC
 #  define NORETURN __attribute__ ((noreturn))
+#elif COMPILER_MSVC
+#  define NORETURN __declspec (noreturn)
+#else
+#  define NORETURN
 #endif
 
 ////////////////////////////////////////////////////////////
 // PRINTF_ATTR
-#if PLATFORM_WINDOWS
-#  define PRINTF_ATTR(fmt_pos, va_pos)
-#else
+#if COMPILER_GNUC && PLATFORM_WINDOWS
+#  define PRINTF_ATTR(fmt_pos, va_pos) __attribute__ ((format (gnu_printf, fmt_pos, va_pos)))
+#elif COMPILER_GNUC
 #  define PRINTF_ATTR(fmt_pos, va_pos) __attribute__ ((format (printf, fmt_pos, va_pos)))
+#else
+#  define PRINTF_ATTR(fmt_pos, va_pos)
 #endif
 
 ////////////////////////////////////////////////////////////
 // MAYBE_UNUSED
-#if PLATFORM_WINDOWS
-#  define MAYBE_UNUSED
-#else
+#if COMPILER_GNUC
 #  define MAYBE_UNUSED __attribute__ ((unused))
+#else
+#  define MAYBE_UNUSED
 #endif
 
 ////////////////////////////////////////////////////////////
@@ -214,10 +244,10 @@
 
 ////////////////////////////////////////////////////////////
 // HAS_BUILTIN_OVERFLOW
-#if PLATFORM_WINDOWS
-#  define HAS_BUILTIN_OVERFLOW 0
-#else
+#if COMPILER_GNUC
 #  define HAS_BUILTIN_OVERFLOW 1
+#else
+#  define HAS_BUILTIN_OVERFLOW 0
 #endif
 
 #define HEADER_FUNC static inline MAYBE_UNUSED

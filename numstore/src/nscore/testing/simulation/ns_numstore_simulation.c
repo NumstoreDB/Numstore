@@ -422,7 +422,7 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
   // Max Insert Length
   {
     char buf[32];
-    snprintf (buf, sizeof (buf), "%lld", meta->max_insert_len);
+    snprintf (buf, sizeof (buf), "%" PRIu64, (u64)meta->max_insert_len);
     print_entry ("max_insert_len", buf);
   }
 

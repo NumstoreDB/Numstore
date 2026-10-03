@@ -42,33 +42,34 @@ typedef double      f64;
 typedef long double f128;
 
 // Complex floats
-
-#ifdef _MSC_VER
-
-typedef _Fcomplex cf32;
-typedef _Dcomplex cf64;
-typedef _Lcomplex cf128;
-
-#else
-
-typedef u16 cf32[2];
-typedef u32 cf64[2];
-typedef u64 cf128[2];
+//
+// These are named for their TOTAL width, not the width of one component:
+// cf32 is a pair of 16-bit halves, cf64 a pair of f32, cf128 a pair of f64.
+// That matches prim_size() (CF32 -> 4, CF64 -> 8, CF128 -> 16) and is what
+// goes on disk.
+//
+// Representing them as integer pairs rather than C99 _Complex keeps the layout
+// identical on every target and avoids needing complex-number support at all.
+// There used to be an _MSC_VER branch here mapping these onto _Fcomplex /
+// _Dcomplex / _Lcomplex, but those are pairs of float/double/long double - 8
+// and 16 bytes - so MSVC builds would have disagreed with prim_size() and with
+// every other platform's on-disk format.
+typedef u16         cf32[2];
+typedef u32         cf64[2];
+typedef u64         cf128[2];
 // #if defined(__SIZEOF_FLOAT128__)
 //     typedef __float128 _Complex cf256;
 //  #endif
 
-#endif
+typedef i8          ci16[2];
+typedef i16         ci32[2];
+typedef i32         ci64[2];
+typedef i64         ci128[2];
 
-typedef i8  ci16[2];
-typedef i16 ci32[2];
-typedef i32 ci64[2];
-typedef i64 ci128[2];
-
-typedef u8  cu16[2];
-typedef u16 cu32[2];
-typedef u32 cu64[2];
-typedef u64 cu128[2];
+typedef u8          cu16[2];
+typedef u16         cu32[2];
+typedef u32         cu64[2];
+typedef u64         cu128[2];
 
 /******************************************************************************
  * SECTION: Numstore type aliases

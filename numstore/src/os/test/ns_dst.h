@@ -75,7 +75,7 @@ struct dst_data
 
     float writev_fail_prob;
     float truncate_fail_prob;
-    float fallocate_fail_prob;
+    float prealloc_fail_prob;
     float seek_fail_prob;
   } file;
 

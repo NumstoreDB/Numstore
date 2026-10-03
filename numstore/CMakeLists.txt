@@ -28,6 +28,21 @@ set_target_properties(
         POSITION_INDEPENDENT_CODE ON
 )
 
+# On glibc older than 2.34 the pthread entry points live in libpthread rather
+# than libc, so anything linking numstore has to ask for them. Only the oldest
+# targets expose this (manylinux2014 is CentOS 7 / glibc 2.17, and it failed to
+# link pthread_once and pthread_join); newer glibc resolves them from libc and
+# hides the omission. PUBLIC so every consumer inherits it. On Windows the
+# Win32 threading backend is used and Threads::Threads resolves to nothing.
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(numstore.library PUBLIC Threads::Threads)
+
+# long double / complex helpers land in libm on glibc.
+if(UNIX AND NOT APPLE)
+    target_link_libraries(numstore.library PUBLIC m)
+endif()
+
 install(
     TARGETS numstore.library
     EXPORT numstoreTargets

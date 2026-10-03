@@ -193,7 +193,11 @@ parse_query_create (struct parser *parser, struct query *dest, error *e)
                   .data = (char *)tok->str.data,
                   .len  = tok->str.len,
               },
-          // .type = PARSE,
+          // Overwritten by parse_type below; named here so the initializer
+          // list is complete and older GCC does not report it under
+          // -Wmissing-field-initializers. struct type leads with a scalar
+          // enum, so {0} needs no extra braces.
+          .type = {0},
       },
   };
 

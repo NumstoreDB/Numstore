@@ -90,8 +90,11 @@ run_phase (int phase_num, int crash, const char *exe)
   // number argument and let the child handle it in main().
   char cmd[512];
   snprintf (cmd, sizeof (cmd), "\"%s\" %s", exe, arg);
-  STARTUPINFOA        si = {sizeof (si)};
+  STARTUPINFOA        si;
   PROCESS_INFORMATION pi;
+  ZeroMemory (&si, sizeof (si));
+  ZeroMemory (&pi, sizeof (pi));
+  si.cb = sizeof (si);
   if (!CreateProcessA (NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
     fprintf (stderr, "CreateProcess failed: %lu\n", GetLastError ());
     exit (1);
@@ -240,12 +243,12 @@ main (int argc, char *argv[])
   if (argc == 2) {
     int     phase_num = atoi (argv[1]);
     int     crash     = (phase_num == 3 || phase_num == 4);
-    nsdb_t *smf       = smfile_open (PATH);
+    nsdb_t *smf       = ns_smfile_open (PATH);
     phases[phase_num](smf);
     if (crash) {
-      exit (1);
+      _Exit (1); // Simulate crash: no ns_close(), no WAL flush
     }
-    smfile_close (smf);
+    ns_close (smf);
     return 0;
   }
 #endif

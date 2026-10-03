@@ -494,7 +494,13 @@ nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
   }
 
   ALLOC_INIT (temp);
-  sb_size ret;
+
+  // Every enumerator below is handled, but an enum object can hold values
+  // outside its enumerators, so GCC can't prove `ret` is assigned and warns
+  // under -O3. Seeding it with a failure keeps the switch exhaustive (and so
+  // keeps -Wswitch working for newly added query types) while making a
+  // nonsense q.type fail closed instead of reporting success.
+  sb_size ret = ERR_CORRUPT;
 
   switch (ns->q.type) {
       // Array Operations

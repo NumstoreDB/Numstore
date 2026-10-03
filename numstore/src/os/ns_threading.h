@@ -15,6 +15,10 @@
 #ifndef NS_THREADING_H
 #define NS_THREADING_H
 
+// ns_platform.h provides the pthread.h / windows.h include this header's
+// types depend on; it was previously relied on to arrive via some other
+// include first.
+#include "core/ns_platform.h"
 #include "os/ns_os_vtable.h"
 
 /******************************************************************************
@@ -54,6 +58,30 @@ struct i_thread
   pthread_t thread;
 #endif
 };
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: One-Time Initialization
+ * ----------------------------------------------------------------------------
+ * @brief Run a function exactly once, blocking concurrent callers until the
+ * first run completes.
+ *
+ * This is deliberately *not* on os_vtable: callers are file-scope lazy
+ * initializers (CRC tables and the like) that have no vtable instance to
+ * reach for. It is still part of the OS layer rather than raw pthread calls
+ * at the use site - pthread.h does not exist under MSVC, which is what builds
+ * the Windows Python extension, and ns_platform.h only pulls it in for
+ * PLATFORM_POSIX.
+ *----------------------------------------------------------------------------*/
+
+#ifdef _WIN32
+typedef INIT_ONCE i_once;
+#  define I_ONCE_INIT INIT_ONCE_STATIC_INIT
+#else
+typedef pthread_once_t i_once;
+#  define I_ONCE_INIT PTHREAD_ONCE_INIT
+#endif
+
+void i_once_run (i_once *once, void (*fn) (void));
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Abstraction

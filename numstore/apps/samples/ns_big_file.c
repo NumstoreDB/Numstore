@@ -19,7 +19,36 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
+
+#ifdef _WIN32
+#  include <io.h>
+// Win32 has no pread/pwrite. The naive side of this benchmark only needs
+// positioned I/O on a single-threaded fd, so seek-then-transfer is equivalent
+// here. O_BINARY matters too: without it the CRT would translate newlines and
+// corrupt the byte counts we are timing.
+#  define O_EXTRA_FLAGS O_BINARY
+
+static long
+pread (int fd, void *buf, size_t n, long long offset)
+{
+  if (_lseeki64 (fd, offset, SEEK_SET) < 0) {
+    return -1;
+  }
+  return _read (fd, buf, (unsigned int)n);
+}
+
+static long
+pwrite (int fd, const void *buf, size_t n, long long offset)
+{
+  if (_lseeki64 (fd, offset, SEEK_SET) < 0) {
+    return -1;
+  }
+  return _write (fd, buf, (unsigned int)n);
+}
+#else
+#  include <unistd.h>
+#  define O_EXTRA_FLAGS 0
+#endif
 
 #define DEFAULT_B_SIZE 900000000
 #define DEFAULT_I_SIZE 1000
@@ -65,7 +94,7 @@ main (int argc, char **argv)
   {
     // Set up - build the backing file first
     remove ("sample_naive_file");
-    int fd = open ("sample_naive_file", O_RDWR | O_CREAT | O_TRUNC, 0644);
+    int fd = open ("sample_naive_file", O_RDWR | O_CREAT | O_TRUNC | O_EXTRA_FLAGS, 0644);
 
     // Do one big write of the backing data
     write (fd, backing_data, b_size);

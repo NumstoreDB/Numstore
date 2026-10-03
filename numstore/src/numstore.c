@@ -334,6 +334,13 @@ ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dlen)
 }
 
 sb_size
+ns_smfile_size (nsdb_t *db, struct txn *tx)
+{
+  error_reset (db->e);
+  return nsdb_smfile_size (db, tx, NULL);
+}
+
+sb_size
 ns_smfile_insert (nsdb_t *db, struct txn *tx, const void *src, sb_size bofst, b_size slen)
 {
   error_reset (db->e);

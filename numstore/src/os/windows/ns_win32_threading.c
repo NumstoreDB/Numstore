@@ -250,4 +250,38 @@ impl_thread_join (void *t, i_thread *th, error *e)
   return SUCCESS;
 }
 
+/******************************************************************************
+ * SECTION: One-Time Initialization
+ ******************************************************************************/
+
+// InitOnceExecuteOnce hands the callback its Parameter as a void*. Routing the
+// function pointer through this struct avoids casting a function pointer to
+// void*, which is not something C guarantees.
+struct once_ctx
+{
+  void (*fn) (void);
+};
+
+static BOOL CALLBACK
+once_trampoline (PINIT_ONCE once, PVOID param, PVOID *ctx)
+{
+  (void)once;
+  (void)ctx;
+
+  const struct once_ctx *oc = param;
+  oc->fn ();
+
+  return TRUE;
+}
+
+void
+i_once_run (i_once *once, void (*fn) (void))
+{
+  ASSERT (once);
+  ASSERT (fn);
+
+  struct once_ctx oc = {.fn = fn};
+  InitOnceExecuteOnce (once, once_trampoline, &oc, NULL);
+}
+
 #endif

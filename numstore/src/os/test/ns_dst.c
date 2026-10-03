@@ -218,7 +218,7 @@ dst_data_init (struct dst_data *d, const struct os_vtable *delegate)
       .pwrite_all      = d->delegate->pwrite_all,
       .writev_all      = d->delegate->writev_all,
       .truncate        = d->delegate->truncate,
-      .fallocate       = d->delegate->fallocate,
+      .prealloc        = d->delegate->prealloc,
       .seek            = d->delegate->seek,
       .test_data       = d,
 
