@@ -91,9 +91,8 @@ gte0 (int val)
 // Release doesn't allow these two
 #  define panic(msg)           NOT_FOR_PRODUCTION ()
 
-#  Little trick to convince the compiler that the expression is being
-#  used
-#  define ASSERT(expr) ((void)sizeof ((expr) ? 1 : 0))
+// Little trick to convince the compiler that the expression is being used
+#  define ASSERT(expr)         ((void)sizeof ((expr) ? 1 : 0))
 
 #  define DEFINE_DBG_ASSERT(type, name, var, body)     \
     HEADER_FUNC void name##_assert (const type *(var)) \

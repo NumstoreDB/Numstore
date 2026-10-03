@@ -14,9 +14,7 @@ const CMAKE_TARGET: &str = "numstore.library";
 /// dependencies, so list them here (e.g. "m", "pthread").
 const SYSTEM_LIBS: &[&str] = &[];
 
-const PROTOS: &[&str] = &[
-    "proto/numstore/v1/numstore.proto",
-];
+const PROTOS: &[&str] = &["proto/numstore/v1/numstore.proto"];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     build_numstore()?;
@@ -69,7 +67,9 @@ fn build_numstore() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn find_archives(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
@@ -78,10 +78,7 @@ fn find_archives(dir: &Path, out: &mut Vec<PathBuf>) {
                 continue;
             }
             find_archives(&path, out);
-        } else if path
-            .extension()
-            .is_some_and(|e| e == "a" || e == "lib")
-        {
+        } else if path.extension().is_some_and(|e| e == "a" || e == "lib") {
             out.push(path);
         }
     }
