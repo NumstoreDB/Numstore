@@ -38,8 +38,8 @@
 err_t
 pgr_delete_single_file (const char *dbname, error *e)
 {
-  char fname[PATH_MAX];
-  char walname[PATH_MAX];
+  char fname[NS_PATH_MAX];
+  char walname[NS_PATH_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
