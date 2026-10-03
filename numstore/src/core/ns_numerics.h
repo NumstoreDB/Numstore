@@ -127,8 +127,7 @@ HEADER_FUNC err_t
 safe_add_u16 (u16 *dest, u16 arg, error *e)
 {
   // Compared in u32 so the check never depends on how UINT16_MAX and the u16
-  // operands promote - doing it in u16 made GCC flag the comparison under
-  // -Wsign-compare once per translation unit that included this header.
+  // operands promote
   if ((u32)*dest + (u32)arg > (u32)UINT16_MAX) {
     return error_causef (e, ERR_ARITH, "Arithmetic overflow: %d + %d > %d\n", *dest, arg, UINT16_MAX);
   }

@@ -52,7 +52,7 @@ PRUNE = -type d \( -name build -o -name dist -o -name .venv -o -name venv -o -na
 
 format-c:
 	@if command -v clang-format >/dev/null 2>&1; then \
-		find src include bindings $(PRUNE) -type f \( -name '*.c' -o -name '*.h' \) -print \
+		find numstore bindings $(PRUNE) -type f \( -name '*.c' -o -name '*.h' \) -print \
 			| while read -r f; do echo "formatting: $$f"; clang-format --style=file:.clang-format -i "$$f"; done; \
 	else \
 		echo "clang-format not found; skipping"; \
@@ -68,16 +68,8 @@ format-cmake:
 
 format-python:
 	@if command -v ruff >/dev/null 2>&1; then \
-		find . $(PRUNE) -type f -name '*.py' -print \
+		find bindings/python $(PRUNE) -type f -name '*.py' -print \
 			| while read -r f; do echo "formatting: $$f"; ruff format --quiet "$$f"; done; \
 	else \
 		echo "ruff not found; skipping"; \
-	fi
-
-format-markdown:
-	@if command -v mdformat >/dev/null 2>&1; then \
-		find . $(PRUNE) -type f -name '*.md' -print \
-			| while read -r f; do echo "formatting: $$f"; mdformat "$$f"; done; \
-	else \
-		echo "mdformat not found; skipping"; \
 	fi

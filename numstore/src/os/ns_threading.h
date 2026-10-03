@@ -15,9 +15,6 @@
 #ifndef NS_THREADING_H
 #define NS_THREADING_H
 
-// ns_platform.h provides the pthread.h / windows.h include this header's
-// types depend on; it was previously relied on to arrive via some other
-// include first.
 #include "core/ns_platform.h"
 #include "os/ns_os_vtable.h"
 

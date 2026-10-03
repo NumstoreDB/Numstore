@@ -170,10 +170,6 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
 {
   // Look up to see if there are
   // any conflicts
-  // Only vname participates in the hnode lookup; the rest of the key has to be
-  // zeroed, and memset does that without tripping -Wmissing-braces (clang) or
-  // -Wmissing-field-initializers (older GCC) the way a partial initializer list
-  // does.
   struct var_frame key;
   memset (&key, 0, sizeof (key));
   key.var.var.vname = var->vname;
@@ -208,10 +204,6 @@ struct var_with_data *
 mem_vhmap_get (struct mem_vhmap *db, struct string name)
 {
   // Lookup this variable
-  // Only vname participates in the hnode lookup; the rest of the key has to be
-  // zeroed, and memset does that without tripping -Wmissing-braces (clang) or
-  // -Wmissing-field-initializers (older GCC) the way a partial initializer list
-  // does.
   struct var_frame key;
   memset (&key, 0, sizeof (key));
   key.var.var.vname = name;
@@ -228,10 +220,6 @@ void
 mem_vhmap_remove (struct mem_vhmap *db, struct string name)
 {
   // Lookup this variable
-  // Only vname participates in the hnode lookup; the rest of the key has to be
-  // zeroed, and memset does that without tripping -Wmissing-braces (clang) or
-  // -Wmissing-field-initializers (older GCC) the way a partial initializer list
-  // does.
   struct var_frame key;
   memset (&key, 0, sizeof (key));
   key.var.var.vname = name;
