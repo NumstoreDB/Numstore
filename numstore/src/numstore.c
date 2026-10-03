@@ -101,7 +101,7 @@ ns_var_len (nsdb_var_t *var)
 void
 ns_var_free (nsdb_var_t *var)
 {
-  return nsdb_var_free (var);
+  nsdb_var_free (var);
 }
 
 // Errors

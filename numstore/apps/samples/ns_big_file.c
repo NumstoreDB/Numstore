@@ -21,7 +21,25 @@
 #include <time.h>
 
 #ifdef _WIN32
+#  define WIN32_LEAN_AND_MEAN
 #  include <io.h>
+#  include <windows.h>
+
+#  define O_EXTRA_FLAGS   _O_BINARY
+#  define CLOCK_MONOTONIC 1
+
+// MSVC has no clock_gettime; QueryPerformanceCounter is the monotonic source.
+static int
+clock_gettime (int clk, struct timespec *ts)
+{
+  (void)clk;
+  LARGE_INTEGER freq, ctr;
+  QueryPerformanceFrequency (&freq);
+  QueryPerformanceCounter (&ctr);
+  ts->tv_sec  = (time_t)(ctr.QuadPart / freq.QuadPart);
+  ts->tv_nsec = (long)(((ctr.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart);
+  return 0;
+}
 
 static long
 pread (int fd, void *buf, size_t n, long long offset)
