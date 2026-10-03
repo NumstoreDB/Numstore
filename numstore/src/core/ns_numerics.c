@@ -477,19 +477,22 @@ TEST (randf)
 void
 rand_bytes (void *dst, const u32 n)
 {
+  // Byte stepping needs a sized type: arithmetic on void * is a GNU extension
+  // that MSVC rejects outright (C2036).
+  u8    *d = dst;
   u64    s = (((u64)rand () << 32) ^ (u64)rand ()) | 1;
   b_size i = 0;
   for (; i + 8 <= n; i += 8) {
     s ^= s << 13;
     s ^= s >> 7;
     s ^= s << 17;
-    memcpy (dst + i, &s, 8);
+    memcpy (d + i, &s, 8);
   }
   if (i < n) {
     s ^= s << 13;
     s ^= s >> 7;
     s ^= s << 17;
-    memcpy (dst + i, &s, n - i);
+    memcpy (d + i, &s, n - i);
   }
 }
 
