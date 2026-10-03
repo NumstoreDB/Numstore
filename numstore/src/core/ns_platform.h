@@ -280,6 +280,7 @@ platformstr (void)
 
 #include <complex.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -296,6 +297,21 @@ platformstr (void)
 #  include <pthread.h>
 #  include <semaphore.h>
 #  include <time.h>
+#endif
+
+////////////////////////////////////////////////////////////
+// NS_PATH_MAX
+//
+// Longest path a stack path buffer needs to hold. POSIX spells this PATH_MAX
+// in <limits.h> (4096 on Linux, 1024 on macOS); MSVC does not define it at
+// all and the Win32 narrow file APIs cap out at MAX_PATH, so defer to
+// whichever limit the platform states and keep a floor for anything exotic.
+#if defined(PATH_MAX)
+#  define NS_PATH_MAX PATH_MAX
+#elif defined(MAX_PATH)
+#  define NS_PATH_MAX MAX_PATH
+#else
+#  define NS_PATH_MAX 4096
 #endif
 
 #endif // PLATFORM_H
