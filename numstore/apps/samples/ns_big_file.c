@@ -22,11 +22,6 @@
 
 #ifdef _WIN32
 #  include <io.h>
-// Win32 has no pread/pwrite. The naive side of this benchmark only needs
-// positioned I/O on a single-threaded fd, so seek-then-transfer is equivalent
-// here. O_BINARY matters too: without it the CRT would translate newlines and
-// corrupt the byte counts we are timing.
-#  define O_EXTRA_FLAGS O_BINARY
 
 static long
 pread (int fd, void *buf, size_t n, long long offset)

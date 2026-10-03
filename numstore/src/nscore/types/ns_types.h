@@ -159,9 +159,6 @@ mk_sarray (u16 rank, u32 *dims, struct type *sub)
 enum prim_t strtoprim (const char *text, u32 len);
 
 #ifndef NDEBUG
-// Shared primitive-type fixtures for TEST blocks. MAYBE_UNUSED because every
-// translation unit that includes this header gets all of them while using at
-// most a few, which GCC otherwise reports as 'defined but not used'.
 static struct type MAYBE_UNUSED TU8    = _mk_prim (U8);
 static struct type MAYBE_UNUSED TU16   = _mk_prim (U16);
 static struct type MAYBE_UNUSED TU32   = _mk_prim (U32);

@@ -3,8 +3,8 @@ project(numstore_python LANGUAGES C CXX)
 
 # Add numstore as a dependency
 add_subdirectory(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../numstore
-  ${CMAKE_CURRENT_BINARY_DIR}/numstore
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../numstore
+    ${CMAKE_CURRENT_BINARY_DIR}/numstore
 )
 
 find_package(

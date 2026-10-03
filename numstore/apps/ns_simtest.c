@@ -49,30 +49,33 @@ exit_handler (int sig)
 static void
 print_usage (FILE *out, const char *prog)
 {
-  fprintf (out,
-           "Usage: %s [options]\n"
-           "\n"
-           "Options:\n"
-           "  --dbname NAME        database name                 (default: %s)\n"
-           "  --duration SECONDS   run time in seconds, > 0      (default: %d)\n"
-           "  --seed N             RNG seed                      (default: %llu)\n"
-           "  --commit-hash HASH   commit hash to record         (default: %s)\n"
-           "  --seqid N            sequence id                   (default: %d)\n"
-           "  --disable ACTION     disable an action; repeatable\n"
-           "  -h, --help           show this help\n"
-           "\n"
-           "Values can be given as --flag VALUE or --flag=VALUE.\n"
-           "\n"
-           "Actions (all enabled by default; NSS_ prefix and case optional):\n",
-           prog,
-           DEFAULT_DBNAME,
-           DEFAULT_DURATION,
-           DEFAULT_SEED,
-           DEFAULT_COMMIT_HASH,
-           DEFAULT_SEQID);
+  fprintf (
+      out,
+      "Usage: %s [options]\n"
+      "\n"
+      "Options:\n"
+      "  --dbname NAME        database name                 (default: %s)\n"
+      "  --duration SECONDS   run time in seconds, > 0      (default: %d)\n"
+      "  --seed N             RNG seed                      (default: %llu)\n"
+      "  --commit-hash HASH   commit hash to record         (default: %s)\n"
+      "  --seqid N            sequence id                   (default: %d)\n"
+      "  --disable ACTION     disable an action; repeatable\n"
+      "  -h, --help           show this help\n"
+      "\n"
+      "Values can be given as --flag VALUE or --flag=VALUE.\n"
+      "\n"
+      "Actions (all enabled by default; NSS_ prefix and case optional):\n",
+      prog,
+      DEFAULT_DBNAME,
+      DEFAULT_DURATION,
+      DEFAULT_SEED,
+      DEFAULT_COMMIT_HASH,
+      DEFAULT_SEQID
+  );
 
-  for (int a = 0; a < NSS_AT_LEN; ++a)
+  for (int a = 0; a < NSS_AT_LEN; ++a) {
     fprintf (out, "  NSS_%s\n", action_names[a] ? action_names[a] : "?");
+  }
 }
 
 static int
@@ -96,17 +99,19 @@ take_flag (const char *name, int argc, char **argv, int *i, const char **value)
   const char *arg = argv[*i];
   size_t      len = strlen (name);
 
-  if (strncmp (arg, name, len) != 0)
+  if (strncmp (arg, name, len) != 0) {
     return false;
+  }
 
-  if (arg[len] == '=')
+  if (arg[len] == '=') {
     *value = arg + len + 1;
-  else if (arg[len] != '\0')
+  } else if (arg[len] != '\0') {
     return false; // e.g. --seedling is not --seed
-  else if (*i + 1 < argc)
+  } else if (*i + 1 < argc) {
     *value = argv[++*i];
-  else
+  } else {
     *value = NULL;
+  }
 
   return true;
 }
@@ -118,13 +123,15 @@ parse_u64 (const char *s, u64 max, u64 *out)
   char              *end;
   unsigned long long v;
 
-  if (*s == '\0' || *s == '-' || *s == '+')
+  if (*s == '\0' || *s == '-' || *s == '+') {
     return false;
+  }
 
   errno = 0;
   v     = strtoull (s, &end, 10);
-  if (errno != 0 || *end != '\0' || v > max)
+  if (errno != 0 || *end != '\0' || v > max) {
     return false;
+  }
 
   *out = (u64)v;
   return true;
@@ -134,13 +141,14 @@ parse_u64 (const char *s, u64 max, u64 *out)
 static bool
 ieqn (const char *a, const char *b, size_t n)
 {
-  for (size_t k = 0; k < n; ++k)
-    {
-      if (toupper ((unsigned char)a[k]) != toupper ((unsigned char)b[k]))
-        return false;
-      if (a[k] == '\0')
-        return true;
+  for (size_t k = 0; k < n; ++k) {
+    if (toupper ((unsigned char)a[k]) != toupper ((unsigned char)b[k])) {
+      return false;
     }
+    if (a[k] == '\0') {
+      return true;
+    }
+  }
   return true;
 }
 
@@ -148,103 +156,98 @@ ieqn (const char *a, const char *b, size_t n)
 static bool
 parse_action (const char *s, enum ns_action_type *out)
 {
-  if (ieqn (s, "NSS_", 4))
+  if (ieqn (s, "NSS_", 4)) {
     s += 4;
+  }
 
-  for (int a = 0; a < NSS_AT_LEN; ++a)
-    {
-      if (action_names[a] && ieqn (s, action_names[a], SIZE_MAX))
-        {
-          *out = (enum ns_action_type)a;
-          return true;
-        }
+  for (int a = 0; a < NSS_AT_LEN; ++a) {
+    if (action_names[a] && ieqn (s, action_names[a], SIZE_MAX)) {
+      *out = (enum ns_action_type)a;
+      return true;
     }
+  }
   return false;
 }
 
 int
 main (int argc, char **argv)
 {
-  error                       e      = error_create ();
-  struct ns_simulation_params params = { 0 };
+  error                       e           = error_create ();
+  struct ns_simulation_params params      = {0};
 
-  const char *dbname      = DEFAULT_DBNAME;
-  u64         duration    = DEFAULT_DURATION;
-  u64         seed        = DEFAULT_SEED;
-  const char *commit_hash = DEFAULT_COMMIT_HASH;
-  u64         seqid       = DEFAULT_SEQID;
+  const char                 *dbname      = DEFAULT_DBNAME;
+  u64                         duration    = DEFAULT_DURATION;
+  u64                         seed        = DEFAULT_SEED;
+  const char                 *commit_hash = DEFAULT_COMMIT_HASH;
+  u64                         seqid       = DEFAULT_SEQID;
 
   // All actions enabled by default
   memset (params.enabled, 1, sizeof (params.enabled));
 
   // Parse arguments
-  for (int i = 1; i < argc; ++i)
-    {
-      const char *arg = argv[i];
-      const char *v   = NULL;
+  for (int i = 1; i < argc; ++i) {
+    const char *arg = argv[i];
+    const char *v   = NULL;
 
-      if (strcmp (arg, "-h") == 0 || strcmp (arg, "--help") == 0)
-        {
-          print_usage (stdout, argv[0]);
-          return EXIT_SUCCESS;
-        }
-      else if (take_flag ("--dbname", argc, argv, &i, &v))
-        {
-          if (!v || !*v)
-            return usage_error (argv[0], "%s requires a value", arg);
-          dbname = v;
-        }
-      else if (take_flag ("--duration", argc, argv, &i, &v))
-        {
-          if (!v || !*v)
-            return usage_error (argv[0], "%s requires a value", arg);
-          if (!parse_u64 (v, INT_MAX, &duration) || duration == 0)
-            return usage_error (argv[0], "invalid duration '%s' (must be > 0)", v);
-        }
-      else if (take_flag ("--seed", argc, argv, &i, &v))
-        {
-          if (!v || !*v)
-            return usage_error (argv[0], "%s requires a value", arg);
-          if (!parse_u64 (v, UINT64_MAX, &seed))
-            return usage_error (argv[0], "invalid seed '%s'", v);
-        }
-      else if (take_flag ("--commit-hash", argc, argv, &i, &v))
-        {
-          if (!v || !*v)
-            return usage_error (argv[0], "%s requires a value", arg);
-          commit_hash = v;
-        }
-      else if (take_flag ("--seqid", argc, argv, &i, &v))
-        {
-          if (!v || !*v)
-            return usage_error (argv[0], "%s requires a value", arg);
-          if (!parse_u64 (v, UINT32_MAX, &seqid))
-            return usage_error (argv[0], "invalid seqid '%s'", v);
-        }
-      else if (take_flag ("--disable", argc, argv, &i, &v))
-        {
-          enum ns_action_type a;
+    if (strcmp (arg, "-h") == 0 || strcmp (arg, "--help") == 0) {
+      print_usage (stdout, argv[0]);
+      return EXIT_SUCCESS;
+    } else if (take_flag ("--dbname", argc, argv, &i, &v)) {
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      dbname = v;
+    } else if (take_flag ("--duration", argc, argv, &i, &v)) {
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      if (!parse_u64 (v, INT_MAX, &duration) || duration == 0) {
+        return usage_error (argv[0], "invalid duration '%s' (must be > 0)", v);
+      }
+    } else if (take_flag ("--seed", argc, argv, &i, &v)) {
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      if (!parse_u64 (v, UINT64_MAX, &seed)) {
+        return usage_error (argv[0], "invalid seed '%s'", v);
+      }
+    } else if (take_flag ("--commit-hash", argc, argv, &i, &v)) {
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      commit_hash = v;
+    } else if (take_flag ("--seqid", argc, argv, &i, &v)) {
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      if (!parse_u64 (v, UINT32_MAX, &seqid)) {
+        return usage_error (argv[0], "invalid seqid '%s'", v);
+      }
+    } else if (take_flag ("--disable", argc, argv, &i, &v)) {
+      enum ns_action_type a;
 
-          if (!v || !*v)
-            return usage_error (argv[0], "%s requires a value", arg);
-          if (!parse_action (v, &a))
-            return usage_error (argv[0], "unknown action '%s' (see --help)", v);
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      if (!parse_action (v, &a)) {
+        return usage_error (argv[0], "unknown action '%s' (see --help)", v);
+      }
 
-          params.enabled[a] = 0;
-        }
-      else
-        {
-          return usage_error (argv[0], "unknown argument '%s'", arg);
-        }
+      params.enabled[a] = 0;
+    } else {
+      return usage_error (argv[0], "unknown argument '%s'", arg);
     }
+  }
 
   // At least one action must remain
   bool any_enabled = false;
-  for (int a = 0; a < NSS_AT_LEN; ++a)
+  for (int a = 0; a < NSS_AT_LEN; ++a) {
     any_enabled = any_enabled || params.enabled[a];
+  }
 
-  if (!any_enabled)
+  if (!any_enabled) {
     return usage_error (argv[0], "all actions are disabled");
+  }
 
   params.seed              = seed;
   params.commit_hash       = commit_hash;
@@ -261,29 +264,25 @@ main (int argc, char **argv)
   srand ((unsigned)seed);
 
   struct ns_simulation *simul = ns_simul_open (params, &e);
-  if (simul == NULL)
-    {
-      error_log_consume (&e);
-      return EXIT_FAILURE;
-    }
+  if (simul == NULL) {
+    error_log_consume (&e);
+    return EXIT_FAILURE;
+  }
 
   i_timer timer;
-  if (i_timer_create (&timer, &e))
-    {
-      error_log_consume (&e);
-      ns_simul_close (simul, &e);
-      return EXIT_FAILURE;
-    }
+  if (i_timer_create (&timer, &e)) {
+    error_log_consume (&e);
+    ns_simul_close (simul, &e);
+    return EXIT_FAILURE;
+  }
 
-  // Register SIGINT. Windows has no sigaction(2) - its CRT only offers the
-  // ANSI signal(), which is enough for flipping the `running` flag.
+  // Register SIGINT.
 #if PLATFORM_WINDOWS
-  if (signal (SIGINT, exit_handler) == SIG_ERR)
-    {
-      perror ("signal");
-      ns_simul_close (simul, &e);
-      return EXIT_FAILURE;
-    }
+  if (signal (SIGINT, exit_handler) == SIG_ERR) {
+    perror ("signal");
+    ns_simul_close (simul, &e);
+    return EXIT_FAILURE;
+  }
 #else
   struct sigaction sa;
   memset (&sa, 0, sizeof (sa));
@@ -291,28 +290,26 @@ main (int argc, char **argv)
   sigemptyset (&sa.sa_mask);
   sa.sa_flags = 0;
 
-  if (sigaction (SIGINT, &sa, NULL) == -1)
-    {
-      perror ("sigaction");
-      ns_simul_close (simul, &e);
-      return EXIT_FAILURE;
-    }
+  if (sigaction (SIGINT, &sa, NULL) == -1) {
+    perror ("sigaction");
+    ns_simul_close (simul, &e);
+    return EXIT_FAILURE;
+  }
 #endif
 
   int rc = EXIT_SUCCESS;
 
-  while (running)
-    {
-      if (ns_simul_step (simul, &e) < 0)
-        {
-          error_log_consume (&e);
-          rc = EXIT_FAILURE;
-          break;
-        }
-
-      if (i_timer_now_s (&timer) > (f64)duration)
-        running = false;
+  while (running) {
+    if (ns_simul_step (simul, &e) < 0) {
+      error_log_consume (&e);
+      rc = EXIT_FAILURE;
+      break;
     }
+
+    if (i_timer_now_s (&timer) > (f64)duration) {
+      running = false;
+    }
+  }
 
   ns_simul_close (simul, &e);
 
