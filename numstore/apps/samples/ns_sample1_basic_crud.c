@@ -19,12 +19,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+// MSVC packs with #pragma pack rather than __attribute__.
+#ifdef _MSC_VER
+#  define PACK_PUSH __pragma (pack (push, 1))
+#  define PACK_POP  __pragma (pack (pop))
+#  define PACKED
+#else
+#  define PACK_PUSH
+#  define PACK_POP
+#  define PACKED __attribute__ ((packed))
+#endif
+
+PACK_PUSH
+
 struct example
 {
   float    a;
   int32_t  b;
   uint32_t d[5][10];
-} __attribute__ ((packed));
+} PACKED;
+
+PACK_POP
 
 // Little utils
 static void print_example (const char *label, struct example *ex, int size);

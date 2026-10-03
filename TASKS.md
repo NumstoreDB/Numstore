@@ -12,12 +12,20 @@ Publish pynumstore to pypi and post an announcement on reddit
   numstore library
 - [ ] Fix broken seeds 
     - seed=53529417 seqid=7642841
-      "$exe" \
-        --dbname "simtest_macos-latest.db" \
-        --duration 10 \
-        --seed "$seed" \
-        --commit-hash "ab8b955c1f890852b1a9d5f21e81d5366de73e18" \
-        --seqid "$seqid"
+          "$exe" \
+            --dbname "simtest_macos-latest.db" \
+            --duration 10 \
+            --seed "$seed" \
+            --commit-hash "ab8b955c1f890852b1a9d5f21e81d5366de73e18" \
+            --seqid "$seqid"
+    - seed=97029924 seqid=53793608
+          "$exe" \
+            --dbname "simtest_linux-aarch64.db" \
+            --duration 10 \
+            --seed "$seed" \
+            --commit-hash "c27452d72a52a10919acffeb0fa7b1dab20c7619" \
+            --seqid "$seqid"
+          shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
 Supported Architectures
 =======================
