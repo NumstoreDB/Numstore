@@ -73,12 +73,14 @@ err_t
 impl_open_r (void *vfs, i_file *dest, const char *fname, error *e)
 {
   (void)vfs;
+  // OPEN_EXISTING, not OPEN_ALWAYS: read-only opens must fail on a missing
+  // file like POSIX O_RDONLY, not create an empty one.
   HANDLE h = CreateFileA (
       fname,
       GENERIC_READ,
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
       NULL,
-      OPEN_ALWAYS,
+      OPEN_EXISTING,
       FILE_ATTRIBUTE_NORMAL,
       NULL
   );

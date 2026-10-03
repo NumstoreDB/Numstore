@@ -6,6 +6,10 @@
 
 .PHONY: all release release-package python python-upload python-upload-prod clean format
 
+# NLOG=1 compiles out logging (CI uses it to keep expected-error traces out of
+# the log). Takes effect at configure time, so it needs a fresh build dir.
+CMAKE_CONFIG_FLAGS := $(if $(NLOG),-DNS_NLOG=ON,)
+
 all: build/debug/CMakeCache.txt
 	cmake --build build/debug
 
@@ -18,11 +22,11 @@ release-package: release
 
 # Debug configuration
 build/debug/CMakeCache.txt:
-	cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug
+	cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug $(CMAKE_CONFIG_FLAGS)
 
 # Release configuration
 build/release/CMakeCache.txt:
-	cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
+	cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release $(CMAKE_CONFIG_FLAGS)
 
 #############################################
 ### Python bindings

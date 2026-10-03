@@ -7,9 +7,15 @@ include(GNUInstallDirs)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# for MSVC: as of 19.51 its <stdatomic.h> is still gated behind /experimental:c11atomics 
+# for MSVC: as of 19.51 its <stdatomic.h> is still gated behind /experimental:c11atomics
 if(MSVC)
     add_compile_options(/experimental:c11atomics)
+endif()
+
+# NLOG compiles out leveled logging. Test CASE/PASSED/FAILURE lines survive.
+option(NS_NLOG "Compile out logging" OFF)
+if(NS_NLOG)
+    add_compile_definitions(NLOG)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
