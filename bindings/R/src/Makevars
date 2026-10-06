@@ -1,0 +1,12 @@
+# Point these at your numstore install if it isn't on the default paths, e.g.
+#   NUMSTORE_CFLAGS="-I/opt/numstore/include" \
+#   NUMSTORE_LIBS="-L/opt/numstore/lib -Wl,-rpath,/opt/numstore/lib" \
+#   R CMD INSTALL numstoreR
+NUMSTORE_CPP ?= ../../../cpp
+
+CXX_STD      = CXX17
+PKG_CPPFLAGS = -I$(NUMSTORE_CPP) $(NUMSTORE_CFLAGS)
+PKG_LIBS     = $(NUMSTORE_LIBS) -lnumstore
+
+vpath %.cpp $(NUMSTORE_CPP)
+OBJECTS = RcppExports.o bindings.o numstore.o

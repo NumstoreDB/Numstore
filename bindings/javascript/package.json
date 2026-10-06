@@ -1,0 +1,29 @@
+{
+  "name": "numstore",
+  "version": "0.1.0",
+  "description": "Node.js bindings for numstore",
+  "license": "Apache-2.0",
+  "author": "Theo Lincke",
+  "main": "lib/index.js",
+  "types": "index.d.ts",
+  "gypfile": true,
+  "files": [
+    "lib/",
+    "src/",
+    "include/",
+    "binding.gyp",
+    "index.d.ts"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "build": "node-gyp rebuild",
+    "test": "node --expose-gc --test test/numstore.test.js",
+    "test:stub": "node scripts/test-with-stub.js"
+  },
+  "devDependencies": {
+    "node-gyp": "^12.0.0"
+  }
+}
