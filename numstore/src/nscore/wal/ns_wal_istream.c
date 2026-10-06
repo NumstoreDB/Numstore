@@ -20,9 +20,8 @@
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_testing.h"
-#include "os/ns_file.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -48,6 +47,7 @@ DEFINE_DBG_ASSERT (struct wal_istream, wal_istream, w, { ASSERT (w); })
 struct wal_istream
 {
   struct i_mem mem;
+  struct i_os  os;     // The OS that opened [fd] - it must close it too
   i_file       fd;     // The file we're reading
   lsn          curlsn; // Where we are within the entire log file
   lsn          lsnidx; // Where we are within the current log
@@ -59,14 +59,15 @@ struct wal_istream
 /// LOGR Mode
 
 struct wal_istream *
-walis_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e)
+walis_open (const char *fname, struct i_mem mem, struct i_os os, error *e)
 {
-  struct wal_istream *dest = i_malloc (mem, 1, sizeof *dest, e);
+  struct wal_istream *dest = mem.table->malloc (mem.self, 1, sizeof *dest, e);
   if (dest == NULL) {
     return NULL;
   }
 
   dest->mem = mem;
+  dest->os  = os;
 
   /**
    * We'll open in write mode too
@@ -75,21 +76,21 @@ walis_open (const char *fname, struct i_mem mem, struct i_file_system fs, error 
    *
    * In the future I forsee this going away.
    */
-  if (i_open_r (fs, &dest->fd, fname, e)) {
-    i_free (mem, dest);
+  if (os.table->open_file_r (os.self, &dest->fd, fname, e)) {
+    mem.table->free (mem.self, dest);
     return NULL;
   }
 
-  const i64 len = i_file_size (&dest->fd, e);
+  const i64 len = dest->fd.table->file_size (dest->fd.self, e);
   if (len < 0) {
-    i_close (&dest->fd, e);
-    i_free (mem, dest);
+    os.table->close_file (os.self, dest->fd.self, e);
+    mem.table->free (mem.self, dest);
     return NULL;
   }
 
-  if (i_seek (&dest->fd, 0, I_SEEK_SET, e) < 0) {
-    i_close (&dest->fd, e);
-    i_free (mem, dest);
+  if (dest->fd.table->seek (dest->fd.self, 0, I_SEEK_SET, e) < 0) {
+    os.table->close_file (os.self, dest->fd.self, e);
+    mem.table->free (mem.self, dest);
     return NULL;
   }
 
@@ -109,15 +110,15 @@ TEST (walis_open)
 
   TEST_CASE ("happy path")
   {
-    i_remove_quiet (fs, "foo", &e);
+    os.table->remove_quiet (os.self, "foo", &e);
     i_file fp = {0};
-    i_open_w (fs, &fp, "foo", &e);
-    i_close (&fp, &e);
+    os.table->open_file_w (os.self, &fp, "foo", &e);
+    os.table->close_file (os.self, fp.self, &e);
 
-    struct wal_istream *wis = walis_open ("foo", mem, fs, &e);
+    struct wal_istream *wis = walis_open ("foo", mem, os, &e);
     test_assert (wis != NULL);
     walis_close (wis, &e);
-    i_remove_quiet (fs, "foo", &e);
+    os.table->remove_quiet (os.self, "foo", &e);
   }
 }
 #endif
@@ -126,8 +127,8 @@ err_t
 walis_close (struct wal_istream *w, error *e)
 {
   DBG_ASSERT (wal_istream, w);
-  i_close (&w->fd, e);
-  i_free (w->mem, w);
+  w->os.table->close_file (w->os.self, w->fd.self, e);
+  w->mem.table->free (w->mem.self, w);
   return error_trace (e);
 }
 
@@ -138,7 +139,7 @@ walis_seek (struct wal_istream *w, const lsn pos, error *e)
 
   DBG_ASSERT (wal_istream, w);
 
-  const i64 res = i_seek (&w->fd, pos, I_SEEK_SET, e);
+  const i64 res = w->fd.table->seek (w->fd.self, pos, I_SEEK_SET, e);
   if (res < 0) {
     latch_unlock (&w->latch);
     return error_trace (e);
@@ -176,7 +177,7 @@ walis_read_all (
     *rlsn = w->curlsn;
   }
 
-  const i64 bread = i_read_all (&w->fd, data, len, e);
+  const i64 bread = w->fd.table->read_all (w->fd.self, data, len, e);
   if (bread < 0) {
     latch_unlock (&w->latch);
     return error_trace (e);
@@ -229,7 +230,7 @@ err_t
 walis_crash (struct wal_istream *w, error *e)
 {
   DBG_ASSERT (wal_istream, w);
-  i_close (&w->fd, e);
-  i_free (w->mem, w);
+  w->os.table->close_file (w->os.self, w->fd.self, e);
+  w->mem.table->free (w->mem.self, w);
   return error_trace (e);
 }

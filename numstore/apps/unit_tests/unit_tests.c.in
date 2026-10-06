@@ -19,8 +19,9 @@
 #include <string.h>
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
-#include "os/ns_time.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 int
 main (int argc, char **argv)
@@ -37,16 +38,29 @@ main (int argc, char **argv)
 
   int ntests = 0;
   error   e = error_create ();
-  i_timer timer;
-  if (i_timer_create (&timer, &e) != SUCCESS)
+
+  // The harness runs on the real OS - each test body gets its own
+  struct i_os harness_os;
+  if (system_os_create (default_mem (), &harness_os, &e) != SUCCESS)
   {
+    return -1;
+  }
+
+  i_timer timer;
+  if (harness_os.table->timer_create (harness_os.self, &timer, &e) != SUCCESS)
+  {
+    system_os_free (harness_os);
     return -1;
   }
   int         failed = 0;
   const char *failed_names[%TEST_COUNT%];
   %CALLS%
-  printf ("Time: %llu ms\n", (unsigned long long)i_timer_now_ms (&timer));
-  i_timer_free (&timer);
+  printf (
+      "Time: %llu ms\n",
+      (unsigned long long)(timer.table->timer_now_ns (timer.self) / 1000000ULL)
+  );
+  harness_os.table->timer_free (harness_os.self, timer.self);
+  system_os_free (harness_os);
   if (failed)
   {
     i_log_failure ("FAILED TESTS (%d):\n", failed);

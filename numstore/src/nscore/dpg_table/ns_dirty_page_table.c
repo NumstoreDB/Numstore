@@ -19,8 +19,8 @@
 #include "core/ns_htable.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
-#include "os/ns_memory.h"
-#include "os/ns_threading.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 #include <stddef.h>
 
@@ -92,7 +92,7 @@ DEFINE_DBG_ASSERT (struct dpg_table, dirty_pg_table, d, { ASSERT (d); })
 struct dpg_table *
 dpgt_open (struct i_mem mem, error *e)
 {
-  struct dpg_table *dest = i_malloc (mem, 1, sizeof *dest, e);
+  struct dpg_table *dest = mem.table->malloc (mem.self, 1, sizeof *dest, e);
   if (dest == NULL) {
     goto failed;
   }
@@ -107,7 +107,7 @@ dpgt_open (struct i_mem mem, error *e)
   return dest;
 
 dest_failed:
-  i_free (mem, dest);
+  mem.table->free (mem.self, dest);
 failed:
   return NULL;
 }
@@ -119,7 +119,7 @@ dpgt_close (struct dpg_table *t)
   struct i_mem mem = t->mem;
   slab_alloc_destroy (&t->alloc);
   htable_free (t->t);
-  i_free (mem, t);
+  mem.table->free (mem.self, t);
 }
 
 struct dpgt_merge_ctx
@@ -395,7 +395,7 @@ dpgt_crash (struct dpg_table *t)
   struct i_mem mem = t->mem;
   htable_free (t->t);
   slab_alloc_destroy (&t->alloc);
-  i_free (mem, t);
+  mem.table->free (mem.self, t);
 }
 
 #ifndef NDEBUG
@@ -873,21 +873,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        i_thread_create (default_threading (), &t1, dpgt_insert_thread, &ctx1, &e),
+        os.table->thread_create (os.self, &t1, dpgt_insert_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t2, dpgt_insert_thread, &ctx2, &e),
+        os.table->thread_create (os.self, &t2, dpgt_insert_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t3, dpgt_insert_thread, &ctx3, &e),
+        os.table->thread_create (os.self, &t3, dpgt_insert_thread, &ctx3, &e),
         SUCCESS
     );
 
-    i_thread_join (default_threading (), &t1, &e);
-    i_thread_join (default_threading (), &t2, &e);
-    i_thread_join (default_threading (), &t3, &e);
+    os.table->thread_join (os.self, t1.self);
+    os.table->thread_join (os.self, t2.self);
+    os.table->thread_join (os.self, t3.self);
 
     int total_inserts = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_inserts, 300);
@@ -929,21 +929,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        i_thread_create (default_threading (), &t1, dpgt_reader_thread, &ctx1, &e),
+        os.table->thread_create (os.self, &t1, dpgt_reader_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t2, dpgt_reader_thread, &ctx2, &e),
+        os.table->thread_create (os.self, &t2, dpgt_reader_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t3, dpgt_reader_thread, &ctx3, &e),
+        os.table->thread_create (os.self, &t3, dpgt_reader_thread, &ctx3, &e),
         SUCCESS
     );
 
-    i_thread_join (default_threading (), &t1, &e);
-    i_thread_join (default_threading (), &t2, &e);
-    i_thread_join (default_threading (), &t3, &e);
+    os.table->thread_join (os.self, t1.self);
+    os.table->thread_join (os.self, t2.self);
+    os.table->thread_join (os.self, t3.self);
 
     int total_reads = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_reads, 300);
@@ -981,21 +981,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        i_thread_create (default_threading (), &t1, dpgt_updater_thread, &ctx1, &e),
+        os.table->thread_create (os.self, &t1, dpgt_updater_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t2, dpgt_updater_thread, &ctx2, &e),
+        os.table->thread_create (os.self, &t2, dpgt_updater_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t3, dpgt_updater_thread, &ctx3, &e),
+        os.table->thread_create (os.self, &t3, dpgt_updater_thread, &ctx3, &e),
         SUCCESS
     );
 
-    i_thread_join (default_threading (), &t1, &e);
-    i_thread_join (default_threading (), &t2, &e);
-    i_thread_join (default_threading (), &t3, &e);
+    os.table->thread_join (os.self, t1.self);
+    os.table->thread_join (os.self, t2.self);
+    os.table->thread_join (os.self, t3.self);
 
     int total_updates = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_updates, 300);
@@ -1040,21 +1040,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        i_thread_create (default_threading (), &t1, dpgt_remove_thread, &ctx1, &e),
+        os.table->thread_create (os.self, &t1, dpgt_remove_thread, &ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t2, dpgt_remove_thread, &ctx2, &e),
+        os.table->thread_create (os.self, &t2, dpgt_remove_thread, &ctx2, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t3, dpgt_remove_thread, &ctx3, &e),
+        os.table->thread_create (os.self, &t3, dpgt_remove_thread, &ctx3, &e),
         SUCCESS
     );
 
-    i_thread_join (default_threading (), &t1, &e);
-    i_thread_join (default_threading (), &t2, &e);
-    i_thread_join (default_threading (), &t3, &e);
+    os.table->thread_join (os.self, t1.self);
+    os.table->thread_join (os.self, t2.self);
+    os.table->thread_join (os.self, t3.self);
 
     int total_removes = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_removes, 300);
@@ -1096,21 +1096,21 @@ TEST (dpgt_concurrent)
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        i_thread_create (default_threading (), &t1, dpgt_insert_thread, &insert_ctx, &e),
+        os.table->thread_create (os.self, &t1, dpgt_insert_thread, &insert_ctx, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t2, dpgt_reader_thread, &read_ctx1, &e),
+        os.table->thread_create (os.self, &t2, dpgt_reader_thread, &read_ctx1, &e),
         SUCCESS
     );
     test_assert_equal (
-        i_thread_create (default_threading (), &t3, dpgt_reader_thread, &read_ctx2, &e),
+        os.table->thread_create (os.self, &t3, dpgt_reader_thread, &read_ctx2, &e),
         SUCCESS
     );
 
-    i_thread_join (default_threading (), &t1, &e);
-    i_thread_join (default_threading (), &t2, &e);
-    i_thread_join (default_threading (), &t3, &e);
+    os.table->thread_join (os.self, t1.self);
+    os.table->thread_join (os.self, t2.self);
+    os.table->thread_join (os.self, t3.self);
 
     // All inserts must have succeeded
     test_assert_equal (insert_ctx.counter, 100);

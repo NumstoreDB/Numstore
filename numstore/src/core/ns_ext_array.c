@@ -22,7 +22,7 @@
 #include "core/ns_stride.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <string.h>
 
@@ -41,7 +41,7 @@ void
 ext_array_free (struct ext_array *r)
 {
   if (r->data) {
-    i_free (r->mem, r->data);
+    r->mem.table->free (r->mem.self, r->data);
   }
   r->data = NULL;
   r->len  = 0;
@@ -52,7 +52,7 @@ static err_t
 ext_array_reserve (struct ext_array *r, const u32 cap, error *e)
 {
   if (cap > r->cap) {
-    u8 *data = i_realloc (r->mem, r->data, cap * 2, 1, e);
+    u8 *data = r->mem.table->realloc (r->mem.self, r->data, cap * 2, 1, e);
     if (data == NULL) {
       return error_trace (e);
     }
@@ -72,14 +72,14 @@ ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u3
 
   const u32 tlen = r->len - ofst;
   if (tlen > 0) {
-    u8 *tail = i_malloc (r->mem, tlen, 1, e);
+    u8 *tail = r->mem.table->malloc (r->mem.self, tlen, 1, e);
     if (tail == NULL) {
       return error_trace (e);
     }
     memcpy (tail, r->data + ofst, tlen);
     memcpy (r->data + ofst, src, slen);
     memcpy (r->data + ofst + slen, tail, tlen);
-    i_free (r->mem, tail);
+    r->mem.table->free (r->mem.self, tail);
   } else {
     memcpy (r->data + ofst, src, slen);
   }

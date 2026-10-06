@@ -14,8 +14,8 @@
 
 #include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_malloc.h"
 #include "numstore.h"
-#include "os/ns_memory.h"
 
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
@@ -49,14 +49,14 @@ TEST (0003_rollback_invalid_wal_header)
 
   // TXN 4 (auto): INSERT ofst=0 nelem=53797
   {
-    u32 *data = i_malloc (mem, 53797 * sizeof (u32), 1, NULL);
+    u32 *data = mem.table->malloc (mem.self, 53797 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     rand_bytes (data, 53797 * sizeof (u32));
 
     res = ns_write (db, NULL, data, 53797 * sizeof (u32), "insert testvar %d %d", 0, 53797);
     test_assert_int_equal (res, 53797);
 
-    i_free (mem, data);
+    mem.table->free (mem.self, data);
   }
 
   // TXN 5 (auto): WRITE start=23070 stride=7888 stop=54622 nelems=4
@@ -140,14 +140,14 @@ TEST (0003_rollback_invalid_wal_header)
 
   // INSERT ofst=22727 nelem=73857
   {
-    u32 *data = i_malloc (mem, 73857 * sizeof (u32), 1, NULL);
+    u32 *data = mem.table->malloc (mem.self, 73857 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     rand_bytes (data, 73857 * sizeof (u32));
 
     res = ns_write (db, tx, data, 73857 * sizeof (u32), "insert testvar %d %d", 22727, 73857);
     test_assert_int_equal (res, 73857);
 
-    i_free (mem, data);
+    mem.table->free (mem.self, data);
   }
 
   // REMOVE start=5509 stride=92363 stop=190235 nelems=2
@@ -160,14 +160,14 @@ TEST (0003_rollback_invalid_wal_header)
 
   // INSERT ofst=8986 nelem=15959
   {
-    u32 *data = i_malloc (mem, 15959 * sizeof (u32), 1, NULL);
+    u32 *data = mem.table->malloc (mem.self, 15959 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     rand_bytes (data, 15959 * sizeof (u32));
 
     res = ns_write (db, tx, data, 15959 * sizeof (u32), "insert testvar %d %d", 8986, 15959);
     test_assert_int_equal (res, 15959);
 
-    i_free (mem, data);
+    mem.table->free (mem.self, data);
   }
 
   // READ start=118059 stride=13676 stop=145411 nelems=2
@@ -191,14 +191,14 @@ TEST (0003_rollback_invalid_wal_header)
 
   // INSERT ofst=29193 nelem=27045
   {
-    u32 *data = i_malloc (mem, 27045 * sizeof (u32), 1, NULL);
+    u32 *data = mem.table->malloc (mem.self, 27045 * sizeof (u32), 1, NULL);
     test_assert (data != NULL);
     rand_bytes (data, 27045 * sizeof (u32));
 
     res = ns_write (db, tx, data, 27045 * sizeof (u32), "insert testvar %d %d", 29193, 27045);
     test_assert_int_equal (res, 27045);
 
-    i_free (mem, data);
+    mem.table->free (mem.self, data);
   }
 
   // READ start=39413 stride=49536 stop=88949 nelems=1

@@ -14,9 +14,9 @@
 
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/pager/ns_pager.h"
 #include "numstore.h"
-#include "os/ns_memory.h"
 
 #ifndef NDEBUG
 
@@ -26,7 +26,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("sample5_bug")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
 
     struct txn *tx  = smfile_begin (smf);
@@ -58,7 +58,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("crash_before_commit_discards_uncommitted")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
     struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
@@ -84,7 +84,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("crash_keeps_committed_drops_followon_uncommitted")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
 
     struct txn *tx  = smfile_begin (smf);
@@ -108,7 +108,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("repeated_crash_recover_cycles_preserve_all_commits")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
 
     smfile_t      *smf = smfile_open ("testdb");
     struct txn *tx  = smfile_begin (smf);
@@ -141,7 +141,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("crash_with_no_new_commits_is_a_noop")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
     struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "STABLE", 0, 6);
@@ -165,7 +165,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("many_small_commits_then_crash")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t *smf = smfile_open ("testdb");
 
     for (int i = 0; i < 26; i++) {
@@ -190,7 +190,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("multi_insert_single_txn_is_atomic_through_crash")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
 
     struct txn *tx  = smfile_begin (smf);
@@ -215,7 +215,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("append_at_end_offset_then_crash")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
     struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "ABCDE", 0, 5);
@@ -242,7 +242,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("insert_at_zero_shifts_existing_through_crash")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
     struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "WORLD", 0, 5);
@@ -274,9 +274,9 @@ TEST_DISABLED (aries_crash)
     };
 
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
 
-    char *big = i_malloc (mem, BIG_SIZE, 1, &e);
+    char *big = mem.table->malloc (mem.self, BIG_SIZE, 1, &e);
     for (int i = 0; i < BIG_SIZE; i++) {
       big[i] = (char)('A' + (i % 26));
     }
@@ -288,12 +288,12 @@ TEST_DISABLED (aries_crash)
     smfile_crash (smf);
 
     smf          = smfile_open ("testdb");
-    char *actual = i_malloc (mem, BIG_SIZE, 1, &e);
+    char *actual = mem.table->malloc (mem.self, BIG_SIZE, 1, &e);
     smfile_read (smf, NULL, actual, 1, 0, 1, BIG_SIZE);
     test_assert_memequal (big, actual, BIG_SIZE);
     smfile_close (smf);
-    i_free (mem, big);
-    i_free (mem, actual);
+    mem.table->free (mem.self, big);
+    mem.table->free (mem.self, actual);
   }
 
    //10. Reads at the boundary of recovered content.
@@ -303,7 +303,7 @@ TEST_DISABLED (aries_crash)
   TEST_CASE ("tail_read_after_recovery")
   {
     error e = error_create ();
-    pgr_delete_single_file ("testdb", &e);
+    pgr_delete_single_file ("testdb", os, &e);
     smfile_t      *smf = smfile_open ("testdb");
     struct txn *tx  = smfile_begin (smf);
     smfile_insert (smf, tx, "0123456789", 0, 10);

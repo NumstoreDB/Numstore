@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/wal/ns_wal.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,12 +22,19 @@
 static void
 walf_print (const char *fname)
 {
-  error       e  = error_create ();
+  error       e = error_create ();
 
-  struct wal *wf = wal_open (fname, default_mem (), default_filesystem (), &e);
+  struct i_os os;
+  if (system_os_create (default_mem (), &os, &e)) {
+    error_log_consume (&e);
+    return;
+  }
+
+  struct wal *wf = wal_open (fname, default_mem (), os, &e);
 
   if (wf == NULL) {
     error_log_consume (&e);
+    system_os_free (os);
     return;
   }
 
@@ -49,6 +56,7 @@ walf_print (const char *fname)
 
 theend:
   wal_close (wf, &e);
+  system_os_free (os);
 }
 
 int

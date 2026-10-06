@@ -157,8 +157,8 @@ test_visit_func (struct variable *var, void *ctx, error *e)
 TEST (ns_visit_variables)
 {
   error e = error_create ();
-  nsdb_cleanup ("test", &e);
-  struct nsdb *db = nsdb_open ("test", mem, fs, &e);
+  nsdb_cleanup ("test", os, &e);
+  struct nsdb *db = nsdb_open ("test", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
 
   TEST_CASE ("no variables")

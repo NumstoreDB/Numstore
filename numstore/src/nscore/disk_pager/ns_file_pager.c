@@ -18,9 +18,8 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
-#include "os/ns_file.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 #include <stdatomic.h>
 #include <string.h>
@@ -35,6 +34,7 @@ enum file_pager_flags
 struct file_pager
 {
   struct i_mem mem;
+  struct i_os  os; // The OS that opened [f] - it must close it too
   _Atomic pgno npages;
   i_file       f;
   u32          header_len;
@@ -45,26 +45,27 @@ struct file_pager
 DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
 
 struct file_pager *
-fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 header_len, error *e)
+fpgr_open (const char *dbname, struct i_mem mem, struct i_os os, u32 header_len, error *e)
 {
   // Allocate space for the pager
-  struct file_pager *dest = i_malloc (mem, 1, sizeof *dest, e);
+  struct file_pager *dest = mem.table->malloc (mem.self, 1, sizeof *dest, e);
   if (dest == NULL) {
     return NULL;
   }
 
   // Basic initialization
   dest->mem = mem;
+  dest->os  = os;
   latch_init (&dest->l);
   dest->flags = 0;
 
   // Open the database in read write mode
-  if (i_open_rw (fs, &dest->f, dbname, e)) {
+  if (os.table->open_file_rw (os.self, &dest->f, dbname, e)) {
     goto failed;
   }
 
   // We'll use the size for checking if it's new or not
-  i64 size = i_file_size (&dest->f, e);
+  i64 size = dest->f.table->file_size (dest->f.self, e);
 
   // Failed
   if (size < 0) {
@@ -77,7 +78,7 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
 
     // extend the file to the header length
     if (size == 0) {
-      if (i_truncate (&dest->f, header_len, e)) {
+      if (dest->f.table->truncate (dest->f.self, header_len, e)) {
         goto fp_failed;
       }
     }
@@ -105,8 +106,8 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, u32 he
   return dest;
 
 fp_failed:
-  i_close (&dest->f, e);
-  i_free (mem, dest);
+  os.table->close_file (os.self, dest->f.self, e);
+  mem.table->free (mem.self, dest);
 
 failed:
   return NULL;
@@ -120,33 +121,33 @@ TEST (fpgr_open)
   _Static_assert (NS_PAGE_SIZE > 2, "NS_PAGE_SIZE should be > 2 for file_pager test");
 
   i_file fp = {0};
-  i_open_rw (fs, &fp, "test.db", &e);
+  os.table->open_file_rw (os.self, &fp, "test.db", &e);
 
   // edge case: file shorter than header
-  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
-  struct file_pager *pager = fpgr_open ("test.db", mem, fs, 0, &e);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &e));
+  struct file_pager *pager = fpgr_open ("test.db", mem, os, 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // edge case: file size = half a page
-  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE / 2, &e));
-  pager = fpgr_open ("test.db", mem, fs, 0, &e);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &e));
+  pager = fpgr_open ("test.db", mem, os, 0, &e);
   test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
 
   // happy path: file exactly header size, zero pages
-  test_fail_if (i_truncate (&fp, 0, &e));
-  pager = fpgr_open ("test.db", mem, fs, 0, &e);
+  test_fail_if (fp.table->truncate (fp.self, 0, &e));
+  pager = fpgr_open ("test.db", mem, os, 0, &e);
   test_assert_int_equal ((int)atomic_load (&pager->npages), 0);
   test_fail_if (fpgr_close (pager, &e));
 
   // happy path: file exactly header size, more pages
-  test_fail_if (i_truncate (&fp, 3 * NS_PAGE_SIZE, &e));
-  pager = fpgr_open ("test.db", mem, fs, 0, &e);
+  test_fail_if (fp.table->truncate (fp.self, 3 * NS_PAGE_SIZE, &e));
+  pager = fpgr_open ("test.db", mem, os, 0, &e);
   test_assert_equal (atomic_load (&pager->npages), 3);
   test_fail_if (fpgr_close (pager, &e));
 
   // There were 2 refs to file - close it here too
-  test_fail_if (i_close (&fp, &e));
-  test_fail_if (i_unlink (fs, "test.db", &e));
+  test_fail_if (os.table->close_file (os.self, fp.self, &e));
+  test_fail_if (os.table->unlink (os.self, "test.db", &e));
 }
 #endif
 
@@ -155,8 +156,8 @@ fpgr_close (struct file_pager *f, error *e)
 {
   DBG_ASSERT (file_pager, f);
   latch_lock (&f->l); // Never release this
-  i_close (&f->f, e);
-  i_free (f->mem, f);
+  f->os.table->close_file (f->os.self, f->f.self, e);
+  f->mem.table->free (f->mem.self, f);
   return error_trace (e);
 }
 
@@ -166,7 +167,7 @@ fpgr_reset (struct file_pager *f, error *e)
   DBG_ASSERT (file_pager, f);
 
   latch_lock (&f->l);
-  if (i_truncate (&f->f, f->header_len, e)) {
+  if (f->f.table->truncate (f->f.self, f->header_len, e)) {
     latch_unlock (&f->l);
     return error_trace (e);
   }
@@ -202,7 +203,7 @@ fpgr_extend (struct file_pager *p, pgno dest, error *e)
     return SUCCESS;
   }
 
-  if (i_truncate (&p->f, p->header_len + NS_PAGE_SIZE * (dest), e)) {
+  if (p->f.table->truncate (p->f.self, p->header_len + NS_PAGE_SIZE * (dest), e)) {
     latch_unlock (&p->l);
     goto failed;
   }
@@ -222,31 +223,40 @@ TEST (fpgr_new)
   i_file fp = {0};
   error  e  = error_create ();
 
-  test_fail_if (i_open_rw (fs, &fp, "test.db", &e));
+  test_fail_if (os.table->open_file_rw (os.self, &fp, "test.db", &e));
 
-  test_fail_if (i_truncate (&fp, 0, &e));
+  test_fail_if (fp.table->truncate (fp.self, 0, &e));
 
-  struct file_pager *pager = fpgr_open ("test.db", mem, fs, 0, &e);
+  struct file_pager *pager = fpgr_open ("test.db", mem, os, 0, &e);
 
   // Create a new page
   test_fail_if (fpgr_extend (pager, 1, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 1);
-  test_assert_int_equal (i_file_size (&fp, &e), NS_PAGE_SIZE * atomic_load (&pager->npages));
+  test_assert_int_equal (
+      fp.table->file_size (fp.self, &e),
+      NS_PAGE_SIZE * atomic_load (&pager->npages)
+  );
 
   // Add two more pages and do the same thing
   test_fail_if (fpgr_extend (pager, 2, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 2);
-  test_assert_int_equal (i_file_size (&fp, &e), NS_PAGE_SIZE * atomic_load (&pager->npages));
+  test_assert_int_equal (
+      fp.table->file_size (fp.self, &e),
+      NS_PAGE_SIZE * atomic_load (&pager->npages)
+  );
 
   test_fail_if (fpgr_extend (pager, 3, &e));
   test_assert_int_equal (atomic_load (&pager->npages), 3);
-  test_assert_int_equal (i_file_size (&fp, &e), NS_PAGE_SIZE * atomic_load (&pager->npages));
+  test_assert_int_equal (
+      fp.table->file_size (fp.self, &e),
+      NS_PAGE_SIZE * atomic_load (&pager->npages)
+  );
 
   test_fail_if (fpgr_close (pager, &e));
 
   // There were 2 refs to file - close it here too
-  test_fail_if (i_close (&fp, &e));
-  test_fail_if (i_unlink (fs, "test.db", &e));
+  test_fail_if (os.table->close_file (os.self, fp.self, &e));
+  test_fail_if (os.table->unlink (os.self, "test.db", &e));
 }
 #endif
 
@@ -271,7 +281,13 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
   }
 
   // Read all from file
-  const i64 nread = i_pread_all (&p->f, dest, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e);
+  const i64 nread = p->f.table->pread_all (
+      p->f.self,
+      dest,
+      NS_PAGE_SIZE,
+      p->header_len + pg * NS_PAGE_SIZE,
+      e
+  );
 
   if (nread == 0) {
     error_causef (e, ERR_CORRUPT, "pread returned 0 bytes at page %" PRpgno, pg);
@@ -299,7 +315,7 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (i_pwrite_all (&p->f, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e)) {
+  if (p->f.table->pwrite_all (p->f.self, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e)) {
     goto theend;
   }
 
@@ -320,11 +336,11 @@ fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, erro
 
   DBG_ASSERT (file_pager, p);
 
-  if (i_pwrite_all (&p->f, src, size, ofst, e)) {
+  if (p->f.table->pwrite_all (p->f.self, src, size, ofst, e)) {
     goto theend;
   }
 
-  if (i_fsync (&p->f, e)) {
+  if (p->f.table->fsync (p->f.self, e)) {
     goto theend;
   }
 
@@ -333,25 +349,6 @@ theend:
   latch_unlock (&p->l);
 
   return error_trace (e);
-}
-
-static inline err_t
-i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
-{
-  const i64 ret = i_pread_all (fp, dest, n, offset, e);
-  WRAP (ret);
-
-  if (unlikely ((u64)ret != n)) {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
-        ret,
-        (i64)n
-    );
-  }
-
-  return SUCCESS;
 }
 
 err_t
@@ -365,7 +362,7 @@ fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
   DBG_ASSERT (file_pager, p);
 
   // Read all from file
-  if (i_pread_all_expect (&p->f, dest, size, ofst, e)) {
+  if (file_pread_all_expect (p->f, dest, size, ofst, e)) {
     goto theend;
   }
 
@@ -386,13 +383,13 @@ TEST (fpgr_read_write)
   i_file fp = {0};
   error  e  = error_create ();
 
-  test_fail_if (i_open_rw (fs, &fp, "test.db", &e));
+  test_fail_if (os.table->open_file_rw (os.self, &fp, "test.db", &e));
 
   // File should be size 0
-  test_fail_if (i_truncate (&fp, 0, &e));
+  test_fail_if (fp.table->truncate (fp.self, 0, &e));
 
   // Open a new pager
-  struct file_pager *pager = fpgr_open ("test.db", mem, fs, 0, &e);
+  struct file_pager *pager = fpgr_open ("test.db", mem, os, 0, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
   // happy path: new page, write, then read back
   test_fail_if (fpgr_extend (pager, 2, &e));
@@ -415,8 +412,8 @@ TEST (fpgr_read_write)
 
   // There's 2 refs to this file, close the other one
   test_fail_if (fpgr_close (pager, &e));
-  test_fail_if (i_close (&fp, &e));
-  test_fail_if (i_unlink (fs, "test.db", &e));
+  test_fail_if (os.table->close_file (os.self, fp.self, &e));
+  test_fail_if (os.table->unlink (os.self, "test.db", &e));
 }
 #endif
 
@@ -425,7 +422,7 @@ fpgr_crash (struct file_pager *p, error *e)
 {
   DBG_ASSERT (file_pager, p);
   latch_lock (&p->l);
-  i_close (&p->f, e);
-  i_free (p->mem, p);
+  p->os.table->close_file (p->os.self, p->f.self, e);
+  p->mem.table->free (p->mem.self, p);
   return error_trace (e);
 }

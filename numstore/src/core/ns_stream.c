@@ -18,7 +18,7 @@
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <string.h>
 

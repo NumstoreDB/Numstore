@@ -20,7 +20,7 @@
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_file.h"
+#include "core/os/ns_os.h"
 
 #include <stdbool.h>
 

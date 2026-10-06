@@ -23,11 +23,12 @@
 #  include "core/ns_numerics.h"
 #  include "core/ns_platform.h"
 #  include "core/ns_testing.h"
+#  include "core/os/ns_malloc.h"
+#  include "core/os/ns_os.h"
 #  include "nscore/algorithms/var/ns_var_algorithms.h"
 #  include "nscore/page/ns_page.h"
 #  include "nscore/page/ns_page_delegate.h"
 #  include "nscore/pager/ns_pager.h"
-#  include "os/ns_memory.h"
 
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {
   ASSERT (f);
@@ -56,17 +57,22 @@ err_t
 pgr_fixture_create (struct pgr_fixture *dest)
 {
   ASSERT (dest);
-  dest->e = error_create ();
+  dest->e   = error_create ();
+  dest->mem = default_mem ();
 
-  if (unlikely (pgr_delete_single_file ("testdb", &dest->e) < SUCCESS)) {
+  // The fixture owns its OS - teardown frees it
+  if (unlikely (system_os_create (dest->mem, &dest->os, &dest->e))) {
     return error_trace (&dest->e);
   }
 
-  dest->mem       = default_mem ();
-  dest->fs        = default_filesystem ();
+  if (unlikely (pgr_delete_single_file ("testdb", dest->os, &dest->e) < SUCCESS)) {
+    system_os_free (dest->os);
+    return error_trace (&dest->e);
+  }
 
-  struct pager *p = pgr_open ("testdb", dest->mem, dest->fs, &dest->e);
+  struct pager *p = pgr_open ("testdb", dest->mem, dest->os, &dest->e);
   if (p == NULL) {
+    system_os_free (dest->os);
     return dest->e.cause_code;
   }
 
@@ -98,6 +104,7 @@ pgr_fixture_teardown (struct pgr_fixture *f)
 {
   pgr_close (f->p, &f->e);
   arena_alloc_free_all (&f->alloc);
+  system_os_free (f->os);
   return f->e.cause_code;
 }
 

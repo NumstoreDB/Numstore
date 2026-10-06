@@ -25,10 +25,15 @@
 #  include <io.h>
 #  include <windows.h>
 
-#  define O_EXTRA_FLAGS   _O_BINARY
-#  define CLOCK_MONOTONIC 1
+#  define O_EXTRA_FLAGS _O_BINARY
 
 // MSVC has no clock_gettime; QueryPerformanceCounter is the monotonic source.
+// mingw does have one (winpthreads' <pthread_time.h>, pulled in by <time.h>),
+// and it defines CLOCK_MONOTONIC - so that macro is the signal for whether a
+// shim is needed at all. Defining one unconditionally redefined mingw's.
+#  ifndef CLOCK_MONOTONIC
+#    define CLOCK_MONOTONIC 1
+
 static int
 clock_gettime (int clk, struct timespec *ts)
 {
@@ -40,6 +45,7 @@ clock_gettime (int clk, struct timespec *ts)
   ts->tv_nsec = (long)(((ctr.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart);
   return 0;
 }
+#  endif
 
 static long
 pread (int fd, void *buf, size_t n, long long offset)

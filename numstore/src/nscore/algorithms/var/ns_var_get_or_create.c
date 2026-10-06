@@ -18,13 +18,13 @@
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "os/ns_memory.h"
 
 err_t
 ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
@@ -159,7 +159,7 @@ TEST (ns_var_get_or_create)
         pgr_begin_txn (&tx, f.p, &f.e);
 
         u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
-        char *name = i_malloc (f.mem, len, 1, &f.e);
+        char *name = f.mem.table->malloc (f.mem.self, len, 1, &f.e);
         for (u32 k = 0; k < len - 1; ++k) {
           name[k] = 'a' + randu32r (0, 26);
         }
@@ -178,7 +178,7 @@ TEST (ns_var_get_or_create)
         test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
         test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
 
-        i_free (f.mem, name);
+        f.mem.table->free (f.mem.self, name);
 
         pgr_commit (f.p, &tx, &f.e);
       }
@@ -204,7 +204,7 @@ TEST (ns_var_get_or_create)
         char *name;
         {
           u32 len = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
-          name    = i_malloc (f.mem, len, 1, &f.e);
+          name    = f.mem.table->malloc (f.mem.self, len, 1, &f.e);
           for (u32 k = 0; k < len - 1; ++k) {
             name[k] = 'a' + randu32r (0, 26);
           }
@@ -228,7 +228,7 @@ TEST (ns_var_get_or_create)
         test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
         test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
 
-        i_free (f.mem, name);
+        f.mem.table->free (f.mem.self, name);
 
         pgr_commit (f.p, &tx, &f.e);
       }

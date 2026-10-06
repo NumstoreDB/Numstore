@@ -3,10 +3,10 @@
 #include "core/ns_error.h"
 #include "core/ns_stride.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/nsdb/ns_nsdb.h"
-#include "os/ns_memory.h"
-#include "os/ns_time.h"
 
 #include <string.h>
 
@@ -26,7 +26,7 @@ ns_db_set_file_size (struct ns_db *db, error *e)
 static err_t
 ns_db_reopen_handle (struct ns_db *db, error *e)
 {
-  struct nsdb *ns = nsdb_open (db->dbname, db->test_mem, db->test_fs, e);
+  struct nsdb *ns = nsdb_open (db->dbname, db->test_mem, db->test_os, e);
   if (ns == NULL) {
     return error_trace (e);
   }
@@ -45,14 +45,15 @@ ns_db_reopen_handle (struct ns_db *db, error *e)
 
 struct ns_db *
 ns_db_new (
-    struct i_mem         reliable_mem,
-    struct i_mem         test_mem,
-    struct i_file_system test_fs,
-    const char          *dbname,
-    error               *e
+    struct i_mem reliable_mem,
+    struct i_os  reliable_os,
+    struct i_mem test_mem,
+    struct i_os  test_os,
+    const char  *dbname,
+    error       *e
 )
 {
-  struct ns_db *ret = i_malloc (reliable_mem, 1, sizeof *ret, e);
+  struct ns_db *ret = reliable_mem.table->malloc (reliable_mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -63,31 +64,32 @@ ns_db_new (
       .var_committed       = NULL,
       .var_working         = NULL,
       .reliable_mem        = reliable_mem,
+      .reliable_os         = reliable_os,
       .total_working_ns    = 0,
       .prev_op_duration_ns = 0,
       .db_size_bytes       = 0,
 
       .test_mem            = test_mem,
-      .test_fs             = test_fs,
+      .test_os             = test_os,
       .dbname              = dbname,
   };
 
   // After the struct assignment above, otherwise it wipes the timer
-  if (i_timer_create (&ret->timer, e) < 0) {
-    i_free (reliable_mem, ret);
+  if (reliable_os.table->timer_create (reliable_os.self, &ret->timer, e)) {
+    reliable_mem.table->free (reliable_mem.self, ret);
     return NULL;
   }
 
   if (ns_db_reopen_handle (ret, e)) {
-    i_timer_free (&ret->timer);
-    i_free (reliable_mem, ret);
+    reliable_os.table->timer_free (reliable_os.self, ret->timer.self);
+    reliable_mem.table->free (reliable_mem.self, ret);
     return NULL;
   }
 
   if (ns_db_set_file_size (ret, e)) {
     nsdb_close (ret->db, e);
-    i_timer_free (&ret->timer);
-    i_free (reliable_mem, ret);
+    reliable_os.table->timer_free (reliable_os.self, ret->timer.self);
+    reliable_mem.table->free (reliable_mem.self, ret);
     return NULL;
   }
 
@@ -100,22 +102,22 @@ ns_db_close (struct ns_db *db, error *e)
   ASSERT (db->tx == NULL);
   ASSERT (db->var_working == NULL);
 
-  i_cfree (db->reliable_mem, db->var_committed);
+  mem_cfree (db->reliable_mem, db->var_committed);
 
   err_t ret = nsdb_close (db->db, e);
-  i_timer_free (&db->timer);
-  i_free (db->reliable_mem, db);
+  db->reliable_os.table->timer_free (db->reliable_os.self, db->timer.self);
+  db->reliable_mem.table->free (db->reliable_mem.self, db);
 
   return ret;
 }
 
-#define pre_op(db) u64 now = i_timer_now_ns (&db->timer)
+#define pre_op(db) u64 now = db->timer.table->timer_now_ns (db->timer.self)
 
-#define post_op(db)                                              \
-  do {                                                           \
-    db->prev_op_duration_ns = i_timer_now_ns (&db->timer) - now; \
-    db->total_working_ns += db->prev_op_duration_ns;             \
-  }                                                              \
+#define post_op(db)                                                                 \
+  do {                                                                              \
+    db->prev_op_duration_ns = db->timer.table->timer_now_ns (db->timer.self) - now; \
+    db->total_working_ns += db->prev_op_duration_ns;                                \
+  }                                                                                 \
   while (0)
 
 // Returns a reliable_mem copy of src, or NULL if src is NULL.
@@ -130,7 +132,7 @@ ns_db_copy_name (struct ns_db *db, const char *src, error *e)
   // +1 so the copy stays NUL terminated - it's handed to strfcstr(), which
   // calls strlen() on it.
   size_t len  = strlen (src) + 1;
-  char  *copy = i_malloc (db->reliable_mem, len, 1, e);
+  char  *copy = db->reliable_mem.table->malloc (db->reliable_mem.self, len, 1, e);
   if (copy == NULL) {
     return NULL;
   }
@@ -157,7 +159,7 @@ ns_db_begin_txn (struct ns_db *db, error *e)
   post_op (db);
 
   if (tx == NULL) {
-    i_cfree (db->reliable_mem, var_working);
+    mem_cfree (db->reliable_mem, var_working);
     return error_trace (e);
   }
 
@@ -181,7 +183,7 @@ ns_db_rollback_txn (struct ns_db *db, error *e)
     return error_trace (e);
   }
 
-  i_cfree (db->reliable_mem, db->var_working);
+  mem_cfree (db->reliable_mem, db->var_working);
   db->tx          = NULL;
   db->var_working = NULL;
   return ns_db_set_file_size (db, e);
@@ -204,13 +206,13 @@ ns_db_commit_txn (struct ns_db *db, error *e)
   post_op (db);
 
   if (ret < 0) {
-    i_cfree (db->reliable_mem, new_committed);
+    mem_cfree (db->reliable_mem, new_committed);
     return error_trace (e);
   }
 
   // Transfer state
-  i_cfree (db->reliable_mem, db->var_working);
-  i_cfree (db->reliable_mem, db->var_committed);
+  mem_cfree (db->reliable_mem, db->var_working);
+  mem_cfree (db->reliable_mem, db->var_committed);
   db->var_committed = new_committed;
   db->tx            = NULL;
   db->var_working   = NULL;
@@ -237,7 +239,7 @@ ns_db_crash_and_reopen (struct ns_db *db, error *e)
     return error_trace (e);
   }
 
-  i_cfree (db->reliable_mem, db->var_working);
+  mem_cfree (db->reliable_mem, db->var_working);
   db->tx          = NULL;
   db->var_working = NULL;
   return ns_db_set_file_size (db, e);
@@ -283,10 +285,10 @@ static inline void
 ns_db_set_cur (struct ns_db *db, char *vname)
 {
   if (db->tx) {
-    i_cfree (db->reliable_mem, db->var_working);
+    mem_cfree (db->reliable_mem, db->var_working);
     db->var_working = vname;
   } else {
-    i_cfree (db->reliable_mem, db->var_committed);
+    mem_cfree (db->reliable_mem, db->var_committed);
     db->var_committed = vname;
   }
 }
@@ -377,7 +379,7 @@ ns_db_delete_and_switch (struct ns_db *db, const char *next, error *e)
   nsdb_plan_free (plan);
 
   if (ret < 0) {
-    i_cfree (db->reliable_mem, copy);
+    mem_cfree (db->reliable_mem, copy);
     return error_trace (e);
   }
 
@@ -520,8 +522,8 @@ ns_db_write (struct ns_db *db, const void *data, b_size dlen, struct stride str,
 TEST (ns_db)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test_db.db", &e);
-  struct ns_db *db = ns_db_new (mem, mem, fs, "./test_db.db", &e);
+  nsdb_cleanup ("./test_db.db", os, &e);
+  struct ns_db *db = ns_db_new (mem, os, mem, os, "./test_db.db", &e);
   test_assert (db != NULL);
 
   u32 dest[20];
@@ -673,7 +675,7 @@ TEST (ns_db)
   }
 
   ns_db_close (db, &e);
-  nsdb_cleanup ("./test_db.db", &e);
+  nsdb_cleanup ("./test_db.db", os, &e);
 
 #  undef STR
 #  undef validate

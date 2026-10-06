@@ -19,14 +19,13 @@
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
 #include "core/ns_numerics.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/testing/simulation/ns_db_state_machine.h"
 #include "nscore/testing/simulation/ns_operation_generator.h"
 #include "nscore/testing/simulation/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
-#include "os/ns_time.h"
 
 #include <string.h>
 
@@ -63,15 +62,17 @@ struct ns_simulation
   i_timer                    timer;
   struct arena_alloc         alloc;
 
-  // The file system used by the system under test
-  // (can be faulty)
-  struct i_file_system       test_filesystem;
+  // The OS the system under test runs on (can be faulty)
+  struct i_os                test_os;
 
   // Memory used by the test (can be faulty)
   struct i_mem               test_mem;
 
   // Memory used for things that aren't being tested
   struct i_mem               reliable_mem;
+
+  // OS used for things that aren't being tested (metrics timers and the like)
+  struct i_os                reliable_os;
 
   // Configuration
   enum write_validation_mode write_validation;
@@ -507,7 +508,7 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
         buf,
         sizeof (buf),
         "%.6f",
-        (double)(i_timer_now_ns (&meta->timer) - meta->start) / 1e6
+        (double)(meta->timer.table->timer_now_ns (meta->timer.self) - meta->start) / 1e6
     );
     print_entry ("elapsed_ms", buf);
   }
@@ -765,31 +766,33 @@ ns_simul_open (struct ns_simulation_params params, error *e)
   DBG_ASSERT (ns_simulation_params, &params);
 
   // Clean up the database before starting
-  if (nsdb_cleanup (params.dbname, e) < 0) {
+  if (nsdb_cleanup (params.dbname, params.reliable_os, e) < 0) {
     return NULL;
   }
 
-  struct ns_simulation *ret = i_malloc (params.reliable_mem, 1, sizeof *ret, e);
+  struct ns_simulation *ret = params.reliable_mem.table
+                                  ->malloc (params.reliable_mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
 
   struct ns_ref *ref = ns_ref_new (default_mem (), e);
   if (ref == NULL) {
-    i_free (params.reliable_mem, ret);
+    params.reliable_mem.table->free (params.reliable_mem.self, ret);
     return NULL;
   }
 
   struct ns_db *db = ns_db_new (
       params.reliable_mem,
+      params.reliable_os,
       params.test_mem,
-      params.test_filesystem,
+      params.test_os,
       params.dbname,
       e
   );
   if (db == NULL) {
     ns_ref_free (ref);
-    i_free (params.reliable_mem, ret);
+    params.reliable_mem.table->free (params.reliable_mem.self, ret);
     return NULL;
   }
 
@@ -812,15 +815,25 @@ ns_simul_open (struct ns_simulation_params params, error *e)
       .total_bytes_moved = 0,
 
       .reliable_mem      = params.reliable_mem,
+      .reliable_os       = params.reliable_os,
       .test_mem          = params.test_mem,
-      .test_filesystem   = params.test_filesystem,
+      .test_os           = params.test_os,
 
       .write_validation  = params.write_validation,
   };
 
   memcpy (ret->enabled, params.enabled, sizeof (params.enabled));
 
-  ret->start = i_timer_now_ns (&ret->timer);
+  // Metrics run off the reliable OS - a faulty timer would only make the
+  // numbers lie
+  if (params.reliable_os.table->timer_create (params.reliable_os.self, &ret->timer, e)) {
+    ns_db_close (db, e);
+    ns_ref_free (ref);
+    params.reliable_mem.table->free (params.reliable_mem.self, ret);
+    return NULL;
+  }
+
+  ret->start = ret->timer.table->timer_now_ns (ret->timer.self);
   ret->clock = ret->start;
 
   return ret;
@@ -836,7 +849,8 @@ ns_simul_close (struct ns_simulation *meta, error *e)
   }
   ns_ref_free (meta->ref);
   ns_db_close (meta->db, e);
-  i_free (meta->reliable_mem, meta);
+  meta->reliable_os.table->timer_free (meta->reliable_os.self, meta->timer.self);
+  meta->reliable_mem.table->free (meta->reliable_mem.self, meta);
   return error_trace (e);
 }
 
@@ -909,9 +923,10 @@ TEST (ns_simul)
         .max_insert_len    = 1000,
         .max_tsize         = 1000,
         .sample_space_prob = 1,
-        .test_filesystem   = fs,
+        .test_os           = os,
         .test_mem          = mem,
         .reliable_mem      = mem,
+        .reliable_os       = os,
     };
     struct ns_simulation *simul = ns_simul_open (params, &e);
 

@@ -14,12 +14,10 @@
 
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/testing/simulation/ns_numstore_simulation.h"
 #include "nscore/testing/simulation/ns_operation_generator.h"
-#include "os/ns_memory.h"
-#include "os/ns_os_vtable.h"
-#include "os/ns_time.h"
-#include "os/test/ns_dst.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -38,6 +36,7 @@
 #define DEFAULT_SEED        1231241123ULL
 #define DEFAULT_COMMIT_HASH "foo"
 #define DEFAULT_SEQID       10
+#define DEFAULT_FAIL_PCT    0.0f
 
 static _Atomic bool running = true;
 
@@ -61,10 +60,16 @@ print_usage (FILE *out, const char *prog)
       "  --seed N             RNG seed                      (default: %llu)\n"
       "  --commit-hash HASH   commit hash to record         (default: %s)\n"
       "  --seqid N            sequence id                   (default: %d)\n"
+      "  --fail-percent P     fault injection rate in [0,1]  (default: %.4f)\n"
       "  --disable ACTION     disable an action; repeatable\n"
       "  -h, --help           show this help\n"
       "\n"
       "Values can be given as --flag VALUE or --flag=VALUE.\n"
+      "\n"
+      "The system under test runs on a faulty OS and a faulty allocator that\n"
+      "wrap the real ones: every fallible call fails with probability\n"
+      "--fail-percent. At 0 they are pure pass-through. Metrics and the\n"
+      "reference model always run on the real OS and allocator.\n"
       "\n"
       "Actions (all enabled by default; NSS_ prefix and case optional):\n",
       prog,
@@ -72,7 +77,8 @@ print_usage (FILE *out, const char *prog)
       DEFAULT_DURATION,
       DEFAULT_SEED,
       DEFAULT_COMMIT_HASH,
-      DEFAULT_SEQID
+      DEFAULT_SEQID,
+      (double)DEFAULT_FAIL_PCT
   );
 
   for (int a = 0; a < NSS_AT_LEN; ++a) {
@@ -139,6 +145,27 @@ parse_u64 (const char *s, u64 max, u64 *out)
   return true;
 }
 
+/// Strict parse of a probability: whole string must be a number in [0, 1]
+static bool
+parse_prob (const char *s, float *out)
+{
+  char  *end;
+  double v;
+
+  if (*s == '\0') {
+    return false;
+  }
+
+  errno = 0;
+  v     = strtod (s, &end);
+  if (errno != 0 || *end != '\0' || !(v >= 0.0 && v <= 1.0)) {
+    return false;
+  }
+
+  *out = (float)v;
+  return true;
+}
+
 /// ASCII case-insensitive compare of up to n chars
 static bool
 ieqn (const char *a, const char *b, size_t n)
@@ -182,6 +209,7 @@ main (int argc, char **argv)
   u64                         seed        = DEFAULT_SEED;
   const char                 *commit_hash = DEFAULT_COMMIT_HASH;
   u64                         seqid       = DEFAULT_SEQID;
+  float                       fail_pct    = DEFAULT_FAIL_PCT;
 
   // All actions enabled by default
   memset (params.enabled, 1, sizeof (params.enabled));
@@ -225,6 +253,13 @@ main (int argc, char **argv)
       if (!parse_u64 (v, UINT32_MAX, &seqid)) {
         return usage_error (argv[0], "invalid seqid '%s'", v);
       }
+    } else if (take_flag ("--fail-percent", argc, argv, &i, &v)) {
+      if (!v || !*v) {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      if (!parse_prob (v, &fail_pct)) {
+        return usage_error (argv[0], "invalid fail percent '%s' (must be in [0, 1])", v);
+      }
     } else if (take_flag ("--disable", argc, argv, &i, &v)) {
       enum ns_action_type a;
 
@@ -251,33 +286,65 @@ main (int argc, char **argv)
     return usage_error (argv[0], "all actions are disabled");
   }
 
-  struct dst_data dst;
-  dst_data_init (&dst, &default_os_vtable);
-
-  params.seed              = seed;
-  params.commit_hash       = commit_hash;
-  params.sequence_id       = (u32)seqid; // range-checked above
-  params.dbname            = dbname;
-  params.max_insert_len    = 1000000;
-  params.max_tsize         = 4096;
-  params.sample_space_prob = 0;
-  params.reliable_mem      = default_mem ();
-  params.test_mem          = dst_mem (&dst);
-  params.test_filesystem   = dst_filesystem (&dst);
-  params.write_validation  = NSS_READ_ALL_AFTER_WRITES;
-
+  // Fault injection is deterministic: randf() is backed by libc rand(), which
+  // srand(seed) below pins, so one (seed, fail-percent) pair replays exactly.
   srand ((unsigned)seed);
 
-  struct ns_simulation *simul = ns_simul_open (params, &e);
-  if (simul == NULL) {
+  // The reliable layer - metrics, the reference model, and the faulty
+  // decorators' own bookkeeping all run on this
+  const struct i_mem reliable_mem = default_mem ();
+
+  struct i_os        reliable_os;
+  if (system_os_create (reliable_mem, &reliable_os, &e)) {
     error_log_consume (&e);
     return EXIT_FAILURE;
   }
 
+  // The layer under test - wraps the reliable one and injects faults
+  struct i_os test_os;
+  if (faulty_os_create (reliable_mem, reliable_os, fail_pct, &test_os, &e)) {
+    error_log_consume (&e);
+    system_os_free (reliable_os);
+    return EXIT_FAILURE;
+  }
+
+  struct i_mem test_mem;
+  if (faulty_mem_create (reliable_mem, fail_pct, &test_mem, &e)) {
+    error_log_consume (&e);
+    faulty_os_free (test_os);
+    system_os_free (reliable_os);
+    return EXIT_FAILURE;
+  }
+
+  params.seed                 = seed;
+  params.commit_hash          = commit_hash;
+  params.sequence_id          = (u32)seqid; // range-checked above
+  params.dbname               = dbname;
+  params.max_insert_len       = 1000000;
+  params.max_tsize            = 4096;
+  params.sample_space_prob    = 0;
+  params.reliable_mem         = reliable_mem;
+  params.reliable_os          = reliable_os;
+  params.test_mem             = test_mem;
+  params.test_os              = test_os;
+  params.write_validation     = NSS_READ_ALL_AFTER_WRITES;
+
+  struct ns_simulation *simul = ns_simul_open (params, &e);
+  if (simul == NULL) {
+    error_log_consume (&e);
+    faulty_mem_free (test_mem);
+    faulty_os_free (test_os);
+    system_os_free (reliable_os);
+    return EXIT_FAILURE;
+  }
+
   i_timer timer;
-  if (i_timer_create (&timer, &e)) {
+  if (reliable_os.table->timer_create (reliable_os.self, &timer, &e)) {
     error_log_consume (&e);
     ns_simul_close (simul, &e);
+    faulty_mem_free (test_mem);
+    faulty_os_free (test_os);
+    system_os_free (reliable_os);
     return EXIT_FAILURE;
   }
 
@@ -285,8 +352,7 @@ main (int argc, char **argv)
 #if PLATFORM_WINDOWS
   if (signal (SIGINT, exit_handler) == SIG_ERR) {
     perror ("signal");
-    ns_simul_close (simul, &e);
-    return EXIT_FAILURE;
+    goto fail;
   }
 #else
   struct sigaction sa;
@@ -297,8 +363,7 @@ main (int argc, char **argv)
 
   if (sigaction (SIGINT, &sa, NULL) == -1) {
     perror ("sigaction");
-    ns_simul_close (simul, &e);
-    return EXIT_FAILURE;
+    goto fail;
   }
 #endif
 
@@ -311,12 +376,26 @@ main (int argc, char **argv)
       break;
     }
 
-    if (i_timer_now_s (&timer) > (f64)duration) {
+    const u64 elapsed_ns = timer.table->timer_now_ns (timer.self);
+    if ((f64)elapsed_ns / 1e9 > (f64)duration) {
       running = false;
     }
   }
 
   ns_simul_close (simul, &e);
+  reliable_os.table->timer_free (reliable_os.self, timer.self);
+  faulty_mem_free (test_mem);
+  faulty_os_free (test_os);
+  system_os_free (reliable_os);
 
   return rc;
+
+fail:
+  ns_simul_close (simul, &e);
+  reliable_os.table->timer_free (reliable_os.self, timer.self);
+  faulty_mem_free (test_mem);
+  faulty_os_free (test_os);
+  system_os_free (reliable_os);
+
+  return EXIT_FAILURE;
 }

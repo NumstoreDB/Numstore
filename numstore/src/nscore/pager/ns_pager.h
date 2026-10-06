@@ -22,13 +22,13 @@
 #include "core/ns_error.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_os.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/wal/ns_wal.h"
-#include "os/ns_filesystem.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -113,7 +113,7 @@ struct pager_header
 struct pager
 {
   struct i_mem             mem;
-  struct i_file_system     fs;
+  struct i_os              os;
 
   struct pager_header      header;
   u8                       _header[PAGE_HEADER_LEN];
@@ -150,8 +150,8 @@ DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p->tnxt);
 })
 
-struct pager *pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *e);
-err_t pgr_delete_single_file (const char *dbname, error *e);
+struct pager *pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e);
+err_t pgr_delete_single_file (const char *dbname, struct i_os os, error *e);
 err_t pgr_close (struct pager *p, error *e);
 err_t pgr_crash (struct pager *p, error *e);
 

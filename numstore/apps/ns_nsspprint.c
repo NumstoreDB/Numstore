@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/page/ns_page.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,15 +38,27 @@ _simple_page_print (struct file_pager *p, const pgno pg, error *e)
 static void
 simple_page_print (const char *fname)
 {
-  error              e  = error_create ();
+  error       e = error_create ();
 
-  struct file_pager *fp = fpgr_open (fname, default_mem (), default_filesystem (), 0, &e);
+  struct i_os os;
+  if (system_os_create (default_mem (), &os, &e)) {
+    error_log_consume (&e);
+    return;
+  }
+
+  struct file_pager *fp = fpgr_open (fname, default_mem (), os, 0, &e);
+  if (fp == NULL) {
+    error_log_consume (&e);
+    system_os_free (os);
+    return;
+  }
 
   for (u32 i = 0; i < fpgr_get_npages (fp); ++i) {
     _simple_page_print (fp, i, &e);
   }
 
   fpgr_close (fp, &e);
+  system_os_free (os);
 }
 
 int

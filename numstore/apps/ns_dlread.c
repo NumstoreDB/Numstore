@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/pager/ns_pager.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,12 +51,19 @@ dl_contents_one_page (FILE *out, const page_h *cur)
 static void
 dl_contents (FILE *out, const char *fname, const pgno pg)
 {
-  error         e    = error_create ();
-  page_h        next = page_h_create ();
+  error       e    = error_create ();
+  page_h      next = page_h_create ();
 
-  struct pager *p    = pgr_open (fname, default_mem (), default_filesystem (), &e);
+  struct i_os os;
+  if (system_os_create (default_mem (), &os, &e)) {
+    error_log_consume (&e);
+    return;
+  }
+
+  struct pager *p = pgr_open (fname, default_mem (), os, &e);
   if (p == NULL) {
     error_log_consume (&e);
+    system_os_free (os);
     return;
   }
 
@@ -69,6 +76,7 @@ dl_contents (FILE *out, const char *fname, const pgno pg)
   while (true) {
     if (cur.mode == PHM_NONE) {
       pgr_close (p, &e);
+      system_os_free (os);
       return;
     }
 

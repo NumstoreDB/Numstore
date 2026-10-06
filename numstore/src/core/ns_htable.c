@@ -19,7 +19,7 @@
 #include "core/ns_string.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <string.h>
 
@@ -32,7 +32,12 @@ DEFINE_DBG_ASSERT (struct htable, htable, t, {
 struct htable *
 htable_create (const u32 n, struct i_mem mem, error *e)
 {
-  struct htable *ret = i_malloc (mem, 1, sizeof (struct htable) + n * sizeof (struct hnode *), e);
+  struct htable *ret = mem.table->malloc (
+      mem.self,
+      1,
+      sizeof (struct htable) + n * sizeof (struct hnode *),
+      e
+  );
 
   if (ret == NULL) {
     return ret;
@@ -55,7 +60,7 @@ htable_free (struct htable *t)
 {
   DBG_ASSERT (htable, t);
 
-  i_free (t->mem, t);
+  t->mem.table->free (t->mem.self, t);
 }
 
 void

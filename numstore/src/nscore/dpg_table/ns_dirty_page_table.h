@@ -30,7 +30,7 @@
 #include "core/ns_htable.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdbool.h>
 

@@ -20,9 +20,9 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/wal/ns_wal_record.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <stdbool.h>
 
@@ -38,7 +38,7 @@ enum wal_flags
 struct wal
 {
   struct i_mem             mem;
-  struct i_file_system     fs;
+  struct i_os              os;
 
   // The file that's open
   struct string            fname;
@@ -60,7 +60,7 @@ struct wal
 DEFINE_DBG_ASSERT (struct wal, wal, w, { ASSERT (w); })
 
 // Lifecycle
-struct wal *wal_open (const char *fname, struct i_mem mem, struct i_file_system fs, error *e);
+struct wal *wal_open (const char *fname, struct i_mem mem, struct i_os os, error *e);
 err_t wal_close (struct wal *w, error *e);
 err_t wal_close_and_delete (struct wal *w, error *e);
 err_t wal_delete_and_reopen (struct wal *w, error *e);

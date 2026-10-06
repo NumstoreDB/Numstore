@@ -20,8 +20,8 @@
 #  include "core/ns_error.h"
 #  include "core/ns_slab_alloc.h"
 #  include "core/ns_stdtypes.h"
-#  include "os/ns_malloc.h"
-#  include "os/windows/ns_windows_os.h"
+#  include "core/os/ns_malloc.h"
+#  include "core/os/windows/ns_windows_os.h"
 
 // Interlocked* instead of <stdatomic.h>: MSVC only ships C11 atomics behind
 // /experimental:c11atomics, and these compile everywhere (MSVC, MinGW, clang-cl).

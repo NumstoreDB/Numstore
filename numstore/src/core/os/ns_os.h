@@ -12,18 +12,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef NS_OS_VTABLE_H
-#define NS_OS_VTABLE_H
+#ifndef NS_OS_H
+#define NS_OS_H
 
 #include "core/ns_bytes.h"
 #include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_malloc.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdbool.h>
-#include <time.h>
 
-#ifdef _WIN32
+#if PLATFORM_WINDOWS
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
 #  endif
@@ -33,6 +33,7 @@
 #  include <windows.h>
 #else
 #  include <pthread.h>
+#  include <time.h>
 #endif
 
 typedef struct i_file   i_file;
@@ -54,7 +55,16 @@ typedef enum
 /// Conventions:
 ///   - os_self:   the i_os.self of the OS that created the object
 ///   - file_self, mutex, cond, thread, timer: the .self of that object
-///   - An object must be freed through the same OS that created it
+///   - An object must be freed through the same OS that created it, which is
+///     why every destructor (close_file, thread_join, mutex_free, cond_free,
+///     timer_free) takes os_self as well as the object's own self. Callers
+///     that hold an object therefore have to hold its i_os too.
+///
+/// Call these explicitly through the handle that owns them, e.g.
+///
+///   os.table->open_file_rw (os.self, &f, "x.db", e);
+///   f.table->pread_all (f.self, dest, n, offset, e);
+///   os.table->close_file (os.self, f.self, e);
 
 struct os_vtable
 {
@@ -62,7 +72,7 @@ struct os_vtable
   err_t (*open_file_rw) (void *os_self, i_file *dest, const char *fname, error *e);
   err_t (*open_file_r) (void *os_self, i_file *dest, const char *fname, error *e);
   err_t (*open_file_w) (void *os_self, i_file *dest, const char *fname, error *e);
-  err_t (*close_file) (void *os_self, void *file, error *e);
+  err_t (*close_file) (void *os_self, void *file_self, error *e);
 
   // File system
   err_t (*remove_quiet) (void *os_self, const char *fname, error *e);
@@ -89,26 +99,26 @@ struct os_vtable
       void  *arg,
       error *e
   );
-  err_t (*thread_join) (void *os_self, void *thread, error *e);
+  void (*thread_join) (void *os_self, void *thread_self);
 
   // Mutexes
   err_t (*mutex_create) (void *os_self, i_mutex *dest, error *e);
-  void (*mutex_free) (void *os_self, void *mutex);
-  void (*mutex_lock) (void *mutex);
-  void (*mutex_unlock) (void *mutex);
+  void (*mutex_free) (void *os_self, void *mutex_self);
+  void (*mutex_lock) (void *mutex_self);
+  void (*mutex_unlock) (void *mutex_self);
 
   // Condition variables
   err_t (*cond_create) (void *os_self, i_cond *dest, error *e);
-  void (*cond_free) (void *os_self, void *cond);
-  void (*cond_wait) (void *cond, void *mutex);
-  void (*cond_timed_wait) (void *cond, void *mutex, u64 msec);
-  void (*cond_signal) (void *cond);
-  void (*cond_broadcast) (void *cond);
+  void (*cond_free) (void *os_self, void *cond_self);
+  void (*cond_wait) (void *cond_self, void *mutex_self);
+  void (*cond_timed_wait) (void *cond_self, void *mutex_self, u64 msec);
+  void (*cond_signal) (void *cond_self);
+  void (*cond_broadcast) (void *cond_self);
 
   // Timer
   err_t (*timer_create) (void *os_self, i_timer *dest, error *e);
-  void (*timer_free) (void *os_self, void *timer);
-  u64 (*timer_now_ns) (void *timer);
+  void (*timer_free) (void *os_self, void *timer_self);
+  u64 (*timer_now_ns) (void *timer_self);
 };
 
 typedef struct i_os
@@ -166,9 +176,65 @@ err_t faulty_os_create (
 void faulty_os_free (struct i_os os);
 
 ////////////////////////////
-/// Run once
+/// Composite file helpers
+///
+/// Built only out of vtable primitives - they are here so the short read
+/// check isn't copy pasted at every call site.
 
-#ifdef _WIN32
+/// pread exactly [n] bytes - a short read is ERR_CORRUPT, not EOF
+HEADER_FUNC err_t
+file_pread_all_expect (i_file f, void *dest, const u64 n, const u64 offset, error *e)
+{
+  const i64 ret = f.table->pread_all (f.self, dest, n, offset, e);
+  if (ret < 0) {
+    return error_trace (e);
+  }
+
+  if (unlikely ((u64)ret != n)) {
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
+        ret,
+        (i64)n
+    );
+  }
+
+  return SUCCESS;
+}
+
+/// read exactly [nbytes] bytes - a short read is ERR_CORRUPT, not EOF
+HEADER_FUNC err_t
+file_read_all_expect (i_file f, void *dest, const u64 nbytes, error *e)
+{
+  const i64 ret = f.table->read_all (f.self, dest, nbytes, e);
+  if (ret < 0) {
+    return error_trace (e);
+  }
+
+  if (unlikely ((u64)ret != nbytes)) {
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "read: short read (got %" PRId64 " of %" PRId64 " bytes)",
+        ret,
+        (i64)nbytes
+    );
+  }
+
+  return SUCCESS;
+}
+
+////////////////////////////
+/// Run once
+///
+/// Deliberately *not* on os_vtable: callers are file-scope lazy initializers
+/// (CRC tables and the like) that have no vtable instance to reach for. It is
+/// still part of the OS layer rather than raw pthread calls at the use site -
+/// pthread.h does not exist under MSVC, which is what builds the Windows
+/// Python extension.
+
+#if PLATFORM_WINDOWS
 typedef INIT_ONCE i_once;
 #  define I_ONCE_INIT INIT_ONCE_STATIC_INIT
 #else
@@ -178,4 +244,16 @@ typedef pthread_once_t i_once;
 
 void i_once_run (i_once *once, void (*fn) (void));
 
-#endif
+////////////////////////////
+/// Sleep
+///
+/// Also not on os_vtable, for the same reason: it needs no OS instance, and
+/// there is nothing per-OS to decorate - a faulty OS that slept differently
+/// would just make tests flaky.
+
+void i_sleep_us (u64 us);
+
+#define i_sleep_ms(ms) i_sleep_us (1000 * (u64)(ms))
+#define i_sleep_s(s)   i_sleep_us (1000000 * (u64)(s))
+
+#endif // NS_OS_H

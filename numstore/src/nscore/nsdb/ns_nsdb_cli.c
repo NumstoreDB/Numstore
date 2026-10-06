@@ -17,12 +17,12 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -32,15 +32,22 @@
 err_t
 nscli_init (struct nscli *cli, const char *dbname)
 {
-  cli->e  = error_create ();
-  cli->db = nsdb_open (dbname, default_mem (), default_filesystem (), &cli->e);
+  cli->e = error_create ();
+
+  if (system_os_create (default_mem (), &cli->os, &cli->e)) {
+    return error_trace (&cli->e);
+  }
+
+  cli->db = nsdb_open (dbname, default_mem (), cli->os, &cli->e);
 
   if (cli->db == NULL) {
+    system_os_free (cli->os);
     return -1;
   }
 
   if (nsdb_writeit_numstore (cli->db, &cli->e) < 0) {
     nsdb_close (cli->db, &cli->e);
+    system_os_free (cli->os);
     return error_trace (&cli->e);
   }
 
@@ -217,4 +224,5 @@ nscli_close (struct nscli *cli)
 {
   arena_alloc_free_all (&cli->step_alloc);
   nsdb_close (cli->db, &cli->e);
+  system_os_free (cli->os);
 }

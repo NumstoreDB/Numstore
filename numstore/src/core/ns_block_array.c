@@ -21,7 +21,7 @@
 #include "core/ns_stride.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -33,7 +33,8 @@ block_array_create (const u32 cap_per_node, struct i_mem mem, error *e)
   ASSERT (cap_per_node > 0);
 
   // Allocate one block
-  struct block_array *ret = i_malloc (mem, 1, sizeof (struct block_array) + cap_per_node, e);
+  struct block_array
+      *ret = mem.table->malloc (mem.self, 1, sizeof (struct block_array) + cap_per_node, e);
   if (ret == NULL) {
     return ret;
   }
@@ -83,7 +84,7 @@ void
 block_array_free (struct block_array *r)
 {
   slab_alloc_destroy (&r->block_alloc);
-  i_free (r->mem, r);
+  r->mem.table->free (r->mem.self, r);
 }
 
 static struct block *

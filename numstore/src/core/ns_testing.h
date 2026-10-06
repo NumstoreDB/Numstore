@@ -19,11 +19,12 @@
 #include <stdbool.h>
 #ifndef NDEBUG
 #  include "core/ns_csx_assert.h" // ASSERT
+#  include "core/ns_error.h"      // error, error_create
 #  include "core/ns_logging.h"    // i_log_info
 #  include "core/ns_platform.h"   // HEADER_FUNC
 #  include "core/ns_utils.h"      // FPREFIX_STR
-#  include "os/ns_filesystem.h"   // struct i_file_system, default_filesystem
-#  include "os/ns_memory.h"       // struct i_mem, default_mem
+#  include "core/os/ns_malloc.h"  // struct i_mem, default_mem
+#  include "core/os/ns_os.h"      // struct i_os, system_os_create
 
 extern int test_ret;
 
@@ -41,16 +42,25 @@ enum
  * @brief Macro for defining new tests
  ******************************************************************************/
 
-#  define TEST(name)                                                             \
-    static void __test_body__##name (struct i_mem mem, struct i_file_system fs); \
-    void __test__##name (void)                                                   \
-    {                                                                            \
-      __test_body__##name (default_mem (), default_filesystem ());               \
-    }                                                                            \
-    static void __test_body__##name (                                            \
-        MAYBE_UNUSED struct i_mem         mem,                                   \
-        MAYBE_UNUSED struct i_file_system fs                                     \
-    )
+/// Every test body gets the process allocator as [mem] and a fresh system OS
+/// as [os]. The OS is freed on the way out, which also asserts that the test
+/// left no file open and no thread unjoined.
+#  define TEST(name)                                                    \
+    static void __test_body__##name (struct i_mem mem, struct i_os os); \
+    void __test__##name (void)                                          \
+    {                                                                   \
+      error        __e   = error_create ();                             \
+      struct i_mem __mem = default_mem ();                              \
+      struct i_os  __os;                                                \
+      if (system_os_create (__mem, &__os, &__e) != SUCCESS) {           \
+        i_log_failure ("%s: system_os_create failed\n", #name);         \
+        test_ret = -1;                                                  \
+        return;                                                         \
+      }                                                                 \
+      __test_body__##name (__mem, __os);                                \
+      system_os_free (__os);                                            \
+    }                                                                   \
+    static void __test_body__##name (MAYBE_UNUSED struct i_mem mem, MAYBE_UNUSED struct i_os os)
 
 #  define TEST_CASE(fmt, ...)                                                                \
     for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1), _tc_prev = test_ret; \

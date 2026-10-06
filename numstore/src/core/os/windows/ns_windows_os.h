@@ -22,16 +22,8 @@
 #  include "core/ns_error.h"
 #  include "core/ns_slab_alloc.h"
 #  include "core/ns_stdtypes.h"
-#  include "os/ns_malloc.h"
-#  include "os/ns_os.h" // pulls in <windows.h> with the right macros
-
-#  ifndef MAX_OPEN_FILES
-#    define MAX_OPEN_FILES 1024
-#  endif
-
-#  ifndef MAX_THREADS
-#    define MAX_THREADS 64
-#  endif
+#  include "core/os/ns_malloc.h"
+#  include "core/os/ns_os.h"
 
 /// File handle slots. Win32 file handles are multiples of 4 and never NULL,
 /// so NULL and 1 are free to use as sentinels. Any other value is occupied

@@ -19,7 +19,7 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_testing.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -66,7 +66,7 @@ slab_alloc_destroy (struct slab_alloc *alloc)
   struct slab *s = alloc->head;
   while (s) {
     struct slab *next = s->next;
-    i_free (alloc->mem, s);
+    alloc->mem.table->free (alloc->mem.self, s);
     s = next;
   }
 
@@ -80,7 +80,7 @@ slab_alloc_extend (struct slab_alloc *alloc, error *e)
   const u32    data_size  = alloc->size * alloc->cap_per_slab;
   const u32    total_size = data_size + sizeof (struct slab);
 
-  struct slab *slab       = i_malloc (alloc->mem, 1, total_size, e);
+  struct slab *slab       = alloc->mem.table->malloc (alloc->mem.self, 1, total_size, e);
   if (slab == NULL) {
     return NULL;
   }
@@ -223,7 +223,7 @@ slab_alloc_free (struct slab_alloc *alloc, void *ptr)
       s->next->prev = s->prev;
     }
 
-    i_free (alloc->mem, s);
+    alloc->mem.table->free (alloc->mem.self, s);
   }
 
   latch_unlock (&alloc->l);

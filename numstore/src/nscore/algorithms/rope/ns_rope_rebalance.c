@@ -26,8 +26,8 @@
 
 #ifndef NDEBUG
 #  include "core/ns_numerics.h"
+#  include "core/os/ns_malloc.h"
 #  include "nscore/page/ns_page_data_list.h"
-#  include "os/ns_memory.h"
 #endif
 
 #include <stdbool.h>
@@ -878,7 +878,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
   pgno *left  = NULL;
 
   if (rlen > 0) {
-    right = i_malloc (f->mem, rlen, sizeof *right, &f->e);
+    right = f->mem.table->malloc (f->mem.self, rlen, sizeof *right, &f->e);
 
     // Ensure they are unique - TODO - make this better
     for (u32 i = 0; i < rlen; ++i) {
@@ -887,7 +887,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
   }
 
   if (llen > 0) {
-    left = i_malloc (f->mem, llen, sizeof *left, &f->e);
+    left = f->mem.table->malloc (f->mem.self, llen, sizeof *left, &f->e);
 
     // Ensure they are unique
     for (u32 i = 0; i < llen; ++i) {
@@ -920,8 +920,8 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
 
   ns_rebalance (&rebalance, &f->e);
 
-  i_cfree (f->mem, right);
-  i_cfree (f->mem, left);
+  mem_cfree (f->mem, right);
+  mem_cfree (f->mem, left);
   nupd_free (output);
   nupd_free (input);
 

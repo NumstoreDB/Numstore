@@ -17,7 +17,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <string.h>
 
@@ -245,7 +245,7 @@ string_greater_equal_string (const struct string left, const struct string right
 err_t
 string_copy (struct string *dest, struct string src, struct i_mem mem, error *e)
 {
-  char *data = i_calloc (mem, src.len + 1, 1, e);
+  char *data = mem.table->calloc (mem.self, src.len + 1, 1, e);
   if (data == NULL) {
     return error_trace (e);
   }

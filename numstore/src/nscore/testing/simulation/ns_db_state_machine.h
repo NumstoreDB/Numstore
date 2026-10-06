@@ -4,10 +4,9 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/types/ns_types.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
-#include "os/ns_time.h"
 
 /**
  * A database stepper is a little state machine that
@@ -16,33 +15,35 @@
  */
 struct ns_db
 {
-  struct nsdb         *db; // The system under test
-  struct txn          *tx; // The active transaction
+  struct nsdb   *db; // The system under test
+  struct txn    *tx; // The active transaction
 
-  char                *var_committed; // Current variable we act on
-  char                *var_working;   // For rollback
+  char          *var_committed; // Current variable we act on
+  char          *var_working;   // For rollback
 
-  struct i_mem         reliable_mem; // Memory used that isn't supposed to fail
+  struct i_mem   reliable_mem; // Memory used that isn't supposed to fail
+  struct i_os    reliable_os;  // OS used that isn't supposed to fail
 
   // Metrics
-  struct i_timer       timer;               // timer used to record metrics
-  u64                  total_working_ns;    // Total time spent working
-  u64                  prev_op_duration_ns; // Time it took to execute the previous operation
-  u64                  db_size_bytes;       // Total size of the database in bytes
+  struct i_timer timer;               // timer used to record metrics
+  u64            total_working_ns;    // Total time spent working
+  u64            prev_op_duration_ns; // Time it took to execute the previous operation
+  u64            db_size_bytes;       // Total size of the database in bytes
 
   // Open parameters
-  const char          *dbname;   // Name of the database
-  struct i_mem         test_mem; // Memory used in test - can fail
-  struct i_file_system test_fs;  // File system used in test - can fail
+  const char    *dbname;   // Name of the database
+  struct i_mem   test_mem; // Memory used in test - can fail
+  struct i_os    test_os;  // OS the system under test runs on - can fail
 };
 
 // Create a new simulation
 struct ns_db *ns_db_new (
-    struct i_mem         reliable_mem,
-    struct i_mem         test_mem,
-    struct i_file_system fs,
-    const char          *dbname,
-    error               *e
+    struct i_mem reliable_mem,
+    struct i_os  reliable_os,
+    struct i_mem test_mem,
+    struct i_os  test_os,
+    const char  *dbname,
+    error       *e
 );
 err_t ns_db_close (struct ns_db *db, error *e);
 

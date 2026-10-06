@@ -20,6 +20,8 @@
 #include "core/ns_numerics.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/smartfiles/ns_smartfiles_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
@@ -27,8 +29,6 @@
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -36,9 +36,9 @@
 /////////////////////////////////////// NSDB
 
 struct nsdb *
-nsdb_open (const char *path, struct i_mem mem, struct i_file_system fs, error *e)
+nsdb_open (const char *path, struct i_mem mem, struct i_os os, error *e)
 {
-  struct nsdb *ret = i_malloc (mem, 1, sizeof *ret, e);
+  struct nsdb *ret = mem.table->malloc (mem.self, 1, sizeof *ret, e);
 
   if (ret == NULL) {
     return NULL;
@@ -48,7 +48,7 @@ nsdb_open (const char *path, struct i_mem mem, struct i_file_system fs, error *e
   slab_alloc_init (&ret->txn_alloc, mem, sizeof (struct txn), 512);
   slab_alloc_init (&ret->plan_alloc, mem, sizeof (struct nsdb_plan), 512);
   ret->mem                 = mem;
-  ret->fs                  = fs;
+  ret->os                  = os;
   ret->path.data           = NULL;
   ret->p                   = NULL;
   ret->e                   = NULL;
@@ -57,14 +57,14 @@ nsdb_open (const char *path, struct i_mem mem, struct i_file_system fs, error *e
 
   // Path
   ret->path.len            = strlen (path);
-  ret->path.data           = i_malloc (mem, ret->path.len, 1, e);
+  ret->path.data           = mem.table->malloc (mem.self, ret->path.len, 1, e);
   if (ret->path.data == NULL) {
     goto failed;
   }
   memcpy ((void *)ret->path.data, path, ret->path.len);
 
   // Pager
-  ret->p = pgr_open (path, mem, fs, e);
+  ret->p = pgr_open (path, mem, os, e);
   if (ret->p == NULL) {
     goto failed;
   }
@@ -82,8 +82,8 @@ failed:
   }
   slab_alloc_destroy (&ret->txn_alloc);
   slab_alloc_destroy (&ret->plan_alloc);
-  i_free (mem, (void *)ret->path.data);
-  i_free (mem, ret);
+  mem.table->free (mem.self, (void *)ret->path.data);
+  mem.table->free (mem.self, ret);
   return NULL;
 }
 
@@ -140,9 +140,9 @@ nsdb_writeit_smartfiles (struct nsdb *db, error *_e)
 }
 
 int
-nsdb_cleanup (const char *path, error *e)
+nsdb_cleanup (const char *path, const struct i_os os, error *e)
 {
-  pgr_delete_single_file (path, e);
+  pgr_delete_single_file (path, os, e);
   return error_trace (e);
 }
 
@@ -157,8 +157,8 @@ nsdb_close (struct nsdb *n, error *_e)
   slab_alloc_destroy (&n->plan_alloc);
 
   struct i_mem mem = n->mem;
-  i_free (mem, (void *)n->path.data);
-  i_free (mem, n);
+  mem.table->free (mem.self, (void *)n->path.data);
+  mem.table->free (mem.self, n);
 
   return ret;
 }
@@ -173,8 +173,8 @@ nsdb_crash (struct nsdb *n, error *_e)
   slab_alloc_destroy (&n->plan_alloc);
 
   struct i_mem mem = n->mem;
-  i_free (mem, (void *)n->path.data);
-  i_free (mem, n);
+  mem.table->free (mem.self, (void *)n->path.data);
+  mem.table->free (mem.self, n);
 
   return err;
 }
@@ -305,7 +305,7 @@ nsdb_auto_finish (struct nsdb *db, struct txn *user_tx, sb_size ret, error *e)
 struct nsdb_var *
 nsdb_var_create (struct i_mem mem, error *e)
 {
-  struct nsdb_var *ret = i_malloc (mem, 1, sizeof *ret, e);
+  struct nsdb_var *ret = mem.table->malloc (mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -324,7 +324,7 @@ nsdb_var_free (struct nsdb_var *var)
   arena_alloc_free_all (&var->alloc);
 
   // Free the container
-  i_free (var->mem, var);
+  var->mem.table->free (var->mem.self, var);
 }
 
 struct arena_alloc *
@@ -461,8 +461,8 @@ nsdb_plan_free (struct nsdb_plan *plan)
 TEST (nsdb_plan_create)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test.db", &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, fs, &e);
+  nsdb_cleanup ("./test.db", os, &e);
+  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
 
   TEST_CASE ("Successfully create a plan")
@@ -597,8 +597,8 @@ nsdb_plan_get_var (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 TEST (nsdb_plan_get_var)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test.db", &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, fs, &e);
+  nsdb_cleanup ("./test.db", os, &e);
+  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
@@ -631,7 +631,7 @@ TEST (nsdb_plan_get_var)
       int n = snprintf (NULL, 0, "create foo %s", tstr);
       test_assert (n > 0);
 
-      char *buffer = i_malloc (mem, n, 1, &e);
+      char *buffer = mem.table->malloc (mem.self, n, 1, &e);
       test_assert (buffer != NULL);
 
       // Create variable
@@ -641,7 +641,7 @@ TEST (nsdb_plan_get_var)
           break;
         }
         case ERR_DUPLICATE_VARIABLE: {
-          i_free (mem, buffer);
+          mem.table->free (mem.self, buffer);
         }
       }
 
@@ -651,7 +651,7 @@ TEST (nsdb_plan_get_var)
       test_assert (type_equal (nsdb_var_type (var), t));
 
       nsdb_var_free (var);
-      i_free (mem, buffer);
+      mem.table->free (mem.self, buffer);
     }
 
     ALLOC_CLOSE (temp);
@@ -740,8 +740,8 @@ nsdb_plan_read (struct nsdb_plan *st, struct txn *user_tx, void *dest, b_size dl
 TEST (nsdb_plan_read)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test.db", &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, fs, &e);
+  nsdb_cleanup ("./test.db", os, &e);
+  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
@@ -892,7 +892,7 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
 
   if (nsdb_auto_finish (st->parent, user_tx, err, e) < 0) {
     if (ret != NULL) {
-      i_free (st->parent->mem, ret);
+      st->parent->mem.table->free (st->parent->mem.self, ret);
     }
     return NULL;
   }
@@ -904,8 +904,8 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
 TEST (nsdb_plan_read_malloc)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test.db", &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, fs, &e);
+  nsdb_cleanup ("./test.db", os, &e);
+  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
@@ -923,7 +923,7 @@ TEST (nsdb_plan_read_malloc)
     void  *dest = nsdb_read_malloc (db, tx, &len, "read foo[0:]", &e);
     test_assert_memequal (src, dest, sizeof (src));
     test_assert_int_equal (len, 10 * sizeof (u32));
-    i_free (mem, dest);
+    mem.table->free (mem.self, dest);
   }
 
   TEST_CASE ("Read a non existent variable")
@@ -954,8 +954,8 @@ TEST (nsdb_plan_read_malloc)
     test_assert_memequal (removed_expected, removed, sizeof (removed_expected));
     test_assert_memequal (remaining_expected, remaining, sizeof (remaining_expected));
 
-    i_free (mem, removed);
-    i_free (mem, remaining);
+    mem.table->free (mem.self, removed);
+    mem.table->free (mem.self, remaining);
   }
 
   TEST_CASE ("Remove a non existent variable")
@@ -1046,8 +1046,8 @@ nsdb_plan_write (struct nsdb_plan *st, struct txn *user_tx, const void *src, b_s
 TEST (nsdb_plan_write)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test.db", &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, fs, &e);
+  nsdb_cleanup ("./test.db", os, &e);
+  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
@@ -1104,8 +1104,8 @@ TEST (nsdb_plan_write)
 TEST (nsdb_auto_txn)
 {
   error e = error_create ();
-  nsdb_cleanup ("./test.db", &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, fs, &e);
+  nsdb_cleanup ("./test.db", os, &e);
+  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
   nsdb_allow_auto_txn (db);
 
@@ -1134,7 +1134,7 @@ TEST (nsdb_auto_txn)
     test_assert (mdest != NULL);
     test_assert_int_equal (len, 10 * sizeof (u32));
     test_assert_memequal (src, mdest, sizeof (src));
-    i_free (mem, mdest);
+    mem.table->free (mem.self, mdest);
     test_assert (!db->auto_tx.in_auto_txn);
   }
 

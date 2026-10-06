@@ -838,7 +838,7 @@ cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, e
     return 0;
   }
 
-  const err_t err = i_writev_all (dest, iov, iovcnt, e);
+  const err_t err = (*dest).table->writev_all ((*dest).self, iov, iovcnt, e);
   if (err != SUCCESS) {
     return error_trace (e);
   }

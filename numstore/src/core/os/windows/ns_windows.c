@@ -19,9 +19,10 @@
 #  include "core/ns_bytes.h"
 #  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h"
+#  include "core/ns_logging.h"
 #  include "core/ns_stdtypes.h"
-#  include "os/ns_os.h"
-#  include "os/windows/ns_windows_os.h"
+#  include "core/os/ns_os.h"
+#  include "core/os/windows/ns_windows_os.h"
 
 #  include <stdbool.h>
 #  include <stdint.h>
@@ -183,7 +184,7 @@ sys_open_file (
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_open_file_rw (void *os_self, i_file *dest, const char *fname, error *e)
 {
   return sys_open_file (
@@ -197,20 +198,20 @@ sys_open_file_rw (void *os_self, i_file *dest, const char *fname, error *e)
   );
 }
 
-err_t
+static err_t
 sys_open_file_r (void *os_self, i_file *dest, const char *fname, error *e)
 {
   // OPEN_EXISTING: a read-only open fails on a missing file, like O_RDONLY
   return sys_open_file (os_self, dest, fname, GENERIC_READ, OPEN_EXISTING, "open_file_r", e);
 }
 
-err_t
+static err_t
 sys_open_file_w (void *os_self, i_file *dest, const char *fname, error *e)
 {
   return sys_open_file (os_self, dest, fname, GENERIC_WRITE, OPEN_ALWAYS, "open_file_w", e);
 }
 
-err_t
+static err_t
 sys_close_file (void *os_self, void *file, error *e)
 {
   struct windows_os *os   = os_self;
@@ -232,7 +233,7 @@ sys_close_file (void *os_self, void *file, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_remove_quiet (void *os_self, const char *fname, error *e)
 {
   (void)os_self;
@@ -248,7 +249,7 @@ sys_remove_quiet (void *os_self, const char *fname, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_unlink (void *os_self, const char *fname, error *e)
 {
   (void)os_self;
@@ -261,7 +262,7 @@ sys_unlink (void *os_self, const char *fname, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_file_exists (void *os_self, const char *fname, bool *dest, error *e)
 {
   (void)os_self;
@@ -285,7 +286,7 @@ sys_file_exists (void *os_self, const char *fname, bool *dest, error *e)
 
 ///////////// System file implementations
 
-err_t
+static err_t
 sys_fsync (void *self, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -297,7 +298,7 @@ sys_fsync (void *self, error *e)
   return SUCCESS;
 }
 
-i64
+static i64
 sys_file_size (void *self, error *e)
 {
   const HANDLE  h = handle_of (self);
@@ -316,7 +317,7 @@ sys_file_size (void *self, error *e)
 /// offset ALSO move the file pointer (unlike pread/pwrite). Don't mix
 /// positional and stream I/O on the same file and expect the stream
 /// position to be untouched.
-i64
+static i64
 sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -354,7 +355,7 @@ sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
   return (i64)nread;
 }
 
-err_t
+static err_t
 sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -391,7 +392,7 @@ sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, erro
 /// No scatter-gather for regular files on Win32 (WriteFileGather needs
 /// unbuffered, page-aligned I/O) - write each buffer in turn. The caller's
 /// iov is never modified.
-err_t
+static err_t
 sys_writev_all (void *self, struct bytes *iov, const int iovcnt, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -433,7 +434,7 @@ sys_writev_all (void *self, struct bytes *iov, const int iovcnt, error *e)
   return SUCCESS;
 }
 
-i64
+static i64
 sys_read_all (void *self, void *dest, const u64 nbytes, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -466,7 +467,7 @@ sys_read_all (void *self, void *dest, const u64 nbytes, error *e)
   return (i64)nread;
 }
 
-err_t
+static err_t
 sys_write_all (void *self, const void *src, const u64 nbytes, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -497,7 +498,7 @@ sys_write_all (void *self, const void *src, const u64 nbytes, error *e)
 
 /// Like ftruncate: sets the size without moving the file pointer
 /// (SetFilePointerEx + SetEndOfFile would leave it at [bytes]).
-err_t
+static err_t
 sys_truncate (void *self, const u64 bytes, error *e)
 {
   const HANDLE          h   = handle_of (self);
@@ -514,7 +515,7 @@ sys_truncate (void *self, const u64 bytes, error *e)
 
 /// Like posix_fallocate: grows the file to at least [bytes], never shrinks
 /// it, and leaves the file pointer alone.
-err_t
+static err_t
 sys_prealloc (void *self, const u64 bytes, error *e)
 {
   const HANDLE  h = handle_of (self);
@@ -544,7 +545,7 @@ sys_prealloc (void *self, const u64 bytes, error *e)
   return SUCCESS;
 }
 
-i64
+static i64
 sys_seek (void *self, const u64 offset, const seek_t whence, error *e)
 {
   const HANDLE h = handle_of (self);
@@ -595,7 +596,7 @@ thread_trampoline (LPVOID param)
   return 0;
 }
 
-err_t
+static err_t
 sys_thread_create (void *os_self, i_thread *dest, void *(*func) (void *), void *context, error *e)
 {
   ASSERT (dest);
@@ -626,12 +627,11 @@ sys_thread_create (void *os_self, i_thread *dest, void *(*func) (void *), void *
   return SUCCESS;
 }
 
-err_t
-sys_thread_join (void *os_self, void *thread, error *e)
+static void
+sys_thread_join (void *os_self, void *thread)
 {
   struct windows_os           *os = os_self;
   struct windows_thread_frame *t  = thread;
-  (void)e; // Unused
   ASSERT (os);
   DBG_ASSERT (thread, t);
 
@@ -657,8 +657,6 @@ sys_thread_join (void *os_self, void *thread, error *e)
   (void)ok;
 
   windows_thread_free (os, t);
-
-  return SUCCESS;
 }
 
 ///////////// System Mutex implementations
@@ -667,7 +665,7 @@ sys_thread_join (void *os_self, void *thread, error *e)
 // behave like the POSIX PTHREAD_MUTEX_ERRORCHECK build: relocking from the
 // owner is a deadlock, unlocking from a non-owner is a bug.
 
-err_t
+static err_t
 sys_mutex_create (void *os_self, i_mutex *dest, error *e)
 {
   ASSERT (dest);
@@ -693,7 +691,7 @@ sys_mutex_create (void *os_self, i_mutex *dest, error *e)
   return SUCCESS;
 }
 
-void
+static void
 sys_mutex_free (void *os_self, void *mutex)
 {
   struct windows_os *os = os_self;
@@ -713,7 +711,7 @@ sys_mutex_free (void *os_self, void *mutex)
   windows_mutex_free (os, m);
 }
 
-void
+static void
 sys_mutex_lock (void *mutex)
 {
   CRITICAL_SECTION *m = mutex;
@@ -730,7 +728,7 @@ sys_mutex_lock (void *mutex)
   EnterCriticalSection (m);
 }
 
-void
+static void
 sys_mutex_unlock (void *mutex)
 {
   CRITICAL_SECTION *m = mutex;
@@ -749,7 +747,7 @@ sys_mutex_unlock (void *mutex)
 
 ///////////// System Condition implementations
 
-err_t
+static err_t
 sys_cond_create (void *os_self, i_cond *dest, error *e)
 {
   ASSERT (dest);
@@ -770,7 +768,7 @@ sys_cond_create (void *os_self, i_cond *dest, error *e)
   return SUCCESS;
 }
 
-void
+static void
 sys_cond_free (void *os_self, void *cond)
 {
   struct windows_os  *os = os_self;
@@ -782,7 +780,7 @@ sys_cond_free (void *os_self, void *cond)
   windows_cond_free (os, c);
 }
 
-void
+static void
 sys_cond_wait (void *cond, void *mutex)
 {
   CONDITION_VARIABLE *c = cond;
@@ -805,7 +803,7 @@ sys_cond_wait (void *cond, void *mutex)
   }
 }
 
-void
+static void
 sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
 {
   CONDITION_VARIABLE *c = cond;
@@ -833,7 +831,7 @@ sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
   }
 }
 
-void
+static void
 sys_cond_signal (void *cond)
 {
   CONDITION_VARIABLE *c = cond;
@@ -842,7 +840,7 @@ sys_cond_signal (void *cond)
   WakeConditionVariable (c);
 }
 
-void
+static void
 sys_cond_broadcast (void *cond)
 {
   CONDITION_VARIABLE *c = cond;
@@ -856,7 +854,7 @@ sys_cond_broadcast (void *cond)
 // QueryPerformanceCounter is the Windows monotonic clock. The frequency is
 // fixed at boot, so it's read once per timer. Neither call fails on XP+.
 
-err_t
+static err_t
 sys_timer_create (void *os_self, i_timer *dest, error *e)
 {
   ASSERT (os_self);
@@ -882,7 +880,7 @@ sys_timer_create (void *os_self, i_timer *dest, error *e)
   return SUCCESS;
 }
 
-void
+static void
 sys_timer_free (void *os_self, void *timer)
 {
   struct windows_os    *os = os_self;
@@ -893,7 +891,7 @@ sys_timer_free (void *os_self, void *timer)
   windows_timer_free (os, t);
 }
 
-u64
+static u64
 sys_timer_now_ns (void *timer)
 {
   struct windows_timer *self = timer;
@@ -914,6 +912,19 @@ sys_timer_now_ns (void *timer)
   const i64 rem = elapsed % freq;
 
   return (u64)(sec * 1000000000LL + (rem * 1000000000LL) / freq);
+}
+
+////////////////////////////
+/// Sleep
+
+void
+i_sleep_us (const u64 us)
+{
+  // Sleep() only has millisecond resolution, and Sleep(0) yields the rest of
+  // the time slice instead of returning immediately. Round a sub-millisecond
+  // request up to 1ms so a caller asking to wait always waits.
+  const u64 ms = (us + 999ULL) / 1000ULL;
+  Sleep (ms > INFINITE - 1 ? INFINITE - 1 : (DWORD)ms);
 }
 
 ////////////////////////////
@@ -989,15 +1000,15 @@ static const struct os_vtable default_os_vtable = {
     .cond_create     = sys_cond_create,
     .cond_free       = sys_cond_free,
     .cond_wait       = sys_cond_wait,
-    .[27;
-1 : 3ucond_timed_wait = sys_cond_timed_wait, .cond_signal = sys_cond_signal,
-    .cond_broadcast = sys_cond_broadcast,
+    .cond_timed_wait = sys_cond_timed_wait,
+    .cond_signal     = sys_cond_signal,
+    .cond_broadcast  = sys_cond_broadcast,
 
     // Timer
-    .timer_create = sys_timer_create, .timer_free = sys_timer_free,
-    .timer_now_ns = sys_timer_now_ns,
-}
-;
+    .timer_create    = sys_timer_create,
+    .timer_free      = sys_timer_free,
+    .timer_now_ns    = sys_timer_now_ns,
+};
 
 err_t
 system_os_create (struct i_mem mem, struct i_os *dest, error *e)

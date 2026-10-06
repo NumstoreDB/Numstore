@@ -18,7 +18,7 @@
 #include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -176,7 +176,7 @@ DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, {
 static struct chunk *
 chunk_create (const u32 size, struct i_mem mem, error *e)
 {
-  struct chunk *ret = i_malloc (mem, sizeof (struct chunk) + size, 1, e);
+  struct chunk *ret = mem.table->malloc (mem.self, sizeof (struct chunk) + size, 1, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -260,7 +260,7 @@ arena_alloc_free_all (struct arena_alloc *ca)
   while (cur != NULL) {
     struct chunk *next = cur->next;
     DBG_ASSERT (chunk, cur);
-    i_free (ca->settings.mem, cur);
+    ca->settings.mem.table->free (ca->settings.mem.self, cur);
     cur = next;
   }
 

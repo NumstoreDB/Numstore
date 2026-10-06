@@ -93,9 +93,14 @@ struct lockt_frame
 };
 
 static err_t
-lockt_frame_init (struct lockt_frame *dest, const struct lt_lock key, error *e)
+lockt_frame_init (
+    struct lockt_frame  *dest,
+    const struct lt_lock key,
+    const struct i_os    os,
+    error               *e
+)
 {
-  WRAP (gr_lock_init (&dest->lock, e));
+  WRAP (gr_lock_init (&dest->lock, os, e));
 
   dest->key      = key;
   dest->refcount = 0;
@@ -146,8 +151,9 @@ frame_unref (struct lockt *t, struct lockt_frame *frame)
 }
 
 err_t
-lockt_init (struct lockt *t, struct i_mem mem, error *e)
+lockt_init (struct lockt *t, struct i_mem mem, const struct i_os os, error *e)
 {
+  t->os = os;
   slab_alloc_init (&t->lock_alloc, mem, sizeof (struct lockt_frame), 1000);
 
   t->table = htable_create (1000, mem, e);
@@ -205,7 +211,7 @@ lockt_lock_once (
       return error_trace (e);
     }
 
-    if (lockt_frame_init (frame, lock, e) != SUCCESS) {
+    if (lockt_frame_init (frame, lock, t->os, e) != SUCCESS) {
       slab_alloc_free (&t->lock_alloc, frame);
       latch_unlock (&t->l);
       return error_trace (e);

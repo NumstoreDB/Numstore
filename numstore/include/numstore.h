@@ -62,9 +62,6 @@ typedef struct nsdb_plan nsdb_plan_t;
 // needing to flush due to size constraints
 #  define WAL_BUFFER_CAP 1048576
 
-// Maximum open files
-#  define MAX_OPEN_FILES 20
-
 #  define NS_END  INT64_MAX
 #  define SMF_END INT64_MAX
 
@@ -107,6 +104,11 @@ typedef uint8_t  wlh;     // WAL header
 #  define PRslsn    PRId64
 #  define PRpgh     PRIu8
 #  define PRwlh     PRIu8
+
+// The private ns_stdtypes.h carries the same block. Claiming the guard here
+// stops it defining everything a second time when both headers are in one
+// translation unit.
+#  define NS_TYPE_ALIASES
 
 #endif
 
