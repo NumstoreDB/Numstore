@@ -85,7 +85,8 @@ struct txn *nsdb_begin (struct nsdb *db, error *e);
 err_t nsdb_commit (struct nsdb *db, struct txn *txn, error *e);
 err_t nsdb_rollback (struct nsdb *db, struct txn *txn, error *e);
 
-/////////////////////////////////////// Variables - immutable variable data from the database
+/////////////////////////////////////// Variables - immutable variable data from
+/// the database
 
 /**
  * A variable has it's own memory space - and has a lifecycle
@@ -117,7 +118,8 @@ pgno nsdb_var_rpt_root (struct nsdb_var *var);
 struct string nsdb_var_name (struct nsdb_var *var);
 struct type *nsdb_var_type (struct nsdb_var *var);
 
-/////////////////////////////////////// Nsdb Plan - a pre compiled statement that can be executed
+/////////////////////////////////////// Nsdb Plan - a pre compiled statement
+/// that can be executed
 
 struct nsdb_plan
 {
@@ -176,10 +178,17 @@ struct nsdb_var *nsdb_plan_get_var (struct nsdb_plan *st, struct txn *tx, error 
  *    u32 dest[10];
  *    sb_size read = ns_read(db, tx, dest, sizeof(dest), "read foo[0:10]");
  *    sb_size removed = ns_read(db, tx, dest, sizeof(dest), "remove foo[0:10]");
- *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "insert foo 0 10");   X FAILS
- *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "get foo");           X FAILS
+ *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "insert foo 0 10");   X
+ * FAILS sb_size len = ns_read(db, tx, dest, sizeof(dest), "get foo"); X FAILS
  */
-sb_size nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char *query, error *e);
+sb_size nsdb_read (
+    struct nsdb *db,
+    struct txn  *txn,
+    void        *dest,
+    b_size       dlen,
+    const char  *query,
+    error       *e
+);
 sb_size nsdb_plan_read (struct nsdb_plan *st, struct txn *tx, void *dest, b_size dlen, error *e);
 
 /**
@@ -194,7 +203,13 @@ sb_size nsdb_plan_read (struct nsdb_plan *st, struct txn *tx, void *dest, b_size
  *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
  *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
  */
-void *nsdb_read_malloc (struct nsdb *db, struct txn *txn, b_size *dlen, const char *query, error *e);
+void *nsdb_read_malloc (
+    struct nsdb *db,
+    struct txn  *txn,
+    b_size      *dlen,
+    const char  *query,
+    error       *e
+);
 void *nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *tx, b_size *dlen, error *e);
 
 /**
@@ -209,8 +224,21 @@ void *nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *tx, b_size *dlen,
  *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
  *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
  */
-sb_size nsdb_write (struct nsdb *db, struct txn *txn, const void *src, b_size dlen, const char *query, error *e);
-sb_size nsdb_plan_write (struct nsdb_plan *st, struct txn *tx, const void *src, b_size dlen, error *e);
+sb_size nsdb_write (
+    struct nsdb *db,
+    struct txn  *txn,
+    const void  *src,
+    b_size       dlen,
+    const char  *query,
+    error       *e
+);
+sb_size nsdb_plan_write (
+    struct nsdb_plan *st,
+    struct txn       *tx,
+    const void       *src,
+    b_size            dlen,
+    error            *e
+);
 
 /**
  * Execute a query and output to the terminal
@@ -220,7 +248,14 @@ err_t nsdb_plan_console (struct nsdb_plan *st, struct txn *tx, error *e);
 
 // Smart files patterns
 sb_size nsdb_smfile_size (struct nsdb *smf, struct txn *tx, error *e);
-sb_size nsdb_smfile_insert (struct nsdb *smf, struct txn *tx, const void *src, sb_size bofst, b_size slen, error *e);
+sb_size nsdb_smfile_insert (
+    struct nsdb *smf,
+    struct txn  *tx,
+    const void  *src,
+    sb_size      bofst,
+    b_size       slen,
+    error       *e
+);
 sb_size nsdb_smfile_write (
     struct nsdb *smf,
     struct txn  *tx,

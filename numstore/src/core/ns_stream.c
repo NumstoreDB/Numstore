@@ -516,7 +516,14 @@ stream_ibuf_pull (struct stream *s, void *vctx, void *dest, const u32 size, cons
 }
 
 static i32
-stream_obuf_push (struct stream *s, void *vctx, const void *src, const u32 size, const u32 n, error *e)
+stream_obuf_push (
+    struct stream *s,
+    void          *vctx,
+    const void    *src,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
 {
   (void)e; // Unused
   struct stream_obuf_ctx *ctx = (struct stream_obuf_ctx *)vctx;
@@ -547,7 +554,14 @@ stream_obuf_push (struct stream *s, void *vctx, const void *src, const u32 size,
 }
 
 static i32
-stream_dyn_obuf_push (struct stream *s, void *vctx, const void *src, const u32 size, const u32 n, error *e)
+stream_dyn_obuf_push (
+    struct stream *s,
+    void          *vctx,
+    const void    *src,
+    const u32      size,
+    const u32      n,
+    error         *e
+)
 {
   (void)s; // Unused
   struct stream_dyn_obuf_ctx *ctx  = (struct stream_dyn_obuf_ctx *)vctx;

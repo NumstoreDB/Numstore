@@ -215,7 +215,15 @@ failed:
 }
 
 struct node_updates *
-nupd_random_from (pgno *left, u32 llen, pgno pivot, pgno *right, u32 rlen, struct i_mem mem, error *e)
+nupd_random_from (
+    pgno        *left,
+    u32          llen,
+    pgno         pivot,
+    pgno        *right,
+    u32          rlen,
+    struct i_mem mem,
+    error       *e
+)
 {
   struct node_updates *ret = nupd_init (pivot, randu64r (1, 1000000), mem, e);
   if (ret == NULL) {

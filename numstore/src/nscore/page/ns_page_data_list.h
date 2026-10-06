@@ -180,7 +180,13 @@ dl_init_empty (page *d)
 }
 
 HEADER_FUNC void
-dl_dl_memmove_permissive (page *dest, const page *src, const p_size didx, const p_size sidx, const p_size nbytes)
+dl_dl_memmove_permissive (
+    page        *dest,
+    const page  *src,
+    const p_size didx,
+    const p_size sidx,
+    const p_size nbytes
+)
 {
   ASSERT (dest);
   ASSERT (src);

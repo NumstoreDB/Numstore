@@ -109,7 +109,12 @@ ext_array_read (const struct ext_array *r, const struct stride str, const u32 si
 }
 
 u64
-ext_array_write (const struct ext_array *r, const struct stride str, const u32 size, const void *_src)
+ext_array_write (
+    const struct ext_array *r,
+    const struct stride     str,
+    const u32               size,
+    const void             *_src
+)
 {
   const u8 *src           = _src;
   u32       total_written = 0;

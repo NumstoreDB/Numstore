@@ -51,10 +51,31 @@ struct string vname_or_default (const char *name);
 bool variable_equal (const struct variable *left, const struct variable *right);
 err_t validate_vname (struct string vname, error *e);
 void var_random_name (char *buffer, u32 length);
-err_t rand_varname (struct string *dest, struct arena_alloc *alloc, u32 minlen, u32 maxlen, error *e);
-err_t rand_varname_same_hash (struct string *name1, struct string *name2, struct arena_alloc *alloc, error *e);
-err_t rand_varname_different_hash (struct string *name1, struct string *name2, struct arena_alloc *alloc, error *e);
-err_t variable_copy (struct variable *dest, const struct variable *src, struct arena_alloc *alloc, error *e);
+err_t rand_varname (
+    struct string      *dest,
+    struct arena_alloc *alloc,
+    u32                 minlen,
+    u32                 maxlen,
+    error              *e
+);
+err_t rand_varname_same_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct arena_alloc *alloc,
+    error              *e
+);
+err_t rand_varname_different_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct arena_alloc *alloc,
+    error              *e
+);
+err_t variable_copy (
+    struct variable       *dest,
+    const struct variable *src,
+    struct arena_alloc    *alloc,
+    error                 *e
+);
 b_size var_resolve_index (struct variable *v, sb_size bofst);
 b_size var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size);
 

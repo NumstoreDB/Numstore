@@ -28,10 +28,10 @@ pgr_flush_wall (struct pager *p, error *e)
 err_t
 pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
-  struct wal_rec_hdr_read *log_rec      = NULL;                   // Next record to read
-  page_h                   ph           = page_h_create ();       // The page handle used for all undo's
+  struct wal_rec_hdr_read *log_rec      = NULL;             // Next record to read
+  page_h                   ph           = page_h_create (); // The page handle used for all undo's
   lsn                      undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
-  slsn                     prev_lsn     = undo_nxt_lsn;           // The lsn of the previously written log
+  slsn                     prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
   // struct wal_clr_write     clr;                             // Next record to
   // write txid                     tid          = tx->tid;      // The
   // transaction id
@@ -99,7 +99,12 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
       }
       case WL_COMMIT:
       case WL_END: {
-        return error_causef (e, ERR_CORRUPT, "unexpected log record during rollback (lsn=%" PRlsn ")", undo_nxt_lsn);
+        return error_causef (
+            e,
+            ERR_CORRUPT,
+            "unexpected log record during rollback (lsn=%" PRlsn ")",
+            undo_nxt_lsn
+        );
       }
 
       case WL_EOF: {
@@ -275,7 +280,10 @@ TEST (aries_rollback_with_crash_recovery)
     test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &e));
 
     memset (committed_data, 0xAA, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = committed_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = committed_data, .blen = DL_DATA_SIZE}
+    );
 
     pgno1 = page_h_ro (&dl_page)->pg;
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
@@ -289,7 +297,10 @@ TEST (aries_rollback_with_crash_recovery)
     pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
     u8 uncommitted_data[DL_DATA_SIZE];
     memset (uncommitted_data, 0xBB, DL_DATA_SIZE);
-    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = uncommitted_data, .blen = DL_DATA_SIZE});
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = uncommitted_data, .blen = DL_DATA_SIZE}
+    );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
 
     pgr_flush_wall (p, &e);

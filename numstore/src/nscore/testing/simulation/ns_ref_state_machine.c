@@ -414,7 +414,11 @@ TEST (ns_ref)
       check_state (3, 7 * sizeof (u32));
 
       // 100 20 200 40 300 60 400
-      ns_ref_write (ref, (u32[]){100, 200, 300, 400}, (struct stride){.start = 0, .stride = 2, .nelems = 4});
+      ns_ref_write (
+          ref,
+          (u32[]){100, 200, 300, 400},
+          (struct stride){.start = 0, .stride = 2, .nelems = 4}
+      );
       validate (((u32[]){100, 20, 200, 40, 300, 60, 400}));
       check_state (3, 7 * sizeof (u32));
 
@@ -468,7 +472,11 @@ TEST (ns_ref)
     ns_ref_begin_txn (ref, &e);
     {
       ns_ref_switch (ref, "var2");
-      ns_ref_write (ref, (u32[]){111, 222, 333, 444}, (struct stride){.start = 0, .stride = 1, .nelems = 4});
+      ns_ref_write (
+          ref,
+          (u32[]){111, 222, 333, 444},
+          (struct stride){.start = 0, .stride = 1, .nelems = 4}
+      );
       check_state (2, 8 * sizeof (u32));
       validate (((u32[]){111, 222, 333, 444}));
     }

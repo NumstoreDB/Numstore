@@ -128,7 +128,12 @@ ustride02 (i64 start, i64 step)
 HEADER_FUNC struct user_stride
 ustride012 (i64 start, i64 stop, i64 step)
 {
-  return make_ustride (start, stop, step, STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT);
+  return make_ustride (
+      start,
+      stop,
+      step,
+      STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT
+  );
 }
 
 // [start]  - bare index, no colon

@@ -27,7 +27,13 @@ DEFINE_DBG_ASSERT (struct dbl_buffer, dbl_buffer, d, {
 })
 
 err_t
-dblb_create (struct dbl_buffer *dest, struct arena_alloc *alloc, const u32 size, const u32 initial_cap, error *e)
+dblb_create (
+    struct dbl_buffer  *dest,
+    struct arena_alloc *alloc,
+    const u32           size,
+    const u32           initial_cap,
+    error              *e
+)
 {
   ASSERT (initial_cap > 0);
   ASSERT (size > 0);

@@ -41,8 +41,14 @@ TEST (ht_insert_test_regression_trigger_swap)
   test_assert_int_equal (ht_delete_test (&ht, NULL, 1), HTAR_SUCCESS);
   test_assert_int_equal (ht_delete_test (&ht, NULL, 2), HTAR_SUCCESS);
 
-  test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = TEST_TABLE_LEN, .value = 0}), HTIR_SUCCESS);
-  test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = TEST_TABLE_LEN + 1, .value = 1}), HTIR_SUCCESS);
+  test_assert_int_equal (
+      ht_insert_test (&ht, (hdata_test){.key = TEST_TABLE_LEN, .value = 0}),
+      HTIR_SUCCESS
+  );
+  test_assert_int_equal (
+      ht_insert_test (&ht, (hdata_test){.key = TEST_TABLE_LEN + 1, .value = 1}),
+      HTIR_SUCCESS
+  );
 
   test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 0, .value = 0}), HTIR_SUCCESS);
 
@@ -97,7 +103,10 @@ TEST (robin_hood_ht)
 
   TEST_CASE ("Duplicate insert")
   {
-    test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 99}), HTIR_EXISTS);
+    test_assert_int_equal (
+        ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 99}),
+        HTIR_EXISTS
+    );
   }
 
   TEST_CASE ("Get normal")
@@ -124,9 +133,18 @@ TEST (robin_hood_ht)
 
   TEST_CASE ("Linear probing")
   {
-    test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 10}), HTIR_SUCCESS);
-    test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 110u, .value = 11}), HTIR_SUCCESS);
-    test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 210u, .value = 21}), HTIR_SUCCESS);
+    test_assert_int_equal (
+        ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 10}),
+        HTIR_SUCCESS
+    );
+    test_assert_int_equal (
+        ht_insert_test (&ht, (hdata_test){.key = 110u, .value = 11}),
+        HTIR_SUCCESS
+    );
+    test_assert_int_equal (
+        ht_insert_test (&ht, (hdata_test){.key = 210u, .value = 21}),
+        HTIR_SUCCESS
+    );
   }
 
   TEST_CASE ("Delete and create a hole")
@@ -154,10 +172,16 @@ TEST (robin_hood_ht)
     ht_init_test (&tiny, _tiny, 4);
 
     for (u32 k = 0; k < 4; ++k) {
-      test_assert_int_equal (ht_insert_test (&tiny, (hdata_test){.key = k, .value = k}), HTIR_SUCCESS);
+      test_assert_int_equal (
+          ht_insert_test (&tiny, (hdata_test){.key = k, .value = k}),
+          HTIR_SUCCESS
+      );
     }
 
-    test_assert_int_equal (ht_insert_test (&tiny, (hdata_test){.key = 99u, .value = 99}), HTIR_FULL);
+    test_assert_int_equal (
+        ht_insert_test (&tiny, (hdata_test){.key = 99u, .value = 99}),
+        HTIR_FULL
+    );
   }
 }
 #endif

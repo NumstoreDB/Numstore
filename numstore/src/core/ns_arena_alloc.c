@@ -144,7 +144,9 @@ DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, {
   ASSERT (ca);
   ASSERT (ca->settings.target_chunk_mult >= 1.0f);
   ASSERT (ca->settings.min_chunk_size > 0);
-  ASSERT (ca->settings.max_chunk_size == 0 || ca->settings.max_chunk_size >= ca->settings.min_chunk_size);
+  ASSERT (
+      ca->settings.max_chunk_size == 0 || ca->settings.max_chunk_size >= ca->settings.min_chunk_size
+  );
   ASSERT (ca->head != NULL || ca->num_chunks == 0);
   ASSERT (ca->total_used <= ca->total_allocated);
   ASSERT (ca->settings.max_total_size == 0 || ca->total_allocated <= ca->settings.max_total_size);
@@ -291,7 +293,13 @@ arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
 
   // Check chunk count limit
   if (ca->settings.max_chunks > 0 && ca->num_chunks >= ca->settings.max_chunks) {
-    return error_causef (e, ERR_NOMEM, "chunk limit reached (%u/%u chunks)", ca->num_chunks, ca->settings.max_chunks);
+    return error_causef (
+        e,
+        ERR_NOMEM,
+        "chunk limit reached (%u/%u chunks)",
+        ca->num_chunks,
+        ca->settings.max_chunks
+    );
   }
 
   // Verify size constraints (internal assertions)
@@ -299,7 +307,8 @@ arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
   ASSERT (ca->settings.max_chunk_size == 0 || size <= ca->settings.max_chunk_size);
 
   // Check total memory limit
-  if ((ca->settings.max_total_size > 0) && (ca->total_allocated + size > ca->settings.max_total_size)) {
+  if ((ca->settings.max_total_size > 0)
+      && (ca->total_allocated + size > ca->settings.max_total_size)) {
     return error_causef (
         e,
         ERR_NOMEM,
@@ -344,7 +353,13 @@ arena_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
 
   // Check single allocation limit
   if (ca->settings.max_alloc_size > 0 && alloc_size > ca->settings.max_alloc_size) {
-    error_causef (e, ERR_NOMEM, "alloc %u bytes exceeds max %u", alloc_size, ca->settings.max_alloc_size);
+    error_causef (
+        e,
+        ERR_NOMEM,
+        "alloc %u bytes exceeds max %u",
+        alloc_size,
+        ca->settings.max_alloc_size
+    );
     latch_unlock (&ca->latch);
     return NULL;
   }

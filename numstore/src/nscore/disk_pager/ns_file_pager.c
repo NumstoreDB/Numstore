@@ -335,6 +335,25 @@ theend:
   return error_trace (e);
 }
 
+static inline err_t
+i_pread_all_expect (i_file *fp, void *dest, const u64 n, const u64 offset, error *e)
+{
+  const i64 ret = i_pread_all (fp, dest, n, offset, e);
+  WRAP (ret);
+
+  if (unlikely ((u64)ret != n)) {
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
+        ret,
+        (i64)n
+    );
+  }
+
+  return SUCCESS;
+}
+
 err_t
 fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
 {

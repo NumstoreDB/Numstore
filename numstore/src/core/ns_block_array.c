@@ -273,7 +273,12 @@ block_array_read (const struct block_array *r, const struct stride str, const u3
 }
 
 u64
-block_array_write (const struct block_array *r, const struct stride str, const u32 size, const void *_src)
+block_array_write (
+    const struct block_array *r,
+    const struct stride       str,
+    const u32                 size,
+    const void               *_src
+)
 {
   const u8     *src  = _src;
 
@@ -348,7 +353,13 @@ block_array_write (const struct block_array *r, const struct stride str, const u
 }
 
 i64
-block_array_remove (struct block_array *r, const struct stride str, const u32 size, void *_dest, error *e)
+block_array_remove (
+    struct block_array *r,
+    const struct stride str,
+    const u32           size,
+    void               *_dest,
+    error              *e
+)
 {
   (void)e; // Unused
   u8           *dest  = _dest;
@@ -531,7 +542,13 @@ block_array_read_func (void *ctx, const struct stride str, const u32 size, void 
 }
 
 static i64
-block_array_write_func (void *ctx, const struct stride str, const u32 size, const void *src, error *e)
+block_array_write_func (
+    void               *ctx,
+    const struct stride str,
+    const u32           size,
+    const void         *src,
+    error              *e
+)
 {
   (void)e; // Unused
   struct block_array *arr = ctx;
@@ -837,9 +854,14 @@ TEST (block_insert_remove_read)
     block_array_insert (b, 0, src, sizeof (src), &e);
 
     // Remove the middle element (index 2)
-    u32 removed = 0;
-    const i64
-        n = block_array_remove (b, (struct stride){.start = 2, .stride = 1, .nelems = 1}, sizeof (u32), &removed, &e);
+    u32       removed = 0;
+    const i64 n       = block_array_remove (
+        b,
+        (struct stride){.start = 2, .stride = 1, .nelems = 1},
+        sizeof (u32),
+        &removed,
+        &e
+    );
 
     test_assert (n == 1);
     u32 expected_removed = 3;
@@ -862,9 +884,14 @@ TEST (block_insert_remove_read)
     const u32           src[] = {10, 20, 30};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
-    u32 removed = 0;
-    const i64
-        n = block_array_remove (b, (struct stride){.start = 0, .stride = 1, .nelems = 1}, sizeof (u32), &removed, &e);
+    u32       removed = 0;
+    const i64 n       = block_array_remove (
+        b,
+        (struct stride){.start = 0, .stride = 1, .nelems = 1},
+        sizeof (u32),
+        &removed,
+        &e
+    );
 
     test_assert (n == 1);
     u32 expected_removed = 10;
@@ -887,9 +914,14 @@ TEST (block_insert_remove_read)
     const u32           src[] = {10, 20, 30};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
-    u32 removed = 0;
-    const i64
-        n = block_array_remove (b, (struct stride){.start = 2, .stride = 1, .nelems = 1}, sizeof (u32), &removed, &e);
+    u32       removed = 0;
+    const i64 n       = block_array_remove (
+        b,
+        (struct stride){.start = 2, .stride = 1, .nelems = 1},
+        sizeof (u32),
+        &removed,
+        &e
+    );
 
     test_assert (n == 1);
     u32 expected_removed = 30;
@@ -913,9 +945,14 @@ TEST (block_insert_remove_read)
     const u32           src[] = {1, 2, 3, 4, 5, 6};
     block_array_insert (b, 0, src, sizeof (src), &e);
 
-    u32 removed[3] = {0};
-    const i64
-        n = block_array_remove (b, (struct stride){.start = 0, .stride = 2, .nelems = 3}, sizeof (u32), removed, &e);
+    u32       removed[3] = {0};
+    const i64 n          = block_array_remove (
+        b,
+        (struct stride){.start = 0, .stride = 2, .nelems = 3},
+        sizeof (u32),
+        removed,
+        &e
+    );
 
     test_assert (n == 3);
     const u32 expected_removed[] = {1, 3, 5};

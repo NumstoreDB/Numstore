@@ -74,7 +74,12 @@ struct type_ref
 };
 
 bool type_ref_equal (struct type_ref left, struct type_ref right);
-struct type *tr_construct (struct type *reftype, struct type_ref *tr, struct arena_alloc *alloc, error *e);
+struct type *tr_construct (
+    struct type        *reftype,
+    struct type_ref    *tr,
+    struct arena_alloc *alloc,
+    error              *e
+);
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Simple Stack Constructors

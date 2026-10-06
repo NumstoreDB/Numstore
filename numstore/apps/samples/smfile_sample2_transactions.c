@@ -90,7 +90,8 @@ main (void)
 
     uint8_t extra[4];
     memset (extra, 0xCC, sizeof (extra));
-    ns_smfile_insert (smf, tx, extra, 80, sizeof (extra)); // append 4 bytes of 0xcc
+    ns_smfile_insert (smf, tx, extra, 80,
+                      sizeof (extra)); // append 4 bytes of 0xcc
 
     ns_commit (smf, tx);
   }
@@ -98,8 +99,8 @@ main (void)
   // A roll'ed back transaction
   {
     txn_t *tx = ns_begin (smf);
-    ns_smfile_remove (smf, tx, NULL, 1, 80, 1, 4); // attempt to remove what we just
-                                                   // appended
+    ns_smfile_remove (smf, tx, NULL, 1, 80, 1, 4); // attempt to remove what we
+                                                   // just appended
     ns_rollback (smf, tx);
   }
 

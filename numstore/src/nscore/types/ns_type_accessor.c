@@ -92,7 +92,12 @@ ta_select_struct (struct type *ref, struct type_accessor *ta, struct arena_alloc
 }
 
 static struct type *
-ta_select_union (struct type *reftype, struct type_accessor *ta, struct arena_alloc *alloc, error *e)
+ta_select_union (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+)
 {
   struct type *subtype = union_t_resolve_key (&reftype->un, ta->select.key);
   if (subtype == NULL) {
@@ -103,7 +108,12 @@ ta_select_union (struct type *reftype, struct type_accessor *ta, struct arena_al
 }
 
 static struct type *
-ta_select_sarray (struct type *reftype, struct type_accessor *ta, struct arena_alloc *alloc, error *e)
+ta_select_sarray (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+)
 {
   BUILDER_INIT (b, alloc);
 
@@ -143,7 +153,12 @@ failed:
 }
 
 static struct type *
-ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct arena_alloc *alloc, error *e)
+ta_range_sarray (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+)
 {
   BUILDER_INIT (b, alloc);
   struct sarray_builder builder = sab_create (&b);
@@ -166,7 +181,8 @@ ta_range_sarray (struct type *reftype, struct type_accessor *ta, struct arena_al
       if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e)) {
         goto failure;
       }
-      if ((ta->range.dim_accessors[i].present & COLON_PRESENT) && (sab_accept_dim (&builder, str.nelems, e))) {
+      if ((ta->range.dim_accessors[i].present & COLON_PRESENT)
+          && (sab_accept_dim (&builder, str.nelems, e))) {
         goto failure;
       }
     }
@@ -333,10 +349,10 @@ TEST (ta_subtype)
       {"union { data [10][ 20] i32 }", "a.data[0:10:5, 3]", "[2] i32"},  // union parity
 
       // array sub-access: field select BROADCASTS over array dims
-      {"[10] struct { i i32 }", "a.i", "[10] i32"},              // the canonical case
-      {"[10] struct { x f32, y f64 }", "a.y", "[10] f64"},       // broadcast + field offset
-      {"[3][ 4] struct { v f32 }", "a.v", "[3][ 4] f32"},        // broadcast over 2 dims
-      {"[5] struct { d [10] i32 }", "a.d", "[5][ 10] i32"},      // broadcast field is itself an array
+      {"[10] struct { i i32 }", "a.i", "[10] i32"},         // the canonical case
+      {"[10] struct { x f32, y f64 }", "a.y", "[10] f64"},  // broadcast + field offset
+      {"[3][ 4] struct { v f32 }", "a.v", "[3][ 4] f32"},   // broadcast over 2 dims
+      {"[5] struct { d [10] i32 }", "a.d", "[5][ 10] i32"}, // broadcast field is itself an array
       {"[6] struct { p struct { q i16 } }", "a.p.q", "[6] i16"}, // broadcast through nested field
       {"[10] union { x f32, y f32 }", "a.y", "[10] f32"},        // union parity
 
@@ -346,8 +362,10 @@ TEST (ta_subtype)
       {"[10] union { x f32, y f32 }", "a[0:10:2].y", "[5] f32"},  // union parity
 
       // struct -> array -> struct chains
-      {"struct { points [100] struct { val f32 } }", "a.points[7].val", "f32"},           // chain -> scalar
-      {"struct { points [100] struct { val f32 } }", "a.points[0:50:2].val", "[25] f32"}, // chain -> broadcast
+      {"struct { points [100] struct { val f32 } }", "a.points[7].val", "f32"}, // chain -> scalar
+      {"struct { points [100] struct { val f32 } }",
+       "a.points[0:50:2].val",
+       "[25] f32"}, // chain -> broadcast
 
       // deep nest + array stride broadcast
       {"struct { a struct { b [20] struct { c i32 } } }", "a.a.b[0:20:4].c", "[5] i32"},

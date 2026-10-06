@@ -68,7 +68,8 @@ typedef u64         cu128[2];
 #  define NS_PAGE_SIZE    4096
 #  define MEMORY_PAGE_LEN 4096
 #  define WAL_BUFFER_CAP  1048576
-#  define MAX_OPEN_FILES  20
+#  define MAX_OPEN_FILES  16
+#  define MAX_THREADS     16
 
 #  define NS_END  INT64_MAX
 #  define SMF_END INT64_MAX

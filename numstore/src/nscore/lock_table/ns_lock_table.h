@@ -127,7 +127,13 @@ err_t lockt_init (struct lockt *t, struct i_mem mem, error *e);
 void lockt_destroy (struct lockt *t);
 void lockt_crash (struct lockt *t);
 
-err_t lockt_lock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, struct txn *tx, error *e);
+err_t lockt_lock (
+    struct lockt  *t,
+    struct lt_lock lock,
+    enum lock_mode mode,
+    struct txn    *tx,
+    error         *e
+);
 
 err_t lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode, error *e);
 

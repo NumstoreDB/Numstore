@@ -385,13 +385,23 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
         case WUP_FSM: {
           return (struct wal_rec_hdr_write){
               .type   = WL_UPDATE,
-              .update = {.type = WUP_FSM, .tid = src->update.tid, .prev = src->update.prev, .fsm = src->update.fsm},
+              .update = {
+                  .type = WUP_FSM,
+                  .tid  = src->update.tid,
+                  .prev = src->update.prev,
+                  .fsm  = src->update.fsm
+              },
           };
         }
         case WUP_FEXT: {
           return (struct wal_rec_hdr_write){
               .type   = WL_UPDATE,
-              .update = {.type = WUP_FEXT, .tid = src->update.tid, .prev = src->update.prev, .fext = src->update.fext},
+              .update = {
+                  .type = WUP_FEXT,
+                  .tid  = src->update.tid,
+                  .prev = src->update.prev,
+                  .fext = src->update.fext
+              },
           };
         }
       }
@@ -660,8 +670,10 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
         }
         case WUP_PHYSICAL: {
           match = match && left->update.phys.pg == right->update.phys.pg;
-          match = match && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
-          match = match && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (left->update.phys.undo, right->update.phys.undo, NS_PAGE_SIZE) == 0;
+          match = match
+                  && memcmp (left->update.phys.redo, right->update.phys.redo, NS_PAGE_SIZE) == 0;
           break;
         }
         case WUP_FEXT: {
@@ -742,7 +754,13 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
       switch (r->update.type) {
         case WUP_PHYSICAL: {
           name = "UPDATE PHYS";
-          snprintf (fields, sizeof fields, "txid = %8" PRtxid ", pg   = %8" PRpgno, r->update.tid, r->update.phys.pg);
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", pg   = %8" PRpgno,
+              r->update.tid,
+              r->update.phys.pg
+          );
           prev = &r->update.prev;
           break;
         }
@@ -807,7 +825,13 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
         }
         case WCLR_DUMMY: {
           name = "CLR DUMMY";
-          snprintf (fields, sizeof fields, "txid = %8" PRtxid ", undoNxt = %15" PRlsn, r->clr.tid, r->clr.undo_next);
+          snprintf (
+              fields,
+              sizeof fields,
+              "txid = %8" PRtxid ", undoNxt = %15" PRlsn,
+              r->clr.tid,
+              r->clr.undo_next
+          );
           prev = &r->clr.prev;
           break;
         }
@@ -845,7 +869,14 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
        72 = widest fields line     -- "CLR FSM" case
      Bump them if a new record type pushes past these. */
   if (prev) {
-    i_log_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n", l, name, fields, *prev);
+    i_log_printf (
+        log_level,
+        "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
+        l,
+        name,
+        fields,
+        *prev
+    );
   } else {
     i_log_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
   }

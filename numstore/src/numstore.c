@@ -348,21 +348,45 @@ ns_smfile_insert (nsdb_t *db, struct txn *tx, const void *src, sb_size bofst, b_
 }
 
 sb_size
-ns_smfile_read (nsdb_t *db, struct txn *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
+ns_smfile_read (
+    nsdb_t     *db,
+    struct txn *tx,
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+)
 {
   error_reset (db->e);
   return nsdb_smfile_read (db, tx, dest, size, bofst, stride, nelem, NULL);
 }
 
 sb_size
-ns_smfile_remove (nsdb_t *db, struct txn *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)
+ns_smfile_remove (
+    nsdb_t     *db,
+    struct txn *tx,
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+)
 {
   error_reset (db->e);
   return nsdb_smfile_remove (db, tx, dest, size, bofst, stride, nelem, NULL);
 }
 
 sb_size
-ns_smfile_write (nsdb_t *db, struct txn *tx, const void *src, t_size size, sb_size bofst, sb_size stride, b_size nelem)
+ns_smfile_write (
+    nsdb_t     *db,
+    struct txn *tx,
+    const void *src,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
+)
 {
   error_reset (db->e);
   return nsdb_smfile_write (db, tx, src, size, bofst, stride, nelem, NULL);

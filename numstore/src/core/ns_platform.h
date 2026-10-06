@@ -111,7 +111,8 @@
 
 ////////////////////////////////////////////////////////////
 // BSD
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__bsdi__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) \
+    || defined(__bsdi__)
 #  undef PLATFORM_BSD
 #  undef PLATFORM_UNIX
 #  undef PLATFORM_POSIX
@@ -131,9 +132,9 @@
 
 ////////////////////////////////////////////////////////////
 // Verify
-#if (                                                                                                 \
-    PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC + PLATFORM_IOS + PLATFORM_BSD \
-    + PLATFORM_EMSCRIPTEN                                                                             \
+#if (                                                                                  \
+    PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_ANDROID + PLATFORM_MAC + PLATFORM_IOS \
+    + PLATFORM_BSD + PLATFORM_EMSCRIPTEN                                               \
 ) > 1
 #  warning "Multiple platforms detected - check your build configuration"
 #endif

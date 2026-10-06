@@ -18,7 +18,7 @@
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_threading.h"
+#include "os/ns_os.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -110,7 +110,13 @@ struct periodic_task
 
 err_t periodic_task_init (struct periodic_task *t, error *e);
 
-err_t periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, void *ctx, error *e);
+err_t periodic_task_start (
+    struct periodic_task *t,
+    u64                   msec,
+    periodic_task_fn      fn,
+    void                 *ctx,
+    error                *e
+);
 
 err_t periodic_task_stop (struct periodic_task *t, error *e);
 
@@ -155,7 +161,13 @@ latch_trylock (latch *l)
 
   // Fast path - it's likely that the lock will succeed if
   // l == 0, replace it with 1
-  if (likely (atomic_compare_exchange_weak_explicit (l, &val, 1, memory_order_acquire, memory_order_relaxed))) {
+  if (likely (atomic_compare_exchange_weak_explicit (
+          l,
+          &val,
+          1,
+          memory_order_acquire,
+          memory_order_relaxed
+      ))) {
     return true;
   }
   return false;
@@ -168,7 +180,13 @@ latch_lock (latch *l)
 
   // Fast path - it's likely that the lock will succeed if
   // l == 0, replace it with 1
-  if (likely (atomic_compare_exchange_weak_explicit (l, &val, 1, memory_order_acquire, memory_order_relaxed))) {
+  if (likely (atomic_compare_exchange_weak_explicit (
+          l,
+          &val,
+          1,
+          memory_order_acquire,
+          memory_order_relaxed
+      ))) {
     return;
   }
 
@@ -185,7 +203,13 @@ latch_lock (latch *l)
   }
 
   // Has it changed yet? If not - set it to locked - this risks the ABA problem
-  while (!atomic_compare_exchange_weak_explicit (l, &val, 1, memory_order_acquire, memory_order_relaxed));
+  while (!atomic_compare_exchange_weak_explicit (
+      l,
+      &val,
+      1,
+      memory_order_acquire,
+      memory_order_relaxed
+  ));
 }
 
 HEADER_FUNC void
@@ -225,7 +249,13 @@ spx_trylock_s (sx_latch *l)
     return false;
   }
 
-  return atomic_compare_exchange_strong_explicit (l, &val, val + 1, memory_order_acquire, memory_order_relaxed);
+  return atomic_compare_exchange_strong_explicit (
+      l,
+      &val,
+      val + 1,
+      memory_order_acquire,
+      memory_order_relaxed
+  );
 }
 
 HEADER_FUNC void
@@ -240,7 +270,13 @@ spx_lock_s (sx_latch *l)
       val = atomic_load_explicit (l, memory_order_relaxed);
     }
 
-    if (likely (atomic_compare_exchange_weak_explicit (l, &val, val + 1, memory_order_acquire, memory_order_relaxed))) {
+    if (likely (atomic_compare_exchange_weak_explicit (
+            l,
+            &val,
+            val + 1,
+            memory_order_acquire,
+            memory_order_relaxed
+        ))) {
       return;
     }
   }
@@ -256,7 +292,13 @@ HEADER_FUNC bool
 spx_trylock_x (sx_latch *l)
 {
   u32 expected = 0;
-  return atomic_compare_exchange_strong_explicit (l, &expected, X, memory_order_acquire, memory_order_relaxed);
+  return atomic_compare_exchange_strong_explicit (
+      l,
+      &expected,
+      X,
+      memory_order_acquire,
+      memory_order_relaxed
+  );
 }
 
 HEADER_FUNC void
@@ -268,7 +310,13 @@ spx_lock_x (sx_latch *l)
   // wait for in-flight readers.
   while (true) {
     if (likely (!XLOCKED (val))) {
-      if (atomic_compare_exchange_weak_explicit (l, &val, val | X, memory_order_acquire, memory_order_relaxed)) {
+      if (atomic_compare_exchange_weak_explicit (
+              l,
+              &val,
+              val | X,
+              memory_order_acquire,
+              memory_order_relaxed
+          )) {
         break;
       }
       // CAS failed; val is refreshed, retry without spinning.

@@ -107,7 +107,15 @@ smartfiles_write (
     ret += inserted / size;
 
     // UPDATE VARIABLE
-    if (ns_var_update_by_var_root (p, tx, gparams.dest.var_root, iparams.root, gparams.dest.nbytes + inserted, e) < 0) {
+    if (ns_var_update_by_var_root (
+            p,
+            tx,
+            gparams.dest.var_root,
+            iparams.root,
+            gparams.dest.nbytes + inserted,
+            e
+        )
+        < 0) {
       return error_trace (e);
     }
   }

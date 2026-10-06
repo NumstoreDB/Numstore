@@ -1,8 +1,4 @@
 target_sources(
     numstore.library
-    PRIVATE
-        ns_win32_file.c
-        ns_win32_filesystem.c
-        ns_win32_threading.c
-        ns_win32_timing.c
+    PRIVATE ns_windows.c ns_windows_os.c ns_windows_os.h
 )

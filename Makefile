@@ -11,10 +11,10 @@
 CMAKE_CONFIG_FLAGS := $(if $(NLOG),-DNS_NLOG=ON,)
 
 all: build/debug/CMakeCache.txt
-	cmake --build build/debug
+	cmake --build build/debug -j12
 
 release: build/release/CMakeCache.txt
-	cmake --build build/release
+	cmake --build build/release -j12
 
 release-package: release
 	rm -rf build/release/package

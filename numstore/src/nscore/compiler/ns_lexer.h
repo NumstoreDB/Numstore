@@ -36,6 +36,12 @@ struct lexer
   struct arena_alloc *alloc;
 };
 
-err_t lex_tokens (const char *src, struct arena_alloc *alloc, u32 src_len, struct lexer *lex, error *e);
+err_t lex_tokens (
+    const char         *src,
+    struct arena_alloc *alloc,
+    u32                 src_len,
+    struct lexer       *lex,
+    error              *e
+);
 
 #endif

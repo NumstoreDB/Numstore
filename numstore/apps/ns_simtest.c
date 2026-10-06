@@ -16,8 +16,10 @@
 #include "core/ns_platform.h"
 #include "nscore/testing/simulation/ns_numstore_simulation.h"
 #include "nscore/testing/simulation/ns_operation_generator.h"
-#include "os/ns_filesystem.h"
+#include "os/ns_memory.h"
+#include "os/ns_os_vtable.h"
 #include "os/ns_time.h"
+#include "os/test/ns_dst.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -249,6 +251,9 @@ main (int argc, char **argv)
     return usage_error (argv[0], "all actions are disabled");
   }
 
+  struct dst_data dst;
+  dst_data_init (&dst, &default_os_vtable);
+
   params.seed              = seed;
   params.commit_hash       = commit_hash;
   params.sequence_id       = (u32)seqid; // range-checked above
@@ -257,8 +262,8 @@ main (int argc, char **argv)
   params.max_tsize         = 4096;
   params.sample_space_prob = 0;
   params.reliable_mem      = default_mem ();
-  params.test_mem          = default_mem ();
-  params.test_filesystem   = default_filesystem ();
+  params.test_mem          = dst_mem (&dst);
+  params.test_filesystem   = dst_filesystem (&dst);
   params.write_validation  = NSS_READ_ALL_AFTER_WRITES;
 
   srand ((unsigned)seed);

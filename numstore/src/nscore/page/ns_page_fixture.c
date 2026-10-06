@@ -241,7 +241,12 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
 ////////////////////////////////////////////////////////////
 /// DECLARATIVE API
 
-static err_t build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, error *e);
+static err_t build_page_desc (
+    struct page_desc *desc,
+    struct pager     *pager,
+    struct txn       *txn,
+    error            *e
+);
 
 err_t
 build_page_tree (struct page_tree_builder *builder, error *e)
@@ -347,10 +352,11 @@ TEST (build_page_tree)
                                           .children =
                                               (struct page_desc[]){
                                                   {
-                                                      .type      = PG_DATA_LIST,
-                                                      .out       = page_h_create (),
-                                                      .size      = DL_DATA_SIZE,
-                                                      .data_list = (struct dl_data){.data = NULL, .blen = 0},
+                                                      .type = PG_DATA_LIST,
+                                                      .out  = page_h_create (),
+                                                      .size = DL_DATA_SIZE,
+                                                      .data_list =
+                                                          (struct dl_data){.data = NULL, .blen = 0},
                                                   },
                                               },
 

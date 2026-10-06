@@ -6,110 +6,165 @@ Numstore
 Numstore is a single-file, embedded, ACID database built for arrays, written
 entirely in C with no dependencies.
 
-Conceptually, it's an ACID file with [faster inner-file
-mutations](https://theolincke.com/blog/13_inner_inserts) than a typical
-database.
+What is Numstore?
+-----------------
 
-Thinking about it as "just a file" led to a second interface: **smartfiles**, a
-plain ACID transactional file with no array-specific semantics.
+There's an untapped type of data that isn't natively supported in most modern
+reliable fault tollerant databases today: Array data. Traditional relational
+databases store "tabular data". Each column has a "name" and "data type". A SQL
+database stores e.g. a "User" table, which has a name, a date of birth, and a 
 
-The original reason Numstore exists is to store numerical arrays - arrays of
-bytes where every 4 bytes is an `int`, every 8 bytes is a `u64`, and so on.
+An array is a type of data where there's a lot of information packed into one
+type:
 
-So there are two interfaces:
+* A 3x256x256 RGB image 
+* A stream of thousands of floating point stock ticker data 
 
-- **smartfiles** - a simple ACID transactional file.
-- **numstore** - an embedded database for numerical arrays.
+Traditionally, this type of data tends to be stored in a flat binary file
+format or specialized non database file formats like HDF5.
+
+Numstore is a database for that type of data. In numstore, a single database has:
+* Multiple _variables_ which each have a name, and type 
+* _types_ represent the byte layout of the variable 
+* _data_ is an array of bytes that represent the content of the variable
+
+Types are byte layouts of a variable:
+
+* A "primitive" is a scalar - signed or unsigned ints, floats and complex
+  floats. The digit represents how many bits they take up:
+    - `u8-u64` are 1-8 byte unsigned ints
+    - `i8-i64` are 1-8 byte signed ints
+    - `f16-f128` are 2-16 byte floats
+    - `cf32-cf256` are 4-32 byte complex floats
+    - `ci16-ci128` are 2-16 byte complex signed ints
+    - `cu16-cu128` are 2-16 byte complex unsigned ints
+
+* A "struct" is a stacked combination of two sub types. The size of a struct is
+  the sum of all the sub types:
+    - A struct: `struct { a u32, b f16 }` is a 6 byte type (`sizeof(u32) +
+      sizeof(f16)`) which represents an unsigned 4 byte int and a 2 byte float
+      stacked on top of each other.
+    - A nested struct: `struct { a u32, b struct { c f16, d [10]f32 } }` is a
+      46 byte type `10 * sizeof(f32) + sizeof(u16) + sizeof(u32)`
+
+* A "union" is a type where all of its sub types overlap at index 0,
+  representing an "either or" relationship:
+    - A union: `union { a u32, b f16 }` is a 4 byte structure which either
+      represents a u32 or an f16
+    - A nested union: `union { a u32, b struct { c f16, d [10]f32 } }` is a 42
+      byte `Max(10 * sizeof(f32) + sizeof(f16), sizeof(u32))`
+
+* A "strict array" is a multi dimensional 
+    - A simple strict array `[3][256][256] f32` is a rank 3 array of floats
+      with 256 columns, 256 rows and 3 "cubes"
 
 More info: [Documentation](docs/index.md)
+
+What are Smartfiles?
+--------------------
+
+Numstore was originally written to be an array database, but I found it useful
+to think of it as a single ACID file. If your use case is simpler than a
+database for arrays, numstore core also doubles as a simple ACID file with
+first class interior mutations.
+
+Traditionally, a "file" is an array of bytes. You read and write to the
+interior using two well know functions:
+
+```
+// Open and close a file
+int open(name)
+close(fd)
+
+read(fd, dest, count) // Read a file - maybe fail - into dest
+write(fd, src, count) // Overwrite bytes within a file
+```
+
+Both *read* and *write* return the number of bytes read or written. Both of
+them can fail half way or read / write only a subset of the bytes in the file.
+
+From the write man pages:
+> Note that a successful write() may transfer fewer than count bytes.  Such
+> partial writes can occur for various reasons; for example, because there was
+> insufficient space on the disk device to write all of the requested bytes, or
+> because a blocked write() to a socket, pipe, or similar was interrupted by a
+> signal handler after it had transferred some, but before it had transferred
+> all of the requested bytes.  In the event of a partial write, the caller can
+> make another write() call to transfer the remaining bytes.  The subsequent
+> call will either transfer further bytes or may result in an error (e.g., if
+> the disk is now full).
+
+From the read man pages:
+> On success, the number of bytes read is returned (zero indicates end of
+> file), and the file position is advanced by this number. It is not an error
+> if this number is smaller than the number of bytes requested; this may happen
+> for example because fewer bytes are actually available right now (maybe
+> because we were close to end-of-file, or because we are reading from a pipe,
+> or from a terminal), or because read() was interrupted by a signal.  See also
+> NOTES.
+
+```
+// Open and close a smart file
+nsdb_t *ns_smfile_open (path);
+int ns_close (ns);
+
+// Begin or commit a transaction
+txn_t *ns_begin (ns);
+int ns_commit (ns, txn);
+int ns_rollback (ns, txn);
+
+// Return the size of the file
+sb_size ns_smfile_size (smf, tx);
+
+// Insert data into the interior of the file (increasing the file length)
+sb_size ns_smfile_insert (smf, tx, src, bofst, slen);
+
+// Overwrite data inside the file (keep the file length the same)
+sb_size ns_smfile_write (smf, tx, src, size, bofst, stride, nelem);
+
+// Read data from the file with a given element size and stride
+sb_size ns_smfile_read (smf, tx, dest, size, bofst, stride, nelem);
+
+// Remove data from the file - and write the results to dest
+sb_size ns_smfile_remove (smf, tx, dest, size, bofst, stride, nelem);
+```
+
+Numstore writes are atomic, meaning they either happen or they don't. There's
+no "half writes" or "half reads". Everything either happens or doesn't.
 
 Quick Start
 ===========
 
-I want to use Numstore from Python
------------------------------------
+<details>
+    <summary>C Quick Start Guide</summary>
+        
+    mkdir -p build/release
+    cd build/release
+    cmake ../../numstore -DCMAKE_BUILD_TYPE=Release
+    cmake --build .
+    ./bin/ns_sample1_basic_crud
 
-Numstore isn't strictly a Python library, but it's easiest to try out in its
-Python form. Run any of the samples in `bindings/python/samples`:
+The Numstore C library is intentionally simple. These are the most important 
+outputs:
+* `build/lib/libnumstore.a` - all numstore code in a single library
+* `build/bin/*_sample*` - a bunch of samples, found in `numstore/apps/samples/`
+* `numstore/apps/include/numstore.h` - The only header file you need for
+  numstore 
+
+</details>
+
+<details>
+    <summary>Python Quick Start Guide</summary>
 
     pip3 install build
-    make python-package
+	python3 -m build --wheel bindings/python --outdir bindings/python/dist
     pip3 install build/python/target/*.whl --force-reinstall
+    pip3 install bindings/python/dist/pynumstore-*.whl --force-reinstall
     python3 bindings/python/samples/sample1_basic.py
 
-I want to use the Numstore embedded C library
------------------------------------------------
-
-This is the more advanced path. Numstore is primarily a C library, with
-`numstore.h` and `smartfiles.h` as the two main entry points.
-
-* Build everything (debug is the default target):
-
-      make
-
-* Populate some data (using the Python bindings, for convenience):
-
-      make python-package
-      pip3 install build/python/target/*.whl --force-reinstall
-      python3 bindings/python/samples/sample1_basic.py
-
-* Run the numstore CLI/REPL (work in progress):
-
-      ./build/debug/*/bin/numstore example.db
-      > get prices;
-
-* Build a release version instead (no asserts, no logs, `-O3`):
-
-      make TARGET=release
-      ./build/release/*/bin/numstore example.db
-
-* Run the unit tests:
-
-      ./build/debug/*/bin/unit_tests SEED <filter>
-
-* Build and run a sample program (using the numstore or smartfiles library):
-
-      ls build/debug/*/bin | grep sample
-      ./build/debug/*/bin/smfile_sample1_basic_crud
-
-* Clean up:
-
-      make clean
-
-Headers and libraries land in `build/<target>/<artifact>/include` and
-`build/<target>/<artifact>/lib` if you want to link against numstore,
-smartfiles, or core yourself. See `lib/pkgconfig/numstore.pc` for a
-`pkg-config`-friendly way to pick those paths up automatically.
-
-Main Outputs
-============
-
-Numstore Executable
---------------------
-
-    build/<target>/<artifact>/bin/numstore
-
-A CLI app for examining a database (work in progress).
-
-Numstore Library
------------------
-
-    build/<target>/<artifact>/lib/libnumstore.a
-    build/<target>/<artifact>/include/numstore/numstore.h
-
-An embedded database for numerical arrays. See `src/numstore/numstore.h` or
-`src/numstore/samples/*`.
-
-Smartfiles Library
---------------------
-
-    build/<target>/<artifact>/lib/libnumstore.a
-    build/<target>/<artifact>/include/smartfiles/smartfiles.h
-
-An embedded ACID file interface. See `src/smartfiles/smartfiles.h` or
-`src/smartfiles/samples/*`. Smartfiles compiles into the same
-`libnumstore.a` as the numstore library above - there is only one static
-library, with two separate headers.
+The Python library is a lightweight wrapper around the C library. All 
+the bindings live in `bindings/python/src/c/ns_pynumstore.c`.
+</details>
 
 AI Usage Policy
 ===============
@@ -138,6 +193,8 @@ by me.
 Contributing
 ============
 
+Contributions are welcome, but I don't have the bandwidth to make the process 
+easy (something I am trying my best to change). Feel free to 
 File a ticket on GitHub for bugs, feature requests, or questions. Tickets
 that are easy to contribute to will be marked `good first issue`.
 

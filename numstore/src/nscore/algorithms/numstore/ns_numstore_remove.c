@@ -76,7 +76,8 @@ numstore_remove (
     goto failed;
   }
 
-  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e) < 0) {
+  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e)
+      < 0) {
     goto failed;
   }
 
