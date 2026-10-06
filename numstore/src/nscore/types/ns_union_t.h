@@ -32,15 +32,31 @@ struct union_t;
 
 struct type *union_t_resolve_key (struct union_t *t, struct string key);
 
-err_t union_t_create (struct union_t *dest, struct kvt_list list, struct arena_alloc *dalloc, error *e);
+err_t union_t_create (
+    struct union_t     *dest,
+    struct kvt_list     list,
+    struct arena_alloc *dalloc,
+    error              *e
+);
 
 err_t union_t_get_serial_size (u16 *dest, const struct union_t *t, error *e);
 void union_t_serialize (struct serializer *dest, const struct union_t *src);
-err_t union_t_deserialize (struct union_t *dest, struct deserializer *src, struct arena_alloc *a, error *e);
+err_t union_t_deserialize (
+    struct union_t      *dest,
+    struct deserializer *src,
+    struct arena_alloc  *a,
+    error               *e
+);
 err_t union_t_validate (const struct union_t *s, error *e);
 i32 union_t_snprintf (char *str, u32 size, const struct union_t *st);
 u32 union_t_byte_size (const struct union_t *t);
-err_t union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, t_size max_tsize, error *e);
+err_t union_t_random (
+    struct union_t     *un,
+    struct arena_alloc *alloc,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+);
 bool union_t_equal (const struct union_t *left, const struct union_t *right);
 
 #endif

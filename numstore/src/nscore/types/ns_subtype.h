@@ -39,6 +39,11 @@ struct subtype
 
 struct subtype subtype_create (struct string vname, struct type_accessor ta);
 bool subtype_equal (const struct subtype *left, const struct subtype *right);
-struct type *subtype_get_type (struct type *stype, struct type_accessor *ta, struct arena_alloc *alloc, error *e);
+struct type *subtype_get_type (
+    struct type          *stype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+);
 
 #endif

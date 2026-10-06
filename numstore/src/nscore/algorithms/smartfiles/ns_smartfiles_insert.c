@@ -70,7 +70,15 @@ smartfiles_insert (
   }
 
   // UPDATE VARIABLE
-  if (ns_var_update_by_var_root (p, tx, gparams.dest.var_root, iparams.root, gparams.dest.nbytes + ret, e) < 0) {
+  if (ns_var_update_by_var_root (
+          p,
+          tx,
+          gparams.dest.var_root,
+          iparams.root,
+          gparams.dest.nbytes + ret,
+          e
+      )
+      < 0) {
     return error_trace (e);
   }
 

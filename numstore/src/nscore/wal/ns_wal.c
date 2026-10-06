@@ -672,7 +672,13 @@ wal_read_entry (struct wal *w, const lsn id, error *e)
 
   ASSERT (w->istream);
   if (id < w->start_lsn) {
-    error_causef (e, ERR_CORRUPT, "Tried to read previous deleted log %" PRlsn " %" PRlsn, id, w->start_lsn);
+    error_causef (
+        e,
+        ERR_CORRUPT,
+        "Tried to read previous deleted log %" PRlsn " %" PRlsn,
+        id,
+        w->start_lsn
+    );
     latch_unlock (&w->latch);
     return NULL;
   }
@@ -1316,8 +1322,10 @@ TEST (wal_single_entry)
       {.type = WL_BEGIN, .begin = {.tid = 1}},
       {.type = WL_COMMIT, .commit = {.tid = 2, .prev = 10}},
       {.type = WL_END, .end = {.tid = 3, .prev = 20}},
-      {.type = WL_UPDATE, .update = {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
-      {.type = WL_CLR, .clr = {.type = WCLR_PHYSICAL, .tid = 5, .prev = 40, .undo_next = 42, .phys = {.pg = 222}}},
+      {.type   = WL_UPDATE,
+       .update = {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
+      {.type = WL_CLR,
+       .clr  = {.type = WCLR_PHYSICAL, .tid = 5, .prev = 40, .undo_next = 42, .phys = {.pg = 222}}},
   };
 
   for (u32 i = 0; i < arrlen (cases); i++) {

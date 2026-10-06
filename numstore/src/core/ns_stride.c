@@ -181,7 +181,11 @@ TEST (stride_resolve)
 
   TEST_CASE ("Both negative [-5:-2] on length 10 -> [5:8] ")
   {
-    struct user_stride both_neg = {.start = -5, .stop = -2, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride both_neg = {
+        .start   = -5,
+        .stop    = -2,
+        .present = START_PRESENT | STOP_PRESENT
+    };
     stride_resolve (&result, both_neg, 10, &e);
     test_assert_int_equal (result.start, 5);
     test_assert_int_equal (result.stride, 1);

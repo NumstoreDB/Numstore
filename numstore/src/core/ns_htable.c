@@ -75,7 +75,11 @@ htable_insert (struct htable *t, struct hnode *node)
 }
 
 struct hnode **
-htable_lookup (struct htable *t, const struct hnode *key, bool (*eq) (const struct hnode *, const struct hnode *))
+htable_lookup (
+    struct htable      *t,
+    const struct hnode *key,
+    bool (*eq) (const struct hnode *, const struct hnode *)
+)
 {
   ASSERT (eq);
   latch_lock (&t->latch);

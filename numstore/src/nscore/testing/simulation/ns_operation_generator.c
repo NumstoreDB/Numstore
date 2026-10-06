@@ -51,11 +51,12 @@ get_allowed (struct ns_ref *ref, u8 allowed[NSS_AT_LEN], const u8 enabled[NSS_AT
   }
 
   if (nvars > 0) {
-    allowed[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH] = enabled[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH];
+    allowed[NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH] = enabled
+        [NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH];
 
     // You're always guaranteed to have an active
     // variable if there's more than 0 variables
-    allowed[NSS_INSERT]                             = enabled[NSS_INSERT];
+    allowed[NSS_INSERT] = enabled[NSS_INSERT];
 
     // Can remove, read and write if length > 0
     if (ns_ref_cur_len (ref) > 0) {

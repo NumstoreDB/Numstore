@@ -43,7 +43,12 @@ compile_type_alloc (const char *text, struct arena_alloc *dalloc, error *e)
   return ret;
 }
 
-err_t compile_subtype (struct subtype *dest, const char *text, struct arena_alloc *dalloc, error *e);
+err_t compile_subtype (
+    struct subtype     *dest,
+    const char         *text,
+    struct arena_alloc *dalloc,
+    error              *e
+);
 
 err_t compile_multi_user_stride (
     struct multi_user_stride *dest,
@@ -54,7 +59,12 @@ err_t compile_multi_user_stride (
 
 err_t compile_user_stride (struct user_stride *dest, const char *text, error *e);
 
-err_t compile_type_ref (struct type_ref *dest, const char *text, struct arena_alloc *dalloc, error *e);
+err_t compile_type_ref (
+    struct type_ref    *dest,
+    const char         *text,
+    struct arena_alloc *dalloc,
+    error              *e
+);
 
 err_t compile_query (struct query *dest, const char *text, struct arena_alloc *dalloc, error *e);
 

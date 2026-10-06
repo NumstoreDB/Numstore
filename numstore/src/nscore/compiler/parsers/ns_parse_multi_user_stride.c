@@ -147,7 +147,12 @@ theend:
 }
 
 err_t
-compile_multi_user_stride (struct multi_user_stride *dest, const char *text, struct arena_alloc *dalloc, error *e)
+compile_multi_user_stride (
+    struct multi_user_stride *dest,
+    const char               *text,
+    struct arena_alloc       *dalloc,
+    error                    *e
+)
 {
   BUILDER_INIT (b, dalloc);
 
@@ -372,7 +377,10 @@ TEST (compile_multi_user_stride)
     compile_multi_user_stride (&stride, "[0:0:0, 0]", &alloc, &e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
-    test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT | STOP_PRESENT | STEP_PRESENT);
+    test_assert_int_equal (
+        stride.strides[0].present,
+        START_PRESENT | COLON_PRESENT | STOP_PRESENT | STEP_PRESENT
+    );
     test_assert_int_equal (stride.strides[0].start, 0);
     test_assert_int_equal (stride.strides[0].stop, 0);
     test_assert_int_equal (stride.strides[0].step, 0);

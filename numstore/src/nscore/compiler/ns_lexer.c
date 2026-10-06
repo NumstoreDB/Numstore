@@ -204,7 +204,13 @@ scan_string (struct lexer *lex, error *e)
 
   advance (lex); // Closing quote
 
-  return add_token_str (lex, TT_STRING, &lex->src[lex->start + 1], (lex->current - lex->start) - 2, e);
+  return add_token_str (
+      lex,
+      TT_STRING,
+      &lex->src[lex->start + 1],
+      (lex->current - lex->start) - 2,
+      e
+  );
 }
 
 static err_t
@@ -370,7 +376,13 @@ scan_token (struct lexer *lex, error *e)
         return scan_identifier (lex, e);
       }
 
-      return error_causef (e, ERR_SYNTAX, "Unexpected character '%c' at position %u", c, lex->start);
+      return error_causef (
+          e,
+          ERR_SYNTAX,
+          "Unexpected character '%c' at position %u",
+          c,
+          lex->start
+      );
     }
   }
 }

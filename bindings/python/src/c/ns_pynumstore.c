@@ -68,7 +68,12 @@ _unwrap_capsule (PyObject *capsule, const char *name, const void *sentinel)
 {
   // Ensure that the object is a capsule
   if (!PyCapsule_CheckExact (capsule)) {
-    PyErr_Format (PyExc_TypeError, "expected %s capsule, got %.200s", name, Py_TYPE (capsule)->tp_name);
+    PyErr_Format (
+        PyExc_TypeError,
+        "expected %s capsule, got %.200s",
+        name,
+        Py_TYPE (capsule)->tp_name
+    );
     return NULL;
   }
 
@@ -76,7 +81,12 @@ _unwrap_capsule (PyObject *capsule, const char *name, const void *sentinel)
   // ValueError for e.g. a txn passed where a db is expected
   if (!PyCapsule_IsValid (capsule, name)) {
     const char *got = PyCapsule_GetName (capsule);
-    PyErr_Format (PyExc_TypeError, "expected %s capsule, got %.200s capsule", name, got ? got : "unnamed");
+    PyErr_Format (
+        PyExc_TypeError,
+        "expected %s capsule, got %.200s capsule",
+        name,
+        got ? got : "unnamed"
+    );
     return NULL;
   }
 
@@ -485,7 +495,8 @@ primitive_to_dtype (enum prim_t p)
   if (expect != 0 && elsize (d) != expect) {
     PyErr_Format (
         PyExc_NotImplementedError,
-        "numstore type needs a %zd byte float, but numpy's long double is %zd bytes on this platform",
+        "numstore type needs a %zd byte float, but numpy's long double is %zd "
+        "bytes on this platform",
         expect,
         elsize (d)
     );

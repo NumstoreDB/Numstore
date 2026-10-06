@@ -22,7 +22,14 @@
 #include "nscore/wal/ns_wal_record.h"
 
 static err_t
-pgr_new_impl (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, const pgno pg, error *e)
+pgr_new_impl (
+    page_h              *dest,
+    struct pager        *p,
+    struct txn          *tx,
+    const enum page_type type,
+    const pgno           pg,
+    error               *e
+)
 {
   DBG_ASSERT (pager, p);
   DBG_ASSERT (page_h, dest);

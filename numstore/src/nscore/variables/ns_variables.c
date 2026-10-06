@@ -306,7 +306,13 @@ TEST (var_random_name)
 #endif // TESTING
 
 err_t
-rand_varname (struct string *dest, struct arena_alloc *alloc, const u32 minlen, const u32 maxlen, error *e)
+rand_varname (
+    struct string      *dest,
+    struct arena_alloc *alloc,
+    const u32           minlen,
+    const u32           maxlen,
+    error              *e
+)
 {
   ASSERT (dest);
   ASSERT (alloc);
@@ -348,7 +354,12 @@ TEST (rand_varname)
 #endif
 
 err_t
-rand_varname_same_hash (struct string *name1, struct string *name2, struct arena_alloc *alloc, error *e)
+rand_varname_same_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct arena_alloc *alloc,
+    error              *e
+)
 {
   ASSERT (name1);
   ASSERT (name2);
@@ -397,7 +408,12 @@ failed:
 }
 
 err_t
-rand_varname_different_hash (struct string *name1, struct string *name2, struct arena_alloc *alloc, error *e)
+rand_varname_different_hash (
+    struct string      *name1,
+    struct string      *name2,
+    struct arena_alloc *alloc,
+    error              *e
+)
 {
   ASSERT (name1);
   ASSERT (name2);
@@ -566,7 +582,12 @@ TEST (var_resolve_nelem)
 #endif
 
 err_t
-variable_copy (struct variable *dest, const struct variable *src, struct arena_alloc *alloc, error *e)
+variable_copy (
+    struct variable       *dest,
+    const struct variable *src,
+    struct arena_alloc    *alloc,
+    error                 *e
+)
 {
   // Copy over the variable name
   // TODO - this is awful - remove +1

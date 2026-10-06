@@ -17,7 +17,14 @@
 #include "nscore/pager/ns_pager.h"
 
 err_t
-pgr_get_writable (page_h *dest, struct txn *tx, const int flags, const pgno pg, struct pager *p, error *e)
+pgr_get_writable (
+    page_h       *dest,
+    struct txn   *tx,
+    const int     flags,
+    const pgno    pg,
+    struct pager *p,
+    error        *e
+)
 {
   struct page_frame *pgr = NULL; // Read frame
   struct page_frame *pgw = NULL; // Write frame

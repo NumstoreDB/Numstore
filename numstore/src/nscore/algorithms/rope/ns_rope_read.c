@@ -84,9 +84,9 @@ ns_read_forward (struct ns_read_params params, error *e)
   p_size                lidx        = 0;
   b_size                total_bread = 0;
   b_size                max_bread   = params.size * params.nelem;
-  b_size                bnext       = params.size; // bytes remaining in the current read/skip window
+  b_size                bnext = params.size; // bytes remaining in the current read/skip window
 
-  struct ns_seek_params seek        = {
+  struct ns_seek_params seek  = {
       .p          = params.p,
       .tx         = params.tx,
       .root       = params.root,
@@ -155,7 +155,8 @@ ns_read_forward (struct ns_read_params params, error *e)
 
     switch (state) {
       case ACTIVE: {
-        sp_size read = stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
+        sp_size
+            read = stream_bwrite ((u8 *)dl_get_data (curp) + lidx, 1, next_amount, params.dest, e);
 
         if (read < 0) {
           goto failed;

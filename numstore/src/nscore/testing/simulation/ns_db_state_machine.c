@@ -44,7 +44,13 @@ ns_db_reopen_handle (struct ns_db *db, error *e)
 }
 
 struct ns_db *
-ns_db_new (struct i_mem reliable_mem, struct i_mem test_mem, struct i_file_system test_fs, const char *dbname, error *e)
+ns_db_new (
+    struct i_mem         reliable_mem,
+    struct i_mem         test_mem,
+    struct i_file_system test_fs,
+    const char          *dbname,
+    error               *e
+)
 {
   struct ns_db *ret = i_malloc (reliable_mem, 1, sizeof *ret, e);
   if (ret == NULL) {
@@ -423,7 +429,8 @@ ns_db_remove (struct ns_db *db, void *dest, b_size dlen, struct stride str, erro
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "remove %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  struct nsdb_plan
+      *plan = nsdb_plan_fcreate (db->db, "remove %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
   if (plan == NULL) {
     return error_trace (e);
   }
@@ -453,7 +460,8 @@ ns_db_read (struct ns_db *db, void *dest, b_size dlen, struct stride str, error 
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "read %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  struct nsdb_plan
+      *plan = nsdb_plan_fcreate (db->db, "read %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
   if (plan == NULL) {
     return error_trace (e);
   }
@@ -483,7 +491,8 @@ ns_db_write (struct ns_db *db, const void *data, b_size dlen, struct stride str,
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan *plan = nsdb_plan_fcreate (db->db, "write %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  struct nsdb_plan
+      *plan = nsdb_plan_fcreate (db->db, "write %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
   if (plan == NULL) {
     return error_trace (e);
   }
@@ -517,9 +526,11 @@ TEST (ns_db)
 
   u32 dest[20];
 
-#  define STR(_start, _stride, _nelems) ((struct stride){.start = (_start), .stride = (_stride), .nelems = (_nelems)})
+#  define STR(_start, _stride, _nelems) \
+    ((struct stride){.start = (_start), .stride = (_stride), .nelems = (_nelems)})
 
-  // Reads the whole current variable and checks both the length and the contents
+  // Reads the whole current variable and checks both the length and the
+  // contents
 #  define validate(expected)                                                 \
     do {                                                                     \
       sb_size _n = ns_db_read (db, dest, sizeof (dest), STR (0, 1, 20), &e); \

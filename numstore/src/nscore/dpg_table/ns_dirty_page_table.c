@@ -200,7 +200,11 @@ dpgt_hnode_foreach (struct hnode *node, void *ctx)
 }
 
 void
-dpgt_foreach (const struct dpg_table *t, void (*action) (pgno pg, lsn rec_lsn, void *ctx), void *ctx)
+dpgt_foreach (
+    const struct dpg_table *t,
+    void (*action) (pgno pg, lsn rec_lsn, void *ctx),
+    void *ctx
+)
 {
   struct dpgt_foreach_ctx _ctx = {
       .action = action,
@@ -868,9 +872,18 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (default_threading (), &t1, dpgt_insert_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t2, dpgt_insert_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t3, dpgt_insert_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (default_threading (), &t1, dpgt_insert_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t2, dpgt_insert_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t3, dpgt_insert_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -915,9 +928,18 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (default_threading (), &t1, dpgt_reader_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t2, dpgt_reader_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t3, dpgt_reader_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (default_threading (), &t1, dpgt_reader_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t2, dpgt_reader_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t3, dpgt_reader_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -958,9 +980,18 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (default_threading (), &t1, dpgt_updater_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t2, dpgt_updater_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t3, dpgt_updater_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (default_threading (), &t1, dpgt_updater_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t2, dpgt_updater_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t3, dpgt_updater_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -1008,9 +1039,18 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (default_threading (), &t1, dpgt_remove_thread, &ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t2, dpgt_remove_thread, &ctx2, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t3, dpgt_remove_thread, &ctx3, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (default_threading (), &t1, dpgt_remove_thread, &ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t2, dpgt_remove_thread, &ctx2, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t3, dpgt_remove_thread, &ctx3, &e),
+        SUCCESS
+    );
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);
@@ -1055,9 +1095,18 @@ TEST (dpgt_concurrent)
     };
 
     i_thread t1, t2, t3;
-    test_assert_equal (i_thread_create (default_threading (), &t1, dpgt_insert_thread, &insert_ctx, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t2, dpgt_reader_thread, &read_ctx1, &e), SUCCESS);
-    test_assert_equal (i_thread_create (default_threading (), &t3, dpgt_reader_thread, &read_ctx2, &e), SUCCESS);
+    test_assert_equal (
+        i_thread_create (default_threading (), &t1, dpgt_insert_thread, &insert_ctx, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t2, dpgt_reader_thread, &read_ctx1, &e),
+        SUCCESS
+    );
+    test_assert_equal (
+        i_thread_create (default_threading (), &t3, dpgt_reader_thread, &read_ctx2, &e),
+        SUCCESS
+    );
 
     i_thread_join (default_threading (), &t1, &e);
     i_thread_join (default_threading (), &t2, &e);

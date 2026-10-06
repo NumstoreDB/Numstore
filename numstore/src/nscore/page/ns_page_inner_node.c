@@ -63,7 +63,12 @@ in_print_as_arrays (const pgno *pgs, const b_size *keys, const p_size len)
 }
 
 static void
-test_assert_inner_node_equal (const page *actual, const pgno *e_pgs, const b_size *e_keys, const p_size len)
+test_assert_inner_node_equal (
+    const page   *actual,
+    const pgno   *e_pgs,
+    const b_size *e_keys,
+    const p_size  len
+)
 {
   test_assert_int_equal (len, in_get_len (actual));
 
@@ -420,7 +425,10 @@ TEST (in_memcpy)
     memset (dest_page, 0xFF, sizeof (dest_page));
     copied = in_page_memcpy_right (dest_page, &in, 3);
     test_assert_int_equal (copied, 7);
-    test_assert_int_equal (memcmp (dest_page, &expected_p[3], sizeof (expected_p) - 3 * sizeof *expected_p), 0);
+    test_assert_int_equal (
+        memcmp (dest_page, &expected_p[3], sizeof (expected_p) - 3 * sizeof *expected_p),
+        0
+    );
     memset (dest_page, 0xFF, sizeof (dest_page));
 
     // key
@@ -431,7 +439,10 @@ TEST (in_memcpy)
     memset (dest_key, 0xFF, sizeof (dest_key));
     copied = in_key_memcpy_right (dest_key, &in, 3);
     test_assert_int_equal (copied, 7);
-    test_assert_int_equal (memcmp (dest_key, &expected_b1[3], sizeof (expected_b1) - 3 * sizeof *expected_b1), 0);
+    test_assert_int_equal (
+        memcmp (dest_key, &expected_b1[3], sizeof (expected_b1) - 3 * sizeof *expected_b1),
+        0
+    );
     memset (dest_key, 0xFF, sizeof (dest_key));
   }
 }
@@ -581,7 +592,12 @@ TEST (in_push_left)
 
   in_push_left (&in, 2);
 
-  test_assert_inner_node_equal (&in, (pgno[]){0, 0, 0, 0, 1, 2, 3}, (b_size[]){10, 10, 10, 10, 21, 33, 46}, 7);
+  test_assert_inner_node_equal (
+      &in,
+      (pgno[]){0, 0, 0, 0, 1, 2, 3},
+      (b_size[]){10, 10, 10, 10, 21, 33, 46},
+      7
+  );
 }
 
 #  ifndef NDEBUG

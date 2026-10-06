@@ -288,7 +288,8 @@ randu64r (const u64 lower, const u64 upper)
   u64 x  = randu64 ();
   // compute hi = upper 64 bits of x * range
   u64 hi = HI32 (x) * HI32 (range)
-           + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range))) + HI32 (LO32 (x) * HI32 (range)));
+           + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range)))
+              + HI32 (LO32 (x) * HI32 (range)));
   u64 lo = x * range; // lower 64 bits (natural wraparound)
 
   if (lo < range) {
@@ -296,7 +297,8 @@ randu64r (const u64 lower, const u64 upper)
     while (lo < t) {
       x  = randu64 ();
       hi = HI32 (x) * HI32 (range)
-           + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range))) + HI32 (LO32 (x) * HI32 (range)));
+           + (HI32 (HI32 (x) * LO32 (range) + HI32 (LO32 (x) * LO32 (range)))
+              + HI32 (LO32 (x) * HI32 (range)));
       lo = x * range;
     }
   }
@@ -317,7 +319,12 @@ randu64e (const u64 lower, const u64 upper)
 #ifndef NDEBUG
 TEST (randu64r)
 {
-  test_assert_type_equal (randu64r (1234567890123ull, 1234567890123ull), 1234567890123ull, u64, PRIu64);
+  test_assert_type_equal (
+      randu64r (1234567890123ull, 1234567890123ull),
+      1234567890123ull,
+      u64,
+      PRIu64
+  );
   test_assert_type_equal (randu64r (0ull, 0ull), 0ull, u64, PRIu64);
   test_assert_type_equal (randu64r (U64_MAX, U64_MAX), U64_MAX, u64, PRIu64);
 

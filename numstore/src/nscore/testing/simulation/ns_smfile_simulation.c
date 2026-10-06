@@ -311,7 +311,11 @@ smfile_simul_remove (struct smfile_simulation *meta)
 
   // compare the two
   if (got != actual) {
-    i_log_failure ("remove count mismatch: got=%lld actual=%lld\n", (long long)got, (long long)actual);
+    i_log_failure (
+        "remove count mismatch: got=%lld actual=%lld\n",
+        (long long)got,
+        (long long)actual
+    );
     free (db_buf);
     free (ref_buf);
     return -1;
@@ -371,7 +375,11 @@ smfile_simul_read (struct smfile_simulation *meta)
 
   // compare the two
   if (got != actual) {
-    i_log_failure ("read count mismatch: got=%lld actual=%lld\n", (long long)got, (long long)actual);
+    i_log_failure (
+        "read count mismatch: got=%lld actual=%lld\n",
+        (long long)got,
+        (long long)actual
+    );
     free (db_buf);
     free (ref_buf);
     return -1;
@@ -425,7 +433,11 @@ smfile_simul_write (struct smfile_simulation *meta)
   }
 
   if (got != (i64)actual) {
-    i_log_failure ("write count mismatch: got=%lld actual=%lld\n", (long long)got, (long long)actual);
+    i_log_failure (
+        "write count mismatch: got=%lld actual=%lld\n",
+        (long long)got,
+        (long long)actual
+    );
     free (data);
     return -1;
   }

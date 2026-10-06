@@ -29,7 +29,15 @@ numstore_remove_malloc_from_name (
     error              *e
 )
 {
-  WITH_OPT_VARIABLE_PTR (p, tx, name, alloc, var, e, numstore_remove_malloc (p, tx, var, ustr, dlen, mem, e));
+  WITH_OPT_VARIABLE_PTR (
+      p,
+      tx,
+      name,
+      alloc,
+      var,
+      e,
+      numstore_remove_malloc (p, tx, var, ustr, dlen, mem, e)
+  );
 }
 
 void *
@@ -89,7 +97,8 @@ numstore_remove_malloc (
   }
 
   // UPDATE VARIABLE
-  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e) < 0) {
+  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e)
+      < 0) {
     i_free (mem, buffer);
     goto failed;
   }

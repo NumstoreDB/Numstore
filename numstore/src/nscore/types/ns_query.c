@@ -44,8 +44,8 @@ query_equal (const struct query *left, const struct query *right)
              != 0;
     }
     case QT_INSERT: {
-      return (string_equal (left->insert.name, right->insert.name) && left->insert.ofst == right->insert.ofst
-              && left->insert.len == right->insert.len)
+      return (string_equal (left->insert.name, right->insert.name)
+              && left->insert.ofst == right->insert.ofst && left->insert.len == right->insert.len)
              != 0;
     }
 
@@ -58,7 +58,9 @@ query_equal (const struct query *left, const struct query *right)
       return string_equal (left->delete.name, right->delete.name);
     }
     case QT_GET: {
-      return (string_equal (left->get.name, right->get.name) && left->get.if_exists == right->get.if_exists) != 0;
+      return (string_equal (left->get.name, right->get.name)
+              && left->get.if_exists == right->get.if_exists)
+             != 0;
     }
 
     case QT_EXIT: {
@@ -187,7 +189,11 @@ query_ustr_of_interest (struct user_stride *dest, const struct query *q, error *
     }
 
     default: {
-      return error_causef (e, ERR_INVALID_ARGUMENT, "Unsupported query type - ustride is not applicable");
+      return error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "Unsupported query type - ustride is not applicable"
+      );
     }
   }
 }

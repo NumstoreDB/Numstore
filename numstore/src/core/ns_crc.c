@@ -49,9 +49,10 @@ crc_sw (u32 c, const u8 *p, u32 len)
     memcpy (&lo, p, 4); // little-endian hosts only
     memcpy (&hi, p + 4, 4);
     lo ^= c;
-    c = crc_sw_tbl[7][lo & 0xFF] ^ crc_sw_tbl[6][(lo >> 8) & 0xFF] ^ crc_sw_tbl[5][(lo >> 16) & 0xFF]
-        ^ crc_sw_tbl[4][lo >> 24] ^ crc_sw_tbl[3][hi & 0xFF] ^ crc_sw_tbl[2][(hi >> 8) & 0xFF]
-        ^ crc_sw_tbl[1][(hi >> 16) & 0xFF] ^ crc_sw_tbl[0][hi >> 24];
+    c = crc_sw_tbl[7][lo & 0xFF] ^ crc_sw_tbl[6][(lo >> 8) & 0xFF]
+        ^ crc_sw_tbl[5][(lo >> 16) & 0xFF] ^ crc_sw_tbl[4][lo >> 24] ^ crc_sw_tbl[3][hi & 0xFF]
+        ^ crc_sw_tbl[2][(hi >> 8) & 0xFF] ^ crc_sw_tbl[1][(hi >> 16) & 0xFF]
+        ^ crc_sw_tbl[0][hi >> 24];
     p += 8;
     len -= 8;
   }
@@ -70,8 +71,8 @@ crc_sw (u32 c, const u8 *p, u32 len)
 static inline u32
 crc_shift (u32 v)
 {
-  return crc_shift_tbl[0][v & 0xFF] ^ crc_shift_tbl[1][(v >> 8) & 0xFF] ^ crc_shift_tbl[2][(v >> 16) & 0xFF]
-         ^ crc_shift_tbl[3][v >> 24];
+  return crc_shift_tbl[0][v & 0xFF] ^ crc_shift_tbl[1][(v >> 8) & 0xFF]
+         ^ crc_shift_tbl[2][(v >> 16) & 0xFF] ^ crc_shift_tbl[3][v >> 24];
 }
 
 CRC_HW_ATTR static u32

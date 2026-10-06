@@ -173,7 +173,10 @@ TEST (compile_subtype)
 
   test_compile_subtype_green_path (
       "myvar[9]",
-      subtype_create (strfcstr ("myvar"), ta_range ((struct user_stride[]){ustride_single (9)}, 1, &ta_take ()))
+      subtype_create (
+          strfcstr ("myvar"),
+          ta_range ((struct user_stride[]){ustride_single (9)}, 1, &ta_take ())
+      )
   );
 
   test_compile_subtype_green_path (
@@ -181,7 +184,11 @@ TEST (compile_subtype)
       subtype_create (strfcstr ("myvar"), ta_select (strfcstr ("field"), &ta_take ()))
   );
 
-  struct type_accessor subrange = ta_range ((struct user_stride[]){ustride_single (0)}, 1, &ta_take ());
+  struct type_accessor subrange = ta_range (
+      (struct user_stride[]){ustride_single (0)},
+      1,
+      &ta_take ()
+  );
 
   test_compile_subtype_green_path (
       "myvar.a[0]",

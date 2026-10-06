@@ -162,14 +162,21 @@ TEST (union_t_resolve_key)
   ALLOC_INIT (alloc);
   error        e = error_create ();
 
-  struct type *t = compile_type_alloc ("union { a struct { a u32, b [10]f32 }, b f32 }", &alloc, &e);
+  struct type *t = compile_type_alloc (
+      "union { a struct { a u32, b [10]f32 }, b f32 }",
+      &alloc,
+      &e
+  );
 
   test_assert (type_equal (
       compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e),
       union_t_resolve_key (&t->un, strfcstr ("a"))
   ));
 
-  test_assert (type_equal (compile_type_alloc ("f32", &alloc, &e), union_t_resolve_key (&t->un, strfcstr ("b"))));
+  test_assert (type_equal (
+      compile_type_alloc ("f32", &alloc, &e),
+      union_t_resolve_key (&t->un, strfcstr ("b"))
+  ));
 
   ALLOC_CLOSE (alloc);
 }
@@ -556,9 +563,10 @@ TEST (union_t_serialize)
   };
 
   u8  act[200]; // Sloppy sizing
-  u8  exp[] = {0,       0,   0,          0,      'f', 'o', 'o', (u8)T_PRIM, (u8)U32,    0,        0,
-               'f',     'o', (u8)T_PRIM, (u8)U8, 0,   0,   'b', 'a',        'r',        'o',      (u8)T_PRIM,
-               (u8)U16, 0,   0,          'b',    'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
+  u8  exp[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
+               (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
+               0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
+               0,       'b', 'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
   u16 len   = 4;
   u16 l0    = 3;
   u16 l2    = 2;
@@ -580,7 +588,12 @@ TEST (union_t_serialize)
 #endif
 
 err_t
-union_t_deserialize (struct union_t *dest, struct deserializer *src, struct arena_alloc *a, error *e)
+union_t_deserialize (
+    struct union_t      *dest,
+    struct deserializer *src,
+    struct arena_alloc  *a,
+    error               *e
+)
 {
   ASSERT (dest);
   BUILDER_INIT (b, a);
@@ -646,9 +659,10 @@ TEST (union_t_deserialize_green_path)
 {
   ALLOC_INIT (alloc);
 
-  u8  data[] = {0,       0,   0,          0,      'f', 'o', 'o', (u8)T_PRIM, (u8)U32,    0,        0,
-                'f',     'o', (u8)T_PRIM, (u8)U8, 0,   0,   'b', 'a',        'r',        'o',      (u8)T_PRIM,
-                (u8)U16, 0,   0,          'b',    'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
+  u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
+                (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
+                0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
+                0,       'b', 'a', 'z', 'b', 'i',        (u8)T_PRIM, (u8)CF128};
   u16 len    = 4;
   u16 l0     = 3;
   u16 l2     = 2;
@@ -700,9 +714,10 @@ TEST (union_t_deserialize_red_path)
 {
   ALLOC_INIT (alloc);
 
-  u8  data[] = {0,          0,       0,   0,          'f',    'o', 'o', (u8)T_PRIM, (u8)U32, 0,          0,
-                'f',        'o',     'o', (u8)T_PRIM, (u8)U8, 0,   0,   'b',        'a',     'r',        'o',
-                (u8)T_PRIM, (u8)U16, 0,   0,          'b',    'a', 'z', 'b',        'i',     (u8)T_PRIM, (u8)CF128};
+  u8  data[] = {0,   0,   0,   0,   'f',        'o',        'o',    (u8)T_PRIM, (u8)U32,
+                0,   0,   'f', 'o', 'o',        (u8)T_PRIM, (u8)U8, 0,          0,
+                'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,      0,          'b',
+                'a', 'z', 'b', 'i', (u8)T_PRIM, (u8)CF128};
   u16 len    = 4;
   u16 l0     = 3;
   u16 l2     = 3;
@@ -726,7 +741,13 @@ TEST (union_t_deserialize_red_path)
 #endif
 
 err_t
-union_t_random (struct union_t *un, struct arena_alloc *alloc, u32 depth, t_size max_tsize, error *e)
+union_t_random (
+    struct union_t     *un,
+    struct arena_alloc *alloc,
+    u32                 depth,
+    t_size              max_tsize,
+    error              *e
+)
 {
   ASSERT (un);
 

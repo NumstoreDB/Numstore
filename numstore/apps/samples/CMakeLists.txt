@@ -1,4 +1,6 @@
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+option(BUILD_SAMPLES "Build sample apps" ON)
+
+if(BUILD_SAMPLES)
     add_executable(ns_big_file ns_big_file.c)
     add_executable(ns_sample1_basic_crud ns_sample1_basic_crud.c)
     add_executable(smfile_sample1_basic_crud smfile_sample1_basic_crud.c)

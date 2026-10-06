@@ -53,7 +53,12 @@ static err_t
 parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
 {
   if (!parser_match (parser->base, TT_PRIM)) {
-    return error_causef (e, ERR_SYNTAX, "Expected primitive type at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected primitive type at position %u",
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -375,7 +380,10 @@ TEST (compile_type)
       (struct string[]){strfcstr ("x"), strfcstr ("y")},
       (struct type *[]){&TI32, &inner_sarray}
   );
-  test_compile_type_green_path ("[10]struct { x i32, y [5]f64 }", mk_sarray (1, (u32[]){10}, &inner_struct));
+  test_compile_type_green_path (
+      "[10]struct { x i32, y [5]f64 }",
+      mk_sarray (1, (u32[]){10}, &inner_struct)
+  );
 }
 
 #endif

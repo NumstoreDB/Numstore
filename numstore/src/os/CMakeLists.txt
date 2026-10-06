@@ -1,15 +1,8 @@
 target_sources(
     numstore.library
-    PRIVATE
-        ns_file.h
-        ns_filesystem.h
-        ns_memory.h
-        ns_os_vtable.h
-        ns_threading.h
-        ns_time.h
+    PRIVATE ns_faulty.c ns_faulty.h ns_os.h ns_posix.c ns_system.h
 )
 
-add_subdirectory(common)
 add_subdirectory(posix)
-add_subdirectory(test)
 add_subdirectory(windows)
+add_subdirectory(faulty)

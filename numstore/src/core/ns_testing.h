@@ -47,11 +47,16 @@ enum
     {                                                                            \
       __test_body__##name (default_mem (), default_filesystem ());               \
     }                                                                            \
-    static void __test_body__##name (MAYBE_UNUSED struct i_mem mem, MAYBE_UNUSED struct i_file_system fs)
+    static void __test_body__##name (                                            \
+        MAYBE_UNUSED struct i_mem         mem,                                   \
+        MAYBE_UNUSED struct i_file_system fs                                     \
+    )
 
-#  define TEST_CASE(fmt, ...)                                                                                        \
-    for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1), _tc_prev = test_ret; _tc_once; _tc_once = 0, \
-             (test_ret == _tc_prev ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0)                         \
+#  define TEST_CASE(fmt, ...)                                                                \
+    for (int _tc_once = (i_log_test_case (fmt "\n", ##__VA_ARGS__), 1), _tc_prev = test_ret; \
+         _tc_once;                                                                           \
+         _tc_once = 0,                                                                       \
+             (test_ret == _tc_prev ? (i_log_passed ("------ : " fmt "\n", ##__VA_ARGS__), 0) \
                                    : (i_log_failure ("------ : " fmt "\n", ##__VA_ARGS__), 0)))
 
 /******************************************************************************
@@ -65,11 +70,14 @@ void fault_set (const char *name);
 void fault_reset_all (void);
 
 #  ifndef FAULT
-#    define FAULT(expr, name) \
-      (fault_is_set (name) ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) : (expr))
+#    define FAULT(expr, name)                                                                \
+      (fault_is_set (name) ? (error_causef ((e), ERR_INVALID_ARGUMENT, "Fault: %s", (name))) \
+                           : (expr))
 
-#    define FAULT_NULL(expr, name) \
-      (fault_is_set (name) ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), (void *)0) : (expr))
+#    define FAULT_NULL(expr, name)                                                      \
+      (fault_is_set (name)                                                              \
+           ? (error_causef ((e), ERR_INVALID_ARGUMENT, "FAULT: %s", (name)), (void *)0) \
+           : (expr))
 #  endif
 
 /******************************************************************************

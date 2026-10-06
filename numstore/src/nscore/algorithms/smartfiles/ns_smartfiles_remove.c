@@ -89,7 +89,14 @@ smartfiles_remove (
   }
 
   // UPDATE VARIABLE
-  if (ns_var_update_by_var_root (p, tx, gparams.dest.var_root, rparams.root, gparams.dest.nbytes - (ret * size), e)
+  if (ns_var_update_by_var_root (
+          p,
+          tx,
+          gparams.dest.var_root,
+          rparams.root,
+          gparams.dest.nbytes - (ret * size),
+          e
+      )
       < 0) {
     return error_trace (e);
   }

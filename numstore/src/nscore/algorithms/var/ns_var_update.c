@@ -31,7 +31,14 @@
  * earlier _find_var_page() call, avoiding a second hash-chain traversal.
  */
 err_t
-ns_var_update_by_var_root (struct pager *p, struct txn *tx, pgno root, pgno newpg, b_size nbytes, error *e)
+ns_var_update_by_var_root (
+    struct pager *p,
+    struct txn   *tx,
+    pgno          root,
+    pgno          newpg,
+    b_size        nbytes,
+    error        *e
+)
 {
   page_h cur = page_h_create ();
 
@@ -62,7 +69,14 @@ failed:
  * the page to writable and stamps the new root pgno and byte count.
  */
 err_t
-ns_var_update_by_name (struct pager *p, struct txn *tx, struct string name, pgno newpg, b_size nbytes, error *e)
+ns_var_update_by_name (
+    struct pager *p,
+    struct txn   *tx,
+    struct string name,
+    pgno          newpg,
+    b_size        nbytes,
+    error        *e
+)
 {
   page_h                         cur     = page_h_create ();
 

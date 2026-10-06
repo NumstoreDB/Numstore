@@ -32,7 +32,13 @@ struct dbl_buffer
   struct arena_alloc *alloc;
 };
 
-err_t dblb_create (struct dbl_buffer *dest, struct arena_alloc *alloc, u32 size, u32 initial_cap, error *e);
+err_t dblb_create (
+    struct dbl_buffer  *dest,
+    struct arena_alloc *alloc,
+    u32                 size,
+    u32                 initial_cap,
+    error              *e
+);
 err_t dblb_append (struct dbl_buffer *d, const void *data, u32 nelem, error *e);
 err_t dblb_ensure_space (struct dbl_buffer *d, u32 nelem, error *e);
 void *dblb_append_alloc (struct dbl_buffer *d, u32 nelem, error *e);

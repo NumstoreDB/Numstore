@@ -299,7 +299,8 @@ nsdb_auto_finish (struct nsdb *db, struct txn *user_tx, sb_size ret, error *e)
   return ret;
 }
 
-/////////////////////////////////////// Variables - immutable variable data from the database
+/////////////////////////////////////// Variables - immutable variable data from
+/// the database
 
 struct nsdb_var *
 nsdb_var_create (struct i_mem mem, error *e)
@@ -380,7 +381,8 @@ nsdb_var_type (struct nsdb_var *var)
   return var->var.dtype;
 }
 
-/////////////////////////////////////// Nsdb Plan - a pre compiled statement that can be executed
+/////////////////////////////////////// Nsdb Plan - a pre compiled statement
+/// that can be executed
 
 struct nsdb_plan *
 nsdb_plan_create (struct nsdb *db, const char *query, error *_e)
@@ -500,12 +502,29 @@ nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
   switch (ns->q.type) {
       // Array Operations
     case QT_REMOVE: {
-      ret = numstore_remove_from_name (ns->parent->p, tx, ns->q.remove.name, ns->q.remove.ustr, &temp, NULL, NULL, e);
+      ret = numstore_remove_from_name (
+          ns->parent->p,
+          tx,
+          ns->q.remove.name,
+          ns->q.remove.ustr,
+          &temp,
+          NULL,
+          NULL,
+          e
+      );
       break;
     }
       // Variable Operations
     case QT_CREATE: {
-      ret = numstore_create (ns->parent->p, tx, ns->q.create.name, ns->q.create.type, &temp, NULL, e);
+      ret = numstore_create (
+          ns->parent->p,
+          tx,
+          ns->q.create.name,
+          ns->q.create.type,
+          &temp,
+          NULL,
+          e
+      );
       break;
     }
     case QT_DELETE: {
@@ -519,7 +538,11 @@ nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
     case QT_READ:
     case QT_WRITE:
     case QT_INSERT: {
-      ret = error_causef (e, ERR_INVALID_ARGUMENT, "Only supported exec commands are REMOVE/CREATE/DELETE");
+      ret = error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "Only supported exec commands are REMOVE/CREATE/DELETE"
+      );
       break;
     }
     default: {
@@ -649,7 +672,7 @@ nsdb_plan_read (struct nsdb_plan *st, struct txn *user_tx, void *dest, b_size dl
 
   // Validate inputs before opening any transaction
   if (st->q.type == QT_READ && (dest == NULL || dlen == 0)) {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "destination buffer is reqiured for read query");
+    return error_causef (e, ERR_INVALID_ARGUMENT, "destination buffer is required for read query");
   }
 
   struct txn *tx = nsdb_auto_begin (st->parent, user_tx, e);
@@ -762,8 +785,8 @@ TEST (nsdb_plan_read)
     u32     removed_expected[]   = {src[0], src[2], src[4], src[6], src[8]};
     u32     remaining_expected[] = {src[1], src[3], src[5], src[7], src[9]};
 
-    sb_size len_removed          = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
-    sb_size len_remaining        = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
+    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
+    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
 
     test_assert_int_equal (len_removed, 5);
     test_assert_int_equal (len_remaining, 5);
@@ -779,8 +802,8 @@ TEST (nsdb_plan_read)
     u32     removed_expected[]   = {src[1], src[5]};
     u32     remaining_expected[] = {src[3], src[7], src[9]};
 
-    sb_size len_removed          = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
-    sb_size len_remaining        = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
+    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
+    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
 
     test_assert_int_equal (len_removed, 2);
     test_assert_int_equal (len_remaining, 3);
@@ -825,7 +848,15 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
         break;
       }
 
-      ret = numstore_read_malloc (st->parent->p, tx, nsdb_var_var (_var), st->q.read.ustr, dlen, st->parent->mem, e);
+      ret = numstore_read_malloc (
+          st->parent->p,
+          tx,
+          nsdb_var_var (_var),
+          st->q.read.ustr,
+          dlen,
+          st->parent->mem,
+          e
+      );
       break;
     }
     case QT_REMOVE: {
@@ -971,7 +1002,15 @@ nsdb_plan_write (struct nsdb_plan *st, struct txn *user_tx, const void *src, b_s
   sb_size ret;
   switch (st->q.type) {
     case QT_INSERT: {
-      ret = numstore_insert (st->parent->p, tx, var, st->q.insert.ofst, st->q.insert.len, &stream, e);
+      ret = numstore_insert (
+          st->parent->p,
+          tx,
+          var,
+          st->q.insert.ofst,
+          st->q.insert.len,
+          &stream,
+          e
+      );
       break;
     }
     case QT_WRITE: {
@@ -979,7 +1018,11 @@ nsdb_plan_write (struct nsdb_plan *st, struct txn *user_tx, const void *src, b_s
       break;
     }
     default: {
-      ret = error_causef (e, ERR_INVALID_ARGUMENT, "Only supported write commands are WRITE/INSERT");
+      ret = error_causef (
+          e,
+          ERR_INVALID_ARGUMENT,
+          "Only supported write commands are WRITE/INSERT"
+      );
       break;
     }
   }
@@ -1325,7 +1368,14 @@ nsdb_read_malloc (struct nsdb *db, struct txn *txn, b_size *dlen, const char *qu
 }
 
 sb_size
-nsdb_write (struct nsdb *db, struct txn *txn, const void *src, b_size dlen, const char *query, error *_e)
+nsdb_write (
+    struct nsdb *db,
+    struct txn  *txn,
+    const void  *src,
+    b_size       dlen,
+    const char  *query,
+    error       *_e
+)
 {
   error *e = nsdb_get_active_error (db, _e);
 
@@ -1384,7 +1434,14 @@ nsdb_smfile_size (struct nsdb *db, struct txn *user_tx, error *_e)
 }
 
 sb_size
-nsdb_smfile_insert (struct nsdb *db, struct txn *user_tx, const void *src, sb_size bofst, b_size slen, error *_e)
+nsdb_smfile_insert (
+    struct nsdb *db,
+    struct txn  *user_tx,
+    const void  *src,
+    sb_size      bofst,
+    b_size       slen,
+    error       *_e
+)
 {
   error *e = nsdb_get_active_error (db, _e);
   istream_create_from (input, src, slen);
