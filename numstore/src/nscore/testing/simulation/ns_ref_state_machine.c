@@ -6,10 +6,10 @@
 #include "core/ns_ext_array.h"
 #include "core/ns_string.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/testing/simulation/ns_mem_vhmap.h"
 #include "nscore/types/ns_types.h"
-#include "os/ns_memory.h"
 
 #include <string.h>
 
@@ -28,14 +28,14 @@ ns_ref_cur (struct ns_ref *ref)
 static struct db_state *
 db_state_create (struct i_mem mem, error *e)
 {
-  struct db_state *ret = i_malloc (mem, 1, sizeof *ret, e);
+  struct db_state *ret = mem.table->malloc (mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
 
   ret->db_data = mem_vhmap_create (mem, e);
   if (ret->db_data == NULL) {
-    i_free (mem, ret);
+    mem.table->free (mem.self, ret);
     return NULL;
   }
 
@@ -52,7 +52,7 @@ db_state_free (struct db_state *db)
 {
   mem_vhmap_free (db->db_data);
   struct i_mem mem = db->mem;
-  i_free (mem, db);
+  mem.table->free (mem.self, db);
 }
 
 struct db_state *
@@ -98,14 +98,14 @@ db_state_clone (struct i_mem mem, struct db_state *state, error *e)
 struct ns_ref *
 ns_ref_new (struct i_mem mem, error *e)
 {
-  struct ns_ref *ref = i_malloc (mem, 1, sizeof *ref, e);
+  struct ns_ref *ref = mem.table->malloc (mem.self, 1, sizeof *ref, e);
   if (ref == NULL) {
     return NULL;
   }
 
   struct db_state *committed = db_state_create (mem, e);
   if (committed == NULL) {
-    i_free (mem, ref);
+    mem.table->free (mem.self, ref);
     return NULL;
   }
 
@@ -128,7 +128,7 @@ ns_ref_free (struct ns_ref *ref)
   if (ref->committed) {
     db_state_free (ref->committed);
   }
-  i_free (ref->mem, ref);
+  ref->mem.table->free (ref->mem.self, ref);
 }
 
 // Return nu

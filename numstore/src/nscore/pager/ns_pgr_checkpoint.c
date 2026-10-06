@@ -13,9 +13,9 @@
 /// limitations under the License.
 
 #include "core/ns_testing.h"
+#include "core/os/ns_os.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
-#include "os/ns_time.h"
 
 static err_t
 pgr_refresh_wal (struct pager *p, error *e)
@@ -134,12 +134,12 @@ TEST (pgr_checkpoint)
     };
 
     i_thread producer;
-    i_thread_create (default_threading (), &producer, producer_thread, &args, &f.e);
+    os.table->thread_create (os.self, &producer, producer_thread, &args, &f.e);
     i_sleep_ms (1000);
 
     args.done = 1;
 
-    i_thread_join (default_threading (), &producer, &f.e);
+    os.table->thread_join (os.self, producer.self);
 
     pgr_fixture_teardown (&f);
   }

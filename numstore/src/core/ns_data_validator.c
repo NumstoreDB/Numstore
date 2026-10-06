@@ -17,7 +17,7 @@
 #include "core/ns_numerics.h"
 #include "core/ns_stride.h"
 #include "core/ns_utils.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <inttypes.h>
 #include <string.h>
@@ -62,7 +62,7 @@ dvalidtr_read (
     error                 *e
 )
 {
-  void *ref  = i_malloc (d->mem, str.nelems, size, e);
+  void *ref  = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
   void *dest = _dest;
 
   if (ref == NULL) {
@@ -70,7 +70,7 @@ dvalidtr_read (
   }
 
   if (_dest == NULL) {
-    dest = i_malloc (d->mem, str.nelems, size, e);
+    dest = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
     if (dest == NULL) {
       goto theend;
     }
@@ -139,10 +139,10 @@ dvalidtr_read (
 
 theend:
   if (ref) {
-    i_free (d->mem, ref);
+    d->mem.table->free (d->mem.self, ref);
   }
   if (_dest == NULL && dest) {
-    i_free (d->mem, dest);
+    d->mem.table->free (d->mem.self, dest);
   }
   return error_trace (e);
 }
@@ -152,7 +152,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
 {
   u8 *src = (u8 *)_src;
   if (_src == NULL) {
-    src = i_malloc (d->mem, slen, 1, e);
+    src = d->mem.table->malloc (d->mem.self, slen, 1, e);
     if (src == NULL) {
       goto theend;
     }
@@ -241,7 +241,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
 
 theend:
   if (_src == NULL) {
-    i_free (d->mem, src);
+    d->mem.table->free (d->mem.self, src);
   }
   return error_trace (e);
 }
@@ -257,7 +257,7 @@ dvalidtr_write (
 {
   u8 *src = (u8 *)_src;
   if (_src == NULL) {
-    src = i_malloc (d->mem, str.nelems, size, e);
+    src = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
     if (src == NULL) {
       goto theend;
     }
@@ -329,7 +329,7 @@ dvalidtr_write (
 
 theend:
   if (_src == NULL && src) {
-    i_free (d->mem, src);
+    d->mem.table->free (d->mem.self, src);
   }
   return error_trace (e);
 }
@@ -337,7 +337,7 @@ theend:
 static err_t
 dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, void *_dest, error *e)
 {
-  void *ref  = i_malloc (d->mem, str.nelems, size, e);
+  void *ref  = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
   void *dest = _dest;
 
   if (ref == NULL) {
@@ -345,7 +345,7 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
   }
 
   if (_dest == NULL) {
-    dest = i_malloc (d->mem, str.nelems, size, e);
+    dest = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
     if (dest == NULL) {
       goto theend;
     }
@@ -432,10 +432,10 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
 
 theend:
   if (ref) {
-    i_free (d->mem, ref);
+    d->mem.table->free (d->mem.self, ref);
   }
   if (_dest == NULL && dest) {
-    i_free (d->mem, dest);
+    d->mem.table->free (d->mem.self, dest);
   }
   return error_trace (e);
 }

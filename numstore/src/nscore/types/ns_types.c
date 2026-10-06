@@ -22,11 +22,11 @@
 #include "core/ns_stream.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/types/ns_sarray_t.h"
 #include "nscore/types/ns_struct_t.h"
 #include "nscore/types/ns_type_ref.h"
 #include "nscore/types/ns_union_t.h"
-#include "os/ns_memory.h"
 
 #include <stddef.h>
 
@@ -991,7 +991,7 @@ get_var_str (struct type *t, u32 *dlen, error *e)
     return NULL;
   }
 
-  char *dest = i_malloc (default_mem (), len + 1, sizeof *dest, e);
+  char *dest = (default_mem ()).table->malloc ((default_mem ()).self, len + 1, sizeof *dest, e);
   if (dest == NULL) {
     error_causef (e, ERR_NOMEM, "alloc failed for type log string");
     return NULL;
@@ -999,7 +999,7 @@ get_var_str (struct type *t, u32 *dlen, error *e)
 
   len = type_snprintf (dest, len + 1, t);
   if (len < 0) {
-    i_free (default_mem (), dest);
+    (default_mem ()).table->free ((default_mem ()).self, dest);
     error_causef (e, ERR_IO, "snprintf failed");
     return NULL;
   }
@@ -1019,7 +1019,7 @@ i_log_type (struct type *t, error *e)
   }
 
   i_log_info ("%.*s\n", len, var_str);
-  i_free (default_mem (), var_str);
+  (default_mem ()).table->free ((default_mem ()).self, var_str);
 
   return SUCCESS;
 }
@@ -1857,17 +1857,18 @@ TEST (type_print_os_sink)
 {
   TEST_CASE ("smoke test")
   {
-    struct type                      t    = {.type = T_PRIM, .p = U32};
-    error                            e    = {0};
-    t_size                           size = type_byte_size (&t);
-    struct type_printer_ostream_ctx *ctx  = i_malloc (default_mem (), 1, sizeof *ctx + size, &e);
-    ctx->t                                = &t;
-    ctx->pos                              = 0;
-    ctx->size                             = size;
-    struct stream s                       = {0};
-    u32           v                       = 0xDEADBEEF;
+    struct type t    = {.type = T_PRIM, .p = U32};
+    error       e    = {0};
+    t_size      size = type_byte_size (&t);
+    struct type_printer_ostream_ctx
+        *ctx  = (default_mem ()).table->malloc ((default_mem ()).self, 1, sizeof *ctx + size, &e);
+    ctx->t    = &t;
+    ctx->pos  = 0;
+    ctx->size = size;
+    struct stream s = {0};
+    u32           v = 0xDEADBEEF;
     type_print_os_sink (&s, ctx, &v, 1, sizeof v, &e);
-    i_free (default_mem (), ctx);
+    (default_mem ()).table->free ((default_mem ()).self, ctx);
   }
 }
 #endif
@@ -1875,7 +1876,7 @@ TEST (type_print_os_sink)
 static void
 type_print_os_close (void *ctx)
 {
-  i_free (default_mem (), (struct type_printer_ostream_ctx *)ctx);
+  (default_mem ()).table->free ((default_mem ()).self, (struct type_printer_ostream_ctx *)ctx);
 }
 
 #ifndef NDEBUG
@@ -1883,8 +1884,9 @@ TEST (type_print_os_close)
 {
   TEST_CASE ("smoke test")
   {
-    error                            e   = {0};
-    struct type_printer_ostream_ctx *ctx = i_malloc (default_mem (), 1, sizeof *ctx, &e);
+    error e = {0};
+    struct type_printer_ostream_ctx
+        *ctx = (default_mem ()).table->malloc ((default_mem ()).self, 1, sizeof *ctx, &e);
     type_print_os_close (ctx);
   }
 }
@@ -1899,8 +1901,9 @@ static const struct stream_ops type_printer_os_ops = {
 err_t
 type_stream_printer_init (struct stream *s, struct type *t, error *e)
 {
-  t_size                           size = type_byte_size (t);
-  struct type_printer_ostream_ctx *ctx  = i_malloc (default_mem (), 1, sizeof *ctx + size, e);
+  t_size size = type_byte_size (t);
+  struct type_printer_ostream_ctx
+      *ctx = (default_mem ()).table->malloc ((default_mem ()).self, 1, sizeof *ctx + size, e);
   if (ctx == NULL) {
     return error_trace (e);
   }

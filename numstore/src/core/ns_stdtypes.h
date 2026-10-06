@@ -68,8 +68,6 @@ typedef u64         cu128[2];
 #  define NS_PAGE_SIZE    4096
 #  define MEMORY_PAGE_LEN 4096
 #  define WAL_BUFFER_CAP  1048576
-#  define MAX_OPEN_FILES  16
-#  define MAX_THREADS     16
 
 #  define NS_END  INT64_MAX
 #  define SMF_END INT64_MAX
@@ -108,6 +106,28 @@ typedef uint8_t  wlh;     // WAL header
 #  define PRpgh     PRIu8
 #  define PRwlh     PRIu8
 
+// The public numstore.h carries the same block. Claiming the guard here stops
+// it defining everything a second time when both headers end up in one
+// translation unit.
+#  define NS_TYPE_ALIASES
+
+#endif
+
+/******************************************************************************
+ * SECTION: OS layer slot tables
+ * ----------------------------------------------------------------------------
+ * How many files and threads a single i_os can hand out at once. These are
+ * private to the OS layer, not part of the public API, and both must be
+ * powers of two: the slot allocators index with a mask, and ns_posix_os.c and
+ * ns_windows_os.c static-assert it.
+ ******************************************************************************/
+
+#ifndef MAX_OPEN_FILES
+#  define MAX_OPEN_FILES 64
+#endif
+
+#ifndef MAX_THREADS
+#  define MAX_THREADS 128
 #endif
 
 /******************************************************************************

@@ -135,9 +135,9 @@ failed:
 TEST (aries_rollback_basic)
 {
   error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
-  struct pager *p = pgr_open ("testdb", mem, fs, &e);
+  struct pager *p = pgr_open ("testdb", mem, os, &e);
   struct txn    tx;
   page_h        fsm = page_h_create ();
   page_h        pg  = page_h_create ();
@@ -201,9 +201,9 @@ TEST (aries_rollback_basic)
 TEST (aries_rollback_multiple_updates)
 {
   error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
-  struct pager *p = pgr_open ("testdb", mem, fs, &e);
+  struct pager *p = pgr_open ("testdb", mem, os, &e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -264,9 +264,9 @@ TEST (aries_rollback_multiple_updates)
 TEST (aries_rollback_with_crash_recovery)
 {
   error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
-  struct pager *p = pgr_open ("testdb", mem, fs, &e);
+  struct pager *p = pgr_open ("testdb", mem, os, &e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -309,7 +309,7 @@ TEST (aries_rollback_with_crash_recovery)
 
   // Verify data is back to committed state after recovery
   {
-    p = pgr_open ("testdb", mem, fs, &e);
+    p = pgr_open ("testdb", mem, os, &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
     test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), committed_data, DL_DATA_SIZE);
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);
@@ -322,9 +322,9 @@ TEST (aries_rollback_clr_not_undone)
 {
   error e = error_create ();
 
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
-  struct pager *p = pgr_open ("testdb", mem, fs, &e);
+  struct pager *p = pgr_open ("testdb", mem, os, &e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -370,7 +370,7 @@ TEST (aries_rollback_clr_not_undone)
   // Crash and recover - verify CLRs were not undone
   {
     test_fail_if (pgr_crash (p, &e));
-    p = pgr_open ("testdb", mem, fs, &e);
+    p = pgr_open ("testdb", mem, os, &e);
     pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
     test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
     pgr_release (p, &dl_page, PG_DATA_LIST, &e);

@@ -17,11 +17,10 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
-#include "os/ns_threading.h"
+#include "core/os/ns_os.h"
 
 #ifndef NDEBUG
 #  include "core/ns_logging.h"
-#  include "os/ns_time.h"
 #endif
 
 #include <stdint.h>
@@ -45,13 +44,14 @@ static const bool compatible[LM_COUNT][LM_COUNT] = {
 static const char *mode_names[LM_COUNT] = {"IS", "IX", "S", "SIX", "X"};
 
 err_t
-gr_lock_init (struct gr_lock *l, error *e)
+gr_lock_init (struct gr_lock *l, const struct i_os os, error *e)
 {
-  const err_t result = i_mutex_create (default_threading (), &l->mutex, e);
+  const err_t result = os.table->mutex_create (os.self, &l->mutex, e);
   if (result != SUCCESS) {
     return result;
   }
 
+  l->os = os;
   memset (l->holder_counts, 0, sizeof (l->holder_counts));
   l->head = NULL;
 
@@ -65,7 +65,7 @@ TEST (gr_lock_init)
   {
     error          e = error_create ();
     struct gr_lock l;
-    gr_lock_init (&l, &e);
+    gr_lock_init (&l, os, &e);
     gr_lock_destroy (&l);
   }
 }
@@ -74,17 +74,17 @@ TEST (gr_lock_init)
 void
 gr_lock_destroy (struct gr_lock *l)
 {
-  i_mutex_lock (default_threading (), &l->mutex);
+  l->mutex.table->mutex_lock (l->mutex.self);
   // TODO - Caller must ensure all threads have released locks
   // You could put a done flag - and assert !done on actions
-  i_mutex_unlock (default_threading (), &l->mutex);
+  l->mutex.table->mutex_unlock (l->mutex.self);
 
-  i_mutex_free (default_threading (), &l->mutex);
+  l->os.table->mutex_free (l->os.self, l->mutex.self);
 
   while (l->head) {
     struct gr_lock_waiter *w = l->head;
     l->head                  = w->next;
-    i_cond_free (default_threading (), &w->cond);
+    l->os.table->cond_free (l->os.self, w->cond.self);
   }
 }
 
@@ -95,7 +95,7 @@ TEST (gr_lock_destroy)
   {
     error          e = error_create ();
     struct gr_lock l;
-    gr_lock_init (&l, &e);
+    gr_lock_init (&l, os, &e);
     gr_lock_destroy (&l);
   }
 }
@@ -137,7 +137,7 @@ TEST (gr_lock_is_compatible)
 {
   error          e = error_create ();
   struct gr_lock l;
-  gr_lock_init (&l, &e);
+  gr_lock_init (&l, os, &e);
 
   // All locks compatible on init
   test_assert (is_compatible (&l, LM_IS));
@@ -197,7 +197,7 @@ err_t
 gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
 {
   // First do a global mutex lock
-  i_mutex_lock (default_threading (), &l->mutex);
+  l->mutex.table->mutex_lock (l->mutex.self);
 
   // If it's compatible - just increment mode count and move on
   if (is_compatible (l, mode)) {
@@ -211,9 +211,9 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
       .prev = NULL,
       .next = NULL,
   };
-  if (i_cond_create (default_threading (), &waiter.cond, e)) {
+  if (l->os.table->cond_create (l->os.self, &waiter.cond, e)) {
     // Ok here - we just failed and everything is unlocked
-    i_mutex_unlock (default_threading (), &l->mutex);
+    l->mutex.table->mutex_unlock (l->mutex.self);
     return error_trace (e);
   }
 
@@ -233,7 +233,7 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
   // Wait for someone to signal my condition variable - main wait code
   while (!is_compatible (l, mode)) {
     TEST_MARK ("gr_lock:gr_lock:wait");
-    i_cond_wait (default_threading (), &waiter.cond, &l->mutex);
+    waiter.cond.table->cond_wait (waiter.cond.self, l->mutex.self);
   }
 
   // Remove from waiters list
@@ -248,19 +248,19 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
   }
 
   // Release resources
-  i_cond_free (default_threading (), &waiter.cond);
+  l->os.table->cond_free (l->os.self, waiter.cond.self);
 
 acquire:
   // Acquire the lock
   l->holder_counts[mode]++;
-  i_mutex_unlock (default_threading (), &l->mutex);
+  l->mutex.table->mutex_unlock (l->mutex.self);
   return SUCCESS;
 }
 
 void
 gr_unlock (struct gr_lock *l, const enum lock_mode mode)
 {
-  i_mutex_lock (default_threading (), &l->mutex);
+  l->mutex.table->mutex_lock (l->mutex.self);
 
   // do unlock
   ASSERT (l->holder_counts[mode] > 0);
@@ -270,11 +270,11 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
   if (l->head) {
     for (struct gr_lock_waiter *w = l->head; w; w = w->next) {
       // signal all waiters - they do the compatability check - it's ok
-      i_cond_signal (default_threading (), &w->cond);
+      w->cond.table->cond_signal (w->cond.self);
     }
   }
 
-  i_mutex_unlock (default_threading (), &l->mutex);
+  l->mutex.table->mutex_unlock (l->mutex.self);
 }
 
 #ifndef NDEBUG
@@ -332,7 +332,7 @@ TEST (gr_lock_unlock)
   i_thread       t1, t2;
   error          e = error_create ();
   struct gr_lock l;
-  gr_lock_init (&l, &e);
+  gr_lock_init (&l, os, &e);
 
   // Cartesion product
   for (int m1 = 0; m1 < LM_COUNT; ++m1) {
@@ -350,8 +350,8 @@ TEST (gr_lock_unlock)
             .gate    = 0,
         };
 
-        i_thread_create (default_threading (), &t1, thread1, &ctx, &e);
-        i_thread_create (default_threading (), &t2, thread2, &ctx, &e);
+        os.table->thread_create (os.self, &t1, thread1, &ctx, &e);
+        os.table->thread_create (os.self, &t2, thread2, &ctx, &e);
 
         // Launch both threads
         atomic_store (&ctx.gate, 1);
@@ -398,8 +398,8 @@ TEST (gr_lock_unlock)
           test_assert_mark_hit ("gr_lock:gr_lock:wait");
         }
 
-        i_thread_join (default_threading (), &t1, &e);
-        i_thread_join (default_threading (), &t2, &e);
+        os.table->thread_join (os.self, t1.self);
+        os.table->thread_join (os.self, t2.self);
       }
     }
   }
@@ -453,6 +453,7 @@ get_parent_mode (const enum lock_mode child_mode)
 struct lock_test_ctx
 {
   struct gr_lock *lock;
+  struct i_os     os;
 
   // Coordination Primitives
   i_mutex         gate_mtx;
@@ -470,20 +471,26 @@ struct lock_test_ctx
 };
 
 static void
-test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock)
+test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock, const struct i_os os)
 {
+  error e = error_create ();
+
   memset (ctx, 0, sizeof (*ctx));
   ctx->lock = lock;
-  i_mutex_create (default_threading (), &ctx->gate_mtx, NULL);
-  i_cond_create (default_threading (), &ctx->gate_cv, NULL);
+  ctx->os   = os;
+
+  // Not NULL: the OS layer reports failures through error_trace, which
+  // dereferences the error
+  os.table->mutex_create (os.self, &ctx->gate_mtx, &e);
+  os.table->cond_create (os.self, &ctx->gate_cv, &e);
   ctx->gate_open = false;
 }
 
 static void
 test_ctx_destroy (struct lock_test_ctx *ctx)
 {
-  i_mutex_free (default_threading (), &ctx->gate_mtx);
-  i_cond_free (default_threading (), &ctx->gate_cv);
+  ctx->os.table->mutex_free (ctx->os.self, ctx->gate_mtx.self);
+  ctx->os.table->cond_free (ctx->os.self, ctx->gate_cv.self);
 }
 
 /* --- Deterministic Thread Routines --- */
@@ -498,11 +505,11 @@ thread_hold_and_signal (void *arg)
   gr_lock (ctx->lock, ctx->mode1, &e);
 
   // Signal to Thread 2 that the lock is held
-  i_mutex_lock (default_threading (), &ctx->gate_mtx);
+  ctx->gate_mtx.table->mutex_lock (ctx->gate_mtx.self);
   ctx->t1_acquired = 1;
   ctx->gate_open   = true;
-  i_cond_broadcast (default_threading (), &ctx->gate_cv);
-  i_mutex_unlock (default_threading (), &ctx->gate_mtx);
+  ctx->gate_cv.table->cond_broadcast (ctx->gate_cv.self);
+  ctx->gate_mtx.table->mutex_unlock (ctx->gate_mtx.self);
 
   // Hold long enough for the main thread to sample "blocked" state
   i_sleep_ms (100);
@@ -518,11 +525,11 @@ thread_wait_and_try (void *arg)
   error                 e   = error_create ();
 
   // Wait for Thread 1 to confirm it holds the lock
-  i_mutex_lock (default_threading (), &ctx->gate_mtx);
+  ctx->gate_mtx.table->mutex_lock (ctx->gate_mtx.self);
   while (!ctx->gate_open) {
-    i_cond_wait (default_threading (), &ctx->gate_cv, &ctx->gate_mtx);
+    ctx->gate_cv.table->cond_wait (ctx->gate_cv.self, ctx->gate_mtx.self);
   }
-  i_mutex_unlock (default_threading (), &ctx->gate_mtx);
+  ctx->gate_mtx.table->mutex_unlock (ctx->gate_mtx.self);
 
   // Attempt acquisition (will block if incompatible)
   ctx->t2_blocked = 1;
@@ -571,7 +578,7 @@ TEST (gr_lock_basic_sanity)
 {
   struct gr_lock lock;
   error          e = error_create ();
-  gr_lock_init (&lock, &e);
+  gr_lock_init (&lock, os, &e);
 
   for (int mode = 0; mode < LM_COUNT; mode++) {
     gr_lock (&lock, mode, &e);
@@ -587,19 +594,19 @@ TEST (gr_lock_is_is_compatible)
 {
   struct gr_lock lock;
   error          e = error_create ();
-  gr_lock_init (&lock, &e);
+  gr_lock_init (&lock, os, &e);
 
   struct lock_test_ctx ctx;
-  test_ctx_init (&ctx, &lock);
+  test_ctx_init (&ctx, &lock, os);
   ctx.mode1 = LM_IS;
   ctx.mode2 = LM_IS;
 
   i_thread t1, t2;
-  i_thread_create (default_threading (), &t1, thread_hold_and_signal, &ctx, &e);
-  i_thread_create (default_threading (), &t2, thread_wait_and_try, &ctx, &e);
+  os.table->thread_create (os.self, &t1, thread_hold_and_signal, &ctx, &e);
+  os.table->thread_create (os.self, &t2, thread_wait_and_try, &ctx, &e);
 
-  i_thread_join (default_threading (), &t1, &e);
-  i_thread_join (default_threading (), &t2, &e);
+  os.table->thread_join (os.self, t1.self);
+  os.table->thread_join (os.self, t2.self);
 
   test_assert (ctx.t1_acquired && ctx.t2_acquired);
   test_ctx_destroy (&ctx);
@@ -613,17 +620,16 @@ TEST_DISABLED (gr_lock_is_x_blocks)
 {
   struct gr_lock lock;
   error          e = error_create ();
-  gr_lock_init (&lock, &e);
+  gr_lock_init (&lock, os, &e);
 
   struct lock_test_ctx ctx;
-  test_ctx_init (&ctx, &lock);
+  test_ctx_init (&ctx, &lock, os);
   ctx.mode1 = LM_IS;
   ctx.mode2 = LM_X;
 
   i_thread t1, t2;
-  i_thread_create (default_threading (), &t1,
-thread_hold_and_signal, &ctx, &e); i_thread_create (default_threading (), &t2,
-thread_wait_and_try, &ctx, &e);
+  os.table->thread_create (os.self, &t1, thread_hold_and_signal, &ctx, &e); os.table->thread_create
+(os.self, &t2, thread_wait_and_try, &ctx, &e);
 
   // Wait slightly to let T2 hit the block, then check status
   i_sleep_ms (50);
@@ -631,8 +637,8 @@ thread_wait_and_try, &ctx, &e);
   test_assert (ctx.t2_blocked);
   test_assert (!ctx.t2_acquired);
 
-  i_thread_join (default_threading (), &t1, &e);
-  i_thread_join (default_threading (), &t2, &e);
+  os.table->thread_join (os.self, t1.self);
+  os.table->thread_join (os.self, t2.self);
 
   test_assert (ctx.t2_acquired); // Should succeed after T1 releases
   test_ctx_destroy (&ctx);
@@ -644,19 +650,19 @@ TEST (gr_lock_high_pressure_random)
 {
   struct gr_lock lock;
   error          e = error_create ();
-  gr_lock_init (&lock, &e);
+  gr_lock_init (&lock, os, &e);
 
   struct lock_test_ctx ctx;
-  test_ctx_init (&ctx, &lock);
+  test_ctx_init (&ctx, &lock, os);
 
   i_thread threads[12];
 
   for (int i = 0; i < 12; i++) {
-    i_thread_create (default_threading (), &threads[i], random_stress_worker, &ctx, &e);
+    os.table->thread_create (os.self, &threads[i], random_stress_worker, &ctx, &e);
   }
 
   for (int i = 0; i < 12; i++) {
-    i_thread_join (default_threading (), &threads[i], &e);
+    os.table->thread_join (os.self, threads[i].self);
   }
 
   // Final Validation
@@ -675,31 +681,32 @@ TEST (gr_lock_high_pressure_random)
  ******************************************************************************/
 
 err_t
-periodic_task_init (struct periodic_task *t, error *e)
+periodic_task_init (struct periodic_task *t, const struct i_os os, error *e)
 {
+  t->os             = os;
   t->stop           = false;
   t->wake_requested = false;
   t->done           = false;
   t->running        = false;
 
-  if (i_mutex_create (default_threading (), &t->mutex, e)) {
+  if (t->os.table->mutex_create (t->os.self, &t->mutex, e)) {
     goto theend;
   }
-  if (i_cond_create (default_threading (), &t->wake_cond, e)) {
+  if (t->os.table->cond_create (t->os.self, &t->wake_cond, e)) {
     goto fail_mutex;
   }
-  if (i_cond_create (default_threading (), &t->done_cond, e)) {
+  if (t->os.table->cond_create (t->os.self, &t->done_cond, e)) {
     goto fail_wake_cond;
   }
 
   goto theend;
 
   // Commented this out - I am pretty sure I can - but it was on a whim
-  // i_cond_free (default_threading (), &t->done_cond);
+  // t->os.table->cond_free (t->os.self, t->done_cond.self);
 fail_wake_cond:
-  i_cond_free (default_threading (), &t->wake_cond);
+  t->os.table->cond_free (t->os.self, t->wake_cond.self);
 fail_mutex:
-  i_mutex_free (default_threading (), &t->mutex);
+  t->os.table->mutex_free (t->os.self, t->mutex.self);
 theend:
   return error_trace (e);
 }
@@ -710,14 +717,14 @@ periodic_task_thread (void *_ctx)
   struct periodic_task *t = _ctx;
 
   while (true) {
-    i_mutex_lock (default_threading (), &t->mutex);
+    t->mutex.table->mutex_lock (t->mutex.self);
     // TODO - spurrious wakeups
     if (!t->wake_requested && !t->stop) {
-      i_cond_timed_wait (default_threading (), &t->wake_cond, &t->mutex, t->msec);
+      t->wake_cond.table->cond_timed_wait (t->wake_cond.self, t->mutex.self, t->msec);
     }
     t->wake_requested = false;
     bool should_stop  = t->stop;
-    i_mutex_unlock (default_threading (), &t->mutex);
+    t->mutex.table->mutex_unlock (t->mutex.self);
 
     if (should_stop) {
       break;
@@ -726,10 +733,10 @@ periodic_task_thread (void *_ctx)
     t->fn (t->ctx);
   }
 
-  i_mutex_lock (default_threading (), &t->mutex);
+  t->mutex.table->mutex_lock (t->mutex.self);
   t->done = true;
-  i_cond_signal (default_threading (), &t->done_cond);
-  i_mutex_unlock (default_threading (), &t->mutex);
+  t->done_cond.table->cond_signal (t->done_cond.self);
+  t->mutex.table->mutex_unlock (t->mutex.self);
 
   return NULL;
 }
@@ -741,7 +748,7 @@ periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, voi
   t->fn   = fn;
   t->ctx  = ctx;
 
-  if (i_thread_create (default_threading (), &t->thread, periodic_task_thread, t, e)) {
+  if (t->os.table->thread_create (t->os.self, &t->thread, periodic_task_thread, t, e)) {
     return error_trace (e);
   }
 
@@ -757,21 +764,21 @@ periodic_task_stop (struct periodic_task *t, error *e)
     return SUCCESS;
   }
 
-  i_mutex_lock (default_threading (), &t->mutex);
+  t->mutex.table->mutex_lock (t->mutex.self);
   t->stop = true;
-  i_cond_signal (default_threading (), &t->wake_cond);
-  i_mutex_unlock (default_threading (), &t->mutex);
+  t->wake_cond.table->cond_signal (t->wake_cond.self);
+  t->mutex.table->mutex_unlock (t->mutex.self);
 
-  i_mutex_lock (default_threading (), &t->mutex);
+  t->mutex.table->mutex_lock (t->mutex.self);
   while (!t->done) {
-    i_cond_wait (default_threading (), &t->done_cond, &t->mutex);
+    t->done_cond.table->cond_wait (t->done_cond.self, t->mutex.self);
   }
-  i_mutex_unlock (default_threading (), &t->mutex);
+  t->mutex.table->mutex_unlock (t->mutex.self);
 
-  i_thread_join (default_threading (), &t->thread, e);
-  i_cond_free (default_threading (), &t->done_cond);
-  i_cond_free (default_threading (), &t->wake_cond);
-  i_mutex_free (default_threading (), &t->mutex);
+  t->os.table->thread_join (t->os.self, t->thread.self);
+  t->os.table->cond_free (t->os.self, t->done_cond.self);
+  t->os.table->cond_free (t->os.self, t->wake_cond.self);
+  t->os.table->mutex_free (t->os.self, t->mutex.self);
   t->running = false;
 
   return error_trace (e);
@@ -816,11 +823,11 @@ TEST (latch)
   i_thread threads[10];
 
   for (u32 i = 0; i < 10; ++i) {
-    i_thread_create (default_threading (), &threads[i], data_thread, &d, &e);
+    os.table->thread_create (os.self, &threads[i], data_thread, &d, &e);
   }
 
   for (u32 i = 0; i < 10; ++i) {
-    i_thread_join (default_threading (), &threads[i], &e);
+    os.table->thread_join (os.self, threads[i].self);
   }
 
   test_assert_int_equal (d.value, 10 * 1000);

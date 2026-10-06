@@ -23,33 +23,33 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_string.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_query.h"
 #include "nscore/variables/ns_variables.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 /////////////////////////////////////// NSDB
 
 struct nsdb
 {
   // Allocates transaction objects
-  struct slab_alloc    txn_alloc;
+  struct slab_alloc txn_alloc;
 
   // Allocates plans
-  struct slab_alloc    plan_alloc;
+  struct slab_alloc plan_alloc;
 
-  struct pager        *p;
+  struct pager     *p;
 
   // Database path
-  struct string        path;
+  struct string     path;
 
   // OS Resources
-  struct i_mem         mem;
-  struct i_file_system fs;
+  struct i_mem      mem;
+  struct i_os       os;
 
   // Optionally supply an error for error handling
-  error               *e;
+  error            *e;
 
   // Auto transaction mode
   struct
@@ -68,8 +68,8 @@ DEFINE_DBG_ASSERT (struct nsdb, nsdb, n, {
 })
 
 // Lifecycle
-struct nsdb *nsdb_open (const char *path, struct i_mem mem, struct i_file_system fs, error *e);
-err_t nsdb_cleanup (const char *path, error *e);
+struct nsdb *nsdb_open (const char *path, struct i_mem mem, struct i_os os, error *e);
+err_t nsdb_cleanup (const char *path, struct i_os os, error *e);
 err_t nsdb_close (struct nsdb *ns, error *e);
 err_t nsdb_crash (struct nsdb *ns, error *e);
 

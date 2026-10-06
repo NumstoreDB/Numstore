@@ -17,9 +17,9 @@
 
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/page/ns_page_inner_node.h"
-#include "os/ns_memory.h"
 
 /**
  * A buffer meant to mimic the structure of a chain of inner nodes

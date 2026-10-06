@@ -16,29 +16,31 @@
 #define NSS_SWARM_TEST_FIXTURE_H
 
 #include "core/ns_stdtypes.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/testing/simulation/ns_operation_generator.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 struct ns_simulation_params
 {
-  u64                  seed;
-  const char          *commit_hash;
-  u8                   enabled[NSS_AT_LEN];
-  u64                  sequence_id;
-  const char          *dbname;
-  b_size               max_insert_len;
-  t_size               max_tsize;
-  float                sample_space_prob;
-  // The file system used by the system under test
-  // (can be faulty)
-  struct i_file_system test_filesystem;
+  u64          seed;
+  const char  *commit_hash;
+  u8           enabled[NSS_AT_LEN];
+  u64          sequence_id;
+  const char  *dbname;
+  b_size       max_insert_len;
+  t_size       max_tsize;
+  float        sample_space_prob;
+  // The OS the system under test runs on (can be faulty)
+  struct i_os  test_os;
 
   // Memory used by the test (can be faulty)
-  struct i_mem         test_mem;
+  struct i_mem test_mem;
 
   // Memory used for things that aren't being tested
-  struct i_mem         reliable_mem;
+  struct i_mem reliable_mem;
+
+  // OS used for things that aren't being tested (metrics timers and the like)
+  struct i_os  reliable_os;
 
   // Configuration
   enum write_validation_mode

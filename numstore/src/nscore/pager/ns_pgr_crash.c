@@ -36,8 +36,8 @@ pgr_crash (struct pager *p, error *e)
   txnt_crash (p->tnxt);
   dpgt_crash (p->dpt);
   lockt_destroy (p->lt);
-  i_free (p->mem, p->lt);
-  i_free (p->mem, p);
+  p->mem.table->free (p->mem.self, p->lt);
+  p->mem.table->free (p->mem.self, p);
 
   return error_trace (e);
 }

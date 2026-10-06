@@ -1,5 +1,4 @@
 /// Copyright 2026 Theo Lincke
-/// Copyright 2026 Theo Lincke
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,7 +28,7 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_slab_alloc.h"
-#include "os/ns_os.h"
+#include "core/os/ns_os.h"
 
 #include <stdbool.h>
 
@@ -769,4 +768,135 @@ faulty_os_free (struct i_os os)
   // Copy out before freeing - mem lives inside ctx
   struct i_mem mem = ctx->mem;
   mem.table->free (mem.self, ctx);
+}
+
+////////////////////////////////////////////////////////////
+// Faulty allocator
+//
+// The i_mem counterpart of the faulty OS: same roll, same borrowed-delegate
+// rule. It is a separate decorator because i_mem is a separate interface -
+// a simulation wants to inject OOM independently of IO faults.
+
+struct faulty_mem_ctx
+{
+  struct i_mem delegate;
+  float        fail_percent;
+};
+
+static const struct i_mem_vtable faulty_mem_vtable;
+
+DEFINE_DBG_ASSERT (struct faulty_mem_ctx, faulty_mem_ctx, c, {
+  ASSERT (c);
+  ASSERT (c->delegate.table);
+  ASSERT (c->fail_percent >= 0.0f && c->fail_percent <= 1.0f);
+})
+
+/// NULL (with [e] set) instead of an allocation, with probability fail_percent
+static inline bool
+faulty_mem_roll (const struct faulty_mem_ctx *ctx, const char *what, error *e)
+{
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  if (randf () < ctx->fail_percent) {
+    error_causef (e, ERR_NOMEM, "%s: injected fault", what);
+    return true;
+  }
+  return false;
+}
+
+static void *
+faulty_mem_malloc (void *self, const u32 nelem, const u32 size, error *e)
+{
+  struct faulty_mem_ctx *ctx = self;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  if (faulty_mem_roll (ctx, "malloc", e)) {
+    return NULL;
+  }
+
+  return ctx->delegate.table->malloc (ctx->delegate.self, nelem, size, e);
+}
+
+static void *
+faulty_mem_calloc (void *self, const u32 nelem, const u32 size, error *e)
+{
+  struct faulty_mem_ctx *ctx = self;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  if (faulty_mem_roll (ctx, "calloc", e)) {
+    return NULL;
+  }
+
+  return ctx->delegate.table->calloc (ctx->delegate.self, nelem, size, e);
+}
+
+static void *
+faulty_mem_realloc (void *self, void *ptr, const u32 nelem, const u32 size, error *e)
+{
+  struct faulty_mem_ctx *ctx = self;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  // A failed realloc must leave [ptr] untouched, which is exactly what
+  // returning NULL here does - the caller still owns it.
+  if (faulty_mem_roll (ctx, "realloc", e)) {
+    return NULL;
+  }
+
+  return ctx->delegate.table->realloc (ctx->delegate.self, ptr, nelem, size, e);
+}
+
+/// free never fails - a caller cannot react to it, and leaking here would
+/// turn every injected fault into a false positive under a leak checker.
+static void
+faulty_mem_free_ptr (void *self, void *v)
+{
+  struct faulty_mem_ctx *ctx = self;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  ctx->delegate.table->free (ctx->delegate.self, v);
+}
+
+static const struct i_mem_vtable faulty_mem_vtable = {
+    .malloc  = faulty_mem_malloc,
+    .calloc  = faulty_mem_calloc,
+    .realloc = faulty_mem_realloc,
+    .free    = faulty_mem_free_ptr,
+};
+
+err_t
+faulty_mem_create (struct i_mem delegate, const float fail_percent, struct i_mem *dest, error *e)
+{
+  ASSERT (dest);
+  ASSERT (delegate.table);
+  ASSERT (fail_percent >= 0.0f && fail_percent <= 1.0f);
+
+  // The ctx itself comes from the delegate and is never subject to the roll
+  struct faulty_mem_ctx *ctx = delegate.table->calloc (delegate.self, 1, sizeof *ctx, e);
+  if (ctx == NULL) {
+    return error_trace (e);
+  }
+
+  ctx->delegate     = delegate;
+  ctx->fail_percent = fail_percent;
+
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  dest->table = &faulty_mem_vtable;
+  dest->self  = ctx;
+
+  return SUCCESS;
+}
+
+/// Frees the faulty layer - the delegate allocator is borrowed and stays alive.
+void
+faulty_mem_free (struct i_mem mem)
+{
+  ASSERT (mem.table == &faulty_mem_vtable);
+
+  struct faulty_mem_ctx *ctx = mem.self;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+
+  // Copy out before freeing - delegate lives inside ctx
+  struct i_mem delegate = ctx->delegate;
+  delegate.table->free (delegate.self, ctx);
 }

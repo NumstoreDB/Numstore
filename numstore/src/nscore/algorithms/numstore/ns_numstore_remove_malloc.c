@@ -70,7 +70,7 @@ numstore_remove_malloc (
     goto failed;
   }
 
-  void *buffer = i_malloc (mem, stride.nelems, tsize, e);
+  void *buffer = mem.table->malloc (mem.self, stride.nelems, tsize, e);
   if (buffer == NULL) {
     goto failed;
   }
@@ -92,14 +92,14 @@ numstore_remove_malloc (
   };
   sb_size ret = ns_remove (&rparams, e);
   if (ret < 0) {
-    i_free (mem, buffer);
+    mem.table->free (mem.self, buffer);
     goto failed;
   }
 
   // UPDATE VARIABLE
   if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e)
       < 0) {
-    i_free (mem, buffer);
+    mem.table->free (mem.self, buffer);
     goto failed;
   }
 

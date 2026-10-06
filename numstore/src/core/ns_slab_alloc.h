@@ -28,7 +28,7 @@
 #include "core/ns_concurrency.h" // latch
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h" // u32
-#include "os/ns_malloc.h"
+#include "core/os/ns_malloc.h"
 
 /******************************************************************************
  * SECTION: Slab Allocator

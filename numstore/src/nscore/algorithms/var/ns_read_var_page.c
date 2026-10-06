@@ -21,6 +21,7 @@
 #include "core/ns_string.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/algorithms/var/ns_var_algorithms_internal.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/page/ns_page.h"
@@ -31,7 +32,6 @@
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
 #include "numstore.h"
-#include "os/ns_memory.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -277,7 +277,7 @@ create_and_get_root (
 {
   // Build the query
   int   n     = snprintf (NULL, 0, "create %s u32", name);
-  char *query = i_malloc (mem, n + 1, 1, e);
+  char *query = mem.table->malloc (mem.self, n + 1, 1, e);
 
   // Create the variable
   snprintf (query, n + 1, "create %s u32", name);
@@ -303,8 +303,8 @@ TEST (ns_read_var_page)
   error e = error_create ();
 
   /* Create a new database */
-  nsdb_cleanup ("test", &e);
-  struct nsdb *db = nsdb_open ("test", mem, fs, &e);
+  nsdb_cleanup ("test", os, &e);
+  struct nsdb *db = nsdb_open ("test", mem, os, &e);
   nsdb_writeit_numstore (db, &e);
 
   struct txn *tx = nsdb_begin (db, &e);
@@ -1774,6 +1774,7 @@ TEST (ns_read_var_page)
   }
 
   nsdb_commit (db, tx, &e);
+  nsdb_close (db, &e);
 }
 
 #endif

@@ -12,17 +12,40 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+// pread/pwrite/ftruncate/fsync/posix_fallocate are POSIX, not ISO C. glibc
+// only declares them when a feature-test macro asks for them, and a strict
+// -std=c11 (as opposed to -std=gnu11) switches that off - so say so here
+// rather than relying on the build happening to pass -std=gnu11. This has to
+// come before any system header, hence before ns_platform.h.
+//
+// Darwin is the exception: it declares them by default, and _POSIX_C_SOURCE
+// there would *hide* the non-standard fstore_t / F_PREALLOCATE that
+// sys_prealloc needs, so ask for the full Darwin surface instead.
+#ifdef __APPLE__
+#  ifndef _DARWIN_C_SOURCE
+#    define _DARWIN_C_SOURCE 1
+#  endif
+#else
+#  ifndef _POSIX_C_SOURCE
+#    define _POSIX_C_SOURCE 200809L
+#  endif
+#  ifndef _DEFAULT_SOURCE
+#    define _DEFAULT_SOURCE 1
+#  endif
+#endif
+
 #include "core/ns_platform.h"
-#include "os/posix/ns_posix_os.h"
+#include "core/os/posix/ns_posix_os.h"
 
 #if PLATFORM_POSIX
 
 #  include "core/ns_bytes.h"
 #  include "core/ns_csx_assert.h"
 #  include "core/ns_error.h"
+#  include "core/ns_logging.h"
 #  include "core/ns_stdtypes.h"
 #  include "core/ns_utils.h"
-#  include "os/ns_os.h"
+#  include "core/os/ns_os.h"
 
 #  include <errno.h>
 #  include <fcntl.h>
@@ -120,25 +143,25 @@ sys_open_file (
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_open_file_rw (void *os_self, i_file *dest, const char *fname, error *e)
 {
   return sys_open_file (os_self, dest, fname, O_RDWR | O_CREAT, "open_file_rw", e);
 }
 
-err_t
+static err_t
 sys_open_file_r (void *os_self, i_file *dest, const char *fname, error *e)
 {
   return sys_open_file (os_self, dest, fname, O_RDONLY, "open_file_r", e);
 }
 
-err_t
+static err_t
 sys_open_file_w (void *os_self, i_file *dest, const char *fname, error *e)
 {
   return sys_open_file (os_self, dest, fname, O_WRONLY | O_CREAT, "open_file_w", e);
 }
 
-err_t
+static err_t
 sys_close_file (void *os_self, void *file, error *e)
 {
   struct posix_os *os   = os_self;
@@ -159,7 +182,7 @@ sys_close_file (void *os_self, void *file, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_remove_quiet (void *os_self, const char *fname, error *e)
 {
   (void)os_self;
@@ -172,7 +195,7 @@ sys_remove_quiet (void *os_self, const char *fname, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_unlink (void *os_self, const char *fname, error *e)
 {
   (void)os_self;
@@ -185,7 +208,7 @@ sys_unlink (void *os_self, const char *fname, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_file_exists (void *os_self, const char *fname, bool *dest, error *e)
 {
   (void)os_self;
@@ -208,7 +231,7 @@ sys_file_exists (void *os_self, const char *fname, bool *dest, error *e)
 
 ///////////// System file implementations
 
-err_t
+static err_t
 sys_fsync (void *self, error *e)
 {
   const int fd = fd_of (self);
@@ -220,7 +243,7 @@ sys_fsync (void *self, error *e)
   return SUCCESS;
 }
 
-i64
+static i64
 sys_file_size (void *self, error *e)
 {
   const int   fd = fd_of (self);
@@ -235,7 +258,7 @@ sys_file_size (void *self, error *e)
   return (i64)st.st_size;
 }
 
-i64
+static i64
 sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
 {
   const int fd = fd_of (self);
@@ -267,7 +290,7 @@ sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
   return (i64)nread;
 }
 
-err_t
+static err_t
 sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, error *e)
 {
   const int fd = fd_of (self);
@@ -295,7 +318,7 @@ sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, erro
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_writev_all (void *self, struct bytes *iov, const int iovcnt, error *e)
 {
   const int fd = fd_of (self);
@@ -354,7 +377,7 @@ sys_writev_all (void *self, struct bytes *iov, const int iovcnt, error *e)
   return SUCCESS;
 }
 
-i64
+static i64
 sys_read_all (void *self, void *dest, const u64 nbytes, error *e)
 {
   const int fd = fd_of (self);
@@ -389,7 +412,7 @@ sys_read_all (void *self, void *dest, const u64 nbytes, error *e)
   return (i64)nread;
 }
 
-err_t
+static err_t
 sys_write_all (void *self, const void *src, const u64 nbytes, error *e)
 {
   const int fd = fd_of (self);
@@ -417,7 +440,7 @@ sys_write_all (void *self, const void *src, const u64 nbytes, error *e)
   return SUCCESS;
 }
 
-err_t
+static err_t
 sys_truncate (void *self, const u64 bytes, error *e)
 {
   const int fd = fd_of (self);
@@ -429,26 +452,44 @@ sys_truncate (void *self, const u64 bytes, error *e)
   return SUCCESS;
 }
 
-err_t
+/// Grows the file to at least [bytes] and never shrinks it, like
+/// posix_fallocate.
+static err_t
 sys_prealloc (void *self, const u64 bytes, error *e)
 {
   const int fd = fd_of (self);
 
 #  ifdef __APPLE__
+  // macOS has no posix_fallocate. F_PREALLOCATE reserves blocks but leaves
+  // the size alone, so the size has to be set separately - and because that
+  // step is an ftruncate, which shrinks as readily as it grows, a file that
+  // is already big enough has to be left alone entirely.
+  struct stat st;
+  if (unlikely (fstat (fd, &st) == -1)) {
+    return error_causef (e, ERR_IO, "prealloc (fstat): %s", strerror (errno));
+  }
+
+  if ((u64)st.st_size >= bytes) {
+    return SUCCESS;
+  }
+
   fstore_t store = {
       .fst_flags   = F_ALLOCATECONTIG,
       .fst_posmode = F_PEOFPOSMODE,
       .fst_offset  = 0,
-      .fst_length  = (off_t)bytes,
+      .fst_length  = (off_t)(bytes - (u64)st.st_size),
   };
-  if (unlikely (fcntl (fd, F_PREALLOCATE, &store) == -1)) {
+
+  // Best effort: a contiguous reservation is only a fragmentation hint, and
+  // some filesystems support neither flag. The ftruncate below is what
+  // actually has to happen, so a failure here is not fatal.
+  if (fcntl (fd, F_PREALLOCATE, &store) == -1) {
     store.fst_flags = F_ALLOCATEALL;
-    if (unlikely (fcntl (fd, F_PREALLOCATE, &store) == -1)) {
-      return error_causef (e, ERR_IO, "F_PREALLOCATE: %s", strerror (errno));
-    }
+    (void)fcntl (fd, F_PREALLOCATE, &store);
   }
+
   if (unlikely (ftruncate (fd, (off_t)bytes) == -1)) {
-    return error_causef (e, ERR_IO, "ftruncate: %s", strerror (errno));
+    return error_causef (e, ERR_IO, "prealloc (ftruncate): %s", strerror (errno));
   }
 #  else
   const int ret = posix_fallocate (fd, 0, (off_t)bytes);
@@ -461,7 +502,7 @@ sys_prealloc (void *self, const u64 bytes, error *e)
   return SUCCESS;
 }
 
-i64
+static i64
 sys_seek (void *self, const u64 offset, const seek_t whence, error *e)
 {
   const int fd = fd_of (self);
@@ -499,7 +540,7 @@ sys_seek (void *self, const u64 offset, const seek_t whence, error *e)
 //
 // Note: the pthread_* functions return an error code and do NOT set errno.
 
-err_t
+static err_t
 sys_thread_create (void *os_self, i_thread *dest, void *(*func) (void *), void *context, error *e)
 {
   ASSERT (dest);
@@ -561,7 +602,7 @@ sys_thread_create (void *os_self, i_thread *dest, void *(*func) (void *), void *
   return SUCCESS;
 }
 
-void
+static void
 sys_thread_join (void *os_self, void *t)
 {
   struct posix_os *os     = os_self;
@@ -597,7 +638,7 @@ sys_thread_join (void *os_self, void *t)
 
 ///////////// System Mutex implementations
 
-err_t
+static err_t
 sys_mutex_create (void *os_self, i_mutex *dest, error *e)
 {
   ASSERT (dest);
@@ -657,7 +698,7 @@ sys_mutex_create (void *os_self, i_mutex *dest, error *e)
   return SUCCESS;
 }
 
-void
+static void
 sys_mutex_free (void *os_self, void *mutex)
 {
   struct posix_os *os = os_self;
@@ -686,7 +727,7 @@ sys_mutex_free (void *os_self, void *mutex)
   posix_pthread_mutex_free (os, m);
 }
 
-void
+static void
 sys_mutex_lock (void *mutex)
 {
   pthread_mutex_t *m = mutex;
@@ -715,7 +756,7 @@ sys_mutex_lock (void *mutex)
   }
 }
 
-void
+static void
 sys_mutex_unlock (void *mutex)
 {
   pthread_mutex_t *m = mutex;
@@ -746,7 +787,7 @@ sys_mutex_unlock (void *mutex)
 
 ///////////// System Condition implementations
 
-err_t
+static err_t
 sys_cond_create (void *os_self, i_cond *dest, error *e)
 {
   ASSERT (dest);
@@ -807,7 +848,7 @@ sys_cond_create (void *os_self, i_cond *dest, error *e)
   return SUCCESS;
 }
 
-void
+static void
 sys_cond_free (void *os_self, void *cond)
 {
   struct posix_os *os = os_self;
@@ -836,7 +877,7 @@ sys_cond_free (void *os_self, void *cond)
   posix_pthread_cond_free (os, c);
 }
 
-void
+static void
 sys_cond_wait (void *cond, void *mutex)
 {
   pthread_cond_t  *c = cond;
@@ -863,7 +904,7 @@ sys_cond_wait (void *cond, void *mutex)
   }
 }
 
-void
+static void
 sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
 {
   pthread_cond_t  *c = cond;
@@ -902,7 +943,7 @@ sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
   }
 }
 
-void
+static void
 sys_cond_signal (void *cond)
 {
   pthread_cond_t *c = cond;
@@ -923,7 +964,7 @@ sys_cond_signal (void *cond)
   }
 }
 
-void
+static void
 sys_cond_broadcast (void *cond)
 {
   pthread_cond_t *c = cond;
@@ -946,7 +987,7 @@ sys_cond_broadcast (void *cond)
 
 ///////////// System time implementations
 
-err_t
+static err_t
 sys_timer_create (void *os_self, i_timer *dest, error *e)
 {
   ASSERT (os_self);
@@ -972,7 +1013,7 @@ sys_timer_create (void *os_self, i_timer *dest, error *e)
   return SUCCESS;
 }
 
-void
+static void
 sys_timer_free (void *os_self, void *timer)
 {
   struct posix_os *os = os_self;
@@ -983,7 +1024,7 @@ sys_timer_free (void *os_self, void *timer)
   posix_timer_free (os, t);
 }
 
-u64
+static u64
 sys_timer_now_ns (void *timer)
 {
   struct timespec *self = timer;
@@ -1000,6 +1041,24 @@ sys_timer_now_ns (void *timer)
   ASSERT (total >= 0); // monotonic clock
 
   return (u64)total;
+}
+
+////////////////////////////
+/// Sleep
+
+void
+i_sleep_us (const u64 us)
+{
+  struct timespec ts = {
+      .tv_sec  = (time_t)(us / 1000000ULL),
+      .tv_nsec = (long)((us % 1000000ULL) * 1000ULL),
+  };
+
+  // nanosleep returns EINTR with the remaining time in [rem] - finish the nap
+  struct timespec rem;
+  while (nanosleep (&ts, &rem) == -1 && errno == EINTR) {
+    ts = rem;
+  }
 }
 
 ////////////////////////////

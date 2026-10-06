@@ -18,7 +18,7 @@
 #include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_os.h"
+#include "core/os/ns_os.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
@@ -68,12 +68,14 @@ struct gr_lock_waiter
 
 struct gr_lock
 {
+  // The OS that created [mutex] and every waiter's cond - it has to free them
+  struct i_os            os;
   i_mutex                mutex;
   int                    holder_counts[LM_COUNT];
   struct gr_lock_waiter *head;
 };
 
-err_t gr_lock_init (struct gr_lock *l, error *e);
+err_t gr_lock_init (struct gr_lock *l, struct i_os os, error *e);
 
 void gr_lock_destroy (struct gr_lock *l);
 
@@ -95,6 +97,8 @@ typedef void (*periodic_task_fn) (void *ctx);
 
 struct periodic_task
 {
+  // The OS that created the thread, mutex and conds below
+  struct i_os      os;
   i_thread         thread;
   i_mutex          mutex;
   i_cond           wake_cond;
@@ -108,7 +112,7 @@ struct periodic_task
   void            *ctx;
 };
 
-err_t periodic_task_init (struct periodic_task *t, error *e);
+err_t periodic_task_init (struct periodic_task *t, struct i_os os, error *e);
 
 err_t periodic_task_start (
     struct periodic_task *t,

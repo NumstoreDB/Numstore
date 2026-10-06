@@ -2,7 +2,7 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_testing.h"
-#include "os/ns_threading.h"
+#include "core/os/ns_os.h"
 
 #include <string.h>
 
@@ -19,7 +19,11 @@
 #elif defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__))
 #  include <nmmintrin.h>
 #  define CRC_HW       1
-#  define CRC_HW_ATTR  __attribute__ ((target ("sse4.2")))
+// clang 17+ splits crc32 out of sse4.2 as its own subtarget feature, so
+// target("sse4.2") alone is no longer enough to let _mm_crc32_* inline here.
+// GCC accepts both names (-mcrc32 exists there too), so naming both is
+// portable across the x86 toolchains.
+#  define CRC_HW_ATTR  __attribute__ ((target ("sse4.2,crc32")))
 #  define hw_u8(c, v)  _mm_crc32_u8 ((c), (v))
 #  define hw_u64(c, v) ((u32)_mm_crc32_u64 ((c), (v)))
 #endif

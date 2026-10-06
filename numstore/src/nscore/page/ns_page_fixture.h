@@ -18,14 +18,14 @@
 #include "core/ns_arena_alloc.h" // allocator
 #include "core/ns_error.h"       // error
 #include "core/ns_stdtypes.h"    // u32 ...etc
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/page/ns_page.h" // dl_data
 #include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h" // page_h
 #include "nscore/txn_table/ns_txn_table.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #include <stddef.h>
 
@@ -42,12 +42,12 @@ struct pager;
 
 struct pgr_fixture
 {
-  error                e;
-  struct pager        *p;
-  struct arena_alloc   alloc;
-  struct txn           tx;
-  struct i_mem         mem;
-  struct i_file_system fs;
+  error              e;
+  struct pager      *p;
+  struct arena_alloc alloc;
+  struct txn         tx;
+  struct i_mem       mem;
+  struct i_os        os;
 };
 
 err_t pgr_fixture_create (struct pgr_fixture *dest);

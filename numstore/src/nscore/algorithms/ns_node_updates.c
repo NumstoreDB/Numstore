@@ -17,7 +17,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
@@ -115,7 +115,7 @@ nupd_push_right (struct node_updates *s, const pgno pg, const b_size size, error
   struct in_pair_slab *slab      = &s->right;
   for (u32 i = 0; i < slab_idx; ++i) {
     if (slab->next == NULL) {
-      slab->next = i_malloc (s->mem, 1, sizeof *slab->next, e);
+      slab->next = s->mem.table->malloc (s->mem.self, 1, sizeof *slab->next, e);
       if (slab->next == NULL) {
         return NULL;
       }
@@ -138,7 +138,7 @@ nupd_push_left (struct node_updates *s, const pgno pg, const b_size size, error 
   struct in_pair_slab *slab      = &s->left;
   for (u32 i = 0; i < slab_idx; ++i) {
     if (slab->next == NULL) {
-      slab->next = i_malloc (s->mem, 1, sizeof *slab->next, e);
+      slab->next = s->mem.table->malloc (s->mem.self, 1, sizeof *slab->next, e);
       if (slab->next == NULL) {
         return NULL;
       }
@@ -159,7 +159,7 @@ slab_free_chain (const struct in_pair_slab *head, struct i_mem mem)
   struct in_pair_slab *cur = head->next;
   while (cur != NULL) {
     struct in_pair_slab *next = cur->next;
-    i_free (mem, cur);
+    mem.table->free (mem.self, cur);
     cur = next;
   }
 }
@@ -167,7 +167,7 @@ slab_free_chain (const struct in_pair_slab *head, struct i_mem mem)
 struct node_updates *
 nupd_init (const pgno pg, const b_size size, struct i_mem mem, error *e)
 {
-  struct node_updates *ret = i_calloc (mem, 1, sizeof *ret, e);
+  struct node_updates *ret = mem.table->calloc (mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -276,7 +276,7 @@ nupd_free (struct node_updates *n)
   struct i_mem mem = n->mem;
   slab_free_chain (&n->right, mem);
   slab_free_chain (&n->left, mem);
-  i_free (mem, n);
+  mem.table->free (mem.self, n);
 }
 
 pgno

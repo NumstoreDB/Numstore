@@ -16,8 +16,8 @@
 #define NS_WAL_ISTREAM_H
 
 #include "core/ns_error.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 /******************************************************************************
  * SECTION: Wal Input Stream
@@ -27,12 +27,7 @@
 
 struct wal_istream;
 
-struct wal_istream *walis_open (
-    const char          *fname,
-    struct i_mem         mem,
-    struct i_file_system fs,
-    error               *e
-);
+struct wal_istream *walis_open (const char *fname, struct i_mem mem, struct i_os os, error *e);
 err_t walis_close (struct wal_istream *w, error *e);
 err_t walis_crash (struct wal_istream *w, error *e);
 

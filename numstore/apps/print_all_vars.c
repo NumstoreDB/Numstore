@@ -74,19 +74,31 @@ main (const int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  error         e = error_create ();
+  error       e = error_create ();
 
-  struct pager *p = pgr_open (args.dbname, default_mem (), default_filesystem (), &e);
+  struct i_os os;
+  if (system_os_create (default_mem (), &os, &e)) {
+    error_log_consume (&e);
+    return EXIT_FAILURE;
+  }
+
+  struct pager *p = pgr_open (args.dbname, default_mem (), os, &e);
   if (p == NULL) {
     error_log_consume (&e);
+    system_os_free (os);
     return -1;
   }
 
   printf ("[\n");
   if (ns_visit_variables (p, print_variable, &args, &e) < 0) {
+    pgr_close (p, &e);
+    system_os_free (os);
     return error_trace (&e);
   }
   printf ("null ]\n");
+
+  pgr_close (p, &e);
+  system_os_free (os);
 
   return EXIT_SUCCESS;
 }

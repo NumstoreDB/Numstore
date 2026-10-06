@@ -24,9 +24,9 @@
 #include "core/ns_string.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "os/ns_memory.h"
 
 #include <string.h>
 
@@ -41,14 +41,14 @@ struct var_frame
 struct mem_vhmap *
 mem_vhmap_create (struct i_mem mem, error *e)
 {
-  struct mem_vhmap *ret = i_malloc (mem, 1, sizeof *ret, e);
+  struct mem_vhmap *ret = mem.table->malloc (mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
 
   ret->vhasht = htable_create (256, mem, e);
   if (ret->vhasht == NULL) {
-    i_free (mem, ret);
+    mem.table->free (mem.self, ret);
     return NULL;
   }
 
@@ -80,7 +80,7 @@ mem_vhmap_free (struct mem_vhmap *db)
   htable_foreach (db->vhasht, var_frame_free_hnode, NULL);
   slab_alloc_destroy (&db->alloc);
   htable_free (db->vhasht);
-  i_free (db->mem, db);
+  db->mem.table->free (db->mem.self, db);
 }
 
 struct copy_ctx

@@ -20,7 +20,7 @@
 #include "core/ns_platform.h"    // HEADER_FUNC
 #include "core/ns_stdtypes.h"    // u32 ...etc
 #include "core/ns_string.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdbool.h>
 #include <stddef.h>

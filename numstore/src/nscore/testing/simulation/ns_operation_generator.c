@@ -5,10 +5,10 @@
 #include "core/ns_error.h"
 #include "core/ns_numerics.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/testing/simulation/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
-#include "os/ns_memory.h"
 
 /******************************************************************************
  *                                  Getters                                   *
@@ -476,7 +476,7 @@ opg_spin_enabled (u8 enabled[NSS_AT_LEN])
 struct operation *
 opg_random (struct rand_op_params params, error *e)
 {
-  struct operation *ret = i_malloc (params.mem, 1, sizeof *ret, e);
+  struct operation *ret = params.mem.table->malloc (params.mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -550,7 +550,7 @@ void
 opg_free (struct operation *op)
 {
   arena_alloc_free_all (&op->alloc);
-  i_free (op->mem, op);
+  op->mem.table->free (op->mem.self, op);
 }
 
 #ifndef NDEBUG

@@ -30,7 +30,8 @@
 #include "core/ns_platform.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 #include <stdbool.h>
 
@@ -118,12 +119,13 @@ struct txn;
 
 struct lockt
 {
+  struct i_os       os;         // The OS every gr_lock in the table is built on
   struct slab_alloc lock_alloc; // Allocate gr locks
   struct htable    *table;      // The table of locks
   latch             l;          // Latch for modifications
 };
 
-err_t lockt_init (struct lockt *t, struct i_mem mem, error *e);
+err_t lockt_init (struct lockt *t, struct i_mem mem, struct i_os os, error *e);
 void lockt_destroy (struct lockt *t);
 void lockt_crash (struct lockt *t);
 

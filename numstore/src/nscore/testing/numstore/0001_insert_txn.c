@@ -37,7 +37,7 @@ TEST (ns_writesert_txn)
     test_assert_int_equal (res, 0);
 
     // Generate random data to insert
-    u32 *src = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *src = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (src, 10 * sizeof (u32));
 
     // Insert the data inside a transaction and commit it
@@ -56,14 +56,14 @@ TEST (ns_writesert_txn)
     ns_var_free (var);
 
     // Read the data back and compare
-    u32 *dst = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *dst = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     res      = ns_read (db, NULL, dst, 10 * sizeof (u32), "read foo[:]");
     test_assert_int_equal (res, 10);
     test_assert_memequal (src, dst, 10 * sizeof (u32));
 
     // Cleanup
-    i_free (mem, src);
-    i_free (mem, dst);
+    mem.table->free (mem.self, src);
+    mem.table->free (mem.self, dst);
     test_assert_int_equal (ns_close (db), 0);
   }
 
@@ -87,7 +87,7 @@ TEST (ns_writesert_txn)
     ns_var_free (var);
 
     // Generate random data to insert
-    u32 *src = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *src = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (src, 10 * sizeof (u32));
 
     // Insert the data inside a transaction, then roll it back
@@ -106,7 +106,7 @@ TEST (ns_writesert_txn)
     ns_var_free (var);
 
     // Cleanup
-    i_free (mem, src);
+    mem.table->free (mem.self, src);
     test_assert_int_equal (ns_close (db), 0);
   }
 
@@ -124,13 +124,13 @@ TEST (ns_writesert_txn)
     test_assert_int_equal (res, 0);
 
     // Insert the initial data
-    u32 *initial = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *initial = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (initial, 10 * sizeof (u32));
     res = ns_write (db, NULL, initial, 10 * sizeof (u32), "insert foo %d %d", 0, 10);
     test_assert_int_equal (res, 10);
 
     // Generate extra data to insert in a transaction
-    u32 *extra = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *extra = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (extra, 10 * sizeof (u32));
 
     // Append the extra data inside a transaction
@@ -156,15 +156,15 @@ TEST (ns_writesert_txn)
     ns_var_free (var);
 
     // Read the data back and compare to the initial data
-    u32 *dst = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *dst = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     res      = ns_read (db, NULL, dst, 10 * sizeof (u32), "read foo[:]");
     test_assert_int_equal (res, 10);
     test_assert_memequal (initial, dst, 10 * sizeof (u32));
 
     // Cleanup
-    i_free (mem, initial);
-    i_free (mem, extra);
-    i_free (mem, dst);
+    mem.table->free (mem.self, initial);
+    mem.table->free (mem.self, extra);
+    mem.table->free (mem.self, dst);
     test_assert_int_equal (ns_close (db), 0);
   }
 
@@ -216,7 +216,7 @@ TEST (ns_writesert_txn)
     test_assert_int_equal (res, 0);
 
     // Generate the values we expect to end up with
-    u32 *vals = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *vals = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (vals, 10 * sizeof (u32));
 
     // Insert them one at a time at the front, last value first
@@ -232,14 +232,14 @@ TEST (ns_writesert_txn)
     ns_var_free (var);
 
     // Read the data back and compare
-    u32 *dst = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *dst = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     res      = ns_read (db, NULL, dst, 10 * sizeof (u32), "read foo[:]");
     test_assert_int_equal (res, 10);
     test_assert_memequal (vals, dst, 10 * sizeof (u32));
 
     // Cleanup
-    i_free (mem, vals);
-    i_free (mem, dst);
+    mem.table->free (mem.self, vals);
+    mem.table->free (mem.self, dst);
     test_assert_int_equal (ns_close (db), 0);
   }
 
@@ -257,13 +257,13 @@ TEST (ns_writesert_txn)
     test_assert_int_equal (res, 0);
 
     // Insert the initial data
-    u32 *initial = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *initial = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (initial, 10 * sizeof (u32));
     res = ns_write (db, NULL, initial, 10 * sizeof (u32), "insert foo %d %d", 0, 10);
     test_assert_int_equal (res, 10);
 
     // Append one element in a transaction and roll it back, over and over
-    u32 *extra = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *extra = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (extra, 10 * sizeof (u32));
 
     for (int i = 0; i < 10; ++i) {
@@ -283,15 +283,15 @@ TEST (ns_writesert_txn)
     }
 
     // Read the data back and compare to the initial data
-    u32 *dst = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *dst = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     res      = ns_read (db, NULL, dst, 10 * sizeof (u32), "read foo[:]");
     test_assert_int_equal (res, 10);
     test_assert_memequal (initial, dst, 10 * sizeof (u32));
 
     // Cleanup
-    i_free (mem, initial);
-    i_free (mem, extra);
-    i_free (mem, dst);
+    mem.table->free (mem.self, initial);
+    mem.table->free (mem.self, extra);
+    mem.table->free (mem.self, dst);
     test_assert_int_equal (ns_close (db), 0);
   }
 
@@ -305,7 +305,7 @@ TEST (ns_writesert_txn)
     test_assert (db != NULL);
 
     // Generate one random element per variable
-    u32 *vals = i_malloc (mem, 10 * sizeof (u32), 1, NULL);
+    u32 *vals = mem.table->malloc (mem.self, 10 * sizeof (u32), 1, NULL);
     rand_bytes (vals, 10 * sizeof (u32));
 
     // Create 10 variables, each with a single element
@@ -333,7 +333,7 @@ TEST (ns_writesert_txn)
     }
 
     // Cleanup
-    i_free (mem, vals);
+    mem.table->free (mem.self, vals);
     test_assert_int_equal (ns_close (db), 0);
   }
 }

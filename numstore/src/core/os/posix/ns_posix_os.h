@@ -1,10 +1,32 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
 #ifndef NS_POSIX_OS_H
 #define NS_POSIX_OS_H
 
-#include "core/ns_slab_alloc.h"
-#include "core/ns_stdtypes.h"
+#include "core/ns_platform.h"
 
-#include <time.h>
+#if PLATFORM_POSIX
+
+#  include "core/ns_error.h"
+#  include "core/ns_slab_alloc.h"
+#  include "core/ns_stdtypes.h"
+#  include "core/os/ns_malloc.h"
+
+#  include <pthread.h>
+#  include <stdatomic.h>
+#  include <time.h>
 
 struct pthread_frame
 {
@@ -17,7 +39,7 @@ struct posix_os
   /**
    * -1         - unoccupied
    * -2         - pending
-   *  n > 0     - occupied
+   *  n >= 0    - occupied, and IS the fd
    */
   _Atomic int          fds[MAX_OPEN_FILES];
   _Atomic int          fd_clock;
@@ -50,4 +72,6 @@ void posix_pthread_cond_free (struct posix_os *os, pthread_cond_t *cond);
 struct timespec *posix_timer_alloc (struct posix_os *os, error *e);
 void posix_timer_free (struct posix_os *os, struct timespec *timer);
 
-#endif
+#endif // PLATFORM_POSIX
+
+#endif // NS_POSIX_OS_H

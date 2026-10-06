@@ -25,3 +25,5 @@ target_sources(
         ns_testing.c
         ns_tests.c
 )
+
+add_subdirectory(os)

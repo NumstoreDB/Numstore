@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/os/ns_malloc.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/lock_table/ns_lock_table.h"
@@ -20,7 +21,6 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/wal/ns_wal.h"
-#include "os/ns_memory.h"
 
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
@@ -75,12 +75,12 @@ pgr_close (struct pager *p, error *e)
   i_log_lockt (LOG_INFO, p->lt);
   lockt_unlock (p->lt, lock_db (), LM_X, e);
   lockt_destroy (p->lt);
-  i_free (p->mem, p->lt);
+  p->mem.table->free (p->mem.self, p->lt);
 
   txnt_close (p->tnxt);
   dpgt_close (p->dpt);
 
-  i_free (p->mem, p);
+  p->mem.table->free (p->mem.self, p);
 
   return error_trace (e);
 }
@@ -89,11 +89,11 @@ pgr_close (struct pager *p, error *e)
 TEST (pgr_close_success)
 {
   error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
-  struct pager *p = pgr_open ("testdb", mem, fs, &e);
-  // Delete file i_close should fail
+  struct pager *p = pgr_open ("testdb", mem, os, &e);
+  // Delete file close_file should fail
   test_assert_equal (pgr_close (p, &e), SUCCESS);
-  test_fail_if (pgr_delete_single_file ("foodir", &e));
+  test_fail_if (pgr_delete_single_file ("foodir", os, &e));
 }
 #endif

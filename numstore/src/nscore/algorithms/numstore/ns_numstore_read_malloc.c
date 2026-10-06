@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/os/ns_malloc.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
-#include "os/ns_memory.h"
 
 void *
 numstore_read_malloc_from_name (
@@ -69,7 +69,7 @@ numstore_read_malloc (
     goto failed;
   }
 
-  void *buffer = i_malloc (mem, stride.nelems, tsize, e);
+  void *buffer = mem.table->malloc (mem.self, stride.nelems, tsize, e);
   if (buffer == NULL) {
     goto failed;
   }
@@ -93,7 +93,7 @@ numstore_read_malloc (
       e
   );
   if (ret < 0) {
-    i_free (mem, buffer);
+    mem.table->free (mem.self, buffer);
     goto failed;
   }
 

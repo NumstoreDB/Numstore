@@ -14,6 +14,8 @@
 
 #include "core/ns_error.h"
 #include "core/ns_utils.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 #include "nscore/disk_pager/ns_file_pager.h"
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/lock_table/ns_lock_table.h"
@@ -21,9 +23,6 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/wal/ns_wal.h"
-#include "os/ns_file.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
 
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
@@ -36,15 +35,15 @@
 #include <string.h>
 
 err_t
-pgr_delete_single_file (const char *dbname, error *e)
+pgr_delete_single_file (const char *dbname, const struct i_os os, error *e)
 {
   char fname[NS_PATH_MAX];
   char walname[NS_PATH_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
-  i_remove_quiet (default_filesystem (), fname, e);
-  i_remove_quiet (default_filesystem (), walname, e);
+  os.table->remove_quiet (os.self, fname, e);
+  os.table->remove_quiet (os.self, walname, e);
 
   return error_trace (e);
 }
@@ -112,7 +111,7 @@ pgr_read_header (struct pager *p, error *e)
  *   Runs the three-phase ARIES restart via pgr_open().
  */
 struct pager *
-pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *e)
+pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
 {
   u32 len = strlen (dbname);
   if (len > (NS_NAME_MAX - 4)) {
@@ -132,27 +131,27 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
   // File pager
-  struct file_pager *fp = fpgr_open (fname, mem, fs, PAGE_HEADER_LEN, e);
+  struct file_pager *fp = fpgr_open (fname, mem, os, PAGE_HEADER_LEN, e);
   if (fp == NULL) {
     return NULL;
   }
 
-  struct wal *ww = wal_open (walname, mem, fs, e);
+  struct wal *ww = wal_open (walname, mem, os, e);
   if (ww == NULL) {
     fpgr_close (fp, e);
     return NULL;
   }
 
-  struct lockt *lt = i_malloc (mem, 1, sizeof *lt, e);
+  struct lockt *lt = mem.table->malloc (mem.self, 1, sizeof *lt, e);
   if (lt == NULL) {
     fpgr_close (fp, e);
     wal_close_and_delete (ww, e);
     return NULL;
   }
-  if (lockt_init (lt, mem, e)) {
+  if (lockt_init (lt, mem, os, e)) {
     fpgr_close (fp, e);
     wal_close_and_delete (ww, e);
-    i_free (mem, lt);
+    mem.table->free (mem.self, lt);
     lockt_destroy (lt);
     return NULL;
   }
@@ -160,13 +159,13 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
   page_h        root = page_h_create ();
   struct pager *ret  = NULL;
 
-  if ((ret = i_calloc (mem, 1, sizeof *ret, e)) == NULL) {
+  if ((ret = mem.table->calloc (mem.self, 1, sizeof *ret, e)) == NULL) {
     goto failed;
   }
 
   // Initialize "easy" things
   ret->mem                        = mem;
-  ret->fs                         = fs;
+  ret->os                         = os;
   *(struct file_pager **)&ret->fp = fp;
   *(struct wal **)&ret->ww        = ww;
   ret->lt                         = lt;
@@ -189,7 +188,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_file_system fs, error *
   }
 
   // Initialize (but don't start) the checkpoint task
-  if (periodic_task_init (&ret->checkpoint_task, e)) {
+  if (periodic_task_init (&ret->checkpoint_task, os, e)) {
     goto failed;
   }
 
@@ -280,7 +279,7 @@ failed:
     if (ret->tnxt) {
       txnt_close (ret->tnxt);
     }
-    i_free (mem, ret);
+    mem.table->free (mem.self, ret);
   }
 
   if (ww) {
@@ -303,36 +302,36 @@ TEST (pager_open)
 
   TEST_CASE ("green path")
   {
-    test_fail_if (pgr_delete_single_file ("testdb", &e));
+    test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
-    struct pager *p = pgr_open ("testdb", mem, fs, &e);
+    struct pager *p = pgr_open ("testdb", mem, os, &e);
 
     pgr_close (p, &e);
   }
 
   TEST_CASE ("dbname is too long")
   {
-    char *name = i_malloc (mem, NS_NAME_MAX, 1, &e);
+    char *name = mem.table->malloc (mem.self, NS_NAME_MAX, 1, &e);
     for (int i = 0; i < NS_NAME_MAX; ++i) {
       name[i] = 'c';
     }
     name[NS_NAME_MAX - 3] = '\0';
 
-    struct pager *p       = pgr_open (name, mem, fs, &e);
+    struct pager *p       = pgr_open (name, mem, os, &e);
     test_assert (p == NULL);
     test_err_t_check (e.cause_code, ERR_INVALID_ARGUMENT, &e);
     e.cause_code          = SUCCESS;
 
     name[NS_NAME_MAX - 4] = '\0';
-    p                     = pgr_open (name, mem, fs, &e);
+    p                     = pgr_open (name, mem, os, &e);
     test_assert (p != NULL);
 
     pgr_close (p, &e);
 
     // Delete the obtuse name
-    pgr_delete_single_file (name, &e);
+    pgr_delete_single_file (name, os, &e);
 
-    i_free (mem, name);
+    mem.table->free (mem.self, name);
   }
 }
 #endif
@@ -342,34 +341,34 @@ TEST (pgr_open_basic)
 {
   error e = error_create ();
 
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 
   i_file fp = {0};
-  i_open_rw (fs, &fp, "testdb", &e);
+  os.table->open_file_rw (os.self, &fp, "testdb", &e);
 
   // File is shorter than page size
-  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE - 1, &e));
-  struct pager *p = pgr_open ("testdb", mem, fs, &e);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &e));
+  struct pager *p = pgr_open ("testdb", mem, os, &e);
   test_assert_int_equal (e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
   error_reset (&e);
 
   // Half a page
-  test_fail_if (i_truncate (&fp, NS_PAGE_SIZE / 2, &e));
-  p = pgr_open ("testdb", mem, fs, &e);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &e));
+  p = pgr_open ("testdb", mem, os, &e);
   test_assert_int_equal (e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
   error_reset (&e);
 
   // 0 pages
-  test_fail_if (i_truncate (&fp, 0, &e));
-  p = pgr_open ("testdb", mem, fs, &e);
+  test_fail_if (fp.table->truncate (fp.self, 0, &e));
+  p = pgr_open ("testdb", mem, os, &e);
   test_assert_int_equal (e.cause_code, SUCCESS);
   test_assert_int_equal ((int)pgr_get_npages (p), 0);
   test_fail_if (pgr_close (p, &e));
 
   // Tear down
-  test_fail_if (i_close (&fp, &e));
-  test_fail_if (pgr_delete_single_file ("testdb", &e));
+  test_fail_if (os.table->close_file (os.self, fp.self, &e));
+  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
 }
 #endif

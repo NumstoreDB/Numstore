@@ -18,6 +18,7 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
+#include "core/os/ns_os.h"
 #include "nscore/txn_table/ns_txn_table.h"
 
 /******************************************************************************
@@ -65,6 +66,7 @@
 struct nscli
 {
   struct nsdb       *db;         // The Database
+  struct i_os        os;         // The OS this session created and owns
   error              e;          // Error state for this session
   struct dbl_buffer  stmt;       // Statement
   struct arena_alloc step_alloc; // Allocator for anything per step

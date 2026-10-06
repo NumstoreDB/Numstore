@@ -19,8 +19,8 @@
 #include "core/ns_concurrency.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_filesystem.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
+#include "core/os/ns_os.h"
 
 /******************************************************************************
  * SECTION: Wal Output Stream
@@ -31,6 +31,7 @@
 struct wal_ostream
 {
   struct i_mem   mem;
+  struct i_os    os; // the OS that opened [fd] - it must close it too
   i_file         fd;
   latch          l;
   lsn            flushed_lsn;
@@ -40,12 +41,7 @@ struct wal_ostream
 };
 
 // Lifecycle
-struct wal_ostream *walos_open (
-    const char          *fname,
-    struct i_mem         mem,
-    struct i_file_system fs,
-    error               *e
-);
+struct wal_ostream *walos_open (const char *fname, struct i_mem mem, struct i_os os, error *e);
 err_t walos_close (struct wal_ostream *w, error *e);
 
 // Flush

@@ -12,21 +12,24 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "os/posix/ns_posix_os.h"
+#include "core/os/posix/ns_posix_os.h"
 
-#include "core/ns_csx_assert.h"
-#include "core/ns_error.h"
-#include "core/ns_slab_alloc.h"
-#include "core/ns_stdtypes.h"
-#include "core/ns_utils.h"
-#include "os/ns_malloc.h"
+#if PLATFORM_POSIX
 
-#include <stdatomic.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#  include "core/ns_csx_assert.h"
+#  include "core/ns_error.h"
+#  include "core/ns_slab_alloc.h"
+#  include "core/ns_stdtypes.h"
+#  include "core/ns_utils.h"
+#  include "core/os/ns_malloc.h"
 
-#define IS_POW2(x) ((x) > 0 && ((x) & ((x) - 1)) == 0)
+#  include <pthread.h>
+#  include <stdatomic.h>
+#  include <stdlib.h>
+#  include <string.h>
+#  include <time.h>
+
+#  define IS_POW2(x) ((x) > 0 && ((x) & ((x) - 1)) == 0)
 
 _Static_assert (IS_POW2 (MAX_OPEN_FILES), "MAX_OPEN_FILES must be a power of 2");
 _Static_assert (IS_POW2 (MAX_THREADS), "MAX_THREADS must be a power of 2");
@@ -209,3 +212,5 @@ posix_timer_free (struct posix_os *os, struct timespec *timer)
   ASSERT (timer);
   slab_alloc_free (&os->timer_alloc, timer);
 }
+
+#endif // PLATFORM_POSIX

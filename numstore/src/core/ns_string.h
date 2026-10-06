@@ -22,7 +22,7 @@
 
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
-#include "os/ns_memory.h"
+#include "core/os/ns_malloc.h"
 
 #include <stdbool.h>
 
