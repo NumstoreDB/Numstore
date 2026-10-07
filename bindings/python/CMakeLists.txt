@@ -10,8 +10,7 @@ else()
     set(_numstore_default ${CMAKE_CURRENT_SOURCE_DIR}/../../numstore)
 endif()
 
-set(
-    NUMSTORE_DIR
+set(NUMSTORE_DIR
     ${_numstore_default}
     CACHE PATH
     "Path to the numstore C library sources"

@@ -90,12 +90,6 @@ pgr_read_header (struct pager *p, error *e)
  * @brief Open a new pager
  ******************************************************************************/
 
-#ifdef _WIN32
-#  define NS_NAME_MAX 50
-#else
-#  define NS_NAME_MAX 200
-#endif
-
 /*
  * pgr_open - standard file-backed entry point.
  *
@@ -113,20 +107,23 @@ pgr_read_header (struct pager *p, error *e)
 struct pager *
 pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
 {
+  // The wal name is the db name plus ".wal", so the longest db name that still
+  // fits a path buffer is 5 short of it: 4 for the suffix and 1 for the
+  // terminator. pgr_delete_single_file above uses the same buffers.
   u32 len = strlen (dbname);
-  if (len > (NS_NAME_MAX - 4)) {
+  if (len > (NS_PATH_MAX - 5)) {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
         "DBName is too big. Supported max: %d actual len: %d",
-        NS_NAME_MAX - 4,
+        NS_PATH_MAX - 5,
         len
     );
     return NULL;
   }
 
-  char fname[NS_NAME_MAX];
-  char walname[NS_NAME_MAX];
+  char fname[NS_PATH_MAX];
+  char walname[NS_PATH_MAX];
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
@@ -311,19 +308,23 @@ TEST (pager_open)
 
   TEST_CASE ("dbname is too long")
   {
-    char *name = mem.table->malloc (mem.self, NS_NAME_MAX, 1, &e);
-    for (int i = 0; i < NS_NAME_MAX; ++i) {
-      name[i] = 'c';
-    }
-    name[NS_NAME_MAX - 3] = '\0';
+    // Over the limit is rejected before anything reaches the filesystem, so
+    // this probe can be longer than any filesystem would accept for a name.
+    u32   overlong = NS_PATH_MAX - 4;
+    char *name     = mem.table->malloc (mem.self, overlong + 1, 1, &e);
+    memset (name, 'c', overlong);
+    name[overlong]  = '\0';
 
-    struct pager *p       = pgr_open (name, mem, os, &e);
+    struct pager *p = pgr_open (name, mem, os, &e);
     test_assert (p == NULL);
     test_err_t_check (e.cause_code, ERR_INVALID_ARGUMENT, &e);
-    e.cause_code          = SUCCESS;
+    e.cause_code = SUCCESS;
 
-    name[NS_NAME_MAX - 4] = '\0';
-    p                     = pgr_open (name, mem, os, &e);
+    // Under it, but not at it: the limit is a path limit, while this name is a
+    // single path component, which filesystems cap at 255 bytes -- and on
+    // Windows the cwd plus the name still has to fit MAX_PATH.
+    name[100]    = '\0';
+    p            = pgr_open (name, mem, os, &e);
     test_assert (p != NULL);
 
     pgr_close (p, &e);

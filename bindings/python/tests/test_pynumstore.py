@@ -20,20 +20,20 @@ def test_to_dtype_invalid_type_raises():
         ns.to_dtype("not_a_real_type")
 
 
-def test_database_context_manager_closes(tmp_path):
-    with ns.Database(str(tmp_path / "ctx.db")) as db:
+def test_database_context_manager_closes(db_dir):
+    with ns.Database("ctx.db") as db:
         db.execute("create foo u32")
     assert db._handle is None
 
 
-def test_double_close_raises_cleanly(tmp_path):
-    db = ns.Database(str(tmp_path / "close.db"))
+def test_double_close_raises_cleanly(db_dir):
+    db = ns.Database("close.db")
     db.close()
     db.close()
 
 
-def test_execute_after_close_raises(tmp_path):
-    db = ns.Database(str(tmp_path / "closed.db"))
+def test_execute_after_close_raises(db_dir):
+    db = ns.Database("closed.db")
     db.close()
     with pytest.raises(RuntimeError):
         db.execute("create foo u32")
@@ -284,8 +284,8 @@ def test_var_in_transaction(db):
     assert db.get("get foo").length == src.size
 
 
-def test_var_after_database_close_raises(tmp_path):
-    db = ns.Database(str(tmp_path / "varclose.db"))
+def test_var_after_database_close_raises(db_dir):
+    db = ns.Database("varclose.db")
     db.execute("create foo u32")
     db.close()
 
