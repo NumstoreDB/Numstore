@@ -2,8 +2,10 @@
 #
 # Upload wheels to TestPyPI, or to PyPI with --prod.
 #
+# Run from bindings/python (the Makefile targets do):
+#
 #   scripts/upload_python.sh wheelhouse/*.whl
-#   scripts/upload_python.sh --prod dist/wheels/*.whl
+#   scripts/upload_python.sh --prod wheelhouse/*.whl
 #
 # Credentials come from twine: ~/.pypirc, or TWINE_USERNAME=__token__ plus
 # TWINE_PASSWORD=<api token>.

@@ -1,0 +1,60 @@
+name: Wheels
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        # One runner per OS/arch, because cibuildwheel builds for the host it
+        # runs on: CIBW_ARCHS defaults to "auto", so the runner label is what
+        # picks the wheel architecture. Nothing here is cross compiled, and
+        # Windows wheels exist only because of the two Windows runners.
+        include:
+          - { target: linux-x86_64,    runner: ubuntu-24.04 }
+          - { target: linux-aarch64,   runner: ubuntu-24.04-arm }
+          - { target: macos-arm64,     runner: macos-15 }
+          - { target: macos-x86_64,    runner: macos-15-intel }
+          - { target: windows-x86_64,  runner: windows-2025 }
+          - { target: windows-aarch64, runner: windows-11-arm }
+
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # package-dir points at the bindings, but the action runs from the repo
+      # root, and that is what makes the Linux legs work: cibuildwheel copies
+      # the working directory into the container as /project, so the package
+      # lands at /project/bindings/python and the add_subdirectory(../../numstore)
+      # in its CMakeLists resolves to /project/numstore. Running cibuildwheel
+      # from inside bindings/python would copy only that subtree and the
+      # library would be missing.
+      #
+      # Interpreters, architectures and the test command come from
+      # [tool.cibuildwheel] in bindings/python/pyproject.toml.
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.3.0
+        with:
+          package-dir: bindings/python
+          output-dir: wheelhouse
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.target }}
+          path: ./wheelhouse/*.whl
+          if-no-files-found: error

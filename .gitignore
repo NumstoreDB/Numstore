@@ -1113,3 +1113,8 @@ gmon.out
 *_example
 sample1_crud
 docgen_tmp/
+
+############ Vendored into bindings/python by scripts/vendor.sh
+
+bindings/python/_numstore/
+.claude

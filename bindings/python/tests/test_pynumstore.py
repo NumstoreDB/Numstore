@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+
 import numpy as np
 import pytest
 
@@ -42,19 +44,28 @@ def test_execute_invalid_query_raises(db):
         db.execute("not a real query")
 
 
-def test_get_nonexistent_variable_fails(db):
+def test_execute_only_takes_queries_that_produce_nothing(db):
+    db.execute("create foo u32")
+
+    # execute() is create/delete/remove only - anything that resolves a
+    # variable or moves data goes through get/read/write
     with pytest.raises(RuntimeError):
         db.execute("get foo")
+
+
+def test_get_nonexistent_variable_fails(db):
+    with pytest.raises(RuntimeError):
+        db.get("get foo")
 
 
 def test_create_insert_read(db):
     db.execute("create foo u32")
 
     src = np.arange(5, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
+    db.write(f"insert foo 0 {src.size}", src)
 
     dest = np.zeros(5, dtype=np.uint32)
-    n = db.execute(f"read foo[0:] blimit {dest.nbytes}", dest)
+    n = db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest)
 
     assert n == dest.size
     np.testing.assert_array_equal(dest, src)
@@ -65,10 +76,10 @@ def test_transaction_commit(db):
     src = np.arange(3, dtype=np.uint32)
 
     with db.begin() as txn:
-        txn.execute(f"insert foo 0 {src.size}", src)
+        txn.write(f"insert foo 0 {src.size}", src)
 
     dest = np.zeros(3, dtype=np.uint32)
-    n = db.execute(f"read foo[0:] blimit {dest.nbytes}", dest)
+    n = db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest)
     assert n == dest.size
     np.testing.assert_array_equal(dest, src)
 
@@ -78,11 +89,11 @@ def test_transaction_rollback(db):
     src = np.arange(3, dtype=np.uint32)
 
     txn = db.begin()
-    txn.execute(f"insert foo 0 {src.size}", src)
+    txn.write(f"insert foo 0 {src.size}", src)
     txn.rollback()
 
     dest = np.zeros(3, dtype=np.uint32)
-    n = db.execute(f"read foo[0:] blimit {dest.nbytes}", dest)
+    n = db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest)
     assert n == 0
 
 
@@ -93,7 +104,7 @@ def test_reusing_closed_transaction_raises(db):
     txn.commit()
 
     with pytest.raises(RuntimeError):
-        txn.execute("read foo[0:] blimit 4", np.zeros(1, dtype=np.uint32))
+        txn.read_into("read foo[0:] blimit 4", np.zeros(1, dtype=np.uint32))
 
 
 def test_double_commit_raises(db):
@@ -133,11 +144,11 @@ def test_with_block_over_a_hand_committed_transaction_is_fine(db):
 
     # Leaving the block is not a second commit - it has nothing left to do
     with db.begin() as txn:
-        txn.execute("insert foo 0 3", np.arange(3, dtype=np.uint32))
+        txn.write("insert foo 0 3", np.arange(3, dtype=np.uint32))
         txn.commit()
 
     np.testing.assert_array_equal(
-        db.execute("read foo[0:]"), np.arange(3, dtype=np.uint32)
+        db.read("read foo[0:]"), np.arange(3, dtype=np.uint32)
     )
 
 
@@ -145,75 +156,84 @@ def test_with_block_over_a_hand_rolled_back_transaction_is_fine(db):
     db.execute("create foo u32")
 
     with db.begin() as txn:
-        txn.execute("insert foo 0 3", np.arange(3, dtype=np.uint32))
+        txn.write("insert foo 0 3", np.arange(3, dtype=np.uint32))
         txn.rollback()
 
-    assert db.get("foo").length() == 0
+    assert db.get("get foo").length == 0
 
 
-def test_read_with_no_buffer_allocates_array(db):
+def test_read_allocates_an_array(db):
     db.execute("create foo u32")
     src = np.arange(5, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
+    db.write(f"insert foo 0 {src.size}", src)
 
-    result = db.execute("read foo[0:]")
+    result = db.read("read foo[0:]")
 
     assert isinstance(result, np.ndarray)
     assert result.dtype == np.uint32
     np.testing.assert_array_equal(result, src)
 
 
-def test_remove_with_no_buffer_returns_removed_data(db):
+def test_read_of_a_remove_returns_the_removed_data(db):
     db.execute("create foo u32")
     src = np.arange(5, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
+    db.write(f"insert foo 0 {src.size}", src)
 
-    removed = db.execute("remove foo[0:2]")
+    removed = db.read("remove foo[0:2]")
     np.testing.assert_array_equal(removed, src[0:2])
 
-    remaining = db.execute("read foo[0:]")
+    remaining = db.read("read foo[0:]")
     np.testing.assert_array_equal(remaining, src[2:])
 
 
 def test_var_basic_accessors(db):
     db.execute("create foo u32")
 
-    var = db.get("foo")
-    assert var.name() == "foo"
-    assert var.type() == "u32"
-    assert var.tsize() == 4
-    assert var.length() == 0
-    assert var.dtype() == np.dtype(np.uint32)
+    var = db.get("get foo")
+    assert var.name == "foo"
+    assert var.type == "u32"
+    assert var.tsize == 4
+    assert var.length == 0
+    assert var.dtype == np.dtype(np.uint32)
+    assert var.shape == (0,)
+    assert len(var) == 0
 
 
 def test_var_length_tracks_inserts(db):
     db.execute("create foo u32")
-    assert db.get("foo").length() == 0
+    assert db.get("get foo").length == 0
 
     src = np.arange(5, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
+    db.write(f"insert foo 0 {src.size}", src)
 
-    assert db.get("foo").length() == src.size
+    assert db.get("get foo").length == src.size
 
 
 def test_var_is_a_snapshot(db):
     db.execute("create foo u32")
-    var = db.get("foo")
+    var = db.get("get foo")
 
     src = np.arange(3, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
+    db.write(f"insert foo 0 {src.size}", src)
 
     # Captured before the insert, so it still reports the old length
-    assert var.length() == 0
-    assert db.get("foo").length() == 3
+    assert var.length == 0
+    assert db.get("get foo").length == 3
 
 
-def test_var_has_no_free_to_call(db):
+def test_var_holds_no_c_handle(db):
     db.execute("create foo u32")
 
-    # Releasing is the capsule destructor's job - nothing is exposed for it
-    assert not hasattr(db.get("foo"), "free")
-    assert not hasattr(ns._ns, "pyns_var_free")
+    # _capture_var frees the handle before returning, so a Var is a plain
+    # value with nothing to release - and nothing is exposed to release it
+    var = db.get("get foo")
+    assert not hasattr(var, "free")
+    assert {f.name for f in dataclasses.fields(var)} == {
+        "name",
+        "type",
+        "length",
+        "tsize",
+    }
 
 
 def test_dropped_vars_are_released(db):
@@ -222,38 +242,34 @@ def test_dropped_vars_are_released(db):
     # Capturing and dropping without ever freeing must stay flat. If the
     # destructor were not running, each iteration would strand an arena.
     for _ in range(20000):
-        assert db.get("foo").tsize() == 8
+        assert db.get("get foo").tsize == 8
 
 
 def test_var_repr(db):
     db.execute("create foo u32")
-    assert repr(db.get("foo")) == "<Var foo type='u32' length=0 tsize=4>"
+    assert repr(db.get("get foo")) == "Var(name='foo', type='u32', length=0, tsize=4)"
 
 
 def test_var_name(db):
     db.execute("create foo u32")
     db.execute("create other_variable f64")
 
-    assert db.get("foo").name() == "foo"
-    assert db.get("other_variable").name() == "other_variable"
-
-
-def test_var_name_from_create(db):
-    assert db.execute("create foo u32").name() == "foo"
+    assert db.get("get foo").name == "foo"
+    assert db.get("get other_variable").name == "other_variable"
 
 
 def test_var_of_nonexistent_variable_raises(db):
     with pytest.raises(RuntimeError):
-        db.get("nope")
+        db.get("get nope")
 
 
 def test_var_composite_type(db):
     db.execute("create foo struct { a u32, b f64 }")
 
-    var = db.get("foo")
-    assert var.type() == "struct { a u32, b f64 }"
-    assert var.tsize() == 12
-    assert var.length() == 0
+    var = db.get("get foo")
+    assert var.type == "struct { a u32, b f64 }"
+    assert var.tsize == 12
+    assert var.length == 0
 
 
 def test_var_in_transaction(db):
@@ -261,11 +277,11 @@ def test_var_in_transaction(db):
     src = np.arange(4, dtype=np.uint32)
 
     with db.begin() as txn:
-        txn.execute(f"insert foo 0 {src.size}", src)
+        txn.write(f"insert foo 0 {src.size}", src)
         # The insert is visible inside its own transaction
-        assert txn.get("foo").length() == src.size
+        assert txn.get("get foo").length == src.size
 
-    assert db.get("foo").length() == src.size
+    assert db.get("get foo").length == src.size
 
 
 def test_var_after_database_close_raises(tmp_path):
@@ -274,56 +290,44 @@ def test_var_after_database_close_raises(tmp_path):
     db.close()
 
     with pytest.raises(RuntimeError):
-        db.get("foo")
+        db.get("get foo")
 
 
-def test_execute_returns_none_when_nothing_is_produced(db):
-    db.execute("create foo u32")
-    # delete resolves no variable and allocates no data, so there is nothing
-    # for the plan to hand back
-    assert db.execute("delete foo") is None
+def test_execute_returns_a_count(db):
+    assert isinstance(db.execute("create foo u32"), int)
+    assert isinstance(db.execute("delete foo"), int)
 
 
-def test_execute_returns_var_for_get(db):
+def test_get_returns_a_var(db):
     db.execute("create foo u32")
 
-    var = db.execute("get foo")
+    var = db.get("get foo")
     assert isinstance(var, ns.Var)
-    assert var.type() == "u32"
+    assert var.type == "u32"
 
 
-def test_execute_returns_var_for_create(db):
-    # create resolves the variable it just made, so the plan captures it
-    var = db.execute("create foo u32")
-    assert isinstance(var, ns.Var)
-    assert var.type() == "u32"
-    assert var.length() == 0
-
-
-def test_execute_returns_array_for_read(db):
+def test_write_returns_the_count_written(db):
     db.execute("create foo u32")
     src = np.arange(3, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
-
-    assert isinstance(db.execute("read foo[0:]"), np.ndarray)
+    assert db.write(f"insert foo 0 {src.size}", src) == src.size
 
 
-def test_execute_returns_count_when_given_a_buffer(db):
+def test_read_into_returns_the_count_read(db):
     db.execute("create foo u32")
     src = np.arange(3, dtype=np.uint32)
-    assert db.execute(f"insert foo 0 {src.size}", src) == 3
+    db.write(f"insert foo 0 {src.size}", src)
 
     dest = np.zeros(3, dtype=np.uint32)
-    assert db.execute(f"read foo[0:] blimit {dest.nbytes}", dest) == 3
+    assert db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest) == 3
 
 
-def test_read_bounded_by_buffer_without_blimit(db):
+def test_read_into_is_bounded_by_the_buffer_without_blimit(db):
     db.execute("create foo u32")
     src = np.arange(10, dtype=np.uint32)
-    db.execute(f"insert foo 0 {src.size}", src)
+    db.write(f"insert foo 0 {src.size}", src)
 
     dest = np.zeros(4, dtype=np.uint32)
-    assert db.execute("read foo[0:]", dest) == dest.size
+    assert db.read_into("read foo[0:]", dest) == dest.size
     np.testing.assert_array_equal(dest, src[:4])
 
 
@@ -331,10 +335,10 @@ def test_sarray_variable_accepts_matching_2d_array(db):
     db.execute("create grid [3] u32")
 
     src = np.arange(6, dtype=np.uint32).reshape(2, 3)
-    assert db.execute("insert grid 0 2", src) == 2
-    np.testing.assert_array_equal(db.execute("read grid[0:]"), src)
+    assert db.write("insert grid 0 2", src) == 2
+    np.testing.assert_array_equal(db.read("read grid[0:]"), src)
 
 
 def test_insert_into_nonexistent_variable_raises(db):
     with pytest.raises(RuntimeError):
-        db.execute("insert nope 0 1", np.zeros(1, dtype=np.uint32))
+        db.write("insert nope 0 1", np.zeros(1, dtype=np.uint32))
