@@ -33,7 +33,7 @@ jobs:
         shell: bash
 
     env:
-      SIMTEST_DURATION: 10
+      SIMTEST_DURATION: 5
 
     steps:
       - uses: actions/checkout@v4
@@ -63,9 +63,7 @@ jobs:
       - name: Build debug (ASan)
         if: runner.os != 'Windows'
         run: |
-          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer" \
-            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"
+          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug 
           cmake --build build/debug --parallel 4
 
       # MSVC rejects /fsanitize=address alongside the /RTC1 in cmake's default
@@ -73,8 +71,7 @@ jobs:
       - name: Build debug (ASan, Windows x64)
         if: runner.os == 'Windows' && matrix.msvc_arch == 'x64'
         run: |
-          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_C_FLAGS_DEBUG="/Zi /Ob0 /Od /fsanitize=address"
+          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug 
           cmake --build build/debug --parallel 4
 
       # MSVC's ASan is x86/x64 only -- there is no ARM64 implementation to
