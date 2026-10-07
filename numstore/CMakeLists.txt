@@ -7,11 +7,6 @@ include(GNUInstallDirs)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# for MSVC: as of 19.51 its <stdatomic.h> is still gated behind /experimental:c11atomics
-if(MSVC)
-    add_compile_options(/experimental:c11atomics)
-endif()
-
 # NLOG compiles out leveled logging. Test CASE/PASSED/FAILURE lines survive.
 option(NS_NLOG "Compile out logging" OFF)
 if(NS_NLOG)
@@ -42,6 +37,17 @@ set_target_properties(
         EXPORT_NAME numstore
         POSITION_INDEPENDENT_CODE ON
 )
+
+# <stdatomic.h> in the public headers makes C11 a usage requirement, not just a
+# build setting for this directory: anything compiling against include/ needs
+# it too, which a directory-scoped CMAKE_C_STANDARD never reaches. The bindings
+# are in a parent directory, so they were getting MSVC's default C instead.
+target_compile_features(numstore.library PUBLIC c_std_11)
+
+# for MSVC: as of 19.51 its <stdatomic.h> is still gated behind /experimental:c11atomics
+if(MSVC)
+    target_compile_options(numstore.library PUBLIC /experimental:c11atomics)
+endif()
 
 # Prefer using -pthread instead of -lpthread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
