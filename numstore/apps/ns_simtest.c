@@ -36,7 +36,7 @@
 #define DEFAULT_SEED        1231241123ULL
 #define DEFAULT_COMMIT_HASH "foo"
 #define DEFAULT_SEQID       10
-#define DEFAULT_FAIL_PCT    0.0f
+#define DEFAULT_FAIL_PCT    0.1f
 
 static _Atomic bool running = true;
 

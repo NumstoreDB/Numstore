@@ -1,19 +1,135 @@
 name: CI
+
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-native:
-    uses: ./.github/workflows/build-native.yml
-    with:
-      # Runner labels are pinned rather than using -latest so a target's
-      # architecture can't silently change under us.
-      targets: >-
-        [
-          {"target": "linux-x86_64",    "runner": "ubuntu-24.04"},
-          {"target": "linux-aarch64",   "runner": "ubuntu-24.04-arm"},
-          {"target": "macos-arm64",     "runner": "macos-15"},
-          {"target": "macos-x86_64",    "runner": "macos-15-intel"},
-          {"target": "windows-x86_64",  "runner": "windows-2025",   "msvc_arch": "x64"},
-          {"target": "windows-aarch64", "runner": "windows-11-arm", "msvc_arch": "arm64"}
-        ]
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Runner labels are pinned rather than using -latest so a target's
+        # architecture can't silently change under us. Windows entries set
+        # msvc_arch to pick the MSVC target architecture.
+        include:
+          - { target: linux-x86_64,    runner: ubuntu-24.04 }
+          - { target: linux-aarch64,   runner: ubuntu-24.04-arm }
+          - { target: macos-arm64,     runner: macos-15 }
+          - { target: macos-x86_64,    runner: macos-15-intel }
+          - { target: windows-x86_64,  runner: windows-2025,   msvc_arch: x64 }
+          - { target: windows-aarch64, runner: windows-11-arm, msvc_arch: arm64 }
+
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      SIMTEST_DURATION: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
+
+      # unit_tests and ns_simtest only exist when CMAKE_BUILD_TYPE is Debug,
+      # which multi-config generators ignore. Force Ninja so Windows gets a
+      # single-config build too; msvc-dev-cmd leaves a usable ninja on PATH.
+      - name: Use Ninja on Windows
+        if: runner.os == 'Windows'
+        run: echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
+
+      - name: Report toolchain
+        run: |
+          echo "target:  ${{ matrix.target }}"
+          echo "runner:  ${{ matrix.runner }} ($RUNNER_OS/$RUNNER_ARCH)"
+          echo "machine: $(uname -m)"
+          cmake --version | head -1
+
+      # The tests below run instrumented. numstore has no cmake option for
+      # sanitizers, so the flags go in here.
+      - name: Build debug (ASan)
+        if: runner.os != 'Windows'
+        run: |
+          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address"
+          cmake --build build/debug --parallel 4
+
+      # MSVC rejects /fsanitize=address alongside the /RTC1 in cmake's default
+      # debug flags, so CMAKE_C_FLAGS_DEBUG is replaced rather than appended to.
+      - name: Build debug (ASan, Windows x64)
+        if: runner.os == 'Windows' && matrix.msvc_arch == 'x64'
+        run: |
+          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS_DEBUG="/Zi /Ob0 /Od /fsanitize=address"
+          cmake --build build/debug --parallel 4
+
+      # MSVC's ASan is x86/x64 only -- there is no ARM64 implementation to
+      # turn on, so this lane builds plain Debug.
+      - name: Build debug (no ASan, Windows arm64)
+        if: runner.os == 'Windows' && matrix.msvc_arch == 'arm64'
+        run: |
+          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build/debug --parallel 4
+
+      - name: Run unit tests
+        if: runner.os != 'Windows'
+        run: |
+          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          echo "::notice title=unit_tests seed (${{ matrix.target }})::$seed"
+          build/debug/bin/unit_tests "$seed"
+
+      - name: Run unit tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          echo "::notice title=unit_tests seed (${{ matrix.target }})::$seed"
+          build/debug/bin/unit_tests.exe "$seed"
+
+      - name: Run simulation test
+        if: runner.os != 'Windows'
+        run: |
+          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          echo "::notice title=ns_simtest seed (${{ matrix.target }})::seed=$seed seqid=$seqid"
+          build/debug/bin/ns_simtest \
+            --dbname "simtest_${{ matrix.target }}.db" \
+            --duration "$SIMTEST_DURATION" \
+            --seed "$seed" \
+            --commit-hash "${{ github.sha }}" \
+            --seqid "$seqid"
+
+      - name: Run simulation test (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
+          echo "::notice title=ns_simtest seed (${{ matrix.target }})::seed=$seed seqid=$seqid"
+          build/debug/bin/ns_simtest.exe \
+            --dbname "simtest_${{ matrix.target }}.db" \
+            --duration "$SIMTEST_DURATION" \
+            --seed "$seed" \
+            --commit-hash "${{ github.sha }}" \
+            --seqid "$seqid"
+
+      - name: Build release package
+        run: |
+          cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/release --parallel 4
+          rm -rf build/release/package
+          cmake --install build/release --prefix build/release/package
+          echo "installed release package:"
+          find build/release/package -type f | sort

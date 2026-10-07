@@ -2,6 +2,12 @@
 #
 # Remove every build artifact in the tree.
 #
+# Removes what the repo itself owns. The packages with their own build systems
+# (bindings/python, bindings/rust, bindings/javascript, nsserver) clean
+# themselves -- see the clean target in the root Makefile. The generic sweeps
+# below stay repo wide, since stray object files and test databases can land
+# anywhere.
+#
 # The top level dist/ is left alone on purpose: it holds the cross compiled
 # release tarballs and wheels, which take a long time to reproduce.
 
@@ -31,13 +37,9 @@ existing() {
 }
 
 if list "removing build dirs" "$(
-  existing build build_coverage nsserver/target wheelhouse \
-           bindings/python/dist bindings/python/build bindings/python/sources.txt \
-           docs/build docs/api
+  existing build build_coverage docs/build docs/api
 )"; then
-  rm -rf build build_coverage nsserver/target wheelhouse \
-         bindings/python/dist bindings/python/build bindings/python/sources.txt \
-         docs/build docs/api
+  rm -rf build build_coverage docs/build docs/api
 fi
 
 caches=$(

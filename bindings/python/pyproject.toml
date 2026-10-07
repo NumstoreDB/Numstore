@@ -25,5 +25,17 @@ wheel.packages = ["src/pynumstore"]     # pure-Python files, incl. py.typed and 
 install.components = ["python"]         # only package the extension, not the C SDK
 build-dir = "build/{wheel_tag}"         # reuse the build between runs
 
+# _numstore/ is gitignored, and the sdist otherwise follows gitignore -- but it
+# is exactly what makes the sdist buildable, so name it explicitly. Run
+# scripts/vendor.sh before building an sdist (make sdist does).
+sdist.include = ["_numstore/**"]
+
+[tool.cibuildwheel]
+# CPython only: the extension is a CPython C-API module.
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+skip = ["*-musllinux_*", "*_i686", "*-win32"]
+test-extras = ["test"]
+test-command = "pytest {package}/tests"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

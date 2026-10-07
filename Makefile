@@ -4,7 +4,7 @@
 # Don't use this for production builds - just
 # eliminates keystrokes while developing
 
-.PHONY: all release release-package python python-upload python-upload-prod clean format
+.PHONY: all release release-package clean format
 
 # NLOG=1 compiles out logging (CI uses it to keep expected-error traces out of
 # the log). Takes effect at configure time, so it needs a fresh build dir.
@@ -29,37 +29,18 @@ build/release/CMakeCache.txt:
 	cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release $(CMAKE_CONFIG_FLAGS)
 
 #############################################
-### Python bindings
-
-# The cleaned wheel
-python: wheelhouse/pynumstore-*.whl
-
-# The main wheel (python step)
-bindings/python/dist/pynumstore-*.whl:
-	python3 -m build --wheel bindings/python --outdir bindings/python/dist
-
-# Clean the wheel
-wheelhouse/pynumstore-*.whl: bindings/python/dist/pynumstore-*.whl
-	mkdir -p wheelhouse
-ifeq ($(shell uname -s),Linux)
-	auditwheel repair $^ -w wheelhouse
-else
-	cp $^ wheelhouse/
-endif
-
-# Upload the clean wheel
-python-upload: wheelhouse/pynumstore-*.whl
-	scripts/upload_python.sh $^
-
-# Upload the clean wheel to production
-python-upload-prod: wheelhouse/pynumstore-*.whl
-	scripts/upload_python.sh --prod $^
-
-#############################################
 ### Housekeeping
-
-clean:
-	scripts/clean_all.sh
 
 format:
 	scripts/format.sh
+	$(MAKE) -C bindings/python format
+	$(MAKE) -C bindings/rust format
+	$(MAKE) -C nsserver format
+
+# bindings/javascript has no formatter, so it only shows up here.
+clean:
+	scripts/clean_all.sh
+	$(MAKE) -C bindings/python clean
+	$(MAKE) -C bindings/rust clean
+	$(MAKE) -C bindings/javascript clean
+	$(MAKE) -C nsserver clean

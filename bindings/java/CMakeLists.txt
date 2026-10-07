@@ -32,38 +32,52 @@ find_package(JNI REQUIRED)
 include(UseJava)
 
 set(NUMSTORE_INCLUDE_DIR "" CACHE PATH "Directory containing numstore.h")
-set(NUMSTORE_LIBRARY "" CACHE FILEPATH "numstore library to link (ignored if a 'numstore' target exists)")
+set(NUMSTORE_LIBRARY
+    ""
+    CACHE FILEPATH
+    "numstore library to link (ignored if a 'numstore' target exists)"
+)
 
 # ------------------------------------------------------------ Java
 
 set(CMAKE_JAVA_COMPILE_FLAGS --release 11 -Xlint:all)
-file(GLOB NUMSTORE_JAVA_SOURCES CONFIGURE_DEPENDS
-     ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/com/numstore/*.java)
+file(
+    GLOB NUMSTORE_JAVA_SOURCES
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/com/numstore/*.java
+)
 
-add_jar(numstore_jar
-        SOURCES ${NUMSTORE_JAVA_SOURCES}
-        OUTPUT_NAME numstore
-        GENERATE_NATIVE_HEADERS numstore_jni_headers)
+add_jar(
+    numstore_jar
+    SOURCES ${NUMSTORE_JAVA_SOURCES}
+    OUTPUT_NAME numstore
+    GENERATE_NATIVE_HEADERS numstore_jni_headers
+)
 
 # ------------------------------------------------------------ JNI library
 
 add_library(numstore_jni SHARED src/main/c/numstore_jni.c)
 target_include_directories(numstore_jni PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_libraries(numstore_jni PRIVATE numstore_jni_headers)
-set_target_properties(numstore_jni PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
+set_target_properties(
+    numstore_jni
+    PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON
+)
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(numstore_jni PRIVATE -Wall -Wextra)
+    target_compile_options(numstore_jni PRIVATE -Wall -Wextra)
 endif()
 
 if(TARGET numstore)
-  target_link_libraries(numstore_jni PRIVATE numstore)
+    target_link_libraries(numstore_jni PRIVATE numstore)
 else()
-  if(NOT NUMSTORE_INCLUDE_DIR OR NOT NUMSTORE_LIBRARY)
-    message(FATAL_ERROR
-      "Set NUMSTORE_INCLUDE_DIR and NUMSTORE_LIBRARY, or add this directory "
-      "from a project that defines a 'numstore' target.")
-  endif()
-  target_include_directories(numstore_jni PRIVATE ${NUMSTORE_INCLUDE_DIR})
-  target_link_libraries(numstore_jni PRIVATE ${NUMSTORE_LIBRARY})
+    if(NOT NUMSTORE_INCLUDE_DIR OR NOT NUMSTORE_LIBRARY)
+        message(
+            FATAL_ERROR
+            "Set NUMSTORE_INCLUDE_DIR and NUMSTORE_LIBRARY, or add this directory "
+            "from a project that defines a 'numstore' target."
+        )
+    endif()
+    target_include_directories(numstore_jni PRIVATE ${NUMSTORE_INCLUDE_DIR})
+    target_link_libraries(numstore_jni PRIVATE ${NUMSTORE_LIBRARY})
 endif()
