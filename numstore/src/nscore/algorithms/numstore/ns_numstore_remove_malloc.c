@@ -12,45 +12,49 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
-void *
+err_t
 numstore_remove_malloc_from_name (
     struct pager       *p,
     struct txn         *tx,
-    struct string       name,  // Name of the variable
-    struct user_stride  ustr,  // Stride to remove
-    struct arena_alloc *alloc, // Allocator for variable in get
-    struct variable    *var,   // If not null - save the variable
-    b_size             *dlen,  // Output stream (can be null)
-    struct i_mem        mem,   // Where to allocate on
+    struct string       name,
+    struct user_stride  ustr,
+    struct arena_alloc *alloc,
+    struct variable    *var,
+    void              **dest,
+    b_size             *dlen,
+    struct i_mem        mem,
     error              *e
 )
 {
-  WITH_OPT_VARIABLE_PTR (
+  WITH_OPT_VARIABLE (
       p,
       tx,
       name,
       alloc,
       var,
       e,
-      numstore_remove_malloc (p, tx, var, ustr, dlen, mem, e)
+      numstore_remove_malloc (p, tx, var, ustr, dest, dlen, mem, e)
   );
 }
 
-void *
+err_t
 numstore_remove_malloc (
     struct pager      *p,
     struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
+    void             **dest,
     b_size            *dlen,
     struct i_mem       mem,
     error             *e
 )
 {
+  ASSERT (dest);
   // Resolve sizes
   t_size tsize = type_byte_size (var->dtype);
 
@@ -68,6 +72,12 @@ numstore_remove_malloc (
   struct stride stride;
   if (stride_resolve (&stride, ustr, len, e)) {
     goto failed;
+  }
+
+  if (stride.nelems == 0) {
+    *dlen = 0;
+    *dest = NULL;
+    return SUCCESS;
   }
 
   void *buffer = mem.table->malloc (mem.self, stride.nelems, tsize, e);
@@ -107,8 +117,10 @@ numstore_remove_malloc (
     *dlen = ret * tsize;
   }
 
-  return buffer;
+  *dest = buffer;
+
+  return SUCCESS;
 
 failed:
-  return NULL;
+  return error_trace (e);
 }

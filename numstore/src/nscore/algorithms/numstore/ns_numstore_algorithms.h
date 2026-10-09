@@ -72,23 +72,25 @@ sb_size numstore_read (
 
 ////// Read malloc
 
-void *numstore_read_malloc_from_name (
+err_t numstore_read_malloc_from_name (
     struct pager       *p,
     struct txn         *tx,
     struct string       name,   // Name of the variable
     struct user_stride  ustr,   // Stride to read
     struct arena_alloc *valloc, // Allocator for variable in get
     struct variable    *var,    // If not null - save the variable
+    void              **dest,   // Dest buffer
     b_size             *dlen,   // If not null - save output len
     struct i_mem        mem,    // Where to allocate on
     error              *e
 );
 
-void *numstore_read_malloc (
+err_t numstore_read_malloc (
     struct pager      *p,
     struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
+    void             **dest,
     b_size            *dlen,
     struct i_mem       mem,
     error             *e
@@ -140,23 +142,25 @@ sb_size numstore_remove (
 
 ////// Remove Malloc
 
-void *numstore_remove_malloc_from_name (
+err_t numstore_remove_malloc_from_name (
     struct pager       *p,
     struct txn         *tx,
     struct string       name,  // Name of the variable
     struct user_stride  ustr,  // Stride to remove
     struct arena_alloc *alloc, // Allocator for variable in get
     struct variable    *var,   // If not null - save the variable
+    void              **dest,  // destination buffer
     b_size             *dlen,  // Output stream (can be null)
     struct i_mem        mem,   // Where to allocate on
     error              *e
 );
 
-void *numstore_remove_malloc (
+err_t numstore_remove_malloc (
     struct pager      *p,
     struct txn        *tx,
     struct variable   *var,
     struct user_stride ustr,
+    void             **dest,
     b_size            *dlen,
     struct i_mem       mem,
     error             *e
@@ -204,19 +208,6 @@ err_t numstore_create (
     }                                                            \
     if (numstore_get (p, tx, false, name, valloc, var, e) < 0) { \
       return error_trace (e);                                    \
-    }                                                            \
-    return (expr);                                               \
-  }                                                              \
-  while (0)
-
-#define WITH_OPT_VARIABLE_PTR(p, tx, name, valloc, var, e, expr) \
-  do {                                                           \
-    struct variable _var;                                        \
-    if (var == NULL) {                                           \
-      var = &_var;                                               \
-    }                                                            \
-    if (numstore_get (p, tx, false, name, valloc, var, e) < 0) { \
-      return NULL;                                               \
     }                                                            \
     return (expr);                                               \
   }                                                              \
