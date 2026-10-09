@@ -12,23 +12,30 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/variables/ns_variables.h"
 
 err_t
 numstore_get (
-    struct pager       *p,
-    struct txn         *tx,
-    bool                if_exists,
-    struct string       name,   // Name of the variable
-    struct arena_alloc *valloc, // Allocator for variable in get
-    struct variable    *var,    // If not null - save the variable
-    error              *e
+    struct pager *NONNULL       p,
+    struct txn *NONNULL         tx,
+    bool                        if_exists,
+    struct string               name,   // Name of the variable
+    struct arena_alloc *NONNULL valloc, // Allocator for variable in get
+    struct variable *NONNULL    var,    // If not null - save the variable
+    error *NONNULL              e
 )
 {
-  i_log_debug ("GET (txn = %" PRtxid ") - %.*s\n", tx->tid, strfmt (&name));
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (string, &name);
+  DBG_ASSERT (arena_alloc, valloc);
+  ASSERT (var != NULL);
+  DBG_ASSERT (clean_error, e);
 
   // Get Variable
   struct ns_var_get_params gparams = {
@@ -45,17 +52,16 @@ numstore_get (
     error_reset (e);
     var->dtype = NULL;
     *var       = (struct variable){0};
-    goto theend;
+    return SUCCESS;
   }
 
   if (err < 0) {
-    goto theend;
+    return error_trace (e);
   }
 
-  if (var) {
-    *var = gparams.dest;
-  }
+  *var = gparams.dest;
 
-theend:
-  return error_trace (e);
+  DBG_ASSERT (variable, var);
+
+  return SUCCESS;
 }

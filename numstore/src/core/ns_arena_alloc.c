@@ -140,7 +140,9 @@ DEFINE_DBG_ASSERT (struct chunk, chunk, c, {
   ASSERT (c->alloc.data == (u8 *)c + sizeof (struct chunk));
 })
 
-DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, {
+void
+arena_alloc_assert (const struct arena_alloc *ca)
+{
   ASSERT (ca);
   ASSERT (ca->settings.target_chunk_mult >= 1.0f);
   ASSERT (ca->settings.min_chunk_size > 0);
@@ -171,7 +173,7 @@ DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, {
   ASSERT (counted_chunks == ca->num_chunks);
   ASSERT (counted_allocated == ca->total_allocated);
   ASSERT (counted_used == ca->total_used);
-})
+}
 
 static struct chunk *
 chunk_create (const u32 size, struct i_mem mem, error *e)

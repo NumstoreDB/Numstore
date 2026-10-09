@@ -20,6 +20,7 @@
 #ifndef NS_STREAM_H
 #define NS_STREAM_H
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h"
 #include "core/ns_stdtypes.h"
@@ -53,6 +54,11 @@ struct stream
   void                    *ctx;
   atomic_int               done;
 };
+
+DEFINE_DBG_ASSERT (struct stream, stream, s, {
+  ASSERT (s);
+  ASSERT (s->ops);
+})
 
 void stream_init (struct stream *s, const struct stream_ops *ops, void *ctx);
 void stream_close (const struct stream *s);

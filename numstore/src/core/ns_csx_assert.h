@@ -79,9 +79,17 @@ gte0 (int val)
 #  define ASSERT_GTE0(v) gte0 (v)
 
 #  define DEFINE_DBG_ASSERT(type, name, var, body) \
-    HEADER_FUNC void name##_assert__ (const type *var) body
+    HEADER_FUNC void name##_assert__ (const type *NULLABLE var) body
 
 #  define DBG_ASSERT(name, expr) name##_assert__ (expr)
+
+#  define DBG_ASSERT_IF_NN(name, expr) \
+    do {                               \
+      if (expr != NULL) {              \
+        name##_assert__ (expr);        \
+      }                                \
+    }                                  \
+    while (0)
 
 #else
 
@@ -105,6 +113,8 @@ gte0 (int val)
 #  define ASSERT_GTE0(v) v
 
 #  define DBG_ASSERT(name, expr) ((void)sizeof ((expr)))
+
+#  define DBG_ASSERT_IF_NN(name, expr)
 #endif
 
 #endif // CSX_ASSERT_H

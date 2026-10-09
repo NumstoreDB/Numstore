@@ -12,54 +12,70 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 
 sb_size
 numstore_write_from_name (
-    struct pager       *p,
-    struct txn         *tx,
-    struct string       name,  // Name of the variable
-    struct user_stride  ustr,  // Stride to write
-    struct arena_alloc *alloc, // Allocator for variable in get
-    struct variable    *var,   // If not null - save the variable
-    struct stream      *src,   // Input stream
-    error              *e
+    struct pager *NONNULL       p,
+    struct txn *NONNULL         tx,
+    struct string               name,  // Name of the variable
+    struct user_stride          ustr,  // Stride to write
+    struct arena_alloc *NONNULL alloc, // Allocator for variable in get
+    struct variable *NULLABLE   var,   // If not null - save the variable
+    struct stream *NONNULL      src,   // Input stream
+    error *NONNULL              e
 )
 {
-  WITH_OPT_VARIABLE (p, tx, name, alloc, var, e, numstore_write (p, tx, var, ustr, src, e));
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (string, &name);
+  DBG_ASSERT (user_stride, &ustr);
+  DBG_ASSERT (arena_alloc, alloc);
+  DBG_ASSERT (stream, src);
+  DBG_ASSERT (clean_error, e);
+
+  struct variable _var;
+  if (var == NULL) {
+    var = &_var;
+  }
+  if (numstore_get (p, tx, false, name, alloc, var, e) < 0) {
+    return error_trace (e);
+  }
+
+  return numstore_write (p, tx, var, ustr, src, e);
 }
 
 sb_size
 numstore_write (
-    struct pager      *p,
-    struct txn        *tx,
-    struct variable   *var,
-    struct user_stride ustr,
-    struct stream     *src,
-    error             *e
+    struct pager *NONNULL    p,
+    struct txn *NONNULL      tx,
+    struct variable *NONNULL var,
+    struct user_stride       ustr,
+    struct stream *NONNULL   src,
+    error *NONNULL           e
 )
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (variable, var);
+  DBG_ASSERT (user_stride, &ustr);
+  DBG_ASSERT (stream, src);
+  DBG_ASSERT (clean_error, e);
+
   // Resolve sizes
   t_size tsize = type_byte_size (var->dtype);
-
-  // Total size in bytes of the variable
-  b_size len   = var->nbytes;
-
-  // A consistent database has this be a multiple of tsize
-  if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable has invalid byte size");
-    goto failed;
-  }
-  len /= tsize;
+  ASSERT (var->nbytes % tsize == 0); // From valid var (assert)
+  b_size        len = var->nbytes / tsize;
 
   // Resolve length based on the stride
   struct stride stride;
   if (stride_resolve (&stride, ustr, len, e)) {
-    goto failed;
+    return error_trace (e);
   }
 
-  sb_size ret = ns_rope_write (
+  return ns_rope_write (
       (struct ns_write_params){
           .p      = p,
           .src    = src,
@@ -72,13 +88,4 @@ numstore_write (
       },
       e
   );
-
-  if (ret < 0) {
-    goto failed;
-  }
-
-  return ret;
-
-failed:
-  return error_trace (e);
 }

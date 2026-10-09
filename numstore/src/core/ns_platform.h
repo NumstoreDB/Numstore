@@ -190,6 +190,16 @@
 #endif
 
 ////////////////////////////////////////////////////////////
+// Nullability
+#if defined(__clang__)
+#  define NONNULL  // _Nonnull
+#  define NULLABLE // _Nullable
+#else
+#  define NONNULL
+#  define NULLABLE
+#endif
+
+////////////////////////////////////////////////////////////
 // UNREACHABLE_WARN_PUSH / UNREACHABLE_WARN_POP
 //
 // Wraps whatever follows UNREACHABLE_HINT() (e.g. a trailing return/abort
@@ -252,29 +262,6 @@
 #endif
 
 #define HEADER_FUNC static inline MAYBE_UNUSED
-
-HEADER_FUNC const char *
-platformstr (void)
-{
-  if (PLATFORM_WINDOWS) {
-    return "Windows";
-  }
-  if (PLATFORM_LINUX) {
-    return "Linux";
-  } else if (PLATFORM_ANDROID) {
-    return "Android";
-  } else if (PLATFORM_MAC) {
-    return "macOS";
-  } else if (PLATFORM_IOS) {
-    return "iOS";
-  } else if (PLATFORM_BSD) {
-    return "BSD";
-  } else if (PLATFORM_EMSCRIPTEN) {
-    return "Emscripten/WebAssembly";
-  }
-
-  return 0;
-}
 
 ////////////////////////////////////////////////////////////
 // SYSTEM INCLUDES

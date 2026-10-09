@@ -51,6 +51,11 @@ struct arena_alloc
   u32                         total_used;
 };
 
+#ifndef NDEBUG
+void arena_alloc_assert (const struct arena_alloc *a);
+DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, { arena_alloc_assert (ca); })
+#endif
+
 void arena_alloc_create_default (struct arena_alloc *dest);
 void *arena_malloc (struct arena_alloc *ca, u32 req, u32 size, error *e);
 void arena_alloc_free_all (struct arena_alloc *ca);

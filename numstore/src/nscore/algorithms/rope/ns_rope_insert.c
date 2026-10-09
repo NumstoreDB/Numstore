@@ -37,7 +37,7 @@
 #include <string.h>
 
 /******************************************************************************
- * SECTION: ns_writesert
+ * SECTION: ns_insert
  * ----------------------------------------------------------------------------
  * @brief Insert data into a byte array
  ******************************************************************************/
@@ -53,8 +53,8 @@
  * When nelem is 0, bytes are consumed from src until it is exhausted.
  * params->root is updated in place if the root changes.
  */
-sb_size
-ns_writesert (struct ns_writesert_params *params, error *e)
+err_t
+ns_insert (struct ns_insert_params *params, error *e)
 {
   page_h                prev = page_h_create ();
   page_h                cur  = page_h_create ();
@@ -235,7 +235,7 @@ ns_writesert (struct ns_writesert_params *params, error *e)
 
   params->root = rebalance.root;
 
-  return (sb_size)total_written;
+  return total_written;
 
 failed:
   pgr_cancel_if_exists (&prev);
@@ -257,7 +257,7 @@ failed:
 }
 
 #ifndef NDEBUG
-TEST (ns_writesert)
+TEST (ns_insert)
 {
   struct pgr_fixture f;
   pgr_fixture_create (&f);
@@ -269,7 +269,7 @@ TEST (ns_writesert)
     struct stream_ibuf_ctx ctx;
     stream_ibuf_init (&input, &ctx, buffer, sizeof (buffer));
 
-    struct ns_writesert_params params = {
+    struct ns_insert_params params = {
         .p     = f.p,
         .src   = &input,
         .tx    = &f.tx,
@@ -278,9 +278,9 @@ TEST (ns_writesert)
         .bytes = 40,
     };
 
-    sb_size nelems = ns_writesert (&params, &f.e);
+    err_t ret = ns_insert (&params, &f.e);
 
-    test_assert_int_equal (nelems, 40);
+    test_assert_int_equal (ret, 40);
     test_assert (params.root != PGNO_NULL);
   }
 
@@ -291,7 +291,7 @@ TEST (ns_writesert)
     struct stream_ibuf_ctx ctx;
     stream_ibuf_init (&input, &ctx, buffer, sizeof (buffer));
 
-    struct ns_writesert_params params = {
+    struct ns_insert_params params = {
         .p     = f.p,
         .src   = &input,
         .tx    = &f.tx,
@@ -300,14 +300,14 @@ TEST (ns_writesert)
         .bytes = 40,
     };
 
-    sb_size nelems = ns_writesert (&params, &f.e);
+    err_t ret = ns_insert (&params, &f.e);
 
-    test_assert_int_equal (nelems, 40);
+    test_assert_int_equal (ret, 40);
     test_assert (params.root != PGNO_NULL);
 
-    nelems = ns_writesert (&params, &f.e);
+    ret = ns_insert (&params, &f.e);
 
-    test_assert_int_equal (nelems, 40);
+    test_assert_int_equal (ret, 40);
     test_assert (params.root != PGNO_NULL);
   }
 
@@ -324,7 +324,7 @@ TEST (ns_writesert)
         struct stream_ibuf_ctx ctx;                                              \
         stream_ibuf_init (&input, &ctx, buffer, stream_size);                    \
                                                                                  \
-        struct ns_writesert_params params = {                                    \
+        struct ns_insert_params params = {                                       \
             .p     = f.p,                                                        \
             .src   = &input,                                                     \
             .tx    = &f.tx,                                                      \
@@ -333,9 +333,9 @@ TEST (ns_writesert)
             .bytes = byte_size,                                                  \
         };                                                                       \
                                                                                  \
-        sb_size nelems = ns_writesert (&params, &f.e);                           \
+        err_t ret = ns_insert (&params, &f.e);                                   \
                                                                                  \
-        test_assert_int_equal (nelems, expected);                                \
+        test_assert_int_equal (ret, expected);                                   \
         if (expected > 0) {                                                      \
           test_assert (params.root != PGNO_NULL);                                \
         } else {                                                                 \
@@ -363,7 +363,7 @@ TEST (ns_writesert)
                                                           \
       pgr_begin_txn (&f.tx, f.p, &f.e);                   \
                                                           \
-      params = (struct ns_writesert_params){              \
+      params = (struct ns_insert_params){                 \
           .p     = f.p,                                   \
           .src   = &src,                                  \
           .tx    = &f.tx,                                 \
@@ -372,7 +372,7 @@ TEST (ns_writesert)
           .bytes = sizeof (data),                         \
       };                                                  \
                                                           \
-      ns_writesert (&params, &f.e);                       \
+      ns_insert (&params, &f.e);                          \
                                                           \
       pgr_commit (f.p, &f.tx, &f.e);                      \
                                                           \
@@ -411,32 +411,32 @@ TEST (ns_writesert)
     }                                                                                              \
     while (0)
 
-TEST (ns_writesert_from_empty)
+TEST (ns_insert_from_empty)
 {
   struct pgr_fixture f;
   pgr_fixture_create (&f);
 
   TEST_CASE ("Create a data list page with one element")
   {
-    struct ns_writesert_params params;
-    u8                         data[1];
+    struct ns_insert_params params;
+    u8                      data[1];
     DO_INSERT (f, PGNO_NULL, 0, data, params);
     TEST_DATA_LIST (params.root, data);
   }
 
   TEST_CASE ("When ofst > size, treats as ofst = size")
   {
-    struct ns_writesert_params params;
-    u8                         data[1];
+    struct ns_insert_params params;
+    u8                      data[1];
     DO_INSERT (f, PGNO_NULL, 10, data, params);
     TEST_DATA_LIST (params.root, data);
   }
 
   TEST_CASE ("Insert 1 element twice at offset 0")
   {
-    struct ns_writesert_params params;
-    u8                         data[1];
-    u8                         expected[2];
+    struct ns_insert_params params;
+    u8                      data[1];
+    u8                      expected[2];
 
     DO_INSERT (f, PGNO_NULL, 0, data, params);
     expected[1] = data[0];
@@ -449,9 +449,9 @@ TEST (ns_writesert_from_empty)
 
   TEST_CASE ("Insert 1 element twice at offset -1")
   {
-    struct ns_writesert_params params;
-    u8                         data[1];
-    u8                         expected[2];
+    struct ns_insert_params params;
+    u8                      data[1];
+    u8                      expected[2];
 
     DO_INSERT (f, PGNO_NULL, 0, data, params);
     expected[0] = data[0];
@@ -464,18 +464,18 @@ TEST (ns_writesert_from_empty)
 
   TEST_CASE ("Insert DL_DATA_SIZE elements - doesn't break into nodes")
   {
-    struct ns_writesert_params params;
-    u8                         data[DL_DATA_SIZE];
+    struct ns_insert_params params;
+    u8                      data[DL_DATA_SIZE];
     DO_INSERT (f, PGNO_NULL, 0, data, params);
     TEST_DATA_LIST (params.root, data);
   }
 
   TEST_CASE ("Insert combined DL_DATA_SIZE elements - doesn't break into nodes")
   {
-    struct ns_writesert_params params;
-    u8                         data1[DL_DATA_SIZE - 1];
-    u8                         data2[1];
-    u8                         expected[DL_DATA_SIZE];
+    struct ns_insert_params params;
+    u8                      data1[DL_DATA_SIZE - 1];
+    u8                      data2[1];
+    u8                      expected[DL_DATA_SIZE];
 
     DO_INSERT (f, PGNO_NULL, 0, data1, params);
     DO_INSERT (f, params.root, 0, data2, params);
@@ -488,13 +488,13 @@ TEST (ns_writesert_from_empty)
 
   TEST_CASE ("Insert combined DL_DATA_SIZE elements - doesn't break into nodes")
   {
-    struct ns_writesert_params params;
-    u8                         data1[DL_DATA_SIZE - 3];
-    u8                         data2[1];
-    u8                         data3[1];
-    u8                         data4[1];
+    struct ns_insert_params params;
+    u8                      data1[DL_DATA_SIZE - 3];
+    u8                      data2[1];
+    u8                      data3[1];
+    u8                      data4[1];
 
-    u8                         expected[DL_DATA_SIZE];
+    u8                      expected[DL_DATA_SIZE];
 
     DO_INSERT (f, PGNO_NULL, 0, data1, params);
     DO_INSERT (f, params.root, 1, data2, params);

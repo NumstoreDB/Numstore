@@ -24,17 +24,6 @@
 /////////////////////////////////////////////////////////////////////
 ////// String
 
-DEFINE_DBG_ASSERT (struct string, string, s, {
-  ASSERT (s);
-  ASSERT (s->data);
-  ASSERT (s->len > 0);
-})
-
-DEFINE_DBG_ASSERT (struct string, cstring, s, {
-  DBG_ASSERT (string, s);
-  ASSERT (s->data[s->len] == 0);
-})
-
 struct string
 strfcstr (const char *cstr)
 {

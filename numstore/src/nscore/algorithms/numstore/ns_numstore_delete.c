@@ -12,14 +12,24 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 err_t
-numstore_delete (struct pager *p, struct txn *tx, struct string name, bool if_exists, error *e)
+numstore_delete (
+    struct pager *NONNULL p,
+    struct txn *NONNULL   tx,
+    struct string         name,
+    bool                  if_exists,
+    error *NONNULL        e
+)
 {
-  i_log_debug ("DELETE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&name));
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (string, &name);
+  DBG_ASSERT (clean_error, e);
 
   err_t err = ns_var_delete (p, tx, name, e);
 

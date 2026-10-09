@@ -7,36 +7,79 @@ numpy arrays and structured types.
 Quick start
 -----------
 
+From the repo root:
+
+```sh
+python3 -m venv .venv && . .venv/bin/activate
+pip install build
+make -C bindings/python install
+```
+
 ```python
 import numpy as np
 import pynumstore as ns
 
 with ns.Database("data.db") as db:
     db.execute("create prices f64")
-    db.execute("insert prices 0 3", np.array([1.5, 2.25, 3.75]))
-    dest = db.execute("read prices[0:]")
+    db.write("insert prices 0 3", np.array([1.5, 2.25, 3.75]))
+    dest = db.read("read prices[0:]")
 ```
+
+More examples in [samples/](samples/).
+
+Development
+-----------
+
+`make help` lists the targets. The common ones:
+
+```sh
+make install      # build a wheel and install it
+make dev          # editable install with test extras
+make test         # pytest
+make samples      # run every sample
+make sdist        # self-contained source distribution
+make clean
+```
+
+Variables: `PYTHON` (default `python3`), `BUILD_TYPE` (`Release`), `DIST`
+(`dist`), `WHEELHOUSE` (`wheelhouse`), e.g. `make install PYTHON=python3.12`.
 
 API
 ---
 
 ### `Database(path)`
 
-- `.execute(query, data=None) -> int | ndarray` Runs a query. `data` is the
-  source for `insert`, or the destination buffer for `read`/`remove`. Omit it
-  on read/remove to auto-allocate and return an array; with `data` given, the
-  element count is returned instead.
+- `.execute(query) -> int` Runs a query that takes no data (`create`,
+  `delete`, `remove`, ...).
+- `.write(query, data) -> int` Runs an `insert`/`write` query with `data` as
+  the source. Lists and scalars are converted to the variable's dtype; arrays
+  are cast if that keeps their kind (float64 -> float32 is fine, float -> int
+  raises `TypeError`).
+- `.read(query) -> ndarray` Runs a `read`/`remove` query and returns a new
+  array of shape `(n, *dims)`.
+- `.read_into(query, out) -> int` Same, into a preallocated, C-contiguous
+  array.
+- `.get(query) -> Var` Looks up a variable's metadata (`name`, `type`,
+  `length`, `tsize`, `shape`, `dtype`).
+- `.prepare(query) -> Plan` Compiles a query once to run many times.
 - `.begin() -> Transaction`
-- `.close()`
+- `.close()` Safe to call twice.
 - Context manager: closes on `__exit__`.
 
 ### `Transaction` (from `db.begin()`)
 
-- `.execute(query, data=None)` - same semantics as `Database.execute`
+- `.execute`, `.write`, `.read`, `.read_into`, `.get` - same as `Database`
 - `.commit()`
 - `.rollback()`
-- Context manager: commits on clean exit, rolls back on exception. Double
-  commit/rollback is a no-op. Using after close raises `RuntimeError`.
+- Context manager: commits on clean exit, rolls back on exception. Using it
+  after it finished raises `RuntimeError`.
+
+### `Plan` (from `db.prepare(query)`)
+
+- `.execute(txn=None)`, `.write(data, txn=None)`, `.read(txn=None)`,
+  `.read_into(out, txn=None)`, `.var(txn=None)` - run the compiled query,
+  optionally inside a transaction.
+- `.close()`, context manager.
 
 ### `to_dtype(type_str) -> np.dtype`
 
@@ -75,7 +118,7 @@ Structured data maps directly onto `numpy` structured arrays - build with
 
 ```python
 with db.begin() as txn:
-    txn.execute("insert log 0 2", data)
+    txn.write("insert log 0 2", data)
 # committed automatically on clean exit, rolled back on exception
 ```
 

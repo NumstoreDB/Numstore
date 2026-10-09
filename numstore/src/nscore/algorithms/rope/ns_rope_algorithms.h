@@ -30,7 +30,7 @@ enum stride_phase
   SKIPPING,
 };
 
-struct ns_writesert_params
+struct ns_insert_params
 {
   struct pager  *p;
   struct stream *src;
@@ -76,7 +76,7 @@ struct ns_remove_params
   b_size         nelem;
 };
 
-sb_size ns_writesert (struct ns_writesert_params *params, error *e);
+err_t ns_insert (struct ns_insert_params *params, error *e);
 sb_size ns_rope_write (struct ns_write_params params, error *e);
 sb_size ns_rope_read (struct ns_read_params params, error *e);
 sb_size ns_remove (struct ns_remove_params *params, error *e);

@@ -15,6 +15,7 @@
 #ifndef NS_MALLOC_H
 #define NS_MALLOC_H
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 
@@ -30,17 +31,38 @@
 
 struct i_mem_vtable
 {
-  void *(*malloc) (void *self, const u32 nelem, const u32 size, error *e);
-  void *(*calloc) (void *self, const u32 nelem, const u32 size, error *e);
-  void *(*realloc) (void *self, void *ptr, const u32 nelem, const u32 size, error *e);
-  void (*free) (void *self, void *v);
+  void *NULLABLE (*NONNULL malloc) (
+      void *NULLABLE self,
+      const u32      nelem,
+      const u32      size,
+      error *NONNULL e
+  );
+  void *NULLABLE (*NONNULL calloc) (
+      void *NULLABLE self,
+      const u32      nelem,
+      const u32      size,
+      error *NONNULL e
+  );
+  void *NULLABLE (*NONNULL realloc) (
+      void *NULLABLE self,
+      void *NONNULL  ptr,
+      const u32      nelem,
+      const u32      size,
+      error *NONNULL e
+  );
+  void (*NONNULL free) (void *NULLABLE self, void *NONNULL v);
 };
 
 struct i_mem
 {
-  const struct i_mem_vtable *table;
-  void                      *self;
+  const struct i_mem_vtable *NONNULL table;
+  void *NULLABLE                     self;
 };
+
+DEFINE_DBG_ASSERT (struct i_mem, i_mem, m, {
+  ASSERT (m);
+  ASSERT (m->table);
+})
 
 /// The process allocator - malloc/calloc/realloc/free
 struct i_mem default_mem (void);
@@ -50,7 +72,12 @@ struct i_mem default_mem (void);
 ///
 /// [delegate] is borrowed - it must outlive the faulty allocator and is not
 /// freed by it. This is the i_mem counterpart of faulty_os_create.
-err_t faulty_mem_create (struct i_mem delegate, float fail_percent, struct i_mem *dest, error *e);
+err_t faulty_mem_create (
+    struct i_mem          delegate,
+    float                 fail_percent,
+    struct i_mem *NONNULL dest,
+    error *NONNULL        e
+);
 void faulty_mem_free (struct i_mem mem);
 
 /// free [ptr] if it is non-NULL

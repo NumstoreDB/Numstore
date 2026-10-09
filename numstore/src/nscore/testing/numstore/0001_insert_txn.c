@@ -21,7 +21,7 @@
 
 #ifndef NDEBUG
 
-TEST (ns_writesert_txn)
+TEST (ns_insert_txn)
 {
   TEST_CASE ("Committing an insert makes the data persist")
   {
