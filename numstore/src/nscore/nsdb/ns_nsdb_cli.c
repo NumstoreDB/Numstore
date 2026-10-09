@@ -17,9 +17,9 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
+#include "core/ns_testing.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
-#include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_query.h"
@@ -178,6 +178,18 @@ nscli_step_read_stdin (struct nscli *cli)
   return CMD_RUN;
 }
 
+enum nscli_read_result
+nscli_step_read_str (struct nscli *cli, const char *input)
+{
+  if (dblb_append (&cli->stmt, input, strlen (input), &cli->e) < 0) {
+    return CMD_FATAL;
+  }
+  if (is_blank (&cli->stmt)) {
+    return CMD_NOTHING_TO_DO;
+  }
+  return CMD_RUN;
+}
+
 enum nscli_execute_result
 nscli_step_execute (struct nscli *cli)
 {
@@ -199,8 +211,7 @@ nscli_step_execute (struct nscli *cli)
   }
 
   // Execute the query
-  struct txn *tx  = NULL;
-  err_t       res = nsdb_console (cli->db, tx, cli->stmt.data, &cli->e);
+  err_t res = nsdb_console (cli->db, cli->stmt.data, &cli->e);
 
   if (res < 0) {
     ret = EXE_ERROR;
@@ -226,3 +237,21 @@ nscli_close (struct nscli *cli)
   nsdb_close (cli->db, &cli->e);
   system_os_free (cli->os);
 }
+
+#ifndef NDEBUG
+TEST (ns_cli)
+{
+  error e = error_create ();
+  nsdb_cleanup ("test.db", os, &e);
+
+  /**
+  struct nscli cli;
+  test_assert_int_equal (nscli_init (&cli, "test.db"), 0);
+  test_assert_int_equal (nscli_step_init (&cli), 0);
+  test_assert_int_equal (nscli_step_read_str (&cli, "create a u32"), CMD_RUN);
+  test_assert_int_equal (nscli_step_execute (&cli), EXE_SUCCESS);
+
+  nscli_close (&cli);
+  */
+}
+#endif

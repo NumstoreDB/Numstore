@@ -243,8 +243,8 @@ sb_size nsdb_plan_write (
 /**
  * Execute a query and output to the terminal
  */
-err_t nsdb_console (struct nsdb *db, struct txn *txn, const char *query, error *e);
-err_t nsdb_plan_console (struct nsdb_plan *st, struct txn *tx, error *e);
+err_t nsdb_console (struct nsdb *db, const char *query, error *e);
+err_t nsdb_plan_console (struct nsdb_plan *st, error *e);
 
 // Smart files patterns
 sb_size nsdb_smfile_size (struct nsdb *smf, struct txn *tx, error *e);

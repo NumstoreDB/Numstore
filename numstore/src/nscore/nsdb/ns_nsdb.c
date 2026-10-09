@@ -840,6 +840,7 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
   void            *ret  = NULL;
   struct nsdb_var *_var = NULL;
 
+  err_t            err;
   switch (st->q.type) {
     case QT_READ: {
       // Get interested variable
@@ -848,11 +849,12 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
         break;
       }
 
-      ret = numstore_read_malloc (
+      err = numstore_read_malloc (
           st->parent->p,
           tx,
           nsdb_var_var (_var),
           st->q.read.ustr,
+          &ret,
           dlen,
           st->parent->mem,
           e
@@ -866,11 +868,12 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
         break;
       }
 
-      ret = numstore_remove_malloc (
+      err = numstore_remove_malloc (
           st->parent->p,
           tx,
           nsdb_var_var (_var),
           st->q.remove.ustr,
+          &ret,
           dlen,
           st->parent->mem,
           e
@@ -886,9 +889,6 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
   if (_var != NULL) {
     nsdb_var_free (_var);
   }
-
-  // NULL with no error set (e.g. empty result) still commits
-  err_t err = (ret == NULL) ? error_trace (e) : SUCCESS;
 
   if (nsdb_auto_finish (st->parent, user_tx, err, e) < 0) {
     if (ret != NULL) {
@@ -1161,96 +1161,116 @@ TEST (nsdb_auto_txn)
 
 ////////////////////////////////// Execute in console
 
-/**
 static inline sb_size
-console_qt_read (struct nsdb *ns, struct query *q, struct arena_alloc *alc,
-error *_e)
+nsdb_plan_console_read (struct nsdb_plan *plan, error *_e)
 {
-  sb_size ret = nsdb_read_and_print (ns, &q->read, alc, e);
-  if (ret < 0) {
-    return error_trace (e);
-  }
+  error       *e   = nsdb_plan_get_active_error (plan, _e);
+  struct i_mem mem = plan->parent->mem;
 
-  return ret;
-}
+  DBG_ASSERT (nsdb_plan, plan);
 
-static inline sb_size
-console_qt_write (void)
-{
-  return SUCCESS;
-}
-
-static inline sb_size
-console_qt_remove (void)
-{
-  return SUCCESS;
-}
-
-static inline sb_size
-console_qt_insert (void)
-{
-  return SUCCESS;
-}
-
-static inline sb_size
-console_qt_create (struct nsdb *ns, struct query *q, struct arena_alloc *alc,
-error *_e)
-{
-  struct txn *tx = nsdb_begin (ns, e);
+  // Begin txn
+  struct txn *tx = nsdb_begin (plan->parent, e);
   if (tx == NULL) {
     return error_trace (e);
   }
 
-  if (numstore_create (ns->p, tx, q->create.name, q->create.type, alc, NULL, e)
-< 0) { return error_trace (e);
-  }
+  struct nsdb_var *_var = NULL;
 
-  if (nsdb_commit (ns, tx, e) < 0) {
+  // Get interested variable
+  _var                  = nsdb_plan_get_var (plan, tx, e);
+  if (_var == NULL) {
+    nsdb_rollback (plan->parent, tx, e);
     return error_trace (e);
   }
 
-  printf ("{ \"Status\" : \"Ok\" }\n");
+  // Read malloc
+  b_size dlen;
+  void  *data;
+  if (numstore_read_malloc (
+          plan->parent->p,
+          tx,
+          nsdb_var_var (_var),
+          plan->q.read.ustr,
+          &data,
+          &dlen,
+          mem,
+          e
+      )
+      < 0) {
+    nsdb_rollback (plan->parent, tx, e);
+    nsdb_var_free (_var);
+    return error_trace (e);
+  }
 
-  return SUCCESS;
+  // Print variable data
+  struct type *type  = nsdb_var_type (_var);
+  t_size       tsize = type_byte_size (type);
+  u8          *head  = data;
+
+  for (int i = 0; i < dlen; ++i) {
+    type_print_data (LOG_INFO, head, type, 10);
+    head += tsize;
+  }
+
+  // Release resources
+  nsdb_var_free (_var);
+  mem.table->free (mem.self, data);
+
+  if (nsdb_commit (plan->parent, tx, e) < 0) {
+    return error_trace (e);
+  }
+
+  return dlen / tsize;
 }
 
-static inline sb_size
-console_qt_delete (void)
+static inline err_t
+nsdb_plan_console_create (struct nsdb_plan *plan, error *_e)
 {
-  return SUCCESS;
-}
+  error       *e   = nsdb_plan_get_active_error (plan, _e);
+  struct i_mem mem = plan->parent->mem;
 
-static inline sb_size
-console_qt_get (struct nsdb *ns, struct query *q, struct arena_alloc *alc, error
-*e)
-{
-  sb_size ret = nsdb_get_and_print (ns, &q->get, alc, e);
+  DBG_ASSERT (nsdb_plan, plan);
+
+  // Begin txn
+  struct txn *tx = nsdb_begin (plan->parent, e);
+  if (tx == NULL) {
+    return error_trace (e);
+  }
+
+  ALLOC_INIT (alloc);
+  struct variable var;
+  err_t           ret = numstore_create (
+      plan->parent->p,
+      tx,
+      plan->q.create.name,
+      plan->q.create.type,
+      &alloc,
+      &var,
+      e
+  );
+  ALLOC_CLOSE (alloc);
+
   if (ret < 0) {
+    nsdb_rollback (plan->parent, tx, e);
     return error_trace (e);
   }
 
-  return ret;
-}
+  i_print_variable (&var, e);
 
-static inline sb_size
-console_qt_exit (void)
-{
+  if (nsdb_commit (plan->parent, tx, e) < 0) {
+    return error_trace (e);
+  }
+
   return SUCCESS;
 }
-
-static inline sb_size
-console_qt_help (void)
-{
-  return SUCCESS;
-}
-*/
 
 err_t
-nsdb_plan_execute_in_console (struct nsdb_plan *ns, struct txn *tx, error *_e)
+nsdb_plan_console (struct nsdb_plan *ns, error *_e)
 {
   switch (ns->q.type) {
     case QT_READ: {
-      return fprintf (stdout, "QT_READ");
+      return nsdb_plan_console_read (ns, _e);
     }
     case QT_WRITE: {
       return fprintf (stdout, "QT_WRITE");
@@ -1262,7 +1282,7 @@ nsdb_plan_execute_in_console (struct nsdb_plan *ns, struct txn *tx, error *_e)
       return fprintf (stdout, "QT_INSERT");
     }
     case QT_CREATE: {
-      return fprintf (stdout, "QT_CREATE");
+      return nsdb_plan_console_create (ns, _e);
     }
     case QT_DELETE: {
       return fprintf (stdout, "QT_DELETE");
@@ -1278,14 +1298,8 @@ nsdb_plan_execute_in_console (struct nsdb_plan *ns, struct txn *tx, error *_e)
     }
   }
 
-  (void)tx;
-  (void)_e;
-
   return SUCCESS;
 }
-
-// The wrappers below accept tx == NULL (auto transaction). The plan
-// functions validate non NULL transactions in nsdb_auto_begin.
 
 err_t
 nsdb_execute (struct nsdb *db, struct txn *tx, const char *query, error *_e)
@@ -1396,12 +1410,11 @@ nsdb_write (
 }
 
 err_t
-nsdb_console (struct nsdb *db, struct txn *txn, const char *query, error *_e)
+nsdb_console (struct nsdb *db, const char *query, error *_e)
 {
   error *e = nsdb_get_active_error (db, _e);
 
   DBG_ASSERT (nsdb, db);
-  DBG_ASSERT (ns_txn, txn);
   ASSERT (query);
 
   struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
@@ -1409,7 +1422,7 @@ nsdb_console (struct nsdb *db, struct txn *txn, const char *query, error *_e)
     return error_trace (e);
   }
 
-  err_t ret = nsdb_plan_execute_in_console (plan, txn, e);
+  err_t ret = nsdb_plan_console (plan, e);
   nsdb_plan_free (plan);
 
   return ret;
