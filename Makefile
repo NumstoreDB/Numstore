@@ -11,7 +11,7 @@ all: debug
 
 ############ Debug
 debug: build/debug/CMakeCache.txt 
-	cmake --build build/debug -j12
+	cmake --build build/debug 
 
 build/debug/CMakeCache.txt:
 	cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug 
@@ -39,12 +39,14 @@ build/coverage/CMakeCache.txt:
 		-DCMAKE_EXE_LINKER_FLAGS="--coverage" \
 		-DCMAKE_SHARED_LINKER_FLAGS="--coverage"
 
+build/coverage/bin/ns_simtest: build/coverage/bin/unit_tests
 build/coverage/bin/unit_tests: build/coverage/CMakeCache.txt
 	cmake --build build/coverage -j12
 
-build/coverage/.stamp: build/coverage/bin/unit_tests
+build/coverage/.stamp: build/coverage/bin/unit_tests build/coverage/bin/ns_simtest
 	find build/coverage -name "*.gcda" -delete
 	./build/coverage/bin/unit_tests 123142
+	./build/coverage/bin/ns_simtest --duration 5
 	touch build/coverage/.stamp
 
 build/coverage/html/index.html: build/coverage/.stamp

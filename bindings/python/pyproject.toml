@@ -19,7 +19,7 @@ Homepage = "https://github.com/NumstoreDB/Numstore"
 test = ["pytest>=7"]
 
 [tool.scikit-build]
-cmake.source-dir = "."     # The numstore library dependency
+cmake.source-dir = "."                  # CMakeLists.txt here pulls in the numstore library
 cmake.build-type = "Release"            # gives you NDEBUG
 wheel.packages = ["src/pynumstore"]     # pure-Python files, incl. py.typed and .pyi
 install.components = ["python"]         # only package the extension, not the C SDK

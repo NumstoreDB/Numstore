@@ -6,7 +6,6 @@
 #include "core/ns_stride.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
-#include "nscore/types/ns_types.h"
 
 /**
  * A database stepper is a little state machine that

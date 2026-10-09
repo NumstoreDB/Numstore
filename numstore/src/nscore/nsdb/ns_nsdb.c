@@ -1011,6 +1011,9 @@ nsdb_plan_write (struct nsdb_plan *st, struct txn *user_tx, const void *src, b_s
           &stream,
           e
       );
+      if (ret == SUCCESS) {
+        ret = st->q.insert.len;
+      }
       break;
     }
     case QT_WRITE: {

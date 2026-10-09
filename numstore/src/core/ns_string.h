@@ -40,6 +40,17 @@ struct string
   const char *data;
 };
 
+DEFINE_DBG_ASSERT (struct string, string, s, {
+  ASSERT (s);
+  ASSERT (s->data);
+  ASSERT (s->len > 0);
+})
+
+DEFINE_DBG_ASSERT (struct string, cstring, s, {
+  DBG_ASSERT (string, s);
+  ASSERT (s->data[s->len] == 0);
+})
+
 struct string strfcstr (const char *cstr);
 u64 line_length (const char *buf, u64 max);
 int strings_all_unique (const struct string *strs, u32 count);

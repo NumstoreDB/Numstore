@@ -16,6 +16,7 @@
 #define NS_STRIDE_H
 
 #include "core/ns_arena_alloc.h"
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
@@ -47,6 +48,28 @@ struct user_stride
   i64 stop;
   u32 present;
 };
+
+DEFINE_DBG_ASSERT (struct user_stride, user_stride, u, {
+  ASSERT (u);
+
+  // No unknown flag bits
+  ASSERT ((u->present & ~(u32)(START_PRESENT | STEP_PRESENT | STOP_PRESENT | COLON_PRESENT)) == 0);
+
+  // Without a colon it's a bare index ("1"): only start, and start is required
+  if (!(u->present & COLON_PRESENT)) {
+    ASSERT (u->present == START_PRESENT);
+  }
+
+  // Step and stop can only appear after a colon
+  if (u->present & (STEP_PRESENT | STOP_PRESENT)) {
+    ASSERT (u->present & COLON_PRESENT);
+  }
+
+  // A zero step is never valid
+  if (u->present & STEP_PRESENT) {
+    ASSERT (u->step != 0);
+  }
+})
 
 struct multi_user_stride
 {

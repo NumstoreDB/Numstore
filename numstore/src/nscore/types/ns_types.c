@@ -37,25 +37,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/******************************************************************************
- * SECTION: Types
- * ----------------------------------------------------------------------------
- * @brief Common Type wrapper code
- ******************************************************************************/
-
-DEFINE_DBG_ASSERT (struct type, unchecked_type, t, { ASSERT (t); })
-
-DEFINE_DBG_ASSERT (struct type, valid_type, t, {
-  ASSERT (t);
-  error e = error_create ();
-  ASSERT (type_validate (t, &e) == SUCCESS);
-})
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: type_validate
- * @brief Validate that a type is sound
- *----------------------------------------------------------------------------*/
-
 static inline err_t
 prim_t_validate (const enum prim_t *t, error *e)
 {

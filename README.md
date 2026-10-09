@@ -6,13 +6,32 @@ Numstore
 Numstore is a single-file, embedded, ACID database built for arrays, written
 entirely in C with no dependencies.
 
+Numstore has first class python bindings:
+
+```python
+import numpy as np
+import pynumstore as ns
+
+with ns.Database("prices.db") as db:
+    db.execute("create prices f64")
+    db.write("insert prices 0 3", np.array([1.5, 2.25, 3.75]))
+
+    with db.begin() as tx:              # commits on success, rolls back on error
+        tx.write("insert prices 3 2", [4.0, 5.0])
+
+    print(db.read("read prices[0:]"))   # [1.5  2.25 3.75 4.   5.  ]
+    print(db.read("read prices[0::2]")) # [1.5  3.75 5.  ]
+```
+
+To run this yourself, see the [Quick Start](#quick-start).
+
 What is Numstore?
 -----------------
 
 There's an untapped type of data that isn't natively supported in most modern
-reliable fault tollerant databases today: Array data. Traditional relational
+reliable fault tolerant databases today: Array data. Traditional relational
 databases store "tabular data". Each column has a "name" and "data type". A SQL
-database stores e.g. a "User" table, which has a name, a date of birth, and a 
+database stores e.g. a "User" table, which has a name and a date of birth.
 
 An array is a type of data where there's a lot of information packed into one
 type:
@@ -45,7 +64,7 @@ Types are byte layouts of a variable:
       sizeof(f16)`) which represents an unsigned 4 byte int and a 2 byte float
       stacked on top of each other.
     - A nested struct: `struct { a u32, b struct { c f16, d [10]f32 } }` is a
-      46 byte type `10 * sizeof(f32) + sizeof(u16) + sizeof(u32)`
+      46 byte type `10 * sizeof(f32) + sizeof(f16) + sizeof(u32)`
 
 * A "union" is a type where all of its sub types overlap at index 0,
   representing an "either or" relationship:
@@ -54,7 +73,7 @@ Types are byte layouts of a variable:
     - A nested union: `union { a u32, b struct { c f16, d [10]f32 } }` is a 42
       byte `Max(10 * sizeof(f32) + sizeof(f16), sizeof(u32))`
 
-* A "strict array" is a multi dimensional 
+* A "strict array" is a fixed size, multi dimensional array of a sub type:
     - A simple strict array `[3][256][256] f32` is a rank 3 array of floats
       with 256 columns, 256 rows and 3 "cubes"
 
@@ -69,7 +88,7 @@ database for arrays, numstore core also doubles as a simple ACID file with
 first class interior mutations.
 
 Traditionally, a "file" is an array of bytes. You read and write to the
-interior using two well know functions:
+interior using two well known functions:
 
 ```
 // Open and close a file
@@ -135,6 +154,26 @@ no "half writes" or "half reads". Everything either happens or doesn't.
 Quick Start
 ===========
 
+You need a C11 compiler and CMake 3.20 or newer. Python needs 3.9 or newer.
+
+<details open>
+    <summary>Python Quick Start Guide</summary>
+
+    git clone https://github.com/NumstoreDB/Numstore
+    cd Numstore
+    python3 -m venv .venv && . .venv/bin/activate
+    pip install build
+    make -C bindings/python install
+    python bindings/python/samples/sample1_basic.py
+
+`make -C bindings/python help` lists the other targets (`test`, `samples`,
+`dev`, `sdist`, ...).
+
+The Python library is a lightweight wrapper around the C library. All 
+the bindings live in `bindings/python/src/c/ns_pynumstore.c`. See
+[bindings/python](bindings/python/README.md) for the API.
+</details>
+
 <details>
     <summary>C Quick Start Guide</summary>
         
@@ -146,24 +185,12 @@ Quick Start
 
 The Numstore C library is intentionally simple. These are the most important 
 outputs:
-* `build/lib/libnumstore.a` - all numstore code in a single library
-* `build/bin/*_sample*` - a bunch of samples, found in `numstore/apps/samples/`
-* `numstore/apps/include/numstore.h` - The only header file you need for
+* `build/release/lib/libnumstore.a` - all numstore code in a single library
+* `build/release/bin/*_sample*` - a bunch of samples, found in
+  `numstore/apps/samples/`
+* `numstore/include/numstore.h` - The only header file you need for
   numstore 
 
-</details>
-
-<details>
-    <summary>Python Quick Start Guide</summary>
-
-    pip3 install build
-	python3 -m build --wheel bindings/python --outdir bindings/python/dist
-    pip3 install build/python/target/*.whl --force-reinstall
-    pip3 install bindings/python/dist/pynumstore-*.whl --force-reinstall
-    python3 bindings/python/samples/sample1_basic.py
-
-The Python library is a lightweight wrapper around the C library. All 
-the bindings live in `bindings/python/src/c/ns_pynumstore.c`.
 </details>
 
 AI Usage Policy

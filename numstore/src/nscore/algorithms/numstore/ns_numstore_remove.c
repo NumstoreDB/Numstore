@@ -12,55 +12,72 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 sb_size
 numstore_remove_from_name (
-    struct pager       *p,
-    struct txn         *tx,
-    struct string       name,  // Name of the variable
-    struct user_stride  ustr,  // Stride to remove
-    struct arena_alloc *alloc, // Allocator for variable in get
-    struct variable    *var,   // If not null - save the variable
-    struct stream      *dest,  // Output stream (can be null)
-    error              *e
+    struct pager *NONNULL       p,
+    struct txn *NONNULL         tx,
+    struct string               name,
+    struct user_stride          ustr,
+    struct arena_alloc *NONNULL valloc,
+    struct variable *NULLABLE   var,
+    struct stream *NULLABLE     dest,
+    error *NONNULL              e
 )
 {
-  WITH_OPT_VARIABLE (p, tx, name, alloc, var, e, numstore_remove (p, tx, var, ustr, dest, e));
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (string, &name);
+  DBG_ASSERT (user_stride, &ustr);
+  DBG_ASSERT (arena_alloc, valloc);
+  DBG_ASSERT_IF_NN (stream, dest);
+  DBG_ASSERT (clean_error, e);
+
+  // First, fetch the variable
+  struct variable _var;
+  if (var == NULL) {
+    var = &_var;
+  }
+  if (numstore_get (p, tx, false, name, valloc, var, e) < 0) {
+    return error_trace (e);
+  }
+
+  // Then, do the remove
+  return numstore_remove (p, tx, var, ustr, dest, e);
 }
 
 sb_size
 numstore_remove (
-    struct pager      *p,
-    struct txn        *tx,
-    struct variable   *var,
-    struct user_stride ustr,
-    struct stream     *dest,
-    error             *e
+    struct pager *NONNULL    p,
+    struct txn *NONNULL      tx,
+    struct variable *NONNULL var,
+    struct user_stride       ustr,
+    struct stream *NULLABLE  dest,
+    error *NONNULL           e
 )
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (variable, var);
+  DBG_ASSERT (user_stride, &ustr);
+  DBG_ASSERT_IF_NN (stream, dest);
+  DBG_ASSERT (clean_error, e);
+
   // Resolve sizes
   t_size tsize = type_byte_size (var->dtype);
-
-  // Total size in bytes of the variable
-  b_size len   = var->nbytes;
-
-  // A consistent database has this be a multiple of tsize
-  if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable: has invalid byte size");
-    goto failed;
-  }
-  len /= tsize;
+  ASSERT (var->nbytes % tsize == 0); // Variable is valid (from assert)
+  b_size        len = var->nbytes / tsize;
 
   // Resolve length based on the stride
   struct stride stride;
   if (stride_resolve (&stride, ustr, len, e)) {
-    goto failed;
+    return error_trace (e);
   }
 
-  // REMOVE
   struct ns_remove_params rparams = {
       .p      = p,
       .dest   = dest,
@@ -73,16 +90,16 @@ numstore_remove (
   };
   sb_size ret = ns_remove (&rparams, e);
   if (ret < 0) {
-    goto failed;
+    return error_trace (e);
   }
 
-  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e)
-      < 0) {
-    goto failed;
+  // Update new sizes and root
+  b_size newsize = var->nbytes + (len * tsize);
+  pgno   newroot = rparams.root;
+
+  if (ns_var_update_by_var_root (p, tx, var->var_root, newroot, newsize, e) < 0) {
+    return error_trace (e);
   }
 
   return ret;
-
-failed:
-  return error_trace (e);
 }

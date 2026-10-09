@@ -26,8 +26,12 @@ numstore_create (
     error              *e
 )
 {
-  // Log the call
-  i_log_debug ("CREATE (txn = %" PRtxid "): %.*s\n", tx->tid, strfmt (&vname));
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (string, &name);
+  DBG_ASSERT (valid_type, &type);
+  DBG_ASSERT (arena_alloc, valloc);
+  DBG_ASSERT (clean_error, e);
 
   // Get or create
   struct ns_var_get_or_create_params gparams = {

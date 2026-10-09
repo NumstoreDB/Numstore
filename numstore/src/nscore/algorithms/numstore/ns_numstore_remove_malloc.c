@@ -19,59 +19,70 @@
 
 err_t
 numstore_remove_malloc_from_name (
-    struct pager       *p,
-    struct txn         *tx,
-    struct string       name,
-    struct user_stride  ustr,
-    struct arena_alloc *alloc,
-    struct variable    *var,
-    void              **dest,
-    b_size             *dlen,
-    struct i_mem        mem,
-    error              *e
+    struct pager *NONNULL       p,
+    struct txn *NONNULL         tx,
+    struct string               name,
+    struct user_stride          ustr,
+    struct arena_alloc *NONNULL valloc,
+    struct variable *NULLABLE   var,
+    void *NONNULL *NULLABLE     dest,
+    b_size *NONNULL             dlen,
+    struct i_mem                mem,
+    error *NONNULL              e
 )
 {
-  WITH_OPT_VARIABLE (
-      p,
-      tx,
-      name,
-      alloc,
-      var,
-      e,
-      numstore_remove_malloc (p, tx, var, ustr, dest, dlen, mem, e)
-  );
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (string, &name);
+  DBG_ASSERT (user_stride, &ustr);
+  DBG_ASSERT (arena_alloc, valloc);
+  ASSERT (dest);
+  ASSERT (dlen);
+  DBG_ASSERT (i_mem, &mem);
+  DBG_ASSERT (clean_error, e);
+
+  // First, fetch the variable
+  struct variable _var;
+  if (var == NULL) {
+    var = &_var;
+  }
+  if (numstore_get (p, tx, false, name, valloc, var, e) < 0) {
+    return error_trace (e);
+  }
+
+  return numstore_remove_malloc (p, tx, var, ustr, dest, dlen, mem, e);
 }
 
 err_t
 numstore_remove_malloc (
-    struct pager      *p,
-    struct txn        *tx,
-    struct variable   *var,
-    struct user_stride ustr,
-    void             **dest,
-    b_size            *dlen,
-    struct i_mem       mem,
-    error             *e
+    struct pager *NONNULL    p,
+    struct txn *NONNULL      tx,
+    struct variable *NONNULL var,
+    struct user_stride       ustr,
+    void *NONNULL *NULLABLE  dest,
+    b_size *NONNULL          dlen,
+    struct i_mem             mem,
+    error *NONNULL           e
 )
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+  DBG_ASSERT (variable, var);
+  DBG_ASSERT (user_stride, &ustr);
   ASSERT (dest);
+  ASSERT (dlen);
+  DBG_ASSERT (i_mem, &mem);
+  DBG_ASSERT (clean_error, e);
+
   // Resolve sizes
   t_size tsize = type_byte_size (var->dtype);
-
-  // Total size in bytes of the variable
-  b_size len   = var->nbytes;
-
-  // A consistent database has this be a multiple of tsize
-  if (len % tsize != 0) {
-    error_causef (e, ERR_CORRUPT, "Variable has invalid byte size");
-    goto failed;
-  }
-  len /= tsize;
+  ASSERT (var->nbytes % tsize == 0); // Variable is valid (from assert)
+  b_size        len = var->nbytes / tsize;
 
   // Resolve length based on the stride
   struct stride stride;
   if (stride_resolve (&stride, ustr, len, e)) {
-    goto failed;
+    return error_trace (e);
   }
 
   if (stride.nelems == 0) {
@@ -82,12 +93,11 @@ numstore_remove_malloc (
 
   void *buffer = mem.table->malloc (mem.self, stride.nelems, tsize, e);
   if (buffer == NULL) {
-    goto failed;
+    return error_trace (e);
   }
 
-  struct stream          stream;
-  struct stream_obuf_ctx octx;
-  stream_obuf_init (&stream, &octx, buffer, stride.nelems * tsize);
+  // Create output stream
+  ostream_create_from (stream, buffer, stride.nelems * tsize);
 
   // REMOVE
   struct ns_remove_params rparams = {
@@ -103,24 +113,19 @@ numstore_remove_malloc (
   sb_size ret = ns_remove (&rparams, e);
   if (ret < 0) {
     mem.table->free (mem.self, buffer);
-    goto failed;
+    return error_trace (e);
   }
 
-  // UPDATE VARIABLE
-  if (ns_var_update_by_var_root (p, tx, var->var_root, rparams.root, var->nbytes - (ret * tsize), e)
-      < 0) {
-    mem.table->free (mem.self, buffer);
-    goto failed;
+  // Update new sizes and root
+  b_size newsize = var->nbytes + (len * tsize);
+  pgno   newroot = rparams.root;
+  if (ns_var_update_by_var_root (p, tx, var->var_root, newroot, newsize, e) < 0) {
+    return error_trace (e);
   }
 
-  if (dlen) {
-    *dlen = ret * tsize;
-  }
-
+  // Set return values
+  *dlen = ret * tsize;
   *dest = buffer;
 
   return SUCCESS;
-
-failed:
-  return error_trace (e);
 }

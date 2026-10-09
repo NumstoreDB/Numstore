@@ -109,6 +109,14 @@ struct type *type_movemem (struct type *src, struct arena_alloc *alloc, error *e
 void type_print_data (int log_level, const u8 *buf, const struct type *t, u32 max_elems);
 err_t type_stream_printer_init (struct stream *s, struct type *t, error *e);
 
+DEFINE_DBG_ASSERT (struct type, unchecked_type, t, { ASSERT (t); })
+
+DEFINE_DBG_ASSERT (struct type, valid_type, t, {
+  ASSERT (t);
+  error e = error_create ();
+  ASSERT (type_validate (t, &e) == SUCCESS);
+})
+
 #define _mk_prim(_p) {.type = T_PRIM, .p = (_p)}
 
 HEADER_FUNC struct type

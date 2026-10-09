@@ -54,17 +54,17 @@ smartfiles_insert (
     return error_trace (e);
   }
 
-  b_size                     ofst    = var_resolve_index (&gparams.dest, bofst);
+  b_size                  ofst    = var_resolve_index (&gparams.dest, bofst);
 
   // INSERT
-  struct ns_writesert_params iparams = {
+  struct ns_insert_params iparams = {
       .p     = p,
       .src   = src,
       .tx    = tx,
       .root  = gparams.dest.rpt_root,
       .bofst = ofst,
   };
-  sb_size ret = ns_writesert (&iparams, e);
+  sb_size ret = ns_insert (&iparams, e);
   if (ret < 0) {
     return error_trace (e);
   }
