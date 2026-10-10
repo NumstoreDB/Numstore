@@ -33,7 +33,7 @@ def test_invalid_query_raises(db):
         db.read("not a real query")
 
     with pytest.raises(RuntimeError):
-        db.write("not a real query")
+        db.write("not a real query", [1])
 
     with pytest.raises(RuntimeError):
         db.get("not a real query")
@@ -55,11 +55,11 @@ def test_invalid_query_types(db):
 
     db.read("read foo[0:10]")
     with pytest.raises(RuntimeError):
-        db.write("read foo[0:10]", None, None)
+        db.write("read foo[0:10]", np.zeros(1, dtype=np.uint32))
 
     db.read("remove foo[0:10]")
     with pytest.raises(RuntimeError):
-        db.write("remove foo[0:10]", None, None)
+        db.write("remove foo[0:10]", np.zeros(1, dtype=np.uint32))
 
 def test_get_nonexistent_variable_fails(db):
     with pytest.raises(RuntimeError):
@@ -225,7 +225,6 @@ def test_var_is_a_snapshot(db):
     src = np.arange(3, dtype=np.uint32)
     db.write(f"insert foo 0 {src.size}", src)
 
-    # Captured before the insert, so it still reports the old length
     assert var.length == 0
     assert db.get("get foo").length == 3
 
@@ -233,8 +232,6 @@ def test_var_is_a_snapshot(db):
 def test_var_holds_no_c_handle(db):
     db.execute("create foo u32")
 
-    # _capture_var frees the handle before returning, so a Var is a plain
-    # value with nothing to release - and nothing is exposed to release it
     var = db.get("get foo")
     assert not hasattr(var, "free")
     assert {f.name for f in dataclasses.fields(var)} == {
@@ -247,8 +244,6 @@ def test_var_holds_no_c_handle(db):
 def test_dropped_vars_are_released(db):
     db.execute("create foo f64")
 
-    # Capturing and dropping without ever freeing must stay flat. If the
-    # destructor were not running, each iteration would strand an arena.
     for _ in range(20000):
         assert db.get("get foo").tsize == 8
 
@@ -286,7 +281,6 @@ def test_var_in_transaction(db):
 
     with db.begin() as txn:
         txn.write(f"insert foo 0 {src.size}", src)
-        # The insert is visible inside its own transaction
         assert txn.get("get foo").length == src.size
 
     assert db.get("get foo").length == src.size
