@@ -7,16 +7,8 @@
 #   make install PYTHON=python3.12
 #   make wheel BUILD_TYPE=Debug
 
-PYTHON     ?= python3
-BUILD_TYPE ?= Release
-DIST       ?= dist
-WHEELHOUSE ?= wheelhouse
-
-PIP   = $(PYTHON) -m pip
-BUILD = $(PYTHON) -m build -C cmake.build-type=$(BUILD_TYPE)
-
-# Newest wheel in $(DIST) -- several can pile up across python versions
-WHEEL = $$(ls -t $(DIST)/pynumstore-*.whl | head -1)
+# Newest wheel in dist -- several can pile up across python versions
+WHEEL = $$(ls -t dist/pynumstore-*.whl | head -1)
 
 .PHONY: all help deps wheel sdist vendor install dev test samples check \
         format clean upload-test upload
@@ -25,7 +17,7 @@ all: wheel
 
 help:
 	@echo "make deps         install build/test tooling into the current python"
-	@echo "make wheel        build a wheel into $(DIST)/"
+	@echo "make wheel        build a wheel into dist/"
 	@echo "make install      build a wheel and pip install it"
 	@echo "make dev          editable install with test extras"
 	@echo "make test         run pytest"
@@ -34,36 +26,36 @@ help:
 	@echo "make sdist        vendor numstore and build a source distribution"
 	@echo "make format       ruff format"
 	@echo "make clean        remove build artifacts"
-	@echo "make upload-test  upload $(WHEELHOUSE)/*.whl to TestPyPI"
-	@echo "make upload       upload $(WHEELHOUSE)/*.whl to PyPI"
+	@echo "make upload-test  upload wheelhouse/*.whl to TestPyPI"
+	@echo "make upload       upload wheelhouse/*.whl to PyPI"
 
 
 ############ Build
 deps:
-	$(PIP) install --upgrade build pytest ruff twine
+	python3 -m pip install --upgrade build pytest ruff twine
 
 wheel:
-	$(BUILD) --wheel . --outdir $(DIST)
+	python3 -m build -C cmake.build-type=Release --wheel . --outdir dist
 
 vendor:
 	scripts/vendor.sh
 
 sdist: vendor
-	$(BUILD) --sdist . --outdir $(DIST)
+	python3 -m build -C cmake.build-type=Release --sdist . --outdir dist
 
 
 ############ Install
 install: wheel
-	$(PIP) install --force-reinstall --no-deps $(WHEEL)
-	$(PIP) install numpy
+	python3 -m pip install --force-reinstall --no-deps $(WHEEL)
+	python3 -m pip install numpy
 
 dev:
-	$(PIP) install -e '.[test]'
+	python3 -m pip install -e '.[test]'
 
 
 ############ Test
 test:
-	$(PYTHON) -m pytest tests
+	python3 -m pytest tests
 
 # Samples write database files into the working directory, so run them in a
 # scratch directory rather than the source tree
@@ -71,7 +63,7 @@ samples:
 	@mkdir -p build/samples
 	@set -e; for s in samples/*.py; do \
 	    echo "== $$s"; \
-	    (cd build/samples && $(PYTHON) ../../$$s); \
+	    (cd build/samples && python3 ../../$$s); \
 	done
 
 check: install test samples
@@ -86,11 +78,8 @@ format:
 clean:
 	scripts/clean.sh
 
-# Wheels for PyPI must be manylinux/macOS/Windows builds -- download them from
-# the Wheels workflow's artifacts into $(WHEELHOUSE) first. A local wheel from
-# `make wheel` is tagged linux_x86_64 and PyPI rejects it.
 upload-test:
-	scripts/upload_python.sh $(WHEELHOUSE)/*.whl
+	scripts/upload_python.sh wheelhouse/*.whl
 
 upload:
-	scripts/upload_python.sh --prod $(WHEELHOUSE)/*.whl
+	scripts/upload_python.sh --prod wheelhouse/*.whl
