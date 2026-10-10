@@ -1,12 +1,23 @@
 Numstore
 ========
 
-**A database for arrays**
+**An embedded ACID database for arrays.**
 
-Numstore is a single-file, embedded, ACID database built for arrays, written
-entirely in C with no dependencies.
+Features:
+---------
+- **Single File.** The whole database lives in a single file. There is no
+  server. `nsserver` is a work in progress network front end to numstore but
+  numstore will always expose a simple embedded front end interface. See
+  `numstore/include/*` 
+- **ACID.** Every insert, write and remove either happens completely or not at
+  all, even if the process crashes partway through. It uses ARIES for crash
+  recovery and a unique rope variant of the B+Tree to index into arrays.
+- **Arrays.** Numstore stores images, sensor streams, tick data and any fixed
+  layout of numbers you can describe as a type.
+- **No dependencies.** Plain C11, with first class Python bindings that return
+  numpy arrays.
 
-Numstore has first class python bindings:
+Pynumstore is the easiest way to get started:
 
 ```python
 import numpy as np
@@ -23,86 +34,106 @@ with ns.Database("prices.db") as db:
     print(db.read("read prices[0::2]")) # [1.5  3.75 5.  ]
 ```
 
-To run this yourself, see the [Quick Start](#quick-start).
+You'll need Python 3.9+, a C11 compiler and CMake 3.20+.
 
-What is Numstore?
------------------
-
-There's an untapped type of data that isn't natively supported in most modern
-reliable fault tolerant databases today: Array data. Traditional relational
-databases store "tabular data". Each column has a "name" and "data type". A SQL
-database stores e.g. a "User" table, which has a name and a date of birth.
-
-An array is a type of data where there's a lot of information packed into one
-type:
-
-* A 3x256x256 RGB image 
-* A stream of thousands of floating point stock ticker data 
-
-Traditionally, this type of data tends to be stored in a flat binary file
-format or specialized non database file formats like HDF5.
-
-Numstore is a database for that type of data. In numstore, a single database has:
-* Multiple _variables_ which each have a name, and type 
-* _types_ represent the byte layout of the variable 
-* _data_ is an array of bytes that represent the content of the variable
-
-Types are byte layouts of a variable:
-
-* A "primitive" is a scalar - signed or unsigned ints, floats and complex
-  floats. The digit represents how many bits they take up:
-    - `u8-u64` are 1-8 byte unsigned ints
-    - `i8-i64` are 1-8 byte signed ints
-    - `f16-f128` are 2-16 byte floats
-    - `cf32-cf256` are 4-32 byte complex floats
-    - `ci16-ci128` are 2-16 byte complex signed ints
-    - `cu16-cu128` are 2-16 byte complex unsigned ints
-
-* A "struct" is a stacked combination of two sub types. The size of a struct is
-  the sum of all the sub types:
-    - A struct: `struct { a u32, b f16 }` is a 6 byte type (`sizeof(u32) +
-      sizeof(f16)`) which represents an unsigned 4 byte int and a 2 byte float
-      stacked on top of each other.
-    - A nested struct: `struct { a u32, b struct { c f16, d [10]f32 } }` is a
-      46 byte type `10 * sizeof(f32) + sizeof(f16) + sizeof(u32)`
-
-* A "union" is a type where all of its sub types overlap at index 0,
-  representing an "either or" relationship:
-    - A union: `union { a u32, b f16 }` is a 4 byte structure which either
-      represents a u32 or an f16
-    - A nested union: `union { a u32, b struct { c f16, d [10]f32 } }` is a 42
-      byte `Max(10 * sizeof(f32) + sizeof(f16), sizeof(u32))`
-
-* A "strict array" is a fixed size, multi dimensional array of a sub type:
-    - A simple strict array `[3][256][256] f32` is a rank 3 array of floats
-      with 256 columns, 256 rows and 3 "cubes"
-
-More info: [Documentation](docs/index.md)
-
-What are Smartfiles?
---------------------
-
-Numstore was originally written to be an array database, but I found it useful
-to think of it as a single ACID file. If your use case is simpler than a
-database for arrays, numstore core also doubles as a simple ACID file with
-first class interior mutations.
-
-Traditionally, a "file" is an array of bytes. You read and write to the
-interior using two well known functions:
-
+```sh
+git clone https://github.com/NumstoreDB/Numstore
+cd Numstore
+python3 -m venv .venv && . .venv/bin/activate # Optional
+pip install ./bindings/python
+python bindings/python/samples/sample1_basic.py
 ```
+
+`pip install` compiles the C library and the bindings in one step. The sample
+creates a database file in your current directory.
+
+Prefer C? Jump to the [C Quick Start](#c-quick-start).
+
+Why Numstore?
+-------------
+
+Relational databases store tables: rows of named, typed columns, like a `users`
+table with a name and a date of birth. They are a poor fit for data where one
+value is a large block of numbers:
+
+* a 3x256x256 RGB image
+* a stream of thousands of floating point stock prices
+
+That data usually ends up in flat binary files or formats like HDF5, which are
+fast but give you no transactions: a crash halfway through a write leaves the
+file half written. Numstore stores the same data with database guarantees.
+
+Core ideas
+----------
+
+A database holds **variables**. Each variable has:
+
+* a **name**, like `prices`
+* a **type**, the byte layout of one element, like `f64` 
+* **data**, an array of elements of that type
+
+You work with variables through short queries:
+
+| Query                    | What it does                                     |
+| ------------------------ | ------------------------------------------------ |
+| `create prices f64`      | create a variable                                |
+| `delete prices`          | delete a variable                                |
+| `insert prices 0 3`      | insert 3 elements at position 0                  |
+| `write prices[0:3]`      | overwrite existing elements                      |
+| `read prices[0:10:2]`    | read elements, with numpy-style `start:stop:step`|
+| `remove prices[0:2]`     | remove elements and return them                  |
+| `get prices`             | look up a variable's type and length             |
+
+### Types
+
+**Primitives.** The number is the size in bits.
+
+| Family                 | Types             | Size         |
+| ---------------------- | ----------------- | -------------|
+| unsigned int           | `u8` to `u64`     | 1-8 bytes    |
+| signed int             | `i8` to `i64`     | 1-8 bytes    |
+| float                  | `f16` to `f128`   | 2-16 bytes   |
+| complex float          | `cf32` to `cf256` | 4-32 bytes   |
+| complex signed int     | `ci16` to `ci128` | 2-16 bytes   |
+| complex unsigned int   | `cu16` to `cu128` | 2-16 bytes   |
+
+**Composites.** Build bigger types out of smaller ones:
+
+* **Strict array:** a fixed size, multi-dimensional array. `[3][256][256] f32`
+  is three 256x256 grids of floats, like an RGB image.
+* **Struct:** fields stored one after another, with no padding. The size is the
+  sum of the fields. `struct { a u32, b f16 }` is 4 + 2 = 6 bytes.
+* **Union:** fields that overlap, so it holds one of them at a time. The size
+  is that of the largest field. `union { a u32, b f16 }` is 4 bytes.
+
+They nest freely: `struct { a u32, b struct { c f16, d [10]f32 } }` is 4 + 2 +
+40 = 46 bytes.
+
+More: [Documentation](docs/index.md) ·
+[Python API](bindings/python/README.md)
+
+Smartfiles: Numstore as an ACID file
+------------------------------------
+ 
+If you don't need variables or types, the core of Numstore also works as a
+single file with transactions, called a smartfile.
+ 
+Traditionally, a file is an array of bytes, and you read and write its interior
+with two well known functions:
+ 
+```c
 // Open and close a file
 int open(name)
 close(fd)
-
-read(fd, dest, count) // Read a file - maybe fail - into dest
-write(fd, src, count) // Overwrite bytes within a file
+ 
+read(fd, dest, count)   // Read from a file - maybe fail - into dest
+write(fd, src, count)   // Overwrite bytes within a file
 ```
-
-Both *read* and *write* return the number of bytes read or written. Both of
-them can fail half way or read / write only a subset of the bytes in the file.
-
-From the write man pages:
+ 
+Both return the number of bytes transferred, and both can stop partway, reading
+or writing only some of the bytes you asked for.
+ 
+From the write man page:
 > Note that a successful write() may transfer fewer than count bytes.  Such
 > partial writes can occur for various reasons; for example, because there was
 > insufficient space on the disk device to write all of the requested bytes, or
@@ -112,8 +143,8 @@ From the write man pages:
 > make another write() call to transfer the remaining bytes.  The subsequent
 > call will either transfer further bytes or may result in an error (e.g., if
 > the disk is now full).
-
-From the read man pages:
+ 
+From the read man page:
 > On success, the number of bytes read is returned (zero indicates end of
 > file), and the file position is advanced by this number. It is not an error
 > if this number is smaller than the number of bytes requested; this may happen
@@ -121,83 +152,73 @@ From the read man pages:
 > because we were close to end-of-file, or because we are reading from a pipe,
 > or from a terminal), or because read() was interrupted by a signal.  See also
 > NOTES.
-
-```
-// Open and close a smart file
+ 
+A smartfile has no half writes or half reads: every operation either happens
+completely or not at all. You can also insert into or remove from the middle of
+the file, not just append:
+ 
+```c
+// Open and close a smartfile
 nsdb_t *ns_smfile_open (path);
 int ns_close (ns);
-
-// Begin or commit a transaction
+ 
+// Group operations into a transaction
 txn_t *ns_begin (ns);
 int ns_commit (ns, txn);
 int ns_rollback (ns, txn);
-
-// Return the size of the file
+ 
+// Size of the file
 sb_size ns_smfile_size (smf, tx);
-
-// Insert data into the interior of the file (increasing the file length)
+ 
+// Insert data into the middle of the file (the file grows)
 sb_size ns_smfile_insert (smf, tx, src, bofst, slen);
-
-// Overwrite data inside the file (keep the file length the same)
+ 
+// Overwrite data in place (the file length stays the same)
 sb_size ns_smfile_write (smf, tx, src, size, bofst, stride, nelem);
-
-// Read data from the file with a given element size and stride
+ 
+// Read elements of a given size and stride
 sb_size ns_smfile_read (smf, tx, dest, size, bofst, stride, nelem);
-
-// Remove data from the file - and write the results to dest
+ 
+// Remove data from the file, copying what was removed into dest
 sb_size ns_smfile_remove (smf, tx, dest, size, bofst, stride, nelem);
 ```
 
-Numstore writes are atomic, meaning they either happen or they don't. There's
-no "half writes" or "half reads". Everything either happens or doesn't.
+C Quick Start
+-------------
 
-Quick Start
-===========
+From the repository root:
 
-You need a C11 compiler and CMake 3.20 or newer. Python needs 3.9 or newer.
+```sh
+cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
+cmake --build build/release
+./build/release/bin/ns_sample1_basic_crud
+```
 
-<details open>
-    <summary>Python Quick Start Guide</summary>
+What you get:
 
-    git clone https://github.com/NumstoreDB/Numstore
-    cd Numstore
-    python3 -m venv .venv && . .venv/bin/activate
-    pip install build
-    make -C bindings/python install
-    python bindings/python/samples/sample1_basic.py
-
-`make -C bindings/python help` lists the other targets (`test`, `samples`,
-`dev`, `sdist`, ...).
-
-The Python library is a lightweight wrapper around the C library. All 
-the bindings live in `bindings/python/src/c/ns_pynumstore.c`. See
-[bindings/python](bindings/python/README.md) for the API.
-</details>
-
-<details>
-    <summary>C Quick Start Guide</summary>
-        
-    mkdir -p build/release
-    cd build/release
-    cmake ../../numstore -DCMAKE_BUILD_TYPE=Release
-    cmake --build .
-    ./bin/ns_sample1_basic_crud
-
-The Numstore C library is intentionally simple. These are the most important 
-outputs:
-* `build/release/lib/libnumstore.a` - all numstore code in a single library
-* `build/release/bin/*_sample*` - a bunch of samples, found in
+* `numstore/include/numstore.h`: the only header you need
+* `build/release/lib/libnumstore.a`: the whole library in one static archive
+* `build/release/bin/*_sample*`: runnable samples, with source in
   `numstore/apps/samples/`
-* `numstore/include/numstore.h` - The only header file you need for
-  numstore 
 
-</details>
+For a debug build, use `-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
+
+Developing the Python bindings
+------------------------------
+
+The bindings are a thin layer over the C library. All the C glue is in
+`bindings/python/src/c/ns_pynumstore.c`.
+
+```sh
+pip install -e './bindings/python[test]'   # editable install, with pytest
+python -m pytest bindings/python/tests
+```
 
 AI Usage Policy
-===============
+---------------
 
-I use AI the way I use a language server: as a tool, not a co-author. AI
-usage is fine, but not for heavy lifting.
+I use AI the way I use a language server: as a tool, not a co-author. AI usage
+is fine, but not for heavy lifting.
 
 Things I ask AI to do:
 
@@ -214,18 +235,18 @@ Things I don't ask AI to do:
 - Read a paper and implement the algorithm.
 
 In practice, AI is useful for ideation, code review, and generating mundane
-code I'll immediately refactor. Every algorithm in this codebase was written
-by me.
+code I'll immediately refactor. Every algorithm in this codebase was written by
+me.
 
 Contributing
-============
+------------
 
-Contributions are welcome, but I don't have the bandwidth to make the process 
-easy (something I am trying my best to change). Feel free to 
-File a ticket on GitHub for bugs, feature requests, or questions. Tickets
-that are easy to contribute to will be marked `good first issue`.
+Contributions are welcome, but I don't have the bandwidth to make the process
+easy yet (something I'm working on). File a GitHub issue for bugs, feature
+requests or questions. Issues that are easy to pick up are labeled `good first
+issue`.
 
 License
-=======
+-------
 
 Apache 2.0. See [LICENSE](LICENSE).
