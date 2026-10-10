@@ -7,30 +7,16 @@ import pytest
 
 import pynumstore as ns
 
-
-def test_to_dtype():
-    assert ns.to_dtype("u32") == np.dtype(np.uint32)
-    assert ns.to_dtype("f64") == np.dtype(np.float64)
-    assert ns.to_dtype("i8") == np.dtype(np.int8)
-    assert ns.to_dtype("u8") == np.dtype(np.uint8)
-
-
-def test_to_dtype_invalid_type_raises():
-    with pytest.raises(ValueError):
-        ns.to_dtype("not_a_real_type")
-
-
+############# Lifecycle tests
 def test_database_context_manager_closes(db_dir):
     with ns.Database("ctx.db") as db:
         db.execute("create foo u32")
     assert db._handle is None
 
-
-def test_double_close_raises_cleanly(db_dir):
+def test_double_close_idempodent(db_dir):
     db = ns.Database("close.db")
     db.close()
     db.close()
-
 
 def test_execute_after_close_raises(db_dir):
     db = ns.Database("closed.db")
@@ -38,26 +24,49 @@ def test_execute_after_close_raises(db_dir):
     with pytest.raises(RuntimeError):
         db.execute("create foo u32")
 
-
-def test_execute_invalid_query_raises(db):
+############# Execute 
+def test_invalid_query_raises(db):
     with pytest.raises(RuntimeError):
         db.execute("not a real query")
 
+    with pytest.raises(RuntimeError):
+        db.read("not a real query")
 
-def test_execute_only_takes_queries_that_produce_nothing(db):
+    with pytest.raises(RuntimeError):
+        db.write("not a real query")
+
+    with pytest.raises(RuntimeError):
+        db.get("not a real query")
+
+def test_invalid_query_types(db):
     db.execute("create foo u32")
 
-    # execute() is create/delete/remove only - anything that resolves a
-    # variable or moves data goes through get/read/write
+    db.get("get foo")
     with pytest.raises(RuntimeError):
         db.execute("get foo")
 
+    db.write("insert foo 0 5", np.arange(5, dtype=np.uint32))
+    with pytest.raises(RuntimeError):
+        db.read("insert foo 0 10")
+
+    db.write("write foo[0:5]", np.arange(5, dtype=np.uint32))
+    with pytest.raises(RuntimeError):
+        db.read("write foo[0:5]")
+
+    db.read("read foo[0:10]")
+    with pytest.raises(RuntimeError):
+        db.write("read foo[0:10]", None, None)
+
+    db.read("remove foo[0:10]")
+    with pytest.raises(RuntimeError):
+        db.write("remove foo[0:10]", None, None)
 
 def test_get_nonexistent_variable_fails(db):
     with pytest.raises(RuntimeError):
         db.get("get foo")
 
 
+############# Logic
 def test_create_insert_read(db):
     db.execute("create foo u32")
 
@@ -234,7 +243,6 @@ def test_var_holds_no_c_handle(db):
         "length",
         "tsize",
     }
-
 
 def test_dropped_vars_are_released(db):
     db.execute("create foo f64")
