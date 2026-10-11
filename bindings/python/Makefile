@@ -57,8 +57,6 @@ dev:
 test:
 	python3 -m pytest tests
 
-# Samples write database files into the working directory, so run them in a
-# scratch directory rather than the source tree
 samples:
 	@mkdir -p build/samples
 	@set -e; for s in samples/*.py; do \

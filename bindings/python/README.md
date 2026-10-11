@@ -1,126 +1,185 @@
-Pynumstore
+pynumstore
 ==========
 
-Python wrapper around the `numstore` C extension - a transactional store for
-numpy arrays and structured types.
-
-Quick start
------------
-
-From the repo root:
-
-```sh
-python3 -m venv .venv && . .venv/bin/activate
-pip install build
-make -C bindings/python install
-```
+Python bindings for [Numstore](../../README.md), an embedded ACID database for
+arrays. 
 
 ```python
 import numpy as np
 import pynumstore as ns
 
-with ns.Database("data.db") as db:
+with ns.Database("prices.db") as db:
     db.execute("create prices f64")
     db.write("insert prices 0 3", np.array([1.5, 2.25, 3.75]))
-    dest = db.read("read prices[0:]")
+
+    with db.begin() as tx: 
+        tx.write("insert prices 3 2", [4.0, 5.0])
+
+    print(db.read("read prices[0:]"))   # [1.5  2.25 3.75 4.   5.  ]
+    print(db.read("read prices[0::2]")) # [1.5  3.75 5.  ]
 ```
 
-More examples in [samples/](samples/).
+Install
+-------
 
-Development
------------
-
-`make help` lists the targets. The common ones:
+You need Python 3.9+, a C11 compiler and CMake 3.20+. From the repo root:
 
 ```sh
-make install      # build a wheel and install it
-make dev          # editable install with test extras
-make test         # pytest
-make samples      # run every sample
-make sdist        # self-contained source distribution
-make clean
+python3 -m venv .venv && . .venv/bin/activate
+pip install ./bindings/python
 ```
 
-Variables: `PYTHON` (default `python3`), `BUILD_TYPE` (`Release`), `DIST`
-(`dist`), `WHEELHOUSE` (`wheelhouse`), e.g. `make install PYTHON=python3.12`.
+This compiles the C library and the extension in one step. There are no
+runtime dependencies besides numpy.
+
+How it works
+------------
+
+A database is a set of named **variables**. Each variable has a **type** (the
+layout of one element) and holds a growable array of elements of that type.
+You talk to it with short queries:
+
+| Query                  | Python call              | What it does                       |
+| ---------------------- | ------------------------ | ---------------------------------- |
+| `create prices f64`    | `db.execute(q)`          | create a variable                  |
+| `delete prices`        | `db.execute(q)`          | delete a variable                  |
+| `insert prices 0 3`    | `db.write(q, data)`      | insert 3 elements at index 0       |
+| `write prices[0:3]`    | `db.write(q, data)`      | overwrite elements in place        |
+| `read prices[0:10:2]`  | `db.read(q)`             | read a slice (`start:stop:step`)   |
+| `remove prices[0:2]`   | `db.read(q)`             | remove a slice and return it       |
+| `get prices`           | `db.get(q)`              | look up type, length and shape     |
+
+Only `insert` and `remove` change a variable's length. Slices follow numpy
+rules, except negative steps aren't supported yet. 
+
+Types
+-----
+
+Every Numstore type has a numpy equivalent, and `ns.to_dtype()` converts
+between them:
+
+| Numstore                       | numpy                                       |
+| ------------------------------ | ------------------------------------------- |
+| `u8` ... `u64`, `i8` ... `i64` | `np.uint8` ... `np.int64`                   |
+| `f16`, `f32`, `f64`            | `np.float16`, `np.float32`, `np.float64`    |
+| `cf64`, `cf128`                | `np.complex64`, `np.complex128`             |
+| `cu16`, `ci32`, ...            | struct `[("re", ...), ("im", ...)]`         |
+| `[10][20] f32`                 | `np.dtype((np.float32, (10, 20)))`          |
+| `struct { a u8, b u32 }`       | `[("a", np.uint8), ("b", np.uint32)]`       |
+| `union { a u8, b u32 }`        | struct dtype with every offset at 0         |
+
+The number in a type name is its size in bits, so `cf64` is two `f32`s, the
+same as numpy's `complex64`. numpy has no complex integers, so those become a
+two-field struct.
+
+Structs and unions are packed, with no padding. A struct's size is the sum of
+its fields and a union's is its largest field. Types nest freely.
+
+### Structured data
+
+```python
+point = "struct { x f32, y f32, z f32 }"
+
+with ns.Database("points.db") as db:
+    db.execute(f"create points {point}")
+
+    pts = np.zeros(3, dtype=ns.to_dtype(point))
+    pts["x"] = [1, 2, 3]
+    db.write("insert points 0 3", pts)
+
+    out = db.read("read points[0:]")
+    print(out["x"])                     # [1. 2. 3.]
+```
+
+### Fixed-size arrays
+
+An array type makes each element a whole block, such as an image:
+
+```python
+with ns.Database("frames.db") as db:
+    db.execute("create frames [256][256] u8")
+    db.write("insert frames 0 2", np.zeros((2, 256, 256), dtype=np.uint8))
+
+    db.read("read frames[0:]").shape
+```
+
+Reads always return shape `(n, *dims)`, where `n` is the number of elements
+read.
+
+Transactions
+------------
+
+Every call outside a transaction is atomic on its own. To group calls together,
+use `db.begin()`:
+
+```python
+with db.begin() as tx:
+    tx.write("insert log 0 2", data)
+    tx.execute("remove staging[0:]")
+# committed here, or rolled back if the block raised
+```
+
+Committed writes are durable: they survive a crash right after `commit()`.
+Uncommitted or rolled-back writes never reach the file.
+
+Prepared queries
+----------------
+
+If you run the same query often, compile it once with `db.prepare()`:
+
+```python
+with db.prepare("read prices[0:]") as plan:
+    for _ in range(1000):
+        latest = plan.read()
+```
+
+Any plan method takes an optional `txn` argument to run it inside a
+transaction.
 
 API
 ---
 
 ### `Database(path)`
 
-- `.execute(query) -> int` Runs a query that takes no data (`create`,
-  `delete`, `remove`, ...).
-- `.write(query, data) -> int` Runs an `insert`/`write` query with `data` as
-  the source. Lists and scalars are converted to the variable's dtype; arrays
-  are cast if that keeps their kind (float64 -> float32 is fine, float -> int
-  raises `TypeError`).
-- `.read(query) -> ndarray` Runs a `read`/`remove` query and returns a new
-  array of shape `(n, *dims)`.
-- `.read_into(query, out) -> int` Same, into a preallocated, C-contiguous
-  array.
-- `.get(query) -> Var` Looks up a variable's metadata (`name`, `type`,
-  `length`, `tsize`, `shape`, `dtype`).
-- `.prepare(query) -> Plan` Compiles a query once to run many times.
-- `.begin() -> Transaction`
-- `.close()` Safe to call twice.
-- Context manager: closes on `__exit__`.
+Opens `path` and creates it if needed. Works as a context manager.
 
-### `Transaction` (from `db.begin()`)
+| Method                     | Returns       | Notes                                             |
+| -------------------------- | ------------- | ------------------------------------------------- |
+| `execute(query)`           | `int`         | queries that take no data: `create`, `delete`, ...  |
+| `write(query, data)`       | `int`         | `insert` / `write`; see casting below             |
+| `read(query)`              | `ndarray`     | `read` / `remove`; returns a new array            |
+| `read_into(query, out)`    | `int`         | same, into a preallocated C-contiguous array      |
+| `get(query)`               | `Var`         | `.name .type .length .tsize .shape .dtype`        |
+| `prepare(query)`           | `Plan`        | compiled query to run many times                  |
+| `begin()`                  | `Transaction` |                                                   |
+| `close()`                  |               | safe to call twice                                |
 
-- `.execute`, `.write`, `.read`, `.read_into`, `.get` - same as `Database`
-- `.commit()`
-- `.rollback()`
-- Context manager: commits on clean exit, rolls back on exception. Using it
-  after it finished raises `RuntimeError`.
+Examples
+--------
 
-### `Plan` (from `db.prepare(query)`)
+[samples/](samples/) has runnable scripts, and `make samples` runs them all.
 
-- `.execute(txn=None)`, `.write(data, txn=None)`, `.read(txn=None)`,
-  `.read_into(out, txn=None)`, `.var(txn=None)` - run the compiled query,
-  optionally inside a transaction.
-- `.close()`, context manager.
+Development
+-----------
 
-### `to_dtype(type_str) -> np.dtype`
-
-Converts a numstore type string to a numpy dtype. Raises `ValueError` on an
-unknown type.
-
-## Query language
-
-```
-create <name> <type>              # define a variable
-insert <name> <offset> <count>    # write count elements from data
-read <name>[start:end]            # read into data, or return new array
-remove <name>[start:end]          # delete range; returns removed elements
+```sh
+make dev          # editable install with test extras
+make test         # run pytest
+make samples      # run every sample
+make install      # build a wheel and install it
+make sdist        # self-contained source distribution
+make clean
+make help         # everything else
 ```
 
-Slices support a step: `name[start:end:step]`.
+You can override `PYTHON` (default `python3`), `BUILD_TYPE` (`Release`), `DIST`
+(`dist`) and `WHEELHOUSE` (`wheelhouse`). For example,
+`make install PYTHON=python3.12`.
 
-### Types
+The bindings are a thin layer over the C library. All the C glue is in
+`src/c/ns_pynumstore.c`.
 
-Scalars: `u8 i8 u32 i32 f64 ...` (numstore integer/float types)
+License
+-------
 
-Composite:
-
-```
-struct {
-    id     u32,
-    name   [10]u8,
-    height u32
-}
-```
-
-Structured data maps directly onto `numpy` structured arrays - build with
-`to_dtype()` and construct via `np.array([...], dtype=record_dtype)`.
-
-## Transactions
-
-```python
-with db.begin() as txn:
-    txn.write("insert log 0 2", data)
-# committed automatically on clean exit, rolled back on exception
-```
-
-Committed writes are WAL-durable: they survive a crash immediately after
-`commit()`. Uncommitted or rolled-back writes never persist, crash or not.
+Apache 2.0. See [LICENSE](../../LICENSE).

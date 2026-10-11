@@ -16,10 +16,10 @@ class Queries:
     def _target(self) -> tuple[Database, Transaction | None]:
         raise NotImplementedError
 
-    def execute(self, query: str) -> int:
+    def execute(self, query: str) -> None:
         db, txn = self._target()
         with db.prepare(query) as plan:
-            return plan.execute(txn)
+            plan.execute(txn)
 
     def read(self, query: str) -> npt.NDArray[Any]:
         db, txn = self._target()

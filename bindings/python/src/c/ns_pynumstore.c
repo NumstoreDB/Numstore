@@ -1087,7 +1087,8 @@ pyns_plan_execute (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  return PyLong_FromLong (ret);
+  ASSERT(ret == SUCCESS);
+  Py_RETURN_NONE;
 }
 
 PyObject *

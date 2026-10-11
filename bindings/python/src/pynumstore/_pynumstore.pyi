@@ -32,7 +32,7 @@ def _pyns_rollback(db: nsdb, txn: nstxn, /) -> None:
 
 def _pyns_plan_create(db: nsdb, query: str, /) -> nsplan:
 def _pyns_plan_close(plan: nsplan, /) -> None:
-def _pyns_plan_execute(plan: nsplan, txn: nstxn | None, /) -> int:
+def _pyns_plan_execute(plan: nsplan, txn: nstxn | None, /) -> None:
 def _pyns_plan_get_var(plan: nsplan, txn: nstxn | None, /) -> nsvar:
 def _pyns_plan_read(plan: nsplan, txn: nstxn | None, dest: Buffer, /) -> int:
 def _pyns_plan_malloc(plan: nsplan, txn: nstxn | None, /) -> bytes:

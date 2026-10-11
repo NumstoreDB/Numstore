@@ -35,12 +35,10 @@ class Plan:
     def closed(self) -> bool:
         return self._handle is None or self._db.closed
 
-    def execute(self, txn: Transaction | None = None) -> int:
-        """Run a query that takes no data (create, delete, remove, ...)."""
-        return _ns._pyns_plan_execute(*self._args(txn))
+    def execute(self, txn: Transaction | None = None) -> None:
+        _ns._pyns_plan_execute(*self._args(txn))
 
     def var(self, txn: Transaction | None = None) -> Var:
-        """Look up the variable this query refers to, without running the query."""
         return capture_var(*self._args(txn))
 
     def read(self, txn: Transaction | None = None) -> npt.NDArray[Any]:
