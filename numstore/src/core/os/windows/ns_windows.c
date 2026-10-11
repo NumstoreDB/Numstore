@@ -28,6 +28,7 @@
 #  include <stdint.h>
 #  include <stdio.h>
 #  include <string.h>
+#  include <winioctl.h> // FSCTL_SET_SPARSE (not pulled in by WIN32_LEAN_AND_MEAN)
 
 static const struct os_vtable default_os_vtable;
 
@@ -136,6 +137,29 @@ handle_of (void *self)
   return h;
 }
 
+///////////// Sparse files
+
+/// Marks [h] sparse so extending it (sys_truncate) only changes the logical
+/// size instead of allocating real clusters - matching ftruncate on
+/// Linux/macOS, where a grown file is sparse for free. Without this, NTFS
+/// reserves every byte of a grown file and a large truncate can fail with
+/// ERROR_DISK_FULL.
+///
+/// The flag is persistent, so re-marking an already sparse file is a no-op.
+///
+/// A NULL input buffer means "set sparse" (documented FSCTL_SET_SPARSE
+/// behavior), so no FILE_SET_SPARSE_BUFFER is needed.
+///
+/// Best effort: FAT/exFAT, some network shares and Wine reject this. The file
+/// then simply behaves like a regular (non-sparse) file, so failure is
+/// ignored.
+static void
+win_make_sparse (const HANDLE h)
+{
+  DWORD ret = 0;
+  (void)DeviceIoControl (h, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &ret, NULL);
+}
+
 ///////////// System OS implementations
 
 static err_t
@@ -174,6 +198,13 @@ sys_open_file (
     const DWORD err = GetLastError ();
     windows_handle_free (os, slot);
     return win_fail (e, ERR_IO, opname, fname, err);
+  }
+
+  // FSCTL_SET_SPARSE needs write access; a read-only handle can't grow the
+  // file anyway. (CreateFile ignores FILE_ATTRIBUTE_SPARSE_FILE, so the
+  // ioctl is the only way to set it.)
+  if (access & GENERIC_WRITE) {
+    win_make_sparse (h);
   }
 
   windows_handle_store (slot, h);
@@ -498,6 +529,10 @@ sys_write_all (void *self, const void *src, const u64 nbytes, error *e)
 
 /// Like ftruncate: sets the size without moving the file pointer
 /// (SetFilePointerEx + SetEndOfFile would leave it at [bytes]).
+///
+/// Writable handles are marked sparse at open (win_make_sparse), so growing
+/// the file here only moves EOF - the new range reads as zeros and takes no
+/// disk space until written, like ftruncate on POSIX.
 static err_t
 sys_truncate (void *self, const u64 bytes, error *e)
 {
@@ -515,6 +550,11 @@ sys_truncate (void *self, const u64 bytes, error *e)
 
 /// Like posix_fallocate: grows the file to at least [bytes], never shrinks
 /// it, and leaves the file pointer alone.
+///
+/// Unlike sys_truncate this is meant to reserve real space, so it keeps the
+/// FileAllocationInfo call. Note that on a sparse file NTFS may still leave
+/// the extended range unallocated - the guarantee here is the size, not the
+/// reservation.
 static err_t
 sys_prealloc (void *self, const u64 bytes, error *e)
 {
