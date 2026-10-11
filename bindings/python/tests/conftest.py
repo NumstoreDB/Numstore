@@ -16,3 +16,4 @@ def db(db_dir):
     database = ns.Database("t.db")
     yield database
     database.close()
+    os.remove("t.db")
