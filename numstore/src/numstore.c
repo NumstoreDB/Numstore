@@ -66,6 +66,8 @@ ns_open_with_error (const char *path,
   error e = error_create();
   nsdb_t* ret = _ns_open(path, &e);
   if(ret == NULL) {
+    fprintf(stderr, "Failed to open database :%.*s", e.cmlen, e.cause_msg);
+    fflush(stderr);
     memcpy(erstr, e.cause_msg, MIN(e.cmlen, elen));
     return NULL;
   }

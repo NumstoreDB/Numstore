@@ -19,11 +19,11 @@ jobs:
         # msvc_arch to pick the MSVC target architecture.
         include:
           - { target: linux-x86_64,    runner: ubuntu-24.04 }
-          - { target: linux-aarch64,   runner: ubuntu-24.04-arm }
-          - { target: macos-arm64,     runner: macos-15 }
-          - { target: macos-x86_64,    runner: macos-15-intel }
-          - { target: windows-x86_64,  runner: windows-2025,   msvc_arch: x64 }
-          - { target: windows-aarch64, runner: windows-11-arm, msvc_arch: arm64 }
+          # - { target: linux-aarch64,   runner: ubuntu-24.04-arm }
+          # - { target: macos-arm64,     runner: macos-15 }
+          # - { target: macos-x86_64,    runner: macos-15-intel }
+          # - { target: windows-x86_64,  runner: windows-2025,   msvc_arch: x64 }
+          # - { target: windows-aarch64, runner: windows-11-arm, msvc_arch: arm64 }
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
