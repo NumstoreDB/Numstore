@@ -2,6 +2,7 @@
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h"
+#include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
@@ -10,20 +11,19 @@
 
 #include <stdarg.h>
 
-nsdb_t *
-ns_open (const char *path)
+static nsdb_t *
+_ns_open (const char *path, error* e)
 {
-  error        e   = error_create ();
   struct i_mem mem = default_mem ();
 
   // The public API owns the OS it hands to the database - ns_close/ns_crash
   // free it again
   struct i_os  os;
-  if (system_os_create (mem, &os, &e)) {
+  if (system_os_create (mem, &os, e)) {
     return NULL;
   }
 
-  struct nsdb *db = nsdb_open (path, mem, os, &e);
+  struct nsdb *db = nsdb_open (path, mem, os, e);
 
   if (db == NULL) {
     system_os_free (os);
@@ -31,16 +31,16 @@ ns_open (const char *path)
   }
 
   // Initialize pager
-  if (numstore_init_pager (db->p, &e)) {
-    nsdb_close (db, &e);
+  if (numstore_init_pager (db->p, e)) {
+    nsdb_close (db, e);
     system_os_free (os);
     return NULL;
   }
 
   // Allocate an error for the database
-  error *persistent_e = mem.table->malloc (mem.self, 1, sizeof *persistent_e, &e);
+  error *persistent_e = mem.table->malloc (mem.self, 1, sizeof *persistent_e, e);
   if (persistent_e == NULL) {
-    nsdb_close (db, &e);
+    nsdb_close (db, e);
     system_os_free (os);
     return NULL;
   }
@@ -53,19 +53,38 @@ ns_open (const char *path)
 }
 
 nsdb_t *
-ns_smfile_open (const char *path)
+ns_open (const char *path) {
+  error e = error_create();
+  return _ns_open(path, &e);
+}
+
+nsdb_t *
+ns_open_with_error (const char *path, 
+    char erstr[], 
+    unsigned elen)
 {
-  error        e   = error_create ();
+  error e = error_create();
+  nsdb_t* ret = _ns_open(path, &e);
+  if(ret == NULL) {
+    memcpy(erstr, e.cause_msg, MIN(e.cmlen, elen));
+    return NULL;
+  }
+  return ret;
+}
+
+static nsdb_t *
+_ns_smfile_open (const char *path, error* e)
+{
   struct i_mem mem = default_mem ();
 
   // The public API owns the OS it hands to the database - ns_close/ns_crash
   // free it again
   struct i_os  os;
-  if (system_os_create (mem, &os, &e)) {
+  if (system_os_create (mem, &os, e)) {
     return NULL;
   }
 
-  struct nsdb *db = nsdb_open (path, mem, os, &e);
+  struct nsdb *db = nsdb_open (path, mem, os, e);
 
   if (db == NULL) {
     system_os_free (os);
@@ -73,16 +92,16 @@ ns_smfile_open (const char *path)
   }
 
   // Initialize pager
-  if (smartfiles_init_pager (db->p, &e)) {
-    nsdb_close (db, &e);
+  if (smartfiles_init_pager (db->p, e)) {
+    nsdb_close (db, e);
     system_os_free (os);
     return NULL;
   }
 
   // Allocate an error for the database
-  error *persistent_e = mem.table->malloc (mem.self, 1, sizeof *persistent_e, &e);
+  error *persistent_e = mem.table->malloc (mem.self, 1, sizeof *persistent_e, e);
   if (persistent_e == NULL) {
-    nsdb_close (db, &e);
+    nsdb_close (db, e);
     system_os_free (os);
     return NULL;
   }
@@ -92,6 +111,26 @@ ns_smfile_open (const char *path)
   nsdb_allow_auto_txn (db);
 
   return db;
+}
+
+nsdb_t *
+ns_smfile_open (const char *path) {
+  error e = error_create();
+  return _ns_smfile_open(path, &e);
+}
+
+nsdb_t *
+ns_smfile_open_with_error (const char *path, 
+    char erstr[], 
+    unsigned elen)
+{
+  error e = error_create();
+  nsdb_t* ret = _ns_smfile_open(path, &e);
+  if(ret == NULL) {
+    memcpy(erstr, e.cause_msg, MIN(e.cmlen, elen));
+    return NULL;
+  }
+  return ret;
 }
 
 int

@@ -68,6 +68,7 @@ typedef u64         cu128[2];
 #  define NS_PAGE_SIZE    4096
 #  define MEMORY_PAGE_LEN 4096
 #  define WAL_BUFFER_CAP  1048576
+# define MAX_ERRSTR_LEN 256
 
 #  define NS_END  INT64_MAX
 #  define SMF_END INT64_MAX

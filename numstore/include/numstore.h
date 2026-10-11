@@ -62,6 +62,8 @@ typedef struct nsdb_plan nsdb_plan_t;
 // needing to flush due to size constraints
 #  define WAL_BUFFER_CAP 1048576
 
+# define MAX_ERRSTR_LEN 256 
+
 #  define NS_END  INT64_MAX
 #  define SMF_END INT64_MAX
 
@@ -116,9 +118,19 @@ typedef uint8_t  wlh;     // WAL header
 
 // Open a Numstore database
 nsdb_t *ns_open (const char *path);
+nsdb_t *ns_open_with_error (
+    const char *path, 
+    char erstr[], 
+    unsigned elen
+);
 
 // Open a Smart file
 nsdb_t *ns_smfile_open (const char *path);
+nsdb_t *ns_smfile_open_with_error (
+    const char *path, 
+    char erstr[], 
+    unsigned elen
+);
 
 // Remove a numstore or smart file at [path]
 int ns_cleanup (const char *path);
