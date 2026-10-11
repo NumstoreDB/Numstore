@@ -1087,7 +1087,7 @@ pyns_plan_execute (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  ASSERT(ret == SUCCESS);
+  ASSERT (ret == SUCCESS);
   Py_RETURN_NONE;
 }
 
