@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 import pynumstore as ns
+import os
 
 
 @pytest.fixture
