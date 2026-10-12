@@ -7,6 +7,7 @@ import pytest
 
 import pynumstore as ns
 
+
 def test_read_of_a_remove_returns_the_removed_data(db):
     db.execute("create foo u32")
     src = np.arange(5, dtype=np.uint32)
@@ -17,4 +18,3 @@ def test_read_of_a_remove_returns_the_removed_data(db):
 
     remaining = db.read("read foo[0:]")
     np.testing.assert_array_equal(remaining, src[2:])
-

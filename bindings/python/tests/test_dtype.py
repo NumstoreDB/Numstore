@@ -5,8 +5,10 @@ import pytest
 
 import pynumstore as ns
 
+
 def _cplx(part):
     return np.dtype([("re", part), ("im", part)])
+
 
 def test_to_dtype():
     # real
@@ -65,13 +67,18 @@ def test_to_dtype():
             }
         }
     """
-    expected = np.dtype([
-        ("i", np.uint8),
-        ("b", [
-            ("a", np.uint32),
-            ("b", np.float32),
-        ]),
-    ])
+    expected = np.dtype(
+        [
+            ("i", np.uint8),
+            (
+                "b",
+                [
+                    ("a", np.uint32),
+                    ("b", np.float32),
+                ],
+            ),
+        ]
+    )
     assert ns.to_dtype(actual) == expected
 
     # Nested array inside struct
@@ -84,13 +91,18 @@ def test_to_dtype():
             }
         }
     """
-    expected = np.dtype([
-        ("i", np.uint8),
-        ("b", [
-            ("a", np.uint32),
-            ("b", np.float32, (10,)),
-        ]),
-    ])
+    expected = np.dtype(
+        [
+            ("i", np.uint8),
+            (
+                "b",
+                [
+                    ("a", np.uint32),
+                    ("b", np.float32, (10,)),
+                ],
+            ),
+        ]
+    )
     assert ns.to_dtype(actual) == expected
 
     # Nested rank 2 array inside struct
@@ -103,13 +115,18 @@ def test_to_dtype():
             }
         }
     """
-    expected = np.dtype([
-        ("i", np.uint8),
-        ("b", [
-            ("a", np.uint32),
-            ("b", np.float32, (10, 20)),
-        ]),
-    ])
+    expected = np.dtype(
+        [
+            ("i", np.uint8),
+            (
+                "b",
+                [
+                    ("a", np.uint32),
+                    ("b", np.float32, (10, 20)),
+                ],
+            ),
+        ]
+    )
     assert ns.to_dtype(actual) == expected
 
     # Union
@@ -122,18 +139,20 @@ def test_to_dtype():
             }
         }
     """
-    union = np.dtype({
-        "names":   ["i", "b"],
-        "formats": [
-            np.uint8,
-            [
-                ("a", np.uint32),
-                ("b", np.float32, (10, 20)),
+    union = np.dtype(
+        {
+            "names": ["i", "b"],
+            "formats": [
+                np.uint8,
+                [
+                    ("a", np.uint32),
+                    ("b", np.float32, (10, 20)),
+                ],
             ],
-        ],
-        "offsets":  [0, 0],
-        "itemsize": 804,  # 4 + 10*20*4
-    })
+            "offsets": [0, 0],
+            "itemsize": 804,  # 4 + 10*20*4
+        }
+    )
     assert ns.to_dtype(actual) == union
     assert union.itemsize == 804
 
@@ -161,27 +180,39 @@ def test_to_dtype():
             w [4]cf64
         }
     """
-    expected = np.dtype([
-        ("z", [
-            ("re", np.uint8),
-            ("im", np.uint8),
-        ]),
-        ("w", np.complex64, (4,)),
-    ])
+    expected = np.dtype(
+        [
+            (
+                "z",
+                [
+                    ("re", np.uint8),
+                    ("im", np.uint8),
+                ],
+            ),
+            ("w", np.complex64, (4,)),
+        ]
+    )
     assert ns.to_dtype(actual) == expected
 
     # Invalid cases
     bad_ones = [
-        "cu8", "ci8", "cf16", "u7", "f8", "x32", "c", "",
-        "struct { }",                 # empty record
-        "struct { i u8 b u32 }",      # missing comma
-        "struct { i u8, i u32 }",     # duplicate field
-        "struct { i u8",              # unclosed
-        "[0]f32",                     # zero-length dim
-        "[x]f32",                     # non-numeric dim
-        "[10]",                       # no element type
+        "cu8",
+        "ci8",
+        "cf16",
+        "u7",
+        "f8",
+        "x32",
+        "c",
+        "",
+        "struct { }",  # empty record
+        "struct { i u8 b u32 }",  # missing comma
+        "struct { i u8, i u32 }",  # duplicate field
+        "struct { i u8",  # unclosed
+        "[0]f32",  # zero-length dim
+        "[x]f32",  # non-numeric dim
+        "[10]",  # no element type
         # "f32 junk",                 # trailing tokens - TODO this should probably fail
-        "struct { 1a u8 }",           # bad field name
+        "struct { 1a u8 }",  # bad field name
     ]
     for bad in bad_ones:
         with pytest.raises(ValueError):

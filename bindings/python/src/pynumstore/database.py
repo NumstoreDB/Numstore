@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 
 class Database(Queries):
-
     def __init__(self, path: str | os.PathLike[str]) -> None:
         self._path = os.fspath(path)
         self._handle: nsdb | None = _ns._pyns_open(self._path)

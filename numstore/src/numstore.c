@@ -1,3 +1,17 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
 #include "numstore.h"
 
 #include "core/ns_arena_alloc.h"
@@ -12,7 +26,7 @@
 #include <stdarg.h>
 
 static nsdb_t *
-_ns_open (const char *path, error* e)
+_ns_open (const char *path, error *e)
 {
   struct i_mem mem = default_mem ();
 
@@ -53,27 +67,26 @@ _ns_open (const char *path, error* e)
 }
 
 nsdb_t *
-ns_open (const char *path) {
-  error e = error_create();
-  return _ns_open(path, &e);
+ns_open (const char *path)
+{
+  error e = error_create ();
+  return _ns_open (path, &e);
 }
 
 nsdb_t *
-ns_open_with_error (const char *path, 
-    char erstr[], 
-    unsigned elen)
+ns_open_with_error (const char *path, char erstr[], unsigned elen)
 {
-  error e = error_create();
-  nsdb_t* ret = _ns_open(path, &e);
-  if(ret == NULL) {
-    memcpy(erstr, e.cause_msg, MIN(e.cmlen, elen));
+  error   e   = error_create ();
+  nsdb_t *ret = _ns_open (path, &e);
+  if (ret == NULL) {
+    memcpy (erstr, e.cause_msg, MIN (e.cmlen, elen));
     return NULL;
   }
   return ret;
 }
 
 static nsdb_t *
-_ns_smfile_open (const char *path, error* e)
+_ns_smfile_open (const char *path, error *e)
 {
   struct i_mem mem = default_mem ();
 
@@ -114,20 +127,19 @@ _ns_smfile_open (const char *path, error* e)
 }
 
 nsdb_t *
-ns_smfile_open (const char *path) {
-  error e = error_create();
-  return _ns_smfile_open(path, &e);
+ns_smfile_open (const char *path)
+{
+  error e = error_create ();
+  return _ns_smfile_open (path, &e);
 }
 
 nsdb_t *
-ns_smfile_open_with_error (const char *path, 
-    char erstr[], 
-    unsigned elen)
+ns_smfile_open_with_error (const char *path, char erstr[], unsigned elen)
 {
-  error e = error_create();
-  nsdb_t* ret = _ns_smfile_open(path, &e);
-  if(ret == NULL) {
-    memcpy(erstr, e.cause_msg, MIN(e.cmlen, elen));
+  error   e   = error_create ();
+  nsdb_t *ret = _ns_smfile_open (path, &e);
+  if (ret == NULL) {
+    memcpy (erstr, e.cause_msg, MIN (e.cmlen, elen));
     return NULL;
   }
   return ret;

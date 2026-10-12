@@ -7,6 +7,7 @@ import pytest
 
 import pynumstore as ns
 
+
 def test_transaction_commit(db):
     db.execute("create foo u32")
     src = np.arange(3, dtype=np.uint32)
@@ -96,6 +97,7 @@ def test_with_block_over_a_hand_rolled_back_transaction_is_fine(db):
         txn.rollback()
 
     assert db.get("get foo").length == 0
+
 
 def test_var_in_transaction(db):
     db.execute("create foo u32")

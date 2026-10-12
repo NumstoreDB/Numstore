@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: Numstore
+message: "If you use Numstore in your work, please cite it as below."
+abstract: "An embedded ACID database for arrays, with ARIES crash recovery and a rope-variant B+Tree index."
+type: software
+authors:
+  - family-names: Lincke
+    given-names: Theo
+repository-code: "https://github.com/NumstoreDB/Numstore"
+license: Apache-2.0
+version: 1.4.1
+date-released: "2026-08-27"
+keywords:
+  - database
+  - embedded-database
+  - acid
+  - arrays
+  - time-series
+  - numpy

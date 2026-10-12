@@ -2,22 +2,19 @@
 # A thin wrapper around the python build tools
 #
 # Run from bindings/python, or from anywhere with make -C bindings/python.
-# Override any variable on the command line, e.g.
-#
-#   make install PYTHON=python3.12
-#   make wheel BUILD_TYPE=Debug
 
 # Newest wheel in dist -- several can pile up across python versions
 WHEEL = $$(ls -t dist/pynumstore-*.whl | head -1)
 
-.PHONY: all help deps wheel sdist vendor install dev test samples check \
-        format clean upload-test upload
+.PHONY: all help deps wheel ci-wheels sdist vendor install dev test samples check \
+        format clean
 
 all: wheel
 
 help:
 	@echo "make deps         install build/test tooling into the current python"
 	@echo "make wheel        build a wheel into dist/"
+	@echo "make ci-wheels    build release wheels for this host via cibuildwheel"
 	@echo "make install      build a wheel and pip install it"
 	@echo "make dev          editable install with test extras"
 	@echo "make test         run pytest"
@@ -26,13 +23,11 @@ help:
 	@echo "make sdist        vendor numstore and build a source distribution"
 	@echo "make format       ruff format"
 	@echo "make clean        remove build artifacts"
-	@echo "make upload-test  upload wheelhouse/*.whl to TestPyPI"
-	@echo "make upload       upload wheelhouse/*.whl to PyPI"
 
 
 ############ Build
 deps:
-	python3 -m pip install --upgrade build pytest ruff twine
+	python3 -m pip install --upgrade build pytest ruff cibuildwheel==4.3.0
 
 wheel:
 	python3 -m build -C cmake.build-type=Release --wheel . --outdir dist
@@ -42,6 +37,23 @@ vendor:
 
 sdist: vendor
 	python3 -m build -C cmake.build-type=Release --sdist . --outdir dist
+
+
+############ Wheels
+# What wheels.yml builds. cibuildwheel runs from the repo root rather than
+# here: it copies the working directory into the Linux containers as /project,
+# so the package has to land at /project/bindings/python for the
+# add_subdirectory(../../numstore) in its CMakeLists to resolve. Running it
+# from this directory would copy only this subtree and the library would be
+# missing. Interpreters, architectures and the test command all come from
+# [tool.cibuildwheel] in pyproject.toml.
+#
+# Only builds for the host OS and arch -- CIBW_ARCHS defaults to "auto", so
+# the matrix in wheels.yml is what produces the full set.
+ci-wheels:
+	cd ../.. && python3 -m cibuildwheel \
+		--package-dir bindings/python \
+		--output-dir bindings/python/wheelhouse
 
 
 ############ Install
@@ -75,9 +87,3 @@ format:
 
 clean:
 	scripts/clean.sh
-
-upload-test:
-	scripts/upload_python.sh wheelhouse/*.whl
-
-upload:
-	scripts/upload_python.sh --prod wheelhouse/*.whl

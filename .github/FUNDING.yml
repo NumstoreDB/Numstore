@@ -1,0 +1,17 @@
+# Renders the "Sponsor" button on the repo landing page.
+# Must live in .github/ on the default branch. Entries for accounts that
+# aren't enrolled with the given platform are silently skipped.
+
+github: lincketheo
+
+# Add an org alongside the user once NumstoreDB is enrolled:
+#   github: [lincketheo, NumstoreDB]
+#
+# Third-party platforms need no GitHub approval, just an account:
+# ko_fi: USERNAME
+# buy_me_a_coffee: USERNAME
+# polar: USERNAME
+# open_collective: USERNAME
+# liberapay: USERNAME
+# thanks_dev: u/gh/lincketheo
+# custom: ["https://example.com/donate"]

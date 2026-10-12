@@ -7,6 +7,7 @@ import pytest
 
 import pynumstore as ns
 
+
 def test_read_allocates_an_array(db):
     db.execute("create foo u32")
     src = np.arange(5, dtype=np.uint32)
@@ -18,6 +19,7 @@ def test_read_allocates_an_array(db):
     assert result.dtype == np.uint32
     np.testing.assert_array_equal(result, src)
 
+
 def test_read_into_returns_the_count_read(db):
     db.execute("create foo u32")
     src = np.arange(3, dtype=np.uint32)
@@ -25,6 +27,7 @@ def test_read_into_returns_the_count_read(db):
 
     dest = np.zeros(3, dtype=np.uint32)
     assert db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest) == 3
+
 
 def test_read_into_is_bounded_by_the_buffer_without_blimit(db):
     db.execute("create foo u32")

@@ -32,29 +32,27 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v4
 
-      # package-dir points at the bindings, but the action runs from the repo
-      # root, and that is what makes the Linux legs work: cibuildwheel copies
-      # the working directory into the container as /project, so the package
-      # lands at /project/bindings/python and the add_subdirectory(../../numstore)
-      # in its CMakeLists resolves to /project/numstore. Running cibuildwheel
-      # from inside bindings/python would copy only that subtree and the
-      # library would be missing.
-      #
-      # Interpreters, architectures and the test command come from
-      # [tool.cibuildwheel] in bindings/python/pyproject.toml.
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v4.3.0
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          package-dir: bindings/python
-          output-dir: wheelhouse
+          python-version: '3.12'
+
+      - name: Install cibuildwheel
+        run: pip install --upgrade 'cibuildwheel==4.3.0'
+
+      - name: Build wheels
+        run: make -C bindings/python ci-wheels
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.target }}
-          path: ./wheelhouse/*.whl
+          path: ./bindings/python/wheelhouse/*.whl
           if-no-files-found: error

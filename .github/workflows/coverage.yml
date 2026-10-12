@@ -1,0 +1,69 @@
+name: Coverage
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: coverage (linux-x86_64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install gcovr
+        run: pip install --upgrade 'gcovr==7.2'
+
+      # gcovr parses gcc's .gcno/.gcda, so the compiler that writes them and
+      # the gcov that reads them have to be the same toolchain version.
+      - name: Report toolchain
+        run: |
+          echo "runner:  $RUNNER_OS/$RUNNER_ARCH"
+          echo "machine: $(uname -m)"
+          cmake --version | head -1
+          make --version | head -1
+          gcc --version | head -1
+          gcov --version | head -1
+          gcovr --version | head -1
+
+      # Builds instrumented, runs both test binaries, writes the HTML and
+      # Cobertura reports, then enforces the thresholds. See the root Makefile.
+      - name: Coverage
+        run: make ci-coverage
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo '## Coverage'
+            echo
+            echo '```'
+            cat build/coverage/report/coverage.txt 2>/dev/null || echo 'no report generated'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            build/coverage/html/
+            build/coverage/report/
+          retention-days: 14
+          if-no-files-found: warn

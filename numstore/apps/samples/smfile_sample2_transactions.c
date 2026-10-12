@@ -36,7 +36,7 @@ main (void)
   nsdb_t *smf = ns_smfile_open ("sample2_txn");
 
   // Start from scratch (remove all data)
-  ns_smfile_remove (smf, NULL, NULL, 1, 0, 1, SMF_END);
+  ns_smfile_remove (smf, NULL, NULL, 1, 0, 1, NS_END);
 
   // Do 1 full committed transaction
   {

@@ -37,7 +37,7 @@ main (void)
 
   // Remove all the data (this might error - that's ok - just says there's no
   // dataset with that name)
-  ns_smfile_remove (smf, NULL, NULL, 1, 0, 1, SMF_END);
+  ns_smfile_remove (smf, NULL, NULL, 1, 0, 1, NS_END);
 
   // Insert some data
   float data[16];

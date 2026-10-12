@@ -7,9 +7,7 @@ Numstore
 Features:
 ---------
 - **Single File.** The whole database lives in a single file. There is no
-  server. `nsserver` is a work in progress network front end to numstore but
-  numstore will always expose a simple embedded front end interface. See
-  `numstore/include/*` 
+  server - see `numstore/include/*` 
 - **ACID.** Every insert, write and remove either happens completely or not at
   all, even if the process crashes partway through. It uses ARIES for crash
   recovery and a unique rope variant of the B+Tree to index into arrays.
@@ -48,7 +46,7 @@ python bindings/python/samples/sample1_basic.py
 `pip install` compiles the C library and the bindings in one step. The sample
 creates a database file in your current directory.
 
-Prefer C? Jump to the [C Quick Start](#c-quick-start).
+For C - Jump to the [C Quick Start](#c-quick-start).
 
 Why Numstore?
 -------------

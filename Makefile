@@ -4,7 +4,9 @@
 # Don't use this for production builds - just
 # eliminates keystrokes while developing
 
-.PHONY: all release release-package clean format
+.PHONY: all debug release release-package coverage coverage-xml coverage-check \
+        ci ci-debug ci-simtest ci-release ci-coverage ci-format ci-copyright \
+        ci-wheels clean copyright format
 
 all: debug
 
@@ -58,12 +60,98 @@ build/coverage/html/index.html: build/coverage/.stamp
 		--exclude build \
 		--print-summary
 
+coverage-xml: build/coverage/report/coverage.xml
+
+build/coverage/report/coverage.xml: build/coverage/.stamp
+	mkdir -p build/coverage/report
+	gcovr -r . build/coverage \
+		--cobertura build/coverage/report/coverage.xml \
+		--cobertura-pretty \
+		--txt build/coverage/report/coverage.txt \
+		--exclude numstore/apps \
+		--exclude build \
+		--print-summary
+
+# Measured 88.0% line / 54.9% branch locally, so these sit below that with
+# room for the gcc/clang difference. Raise them as coverage climbs.
+coverage-check: build/coverage/.stamp
+	gcovr -r . build/coverage \
+		--exclude numstore/apps \
+		--exclude build \
+		--fail-under-line 80 \
+		--fail-under-branch 45
+
+
+#############################################
+### CI
+#
+# One target per workflow step. .github/workflows calls these so the build and
+# test commands live here instead of being duplicated in yaml.
+#
+# Windows builds unit_tests.exe / ns_simtest.exe, and MSVC drops a matching
+# .pdb beside each, so the suffix is tested for rather than globbed -- a
+# unit_tests* glob would pass the .pdb along as an argument.
+
+############ Debug build and unit tests
+ci-debug: debug
+	if [ -f build/debug/bin/unit_tests.exe ]; \
+		then ./build/debug/bin/unit_tests.exe 123142; \
+		else ./build/debug/bin/unit_tests 123142; fi
+
+
+############ Simulation test
+ci-simtest: debug
+	if [ -f build/debug/bin/ns_simtest.exe ]; \
+		then exe=./build/debug/bin/ns_simtest.exe; \
+		else exe=./build/debug/bin/ns_simtest; fi; \
+	$$exe \
+		--dbname simtest.db \
+		--duration 5 \
+		--seed 123142 \
+		--commit-hash $$(git rev-parse HEAD) \
+		--seqid 123142
+
+
+############ Release package
+ci-release: release-package
+	find build/release/package -type f | sort
+
+
+############ Code coverage
+ci-coverage: coverage coverage-xml coverage-check
+
+
+############ Formatting
+# Formats in place, then fails if that changed anything -- i.e. if the commit
+# was made without running `make format`. Expects a clean tree.
+ci-format: format
+	git --no-pager diff --exit-code
+
+
+############ Copyright headers
+# Same idea: adds any missing header, then fails if that changed anything.
+ci-copyright: copyright
+	git --no-pager diff --exit-code
+
+
+############ Wheels
+ci-wheels:
+	$(MAKE) -C bindings/python ci-wheels
+
+
+############ Everything
+ci: ci-debug ci-simtest ci-coverage ci-release
+
 
 #############################################
 ### Housekeeping
 
+copyright:
+	scripts/add_copywrite.py
+
 format:
 	scripts/format.sh
+	$(MAKE) -C bindings/python format
 
 # bindings/javascript has no formatter, so it only shows up here.
 clean:

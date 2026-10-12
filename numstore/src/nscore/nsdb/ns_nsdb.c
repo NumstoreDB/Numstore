@@ -849,7 +849,8 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
         break;
       }
 
-      err = numstore_read_malloc (
+      // Unused return
+      numstore_read_malloc (
           st->parent->p,
           tx,
           nsdb_var_var (_var),
@@ -868,7 +869,8 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
         break;
       }
 
-      err = numstore_remove_malloc (
+      // Unused return
+      numstore_remove_malloc (
           st->parent->p,
           tx,
           nsdb_var_var (_var),
@@ -890,6 +892,7 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
     nsdb_var_free (_var);
   }
 
+  err = error_trace (e); // Save err so that nsdb_auto_finish knows what to use
   if (nsdb_auto_finish (st->parent, user_tx, err, e) < 0) {
     if (ret != NULL) {
       st->parent->mem.table->free (st->parent->mem.self, ret);

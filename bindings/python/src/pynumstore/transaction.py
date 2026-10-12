@@ -43,7 +43,7 @@ class Transaction(Queries):
     def __enter__(self) -> Transaction:
         return self
 
-    def __exit__(self,exc_type,exc,tb) -> None:
+    def __exit__(self, exc_type, exc, tb) -> None:
         if self._handle is None:
             return
 

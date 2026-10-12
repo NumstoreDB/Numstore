@@ -21,6 +21,7 @@
 #include "core/ns_serial.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stream.h"
+#include "numstore.h"
 
 #include <stdbool.h>
 
@@ -28,68 +29,6 @@ struct arena_alloc;
 struct deserializer;
 struct serializer;
 struct stream;
-
-struct type
-{
-  enum type_t
-  {
-    T_PRIM   = 0,
-    T_STRUCT = 1,
-    T_UNION  = 2,
-    T_SARRAY = 3,
-  } type;
-
-  union {
-    enum prim_t
-    {
-      U8    = 0,
-      U16   = 1,
-      U32   = 2,
-      U64   = 3,
-      I8    = 4,
-      I16   = 5,
-      I32   = 6,
-      I64   = 7,
-      F16   = 8,
-      F32   = 9,
-      F64   = 10,
-      F128  = 11,
-      CF32  = 12,
-      CF64  = 13,
-      CF128 = 14,
-      CF256 = 15,
-      CI16  = 16,
-      CI32  = 17,
-      CI64  = 18,
-      CI128 = 19,
-      CU16  = 20,
-      CU32  = 21,
-      CU64  = 22,
-      CU128 = 23,
-    } p;
-
-    struct struct_t
-    {
-      u16            len;
-      struct string *keys;
-      struct type  **types;
-    } st;
-
-    struct union_t
-    {
-      u16            len;
-      struct string *keys;
-      struct type  **types;
-    } un;
-
-    struct sarray_t
-    {
-      u16          rank;
-      u32         *dims;
-      struct type *t;
-    } sa;
-  };
-};
 
 // Core api
 err_t type_validate (const struct type *t, error *e);

@@ -17,6 +17,7 @@
 
 #include <inttypes.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -36,101 +37,22 @@ typedef struct txn       txn_t;
 typedef struct nsdb_var  nsdb_var_t;
 typedef struct nsdb_plan nsdb_plan_t;
 
-/**
- * Type aliases. Most "things" in numstore
- * are configurable.
- *
- * For example:
- *  - A transaction id is a 64 bit int
- *  - A page number is a 64 bit int
- *  - The number of bytes you need to represent the location
- *    within a variable type is 4 bytes
- *  - The number of bytes you need to represent the location
- *    within a variable data is 8 bytes
- *  - ...
- */
-#ifndef NS_TYPE_ALIASES
-
-// Size of each page in the database
-#  define NS_PAGE_SIZE 4096
-
-// Number of page slots open in the
-// pager buffer pool
-#  define MEMORY_PAGE_LEN 4096
-
-// The maximum bytes the WAL can hold before
-// needing to flush due to size constraints
-#  define WAL_BUFFER_CAP 1048576
-
-# define MAX_ERRSTR_LEN 256 
-
-#  define NS_END  INT64_MAX
-#  define SMF_END INT64_MAX
-
-typedef uint32_t t_size;  // Represents the size of a single type in bytes
-typedef int32_t  st_size; // Signed t_size
-typedef uint32_t p_size;  // To index inside a page
-typedef int32_t  sp_size; // Signed p_size
-typedef uint64_t b_size;  // Bytes size to index into a contiguous rope bytes
-typedef int64_t  sb_size; // Signed b_size
-typedef uint64_t pgno;    // Page number
-typedef int64_t  spgno;   // Signed page number
-typedef uint64_t txid;    // Transaction id
-typedef int64_t  stxid;   // Signed transaction id
-typedef int64_t  slsn;    // Wall index (often called LSN)
-typedef uint64_t lsn;     // Wall index (often called LSN)
-typedef uint8_t  pgh;     // Page header
-typedef uint8_t  wlh;     // WAL header
-
-// A page that doesn't exist
-#  define PGNO_NULL U64_MAX
-
-// A log sequence number that doesn't exist
-#  define LSN_NULL U64_MAX
-
-// The last wal log header
-#  define WLH_NULL U8_MAX
-
-// Printf formats
-#  define PRt_size  PRIu32
-#  define PRst_size PRId32
-#  define PRp_size  PRIu32
-#  define PRsp_size PRId32
-#  define PRb_size  PRIu64
-#  define PRsb_size PRId64
-#  define PRpgno    PRIu64
-#  define PRspgno   PRId64
-#  define PRtxid    PRIu64
-#  define PRstxid   PRId64
-#  define PRlsn     PRIu64
-#  define PRslsn    PRId64
-#  define PRpgh     PRIu8
-#  define PRwlh     PRIu8
-
-// The private ns_stdtypes.h carries the same block. Claiming the guard here
-// stops it defining everything a second time when both headers are in one
-// translation unit.
-#  define NS_TYPE_ALIASES
-
-#endif
+// Specific sizes of "things" in a numstore database
+typedef uint32_t         t_size;  // Represents the size of a single type in bytes
+typedef uint64_t         b_size;  // Bytes size to index into a contiguous rope bytes
+typedef int64_t          sb_size; // Signed b_size
+#define MAX_ERRSTR_LEN 256
+#define NS_END         INT64_MAX
 
 //////////////////////////////////// Lifecycle
 
 // Open a Numstore database
 nsdb_t *ns_open (const char *path);
-nsdb_t *ns_open_with_error (
-    const char *path, 
-    char erstr[], 
-    unsigned elen
-);
+nsdb_t *ns_open_with_error (const char *path, char erstr[], unsigned elen);
 
 // Open a Smart file
 nsdb_t *ns_smfile_open (const char *path);
-nsdb_t *ns_smfile_open_with_error (
-    const char *path, 
-    char erstr[], 
-    unsigned elen
-);
+nsdb_t *ns_smfile_open_with_error (const char *path, char erstr[], unsigned elen);
 
 // Remove a numstore or smart file at [path]
 int ns_cleanup (const char *path);
@@ -194,6 +116,165 @@ int ns_rollback (nsdb_t *ns, txn_t *txn);
  */
 nsdb_plan_t *ns_plan_fcreate (nsdb_t *db, const char *fmt, ...);
 void ns_plan_free (nsdb_plan_t *plan);
+
+enum
+{
+  START_PRESENT = (1 << 0),
+  STEP_PRESENT  = (1 << 1),
+  STOP_PRESENT  = (1 << 2),
+  COLON_PRESENT = (1 << 3),
+};
+
+struct user_stride
+{
+  int64_t  start;
+  int64_t  step;
+  int64_t  stop;
+  uint32_t present; // The above flags
+};
+
+struct string
+{
+  uint32_t    len;
+  const char *data;
+};
+
+struct type
+{
+  enum type_t
+  {
+    T_PRIM   = 0,
+    T_STRUCT = 1,
+    T_UNION  = 2,
+    T_SARRAY = 3,
+  } type;
+
+  union {
+    enum prim_t
+    {
+      U8    = 0,
+      U16   = 1,
+      U32   = 2,
+      U64   = 3,
+      I8    = 4,
+      I16   = 5,
+      I32   = 6,
+      I64   = 7,
+      F16   = 8,
+      F32   = 9,
+      F64   = 10,
+      F128  = 11,
+      CF32  = 12,
+      CF64  = 13,
+      CF128 = 14,
+      CF256 = 15,
+      CI16  = 16,
+      CI32  = 17,
+      CI64  = 18,
+      CI128 = 19,
+      CU16  = 20,
+      CU32  = 21,
+      CU64  = 22,
+      CU128 = 23,
+    } p;
+
+    struct struct_t
+    {
+      uint16_t       len;
+      struct string *keys;
+      struct type  **types;
+    } st;
+
+    struct union_t
+    {
+      uint16_t       len;
+      struct string *keys;
+      struct type  **types;
+    } un;
+
+    struct sarray_t
+    {
+      uint16_t     rank;
+      uint32_t    *dims;
+      struct type *t;
+    } sa;
+  };
+};
+
+struct query
+{
+  enum query_type
+  {
+    // Array Operations
+    QT_READ,
+    QT_WRITE,
+    QT_INSERT,
+    QT_REMOVE,
+
+    // Variable Operations
+    QT_CREATE,
+    QT_DELETE,
+    QT_GET,
+
+    // Meta Operations
+    QT_EXIT,
+    QT_HELP,
+  } type;
+
+  union {
+    // Array Operations
+    struct read_query
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } read;
+
+    struct write_query
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } write;
+
+    struct insert_query
+    {
+      struct string name;
+      sb_size       ofst;
+      b_size        len;
+    } insert;
+
+    struct remove_query
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } remove;
+
+    // Variable Operations
+    struct create_query
+    {
+      struct string name;
+      struct type   type;
+    } create;
+
+    struct delete_query
+    {
+      struct string name;
+      bool          if_exists;
+    } delete;
+
+    struct get_query
+    {
+      struct string name;
+      bool          if_exists;
+    } get;
+
+    // Meta Operations
+    struct help_query
+    {
+      bool            has_command;
+      enum query_type command;
+    } help;
+  };
+};
 
 /**
  * Execute a single query.

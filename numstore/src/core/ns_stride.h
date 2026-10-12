@@ -21,6 +21,7 @@
 #include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+#include "numstore.h"
 
 #include <stdbool.h>
 
@@ -32,22 +33,6 @@ struct stride
 };
 
 #define stride_ustr_args(s) (s).start, (s).start + ((s).stride * (s).nelems), (s).stride
-
-enum
-{
-  START_PRESENT = (1 << 0),
-  STEP_PRESENT  = (1 << 1),
-  STOP_PRESENT  = (1 << 2),
-  COLON_PRESENT = (1 << 3),
-};
-
-struct user_stride
-{
-  i64 start;
-  i64 step;
-  i64 stop;
-  u32 present;
-};
 
 DEFINE_DBG_ASSERT (struct user_stride, user_stride, u, {
   ASSERT (u);

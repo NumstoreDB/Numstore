@@ -68,10 +68,10 @@ typedef u64         cu128[2];
 #  define NS_PAGE_SIZE    4096
 #  define MEMORY_PAGE_LEN 4096
 #  define WAL_BUFFER_CAP  1048576
-# define MAX_ERRSTR_LEN 256
+#  define MAX_ERRSTR_LEN  256
 
-#  define NS_END  INT64_MAX
-#  define SMF_END INT64_MAX
+#  define NS_END INT64_MAX
+#  define NS_END INT64_MAX
 
 typedef uint32_t t_size;  // Represents the size of a single type in bytes
 typedef int32_t  st_size; // Signed t_size

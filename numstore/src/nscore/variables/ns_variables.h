@@ -18,7 +18,6 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
-#include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
 
 #include <stdbool.h>

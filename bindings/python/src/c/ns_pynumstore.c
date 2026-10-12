@@ -863,7 +863,7 @@ pyns_open (PyObject *Py_UNUSED (m), PyObject *arg)
   }
 
   // Open the database
-  char error[MAX_ERRSTR_LEN];
+  char    error[MAX_ERRSTR_LEN];
   nsdb_t *ns = ns_open_with_error (path, error, MAX_ERRSTR_LEN);
   if (!ns) {
     PyErr_SetString (PyExc_RuntimeError, error);

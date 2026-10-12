@@ -39,12 +39,12 @@ main (void)
   // Remove all data from the file
   ns_smfile_remove (
       smf,
-      NULL,   // The transaction pointer - see transaction example
-      NULL,   // You can optionally supply a destination for the data - we'll just
-      1,      // The size of each element to remove
-      0,      // The starting offset to remove
-      1,      // The stride of the remove step
-      SMF_END // This let's you remove all the data
+      NULL,  // The transaction pointer - see transaction example
+      NULL,  // You can optionally supply a destination for the data - we'll just
+      1,     // The size of each element to remove
+      0,     // The starting offset to remove
+      1,     // The stride of the remove step
+      NS_END // This let's you remove all the data
   );
 
   // Insert out initial sentence
@@ -69,7 +69,7 @@ main (void)
 
   // Read the entire array
   char    buf[64];
-  sb_size n = ns_smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
+  sb_size n = ns_smfile_read (smf, NULL, buf, 1, 0, 1, NS_END);
   buf[n]    = '\0';
   printf ("after insert:  \"%s\"\n", buf);
 
@@ -77,7 +77,7 @@ main (void)
   ns_smfile_write (smf, NULL, "cat", 1, 16, 1, 3);
 
   // Read the entire array
-  n      = ns_smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
+  n      = ns_smfile_read (smf, NULL, buf, 1, 0, 1, NS_END);
   buf[n] = '\0';
   printf ("after write:   \"%s\"\n", buf);
 
@@ -88,7 +88,7 @@ main (void)
   printf ("removed:       \"%s\"\n", evicted);
 
   // Read the result
-  n      = ns_smfile_read (smf, NULL, buf, 1, 0, 1, SMF_END);
+  n      = ns_smfile_read (smf, NULL, buf, 1, 0, 1, NS_END);
   buf[n] = '\0';
   printf ("after remove:  \"%s\"\n", buf);
 

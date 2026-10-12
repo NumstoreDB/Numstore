@@ -27,13 +27,10 @@ jobs:
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 10
     defaults:
       run:
         shell: bash
-
-    env:
-      SIMTEST_DURATION: 5
 
     steps:
       - uses: actions/checkout@v4
@@ -57,76 +54,15 @@ jobs:
           echo "runner:  ${{ matrix.runner }} ($RUNNER_OS/$RUNNER_ARCH)"
           echo "machine: $(uname -m)"
           cmake --version | head -1
+          make --version | head -1
 
-      # The tests below run instrumented. numstore has no cmake option for
-      # sanitizers, so the flags go in here.
-      - name: Build debug (ASan)
-        if: runner.os != 'Windows'
-        run: |
-          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug 
-          cmake --build build/debug --parallel 4
+      # Each step is one target in the root Makefile, so the cmake invocations
+      # and test arguments live in one place rather than being duplicated here.
+      - name: Debug build and unit tests
+        run: make ci-debug
 
-      # MSVC rejects /fsanitize=address alongside the /RTC1 in cmake's default
-      # debug flags, so CMAKE_C_FLAGS_DEBUG is replaced rather than appended to.
-      - name: Build debug (ASan, Windows x64)
-        if: runner.os == 'Windows' && matrix.msvc_arch == 'x64'
-        run: |
-          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug 
-          cmake --build build/debug --parallel 4
+      - name: Simulation test
+        run: make ci-simtest
 
-      # MSVC's ASan is x86/x64 only -- there is no ARM64 implementation to
-      # turn on, so this lane builds plain Debug.
-      - name: Build debug (no ASan, Windows arm64)
-        if: runner.os == 'Windows' && matrix.msvc_arch == 'arm64'
-        run: |
-          cmake -S numstore -B build/debug -DCMAKE_BUILD_TYPE=Debug
-          cmake --build build/debug --parallel 4
-
-      - name: Run unit tests
-        if: runner.os != 'Windows'
-        run: |
-          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          echo "::notice title=unit_tests seed (${{ matrix.target }})::$seed"
-          build/debug/bin/unit_tests "$seed"
-
-      - name: Run unit tests (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          echo "::notice title=unit_tests seed (${{ matrix.target }})::$seed"
-          build/debug/bin/unit_tests.exe "$seed"
-
-      - name: Run simulation test
-        if: runner.os != 'Windows'
-        run: |
-          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          echo "::notice title=ns_simtest seed (${{ matrix.target }})::seed=$seed seqid=$seqid"
-          build/debug/bin/ns_simtest \
-            --dbname "simtest_${{ matrix.target }}.db" \
-            --duration "$SIMTEST_DURATION" \
-            --seed "$seed" \
-            --commit-hash "${{ github.sha }}" \
-            --seqid "$seqid"
-
-      - name: Run simulation test (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          seed=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          seqid=$(( (RANDOM << 15 | RANDOM) % 500000000 + 10 ))
-          echo "::notice title=ns_simtest seed (${{ matrix.target }})::seed=$seed seqid=$seqid"
-          build/debug/bin/ns_simtest.exe \
-            --dbname "simtest_${{ matrix.target }}.db" \
-            --duration "$SIMTEST_DURATION" \
-            --seed "$seed" \
-            --commit-hash "${{ github.sha }}" \
-            --seqid "$seqid"
-
-      - name: Build release package
-        run: |
-          cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
-          cmake --build build/release --parallel 4
-          rm -rf build/release/package
-          cmake --install build/release --prefix build/release/package
-          echo "installed release package:"
-          find build/release/package -type f | sort
+      - name: Release package
+        run: make ci-release

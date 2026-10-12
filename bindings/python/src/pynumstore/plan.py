@@ -98,7 +98,7 @@ class Plan:
     def __enter__(self) -> Plan:
         return self
 
-    def __exit__(self,exc_type,exc,tb) -> None:
+    def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
 
     def __repr__(self) -> str:
