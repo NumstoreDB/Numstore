@@ -57,6 +57,20 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # ci-coverage writes the Cobertura XML before it checks the thresholds,
+      # so upload even when the check fails -- a regression is exactly when
+      # the numbers are worth seeing. fail_ci_if_error stays false so a
+      # codecov.io outage can't redden a build the local gate already passed;
+      # flip it to true if you'd rather see upload failures loudly.
+      - name: Upload to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage/report/coverage.xml
+          name: linux-x86_64
+          fail_ci_if_error: false
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
