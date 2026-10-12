@@ -1,8 +1,8 @@
 pynumstore
 ==========
 
-Python bindings for [Numstore](../../README.md), an embedded ACID database for
-arrays. 
+Python bindings for [Numstore](https://github.com/NumstoreDB/Numstore), an
+embedded ACID database for arrays. 
 
 ```python
 import numpy as np
@@ -29,15 +29,15 @@ python3 -m venv .venv && . .venv/bin/activate
 pip install ./bindings/python
 ```
 
-This compiles the C library and the extension in one step. There are no
-runtime dependencies besides numpy.
+This compiles the C library and the extension in one step. There are no runtime
+dependencies besides numpy.
 
 How it works
 ------------
 
 A database is a set of named **variables**. Each variable has a **type** (the
-layout of one element) and holds a growable array of elements of that type.
-You talk to it with short queries:
+layout of one element) and holds a growable array of elements of that type. You
+talk to it with short queries:
 
 | Query                  | Python call              | What it does                       |
 | ---------------------- | ------------------------ | ---------------------------------- |

@@ -2,6 +2,7 @@ name: Wheels
 
 on:
   push:
+    branches: [develop]
   pull_request:
   workflow_dispatch:
 
