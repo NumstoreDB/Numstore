@@ -32,6 +32,9 @@ build/release/CMakeCache.txt:
 
 
 ############ Code Coverage
+# gcc's gcov emits "branch N taken -1" on this tree (GCC bug 68080), which
+# gcovr treats as fatal unless told to warn instead. Apple clang's gcov does
+# not, so this only bites in CI.
 coverage: build/coverage/html/index.html
 
 build/coverage/CMakeCache.txt:
@@ -56,6 +59,7 @@ build/coverage/html/index.html: build/coverage/.stamp
 	mkdir -p build/coverage/html
 	gcovr -r . build/coverage \
 		--html-details build/coverage/html/index.html \
+		--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
 		--exclude numstore/apps \
 		--exclude build \
 		--print-summary
@@ -68,6 +72,7 @@ build/coverage/report/coverage.xml: build/coverage/.stamp
 		--cobertura build/coverage/report/coverage.xml \
 		--cobertura-pretty \
 		--txt build/coverage/report/coverage.txt \
+		--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
 		--exclude numstore/apps \
 		--exclude build \
 		--print-summary
@@ -76,6 +81,7 @@ build/coverage/report/coverage.xml: build/coverage/.stamp
 # room for the gcc/clang difference. Raise them as coverage climbs.
 coverage-check: build/coverage/.stamp
 	gcovr -r . build/coverage \
+		--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
 		--exclude numstore/apps \
 		--exclude build \
 		--fail-under-line 80 \

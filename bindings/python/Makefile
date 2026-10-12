@@ -52,8 +52,8 @@ sdist: vendor
 # the matrix in wheels.yml is what produces the full set.
 ci-wheels:
 	cd ../.. && python3 -m cibuildwheel \
-		--package-dir bindings/python \
-		--output-dir bindings/python/wheelhouse
+		--output-dir bindings/python/wheelhouse \
+		bindings/python
 
 
 ############ Install
