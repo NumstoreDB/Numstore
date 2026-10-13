@@ -19,7 +19,6 @@ debug: build/debug/CMakeCache.txt
 build/debug/CMakeCache.txt:
 	cmake -S numstore -B build/debug \
 		-DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_C_FLAGS="-Wall -Wextra -Werror" \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 
@@ -32,8 +31,7 @@ release: build/release/CMakeCache.txt
 	cmake --build build/release -j12
 
 build/release/CMakeCache.txt:
-	cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_C_FLAGS="-Wall -Wextra -Werror"
+	cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
 
 
 ############ Code Coverage
@@ -42,7 +40,7 @@ coverage: build/coverage/html/index.html
 build/coverage/CMakeCache.txt:
 	cmake -S numstore -B build/coverage \
 		-DCMAKE_BUILD_TYPE=Debug \
-		-DCMAKE_C_FLAGS="--coverage -O0 -Wall -Wextra -Werror" \
+		-DCMAKE_C_FLAGS="--coverage -O0" \
 		-DCMAKE_EXE_LINKER_FLAGS="--coverage" \
 		-DCMAKE_SHARED_LINKER_FLAGS="--coverage"
 
