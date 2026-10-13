@@ -1214,7 +1214,7 @@ nsdb_plan_console_read (struct nsdb_plan *plan, error *_e)
   t_size       tsize = type_byte_size (type);
   u8          *head  = data;
 
-  for (int i = 0; i < dlen; ++i) {
+  for (b_size i = 0; i < dlen; ++i) {
     type_print_data (LOG_INFO, head, type, 10);
     head += tsize;
   }
@@ -1233,8 +1233,7 @@ nsdb_plan_console_read (struct nsdb_plan *plan, error *_e)
 static inline err_t
 nsdb_plan_console_create (struct nsdb_plan *plan, error *_e)
 {
-  error       *e   = nsdb_plan_get_active_error (plan, _e);
-  struct i_mem mem = plan->parent->mem;
+  error *e = nsdb_plan_get_active_error (plan, _e);
 
   DBG_ASSERT (nsdb_plan, plan);
 

@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.18)
-project(numstore LANGUAGES C)
+
+# Read version frm version.txt
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" NUMSTORE_VERSION)
+string(STRIP "${NUMSTORE_VERSION}" NUMSTORE_VERSION)
+
+# Replace vx.y.z with x.y.z
+string(REGEX REPLACE "^v" "" NUMSTORE_VERSION "${NUMSTORE_VERSION}")
+
+project(numstore VERSION ${NUMSTORE_VERSION} LANGUAGES C)
 
 include(GNUInstallDirs)
 
@@ -7,14 +15,9 @@ include(GNUInstallDirs)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# NLOG compiles out leveled logging. Test CASE/PASSED/FAILURE lines survive.
-option(NS_NLOG "Compile out logging" OFF)
-if(NS_NLOG)
-    add_compile_definitions(NLOG)
-endif()
+# Compile out logging for release config
+add_compile_definitions($<$<CONFIG:Release>:NLOG>)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -38,10 +41,7 @@ set_target_properties(
         POSITION_INDEPENDENT_CODE ON
 )
 
-# <stdatomic.h> in the public headers makes C11 a usage requirement, not just a
-# build setting for this directory: anything compiling against include/ needs
-# it too, which a directory-scoped CMAKE_C_STANDARD never reaches. The bindings
-# are in a parent directory, so they were getting MSVC's default C instead.
+# <stdatomic.h> in the public headers makes C11 a usage requirement
 target_compile_features(numstore.library PUBLIC c_std_11)
 
 # for MSVC: as of 19.51 its <stdatomic.h> is still gated behind /experimental:c11atomics
@@ -54,7 +54,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(numstore.library PUBLIC Threads::Threads)
 
-# long double / complex helpers land in libm on glibc.
+# long double / complex helpers are in libm on glibc.
 if(UNIX AND NOT APPLE)
     target_link_libraries(numstore.library PUBLIC m)
 endif()

@@ -12,8 +12,8 @@ Features:
   recovery and a unique rope variant of the B+Tree to index into arrays.
 - **Arrays.** Numstore stores images, sensor streams, tick data and any fixed
   layout of numbers you can describe as a type.
-- **No dependencies.** Plain C11, with first class Python bindings that return
-  numpy arrays.
+- **No dependencies.** Written in C11 with first class Python bindings that
+  return numpy arrays.
 
 Pynumstore is the easiest way to get started:
 

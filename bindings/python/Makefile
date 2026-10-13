@@ -40,16 +40,6 @@ sdist: vendor
 
 
 ############ Wheels
-# What wheels.yml builds. cibuildwheel runs from the repo root rather than
-# here: it copies the working directory into the Linux containers as /project,
-# so the package has to land at /project/bindings/python for the
-# add_subdirectory(../../numstore) in its CMakeLists to resolve. Running it
-# from this directory would copy only this subtree and the library would be
-# missing. Interpreters, architectures and the test command all come from
-# [tool.cibuildwheel] in pyproject.toml.
-#
-# Only builds for the host OS and arch -- CIBW_ARCHS defaults to "auto", so
-# the matrix in wheels.yml is what produces the full set.
 ci-wheels:
 	cd ../.. && python3 -m cibuildwheel \
 		--output-dir bindings/python/wheelhouse \

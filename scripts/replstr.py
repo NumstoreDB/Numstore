@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 from pathlib import Path
 
+# I use this script a lot to replace
+# tokens in the code base
+# Not useful at all outside of that
+# An ide would do a much better job
+# I use it so much that I just keep it in
+# the repo
 REPLACEMENTS = {"SMF_END": "NS_END"}
 
 for root in ("numstore/src", "numstore/include", "numstore/apps", "bindings", "docs"):

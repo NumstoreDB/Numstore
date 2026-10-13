@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(numstore_python LANGUAGES C CXX)
 
-# Add numstore as a dependency. An sdist carries the library at _numstore/,
-# put there by the Makefile's vendor target; a git checkout has no copy and
-# uses the library in the tree. Override either with -DNUMSTORE_DIR=<dir>.
+# Add numstore as a dependency. An sdist puts the library in _numstore/
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/_numstore/CMakeLists.txt)
     set(_numstore_default ${CMAKE_CURRENT_SOURCE_DIR}/_numstore)
 else()

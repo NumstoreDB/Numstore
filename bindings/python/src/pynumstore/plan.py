@@ -46,6 +46,12 @@ class Plan:
         var = capture_var(plan, txh)
         dtype, dims = layout(var)
 
+        # An empty variable has nothing to allocate, and the malloc path
+        # reports that as a failure. read_into returns 0 for the same query,
+        # so return an empty array to keep the two consistent.
+        if var.length == 0:
+            return np.empty((0, *dims), dtype=dtype)
+
         raw = _ns._pyns_plan_malloc(plan, txh)
         if var.tsize == 0 or len(raw) % var.tsize != 0:
             raise RuntimeError(

@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pynumstore"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Python bindings for numstore, an embedded ACID database for arrays"
 readme = "README.md"
 license = "Apache-2.0"
@@ -17,6 +17,12 @@ Homepage = "https://github.com/NumstoreDB/Numstore"
 
 [project.optional-dependencies]
 test = ["pytest>=7"]
+
+[[tool.dynamic-metadata]]
+field = "version"
+provider = "scikit_build_core.metadata.regex"
+input = "version.txt"
+regex = '^v?(?P<value>\S+)'
 
 [tool.scikit-build]
 cmake.source-dir = "."                  
