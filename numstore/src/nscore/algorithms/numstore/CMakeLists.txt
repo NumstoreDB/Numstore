@@ -13,3 +13,5 @@ target_sources(
         ns_numstore_remove_malloc.c
         ns_numstore_write.c
 )
+
+add_subdirectory(tests)

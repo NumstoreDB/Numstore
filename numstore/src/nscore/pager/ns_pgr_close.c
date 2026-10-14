@@ -73,7 +73,7 @@ pgr_close (struct pager *p, error *e)
 
   fpgr_close (p->fp, e);
   i_log_lockt (LOG_INFO, p->lt);
-  lockt_unlock (p->lt, lock_db (), LM_X, e);
+  lockt_unlock (p->lt, lock_db (), LM_X);
   lockt_destroy (p->lt);
   p->mem.table->free (p->mem.self, p->lt);
 

@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "nscore/lock_table/ns_lock_table.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
 
@@ -38,11 +39,9 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
       p->mem
   );
 
-  // Lock the database before doing any changes to
-  // the log or page table
+  // Lock the database before doing any changes to the log or page table
   if (lockt_lock (p->lt, lock_db (), LM_X, tx, e)) {
-    // Failing here is fine - just couldn't lock the lock table
-    // for some reason
+    // Failing here is fine - just couldn't acquire a lock
     return error_trace (e);
   }
 
@@ -50,6 +49,7 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   l = wal_append_begin_log (p->ww, tid, e);
 
   if (l < 0) {
+    lockt_unlock (p->lt, lock_db (), LM_X);
     // WAL append failed - we just wasted a transaction id - not a big deal
     return error_trace (e);
   }

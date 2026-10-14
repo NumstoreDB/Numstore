@@ -23,17 +23,12 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
 
   if (tx->data.state != TX_RUNNING) {
     error_causef (e, ERR_DUPLICATE_COMMIT, "txn already committed");
-
-    // Failure here is fine
-
     goto theend;
   }
 
   // COMMIT
   slsn l = wal_append_commit_log (p->ww, tx->tid, tx->data.last_lsn, e);
   if (l < 0) {
-    // Failure here is fine
-
     goto theend;
   }
 

@@ -15,9 +15,7 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_numerics.h"
 #include "core/ns_stream.h"
-#include "core/ns_stride.h"
 #include "core/ns_testing.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
@@ -26,6 +24,8 @@
 #include "nscore/pager/ns_pager.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
+
+#include <stdatomic.h>
 
 sb_size
 numstore_insert_from_name (
@@ -226,6 +226,4 @@ TEST (numstore_insert_from_var)
   ALLOC_CLOSE (alloc);
 }
 
-TEST (numstore_insert)
-{}
 #endif

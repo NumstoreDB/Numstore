@@ -72,7 +72,7 @@ theend:
 
   // Unlock the database lock
   // i_log_debug ("Checkpoint Done - unlocking the database\n");
-  lockt_unlock (p->lt, lock_db (), LM_X, e);
+  lockt_unlock (p->lt, lock_db (), LM_X);
   return SUCCESS;
 }
 
