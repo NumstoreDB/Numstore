@@ -60,10 +60,10 @@ jobs:
       # Each step is one target in the root Makefile, so the cmake invocations
       # and test arguments live in one place rather than being duplicated here.
       - name: Debug build and unit tests
-        run: make ci-debug
+        run: make test-unit
 
       - name: Simulation test
-        run: make ci-simtest
+        run: make test-simtest
 
       - name: Release package
-        run: make ci-release
+        run: make release-package

@@ -82,7 +82,6 @@ CMakeScripts
 Testing
 Makefile
 !/Makefile
-!/bindings/python/Makefile
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
@@ -1100,12 +1099,20 @@ gradle-app.setting
 
 # End of https://www.toptal.com/developers/gitignore/api/c,c++,csharp,r,go,java,node,python,rust,gradle,macos,jetbrains+all,rust-analyzer,vim,cmake,valgrind
 
+############ Build / packaging output
+
+wheelhouse/
+
 ############ Data / debug artifacts
 
 *.db
 *.nsdb
 *.wal
 testdb
+# unit_tests and the samples open databases by bare name in the CWD.
+# Anchored so they can't shadow pytest/ or any test directory.
+/test
+/foo
 history.txt
 vgcore.*
 gmon.out
@@ -1116,7 +1123,4 @@ gmon.out
 sample1_crud
 docgen_tmp/
 
-############ Vendored into bindings/python by scripts/vendor.sh
-
-bindings/python/_numstore/
 .claude

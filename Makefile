@@ -1,44 +1,83 @@
 #############################################
-# A thin wrapper around cmake
+# A thin wrapper around cmake and the python build tools
 #
 # Don't use this for production builds - just
 # eliminates keystrokes while developing
 
-.PHONY: all debug release release-package coverage coverage-xml coverage-check \
-        ci ci-debug ci-simtest ci-release ci-coverage ci-format ci-copyright \
-        ci-wheels valgrind valgrind-unit valgrind-simtest leaks leaks-unit \
-        leaks-simtest lldb lldb-simtest clean copyright format
-
 all: debug
 
+SEED := $(shell od -An -N4 -tu4 /dev/urandom 2>/dev/null | tr -dc 0-9)
+SEED := $(or $(SEED),123142)
+
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
+
+DEBUG_BIN := build/debug/bin
 
 ############ Debug
-debug: build/debug/CMakeCache.txt 
-	cmake --build build/debug 
+.PHONY: debug
+debug: build/debug/CMakeCache.txt
+	cmake --build build/debug
 
 build/debug/CMakeCache.txt:
-	cmake -S numstore -B build/debug \
+	cmake -S . -B build/debug \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
+############ Testing
+.PHONY: test
+test: test-unit test-simtest
+
+# The CI runners drive these through bash on every platform, so the recipes
+# pick up the .exe that Windows builds produce instead of the workflow having
+# to branch on the runner OS.
+.PHONY: test-unit
+test-unit: debug
+	exe=$(DEBUG_BIN)/unit_tests; [ -f "$$exe.exe" ] && exe="$$exe.exe"; \
+	"$$exe" $(SEED)
+
+.PHONY: test-simtest
+test-simtest: debug
+	exe=$(DEBUG_BIN)/ns_simtest; [ -f "$$exe.exe" ] && exe="$$exe.exe"; \
+	"$$exe" \
+		--dbname simtest.db \
+		--duration 5 \
+		--seed $(SEED) \
+		--commit-hash $(COMMIT) \
+		--seqid $(SEED)
+
+.PHONY: test-python
+test-python: dev pytest
+
 
 ############ Release
+.PHONY: release-package
 release-package: release
 	rm -rf build/release/package
 	cmake --install build/release --prefix build/release/package
 
+.PHONY: release
 release: build/release/CMakeCache.txt
 	cmake --build build/release -j12
 
 build/release/CMakeCache.txt:
-	cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
+	cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
 
 
 ############ Code Coverage
+# apps/ is the two entry points plus the generated unit_tests.c; samples/ is
+# documentation. Neither is library code, so neither belongs in the ratio.
+GCOVR = gcovr -r . build/coverage \
+	--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
+	--exclude apps \
+	--exclude samples \
+	--exclude build \
+	--print-summary
+
+.PHONY: coverage
 coverage: build/coverage/html/index.html
 
 build/coverage/CMakeCache.txt:
-	cmake -S numstore -B build/coverage \
+	cmake -S . -B build/coverage \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_C_FLAGS="--coverage -O0" \
 		-DCMAKE_EXE_LINKER_FLAGS="--coverage" \
@@ -50,46 +89,48 @@ build/coverage/bin/unit_tests: build/coverage/CMakeCache.txt
 
 build/coverage/.stamp: build/coverage/bin/unit_tests build/coverage/bin/ns_simtest
 	find build/coverage -name "*.gcda" -delete
-	./build/coverage/bin/unit_tests 123142
-	./build/coverage/bin/ns_simtest --duration 5
+	./build/coverage/bin/unit_tests $(SEED)
+	./build/coverage/bin/ns_simtest \
+		--dbname build/coverage/simtest.db \
+		--duration 5 \
+		--seed $(SEED)
 	touch build/coverage/.stamp
 
 build/coverage/html/index.html: build/coverage/.stamp
-	rm -rf build/coverage/html 
+	rm -rf build/coverage/html
 	mkdir -p build/coverage/html
-	gcovr -r . build/coverage \
-		--html-details build/coverage/html/index.html \
-		--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
-		--exclude numstore/apps \
-		--exclude build \
-		--print-summary
+	$(GCOVR) --html-details build/coverage/html/index.html
 
-coverage-xml: build/coverage/report/coverage.xml
-
-build/coverage/report/coverage.xml: build/coverage/.stamp
+.PHONY: coverage-xml
+coverage-xml: build/coverage/.stamp
 	mkdir -p build/coverage/report
-	gcovr -r . build/coverage \
-		--cobertura build/coverage/report/coverage.xml \
+	$(GCOVR) --cobertura build/coverage/report/coverage.xml \
 		--cobertura-pretty \
-		--txt build/coverage/report/coverage.txt \
-		--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
-		--exclude numstore/apps \
-		--exclude build \
-		--print-summary
+		--txt build/coverage/report/coverage.txt
 
+# Runs after coverage-xml so the report is on disk and uploadable even when
+# the ratio has regressed -- that is exactly when it's worth reading.
+.PHONY: coverage-check
 coverage-check: build/coverage/.stamp
-	gcovr -r . build/coverage \
-		--gcov-ignore-parse-errors negative_hits.warn_once_per_file \
-		--exclude numstore/apps \
-		--exclude build \
-		--fail-under-line 80 \
-		--fail-under-branch 45
+	$(GCOVR) \
+		--fail-under-line $(COV_MIN_LINE) \
+		--fail-under-branch $(COV_MIN_BRANCH)
 
+COV_MIN_LINE   ?= 80
+COV_MIN_BRANCH ?= 45
+
+# Sub-makes rather than prerequisites: the gate has to run last even under
+# -j, and the XML has to be on disk before the gate can fail the build.
+.PHONY: ci-coverage
+ci-coverage:
+	$(MAKE) coverage
+	$(MAKE) coverage-xml
+	$(MAKE) coverage-check
 
 ############ Leak checking
 
 build/memcheck/CMakeCache.txt:
-	cmake -S numstore -B build/memcheck \
+	cmake -S . -B build/memcheck \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_C_FLAGS="-g3 -O0 -fno-inline -fno-omit-frame-pointer -Wall -Wextra -Werror"
 
@@ -120,11 +161,14 @@ VALGRIND = valgrind \
 	--fair-sched=yes \
 	--gen-suppressions=all
 
+.PHONY: valgrind
 valgrind: valgrind-unit valgrind-simtest
 
+.PHONY: valgrind-unit
 valgrind-unit: build/memcheck/bin/unit_tests
 	$(VALGRIND) ./build/memcheck/bin/unit_tests 123142
 
+.PHONY: valgrind-simtest
 valgrind-simtest: build/memcheck/bin/ns_simtest
 	$(VALGRIND) ./build/memcheck/bin/ns_simtest --dbname simtest.db --duration 5 --seed 123142
 
@@ -138,71 +182,93 @@ LEAKS = MallocStackLogging=1 \
 	MallocGuardEdges=1 \
 	leaks --atExit --list --fullStacks --
 
+.PHONY: leaks
 leaks: leaks-unit leaks-simtest
 
+.PHONY: leaks-unit
 leaks-unit: build/memcheck/bin/unit_tests
 	$(LEAKS) ./build/memcheck/bin/unit_tests 123142
 
+.PHONY: leaks-simtest
 leaks-simtest: build/memcheck/bin/ns_simtest
 	$(LEAKS) ./build/memcheck/bin/ns_simtest --dbname simtest.db --duration 5 --seed 123142
 
 
 #############################################
-### CI
+### pynumstore
 
-# Run the debug unit tests
-ci-debug: debug
-	if [ -f build/debug/bin/unit_tests.exe ]; \
-		then ./build/debug/bin/unit_tests.exe 123142; \
-		else ./build/debug/bin/unit_tests 123142; fi
+# Newest wheel in dist -- several can pile up across python versions
+WHEEL = $$(ls -t dist/pynumstore-*.whl | head -1)
 
+.PHONY: wheel
+wheel:
+	python3 -m build -C cmake.build-type=Release --wheel . --outdir dist
 
-# Run the debug simulation tests
-ci-simtest: debug
-	if [ -f build/debug/bin/ns_simtest.exe ]; \
-		then exe=./build/debug/bin/ns_simtest.exe; \
-		else exe=./build/debug/bin/ns_simtest; fi; \
-	$$exe \
-		--dbname simtest.db \
-		--duration 5 \
-		--seed 123142 \
-		--commit-hash $$(git rev-parse HEAD) \
-		--seqid 123142
+# Release wheels for the host, every interpreter in [tool.cibuildwheel].
+# cibuildwheel builds for the machine it runs on, so CI gets its matrix from
+# runner labels rather than from anything here.
+.PHONY: wheels
+wheels:
+	python3 -m cibuildwheel --output-dir wheelhouse .
 
-# Build the release package
-ci-release: release-package
-	find build/release/package -type f | sort
+.PHONY: sdist
+sdist:
+	python3 -m build -C cmake.build-type=Release --sdist . --outdir dist
 
-# Run code coverage
-ci-coverage: coverage coverage-xml coverage-check
+.PHONY: wheel
+install: wheel
+	python3 -m pip install --force-reinstall --no-deps $(WHEEL)
+	python3 -m pip install numpy
 
-# Format - if anything is different - fail
-ci-format: format
-	git --no-pager diff --exit-code
+.PHONY: dev
+dev:
+	python3 -m pip install -e '.[test]'
 
-# Copyright - if anything is different - fail
-ci-copyright: copyright
-	git --no-pager diff --exit-code
-
-# Generate python wheels
-ci-wheels:
-	$(MAKE) -C bindings/python ci-wheels
-
-# All ci
-ci: ci-debug ci-simtest ci-coverage ci-release
-
+.PHONY: pytest
+pytest:
+	python3 -m pytest pytest
 
 #############################################
 ### Housekeeping
+.PHONY: format
+EXCLUDE := -not -path '*build*'
 
-copyright:
-	scripts/add_copywrite.py
+C_SRCS     := $(shell find . -name '*.c' $(EXCLUDE))
+H_SRCS     := $(shell find . -name '*.h' $(EXCLUDE))
+CMAKE_SRCS := $(shell find . \( -name '*.cmake' -o -name 'CMakeLists.txt' \) $(EXCLUDE))
+PY_SRCS    := $(shell find . -name '*.py' $(EXCLUDE))
 
 format:
-	scripts/format.sh
-	$(MAKE) -C bindings/python format
+	-clang-format -i $(C_SRCS) $(H_SRCS)
+	-gersemi -i --no-warn-about-unknown-commands $(CMAKE_SRCS)
+	-ruff format $(PY_SRCS)
 
-# bindings/javascript has no formatter, so it only shows up here.
-clean:
-	scripts/clean_all.sh
-	$(MAKE) -C bindings/python clean
+.PHONY: clean 
+clean: clean-c clean-python
+
+.PHONY: clean-common
+clean-common:
+	rm -rf build build_coverage docs/build docs/api 
+	find . -type f -name '*.db'     -delete
+	find . -type f -name '*.nsdb'   -delete
+	find . -type f -name '*.wal'    -delete
+	find . -type f -name 'testdb*'  -delete
+	find . -type f -name 'vgcore.*' -delete
+	find . -type f -name gmon.out   -delete
+	rm -f foo test ns_simtest
+
+.PHONY: clean-c
+clean-c: clean-common
+	find . -type f -name '*.o'    -delete
+	find . -type f -name '*.d'    -delete
+	find . -type f -name '*.gcda' -delete
+	find . -type f -name '*.gcno' -delete
+	find . -type f -name '*.gcov' -delete
+
+.PHONY: clean-python
+clean-python: clean-common
+	rm -rf dist wheelhouse
+	find . -type d -name __pycache__   -prune -exec rm -rf {} +
+	find . -type d -name '*.egg-info'  -prune -exec rm -rf {} +
+	find . -type d -name .pytest_cache -prune -exec rm -rf {} +
+	find . -type d -name .ruff_cache   -prune -exec rm -rf {} +

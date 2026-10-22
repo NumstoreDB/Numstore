@@ -1,12 +1,12 @@
 Numstore
 ========
 
-**An embedded ACID database for arrays.**
+**An embedded ACID database for Numpy arrays.**
 
 Features:
 ---------
 - **Single File.** The whole database lives in a single file. There is no
-  server - see `numstore/include/*` 
+  server - see `include/numstore.h`
 - **ACID.** Every insert, write and remove either happens completely or not at
   all, even if the process crashes partway through. It uses ARIES for crash
   recovery and a unique rope variant of the B+Tree to index into arrays.
@@ -38,8 +38,8 @@ You'll need Python 3.9+, a C11 compiler and CMake 3.20+.
 git clone https://github.com/NumstoreDB/Numstore
 cd Numstore
 python3 -m venv .venv && . .venv/bin/activate # Optional
-pip install ./bindings/python
-python bindings/python/samples/sample1_basic.py
+pip install .
+python samples/sample1_basic.py
 ```
 
 `pip install` compiles the C library and the bindings in one step. The sample
@@ -107,79 +107,7 @@ You work with variables through short queries:
 They nest freely: `struct { a u32, b struct { c f16, d [10]f32 } }` is 4 + 2 +
 40 = 46 bytes.
 
-More: [Documentation](docs/index.md) ·
-[Python API](bindings/python/README.md)
-
-Smartfiles: Numstore as an ACID file
-------------------------------------
- 
-If you don't need variables or types, the core of Numstore also works as a
-single file with transactions, called a smartfile.
- 
-Traditionally, a file is an array of bytes, and you read and write its interior
-with two well known functions:
- 
-```c
-// Open and close a file
-int open(name)
-close(fd)
- 
-read(fd, dest, count)   // Read from a file - maybe fail - into dest
-write(fd, src, count)   // Overwrite bytes within a file
-```
- 
-Both return the number of bytes transferred, and both can stop partway, reading
-or writing only some of the bytes you asked for.
- 
-From the write man page:
-> Note that a successful write() may transfer fewer than count bytes.  Such
-> partial writes can occur for various reasons; for example, because there was
-> insufficient space on the disk device to write all of the requested bytes, or
-> because a blocked write() to a socket, pipe, or similar was interrupted by a
-> signal handler after it had transferred some, but before it had transferred
-> all of the requested bytes.  In the event of a partial write, the caller can
-> make another write() call to transfer the remaining bytes.  The subsequent
-> call will either transfer further bytes or may result in an error (e.g., if
-> the disk is now full).
- 
-From the read man page:
-> On success, the number of bytes read is returned (zero indicates end of
-> file), and the file position is advanced by this number. It is not an error
-> if this number is smaller than the number of bytes requested; this may happen
-> for example because fewer bytes are actually available right now (maybe
-> because we were close to end-of-file, or because we are reading from a pipe,
-> or from a terminal), or because read() was interrupted by a signal.  See also
-> NOTES.
- 
-A smartfile has no half writes or half reads: every operation either happens
-completely or not at all. You can also insert into or remove from the middle of
-the file, not just append:
- 
-```c
-// Open and close a smartfile
-nsdb_t *ns_smfile_open (path);
-int ns_close (ns);
- 
-// Group operations into a transaction
-txn_t *ns_begin (ns);
-int ns_commit (ns, txn);
-int ns_rollback (ns, txn);
- 
-// Size of the file
-sb_size ns_smfile_size (smf, tx);
- 
-// Insert data into the middle of the file (the file grows)
-sb_size ns_smfile_insert (smf, tx, src, bofst, slen);
- 
-// Overwrite data in place (the file length stays the same)
-sb_size ns_smfile_write (smf, tx, src, size, bofst, stride, nelem);
- 
-// Read elements of a given size and stride
-sb_size ns_smfile_read (smf, tx, dest, size, bofst, stride, nelem);
- 
-// Remove data from the file, copying what was removed into dest
-sb_size ns_smfile_remove (smf, tx, dest, size, bofst, stride, nelem);
-```
+More: [Documentation](docs/index.md)
 
 C Quick Start
 -------------
@@ -187,30 +115,46 @@ C Quick Start
 From the repository root:
 
 ```sh
-cmake -S numstore -B build/release -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
 cmake --build build/release
 ./build/release/bin/ns_sample1_basic_crud
 ```
 
 What you get:
 
-* `numstore/include/numstore.h`: the only header you need
+* `include/numstore.h`: the only header you need
 * `build/release/lib/libnumstore.a`: the whole library in one static archive
-* `build/release/bin/*_sample*`: runnable samples, with source in
-  `numstore/apps/samples/`
+* `build/release/bin/`: one binary per sample in `samples/`, plus `ns_simtest`
 
 For a debug build, use `-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
 
-Developing the Python bindings
-------------------------------
+Developing
+----------
 
-The bindings are a thin layer over the C library. All the C glue is in
-`bindings/python/src/c/ns_pynumstore.c`.
+One `CMakeLists.txt` builds everything, and `make` wraps the cmake invocations
+so the flags live in one place:
 
-```sh
-pip install -e './bindings/python[test]'   # editable install, with pytest
-python -m pytest bindings/python/tests
-```
+| Target            | What it does                                     |
+| ----------------- | ------------------------------------------------ |
+| `make debug`      | debug build into `build/debug`                   |
+| `make release`    | release build into `build/release`               |
+| `make ci-debug`   | debug build, then run `unit_tests`               |
+| `make ci-simtest` | debug build, then run `ns_simtest` for 5 seconds |
+| `make coverage`   | gcovr HTML report into `build/coverage/html`     |
+| `make format`     | clang-format, gersemi and ruff over the tree     |
+| `make clean`      | remove build artifacts                           |
+
+`coverage` needs gcovr, and `format` needs clang-format, gersemi and ruff.
+
+`unit_tests` takes a seed and an optional name filter, so
+`./build/debug/bin/unit_tests 123142 wal` runs only the tests whose name
+contains `wal`. It exists in debug builds only: its `main` is generated at
+configure time by `apps/gen_tests.py`, which scrapes every `TEST(...)` in
+`csrc/`.
+
+`ns_simtest` drives a database with random operations, checks it against a
+reference model and crashes it at random:
+`./build/debug/bin/ns_simtest --duration 5`.
 
 AI Usage Policy
 ---------------
