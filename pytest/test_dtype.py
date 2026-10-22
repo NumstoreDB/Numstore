@@ -211,7 +211,7 @@ def test_to_dtype():
         "[0]f32",  # zero-length dim
         "[x]f32",  # non-numeric dim
         "[10]",  # no element type
-        # "f32 junk",                 # trailing tokens - TODO this should probably fail
+        # "f32 junk", # trailing tokens - TODO this should probably fail
         "struct { 1a u8 }",  # bad field name
     ]
     for bad in bad_ones:

@@ -23,7 +23,6 @@
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_malloc.h"
-#include "numstore.h"
 
 #include <stdbool.h>
 
@@ -34,6 +33,12 @@
  *
  * Avoids the heavy usage of c - strings
  ******************************************************************************/
+
+struct string
+{
+  uint32_t    len;
+  const char *data;
+};
 
 DEFINE_DBG_ASSERT (struct string, string, s, {
   ASSERT (s);

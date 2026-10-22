@@ -29,6 +29,7 @@
 #include "nscore/types/ns_query.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
+#include "numstore.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -225,6 +226,20 @@ nsdb_rollback (struct nsdb *db, struct txn *tx, error *_e)
 
   slab_alloc_free (&db->txn_alloc, tx);
   return SUCCESS;
+}
+
+/////////////////////////////////////// Get all variables
+
+err_t
+nsdb_visit_nsdb_vars (
+    struct nsdb      *db,
+    nsdb_var_consumer consumer,
+    struct txn       *tx,
+    void             *ctx,
+    error            *e
+)
+{
+  return error_causef (e, ERR_INVALID_ARGUMENT, "Not implemented");
 }
 
 /////////////////////////////////////// Auto Transactions

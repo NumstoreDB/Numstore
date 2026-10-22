@@ -19,9 +19,83 @@
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
 
 #include <stdbool.h>
+
+struct query
+{
+  enum query_type
+  {
+    // Array Operations
+    QT_READ,
+    QT_WRITE,
+    QT_INSERT,
+    QT_REMOVE,
+
+    // Variable Operations
+    QT_CREATE,
+    QT_DELETE,
+    QT_GET,
+
+    // Meta Operations
+    QT_EXIT,
+    QT_HELP,
+  } type;
+
+  union {
+    // Array Operations
+    struct read_query
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } read;
+
+    struct write_query
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } write;
+
+    struct insert_query
+    {
+      struct string name;
+      sb_size       ofst;
+      b_size        len;
+    } insert;
+
+    struct remove_query
+    {
+      struct string      name;
+      struct user_stride ustr;
+    } remove;
+
+    // Variable Operations
+    struct create_query
+    {
+      struct string name;
+      struct type   type;
+    } create;
+
+    struct delete_query
+    {
+      struct string name;
+      bool          if_exists;
+    } delete;
+
+    struct get_query
+    {
+      struct string name;
+      bool          if_exists;
+    } get;
+
+    // Meta Operations
+    struct help_query
+    {
+      bool            has_command;
+      enum query_type command;
+    } help;
+  };
+};
 
 bool query_equal (const struct query *left, const struct query *right);
 

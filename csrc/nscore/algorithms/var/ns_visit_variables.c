@@ -28,7 +28,7 @@
 #include "nscore/variables/ns_variables.h"
 #include "numstore.h"
 
-err_t
+static err_t
 ns_consume_one_var (struct pager *p, page_h *cur, var_consumer var, void *ctx, error *e)
 {
   ALLOC_INIT (alloc);
@@ -63,7 +63,7 @@ theend:
   return error_trace (e);
 }
 
-err_t
+static err_t
 ns_consume_var_chain (struct pager *p, pgno start, var_consumer var, void *ctx, error *e)
 {
   page_h cur = page_h_create ();

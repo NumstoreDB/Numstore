@@ -134,7 +134,7 @@ or data out:
 | Method               | Queries it accepts        | Returns                         |
 |----------------------|---------------------------|---------------------------------|
 | `db.execute(q)`      | `CREATE` `DELETE` `REMOVE`| `None`                          |
-| `db.get(q)`          | `GET`                     | a `Var` (metadata)              |
+| `db.get(q)`          | Anything with a variable  | a `Var` (metadata)              |
 | `db.write(q, data)`  | `INSERT` `WRITE`          | `int` - elements written        |
 | `db.read(q)`         | `READ` `REMOVE`           | a fresh `numpy` array           |
 | `db.read_into(q, o)` | `READ` `REMOVE`           | `int` - elements read into `o`  |
@@ -186,6 +186,16 @@ You can get a variable's information by invoking the `GET` operation.
 
 ```python
 >>> db.get("get foo")
+Var(name='foo', type='u32', length=0, tsize=4)
+```
+
+You can also run get for any query that contains a variable in it 
+(the query never runs - so you only ever read the variable, not 
+the data)
+```python
+>>> db.get("read foo[0:10]")
+Var(name='foo', type='u32', length=0, tsize=4)
+>>> db.get("remove foo[0:10]") # I don't modify foo
 Var(name='foo', type='u32', length=0, tsize=4)
 ```
 
@@ -343,7 +353,8 @@ A true `append` is an offset equal to the length of the array - or any offset
 past it, because offsets clamp:
 
 ```python
->>> db.write("insert data 100 2", [10, 11])
+>>> v = db.get("get data")
+>>> db.write(f"insert data {len(v)} 2", [10, 11])
 2
 >>> db.read("read data")
 array([ 1,  2,  7,  8,  3,  4,  9,  5, 10, 11], dtype=uint32)

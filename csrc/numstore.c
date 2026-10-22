@@ -243,6 +243,13 @@ ns_rollback (nsdb_t *ns, txn_t *txn)
   return nsdb_rollback (ns, txn, ns->e);
 }
 
+int
+ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx)
+{
+  error_reset (db->e);
+  return nsdb_visit_nsdb_vars (db, consumer, tx, ctx, db->e);
+}
+
 static inline char *
 query_vsnprintf (const char *fmt, va_list ap, struct arena_alloc *alloc, error *e)
 {

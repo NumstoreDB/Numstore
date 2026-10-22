@@ -24,6 +24,8 @@
 
 #include <stdbool.h>
 
+struct txn;
+
 ///////////////////// Lock data
 struct lt_lock
 {

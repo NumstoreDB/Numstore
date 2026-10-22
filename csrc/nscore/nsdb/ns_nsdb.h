@@ -85,6 +85,16 @@ struct txn *nsdb_begin (struct nsdb *db, error *e);
 err_t nsdb_commit (struct nsdb *db, struct txn *txn, error *e);
 err_t nsdb_rollback (struct nsdb *db, struct txn *txn, error *e);
 
+/////////////////////////////////////// Get all variables
+
+err_t nsdb_visit_nsdb_vars (
+    struct nsdb      *db,
+    nsdb_var_consumer consumer,
+    struct txn       *tx,
+    void             *ctx,
+    error            *e
+);
+
 /////////////////////////////////////// Variables - immutable variable data from
 /// the database
 

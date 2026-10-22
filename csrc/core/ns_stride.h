@@ -21,9 +21,24 @@
 #include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "numstore.h"
 
 #include <stdbool.h>
+
+enum
+{
+  START_PRESENT = (1 << 0),
+  STEP_PRESENT  = (1 << 1),
+  STOP_PRESENT  = (1 << 2),
+  COLON_PRESENT = (1 << 3),
+};
+
+struct user_stride
+{
+  int64_t  start;
+  int64_t  step;
+  int64_t  stop;
+  uint32_t present; // The above flags
+};
 
 struct stride
 {
