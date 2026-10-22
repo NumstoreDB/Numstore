@@ -65,12 +65,12 @@ struct multi_user_stride
 /**
  * @brief all elements from 0 to end
  */
-#define USER_STRIDE_ALL                        \
-  ((struct user_stride){                       \
-      .start   = 0,                            \
-      .step    = 1,                            \
-      .stop    = 0,                            \
-      .present = STEP_PRESENT | START_PRESENT, \
+#define USER_STRIDE_ALL                                        \
+  ((struct user_stride){                                       \
+      .start   = 0,                                            \
+      .step    = 1,                                            \
+      .stop    = 0,                                            \
+      .present = STEP_PRESENT | START_PRESENT | COLON_PRESENT, \
   })
 
 bool user_stride_equal (const struct user_stride *left, const struct user_stride *right);

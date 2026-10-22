@@ -164,11 +164,14 @@ ns_cleanup (const char *path)
 int
 ns_close (nsdb_t *ns)
 {
-  // Copy out before closing - the OS handle lives inside ns
-  const struct i_os os = ns->os;
+  // Copy out before closing - these all live inside ns
+  const struct i_os  os  = ns->os;
+  const struct i_mem mem = ns->mem;
+  error             *e   = ns->e;
 
-  error_reset (ns->e);
-  const err_t ret = nsdb_close (ns, ns->e);
+  error_reset (e);
+  const err_t ret = nsdb_close (ns, e);
+  mem.table->free (mem.self, e);
   system_os_free (os);
   return ret;
 }
@@ -176,11 +179,14 @@ ns_close (nsdb_t *ns)
 int
 ns_crash (nsdb_t *ns)
 {
-  // Copy out before crashing - the OS handle lives inside ns
-  const struct i_os os = ns->os;
+  // Copy out before crashing - these all live inside ns
+  const struct i_os  os  = ns->os;
+  const struct i_mem mem = ns->mem;
+  error             *e   = ns->e;
 
-  error_reset (ns->e);
-  const err_t ret = nsdb_crash (ns, ns->e);
+  error_reset (e);
+  const err_t ret = nsdb_crash (ns, e);
+  mem.table->free (mem.self, e);
   system_os_free (os);
   return ret;
 }
@@ -246,7 +252,7 @@ query_vsnprintf (const char *fmt, va_list ap, struct arena_alloc *alloc, error *
   // Compute the length the formatted query needs, without writing anything.
   i32 qlen = vsnprintf (NULL, 0, fmt, ap);
   if (qlen < 0) {
-    va_end (ap);
+    va_end (ap2);
     error_causef (e, ERR_INVALID_ARGUMENT, "Invalid printf argument");
     return NULL;
   }
@@ -294,6 +300,7 @@ ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...)
 
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
     return error_trace (db->e);
@@ -320,16 +327,15 @@ ns_get_var (nsdb_t *db, struct txn *tx, const char *fmt, ...)
 
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
     return NULL;
   }
 
+  // The returned var owns its own arena, so [temp] can go either way
   nsdb_var_t *ret = nsdb_get_var (db, tx, query, NULL);
-  if (ret == NULL) {
-    ALLOC_CLOSE (temp);
-    return NULL;
-  }
+  ALLOC_CLOSE (temp);
 
   return ret;
 }

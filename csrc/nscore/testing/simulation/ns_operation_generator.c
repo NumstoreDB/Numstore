@@ -599,6 +599,8 @@ TEST (opg)
       opg_free (op);
     }
   }
+
+  ns_ref_free (ref);
 }
 
 #endif

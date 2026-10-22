@@ -69,6 +69,14 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
     if (stop > (i64)arrlen) {
       stop = arrlen;
     }
+  } else if (!(src.present & COLON_PRESENT) && (src.present & START_PRESENT)) {
+    // No colon and a start: this is a bare index ("[2]"), which selects exactly
+    // one element. Without this, a missing stop reads as "to the end" and
+    // "[2]" would silently mean "[2:]".
+    stop = start + 1;
+    if (stop > (i64)arrlen) {
+      stop = arrlen;
+    }
   } else {
     stop = arrlen;
   }
@@ -108,7 +116,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Full slice [::] on length 10 ")
   {
-    struct user_stride full = {0};
+    struct user_stride full = {.present = COLON_PRESENT};
     stride_resolve (&result, full, 10, &e);
     test_assert_int_equal (result.start, 0);
     test_assert_int_equal (result.stride, 1);
@@ -117,7 +125,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Slice with step [::2] on length 10 ")
   {
-    struct user_stride step2 = {.step = 2, .present = STEP_PRESENT};
+    struct user_stride step2 = {.step = 2, .present = STEP_PRESENT | COLON_PRESENT};
     stride_resolve (&result, step2, 10, &e);
     test_assert_int_equal (result.start, 0);
     test_assert_int_equal (result.stride, 2);
@@ -126,7 +134,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Start only [5:] on length 10 ")
   {
-    struct user_stride from5 = {.start = 5, .present = START_PRESENT};
+    struct user_stride from5 = {.start = 5, .present = START_PRESENT | COLON_PRESENT};
     stride_resolve (&result, from5, 10, &e);
     test_assert_int_equal (result.start, 5);
     test_assert_int_equal (result.stride, 1);
@@ -135,7 +143,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Stop only [:5] on length 10 ")
   {
-    struct user_stride to5 = {.stop = 5, .present = STOP_PRESENT};
+    struct user_stride to5 = {.stop = 5, .present = STOP_PRESENT | COLON_PRESENT};
     stride_resolve (&result, to5, 10, &e);
     test_assert_int_equal (result.start, 0);
     test_assert_int_equal (result.stride, 1);
@@ -144,7 +152,11 @@ TEST (stride_resolve)
 
   TEST_CASE ("Range [2:8] on length 10 ")
   {
-    struct user_stride range = {.start = 2, .stop = 8, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride range = {
+        .start   = 2,
+        .stop    = 8,
+        .present = START_PRESENT | STOP_PRESENT | COLON_PRESENT
+    };
     stride_resolve (&result, range, 10, &e);
     test_assert_int_equal (result.start, 2);
     test_assert_int_equal (result.stride, 1);
@@ -153,8 +165,12 @@ TEST (stride_resolve)
 
   TEST_CASE ("Range with step [1:9:2] on length 10 ")
   {
-    struct user_stride range_step =
-        {.start = 1, .stop = 9, .step = 2, .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT};
+    struct user_stride range_step = {
+        .start   = 1,
+        .stop    = 9,
+        .step    = 2,
+        .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT | COLON_PRESENT
+    };
     stride_resolve (&result, range_step, 10, &e);
     test_assert_int_equal (result.start, 1);
     test_assert_int_equal (result.stride, 2);
@@ -163,7 +179,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Negative start index [-3:] on length 10 -> [7:] ")
   {
-    struct user_stride neg_start = {.start = -3, .present = START_PRESENT};
+    struct user_stride neg_start = {.start = -3, .present = START_PRESENT | COLON_PRESENT};
     stride_resolve (&result, neg_start, 10, &e);
     test_assert_int_equal (result.start, 7);
     test_assert_int_equal (result.stride, 1);
@@ -172,7 +188,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Negative stop index [:-2] on length 10 -> [:8] ")
   {
-    struct user_stride neg_stop = {.stop = -2, .present = STOP_PRESENT};
+    struct user_stride neg_stop = {.stop = -2, .present = STOP_PRESENT | COLON_PRESENT};
     stride_resolve (&result, neg_stop, 10, &e);
     test_assert_int_equal (result.start, 0);
     test_assert_int_equal (result.stride, 1);
@@ -184,7 +200,7 @@ TEST (stride_resolve)
     struct user_stride both_neg = {
         .start   = -5,
         .stop    = -2,
-        .present = START_PRESENT | STOP_PRESENT
+        .present = START_PRESENT | STOP_PRESENT | COLON_PRESENT
     };
     stride_resolve (&result, both_neg, 10, &e);
     test_assert_int_equal (result.start, 5);
@@ -194,7 +210,7 @@ TEST (stride_resolve)
 
   TEST_CASE ("Out of bounds start [20:] on length 10 ")
   {
-    struct user_stride oob_start = {.start = 20, .present = START_PRESENT};
+    struct user_stride oob_start = {.start = 20, .present = START_PRESENT | COLON_PRESENT};
     stride_resolve (&result, oob_start, 10, &e);
     test_assert_int_equal (result.start, 10);
     test_assert_int_equal (result.stride, 1);
@@ -203,29 +219,65 @@ TEST (stride_resolve)
 
   TEST_CASE ("Empty slice [5:2] on length 10 ")
   {
-    struct user_stride empty = {.start = 5, .stop = 2, .present = START_PRESENT | STOP_PRESENT};
+    struct user_stride empty = {
+        .start   = 5,
+        .stop    = 2,
+        .present = START_PRESENT | STOP_PRESENT | COLON_PRESENT
+    };
     stride_resolve (&result, empty, 10, &e);
     test_assert_int_equal (result.nelems, 0);
   }
 
   TEST_CASE ("Empty array ")
   {
-    struct user_stride on_empty = {0};
+    struct user_stride on_empty = {.present = COLON_PRESENT};
     stride_resolve (&result, on_empty, 0, &e);
     test_assert_int_equal (result.start, 0);
     test_assert_int_equal (result.stride, 1);
     test_assert_int_equal (result.nelems, 0);
   }
 
+  TEST_CASE ("Bare index [5] on length 10 -> one element ")
+  {
+    stride_resolve (&result, ustride_single (5), 10, &e);
+    test_assert_int_equal (result.start, 5);
+    test_assert_int_equal (result.stride, 1);
+    test_assert_int_equal (result.nelems, 1);
+  }
+
+  TEST_CASE ("Bare negative index [-1] on length 10 -> [9] ")
+  {
+    stride_resolve (&result, ustride_single (-1), 10, &e);
+    test_assert_int_equal (result.start, 9);
+    test_assert_int_equal (result.stride, 1);
+    test_assert_int_equal (result.nelems, 1);
+  }
+
+  TEST_CASE ("Bare out of bounds index [20] on length 10 ")
+  {
+    stride_resolve (&result, ustride_single (20), 10, &e);
+    test_assert_int_equal (result.start, 10);
+    test_assert_int_equal (result.stride, 1);
+    test_assert_int_equal (result.nelems, 0);
+  }
+
+  TEST_CASE ("Last valid bare index [9] on length 10 ")
+  {
+    stride_resolve (&result, ustride_single (9), 10, &e);
+    test_assert_int_equal (result.start, 9);
+    test_assert_int_equal (result.stride, 1);
+    test_assert_int_equal (result.nelems, 1);
+  }
+
   TEST_CASE ("Invalid step = 0 ")
   {
-    struct user_stride zero_step = {.step = 0, .present = STEP_PRESENT};
+    struct user_stride zero_step = {.step = 0, .present = STEP_PRESENT | COLON_PRESENT};
     test_err_t_check (stride_resolve (&result, zero_step, 0, &e), ERR_INVALID_ARGUMENT, &e);
   }
 
   TEST_CASE ("Invalid negative step ")
   {
-    struct user_stride neg_step = {.step = -1, .present = STEP_PRESENT};
+    struct user_stride neg_step = {.step = -1, .present = STEP_PRESENT | COLON_PRESENT};
     test_err_t_check (stride_resolve (&result, neg_step, 0, &e), ERR_INVALID_ARGUMENT, &e);
   }
 }

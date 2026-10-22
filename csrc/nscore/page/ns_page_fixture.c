@@ -83,14 +83,15 @@ pgr_fixture_create (struct pgr_fixture *dest)
   arena_alloc_create_default (&dest->alloc);
 
   return SUCCESS;
-
-  return dest->e.cause_code;
 }
 
 err_t
 pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest)
 {
-  pgr_fixture_create (dest);
+  if (unlikely (pgr_fixture_create (dest))) {
+    return error_trace (&dest->e);
+  }
+
   if (ns_init_var_hash_map (dest->p, &dest->e)) {
     pgr_fixture_teardown (dest);
     return error_trace (&dest->e);

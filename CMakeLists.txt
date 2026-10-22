@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Version lives in version.txt as vX.Y.Z
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" NUMSTORE_VERSION)
 string(STRIP "${NUMSTORE_VERSION}" NUMSTORE_VERSION)
 string(REGEX REPLACE "^v" "" NUMSTORE_VERSION "${NUMSTORE_VERSION}")
@@ -9,11 +8,9 @@ project(numstore VERSION ${NUMSTORE_VERSION} LANGUAGES C)
 
 include(GNUInstallDirs)
 
-# ns_platform.h uses <stdatomic.h> and <complex.h>, so C11 is the minimum.
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Compile out logging for release config
 add_compile_definitions($<$<CONFIG:Release>:NLOG>)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -35,8 +32,6 @@ list(APPEND NUMSTORE_SOURCES csrc/numstore.c)
 add_library(numstore STATIC ${NUMSTORE_SOURCES})
 add_library(numstore::numstore ALIAS numstore)
 
-# csrc/ is on the build interface so in-tree targets can reach the private
-# headers; installed consumers only ever see include/.
 target_include_directories(
     numstore
     PUBLIC
@@ -46,11 +41,6 @@ target_include_directories(
 )
 set_target_properties(numstore PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# <stdatomic.h> in the public headers makes C11 a usage requirement
-target_compile_features(numstore PUBLIC c_std_11)
-
-# for MSVC: as of 19.51 its <stdatomic.h> is still gated behind
-# /experimental:c11atomics
 if(MSVC)
     target_compile_options(numstore PUBLIC /experimental:c11atomics)
 endif()
@@ -65,6 +55,7 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(numstore PUBLIC m)
 endif()
 
+# Install
 install(
     TARGETS numstore
     EXPORT numstoreTargets

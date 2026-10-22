@@ -3,6 +3,7 @@ Table of Contents
 
 * [What is Numstore?](#what-is-numstore)
     * [How is it different than other databases?](#how-is-it-different-than-other-databases)
+* [Getting started](#getting-started)
 * [A tour of the language](#a-tour-of-the-language)
   * [Variable Operations](#variable-operations)
   * [Array Operations](#array-operations)
@@ -10,6 +11,7 @@ Table of Contents
     * [Write](#write)
     * [Read](#read)
     * [Remove](#remove)
+  * [Transactions](#transactions)
   * [The Numstore Type System](#the-numstore-type-system)
   * [Data Inputs and Outputs](#data-inputs-and-outputs)
 
@@ -75,6 +77,35 @@ But each one makes it very clear that it isn't a database because:
 
 Numstore is the database for this type of data.
 
+Getting started
+===============
+
+Everything below is a real Python session. Install the bindings:
+
+```sh
+pip install pynumstore
+```
+
+And open a database. A Numstore database is a single file, and there's no
+server to start:
+
+```python
+>>> import numpy as np
+>>> import pynumstore as ns
+>>> db = ns.Database("tour.db")
+>>> db
+<Database 'tour.db'>
+>>> db.path
+'tour.db'
+```
+
+`Database` is a context manager, so in a script you'd normally write
+`with ns.Database("tour.db") as db:` and let the block close it. In the REPL
+it's easier to keep `db` around and call `db.close()` when you're done.
+
+If you want to follow along, type the examples in order - each section builds on
+the one before it.
+
 A tour of the language
 ======================
 
@@ -96,7 +127,37 @@ You could put `CREATE`, `GET` and `DELETE` in their own category of _variable
 operations_ and `INSERT`, `WRITE`, `READ` and `REMOVE` in their own category of
 _array operations_.
 
-Variable Operations 
+From Python, a query is just a string. Which method you hand it to depends on
+what the query needs to move across the boundary - nothing, metadata, data in,
+or data out:
+
+| Method               | Queries it accepts        | Returns                         |
+|----------------------|---------------------------|---------------------------------|
+| `db.execute(q)`      | `CREATE` `DELETE` `REMOVE`| `None`                          |
+| `db.get(q)`          | `GET`                     | a `Var` (metadata)              |
+| `db.write(q, data)`  | `INSERT` `WRITE`          | `int` - elements written        |
+| `db.read(q)`         | `READ` `REMOVE`           | a fresh `numpy` array           |
+| `db.read_into(q, o)` | `READ` `REMOVE`           | `int` - elements read into `o`  |
+
+Hand a query to the wrong method and you get an error rather than a surprise:
+
+```python
+>>> db.execute("read foo")
+Traceback (most recent call last):
+  ...
+RuntimeError: Only supported exec commands are REMOVE/CREATE/DELETE
+```
+
+A query that isn't a query at all fails the same way:
+
+```python
+>>> db.execute("not a real query")
+Traceback (most recent call last):
+  ...
+RuntimeError: Expected a valid operation at pos: 0
+```
+
+Variable Operations
 -------------------
 
 `CREATE`, `GET` and `DELETE` exist because a Numstore database is really just a
@@ -110,75 +171,89 @@ A Numstore database may look like this:
 ...
 ```
 
-To create new variables you execute the `CREATE` operation:
-```
-numstore> create foo u32;
-{ "Status" : "Ok" }
+To create new variables you execute the `CREATE` operation. `create` takes a
+name and a type, and returns nothing - so in the REPL a successful `create` is
+silent:
 
-numstore> create bar f32;
-{ "Status" : "Ok" }
-
-numstore> create biz cf64;
-{ "Status" : "Ok" }
-...
+```python
+>>> db.execute("create foo u32")
+>>> db.execute("create bar f32")
+>>> db.execute("create biz cf128")
 ```
 
-You can get a variable's information by invoking the `GET` operation:
+You can get a variable's information by invoking the `GET` operation.
+`db.get` hands you back a `Var`, a frozen snapshot of the variable's metadata:
 
-```
-get foo;
-{
-    "Status" : "Ok",
-    "Name"   : "foo",
-    "DType"  : "u32",
-    "DSize"  : 4,
-    "Nelems" : 1296,
-    "Bytes"  : 5184,
-    "Root"   : 12398312
-}
+```python
+>>> db.get("get foo")
+Var(name='foo', type='u32', length=0, tsize=4)
 ```
 
-1. `Name` is the variable name
-2. `DType` is the data type of the array - explained further in
+1. `name` is the variable name
+2. `type` is the data type of the array - explained further in
    [The Numstore Type System](#the-numstore-type-system)
-3. `DSize` is the size of each element inside the array `foo` (a `u32` is 4
-   bytes)
-4. `Nelems` is the number of elements in the array
-5. `Bytes` is the total size of the array in bytes.
-6. `Root` is the page number where the root of the variable's array begins
+3. `length` is the number of elements in the array
+4. `tsize` is the size in bytes of each element inside the array `foo` (a `u32`
+   is 4 bytes)
+
+A `Var` is a dataclass, so the fields are just attributes, and it carries two
+numpy-shaped conveniences on top:
+
+```python
+>>> var = db.get("get foo")
+>>> var.name, var.type
+('foo', 'u32')
+>>> var.length, var.tsize
+(0, 4)
+>>> var.dtype
+dtype('uint32')
+>>> var.shape
+(0,)
+>>> len(var)
+0
+```
+
+`var.dtype` is the numpy dtype one element maps to, and `var.shape` is the shape
+an array of the whole variable would have - here `(0,)`, because `foo` is still
+empty. A `Var` is a snapshot, not a live view: it keeps reporting what was true
+when you asked.
+
+`CREATE` is idempotent as long as the type agrees. Re-creating a variable with
+the same type leaves it (and its data) alone:
+
+```python
+>>> db.execute("create foo u32")
+```
+
+Asking for a different type for a name that already exists is an error, not a
+silent replacement:
+
+```python
+>>> db.execute("create foo f64")
+Traceback (most recent call last):
+  ...
+RuntimeError: Trying to create variable: foo but variable already exists and types are different
+```
 
 You can delete a variable by invoking the `DELETE` operation:
 
-```
-numstore> delete foo;
-{ "Status" : "Ok" }
-
-numstore> get foo;
-{ 
-    "Status" : "Error", 
-    "Message" : "No variable with name 'foo' exists"
-}
+```python
+>>> db.execute("delete biz")
+>>> db.get("get biz")
+Traceback (most recent call last):
+  ...
+RuntimeError: Variable: biz doesn't exist
 ```
 
-Array Operations 
+Array Operations
 ----------------
 
 Each variable has one array. So first, you need to create a variable:
 
-```
-numstore> create foo u32;
-{ "Status" : "Ok" }
-
-numstore> get foo;
-{
-    "Status" : "Ok",
-    "Name"   : "foo",
-    "DType"  : "u32",
-    "DSize"  : 4,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : null
-}
+```python
+>>> db.execute("create data u32")
+>>> db.get("get data")
+Var(name='data', type='u32', length=0, tsize=4)
 ```
 
 The only way to _add_ data to an array (e.g. increase the array size) is to
@@ -188,40 +263,35 @@ operations.
 
 ### INSERT
 
-To `INSERT` data, you specify what _offset_ to insert the data into and
-optionally the data.
+To `INSERT` data, you specify what _offset_ to insert at and how many elements
+you're inserting. The data itself goes to `db.write` as the second argument:
+
+```python
+>>> db.write("insert data 0 5", [1, 2, 3, 4, 5])
+5
+>>> db.read("read data")
+array([1, 2, 3, 4, 5], dtype=uint32)
+```
+
+The general form of an insert command looks like this:
 
 ```
-numstore> insert foo[0] [ 1, 2, 3, 4, 5 ];
-{ "Status" : "Ok" }
-```
-
-The general form of an insert command looks like this: 
-```
-insert <Variable Name>[ "[" Offset "]" ] [ data ];
+insert <Variable Name> <Offset> <Count>
 ```
 
 * _Offset_ (`0` in the example above) is where to insert the data into the
-  array. If it isn't included, it appends to the end of the array. Negative
-  numbers count back from the end of the array, -1 being the last index.
-* _data_ is an optional explicit data source.
+  array. Negative numbers count back from the end of the array, -1 being the
+  last index.
+* _Count_ (`5` in the example above) is how many elements to insert. It's a
+  ceiling, not a promise - see [Count is a ceiling](#count-is-a-ceiling).
 
-Assuming `foo` is an empty array to begin with, the following commands do the
-same thing:
+The return value is the number of elements actually inserted.
 
-```
-numstore> insert foo[0] [ 1, 2, 3, 4, 5];
-{ "Status" : "Ok" }
-
-numstore> insert foo [ 1, 2, 3, 4, 5];
-{ "Status" : "Ok" }
-```
-
-For example, if we insert an array into a 6 element array at index 2, it's like
-we're "pushing" data into index 2:
+For example, if we insert into a 6 element array at index 2, it's like we're
+"pushing" data into index 2:
 
 ```
-insert foo[2] [7, 8, 9]
+insert foo 2 3   <- [7, 8, 9]
 
 Before:
   [1, 2, 3, 4, 5, 6]
@@ -233,7 +303,7 @@ After:
 ```
 
 ```
-insert foo[0] [7, 8, 9]
+insert foo 0 3   <- [7, 8, 9]
 
 Before:
   [1, 2, 3, 4, 5, 6]
@@ -245,7 +315,7 @@ After:
 ```
 
 ```
-insert foo[-1] [7, 8, 9]
+insert foo -1 3  <- [7, 8, 9]
 
 Before:
   [1, 2, 3, 4, 5, 6]
@@ -256,107 +326,100 @@ After:
   [1, 2, 3, 4, 5, 7, 8, 9, 6]
 ```
 
-A true `append` operation is the absence of an _offset_:
+And here it is for real. `data` is `[1, 2, 3, 4, 5]` from above:
 
+```python
+>>> db.write("insert data 2 2", [7, 8])
+2
+>>> db.read("read data")
+array([1, 2, 7, 8, 3, 4, 5], dtype=uint32)
+>>> db.write("insert data -1 1", [9])
+1
+>>> db.read("read data")
+array([1, 2, 7, 8, 3, 4, 9, 5], dtype=uint32)
 ```
-insert foo [7, 8, 9]
 
-Before:
-  [1, 2, 3, 4, 5, 6]
-                   ^
-               [7, 8, 9]
+A true `append` is an offset equal to the length of the array - or any offset
+past it, because offsets clamp:
 
-After:
-  [1, 2, 3, 4, 5, 6, 7, 8, 9]
+```python
+>>> db.write("insert data 100 2", [10, 11])
+2
+>>> db.read("read data")
+array([ 1,  2,  7,  8,  3,  4,  9,  5, 10, 11], dtype=uint32)
 ```
 
-`INSERT` is strongly indexed. You can't insert data using invalid indexes:
+#### Count is a ceiling
 
+The _Count_ in the query and the length of the data you pass don't have to
+agree. `INSERT` pairs them up and stops as soon as either one runs out, and the
+return value tells you how many elements actually landed:
+
+```python
+>>> db.execute("create cap u32")
+>>> db.write("insert cap 0 3", [1, 2])
+2
+>>> db.write("insert cap 0 2", [7, 8, 9])
+2
+>>> db.read("read cap")
+array([7, 8, 1, 2], dtype=uint32)
 ```
-numstore> create foo;
-{ "Status" : "Ok" }
 
-numstore> insert foo[-1] [ 1, 2, 3, 4, 5];
-{
-    "Status"   : "Error",
-    "Message"  : "Index -1 is out of bounds for array of length 0"
-}
-
-numstore> insert foo[10] [ 1, 2, 3, 4, 5];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 10 is out of bounds for array of length 0"
-}
-
-numstore> insert foo [1, 2, 3, 4, 5, 6, 7, 8, 9];
-{ "Status" : "Ok" }
-
-numstore> insert foo[10] [ 1, 2, 3, 4, 5];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 10 is out of bounds for array of length 9"
-}
-
-numstore> insert foo[-10] [ 1, 2, 3, 4, 5];
-{
-    "Status"   : "Error",
-    "Message"  : "Index -10 is out of bounds for array of length 9"
-}
-
-numstore> insert foo[-9] [ 1, 2, 3, 4, 5];
-{ "Status"   : "Ok" }
-```
+The first call asked for 3 but only had 2 elements to give. The second had 3
+elements but only asked for 2, so `9` was never consumed.
 
 ### WRITE
 
 While `INSERT` increases the array length, `WRITE` simply overwrites data in
-place. To write data, you specify the _range_ you wish to modify.
+place. To write data, you specify the _range_ you wish to modify:
 
-```
-numstore> write foo[0:10:12] [ 1, 2, 3, 4, 5 ];
-{ "Status" : "Ok" }
+```python
+>>> db.execute("create w u32")
+>>> db.write("insert w 0 6", [1, 2, 3, 4, 5, 6])
+6
+>>> db.write("write w[2:5]", [70, 80, 90])
+3
+>>> db.read("read w")
+array([ 1,  2, 70, 80, 90,  6], dtype=uint32)
 ```
 
 The general form of a write command looks like this:
 
 ```
-write <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ] [ data ];
+write <Variable Name>[ "[" ( index
+      | [ start ] ":" [ stop ] [ ":" [ step ] ]
+      ) "]" ]
 ```
 
 Every part of the range is optional:
 
-* _start_ (`0` in the example above) is the first index written to. If it isn't
-  included, it defaults to `0`. Negative numbers count back from the end of the
-  array, -1 being the last index.
-* _stop_ (`10` in the example above) is the index to stop at, **exclusive**. If
-  it isn't included, it defaults to the length of the array. Negative numbers
-  count back from the end.
-* _step_ (`12` in the example above) is the distance between written indexes. If
-  it isn't included, it defaults to `1`. A step of `0` is an error.
-* _data_ is an optional explicit data source.
+* _start_ is the first index written to. If it isn't included, it defaults to
+  `0`. Negative numbers count back from the end of the array, -1 being the last
+  index.
+* _stop_ is the index to stop at, **exclusive**. If it isn't included, it
+  defaults to the length of the array. Negative numbers count back from the
+  end.
+* _step_ is the distance between written indexes. If it isn't included, it
+  defaults to `1`. A step of `0` is an error.
 
-Assuming `foo` is a 5 element array, the following commands do the same thing:
+Assuming `w` is a 6 element array, the following commands all cover the whole
+thing:
 
-```
-numstore> write foo[0:5:1] [ 1, 2, 3, 4, 5 ];
-{ "Status" : "Ok" }
-
-numstore> write foo[0:] [ 1, 2, 3, 4, 5 ];
-{ "Status" : "Ok" }
-
-numstore> write foo[:] [ 1, 2, 3, 4, 5 ];
-{ "Status" : "Ok" }
-
-numstore> write foo [ 1, 2, 3, 4, 5 ];
-{ "Status" : "Ok" }
+```python
+>>> db.write("write w[0:6:1]", [1, 2, 3, 4, 5, 6])
+6
+>>> db.write("write w[0:]", [1, 2, 3, 4, 5, 6])
+6
+>>> db.write("write w[:]", [1, 2, 3, 4, 5, 6])
+6
+>>> db.write("write w", [1, 2, 3, 4, 5, 6])
+6
 ```
 
-For example, if we write into a 6 element array over the range `2:5`, the data
-lands on top of what was already there. Nothing moves, and the array is the
-same length afterwards:
+Nothing moves, and the array is the same length afterwards:
 
 ```
-write foo[2:5] [7, 8, 9]
+write foo[2:5]  <- [7, 8, 9]
 Before:
   [1, 2, 3, 4, 5, 6]
          ^  ^  ^
@@ -365,15 +428,15 @@ After:
   [1, 2, 7, 8, 9, 6]
 ```
 
-Compare that to `insert foo[2] [7, 8, 9]`, which pushes the old data out of the
-way and leaves you with a 9 element array. If you want to grow an array, you
-want `INSERT`.
+Compare that to `insert foo 2 3`, which pushes the old data out of the way and
+leaves you with a 9 element array. If you want to grow an array, you want
+`INSERT`.
 
 A _step_ spreads the write out over the array instead of laying it down
 contiguously:
 
 ```
-write foo[0:6:2] [7, 8, 9]
+write foo[0:6:2]  <- [7, 8, 9]
 Before:
   [1, 2, 3, 4, 5, 6]
    ^     ^     ^
@@ -382,137 +445,157 @@ After:
   [7, 2, 8, 4, 9, 6]
 ```
 
-A negative _step_ walks the array backwards. Negative steps aren't supported
-yet but are a planned feature.
-
+```python
+>>> db.write("write w[0:6:2]", [7, 8, 9])
+3
+>>> db.read("read w")
+array([7, 2, 8, 4, 9, 6], dtype=uint32)
 ```
-numstore> write foo[0:6:-2] [7, 8, 9]
-{ 
-    "Status"  : "Error",
-    "Message" : "Negative Strides aren't supported yet"
-}
+
+A negative _step_ would walk the array backwards. Negative steps aren't
+supported yet but are a planned feature:
+
+```python
+>>> db.write("write w[0:6:-2]", [7, 8, 9])
+Traceback (most recent call last):
+  ...
+RuntimeError: stride step must be positive
+```
+
+A step of `0` is rejected by the same check:
+
+```python
+>>> db.write("write w[0:6:0]", [7, 8, 9])
+Traceback (most recent call last):
+  ...
+RuntimeError: stride step must be positive
 ```
 
 The range and the data don't have to agree on length. `WRITE` pairs them up one
-element at a time and stops as soon as either one runs out. If the data runs
-out first, the rest of the range is left exactly as it was:
+element at a time and stops as soon as either one runs out, and returns how many
+elements it wrote. If the data runs out first, the rest of the range is left
+exactly as it was:
 
-```
-write foo[:] [7, 8]
-Before:
-  [1, 2, 3, 4, 5, 6]
-After:
-  [7, 8, 3, 4, 5, 6]
+```python
+>>> db.write("write w", [1, 2, 3, 4, 5, 6])
+6
+>>> db.write("write w[:]", [70, 80])
+2
+>>> db.read("read w")
+array([70, 80,  3,  4,  5,  6], dtype=uint32)
 ```
 
 And if the range runs out first, the remaining data is simply not consumed:
 
-```
-write foo[0:2] [7, 8, 9, 10, 11]
-Before:
-  [1, 2, 3, 4, 5, 6]
-After:
-  [7, 8, 3, 4, 5, 6]
+```python
+>>> db.write("write w[0:2]", [11, 12, 13, 14, 15])
+2
+>>> db.read("read w")
+array([11, 12,  3,  4,  5,  6], dtype=uint32)
 ```
 
 An empty range is legal and writes nothing. In particular, writing to the range
-just past the end of an array is **not** an `append`, it's a no-op:
+just past the end of an array is **not** an `append`, it's a no-op that returns
+`0`:
 
-```
-numstore> write foo[6:] [7, 8, 9];
-{ "Status" : "Ok" }
-
-Before:
-  [1, 2, 3, 4, 5, 6]
-After:
-  [1, 2, 3, 4, 5, 6]
+```python
+>>> db.write("write w[6:]", [7, 8, 9])
+0
+>>> db.read("read w")
+array([11, 12,  3,  4,  5,  6], dtype=uint32)
 ```
 
-Like `INSERT`, `WRITE` is strongly indexed. _start_ must be a valid index, and
-_stop_ may be at most the length of the array (one past the last index):
+#### Ranges clamp
 
+Ranges aren't bounds-checked the way an index into a Python list is. _start_ and
+_stop_ are clamped to the array, so a range that hangs off either end just
+covers less than you asked for:
+
+```python
+>>> db.write("write w[0:100]", [21, 22])
+2
+>>> db.write("write w[-100:]", [31, 32])
+2
+>>> db.read("read w")
+array([31, 32,  3,  4,  5,  6], dtype=uint32)
 ```
-numstore> create foo;
-{ "Status" : "Ok" }
 
-numstore> write foo[0] [ 1 ];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 0 is out of bounds for array of length 0"
-}
+#### A bare index
 
-numstore> insert foo [1, 2, 3, 4, 5, 6];
-{ "Status" : "Ok" }
+A single number in the brackets, with no colon, is a bare index: it covers
+exactly one element. The colon is what makes a range open ended, so `w[2]` and
+`w[2:]` are different things:
 
-numstore> write foo[6] [ 1 ];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 6 is out of bounds for array of length 6"
-}
+```python
+>>> db.read("read w[2]")
+array([3], dtype=uint32)
+>>> db.read("read w[2:]")
+array([3, 4, 5, 6], dtype=uint32)
+```
 
-numstore> write foo[0:7] [ 1, 2, 3 ];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 7 is out of bounds for array of length 6"
-}
+`w[2]` and `w[2:3]` are the same thing. A bare index works wherever a range
+does, so it's the way to touch a single element with any of the three
+operations:
 
-numstore> write foo[-7:] [ 1, 2, 3 ];
-{
-    "Status"   : "Error",
-    "Message"  : "Index -7 is out of bounds for array of length 6"
-}
+```python
+>>> db.write("write w[2]", [70, 80, 90])
+1
+>>> db.read("read w")
+array([31, 32, 70,  4,  5,  6], dtype=uint32)
+```
 
-numstore> write foo[0:6:0] [ 1, 2, 3 ];
-{
-    "Status"   : "Error",
-    "Message"  : "Step cannot be 0"
-}
+The write asked to lay down three elements but the range only had room for one,
+so only one landed - see the pairing rule above.
 
-numstore> write foo[-6:] [ 1, 2, 3 ];
-{ "Status" : "Ok" }
+A bare index counts from the end like any other, and clamps like any other, so
+an index past the end is an empty range rather than an error:
+
+```python
+>>> db.read("read w[-1]")
+array([6], dtype=uint32)
+>>> db.read_into("read w[6]", np.zeros(1, dtype=np.uint32))
+0
 ```
 
 ### READ
 
-To `READ` data, you specify the _range_ you wish to read.
+To `READ` data, you specify the _range_ you wish to read:
 
-```
-numstore> read foo[0:10:12];
-{ 
-    "Status" : "Ok",
-    "Data"   : [ 0, 1, 2 ]
-}
+```python
+>>> db.execute("create r u32")
+>>> db.write("insert r 0 6", [1, 2, 3, 4, 5, 6])
+6
+>>> db.read("read r[2:5]")
+array([3, 4, 5], dtype=uint32)
 ```
 
 The general form of a read command looks like this:
 
 ```
-read <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ];
+read <Variable Name>[ "[" ( index
+     | [ start ] ":" [ stop ] [ ":" [ step ] ]
+     ) "]" ]
 ```
 
 `READ` has the same range semantics as `WRITE`. See [WRITE](#write).
 
-Where `WRITE` puts data into the range, `READ` takes it out. `Data` in the
-response is the default output stream.
+Where `WRITE` puts data into the range, `READ` takes it out. `db.read` allocates
+a fresh numpy array of exactly the right dtype and shape and hands it to you.
 
-Assuming `foo` is a 5 element array, the following commands do the same thing:
+Assuming `r` is a 6 element array, the following commands do the same thing:
 
-```
-numstore> read foo[0:5:1];
-{ "Status" : "Ok", "Data" : [ 1, 2, 3, 4, 5 ] }
-
-numstore> read foo[0:];
-{ "Status" : "Ok", "Data" : [ 1, 2, 3, 4, 5 ] }
-
-numstore> read foo[:];
-{ "Status" : "Ok", "Data" : [ 1, 2, 3, 4, 5 ] }
-
-numstore> read foo;
-{ "Status" : "Ok", "Data" : [ 1, 2, 3, 4, 5 ] }
+```python
+>>> db.read("read r[0:6:1]")
+array([1, 2, 3, 4, 5, 6], dtype=uint32)
+>>> db.read("read r[0:]")
+array([1, 2, 3, 4, 5, 6], dtype=uint32)
+>>> db.read("read r[:]")
+array([1, 2, 3, 4, 5, 6], dtype=uint32)
+>>> db.read("read r")
+array([1, 2, 3, 4, 5, 6], dtype=uint32)
 ```
 
-For example, reading the range `2:5` out of a 6 element array picks up the three
-elements the range covers. Reading never modifies the array:
+Reading never modifies the array:
 
 ```
 read foo[2:5]
@@ -542,83 +625,68 @@ Data:
   [1, 3, 5]
 ```
 
+```python
+>>> db.read("read r[0:6:2]")
+array([1, 3, 5], dtype=uint32)
+```
+
+Negative numbers count back from the end:
+
+```python
+>>> db.read("read r[-3:]")
+array([4, 5, 6], dtype=uint32)
+```
+
 Negative steps aren't supported yet, so you can't read an array backwards:
 
-```
-numstore> read foo[0:6:-2];
-{ 
-    "Status"  : "Error",
-    "Message" : "Negative Strides aren't supported yet"
-}
-```
-
-An empty range is legal and reads nothing. Reading the range just past the end
-of an array gives you back an empty array, not an error:
-
-```
-numstore> read foo[6:];
-{ "Status" : "Ok", "Data" : [] }
+```python
+>>> db.read("read r[0:6:-2]")
+Traceback (most recent call last):
+  ...
+RuntimeError: stride step must be positive
 ```
 
-Like `WRITE`, `READ` is strongly ranged. _start_ must be a valid index, and
-_stop_ may be at most the length of the array (one past the last index):
+An empty range is legal, but `db.read` has nothing to allocate for it and
+raises. If you want "read whatever is there, possibly nothing", use
+`db.read_into`, which reports `0`:
 
+```python
+>>> db.read("read r[6:]")
+Traceback (most recent call last):
+  ...
+RuntimeError: numstore operation failed
+>>> db.read_into("read r[6:]", np.zeros(3, dtype=np.uint32))
+0
 ```
-numstore> create foo;
-{ "Status" : "Ok" }
 
-numstore> read foo[0];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 0 is out of bounds for array of length 0"
-}
+Reading a variable that has no data at all is fine, though - you get an empty
+array back:
 
-numstore> insert foo [1, 2, 3, 4, 5, 6];
-{ "Status" : "Ok" }
-
-numstore> read foo[6];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 6 is out of bounds for array of length 6"
-}
-
-numstore> read foo[0:7];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 7 is out of bounds for array of length 6"
-}
-
-numstore> read foo[-7:];
-{
-    "Status"   : "Error",
-    "Message"  : "Index -7 is out of bounds for array of length 6"
-}
-
-numstore> read foo[0:6:0];
-{
-    "Status"   : "Error",
-    "Message"  : "Step cannot be 0"
-}
-
-numstore> read foo[-6:];
-{ "Status" : "Ok", "Data" : [ 1, 2, 3, 4, 5, 6 ] }
+```python
+>>> db.execute("create empty u32")
+>>> db.read("read empty")
+array([], dtype=uint32)
 ```
 
 ### REMOVE
 
-To `REMOVE` data, you specify the _range_ you wish to remove.
+To `REMOVE` data, you specify the _range_ you wish to remove:
 
-```
-numstore> remove foo[0:10:12];
-{
-    "Status" : "Ok"
-}
+```python
+>>> db.execute("create x u32")
+>>> db.write("insert x 0 6", [1, 2, 3, 4, 5, 6])
+6
+>>> db.execute("remove x[2:5]")
+>>> db.read("read x")
+array([1, 2, 6], dtype=uint32)
 ```
 
 The general form of a remove command looks like this:
 
 ```
-remove <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ];
+remove <Variable Name>[ "[" ( index
+       | [ start ] ":" [ stop ] [ ":" [ step ] ]
+       ) "]" ]
 ```
 
 `REMOVE` has the same range semantics as `READ`. See [READ](#read).
@@ -627,35 +695,32 @@ remove <Variable Name>[ "[" [ start ] ":" [ stop ] [ ":" [ step ] ] "]" ];
 that changes the length of an array. Everything the range covers is taken out
 and whatever is left closes the gap.
 
-Because the whole range is optional, the following commands all remove
-everything:
+`REMOVE` is the one operation that answers to two methods. `db.execute` throws
+the removed data away; `db.read` hands it back to you on the way out, which
+makes it a destructive read:
 
-```
-numstore> remove foo[0::1];
-{ "Status" : "Ok" }
-
-numstore> remove foo[0:];
-{ "Status" : "Ok" }
-
-numstore> remove foo[:];
-{ "Status" : "Ok" }
-
-numstore> remove foo;
-{ "Status" : "Ok" }
+```python
+>>> db.write("insert x 0 3", [7, 8, 9])
+3
+>>> db.read("read x")
+array([7, 8, 9, 1, 2, 6], dtype=uint32)
+>>> db.read("remove x[0:2]")
+array([7, 8], dtype=uint32)
+>>> db.read("read x")
+array([9, 1, 2, 6], dtype=uint32)
 ```
 
-This empties `foo` out, it doesn't get rid of `foo` itself. You're left with an
-array of length 0:
+Either way the variable's length follows the data, so `get` after a remove
+reports what's actually left:
 
-```
-remove foo
-
-Before:
-  [1, 2, 3, 4, 5, 6]
-   ^  ^  ^  ^  ^  ^
-
-After:
-  []
+```python
+>>> db.get("get x")
+Var(name='x', type='u32', length=4, tsize=4)
+>>> db.execute("remove x[0]")
+>>> db.get("get x")
+Var(name='x', type='u32', length=3, tsize=4)
+>>> db.read("read x")
+array([1, 2, 6], dtype=uint32)
 ```
 
 For example, removing the range `2:5` from a 6 element array takes out three
@@ -686,70 +751,121 @@ After:
   [2, 4, 6]
 ```
 
-Negative steps aren't supported yet:
+```python
+>>> db.execute("remove x[0:3:2]")
+>>> db.read("read x")
+array([2], dtype=uint32)
+```
+
+Because the whole range is optional, the following commands all remove
+everything. This empties the variable out, it doesn't get rid of the variable
+itself - you're left with an array of length 0:
 
 ```
-numstore> remove foo[0:6:-2];
-{ 
-    "Status"  : "Error",
-    "Message" : "Negative Strides aren't supported yet"
-}
+remove foo
+
+Before:
+  [1, 2, 3, 4, 5, 6]
+   ^  ^  ^  ^  ^  ^
+
+After:
+  []
+```
+
+```python
+>>> db.execute("remove x")
+>>> db.read("read x")
+array([], dtype=uint32)
 ```
 
 An empty range is legal and removes nothing:
 
-```
-numstore> remove foo[6:];
-{ "Status" : "Ok" }
-
-Before:
-  [1, 2, 3, 4, 5, 6]
-After:
-  [1, 2, 3, 4, 5, 6]
+```python
+>>> db.write("insert x 0 3", [1, 2, 3])
+3
+>>> db.execute("remove x[6:]")
+>>> db.read("read x")
+array([1, 2, 3], dtype=uint32)
 ```
 
-Like `READ`, `REMOVE` is strongly ranged. _start_ must be a valid index, and
-_stop_ may be at most the length of the array (one past the last index):
+Transactions
+------------
 
+Every one of the operations above ran on its own. When you don't name a
+transaction, each query gets an automatic one: it either happens completely or
+not at all, and it's durable by the time the call returns.
+
+To group several operations into one atomic unit, open a transaction with
+`db.begin()` and run the queries on it instead of on `db`. A `Transaction` has
+the same five query methods as a `Database`:
+
+```python
+>>> db.execute("create prices f64")
+>>> txn = db.begin()
+>>> txn
+<Transaction open>
+>>> txn.write("insert prices 0 3", [1.5, 2.25, 3.75])
+3
+>>> txn.read("read prices")
+array([1.5 , 2.25, 3.75])
+>>> txn.commit()
+>>> db.read("read prices")
+array([1.5 , 2.25, 3.75])
 ```
-numstore> create foo;
-{ "Status" : "Ok" }
 
-numstore> remove foo[0];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 0 is out of bounds for array of length 0"
-}
+Inside the transaction, `txn.read` sees the transaction's own uncommitted work.
+`rollback` throws all of it away:
 
-numstore> insert foo [1, 2, 3, 4, 5, 6];
-{ "Status" : "Ok" }
+```python
+>>> txn = db.begin()
+>>> txn.write("insert prices 3 2", [4.0, 5.0])
+2
+>>> txn.read("read prices")
+array([1.5 , 2.25, 3.75, 4.  , 5.  ])
+>>> txn.rollback()
+>>> db.read("read prices")
+array([1.5 , 2.25, 3.75])
+```
 
-numstore> remove foo[6];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 6 is out of bounds for array of length 6"
-}
+A transaction is finished once you commit or roll it back, and using it again is
+an error rather than a silent no-op:
 
-numstore> remove foo[0:7];
-{
-    "Status"   : "Error",
-    "Message"  : "Index 7 is out of bounds for array of length 6"
-}
+```python
+>>> txn
+<Transaction closed>
+>>> txn.commit()
+Traceback (most recent call last):
+  ...
+RuntimeError: transaction was already committed or rolled back
+```
 
-numstore> remove foo[-7:];
-{
-    "Status"   : "Error",
-    "Message"  : "Index -7 is out of bounds for array of length 6"
-}
+In practice you want the context manager, which commits when the block finishes
+and rolls back if it raises:
 
-numstore> remove foo[0:6:0];
-{
-    "Status"   : "Error",
-    "Message"  : "Step cannot be 0"
-}
+```python
+>>> with db.begin() as txn:
+...     txn.write("insert prices 3 2", [4.0, 5.0])
+2
+>>> db.read("read prices")
+array([1.5 , 2.25, 3.75, 4.  , 5.  ])
+```
 
-numstore> remove foo[-6:];
-{ "Status" : "Ok" }
+That `2` is the REPL echoing the return value of `txn.write` from inside the
+block - the two elements it inserted.
+
+If the block raises, nothing lands:
+
+```python
+>>> try:
+...     with db.begin() as txn:
+...         txn.write("insert prices 0 2", [98.0, 99.0])
+...         raise ValueError("something went wrong")
+... except ValueError as exc:
+...     print(exc)
+2
+something went wrong
+>>> db.read("read prices")
+array([1.5 , 2.25, 3.75, 4.  , 5.  ])
 ```
 
 The Numstore Type System
@@ -768,22 +884,32 @@ all ways of gluing other types together, and at the bottom of every type is a
 `Primitive`. Once you know how to size these 4, you can size any type in
 Numstore.
 
+Every Numstore type maps onto a numpy dtype, and `ns.to_dtype` shows you the
+mapping without touching a database:
+
+```python
+>>> ns.to_dtype("u32")
+dtype('uint32')
+>>> ns.to_dtype("u32").itemsize
+4
+```
+
 #### Primitives
 
 `Primitives` are the core data type of Numstore. They are categorized into
 signed/unsigned, floats/integers, complex/real, and number of bits.
 
 The signed ints are:
-* `i8` - a 1 byte signed integer 
-* `i16` - a 2 byte signed integer 
-* `i32` - a 4 byte signed integer 
-* `i64` - an 8 byte signed integer 
+* `i8` - a 1 byte signed integer
+* `i16` - a 2 byte signed integer
+* `i32` - a 4 byte signed integer
+* `i64` - an 8 byte signed integer
 
 Integers can be unsigned too:
-* `u8` - a 1 byte unsigned integer 
-* `u16` - a 2 byte unsigned integer 
-* `u32` - a 4 byte unsigned integer 
-* `u64` - an 8 byte unsigned integer 
+* `u8` - a 1 byte unsigned integer
+* `u16` - a 2 byte unsigned integer
+* `u32` - a 4 byte unsigned integer
+* `u64` - an 8 byte unsigned integer
 
 Numstore also supports floating point numbers:
 * `f16` - a 2 byte float
@@ -794,7 +920,7 @@ Numstore also supports floating point numbers:
 Finally, any of the above types can also be complex (effectively doubling their
 size):
 * `ci16-128` - Complex signed ints
-* `cu16-128` - Complex unsigned ints 
+* `cu16-128` - Complex unsigned ints
 * `cf32-256` - Complex floats
 
 The number in a primitive's name is always its size **in bits**, so the byte
@@ -831,89 +957,102 @@ Here's the full key:
 | `cf128` | 128  | 16    | complex `f64` (2 x `f64`)     |
 | `cf256` | 256  | 32    | complex `f128` (2 x `f128`)   |
 
-To create a primitive type, you specify the name right after your `create`
-command:
-```
-numstore> create foo u32;
-{ "Status" : "Ok" }
+Numpy has a native dtype for most of these. Where it doesn't - the small complex
+integers, and `cf32` - Numstore maps the type to a two-field structured dtype
+with a real and an imaginary part, which has the same layout in memory:
 
-numstore> create bar cf256;
-{ "Status" : "Ok" }
-
-numstore> create biz ci128;
-{ "Status" : "Ok" }
+```python
+>>> ns.to_dtype("cf64")
+dtype('complex64')
+>>> ns.to_dtype("cu16")
+dtype([('re', 'u1'), ('im', 'u1')])
 ```
 
-The size of each variable is the size of the primitive:
-```
-get foo;
-{
-    "Status" : "Ok",
-    "Name"   : "foo",
-    "DType"  : "u32",
-    "DSize"  : 4,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : NULL 
-}
-get bar;
-{
-    "Status" : "Ok",
-    "Name"   : "bar",
-    "DType"  : "cf256",
-    "DSize"  : 32,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : NULL 
-}
-get biz;
-{
-    "Status" : "Ok",
-    "Name"   : "biz",
-    "DType"  : "ci128",
-    "DSize"  : 16,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : NULL 
-}
+`f128` and `cf256` need a 16 byte float, which numpy only has where the
+platform's `long double` is 16 bytes wide. Numstore stores them anywhere - the
+database doesn't care what numpy can represent:
+
+```python
+>>> db.execute("create wide f128")
+>>> db.get("get wide").tsize
+16
 ```
 
-`DSize` is the size of **one element** of the variable. A fresh variable has
-`Nelems` 0 and `Bytes` 0 - you haven't pushed any data in yet - but its `DSize`
-is locked in the moment you create it, because that's fixed by the type.
+Reading or writing one, though, has to go through a dtype, so on a platform
+without a wide long double (macOS on Apple silicon, for instance)
+`ns.to_dtype("f128")` raises `NotImplementedError` and so does any `read` or
+`write` of that variable. `get` keeps working, because it only reports sizes.
 
-#### Structs 
+To create a primitive type, you specify the name right after the variable name
+in your `create` query:
+
+```python
+>>> db.execute("create p1 u32")
+>>> db.execute("create p2 ci128")
+>>> db.execute("create p3 cu64")
+```
+
+The size of each element is the size of the primitive:
+
+```python
+>>> db.get("get p1")
+Var(name='p1', type='u32', length=0, tsize=4)
+>>> db.get("get p2")
+Var(name='p2', type='ci128', length=0, tsize=16)
+>>> db.get("get p3")
+Var(name='p3', type='cu64', length=0, tsize=8)
+```
+
+`tsize` is the size of **one element** of the variable. A fresh variable has
+`length` 0 - you haven't pushed any data in yet - but its `tsize` is locked in
+the moment you create it, because that's fixed by the type.
+
+#### Structs
 
 A `Struct` is a product type. That essentially means sub types are "stacked" on
 top of each other. Unlike programming languages, there is no struct padding.
 Numstore structs are WYSIWYG.
 
 In the following example:
-```
-numstore> create foo struct { a u32, b cf256 };
-{ "Status" : "Ok" }
-```
-`foo` is a variable whose elements as bytes in memory look like:
 
-`[ 4 byte int ][    32 byte complex float    ]`
+```python
+>>> db.execute("create s struct { a u32, b cf128 }")
+```
+
+`s` is a variable whose elements as bytes in memory look like:
+
+`[ 4 byte int ][    16 byte complex float    ]`
 
 Because there's no padding, **the size of a struct is just the sum of its
-members**. Here that's `4 + 32 = 36` bytes:
+members**. Here that's `4 + 16 = 20` bytes:
+
+```python
+>>> db.get("get s")
+Var(name='s', type='struct { a u32, b cf128 }', length=0, tsize=20)
 ```
-get foo;
-{
-    "Status" : "Ok",
-    "Name"   : "foo",
-    "DType"  : "struct { a u32, b cf256 }",
-    "DSize"  : 36,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : NULL 
-}
-```
+
 Members are laid out in the order you write them, and each member starts exactly
 where the previous one ended. `a` sits at byte offset 0, `b` sits at byte
-offset 4.
+offset 4. Numpy's dtype for the same type says so too:
+
+```python
+>>> ns.to_dtype("struct { a u32, b cf128 }")
+dtype([('a', '<u4'), ('b', '<c16')])
+```
+
+A struct variable reads and writes as a numpy structured array, so you can hand
+it a list of tuples and pull a single field back out by name:
+
+```python
+>>> db.execute("create pt struct { x f32, y f32, z f32 }")
+>>> db.write("insert pt 0 2", [(1, 2, 3), (4, 5, 6)])
+2
+>>> db.read("read pt")
+array([(1., 2., 3.), (4., 5., 6.)],
+      dtype=[('x', '<f4'), ('y', '<f4'), ('z', '<f4')])
+>>> db.read("read pt")["y"]
+array([2., 5.], dtype=float32)
+```
 
 #### Unions
 
@@ -922,36 +1061,35 @@ of each other. Unlike programming languages, there is no union padding. Numstore
 unions are WYSIWYG.
 
 In the following example:
+
+```python
+>>> db.execute("create u union { a u32, b cf128 }")
 ```
-numstore> create foo union { a u32, b cf256 };
-{ "Status" : "Ok" }
-```
-`foo` is a variable whose elements as bytes in memory look like:
+
+`u` is a variable whose elements as bytes in memory look like:
 
 ```
 a -> [ 4 byte int ]
-b -> [            32 byte complex float            ]
+b -> [      16 byte complex float      ]
      ^-- both members start at the same byte --^
 ```
 
 Every member shares the same starting byte, so **the size of a union is the
-size of its largest member** - here `max(4, 32) = 32` bytes:
+size of its largest member** - here `max(4, 16) = 16` bytes:
 
-```
-get foo;
-{
-    "Status" : "Ok",
-    "Name"   : "foo",
-    "DType"  : "union { a u32, b cf256 }",
-    "DSize"  : 32,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : NULL 
-}
+```python
+>>> db.get("get u")
+Var(name='u', type='union { a u32, b cf128 }', length=0, tsize=16)
 ```
 
 Reading `a` interprets the first 4 bytes as a `u32`; reading `b` interprets all
-32 bytes as a `cf256`. It's the same memory - you just choose how to read it.
+16 bytes as a `cf128`. It's the same memory - you just choose how to read it.
+Numpy spells that as a structured dtype whose fields both sit at offset 0:
+
+```python
+>>> ns.to_dtype("union { a u32, b cf128 }")
+dtype({'names': ['a', 'b'], 'formats': ['<u4', '<c16'], 'offsets': [0, 0], 'itemsize': 16})
+```
 
 #### Strict Arrays
 
@@ -959,30 +1097,42 @@ A `Strict Array` is an array type. This is how we'd store our 256x256 image in
 our database.
 
 In the following example:
+
+```python
+>>> db.execute("create img [256][256] f32")
 ```
-numstore> create foo [256][256] f32;
-{ "Status" : "Ok" }
-```
-`foo` is a 256x256 grid of `f32`s - exactly the image from our very first
+
+`img` is a 256x256 grid of `f32`s - exactly the image from our very first
 example. You read the dimensions left to right, outermost first: `[256][256]
 f32` means "a 256-element array, where each element is a 256-element array of
 `f32`."
 
 **The size of an array is the product of its dimensions times the size of its
 element.** Each `f32` is 4 bytes and there are `256 x 256 = 65,536` of them, so
-one `foo` element is `65,536 x 4 = 262,144` bytes:
+one `img` element is `65,536 x 4 = 262,144` bytes:
+
+```python
+>>> db.get("get img")
+Var(name='img', type='[256][256]f32', length=0, tsize=262144)
 ```
-get foo;
-{
-    "Status" : "Ok",
-    "Name"   : "foo",
-    "DType"  : "[256][256] f32",
-    "DSize"  : 262144,
-    "Nelems" : 0,
-    "Bytes"  : 0,
-    "Root"   : NULL 
-}
+
+A strict array variable is an array *of* arrays, so in numpy it picks up extra
+trailing dimensions. The leading axis is the variable's length; the trailing
+axes are the element's shape:
+
+```python
+>>> db.execute("create grid [2][3] u8")
+>>> db.write("insert grid 0 2", np.arange(12, dtype=np.uint8).reshape(2, 2, 3))
+2
+>>> db.read("read grid").shape
+(2, 2, 3)
+>>> db.read("read grid[0:1]")
+array([[[0, 1, 2],
+        [3, 4, 5]]], dtype=uint8)
 ```
+
+Ranges still index *elements* of the variable, not scalars - `grid[0:1]` is the
+first 2x3 element, not the first byte.
 
 ##### Array ordering (C order)
 
@@ -995,7 +1145,12 @@ For a small `[2][3] u8`, memory looks like:
 [ (0,0) ][ (0,1) ][ (0,2) ][ (1,0) ][ (1,1) ][ (1,2) ]
 ```
 Notice the second index (the column) races from 0->2 before the first index
-(the row) ticks over. That's row-major.
+(the row) ticks over. That's row-major. You can see it in the bytes:
+
+```python
+>>> db.read("read grid[0:1]").tobytes()
+b'\x00\x01\x02\x03\x04\x05'
+```
 
 To find where element `[i][j]` lives in a `[R][C]` array of element size `S`,
 the byte offset is:
@@ -1020,42 +1175,62 @@ never need a new rule, you just apply the same 4 recursively:
 | `Union`       | max of member sizes                              |
 | `Strict Array`| product of dimensions x element size             |
 
-An **array of structs** - say a buffer of 3D points:
-```
-numstore> create points [1000] struct { x f32, y f32, z f32 };
-{ "Status" : "Ok" }
-```
-The struct is `4 + 4 + 4 = 12` bytes, and there are 1000 of them, so
-`DSize = 12,000` bytes.
+An **array of structs** - say a buffer of 3D points. The struct is
+`4 + 4 + 4 = 12` bytes, and there are 1000 of them:
 
-A **struct with an array member** - an image with a header:
+```python
+>>> db.execute("create points [1000] struct { x f32, y f32, z f32 }")
+>>> db.get("get points").tsize
+12000
 ```
-numstore> create frame struct { timestamp u64, pixels [256][256] u8 };
-{ "Status" : "Ok" }
+
+A **struct with an array member** - an image with a header. `timestamp` is 8
+bytes, `pixels` is `256 x 256 x 1 = 65,536` bytes:
+
+```python
+>>> db.execute("create frame struct { timestamp u64, pixels [256][256] u8 }")
+>>> db.get("get frame").tsize
+65544
 ```
-`timestamp` is 8 bytes, `pixels` is `256 x 256 x 1 = 65,536` bytes, so
-`DSize = 65,544` bytes.
 
 And our original **array of images**, now fully spelled out - 12 frames of
-256x256 RGB:
-```
-numstore> create video [12][256][256] struct { r u8, g u8, b u8 };
-{ "Status" : "Ok" }
+256x256 RGB. The struct is `1 + 1 + 1 = 3` bytes and the array is
+`12 x 256 x 256 = 786,432` elements:
+
+```python
+>>> db.execute("create video [12][256][256] struct { r u8, g u8, b u8 }")
+>>> db.get("get video").tsize
+2359296
 ```
 
-The struct is `1 + 1 + 1 = 3` bytes, the array is `12 x 256 x 256 = 786,432`
-elements, so `DSize = 2,359,296` bytes. Same 4 rules, just stacked.
+Same 4 rules, just stacked.
+
+Bad types are caught when the query is compiled, before anything touches the
+database:
+
+```python
+>>> db.execute("create bad q99")
+Traceback (most recent call last):
+  ...
+RuntimeError: Expected type at position 2, got token type TT_IDENTIFIER
+>>> ns.to_dtype("struct { i u8, i u32 }")
+Traceback (most recent call last):
+  ...
+ValueError: duplicate key: i
+```
 
 #### Practice Problems
 
-1. What is the `DSize` of `struct { a u16, b i64, c f32 }`?
-2. What is the `DSize` of `union { a u16, b i64, c f32 }`?
-3. What is the `DSize` of `[10][20] u32`?
-4. What is the `DSize` of `[100] struct { x f32, y f32, z f32 }`?
-5. What is the `DSize` of `struct { id u64, samples [8] cf64 }`?
-6. What is the `DSize` of `[12][256][256] struct { r u8, g u8, b u8 }`?
+`ns.to_dtype(...).itemsize` will check your answers.
+
+1. What is the element size of `struct { a u16, b i64, c f32 }`?
+2. What is the element size of `union { a u16, b i64, c f32 }`?
+3. What is the element size of `[10][20] u32`?
+4. What is the element size of `[100] struct { x f32, y f32, z f32 }`?
+5. What is the element size of `struct { id u64, samples [8] cf64 }`?
+6. What is the element size of `[12][256][256] struct { r u8, g u8, b u8 }`?
 7. In a `[4][4] f32`, what byte offset is element `[2][3]`?
-8. What is the `DSize` of
+8. What is the element size of
    `struct { tag u8, payload union { a f64, b [2] u32 } }`?
 
 ##### Answers
@@ -1068,3 +1243,172 @@ elements, so `DSize = 2,359,296` bytes. Same 4 rules, just stacked.
 6. struct is `3`, array is `12 x 256 x 256 = 786,432` -> `2,359,296` bytes.
 7. `(2 x 4 + 3) x 4 = 11 x 4 = 44` bytes.
 8. `union` is `max(8, 2 x 4) = 8`, plus `tag` at 1 -> `9` bytes.
+
+```python
+>>> ns.to_dtype("struct { a u16, b i64, c f32 }").itemsize
+14
+>>> ns.to_dtype("union { a u16, b i64, c f32 }").itemsize
+8
+>>> ns.to_dtype("[10][20] u32").itemsize
+800
+>>> ns.to_dtype("[100] struct { x f32, y f32, z f32 }").itemsize
+1200
+>>> ns.to_dtype("struct { id u64, samples [8] cf64 }").itemsize
+72
+>>> ns.to_dtype("[12][256][256] struct { r u8, g u8, b u8 }").itemsize
+2359296
+>>> ns.to_dtype("struct { tag u8, payload union { a f64, b [2] u32 } }").itemsize
+9
+```
+
+Data Inputs and Outputs
+-----------------------
+
+The query language says *which* elements to touch. The Python side decides where
+the bytes come from and go.
+
+### Getting data out
+
+`db.read` allocates. It asks the variable for its dtype and shape, allocates an
+array of exactly that, and hands it to you:
+
+```python
+>>> db.execute("create out u32")
+>>> db.write("insert out 0 4", [1, 2, 3, 4])
+4
+>>> db.read("read out")
+array([1, 2, 3, 4], dtype=uint32)
+```
+
+`db.read_into` doesn't allocate. You bring the buffer, it fills as much of it as
+it can and returns how many elements it wrote. That makes it the tool for
+reading a large variable in chunks, or for reading into memory you already own:
+
+```python
+>>> buf = np.zeros(2, dtype=np.uint32)
+>>> db.read_into("read out", buf)
+2
+>>> buf
+array([1, 2], dtype=uint32)
+```
+
+The buffer has to actually fit the variable's type. `read_into` checks the dtype
+exactly - it won't convert on your behalf, because the whole point is to write
+straight into your memory:
+
+```python
+>>> db.read_into("read out", np.zeros(4, dtype=np.float64))
+Traceback (most recent call last):
+  ...
+TypeError: out has dtype float64, expected uint32
+>>> db.read_into("read out", [0, 0, 0, 0])
+Traceback (most recent call last):
+  ...
+TypeError: out must be a numpy array, not list
+```
+
+It must also be C-contiguous and writable, which rules out a non-trivial slice
+of someone else's array.
+
+### Putting data in
+
+`db.write` accepts anything numpy can turn into an array. Lists, tuples, and
+numpy arrays all work:
+
+```python
+>>> db.execute("create inp f64")
+>>> db.write("insert inp 0 2", [1.5, 2.5])
+2
+>>> db.write("insert inp 2 2", (3.5, 4.5))
+2
+>>> db.write("insert inp 4 2", np.array([5.5, 6.5]))
+2
+>>> db.read("read inp")
+array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5])
+```
+
+When you pass a numpy array, its dtype is checked and only a same-kind cast is
+allowed - so a widening cast goes through and a lossy one is refused:
+
+```python
+>>> db.write("write inp", np.array([1.5, 2.5], dtype=np.float32))
+2
+>>> db.execute("create ints u32")
+>>> db.write("insert ints 0 2", np.array([1.5, 2.5]))
+Traceback (most recent call last):
+  ...
+TypeError: cannot write float64 data to a uint32 variable
+```
+
+A plain list doesn't get that protection - it goes through
+`np.asarray(data, dtype)`, which casts however numpy sees fit. If you care about
+not silently truncating, pass an array:
+
+```python
+>>> db.write("insert ints 0 2", [1.5, 2.5])
+2
+>>> db.read("read ints")
+array([1, 2], dtype=uint32)
+```
+
+### Shapes
+
+For a scalar variable, the data is one-dimensional and only the element count
+matters. For a strict array variable, the trailing dimensions have to match the
+element type exactly, and the leading axis is the element count:
+
+```python
+>>> db.execute("create rows [3] u32")
+>>> db.write("insert rows 0 2", np.arange(6, dtype=np.uint32).reshape(2, 3))
+2
+>>> db.write("insert rows 0 1", [[1, 2]])
+Traceback (most recent call last):
+  ...
+ValueError: data has shape (1, 2), expected (n, 3)
+>>> db.read_into("read rows", np.zeros((2, 2), dtype=np.uint32))
+Traceback (most recent call last):
+  ...
+ValueError: out has shape (2, 2), expected (n, 3)
+```
+
+### Reusing a query
+
+Every call above compiled its query string, ran it, and threw the compiled form
+away. `db.prepare` keeps it, so a query you run in a loop is compiled once:
+
+```python
+>>> plan = db.prepare("read out[0:2]")
+>>> plan
+<Plan 'read out[0:2]'>
+>>> plan.read()
+array([1, 2], dtype=uint32)
+>>> plan.read()
+array([1, 2], dtype=uint32)
+>>> plan.close()
+```
+
+A `Plan` has the same `execute` / `read` / `read_into` / `write` / `var` methods,
+each taking an optional transaction as its last argument, and it's a context
+manager like everything else:
+
+```python
+>>> with db.prepare("insert out 0 2") as plan:
+...     with db.begin() as txn:
+...         plan.write([10, 20], txn)
+2
+>>> db.read("read out")
+array([10, 20,  1,  2,  3,  4], dtype=uint32)
+```
+
+When you're done with the database, close it. Any query after that is an error
+rather than a crash:
+
+```python
+>>> db.close()
+>>> db.closed
+True
+>>> db.read("read out")
+Traceback (most recent call last):
+  ...
+RuntimeError: database is closed
+```

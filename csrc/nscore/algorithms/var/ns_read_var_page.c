@@ -284,11 +284,12 @@ create_and_get_root (
   nsdb_execute (db, tx, query, e);
 
   // Get the variable
-  snprintf (query, n, "get %s", name);
-  struct nsdb_var *var  = nsdb_get_var (db, tx, query, e);
+  snprintf (query, n + 1, "get %s", name);
+  struct nsdb_var *var = nsdb_get_var (db, tx, query, e);
+  mem.table->free (mem.self, query);
 
   // Get the root
-  pgno             root = var->var.var_root;
+  pgno root = var->var.var_root;
   nsdb_var_free (var);
 
   if (writable) {

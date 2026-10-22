@@ -505,6 +505,9 @@ TEST (ns_ref)
     validate (((u32[]){100, 200, 300, 400}));
     check_state (2, 8 * sizeof (u32));
   }
+
+  ALLOC_CLOSE (alloc);
+  ns_ref_free (ref);
 }
 
 #endif

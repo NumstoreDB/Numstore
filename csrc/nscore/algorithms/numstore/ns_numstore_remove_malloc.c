@@ -116,16 +116,23 @@ numstore_remove_malloc (
     return error_trace (e);
   }
 
-  // Update new sizes and root
-  b_size newsize = var->nbytes + (len * tsize);
+  // Update new sizes and root. ns_remove returns the number of elements it
+  // took out, so the variable shrinks by that much - `len` is the length we
+  // started with, not the amount removed.
+  ASSERT ((b_size)ret * tsize <= var->nbytes);
+  b_size newsize = var->nbytes - ((b_size)ret * tsize);
   pgno   newroot = rparams.root;
   if (ns_var_update_by_var_root (p, tx, var->var_root, newroot, newsize, e) < 0) {
     return error_trace (e);
   }
 
+  // Update the user supplied variable
+  var->nbytes   = newsize;
+  var->rpt_root = rparams.root;
+
   // Set return values
-  *dlen = ret * tsize;
-  *dest = buffer;
+  *dlen         = ret * tsize;
+  *dest         = buffer;
 
   return SUCCESS;
 }

@@ -27,9 +27,6 @@ build/debug/CMakeCache.txt:
 .PHONY: test
 test: test-unit test-simtest
 
-# The CI runners drive these through bash on every platform, so the recipes
-# pick up the .exe that Windows builds produce instead of the workflow having
-# to branch on the runner OS.
 .PHONY: test-unit
 test-unit: debug
 	exe=$(DEBUG_BIN)/unit_tests; [ -f "$$exe.exe" ] && exe="$$exe.exe"; \
@@ -204,9 +201,6 @@ WHEEL = $$(ls -t dist/pynumstore-*.whl | head -1)
 wheel:
 	python3 -m build -C cmake.build-type=Release --wheel . --outdir dist
 
-# Release wheels for the host, every interpreter in [tool.cibuildwheel].
-# cibuildwheel builds for the machine it runs on, so CI gets its matrix from
-# runner labels rather than from anything here.
 .PHONY: wheels
 wheels:
 	python3 -m cibuildwheel --output-dir wheelhouse .

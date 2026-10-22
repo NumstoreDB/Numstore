@@ -137,5 +137,6 @@ TEST (smartfiles_remove)
   pgr_commit (f.p, &tx, &f.e);
 
   ALLOC_CLOSE (temp);
+  pgr_fixture_teardown (&f);
 }
 #endif

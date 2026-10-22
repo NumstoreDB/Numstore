@@ -37,9 +37,6 @@ skip = [
     "*-musllinux_*",
     "*_i686",
     "*-win32",
-    # numpy publishes win_arm64 wheels for cp311+ only (and only from numpy
-    # 2.3.0). On cp39/cp310 pip would build numpy from source on the ARM64
-    # runner, where it picks up MinGW gcc and fails inside numpy's own sources.
     "cp39-win_arm64",
     "cp310-win_arm64",
 ]
