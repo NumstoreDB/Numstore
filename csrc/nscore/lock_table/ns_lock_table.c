@@ -14,9 +14,9 @@
 
 #include "nscore/lock_table/ns_lock_table.h"
 
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_gr_lock.h"
 #include "core/ns_htable.h"
 #include "core/ns_utils.h"
 #include "nscore/txn_table/ns_txn_table.h"

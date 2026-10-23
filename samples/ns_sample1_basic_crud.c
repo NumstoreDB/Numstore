@@ -62,8 +62,8 @@ int
 main (void)
 {
   // Open a new data file
-  ns_cleanup ("sample1_crud");
-  nsdb_t *ns = ns_open ("sample1_crud");
+  ns_cleanup ("ns_sample1_crud");
+  nsdb_t *ns = ns_open ("ns_sample1_crud");
   if (ns == NULL) {
     return -1;
   }

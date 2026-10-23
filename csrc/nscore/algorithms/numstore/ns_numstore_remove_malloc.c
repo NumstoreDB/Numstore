@@ -18,42 +18,6 @@
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 err_t
-numstore_remove_malloc_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,
-    struct user_stride          ustr,
-    struct arena_alloc *NONNULL valloc,
-    struct variable *NULLABLE   var,
-    void *NONNULL *NULLABLE     dest,
-    b_size *NONNULL             dlen,
-    struct i_mem                mem,
-    error *NONNULL              e
-)
-{
-  DBG_ASSERT (pager, p);
-  DBG_ASSERT (ns_txn, tx);
-  DBG_ASSERT (string, &name);
-  DBG_ASSERT (user_stride, &ustr);
-  DBG_ASSERT (arena_alloc, valloc);
-  ASSERT (dest);
-  ASSERT (dlen);
-  DBG_ASSERT (i_mem, &mem);
-  DBG_ASSERT (clean_error, e);
-
-  // First, fetch the variable
-  struct variable _var;
-  if (var == NULL) {
-    var = &_var;
-  }
-  if (numstore_get (p, tx, false, name, valloc, var, e) < 0) {
-    return error_trace (e);
-  }
-
-  return numstore_remove_malloc (p, tx, var, ustr, dest, dlen, mem, e);
-}
-
-err_t
 numstore_remove_malloc (
     struct pager *NONNULL    p,
     struct txn *NONNULL      tx,

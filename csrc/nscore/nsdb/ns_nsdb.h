@@ -76,24 +76,14 @@ err_t nsdb_crash (struct nsdb *ns, error *e);
 // Options / configuration
 void nsdb_allow_auto_txn (struct nsdb *db);
 void nsdb_set_error (struct nsdb *db, error *e);
-err_t nsdb_writeit_numstore (struct nsdb *db, error *e);
-err_t nsdb_writeit_smartfiles (struct nsdb *db, error *e);
+err_t nsdb_init_numstore (struct nsdb *db, error *e);
+err_t nsdb_init_smartfiles (struct nsdb *db, error *e);
 
 /////////////////////////////////////// Transaction Control
 
 struct txn *nsdb_begin (struct nsdb *db, error *e);
 err_t nsdb_commit (struct nsdb *db, struct txn *txn, error *e);
 err_t nsdb_rollback (struct nsdb *db, struct txn *txn, error *e);
-
-/////////////////////////////////////// Get all variables
-
-err_t nsdb_visit_nsdb_vars (
-    struct nsdb      *db,
-    nsdb_var_consumer consumer,
-    struct txn       *tx,
-    void             *ctx,
-    error            *e
-);
 
 /////////////////////////////////////// Variables - immutable variable data from
 /// the database

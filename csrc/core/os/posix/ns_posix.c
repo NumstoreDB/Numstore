@@ -21,6 +21,7 @@
 // Darwin is the exception: it declares them by default, and _POSIX_C_SOURCE
 // there would *hide* the non-standard fstore_t / F_PREALLOCATE that
 // sys_prealloc needs, so ask for the full Darwin surface instead.
+#include "core/os/ns_once.h"
 #ifdef __APPLE__
 #  ifndef _DARWIN_C_SOURCE
 #    define _DARWIN_C_SOURCE 1

@@ -46,6 +46,8 @@ DEFINE_DBG_ASSERT (struct variable, variable, v, {
 
 err_t i_print_variable (struct variable *v, error *e);
 
+err_t var_copy (struct variable *dest, struct variable *src, struct arena_alloc *alloc, error *e);
+
 // If name is NULL - returns default variable name
 struct string vname_or_default (const char *name);
 bool variable_equal (const struct variable *left, const struct variable *right);

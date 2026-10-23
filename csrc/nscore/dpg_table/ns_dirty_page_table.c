@@ -14,9 +14,9 @@
 
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_htable.h"
+#include "core/ns_latch.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"

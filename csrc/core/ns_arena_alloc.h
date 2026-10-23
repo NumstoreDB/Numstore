@@ -25,8 +25,8 @@
 #ifndef NS_CHUNK_ALLOC_H
 #define NS_CHUNK_ALLOC_H
 
-#include "core/ns_concurrency.h"
 #include "core/ns_error.h"
+#include "core/ns_latch.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_malloc.h"
 
@@ -56,6 +56,7 @@ void arena_alloc_assert (const struct arena_alloc *a);
 DEFINE_DBG_ASSERT (struct arena_alloc, arena_alloc, ca, { arena_alloc_assert (ca); })
 #endif
 
+void arena_alloc_create_default_with (struct arena_alloc *dest, struct i_mem mem);
 void arena_alloc_create_default (struct arena_alloc *dest);
 void *arena_malloc (struct arena_alloc *ca, u32 req, u32 size, error *e);
 void arena_alloc_free_all (struct arena_alloc *ca);
@@ -70,6 +71,22 @@ void *arena_alloc_copy (struct arena_alloc *alloc, const void *ptr, u32 size, er
 #define ALLOC_RESET(name)         \
   arena_alloc_free_all (&(name)); \
   arena_alloc_create_default (&(name))
+
+#ifndef NDEBUG
+/**
+ * For testing only
+ */
+#  define TEST_ALLOC_INIT_FAULTY(name, faulty, e)             \
+    struct i_mem faulty;                                      \
+    err_t        r = faulty_mem_init_default (&faulty, 0, e); \
+    test_assert_int_equal (r, SUCCESS);                       \
+    struct arena_alloc alloc;                                 \
+    arena_alloc_create_default_with (&alloc, faulty)
+
+#  define TEST_ALLOC_CLOSE_FAULTY(name, faulty) \
+    arena_alloc_free_all (&(name));             \
+    faulty_mem_free (faulty)
+#endif
 
 /******************************************************************************
  * SECTION: Builder Pattern

@@ -99,10 +99,7 @@ struct query
 
 bool query_equal (const struct query *left, const struct query *right);
 
-void i_log_query (int LOG_LEVEL, struct query *q);
-
 err_t query_vname_of_interest (struct string *dest, const struct query *q, error *e);
-err_t query_ustr_of_interest (struct user_stride *dest, const struct query *q, error *e);
 
 sb_size ns_query_fcompile (
     struct arena_alloc *alloc, // Where to allocate query

@@ -45,7 +45,7 @@ ns_db_reopen_handle (struct ns_db *db, error *e)
     return error_trace (e);
   }
 
-  if (nsdb_writeit_numstore (ns, e)) {
+  if (nsdb_init_numstore (ns, e)) {
     nsdb_close (ns, e);
     return error_trace (e);
   }

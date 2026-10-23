@@ -95,7 +95,7 @@ int ns_commit (nsdb_t *ns, txn_t *txn);
 // Roll back a transaction
 int ns_rollback (nsdb_t *ns, txn_t *txn);
 
-typedef int (*nsdb_var_consumer) (nsdb_var_t *v, void *ctx);
+typedef void (*nsdb_var_consumer) (nsdb_var_t *v, void *ctx);
 int ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx);
 
 //////////////////////////////////// Numstore Execution patterns

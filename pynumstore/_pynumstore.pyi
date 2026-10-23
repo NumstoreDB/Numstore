@@ -1,4 +1,4 @@
-from typing import Any, NewType
+from typing import Any, NewType, List
 
 import numpy as np
 
@@ -25,6 +25,9 @@ def _pyns_begin(db: nsdb, /) -> nstxn:
 def _pyns_commit(db: nsdb, txn: nstxn, /) -> None:
 def _pyns_rollback(db: nsdb, txn: nstxn, /) -> None:
 
+# ---------------------------------------------------------------- High level 
+def _pyns_get_all_vars(db: nsdb, txn: nstxn | None, /) -> List[var]:
+
 # ---------------------------------------------------------------- Plans
 #
 # A plan is a compiled query that can be run many times. Passing txn=None
@@ -32,6 +35,7 @@ def _pyns_rollback(db: nsdb, txn: nstxn, /) -> None:
 
 def _pyns_plan_create(db: nsdb, query: str, /) -> nsplan:
 def _pyns_plan_close(plan: nsplan, /) -> None:
+
 def _pyns_plan_execute(plan: nsplan, txn: nstxn | None, /) -> None:
 def _pyns_plan_get_var(plan: nsplan, txn: nstxn | None, /) -> nsvar:
 def _pyns_plan_read(plan: nsplan, txn: nstxn | None, dest: Buffer, /) -> int:

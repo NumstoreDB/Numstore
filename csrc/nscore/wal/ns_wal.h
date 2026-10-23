@@ -15,9 +15,9 @@
 #ifndef WAL_H
 #define WAL_H
 
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_latch.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "core/os/ns_malloc.h"

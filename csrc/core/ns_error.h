@@ -116,6 +116,27 @@ void error_log_consume (error *e);
   }                      \
   while (0)
 
+#include <stddef.h>
+
+/**
+ * returns the first available non null
+ * error
+ */
+HEADER_FUNC error *
+error_priority_n (error *const *errs, size_t n)
+{
+  for (size_t i = 0; i < n; ++i) {
+    if (errs[i] != NULL) {
+      return errs[i];
+    }
+  }
+  UNREACHABLE ();
+}
+
+// Short hand for error_priority_n
+#define error_priority(...) \
+  error_priority_n ((error *[]){__VA_ARGS__}, sizeof ((error *[]){__VA_ARGS__}) / sizeof (error *))
+
 #ifdef NDEBUG
 #  define FAULT(expr, label) unlikely (expr)
 #endif

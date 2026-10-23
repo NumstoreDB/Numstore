@@ -15,9 +15,9 @@
 #include "core/ns_arena_alloc.h"
 
 #include "core/ns_bounds.h"
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_latch.h"
 #include "core/os/ns_malloc.h"
 
 #include <stdint.h>
@@ -206,6 +206,23 @@ arena_alloc_create (struct arena_alloc *dest, const struct arena_alloc_settings 
   latch_init (&dest->latch);
 
   DBG_ASSERT (arena_alloc, dest);
+}
+
+void
+arena_alloc_create_default_with (struct arena_alloc *dest, struct i_mem mem)
+{
+  arena_alloc_create (
+      dest,
+      (struct arena_alloc_settings){
+          .max_alloc_size    = 0,
+          .max_total_size    = 0,
+          .target_chunk_mult = 10,
+          .min_chunk_size    = 10,
+          .max_chunk_size    = 0,
+          .max_chunks        = 0,
+          .mem               = mem,
+      }
+  );
 }
 
 void

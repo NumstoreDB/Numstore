@@ -17,39 +17,6 @@
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 
 sb_size
-numstore_read_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,
-    struct user_stride          ustr,
-    struct arena_alloc *NONNULL valloc,
-    struct variable *NULLABLE   var,
-    struct stream *NONNULL      dest,
-    error *NONNULL              e
-)
-{
-  DBG_ASSERT (pager, p);
-  DBG_ASSERT (ns_txn, tx);
-  DBG_ASSERT (string, &name);
-  DBG_ASSERT (user_stride, &ustr);
-  DBG_ASSERT (arena_alloc, valloc);
-  DBG_ASSERT (stream, dest);
-  DBG_ASSERT (clean_error, e);
-
-  // First, fetch the variable
-  struct variable _var;
-  if (var == NULL) {
-    var = &_var;
-  }
-  if (numstore_get (p, tx, false, name, valloc, var, e) < 0) {
-    return error_trace (e);
-  }
-
-  // Then, do the read
-  return numstore_read (p, tx, var, ustr, dest, e);
-}
-
-sb_size
 numstore_read (
     struct pager *NONNULL    p,
     struct txn *NONNULL      tx,

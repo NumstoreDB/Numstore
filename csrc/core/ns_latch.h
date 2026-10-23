@@ -12,117 +12,14 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#ifndef CONCURRENCY_H
-#define CONCURRENCY_H
+#ifndef NS_LATCH_H
+#define NS_LATCH_H
 
-#include "core/ns_error.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
-#include "core/os/ns_os.h"
 
 #include <stdatomic.h>
 #include <stdbool.h>
-
-/******************************************************************************
- * SECTION: GRLock
- * ----------------------------------------------------------------------------
- * @brief A Lock with precedence
- ******************************************************************************/
-
-enum lock_mode
-{
-  LM_IS    = 0,
-  LM_IX    = 1,
-  LM_S     = 2,
-  LM_SIX   = 3,
-  LM_X     = 4,
-  LM_COUNT = 5,
-};
-
-/**
- * lock waiters are allocated on the stack - so a waiter only exists
- * for as long as gr_lock is waiting. Therefore, there is no array of
- * granted lock groups, instead, I use a counter to count how many locks
- * of each type are granted.
- *
- * This comes with drawbacks.
- *
- * 1. There is no priority - The only priority that's ensured is that the order
- *    of the condition variable signals is the same as the order that they came
- * in, which is ok, but not the best.
- *
- * In order to add priority I need to keep track of the list of granted locks -
- * which would mean some sort of allocation or intrusive data structure.
- *
- * One idea would be to have a gr_lock live on the stack and it's lifecycle is
- * tied to one lock unlock flow, which is probably what I'll do, but for now,
- * locks have loose priority until it becomes a performance problem
- */
-struct gr_lock_waiter
-{
-  enum lock_mode         mode;
-  i_cond                 cond;
-  struct gr_lock_waiter *prev;
-  struct gr_lock_waiter *next;
-};
-
-struct gr_lock
-{
-  // The OS that created [mutex] and every waiter's cond - it has to free them
-  struct i_os            os;
-  i_mutex                mutex;
-  int                    holder_counts[LM_COUNT];
-  struct gr_lock_waiter *head;
-};
-
-err_t gr_lock_init (struct gr_lock *l, struct i_os os, error *e);
-
-void gr_lock_destroy (struct gr_lock *l);
-
-err_t gr_lock (struct gr_lock *l, enum lock_mode mode, error *e);
-void gr_unlock (struct gr_lock *l, enum lock_mode mode);
-
-const char *gr_lock_mode_name (enum lock_mode mode);
-enum lock_mode get_parent_mode (enum lock_mode child_mode);
-
-/******************************************************************************
- * SECTION: Periodic Task
- * ----------------------------------------------------------------------------
- * @brief A utility for a periodic task that occurs a fixed timer
- *
- * TODO - usage
- ******************************************************************************/
-
-typedef void (*periodic_task_fn) (void *ctx);
-
-struct periodic_task
-{
-  // The OS that created the thread, mutex and conds below
-  struct i_os      os;
-  i_thread         thread;
-  i_mutex          mutex;
-  i_cond           wake_cond;
-  i_cond           done_cond;
-  bool             wake_requested;
-  bool             done;
-  _Atomic (bool)   stop;
-  bool             running;
-  u64              msec;
-  periodic_task_fn fn;
-  void            *ctx;
-};
-
-err_t periodic_task_init (struct periodic_task *t, struct i_os os, error *e);
-
-err_t periodic_task_start (
-    struct periodic_task *t,
-    u64                   msec,
-    periodic_task_fn      fn,
-    void                 *ctx,
-    error                *e
-);
-
-err_t periodic_task_stop (struct periodic_task *t, error *e);
 
 /******************************************************************************
  * SECTION: Latch

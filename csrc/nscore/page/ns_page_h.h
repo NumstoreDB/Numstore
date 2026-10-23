@@ -15,8 +15,8 @@
 #ifndef PAGE_H_H
 #define PAGE_H_H
 
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
+#include "core/ns_latch.h"
 #include "core/ns_stdtypes.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_delegate.h"

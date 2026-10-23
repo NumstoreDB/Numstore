@@ -77,13 +77,4 @@ err_t ns_var_update_by_var_root (
     error        *e
 );
 
-err_t ns_var_update_by_name (
-    struct pager *p,
-    struct txn   *tx,
-    struct string name,
-    pgno          newpg,
-    b_size        nbytes,
-    error        *e
-);
-
 #endif

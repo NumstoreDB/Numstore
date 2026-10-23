@@ -39,6 +39,9 @@ PyObject *pyns_begin (PyObject *m, PyObject *arg);
 PyObject *pyns_commit (PyObject *m, PyObject *args);
 PyObject *pyns_rollback (PyObject *m, PyObject *args);
 
+// Global operations
+PyObject *pyns_get_all_vars (PyObject *m, PyObject *args);
+
 // Execution
 PyObject *pyns_execute (PyObject *m, PyObject *args);
 PyObject *pyns_plan_execute (PyObject *m, PyObject *args);

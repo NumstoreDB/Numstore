@@ -16,8 +16,8 @@
 #define NS_DBL_BUFFER_H
 
 #include "core/ns_arena_alloc.h" // slab alloc
-#include "core/ns_concurrency.h" // latch
 #include "core/ns_error.h"       // err_t
+#include "core/ns_latch.h"       // latch
 #include "core/ns_stdtypes.h"    // u32 ...etc
 
 struct arena_alloc;

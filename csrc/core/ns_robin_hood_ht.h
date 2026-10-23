@@ -24,9 +24,9 @@
  * SUFFIX: What to suffix all the methods and structs with
  */
 
-#include "core/ns_concurrency.h" // latch
 #include "core/ns_csx_assert.h"
 #include "core/ns_htable.h"   // hti_res etc
+#include "core/ns_latch.h"    // latch
 #include "core/ns_platform.h" // string.h
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "core/ns_utils.h"

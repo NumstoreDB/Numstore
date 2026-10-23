@@ -173,7 +173,7 @@ TEST (ns_visit_variables)
   error e = error_create ();
   nsdb_cleanup ("test", os, &e);
   struct nsdb *db = nsdb_open ("test", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
 
   TEST_CASE ("no variables")
   {

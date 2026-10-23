@@ -781,6 +781,8 @@ struct faulty_mem_ctx
 {
   struct i_mem delegate;
   float        fail_percent;
+  int          fail_after;
+  u32          nmallocs;
 };
 
 static const struct i_mem_vtable faulty_mem_vtable;
@@ -793,14 +795,30 @@ DEFINE_DBG_ASSERT (struct faulty_mem_ctx, faulty_mem_ctx, c, {
 
 /// NULL (with [e] set) instead of an allocation, with probability fail_percent
 static inline bool
-faulty_mem_roll (const struct faulty_mem_ctx *ctx, const char *what, error *e)
+faulty_mem_roll (struct faulty_mem_ctx *ctx, const char *what, error *e)
 {
   DBG_ASSERT (faulty_mem_ctx, ctx);
 
+  /**
+   * Check fail after if >= 0
+   */
+  if (ctx->fail_after >= 0) {
+    if (ctx->fail_after == 0) {
+      ctx->fail_after = -1;
+      error_causef (e, ERR_NOMEM, "%s: injected fault", what);
+      return true;
+    }
+    ctx->fail_after -= 1;
+  }
+
+  /**
+   * Check fail percent
+   */
   if (randf () < ctx->fail_percent) {
     error_causef (e, ERR_NOMEM, "%s: injected fault", what);
     return true;
   }
+
   return false;
 }
 
@@ -814,7 +832,11 @@ faulty_mem_malloc (void *self, const u32 nelem, const u32 size, error *e)
     return NULL;
   }
 
-  return ctx->delegate.table->malloc (ctx->delegate.self, nelem, size, e);
+  void *ret = ctx->delegate.table->malloc (ctx->delegate.self, nelem, size, e);
+  if (ret != NULL) {
+    ctx->nmallocs += 1;
+  }
+  return ret;
 }
 
 static void *
@@ -827,7 +849,11 @@ faulty_mem_calloc (void *self, const u32 nelem, const u32 size, error *e)
     return NULL;
   }
 
-  return ctx->delegate.table->calloc (ctx->delegate.self, nelem, size, e);
+  void *ret = ctx->delegate.table->calloc (ctx->delegate.self, nelem, size, e);
+  if (ret != NULL) {
+    ctx->nmallocs += 1;
+  }
+  return ret;
 }
 
 static void *
@@ -836,13 +862,15 @@ faulty_mem_realloc (void *self, void *ptr, const u32 nelem, const u32 size, erro
   struct faulty_mem_ctx *ctx = self;
   DBG_ASSERT (faulty_mem_ctx, ctx);
 
-  // A failed realloc must leave [ptr] untouched, which is exactly what
-  // returning NULL here does - the caller still owns it.
   if (faulty_mem_roll (ctx, "realloc", e)) {
     return NULL;
   }
 
-  return ctx->delegate.table->realloc (ctx->delegate.self, ptr, nelem, size, e);
+  void *ret = ctx->delegate.table->realloc (ctx->delegate.self, ptr, nelem, size, e);
+  if (ret != NULL) {
+    ctx->nmallocs += 1;
+  }
+  return ret;
 }
 
 /// free never fails - a caller cannot react to it, and leaking here would
@@ -878,6 +906,8 @@ faulty_mem_create (struct i_mem delegate, const float fail_percent, struct i_mem
 
   ctx->delegate     = delegate;
   ctx->fail_percent = fail_percent;
+  ctx->fail_after   = -1;
+  ctx->nmallocs     = 0;
 
   DBG_ASSERT (faulty_mem_ctx, ctx);
 
@@ -885,6 +915,27 @@ faulty_mem_create (struct i_mem delegate, const float fail_percent, struct i_mem
   dest->self  = ctx;
 
   return SUCCESS;
+}
+
+void
+faulty_mem_set_fail (struct i_mem mem, float fail_percent)
+{
+  struct faulty_mem_ctx *ctx = mem.self;
+  ctx->fail_percent          = fail_percent;
+}
+
+void
+faulty_mem_fail_after (struct i_mem mem, int count)
+{
+  struct faulty_mem_ctx *ctx = mem.self;
+  ctx->fail_after            = count;
+}
+
+u32
+faulty_num_mallocs (struct i_mem mem)
+{
+  struct faulty_mem_ctx *ctx = mem.self;
+  return ctx->nmallocs;
 }
 
 /// Frees the faulty layer - the delegate allocator is borrowed and stays alive.

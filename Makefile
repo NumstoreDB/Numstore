@@ -16,7 +16,7 @@ DEBUG_BIN := build/debug/bin
 ############ Debug
 .PHONY: debug
 debug: build/debug/CMakeCache.txt
-	cmake --build build/debug
+	cmake --build build/debug -j12
 
 build/debug/CMakeCache.txt:
 	cmake -S . -B build/debug \
@@ -91,6 +91,11 @@ build/coverage/.stamp: build/coverage/bin/unit_tests build/coverage/bin/ns_simte
 		--dbname build/coverage/simtest.db \
 		--duration 5 \
 		--seed $(SEED)
+	./build/coverage/bin/smfile_sample1_basic_crud
+	./build/coverage/bin/smfile_sample2_transactions
+	./build/coverage/bin/smfile_sample3_stride
+	./build/coverage/bin/smfile_sample4_rollback_commit
+	./build/coverage/bin/ns_sample1_basic_crud
 	touch build/coverage/.stamp
 
 build/coverage/html/index.html: build/coverage/.stamp

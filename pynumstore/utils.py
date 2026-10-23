@@ -19,8 +19,7 @@ def to_dtype(type_str: str) -> np.dtype[Any]:
     return _ns._pyns_ns_to_np(type_str)
 
 
-def capture_var(plan: nsplan, txn: nstxn | None) -> Var:
-    handle = _ns._pyns_plan_get_var(plan, txn)
+def handle_to_var(handle) -> Var:
     try:
         return Var(
             name=_ns._pyns_var_name(handle),
@@ -30,6 +29,11 @@ def capture_var(plan: nsplan, txn: nstxn | None) -> Var:
         )
     finally:
         _ns._pyns_var_free(handle)
+
+
+def capture_var(plan: nsplan, txn: nstxn | None) -> Var:
+    handle = _ns._pyns_plan_get_var(plan, txn)
+    return handle_to_var(handle)
 
 
 def layout(var: Var) -> tuple[np.dtype[Any], tuple[int, ...]]:

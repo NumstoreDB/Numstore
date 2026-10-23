@@ -21,7 +21,9 @@
 #include "core/os/ns_os.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/smartfiles/ns_smartfiles_algorithms.h"
+#include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/nsdb/ns_nsdb.h"
+#include "nscore/variables/ns_variables.h"
 
 #include <stdarg.h>
 
@@ -243,11 +245,30 @@ ns_rollback (nsdb_t *ns, txn_t *txn)
   return nsdb_rollback (ns, txn, ns->e);
 }
 
+struct nsdb_var_t_visit_ctx
+{
+  nsdb_var_consumer consumer;
+  void             *parent_ctx;
+};
+
+static err_t
+ns_visit_consumer (struct variable *_var, void *_ctx, error *e)
+{
+  struct nsdb_var_t_visit_ctx *ctx = _ctx;
+  struct nsdb_var              var = {
+      .var   = *_var,
+      .alloc = {0},
+      .mem   = {0},
+  };
+  ctx->consumer (&var, ctx->parent_ctx);
+  return SUCCESS;
+}
+
 int
 ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx)
 {
   error_reset (db->e);
-  return nsdb_visit_nsdb_vars (db, consumer, tx, ctx, db->e);
+  return ns_visit_variables (db->p, ns_visit_consumer, ctx, db->e);
 }
 
 static inline char *

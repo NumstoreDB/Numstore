@@ -26,9 +26,6 @@
 
 err_t numstore_init_pager (struct pager *p, error *e);
 
-// Insert into a variable based on it's variable name
-// If you pass a non null variable to this function,
-// The variable will be captured
 sb_size numstore_insert_from_name (
     struct pager *NONNULL       p,
     struct txn *NONNULL         tx,
@@ -54,17 +51,6 @@ sb_size numstore_insert (
 );
 
 ////// Read
-sb_size numstore_read_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,   // Name of the variable
-    struct user_stride          ustr,   // Stride to read
-    struct arena_alloc *NONNULL valloc, // Allocator for variable in get
-    struct variable *NULLABLE   var,    // If not null - save the variable
-    struct stream *NONNULL      dest,   // Output stream
-    error *NONNULL              e
-);
-
 sb_size numstore_read (
     struct pager *NONNULL    p,
     struct txn *NONNULL      tx,
@@ -102,17 +88,6 @@ err_t numstore_read_malloc (
 
 ////// Write
 
-sb_size numstore_write_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,  // Name of the variable
-    struct user_stride          ustr,  // Stride to write
-    struct arena_alloc *NONNULL alloc, // Allocator for variable in get
-    struct variable *NULLABLE   var,   // If not null - save the variable
-    struct stream *NONNULL      src,   // Input stream
-    error *NONNULL              e
-);
-
 sb_size numstore_write (
     struct pager *NONNULL    p,
     struct txn *NONNULL      tx,
@@ -145,19 +120,6 @@ sb_size numstore_remove (
 );
 
 ////// Remove Malloc
-
-err_t numstore_remove_malloc_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,  // Name of the variable
-    struct user_stride          ustr,  // Stride to remove
-    struct arena_alloc *NONNULL alloc, // Allocator for variable in get
-    struct variable *NULLABLE   var,   // If not null - save the variable
-    void *NONNULL *NULLABLE     dest,  // destination buffer
-    b_size *NONNULL             dlen,  // Output stream (can be null)
-    struct i_mem                mem,   // Where to allocate on
-    error *NONNULL              e
-);
 
 err_t numstore_remove_malloc (
     struct pager *NONNULL    p,

@@ -19,6 +19,7 @@
 #include "core/ns_error.h"
 #include "core/ns_logging.h"
 #include "core/ns_numerics.h"
+#include "core/ns_string.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
@@ -89,6 +90,33 @@ TEST (i_print_variable)
   ALLOC_CLOSE (alloc);
 }
 #endif
+
+err_t
+var_copy (struct variable *dest, struct variable *src, struct arena_alloc *alloc, error *e)
+{
+  *dest = (struct variable){
+      .vname =
+          {
+              .data = arena_alloc_copy (alloc, src->vname.data, src->vname.len, e),
+              .len  = src->vname.len,
+          },
+      // .dtype = copy
+      .nbytes   = src->nbytes,
+      .rpt_root = src->rpt_root,
+      .var_root = src->var_root,
+  };
+
+  if (dest->vname.data == NULL) {
+    return error_trace (e);
+  }
+
+  dest->dtype = type_movemem (src->dtype, alloc, e);
+  if (dest->dtype == NULL) {
+    return error_trace (e);
+  }
+
+  return SUCCESS;
+}
 
 bool
 variable_equal (const struct variable *left, const struct variable *right)

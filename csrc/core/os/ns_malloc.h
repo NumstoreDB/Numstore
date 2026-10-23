@@ -78,7 +78,17 @@ err_t faulty_mem_create (
     struct i_mem *NONNULL dest,
     error *NONNULL        e
 );
+void faulty_mem_set_fail (struct i_mem mem, float fail_percent);
+void faulty_mem_fail_after (struct i_mem mem, int count);
+u32 faulty_num_mallocs (struct i_mem mem);
 void faulty_mem_free (struct i_mem mem);
+
+HEADER_FUNC err_t
+faulty_mem_init_default (struct i_mem *dest, float fail_percent, error *e)
+{
+  struct i_mem mem = default_mem ();
+  return faulty_mem_create (mem, 0, dest, e);
+}
 
 /// free [ptr] if it is non-NULL
 #define mem_cfree(mem, ptr)                  \

@@ -182,74 +182,9 @@ void faulty_os_free (struct i_os os);
 /// check isn't copy pasted at every call site.
 
 /// pread exactly [n] bytes - a short read is ERR_CORRUPT, not EOF
-HEADER_FUNC err_t
-file_pread_all_expect (i_file f, void *dest, const u64 n, const u64 offset, error *e)
-{
-  const i64 ret = f.table->pread_all (f.self, dest, n, offset, e);
-  if (ret < 0) {
-    return error_trace (e);
-  }
-
-  if (unlikely ((u64)ret != n)) {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
-        ret,
-        (i64)n
-    );
-  }
-
-  return SUCCESS;
-}
-
+err_t file_pread_all_expect (i_file f, void *dest, const u64 n, const u64 offset, error *e);
 /// read exactly [nbytes] bytes - a short read is ERR_CORRUPT, not EOF
-HEADER_FUNC err_t
-file_read_all_expect (i_file f, void *dest, const u64 nbytes, error *e)
-{
-  const i64 ret = f.table->read_all (f.self, dest, nbytes, e);
-  if (ret < 0) {
-    return error_trace (e);
-  }
-
-  if (unlikely ((u64)ret != nbytes)) {
-    return error_causef (
-        e,
-        ERR_CORRUPT,
-        "read: short read (got %" PRId64 " of %" PRId64 " bytes)",
-        ret,
-        (i64)nbytes
-    );
-  }
-
-  return SUCCESS;
-}
-
-////////////////////////////
-/// Run once
-///
-/// Deliberately *not* on os_vtable: callers are file-scope lazy initializers
-/// (CRC tables and the like) that have no vtable instance to reach for. It is
-/// still part of the OS layer rather than raw pthread calls at the use site -
-/// pthread.h does not exist under MSVC, which is what builds the Windows
-/// Python extension.
-
-#if PLATFORM_WINDOWS
-typedef INIT_ONCE i_once;
-#  define I_ONCE_INIT INIT_ONCE_STATIC_INIT
-#else
-typedef pthread_once_t i_once;
-#  define I_ONCE_INIT PTHREAD_ONCE_INIT
-#endif
-
-void i_once_run (i_once *once, void (*fn) (void));
-
-////////////////////////////
-/// Sleep
-///
-/// Also not on os_vtable, for the same reason: it needs no OS instance, and
-/// there is nothing per-OS to decorate - a faulty OS that slept differently
-/// would just make tests flaky.
+err_t file_read_all_expect (i_file f, void *dest, const u64 nbytes, error *e);
 
 void i_sleep_us (u64 us);
 

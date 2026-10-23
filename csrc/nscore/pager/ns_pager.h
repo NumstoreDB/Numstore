@@ -16,10 +16,11 @@
 #define PAGER_H
 
 #include "core/ns_arena_alloc.h"
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
 #include "core/ns_error.h"
+#include "core/ns_latch.h"
+#include "core/ns_periodic_task.h"
 #include "core/ns_slab_alloc.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_os.h"

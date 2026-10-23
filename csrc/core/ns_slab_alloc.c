@@ -14,9 +14,9 @@
 
 #include "core/ns_slab_alloc.h"
 
-#include "core/ns_concurrency.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
+#include "core/ns_latch.h"
 #include "core/ns_numerics.h"
 #include "core/ns_testing.h"
 #include "core/os/ns_malloc.h"

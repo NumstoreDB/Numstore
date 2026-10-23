@@ -16,7 +16,7 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_testing.h"
-#include "core/os/ns_os.h"
+#include "core/os/ns_once.h"
 
 #include <string.h>
 

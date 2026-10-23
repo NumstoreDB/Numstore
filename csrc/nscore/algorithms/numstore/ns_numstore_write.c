@@ -17,37 +17,6 @@
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 
 sb_size
-numstore_write_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,  // Name of the variable
-    struct user_stride          ustr,  // Stride to write
-    struct arena_alloc *NONNULL alloc, // Allocator for variable in get
-    struct variable *NULLABLE   var,   // If not null - save the variable
-    struct stream *NONNULL      src,   // Input stream
-    error *NONNULL              e
-)
-{
-  DBG_ASSERT (pager, p);
-  DBG_ASSERT (ns_txn, tx);
-  DBG_ASSERT (string, &name);
-  DBG_ASSERT (user_stride, &ustr);
-  DBG_ASSERT (arena_alloc, alloc);
-  DBG_ASSERT (stream, src);
-  DBG_ASSERT (clean_error, e);
-
-  struct variable _var;
-  if (var == NULL) {
-    var = &_var;
-  }
-  if (numstore_get (p, tx, false, name, alloc, var, e) < 0) {
-    return error_trace (e);
-  }
-
-  return numstore_write (p, tx, var, ustr, src, e);
-}
-
-sb_size
 numstore_write (
     struct pager *NONNULL    p,
     struct txn *NONNULL      tx,

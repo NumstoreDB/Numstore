@@ -15,14 +15,15 @@
 // ns_pynumstore.h must come first: it includes <Python.h> (which has to precede
 // every system header) and sets the NumPy API macros before numpy/arrayobject.h
 // is pulled in. Including a numpy header before it locks in the wrong config.
+#include "core/ns_error.h"
+#include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/variables/ns_variables.h"
 #define PYNUMSTORE_MODULE_MAIN
-#include "ns_pynumstore.h"
-
 #include "core/ns_csx_assert.h"
+#include "ns_pynumstore.h"
 #include "nscore/compiler/ns_compiler.h"
 #include "nscore/nsdb/ns_nsdb.h"
 #include "nscore/types/ns_types.h"
-#include "numstore.h"
 
 //////////////////////////////// Constants
 
@@ -1001,6 +1002,78 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
   Py_RETURN_NONE;
 }
 
+//////////////////////////////// Global operations
+
+struct pyns_visit_vars_ctx
+{
+  PyObject    *list;
+  struct nsdb *db;
+};
+
+static err_t
+pyns_visit_var_consumer (struct variable *_var, void *_ctx, error *e)
+{
+  struct pyns_visit_vars_ctx *ctx = _ctx;
+
+  // Allocate a variable
+  struct nsdb_var            *var = nsdb_var_create (ctx->db->mem, e);
+  if (var == NULL) {
+    return error_trace (e);
+  }
+
+  // Variable is temporary in visitor - copy it to result variable
+  if (var_copy (nsdb_var_var (var), _var, nsdb_var_alloc (var), e) < 0) {
+    nsdb_var_free (var);
+    return error_trace (e);
+  }
+
+  // Wrap in a capsule - capsule now owns var
+  PyObject *next = pyns_var_capsule_new (var);
+  if (next == NULL) {
+    nsdb_var_free (var);
+    return error_trace (e);
+  }
+
+  // List takes its own reference; drop ours either way
+  int rc = PyList_Append (ctx->list, next);
+  Py_DECREF (next);
+  if (rc < 0) {
+    return error_causef (e, ERR_IO, "Failed to append item to python list");
+  }
+
+  return SUCCESS;
+}
+
+PyObject *
+pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
+{
+  nsdb_t *db;
+  txn_t  *txn;
+
+  // pyns_get_all_vars(db: capsule, txn: capsule | None)
+  if (!PyArg_ParseTuple (args, "O&O&", _db_arg, &db, _txn_arg, &txn)) {
+    return NULL;
+  }
+
+  PyObject *list = PyList_New (0);
+  if (list == NULL) {
+    return NULL; // MemoryError already set by Python
+  }
+
+  struct pyns_visit_vars_ctx ctx = {
+      .db   = db,
+      .list = list,
+  };
+
+  if (ns_visit_variables (db->p, pyns_visit_var_consumer, &ctx, db->e) < 0) {
+    Py_DECREF (list); // frees list + every capsule (and its var) in it
+    _pyns_set_error_from_nsdb (db);
+    return NULL;
+  }
+
+  return list;
+}
+
 //////////////////////////////// Plans
 
 PyObject *
@@ -1326,6 +1399,14 @@ static PyMethodDef pynumstore_methods[] = {
         pyns_rollback,
         METH_VARARGS,
         "_pyns_rollback(db, txn) -> None",
+    },
+
+    // Global
+    {
+        "_pyns_get_all_vars",
+        pyns_get_all_vars,
+        METH_VARARGS,
+        "_pyns_get_all_vars(db, txn) -> List[var]",
     },
 
     // Plans

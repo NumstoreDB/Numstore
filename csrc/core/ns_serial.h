@@ -20,7 +20,7 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include "core/ns_concurrency.h"
+#include "core/ns_latch.h"
 #include "core/ns_stdtypes.h"
 
 #include <stdbool.h>

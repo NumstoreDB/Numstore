@@ -16,8 +16,8 @@
 #define NS_WAL_OSTREAM_H
 
 #include "core/ns_cbuffer.h"
-#include "core/ns_concurrency.h"
 #include "core/ns_error.h"
+#include "core/ns_latch.h"
 #include "core/ns_stdtypes.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"

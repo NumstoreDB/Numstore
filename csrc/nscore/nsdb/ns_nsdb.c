@@ -100,43 +100,17 @@ nsdb_set_error (struct nsdb *db, error *e)
   db->e = e;
 }
 
-static inline error *
-nsdb_get_active_error (struct nsdb *db, error *e)
-{
-  // Always use the passed in error by default
-  if (e != NULL) {
-    return e;
-  }
-
-  // resort to struct error
-  ASSERT (db->e != NULL);
-  return db->e;
-}
-
-static inline error *
-nsdb_plan_get_active_error (struct nsdb_plan *db, error *e)
-{
-  // Always use the passed in error by default
-  if (e != NULL) {
-    return e;
-  }
-
-  // resort to struct error
-  ASSERT (db->parent->e != NULL);
-  return db->parent->e;
-}
-
 err_t
-nsdb_writeit_numstore (struct nsdb *db, error *_e)
+nsdb_init_numstore (struct nsdb *db, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
   return numstore_init_pager (db->p, e);
 }
 
 err_t
-nsdb_writeit_smartfiles (struct nsdb *db, error *_e)
+nsdb_init_smartfiles (struct nsdb *db, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
   return smartfiles_init_pager (db->p, e);
 }
 
@@ -150,7 +124,7 @@ nsdb_cleanup (const char *path, const struct i_os os, error *e)
 err_t
 nsdb_close (struct nsdb *n, error *_e)
 {
-  error *e = nsdb_get_active_error (n, _e);
+  error *e = error_priority (_e, n->e);
   ASSERT (!n->auto_tx.in_auto_txn);
 
   err_t ret = pgr_close (n->p, e);
@@ -167,7 +141,7 @@ nsdb_close (struct nsdb *n, error *_e)
 err_t
 nsdb_crash (struct nsdb *n, error *_e)
 {
-  error *e   = nsdb_get_active_error (n, _e);
+  error *e   = error_priority (_e, n->e);
 
   err_t  err = pgr_crash (n->p, e);
   slab_alloc_destroy (&n->txn_alloc);
@@ -185,7 +159,7 @@ nsdb_crash (struct nsdb *n, error *_e)
 struct txn *
 nsdb_begin (struct nsdb *db, error *_e)
 {
-  error      *e  = nsdb_get_active_error (db, _e);
+  error      *e  = error_priority (_e, db->e);
 
   struct txn *tx = slab_alloc_alloc (&db->txn_alloc, e);
   if (tx == NULL) {
@@ -203,7 +177,7 @@ nsdb_begin (struct nsdb *db, error *_e)
 err_t
 nsdb_commit (struct nsdb *db, struct txn *tx, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   if (pgr_commit (db->p, tx, e)) {
     slab_alloc_free (&db->txn_alloc, tx);
@@ -217,7 +191,7 @@ nsdb_commit (struct nsdb *db, struct txn *tx, error *_e)
 err_t
 nsdb_rollback (struct nsdb *db, struct txn *tx, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   if (pgr_rollback (db->p, tx, 0, e)) {
     slab_alloc_free (&db->txn_alloc, tx);
@@ -226,20 +200,6 @@ nsdb_rollback (struct nsdb *db, struct txn *tx, error *_e)
 
   slab_alloc_free (&db->txn_alloc, tx);
   return SUCCESS;
-}
-
-/////////////////////////////////////// Get all variables
-
-err_t
-nsdb_visit_nsdb_vars (
-    struct nsdb      *db,
-    nsdb_var_consumer consumer,
-    struct txn       *tx,
-    void             *ctx,
-    error            *e
-)
-{
-  return error_causef (e, ERR_INVALID_ARGUMENT, "Not implemented");
 }
 
 /////////////////////////////////////// Auto Transactions
@@ -403,7 +363,7 @@ struct nsdb_plan *
 nsdb_plan_create (struct nsdb *db, const char *query, error *_e)
 {
   DBG_ASSERT (nsdb, db);
-  error            *e   = nsdb_get_active_error (db, _e);
+  error            *e   = error_priority (_e, db->e);
 
   // Allocate return value
   struct nsdb_plan *ret = slab_alloc_alloc (&db->plan_alloc, e);
@@ -440,7 +400,7 @@ struct nsdb_plan *
 nsdb_plan_vcreate (struct nsdb *db, const char *fmt, error *_e, va_list args)
 {
   DBG_ASSERT (nsdb, db);
-  error            *e   = nsdb_get_active_error (db, _e);
+  error            *e   = error_priority (_e, db->e);
 
   // Allocate return value
   struct nsdb_plan *ret = slab_alloc_alloc (&db->plan_alloc, e);
@@ -478,7 +438,7 @@ TEST (nsdb_plan_create)
   error e = error_create ();
   nsdb_cleanup ("./test.db", os, &e);
   struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
 
   TEST_CASE ("Successfully create a plan")
   {
@@ -501,7 +461,7 @@ TEST (nsdb_plan_create)
 sb_size
 nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 {
-  error *e = nsdb_plan_get_active_error (ns, _e);
+  error *e = error_priority (_e, ns->parent->e);
 
   DBG_ASSERT (nsdb_plan, ns);
 
@@ -573,7 +533,7 @@ nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 struct nsdb_var *
 nsdb_plan_get_var (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 {
-  error *e = nsdb_plan_get_active_error (ns, _e);
+  error *e = error_priority (_e, ns->parent->e);
 
   DBG_ASSERT (nsdb_plan, ns);
 
@@ -614,7 +574,7 @@ TEST (nsdb_plan_get_var)
   error e = error_create ();
   nsdb_cleanup ("./test.db", os, &e);
   struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
   TEST_CASE ("Successfully get a variable")
@@ -681,7 +641,7 @@ TEST (nsdb_plan_get_var)
 sb_size
 nsdb_plan_read (struct nsdb_plan *st, struct txn *user_tx, void *dest, b_size dlen, error *_e)
 {
-  error *e = nsdb_plan_get_active_error (st, _e);
+  error *e = error_priority (_e, st->parent->e);
 
   DBG_ASSERT (nsdb_plan, st);
 
@@ -757,7 +717,7 @@ TEST (nsdb_plan_read)
   error e = error_create ();
   nsdb_cleanup ("./test.db", os, &e);
   struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
   // Seed database
@@ -843,7 +803,7 @@ TEST (nsdb_plan_read)
 void *
 nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, error *_e)
 {
-  error *e = nsdb_plan_get_active_error (st, _e);
+  error *e = error_priority (_e, st->parent->e);
 
   DBG_ASSERT (nsdb_plan, st);
 
@@ -924,7 +884,7 @@ TEST (nsdb_plan_read_malloc)
   error e = error_create ();
   nsdb_cleanup ("./test.db", os, &e);
   struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
   // Seed database
@@ -993,7 +953,7 @@ TEST (nsdb_plan_read_malloc)
 sb_size
 nsdb_plan_write (struct nsdb_plan *st, struct txn *user_tx, const void *src, b_size dlen, error *_e)
 {
-  error *e = nsdb_plan_get_active_error (st, _e);
+  error *e = error_priority (_e, st->parent->e);
 
   DBG_ASSERT (nsdb_plan, st);
 
@@ -1069,7 +1029,7 @@ TEST (nsdb_plan_write)
   error e = error_create ();
   nsdb_cleanup ("./test.db", os, &e);
   struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
   struct txn *tx = nsdb_begin (db, &e);
 
   // Seed database
@@ -1127,7 +1087,7 @@ TEST (nsdb_auto_txn)
   error e = error_create ();
   nsdb_cleanup ("./test.db", os, &e);
   struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
   nsdb_allow_auto_txn (db);
 
   TEST_CASE ("Every entry point works with a NULL transaction")
@@ -1185,7 +1145,7 @@ TEST (nsdb_auto_txn)
 static inline sb_size
 nsdb_plan_console_read (struct nsdb_plan *plan, error *_e)
 {
-  error       *e   = nsdb_plan_get_active_error (plan, _e);
+  error       *e   = error_priority (_e, plan->parent->e);
   struct i_mem mem = plan->parent->mem;
 
   DBG_ASSERT (nsdb_plan, plan);
@@ -1248,7 +1208,7 @@ nsdb_plan_console_read (struct nsdb_plan *plan, error *_e)
 static inline err_t
 nsdb_plan_console_create (struct nsdb_plan *plan, error *_e)
 {
-  error *e = nsdb_plan_get_active_error (plan, _e);
+  error *e = error_priority (_e, plan->parent->e);
 
   DBG_ASSERT (nsdb_plan, plan);
 
@@ -1324,7 +1284,7 @@ nsdb_plan_console (struct nsdb_plan *ns, error *_e)
 err_t
 nsdb_execute (struct nsdb *db, struct txn *tx, const char *query, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
@@ -1343,7 +1303,7 @@ nsdb_execute (struct nsdb *db, struct txn *tx, const char *query, error *_e)
 struct nsdb_var *
 nsdb_get_var (struct nsdb *db, struct txn *tx, const char *query, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
@@ -1363,7 +1323,7 @@ nsdb_get_var (struct nsdb *db, struct txn *tx, const char *query, error *_e)
 sb_size
 nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char *query, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
@@ -1384,7 +1344,7 @@ nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char
 void *
 nsdb_read_malloc (struct nsdb *db, struct txn *txn, b_size *dlen, const char *query, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
@@ -1411,7 +1371,7 @@ nsdb_write (
     error       *_e
 )
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
@@ -1432,7 +1392,7 @@ nsdb_write (
 err_t
 nsdb_console (struct nsdb *db, const char *query, error *_e)
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
@@ -1452,7 +1412,7 @@ nsdb_console (struct nsdb *db, const char *query, error *_e)
 sb_size
 nsdb_smfile_size (struct nsdb *db, struct txn *user_tx, error *_e)
 {
-  error      *e  = nsdb_get_active_error (db, _e);
+  error      *e  = error_priority (_e, db->e);
 
   struct txn *tx = nsdb_auto_begin (db, user_tx, e);
   if (tx == NULL) {
@@ -1476,7 +1436,7 @@ nsdb_smfile_insert (
     error       *_e
 )
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
   istream_create_from (input, src, slen);
 
   struct txn *tx = nsdb_auto_begin (db, user_tx, e);
@@ -1503,7 +1463,7 @@ nsdb_smfile_write (
     error       *_e
 )
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
   istream_create_from (input, src, nelem * size);
 
   struct txn *tx = nsdb_auto_begin (db, user_tx, e);
@@ -1530,7 +1490,7 @@ nsdb_smfile_read (
     error       *_e
 )
 {
-  error *e = nsdb_get_active_error (db, _e);
+  error *e = error_priority (_e, db->e);
   ostream_create_from (output, dest, nelem * size);
 
   struct txn *tx = nsdb_auto_begin (db, user_tx, e);
@@ -1557,8 +1517,14 @@ nsdb_smfile_remove (
     error       *_e
 )
 {
-  error *e = nsdb_get_active_error (db, _e);
-  ostream_create_from (output, dest, nelem * size);
+  error                 *e      = error_priority (_e, db->e);
+  struct stream         *output = NULL;
+  struct stream          _output;
+  struct stream_obuf_ctx ctx;
+  if (dest) {
+    stream_obuf_init (&_output, &ctx, dest, nelem * size);
+    output = &_output;
+  }
 
   struct txn *tx = nsdb_auto_begin (db, user_tx, e);
   if (tx == NULL) {
@@ -1566,7 +1532,7 @@ nsdb_smfile_remove (
   }
 
   ALLOC_INIT (temp);
-  sb_size ret = smartfiles_remove (db->p, tx, &output, size, bofst, stride, nelem, &temp, e);
+  sb_size ret = smartfiles_remove (db->p, tx, output, size, bofst, stride, nelem, &temp, e);
   ALLOC_CLOSE (temp);
 
   return nsdb_auto_finish (db, user_tx, ret, e);

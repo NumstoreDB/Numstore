@@ -306,7 +306,7 @@ TEST (ns_read_var_page)
   /* Create a new database */
   nsdb_cleanup ("test", os, &e);
   struct nsdb *db = nsdb_open ("test", mem, os, &e);
-  nsdb_writeit_numstore (db, &e);
+  nsdb_init_numstore (db, &e);
 
   struct txn *tx = nsdb_begin (db, &e);
 

@@ -16,7 +16,10 @@
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_csx_assert.h"
+#include "core/ns_error.h"
 #include "core/ns_testing.h"
+#include "core/ns_utils.h"
+#include "core/os/ns_malloc.h"
 
 #include <string.h>
 
@@ -56,6 +59,65 @@ dblb_create (
   return SUCCESS;
 }
 
+#ifndef NTEST
+TEST (dblb_create)
+{
+  TEST_CASE ("basic")
+  {
+    ALLOC_INIT (alloc);
+
+    struct dbl_buffer db;
+    error             e   = error_create ();
+
+    // Create buffer with size=4, initial_cap=2
+    const err_t       err = dblb_create (&db, &alloc, 4, 2, &e);
+    test_assert_int_equal (err, SUCCESS);
+    test_assert_int_equal (db.size, 4);
+    test_assert_int_equal (db.nelem, 0);
+    test_assert_int_equal (db.nelem_cap, 2);
+    test_assert (db.data != NULL);
+
+    ALLOC_CLOSE (alloc);
+  }
+
+  TEST_CASE ("malloc fails")
+  {
+    error        e = error_create ();
+    // TEST_ALLOC_INIT_FAULTY(alloc, faulty, &e);
+    struct i_mem faulty;
+    err_t        r = faulty_mem_init_default (&faulty, 0, &e);
+    test_assert_int_equal (r, SUCCESS);
+    struct arena_alloc alloc;
+    arena_alloc_create_default_with (&alloc, faulty);
+
+    struct dbl_buffer  buffer;
+
+    /**
+     * Testing that the data isn't overrided on fail
+     */
+    int                i     = 1;
+    struct arena_alloc dummy = {0};
+    buffer.size              = 10;
+    buffer.nelem             = 11;
+    buffer.nelem_cap         = 12;
+    buffer.data              = &i;
+    buffer.alloc             = &dummy;
+
+    // fail the main malloc
+    faulty_mem_fail_after (faulty, 0);
+    test_err_t_check (dblb_create (&buffer, &alloc, 10, 100, &e), ERR_NOMEM, &e);
+
+    test_assert_int_equal (buffer.size, 10);
+    test_assert_int_equal (buffer.nelem, 11);
+    test_assert_int_equal (buffer.nelem_cap, 12);
+    test_assert_ptr_equal (buffer.data, &i);
+    test_assert_ptr_equal (buffer.alloc, &dummy);
+
+    TEST_ALLOC_CLOSE_FAULTY (alloc, faulty);
+  }
+}
+#endif
+
 err_t
 dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
 {
@@ -70,6 +132,71 @@ dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
 
   return SUCCESS;
 }
+
+#ifndef NTEST
+TEST (dblb_append)
+{
+  TEST_CASE ("basic")
+  {
+    error e = error_create ();
+    TEST_ALLOC_INIT_FAULTY (alloc, faulty, &e);
+
+    struct dbl_buffer db;
+
+    // Create the buffer
+    dblb_create (&db, &alloc, 4, 2, &e);
+    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+
+    // No extra realloc
+    u32 data1[] = {1};
+    dblb_append (&db, data1, arrlen (data1), &e);
+    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+    test_assert_int_equal (db.nelem, 1);
+    test_assert_int_equal (1, ((u32 *)db.data)[0]);
+
+    // Executes a realloc
+    u32 data2[] = {2, 3, 4, 5};
+    dblb_append (&db, data2, arrlen (data2), &e);
+    test_assert_int_equal (faulty_num_mallocs (faulty), 2);
+    test_assert_int_equal (db.nelem, 5);
+    test_assert_int_equal (1, ((u32 *)db.data)[0]);
+    test_assert_int_equal (2, ((u32 *)db.data)[1]);
+    test_assert_int_equal (3, ((u32 *)db.data)[2]);
+    test_assert_int_equal (4, ((u32 *)db.data)[3]);
+    test_assert_int_equal (5, ((u32 *)db.data)[4]);
+
+    TEST_ALLOC_CLOSE_FAULTY (alloc, faulty);
+  }
+
+  TEST_CASE ("malloc fails")
+  {
+    error e = error_create ();
+    TEST_ALLOC_INIT_FAULTY (alloc, faulty, &e);
+
+    struct dbl_buffer db;
+
+    // Create the buffer
+    dblb_create (&db, &alloc, 4, 2, &e);
+    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+
+    // No extra realloc
+    u32 data1[] = {1};
+    dblb_append (&db, data1, arrlen (data1), &e);
+    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+    test_assert_int_equal (db.nelem, 1);
+    test_assert_int_equal (1, ((u32 *)db.data)[0]);
+
+    // Executes a realloc
+    u32 data2[] = {2, 3, 4, 5};
+    faulty_mem_fail_after (faulty, 0);
+    test_err_t_check (dblb_append (&db, data2, arrlen (data2), &e), ERR_NOMEM, &e);
+    test_assert_int_equal (db.nelem, 1);
+    test_assert_int_equal (1, ((u32 *)db.data)[0]);
+
+    TEST_ALLOC_CLOSE_FAULTY (alloc, faulty);
+  }
+}
+#endif
 
 err_t
 dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e)
@@ -113,23 +240,6 @@ dblb_reset (struct dbl_buffer *d)
 }
 
 #ifndef NDEBUG
-TEST (dblb_create_basic)
-{
-  ALLOC_INIT (alloc);
-
-  struct dbl_buffer db;
-  error             e   = error_create ();
-
-  // Create buffer with size=4, initial_cap=2
-  const err_t       err = dblb_create (&db, &alloc, 4, 2, &e);
-  test_assert_int_equal (err, SUCCESS);
-  test_assert_int_equal (db.size, 4);
-  test_assert_int_equal (db.nelem, 0);
-  test_assert_int_equal (db.nelem_cap, 2);
-  test_assert (db.data != NULL);
-
-  ALLOC_CLOSE (alloc);
-}
 
 TEST (dblb_append_single)
 {
