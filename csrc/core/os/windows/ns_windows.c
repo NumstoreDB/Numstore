@@ -21,6 +21,7 @@
 #  include "core/ns_error.h"
 #  include "core/ns_logging.h"
 #  include "core/ns_stdtypes.h"
+#  include "core/os/ns_once.h"
 #  include "core/os/ns_os.h"
 #  include "core/os/windows/ns_windows_os.h"
 

@@ -15,6 +15,8 @@
 #ifndef NS_ONCE_H
 #define NS_ONCE_H
 
+#include "core/ns_platform.h"
+
 #if PLATFORM_WINDOWS
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN

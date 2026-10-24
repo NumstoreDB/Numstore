@@ -12,7 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/os/ns_once.h"
 #ifdef __APPLE__
 #  ifndef _DARWIN_C_SOURCE
 #    define _DARWIN_C_SOURCE 1
@@ -37,6 +36,7 @@
 #  include "core/ns_logging.h"
 #  include "core/ns_stdtypes.h"
 #  include "core/ns_utils.h"
+#  include "core/os/ns_once.h"
 #  include "core/os/ns_os.h"
 
 #  include <errno.h>
