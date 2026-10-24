@@ -108,11 +108,20 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
     set(_unit_tests_c ${CMAKE_CURRENT_BINARY_DIR}/unit_tests.c)
 
+    # Which os backend's tests to scrape. WIN32 is the target, not the host, so
+    # this stays right under a mingw cross build.
+    if(WIN32)
+        set(_unit_tests_platform windows)
+    else()
+        set(_unit_tests_platform posix)
+    endif()
+
     add_custom_command(
         OUTPUT ${_unit_tests_c}
         COMMAND
             ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apps/gen_tests.py
             ${CMAKE_CURRENT_SOURCE_DIR}/apps/unit_tests.c.in ${_unit_tests_c}
+            ${_unit_tests_platform}
         DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/apps/gen_tests.py
             ${CMAKE_CURRENT_SOURCE_DIR}/apps/unit_tests.c.in

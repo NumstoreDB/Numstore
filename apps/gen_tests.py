@@ -4,17 +4,23 @@ import re
 import sys
 from pathlib import Path
 
+OS_BACKENDS = ["posix", "windows"]
 
-def gen_tests(template_path, output_path):
+
+def gen_tests(template_path, output_path, platform):
     pattern = re.compile(r"TEST\s*\(\s*(\w+)\s*\)")
 
-    tests = []  # list of (name, filepath, line_number)
+    skip = [Path("csrc/core/os") / b for b in OS_BACKENDS if b != platform]
+
+    tests = []
     for root in ["csrc"]:
         root = Path(root)
         if not root.exists():
             print(f"Error: Directory '{root}' does not exist.", file=sys.stderr)
             sys.exit(1)
         for path in sorted(root.rglob("*.c")):
+            if any(d in path.parents for d in skip):
+                continue
             try:
                 content = path.read_text(errors="replace")
             except Exception:
@@ -55,4 +61,11 @@ def gen_tests(template_path, output_path):
     print(f"Generated {output_path} with {len(tests)} tests.")
 
 
-gen_tests(sys.argv[1], sys.argv[2])
+if len(sys.argv) != 4 or sys.argv[3] not in OS_BACKENDS:
+    print(
+        f"Usage: {sys.argv[0]} TEMPLATE OUTPUT ({'|'.join(OS_BACKENDS)})",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+gen_tests(sys.argv[1], sys.argv[2], sys.argv[3])
