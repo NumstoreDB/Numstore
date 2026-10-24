@@ -182,8 +182,7 @@ in_validate_for_db (const page *in, error *e)
 #ifndef NDEBUG
 TEST (in_validate_for_db)
 {
-  error e = error_create ();
-  page  in;
+  page in;
 
   TEST_CASE ("Invalid header")
   {
@@ -192,8 +191,8 @@ TEST (in_validate_for_db)
     in_set_key_leaf (&in, 0, 1, 2);
     in_set_key_leaf (&in, 1, 2, 3);
     page_set_type (&in, PG_DATA_LIST);
-    test_assert_int_equal (in_validate_for_db (&in, &e), ERR_CORRUPT);
-    error_reset (&e);
+    test_assert_int_equal (in_validate_for_db (&in, &ctx->e), ERR_CORRUPT);
+    error_reset (&ctx->e);
   }
 
   TEST_CASE ("Len is too large")
@@ -203,8 +202,8 @@ TEST (in_validate_for_db)
     in_set_key_leaf (&in, 0, 1, 2);
     in_set_key_leaf (&in, 1, 2, 3);
     in_set_len (&in, IN_MAX_KEYS + 4);
-    test_assert_int_equal (in_validate_for_db (&in, &e), ERR_CORRUPT);
-    error_reset (&e);
+    test_assert_int_equal (in_validate_for_db (&in, &ctx->e), ERR_CORRUPT);
+    error_reset (&ctx->e);
   }
 
   TEST_CASE ("Keys are not strict monotonic (ok - used to be bad)")
@@ -213,8 +212,8 @@ TEST (in_validate_for_db)
     in_set_len (&in, 2);
     in_set_key_leaf (&in, 0, 2, 2);
     in_set_key_leaf (&in, 1, 1, 3);
-    test_assert_int_equal (in_validate_for_db (&in, &e), SUCCESS);
-    error_reset (&e);
+    test_assert_int_equal (in_validate_for_db (&in, &ctx->e), SUCCESS);
+    error_reset (&ctx->e);
   }
 
   TEST_CASE ("Duplicate leafs")
@@ -223,8 +222,8 @@ TEST (in_validate_for_db)
     in_set_len (&in, 2);
     in_set_key_leaf (&in, 0, 2, 2);
     in_set_key_leaf (&in, 1, 5, 2);
-    test_assert_int_equal (in_validate_for_db (&in, &e), ERR_CORRUPT);
-    error_reset (&e);
+    test_assert_int_equal (in_validate_for_db (&in, &ctx->e), ERR_CORRUPT);
+    error_reset (&ctx->e);
   }
 
   TEST_CASE ("Green path")
@@ -233,7 +232,7 @@ TEST (in_validate_for_db)
     in_set_len (&in, 2);
     in_set_key_leaf (&in, 0, 2, 2);
     in_set_key_leaf (&in, 1, 5, 3);
-    test_assert_int_equal (in_validate_for_db (&in, &e), SUCCESS);
+    test_assert_int_equal (in_validate_for_db (&in, &ctx->e), SUCCESS);
   }
 }
 #endif

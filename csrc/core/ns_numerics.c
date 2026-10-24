@@ -600,17 +600,16 @@ failed:
 #ifndef NDEBUG
 TEST (parse_i32_expect)
 {
-  i32   out = -1;
-  error e   = error_create ();
+  i32 out = -1;
 
-  test_assert_int_equal (parse_i32_expect (&out, "1234", 4, &e), SUCCESS);
+  test_assert_int_equal (parse_i32_expect (&out, "1234", 4, &ctx->e), SUCCESS);
   test_assert_int_equal (out, 1234);
 
-  test_assert_int_equal (parse_i32_expect (&out, "-56", 3, &e), SUCCESS);
+  test_assert_int_equal (parse_i32_expect (&out, "-56", 3, &ctx->e), SUCCESS);
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &e), ERR_ARITH);
+  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &ctx->e), ERR_ARITH);
 }
 #endif
 
@@ -730,22 +729,21 @@ failed:
 #ifndef NDEBUG
 TEST (parse_f32_expect)
 {
-  f32   out = NAN;
-  error e   = error_create ();
+  f32 out = NAN;
 
-  test_assert_int_equal (parse_f32_expect (&out, "3.14", 4, &e), SUCCESS);
+  test_assert_int_equal (parse_f32_expect (&out, "3.14", 4, &ctx->e), SUCCESS);
   test_assert_int_equal (fabsf (out - 3.14f) < EPSILON, true);
 
-  test_assert_int_equal (parse_f32_expect (&out, "-0.5", 4, &e), SUCCESS);
+  test_assert_int_equal (parse_f32_expect (&out, "-0.5", 4, &ctx->e), SUCCESS);
   test_assert_int_equal (fabsf (out + 0.5f) < EPSILON, true);
 
-  test_assert_int_equal (parse_f32_expect (&out, "1.23e3", 6, &e), SUCCESS);
+  test_assert_int_equal (parse_f32_expect (&out, "1.23e3", 6, &ctx->e), SUCCESS);
   test_assert_int_equal (fabsf (out - 1230.0f) < EPSILON, true);
 
-  test_assert_int_equal (parse_f32_expect (&out, ".25", 3, &e), SUCCESS);
+  test_assert_int_equal (parse_f32_expect (&out, ".25", 3, &ctx->e), SUCCESS);
   test_assert_int_equal (fabsf (out - 0.25f) < EPSILON, true);
 
-  test_assert_int_equal (parse_f32_expect (&out, "1e40", 4, &e), ERR_ARITH);
+  test_assert_int_equal (parse_f32_expect (&out, "1e40", 4, &ctx->e), ERR_ARITH);
 }
 #endif
 

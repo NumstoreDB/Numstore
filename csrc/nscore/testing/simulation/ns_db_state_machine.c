@@ -535,9 +535,8 @@ ns_db_write (struct ns_db *db, const void *data, b_size dlen, struct stride str,
 
 TEST (ns_db)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test_db.db", os, &e);
-  struct ns_db *db = ns_db_new (mem, os, mem, os, "./test_db.db", &e);
+  nsdb_cleanup ("./test_db.db", ctx->os, &ctx->e);
+  struct ns_db *db = ns_db_new (ctx->mem, ctx->os, ctx->mem, ctx->os, "./test_db.db", &ctx->e);
   test_assert (db != NULL);
 
   u32 dest[20];
@@ -547,12 +546,12 @@ TEST (ns_db)
 
   // Reads the whole current variable and checks both the length and the
   // contents
-#  define validate(expected)                                                 \
-    do {                                                                     \
-      sb_size _n = ns_db_read (db, dest, sizeof (dest), STR (0, 1, 20), &e); \
-      test_assert_int_equal (_n, sizeof (expected) / sizeof (u32));          \
-      test_assert_memequal (expected, dest, sizeof (expected));              \
-    }                                                                        \
+#  define validate(expected)                                                      \
+    do {                                                                          \
+      sb_size _n = ns_db_read (db, dest, sizeof (dest), STR (0, 1, 20), &ctx->e); \
+      test_assert_int_equal (_n, sizeof (expected) / sizeof (u32));               \
+      test_assert_memequal (expected, dest, sizeof (expected));                   \
+    }                                                                             \
     while (0)
 
   // Checks which variable is current (works in and out of a transaction)
@@ -568,39 +567,42 @@ TEST (ns_db)
     test_assert (ns_db_cur (db) == NULL);
 
     // First create auto-switches (cur was NULL), the rest don't
-    test_assert_int_equal (ns_db_create (db, "var1", "u32", &e), SUCCESS);
+    test_assert_int_equal (ns_db_create (db, "var1", "u32", &ctx->e), SUCCESS);
     check_cur ("var1");
-    test_assert_int_equal (ns_db_create (db, "var2", "u32", &e), SUCCESS);
+    test_assert_int_equal (ns_db_create (db, "var2", "u32", &ctx->e), SUCCESS);
     check_cur ("var1");
-    test_assert_int_equal (ns_db_create (db, "var3", "u32", &e), SUCCESS);
+    test_assert_int_equal (ns_db_create (db, "var3", "u32", &ctx->e), SUCCESS);
     check_cur ("var1");
 
-    ns_db_begin_txn (db, &e);
+    ns_db_begin_txn (db, &ctx->e);
     {
       u32 a[] = {10, 20, 30, 40};
-      test_assert_int_equal (ns_db_insert (db, a, sizeof (a), 0, 4, &e), 4);
+      test_assert_int_equal (ns_db_insert (db, a, sizeof (a), 0, 4, &ctx->e), 4);
       validate (((u32[]){10, 20, 30, 40}));
 
       u32 b[] = {50, 60};
-      test_assert_int_equal (ns_db_insert (db, b, sizeof (b), 4, 2, &e), 2);
+      test_assert_int_equal (ns_db_insert (db, b, sizeof (b), 4, 2, &ctx->e), 2);
       validate (((u32[]){10, 20, 30, 40, 50, 60}));
 
       u32 c[] = {70};
-      test_assert_int_equal (ns_db_insert (db, c, sizeof (c), 6, 1, &e), 1);
+      test_assert_int_equal (ns_db_insert (db, c, sizeof (c), 6, 1, &ctx->e), 1);
       validate (((u32[]){10, 20, 30, 40, 50, 60, 70}));
 
       // 100 20 200 40 300 60 400
       u32 w[] = {100, 200, 300, 400};
-      test_assert_int_equal (ns_db_write (db, w, sizeof (w), STR (0, 2, 4), &e), 4);
+      test_assert_int_equal (ns_db_write (db, w, sizeof (w), STR (0, 2, 4), &ctx->e), 4);
       validate (((u32[]){100, 20, 200, 40, 300, 60, 400}));
 
       // 20 40 60
       u32 removed[4] = {0};
-      test_assert_int_equal (ns_db_remove (db, removed, sizeof (removed), STR (0, 2, 4), &e), 4);
+      test_assert_int_equal (
+          ns_db_remove (db, removed, sizeof (removed), STR (0, 2, 4), &ctx->e),
+          4
+      );
       test_assert_memequal (((u32[]){100, 200, 300, 400}), removed, sizeof (removed));
       validate (((u32[]){20, 40, 60}));
     }
-    test_assert_int_equal (ns_db_commit_txn (db, &e), SUCCESS);
+    test_assert_int_equal (ns_db_commit_txn (db, &ctx->e), SUCCESS);
 
     check_cur ("var1");
     validate (((u32[]){20, 40, 60}));
@@ -609,87 +611,87 @@ TEST (ns_db)
   TEST_CASE ("rollback restores prior state, including current variable")
   {
     // Outside a transaction - these go through nsdb's auto transactions
-    ns_db_switch (db, "var2", &e);
+    ns_db_switch (db, "var2", &ctx->e);
     u32 a[] = {10, 20, 30, 40};
-    test_assert_int_equal (ns_db_insert (db, a, sizeof (a), 0, 4, &e), 4);
+    test_assert_int_equal (ns_db_insert (db, a, sizeof (a), 0, 4, &ctx->e), 4);
 
-    ns_db_switch (db, "var3", &e);
+    ns_db_switch (db, "var3", &ctx->e);
     u32 b[] = {100, 200, 300, 400};
-    test_assert_int_equal (ns_db_insert (db, b, sizeof (b), 0, 4, &e), 4);
+    test_assert_int_equal (ns_db_insert (db, b, sizeof (b), 0, 4, &ctx->e), 4);
 
-    ns_db_switch (db, "var1", &e);
+    ns_db_switch (db, "var1", &ctx->e);
 
     // deletes var1 and switches to var2
-    test_assert_int_equal (ns_db_delete_and_switch (db, "var2", &e), SUCCESS);
+    test_assert_int_equal (ns_db_delete_and_switch (db, "var2", &ctx->e), SUCCESS);
     check_cur ("var2");
     validate (((u32[]){10, 20, 30, 40}));
 
-    ns_db_begin_txn (db, &e);
+    ns_db_begin_txn (db, &ctx->e);
     {
-      ns_db_switch (db, "var3", &e);
+      ns_db_switch (db, "var3", &ctx->e);
       check_cur ("var3");
 
       u32 c[] = {111, 222, 333, 444};
-      test_assert_int_equal (ns_db_insert (db, c, sizeof (c), 0, 4, &e), 4);
+      test_assert_int_equal (ns_db_insert (db, c, sizeof (c), 0, 4, &ctx->e), 4);
       validate (((u32[]){111, 222, 333, 444, 100, 200, 300, 400}));
     }
-    test_assert_int_equal (ns_db_rollback_txn (db, &e), SUCCESS);
+    test_assert_int_equal (ns_db_rollback_txn (db, &ctx->e), SUCCESS);
 
     // Still var2
     check_cur ("var2");
     validate (((u32[]){10, 20, 30, 40}));
 
     // var3 didn't get changes
-    ns_db_switch (db, "var3", &e);
+    ns_db_switch (db, "var3", &ctx->e);
     validate (((u32[]){100, 200, 300, 400}));
   }
 
   TEST_CASE ("commit persists the switch and the write")
   {
-    ns_db_begin_txn (db, &e);
+    ns_db_begin_txn (db, &ctx->e);
     {
-      ns_db_switch (db, "var2", &e);
+      ns_db_switch (db, "var2", &ctx->e);
       u32 w[] = {111, 222, 333, 444};
-      test_assert_int_equal (ns_db_write (db, w, sizeof (w), STR (0, 1, 4), &e), 4);
+      test_assert_int_equal (ns_db_write (db, w, sizeof (w), STR (0, 1, 4), &ctx->e), 4);
       validate (((u32[]){111, 222, 333, 444}));
     }
-    test_assert_int_equal (ns_db_commit_txn (db, &e), SUCCESS);
+    test_assert_int_equal (ns_db_commit_txn (db, &ctx->e), SUCCESS);
 
     // Still on var2
     check_cur ("var2");
     validate (((u32[]){111, 222, 333, 444}));
 
     // var3 didn't get changes
-    ns_db_switch (db, "var3", &e);
+    ns_db_switch (db, "var3", &ctx->e);
     validate (((u32[]){100, 200, 300, 400}));
   }
 
   TEST_CASE ("close and reopen keeps committed data and current variable")
   {
-    test_assert_int_equal (ns_db_close_and_reopen (db, &e), SUCCESS);
+    test_assert_int_equal (ns_db_close_and_reopen (db, &ctx->e), SUCCESS);
     check_cur ("var3");
     validate (((u32[]){100, 200, 300, 400}));
 
-    ns_db_switch (db, "var2", &e);
+    ns_db_switch (db, "var2", &ctx->e);
     validate (((u32[]){111, 222, 333, 444}));
   }
 
   TEST_CASE ("crash drops the open transaction")
   {
-    ns_db_begin_txn (db, &e);
+    ns_db_begin_txn (db, &ctx->e);
     {
       u32 w[] = {9, 9, 9, 9};
-      ns_db_write (db, w, sizeof (w), STR (0, 1, 4), &e);
+      ns_db_write (db, w, sizeof (w), STR (0, 1, 4), &ctx->e);
       validate (((u32[]){9, 9, 9, 9}));
     }
-    test_assert_int_equal (ns_db_crash_and_reopen (db, &e), SUCCESS);
+    test_assert_int_equal (ns_db_crash_and_reopen (db, &ctx->e), SUCCESS);
 
     check_cur ("var2");
     validate (((u32[]){111, 222, 333, 444}));
   }
 
-  ns_db_close (db, &e);
-  nsdb_cleanup ("./test_db.db", os, &e);
+  ns_db_close (db, &ctx->e);
+  nsdb_cleanup ("./test_db.db", ctx->os, &ctx->e);
 
 #  undef STR
 #  undef validate

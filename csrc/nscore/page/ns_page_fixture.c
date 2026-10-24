@@ -33,7 +33,6 @@
 DEFINE_DBG_ASSERT (struct pgr_fixture, pgr_fixture, f, {
   ASSERT (f);
   ASSERT (f->p);
-  ASSERT (f->e.cause_code == SUCCESS);
 })
 
 DEFINE_DBG_ASSERT (struct in_page_builder, in_page_builder, in, {
@@ -54,26 +53,25 @@ DEFINE_DBG_ASSERT (struct dl_page_builder, dl_page_builder, in, {
 })
 
 err_t
-pgr_fixture_create (struct pgr_fixture *dest)
+pgr_fixture_create (struct pgr_fixture *dest, error *e)
 {
   ASSERT (dest);
-  dest->e   = error_create ();
   dest->mem = default_mem ();
 
   // The fixture owns its OS - teardown frees it
-  if (unlikely (system_os_create (dest->mem, &dest->os, &dest->e))) {
-    return error_trace (&dest->e);
+  if (unlikely (system_os_create (dest->mem, &dest->os, e))) {
+    return error_trace (e);
   }
 
-  if (unlikely (pgr_delete_single_file ("testdb", dest->os, &dest->e) < SUCCESS)) {
+  if (unlikely (pgr_delete_single_file ("testdb", dest->os, e) < SUCCESS)) {
     system_os_free (dest->os);
-    return error_trace (&dest->e);
+    return error_trace (e);
   }
 
-  struct pager *p = pgr_open ("testdb", dest->mem, dest->os, &dest->e);
+  struct pager *p = pgr_open ("testdb", dest->mem, dest->os, e);
   if (p == NULL) {
     system_os_free (dest->os);
-    return dest->e.cause_code;
+    return e->cause_code;
   }
 
   dest->p = p;
@@ -86,27 +84,27 @@ pgr_fixture_create (struct pgr_fixture *dest)
 }
 
 err_t
-pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest)
+pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e)
 {
-  if (unlikely (pgr_fixture_create (dest))) {
-    return error_trace (&dest->e);
+  if (unlikely (pgr_fixture_create (dest, e))) {
+    return error_trace (e);
   }
 
-  if (ns_init_var_hash_map (dest->p, &dest->e)) {
-    pgr_fixture_teardown (dest);
-    return error_trace (&dest->e);
+  if (ns_init_var_hash_map (dest->p, e)) {
+    pgr_fixture_teardown (dest, e);
+    return error_trace (e);
   }
 
   return SUCCESS;
 }
 
 err_t
-pgr_fixture_teardown (struct pgr_fixture *f)
+pgr_fixture_teardown (struct pgr_fixture *f, error *e)
 {
-  pgr_close (f->p, &f->e);
+  pgr_close (f->p, e);
   arena_alloc_free_all (&f->alloc);
   system_os_free (f->os);
-  return f->e.cause_code;
+  return e->cause_code;
 }
 
 struct tree_result
@@ -334,10 +332,10 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
 TEST (build_page_tree)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   struct page_tree_builder builder = {
       .root =
@@ -384,20 +382,20 @@ TEST (build_page_tree)
       .txn   = &tx,
   };
 
-  build_page_tree (&builder, &f.e);
+  build_page_tree (&builder, &ctx->e);
 
   page_h *root = &builder.root.out;
   page_h *inl1 = &builder.root.inner.children[0].out;
   page_h *dll1 = &builder.root.inner.children[1].out;
   page_h *dll2 = &builder.root.inner.children[0].inner.children[0].out;
 
-  pgr_release (f.p, root, PG_INNER_NODE, &f.e);
-  pgr_release (f.p, inl1, PG_INNER_NODE, &f.e);
-  pgr_release (f.p, dll1, PG_DATA_LIST, &f.e);
-  pgr_release (f.p, dll2, PG_DATA_LIST, &f.e);
+  pgr_release (f.p, root, PG_INNER_NODE, &ctx->e);
+  pgr_release (f.p, inl1, PG_INNER_NODE, &ctx->e);
+  pgr_release (f.p, dll1, PG_DATA_LIST, &ctx->e);
+  pgr_release (f.p, dll2, PG_DATA_LIST, &ctx->e);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

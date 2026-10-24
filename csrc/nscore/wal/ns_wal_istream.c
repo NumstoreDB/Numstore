@@ -106,19 +106,17 @@ walis_open (const char *fname, struct i_mem mem, struct i_os os, error *e)
 #ifndef NDEBUG
 TEST (walis_open)
 {
-  error e = error_create ();
-
   TEST_CASE ("happy path")
   {
-    os.table->remove_quiet (os.self, "foo", &e);
+    ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
     i_file fp = {0};
-    os.table->open_file_w (os.self, &fp, "foo", &e);
-    os.table->close_file (os.self, fp.self, &e);
+    ctx->os.table->open_file_w (ctx->os.self, &fp, "foo", &ctx->e);
+    ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e);
 
-    struct wal_istream *wis = walis_open ("foo", mem, os, &e);
+    struct wal_istream *wis = walis_open ("foo", ctx->mem, ctx->os, &ctx->e);
     test_assert (wis != NULL);
-    walis_close (wis, &e);
-    os.table->remove_quiet (os.self, "foo", &e);
+    walis_close (wis, &ctx->e);
+    ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
   }
 }
 #endif

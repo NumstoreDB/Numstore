@@ -80,33 +80,30 @@ sarray_t_validate_shallow (const struct sarray_t *t, error *e)
 #ifndef NDEBUG
 TEST (sarray_t_validate_shallow)
 {
-  ALLOC_INIT (alloc);
-  BUILDER_INIT (b, &alloc);
+  BUILDER_INIT (b, &ctx->alloc);
 
   TEST_CASE ("rank == 0")
   {
-    error           e = error_create ();
     struct sarray_t s = {
         .dims = (u32[]){1},
         .rank = 0,
         .t    = &TU8,
     };
-    test_err_t_check (sarray_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+    test_err_t_check (sarray_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
 
   TEST_CASE ("Null dimension")
   {
-    error           e = error_create ();
     struct sarray_t s = {
         .dims = (u32[]){10, 0, 11},
         .rank = 3,
         .t    = &TU8,
     };
-    test_err_t_check (sarray_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+    test_err_t_check (sarray_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
 
   BUILDER_CLOSE (b);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -164,7 +161,6 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
 #ifndef NDEBUG
 TEST (sarray_t_snprintf)
 {
-  ALLOC_INIT (alloc);
   struct type s = (struct type){
       .type = T_SARRAY,
       .sa   = {
@@ -179,11 +175,10 @@ TEST (sarray_t_snprintf)
 
   const char *expected = "[10][11][12]u32";
 
-  error       e        = error_create ();
-  char       *ret      = type_tostr (&alloc, &s, &e);
-  i_log_type (&s, &e);
+  char       *ret      = type_tostr (&ctx->alloc, &s, &ctx->e);
+  i_log_type (&s, &ctx->e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -304,9 +299,8 @@ TEST (sarray_t_get_serial_size)
       },
   };
 
-  error e = error_create ();
-  u16   dest;
-  sarray_t_get_serial_size (&dest, &s, &e);
+  u16 dest;
+  sarray_t_get_serial_size (&dest, &s, &ctx->e);
 
   test_assert_int_equal (dest, 3 * 4 + 2 + 2);
 }
@@ -371,8 +365,6 @@ early_terimination:
 #ifndef NDEBUG
 TEST (sarray_t_deserialize_green_path)
 {
-  ALLOC_INIT (sab_temp);
-
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
   u16 len    = 3;
   u32 d0     = 10;
@@ -385,10 +377,8 @@ TEST (sarray_t_deserialize_green_path)
 
   struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
-  error               e    = error_create ();
-
   struct sarray_t     sret = {0};
-  err_t               ret  = sarray_t_deserialize (&sret, &d, &sab_temp, &e);
+  err_t               ret  = sarray_t_deserialize (&sret, &d, &ctx->alloc, &ctx->e);
 
   test_assert_int_equal (ret, SUCCESS);
 
@@ -398,15 +388,13 @@ TEST (sarray_t_deserialize_green_path)
   test_assert_int_equal (sret.dims[1], 11);
   test_assert_int_equal (sret.dims[2], 12);
 
-  ALLOC_CLOSE (sab_temp);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
 #ifndef NDEBUG
 TEST (sarray_t_deserialize_red_path)
 {
-  ALLOC_INIT (alloc);
-
   u8  data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, (u8)T_PRIM, (u8)U32};
   u16 len    = 3;
   u32 d0     = 10;
@@ -420,12 +408,11 @@ TEST (sarray_t_deserialize_red_path)
   struct sarray_t     eret;
   struct deserializer d   = dsrlizr_create (data, sizeof (data));
 
-  error               e   = error_create ();
-  err_t               ret = sarray_t_deserialize (&eret, &d, &alloc, &e);
+  err_t               ret = sarray_t_deserialize (&eret, &d, &ctx->alloc, &ctx->e);
 
   test_assert_int_equal (ret, ERR_INTERP); // 0 value
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -586,46 +573,43 @@ theend:
 #ifndef NDEBUG
 TEST (sarray_builder)
 {
-  ALLOC_INIT (persistent);
-  BUILDER_INIT (b, &persistent);
-
-  error                 err = error_create ();
+  BUILDER_INIT (b, &ctx->alloc);
 
   // provide two fixed-size allocators for nodes + dims array
 
   // 0. freshly-created builder must be clean
-  struct sarray_builder sb  = sab_create (&b);
+  struct sarray_builder sb = sab_create (&b);
   test_fail_if (sb.head != NULL);
   test_fail_if (sb.type != NULL);
 
   // 1. build without type -> ERR_INTERP
   struct sarray_t sar = {0};
-  test_assert_int_equal (sab_build (&sar, &sb, &err), ERR_INTERP);
-  err.cause_code    = SUCCESS;
+  test_assert_int_equal (sab_build (&sar, &sb, &ctx->e), ERR_INTERP);
+  ctx->e.cause_code = SUCCESS;
 
   // 2. set type but no dims -> still ERR_INTERP
   struct type t_u32 = (struct type){.type = T_PRIM, .p = U32};
-  test_assert_int_equal (sab_accept_type (&sb, &t_u32, &err), SUCCESS);
-  test_assert_int_equal (sab_build (&sar, &sb, &err), ERR_INTERP);
-  error_reset (&err);
+  test_assert_int_equal (sab_accept_type (&sb, &t_u32, &ctx->e), SUCCESS);
+  test_assert_int_equal (sab_build (&sar, &sb, &ctx->e), ERR_INTERP);
+  error_reset (&ctx->e);
 
   // 3. duplicate type must fail
-  test_assert_int_equal (sab_accept_type (&sb, &t_u32, &err), ERR_INTERP);
-  error_reset (&err);
+  test_assert_int_equal (sab_accept_type (&sb, &t_u32, &ctx->e), ERR_INTERP);
+  error_reset (&ctx->e);
 
   // 4. accept first dim 10
-  test_assert_int_equal (sab_accept_dim (&sb, 10, &err), SUCCESS);
+  test_assert_int_equal (sab_accept_dim (&sb, 10, &ctx->e), SUCCESS);
 
   // 5. successful build now that we have type and one dim
-  test_assert_int_equal (sab_build (&sar, &sb, &err), SUCCESS);
+  test_assert_int_equal (sab_build (&sar, &sb, &ctx->e), SUCCESS);
   test_assert_int_equal (sar.rank, 1);
   test_assert_int_equal (*sar.dims, 10);
   test_assert_int_equal (sar.t->p, t_u32.p);
 
   // 6. accept additional dims and rebuild (rank 3)
-  test_assert_int_equal (sab_accept_dim (&sb, 4, &err), SUCCESS);
-  test_assert_int_equal (sab_accept_dim (&sb, 2, &err), SUCCESS);
-  test_assert_int_equal (sab_build (&sar, &sb, &err), SUCCESS);
+  test_assert_int_equal (sab_accept_dim (&sb, 4, &ctx->e), SUCCESS);
+  test_assert_int_equal (sab_accept_dim (&sb, 2, &ctx->e), SUCCESS);
+  test_assert_int_equal (sab_build (&sar, &sb, &ctx->e), SUCCESS);
   test_assert_int_equal (sar.rank, 3);
   test_assert_int_equal (sar.dims[0], 10);
   test_assert_int_equal (sar.dims[1], 4);
@@ -642,11 +626,11 @@ TEST (sarray_builder)
       .sa   = {.rank = 2, .dims = sub_dims, .t = &inner_elem},
   };
 
-  test_assert_int_equal (sab_accept_type (&nb, &sub_ty, &err), SUCCESS);
-  test_assert_int_equal (sab_accept_dim (&nb, 10, &err), SUCCESS);
+  test_assert_int_equal (sab_accept_type (&nb, &sub_ty, &ctx->e), SUCCESS);
+  test_assert_int_equal (sab_accept_dim (&nb, 10, &ctx->e), SUCCESS);
 
   struct sarray_t flat = {0};
-  test_assert_int_equal (sab_build (&flat, &nb, &err), SUCCESS);
+  test_assert_int_equal (sab_build (&flat, &nb, &ctx->e), SUCCESS);
   test_assert_int_equal (flat.rank, 3);
   test_assert_int_equal (flat.dims[0], 10);
   test_assert_int_equal (flat.dims[1], 3);
@@ -655,6 +639,6 @@ TEST (sarray_builder)
   test_assert_int_equal (flat.t->p, U32);
 
   BUILDER_CLOSE (b);
-  ALLOC_CLOSE (persistent);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif

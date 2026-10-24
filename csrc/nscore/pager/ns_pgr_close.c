@@ -88,12 +88,11 @@ pgr_close (struct pager *p, error *e)
 #ifndef NDEBUG
 TEST (pgr_close_success)
 {
-  error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
-  struct pager *p = pgr_open ("testdb", mem, os, &e);
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   // Delete file close_file should fail
-  test_assert_equal (pgr_close (p, &e), SUCCESS);
-  test_fail_if (pgr_delete_single_file ("foodir", os, &e));
+  test_assert_equal (pgr_close (p, &ctx->e), SUCCESS);
+  test_fail_if (pgr_delete_single_file ("foodir", ctx->os, &ctx->e));
 }
 #endif

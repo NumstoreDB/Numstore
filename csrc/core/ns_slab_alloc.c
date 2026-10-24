@@ -261,14 +261,13 @@ test_item_verify (const struct test_item *item, const i32 expected)
 TEST (slab_alloc_simple)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 5);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 5);
 
   // Allocate 20 items (will span 4 slabs)
   struct test_item *items[20];
   for (int i = 0; i < 20; i++) {
-    items[i] = slab_alloc_alloc (&alloc, &e);
+    items[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (items[i] != NULL);
     test_item_init (items[i], i);
   }
@@ -292,7 +291,7 @@ TEST (slab_alloc_simple)
   // Allocate 10 new items (should reuse freed slots)
   struct test_item *new_items[10];
   for (int i = 0; i < 10; i++) {
-    new_items[i] = slab_alloc_alloc (&alloc, &e);
+    new_items[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (new_items[i] != NULL);
     test_item_init (new_items[i], 100 + i);
   }
@@ -326,7 +325,7 @@ TEST (slab_alloc_simple)
   // Allocate another batch
   struct test_item *batch3[15];
   for (int i = 0; i < 15; i++) {
-    batch3[i] = slab_alloc_alloc (&alloc, &e);
+    batch3[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (batch3[i] != NULL);
     test_item_init (batch3[i], 200 + i);
   }
@@ -360,15 +359,14 @@ TEST (slab_alloc_simple)
 TEST (slab_alloc_cap_one)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 1);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 1);
 
-  struct test_item *a = slab_alloc_alloc (&alloc, &e);
+  struct test_item *a = slab_alloc_alloc (&alloc, &ctx->e);
   test_assert (a != NULL);
   test_item_init (a, 42);
 
-  struct test_item *b = slab_alloc_alloc (&alloc, &e);
+  struct test_item *b = slab_alloc_alloc (&alloc, &ctx->e);
   test_assert (b != NULL);
   test_assert (a != b);
   test_item_init (b, 43);
@@ -380,7 +378,7 @@ TEST (slab_alloc_cap_one)
   test_item_verify (b, 43);
 
   // Realloc should reuse the freed slot
-  struct test_item *c = slab_alloc_alloc (&alloc, &e);
+  struct test_item *c = slab_alloc_alloc (&alloc, &ctx->e);
   test_assert (c != NULL);
   test_item_init (c, 44);
 
@@ -396,14 +394,13 @@ TEST (slab_alloc_cap_one)
 TEST (slab_alloc_no_duplicates)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
   const int         N = 100;
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 7);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 7);
 
   void *ptrs[100];
   for (int i = 0; i < N; i++) {
-    ptrs[i] = slab_alloc_alloc (&alloc, &e);
+    ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
 
     // Verify no duplicate with any prior pointer
@@ -422,14 +419,13 @@ TEST (slab_alloc_no_duplicates)
 TEST (slab_alloc_free_all_realloc)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 4);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 4);
 
   // Fill 3 slabs (12 items)
   struct test_item *ptrs[12];
   for (int i = 0; i < 12; i++) {
-    ptrs[i] = slab_alloc_alloc (&alloc, &e);
+    ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], i);
   }
@@ -441,7 +437,7 @@ TEST (slab_alloc_free_all_realloc)
 
   // Reallocate - should work, extending as needed
   for (int i = 0; i < 12; i++) {
-    ptrs[i] = slab_alloc_alloc (&alloc, &e);
+    ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], 500 + i);
   }
@@ -460,14 +456,13 @@ TEST (slab_alloc_free_all_realloc)
 TEST (slab_alloc_interleaved_patterns)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 4);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 4);
 
   // Pattern 1: alloc 8, free LIFO (stack order)
   struct test_item *ptrs[8];
   for (int i = 0; i < 8; i++) {
-    ptrs[i] = slab_alloc_alloc (&alloc, &e);
+    ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], i);
   }
@@ -478,7 +473,7 @@ TEST (slab_alloc_interleaved_patterns)
 
   // Pattern 2: alloc 8, free FIFO (queue order)
   for (int i = 0; i < 8; i++) {
-    ptrs[i] = slab_alloc_alloc (&alloc, &e);
+    ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
     test_item_init (ptrs[i], 100 + i);
   }
@@ -488,12 +483,12 @@ TEST (slab_alloc_interleaved_patterns)
   }
 
   // Pattern 3: alternating alloc-free-alloc-free
-  struct test_item *a = slab_alloc_alloc (&alloc, &e);
+  struct test_item *a = slab_alloc_alloc (&alloc, &ctx->e);
   test_item_init (a, 1);
-  struct test_item *b = slab_alloc_alloc (&alloc, &e);
+  struct test_item *b = slab_alloc_alloc (&alloc, &ctx->e);
   test_item_init (b, 2);
   slab_alloc_free (&alloc, a);
-  struct test_item *c = slab_alloc_alloc (&alloc, &e);
+  struct test_item *c = slab_alloc_alloc (&alloc, &ctx->e);
   test_item_init (c, 3);
   test_item_verify (b, 2);
   test_item_verify (c, 3);
@@ -508,17 +503,16 @@ TEST (slab_alloc_interleaved_patterns)
 TEST (slab_alloc_free_head_slab)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 2);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 2);
 
   // slab1 created (becomes head)
-  struct test_item *a = slab_alloc_alloc (&alloc, &e);
-  struct test_item *b = slab_alloc_alloc (&alloc, &e);
+  struct test_item *a = slab_alloc_alloc (&alloc, &ctx->e);
+  struct test_item *b = slab_alloc_alloc (&alloc, &ctx->e);
 
   // slab2 created (becomes new head, slab2->next = slab1)
-  struct test_item *c = slab_alloc_alloc (&alloc, &e);
-  struct test_item *d = slab_alloc_alloc (&alloc, &e);
+  struct test_item *c = slab_alloc_alloc (&alloc, &ctx->e);
+  struct test_item *d = slab_alloc_alloc (&alloc, &ctx->e);
 
   test_item_init (a, 1);
   test_item_init (b, 2);
@@ -534,7 +528,7 @@ TEST (slab_alloc_free_head_slab)
   test_item_verify (b, 2);
 
   // Should still be able to arena_malloc (extends or reuses slab1 if space)
-  struct test_item *f = slab_alloc_alloc (&alloc, &e);
+  struct test_item *f = slab_alloc_alloc (&alloc, &ctx->e);
   test_assert (f != NULL);
   test_item_init (f, 5);
 
@@ -552,18 +546,17 @@ TEST (slab_alloc_free_head_slab)
 TEST (slab_alloc_free_middle_slab)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 2);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 2);
 
   // Create 3 slabs: head -> slab3 -> slab2 -> slab1
   struct test_item *s1[2], *s2[2], *s3[2];
-  s1[0] = slab_alloc_alloc (&alloc, &e);
-  s1[1] = slab_alloc_alloc (&alloc, &e);
-  s2[0] = slab_alloc_alloc (&alloc, &e);
-  s2[1] = slab_alloc_alloc (&alloc, &e);
-  s3[0] = slab_alloc_alloc (&alloc, &e);
-  s3[1] = slab_alloc_alloc (&alloc, &e);
+  s1[0] = slab_alloc_alloc (&alloc, &ctx->e);
+  s1[1] = slab_alloc_alloc (&alloc, &ctx->e);
+  s2[0] = slab_alloc_alloc (&alloc, &ctx->e);
+  s2[1] = slab_alloc_alloc (&alloc, &ctx->e);
+  s3[0] = slab_alloc_alloc (&alloc, &ctx->e);
+  s3[1] = slab_alloc_alloc (&alloc, &ctx->e);
 
   for (int i = 0; i < 2; i++) {
     test_item_init (s1[i], 10 + i);
@@ -582,7 +575,7 @@ TEST (slab_alloc_free_middle_slab)
   test_item_verify (s3[1], 31);
 
   // Alloc more to confirm list is intact
-  struct test_item *x = slab_alloc_alloc (&alloc, &e);
+  struct test_item *x = slab_alloc_alloc (&alloc, &ctx->e);
   test_assert (x != NULL);
 
   slab_alloc_free (&alloc, s1[0]);
@@ -597,13 +590,12 @@ TEST (slab_alloc_free_middle_slab)
 TEST (slab_alloc_minimum_size)
 {
   struct slab_alloc alloc;
-  error             e = error_create ();
 
-  slab_alloc_init (&alloc, mem, sizeof (void *), 10);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (void *), 10);
 
   void *ptrs[20];
   for (int i = 0; i < 20; i++) {
-    ptrs[i] = slab_alloc_alloc (&alloc, &e);
+    ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
     // Write a known pattern to detect corruption
     *(uintptr_t *)ptrs[i] = (uintptr_t)(0xDEAD0000 + i);
@@ -623,10 +615,9 @@ TEST (slab_alloc_minimum_size)
 TEST (slab_alloc_stress_random)
 {
   struct slab_alloc alloc;
-  error             e    = error_create ();
   const int         POOL = 256;
 
-  slab_alloc_init (&alloc, mem, sizeof (struct test_item), 8);
+  slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 8);
 
   struct test_item *pool[256]   = {0};
   i32               values[256] = {0};
@@ -648,7 +639,7 @@ TEST (slab_alloc_stress_random)
         continue;
       }
 
-      pool[idx] = slab_alloc_alloc (&alloc, &e);
+      pool[idx] = slab_alloc_alloc (&alloc, &ctx->e);
       test_assert (pool[idx] != NULL);
       values[idx] = round;
       test_item_init (pool[idx], round);

@@ -316,10 +316,10 @@ TEST (ns_find_var_page)
 
   TEST_CASE ("Fault 1")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
 
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -335,25 +335,25 @@ TEST (ns_find_var_page)
       fault_reset_all ();
       fault_set ("ns_find_var_page:1");
 
-      ns_find_var_page (&fparams, &f.e);
-      error_reset (&f.e);
+      ns_find_var_page (&fparams, &ctx->e);
+      error_reset (&ctx->e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
     fault_reset_all ();
   }
 
   TEST_CASE ("Fault 2")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
 
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -368,26 +368,26 @@ TEST (ns_find_var_page)
 
       fault_set ("ns_find_var_page:2");
 
-      ns_find_var_page (&fparams, &f.e);
-      error_reset (&f.e);
+      ns_find_var_page (&fparams, &ctx->e);
+      error_reset (&ctx->e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
     fault_reset_all ();
   }
 
   TEST_CASE ("Fault 3")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
 
     // Create a variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -395,13 +395,13 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
-      pgr_commit (f.p, &f.tx, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Get the same variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = (struct ns_find_var_page_params){
           .p     = f.p,
@@ -417,27 +417,27 @@ TEST (ns_find_var_page)
       fault_reset_all ();
       fault_set ("ns_find_var_page:3");
 
-      test_assert (ns_find_var_page (&fparams, &f.e) != SUCCESS);
+      test_assert (ns_find_var_page (&fparams, &ctx->e) != SUCCESS);
 
-      error_reset (&f.e);
+      error_reset (&ctx->e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
     fault_reset_all ();
   }
 
   TEST_CASE ("Fault 4")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
 
     // Create a variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -445,13 +445,13 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
-      pgr_commit (f.p, &f.tx, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Get the same variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = (struct ns_find_var_page_params){
           .p     = f.p,
@@ -466,25 +466,25 @@ TEST (ns_find_var_page)
 
       fault_set ("ns_find_var_page:4");
 
-      ns_find_var_page (&fparams, &f.e);
-      error_reset (&f.e);
+      ns_find_var_page (&fparams, &ctx->e);
+      error_reset (&ctx->e);
 
       test_assert_int_equal (prev.mode, PHM_NONE);
       test_assert_int_equal (cur.mode, PHM_NONE);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
     fault_reset_all ();
   }
 
   TEST_CASE ("create new variable page (prev, cur) = (vhp, vp)")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
 
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -497,30 +497,30 @@ TEST (ns_find_var_page)
           .prev  = &prev,
       };
 
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
 
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("create new page hash collision (prev, cur) = (vp, vp)")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
     struct string name1;
     struct string name2;
-    rand_varname_same_hash (&name1, &name2, &f.alloc, &f.e);
+    rand_varname_same_hash (&name1, &name2, &f.alloc, &ctx->e);
     pgno pg1;
 
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -533,22 +533,22 @@ TEST (ns_find_var_page)
           .prev  = &prev,
       };
 
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
 
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
 
       pg1 = page_h_pgno (&cur);
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Create a colliding variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = (struct ns_find_var_page_params){
           .p     = f.p,
@@ -560,29 +560,29 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
 
       // This time, prev is the previous page
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (pg1, page_h_pgno (&prev));
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Create same variable throws")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
 
     // Create a variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -590,13 +590,13 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
-      pgr_commit (f.p, &f.tx, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Create the same variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = (struct ns_find_var_page_params){
           .p     = f.p,
@@ -608,22 +608,22 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      test_err_t_check (ns_find_var_page (&fparams, &f.e), ERR_DUPLICATE_VARIABLE, &f.e);
+      test_err_t_check (ns_find_var_page (&fparams, &ctx->e), ERR_DUPLICATE_VARIABLE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Read existing variable no chain")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
     pgno pg1;
 
     // Create a variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -631,14 +631,14 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
       pg1 = cparams.dest.var_root;
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Find the same variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -650,33 +650,33 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
 
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (pg1, page_h_pgno (&cur));
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Find existing page hash collision (prev, cur) = (vp, vp)")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
     struct string name1;
     struct string name2;
-    rand_varname_same_hash (&name1, &name2, &f.alloc, &f.e);
+    rand_varname_same_hash (&name1, &name2, &f.alloc, &ctx->e);
     pgno pg1;
     pgno pg2;
 
     // Create a variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -684,14 +684,14 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
       pg1 = cparams.dest.var_root;
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Create a variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -699,14 +699,14 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
       pg2 = cparams.dest.var_root;
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Find the first variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -718,20 +718,20 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (pg1, page_h_pgno (&cur));
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Find the second variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -743,33 +743,33 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
 
       test_assert_int_equal (page_h_pgno (&prev), pg1);
       test_assert_int_equal (page_h_pgno (&cur), pg2);
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Find existing page no hash collision (prev, cur) = (vp, vp)")
   {
-    pgr_fixture_create_with_var_hash_map (&f);
+    pgr_fixture_create_with_var_hash_map (&f, &ctx->e);
     struct string name1;
     struct string name2;
-    rand_varname_different_hash (&name1, &name2, &f.alloc, &f.e);
+    rand_varname_different_hash (&name1, &name2, &f.alloc, &ctx->e);
     pgno pg1;
     pgno pg2;
 
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -777,13 +777,13 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
       pg1 = cparams.dest.var_root;
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
       struct ns_var_get_or_create_params cparams = {
           .p     = f.p,
           .tx    = &f.tx,
@@ -791,14 +791,14 @@ TEST (ns_find_var_page)
           .type  = &(struct type){.type = T_PRIM, .p = U32},
           .alloc = &f.alloc,
       };
-      ns_var_get_or_create (&cparams, &f.e);
+      ns_var_get_or_create (&cparams, &ctx->e);
       pg2 = cparams.dest.var_root;
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Find the first variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -810,21 +810,21 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
 
       test_assert_int_equal (page_h_pgno (&cur), pg1);
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
     // Find the second variable
     {
-      pgr_begin_txn (&f.tx, f.p, &f.e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
       struct ns_find_var_page_params fparams = {
           .p     = f.p,
@@ -836,19 +836,19 @@ TEST (ns_find_var_page)
           .cur   = &cur,
           .prev  = &prev,
       };
-      ns_find_var_page (&fparams, &f.e);
+      ns_find_var_page (&fparams, &ctx->e);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
 
       test_assert_int_equal (page_h_pgno (&cur), pg2);
 
-      pgr_release (f.p, &cur, PG_PERMISSIVE, &f.e);
-      pgr_release (f.p, &prev, PG_PERMISSIVE, &f.e);
+      pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
+      pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
 
-      pgr_commit (f.p, &f.tx, &f.e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 }
 #endif

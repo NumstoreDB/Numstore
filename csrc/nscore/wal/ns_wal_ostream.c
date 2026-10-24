@@ -74,15 +74,13 @@ err_free:
 #ifndef NDEBUG
 TEST (walos_open)
 {
-  error e = error_create ();
-
   TEST_CASE ("happy path")
   {
-    os.table->remove_quiet (os.self, "foo", &e);
-    struct wal_ostream *wos = walos_open ("foo", mem, os, &e);
+    ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
+    struct wal_ostream *wos = walos_open ("foo", ctx->mem, ctx->os, &ctx->e);
     test_assert (wos != NULL);
-    walos_close (wos, &e);
-    os.table->remove_quiet (os.self, "foo", &e);
+    walos_close (wos, &ctx->e);
+    ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
   }
 }
 #endif

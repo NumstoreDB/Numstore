@@ -29,15 +29,15 @@
 
 sb_size
 numstore_insert_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               vname,
-    b_size                      ofst,
-    b_size                      len,
-    struct arena_alloc *NONNULL valloc,
-    struct variable *NULLABLE   var,
-    struct stream *NONNULL      src,
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       vname,
+    b_size              ofst,
+    b_size              len,
+    struct arena_alloc *valloc,
+    struct variable    *var,
+    struct stream      *src,
+    error              *e
 )
 {
   DBG_ASSERT (pager, p);
@@ -62,13 +62,13 @@ numstore_insert_from_name (
 
 sb_size
 numstore_insert (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    b_size                   ofst,
-    b_size                   len,
-    struct stream *NONNULL   src,
-    error *NONNULL           e
+    struct pager    *p,
+    struct txn      *tx,
+    struct variable *var,
+    b_size           ofst,
+    b_size           len,
+    struct stream   *src,
+    error           *e
 )
 {
   DBG_ASSERT (pager, p);
@@ -121,13 +121,12 @@ numstore_insert (
 TEST (numstore_insert_from_var)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
-  numstore_init_pager (f.p, &f.e);
-  pgr_begin_txn (&f.tx, f.p, &f.e);
+  pgr_fixture_create (&f, &ctx->e);
+  numstore_init_pager (f.p, &ctx->e);
+  pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
-  ALLOC_INIT (alloc);
   struct variable var;
-  numstore_create (f.p, &f.tx, strfcstr ("var"), TU32, &alloc, &var, &f.e);
+  numstore_create (f.p, &f.tx, strfcstr ("var"), TU32, &ctx->alloc, &var, &ctx->e);
 
   TEST_CASE ("variable is present - capture variable")
   {
@@ -146,10 +145,10 @@ TEST (numstore_insert_from_var)
         strfcstr ("var"),
         0,
         10,
-        &alloc,    // IMPORTANT - not null
-        &var_test, // IMPORTANT - not null
+        &ctx->alloc, // IMPORTANT - not null
+        &var_test,   // IMPORTANT - not null
         &stream,
-        &f.e
+        &ctx->e
     );
 
     // Check results
@@ -170,7 +169,7 @@ TEST (numstore_insert_from_var)
     u32 expected[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     arr_range (out_data);
     ostream_create_from_array (out, out_data);
-    sb_size read = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &out, &f.e);
+    sb_size read = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &out, &ctx->e);
     test_assert_equal (read, 10);
     test_assert_memequal (out_data, expected, sizeof (expected));
   }
@@ -189,14 +188,14 @@ TEST (numstore_insert_from_var)
         strfcstr ("var"),
         0,
         10,
-        &alloc,
+        &ctx->alloc,
         NULL, // IMPORTANT - null
         &stream,
-        &f.e
+        &ctx->e
     );
 
     struct variable var_test;
-    ret = numstore_get (f.p, &f.tx, false, strfcstr ("var"), &alloc, &var_test, &f.e);
+    ret = numstore_get (f.p, &f.tx, false, strfcstr ("var"), &ctx->alloc, &var_test, &ctx->e);
 
     // Check results
     test_assert_int_equal (ret, SUCCESS);
@@ -216,14 +215,14 @@ TEST (numstore_insert_from_var)
     u32 out_data[20];
     arr_range (out_data);
     ostream_create_from_array (out, out_data);
-    sb_size read = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &out, &f.e);
+    sb_size read = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &out, &ctx->e);
     test_assert_equal (read, 20);
     test_assert_memequal (out_data, expected, sizeof (expected));
   }
 
-  pgr_commit (f.p, &f.tx, &f.e);
-  pgr_fixture_teardown (&f);
-  ALLOC_CLOSE (alloc);
+  pgr_commit (f.p, &f.tx, &ctx->e);
+  pgr_fixture_teardown (&f, &ctx->e);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 #endif

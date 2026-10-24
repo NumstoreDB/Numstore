@@ -18,12 +18,12 @@
 
 sb_size
 numstore_read (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    struct stream *NONNULL   dest,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *dest,
+    error             *e
 )
 {
   DBG_ASSERT (pager, p);

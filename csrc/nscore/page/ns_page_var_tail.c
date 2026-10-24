@@ -53,13 +53,12 @@ vt_validate_for_db (const page *p, error *e)
 #ifndef NDEBUG
 TEST (vt_validate)
 {
-  page  sut;
-  error e = error_create ();
+  page sut;
 
   TEST_CASE ("Invalid page type")
   {
     page_init_empty (&sut, PG_DATA_LIST);
-    test_err_t_check (vt_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (vt_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 }
 #endif

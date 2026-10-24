@@ -571,22 +571,21 @@ opg_free (struct operation *op)
 
 TEST (opg)
 {
-  error                 e   = error_create ();
-  struct ns_ref        *ref = ns_ref_new (mem, &e);
+  struct ns_ref        *ref = ns_ref_new (ctx->mem, &ctx->e);
   u8                    enabled[NSS_AT_LEN];
   struct rand_op_params params = {
       .ref        = ref,
       .max_nelems = 64,
       .max_tsize  = 4096,
       .enabled    = enabled,
-      .mem        = mem,
+      .mem        = ctx->mem,
   };
   memset (params.enabled, 1, NSS_AT_LEN);
 
   TEST_CASE ("1000 random operations against the reference model")
   {
     for (int i = 0; i < 1000; ++i) {
-      struct operation *op = opg_random (params, &e);
+      struct operation *op = opg_random (params, &ctx->e);
 
       test_assert_int_equal (1, op != NULL);
       test_assert_int_equal (1, params.enabled[op->type] != 0);

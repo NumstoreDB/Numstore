@@ -77,55 +77,50 @@ struct_t_validate_shallow (const struct struct_t *s, error *e)
 #ifndef NDEBUG
 TEST (struct_t_validate_shallow)
 {
-  ALLOC_INIT (alloc);
-  BUILDER_INIT (b, &alloc);
+  BUILDER_INIT (b, &ctx->alloc);
 
   TEST_CASE ("Len == 0")
   {
-    error           e = error_create ();
     struct struct_t s = {
         .keys  = (struct string[]){strfcstr ("foo")},
         .types = (struct type *[]){&TU8},
         .len   = 0,
     };
-    test_err_t_check (struct_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+    test_err_t_check (struct_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
 
   TEST_CASE ("One Invalid label")
   {
-    error           e = error_create ();
     struct struct_t s = {
         .keys  = (struct string[]){strfcstr ("foo"), strfcstr (""), strfcstr ("biz")},
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
-    test_err_t_check (struct_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+    test_err_t_check (struct_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
 
   TEST_CASE ("Non Unique labels")
   {
-    error           e = error_create ();
     struct struct_t s = {
         .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("biz"), strfcstr ("biz")},
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
-    test_err_t_check (struct_t_validate_shallow (&s, &e), ERR_INTERP, &e);
+    test_err_t_check (struct_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
 
   TEST_CASE ("Valid")
   {
-    error           e = error_create ();
     struct struct_t s = {
         .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("bar"), strfcstr ("biz")},
         .types = (struct type *[]){&TU8, &TU16, &TU32},
         .len   = 3,
     };
-    test_assert (struct_t_validate_shallow (&s, &e) == SUCCESS);
+    test_assert (struct_t_validate_shallow (&s, &ctx->e) == SUCCESS);
   }
 
   BUILDER_CLOSE (b);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -164,8 +159,6 @@ struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key)
 #ifndef NDEBUG
 TEST (struct_t_resolve_key)
 {
-  ALLOC_INIT (alloc);
-  error        e = error_create ();
   t_size       ofst;
 
   struct type *t = compile_type_alloc (
@@ -179,30 +172,30 @@ TEST (struct_t_resolve_key)
       "     d i8, "
       "     e cf256 "
       "}",
-      &alloc,
-      &e
+      &ctx->alloc,
+      &ctx->e
   );
 
   test_assert (type_equal (
-      compile_type_alloc ("struct { a u32, b [10]f32}", &alloc, &e),
+      compile_type_alloc ("struct { a u32, b [10]f32}", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("a"))
   ));
   test_assert_int_equal (ofst, 0);
 
   test_assert (type_equal (
-      compile_type_alloc ("f32", &alloc, &e),
+      compile_type_alloc ("f32", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("b"))
   ));
   test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32));
 
   test_assert (type_equal (
-      compile_type_alloc ("[10][20]f32", &alloc, &e),
+      compile_type_alloc ("[10][20]f32", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("c"))
   ));
   test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32) + sizeof (f32));
 
   test_assert (type_equal (
-      compile_type_alloc ("i8", &alloc, &e),
+      compile_type_alloc ("i8", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("d"))
   ));
   test_assert_int_equal (
@@ -211,7 +204,7 @@ TEST (struct_t_resolve_key)
   );
 
   test_assert (type_equal (
-      compile_type_alloc ("cf256", &alloc, &e),
+      compile_type_alloc ("cf256", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("e"))
   ));
   test_assert_int_equal (
@@ -219,7 +212,7 @@ TEST (struct_t_resolve_key)
       10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32) + sizeof (i8)
   );
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 #endif
@@ -338,8 +331,6 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
 #ifndef NDEBUG
 TEST (struct_t_snprintf)
 {
-  ALLOC_INIT (alloc);
-
   struct struct_t st;
   st.len  = 4;
   st.keys = (struct string[]){
@@ -386,11 +377,10 @@ TEST (struct_t_snprintf)
 
   const char *expected = "struct { foo u32, fo u8, baro u16, bazbi cf128 }";
 
-  error       e        = error_create ();
-  char       *ret      = type_tostr (&alloc, &t, &e);
-  i_log_type (&t, &e);
+  char       *ret      = type_tostr (&ctx->alloc, &t, &ctx->e);
+  i_log_type (&t, &ctx->e);
   test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -525,9 +515,8 @@ TEST (struct_t_get_serial_size)
       },
   };
 
-  error e = error_create ();
-  u16   act;
-  struct_t_get_serial_size (&act, &st, &e);
+  u16 act;
+  struct_t_get_serial_size (&act, &st, &ctx->e);
   u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
   // u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
 
@@ -701,8 +690,6 @@ early_termination:
 #ifndef NDEBUG
 TEST (struct_t_deserialize_green_path)
 {
-  ALLOC_INIT (st_alloc);
-
   u8  data[] = {0,       0,   0,   0,   'f', 'o',        'o',        (u8)T_PRIM,
                 (u8)U32, 0,   0,   'f', 'o', (u8)T_PRIM, (u8)U8,     0,
                 0,       'b', 'a', 'r', 'o', (u8)T_PRIM, (u8)U16,    0,
@@ -720,10 +707,8 @@ TEST (struct_t_deserialize_green_path)
 
   struct deserializer d = dsrlizr_create (data, sizeof (data));
 
-  error               e = error_create ();
-
   struct struct_t     eret;
-  err_t               ret = struct_t_deserialize (&eret, &d, &st_alloc, &e);
+  err_t               ret = struct_t_deserialize (&eret, &d, &ctx->alloc, &ctx->e);
 
   test_assert_int_equal (ret, SUCCESS);
 
@@ -749,15 +734,13 @@ TEST (struct_t_deserialize_green_path)
   test_assert_int_equal (eret.types[3]->type, T_PRIM);
   test_assert_int_equal (eret.types[3]->p, CF128);
 
-  ALLOC_CLOSE (st_alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
 #ifndef NDEBUG
 TEST (struct_t_deserialize_red_path)
 {
-  ALLOC_INIT (alloc);
-
   u8 data[] = {
       0,
       0, // Total length (4)
@@ -808,12 +791,11 @@ TEST (struct_t_deserialize_red_path)
   struct struct_t     sret = {0};
   struct deserializer d    = dsrlizr_create (data, sizeof (data));
 
-  error               e    = error_create ();
-  err_t               ret  = struct_t_deserialize (&sret, &d, &alloc, &e);
+  err_t               ret  = struct_t_deserialize (&sret, &d, &ctx->alloc, &ctx->e);
 
   test_assert_int_equal (ret, ERR_INTERP); // Duplicate
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 

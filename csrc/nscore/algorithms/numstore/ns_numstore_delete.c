@@ -18,13 +18,7 @@
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 
 err_t
-numstore_delete (
-    struct pager *NONNULL p,
-    struct txn *NONNULL   tx,
-    struct string         name,
-    bool                  if_exists,
-    error *NONNULL        e
-)
+numstore_delete (struct pager *p, struct txn *tx, struct string name, bool if_exists, error *e)
 {
   DBG_ASSERT (pager, p);
   DBG_ASSERT (ns_txn, tx);

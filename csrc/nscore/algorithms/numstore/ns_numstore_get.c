@@ -21,13 +21,13 @@
 
 err_t
 numstore_get (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    bool                        if_exists,
-    struct string               name,   // Name of the variable
-    struct arena_alloc *NONNULL valloc, // Allocator for variable in get
-    struct variable *NONNULL    var,    // If not null - save the variable
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    bool                if_exists,
+    struct string       name,   // Name of the variable
+    struct arena_alloc *valloc, // Allocator for variable in get
+    struct variable    *var,    // If not null - save the variable
+    error              *e
 )
 {
   DBG_ASSERT (pager, p);

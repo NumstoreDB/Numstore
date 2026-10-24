@@ -59,36 +59,28 @@ dblb_create (
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifndef NDEBUG
 TEST (dblb_create)
 {
   TEST_CASE ("basic")
   {
-    ALLOC_INIT (alloc);
-
     struct dbl_buffer db;
-    error             e   = error_create ();
 
     // Create buffer with size=4, initial_cap=2
-    const err_t       err = dblb_create (&db, &alloc, 4, 2, &e);
+    const err_t       err = dblb_create (&db, &ctx->alloc, 4, 2, &ctx->e);
     test_assert_int_equal (err, SUCCESS);
     test_assert_int_equal (db.size, 4);
     test_assert_int_equal (db.nelem, 0);
     test_assert_int_equal (db.nelem_cap, 2);
     test_assert (db.data != NULL);
 
-    ALLOC_CLOSE (alloc);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("malloc fails")
   {
-    error        e = error_create ();
-    // TEST_ALLOC_INIT_FAULTY(alloc, faulty, &e);
-    struct i_mem faulty;
-    err_t        r = faulty_mem_init_default (&faulty, 0, &e);
-    test_assert_int_equal (r, SUCCESS);
-    struct arena_alloc alloc;
-    arena_alloc_create_default_with (&alloc, faulty);
+    arena_alloc_free_all (&ctx->faulty_alloc);
+    faulty_mem_reset (ctx->faulty_mem);
 
     struct dbl_buffer  buffer;
 
@@ -104,16 +96,18 @@ TEST (dblb_create)
     buffer.alloc             = &dummy;
 
     // fail the main malloc
-    faulty_mem_fail_after (faulty, 0);
-    test_err_t_check (dblb_create (&buffer, &alloc, 10, 100, &e), ERR_NOMEM, &e);
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (
+        dblb_create (&buffer, &ctx->faulty_alloc, 10, 100, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
 
     test_assert_int_equal (buffer.size, 10);
     test_assert_int_equal (buffer.nelem, 11);
     test_assert_int_equal (buffer.nelem_cap, 12);
     test_assert_ptr_equal (buffer.data, &i);
     test_assert_ptr_equal (buffer.alloc, &dummy);
-
-    TEST_ALLOC_CLOSE_FAULTY (alloc, faulty);
   }
 }
 #endif
@@ -133,67 +127,63 @@ dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
   return SUCCESS;
 }
 
-#ifndef NTEST
+#ifndef NDEBUG
 TEST (dblb_append)
 {
   TEST_CASE ("basic")
   {
-    error e = error_create ();
-    TEST_ALLOC_INIT_FAULTY (alloc, faulty, &e);
+    arena_alloc_free_all (&ctx->faulty_alloc);
+    faulty_mem_reset (ctx->faulty_mem);
 
     struct dbl_buffer db;
 
     // Create the buffer
-    dblb_create (&db, &alloc, 4, 2, &e);
-    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+    dblb_create (&db, &ctx->faulty_alloc, 4, 2, &ctx->e);
+    test_assert_int_equal (faulty_num_mallocs (ctx->faulty_mem), 1);
 
     // No extra realloc
     u32 data1[] = {1};
-    dblb_append (&db, data1, arrlen (data1), &e);
-    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+    dblb_append (&db, data1, arrlen (data1), &ctx->e);
+    test_assert_int_equal (faulty_num_mallocs (ctx->faulty_mem), 1);
     test_assert_int_equal (db.nelem, 1);
     test_assert_int_equal (1, ((u32 *)db.data)[0]);
 
     // Executes a realloc
     u32 data2[] = {2, 3, 4, 5};
-    dblb_append (&db, data2, arrlen (data2), &e);
-    test_assert_int_equal (faulty_num_mallocs (faulty), 2);
+    dblb_append (&db, data2, arrlen (data2), &ctx->e);
+    test_assert_int_equal (faulty_num_mallocs (ctx->faulty_mem), 2);
     test_assert_int_equal (db.nelem, 5);
     test_assert_int_equal (1, ((u32 *)db.data)[0]);
     test_assert_int_equal (2, ((u32 *)db.data)[1]);
     test_assert_int_equal (3, ((u32 *)db.data)[2]);
     test_assert_int_equal (4, ((u32 *)db.data)[3]);
     test_assert_int_equal (5, ((u32 *)db.data)[4]);
-
-    TEST_ALLOC_CLOSE_FAULTY (alloc, faulty);
   }
 
   TEST_CASE ("malloc fails")
   {
-    error e = error_create ();
-    TEST_ALLOC_INIT_FAULTY (alloc, faulty, &e);
+    arena_alloc_free_all (&ctx->faulty_alloc);
+    faulty_mem_reset (ctx->faulty_mem);
 
     struct dbl_buffer db;
 
     // Create the buffer
-    dblb_create (&db, &alloc, 4, 2, &e);
-    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+    dblb_create (&db, &ctx->faulty_alloc, 4, 2, &ctx->e);
+    test_assert_int_equal (faulty_num_mallocs (ctx->faulty_mem), 1);
 
     // No extra realloc
     u32 data1[] = {1};
-    dblb_append (&db, data1, arrlen (data1), &e);
-    test_assert_int_equal (faulty_num_mallocs (faulty), 1);
+    dblb_append (&db, data1, arrlen (data1), &ctx->e);
+    test_assert_int_equal (faulty_num_mallocs (ctx->faulty_mem), 1);
     test_assert_int_equal (db.nelem, 1);
     test_assert_int_equal (1, ((u32 *)db.data)[0]);
 
     // Executes a realloc
     u32 data2[] = {2, 3, 4, 5};
-    faulty_mem_fail_after (faulty, 0);
-    test_err_t_check (dblb_append (&db, data2, arrlen (data2), &e), ERR_NOMEM, &e);
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (dblb_append (&db, data2, arrlen (data2), &ctx->e), ERR_NOMEM, &ctx->e);
     test_assert_int_equal (db.nelem, 1);
     test_assert_int_equal (1, ((u32 *)db.data)[0]);
-
-    TEST_ALLOC_CLOSE_FAULTY (alloc, faulty);
   }
 }
 #endif
@@ -243,16 +233,13 @@ dblb_reset (struct dbl_buffer *d)
 
 TEST (dblb_append_single)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 4, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 4, &ctx->e);
 
   // Append single element
   u32         val = 0x12345678;
-  const err_t err = dblb_append (&db, &val, 1, &e);
+  const err_t err = dblb_append (&db, &val, 1, &ctx->e);
   test_assert_int_equal (err, SUCCESS);
   test_assert_int_equal (db.nelem, 1);
   test_assert_int_equal (db.nelem_cap, 4);
@@ -261,21 +248,18 @@ TEST (dblb_append_single)
   const u32 *data = (u32 *)db.data;
   test_assert_int_equal (data[0], 0x12345678);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_append_multiple)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 2, &ctx->e);
 
   // Append multiple elements
   u32         vals[] = {0x11, 0x22, 0x33};
-  const err_t err    = dblb_append (&db, vals, 3, &e);
+  const err_t err    = dblb_append (&db, vals, 3, &ctx->e);
   test_assert_int_equal (err, SUCCESS);
   test_assert_int_equal (db.nelem, 3);
 
@@ -285,36 +269,33 @@ TEST (dblb_append_multiple)
   test_assert_int_equal (data[1], 0x22);
   test_assert_int_equal (data[2], 0x33);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_append_triggers_realloc)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
   // Start with capacity of 2
-  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 2, &ctx->e);
 
   u32 val1 = 0xAA;
-  dblb_append (&db, &val1, 1, &e);
+  dblb_append (&db, &val1, 1, &ctx->e);
   test_assert_int_equal (db.nelem, 1);
   test_assert_int_equal (db.nelem_cap, 2);
 
   u32 val2 = 0xBB;
-  dblb_append (&db, &val2, 1, &e);
+  dblb_append (&db, &val2, 1, &ctx->e);
   test_assert_int_equal (db.nelem, 2);
   test_assert_int_equal (db.nelem_cap, 4);
 
   u32 val3 = 0xCC;
-  dblb_append (&db, &val3, 1, &e);
+  dblb_append (&db, &val3, 1, &ctx->e);
   test_assert_int_equal (db.nelem, 3);
   test_assert_int_equal (db.nelem_cap, 4);
 
   u32 val4 = 0xDD;
-  dblb_append (&db, &val4, 1, &e);
+  dblb_append (&db, &val4, 1, &ctx->e);
   test_assert_int_equal (db.nelem, 4);
   test_assert_int_equal (db.nelem_cap, 8);
 
@@ -324,20 +305,17 @@ TEST (dblb_append_triggers_realloc)
   test_assert_int_equal (data[2], 0xCC);
   test_assert_int_equal (data[3], 0xDD);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_append_alloc_basic)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 4, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 4, &ctx->e);
 
   // Allocate space for 2 elements
-  void *ptr = dblb_append_alloc (&db, 2, &e);
+  void *ptr = dblb_append_alloc (&db, 2, &ctx->e);
   test_assert (ptr != NULL);
   test_assert_int_equal (db.nelem, 2);
 
@@ -351,26 +329,23 @@ TEST (dblb_append_alloc_basic)
   test_assert_int_equal (base[0], 0x1111);
   test_assert_int_equal (base[1], 0x2222);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_append_alloc_sequential)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 8, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 8, &ctx->e);
 
   // First allocation
-  u32 *ptr1 = (u32 *)dblb_append_alloc (&db, 2, &e);
+  u32 *ptr1 = (u32 *)dblb_append_alloc (&db, 2, &ctx->e);
   test_assert (ptr1 != NULL);
   ptr1[0]   = 0xAA;
   ptr1[1]   = 0xBB;
 
   // Second allocation - should be right after first
-  u32 *ptr2 = (u32 *)dblb_append_alloc (&db, 2, &e);
+  u32 *ptr2 = (u32 *)dblb_append_alloc (&db, 2, &ctx->e);
   test_assert (ptr2 != NULL);
   test_assert_int_equal ((u8 *)ptr2 - (u8 *)ptr1, 2 * sizeof (u32));
   ptr2[0]         = 0xCC;
@@ -384,58 +359,49 @@ TEST (dblb_append_alloc_sequential)
   test_assert_int_equal (base[3], 0xDD);
   test_assert_int_equal (db.nelem, 4);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_append_alloc_triggers_realloc)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 2, &ctx->e);
 
   // Fill to capacity
-  dblb_append_alloc (&db, 2, &e);
+  dblb_append_alloc (&db, 2, &ctx->e);
   test_assert_int_equal (db.nelem_cap, 4);
 
   // This should trigger realloc
-  const void *ptr = dblb_append_alloc (&db, 1, &e);
+  const void *ptr = dblb_append_alloc (&db, 1, &ctx->e);
   test_assert (ptr != NULL);
   test_assert_int_equal (db.nelem, 3);
   test_assert_int_equal (db.nelem_cap, 4);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_different_element_sizes)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
   // Test with u8
-  dblb_create (&db, &alloc, sizeof (u8), 4, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u8), 4, &ctx->e);
   u8 byte = 0x42;
-  dblb_append (&db, &byte, 1, &e);
+  dblb_append (&db, &byte, 1, &ctx->e);
   test_assert_int_equal (((u8 *)db.data)[0], 0x42);
 
   // Test with u64
-  dblb_create (&db, &alloc, sizeof (u64), 4, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u64), 4, &ctx->e);
   u64 large = 0x123456789ABCDEF0;
-  dblb_append (&db, &large, 1, &e);
+  dblb_append (&db, &large, 1, &ctx->e);
   test_assert_equal (((u64 *)db.data)[0], 0x123456789ABCDEF0);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_struct_elements)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
   struct test_struct
   {
@@ -443,13 +409,13 @@ TEST (dblb_struct_elements)
     u32 value;
   };
 
-  dblb_create (&db, &alloc, sizeof (struct test_struct), 2, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (struct test_struct), 2, &ctx->e);
 
   struct test_struct s1 = {.id = 1, .value = 100};
   struct test_struct s2 = {.id = 2, .value = 200};
 
-  dblb_append (&db, &s1, 1, &e);
-  dblb_append (&db, &s2, 1, &e);
+  dblb_append (&db, &s1, 1, &ctx->e);
+  dblb_append (&db, &s2, 1, &ctx->e);
 
   const struct test_struct *data = (struct test_struct *)db.data;
   test_assert_int_equal (data[0].id, 1);
@@ -457,35 +423,29 @@ TEST (dblb_struct_elements)
   test_assert_int_equal (data[1].id, 2);
   test_assert_int_equal (data[1].value, 200);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_free_resets)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 4, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 4, &ctx->e);
   u32 val = 0x1234;
-  dblb_append (&db, &val, 1, &e);
+  dblb_append (&db, &val, 1, &ctx->e);
 
   dblb_reset (&db);
 
   // Verify fields are reset
   test_assert_int_equal (db.nelem, 0);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (dblb_large_append)
 {
-  ALLOC_INIT (alloc);
-
   struct dbl_buffer db;
-  error             e = error_create ();
 
-  dblb_create (&db, &alloc, sizeof (u32), 2, &e);
+  dblb_create (&db, &ctx->alloc, sizeof (u32), 2, &ctx->e);
 
   // Append many elements at once
   u32 vals[100];
@@ -493,7 +453,7 @@ TEST (dblb_large_append)
     vals[i] = i;
   }
 
-  dblb_append (&db, vals, 100, &e);
+  dblb_append (&db, vals, 100, &ctx->e);
   test_assert_int_equal (db.nelem, 100);
 
   // Verify data
@@ -502,6 +462,6 @@ TEST (dblb_large_append)
     test_assert_int_equal (data[i], i);
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif

@@ -105,20 +105,20 @@ TEST (pgr_get_invalid_checksum)
 {
   page_h             pg = page_h_create ();
   struct pgr_fixture pf;
-  pgr_fixture_create (&pf);
+  pgr_fixture_create (&pf, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, pf.p, &pf.e);
+  pgr_begin_txn (&tx, pf.p, &ctx->e);
 
-  pgr_new (&pg, pf.p, &tx, PG_DATA_LIST, &pf.e);
+  pgr_new (&pg, pf.p, &tx, PG_DATA_LIST, &ctx->e);
   dl_make_valid (page_h_w (&pg));
 
   const pgno _pg = page_h_pgno (&pg);
-  pgr_release_with_flush (pf.p, &pg, PG_DATA_LIST, &pf.e);
+  pgr_release_with_flush (pf.p, &pg, PG_DATA_LIST, &ctx->e);
 
-  pgr_commit (pf.p, &tx, &pf.e);
+  pgr_commit (pf.p, &tx, &ctx->e);
 
-  pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e);
+  pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &ctx->e);
   test_assert_int_equal (
       page_get_checksum (page_h_ro (&pg)),
       page_compute_checksum (page_h_ro (&pg))
@@ -130,14 +130,14 @@ TEST (pgr_get_invalid_checksum)
   fake_page.pg = page_h_pgno (&pg);
   page_set_checksum (&fake_page, page_get_checksum (&fake_page) + 1);
 
-  pgr_release_with_evict (pf.p, &pg, PG_DATA_LIST, &pf.e);
+  pgr_release_with_evict (pf.p, &pg, PG_DATA_LIST, &ctx->e);
 
   // Force a invalid write
-  fpgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &pf.e);
+  fpgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &ctx->e);
 
   // This one will fail
-  test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &pf.e), ERR_CORRUPT, &pf.e);
+  test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-  pgr_fixture_teardown (&pf);
+  pgr_fixture_teardown (&pf, &ctx->e);
 }
 #endif

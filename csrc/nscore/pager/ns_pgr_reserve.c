@@ -87,13 +87,13 @@ TEST (pgr_reserve_and_ctrl_lock_st)
   TEST_CASE ("single threaded clock iterator test")
   {
     struct pgr_fixture pgr;
-    pgr_fixture_create (&pgr);
+    pgr_fixture_create (&pgr, &ctx->e);
 
-    i32 clock1   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    i32 clock1   = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
     pgr.p->clock = 0;
-    i32 clock2   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    i32 clock2   = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
     pgr.p->clock = 0;
-    i32 clock3   = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    i32 clock3   = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
     pgr.p->clock = 0;
 
     test_assert_int_equal (clock1, 0);
@@ -105,11 +105,11 @@ TEST (pgr_reserve_and_ctrl_lock_st)
     latch_unlock (&pgr.p->pages[2].ctrl);
 
     // If I don't do anything and just unlock - it should repeat
-    clock1       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    clock1       = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
     pgr.p->clock = 0;
-    clock2       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    clock2       = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
     pgr.p->clock = 0;
-    clock3       = pgr_reserve_and_ctrl_lock (pgr.p, &pgr.e);
+    clock3       = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
     pgr.p->clock = 0;
 
     test_assert_int_equal (clock1, 0);
@@ -120,7 +120,7 @@ TEST (pgr_reserve_and_ctrl_lock_st)
     latch_unlock (&pgr.p->pages[1].ctrl);
     latch_unlock (&pgr.p->pages[2].ctrl);
 
-    pgr_fixture_teardown (&pgr);
+    pgr_fixture_teardown (&pgr, &ctx->e);
   }
 }
 #endif

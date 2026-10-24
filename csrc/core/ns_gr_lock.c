@@ -64,9 +64,8 @@ TEST (gr_lock_init)
 {
   TEST_CASE ("mutex create green path")
   {
-    error          e = error_create ();
     struct gr_lock l;
-    gr_lock_init (&l, os, &e);
+    gr_lock_init (&l, ctx->os, &ctx->e);
     gr_lock_destroy (&l);
   }
 }
@@ -94,9 +93,8 @@ TEST (gr_lock_destroy)
 {
   TEST_CASE ("green path")
   {
-    error          e = error_create ();
     struct gr_lock l;
-    gr_lock_init (&l, os, &e);
+    gr_lock_init (&l, ctx->os, &ctx->e);
     gr_lock_destroy (&l);
   }
 }
@@ -136,9 +134,8 @@ is_compatible (const struct gr_lock *l, const enum lock_mode mode)
 #ifndef NDEBUG
 TEST (gr_lock_is_compatible)
 {
-  error          e = error_create ();
   struct gr_lock l;
-  gr_lock_init (&l, os, &e);
+  gr_lock_init (&l, ctx->os, &ctx->e);
 
   // All locks compatible on init
   test_assert (is_compatible (&l, LM_IS));
@@ -148,7 +145,7 @@ TEST (gr_lock_is_compatible)
   test_assert (is_compatible (&l, LM_X));
 
   // IS is incompatible with X
-  gr_lock (&l, LM_IS, &e);
+  gr_lock (&l, LM_IS, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (is_compatible (&l, LM_IX));
   test_assert (is_compatible (&l, LM_S));
@@ -157,7 +154,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_IS);
 
   // IX is incompatible with S SIX X
-  gr_lock (&l, LM_IX, &e);
+  gr_lock (&l, LM_IX, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (is_compatible (&l, LM_IX));
   test_assert (!is_compatible (&l, LM_S));
@@ -166,7 +163,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_IX);
 
   // S is incompatible with IX SIX X
-  gr_lock (&l, LM_S, &e);
+  gr_lock (&l, LM_S, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (!is_compatible (&l, LM_IX));
   test_assert (is_compatible (&l, LM_S));
@@ -175,7 +172,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_S);
 
   // SIX is incompatible with IX S SIX X
-  gr_lock (&l, LM_SIX, &e);
+  gr_lock (&l, LM_SIX, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (!is_compatible (&l, LM_IX));
   test_assert (!is_compatible (&l, LM_S));
@@ -184,7 +181,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_SIX);
 
   // X is incompatible with IS IX S SIX X
-  gr_lock (&l, LM_X, &e);
+  gr_lock (&l, LM_X, &ctx->e);
   test_assert (!is_compatible (&l, LM_IS));
   test_assert (!is_compatible (&l, LM_IX));
   test_assert (!is_compatible (&l, LM_S));
@@ -331,9 +328,8 @@ thread2 (void *_ctx)
 TEST (gr_lock_unlock)
 {
   i_thread       t1, t2;
-  error          e = error_create ();
   struct gr_lock l;
-  gr_lock_init (&l, os, &e);
+  gr_lock_init (&l, ctx->os, &ctx->e);
 
   // Cartesion product
   for (int m1 = 0; m1 < LM_COUNT; ++m1) {
@@ -342,7 +338,7 @@ TEST (gr_lock_unlock)
       {
         test_reset_marks ();
 
-        struct thread_ctx ctx = {
+        struct thread_ctx lctx = {
             .l       = &l,
             .mode1   = m1,
             .mode2   = m2,
@@ -351,15 +347,15 @@ TEST (gr_lock_unlock)
             .gate    = 0,
         };
 
-        os.table->thread_create (os.self, &t1, thread1, &ctx, &e);
-        os.table->thread_create (os.self, &t2, thread2, &ctx, &e);
+        ctx->os.table->thread_create (ctx->os.self, &t1, thread1, &lctx, &ctx->e);
+        ctx->os.table->thread_create (ctx->os.self, &t2, thread2, &lctx, &ctx->e);
 
         // Launch both threads
-        atomic_store (&ctx.gate, 1);
+        atomic_store (&lctx.gate, 1);
 
         if (compatible[m1][m2]) {
           // 2 finishes without unlocking anything
-          while (!atomic_load (&ctx.locked2)) {
+          while (!atomic_load (&lctx.locked2)) {
             spin_pause ();
           }
 
@@ -373,7 +369,7 @@ TEST (gr_lock_unlock)
           test_assert_mark_not_hit ("gr_lock:gr_lock:wait");
         } else {
           // 1 finishes fine
-          while (!atomic_load (&ctx.locked1)) {
+          while (!atomic_load (&lctx.locked1)) {
             spin_pause ();
           }
 
@@ -382,11 +378,11 @@ TEST (gr_lock_unlock)
 
           // Wait 10 ms and 2 is STILL not locked
           i_sleep_ms (10);
-          test_assert_int_equal (atomic_load (&ctx.locked2), 0);
+          test_assert_int_equal (atomic_load (&lctx.locked2), 0);
 
           // Unlock 2
           gr_unlock (&l, m1);
-          while (!atomic_load (&ctx.locked2)) {
+          while (!atomic_load (&lctx.locked2)) {
             spin_pause ();
           }
 
@@ -399,8 +395,8 @@ TEST (gr_lock_unlock)
           test_assert_mark_hit ("gr_lock:gr_lock:wait");
         }
 
-        os.table->thread_join (os.self, t1.self);
-        os.table->thread_join (os.self, t2.self);
+        ctx->os.table->thread_join (ctx->os.self, t1.self);
+        ctx->os.table->thread_join (ctx->os.self, t2.self);
       }
     }
   }
@@ -472,7 +468,7 @@ struct lock_test_ctx
 };
 
 static void
-test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock, const struct i_os os)
+lock_test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock, const struct i_os os)
 {
   error e = error_create ();
 
@@ -488,7 +484,7 @@ test_ctx_init (struct lock_test_ctx *ctx, struct gr_lock *lock, const struct i_o
 }
 
 static void
-test_ctx_destroy (struct lock_test_ctx *ctx)
+lock_test_ctx_destroy (struct lock_test_ctx *ctx)
 {
   ctx->os.table->mutex_free (ctx->os.self, ctx->gate_mtx.self);
   ctx->os.table->cond_free (ctx->os.self, ctx->gate_cv.self);
@@ -578,11 +574,10 @@ random_stress_worker (void *arg)
 TEST (gr_lock_basic_sanity)
 {
   struct gr_lock lock;
-  error          e = error_create ();
-  gr_lock_init (&lock, os, &e);
+  gr_lock_init (&lock, ctx->os, &ctx->e);
 
   for (int mode = 0; mode < LM_COUNT; mode++) {
-    gr_lock (&lock, mode, &e);
+    gr_lock (&lock, mode, &ctx->e);
     test_assert_equal (lock.holder_counts[mode], 1);
     gr_unlock (&lock, mode);
     test_assert_equal (lock.holder_counts[mode], 0);
@@ -594,23 +589,22 @@ TEST (gr_lock_basic_sanity)
 TEST (gr_lock_is_is_compatible)
 {
   struct gr_lock lock;
-  error          e = error_create ();
-  gr_lock_init (&lock, os, &e);
+  gr_lock_init (&lock, ctx->os, &ctx->e);
 
-  struct lock_test_ctx ctx;
-  test_ctx_init (&ctx, &lock, os);
-  ctx.mode1 = LM_IS;
-  ctx.mode2 = LM_IS;
+  struct lock_test_ctx lctx;
+  lock_test_ctx_init (&lctx, &lock, ctx->os);
+  lctx.mode1 = LM_IS;
+  lctx.mode2 = LM_IS;
 
   i_thread t1, t2;
-  os.table->thread_create (os.self, &t1, thread_hold_and_signal, &ctx, &e);
-  os.table->thread_create (os.self, &t2, thread_wait_and_try, &ctx, &e);
+  ctx->os.table->thread_create (ctx->os.self, &t1, thread_hold_and_signal, &lctx, &ctx->e);
+  ctx->os.table->thread_create (ctx->os.self, &t2, thread_wait_and_try, &lctx, &ctx->e);
 
-  os.table->thread_join (os.self, t1.self);
-  os.table->thread_join (os.self, t2.self);
+  ctx->os.table->thread_join (ctx->os.self, t1.self);
+  ctx->os.table->thread_join (ctx->os.self, t2.self);
 
-  test_assert (ctx.t1_acquired && ctx.t2_acquired);
-  test_ctx_destroy (&ctx);
+  test_assert (lctx.t1_acquired && lctx.t2_acquired);
+  lock_test_ctx_destroy (&lctx);
   gr_lock_destroy (&lock);
 }
 
@@ -624,7 +618,7 @@ TEST_DISABLED (gr_lock_is_x_blocks)
   gr_lock_init (&lock, os, &e);
 
   struct lock_test_ctx ctx;
-  test_ctx_init (&ctx, &lock, os);
+  lock_test_ctx_init (&ctx, &lock, os);
   ctx.mode1 = LM_IS;
   ctx.mode2 = LM_X;
 
@@ -642,7 +636,7 @@ TEST_DISABLED (gr_lock_is_x_blocks)
   os.table->thread_join (os.self, t2.self);
 
   test_assert (ctx.t2_acquired); // Should succeed after T1 releases
-  test_ctx_destroy (&ctx);
+  lock_test_ctx_destroy (&ctx);
   gr_lock_destroy (&lock);
 }
 */
@@ -650,20 +644,19 @@ TEST_DISABLED (gr_lock_is_x_blocks)
 TEST (gr_lock_high_pressure_random)
 {
   struct gr_lock lock;
-  error          e = error_create ();
-  gr_lock_init (&lock, os, &e);
+  gr_lock_init (&lock, ctx->os, &ctx->e);
 
-  struct lock_test_ctx ctx;
-  test_ctx_init (&ctx, &lock, os);
+  struct lock_test_ctx lctx;
+  lock_test_ctx_init (&lctx, &lock, ctx->os);
 
   i_thread threads[12];
 
   for (int i = 0; i < 12; i++) {
-    os.table->thread_create (os.self, &threads[i], random_stress_worker, &ctx, &e);
+    ctx->os.table->thread_create (ctx->os.self, &threads[i], random_stress_worker, &lctx, &ctx->e);
   }
 
   for (int i = 0; i < 12; i++) {
-    os.table->thread_join (os.self, threads[i].self);
+    ctx->os.table->thread_join (ctx->os.self, threads[i].self);
   }
 
   // Final Validation
@@ -671,7 +664,7 @@ TEST (gr_lock_high_pressure_random)
     test_assert_equal (lock.holder_counts[m], 0);
   }
 
-  test_ctx_destroy (&ctx);
+  lock_test_ctx_destroy (&lctx);
   gr_lock_destroy (&lock);
 }
 

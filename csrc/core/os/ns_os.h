@@ -158,14 +158,14 @@ struct i_timer
 };
 
 ////////////////////////////
-/// Constructors
+/// System default
 
 err_t system_os_create (struct i_mem mem, struct i_os *dest, error *e);
 void system_os_free (struct i_os os);
 
-/// Wraps [delegate]: every fallible call fails with probability
-/// [fail_percent] in [0, 1], otherwise forwards to [delegate].
-/// [delegate] is borrowed - it must outlive the faulty OS and is not freed by it.
+////////////////////////////
+/// Faulty version
+
 err_t faulty_os_create (
     struct i_mem mem,
     struct i_os  delegate,
@@ -173,17 +173,15 @@ err_t faulty_os_create (
     struct i_os *dest,
     error       *e
 );
+void faulty_os_set_fail (struct i_os os, float fail_percent);
+void faulty_os_fail_after (struct i_os os, int count);
+u32 faulty_num_os_calls (struct i_os os);
 void faulty_os_free (struct i_os os);
 
 ////////////////////////////
-/// Composite file helpers
-///
-/// Built only out of vtable primitives - they are here so the short read
-/// check isn't copy pasted at every call site.
+/// Wrappers
 
-/// pread exactly [n] bytes - a short read is ERR_CORRUPT, not EOF
 err_t file_pread_all_expect (i_file f, void *dest, const u64 n, const u64 offset, error *e);
-/// read exactly [nbytes] bytes - a short read is ERR_CORRUPT, not EOF
 err_t file_read_all_expect (i_file f, void *dest, const u64 nbytes, error *e);
 
 void i_sleep_us (u64 us);

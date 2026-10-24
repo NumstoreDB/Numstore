@@ -57,21 +57,19 @@ DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
 #ifndef NDEBUG
 TEST (prim_t_validate)
 {
-  error       err = error_create ();
-
   // 1.1 happy path – legal value
-  enum prim_t ok  = U32;
-  test_assert_int_equal (prim_t_validate (&ok, &err), SUCCESS);
+  enum prim_t ok = U32;
+  test_assert_int_equal (prim_t_validate (&ok, &ctx->e), SUCCESS);
 
   // 1.2 too‑small → ERR_INTERP
   enum prim_t bad_lo = (enum prim_t) (U8 - 1);
-  test_assert_int_equal (prim_t_validate (&bad_lo, &err), ERR_INTERP);
-  err.cause_code     = SUCCESS;
+  test_assert_int_equal (prim_t_validate (&bad_lo, &ctx->e), ERR_INTERP);
+  ctx->e.cause_code  = SUCCESS;
 
   // 1.3 too‑large → ERR_INTERP
   enum prim_t bad_hi = (enum prim_t) (CU128 + 1);
-  test_assert_int_equal (prim_t_validate (&bad_hi, &err), ERR_INTERP);
-  error_reset (&err);
+  test_assert_int_equal (prim_t_validate (&bad_hi, &ctx->e), ERR_INTERP);
+  error_reset (&ctx->e);
 }
 #endif
 
@@ -174,8 +172,6 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 #ifndef NDEBUG
 TEST (prim_t_snprintf)
 {
-  ALLOC_INIT (alloc);
-
 #  define CASE_PRIM(prim_type, exp)                                      \
     TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)             \
     {                                                                    \
@@ -185,9 +181,8 @@ TEST (prim_t_snprintf)
       };                                                                 \
                                                                          \
       const char *expect = exp;                                          \
-      error       e      = error_create ();                              \
-      char       *ret    = type_tostr (&alloc, &t, &e);                  \
-      i_log_type (&t, &e);                                               \
+      char       *ret    = type_tostr (&ctx->alloc, &t, &ctx->e);        \
+      i_log_type (&t, &ctx->e);                                          \
       test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0); \
     }
 
@@ -221,7 +216,7 @@ TEST (prim_t_snprintf)
   CASE_PRIM (CU64, "cu64");
   CASE_PRIM (CU128, "cu128");
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -723,17 +718,16 @@ TEST (prim_t_deserialize)
   // 5.1 green path
   u8                  data[] = {(u8)CI32};
   struct deserializer d      = dsrlizr_create (data, sizeof data);
-  error               err    = error_create ();
   enum prim_t         out    = 0;
 
-  test_assert_int_equal (prim_t_deserialize (&out, &d, &err), SUCCESS);
+  test_assert_int_equal (prim_t_deserialize (&out, &d, &ctx->e), SUCCESS);
   test_assert_int_equal (out, CI32);
 
   // 5.2 red path – invalid enum value (CU128+1)
   u8                  bad[] = {(u8)(CU128 + 1)};
   struct deserializer d2    = dsrlizr_create (bad, sizeof bad);
-  test_assert_int_equal (prim_t_deserialize (&out, &d2, &err), ERR_INTERP);
-  error_reset (&err);
+  test_assert_int_equal (prim_t_deserialize (&out, &d2, &ctx->e), ERR_INTERP);
+  error_reset (&ctx->e);
 }
 #endif
 
@@ -796,10 +790,9 @@ prim_t_random (void)
 #ifndef NDEBUG
 TEST (prim_t_random)
 {
-  error err = error_create ();
   for (u32 i = 0; i < 1000; ++i) {
     enum prim_t p = prim_t_random ();
-    test_assert_int_equal (prim_t_validate (&p, &err), SUCCESS);
+    test_assert_int_equal (prim_t_validate (&p, &ctx->e), SUCCESS);
   }
 }
 #endif
@@ -914,20 +907,17 @@ type_random (struct arena_alloc *alloc, u32 depth, t_size max_size, error *e)
 #ifndef NDEBUG
 TEST (type_random)
 {
-  ALLOC_INIT (alloc);
-  error e     = error_create ();
-
-  int   iters = 0;
+  int iters = 0;
   while (iters < 100) {
     t_size       max_tsize = randu32r (10, 4096);
-    struct type *t         = type_random (&alloc, 5, max_tsize, &e);
+    struct type *t         = type_random (&ctx->alloc, 5, max_tsize, &ctx->e);
     if (t != NULL) {
       iters++;
       test_assert (type_byte_size (t) <= max_tsize);
     }
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -1839,17 +1829,16 @@ TEST (type_print_os_sink)
   TEST_CASE ("smoke test")
   {
     struct type t    = {.type = T_PRIM, .p = U32};
-    error       e    = {0};
     t_size      size = type_byte_size (&t);
     struct type_printer_ostream_ctx
-        *ctx  = (default_mem ()).table->malloc ((default_mem ()).self, 1, sizeof *ctx + size, &e);
-    ctx->t    = &t;
-    ctx->pos  = 0;
-    ctx->size = size;
+        *pctx       = ctx->mem.table->malloc (ctx->mem.self, 1, sizeof *pctx + size, &ctx->e);
+    pctx->t         = &t;
+    pctx->pos       = 0;
+    pctx->size      = size;
     struct stream s = {0};
     u32           v = 0xDEADBEEF;
-    type_print_os_sink (&s, ctx, &v, 1, sizeof v, &e);
-    (default_mem ()).table->free ((default_mem ()).self, ctx);
+    type_print_os_sink (&s, pctx, &v, 1, sizeof v, &ctx->e);
+    ctx->mem.table->free (ctx->mem.self, pctx);
   }
 }
 #endif
@@ -1865,10 +1854,9 @@ TEST (type_print_os_close)
 {
   TEST_CASE ("smoke test")
   {
-    error e = {0};
-    struct type_printer_ostream_ctx
-        *ctx = (default_mem ()).table->malloc ((default_mem ()).self, 1, sizeof *ctx, &e);
-    type_print_os_close (ctx);
+    struct type_printer_ostream_ctx *pctx = ctx->mem.table
+                                                ->malloc (ctx->mem.self, 1, sizeof *pctx, &ctx->e);
+    type_print_os_close (pctx);
   }
 }
 #endif

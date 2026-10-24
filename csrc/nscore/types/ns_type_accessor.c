@@ -601,10 +601,7 @@ theend:
 #ifndef NDEBUG
 TEST (type_accessor_builder)
 {
-  ALLOC_INIT (alloc);
-  BUILDER_INIT (b, &alloc);
-
-  error                        e       = error_create ();
+  BUILDER_INIT (b, &ctx->alloc);
 
   // 0. freshly-created builder must be clean
   struct type_accessor_builder builder = tab_create (&b);
@@ -612,27 +609,27 @@ TEST (type_accessor_builder)
   test_fail_if (builder.tail != NULL);
 
   struct type_accessor acc;
-  tab_build (&acc, &builder, &e);
+  tab_build (&acc, &builder, &ctx->e);
   test_assert_int_equal (acc.type, TA_TAKE);
 
   builder            = tab_create (&b);
 
   // 2. accept a select accessor
   struct string key1 = strfcstr ("field1");
-  test_assert_int_equal (tab_accept_select (&builder, key1, &e), SUCCESS);
+  test_assert_int_equal (tab_accept_select (&builder, key1, &ctx->e), SUCCESS);
   // 3. accept a stride + single (enters range mode)
-  test_assert_int_equal (tab_accept_stride (&builder, ustride012 (0, 10, 2), &e), SUCCESS);
+  test_assert_int_equal (tab_accept_stride (&builder, ustride012 (0, 10, 2), &ctx->e), SUCCESS);
   test_assert (builder.in_range);
-  test_assert_int_equal (tab_accept_stride (&builder, ustride_single (5), &e), SUCCESS);
+  test_assert_int_equal (tab_accept_stride (&builder, ustride_single (5), &ctx->e), SUCCESS);
   test_assert_int_equal (builder.rb.len, 2);
 
   // 4. accept another select accessor (should flush the range)
   struct string key2 = strfcstr ("field2");
-  test_assert_int_equal (tab_accept_select (&builder, key2, &e), SUCCESS);
+  test_assert_int_equal (tab_accept_select (&builder, key2, &ctx->e), SUCCESS);
   test_fail_if (builder.in_range);
 
   // 5. successful build
-  test_assert_int_equal (tab_build (&acc, &builder, &e), SUCCESS);
+  test_assert_int_equal (tab_build (&acc, &builder, &ctx->e), SUCCESS);
 
   // 6. verify chain: SELECT(field1) → RANGE([0:10:2, 5]) →
   // SELECT(field2) → TAKE
@@ -656,6 +653,6 @@ TEST (type_accessor_builder)
   test_assert_int_equal (select_acc->select.sub_ta->type, TA_TAKE);
 
   BUILDER_CLOSE (b);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif

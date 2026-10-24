@@ -125,8 +125,8 @@ TEST (pgr_checkpoint)
   TEST_CASE ("smoke test")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    pgr_launch_checkpoint_thread (f.p, 100, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    pgr_launch_checkpoint_thread (f.p, 100, &ctx->e);
 
     struct args args = {
         .done = 0,
@@ -134,14 +134,14 @@ TEST (pgr_checkpoint)
     };
 
     i_thread producer;
-    os.table->thread_create (os.self, &producer, producer_thread, &args, &f.e);
+    ctx->os.table->thread_create (ctx->os.self, &producer, producer_thread, &args, &ctx->e);
     i_sleep_ms (1000);
 
     args.done = 1;
 
-    os.table->thread_join (os.self, producer.self);
+    ctx->os.table->thread_join (ctx->os.self, producer.self);
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 }
 

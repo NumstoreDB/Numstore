@@ -72,22 +72,18 @@ i_print_variable (struct variable *v, error *e)
 #ifndef NDEBUG
 TEST (i_print_variable)
 {
-  ALLOC_INIT (alloc);
-
-  error           e = error_create ();
-
   struct variable v = {
       .vname    = strfcstr ("foo"),
-      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
       .nbytes   = 789,
   };
 
   // Just logging - make sure it succeeds and doesn't crash.
-  test_assert (i_print_variable (&v, &e) == SUCCESS);
+  test_assert (i_print_variable (&v, &ctx->e) == SUCCESS);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -143,13 +139,9 @@ variable_equal (const struct variable *left, const struct variable *right)
 #ifndef NDEBUG
 TEST (variable_equal)
 {
-  ALLOC_INIT (alloc);
-
-  error           e = error_create ();
-
   struct variable a = {
       .vname    = strfcstr ("foo"),
-      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
       .nbytes   = 789,
@@ -157,7 +149,7 @@ TEST (variable_equal)
 
   struct variable b = {
       .vname    = strfcstr ("foo"),
-      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
       .nbytes   = 789,
@@ -169,9 +161,9 @@ TEST (variable_equal)
   test_assert (!variable_equal (&a, &b));
   a.vname = strfcstr ("foo");
 
-  a.dtype = compile_type_alloc ("u32", &alloc, &e);
+  a.dtype = compile_type_alloc ("u32", &ctx->alloc, &ctx->e);
   test_assert (!variable_equal (&a, &b));
-  a.dtype    = compile_type_alloc ("struct { a u32, b f32}", &alloc, &e);
+  a.dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e);
 
   a.var_root = 987;
   test_assert (!variable_equal (&a, &b));
@@ -185,7 +177,7 @@ TEST (variable_equal)
   test_assert (!variable_equal (&a, &b));
   a.nbytes = 789;
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -230,28 +222,26 @@ validate_vname (struct string vname, error *e)
 #ifndef NDEBUG
 TEST (validate_vname)
 {
-  error e = error_create ();
-
   // Valid: plain letters.
-  test_assert (validate_vname (strfcstr ("foo"), &e) == SUCCESS);
+  test_assert (validate_vname (strfcstr ("foo"), &ctx->e) == SUCCESS);
 
   // Valid: leading underscore, mixed digits/letters after.
-  test_assert (validate_vname (strfcstr ("_valid_Name123"), &e) == SUCCESS);
+  test_assert (validate_vname (strfcstr ("_valid_Name123"), &ctx->e) == SUCCESS);
 
   // Invalid: empty name.
-  test_assert (validate_vname (strfcstr (""), &e) != SUCCESS);
+  test_assert (validate_vname (strfcstr (""), &ctx->e) != SUCCESS);
 
   // Invalid: starts with a digit.
-  test_assert (validate_vname (strfcstr ("1abc"), &e) != SUCCESS);
+  test_assert (validate_vname (strfcstr ("1abc"), &ctx->e) != SUCCESS);
 
   // Invalid: contains a character outside the allowed set.
-  test_assert (validate_vname (strfcstr ("abc!def"), &e) != SUCCESS);
+  test_assert (validate_vname (strfcstr ("abc!def"), &ctx->e) != SUCCESS);
 
   // Invalid: name is too long (>= 4096 chars).
   static char long_name[5000];
   memset (long_name, 'a', sizeof (long_name));
   struct string too_long = {.data = long_name, .len = sizeof (long_name)};
-  test_assert (validate_vname (too_long, &e) != SUCCESS);
+  test_assert (validate_vname (too_long, &ctx->e) != SUCCESS);
 }
 #endif
 
@@ -363,13 +353,9 @@ rand_varname (
 #ifndef NDEBUG
 TEST (rand_varname)
 {
-  ALLOC_INIT (alloc);
-
-  error e = error_create ();
-
   for (int i = 0; i < 10; ++i) {
     struct string name;
-    err_t         ret = rand_varname (&name, &alloc, 5, 10, &e);
+    err_t         ret = rand_varname (&name, &ctx->alloc, 5, 10, &ctx->e);
 
     test_assert_int_equal (ret, SUCCESS);
     test_assert (name.len >= 5 && name.len <= 10);
@@ -377,7 +363,7 @@ TEST (rand_varname)
     test_assert_int_equal (name.data[name.len - 1], '\0');
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -492,34 +478,26 @@ failed:
 #ifndef NDEBUG
 TEST (rand_varname_same_hash)
 {
-  ALLOC_INIT (alloc);
-
-  error e = error_create ();
-
   for (int i = 0; i < 10; ++i) {
     struct string name1;
     struct string name2;
-    rand_varname_same_hash (&name1, &name2, &alloc, &e);
+    rand_varname_same_hash (&name1, &name2, &ctx->alloc, &ctx->e);
     test_assert_int_equal (vh_get_hash_pos (name1), vh_get_hash_pos (name2));
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 
 TEST (rand_varname_different_hash)
 {
-  ALLOC_INIT (alloc);
-
-  error e = error_create ();
-
   for (int i = 0; i < 10; ++i) {
     struct string name1;
     struct string name2;
-    rand_varname_different_hash (&name1, &name2, &alloc, &e);
+    rand_varname_different_hash (&name1, &name2, &ctx->alloc, &ctx->e);
     test_assert (vh_get_hash_pos (name1) != vh_get_hash_pos (name2));
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 

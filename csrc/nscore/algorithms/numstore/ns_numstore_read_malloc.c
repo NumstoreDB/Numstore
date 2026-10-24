@@ -20,16 +20,16 @@
 
 err_t
 numstore_read_malloc_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,
-    struct user_stride          ustr,
-    struct arena_alloc *NONNULL valloc,
-    struct variable *NULLABLE   var,
-    void *NONNULL *NULLABLE     dest,
-    b_size *NONNULL             dlen,
-    struct i_mem                mem,
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,
+    struct user_stride  ustr,
+    struct arena_alloc *valloc,
+    struct variable    *var,
+    void              **dest,
+    b_size             *dlen,
+    struct i_mem        mem,
+    error              *e
 )
 {
   DBG_ASSERT (pager, p);
@@ -56,14 +56,14 @@ numstore_read_malloc_from_name (
 
 err_t
 numstore_read_malloc (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    void *NONNULL *NULLABLE  dest,
-    b_size *NONNULL          dlen,
-    struct i_mem             mem,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    void             **dest,
+    b_size            *dlen,
+    struct i_mem       mem,
+    error             *e
 )
 {
   DBG_ASSERT (pager, p);

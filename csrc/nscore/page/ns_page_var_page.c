@@ -193,15 +193,14 @@ vp_validate_for_db (const page *p, error *e)
 #ifndef NDEBUG
 TEST (vp_validate)
 {
-  page  sut;
-  error e = error_create ();
+  page sut;
 
   TEST_CASE ("Invalid page type")
   {
     page_init_empty (&sut, PG_DATA_LIST);
     vp_set_vlen (&sut, 10);
     vp_set_tlen (&sut, 10);
-    test_err_t_check (vp_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (vp_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
   TEST_CASE ("Empty variable length")
@@ -209,7 +208,7 @@ TEST (vp_validate)
     page_init_empty (&sut, PG_VAR_PAGE);
     vp_set_vlen (&sut, 0);
     vp_set_tlen (&sut, 10);
-    test_err_t_check (vp_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (vp_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
   TEST_CASE ("Empty type string length")
@@ -217,7 +216,7 @@ TEST (vp_validate)
     page_init_empty (&sut, PG_VAR_PAGE);
     vp_set_vlen (&sut, 10);
     vp_set_tlen (&sut, 0);
-    test_err_t_check (vp_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (vp_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
   TEST_CASE ("Overflow page requires next pointer")
@@ -226,7 +225,7 @@ TEST (vp_validate)
     vp_set_vlen (&sut, NS_PAGE_SIZE);
     vp_set_tlen (&sut, 10);
     vp_set_ovnext (&sut, PGNO_NULL);
-    test_err_t_check (vp_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (vp_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
   TEST_CASE ("Valid minimal varpage")
@@ -234,7 +233,7 @@ TEST (vp_validate)
     page_init_empty (&sut, PG_VAR_PAGE);
     vp_set_vlen (&sut, 1);
     vp_set_tlen (&sut, 1);
-    test_err_t_check (vp_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (vp_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
   }
 
   TEST_CASE ("Valid overflow with next pointer")
@@ -243,7 +242,7 @@ TEST (vp_validate)
     vp_set_vlen (&sut, 100);
     vp_set_tlen (&sut, 10);
     vp_set_next (&sut, 42);
-    test_err_t_check (vp_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (vp_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
   }
 }
 #endif

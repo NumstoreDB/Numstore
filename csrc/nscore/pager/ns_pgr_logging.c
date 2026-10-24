@@ -50,15 +50,15 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
 TEST (i_log_page_table)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   page_h a = page_h_create ();
-  pgr_new (&a, f.p, &f.tx, PG_DATA_LIST, &f.e);
+  pgr_new (&a, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
   dl_make_valid (page_h_w (&a));
-  pgr_release (f.p, &a, PG_DATA_LIST, &f.e);
+  pgr_release (f.p, &a, PG_DATA_LIST, &ctx->e);
 
   i_log_page_table (LOG_INFO, false, f.p);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

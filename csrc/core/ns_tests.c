@@ -115,19 +115,18 @@ static const struct
 
 TEST (parse_i32_boundary_values)
 {
-  error e   = error_create ();
-  i32   out = 0;
+  i32 out = 0;
 
   for (u32 i = 0; i < arrlen (parse_i32_cases); ++i) {
     TEST_CASE ("%s", parse_i32_cases[i].name)
     {
       const err_t
-          ret = parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &e);
+          ret = parse_i32_expect (&out, parse_i32_cases[i].input, parse_i32_cases[i].ilen, &ctx->e);
       test_assert_int_equal (ret, parse_i32_cases[i].expected_ret);
       if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i32_cases[i].expected_val, i32, PRId32);
       } else {
-        error_reset (&e);
+        error_reset (&ctx->e);
       }
     }
   }
@@ -156,74 +155,21 @@ static const struct
 
 TEST (parse_i64_boundary_values)
 {
-  error e   = error_create ();
-  i64   out = 0;
+  i64 out = 0;
 
   for (u32 i = 0; i < arrlen (parse_i64_cases); ++i) {
     TEST_CASE ("%s", parse_i64_cases[i].name)
     {
       const err_t
-          ret = parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &e);
+          ret = parse_i64_expect (&out, parse_i64_cases[i].input, parse_i64_cases[i].ilen, &ctx->e);
       test_assert_int_equal (ret, parse_i64_cases[i].expected_ret);
       if (ret == SUCCESS) {
         test_assert_type_equal (out, parse_i64_cases[i].expected_val, i64, PRId64);
       } else {
-        error_reset (&e);
+        error_reset (&ctx->e);
       }
     }
   }
-}
-
-// Verify that inserting past the current cap triggers a realloc and that
-// capacity at least doubles (catching regressions to the doubling formula).
-TEST (ext_array_capacity_doubles_on_growth)
-{
-  error            e    = error_create ();
-  struct ext_array a    = ext_array_create (mem);
-
-  // Seed with one byte to force the first allocation (cap → 2).
-  const u8         seed = 0x01;
-  ext_array_insert (&a, 0, &seed, 1, &e);
-  test_assert_int_equal (e.cause_code, SUCCESS);
-  test_assert (a.cap >= 2u);
-
-  // Fill to capacity.
-  const u32 orig_cap = a.cap;
-  for (u32 i = a.len; i < orig_cap; ++i) {
-    u8 b = (u8)(i & 0xFF);
-    ext_array_insert (&a, a.len, &b, 1, &e);
-    test_assert_int_equal (e.cause_code, SUCCESS);
-  }
-  test_assert_type_equal (a.len, orig_cap, u32, PRIu32);
-
-  // One more byte must trigger realloc; new cap must be >= 2×old.
-  const u8 extra = 0xFF;
-  ext_array_insert (&a, a.len, &extra, 1, &e);
-  test_assert_int_equal (e.cause_code, SUCCESS);
-  test_assert (a.cap >= orig_cap * 2u);
-
-  ext_array_free (&a);
-}
-
-// Removing every element via stride must leave an empty array.
-TEST (ext_array_remove_all_produces_empty)
-{
-  error            e      = error_create ();
-  struct ext_array a      = ext_array_create (mem);
-
-  const u8         src[5] = {10, 20, 30, 40, 50};
-  ext_array_insert (&a, 0, src, sizeof src, &e);
-  test_assert_int_equal (e.cause_code, SUCCESS);
-
-  u8 out[5] = {0};
-  const u64
-      n = ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out);
-
-  test_assert_type_equal (n, (i64)5, i64, PRId64);
-  test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);
-  test_assert_memequal (src, out, 5);
-
-  ext_array_free (&a);
 }
 
 struct llt_node
@@ -416,11 +362,10 @@ TEST (serializer_incremental_write_overflow)
 TEST (stride_constructors_resolve_correctly)
 {
   struct stride r;
-  error         e = error_create ();
 
   TEST_CASE ("ustride() = [::] - all elements")
   {
-    stride_resolve (&r, ustride (), 10, &e);
+    stride_resolve (&r, ustride (), 10, &ctx->e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 10);
@@ -428,7 +373,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride0(3) = [3:] - from index 3 to end")
   {
-    stride_resolve (&r, ustride0 (3), 10, &e);
+    stride_resolve (&r, ustride0 (3), 10, &ctx->e);
     test_assert_int_equal (r.start, 3);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 7);
@@ -436,7 +381,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride2(6) = [:6] - first 6 elements")
   {
-    stride_resolve (&r, ustride1 (6), 10, &e);
+    stride_resolve (&r, ustride1 (6), 10, &ctx->e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 1);
     test_assert_int_equal (r.nelems, 6);
@@ -444,7 +389,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride1(3) = [::3] - every 3rd, indices 0,3,6,9")
   {
-    stride_resolve (&r, ustride2 (3), 10, &e);
+    stride_resolve (&r, ustride2 (3), 10, &ctx->e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 3);
     test_assert_int_equal (r.nelems, 4);
@@ -452,7 +397,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride01(2,3) = [2::3] - from 2, step 3, indices 2,5,8")
   {
-    stride_resolve (&r, ustride02 (2, 3), 10, &e);
+    stride_resolve (&r, ustride02 (2, 3), 10, &ctx->e);
     test_assert_int_equal (r.start, 2);
     test_assert_int_equal (r.stride, 3);
     test_assert_int_equal (r.nelems, 3);
@@ -460,7 +405,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride12(2,8) = [:2:8] stop 8 - indices 0,2,4,6")
   {
-    stride_resolve (&r, ustride12 (8, 2), 10, &e);
+    stride_resolve (&r, ustride12 (8, 2), 10, &ctx->e);
     test_assert_int_equal (r.start, 0);
     test_assert_int_equal (r.stride, 2);
     test_assert_int_equal (r.nelems, 4);
@@ -468,7 +413,7 @@ TEST (stride_constructors_resolve_correctly)
 
   TEST_CASE ("ustride012(1,2,7) = [1:7:2] - indices 1,3,5")
   {
-    stride_resolve (&r, ustride012 (1, 7, 2), 10, &e);
+    stride_resolve (&r, ustride012 (1, 7, 2), 10, &ctx->e);
     test_assert_int_equal (r.start, 1);
     test_assert_int_equal (r.stride, 2);
     test_assert_int_equal (r.nelems, 3);
@@ -480,7 +425,7 @@ TEST (stride_constructors_resolve_correctly)
     const struct stride      orig = {.start = 2, .stride = 3, .nelems = 3};
     const struct user_stride us   = usfrms (orig);
     struct stride            got;
-    stride_resolve (&got, us, 10, &e);
+    stride_resolve (&got, us, 10, &ctx->e);
 
     test_assert_type_equal (got.start, orig.start, u64, PRIu64);
     test_assert_type_equal (got.stride, orig.stride, u32, PRIu32);

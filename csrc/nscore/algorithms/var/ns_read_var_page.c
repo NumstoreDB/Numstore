@@ -301,14 +301,12 @@ create_and_get_root (
 
 TEST (ns_read_var_page)
 {
-  error e = error_create ();
-
   /* Create a new database */
-  nsdb_cleanup ("test", os, &e);
-  struct nsdb *db = nsdb_open ("test", mem, os, &e);
-  nsdb_init_numstore (db, &e);
+  nsdb_cleanup ("test", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("test", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
 
-  struct txn *tx = nsdb_begin (db, &e);
+  struct txn *tx = nsdb_begin (db, &ctx->e);
 
   /* Long names - every test creates its own variable, so each needs a unique
    * name */
@@ -331,7 +329,6 @@ TEST (ns_read_var_page)
 
   TEST_CASE ("Handle stays in X mode if it starts in X mode")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
     create_and_get_root (
         &cur,
@@ -339,8 +336,8 @@ TEST (ns_read_var_page)
         db,
         tx,
         "mode_x_plain",
-        mem,
-        &e
+        ctx->mem,
+        &ctx->e
     );
 
     struct variable                var    = {0};
@@ -349,7 +346,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -357,7 +354,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_X); // IMPORTANT
@@ -373,13 +370,12 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Handle stays in S mode if it starts in S mode")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
     create_and_get_root (
         &cur,
@@ -387,8 +383,8 @@ TEST (ns_read_var_page)
         db,
         tx,
         "mode_s_plain",
-        mem,
-        &e
+        ctx->mem,
+        &ctx->e
     );
 
     struct variable                var    = {0};
@@ -397,7 +393,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -405,7 +401,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S); // IMPORTANT
@@ -421,13 +417,12 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Handle stays in X mode with save_vname and save_type")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
     create_and_get_root (
         &cur,
@@ -435,8 +430,8 @@ TEST (ns_read_var_page)
         db,
         tx,
         "mode_x_saves",
-        mem,
-        &e
+        ctx->mem,
+        &ctx->e
     );
 
     struct variable                var    = {0};
@@ -445,7 +440,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -453,7 +448,7 @@ TEST (ns_read_var_page)
         .save_vname = true,
         .save_type  = true,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_X); // IMPORTANT
@@ -470,13 +465,12 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Handle stays in X mode when vname doesn't match")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
     create_and_get_root (
         &cur,
@@ -484,8 +478,8 @@ TEST (ns_read_var_page)
         db,
         tx,
         "mode_x_nomatch",
-        mem,
-        &e
+        ctx->mem,
+        &ctx->e
     );
 
     struct variable                var    = {0};
@@ -495,7 +489,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -503,7 +497,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_X); // IMPORTANT
@@ -519,15 +513,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Matches is true when check is NULL")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "match_null", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "match_null", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -535,7 +528,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -543,7 +536,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -559,15 +552,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Matches is true when vname matches")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "match_eq", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "match_eq", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("match_eq");
@@ -576,7 +568,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -584,7 +576,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -600,15 +592,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Matches is false when vname differs in content (same length)")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "match_diff", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "match_diff", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("match_difX");
@@ -617,7 +608,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -625,7 +616,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -641,15 +632,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Matches is false when check is shorter than vname")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "match_short", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "match_short", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("match_shor");
@@ -658,7 +648,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -666,7 +656,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -682,15 +672,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Matches is false when check is longer than vname")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "match_long", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "match_long", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("match_longX");
@@ -699,7 +688,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -707,7 +696,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -723,15 +712,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("vname is saved when save_vname and check is NULL")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "sv_null", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "sv_null", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -739,7 +727,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -747,7 +735,7 @@ TEST (ns_read_var_page)
         .save_vname = true, // IMPORTANT
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -764,15 +752,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("vname is saved when save_vname and vname matches")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "sv_eq", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "sv_eq", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("sv_eq");
@@ -781,7 +768,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -789,7 +776,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -806,15 +793,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("vname isn't saved when save_vname and vname content differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "sv_diff", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "sv_diff", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("sv_difX");
@@ -823,7 +809,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -831,7 +817,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -847,15 +833,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("vname isn't saved when save_vname and vname length differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "sv_len", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "sv_len", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("sv_lenXX");
@@ -864,7 +849,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -872,7 +857,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -888,15 +873,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("dtype is saved (vname isn't) when save_type and check is NULL")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "st_null", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "st_null", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -904,7 +888,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -912,7 +896,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = true, // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -928,15 +912,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("dtype is saved (vname isn't) when save_type and vname matches")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "st_eq", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "st_eq", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("st_eq");
@@ -945,7 +928,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -953,7 +936,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = true, // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -969,15 +952,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("dtype isn't saved when save_type and vname content differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "st_diff", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "st_diff", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("st_difX");
@@ -986,7 +968,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -994,7 +976,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = true, // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1010,15 +992,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("dtype isn't saved when save_type and vname length differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "st_len", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "st_len", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("st_lenXX");
@@ -1027,7 +1008,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -1035,7 +1016,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = true, // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1051,15 +1032,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("vname and dtype are saved when both flags set and check is NULL")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "both_null", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "both_null", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -1067,7 +1047,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -1075,7 +1055,7 @@ TEST (ns_read_var_page)
         .save_vname = true, // IMPORTANT
         .save_type  = true, // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1092,15 +1072,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("vname and dtype are saved when both flags set and vname matches")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "both_eq", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "both_eq", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("both_eq");
@@ -1109,7 +1088,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -1117,7 +1096,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = true,   // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1134,15 +1113,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Neither is saved when both flags set and vname content differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "both_diff", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "both_diff", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("both_difX");
@@ -1151,7 +1129,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -1159,7 +1137,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = true,   // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1175,15 +1153,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Neither is saved when both flags set and vname length differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "both_len", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "both_len", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("both_lenXX");
@@ -1192,7 +1169,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -1200,7 +1177,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = true,   // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1216,15 +1193,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Long vname: handle returns to the root var page")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_a, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_a, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -1232,7 +1208,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -1240,7 +1216,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1256,15 +1232,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Long vname: saved in full when save_vname")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_b, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_b, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -1272,7 +1247,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -1280,7 +1255,7 @@ TEST (ns_read_var_page)
         .save_vname = true, // IMPORTANT
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1297,13 +1272,12 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Long vname: X mode handle returns to root with both flags set")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
     create_and_get_root (
         &cur,
@@ -1311,8 +1285,8 @@ TEST (ns_read_var_page)
         db,
         tx,
         long_c,
-        mem,
-        &e
+        ctx->mem,
+        &ctx->e
     );
 
     struct variable                var    = {0};
@@ -1321,7 +1295,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -1329,7 +1303,7 @@ TEST (ns_read_var_page)
         .save_vname = true, // IMPORTANT
         .save_type  = true, // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_X); // IMPORTANT
@@ -1346,15 +1320,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Long vname: matches when check is equal")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_d, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_d, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr (long_d);
@@ -1363,7 +1336,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = false,
@@ -1371,7 +1344,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1387,15 +1360,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Long vname: doesn't match when only the last byte differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_e, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_e, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr (long_z);
@@ -1404,7 +1376,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -1412,7 +1384,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1428,15 +1400,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("Long vname: nothing saved when last byte differs and both flags set")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_f, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_f, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr (long_y);
@@ -1445,7 +1416,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = &var,
         .matches    = true,
@@ -1453,7 +1424,7 @@ TEST (ns_read_var_page)
         .save_vname = true,   // IMPORTANT
         .save_type  = true,   // IMPORTANT
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1469,8 +1440,8 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   /* Add next to the other long_* declarations */
@@ -1483,9 +1454,8 @@ TEST (ns_read_var_page)
 
   TEST_CASE ("NULL dest: succeeds with no check (S mode)")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "dn_plain", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "dn_plain", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct ns_read_var_page_params params = {
@@ -1493,7 +1463,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = false,
@@ -1501,7 +1471,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1517,13 +1487,12 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("NULL dest: succeeds with no check (X mode)")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
     create_and_get_root (
         &cur,
@@ -1531,8 +1500,8 @@ TEST (ns_read_var_page)
         db,
         tx,
         "dn_x",
-        mem,
-        &e
+        ctx->mem,
+        &ctx->e
     );
 
     struct variable                var    = {0};
@@ -1541,7 +1510,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = false,
@@ -1549,7 +1518,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_X); // IMPORTANT
@@ -1565,15 +1534,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("NULL dest: matches is true when vname matches")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "dn_eq", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "dn_eq", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("dn_eq");
@@ -1582,7 +1550,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = false,
@@ -1590,7 +1558,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1606,15 +1574,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("NULL dest: matches is false when vname content differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "dn_diff", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "dn_diff", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("dn_difX");
@@ -1623,7 +1590,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = true,
@@ -1631,7 +1598,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1647,15 +1614,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("NULL dest: matches is false when vname length differs")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, "dn_len", mem, &e);
+    create_and_get_root (&cur, false, db, tx, "dn_len", ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr ("dn_lenXX");
@@ -1664,7 +1630,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = true,
@@ -1672,7 +1638,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1688,15 +1654,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("NULL dest: long vname matches and handle returns to root")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_g, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_g, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr (long_g);
@@ -1705,7 +1670,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = false,
@@ -1713,7 +1678,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1729,15 +1694,14 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
   TEST_CASE ("NULL dest: long vname doesn't match on last byte")
   {
-    ALLOC_INIT (alloc);
     page_h cur = page_h_create ();
-    create_and_get_root (&cur, false, db, tx, long_h, mem, &e);
+    create_and_get_root (&cur, false, db, tx, long_h, ctx->mem, &ctx->e);
 
     struct variable                var    = {0};
     struct string                  check  = strfcstr (long_x);
@@ -1746,7 +1710,7 @@ TEST (ns_read_var_page)
         .tx         = tx,
 
         .vp         = &cur,
-        .alloc      = &alloc,
+        .alloc      = &ctx->alloc,
 
         .dest       = NULL, // IMPORTANT
         .matches    = true,
@@ -1754,7 +1718,7 @@ TEST (ns_read_var_page)
         .save_vname = false,
         .save_type  = false,
     };
-    test_assert_int_equal (ns_read_var_page (&params, &e), SUCCESS);
+    test_assert_int_equal (ns_read_var_page (&params, &ctx->e), SUCCESS);
 
     // Variable is in the same mode as before
     test_assert (cur.mode == PHM_S);
@@ -1770,12 +1734,12 @@ TEST (ns_read_var_page)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
     test_assert_int_equal (var.nbytes, 0);
 
-    pgr_release (db->p, &cur, PG_VAR_PAGE, &e);
-    ALLOC_CLOSE (alloc);
+    pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
+    arena_alloc_free_all (&ctx->alloc);
   }
 
-  nsdb_commit (db, tx, &e);
-  nsdb_close (db, &e);
+  nsdb_commit (db, tx, &ctx->e);
+  nsdb_close (db, &ctx->e);
 }
 
 #endif

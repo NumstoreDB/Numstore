@@ -79,14 +79,13 @@ dl_validate_for_db (const page *d, error *e)
 #ifndef NDEBUG
 TEST (dl_validate)
 {
-  page  sut;
-  error e = error_create ();
+  page sut;
 
   // Initialized page is base valid
   TEST_CASE ("Initialized page base - no changes is valid")
   {
     page_init_empty (&sut, PG_DATA_LIST);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
   // Corrupt page header
@@ -94,7 +93,7 @@ TEST (dl_validate)
   {
     page_init_empty (&sut, PG_DATA_LIST);
     page_set_type (&sut, PG_INNER_NODE);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
   TEST_CASE ("Root page size checks")
@@ -106,23 +105,23 @@ TEST (dl_validate)
     // corruption dl_set_used(&sut, DL_DATA_SIZE + 1);
     p_size size = DL_DATA_SIZE + 1;
     PAGE_SIMPLE_SET_IMPL (&sut, size, DL_BLEN_OFST);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
     // Max size is valid
     dl_set_used (&sut, DL_DATA_SIZE);
-    test_err_t_check (dl_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
     // 0 size is invalid
     dl_set_used (&sut, 0);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
     // in between size is valid
     dl_set_used (&sut, DL_DATA_SIZE / 2);
-    test_err_t_check (dl_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
     // in between size is valid for root
     dl_set_used (&sut, DL_DATA_SIZE / 2 - 1);
-    test_err_t_check (dl_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
   }
 
   TEST_CASE ("Non root page size checks")
@@ -135,23 +134,23 @@ TEST (dl_validate)
     // corruption dl_set_used(&sut, DL_DATA_SIZE + 1);
     p_size size = DL_DATA_SIZE + 1;
     PAGE_SIMPLE_SET_IMPL (&sut, size, DL_BLEN_OFST);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
     // Max size is valid
     dl_set_used (&sut, DL_DATA_SIZE);
-    test_err_t_check (dl_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
     // 0 size is invalid
     dl_set_used (&sut, 0);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
     // in between size is valid
     dl_set_used (&sut, DL_DATA_SIZE / 2);
-    test_err_t_check (dl_validate_for_db (&sut, &e), SUCCESS, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
     // in between size is valid for root
     dl_set_used (&sut, DL_DATA_SIZE / 2 - 1);
-    test_err_t_check (dl_validate_for_db (&sut, &e), ERR_CORRUPT, &e);
+    test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 }
 #endif

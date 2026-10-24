@@ -138,7 +138,7 @@ failed:
 
 #ifndef NDEBUG
 
-struct test_ctx
+struct visit_ctx
 {
   u32    count;
   b_size total_nelems;
@@ -153,9 +153,9 @@ test_visit_func (struct variable *var, void *ctx, error *e)
   if (var->vname.len != 4) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Failed test");
   }
-  u32              v    = var->vname.data[3] - '0';
+  u32               v    = var->vname.data[3] - '0';
 
-  struct test_ctx *_ctx = ctx;
+  struct visit_ctx *_ctx = ctx;
   _ctx->count += 1;
   _ctx->total_nelems += var->nbytes / type_byte_size (var->dtype);
   _ctx->total_size += type_byte_size (var->dtype);
@@ -170,60 +170,59 @@ test_visit_func (struct variable *var, void *ctx, error *e)
 
 TEST (ns_visit_variables)
 {
-  error e = error_create ();
-  nsdb_cleanup ("test", os, &e);
-  struct nsdb *db = nsdb_open ("test", mem, os, &e);
-  nsdb_init_numstore (db, &e);
+  nsdb_cleanup ("test", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("test", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
 
   TEST_CASE ("no variables")
   {
-    struct test_ctx ctx = {
+    struct visit_ctx vctx = {
         .count        = 0,
         .total_nelems = 0,
         .total_size   = 0,
         .varname_sum  = 0,
         .fail_on      = -1,
     };
-    ns_visit_variables (db->p, test_visit_func, &ctx, &e);
+    ns_visit_variables (db->p, test_visit_func, &vctx, &ctx->e);
 
-    test_assert_int_equal (ctx.count, 0);
-    test_assert_int_equal (ctx.total_nelems, 0);
-    test_assert_int_equal (ctx.total_size, 0);
-    test_assert_int_equal (ctx.varname_sum, 0);
+    test_assert_int_equal (vctx.count, 0);
+    test_assert_int_equal (vctx.total_nelems, 0);
+    test_assert_int_equal (vctx.total_size, 0);
+    test_assert_int_equal (vctx.varname_sum, 0);
   }
 
   TEST_CASE ("multiple variables")
   {
-    struct txn *tx = nsdb_begin (db, &e);
+    struct txn *tx = nsdb_begin (db, &ctx->e);
 
-    nsdb_execute (db, tx, "create var0 u32", &e);
-    nsdb_execute (db, tx, "create var1 u32", &e);
-    nsdb_execute (db, tx, "create var2 u32", &e);
-    nsdb_execute (db, tx, "create var3 u32", &e);
-    nsdb_execute (db, tx, "create var4 u32", &e);
-    nsdb_execute (db, tx, "create var5 u32", &e);
-    nsdb_execute (db, tx, "create var6 u32", &e);
-    nsdb_execute (db, tx, "create var7 u32", &e);
-    nsdb_execute (db, tx, "create var8 u32", &e);
-    nsdb_execute (db, tx, "create var9 u32", &e);
+    nsdb_execute (db, tx, "create var0 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var1 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var2 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var3 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var4 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var5 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var6 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var7 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var8 u32", &ctx->e);
+    nsdb_execute (db, tx, "create var9 u32", &ctx->e);
 
-    nsdb_commit (db, tx, &e);
+    nsdb_commit (db, tx, &ctx->e);
 
-    struct test_ctx ctx = {
+    struct visit_ctx vctx = {
         .count        = 0,
         .total_nelems = 0,
         .total_size   = 0,
         .varname_sum  = 0,
         .fail_on      = -1,
     };
-    ns_visit_variables (db->p, test_visit_func, &ctx, &e);
+    ns_visit_variables (db->p, test_visit_func, &vctx, &ctx->e);
 
-    test_assert_int_equal (ctx.count, 10);
-    test_assert_int_equal (ctx.total_nelems, 0);
-    test_assert_int_equal (ctx.total_size, 10 * sizeof (u32));
-    test_assert_int_equal (ctx.varname_sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9);
+    test_assert_int_equal (vctx.count, 10);
+    test_assert_int_equal (vctx.total_nelems, 0);
+    test_assert_int_equal (vctx.total_size, 10 * sizeof (u32));
+    test_assert_int_equal (vctx.varname_sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9);
   }
 
-  nsdb_close (db, &e);
+  nsdb_close (db, &ctx->e);
 }
 #endif

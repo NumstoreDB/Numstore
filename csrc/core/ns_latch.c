@@ -30,8 +30,6 @@ data_thread (void *_data)
 
 TEST (latch)
 {
-  error       e = error_create ();
-
   struct data d = {
       .iters = 1000,
       .value = 0,
@@ -41,11 +39,11 @@ TEST (latch)
   i_thread threads[10];
 
   for (u32 i = 0; i < 10; ++i) {
-    os.table->thread_create (os.self, &threads[i], data_thread, &d, &e);
+    ctx->os.table->thread_create (ctx->os.self, &threads[i], data_thread, &d, &ctx->e);
   }
 
   for (u32 i = 0; i < 10; ++i) {
-    os.table->thread_join (os.self, threads[i].self);
+    ctx->os.table->thread_join (ctx->os.self, threads[i].self);
   }
 
   test_assert_int_equal (d.value, 10 * 1000);

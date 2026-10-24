@@ -205,15 +205,14 @@ TEST (stream_bread)
   TEST_CASE ("reads requested data")
   {
     const u8             data[] = {1, 2, 3, 4, 5, 6, 7, 8};
-    struct test_pull_ctx ctx    = {.data = data, .len = sizeof (data), .pos = 0};
+    struct test_pull_ctx sctx   = {.data = data, .len = sizeof (data), .pos = 0};
     struct stream        src;
 
-    stream_init (&src, &test_pull_ops, &ctx);
+    stream_init (&src, &test_pull_ops, &sctx);
 
-    u8    buf[4] = {0};
-    error e      = error_create ();
+    u8  buf[4] = {0};
 
-    i32   got    = stream_bread (buf, 1, 4, &src, &e);
+    i32 got    = stream_bread (buf, 1, 4, &src, &ctx->e);
 
     test_assert_int_equal (got, 4);
     test_assert (memcmp (buf, data, 4) == 0);
@@ -223,19 +222,18 @@ TEST (stream_bread)
   TEST_CASE ("partial read then exhausted")
   {
     const u8             data[] = {9, 8, 7};
-    struct test_pull_ctx ctx    = {.data = data, .len = sizeof (data), .pos = 0};
+    struct test_pull_ctx sctx   = {.data = data, .len = sizeof (data), .pos = 0};
     struct stream        src;
 
-    stream_init (&src, &test_pull_ops, &ctx);
+    stream_init (&src, &test_pull_ops, &sctx);
 
-    u8    buf[10] = {0};
-    error e       = error_create ();
+    u8  buf[10] = {0};
 
-    i32   got     = stream_bread (buf, 1, 10, &src, &e);
+    i32 got     = stream_bread (buf, 1, 10, &src, &ctx->e);
     test_assert_int_equal (got, 3);
     test_assert (memcmp (buf, data, 3) == 0);
 
-    got = stream_bread (buf, 1, 10, &src, &e);
+    got = stream_bread (buf, 1, 10, &src, &ctx->e);
     test_assert_int_equal (got, 0);
     test_assert (stream_isdone (&src));
   }
@@ -290,15 +288,14 @@ TEST (stream_bwrite)
   TEST_CASE ("writes requested data")
   {
     u8                   out[8] = {0};
-    struct test_push_ctx ctx    = {.data = out, .cap = sizeof (out), .pos = 0};
+    struct test_push_ctx sctx   = {.data = out, .cap = sizeof (out), .pos = 0};
     struct stream        dest;
 
-    stream_init (&dest, &test_push_ops, &ctx);
+    stream_init (&dest, &test_push_ops, &sctx);
 
     const u8 src[4] = {10, 20, 30, 40};
-    error    e      = error_create ();
 
-    i32      put    = stream_bwrite (src, 1, 4, &dest, &e);
+    i32      put    = stream_bwrite (src, 1, 4, &dest, &ctx->e);
 
     test_assert_int_equal (put, 4);
     test_assert (memcmp (out, src, 4) == 0);
@@ -308,19 +305,18 @@ TEST (stream_bwrite)
   TEST_CASE ("partial write then exhausted")
   {
     u8                   out[3] = {0};
-    struct test_push_ctx ctx    = {.data = out, .cap = sizeof (out), .pos = 0};
+    struct test_push_ctx sctx   = {.data = out, .cap = sizeof (out), .pos = 0};
     struct stream        dest;
 
-    stream_init (&dest, &test_push_ops, &ctx);
+    stream_init (&dest, &test_push_ops, &sctx);
 
     const u8 src[5] = {1, 2, 3, 4, 5};
-    error    e      = error_create ();
 
-    i32      put    = stream_bwrite (src, 1, 5, &dest, &e);
+    i32      put    = stream_bwrite (src, 1, 5, &dest, &ctx->e);
     test_assert_int_equal (put, 3);
     test_assert (memcmp (out, src, 3) == 0);
 
-    put = stream_bwrite (src, 1, 5, &dest, &e);
+    put = stream_bwrite (src, 1, 5, &dest, &ctx->e);
     test_assert_int_equal (put, 0);
     test_assert (stream_isdone (&dest));
   }
@@ -395,8 +391,7 @@ TEST (stream_read)
 
     stream_init (&dest, &test_push_ops, &octx);
 
-    error e     = error_create ();
-    i32   total = stream_read (&dest, 1, 6, &src, &e);
+    i32 total = stream_read (&dest, 1, 6, &src, &ctx->e);
 
     test_assert_int_equal (total, 6);
     test_assert (memcmp (out, data, 6) == 0);
@@ -427,8 +422,7 @@ TEST (stream_read)
     struct stream        dest;
     stream_init (&dest, &test_push_ops, &octx);
 
-    error e     = error_create ();
-    i32   total = stream_read (&dest, 1, N, &src, &e);
+    i32 total = stream_read (&dest, 1, N, &src, &ctx->e);
 
     test_assert_int_equal (total, N);
     test_assert (memcmp (out, data, N) == 0);
@@ -448,8 +442,7 @@ TEST (stream_read)
 
     stream_init (&dest, &test_push_ops, &octx);
 
-    error e     = error_create ();
-    i32   total = stream_read (&dest, 1, 10, &src, &e);
+    i32 total = stream_read (&dest, 1, 10, &src, &ctx->e);
 
     test_assert_int_equal (total, 3);
     test_assert (memcmp (out, data, 3) == 0);
@@ -470,8 +463,7 @@ TEST (stream_read)
 
     stream_init (&dest, &test_push_ops, &octx);
 
-    error e     = error_create ();
-    i32   total = stream_read (&dest, 1, 10, &src, &e);
+    i32 total = stream_read (&dest, 1, 10, &src, &ctx->e);
 
     // Dest only has room for 7 bytes, so the transfer stops short and
     // marks dest finished even though src still has data left.
@@ -619,36 +611,35 @@ TEST (stream_ibuf)
     const u8               data[5] = {1, 2, 3, 4, 5};
 
     struct stream          s;
-    struct stream_ibuf_ctx ctx;
+    struct stream_ibuf_ctx sctx;
 
-    stream_ibuf_init (&s, &ctx, data, sizeof (data));
+    stream_ibuf_init (&s, &sctx, data, sizeof (data));
 
-    u8    buf[2];
-    error e   = error_create ();
+    u8  buf[2];
 
-    i32   got = stream_bread (buf, 1, 2, &s, &e);
+    i32 got = stream_bread (buf, 1, 2, &s, &ctx->e);
     test_assert_int_equal (got, 2);
     test_assert (memcmp (buf, data, 2) == 0);
     test_assert (!stream_isdone (&s));
 
-    got = stream_bread (buf, 1, 2, &s, &e);
+    got = stream_bread (buf, 1, 2, &s, &ctx->e);
     test_assert_int_equal (got, 2);
     test_assert (memcmp (buf, data + 2, 2) == 0);
     test_assert (!stream_isdone (&s));
 
     // Only one byte remains; should clamp and mark done.
-    got = stream_bread (buf, 1, 2, &s, &e);
+    got = stream_bread (buf, 1, 2, &s, &ctx->e);
     test_assert_int_equal (got, 1);
     test_assert_int_equal (buf[0], data[4]);
 
     // not done until you do 1 more read - it
     // would be nice to change this
     test_assert (!stream_isdone (&s));
-    got = stream_bread (buf, 1, 2, &s, &e);
+    got = stream_bread (buf, 1, 2, &s, &ctx->e);
     test_assert_int_equal (got, 0);
     test_assert (stream_isdone (&s));
 
-    got = stream_bread (buf, 1, 2, &s, &e);
+    got = stream_bread (buf, 1, 2, &s, &ctx->e);
     test_assert_int_equal (got, 0);
   }
 
@@ -657,14 +648,13 @@ TEST (stream_ibuf)
     const u8               data[3] = {1, 2, 3};
 
     struct stream          s;
-    struct stream_ibuf_ctx ctx;
+    struct stream_ibuf_ctx sctx;
 
-    stream_ibuf_init (&s, &ctx, data, sizeof (data));
+    stream_ibuf_init (&s, &sctx, data, sizeof (data));
 
-    u8    buf[1];
-    error e   = error_create ();
+    u8  buf[1];
 
-    i32   got = stream_bread (buf, 1, 0, &s, &e);
+    i32 got = stream_bread (buf, 1, 0, &s, &ctx->e);
 
     test_assert_int_equal (got, 0);
     test_assert (!stream_isdone (&s));
@@ -682,14 +672,13 @@ TEST (stream_ibuf)
     }
 
     struct stream          s;
-    struct stream_ibuf_ctx ctx;
+    struct stream_ibuf_ctx sctx;
 
-    stream_ibuf_init (&s, &ctx, data, 0);
+    stream_ibuf_init (&s, &sctx, data, 0);
 
-    u8    buf[16] = {0};
-    error e       = error_create ();
+    u8  buf[16] = {0};
 
-    i32   got     = stream_bread (buf, 1, 16, &s, &e);
+    i32 got     = stream_bread (buf, 1, 16, &s, &ctx->e);
 
     test_assert_int_equal (got, 16);
     test_assert (memcmp (buf, data, 16) == 0);
@@ -717,28 +706,26 @@ TEST (stream_obuf)
     u8                     out[5] = {0};
 
     struct stream          s;
-    struct stream_obuf_ctx ctx;
+    struct stream_obuf_ctx sctx;
 
-    stream_obuf_init (&s, &ctx, out, sizeof (out));
+    stream_obuf_init (&s, &sctx, out, sizeof (out));
 
     const u8 chunk1[2] = {1, 2};
     const u8 chunk2[2] = {3, 4};
     const u8 chunk3[2] = {5, 6}; // only 1 byte of capacity remains
 
-    error    e         = error_create ();
-
-    i32      put       = stream_bwrite (chunk1, 1, 2, &s, &e);
+    i32      put       = stream_bwrite (chunk1, 1, 2, &s, &ctx->e);
     test_assert_int_equal (put, 2);
 
-    put = stream_bwrite (chunk2, 1, 2, &s, &e);
+    put = stream_bwrite (chunk2, 1, 2, &s, &ctx->e);
     test_assert_int_equal (put, 2);
 
-    put = stream_bwrite (chunk3, 1, 2, &s, &e);
+    put = stream_bwrite (chunk3, 1, 2, &s, &ctx->e);
     test_assert_int_equal (put, 1);
 
     // One more 0 read
     test_assert (!stream_isdone (&s));
-    put = stream_bwrite (chunk3, 1, 2, &s, &e);
+    put = stream_bwrite (chunk3, 1, 2, &s, &ctx->e);
     test_assert_int_equal (put, 0);
     test_assert (stream_isdone (&s));
 
@@ -751,18 +738,17 @@ TEST (stream_obuf)
     u8                     out[2] = {0};
 
     struct stream          s;
-    struct stream_obuf_ctx ctx;
+    struct stream_obuf_ctx sctx;
 
-    stream_obuf_init (&s, &ctx, out, sizeof (out));
+    stream_obuf_init (&s, &sctx, out, sizeof (out));
 
     const u8 chunk[2] = {9, 9};
-    error    e        = error_create ();
 
-    i32      put      = stream_bwrite (chunk, 1, 2, &s, &e);
+    i32      put      = stream_bwrite (chunk, 1, 2, &s, &ctx->e);
     test_assert_int_equal (put, 2);
     test_assert (!stream_isdone (&s)); // exactly filled, not yet probed again
 
-    put = stream_bwrite (chunk, 1, 1, &s, &e);
+    put = stream_bwrite (chunk, 1, 1, &s, &ctx->e);
     test_assert_int_equal (put, 0);
     test_assert (stream_isdone (&s));
   }
@@ -775,17 +761,16 @@ TEST (stream_obuf)
     memset (out, 0, sizeof (out));
 
     struct stream          s;
-    struct stream_obuf_ctx ctx;
+    struct stream_obuf_ctx sctx;
 
-    stream_obuf_init (&s, &ctx, out, 0);
+    stream_obuf_init (&s, &sctx, out, 0);
 
     u8 chunk[16];
     for (u32 i = 0; i < 16; i++) {
       chunk[i] = (u8)(i + 1);
     }
 
-    error e   = error_create ();
-    i32   put = stream_bwrite (chunk, 1, 16, &s, &e);
+    i32 put = stream_bwrite (chunk, 1, 16, &s, &ctx->e);
 
     test_assert_int_equal (put, 16);
     test_assert (memcmp (out, chunk, 16) == 0);
@@ -811,15 +796,14 @@ TEST (stream_read_ibuf_to_obuf)
     struct stream_obuf_ctx obuf_ctx;
     stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
 
-    error e     = error_create ();
-    i32   total = stream_read (&obuf_s, 1, 6, &ibuf_s, &e);
+    i32 total = stream_read (&obuf_s, 1, 6, &ibuf_s, &ctx->e);
 
     test_assert_int_equal (total, 6);
     test_assert (memcmp (out, data, 6) == 0);
 
     test_assert (!stream_isdone (&ibuf_s));
     test_assert (!stream_isdone (&obuf_s));
-    total = stream_read (&obuf_s, 1, 6, &ibuf_s, &e);
+    total = stream_read (&obuf_s, 1, 6, &ibuf_s, &ctx->e);
     test_assert_int_equal (total, 0);
 
     test_assert (stream_isdone (&ibuf_s));
@@ -842,8 +826,7 @@ TEST (stream_read_ibuf_to_obuf)
     struct stream_obuf_ctx obuf_ctx;
     stream_obuf_init (&obuf_s, &obuf_ctx, out, sizeof (out));
 
-    error e     = error_create ();
-    i32   total = stream_read (&obuf_s, 1, 10, &ibuf_s, &e);
+    i32 total = stream_read (&obuf_s, 1, 10, &ibuf_s, &ctx->e);
 
     test_assert_int_equal (total, 4);
     test_assert (memcmp (out, data, 4) == 0);

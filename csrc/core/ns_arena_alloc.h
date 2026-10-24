@@ -72,22 +72,6 @@ void *arena_alloc_copy (struct arena_alloc *alloc, const void *ptr, u32 size, er
   arena_alloc_free_all (&(name)); \
   arena_alloc_create_default (&(name))
 
-#ifndef NDEBUG
-/**
- * For testing only
- */
-#  define TEST_ALLOC_INIT_FAULTY(name, faulty, e)             \
-    struct i_mem faulty;                                      \
-    err_t        r = faulty_mem_init_default (&faulty, 0, e); \
-    test_assert_int_equal (r, SUCCESS);                       \
-    struct arena_alloc alloc;                                 \
-    arena_alloc_create_default_with (&alloc, faulty)
-
-#  define TEST_ALLOC_CLOSE_FAULTY(name, faulty) \
-    arena_alloc_free_all (&(name));             \
-    faulty_mem_free (faulty)
-#endif
-
 /******************************************************************************
  * SECTION: Builder Pattern
  * ----------------------------------------------------------------------------

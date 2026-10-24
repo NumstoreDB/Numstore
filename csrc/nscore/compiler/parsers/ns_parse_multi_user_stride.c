@@ -175,9 +175,6 @@ theend:
 #ifndef NDEBUG
 TEST (compile_multi_user_stride)
 {
-  ALLOC_INIT (alloc);
-
-  error                    e      = error_create ();
   struct multi_user_stride stride = {0};
 
   // -------------------------------------------------------------------------
@@ -185,16 +182,16 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ ]")
   {
-    compile_multi_user_stride (&stride, "[]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 0);
     test_assert_equal (stride.strides, NULL);
-    compile_multi_user_stride (&stride, "[ ]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[ ]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 0);
     test_assert_equal (stride.strides, NULL);
-    compile_multi_user_stride (&stride, " [ ]", &alloc, &e);
+    compile_multi_user_stride (&stride, " [ ]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 0);
     test_assert_equal (stride.strides, NULL);
-    compile_multi_user_stride (&stride, " [] ", &alloc, &e);
+    compile_multi_user_stride (&stride, " [] ", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 0);
     test_assert_equal (stride.strides, NULL);
   }
@@ -204,7 +201,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 1);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT);
@@ -216,7 +213,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     // first
@@ -232,7 +229,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0: ]")
   {
-    compile_multi_user_stride (&stride, "[0:]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0:]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 1);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
@@ -244,7 +241,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0:, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0:, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0:, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
@@ -258,7 +255,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[:, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[:, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT);
@@ -271,7 +268,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[:0, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[:0, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT);
@@ -287,7 +284,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ ::, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[::, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[::, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT);
@@ -302,7 +299,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ ::0, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[::0, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[::0, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STEP_PRESENT);
@@ -316,7 +313,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0:, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[:0:, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[:0:, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT);
@@ -330,7 +327,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0:0, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[:0:0, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[:0:0, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT | STEP_PRESENT);
@@ -345,7 +342,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0::, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0::, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0::, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
@@ -359,7 +356,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0::0, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0::0, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0::0, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT | STEP_PRESENT);
@@ -374,7 +371,7 @@ TEST (compile_multi_user_stride)
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0:0:0, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0:0:0, 0]", &alloc, &e);
+    compile_multi_user_stride (&stride, "[0:0:0, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (
@@ -395,76 +392,76 @@ TEST (compile_multi_user_stride)
   // Missing opening bracket
   TEST_CASE ("error: no leading '['")
   {
-    err_t err = compile_multi_user_stride (&stride, "0, 1]", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "0, 1]", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Missing closing bracket
   TEST_CASE ("error: no trailing ']'")
   {
-    err_t err = compile_multi_user_stride (&stride, "[0, 1", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "[0, 1", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Empty input
   TEST_CASE ("error: empty string")
   {
-    err_t err = compile_multi_user_stride (&stride, "", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Trailing comma with no entry after it  â†’  parse_entry gets ']', not a
   // number or ':', so it returns ERR_SYNTAX
   TEST_CASE ("error: trailing comma '[0,]'")
   {
-    err_t err = compile_multi_user_stride (&stride, "[0,]", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "[0,]", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Leading comma parse_entry gets ',' which is neither number nor ':'
   TEST_CASE ("error: leading comma '[,0]'")
   {
-    err_t err = compile_multi_user_stride (&stride, "[,0]", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "[,0]", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Bare comma between two commas
   TEST_CASE ("error: double comma '[0,,1]'")
   {
-    err_t err = compile_multi_user_stride (&stride, "[0,,1]", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "[0,,1]", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Garbage token (not number, colon, comma, or bracket)
   TEST_CASE ("error: garbage token '[abc]'")
   {
-    err_t err = compile_multi_user_stride (&stride, "[abc]", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "[abc]", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
   // Completely wrong structure
   TEST_CASE ("error: only a number, no brackets")
   {
-    err_t err = compile_multi_user_stride (&stride, "42", &alloc, &e);
+    err_t err = compile_multi_user_stride (&stride, "42", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
-    test_assert_int_equal (e.cause_code, ERR_SYNTAX);
-    error_reset (&e);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif

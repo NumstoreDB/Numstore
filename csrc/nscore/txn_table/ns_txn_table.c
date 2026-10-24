@@ -205,8 +205,6 @@ txn_newlock_test (void *_tx)
 
 TEST (txn_basic)
 {
-  error e = error_create ();
-
   TEST_CASE ("txn_newlock single threaded")
   {
     struct txn tx;
@@ -218,7 +216,7 @@ TEST (txn_basic)
             .last_lsn      = 10,
             .undo_next_lsn = 5,
         },
-        mem
+        ctx->mem
     );
 
     for (u32 i = 0; i < 1000; ++i) {
@@ -239,7 +237,7 @@ TEST (txn_basic)
             .last_lsn      = 10,
             .undo_next_lsn = 5,
         },
-        mem
+        ctx->mem
     );
 
     i_thread threads[100];
@@ -247,14 +245,15 @@ TEST (txn_basic)
 
     u32 started = 0;
     for (u32 i = 0; i < 100; ++i) {
-      if (os.table->thread_create (os.self, &threads[i], txn_newlock_test, &tx, &e)) {
+      if (ctx->os.table
+              ->thread_create (ctx->os.self, &threads[i], txn_newlock_test, &tx, &ctx->e)) {
         break;
       }
       started++;
     }
 
     for (u32 i = 0; i < started; ++i) {
-      os.table->thread_join (os.self, threads[i].self);
+      ctx->os.table->thread_join (ctx->os.self, threads[i].self);
     }
 
     test_assert_int_equal ((int)started, 100);
@@ -321,16 +320,14 @@ TEST (txnt_open)
 {
   TEST_CASE ("basic")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     txnt_close (t);
   }
 
   TEST_CASE ("open multiple")
   {
-    error e = error_create ();
     for (int i = 0; i < 4; ++i) {
-      struct txn_table *t = txnt_open (mem, &e);
+      struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
       txnt_close (t);
     }
   }
@@ -416,10 +413,9 @@ TEST (txnt_merge_into)
 {
   TEST_CASE ("Empty to Empty")
   {
-    error             e      = error_create ();
-    struct txn_table *src    = txnt_open (mem, &e);
-    struct txn_table *dest   = txnt_open (mem, &e);
-    const err_t       result = txnt_merge_into (dest, src, NULL, NULL, mem, &e);
+    struct txn_table *src    = txnt_open (ctx->mem, &ctx->e);
+    struct txn_table *dest   = txnt_open (ctx->mem, &ctx->e);
+    const err_t       result = txnt_merge_into (dest, src, NULL, NULL, ctx->mem, &ctx->e);
     test_assert (result == SUCCESS);
 
     txnt_close (dest);
@@ -428,9 +424,8 @@ TEST (txnt_merge_into)
 
   TEST_CASE ("Data")
   {
-    error             e    = error_create ();
-    struct txn_table *dest = txnt_open (mem, &e);
-    struct txn_table *src  = txnt_open (mem, &e);
+    struct txn_table *dest = txnt_open (ctx->mem, &ctx->e);
+    struct txn_table *src  = txnt_open (ctx->mem, &ctx->e);
     // Add to dest
     struct txn        dest_txns[5];
     for (int i = 0; i < 5; i++) {
@@ -442,7 +437,7 @@ TEST (txnt_merge_into)
               .undo_next_lsn = (i + 1) * 10 - 1,
               .state         = TX_RUNNING,
           },
-          mem
+          ctx->mem
       );
       txnt_insert_txn (dest, &dest_txns[i]);
     }
@@ -458,12 +453,12 @@ TEST (txnt_merge_into)
               .undo_next_lsn = (i + 6) * 10 - 1,
               .state         = TX_CANDIDATE_FOR_UNDO,
           },
-          mem
+          ctx->mem
       );
       txnt_insert_txn (src, &src_txns[i]);
     }
 
-    const err_t result = txnt_merge_into (dest, src, NULL, NULL, mem, &e);
+    const err_t result = txnt_merge_into (dest, src, NULL, NULL, ctx->mem, &ctx->e);
     test_assert (result == SUCCESS);
 
     // Verify all exist in dest
@@ -477,10 +472,8 @@ TEST (txnt_merge_into)
 
   TEST_CASE ("no duplicate insert")
   {
-    error             e    = error_create ();
-
-    struct txn_table *dest = txnt_open (mem, &e);
-    struct txn_table *src  = txnt_open (mem, &e);
+    struct txn_table *dest = txnt_open (ctx->mem, &ctx->e);
+    struct txn_table *src  = txnt_open (ctx->mem, &ctx->e);
     // Add same tid to both with different values
     struct txn        dest_tx;
     txn_init (
@@ -491,7 +484,7 @@ TEST (txnt_merge_into)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
     txnt_insert_txn (dest, &dest_tx);
 
@@ -504,11 +497,11 @@ TEST (txnt_merge_into)
             .undo_next_lsn = 190,
             .state         = TX_COMMITTED,
         },
-        mem
+        ctx->mem
     );
     txnt_insert_txn (src, &src_tx);
 
-    txnt_merge_into (dest, src, NULL, NULL, mem, &e);
+    txnt_merge_into (dest, src, NULL, NULL, ctx->mem, &ctx->e);
 
     // Dest should keep its original value
     struct txn *retrieved;
@@ -554,8 +547,7 @@ TEST (txnt_max_u_undo_lsn)
 {
   TEST_CASE ("empty")
   {
-    error             e   = error_create ();
-    struct txn_table *t   = txnt_open (mem, &e);
+    struct txn_table *t   = txnt_open (ctx->mem, &ctx->e);
     slsn              max = txnt_max_u_undo_lsn (t);
     test_assert (max == -1);
 
@@ -564,8 +556,7 @@ TEST (txnt_max_u_undo_lsn)
 
   TEST_CASE ("candidates")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx1, tx2, tx3, tx4;
 
     // Running - should be ignored
@@ -573,7 +564,7 @@ TEST (txnt_max_u_undo_lsn)
         &tx1,
         1,
         (struct txn_data){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING},
-        mem
+        ctx->mem
     );
 
     // Candidates
@@ -581,19 +572,19 @@ TEST (txnt_max_u_undo_lsn)
         &tx2,
         2,
         (struct txn_data){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx3,
         3,
         (struct txn_data){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx4,
         4,
         (struct txn_data){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx1);
@@ -609,26 +600,25 @@ TEST (txnt_max_u_undo_lsn)
 
   TEST_CASE ("only running txns")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx1, tx2, tx3;
     txn_init (
         &tx1,
         1,
         (struct txn_data){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx2,
         2,
         (struct txn_data){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx3,
         3,
         (struct txn_data){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED},
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx1);
@@ -674,8 +664,7 @@ TEST (txnt_min_lsn)
 {
   TEST_CASE ("empty")
   {
-    error             e   = error_create ();
-    struct txn_table *t   = txnt_open (mem, &e);
+    struct txn_table *t   = txnt_open (ctx->mem, &ctx->e);
     const slsn        min = txnt_min_lsn (t);
     test_assert (min == -1);
 
@@ -684,14 +673,13 @@ TEST (txnt_min_lsn)
 
   TEST_CASE ("candidates")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx1, tx2, tx3, tx4;
 
-    txn_init (&tx1, 1, (struct txn_data){.min_lsn = 100}, mem);
-    txn_init (&tx2, 2, (struct txn_data){.min_lsn = 40}, mem);
-    txn_init (&tx3, 3, (struct txn_data){.min_lsn = 75}, mem);
-    txn_init (&tx4, 4, (struct txn_data){.min_lsn = 55}, mem);
+    txn_init (&tx1, 1, (struct txn_data){.min_lsn = 100}, ctx->mem);
+    txn_init (&tx2, 2, (struct txn_data){.min_lsn = 40}, ctx->mem);
+    txn_init (&tx3, 3, (struct txn_data){.min_lsn = 75}, ctx->mem);
+    txn_init (&tx4, 4, (struct txn_data){.min_lsn = 55}, ctx->mem);
 
     txnt_insert_txn (t, &tx1);
     txnt_insert_txn (t, &tx2);
@@ -775,8 +763,7 @@ TEST (txnt_exists)
 {
   TEST_CASE ("txnt_exists")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     test_assert (!txn_exists (t, 1100));
 
     struct txn tx;
@@ -788,7 +775,7 @@ TEST (txnt_exists)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -832,8 +819,7 @@ TEST (txnt_insert)
 {
   TEST_CASE ("new")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -843,7 +829,7 @@ TEST (txnt_insert)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn_if_not_exists (t, &tx);
@@ -858,8 +844,7 @@ TEST (txnt_insert)
 
   TEST_CASE ("if not exists but exists")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx1;
     txn_init (
         &tx1,
@@ -869,7 +854,7 @@ TEST (txnt_insert)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx1);
@@ -883,7 +868,7 @@ TEST (txnt_insert)
             .undo_next_lsn = 180,
             .state         = TX_COMMITTED,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn_if_not_exists (t, &tx2);
@@ -899,27 +884,26 @@ TEST (txnt_insert)
 
   TEST_CASE ("different states")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx1, tx2, tx3;
 
     txn_init (
         &tx1,
         1,
         (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx2,
         2,
         (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx3,
         3,
         (struct txn_data){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED},
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx1);
@@ -984,8 +968,7 @@ TEST (txnt_get)
 {
   TEST_CASE ("nonexistent returns false")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn       *retrieved;
     bool              found = txnt_get (&retrieved, t, 9999);
     test_assert (!found);
@@ -995,8 +978,7 @@ TEST (txnt_get)
 
   TEST_CASE ("and get tx running")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1006,7 +988,7 @@ TEST (txnt_get)
             .undo_next_lsn = 40,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1021,8 +1003,7 @@ TEST (txnt_get)
 
   TEST_CASE ("and get tx candidate for undo")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1032,7 +1013,7 @@ TEST (txnt_get)
             .undo_next_lsn = 90,
             .state         = TX_CANDIDATE_FOR_UNDO,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1050,8 +1031,7 @@ TEST (txnt_get)
 
   TEST_CASE ("update last lsn")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1061,7 +1041,7 @@ TEST (txnt_get)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1085,8 +1065,7 @@ TEST (txnt_get)
 
   TEST_CASE ("txnt state transitions all types")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1096,7 +1075,7 @@ TEST (txnt_get)
             .undo_next_lsn = 99,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1171,8 +1150,7 @@ TEST (txnt_remove)
 {
   TEST_CASE ("txnt_remove_existing_txn")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1182,7 +1160,7 @@ TEST (txnt_remove)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1200,8 +1178,7 @@ TEST (txnt_remove)
 
   TEST_CASE ("txnt_remove_nonexistent_txn")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_key_init (&tx, 500);
 
@@ -1214,8 +1191,7 @@ TEST (txnt_remove)
 
   TEST_CASE ("txnt_double_remove_same_transaction")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1225,7 +1201,7 @@ TEST (txnt_remove)
             .undo_next_lsn = 49,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1242,8 +1218,7 @@ TEST (txnt_remove)
 
   TEST_CASE ("txnt_operations_after_remove")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1253,7 +1228,7 @@ TEST (txnt_remove)
             .undo_next_lsn = 49,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1350,9 +1325,8 @@ TEST (txnt_equal_ignore_state)
 {
   TEST_CASE ("txnt_equal_ignore_state_empty_tables")
   {
-    error             e  = error_create ();
-    struct txn_table *t1 = txnt_open (mem, &e);
-    struct txn_table *t2 = txnt_open (mem, &e);
+    struct txn_table *t1 = txnt_open (ctx->mem, &ctx->e);
+    struct txn_table *t2 = txnt_open (ctx->mem, &ctx->e);
     test_assert (txnt_equal_ignore_state (t1, t2));
 
     txnt_close (t1);
@@ -1361,9 +1335,8 @@ TEST (txnt_equal_ignore_state)
 
   TEST_CASE ("txnt_equal_ignore_state_same_content")
   {
-    error             e  = error_create ();
-    struct txn_table *t1 = txnt_open (mem, &e);
-    struct txn_table *t2 = txnt_open (mem, &e);
+    struct txn_table *t1 = txnt_open (ctx->mem, &ctx->e);
+    struct txn_table *t2 = txnt_open (ctx->mem, &ctx->e);
     struct txn        t1_txns[5], t2_txns[5];
     for (int i = 0; i < 5; i++) {
       txn_init (
@@ -1374,7 +1347,7 @@ TEST (txnt_equal_ignore_state)
               .undo_next_lsn = (i + 1) * 10 - 1,
               .state         = TX_RUNNING,
           },
-          mem
+          ctx->mem
       );
       txn_init (
           &t2_txns[i],
@@ -1384,7 +1357,7 @@ TEST (txnt_equal_ignore_state)
               .undo_next_lsn = (i + 1) * 10 - 1,
               .state         = TX_RUNNING,
           },
-          mem
+          ctx->mem
       );
       txnt_insert_txn (t1, &t1_txns[i]);
       txnt_insert_txn (t2, &t2_txns[i]);
@@ -1398,21 +1371,20 @@ TEST (txnt_equal_ignore_state)
 
   TEST_CASE ("txnt_not_equal_different_content")
   {
-    error             e  = error_create ();
-    struct txn_table *t1 = txnt_open (mem, &e);
-    struct txn_table *t2 = txnt_open (mem, &e);
+    struct txn_table *t1 = txnt_open (ctx->mem, &ctx->e);
+    struct txn_table *t2 = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx1, tx2;
     txn_init (
         &tx1,
         1,
         (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING},
-        mem
+        ctx->mem
     );
     txn_init (
         &tx2,
         1,
         (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING},
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t1, &tx1);
@@ -1535,8 +1507,7 @@ TEST (txnt_concurrent)
 {
   TEST_CASE ("txnt_concurrent_inserts")
   {
-    error                  e = error_create ();
-    struct txn_table      *t = txnt_open (mem, &e);
+    struct txn_table      *t = txnt_open (ctx->mem, &ctx->e);
     struct txn             txn_bank1[100], txn_bank2[100], txn_bank3[100];
 
     struct txnt_thread_ctx ctx1 = {
@@ -1545,7 +1516,7 @@ TEST (txnt_concurrent)
         .start_tid = 0,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
@@ -1553,7 +1524,7 @@ TEST (txnt_concurrent)
         .start_tid = 100,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
@@ -1561,26 +1532,26 @@ TEST (txnt_concurrent)
         .start_tid = 200,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        os.table->thread_create (os.self, &t1, txnt_insert_thread, &ctx1, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t1, txnt_insert_thread, &ctx1, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t2, txnt_insert_thread, &ctx2, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t2, txnt_insert_thread, &ctx2, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t3, txnt_insert_thread, &ctx3, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t3, txnt_insert_thread, &ctx3, &ctx->e),
         SUCCESS
     );
 
-    os.table->thread_join (os.self, t1.self);
-    os.table->thread_join (os.self, t2.self);
-    os.table->thread_join (os.self, t3.self);
+    ctx->os.table->thread_join (ctx->os.self, t1.self);
+    ctx->os.table->thread_join (ctx->os.self, t2.self);
+    ctx->os.table->thread_join (ctx->os.self, t3.self);
 
     int total_inserts = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_inserts, 300);
@@ -1594,8 +1565,7 @@ TEST (txnt_concurrent)
 
   TEST_CASE ("txnt_concurrent_readers")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     // Pre-populate
     struct txn        txns[200];
     for (int i = 0; i < 200; i++) {
@@ -1607,7 +1577,7 @@ TEST (txnt_concurrent)
               .undo_next_lsn = i - 1,
               .state         = TX_RUNNING,
           },
-          mem
+          ctx->mem
       );
       txnt_insert_txn (t, &txns[i]);
     }
@@ -1617,40 +1587,40 @@ TEST (txnt_concurrent)
         .start_tid = 0,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
         .start_tid = 50,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
         .start_tid = 100,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        os.table->thread_create (os.self, &t1, txnt_reader_thread, &ctx1, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t1, txnt_reader_thread, &ctx1, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t2, txnt_reader_thread, &ctx2, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t2, txnt_reader_thread, &ctx2, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t3, txnt_reader_thread, &ctx3, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t3, txnt_reader_thread, &ctx3, &ctx->e),
         SUCCESS
     );
 
-    os.table->thread_join (os.self, t1.self);
-    os.table->thread_join (os.self, t2.self);
-    os.table->thread_join (os.self, t3.self);
+    ctx->os.table->thread_join (ctx->os.self, t1.self);
+    ctx->os.table->thread_join (ctx->os.self, t2.self);
+    ctx->os.table->thread_join (ctx->os.self, t3.self);
 
     int total_reads = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_reads, 300);
@@ -1660,8 +1630,7 @@ TEST (txnt_concurrent)
 
   TEST_CASE ("txnt_update_undo_next")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1671,7 +1640,7 @@ TEST (txnt_concurrent)
             .undo_next_lsn = 80,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1693,8 +1662,7 @@ TEST (txnt_concurrent)
 
   TEST_CASE ("txnt_update_state")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     struct txn        tx;
     txn_init (
         &tx,
@@ -1704,7 +1672,7 @@ TEST (txnt_concurrent)
             .undo_next_lsn = 90,
             .state         = TX_RUNNING,
         },
-        mem
+        ctx->mem
     );
 
     txnt_insert_txn (t, &tx);
@@ -1726,8 +1694,7 @@ TEST (txnt_concurrent)
 
   TEST_CASE ("txnt_concurrent_updates")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     // Pre-populate
     struct txn        txns[300];
     for (int i = 0; i < 300; i++) {
@@ -1739,7 +1706,7 @@ TEST (txnt_concurrent)
               .undo_next_lsn = i - 1,
               .state         = TX_RUNNING,
           },
-          mem
+          ctx->mem
       );
       txnt_insert_txn (t, &txns[i]);
     }
@@ -1749,40 +1716,40 @@ TEST (txnt_concurrent)
         .start_tid = 0,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
         .start_tid = 100,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
         .start_tid = 200,
         .count     = 100,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        os.table->thread_create (os.self, &t1, txnt_updater_thread, &ctx1, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t1, txnt_updater_thread, &ctx1, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t2, txnt_updater_thread, &ctx2, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t2, txnt_updater_thread, &ctx2, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t3, txnt_updater_thread, &ctx3, &e),
+        ctx->os.table->thread_create (ctx->os.self, &t3, txnt_updater_thread, &ctx3, &ctx->e),
         SUCCESS
     );
 
-    os.table->thread_join (os.self, t1.self);
-    os.table->thread_join (os.self, t2.self);
-    os.table->thread_join (os.self, t3.self);
+    ctx->os.table->thread_join (ctx->os.self, t1.self);
+    ctx->os.table->thread_join (ctx->os.self, t2.self);
+    ctx->os.table->thread_join (ctx->os.self, t3.self);
 
     int total_updates = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_updates, 300);
@@ -1799,8 +1766,7 @@ TEST (txnt_concurrent)
 
   TEST_CASE ("txnt_concurrent_state_transitions")
   {
-    error             e = error_create ();
-    struct txn_table *t = txnt_open (mem, &e);
+    struct txn_table *t = txnt_open (ctx->mem, &ctx->e);
     // Pre-populate with running transactions
     struct txn        txns[150];
     for (int i = 0; i < 150; i++) {
@@ -1812,7 +1778,7 @@ TEST (txnt_concurrent)
               .undo_next_lsn = i - 1,
               .state         = TX_RUNNING,
           },
-          mem
+          ctx->mem
       );
       txnt_insert_txn (t, &txns[i]);
     }
@@ -1822,40 +1788,43 @@ TEST (txnt_concurrent)
         .start_tid = 0,
         .count     = 50,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
         .start_tid = 50,
         .count     = 50,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
         .start_tid = 100,
         .count     = 50,
         .counter   = 0,
-        .mem       = mem,
+        .mem       = ctx->mem,
     };
 
     i_thread t1, t2, t3;
     test_assert_equal (
-        os.table->thread_create (os.self, &t1, txnt_state_transition_thread, &ctx1, &e),
+        ctx->os.table
+            ->thread_create (ctx->os.self, &t1, txnt_state_transition_thread, &ctx1, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t2, txnt_state_transition_thread, &ctx2, &e),
+        ctx->os.table
+            ->thread_create (ctx->os.self, &t2, txnt_state_transition_thread, &ctx2, &ctx->e),
         SUCCESS
     );
     test_assert_equal (
-        os.table->thread_create (os.self, &t3, txnt_state_transition_thread, &ctx3, &e),
+        ctx->os.table
+            ->thread_create (ctx->os.self, &t3, txnt_state_transition_thread, &ctx3, &ctx->e),
         SUCCESS
     );
 
-    os.table->thread_join (os.self, t1.self);
-    os.table->thread_join (os.self, t2.self);
-    os.table->thread_join (os.self, t3.self);
+    ctx->os.table->thread_join (ctx->os.self, t1.self);
+    ctx->os.table->thread_join (ctx->os.self, t2.self);
+    ctx->os.table->thread_join (ctx->os.self, t3.self);
 
     int total_transitions = ctx1.counter + ctx2.counter + ctx3.counter;
     test_assert_equal (total_transitions, 150);

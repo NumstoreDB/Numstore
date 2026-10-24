@@ -228,11 +228,10 @@ TEST (ext_array_insert_read)
 {
   TEST_CASE ("basic sequential")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3, 4, 5};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32       dest[5] = {0};
     const u64 n       = ext_array_read (
@@ -253,13 +252,12 @@ TEST (ext_array_insert_read)
 
   TEST_CASE ("insert at end (append)")
   {
-    error            e        = error_create ();
-    struct ext_array a        = ext_array_create (mem);
+    struct ext_array a        = ext_array_create (ctx->mem);
 
     const u32        first[]  = {1, 2, 3};
     const u32        second[] = {4, 5, 6};
-    ext_array_insert (&a, 0, first, sizeof (first), &e);
-    ext_array_insert (&a, sizeof (first), second, sizeof (second), &e);
+    ext_array_insert (&a, 0, first, sizeof (first), &ctx->e);
+    ext_array_insert (&a, sizeof (first), second, sizeof (second), &ctx->e);
 
     u32 dest[6] = {0};
     ext_array_read (
@@ -280,13 +278,12 @@ TEST (ext_array_insert_read)
 
   TEST_CASE ("insert in middle")
   {
-    error            e          = error_create ();
-    struct ext_array a          = ext_array_create (mem);
+    struct ext_array a          = ext_array_create (ctx->mem);
 
     const u32        initial[]  = {1, 3, 4};
     const u32        inserted[] = {2};
-    ext_array_insert (&a, 0, initial, sizeof (initial), &e);
-    ext_array_insert (&a, sizeof (u32), inserted, sizeof (inserted), &e);
+    ext_array_insert (&a, 0, initial, sizeof (initial), &ctx->e);
+    ext_array_insert (&a, sizeof (u32), inserted, sizeof (inserted), &ctx->e);
 
     u32 dest[4] = {0};
     ext_array_read (
@@ -307,11 +304,10 @@ TEST (ext_array_insert_read)
 
   TEST_CASE ("read strided")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3, 4, 5, 6};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32       dest[3] = {0};
     const u64 n       = ext_array_read (
@@ -333,11 +329,10 @@ TEST (ext_array_insert_read)
 
   TEST_CASE ("read past end")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {10, 20, 30};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32       dest[10] = {0};
     const u64 n        = ext_array_read (
@@ -362,11 +357,10 @@ TEST (ext_array_write)
 {
   TEST_CASE ("overwrite single middle")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3, 4, 5};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     const u32 patch[] = {99};
     const u64 n       = ext_array_write (
@@ -392,11 +386,10 @@ TEST (ext_array_write)
 
   TEST_CASE ("overwrite strided")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3, 4, 5, 6};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     const u32 patch[] = {0, 0, 0};
     const u64 n       = ext_array_write (
@@ -431,11 +424,10 @@ TEST (ext_array_write)
 
   TEST_CASE ("write past end returns short count")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     const u32 patch[] = {9, 9, 9};
     const u64 n       = ext_array_write (
@@ -458,11 +450,10 @@ TEST (ext_array_remove)
 {
   TEST_CASE ("remove from middle")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3, 4, 5};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32       removed = 0;
     const u64 n       = ext_array_remove (
@@ -499,11 +490,10 @@ TEST (ext_array_remove)
 
   TEST_CASE ("remove first")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {10, 20, 30};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32 removed = 0;
     ext_array_remove (
@@ -536,11 +526,10 @@ TEST (ext_array_remove)
 
   TEST_CASE ("remove last")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {10, 20, 30};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32 removed = 0;
     ext_array_remove (
@@ -573,11 +562,10 @@ TEST (ext_array_remove)
 
   TEST_CASE ("remove strided")
   {
-    error            e     = error_create ();
-    struct ext_array a     = ext_array_create (mem);
+    struct ext_array a     = ext_array_create (ctx->mem);
 
     const u32        src[] = {1, 2, 3, 4, 5, 6};
-    ext_array_insert (&a, 0, src, sizeof (src), &e);
+    ext_array_insert (&a, 0, src, sizeof (src), &ctx->e);
 
     u32       removed[3] = {0};
     const u64 n          = ext_array_remove (
@@ -615,8 +603,6 @@ TEST (ext_array_remove)
 
 TEST (ext_array_random)
 {
-  error     e        = error_create ();
-
   /**
   struct ext_array ext_arr_1 = ext_array_create ();
   struct ext_array ext_arr_2 = ext_array_create ();
@@ -645,8 +631,8 @@ TEST (ext_array_random)
   for (u32 i = 0; i < arrlen (niters); ++i) {
     i_log_info ("Block random test: %d\n", i);
 
-    struct ext_array   ext_arr_1 = ext_array_create (mem);
-    struct ext_array   ext_arr_2 = ext_array_create (mem);
+    struct ext_array   ext_arr_1 = ext_array_create (ctx->mem);
+    struct ext_array   ext_arr_2 = ext_array_create (ctx->mem);
 
     struct data_writer ref;
     struct data_writer sut;
@@ -655,13 +641,13 @@ TEST (ext_array_random)
     ext_array_data_writer (&sut, &ext_arr_2);
 
     struct dvalidtr d = {
-        .mem     = default_mem (),
+        .mem     = ctx->mem,
         .sut     = sut,
         .ref     = ref,
         .isvalid = NULL,
     };
 
-    dvalidtr_random_test (&d, 1, niters[i], 1000, &e);
+    dvalidtr_random_test (&d, 1, niters[i], 1000, &ctx->e);
 
     ext_array_free (&ext_arr_1);
     ext_array_free (&ext_arr_2);
@@ -688,3 +674,53 @@ ext_array_clone (struct ext_array *dest, struct ext_array *r, error *e)
 
   return SUCCESS;
 }
+
+#ifndef NDEBUG
+TEST (ext_array_capacity_doubles_on_growth)
+{
+  struct ext_array a    = ext_array_create (ctx->mem);
+
+  // Seed with one byte to force the first allocation (cap → 2).
+  const u8         seed = 0x01;
+  ext_array_insert (&a, 0, &seed, 1, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+  test_assert (a.cap >= 2u);
+
+  // Fill to capacity.
+  const u32 orig_cap = a.cap;
+  for (u32 i = a.len; i < orig_cap; ++i) {
+    u8 b = (u8)(i & 0xFF);
+    ext_array_insert (&a, a.len, &b, 1, &ctx->e);
+    test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+  }
+  test_assert_type_equal (a.len, orig_cap, u32, PRIu32);
+
+  // One more byte must trigger realloc; new cap must be >= 2×old.
+  const u8 extra = 0xFF;
+  ext_array_insert (&a, a.len, &extra, 1, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+  test_assert (a.cap >= orig_cap * 2u);
+
+  ext_array_free (&a);
+}
+
+// Removing every element via stride must leave an empty array.
+TEST (ext_array_remove_all_produces_empty)
+{
+  struct ext_array a      = ext_array_create (ctx->mem);
+
+  const u8         src[5] = {10, 20, 30, 40, 50};
+  ext_array_insert (&a, 0, src, sizeof src, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+  u8 out[5] = {0};
+  const u64
+      n = ext_array_remove (&a, (struct stride){.start = 0, .stride = 1, .nelems = 5}, 1, out);
+
+  test_assert_type_equal (n, (i64)5, i64, PRId64);
+  test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);
+  test_assert_memequal (src, out, 5);
+
+  ext_array_free (&a);
+}
+#endif

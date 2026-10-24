@@ -19,14 +19,14 @@
 
 err_t
 numstore_remove_malloc (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    void *NONNULL *NULLABLE  dest,
-    b_size *NONNULL          dlen,
-    struct i_mem             mem,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    void             **dest,
+    b_size            *dlen,
+    struct i_mem       mem,
+    error             *e
 )
 {
   DBG_ASSERT (pager, p);

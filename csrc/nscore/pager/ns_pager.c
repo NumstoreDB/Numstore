@@ -166,10 +166,10 @@ pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e)
 TEST (pager_fill_ht)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   page_h pgs[MEMORY_PAGE_LEN];
 
@@ -178,17 +178,17 @@ TEST (pager_fill_ht)
     u32 i = 0;
     for (; i < MEMORY_PAGE_LEN / 2; ++i) {
       pgs[i] = page_h_create ();
-      pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &f.e);
+      pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &ctx->e);
       test_assert_equal (pgs[i].mode, PHM_X);
     }
 
     // This would block
-    // pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &f.e);
+    // pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &e);
 
     // Release them all
     for (i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
       dl_set_used (page_h_w (&pgs[i]), DL_DATA_SIZE);
-      pgr_release (f.p, &pgs[i], PG_DATA_LIST, &f.e);
+      pgr_release (f.p, &pgs[i], PG_DATA_LIST, &ctx->e);
     }
   }
 
@@ -196,38 +196,38 @@ TEST (pager_fill_ht)
   {
     // Fill half way up - good
     for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
-      pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &f.e);
+      pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &ctx->e);
       test_assert_equal (pgs[i].mode, PHM_X);
     }
 
     // Release them all
     for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
       dl_set_used (page_h_w (&pgs[i]), DL_DATA_SIZE);
-      pgr_release (f.p, &pgs[i], PG_DATA_LIST, &f.e);
+      pgr_release (f.p, &pgs[i], PG_DATA_LIST, &ctx->e);
     }
   }
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 
 TEST (wal_int)
 {
   struct pgr_fixture f;
   page_h             h = page_h_create ();
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
-  pgr_new (&h, f.p, &tx, PG_DATA_LIST, &f.e);
+  pgr_new (&h, f.p, &tx, PG_DATA_LIST, &ctx->e);
 
   dl_set_used (page_h_w (&h), DL_DATA_SIZE);
-  pgr_release (f.p, &h, PG_DATA_LIST, &f.e);
+  pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

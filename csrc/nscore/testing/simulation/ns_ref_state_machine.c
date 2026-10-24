@@ -378,11 +378,9 @@ ns_ref_write (struct ns_ref *ref, void *data, struct stride str)
 
 TEST (ns_ref)
 {
-  error          e   = error_create ();
-  struct ns_ref *ref = ns_ref_new (mem, &e);
-  ALLOC_INIT (alloc);
+  struct ns_ref *ref = ns_ref_new (ctx->mem, &ctx->e);
 
-  u32 dest[20];
+  u32            dest[20];
 
 #  define validate(expected)                                                           \
     do {                                                                               \
@@ -401,29 +399,29 @@ TEST (ns_ref)
   TEST_CASE ("create, switch, write, read, insert, remove, delete")
   {
     struct type type;
-    compile_type (&type, "u32", &alloc, &e);
+    compile_type (&type, "u32", &ctx->alloc, &ctx->e);
 
     check_state (0, 0);
-    ns_ref_create (ref, "var1", &type, &e);
+    ns_ref_create (ref, "var1", &type, &ctx->e);
     check_state (1, 0);
-    ns_ref_create (ref, "var2", &type, &e);
+    ns_ref_create (ref, "var2", &type, &ctx->e);
     check_state (2, 0);
-    ns_ref_create (ref, "var3", &type, &e);
+    ns_ref_create (ref, "var3", &type, &ctx->e);
     check_state (3, 0);
 
     // Current variable is var1
 
-    ns_ref_begin_txn (ref, &e);
+    ns_ref_begin_txn (ref, &ctx->e);
     {
-      ns_ref_insert (ref, (u32[]){10, 20, 30, 40}, 0, 4, &e);
+      ns_ref_insert (ref, (u32[]){10, 20, 30, 40}, 0, 4, &ctx->e);
       validate (((u32[]){10, 20, 30, 40}));
       check_state (3, 4 * sizeof (u32));
 
-      ns_ref_insert (ref, (u32[]){50, 60}, 4, 2, &e);
+      ns_ref_insert (ref, (u32[]){50, 60}, 4, 2, &ctx->e);
       validate (((u32[]){10, 20, 30, 40, 50, 60}));
       check_state (3, 6 * sizeof (u32));
 
-      ns_ref_insert (ref, (u32[]){70}, 6, 1, &e);
+      ns_ref_insert (ref, (u32[]){70}, 6, 1, &ctx->e);
       validate (((u32[]){10, 20, 30, 40, 50, 60, 70}));
       check_state (3, 7 * sizeof (u32));
 
@@ -442,17 +440,17 @@ TEST (ns_ref)
       validate (((u32[]){20, 40, 60}));
       check_state (3, 3 * sizeof (u32));
     }
-    ns_ref_commit_txn (ref, &e);
+    ns_ref_commit_txn (ref, &ctx->e);
   }
 
   TEST_CASE ("rollback restores prior state, including current variable")
   {
     ns_ref_switch (ref, "var2");
-    ns_ref_insert (ref, (u32[]){10, 20, 30, 40}, 0, 4, &e);
+    ns_ref_insert (ref, (u32[]){10, 20, 30, 40}, 0, 4, &ctx->e);
     check_state (3, 7 * sizeof (u32));
 
     ns_ref_switch (ref, "var3");
-    ns_ref_insert (ref, (u32[]){100, 200, 300, 400}, 0, 4, &e);
+    ns_ref_insert (ref, (u32[]){100, 200, 300, 400}, 0, 4, &ctx->e);
     check_state (3, 11 * sizeof (u32));
 
     ns_ref_switch (ref, "var1");
@@ -462,10 +460,10 @@ TEST (ns_ref)
     validate (((u32[]){10, 20, 30, 40}));
     check_state (2, 8 * sizeof (u32));
 
-    ns_ref_begin_txn (ref, &e);
+    ns_ref_begin_txn (ref, &ctx->e);
     {
       ns_ref_switch (ref, "var3");
-      ns_ref_insert (ref, (u32[]){111, 222, 333, 444}, 0, 4, &e);
+      ns_ref_insert (ref, (u32[]){111, 222, 333, 444}, 0, 4, &ctx->e);
       validate (((u32[]){111, 222, 333, 444, 100, 200, 300, 400}));
       check_state (2, 12 * sizeof (u32));
     }
@@ -483,7 +481,7 @@ TEST (ns_ref)
 
   TEST_CASE ("commit persists the switch and the write")
   {
-    ns_ref_begin_txn (ref, &e);
+    ns_ref_begin_txn (ref, &ctx->e);
     {
       ns_ref_switch (ref, "var2");
       ns_ref_write (
@@ -494,7 +492,7 @@ TEST (ns_ref)
       check_state (2, 8 * sizeof (u32));
       validate (((u32[]){111, 222, 333, 444}));
     }
-    ns_ref_commit_txn (ref, &e);
+    ns_ref_commit_txn (ref, &ctx->e);
 
     // Still on var2
     validate (((u32[]){111, 222, 333, 444}));
@@ -506,7 +504,7 @@ TEST (ns_ref)
     check_state (2, 8 * sizeof (u32));
   }
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
   ns_ref_free (ref);
 }
 

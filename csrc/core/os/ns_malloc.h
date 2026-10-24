@@ -31,32 +31,16 @@
 
 struct i_mem_vtable
 {
-  void *NULLABLE (*NONNULL malloc) (
-      void *NULLABLE self,
-      const u32      nelem,
-      const u32      size,
-      error *NONNULL e
-  );
-  void *NULLABLE (*NONNULL calloc) (
-      void *NULLABLE self,
-      const u32      nelem,
-      const u32      size,
-      error *NONNULL e
-  );
-  void *NULLABLE (*NONNULL realloc) (
-      void *NULLABLE self,
-      void *NONNULL  ptr,
-      const u32      nelem,
-      const u32      size,
-      error *NONNULL e
-  );
-  void (*NONNULL free) (void *NULLABLE self, void *NONNULL v);
+  void *(*malloc) (void *self, const u32 nelem, const u32 size, error *e);
+  void *(*calloc) (void *self, const u32 nelem, const u32 size, error *e);
+  void *(*realloc) (void *self, void *ptr, const u32 nelem, const u32 size, error *e);
+  void (*free) (void *self, void *v);
 };
 
 struct i_mem
 {
-  const struct i_mem_vtable *NONNULL table;
-  void *NULLABLE                     self;
+  const struct i_mem_vtable *table;
+  void                      *self;
 };
 
 DEFINE_DBG_ASSERT (struct i_mem, i_mem, m, {
@@ -64,33 +48,18 @@ DEFINE_DBG_ASSERT (struct i_mem, i_mem, m, {
   ASSERT (m->table);
 })
 
-/// The process allocator - malloc/calloc/realloc/free
+/// The system default allocator - malloc/calloc/realloc/free
 struct i_mem default_mem (void);
 
-/// Wraps [delegate]: every allocation fails with probability [fail_percent]
-/// in [0, 1], otherwise forwards to [delegate]. free always forwards.
-///
-/// [delegate] is borrowed - it must outlive the faulty allocator and is not
-/// freed by it. This is the i_mem counterpart of faulty_os_create.
-err_t faulty_mem_create (
-    struct i_mem          delegate,
-    float                 fail_percent,
-    struct i_mem *NONNULL dest,
-    error *NONNULL        e
-);
+// Faulty memory
+err_t faulty_mem_create (struct i_mem delegate, float fail_percent, struct i_mem *dest, error *e);
 void faulty_mem_set_fail (struct i_mem mem, float fail_percent);
 void faulty_mem_fail_after (struct i_mem mem, int count);
+void faulty_mem_reset (struct i_mem mem);
 u32 faulty_num_mallocs (struct i_mem mem);
 void faulty_mem_free (struct i_mem mem);
 
-HEADER_FUNC err_t
-faulty_mem_init_default (struct i_mem *dest, float fail_percent, error *e)
-{
-  struct i_mem mem = default_mem ();
-  return faulty_mem_create (mem, 0, dest, e);
-}
-
-/// free [ptr] if it is non-NULL
+// Free if not null
 #define mem_cfree(mem, ptr)                  \
   do {                                       \
     if ((ptr)) {                             \

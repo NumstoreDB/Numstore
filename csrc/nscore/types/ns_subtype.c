@@ -46,17 +46,14 @@ subtype_equal (const struct subtype *left, const struct subtype *right)
 #ifndef NDEBUG
 TEST (subtype_equal)
 {
-  ALLOC_INIT (alloc);
-  error e = error_create ();
-
 #  define STE_TC(left, right, expected)                           \
     TEST_CASE ("%s == %s == %d", left, right, expected)           \
     {                                                             \
       struct subtype leftst;                                      \
       struct subtype rightst;                                     \
                                                                   \
-      compile_subtype (&leftst, left, &alloc, &e);                \
-      compile_subtype (&rightst, right, &alloc, &e);              \
+      compile_subtype (&leftst, left, &ctx->alloc, &ctx->e);      \
+      compile_subtype (&rightst, right, &ctx->alloc, &ctx->e);    \
                                                                   \
       if (expected) {                                             \
         test_assert (subtype_equal (&leftst, &rightst));          \
@@ -72,6 +69,6 @@ TEST (subtype_equal)
   STE_TC ("foo[0][1]", "foo.bar[0]", false);
   STE_TC ("biz.bar[0]", "foo.bar[0]", false);
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif

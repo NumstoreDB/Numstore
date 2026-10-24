@@ -77,25 +77,24 @@ TEST (numstore_insert_multithreaded)
 {
   for (int k = 0; k < NITERS; ++k) {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    numstore_init_pager (f.p, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    numstore_init_pager (f.p, &ctx->e);
 
-    ALLOC_INIT (alloc);
-    pgr_begin_txn (&f.tx, f.p, &f.e);
-    numstore_create (f.p, &f.tx, strfcstr ("foo"), TU8, &alloc, NULL, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
+    pgr_begin_txn (&f.tx, f.p, &ctx->e);
+    numstore_create (f.p, &f.tx, strfcstr ("foo"), TU8, &ctx->alloc, NULL, &ctx->e);
+    pgr_commit (f.p, &f.tx, &ctx->e);
 
     _Atomic int          ready = NTHREADS, go = 0, idx = 0;
-    struct insert_mt_ctx ctx = {.p = &f, .ready = &ready, .go = &go, .idx = &idx};
+    struct insert_mt_ctx targs = {.p = &f, .ready = &ready, .go = &go, .idx = &idx};
 
     for (int i = 0; i < NTHREADS; ++i) {
-      ctx.data[i] = f.mem.table->malloc (f.mem.self, 1, SIZE_EACH_INSERT, &f.e);
-      rand_bytes (ctx.data[i], SIZE_EACH_INSERT);
+      targs.data[i] = f.mem.table->malloc (f.mem.self, 1, SIZE_EACH_INSERT, &ctx->e);
+      rand_bytes (targs.data[i], SIZE_EACH_INSERT);
     }
 
     i_thread workers[NTHREADS];
     for (int i = 0; i < NTHREADS; ++i) {
-      f.os.table->thread_create (f.os.self, &workers[i], insert_mt_func, &ctx, &f.e);
+      f.os.table->thread_create (f.os.self, &workers[i], insert_mt_func, &targs, &ctx->e);
     }
 
     while (atomic_load (&ready) > 0) {
@@ -110,20 +109,20 @@ TEST (numstore_insert_multithreaded)
     struct txn rtx;
     b_size     dlen;
     void      *_a;
-    pgr_begin_txn (&rtx, f.p, &f.e);
+    pgr_begin_txn (&rtx, f.p, &ctx->e);
     numstore_read_malloc_from_name (
         f.p,
         &rtx,
         strfcstr ("foo"),
         ustride0 (0),
-        &alloc,
+        &ctx->alloc,
         NULL,
         &_a,
         &dlen,
         f.mem,
-        &f.e
+        &ctx->e
     );
-    pgr_commit (f.p, &rtx, &f.e);
+    pgr_commit (f.p, &rtx, &ctx->e);
     u8 *actual = _a;
 
     test_assert_int_equal (dlen, NTHREADS * SIZE_EACH_INSERT);
@@ -134,7 +133,7 @@ TEST (numstore_insert_multithreaded)
       int match = -1;
       for (int i = 0; i < NTHREADS; ++i) {
         if (!used[i]
-            && memcmp (actual + slot * SIZE_EACH_INSERT, ctx.data[i], SIZE_EACH_INSERT) == 0) {
+            && memcmp (actual + slot * SIZE_EACH_INSERT, targs.data[i], SIZE_EACH_INSERT) == 0) {
           match = i;
           break;
         }
@@ -145,10 +144,10 @@ TEST (numstore_insert_multithreaded)
 
     f.mem.table->free (f.mem.self, actual);
     for (int i = 0; i < NTHREADS; ++i) {
-      f.mem.table->free (f.mem.self, ctx.data[i]);
+      f.mem.table->free (f.mem.self, targs.data[i]);
     }
-    ALLOC_CLOSE (alloc);
-    pgr_fixture_teardown (&f);
+    arena_alloc_free_all (&ctx->alloc);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 }
 

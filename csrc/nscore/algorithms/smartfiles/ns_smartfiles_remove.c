@@ -108,13 +108,11 @@ smartfiles_remove (
 TEST (smartfiles_remove)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
-  smartfiles_init_pager (f.p, &f.e);
-
-  ALLOC_INIT (temp);
+  pgr_fixture_create (&f, &ctx->e);
+  smartfiles_init_pager (f.p, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   u8 buffer[16];
   for (u32 i = 0; i < sizeof (buffer); i++) {
@@ -122,21 +120,21 @@ TEST (smartfiles_remove)
   }
 
   istream_create_from_array (input, buffer);
-  smartfiles_insert (f.p, &tx, &input, 0, sizeof (buffer), &temp, &f.e);
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), sizeof (buffer));
+  smartfiles_insert (f.p, &tx, &input, 0, sizeof (buffer), &ctx->alloc, &ctx->e);
+  test_assert_equal (smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e), sizeof (buffer));
 
   u8 out[16] = {0};
 
   ostream_create_from_array (output, out);
-  sb_size n = smartfiles_remove (f.p, &tx, &output, 1, 0, 1, sizeof (buffer), &temp, &f.e);
+  sb_size n = smartfiles_remove (f.p, &tx, &output, 1, 0, 1, sizeof (buffer), &ctx->alloc, &ctx->e);
 
   test_assert_equal (n, sizeof (buffer));
   test_assert (memcmp (out, buffer, sizeof (buffer)) == 0);
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), 0);
+  test_assert_equal (smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e), 0);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  ALLOC_CLOSE (temp);
-  pgr_fixture_teardown (&f);
+  arena_alloc_free_all (&ctx->alloc);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

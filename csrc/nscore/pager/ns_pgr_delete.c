@@ -85,51 +85,50 @@ failed:
 TEST (pgr_delete)
 {
   struct pgr_fixture f;
-  error             *e = &f.e;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   page_h a = page_h_create ();
   page_h b = page_h_create ();
   page_h c = page_h_create ();
   page_h d = page_h_create ();
 
-  pgr_new (&a, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&b, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&c, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&d, f.p, &tx, PG_DATA_LIST, e);
+  pgr_new (&a, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&b, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&c, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&d, f.p, &tx, PG_DATA_LIST, &ctx->e);
 
   const pgno apg = page_h_pgno (&a);
   const pgno bpg = page_h_pgno (&b);
   const pgno cpg = page_h_pgno (&c);
   const pgno dpg = page_h_pgno (&d);
 
-  pgr_delete_and_release (f.p, &tx, &a, e);
-  pgr_delete_and_release (f.p, &tx, &b, e);
-  pgr_delete_and_release (f.p, &tx, &c, e);
-  pgr_delete_and_release (f.p, &tx, &d, e);
+  pgr_delete_and_release (f.p, &tx, &a, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &b, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &c, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &d, &ctx->e);
 
-  pgr_new (&a, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&b, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&c, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&d, f.p, &tx, PG_DATA_LIST, e);
+  pgr_new (&a, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&b, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&c, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&d, f.p, &tx, PG_DATA_LIST, &ctx->e);
 
   test_assert_equal (page_h_pgno (&a), apg);
   test_assert_equal (page_h_pgno (&b), bpg);
   test_assert_equal (page_h_pgno (&c), cpg);
   test_assert_equal (page_h_pgno (&d), dpg);
 
-  pgr_delete_and_release (f.p, &tx, &a, e);
-  pgr_delete_and_release (f.p, &tx, &b, e);
-  pgr_delete_and_release (f.p, &tx, &c, e);
-  pgr_delete_and_release (f.p, &tx, &d, e);
+  pgr_delete_and_release (f.p, &tx, &a, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &b, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &c, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &d, &ctx->e);
 
-  pgr_new (&a, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&b, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&c, f.p, &tx, PG_DATA_LIST, e);
-  pgr_new (&d, f.p, &tx, PG_DATA_LIST, e);
+  pgr_new (&a, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&b, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&c, f.p, &tx, PG_DATA_LIST, &ctx->e);
+  pgr_new (&d, f.p, &tx, PG_DATA_LIST, &ctx->e);
 
   test_assert_equal (page_h_pgno (&a), apg);
   test_assert_equal (page_h_pgno (&b), bpg);
@@ -141,13 +140,13 @@ TEST (pgr_delete)
   dl_set_used (page_h_w (&c), DL_DATA_SIZE);
   dl_set_used (page_h_w (&d), DL_DATA_SIZE);
 
-  pgr_release (f.p, &a, PG_DATA_LIST, e);
-  pgr_delete_and_release (f.p, &tx, &b, e);
-  pgr_delete_and_release (f.p, &tx, &c, e);
-  pgr_release (f.p, &d, PG_DATA_LIST, e);
+  pgr_release (f.p, &a, PG_DATA_LIST, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &b, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, &c, &ctx->e);
+  pgr_release (f.p, &d, PG_DATA_LIST, &ctx->e);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

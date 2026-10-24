@@ -818,7 +818,7 @@ TEST (possible_to_get_long_left_tail_on_nupd)
 }
 
 static inline spgno
-build_2_layer_tree (p_size len, struct pgr_fixture *f)
+build_2_layer_tree (p_size len, struct pgr_fixture *f, error *e)
 {
   u8 data[DL_DATA_SIZE];
   rand_bytes (data, sizeof (data));
@@ -835,7 +835,7 @@ build_2_layer_tree (p_size len, struct pgr_fixture *f)
       .nlen = len,
   };
 
-  return build_tree_from_descr (f->p, &f->tx, descr, &f->e);
+  return build_tree_from_descr (f->p, &f->tx, descr, e);
 }
 
 /*
@@ -860,17 +860,24 @@ build_2_layer_tree (p_size len, struct pgr_fixture *f)
  * read through the code to understand exactly what it does
  */
 static inline spgno
-do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size in_len, p_size lidx)
+do_rebalance_on_2_layer_tree (
+    struct pgr_fixture *f,
+    u32                 llen,
+    u32                 rlen,
+    p_size              in_len,
+    p_size              lidx,
+    error              *e
+)
 {
   // Build the 3 node tree
-  spgno root = build_2_layer_tree (in_len, f);
+  spgno root = build_2_layer_tree (in_len, f, e);
 
   // Should be 3 nodes - e.g.
-  ASSERT (ns_get_number_of_layers (f->p, root, &f->e) == 2);
+  ASSERT (ns_get_number_of_layers (f->p, root, e) == 2);
 
   // Fetch the root page to reconstruct the seek stack
   page_h rpg = page_h_create ();
-  pgr_get_writable (&rpg, &f->tx, PG_INNER_NODE, root, f->p, &f->e);
+  pgr_get_writable (&rpg, &f->tx, PG_INNER_NODE, root, f->p, e);
 
   // Build the mock node updates
   pgno  pivot = in_get_leaf (page_h_ro (&rpg), lidx);
@@ -878,7 +885,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
   pgno *left  = NULL;
 
   if (rlen > 0) {
-    right = f->mem.table->malloc (f->mem.self, rlen, sizeof *right, &f->e);
+    right = f->mem.table->malloc (f->mem.self, rlen, sizeof *right, e);
 
     // Ensure they are unique - TODO - make this better
     for (u32 i = 0; i < rlen; ++i) {
@@ -887,7 +894,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
   }
 
   if (llen > 0) {
-    left = f->mem.table->malloc (f->mem.self, llen, sizeof *left, &f->e);
+    left = f->mem.table->malloc (f->mem.self, llen, sizeof *left, e);
 
     // Ensure they are unique
     for (u32 i = 0; i < llen; ++i) {
@@ -896,8 +903,8 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
   }
 
   // Create random node updates
-  struct node_updates *output = nupd_random_from (left, llen, pivot, right, rlen, f->mem, &f->e);
-  struct node_updates *input  = nupd_init (0, 0, f->mem, &f->e);
+  struct node_updates *output = nupd_random_from (left, llen, pivot, right, rlen, f->mem, e);
+  struct node_updates *input  = nupd_init (0, 0, f->mem, e);
   ASSERT (output != NULL);
 
   // Do rebalance
@@ -918,7 +925,7 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
       .layer_root = {.isroot = false},
   };
 
-  ns_rebalance (&rebalance, &f->e);
+  ns_rebalance (&rebalance, e);
 
   mem_cfree (f->mem, right);
   mem_cfree (f->mem, left);
@@ -931,51 +938,51 @@ do_rebalance_on_2_layer_tree (struct pgr_fixture *f, u32 llen, u32 rlen, p_size 
 TEST (ns_rebalance_apply_to_pivot_splits_2_layer_tree)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
-  pgr_begin_txn (&f.tx, f.p, &f.e);
+  pgr_fixture_create (&f, &ctx->e);
+  pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
   TEST_CASE ("Just overwrite one key")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 0, IN_MAX_KEYS, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 0, IN_MAX_KEYS, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
   }
 
   TEST_CASE ("Right 1 key full")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 1, IN_MAX_KEYS, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 1, IN_MAX_KEYS, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
   }
 
   TEST_CASE ("Left 1 key full")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 0, IN_MAX_KEYS, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 0, IN_MAX_KEYS, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
   }
 
   TEST_CASE ("Right and Left 1 key full")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
-    root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS - 1, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
+    root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS - 1, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
   }
 
   TEST_CASE ("Right 1 key don't split")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 1, IN_MAX_KEYS - 1, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 0, 1, IN_MAX_KEYS - 1, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
   }
 
   TEST_CASE ("Left 1 key don't split")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 0, IN_MAX_KEYS - 1, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 0, IN_MAX_KEYS - 1, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
   }
 
   TEST_CASE ("Right and Left 1 key don't split")
   {
-    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS - 2, 10);
-    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+    spgno root = do_rebalance_on_2_layer_tree (&f, 1, 1, IN_MAX_KEYS - 2, 10, &ctx->e);
+    test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
   }
 
   /**
@@ -988,37 +995,37 @@ TEST (ns_rebalance_apply_to_pivot_splits_2_layer_tree)
 
     TEST_CASE ("Right length %d", len)
     {
-      spgno root = do_rebalance_on_2_layer_tree (&f, 0, len, in_len, lidx);
+      spgno root = do_rebalance_on_2_layer_tree (&f, 0, len, in_len, lidx, &ctx->e);
       if (in_len + len > IN_MAX_KEYS) {
-        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
       } else {
-        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
       }
     }
 
     TEST_CASE ("Left length %d", len)
     {
-      spgno root = do_rebalance_on_2_layer_tree (&f, len, 0, in_len, lidx);
+      spgno root = do_rebalance_on_2_layer_tree (&f, len, 0, in_len, lidx, &ctx->e);
       if (in_len + len > IN_MAX_KEYS) {
-        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
       } else {
-        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
       }
     }
 
     TEST_CASE ("Right Left length %d", len)
     {
-      spgno root = do_rebalance_on_2_layer_tree (&f, len, len, in_len, lidx);
+      spgno root = do_rebalance_on_2_layer_tree (&f, len, len, in_len, lidx, &ctx->e);
       if (in_len + 2 * len > IN_MAX_KEYS) {
-        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 3);
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 3);
       } else {
-        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &f.e), 2);
+        test_assert_int_equal (ns_get_number_of_layers (f.p, root, &ctx->e), 2);
       }
     }
   }
 
-  pgr_commit (f.p, &f.tx, &f.e);
-  pgr_fixture_teardown (&f);
+  pgr_commit (f.p, &f.tx, &ctx->e);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif
 

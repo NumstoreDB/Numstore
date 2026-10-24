@@ -42,7 +42,6 @@ struct pager;
 
 struct pgr_fixture
 {
-  error              e;
   struct pager      *p;
   struct arena_alloc alloc;
   struct txn         tx;
@@ -50,9 +49,9 @@ struct pgr_fixture
   struct i_os        os;
 };
 
-err_t pgr_fixture_create (struct pgr_fixture *dest);
-err_t pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest);
-err_t pgr_fixture_teardown (struct pgr_fixture *f);
+err_t pgr_fixture_create (struct pgr_fixture *dest, error *e);
+err_t pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e);
+err_t pgr_fixture_teardown (struct pgr_fixture *f, error *e);
 
 /******************************************************************************
  * SECTION: Tree fixture 2

@@ -47,29 +47,27 @@ smartfiles_size (struct pager *p, struct txn *tx, struct arena_alloc *alloc, err
 TEST (smartfiles_size)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
-  smartfiles_init_pager (f.p, &f.e);
-
-  ALLOC_INIT (temp);
+  pgr_fixture_create (&f, &ctx->e);
+  smartfiles_init_pager (f.p, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), 0);
+  test_assert_equal (smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e), 0);
 
   u8 buffer[2048];
 
   istream_create_from_array (in1, buffer);
-  smartfiles_insert (f.p, &tx, &in1, 0, sizeof (buffer), &temp, &f.e);
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), sizeof (buffer));
+  smartfiles_insert (f.p, &tx, &in1, 0, sizeof (buffer), &ctx->alloc, &ctx->e);
+  test_assert_equal (smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e), sizeof (buffer));
 
   istream_create_from_array (in2, buffer);
-  smartfiles_insert (f.p, &tx, &in2, 0, sizeof (buffer), &temp, &f.e);
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), 2 * sizeof (buffer));
+  smartfiles_insert (f.p, &tx, &in2, 0, sizeof (buffer), &ctx->alloc, &ctx->e);
+  test_assert_equal (smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e), 2 * sizeof (buffer));
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  ALLOC_CLOSE (temp);
-  pgr_fixture_teardown (&f);
+  arena_alloc_free_all (&ctx->alloc);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

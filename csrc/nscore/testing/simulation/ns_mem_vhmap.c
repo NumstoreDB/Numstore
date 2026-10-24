@@ -283,8 +283,7 @@ mem_vhmap_random (struct mem_vhmap *db)
 #ifndef NDEBUG
 TEST (mem_vhmap)
 {
-  error             e       = error_create ();
-  struct mem_vhmap *v       = mem_vhmap_create (mem, &e);
+  struct mem_vhmap *v       = mem_vhmap_create (ctx->mem, &ctx->e);
 
   struct type       deftype = {
       .type = T_PRIM,
@@ -301,7 +300,7 @@ TEST (mem_vhmap)
           .dtype  = &deftype,
           .nbytes = (b_size)i,
       };
-      struct var_with_data *vwd = mem_vhmap_add (v, &var, &e);
+      struct var_with_data *vwd = mem_vhmap_add (v, &var, &ctx->e);
       ASSERT (vwd != NULL);
 
       struct var_with_data *got = mem_vhmap_get (v, strfcstr (buf));
@@ -317,8 +316,8 @@ TEST (mem_vhmap)
           .vname = strfcstr ("var_0"),
           .dtype = &deftype,
       };
-      ASSERT (mem_vhmap_add (v, &dup, &e) == NULL);
-      error_reset (&e);
+      ASSERT (mem_vhmap_add (v, &dup, &ctx->e) == NULL);
+      error_reset (&ctx->e);
     }
   }
 
@@ -352,11 +351,11 @@ TEST (mem_vhmap)
           .nbytes = (b_size)(i * 3),
           .dtype  = &deftype,
       };
-      struct var_with_data *vwd = mem_vhmap_add (v, &var, &e);
+      struct var_with_data *vwd = mem_vhmap_add (v, &var, &ctx->e);
       test_assert (vwd != NULL);
     }
 
-    struct mem_vhmap *c = mem_vhmap_clone (mem, v, &e);
+    struct mem_vhmap *c = mem_vhmap_clone (ctx->mem, v, &ctx->e);
     ASSERT (c != NULL);
 
     for (int i = 0; i < 128; ++i) {

@@ -86,13 +86,13 @@ TEST (ns_var_get_or_create)
   TEST_CASE ("check types is correct")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    ns_init_var_hash_map (f.p, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    ns_init_var_hash_map (f.p, &ctx->e);
     struct txn tx;
 
     // Create
     {
-      pgr_begin_txn (&tx, f.p, &f.e);
+      pgr_begin_txn (&tx, f.p, &ctx->e);
 
       struct ns_var_get_or_create_params params = {
           .p     = f.p,
@@ -104,25 +104,25 @@ TEST (ns_var_get_or_create)
       };
 
       // Do it twice, both times succeed because it checks types
-      test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
-      test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+      test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
+      test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
 
-      pgr_commit (f.p, &tx, &f.e);
+      pgr_commit (f.p, &tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("errors on different type")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    ns_init_var_hash_map (f.p, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    ns_init_var_hash_map (f.p, &ctx->e);
     struct txn tx;
 
     // Create
     {
-      pgr_begin_txn (&tx, f.p, &f.e);
+      pgr_begin_txn (&tx, f.p, &ctx->e);
 
       struct ns_var_get_or_create_params params = {
           .p     = f.p,
@@ -133,33 +133,33 @@ TEST (ns_var_get_or_create)
           .alloc = &f.alloc,
       };
 
-      test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+      test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
 
       // Should fail if you pass a different type
       params.type = &(struct type){.type = T_PRIM, .p = I32};
-      test_err_t_check (ns_var_get_or_create (&params, &f.e), ERR_INVALID_ARGUMENT, &f.e);
+      test_err_t_check (ns_var_get_or_create (&params, &ctx->e), ERR_INVALID_ARGUMENT, &ctx->e);
 
-      pgr_commit (f.p, &tx, &f.e);
+      pgr_commit (f.p, &tx, &ctx->e);
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Big variable short type")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    ns_init_var_hash_map (f.p, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    ns_init_var_hash_map (f.p, &ctx->e);
 
     for (u32 i = 0; i < 100; ++i) {
       struct txn tx;
 
       // Long variable name
       {
-        pgr_begin_txn (&tx, f.p, &f.e);
+        pgr_begin_txn (&tx, f.p, &ctx->e);
 
         u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
-        char *name = f.mem.table->malloc (f.mem.self, len, 1, &f.e);
+        char *name = f.mem.table->malloc (f.mem.self, len, 1, &ctx->e);
         for (u32 k = 0; k < len - 1; ++k) {
           name[k] = 'a' + randu32r (0, 26);
         }
@@ -175,36 +175,36 @@ TEST (ns_var_get_or_create)
         };
 
         // Do it twice, both times succeed because it checks types
-        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
-        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
 
         f.mem.table->free (f.mem.self, name);
 
-        pgr_commit (f.p, &tx, &f.e);
+        pgr_commit (f.p, &tx, &ctx->e);
       }
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Big variable big type")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    ns_init_var_hash_map (f.p, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    ns_init_var_hash_map (f.p, &ctx->e);
 
     for (u32 i = 0; i < 100; ++i) {
       struct txn tx;
 
       // Long variable name
       {
-        pgr_begin_txn (&tx, f.p, &f.e);
+        pgr_begin_txn (&tx, f.p, &ctx->e);
 
         // Generate a random name that spans 1 - 10 pages
         char *name;
         {
           u32 len = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
-          name    = f.mem.table->malloc (f.mem.self, len, 1, &f.e);
+          name    = f.mem.table->malloc (f.mem.self, len, 1, &ctx->e);
           for (u32 k = 0; k < len - 1; ++k) {
             name[k] = 'a' + randu32r (0, 26);
           }
@@ -212,7 +212,7 @@ TEST (ns_var_get_or_create)
         }
 
         // Generate a random type that goes 0 - 10 layers deep
-        struct type *t = type_random (&f.alloc, randu32r (0, 5), 4096, &f.e);
+        struct type *t = type_random (&f.alloc, randu32r (0, 5), 4096, &ctx->e);
         i_log_info ("%d/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
@@ -225,31 +225,31 @@ TEST (ns_var_get_or_create)
         };
 
         // Do it twice, both times succeed because it checks types
-        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
-        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
 
         f.mem.table->free (f.mem.self, name);
 
-        pgr_commit (f.p, &tx, &f.e);
+        pgr_commit (f.p, &tx, &ctx->e);
       }
     }
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("Big type short variable name")
   {
     for (int i = 0; i < 100; ++i) {
       struct pgr_fixture f;
-      pgr_fixture_create (&f);
-      ns_init_var_hash_map (f.p, &f.e);
+      pgr_fixture_create (&f, &ctx->e);
+      ns_init_var_hash_map (f.p, &ctx->e);
       struct txn tx;
 
       // Long variable name
       {
-        pgr_begin_txn (&tx, f.p, &f.e);
+        pgr_begin_txn (&tx, f.p, &ctx->e);
 
-        struct type *t = type_random (&f.alloc, randu32r (0, 10), 4096, &f.e);
+        struct type *t = type_random (&f.alloc, randu32r (0, 10), 4096, &ctx->e);
 
         i_log_info ("%d/%d\n", i, 100);
 
@@ -263,13 +263,13 @@ TEST (ns_var_get_or_create)
         };
 
         // Do it twice, both times succeed because it checks types
-        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
-        test_assert (ns_var_get_or_create (&params, &f.e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
+        test_assert (ns_var_get_or_create (&params, &ctx->e) == SUCCESS);
 
-        pgr_commit (f.p, &tx, &f.e);
+        pgr_commit (f.p, &tx, &ctx->e);
       }
 
-      pgr_fixture_teardown (&f);
+      pgr_fixture_teardown (&f, &ctx->e);
     }
   }
 }

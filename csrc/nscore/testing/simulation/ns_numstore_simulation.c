@@ -910,8 +910,6 @@ ns_simul_step (struct ns_simulation *meta, error *e)
 #ifndef NDEBUG
 TEST (ns_simul)
 {
-  error e = error_create ();
-
   TEST_CASE ("Smoke test")
   {
     struct ns_simulation_params params = {
@@ -923,18 +921,18 @@ TEST (ns_simul)
         .max_insert_len    = 1000,
         .max_tsize         = 1000,
         .sample_space_prob = 1,
-        .test_os           = os,
-        .test_mem          = mem,
-        .reliable_mem      = mem,
-        .reliable_os       = os,
+        .test_os           = ctx->os,
+        .test_mem          = ctx->mem,
+        .reliable_mem      = ctx->mem,
+        .reliable_os       = ctx->os,
     };
-    struct ns_simulation *simul = ns_simul_open (params, &e);
+    struct ns_simulation *simul = ns_simul_open (params, &ctx->e);
 
-    ns_simul_step (simul, &e);
-    ns_simul_step (simul, &e);
-    ns_simul_step (simul, &e);
+    ns_simul_step (simul, &ctx->e);
+    ns_simul_step (simul, &ctx->e);
+    ns_simul_step (simul, &ctx->e);
 
-    ns_simul_close (simul, &e);
+    ns_simul_close (simul, &ctx->e);
   }
 }
 #endif

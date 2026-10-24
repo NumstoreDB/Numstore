@@ -1003,20 +1003,19 @@ wal_thread (void *ctx)
 
 TEST (wal_multi_threaded)
 {
-  error e = error_create ();
-  os.table->remove_quiet (os.self, "test.wal", &e);
-  struct wal *ww = wal_open ("test.wal", mem, os, &e);
-  wal_write_start_lsn (ww, 0, &e);
+  ctx->os.table->remove_quiet (ctx->os.self, "test.wal", &ctx->e);
+  struct wal *ww = wal_open ("test.wal", ctx->mem, ctx->os, &ctx->e);
+  wal_write_start_lsn (ww, 0, &ctx->e);
 
   const u32                N    = 5000;
 
-  struct wal_rec_hdr_read *read = mem.table->malloc (mem.self, N, sizeof *read, &e);
+  struct wal_rec_hdr_read *read = ctx->mem.table->malloc (ctx->mem.self, N, sizeof *read, &ctx->e);
 
   for (u32 i = 0; i < N; ++i) {
     wal_rec_hdr_read_random (&read[i]);
   }
 
-  struct wal_queue ctx = {
+  struct wal_queue queue = {
       .sync = 1,
       .ww   = ww,
       .idx  = 0,
@@ -1027,16 +1026,16 @@ TEST (wal_multi_threaded)
   u32      nthreads;
   i_thread threads[10];
   for (nthreads = 0; nthreads < arrlen (threads); ++nthreads) {
-    os.table->thread_create (os.self, &threads[nthreads], wal_thread, &ctx, &e);
+    ctx->os.table->thread_create (ctx->os.self, &threads[nthreads], wal_thread, &queue, &ctx->e);
   }
 
   // launch
-  atomic_store (&ctx.sync, 0);
+  atomic_store (&queue.sync, 0);
 
   i_log_info ("Threads active\n");
 
   for (; nthreads > 0; --nthreads) {
-    os.table->thread_join (os.self, threads[nthreads - 1].self);
+    ctx->os.table->thread_join (ctx->os.self, threads[nthreads - 1].self);
   }
 
   // To speed up searches, keep a "finger" which is "near" the
@@ -1045,7 +1044,7 @@ TEST (wal_multi_threaded)
   lsn read_lsn = 0;
 
   for (u32 i = 0; i < N; ++i) {
-    struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &e);
+    struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &ctx->e);
     i_print_wal_rec_hdr_read_light (LOG_INFO, actual, read_lsn);
     test_assert (actual->type != WL_EOF);
 
@@ -1063,11 +1062,11 @@ TEST (wal_multi_threaded)
     test_assert (found);
   }
 
-  const struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &e);
+  const struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &ctx->e);
   test_assert_int_equal (actual->type, WL_EOF);
 
-  wal_close (ww, &e);
-  mem.table->free (mem.self, read);
+  wal_close (ww, &ctx->e);
+  ctx->mem.table->free (ctx->mem.self, read);
 }
 
 struct wal_test_params
@@ -1304,7 +1303,7 @@ TEST (wal)
       wal_test_fill_batch (c->batch1, c->batch1_len);
       wal_test_fill_batch (c->batch2, c->batch2_len);
 
-      run_wal_test (c, os);
+      run_wal_test (c, ctx->os);
 
       wal_test_free_batch (c->batch1, c->batch1_len);
       wal_test_free_batch (c->batch2, c->batch2_len);
@@ -1314,8 +1313,6 @@ TEST (wal)
 
 TEST (wal_single_entry)
 {
-  error                   e       = error_create ();
-
   struct wal_rec_hdr_read cases[] = {
       {.type = WL_BEGIN, .begin = {.tid = 1}},
       {.type = WL_COMMIT, .commit = {.tid = 2, .prev = 10}},
@@ -1333,22 +1330,22 @@ TEST (wal_single_entry)
 
       wal_test_fill_batch (c, 1);
 
-      os.table->remove_quiet (os.self, "test_single_entry.wal", &e);
-      struct wal *ww = wal_open ("test_single_entry.wal", mem, os, &e);
-      wal_write_start_lsn (ww, 0, &e);
+      ctx->os.table->remove_quiet (ctx->os.self, "test_single_entry.wal", &ctx->e);
+      struct wal *ww = wal_open ("test_single_entry.wal", ctx->mem, ctx->os, &ctx->e);
+      wal_write_start_lsn (ww, 0, &ctx->e);
 
       // WRITE
       struct wal_rec_hdr_write out = wrhw_from_wrhr (c);
-      const slsn               l   = wal_append_log (ww, &out, &e);
+      const slsn               l   = wal_append_log (ww, &out, &ctx->e);
       test_assert (l >= 0);
 
-      wal_flush_all (ww, &e);
+      wal_flush_all (ww, &ctx->e);
 
       // READ
-      struct wal_rec_hdr_read *next = wal_read_first (ww, &e);
+      struct wal_rec_hdr_read *next = wal_read_first (ww, &ctx->e);
       test_assert (wal_rec_hdr_read_equal (next, c));
 
-      wal_close (ww, &e);
+      wal_close (ww, &ctx->e);
 
       wal_test_free_batch (c, 1);
     }

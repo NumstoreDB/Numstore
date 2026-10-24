@@ -260,14 +260,14 @@ failed:
 TEST (ns_insert)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   TEST_CASE ("Smoke Test")
   {
     u32                    buffer[2048];
     struct stream          input;
-    struct stream_ibuf_ctx ctx;
-    stream_ibuf_init (&input, &ctx, buffer, sizeof (buffer));
+    struct stream_ibuf_ctx ibuf;
+    stream_ibuf_init (&input, &ibuf, buffer, sizeof (buffer));
 
     struct ns_insert_params params = {
         .p     = f.p,
@@ -278,7 +278,7 @@ TEST (ns_insert)
         .bytes = 40,
     };
 
-    err_t ret = ns_insert (&params, &f.e);
+    err_t ret = ns_insert (&params, &ctx->e);
 
     test_assert_int_equal (ret, 40);
     test_assert (params.root != PGNO_NULL);
@@ -288,8 +288,8 @@ TEST (ns_insert)
   {
     u32                    buffer[2048];
     struct stream          input;
-    struct stream_ibuf_ctx ctx;
-    stream_ibuf_init (&input, &ctx, buffer, sizeof (buffer));
+    struct stream_ibuf_ctx ibuf;
+    stream_ibuf_init (&input, &ibuf, buffer, sizeof (buffer));
 
     struct ns_insert_params params = {
         .p     = f.p,
@@ -300,12 +300,12 @@ TEST (ns_insert)
         .bytes = 40,
     };
 
-    err_t ret = ns_insert (&params, &f.e);
+    err_t ret = ns_insert (&params, &ctx->e);
 
     test_assert_int_equal (ret, 40);
     test_assert (params.root != PGNO_NULL);
 
-    ret = ns_insert (&params, &f.e);
+    ret = ns_insert (&params, &ctx->e);
 
     test_assert_int_equal (ret, 40);
     test_assert (params.root != PGNO_NULL);
@@ -321,8 +321,8 @@ TEST (ns_insert)
       {                                                                          \
         u8                     buffer[4096];                                     \
         struct stream          input;                                            \
-        struct stream_ibuf_ctx ctx;                                              \
-        stream_ibuf_init (&input, &ctx, buffer, stream_size);                    \
+        struct stream_ibuf_ctx ibuf;                                             \
+        stream_ibuf_init (&input, &ibuf, buffer, stream_size);                   \
                                                                                  \
         struct ns_insert_params params = {                                       \
             .p     = f.p,                                                        \
@@ -333,7 +333,7 @@ TEST (ns_insert)
             .bytes = byte_size,                                                  \
         };                                                                       \
                                                                                  \
-        err_t ret = ns_insert (&params, &f.e);                                   \
+        err_t ret = ns_insert (&params, &ctx->e);                                \
                                                                                  \
         test_assert_int_equal (ret, expected);                                   \
         if (expected > 0) {                                                      \
@@ -351,38 +351,38 @@ TEST (ns_insert)
   BYTE_STREAM_SIZE_TEST (2048, 4096, 2048);
   BYTE_STREAM_SIZE_TEST (4096, 2048, 2048);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 
-#  define DO_INSERT(f, _root, _bofst, data, params)       \
-    do {                                                  \
-      u32_arr_rand (data);                                \
-      struct stream          src;                         \
-      struct stream_ibuf_ctx ctx;                         \
-      stream_ibuf_init (&src, &ctx, data, sizeof (data)); \
-                                                          \
-      pgr_begin_txn (&f.tx, f.p, &f.e);                   \
-                                                          \
-      params = (struct ns_insert_params){                 \
-          .p     = f.p,                                   \
-          .src   = &src,                                  \
-          .tx    = &f.tx,                                 \
-          .root  = _root,                                 \
-          .bofst = _bofst,                                \
-          .bytes = sizeof (data),                         \
-      };                                                  \
-                                                          \
-      ns_insert (&params, &f.e);                          \
-                                                          \
-      pgr_commit (f.p, &f.tx, &f.e);                      \
-                                                          \
-      test_assert (params.root != PGNO_NULL);             \
-    }                                                     \
+#  define DO_INSERT(f, _root, _bofst, data, params)        \
+    do {                                                   \
+      u32_arr_rand (data);                                 \
+      struct stream          src;                          \
+      struct stream_ibuf_ctx ibuf;                         \
+      stream_ibuf_init (&src, &ibuf, data, sizeof (data)); \
+                                                           \
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);                 \
+                                                           \
+      params = (struct ns_insert_params){                  \
+          .p     = f.p,                                    \
+          .src   = &src,                                   \
+          .tx    = &f.tx,                                  \
+          .root  = _root,                                  \
+          .bofst = _bofst,                                 \
+          .bytes = sizeof (data),                          \
+      };                                                   \
+                                                           \
+      ns_insert (&params, &ctx->e);                        \
+                                                           \
+      pgr_commit (f.p, &f.tx, &ctx->e);                    \
+                                                           \
+      test_assert (params.root != PGNO_NULL);              \
+    }                                                      \
     while (0)
 
 #  define DO_REMOVE(f, _root, _bofst, _size, params) \
     do {                                             \
-      pgr_begin_txn (&f.tx, f.p, &f.e);              \
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);           \
                                                      \
       params = (struct ns_remove_params){            \
           .p      = f.p,                             \
@@ -394,27 +394,27 @@ TEST (ns_insert)
           .nelem  = _size,                           \
       };                                             \
                                                      \
-      ns_remove (&params, &f.e);                     \
+      ns_remove (&params, &ctx->e);                  \
                                                      \
-      pgr_commit (f.p, &f.tx, &f.e);                 \
+      pgr_commit (f.p, &f.tx, &ctx->e);              \
     }                                                \
     while (0)
 
 #  define TEST_DATA_LIST(pgno, expected_data)                                                      \
     do {                                                                                           \
       page_h root = page_h_create ();                                                              \
-      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &f.e);                                              \
+      pgr_get (&root, PG_DATA_LIST, pgno, f.p, &ctx->e);                                           \
       test_assert_int_equal (dl_used (page_h_ro (&root)), sizeof (expected_data));                 \
       int equal = memcmp (dl_get_data (page_h_ro (&root)), expected_data, sizeof (expected_data)); \
       test_assert_int_equal (equal, 0);                                                            \
-      pgr_release (f.p, &root, PG_DATA_LIST, &f.e);                                                \
+      pgr_release (f.p, &root, PG_DATA_LIST, &ctx->e);                                             \
     }                                                                                              \
     while (0)
 
 TEST (ns_insert_from_empty)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   TEST_CASE ("Create a data list page with one element")
   {
@@ -510,6 +510,6 @@ TEST (ns_insert_from_empty)
     TEST_DATA_LIST (params.root, expected);
   }
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

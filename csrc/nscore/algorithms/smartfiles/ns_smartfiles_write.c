@@ -127,31 +127,30 @@ smartfiles_write (
 TEST (smartfiles_pwrite)
 {
   struct pgr_fixture f;
-  pgr_fixture_create (&f);
-  smartfiles_init_pager (f.p, &f.e);
-
-  ALLOC_INIT (temp);
+  pgr_fixture_create (&f, &ctx->e);
+  smartfiles_init_pager (f.p, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   u8 buffer[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
   istream_create_from_array (in_init, buffer);
-  smartfiles_insert (f.p, &tx, &in_init, 0, sizeof (buffer), &temp, &f.e);
+  smartfiles_insert (f.p, &tx, &in_init, 0, sizeof (buffer), &ctx->alloc, &ctx->e);
 
   // Overwrite the first 4 bytes in place.
   u8 overwrite[4] = {9, 9, 9, 9};
   istream_create_from_array (in_over, overwrite);
-  sb_size n = smartfiles_write (f.p, &tx, &in_over, 1, 0, 1, sizeof (overwrite), &temp, &f.e);
+  sb_size
+      n = smartfiles_write (f.p, &tx, &in_over, 1, 0, 1, sizeof (overwrite), &ctx->alloc, &ctx->e);
 
   test_assert_equal (n, sizeof (overwrite));
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), sizeof (buffer));
+  test_assert_equal (smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e), sizeof (buffer));
 
   u8 out[8] = {0};
 
   ostream_create_from_array (output, out);
-  smartfiles_read (f.p, &tx, &output, 1, 0, 1, sizeof (out), &temp, &f.e);
+  smartfiles_read (f.p, &tx, &output, 1, 0, 1, sizeof (out), &ctx->alloc, &ctx->e);
 
   u8 expected[8] = {9, 9, 9, 9, 5, 6, 7, 8};
   test_assert (memcmp (out, expected, sizeof (expected)) == 0);
@@ -159,14 +158,27 @@ TEST (smartfiles_pwrite)
   // Writing past the end should append (insert the remainder).
   u8 append[4] = {11, 12, 13, 14};
   istream_create_from_array (in_append, append);
-  n = smartfiles_write (f.p, &tx, &in_append, 1, sizeof (buffer), 1, sizeof (append), &temp, &f.e);
+  n = smartfiles_write (
+      f.p,
+      &tx,
+      &in_append,
+      1,
+      sizeof (buffer),
+      1,
+      sizeof (append),
+      &ctx->alloc,
+      &ctx->e
+  );
 
   test_assert_equal (n, sizeof (append));
-  test_assert_equal (smartfiles_size (f.p, &tx, &temp, &f.e), sizeof (buffer) + sizeof (append));
+  test_assert_equal (
+      smartfiles_size (f.p, &tx, &ctx->alloc, &ctx->e),
+      sizeof (buffer) + sizeof (append)
+  );
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  ALLOC_CLOSE (temp);
-  pgr_fixture_teardown (&f);
+  arena_alloc_free_all (&ctx->alloc);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

@@ -116,38 +116,36 @@ failed:
 #ifndef NDEBUG
 TEST (fpgr_open)
 {
-  error e = error_create ();
-
   _Static_assert (NS_PAGE_SIZE > 2, "NS_PAGE_SIZE should be > 2 for file_pager test");
 
   i_file fp = {0};
-  os.table->open_file_rw (os.self, &fp, "test.db", &e);
+  ctx->os.table->open_file_rw (ctx->os.self, &fp, "test.db", &ctx->e);
 
   // edge case: file shorter than header
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &e));
-  struct file_pager *pager = fpgr_open ("test.db", mem, os, 0, &e);
-  test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &ctx->e));
+  struct file_pager *pager = fpgr_open ("test.db", ctx->mem, ctx->os, 0, &ctx->e);
+  test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
 
   // edge case: file size = half a page
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &e));
-  pager = fpgr_open ("test.db", mem, os, 0, &e);
-  test_err_t_check (e.cause_code, ERR_CORRUPT, &e);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &ctx->e));
+  pager = fpgr_open ("test.db", ctx->mem, ctx->os, 0, &ctx->e);
+  test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
 
   // happy path: file exactly header size, zero pages
-  test_fail_if (fp.table->truncate (fp.self, 0, &e));
-  pager = fpgr_open ("test.db", mem, os, 0, &e);
+  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
+  pager = fpgr_open ("test.db", ctx->mem, ctx->os, 0, &ctx->e);
   test_assert_int_equal ((int)atomic_load (&pager->npages), 0);
-  test_fail_if (fpgr_close (pager, &e));
+  test_fail_if (fpgr_close (pager, &ctx->e));
 
   // happy path: file exactly header size, more pages
-  test_fail_if (fp.table->truncate (fp.self, 3 * NS_PAGE_SIZE, &e));
-  pager = fpgr_open ("test.db", mem, os, 0, &e);
+  test_fail_if (fp.table->truncate (fp.self, 3 * NS_PAGE_SIZE, &ctx->e));
+  pager = fpgr_open ("test.db", ctx->mem, ctx->os, 0, &ctx->e);
   test_assert_equal (atomic_load (&pager->npages), 3);
-  test_fail_if (fpgr_close (pager, &e));
+  test_fail_if (fpgr_close (pager, &ctx->e));
 
   // There were 2 refs to file - close it here too
-  test_fail_if (os.table->close_file (os.self, fp.self, &e));
-  test_fail_if (os.table->unlink (os.self, "test.db", &e));
+  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
+  test_fail_if (ctx->os.table->unlink (ctx->os.self, "test.db", &ctx->e));
 }
 #endif
 
@@ -221,42 +219,41 @@ failed:
 TEST (fpgr_new)
 {
   i_file fp = {0};
-  error  e  = error_create ();
 
-  test_fail_if (os.table->open_file_rw (os.self, &fp, "test.db", &e));
+  test_fail_if (ctx->os.table->open_file_rw (ctx->os.self, &fp, "test.db", &ctx->e));
 
-  test_fail_if (fp.table->truncate (fp.self, 0, &e));
+  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
 
-  struct file_pager *pager = fpgr_open ("test.db", mem, os, 0, &e);
+  struct file_pager *pager = fpgr_open ("test.db", ctx->mem, ctx->os, 0, &ctx->e);
 
   // Create a new page
-  test_fail_if (fpgr_extend (pager, 1, &e));
+  test_fail_if (fpgr_extend (pager, 1, &ctx->e));
   test_assert_int_equal (atomic_load (&pager->npages), 1);
   test_assert_int_equal (
-      fp.table->file_size (fp.self, &e),
+      fp.table->file_size (fp.self, &ctx->e),
       NS_PAGE_SIZE * atomic_load (&pager->npages)
   );
 
   // Add two more pages and do the same thing
-  test_fail_if (fpgr_extend (pager, 2, &e));
+  test_fail_if (fpgr_extend (pager, 2, &ctx->e));
   test_assert_int_equal (atomic_load (&pager->npages), 2);
   test_assert_int_equal (
-      fp.table->file_size (fp.self, &e),
+      fp.table->file_size (fp.self, &ctx->e),
       NS_PAGE_SIZE * atomic_load (&pager->npages)
   );
 
-  test_fail_if (fpgr_extend (pager, 3, &e));
+  test_fail_if (fpgr_extend (pager, 3, &ctx->e));
   test_assert_int_equal (atomic_load (&pager->npages), 3);
   test_assert_int_equal (
-      fp.table->file_size (fp.self, &e),
+      fp.table->file_size (fp.self, &ctx->e),
       NS_PAGE_SIZE * atomic_load (&pager->npages)
   );
 
-  test_fail_if (fpgr_close (pager, &e));
+  test_fail_if (fpgr_close (pager, &ctx->e));
 
   // There were 2 refs to file - close it here too
-  test_fail_if (os.table->close_file (os.self, fp.self, &e));
-  test_fail_if (os.table->unlink (os.self, "test.db", &e));
+  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
+  test_fail_if (ctx->os.table->unlink (ctx->os.self, "test.db", &ctx->e));
 }
 #endif
 
@@ -381,29 +378,28 @@ TEST (fpgr_read_write)
 
   // Create a temporary file
   i_file fp = {0};
-  error  e  = error_create ();
 
-  test_fail_if (os.table->open_file_rw (os.self, &fp, "test.db", &e));
+  test_fail_if (ctx->os.table->open_file_rw (ctx->os.self, &fp, "test.db", &ctx->e));
 
   // File should be size 0
-  test_fail_if (fp.table->truncate (fp.self, 0, &e));
+  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
 
   // Open a new pager
-  struct file_pager *pager = fpgr_open ("test.db", mem, os, 0, &e);
-  test_assert_int_equal (e.cause_code, SUCCESS);
+  struct file_pager *pager = fpgr_open ("test.db", ctx->mem, ctx->os, 0, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
   // happy path: new page, write, then read back
-  test_fail_if (fpgr_extend (pager, 2, &e));
+  test_fail_if (fpgr_extend (pager, 2, &ctx->e));
 
   // Write 0 : NS_PAGE_SIZE to each byte (overflow fine, it's just data)
   for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
     _page[i] = (u8)i;
   }
   // Write it out
-  test_fail_if (fpgr_write (pager, _page, 1, &e));
+  test_fail_if (fpgr_write (pager, _page, 1, &ctx->e));
 
   // Scramble page so we can read it back in
   memset (_page, 0xFF, NS_PAGE_SIZE);
-  test_fail_if (fpgr_read (pager, _page, 1, &e));
+  test_fail_if (fpgr_read (pager, _page, 1, &ctx->e));
 
   // Iterate and check that it matches what we expect
   for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
@@ -411,9 +407,9 @@ TEST (fpgr_read_write)
   }
 
   // There's 2 refs to this file, close the other one
-  test_fail_if (fpgr_close (pager, &e));
-  test_fail_if (os.table->close_file (os.self, fp.self, &e));
-  test_fail_if (os.table->unlink (os.self, "test.db", &e));
+  test_fail_if (fpgr_close (pager, &ctx->e));
+  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
+  test_fail_if (ctx->os.table->unlink (ctx->os.self, "test.db", &ctx->e));
 }
 #endif
 

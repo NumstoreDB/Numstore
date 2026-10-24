@@ -295,15 +295,13 @@ failed:
 #ifndef NDEBUG
 TEST (pager_open)
 {
-  error e = error_create ();
-
   TEST_CASE ("green path")
   {
-    test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+    test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
-    struct pager *p = pgr_open ("testdb", mem, os, &e);
+    struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
 
-    pgr_close (p, &e);
+    pgr_close (p, &ctx->e);
   }
 
   TEST_CASE ("dbname is too long")
@@ -311,65 +309,66 @@ TEST (pager_open)
     // Over the limit is rejected before anything reaches the filesystem, so
     // this probe can be longer than any filesystem would accept for a name.
     u32   overlong = NS_PATH_MAX - 4;
-    char *name     = mem.table->malloc (mem.self, overlong + 1, 1, &e);
+    char *name     = ctx->mem.table->malloc (ctx->mem.self, overlong + 1, 1, &ctx->e);
     memset (name, 'c', overlong);
     name[overlong]  = '\0';
 
-    struct pager *p = pgr_open (name, mem, os, &e);
+    struct pager *p = pgr_open (name, ctx->mem, ctx->os, &ctx->e);
     test_assert (p == NULL);
-    test_err_t_check (e.cause_code, ERR_INVALID_ARGUMENT, &e);
-    e.cause_code = SUCCESS;
+    test_err_t_check (ctx->e.cause_code, ERR_INVALID_ARGUMENT, &ctx->e);
+    ctx->e.cause_code = SUCCESS;
 
     // Under it, but not at it: the limit is a path limit, while this name is a
     // single path component, which filesystems cap at 255 bytes -- and on
     // Windows the cwd plus the name still has to fit MAX_PATH.
-    name[100]    = '\0';
-    p            = pgr_open (name, mem, os, &e);
+    name[100]         = '\0';
+    p                 = pgr_open (name, ctx->mem, ctx->os, &ctx->e);
     test_assert (p != NULL);
 
-    pgr_close (p, &e);
+    pgr_close (p, &ctx->e);
 
     // Delete the obtuse name
-    pgr_delete_single_file (name, os, &e);
+    pgr_delete_single_file (name, ctx->os, &ctx->e);
 
-    mem.table->free (mem.self, name);
+    ctx->mem.table->free (ctx->mem.self, name);
   }
+
+  TEST_CASE ("pgr malloc fails")
+  {}
 }
 #endif
 
 #ifndef NDEBUG
 TEST (pgr_open_basic)
 {
-  error e = error_create ();
-
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
   i_file fp = {0};
-  os.table->open_file_rw (os.self, &fp, "testdb", &e);
+  ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e);
 
   // File is shorter than page size
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &e));
-  struct pager *p = pgr_open ("testdb", mem, os, &e);
-  test_assert_int_equal (e.cause_code, ERR_CORRUPT);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &ctx->e));
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
-  error_reset (&e);
+  error_reset (&ctx->e);
 
   // Half a page
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &e));
-  p = pgr_open ("testdb", mem, os, &e);
-  test_assert_int_equal (e.cause_code, ERR_CORRUPT);
+  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &ctx->e));
+  p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, ERR_CORRUPT);
   test_assert_equal (p, NULL);
-  error_reset (&e);
+  error_reset (&ctx->e);
 
   // 0 pages
-  test_fail_if (fp.table->truncate (fp.self, 0, &e));
-  p = pgr_open ("testdb", mem, os, &e);
-  test_assert_int_equal (e.cause_code, SUCCESS);
+  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
+  p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
   test_assert_int_equal ((int)pgr_get_npages (p), 0);
-  test_fail_if (pgr_close (p, &e));
+  test_fail_if (pgr_close (p, &ctx->e));
 
   // Tear down
-  test_fail_if (os.table->close_file (os.self, fp.self, &e));
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 }
 #endif

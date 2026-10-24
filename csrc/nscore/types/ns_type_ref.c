@@ -72,17 +72,14 @@ type_ref_equal (const struct type_ref left, const struct type_ref right)
 #ifndef NDEBUG
 TEST (type_ref_equal)
 {
-  ALLOC_INIT (alloc);
-  error e = error_create ();
-
 #  define TRE_TC(left, right, expected)                            \
     TEST_CASE ("%s == %s == %d", left, right, expected)            \
     {                                                              \
       struct type_ref left_tr;                                     \
       struct type_ref right_tr;                                    \
                                                                    \
-      compile_type_ref (&left_tr, left, &alloc, &e);               \
-      compile_type_ref (&right_tr, right, &alloc, &e);             \
+      compile_type_ref (&left_tr, left, &ctx->alloc, &ctx->e);     \
+      compile_type_ref (&right_tr, right, &ctx->alloc, &ctx->e);   \
                                                                    \
       if (expected) {                                              \
         test_assert (type_ref_equal (left_tr, right_tr));          \
@@ -115,7 +112,7 @@ TEST (type_ref_equal)
       false
   );
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 
@@ -193,38 +190,35 @@ tr_construct (struct type *reftype, struct type_ref *tr, struct arena_alloc *all
 #ifndef NDEBUG
 TEST (tr_construct)
 {
-  ALLOC_INIT (alloc);
-  error e = error_create ();
-
-#  define TRC_TC(typestr, trstr, expectedstr)                             \
-    TEST_CASE ("tr_construct(%s, %s) == %s", typestr, trstr, expectedstr) \
-    {                                                                     \
-      struct type     base_type;                                          \
-      struct type_ref tr;                                                 \
-      struct type     expected_type;                                      \
-                                                                          \
-      compile_type (&base_type, typestr, &alloc, &e);                     \
-      compile_type_ref (&tr, trstr, &alloc, &e);                          \
-      compile_type (&expected_type, expectedstr, &alloc, &e);             \
-                                                                          \
-      struct type *actual = tr_construct (&base_type, &tr, &alloc, &e);   \
-                                                                          \
-      test_assert (type_equal (&expected_type, actual));                  \
+#  define TRC_TC(typestr, trstr, expectedstr)                                     \
+    TEST_CASE ("tr_construct(%s, %s) == %s", typestr, trstr, expectedstr)         \
+    {                                                                             \
+      struct type     base_type;                                                  \
+      struct type_ref tr;                                                         \
+      struct type     expected_type;                                              \
+                                                                                  \
+      compile_type (&base_type, typestr, &ctx->alloc, &ctx->e);                   \
+      compile_type_ref (&tr, trstr, &ctx->alloc, &ctx->e);                        \
+      compile_type (&expected_type, expectedstr, &ctx->alloc, &ctx->e);           \
+                                                                                  \
+      struct type *actual = tr_construct (&base_type, &tr, &ctx->alloc, &ctx->e); \
+                                                                                  \
+      test_assert (type_equal (&expected_type, actual));                          \
     }
 
-#  define TRC_TC_FAIL(typestr, trstr)                                   \
-    TEST_CASE ("tr_construct(%s, %s) == FAIL", typestr, trstr)          \
-    {                                                                   \
-      struct type     base_type;                                        \
-      struct type_ref tr;                                               \
-                                                                        \
-      compile_type (&base_type, typestr, &alloc, &e);                   \
-      compile_type_ref (&tr, trstr, &alloc, &e);                        \
-                                                                        \
-      struct type *actual = tr_construct (&base_type, &tr, &alloc, &e); \
-                                                                        \
-      test_assert (actual == NULL);                                     \
-      error_reset (&e);                                                 \
+#  define TRC_TC_FAIL(typestr, trstr)                                             \
+    TEST_CASE ("tr_construct(%s, %s) == FAIL", typestr, trstr)                    \
+    {                                                                             \
+      struct type     base_type;                                                  \
+      struct type_ref tr;                                                         \
+                                                                                  \
+      compile_type (&base_type, typestr, &ctx->alloc, &ctx->e);                   \
+      compile_type_ref (&tr, trstr, &ctx->alloc, &ctx->e);                        \
+                                                                                  \
+      struct type *actual = tr_construct (&base_type, &tr, &ctx->alloc, &ctx->e); \
+                                                                                  \
+      test_assert (actual == NULL);                                               \
+      error_reset (&ctx->e);                                                      \
     }
 
   TRC_TC ("u8", "foo", "u8");
@@ -245,6 +239,6 @@ TEST (tr_construct)
       "struct { a struct { c u16 }, b u8 }"
   );
 
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif

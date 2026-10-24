@@ -81,8 +81,7 @@ dlgt_balance_with_prev (const page_h *prev, const page_h *cur)
 TEST (dlgt_balance_with_prev)
 {
   struct pgr_fixture f;
-  error             *e = &f.e;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   u8 _prev[DL_DATA_SIZE];
   u8 _cur[DL_DATA_SIZE];
@@ -90,7 +89,7 @@ TEST (dlgt_balance_with_prev)
   u32_arr_rand (_cur);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   struct page_tree_builder builder = {
       .root =
@@ -130,12 +129,12 @@ TEST (dlgt_balance_with_prev)
       .txn   = &tx,
   };
 
-  build_page_tree (&builder, &f.e);
+  build_page_tree (&builder, &ctx->e);
 
   page_h *prev = &builder.root.inner.children[0].out;
   page_h *cur  = &builder.root.inner.children[1].out;
 
-  pgr_release (f.p, &builder.root.out, PG_INNER_NODE, e);
+  pgr_release (f.p, &builder.root.out, PG_INNER_NODE, &ctx->e);
 
   TEST_CASE ("Both Full no change")
   {
@@ -201,12 +200,12 @@ TEST (dlgt_balance_with_prev)
     }
   }
 
-  pgr_release (f.p, prev, PG_DATA_LIST, e);
-  pgr_delete_and_release (f.p, &tx, cur, e);
+  pgr_release (f.p, prev, PG_DATA_LIST, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, cur, &ctx->e);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif
 
@@ -250,8 +249,7 @@ dlgt_balance_with_next (const page_h *cur, const page_h *next)
 TEST (dlgt_balance_with_next)
 {
   struct pgr_fixture f;
-  error             *e = &f.e;
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   u8 _cur[DL_DATA_SIZE];
   u8 _next[DL_DATA_SIZE];
@@ -259,7 +257,7 @@ TEST (dlgt_balance_with_next)
   u32_arr_rand (_cur);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
   struct page_tree_builder builder = {
       .root =
@@ -299,12 +297,12 @@ TEST (dlgt_balance_with_next)
       .txn   = &tx,
   };
 
-  build_page_tree (&builder, &f.e);
+  build_page_tree (&builder, &ctx->e);
 
   page_h *cur  = &builder.root.inner.children[0].out;
   page_h *next = &builder.root.inner.children[1].out;
 
-  pgr_release (f.p, &builder.root.out, PG_INNER_NODE, e);
+  pgr_release (f.p, &builder.root.out, PG_INNER_NODE, &ctx->e);
 
   TEST_CASE ("Both Full no change")
   {
@@ -370,12 +368,12 @@ TEST (dlgt_balance_with_next)
     }
   }
 
-  pgr_release (f.p, next, PG_DATA_LIST, e);
-  pgr_delete_and_release (f.p, &tx, cur, e);
+  pgr_release (f.p, next, PG_DATA_LIST, &ctx->e);
+  pgr_delete_and_release (f.p, &tx, cur, &ctx->e);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif
 

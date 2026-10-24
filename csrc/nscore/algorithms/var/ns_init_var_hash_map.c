@@ -74,44 +74,44 @@ TEST (ns_init_var_hash_map)
   TEST_CASE ("green path")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
-    ns_init_var_hash_map (f.p, &f.e);
+    pgr_fixture_create (&f, &ctx->e);
+    ns_init_var_hash_map (f.p, &ctx->e);
 
     page_h vhp = page_h_create ();
-    test_assert_int_equal (pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &f.e), SUCCESS);
+    test_assert_int_equal (pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &ctx->e), SUCCESS);
 
-    pgr_release (f.p, &vhp, PG_VAR_HASH_PAGE, &f.e);
-    pgr_fixture_teardown (&f);
+    pgr_release (f.p, &vhp, PG_VAR_HASH_PAGE, &ctx->e);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("corrupt database")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
+    pgr_fixture_create (&f, &ctx->e);
 
     // Create an invalid database by creating an upfront page
-    pgr_begin_txn (&f.tx, f.p, &f.e);
+    pgr_begin_txn (&f.tx, f.p, &ctx->e);
     page_h corrupt_page = page_h_create ();
-    pgr_new (&corrupt_page, f.p, &f.tx, PG_DATA_LIST, &f.e);
+    pgr_new (&corrupt_page, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
     dl_make_valid (page_h_w (&corrupt_page));
-    pgr_release (f.p, &corrupt_page, PG_DATA_LIST, &f.e);
-    pgr_commit (f.p, &f.tx, &f.e);
+    pgr_release (f.p, &corrupt_page, PG_DATA_LIST, &ctx->e);
+    pgr_commit (f.p, &f.tx, &ctx->e);
 
     // Initialize - this should fail
-    test_err_t_check (ns_init_var_hash_map (f.p, &f.e), ERR_CORRUPT, &f.e);
+    test_err_t_check (ns_init_var_hash_map (f.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("can't init twice")
   {
     struct pgr_fixture f;
-    pgr_fixture_create (&f);
+    pgr_fixture_create (&f, &ctx->e);
 
-    test_assert (ns_init_var_hash_map (f.p, &f.e) == SUCCESS);
-    test_err_t_check (ns_init_var_hash_map (f.p, &f.e), ERR_CORRUPT, &f.e);
+    test_assert (ns_init_var_hash_map (f.p, &ctx->e) == SUCCESS);
+    test_err_t_check (ns_init_var_hash_map (f.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-    pgr_fixture_teardown (&f);
+    pgr_fixture_teardown (&f, &ctx->e);
   }
 }
 #endif

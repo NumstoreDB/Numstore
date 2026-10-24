@@ -19,14 +19,14 @@
 
 sb_size
 numstore_remove_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,
-    struct user_stride          ustr,
-    struct arena_alloc *NONNULL valloc,
-    struct variable *NULLABLE   var,
-    struct stream *NULLABLE     dest,
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,
+    struct user_stride  ustr,
+    struct arena_alloc *valloc,
+    struct variable    *var,
+    struct stream      *dest,
+    error              *e
 )
 {
   DBG_ASSERT (pager, p);
@@ -52,12 +52,12 @@ numstore_remove_from_name (
 
 sb_size
 numstore_remove (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    struct stream *NULLABLE  dest,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *dest,
+    error             *e
 )
 {
   DBG_ASSERT (pager, p);

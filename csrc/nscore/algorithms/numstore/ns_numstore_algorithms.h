@@ -27,143 +27,143 @@
 err_t numstore_init_pager (struct pager *p, error *e);
 
 sb_size numstore_insert_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               vname,  // Name of the variable
-    b_size                      ofst,   // Offset (in elements)
-    b_size                      len,    // Length of the data
-    struct arena_alloc *NONNULL valloc, // Where to allocate the variable
-    struct variable *NULLABLE   var,    // If not null - save the variable
-    struct stream *NONNULL      src,    // Input stream
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       vname,  // Name of the variable
+    b_size              ofst,   // Offset (in elements)
+    b_size              len,    // Length of the data
+    struct arena_alloc *valloc, // Where to allocate the variable
+    struct variable    *var,    // If not null - save the variable
+    struct stream      *src,    // Input stream
+    error              *e
 );
 
 // Insert into a variable based on already knowing the variable
 // Removes a variable lookup operation
 sb_size numstore_insert (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    b_size                   ofst,
-    b_size                   len,
-    struct stream *NONNULL   src,
-    error *NONNULL           e
+    struct pager    *p,
+    struct txn      *tx,
+    struct variable *var,
+    b_size           ofst,
+    b_size           len,
+    struct stream   *src,
+    error           *e
 );
 
 ////// Read
 sb_size numstore_read (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    struct stream *NONNULL   dest,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *dest,
+    error             *e
 );
 
 ////// Read malloc
 
 err_t numstore_read_malloc_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,   // Name of the variable
-    struct user_stride          ustr,   // Stride to read
-    struct arena_alloc *NONNULL valloc, // Allocator for variable in get
-    struct variable *NULLABLE   var,    // If not null - save the variable
-    void *NONNULL *NULLABLE     dest,   // Dest buffer
-    b_size *NONNULL             dlen,   // If not null - save output len
-    struct i_mem                mem,    // Where to allocate on
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,   // Name of the variable
+    struct user_stride  ustr,   // Stride to read
+    struct arena_alloc *valloc, // Allocator for variable in get
+    struct variable    *var,    // If not null - save the variable
+    void              **dest,   // Dest buffer
+    b_size             *dlen,   // If not null - save output len
+    struct i_mem        mem,    // Where to allocate on
+    error              *e
 );
 
 err_t numstore_read_malloc (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    void *NONNULL *NULLABLE  dest,
-    b_size *NONNULL          dlen,
-    struct i_mem             mem,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    void             **dest,
+    b_size            *dlen,
+    struct i_mem       mem,
+    error             *e
 );
 
 ////// Write
 
 sb_size numstore_write (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    struct stream *NONNULL   src,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *src,
+    error             *e
 );
 
 ////// Remove
 
 sb_size numstore_remove_from_name (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,  // Name of the variable
-    struct user_stride          ustr,  // Stride to remove
-    struct arena_alloc *NONNULL alloc, // Allocator for variable in get
-    struct variable *NULLABLE   var,   // If not null - save the variable
-    struct stream *NULLABLE     dest,  // Output stream (can be null)
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,  // Name of the variable
+    struct user_stride  ustr,  // Stride to remove
+    struct arena_alloc *alloc, // Allocator for variable in get
+    struct variable    *var,   // If not null - save the variable
+    struct stream      *dest,  // Output stream (can be null)
+    error              *e
 );
 
 sb_size numstore_remove (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    struct stream *NULLABLE  dest,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    struct stream     *dest,
+    error             *e
 );
 
 ////// Remove Malloc
 
 err_t numstore_remove_malloc (
-    struct pager *NONNULL    p,
-    struct txn *NONNULL      tx,
-    struct variable *NONNULL var,
-    struct user_stride       ustr,
-    void *NONNULL *NULLABLE  dest,
-    b_size *NONNULL          dlen,
-    struct i_mem             mem,
-    error *NONNULL           e
+    struct pager      *p,
+    struct txn        *tx,
+    struct variable   *var,
+    struct user_stride ustr,
+    void             **dest,
+    b_size            *dlen,
+    struct i_mem       mem,
+    error             *e
 );
 
 ////// Get
 
 err_t numstore_get (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    bool                        if_exists,
-    struct string               name,  // Name of the variable
-    struct arena_alloc *NONNULL alloc, // Allocator for variable in get
-    struct variable *NONNULL    var,   // If not null - save the variable
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    bool                if_exists,
+    struct string       name,  // Name of the variable
+    struct arena_alloc *alloc, // Allocator for variable in get
+    struct variable    *var,   // If not null - save the variable
+    error              *e
 );
 
 ////// Delete
 
 err_t numstore_delete (
-    struct pager *NONNULL p,
-    struct txn *NONNULL   tx,
-    struct string         name, // Name of the variable
-    bool                  if_exists,
-    error *NONNULL        e
+    struct pager *p,
+    struct txn   *tx,
+    struct string name, // Name of the variable
+    bool          if_exists,
+    error        *e
 );
 
 ////// Create
 
 err_t numstore_create (
-    struct pager *NONNULL       p,
-    struct txn *NONNULL         tx,
-    struct string               name,   // Name of new variable
-    struct type                 type,   // Type for new variable
-    struct arena_alloc *NONNULL valloc, // Allocator for variable
-    struct variable *NULLABLE   var,    // If not null - save the variable
-    error *NONNULL              e
+    struct pager       *p,
+    struct txn         *tx,
+    struct string       name,   // Name of new variable
+    struct type         type,   // Type for new variable
+    struct arena_alloc *valloc, // Allocator for variable
+    struct variable    *var,    // If not null - save the variable
+    error              *e
 );
 
 #endif

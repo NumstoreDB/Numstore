@@ -134,31 +134,30 @@ failed:
 #ifndef NDEBUG
 TEST (aries_rollback_basic)
 {
-  error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
-  struct pager *p = pgr_open ("testdb", mem, os, &e);
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   struct txn    tx;
   page_h        fsm = page_h_create ();
   page_h        pg  = page_h_create ();
 
   // Create pages in a transaction
   {
-    pgr_begin_txn (&tx, p, &e);
+    pgr_begin_txn (&tx, p, &ctx->e);
 
     for (int i = 0; i < 3; ++i) {
       page_h dl_page = page_h_create ();
-      test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &e));
+      test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e));
       dl_make_valid (page_h_w (&dl_page));
-      test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
+      test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
     }
 
-    pgr_flush_wall (p, &e);
+    pgr_flush_wall (p, &ctx->e);
   }
 
   // Verify FSM has all pages before rollback
   {
-    test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &e));
+    test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &ctx->e));
 
     for (p_size i = 0; i < FS_BTMP_NPGS; ++i) {
       if (i < 4) {
@@ -168,42 +167,41 @@ TEST (aries_rollback_basic)
       }
     }
 
-    test_fail_if (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &e));
+    test_fail_if (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &ctx->e));
   }
 
   // Rollback the transaction
   {
-    pgr_rollback (p, &tx, 0, &e);
+    pgr_rollback (p, &tx, 0, &ctx->e);
   }
 
   // Verify pages are trash after rollback
   {
     for (int i = 1; i < 3; ++i) {
-      pgr_get (&pg, PG_TRASH, i, p, &e);
-      pgr_release (p, &pg, PG_TRASH, &e);
+      pgr_get (&pg, PG_TRASH, i, p, &ctx->e);
+      pgr_release (p, &pg, PG_TRASH, &ctx->e);
     }
   }
 
   // Verify FSM reflects rolled back state
   {
-    test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &e));
+    test_fail_if (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &ctx->e));
 
     for (p_size i = 1; i < FS_BTMP_NPGS; ++i) {
       test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
     }
 
-    test_fail_if (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &e));
+    test_fail_if (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &ctx->e));
   }
 
-  pgr_close (p, &e);
+  pgr_close (p, &ctx->e);
 }
 
 TEST (aries_rollback_multiple_updates)
 {
-  error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
-  struct pager *p = pgr_open ("testdb", mem, os, &e);
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -212,61 +210,60 @@ TEST (aries_rollback_multiple_updates)
 
   // Txn 1: create and commit initial data
   {
-    pgr_begin_txn (&tx, p, &e);
+    pgr_begin_txn (&tx, p, &ctx->e);
 
-    test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &e));
+    test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e));
     dl_make_valid (page_h_w (&dl_page));
 
     memset (initial_data, 0xAA, DL_DATA_SIZE);
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
 
     pgno1 = page_h_ro (&dl_page)->pg;
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
-    pgr_commit (p, &tx, &e);
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
+    pgr_commit (p, &tx, &ctx->e);
   }
 
   // Txn 2: make multiple updates then rollback
   {
-    pgr_begin_txn (&tx2, p, &e);
+    pgr_begin_txn (&tx2, p, &ctx->e);
 
-    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
     u8 update1_data[DL_DATA_SIZE];
     memset (update1_data, 0xBB, DL_DATA_SIZE);
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update1_data, .blen = DL_DATA_SIZE});
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
     u8 update2_data[DL_DATA_SIZE];
     memset (update2_data, 0xCC, DL_DATA_SIZE);
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update2_data, .blen = DL_DATA_SIZE});
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
     u8 update3_data[DL_DATA_SIZE];
     memset (update3_data, 0xDD, DL_DATA_SIZE);
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE});
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_flush_wall (p, &e);
-    pgr_rollback (p, &tx2, 0, &e);
+    pgr_flush_wall (p, &ctx->e);
+    pgr_rollback (p, &tx2, 0, &ctx->e);
   }
 
   // Verify data is back to initial state
   {
-    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
     test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
-    pgr_release (p, &dl_page, PG_DATA_LIST, &e);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
   }
 
-  pgr_close (p, &e);
+  pgr_close (p, &ctx->e);
 }
 
 TEST (aries_rollback_with_crash_recovery)
 {
-  error e = error_create ();
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
-  struct pager *p = pgr_open ("testdb", mem, os, &e);
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -275,9 +272,9 @@ TEST (aries_rollback_with_crash_recovery)
 
   // Txn 1: create and commit data
   {
-    pgr_begin_txn (&tx, p, &e);
+    pgr_begin_txn (&tx, p, &ctx->e);
 
-    test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &e));
+    test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e));
 
     memset (committed_data, 0xAA, DL_DATA_SIZE);
     dl_set_data (
@@ -286,45 +283,43 @@ TEST (aries_rollback_with_crash_recovery)
     );
 
     pgno1 = page_h_ro (&dl_page)->pg;
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
-    pgr_commit (p, &tx, &e);
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
+    pgr_commit (p, &tx, &ctx->e);
   }
 
   // Txn 2: make changes then crash without commit or rollback
   {
-    pgr_begin_txn (&tx2, p, &e);
+    pgr_begin_txn (&tx2, p, &ctx->e);
 
-    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
     u8 uncommitted_data[DL_DATA_SIZE];
     memset (uncommitted_data, 0xBB, DL_DATA_SIZE);
     dl_set_data (
         page_h_w (&dl_page),
         (struct dl_data){.data = uncommitted_data, .blen = DL_DATA_SIZE}
     );
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_flush_wall (p, &e);
-    test_fail_if (pgr_crash (p, &e));
+    pgr_flush_wall (p, &ctx->e);
+    test_fail_if (pgr_crash (p, &ctx->e));
   }
 
   // Verify data is back to committed state after recovery
   {
-    p = pgr_open ("testdb", mem, os, &e);
-    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
+    p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
     test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), committed_data, DL_DATA_SIZE);
-    pgr_release (p, &dl_page, PG_DATA_LIST, &e);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
   }
 
-  pgr_close (p, &e);
+  pgr_close (p, &ctx->e);
 }
 
 TEST (aries_rollback_clr_not_undone)
 {
-  error e = error_create ();
+  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
 
-  test_fail_if (pgr_delete_single_file ("testdb", os, &e));
-
-  struct pager *p = pgr_open ("testdb", mem, os, &e);
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   struct txn    tx;
   struct txn    tx2;
   page_h        dl_page = page_h_create ();
@@ -333,49 +328,49 @@ TEST (aries_rollback_clr_not_undone)
 
   // Txn 1 - normal commit
   {
-    pgr_begin_txn (&tx, p, &e);
+    pgr_begin_txn (&tx, p, &ctx->e);
 
-    test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &e));
+    test_fail_if (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e));
     dl_make_valid (page_h_w (&dl_page));
 
     memset (initial_data, 0xAA, DL_DATA_SIZE);
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
 
     pgno1 = page_h_ro (&dl_page)->pg;
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
-    pgr_commit (p, &tx, &e);
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
+    pgr_commit (p, &tx, &ctx->e);
   }
 
   // Txn 2: make update then rollback (generates CLRs)
   {
-    pgr_begin_txn (&tx2, p, &e);
+    pgr_begin_txn (&tx2, p, &ctx->e);
 
-    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
 
     u8 temp_data[DL_DATA_SIZE];
     memset (temp_data, 0xBB, DL_DATA_SIZE);
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = temp_data, .blen = DL_DATA_SIZE});
-    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &e));
+    test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_rollback (p, &tx2, 0, &e);
+    pgr_rollback (p, &tx2, 0, &ctx->e);
   }
 
   // Verify data is back to initial
   {
-    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
     test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
-    pgr_release (p, &dl_page, PG_DATA_LIST, &e);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
   }
 
   // Crash and recover - verify CLRs were not undone
   {
-    test_fail_if (pgr_crash (p, &e));
-    p = pgr_open ("testdb", mem, os, &e);
-    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &e);
+    test_fail_if (pgr_crash (p, &ctx->e));
+    p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
     test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
-    pgr_release (p, &dl_page, PG_DATA_LIST, &e);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
   }
 
-  pgr_close (p, &e);
+  pgr_close (p, &ctx->e);
 }
 #endif

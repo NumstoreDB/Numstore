@@ -273,21 +273,21 @@ TEST (pgr_new_get_save)
 {
   struct pgr_fixture f;
   page_h             h = page_h_create ();
-  pgr_fixture_create (&f);
+  pgr_fixture_create (&f, &ctx->e);
 
   struct txn tx;
-  pgr_begin_txn (&tx, f.p, &f.e);
+  pgr_begin_txn (&tx, f.p, &ctx->e);
 
-  pgr_new (&h, f.p, &tx, PG_DATA_LIST, &f.e);
+  pgr_new (&h, f.p, &tx, PG_DATA_LIST, &ctx->e);
   test_assert_int_equal ((int)pgr_get_npages (f.p), FS_BTMP_NPGS);
 
   // Make it valid
   dl_set_used (page_h_w (&h), DL_DATA_SIZE);
 
-  pgr_release (f.p, &h, PG_DATA_LIST, &f.e);
+  pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
 
-  pgr_commit (f.p, &tx, &f.e);
+  pgr_commit (f.p, &tx, &ctx->e);
 
-  pgr_fixture_teardown (&f);
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 #endif

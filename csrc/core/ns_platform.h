@@ -190,16 +190,6 @@
 #endif
 
 ////////////////////////////////////////////////////////////
-// Nullability
-#if defined(__clang__)
-#  define NONNULL  // _Nonnull
-#  define NULLABLE // _Nullable
-#else
-#  define NONNULL
-#  define NULLABLE
-#endif
-
-////////////////////////////////////////////////////////////
 // UNREACHABLE_WARN_PUSH / UNREACHABLE_WARN_POP
 //
 // Wraps whatever follows UNREACHABLE_HINT() (e.g. a trailing return/abort

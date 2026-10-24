@@ -184,8 +184,7 @@ hdata_eq (const struct hnode *left, const struct hnode *right)
 
 TEST (htable)
 {
-  error          e = error_create ();
-  struct htable *t = htable_create (100, mem, &e);
+  struct htable *t = htable_create (100, ctx->mem, &ctx->e);
   struct hdata   data[1000];
 
   int            k = 0;

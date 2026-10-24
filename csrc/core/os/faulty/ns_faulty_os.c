@@ -14,8 +14,9 @@
 
 /// Faulty OS: a decorator over any i_os.
 ///
-/// Every fallible call rolls first and fails with probability
-/// ctx->fail_percent, otherwise it forwards to the delegate OS.
+/// Every fallible call rolls first: it fails if the ctx->fail_after budget
+/// has run out, then with probability ctx->fail_percent, otherwise it
+/// forwards to the delegate OS.
 ///
 /// Every object handed out (file, thread, mutex, cond, timer) has a .self
 /// that points to a small wrapper holding the delegate's {table, self} plus a
@@ -40,6 +41,8 @@ struct faulty_ctx
   struct i_os       delegate;
   struct i_mem      mem;
   float             fail_percent;
+  int               fail_after;
+  u32               ncalls;
 
   struct slab_alloc file_alloc;
   struct slab_alloc thread_alloc;
@@ -128,14 +131,33 @@ DEFINE_DBG_ASSERT (struct faulty_timer, faulty_timer, t, {
 ////////////////////////////////////////////////////////////
 // Utils
 
+/// Every fallible call rolls here, so [ncalls] and the [fail_after] budget
+/// count calls of any kind - the budget does not care which one it lands on.
 static inline err_t
-faulty_roll (const struct faulty_ctx *ctx, error *e, err_t type)
+faulty_roll (struct faulty_ctx *ctx, error *e, err_t type)
 {
   DBG_ASSERT (faulty_ctx, ctx);
 
+  ctx->ncalls += 1;
+
+  /**
+   * Check fail after if >= 0
+   */
+  if (ctx->fail_after >= 0) {
+    if (ctx->fail_after == 0) {
+      ctx->fail_after = -1;
+      return error_causef (e, type, "Injected fault");
+    }
+    ctx->fail_after -= 1;
+  }
+
+  /**
+   * Check fail percent
+   */
   if (randf () < ctx->fail_percent) {
     return error_causef (e, type, "Injected fault");
   }
+
   return SUCCESS;
 }
 
@@ -735,6 +757,8 @@ faulty_os_create (
   ctx->delegate     = delegate;
   ctx->mem          = mem;
   ctx->fail_percent = fail_percent;
+  ctx->fail_after   = -1;
+  ctx->ncalls       = 0;
 
   slab_alloc_init (&ctx->file_alloc, mem, sizeof (struct faulty_file), 10);
   slab_alloc_init (&ctx->thread_alloc, mem, sizeof (struct faulty_thread), 10);
@@ -748,6 +772,29 @@ faulty_os_create (
   dest->self  = ctx;
 
   return SUCCESS;
+}
+
+void
+faulty_os_set_fail (struct i_os os, float fail_percent)
+{
+  ASSERT (fail_percent >= 0.0f && fail_percent <= 1.0f);
+
+  struct faulty_ctx *ctx = os.self;
+  ctx->fail_percent      = fail_percent;
+}
+
+void
+faulty_os_fail_after (struct i_os os, int count)
+{
+  struct faulty_ctx *ctx = os.self;
+  ctx->fail_after        = count;
+}
+
+u32
+faulty_num_os_calls (struct i_os os)
+{
+  struct faulty_ctx *ctx = os.self;
+  return ctx->ncalls;
 }
 
 /// Frees the faulty layer - the delegate OS is borrowed and stays alive.
@@ -929,6 +976,15 @@ faulty_mem_fail_after (struct i_mem mem, int count)
 {
   struct faulty_mem_ctx *ctx = mem.self;
   ctx->fail_after            = count;
+}
+
+void
+faulty_mem_reset (struct i_mem mem)
+{
+  struct faulty_mem_ctx *ctx = mem.self;
+  ctx->fail_percent          = 0.0f;
+  ctx->fail_after            = -1;
+  ctx->nmallocs              = 0;
 }
 
 u32

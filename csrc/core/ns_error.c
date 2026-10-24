@@ -110,12 +110,11 @@ TEST (error_log_consume)
 {
   TEST_CASE ("error consumes")
   {
-    error e = error_create ();
-    error_causef (&e, ERR_CORRUPT, "Test");
-    test_assert (e.cause_code == ERR_CORRUPT);
-    error_log_consume (&e);
-    test_assert (e.cause_code == SUCCESS);
-    test_assert (e.cmlen == 0);
+    error_causef (&ctx->e, ERR_CORRUPT, "Test");
+    test_assert (ctx->e.cause_code == ERR_CORRUPT);
+    error_log_consume (&ctx->e);
+    test_assert (ctx->e.cause_code == SUCCESS);
+    test_assert (ctx->e.cmlen == 0);
   }
 }
 #endif

@@ -179,50 +179,47 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
 #ifndef NDEBUG
 TEST (kvt_list_builder)
 {
-  ALLOC_INIT (alloc);
-  BUILDER_INIT (b, &alloc);
-
-  error                   err = error_create ();
+  BUILDER_INIT (b, &ctx->alloc);
 
   // 0. freshly-created builder must be clean
-  struct kvt_list_builder kb  = kvlb_create (&b);
+  struct kvt_list_builder kb = kvlb_create (&b);
   test_assert_int_equal (kb.klen, 0);
   test_assert_int_equal (kb.tlen, 0);
   test_fail_if (kb.head != NULL);
 
   // 1. accept first key "id"
   struct string key_id = strfcstr ("id");
-  test_assert_int_equal (kvlb_accept_key (&kb, key_id, &err), SUCCESS);
+  test_assert_int_equal (kvlb_accept_key (&kb, key_id, &ctx->e), SUCCESS);
 
   // 2. duplicate key "id" must fail
-  test_assert_int_equal (kvlb_accept_key (&kb, key_id, &err), ERR_INTERP);
-  err.cause_code    = SUCCESS;
+  test_assert_int_equal (kvlb_accept_key (&kb, key_id, &ctx->e), ERR_INTERP);
+  ctx->e.cause_code = SUCCESS;
 
   // 3. accept a type for that key (u32)
   struct type t_u32 = (struct type){.type = T_PRIM, .p = U32};
-  test_assert_int_equal (kvlb_accept_type (&kb, &t_u32, &err), SUCCESS);
+  test_assert_int_equal (kvlb_accept_type (&kb, &t_u32, &ctx->e), SUCCESS);
 
   // 4. accept second key/value pair ("name", i32)
   struct string key_name = strfcstr ("name");
-  test_assert_int_equal (kvlb_accept_key (&kb, key_name, &err), SUCCESS);
+  test_assert_int_equal (kvlb_accept_key (&kb, key_name, &ctx->e), SUCCESS);
   struct type t_i32 = (struct type){.type = T_PRIM, .p = I32};
-  test_assert_int_equal (kvlb_accept_type (&kb, &t_i32, &err), SUCCESS);
+  test_assert_int_equal (kvlb_accept_type (&kb, &t_i32, &ctx->e), SUCCESS);
 
   // 5. mismatched key/type counts -> build must fail
   struct string key_extra = strfcstr ("extra");
-  test_assert_int_equal (kvlb_accept_key (&kb, key_extra, &err),
+  test_assert_int_equal (kvlb_accept_key (&kb, key_extra, &ctx->e),
                          SUCCESS); // klen=3, tlen=2
   struct kvt_list list_fail = {0};
-  test_assert_int_equal (kvlb_build (&list_fail, &kb, &err), ERR_INTERP);
-  err.cause_code    = SUCCESS;
+  test_assert_int_equal (kvlb_build (&list_fail, &kb, &ctx->e), ERR_INTERP);
+  ctx->e.cause_code = SUCCESS;
 
   // 6. add matching type so counts align
   struct type t_f32 = (struct type){.type = T_PRIM, .p = F32};
-  test_assert_int_equal (kvlb_accept_type (&kb, &t_f32, &err), SUCCESS);
+  test_assert_int_equal (kvlb_accept_type (&kb, &t_f32, &ctx->e), SUCCESS);
 
   // 7. successful build
   struct kvt_list list = {0};
-  test_assert_int_equal (kvlb_build (&list, &kb, &err), SUCCESS);
+  test_assert_int_equal (kvlb_build (&list, &kb, &ctx->e), SUCCESS);
   test_assert_int_equal (list.len, 3);
   // 8. ensure key order preserved (id, name, extra)
   test_assert_int_equal (string_equal (list.keys[0], key_id), true);
@@ -235,7 +232,7 @@ TEST (kvt_list_builder)
   test_assert_int_equal (list.types[2]->p, t_f32.p);
 
   BUILDER_CLOSE (b);
-  ALLOC_CLOSE (alloc);
+  arena_alloc_free_all (&ctx->alloc);
 }
 #endif
 

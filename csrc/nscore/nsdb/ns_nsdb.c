@@ -435,26 +435,25 @@ nsdb_plan_free (struct nsdb_plan *plan)
 #ifndef NDEBUG
 TEST (nsdb_plan_create)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test.db", os, &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_init_numstore (db, &e);
+  nsdb_cleanup ("./test.db", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("./test.db", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
 
   TEST_CASE ("Successfully create a plan")
   {
-    struct nsdb_plan *plan = nsdb_plan_create (db, "create foo u32", &e);
+    struct nsdb_plan *plan = nsdb_plan_create (db, "create foo u32", &ctx->e);
     DBG_ASSERT (nsdb_plan, plan);
     nsdb_plan_free (plan);
   }
 
   TEST_CASE ("Fail to create a plan form invalid query")
   {
-    struct nsdb_plan *plan = nsdb_plan_create (db, "create foo INVALID", &e);
+    struct nsdb_plan *plan = nsdb_plan_create (db, "create foo INVALID", &ctx->e);
     test_assert (plan == NULL);
-    error_reset (&e);
+    error_reset (&ctx->e);
   }
 
-  nsdb_close (db, &e);
+  nsdb_close (db, &ctx->e);
 }
 #endif
 
@@ -571,17 +570,16 @@ nsdb_plan_get_var (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 #ifndef NDEBUG
 TEST (nsdb_plan_get_var)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test.db", os, &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_init_numstore (db, &e);
-  struct txn *tx = nsdb_begin (db, &e);
+  nsdb_cleanup ("./test.db", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("./test.db", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
+  struct txn *tx = nsdb_begin (db, &ctx->e);
 
   TEST_CASE ("Successfully get a variable")
   {
-    test_assert (nsdb_execute (db, tx, "create foo u32", &e) == SUCCESS);
+    test_assert (nsdb_execute (db, tx, "create foo u32", &ctx->e) == SUCCESS);
 
-    struct nsdb_var *var = nsdb_get_var (db, tx, "get foo", &e);
+    struct nsdb_var *var = nsdb_get_var (db, tx, "get foo", &ctx->e);
     test_assert (var != NULL);
     test_assert (type_equal (nsdb_var_type (var), &TU32));
 
@@ -591,7 +589,6 @@ TEST (nsdb_plan_get_var)
   /**
   TEST_CASE ("Randomly create and get variables")
   {
-    ALLOC_INIT (temp);
 
     int i = 0;
     while (i < 100) {
@@ -629,12 +626,12 @@ TEST (nsdb_plan_get_var)
       mem.table->free (mem.self, buffer);
     }
 
-    ALLOC_CLOSE (temp);
+    arena_alloc_free_all (&ctx->alloc);
   }
   */
 
-  nsdb_commit (db, tx, &e);
-  nsdb_close (db, &e);
+  nsdb_commit (db, tx, &ctx->e);
+  nsdb_close (db, &ctx->e);
 }
 #endif
 
@@ -714,31 +711,30 @@ nsdb_plan_read (struct nsdb_plan *st, struct txn *user_tx, void *dest, b_size dl
 #ifndef NDEBUG
 TEST (nsdb_plan_read)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test.db", os, &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_init_numstore (db, &e);
-  struct txn *tx = nsdb_begin (db, &e);
+  nsdb_cleanup ("./test.db", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("./test.db", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
+  struct txn *tx = nsdb_begin (db, &ctx->e);
 
   // Seed database
   u32         src[10];
   rand_bytes (src, sizeof (src));
-  nsdb_execute (db, tx, "create foo u32", &e);
-  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
+  nsdb_execute (db, tx, "create foo u32", &ctx->e);
+  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &ctx->e);
 
   //////////// READ
 
   TEST_CASE ("Read a variable successfully")
   {
     u32 dest[10];
-    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
+    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &ctx->e);
     test_assert_memequal (src, dest, sizeof (src));
   }
 
   TEST_CASE ("Read request more in a smaller buffer")
   {
     u32     dest[2];
-    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
+    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &ctx->e);
     test_assert_int_equal (len, 2);
     test_assert_memequal (src, dest, sizeof (dest));
   }
@@ -746,22 +742,24 @@ TEST (nsdb_plan_read)
   TEST_CASE ("Read a non existent variable")
   {
     u32     dest[10];
-    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "read biz[0:]", &e);
+    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "read biz[0:]", &ctx->e);
     test_assert_int_equal (ret, ERR_VARIABLE_NE);
-    error_reset (&e);
+    error_reset (&ctx->e);
   }
 
   //////////// REMOVE
 
   TEST_CASE ("Remove a variable successfully")
   {
-    u32     removed[5];
-    u32     remaining[5];
-    u32     removed_expected[]   = {src[0], src[2], src[4], src[6], src[8]};
-    u32     remaining_expected[] = {src[1], src[3], src[5], src[7], src[9]};
+    u32 removed[5];
+    u32 remaining[5];
+    u32 removed_expected[]   = {src[0], src[2], src[4], src[6], src[8]};
+    u32 remaining_expected[] = {src[1], src[3], src[5], src[7], src[9]};
 
-    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
-    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
+    sb_size
+        len_removed = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &ctx->e);
+    sb_size
+        len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &ctx->e);
 
     test_assert_int_equal (len_removed, 5);
     test_assert_int_equal (len_remaining, 5);
@@ -772,13 +770,15 @@ TEST (nsdb_plan_read)
 
   TEST_CASE ("Remove request more in a smaller buffer")
   {
-    u32     removed[2];
-    u32     remaining[3];
-    u32     removed_expected[]   = {src[1], src[5]};
-    u32     remaining_expected[] = {src[3], src[7], src[9]};
+    u32 removed[2];
+    u32 remaining[3];
+    u32 removed_expected[]   = {src[1], src[5]};
+    u32 remaining_expected[] = {src[3], src[7], src[9]};
 
-    sb_size len_removed   = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &e);
-    sb_size len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &e);
+    sb_size
+        len_removed = nsdb_read (db, tx, removed, sizeof (removed), "remove foo[0::2]", &ctx->e);
+    sb_size
+        len_remaining = nsdb_read (db, tx, remaining, sizeof (remaining), "read foo[0:]", &ctx->e);
 
     test_assert_int_equal (len_removed, 2);
     test_assert_int_equal (len_remaining, 3);
@@ -790,13 +790,13 @@ TEST (nsdb_plan_read)
   TEST_CASE ("Remove a non existent variable")
   {
     u32     dest[10];
-    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "remove biz[0:]", &e);
+    sb_size ret = nsdb_read (db, tx, dest, sizeof (dest), "remove biz[0:]", &ctx->e);
     test_assert_int_equal (ret, ERR_VARIABLE_NE);
-    error_reset (&e);
+    error_reset (&ctx->e);
   }
 
-  nsdb_commit (db, tx, &e);
-  nsdb_close (db, &e);
+  nsdb_commit (db, tx, &ctx->e);
+  nsdb_close (db, &ctx->e);
 }
 #endif
 
@@ -881,34 +881,33 @@ nsdb_plan_read_malloc (struct nsdb_plan *st, struct txn *user_tx, b_size *dlen, 
 #ifndef NDEBUG
 TEST (nsdb_plan_read_malloc)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test.db", os, &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_init_numstore (db, &e);
-  struct txn *tx = nsdb_begin (db, &e);
+  nsdb_cleanup ("./test.db", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("./test.db", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
+  struct txn *tx = nsdb_begin (db, &ctx->e);
 
   // Seed database
   u32         src[10];
   rand_bytes (src, sizeof (src));
-  nsdb_execute (db, tx, "create foo u32", &e);
-  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
+  nsdb_execute (db, tx, "create foo u32", &ctx->e);
+  nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &ctx->e);
 
   //////////// READ
 
   TEST_CASE ("Read a variable successfully")
   {
     b_size len;
-    void  *dest = nsdb_read_malloc (db, tx, &len, "read foo[0:]", &e);
+    void  *dest = nsdb_read_malloc (db, tx, &len, "read foo[0:]", &ctx->e);
     test_assert_memequal (src, dest, sizeof (src));
     test_assert_int_equal (len, 10 * sizeof (u32));
-    mem.table->free (mem.self, dest);
+    ctx->mem.table->free (ctx->mem.self, dest);
   }
 
   TEST_CASE ("Read a non existent variable")
   {
     b_size len  = 123;
-    void  *dest = nsdb_read_malloc (db, tx, &len, "read biz[0:]", &e);
-    test_err_t_check (e.cause_code, ERR_VARIABLE_NE, &e);
+    void  *dest = nsdb_read_malloc (db, tx, &len, "read biz[0:]", &ctx->e);
+    test_err_t_check (ctx->e.cause_code, ERR_VARIABLE_NE, &ctx->e);
     test_assert (dest == NULL);
     test_assert_int_equal (len, 123);
   }
@@ -922,8 +921,8 @@ TEST (nsdb_plan_read_malloc)
 
     b_size len_removed;
     b_size len_remaining;
-    void  *removed   = nsdb_read_malloc (db, tx, &len_removed, "remove foo[0::2]", &e);
-    void  *remaining = nsdb_read_malloc (db, tx, &len_remaining, "read foo[0:]", &e);
+    void  *removed   = nsdb_read_malloc (db, tx, &len_removed, "remove foo[0::2]", &ctx->e);
+    void  *remaining = nsdb_read_malloc (db, tx, &len_remaining, "read foo[0:]", &ctx->e);
 
     test_assert_int_equal (len_removed, 5 * sizeof (u32));
     test_assert_int_equal (len_remaining, 5 * sizeof (u32));
@@ -932,21 +931,21 @@ TEST (nsdb_plan_read_malloc)
     test_assert_memequal (removed_expected, removed, sizeof (removed_expected));
     test_assert_memequal (remaining_expected, remaining, sizeof (remaining_expected));
 
-    mem.table->free (mem.self, removed);
-    mem.table->free (mem.self, remaining);
+    ctx->mem.table->free (ctx->mem.self, removed);
+    ctx->mem.table->free (ctx->mem.self, remaining);
   }
 
   TEST_CASE ("Remove a non existent variable")
   {
     b_size len  = 123;
-    void  *dest = nsdb_read_malloc (db, tx, &len, "remove biz[0:]", &e);
-    test_err_t_check (e.cause_code, ERR_VARIABLE_NE, &e);
+    void  *dest = nsdb_read_malloc (db, tx, &len, "remove biz[0:]", &ctx->e);
+    test_err_t_check (ctx->e.cause_code, ERR_VARIABLE_NE, &ctx->e);
     test_assert (dest == NULL);
     test_assert_int_equal (len, 123);
   }
 
-  nsdb_commit (db, tx, &e);
-  nsdb_close (db, &e);
+  nsdb_commit (db, tx, &ctx->e);
+  nsdb_close (db, &ctx->e);
 }
 #endif
 
@@ -1026,15 +1025,14 @@ nsdb_plan_write (struct nsdb_plan *st, struct txn *user_tx, const void *src, b_s
 
 TEST (nsdb_plan_write)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test.db", os, &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_init_numstore (db, &e);
-  struct txn *tx = nsdb_begin (db, &e);
+  nsdb_cleanup ("./test.db", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("./test.db", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
+  struct txn *tx = nsdb_begin (db, &ctx->e);
 
   // Seed database
-  nsdb_execute (db, tx, "create foo u32", &e);
-  check_nbytes (db, tx, "foo", 0, &e);
+  nsdb_execute (db, tx, "create foo u32", &ctx->e);
+  check_nbytes (db, tx, "foo", 0, &ctx->e);
 
   //////////// Insert
 
@@ -1043,14 +1041,14 @@ TEST (nsdb_plan_write)
     u32 src[10];
     arr_range (src);
 
-    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
-    check_nbytes (db, tx, "foo", sizeof (src), &e);
+    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &ctx->e);
+    check_nbytes (db, tx, "foo", sizeof (src), &ctx->e);
 
-    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &e);
-    check_nbytes (db, tx, "foo", 2 * sizeof (src), &e);
+    nsdb_write (db, tx, src, sizeof (src), "insert foo 0 10", &ctx->e);
+    check_nbytes (db, tx, "foo", 2 * sizeof (src), &ctx->e);
 
     u32 dest[20];
-    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
+    nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &ctx->e);
     test_assert_memequal (src, dest, sizeof (src));
     test_assert_memequal (src, &dest[10], sizeof (src));
   }
@@ -1059,8 +1057,8 @@ TEST (nsdb_plan_write)
   {
     u32 src[10];
     arr_range (src);
-    nsdb_write (db, tx, src, sizeof (src), "insert bar 0 10", &e);
-    test_err_t_check (e.cause_code, ERR_VARIABLE_NE, &e);
+    nsdb_write (db, tx, src, sizeof (src), "insert bar 0 10", &ctx->e);
+    test_err_t_check (ctx->e.cause_code, ERR_VARIABLE_NE, &ctx->e);
   }
 
   //////////// WRITE
@@ -1070,24 +1068,23 @@ TEST (nsdb_plan_write)
     // Overwrite with random data
     u32 src[20];
     rand_bytes (src, sizeof (src));
-    nsdb_write (db, tx, src, sizeof (src), "write foo[0:]", &e);
+    nsdb_write (db, tx, src, sizeof (src), "write foo[0:]", &ctx->e);
 
     u32     dest[40]; // Bigger buffer to show that only 20 are read
-    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &e);
+    sb_size len = nsdb_read (db, tx, dest, sizeof (dest), "read foo[0:]", &ctx->e);
     test_assert_int_equal (len, 20);
     test_assert_memequal (src, dest, sizeof (src));
   }
 
-  nsdb_commit (db, tx, &e);
-  nsdb_close (db, &e);
+  nsdb_commit (db, tx, &ctx->e);
+  nsdb_close (db, &ctx->e);
 }
 
 TEST (nsdb_auto_txn)
 {
-  error e = error_create ();
-  nsdb_cleanup ("./test.db", os, &e);
-  struct nsdb *db = nsdb_open ("./test.db", mem, os, &e);
-  nsdb_init_numstore (db, &e);
+  nsdb_cleanup ("./test.db", ctx->os, &ctx->e);
+  struct nsdb *db = nsdb_open ("./test.db", ctx->mem, ctx->os, &ctx->e);
+  nsdb_init_numstore (db, &ctx->e);
   nsdb_allow_auto_txn (db);
 
   TEST_CASE ("Every entry point works with a NULL transaction")
@@ -1095,48 +1092,51 @@ TEST (nsdb_auto_txn)
     u32 src[10];
     arr_range (src);
 
-    test_assert (nsdb_execute (db, NULL, "create foo u32", &e) == SUCCESS);
+    test_assert (nsdb_execute (db, NULL, "create foo u32", &ctx->e) == SUCCESS);
     test_assert (!db->auto_tx.in_auto_txn);
 
-    test_assert_int_equal (nsdb_write (db, NULL, src, sizeof (src), "insert foo 0 10", &e), 10);
+    test_assert_int_equal (
+        nsdb_write (db, NULL, src, sizeof (src), "insert foo 0 10", &ctx->e),
+        10
+    );
     test_assert (!db->auto_tx.in_auto_txn);
 
     // Committed data is visible to the next auto transaction
-    check_nbytes (db, NULL, "foo", sizeof (src), &e);
+    check_nbytes (db, NULL, "foo", sizeof (src), &ctx->e);
     test_assert (!db->auto_tx.in_auto_txn);
 
     u32 dest[10];
-    test_assert_int_equal (nsdb_read (db, NULL, dest, sizeof (dest), "read foo[0:]", &e), 10);
+    test_assert_int_equal (nsdb_read (db, NULL, dest, sizeof (dest), "read foo[0:]", &ctx->e), 10);
     test_assert_memequal (src, dest, sizeof (src));
     test_assert (!db->auto_tx.in_auto_txn);
 
     b_size len;
-    void  *mdest = nsdb_read_malloc (db, NULL, &len, "read foo[0:]", &e);
+    void  *mdest = nsdb_read_malloc (db, NULL, &len, "read foo[0:]", &ctx->e);
     test_assert (mdest != NULL);
     test_assert_int_equal (len, 10 * sizeof (u32));
     test_assert_memequal (src, mdest, sizeof (src));
-    mem.table->free (mem.self, mdest);
+    ctx->mem.table->free (ctx->mem.self, mdest);
     test_assert (!db->auto_tx.in_auto_txn);
   }
 
   TEST_CASE ("A failed operation rolls back and leaves the db usable")
   {
     u32     dest[10];
-    sb_size ret = nsdb_read (db, NULL, dest, sizeof (dest), "read biz[0:]", &e);
+    sb_size ret = nsdb_read (db, NULL, dest, sizeof (dest), "read biz[0:]", &ctx->e);
     test_assert_int_equal (ret, ERR_VARIABLE_NE);
     test_assert (!db->auto_tx.in_auto_txn);
-    error_reset (&e);
+    error_reset (&ctx->e);
 
-    struct nsdb_var *var = nsdb_get_var (db, NULL, "get biz", &e);
+    struct nsdb_var *var = nsdb_get_var (db, NULL, "get biz", &ctx->e);
     test_assert (var == NULL);
     test_assert (!db->auto_tx.in_auto_txn);
-    error_reset (&e);
+    error_reset (&ctx->e);
 
     // Next auto transaction still works
-    test_assert_int_equal (nsdb_read (db, NULL, dest, sizeof (dest), "read foo[0:]", &e), 10);
+    test_assert_int_equal (nsdb_read (db, NULL, dest, sizeof (dest), "read foo[0:]", &ctx->e), 10);
   }
 
-  nsdb_close (db, &e);
+  nsdb_close (db, &ctx->e);
 }
 #endif
 

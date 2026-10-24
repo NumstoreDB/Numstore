@@ -53,6 +53,57 @@ fault_reset_all (void)
   g_fault_count = 0;
 }
 
+struct test_ctx *
+test_ctx_create (error *e)
+{
+  struct i_mem     mem = default_mem ();
+  struct test_ctx *ctx = mem.table->calloc (mem.self, 1, sizeof *ctx, e);
+  if (ctx == NULL) {
+    return NULL;
+  }
+
+  ctx->e   = error_create ();
+  ctx->mem = mem;
+
+  if (system_os_create (mem, &ctx->os, e)) {
+    mem.table->free (mem.self, ctx);
+    return NULL;
+  }
+
+  if (faulty_mem_create (mem, 0.0f, &ctx->faulty_mem, e)) {
+    system_os_free (ctx->os);
+    mem.table->free (mem.self, ctx);
+    return NULL;
+  }
+
+  if (faulty_os_create (mem, ctx->os, 0.0f, &ctx->faulty_os, e)) {
+    faulty_mem_free (ctx->faulty_mem);
+    system_os_free (ctx->os);
+    mem.table->free (mem.self, ctx);
+    return NULL;
+  }
+
+  arena_alloc_create_default_with (&ctx->alloc, ctx->mem);
+  arena_alloc_create_default_with (&ctx->faulty_alloc, ctx->faulty_mem);
+
+  return ctx;
+}
+
+void
+test_ctx_free (struct test_ctx *ctx)
+{
+  ASSERT (ctx);
+
+  arena_alloc_free_all (&ctx->faulty_alloc);
+  arena_alloc_free_all (&ctx->alloc);
+  faulty_os_free (ctx->faulty_os);
+  faulty_mem_free (ctx->faulty_mem);
+  system_os_free (ctx->os);
+
+  struct i_mem mem = ctx->mem;
+  mem.table->free (mem.self, ctx);
+}
+
 static int
 example_func (void)
 {
