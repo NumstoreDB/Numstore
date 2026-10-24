@@ -1119,7 +1119,16 @@ gmon.out
 *.gcno
 *.gcov
 *_example
-sample1_crud
 docgen_tmp/
+
+# The samples and the csrc/numstore.c API tests open databases by bare name in
+# the CWD. Anchored for the same reason /test is.
+/ns_sample1_crud
+/sample_big_file
+/sample1_crud
+/sample2_txn
+/sample4_stride
+/sample5_durability
+/ns_api_test_*
 
 .claude

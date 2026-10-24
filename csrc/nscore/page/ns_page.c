@@ -228,4 +228,89 @@ TEST (i_log_page)
   page_init_empty (&pg, PG_VAR_HASH_PAGE);
   i_log_page (LOG_INFO, &pg);
 }
+
+/******************************************************************************
+ * SECTION: Page Type Flags (tests)
+ ******************************************************************************/
+
+static const struct
+{
+  enum page_type type;
+  const char    *str;
+} page_type_cases[] = {
+    {PG_FREE_SPACE_MAP, "PG_FREE_SPACE_MAP"},
+    {PG_DATA_LIST, "PG_DATA_LIST"},
+    {PG_INNER_NODE, "PG_INNER_NODE"},
+    {PG_VAR_HASH_PAGE, "PG_VAR_HASH_PAGE"},
+    {PG_VAR_PAGE, "PG_VAR_PAGE"},
+    {PG_VAR_TAIL, "PG_VAR_TAIL"},
+};
+
+TEST (flags_to_page_type_every_type)
+{
+  // Every declared type, so a new one added without a str case is caught
+  for (u32 i = 0; i < arrlen (page_type_cases); ++i) {
+    TEST_CASE ("%s", page_type_cases[i].str)
+    {
+      const enum page_type type = page_type_cases[i].type;
+
+      test_assert_int_equal (flags_to_page_type (type), type);
+      test_assert (strcmp (page_type_str_from_flags (type), page_type_cases[i].str) == 0);
+
+      // The modifier bits live above the type mask and must not change the
+      // type the flags decode to
+      test_assert_int_equal (flags_to_page_type (type | PG_PERMISSIVE), type);
+      test_assert_int_equal (flags_to_page_type (type | PG_SKIP_CHECKSUM), type);
+      test_assert_int_equal (flags_to_page_type (type | PG_PERMISSIVE | PG_SKIP_CHECKSUM), type);
+      test_assert (
+          strcmp (
+              page_type_str_from_flags (type | PG_PERMISSIVE | PG_SKIP_CHECKSUM),
+              page_type_cases[i].str
+          )
+          == 0
+      );
+    }
+  }
+}
+
+TEST (flags_to_page_type_non_types)
+{
+  TEST_CASE ("No bits set decodes to no type and prints UNKNOWN")
+  {
+    test_assert_int_equal (flags_to_page_type (0), 0);
+    test_assert (strcmp (page_type_str_from_flags (0), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Bit 1 is unallocated, so it is not a known type")
+  {
+    test_assert_int_equal (flags_to_page_type (1 << 1), 1 << 1);
+    test_assert (strcmp (page_type_str_from_flags (1 << 1), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Two type bits at once is not a single type")
+  {
+    const int both = PG_DATA_LIST | PG_INNER_NODE;
+    test_assert_int_equal (flags_to_page_type (both), both);
+    test_assert (strcmp (page_type_str_from_flags (both), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Modifier bits alone carry no type")
+  {
+    test_assert_int_equal (flags_to_page_type (PG_PERMISSIVE), 0);
+    test_assert_int_equal (flags_to_page_type (PG_SKIP_CHECKSUM), 0);
+    test_assert (strcmp (page_type_str_from_flags (PG_PERMISSIVE), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("PG_TRASH is a sentinel, not a page type")
+  {
+    // PG_TRASH is all ones, so it covers every type bit at once
+    test_assert (strcmp (page_type_str_from_flags (PG_TRASH), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Bits above the mask are discarded")
+  {
+    test_assert_int_equal (flags_to_page_type (PG_VAR_TAIL << 1), 0);
+    test_assert_int_equal (flags_to_page_type (1 << 20), 0);
+  }
+}
 #endif

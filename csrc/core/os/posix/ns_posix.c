@@ -1146,4 +1146,413 @@ system_os_free (struct i_os os)
   posix_free (os.self);
 }
 
+#  ifndef NDEBUG
+#    include "core/ns_testing.h"
+
+/******************************************************************************
+ * SECTION: Posix OS (tests)
+ * ----------------------------------------------------------------------------
+ * Every sys_* function is static and reachable only through the vtable, so
+ * these drive them through ctx->os, which is a system OS built by
+ * system_os_create. One test per vtable group; every file is closed and every
+ * thread joined, since test_ctx_free asserts on leaks of either.
+ *
+ * read_all / pread_all / write_all / pwrite_all all ASSERT (n > 0), so no case
+ * here asks for a zero length transfer.
+ ******************************************************************************/
+
+#    define SYS_T_FILE  "ns_posix_sys_test.bin"
+#    define SYS_T_FILE2 "ns_posix_sys_test2.bin"
+
+TEST (sys_file_open_write_read_close)
+{
+  const u8 payload[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+  // Start from a clean slate; remove_quiet tolerates the file not being there
+  test_assert_int_equal (ctx->os.table->remove_quiet (ctx->os.self, SYS_T_FILE, &ctx->e), SUCCESS);
+
+  TEST_CASE ("open_file_w creates the file and write_all fills it")
+  {
+    i_file f;
+    test_assert_int_equal (
+        ctx->os.table->open_file_w (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+        SUCCESS
+    );
+    test_assert_int_equal (f.table->write_all (f.self, payload, sizeof payload, &ctx->e), SUCCESS);
+    test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("file_exists sees a regular file")
+  {
+    bool exists = false;
+    test_assert_int_equal (
+        ctx->os.table->file_exists (ctx->os.self, SYS_T_FILE, &exists, &ctx->e),
+        SUCCESS
+    );
+    test_assert (exists);
+  }
+
+  TEST_CASE ("open_file_r reads back exactly what was written")
+  {
+    i_file f;
+    test_assert_int_equal (
+        ctx->os.table->open_file_r (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+        SUCCESS
+    );
+
+    u8 got[8] = {0};
+    test_assert_int_equal (f.table->read_all (f.self, got, sizeof got, &ctx->e), 8);
+    test_assert_memequal (got, payload, sizeof payload);
+
+    test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("file_size reports the written length")
+  {
+    i_file f;
+    test_assert_int_equal (
+        ctx->os.table->open_file_r (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+        SUCCESS
+    );
+    test_assert_int_equal (f.table->file_size (f.self, &ctx->e), 8);
+    test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("unlink removes it and file_exists says so")
+  {
+    test_assert_int_equal (ctx->os.table->unlink (ctx->os.self, SYS_T_FILE, &ctx->e), SUCCESS);
+
+    bool exists = true;
+    test_assert_int_equal (
+        ctx->os.table->file_exists (ctx->os.self, SYS_T_FILE, &exists, &ctx->e),
+        SUCCESS
+    );
+    test_assert (!exists);
+  }
+}
+
+TEST (sys_file_offsets_and_sizing)
+{
+  test_assert_int_equal (ctx->os.table->remove_quiet (ctx->os.self, SYS_T_FILE, &ctx->e), SUCCESS);
+
+  i_file f;
+  test_assert_int_equal (
+      ctx->os.table->open_file_rw (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+      SUCCESS
+  );
+
+  const u8 payload[16] = {0};
+  test_assert_int_equal (f.table->write_all (f.self, payload, sizeof payload, &ctx->e), SUCCESS);
+
+  TEST_CASE ("pwrite_all then pread_all round trips at an offset")
+  {
+    const u8 marker[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+    test_assert_int_equal (f.table->pwrite_all (f.self, marker, 4, 8, &ctx->e), SUCCESS);
+
+    u8 got[4] = {0};
+    test_assert_int_equal (f.table->pread_all (f.self, got, 4, 8, &ctx->e), 4);
+    test_assert_memequal (got, marker, 4);
+  }
+
+  TEST_CASE ("pread_all past the end returns a short count rather than failing")
+  {
+    u8 got[8] = {0};
+    // Only 16 bytes exist, so asking at offset 12 for 8 can only yield 4
+    test_assert_int_equal (f.table->pread_all (f.self, got, 8, 12, &ctx->e), 4);
+  }
+
+  TEST_CASE ("seek reports the resulting absolute offset for each whence")
+  {
+    test_assert_int_equal (f.table->seek (f.self, 4, I_SEEK_SET, &ctx->e), 4);
+    test_assert_int_equal (f.table->seek (f.self, 2, I_SEEK_CUR, &ctx->e), 6);
+    test_assert_int_equal (f.table->seek (f.self, 0, I_SEEK_END, &ctx->e), 16);
+  }
+
+  TEST_CASE ("truncate shrinks the file")
+  {
+    test_assert_int_equal (f.table->truncate (f.self, 10, &ctx->e), SUCCESS);
+    test_assert_int_equal (f.table->file_size (f.self, &ctx->e), 10);
+  }
+
+  TEST_CASE ("prealloc grows the file and never shrinks it")
+  {
+    test_assert_int_equal (f.table->prealloc (f.self, 64, &ctx->e), SUCCESS);
+    test_assert (f.table->file_size (f.self, &ctx->e) >= 64);
+
+    // Already big enough, so this must leave the size alone
+    const i64 before = f.table->file_size (f.self, &ctx->e);
+    test_assert_int_equal (f.table->prealloc (f.self, 8, &ctx->e), SUCCESS);
+    test_assert_int_equal (f.table->file_size (f.self, &ctx->e), (i32)before);
+  }
+
+  TEST_CASE ("writev_all writes every buffer in order")
+  {
+    test_assert_int_equal (f.table->truncate (f.self, 0, &ctx->e), SUCCESS);
+    test_assert_int_equal (f.table->seek (f.self, 0, I_SEEK_SET, &ctx->e), 0);
+
+    u8           a[2]    = {0xA0, 0xA1};
+    u8           b[3]    = {0xB0, 0xB1, 0xB2};
+    struct bytes arrs[2] = {
+        {.head = a, .len = sizeof a},
+        {.head = b, .len = sizeof b},
+    };
+
+    test_assert_int_equal (f.table->writev_all (f.self, arrs, 2, &ctx->e), SUCCESS);
+
+    u8 got[5] = {0};
+    test_assert_int_equal (f.table->pread_all (f.self, got, 5, 0, &ctx->e), 5);
+
+    const u8 expected[5] = {0xA0, 0xA1, 0xB0, 0xB1, 0xB2};
+    test_assert_memequal (got, expected, 5);
+  }
+
+  TEST_CASE ("fsync succeeds on an open file")
+  {
+    test_assert_int_equal (f.table->fsync (f.self, &ctx->e), SUCCESS);
+  }
+
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->unlink (ctx->os.self, SYS_T_FILE, &ctx->e), SUCCESS);
+}
+
+TEST (sys_file_error_paths)
+{
+  TEST_CASE ("Opening a missing file for read fails")
+  {
+    i_file f;
+    test_assert (
+        ctx->os.table->open_file_r (ctx->os.self, &f, "ns_posix_definitely_absent.bin", &ctx->e)
+        != SUCCESS
+    );
+    error_reset (&ctx->e);
+  }
+
+  TEST_CASE ("unlink of a missing file fails")
+  {
+    test_assert (
+        ctx->os.table->unlink (ctx->os.self, "ns_posix_definitely_absent.bin", &ctx->e) != SUCCESS
+    );
+    error_reset (&ctx->e);
+  }
+
+  TEST_CASE ("remove_quiet of a missing file succeeds, which is the point of it")
+  {
+    test_assert_int_equal (
+        ctx->os.table->remove_quiet (ctx->os.self, "ns_posix_definitely_absent.bin", &ctx->e),
+        SUCCESS
+    );
+  }
+
+  TEST_CASE ("file_exists reports false for a missing file without erroring")
+  {
+    bool exists = true;
+    test_assert_int_equal (
+        ctx->os.table
+            ->file_exists (ctx->os.self, "ns_posix_definitely_absent.bin", &exists, &ctx->e),
+        SUCCESS
+    );
+    test_assert (!exists);
+  }
+}
+
+struct sys_thr_data
+{
+  struct i_os os;
+  i_mutex     m;
+  i_cond      c;
+  u32         iters;
+  int         counter;
+  bool        ready;
+};
+
+static void *
+sys_counter_thread (void *_d)
+{
+  struct sys_thr_data *d = _d;
+
+  for (u32 i = 0; i < d->iters; ++i) {
+    d->os.table->mutex_lock (d->m.self);
+    d->counter += 1;
+    d->os.table->mutex_unlock (d->m.self);
+  }
+
+  return NULL;
+}
+
+static void *
+sys_signal_thread (void *_d)
+{
+  struct sys_thr_data *d = _d;
+
+  d->os.table->mutex_lock (d->m.self);
+  d->ready = true;
+  d->os.table->cond_signal (d->c.self);
+  d->os.table->mutex_unlock (d->m.self);
+
+  return NULL;
+}
+
+static void *
+sys_broadcast_thread (void *_d)
+{
+  struct sys_thr_data *d = _d;
+
+  d->os.table->mutex_lock (d->m.self);
+  d->ready = true;
+  d->os.table->cond_broadcast (d->c.self);
+  d->os.table->mutex_unlock (d->m.self);
+
+  return NULL;
+}
+
+TEST (sys_threads_and_mutexes)
+{
+  struct sys_thr_data d = {.os = ctx->os, .iters = 500, .counter = 0};
+
+  test_assert_int_equal (ctx->os.table->mutex_create (ctx->os.self, &d.m, &ctx->e), SUCCESS);
+
+  // The total is only exact if mutex_lock really excludes
+  i_thread threads[8];
+  for (u32 i = 0; i < arrlen (threads); ++i) {
+    test_assert_int_equal (
+        ctx->os.table->thread_create (ctx->os.self, &threads[i], sys_counter_thread, &d, &ctx->e),
+        SUCCESS
+    );
+  }
+  for (u32 i = 0; i < arrlen (threads); ++i) {
+    ctx->os.table->thread_join (ctx->os.self, threads[i].self);
+  }
+
+  test_assert_int_equal (d.counter, (int)(arrlen (threads) * 500));
+
+  ctx->os.table->mutex_free (ctx->os.self, d.m.self);
+}
+
+TEST (sys_condition_variables)
+{
+  TEST_CASE ("cond_wait returns once another thread signals")
+  {
+    struct sys_thr_data d = {.os = ctx->os, .ready = false};
+    test_assert_int_equal (ctx->os.table->mutex_create (ctx->os.self, &d.m, &ctx->e), SUCCESS);
+    test_assert_int_equal (ctx->os.table->cond_create (ctx->os.self, &d.c, &ctx->e), SUCCESS);
+
+    i_thread t;
+    test_assert_int_equal (
+        ctx->os.table->thread_create (ctx->os.self, &t, sys_signal_thread, &d, &ctx->e),
+        SUCCESS
+    );
+
+    ctx->os.table->mutex_lock (d.m.self);
+    while (!d.ready) {
+      ctx->os.table->cond_wait (d.c.self, d.m.self);
+    }
+    ctx->os.table->mutex_unlock (d.m.self);
+
+    ctx->os.table->thread_join (ctx->os.self, t.self);
+    test_assert (d.ready);
+
+    ctx->os.table->cond_free (ctx->os.self, d.c.self);
+    ctx->os.table->mutex_free (ctx->os.self, d.m.self);
+  }
+
+  TEST_CASE ("cond_broadcast also wakes a waiter")
+  {
+    struct sys_thr_data d = {.os = ctx->os, .ready = false};
+    test_assert_int_equal (ctx->os.table->mutex_create (ctx->os.self, &d.m, &ctx->e), SUCCESS);
+    test_assert_int_equal (ctx->os.table->cond_create (ctx->os.self, &d.c, &ctx->e), SUCCESS);
+
+    i_thread t;
+    test_assert_int_equal (
+        ctx->os.table->thread_create (ctx->os.self, &t, sys_broadcast_thread, &d, &ctx->e),
+        SUCCESS
+    );
+
+    ctx->os.table->mutex_lock (d.m.self);
+    while (!d.ready) {
+      ctx->os.table->cond_wait (d.c.self, d.m.self);
+    }
+    ctx->os.table->mutex_unlock (d.m.self);
+
+    ctx->os.table->thread_join (ctx->os.self, t.self);
+    test_assert (d.ready);
+
+    ctx->os.table->cond_free (ctx->os.self, d.c.self);
+    ctx->os.table->mutex_free (ctx->os.self, d.m.self);
+  }
+
+  TEST_CASE ("cond_timed_wait gives up when nobody signals")
+  {
+    struct sys_thr_data d = {.os = ctx->os, .ready = false};
+    test_assert_int_equal (ctx->os.table->mutex_create (ctx->os.self, &d.m, &ctx->e), SUCCESS);
+    test_assert_int_equal (ctx->os.table->cond_create (ctx->os.self, &d.c, &ctx->e), SUCCESS);
+
+    // Nothing will ever signal this, so reaching the next line is the test
+    ctx->os.table->mutex_lock (d.m.self);
+    ctx->os.table->cond_timed_wait (d.c.self, d.m.self, 10);
+    ctx->os.table->mutex_unlock (d.m.self);
+
+    test_assert (!d.ready);
+
+    ctx->os.table->cond_free (ctx->os.self, d.c.self);
+    ctx->os.table->mutex_free (ctx->os.self, d.m.self);
+  }
+}
+
+TEST (sys_timer)
+{
+  i_timer t;
+  test_assert_int_equal (ctx->os.table->timer_create (ctx->os.self, &t, &ctx->e), SUCCESS);
+
+  // now_ns is elapsed time since timer_create, so the first reading can
+  // legitimately be 0 - only the ordering between readings is guaranteed
+  const u64 first = ctx->os.table->timer_now_ns (t.self);
+
+  TEST_CASE ("The clock never goes backwards")
+  {
+    u64 last = first;
+    for (u32 i = 0; i < 1000; ++i) {
+      const u64 now = ctx->os.table->timer_now_ns (t.self);
+      test_assert (now >= last);
+      last = now;
+    }
+  }
+
+  TEST_CASE ("The clock advances across a sleep")
+  {
+    const u64 before = ctx->os.table->timer_now_ns (t.self);
+    i_sleep_ms (2);
+    const u64 after = ctx->os.table->timer_now_ns (t.self);
+
+    test_assert (after > before);
+
+    // At least most of the 2ms nap should show up
+    test_assert (after - before >= 1000000u);
+  }
+
+  ctx->os.table->timer_free (ctx->os.self, t.self);
+}
+
+TEST (sys_os_create_and_free)
+{
+  // A second, independent system OS alongside the one in ctx
+  struct i_os os;
+  test_assert_int_equal (system_os_create (ctx->mem, &os, &ctx->e), SUCCESS);
+  test_assert (os.self != NULL);
+  test_assert (os.table == &default_os_vtable);
+
+  // Usable in its own right
+  test_assert_int_equal (os.table->remove_quiet (os.self, SYS_T_FILE2, &ctx->e), SUCCESS);
+
+  i_file f;
+  test_assert_int_equal (os.table->open_file_rw (os.self, &f, SYS_T_FILE2, &ctx->e), SUCCESS);
+
+  const u8 byte = 0x5A;
+  test_assert_int_equal (f.table->write_all (f.self, &byte, 1, &ctx->e), SUCCESS);
+  test_assert_int_equal (os.table->close_file (os.self, f.self, &ctx->e), SUCCESS);
+  test_assert_int_equal (os.table->unlink (os.self, SYS_T_FILE2, &ctx->e), SUCCESS);
+
+  system_os_free (os);
+}
+#  endif // NDEBUG
+
 #endif // PLATFORM_POSIX

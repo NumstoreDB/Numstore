@@ -194,3 +194,100 @@ def test_var_name(db):
 def test_var_of_nonexistent_variable_raises(db):
     with pytest.raises(RuntimeError):
         db.get("get nope")
+
+
+############# get_all
+
+
+def test_get_all_on_an_empty_database(db):
+    assert db.get_all() == []
+
+
+def test_get_all_returns_every_variable(db):
+    db.execute("create a u8")
+    db.execute("create b [4]f32")
+    db.execute("create c struct { x u32, y f64 }")
+
+    # No ordering is promised, so compare by name
+    by_name = {v.name: v for v in db.get_all()}
+    assert set(by_name) == {"a", "b", "c"}
+    assert by_name["b"] == ns.Var("b", "[4]f32", 0, 16)
+
+
+def test_get_all_matches_get(db):
+    db.execute("create foo u32")
+    db.execute("create bar [2]f64")
+
+    by_name = {v.name: v for v in db.get_all()}
+    assert by_name["foo"] == db.get("get foo")
+    assert by_name["bar"] == db.get("get bar")
+
+
+def test_get_all_tracks_length(db):
+    db.execute("create foo u32")
+    src = np.arange(5, dtype=np.uint32)
+    db.write(f"insert foo 0 {src.size}", src)
+
+    (var,) = db.get_all()
+    assert var.length == src.size
+    assert var.shape == (5,)
+    assert var.dtype == np.dtype(np.uint32)
+
+
+def test_get_all_holds_no_c_handle(db):
+    db.execute("create foo u32")
+
+    (var,) = db.get_all()
+    assert isinstance(var, ns.Var)
+    assert {f.name for f in dataclasses.fields(var)} == {
+        "name",
+        "type",
+        "length",
+        "tsize",
+    }
+
+
+def test_get_all_in_a_transaction(db):
+    db.execute("create foo u32")
+
+    with db.begin() as tx:
+        tx.execute("create bar f64")
+        assert {v.name for v in tx.get_all()} == {"foo", "bar"}
+
+    assert {v.name for v in db.get_all()} == {"foo", "bar"}
+
+
+def test_get_all_after_rollback(db):
+    db.execute("create foo u32")
+
+    tx = db.begin()
+    tx.execute("create bar f64")
+    tx.rollback()
+
+    assert {v.name for v in db.get_all()} == {"foo"}
+
+
+def test_get_all_on_a_finished_transaction_raises(db):
+    tx = db.begin()
+    tx.commit()
+
+    with pytest.raises(RuntimeError):
+        tx.get_all()
+
+
+def test_get_all_on_a_closed_database_raises(db_dir):
+    database = ns.Database("closed.db")
+    database.execute("create foo u32")
+    database.close()
+
+    with pytest.raises(RuntimeError):
+        database.get_all()
+
+
+def test_get_all_releases_its_handles(db):
+    db.execute("create foo f64")
+    db.execute("create bar u8")
+
+    # Each call allocates a capsule per variable; a leak shows up fast here
+    for _ in range(5000):
+        assert len(db.get_all()) == 2

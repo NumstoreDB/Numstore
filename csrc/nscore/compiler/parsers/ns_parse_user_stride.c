@@ -92,6 +92,8 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
     return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->pos);
   }
 
+  WRAP (user_stride_validate (s, e));
+
   *dest = s;
   return parser_expect (parser, TT_RIGHT_BRACKET, e);
 }

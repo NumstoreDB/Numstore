@@ -12,14 +12,14 @@ from . import _pynumstore as _ns
 from .var import Var
 
 if TYPE_CHECKING:
-    from ._pynumstore import nsplan, nstxn
+    from ._pynumstore import nsplan, nstxn, nsvar
 
 
 def to_dtype(type_str: str) -> np.dtype[Any]:
     return _ns._pyns_ns_to_np(type_str)
 
 
-def handle_to_var(handle) -> Var:
+def handle_to_var(handle: nsvar) -> Var:
     try:
         return Var(
             name=_ns._pyns_var_name(handle),

@@ -253,4 +253,208 @@ TEST (checksum_execute_incremental)
 
   test_assert_equal (state1, state2);
 }
+
+/******************************************************************************
+ * SECTION: crc_sw
+ * ----------------------------------------------------------------------------
+ * crc_sw is the portable slicing-by-8 fallback. On a host with CRC_HW it is
+ * not the path checksum_execute takes, so it is tested directly here: against
+ * an independent bit-at-a-time oracle, against the published CRC-32C vectors,
+ * and against the hardware path it has to stay bit-identical to.
+ *
+ * It works on the raw (inverted) state, so a finished CRC-32C of [buf] is
+ * ~crc_sw (0xFFFFFFFFu, buf, len).
+ ******************************************************************************/
+
+// Bit-at-a-time CRC-32C. Deliberately the dumbest possible implementation: it
+// shares no tables or structure with crc_sw, so agreement is real evidence.
+static u32
+crc_bitwise (u32 c, const u8 *p, u32 len)
+{
+  for (u32 i = 0; i < len; ++i) {
+    c ^= p[i];
+    for (int k = 0; k < 8; ++k) {
+      c = (c >> 1) ^ (CRC32C_POLY & -(c & 1));
+    }
+  }
+  return c;
+}
+
+// crc_sw reads its tables, so they have to be built before it is called
+// directly rather than through checksum_execute
+static void
+crc_tables_ready (void)
+{
+  i_once_run (&crc_once, crc_init);
+}
+
+static u32
+crc32c_of (const u8 *p, const u32 len)
+{
+  return ~crc_sw (0xFFFFFFFFu, p, len);
+}
+
+static const struct
+{
+  const char *name;
+  u32         len;
+  u8          fill_kind; // 0: zeros, 1: 0xff, 2: incrementing, 3: decrementing
+  u32         expected;
+} crc_rfc3720_cases[] = {
+    // RFC 3720 (iSCSI) appendix B.4 CRC-32C vectors
+    {"32 bytes of zeros", 32, 0, 0x8A9136AAu},
+    {"32 bytes of 0xff", 32, 1, 0x62A8AB43u},
+    {"32 bytes incrementing 00..1f", 32, 2, 0x46DD794Eu},
+    {"32 bytes decrementing 1f..00", 32, 3, 0x113FDB5Cu},
+};
+
+TEST (crc_sw_known_answers)
+{
+  crc_tables_ready ();
+
+  TEST_CASE ("The CRC-32C check value for \"123456789\"")
+  {
+    const u8 *check = (const u8 *)"123456789";
+    test_assert_type_equal (crc32c_of (check, 9), 0xE3069283u, u32, PRIx32);
+  }
+
+  TEST_CASE ("An empty buffer leaves the CRC at its initial value")
+  {
+    test_assert_type_equal (crc32c_of ((const u8 *)"", 0), 0x00000000u, u32, PRIx32);
+  }
+
+  TEST_CASE ("Single byte \"a\"")
+  {
+    test_assert_type_equal (crc32c_of ((const u8 *)"a", 1), 0xC1D04330u, u32, PRIx32);
+  }
+
+  TEST_CASE ("Five bytes \"hello\" exercises the trailing byte loop alone")
+  {
+    test_assert_type_equal (crc32c_of ((const u8 *)"hello", 5), 0x9A71BB4Cu, u32, PRIx32);
+  }
+
+  for (u32 i = 0; i < arrlen (crc_rfc3720_cases); ++i) {
+    TEST_CASE ("%s", crc_rfc3720_cases[i].name)
+    {
+      u8 buf[32];
+      for (u32 j = 0; j < crc_rfc3720_cases[i].len; ++j) {
+        switch (crc_rfc3720_cases[i].fill_kind) {
+          case 0: buf[j] = 0x00; break;
+          case 1: buf[j] = 0xFF; break;
+          case 2: buf[j] = (u8)j; break;
+          default: buf[j] = (u8)(crc_rfc3720_cases[i].len - 1 - j); break;
+        }
+      }
+      test_assert_type_equal (
+          crc32c_of (buf, crc_rfc3720_cases[i].len),
+          crc_rfc3720_cases[i].expected,
+          u32,
+          PRIx32
+      );
+    }
+  }
+}
+
+// Every length from 0 to 40 covers the 8-byte slicing loop, the 1-byte tail
+// loop, and each combination of the two
+TEST (crc_sw_matches_bitwise_oracle_at_every_length)
+{
+  crc_tables_ready ();
+
+  u8 buf[40];
+  for (u32 i = 0; i < arrlen (buf); ++i) {
+    buf[i] = (u8)(i * 7u + 1u);
+  }
+
+  for (u32 len = 0; len <= arrlen (buf); ++len) {
+    TEST_CASE ("len=%u", len)
+    {
+      test_assert_type_equal (
+          crc_sw (0xFFFFFFFFu, buf, len),
+          crc_bitwise (0xFFFFFFFFu, buf, len),
+          u32,
+          PRIx32
+      );
+    }
+  }
+}
+
+// A non-default seed must be carried through both loops, not discarded
+TEST (crc_sw_honours_the_incoming_state)
+{
+  crc_tables_ready ();
+
+  const u8  buf[11] = {9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 255};
+  const u32 seeds[] = {0x00000000u, 0x00000001u, 0xDEADBEEFu, 0xFFFFFFFFu};
+
+  for (u32 i = 0; i < arrlen (seeds); ++i) {
+    TEST_CASE ("seed=0x%08X", seeds[i])
+    {
+      test_assert_type_equal (
+          crc_sw (seeds[i], buf, arrlen (buf)),
+          crc_bitwise (seeds[i], buf, arrlen (buf)),
+          u32,
+          PRIx32
+      );
+    }
+  }
+
+  TEST_CASE ("A zero length run returns the state untouched")
+  {
+    test_assert_type_equal (crc_sw (0x12345678u, buf, 0), 0x12345678u, u32, PRIx32);
+  }
+}
+
+// Splitting a buffer anywhere must not change the result, which is what lets
+// checksum_execute be called incrementally
+TEST (crc_sw_is_resumable_at_every_split)
+{
+  crc_tables_ready ();
+
+  u8 buf[24];
+  for (u32 i = 0; i < arrlen (buf); ++i) {
+    buf[i] = (u8)(i * 31u + 5u);
+  }
+
+  const u32 whole = crc_sw (0xFFFFFFFFu, buf, arrlen (buf));
+
+  for (u32 split = 0; split <= arrlen (buf); ++split) {
+    TEST_CASE ("split at %u", split)
+    {
+      const u32 first = crc_sw (0xFFFFFFFFu, buf, split);
+      const u32 both  = crc_sw (first, buf + split, (u32)arrlen (buf) - split);
+      test_assert_type_equal (both, whole, u32, PRIx32);
+    }
+  }
+}
+
+// On a CRC_HW host this is the test that matters: the fallback and the
+// hardware path must agree exactly, including across the 3 * CRC_K interleaved
+// block boundary the hardware path takes for large inputs.
+TEST (crc_sw_agrees_with_checksum_execute)
+{
+  crc_tables_ready ();
+
+  // Spans the hardware path's 3 * CRC_K == 3072 byte block, plus a remainder
+  const u32 len = 3 * CRC_K + 77;
+  u8       *buf = ctx->mem.table->malloc (ctx->mem.self, len, 1, &ctx->e);
+  test_assert (buf != NULL);
+
+  for (u32 i = 0; i < len; ++i) {
+    buf[i] = (u8)(i * 13u + (i >> 5));
+  }
+
+  const u32 lens[] = {0, 1, 7, 8, 9, 63, 64, 1024, 3071, 3072, 3073, 3 * CRC_K + 77};
+
+  for (u32 i = 0; i < arrlen (lens); ++i) {
+    TEST_CASE ("len=%u", lens[i])
+    {
+      u32 state = checksum_init ();
+      checksum_execute (&state, buf, lens[i]);
+      test_assert_type_equal (state, crc32c_of (buf, lens[i]), u32, PRIx32);
+    }
+  }
+
+  ctx->mem.table->free (ctx->mem.self, buf);
+}
 #endif

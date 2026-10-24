@@ -267,8 +267,20 @@ ns_visit_consumer (struct variable *_var, void *_ctx, error *e)
 int
 ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx)
 {
+  // Visiting every variable is a pure read, and reads don't go through a txn -
+  // only writes need one.
+  (void)tx;
+
   error_reset (db->e);
-  return ns_visit_variables (db->p, ns_visit_consumer, ctx, db->e);
+
+  // ns_visit_consumer unwraps this - handing it the caller's ctx directly
+  // would have it read a nsdb_var_t_visit_ctx out of unrelated memory.
+  struct nsdb_var_t_visit_ctx wrapped = {
+      .consumer   = consumer,
+      .parent_ctx = ctx,
+  };
+
+  return ns_visit_variables (db->p, ns_visit_consumer, &wrapped, db->e);
 }
 
 static inline char *
@@ -519,3 +531,516 @@ ns_smfile_write (
   error_reset (db->e);
   return nsdb_smfile_write (db, tx, src, size, bofst, stride, nelem, NULL);
 }
+
+#ifndef NDEBUG
+#  include "core/ns_testing.h"
+
+#  include <stdlib.h>
+#  include <string.h>
+
+/******************************************************************************
+ * SECTION: Public API (tests)
+ * ----------------------------------------------------------------------------
+ * One basic test per public entry point in this file. These go through the
+ * real public surface - ns_open and friends build their own OS and allocator
+ * rather than taking ctx's - so each test owns its database file and cleans up
+ * after itself.
+ ******************************************************************************/
+
+#  define NS_T_DB    "ns_api_test_db"
+#  define NS_T_DB2   "ns_api_test_db2"
+#  define NS_T_SMF   "ns_api_test_smf"
+#  define NS_T_CRASH "ns_api_test_crash"
+
+TEST (ns_api_open_and_close)
+{
+  TEST_CASE ("ns_cleanup on an absent path succeeds")
+  {
+    test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+  }
+
+  TEST_CASE ("ns_open then ns_close")
+  {
+    nsdb_t *db = ns_open (NS_T_DB);
+    test_assert (db != NULL);
+
+    // Nothing has gone wrong yet, so there is no error string to report
+    test_assert_ptr_equal (ns_strerror (db), NULL);
+
+    test_assert_int_equal (ns_close (db), 0);
+  }
+
+  TEST_CASE ("ns_cleanup removes what ns_open created")
+  {
+    test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+  }
+}
+
+TEST (ns_api_open_with_error)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+
+  TEST_CASE ("ns_open_with_error on a good path leaves the buffer alone")
+  {
+    char    erstr[256] = {0};
+    nsdb_t *db         = ns_open_with_error (NS_T_DB, erstr, sizeof erstr);
+    test_assert (db != NULL);
+    test_assert_int_equal (ns_close (db), 0);
+  }
+
+  TEST_CASE ("ns_open_with_error reports why a bad path failed")
+  {
+    char    erstr[256] = {0};
+    nsdb_t *db = ns_open_with_error ("ns_api_no_such_directory_xyz/db", erstr, sizeof erstr);
+    test_assert_ptr_equal (db, NULL);
+    test_assert (strlen (erstr) > 0);
+  }
+
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+}
+
+TEST (ns_api_execute_write_read)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB);
+  test_assert (db != NULL);
+
+  const int src[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+  int       dest[8];
+
+  TEST_CASE ("ns_execute creates a variable")
+  {
+    test_assert_int_equal (ns_execute (db, NULL, "create v i32"), 0);
+  }
+
+  // ns_write and ns_read count ELEMENTS, not bytes
+  TEST_CASE ("ns_write inserts and reports the elements written")
+  {
+    const sb_size n = ns_write (db, NULL, src, sizeof src, "insert v 0 %d", 8);
+    test_assert_int_equal ((int)n, 8);
+  }
+
+  TEST_CASE ("ns_read reads the same bytes back")
+  {
+    memset (dest, 0, sizeof dest);
+    const sb_size n = ns_read (db, NULL, dest, sizeof dest, "read v[0:] blimit %ld", sizeof dest);
+    test_assert_int_equal ((int)n, 8);
+    test_assert_memequal (dest, src, sizeof src);
+  }
+
+  // dlen, unlike the return values above, is a byte count
+  TEST_CASE ("ns_malloc allocates the result for you")
+  {
+    b_size dlen = 0;
+    void  *got  = ns_malloc (db, NULL, &dlen, "read v[0:]");
+    test_assert (got != NULL);
+    test_assert_int_equal ((int)dlen, (int)sizeof src);
+    test_assert_memequal (got, src, sizeof src);
+
+    // The contract is the system free, not an ns_ call
+    free (got);
+  }
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+}
+
+TEST (ns_api_plans)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB);
+  test_assert (db != NULL);
+
+  const int src[4] = {10, 20, 30, 40};
+  int       dest[4];
+
+  TEST_CASE ("ns_plan_fcreate then ns_plan_execute runs a create")
+  {
+    nsdb_plan_t *plan = ns_plan_fcreate (db, "create p i32");
+    test_assert (plan != NULL);
+
+    // No error yet, so there is nothing to report
+    test_assert_ptr_equal (ns_plan_strerror (plan), NULL);
+
+    test_assert_int_equal (ns_plan_execute (plan, NULL), 0);
+    ns_plan_free (plan);
+  }
+
+  TEST_CASE ("ns_plan_write runs an insert")
+  {
+    nsdb_plan_t *plan = ns_plan_fcreate (db, "insert p 0 4");
+    test_assert (plan != NULL);
+
+    const sb_size n = ns_plan_write (plan, NULL, src, sizeof src);
+    test_assert_int_equal ((int)n, 4);
+
+    ns_plan_free (plan);
+  }
+
+  TEST_CASE ("ns_plan_read runs a read")
+  {
+    nsdb_plan_t *plan = ns_plan_fcreate (db, "read p[0:]");
+    test_assert (plan != NULL);
+
+    memset (dest, 0, sizeof dest);
+    const sb_size n = ns_plan_read (plan, NULL, dest, sizeof dest);
+    test_assert_int_equal ((int)n, 4);
+    test_assert_memequal (dest, src, sizeof src);
+
+    ns_plan_free (plan);
+  }
+
+  TEST_CASE ("ns_plan_malloc allocates the result")
+  {
+    nsdb_plan_t *plan = ns_plan_fcreate (db, "read p[0:]");
+    test_assert (plan != NULL);
+
+    b_size dlen = 0;
+    void  *got  = ns_plan_malloc (plan, NULL, &dlen);
+    test_assert (got != NULL);
+    test_assert_int_equal ((int)dlen, (int)sizeof src);
+    free (got);
+
+    ns_plan_free (plan);
+  }
+
+  TEST_CASE ("ns_plan_get_var resolves the variable")
+  {
+    nsdb_plan_t *plan = ns_plan_fcreate (db, "get p");
+    test_assert (plan != NULL);
+
+    nsdb_var_t *var = ns_plan_get_var (plan, NULL);
+    test_assert (var != NULL);
+    // ns_var_len is an element count too
+    test_assert_int_equal ((int)ns_var_len (var), 4);
+    ns_var_free (var);
+
+    ns_plan_free (plan);
+  }
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+}
+
+struct ns_visit_count
+{
+  unsigned seen;
+  b_size   total_len;
+};
+
+// The nsdb_var_t handed to a consumer is borrowed - it lives on
+// ns_visit_consumer's stack - so this reads it and hands it back, it never
+// frees it
+static void
+ns_t_count_vars (nsdb_var_t *v, void *vctx)
+{
+  struct ns_visit_count *c = vctx;
+  c->seen += 1;
+  c->total_len += ns_var_len (v);
+}
+
+TEST (ns_api_get_var)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB);
+  test_assert (db != NULL);
+
+  test_assert_int_equal (ns_execute (db, NULL, "create a i32"), 0);
+
+  const int src[2] = {7, 8};
+  test_assert_int_equal ((int)ns_write (db, NULL, src, sizeof src, "insert a 0 %d", 2), 2);
+
+  TEST_CASE ("ns_get_var and ns_var_len report the stored length")
+  {
+    nsdb_var_t *var = ns_get_var (db, NULL, "get a");
+    test_assert (var != NULL);
+    test_assert_int_equal ((int)ns_var_len (var), 2);
+    ns_var_free (var);
+  }
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+}
+
+TEST (ns_api_get_var_empty)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB2);
+  test_assert (db != NULL);
+
+  test_assert_int_equal (ns_execute (db, NULL, "create b f32"), 0);
+
+  nsdb_var_t *var = ns_get_var (db, NULL, "get b");
+  test_assert (var != NULL);
+  ns_var_free (var);
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);
+}
+
+TEST (ns_api_variables)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB2);
+  test_assert (db != NULL);
+
+  TEST_CASE ("A fresh database has no variables to visit")
+  {
+    struct ns_visit_count c = {0};
+    test_assert_int_equal (ns_visit_nsdb_vars (db, ns_t_count_vars, NULL, &c), 0);
+    test_assert_int_equal ((int)c.seen, 0);
+  }
+
+  test_assert_int_equal (ns_execute (db, NULL, "create v1 i32"), 0);
+  test_assert_int_equal (ns_execute (db, NULL, "create v2 f64"), 0);
+
+  const int src[3] = {1, 2, 3};
+  test_assert_int_equal ((int)ns_write (db, NULL, src, sizeof src, "insert v1 0 %d", 3), 3);
+
+  TEST_CASE ("ns_visit_nsdb_vars sees every variable")
+  {
+    struct ns_visit_count c = {0};
+    test_assert_int_equal (ns_visit_nsdb_vars (db, ns_t_count_vars, NULL, &c), 0);
+    test_assert_int_equal ((int)c.seen, 2);
+
+    // Three elements in v1, none in v2
+    test_assert_int_equal ((int)c.total_len, 3);
+  }
+
+  // Reads don't join a transaction, so passing one changes nothing
+  TEST_CASE ("ns_visit_nsdb_vars ignores the transaction it is handed")
+  {
+    txn_t *tx = ns_begin (db);
+    test_assert (tx != NULL);
+
+    struct ns_visit_count c = {0};
+    test_assert_int_equal (ns_visit_nsdb_vars (db, ns_t_count_vars, tx, &c), 0);
+    test_assert_int_equal ((int)c.seen, 2);
+
+    test_assert_int_equal (ns_commit (db, tx), 0);
+  }
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);
+}
+
+TEST (ns_api_transactions)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB);
+  test_assert (db != NULL);
+
+  test_assert_int_equal (ns_execute (db, NULL, "create t i32"), 0);
+
+  const int src[4] = {1, 2, 3, 4};
+
+  TEST_CASE ("ns_begin then ns_commit keeps the write")
+  {
+    txn_t *tx = ns_begin (db);
+    test_assert (tx != NULL);
+
+    test_assert_int_equal ((int)ns_write (db, tx, src, sizeof src, "insert t 0 %d", 4), 4);
+    test_assert_int_equal (ns_commit (db, tx), 0);
+
+    int dest[4] = {0};
+    test_assert_int_equal (
+        (int)ns_read (db, NULL, dest, sizeof dest, "read t[0:] blimit %ld", sizeof dest),
+        4
+    );
+    test_assert_memequal (dest, src, sizeof src);
+  }
+
+  TEST_CASE ("ns_begin then ns_rollback discards the write")
+  {
+    txn_t *tx = ns_begin (db);
+    test_assert (tx != NULL);
+
+    test_assert_int_equal ((int)ns_write (db, tx, src, sizeof src, "insert t 0 %d", 4), 4);
+    test_assert_int_equal (ns_rollback (db, tx), 0);
+
+    // Still just the four committed elements
+    int dest[8] = {0};
+    test_assert_int_equal (
+        (int)ns_read (db, NULL, dest, sizeof dest, "read t[0:] blimit %ld", sizeof dest),
+        4
+    );
+  }
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
+}
+
+// ns_crash drops the database without the orderly shutdown ns_close does, so
+// the committed data has to come back through recovery on the next open
+TEST (ns_api_crash)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_CRASH), 0);
+
+  const int src[4] = {5, 6, 7, 8};
+
+  {
+    nsdb_t *db = ns_open (NS_T_CRASH);
+    test_assert (db != NULL);
+
+    test_assert_int_equal (ns_execute (db, NULL, "create c i32"), 0);
+    test_assert_int_equal ((int)ns_write (db, NULL, src, sizeof src, "insert c 0 %d", 4), 4);
+
+    // Takes the database down; no ns_close after this
+    test_assert_int_equal (ns_crash (db), 0);
+  }
+
+  {
+    nsdb_t *db = ns_open (NS_T_CRASH);
+    test_assert (db != NULL);
+
+    int dest[4] = {0};
+    test_assert_int_equal (
+        (int)ns_read (db, NULL, dest, sizeof dest, "read c[0:] blimit %ld", sizeof dest),
+        4
+    );
+    test_assert_memequal (dest, src, sizeof src);
+
+    test_assert_int_equal (ns_close (db), 0);
+  }
+
+  test_assert_int_equal (ns_cleanup (NS_T_CRASH), 0);
+}
+
+TEST (ns_api_smfile_open_and_close)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
+
+  TEST_CASE ("ns_smfile_open then ns_close")
+  {
+    nsdb_t *smf = ns_smfile_open (NS_T_SMF);
+    test_assert (smf != NULL);
+    test_assert_int_equal (ns_close (smf), 0);
+  }
+
+  TEST_CASE ("ns_smfile_open_with_error on a good path")
+  {
+    char    erstr[256] = {0};
+    nsdb_t *smf        = ns_smfile_open_with_error (NS_T_SMF, erstr, sizeof erstr);
+    test_assert (smf != NULL);
+    test_assert_int_equal (ns_close (smf), 0);
+  }
+
+  TEST_CASE ("ns_smfile_open_with_error reports why a bad path failed")
+  {
+    char    erstr[256] = {0};
+    nsdb_t *smf        = ns_smfile_open_with_error (
+        "ns_api_no_such_directory_xyz/smf",
+        erstr,
+        sizeof erstr
+    );
+    test_assert_ptr_equal (smf, NULL);
+    test_assert (strlen (erstr) > 0);
+  }
+
+  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
+}
+
+TEST (ns_api_smfile_operations)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
+
+  nsdb_t *smf = ns_smfile_open (NS_T_SMF);
+  test_assert (smf != NULL);
+
+  TEST_CASE ("A fresh smart file is empty")
+  {
+    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 0);
+  }
+
+  TEST_CASE ("ns_smfile_insert appends bytes")
+  {
+    test_assert_int_equal ((int)ns_smfile_insert (smf, NULL, "hello world", 0, 11), 11);
+    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 11);
+  }
+
+  TEST_CASE ("ns_smfile_read reads the whole file")
+  {
+    char got[16] = {0};
+    test_assert_int_equal ((int)ns_smfile_read (smf, NULL, got, 1, 0, 1, NS_END), 11);
+    test_assert_memequal (got, "hello world", 11);
+  }
+
+  TEST_CASE ("ns_smfile_write overwrites in place")
+  {
+    test_assert_int_equal ((int)ns_smfile_write (smf, NULL, "WORLD", 1, 6, 1, 5), 5);
+
+    char got[16] = {0};
+    test_assert_int_equal ((int)ns_smfile_read (smf, NULL, got, 1, 0, 1, NS_END), 11);
+    test_assert_memequal (got, "hello WORLD", 11);
+  }
+
+  TEST_CASE ("ns_smfile_remove takes bytes out and hands them back")
+  {
+    char evicted[8] = {0};
+    test_assert_int_equal ((int)ns_smfile_remove (smf, NULL, evicted, 1, 0, 1, 6), 6);
+    test_assert_memequal (evicted, "hello ", 6);
+
+    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 5);
+
+    char got[8] = {0};
+    test_assert_int_equal ((int)ns_smfile_read (smf, NULL, got, 1, 0, 1, NS_END), 5);
+    test_assert_memequal (got, "WORLD", 5);
+  }
+
+  TEST_CASE ("Smart file writes take part in transactions")
+  {
+    txn_t *tx = ns_begin (smf);
+    test_assert (tx != NULL);
+
+    test_assert_int_equal ((int)ns_smfile_insert (smf, tx, "!!", 5, 2), 2);
+    test_assert_int_equal (ns_commit (smf, tx), 0);
+
+    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 7);
+  }
+
+  test_assert_int_equal (ns_close (smf), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
+}
+
+// ns_strerror and ns_plan_strerror on an actual failure, which is the case
+// callers reach for
+TEST (ns_api_error_reporting)
+{
+  test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);
+
+  nsdb_t *db = ns_open (NS_T_DB2);
+  test_assert (db != NULL);
+
+  TEST_CASE ("ns_strerror describes a failed query")
+  {
+    test_assert (ns_execute (db, NULL, "this is not a query") != 0);
+
+    const char *msg = ns_strerror (db);
+    test_assert (msg != NULL);
+    test_assert (strlen (msg) > 0);
+  }
+
+  TEST_CASE ("ns_plan_fcreate rejects a malformed query")
+  {
+    nsdb_plan_t *plan = ns_plan_fcreate (db, "also not a query");
+    if (plan == NULL) {
+      // The parse failed outright, and the reason is on the database
+      const char *msg = ns_strerror (db);
+      test_assert (msg != NULL);
+    } else {
+      test_assert (ns_plan_execute (plan, NULL) != 0);
+      test_assert (ns_plan_strerror (plan) != NULL);
+      ns_plan_free (plan);
+    }
+  }
+
+  test_assert_int_equal (ns_close (db), 0);
+  test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);
+}
+#endif

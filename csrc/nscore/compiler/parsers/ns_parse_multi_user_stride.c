@@ -293,17 +293,19 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Double colon + step  â†’  "::0"
-  // COLON_PRESENT (from first ':') | STEP_PRESENT (from "::0")
+  // Double colon + step  â†’  "::2"
+  // COLON_PRESENT (from first ':') | STEP_PRESENT (from "::2")
   // Note: no START_PRESENT, no STOP_PRESENT
+  // A step of 0 is rejected (see the zero-step error cases), so these shape
+  // tests use 2 as the filler step.
   // -------------------------------------------------------------------------
-  TEST_CASE ("[ ::0, 0 ]")
+  TEST_CASE ("[ ::2, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[::0, 0]", &ctx->alloc, &ctx->e);
+    compile_multi_user_stride (&stride, "[::2, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STEP_PRESENT);
-    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[0].step, 2);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
   }
@@ -323,16 +325,16 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop + colon + step  â†’  ":0:0"
+  // Colon + stop + colon + step  â†’  ":0:2"
   // -------------------------------------------------------------------------
-  TEST_CASE ("[ :0:0, 0 ]")
+  TEST_CASE ("[ :0:2, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[:0:0, 0]", &ctx->alloc, &ctx->e);
+    compile_multi_user_stride (&stride, "[:0:2, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT | STEP_PRESENT);
     test_assert_int_equal (stride.strides[0].stop, 0);
-    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[0].step, 2);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
   }
@@ -352,26 +354,26 @@ TEST (compile_multi_user_stride)
   }
 
   // -------------------------------------------------------------------------
-  // Start + double colon + step  â†’  "0::0"
+  // Start + double colon + step  â†’  "0::2"
   // -------------------------------------------------------------------------
-  TEST_CASE ("[ 0::0, 0 ]")
+  TEST_CASE ("[ 0::2, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0::0, 0]", &ctx->alloc, &ctx->e);
+    compile_multi_user_stride (&stride, "[0::2, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT | STEP_PRESENT);
     test_assert_int_equal (stride.strides[0].start, 0);
-    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[0].step, 2);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
   }
 
   // -------------------------------------------------------------------------
-  // Full slice  â†’  "0:0:0"
+  // Full slice  â†’  "0:0:2"
   // -------------------------------------------------------------------------
-  TEST_CASE ("[ 0:0:0, 0 ]")
+  TEST_CASE ("[ 0:0:2, 0 ]")
   {
-    compile_multi_user_stride (&stride, "[0:0:0, 0]", &ctx->alloc, &ctx->e);
+    compile_multi_user_stride (&stride, "[0:0:2, 0]", &ctx->alloc, &ctx->e);
     test_assert_int_equal (stride.len, 2);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (
@@ -380,7 +382,7 @@ TEST (compile_multi_user_stride)
     );
     test_assert_int_equal (stride.strides[0].start, 0);
     test_assert_int_equal (stride.strides[0].stop, 0);
-    test_assert_int_equal (stride.strides[0].step, 0);
+    test_assert_int_equal (stride.strides[0].step, 2);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
     test_assert_int_equal (stride.strides[1].start, 0);
   }
@@ -432,6 +434,43 @@ TEST (compile_multi_user_stride)
     err_t err = compile_multi_user_stride (&stride, "[,0]", &ctx->alloc, &ctx->e);
     test_assert (err < SUCCESS);
     test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
+  }
+
+  // A zero step would never advance. The user_stride invariant forbids it, so
+  // the parser has to reject it rather than hand one downstream.
+  TEST_CASE ("error: zero step '[::0]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[::0]", &ctx->alloc, &ctx->e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (ctx->e.cause_code, ERR_INVALID_ARGUMENT);
+    error_reset (&ctx->e);
+  }
+
+  TEST_CASE ("error: zero step '[0:10:0]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[0:10:0]", &ctx->alloc, &ctx->e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (ctx->e.cause_code, ERR_INVALID_ARGUMENT);
+    error_reset (&ctx->e);
+  }
+
+  // Only one entry of several has to be bad
+  TEST_CASE ("error: zero step in a later entry '[0, ::0]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[0, ::0]", &ctx->alloc, &ctx->e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (ctx->e.cause_code, ERR_INVALID_ARGUMENT);
+    error_reset (&ctx->e);
+  }
+
+  // Negative steps were already rejected by stride_resolve; the parser now
+  // catches them up front with the same code and message
+  TEST_CASE ("error: negative step '[0:10:-1]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[0:10:-1]", &ctx->alloc, &ctx->e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (ctx->e.cause_code, ERR_INVALID_ARGUMENT);
     error_reset (&ctx->e);
   }
 

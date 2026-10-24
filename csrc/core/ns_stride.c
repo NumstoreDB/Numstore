@@ -302,9 +302,26 @@ musb_create (struct builder *b)
 }
 
 err_t
+user_stride_validate (const struct user_stride u, error *e)
+{
+  // Same rule and wording as stride_resolve, which stays the backstop for
+  // strides that didn't come from the parser. A step of 0 has to be caught
+  // here: it trips the user_stride invariant before resolve ever sees it.
+  if ((u.present & STEP_PRESENT) && u.step <= 0) {
+    return error_causef (e, ERR_INVALID_ARGUMENT, "stride step must be positive");
+  }
+
+  return SUCCESS;
+}
+
+err_t
 musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error *e)
 {
   DBG_ASSERT (mus_builder, eb);
+
+  // Every multi-stride entry the parser builds lands here, so this is the one
+  // place to turn bad user text into an error
+  WRAP (user_stride_validate (stride, e));
 
   struct mus_llnode *node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
   if (!node) {

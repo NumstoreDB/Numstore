@@ -19,6 +19,11 @@
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
 
+#ifndef NDEBUG
+#  include "core/ns_ext_array.h" // ext_array - the writer the tests drive
+#  include "core/ns_testing.h"   // TEST
+#endif
+
 #include <inttypes.h>
 #include <string.h>
 
@@ -593,3 +598,314 @@ dvalidtr_random_test (
 
   return SUCCESS;
 }
+
+#ifndef NDEBUG
+
+/******************************************************************************
+ * SECTION: Data Validator Tests
+ * ----------------------------------------------------------------------------
+ * The validator's whole job is to notice when [sut] stops agreeing with [ref],
+ * so each test drives a pair of ext_arrays through the validator and then
+ * corrupts the sut behind the validator's back to prove the check fires.
+ ******************************************************************************/
+
+// Both sides are real ext_arrays, so the success paths exercise the validator
+// rather than a stub. Pointers into the caller's arrays, so [ref] and [sut]
+// must outlive the returned validator.
+static struct dvalidtr
+dv_create (struct ext_array *ref, struct ext_array *sut, const struct i_mem mem)
+{
+  struct dvalidtr d = {
+      .mem     = mem,
+      .isvalid = NULL,
+  };
+  ext_array_data_writer (&d.ref, ref);
+  ext_array_data_writer (&d.sut, sut);
+  return d;
+}
+
+static const u8 dv_payload[8] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80};
+
+TEST (dvalidtr_insert_agreeing_writers)
+{
+  struct ext_array ref = ext_array_create (ctx->mem);
+  struct ext_array sut = ext_array_create (ctx->mem);
+  struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+  TEST_CASE ("Insert propagates to both writers")
+  {
+    test_assert_int_equal (
+        dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e),
+        SUCCESS
+    );
+    test_assert_type_equal (ext_array_get_len (&ref), (u64)sizeof dv_payload, u64, PRIu64);
+    test_assert_type_equal (ext_array_get_len (&sut), (u64)sizeof dv_payload, u64, PRIu64);
+    test_assert_memequal (ref.data, sut.data, sizeof dv_payload);
+  }
+
+  TEST_CASE ("A second insert in the middle still agrees")
+  {
+    test_assert_int_equal (dvalidtr_insert (&d, 4, dv_payload, 4, &ctx->e), SUCCESS);
+    test_assert_type_equal (ext_array_get_len (&sut), (u64)12, u64, PRIu64);
+  }
+
+  TEST_CASE ("getlen reports the ref length")
+  {
+    test_assert_int_equal (dvalidtr_getlen (&d, &ctx->e), 12);
+  }
+
+  TEST_CASE ("Full validation passes while the writers agree")
+  {
+    test_assert_int_equal (dvalidtr_light_validate (&d, &ctx->e), SUCCESS);
+    test_assert_int_equal (dvalidtr_validate (&d, &ctx->e), SUCCESS);
+  }
+
+  ext_array_free (&ref);
+  ext_array_free (&sut);
+}
+
+// NULL [_src] asks the validator to allocate and fill the payload itself, which
+// is the path dvalidtr_random_test takes
+TEST (dvalidtr_insert_generates_its_own_payload)
+{
+  struct ext_array ref = ext_array_create (ctx->mem);
+  struct ext_array sut = ext_array_create (ctx->mem);
+  struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+  test_assert_int_equal (dvalidtr_insert (&d, 0, NULL, 16, &ctx->e), SUCCESS);
+  test_assert_type_equal (ext_array_get_len (&sut), (u64)16, u64, PRIu64);
+  test_assert_memequal (ref.data, sut.data, 16);
+
+  ext_array_free (&ref);
+  ext_array_free (&sut);
+}
+
+TEST (dvalidtr_read_write_remove_agreeing_writers)
+{
+  struct ext_array    ref = ext_array_create (ctx->mem);
+  struct ext_array    sut = ext_array_create (ctx->mem);
+  struct dvalidtr     d   = dv_create (&ref, &sut, ctx->mem);
+
+  const struct stride all = {.start = 0, .stride = 1, .nelems = sizeof dv_payload};
+
+  test_assert_int_equal (dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e), SUCCESS);
+
+  TEST_CASE ("Contiguous read agrees")
+  {
+    test_assert_int_equal (dvalidtr_read (&d, all, 1, NULL, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("Strided read agrees")
+  {
+    const struct stride every_other = {.start = 0, .stride = 2, .nelems = 4};
+    test_assert_int_equal (dvalidtr_read (&d, every_other, 1, NULL, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("Read into a caller supplied buffer returns the ref bytes")
+  {
+    u8 dest[sizeof dv_payload] = {0};
+    test_assert_int_equal (dvalidtr_read (&d, all, 1, dest, &ctx->e), SUCCESS);
+    test_assert_memequal (dest, dv_payload, sizeof dv_payload);
+  }
+
+  TEST_CASE ("Write agrees and lands in both writers")
+  {
+    const u8            replacement[4] = {0xAA, 0xBB, 0xCC, 0xDD};
+    const struct stride head           = {.start = 0, .stride = 1, .nelems = 4};
+    test_assert_int_equal (dvalidtr_write (&d, head, 1, replacement, &ctx->e), SUCCESS);
+    test_assert_memequal (ref.data, replacement, 4);
+    test_assert_memequal (sut.data, replacement, 4);
+  }
+
+  TEST_CASE ("Remove agrees and shortens both writers")
+  {
+    const struct stride head = {.start = 0, .stride = 1, .nelems = 4};
+    test_assert_int_equal (dvalidtr_remove (&d, head, 1, NULL, &ctx->e), SUCCESS);
+    test_assert_type_equal (ext_array_get_len (&ref), (u64)4, u64, PRIu64);
+    test_assert_type_equal (ext_array_get_len (&sut), (u64)4, u64, PRIu64);
+    test_assert_int_equal (dvalidtr_validate (&d, &ctx->e), SUCCESS);
+  }
+
+  ext_array_free (&ref);
+  ext_array_free (&sut);
+}
+
+// Writing behind the validator's back is what a real sut bug looks like
+TEST (dvalidtr_detects_length_mismatch)
+{
+  struct ext_array ref = ext_array_create (ctx->mem);
+  struct ext_array sut = ext_array_create (ctx->mem);
+  struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+  test_assert_int_equal (dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e), SUCCESS);
+
+  // Only the sut grows, so the lengths diverge
+  ext_array_insert (&sut, 0, dv_payload, 2, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+  TEST_CASE ("Light validation reports the mismatch")
+  {
+    test_err_t_check (dvalidtr_light_validate (&d, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  TEST_CASE ("Full validation reports the mismatch")
+  {
+    test_err_t_check (dvalidtr_validate (&d, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  ext_array_free (&ref);
+  ext_array_free (&sut);
+}
+
+TEST (dvalidtr_detects_data_divergence)
+{
+  struct ext_array ref = ext_array_create (ctx->mem);
+  struct ext_array sut = ext_array_create (ctx->mem);
+  struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+  test_assert_int_equal (dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e), SUCCESS);
+
+  // Same length, one wrong byte: only a content comparison can catch this
+  sut.data[3] ^= 0xFF;
+
+  TEST_CASE ("Lengths still agree, so light validation passes")
+  {
+    test_assert_int_equal (dvalidtr_light_validate (&d, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("A read covering the bad byte reports divergence")
+  {
+    const struct stride all = {.start = 0, .stride = 1, .nelems = sizeof dv_payload};
+    test_err_t_check (dvalidtr_read (&d, all, 1, NULL, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  TEST_CASE ("A read that skips the bad byte still agrees")
+  {
+    const struct stride tail = {.start = 4, .stride = 1, .nelems = 4};
+    test_assert_int_equal (dvalidtr_read (&d, tail, 1, NULL, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("Full validation reads everything and reports divergence")
+  {
+    test_err_t_check (dvalidtr_validate (&d, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  ext_array_free (&ref);
+  ext_array_free (&sut);
+}
+
+static err_t
+dv_isvalid_always_fails (void *vctx, error *e)
+{
+  (void)vctx;
+  return error_causef (e, ERR_CORRUPT, "sut rejected by isvalid hook");
+}
+
+static err_t
+dv_isvalid_always_passes (void *vctx, error *e)
+{
+  (void)vctx;
+  (void)e;
+  return SUCCESS;
+}
+
+TEST (dvalidtr_isvalid_hook)
+{
+  TEST_CASE ("A passing hook leaves insert succeeding")
+  {
+    struct ext_array ref = ext_array_create (ctx->mem);
+    struct ext_array sut = ext_array_create (ctx->mem);
+    struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+    d.isvalid            = dv_isvalid_always_passes;
+
+    test_assert_int_equal (dvalidtr_insert (&d, 0, dv_payload, 4, &ctx->e), SUCCESS);
+
+    ext_array_free (&ref);
+    ext_array_free (&sut);
+  }
+
+  TEST_CASE ("A failing hook fails the insert even though the writers agree")
+  {
+    struct ext_array ref = ext_array_create (ctx->mem);
+    struct ext_array sut = ext_array_create (ctx->mem);
+    struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+    d.isvalid            = dv_isvalid_always_fails;
+
+    test_err_t_check (dvalidtr_insert (&d, 0, dv_payload, 4, &ctx->e), ERR_CORRUPT, &ctx->e);
+
+    ext_array_free (&ref);
+    ext_array_free (&sut);
+  }
+}
+
+TEST (dvalidtr_random_test_agreeing_writers)
+{
+  // Element sizes 1 and 4, so the size scaling in the random driver is covered
+  const u32 sizes[] = {1, 4};
+
+  for (u32 i = 0; i < arrlen (sizes); ++i) {
+    TEST_CASE ("size=%u", sizes[i])
+    {
+      struct ext_array ref = ext_array_create (ctx->mem);
+      struct ext_array sut = ext_array_create (ctx->mem);
+      struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+      test_assert_int_equal (dvalidtr_random_test (&d, sizes[i], 200, 64, &ctx->e), SUCCESS);
+
+      ext_array_free (&ref);
+      ext_array_free (&sut);
+    }
+  }
+}
+
+// The random driver must not report success on a broken sut: after its
+// iterations it runs dvalidtr_validate, and that is what has to catch it.
+//
+// niters is 0 on purpose. With real iterations the driver can heal the
+// corruption it is supposed to find - a random write copies the same source
+// into ref and sut, and a random remove can drop the corrupted byte from
+// both - so whether the divergence survives to the end depends on the seed.
+// Going straight to the final validation keeps this deterministic; the
+// iterations themselves are covered by the agreeing-writers test above.
+TEST (dvalidtr_random_test_reports_a_broken_sut)
+{
+  TEST_CASE ("A sut that diverged in content is reported")
+  {
+    struct ext_array ref = ext_array_create (ctx->mem);
+    struct ext_array sut = ext_array_create (ctx->mem);
+    struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+    test_assert_int_equal (
+        dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e),
+        SUCCESS
+    );
+
+    sut.data[0] ^= 0xFF;
+    test_err_t_check (dvalidtr_random_test (&d, 1, 0, 16, &ctx->e), ERR_CORRUPT, &ctx->e);
+
+    ext_array_free (&ref);
+    ext_array_free (&sut);
+  }
+
+  TEST_CASE ("A sut that diverged in length is reported")
+  {
+    struct ext_array ref = ext_array_create (ctx->mem);
+    struct ext_array sut = ext_array_create (ctx->mem);
+    struct dvalidtr  d   = dv_create (&ref, &sut, ctx->mem);
+
+    test_assert_int_equal (
+        dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e),
+        SUCCESS
+    );
+
+    ext_array_insert (&sut, 0, dv_payload, 2, &ctx->e);
+    test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+    test_err_t_check (dvalidtr_random_test (&d, 1, 0, 16, &ctx->e), ERR_CORRUPT, &ctx->e);
+
+    ext_array_free (&ref);
+    ext_array_free (&sut);
+  }
+}
+
+#endif

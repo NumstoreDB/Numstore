@@ -1031,14 +1031,17 @@ pyns_visit_var_consumer (struct variable *_var, void *_ctx, error *e)
   PyObject *next = pyns_var_capsule_new (var);
   if (next == NULL) {
     nsdb_var_free (var);
-    return error_trace (e);
+    // The failure is Python's, so e is still clean and error_trace would hand
+    // back SUCCESS - the visit would carry on and we'd return a short list
+    // with an exception set. Set a real cause so the visit aborts.
+    return error_causef (e, ERR_NOMEM, "Failed to wrap a variable in a capsule");
   }
 
   // List takes its own reference; drop ours either way
   int rc = PyList_Append (ctx->list, next);
   Py_DECREF (next);
   if (rc < 0) {
-    return error_causef (e, ERR_IO, "Failed to append item to python list");
+    return error_causef (e, ERR_NOMEM, "Failed to append item to python list");
   }
 
   return SUCCESS;
@@ -1055,6 +1058,18 @@ pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
+  // Visiting every variable is a pure read, and reads in numstore don't go
+  // through a txn - only writes need one. txn is still parsed so the signature
+  // matches every other entry point and a closed handle is rejected, but there
+  // is nothing to thread it into.
+  (void)txn;
+
+  // No ns_* wrapper fits here: the public visitor (ns_visit_nsdb_vars) hands
+  // the consumer a borrowed nsdb_var_t, and our capsules have to own theirs.
+  // So reach for the algorithm directly, and reset the error the way the ns_*
+  // entry points do.
+  error_reset (db->e);
+
   PyObject *list = PyList_New (0);
   if (list == NULL) {
     return NULL; // MemoryError already set by Python
@@ -1067,7 +1082,14 @@ pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
 
   if (ns_visit_variables (db->p, pyns_visit_var_consumer, &ctx, db->e) < 0) {
     Py_DECREF (list); // frees list + every capsule (and its var) in it
-    _pyns_set_error_from_nsdb (db);
+
+    // The consumer fails on Python errors too - keep that exception
+    // (MemoryError, say) rather than papering over it with the db's message.
+    if (PyErr_Occurred ()) {
+      error_reset (db->e);
+    } else {
+      _pyns_set_error_from_nsdb (db);
+    }
     return NULL;
   }
 
@@ -1155,13 +1177,15 @@ pyns_plan_execute (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
+  // A non-negative result is success. It isn't always SUCCESS: a remove plan
+  // returns the number of elements it removed. execute() is documented to
+  // return None, so the count is deliberately dropped here.
   int ret = ns_plan_execute (plan, txn);
   if (ret < 0) {
     _pyns_set_error_from_plan (plan);
     return NULL;
   }
 
-  ASSERT (ret == SUCCESS);
   Py_RETURN_NONE;
 }
 
@@ -1426,7 +1450,7 @@ static PyMethodDef pynumstore_methods[] = {
         "_pyns_plan_execute",
         pyns_plan_execute,
         METH_VARARGS,
-        "_pyns_plan_execute(plan, txn | None) -> int",
+        "_pyns_plan_execute(plan, txn | None) -> None",
     },
     {
         "_pyns_plan_get_var",

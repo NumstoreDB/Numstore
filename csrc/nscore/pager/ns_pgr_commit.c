@@ -63,3 +63,86 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
 theend:
   return error_trace (e);
 }
+
+#ifndef NDEBUG
+#  include "core/ns_testing.h"
+
+/******************************************************************************
+ * SECTION: pgr_commit (tests)
+ ******************************************************************************/
+
+TEST (pgr_commit_happy_path)
+{
+  struct pgr_fixture f;
+  test_fail_if (pgr_fixture_create (&f, &ctx->e));
+
+  struct txn tx;
+  test_assert_int_equal (pgr_begin_txn (&tx, f.p, &ctx->e), SUCCESS);
+  test_assert_int_equal (tx.data.state, TX_RUNNING);
+
+  test_assert_int_equal (pgr_commit (f.p, &tx, &ctx->e), SUCCESS);
+  test_assert_int_equal (tx.data.state, TX_DONE);
+
+  test_fail_if (pgr_fixture_teardown (&f, &ctx->e));
+}
+
+// The guard at the top of pgr_commit: anything but TX_RUNNING is a duplicate
+// commit, and the transaction must be left exactly as it was found
+TEST (pgr_commit_txn_not_running)
+{
+  struct pgr_fixture f;
+  test_fail_if (pgr_fixture_create (&f, &ctx->e));
+
+  TEST_CASE ("Committing a second time is ERR_DUPLICATE_COMMIT")
+  {
+    struct txn tx;
+    test_assert_int_equal (pgr_begin_txn (&tx, f.p, &ctx->e), SUCCESS);
+    test_assert_int_equal (pgr_commit (f.p, &tx, &ctx->e), SUCCESS);
+    test_assert_int_equal (tx.data.state, TX_DONE);
+
+    test_err_t_check (pgr_commit (f.p, &tx, &ctx->e), ERR_DUPLICATE_COMMIT, &ctx->e);
+
+    // Still done, not re-committed
+    test_assert_int_equal (tx.data.state, TX_DONE);
+  }
+
+  TEST_CASE ("A third attempt is refused the same way")
+  {
+    struct txn tx;
+    test_assert_int_equal (pgr_begin_txn (&tx, f.p, &ctx->e), SUCCESS);
+    test_assert_int_equal (pgr_commit (f.p, &tx, &ctx->e), SUCCESS);
+
+    test_err_t_check (pgr_commit (f.p, &tx, &ctx->e), ERR_DUPLICATE_COMMIT, &ctx->e);
+    test_err_t_check (pgr_commit (f.p, &tx, &ctx->e), ERR_DUPLICATE_COMMIT, &ctx->e);
+  }
+
+  // Every state that is not TX_RUNNING must be refused, not just TX_DONE
+  const enum tx_state not_running[] = {
+      TX_CANDIDATE_FOR_UNDO,
+      TX_COMMITTED,
+      TX_DONE,
+  };
+
+  for (u32 i = 0; i < arrlen (not_running); ++i) {
+    TEST_CASE ("state %d is refused", (int)not_running[i])
+    {
+      struct txn tx;
+      test_assert_int_equal (pgr_begin_txn (&tx, f.p, &ctx->e), SUCCESS);
+
+      // Drive the state directly: these are states the commit guard has to
+      // reject, and reaching them through real work would need a crash or a
+      // recovery pass
+      tx.data.state = not_running[i];
+
+      test_err_t_check (pgr_commit (f.p, &tx, &ctx->e), ERR_DUPLICATE_COMMIT, &ctx->e);
+      test_assert_int_equal (tx.data.state, not_running[i]);
+
+      // Put it back so the fixture can tear down cleanly
+      tx.data.state = TX_RUNNING;
+      test_assert_int_equal (pgr_commit (f.p, &tx, &ctx->e), SUCCESS);
+    }
+  }
+
+  test_fail_if (pgr_fixture_teardown (&f, &ctx->e));
+}
+#endif
