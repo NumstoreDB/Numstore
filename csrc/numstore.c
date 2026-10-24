@@ -267,14 +267,11 @@ ns_visit_consumer (struct variable *_var, void *_ctx, error *e)
 int
 ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx)
 {
-  // Visiting every variable is a pure read, and reads don't go through a txn -
-  // only writes need one.
+  // Doesnt use tx yet
   (void)tx;
 
   error_reset (db->e);
 
-  // ns_visit_consumer unwraps this - handing it the caller's ctx directly
-  // would have it read a nsdb_var_t_visit_ctx out of unrelated memory.
   struct nsdb_var_t_visit_ctx wrapped = {
       .consumer   = consumer,
       .parent_ctx = ctx,
@@ -538,15 +535,6 @@ ns_smfile_write (
 #  include <stdlib.h>
 #  include <string.h>
 
-/******************************************************************************
- * SECTION: Public API (tests)
- * ----------------------------------------------------------------------------
- * One basic test per public entry point in this file. These go through the
- * real public surface - ns_open and friends build their own OS and allocator
- * rather than taking ctx's - so each test owns its database file and cleans up
- * after itself.
- ******************************************************************************/
-
 #  define NS_T_DB    "ns_api_test_db"
 #  define NS_T_DB2   "ns_api_test_db2"
 #  define NS_T_SMF   "ns_api_test_smf"
@@ -564,7 +552,6 @@ TEST (ns_api_open_and_close)
     nsdb_t *db = ns_open (NS_T_DB);
     test_assert (db != NULL);
 
-    // Nothing has gone wrong yet, so there is no error string to report
     test_assert_ptr_equal (ns_strerror (db), NULL);
 
     test_assert_int_equal (ns_close (db), 0);
@@ -629,7 +616,6 @@ TEST (ns_api_execute_write_read)
     test_assert_memequal (dest, src, sizeof src);
   }
 
-  // dlen, unlike the return values above, is a byte count
   TEST_CASE ("ns_malloc allocates the result for you")
   {
     b_size dlen = 0;
@@ -661,7 +647,6 @@ TEST (ns_api_plans)
     nsdb_plan_t *plan = ns_plan_fcreate (db, "create p i32");
     test_assert (plan != NULL);
 
-    // No error yet, so there is nothing to report
     test_assert_ptr_equal (ns_plan_strerror (plan), NULL);
 
     test_assert_int_equal (ns_plan_execute (plan, NULL), 0);
@@ -730,9 +715,6 @@ struct ns_visit_count
   b_size   total_len;
 };
 
-// The nsdb_var_t handed to a consumer is borrowed - it lives on
-// ns_visit_consumer's stack - so this reads it and hands it back, it never
-// frees it
 static void
 ns_t_count_vars (nsdb_var_t *v, void *vctx)
 {
@@ -876,8 +858,6 @@ TEST (ns_api_transactions)
   test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
 }
 
-// ns_crash drops the database without the orderly shutdown ns_close does, so
-// the committed data has to come back through recovery on the next open
 TEST (ns_api_crash)
 {
   test_assert_int_equal (ns_cleanup (NS_T_CRASH), 0);
@@ -891,7 +871,6 @@ TEST (ns_api_crash)
     test_assert_int_equal (ns_execute (db, NULL, "create c i32"), 0);
     test_assert_int_equal ((int)ns_write (db, NULL, src, sizeof src, "insert c 0 %d", 4), 4);
 
-    // Takes the database down; no ns_close after this
     test_assert_int_equal (ns_crash (db), 0);
   }
 
@@ -1008,8 +987,6 @@ TEST (ns_api_smfile_operations)
   test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
 }
 
-// ns_strerror and ns_plan_strerror on an actual failure, which is the case
-// callers reach for
 TEST (ns_api_error_reporting)
 {
   test_assert_int_equal (ns_cleanup (NS_T_DB2), 0);

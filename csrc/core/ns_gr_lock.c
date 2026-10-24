@@ -444,6 +444,17 @@ get_parent_mode (const enum lock_mode child_mode)
 }
 
 #ifndef NDEBUG
+TEST (get_parent_mode)
+{
+  test_assert_int_equal (get_parent_mode (LM_IS), LM_IS);
+  test_assert_int_equal (get_parent_mode (LM_S), LM_IS);
+  test_assert_int_equal (get_parent_mode (LM_IX), LM_IX);
+  test_assert_int_equal (get_parent_mode (LM_SIX), LM_IX);
+  test_assert_int_equal (get_parent_mode (LM_X), LM_IX);
+}
+#endif
+
+#ifndef NDEBUG
 
 /* --- Test Infrastructure --- */
 

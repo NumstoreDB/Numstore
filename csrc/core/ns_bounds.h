@@ -60,7 +60,6 @@
 #  define safe_sub_u8(dest, a, b) (!__builtin_sub_overflow (a, b, dest))
 #  define safe_mul_u8(dest, a, b) (!__builtin_mul_overflow (a, b, dest))
 
-#  define safe_add_u16(dest, a, b) (!__builtin_add_overflow (a, b, dest))
 #  define safe_sub_u16(dest, a, b) (!__builtin_sub_overflow (a, b, dest))
 #  define safe_mul_u16(dest, a, b) (!__builtin_mul_overflow (a, b, dest))
 

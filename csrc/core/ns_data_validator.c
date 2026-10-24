@@ -601,17 +601,6 @@ dvalidtr_random_test (
 
 #ifndef NDEBUG
 
-/******************************************************************************
- * SECTION: Data Validator Tests
- * ----------------------------------------------------------------------------
- * The validator's whole job is to notice when [sut] stops agreeing with [ref],
- * so each test drives a pair of ext_arrays through the validator and then
- * corrupts the sut behind the validator's back to prove the check fires.
- ******************************************************************************/
-
-// Both sides are real ext_arrays, so the success paths exercise the validator
-// rather than a stub. Pointers into the caller's arrays, so [ref] and [sut]
-// must outlive the returned validator.
 static struct dvalidtr
 dv_create (struct ext_array *ref, struct ext_array *sut, const struct i_mem mem)
 {
@@ -730,7 +719,6 @@ TEST (dvalidtr_read_write_remove_agreeing_writers)
   ext_array_free (&sut);
 }
 
-// Writing behind the validator's back is what a real sut bug looks like
 TEST (dvalidtr_detects_length_mismatch)
 {
   struct ext_array ref = ext_array_create (ctx->mem);
@@ -739,7 +727,6 @@ TEST (dvalidtr_detects_length_mismatch)
 
   test_assert_int_equal (dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e), SUCCESS);
 
-  // Only the sut grows, so the lengths diverge
   ext_array_insert (&sut, 0, dv_payload, 2, &ctx->e);
   test_assert_int_equal (ctx->e.cause_code, SUCCESS);
 
@@ -765,7 +752,6 @@ TEST (dvalidtr_detects_data_divergence)
 
   test_assert_int_equal (dvalidtr_insert (&d, 0, dv_payload, sizeof dv_payload, &ctx->e), SUCCESS);
 
-  // Same length, one wrong byte: only a content comparison can catch this
   sut.data[3] ^= 0xFF;
 
   TEST_CASE ("Lengths still agree, so light validation passes")
@@ -858,15 +844,6 @@ TEST (dvalidtr_random_test_agreeing_writers)
   }
 }
 
-// The random driver must not report success on a broken sut: after its
-// iterations it runs dvalidtr_validate, and that is what has to catch it.
-//
-// niters is 0 on purpose. With real iterations the driver can heal the
-// corruption it is supposed to find - a random write copies the same source
-// into ref and sut, and a random remove can drop the corrupted byte from
-// both - so whether the divergence survives to the end depends on the seed.
-// Going straight to the final validation keeps this deterministic; the
-// iterations themselves are covered by the agreeing-writers test above.
 TEST (dvalidtr_random_test_reports_a_broken_sut)
 {
   TEST_CASE ("A sut that diverged in content is reported")

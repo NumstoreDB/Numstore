@@ -437,8 +437,6 @@ TEST (compile_multi_user_stride)
     error_reset (&ctx->e);
   }
 
-  // A zero step would never advance. The user_stride invariant forbids it, so
-  // the parser has to reject it rather than hand one downstream.
   TEST_CASE ("error: zero step '[::0]'")
   {
     err_t err = compile_multi_user_stride (&stride, "[::0]", &ctx->alloc, &ctx->e);

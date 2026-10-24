@@ -86,8 +86,6 @@ TEST (pgr_commit_happy_path)
   test_fail_if (pgr_fixture_teardown (&f, &ctx->e));
 }
 
-// The guard at the top of pgr_commit: anything but TX_RUNNING is a duplicate
-// commit, and the transaction must be left exactly as it was found
 TEST (pgr_commit_txn_not_running)
 {
   struct pgr_fixture f;

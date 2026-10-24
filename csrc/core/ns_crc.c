@@ -257,17 +257,9 @@ TEST (checksum_execute_incremental)
 /******************************************************************************
  * SECTION: crc_sw
  * ----------------------------------------------------------------------------
- * crc_sw is the portable slicing-by-8 fallback. On a host with CRC_HW it is
- * not the path checksum_execute takes, so it is tested directly here: against
- * an independent bit-at-a-time oracle, against the published CRC-32C vectors,
- * and against the hardware path it has to stay bit-identical to.
- *
- * It works on the raw (inverted) state, so a finished CRC-32C of [buf] is
- * ~crc_sw (0xFFFFFFFFu, buf, len).
+ * crc_sw is the portable slicing-by-8 fallback
  ******************************************************************************/
 
-// Bit-at-a-time CRC-32C. Deliberately the dumbest possible implementation: it
-// shares no tables or structure with crc_sw, so agreement is real evidence.
 static u32
 crc_bitwise (u32 c, const u8 *p, u32 len)
 {
@@ -280,8 +272,6 @@ crc_bitwise (u32 c, const u8 *p, u32 len)
   return c;
 }
 
-// crc_sw reads its tables, so they have to be built before it is called
-// directly rather than through checksum_execute
 static void
 crc_tables_ready (void)
 {
@@ -355,8 +345,6 @@ TEST (crc_sw_known_answers)
   }
 }
 
-// Every length from 0 to 40 covers the 8-byte slicing loop, the 1-byte tail
-// loop, and each combination of the two
 TEST (crc_sw_matches_bitwise_oracle_at_every_length)
 {
   crc_tables_ready ();
@@ -428,9 +416,6 @@ TEST (crc_sw_is_resumable_at_every_split)
   }
 }
 
-// On a CRC_HW host this is the test that matters: the fallback and the
-// hardware path must agree exactly, including across the 3 * CRC_K interleaved
-// block boundary the hardware path takes for large inputs.
 TEST (crc_sw_agrees_with_checksum_execute)
 {
   crc_tables_ready ();

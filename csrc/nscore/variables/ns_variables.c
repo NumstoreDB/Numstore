@@ -114,6 +114,28 @@ var_copy (struct variable *dest, struct variable *src, struct arena_alloc *alloc
   return SUCCESS;
 }
 
+#ifndef NDEBUG
+TEST (var_copy)
+{
+  struct variable src = {
+      .vname    = strfcstr ("foo"),
+      .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
+      .var_root = 123,
+      .rpt_root = 456,
+      .nbytes   = 789,
+  };
+
+  struct variable dest;
+  test_assert (var_copy (&dest, &src, &ctx->alloc, &ctx->e) == SUCCESS);
+
+  test_assert (variable_equal (&dest, &src));
+  test_assert (dest.vname.data != src.vname.data);
+  test_assert (dest.dtype != src.dtype);
+
+  arena_alloc_free_all (&ctx->alloc);
+}
+#endif
+
 bool
 variable_equal (const struct variable *left, const struct variable *right)
 {
@@ -623,3 +645,11 @@ vname_or_default (const char *name)
     return strfcstr (DEFAULT_VARIABLE);
   }
 }
+
+#ifndef NDEBUG
+TEST (vname_or_default)
+{
+  test_assert (string_equal (vname_or_default ("foo"), strfcstr ("foo")));
+  test_assert (string_equal (vname_or_default (NULL), strfcstr (DEFAULT_VARIABLE)));
+}
+#endif

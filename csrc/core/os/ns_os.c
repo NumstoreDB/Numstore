@@ -53,18 +53,6 @@ file_read_all_expect (i_file f, void *dest, const u64 nbytes, error *e)
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
 
-/******************************************************************************
- * SECTION: Composite file helpers (tests)
- * ----------------------------------------------------------------------------
- * The whole point of these wrappers is that a short read is an error rather
- * than something the caller has to notice, so each one is tested on an exact
- * read, on a read that runs off the end of the file, and on an underlying
- * failure injected through ctx->faulty_os.
- *
- * Both wrappers reach primitives that ASSERT (n > 0), so there is no zero
- * length case here.
- ******************************************************************************/
-
 #  define OS_T_FILE "ns_os_expect_test.bin"
 
 // 16 bytes on disk, so a 16 byte read is exact and a 17 byte read is short

@@ -12,15 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-// pread/pwrite/ftruncate/fsync/posix_fallocate are POSIX, not ISO C. glibc
-// only declares them when a feature-test macro asks for them, and a strict
-// -std=c11 (as opposed to -std=gnu11) switches that off - so say so here
-// rather than relying on the build happening to pass -std=gnu11. This has to
-// come before any system header, hence before ns_platform.h.
-//
-// Darwin is the exception: it declares them by default, and _POSIX_C_SOURCE
-// there would *hide* the non-standard fstore_t / F_PREALLOCATE that
-// sys_prealloc needs, so ask for the full Darwin surface instead.
 #include "core/os/ns_once.h"
 #ifdef __APPLE__
 #  ifndef _DARWIN_C_SOURCE
@@ -1148,18 +1139,6 @@ system_os_free (struct i_os os)
 
 #  ifndef NDEBUG
 #    include "core/ns_testing.h"
-
-/******************************************************************************
- * SECTION: Posix OS (tests)
- * ----------------------------------------------------------------------------
- * Every sys_* function is static and reachable only through the vtable, so
- * these drive them through ctx->os, which is a system OS built by
- * system_os_create. One test per vtable group; every file is closed and every
- * thread joined, since test_ctx_free asserts on leaks of either.
- *
- * read_all / pread_all / write_all / pwrite_all all ASSERT (n > 0), so no case
- * here asks for a zero length transfer.
- ******************************************************************************/
 
 #    define SYS_T_FILE  "ns_posix_sys_test.bin"
 #    define SYS_T_FILE2 "ns_posix_sys_test2.bin"

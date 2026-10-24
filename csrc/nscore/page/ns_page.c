@@ -248,7 +248,6 @@ static const struct
 
 TEST (flags_to_page_type_every_type)
 {
-  // Every declared type, so a new one added without a str case is caught
   for (u32 i = 0; i < arrlen (page_type_cases); ++i) {
     TEST_CASE ("%s", page_type_cases[i].str)
     {
@@ -257,8 +256,6 @@ TEST (flags_to_page_type_every_type)
       test_assert_int_equal (flags_to_page_type (type), type);
       test_assert (strcmp (page_type_str_from_flags (type), page_type_cases[i].str) == 0);
 
-      // The modifier bits live above the type mask and must not change the
-      // type the flags decode to
       test_assert_int_equal (flags_to_page_type (type | PG_PERMISSIVE), type);
       test_assert_int_equal (flags_to_page_type (type | PG_SKIP_CHECKSUM), type);
       test_assert_int_equal (flags_to_page_type (type | PG_PERMISSIVE | PG_SKIP_CHECKSUM), type);
@@ -303,7 +300,6 @@ TEST (flags_to_page_type_non_types)
 
   TEST_CASE ("PG_TRASH is a sentinel, not a page type")
   {
-    // PG_TRASH is all ones, so it covers every type bit at once
     test_assert (strcmp (page_type_str_from_flags (PG_TRASH), "UNKNOWN") == 0);
   }
 

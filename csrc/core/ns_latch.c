@@ -49,14 +49,8 @@ TEST (latch)
   test_assert_int_equal (d.value, 10 * 1000);
 }
 
-/******************************************************************************
- * SECTION: Shared / Exclusive Latch (tests)
- ******************************************************************************/
-
 enum
 {
-  // Bound every spin so a broken latch fails the test instead of hanging the
-  // whole suite
   spx_spin_cap = 200000000,
 };
 
@@ -66,12 +60,9 @@ struct spx_data
   int                value;
   sx_latch           l;
 
-  // Readers use these to prove they were all inside the latch together
   _Atomic (unsigned) arrived;
   unsigned           nreaders;
   _Atomic (unsigned) all_in;
-
-  // Set by the writer once it has actually taken X
   _Atomic (unsigned) x_taken;
 };
 
@@ -89,9 +80,6 @@ spx_x_thread (void *_d)
   return NULL;
 }
 
-// Each reader parks inside the S latch until every other reader has arrived.
-// If S were exclusive this would never complete, so reaching [nreaders] is the
-// evidence that S is genuinely shared.
 static void *
 spx_s_thread (void *_d)
 {
@@ -140,7 +128,6 @@ TEST (spx_lock_s_and_x_states)
     test_assert_type_equal (SLOCKED (l), 1u, u32, PRIu32);
     test_assert (!XLOCKED (l));
 
-    // A second shared holder is admitted rather than blocked
     spx_lock_s (&l);
     test_assert_type_equal (SLOCKED (l), 2u, u32, PRIu32);
 
@@ -156,7 +143,6 @@ TEST (spx_lock_s_and_x_states)
     test_assert (!spx_trylock_x (&l));
     spx_unlock_s (&l);
 
-    // ... and succeeds once the reader leaves
     test_assert (spx_trylock_x (&l));
     spx_unlock_x (&l);
   }
@@ -180,7 +166,6 @@ TEST (spx_lock_s_and_x_states)
   }
 }
 
-// The counter is only correct if spx_lock_x really serialises the writers
 TEST (spx_lock_x_serialises_writers)
 {
   struct spx_data d = {
@@ -225,8 +210,6 @@ TEST (spx_lock_s_admits_readers_concurrently)
   test_assert_type_equal ((u32)d.l, 0u, u32, PRIu32);
 }
 
-// Phase 2 of spx_lock_x: the X bit is claimed immediately, but the writer must
-// not proceed until in-flight readers have drained
 TEST (spx_lock_x_waits_for_readers_to_drain)
 {
   struct spx_data d = {
@@ -240,7 +223,6 @@ TEST (spx_lock_x_waits_for_readers_to_drain)
   i_thread writer;
   ctx->os.table->thread_create (ctx->os.self, &writer, spx_x_waiter_thread, &d, &ctx->e);
 
-  // The writer claims X quickly, but must still be stuck draining this reader
   for (long spins = 0; spins < 1000000; ++spins) {
     if (XLOCKED (atomic_load (&d.l))) {
       break;
@@ -248,7 +230,6 @@ TEST (spx_lock_x_waits_for_readers_to_drain)
   }
   test_assert_type_equal (atomic_load (&d.x_taken), 0u, u32, PRIu32);
 
-  // Releasing the reader lets the writer through
   spx_unlock_s (&d.l);
   ctx->os.table->thread_join (ctx->os.self, writer.self);
 

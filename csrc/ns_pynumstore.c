@@ -1031,9 +1031,6 @@ pyns_visit_var_consumer (struct variable *_var, void *_ctx, error *e)
   PyObject *next = pyns_var_capsule_new (var);
   if (next == NULL) {
     nsdb_var_free (var);
-    // The failure is Python's, so e is still clean and error_trace would hand
-    // back SUCCESS - the visit would carry on and we'd return a short list
-    // with an exception set. Set a real cause so the visit aborts.
     return error_causef (e, ERR_NOMEM, "Failed to wrap a variable in a capsule");
   }
 
@@ -1058,16 +1055,10 @@ pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  // Visiting every variable is a pure read, and reads in numstore don't go
-  // through a txn - only writes need one. txn is still parsed so the signature
-  // matches every other entry point and a closed handle is rejected, but there
-  // is nothing to thread it into.
+  // Read for now - wait until lock table is better
   (void)txn;
 
-  // No ns_* wrapper fits here: the public visitor (ns_visit_nsdb_vars) hands
-  // the consumer a borrowed nsdb_var_t, and our capsules have to own theirs.
-  // So reach for the algorithm directly, and reset the error the way the ns_*
-  // entry points do.
+  // Manually run this - no wrapper is available
   error_reset (db->e);
 
   PyObject *list = PyList_New (0);
@@ -1177,9 +1168,6 @@ pyns_plan_execute (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  // A non-negative result is success. It isn't always SUCCESS: a remove plan
-  // returns the number of elements it removed. execute() is documented to
-  // return None, so the count is deliberately dropped here.
   int ret = ns_plan_execute (plan, txn);
   if (ret < 0) {
     _pyns_set_error_from_plan (plan);
