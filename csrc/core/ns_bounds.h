@@ -81,8 +81,6 @@
 #  define safe_mul_u8(dest, a, b) \
     (_umul_ok ((u8)(a), (u8)(b), UINT8_MAX) ? (*(dest) = (u8)(a) * (u8)(b), true) : false)
 
-#  define safe_add_u16(dest, a, b) \
-    (_uadd_ok ((u16)(a), (u16)(b), UINT16_MAX) ? (*(dest) = (u16)(a) + (u16)(b), true) : false)
 #  define safe_sub_u16(dest, a, b) \
     (_usub_ok ((u16)(a), (u16)(b)) ? (*(dest) = (u16)(a) - (u16)(b), true) : false)
 #  define safe_mul_u16(dest, a, b) \
