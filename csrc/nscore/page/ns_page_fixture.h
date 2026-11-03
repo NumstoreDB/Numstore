@@ -50,8 +50,15 @@ struct pgr_fixture
 };
 
 err_t pgr_fixture_create (struct pgr_fixture *dest, error *e);
-err_t pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e);
 err_t pgr_fixture_teardown (struct pgr_fixture *f, error *e);
+
+err_t pgr_fixture_create_with (
+    struct pgr_fixture *dest,
+    struct i_os         os,
+    struct i_mem        mem,
+    error              *e
+);
+err_t pgr_fixture_teardown_with (struct pgr_fixture *f, error *e);
 
 /******************************************************************************
  * SECTION: Tree fixture 2

@@ -25,7 +25,6 @@
 #  include "core/ns_testing.h"
 #  include "core/os/ns_malloc.h"
 #  include "core/os/ns_os.h"
-#  include "nscore/algorithms/var/ns_var_algorithms.h"
 #  include "nscore/page/ns_page.h"
 #  include "nscore/page/ns_page_delegate.h"
 #  include "nscore/pager/ns_pager.h"
@@ -53,24 +52,18 @@ DEFINE_DBG_ASSERT (struct dl_page_builder, dl_page_builder, in, {
 })
 
 err_t
-pgr_fixture_create (struct pgr_fixture *dest, error *e)
+pgr_fixture_create_with (struct pgr_fixture *dest, struct i_os os, struct i_mem mem, error *e)
 {
   ASSERT (dest);
-  dest->mem = default_mem ();
-
-  // The fixture owns its OS - teardown frees it
-  if (unlikely (system_os_create (dest->mem, &dest->os, e))) {
-    return error_trace (e);
-  }
+  dest->mem = mem;
+  dest->os  = os;
 
   if (unlikely (pgr_delete_single_file ("testdb", dest->os, e) < SUCCESS)) {
-    system_os_free (dest->os);
     return error_trace (e);
   }
 
   struct pager *p = pgr_open ("testdb", dest->mem, dest->os, e);
   if (p == NULL) {
-    system_os_free (dest->os);
     return e->cause_code;
   }
 
@@ -84,14 +77,18 @@ pgr_fixture_create (struct pgr_fixture *dest, error *e)
 }
 
 err_t
-pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e)
+pgr_fixture_create (struct pgr_fixture *dest, error *e)
 {
-  if (unlikely (pgr_fixture_create (dest, e))) {
+  ASSERT (dest);
+  struct i_mem mem = default_mem ();
+  struct i_os  os;
+
+  if (unlikely (system_os_create (mem, &os, e))) {
     return error_trace (e);
   }
 
-  if (ns_init_var_hash_map (dest->p, e)) {
-    pgr_fixture_teardown (dest, e);
+  if (pgr_fixture_create_with (dest, os, mem, e)) {
+    system_os_free (os);
     return error_trace (e);
   }
 
@@ -101,9 +98,22 @@ pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e)
 err_t
 pgr_fixture_teardown (struct pgr_fixture *f, error *e)
 {
-  pgr_close (f->p, e);
-  arena_alloc_free_all (&f->alloc);
+  pgr_fixture_teardown_with (f, e);
   system_os_free (f->os);
+  return e->cause_code;
+}
+
+err_t
+pgr_fixture_teardown_with (struct pgr_fixture *f, error *e)
+{
+  if (e->cause_code == ERR_CRASHED) {
+    error_reset (e);
+    pgr_crash (f->p, e);
+  } else {
+    error_reset (e);
+    pgr_close (f->p, e);
+  }
+  arena_alloc_free_all (&f->alloc);
   return e->cause_code;
 }
 

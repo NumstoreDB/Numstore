@@ -3,6 +3,7 @@ list(
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_arena_alloc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_byte_accessor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_cbuffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_crash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_crc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_data_validator.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_dbl_buffer.c

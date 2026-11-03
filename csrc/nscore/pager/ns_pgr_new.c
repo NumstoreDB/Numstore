@@ -126,19 +126,17 @@ pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error
   const lsn undo_next = tx->data.last_lsn;
 
   // 2. Logging the redo and undp information
-  slsn      top_lsn   = wal_append_update_log (
+  lsn       top_lsn   = wal_append_update_log (
       p->ww,
       (struct wal_update_write){
           .type = WUP_FEXT,
           .tid  = tx->tid,
           .prev = tx->data.last_lsn,
-          .fext =
-              {
-                  .undo = fpgr_get_npages (p->fp),
-                  .redo = npages,
-              },
-      },
-      e
+          .fext = {
+              .undo = fpgr_get_npages (p->fp),
+              .redo = npages,
+          },
+      }
   );
 
   // 3. Writing a dummy CLR whose UNL points to the log record whose
@@ -150,8 +148,7 @@ pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error
           .tid       = tx->tid,
           .prev      = tx->data.last_lsn,
           .undo_next = undo_next,
-      },
-      e
+      }
   );
 
   // 4. Anchor both LSN fields to the CLR so the undo chain jumps over the FEXT

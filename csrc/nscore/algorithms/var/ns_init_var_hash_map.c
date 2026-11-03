@@ -14,6 +14,7 @@
 
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_os.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_data_list.h"
@@ -73,45 +74,76 @@ TEST (ns_init_var_hash_map)
 {
   TEST_CASE ("green path")
   {
+    // Set up
     struct pgr_fixture f;
     pgr_fixture_create (&f, &ctx->e);
     ns_init_var_hash_map (f.p, &ctx->e);
 
+    // First page is the var hash page
     page_h vhp = page_h_create ();
     test_assert_int_equal (pgr_get (&vhp, PG_VAR_HASH_PAGE, 1, f.p, &ctx->e), SUCCESS);
 
+    // Clean up
     pgr_release (f.p, &vhp, PG_VAR_HASH_PAGE, &ctx->e);
     pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("corrupt database")
   {
+    // Set up
     struct pgr_fixture f;
     pgr_fixture_create (&f, &ctx->e);
 
     // Create an invalid database by creating an upfront page
-    pgr_begin_txn (&f.tx, f.p, &ctx->e);
-    page_h corrupt_page = page_h_create ();
-    pgr_new (&corrupt_page, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
-    dl_make_valid (page_h_w (&corrupt_page));
-    pgr_release (f.p, &corrupt_page, PG_DATA_LIST, &ctx->e);
-    pgr_commit (f.p, &f.tx, &ctx->e);
+    {
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
+      page_h corrupt_page = page_h_create ();
+      pgr_new (&corrupt_page, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
+      dl_make_valid (page_h_w (&corrupt_page));
+      pgr_release (f.p, &corrupt_page, PG_DATA_LIST, &ctx->e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
+    }
 
-    // Initialize - this should fail
+    // This should fail - the database is in an "invalid state"
     test_err_t_check (ns_init_var_hash_map (f.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
+    // Clean up
     pgr_fixture_teardown (&f, &ctx->e);
   }
 
   TEST_CASE ("can't init twice")
   {
+    // Set up
     struct pgr_fixture f;
     pgr_fixture_create (&f, &ctx->e);
 
+    // Run twice (similar to previous test - just explicit)
     test_assert (ns_init_var_hash_map (f.p, &ctx->e) == SUCCESS);
     test_err_t_check (ns_init_var_hash_map (f.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
+    // Clean up
     pgr_fixture_teardown (&f, &ctx->e);
+  }
+
+  TEST_CASE ("Error handling")
+  {
+    int fail_after = 0;
+    while (true) {
+      // Set up
+      struct pgr_fixture f;
+      pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
+
+      f.p->os = ctx->faulty_os;
+      faulty_os_fail_after (f.p->os, fail_after);
+
+      ns_init_var_hash_map (f.p, &ctx->e);
+      error_reset (&ctx->e);
+
+      // Clean up
+      pgr_fixture_teardown_with (&f, &ctx->e);
+
+      break;
+    }
   }
 }
 #endif

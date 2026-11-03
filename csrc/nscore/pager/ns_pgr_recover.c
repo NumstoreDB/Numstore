@@ -188,11 +188,7 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 
     if (nothing_to_do || committed) {
       // Append an end log
-      const slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-
-      if (l < 0) {
-        goto failed;
-      }
+      lsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
       txnt_remove_txn_expect (ctx->txt, tx);
       txn_update_state (tx, TX_DONE);
     }
@@ -312,10 +308,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
           }
 
           // Undo and Append a clr log
-          slsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
-          if (l < 0) {
-            goto failed;
-          }
+          lsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph));
 
           // Set the page lsn
           page_set_page_lsn (page_h_w (&ph), l);
@@ -331,10 +324,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         tx->data.undo_next_lsn = log_rec->update.prev;
 
         if (log_rec->update.prev == 0) {
-          slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-          if (l < 0) {
-            goto failed;
-          }
+          lsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
           txnt_remove_txn_expect (ctx->txt, tx);
           txn_update_state (tx, TX_DONE);
         }
@@ -352,10 +342,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
-        slsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn, e);
-        if (l < 0) {
-          goto failed;
-        }
+        lsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
         txnt_remove_txn_expect (ctx->txt, tx);
         txn_update_state (tx, TX_DONE);
         break;

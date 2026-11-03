@@ -130,28 +130,36 @@ walis_close (struct wal_istream *w, error *e)
   return error_trace (e);
 }
 
-err_t
-walis_seek (struct wal_istream *w, const lsn pos, error *e)
+static err_t
+walis_seek_unsafe (struct wal_istream *w, const lsn pos, error *e)
 {
-  latch_lock (&w->latch);
-
   DBG_ASSERT (wal_istream, w);
 
   const i64 res = w->fd.table->seek (w->fd.self, pos, I_SEEK_SET, e);
   if (res < 0) {
-    latch_unlock (&w->latch);
     return error_trace (e);
   }
 
   if ((u64)res != pos) {
-    latch_unlock (&w->latch);
     return error_causef (e, ERR_CORRUPT, "seek to invalid offset");
   }
 
   w->curlsn = pos;
 
-  latch_unlock (&w->latch);
+  return SUCCESS;
+}
 
+err_t
+walis_seek (struct wal_istream *w, const lsn pos, error *e)
+{
+  latch_lock (&w->latch);
+
+  if (walis_seek_unsafe (w, pos, e) < 0) {
+    latch_unlock (&w->latch);
+    return error_trace (e);
+  }
+
+  latch_unlock (&w->latch);
   return SUCCESS;
 }
 
@@ -175,6 +183,7 @@ walis_read_all (
     *rlsn = w->curlsn;
   }
 
+  // Read the expected record
   const i64 bread = w->fd.table->read_all (w->fd.self, data, len, e);
   if (bread < 0) {
     latch_unlock (&w->latch);
@@ -182,14 +191,14 @@ walis_read_all (
   }
 
   if (bread < len) {
-    // Hit EOF - incomplete record (torn write at end of WAL)
-    if ((bread > 0) && (walis_seek (w, w->curlsn, e)))
-    // Partial read: seek back so the file position is at the
-    // record start, leaving it at the last fully-written
-    // record boundary
-    {
-      latch_unlock (&w->latch);
-      return error_trace (e);
+    // Didn't read everything - record is incomplete
+    if (bread > 0) {
+      // Seek back so the file position is at the record start,
+      // leaving it at the last fully-written record boundary
+      if (walis_seek_unsafe (w, w->curlsn, e)) {
+        latch_unlock (&w->latch);
+        return error_trace (e);
+      }
     }
 
     *iseof = true;

@@ -740,7 +740,7 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
 #endif
 
 void
-i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_read *r, const lsn l)
+i_print_wal_rec_hdr_read_light (const struct wal_rec_hdr_read *r, const lsn l)
 {
   char        fields[128];
   const char *name = "?";
@@ -859,7 +859,7 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
     }
 
     case WL_EOF: {
-      i_log_printf (log_level, "%15" PRlsn "  WL_EOF\n", l);
+      printf ("%15" PRlsn "  WL_EOF\n", l);
       return;
     }
   }
@@ -869,16 +869,9 @@ i_print_wal_rec_hdr_read_light (const int log_level, const struct wal_rec_hdr_re
        72 = widest fields line     -- "CLR FSM" case
      Bump them if a new record type pushes past these. */
   if (prev) {
-    i_log_printf (
-        log_level,
-        "%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n",
-        l,
-        name,
-        fields,
-        *prev
-    );
+    printf ("%15" PRlsn "  %-11s  [ %-72s ] --> %" PRlsn "\n", l, name, fields, *prev);
   } else {
-    i_log_printf (log_level, "%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
+    printf ("%15" PRlsn "  %-11s  [ %-72s ]\n", l, name, fields);
   }
 }
 

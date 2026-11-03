@@ -43,9 +43,7 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
   }
 
   // Flush the WAL
-  if (wal_flush_all (p->ww, e)) {
-    goto theend;
-  }
+  wal_flush_all (p->ww);
 
   // Get the end_lsn
   lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);

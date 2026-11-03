@@ -14,9 +14,10 @@
 
 #include "nscore/wal/ns_wal_ostream.h"
 
+#include "core/ns_crash.h"
+#include "core/ns_crc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
-#include "core/ns_numerics.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
@@ -89,7 +90,7 @@ err_t
 walos_close (struct wal_ostream *w, error *e)
 {
   DBG_ASSERT (wal_ostream, w);
-  walos_flush_all (w, e);
+  walos_flush_all (w);
   w->os.table->close_file (w->os.self, w->fd.self, e);
   w->mem.table->free (w->mem.self, w);
   return error_trace (e);
@@ -123,11 +124,6 @@ walos_test_file_size (struct test_ctx *ctx, const char *fname)
   return size;
 }
 
-/// walos_crash is walos_close minus the flush: it models the process dying
-/// with a dirty WAL buffer, so everything that had not been fsynced has to be
-/// lost and everything that had been has to survive. It still owns the file
-/// handle and the allocation, so it still has to release both - a leaked fd
-/// trips the OS teardown assert in test_ctx_free.
 TEST (walos_crash)
 {
   const u8 payload[8] = {1, 2, 3, 4, 5, 6, 7, 8};
@@ -139,7 +135,7 @@ TEST (walos_crash)
     struct wal_ostream *wos = walos_open (WALOS_CRASH_T_FILE, ctx->mem, ctx->os, &ctx->e);
     test_assert (wos != NULL);
 
-    test_assert_int_equal (walos_write_all (wos, NULL, payload, sizeof payload, &ctx->e), SUCCESS);
+    walos_write_all (wos, NULL, payload, sizeof payload);
 
     // Buffered only: the next lsn moved, the flushed one did not
     test_assert_int_equal ((i32)walos_get_next_lsn (wos), (i32)sizeof payload);
@@ -159,12 +155,12 @@ TEST (walos_crash)
     struct wal_ostream *wos = walos_open (WALOS_CRASH_T_FILE, ctx->mem, ctx->os, &ctx->e);
     test_assert (wos != NULL);
 
-    test_assert_int_equal (walos_write_all (wos, NULL, payload, sizeof payload, &ctx->e), SUCCESS);
-    test_assert_int_equal (walos_flush_all (wos, &ctx->e), SUCCESS);
+    walos_write_all (wos, NULL, payload, sizeof payload);
+    walos_flush_all (wos);
     test_assert_int_equal ((i32)wos->flushed_lsn, (i32)sizeof payload);
 
     // A second write that is still sitting in the buffer when we die
-    test_assert_int_equal (walos_write_all (wos, NULL, payload, sizeof payload, &ctx->e), SUCCESS);
+    walos_write_all (wos, NULL, payload, sizeof payload);
     test_assert_int_equal ((i32)walos_get_next_lsn (wos), 2 * (i32)sizeof payload);
 
     test_assert_int_equal (walos_crash (wos, &ctx->e), SUCCESS);
@@ -208,39 +204,40 @@ TEST (walos_crash)
 
 #endif // TESTING
 
-static err_t
-walos_flush_impl (struct wal_ostream *w, error *e)
+static void
+walos_flush_impl (struct wal_ostream *w)
 {
   const u32 towrite = cbuffer_len (&w->buffer);
   if (towrite == 0) {
-    return SUCCESS;
+    return;
   }
 
-  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e)) {
-    panic ("Wal write failed");
+  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, &w->e)) {
+    error_log_consume (&w->e);
+    intentionally_crash ();
   }
+
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
-  if (w->fd.table->fsync (w->fd.self, e)) {
-    panic ("Wal fsync failed");
+  if (w->fd.table->fsync (w->fd.self, &w->e)) {
+    error_log_consume (&w->e);
+    intentionally_crash ();
   }
 
   w->flushed_lsn += towrite;
-  return SUCCESS;
 }
 
-err_t
-walos_flush_all (struct wal_ostream *w, error *e)
+void
+walos_flush_all (struct wal_ostream *w)
 {
   DBG_ASSERT (wal_ostream, w);
   latch_lock (&w->l);
-  const err_t ret = walos_flush_impl (w, e);
+  walos_flush_impl (w);
   latch_unlock (&w->l);
-  return ret;
 }
 
-err_t
-walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u32 len, error *e)
+void
+walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u32 len)
 {
   DBG_ASSERT (wal_ostream, w);
 
@@ -254,9 +251,8 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
   latch_lock (&w->l);
 
   while (written < len) {
-    if ((cbuffer_avail (&w->buffer) == 0) && (walos_flush_impl (w, e))) {
-      latch_unlock (&w->l);
-      return error_trace (e);
+    if (cbuffer_avail (&w->buffer) == 0) {
+      walos_flush_impl (w);
     }
 
     const u32 towrite = MIN (len - written, cbuffer_avail (&w->buffer));
@@ -267,7 +263,6 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, const u
   }
 
   latch_unlock (&w->l);
-  return SUCCESS;
 }
 
 lsn

@@ -12,10 +12,15 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_crash.h"
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
+#include "core/ns_testing.h"
+#include "core/os/ns_os.h"
 #include "nscore/lock_table/ns_lock_table.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/wal/ns_wal.h"
 
 err_t
 pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
@@ -46,7 +51,7 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   }
 
   // Append a begin log record
-  l = wal_append_begin_log (p->ww, tid, e);
+  l = wal_append_begin_log (p->ww, tid);
 
   if (l < 0) {
     lockt_unlock (p->lt, lock_db (), LM_X);
@@ -70,3 +75,81 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
 
   return SUCCESS;
 }
+
+#ifndef NDEBUG
+TEST (pgr_begin_txn_fail_no_wal)
+{
+  // Set up with faulty os
+  struct pgr_fixture f;
+  pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
+
+  struct txn tx;
+  int        fail_after = 0;
+  err_t      ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      // Ensure the WAL is flushed (This does assume WAL buffer
+      // size is > sizeof(BEGIN))
+      // That's pretty much a given
+      wal_flush_all (f.p->ww);
+
+      // Do operation under error
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = pgr_begin_txn (&tx, f.p, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  // Done - commit and clean up
+  pgr_commit (f.p, &tx, &ctx->e);
+  pgr_fixture_teardown_with (&f, &ctx->e);
+}
+
+//  Same as above, but fills up wal before
+//  begin txn - to ensure a wal is triggered
+TEST (pgr_begin_txn_fail_full_wal)
+{
+  // Set up with faulty os
+  struct pgr_fixture f;
+
+  int                fail_after = 0;
+  err_t              ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
+
+      // Ensure the WAL will trigger on next begin for begin record
+      // (remember that the WAL doesn't need to flush on a begin txn)
+      wal_ensure_flush_next (f.p->ww);
+
+      // Do operation under error
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      capture_intentional_crash (&ret, &ctx->e)
+      {
+        ret = pgr_begin_txn (&f.tx, f.p, &ctx->e);
+      }
+      faulty_os_reset (ctx->faulty_os);
+
+      // Commit if success to avoid locking
+      if (ret == SUCCESS) {
+        pgr_commit (f.p, &f.tx, &ctx->e);
+      }
+
+      // Teardown (handles crash case)
+      pgr_fixture_teardown_with (&f, &ctx->e);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+}
+#endif

@@ -70,7 +70,7 @@ walf_print (const char *fname)
       goto theend;
     }
 
-    i_print_wal_rec_hdr_read_light (LOG_INFO, out, rlsn);
+    i_print_wal_rec_hdr_read_light (out, rlsn);
 
     if (out->type == WL_EOF) {
       break;

@@ -77,7 +77,7 @@ lsn wal_size (struct wal *w);
  * under the hood this is just the same as flush all
  * with an assert that [l] has been written already.
  */
-err_t wal_flush_all (const struct wal *w, error *e);
+void wal_flush_all (const struct wal *w);
 
 /**
  * Reading
@@ -93,20 +93,24 @@ struct wal_rec_hdr_read *wal_read_next (struct wal *w, lsn *read_lsn, error *e);
 struct wal_rec_hdr_read *wal_read_first (struct wal *w, error *e);
 struct wal_rec_hdr_read *wal_read_entry (struct wal *w, lsn id, error *e);
 
-slsn wal_write_locked (struct wal *w, error *e);
-slsn wal_append_begin_log (struct wal *w, txid tid, error *e);
-slsn wal_append_commit_log (struct wal *w, txid tid, lsn prev, error *e);
-slsn wal_append_end_log (struct wal *w, txid tid, lsn prev, error *e);
-slsn wal_append_ckpt_begin (struct wal *w, error *e);
-slsn wal_append_update_log (struct wal *w, struct wal_update_write update, error *e);
-slsn wal_append_clr_log (struct wal *w, struct wal_clr_write clr, error *e);
+lsn wal_write_locked (struct wal *w);
+lsn wal_append_begin_log (struct wal *w, txid tid);
+lsn wal_append_commit_log (struct wal *w, txid tid, lsn prev);
+lsn wal_append_end_log (struct wal *w, txid tid, lsn prev);
+lsn wal_append_ckpt_begin (struct wal *w);
+lsn wal_append_update_log (struct wal *w, struct wal_update_write update);
+lsn wal_append_clr_log (struct wal *w, struct wal_clr_write clr);
 
 /**
  * Just append an arbitrary log
  * this is used mostly for testing
  */
-slsn wal_append_log (struct wal *w, const struct wal_rec_hdr_write *hdr, error *e);
+lsn wal_append_log (struct wal *w, const struct wal_rec_hdr_write *hdr);
 
 err_t wal_crash (struct wal *w, error *e);
+
+#ifndef NDEBUG
+void wal_ensure_flush_next (struct wal *w);
+#endif
 
 #endif // WAL_H

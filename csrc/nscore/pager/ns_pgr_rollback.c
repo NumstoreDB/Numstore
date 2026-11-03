@@ -17,11 +17,11 @@
 #include "nscore/pager/ns_pager.h"
 
 #ifndef NDEBUG
-static err_t
-pgr_flush_wall (struct pager *p, error *e)
+static void
+pgr_flush_wall (struct pager *p)
 {
   DBG_ASSERT (pager, p);
-  return wal_flush_all (p->ww, e);
+  wal_flush_all (p->ww);
 }
 #endif
 
@@ -31,14 +31,14 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
   struct wal_rec_hdr_read *log_rec      = NULL;             // Next record to read
   page_h                   ph           = page_h_create (); // The page handle used for all undo's
   lsn                      undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
-  slsn                     prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
+  lsn                      prev_lsn     = undo_nxt_lsn; // The lsn of the previously written log
   // struct wal_clr_write     clr;                             // Next record to
   // write txid                     tid          = tx->tid;      // The
   // transaction id
 
   // First ensure the wal is flushed so that any undoable log is readable
-  if ((undo_nxt_lsn > 0) && (wal_flush_all (p->ww, e))) {
-    goto failed;
+  if (undo_nxt_lsn > 0) {
+    wal_flush_all (p->ww);
   }
 
   while (save_lsn < undo_nxt_lsn) {
@@ -62,10 +62,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
           }
 
           // Undo and append a clr log
-          prev_lsn = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph), e);
-          if (prev_lsn < 0) {
-            goto failed;
-          }
+          prev_lsn = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph));
 
           // Set the last page lsn
           page_set_page_lsn (page_h_w (&ph), prev_lsn);
@@ -79,10 +76,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
         undo_nxt_lsn = log_rec->update.prev;
 
         if (undo_nxt_lsn == 0) {
-          slsn l = wal_append_end_log (p->ww, tx->tid, prev_lsn, e);
-          if (l < 0) {
-            goto failed;
-          }
+          lsn l = wal_append_end_log (p->ww, tx->tid, prev_lsn);
           // We'll break next
         }
         break;
@@ -118,7 +112,8 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 theend:
   lockt_unlock_tx (p->lt, tx);
 
-  if ((undo_nxt_lsn > 0) && (wal_flush_all (p->ww, e))) {
+  if (undo_nxt_lsn > 0) {
+    wal_flush_all (p->ww);
     goto failed;
   }
 
@@ -152,7 +147,7 @@ TEST (aries_rollback_basic)
       test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
     }
 
-    pgr_flush_wall (p, &ctx->e);
+    pgr_flush_wall (p);
   }
 
   // Verify FSM has all pages before rollback
@@ -245,7 +240,7 @@ TEST (aries_rollback_multiple_updates)
     dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE});
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_flush_wall (p, &ctx->e);
+    pgr_flush_wall (p);
     pgr_rollback (p, &tx2, 0, &ctx->e);
   }
 
@@ -300,7 +295,7 @@ TEST (aries_rollback_with_crash_recovery)
     );
     test_fail_if (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e));
 
-    pgr_flush_wall (p, &ctx->e);
+    pgr_flush_wall (p);
     test_fail_if (pgr_crash (p, &ctx->e));
   }
 

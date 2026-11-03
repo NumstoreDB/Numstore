@@ -57,7 +57,7 @@ pgr_close (struct pager *p, error *e)
 
     // Flush the WAL
     i_log_debug ("Flushing WAL\n");
-    wal_flush_all (p->ww, e);
+    wal_flush_all (p->ww);
 
     // Get the end_lsn
     lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);

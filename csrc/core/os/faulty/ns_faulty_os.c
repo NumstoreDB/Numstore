@@ -681,6 +681,15 @@ faulty_num_os_calls (struct i_os os)
   return ctx->ncalls;
 }
 
+void
+faulty_os_reset (struct i_os mem)
+{
+  struct faulty_ctx *ctx = mem.self;
+  ctx->fail_percent      = 0.0f;
+  ctx->fail_after        = -1;
+  ctx->ncalls            = 0;
+}
+
 /// Frees the faulty layer - the delegate OS is borrowed and stays alive.
 void
 faulty_os_free (struct i_os os)

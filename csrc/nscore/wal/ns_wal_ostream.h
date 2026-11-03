@@ -36,6 +36,8 @@ struct wal_ostream
   latch          l;
   lsn            flushed_lsn;
 
+  error          e;
+
   struct cbuffer buffer;
   u8             _buffer[WAL_BUFFER_CAP];
 };
@@ -45,10 +47,10 @@ struct wal_ostream *walos_open (const char *fname, struct i_mem mem, struct i_os
 err_t walos_close (struct wal_ostream *w, error *e);
 
 // Flush
-err_t walos_flush_all (struct wal_ostream *w, error *e);
+void walos_flush_all (struct wal_ostream *w);
 
 // Write
-err_t walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len, error *e);
+void walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len);
 lsn walos_get_next_lsn (struct wal_ostream *w);
 slsn walos_truncate (struct wal_ostream *w, error *e);
 

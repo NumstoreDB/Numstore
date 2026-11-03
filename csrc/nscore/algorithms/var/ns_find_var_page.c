@@ -307,6 +307,22 @@ failed:
 }
 
 #ifndef NDEBUG
+
+static inline err_t
+pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e)
+{
+  if (unlikely (pgr_fixture_create (dest, e))) {
+    return error_trace (e);
+  }
+
+  if (ns_init_var_hash_map (dest->p, e)) {
+    pgr_fixture_teardown (dest, e);
+    return error_trace (e);
+  }
+
+  return SUCCESS;
+}
+
 TEST (ns_find_var_page)
 {
   struct pgr_fixture f;

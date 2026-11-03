@@ -36,7 +36,7 @@ pgr_release_with_log (
   ASSERT (h->pgr->flags & PW_PRESENT);
 
   if (h->mode == PHM_X) {
-    spgno page_lsn = 0;
+    lsn page_lsn = 0;
 
     // Can only save valid pages
     ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e));
@@ -53,21 +53,15 @@ pgr_release_with_log (
                 .tid  = h->tx->tid,
                 .type = WUP_PHYSICAL,
                 .prev = h->tx->data.last_lsn,
-                .phys =
-                    {
-                        .pg   = page_h_pgno (h),
-                        .undo = h->pgr->page.raw,
-                        .redo = h->pgw->page.raw,
-                    },
-            },
-            e
+                .phys = {
+                    .pg   = page_h_pgno (h),
+                    .undo = h->pgr->page.raw,
+                    .redo = h->pgw->page.raw,
+                },
+            }
         );
       } else {
-        page_lsn = wal_append_update_log (p->ww, *record, e);
-      }
-
-      if (page_lsn < 0) {
-        return error_trace (e);
+        page_lsn = wal_append_update_log (p->ww, *record);
       }
 
       // Update the page lsn

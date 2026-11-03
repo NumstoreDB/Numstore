@@ -24,14 +24,13 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
 
   // Only need to write it out if it's dirty
   if (dpgt_exists (p->dpt, mp->page.pg)) {
-    if ((!(p->flags & PGR_ISRESTARTING) && p->ww) && (wal_flush_all (p->ww, e)))
     // WAL invariant: always flush page to wal before
     // it's flushed to disk
     // Remember:
     //    page_lsn = latest log page that modified this page
     // const lsn plsn = page_get_page_lsn (&mp->page);
-    {
-      goto theend;
+    if (!(p->flags & PGR_ISRESTARTING) && p->ww) {
+      wal_flush_all (p->ww);
     }
 
     // Set page checksum before flushing

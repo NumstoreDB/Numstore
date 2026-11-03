@@ -48,6 +48,10 @@
 #define ERR_TOO_MANY_FILES             (-14)
 #define ERR_TOO_MANY_THREADS           (-15)
 
+#ifndef NDEBUG
+#  define ERR_CRASHED (-16)
+#endif
+
 typedef int err_t;
 
 typedef struct

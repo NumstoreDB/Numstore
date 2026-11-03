@@ -308,8 +308,10 @@ lockt_lock (
   // Then, lock the requested lock
   if (lockt_lock_once (t, lock, mode, tx, e) < 0) {
     // If this lock failed, unlock the parent is all we need to do
-    const enum lock_mode pmode = get_parent_mode (mode);
-    lockt_unlock (t, parent, pmode);
+    if (has_parent) {
+      const enum lock_mode pmode = get_parent_mode (mode);
+      lockt_unlock (t, parent, pmode);
+    }
 
     return error_trace (e);
   }
