@@ -1,0 +1,136 @@
+<nav class="docs-nav" aria-label="Documentation">
+  <ul>
+    <li><a href="index.html" class="top-link">Start</a></li>
+    <li><a href="getting-started.html">Getting started</a></li>
+    <li><a href="rpc.html">The numstore RPC</a></li>
+    <li><a href="documentation_plan.html">Documentation plan</a></li>
+    <li class="section">
+      <details>
+        <summary>Concepts</summary>
+        <ul>
+          <li><a href="concepts/concurrency.html">Concurrency Model</a></li>
+          <li><a href="concepts/data-input-output.html">Data Input and Output</a></li>
+          <li><a href="concepts/data-model.html">Data Model: Variables and Elements</a></li>
+          <li><a href="concepts/durability-and-recovery.html">Durability and Crash Recovery</a></li>
+          <li><a href="concepts/transactions.html">Transactions</a></li>
+          <li><a href="concepts/vs-other-databases.html">How Numstore Differs from Other Databases</a></li>
+          <li><a href="concepts/what-is-numstore.html">What is Numstore?</a></li>
+          <li class="subsection">
+            <details>
+              <summary>Query language</summary>
+              <ul>
+                <li><a href="concepts/query-language/insert.html">Insert</a></li>
+                <li><a href="concepts/query-language/overview.html">Query Language Overview</a></li>
+                <li><a href="concepts/query-language/read.html">Read</a></li>
+                <li><a href="concepts/query-language/remove.html">Remove</a></li>
+                <li><a href="concepts/query-language/variables.html">Variable Operations</a></li>
+                <li><a href="concepts/query-language/write.html">Write</a></li>
+              </ul>
+            </details>
+          </li>
+          <li class="subsection">
+            <details>
+              <summary>Type system</summary>
+              <ul>
+                <li><a href="concepts/types/combining-types.html">Combining Types</a></li>
+                <li><a href="concepts/types/overview.html">Type System Overview</a></li>
+                <li><a href="concepts/types/primitives.html">Primitive Types</a></li>
+                <li><a href="concepts/types/strict-arrays.html">Strict Arrays</a></li>
+                <li><a href="concepts/types/structs.html">Structs</a></li>
+                <li><a href="concepts/types/unions.html">Unions</a></li>
+              </ul>
+            </details>
+          </li>
+        </ul>
+      </details>
+    </li>
+    <li class="section">
+      <details>
+        <summary>Integrator guide</summary>
+        <ul>
+          <li class="subsection">
+            <details>
+              <summary>Tutorials</summary>
+              <ul>
+                <li><a href="integrator/tutorials/c-first-database.html">C: Your First Database</a></li>
+                <li><a href="integrator/tutorials/c-link-with-cmake.html">C: Link with CMake</a></li>
+                <li><a href="integrator/tutorials/type-design-exercises.html">Type Design Exercises</a></li>
+              </ul>
+            </details>
+          </li>
+          <li class="subsection">
+            <details>
+              <summary>How-to</summary>
+              <ul>
+                <li><a href="integrator/how-to/c-handle-errors.html">C: Handle Errors</a></li>
+                <li><a href="integrator/how-to/c-read-into-a-numstore-buffer.html">C: Read into a Numstore-Allocated Buffer</a></li>
+                <li><a href="integrator/how-to/c-read-into-your-own-buffer.html">C: Read into Your Own Buffer</a></li>
+                <li><a href="integrator/how-to/c-recover-after-a-crash.html">C: Recover After a Crash</a></li>
+                <li><a href="integrator/how-to/c-store-packed-structs.html">C: Store Packed Structs</a></li>
+                <li><a href="integrator/how-to/c-use-prepared-plans.html">C: Use Prepared Plans</a></li>
+                <li><a href="integrator/how-to/c-use-smart-files.html">C: Use Smart Files</a></li>
+                <li><a href="integrator/how-to/python-handle-errors.html">Python: Handle Errors</a></li>
+                <li><a href="integrator/how-to/python-read-into-preallocated-array.html">Python: Read into a Preallocated Array</a></li>
+                <li><a href="integrator/how-to/python-reuse-a-query-plan.html">Python: Reuse a Query Plan</a></li>
+                <li><a href="integrator/how-to/python-use-threads-safely.html">Python: Use Threads Safely</a></li>
+              </ul>
+            </details>
+          </li>
+          <li class="subsection">
+            <details>
+              <summary>Reference</summary>
+              <ul>
+                <li><a href="integrator/reference/c-api.html">C API Reference</a></li>
+                <li><a href="integrator/reference/python-api.html">Python API Reference</a></li>
+              </ul>
+            </details>
+          </li>
+          <li><a href="integrator/troubleshooting.html">Integrator Troubleshooting</a></li>
+        </ul>
+      </details>
+    </li>
+    <li class="section">
+      <details>
+        <summary>Developer guide</summary>
+        <ul>
+          <li class="subsection">
+            <details>
+              <summary>Reference</summary>
+              <ul>
+                <li><a href="developers/reference/make-targets.html">Make Targets</a></li>
+              </ul>
+            </details>
+          </li>
+          <li class="subsection">
+            <details>
+              <summary>Tools</summary>
+              <ul>
+                <li><a href="developers/tools/index.html" class="section-index">All tools</a></li>
+              </ul>
+            </details>
+          </li>
+        </ul>
+      </details>
+    </li>
+    <li class="section">
+      <details>
+        <summary>How-to guides</summary>
+        <ul>
+          <li><a href="how-to-guides/add-a-cargo-library.html">Adding a new Cargo library</a></li>
+          <li><a href="how-to-guides/c-calling-rust.html">C calling Rust</a></li>
+          <li><a href="how-to-guides/rust-calling-c.html">Rust calling a C library</a></li>
+          <li><a href="how-to-guides/wheels-with-rust.html">Wheels with Rust</a></li>
+        </ul>
+      </details>
+    </li>
+    <li class="section">
+      <details>
+        <summary>Releases</summary>
+        <ul>
+          <li><a href="releases/v1.5.1.html">v1.5.1</a></li>
+          <li><a href="releases/v1.5.0.html">v1.5.0</a></li>
+        </ul>
+      </details>
+    </li>
+  </ul>
+</nav>

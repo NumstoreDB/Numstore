@@ -1,0 +1,11 @@
+[package]
+name = "nsclient"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nsserver = { path = "../../libs/nsserver" }
+tokio.workspace = true
+tokio-stream = "0.1.19"
+tonic.workspace = true

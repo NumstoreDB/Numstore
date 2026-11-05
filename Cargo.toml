@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["libs/nsserver", "apps/numstore", "apps/nsclient"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+futures = "0.3"
+prost = "0.14"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+tonic-prost-build = "0.14"
+protoc-bin-vendored = "3"

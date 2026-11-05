@@ -1,12 +1,15 @@
-Numstore
-========
+# Numstore
 
 **An embedded ACID database for Numpy arrays.**
 
-Features:
----------
+Numstore is a database for arrays. It is an ACID database meant to store
+contiguous arrays of numerical values. Full introduction:
+[What is Numstore?](docs/concepts/what-is-numstore.md).
+
+## Features
+
 - **Single File.** The whole database lives in a single file. There is no
-  server - see `include/numstore.h`
+  server - see `libs/numstore/include/numstore.h`
 - **ACID.** Every insert, write and remove either happens completely or not at
   all, even if the process crashes partway through. Transactions are strictly
   serializable - one is open at a time - and crash recovery uses ARIES over a
@@ -16,6 +19,8 @@ Features:
   layout of numbers you can describe as a type.
 - **No dependencies.** Written in C11 with first class Python bindings that
   return numpy arrays.
+
+## Quick start
 
 Pynumstore is the easiest way to get started:
 
@@ -38,161 +43,42 @@ with ns.Database("prices.db") as db:
     print(db.read("read prices[0::2]")) # [1.5  3.75 5.  ]
 ```
 
-The wheel brings numpy and nothing else. To build the bindings from source
-instead - which is what you want if you're working on Numstore itself - you'll
-need Python 3.9+, a C11 compiler and CMake 3.20+:
+## Layout
 
-```sh
-git clone https://github.com/NumstoreDB/Numstore
-cd Numstore
-python3 -m venv .venv && . .venv/bin/activate # Optional
-pip install .
-python samples/sample1_basic.py
+```text
+libs/numstore/      one C static library; include/numstore.h is the only public header
+libs/pynumstore/    the Python package and its CPython extension (tests/ is not shipped)
+libs/nsserver/      Rust: the gRPC service (see docs/rpc.md)
+apps/               C debug tools, plus the Rust server and client binaries
+samples/            runnable samples
+docs/               documentation
 ```
 
-`pip install .` compiles the C library and the bindings in one step. The sample
-creates a database file in your current directory.
+Dependencies run one way: **`pynumstore` -> `numstore` -> Rust crates.** C
+consumes Rust; Rust crates never call back into numstore. See
+[C calling Rust](docs/how-to-guides/c-calling-rust.md).
 
-Next steps:
+The Rust workspace always builds, so building this tree needs a Rust
+toolchain. The wheels are the exception - a `scikit-build-core` build stops at
+`pynumstore` and needs no cargo -
+[what would change when wheels need Rust](docs/how-to-guides/wheels-with-rust.md).
 
-* [**Documentation**](docs/index.md) - the guided tour: the query language, the
-  type system, transactions and durability, all in Python.
-* [**Python API Reference**](docs/python_api.md) - every class and method in
-  `pynumstore`.
-* [**C API Reference**](docs/c_api.md) - `numstore.h`, linking, and a complete
-  program per operation. Also see the [C Quick Start](#c-quick-start) below.
+## Pick your path
 
-Why Numstore?
--------------
+| I want to... | Go to |
+|---|---|
+| Try it in five minutes | [Getting started](docs/getting-started.md) |
+| Read the Python reference | [Python API](docs/integrator/reference/python-api.md) |
+| Read the C reference | [C API](docs/integrator/reference/c-api.md) |
+| Build Numstore from source | [Build debug and release](docs/developers/reference/make-targets.md) |
+| Add a Rust crate, or cross the C/Rust boundary | [Guides](docs/how-to-guides/add-a-cargo-library.md) |
+| Talk to numstore over gRPC | [The numstore RPC](docs/rpc.md) |
+| Start from C | [C: First database](docs/integrator/tutorials/c-first-database.md) |
 
-Relational databases store tables: rows of named, typed columns, like a `users`
-table with a name and a date of birth. They are a poor fit for data where one
-value is a large block of numbers:
+Every page is indexed in [docs/index.md](docs/index.md). Release notes are in
+[CHANGELOG.md](CHANGELOG.md).
 
-* a 3x256x256 RGB image
-* a stream of thousands of floating point stock prices
-
-That data usually ends up in flat binary files or formats like HDF5, which are
-fast but give you no transactions: a crash halfway through a write leaves the
-file half written. Numstore stores the same data with database guarantees.
-
-Core ideas
-----------
-
-A database holds **variables**. Each variable has:
-
-* a **name**, like `prices`
-* a **type**, the byte layout of one element, like `f64` 
-* **data**, an array of elements of that type
-
-You work with variables through short queries:
-
-| Query                    | What it does                                     |
-| ------------------------ | ------------------------------------------------ |
-| `create prices f64`      | create a variable                                |
-| `delete prices`          | delete a variable                                |
-| `insert prices 0 3`      | insert 3 elements at position 0                  |
-| `write prices[0:3]`      | overwrite existing elements                      |
-| `read prices[0:10:2]`    | read elements, with numpy-style `start:stop:step`|
-| `remove prices[0:2]`     | remove elements and return them                  |
-| `get prices`             | look up a variable's type and length             |
-
-### Types
-
-**Primitives.** The number is the size in bits.
-
-| Family                 | Types             | Size         |
-| ---------------------- | ----------------- | -------------|
-| unsigned int           | `u8` to `u64`     | 1-8 bytes    |
-| signed int             | `i8` to `i64`     | 1-8 bytes    |
-| float                  | `f16` to `f128`   | 2-16 bytes   |
-| complex float          | `cf32` to `cf256` | 4-32 bytes   |
-| complex signed int     | `ci16` to `ci128` | 2-16 bytes   |
-| complex unsigned int   | `cu16` to `cu128` | 2-16 bytes   |
-
-**Composites.** Build bigger types out of smaller ones:
-
-* **Strict array:** a fixed size, multi-dimensional array. `[3][256][256] f32`
-  is three 256x256 grids of floats, like an RGB image.
-* **Struct:** fields stored one after another, with no padding. The size is the
-  sum of the fields. `struct { a u32, b f16 }` is 4 + 2 = 6 bytes.
-* **Union:** fields that overlap, so it holds one of them at a time. The size
-  is that of the largest field. `union { a u32, b f16 }` is 4 bytes.
-
-They nest freely: `struct { a u32, b struct { c f16, d [10]f32 } }` is 4 + 2 +
-40 = 46 bytes.
-
-The full rules for sizing and nesting types are in
-[the type system](docs/index.md#the-numstore-type-system).
-
-C Quick Start
--------------
-
-From the repository root:
-
-```sh
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
-cmake --build build/release
-./build/release/bin/ns_sample1_basic_crud
-```
-
-What you get:
-
-* `include/numstore.h`: the only header you need
-* `build/release/lib/libnumstore.a`: the whole library in one static archive
-* `build/release/bin/`: one binary per C sample in `samples/`, plus `ns_simtest`
-
-To compile a program of your own against it:
-
-```sh
-cc -std=c11 -I include myprog.c build/release/lib/libnumstore.a -o myprog
-```
-
-On Linux add `-pthread -lm`. For a debug build, use
-`-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
-
-The [C API Reference](docs/c_api.md) has the rest: linking from CMake, and a
-complete program for queries, transactions, crash recovery, packed structs,
-prepared plans and smart files.
-
-Developing
-----------
-
-One `CMakeLists.txt` builds everything, and `make` wraps the cmake invocations
-so the flags live in one place:
-
-| Target                 | What it does                                        |
-| ---------------------- | --------------------------------------------------- |
-| `make debug`           | debug build into `build/debug` (the default target) |
-| `make release`         | release build into `build/release`                  |
-| `make release-package` | release build, then `cmake --install` into `build/release/package` |
-| `make test`            | `test-unit`, then `test-simtest`                    |
-| `make test-unit`       | debug build, then `unit_tests` with a random seed   |
-| `make test-simtest`    | debug build, then `ns_simtest` for 50 seconds       |
-| `make test-python`     | pip install the package, then run `pytest`          |
-| `make wheel`           | build a wheel into `dist/` (`make sdist` for a tarball) |
-| `make coverage`        | gcovr HTML report into `build/coverage/html`        |
-| `make valgrind`        | `unit_tests` and `ns_simtest` under valgrind        |
-| `make leaks`           | the same two under macOS `leaks`                    |
-| `make format`          | clang-format, gersemi and ruff over the tree        |
-| `make clean`           | remove build artifacts                              |
-
-`coverage` needs gcovr, `format` needs clang-format, gersemi and ruff, and
-`valgrind` and `leaks` need the tool they're named after. CI runs `make
-test-unit` and `make release-package` on every push.
-
-`unit_tests` takes a seed and an optional name filter, so
-`./build/debug/bin/unit_tests 123142 wal` runs only the tests whose name
-contains `wal`. It exists in debug builds only: its `main` is generated at
-configure time by `apps/gen_tests.py`, which scrapes every `TEST(...)` in
-`csrc/`.
-
-`ns_simtest` drives a database with random operations, checks it against a
-reference model and crashes it at random:
-`./build/debug/bin/ns_simtest --duration 5`.
-
-AI Usage Policy
----------------
+## AI Usage Policy
 
 I use AI the way I use a language server: as a tool, not a co-author. AI usage
 is fine, but not for heavy lifting.
@@ -215,15 +101,10 @@ In practice, AI is useful for ideation, code review, and generating mundane
 code I'll immediately refactor. Every algorithm in this codebase was written by
 me.
 
-Contributing
-------------
+## Contributing
 
-Contributions are welcome, but I don't have the bandwidth to make the process
-easy yet (something I'm working on). File a GitHub issue for bugs, feature
-requests or questions. Issues that are easy to pick up are labeled `good first
-issue`.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-License
--------
+## License
 
 Apache 2.0. See [LICENSE](LICENSE).

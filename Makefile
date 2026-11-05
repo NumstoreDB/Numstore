@@ -25,7 +25,7 @@ build/debug/CMakeCache.txt:
 
 ############ Testing
 .PHONY: test
-test: test-unit test-simtest
+test: test-unit test-simtest test-rust
 
 .PHONY: test-unit
 test-unit: debug
@@ -41,6 +41,16 @@ test-simtest: debug
 		--seed $(SEED) \
 		--commit-hash $(COMMIT) \
 		--seqid $(SEED)
+
+############ Rust
+.PHONY: rust
+rust:
+	cargo build --workspace
+
+.PHONY: test-rust
+test-rust:
+	cargo clippy --workspace -- -D warnings
+	cargo build --workspace
 
 ############ Release
 .PHONY: release-package
@@ -200,7 +210,7 @@ leaks-simtest: build/memcheck/bin/ns_simtest
 #############################################
 ### pynumstore
 
-PKG_PY_SRCS     := $(shell find pynumstore -name '*.py' -o -name "*.pyi")
+PKG_PY_SRCS     := $(shell find libs/pynumstore/src -name '*.py' -o -name "*.pyi")
 PKG_NATIVE_SRCS := $(shell find . \( -name '*.c' -o -name '*.h' -o -name '*.cmake' -o -name 'CMakeLists.txt' \) -not -path '*build*')
 
 build/python/.installed: $(PKG_PY_SRCS) $(PKG_NATIVE_SRCS) pyproject.toml version.txt
@@ -216,11 +226,11 @@ python-reinstall:
 	rm -rf build/python build/wheel
 	$(MAKE) python-install
  
-# Run from inside pytest/ so the tests import the installed package,
-# not the ./pynumstore source directory.
+# Run from inside the tests directory so they import the installed package,
+# not the source tree.
 .PHONY: test-python
 test-python: python-install
-	cd pytest && python3 -m pytest -ra --tb=short
+	cd libs/pynumstore/tests && python3 -m pytest -ra --tb=short
  
 .PHONY: wheel
 wheel:
@@ -244,9 +254,10 @@ format:
 	-clang-format -i $(C_SRCS) $(H_SRCS)
 	-gersemi -i --no-warn-about-unknown-commands $(CMAKE_SRCS)
 	-ruff format $(PY_SRCS)
+	-cargo fmt --all
 
 .PHONY: clean 
-clean: clean-c clean-python
+clean: clean-c clean-python clean-rust
 
 .PHONY: clean-common
 clean-common:
@@ -266,6 +277,10 @@ clean-c: clean-common
 	find . -type f -name '*.gcda' -delete
 	find . -type f -name '*.gcno' -delete
 	find . -type f -name '*.gcov' -delete
+
+.PHONY: clean-rust
+clean-rust: clean-common
+	rm -rf target
 
 .PHONY: clean-python
 clean-python: clean-common

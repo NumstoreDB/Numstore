@@ -27,9 +27,14 @@ regex = '^v?(?P<value>\S+)'
 [tool.scikit-build]
 cmake.source-dir = "."
 cmake.build-type = "Release"
-wheel.packages = ["pynumstore"]
+wheel.packages = ["libs/pynumstore/src/pynumstore"]
 install.components = ["python"]
 build-dir = "build/wheel/{wheel_tag}"
+# Tests live outside the shipped package, so keep them out of the sdist too.
+sdist.exclude = ["libs/pynumstore/tests", "build", "docs/pandoc"]
+# The extension sources sit in the package directory, so wheel.packages would
+# otherwise ship them next to the built .so.
+wheel.exclude = ["pynumstore/ns_pynumstore.c", "pynumstore/ns_pynumstore.h"]
 
 [tool.cibuildwheel]
 archs = ["auto"]
@@ -39,12 +44,12 @@ skip = [
     "cp310-win_arm64",
 ]
 test-extras = ["test"]
-test-sources = ["pytest", "pyproject.toml", "version.txt"]
-test-command = "python -m pytest pytest"
+test-sources = ["libs/pynumstore/tests", "pyproject.toml", "version.txt"]
+test-command = "python -m pytest libs/pynumstore/tests"
 
 [tool.pytest.ini_options]
-testpaths = ["pytest"]
-pythonpath = ["pytest"]
+testpaths = ["libs/pynumstore/tests"]
+pythonpath = ["libs/pynumstore/tests"]
 addopts = ["--import-mode=importlib"]
 # Test modules are named after the pynumstore module they cover (database.py,
 # query.py, ...), not test_*.py, so collection needs every file in testpaths.

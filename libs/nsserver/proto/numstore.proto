@@ -1,0 +1,25 @@
+syntax = "proto3";
+package numstore.v1;
+
+service NumStore {
+  rpc Push(stream PushRequest)   returns (stream PushResponse);
+  rpc Pull(PullRequest)          returns (stream PullResponse);
+  rpc Execute(ExecuteRequest)    returns (ExecuteResponse);
+  rpc Get(GetRequest)            returns (GetResponse);
+}
+
+message Success {}
+message Error { int32 code = 1; string message = 2; }
+
+// First message is the query; the rest are data chunks.
+message PushRequest  { oneof msg { string query = 1; bytes data = 2; } }
+message PushResponse { oneof msg { Success success = 1; Error error = 2; } }
+
+message PullRequest  { string query = 1; }
+message PullResponse { oneof msg { bytes data = 1; Error error = 2; } }
+
+message ExecuteRequest  { string query = 1; }
+message ExecuteResponse { oneof msg { Success success = 1; Error error = 2; } }
+
+message GetRequest  { string query = 1; }
+message GetResponse { oneof msg { bytes var = 1; Error error = 2; } }

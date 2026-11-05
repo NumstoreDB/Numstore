@@ -1,0 +1,16 @@
+# numstore-app, not numstore: the directory keeps the name, but the target
+# can't collide with the C library of the same name.
+[package]
+name = "numstore-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "nsserver"
+path = "src/main.rs"
+
+[dependencies]
+nsserver = { path = "../../libs/nsserver" }
+tokio.workspace = true
+tonic.workspace = true

@@ -28,99 +28,21 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 #####################################################################
 ### The numstore library
-# csrc/ also holds the entry points below, so the library collects sources
-# from its two source trees rather than everything under csrc/.
-set(LIBNUMSTORE_SRCS "")
-add_subdirectory(csrc/core)
-add_subdirectory(csrc/nscore)
-
-# csrc/numstore.c is the public C API (include/numstore.h). pynumstore talks
-# to nscore/nsdb directly, so a wheel build leaves it out entirely.
-if(NOT SKBUILD)
-    list(APPEND LIBNUMSTORE_SRCS csrc/numstore.c)
-endif()
-
-add_library(numstore STATIC ${LIBNUMSTORE_SRCS})
-add_library(numstore::numstore ALIAS numstore)
-
-target_include_directories(
-    numstore
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/csrc>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-set_target_properties(numstore PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-if(MSVC)
-    target_compile_options(numstore PUBLIC /experimental:c11atomics)
-endif()
-
-# Prefer using -pthread instead of -lpthread
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-target_link_libraries(numstore PUBLIC Threads::Threads)
-
-# long double / complex helpers are in libm on glibc.
-if(UNIX AND NOT APPLE)
-    target_link_libraries(numstore PUBLIC m)
-endif()
-
-# Install
-install(
-    TARGETS numstore
-    EXPORT numstoreTargets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-# The installed package carries the version from version.txt, so a consumer can
-# pin it with find_package(numstore 1.5).
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-    cmake/numstoreConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
-)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfigVersion.cmake
-    COMPATIBILITY SameMajorVersion
-)
-
-install(
-    EXPORT numstoreTargets
-    FILE numstoreTargets.cmake
-    NAMESPACE numstore::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
-)
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
-)
+add_subdirectory(libs/numstore)
 
 #####################################################################
 ### pynumstore
 ### scikit-build-core defines SKBUILD, and a wheel build wants nothing else.
 if(SKBUILD)
-    find_package(
-        Python
-        3.9
-        REQUIRED
-        COMPONENTS Interpreter Development.Module NumPy
-    )
-
-    python_add_library(_pynumstore MODULE WITH_SOABI csrc/ns_pynumstore.c)
-    target_link_libraries(_pynumstore PRIVATE numstore Python::NumPy)
-    set_target_properties(_pynumstore PROPERTIES C_VISIBILITY_PRESET hidden)
-
-    install(TARGETS _pynumstore LIBRARY DESTINATION pynumstore COMPONENT python)
-
+    add_subdirectory(libs/pynumstore)
     return()
 endif()
+
+#####################################################################
+### Rust
+### Always built. A wheel build returns above this, so cibuildwheel still
+### needs no cargo.
+include(cmake/Rust.cmake)
 
 #####################################################################
 ### apps
@@ -138,7 +60,8 @@ endforeach()
 
 #####################################################################
 ### unit_tests
-### gen_tests.py scrapes TEST(...) out of csrc/ and writes the main().
+### gen_tests.py scrapes TEST(...) out of the library sources and writes the
+### main(). The source root is an argument so the script holds no paths.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -158,6 +81,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apps/gen_tests.py
             ${CMAKE_CURRENT_SOURCE_DIR}/apps/unit_tests.c.in ${_unit_tests_c}
             ${_unit_tests_platform}
+            ${CMAKE_CURRENT_SOURCE_DIR}/libs/numstore/src
         DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/apps/gen_tests.py
             ${CMAKE_CURRENT_SOURCE_DIR}/apps/unit_tests.c.in
