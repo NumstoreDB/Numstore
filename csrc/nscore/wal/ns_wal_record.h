@@ -28,15 +28,16 @@
  * SECTION: WAL Records
  ******************************************************************************/
 
+enum wal_update_type
+{
+  WUP_PHYSICAL = 1,
+  WUP_FSM      = 2,
+  WUP_FEXT     = 3,
+};
+
 struct wal_update_read
 {
-  enum wal_update_type
-  {
-    WUP_PHYSICAL = 1,
-    WUP_FSM      = 2,
-    WUP_FEXT     = 3,
-  } type;
-
+  wlh  type;
   txid tid;  // Transaction id this log is associated with
   lsn  prev; // Previous lsn
 
@@ -158,12 +159,11 @@ enum wal_rec_hdr_type
   WL_END    = 3,
   WL_UPDATE = 4,
   WL_CLR    = 5,
-  WL_EOF    = 6,
 };
 
 struct wal_rec_hdr_read
 {
-  enum wal_rec_hdr_type type;
+  wlh type;
 
   union {
     struct wal_update_read update;
@@ -176,7 +176,7 @@ struct wal_rec_hdr_read
 
 struct wal_rec_hdr_write
 {
-  enum wal_rec_hdr_type type;
+  wlh type;
 
   union {
     struct wal_update_write update;
@@ -274,8 +274,8 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
   (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
 
 // Utils
-stxid wrh_get_tid (const struct wal_rec_hdr_read *h);
-slsn wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
+txid wrh_get_tid (const struct wal_rec_hdr_read *h);
+lsn wrh_get_prev_lsn (const struct wal_rec_hdr_read *h);
 bool wrh_is_undoable (const struct wal_rec_hdr_read *h);
 bool wrh_is_redoable (const struct wal_rec_hdr_read *h);
 pgno wrh_get_affected_pg (const struct wal_rec_hdr_read *h);

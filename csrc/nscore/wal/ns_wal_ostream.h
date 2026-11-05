@@ -22,12 +22,6 @@
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
 
-/******************************************************************************
- * SECTION: Wal Output Stream
- * ----------------------------------------------------------------------------
- * @brief Writes out a wal
- ******************************************************************************/
-
 struct wal_ostream
 {
   struct i_mem   mem;
@@ -43,17 +37,20 @@ struct wal_ostream
 };
 
 // Lifecycle
-struct wal_ostream *walos_open (const char *fname, struct i_mem mem, struct i_os os, error *e);
+struct wal_ostream *walos_open (
+    const char  *fname,
+    struct i_mem mem,
+    struct i_os  os,
+    lsn          seek_to,
+    error       *e
+);
 err_t walos_close (struct wal_ostream *w, error *e);
-
-// Flush
-void walos_flush_all (struct wal_ostream *w);
-
-// Write
-void walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len);
-lsn walos_get_next_lsn (struct wal_ostream *w);
-slsn walos_truncate (struct wal_ostream *w, error *e);
-
 err_t walos_crash (struct wal_ostream *w, error *e);
+
+// Primary API - Crash on write behavior
+void walos_flush_all (struct wal_ostream *w);
+void walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len);
+lsn walos_get_lsn (struct wal_ostream *w);
+slsn walos_truncate (struct wal_ostream *w, error *e);
 
 #endif

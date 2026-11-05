@@ -63,4 +63,12 @@ snprintf_len (const int n)
 #  define RH__XCAT(a, b) RH__CAT (a, b)
 #endif
 
+HEADER_FUNC u64
+memcpy_inc (void *dest, void *src, u64 len)
+{
+  memcpy (dest, src, len);
+  return len;
+}
+
 #endif // UTILS_H
+       //

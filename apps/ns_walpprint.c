@@ -12,7 +12,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_logging.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
 #include "nscore/wal/ns_wal.h"
@@ -42,6 +41,13 @@ print_usage (FILE *out, const char *prog)
   );
 }
 
+static err_t
+wal_print_func (struct wal_rec_hdr_read *log, lsn l, void *ctx, error *e)
+{
+  i_print_wal_rec_hdr_read_light (log, l);
+  return SUCCESS;
+}
+
 static void
 walf_print (const char *fname)
 {
@@ -61,23 +67,8 @@ walf_print (const char *fname)
     return;
   }
 
-  while (true) {
-    lsn                      rlsn;
-    struct wal_rec_hdr_read *out = wal_read_next (wf, &rlsn, &e);
+  wal_forward_scan (wf, LSN_NULL, wal_print_func, NULL, &e);
 
-    if (out == NULL) {
-      error_log_consume (&e);
-      goto theend;
-    }
-
-    i_print_wal_rec_hdr_read_light (out, rlsn);
-
-    if (out->type == WL_EOF) {
-      break;
-    }
-  }
-
-theend:
   wal_close (wf, &e);
   system_os_free (os);
 }

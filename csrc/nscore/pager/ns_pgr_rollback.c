@@ -15,6 +15,7 @@
 #include "core/ns_testing.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
+#include "nscore/wal/ns_wal_record.h"
 
 #ifndef NDEBUG
 static void
@@ -28,6 +29,7 @@ pgr_flush_wall (struct pager *p)
 err_t
 pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 {
+  struct wal_rec_hdr_read  rdhdr;
   struct wal_rec_hdr_read *log_rec      = NULL;             // Next record to read
   page_h                   ph           = page_h_create (); // The page handle used for all undo's
   lsn                      undo_nxt_lsn = tx->data.undo_next_lsn; // Starting undo lsn
@@ -43,14 +45,8 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 
   while (save_lsn < undo_nxt_lsn) {
     // Read the next undo log entry
-    if ((log_rec = wal_read_entry (p->ww, undo_nxt_lsn, e)) == NULL) {
+    if ((log_rec = wal_read_entry (p->ww, &rdhdr, undo_nxt_lsn, e)) == NULL) {
       return error_trace (e);
-    }
-
-    // Early Done  - this is a corrupt sequence of logs written - we expect a
-    // BEGIN
-    if (log_rec->type == WL_EOF) {
-      return error_causef (e, ERR_CORRUPT, "Transaction does not have a valid top level log");
     }
 
     switch (log_rec->type) {
@@ -99,10 +95,6 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
             "unexpected log record during rollback (lsn=%" PRlsn ")",
             undo_nxt_lsn
         );
-      }
-
-      case WL_EOF: {
-        goto theend;
       }
     }
 

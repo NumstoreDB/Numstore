@@ -487,77 +487,196 @@ opg_spin_enabled (u8 enabled[NSS_AT_LEN])
   }
 }
 
-struct operation *
-opg_random (struct rand_op_params params, error *e)
+// Individual operations - when you want more control
+static struct operation *
+op_alloc (struct rand_op_params params, enum ns_action_type type, error *e)
 {
   struct operation *ret = params.mem.table->malloc (params.mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }
+  arena_alloc_create_default (&ret->alloc);
+  ret->mem  = params.mem;
+  ret->type = type;
+  return ret;
+}
 
+struct operation *
+opg_rand_begin (struct rand_op_params params, error *e)
+{
+  return op_alloc (params, NSS_BEGIN_TXN, e);
+}
+
+struct operation *
+opg_rand_commit (struct rand_op_params params, error *e)
+{
+  return op_alloc (params, NSS_COMMIT_TXN, e);
+}
+
+struct operation *
+opg_rand_rollback (struct rand_op_params params, error *e)
+{
+  return op_alloc (params, NSS_ROLLBACK_TXN, e);
+}
+
+struct operation *
+opg_rand_crash_and_reopen (struct rand_op_params params, error *e)
+{
+  return op_alloc (params, NSS_CRASH_AND_REOPEN, e);
+}
+
+struct operation *
+opg_rand_close_and_reopen (struct rand_op_params params, error *e)
+{
+  return op_alloc (params, NSS_CLOSE_AND_REOPEN, e);
+}
+
+struct operation *
+opg_rand_create (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_CREATE_AND_SWAP_IF_EMPTY, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_create (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand_switch (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_SWITCH, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_switch (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand_delete (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_delete (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand_insert (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_INSERT, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_insert (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand_remove (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_REMOVE, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_remove (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand_read (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_READ, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_read (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand_write (struct rand_op_params params, error *e)
+{
+  struct operation *op = op_alloc (params, NSS_WRITE, e);
+  if (op == NULL) {
+    return NULL;
+  }
+  if (build_write (op, params, e) < 0) {
+    return NULL;
+  }
+  return op;
+}
+
+struct operation *
+opg_rand (struct rand_op_params params, error *e)
+{
+  // Get a random type from allowed types
   u8 allowed[NSS_AT_LEN];
   get_allowed (params.ref, allowed, params.enabled);
+  enum ns_action_type type = get_random_action_type (allowed);
 
-  // Common fields - buffers start empty, builders fill in what they need
-  *ret = (struct operation){
-      .type = get_random_action_type (allowed),
-      .mem  = params.mem,
-  };
-  arena_alloc_create_default (&ret->alloc);
-
-  err_t err = SUCCESS;
-
-  switch (ret->type) {
+  switch (type) {
       // Nothing to build
-    case NSS_BEGIN_TXN:
-    case NSS_COMMIT_TXN:
-    case NSS_ROLLBACK_TXN:
-    case NSS_CRASH_AND_REOPEN:
-    case NSS_CLOSE_AND_REOPEN:
+    case NSS_BEGIN_TXN: {
+      return opg_rand_begin (params, e);
+    }
+    case NSS_COMMIT_TXN: {
+      return opg_rand_commit (params, e);
+    }
+    case NSS_ROLLBACK_TXN: {
+      return opg_rand_rollback (params, e);
+    }
+    case NSS_CRASH_AND_REOPEN: {
+      return opg_rand_crash_and_reopen (params, e);
+    }
+    case NSS_CLOSE_AND_REOPEN: {
+      return opg_rand_close_and_reopen (params, e);
+    }
     case NSS_NONE_AVAILABLE: {
-      break;
+      return op_alloc (params, NSS_NONE_AVAILABLE, e);
     }
 
     case NSS_CREATE_AND_SWAP_IF_EMPTY: {
-      err = build_create (ret, params, e);
-      break;
+      return opg_rand_create (params, e);
     }
     case NSS_SWITCH: {
-      err = build_switch (ret, params, e);
-      break;
+      return opg_rand_switch (params, e);
     }
     case NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH: {
-      err = build_delete (ret, params, e);
-      break;
+      return opg_rand_delete (params, e);
     }
     case NSS_INSERT: {
-      err = build_insert (ret, params, e);
-      break;
+      return opg_rand_insert (params, e);
     }
     case NSS_REMOVE: {
-      err = build_remove (ret, params, e);
-      break;
+      return opg_rand_remove (params, e);
     }
     case NSS_READ: {
-      err = build_read (ret, params, e);
-      break;
+      return opg_rand_read (params, e);
     }
     case NSS_WRITE: {
-      err = build_write (ret, params, e);
-      break;
+      return opg_rand_write (params, e);
     }
 
     case NSS_AT_LEN: {
       UNREACHABLE ();
     }
   }
-
-  if (err < 0) {
-    opg_free (ret);
-    return NULL;
-  }
-
-  return ret;
 }
 
 void
@@ -585,7 +704,7 @@ TEST (opg)
   TEST_CASE ("1000 random operations against the reference model")
   {
     for (int i = 0; i < 1000; ++i) {
-      struct operation *op = opg_random (params, &ctx->e);
+      struct operation *op = opg_rand (params, &ctx->e);
 
       test_assert_int_equal (1, op != NULL);
       test_assert_int_equal (1, params.enabled[op->type] != 0);

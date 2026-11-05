@@ -307,9 +307,6 @@ wal_rec_hdr_read_random (struct wal_rec_hdr_read *dest)
       }
       break;
     }
-    case WL_EOF: {
-      ASSERT (false);
-    }
   }
 }
 
@@ -332,9 +329,6 @@ wal_rec_hdr_type_tostr (const enum wal_rec_hdr_type type)
     case WL_END: {
       return "WL_END";
     }
-    case WL_EOF: {
-      return "WL_EOF";
-    }
   }
 
   UNREACHABLE (); // LCOV_EXCL_LINE
@@ -348,7 +342,6 @@ TEST (wal_rec_hdr_type_tostr)
   test_assert (wal_rec_hdr_type_tostr (WL_BEGIN) != NULL);
   test_assert (wal_rec_hdr_type_tostr (WL_COMMIT) != NULL);
   test_assert (wal_rec_hdr_type_tostr (WL_END) != NULL);
-  test_assert (wal_rec_hdr_type_tostr (WL_EOF) != NULL);
 }
 #endif
 
@@ -450,14 +443,11 @@ wrhw_from_wrhr (struct wal_rec_hdr_read *src)
       }
       break;
     }
-    case WL_EOF: {
-      UNREACHABLE (); // LCOV_EXCL_LINE
-    }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
-stxid
+txid
 wrh_get_tid (const struct wal_rec_hdr_read *h)
 {
   switch (h->type) {
@@ -476,14 +466,11 @@ wrh_get_tid (const struct wal_rec_hdr_read *h)
     case WL_CLR: {
       return h->clr.tid;
     }
-    case WL_EOF: {
-      UNREACHABLE (); // LCOV_EXCL_LINE
-    }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
-slsn
+lsn
 wrh_get_prev_lsn (const struct wal_rec_hdr_read *h)
 {
   switch (h->type) {
@@ -501,9 +488,6 @@ wrh_get_prev_lsn (const struct wal_rec_hdr_read *h)
     }
     case WL_CLR: {
       return h->clr.prev;
-    }
-    case WL_EOF: {
-      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
@@ -538,9 +522,6 @@ wrh_is_undoable (const struct wal_rec_hdr_read *h)
     }
     case WL_CLR: {
       return false;
-    }
-    case WL_EOF: {
-      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
@@ -587,9 +568,6 @@ wrh_is_redoable (const struct wal_rec_hdr_read *h)
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_EOF: {
-      UNREACHABLE (); // LCOV_EXCL_LINE
-    }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
@@ -633,9 +611,6 @@ wrh_get_affected_pg (const struct wal_rec_hdr_read *h)
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE (); // LCOV_EXCL_LINE
-    }
-    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
@@ -728,10 +703,6 @@ wal_rec_hdr_read_equal (const struct wal_rec_hdr_read *left, const struct wal_re
       match = match && left->commit.tid == right->commit.tid;
       match = match && left->commit.prev == right->commit.prev;
       break;
-    }
-
-    case WL_EOF: {
-      return true;
     }
   }
 
@@ -857,11 +828,6 @@ i_print_wal_rec_hdr_read_light (const struct wal_rec_hdr_read *r, const lsn l)
       prev = &r->end.prev;
       break;
     }
-
-    case WL_EOF: {
-      printf ("%15" PRlsn "  WL_EOF\n", l);
-      return;
-    }
   }
 
   /* Widths set in one place:
@@ -941,9 +907,6 @@ wrh_undo (struct wal_rec_hdr_read *h, struct txn *tx, page_h *ph)
       }
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
-    case WL_EOF: {
-      UNREACHABLE (); // LCOV_EXCL_LINE
-    }
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
@@ -999,9 +962,6 @@ wrh_redo (struct wal_rec_hdr_read *h, page_h *ph)
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
       }
-      UNREACHABLE (); // LCOV_EXCL_LINE
-    }
-    case WL_EOF: {
       UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }

@@ -49,7 +49,6 @@ struct ns_simulation *ns_simul_open (struct ns_simulation_params params, error *
 // Close a simulation
 // Can error on ns_db_close
 err_t ns_simul_close (struct ns_simulation *meta, error *e);
-
 void ns_simul_set_enabled (struct ns_simulation *meta, const u8 enabled[NSS_AT_LEN]);
 
 /*
@@ -64,5 +63,11 @@ void ns_simul_set_enabled (struct ns_simulation *meta, const u8 enabled[NSS_AT_L
  * A failure here means an invalid database state - e.g. a bug
  */
 err_t ns_simul_step (struct ns_simulation *meta, error *e);
+
+// Explicitly pass an operation
+// Free's op - refactor if you
+// ever need operations on the stack
+err_t ns_simul_step_with (struct ns_simulation *meta, struct operation *op, error *e);
+struct rand_op_params simtorandopp (struct ns_simulation *meta);
 
 #endif // NSS_SWARM_TEST_FIXTURE_H

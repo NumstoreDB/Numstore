@@ -262,6 +262,10 @@ struct aries_ctx
 err_t aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);
 void aries_ctx_free (struct aries_ctx *ctx);
 struct txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e);
+
+err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e);
+err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e);
+err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
 err_t pgr_recover (struct pager *p, error *e);
 
 #endif // PAGER_H

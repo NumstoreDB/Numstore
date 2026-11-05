@@ -140,94 +140,21 @@ struct rand_op_params
 
 // Spin a random
 void opg_spin_enabled (u8 enabled[NSS_AT_LEN]);
-struct operation *opg_random (struct rand_op_params params, error *e);
+struct operation *opg_rand (struct rand_op_params params, error *e);
 void opg_free (struct operation *op);
 
-#define OP_CREATE(_name, _type)                  \
-  ((struct operation){                           \
-      .type      = NSS_CREATE_AND_SWAP_IF_EMPTY, \
-      .op_create = {                             \
-          .vname = (char *)(_name),              \
-          .t     = (_type),                      \
-      },                                         \
-  })
-
-#define OP_SWITCH(_name)           \
-  ((struct operation){             \
-      .type      = NSS_SWITCH,     \
-      .op_switch = {               \
-          .next = (char *)(_name), \
-      },                           \
-  })
-
-#define OP_DELETE(_next)                                   \
-  ((struct operation){                                     \
-      .type      = NSS_DELETE_CURRENT_VARIABLE_AND_SWITCH, \
-      .op_delete = {                                       \
-          .next = (char *)(_next),                         \
-      },                                                   \
-  })
-
-#define OP_INSERT(_data, _dlen, _ofst, _n) \
-  ((struct operation){                     \
-      .type = NSS_INSERT,                  \
-      .op_insert =                         \
-          {                                \
-              .ofst   = (_ofst),           \
-              .nelems = (_n),              \
-          },                               \
-      .data      = (_data),                \
-      .data_size = (_dlen),                \
-  })
-
-#define OP_WRITE(_data, _dlen, _start, _stride, _nelems) \
-  ((struct operation){                                   \
-      .type = NSS_WRITE,                                 \
-      .op_write =                                        \
-          {                                              \
-              .str =                                     \
-                  (struct stride){                       \
-                      .start  = (_start),                \
-                      .stride = (_stride),               \
-                      .nelems = (_nelems),               \
-                  },                                     \
-          },                                             \
-      .data      = (_data),                              \
-      .data_size = (_dlen),                              \
-  })
-
-#define OP_READ(_db_buf, _ref_buf, _dlen, _start, _stride, _nelems) \
-  ((struct operation){                                              \
-      .type = NSS_READ,                                             \
-      .op_read =                                                    \
-          {                                                         \
-              .str =                                                \
-                  (struct stride){                                  \
-                      .start  = (_start),                           \
-                      .stride = (_stride),                          \
-                      .nelems = (_nelems),                          \
-                  },                                                \
-          },                                                        \
-      .ref_buf  = (_ref_buf),                                       \
-      .db_buf   = (_db_buf),                                        \
-      .buf_size = (_dlen),                                          \
-  })
-
-#define OP_REMOVE(_db_buf, _ref_buf, _dlen, _start, _stride, _nelems) \
-  ((struct operation){                                                \
-      .type = NSS_REMOVE,                                             \
-      .op_remove =                                                    \
-          {                                                           \
-              .str =                                                  \
-                  (struct stride){                                    \
-                      .start  = (_start),                             \
-                      .stride = (_stride),                            \
-                      .nelems = (_nelems),                            \
-                  },                                                  \
-          },                                                          \
-      .ref_buf  = (_ref_buf),                                         \
-      .db_buf   = (_db_buf),                                          \
-      .buf_size = (_dlen),                                            \
-  })
+// Individual operations - when you want more control
+struct operation *opg_rand_begin (struct rand_op_params, error *e);
+struct operation *opg_rand_commit (struct rand_op_params, error *e);
+struct operation *opg_rand_rollback (struct rand_op_params, error *e);
+struct operation *opg_rand_crash_and_reopen (struct rand_op_params, error *e);
+struct operation *opg_rand_close_and_reopen (struct rand_op_params, error *e);
+struct operation *opg_rand_create (struct rand_op_params, error *e);
+struct operation *opg_rand_switch (struct rand_op_params, error *e);
+struct operation *opg_rand_delete (struct rand_op_params, error *e);
+struct operation *opg_rand_insert (struct rand_op_params, error *e);
+struct operation *opg_rand_remove (struct rand_op_params, error *e);
+struct operation *opg_rand_read (struct rand_op_params, error *e);
+struct operation *opg_rand_write (struct rand_op_params, error *e);
 
 #endif

@@ -914,26 +914,32 @@ ns_simul_set_enabled (struct ns_simulation *meta, const u8 enabled[NSS_AT_LEN])
   memcpy (meta->enabled, enabled, sizeof (meta->enabled));
 }
 
-err_t
-ns_simul_step (struct ns_simulation *meta, error *e)
+struct rand_op_params
+simtorandopp (struct ns_simulation *meta)
 {
-  if (meta->step_number == 373) {
-    printf ("HERE\n");
-  }
-
-  struct rand_op_params params = {
+  return (struct rand_op_params){
       .ref        = meta->ref,
       .enabled    = meta->enabled,
       .max_nelems = meta->max_insert_len,
       .max_tsize  = meta->max_tsize,
       .mem        = meta->reliable_mem,
   };
+}
 
-  struct operation *op = opg_random (params, e);
+err_t
+ns_simul_step (struct ns_simulation *meta, error *e)
+{
+  struct operation *op = opg_rand (simtorandopp (meta), e);
   if (op == NULL) {
     return error_trace (e);
   }
 
+  return ns_simul_step_with (meta, op, e);
+}
+
+err_t
+ns_simul_step_with (struct ns_simulation *meta, struct operation *op, error *e)
+{
   err_t result = SUCCESS;
   switch (op->type) {
     case NSS_BEGIN_TXN: result = nss_begin_txn (meta, e); break;

@@ -1,5 +1,6 @@
 list(
     APPEND LIBNUMSTORE_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_aries_ctx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pager.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_begin_txn.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_cancel.c
@@ -18,6 +19,9 @@ list(
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_recover.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_release.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_reserve.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_restart_analysis.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_restart_redo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_restart_undo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_rollback.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_unfix.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_write_header.c
