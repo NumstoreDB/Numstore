@@ -37,10 +37,11 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
     return error_trace (e);
   }
 
-  // Fetch next page
+  // Fetch next page. [in.npg] is in_get_next: the next node along this level
+  // of the rope, so it is another inner node - not a data list.
   page_h iter = page_h_create ();
   if (in.npg != PGNO_NULL) {
-    if (pgr_get (&iter, PG_DATA_LIST, in.npg, p, e)) {
+    if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e)) {
       return error_trace (e);
     }
   }
@@ -56,18 +57,18 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
 
     // Execute consumer
     if (consume (&in, ctx, e) < 0) {
-      pgr_release (p, &iter, PG_DATA_LIST, e);
+      pgr_release (p, &iter, PG_INNER_NODE, e);
       return error_trace (e);
     }
 
     // Release current
-    if (pgr_release (p, &iter, PG_DATA_LIST, e)) {
+    if (pgr_release (p, &iter, PG_INNER_NODE, e)) {
       return error_trace (e);
     }
 
     // Fetch next
     if (in.npg != PGNO_NULL) {
-      if (pgr_get (&iter, PG_DATA_LIST, in.npg, p, e)) {
+      if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e)) {
         return error_trace (e);
       }
     }

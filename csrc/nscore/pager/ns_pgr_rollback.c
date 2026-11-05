@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_testing.h"
+#include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/wal/ns_wal_record.h"
@@ -65,6 +66,16 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
 
           // Set the update lsn
           tx->data.last_lsn = prev_lsn;
+
+          // The undo changed the page, so it has to go back to disk. Unlike
+          // pgr_release_with_log, pgr_unfix below does not mark it dirty - and
+          // a page that was already flushed once is no longer in the table, so
+          // without this the undone version only ever exists in memory and the
+          // next open reads the version it replaced.
+          if (dpgt_add_if_ne (p->dpt, pg, prev_lsn, e)) {
+            pgr_unfix (&ph, PG_PERMISSIVE);
+            goto failed;
+          }
 
           pgr_unfix (&ph, PG_PERMISSIVE);
         }

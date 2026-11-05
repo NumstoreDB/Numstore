@@ -206,7 +206,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
       goto failed;
     }
 
-    if (wal_write_start_lsn (ret->ww, 0, e)) {
+    if (wal_write_start_lsn (ret->ww, WAL_START_LSN, e)) {
       goto failed;
     }
   } else {
@@ -224,8 +224,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
         goto failed;
       }
     } else {
-      lsn start_lsn      = wal_start_lsn (ret->ww);
-      lsn next_start_lsn = start_lsn + wal_size (ret->ww);
+      lsn start_lsn = wal_start_lsn (ret->ww);
 
       if (ret->header.lsn0valid && ret->header.lsn1valid) {
         if (start_lsn == MAX (ret->header.lsn0, ret->header.lsn1)) {
@@ -241,14 +240,19 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
           goto failed;
         }
       } else {
+        // One slot tore while it was being handed the *next* start lsn. That
+        // write always lands before the wal it describes is put in place, so
+        // the surviving slot still names the wal sitting on disk - and that
+        // wal is the one holding everything not yet in the pages. Repair the
+        // torn slot with the value both now agree on, then recover from it.
         if (ret->header.lsn0valid) {
-          if (ret->header.lsn0 != wal_start_lsn (ret->ww)) {
+          if (ret->header.lsn0 != start_lsn) {
             error_causef (e, ERR_CORRUPT, "Invalid header lsn");
             goto failed;
           }
           WRAP_GOTO (pgr_write_lsn1 (ret, start_lsn, e), failed);
         } else if (ret->header.lsn1valid) {
-          if (ret->header.lsn1 != wal_start_lsn (ret->ww)) {
+          if (ret->header.lsn1 != start_lsn) {
             error_causef (e, ERR_CORRUPT, "Invalid header lsn");
             goto failed;
           }
@@ -257,8 +261,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
           UNREACHABLE (); // LCOV_EXCL_LINE
         }
 
-        WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
-        WRAP_GOTO (wal_write_start_lsn (ret->ww, next_start_lsn, e), failed);
+        WRAP_GOTO (pgr_recover (ret, e), failed);
       }
     }
   }

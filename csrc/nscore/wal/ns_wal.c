@@ -15,10 +15,12 @@
 #include "nscore/wal/ns_wal.h"
 
 #include "core/ns_cbuffer.h"
+#include "core/ns_crash.h"
 #include "core/ns_crc.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_latch.h"
+#include "core/ns_numerics.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "core/ns_utils.h"
@@ -28,16 +30,37 @@
 #include "nscore/wal/ns_wal_ostream.h"
 #include "nscore/wal/ns_wal_record.h"
 
+#ifndef NDEBUG
+#  include "core/ns_testing.h"
+#endif
+
 #include <stdatomic.h>
 #include <string.h>
+
+/// The reader opens read only, so the file has to be there before [walis_open]
+/// can look at it. Creating it is a no-op when it already exists - open_file_w
+/// is O_CREAT without O_TRUNC - so this never touches an existing log.
+static err_t
+wal_touch (struct wal *dest, error *e)
+{
+  i_file f;
+  if (dest->os.table->open_file_w (dest->os.self, &f, dest->fname.data, e)) {
+    return error_trace (e);
+  }
+  return dest->os.table->close_file (dest->os.self, f.self, e);
+}
 
 static err_t
 wal_init (struct wal *dest, error *e)
 {
-  dest->ostream = NULL;
-  dest->istream = NULL;
-  dest->flags   = 0;
-  latch_init (&dest->l);
+  dest->ostream   = NULL;
+  dest->istream   = NULL;
+  dest->flags     = 0;
+  dest->start_lsn = 0;
+
+  if (wal_touch (dest, e)) {
+    return error_trace (e);
+  }
 
   dest->istream = walis_open (dest->fname.data, dest->mem, dest->os, e);
   if (dest->istream == NULL) {
@@ -48,18 +71,18 @@ wal_init (struct wal *dest, error *e)
   {
     lsn start_lsn = 0;
 
-    lsn start     = walis_mark (dest->istream);
-    ASSERT (start == 0);
-    int iseof = walis_read_all (dest->istream, NULL, &start_lsn, sizeof (start_lsn), e);
+    ASSERT (walis_mark (dest->istream) == 0);
+    int iseof = walis_read_all (dest->istream, NULL, &start_lsn, sizeof start_lsn, e);
 
     // Failed
     if (iseof < 0) {
       goto err_walis_close;
     }
 
-    // Eof - this is a fresh wal
+    // Eof - this is a fresh wal. Anything shorter than a start lsn is a
+    // half-written header and counts as fresh too, so open the writer at 0
+    // and let it truncate the stub away.
     if (iseof) {
-      // We can open ostream because we know the wal is fresh
       dest->ostream = walos_open (dest->fname.data, dest->mem, dest->os, 0, e);
       if (dest->ostream == NULL) {
         goto err_walis_close;
@@ -67,9 +90,10 @@ wal_init (struct wal *dest, error *e)
       dest->flags |= WAL_ISNEW;
 
     } else {
-      // Keep the ostream closed - we can't open it until we do a full WAL scan
-      start = walis_mark (dest->istream);
-      ASSERT (start == sizeof (start_lsn));
+      // Commit the header read so the reader's mark sits on the first record.
+      // Keep the ostream closed - we can't open it until a full WAL scan has
+      // found where the last intact record ends.
+      ASSERT (walis_mark (dest->istream) == WAL_RECORDS_START);
       dest->start_lsn = start_lsn;
     }
   }
@@ -89,17 +113,21 @@ wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
 {
   ASSERT (w->flags & WAL_ISNEW);
 
-  // Use a temporary ostream
-  {
-    ASSERT (w->ostream == NULL);
-    struct wal_ostream *ostream = walos_open (w->fname.data, w->mem, w->os, 0, e);
-    if (ostream == NULL) {
-      return error_trace (e);
-    }
-    walos_write_all (ostream, NULL, &start_lsn, sizeof (start_lsn));
-    if (walos_close (ostream, e) < 0) {
-      return error_trace (e);
-    }
+  // A fresh wal always has its writer open at offset 0 (see wal_init), so the
+  // header goes through it - a second writer on the same file would leave both
+  // of them pointing at offset 0 and the first record would eat the header.
+  ASSERT (w->ostream);
+  ASSERT (walos_get_lsn (w->ostream) == 0);
+
+  walos_write_all (w->ostream, NULL, &start_lsn, sizeof start_lsn);
+
+  // The reader has its own handle, so the header has to reach the file before
+  // it can be read back below.
+  walos_flush_all (w->ostream);
+
+  // Nothing is open for business yet, so a failure here is reportable
+  if (walos_failed (w->ostream)) {
+    return walos_take_err (w->ostream, e);
   }
 
   w->start_lsn = start_lsn;
@@ -108,12 +136,11 @@ wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
   // Advance istream forward one lsn worth
   {
     // We should only be at position 0 calling this
-    lsn curlsn = walis_mark (w->istream);
-    ASSERT (curlsn == 0);
+    ASSERT (walis_mark (w->istream) == 0);
 
     // Do read
-    lsn read_start_lsn;
-    if (walis_read_all (w->istream, NULL, &read_start_lsn, sizeof (start_lsn), e) < 0) {
+    lsn read_start_lsn = 0;
+    if (walis_read_all (w->istream, NULL, &read_start_lsn, sizeof read_start_lsn, e) < 0) {
       return error_trace (e);
     }
 
@@ -122,9 +149,8 @@ wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
       return error_causef (e, ERR_CORRUPT, "Failed to read start lsn just written");
     }
 
-    // We should now be at position sizeof(start_lsn)
-    curlsn = walis_mark (w->istream);
-    ASSERT (curlsn == sizeof (start_lsn));
+    // Commit it, leaving the reader's mark on the first record
+    ASSERT (walis_mark (w->istream) == WAL_RECORDS_START);
   }
 
   return SUCCESS;
@@ -140,6 +166,7 @@ wal_open (const char *fname, struct i_mem mem, struct i_os os, error *e)
 
   dest->mem = mem;
   dest->os  = os;
+  latch_init (&dest->l);
 
   if (string_copy (&dest->fname, strfcstr (fname), mem, e)) {
     goto err_free_dest;
@@ -158,11 +185,475 @@ err_free_dest:
   return NULL;
 }
 
+#ifndef NDEBUG
+
+#  define WAL_T_FILE "wal_t.wal"
+
+/// Byte length of the log on disk, or -1 if it isn't there
+static i64
+wal_test_file_size (struct test_ctx *ctx, const char *fname)
+{
+  i_file f;
+  if (ctx->os.table->open_file_r (ctx->os.self, &f, fname, &ctx->e) != SUCCESS) {
+    error_reset (&ctx->e);
+    return -1;
+  }
+  const i64 size = f.table->file_size (f.self, &ctx->e);
+  ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e);
+  return size;
+}
+
+/// Cuts the log down to [len] bytes, which is how a crash leaves it: walos
+/// flushes whole buffers, so whatever did not make it is a suffix of some
+/// record and the file ends part way through it.
+static void
+wal_test_truncate (struct test_ctx *ctx, const char *fname, u64 len)
+{
+  i_file f;
+  test_assert_int_equal (ctx->os.table->open_file_w (ctx->os.self, &f, fname, &ctx->e), SUCCESS);
+  test_assert_int_equal (f.table->truncate (f.self, len, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+}
+
+/// A brand new log at [start_lsn] - nothing on disk, so wal_open calls it new
+/// and the start lsn header is the first thing written
+static struct wal *
+wal_test_fresh (struct test_ctx *ctx, struct i_mem mem, struct i_os os, lsn start_lsn)
+{
+  os.table->remove_quiet (os.self, WAL_T_FILE, &ctx->e);
+
+  struct wal *w = wal_open (WAL_T_FILE, mem, os, &ctx->e);
+  if (w == NULL) {
+    return NULL;
+  }
+
+  if (wal_write_start_lsn (w, start_lsn, &ctx->e)) {
+    wal_close (w, &ctx->e);
+    return NULL;
+  }
+
+  return w;
+}
+
+/// Collects what a forward scan hands back, so a test can check both the
+/// records and the lsns they were reported at
+struct wal_test_scan
+{
+  struct wal_rec_hdr_read recs[16];
+  lsn                     lsns[16];
+  u32                     n;
+  u32                     stop_after; // non zero: fail the scan at this many
+};
+
+static err_t
+wal_test_collect (struct wal_rec_hdr_read *rec, lsn l, void *vctx, error *e)
+{
+  struct wal_test_scan *c = vctx;
+
+  if (c->stop_after && c->n + 1 >= c->stop_after) {
+    return error_causef (e, ERR_IO, "wal_test_collect: asked to stop");
+  }
+
+  ASSERT (c->n < arrlen (c->recs));
+  c->recs[c->n] = *rec;
+  c->lsns[c->n] = l;
+  c->n++;
+
+  return SUCCESS;
+}
+
+/// Appends whatever record [r] describes, going through the same per-type
+/// entry points the pager uses
+static lsn
+wal_test_append (struct wal *w, struct wal_rec_hdr_read *r)
+{
+  struct wal_rec_hdr_write out = wrhw_from_wrhr (r);
+
+  switch (out.type) {
+    case WL_BEGIN: {
+      return wal_append_begin_log (w, out.begin.tid);
+    }
+    case WL_COMMIT: {
+      return wal_append_commit_log (w, out.commit.tid, out.commit.prev);
+    }
+    case WL_END: {
+      return wal_append_end_log (w, out.end.tid, out.end.prev);
+    }
+    case WL_UPDATE: {
+      return wal_append_update_log (w, out.update);
+    }
+    case WL_CLR: {
+      return wal_append_clr_log (w, out.clr);
+    }
+  }
+
+  UNREACHABLE (); // LCOV_EXCL_LINE
+}
+
+/// One record of every shape the log can hold, so a round trip covers every
+/// encode/decode pair. [phys] backs the two page sized payloads.
+static u32
+wal_test_all_shapes (struct wal_rec_hdr_read *dest, u32 cap, u8 (*phys)[NS_PAGE_SIZE])
+{
+  ASSERT (cap >= 8);
+
+  rand_bytes (phys[0], NS_PAGE_SIZE);
+  rand_bytes (phys[1], NS_PAGE_SIZE);
+  rand_bytes (phys[2], NS_PAGE_SIZE);
+
+  u32 n     = 0;
+
+  dest[n++] = (struct wal_rec_hdr_read){.type = WL_BEGIN, .begin = {.tid = 1}};
+  dest[n++] = (struct wal_rec_hdr_read){.type = WL_COMMIT, .commit = {.tid = 2, .prev = 11}};
+  dest[n++] = (struct wal_rec_hdr_read){.type = WL_END, .end = {.tid = 3, .prev = 22}};
+
+  dest[n]   = (struct wal_rec_hdr_read){
+      .type   = WL_UPDATE,
+      .update = {.type = WUP_PHYSICAL, .tid = 4, .prev = 33, .phys = {.pg = 101}},
+  };
+  memcpy (dest[n].update.phys.undo, phys[0], NS_PAGE_SIZE);
+  memcpy (dest[n].update.phys.redo, phys[1], NS_PAGE_SIZE);
+  n++;
+
+  dest[n++] = (struct wal_rec_hdr_read){
+      .type   = WL_UPDATE,
+      .update = {
+          .type = WUP_FSM,
+          .tid  = 5,
+          .prev = 44,
+          .fsm  = {.pg = 0, .bit = 7, .undo = 0, .redo = 1},
+      },
+  };
+
+  dest[n++] = (struct wal_rec_hdr_read){
+      .type   = WL_UPDATE,
+      .update = {.type = WUP_FEXT, .tid = 6, .prev = 55, .fext = {.undo = 9, .redo = 17}},
+  };
+
+  dest[n] = (struct wal_rec_hdr_read){
+      .type = WL_CLR,
+      .clr  = {
+          .type      = WCLR_PHYSICAL,
+          .tid       = 7,
+          .prev      = 66,
+          .undo_next = 65,
+          .phys      = {.pg = 202},
+      },
+  };
+  memcpy (dest[n].clr.phys.redo, phys[2], NS_PAGE_SIZE);
+  n++;
+
+  dest[n++] = (struct wal_rec_hdr_read){
+      .type = WL_CLR,
+      .clr  = {
+          .type      = WCLR_FSM,
+          .tid       = 8,
+          .prev      = 77,
+          .undo_next = 76,
+          .fsm       = {.pg = 0, .bit = 3, .redo = 1},
+      },
+  };
+
+  dest[n++] = (struct wal_rec_hdr_read){
+      .type = WL_CLR,
+      .clr  = {.type = WCLR_DUMMY, .tid = 9, .prev = 88, .undo_next = 87},
+  };
+
+  ASSERT (n <= cap);
+  return n;
+}
+
+TEST (wal_open)
+{
+  TEST_CASE ("happy path")
+  {
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+    struct wal *w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+
+    // Nothing was on disk, so this is a brand new log: the reader opens read
+    // only and would have failed outright if the file had not been created
+    test_assert (wal_isnew (w));
+    test_assert_int_equal ((i32)wal_start_lsn (w), 0);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), 0);
+
+    // A fresh log has its writer open from the start - there is nothing to
+    // scan, so there is nothing to wait for
+    test_assert (w->ostream != NULL);
+    test_assert_int_equal ((i32)wal_size (w), 0);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("reopening an existing log")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 4096);
+    test_assert (w != NULL);
+
+    test_assert (
+        wal_test_append (
+            w,
+            &(struct wal_rec_hdr_read){
+                .type  = WL_BEGIN,
+                .begin = {.tid = 1},
+            }
+        )
+        > 0
+    );
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+
+    w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+
+    // The header is still there, so this log is not new and remembers where
+    // its lsn space starts
+    test_assert (!wal_isnew (w));
+    test_assert_int_equal ((i32)wal_start_lsn (w), 4096);
+
+    // And the writer stays shut until a scan has found the end of the records
+    test_assert (w->ostream == NULL);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("a half written header counts as a fresh log")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 4096);
+    test_assert (w != NULL);
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+
+    // Die part way through writing the start lsn
+    wal_test_truncate (ctx, WAL_T_FILE, 3);
+
+    w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+
+    // There is no usable header, so the stub is thrown away and the log starts
+    // over - walos_open truncated it back to nothing
+    test_assert (wal_isnew (w));
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), 0);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("Flaky malloc")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky malloc. Fail after: %d", fail_after)
+      {
+        // Setup
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Do test
+        faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+        struct wal *w = wal_open (WAL_T_FILE, ctx->faulty_mem, ctx->os, &ctx->e);
+        ret           = error_trace (&ctx->e);
+        if (ret != SUCCESS) {
+          test_assert (w == NULL);
+        }
+        faulty_mem_reset (ctx->faulty_mem);
+        error_reset (&ctx->e);
+
+        // Clean up
+        if (w) {
+          wal_close (w, &ctx->e);
+        }
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Do test
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        struct wal *w = wal_open (WAL_T_FILE, ctx->mem, ctx->faulty_os, &ctx->e);
+        ret           = error_trace (&ctx->e);
+        if (ret != SUCCESS) {
+          test_assert (w == NULL);
+        }
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+
+        // Clean up
+        if (w) {
+          wal_close (w, &ctx->e);
+          error_reset (&ctx->e);
+        }
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+
+TEST (wal_write_start_lsn)
+{
+  TEST_CASE ("happy path")
+  {
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+    struct wal *w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+    test_assert (wal_isnew (w));
+
+    test_assert_int_equal (wal_write_start_lsn (w, 4096, &ctx->e), SUCCESS);
+
+    // The log is now open for business at the lsn it was handed
+    test_assert (!wal_isnew (w));
+    test_assert_int_equal ((i32)wal_start_lsn (w), 4096);
+
+    // The header is on disk, and records start right after it
+    test_assert_int_equal ((i32)wal_size (w), (i32)WAL_RECORDS_START);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)WAL_RECORDS_START);
+
+    // So the first record lands at the first lsn of this log
+    const lsn first = wal_append_begin_log (w, 1);
+    test_assert_int_equal ((i32)first, (i32)(4096 + WAL_RECORDS_START));
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+        struct wal *w = wal_open (WAL_T_FILE, ctx->mem, ctx->faulty_os, &ctx->e);
+        test_assert (w != NULL);
+
+        // Do test - writing the header has somewhere to report, so it reports
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        ret = wal_write_start_lsn (w, 4096, &ctx->e);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        wal_close (w, &ctx->e);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
+
+/// Both of these speak for the writer, so they are only answerable once the
+/// writer exists - which is after a full forward scan has found where the last
+/// intact record ends, or immediately for a wal that had nothing in it. A
+/// caller that reaches here with no writer has skipped the scan.
+lsn
+wal_size (struct wal *w)
+{
+  DBG_ASSERT (wal, w);
+  ASSERT (w->ostream);
+
+  return walos_get_lsn (w->ostream);
+}
+
+/// A record that never reached the log leaves a hole in it, and there is no
+/// honest way to carry on from that - so the process goes down.
+///
+/// Call this with every latch already released. In a debug build the crash is
+/// a longjmp out to a [capture_intentional_crash], so whatever runs next (a
+/// [pgr_crash], closing the wal) would spin forever on a latch nobody is left
+/// to hand back.
+static _Noreturn void
+wal_die (struct wal *w)
+{
+  error e = error_create ();
+  walos_take_err (w->ostream, &e);
+  error_log_consume (&e);
+  intentionally_crash ();
+}
+
+void
+wal_flush_all (struct wal *w)
+{
+  DBG_ASSERT (wal, w);
+  ASSERT (w->ostream);
+
+  walos_flush_all (w->ostream);
+
+  if (walos_failed (w->ostream)) {
+    wal_die (w);
+  }
+}
+
+#ifndef NDEBUG
+TEST (wal_size)
+{
+  TEST_CASE ("happy path")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 1024);
+    test_assert (w != NULL);
+
+    // Just the header so far
+    test_assert_int_equal ((i32)wal_size (w), (i32)WAL_RECORDS_START);
+
+    // Buffered records count towards it
+    wal_append_begin_log (w, 1);
+    const lsn buffered = wal_size (w);
+    test_assert (buffered > WAL_RECORDS_START);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)WAL_RECORDS_START);
+
+    // Flushing doesn't change the size, it just moves it to the file
+    wal_flush_all (w);
+    test_assert_int_equal ((i32)wal_size (w), (i32)buffered);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)buffered);
+
+    // Flushing an empty buffer changes nothing
+    wal_flush_all (w);
+    test_assert_int_equal ((i32)wal_size (w), (i32)buffered);
+
+    // The next log of this database starts where this one ends
+    test_assert_int_equal ((i32)(wal_start_lsn (w) + wal_size (w)), (i32)(1024 + buffered));
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+}
+#endif
+
 static inline err_t
 wal_destroy (struct wal *w, error *e)
 {
+  // walos_close does the last flush itself, and unlike wal_flush_all it has
+  // somewhere to report a failure instead of taking the process down
   if (w->ostream) {
-    wal_flush_all (w);
     walos_close (w->ostream, e);
     w->ostream = NULL;
   }
@@ -187,6 +678,57 @@ wal_close (struct wal *w, error *e)
   return error_trace (e);
 }
 
+#ifndef NDEBUG
+TEST (wal_close)
+{
+  TEST_CASE ("happy path")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    // Buffered, not yet on disk
+    test_assert (wal_append_begin_log (w, 1) > 0);
+    const lsn size = wal_size (w);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)WAL_RECORDS_START);
+
+    // Closing pushes it out, and leaves the log behind to be reopened
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)size);
+
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->faulty_os, 0);
+        test_assert (w != NULL);
+        test_assert (wal_append_begin_log (w, 1) > 0);
+
+        // Do test - closing reports instead of dying, and frees either way
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        ret = wal_close (w, &ctx->e);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
+
 err_t
 wal_close_and_delete (struct wal *w, error *e)
 {
@@ -204,6 +746,51 @@ wal_close_and_delete (struct wal *w, error *e)
   return error_trace (e);
 }
 
+#ifndef NDEBUG
+TEST (wal_close_and_delete)
+{
+  TEST_CASE ("happy path")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+    test_assert (wal_append_begin_log (w, 1) > 0);
+
+    test_assert_int_equal (wal_close_and_delete (w, &ctx->e), SUCCESS);
+
+    // The log is gone, not merely closed
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), -1);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->faulty_os, 0);
+        test_assert (w != NULL);
+
+        // Do test (the wal is freed regardless of the error)
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        ret = wal_close_and_delete (w, &ctx->e);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
+
 err_t
 wal_delete_and_reopen (struct wal *w, error *e)
 {
@@ -216,19 +803,94 @@ wal_delete_and_reopen (struct wal *w, error *e)
   w->fname.data       = NULL;
 
   if (wal_destroy (w, e)) {
-    latch_unlock (&w->l);
-    return error_trace (e);
+    goto theend;
   }
 
   if (w->os.table->remove_quiet (w->os.self, fname.data, e)) {
-    latch_unlock (&w->l);
-    return error_trace (e);
+    goto theend;
   }
 
-  w->fname = fname;
+  w->fname   = fname;
+  fname.data = NULL;
 
-  return wal_init (w, e);
+  wal_init (w, e);
+
+theend:
+  // wal_destroy took the name off [w] - if we never got as far as putting it
+  // back, this is the only handle left on it
+  if (fname.data) {
+    w->mem.table->free (w->mem.self, (char *)fname.data);
+  }
+  latch_unlock (&w->l);
+  return error_trace (e);
 }
+
+#ifndef NDEBUG
+TEST (wal_delete_and_reopen)
+{
+  TEST_CASE ("happy path")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 1024);
+    test_assert (w != NULL);
+    test_assert (wal_append_begin_log (w, 1) > 0);
+    test_assert (wal_size (w) > WAL_RECORDS_START);
+
+    test_assert_int_equal (wal_delete_and_reopen (w, &ctx->e), SUCCESS);
+
+    // Everything that was in it is gone and it is a fresh log again, waiting
+    // for a start lsn
+    test_assert (wal_isnew (w));
+    test_assert_int_equal ((i32)wal_size (w), 0);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), 0);
+
+    // Which it will take, at a new place in the lsn space
+    test_assert_int_equal (wal_write_start_lsn (w, 2048, &ctx->e), SUCCESS);
+    test_assert_int_equal ((i32)wal_start_lsn (w), 2048);
+
+    // The latch went back, so the next append does not hang
+    test_assert (latch_trylock (&w->l));
+    latch_unlock (&w->l);
+    test_assert (wal_append_begin_log (w, 2) > 0);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->faulty_os, 0);
+        test_assert (w != NULL);
+
+        // Do test
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        ret = wal_delete_and_reopen (w, &ctx->e);
+
+        // However it went, the latch is not still held
+        test_assert (latch_trylock (&w->l));
+        latch_unlock (&w->l);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        wal_close (w, &ctx->e);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
 
 err_t
 wal_crash (struct wal *w, error *e)
@@ -252,16 +914,129 @@ wal_crash (struct wal *w, error *e)
 }
 
 #ifndef NDEBUG
+/// wal_crash walks away from a live log: the handles and the allocation go
+/// back, the buffer does not reach the file, and whatever was already flushed
+/// has to still be readable afterwards.
+TEST (wal_crash)
+{
+  TEST_CASE ("unflushed records never reach the log")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    test_assert (wal_append_begin_log (w, 1) > 0);
+    test_assert (wal_size (w) > WAL_RECORDS_START);
+
+    test_assert_int_equal (wal_crash (w, &ctx->e), SUCCESS);
+
+    // Only the header, which wal_write_start_lsn flushed, survived
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)WAL_RECORDS_START);
+
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("flushed records survive and are still readable")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    const lsn kept = wal_append_begin_log (w, 7);
+    wal_flush_all (w);
+    const lsn size = wal_size (w);
+
+    // A second record that is still in the buffer when we die
+    test_assert (wal_append_commit_log (w, 7, kept) > 0);
+    test_assert (wal_size (w) > size);
+
+    test_assert_int_equal (wal_crash (w, &ctx->e), SUCCESS);
+
+    // Exactly the flushed prefix is there
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)size);
+
+    // And it reads back as the record it was
+    w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+    test_assert (!wal_isnew (w));
+
+    // The scan is what opens the writer again, at the end of the intact log
+    struct wal_test_scan seen = {0};
+    test_assert_int_equal (
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e),
+        SUCCESS
+    );
+    test_assert_int_equal ((i32)seen.n, 1);
+    test_assert_int_equal (seen.recs[0].type, WL_BEGIN);
+    test_assert_int_equal ((i32)seen.lsns[0], (i32)kept);
+    test_assert_int_equal ((i32)wal_size (w), (i32)size);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("crashing straight after open leaves an empty log behind")
+  {
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+    struct wal *w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+    test_assert_int_equal (wal_crash (w, &ctx->e), SUCCESS);
+
+    // wal_open created the file, so it exists and is empty - not missing
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), 0);
+
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->faulty_os, 0);
+        test_assert (w != NULL);
+
+        // Do test (the wal is freed regardless of the error)
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        wal_crash (w, &ctx->e);
+        ret = error_trace (&ctx->e);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
+
+#ifndef NDEBUG
+/// Pads the writer's buffer right up to its capacity so the very next record
+/// written has to flush. Test-only: the padding is not a record, so the log is
+/// unreadable afterwards and the caller is expected to throw it away.
 void
 wal_ensure_flush_next (struct wal *w)
 {
-  u8  buffer[WAL_BUFFER_CAP];
-  u32 len = cbuffer_len (&w->ostream->buffer);
+  static const u8 pad[4096] = {0};
+
+  ASSERT (w->ostream);
+
+  const u32 len = cbuffer_len (&w->ostream->buffer);
   ASSERT (len <= WAL_BUFFER_CAP);
+
   u32 towrite = WAL_BUFFER_CAP - len;
-  if (towrite > 0) {
-    error e = error_create ();
-    walos_write_all (w->ostream, NULL, buffer, towrite);
+  while (towrite > 0) {
+    const u32 chunk = MIN (towrite, (u32)sizeof pad);
+    walos_write_all (w->ostream, NULL, pad, chunk);
+    towrite -= chunk;
   }
 }
 #endif
@@ -512,7 +1287,8 @@ wal_read_one (struct wal *w, struct wal_rec_hdr_read *dest, error *e)
       return error_causef (e, ERR_CORRUPT, "Invalid log type: %" PRwlh, dest->type);
     }
   }
-  UNREACHABLE ();
+
+  return WAL_NOT_EOF;
 }
 
 err_t
@@ -520,8 +1296,10 @@ wal_seek_unsafe (struct wal *w, lsn id, error *e)
 {
   DBG_ASSERT (wal, w);
 
+  // LSN_NULL means "from the top of the log", which is the first byte after
+  // the start lsn header - not a file offset of LSN_NULL
   if (id == LSN_NULL) {
-    return walis_seek (w->istream, LSN_NULL, e);
+    return walis_seek (w->istream, WAL_RECORDS_START, e);
   }
 
   // Reading before a start lsn
@@ -556,7 +1334,8 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
   lsn prevlsn = 0;
 
   while (true) {
-    // Mark the start of a log
+    // Commit the record just read and take the offset of the next one. On the
+    // way out this is where the intact part of the log ends.
     lsn curlsn = walis_mark (w->istream);
 
     // Assert that we're making progress
@@ -568,7 +1347,7 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
 
     // Error
     if (iseof < 0) {
-      return iseof;
+      return error_trace (e);
     }
 
     // End of log file - transition to random access mode
@@ -589,6 +1368,206 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
   }
 }
 
+#ifndef NDEBUG
+TEST (wal_forward_scan)
+{
+  u8                      phys[3][NS_PAGE_SIZE];
+  struct wal_rec_hdr_read want[16];
+  lsn                     at[16];
+
+  TEST_CASE ("every record shape round trips, in order and at its own lsn")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 4096);
+    test_assert (w != NULL);
+
+    const u32 n = wal_test_all_shapes (want, arrlen (want), phys);
+    for (u32 i = 0; i < n; ++i) {
+      at[i] = wal_test_append (w, &want[i]);
+      test_assert (at[i] > 0);
+    }
+    wal_flush_all (w);
+
+    struct wal_test_scan seen = {0};
+    test_assert_int_equal (
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e),
+        SUCCESS
+    );
+
+    test_assert_int_equal ((i32)seen.n, (i32)n);
+    for (u32 i = 0; i < n; ++i) {
+      test_assert (wal_rec_hdr_read_equal (&seen.recs[i], &want[i]));
+      test_assert_int_equal ((i32)seen.lsns[i], (i32)at[i]);
+    }
+
+    // The first record sits right after the header, in this log's lsn space
+    test_assert_int_equal ((i32)seen.lsns[0], (i32)(4096 + WAL_RECORDS_START));
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("scanning from part way in skips what came before")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    const u32 n = wal_test_all_shapes (want, arrlen (want), phys);
+    for (u32 i = 0; i < n; ++i) {
+      at[i] = wal_test_append (w, &want[i]);
+    }
+    wal_flush_all (w);
+
+    struct wal_test_scan seen = {0};
+    test_assert_int_equal (
+        wal_forward_scan (w, at[n - 2], wal_test_collect, &seen, &ctx->e),
+        SUCCESS
+    );
+
+    test_assert_int_equal ((i32)seen.n, 2);
+    test_assert (wal_rec_hdr_read_equal (&seen.recs[0], &want[n - 2]));
+    test_assert (wal_rec_hdr_read_equal (&seen.recs[1], &want[n - 1]));
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("an empty log reports nothing")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    struct wal_test_scan seen = {0};
+    test_assert_int_equal (
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e),
+        SUCCESS
+    );
+    test_assert_int_equal ((i32)seen.n, 0);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("the callback can stop the scan")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    const u32 n = wal_test_all_shapes (want, arrlen (want), phys);
+    for (u32 i = 0; i < n; ++i) {
+      wal_test_append (w, &want[i]);
+    }
+    wal_flush_all (w);
+
+    struct wal_test_scan seen = {.stop_after = 3};
+    test_assert (wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e) != SUCCESS);
+    test_assert_int_equal ((i32)seen.n, 2);
+    error_reset (&ctx->e);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  /// The regression behind 0005_crash_twice_in_txn: a crash cuts the log part
+  /// way through a record, and the scan has to report the last intact record
+  /// as the end of the log *and* leave the writer sitting exactly there. If the
+  /// writer resumed past the stump, the leftover bytes would read back as a bad
+  /// log type or a bad CRC on the next restart.
+  TEST_CASE ("a torn tail record is where the log ends and the writer resumes")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    const lsn first  = wal_append_begin_log (w, 1);
+    const lsn second = wal_append_commit_log (w, 1, first);
+    wal_flush_all (w);
+    const lsn intact = wal_size (w);
+
+    // One more record, flushed, then cut part way through it
+    test_assert (wal_append_end_log (w, 1, second) > 0);
+    wal_flush_all (w);
+    test_assert (wal_size (w) > intact);
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+
+    wal_test_truncate (ctx, WAL_T_FILE, intact + 5);
+
+    w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+    test_assert (w->ostream == NULL);
+
+    struct wal_test_scan seen = {0};
+    test_assert_int_equal (
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e),
+        SUCCESS
+    );
+
+    // The stump is not a record
+    test_assert_int_equal ((i32)seen.n, 2);
+    test_assert_int_equal ((i32)seen.lsns[1], (i32)second);
+
+    // The writer picked up at the end of the intact log, and the stump is gone
+    // from the file rather than waiting to be misread
+    test_assert (w->ostream != NULL);
+    test_assert_int_equal ((i32)wal_size (w), (i32)intact);
+    test_assert_int_equal ((i32)wal_test_file_size (ctx, WAL_T_FILE), (i32)intact);
+
+    // So the next record takes the lsn the torn one was going to have, and a
+    // second pass over the log sees three clean records
+    const lsn third = wal_append_end_log (w, 1, second);
+    test_assert_int_equal ((i32)third, (i32)intact);
+    wal_flush_all (w);
+
+    struct wal_test_scan again = {0};
+    test_assert_int_equal (
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, &again, &ctx->e),
+        SUCCESS
+    );
+    test_assert_int_equal ((i32)again.n, 3);
+    test_assert_int_equal (again.recs[2].type, WL_END);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("a record with a bad checksum is corruption, not an ending")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    wal_append_begin_log (w, 1);
+    const lsn second = wal_append_commit_log (w, 1, 0);
+    wal_flush_all (w);
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+
+    // Flip a byte in the body of the second record
+    {
+      i_file f;
+      test_assert_int_equal (
+          ctx->os.table->open_file_rw (ctx->os.self, &f, WAL_T_FILE, &ctx->e),
+          SUCCESS
+      );
+      u8 b = 0;
+      test_assert_int_equal ((i32)f.table->pread_all (f.self, &b, 1, second + 2, &ctx->e), 1);
+      b ^= 0xFF;
+      test_assert_int_equal (f.table->pwrite_all (f.self, &b, 1, second + 2, &ctx->e), SUCCESS);
+      ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e);
+    }
+
+    w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
+    test_assert (w != NULL);
+
+    struct wal_test_scan seen = {0};
+    test_assert (wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e) != SUCCESS);
+    test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+
+    // The good record ahead of it still came back
+    test_assert_int_equal ((i32)seen.n, 1);
+
+    wal_crash (w, &ctx->e);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+}
+#endif
+
 struct wal_rec_hdr_read *
 wal_read_entry (struct wal *w, struct wal_rec_hdr_read *dest, const lsn id, error *e)
 {
@@ -601,12 +1580,27 @@ wal_read_entry (struct wal *w, struct wal_rec_hdr_read *dest, const lsn id, erro
 
   latch_lock (&w->l);
 
+  // Random access only makes sense once the forward scan has found the end of
+  // the log, which is also when the writer opens
+  ASSERT (w->ostream);
+
+  // The reader has its own file handle, so anything still sitting in the
+  // writer's buffer is invisible to it. A caller walking an undo chain can ask
+  // for a record this session appended, so push the buffer out first.
+  if (id >= w->start_lsn + w->ostream->flushed_lsn) {
+    walos_flush_all (w->ostream);
+    if (walos_failed (w->ostream)) {
+      walos_take_err (w->ostream, e);
+      goto failed;
+    }
+  }
+
   if (wal_seek_unsafe (w, id, e) < 0) {
     goto failed;
   }
 
   // Read
-  int iseof = wal_read_one (w, dest, e);
+  int iseof = wal_read_one (w, ret, e);
   if (iseof < 0) {
     goto failed;
   }
@@ -622,6 +1616,149 @@ failed:
   latch_unlock (&w->l);
   return NULL;
 }
+
+#ifndef NDEBUG
+TEST (wal_read_entry)
+{
+  u8                      phys[3][NS_PAGE_SIZE];
+  struct wal_rec_hdr_read want[16];
+  lsn                     at[16];
+
+  TEST_CASE ("every record shape reads back by lsn")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 4096);
+    test_assert (w != NULL);
+
+    const u32 n = wal_test_all_shapes (want, arrlen (want), phys);
+    for (u32 i = 0; i < n; ++i) {
+      at[i] = wal_test_append (w, &want[i]);
+    }
+    wal_flush_all (w);
+
+    // Backwards, the way an undo chain walks it
+    struct wal_rec_hdr_read got;
+    for (u32 i = n; i > 0; --i) {
+      test_assert (wal_read_entry (w, &got, at[i - 1], &ctx->e) != NULL);
+      test_assert (wal_rec_hdr_read_equal (&got, &want[i - 1]));
+    }
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("a record still in the buffer is flushed to be read")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    // No flush: the reader has its own handle and cannot see this yet
+    const lsn only = wal_append_begin_log (w, 42);
+    test_assert_int_equal ((i32)w->ostream->flushed_lsn, (i32)WAL_RECORDS_START);
+
+    struct wal_rec_hdr_read got;
+    test_assert (wal_read_entry (w, &got, only, &ctx->e) != NULL);
+    test_assert_int_equal (got.type, WL_BEGIN);
+    test_assert_int_equal ((i32)got.begin.tid, 42);
+    test_assert_int_equal ((i32)w->ostream->flushed_lsn, (i32)wal_size (w));
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("with no destination it reads into the wal's own header")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    const lsn only = wal_append_commit_log (w, 5, 0);
+    wal_flush_all (w);
+
+    struct wal_rec_hdr_read *got = wal_read_entry (w, NULL, only, &ctx->e);
+    test_assert (got == &w->rhdr);
+    test_assert_int_equal (got->type, WL_COMMIT);
+    test_assert_int_equal ((i32)got->commit.tid, 5);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("an lsn from a log that was already thrown away is corruption")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 4096);
+    test_assert (w != NULL);
+
+    wal_append_begin_log (w, 1);
+    wal_flush_all (w);
+
+    // Anything below this log's start lsn lived in its predecessor
+    struct wal_rec_hdr_read got;
+    test_assert (wal_read_entry (w, &got, 10, &ctx->e) == NULL);
+    test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+
+    // The latch went back on the way out
+    test_assert (latch_trylock (&w->l));
+    latch_unlock (&w->l);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("reading off the end of the log is corruption")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    wal_append_begin_log (w, 1);
+    wal_flush_all (w);
+
+    struct wal_rec_hdr_read got;
+    test_assert (wal_read_entry (w, &got, wal_start_lsn (w) + wal_size (w), &ctx->e) == NULL);
+    test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("Flaky os")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup
+        struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->faulty_os, 0);
+        test_assert (w != NULL);
+        const lsn only = wal_append_begin_log (w, 1);
+        wal_flush_all (w);
+
+        // Do test
+        struct wal_rec_hdr_read got;
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        const bool ok = wal_read_entry (w, &got, only, &ctx->e) != NULL;
+        ret           = ok ? SUCCESS : error_trace (&ctx->e);
+        test_assert (ok == (ret == SUCCESS));
+
+        // Either way the latch came back
+        test_assert (latch_trylock (&w->l));
+        latch_unlock (&w->l);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        wal_close (w, &ctx->e);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
 
 /******************************************************************************
  * SECTION: WAL Write Logic
@@ -851,16 +1988,30 @@ wal_write_locked (struct wal *w)
  * @brief Write implementation functions
  *----------------------------------------------------------------------------*/
 
+/// Closes out an append. The function that took [w->l] calls this, so the
+/// latch is handed back here - before [wal_die] runs, which never returns.
+static lsn
+wal_append_done (struct wal *w, const lsn result)
+{
+  const bool failed = walos_failed (w->ostream);
+
+  latch_unlock (&w->l);
+
+  if (failed) {
+    wal_die (w);
+  }
+
+  return result;
+}
+
 lsn
 wal_append_begin_log (struct wal *w, const txid tid)
 {
   latch_lock (&w->l);
   DBG_ASSERT (wal, w);
-  w->whdr.type     = WL_BEGIN;
-  w->whdr.begin    = (struct wal_begin){.tid = tid};
-  const lsn result = wal_write_locked (w);
-  latch_unlock (&w->l);
-  return result;
+  w->whdr.type  = WL_BEGIN;
+  w->whdr.begin = (struct wal_begin){.tid = tid};
+  return wal_append_done (w, wal_write_locked (w));
 }
 
 lsn
@@ -868,11 +2019,9 @@ wal_append_commit_log (struct wal *w, const txid tid, const lsn prev)
 {
   latch_lock (&w->l);
   DBG_ASSERT (wal, w);
-  w->whdr.type     = WL_COMMIT;
-  w->whdr.commit   = (struct wal_commit){.tid = tid, .prev = prev};
-  const lsn result = wal_write_locked (w);
-  latch_unlock (&w->l);
-  return result;
+  w->whdr.type   = WL_COMMIT;
+  w->whdr.commit = (struct wal_commit){.tid = tid, .prev = prev};
+  return wal_append_done (w, wal_write_locked (w));
 }
 
 lsn
@@ -880,11 +2029,9 @@ wal_append_end_log (struct wal *w, const txid tid, const lsn prev)
 {
   latch_lock (&w->l);
   DBG_ASSERT (wal, w);
-  w->whdr.type     = WL_END;
-  w->whdr.end      = (struct wal_end){.tid = tid, .prev = prev};
-  const lsn result = wal_write_locked (w);
-  latch_unlock (&w->l);
-  return result;
+  w->whdr.type = WL_END;
+  w->whdr.end  = (struct wal_end){.tid = tid, .prev = prev};
+  return wal_append_done (w, wal_write_locked (w));
 }
 
 lsn
@@ -892,11 +2039,9 @@ wal_append_update_log (struct wal *w, const struct wal_update_write update)
 {
   latch_lock (&w->l);
   DBG_ASSERT (wal, w);
-  w->whdr.type     = WL_UPDATE;
-  w->whdr.update   = update;
-  const lsn result = wal_write_locked (w);
-  latch_unlock (&w->l);
-  return result;
+  w->whdr.type   = WL_UPDATE;
+  w->whdr.update = update;
+  return wal_append_done (w, wal_write_locked (w));
 }
 
 lsn
@@ -904,12 +2049,113 @@ wal_append_clr_log (struct wal *w, const struct wal_clr_write clr)
 {
   latch_lock (&w->l);
   DBG_ASSERT (wal, w);
-  w->whdr.type     = WL_CLR;
-  w->whdr.clr      = clr;
-  const lsn result = wal_write_locked (w);
-  latch_unlock (&w->l);
-  return result;
+  w->whdr.type = WL_CLR;
+  w->whdr.clr  = clr;
+  return wal_append_done (w, wal_write_locked (w));
 }
+
+#ifndef NDEBUG
+TEST (wal_append_log)
+{
+  u8                      phys[3][NS_PAGE_SIZE];
+  struct wal_rec_hdr_read want[16];
+
+  TEST_CASE ("lsns are the running size of the log")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 1024);
+    test_assert (w != NULL);
+
+    const u32 n    = wal_test_all_shapes (want, arrlen (want), phys);
+
+    lsn       prev = 0;
+    for (u32 i = 0; i < n; ++i) {
+      // Every append hands back where it started, which is the size the log
+      // had just before it
+      const lsn before = wal_size (w);
+      const lsn got    = wal_test_append (w, &want[i]);
+
+      test_assert_int_equal ((i32)got, (i32)(wal_start_lsn (w) + before));
+      test_assert (got > prev);
+      test_assert (wal_size (w) > before);
+      prev = got;
+
+      // The latch is free again between appends
+      test_assert (latch_trylock (&w->l));
+      latch_unlock (&w->l);
+    }
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("records larger than the buffer still land whole")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    // Leave the buffer with less room than a physical update needs, so the
+    // record has to straddle a flush
+    wal_ensure_flush_next (w);
+    test_assert_int_equal ((i32)cbuffer_avail (&w->ostream->buffer), 0);
+
+    const u32 n = wal_test_all_shapes (want, arrlen (want), phys);
+    lsn       at[16];
+    for (u32 i = 0; i < n; ++i) {
+      at[i] = wal_test_append (w, &want[i]);
+    }
+    wal_flush_all (w);
+
+    struct wal_rec_hdr_read got;
+    for (u32 i = 0; i < n; ++i) {
+      test_assert (wal_read_entry (w, &got, at[i], &ctx->e) != NULL);
+      test_assert (wal_rec_hdr_read_equal (&got, &want[i]));
+    }
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("a log that cannot be written takes the process down")
+  {
+    int   fail_after = 0;
+    err_t ret;
+
+    do {
+      TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
+      {
+        // Setup: the buffer is full, so the next append has to flush
+        struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->faulty_os, 0);
+        test_assert (w != NULL);
+        wal_ensure_flush_next (w);
+
+        // Do test
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        capture_intentional_crash (&ret, &ctx->e)
+        {
+          wal_append_begin_log (w, 1);
+          ret = SUCCESS;
+        }
+
+        // The crash let go of the latch on its way out, so the wal can still
+        // be taken apart
+        test_assert (latch_trylock (&w->l));
+        latch_unlock (&w->l);
+
+        // Clean up
+        faulty_os_reset (ctx->faulty_os);
+        error_reset (&ctx->e);
+        wal_crash (w, &ctx->e);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+
+        // Next fail after
+        fail_after++;
+      }
+    }
+    while (ret != SUCCESS);
+  }
+}
+#endif
 
 // #ifndef NDEBUG
 //

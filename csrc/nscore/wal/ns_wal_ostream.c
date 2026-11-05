@@ -33,12 +33,32 @@
 
 #include <stddef.h>
 
+// [w->e] is deliberately not asserted clean: it is where a failed write or
+// fsync is parked until the caller gets around to noticing (see walos_failed)
 DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, {
   ASSERT (w);
   DBG_ASSERT (cbuffer, &w->buffer);
-  DBG_ASSERT (clean_error, &w->e);
   DBG_ASSERT (i_mem, &w->mem);
 })
+
+bool
+walos_failed (const struct wal_ostream *w)
+{
+  ASSERT (w);
+  return w->e.cause_code != SUCCESS;
+}
+
+err_t
+walos_take_err (struct wal_ostream *w, error *e)
+{
+  DBG_ASSERT (wal_ostream, w);
+  ASSERT (walos_failed (w));
+
+  *e   = w->e;
+  w->e = error_create ();
+
+  return e->cause_code;
+}
 
 struct wal_ostream *
 walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, error *e)
@@ -54,7 +74,32 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
     return NULL;
   }
 
-  // Seek to the end of the file
+  // The file may be longer than [seek_to] - a crash leaves the tail of a
+  // half-flushed record behind, and the caller opens us exactly where the last
+  // intact record ended. Those bytes are not a record and nothing will ever
+  // overwrite all of them, so they would read back as a bad log type or a bad
+  // CRC the next time around. Cut them off.
+  const i64 size = ret->fd.table->file_size (ret->fd.self, e);
+  if (size < 0) {
+    goto err_close;
+  }
+
+  if ((u64)size < seek_to) {
+    error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "WAL Ostream opened to seek position: %" PRlsn " past the end of a %" PRId64 " byte log",
+        seek_to,
+        size
+    );
+    goto err_close;
+  }
+
+  if ((u64)size > seek_to && ret->fd.table->truncate (ret->fd.self, seek_to, e)) {
+    goto err_close;
+  }
+
+  // Seek to where the log is to continue
   i64 pos = ret->fd.table->seek (ret->fd.self, seek_to, I_SEEK_SET, e);
 
   // Failed to seek
@@ -63,7 +108,7 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
   }
 
   // Failed to seek to desired spot (invalid seek_to)
-  if (pos != seek_to) {
+  if ((u64)pos != seek_to) {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
@@ -81,12 +126,15 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
   ret->mem         = mem;
   ret->os          = os;
 
+  // The stream carries its own error for the paths that have nowhere to report
+  // one - see walos_failed, which is how a caller finds out about it
+  ret->e           = error_create ();
+
   DBG_ASSERT (wal_ostream, ret);
   return ret;
 
 err_close:
   os.table->close_file (os.self, ret->fd.self, e);
-err_free:
   mem.table->free (mem.self, ret);
   return NULL;
 }
@@ -165,36 +213,39 @@ TEST (walos_open)
 }
 #endif
 
-static void
-walos_flush_impl (struct wal_ostream *w)
+/// Pushes the buffer out and fsyncs it. Caller holds [w->l] and owns the
+/// error: this neither latches a failure nor crashes, so the function that
+/// took the latch can let go of it first.
+static err_t
+walos_flush_unsafe (struct wal_ostream *w, error *e)
 {
   // Number of bytes to write
   const u32 towrite = cbuffer_len (&w->buffer);
   if (towrite == 0) {
-    return;
+    return SUCCESS;
   }
 
   // Just write the data to the file (don't update the buffer at all)
-  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, &w->e)) {
-    error_log_consume (&w->e);
-    intentionally_crash ();
+  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e)) {
+    return error_trace (e);
   }
 
   // Update the buffer
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
   // Run an fsync
-  if (w->fd.table->fsync (w->fd.self, &w->e)) {
-    error_log_consume (&w->e);
-    intentionally_crash ();
+  if (w->fd.table->fsync (w->fd.self, e)) {
+    return error_trace (e);
   }
 
   // Update flushed lsn
   w->flushed_lsn += towrite;
+
+  return SUCCESS;
 }
 
 #ifndef NDEBUG
-TEST (walos_flush_impl)
+TEST (walos_flush_unsafe)
 {
   TEST_CASE ("happy path")
   {
@@ -207,9 +258,13 @@ TEST (walos_flush_impl)
     u8 data[10] = {0};
     walos_write_all (wos, NULL, data, 10);
     test_assert (wos->flushed_lsn == 0);
-    walos_flush_impl (wos);
+    test_assert_int_equal (walos_flush_unsafe (wos, &ctx->e), SUCCESS);
 
     // Check that flushed lsn is 10
+    test_assert (wos->flushed_lsn == 10);
+
+    // Nothing buffered - still fine, still nothing written
+    test_assert_int_equal (walos_flush_unsafe (wos, &ctx->e), SUCCESS);
     test_assert (wos->flushed_lsn == 10);
 
     // Clean up
@@ -233,17 +288,17 @@ TEST (walos_flush_impl)
         u8 data[10] = {0};
         walos_write_all (wos, NULL, data, 10);
 
-        // Do test
+        // Do test - the unsafe step reports, it never dies
         faulty_os_fail_after (ctx->faulty_os, fail_after);
-        capture_intentional_crash (&ret, &ctx->e)
-        {
-          walos_flush_impl (wos);
+        ret = walos_flush_unsafe (wos, &ctx->e);
+        if (ret != SUCCESS) {
+          // A flush that did not land leaves the lsn where it was
+          test_assert_int_equal ((i32)wos->flushed_lsn, 0);
         }
 
         // Clean up
         faulty_os_reset (ctx->faulty_os);
         error_reset (&ctx->e);
-        ret = SUCCESS;
         walos_close (wos, &ctx->e);
         ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
 
@@ -262,8 +317,19 @@ walos_close (struct wal_ostream *w, error *e)
   latch_lock (&w->l);
 
   DBG_ASSERT (wal_ostream, w);
-  walos_flush_impl (w);
+
+  // Closing has somewhere to report a failure, so a last flush that does not
+  // land comes back as an error rather than killing the process. An error the
+  // write path latched earlier is handed over the same way.
+  if (walos_failed (w)) {
+    walos_take_err (w, e);
+  } else {
+    walos_flush_unsafe (w, e);
+  }
+
   w->os.table->close_file (w->os.self, w->fd.self, e);
+
+  latch_unlock (&w->l);
   w->mem.table->free (w->mem.self, w);
 
   return error_trace (e);
@@ -297,6 +363,9 @@ TEST (walos_close)
 }
 #endif
 
+/// Abandons the writer: the fd goes back to the OS and the allocation is
+/// freed, but the buffer is dropped on the floor so nothing that was not
+/// already flushed reaches the log.
 err_t
 walos_crash (struct wal_ostream *w, error *e)
 {
@@ -304,6 +373,8 @@ walos_crash (struct wal_ostream *w, error *e)
 
   DBG_ASSERT (wal_ostream, w);
   w->os.table->close_file (w->os.self, w->fd.self, e);
+
+  latch_unlock (&w->l);
   w->mem.table->free (w->mem.self, w);
 
   return error_trace (e);
@@ -437,8 +508,14 @@ void
 walos_flush_all (struct wal_ostream *w)
 {
   DBG_ASSERT (wal_ostream, w);
+
   latch_lock (&w->l);
-  walos_flush_impl (w);
+
+  // Once the log has a hole in it there is nothing useful left to push out
+  if (!walos_failed (w)) {
+    walos_flush_unsafe (w, &w->e);
+  }
+
   latch_unlock (&w->l);
 }
 
@@ -476,8 +553,6 @@ TEST (walos_flush_all)
     do {
       TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
       {
-        ret = SUCCESS;
-
         // Setup
         ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
         struct wal_ostream *wos = walos_open ("foo", ctx->mem, ctx->faulty_os, 0, &ctx->e);
@@ -486,21 +561,30 @@ TEST (walos_flush_all)
         u8 data[10] = {0};
         walos_write_all (wos, NULL, data, 10);
 
-        // Do test
+        // Do test - the failure is latched, not thrown, and the latch is free
+        // afterwards either way
         faulty_os_fail_after (ctx->faulty_os, fail_after);
-        capture_intentional_crash (&ret, &ctx->e)
-        {
+        walos_flush_all (wos);
+        ret = walos_failed (wos) ? ERR_IO : SUCCESS;
+        test_assert (latch_trylock (&wos->l));
+        latch_unlock (&wos->l);
+
+        if (ret != SUCCESS) {
+          // A failed stream stops touching the file
+          const lsn stuck = wos->flushed_lsn;
           walos_flush_all (wos);
+          test_assert_int_equal ((i32)wos->flushed_lsn, (i32)stuck);
+
+          // And hands the error over once
+          test_assert (walos_take_err (wos, &ctx->e) != SUCCESS);
+          test_assert (!walos_failed (wos));
         }
 
         // Clean up
         faulty_os_reset (ctx->faulty_os);
         error_reset (&ctx->e);
-        if (ret != SUCCESS) {
-          // During a crash - lock could still be held
-          latch_unlock (&wos->l);
-        }
         walos_close (wos, &ctx->e);
+        error_reset (&ctx->e);
         ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
 
         // Next fail after
@@ -530,10 +614,12 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len
   u32 loop_limit = len / WAL_BUFFER_CAP + 1;
   u32 loop       = 0;
 
-  while (written < len) {
+  while (written < len && !walos_failed (w)) {
     // Flush on full
-    if (cbuffer_avail (&w->buffer) == 0) {
-      walos_flush_impl (w);
+    if (cbuffer_avail (&w->buffer) == 0 && walos_flush_unsafe (w, &w->e)) {
+      // The log now has a hole in it. Stop here and leave the failure parked
+      // for the caller's top level - it is the one holding the latches.
+      break;
     }
 
     // Write maximally to the buffer
@@ -603,26 +689,33 @@ TEST (walos_write_all)
       TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
       {
         // Setup
-        struct wal_ostream *wos = walos_open ("foo", ctx->faulty_mem, ctx->os, 0, &ctx->e);
-        ret                     = error_trace (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
+        struct wal_ostream *wos = walos_open ("foo", ctx->mem, ctx->faulty_os, 0, &ctx->e);
+        test_assert (wos != NULL);
 
-        faulty_os_fail_after (ctx->faulty_os, fail_after);
-
-        // Fill up the buffer
+        // Fill up the buffer - no flush yet, so no fault can fire
         u8 data[WAL_BUFFER_CAP] = {0};
         rand_bytes (data, WAL_BUFFER_CAP);
         walos_write_all (wos, NULL, data, WAL_BUFFER_CAP);
+        test_assert (!walos_failed (wos));
 
-        // Next write flushes
-        capture_intentional_crash (&ret, &ctx->e)
-        {
-          walos_write_all (wos, NULL, data, WAL_BUFFER_CAP);
-        }
+        // The next write has to flush to make room
+        faulty_os_fail_after (ctx->faulty_os, fail_after);
+        walos_write_all (wos, NULL, data, WAL_BUFFER_CAP);
+        ret = walos_failed (wos) ? ERR_IO : SUCCESS;
+
+        // Whatever happened, the latch went back
+        test_assert (latch_trylock (&wos->l));
+        latch_unlock (&wos->l);
 
         // Clean up
         faulty_os_reset (ctx->faulty_os);
         error_reset (&ctx->e);
         walos_close (wos, &ctx->e);
+        error_reset (&ctx->e);
+        ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
+
+        // Next fail after
         fail_after++;
       }
     }
