@@ -22,8 +22,6 @@
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
 
-#include <stdbool.h>
-
 struct wal_ostream
 {
   struct i_mem   mem;
@@ -49,21 +47,10 @@ struct wal_ostream *walos_open (
 err_t walos_close (struct wal_ostream *w, error *e);
 err_t walos_crash (struct wal_ostream *w, error *e);
 
-// Primary API
+// Primary API - Crash on write behavior
 void walos_flush_all (struct wal_ostream *w);
 void walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len);
 lsn walos_get_lsn (struct wal_ostream *w);
 slsn walos_truncate (struct wal_ostream *w, error *e);
-
-/// A failed write or fsync leaves a hole in the log, and neither of the two
-/// calls above has anywhere to report that - they run in the middle of
-/// encoding a record, under latches their caller owns. So the failure is
-/// latched into the stream, which then stops touching the file altogether.
-///
-/// The caller checks this at its own top level, where it still owns every
-/// latch it took and can drop them before taking the process down.
-/// [walos_take_err] moves the latched error out for the log line on the way.
-bool walos_failed (const struct wal_ostream *w);
-err_t walos_take_err (struct wal_ostream *w, error *e);
 
 #endif

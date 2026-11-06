@@ -103,19 +103,14 @@ struct wal_end
   lsn  prev;
 };
 
-enum wal_clr_type
-{
-  WCLR_PHYSICAL = 1,
-  WCLR_FSM      = 2,
-  WCLR_DUMMY    = 3,
-};
-
 struct wal_clr_read
 {
-  // On-disk width: the sub type is serialized as a single [wlh], so the
-  // in-memory field has to be exactly that wide - a wider enum would leave
-  // the high bytes of a decoded record uninitialized.
-  wlh  type;
+  enum wal_clr_type
+  {
+    WCLR_PHYSICAL = 1,
+    WCLR_FSM      = 2,
+    WCLR_DUMMY    = 3,
+  } type;
 
   txid tid;
   lsn  prev;

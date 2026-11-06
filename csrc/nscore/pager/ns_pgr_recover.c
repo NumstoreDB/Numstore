@@ -16,7 +16,6 @@
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
-#include "nscore/wal/ns_wal.h"
 
 err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e);
 err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e);
@@ -25,8 +24,10 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
 /*
  * Entry point for ARIES crash recovery.
  *
- * Runs the three phases in order and frees the aries_ctx on completion,
- * whether or not an error occurred.
+ * Sets PGR_ISRESTARTING for the duration of recovery so that pgr_flush()
+ * skips the WAL-before-page flush (the WAL is already ahead of any page
+ * being replayed).  Runs the three phases in order and frees the aries_ctx
+ * on completion, whether or not an error occurred.
  */
 static err_t
 pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
@@ -49,13 +50,6 @@ pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
       goto theend;
     }
   }
-
-  // Recovery writes to the log itself - the END records analysis appended for
-  // the transactions it settled, and a CLR for every update undo rolled back.
-  // Those have to be on disk before anything else happens, or the next restart
-  // starts over from a log that never heard about this one and reaches a
-  // different answer.
-  wal_flush_all (p->ww);
 
   // This is a good time to do a checkpoint
   // pgr_deletion_blocking_checkpoint (p, e);

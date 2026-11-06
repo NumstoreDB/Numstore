@@ -15,7 +15,6 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
-#include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
@@ -46,10 +45,8 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         txnt_get_expect (&tx, ctx->txt, log_rec->update.tid);
 
         if (wrh_is_undoable (log_rec)) {
-          const pgno pg = wrh_get_affected_pg (log_rec);
-
-          page_h     ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) {
+          page_h ph = page_h_create ();
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e)) {
             goto failed;
           }
 
@@ -61,14 +58,6 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
 
           // Update the last lsn of the transaction
           tx->data.last_lsn = l;
-
-          // pgr_unfix does not mark the page dirty the way a logged release
-          // does, so say so here - otherwise the undone page is only ever in
-          // memory and the close that follows recovery writes nothing
-          if (dpgt_add_if_ne (p->dpt, pg, l, e)) {
-            pgr_unfix (&ph, PG_PERMISSIVE);
-            goto failed;
-          }
 
           // Release this page
           pgr_unfix (&ph, PG_PERMISSIVE);

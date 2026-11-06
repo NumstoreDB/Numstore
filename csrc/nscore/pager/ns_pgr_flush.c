@@ -24,17 +24,12 @@ pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
 
   // Only need to write it out if it's dirty
   if (dpgt_exists (p->dpt, mp->page.pg)) {
-    // WAL invariant: always flush page to wal before it's flushed to disk.
+    // WAL invariant: always flush page to wal before
+    // it's flushed to disk
     // Remember:
     //    page_lsn = latest log page that modified this page
-    //
-    // This holds during a restart too. Redo only replays records that are
-    // already durable, so flushing there is a no-op in spirit - but undo
-    // appends fresh CLRs and stamps their lsn onto the page it just changed.
-    // Writing one of those pages out without its CLR on disk leaves a page
-    // claiming an lsn the log does not reach, and the next restart reads the
-    // page as already-undone while the log says otherwise.
-    if (p->ww) {
+    // const lsn plsn = page_get_page_lsn (&mp->page);
+    if (!(p->flags & PGR_ISRESTARTING) && p->ww) {
       wal_flush_all (p->ww);
     }
 

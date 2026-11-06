@@ -59,17 +59,6 @@ pgr_redo_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, error 
           wrh_redo (log_rec, &ph);
           r_ctx->nredone++;
           page_set_page_lsn (page_h_w (&ph), read_lsn);
-
-          // The page now differs from the copy on disk, and pgr_unfix below
-          // does not say so the way a logged release does. Replaying a log
-          // this long evicts pages as it goes, and an evicted page is only
-          // written if the pager's table calls it dirty - so without this the
-          // replay is thrown away frame by frame and the database comes back
-          // with some pages redone and some not.
-          if (dpgt_add_if_ne (p->dpt, pg, read_lsn, e)) {
-            pgr_unfix (&ph, PG_PERMISSIVE);
-            return error_trace (e);
-          }
         } else {
           dpgt_update (ctx->dpt, pg, page_lsn + 1);
         }

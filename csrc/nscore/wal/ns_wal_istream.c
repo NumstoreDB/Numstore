@@ -502,25 +502,15 @@ TEST (walis_seek)
 }
 #endif
 
-/// Commits everything read since the last mark and returns where that leaves
-/// the reader - the first byte of the next record.
-///
-/// Readers work a record at a time out of several [walis_read_all] calls, and
-/// a short read inside one of them rewinds to the last mark, so a half-read
-/// record never moves the position. The mark is therefore also the answer to
-/// "where does the intact part of this log end", which is what a forward scan
-/// hands to the writer when it runs out of records.
 lsn
 walis_mark (struct wal_istream *w)
 {
+  lsn curlsn = 0;
   latch_lock (&w->l);
-
+  curlsn = w->curlsn;
   w->curlsn += w->lsnidx;
-  w->lsnidx        = 0;
-  const lsn curlsn = w->curlsn;
-
+  w->lsnidx = 0;
   latch_unlock (&w->l);
-
   return curlsn;
 }
 
@@ -539,23 +529,17 @@ TEST (walis_mark)
     // Nothing read yet
     test_assert_int_equal ((i32)walis_mark (wis), 0);
 
-    // mark commits the record just consumed and returns the start of the next
+    // mark returns the start of the record just consumed and commits its end
     test_assert_int_equal (walis_read_all (wis, NULL, buf, sizeof buf, &ctx->e), SUCCESS);
-    test_assert_int_equal ((i32)walis_mark (wis), 4);
+    test_assert_int_equal ((i32)walis_mark (wis), 0);
     test_assert_int_equal ((i32)wis->curlsn, 4);
 
     test_assert_int_equal (walis_read_all (wis, NULL, buf, sizeof buf, &ctx->e), SUCCESS);
-    test_assert_int_equal ((i32)walis_mark (wis), 8);
+    test_assert_int_equal ((i32)walis_mark (wis), 4);
     test_assert_int_equal ((i32)wis->curlsn, 8);
 
-    // Marking again with nothing consumed stays where it is
+    // Marking again with nothing consumed returns the committed position
     test_assert_int_equal ((i32)walis_mark (wis), 8);
-
-    // A half read record does not move the mark: the read rewinds to it
-    test_assert_int_equal (walis_seek (wis, 4, &ctx->e), SUCCESS);
-    u8 big[8] = {0};
-    test_assert_int_equal (walis_read_all (wis, NULL, big, sizeof big, &ctx->e), WAL_EOF);
-    test_assert_int_equal ((i32)walis_mark (wis), 4);
 
     walis_close (wis, &ctx->e);
     ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);

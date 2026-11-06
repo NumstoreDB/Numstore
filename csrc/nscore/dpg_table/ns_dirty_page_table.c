@@ -137,15 +137,6 @@ merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx)
     return;
   }
 
-  // dpgt_add always inserts, so a page [dest] already holds would come out of
-  // a merge with a second entry behind the first - one that no remove ever
-  // reaches, leaving the page looking dirty forever. Hand the existing entry
-  // the incoming rec_lsn instead, which is the same thing the caller wanted.
-  if (dpgt_exists (ctx->dest, pg)) {
-    dpgt_update (ctx->dest, pg, rec_lsn);
-    return;
-  }
-
   if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e)) {
     return;
   }

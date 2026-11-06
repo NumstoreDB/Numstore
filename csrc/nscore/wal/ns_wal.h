@@ -32,13 +32,6 @@ enum wal_flags
   WAL_ISNEW = (1 << 0),
 };
 
-/// A wal file is a start lsn followed by records. The start lsn is the lsn the
-/// first record would have had in the wal this one replaced, so a record's lsn
-/// is its file offset plus the start lsn - which puts the very first record of
-/// the very first wal of a database at [WAL_RECORDS_START].
-#define WAL_START_LSN     ((lsn)0)
-#define WAL_RECORDS_START ((lsn)sizeof (lsn))
-
 struct wal
 {
   struct i_mem             mem;
@@ -75,12 +68,8 @@ err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e);
 // Getters
 #define wal_isnew(w)     (((w)->flags & WAL_ISNEW) != 0)
 #define wal_start_lsn(w) ((w)->start_lsn)
-
-/// Byte length of the log. Both of these have to cope with a wal whose writer
-/// is still closed: an existing log has no writer until a forward scan has
-/// found where its last intact record ends (see [wal_forward_scan]).
-lsn wal_size (struct wal *w);
-void wal_flush_all (struct wal *w);
+#define wal_size(w)      (walos_get_lsn ((w)->ostream))
+#define wal_flush_all(w) (walos_flush_all ((w)->ostream))
 
 // Reading
 typedef err_t (*wal_log_func) (struct wal_rec_hdr_read *log, lsn l, void *ctx, error *e);
