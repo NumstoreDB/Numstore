@@ -94,7 +94,7 @@ kvlb_accept_key (struct kvt_list_builder *ub, struct string key, error *e)
     node->value = NULL;
 
     // Set the head if it doesn't exist
-    if (!ub->head) {
+    if (ub->head == NULL) {
       ub->head = &node->link;
     }
 
@@ -127,7 +127,7 @@ kvlb_accept_type (struct kvt_list_builder *ub, struct type *t, error *e)
     }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head) {
+    if (ub->head == NULL) {
       ub->head = &node->link;
     } else {
       list_append (&ub->head, &node->link);
@@ -300,7 +300,7 @@ kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e)
     node->value = (struct type_ref){0};
 
     // Set the head if it doesn't exist
-    if (!ub->head) {
+    if (ub->head == NULL) {
       ub->head = &node->link;
     }
     // Otherwise, append to the list
@@ -332,7 +332,7 @@ kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e)
     }
     llnode_init (&node->link);
     node->key = (struct string){0};
-    if (!ub->head) {
+    if (ub->head == NULL) {
       ub->head = &node->link;
     } else {
       list_append (&ub->head, &node->link);

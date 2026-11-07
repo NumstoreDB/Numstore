@@ -326,7 +326,7 @@ musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error 
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!eb->head) {
+  if (eb->head == NULL) {
     eb->head = &node->link;
   } else {
     list_append (&eb->head, &node->link);

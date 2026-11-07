@@ -144,6 +144,12 @@ TEST (pgr_begin_txn_fail_full_wal)
         pgr_commit (f.p, &f.tx, &ctx->e);
       }
 
+      // The crash hit after the txn recorded its db lock but before it joined
+      // the txn table, so pgr_crash never sees it - free its lock records here
+      if (ret == ERR_CRASHED) {
+        txn_close (&f.tx);
+      }
+
       // Teardown (handles crash case)
       pgr_fixture_teardown_with (&f, &ctx->e);
 

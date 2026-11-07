@@ -194,8 +194,20 @@ reference model and crashes it at random:
 AI Usage Policy
 ---------------
 
-I use AI the way I use a language server: as a tool, not a co-author. AI usage
-is fine, but not for heavy lifting.
+Moderate controlled AI usage is encouraged in Numstore but due to the highly 
+fragile nature of databases, heavy AI auditing and human driving is required.
+
+Numstore's philosophy is: If you're going to use it, use it right. That's why 
+I've defined a series of skills in `.claude/skills`. When agents do work with 
+the code (and they will), they better do it following the evolving guidance
+defined at the outset.
+
+Every single line of code that goes into Numstore, whether written by a 
+human or AI, should ideally get both human and AI eyes on it. AI is a 
+great code reviewer to find "fat fingered" mistakes and point out design 
+problems, but a _concious_ and critical thinking human should be driving 
+all decisions. There will never be a line of code in Numstore that hasn't 
+been re written by a human.
 
 Things I ask AI to do:
 

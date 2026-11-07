@@ -78,7 +78,7 @@ nsdb_open (const char *path, struct i_mem mem, struct i_os os, error *e)
   return ret;
 
 failed:
-  if (ret->p) {
+  if (ret->p != NULL) {
     pgr_close (ret->p, e);
   }
   slab_alloc_destroy (&ret->txn_alloc);

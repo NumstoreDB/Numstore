@@ -47,10 +47,10 @@ dblb_create (
   }
 
   *dest = (struct dbl_buffer){
-      .size      = size,
-      .nelem     = 0,
-      .nelem_cap = initial_cap,
       .data      = data,
+      .size      = size,
+      .nelem_cap = initial_cap,
+      .nelem     = 0,
       .alloc     = alloc,
   };
 
@@ -122,7 +122,7 @@ dblb_append (struct dbl_buffer *d, const void *data, const u32 nelem, error *e)
     return error_trace (e);
   }
 
-  memcpy (head, data, d->size * nelem);
+  memcpy (head, data, (size_t)d->size * nelem);
 
   return SUCCESS;
 }
@@ -191,12 +191,14 @@ TEST (dblb_append)
 err_t
 dblb_ensure_space (struct dbl_buffer *d, const u32 nelem, error *e)
 {
+  DBG_ASSERT (dbl_buffer, d);
+
   if (nelem >= d->nelem_cap) {
     void *newdata = arena_malloc (d->alloc, d->size * d->nelem_cap, 2 * nelem, e);
     if (newdata == NULL) {
       return error_trace (e);
     }
-    memcpy (newdata, d->data, d->size * d->nelem);
+    memcpy (newdata, d->data, (size_t)d->size * d->nelem);
     d->data      = newdata;
     d->nelem_cap = 2 * nelem;
   }
@@ -210,11 +212,11 @@ dblb_append_alloc (struct dbl_buffer *d, const u32 nelem, error *e)
 
   const u32 newnelem_cap = d->nelem + nelem;
 
-  if (dblb_ensure_space (d, newnelem_cap, e)) {
+  if (dblb_ensure_space (d, newnelem_cap, e) < 0) {
     return NULL;
   }
 
-  void *ret = (u8 *)d->data + (d->nelem * d->size);
+  void *ret = (u8 *)d->data + ((size_t)d->nelem * d->size);
   d->nelem += nelem;
 
   return ret;
@@ -379,6 +381,46 @@ TEST (dblb_append_alloc_triggers_realloc)
   test_assert_int_equal (db.nelem_cap, 4);
 
   arena_alloc_free_all (&ctx->alloc);
+}
+
+TEST (dblb_append_alloc_fail_nomem)
+{
+  struct dbl_buffer db;
+  void             *ret;
+  int               fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      // Setup - two elements in a buffer of capacity 4, so appending three grows it
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&ctx->faulty_alloc);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      test_fail_if (dblb_create (&db, &ctx->faulty_alloc, sizeof (u32), 2, &ctx->e));
+      u32 *head = dblb_append_alloc (&db, 2, &ctx->e);
+      test_assert (head != NULL);
+      head[0] = 1;
+      head[1] = 2;
+
+      // Run
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = dblb_append_alloc (&db, 3, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      // A failed append leaves the contents alone; a successful one keeps them
+      const u32 expected_nelem = ret == NULL ? 2 : 5;
+      test_assert_int_equal (db.nelem, expected_nelem);
+      test_assert_int_equal (((u32 *)db.data)[0], 1);
+      test_assert_int_equal (((u32 *)db.data)[1], 2);
+
+      fail_after++;
+    }
+  }
+  while (ret == NULL);
+
+  // Teardown
+  arena_alloc_free_all (&ctx->faulty_alloc);
 }
 
 TEST (dblb_different_element_sizes)

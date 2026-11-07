@@ -480,7 +480,7 @@ sarray_t_random (
   sa->rank = (u16)randu32r (1, 4);
 
   sa->dims = (u32 *)arena_malloc (temp, sa->rank, sizeof (u32), e);
-  if (!sa->dims) {
+  if (sa->dims == NULL) {
     return error_trace (e);
   }
 
@@ -533,7 +533,7 @@ sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
       return error_trace (e);
     }
     llnode_init (&node->link);
-    if (!eb->head) {
+    if (eb->head == NULL) {
       eb->head = &node->link;
     } else {
       list_append (&eb->head, &node->link);
@@ -549,7 +549,7 @@ sab_accept_type (struct sarray_builder *eb, struct type *t, error *e)
 {
   DBG_ASSERT (sarray_builder, eb);
 
-  if (eb->type) {
+  if (eb->type != NULL) {
     return error_causef (e, ERR_INTERP, "type already set");
   }
 
@@ -564,7 +564,7 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
   DBG_ASSERT (sarray_builder, eb);
   ASSERT (persistent);
 
-  if (!eb->type) {
+  if (eb->type == NULL) {
     error_causef (e, ERR_INTERP, "type not set");
     goto theend;
   }

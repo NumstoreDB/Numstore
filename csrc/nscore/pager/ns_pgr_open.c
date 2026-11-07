@@ -186,10 +186,10 @@ failed:
   ASSERT (error_trace (e));
   if (ret) {
     pgr_cancel_if_exists (&root);
-    if (ret->dpt) {
+    if (ret->dpt != NULL) {
       dpgt_close (ret->dpt);
     }
-    if (ret->tnxt) {
+    if (ret->tnxt != NULL) {
       txnt_close (ret->tnxt);
     }
     mem.table->free (mem.self, ret);

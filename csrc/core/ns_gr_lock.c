@@ -265,7 +265,7 @@ gr_unlock (struct gr_lock *l, const enum lock_mode mode)
   l->holder_counts[mode]--;
 
   // Wake any compatible waiters
-  if (l->head) {
+  if (l->head != NULL) {
     for (struct gr_lock_waiter *w = l->head; w; w = w->next) {
       // signal all waiters - they do the compatability check - it's ok
       w->cond.table->cond_signal (w->cond.self);
@@ -746,4 +746,53 @@ TEST (gr_lock_high_pressure_random)
   gr_lock_destroy (&lock);
 }
 
+TEST (gr_lock_init_fail_os)
+{
+  struct gr_lock l;
+  err_t          ret;
+  int            fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = gr_lock_init (&l, ctx->faulty_os, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  // The lock works after the failures
+  test_err_t_check (gr_lock (&l, LM_X, &ctx->e), SUCCESS, &ctx->e);
+  gr_unlock (&l, LM_X);
+  gr_lock_destroy (&l);
+}
+
+TEST (gr_lock_fail_waiter_cond)
+{
+  struct gr_lock l;
+  test_err_t_check (gr_lock_init (&l, ctx->faulty_os, &ctx->e), SUCCESS, &ctx->e);
+
+  // Hold X so the next X request has to build a waiter
+  test_err_t_check (gr_lock (&l, LM_X, &ctx->e), SUCCESS, &ctx->e);
+
+  // Only the first OS call can fail here - a later one would block forever
+  faulty_os_fail_after (ctx->faulty_os, 0);
+  err_t ret = gr_lock (&l, LM_X, &ctx->e);
+  faulty_os_reset (ctx->faulty_os);
+
+  test_assert (ret != SUCCESS);
+  error_reset (&ctx->e);
+
+  // The failed waiter left nothing behind: the lock is still usable
+  test_assert_ptr_equal (l.head, NULL);
+  gr_unlock (&l, LM_X);
+  test_err_t_check (gr_lock (&l, LM_S, &ctx->e), SUCCESS, &ctx->e);
+  gr_unlock (&l, LM_S);
+  gr_lock_destroy (&l);
+}
 #endif

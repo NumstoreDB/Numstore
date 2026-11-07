@@ -121,7 +121,7 @@ struct pager
 
   // Resources / Systems
   struct file_pager *const fp;
-  struct wal *const        ww;
+  struct wal              *ww;
   struct lockt            *lt;
   struct dpg_table *const  dpt;
   struct txn_table *const  tnxt;

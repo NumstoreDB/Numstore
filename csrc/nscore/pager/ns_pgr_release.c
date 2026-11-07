@@ -31,7 +31,7 @@ pgr_release_with_log (
     error                   *e
 )
 {
-  (void)flags; // Unused for now
+  (void)flags; // Unused in release
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
@@ -42,8 +42,7 @@ pgr_release_with_log (
     ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e));
 
     // Append WAL information
-    if (h->tx) // If you pass tx == NULL - there's no WAL logging - used mid
-               // ARIES
+    if (h->tx) // If you pass tx == NULL - there's no WAL logging - used mid ARIES
     {
       // If no record was supplied, append a physical record
       if (record == NULL) {
@@ -71,11 +70,11 @@ pgr_release_with_log (
       h->tx->data.undo_next_lsn = page_lsn;
     }
 
-    // Add page to DPT if this is the first update (RecLSN = LSN of first
-    // update)
-    if ((!dpgt_exists (p->dpt, page_h_pgno (h)))
-        && (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e))) {
-      return error_trace (e);
+    if (!dpgt_exists (p->dpt, page_h_pgno (h))) {
+      // This is the first update (RecLSN = LSN of the first update)
+      if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e)) {
+        return error_trace (e);
+      }
     }
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);

@@ -183,7 +183,7 @@ faulty_open_file (struct faulty_ctx *ctx, open_fn open, i_file *dest, const char
     return error_trace (e);
   }
 
-  if (open (ctx->delegate.self, &f->d, fname, e)) {
+  if (open (ctx->delegate.self, &f->d, fname, e) < 0) {
     slab_alloc_free (&ctx->file_alloc, f);
     return error_trace (e);
   }

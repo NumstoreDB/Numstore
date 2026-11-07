@@ -21,6 +21,7 @@
 #include "nscore/txn_table/ns_txn_table.h"
 
 #ifndef NDEBUG
+#  include "core/ns_crash.h"
 #  include "core/ns_testing.h"
 #  include "nscore/page/ns_page_data_list.h"
 #endif
@@ -229,5 +230,116 @@ TEST (wal_int)
   pgr_commit (f.p, &tx, &ctx->e);
 
   pgr_fixture_teardown (&f, &ctx->e);
+}
+
+// Commit two data pages, so a flush has more than one dirty page to write
+static void
+pager_test_dirty_two_pages (struct pgr_fixture *f, pgno pgs[2], struct test_ctx *ctx)
+{
+  page_h h = page_h_create ();
+  pgr_begin_txn (&f->tx, f->p, &ctx->e);
+  for (int i = 0; i < 2; ++i) {
+    pgr_new (&h, f->p, &f->tx, PG_DATA_LIST, &ctx->e);
+    dl_make_valid (page_h_w (&h));
+    pgs[i] = page_h_pgno (&h);
+    pgr_release (f->p, &h, PG_DATA_LIST, &ctx->e);
+  }
+  pgr_commit (f->p, &f->tx, &ctx->e);
+}
+
+// Close on a healthy OS and check both pages read back
+static void
+pager_test_check_two_pages (struct pgr_fixture *f, const pgno pgs[2], struct test_ctx *ctx)
+{
+  error_reset (&ctx->e);
+  test_err_t_check (pgr_fixture_teardown_with (f, &ctx->e), SUCCESS, &ctx->e);
+
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert (p != NULL);
+  for (int i = 0; i < 2; ++i) {
+    page_h h = page_h_create ();
+    test_err_t_check (pgr_get (&h, PG_DATA_LIST, pgs[i], p, &ctx->e), SUCCESS, &ctx->e);
+    test_err_t_check (pgr_release (p, &h, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
+  }
+  test_err_t_check (pgr_close (p, &ctx->e), SUCCESS, &ctx->e);
+}
+
+TEST (pgr_flush_all_pages_fail_os)
+{
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      struct pgr_fixture f;
+      pgno               pgs[2];
+      test_err_t_check (
+          pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
+          SUCCESS,
+          &ctx->e
+      );
+      pager_test_dirty_two_pages (&f, pgs, ctx);
+      test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      capture_intentional_crash (&ret, &ctx->e)
+      {
+        ret = pgr_flush_all_pages (f.p, &ctx->e);
+      }
+      faulty_os_reset (ctx->faulty_os);
+
+      if (ret == ERR_CRASHED) {
+        // walos_flush_all drops its latch before crashing - just crash the pager
+        pgr_fixture_teardown_with (&f, &ctx->e);
+        error_reset (&ctx->e);
+      } else {
+        // A failed flush leaves the rest dirty - a healthy close writes them
+        pager_test_check_two_pages (&f, pgs, ctx);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+}
+
+TEST (pgr_evict_all_pages_fail_os)
+{
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      struct pgr_fixture f;
+      pgno               pgs[2];
+      test_err_t_check (
+          pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
+          SUCCESS,
+          &ctx->e
+      );
+      pager_test_dirty_two_pages (&f, pgs, ctx);
+      test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      capture_intentional_crash (&ret, &ctx->e)
+      {
+        ret = pgr_evict_all_pages (f.p, &ctx->e);
+      }
+      faulty_os_reset (ctx->faulty_os);
+
+      if (ret == ERR_CRASHED) {
+        pgr_fixture_teardown_with (&f, &ctx->e);
+        error_reset (&ctx->e);
+      } else {
+        // Pages that failed to write are still cached and dirty
+        pager_test_check_two_pages (&f, pgs, ctx);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
 }
 #endif

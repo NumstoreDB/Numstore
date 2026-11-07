@@ -420,7 +420,7 @@ rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e)
   llnode_init (&node->link);
   node->stride = stride;
 
-  if (!rb->head) {
+  if (rb->head == NULL) {
     rb->head = &node->link;
   } else {
     list_append (&rb->head, &node->link);
@@ -475,7 +475,7 @@ tab_alloc (struct type_accessor_builder *builder, error *e)
 static void
 tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 {
-  if (!builder->head) {
+  if (builder->head == NULL) {
     builder->head = ta;
   } else {
     if (builder->tail->type == TA_SELECT) {
@@ -543,7 +543,7 @@ tab_accept_select (struct type_accessor_builder *builder, struct string key, err
   }
 
   key.data = arena_alloc_copy (builder->b->persistent, key.data, key.len, e);
-  if (!key.data) {
+  if (key.data == NULL) {
     return error_trace (e);
   }
 

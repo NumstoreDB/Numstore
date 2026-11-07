@@ -109,13 +109,13 @@ pgr_get_writable (
       pgr->wsibling = wclock;
       pgr->page.pg  = pg;
 
-      if (fpgr_read (p->fp, pgr->page.raw, pg, e)) {
+      if (fpgr_read (p->fp, pgr->page.raw, pg, e) < 0) {
         latch_unlock (&pgr->ctrl);
         latch_unlock (&pgw->ctrl);
         return error_trace (e);
       }
 
-      if (page_validate_for_db (&pgr->page, flags, e)) {
+      if (page_validate_for_db (&pgr->page, flags, e) < 0) {
         latch_unlock (&pgr->ctrl);
         latch_unlock (&pgw->ctrl);
         return error_trace (e);
@@ -143,3 +143,70 @@ pgr_get_writable (
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
+
+#ifndef NDEBUG
+#  include "core/ns_testing.h"
+#  include "nscore/page/ns_page_data_list.h"
+
+/**
+ * TODO - on a cache miss pgr_get_writable inserts the read frame into
+ * p->pgno_to_value (pin = 1, PW_PRESENT) *before* fpgr_read. When the read
+ * (or page_validate_for_db) fails it only drops the ctrl latches, so the
+ * page table keeps a pinned frame full of garbage for [pg]:
+ *
+ * - the next get of [pg] hits HTAR_SUCCESS and hands out that garbage
+ * - pgr_close -> pgr_evict_all_pages asserts mp->pin == 0 on it
+ *
+ * pgr_get does it in the right order (read, validate, then insert). Fix: do
+ * the same here, or remove the entry and clear the frame on failure.
+ */
+TEST_DISABLED (pgr_get_writable_fail_os)
+{
+  struct pgr_fixture f;
+  test_err_t_check (
+      pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
+      SUCCESS,
+      &ctx->e
+  );
+
+  // Commit one data page, then push it to disk
+  page_h h = page_h_create ();
+  pgr_begin_txn (&f.tx, f.p, &ctx->e);
+  pgr_new (&h, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
+  dl_make_valid (page_h_w (&h));
+  const pgno pg = page_h_pgno (&h);
+  pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
+  pgr_commit (f.p, &f.tx, &ctx->e);
+  pgr_evict_all_pages (f.p, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+  test_err_t_check (pgr_begin_txn (&f.tx, f.p, &ctx->e), SUCCESS, &ctx->e);
+
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = pgr_get_writable (&h, &f.tx, PG_DATA_LIST, pg, f.p, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  // The page handed out is the one on disk, not a leftover from a failure
+  test_assert_int_equal (
+      page_get_checksum (page_h_ro (&h)),
+      page_compute_checksum (page_h_ro (&h))
+  );
+  pgr_cancel (&h);
+  test_err_t_check (pgr_commit (f.p, &f.tx, &ctx->e), SUCCESS, &ctx->e);
+
+  test_err_t_check (pgr_fixture_teardown_with (&f, &ctx->e), SUCCESS, &ctx->e);
+}
+#endif

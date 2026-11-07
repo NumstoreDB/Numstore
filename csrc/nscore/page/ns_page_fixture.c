@@ -87,7 +87,7 @@ pgr_fixture_create (struct pgr_fixture *dest, error *e)
     return error_trace (e);
   }
 
-  if (pgr_fixture_create_with (dest, os, mem, e)) {
+  if (pgr_fixture_create_with (dest, os, mem, e) < 0) {
     system_os_free (os);
     return error_trace (e);
   }
@@ -137,14 +137,14 @@ build_tree_from_descr_inner (
 
   if (descr.next == NULL) {
     // Data List
-    if (pgr_new (&cur, p, tx, PG_DATA_LIST, e)) {
+    if (pgr_new (&cur, p, tx, PG_DATA_LIST, e) < 0) {
       goto failed;
     }
 
     dl_set_data (page_h_w (&cur), (struct dl_data){.data = descr.data, .blen = descr.dlen});
   } else {
     // Inner Node
-    if (pgr_new (&cur, p, tx, PG_INNER_NODE, e)) {
+    if (pgr_new (&cur, p, tx, PG_INNER_NODE, e) < 0) {
       goto failed;
     }
 
@@ -187,11 +187,11 @@ build_fake_inner_node (page_h *dest, const struct in_page_builder b, error *e)
   WRAP (pgr_new (dest, b.pager, b.txn, PG_INNER_NODE, e));
 
   // Create or link
-  if (b.prev) {
+  if (b.prev != NULL) {
     dlgt_link (page_h_w (b.prev), page_h_w (dest));
   }
 
-  if (b.next) {
+  if (b.next != NULL) {
     dlgt_link (page_h_w (dest), page_h_w (b.next));
   }
 
@@ -228,11 +228,11 @@ build_fake_data_list (page_h *dest, const struct dl_page_builder b, error *e)
   WRAP (pgr_new (dest, b.pager, b.txn, PG_DATA_LIST, e));
 
   // Create or link
-  if (b.prev) {
+  if (b.prev != NULL) {
     dlgt_link (page_h_w (b.prev), page_h_w (dest));
   }
 
-  if (b.next) {
+  if (b.next != NULL) {
     dlgt_link (page_h_w (dest), page_h_w (b.next));
   }
 

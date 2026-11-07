@@ -251,7 +251,7 @@ random_iter (struct hnode *node, void *_ctx)
   struct rand_ctx *ctx = _ctx;
 
   // Already done
-  if (ctx->dest) {
+  if (ctx->dest != NULL) {
     return;
   }
 

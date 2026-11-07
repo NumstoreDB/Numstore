@@ -59,13 +59,13 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 
       pgr = &p->pages[clock];
 
-      if (fpgr_read (p->fp, pgr->page.raw, pg, e)) {
+      if (fpgr_read (p->fp, pgr->page.raw, pg, e) < 0) {
         latch_unlock (&pgr->ctrl);
         return error_trace (e);
       }
 
       // Might remove this
-      if (page_validate_for_db (&pgr->page, flags, e)) {
+      if (page_validate_for_db (&pgr->page, flags, e) < 0) {
         latch_unlock (&pgr->ctrl);
         return error_trace (e);
       }
@@ -139,5 +139,65 @@ TEST (pgr_get_invalid_checksum)
   test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
   pgr_fixture_teardown (&pf, &ctx->e);
+}
+
+// Commit one data page and push it out of the buffer pool, so the next get
+// has to read it from disk.
+static pgno
+pgr_get_test_seed_page (struct pgr_fixture *f, struct test_ctx *ctx)
+{
+  page_h h = page_h_create ();
+  pgr_begin_txn (&f->tx, f->p, &ctx->e);
+  pgr_new (&h, f->p, &f->tx, PG_DATA_LIST, &ctx->e);
+  dl_make_valid (page_h_w (&h));
+  const pgno pg = page_h_pgno (&h);
+  pgr_release (f->p, &h, PG_DATA_LIST, &ctx->e);
+  pgr_commit (f->p, &f->tx, &ctx->e);
+  pgr_evict_all_pages (f->p, &ctx->e);
+  return pg;
+}
+
+TEST (pgr_get_fail_os)
+{
+  struct pgr_fixture f;
+  test_err_t_check (
+      pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
+      SUCCESS,
+      &ctx->e
+  );
+  const pgno pg = pgr_get_test_seed_page (&f, ctx);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+  page_h h = page_h_create ();
+  err_t  ret;
+  int    fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = pgr_get (&h, PG_DATA_LIST, pg, f.p, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      if (ret != SUCCESS) {
+        test_assert_int_equal (h.mode, PHM_NONE);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  // The page read back is the page that was written
+  test_assert_type_equal (page_h_pgno (&h), pg, pgno, PRIu64);
+  test_assert_int_equal (
+      page_get_checksum (page_h_ro (&h)),
+      page_compute_checksum (page_h_ro (&h))
+  );
+  test_err_t_check (pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
+
+  test_err_t_check (pgr_fixture_teardown_with (&f, &ctx->e), SUCCESS, &ctx->e);
 }
 #endif

@@ -65,18 +65,18 @@ test_ctx_create (error *e)
   ctx->e   = error_create ();
   ctx->mem = mem;
 
-  if (system_os_create (mem, &ctx->os, e)) {
+  if (system_os_create (mem, &ctx->os, e) < 0) {
     mem.table->free (mem.self, ctx);
     return NULL;
   }
 
-  if (faulty_mem_create (mem, 0.0f, &ctx->faulty_mem, e)) {
+  if (faulty_mem_create (mem, 0.0f, &ctx->faulty_mem, e) < 0) {
     system_os_free (ctx->os);
     mem.table->free (mem.self, ctx);
     return NULL;
   }
 
-  if (faulty_os_create (mem, ctx->os, 0.0f, &ctx->faulty_os, e)) {
+  if (faulty_os_create (mem, ctx->os, 0.0f, &ctx->faulty_os, e) < 0) {
     faulty_mem_free (ctx->faulty_mem);
     system_os_free (ctx->os);
     mem.table->free (mem.self, ctx);

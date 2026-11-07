@@ -286,4 +286,31 @@ TEST (fnv1a_hash_deterministic)
   // Same input should always produce same hash
   test_assert_equal (hash1, hash2);
 }
+
+TEST (htable_create_fail_nomem)
+{
+  struct htable *t;
+  int            fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      t = htable_create (16, ctx->faulty_mem, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (t == NULL) {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+      }
+
+      fail_after++;
+    }
+  }
+  while (t == NULL);
+
+  test_assert_int_equal (htable_size (t), 0);
+  htable_free (t);
+}
 #endif

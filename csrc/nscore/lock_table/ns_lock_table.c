@@ -398,3 +398,164 @@ lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
   }
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
+
+#ifndef NDEBUG
+#  include "core/ns_testing.h"
+
+TEST (lockt_init_fail_nomem)
+{
+  struct lockt t;
+  err_t        ret;
+  int          fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = lockt_init (&t, ctx->faulty_mem, ctx->os, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_err_t_check (lockt_lock (&t, lock_db (), LM_X, NULL, &ctx->e), SUCCESS, &ctx->e);
+  lockt_unlock (&t, lock_db (), LM_X);
+  lockt_destroy (&t);
+}
+
+TEST (lockt_lock_fail_nomem)
+{
+  struct lockt t;
+  test_err_t_check (lockt_init (&t, ctx->faulty_mem, ctx->os, &ctx->e), SUCCESS, &ctx->e);
+
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      struct txn tx;
+      txn_init (&tx, 1, (struct txn_data){.state = TX_RUNNING}, ctx->faulty_mem);
+
+      // Allocates the lock frame and the txn's lock record
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = lockt_lock (&t, lock_db (), LM_X, &tx, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret == SUCCESS) {
+        test_assert (txn_haslock (&tx, lock_db ()));
+        lockt_unlock_tx (&t, &tx);
+      } else {
+        // Nothing was taken, so nothing is recorded or left in the table
+        test_fail_if (txn_haslock (&tx, lock_db ()));
+        test_assert_int_equal (htable_size (t.table), 0);
+        txn_close (&tx);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  lockt_destroy (&t);
+}
+
+TEST (lockt_lock_fail_os)
+{
+  struct lockt t;
+  test_err_t_check (lockt_init (&t, ctx->mem, ctx->faulty_os, &ctx->e), SUCCESS, &ctx->e);
+
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      // A new frame creates its gr_lock mutex
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = lockt_lock (&t, lock_db (), LM_S, NULL, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      if (ret != SUCCESS) {
+        test_assert_int_equal (htable_size (t.table), 0);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  lockt_unlock (&t, lock_db (), LM_S);
+  test_assert_int_equal (htable_size (t.table), 0);
+  lockt_destroy (&t);
+}
+
+TEST (lockt_lock_fail_waiter_no_txn)
+{
+  struct lockt t;
+  test_err_t_check (lockt_init (&t, ctx->mem, ctx->faulty_os, &ctx->e), SUCCESS, &ctx->e);
+
+  // Hold X so a second X has to wait - building the waiter is the first OS call
+  test_err_t_check (lockt_lock (&t, lock_db (), LM_X, NULL, &ctx->e), SUCCESS, &ctx->e);
+
+  faulty_os_fail_after (ctx->faulty_os, 0);
+  err_t ret = lockt_lock (&t, lock_db (), LM_X, NULL, &ctx->e);
+  faulty_os_reset (ctx->faulty_os);
+  test_assert (ret != SUCCESS);
+  error_reset (&ctx->e);
+
+  // The failed request dropped its reference - the holder's frame survives
+  test_assert_int_equal (htable_size (t.table), 1);
+  lockt_unlock (&t, lock_db (), LM_X);
+  test_assert_int_equal (htable_size (t.table), 0);
+
+  lockt_destroy (&t);
+}
+
+/**
+ * TODO - lockt_lock_once records the lock on the txn (txn_newlock) before it
+ * waits in gr_lock. If gr_lock then fails (cond_create for the waiter), it
+ * drops the frame reference but leaves the lock in tx->locks.
+ *
+ * So the txn thinks it holds a lock it never got. lockt_unlock_tx then
+ * gr_unlocks the *holder's* X and unrefs the frame a second time, which frees
+ * the frame out from under the holder, and the holder's unlock hits
+ * ASSERT (found) in unlock_single_lock.
+ *
+ * Fix: remove the txn_lock again on the gr_lock failure path (or only
+ * record it after gr_lock succeeds).
+ */
+TEST_DISABLED (lockt_lock_fail_waiter_with_txn)
+{
+  struct lockt t;
+  test_err_t_check (lockt_init (&t, ctx->mem, ctx->faulty_os, &ctx->e), SUCCESS, &ctx->e);
+
+  struct txn holder;
+  struct txn waiter;
+  txn_init (&holder, 1, (struct txn_data){.state = TX_RUNNING}, ctx->mem);
+  txn_init (&waiter, 2, (struct txn_data){.state = TX_RUNNING}, ctx->mem);
+
+  test_err_t_check (lockt_lock (&t, lock_db (), LM_X, &holder, &ctx->e), SUCCESS, &ctx->e);
+
+  faulty_os_fail_after (ctx->faulty_os, 0);
+  err_t ret = lockt_lock (&t, lock_db (), LM_X, &waiter, &ctx->e);
+  faulty_os_reset (ctx->faulty_os);
+  test_assert (ret != SUCCESS);
+  error_reset (&ctx->e);
+
+  // The waiter never got the lock, so it must not think it holds it
+  test_fail_if (txn_haslock (&waiter, lock_db ()));
+
+  lockt_unlock_tx (&t, &waiter);
+  lockt_unlock_tx (&t, &holder);
+  test_assert_int_equal (htable_size (t.table), 0);
+  lockt_destroy (&t);
+}
+#endif

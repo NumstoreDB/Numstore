@@ -1099,4 +1099,103 @@ TEST (dpgt_concurrent)
     dpgt_close (t);
   }
 }
+
+TEST (dpgt_open_fail_nomem)
+{
+  struct dpg_table *t;
+  int               fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      t = dpgt_open (ctx->faulty_mem, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (t == NULL) {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+      }
+
+      fail_after++;
+    }
+  }
+  while (t == NULL);
+
+  test_assert_int_equal (dpgt_get_size (t), 0);
+  dpgt_close (t);
+}
+
+TEST (dpgt_add_fail_nomem)
+{
+  struct dpg_table *t = dpgt_open (ctx->faulty_mem, &ctx->e);
+  test_assert (t != NULL);
+
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = dpgt_add (t, 7, 100, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      // A failed add leaves the table as it was
+      if (ret != SUCCESS) {
+        test_assert_int_equal (dpgt_get_size (t), 0);
+        test_fail_if (dpgt_exists (t, 7));
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  lsn rec_lsn;
+  test_assert (dpgt_get (&rec_lsn, t, 7));
+  test_assert_type_equal (rec_lsn, (lsn)100, lsn, PRIu64);
+
+  dpgt_close (t);
+}
+
+TEST (dpgt_merge_into_fail_nomem)
+{
+  struct dpg_table *src = dpgt_open (ctx->mem, &ctx->e);
+  test_assert (src != NULL);
+  for (pgno pg = 1; pg <= 3; ++pg) {
+    test_err_t_check (dpgt_add (src, pg, pg * 10, &ctx->e), SUCCESS, &ctx->e);
+  }
+
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      struct dpg_table *dest = dpgt_open (ctx->faulty_mem, &ctx->e);
+      test_assert (dest != NULL);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = dpgt_merge_into (dest, src, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret == SUCCESS) {
+        test_assert (dpgt_equal (dest, src));
+      } else {
+        test_assert (dpgt_get_size (dest) < 3);
+      }
+
+      dpgt_close (dest);
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  dpgt_close (src);
+}
 #endif

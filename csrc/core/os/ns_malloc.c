@@ -34,7 +34,7 @@ default_malloc (void *self, const u32 nelem, const u32 size, error *e)
 
   u32 bytes;
   if (!safe_mul_u32 (&bytes, nelem, size)) {
-    error_causef (e, ERR_NOMEM, "malloc %u*%u: overflow", nelem, size);
+    error_causef (e, ERR_NOMEM, "malloc %" PRIu32 "*%" PRIu32 ": overflow", nelem, size);
     return NULL;
   }
 
@@ -42,9 +42,16 @@ default_malloc (void *self, const u32 nelem, const u32 size, error *e)
   void *ret = malloc ((size_t)bytes);
   if (ret == NULL) {
     if (errno == ENOMEM) {
-      error_causef (e, ERR_NOMEM, "malloc %u*%u: %s", nelem, size, strerror (errno));
+      error_causef (
+          e,
+          ERR_NOMEM,
+          "malloc %" PRIu32 "*%" PRIu32 ": %s",
+          nelem,
+          size,
+          strerror (errno)
+      );
     } else {
-      error_causef (e, ERR_NOMEM, "malloc %u*%u: out of memory", nelem, size);
+      error_causef (e, ERR_NOMEM, "malloc %" PRIu32 "*%" PRIu32 ": out of memory", nelem, size);
     }
   }
   return ret;
@@ -59,7 +66,7 @@ default_calloc (void *self, const u32 nelem, const u32 size, error *e)
 
   u32 bytes = 0;
   if (!safe_mul_u32 (&bytes, nelem, size)) {
-    error_causef (e, ERR_NOMEM, "calloc %u*%u: overflow", nelem, size);
+    error_causef (e, ERR_NOMEM, "calloc %" PRIu32 "*%" PRIu32 ": overflow", nelem, size);
     return NULL;
   }
 
@@ -69,9 +76,16 @@ default_calloc (void *self, const u32 nelem, const u32 size, error *e)
   void *ret = calloc ((size_t)nelem, (size_t)size);
   if (ret == NULL) {
     if (errno == ENOMEM) {
-      error_causef (e, ERR_NOMEM, "calloc %u*%u: %s", nelem, size, strerror (errno));
+      error_causef (
+          e,
+          ERR_NOMEM,
+          "calloc %" PRIu32 "*%" PRIu32 ": %s",
+          nelem,
+          size,
+          strerror (errno)
+      );
     } else {
-      error_causef (e, ERR_NOMEM, "calloc %u*%u: out of memory", nelem, size);
+      error_causef (e, ERR_NOMEM, "calloc %" PRIu32 "*%" PRIu32 ": out of memory", nelem, size);
     }
   }
   return ret;
@@ -86,14 +100,14 @@ default_realloc (void *self, void *ptr, const u32 nelem, const u32 size, error *
 
   u32 bytes = 0;
   if (!safe_mul_u32 (&bytes, nelem, size)) {
-    error_causef (e, ERR_NOMEM, "realloc %u*%u: overflow", nelem, size);
+    error_causef (e, ERR_NOMEM, "realloc %" PRIu32 "*%" PRIu32 ": overflow", nelem, size);
     return NULL;
   }
 
   errno     = 0;
   void *ret = realloc (ptr, (size_t)bytes);
   if (ret == NULL) {
-    error_causef (e, ERR_NOMEM, "realloc %u bytes: %s", bytes, strerror (errno));
+    error_causef (e, ERR_NOMEM, "realloc %" PRIu32 " bytes: %s", bytes, strerror (errno));
     return NULL;
   }
   return ret;

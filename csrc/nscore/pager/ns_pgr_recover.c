@@ -24,10 +24,10 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
 /*
  * Entry point for ARIES crash recovery.
  *
- * Sets PGR_ISRESTARTING for the duration of recovery so that pgr_flush()
- * skips the WAL-before-page flush (the WAL is already ahead of any page
- * being replayed).  Runs the three phases in order and frees the aries_ctx
- * on completion, whether or not an error occurred.
+ * Marks PGR_ISRESTARTING for the duration of recovery. This no longer gates
+ * the WAL-before-page flush in pgr_flush() - undo appends CLRs, so the rule
+ * holds during recovery too.  Runs the three phases in order and frees the
+ * aries_ctx on completion, whether or not an error occurred.
  */
 static err_t
 pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)

@@ -42,7 +42,7 @@ print_usage (FILE *out, const char *prog)
 }
 
 static err_t
-wal_print_func (struct wal_rec_hdr_read *log, lsn l, void *ctx, error *e)
+wal_print_func (struct wal_rec_hdr_read *log, lsn l, MAYBE_UNUSED void *ctx, MAYBE_UNUSED error *e)
 {
   i_print_wal_rec_hdr_read_light (log, l);
   return SUCCESS;

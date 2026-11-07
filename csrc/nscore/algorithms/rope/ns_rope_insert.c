@@ -82,7 +82,7 @@ ns_insert (struct ns_insert_params *params, error *e)
   };
 
   if (params->root == PGNO_NULL) {
-    if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e)) {
+    if (pgr_new (&cur, params->p, params->tx, PG_DATA_LIST, e) < 0) {
       goto failed;
     }
 
@@ -109,7 +109,7 @@ ns_insert (struct ns_insert_params *params, error *e)
     if (avail == 0) {
       ASSERT (lidx == DL_DATA_SIZE);
 
-      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) {
+      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e) < 0) {
         goto failed;
       }
 
@@ -160,7 +160,7 @@ ns_insert (struct ns_insert_params *params, error *e)
     if (lidx == DL_DATA_SIZE && tbw < tbl) {
       ASSERT (lidx == DL_DATA_SIZE);
 
-      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e)) {
+      if (pgr_new (&next, params->p, params->tx, PG_DATA_LIST, e) < 0) {
         goto failed;
       }
 
@@ -222,10 +222,10 @@ ns_insert (struct ns_insert_params *params, error *e)
 
   err_t ret = ns_rebalance (&rebalance, e);
 
-  if (rebalance.output) {
+  if (rebalance.output != NULL) {
     nupd_free (rebalance.output);
   }
-  if (rebalance.input) {
+  if (rebalance.input != NULL) {
     nupd_free (rebalance.input);
   }
 

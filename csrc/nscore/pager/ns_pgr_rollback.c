@@ -72,7 +72,7 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
         undo_nxt_lsn = log_rec->update.prev;
 
         if (undo_nxt_lsn == 0) {
-          lsn l = wal_append_end_log (p->ww, tx->tid, prev_lsn);
+          wal_append_end_log (p->ww, tx->tid, prev_lsn);
           // We'll break next
         }
         break;
@@ -101,7 +101,6 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
     tx->data.undo_next_lsn = undo_nxt_lsn;
   }
 
-theend:
   lockt_unlock_tx (p->lt, tx);
 
   if (undo_nxt_lsn > 0) {

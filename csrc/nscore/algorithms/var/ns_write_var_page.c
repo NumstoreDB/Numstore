@@ -37,7 +37,7 @@ ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
   page_h next = page_h_create ();
 
   // Create a tail page
-  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e)) {
+  if (pgr_new (&next, params->p, params->tx, PG_VAR_TAIL, e) < 0) {
     goto failed;
   }
 

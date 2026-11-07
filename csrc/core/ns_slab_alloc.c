@@ -90,7 +90,7 @@ slab_alloc_extend (struct slab_alloc *alloc, error *e)
   // Link at head
   slab->prev       = NULL;
   slab->next       = alloc->head;
-  if (alloc->head) {
+  if (alloc->head != NULL) {
     ASSERT (alloc->head->prev == NULL);
     alloc->head->prev = slab;
   }
@@ -157,8 +157,8 @@ static bool
 slab_contains (const struct slab_alloc *alloc, struct slab *s, const void *ptr)
 {
   void       *start = s->data;
-  const void *end   = (u8 *)start + (alloc->cap_per_slab * alloc->size);
-  return (ptr >= start && ptr < end) != 0;
+  const void *end   = (u8 *)start + ((size_t)alloc->cap_per_slab * alloc->size);
+  return ptr >= start && ptr < end;
 }
 
 static struct slab *
@@ -216,10 +216,10 @@ slab_alloc_free (struct slab_alloc *alloc, void *ptr)
       alloc->head = s->next;
     }
 
-    if (s->prev) {
+    if (s->prev != NULL) {
       s->prev->next = s->next;
     }
-    if (s->next) {
+    if (s->next != NULL) {
       s->next->prev = s->prev;
     }
 
@@ -545,12 +545,14 @@ TEST (slab_alloc_free_head_slab)
 // Test: free middle slab - verifies doubly-linked list surgery
 TEST (slab_alloc_free_middle_slab)
 {
+  // Setup - three full slabs of two items: head -> slab3 -> slab2 -> slab1
   struct slab_alloc alloc;
 
   slab_alloc_init (&alloc, ctx->mem, sizeof (struct test_item), 2);
 
-  // Create 3 slabs: head -> slab3 -> slab2 -> slab1
-  struct test_item *s1[2], *s2[2], *s3[2];
+  struct test_item *s1[2];
+  struct test_item *s2[2];
+  struct test_item *s3[2];
   s1[0] = slab_alloc_alloc (&alloc, &ctx->e);
   s1[1] = slab_alloc_alloc (&alloc, &ctx->e);
   s2[0] = slab_alloc_alloc (&alloc, &ctx->e);
@@ -564,7 +566,7 @@ TEST (slab_alloc_free_middle_slab)
     test_item_init (s3[i], 30 + i);
   }
 
-  // Free middle slab (slab2)
+  // Run - emptying slab2 unlinks it from between its neighbors
   slab_alloc_free (&alloc, s2[0]);
   slab_alloc_free (&alloc, s2[1]);
 
@@ -578,6 +580,7 @@ TEST (slab_alloc_free_middle_slab)
   struct test_item *x = slab_alloc_alloc (&alloc, &ctx->e);
   test_assert (x != NULL);
 
+  // Teardown
   slab_alloc_free (&alloc, s1[0]);
   slab_alloc_free (&alloc, s1[1]);
   slab_alloc_free (&alloc, s3[0]);
@@ -598,11 +601,11 @@ TEST (slab_alloc_minimum_size)
     ptrs[i] = slab_alloc_alloc (&alloc, &ctx->e);
     test_assert (ptrs[i] != NULL);
     // Write a known pattern to detect corruption
-    *(uintptr_t *)ptrs[i] = (uintptr_t)(0xDEAD0000 + i);
+    *(uintptr_t *)ptrs[i] = (uintptr_t)0xDEAD0000 + (uintptr_t)i;
   }
 
   for (int i = 0; i < 20; i++) {
-    test_assert_equal (*(uintptr_t *)ptrs[i], (uintptr_t)(0xDEAD0000 + i));
+    test_assert_equal (*(uintptr_t *)ptrs[i], (uintptr_t)0xDEAD0000 + (uintptr_t)i);
   }
 
   for (int i = 0; i < 20; i++) {
@@ -679,6 +682,45 @@ TEST (slab_alloc_stress_random)
       slab_alloc_free (&alloc, pool[i]);
     }
   }
+  slab_alloc_destroy (&alloc);
+}
+
+TEST (slab_alloc_alloc_fail_nomem)
+{
+  struct slab_alloc alloc;
+  slab_alloc_init (&alloc, ctx->faulty_mem, sizeof (u64), 2);
+
+  // Fill the first slab so the next alloc has to extend
+  u64 *a = slab_alloc_alloc (&alloc, &ctx->e);
+  u64 *b = slab_alloc_alloc (&alloc, &ctx->e);
+  test_assert (a != NULL && b != NULL);
+
+  u64 *c;
+  int  fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      c = slab_alloc_alloc (&alloc, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (c == NULL) {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+      }
+
+      fail_after++;
+    }
+  }
+  while (c == NULL);
+
+  // The allocator is still usable after the failures
+  *c = 42;
+  slab_alloc_free (&alloc, a);
+  slab_alloc_free (&alloc, b);
+  slab_alloc_free (&alloc, c);
   slab_alloc_destroy (&alloc);
 }
 #endif

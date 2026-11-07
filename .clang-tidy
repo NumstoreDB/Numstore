@@ -1,0 +1,85 @@
+---
+# Tuned for a C codebase: snake_case, UPPER_CASE macros/enum constants,
+# GNU-style formatting. C++-only groups (modernize, cppcoreguidelines, etc.)
+# are left out on purpose.
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  concurrency-*,
+  misc-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  cert-err34-c,
+  cert-env33-c,
+  cert-flp30-c,
+  cert-msc30-c,
+  cert-msc32-c,
+  -bugprone-easily-swappable-parameters,
+  -clang-analyzer-optin.performance.Padding,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -misc-include-cleaner,
+  -misc-no-recursion,
+  -readability-function-size,
+  -readability-identifier-length,
+  -readability-magic-numbers
+
+# Empty while you clean up existing findings. For CI, switch to
+# 'bugprone-*,clang-analyzer-*' once the codebase is clean.
+WarningsAsErrors: ''
+
+# Report diagnostics from your own headers, not third-party ones.
+# Adjust the directory names to match your layout.
+HeaderFilterRegex: '.*/(core|nscore|include)/.*'
+
+# Needs a .clang-format in the repo, otherwise -fix reformats with LLVM style.
+FormatStyle: file
+
+CheckOptions:
+  # ---- Naming ----
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+  - key: readability-identifier-naming.UnionCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumCase
+    value: lower_case
+  - key: readability-identifier-naming.TypedefCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.VariableIgnoredRegexp
+    value: '^_[a-z][a-z0-9_]*$'
+  - key: readability-identifier-naming.ParameterIgnoredRegexp
+    value: '^_[a-z][a-z0-9_]*$'
+  - key: readability-identifier-naming.MemberIgnoredRegexp
+    value: '^_[a-z][a-z0-9_]*$'
+  - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
+    value: '^test_.*$'
+  - key: readability-identifier-naming.IgnoreMainLikeFunctions
+    value: 'true'
+
+  # ---- Readability ----
+  # Force explicit comparisons: `ptr != NULL`, `ret != 0`, never `if (ptr)`
+  # or `if (!ptr)` or `if (int_returning_call ())`.
+  - key: readability-implicit-bool-conversion.AllowPointerConditions
+    value: 'false'
+  - key: readability-implicit-bool-conversion.AllowIntegerConditions
+    value: 'false'
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '25'
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: 'true'
+  - key: readability-inconsistent-declaration-parameter-name.Strict
+    value: 'false'
+...

@@ -54,6 +54,24 @@
 
 typedef int err_t;
 
+// The most negative error code - the bottom of the valid err_t range
+#ifndef NDEBUG
+#  define ERR_MIN ERR_CRASHED
+#else
+#  define ERR_MIN ERR_TOO_MANY_THREADS
+#endif
+
+/// Cast [i] to an err_t, asserting it is SUCCESS or a known error code.
+/// Use this where a wider integer (an i64 result, an int from elsewhere) is
+/// turned into an err_t, so a stray positive value or a garbage code can't
+/// pass for an error.
+HEADER_FUNC err_t
+err_t_cast (const i64 i)
+{
+  ASSERT (i <= SUCCESS && i >= ERR_MIN);
+  return (err_t)i;
+}
+
 typedef struct
 {
   err_t cause_code;     // Machine-readable error code. @c SUCCESS when no error is

@@ -172,17 +172,19 @@ err_free_dest:
 static inline err_t
 wal_destroy (struct wal *w, error *e)
 {
-  if (w->ostream) {
-    wal_flush_all (w);
+  if (w->ostream != NULL) {
+    // No wal_flush_all here. walos_close flushes on its way out and reports
+    // what it could not write - a flush of its own would crash instead, and a
+    // close has somewhere to put the error.
     walos_close (w->ostream, e);
     w->ostream = NULL;
   }
-  if (w->istream) {
+  if (w->istream != NULL) {
     walis_close (w->istream, e);
     w->istream = NULL;
   }
 
-  if (w->fname.data) {
+  if (w->fname.data != NULL) {
     w->mem.table->free (w->mem.self, (void *)w->fname.data);
     w->fname.data = NULL;
   }
@@ -226,12 +228,15 @@ wal_delete_and_reopen (struct wal *w, error *e)
   // Set to NULL so we don't free it
   w->fname.data       = NULL;
 
-  if (wal_destroy (w, e)) {
+  if (wal_destroy (w, e) < 0) {
+    // Hand the name back so wal_close frees it
+    w->fname = fname;
     latch_unlock (&w->l);
     return error_trace (e);
   }
 
-  if (w->os.table->remove_quiet (w->os.self, fname.data, e)) {
+  if (w->os.table->remove_quiet (w->os.self, fname.data, e) < 0) {
+    w->fname = fname;
     latch_unlock (&w->l);
     return error_trace (e);
   }
@@ -248,13 +253,13 @@ wal_crash (struct wal *w, error *e)
 
   struct i_mem mem = w->mem;
 
-  if (w->ostream) {
+  if (w->ostream != NULL) {
     walos_crash (w->ostream, e);
   }
-  if (w->istream) {
+  if (w->istream != NULL) {
     walis_crash (w->istream, e);
   }
-  if (w->fname.data) {
+  if (w->fname.data != NULL) {
     mem.table->free (mem.self, (void *)w->fname.data);
   }
   mem.table->free (mem.self, w);
@@ -266,12 +271,11 @@ wal_crash (struct wal *w, error *e)
 void
 wal_ensure_flush_next (struct wal *w)
 {
-  u8  buffer[WAL_BUFFER_CAP];
-  u32 len = cbuffer_len (&w->ostream->buffer);
+  u8  buffer[WAL_BUFFER_CAP] = {0};
+  u32 len                    = cbuffer_len (&w->ostream->buffer);
   ASSERT (len <= WAL_BUFFER_CAP);
   u32 towrite = WAL_BUFFER_CAP - len;
   if (towrite > 0) {
-    error e = error_create ();
     walos_write_all (w->ostream, NULL, buffer, towrite);
   }
 }
@@ -584,7 +588,7 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
 
     // Error
     if (iseof < 0) {
-      return iseof;
+      return error_trace (e);
     }
 
     // End of log file - transition to random access mode
@@ -1415,6 +1419,16 @@ wal_test_file_size (struct test_ctx *ctx, const char *fname)
   return size;
 }
 
+/// Reads [n] bytes of the log at [ofst] into [dest]
+static void
+wal_test_read_at (struct test_ctx *ctx, const char *fname, void *dest, u64 n, u64 ofst)
+{
+  i_file f;
+  test_assert_int_equal (ctx->os.table->open_file_r (ctx->os.self, &f, fname, &ctx->e), SUCCESS);
+  test_assert_int_equal ((i32)f.table->pread_all (f.self, dest, n, ofst, &ctx->e), (i32)n);
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+}
+
 static void
 wal_test_truncate (struct test_ctx *ctx, const char *fname, u64 len)
 {
@@ -1756,9 +1770,14 @@ TEST (wal_write_start_lsn)
         struct wal *w = wal_open (WAL_T_FILE, ctx->mem, ctx->faulty_os, &ctx->e);
         test_assert (w != NULL);
 
-        // Do test - writing the header has somewhere to report, so it reports
+        // Do test. Writing the header reports what it can, but it also
+        // flushes - and a flush that cannot reach the file takes the process
+        // down rather than claim the header is durable.
         faulty_os_fail_after (ctx->faulty_os, fail_after);
-        ret = wal_write_start_lsn (w, 4096, &ctx->e);
+        capture_intentional_crash (&ret, &ctx->e)
+        {
+          ret = wal_write_start_lsn (w, 4096, &ctx->e);
+        }
 
         // Clean up
         faulty_os_reset (ctx->faulty_os);
@@ -2266,7 +2285,12 @@ TEST (wal_forward_scan)
     test_assert (w != NULL);
 
     struct wal_test_scan seen = {0};
-    test_assert (wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e) != SUCCESS);
+    const err_t          ret  = wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e);
+
+    // The scan hands back the error it is carrying, traced through this frame -
+    // not a raw int off the read path
+    test_assert (ret != SUCCESS);
+    test_assert_int_equal (ret, ctx->e.cause_code);
     test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
 
     // The good record ahead of it still came back
@@ -2477,6 +2501,36 @@ TEST (wal_append_log)
       test_assert (wal_read_entry (w, &got, at[i], &ctx->e) != NULL);
       test_assert (wal_rec_hdr_read_equal (&got, &want[i]));
     }
+
+    test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+    ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  }
+
+  TEST_CASE ("the padding that forces a flush is zeros, not stack garbage")
+  {
+    struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+    test_assert (w != NULL);
+
+    // The start lsn is all that is in the log so far, so the pad starts here
+    const lsn pad_at = wal_size (w);
+
+    wal_ensure_flush_next (w);
+    test_assert_int_equal ((i32)cbuffer_avail (&w->ostream->buffer), 0);
+    wal_flush_all (w);
+
+    // wal_ensure_flush_next fills the buffer to force the next append to
+    // flush. Whatever it pads with ends up in the log, so it has to be zeros -
+    // an uninitialized buffer would write stack contents into the wal.
+    const u32 padlen = (u32)(wal_size (w) - pad_at);
+    test_assert (padlen > 0);
+
+    u8 *got = ctx->mem.table->malloc (ctx->mem.self, 1, padlen, &ctx->e);
+    test_assert (got != NULL);
+    wal_test_read_at (ctx, WAL_T_FILE, got, padlen, pad_at);
+    for (u32 i = 0; i < padlen; ++i) {
+      test_assert_int_equal (got[i], 0);
+    }
+    ctx->mem.table->free (ctx->mem.self, got);
 
     test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
     ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);

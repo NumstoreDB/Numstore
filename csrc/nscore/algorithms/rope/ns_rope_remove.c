@@ -304,7 +304,7 @@ ns_remove (struct ns_remove_params *params, error *e)
           continue;
         }
 
-        if (params->dest) {
+        if (params->dest != NULL) {
           i32 written = stream_bwrite (
               (u8 *)dl_get_data (sro) + s.read_idx,
               1,
@@ -511,10 +511,10 @@ drain:
 
   err_t ret = ns_rebalance (&rebalance, e);
 
-  if (rebalance.output) {
+  if (rebalance.output != NULL) {
     nupd_free (rebalance.output);
   }
-  if (rebalance.input) {
+  if (rebalance.input != NULL) {
     nupd_free (rebalance.input);
   }
 
@@ -535,7 +535,7 @@ failed:
   if (rb_nupd2) {
     nupd_free (rb_nupd2);
   }
-  if (s.output) {
+  if (s.output != NULL) {
     nupd_free (s.output);
   }
 

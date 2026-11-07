@@ -88,7 +88,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   b_size nbytes   = vp_get_nbytes (page_h_ro (params->vp));
   pgno   var_root = page_h_pgno (params->vp);
 
-  if (params->dest) {
+  if (params->dest != NULL) {
     params->dest->rpt_root = rpt_root;
     params->dest->nbytes   = nbytes;
     params->dest->var_root = var_root;

@@ -805,12 +805,12 @@ union_t_random (
   un->len  = (u16)randu32r (1, 5);
 
   un->keys = (struct string *)arena_malloc (alloc, un->len, sizeof (struct string), e);
-  if (!un->keys) {
+  if (un->keys == NULL) {
     return error_trace (e);
   }
 
   un->types = (struct type **)arena_malloc (alloc, un->len, sizeof (struct type *), e);
-  if (!un->types) {
+  if (un->types == NULL) {
     return error_trace (e);
   }
 

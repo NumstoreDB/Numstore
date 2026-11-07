@@ -883,12 +883,12 @@ struct_t_random (
   st->len  = (u16)randu32r (1, 5);
 
   st->keys = arena_malloc (alloc, st->len, sizeof (struct string), e);
-  if (!st->keys) {
+  if (st->keys == NULL) {
     return error_trace (e);
   }
 
   st->types = arena_malloc (alloc, st->len, sizeof (struct type *), e);
-  if (!st->types) {
+  if (st->types == NULL) {
     return error_trace (e);
   }
 

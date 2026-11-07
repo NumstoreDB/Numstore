@@ -103,7 +103,6 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
 
 err_close:
   os.table->close_file (os.self, ret->fd.self, e);
-err_free:
   mem.table->free (mem.self, ret);
   return NULL;
 }
@@ -192,7 +191,7 @@ walos_flush_impl (struct wal_ostream *w, error *e)
   }
 
   // Just write the data to the file (don't update the buffer at all)
-  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, &w->e)) {
+  if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, e)) {
     return error_trace (e);
   }
 
@@ -200,7 +199,7 @@ walos_flush_impl (struct wal_ostream *w, error *e)
   cbuffer_write_to_file_2 (&w->buffer, towrite);
 
   // Run an fsync
-  if (w->fd.table->fsync (w->fd.self, &w->e)) {
+  if (w->fd.table->fsync (w->fd.self, e)) {
     return error_trace (e);
   }
 
@@ -264,14 +263,17 @@ TEST (walos_flush_impl)
         u8 data[10] = {0};
         walos_write_all (wos, NULL, data, 10);
 
-        // Do test
+        // Do test - flush_impl reports through the error it was handed, so a
+        // failure here is visible to the caller that passed &ctx->e
         faulty_os_fail_after (ctx->faulty_os, fail_after);
-        walos_flush_impl (wos, &ctx->e);
+        ret = walos_flush_impl (wos, &ctx->e);
+        if (ret != SUCCESS) {
+          test_assert (ctx->e.cause_code < 0);
+        }
 
         // Clean up
         faulty_os_reset (ctx->faulty_os);
         error_reset (&ctx->e);
-        ret = SUCCESS;
         walos_close (wos, &ctx->e);
         ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
 
@@ -280,6 +282,11 @@ TEST (walos_flush_impl)
       }
     }
     while (ret != SUCCESS);
+
+    // The sweep has to reach past the first injection point. It used to set
+    // ret = SUCCESS unconditionally, which ended the loop after fail_after 0
+    // and left every os call but the first untested.
+    test_assert (fail_after > 1);
   }
 }
 #endif
@@ -290,7 +297,11 @@ walos_close (struct wal_ostream *w, error *e)
   latch_lock (&w->l);
 
   DBG_ASSERT (wal_ostream, w);
-  walos_flush_impl (w, &w->e);
+
+  // Unlike walos_flush_all, close can report - the caller is handed an error
+  // rather than a dead process. Close and free regardless, the stream is gone
+  // either way.
+  walos_flush_impl (w, e);
   w->os.table->close_file (w->os.self, w->fd.self, e);
   w->mem.table->free (w->mem.self, w);
 
@@ -466,7 +477,16 @@ walos_flush_all (struct wal_ostream *w)
 {
   DBG_ASSERT (wal_ostream, w);
   latch_lock (&w->l);
-  walos_flush_impl (w, &w->e);
+
+  // A log that cannot be written is the end of the line - there is nowhere to
+  // report it, the caller is about to be told its logs are durable. Unlock
+  // first: the crash is a longjmp in a debug build, so nothing would hand the
+  // latch back. Same shape as walos_write_all.
+  if (walos_flush_impl (w, &w->e) < 0) {
+    latch_unlock (&w->l);
+    intentionally_crash ();
+  }
+
   latch_unlock (&w->l);
 }
 
@@ -500,6 +520,7 @@ TEST (walos_flush_all)
   {
     int   fail_after = 0;
     err_t ret;
+    bool  crashed = false;
 
     do {
       TEST_CASE ("Failure flaky os. Fail after: %d", fail_after)
@@ -525,6 +546,7 @@ TEST (walos_flush_all)
         faulty_os_reset (ctx->faulty_os);
         error_reset (&ctx->e);
         if (ret != SUCCESS) {
+          crashed = true;
           // During a crash - lock could still be held
           latch_unlock (&wos->l);
         }
@@ -536,6 +558,11 @@ TEST (walos_flush_all)
       }
     }
     while (ret != SUCCESS);
+
+    // A flush has nowhere to report a failure - the caller is about to be told
+    // its logs are durable - so it has to take the process down. If nothing
+    // ever crashed here, the failure was swallowed.
+    test_assert (crashed);
   }
 }
 #endif

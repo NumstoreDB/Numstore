@@ -119,7 +119,7 @@ pgr_analyze_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, err
 }
 
 static void
-flush_txns (struct pager *p, struct aries_ctx *ctx, error *e)
+flush_txns (struct pager *p, struct aries_ctx *ctx)
 {
   // Append end logs and remove rolled back and committed txns
   for (u32 i = 0; i < ctx->txn_ptrs.nelem; ++i) {
@@ -132,7 +132,7 @@ flush_txns (struct pager *p, struct aries_ctx *ctx, error *e)
 
     if (nothing_to_do || committed) {
       // Append an end log
-      lsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
+      wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
       txnt_remove_txn_expect (ctx->txt, tx);
       txn_update_state (tx, TX_DONE);
     }
@@ -151,10 +151,10 @@ pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
   }
 
   // Flush all txns that need an end log
-  u32 before = txnt_get_size (ctx->txt);
-  i_log_info ("Analysis phase, txns in table: %d\n", before);
-  flush_txns (p, ctx, e);
-  i_log_info ("Analysis phase: %d txns were removed\n", before - txnt_get_size (ctx->txt));
+  MAYBE_UNUSED const u32 before = txnt_get_size (ctx->txt);
+  i_log_info ("Analysis phase, txns in table: %" PRIu32 "\n", before);
+  flush_txns (p, ctx);
+  i_log_info ("Analysis phase: %" PRIu32 " txns were removed\n", before - txnt_get_size (ctx->txt));
 
   // Set redo_lsn
   if (dpgt_get_size (ctx->dpt) == 0) {

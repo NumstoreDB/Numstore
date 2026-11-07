@@ -393,7 +393,7 @@ pgr_detect_wal_and_recover (struct pager *p, error *e)
 
   slsn end_lsn = wal_get_end_lsn (p->ww, e);
   if (end_lsn < 0) {
-    return end_lsn;
+    return error_trace (e);
   }
 
   // Both lsn's are valid

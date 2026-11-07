@@ -92,14 +92,20 @@ lmalloc (struct lalloc *a, const u32 req, const u32 size, error *e)
 
   u32 total;
   if (!safe_mul_u32 (&total, req, size)) {
-    error_causef (e, ERR_NOMEM, "alloc %d*%d: overflow", req, size);
+    error_causef (e, ERR_NOMEM, "alloc %" PRIu32 "*%" PRIu32 ": overflow", req, size);
     latch_unlock (&a->latch);
     return NULL;
   }
 
   const u32 avail = a->limit - a->used;
   if (avail < total) {
-    error_causef (e, ERR_NOMEM, "linear alloc %d bytes: only %d remaining", total, avail);
+    error_causef (
+        e,
+        ERR_NOMEM,
+        "linear alloc %" PRIu32 " bytes: only %" PRIu32 " remaining",
+        total,
+        avail
+    );
     latch_unlock (&a->latch);
     return NULL;
   }
@@ -252,24 +258,23 @@ compute_new_chunk_size (const struct arena_alloc *ca, const u32 alloc_size)
 {
   DBG_ASSERT (arena_alloc, ca);
 
-  // Target chunk size based on multiplier
   u32 new_chunk_size = (u32)(alloc_size * ca->settings.target_chunk_mult);
 
-  // Clamp to minimum
   if (new_chunk_size < ca->settings.min_chunk_size) {
     new_chunk_size = ca->settings.min_chunk_size;
   }
 
-  // Clamp to maximum
   if (ca->settings.max_chunk_size > 0 && new_chunk_size > ca->settings.max_chunk_size) {
     new_chunk_size = ca->settings.max_chunk_size;
   }
 
-  // Ensure it fits the current allocation
+  // A request larger than max_chunk_size still gets a chunk of its own
   if (new_chunk_size < alloc_size) {
     new_chunk_size = alloc_size;
   }
 
+  ASSERT (new_chunk_size >= alloc_size);
+  ASSERT (new_chunk_size >= ca->settings.min_chunk_size);
   return new_chunk_size;
 }
 
@@ -315,42 +320,40 @@ arena_alloc_add_new_chunk (struct arena_alloc *ca, const u32 size, error *e)
 {
   DBG_ASSERT (arena_alloc, ca);
 
-  // Check chunk count limit
   if (ca->settings.max_chunks > 0 && ca->num_chunks >= ca->settings.max_chunks) {
     return error_causef (
         e,
         ERR_NOMEM,
-        "chunk limit reached (%u/%u chunks)",
+        "chunk limit reached (%" PRIu32 "/%" PRIu32 " chunks)",
         ca->num_chunks,
         ca->settings.max_chunks
     );
   }
 
-  // Verify size constraints (internal assertions)
   ASSERT (size >= ca->settings.min_chunk_size);
   ASSERT (ca->settings.max_chunk_size == 0 || size <= ca->settings.max_chunk_size);
 
-  // Check total memory limit
+  // The invariant keeps total_allocated <= max_total_size, so the subtraction
+  // can't wrap where an addition could
   if ((ca->settings.max_total_size > 0)
-      && (ca->total_allocated + size > ca->settings.max_total_size)) {
+      && (size > ca->settings.max_total_size - ca->total_allocated)) {
     return error_causef (
         e,
         ERR_NOMEM,
-        "alloc %u bytes would exceed %u "
-        "byte limit (%u allocated)",
+        "alloc %" PRIu32 " bytes would exceed %" PRIu32
+        " "
+        "byte limit (%" PRIu32 " allocated)",
         size,
         ca->settings.max_total_size,
         ca->total_allocated
     );
   }
 
-  // Create chunk
   struct chunk *new_chunk = chunk_create (size, ca->settings.mem, e);
   if (new_chunk == NULL) {
     return error_trace (e);
   }
 
-  // Add to front of list
   new_chunk->next = ca->head;
   ca->head        = new_chunk;
   ca->num_chunks++;
@@ -366,21 +369,18 @@ arena_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
 
   DBG_ASSERT (arena_alloc, ca);
 
-  // Check for overflow
-  if (req > 0 && size > UINT32_MAX / req) {
-    error_causef (e, ERR_NOMEM, "alloc overflow: %u * %u", req, size);
+  u32 alloc_size;
+  if (!safe_mul_u32 (&alloc_size, req, size)) {
+    error_causef (e, ERR_NOMEM, "alloc overflow: %" PRIu32 " * %" PRIu32, req, size);
     latch_unlock (&ca->latch);
     return NULL;
   }
 
-  const u32 alloc_size = req * size;
-
-  // Check single allocation limit
   if (ca->settings.max_alloc_size > 0 && alloc_size > ca->settings.max_alloc_size) {
     error_causef (
         e,
         ERR_NOMEM,
-        "alloc %u bytes exceeds max %u",
+        "alloc %" PRIu32 " bytes exceeds max %" PRIu32,
         alloc_size,
         ca->settings.max_alloc_size
     );
@@ -398,16 +398,13 @@ arena_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
     }
   }
 
-  // Need a new chunk - calculate size
   const u32 new_chunk_size = compute_new_chunk_size (ca, alloc_size);
 
-  // Create new chunk
-  if (arena_alloc_add_new_chunk (ca, new_chunk_size, e) != SUCCESS) {
+  if (arena_alloc_add_new_chunk (ca, new_chunk_size, e) < 0) {
     latch_unlock (&ca->latch);
     return NULL;
   }
 
-  // Allocate from new chunk
   void *ptr = lmalloc (&ca->head->alloc, req, size, e);
   if (ptr != NULL) {
     ca->total_used += alloc_size;

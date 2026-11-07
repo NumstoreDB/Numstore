@@ -380,10 +380,10 @@ The committed `BB` is at offset 3 where the first child put it. The `CC` from
 the child that never committed is gone, and the array is 12 elements rather than
 14. There is no state in between: half a transaction is never visible.
 
-`ns_crash (db)` does this deliberately from inside a live process - it drops the
-handle without flushing, leaving any open transaction to be rolled back on the
-next open. It is how the test suite exercises recovery; use it for the same thing
-rather than as a fast path for closing.
+`ns_crash (db)` does this deliberately from inside a live process - it drops
+the handle without flushing, leaving any open transaction to be rolled back on
+the next open. It is how the test suite exercises recovery; use it for the same
+thing rather than as a fast path for closing.
 
 Two longer samples ship with the repository:
 [`samples/smfile_sample4_rollback_commit.c`](../samples/smfile_sample4_rollback_commit.c)
@@ -584,8 +584,8 @@ variable holds 2 elements
 ```
 
 `8 + 4 x 4 = 24` bytes, which is what both Numstore and the packed struct agree
-on. Arrays are stored in C order, so `pixels[r][c]` lines up element for element.
-The sizing rules for every type are in
+on. Arrays are stored in C order, so `pixels[r][c]` lines up element for
+element. The sizing rules for every type are in
 [the type system](index.md#the-numstore-type-system).
 
 Variable metadata

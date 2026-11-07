@@ -220,7 +220,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           switch (pms->mode) {
             case FP_CREATE: {
               // Create the next page
-              if (pgr_new (&npg, pms->p, pms->tx, PG_VAR_PAGE, e)) {
+              if (pgr_new (&npg, pms->p, pms->tx, PG_VAR_PAGE, e) < 0) {
                 goto failed;
               }
 

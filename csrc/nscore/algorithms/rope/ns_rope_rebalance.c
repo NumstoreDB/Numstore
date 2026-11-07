@@ -333,7 +333,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         // cur -> limit
         // cur -> new -> limit
         // new -> limit
-        if (pgr_new (&next, pms->p, pms->tx, PG_INNER_NODE, e)) {
+        if (pgr_new (&next, pms->p, pms->tx, PG_INNER_NODE, e) < 0) {
           goto failed;
         }
 
@@ -390,7 +390,7 @@ rb_execute_right (struct ns_rebalance_params *pms, error *e)
         // limit
         // limit -> next
         if (pms->limit.mode == PHM_NONE) {
-          if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e)) {
+          if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e) < 0) {
             goto failed;
           }
           in_link (page_h_w (&pms->cur), page_h_w (&pms->limit));
@@ -530,7 +530,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         // limit <- cur
         // limit <- new <- cur
         // limit <- new
-        if (pgr_new (&prev, pms->p, pms->tx, PG_INNER_NODE, e)) {
+        if (pgr_new (&prev, pms->p, pms->tx, PG_INNER_NODE, e) < 0) {
           goto failed;
         }
         in_link (page_h_w_or_null (&pms->limit), page_h_w (&prev));
@@ -586,7 +586,7 @@ rb_execute_left (struct ns_rebalance_params *pms, error *e)
         // limit
         // prev <- limit
         if (pms->limit.mode == PHM_NONE) {
-          if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e)) {
+          if (pgr_new (&pms->limit, pms->p, pms->tx, PG_INNER_NODE, e) < 0) {
             goto failed;
           }
           in_link (page_h_w (&pms->limit), page_h_w (&pms->cur));
@@ -1052,7 +1052,7 @@ ns_rebalance_move_up_stack (struct ns_rebalance_params *pms, error *e)
     if (pms->sp == 0) {
       // This is where tree's grow upwards - create a new layer
       // we are now 1 layer bigger
-      if (pgr_new (&pms->cur, pms->p, pms->tx, PG_INNER_NODE, e)) {
+      if (pgr_new (&pms->cur, pms->p, pms->tx, PG_INNER_NODE, e) < 0) {
         goto failed;
       }
 

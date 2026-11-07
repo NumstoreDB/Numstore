@@ -1921,4 +1921,56 @@ TEST (txnt_concurrent)
   }
 }
 
+TEST (txnt_open_fail_nomem)
+{
+  struct txn_table *t;
+  int               fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      t = txnt_open (ctx->faulty_mem, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (t == NULL) {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+      }
+
+      fail_after++;
+    }
+  }
+  while (t == NULL);
+
+  test_assert_int_equal (txnt_get_size (t), 0);
+  txnt_close (t);
+}
+
+TEST (txn_newlock_fail_nomem)
+{
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      struct txn tx;
+      txn_init (&tx, 1, (struct txn_data){.state = TX_RUNNING}, ctx->faulty_mem);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = txn_newlock (&tx, lock_db (), LM_X, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      // A failed newlock records nothing
+      test_assert_int_equal (txn_haslock (&tx, lock_db ()), ret == SUCCESS);
+
+      txn_close (&tx);
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+}
 #endif

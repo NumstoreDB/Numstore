@@ -243,3 +243,36 @@ string_copy (struct string *dest, struct string src, struct i_mem mem, error *e)
   dest->len  = src.len;
   return SUCCESS;
 }
+
+#ifndef NDEBUG
+
+TEST (string_copy_fail_nomem)
+{
+  const struct string src  = strfcstr ("hello");
+  struct string       dest = {0};
+  err_t               ret;
+  int                 fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = string_copy (&dest, src, ctx->faulty_mem, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret != SUCCESS) {
+        test_assert_int_equal (ret, ERR_NOMEM);
+        test_assert_ptr_equal (dest.data, NULL);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert (string_equal (dest, src));
+  ctx->faulty_mem.table->free (ctx->faulty_mem.self, (void *)dest.data);
+}
+#endif

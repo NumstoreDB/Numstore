@@ -67,7 +67,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         tx->data.undo_next_lsn = log_rec->update.prev;
 
         if (log_rec->update.prev == 0) {
-          lsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
+          wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
           txnt_remove_txn_expect (ctx->txt, tx);
           txn_update_state (tx, TX_DONE);
         }
@@ -85,7 +85,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
         struct txn *tx;
         txnt_get_expect (&tx, ctx->txt, log_rec->begin.tid);
 
-        lsn l = wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
+        wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
         txnt_remove_txn_expect (ctx->txt, tx);
         txn_update_state (tx, TX_DONE);
         break;

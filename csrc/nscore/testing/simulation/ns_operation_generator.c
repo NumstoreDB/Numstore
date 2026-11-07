@@ -491,7 +491,8 @@ opg_spin_enabled (u8 enabled[NSS_AT_LEN])
 static struct operation *
 op_alloc (struct rand_op_params params, enum ns_action_type type, error *e)
 {
-  struct operation *ret = params.mem.table->malloc (params.mem.self, 1, sizeof *ret, e);
+  // calloc: builders assert fields they fill (data, read buffers) start empty
+  struct operation *ret = params.mem.table->calloc (params.mem.self, 1, sizeof *ret, e);
   if (ret == NULL) {
     return NULL;
   }

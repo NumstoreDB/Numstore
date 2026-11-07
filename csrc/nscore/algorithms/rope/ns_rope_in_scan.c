@@ -15,10 +15,12 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_stdtypes.h"
+#include "core/ns_testing.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/page/ns_page_h.h"
+#include "nscore/page/ns_page_inner_node.h"
 #include "nscore/pager/ns_pager.h"
 
 #include <stdbool.h>
@@ -40,7 +42,7 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
   // Fetch next page
   page_h iter = page_h_create ();
   if (in.npg != PGNO_NULL) {
-    if (pgr_get (&iter, PG_DATA_LIST, in.npg, p, e)) {
+    if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e)) {
       return error_trace (e);
     }
   }
@@ -56,18 +58,18 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
 
     // Execute consumer
     if (consume (&in, ctx, e) < 0) {
-      pgr_release (p, &iter, PG_DATA_LIST, e);
+      pgr_release (p, &iter, PG_INNER_NODE, e);
       return error_trace (e);
     }
 
     // Release current
-    if (pgr_release (p, &iter, PG_DATA_LIST, e)) {
+    if (pgr_release (p, &iter, PG_INNER_NODE, e)) {
       return error_trace (e);
     }
 
     // Fetch next
     if (in.npg != PGNO_NULL) {
-      if (pgr_get (&iter, PG_DATA_LIST, in.npg, p, e)) {
+      if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e)) {
         return error_trace (e);
       }
     }
@@ -124,3 +126,98 @@ ns_rope_in_validate_pgno (struct pager *p, pgno pg, error *e)
 {
   return ns_rope_in_scan_pgno (p, pg, in_validate_consumer, p, e);
 }
+
+#ifndef NDEBUG
+
+struct in_scan_count_ctx
+{
+  u32 seen;
+  u32 fail_on;
+};
+
+static err_t
+in_scan_count (struct inner_node *in, void *vctx, error *e)
+{
+  (void)in;
+  struct in_scan_count_ctx *c = vctx;
+  c->seen++;
+  if (c->fail_on != 0 && c->seen == c->fail_on) {
+    return error_causef (e, ERR_CORRUPT, "consumer asked to stop at %u", c->seen);
+  }
+  return SUCCESS;
+}
+
+static void
+in_scan_build_chain (struct test_ctx *ctx, struct pgr_fixture *f, pgno out[3])
+{
+  page_h ph[3];
+
+  for (u32 i = 0; i < 3; ++i) {
+    ph[i] = page_h_create ();
+    test_assert_int_equal (pgr_new (&ph[i], f->p, &f->tx, PG_INNER_NODE, &ctx->e), SUCCESS);
+    out[i] = page_h_pgno (&ph[i]);
+
+    in_make_valid (page_h_w (&ph[i]));
+  }
+
+  in_set_next (page_h_w (&ph[0]), out[1]);
+  in_set_next (page_h_w (&ph[1]), out[2]);
+  in_set_next (page_h_w (&ph[2]), PGNO_NULL);
+
+  // Write them out and let go of the frames
+  for (u32 i = 0; i < 3; ++i) {
+    test_assert_int_equal (pgr_release_with_flush (f->p, &ph[i], PG_INNER_NODE, &ctx->e), SUCCESS);
+  }
+
+  for (u32 i = 0; i < 3; ++i) {
+    page_h h = page_h_create ();
+    test_assert_int_equal (pgr_get (&h, PG_INNER_NODE, out[i], f->p, &ctx->e), SUCCESS);
+    test_assert_int_equal (pgr_release_with_evict (f->p, &h, PG_INNER_NODE, &ctx->e), SUCCESS);
+  }
+}
+
+TEST (ns_rope_in_scan)
+{
+  TEST_CASE ("Green path")
+  {
+    // Set up
+    struct pgr_fixture f;
+    pgr_fixture_create (&f, &ctx->e);
+    pgno pg[3];
+    in_scan_build_chain (ctx, &f, pg);
+
+    // Scan with no failure
+    struct in_scan_count_ctx c = {.seen = 0, .fail_on = 0};
+    test_assert_int_equal (ns_rope_in_scan_pgno (f.p, pg[0], in_scan_count, &c, &ctx->e), SUCCESS);
+    test_assert_int_equal ((i32)c.seen, 3);
+
+    // Clean up
+    pgr_fixture_teardown (&f, &ctx->e);
+  }
+
+  TEST_CASE ("Fails mid scan")
+  {
+    // Set up
+    struct pgr_fixture f;
+    pgr_fixture_create (&f, &ctx->e);
+    pgno pg[3];
+    in_scan_build_chain (ctx, &f, pg);
+
+    // Fail on the second page
+    struct in_scan_count_ctx c   = {.seen = 0, .fail_on = 2};
+    err_t                    ret = ns_rope_in_scan_pgno (f.p, pg[0], in_scan_count, &c, &ctx->e);
+    test_assert (ret == ERR_CORRUPT);
+    error_reset (&ctx->e);
+    test_assert_int_equal ((i32)c.seen, 2);
+
+    // The frame was handed back, so it can be taken again
+    page_h h = page_h_create ();
+    test_assert_int_equal (pgr_get (&h, PG_INNER_NODE, pg[1], f.p, &ctx->e), SUCCESS);
+    test_assert_int_equal (pgr_release (f.p, &h, PG_INNER_NODE, &ctx->e), SUCCESS);
+
+    // Clean up
+    pgr_fixture_teardown (&f, &ctx->e);
+  }
+}
+
+#endif

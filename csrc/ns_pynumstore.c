@@ -81,7 +81,7 @@ _pyns_db_open (const char *path, error *e)
   struct i_mem mem = default_mem ();
 
   struct i_os  os;
-  if (system_os_create (mem, &os, e)) {
+  if (system_os_create (mem, &os, e) < 0) {
     return NULL;
   }
 
@@ -92,7 +92,7 @@ _pyns_db_open (const char *path, error *e)
   }
 
   // A numstore database, not a smart file
-  if (nsdb_init_numstore (db, e)) {
+  if (nsdb_init_numstore (db, e) < 0) {
     nsdb_close (db, e);
     system_os_free (os);
     return NULL;
@@ -848,7 +848,7 @@ pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg)
 
   // compile the type string - a type that won't compile is a bad argument
   // value, not a database failure
-  if (compile_type (&t, src, &alloc, &e)) {
+  if (compile_type (&t, src, &alloc, &e) < 0) {
     _pyns_set_error_from_e (PyExc_ValueError, &e);
     goto theend;
   }
@@ -888,7 +888,7 @@ pyns_ns_to_np_flatten (PyObject *Py_UNUSED (m), PyObject *args)
   dims_vec_create (&vec);
 
   // A type that won't compile is a bad argument value
-  if (compile_type (&t, src, &alloc, &e)) {
+  if (compile_type (&t, src, &alloc, &e) < 0) {
     _pyns_set_error_from_e (PyExc_ValueError, &e);
     goto theend;
   }

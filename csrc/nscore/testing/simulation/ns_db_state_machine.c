@@ -46,7 +46,7 @@ ns_db_reopen_handle (struct ns_db *db, error *e)
     return error_trace (e);
   }
 
-  if (nsdb_init_numstore (ns, e)) {
+  if (nsdb_init_numstore (ns, e) < 0) {
     nsdb_close (ns, e);
     return error_trace (e);
   }
@@ -288,7 +288,7 @@ ns_db_close_and_reopen (struct ns_db *db, error *e)
 static inline char *
 ns_db_cur (struct ns_db *db)
 {
-  if (db->tx) {
+  if (db->tx != NULL) {
     return db->var_working;
   } else {
     return db->var_committed;
@@ -299,7 +299,7 @@ ns_db_cur (struct ns_db *db)
 static inline void
 ns_db_set_cur (struct ns_db *db, char *vname)
 {
-  if (db->tx) {
+  if (db->tx != NULL) {
     mem_cfree (db->reliable_mem, db->var_working);
     db->var_working = vname;
   } else {

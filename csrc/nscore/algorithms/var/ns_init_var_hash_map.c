@@ -39,7 +39,7 @@ ns_init_var_hash_map (struct pager *p, error *e)
   }
 
   // Create a new variable hash page
-  if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e)) {
+  if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e) < 0) {
     goto failed;
   }
 

@@ -35,7 +35,7 @@ _ns_open (const char *path, error *e)
   // The public API owns the OS it hands to the database - ns_close/ns_crash
   // free it again
   struct i_os  os;
-  if (system_os_create (mem, &os, e)) {
+  if (system_os_create (mem, &os, e) < 0) {
     return NULL;
   }
 
@@ -47,7 +47,7 @@ _ns_open (const char *path, error *e)
   }
 
   // Initialize pager
-  if (numstore_init_pager (db->p, e)) {
+  if (numstore_init_pager (db->p, e) < 0) {
     nsdb_close (db, e);
     system_os_free (os);
     return NULL;
@@ -95,7 +95,7 @@ _ns_smfile_open (const char *path, error *e)
   // The public API owns the OS it hands to the database - ns_close/ns_crash
   // free it again
   struct i_os  os;
-  if (system_os_create (mem, &os, e)) {
+  if (system_os_create (mem, &os, e) < 0) {
     return NULL;
   }
 
@@ -107,7 +107,7 @@ _ns_smfile_open (const char *path, error *e)
   }
 
   // Initialize pager
-  if (smartfiles_init_pager (db->p, e)) {
+  if (smartfiles_init_pager (db->p, e) < 0) {
     nsdb_close (db, e);
     system_os_free (os);
     return NULL;
@@ -154,7 +154,7 @@ ns_cleanup (const char *path)
   struct i_mem mem = default_mem ();
 
   struct i_os  os;
-  if (system_os_create (mem, &os, &e)) {
+  if (system_os_create (mem, &os, &e) < 0) {
     return error_trace (&e);
   }
 

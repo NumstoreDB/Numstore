@@ -25,7 +25,7 @@ pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e)
   ASSERT (mp->pin == 0);
 
   // Caller holds mp->latch, so use the unsafe (no-latch) flush variant
-  if (pgr_flush_unsafe (p, mp, e)) {
+  if (pgr_flush_unsafe (p, mp, e) < 0) {
     goto failed;
   }
 

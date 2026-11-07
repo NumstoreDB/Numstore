@@ -1538,9 +1538,9 @@ array([1, 2], dtype=uint32)
 >>> plan.close()
 ```
 
-A `Plan` has the same `execute` / `read` / `read_into` / `write` / `var` methods,
-each taking an optional transaction as its last argument, and it's a context
-manager like everything else:
+A `Plan` has the same `execute` / `read` / `read_into` / `write` / `var`
+methods, each taking an optional transaction as its last argument, and it's a
+context manager like everything else:
 
 ```python
 >>> with db.prepare("insert out 0 2") as plan:

@@ -32,9 +32,11 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 
   i_log_debug ("Starting Checkpoint - locking the database\n");
 
-  // This is what makes the checkpoint blocking
-  // it will wait for all open transactions to complete
-  lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
+  // First, lock the entire database
+  if (lockt_lock (p->lt, lock_db (), LM_X, NULL, e)) {
+    return error_trace (e);
+  }
+
   i_log_debug ("Checkpoint - lock acquired\n");
 
   // Flush all pages - so the database is consistent
@@ -71,7 +73,10 @@ theend:
   // Unlock the database lock
   // i_log_debug ("Checkpoint Done - unlocking the database\n");
   lockt_unlock (p->lt, lock_db (), LM_X);
-  return SUCCESS;
+
+  // Every goto above is a failure path - a checkpoint that could not flush,
+  // write the next lsn or reopen the wal has to say so
+  return error_trace (e);
 }
 
 static void
@@ -141,6 +146,55 @@ TEST (pgr_checkpoint)
 
     pgr_fixture_teardown (&f, &ctx->e);
   }
+}
+
+/**
+ * TODO - a deleted / reopened wal - if it fails
+ * can sometimes lead to ostream being NULL.
+ *
+ * I don't want to just do if(ostream == NULL),
+ * I want to consider other options:
+ *
+ * Two options I've thought of so far:
+ *
+ * 1. make delete_and_reopen return a wal, so that
+ *    pager->ww is NULL after it failed, but then
+ *    you need to do if(pager->ww != NULL) { ... }
+ * 2. make a pager never lose track of a valid WAL
+ *    - Delete and reopen becomes:
+ *      1. Open new (empty) WAL
+ *      2. Delete old WAL
+ *      3. Swap new WAL
+ *    - But 2 and 3 need to be atomic
+ *    - You technically never need to run 3
+ *
+ * Either way - I think wal delete and reopen api
+ * needs to be re worked
+ */
+TEST_DISABLED (pgr_checkpoint_failure)
+{
+  err_t ret        = SUCCESS;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Memory failure after: %d", fail_after)
+    {
+      struct pgr_fixture f;
+      faulty_mem_reset (ctx->faulty_mem);
+      pgr_fixture_create_with (&f, ctx->os, ctx->faulty_mem, &ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = pgr_deletion_blocking_checkpoint (f.p, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      error_reset (&ctx->e);
+      pgr_fixture_teardown_with (&f, &ctx->e);
+      error_reset (&ctx->e);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
 }
 
 #endif

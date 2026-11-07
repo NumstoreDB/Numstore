@@ -14,6 +14,7 @@
 
 #include "core/ns_ext_array.h"
 
+#include "core/ns_bounds.h"
 #include "core/ns_csx_assert.h"
 #include "core/ns_data_validator.h"
 #include "core/ns_data_writer.h"
@@ -40,7 +41,7 @@ ext_array_create (struct i_mem mem)
 void
 ext_array_free (struct ext_array *r)
 {
-  if (r->data) {
+  if (r->data != NULL) {
     r->mem.table->free (r->mem.self, r->data);
   }
   r->data = NULL;
@@ -66,7 +67,13 @@ i64
 ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u32 slen, error *e)
 {
   ASSERT (ofst <= r->len);
-  if (ext_array_reserve (r, r->len + slen, e)) {
+
+  u32 newlen;
+  if (!safe_add_u32 (&newlen, r->len, slen)) {
+    return error_causef (e, ERR_ARITH, "insert of %" PRIu32 " bytes overflows length", slen);
+  }
+
+  if (ext_array_reserve (r, newlen, e) < 0) {
     return error_trace (e);
   }
 
@@ -84,7 +91,7 @@ ext_array_insert (struct ext_array *r, const u32 ofst, const void *src, const u3
     memcpy (r->data + ofst, src, slen);
   }
 
-  r->len += slen;
+  r->len = newlen;
   return slen;
 }
 
@@ -144,7 +151,7 @@ ext_array_remove (struct ext_array *r, const struct stride str, const u32 size, 
 
   while (rpos * size < r->len) {
     if (total_removed < str.nelems && rpos == next_remove) {
-      if (dest) {
+      if (dest != NULL) {
         memcpy (dest, r->data + (rpos * size), size);
         dest += size;
       }
@@ -203,7 +210,7 @@ ext_array_remove_func (void *ctx, const struct stride str, const u32 size, void 
 static i64
 ext_array_getlen_func (void *ctx, error *e)
 {
-  (void)e; // Unused
+  (void)e;
   struct ext_array *arr = ctx;
   return ext_array_get_len (arr);
 }
@@ -663,7 +670,7 @@ ext_array_clone (struct ext_array *dest, struct ext_array *r, error *e)
   u64 len = ext_array_get_len (r);
 
   if (len > 0) {
-    if (ext_array_reserve (dest, len, e)) {
+    if (ext_array_reserve (dest, len, e) < 0) {
       return error_trace (e);
     }
 
@@ -720,6 +727,76 @@ TEST (ext_array_remove_all_produces_empty)
   test_assert_type_equal (n, (i64)5, i64, PRId64);
   test_assert_type_equal (ext_array_get_len (&a), (u64)0, u64, PRIu64);
   test_assert_memequal (src, out, 5);
+
+  ext_array_free (&a);
+}
+
+TEST (ext_array_insert_fail_nomem)
+{
+  const u8 head[4] = {1, 2, 3, 4};
+  const u8 mid[3]  = {9, 9, 9};
+  i64      ret;
+  int      fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      struct ext_array a = ext_array_create (ctx->faulty_mem);
+      test_assert_type_equal (ext_array_insert (&a, 0, head, 4, &ctx->e), (i64)4, i64, PRId64);
+
+      // Insert in the middle so both the grow and the tail copy allocate
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = ext_array_insert (&a, 2, mid, 3, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret < 0) {
+        // A failed insert leaves the contents alone
+        test_assert_type_equal (ext_array_get_len (&a), (u64)4, u64, PRIu64);
+        test_assert_memequal (a.data, head, 4);
+      } else {
+        const u8 expected[7] = {1, 2, 9, 9, 9, 3, 4};
+        test_assert_type_equal (ext_array_get_len (&a), (u64)7, u64, PRIu64);
+        test_assert_memequal (a.data, expected, 7);
+      }
+
+      ext_array_free (&a);
+      fail_after++;
+    }
+  }
+  while (ret < 0);
+}
+
+TEST (ext_array_clone_fail_nomem)
+{
+  const u8         src[5] = {1, 2, 3, 4, 5};
+  err_t            ret;
+  int              fail_after = 0;
+
+  struct ext_array a          = ext_array_create (ctx->faulty_mem);
+  ext_array_insert (&a, 0, src, 5, &ctx->e);
+  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      struct ext_array b;
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = ext_array_clone (&b, &a, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret == SUCCESS) {
+        test_assert_type_equal (ext_array_get_len (&b), (u64)5, u64, PRIu64);
+        test_assert_memequal (b.data, src, 5);
+      }
+
+      ext_array_free (&b);
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
 
   ext_array_free (&a);
 }

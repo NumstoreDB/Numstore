@@ -86,7 +86,7 @@ db_state_clone (struct i_mem mem, struct db_state *state, error *e)
 
   // Clone variable name
   struct var_with_data *new_cur = NULL;
-  if (state->cur) {
+  if (state->cur != NULL) {
     new_cur = mem_vhmap_get (cloned_db_data, state->cur->var.vname);
     if (new_cur == NULL) {
       mem_vhmap_free (cloned_db_data);
@@ -136,10 +136,10 @@ ns_ref_new (struct i_mem mem, error *e)
 void
 ns_ref_free (struct ns_ref *ref)
 {
-  if (ref->working) {
+  if (ref->working != NULL) {
     db_state_free (ref->working);
   }
-  if (ref->committed) {
+  if (ref->committed != NULL) {
     db_state_free (ref->committed);
   }
   ref->mem.table->free (ref->mem.self, ref);

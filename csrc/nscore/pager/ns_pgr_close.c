@@ -96,3 +96,140 @@ TEST (pgr_close_success)
   test_fail_if (pgr_delete_single_file ("foodir", ctx->os, &ctx->e));
 }
 #endif
+
+#ifndef NDEBUG
+#  include "core/ns_crash.h"
+#  include "nscore/page/ns_page_data_list.h"
+
+/**
+ * TODO - pgr_close ignores the result of
+ * lockt_lock (p->lt, lock_db (), LM_X, NULL, e). Creating the lock frame
+ * makes an OS call (the gr_lock mutex), so with Fail after 0 the lock is
+ * never taken, close carries on anyway, and lockt_unlock asserts
+ * ASSERT (found) in lockt_unlock_once.
+ *
+ * Fix: check the lockt_lock result (and decide what a close that can't lock
+ * should do). pgr_close_fail_os_after_lock sweeps the rest of close.
+ */
+TEST_DISABLED (pgr_close_fail_os)
+{
+  err_t ret;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      struct pgr_fixture f;
+      test_err_t_check (
+          pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
+          SUCCESS,
+          &ctx->e
+      );
+
+      // Leave a dirty page and unflushed log for close to write out
+      page_h h = page_h_create ();
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
+      pgr_new (&h, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
+      dl_make_valid (page_h_w (&h));
+      const pgno pg = page_h_pgno (&h);
+      pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
+      test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      capture_intentional_crash (&ret, &ctx->e)
+      {
+        ret = pgr_close (f.p, &ctx->e);
+      }
+      faulty_os_reset (ctx->faulty_os);
+
+      // pgr_close frees the pager whether or not it reported an error
+      if (ret == ERR_CRASHED) {
+        error_reset (&ctx->e);
+        pgr_crash (f.p, &ctx->e);
+      }
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&f.alloc);
+
+      // Whatever happened to close, the committed page has to survive a reopen
+      struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+      test_assert (p != NULL);
+      test_err_t_check (pgr_get (&h, PG_DATA_LIST, pg, p, &ctx->e), SUCCESS, &ctx->e);
+      test_err_t_check (pgr_release (p, &h, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
+      test_err_t_check (pgr_close (p, &ctx->e), SUCCESS, &ctx->e);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_err_t_check (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS, &ctx->e);
+}
+
+/**
+ * Same sweep, skipping the lock frame's mutex_create (see pgr_close_fail_os).
+ *
+ * TODO - loses committed data. When a page write fails during
+ * pgr_evict_all_pages (Fail after 4: fpgr_write -> pwrite), pgr_close keeps
+ * going: it writes the next lsn to the header and wal_close_and_delete
+ * removes the WAL. The page never reached the file and its log is gone, so
+ * on reopen the committed page reads back as an UNKNOWN page.
+ *
+ * Fix: once eviction or the WAL flush fails, close must not advance the
+ * next lsn or delete the WAL - leave it for recovery, like a crash.
+ */
+TEST_DISABLED (pgr_close_fail_os_after_lock)
+{
+  err_t ret;
+  int   fail_after = 1;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      struct pgr_fixture f;
+      test_err_t_check (
+          pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
+          SUCCESS,
+          &ctx->e
+      );
+
+      // Leave a dirty page and unflushed log for close to write out
+      page_h h = page_h_create ();
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
+      pgr_new (&h, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
+      dl_make_valid (page_h_w (&h));
+      const pgno pg = page_h_pgno (&h);
+      pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
+      pgr_commit (f.p, &f.tx, &ctx->e);
+      test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      capture_intentional_crash (&ret, &ctx->e)
+      {
+        ret = pgr_close (f.p, &ctx->e);
+      }
+      faulty_os_reset (ctx->faulty_os);
+
+      // pgr_close frees the pager whether or not it reported an error
+      if (ret == ERR_CRASHED) {
+        error_reset (&ctx->e);
+        pgr_crash (f.p, &ctx->e);
+      }
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&f.alloc);
+
+      // Whatever happened to close, the committed page has to survive a reopen
+      struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+      test_assert (p != NULL);
+      test_err_t_check (pgr_get (&h, PG_DATA_LIST, pg, p, &ctx->e), SUCCESS, &ctx->e);
+      test_err_t_check (pgr_release (p, &h, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
+      test_err_t_check (pgr_close (p, &ctx->e), SUCCESS, &ctx->e);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_err_t_check (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS, &ctx->e);
+}
+#endif
