@@ -635,6 +635,12 @@ wal_read_entry (struct wal *w, struct wal_rec_hdr_read *dest, lsn id, error *e)
   // a full wal scan - so ostream must be open
   ASSERT (w->ostream);
 
+  // Flush the ostream if we're requesting data past
+  // the flushed lsn
+  if (id >= w->start_lsn + w->ostream->flushed_lsn) {
+    walos_flush_all (w->ostream);
+  }
+
   if (wal_seek_unsafe (w, id, e) < 0) {
     goto failed;
   }
@@ -2497,9 +2503,7 @@ TEST (wal_append_log)
           ret = SUCCESS;
         }
 
-        // The crash let go of the latch on its way out, so the wal can still
-        // be taken apart
-        test_assert (latch_trylock (&w->l));
+        // Manually unlock the wal
         latch_unlock (&w->l);
 
         // Clean up

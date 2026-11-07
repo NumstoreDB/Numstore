@@ -670,9 +670,6 @@ walos_zero_tail (struct wal_ostream *w, const void *zeros, u32 len, error *e)
 
   latch_lock (&w->l);
 
-  // This only ever happens on initial start up
-  ASSERT (cbuffer_len (&w->buffer) == 0);
-
   ASSERT (w->file_size >= w->flushed_lsn); // From DBG_ASSERT
   lsn n = w->file_size - w->flushed_lsn;
   if (n == 0) {

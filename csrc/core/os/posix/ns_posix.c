@@ -229,23 +229,30 @@ sys_fsync (void *self, error *e)
   const int fd = fd_of (self);
 
 #  ifdef __APPLE__
-  if (fcntl (fd, F_FULLFSYNC, 0) == -1) {
-    return error_causef (e, ERR_IO, "fcntl F_FULLFSYNC: %s", strerror (errno));
+  // Run a full fsync - fallback to regular fsync
+  // Darwin fsync ensures durability on kill / kernel panics,
+  // but not a power outage
+  //
+  // TODO - adding some configuration here,
+  // I think making F_FULLFSYNC default, and
+  // erroring always no failure is a good idea.
+  //
+  // I don't like the idea of falling back to
+  // a weaker fsync without the user knowning
+  if (fcntl (fd, F_FULLFSYNC, 0) != -1) {
+    return SUCCESS;
   }
-
-  return SUCCESS;
 
   if (errno != ENOTSUP && errno != ENOTTY && errno != EINVAL) {
     return error_causef (e, ERR_IO, "F_FULLFSYNC: %s", strerror (errno));
   }
-#  else
+#  endif
 
   if (unlikely (fsync (fd))) {
     return error_causef (e, ERR_IO, "fsync: %s", strerror (errno));
   }
 
   return SUCCESS;
-#  endif
 }
 
 static i64
