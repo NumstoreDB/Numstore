@@ -54,7 +54,7 @@ walf_print (const char *fname)
   error       e = error_create ();
 
   struct i_os os;
-  if (system_os_create (default_mem (), &os, &e)) {
+  if (system_os_create (default_mem (), &os, &e) < 0) {
     error_log_consume (&e);
     return;
   }

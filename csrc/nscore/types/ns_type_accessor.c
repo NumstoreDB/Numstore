@@ -125,7 +125,7 @@ ta_select_sarray (
   struct sarray_builder builder = sab_create (&b);
 
   for (u32 i = 0; i < reftype->sa.rank; ++i) {
-    if (sab_accept_dim (&builder, reftype->sa.dims[i], e)) {
+    if (sab_accept_dim (&builder, reftype->sa.dims[i], e) < 0) {
       goto failed;
     }
   }
@@ -135,12 +135,12 @@ ta_select_sarray (
     goto failed;
   }
 
-  if (sab_accept_type (&builder, t, e)) {
+  if (sab_accept_type (&builder, t, e) < 0) {
     goto failed;
   }
 
   ret->type = T_SARRAY;
-  if (sab_build (&ret->sa, &builder, e)) {
+  if (sab_build (&ret->sa, &builder, e) < 0) {
     goto failed;
   }
 
@@ -169,20 +169,20 @@ ta_range_sarray (
     if (i >= ta->range.dlen) {
       isarray = true;
       struct stride str;
-      if (stride_resolve (&str, USER_STRIDE_ALL, reftype->sa.dims[i], e)) {
+      if (stride_resolve (&str, USER_STRIDE_ALL, reftype->sa.dims[i], e) < 0) {
         goto failure;
       }
-      if (sab_accept_dim (&builder, str.nelems, e)) {
+      if (sab_accept_dim (&builder, str.nelems, e) < 0) {
         goto failure;
       }
     } else {
       isarray = ((isarray || ta->range.dim_accessors[i].present & COLON_PRESENT) != 0);
       struct stride str;
-      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e)) {
+      if (stride_resolve (&str, ta->range.dim_accessors[i], reftype->sa.dims[i], e) < 0) {
         goto failure;
       }
       if ((ta->range.dim_accessors[i].present & COLON_PRESENT)
-          && (sab_accept_dim (&builder, str.nelems, e))) {
+          && sab_accept_dim (&builder, str.nelems, e) < 0) {
         goto failure;
       }
     }
@@ -195,7 +195,7 @@ ta_range_sarray (
   }
 
   if (isarray) {
-    if (sab_accept_type (&builder, t, e)) {
+    if (sab_accept_type (&builder, t, e) < 0) {
       goto failure;
     }
 
@@ -205,7 +205,7 @@ ta_range_sarray (
     }
 
     ret->type = T_SARRAY;
-    if (sab_build (&ret->sa, &builder, e)) {
+    if (sab_build (&ret->sa, &builder, e) < 0) {
       goto failure;
     }
   } else {
@@ -413,7 +413,7 @@ rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e)
   DBG_ASSERT (range_builder, rb);
 
   struct rb_llnode *node = builder_malloc_temp (rb->b, 1, sizeof *node, e);
-  if (!node) {
+  if (node == NULL) {
     return error_trace (e);
   }
 
@@ -441,7 +441,7 @@ rb_build (struct range_ta *dest, struct range_builder *rb, error *e)
   }
 
   struct user_stride *dims = builder_malloc_persist (rb->b, rb->len, sizeof *dims, e);
-  if (!dims) {
+  if (dims == NULL) {
     goto theend;
   }
 
@@ -464,6 +464,7 @@ DEFINE_DBG_ASSERT (struct type_accessor_builder, type_accessor_builder, s, { ASS
 static struct type_accessor *
 tab_alloc (struct type_accessor_builder *builder, error *e)
 {
+  DBG_ASSERT (type_accessor_builder, builder);
   if (builder->head == NULL) {
     return &builder->ret;
   }
@@ -475,6 +476,7 @@ tab_alloc (struct type_accessor_builder *builder, error *e)
 static void
 tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 {
+  DBG_ASSERT (type_accessor_builder, builder);
   if (builder->head == NULL) {
     builder->head = ta;
   } else {
@@ -490,12 +492,13 @@ tab_link (struct type_accessor_builder *builder, struct type_accessor *ta)
 static err_t
 tab_flush_range (struct type_accessor_builder *builder, error *e)
 {
+  DBG_ASSERT (type_accessor_builder, builder);
   if (!builder->in_range) {
     return SUCCESS;
   }
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta) {
+  if (ta == NULL) {
     return error_trace (e);
   }
 
@@ -513,6 +516,7 @@ tab_flush_range (struct type_accessor_builder *builder, error *e)
 static void
 tab_ensure_range (struct type_accessor_builder *builder)
 {
+  DBG_ASSERT (type_accessor_builder, builder);
   if (!builder->in_range) {
     builder->rb       = rb_create (builder->b);
     builder->in_range = true;
@@ -538,7 +542,7 @@ tab_accept_select (struct type_accessor_builder *builder, struct string key, err
   WRAP (tab_flush_range (builder, e));
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta) {
+  if (ta == NULL) {
     return error_trace (e);
   }
 
@@ -572,7 +576,7 @@ tab_accept_take (struct type_accessor_builder *builder, error *e)
   WRAP (tab_flush_range (builder, e));
 
   struct type_accessor *ta = tab_alloc (builder, e);
-  if (!ta) {
+  if (ta == NULL) {
     return error_trace (e);
   }
 
@@ -588,7 +592,7 @@ tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, er
 {
   DBG_ASSERT (type_accessor_builder, builder);
 
-  if (tab_accept_take (builder, e)) {
+  if (tab_accept_take (builder, e) < 0) {
     goto theend;
   }
 
@@ -631,8 +635,8 @@ TEST (type_accessor_builder)
   // 5. successful build
   test_assert_int_equal (tab_build (&acc, &builder, &ctx->e), SUCCESS);
 
-  // 6. verify chain: SELECT(field1) → RANGE([0:10:2, 5]) →
-  // SELECT(field2) → TAKE
+  // 6. verify chain: SELECT(field1) -> RANGE([0:10:2, 5]) ->
+  // SELECT(field2) -> TAKE
   test_assert_int_equal (acc.type, TA_SELECT);
   test_assert_int_equal (string_equal (acc.select.key, key1), true);
   struct type_accessor *range_acc = acc.select.sub_ta;

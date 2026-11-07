@@ -63,7 +63,8 @@ static u32
 crc_sw (u32 c, const u8 *p, u32 len)
 {
   while (len >= 8) {
-    u32 lo, hi;
+    u32 lo;
+    u32 hi;
     memcpy (&lo, p, 4); // little-endian hosts only
     memcpy (&hi, p + 4, 4);
     lo ^= c;
@@ -107,12 +108,16 @@ crc_hw (u32 c, const u8 *p, u32 len)
 {
   // Three independent streams hide the instruction latency
   while (len >= 3 * CRC_K) {
-    u32       c0 = c, c1 = 0, c2 = 0;
+    u32       c0 = c;
+    u32       c1 = 0;
+    u32       c2 = 0;
     const u8 *p1 = p + CRC_K;
-    const u8 *p2 = p + 2 * CRC_K;
+    const u8 *p2 = p + (size_t)2 * CRC_K;
 
     for (u32 i = 0; i < CRC_K; i += 8) {
-      u64 a, b, d;
+      u64 a;
+      u64 b;
+      u64 d;
       memcpy (&a, p + i, 8);
       memcpy (&b, p1 + i, 8);
       memcpy (&d, p2 + i, 8);
@@ -124,7 +129,7 @@ crc_hw (u32 c, const u8 *p, u32 len)
     // state after S0||S1||S2, by linearity
     c = crc_shift (crc_shift (c0) ^ c1) ^ c2;
 
-    p += 3 * CRC_K;
+    p += (size_t)3 * CRC_K;
     len -= 3 * CRC_K;
   }
 
@@ -281,7 +286,7 @@ crc_tables_ready (void)
 static u32
 crc32c_of (const u8 *p, const u32 len)
 {
-  return ~crc_sw (0xFFFFFFFFu, p, len);
+  return ~crc_sw (0xFFFFFFFFU, p, len);
 }
 
 static const struct
@@ -292,10 +297,10 @@ static const struct
   u32         expected;
 } crc_rfc3720_cases[] = {
     // RFC 3720 (iSCSI) appendix B.4 CRC-32C vectors
-    {"32 bytes of zeros", 32, 0, 0x8A9136AAu},
-    {"32 bytes of 0xff", 32, 1, 0x62A8AB43u},
-    {"32 bytes incrementing 00..1f", 32, 2, 0x46DD794Eu},
-    {"32 bytes decrementing 1f..00", 32, 3, 0x113FDB5Cu},
+    {"32 bytes of zeros", 32, 0, 0x8A9136AAU},
+    {"32 bytes of 0xff", 32, 1, 0x62A8AB43U},
+    {"32 bytes incrementing 00..1f", 32, 2, 0x46DD794EU},
+    {"32 bytes decrementing 1f..00", 32, 3, 0x113FDB5CU},
 };
 
 TEST (crc_sw_known_answers)
@@ -305,22 +310,22 @@ TEST (crc_sw_known_answers)
   TEST_CASE ("The CRC-32C check value for \"123456789\"")
   {
     const u8 *check = (const u8 *)"123456789";
-    test_assert_type_equal (crc32c_of (check, 9), 0xE3069283u, u32, PRIx32);
+    test_assert_type_equal (crc32c_of (check, 9), 0xE3069283U, u32, PRIx32);
   }
 
   TEST_CASE ("An empty buffer leaves the CRC at its initial value")
   {
-    test_assert_type_equal (crc32c_of ((const u8 *)"", 0), 0x00000000u, u32, PRIx32);
+    test_assert_type_equal (crc32c_of ((const u8 *)"", 0), 0x00000000U, u32, PRIx32);
   }
 
   TEST_CASE ("Single byte \"a\"")
   {
-    test_assert_type_equal (crc32c_of ((const u8 *)"a", 1), 0xC1D04330u, u32, PRIx32);
+    test_assert_type_equal (crc32c_of ((const u8 *)"a", 1), 0xC1D04330U, u32, PRIx32);
   }
 
   TEST_CASE ("Five bytes \"hello\" exercises the trailing byte loop alone")
   {
-    test_assert_type_equal (crc32c_of ((const u8 *)"hello", 5), 0x9A71BB4Cu, u32, PRIx32);
+    test_assert_type_equal (crc32c_of ((const u8 *)"hello", 5), 0x9A71BB4CU, u32, PRIx32);
   }
 
   for (u32 i = 0; i < arrlen (crc_rfc3720_cases); ++i) {
@@ -351,15 +356,15 @@ TEST (crc_sw_matches_bitwise_oracle_at_every_length)
 
   u8 buf[40];
   for (u32 i = 0; i < arrlen (buf); ++i) {
-    buf[i] = (u8)(i * 7u + 1u);
+    buf[i] = (u8)(i * 7U + 1U);
   }
 
   for (u32 len = 0; len <= arrlen (buf); ++len) {
-    TEST_CASE ("len=%u", len)
+    TEST_CASE ("len=%" PRIu32, len)
     {
       test_assert_type_equal (
-          crc_sw (0xFFFFFFFFu, buf, len),
-          crc_bitwise (0xFFFFFFFFu, buf, len),
+          crc_sw (0xFFFFFFFFU, buf, len),
+          crc_bitwise (0xFFFFFFFFU, buf, len),
           u32,
           PRIx32
       );
@@ -373,7 +378,7 @@ TEST (crc_sw_honours_the_incoming_state)
   crc_tables_ready ();
 
   const u8  buf[11] = {9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 255};
-  const u32 seeds[] = {0x00000000u, 0x00000001u, 0xDEADBEEFu, 0xFFFFFFFFu};
+  const u32 seeds[] = {0x00000000U, 0x00000001U, 0xDEADBEEFU, 0xFFFFFFFFU};
 
   for (u32 i = 0; i < arrlen (seeds); ++i) {
     TEST_CASE ("seed=0x%08X", seeds[i])
@@ -389,7 +394,7 @@ TEST (crc_sw_honours_the_incoming_state)
 
   TEST_CASE ("A zero length run returns the state untouched")
   {
-    test_assert_type_equal (crc_sw (0x12345678u, buf, 0), 0x12345678u, u32, PRIx32);
+    test_assert_type_equal (crc_sw (0x12345678U, buf, 0), 0x12345678U, u32, PRIx32);
   }
 }
 
@@ -401,15 +406,15 @@ TEST (crc_sw_is_resumable_at_every_split)
 
   u8 buf[24];
   for (u32 i = 0; i < arrlen (buf); ++i) {
-    buf[i] = (u8)(i * 31u + 5u);
+    buf[i] = (u8)(i * 31U + 5U);
   }
 
-  const u32 whole = crc_sw (0xFFFFFFFFu, buf, arrlen (buf));
+  const u32 whole = crc_sw (0xFFFFFFFFU, buf, arrlen (buf));
 
   for (u32 split = 0; split <= arrlen (buf); ++split) {
-    TEST_CASE ("split at %u", split)
+    TEST_CASE ("split at %" PRIu32, split)
     {
-      const u32 first = crc_sw (0xFFFFFFFFu, buf, split);
+      const u32 first = crc_sw (0xFFFFFFFFU, buf, split);
       const u32 both  = crc_sw (first, buf + split, (u32)arrlen (buf) - split);
       test_assert_type_equal (both, whole, u32, PRIx32);
     }
@@ -426,13 +431,13 @@ TEST (crc_sw_agrees_with_checksum_execute)
   test_assert (buf != NULL);
 
   for (u32 i = 0; i < len; ++i) {
-    buf[i] = (u8)(i * 13u + (i >> 5));
+    buf[i] = (u8)(i * 13U + (i >> 5));
   }
 
   const u32 lens[] = {0, 1, 7, 8, 9, 63, 64, 1024, 3071, 3072, 3073, 3 * CRC_K + 77};
 
   for (u32 i = 0; i < arrlen (lens); ++i) {
-    TEST_CASE ("len=%u", lens[i])
+    TEST_CASE ("len=%" PRIu32, lens[i])
     {
       u32 state = checksum_init ();
       checksum_execute (&state, buf, lens[i]);

@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_bounds.h"
 #include "core/ns_error.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
@@ -45,9 +46,12 @@ numstore_remove_malloc (
 
   // Resolve length based on the stride
   struct stride stride;
-  if (stride_resolve (&stride, ustr, len, e)) {
+  if (stride_resolve (&stride, ustr, len, e) < 0) {
     return error_trace (e);
   }
+
+  // The step started as a positive i64, so it fits in sb_size
+  ASSERT (stride.stride <= (u64)I64_MAX);
 
   if (stride.nelems == 0) {
     *dlen = 0;
@@ -55,13 +59,25 @@ numstore_remove_malloc (
     return SUCCESS;
   }
 
-  void *buffer = mem.table->malloc (mem.self, stride.nelems, tsize, e);
+  // The allocator and the buffer stream both take u32 sizes
+  u32 nbytes;
+  if (stride.nelems > U32_MAX || !safe_mul_u32 (&nbytes, (u32)stride.nelems, tsize)) {
+    return error_causef (
+        e,
+        ERR_ARITH,
+        "%" PRIu64 " elements of %" PRt_size " bytes overflow one buffer",
+        stride.nelems,
+        tsize
+    );
+  }
+
+  void *buffer = mem.table->malloc (mem.self, (u32)stride.nelems, tsize, e);
   if (buffer == NULL) {
     return error_trace (e);
   }
 
   // Create output stream
-  ostream_create_from (stream, buffer, stride.nelems * tsize);
+  ostream_create_from (stream, buffer, nbytes);
 
   // REMOVE
   struct ns_remove_params rparams = {
@@ -71,7 +87,7 @@ numstore_remove_malloc (
       .root   = var->rpt_root,
       .size   = tsize,
       .bofst  = tsize * stride.start,
-      .stride = stride.stride,
+      .stride = (sb_size)stride.stride,
       .nelem  = stride.nelems,
   };
   sb_size ret = ns_remove (&rparams, e);
@@ -87,6 +103,8 @@ numstore_remove_malloc (
   b_size newsize = var->nbytes - ((b_size)ret * tsize);
   pgno   newroot = rparams.root;
   if (ns_var_update_by_var_root (p, tx, var->var_root, newroot, newsize, e) < 0) {
+    // TODO: buffer leaks on this path. Free it like the ns_remove failure
+    // above does.
     return error_trace (e);
   }
 
@@ -95,7 +113,7 @@ numstore_remove_malloc (
   var->rpt_root = rparams.root;
 
   // Set return values
-  *dlen         = ret * tsize;
+  *dlen         = (b_size)ret * tsize;
   *dest         = buffer;
 
   return SUCCESS;

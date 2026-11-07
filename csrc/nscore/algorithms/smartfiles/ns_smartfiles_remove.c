@@ -39,6 +39,9 @@ smartfiles_remove (
     error              *e
 )
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+
   ASSERT (tx != NULL);
 
   if (stride < 0) {
@@ -61,7 +64,7 @@ smartfiles_remove (
       .vname = strfcstr (DEFAULT_VARIABLE),
       .alloc = alloc,
   };
-  if (ns_var_get (&gparams, e)) {
+  if (ns_var_get (&gparams, e) < 0) {
     return error_trace (e);
   }
 

@@ -79,7 +79,7 @@ print_variable (struct variable *var, void *ctx, error *e)
   struct args *args = ctx;
 
   if (args->filter == NULL || string_contains (var->vname, strfcstr (args->filter))) {
-    if (i_print_variable (var, e)) {
+    if (i_print_variable (var, e) < 0) {
       return error_trace (e);
     }
     printf (",");
@@ -101,7 +101,7 @@ main (const int argc, char **argv)
   error       e = error_create ();
 
   struct i_os os;
-  if (system_os_create (default_mem (), &os, &e)) {
+  if (system_os_create (default_mem (), &os, &e) < 0) {
     error_log_consume (&e);
     return EXIT_FAILURE;
   }

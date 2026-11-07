@@ -30,7 +30,7 @@
  * array patterns by defining them in memory and comparing
  ******************************************************************************/
 
-typedef err_t (*insert_func) (void *ctx, u32 ofst, const void *src, u32 slen, error *e);
+typedef i64 (*insert_func) (void *ctx, u32 ofst, const void *src, u32 slen, error *e);
 typedef i64 (*read_func) (void *ctx, struct stride str, u32 size, void *dest, error *e);
 typedef i64 (*write_func) (void *ctx, struct stride str, u32 size, const void *src, error *e);
 typedef i64 (*remove_func) (void *ctx, struct stride str, u32 size, void *dest, error *e);

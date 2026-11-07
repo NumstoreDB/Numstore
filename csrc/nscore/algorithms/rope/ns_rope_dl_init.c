@@ -44,8 +44,8 @@ ns_rope_dl_init (struct pager *p, struct txn *tx, page_initializer init, void *c
     return error_trace (e);
   }
 
-  // Save this
-  spgno ret  = page_h_pgno (&cur);
+  ASSERT (page_h_pgno (&cur) <= (pgno)I64_MAX);
+  spgno ret  = (spgno)page_h_pgno (&cur);
   bool  done = false;
 
   while (true) {
@@ -90,6 +90,8 @@ ns_rope_dl_init_from (
     error                     *e
 )
 {
+  DBG_ASSERT (pager, p);
+
   return error_causef (e, ERR_INVALID_ARGUMENT, "Unimplemented");
 }
 
@@ -206,7 +208,12 @@ assert_chain_is (
 /// that case cannot be covered from here.
 #  define DL_INIT_CASE(label, length, pages)                                           \
     do {                                                                               \
-      TEST_CASE ("%s: %u bytes over %u page(s)", label, (u32)(length), (u32)(pages))   \
+      TEST_CASE (                                                                      \
+          "%s: %" PRIu32 " bytes over %" PRIu32 " page(s)",                            \
+          label,                                                                       \
+          (u32)(length),                                                               \
+          (u32)(pages)                                                                 \
+      )                                                                                \
       {                                                                                \
         u8 *src = ctx->mem.table->malloc (ctx->mem.self, 1, (length), &ctx->e);        \
         test_assert (src != NULL);                                                     \
@@ -244,7 +251,6 @@ TEST (ns_rope_dl_init)
   DL_INIT_CASE ("just under one page", DL_DATA_SIZE - 1, 1);
   DL_INIT_CASE ("exactly one page", DL_DATA_SIZE, 1);
 
-  // Multi page: the tail has to stay on or above half capacity.
   // Multi page: the tail has to stay on or above half capacity.
   DL_INIT_CASE ("tail exactly at half", DL_DATA_SIZE + DL_DATA_SIZE / 2, 2);
   DL_INIT_CASE ("exactly two pages", 2 * DL_DATA_SIZE, 2);

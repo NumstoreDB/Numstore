@@ -40,23 +40,26 @@ ns_var_update_by_var_root (
     error        *e
 )
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+
   page_h cur = page_h_create ();
 
-  if (pgr_get_writable (&cur, tx, PG_VAR_PAGE, root, p, e)) {
+  if (pgr_get_writable (&cur, tx, PG_VAR_PAGE, root, p, e) < 0) {
     goto failed;
   }
 
   vp_set_root (page_h_w (&cur), newpg);
   vp_set_nbytes (page_h_w (&cur), nbytes);
 
-  if (pgr_release (p, &cur, PG_VAR_PAGE, e)) {
+  if (pgr_release (p, &cur, PG_VAR_PAGE, e) < 0) {
     goto failed;
   }
 
   goto failed;
 
 failed:
-  if (error_trace (e)) {
+  if (error_trace (e) < 0) {
     return error_trace (e);
   }
   return SUCCESS;

@@ -90,10 +90,10 @@ err_var_already_exists (const struct string vname, error *e)
 static err_t
 xfer_or_release (struct pager *p, page_h *dest, page_h *src, error *e)
 {
-  if (dest) {
+  if (dest != NULL) {
     page_h_xfer_ownership_ptr (dest, src);
   } else {
-    if (pgr_release (p, src, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e)) {
+    if (pgr_release (p, src, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e) < 0) {
       goto theend;
     }
   }
@@ -120,15 +120,8 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
   // Fetch the variable hash page (put it in prev)
   if (FAULT (
-          pgr_get_maybe_writable (
-              &prev,
-              pms->tx,
-              PG_VAR_HASH_PAGE,
-              VHASH_PGNO,
-              pms->p,
-              writable,
-              e
-          ),
+          pgr_get_maybe_writable (&prev, pms->tx, PG_VAR_HASH_PAGE, VHASH_PGNO, pms->p, writable, e)
+              < 0,
           "ns_find_var_page:1"
       )) {
     goto failed;
@@ -149,7 +142,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
       }
       case FP_CREATE: {
         // Create a new variable page
-        if (FAULT (pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e), "ns_find_var_page:2")) {
+        if (FAULT (pgr_new (&cur, pms->p, pms->tx, PG_VAR_PAGE, e) < 0, "ns_find_var_page:2")) {
           goto failed;
         }
         // state:
@@ -167,7 +160,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   else {
     // Fetch start hash chain
     if (FAULT (
-            pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e),
+            pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e) < 0,
             "ns_find_var_page:3"
         )) {
       goto failed;
@@ -190,7 +183,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           .save_type  = false,
           .save_vname = false,
       };
-      if (FAULT (ns_read_var_page (&get_params, e), "ns_find_var_page:4")) {
+      if (FAULT (ns_read_var_page (&get_params, e) < 0, "ns_find_var_page:4")) {
         goto failed;
       }
 
@@ -230,7 +223,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
               // Advance
               {
                 // free(prev)
-                if (pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e)) {
+                if (pgr_release_if_exists (pms->p, &prev, PG_VAR_PAGE | PG_VAR_HASH_PAGE, e) < 0) {
                   goto failed;
                 }
 
@@ -252,7 +245,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
         // Normal Advance
         else {
           // free(prev)
-          if (pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e)) {
+          if (pgr_release (pms->p, &prev, PG_VAR_HASH_PAGE | PG_VAR_PAGE, e) < 0) {
             goto failed;
           }
 
@@ -260,7 +253,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
           prev = page_h_xfer_ownership (&cur);
 
           // cur = cur->next
-          if (pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e)) {
+          if (pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e) < 0) {
             goto failed;
           }
         }
@@ -270,7 +263,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
 foundit:
 
-  if (pms->dvar && pms->alloc) {
+  if (pms->dvar != NULL && pms->alloc != NULL) {
     // Transfer variable name and type to persistent allocator
     pms->dvar->vname.data = arena_alloc_copy (pms->alloc, pms->vname.data, pms->vname.len, e);
     pms->dvar->vname.len  = pms->vname.len;
@@ -285,10 +278,10 @@ foundit:
   if (page_h_type (&prev) == PG_VAR_TAIL) {
     panic ("HERE");
   }
-  if (xfer_or_release (pms->p, pms->prev, &prev, e)) {
+  if (xfer_or_release (pms->p, pms->prev, &prev, e) < 0) {
     goto failed;
   }
-  if (xfer_or_release (pms->p, pms->cur, &cur, e)) {
+  if (xfer_or_release (pms->p, pms->cur, &cur, e) < 0) {
     goto failed;
   }
 
@@ -311,11 +304,11 @@ failed:
 static inline err_t
 pgr_fixture_create_with_var_hash_map (struct pgr_fixture *dest, error *e)
 {
-  if (unlikely (pgr_fixture_create (dest, e))) {
+  if (unlikely (pgr_fixture_create (dest, e) < 0)) {
     return error_trace (e);
   }
 
-  if (ns_init_var_hash_map (dest->p, e)) {
+  if (ns_init_var_hash_map (dest->p, e) < 0) {
     pgr_fixture_teardown (dest, e);
     return error_trace (e);
   }
@@ -581,7 +574,7 @@ TEST (ns_find_var_page)
       // This time, prev is the previous page
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
-      test_assert_int_equal (pg1, page_h_pgno (&prev));
+      test_assert_type_equal (pg1, page_h_pgno (&prev), pgno, PRpgno);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
       pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
@@ -670,7 +663,7 @@ TEST (ns_find_var_page)
 
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
-      test_assert_int_equal (pg1, page_h_pgno (&cur));
+      test_assert_type_equal (pg1, page_h_pgno (&cur), pgno, PRpgno);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
       pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
@@ -737,7 +730,7 @@ TEST (ns_find_var_page)
       ns_find_var_page (&fparams, &ctx->e);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
-      test_assert_int_equal (pg1, page_h_pgno (&cur));
+      test_assert_type_equal (pg1, page_h_pgno (&cur), pgno, PRpgno);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
       pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
@@ -763,8 +756,8 @@ TEST (ns_find_var_page)
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
 
-      test_assert_int_equal (page_h_pgno (&prev), pg1);
-      test_assert_int_equal (page_h_pgno (&cur), pg2);
+      test_assert_type_equal (page_h_pgno (&prev), pg1, pgno, PRpgno);
+      test_assert_type_equal (page_h_pgno (&cur), pg2, pgno, PRpgno);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
       pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
@@ -830,7 +823,7 @@ TEST (ns_find_var_page)
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
 
-      test_assert_int_equal (page_h_pgno (&cur), pg1);
+      test_assert_type_equal (page_h_pgno (&cur), pg1, pgno, PRpgno);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
       pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);
@@ -856,7 +849,7 @@ TEST (ns_find_var_page)
       test_assert_int_equal (page_get_type (page_h_ro (&cur)), PG_VAR_PAGE);
       test_assert_int_equal (page_get_type (page_h_ro (&prev)), PG_VAR_HASH_PAGE);
 
-      test_assert_int_equal (page_h_pgno (&cur), pg2);
+      test_assert_type_equal (page_h_pgno (&cur), pg2, pgno, PRpgno);
 
       pgr_release (f.p, &cur, PG_PERMISSIVE, &ctx->e);
       pgr_release (f.p, &prev, PG_PERMISSIVE, &ctx->e);

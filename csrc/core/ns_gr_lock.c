@@ -44,17 +44,37 @@ static const bool compatible[LM_COUNT][LM_COUNT] = {
 
 static const char *mode_names[LM_COUNT] = {"IS", "IX", "S", "SIX", "X"};
 
+// Callers hold l->mutex, since holder_counts changes under it
+DEFINE_DBG_ASSERT (struct gr_lock, gr_lock, l, {
+  ASSERT (l);
+  ASSERT (l->os.table);
+  int others = 0;
+  for (int i = 0; i < LM_COUNT; i++) {
+    ASSERT (l->holder_counts[i] >= 0);
+    if (i != LM_X) {
+      others += l->holder_counts[i];
+    }
+  }
+  // X is compatible with nothing, itself included
+  ASSERT (l->holder_counts[LM_X] <= 1);
+  ASSERT (l->holder_counts[LM_X] == 0 || others == 0);
+  ASSERT (l->head == NULL || l->head->prev == NULL);
+})
+
 err_t
 gr_lock_init (struct gr_lock *l, const struct i_os os, error *e)
 {
-  const err_t result = os.table->mutex_create (os.self, &l->mutex, e);
-  if (result != SUCCESS) {
-    return result;
+  ASSERT (l);
+
+  if (os.table->mutex_create (os.self, &l->mutex, e) < 0) {
+    return error_trace (e);
   }
 
   l->os = os;
   memset (l->holder_counts, 0, sizeof (l->holder_counts));
   l->head = NULL;
+
+  DBG_ASSERT (gr_lock, l);
 
   return SUCCESS;
 }
@@ -75,13 +95,15 @@ void
 gr_lock_destroy (struct gr_lock *l)
 {
   l->mutex.table->mutex_lock (l->mutex.self);
-  // TODO - Caller must ensure all threads have released locks
-  // You could put a done flag - and assert !done on actions
+  DBG_ASSERT (gr_lock, l);
+  // TODO: nothing checks that every holder unlocked before destroy. A
+  // destroyed flag asserted in gr_lock and gr_unlock would catch a use after
+  // destroy.
   l->mutex.table->mutex_unlock (l->mutex.self);
 
   l->os.table->mutex_free (l->os.self, l->mutex.self);
 
-  while (l->head) {
+  while (l->head != NULL) {
     struct gr_lock_waiter *w = l->head;
     l->head                  = w->next;
     l->os.table->cond_free (l->os.self, w->cond.self);
@@ -188,14 +210,16 @@ TEST (gr_lock_is_compatible)
   test_assert (!is_compatible (&l, LM_SIX));
   test_assert (!is_compatible (&l, LM_X));
   gr_unlock (&l, LM_X);
+
+  gr_lock_destroy (&l);
 }
 #endif
 
 err_t
 gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
 {
-  // First do a global mutex lock
   l->mutex.table->mutex_lock (l->mutex.self);
+  DBG_ASSERT (gr_lock, l);
 
   // If it's compatible - just increment mode count and move on
   if (is_compatible (l, mode)) {
@@ -209,7 +233,7 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
       .prev = NULL,
       .next = NULL,
   };
-  if (l->os.table->cond_create (l->os.self, &waiter.cond, e)) {
+  if (l->os.table->cond_create (l->os.self, &waiter.cond, e) < 0) {
     // Ok here - we just failed and everything is unlocked
     l->mutex.table->mutex_unlock (l->mutex.self);
     return error_trace (e);
@@ -249,8 +273,8 @@ gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
   l->os.table->cond_free (l->os.self, waiter.cond.self);
 
 acquire:
-  // Acquire the lock
   l->holder_counts[mode]++;
+  DBG_ASSERT (gr_lock, l);
   l->mutex.table->mutex_unlock (l->mutex.self);
   return SUCCESS;
 }
@@ -259,15 +283,15 @@ void
 gr_unlock (struct gr_lock *l, const enum lock_mode mode)
 {
   l->mutex.table->mutex_lock (l->mutex.self);
+  DBG_ASSERT (gr_lock, l);
 
-  // do unlock
   ASSERT (l->holder_counts[mode] > 0);
   l->holder_counts[mode]--;
 
   // Wake any compatible waiters
   if (l->head != NULL) {
-    for (struct gr_lock_waiter *w = l->head; w; w = w->next) {
-      // signal all waiters - they do the compatability check - it's ok
+    for (struct gr_lock_waiter *w = l->head; w != NULL; w = w->next) {
+      // Signal every waiter - each one redoes the compatibility check itself
       w->cond.table->cond_signal (w->cond.self);
     }
   }
@@ -291,7 +315,7 @@ thread1 (void *_ctx)
 {
   struct thread_ctx *ctx = _ctx;
 
-  while (!atomic_load (&ctx->gate)) {
+  while (atomic_load (&ctx->gate) == 0) {
     spin_pause ();
   }
 
@@ -308,12 +332,12 @@ thread2 (void *_ctx)
 {
   struct thread_ctx *ctx = _ctx;
 
-  while (!atomic_load (&ctx->gate)) {
+  while (atomic_load (&ctx->gate) == 0) {
     spin_pause ();
   }
 
   // Wait until thread 1 issued the lock
-  while (!atomic_load (&ctx->locked1)) {
+  while (atomic_load (&ctx->locked1) == 0) {
     spin_pause ();
   }
 
@@ -327,11 +351,12 @@ thread2 (void *_ctx)
 
 TEST (gr_lock_unlock)
 {
-  i_thread       t1, t2;
+  i_thread       t1;
+  i_thread       t2;
   struct gr_lock l;
   gr_lock_init (&l, ctx->os, &ctx->e);
 
-  // Cartesion product
+  // Cartesian product
   for (int m1 = 0; m1 < LM_COUNT; ++m1) {
     for (int m2 = 0; m2 < LM_COUNT; ++m2) {
       TEST_CASE ("%s + %s", mode_names[m1], mode_names[m2])
@@ -355,7 +380,7 @@ TEST (gr_lock_unlock)
 
         if (compatible[m1][m2]) {
           // 2 finishes without unlocking anything
-          while (!atomic_load (&lctx.locked2)) {
+          while (atomic_load (&lctx.locked2) == 0) {
             spin_pause ();
           }
 
@@ -369,7 +394,7 @@ TEST (gr_lock_unlock)
           test_assert_mark_not_hit ("gr_lock:gr_lock:wait");
         } else {
           // 1 finishes fine
-          while (!atomic_load (&lctx.locked1)) {
+          while (atomic_load (&lctx.locked1) == 0) {
             spin_pause ();
           }
 
@@ -380,9 +405,9 @@ TEST (gr_lock_unlock)
           i_sleep_ms (10);
           test_assert_int_equal (atomic_load (&lctx.locked2), 0);
 
-          // Unlock 2
+          // Release ours so 2 can acquire
           gr_unlock (&l, m1);
-          while (!atomic_load (&lctx.locked2)) {
+          while (atomic_load (&lctx.locked2) == 0) {
             spin_pause ();
           }
 
@@ -400,6 +425,8 @@ TEST (gr_lock_unlock)
       }
     }
   }
+
+  gr_lock_destroy (&l);
 }
 #endif
 
@@ -544,7 +571,7 @@ thread_hold_and_signal (void *arg)
   ctx->gate_mtx.table->mutex_unlock (ctx->gate_mtx.self);
 
   // Hold until the main thread has sampled whatever it wanted to sample
-  while (!atomic_load (&ctx->t1_release)) {
+  while (atomic_load (&ctx->t1_release) == 0) {
     spin_pause ();
   }
 
@@ -650,12 +677,13 @@ TEST (gr_lock_is_is_compatible)
   lctx.mode1 = LM_IS;
   lctx.mode2 = LM_IS;
 
-  i_thread t1, t2;
+  i_thread t1;
+  i_thread t2;
   ctx->os.table->thread_create (ctx->os.self, &t1, thread_hold_and_signal, &lctx, &ctx->e);
   ctx->os.table->thread_create (ctx->os.self, &t2, thread_wait_and_try, &lctx, &ctx->e);
 
   // IS + IS: thread 2 gets in while thread 1 still holds the lock
-  while (!atomic_load (&lctx.t2_acquired)) {
+  while (atomic_load (&lctx.t2_acquired) == 0) {
     spin_pause ();
   }
   atomic_store (&lctx.t1_release, 1);
@@ -684,7 +712,8 @@ TEST (gr_lock_is_x_blocks)
   lctx.mode1 = LM_IS;
   lctx.mode2 = LM_X;
 
-  i_thread t1, t2;
+  i_thread t1;
+  i_thread t2;
   ctx->os.table->thread_create (ctx->os.self, &t1, thread_hold_and_signal, &lctx, &ctx->e);
   ctx->os.table->thread_create (ctx->os.self, &t2, thread_wait_and_try, &lctx, &ctx->e);
 

@@ -84,13 +84,13 @@ main (int argc, char **argv)
   error           e  = error_create ();
   int             rc = EXIT_SUCCESS;
 
-  if (compile_type (&q, type_str, &alloc, &e)) {
+  if (compile_type (&q, type_str, &alloc, &e) < 0) {
     error_log_consume (&e);
     rc = EXIT_FAILURE;
     goto theend;
   }
 
-  if (compile_type_ref (&ref, type_ref_str, &alloc, &e)) {
+  if (compile_type_ref (&ref, type_ref_str, &alloc, &e) < 0) {
     error_log_consume (&e);
     rc = EXIT_FAILURE;
     goto theend;

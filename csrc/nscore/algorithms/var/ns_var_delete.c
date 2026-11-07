@@ -33,7 +33,7 @@
  *
  * Three steps:
  *
- *   1. _find_var_page() in FP_FIND mode locates the variable's PG_VAR_PAGE,
+ *   1. ns_find_var_page() in FP_FIND mode locates the variable's PG_VAR_PAGE,
  *      keeping prev (the page or hash-bucket that points to cur) pinned.
  *
  *   2. ns_remove() deletes every element from the R+Tree.  After this,
@@ -49,6 +49,9 @@
 err_t
 ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e)
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+
   page_h                         prev   = page_h_create ();
   page_h                         cur    = page_h_create ();
   page_h                         ovnext = page_h_create ();
@@ -63,16 +66,20 @@ ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e)
       .dvar  = &var,
       .mode  = FP_FIND,
 
-      .hpos  = PGNO_NULL,
+      .hpos  = 0,
       .prev  = &prev,
       .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e)) {
+  if (ns_find_var_page (&fparams, e) < 0) {
     goto failed;
   }
-  pgr_upgrade (&prev, tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, p, e);
-  pgr_upgrade (&cur, tx, PG_VAR_PAGE, p, e);
+  if (pgr_upgrade (&prev, tx, PG_VAR_PAGE | PG_VAR_HASH_PAGE, p, e) < 0) {
+    goto failed;
+  }
+  if (pgr_upgrade (&cur, tx, PG_VAR_PAGE, p, e) < 0) {
+    goto failed;
+  }
 
   struct ns_remove_params rparams = {
       .p      = p,
@@ -97,7 +104,7 @@ ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e)
     case PG_VAR_HASH_PAGE: {
       vh_set_hash_value (page_h_w (&prev), fparams.hpos, vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (p, &prev, PG_VAR_HASH_PAGE, e)) {
+      if (pgr_release (p, &prev, PG_VAR_HASH_PAGE, e) < 0) {
         goto failed;
       }
 
@@ -108,7 +115,7 @@ ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e)
     case PG_VAR_PAGE: {
       vp_set_next (page_h_w (&prev), vp_get_next (page_h_ro (&cur)));
 
-      if (pgr_release (p, &prev, PG_VAR_PAGE, e)) {
+      if (pgr_release (p, &prev, PG_VAR_PAGE, e) < 0) {
         goto failed;
       }
 
@@ -123,12 +130,12 @@ ns_var_delete (struct pager *p, struct txn *tx, struct string vname, error *e)
   while (cur.mode != PHM_NONE) {
     pgno npg = dlgt_get_ovnext (page_h_ro (&cur));
     if (npg != PGNO_NULL) {
-      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, p, e)) {
+      if (pgr_get (&ovnext, PG_VAR_TAIL, npg, p, e) < 0) {
         goto failed;
       }
     }
 
-    if (pgr_delete_and_release (p, tx, &cur, e)) {
+    if (pgr_delete_and_release (p, tx, &cur, e) < 0) {
       goto failed;
     }
 

@@ -224,7 +224,7 @@ struct aries_ctx
    * At the end of the analysis phase,
    * this is the minimum recovery lsn
    *
-   * It's the minimum page we need to read first in
+   * It is the lsn the redo pass starts reading from in
    * the restart phase on recovery
    */
   lsn                redo_lsn;
@@ -241,7 +241,7 @@ struct aries_ctx
    * transaction table and the dirty page table
    * while we run recovery.
    *
-   * They are ephemral and will be destroyed at the
+   * They are ephemeral and will be destroyed at the
    * end of recovery. Then the pager will create
    * them again because we're in a clean state
    */

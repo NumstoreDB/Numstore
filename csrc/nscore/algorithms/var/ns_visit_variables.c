@@ -81,7 +81,6 @@ ns_consume_var_chain (struct pager *p, pgno start, var_consumer var, void *ctx, 
     // Maybe finish
     pgno next = vp_get_next (page_h_ro (&cur));
 
-    // Release this page
     if (pgr_release (p, &cur, PG_VAR_PAGE, e) < 0) {
       goto failed;
     }
@@ -90,7 +89,6 @@ ns_consume_var_chain (struct pager *p, pgno start, var_consumer var, void *ctx, 
       return SUCCESS;
     }
 
-    // Get the next page
     ret = pgr_get (&cur, PG_VAR_PAGE, next, p, e);
     if (ret < 0) {
       goto failed;
@@ -105,6 +103,8 @@ failed:
 err_t
 ns_visit_variables (struct pager *p, var_consumer var, void *ctx, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   page_h vhp = page_h_create ();
 
   // Fetch the variable hash page
@@ -185,7 +185,7 @@ TEST (ns_visit_variables)
     ns_visit_variables (db->p, test_visit_func, &vctx, &ctx->e);
 
     test_assert_int_equal (vctx.count, 0);
-    test_assert_int_equal (vctx.total_nelems, 0);
+    test_assert_type_equal (vctx.total_nelems, 0, b_size, PRb_size);
     test_assert_int_equal (vctx.total_size, 0);
     test_assert_int_equal (vctx.varname_sum, 0);
   }
@@ -217,7 +217,7 @@ TEST (ns_visit_variables)
     ns_visit_variables (db->p, test_visit_func, &vctx, &ctx->e);
 
     test_assert_int_equal (vctx.count, 10);
-    test_assert_int_equal (vctx.total_nelems, 0);
+    test_assert_type_equal (vctx.total_nelems, 0, b_size, PRb_size);
     test_assert_int_equal (vctx.total_size, 10 * sizeof (u32));
     test_assert_int_equal (vctx.varname_sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9);
   }

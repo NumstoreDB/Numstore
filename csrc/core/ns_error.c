@@ -45,12 +45,14 @@ error_create (void)
 void
 error_silence (error *e)
 {
+  DBG_ASSERT (error, e);
   e->disable_log = true;
 }
 
 void
 error_unsilence (error *e)
 {
+  DBG_ASSERT (error, e);
   e->disable_log = false;
 }
 
@@ -61,6 +63,7 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
     return c;
   }
 
+  DBG_ASSERT (error, e);
   ASSERT (fmt);
 
   va_list ap;
@@ -75,12 +78,15 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
   const int written = vsnprintf (tmpbuf, sizeof (tmpbuf), fmt, ap_copy);
   va_end (ap_copy);
 
+  // TODO: an encoding error (or an empty fmt) leaves cmlen 0 with a non-SUCCESS
+  // cause_code, which breaks the error invariant (cmlen > 0 on failure). Store
+  // a fallback message instead.
   u32 cmlen;
   if (written < 0) {
     tmpbuf[0] = '\0'; // vsnprintf gives no termination guarantee on failure
     cmlen     = 0;
   } else {
-    cmlen = MIN ((u32)written, 255);
+    cmlen = MIN ((u32)written, 255U);
   }
 
   if (e->cause_code != SUCCESS) {
@@ -96,7 +102,7 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
     e->cmlen            = cmlen;
 
     if (!e->disable_log) {
-      i_log_error ("%.*s\n", e->cmlen, e->cause_msg);
+      i_log_error ("%.*s\n", (int)e->cmlen, e->cause_msg);
     }
   }
 
@@ -108,6 +114,7 @@ error_causef (error *e, const err_t c, const char *fmt, ...)
 err_t
 error_trace_at (error *e, const char *file, const int line, const char *func)
 {
+  DBG_ASSERT (error, e);
   if (e->cause_code < 0) {
     return error_causef (e, e->cause_code, FPREFIX_STR, file, line, func);
   }
@@ -119,7 +126,7 @@ error_log_consume (error *e)
 {
   DBG_ASSERT (error, e);
   ASSERT (e->cause_code != SUCCESS);
-  i_log_error ("%.*s\n", e->cmlen, e->cause_msg);
+  i_log_error ("%.*s\n", (int)e->cmlen, e->cause_msg);
   e->cmlen      = 0;
   e->cause_code = SUCCESS;
 }
@@ -130,10 +137,10 @@ TEST (error_log_consume)
   TEST_CASE ("error consumes")
   {
     error_causef (&ctx->e, ERR_CORRUPT, "Test");
-    test_assert (ctx->e.cause_code == ERR_CORRUPT);
+    test_assert_int_equal (ctx->e.cause_code, ERR_CORRUPT);
     error_log_consume (&ctx->e);
-    test_assert (ctx->e.cause_code == SUCCESS);
-    test_assert (ctx->e.cmlen == 0);
+    test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+    test_assert_type_equal (ctx->e.cmlen, 0, u32, PRIu32);
   }
 }
 #endif

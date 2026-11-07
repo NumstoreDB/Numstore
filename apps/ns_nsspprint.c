@@ -51,7 +51,7 @@ _simple_page_print (struct file_pager *p, const pgno pg, error *e)
   page raw;
   raw.pg = pg;
 
-  if (fpgr_read (p, raw.raw, pg, e)) {
+  if (fpgr_read (p, raw.raw, pg, e) < 0) {
     error_log_consume (e);
     return;
   }
@@ -65,7 +65,7 @@ simple_page_print (const char *fname)
   error       e = error_create ();
 
   struct i_os os;
-  if (system_os_create (default_mem (), &os, &e)) {
+  if (system_os_create (default_mem (), &os, &e) < 0) {
     error_log_consume (&e);
     return;
   }

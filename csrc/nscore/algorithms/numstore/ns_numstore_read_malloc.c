@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_bounds.h"
 #include "core/ns_error.h"
 #include "core/ns_stream.h"
 #include "core/os/ns_malloc.h"
@@ -82,9 +83,12 @@ numstore_read_malloc (
 
   // Resolve length based on the stride
   struct stride stride; // Resolved stride
-  if (stride_resolve (&stride, ustr, len, e)) {
+  if (stride_resolve (&stride, ustr, len, e) < 0) {
     return error_trace (e);
   }
+
+  // The step started as a positive i64, so it fits in sb_size
+  ASSERT (stride.stride <= (u64)I64_MAX);
 
   // Quit early if nothing to read
   if (stride.nelems == 0) {
@@ -93,14 +97,25 @@ numstore_read_malloc (
     return SUCCESS;
   }
 
-  // Do the allocation
-  void *buffer = mem.table->malloc (mem.self, stride.nelems, tsize, e);
+  // The allocator and the buffer stream both take u32 sizes
+  u32 nbytes;
+  if (stride.nelems > U32_MAX || !safe_mul_u32 (&nbytes, (u32)stride.nelems, tsize)) {
+    return error_causef (
+        e,
+        ERR_ARITH,
+        "%" PRIu64 " elements of %" PRt_size " bytes overflow one buffer",
+        stride.nelems,
+        tsize
+    );
+  }
+
+  void *buffer = mem.table->malloc (mem.self, (u32)stride.nelems, tsize, e);
   if (buffer == NULL) {
     return error_trace (e);
   }
 
   // Create output stream
-  ostream_create_from (stream, buffer, stride.nelems * tsize);
+  ostream_create_from (stream, buffer, nbytes);
 
   // Do the read
   sb_size ret = ns_rope_read (
@@ -111,7 +126,7 @@ numstore_read_malloc (
           .root   = var->rpt_root,
           .size   = tsize,
           .bofst  = tsize * stride.start,
-          .stride = stride.stride,
+          .stride = (sb_size)stride.stride,
           .nelem  = stride.nelems,
       },
       e
@@ -122,7 +137,7 @@ numstore_read_malloc (
   }
 
   // Set return values
-  *dlen = ret * tsize;
+  *dlen = (b_size)ret * tsize;
   *dest = buffer;
 
   return SUCCESS;

@@ -22,6 +22,10 @@
 
 struct arena_alloc;
 
+/// The longest source text lex_tokens accepts. Its length is a u32, so
+/// callers measure text with strnlen bounded by this.
+#define MAX_COMPILE_TEXT_LEN UINT32_MAX
+
 struct lexer
 {
   const char         *src;
@@ -44,10 +48,8 @@ err_t lex_tokens (
     error              *e
 );
 
-/**
- * True if [text, text + len) lexes as a primitive type or a keyword rather
- * than an identifier, so it cannot be used as a variable name.
- */
+/// True if [text, text + len) lexes as a primitive type or a keyword rather
+/// than an identifier, so it cannot be used as a variable name.
 bool lex_is_keyword (const char *text, u32 len);
 
 #endif

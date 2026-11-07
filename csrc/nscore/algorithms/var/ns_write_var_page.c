@@ -44,8 +44,7 @@ ns_write_var_page_advance (struct ns_write_var_page_params *params, error *e)
   // Link with the existing page
   dlgtovlink (page_h_w (params->vp), page_h_w (&next));
 
-  // Release current
-  if (pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)) {
+  if (pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e) < 0) {
     goto failed;
   }
 
@@ -80,7 +79,7 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
 
   // The serialized data
   u16 tlen;
-  if (type_get_serial_size (&tlen, params->var->dtype, e)) {
+  if (type_get_serial_size (&tlen, params->var->dtype, e) < 0) {
     return error_trace (e);
   }
   u8 *dtype_serialized = arena_malloc (&temp, tlen, 1, e);
@@ -117,7 +116,7 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   while (vwritten < params->var->vname.len) {
     // Advance forward one new node and reset local written and head
     if (lwritten == head.len) {
-      if (ns_write_var_page_advance (params, e)) {
+      if (ns_write_var_page_advance (params, e) < 0) {
         goto failed;
       }
       lwritten = 0;
@@ -138,7 +137,7 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   while (twritten < tlen) {
     // Advance forward one new node and reset local written and head
     if (lwritten == head.len) {
-      if (ns_write_var_page_advance (params, e)) {
+      if (ns_write_var_page_advance (params, e) < 0) {
         goto failed;
       }
       lwritten = 0;
@@ -165,20 +164,20 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
    */
   if (page_h_pgno (params->vp) != start) {
     // Release the tail (must be a tail because we're not at the starting page)
-    if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e)) {
+    if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e) < 0) {
       goto theend;
     }
 
     // Get the starting node
-    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)) {
+    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e) < 0) {
       goto theend;
     }
   } else {
     // Release and get the page in read mode
-    if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e)) {
+    if (pgr_release (params->p, params->vp, PG_VAR_PAGE, e) < 0) {
       goto theend;
     }
-    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e)) {
+    if (pgr_get (params->vp, PG_VAR_PAGE, start, params->p, e) < 0) {
       goto theend;
     }
   }

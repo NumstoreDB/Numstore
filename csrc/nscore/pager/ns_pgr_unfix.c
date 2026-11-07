@@ -17,7 +17,7 @@
 void
 pgr_unfix (page_h *h, int flags)
 {
-  (void)flags; // Unused for now
+  (void)flags; // Only read by the assert below, which compiles away in release
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
 
   latch_lock (&h->pgr->ctrl);
@@ -26,16 +26,14 @@ pgr_unfix (page_h *h, int flags)
 
   // Need to save this page
   if (h->mode == PHM_X) {
-    // spgno page_lsn = 0;
-
     // Can only save valid pages
-    ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL));
+    ASSERT (page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, NULL) == SUCCESS);
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
 
     latch_lock (&h->pgw->ctrl);
 
-    h->pgw->flags    = 0; // Release pgw
+    h->pgw->flags    = 0;
     h->pgr->wsibling = -1;
 
     latch_unlock (&h->pgw->ctrl);

@@ -133,6 +133,7 @@ frame_unref_unsafe (struct lockt *t, struct lockt_frame *frame)
 
   if (frame->refcount == 0) {
     struct hnode **found = htable_lookup (t->table, &frame->node, lockt_frame_eq);
+    ASSERT (found != NULL);
     htable_delete (t->table, found);
     lockt_frame_destroy (frame);
     slab_alloc_free (&t->lock_alloc, frame);
@@ -152,12 +153,16 @@ lockt_init (struct lockt *t, struct i_mem mem, const struct i_os os, error *e)
 
   latch_init (&t->l);
 
+  DBG_ASSERT (lockt, t);
+
   return SUCCESS;
 }
 
 void
 lockt_destroy (struct lockt *t)
 {
+  DBG_ASSERT (lockt, t);
+
   slab_alloc_destroy (&t->lock_alloc);
   htable_free (t->table);
 }
@@ -165,13 +170,12 @@ lockt_destroy (struct lockt *t)
 static struct lockt_frame *
 lockt_new_frame_unsafe (struct lockt *t, struct lt_lock lock, error *e)
 {
-  // Allocate and insert a new frame
   struct lockt_frame *frame = slab_alloc_alloc (&t->lock_alloc, e);
-  if (e->cause_code != SUCCESS) {
+  if (frame == NULL) {
     return NULL;
   }
 
-  if (lockt_frame_init (frame, lock, t->os, e) != SUCCESS) {
+  if (lockt_frame_init (frame, lock, t->os, e) < 0) {
     slab_alloc_free (&t->lock_alloc, frame);
     return NULL;
   }
@@ -184,20 +188,15 @@ lockt_new_frame_unsafe (struct lockt *t, struct lt_lock lock, error *e)
 static struct lockt_frame *
 get_or_create_frame_unsafe (struct lockt *t, struct lt_lock lock, error *e)
 {
-  // Create the lookup key
   struct lockt_frame lookup_key;
   lockt_frame_init_key (&lookup_key, lock);
 
   struct hnode      **node  = htable_lookup (t->table, &lookup_key.node, lockt_frame_eq);
-
-  // This is the frame we'll be working with
   struct lockt_frame *frame = NULL;
 
   if (node != NULL) {
-    // Frame already exists
     frame = container_of (*node, struct lockt_frame, node);
   } else {
-    // Frame doesn't exist - create it
     frame = lockt_new_frame_unsafe (t, lock, e);
     if (frame == NULL) {
       return NULL;
@@ -218,25 +217,16 @@ lockt_lock_once (
     error               *e
 )
 {
-  /**
-  // Fast path: if this transaction already holds this lock, skip.
-  if (tx && txn_haslock (tx, lock))
-    {
-      return SUCCESS;
-    }
-  */
   latch_lock (&t->l);
 
-  // Get the lock frame or create it if it doesn't exist
   struct lockt_frame *frame = get_or_create_frame_unsafe (t, lock, e);
   if (frame == NULL) {
     latch_unlock (&t->l);
     return error_trace (e);
   }
 
-  // Add this lock to the list of transaction locks
-  if (tx) {
-    if (txn_newlock (tx, lock, mode, e) != SUCCESS) {
+  if (tx != NULL) {
+    if (txn_newlock (tx, lock, mode, e) < 0) {
       frame_unref_unsafe (t, frame);
       latch_unlock (&t->l);
       return error_trace (e);
@@ -250,8 +240,7 @@ lockt_lock_once (
   // immediately have to wait. But that's ok, the frame creation was
   // just so we can find it and representative of a read
 
-  // This is the main wait logic
-  if (gr_lock (&frame->lock, mode, e) != SUCCESS) {
+  if (gr_lock (&frame->lock, mode, e) < 0) {
     // This race is hard to test - between locking, and unreffing
     // but seems fine
     latch_lock (&t->l);
@@ -268,17 +257,13 @@ lockt_unlock_once (struct lockt *t, const struct lt_lock lock, const enum lock_m
 {
   latch_lock (&t->l);
   {
-    // Search for the node
     struct lockt_frame key;
     lockt_frame_init_key (&key, lock);
     struct hnode **found = htable_lookup (t->table, &key.node, lockt_frame_eq);
     ASSERT (found);
     struct lockt_frame *frame = container_of (*found, struct lockt_frame, node);
 
-    // Unlock it
     gr_unlock (&frame->lock, mode);
-
-    // Unreference it
     frame_unref_unsafe (t, frame);
   }
   latch_unlock (&t->l);
@@ -293,11 +278,12 @@ lockt_lock (
     error               *e
 )
 {
-  // Fetch and lock the parent lock first if there is one
+  DBG_ASSERT (lockt, t);
+
+  // Hierarchical locking: take the parent first, top-down
   struct lt_lock parent;
   bool           has_parent = get_parent (&parent, lock);
 
-  // First, lock the parent (top - down)
   if (has_parent) {
     const enum lock_mode pmode = get_parent_mode (mode);
     if (lockt_lock (t, parent, pmode, tx, e) < 0) {
@@ -305,7 +291,6 @@ lockt_lock (
     }
   }
 
-  // Then, lock the requested lock
   if (lockt_lock_once (t, lock, mode, tx, e) < 0) {
     // If this lock failed, unlock the parent is all we need to do
     if (has_parent) {
@@ -322,10 +307,11 @@ lockt_lock (
 void
 lockt_unlock (struct lockt *t, const struct lt_lock lock, const enum lock_mode mode)
 {
-  // Unlock the child first (bottom-up).
+  DBG_ASSERT (lockt, t);
+
+  // Release bottom-up: the child, then its parent
   lockt_unlock_once (t, lock, mode);
 
-  // Then unlock the parent.
   struct lt_lock parent;
   if (get_parent (&parent, lock)) {
     const enum lock_mode pmode = get_parent_mode (mode);
@@ -353,7 +339,7 @@ unlock_single_lock (const struct lt_lock lock, const enum lock_mode mode, void *
 void
 lockt_unlock_tx (struct lockt *t, struct txn *tx)
 {
-  ASSERT (t);
+  DBG_ASSERT (lockt, t);
   ASSERT (tx);
 
   latch_lock (&t->l);
@@ -372,6 +358,7 @@ i_log_lockt_entry (struct hnode *node, void *ctx)
   switch (frame->key.type) {
     case LOCK_DB: {
       i_log (*log_level, "LOCK_DB\n");
+      break;
     }
   }
 }
@@ -379,6 +366,8 @@ i_log_lockt_entry (struct hnode *node, void *ctx)
 void
 i_log_lockt (int log_level, struct lockt *t)
 {
+  DBG_ASSERT (lockt, t);
+
   latch_lock (&t->l);
   htable_foreach (t->table, i_log_lockt_entry, &log_level);
   latch_unlock (&t->l);
@@ -520,7 +509,7 @@ TEST (lockt_lock_fail_waiter_no_txn)
 }
 
 /**
- * TODO - lockt_lock_once records the lock on the txn (txn_newlock) before it
+ * TODO: lockt_lock_once records the lock on the txn (txn_newlock) before it
  * waits in gr_lock. If gr_lock then fails (cond_create for the waiter), it
  * drops the frame reference but leaves the lock in tx->locks.
  *

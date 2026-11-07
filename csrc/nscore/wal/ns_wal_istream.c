@@ -34,18 +34,15 @@ DEFINE_DBG_ASSERT (struct wal_istream, wal_istream, w, {
 struct wal_istream *
 walis_open (const char *fname, struct i_mem mem, struct i_os os, error *e)
 {
-  // Allocate memory
   struct wal_istream *dest = mem.table->malloc (mem.self, 1, sizeof *dest, e);
   if (dest == NULL) {
     return NULL;
   }
 
-  // Open file in read only mode
-  if (os.table->open_file_r (os.self, &dest->fd, fname, e)) {
+  if (os.table->open_file_r (os.self, &dest->fd, fname, e) < 0) {
     goto err_free;
   }
 
-  // Seek to the start of the file
   if (dest->fd.table->seek (dest->fd.self, 0, I_SEEK_SET, e) < 0) {
     goto err_close;
   }
@@ -61,7 +58,8 @@ walis_open (const char *fname, struct i_mem mem, struct i_os os, error *e)
   return dest;
 
 err_close:
-  os.table->close_file (os.self, dest->fd.self, e);
+  // Already failing - a close failure adds nothing the caller can act on
+  (void)os.table->close_file (os.self, dest->fd.self, e);
 err_free:
   mem.table->free (mem.self, dest);
   return NULL;
@@ -119,7 +117,7 @@ TEST (walis_open)
         error_reset (&ctx->e);
 
         // Reset
-        if (wis) {
+        if (wis != NULL) {
           walis_close (wis, &ctx->e);
         }
         ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
@@ -154,7 +152,7 @@ TEST (walis_open)
         error_reset (&ctx->e);
 
         // Reset
-        if (wis) {
+        if (wis != NULL) {
           walis_close (wis, &ctx->e);
         }
         ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
@@ -174,7 +172,8 @@ walis_close (struct wal_istream *w, error *e)
   latch_lock (&w->l);
 
   DBG_ASSERT (wal_istream, w);
-  w->os.table->close_file (w->os.self, w->fd.self, e);
+  // The stream is freed either way. A close failure stays in [e].
+  (void)w->os.table->close_file (w->os.self, w->fd.self, e);
   w->mem.table->free (w->mem.self, w);
 
   return error_trace (e);
@@ -330,11 +329,9 @@ walis_read_all (struct wal_istream *w, u32 *checksum, void *data, const u32 len,
   if (bread < len) {
     // Seek back so the file position is at the record start,
     // leaving it at the last fully-written record boundary
-    if (bread > 0) {
-      if (walis_seek_unsafe (w, w->curlsn, e)) {
-        latch_unlock (&w->l);
-        return error_trace (e);
-      }
+    if (bread > 0 && walis_seek_unsafe (w, w->curlsn, e) < 0) {
+      latch_unlock (&w->l);
+      return error_trace (e);
     }
 
     latch_unlock (&w->l);
@@ -342,7 +339,7 @@ walis_read_all (struct wal_istream *w, u32 *checksum, void *data, const u32 len,
     return WAL_EOF;
   }
 
-  if (checksum) {
+  if (checksum != NULL) {
     checksum_execute (checksum, data, len);
   }
 
@@ -506,6 +503,7 @@ lsn
 walis_mark (struct wal_istream *w)
 {
   latch_lock (&w->l);
+  DBG_ASSERT (wal_istream, w);
 
   w->curlsn += w->lsnidx;
   w->lsnidx  = 0;
@@ -559,7 +557,8 @@ err_t
 walis_crash (struct wal_istream *w, error *e)
 {
   DBG_ASSERT (wal_istream, w);
-  w->os.table->close_file (w->os.self, w->fd.self, e);
+  // The stream is freed either way. A close failure stays in [e].
+  (void)w->os.table->close_file (w->os.self, w->fd.self, e);
   w->mem.table->free (w->mem.self, w);
   return error_trace (e);
 }

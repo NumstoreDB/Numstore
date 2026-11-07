@@ -18,8 +18,6 @@
 #include "core/ns_numerics.h"
 #include "core/ns_testing.h"
 
-struct cbuffer;
-
 /******************************************************************************
  * SECTION: Var Page
  ******************************************************************************/
@@ -32,6 +30,7 @@ DEFINE_DBG_ASSERT (page, vp_page, v, { ASSERT (v); })
 void
 vp_init_empty (page *p)
 {
+  DBG_ASSERT (vp_page, p);
   ASSERT (page_get_type (p) == PG_VAR_PAGE);
   vp_set_next (p, PGNO_NULL);
   vp_set_ovnext (p, PGNO_NULL);
@@ -48,13 +47,13 @@ TEST (vp_init_empty)
   rand_bytes (p.raw, NS_PAGE_SIZE);
   page_init_empty (&p, PG_VAR_PAGE);
 
-  test_assert_equal (vp_get_next (&p), PGNO_NULL);
-  test_assert_equal (vp_get_ovnext (&p), PGNO_NULL);
-  test_assert_equal (vp_get_vlen (&p), 0);
-  test_assert_equal (vp_get_tlen (&p), 0);
-  test_assert_equal (vp_get_root (&p), PGNO_NULL);
-  test_assert_equal (vp_calc_tofst (&p), VP_VNME_OFST);
-  test_assert_equal (vp_is_overflow (&p), false);
+  test_assert_type_equal (vp_get_next (&p), PGNO_NULL, pgno, PRpgno);
+  test_assert_type_equal (vp_get_ovnext (&p), PGNO_NULL, pgno, PRpgno);
+  test_assert_int_equal (vp_get_vlen (&p), 0);
+  test_assert_int_equal (vp_get_tlen (&p), 0);
+  test_assert_type_equal (vp_get_root (&p), PGNO_NULL, pgno, PRpgno);
+  test_assert_type_equal (vp_calc_tofst (&p), VP_VNME_OFST, b_size, PRb_size);
+  test_fail_if (vp_is_overflow (&p));
 }
 #endif
 
@@ -64,40 +63,44 @@ TEST (vp_init_empty)
 void
 vp_set_next (page *p, const pgno pg)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_SET_IMPL (p, pg, VP_NEXT_OFST);
 }
 
 void
 vp_set_ovnext (page *p, const pgno pg)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_SET_IMPL (p, pg, VP_OVNX_OFST);
 }
 
 void
 vp_set_vlen (page *p, const u16 vlen)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_SET_IMPL (p, vlen, VP_VLEN_OFST);
 }
 
 void
 vp_set_tlen (page *p, const u16 tlen)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_SET_IMPL (p, tlen, VP_TLEN_OFST);
 }
 
 void
 vp_set_root (page *p, const pgno root)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_SET_IMPL (p, root, VP_ROOT_OFST);
 }
 
 void
 vp_set_nbytes (page *p, const b_size nbytes)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_SET_IMPL (p, nbytes, VP_NBYT_OFST);
 }
-
-void vp_append_cbuffer (page *p, struct cbuffer src);
 
 ////////////////////////////////////////////////////////////
 // GETTERS
@@ -105,42 +108,49 @@ void vp_append_cbuffer (page *p, struct cbuffer src);
 pgno
 vp_get_next (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_GET_IMPL (p, pgno, VP_NEXT_OFST);
 }
 
 pgno
 vp_get_ovnext (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_GET_IMPL (p, pgno, VP_OVNX_OFST);
 }
 
 u16
 vp_get_vlen (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_GET_IMPL (p, u16, VP_VLEN_OFST);
 }
 
 u16
 vp_get_tlen (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_GET_IMPL (p, u16, VP_TLEN_OFST);
 }
 
 pgno
 vp_get_root (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_GET_IMPL (p, pgno, VP_ROOT_OFST);
 }
 
 b_size
 vp_get_nbytes (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   PAGE_SIMPLE_GET_IMPL (p, b_size, VP_NBYT_OFST);
 }
 
 b_size
 vp_calc_tofst (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   const b_size vlen = (b_size)vp_get_vlen (p);
   return (b_size)VP_VNME_OFST + vlen;
 }
@@ -148,12 +158,14 @@ vp_calc_tofst (const page *p)
 bool
 vp_is_overflow (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   return vp_calc_tofst (p) > NS_PAGE_SIZE;
 }
 
 struct bytes
 vp_get_bytes (page *p)
 {
+  DBG_ASSERT (vp_page, p);
   return (struct bytes){
       .head = (void *)&p->raw[VP_VNME_OFST],
       .len  = NS_PAGE_SIZE - VP_VNME_OFST,
@@ -163,6 +175,7 @@ vp_get_bytes (page *p)
 struct cbytes
 vp_get_bytes_imut (const page *p)
 {
+  DBG_ASSERT (vp_page, p);
   return (struct cbytes){
       .head = (void *)&p->raw[VP_VNME_OFST],
       .len  = NS_PAGE_SIZE - VP_VNME_OFST,
@@ -175,6 +188,7 @@ vp_get_bytes_imut (const page *p)
 err_t
 vp_validate_for_db (const page *p, error *e)
 {
+  DBG_ASSERT (vp_page, p);
   if (page_get_type (p) != PG_VAR_PAGE) {
     return error_causef (e, ERR_CORRUPT, "wrong page type for var page");
   }
@@ -239,9 +253,9 @@ TEST (vp_validate)
   TEST_CASE ("Valid overflow with next pointer")
   {
     page_init_empty (&sut, PG_VAR_PAGE);
-    vp_set_vlen (&sut, 100);
+    vp_set_vlen (&sut, NS_PAGE_SIZE);
     vp_set_tlen (&sut, 10);
-    vp_set_next (&sut, 42);
+    vp_set_ovnext (&sut, 42);
     test_err_t_check (vp_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
   }
 }
@@ -253,11 +267,13 @@ TEST (vp_validate)
 void
 i_log_vp (const int level, const page *vp)
 {
+  DBG_ASSERT (vp_page, vp);
+
   i_log (level, "=== VARIABLE PAGE START ===\n");
 
   i_log_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
-  i_log_printf (level, "VLEN:   %u\n", vp_get_vlen (vp));
-  i_log_printf (level, "TLEN:   %u\n", vp_get_tlen (vp));
+  i_log_printf (level, "VLEN:   %" PRIu16 "\n", vp_get_vlen (vp));
+  i_log_printf (level, "TLEN:   %" PRIu16 "\n", vp_get_tlen (vp));
   if (vp_get_root (vp) == PGNO_NULL) {
     i_log_printf (level, "ROOT:  NULL\n");
   } else {

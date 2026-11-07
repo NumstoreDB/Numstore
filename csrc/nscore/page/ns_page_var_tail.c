@@ -16,6 +16,7 @@
 
 #include "core/ns_numerics.h"
 #include "core/ns_testing.h"
+#include "nscore/page/ns_page_delegate.h"
 
 /******************************************************************************
  * SECTION: Var Tail
@@ -34,7 +35,7 @@ TEST (vt_init_empty)
   rand_bytes (p.raw, NS_PAGE_SIZE);
   page_init_empty (&p, PG_VAR_TAIL);
 
-  test_assert_equal (vt_get_next (&p), PGNO_NULL);
+  test_assert_type_equal (vt_get_next (&p), PGNO_NULL, pgno, PRpgno);
 }
 #endif
 
@@ -44,6 +45,7 @@ TEST (vt_init_empty)
 err_t
 vt_validate_for_db (const page *p, error *e)
 {
+  DBG_ASSERT (vt_page, p);
   if (page_get_type (p) != PG_VAR_TAIL) {
     return error_causef (e, ERR_CORRUPT, "wrong page type for var tail node");
   }
@@ -60,6 +62,12 @@ TEST (vt_validate)
     page_init_empty (&sut, PG_DATA_LIST);
     test_err_t_check (vt_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
+
+  TEST_CASE ("A var tail page is valid")
+  {
+    page_init_empty (&sut, PG_VAR_TAIL);
+    test_err_t_check (vt_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
+  }
 }
 #endif
 
@@ -69,6 +77,8 @@ TEST (vt_validate)
 void
 i_log_vt (const int level, const page *vp)
 {
+  DBG_ASSERT (vt_page, vp);
+
   i_log (level, "=== VARIABLE TAIL START ===\n");
 
   i_log_printf (level, "PGNO:   %" PRpgno "\n", vp->pg);
@@ -94,5 +104,33 @@ TEST (i_log_vt)
 
   vt_set_next (&vt, 10);
   i_log_vt (LOG_INFO, &vt);
+}
+#endif
+
+#ifndef NDEBUG
+TEST (dlgt_var_chain)
+{
+  page vp;
+  page vt;
+  vp.pg = 3;
+  vt.pg = 4;
+  page_init_empty (&vp, PG_VAR_PAGE);
+  page_init_empty (&vt, PG_VAR_TAIL);
+
+  TEST_CASE ("next goes through the var page and var tail setters")
+  {
+    dlgt_set_next (&vp, 7);
+    dlgt_set_next (&vt, 8);
+    test_assert_type_equal (dlgt_get_next (&vp), 7, pgno, PRpgno);
+    test_assert_type_equal (dlgt_get_next (&vt), 8, pgno, PRpgno);
+  }
+
+  TEST_CASE ("an overflow link points the var page at its tail")
+  {
+    dlgtovlink (&vp, &vt);
+    dlgtovlink (&vt, NULL);
+    test_assert_type_equal (dlgt_get_ovnext (&vp), 4, pgno, PRpgno);
+    test_assert_type_equal (dlgt_get_ovnext (&vt), PGNO_NULL, pgno, PRpgno);
+  }
 }
 #endif

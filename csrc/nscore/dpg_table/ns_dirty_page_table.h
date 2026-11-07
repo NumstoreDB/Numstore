@@ -56,7 +56,7 @@ err_t dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e);
 bool dpgt_get (lsn *dest, struct dpg_table *t, pgno pg);
 void dpgt_remove (bool *exists, struct dpg_table *t, pgno pg);
 void dpgt_remove_expect (struct dpg_table *t, pgno pg);
-void dpgt_update (struct dpg_table *d, pgno pg, lsn new_rec_lsn);
+void dpgt_update (struct dpg_table *t, pgno pg, lsn new_rec_lsn);
 bool dpgt_equal (struct dpg_table *left, struct dpg_table *right);
 void dpgt_crash (struct dpg_table *t);
 

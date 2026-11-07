@@ -87,28 +87,28 @@ A database holds **variables**. Each variable has:
 
 You work with variables through short queries:
 
-| Query                    | What it does                                     |
-| ------------------------ | ------------------------------------------------ |
-| `create prices f64`      | create a variable                                |
-| `delete prices`          | delete a variable                                |
-| `insert prices 0 3`      | insert 3 elements at position 0                  |
-| `write prices[0:3]`      | overwrite existing elements                      |
-| `read prices[0:10:2]`    | read elements, with numpy-style `start:stop:step`|
-| `remove prices[0:2]`     | remove elements and return them                  |
-| `get prices`             | look up a variable's type and length             |
+| Query                 | What it does                                      |
+| --------------------- | ------------------------------------------------- |
+| `create prices f64`   | create a variable                                 |
+| `delete prices`       | delete a variable                                 |
+| `insert prices 0 3`   | insert 3 elements at position 0                   |
+| `write prices[0:3]`   | overwrite existing elements                       |
+| `read prices[0:10:2]` | read elements, with numpy-style `start:stop:step` |
+| `remove prices[0:2]`  | remove elements and return them                   |
+| `get prices`          | look up a variable's type and length              |
 
 ### Types
 
 **Primitives.** The number is the size in bits.
 
-| Family                 | Types             | Size         |
-| ---------------------- | ----------------- | -------------|
-| unsigned int           | `u8` to `u64`     | 1-8 bytes    |
-| signed int             | `i8` to `i64`     | 1-8 bytes    |
-| float                  | `f16` to `f128`   | 2-16 bytes   |
-| complex float          | `cf32` to `cf256` | 4-32 bytes   |
-| complex signed int     | `ci16` to `ci128` | 2-16 bytes   |
-| complex unsigned int   | `cu16` to `cu128` | 2-16 bytes   |
+| Family               | Types             | Size       |
+| -------------------- | ----------------- | ---------- |
+| unsigned int         | `u8` to `u64`     | 1-8 bytes  |
+| signed int           | `i8` to `i64`     | 1-8 bytes  |
+| float                | `f16` to `f128`   | 2-16 bytes |
+| complex float        | `cf32` to `cf256` | 4-32 bytes |
+| complex signed int   | `ci16` to `ci128` | 2-16 bytes |
+| complex unsigned int | `cu16` to `cu128` | 2-16 bytes |
 
 **Composites.** Build bigger types out of smaller ones:
 
@@ -161,21 +161,21 @@ Developing
 One `CMakeLists.txt` builds everything, and `make` wraps the cmake invocations
 so the flags live in one place:
 
-| Target                 | What it does                                        |
-| ---------------------- | --------------------------------------------------- |
-| `make debug`           | debug build into `build/debug` (the default target) |
-| `make release`         | release build into `build/release`                  |
+| Target                 | What it does                                                       |
+| ---------------------- | ------------------------------------------------------------------ |
+| `make debug`           | debug build into `build/debug` (the default target)                |
+| `make release`         | release build into `build/release`                                 |
 | `make release-package` | release build, then `cmake --install` into `build/release/package` |
-| `make test`            | `test-unit`, then `test-simtest`                    |
-| `make test-unit`       | debug build, then `unit_tests` with a random seed   |
-| `make test-simtest`    | debug build, then `ns_simtest` for 50 seconds       |
-| `make test-python`     | pip install the package, then run `pytest`          |
-| `make wheel`           | build a wheel into `dist/` (`make sdist` for a tarball) |
-| `make coverage`        | gcovr HTML report into `build/coverage/html`        |
-| `make valgrind`        | `unit_tests` and `ns_simtest` under valgrind        |
-| `make leaks`           | the same two under macOS `leaks`                    |
-| `make format`          | clang-format, gersemi and ruff over the tree        |
-| `make clean`           | remove build artifacts                              |
+| `make test`            | `test-unit`, then `test-simtest`                                   |
+| `make test-unit`       | debug build, then `unit_tests` with a random seed                  |
+| `make test-simtest`    | debug build, then `ns_simtest` for 50 seconds                      |
+| `make test-python`     | pip install the package, then run `pytest`                         |
+| `make wheel`           | build a wheel into `dist/` (`make sdist` for a tarball)            |
+| `make coverage`        | gcovr HTML report into `build/coverage/html`                       |
+| `make valgrind`        | `unit_tests` and `ns_simtest` under valgrind                       |
+| `make leaks`           | the same two under macOS `leaks`                                   |
+| `make format`          | clang-format, gersemi and ruff over the tree                       |
+| `make clean`           | remove build artifacts                                             |
 
 `coverage` needs gcovr, `format` needs clang-format, gersemi and ruff, and
 `valgrind` and `leaks` need the tool they're named after. CI runs `make

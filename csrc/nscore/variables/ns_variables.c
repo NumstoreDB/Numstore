@@ -33,6 +33,7 @@
 err_t
 i_print_variable (struct variable *v, error *e)
 {
+  DBG_ASSERT (variable, v);
   i_printf ("{\n");
   i_printf ("    \"Status\"          : \"Ok\",\n");
   i_printf ("    \"Name\"            : \"%.*s\",\n", strfmt (&v->vname));
@@ -43,22 +44,21 @@ i_print_variable (struct variable *v, error *e)
     return error_trace (e);
   }
   i_printf ("    \"DType\"           : \"%.*s\",\n", len, var_str);
-  (default_mem ()).table->free ((default_mem ()).self, var_str);
-  i_printf ("    \"DSize\"           : %u,\n", type_byte_size (v->dtype));
+  default_mem ().table->free (default_mem ().self, var_str);
+  i_printf ("    \"DSize\"           : %" PRIu32 ",\n", type_byte_size (v->dtype));
 
-  /* Assuming Nelems is derived from bytes / size, or replace with v->nelems if
-   * it exists */
   i_printf ("    \"Nelems\"          : %" PRb_size ",\n", v->nbytes / type_byte_size (v->dtype));
   i_printf ("    \"Bytes\"           : %" PRb_size ",\n", v->nbytes);
 
-  /* JSON strictly requires lowercase 'null' */
+  // TODO: JSON spells it lowercase null, so a NULL root makes this output
+  // unparseable as JSON. Check that nothing reads the uppercase form (the
+  // print_all_vars app emits it) before changing it.
   if (v->var_root == PGNO_NULL) {
     i_printf ("    \"Variable_Root\"   : NULL\n");
   } else {
     i_printf ("    \"Variable_Root\"   : %" PRpgno "\n", v->var_root);
   }
 
-  /* JSON strictly requires lowercase 'null' */
   if (v->rpt_root == PGNO_NULL) {
     i_printf ("    \"Rope_Root\"       : NULL\n");
   } else {
@@ -78,11 +78,20 @@ TEST (i_print_variable)
       .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
-      .nbytes   = 789,
+      .nbytes   = 792, // 99 elements of the 8 byte struct
   };
 
-  // Just logging - make sure it succeeds and doesn't crash.
-  test_assert (i_print_variable (&v, &ctx->e) == SUCCESS);
+  TEST_CASE ("A variable with both roots set")
+  {
+    test_assert_int_equal (i_print_variable (&v, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("A variable with no pages yet prints its roots as NULL")
+  {
+    v.var_root = PGNO_NULL;
+    v.rpt_root = PGNO_NULL;
+    test_assert_int_equal (i_print_variable (&v, &ctx->e), SUCCESS);
+  }
 
   arena_alloc_free_all (&ctx->alloc);
 }
@@ -97,10 +106,9 @@ var_copy (struct variable *dest, struct variable *src, struct arena_alloc *alloc
               .data = arena_alloc_copy (alloc, src->vname.data, src->vname.len, e),
               .len  = src->vname.len,
           },
-      // .dtype = copy
-      .nbytes   = src->nbytes,
-      .rpt_root = src->rpt_root,
       .var_root = src->var_root,
+      .rpt_root = src->rpt_root,
+      .nbytes   = src->nbytes,
   };
 
   if (dest->vname.data == NULL) {
@@ -123,11 +131,11 @@ TEST (var_copy)
       .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
-      .nbytes   = 789,
+      .nbytes   = 792,
   };
 
   struct variable dest;
-  test_assert (var_copy (&dest, &src, &ctx->alloc, &ctx->e) == SUCCESS);
+  test_assert_int_equal (var_copy (&dest, &src, &ctx->alloc, &ctx->e), SUCCESS);
 
   test_assert (variable_equal (&dest, &src));
   test_assert (dest.vname.data != src.vname.data);
@@ -140,6 +148,8 @@ TEST (var_copy)
 bool
 variable_equal (const struct variable *left, const struct variable *right)
 {
+  DBG_ASSERT (variable, left);
+  DBG_ASSERT (variable, right);
   if (!string_equal (left->vname, right->vname)) {
     return false;
   }
@@ -167,7 +177,7 @@ TEST (variable_equal)
       .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
-      .nbytes   = 789,
+      .nbytes   = 792,
   };
 
   struct variable b = {
@@ -175,7 +185,7 @@ TEST (variable_equal)
       .dtype    = compile_type_alloc ("struct { a u32, b f32}", &ctx->alloc, &ctx->e),
       .var_root = 123,
       .rpt_root = 456,
-      .nbytes   = 789,
+      .nbytes   = 792,
   };
 
   test_assert (variable_equal (&a, &b));
@@ -196,9 +206,9 @@ TEST (variable_equal)
   test_assert (!variable_equal (&a, &b));
   a.rpt_root = 456;
 
-  a.nbytes   = 111;
+  a.nbytes   = 112;
   test_assert (!variable_equal (&a, &b));
-  a.nbytes = 789;
+  a.nbytes = 792;
 
   arena_alloc_free_all (&ctx->alloc);
 }
@@ -211,7 +221,7 @@ validate_vname (struct string vname, error *e)
     return error_causef (e, ERR_INVALID_ARGUMENT, "variable name is empty");
   }
 
-  if (vname.len >= 4096) {
+  if (vname.len >= MAX_VARIABLE_LENGTH) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "variable name exceeds 4096 chars");
   }
 
@@ -220,7 +230,7 @@ validate_vname (struct string vname, error *e)
         e,
         ERR_INVALID_ARGUMENT,
         "variable name '%.*s' must start with a letter",
-        vname.len,
+        (int)vname.len,
         vname.data
     );
   }
@@ -233,7 +243,7 @@ validate_vname (struct string vname, error *e)
           ERR_INVALID_ARGUMENT,
           "variable name '%.*s' contains "
           "invalid characters",
-          vname.len,
+          (int)vname.len,
           vname.data
       );
     }
@@ -245,38 +255,38 @@ validate_vname (struct string vname, error *e)
 #ifndef NDEBUG
 TEST (validate_vname)
 {
-  // Valid: plain letters.
-  test_assert (validate_vname (strfcstr ("foo"), &ctx->e) == SUCCESS);
+  TEST_CASE ("Valid names")
+  {
+    test_assert_int_equal (validate_vname (strfcstr ("foo"), &ctx->e), SUCCESS);
+    test_assert_int_equal (validate_vname (strfcstr ("_valid_Name123"), &ctx->e), SUCCESS);
+  }
 
-  // Valid: leading underscore, mixed digits/letters after.
-  test_assert (validate_vname (strfcstr ("_valid_Name123"), &ctx->e) == SUCCESS);
+  TEST_CASE ("Invalid names")
+  {
+    test_err_t_check (validate_vname (strfcstr (""), &ctx->e), ERR_INVALID_ARGUMENT, &ctx->e);
+    test_err_t_check (validate_vname (strfcstr ("1abc"), &ctx->e), ERR_INVALID_ARGUMENT, &ctx->e);
+    test_err_t_check (
+        validate_vname (strfcstr ("abc!def"), &ctx->e),
+        ERR_INVALID_ARGUMENT,
+        &ctx->e
+    );
 
-  // Invalid: empty name.
-  test_assert (validate_vname (strfcstr (""), &ctx->e) != SUCCESS);
-
-  // Invalid: starts with a digit.
-  test_assert (validate_vname (strfcstr ("1abc"), &ctx->e) != SUCCESS);
-
-  // Invalid: contains a character outside the allowed set.
-  test_assert (validate_vname (strfcstr ("abc!def"), &ctx->e) != SUCCESS);
-
-  // Invalid: name is too long (>= 4096 chars).
-  static char long_name[5000];
-  memset (long_name, 'a', sizeof (long_name));
-  struct string too_long = {.data = long_name, .len = sizeof (long_name)};
-  test_assert (validate_vname (too_long, &ctx->e) != SUCCESS);
+    static char long_name[5000];
+    memset (long_name, 'a', sizeof (long_name));
+    struct string too_long = {.data = long_name, .len = sizeof (long_name)};
+    test_err_t_check (validate_vname (too_long, &ctx->e), ERR_INVALID_ARGUMENT, &ctx->e);
+  }
 }
 #endif
 
-// Pool 1: Valid first characters (Letters and underscore)
-const char alpha_pool[] =
+// Valid first characters: letters and underscore
+static const char alpha_pool[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "_";
 
-// Pool 2: Valid remaining characters (Letters, digits, underscore, dot, slash,
-// hyphen)
-const char generous_pool[] =
+// Valid remaining characters: letters, digits and underscore
+static const char generous_pool[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "0123456789"
@@ -289,16 +299,13 @@ var_random_name (char *buffer, u32 length)
     return;
   }
 
-  int alpha_size    = sizeof (alpha_pool) - 1;
-  int generous_size = sizeof (generous_pool) - 1;
+  const u32 alpha_size    = (u32)(sizeof (alpha_pool) - 1);
+  const u32 generous_size = (u32)(sizeof (generous_pool) - 1);
 
   // A keyword or a primitive type name has a valid identifier shape but will
   // not parse as a variable name, so roll again until the name is usable
   do {
-    // First char must strictly be an alpha or underscore
     buffer[0] = alpha_pool[randu32 () % alpha_size];
-
-    // Remaining chars can use the generous pool
     for (u32 i = 1; i < length - 1; i++) {
       buffer[i] = generous_pool[randu32 () % generous_size];
     }
@@ -336,10 +343,10 @@ TEST (var_random_name)
     }
   }
 
-  // length <= 0 should leave the buffer untouched.
+  // length == 0 leaves the buffer untouched
   char sentinel[4] = {'x', 'x', 'x', 'x'};
   var_random_name (sentinel, 0);
-  test_assert (memcmp (sentinel, "xxxx", 4) == 0);
+  test_assert_memequal (sentinel, "xxxx", 4);
 
   // NOTE: with length == 1, the null terminator write at
   // buffer[length - 1] overwrites the alpha char written moments
@@ -364,7 +371,7 @@ TEST (var_random_name)
   }
 }
 
-#endif // TESTING
+#endif // NDEBUG
 
 err_t
 rand_varname (
@@ -425,27 +432,22 @@ rand_varname_same_hash (
   char temp[20];
 
   while (true) {
-    // Random sizes
     u32 len1 = randu32r (5, 10);
     u32 len2 = randu32r (5, 10);
 
-    // Random names
     var_random_name (temp, len1);
     var_random_name (temp + len1, len2);
 
-    // Assign them
     name1->data  = temp;
     name2->data  = temp + len1;
     name1->len   = len1;
     name2->len   = len2;
 
-    // Get hash positions
     p_size hpos1 = vh_get_hash_pos (*name1);
     p_size hpos2 = vh_get_hash_pos (*name2);
 
-    // Check if they are good
     if (hpos1 == hpos2) {
-      // commit strings - copy them to dest
+      // Copy the pair out of [temp] into [alloc]
       char *data = arena_malloc (alloc, len1 + len2, 1, e);
       if (data == NULL) {
         goto failed;
@@ -479,27 +481,22 @@ rand_varname_different_hash (
   char temp[20];
 
   while (true) {
-    // Random sizes
     u32 len1 = randu32r (5, 10);
     u32 len2 = randu32r (5, 10);
 
-    // Random names
     var_random_name (temp, len1);
     var_random_name (temp + len1, len2);
 
-    // Assign them
     name1->data  = temp;
     name2->data  = temp + len1;
     name1->len   = len1;
     name2->len   = len2;
 
-    // Get hash positions
     p_size hpos1 = vh_get_hash_pos (*name1);
     p_size hpos2 = vh_get_hash_pos (*name2);
 
-    // Check if they are good
     if (hpos1 != hpos2) {
-      // commit strings - copy them to dest
+      // Copy the pair out of [temp] into [alloc]
       char *data = arena_malloc (alloc, len1 + len2, 1, e);
       if (data == NULL) {
         goto failed;
@@ -525,10 +522,28 @@ TEST (rand_varname_same_hash)
     struct string name1;
     struct string name2;
     rand_varname_same_hash (&name1, &name2, &ctx->alloc, &ctx->e);
-    test_assert_int_equal (vh_get_hash_pos (name1), vh_get_hash_pos (name2));
+    test_assert_type_equal (vh_get_hash_pos (name1), vh_get_hash_pos (name2), p_size, PRp_size);
   }
 
   arena_alloc_free_all (&ctx->alloc);
+
+  TEST_CASE ("A failed copy into the arena is reported")
+  {
+    struct string name1;
+    struct string name2;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (
+        rand_varname_same_hash (&name1, &name2, &ctx->faulty_alloc, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
+    test_err_t_check (
+        rand_varname_different_hash (&name1, &name2, &ctx->faulty_alloc, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
+    faulty_mem_reset (ctx->faulty_mem);
+  }
 }
 
 TEST (rand_varname_different_hash)
@@ -547,23 +562,25 @@ TEST (rand_varname_different_hash)
 b_size
 var_resolve_index (struct variable *v, sb_size bofst)
 {
-  // Translate negative
+  ASSERT (v->nbytes <= (b_size)INT64_MAX);
+
+  // A negative offset counts back from the end
   if (bofst < 0) {
-    bofst = v->nbytes + bofst;
+    bofst = (sb_size)v->nbytes + bofst;
   }
 
-  // was so negative it's still negative after conversion
+  // Further back than the start clamps to the start
   if (bofst < 0) {
     bofst = 0;
   }
 
-  // Translate indexes past nybtes
-  if ((b_size)bofst > v->nbytes) // also: > not >=, so nbytes itself is valid (append)
-  {
-    bofst = v->nbytes;
+  // > rather than >=, so nbytes itself is valid (append)
+  if ((b_size)bofst > v->nbytes) {
+    bofst = (sb_size)v->nbytes;
   }
 
-  return bofst;
+  ASSERT (bofst >= 0);
+  return (b_size)bofst;
 }
 
 #ifndef NDEBUG
@@ -572,31 +589,34 @@ TEST (var_resolve_index)
   struct variable v = {.nbytes = 100};
 
   // Positive offset within range is unchanged.
-  test_assert_int_equal (var_resolve_index (&v, 10), 10);
+  test_assert_type_equal (var_resolve_index (&v, 10), 10U, b_size, PRb_size);
 
   // Offset exactly at nbytes is valid (append position).
-  test_assert_int_equal (var_resolve_index (&v, 100), 100);
+  test_assert_type_equal (var_resolve_index (&v, 100), 100U, b_size, PRb_size);
 
   // Offset past nbytes is clamped to nbytes.
-  test_assert_int_equal (var_resolve_index (&v, 150), 100);
+  test_assert_type_equal (var_resolve_index (&v, 150), 100U, b_size, PRb_size);
 
   // Offset of 0 is unchanged.
-  test_assert_int_equal (var_resolve_index (&v, 0), 0);
+  test_assert_type_equal (var_resolve_index (&v, 0), 0U, b_size, PRb_size);
 
   // Negative offset is translated relative to nbytes.
-  test_assert_int_equal (var_resolve_index (&v, -10), 90);
+  test_assert_type_equal (var_resolve_index (&v, -10), 90U, b_size, PRb_size);
 
   // Negative offset equal to -nbytes translates to 0.
-  test_assert_int_equal (var_resolve_index (&v, -100), 0);
+  test_assert_type_equal (var_resolve_index (&v, -100), 0U, b_size, PRb_size);
 
   // Negative offset more negative than -nbytes clamps to 0.
-  test_assert_int_equal (var_resolve_index (&v, -150), 0);
+  test_assert_type_equal (var_resolve_index (&v, -150), 0U, b_size, PRb_size);
 }
 #endif
 
 b_size
 var_resolve_nelem (struct variable *v, b_size bofst, b_size nelem, t_size size)
 {
+  ASSERT (size > 0);
+  ASSERT (bofst <= v->nbytes);
+
   b_size remainder = (v->nbytes - bofst) / size;
   if (nelem > remainder) {
     nelem = remainder;
@@ -610,23 +630,23 @@ TEST (var_resolve_nelem)
   struct variable v = {.nbytes = 100};
 
   // nelem within the available remainder is unchanged.
-  test_assert_int_equal (var_resolve_nelem (&v, 0, 10, 1), 10);
+  test_assert_type_equal (var_resolve_nelem (&v, 0, 10, 1), 10U, b_size, PRb_size);
 
   // nelem exactly at the remainder is unchanged.
-  test_assert_int_equal (var_resolve_nelem (&v, 0, 100, 1), 100);
+  test_assert_type_equal (var_resolve_nelem (&v, 0, 100, 1), 100U, b_size, PRb_size);
 
   // nelem past the remainder is clamped down to it.
-  test_assert_int_equal (var_resolve_nelem (&v, 0, 200, 1), 100);
+  test_assert_type_equal (var_resolve_nelem (&v, 0, 200, 1), 100U, b_size, PRb_size);
 
   // Remainder shrinks as bofst moves forward.
-  test_assert_int_equal (var_resolve_nelem (&v, 90, 20, 1), 10);
+  test_assert_type_equal (var_resolve_nelem (&v, 90, 20, 1), 10U, b_size, PRb_size);
 
   // Larger element size reduces the available element count
   // (integer division truncates any partial trailing element).
-  test_assert_int_equal (var_resolve_nelem (&v, 0, 100, 8), 12);
+  test_assert_type_equal (var_resolve_nelem (&v, 0, 100, 8), 12U, b_size, PRb_size);
 
   // bofst == nbytes leaves no remainder at all.
-  test_assert_int_equal (var_resolve_nelem (&v, 100, 5, 1), 0);
+  test_assert_type_equal (var_resolve_nelem (&v, 100, 5, 1), 0U, b_size, PRb_size);
 }
 #endif
 
@@ -638,8 +658,10 @@ variable_copy (
     error                 *e
 )
 {
-  // Copy over the variable name
-  // TODO - this is awful - remove +1
+  DBG_ASSERT (variable, src);
+  // TODO: the +1 copies a byte past vname.len, which over-reads any name
+  // that isn't NUL-terminated. Drop it once no caller relies on the copy
+  // being NUL-terminated.
   dest->vname.data = arena_alloc_copy (alloc, src->vname.data, src->vname.len + 1, e);
   dest->dtype      = type_movemem (src->dtype, alloc, e);
   if (dest->vname.data == NULL) {
@@ -662,9 +684,8 @@ vname_or_default (const char *name)
 {
   if (name != NULL) {
     return strfcstr (name);
-  } else {
-    return strfcstr (DEFAULT_VARIABLE);
   }
+  return strfcstr (DEFAULT_VARIABLE);
 }
 
 #ifndef NDEBUG

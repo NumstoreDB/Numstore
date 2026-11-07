@@ -99,70 +99,70 @@ TEST (robin_hood_ht)
   ht_init_test (&ht, entries, TEST_TABLE_LEN);
   hdata_test out;
 
-  test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 5}), HTIR_SUCCESS);
+  test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 10U, .value = 5}), HTIR_SUCCESS);
 
   TEST_CASE ("Duplicate insert")
   {
     test_assert_int_equal (
-        ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 99}),
+        ht_insert_test (&ht, (hdata_test){.key = 10U, .value = 99}),
         HTIR_EXISTS
     );
   }
 
   TEST_CASE ("Get normal")
   {
-    test_assert_int_equal (ht_get_test (&ht, &out, 10u), HTAR_SUCCESS);
+    test_assert_int_equal (ht_get_test (&ht, &out, 10U), HTAR_SUCCESS);
     test_assert_int_equal (out.value, 5);
   }
 
   TEST_CASE ("Miss look up")
   {
-    test_assert_int_equal (ht_get_test (&ht, &out, 123u), HTAR_DOESNT_EXIST);
+    test_assert_int_equal (ht_get_test (&ht, &out, 123U), HTAR_DOESNT_EXIST);
   }
 
   TEST_CASE ("Delete normal")
   {
-    test_assert_int_equal (ht_delete_test (&ht, NULL, 10u), HTAR_SUCCESS);
-    test_assert_int_equal (ht_get_test (&ht, &out, 10u), HTAR_DOESNT_EXIST);
+    test_assert_int_equal (ht_delete_test (&ht, NULL, 10U), HTAR_SUCCESS);
+    test_assert_int_equal (ht_get_test (&ht, &out, 10U), HTAR_DOESNT_EXIST);
   }
 
   TEST_CASE ("Delete doesn't exist")
   {
-    test_assert_int_equal (ht_delete_test (&ht, NULL, 10u), HTAR_DOESNT_EXIST);
+    test_assert_int_equal (ht_delete_test (&ht, NULL, 10U), HTAR_DOESNT_EXIST);
   }
 
   TEST_CASE ("Linear probing")
   {
     test_assert_int_equal (
-        ht_insert_test (&ht, (hdata_test){.key = 10u, .value = 10}),
+        ht_insert_test (&ht, (hdata_test){.key = 10U, .value = 10}),
         HTIR_SUCCESS
     );
     test_assert_int_equal (
-        ht_insert_test (&ht, (hdata_test){.key = 110u, .value = 11}),
+        ht_insert_test (&ht, (hdata_test){.key = 110U, .value = 11}),
         HTIR_SUCCESS
     );
     test_assert_int_equal (
-        ht_insert_test (&ht, (hdata_test){.key = 210u, .value = 21}),
+        ht_insert_test (&ht, (hdata_test){.key = 210U, .value = 21}),
         HTIR_SUCCESS
     );
   }
 
   TEST_CASE ("Delete and create a hole")
   {
-    test_assert_int_equal (ht_delete_test (&ht, NULL, 10u), HTAR_SUCCESS);
+    test_assert_int_equal (ht_delete_test (&ht, NULL, 10U), HTAR_SUCCESS);
   }
 
   TEST_CASE ("Fetch the rest")
   {
-    test_assert_int_equal (ht_get_test (&ht, &out, 110u), HTAR_SUCCESS);
+    test_assert_int_equal (ht_get_test (&ht, &out, 110U), HTAR_SUCCESS);
     test_assert_int_equal (out.value, 11);
-    test_assert_int_equal (ht_get_test (&ht, &out, 210u), HTAR_SUCCESS);
+    test_assert_int_equal (ht_get_test (&ht, &out, 210U), HTAR_SUCCESS);
     test_assert_int_equal (out.value, 21);
   }
 
   TEST_CASE ("Optional dest")
   {
-    test_assert_int_equal (ht_get_test (&ht, NULL, 110u), HTAR_SUCCESS);
+    test_assert_int_equal (ht_get_test (&ht, NULL, 110U), HTAR_SUCCESS);
   }
 
   TEST_CASE ("Full table")
@@ -179,7 +179,7 @@ TEST (robin_hood_ht)
     }
 
     test_assert_int_equal (
-        ht_insert_test (&tiny, (hdata_test){.key = 99u, .value = 99}),
+        ht_insert_test (&tiny, (hdata_test){.key = 99U, .value = 99}),
         HTIR_FULL
     );
   }

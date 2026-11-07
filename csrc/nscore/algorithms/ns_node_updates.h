@@ -119,8 +119,8 @@ err_t nupd_commit_1st_left (struct node_updates *s, pgno pg, b_size size, error 
  *      if next != NULL:
  *          append_<direction>(next.pg, next.key);
  */
-p_size nupd_append_maximally_left (struct node_updates *n, const page_h *pg, p_size rlen);
-p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, p_size llen);
+p_size nupd_append_maximally_left (struct node_updates *n, const page_h *pg, p_size lidx);
+p_size nupd_append_maximally_right (struct node_updates *n, const page_h *pg, p_size lidx);
 p_size nupd_append_maximally_right_then_left (struct node_updates *n, page_h *pg);
 err_t nupd_append_tip_right (struct node_updates *s, struct three_in_pair output, error *e);
 err_t nupd_append_tip_left (struct node_updates *s, struct three_in_pair output, error *e);

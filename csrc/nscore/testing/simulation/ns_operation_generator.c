@@ -373,7 +373,7 @@ static inline err_t
 build_delete (struct operation *dest, struct rand_op_params params, error *e)
 {
   char *next = get_random_other_existing_name_or_null (params.ref, &dest->alloc, e);
-  if (e->cause_code) {
+  if (e->cause_code < 0) {
     return error_trace (e);
   }
 

@@ -26,9 +26,9 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
     if (mp->flags & PW_PRESENT) {
       i_log_printf (
           log_level,
-          "%u |(PAGE)    pg: %" PRpgno
-          " pin: %d acess: %d dirty: %d present: %d "
-          "sibling: %d type: %d data: %d ctrl: %d|\n",
+          "%" PRIu32 " |(PAGE)    pg: %" PRpgno " pin: %" PRIu32
+          " access: %d dirty: %d present: %d "
+          "sibling: %" PRId32 " type: %d data: %u ctrl: %d|\n",
           i,
           mp->page.pg,
           mp->pin,
@@ -41,7 +41,7 @@ i_log_page_table (const int log_level, bool only_present, struct pager *p)
           mp->ctrl
       );
     } else if (!only_present) {
-      i_log_printf (log_level, "%u | |\n", i);
+      i_log_printf (log_level, "%" PRIu32 " | |\n", i);
     }
   }
 }

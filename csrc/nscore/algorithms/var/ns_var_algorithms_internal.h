@@ -85,7 +85,7 @@ struct ns_find_var_page_params
   } mode;
 
   // You don't need to set these
-  pgno    hpos;
+  p_size  hpos;
   page_h *prev;
   page_h *cur;
 };

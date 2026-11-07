@@ -17,9 +17,9 @@
  * @brief Anything that has to do with numbers
  *
  * Contains:
- * 1. Checksum utilities
- * 2. Random utilities
- * 3. Numeric Limit checking
+ * 1. Random utilities
+ * 2. Parsing and numeric truncation
+ * 3. Math helpers
  */
 
 #ifndef NUMERICS_H
@@ -53,7 +53,7 @@ f32 randf (void); // [0, 1]
 u64 randu64e (u64 lower, u64 upper);
 i64 randi64e (i64 lower, i64 upper);
 
-void rand_bytes (void *dest, u32 len);
+void rand_bytes (void *dst, u32 n);
 #define decl_rand_buffer(name, type, len) \
   type name[len];                         \
   rand_bytes (name, sizeof (type) * (len));
@@ -108,7 +108,6 @@ i32 py_mod_i32 (i32 num, i32 denom);
     (ret) = false;                             \
     for (u32 ___i = 0; ___i < (len); ++___i) { \
       if ((arr)[___i] == (val)) {              \
-        (ret) = (arr)[___i];                   \
         (ret) = true;                          \
         break;                                 \
       }                                        \

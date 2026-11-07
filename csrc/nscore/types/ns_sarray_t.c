@@ -86,8 +86,8 @@ TEST (sarray_t_validate_shallow)
   TEST_CASE ("rank == 0")
   {
     struct sarray_t s = {
-        .dims = (u32[]){1},
         .rank = 0,
+        .dims = (u32[]){1},
         .t    = &TU8,
     };
     test_err_t_check (sarray_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
@@ -96,8 +96,8 @@ TEST (sarray_t_validate_shallow)
   TEST_CASE ("Null dimension")
   {
     struct sarray_t s = {
-        .dims = (u32[]){10, 0, 11},
         .rank = 3,
+        .dims = (u32[]){10, 0, 11},
         .t    = &TU8,
     };
     test_err_t_check (sarray_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
@@ -135,15 +135,15 @@ sarray_t_snprintf (char *str, u32 size, const struct sarray_t *p)
   int   n;
 
   for (u16 i = 0; i < p->rank; ++i) {
-    n = snprintf (out, avail, "[%u]", p->dims[i]);
+    n = snprintf (out, avail, "[%" PRIu32 "]", p->dims[i]);
     if (n < 0) {
       return n;
     }
     len += n;
-    if (out) {
+    if (out != NULL) {
       out += n;
       if ((u32)n < avail) {
-        avail -= n;
+        avail -= (u32)n;
       } else {
         avail = 0;
       }
@@ -165,8 +165,8 @@ TEST (sarray_t_snprintf)
   struct type s = (struct type){
       .type = T_SARRAY,
       .sa   = {
-          .dims = (u32[]){10, 11, 12},
           .rank = 3,
+          .dims = (u32[]){10, 11, 12},
           .t    = &(struct type){
               .type = T_PRIM,
               .p    = U32,
@@ -201,8 +201,8 @@ sarray_t_byte_size (const struct sarray_t *t)
 TEST (sarray_t_byte_size)
 {
   struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
       .rank = 3,
+      .dims = (u32[]){10, 11, 12},
       .t    = &(struct type){
           .type = T_PRIM,
           .p    = U32,
@@ -233,6 +233,8 @@ sarray_t_get_serial_size (u16 *dest, const struct sarray_t *t, error *e)
 
   *dest = ret;
 
+  // TODO: return SUCCESS. This hands the (positive) size back as an err_t,
+  // which only works because callers WRAP it and WRAP checks for < 0.
   return ret;
 }
 
@@ -261,8 +263,8 @@ sarray_t_serialize (struct serializer *persistent, const struct sarray_t *src)
 TEST (sarray_t_serialize)
 {
   struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
       .rank = 3,
+      .dims = (u32[]){10, 11, 12},
       .t    = &(struct type){
           .type = T_PRIM,
           .p    = U32,
@@ -292,8 +294,8 @@ TEST (sarray_t_serialize)
 TEST (sarray_t_get_serial_size)
 {
   struct sarray_t s = {
-      .dims = (u32[]){10, 11, 12},
       .rank = 3,
+      .dims = (u32[]){10, 11, 12},
       .t    = &(struct type){
           .type = T_PRIM,
           .p    = U32,
@@ -321,7 +323,7 @@ sarray_t_deserialize (
 
   // RANK
   if (!dsrlizr_read ((u8 *)&sa.rank, sizeof (u16), src)) {
-    goto early_terimination;
+    goto early_termination;
   }
 
   // Allocate dimensions buffer
@@ -343,7 +345,7 @@ sarray_t_deserialize (
 
     // DIMi
     if (!dsrlizr_read ((u8 *)&dim, sizeof (u32), src)) {
-      goto early_terimination;
+      goto early_termination;
     }
 
     sa.dims[i] = dim;
@@ -359,7 +361,7 @@ sarray_t_deserialize (
   *persistent = sa;
   return SUCCESS;
 
-early_terimination:
+early_termination:
   return sarray_t_type_deser ("Early end of serialized string", e);
 }
 
@@ -479,7 +481,7 @@ sarray_t_random (
 
   sa->rank = (u16)randu32r (1, 4);
 
-  sa->dims = (u32 *)arena_malloc (temp, sa->rank, sizeof (u32), e);
+  sa->dims = arena_malloc (temp, sa->rank, sizeof *sa->dims, e);
   if (sa->dims == NULL) {
     return error_trace (e);
   }
@@ -525,11 +527,11 @@ sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
   struct llnode     *slot = llnode_get_n (eb->head, idx);
   struct dim_llnode *node;
 
-  if (slot) {
+  if (slot != NULL) {
     node = container_of (slot, struct dim_llnode, link);
   } else {
     node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
-    if (!node) {
+    if (node == NULL) {
       return error_trace (e);
     }
     llnode_init (&node->link);
@@ -540,7 +542,8 @@ sab_accept_dim (struct sarray_builder *eb, i32 dim, error *e)
     }
   }
 
-  node->dim = dim;
+  ASSERT (dim > 0);
+  node->dim = (u32)dim;
   return SUCCESS;
 }
 
@@ -587,19 +590,19 @@ sab_build (struct sarray_t *persistent, struct sarray_builder *eb, error *e)
 
   u16  total_rank = rank + sub_rank;
   u32 *dims       = builder_malloc_persist (eb->b, total_rank, sizeof *dims, e);
-  if (!dims) {
+  if (dims == NULL) {
     goto theend;
   }
 
-  // Copy type to persistent memory (eb->type is on temp)
+  // The built sarray gets its own copy of the (flattened) element type
   struct type *t = builder_malloc_persist (eb->b, 1, sizeof *t, e);
-  if (!t) {
+  if (t == NULL) {
     goto theend;
   }
-  *t    = sub ? *sub->t : *eb->type;
+  *t    = sub != NULL ? *sub->t : *eb->type;
 
   u16 i = 0;
-  for (struct llnode *it = eb->head; it; it = it->next) {
+  for (struct llnode *it = eb->head; it != NULL; it = it->next) {
     struct dim_llnode *dn = container_of (it, struct dim_llnode, link);
     dims[i++]             = dn->dim;
   }
@@ -620,8 +623,6 @@ TEST (sarray_builder)
 {
   BUILDER_INIT (b, &ctx->alloc);
 
-  // provide two fixed-size allocators for nodes + dims array
-
   // 0. freshly-created builder must be clean
   struct sarray_builder sb = sab_create (&b);
   test_fail_if (sb.head != NULL);
@@ -630,7 +631,7 @@ TEST (sarray_builder)
   // 1. build without type -> ERR_INTERP
   struct sarray_t sar = {0};
   test_assert_int_equal (sab_build (&sar, &sb, &ctx->e), ERR_INTERP);
-  ctx->e.cause_code = SUCCESS;
+  error_reset (&ctx->e);
 
   // 2. set type but no dims -> still ERR_INTERP
   struct type t_u32 = (struct type){.type = T_PRIM, .p = U32};
@@ -685,5 +686,97 @@ TEST (sarray_builder)
 
   BUILDER_CLOSE (b);
   arena_alloc_free_all (&ctx->alloc);
+}
+#endif
+
+#ifndef NDEBUG
+TEST (sarray_t_equal)
+{
+  u32         d34[] = {3, 4};
+  u32         d35[] = {3, 5};
+
+  struct type base  = mk_sarray (2, d34, &TU8);
+  struct type same  = mk_sarray (2, d34, &TU8);
+  struct type rank  = mk_sarray (1, d34, &TU8);
+  struct type dims  = mk_sarray (2, d35, &TU8);
+  struct type elem  = mk_sarray (2, d34, &TI8);
+
+  test_assert (sarray_t_equal (&base.sa, &same.sa));
+  test_fail_if (sarray_t_equal (&base.sa, &rank.sa));
+  test_fail_if (sarray_t_equal (&base.sa, &dims.sa));
+  test_fail_if (sarray_t_equal (&base.sa, &elem.sa));
+}
+
+TEST (sarray_t_random_fail_malloc)
+{
+  // Setup - an arena where every allocation is a fallible malloc
+  struct arena_alloc a;
+  type_test_arena_create (&a, ctx->faulty_mem);
+
+  struct sarray_t sa;
+  int             fail_after = 0;
+  err_t           ret;
+
+  // Run - depth 1, so the element type is a primitive
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&a);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = sarray_t_random (&sa, &a, 1, 4096, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert (sa.rank > 0);
+
+  // Teardown
+  arena_alloc_free_all (&a);
+}
+
+TEST (sarray_t_deserialize_fail_malloc)
+{
+  // Setup - "[3][4]u16" serialized, and an arena where every allocation is a
+  // fallible malloc
+  u32               dims[] = {3, 4};
+  struct type       src    = mk_sarray (2, dims, &TU16);
+
+  u8                buf[64];
+  struct serializer sr = srlizr_create (buf, sizeof buf);
+  sarray_t_serialize (&sr, &src.sa);
+
+  struct arena_alloc a;
+  type_test_arena_create (&a, ctx->faulty_mem);
+
+  struct sarray_t dest;
+  int             fail_after = 0;
+  err_t           ret;
+
+  // Run
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&a);
+      struct deserializer d = dsrlizr_create (buf, sr.dlen);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = sarray_t_deserialize (&dest, &d, &a, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert (sarray_t_equal (&dest, &src.sa));
+
+  // Teardown
+  arena_alloc_free_all (&a);
 }
 #endif

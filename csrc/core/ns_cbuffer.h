@@ -47,7 +47,13 @@
  * @par Usage:
  * @code
  *
- * TODO
+ * u8             mem[64];
+ * struct cbuffer b = cbuffer_create_from (mem);
+ *
+ * cbuffer_write ("abc", 1, 3, &b);
+ *
+ * char out[3];
+ * u32  nread = cbuffer_read (out, 1, 3, &b); // nread == 3, b is empty again
  *
  * @endcode
  ******************************************************************************/
@@ -61,12 +67,9 @@ struct cbuffer
   bool isfull;
 };
 
-#define cbuffer_create_from(data)      cbuffer_create (data, sizeof (data))
-#define cbuffer_create_full_from(data) cbuffer_create_with (data, sizeof (data), sizeof (data))
-#define cbuffer_create_from_cstr(cstr) cbuffer_create_with (cstr, strlen (cstr), strlen (cstr))
+#define cbuffer_create_from(data) cbuffer_create (data, sizeof (data))
 
 struct cbuffer cbuffer_create (void *data, u32 cap);
-struct cbuffer cbuffer_create_with (void *data, u32 cap, u32 len);
 
 HEADER_FUNC u32
 cbuffer_len (const struct cbuffer *b)
@@ -102,6 +105,8 @@ cbuffer_isempty (const struct cbuffer *b)
 HEADER_FUNC u32
 cbuffer_slen (const struct cbuffer *b, const u32 size)
 {
+  DBG_ASSERT (cbuffer, b);
+  ASSERT (size > 0);
   const u32 len = cbuffer_len (b);
   ASSERT (len % size == 0);
   return len / size;
@@ -134,16 +139,11 @@ void cbuffer_fakewrite (struct cbuffer *b, u32 bytes);
 u32 cbuffer_read (void *dest, u32 size, u32 n, struct cbuffer *b);
 u32 cbuffer_copy (void *dest, u32 size, u32 n, const struct cbuffer *b);
 u32 cbuffer_write (const void *src, u32 size, u32 n, struct cbuffer *b);
-u32 cbuffer_cbuffer_move (struct cbuffer *dest, u32 size, u32 n, struct cbuffer *src);
-u32 cbuffer_cbuffer_copy (struct cbuffer *dest, u32 size, u32 n, const struct cbuffer *src);
+u32 cbuffer_cbuffer_move (struct cbuffer *dest, u32 sz, u32 cnt, struct cbuffer *src);
+u32 cbuffer_cbuffer_copy (struct cbuffer *dest, u32 sz, u32 cnt, const struct cbuffer *src);
 i32 cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 err_t cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, u32 len, error *e);
 void cbuffer_write_to_file_2 (struct cbuffer *b, u32 nwritten);
-i32 cbuffer_write_to_file (i_file *dest, struct cbuffer *b, u32 len, error *e);
-i32 cbuffer_read_from_file_1 (i_file *src, const struct cbuffer *b, u32 len, error *e);
-err_t cbuffer_read_from_file_1_expect (i_file *src, const struct cbuffer *b, u32 len, error *e);
-void cbuffer_read_from_file_2 (struct cbuffer *b, u32 nread);
-i32 cbuffer_read_from_file (i_file *src, struct cbuffer *b, u32 len, error *e);
 bool cbuffer_get (void *dest, u32 size, u32 idx, const struct cbuffer *b);
 bool cbuffer_push_back (const void *src, u32 size, struct cbuffer *b);
 bool cbuffer_push_front (const void *src, u32 size, struct cbuffer *b);
@@ -155,6 +155,7 @@ bool cbuffer_peek_front (void *dest, u32 size, const struct cbuffer *b);
 #define cbuffer_read_expect(dest, size, n, b)     \
   do {                                            \
     u32 __read = cbuffer_read (dest, size, n, b); \
+    (void)__read; /* Unused in release */         \
     ASSERT (__read == (n));                       \
   }                                               \
   while (0)

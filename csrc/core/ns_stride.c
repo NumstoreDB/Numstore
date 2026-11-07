@@ -117,36 +117,36 @@ TEST (stride_resolve)
   {
     struct user_stride full = {.present = COLON_PRESENT};
     stride_resolve (&result, full, 10, &ctx->e);
-    test_assert_int_equal (result.start, 0);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 10);
+    test_assert_type_equal (result.start, 0, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 10, u64, PRIu64);
   }
 
   TEST_CASE ("Slice with step [::2] on length 10 ")
   {
     struct user_stride step2 = {.step = 2, .present = STEP_PRESENT | COLON_PRESENT};
     stride_resolve (&result, step2, 10, &ctx->e);
-    test_assert_int_equal (result.start, 0);
-    test_assert_int_equal (result.stride, 2);
-    test_assert_int_equal (result.nelems, 5);
+    test_assert_type_equal (result.start, 0, u64, PRIu64);
+    test_assert_type_equal (result.stride, 2, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 5, u64, PRIu64);
   }
 
   TEST_CASE ("Start only [5:] on length 10 ")
   {
     struct user_stride from5 = {.start = 5, .present = START_PRESENT | COLON_PRESENT};
     stride_resolve (&result, from5, 10, &ctx->e);
-    test_assert_int_equal (result.start, 5);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 5);
+    test_assert_type_equal (result.start, 5, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 5, u64, PRIu64);
   }
 
   TEST_CASE ("Stop only [:5] on length 10 ")
   {
     struct user_stride to5 = {.stop = 5, .present = STOP_PRESENT | COLON_PRESENT};
     stride_resolve (&result, to5, 10, &ctx->e);
-    test_assert_int_equal (result.start, 0);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 5);
+    test_assert_type_equal (result.start, 0, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 5, u64, PRIu64);
   }
 
   TEST_CASE ("Range [2:8] on length 10 ")
@@ -157,9 +157,9 @@ TEST (stride_resolve)
         .present = START_PRESENT | STOP_PRESENT | COLON_PRESENT
     };
     stride_resolve (&result, range, 10, &ctx->e);
-    test_assert_int_equal (result.start, 2);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 6);
+    test_assert_type_equal (result.start, 2, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 6, u64, PRIu64);
   }
 
   TEST_CASE ("Range with step [1:9:2] on length 10 ")
@@ -171,27 +171,27 @@ TEST (stride_resolve)
         .present = START_PRESENT | STOP_PRESENT | STEP_PRESENT | COLON_PRESENT
     };
     stride_resolve (&result, range_step, 10, &ctx->e);
-    test_assert_int_equal (result.start, 1);
-    test_assert_int_equal (result.stride, 2);
-    test_assert_int_equal (result.nelems, 4); // indices 1,3,5,7
+    test_assert_type_equal (result.start, 1, u64, PRIu64);
+    test_assert_type_equal (result.stride, 2, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 4, u64, PRIu64); // indices 1,3,5,7
   }
 
   TEST_CASE ("Negative start index [-3:] on length 10 -> [7:] ")
   {
     struct user_stride neg_start = {.start = -3, .present = START_PRESENT | COLON_PRESENT};
     stride_resolve (&result, neg_start, 10, &ctx->e);
-    test_assert_int_equal (result.start, 7);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 3);
+    test_assert_type_equal (result.start, 7, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 3, u64, PRIu64);
   }
 
   TEST_CASE ("Negative stop index [:-2] on length 10 -> [:8] ")
   {
     struct user_stride neg_stop = {.stop = -2, .present = STOP_PRESENT | COLON_PRESENT};
     stride_resolve (&result, neg_stop, 10, &ctx->e);
-    test_assert_int_equal (result.start, 0);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 8);
+    test_assert_type_equal (result.start, 0, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 8, u64, PRIu64);
   }
 
   TEST_CASE ("Both negative [-5:-2] on length 10 -> [5:8] ")
@@ -202,18 +202,18 @@ TEST (stride_resolve)
         .present = START_PRESENT | STOP_PRESENT | COLON_PRESENT
     };
     stride_resolve (&result, both_neg, 10, &ctx->e);
-    test_assert_int_equal (result.start, 5);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 3);
+    test_assert_type_equal (result.start, 5, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 3, u64, PRIu64);
   }
 
   TEST_CASE ("Out of bounds start [20:] on length 10 ")
   {
     struct user_stride oob_start = {.start = 20, .present = START_PRESENT | COLON_PRESENT};
     stride_resolve (&result, oob_start, 10, &ctx->e);
-    test_assert_int_equal (result.start, 10);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 0);
+    test_assert_type_equal (result.start, 10, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 0, u64, PRIu64);
   }
 
   TEST_CASE ("Empty slice [5:2] on length 10 ")
@@ -224,48 +224,48 @@ TEST (stride_resolve)
         .present = START_PRESENT | STOP_PRESENT | COLON_PRESENT
     };
     stride_resolve (&result, empty, 10, &ctx->e);
-    test_assert_int_equal (result.nelems, 0);
+    test_assert_type_equal (result.nelems, 0, u64, PRIu64);
   }
 
   TEST_CASE ("Empty array ")
   {
     struct user_stride on_empty = {.present = COLON_PRESENT};
     stride_resolve (&result, on_empty, 0, &ctx->e);
-    test_assert_int_equal (result.start, 0);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 0);
+    test_assert_type_equal (result.start, 0, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 0, u64, PRIu64);
   }
 
   TEST_CASE ("Bare index [5] on length 10 -> one element ")
   {
     stride_resolve (&result, ustride_single (5), 10, &ctx->e);
-    test_assert_int_equal (result.start, 5);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 1);
+    test_assert_type_equal (result.start, 5, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 1, u64, PRIu64);
   }
 
   TEST_CASE ("Bare negative index [-1] on length 10 -> [9] ")
   {
     stride_resolve (&result, ustride_single (-1), 10, &ctx->e);
-    test_assert_int_equal (result.start, 9);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 1);
+    test_assert_type_equal (result.start, 9, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 1, u64, PRIu64);
   }
 
   TEST_CASE ("Bare out of bounds index [20] on length 10 ")
   {
     stride_resolve (&result, ustride_single (20), 10, &ctx->e);
-    test_assert_int_equal (result.start, 10);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 0);
+    test_assert_type_equal (result.start, 10, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 0, u64, PRIu64);
   }
 
   TEST_CASE ("Last valid bare index [9] on length 10 ")
   {
     stride_resolve (&result, ustride_single (9), 10, &ctx->e);
-    test_assert_int_equal (result.start, 9);
-    test_assert_int_equal (result.stride, 1);
-    test_assert_int_equal (result.nelems, 1);
+    test_assert_type_equal (result.start, 9, u64, PRIu64);
+    test_assert_type_equal (result.stride, 1, u64, PRIu64);
+    test_assert_type_equal (result.nelems, 1, u64, PRIu64);
   }
 
   TEST_CASE ("Invalid step = 0 ")
@@ -287,6 +287,54 @@ TEST (stride_resolve)
         &ctx->e
     );
   }
+}
+
+TEST (musb_build_fail_nomem)
+{
+  int   fail_after = 0;
+  err_t ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      // Setup - both arenas allocate through the faulty allocator
+      struct arena_alloc persistent;
+      arena_alloc_create_default_with (&persistent, ctx->faulty_mem);
+      struct builder b;
+      builder_init (&b, &persistent);
+      arena_alloc_free_all (&b.temp);
+      arena_alloc_create_default_with (&b.temp, ctx->faulty_mem);
+      struct mus_builder       mb = musb_create (&b);
+      struct multi_user_stride m;
+
+      // Run - accept two keys (temp arena) then build (persistent arena)
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = musb_accept_key (&mb, ustride01 (0, 4), &ctx->e);
+      if (ret == SUCCESS) {
+        ret = musb_accept_key (&mb, ustride1 (2), &ctx->e);
+      }
+      if (ret == SUCCESS) {
+        ret = musb_build (&m, &mb, &ctx->e);
+      }
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret == SUCCESS) {
+        test_assert_int_equal (m.len, 2);
+        test_assert_type_equal (m.strides[0].start, (i64)0, i64, PRId64);
+        test_assert_type_equal (m.strides[1].stop, (i64)2, i64, PRId64);
+      } else {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+      }
+
+      // Teardown
+      builder_free (&b);
+      arena_alloc_free_all (&persistent);
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
 }
 #endif
 
@@ -319,7 +367,7 @@ musb_accept_key (struct mus_builder *eb, const struct user_stride stride, error 
   WRAP (user_stride_validate (stride, e));
 
   struct mus_llnode *node = builder_malloc_temp (eb->b, 1, sizeof *node, e);
-  if (!node) {
+  if (node == NULL) {
     return error_trace (e);
   }
 
@@ -349,12 +397,12 @@ musb_build (struct multi_user_stride *dest, struct mus_builder *eb, error *e)
   }
 
   struct user_stride *strides = builder_malloc_persist (eb->b, len, sizeof *strides, e);
-  if (!strides) {
+  if (strides == NULL) {
     goto theend;
   }
 
   u32 i = 0;
-  for (struct llnode *it = eb->head; it; it = it->next) {
+  for (struct llnode *it = eb->head; it != NULL; it = it->next) {
     const struct mus_llnode *mn = container_of (it, struct mus_llnode, link);
     strides[i++]                = mn->stride;
   }

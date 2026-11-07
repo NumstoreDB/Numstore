@@ -37,12 +37,13 @@ pgr_isnew (const struct pager *p)
 {
   DBG_ASSERT (pager, p);
 
-  return atomic_load (&p->flags) & PGR_ISNEW;
+  return (atomic_load (&p->flags) & PGR_ISNEW) != 0;
 }
 
 p_size
 pgr_get_npages (struct pager *p)
 {
+  DBG_ASSERT (pager, p);
   return fpgr_get_npages (p->fp);
 }
 
@@ -66,6 +67,7 @@ pgr_get_maybe_writable (
 err_t
 pgr_release (struct pager *p, page_h *h, const int flags, error *e)
 {
+  DBG_ASSERT (pager, p);
   return pgr_release_with_log (p, h, flags, NULL, e);
 }
 
@@ -81,12 +83,13 @@ pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e)
 err_t
 pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
 {
+  DBG_ASSERT (pager, p);
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e)) {
+  if (pgr_release (p, h, flags, e) < 0) {
     return error_trace (e);
   }
-  if (pgr_flush_unsafe (p, pgr, e)) {
+  if (pgr_flush_unsafe (p, pgr, e) < 0) {
     return error_trace (e);
   }
   return SUCCESS;
@@ -95,12 +98,13 @@ pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e)
 err_t
 pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
 {
+  DBG_ASSERT (pager, p);
   struct page_frame *pgr = h->pgr;
 
-  if (pgr_release (p, h, flags, e)) {
+  if (pgr_release (p, h, flags, e) < 0) {
     return error_trace (e);
   }
-  if (pgr_evict_unsafe (p, pgr, e)) {
+  if (pgr_evict_unsafe (p, pgr, e) < 0) {
     return error_trace (e);
   }
   return SUCCESS;
@@ -109,14 +113,17 @@ pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e)
 err_t
 pgr_flush_all_pages (struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
     struct page_frame *mp = &p->pages[i];
 
     latch_lock (&mp->ctrl);
 
-    if (mp->flags & PW_PRESENT && !(mp->flags & PW_X)) {
-      ASSERT (!(mp->flags & PW_X));
-      pgr_flush_unsafe (p, mp, e);
+    if ((mp->flags & PW_PRESENT) && !(mp->flags & PW_X)) {
+      // Keep going on failure so every other page still gets written. The
+      // failure stays in [e] and is returned below.
+      (void)pgr_flush_unsafe (p, mp, e);
     }
 
     latch_unlock (&mp->ctrl);
@@ -128,6 +135,8 @@ pgr_flush_all_pages (struct pager *p, error *e)
 err_t
 pgr_evict_all_pages (struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   for (u32 i = 0; i < MEMORY_PAGE_LEN; ++i) {
     struct page_frame *mp = &p->pages[i];
 
@@ -135,7 +144,9 @@ pgr_evict_all_pages (struct pager *p, error *e)
 
     if (mp->flags & PW_PRESENT) {
       ASSERT (!(mp->flags & PW_X));
-      pgr_evict_unsafe (p, mp, e);
+      // Keep going on failure so every other page still gets evicted. The
+      // failure stays in [e] and is returned below.
+      (void)pgr_evict_unsafe (p, mp, e);
     }
 
     latch_unlock (&mp->ctrl);
@@ -157,8 +168,12 @@ pgr_cancel_if_exists (page_h *h)
 err_t
 pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   pgno pg = page_h_pgno (_pg);
-  pgr_release (p, _pg, flags, e);
+  // TODO: a failed release is ignored and the page is fetched again anyway.
+  // Return early instead, once callers are checked for relying on this.
+  (void)pgr_release (p, _pg, flags, e);
   return pgr_get_writable (_pg, tx, flags, pg, p, e);
 }
 
@@ -180,11 +195,11 @@ TEST (pager_fill_ht)
     for (; i < MEMORY_PAGE_LEN / 2; ++i) {
       pgs[i] = page_h_create ();
       pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &ctx->e);
-      test_assert_equal (pgs[i].mode, PHM_X);
+      test_assert_int_equal (pgs[i].mode, PHM_X);
     }
 
-    // This would block
-    // pgr_new (&bad, f.p, &tx, PG_DATA_LIST, &e);
+    // One more pgr_new here would block: every frame is either one of these
+    // pages or its write twin
 
     // Release them all
     for (i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
@@ -198,7 +213,7 @@ TEST (pager_fill_ht)
     // Fill half way up - good
     for (u32 i = 0; i < MEMORY_PAGE_LEN / 2; ++i) {
       pgr_new (&pgs[i], f.p, &tx, PG_DATA_LIST, &ctx->e);
-      test_assert_equal (pgs[i].mode, PHM_X);
+      test_assert_int_equal (pgs[i].mode, PHM_X);
     }
 
     // Release them all

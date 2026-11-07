@@ -61,23 +61,24 @@ ns_read_next_amount (
 
   // Capped by how far into this element/stride window we still need to
   // go.
-  next_amount        = MIN (next_amount, bnext);
+  next_amount        = (p_size)MIN (next_amount, bnext);
 
   // Capped by the global read limit (only in ACTIVE state; skip bytes do
   // not count toward max_bread).
   if (max_bread > 0 && state == ACTIVE) {
-    next_amount = MIN (next_amount, max_bread - total_bread);
+    next_amount = (p_size)MIN (next_amount, max_bread - total_bread);
   }
 
   return next_amount;
 }
 
-// TODO - (4) tighten up the while loop to loop inside a page - rather than one
-// read per loop
+// TODO: loop inside a page instead of doing one copy per outer loop
+// iteration, which reloads the per-iteration state for every chunk
 static sb_size
 ns_read_forward (struct ns_read_params params, error *e)
 {
   ASSERT (params.stride > 0);
+  ASSERT (params.size > 0);
 
   page_h                cur         = page_h_create ();
   page_h                next        = page_h_create ();
@@ -102,7 +103,7 @@ ns_read_forward (struct ns_read_params params, error *e)
     return 0;
   }
 
-  if (ns_seek (&seek, e)) {
+  if (ns_seek (&seek, e) < 0) {
     goto failed;
   }
 
@@ -133,11 +134,11 @@ ns_read_forward (struct ns_read_params params, error *e)
           break;
         }
 
-        if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e)) {
+        if (pgr_get (&next, PG_DATA_LIST, npg, params.p, e) < 0) {
           goto failed;
         }
 
-        if (pgr_release (params.p, &cur, PG_DATA_LIST, e)) {
+        if (pgr_release (params.p, &cur, PG_DATA_LIST, e) < 0) {
           goto failed;
         }
 
@@ -197,7 +198,6 @@ ns_read_forward (struct ns_read_params params, error *e)
     }
   }
 
-  // Release the final page.
   WRAP (pgr_release (params.p, &cur, page_get_type (curp), e));
 
   // Verify that we always stopped on a complete element boundary.
@@ -214,7 +214,8 @@ ns_read_forward (struct ns_read_params params, error *e)
     goto failed;
   }
 
-  return total_bread / params.size;
+  ASSERT (total_bread / params.size <= (b_size)I64_MAX);
+  return (sb_size)(total_bread / params.size);
 
 failed:
   pgr_cancel_if_exists (&cur);

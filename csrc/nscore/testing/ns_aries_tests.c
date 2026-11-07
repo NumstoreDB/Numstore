@@ -27,14 +27,14 @@
 /// Open [ARIES_TEST_DB] as a smart file: a plain nsdb whose pager is laid out
 /// for smartfiles, with auto transactions on so the NULL [tx] reads below work.
 static struct nsdb *
-aries_smfile_open (struct test_ctx *ctx)
+aries_smfile_open_with (struct test_ctx *ctx, struct i_mem mem, struct i_os os)
 {
-  struct nsdb *smf = nsdb_open (ARIES_TEST_DB, ctx->mem, ctx->os, &ctx->e);
+  struct nsdb *smf = nsdb_open (ARIES_TEST_DB, mem, os, &ctx->e);
   if (smf == NULL) {
     return NULL;
   }
 
-  if (nsdb_init_smartfiles (smf, &ctx->e)) {
+  if (nsdb_init_smartfiles (smf, &ctx->e) < 0) {
     nsdb_close (smf, &ctx->e);
     return NULL;
   }
@@ -42,6 +42,13 @@ aries_smfile_open (struct test_ctx *ctx)
   nsdb_allow_auto_txn (smf);
 
   return smf;
+}
+
+/// [aries_smfile_open_with] on the healthy allocator and OS
+static struct nsdb *
+aries_smfile_open (struct test_ctx *ctx)
+{
+  return aries_smfile_open_with (ctx, ctx->mem, ctx->os);
 }
 
 TEST (aries_crash)
@@ -380,6 +387,35 @@ TEST (aries_crash)
     test_assert_memequal ("6789", actual, sizeof (actual));
     nsdb_close (smf, &ctx->e);
   }
+}
+
+// TODO: with the allocator failing on its 3rd call (fail_after 2), the error
+// path of nsdb_open or nsdb_init_smartfiles frees a NULL pointer and trips
+// the ASSERT in default_free (core/os/ns_malloc.c:120). Re-enable once fixed.
+TEST_DISABLED (aries_smfile_open_fail_mem)
+{
+  int   fail_after = 0;
+  err_t ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      nsdb_cleanup (ARIES_TEST_DB, ctx->os, &ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      struct nsdb *smf = aries_smfile_open_with (ctx, ctx->faulty_mem, ctx->os);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      ret = smf == NULL ? error_trace (&ctx->e) : SUCCESS;
+      if (smf != NULL) {
+        nsdb_close (smf, &ctx->e);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
 }
 
 #endif

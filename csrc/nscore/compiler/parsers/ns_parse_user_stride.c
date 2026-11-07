@@ -70,26 +70,23 @@ parse_user_stride (struct parser *parser, struct user_stride *dest, error *e)
 
   WRAP (parser_expect (parser, TT_LEFT_BRACKET, e));
 
-  int num;
+  i32 num;
   if (parser_maybe_parse_integer (parser, &num)) {
-    // Leading integer: start
     s.start = num;
     s.present |= START_PRESENT;
 
     if (parser_match (parser, TT_COLON)) {
-      // start ':' ...
       s.present |= COLON_PRESENT;
       parser_advance (parser);
       parse_us_stop (parser, &s);
     }
-    // else: bare integer â€” single index, nothing more to parse
+    // else: bare integer - single index, nothing more to parse
   } else if (parser_match (parser, TT_COLON)) {
-    // No leading integer: ':' ...
     s.present |= COLON_PRESENT;
     parser_advance (parser);
     parse_us_stop (parser, &s);
   } else {
-    return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %" PRIu32, parser->pos);
   }
 
   WRAP (user_stride_validate (s, e));
@@ -104,13 +101,13 @@ compile_user_stride (struct user_stride *dest, const char *text, error *e)
   ALLOC_INIT (alloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &alloc, strlen (text), &lex, e) < 0) {
+  if (lex_tokens (text, &alloc, (u32)strnlen (text, MAX_COMPILE_TEXT_LEN), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, NULL, lex.ntokens);
 
-  if (parse_user_stride (&parser, dest, e)) {
+  if (parse_user_stride (&parser, dest, e) < 0) {
     goto theend;
   }
 
@@ -128,7 +125,7 @@ test_compile_user_stride_green_path (const char *query, struct user_stride expec
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    test_assert_equal (compile_user_stride (&actual, query, &e), SUCCESS);
+    test_assert_int_equal (compile_user_stride (&actual, query, &e), SUCCESS);
     test_assert (user_stride_equal (&actual, &expected));
   }
 }
@@ -150,6 +147,7 @@ TEST (compile_user_stride)
   test_compile_user_stride_red_path ("[]", ERR_SYNTAX);
   test_compile_user_stride_red_path ("[ ]", ERR_SYNTAX);
   test_compile_user_stride_red_path (" [ ]", ERR_SYNTAX);
+  test_compile_user_stride_red_path ("[@]", ERR_SYNTAX);
 
   test_compile_user_stride_green_path ("[5]", ustride_single (5));
 

@@ -85,7 +85,7 @@ gte0 (int val)
 
 #  define DBG_ASSERT_IF_NN(name, expr) \
     do {                               \
-      if (expr != NULL) {              \
+      if ((expr) != NULL) {            \
         name##_assert__ (expr);        \
       }                                \
     }                                  \

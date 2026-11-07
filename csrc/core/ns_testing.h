@@ -230,7 +230,7 @@ __test_mark (const char *_src)
     }                                                    \
     while (0)
 
-#  define test_assert_ptr_equal(left, right) test_assert_equal ((void *)left, (void *)right)
+#  define test_assert_ptr_equal(left, right) test_assert_equal ((void *)(left), (void *)(right))
 
 #  define test_assert(expr)                  \
     do {                                     \
@@ -250,7 +250,7 @@ __test_mark (const char *_src)
 
 #  define test_err_t_check(expr, exp, ename) \
     do {                                     \
-      err_t __ret = (err_t)expr;             \
+      err_t __ret = err_t_cast (expr);       \
       test_assert_int_equal (__ret, exp);    \
       error_reset (ename);                   \
     }                                        \

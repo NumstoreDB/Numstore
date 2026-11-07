@@ -58,16 +58,16 @@ DEFINE_DBG_ASSERT (enum prim_t, prim_t, s, {
 #ifndef NDEBUG
 TEST (prim_t_validate)
 {
-  // 1.1 happy path – legal value
+  // 1.1 happy path - legal value
   enum prim_t ok = U32;
   test_assert_int_equal (prim_t_validate (&ok, &ctx->e), SUCCESS);
 
-  // 1.2 too‑small → ERR_INTERP
+  // 1.2 too-small -> ERR_INTERP
   enum prim_t bad_lo = (enum prim_t) (U8 - 1);
   test_assert_int_equal (prim_t_validate (&bad_lo, &ctx->e), ERR_INTERP);
-  ctx->e.cause_code  = SUCCESS;
+  error_reset (&ctx->e);
 
-  // 1.3 too‑large → ERR_INTERP
+  // 1.3 too-large -> ERR_INTERP
   enum prim_t bad_hi = (enum prim_t) (CU128 + 1);
   test_assert_int_equal (prim_t_validate (&bad_hi, &ctx->e), ERR_INTERP);
   error_reset (&ctx->e);
@@ -290,18 +290,18 @@ type_snprintf (char *str, u32 size, struct type *t)
 char *
 type_tostr (struct arena_alloc *alloc, struct type *t, error *e)
 {
-  int len = type_snprintf (NULL, 0, t);
+  i32 len = type_snprintf (NULL, 0, t);
   if (len < 0) { // LCOV_EXCL_LINE
     return NULL; // LCOV_EXCL_LINE
   } // LCOV_EXCL_LINE
 
-  char *msg = arena_malloc (alloc, len + 1, 1, e);
+  char *msg = arena_malloc (alloc, (u32)len + 1, 1, e);
   if (msg == NULL) {
     return NULL;
   }
 
-  if (type_snprintf (msg, len + 1, t) < 0) { // LCOV_EXCL_LINE - as above
-    return NULL;                             // LCOV_EXCL_LINE
+  if (type_snprintf (msg, (u32)len + 1, t) < 0) { // LCOV_EXCL_LINE - as above
+    return NULL;                                  // LCOV_EXCL_LINE
   } // LCOV_EXCL_LINE
 
   return msg;
@@ -461,7 +461,7 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
 
       u16 len = t->st.len;
       for (u16 i = 0; i < len; ++i) {
-        n = snprintf (p, (size_t)(end - p), "%.*s ", t->st.keys[i].len, t->st.keys[i].data);
+        n = snprintf (p, (size_t)(end - p), "%.*s ", (int)t->st.keys[i].len, t->st.keys[i].data);
         p += snprintf_len (n);
 
         p = type_generate_string_rec (p, end, t->st.types[i]);
@@ -478,7 +478,7 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
     case T_SARRAY: {
       char *p = dest;
       for (u16 i = 0; i < t->sa.rank; ++i) {
-        int n = snprintf (p, (size_t)(end - p), "[%u]", t->sa.dims[i]);
+        int n = snprintf (p, (size_t)(end - p), "[%" PRIu32 "]", t->sa.dims[i]);
         p += snprintf_len (n);
       }
       int n = snprintf (p, (size_t)(end - p), " ");
@@ -492,12 +492,11 @@ type_generate_string_rec (char *dest, char *end, const struct type *t)
   }
 }
 
-// Public interface function entry point
 void
 type_generate_string (char *dest, const struct type *t)
 {
   DBG_ASSERT (valid_type, t);
-  if (dest) {
+  if (dest != NULL) {
     type_generate_string_rec (dest, dest + type_get_string_size (t), t);
   }
 }
@@ -514,7 +513,7 @@ TEST (type_generate_string)
     char        buf[64];
     type_generate_string (buf, &t);
 
-    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1), 0);
   }
 
   TEST_CASE ("sarray")
@@ -528,7 +527,7 @@ TEST (type_generate_string)
     char        buf[64];
     type_generate_string (buf, &t);
 
-    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1), 0);
   }
 
   TEST_CASE ("struct")
@@ -545,7 +544,7 @@ TEST (type_generate_string)
     char          buf[64];
     type_generate_string (buf, &t);
 
-    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1), 0);
   }
 
   TEST_CASE ("union")
@@ -565,7 +564,7 @@ TEST (type_generate_string)
     char        buf[128];
     type_generate_string (buf, &t);
 
-    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1), 0);
   }
 
   TEST_CASE ("complex_nested")
@@ -613,7 +612,7 @@ TEST (type_generate_string)
     char buf[256];
     type_generate_string (buf, &root_type);
 
-    test_assert_int_equal (memcmp (buf, expected, expected_len + 1) == 0, 1);
+    test_assert_int_equal (memcmp (buf, expected, expected_len + 1), 0);
   }
 }
 #endif
@@ -626,7 +625,8 @@ TEST (type_generate_string)
 err_t
 type_get_serial_size (u16 *dest, const struct type *t, error *e)
 {
-  // DBG_ASSERT (valid_type, t);
+  // Not valid_type: type_validate calls this, so that would recurse
+  DBG_ASSERT (unchecked_type, t);
 
   // LABEL TYPE
   u16 ret = sizeof (u8);
@@ -738,9 +738,9 @@ prim_t_deserialize (enum prim_t *dest, struct deserializer *src, error *e)
   ASSERT (dest);
 
   u8   p;
-  bool ret = dsrlizr_read ((&p), sizeof (u8), src);
+  bool ret = dsrlizr_read (&p, sizeof (u8), src);
   if (!ret) {
-    return error_causef (e, ERR_CORRUPT, "prim: missing length header");
+    return error_causef (e, ERR_CORRUPT, "prim: missing prim code");
   }
 
   enum prim_t _p = p;
@@ -765,7 +765,7 @@ TEST (prim_t_deserialize)
   test_assert_int_equal (prim_t_deserialize (&out, &d, &ctx->e), SUCCESS);
   test_assert_int_equal (out, CI32);
 
-  // 5.2 red path – invalid enum value (CU128+1)
+  // 5.2 red path - invalid enum value (CU128+1)
   u8                  bad[] = {(u8)(CU128 + 1)};
   struct deserializer d2    = dsrlizr_create (bad, sizeof bad);
   test_assert_int_equal (prim_t_deserialize (&out, &d2, &ctx->e), ERR_INTERP);
@@ -784,7 +784,8 @@ type_deserialize (struct deserializer *src, struct arena_alloc *alloc, error *e)
   // A short read returns false WITHOUT touching header, so reading it anyway
   // means reading uninitialized stack. That is zero on most platforms - and
   // T_PRIM is 0, a perfectly valid type - but MSVC's /RTC1 fills it with
-  // 0xCC, which falls through to the default arm below. Hence Windows-only.
+  // 0xCC, which falls through to the default arm below. The bug only showed
+  // on Windows, which is why the read is checked here.
   if (!dsrlizr_read (&header, sizeof (u8), src)) {
     error_causef (e, ERR_CORRUPT, "Truncated type: no type code");
     return NULL;
@@ -794,25 +795,25 @@ type_deserialize (struct deserializer *src, struct arena_alloc *alloc, error *e)
 
   switch (header) {
     case T_PRIM: {
-      if (prim_t_deserialize (&dest->p, src, e)) {
+      if (prim_t_deserialize (&dest->p, src, e) < 0) {
         return NULL;
       }
       return dest;
     }
     case T_STRUCT: {
-      if (struct_t_deserialize (&dest->st, src, alloc, e)) {
+      if (struct_t_deserialize (&dest->st, src, alloc, e) < 0) {
         return NULL;
       }
       return dest;
     }
     case T_UNION: {
-      if (union_t_deserialize (&dest->un, src, alloc, e)) {
+      if (union_t_deserialize (&dest->un, src, alloc, e) < 0) {
         return NULL;
       }
       return dest;
     }
     case T_SARRAY: {
-      if (sarray_t_deserialize (&dest->sa, src, alloc, e)) {
+      if (sarray_t_deserialize (&dest->sa, src, alloc, e) < 0) {
         return NULL;
       }
       return dest;
@@ -941,21 +942,21 @@ type_random_once (struct arena_alloc *alloc, u32 depth, t_size max_tsize, error 
     }
 
     case T_STRUCT: {
-      if (struct_t_random (&dest->st, alloc, depth, max_tsize, e)) {
+      if (struct_t_random (&dest->st, alloc, depth, max_tsize, e) < 0) {
         return NULL;
       }
       return dest;
     }
 
     case T_UNION: {
-      if (union_t_random (&dest->un, alloc, depth, max_tsize, e)) {
+      if (union_t_random (&dest->un, alloc, depth, max_tsize, e) < 0) {
         return NULL;
       }
       return dest;
     }
 
     case T_SARRAY: {
-      if (sarray_t_random (&dest->sa, alloc, depth, max_tsize, e)) {
+      if (sarray_t_random (&dest->sa, alloc, depth, max_tsize, e) < 0) {
         return NULL;
       }
       return dest;
@@ -1013,7 +1014,7 @@ type_random (struct arena_alloc *alloc, u32 depth, t_size max_size, error *e)
   error_causef (
       e,
       ERR_INVALID_ARGUMENT,
-      "Failed to generate a valid type of at most %u bytes",
+      "Failed to generate a valid type of at most %" PRt_size " bytes",
       max_size
   );
   return NULL;
@@ -1047,7 +1048,7 @@ TEST (type_random_gives_up)
 
   TEST_CASE ("out of memory partway through a composite")
   {
-    faulty_mem_set_fail (ctx->faulty_mem, 0.5f);
+    faulty_mem_set_fail (ctx->faulty_mem, 0.5F);
     for (u32 i = 0; i < 1000; ++i) {
       struct type *t = type_random (&ctx->faulty_alloc, 1, 4096, &ctx->e);
       if (t == NULL) {
@@ -1061,7 +1062,7 @@ TEST (type_random_gives_up)
 
   TEST_CASE ("out of memory on every attempt")
   {
-    faulty_mem_set_fail (ctx->faulty_mem, 1.0f);
+    faulty_mem_set_fail (ctx->faulty_mem, 1.0F);
     test_assert_ptr_equal (type_random (&ctx->faulty_alloc, 0, 4096, &ctx->e), NULL);
     faulty_mem_reset (ctx->faulty_mem);
     error_reset (&ctx->e);
@@ -1112,20 +1113,21 @@ get_var_str (struct type *t, u32 *dlen, error *e)
     return NULL;                                 // LCOV_EXCL_LINE
   } // LCOV_EXCL_LINE
 
-  char *dest = (default_mem ()).table->malloc ((default_mem ()).self, len + 1, sizeof *dest, e);
+  char *dest = (default_mem ())
+                   .table->malloc ((default_mem ()).self, (u32)len + 1, sizeof *dest, e);
   if (dest == NULL) {
     error_causef (e, ERR_NOMEM, "alloc failed for type log string");
     return NULL;
   }
 
-  len = type_snprintf (dest, len + 1, t);
+  len = type_snprintf (dest, (u32)len + 1, t);
   if (len < 0) {                                                // LCOV_EXCL_LINE
     (default_mem ()).table->free ((default_mem ()).self, dest); // LCOV_EXCL_LINE
     error_causef (e, ERR_IO, "snprintf failed");                // LCOV_EXCL_LINE
     return NULL;                                                // LCOV_EXCL_LINE
   } // LCOV_EXCL_LINE
 
-  *dlen = len;
+  *dlen = (u32)len;
 
   return dest;
 }
@@ -1139,7 +1141,7 @@ i_log_type (struct type *t, error *e)
     return error_trace (e);
   }
 
-  i_log_info ("%.*s\n", len, var_str);
+  i_log_info ("%.*s\n", (int)len, var_str);
   (default_mem ()).table->free ((default_mem ()).self, var_str);
 
   return SUCCESS;
@@ -1149,7 +1151,7 @@ static struct string
 string_movemem (struct string src, struct arena_alloc *alloc, error *e)
 {
   char *data = arena_alloc_copy (alloc, src.data, src.len, e);
-  if (!data) {
+  if (data == NULL) {
     return (struct string){0};
   }
   return (struct string){.data = data, .len = src.len};
@@ -1159,13 +1161,13 @@ static struct string *
 keylist_movemem (struct string *src, u32 len, struct arena_alloc *alloc, error *e)
 {
   struct string *keys = arena_malloc (alloc, len, sizeof *keys, e);
-  if (!keys) {
+  if (keys == NULL) {
     return NULL;
   }
 
   for (u32 i = 0; i < len; ++i) {
     keys[i] = string_movemem (src[i], alloc, e);
-    if (!keys[i].data) {
+    if (keys[i].data == NULL) {
       return NULL;
     }
   }
@@ -1175,14 +1177,14 @@ keylist_movemem (struct string *src, u32 len, struct arena_alloc *alloc, error *
 static struct type **
 typelist_movemem (struct type **src, u32 len, struct arena_alloc *alloc, error *e)
 {
-  struct type **types = arena_malloc (alloc, len, sizeof (struct type *), e);
-  if (!types) {
+  struct type **types = arena_malloc (alloc, len, sizeof *types, e);
+  if (types == NULL) {
     return NULL;
   }
 
   for (u32 i = 0; i < len; ++i) {
     types[i] = type_movemem (src[i], alloc, e);
-    if (!types[i]) {
+    if (types[i] == NULL) {
       return NULL;
     }
   }
@@ -1193,7 +1195,7 @@ struct type *
 type_movemem (struct type *src, struct arena_alloc *alloc, error *e)
 {
   struct type *ret = arena_malloc (alloc, 1, sizeof *ret, e);
-  if (!ret) {
+  if (ret == NULL) {
     return NULL;
   }
 
@@ -1207,11 +1209,11 @@ type_movemem (struct type *src, struct arena_alloc *alloc, error *e)
     case T_STRUCT: {
       ret->st.len  = src->st.len;
       ret->st.keys = keylist_movemem (src->st.keys, src->st.len, alloc, e);
-      if (!ret->st.keys) {
+      if (ret->st.keys == NULL) {
         return NULL;
       }
       ret->st.types = typelist_movemem (src->st.types, src->st.len, alloc, e);
-      if (!ret->st.types) {
+      if (ret->st.types == NULL) {
         return NULL;
       }
       break;
@@ -1219,11 +1221,11 @@ type_movemem (struct type *src, struct arena_alloc *alloc, error *e)
     case T_UNION: {
       ret->un.len  = src->un.len;
       ret->un.keys = keylist_movemem (src->un.keys, src->un.len, alloc, e);
-      if (!ret->un.keys) {
+      if (ret->un.keys == NULL) {
         return NULL;
       }
       ret->un.types = typelist_movemem (src->un.types, src->un.len, alloc, e);
-      if (!ret->un.types) {
+      if (ret->un.types == NULL) {
         return NULL;
       }
       break;
@@ -1235,7 +1237,7 @@ type_movemem (struct type *src, struct arena_alloc *alloc, error *e)
         return NULL;
       }
       ret->sa.dims = arena_malloc (alloc, src->sa.rank, sizeof *ret->sa.dims, e);
-      if (!ret->sa.dims) {
+      if (ret->sa.dims == NULL) {
         return NULL;
       }
       memcpy (ret->sa.dims, src->sa.dims, src->sa.rank * sizeof *ret->sa.dims);
@@ -1416,12 +1418,6 @@ strtoprim (const char *text, u32 len)
 }
 
 /******************************************************************************
- * SECTION: Union
- * ----------------------------------------------------------------------------
- * @brief A Union type
- ******************************************************************************/
-
-/******************************************************************************
  * SECTION: Print Type
  ******************************************************************************/
 
@@ -1458,49 +1454,49 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
     case U8: {
       u8 v;
       memcpy (&v, buf, 1);
-      i_log_printf (level, "%u", (unsigned)v);
+      i_log_printf (level, "%" PRIu32, (u32)v);
       return;
     }
     case U16: {
       u16 v;
       memcpy (&v, buf, 2);
-      i_log_printf (level, "%u", (unsigned)v);
+      i_log_printf (level, "%" PRIu32, (u32)v);
       return;
     }
     case U32: {
       u32 v;
       memcpy (&v, buf, 4);
-      i_log_printf (level, "%u", (unsigned)v);
+      i_log_printf (level, "%" PRIu32, (u32)v);
       return;
     }
     case U64: {
       u64 v;
       memcpy (&v, buf, 8);
-      i_log_printf (level, "%lu", (unsigned long)v);
+      i_log_printf (level, "%" PRIu64, v);
       return;
     }
     case I8: {
       i8 v;
       memcpy (&v, buf, 1);
-      i_log_printf (level, "%d", (int)v);
+      i_log_printf (level, "%" PRId32, (i32)v);
       return;
     }
     case I16: {
       i16 v;
       memcpy (&v, buf, 2);
-      i_log_printf (level, "%d", (int)v);
+      i_log_printf (level, "%" PRId32, (i32)v);
       return;
     }
     case I32: {
       i32 v;
       memcpy (&v, buf, 4);
-      i_log_printf (level, "%d", (int)v);
+      i_log_printf (level, "%" PRId32, (i32)v);
       return;
     }
     case I64: {
       i64 v;
       memcpy (&v, buf, 8);
-      i_log_printf (level, "%ld", (long)v);
+      i_log_printf (level, "%" PRId64, v);
       return;
     }
     case F16: {
@@ -1526,7 +1522,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u64 hi;
       memcpy (&lo, buf, 8);
       memcpy (&hi, buf + 8, 8);
-      i_log_printf (level, "<f128:0x%016lx%016lx>", (unsigned long)hi, (unsigned long)lo);
+      i_log_printf (level, "<f128:0x%016" PRIx64 "%016" PRIx64 ">", hi, lo);
       return;
     }
     case CF32: {
@@ -1555,7 +1551,8 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
     }
     case CF256: {
 #if SIZEOF_LONG_DOUBLE >= 16
-      long double r, im;
+      long double r;
+      long double im;
       memcpy (&r, buf, 16);
       memcpy (&im, buf + 16, 16);
       i_log_printf (level, "(%Lg, %Lg)", r, im);
@@ -1570,12 +1567,13 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       memcpy (&im_hi, buf + 24, 8);
       i_log_printf (
           level,
-          "(<f128:0x%016lx%016lx>, "
-          "<f128:0x%016lx%016lx>)",
-          (unsigned long)r_hi,
-          (unsigned long)r_lo,
-          (unsigned long)im_hi,
-          (unsigned long)im_lo
+          "(<f128:0x%016" PRIx64 "%016" PRIx64
+          ">, "
+          "<f128:0x%016" PRIx64 "%016" PRIx64 ">)",
+          r_hi,
+          r_lo,
+          im_hi,
+          im_lo
       );
 #endif
       return;
@@ -1609,7 +1607,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       i64 im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
-      i_log_printf (level, "(%ld, %ld)", (long)r, (long)im);
+      i_log_printf (level, "(%" PRId64 ", %" PRId64 ")", r, im);
       return;
     }
     case CU16: {
@@ -1641,7 +1639,7 @@ print_prim_value (int level, const u8 *buf, enum prim_t p)
       u64 im;
       memcpy (&r, buf, 8);
       memcpy (&im, buf + 8, 8);
-      i_log_printf (level, "(%lu, %lu)", (unsigned long)r, (unsigned long)im);
+      i_log_printf (level, "(%" PRIu64 ", %" PRIu64 ")", r, im);
       return;
     }
   }
@@ -1667,7 +1665,7 @@ TEST (print_prim_value)
   }
   TEST_CASE ("u32")
   {
-    u32 v = 1234567u;
+    u32 v = 1234567U;
     print_prim_value (LOG_INFO, (const u8 *)&v, U32);
   }
   TEST_CASE ("u64")
@@ -1702,7 +1700,7 @@ TEST (print_prim_value)
   }
   TEST_CASE ("f32")
   {
-    float v = 3.14f;
+    float v = 3.14F;
     print_prim_value (LOG_INFO, (const u8 *)&v, F32);
   }
   TEST_CASE ("f64")
@@ -1722,7 +1720,7 @@ TEST (print_prim_value)
   }
   TEST_CASE ("cf64")
   {
-    float v[2] = {1.0f, 2.0f};
+    float v[2] = {1.0F, 2.0F};
     print_prim_value (LOG_INFO, (const u8 *)v, CF64);
   }
   TEST_CASE ("cf128")
@@ -1767,7 +1765,7 @@ TEST (print_prim_value)
   }
   TEST_CASE ("cu64")
   {
-    u32 v[2] = {100000u, 200000u};
+    u32 v[2] = {100000U, 200000U};
     print_prim_value (LOG_INFO, (const u8 *)v, CU64);
   }
   TEST_CASE ("cu128")
@@ -1828,7 +1826,7 @@ print_sarray_dim (
       if (i > 0) {
         i_log_printf (level, ", ");
       }
-      print_type_inner (level, buf + (i * sub_size), sa->t, max_elems, indent + 1);
+      print_type_inner (level, buf + ((size_t)i * sub_size), sa->t, max_elems, indent + 1);
     }
     if (dim_len > max_elems) {
       i_log_printf (level, ", ...");
@@ -1842,7 +1840,7 @@ print_sarray_dim (
       }
       print_sarray_dim (
           level,
-          buf + (i * sub_size),
+          buf + ((size_t)i * sub_size),
           sa,
           dim_idx + 1,
           max_elems,
@@ -1964,7 +1962,7 @@ TEST (type_print_data)
     struct type   f2       = {.type = T_PRIM, .p = F32};
     struct type  *types[2] = {&f1, &f2};
     struct type   t        = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
-    float         buf[2]   = {1.5f, 2.5f};
+    float         buf[2]   = {1.5F, 2.5F};
     type_print_data (LOG_INFO, (const u8 *)buf, &t, 10);
   }
   TEST_CASE ("T_STRUCT with T_SARRAY field")
@@ -2033,9 +2031,9 @@ struct type_printer_ostream_ctx
 static i32
 type_print_os_sink (struct stream *s, void *vctx, const void *src, u32 size, u32 n, error *e)
 {
-  (void)s;    // Unused
-  (void)e;    // Unused
-  (void)size; // Unused
+  (void)s;
+  (void)e;
+  (void)size;
   ASSERT (size == 1);
   struct type_printer_ostream_ctx *ctx   = (struct type_printer_ostream_ctx *)vctx;
 
@@ -2150,9 +2148,9 @@ type_stream_printer_init (struct stream *s, struct type *t, error *e)
     return error_trace (e);
   }
 
-  ctx->size = size;
-  ctx->pos  = 0;
   ctx->t    = t;
+  ctx->pos  = 0;
+  ctx->size = size;
   stream_init (s, &type_printer_os_ops, ctx);
 
   return SUCCESS;
@@ -2221,7 +2219,7 @@ TEST (type_stream_printer_init)
     struct stream s;
     test_assert_int_equal (type_stream_printer_init (&s, &t, &ctx->e), SUCCESS);
 
-    u8 buf[2 * 3 * sizeof (u16)];
+    u8 buf[sizeof (u16) * 2 * 3];
     memset (buf, 0x11, sizeof buf);
     test_assert_int_equal (type_byte_size (&t), (t_size)sizeof buf);
     test_assert_int_equal (stream_bwrite (buf, 1, sizeof buf, &s, &ctx->e), (i32)sizeof buf);

@@ -47,13 +47,12 @@ ns_var_get_or_create (struct ns_var_get_or_create_params *params, error *e)
     e->cause_code = SUCCESS;
     e->cmlen      = 0;
 
-    // Create the variable
-    if (ns_var_create (params->p, params->tx, params->vname, params->type, e)) {
+    if (ns_var_create (params->p, params->tx, params->vname, params->type, e) < 0) {
       goto failed;
     }
 
     // Try again
-    if (ns_var_get (&gparams, e)) {
+    if (ns_var_get (&gparams, e) < 0) {
       goto failed;
     }
   } else if (err < 0) {
@@ -161,7 +160,7 @@ TEST (ns_var_get_or_create)
         u32   len  = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
         char *name = f.mem.table->malloc (f.mem.self, len, 1, &ctx->e);
         for (u32 k = 0; k < len - 1; ++k) {
-          name[k] = 'a' + randu32r (0, 26);
+          name[k] = (char)('a' + randu32r (0, 26));
         }
         name[len - 1]                             = '\0';
 
@@ -206,14 +205,14 @@ TEST (ns_var_get_or_create)
           u32 len = randu32r (NS_PAGE_SIZE, NS_PAGE_SIZE * 10);
           name    = f.mem.table->malloc (f.mem.self, len, 1, &ctx->e);
           for (u32 k = 0; k < len - 1; ++k) {
-            name[k] = 'a' + randu32r (0, 26);
+            name[k] = (char)('a' + randu32r (0, 26));
           }
           name[len - 1] = '\0';
         }
 
         // Generate a random type that goes 0 - 10 layers deep
         struct type *t = type_random (&f.alloc, randu32r (0, 5), 4096, &ctx->e);
-        i_log_info ("%d/%d\n", i, 100);
+        i_log_info ("%" PRIu32 "/%d\n", i, 100);
 
         struct ns_var_get_or_create_params params = {
             .p     = f.p,

@@ -128,7 +128,7 @@ mem_vhmap_clone (struct i_mem mem, const struct mem_vhmap *src, error *e)
   htable_foreach (src->vhasht, move_data, &ctx);
 
   // Error
-  if (ctx.e->cause_code) {
+  if (ctx.e->cause_code < 0) {
     mem_vhmap_free (ret);
     return NULL;
   }
@@ -151,7 +151,7 @@ var_frame_init (struct mem_vhmap *db, struct var_frame *frame, struct variable *
   arena_alloc_create_default (&frame->alloc);
 
   // Copy variable data over to
-  if (variable_copy (&frame->var.var, var, &frame->alloc, e)) {
+  if (variable_copy (&frame->var.var, var, &frame->alloc, e) < 0) {
     goto failed;
   }
 
@@ -188,7 +188,7 @@ mem_vhmap_add (struct mem_vhmap *db, struct variable *var, error *e)
   }
 
   // Initialize this frame
-  if (var_frame_init (db, frame, var, e)) {
+  if (var_frame_init (db, frame, var, e) < 0) {
     slab_alloc_free (&db->alloc, frame);
     return NULL;
   }
@@ -292,14 +292,14 @@ TEST (mem_vhmap)
       struct variable var = {
           .vname  = strfcstr (buf),
           .dtype  = &deftype,
-          .nbytes = (b_size)i,
+          .nbytes = (b_size)i * sizeof (u32),
       };
       struct var_with_data *vwd = mem_vhmap_add (v, &var, &ctx->e);
       ASSERT (vwd != NULL);
 
       struct var_with_data *got = mem_vhmap_get (v, strfcstr (buf));
       ASSERT (got != NULL);
-      ASSERT (got->var.nbytes == (b_size)i);
+      ASSERT (got->var.nbytes == (b_size)i * sizeof (u32));
     }
   }
 
@@ -342,7 +342,7 @@ TEST (mem_vhmap)
       snprintf (buf, sizeof buf, "cv_%d", i);
       struct variable var = {
           .vname  = strfcstr (buf),
-          .nbytes = (b_size)(i * 3),
+          .nbytes = (b_size)i * 3 * sizeof (u32),
           .dtype  = &deftype,
       };
       struct var_with_data *vwd = mem_vhmap_add (v, &var, &ctx->e);
@@ -356,7 +356,7 @@ TEST (mem_vhmap)
       snprintf (buf, sizeof buf, "cv_%d", i);
       struct var_with_data *got = mem_vhmap_get (c, strfcstr (buf));
       ASSERT (got != NULL);
-      ASSERT (got->var.nbytes == (b_size)(i * 3));
+      ASSERT (got->var.nbytes == (b_size)i * 3 * sizeof (u32));
     }
 
     mem_vhmap_remove (c, strfcstr ("cv_0"));

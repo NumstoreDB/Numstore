@@ -24,28 +24,30 @@
 err_t
 smartfiles_init_pager (struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   if (!pgr_isnew (p)) {
     return SUCCESS;
   }
 
   // Initialize the upfront hash page
-  if (ns_init_var_hash_map (p, e)) {
+  if (ns_init_var_hash_map (p, e) < 0) {
     return error_trace (e);
   }
 
   // Create the default variable
   struct txn tx;
-  if (pgr_begin_txn (&tx, p, e)) {
+  if (pgr_begin_txn (&tx, p, e) < 0) {
     return error_trace (e);
   }
 
   struct string name = strfcstr (DEFAULT_VARIABLE);
   struct type   type = (struct type){.type = T_PRIM, .p = U8};
-  if (ns_var_create (p, &tx, name, &type, e)) {
+  if (ns_var_create (p, &tx, name, &type, e) < 0) {
     return error_trace (e);
   }
 
-  if (pgr_commit (p, &tx, e)) {
+  if (pgr_commit (p, &tx, e) < 0) {
     return error_trace (e);
   }
 

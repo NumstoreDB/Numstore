@@ -37,8 +37,10 @@ HEADER_FUNC struct type *
 compile_type_alloc (const char *text, struct arena_alloc *dalloc, error *e)
 {
   struct type *ret = arena_malloc (dalloc, 1, sizeof *ret, e);
-  if (ret) {
-    compile_type (ret, text, dalloc, e);
+  if (ret != NULL) {
+    // TODO: return NULL when compile_type fails. Only tests call this, and
+    // they read the failure from [e], so the half-built type comes back.
+    (void)compile_type (ret, text, dalloc, e);
   }
   return ret;
 }

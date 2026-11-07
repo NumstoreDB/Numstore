@@ -26,11 +26,13 @@ pgr_get_writable (
     error        *e
 )
 {
+  DBG_ASSERT (pager, p);
+
   struct page_frame *pgr = NULL; // Read frame
   struct page_frame *pgw = NULL; // Write frame
-  hdata_idx          data;       // The data to retrieve
-  i32                rclock;     // Location of the new page
-  i32                wclock;     // Write page location
+  hdata_idx          data;
+  i32                rclock; // Read frame index on a cache miss
+  i32                wclock; // Write frame index
 
   latch_lock (&p->htable_lock);
   hta_res res = ht_get_idx (&p->pgno_to_value, &data, pg);
@@ -54,7 +56,6 @@ pgr_get_writable (
       spx_lock_x (&pgr->data);
 
       // Make a copy in a new slot
-
       wclock = pgr_reserve_and_ctrl_lock (p, e);
       if (wclock < 0) {
         return error_trace (e);
@@ -75,7 +76,6 @@ pgr_get_writable (
       dest->pgr->wsibling = wclock;
       latch_unlock (&dest->pgr->ctrl);
 
-      // Set h
       dest->pgw  = pgw;
       dest->mode = PHM_X;
       dest->tx   = tx;
@@ -98,7 +98,7 @@ pgr_get_writable (
         return error_trace (e);
       }
 
-      data = (hdata_idx){.key = pg, .value = rclock};
+      data = (hdata_idx){.key = pg, .value = (u32)rclock};
       ht_insert_expect_idx (&p->pgno_to_value, data);
 
       pgr           = &p->pages[data.value];
@@ -148,18 +148,16 @@ pgr_get_writable (
 #  include "core/ns_testing.h"
 #  include "nscore/page/ns_page_data_list.h"
 
-/**
- * TODO - on a cache miss pgr_get_writable inserts the read frame into
- * p->pgno_to_value (pin = 1, PW_PRESENT) *before* fpgr_read. When the read
- * (or page_validate_for_db) fails it only drops the ctrl latches, so the
- * page table keeps a pinned frame full of garbage for [pg]:
- *
- * - the next get of [pg] hits HTAR_SUCCESS and hands out that garbage
- * - pgr_close -> pgr_evict_all_pages asserts mp->pin == 0 on it
- *
- * pgr_get does it in the right order (read, validate, then insert). Fix: do
- * the same here, or remove the entry and clear the frame on failure.
- */
+// TODO: on a cache miss pgr_get_writable inserts the read frame into
+// p->pgno_to_value (pin = 1, PW_PRESENT) *before* fpgr_read. When the read
+// (or page_validate_for_db) fails it only drops the ctrl latches, so the
+// page table keeps a pinned frame full of garbage for [pg]:
+//
+// - the next get of [pg] hits HTAR_SUCCESS and hands out that garbage
+// - pgr_close -> pgr_evict_all_pages asserts mp->pin == 0 on it
+//
+// pgr_get does it in the right order (read, validate, then insert). Fix: do
+// the same here, or remove the entry and clear the frame on failure.
 TEST_DISABLED (pgr_get_writable_fail_os)
 {
   struct pgr_fixture f;
@@ -200,9 +198,11 @@ TEST_DISABLED (pgr_get_writable_fail_os)
   while (ret != SUCCESS);
 
   // The page handed out is the one on disk, not a leftover from a failure
-  test_assert_int_equal (
+  test_assert_type_equal (
       page_get_checksum (page_h_ro (&h)),
-      page_compute_checksum (page_h_ro (&h))
+      page_compute_checksum (page_h_ro (&h)),
+      u32,
+      PRIu32
   );
   pgr_cancel (&h);
   test_err_t_check (pgr_commit (f.p, &f.tx, &ctx->e), SUCCESS, &ctx->e);

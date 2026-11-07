@@ -93,6 +93,7 @@ err_walis_close:
 err_t
 wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
 {
+  DBG_ASSERT (wal, w);
   ASSERT (w->flags & WAL_ISNEW);
 
   // Only call write_start_lsn on a fresh wal - start lsn's are
@@ -111,7 +112,6 @@ wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
     // We should only be at position 0 calling this
     ASSERT (walis_mark (w->istream) == 0);
 
-    // Do read
     lsn read_start_lsn;
     if (walis_read_all (w->istream, NULL, &read_start_lsn, sizeof (start_lsn), e) < 0) {
       return error_trace (e);
@@ -132,6 +132,7 @@ wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e)
 slsn
 wal_get_end_lsn (struct wal *w, error *e)
 {
+  DBG_ASSERT (wal, w);
   if (wal_forward_scan (w, LSN_NULL, NULL, NULL, e) < 0) {
     return error_trace (e);
   }
@@ -152,11 +153,11 @@ wal_open (const char *fname, struct i_mem mem, struct i_os os, error *e)
   dest->mem = mem;
   dest->os  = os;
 
-  if (string_copy (&dest->fname, strfcstr (fname), mem, e)) {
+  if (string_copy (&dest->fname, strfcstr (fname), mem, e) < 0) {
     goto err_free_dest;
   }
 
-  if (wal_init (dest, e)) {
+  if (wal_init (dest, e) < 0) {
     goto err_free_fname;
   }
 
@@ -194,6 +195,7 @@ wal_destroy (struct wal *w, error *e)
 err_t
 wal_close (struct wal *w, error *e)
 {
+  DBG_ASSERT (wal, w);
   struct i_mem mem = w->mem;
   wal_destroy (w, e);
   mem.table->free (mem.self, w);
@@ -203,6 +205,7 @@ wal_close (struct wal *w, error *e)
 err_t
 wal_close_and_delete (struct wal *w, error *e)
 {
+  DBG_ASSERT (wal, w);
   struct i_mem  mem   = w->mem;
   struct i_os   os    = w->os;
   struct string fname = w->fname;
@@ -221,8 +224,8 @@ err_t
 wal_delete_and_reopen (struct wal *w, error *e)
 {
   latch_lock (&w->l);
+  DBG_ASSERT (wal, w);
 
-  // Copy fname to pass in
   struct string fname = w->fname;
 
   // Set to NULL so we don't free it
@@ -271,6 +274,7 @@ wal_crash (struct wal *w, error *e)
 void
 wal_ensure_flush_next (struct wal *w)
 {
+  DBG_ASSERT (wal, w);
   u8  buffer[WAL_BUFFER_CAP] = {0};
   u32 len                    = cbuffer_len (&w->ostream->buffer);
   ASSERT (len <= WAL_BUFFER_CAP);
@@ -342,7 +346,13 @@ wal_read_full (struct wal *w, u32 *checksum, wlh type1, wlh type2, u8 *buf, u32 
   u32 actual_crc;
   memcpy (&actual_crc, buf + total_len - sizeof (u32), sizeof (u32));
   if (*checksum != actual_crc) {
-    return error_causef (e, ERR_CORRUPT, "Invalid CRC: %d != %d", *checksum, actual_crc);
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "Invalid CRC: %" PRIu32 " != %" PRIu32,
+        *checksum,
+        actual_crc
+    );
   }
 
   return WAL_NOT_EOF;
@@ -555,7 +565,6 @@ wal_seek_unsafe (struct wal *w, lsn id, error *e)
     );
   }
 
-  // Seek
   return walis_seek (w->istream, id - w->start_lsn, e);
 }
 
@@ -583,10 +592,8 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
     ASSERT (prevlsn <= curlsn);
     prevlsn   = curlsn;
 
-    // Read one full log
     int iseof = wal_read_one (w, &w->rhdr, e);
 
-    // Error
     if (iseof < 0) {
       return error_trace (e);
     }
@@ -605,7 +612,7 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
 
       // Zero out the end, which is maximum length MAX(log size)
       static const u8 zeros[MAX_LOG_SIZE] = {0};
-      if (iseof == WAL_EOF && walos_zero_tail (w->ostream, zeros, sizeof zeros, e)) {
+      if (iseof == WAL_EOF && walos_zero_tail (w->ostream, zeros, sizeof zeros, e) < 0) {
         return error_trace (e);
       }
 
@@ -614,7 +621,7 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
 
     else {
       // Else, execute the user supplied function
-      if (func) {
+      if (func != NULL) {
         if (func (&w->rhdr, w->start_lsn + curlsn, ctx, e) < 0) {
           return error_trace (e);
         }
@@ -627,13 +634,14 @@ struct wal_rec_hdr_read *
 wal_read_entry (struct wal *w, struct wal_rec_hdr_read *dest, lsn id, error *e)
 {
   struct wal_rec_hdr_read *ret = NULL;
-  if (dest) {
+  if (dest != NULL) {
     ret = dest;
   } else {
     ret = &w->rhdr;
   }
 
   latch_lock (&w->l);
+  DBG_ASSERT (wal, w);
 
   // You can only read a wal in random mode if you've done
   // a full wal scan - so ostream must be open
@@ -649,7 +657,6 @@ wal_read_entry (struct wal *w, struct wal_rec_hdr_read *dest, lsn id, error *e)
     goto failed;
   }
 
-  // Read
   int iseof = wal_read_one (w, ret, e);
   if (iseof < 0) {
     goto failed;
@@ -955,427 +962,6 @@ wal_append_clr_log (struct wal *w, const struct wal_clr_write clr)
   return result;
 }
 
-// #ifndef NDEBUG
-//
-// static lsn
-// wal_append_log (struct wal *w, const struct wal_rec_hdr_write *whdr)
-// {
-//   switch (whdr->type) {
-//     case WL_BEGIN: {
-//       return wal_append_begin_log (w, whdr->begin.tid);
-//     }
-//     case WL_COMMIT: {
-//       return wal_append_commit_log (w, whdr->commit.tid, whdr->commit.prev);
-//     }
-//     case WL_END: {
-//       return wal_append_end_log (w, whdr->end.tid, whdr->end.prev);
-//     }
-//     case WL_UPDATE: {
-//       return wal_append_update_log (w, whdr->update);
-//     }
-//     case WL_CLR: {
-//       return wal_append_clr_log (w, whdr->clr);
-//     }
-//   }
-//
-//   UNREACHABLE ();
-// }
-//
-// struct wal_queue
-// {
-//   _Atomic u32              sync;
-//   struct wal              *ww;
-//   atomic_int               idx;
-//
-//   struct wal_rec_hdr_read *read;
-//   int                      len;
-// };
-//
-// static void *
-// wal_thread (void *ctx)
-// {
-//   error             e = error_create ();
-//   struct wal_queue *q = ctx;
-//
-//   while (atomic_load (&q->sync) > 0) {
-//     spin_pause ();
-//   }
-//
-//   while (true) {
-//     int idx = atomic_fetch_add (&q->idx, 1);
-//     if (idx >= q->len) {
-//       return NULL;
-//     }
-//
-//     struct wal_rec_hdr_write write = wrhw_from_wrhr (&q->read[idx]);
-//
-//     lsn                l     = wal_append_log (q->ww, &write);
-//
-//     wal_flush_all (q->ww);
-//   }
-// }
-//
-// struct wal_rec_hdr_read *
-// wal_read_first (struct wal *w, error *e)
-// {
-//   return wal_read_entry (w, NULL, sizeof (lsn), e);
-// }
-//
-// TEST_DISABLED (wal_multi_threaded)
-// {
-//   ctx->os.table->remove_quiet (ctx->os.self, "test.wal", &ctx->e);
-//   struct wal *ww = wal_open ("test.wal", ctx->mem, ctx->os, &ctx->e);
-//   wal_write_start_lsn (ww, 0, &ctx->e);
-//
-//   u32                      N    = 5000;
-//
-//   struct wal_rec_hdr_read *read = ctx->mem.table->malloc (ctx->mem.self, N, sizeof *read,
-//   &ctx->e);
-//
-//   for (u32 i = 0; i < N; ++i) {
-//     wal_rec_hdr_read_random (&read[i]);
-//   }
-//
-//   struct wal_queue queue = {
-//       .sync = 1,
-//       .ww   = ww,
-//       .idx  = 0,
-//       .read = read,
-//       .len  = N,
-//   };
-//
-//   u32      nthreads;
-//   i_thread threads[10];
-//   for (nthreads = 0; nthreads < arrlen (threads); ++nthreads) {
-//     ctx->os.table->thread_create (ctx->os.self, &threads[nthreads], wal_thread, &queue, &ctx->e);
-//   }
-//
-//   // launch
-//   atomic_store (&queue.sync, 0);
-//
-//   i_log_info ("Threads active\n");
-//
-//   for (; nthreads > 0; --nthreads) {
-//     ctx->os.table->thread_join (ctx->os.self, threads[nthreads - 1].self);
-//   }
-//
-//   // To speed up searches, keep a "finger" which is "near" the
-//   // most recent found log
-//   u32 finger   = 0;
-//   lsn read_lsn = 0;
-//
-//   for (u32 i = 0; i < N; ++i) {
-//     struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &ctx->e);
-//     i_print_wal_rec_hdr_read_light (actual, read_lsn);
-//     test_assert (actual->type != WL_EOF);
-//
-//     // Search through all records to ensure it's there
-//     bool found = false;
-//     for (u32 k = 0; k < N; ++k) {
-//       u32 idx = (finger + k) % N;
-//       if (wal_rec_hdr_read_equal (actual, &read[idx])) {
-//         finger         = (idx + 1) % N;
-//         read[idx].type = WL_EOF;
-//         found          = true;
-//         break;
-//       }
-//     }
-//     test_assert (found);
-//   }
-//
-//   const struct wal_rec_hdr_read *actual = wal_read_next (ww, &read_lsn, &ctx->e);
-//   test_assert_int_equal (actual->type, WL_EOF);
-//
-//   wal_close (ww, &ctx->e);
-//   ctx->mem.table->free (ctx->mem.self, read);
-// }
-//
-// struct wal_test_params
-// {
-//   const char              *fname;
-//   struct wal_rec_hdr_read *batch1;
-//   u32                      batch1_len;
-//   struct wal_rec_hdr_read *batch2;
-//   u32                      batch2_len;
-// };
-//
-// static void
-// wal_test_fill_batch (struct wal_rec_hdr_read *batch, u32 len)
-// {
-//   // I just removed error for this because it wasn't being used -
-//   // no other reason - maybe breaks
-//
-//   for (u32 i = 0; i < len; i++) {
-//     struct wal_rec_hdr_read *r = &batch[i];
-//
-//     switch (r->type) {
-//       case WL_UPDATE: {
-//         rand_bytes (r->update.phys.undo, NS_PAGE_SIZE);
-//         rand_bytes (r->update.phys.redo, NS_PAGE_SIZE);
-//         break;
-//       }
-//       case WL_CLR: {
-//         rand_bytes (r->clr.phys.redo, NS_PAGE_SIZE);
-//         break;
-//       }
-//       default: {
-//         break;
-//       }
-//     }
-//   }
-// }
-//
-// static void
-// wal_test_free_batch (const struct wal_rec_hdr_read *batch, u32 len)
-// {
-//   for (u32 i = 0; i < len; i++) {
-//     const struct wal_rec_hdr_read *r = &batch[i];
-//     test_assert (r != NULL);
-//   }
-// }
-//
-// static void
-// run_wal_test (const struct wal_test_params *p, const struct i_os os)
-// {
-//   error        e   = error_create ();
-//   struct i_mem mem = default_mem ();
-//
-//   os.table->remove_quiet (os.self, p->fname, &e);
-//   struct wal *ww = wal_open (p->fname, mem, os, &e);
-//   wal_write_start_lsn (ww, 0, &e);
-//   /**
-//    * Write all the input logs
-//    */
-//   {
-//     slsn l = -1;
-//     for (u32 i = 0; i < p->batch1_len; i++) {
-//       struct wal_rec_hdr_write out   = wrhw_from_wrhr (&p->batch1[i]);
-//       slsn                     nextl = wal_append_log (ww, &out);
-//       test_assert (nextl >= 0);
-//       test_assert (nextl > l);
-//       l = nextl;
-//     }
-//     wal_flush_all (ww);
-//   }
-//
-//   /**
-//    * Read all the input logs and expect
-//    * that they are the same as the
-//    * first batch written ones
-//    */
-//   {
-//     for (u32 i = 0; i < p->batch1_len; i++) {
-//       lsn                      read_lsn;
-//       struct wal_rec_hdr_read *next = NULL;
-//       if (i == 0) {
-//         next = wal_read_first (ww, &e);
-//       } else {
-//         next = wal_read_next (ww, &read_lsn, &e);
-//       }
-//       test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
-//     }
-//   }
-//
-//   /**
-//    * Write a second batch of input logs
-//    */
-//   {
-//     slsn l = 0;
-//     for (u32 i = 0; i < p->batch2_len; i++) {
-//       struct wal_rec_hdr_write out = wrhw_from_wrhr (&p->batch2[i]);
-//       l                            = wal_append_log (ww, &out);
-//       test_assert (l > 0);
-//     }
-//     wal_flush_all (ww);
-//   }
-//
-//   /**
-//    * Read from the start and confirm all the logs
-//    */
-//   {
-//     for (u32 i = 0; i < p->batch1_len; i++) {
-//       lsn                      read_lsn;
-//       struct wal_rec_hdr_read *next = NULL;
-//       if (i == 0) {
-//         next = wal_read_first (ww, &e);
-//       } else {
-//         next = wal_read_next (ww, &read_lsn, &e);
-//       }
-//       test_assert (wal_rec_hdr_read_equal (next, &p->batch1[i]));
-//     }
-//
-//     for (u32 i = 0; i < p->batch2_len; i++) {
-//       lsn                      read_lsn;
-//       struct wal_rec_hdr_read *next = wal_read_next (ww, &read_lsn, &e);
-//       test_assert (wal_rec_hdr_read_equal (next, &p->batch2[i]));
-//     }
-//   }
-//
-//   wal_close (ww, &e);
-// }
-//
-// ////////////////////////////////////////////////////////////
-// // WAL test cases
-//
-// TEST_DISABLED (wal)
-// {
-//   struct wal_rec_hdr_read batch1_full[] = {
-//       {.type = WL_BEGIN, .begin = {.tid = 1}},
-//       {.type = WL_COMMIT, .commit = {.tid = 3, .prev = 20}},
-//       {.type = WL_END, .end = {.tid = 4, .prev = 30}},
-//       {
-//           .type = WL_UPDATE,
-//           .update =
-//               {
-//                   .type = WUP_PHYSICAL,
-//                   .tid  = 5,
-//                   .prev = 40,
-//                   .phys = {.pg = 111},
-//               },
-//       },
-//       {
-//           .type = WL_CLR,
-//           .clr  = {
-//               .type      = WCLR_PHYSICAL,
-//               .tid       = 6,
-//               .prev      = 50,
-//               .undo_next = 42,
-//               .phys      = {.pg = 222},
-//           },
-//       },
-//   };
-//
-//   struct wal_rec_hdr_read batch2_full[] = {
-//       {.type = WL_BEGIN, .begin = {.tid = 2}},
-//       {
-//           .type   = WL_UPDATE,
-//           .update = {
-//               .type = WUP_PHYSICAL,
-//               .tid  = 6,
-//               .prev = 41,
-//               .phys = {.pg = 112},
-//           },
-//       },
-//   };
-//
-//   struct wal_rec_hdr_read batch1_begin_only[] = {
-//       {.type = WL_BEGIN, .begin = {.tid = 1}},
-//   };
-//
-//   struct wal_rec_hdr_read batch2_begin_only[] = {
-//       {.type = WL_BEGIN, .begin = {.tid = 2}},
-//   };
-//
-//   struct wal_rec_hdr_read batch1_no_ckpt[] = {
-//       {.type = WL_BEGIN, .begin = {.tid = 1}},
-//       {.type = WL_COMMIT, .commit = {.tid = 3, .prev = 20}},
-//       {.type = WL_END, .end = {.tid = 4, .prev = 30}},
-//       {
-//           .type = WL_UPDATE,
-//           .update =
-//               {
-//                   .type = WUP_PHYSICAL,
-//                   .tid  = 5,
-//                   .prev = 40,
-//                   .phys = {.pg = 111},
-//               },
-//       },
-//       {
-//           .type = WL_CLR,
-//           .clr  = {
-//               .type      = WCLR_PHYSICAL,
-//               .tid       = 6,
-//               .prev      = 50,
-//               .undo_next = 42,
-//               .phys      = {.pg = 222},
-//           },
-//       },
-//   };
-//
-//   struct wal_test_params cases[] = {
-//       {
-//           .fname      = "test_full.wal",
-//           .batch1     = batch1_full,
-//           .batch1_len = arrlen (batch1_full),
-//           .batch2     = batch2_full,
-//           .batch2_len = arrlen (batch2_full),
-//       },
-//       {
-//           .fname      = "test_begin_only.wal",
-//           .batch1     = batch1_begin_only,
-//           .batch1_len = arrlen (batch1_begin_only),
-//           .batch2     = batch2_begin_only,
-//           .batch2_len = arrlen (batch2_begin_only),
-//       },
-//       {
-//           .fname      = "test_no_ckpt.wal",
-//           .batch1     = batch1_no_ckpt,
-//           .batch1_len = arrlen (batch1_no_ckpt),
-//           .batch2     = batch2_full,
-//           .batch2_len = arrlen (batch2_full),
-//       },
-//   };
-//
-//   for (u32 i = 0; i < arrlen (cases); i++) {
-//     TEST_CASE ("Wal: %d", i)
-//     {
-//       const struct wal_test_params *c = &cases[i];
-//
-//       wal_test_fill_batch (c->batch1, c->batch1_len);
-//       wal_test_fill_batch (c->batch2, c->batch2_len);
-//
-//       run_wal_test (c, ctx->os);
-//
-//       wal_test_free_batch (c->batch1, c->batch1_len);
-//       wal_test_free_batch (c->batch2, c->batch2_len);
-//     }
-//   }
-// }
-//
-// TEST_DISABLED (wal_single_entry)
-// {
-//   struct wal_rec_hdr_read cases[] = {
-//       {.type = WL_BEGIN, .begin = {.tid = 1}},
-//       {.type = WL_COMMIT, .commit = {.tid = 2, .prev = 10}},
-//       {.type = WL_END, .end = {.tid = 3, .prev = 20}},
-//       {.type   = WL_UPDATE,
-//        .update = {.type = WUP_PHYSICAL, .tid = 4, .prev = 30, .phys = {.pg = 111}}},
-//       {.type = WL_CLR,
-//        .clr  = {.type = WCLR_PHYSICAL, .tid = 5, .prev = 40, .undo_next = 42, .phys = {.pg =
-//        222}}},
-//   };
-//
-//   for (u32 i = 0; i < arrlen (cases); i++) {
-//     TEST_CASE ("wal_single_entry: %d", i)
-//     {
-//       struct wal_rec_hdr_read *c = &cases[i];
-//
-//       wal_test_fill_batch (c, 1);
-//
-//       ctx->os.table->remove_quiet (ctx->os.self, "test_single_entry.wal", &ctx->e);
-//       struct wal *ww = wal_open ("test_single_entry.wal", ctx->mem, ctx->os, &ctx->e);
-//       wal_write_start_lsn (ww, 0, &ctx->e);
-//
-//       // WRITE
-//       struct wal_rec_hdr_write out = wrhw_from_wrhr (c);
-//       const slsn               l   = wal_append_log (ww, &out);
-//       test_assert (l >= 0);
-//
-//       wal_flush_all (ww);
-//
-//       // READ
-//       struct wal_rec_hdr_read *next = wal_read_first (ww, &ctx->e);
-//       test_assert (wal_rec_hdr_read_equal (next, c));
-//
-//       wal_close (ww, &ctx->e);
-//
-//       wal_test_free_batch (c, 1);
-//     }
-//   }
-// }
-//
-// #endif
-
 /*****************************************************************************
  * SECTION: Tests
  ****************************************************************************/
@@ -1448,7 +1034,7 @@ wal_test_fresh (struct test_ctx *ctx, struct i_mem mem, struct i_os os, lsn star
     return NULL;
   }
 
-  if (wal_write_start_lsn (w, start_lsn, &ctx->e)) {
+  if (wal_write_start_lsn (w, start_lsn, &ctx->e) < 0) {
     wal_close (w, &ctx->e);
     return NULL;
   }
@@ -1681,7 +1267,7 @@ TEST (wal_open)
         error_reset (&ctx->e);
 
         // Clean up
-        if (w) {
+        if (w != NULL) {
           wal_close (w, &ctx->e);
         }
         ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
@@ -1715,7 +1301,7 @@ TEST (wal_open)
         error_reset (&ctx->e);
 
         // Clean up
-        if (w) {
+        if (w != NULL) {
           wal_close (w, &ctx->e);
           error_reset (&ctx->e);
         }
@@ -2573,5 +2159,322 @@ TEST (wal_append_log)
     }
     while (ret != SUCCESS);
   }
+}
+#endif
+
+#ifndef NDEBUG
+/// Gives the page sized payloads of every physical record in [batch] random
+/// contents, so a round trip can't pass by comparing zeros with zeros
+static void
+wal_test_fill_batch (struct wal_rec_hdr_read *batch, u32 len)
+{
+  for (u32 i = 0; i < len; i++) {
+    struct wal_rec_hdr_read *r = &batch[i];
+
+    if (r->type == WL_UPDATE && r->update.type == WUP_PHYSICAL) {
+      rand_bytes (r->update.phys.undo, NS_PAGE_SIZE);
+      rand_bytes (r->update.phys.redo, NS_PAGE_SIZE);
+    } else if (r->type == WL_CLR && r->clr.type == WCLR_PHYSICAL) {
+      rand_bytes (r->clr.phys.redo, NS_PAGE_SIZE);
+    }
+  }
+}
+
+/// Scans the whole log from the start and checks it holds exactly [want]
+static void
+wal_test_expect_log (
+    struct test_ctx               *ctx,
+    struct wal                    *w,
+    const struct wal_rec_hdr_read *want,
+    u32                            n
+)
+{
+  struct wal_test_scan scan = {0};
+  test_assert_int_equal (wal_forward_scan (w, LSN_NULL, wal_test_collect, &scan, &ctx->e), SUCCESS);
+  test_assert_type_equal (scan.n, n, u32, PRIu32);
+
+  for (u32 i = 0; i < n; i++) {
+    test_assert (wal_rec_hdr_read_equal (&scan.recs[i], &want[i]));
+  }
+}
+
+struct wal_test_params
+{
+  struct wal_rec_hdr_read *batch1;
+  u32                      batch1_len;
+  struct wal_rec_hdr_read *batch2;
+  u32                      batch2_len;
+};
+
+static void
+run_wal_test (struct test_ctx *ctx, const struct wal_test_params *p)
+{
+  struct wal_rec_hdr_read all[16];
+  ASSERT (p->batch1_len + p->batch2_len <= arrlen (all));
+
+  // Setup - an empty log
+  struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+  test_assert (w != NULL);
+
+  // Run - write the first batch, lsns strictly increasing
+  lsn l = 0;
+  for (u32 i = 0; i < p->batch1_len; i++) {
+    const lsn next = wal_test_append (w, &p->batch1[i]);
+    test_assert (next > l);
+    l = next;
+  }
+  wal_flush_all (w);
+
+  // It reads back as written
+  wal_test_expect_log (ctx, w, p->batch1, p->batch1_len);
+
+  // Append a second batch after the scan
+  for (u32 i = 0; i < p->batch2_len; i++) {
+    const lsn next = wal_test_append (w, &p->batch2[i]);
+    test_assert (next > l);
+    l = next;
+  }
+  wal_flush_all (w);
+
+  // The log is the first batch followed by the second
+  memcpy (all, p->batch1, p->batch1_len * sizeof *all);
+  memcpy (all + p->batch1_len, p->batch2, p->batch2_len * sizeof *all);
+  wal_test_expect_log (ctx, w, all, p->batch1_len + p->batch2_len);
+
+  // Teardown
+  test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+  ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+}
+
+TEST (wal)
+{
+  struct wal_rec_hdr_read batch1_full[] = {
+      {.type = WL_BEGIN, .begin = {.tid = 1}},
+      {.type = WL_COMMIT, .commit = {.tid = 3, .prev = 20}},
+      {.type = WL_END, .end = {.tid = 4, .prev = 30}},
+      {
+          .type   = WL_UPDATE,
+          .update = {.type = WUP_PHYSICAL, .tid = 5, .prev = 40, .phys = {.pg = 111}},
+      },
+      {
+          .type = WL_CLR,
+          .clr  = {
+              .type      = WCLR_PHYSICAL,
+              .tid       = 6,
+              .prev      = 50,
+              .undo_next = 42,
+              .phys      = {.pg = 222},
+          },
+      },
+  };
+
+  struct wal_rec_hdr_read batch2_full[] = {
+      {.type = WL_BEGIN, .begin = {.tid = 2}},
+      {
+          .type   = WL_UPDATE,
+          .update = {.type = WUP_PHYSICAL, .tid = 6, .prev = 41, .phys = {.pg = 112}},
+      },
+  };
+
+  struct wal_rec_hdr_read batch1_begin_only[] = {
+      {.type = WL_BEGIN, .begin = {.tid = 1}},
+  };
+
+  struct wal_rec_hdr_read batch2_begin_only[] = {
+      {.type = WL_BEGIN, .begin = {.tid = 2}},
+  };
+
+  struct wal_rec_hdr_read batch1_no_begin[] = {
+      {.type = WL_COMMIT, .commit = {.tid = 3, .prev = 20}},
+      {.type = WL_END, .end = {.tid = 4, .prev = 30}},
+      {
+          .type   = WL_UPDATE,
+          .update = {.type = WUP_FSM, .tid = 5, .prev = 40, .fsm = {.pg = 0, .bit = 9, .redo = 1}},
+      },
+      {
+          .type = WL_CLR,
+          .clr  = {.type = WCLR_DUMMY, .tid = 6, .prev = 50, .undo_next = 42},
+      },
+  };
+
+  const struct
+  {
+    const char            *name;
+    struct wal_test_params p;
+  } cases[] = {
+      {"full", {batch1_full, arrlen (batch1_full), batch2_full, arrlen (batch2_full)}},
+      {"begin only",
+       {batch1_begin_only,
+        arrlen (batch1_begin_only),
+        batch2_begin_only,
+        arrlen (batch2_begin_only)}},
+      {"no begin", {batch1_no_begin, arrlen (batch1_no_begin), batch2_full, arrlen (batch2_full)}},
+  };
+
+  for (u32 i = 0; i < arrlen (cases); i++) {
+    TEST_CASE ("%s", cases[i].name)
+    {
+      wal_test_fill_batch (cases[i].p.batch1, cases[i].p.batch1_len);
+      wal_test_fill_batch (cases[i].p.batch2, cases[i].p.batch2_len);
+
+      run_wal_test (ctx, &cases[i].p);
+    }
+  }
+}
+
+TEST (wal_single_entry)
+{
+  u8                      phys[3][NS_PAGE_SIZE];
+  struct wal_rec_hdr_read cases[16];
+  const u32               n = wal_test_all_shapes (cases, arrlen (cases), phys);
+
+  for (u32 i = 0; i < n; i++) {
+    TEST_CASE ("%" PRIu32 ": %s", i, wal_rec_hdr_type_tostr (cases[i].type))
+    {
+      // Setup
+      struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+      test_assert (w != NULL);
+
+      // Run - one record, written then read back both ways
+      const lsn l = wal_test_append (w, &cases[i]);
+      test_assert_type_equal (l, WAL_RECORDS_START, lsn, PRlsn);
+      wal_flush_all (w);
+      i_print_wal_rec_hdr_read_light (&cases[i], l);
+
+      wal_test_expect_log (ctx, w, &cases[i], 1);
+
+      struct wal_rec_hdr_read got;
+      test_assert (wal_read_entry (w, &got, l, &ctx->e) != NULL);
+      test_assert (wal_rec_hdr_read_equal (&got, &cases[i]));
+
+      // Teardown
+      test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
+      ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+    }
+  }
+}
+
+struct wal_queue
+{
+  _Atomic u32              sync;
+  struct wal              *ww;
+  atomic_int               idx;
+
+  struct wal_rec_hdr_read *read;
+  int                      len;
+};
+
+/// Appends records off the shared queue until it runs dry, flushing after
+/// each one so flushes race with other threads' appends
+static void *
+wal_thread (void *vctx)
+{
+  struct wal_queue *q = vctx;
+
+  while (atomic_load (&q->sync) > 0) {
+    spin_pause ();
+  }
+
+  while (true) {
+    const int idx = atomic_fetch_add (&q->idx, 1);
+    if (idx >= q->len) {
+      return NULL;
+    }
+
+    wal_test_append (q->ww, &q->read[idx]);
+    wal_flush_all (q->ww);
+  }
+}
+
+struct wal_mt_scan
+{
+  struct wal_rec_hdr_read *read;
+  u32                      len;
+  bool                    *seen;
+  u32                      read_back;
+  u32                      found;
+
+  // Records land roughly in queue order, so start each search just past the
+  // last match
+  u32                      finger;
+};
+
+/// Checks the record read back is one of the ones the threads wrote, and
+/// that no record shows up twice
+static err_t
+wal_mt_match (struct wal_rec_hdr_read *rec, lsn l, void *vctx, error *e)
+{
+  (void)l;
+  (void)e;
+  struct wal_mt_scan *s = vctx;
+  s->read_back++;
+
+  for (u32 k = 0; k < s->len; ++k) {
+    const u32 idx = (s->finger + k) % s->len;
+    if (!s->seen[idx] && wal_rec_hdr_read_equal (rec, &s->read[idx])) {
+      s->seen[idx] = true;
+      s->finger    = (idx + 1) % s->len;
+      s->found++;
+      return SUCCESS;
+    }
+  }
+
+  return SUCCESS;
+}
+
+TEST (wal_multi_threaded)
+{
+  const u32   N  = 500;
+
+  // Setup - N random records and an empty log
+  struct wal *ww = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
+  test_assert (ww != NULL);
+
+  struct wal_rec_hdr_read *read = ctx->mem.table->malloc (ctx->mem.self, N, sizeof *read, &ctx->e);
+  test_assert (read != NULL);
+  bool *seen = ctx->mem.table->calloc (ctx->mem.self, N, sizeof *seen, &ctx->e);
+  test_assert (seen != NULL);
+
+  for (u32 i = 0; i < N; ++i) {
+    wal_rec_hdr_read_random (&read[i]);
+  }
+
+  struct wal_queue queue = {
+      .sync = 1,
+      .ww   = ww,
+      .idx  = 0,
+      .read = read,
+      .len  = (int)N,
+  };
+
+  // Run - every thread appends at once
+  u32      nthreads;
+  i_thread threads[10];
+  for (nthreads = 0; nthreads < arrlen (threads); ++nthreads) {
+    test_assert_int_equal (
+        ctx->os.table
+            ->thread_create (ctx->os.self, &threads[nthreads], wal_thread, &queue, &ctx->e),
+        SUCCESS
+    );
+  }
+
+  atomic_store (&queue.sync, 0);
+
+  for (; nthreads > 0; --nthreads) {
+    ctx->os.table->thread_join (ctx->os.self, threads[nthreads - 1].self);
+  }
+
+  // Every record is in the log exactly once, and nothing else is
+  struct wal_mt_scan scan =
+      {.read = read, .len = N, .seen = seen, .read_back = 0, .found = 0, .finger = 0};
+  test_assert_int_equal (wal_forward_scan (ww, LSN_NULL, wal_mt_match, &scan, &ctx->e), SUCCESS);
+  test_assert_type_equal (scan.read_back, N, u32, PRIu32);
+  test_assert_type_equal (scan.found, N, u32, PRIu32);
+
+  // Teardown
+  test_assert_int_equal (wal_close (ww, &ctx->e), SUCCESS);
+  ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
+  ctx->mem.table->free (ctx->mem.self, seen);
+  ctx->mem.table->free (ctx->mem.self, read);
 }
 #endif

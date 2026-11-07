@@ -39,14 +39,14 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
     }
     case TA_RANGE: {
       u32 elem_size = acc->range.sub_ba->src_size;
-      u32 pos       = acc->range.stride.start;
+      u64 pos       = acc->range.stride.start;
       u32 written   = 0;
       u32 i         = 0;
 
       while (i < acc->range.stride.nelems) {
         written += ba_memcpy_from_recursive (
             dest + written,
-            src + (pos * elem_size),
+            src + ((size_t)pos * elem_size),
             acc->range.sub_ba
         );
 
@@ -63,6 +63,9 @@ ba_memcpy_from_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 u32
 ba_memcpy_from (u8 *dest, const u8 *src, struct byte_accessor *acc)
 {
+  ASSERT (dest);
+  ASSERT (src);
+  ASSERT (acc);
   return ba_memcpy_from_recursive (dest, src, acc);
 }
 
@@ -363,11 +366,18 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
     }
     case TA_RANGE: {
       u32 elem_size = acc->range.sub_ba->src_size;
-      u32 pos       = acc->range.stride.start;
+      u64 pos       = acc->range.stride.start;
       u32 read      = 0;
 
+      // TODO: this compares a source index with an element count, so a range
+      // with start > 0 or stride > 1 copies too few elements. It should count
+      // iterations like ba_memcpy_from_recursive does.
       while (pos < acc->range.stride.nelems) {
-        read += ba_memcpy_to_recursive (dest + (pos * elem_size), src + read, acc->range.sub_ba);
+        read += ba_memcpy_to_recursive (
+            dest + ((size_t)pos * elem_size),
+            src + read,
+            acc->range.sub_ba
+        );
         pos += acc->range.stride.stride;
       }
 
@@ -380,6 +390,9 @@ ba_memcpy_to_recursive (u8 *dest, const u8 *src, struct byte_accessor *acc)
 u32
 ba_memcpy_to (u8 *dest, const u8 *src, struct byte_accessor *acc)
 {
+  ASSERT (dest);
+  ASSERT (src);
+  ASSERT (acc);
   return ba_memcpy_to_recursive (dest, src, acc);
 }
 

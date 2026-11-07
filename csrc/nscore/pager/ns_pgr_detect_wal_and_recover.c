@@ -42,7 +42,7 @@
  *
  * The basic pattern is to always have either the wal or the database
  * have an up to date start_lsn for the "next" wal. So the database gets
- * two slots, because WAL start_lsns are monotonic, a in a "fresh" database,
+ * two slots, because WAL start_lsns are monotonic, so in a "fresh" database,
  * the larger lsn is the most up to date
  *
  * For each wal deletion step, the order goes:
@@ -154,7 +154,9 @@
 static err_t
 pgr_read_header (struct pager *p, error *e)
 {
-  if (fpgr_read_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e)) {
+  DBG_ASSERT (pager, p);
+
+  if (fpgr_read_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e) < 0) {
     return error_trace (e);
   }
 
@@ -194,11 +196,9 @@ pgr_read_header (struct pager *p, error *e)
 static err_t
 pgr_recover_new_wal (struct pager *p, error *e)
 {
-  ASSERT (p);
-  ASSERT (p->ww);
+  DBG_ASSERT (pager, p);
   ASSERT (wal_isnew (p->ww));
 
-  // Wal is new
   i_log_debug ("Opened a new WAL");
 
   // Invariant 3 was violated
@@ -224,8 +224,7 @@ pgr_recover_new_wal (struct pager *p, error *e)
 static err_t
 pgr_recover_both_lsns_valid (struct pager *p, lsn end_lsn, error *e)
 {
-  ASSERT (p);
-  ASSERT (p->ww);
+  DBG_ASSERT (pager, p);
   ASSERT (p->header.lsn0valid && p->header.lsn1valid);
 
   // The WAL start_lsn is equal to the maximum of the pager lsn's, meaning
@@ -241,8 +240,9 @@ pgr_recover_both_lsns_valid (struct pager *p, lsn end_lsn, error *e)
     );
 
     return pgr_recover (p, e);
+  }
 
-  } else if (wal_start_lsn (p->ww) == MIN (p->header.lsn0, p->header.lsn1)) {
+  if (wal_start_lsn (p->ww) == MIN (p->header.lsn0, p->header.lsn1)) {
     // The WAL start_lsn is equal to the minimum of the pager lsn's meaning
     // we crashed after the database finished writing start_lsn, but before
     // the WAL was deleted
@@ -306,8 +306,7 @@ pgr_recover_both_lsns_valid (struct pager *p, lsn end_lsn, error *e)
 static err_t
 pgr_recover_one_lsn_valid (struct pager *p, lsn end_lsn, error *e)
 {
-  ASSERT (p);
-  ASSERT (p->ww);
+  DBG_ASSERT (pager, p);
   ASSERT (p->header.lsn0valid || p->header.lsn1valid);
   ASSERT (p->header.lsn0valid != p->header.lsn1valid);
 
@@ -371,7 +370,8 @@ pgr_recover_one_lsn_valid (struct pager *p, lsn end_lsn, error *e)
 err_t
 pgr_detect_wal_and_recover (struct pager *p, error *e)
 {
-  // First, read the pager header
+  DBG_ASSERT (pager, p);
+
   if (pgr_read_header (p, e) < 0) {
     return error_trace (e);
   }
@@ -382,12 +382,12 @@ pgr_detect_wal_and_recover (struct pager *p, error *e)
     return error_causef (
         e,
         ERR_CORRUPT,
-        "Pager invariant was violated. Pager must always have at least 1 valid start_lsn in it's "
+        "Pager invariant was violated. Pager must always have at least 1 valid start_lsn in its "
         "header at all times"
     );
+  }
 
-  } else if (wal_isnew (p->ww)) {
-
+  if (wal_isnew (p->ww)) {
     return pgr_recover_new_wal (p, e);
   }
 

@@ -111,7 +111,8 @@ page_type_str_from_flags (int flags)
 #define PG_PLSN_OFST ((p_size)(PG_HEDR_OFST + sizeof (pgh)))
 #define PG_COMMN_END ((p_size)(PG_PLSN_OFST + sizeof (lsn)))
 
-#define PG_CKSM_DATA_LEN (NS_PAGE_SIZE - PG_CKSM_OFST)
+// The checksum covers every byte after the checksum field
+#define PG_CKSM_DATA_LEN (NS_PAGE_SIZE - PG_HEDR_OFST)
 
 typedef struct
 {
@@ -160,15 +161,16 @@ HEADER_FUNC u32
 page_compute_checksum (const page *p)
 {
   DBG_ASSERT (page_base, p);
-  const void *data     = &p->raw[4];
+  const void *data     = &p->raw[PG_HEDR_OFST];
   u32         checksum = checksum_init ();
-  checksum_execute (&checksum, data, NS_PAGE_SIZE - 4);
+  checksum_execute (&checksum, data, PG_CKSM_DATA_LEN);
   return checksum;
 }
 
 HEADER_FUNC pgh
 page_get_type (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_GET_IMPL (p, pgh, PG_HEDR_OFST);
 }
 

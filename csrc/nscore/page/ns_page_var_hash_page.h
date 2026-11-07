@@ -54,11 +54,11 @@
 
 // OFFSETS and _Static_asserts
 #define VH_HASH_OFST PG_COMMN_END
-#define VH_HASH_LEN  ((NS_PAGE_SIZE - VH_HASH_OFST) / sizeof (pgno))
+#define VH_HASH_LEN  ((p_size)((NS_PAGE_SIZE - VH_HASH_OFST) / sizeof (pgno)))
 
 _Static_assert (
     NS_PAGE_SIZE > VH_HASH_OFST + (10 * sizeof (pgno)),
-    "Root Page: NS_PAGE_SIZE must be > RN_HASH_OFST plus at least 10 "
+    "Var Hash Page: NS_PAGE_SIZE must be > VH_HASH_OFST plus at least 10 "
     "extra hashes"
 );
 
@@ -75,16 +75,18 @@ vh_get_hash_pos (const struct string vname)
 HEADER_FUNC pgno
 vh_get_hash_value (const page *p, const p_size pos)
 {
+  DBG_ASSERT (page_base, p);
   ASSERT (pos < VH_HASH_LEN);
-  PAGE_SIMPLE_GET_IMPL (p, pgno, VH_HASH_OFST + pos * sizeof (pgno));
+  PAGE_SIMPLE_GET_IMPL (p, pgno, VH_HASH_OFST + (pos * sizeof (pgno)));
 }
 
 // Setters
 HEADER_FUNC void
 vh_set_hash_value (page *p, const p_size pos, const pgno value)
 {
+  DBG_ASSERT (page_base, p);
   ASSERT (pos < VH_HASH_LEN);
-  PAGE_SIMPLE_SET_IMPL (p, value, VH_HASH_OFST + pos * sizeof (pgno));
+  PAGE_SIMPLE_SET_IMPL (p, value, VH_HASH_OFST + (pos * sizeof (pgno)));
 }
 
 // Validation

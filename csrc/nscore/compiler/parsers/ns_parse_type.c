@@ -56,7 +56,7 @@ parse_primitive_type (struct type_parser *parser, struct type *out, error *e)
     return error_causef (
         e,
         ERR_SYNTAX,
-        "Expected primitive type at position %u",
+        "Expected primitive type at position %" PRIu32,
         parser->base->pos
     );
   }
@@ -83,7 +83,7 @@ parse_sarray_type (struct type_parser *parser, struct type *out, error *e)
           e,
           ERR_SYNTAX,
           "Expected array size at position "
-          "%u",
+          "%" PRIu32,
           parser->base->pos
       );
     }
@@ -109,7 +109,12 @@ parse_field (struct kvt_list_builder *builder, struct type_parser *parser, error
 {
   // IDENT
   if (!parser_match (parser->base, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %" PRIu32,
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -213,7 +218,8 @@ parse_type_inner (struct type_parser *parser, struct type *out, error *e)
       return error_causef (
           e,
           ERR_SYNTAX,
-          "Expected type at position %u, got token "
+          "Expected type at position %" PRIu32
+          ", got token "
           "type %s",
           parser->base->pos,
           tt_tostr (tok->type)
@@ -244,13 +250,13 @@ compile_type (struct type *dest, const char *text, struct arena_alloc *dalloc, e
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e)) {
+  if (lex_tokens (text, &b.temp, (u32)strnlen (text, MAX_COMPILE_TEXT_LEN), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_type (&parser, dest, e)) {
+  if (parse_type (&parser, dest, e) < 0) {
     goto theend;
   }
 
@@ -271,7 +277,7 @@ test_compile_type_green_path (const char *query, struct type expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    test_assert_equal (compile_type (&actual, query, &alloc, &e), SUCCESS);
+    test_assert_int_equal (compile_type (&actual, query, &alloc, &e), SUCCESS);
     i_log_type (&expected, &e);
     i_log_type (&actual, &e);
     test_assert (type_equal (&expected, &actual));
@@ -329,6 +335,14 @@ TEST (compile_type)
   test_compile_type_green_path ("cu128", TCU128);
 
   test_compile_type_red_path ("i2", ERR_SYNTAX);
+  test_compile_type_red_path ("@", ERR_SYNTAX);
+  test_compile_type_red_path ("[x]i32", ERR_SYNTAX);
+  test_compile_type_red_path ("[0]i32", ERR_SYNTAX);
+  test_compile_type_red_path ("[2]", ERR_SYNTAX);
+  test_compile_type_red_path ("struct { 1 i32 }", ERR_SYNTAX);
+  test_compile_type_red_path ("struct { a i32, a f32 }", ERR_INTERP);
+  test_compile_type_red_path ("union { a i32, a f32 }", ERR_INTERP);
+  test_compile_type_red_path ("struct { a }", ERR_SYNTAX);
 
   // SARRAY
   test_compile_type_green_path ("[10]i32", mk_sarray (1, (u32[]){10}, &TI32));
@@ -384,6 +398,40 @@ TEST (compile_type)
       "[10]struct { x i32, y [5]f64 }",
       mk_sarray (1, (u32[]){10}, &inner_struct)
   );
+}
+
+// Every persistent allocation of a nested type can fail, and each failure
+// has to come back as an error rather than a half-built type
+TEST (compile_type_fail_malloc)
+{
+  // Setup - a destination arena where every allocation is a fallible malloc
+  struct arena_alloc dalloc;
+  type_test_arena_create (&dalloc, ctx->faulty_mem);
+
+  struct type t;
+  int         fail_after = 0;
+  err_t       ret;
+
+  // Run
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&dalloc);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = compile_type (&t, "[2]struct { a i32, b union { c u8, d [3]f32 } }", &dalloc, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert_int_equal (t.type, T_SARRAY);
+
+  // Teardown
+  arena_alloc_free_all (&dalloc);
 }
 
 #endif

@@ -62,7 +62,7 @@ void faulty_mem_free (struct i_mem mem);
 // Free if not null
 #define mem_cfree(mem, ptr)                  \
   do {                                       \
-    if ((ptr)) {                             \
+    if ((ptr) != NULL) {                     \
       (mem).table->free ((mem).self, (ptr)); \
     }                                        \
   }                                          \

@@ -57,15 +57,15 @@ there. A database is a single file and there is no server to start.
 False
 ```
 
-| Member               | Type                      | What it does                                      |
-|----------------------|---------------------------|---------------------------------------------------|
-| `Database(path)`     | `str \| os.PathLike`      | opens (or creates) the database file              |
-| `db.path`            | `str`                     | the path it was opened with                       |
-| `db.closed`          | `bool`                    | `True` once `close()` has run                     |
-| `db.close()`         | `None`                    | flushes and closes; safe to call twice            |
-| `db.begin()`         | `Transaction`             | opens a transaction - see [Transactions](#transactions) |
-| `db.prepare(query)`  | `Plan`                    | compiles a query for reuse - see [Plan](#plan)    |
-| `db.execute/get/get_all/read/read_into/write` | | the query methods - see [Queries](#queries) |
+| Member                                        | Type                 | What it does                                            |
+| --------------------------------------------- | -------------------- | ------------------------------------------------------- |
+| `Database(path)`                              | `str \| os.PathLike` | opens (or creates) the database file                    |
+| `db.path`                                     | `str`                | the path it was opened with                             |
+| `db.closed`                                   | `bool`               | `True` once `close()` has run                           |
+| `db.close()`                                  | `None`               | flushes and closes; safe to call twice                  |
+| `db.begin()`                                  | `Transaction`        | opens a transaction - see [Transactions](#transactions) |
+| `db.prepare(query)`                           | `Plan`               | compiles a query for reuse - see [Plan](#plan)          |
+| `db.execute/get/get_all/read/read_into/write` |                      | the query methods - see [Queries](#queries)             |
 
 `path` accepts anything `os.PathLike`, so `pathlib.Path` works:
 
@@ -108,7 +108,7 @@ cross the boundary - nothing, metadata, data in, or data out. `Database`,
 `Transaction` and `Plan` all expose the same set.
 
 | Method               | Queries it accepts         | Returns                        |
-|----------------------|----------------------------|--------------------------------|
+| -------------------- | -------------------------- | ------------------------------ |
 | `db.execute(q)`      | `CREATE` `DELETE` `REMOVE` | `None`                         |
 | `db.get(q)`          | anything naming a variable | a [`Var`](#var)                |
 | `db.get_all()`       | takes no query             | `list[Var]`, one per variable  |
@@ -321,12 +321,12 @@ array([0.5, 3.5, 4.5, 5.5, 6.5])
 array([0.5, 3.5, 4.5, 5.5, 6.5])
 ```
 
-| Member            | Returns  | What it does                                     |
-|-------------------|----------|--------------------------------------------------|
-| `txn.commit()`    | `None`   | makes the work durable and closes the transaction |
-| `txn.rollback()`  | `None`   | throws the work away and closes the transaction   |
-| `txn.closed`      | `bool`   | `True` after commit or rollback                   |
-| `txn.execute/get/get_all/read/read_into/write` | | the same query methods, inside the transaction |
+| Member                                         | Returns | What it does                                      |
+| ---------------------------------------------- | ------- | ------------------------------------------------- |
+| `txn.commit()`                                 | `None`  | makes the work durable and closes the transaction |
+| `txn.rollback()`                               | `None`  | throws the work away and closes the transaction   |
+| `txn.closed`                                   | `bool`  | `True` after commit or rollback                   |
+| `txn.execute/get/get_all/read/read_into/write` |         | the same query methods, inside the transaction    |
 
 `rollback` undoes everything the transaction did:
 
@@ -461,16 +461,16 @@ array([0.5, 3.5])
 True
 ```
 
-| Member                      | Returns        | What it does                              |
-|-----------------------------|----------------|-------------------------------------------|
-| `plan.query`                | `str`          | the query it was compiled from            |
-| `plan.closed`               | `bool`         | `True` once `close()` has run             |
-| `plan.execute(txn=None)`    | `None`         | like `db.execute`                         |
-| `plan.read(txn=None)`       | `np.ndarray`   | like `db.read`                            |
-| `plan.read_into(out, txn=None)` | `int`      | like `db.read_into`                       |
-| `plan.write(data, txn=None)`| `int`          | like `db.write`                           |
-| `plan.var(txn=None)`        | `Var`          | the variable the query names              |
-| `plan.close()`              | `None`         | releases it; safe to call twice           |
+| Member                          | Returns      | What it does                    |
+| ------------------------------- | ------------ | ------------------------------- |
+| `plan.query`                    | `str`        | the query it was compiled from  |
+| `plan.closed`                   | `bool`       | `True` once `close()` has run   |
+| `plan.execute(txn=None)`        | `None`       | like `db.execute`               |
+| `plan.read(txn=None)`           | `np.ndarray` | like `db.read`                  |
+| `plan.read_into(out, txn=None)` | `int`        | like `db.read_into`             |
+| `plan.write(data, txn=None)`    | `int`        | like `db.write`                 |
+| `plan.var(txn=None)`            | `Var`        | the variable the query names    |
+| `plan.close()`                  | `None`       | releases it; safe to call twice |
 
 Each method takes an optional transaction as its last argument, so one compiled
 plan can run inside any transaction. `Plan` is a context manager too:
@@ -542,15 +542,15 @@ dtype('float64')
 6
 ```
 
-| Field / property | Type                 | What it is                                       |
-|------------------|----------------------|--------------------------------------------------|
-| `var.name`       | `str`                | the variable's name                              |
-| `var.type`       | `str`                | its Numstore type, as text                       |
-| `var.length`     | `int`                | number of elements when the snapshot was taken   |
-| `var.tsize`      | `int`                | size of **one** element, in bytes                |
-| `var.dtype`      | `np.dtype`           | the numpy dtype one element maps to              |
-| `var.shape`      | `tuple[int, ...]`    | the shape an array of the whole variable has     |
-| `len(var)`       | `int`                | same as `var.length`                             |
+| Field / property | Type              | What it is                                     |
+| ---------------- | ----------------- | ---------------------------------------------- |
+| `var.name`       | `str`             | the variable's name                            |
+| `var.type`       | `str`             | its Numstore type, as text                     |
+| `var.length`     | `int`             | number of elements when the snapshot was taken |
+| `var.tsize`      | `int`             | size of **one** element, in bytes              |
+| `var.dtype`      | `np.dtype`        | the numpy dtype one element maps to            |
+| `var.shape`      | `tuple[int, ...]` | the shape an array of the whole variable has   |
+| `len(var)`       | `int`             | same as `var.length`                           |
 
 For a strict array type, `tsize` covers the whole element and `shape` picks up
 the trailing dimensions:
@@ -618,12 +618,12 @@ Errors
 Numstore reports failures as standard Python exceptions. There is no custom
 exception hierarchy to import.
 
-| Exception              | When                                                     |
-|------------------------|----------------------------------------------------------|
-| `RuntimeError`         | the database or the query layer refused: a missing variable, a query handed to the wrong method, a syntax error, a closed database, plan or transaction |
-| `TypeError`            | the data or buffer has the wrong dtype or the wrong Python type |
-| `ValueError`           | the shape doesn't fit, a type is malformed, or a transaction is from another database |
-| `NotImplementedError`  | the type has no numpy representation on this platform (`f128`, `cf256`) |
+| Exception             | When                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RuntimeError`        | the database or the query layer refused: a missing variable, a query handed to the wrong method, a syntax error, a closed database, plan or transaction |
+| `TypeError`           | the data or buffer has the wrong dtype or the wrong Python type                                                                                         |
+| `ValueError`          | the shape doesn't fit, a type is malformed, or a transaction is from another database                                                                   |
+| `NotImplementedError` | the type has no numpy representation on this platform (`f128`, `cf256`)                                                                                 |
 
 The messages are written to be read, so logging the exception is usually enough:
 

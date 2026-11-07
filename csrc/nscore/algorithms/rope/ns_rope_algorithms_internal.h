@@ -79,9 +79,8 @@ struct ns_rebalance_params
   p_size               lidx;
 };
 
-err_t ns_rebalance (struct ns_rebalance_params *params, error *e);
+err_t ns_rebalance (struct ns_rebalance_params *pms, error *e);
 
-// UNTESTED (ALL)
 i32 ns_get_number_of_layers (struct pager *p, pgno root, error *e);
 /**
 i32 ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e);

@@ -161,11 +161,11 @@ TEST (dlgt_balance_with_prev)
     test_assert_equal (dl_used (page_h_ro (cur)), DL_DATA_SIZE / 2);
 
     u32 i = 0;
-    for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i) {
+    for (; i < (DL_DATA_SIZE / 2) + DL_REM; ++i) {
       test_assert_equal (dl_get_byte (page_h_ro (prev), i), _prev[i]);
     }
     i = 0;
-    for (; i < DL_DATA_SIZE - 10 - DL_DATA_SIZE / 2 - DL_REM; ++i) {
+    for (; i < DL_DATA_SIZE - 10 - (DL_DATA_SIZE / 2) - DL_REM; ++i) {
       test_assert_equal (dl_get_byte (page_h_ro (cur), i), _prev[DL_DATA_SIZE / 2 + DL_REM + i]);
     }
     const u32 k = i;
@@ -337,7 +337,7 @@ TEST (dlgt_balance_with_next)
       test_assert_equal (dl_get_byte (page_h_ro (cur), i), _next[i - 10]);
     }
     i = 0;
-    for (; i < DL_DATA_SIZE / 2 + DL_REM; ++i) {
+    for (; i < (DL_DATA_SIZE / 2) + DL_REM; ++i) {
       test_assert_equal (dl_get_byte (page_h_ro (next), i), _next[i + DL_DATA_SIZE / 2 - 10]);
     }
   }
@@ -390,13 +390,13 @@ three_in_pair_from (const page_h *prev, const page_h *cur, const page_h *next)
       .next = in_pair_empty,
   };
 
-  if (prev) {
+  if (prev != NULL) {
     ret.prev = in_pair_from_pgh (prev);
   }
-  if (cur) {
+  if (cur != NULL) {
     ret.cur = in_pair_from_pgh (cur);
   }
-  if (next) {
+  if (next != NULL) {
     ret.next = in_pair_from_pgh (next);
   }
 
@@ -541,7 +541,8 @@ ns_maybe_delete_cur (
   return SUCCESS;
 }
 
-// TODO - graceful error handling and clean up of partial pages
+// TODO: a failure part way through leaves the pages already rebalanced as
+// they are and relies on the caller's rollback; release partial pages here
 err_t
 ns_balance_and_release (struct ns_balance_and_release_params params, error *e)
 {
@@ -558,7 +559,8 @@ ns_balance_and_release (struct ns_balance_and_release_params params, error *e)
           params.tx,
           params.output,
           e
-      )) {
+      )
+      < 0) {
     return error_trace (e);
   }
 
@@ -571,7 +573,8 @@ ns_balance_and_release (struct ns_balance_and_release_params params, error *e)
           params.tx,
           params.root,
           e
-      )) {
+      )
+      < 0) {
     return error_trace (e);
   }
 

@@ -185,7 +185,7 @@ HT_GET (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
 
     // Check for key
     if (ht->elems[_i].data.key == key) {
-      if (dest) {
+      if (dest != NULL) {
         *dest = (HDATA_T){
             .value = ht->elems[_i].data.value,
             .key   = ht->elems[_i].data.key,
@@ -240,7 +240,7 @@ HT_DELETE (HASH_TABLE_T *ht, HDATA_T *dest, KTYPE key)
 
     // Check for key
     if (ht->elems[_i].data.key == key) {
-      if (dest) {
+      if (dest != NULL) {
         *dest = ht->elems[_i].data;
       }
       break;

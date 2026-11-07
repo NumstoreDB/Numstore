@@ -20,11 +20,12 @@
 err_t
 pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e)
 {
-  ASSERT ((mp->flags & PW_PRESENT));
+  DBG_ASSERT (pager, p);
+  ASSERT (mp->flags & PW_PRESENT);
   ASSERT (!(mp->flags & PW_X));
   ASSERT (mp->pin == 0);
 
-  // Caller holds mp->latch, so use the unsafe (no-latch) flush variant
+  // Caller holds mp->ctrl, so use the unsafe (no-latch) flush variant
   if (pgr_flush_unsafe (p, mp, e) < 0) {
     goto failed;
   }

@@ -46,7 +46,6 @@ pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
   DBG_ASSERT (pager, p);
   page_h     fsm   = page_h_create ();
 
-  // Truncate to 8 * FS_BTMP_NPGS to get the tracking fsm
   const pgno pg    = page_h_pgno (h);
   // FSM page that tracks this pgno lives at the aligned section base
   pgno       fsmpg = page_h_pgno (h) / FS_BTMP_NPGS;
@@ -55,7 +54,7 @@ pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
   // Bit index within that FSM page's bitmap
   const p_size idx = page_h_pgno (h) % FS_BTMP_NPGS;
 
-  if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e)) {
+  if (pgr_get_writable (&fsm, tx, PG_FREE_SPACE_MAP, fsmpg, p, e) < 0) {
     goto failed;
   }
 
@@ -64,12 +63,12 @@ pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e)
 
   // Log the freed page with a physical record (NULL = full page image as
   // undo)
-  if (pgr_release_with_log (p, h, PG_PERMISSIVE, NULL, e)) {
+  if (pgr_release_with_log (p, h, PG_PERMISSIVE, NULL, e) < 0) {
     goto failed;
   }
 
   struct wal_update_write log = wup_fsm (fsmpg, tx, pgtoidx (pg), 1, 0);
-  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e)) {
+  if (pgr_release_with_log (p, &fsm, PG_FREE_SPACE_MAP, &log, e) < 0) {
     goto failed;
   }
 
@@ -82,8 +81,11 @@ failed:
 }
 
 #ifndef NDEBUG
+// A deleted page is the next one pgr_new hands out, so deleting and
+// reallocating the same pages gives the same page numbers back
 TEST (pgr_delete)
 {
+  // Setup - four fresh pages in one transaction
   struct pgr_fixture f;
   pgr_fixture_create (&f, &ctx->e);
 
@@ -105,6 +107,7 @@ TEST (pgr_delete)
   const pgno cpg = page_h_pgno (&c);
   const pgno dpg = page_h_pgno (&d);
 
+  // Run - delete and reallocate them twice
   pgr_delete_and_release (f.p, &tx, &a, &ctx->e);
   pgr_delete_and_release (f.p, &tx, &b, &ctx->e);
   pgr_delete_and_release (f.p, &tx, &c, &ctx->e);
@@ -115,10 +118,10 @@ TEST (pgr_delete)
   pgr_new (&c, f.p, &tx, PG_DATA_LIST, &ctx->e);
   pgr_new (&d, f.p, &tx, PG_DATA_LIST, &ctx->e);
 
-  test_assert_equal (page_h_pgno (&a), apg);
-  test_assert_equal (page_h_pgno (&b), bpg);
-  test_assert_equal (page_h_pgno (&c), cpg);
-  test_assert_equal (page_h_pgno (&d), dpg);
+  test_assert_type_equal (page_h_pgno (&a), apg, pgno, PRpgno);
+  test_assert_type_equal (page_h_pgno (&b), bpg, pgno, PRpgno);
+  test_assert_type_equal (page_h_pgno (&c), cpg, pgno, PRpgno);
+  test_assert_type_equal (page_h_pgno (&d), dpg, pgno, PRpgno);
 
   pgr_delete_and_release (f.p, &tx, &a, &ctx->e);
   pgr_delete_and_release (f.p, &tx, &b, &ctx->e);
@@ -130,11 +133,12 @@ TEST (pgr_delete)
   pgr_new (&c, f.p, &tx, PG_DATA_LIST, &ctx->e);
   pgr_new (&d, f.p, &tx, PG_DATA_LIST, &ctx->e);
 
-  test_assert_equal (page_h_pgno (&a), apg);
-  test_assert_equal (page_h_pgno (&b), bpg);
-  test_assert_equal (page_h_pgno (&c), cpg);
-  test_assert_equal (page_h_pgno (&d), dpg);
+  test_assert_type_equal (page_h_pgno (&a), apg, pgno, PRpgno);
+  test_assert_type_equal (page_h_pgno (&b), bpg, pgno, PRpgno);
+  test_assert_type_equal (page_h_pgno (&c), cpg, pgno, PRpgno);
+  test_assert_type_equal (page_h_pgno (&d), dpg, pgno, PRpgno);
 
+  // Teardown - keep two, delete two, commit
   dl_set_used (page_h_w (&a), DL_DATA_SIZE);
   dl_set_used (page_h_w (&b), DL_DATA_SIZE);
   dl_set_used (page_h_w (&c), DL_DATA_SIZE);

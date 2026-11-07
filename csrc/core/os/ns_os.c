@@ -19,9 +19,9 @@ file_pread_all_expect (i_file f, void *dest, const u64 n, const u64 offset, erro
     return error_causef (
         e,
         ERR_CORRUPT,
-        "pread: short read (got %" PRId64 " of %" PRId64 " bytes)",
+        "pread: short read (got %" PRId64 " of %" PRIu64 " bytes)",
         ret,
-        (i64)n
+        n
     );
   }
 
@@ -41,9 +41,9 @@ file_read_all_expect (i_file f, void *dest, const u64 nbytes, error *e)
     return error_causef (
         e,
         ERR_CORRUPT,
-        "read: short read (got %" PRId64 " of %" PRId64 " bytes)",
+        "read: short read (got %" PRId64 " of %" PRIu64 " bytes)",
         ret,
-        (i64)nbytes
+        nbytes
     );
   }
 
@@ -174,7 +174,7 @@ TEST (file_pread_all_expect_exact_and_short)
   {
     u8 got = 0;
     test_assert_int_equal (file_pread_all_expect (f, &got, 1, 15, &ctx->e), SUCCESS);
-    test_assert_type_equal (got, 0xFFu, u8, PRIu8);
+    test_assert_type_equal (got, 0xFFU, u8, PRIu8);
   }
 
   TEST_CASE ("A read straddling the end of the file is ERR_CORRUPT")
@@ -232,7 +232,7 @@ TEST (file_all_expect_propagates_an_underlying_failure)
   }
 
   // Let the close and unlink through
-  faulty_os_set_fail (ctx->faulty_os, 0.0f);
+  faulty_os_set_fail (ctx->faulty_os, 0.0F);
 
   test_assert_int_equal (
       ctx->faulty_os.table->close_file (ctx->faulty_os.self, f.self, &ctx->e),
@@ -253,7 +253,7 @@ TEST (faulty_num_os_calls)
 
     i_mutex   m;
     test_assert_int_equal (f.table->mutex_create (f.self, &m, &ctx->e), SUCCESS);
-    test_assert_int_equal (faulty_num_os_calls (f), before + 1);
+    test_assert_type_equal (faulty_num_os_calls (f), before + 1, u32, PRIu32);
 
     f.table->mutex_free (f.self, m.self);
   }
@@ -268,9 +268,9 @@ TEST (faulty_num_os_calls)
     test_assert (f.table->mutex_create (f.self, &m, &ctx->e) != SUCCESS);
     error_reset (&ctx->e);
 
-    test_assert_int_equal (faulty_num_os_calls (f), before + 1);
+    test_assert_type_equal (faulty_num_os_calls (f), before + 1, u32, PRIu32);
   }
 
-  faulty_os_set_fail (f, 0.0f);
+  faulty_os_set_fail (f, 0.0F);
 }
 #endif // NDEBUG

@@ -43,8 +43,9 @@ pgr_delete_single_file (const char *dbname, const struct i_os os, error *e)
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
-  os.table->remove_quiet (os.self, fname, e);
-  os.table->remove_quiet (os.self, walname, e);
+  // Try both even if the first fails. A failure stays in [e] for the return.
+  (void)os.table->remove_quiet (os.self, fname, e);
+  (void)os.table->remove_quiet (os.self, walname, e);
 
   return error_trace (e);
 }
@@ -58,16 +59,14 @@ pgr_delete_single_file (const char *dbname, const struct i_os os, error *e)
 /*
  * pgr_open - standard file-backed entry point.
  *
- * Creates [dbname] if it does not exist, constructs a file_pager and a
- * file-backed WAL, then delegates to pgr_open().  Directory cleanup on
- * first-open failure is handled here because only this function knows the
- * path.
+ * Creates [dbname] if it does not exist and constructs a file_pager and a
+ * file-backed WAL for it.
  *
  * NEW DATABASE (file is empty):
  *   Sets PGR_ISNEW so the caller can distinguish new databases from existing.
  *
  * EXISTING DATABASE:
- *   Runs the three-phase ARIES restart via pgr_open().
+ *   Runs the three-phase ARIES restart via pgr_detect_wal_and_recover().
  */
 struct pager *
 pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
@@ -75,12 +74,13 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   // The wal name is the db name plus ".wal", so the longest db name that still
   // fits a path buffer is 5 short of it: 4 for the suffix and 1 for the
   // terminator. pgr_delete_single_file above uses the same buffers.
-  u32 len = strlen (dbname);
+  // strnlen stops at NS_PATH_MAX, which is already over the limit.
+  size_t len = strnlen (dbname, NS_PATH_MAX);
   if (len > (NS_PATH_MAX - 5)) {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
-        "DBName is too big. Supported max: %d actual len: %d",
+        "DBName is too big. Supported max: %d actual len: %zu",
         NS_PATH_MAX - 5,
         len
     );
@@ -92,27 +92,28 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
-  // File pager
   struct file_pager *fp = fpgr_open (fname, mem, os, PAGE_HEADER_LEN, e);
   if (fp == NULL) {
     return NULL;
   }
 
   struct wal *ww = wal_open (walname, mem, os, e);
+  // The cleanup calls below run after a failure already in [e], so their own
+  // failures add nothing the caller can act on.
   if (ww == NULL) {
-    fpgr_close (fp, e);
+    (void)fpgr_close (fp, e);
     return NULL;
   }
 
   struct lockt *lt = mem.table->malloc (mem.self, 1, sizeof *lt, e);
   if (lt == NULL) {
-    fpgr_close (fp, e);
-    wal_close_and_delete (ww, e);
+    (void)fpgr_close (fp, e);
+    (void)wal_close_and_delete (ww, e);
     return NULL;
   }
-  if (lockt_init (lt, mem, os, e)) {
-    fpgr_close (fp, e);
-    wal_close_and_delete (ww, e);
+  if (lockt_init (lt, mem, os, e) < 0) {
+    (void)fpgr_close (fp, e);
+    (void)wal_close_and_delete (ww, e);
     mem.table->free (mem.self, lt);
     return NULL;
   }
@@ -120,7 +121,8 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   page_h        root = page_h_create ();
   struct pager *ret  = NULL;
 
-  if ((ret = mem.table->calloc (mem.self, 1, sizeof *ret, e)) == NULL) {
+  ret                = mem.table->calloc (mem.self, 1, sizeof *ret, e);
+  if (ret == NULL) {
     goto failed;
   }
 
@@ -136,20 +138,18 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   latch_init (&ret->htable_lock);
   latch_init (&ret->pgrnew_lock);
 
-  // Open the Dirty page table
   *(struct dpg_table **)&ret->dpt = dpgt_open (mem, e);
   if (ret->dpt == NULL) {
     goto failed;
   }
 
-  // Open the transaction table
   *(struct txn_table **)&ret->tnxt = txnt_open (mem, e);
   if (ret->tnxt == NULL) {
     goto failed;
   }
 
   // Initialize (but don't start) the checkpoint task
-  if (periodic_task_init (&ret->checkpoint_task, os, e)) {
+  if (periodic_task_init (&ret->checkpoint_task, os, e) < 0) {
     goto failed;
   }
 
@@ -157,21 +157,21 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
 
   if (atomic_load (&ret->flags) & PGR_ISNEW) {
     // Reset any data in the file pager
-    if (fpgr_reset (ret->fp, e)) {
+    if (fpgr_reset (ret->fp, e) < 0) {
       goto failed;
     }
 
     // Write out the starting header
-    memset (&ret->header, 0, sizeof (ret->header));
-    if (pgr_write_header (ret, e)) {
+    memset (&ret->header, 0, sizeof ret->header);
+    if (pgr_write_header (ret, e) < 0) {
       goto failed;
     }
 
-    if (wal_delete_and_reopen (ret->ww, e)) {
+    if (wal_delete_and_reopen (ret->ww, e) < 0) {
       goto failed;
     }
 
-    if (wal_write_start_lsn (ret->ww, 0, e)) {
+    if (wal_write_start_lsn (ret->ww, 0, e) < 0) {
       goto failed;
     }
   } else {
@@ -183,8 +183,8 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   return ret;
 
 failed:
-  ASSERT (error_trace (e));
-  if (ret) {
+  ASSERT (error_trace (e) < 0);
+  if (ret != NULL) {
     pgr_cancel_if_exists (&root);
     if (ret->dpt != NULL) {
       dpgt_close (ret->dpt);
@@ -195,13 +195,13 @@ failed:
     mem.table->free (mem.self, ret);
   }
 
-  if (ww) {
-    wal_close_and_delete (ww, e);
+  if (ww != NULL) {
+    (void)wal_close_and_delete (ww, e);
   }
-  if (fp) {
-    fpgr_close (fp, e);
+  if (fp != NULL) {
+    (void)fpgr_close (fp, e);
   }
-  if (lt) {
+  if (lt != NULL) {
     lockt_destroy (lt);
     mem.table->free (mem.self, lt);
   }
@@ -214,11 +214,12 @@ TEST (pager_open)
 {
   TEST_CASE ("green path")
   {
-    test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+    test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 
     struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+    test_assert (p != NULL);
 
-    pgr_close (p, &ctx->e);
+    test_assert_int_equal (pgr_close (p, &ctx->e), SUCCESS);
   }
 
   TEST_CASE ("dbname is too long")
@@ -260,7 +261,7 @@ TEST (pgr_open_unwinds_on_allocation_failure)
   while (attempts < PGR_OPEN_MAX_ATTEMPTS && !opened) {
     TEST_CASE ("malloc fail_after %d", attempts)
     {
-      test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+      test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 
       faulty_mem_reset (ctx->faulty_mem);
       faulty_mem_fail_after (ctx->faulty_mem, attempts);
@@ -275,7 +276,7 @@ TEST (pgr_open_unwinds_on_allocation_failure)
         test_assert_int_equal (ctx->e.cause_code, SUCCESS);
         // Closing must not be starved by a fail_after that never fired.
         faulty_mem_reset (ctx->faulty_mem);
-        test_fail_if (pgr_close (p, &ctx->e));
+        test_assert_int_equal (pgr_close (p, &ctx->e), SUCCESS);
       }
     }
 
@@ -284,7 +285,7 @@ TEST (pgr_open_unwinds_on_allocation_failure)
 
   test_assert (opened);
 
-  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 #  undef PGR_OPEN_MAX_ATTEMPTS
 }
 
@@ -319,7 +320,7 @@ pgr_write_raw_header (struct i_os os, lsn lsn0, bool lsn0valid, lsn lsn1, bool l
   memcpy (hdr + LSN1_CSM_OFST, &csm1, sizeof csm1);
 
   i_file f = {0};
-  if (os.table->open_file_rw (os.self, &f, "testdb", e)) {
+  if (os.table->open_file_rw (os.self, &f, "testdb", e) < 0) {
     return;
   }
   f.table->pwrite_all (f.self, hdr, sizeof hdr, 0, e);
@@ -349,26 +350,26 @@ TEST (pgr_open_rejects_a_corrupt_header)
   // is exactly PAGE_HEADER_LEN long, which fpgr_open flags FP_ISNEW, and
   // pgr_close deletes the wal -- so a page is committed and the seed crashes
   // rather than closing.
-#  define seed_existing_db()                                                 \
-    do {                                                                     \
-      test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));    \
-      struct pager *_seed = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e); \
-      test_assert (_seed != NULL);                                           \
-      struct txn _tx;                                                        \
-      test_fail_if (pgr_begin_txn (&_tx, _seed, &ctx->e));                   \
-      page_h _h = page_h_create ();                                          \
-      test_fail_if (pgr_new (&_h, _seed, &_tx, PG_DATA_LIST, &ctx->e));      \
-      dl_set_used (page_h_w (&_h), DL_DATA_SIZE);                            \
-      test_fail_if (pgr_release (_seed, &_h, PG_DATA_LIST, &ctx->e));        \
-      test_fail_if (pgr_commit (_seed, &_tx, &ctx->e));                      \
-      test_fail_if (pgr_crash (_seed, &ctx->e));                             \
-    }                                                                        \
+#  define SEED_EXISTING_DB()                                                                \
+    do {                                                                                    \
+      test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS); \
+      struct pager *_seed = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);                \
+      test_assert (_seed != NULL);                                                          \
+      struct txn _tx;                                                                       \
+      test_assert_int_equal (pgr_begin_txn (&_tx, _seed, &ctx->e), SUCCESS);                \
+      page_h _h = page_h_create ();                                                         \
+      test_assert_int_equal (pgr_new (&_h, _seed, &_tx, PG_DATA_LIST, &ctx->e), SUCCESS);   \
+      dl_set_used (page_h_w (&_h), DL_DATA_SIZE);                                           \
+      test_assert_int_equal (pgr_release (_seed, &_h, PG_DATA_LIST, &ctx->e), SUCCESS);     \
+      test_assert_int_equal (pgr_commit (_seed, &_tx, &ctx->e), SUCCESS);                   \
+      test_assert_int_equal (pgr_crash (_seed, &ctx->e), SUCCESS);                          \
+    }                                                                                       \
     while (0)
 
   for (u32 i = 0; i < arrlen (pgr_header_cases); ++i) {
     TEST_CASE ("%s", pgr_header_cases[i].name)
     {
-      seed_existing_db ();
+      SEED_EXISTING_DB ();
 
       pgr_write_raw_header (
           ctx->os,
@@ -385,51 +386,51 @@ TEST (pgr_open_rejects_a_corrupt_header)
       if (pgr_header_cases[i].opens) {
         test_assert (p != NULL);
         test_assert_int_equal (ctx->e.cause_code, SUCCESS);
-        test_fail_if (pgr_close (p, &ctx->e));
+        test_assert_int_equal (pgr_close (p, &ctx->e), SUCCESS);
       } else {
-        test_assert_equal (p, NULL);
+        test_assert (p == NULL);
         test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
       }
     }
   }
 
-#  undef seed_existing_db
+#  undef SEED_EXISTING_DB
 
-  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 }
 #endif
 
 #ifndef NDEBUG
 TEST (pgr_open_basic)
 {
-  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 
   i_file fp = {0};
   ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e);
 
   // File is shorter than page size
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &ctx->e));
+  test_assert_int_equal (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &ctx->e), SUCCESS);
   struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   test_assert_int_equal (ctx->e.cause_code, ERR_CORRUPT);
-  test_assert_equal (p, NULL);
+  test_assert (p == NULL);
   error_reset (&ctx->e);
 
   // Half a page
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &ctx->e));
+  test_assert_int_equal (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &ctx->e), SUCCESS);
   p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   test_assert_int_equal (ctx->e.cause_code, ERR_CORRUPT);
-  test_assert_equal (p, NULL);
+  test_assert (p == NULL);
   error_reset (&ctx->e);
 
   // 0 pages
-  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
+  test_assert_int_equal (fp.table->truncate (fp.self, 0, &ctx->e), SUCCESS);
   p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
   test_assert_int_equal (ctx->e.cause_code, SUCCESS);
-  test_assert_int_equal ((int)pgr_get_npages (p), 0);
-  test_fail_if (pgr_close (p, &ctx->e));
+  test_assert_type_equal (pgr_get_npages (p), 0U, p_size, PRp_size);
+  test_assert_int_equal (pgr_close (p, &ctx->e), SUCCESS);
 
   // Tear down
-  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
-  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e), SUCCESS);
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 }
 #endif

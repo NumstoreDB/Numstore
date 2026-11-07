@@ -41,7 +41,7 @@ f16_to_f32 (const u16 h)
       // Subnormal f16 becomes a Normal f32
       // Shift mantissa until the first set bit is at position 10
       u32 e = 0;
-      while (!(mant & 0x400U)) {
+      while ((mant & 0x400U) == 0) {
         mant <<= 1;
         e++;
       }
@@ -63,54 +63,27 @@ f16_to_f32 (const u16 h)
   return result;
 }
 
-/**
-static u32 crc32c_tbl[256];
-static int crc32c_inited = 0;
-
-static void
-crc32c_init (void)
-{
-  for (u32 i = 0; i < 256; ++i) {
-    u32 c = i;
-    for (int k = 0; k < 8; ++k) {
-      c = (c >> 1) ^ (0x82F63B78U & -((int)(c & 1)));
-    }
-    crc32c_tbl[i] = c;
-  }
-  crc32c_inited = 1;
-}
-
-u32
-checksum_init (void)
-{
-  return 0;
-}
-
-void
-checksum_execute (u32 *state, const u8 *data, const u32 len)
-{
-  ASSERT (state);
-  ASSERT (data);
-  ASSERT (len > 0);
-
-  if (!crc32c_inited) {
-    crc32c_init ();
-  }
-
-  u32 c = ~(*state);
-  for (u32 i = 0; i < len; ++i) {
-    c = (c >> 8) ^ crc32c_tbl[(c ^ data[i]) & 0xFF];
-  }
-  *state = ~c;
-}
-
-*/
-
 u8
 randu8 (void)
 {
   return (u8)rand ();
 }
+
+#ifndef NDEBUG
+TEST (randu8)
+{
+  // 1000 draws from rand () that all truncate to one byte value would mean
+  // the cast throws away the varying bits
+  const u8 first     = randu8 ();
+  bool     different = false;
+  for (int i = 0; i < 1000; ++i) {
+    if (randu8 () != first) {
+      different = true;
+    }
+  }
+  test_assert (different);
+}
+#endif
 
 u32
 randu32 (void)
@@ -144,9 +117,9 @@ randu32r (const u32 lower, const u32 upper)
 TEST (randu32r)
 {
   // lower == upper
-  test_assert_type_equal (randu32r (5, 5), 5u, u32, "ud");
-  test_assert_type_equal (randu32r (0, 0), 0u, u32, "ud");
-  test_assert_type_equal (randu32r (U32_MAX, U32_MAX), U32_MAX, u32, "ud");
+  test_assert_type_equal (randu32r (5, 5), 5U, u32, PRIu32);
+  test_assert_type_equal (randu32r (0, 0), 0U, u32, PRIu32);
+  test_assert_type_equal (randu32r (U32_MAX, U32_MAX), U32_MAX, u32, PRIu32);
 
   // tiny range - both endpoints must be reachable
   {
@@ -154,11 +127,11 @@ TEST (randu32r)
     bool saw_hi = false;
     for (int i = 0; i < 1000; ++i) {
       const u32 v = randu32r (10, 11);
-      test_assert (v == 10u || v == 11u);
-      if (v == 10u) {
+      test_assert (v == 10U || v == 11U);
+      if (v == 10U) {
         saw_lo = true;
       }
-      if (v == 11u) {
+      if (v == 11U) {
         saw_hi = true;
       }
     }
@@ -168,7 +141,7 @@ TEST (randu32r)
 
   // full 32-bit range
   for (int i = 0; i < 10; ++i) {
-    const u32 v = randu32r (0u, U32_MAX);
+    const u32 v = randu32r (0U, U32_MAX);
     test_assert (v <= U32_MAX);
   }
 
@@ -227,7 +200,7 @@ TEST (randi32r)
 u64
 randu64 (void)
 {
-  const u64 base     = (u64)RAND_MAX + 1u;
+  const u64 base     = (u64)RAND_MAX + 1U;
   u64       r        = (u64)rand ();
   u64       capacity = base;
   while (capacity <= (U64_MAX / base)) {
@@ -320,12 +293,12 @@ randu64e (const u64 lower, const u64 upper)
 TEST (randu64r)
 {
   test_assert_type_equal (
-      randu64r (1234567890123ull, 1234567890123ull),
-      1234567890123ull,
+      randu64r (1234567890123ULL, 1234567890123ULL),
+      1234567890123ULL,
       u64,
       PRIu64
   );
-  test_assert_type_equal (randu64r (0ull, 0ull), 0ull, u64, PRIu64);
+  test_assert_type_equal (randu64r (0ULL, 0ULL), 0ULL, u64, PRIu64);
   test_assert_type_equal (randu64r (U64_MAX, U64_MAX), U64_MAX, u64, PRIu64);
 
   // Both endpoints reachable
@@ -333,12 +306,12 @@ TEST (randu64r)
     bool saw_lo = false;
     bool saw_hi = false;
     for (int i = 0; i < 1000; ++i) {
-      const u64 v = randu64r (1000ull, 1001ull);
-      test_assert (v == 1000ull || v == 1001ull);
-      if (v == 1000ull) {
+      const u64 v = randu64r (1000ULL, 1001ULL);
+      test_assert (v == 1000ULL || v == 1001ULL);
+      if (v == 1000ULL) {
         saw_lo = true;
       }
-      if (v == 1001ull) {
+      if (v == 1001ULL) {
         saw_hi = true;
       }
     }
@@ -348,7 +321,7 @@ TEST (randu64r)
 
   // Full range
   for (int i = 0; i < 100; ++i) {
-    const u64 v = randu64r (0ull, U64_MAX);
+    const u64 v = randu64r (0ULL, U64_MAX);
     test_assert (v <= U64_MAX);
   }
 
@@ -368,12 +341,12 @@ TEST (randu64e)
     bool saw_lo = false;
     bool saw_hi = false;
     for (int i = 0; i < 1000; ++i) {
-      const u64 v = randu64e (10ull, 12ull);
-      test_assert (v == 10ull || v == 11ull);
-      if (v == 10ull) {
+      const u64 v = randu64e (10ULL, 12ULL);
+      test_assert (v == 10ULL || v == 11ULL);
+      if (v == 10ULL) {
         saw_lo = true;
       }
-      if (v == 11ull) {
+      if (v == 11ULL) {
         saw_hi = true;
       }
     }
@@ -383,7 +356,7 @@ TEST (randu64e)
 
   for (int i = 0; i < 50; ++i) {
     const u64 lo = (u64)(randu32 () % 1000);
-    const u64 hi = lo + (u64)(randu32 () % 1000) + 1u;
+    const u64 hi = lo + (u64)(randu32 () % 1000) + 1U;
     const u64 v  = randu64e (lo, hi);
     test_assert (v >= lo && v < hi);
   }
@@ -487,7 +460,7 @@ rand_bytes (void *dst, const u32 n)
   // Byte stepping needs a sized type: arithmetic on void * is a GNU extension
   // that MSVC rejects outright (C2036).
   u8    *d = dst;
-  u64    s = (((u64)rand () << 32) ^ (u64)rand ()) | 1;
+  u64    s = (((u64)rand () << 32) ^ (u64)rand ()) | 1U;
   b_size i = 0;
   for (; i + 8 <= n; i += 8) {
     s ^= s << 13;
@@ -609,7 +582,7 @@ TEST (parse_i32_expect)
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_assert_int_equal (parse_i32_expect (&out, big, strlen (big), &ctx->e), ERR_ARITH);
+  test_err_t_check (parse_i32_expect (&out, big, (u32)strlen (big), &ctx->e), ERR_ARITH, &ctx->e);
 }
 #endif
 
@@ -649,8 +622,8 @@ parse_f32_expect (f32 *dest, const char *s, const u32 len, error *e)
   if (i < len && s[i] == '.') {
     i++;
     ASSERT (i < len); // cannot end with '.'
-    f32 frac  = 0.0f;
-    f32 scale = 1.0f;
+    f32 frac  = 0.0F;
+    f32 scale = 1.0F;
     while (i < len && s[i] >= '0' && s[i] <= '9') {
       const f32 d = (f32)(s[i] - '0');
       if (!safe_mul_f32 (&frac, frac, 10.0F)) {
@@ -724,7 +697,7 @@ failed:
   return error_causef (e, ERR_ARITH, "f32 overflow");
 }
 
-#define EPSILON 1e-6f
+#define EPSILON 1e-6F
 
 #ifndef NDEBUG
 TEST (parse_f32_expect)
@@ -732,18 +705,35 @@ TEST (parse_f32_expect)
   f32 out = NAN;
 
   test_assert_int_equal (parse_f32_expect (&out, "3.14", 4, &ctx->e), SUCCESS);
-  test_assert_int_equal (fabsf (out - 3.14f) < EPSILON, true);
+  test_assert_int_equal (fabsf (out - 3.14F) < EPSILON, true);
 
   test_assert_int_equal (parse_f32_expect (&out, "-0.5", 4, &ctx->e), SUCCESS);
-  test_assert_int_equal (fabsf (out + 0.5f) < EPSILON, true);
+  test_assert_int_equal (fabsf (out + 0.5F) < EPSILON, true);
 
   test_assert_int_equal (parse_f32_expect (&out, "1.23e3", 6, &ctx->e), SUCCESS);
-  test_assert_int_equal (fabsf (out - 1230.0f) < EPSILON, true);
+  test_assert_int_equal (fabsf (out - 1230.0F) < EPSILON, true);
 
   test_assert_int_equal (parse_f32_expect (&out, ".25", 3, &ctx->e), SUCCESS);
-  test_assert_int_equal (fabsf (out - 0.25f) < EPSILON, true);
+  test_assert_int_equal (fabsf (out - 0.25F) < EPSILON, true);
+
+  test_assert_int_equal (parse_f32_expect (&out, "2.5e-1", 6, &ctx->e), SUCCESS);
+  test_assert_int_equal (fabsf (out - 0.25F) < EPSILON, true);
+
+  test_assert_int_equal (parse_f32_expect (&out, "4e+1", 4, &ctx->e), SUCCESS);
+  test_assert_int_equal (fabsf (out - 40.0F) < EPSILON, true);
 
   test_assert_int_equal (parse_f32_expect (&out, "1e40", 4, &ctx->e), ERR_ARITH);
+  error_reset (&ctx->e);
+
+  // 40 integer digits overflow f32 before the exponent is reached
+  const char *big = "1000000000000000000000000000000000000000";
+  test_assert_int_equal (parse_f32_expect (&out, big, (u32)strlen (big), &ctx->e), ERR_ARITH);
+  error_reset (&ctx->e);
+
+  // 40 fractional digits overflow the f32 scale factor
+  const char *tiny = ".0000000000000000000000000000000000000001";
+  test_assert_int_equal (parse_f32_expect (&out, tiny, (u32)strlen (tiny), &ctx->e), ERR_ARITH);
+  error_reset (&ctx->e);
 }
 #endif
 
@@ -754,7 +744,8 @@ py_mod_f32 (const float num, const float denom)
     return INFINITY;
   }
 
-  float rem = num - (denom * (int)(num / denom));
+  // TODO: the int truncation is undefined once |num / denom| passes INT_MAX
+  float rem = num - (denom * (float)(int)(num / denom));
 
   if ((rem < 0.0F && denom > 0.0F) || (rem > 0.0F && denom < 0.0F)) {
     rem += denom;
@@ -767,31 +758,32 @@ py_mod_f32 (const float num, const float denom)
 TEST (py_mod_f32)
 {
   // +num , +denom  (generic)
-  test_assert (py_mod_f32 (5.5f, 2.0f) == 1.5f);
+  test_assert_type_equal (py_mod_f32 (5.5F, 2.0F), 1.5F, f32, "f");
 
   // –num , +denom  (Python keeps denom’s sign)
-  test_assert (py_mod_f32 (-5.5f, 2.0f) == 0.5f);
+  test_assert_type_equal (py_mod_f32 (-5.5F, 2.0F), 0.5F, f32, "f");
 
   // +num , –denom
-  test_assert (py_mod_f32 (5.5f, -2.0f) == -0.5f);
+  test_assert_type_equal (py_mod_f32 (5.5F, -2.0F), -0.5F, f32, "f");
 
   // –num , –denom
-  test_assert (py_mod_f32 (-5.5f, -2.0f) == -1.5f);
+  test_assert_type_equal (py_mod_f32 (-5.5F, -2.0F), -1.5F, f32, "f");
 
   // exact multiple (remainder 0)
-  test_assert (py_mod_f32 (4.0f, 2.0f) == 0.0f);
+  test_assert_type_equal (py_mod_f32 (4.0F, 2.0F), 0.0F, f32, "f");
 
   // zero numerator
-  test_assert (py_mod_f32 (0.0f, 3.3f) == 0.0f);
+  test_assert_type_equal (py_mod_f32 (0.0F, 3.3F), 0.0F, f32, "f");
 
   // denominator 0 ⇒ +INF  (sentinel-style)
-  test_assert (isinf (py_mod_f32 (7.0f, 0.0f)));
+  test_assert (isinf (py_mod_f32 (7.0F, 0.0F)));
 }
 #endif
 
 i32
 py_mod_i32 (const i32 num, const i32 denom)
 {
+  ASSERT (denom != 0);
   i32 r = num % denom;
   if ((r != 0) && ((r < 0) != (denom < 0))) {
     r += denom;
@@ -803,21 +795,21 @@ py_mod_i32 (const i32 num, const i32 denom)
 TEST (py_mod_i32)
 {
   // +num , +denom
-  test_assert (py_mod_i32 (5, 3) == 2);
+  test_assert_int_equal (py_mod_i32 (5, 3), 2);
 
   // –num , +denom
-  test_assert (py_mod_i32 (-5, 3) == 1);
+  test_assert_int_equal (py_mod_i32 (-5, 3), 1);
 
   // +num , –denom
-  test_assert (py_mod_i32 (5, -3) == -1);
+  test_assert_int_equal (py_mod_i32 (5, -3), -1);
 
   // –num , –denom
-  test_assert (py_mod_i32 (-5, -3) == -2);
+  test_assert_int_equal (py_mod_i32 (-5, -3), -2);
 
   // exact multiple (remainder 0)
-  test_assert (py_mod_i32 (9, 3) == 0);
+  test_assert_int_equal (py_mod_i32 (9, 3), 0);
 
   // zero numerator
-  test_assert (py_mod_i32 (0, 7) == 0);
+  test_assert_int_equal (py_mod_i32 (0, 7), 0);
 }
 #endif

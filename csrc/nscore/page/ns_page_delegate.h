@@ -38,6 +38,7 @@ typedef union {
 HEADER_FUNC pgno
 dlgt_get_next (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       return in_get_next (p);
@@ -60,6 +61,7 @@ dlgt_get_next (const page *p)
 HEADER_FUNC pgno
 dlgt_get_ovnext (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_VAR_PAGE: {
       return vp_get_ovnext (p);
@@ -76,6 +78,7 @@ dlgt_get_ovnext (const page *p)
 HEADER_FUNC void
 dlgt_set_next (page *p, const pgno n)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       in_set_next (p, n);
@@ -102,6 +105,7 @@ dlgt_set_next (page *p, const pgno n)
 HEADER_FUNC pgno
 dlgt_get_prev (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       return in_get_prev (p);
@@ -118,6 +122,7 @@ dlgt_get_prev (const page *p)
 HEADER_FUNC void
 dlgt_set_prev (page *p, const pgno prev)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       in_set_prev (p, prev);
@@ -136,6 +141,7 @@ dlgt_set_prev (page *p, const pgno prev)
 HEADER_FUNC void
 dlgtset_ovnext (page *p, const pgno next)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_VAR_PAGE: {
       vp_set_ovnext (p, next);
@@ -154,6 +160,7 @@ dlgtset_ovnext (page *p, const pgno next)
 HEADER_FUNC p_size
 dlgt_get_len (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       return in_get_len (p);
@@ -170,6 +177,7 @@ dlgt_get_len (const page *p)
 HEADER_FUNC b_size
 dlgt_get_size (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       return in_get_size (p);
@@ -186,6 +194,7 @@ dlgt_get_size (const page *p)
 HEADER_FUNC p_size
 dlgt_get_max_len (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       return IN_MAX_KEYS;
@@ -202,12 +211,14 @@ dlgt_get_max_len (const page *p)
 HEADER_FUNC bool
 dlgt_is_root (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   return (dlgt_get_prev (p) == PGNO_NULL && dlgt_get_next (p) == PGNO_NULL) != 0;
 }
 
 HEADER_FUNC bool
 dlgt_is_full (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       return in_full (p);
@@ -224,6 +235,7 @@ dlgt_is_full (const page *p)
 HEADER_FUNC struct bytes
 dlgt_get_bytes (page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_VAR_PAGE: {
       return vp_get_bytes (p);
@@ -240,6 +252,7 @@ dlgt_get_bytes (page *p)
 HEADER_FUNC struct cbytes
 dlgt_get_bytes_imut (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_VAR_PAGE: {
       return vp_get_bytes_imut (p);
@@ -256,6 +269,7 @@ dlgt_get_bytes_imut (const page *p)
 HEADER_FUNC void
 dlgt_set_data (page *p, const in_dl_data d)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_INNER_NODE: {
       in_set_data (p, d.in);
@@ -274,6 +288,8 @@ dlgt_set_data (page *p, const in_dl_data d)
 HEADER_FUNC void
 dlgt_move_left (page *dest, page *src, const p_size len)
 {
+  DBG_ASSERT (page_base, dest);
+  DBG_ASSERT (page_base, src);
   ASSERT (page_get_type (dest) == page_get_type (src));
 
   switch (page_get_type (src)) {
@@ -294,6 +310,8 @@ dlgt_move_left (page *dest, page *src, const p_size len)
 HEADER_FUNC void
 dlgt_move_right (page *src, page *dest, const p_size len)
 {
+  DBG_ASSERT (page_base, src);
+  DBG_ASSERT (page_base, dest);
   ASSERT (page_get_type (dest) == page_get_type (src));
 
   switch (page_get_type (src)) {
@@ -314,22 +332,23 @@ dlgt_move_right (page *src, page *dest, const p_size len)
 HEADER_FUNC void
 dlgt_link (page *left, page *right)
 {
+  DBG_ASSERT (page_base, left);
   pgno _left  = PGNO_NULL;
   pgno _right = PGNO_NULL;
 
-  if (left) {
+  if (left != NULL) {
     _left = left->pg;
   }
 
-  if (right) {
+  if (right != NULL) {
     _right = right->pg;
   }
 
-  if (left) {
+  if (left != NULL) {
     dlgt_set_next (left, _right);
   }
 
-  if (right) {
+  if (right != NULL) {
     dlgt_set_prev (right, _left);
   }
 }
@@ -337,10 +356,11 @@ dlgt_link (page *left, page *right)
 HEADER_FUNC void
 dlgtovlink (page *left, const page *right)
 {
-  ASSERT (left);
+  DBG_ASSERT (page_base, left);
+
   pgno _right = PGNO_NULL;
 
-  if (right) {
+  if (right != NULL) {
     _right = right->pg;
   }
 
@@ -350,24 +370,25 @@ dlgtovlink (page *left, const page *right)
 HEADER_FUNC bool
 dlgt_valid_neighbors (const page *left, const page *right)
 {
+  DBG_ASSERT (page_base, left);
   pgno lpg = PGNO_NULL;
   pgno rpg = PGNO_NULL;
 
-  if (left) {
+  if (left != NULL) {
     lpg = left->pg;
   }
 
-  if (right) {
+  if (right != NULL) {
     rpg = right->pg;
   }
 
   bool ret = true;
 
-  if (left) {
+  if (left != NULL) {
     ret = ((ret && dlgt_get_next (left) == rpg) != 0);
   }
 
-  if (right) {
+  if (right != NULL) {
     ret = ((ret && lpg == dlgt_get_prev (right)) != 0);
   }
 
@@ -377,6 +398,7 @@ dlgt_valid_neighbors (const page *left, const page *right)
 HEADER_FUNC void
 make_valid (page *p)
 {
+  DBG_ASSERT (page_base, p);
   switch (page_get_type (p)) {
     case PG_DATA_LIST: {
       dl_make_valid (p);

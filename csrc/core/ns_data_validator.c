@@ -31,9 +31,26 @@
  * SECTION: Data Validator
  ******************************************************************************/
 
+DEFINE_DBG_ASSERT (struct dvalidtr, dvalidtr, d, {
+  ASSERT (d);
+  ASSERT (d->mem.table);
+  ASSERT (d->ref.functions.insert);
+  ASSERT (d->ref.functions.read);
+  ASSERT (d->ref.functions.write);
+  ASSERT (d->ref.functions.remove);
+  ASSERT (d->ref.functions.getlen);
+  ASSERT (d->sut.functions.insert);
+  ASSERT (d->sut.functions.read);
+  ASSERT (d->sut.functions.write);
+  ASSERT (d->sut.functions.remove);
+  ASSERT (d->sut.functions.getlen);
+})
+
 static err_t
 dvalidtr_light_validate (const struct dvalidtr *d, error *e)
 {
+  DBG_ASSERT (dvalidtr, d);
+
   const i64 sut_len = d->sut.functions.getlen (d->sut.ctx, e);
   if (sut_len < 0) {
     return error_trace (e);
@@ -67,7 +84,12 @@ dvalidtr_read (
     error                 *e
 )
 {
-  void *ref  = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
+  DBG_ASSERT (dvalidtr, d);
+  // TODO: nelems comes from the caller and the allocator takes a u32 count.
+  // Every caller passes counts derived from u32 lengths, but nothing checks it.
+  ASSERT (str.nelems <= UINT32_MAX);
+
+  void *ref  = d->mem.table->malloc (d->mem.self, (u32)str.nelems, size, e);
   void *dest = _dest;
 
   if (ref == NULL) {
@@ -75,7 +97,7 @@ dvalidtr_read (
   }
 
   if (_dest == NULL) {
-    dest = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
+    dest = d->mem.table->malloc (d->mem.self, (u32)str.nelems, size, e);
     if (dest == NULL) {
       goto theend;
     }
@@ -146,10 +168,10 @@ dvalidtr_read (
   }
 
 theend:
-  if (ref) {
+  if (ref != NULL) {
     d->mem.table->free (d->mem.self, ref);
   }
-  if (_dest == NULL && dest) {
+  if (_dest == NULL && dest != NULL) {
     d->mem.table->free (d->mem.self, dest);
   }
   return error_trace (e);
@@ -158,6 +180,8 @@ theend:
 static err_t
 dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32 slen, error *e)
 {
+  DBG_ASSERT (dvalidtr, d);
+
   u8 *src = (u8 *)_src;
   if (_src == NULL) {
     src = d->mem.table->malloc (d->mem.self, slen, 1, e);
@@ -243,7 +267,7 @@ dvalidtr_insert (struct dvalidtr *d, const u32 ofst, const void *_src, const u32
     goto theend;
   }
 
-  if ((d->isvalid) && (d->isvalid (d->sut.ctx, e))) {
+  if (d->isvalid != NULL && d->isvalid (d->sut.ctx, e) < 0) {
     goto theend;
   }
 
@@ -263,9 +287,13 @@ dvalidtr_write (
     error              *e
 )
 {
+  DBG_ASSERT (dvalidtr, d);
+  // TODO: same unchecked u32 bound as dvalidtr_read
+  ASSERT (str.nelems <= UINT32_MAX);
+
   u8 *src = (u8 *)_src;
   if (_src == NULL) {
-    src = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
+    src = d->mem.table->malloc (d->mem.self, (u32)str.nelems, size, e);
     if (src == NULL) {
       goto theend;
     }
@@ -333,12 +361,12 @@ dvalidtr_write (
     goto theend;
   }
 
-  if ((d->isvalid) && (d->isvalid (d->sut.ctx, e))) {
+  if (d->isvalid != NULL && d->isvalid (d->sut.ctx, e) < 0) {
     goto theend;
   }
 
 theend:
-  if (_src == NULL && src) {
+  if (_src == NULL && src != NULL) {
     d->mem.table->free (d->mem.self, src);
   }
   return error_trace (e);
@@ -347,7 +375,11 @@ theend:
 static err_t
 dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, void *_dest, error *e)
 {
-  void *ref  = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
+  DBG_ASSERT (dvalidtr, d);
+  // TODO: same unchecked u32 bound as dvalidtr_read
+  ASSERT (str.nelems <= UINT32_MAX);
+
+  void *ref  = d->mem.table->malloc (d->mem.self, (u32)str.nelems, size, e);
   void *dest = _dest;
 
   if (ref == NULL) {
@@ -355,7 +387,7 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
   }
 
   if (_dest == NULL) {
-    dest = d->mem.table->malloc (d->mem.self, str.nelems, size, e);
+    dest = d->mem.table->malloc (d->mem.self, (u32)str.nelems, size, e);
     if (dest == NULL) {
       goto theend;
     }
@@ -439,29 +471,32 @@ dvalidtr_remove (struct dvalidtr *d, const struct stride str, const u32 size, vo
     goto theend;
   }
 
-  if ((d->isvalid) && (d->isvalid (d->sut.ctx, e))) {
+  if (d->isvalid != NULL && d->isvalid (d->sut.ctx, e) < 0) {
     goto theend;
   }
 
 theend:
-  if (ref) {
+  if (ref != NULL) {
     d->mem.table->free (d->mem.self, ref);
   }
-  if (_dest == NULL && dest) {
+  if (_dest == NULL && dest != NULL) {
     d->mem.table->free (d->mem.self, dest);
   }
   return error_trace (e);
 }
 
-static err_t
+static i64
 dvalidtr_getlen (const struct dvalidtr *d, error *e)
 {
+  DBG_ASSERT (dvalidtr, d);
   return d->ref.functions.getlen (d->ref.ctx, e);
 }
 
 static err_t
 dvalidtr_validate (struct dvalidtr *d, error *e)
 {
+  DBG_ASSERT (dvalidtr, d);
+
   if (dvalidtr_light_validate (d, e) < 0) {
     return error_trace (e);
   }
@@ -476,12 +511,13 @@ dvalidtr_validate (struct dvalidtr *d, error *e)
           (struct stride){
               .start  = 0,
               .stride = 1,
-              .nelems = len,
+              .nelems = (u64)len,
           },
           1,
           NULL,
           e
-      )) {
+      )
+      < 0) {
     error_causef (e, ERR_CORRUPT, "full read validation failed (len=%" PRId64 ")", len);
     return error_trace (e);
   }
@@ -498,6 +534,9 @@ dvalidtr_random_test (
     error           *e
 )
 {
+  DBG_ASSERT (dvalidtr, d);
+  ASSERT (size > 0);
+
   for (u32 k = 0; k < niters; ++k) {
     i64 len = dvalidtr_getlen (d, e);
     if (len < 0) {
@@ -519,8 +558,9 @@ dvalidtr_random_test (
 
     const u64           start   = len > 0 ? randu32r (0, (u32)len - 1) : 0;
     const u64           stride  = randu32r (1, 8);
-    const u32           max_n   = len > 0 ? (((u32)len - 1 - start) / stride) + 1 : 0;
-    const u64           nelems  = max_n > 0 ? randu32r (1, MIN (max_n, max_insert)) : 0;
+    // start < len, so the quotient fits in u32, and MIN (max_n, ...) <= max_n
+    const u32           max_n   = len > 0 ? (u32)(((u32)len - 1 - start) / stride) + 1 : 0;
+    const u64           nelems  = max_n > 0 ? randu32r (1, (u32)MIN (max_n, max_insert)) : 0;
     const u32           ninsert = randu32r (1, (u32)max_insert);
 
     const struct stride str     = {
@@ -531,7 +571,9 @@ dvalidtr_random_test (
 
     switch (choice) {
       case C_INSERT: {
-        if (dvalidtr_insert (d, start * size, NULL, ninsert * size, e) < 0) {
+        // start < len, and len * size is the byte length of the ref
+        ASSERT (start * size <= UINT32_MAX);
+        if (dvalidtr_insert (d, (u32)(start * size), NULL, ninsert * size, e) < 0) {
           return error_causef (
               e,
               ERR_CORRUPT,
@@ -649,7 +691,7 @@ TEST (dvalidtr_insert_agreeing_writers)
 
   TEST_CASE ("getlen reports the ref length")
   {
-    test_assert_int_equal (dvalidtr_getlen (&d, &ctx->e), 12);
+    test_assert_type_equal (dvalidtr_getlen (&d, &ctx->e), (i64)12, i64, PRId64);
   }
 
   TEST_CASE ("Full validation passes while the writers agree")
@@ -909,11 +951,11 @@ TEST (dvalidtr_random_test_reports_a_broken_sut)
 
 enum
 {
-  DV_F_INSERT = 1 << 0,
-  DV_F_READ   = 1 << 1,
-  DV_F_WRITE  = 1 << 2,
-  DV_F_REMOVE = 1 << 3,
-  DV_F_GETLEN = 1 << 4,
+  DV_F_INSERT = 1U << 0,
+  DV_F_READ   = 1U << 1,
+  DV_F_WRITE  = 1U << 2,
+  DV_F_REMOVE = 1U << 3,
+  DV_F_GETLEN = 1U << 4,
   DV_F_ALLOPS = DV_F_INSERT | DV_F_READ | DV_F_WRITE | DV_F_REMOVE,
 };
 
@@ -928,7 +970,7 @@ struct dv_stub
   i64              delta;
 };
 
-static err_t
+static i64
 dv_stub_insert (void *vctx, const u32 ofst, const void *src, const u32 slen, error *e)
 {
   struct dv_stub *s = vctx;
@@ -936,7 +978,7 @@ dv_stub_insert (void *vctx, const u32 ofst, const void *src, const u32 slen, err
     return error_causef (e, ERR_IO, "dv_stub: insert refused");
   }
   const i64 n = ext_array_insert (&s->arr, ofst, src, slen, e);
-  return n < 0 ? err_t_cast (n) : (err_t)(n + s->delta);
+  return n < 0 ? n : n + s->delta;
 }
 
 static i64
@@ -1010,9 +1052,9 @@ dv_pair_init (struct dv_pair *p, const struct i_mem mem, error *e)
 
   p->d = (struct dvalidtr){
       .mem     = mem,
-      .isvalid = NULL,
       .ref     = {.functions = dv_stub_funcs, .ctx = &p->ref},
       .sut     = {.functions = dv_stub_funcs, .ctx = &p->sut},
+      .isvalid = NULL,
   };
 }
 

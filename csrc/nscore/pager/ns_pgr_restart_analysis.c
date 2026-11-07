@@ -30,22 +30,21 @@ upsert_txn (struct pager *p, struct aries_ctx *ctx, txid tid, lsn read_lsn, lsn 
       return NULL;
     }
 
-    // And initialize it
     txn_init (
         tx,
         tid,
         (struct txn_data){
             .state         = TX_CANDIDATE_FOR_UNDO,
+            .min_lsn       = 0,
             .last_lsn      = read_lsn,
             .undo_next_lsn = prev_lsn,
         },
         p->mem
     );
 
-    // Insert this transaction
     txnt_insert_txn_if_not_exists (ctx->txt, tx);
   } else {
-    // Otherwise, just update it's read and prev lsn
+    // Otherwise, just update its read and prev lsn
     txn_update (tx, TX_CANDIDATE_FOR_UNDO, read_lsn, prev_lsn);
   }
 
@@ -65,16 +64,13 @@ pgr_analyze_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, err
   struct aries_ctx       *ctx      = a_ctx->aries;
   struct pager           *p        = a_ctx->p;
 
-  // Get common log attributes
   txid                    tid      = wrh_get_tid (log_rec);
   lsn                     prev_lsn = wrh_get_prev_lsn (log_rec);
 
-  // Update max tid
   if (tid > ctx->max_tid) {
     ctx->max_tid = tid;
   }
 
-  // Get or create a new transaction
   struct txn *tx = upsert_txn (p, ctx, tid, read_lsn, prev_lsn, e);
   if (tx == NULL) {
     return error_trace (e);
@@ -95,7 +91,7 @@ pgr_analyze_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, err
 
       // Add log to dirty page table if it's redoable
       if (wrh_is_redoable (log_rec)) {
-        if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e)) {
+        if (dpgt_add_if_ne (ctx->dpt, wrh_get_affected_pg (log_rec), read_lsn, e) < 0) {
           return error_trace (e);
         }
       }
@@ -126,12 +122,11 @@ flush_txns (struct pager *p, struct aries_ctx *ctx)
     struct txn *tx            = ((struct txn **)ctx->txn_ptrs.data)[i];
 
     bool        is_candidate  = tx->data.state == TX_CANDIDATE_FOR_UNDO;
-    bool        has_prev      = tx->data.undo_next_lsn == 0;
-    bool        nothing_to_do = (is_candidate && has_prev) != 0;
+    bool        undo_done     = tx->data.undo_next_lsn == 0;
+    bool        nothing_to_do = is_candidate && undo_done;
     bool        committed     = tx->data.state == TX_COMMITTED;
 
     if (nothing_to_do || committed) {
-      // Append an end log
       wal_append_end_log (p->ww, tx->tid, tx->data.last_lsn);
       txnt_remove_txn_expect (ctx->txt, tx);
       txn_update_state (tx, TX_DONE);
@@ -142,11 +137,12 @@ flush_txns (struct pager *p, struct aries_ctx *ctx)
 err_t
 pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e)
 {
+  DBG_ASSERT (pager, p);
   i_log_info ("Starting Analysis phase\n");
 
   // Sequential forward scan to reconstruct the txn table and dirty page table
   struct analyze_context a_ctx = {.aries = ctx, .p = p};
-  if (wal_forward_scan (p->ww, LSN_NULL, pgr_analyze_log, &a_ctx, e)) {
+  if (wal_forward_scan (p->ww, LSN_NULL, pgr_analyze_log, &a_ctx, e) < 0) {
     return error_trace (e);
   }
 

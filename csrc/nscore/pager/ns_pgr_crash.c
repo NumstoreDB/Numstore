@@ -26,12 +26,16 @@ txntforeach (struct txn *tx, void *ctx)
 err_t
 pgr_crash (struct pager *p, error *e)
 {
-  periodic_task_stop (&p->checkpoint_task, e);
+  DBG_ASSERT (pager, p);
+
+  // A crash tears everything down regardless of failures along the way. Each
+  // failure is still recorded in [e] and reported by the return below.
+  (void)periodic_task_stop (&p->checkpoint_task, e);
 
   txnt_foreach (p->tnxt, txntforeach, p);
 
-  wal_crash (p->ww, e);
-  fpgr_crash (p->fp, e);
+  (void)wal_crash (p->ww, e);
+  (void)fpgr_crash (p->fp, e);
 
   txnt_crash (p->tnxt);
   dpgt_crash (p->dpt);

@@ -23,7 +23,12 @@ Checks: >
   -misc-no-recursion,
   -readability-function-size,
   -readability-identifier-length,
-  -readability-magic-numbers
+  -readability-magic-numbers,
+  -misc-const-correctness,
+  -readability-non-const-parameter,
+  -readability-avoid-const-params-in-decls,
+  -readability-function-cognitive-complexity,
+  -readability-trailing-comma
 
 # Empty while you clean up existing findings. For CI, switch to
 # 'bugprone-*,clang-analyzer-*' once the codebase is clean.
@@ -82,4 +87,23 @@ CheckOptions:
     value: 'true'
   - key: readability-inconsistent-declaration-parameter-name.Strict
     value: 'false'
+
+  # ---- Cleanup rules (see .claude/skills/cleanup/SKILL.md) ----
+  # Every fallible call's result is checked (outside tests): flag discarded
+  # err_t results.
+  - key: bugprone-unused-return-value.CheckedReturnTypes
+    value: 'err_t'
+  - key: bugprone-unused-return-value.AllowCastToVoid
+    value: 'true'
+  # All literal suffixes uppercase: 10U, 0x7CU, 1.0F, 5ULL.
+  - key: readability-uppercase-literal-suffix.NewSuffixes
+    value: ''
+  # Braces on every if/else/loop body, even one-liners.
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '0'
+  # No silent narrowing (u64 -> u32, i64 -> int, signed <-> unsigned).
+  - key: bugprone-narrowing-conversions.WarnOnIntegerNarrowingConversion
+    value: 'true'
+  - key: bugprone-narrowing-conversions.WarnOnIntegerToFloatingPointNarrowingConversion
+    value: 'true'
 ...

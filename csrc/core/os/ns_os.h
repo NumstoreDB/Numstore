@@ -176,7 +176,7 @@ err_t faulty_os_create (
 void faulty_os_set_fail (struct i_os os, float fail_percent);
 void faulty_os_fail_after (struct i_os os, int count);
 u32 faulty_num_os_calls (struct i_os os);
-void faulty_os_reset (struct i_os mem);
+void faulty_os_reset (struct i_os os);
 void faulty_os_free (struct i_os os);
 
 ////////////////////////////

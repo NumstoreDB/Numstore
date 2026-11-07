@@ -51,38 +51,38 @@ parse_query_help (struct parser *parser, struct query *dest, error *e)
   dest->type = QT_HELP;
 
   if (parser_match (parser, TT_READ)) {
-    dest->help.command     = QT_READ;
     dest->help.has_command = true;
+    dest->help.command     = QT_READ;
     parser_advance (parser);
   }
 
   else if (parser_match (parser, TT_CREATE)) {
-    dest->help.command     = QT_CREATE;
     dest->help.has_command = true;
+    dest->help.command     = QT_CREATE;
     parser_advance (parser);
   }
 
   else if (parser_match (parser, TT_DELETE)) {
-    dest->help.command     = QT_DELETE;
     dest->help.has_command = true;
+    dest->help.command     = QT_DELETE;
     parser_advance (parser);
   }
 
   else if (parser_match (parser, TT_GET)) {
-    dest->help.command     = QT_GET;
     dest->help.has_command = true;
+    dest->help.command     = QT_GET;
     parser_advance (parser);
   }
 
   else if (parser_match (parser, TT_EXIT)) {
-    dest->help.command     = QT_EXIT;
     dest->help.has_command = true;
+    dest->help.command     = QT_EXIT;
     parser_advance (parser);
   }
 
   else if (parser_match (parser, TT_HELP)) {
-    dest->help.command     = QT_HELP;
     dest->help.has_command = true;
+    dest->help.command     = QT_HELP;
     parser_advance (parser);
   } else {
     dest->help.has_command = false;
@@ -120,7 +120,7 @@ parse_query_get (struct parser *parser, struct query *dest, error *e)
 
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
   struct token *tok = parser_advance (parser);
 
@@ -155,7 +155,7 @@ parse_query_delete (struct parser *parser, struct query *dest, error *e)
 
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
   struct token *tok = parser_advance (parser);
 
@@ -180,7 +180,7 @@ parse_query_create (struct parser *parser, struct query *dest, error *e)
   WRAP (parser_expect (parser, TT_CREATE, e));
 
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
 
   struct token *tok = parser_advance (parser);
@@ -209,20 +209,23 @@ parse_query_insert (struct parser *parser, struct query *dest, error *e)
   WRAP (parser_expect (parser, TT_INSERT, e));
 
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
   struct token *ident = parser_advance (parser);
   ASSERT (ident->type == TT_IDENTIFIER);
 
   i32 ofst;
   if (!parser_maybe_parse_integer (parser, &ofst)) {
-    return error_causef (e, ERR_SYNTAX, "Expected integer at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected integer at position %" PRIu32, parser->pos);
   }
 
   i32 len;
   if (!parser_maybe_parse_integer (parser, &len)) {
-    return error_causef (e, ERR_SYNTAX, "Expected integer at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected integer at position %" PRIu32, parser->pos);
   }
+
+  // TODO: reject a negative len. b_size is unsigned, so "insert foo 0 -1"
+  // turns into a huge length below.
 
   *dest = (struct query){
       .type   = QT_INSERT,
@@ -248,7 +251,7 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
 
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
   struct token      *tok  = parser_advance (parser);
 
@@ -277,12 +280,12 @@ parse_query_read (struct parser *parser, struct query *dest, error *e)
 static err_t
 parse_query_remove (struct parser *parser, struct query *dest, error *e)
 {
-  // READ
+  // REMOVE
   WRAP (parser_expect (parser, TT_REMOVE, e));
 
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
   struct token      *tok  = parser_advance (parser);
 
@@ -311,12 +314,12 @@ parse_query_remove (struct parser *parser, struct query *dest, error *e)
 static err_t
 parse_query_write (struct parser *parser, struct query *dest, error *e)
 {
-  // READ
+  // WRITE
   WRAP (parser_expect (parser, TT_WRITE, e));
 
   // IDENT
   if (!parser_match (parser, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %" PRIu32, parser->pos);
   }
   struct token      *tok  = parser_advance (parser);
 
@@ -364,7 +367,7 @@ parse_query (struct parser *parser, struct query *dest, error *e)
   } else if (parser_match (parser, TT_WRITE)) {
     WRAP (parse_query_write (parser, dest, e));
   } else {
-    return error_causef (e, ERR_SYNTAX, "Expected a valid operation at pos: %u", parser->pos);
+    return error_causef (e, ERR_SYNTAX, "Expected a valid operation at pos: %" PRIu32, parser->pos);
   }
 
   return SUCCESS;
@@ -376,13 +379,13 @@ compile_query (struct query *dest, const char *text, struct arena_alloc *dalloc,
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e)) {
+  if (lex_tokens (text, &b.temp, (u32)strnlen (text, MAX_COMPILE_TEXT_LEN), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_query (&parser, dest, e)) {
+  if (parse_query (&parser, dest, e) < 0) {
     goto theend;
   }
 
@@ -403,7 +406,7 @@ test_query_green_path (const char *query, struct query expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    test_assert (compile_query (&actual, query, &alloc, &e) == SUCCESS);
+    test_assert_int_equal (compile_query (&actual, query, &alloc, &e), SUCCESS);
     test_assert (query_equal (&actual, &expected));
   }
 
@@ -570,6 +573,17 @@ TEST (compile_query)
   {
     test_query_red_path ("delete", ERR_SYNTAX);
     test_query_red_path ("delete 1", ERR_SYNTAX);
+    test_query_red_path ("delete if foo", ERR_SYNTAX);
+    test_query_green_path (
+        "delete if exists foo",
+        (struct query){
+            .type   = QT_DELETE,
+            .delete = {
+                .name      = strfcstr ("foo"),
+                .if_exists = true,
+            },
+        }
+    );
     test_query_green_path (
         "delete foo",
         (struct query){
@@ -587,6 +601,7 @@ TEST (compile_query)
     test_query_red_path ("get 1", ERR_SYNTAX);
     test_query_red_path ("get if", ERR_SYNTAX);
     test_query_red_path ("get if foo", ERR_SYNTAX);
+    test_query_red_path ("get @", ERR_SYNTAX);
     test_query_green_path (
         "get foo",
         (struct query){

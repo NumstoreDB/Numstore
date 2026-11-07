@@ -24,8 +24,6 @@
 #include <stdatomic.h>
 #include <string.h>
 
-// pgno ...etc
-
 enum file_pager_flags
 {
   FP_ISNEW = (1 << 0),
@@ -47,27 +45,23 @@ DEFINE_DBG_ASSERT (struct file_pager, file_pager, p, { ASSERT (p); })
 struct file_pager *
 fpgr_open (const char *dbname, struct i_mem mem, struct i_os os, u32 header_len, error *e)
 {
-  // Allocate space for the pager
   struct file_pager *dest = mem.table->malloc (mem.self, 1, sizeof *dest, e);
   if (dest == NULL) {
     return NULL;
   }
 
-  // Basic initialization
-  dest->mem = mem;
-  dest->os  = os;
-  latch_init (&dest->l);
+  dest->mem   = mem;
+  dest->os    = os;
   dest->flags = 0;
+  latch_init (&dest->l);
 
   // Open the database in read write mode
-  if (os.table->open_file_rw (os.self, &dest->f, dbname, e)) {
+  if (os.table->open_file_rw (os.self, &dest->f, dbname, e) < 0) {
     goto failed;
   }
 
-  // We'll use the size for checking if it's new or not
+  // The size tells a new file (empty, or just a header) from an existing one
   i64 size = dest->f.table->file_size (dest->f.self, e);
-
-  // Failed
   if (size < 0) {
     goto fp_failed;
   }
@@ -76,9 +70,9 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_os os, u32 header_len,
   if (size == 0 || size == header_len) {
     dest->flags |= FP_ISNEW;
 
-    // extend the file to the header length
+    // Extend an empty file to the header length
     if (size == 0) {
-      if (dest->f.table->truncate (dest->f.self, header_len, e)) {
+      if (dest->f.table->truncate (dest->f.self, header_len, e) < 0) {
         goto fp_failed;
       }
     }
@@ -119,34 +113,60 @@ TEST (fpgr_open)
 {
   _Static_assert (NS_PAGE_SIZE > 2, "NS_PAGE_SIZE should be > 2 for file_pager test");
 
+  // Setup - a second handle on the file so the test can set its size
   i_file fp = {0};
-  ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e);
+  test_assert_int_equal (
+      ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e),
+      SUCCESS
+  );
 
-  // edge case: file shorter than header
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &ctx->e));
-  struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
-  test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+  TEST_CASE ("file shorter than the header")
+  {
+    test_assert_int_equal (fp.table->truncate (fp.self, 10, &ctx->e), SUCCESS);
+    struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 64, &ctx->e);
+    test_assert (pager == NULL);
+    test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+  }
 
-  // edge case: file size = half a page
-  test_fail_if (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &ctx->e));
-  pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
-  test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+  TEST_CASE ("file one byte short of a page")
+  {
+    test_assert_int_equal (fp.table->truncate (fp.self, NS_PAGE_SIZE - 1, &ctx->e), SUCCESS);
+    struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
+    test_assert (pager == NULL);
+    test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+  }
 
-  // happy path: file exactly header size, zero pages
-  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
-  pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
-  test_assert_int_equal ((int)atomic_load (&pager->npages), 0);
-  test_fail_if (fpgr_close (pager, &ctx->e));
+  TEST_CASE ("file size = half a page")
+  {
+    test_assert_int_equal (fp.table->truncate (fp.self, NS_PAGE_SIZE / 2, &ctx->e), SUCCESS);
+    struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
+    test_assert (pager == NULL);
+    test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
+  }
 
-  // happy path: file exactly header size, more pages
-  test_fail_if (fp.table->truncate (fp.self, 3 * NS_PAGE_SIZE, &ctx->e));
-  pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
-  test_assert_equal (atomic_load (&pager->npages), 3);
-  test_fail_if (fpgr_close (pager, &ctx->e));
+  TEST_CASE ("empty file, zero pages")
+  {
+    test_assert_int_equal (fp.table->truncate (fp.self, 0, &ctx->e), SUCCESS);
+    struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
+    test_assert (pager != NULL);
+    test_assert (fpgr_isnew (pager));
+    test_assert_type_equal (atomic_load (&pager->npages), (pgno)0, pgno, PRpgno);
+    test_assert_int_equal (fpgr_close (pager, &ctx->e), SUCCESS);
+  }
 
-  // There were 2 refs to file - close it here too
-  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
-  test_fail_if (ctx->os.table->unlink (ctx->os.self, "testdb", &ctx->e));
+  TEST_CASE ("existing file with three pages")
+  {
+    test_assert_int_equal (fp.table->truncate (fp.self, 3 * NS_PAGE_SIZE, &ctx->e), SUCCESS);
+    struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
+    test_assert (pager != NULL);
+    test_assert (!fpgr_isnew (pager));
+    test_assert_type_equal (atomic_load (&pager->npages), (pgno)3, pgno, PRpgno);
+    test_assert_int_equal (fpgr_close (pager, &ctx->e), SUCCESS);
+  }
+
+  // Teardown - the pager closed its own handle, close the test's one too
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->unlink (ctx->os.self, "testdb", &ctx->e), SUCCESS);
 }
 #endif
 
@@ -166,7 +186,7 @@ fpgr_reset (struct file_pager *f, error *e)
   DBG_ASSERT (file_pager, f);
 
   latch_lock (&f->l);
-  if (f->f.table->truncate (f->f.self, f->header_len, e)) {
+  if (f->f.table->truncate (f->f.self, f->header_len, e) < 0) {
     latch_unlock (&f->l);
     return error_trace (e);
   }
@@ -179,6 +199,7 @@ fpgr_reset (struct file_pager *f, error *e)
 bool
 fpgr_isnew (struct file_pager *f)
 {
+  DBG_ASSERT (file_pager, f);
   return (f->flags & FP_ISNEW) != 0;
 }
 
@@ -202,7 +223,7 @@ fpgr_extend (struct file_pager *p, pgno dest, error *e)
     return SUCCESS;
   }
 
-  if (p->f.table->truncate (p->f.self, p->header_len + NS_PAGE_SIZE * (dest), e)) {
+  if (p->f.table->truncate (p->f.self, p->header_len + NS_PAGE_SIZE * (dest), e) < 0) {
     latch_unlock (&p->l);
     goto failed;
   }
@@ -219,42 +240,40 @@ failed:
 #ifndef NDEBUG
 TEST (fpgr_new)
 {
+  // Setup - an empty file and a pager on it
   i_file fp = {0};
-
-  test_fail_if (ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e));
-
-  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
+  test_assert_int_equal (
+      ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e),
+      SUCCESS
+  );
+  test_assert_int_equal (fp.table->truncate (fp.self, 0, &ctx->e), SUCCESS);
 
   struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
+  test_assert (pager != NULL);
 
-  // Create a new page
-  test_fail_if (fpgr_extend (pager, 1, &ctx->e));
-  test_assert_int_equal (atomic_load (&pager->npages), 1);
-  test_assert_int_equal (
+  // Run - each extend grows the file by whole pages
+  for (pgno n = 1; n <= 3; ++n) {
+    test_assert_int_equal (fpgr_extend (pager, n, &ctx->e), SUCCESS);
+    test_assert_type_equal (atomic_load (&pager->npages), n, pgno, PRpgno);
+
+    const i64 expected = (i64)(NS_PAGE_SIZE * n);
+    test_assert_type_equal (fp.table->file_size (fp.self, &ctx->e), expected, i64, PRId64);
+  }
+
+  // Extending to fewer pages than the file has is a no-op
+  test_assert_int_equal (fpgr_extend (pager, 1, &ctx->e), SUCCESS);
+  test_assert_type_equal (atomic_load (&pager->npages), (pgno)3, pgno, PRpgno);
+  test_assert_type_equal (
       fp.table->file_size (fp.self, &ctx->e),
-      NS_PAGE_SIZE * atomic_load (&pager->npages)
+      (i64)(3 * NS_PAGE_SIZE),
+      i64,
+      PRId64
   );
 
-  // Add two more pages and do the same thing
-  test_fail_if (fpgr_extend (pager, 2, &ctx->e));
-  test_assert_int_equal (atomic_load (&pager->npages), 2);
-  test_assert_int_equal (
-      fp.table->file_size (fp.self, &ctx->e),
-      NS_PAGE_SIZE * atomic_load (&pager->npages)
-  );
-
-  test_fail_if (fpgr_extend (pager, 3, &ctx->e));
-  test_assert_int_equal (atomic_load (&pager->npages), 3);
-  test_assert_int_equal (
-      fp.table->file_size (fp.self, &ctx->e),
-      NS_PAGE_SIZE * atomic_load (&pager->npages)
-  );
-
-  test_fail_if (fpgr_close (pager, &ctx->e));
-
-  // There were 2 refs to file - close it here too
-  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
-  test_fail_if (ctx->os.table->unlink (ctx->os.self, "testdb", &ctx->e));
+  // Teardown
+  test_assert_int_equal (fpgr_close (pager, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->unlink (ctx->os.self, "testdb", &ctx->e), SUCCESS);
 }
 #endif
 
@@ -278,7 +297,6 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
     goto theend;
   }
 
-  // Read all from file
   const i64 nread = p->f.table->pread_all (
       p->f.self,
       dest,
@@ -313,7 +331,8 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (p->f.table->pwrite_all (p->f.self, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e)) {
+  if (p->f.table->pwrite_all (p->f.self, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e)
+      < 0) {
     goto theend;
   }
 
@@ -328,17 +347,17 @@ err_t
 fpgr_write_header (struct file_pager *p, const u8 *src, u32 ofst, u32 size, error *e)
 {
   ASSERT (src);
-  ASSERT (ofst + size <= p->header_len);
+  ASSERT (size <= p->header_len && ofst <= p->header_len - size);
 
   latch_lock (&p->l);
 
   DBG_ASSERT (file_pager, p);
 
-  if (p->f.table->pwrite_all (p->f.self, src, size, ofst, e)) {
+  if (p->f.table->pwrite_all (p->f.self, src, size, ofst, e) < 0) {
     goto theend;
   }
 
-  if (p->f.table->fsync (p->f.self, e)) {
+  if (p->f.table->fsync (p->f.self, e) < 0) {
     goto theend;
   }
 
@@ -353,13 +372,12 @@ err_t
 fpgr_read_header (struct file_pager *p, u8 *dest, u32 ofst, u32 size, error *e)
 {
   ASSERT (dest);
-  ASSERT (ofst + size <= p->header_len);
+  ASSERT (size <= p->header_len && ofst <= p->header_len - size);
 
   latch_lock (&p->l);
 
   DBG_ASSERT (file_pager, p);
 
-  // Read all from file
   if (file_pread_all_expect (p->f, dest, size, ofst, e) < 0) {
     goto theend;
   }
@@ -374,43 +392,52 @@ theend:
 #ifndef NDEBUG
 TEST (fpgr_read_write)
 {
-  // The raw page bytes
-  u8     _page[NS_PAGE_SIZE];
-
-  // Create a temporary file
+  // Setup - a pager with two pages on an empty file
+  u8     page[NS_PAGE_SIZE];
   i_file fp = {0};
+  test_assert_int_equal (
+      ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e),
+      SUCCESS
+  );
+  test_assert_int_equal (fp.table->truncate (fp.self, 0, &ctx->e), SUCCESS);
 
-  test_fail_if (ctx->os.table->open_file_rw (ctx->os.self, &fp, "testdb", &ctx->e));
-
-  // File should be size 0
-  test_fail_if (fp.table->truncate (fp.self, 0, &ctx->e));
-
-  // Open a new pager
   struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
-  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
-  // happy path: new page, write, then read back
-  test_fail_if (fpgr_extend (pager, 2, &ctx->e));
+  test_assert (pager != NULL);
+  test_assert_int_equal (fpgr_extend (pager, 2, &ctx->e), SUCCESS);
 
-  // Write 0 : NS_PAGE_SIZE to each byte (overflow fine, it's just data)
-  for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
-    _page[i] = (u8)i;
+  TEST_CASE ("write then read back")
+  {
+    // The byte pattern wraps at 256, that's fine
+    for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
+      page[i] = (u8)i;
+    }
+    test_assert_int_equal (fpgr_write (pager, page, 1, &ctx->e), SUCCESS);
+
+    // Scramble the buffer so the read has to fill it
+    memset (page, 0xFF, NS_PAGE_SIZE);
+    test_assert_int_equal (fpgr_read (pager, page, 1, &ctx->e), SUCCESS);
+
+    for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
+      test_assert_int_equal (page[i], (u8)i);
+    }
   }
-  // Write it out
-  test_fail_if (fpgr_write (pager, _page, 1, &ctx->e));
 
-  // Scramble page so we can read it back in
-  memset (_page, 0xFF, NS_PAGE_SIZE);
-  test_fail_if (fpgr_read (pager, _page, 1, &ctx->e));
-
-  // Iterate and check that it matches what we expect
-  for (u32 i = 0; i < NS_PAGE_SIZE; i++) {
-    test_assert_int_equal (_page[i], (u8)i);
+  TEST_CASE ("read past the last page")
+  {
+    test_err_t_check (fpgr_read (pager, page, 2, &ctx->e), ERR_PG_OUT_OF_RANGE, &ctx->e);
   }
 
-  // There's 2 refs to this file, close the other one
-  test_fail_if (fpgr_close (pager, &ctx->e));
-  test_fail_if (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e));
-  test_fail_if (ctx->os.table->unlink (ctx->os.self, "testdb", &ctx->e));
+  TEST_CASE ("read a page the file no longer has")
+  {
+    // Shrink the file behind the pager's back, so npages says page 1 exists
+    test_assert_int_equal (fp.table->truncate (fp.self, NS_PAGE_SIZE, &ctx->e), SUCCESS);
+    test_err_t_check (fpgr_read (pager, page, 1, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  // Teardown - the pager closed its own handle, close the test's one too
+  test_assert_int_equal (fpgr_close (pager, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, fp.self, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->unlink (ctx->os.self, "testdb", &ctx->e), SUCCESS);
 }
 #endif
 

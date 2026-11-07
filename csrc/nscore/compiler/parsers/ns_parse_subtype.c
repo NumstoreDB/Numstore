@@ -44,7 +44,12 @@ static err_t
 parse_sub_type_inner (struct sub_type_parser *parser, error *e)
 {
   if (!parser_match (parser->base, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected variable name at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected variable name at position %" PRIu32,
+        parser->base->pos
+    );
   }
 
   // VNAME
@@ -72,7 +77,7 @@ parse_sub_type_inner (struct sub_type_parser *parser, error *e)
             ERR_SYNTAX,
             "Expected "
             "identifier at "
-            "position %u",
+            "position %" PRIu32,
             parser->base->pos
         );
       }
@@ -107,9 +112,7 @@ parse_subtype (struct parser *p, struct subtype *dest, error *e)
       .dest = dest,
   };
 
-  err_t rc = parse_sub_type_inner (&parser, e);
-
-  return rc;
+  return parse_sub_type_inner (&parser, e);
 }
 
 err_t
@@ -118,13 +121,13 @@ compile_subtype (struct subtype *dest, const char *text, struct arena_alloc *dal
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e)) {
+  if (lex_tokens (text, &b.temp, (u32)strnlen (text, MAX_COMPILE_TEXT_LEN), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_subtype (&parser, dest, e)) {
+  if (parse_subtype (&parser, dest, e) < 0) {
     goto theend;
   }
 
@@ -144,7 +147,7 @@ test_compile_subtype_green_path (const char *query, struct subtype expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    test_assert_equal (compile_subtype (&actual, query, &alloc, &e), SUCCESS);
+    test_assert_int_equal (compile_subtype (&actual, query, &alloc, &e), SUCCESS);
     test_assert (subtype_equal (&expected, &actual));
   }
 
@@ -201,5 +204,6 @@ TEST (compile_subtype)
   test_compile_subtype_red_path ("struct a x }", ERR_SYNTAX);
   test_compile_subtype_red_path ("foo.", ERR_SYNTAX);
   test_compile_subtype_red_path (".bar", ERR_SYNTAX);
+  test_compile_subtype_red_path ("my@var", ERR_SYNTAX);
 }
 #endif

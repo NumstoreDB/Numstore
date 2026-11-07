@@ -90,18 +90,18 @@ ns_db_new (
   };
 
   // After the struct assignment above, otherwise it wipes the timer
-  if (reliable_os.table->timer_create (reliable_os.self, &ret->timer, e)) {
+  if (reliable_os.table->timer_create (reliable_os.self, &ret->timer, e) < 0) {
     reliable_mem.table->free (reliable_mem.self, ret);
     return NULL;
   }
 
-  if (ns_db_reopen_handle (ret, e)) {
+  if (ns_db_reopen_handle (ret, e) < 0) {
     reliable_os.table->timer_free (reliable_os.self, ret->timer.self);
     reliable_mem.table->free (reliable_mem.self, ret);
     return NULL;
   }
 
-  if (ns_db_set_file_size (ret, e)) {
+  if (ns_db_set_file_size (ret, e) < 0) {
     nsdb_close (ret->db, e);
     reliable_os.table->timer_free (reliable_os.self, ret->timer.self);
     reliable_mem.table->free (reliable_mem.self, ret);
@@ -337,7 +337,7 @@ ns_db_create (struct ns_db *db, const char *vname, const char *typestr, error *e
 
   // Execute under a timer
   pre_op (db);
-  err_t ret = nsdb_plan_execute (plan, db->tx, e);
+  err_t ret = err_t_cast (nsdb_plan_execute (plan, db->tx, e));
   post_op (db);
 
   nsdb_plan_free (plan);
@@ -388,7 +388,7 @@ ns_db_delete_and_switch (struct ns_db *db, const char *next, error *e)
 
   // Do the operation under a timer
   pre_op (db);
-  err_t ret = nsdb_plan_execute (plan, db->tx, e);
+  err_t ret = err_t_cast (nsdb_plan_execute (plan, db->tx, e));
   post_op (db);
 
   nsdb_plan_free (plan);
@@ -409,14 +409,8 @@ ns_db_insert (struct ns_db *db, const void *data, b_size dlen, b_size ofst, b_si
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan *plan = nsdb_plan_fcreate (
-      db->db,
-      "insert %s %llu %llu",
-      e,
-      cur,
-      (unsigned long long)ofst,
-      (unsigned long long)nelems
-  );
+  struct nsdb_plan *
+      plan = nsdb_plan_fcreate (db->db, "insert %s %" PRb_size " %" PRb_size, e, cur, ofst, nelems);
   if (plan == NULL) {
     return error_trace (e);
   }
@@ -446,8 +440,13 @@ ns_db_remove (struct ns_db *db, void *dest, b_size dlen, struct stride str, erro
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan
-      *plan = nsdb_plan_fcreate (db->db, "remove %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  struct nsdb_plan *plan = nsdb_plan_fcreate (
+      db->db,
+      "remove %s[%" PRIu64 ":%" PRIu64 ":%" PRIu64 "]",
+      e,
+      cur,
+      stride_ustr_args (str)
+  );
   if (plan == NULL) {
     return error_trace (e);
   }
@@ -477,8 +476,13 @@ ns_db_read (struct ns_db *db, void *dest, b_size dlen, struct stride str, error 
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan
-      *plan = nsdb_plan_fcreate (db->db, "read %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  struct nsdb_plan *plan = nsdb_plan_fcreate (
+      db->db,
+      "read %s[%" PRIu64 ":%" PRIu64 ":%" PRIu64 "]",
+      e,
+      cur,
+      stride_ustr_args (str)
+  );
   if (plan == NULL) {
     return error_trace (e);
   }
@@ -508,8 +512,13 @@ ns_db_write (struct ns_db *db, const void *data, b_size dlen, struct stride str,
   ASSERT (cur);
 
   // Construct the query
-  struct nsdb_plan
-      *plan = nsdb_plan_fcreate (db->db, "write %s[%d:%d:%d]", e, cur, stride_ustr_args (str));
+  struct nsdb_plan *plan = nsdb_plan_fcreate (
+      db->db,
+      "write %s[%" PRIu64 ":%" PRIu64 ":%" PRIu64 "]",
+      e,
+      cur,
+      stride_ustr_args (str)
+  );
   if (plan == NULL) {
     return error_trace (e);
   }

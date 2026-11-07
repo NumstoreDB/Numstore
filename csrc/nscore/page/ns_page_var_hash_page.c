@@ -27,13 +27,13 @@ DEFINE_DBG_ASSERT (page, vh_page, d, { ASSERT (d); })
 void
 vh_init_empty (page *p)
 {
+  DBG_ASSERT (vh_page, p);
   ASSERT (page_get_type (p) == PG_VAR_HASH_PAGE);
   for (p_size i = 0; i < VH_HASH_LEN; ++i) {
     vh_set_hash_value (p, i, PGNO_NULL);
   }
 }
 
-// Validation
 err_t
 vh_validate_for_db (const page *p, error *e)
 {
@@ -46,10 +46,11 @@ vh_validate_for_db (const page *p, error *e)
   return SUCCESS;
 }
 
-// Utils
 void
 i_log_vh (const int level, const page *vh)
 {
+  DBG_ASSERT (vh_page, vh);
+
   i_log (level, "=== VAR HASH TABLE PAGE START ===\n");
 
   bool empty = true;
@@ -81,5 +82,22 @@ TEST (i_log_vh)
   vh_set_hash_value (&vh, 10, 10);
   vh_set_hash_value (&vh, 12, 10);
   i_log_vh (LOG_INFO, &vh);
+}
+
+TEST (vh_validate_for_db)
+{
+  page sut;
+
+  TEST_CASE ("A var hash page is valid")
+  {
+    page_init_empty (&sut, PG_VAR_HASH_PAGE);
+    test_err_t_check (vh_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
+  }
+
+  TEST_CASE ("Any other page type is corrupt")
+  {
+    page_init_empty (&sut, PG_VAR_PAGE);
+    test_err_t_check (vh_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
 }
 #endif

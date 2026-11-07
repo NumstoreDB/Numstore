@@ -83,9 +83,9 @@ TEST (struct_t_validate_shallow)
   TEST_CASE ("Len == 0")
   {
     struct struct_t s = {
+        .len   = 0,
         .keys  = (struct string[]){strfcstr ("foo")},
         .types = (struct type *[]){&TU8},
-        .len   = 0,
     };
     test_err_t_check (struct_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
@@ -93,9 +93,9 @@ TEST (struct_t_validate_shallow)
   TEST_CASE ("One Invalid label")
   {
     struct struct_t s = {
+        .len   = 3,
         .keys  = (struct string[]){strfcstr ("foo"), strfcstr (""), strfcstr ("biz")},
         .types = (struct type *[]){&TU8, &TU16, &TU32},
-        .len   = 3,
     };
     test_err_t_check (struct_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
@@ -103,9 +103,9 @@ TEST (struct_t_validate_shallow)
   TEST_CASE ("Non Unique labels")
   {
     struct struct_t s = {
+        .len   = 3,
         .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("biz"), strfcstr ("biz")},
         .types = (struct type *[]){&TU8, &TU16, &TU32},
-        .len   = 3,
     };
     test_err_t_check (struct_t_validate_shallow (&s, &ctx->e), ERR_INTERP, &ctx->e);
   }
@@ -113,9 +113,9 @@ TEST (struct_t_validate_shallow)
   TEST_CASE ("Valid")
   {
     struct struct_t s = {
+        .len   = 3,
         .keys  = (struct string[]){strfcstr ("foo"), strfcstr ("bar"), strfcstr ("biz")},
         .types = (struct type *[]){&TU8, &TU16, &TU32},
-        .len   = 3,
     };
     test_assert (struct_t_validate_shallow (&s, &ctx->e) == SUCCESS);
   }
@@ -143,10 +143,12 @@ struct_t_validate (const struct struct_t *s, error *e)
 struct type *
 struct_t_resolve_key (t_size *offset, struct struct_t *t, struct string key)
 {
+  DBG_ASSERT (unchecked_struct_t, t);
+
   t_size roffset = 0;
   for (u32 i = 0; i < t->len; ++i) {
     if (string_equal (t->keys[i], key)) {
-      if (offset) {
+      if (offset != NULL) {
         *offset = roffset;
       }
       return t->types[i];
@@ -187,13 +189,13 @@ TEST (struct_t_resolve_key)
       compile_type_alloc ("f32", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("b"))
   ));
-  test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32));
+  test_assert_int_equal (ofst, sizeof (f32) * 10 + sizeof (u32));
 
   test_assert (type_equal (
       compile_type_alloc ("[10][20]f32", &ctx->alloc, &ctx->e),
       struct_t_resolve_key (&ofst, &t->st, strfcstr ("c"))
   ));
-  test_assert_int_equal (ofst, 10 * sizeof (f32) + sizeof (u32) + sizeof (f32));
+  test_assert_int_equal (ofst, sizeof (f32) * 10 + sizeof (u32) + sizeof (f32));
 
   test_assert (type_equal (
       compile_type_alloc ("i8", &ctx->alloc, &ctx->e),
@@ -201,7 +203,7 @@ TEST (struct_t_resolve_key)
   ));
   test_assert_int_equal (
       ofst,
-      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32)
+      sizeof (f32) * 10 + sizeof (u32) + sizeof (f32) + sizeof (f32) * 10 * 20
   );
 
   test_assert (type_equal (
@@ -210,8 +212,10 @@ TEST (struct_t_resolve_key)
   ));
   test_assert_int_equal (
       ofst,
-      10 * sizeof (f32) + sizeof (u32) + sizeof (f32) + 10 * 20 * sizeof (f32) + sizeof (i8)
+      sizeof (f32) * 10 + sizeof (u32) + sizeof (f32) + sizeof (f32) * 10 * 20 + sizeof (i8)
   );
+
+  test_assert_ptr_equal (struct_t_resolve_key (NULL, &t->st, strfcstr ("missing")), NULL);
 
   arena_alloc_free_all (&ctx->alloc);
 }
@@ -225,15 +229,17 @@ struct_t_create (struct struct_t *dest, struct kvt_list list, struct arena_alloc
     return struct_t_type_err ("struct must have greater than 0 keys", e);
   }
 
-  // Copy stuff over
-  if (dalloc) {
+  // Copy the arrays into dalloc so dest doesn't share them with list
+  if (dalloc != NULL) {
     dest->len  = list.len;
     dest->keys = arena_alloc_copy (dalloc, list.keys, list.len * sizeof *dest->keys, e);
     if (dest->keys == NULL) {
       return error_trace (e);
     }
 
-    dest->types = arena_alloc_copy (dalloc, list.types, list.len * sizeof (struct type *), e);
+    dest->types = arena_alloc_copy (dalloc, list.types, list.len * sizeof *dest->types, e);
+    // TODO: this checks keys again instead of types, so a failed types copy
+    // returns SUCCESS with types == NULL
     if (dest->keys == NULL) {
       return error_trace (e);
     }
@@ -264,10 +270,10 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
     return n;
   }
   len += n;
-  if (out) {
+  if (out != NULL) {
     out += n;
     if ((u32)n < avail) {
-      avail -= n;
+      avail -= (u32)n;
     } else {
       avail = 0;
     }
@@ -275,15 +281,15 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
 
   for (u32 i = 0; i < st->len; ++i) {
     struct string key = st->keys[i];
-    n                 = snprintf (out, avail, "%.*s ", key.len, key.data);
+    n                 = snprintf (out, avail, "%.*s ", (int)key.len, key.data);
     if (n < 0) {
       return n;
     }
     len += n;
-    if (out) {
+    if (out != NULL) {
       out += n;
       if ((u32)n < avail) {
-        avail -= n;
+        avail -= (u32)n;
       } else {
         avail = 0;
       }
@@ -294,10 +300,10 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
       return n;
     }
     len += n;
-    if (out) {
+    if (out != NULL) {
       out += n;
       if ((u32)n < avail) {
-        avail -= n;
+        avail -= (u32)n;
       } else {
         avail = 0;
       }
@@ -309,10 +315,10 @@ struct_t_snprintf (char *str, u32 size, const struct struct_t *st)
         return n;
       }
       len += n;
-      if (out) {
+      if (out != NULL) {
         out += n;
         if ((u32)n < avail) {
-          avail -= n;
+          avail -= (u32)n;
         } else {
           avail = 0;
         }
@@ -391,7 +397,7 @@ struct_t_byte_size (const struct struct_t *t)
   DBG_ASSERT (valid_struct_t, t);
   u32 ret = 0;
 
-  // Each type is layed out contiguously
+  // Fields are laid out back to back with no padding
   for (u32 i = 0; i < t->len; ++i) {
     ret += type_byte_size (t->types[i]);
   }
@@ -519,7 +525,6 @@ TEST (struct_t_get_serial_size)
   u16 act;
   struct_t_get_serial_size (&act, &st, &ctx->e);
   u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
-  // u64 exp = 2 + 4 * 2 + 3 + 2 + 4 + 5 + 4 * 2;
 
   test_assert_int_equal (exp, act);
 }
@@ -644,11 +649,12 @@ struct_t_deserialize (
       goto early_termination;
     }
 
+    // TODO: key.len is read inside key's own initializer, and the order
+    // initializers are evaluated in is unspecified. Pass klen instead.
     struct string key = {
         .len  = klen,
         .data = arena_malloc (a, key.len, 1, e),
     };
-    // Read the string data
     if (key.data == NULL) {
       goto theend;
     }
@@ -882,12 +888,12 @@ struct_t_random (
 
   st->len  = (u16)randu32r (1, 5);
 
-  st->keys = arena_malloc (alloc, st->len, sizeof (struct string), e);
+  st->keys = arena_malloc (alloc, st->len, sizeof *st->keys, e);
   if (st->keys == NULL) {
     return error_trace (e);
   }
 
-  st->types = arena_malloc (alloc, st->len, sizeof (struct type *), e);
+  st->types = arena_malloc (alloc, st->len, sizeof *st->types, e);
   if (st->types == NULL) {
     return error_trace (e);
   }
@@ -921,3 +927,146 @@ struct_t_equal (const struct struct_t *left, const struct struct_t *right)
 
   return true;
 }
+
+#ifndef NDEBUG
+TEST (struct_t_create)
+{
+  struct string   keys[]  = {strfcstr ("a"), strfcstr ("b")};
+  struct type    *types[] = {&TU8, &TI8};
+  struct kvt_list list    = {.len = 2, .keys = keys, .types = types};
+
+  TEST_CASE ("no keys")
+  {
+    struct struct_t dest;
+    struct kvt_list empty = {.len = 0, .keys = keys, .types = types};
+    test_err_t_check (struct_t_create (&dest, empty, NULL, &ctx->e), ERR_INTERP, &ctx->e);
+  }
+
+  TEST_CASE ("without dalloc the arrays are shared")
+  {
+    struct struct_t dest;
+    test_assert_int_equal (struct_t_create (&dest, list, NULL, &ctx->e), SUCCESS);
+    test_assert_ptr_equal (dest.keys, keys);
+    test_assert_ptr_equal (dest.types, types);
+  }
+
+  TEST_CASE ("with dalloc the arrays are copied")
+  {
+    struct struct_t dest;
+    test_assert_int_equal (struct_t_create (&dest, list, &ctx->alloc, &ctx->e), SUCCESS);
+    test_assert (dest.keys != keys);
+    test_assert (dest.types != types);
+    test_assert_int_equal (dest.len, 2);
+    test_assert (string_equal (dest.keys[1], keys[1]));
+    test_assert_ptr_equal (dest.types[1], &TI8);
+  }
+
+  TEST_CASE ("keys copy out of memory")
+  {
+    struct struct_t dest;
+    arena_alloc_free_all (&ctx->faulty_alloc);
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (
+        struct_t_create (&dest, list, &ctx->faulty_alloc, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
+    faulty_mem_reset (ctx->faulty_mem);
+  }
+
+  arena_alloc_free_all (&ctx->alloc);
+}
+
+TEST (struct_t_equal)
+{
+  struct string ab[]   = {strfcstr ("a"), strfcstr ("b")};
+  struct string ac[]   = {strfcstr ("a"), strfcstr ("c")};
+  struct type  *u8s[]  = {&TU8, &TU8};
+  struct type  *u8i8[] = {&TU8, &TI8};
+
+  struct type   base   = mk_struct (2, ab, u8s);
+  struct type   same   = mk_struct (2, ab, u8s);
+  struct type   fewer  = mk_struct (1, ab, u8s);
+  struct type   keys   = mk_struct (2, ac, u8s);
+  struct type   types  = mk_struct (2, ab, u8i8);
+
+  test_assert (struct_t_equal (&base.st, &same.st));
+  test_fail_if (struct_t_equal (&base.st, &fewer.st));
+  test_fail_if (struct_t_equal (&base.st, &keys.st));
+  test_fail_if (struct_t_equal (&base.st, &types.st));
+}
+
+TEST (struct_t_random_fail_malloc)
+{
+  // Setup - an arena where every allocation is a fallible malloc
+  struct arena_alloc a;
+  type_test_arena_create (&a, ctx->faulty_mem);
+
+  struct struct_t st;
+  int             fail_after = 0;
+  err_t           ret;
+
+  // Run - depth 1, so every field is a primitive
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&a);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = struct_t_random (&st, &a, 1, 4096, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert (st.len > 0);
+
+  // Teardown
+  arena_alloc_free_all (&a);
+}
+
+TEST (struct_t_deserialize_fail_malloc)
+{
+  // Setup - "struct { foo u32, ba u8 }" serialized, and an arena where every
+  // allocation is a fallible malloc
+  struct string     keys[]  = {strfcstr ("foo"), strfcstr ("ba")};
+  struct type      *types[] = {&TU32, &TU8};
+  struct type       src     = mk_struct (2, keys, types);
+
+  u8                buf[64];
+  struct serializer sr = srlizr_create (buf, sizeof buf);
+  struct_t_serialize (&sr, &src.st);
+
+  struct arena_alloc a;
+  type_test_arena_create (&a, ctx->faulty_mem);
+
+  struct struct_t dest;
+  int             fail_after = 0;
+  err_t           ret;
+
+  // Run
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&a);
+      struct deserializer d = dsrlizr_create (buf, sr.dlen);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = struct_t_deserialize (&dest, &d, &a, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert (struct_t_equal (&dest, &src.st));
+
+  // Teardown
+  arena_alloc_free_all (&a);
+}
+#endif

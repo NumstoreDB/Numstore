@@ -75,7 +75,7 @@ pgr_new_impl (
   // Insert page into the hash table
   const hdata_idx hd = (hdata_idx){
       .key   = pg,
-      .value = rclock,
+      .value = (u32)rclock,
   };
 
   ht_insert_expect_idx (&p->pgno_to_value, hd);
@@ -120,13 +120,13 @@ theend:
 static err_t
 pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error *e)
 {
-  // Do a Nested Top Action
+  DBG_ASSERT (pager, p);
 
   // 1. Ascertain the position of the current tx's last log record
   const lsn undo_next = tx->data.last_lsn;
 
-  // 2. Logging the redo and undp information
-  lsn       top_lsn   = wal_append_update_log (
+  // 2. Logging the redo and undo information
+  wal_append_update_log (
       p->ww,
       (struct wal_update_write){
           .type = WUP_FEXT,
@@ -139,9 +139,13 @@ pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error
       }
   );
 
-  // 3. Writing a dummy CLR whose UNL points to the log record whose
+  // 3. Writing a dummy CLR whose UndoNxtLSN points to the log record whose
   // position was remembered in 1
-  top_lsn = wal_append_clr_log (
+  //
+  // TODO: the CLR's prev is the record before the FEXT, not the FEXT itself,
+  // so the FEXT drops out of the txn's PrevLSN chain. Check whether that is
+  // intended (ARIES Fig. 14 chains the dummy CLR to the last NTA record).
+  lsn top_lsn = wal_append_clr_log (
       p->ww,
       (struct wal_clr_write){
           .type      = WCLR_DUMMY,
@@ -156,12 +160,12 @@ pgr_extend_file (const struct pager *p, const pgno npages, struct txn *tx, error
   tx->data.undo_next_lsn = top_lsn;
 
   // 5. Physically extend the file; if this fails the WAL records are already
-  // durable
+  // appended
   if (fpgr_extend (p->fp, npages, e) < 0) {
     return error_trace (e);
   }
 
-  return error_trace (e);
+  return SUCCESS;
 }
 
 static inline err_t
@@ -195,6 +199,8 @@ pgr_new_fsmpg (page_h *fsm, struct pager *p, struct txn *tx, error *e)
 err_t
 pgr_new (page_h *dest, struct pager *p, struct txn *tx, const enum page_type type, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   page_h fsm   = page_h_create ();
   pgno   fsmpg = 0;
 
@@ -276,7 +282,7 @@ TEST (pgr_new_get_save)
   pgr_begin_txn (&tx, f.p, &ctx->e);
 
   pgr_new (&h, f.p, &tx, PG_DATA_LIST, &ctx->e);
-  test_assert_int_equal ((int)pgr_get_npages (f.p), FS_BTMP_NPGS);
+  test_assert_type_equal (pgr_get_npages (f.p), FS_BTMP_NPGS, p_size, PRp_size);
 
   // Make it valid
   dl_set_used (page_h_w (&h), DL_DATA_SIZE);
@@ -352,21 +358,19 @@ pgr_new_sweep_cleanup (
   error_reset (&ctx->e);
 }
 
-/**
- * TODO - two bugs when the file extend in pgr_new_fsmpg fails (Fail after 0):
- *
- * 1. pgr_new takes p->pgrnew_lock, then returns straight out of the locked
- *    block when pgr_new_fsmpg fails. The latch is never released, so the next
- *    pgr_new on that pager deadlocks. Fix: latch_unlock (&p->pgrnew_lock) on
- *    that error path.
- *
- * 2. pgr_new_fsmpg already released (and logged) the new fsm page before
- *    pgr_extend_file fails, so the buffer pool keeps a dirty frame for a page
- *    past the end of the file. Rollback succeeds (the dummy CLR skips the
- *    FEXT), but pgr_close -> pgr_evict_all_pages -> pgr_flush_unsafe ->
- *    fpgr_write hits ASSERT (pg < npages). The new fsm frame needs to be
- *    dropped (or the extend done first) when the extend fails.
- */
+// TODO: two bugs when the file extend in pgr_new_fsmpg fails (Fail after 0):
+//
+// 1. pgr_new takes p->pgrnew_lock, then returns straight out of the locked
+//    block when pgr_new_fsmpg fails. The latch is never released, so the next
+//    pgr_new on that pager deadlocks. Fix: latch_unlock (&p->pgrnew_lock) on
+//    that error path.
+//
+// 2. pgr_new_fsmpg already released (and logged) the new fsm page before
+//    pgr_extend_file fails, so the buffer pool keeps a dirty frame for a page
+//    past the end of the file. Rollback succeeds (the dummy CLR skips the
+//    FEXT), but pgr_close -> pgr_evict_all_pages -> pgr_flush_unsafe ->
+//    fpgr_write hits ASSERT (pg < npages). The new fsm frame needs to be
+//    dropped (or the extend done first) when the extend fails.
 TEST_DISABLED (pgr_new_fail_os)
 {
   struct pgr_fixture f;
@@ -393,7 +397,7 @@ TEST_DISABLED (pgr_new_fail_os)
   test_fail_if (lock_leaked);
 }
 
-// TODO - Same as pgr_new_fail_os bug 2: the crash iterations pass, but the
+// TODO: Same as pgr_new_fail_os bug 2: the crash iterations pass, but the
 // first plain failure (the file extend) leaves the past-the-end fsm frame
 // that pgr_close then asserts on.
 TEST_DISABLED (pgr_new_fail_os_full_wal)
@@ -425,18 +429,16 @@ TEST_DISABLED (pgr_new_fail_os_full_wal)
   test_fail_if (lock_leaked);
 }
 
-/**
- * TODO - pgr_release_with_log appends the WAL record and only then calls
- * dpgt_add. When dpgt_add fails (Fail after 0) it returns with the page still
- * X latched and the handle still in PHM_X, and pgr_new_fsmpg returns without
- * cancelling it (and with p->pgrnew_lock held, see pgr_new_fail_os).
- *
- * The rollback that follows undoes the logged fsm write, which needs
- * pgr_get_writable on that same page, and blocks forever on its X latch.
- *
- * Fix: add the dirty page table entry before logging, or unwind the handle
- * (cancel) on that failure path - and release pgrnew_lock in pgr_new.
- */
+// TODO: pgr_release_with_log appends the WAL record and only then calls
+// dpgt_add. When dpgt_add fails (Fail after 0) it returns with the page still
+// X latched and the handle still in PHM_X, and pgr_new_fsmpg returns without
+// cancelling it (and with p->pgrnew_lock held, see pgr_new_fail_os).
+//
+// The rollback that follows undoes the logged fsm write, which needs
+// pgr_get_writable on that same page, and blocks forever on its X latch.
+//
+// Fix: add the dirty page table entry before logging, or unwind the handle
+// (cancel) on that failure path - and release pgrnew_lock in pgr_new.
 TEST_DISABLED (pgr_new_fail_nomem)
 {
   struct pgr_fixture f;
@@ -463,7 +465,7 @@ TEST_DISABLED (pgr_new_fail_nomem)
   test_fail_if (lock_leaked);
 }
 
-// TODO - Fails in pgr_get_writable, not pgr_new: see the note on
+// TODO: Fails in pgr_get_writable, not pgr_new: see the note on
 // pgr_get_writable_fail_os. A failed read of the fsm page leaves a pinned
 // frame in the page table, and pgr_close asserts mp->pin == 0 evicting it.
 TEST_DISABLED (pgr_new_fail_os_existing_fsm)

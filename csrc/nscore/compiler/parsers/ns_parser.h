@@ -65,6 +65,7 @@ parser_init (struct token *src, struct builder *b, u32 src_len)
 HEADER_FUNC u32
 parser_remain (struct parser *p)
 {
+  DBG_ASSERT (parser, p);
   return p->src_len - p->pos;
 }
 
@@ -111,6 +112,8 @@ parser_advance (struct parser *p)
 HEADER_FUNC bool
 parser_maybe_parse_integer (struct parser *p, i32 *dest)
 {
+  DBG_ASSERT (parser, p);
+
   struct token *tok1 = parser_peek (p);
   if (tok1->type == TT_INTEGER) {
     *dest = parser_advance (p)->integer;
@@ -132,13 +135,15 @@ parser_maybe_parse_integer (struct parser *p, i32 *dest)
 HEADER_FUNC err_t
 parser_expect (struct parser *p, enum token_t type, error *e)
 {
+  DBG_ASSERT (parser, p);
+
   struct token *tok = parser_peek (p);
 
   if (tok->type != type) {
     return error_causef (
         e,
         ERR_SYNTAX,
-        "Expected token type %s at position %u, got %s",
+        "Expected token type %s at position %" PRIu32 ", got %s",
         tt_tostr (type),
         p->pos,
         tt_tostr (tok->type)
@@ -159,12 +164,14 @@ parser_at_end (struct parser *p)
 HEADER_FUNC err_t
 parser_check_end (struct parser *p, error *e)
 {
+  DBG_ASSERT (parser, p);
+
   if (!parser_at_end (p)) {
     return error_causef (
         e,
         ERR_SYNTAX,
         "Unexpected tokens after "
-        "expression at position %u",
+        "expression at position %" PRIu32,
         p->pos
     );
   }

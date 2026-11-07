@@ -167,6 +167,27 @@ mk_sarray (u16 rank, u32 *dims, struct type *sub)
 enum prim_t strtoprim (const char *text, u32 len);
 
 #ifndef NDEBUG
+/// Test helper: an arena over [mem] that sizes each chunk to the request, so
+/// every allocation is its own malloc and a fail_after sweep can hit each one
+HEADER_FUNC void
+type_test_arena_create (struct arena_alloc *dest, struct i_mem mem)
+{
+  arena_alloc_create (
+      dest,
+      (struct arena_alloc_settings){
+          .max_alloc_size    = 0,
+          .max_total_size    = 0,
+          .target_chunk_mult = 1,
+          .min_chunk_size    = 10,
+          .max_chunk_size    = 0,
+          .max_chunks        = 0,
+          .mem               = mem,
+      }
+  );
+}
+#endif
+
+#ifndef NDEBUG
 static struct type MAYBE_UNUSED TU8    = _mk_prim (U8);
 static struct type MAYBE_UNUSED TU16   = _mk_prim (U16);
 static struct type MAYBE_UNUSED TU32   = _mk_prim (U32);

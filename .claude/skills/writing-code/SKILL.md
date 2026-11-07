@@ -15,7 +15,6 @@ code doesn't settle the question.
 | [assertions.md](references/assertions.md)                              | preconditions, invariants, impossible cases       |
 | [comments.md](references/comments.md)                                  | comments, doc comments, TODOs                     |
 | [conventions.md](references/conventions.md)                            | formatting, naming, errors, headers               |
-| [good-comments.md](../shared/good-comments.md)                         | real comments from `csrc/` worth copying          |
 
 Tests have their own skill, [writing-c-unit-tests](../writing-c-unit-tests/SKILL.md).
 For WAL, commit, rollback, checkpoint or recovery code, also read

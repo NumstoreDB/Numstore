@@ -53,7 +53,6 @@ pgr_cancel (page_h *h)
     spx_unlock_s (&h->pgr->data);
   }
 
-  // Decrement pin
   h->pgr->pin--;
   h->pgr  = NULL;
   h->mode = PHM_NONE;

@@ -173,7 +173,7 @@ TEST (ns_write_txn)
     // Overwrite a random element, then compare everything against the shadow
     u32 *dst = ctx->mem.table->malloc (ctx->mem.self, 10 * sizeof (u32), 1, NULL);
     for (int i = 0; i < 10; ++i) {
-      int idx = randu32 () % 10;
+      int idx = (int)(randu32 () % 10);
       u32 val;
       rand_bytes (&val, sizeof (val));
       shadow[idx] = val;
@@ -217,7 +217,7 @@ TEST (ns_write_txn)
     // over
     u32 *dst = ctx->mem.table->malloc (ctx->mem.self, 10 * sizeof (u32), 1, NULL);
     for (int i = 0; i < 10; ++i) {
-      int idx = randu32 () % 10;
+      int idx = (int)(randu32 () % 10);
       u32 val;
       rand_bytes (&val, sizeof (val));
 
@@ -263,7 +263,7 @@ TEST (ns_write_txn)
 
     u32 *dst = ctx->mem.table->malloc (ctx->mem.self, 10 * sizeof (u32), 1, NULL);
     for (int i = 0; i < 20; ++i) {
-      int idx = randu32 () % 10;
+      int idx = (int)(randu32 () % 10);
       u32 val;
       rand_bytes (&val, sizeof (val));
       data[idx]      = val;

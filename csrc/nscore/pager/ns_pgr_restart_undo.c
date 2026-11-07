@@ -34,7 +34,7 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
       break;
     }
 
-    struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, NULL, undo_lsn, e);
+    struct wal_rec_hdr_read *log_rec = wal_read_entry (p->ww, NULL, (lsn)undo_lsn, e);
     if (log_rec == NULL) {
       goto failed;
     }
@@ -46,24 +46,18 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
 
         if (wrh_is_undoable (log_rec)) {
           page_h ph = page_h_create ();
-          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e)) {
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, log_rec->update.phys.pg, p, e) < 0) {
             goto failed;
           }
 
           // Undo and Append a clr log
           lsn l = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph));
 
-          // Set the page lsn
           page_set_page_lsn (page_h_w (&ph), l);
-
-          // Update the last lsn of the transaction
           tx->data.last_lsn = l;
-
-          // Release this page
           pgr_unfix (&ph, PG_PERMISSIVE);
         }
 
-        // Update undo next page
         tx->data.undo_next_lsn = log_rec->update.prev;
 
         if (log_rec->update.prev == 0) {

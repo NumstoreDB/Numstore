@@ -63,7 +63,12 @@ parse_field_ref (struct kvt_ref_list_builder *builder, struct type_ref_parser *p
 {
   // IDENT
   if (!parser_match (parser->base, TT_IDENTIFIER)) {
-    return error_causef (e, ERR_SYNTAX, "Expected identifier at position %u", parser->base->pos);
+    return error_causef (
+        e,
+        ERR_SYNTAX,
+        "Expected identifier at position %" PRIu32,
+        parser->base->pos
+    );
   }
 
   struct token *tok = parser_advance (parser->base);
@@ -136,7 +141,7 @@ parse_type_ref_inner (struct type_ref_parser *parser, struct type_ref *out, erro
           ERR_SYNTAX,
           "Expected type_ref (struct or identifier) "
           "at "
-          "position %u, got token type %s",
+          "position %" PRIu32 ", got token type %s",
           parser->base->pos,
           tt_tostr (tok->type)
       );
@@ -166,13 +171,13 @@ compile_type_ref (struct type_ref *dest, const char *text, struct arena_alloc *d
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0) {
+  if (lex_tokens (text, &b.temp, (u32)strnlen (text, MAX_COMPILE_TEXT_LEN), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_type_ref (&parser, dest, e)) {
+  if (parse_type_ref (&parser, dest, e) < 0) {
     goto theend;
   }
 
@@ -193,7 +198,7 @@ test_compile_type_ref_green_path (const char *query, struct type_ref expected)
 
   TEST_CASE ("SHOULD PASS: %s", query)
   {
-    test_assert_equal (compile_type_ref (&actual, query, &alloc, &e), SUCCESS);
+    test_assert_int_equal (compile_type_ref (&actual, query, &alloc, &e), SUCCESS);
     test_assert (type_ref_equal (expected, actual));
   }
 
@@ -315,6 +320,8 @@ TEST (compile_type_ref)
   test_compile_type_ref_red_path ("struct { a x,, b y }", ERR_SYNTAX);
   test_compile_type_ref_red_path ("struct { a x, b }", ERR_SYNTAX);
   test_compile_type_ref_red_path ("struct { a x, struct y }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a @ }", ERR_SYNTAX);
+  test_compile_type_ref_red_path ("struct { a x, a y }", ERR_INTERP);
 }
 
 #endif

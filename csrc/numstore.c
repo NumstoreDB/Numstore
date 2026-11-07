@@ -28,7 +28,7 @@
 #include <stdarg.h>
 
 static nsdb_t *
-_ns_open (const char *path, error *e)
+ns_open_common (const char *path, error *e)
 {
   struct i_mem mem = default_mem ();
 
@@ -46,14 +46,14 @@ _ns_open (const char *path, error *e)
     return NULL;
   }
 
-  // Initialize pager
   if (numstore_init_pager (db->p, e) < 0) {
     nsdb_close (db, e);
     system_os_free (os);
     return NULL;
   }
 
-  // Allocate an error for the database
+  // The database only keeps a pointer to its error, so it lives on the heap
+  // until ns_close / ns_crash free it
   error *persistent_e = mem.table->malloc (mem.self, 1, sizeof *persistent_e, e);
   if (persistent_e == NULL) {
     nsdb_close (db, e);
@@ -72,14 +72,14 @@ nsdb_t *
 ns_open (const char *path)
 {
   error e = error_create ();
-  return _ns_open (path, &e);
+  return ns_open_common (path, &e);
 }
 
 nsdb_t *
 ns_open_with_error (const char *path, char erstr[], unsigned elen)
 {
   error   e   = error_create ();
-  nsdb_t *ret = _ns_open (path, &e);
+  nsdb_t *ret = ns_open_common (path, &e);
   if (ret == NULL) {
     memcpy (erstr, e.cause_msg, MIN (e.cmlen, elen));
     return NULL;
@@ -88,7 +88,7 @@ ns_open_with_error (const char *path, char erstr[], unsigned elen)
 }
 
 static nsdb_t *
-_ns_smfile_open (const char *path, error *e)
+ns_smfile_open_common (const char *path, error *e)
 {
   struct i_mem mem = default_mem ();
 
@@ -106,14 +106,14 @@ _ns_smfile_open (const char *path, error *e)
     return NULL;
   }
 
-  // Initialize pager
   if (smartfiles_init_pager (db->p, e) < 0) {
     nsdb_close (db, e);
     system_os_free (os);
     return NULL;
   }
 
-  // Allocate an error for the database
+  // The database only keeps a pointer to its error, so it lives on the heap
+  // until ns_close / ns_crash free it
   error *persistent_e = mem.table->malloc (mem.self, 1, sizeof *persistent_e, e);
   if (persistent_e == NULL) {
     nsdb_close (db, e);
@@ -132,14 +132,14 @@ nsdb_t *
 ns_smfile_open (const char *path)
 {
   error e = error_create ();
-  return _ns_smfile_open (path, &e);
+  return ns_smfile_open_common (path, &e);
 }
 
 nsdb_t *
 ns_smfile_open_with_error (const char *path, char erstr[], unsigned elen)
 {
   error   e   = error_create ();
-  nsdb_t *ret = _ns_smfile_open (path, &e);
+  nsdb_t *ret = ns_smfile_open_common (path, &e);
   if (ret == NULL) {
     memcpy (erstr, e.cause_msg, MIN (e.cmlen, elen));
     return NULL;
@@ -267,7 +267,9 @@ ns_visit_consumer (struct variable *_var, void *_ctx, MAYBE_UNUSED error *e)
 int
 ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx)
 {
-  // Doesnt use tx yet
+  // TODO: the walk runs outside any transaction and ignores [tx]. Pass it
+  // through once ns_visit_variables takes one, so the walk sees the caller's
+  // uncommitted variables.
   (void)tx;
 
   error_reset (db->e);
@@ -294,9 +296,8 @@ query_vsnprintf (const char *fmt, va_list ap, struct arena_alloc *alloc, error *
     return NULL;
   }
 
-  // Allocate buffer for the query
   char *buf = arena_malloc (alloc, (size_t)qlen + 1, 1, e);
-  if (!buf) {
+  if (buf == NULL) {
     va_end (ap2);
     return NULL;
   }
@@ -351,19 +352,21 @@ ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...)
 int
 ns_plan_execute (nsdb_plan_t *plan, struct txn *tx)
 {
-  return nsdb_plan_execute (plan, tx, plan->parent->e);
+  // TODO: nsdb_plan_execute returns an sb_size count for QT_REMOVE, which
+  // this int truncates past INT32_MAX. See the matching TODO on nsdb_execute.
+  return (int)nsdb_plan_execute (plan, tx, plan->parent->e);
 }
 
 nsdb_var_t *
-ns_get_var (nsdb_t *db, struct txn *tx, const char *fmt, ...)
+ns_get_var (nsdb_t *db, struct txn *tx, const char *query_fmt, ...)
 {
   error_reset (db->e);
 
   va_list ap;
-  va_start (ap, fmt);
+  va_start (ap, query_fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  char *query = query_vsnprintf (query_fmt, ap, &temp, NULL);
   va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
@@ -393,12 +396,13 @@ ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...)
 
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
     return error_trace (db->e);
   }
 
-  err_t ret = nsdb_read (db, txn, dest, dlen, query, NULL);
+  sb_size ret = nsdb_read (db, txn, dest, dlen, query, NULL);
   if (ret < 0) {
     ALLOC_CLOSE (temp);
     return ret;
@@ -424,12 +428,13 @@ ns_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...)
 
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
     return NULL;
   }
 
-  nsdb_var_t *ret = nsdb_read_malloc (db, txn, dlen, query, NULL);
+  void *ret = nsdb_read_malloc (db, txn, dlen, query, NULL);
   if (ret == NULL) {
     ALLOC_CLOSE (temp);
     return NULL;
@@ -456,12 +461,13 @@ ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt,
 
   ALLOC_INIT (temp);
   char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
     return error_trace (db->e);
   }
 
-  err_t ret = nsdb_write (db, txn, src, dlen, query, NULL);
+  sb_size ret = nsdb_write (db, txn, src, dlen, query, NULL);
   ALLOC_CLOSE (temp);
   return ret;
 }
@@ -473,22 +479,22 @@ ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dlen)
 }
 
 sb_size
-ns_smfile_size (nsdb_t *db, struct txn *tx)
+ns_smfile_size (nsdb_t *smf, struct txn *tx)
 {
-  error_reset (db->e);
-  return nsdb_smfile_size (db, tx, NULL);
+  error_reset (smf->e);
+  return nsdb_smfile_size (smf, tx, NULL);
 }
 
 sb_size
-ns_smfile_insert (nsdb_t *db, struct txn *tx, const void *src, sb_size bofst, b_size slen)
+ns_smfile_insert (nsdb_t *smf, struct txn *tx, const void *src, sb_size bofst, b_size slen)
 {
-  error_reset (db->e);
-  return nsdb_smfile_insert (db, tx, src, bofst, slen, NULL);
+  error_reset (smf->e);
+  return nsdb_smfile_insert (smf, tx, src, bofst, slen, NULL);
 }
 
 sb_size
 ns_smfile_read (
-    nsdb_t     *db,
+    nsdb_t     *smf,
     struct txn *tx,
     void       *dest,
     t_size      size,
@@ -497,13 +503,13 @@ ns_smfile_read (
     b_size      nelem
 )
 {
-  error_reset (db->e);
-  return nsdb_smfile_read (db, tx, dest, size, bofst, stride, nelem, NULL);
+  error_reset (smf->e);
+  return nsdb_smfile_read (smf, tx, dest, size, bofst, stride, nelem, NULL);
 }
 
 sb_size
 ns_smfile_remove (
-    nsdb_t     *db,
+    nsdb_t     *smf,
     struct txn *tx,
     void       *dest,
     t_size      size,
@@ -512,13 +518,13 @@ ns_smfile_remove (
     b_size      nelem
 )
 {
-  error_reset (db->e);
-  return nsdb_smfile_remove (db, tx, dest, size, bofst, stride, nelem, NULL);
+  error_reset (smf->e);
+  return nsdb_smfile_remove (smf, tx, dest, size, bofst, stride, nelem, NULL);
 }
 
 sb_size
 ns_smfile_write (
-    nsdb_t     *db,
+    nsdb_t     *smf,
     struct txn *tx,
     const void *src,
     t_size      size,
@@ -527,8 +533,8 @@ ns_smfile_write (
     b_size      nelem
 )
 {
-  error_reset (db->e);
-  return nsdb_smfile_write (db, tx, src, size, bofst, stride, nelem, NULL);
+  error_reset (smf->e);
+  return nsdb_smfile_write (smf, tx, src, size, bofst, stride, nelem, NULL);
 }
 
 #ifndef NDEBUG
@@ -613,7 +619,7 @@ TEST (ns_api_execute_write_read)
   TEST_CASE ("ns_read reads the same bytes back")
   {
     memset (dest, 0, sizeof dest);
-    const sb_size n = ns_read (db, NULL, dest, sizeof dest, "read v[0:] blimit %ld", sizeof dest);
+    const sb_size n = ns_read (db, NULL, dest, sizeof dest, "read v[0:] blimit %zu", sizeof dest);
     test_assert_int_equal ((int)n, 8);
     test_assert_memequal (dest, src, sizeof src);
   }
@@ -834,7 +840,7 @@ TEST (ns_api_transactions)
 
     int dest[4] = {0};
     test_assert_int_equal (
-        (int)ns_read (db, NULL, dest, sizeof dest, "read t[0:] blimit %ld", sizeof dest),
+        (int)ns_read (db, NULL, dest, sizeof dest, "read t[0:] blimit %zu", sizeof dest),
         4
     );
     test_assert_memequal (dest, src, sizeof src);
@@ -851,7 +857,7 @@ TEST (ns_api_transactions)
     // Still just the four committed elements
     int dest[8] = {0};
     test_assert_int_equal (
-        (int)ns_read (db, NULL, dest, sizeof dest, "read t[0:] blimit %ld", sizeof dest),
+        (int)ns_read (db, NULL, dest, sizeof dest, "read t[0:] blimit %zu", sizeof dest),
         4
     );
   }
@@ -882,7 +888,7 @@ TEST (ns_api_crash)
 
     int dest[4] = {0};
     test_assert_int_equal (
-        (int)ns_read (db, NULL, dest, sizeof dest, "read c[0:] blimit %ld", sizeof dest),
+        (int)ns_read (db, NULL, dest, sizeof dest, "read c[0:] blimit %zu", sizeof dest),
         4
     );
     test_assert_memequal (dest, src, sizeof src);

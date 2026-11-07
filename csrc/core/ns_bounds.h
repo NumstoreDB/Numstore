@@ -510,7 +510,7 @@ safe_mul_f32 (float *d, float a, float b)
 HEADER_FUNC bool
 safe_div_f32 (float *d, float a, float b)
 {
-  if (b == 0.0f) {
+  if (b == 0.0F) {
     return false;
   }
   *d = a / b;
@@ -583,7 +583,7 @@ safe_add_u16_err (u16 *dest, u16 arg, error *e)
     return error_causef (
         e,
         ERR_ARITH,
-        "Arithmetic overflow: %d + %d > %d\n",
+        "Arithmetic overflow: %" PRIu16 " + %" PRIu16 " > %d\n",
         *dest,
         arg,
         UINT16_MAX
@@ -602,7 +602,7 @@ safe_add_mul_u16_err (u16 *dest, u16 arg1, u16 arg2, error *e)
     return error_causef (
         e,
         ERR_ARITH,
-        "Arithmetic overflow: %d * %d > %d\n",
+        "Arithmetic overflow: %" PRIu16 " * %" PRIu16 " > %d\n",
         arg1,
         arg2,
         UINT16_MAX

@@ -34,7 +34,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
   wal_flush_all (p->ww);
 
   // END
-  l = wal_append_end_log (p->ww, tx->tid, l);
+  wal_append_end_log (p->ww, tx->tid, l);
 
   // Remove the transaction from the txn table
   txnt_remove_txn_expect (p->tnxt, tx);
@@ -51,7 +51,7 @@ pgr_commit (struct pager *p, struct txn *tx, error *e)
 TEST (pgr_commit_happy_path)
 {
   struct pgr_fixture f;
-  test_fail_if (pgr_fixture_create (&f, &ctx->e));
+  test_assert_int_equal (pgr_fixture_create (&f, &ctx->e), SUCCESS);
 
   struct txn tx;
   test_assert_int_equal (pgr_begin_txn (&tx, f.p, &ctx->e), SUCCESS);
@@ -60,13 +60,13 @@ TEST (pgr_commit_happy_path)
   test_assert_int_equal (pgr_commit (f.p, &tx, &ctx->e), SUCCESS);
   test_assert_int_equal (tx.data.state, TX_DONE);
 
-  test_fail_if (pgr_fixture_teardown (&f, &ctx->e));
+  test_assert_int_equal (pgr_fixture_teardown (&f, &ctx->e), SUCCESS);
 }
 
 TEST (pgr_commit_txn_not_running)
 {
   struct pgr_fixture f;
-  test_fail_if (pgr_fixture_create (&f, &ctx->e));
+  test_assert_int_equal (pgr_fixture_create (&f, &ctx->e), SUCCESS);
 
   TEST_CASE ("Committing a second time is ERR_DUPLICATE_COMMIT")
   {
@@ -117,12 +117,11 @@ TEST (pgr_commit_txn_not_running)
     test_commit_refused_in_state (f, ctx, TX_DONE);
   }
 
-  test_fail_if (pgr_fixture_teardown (&f, &ctx->e));
+  test_assert_int_equal (pgr_fixture_teardown (&f, &ctx->e), SUCCESS);
 }
 
 TEST (pgr_commit_fail_no_wal)
 {
-  // Set up with faulty os
   struct pgr_fixture f;
 
   int                fail_after = 0;
@@ -133,10 +132,9 @@ TEST (pgr_commit_fail_no_wal)
     {
       pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
 
-      // Ensure the WAL is flushed (This does assume WAL buffer size
-      // is > sizeof(BEGIN)) That's pretty much a given
+      // An empty buffer so the commit record fits without a flush
       wal_flush_all (f.p->ww);
-      test_assert (pgr_begin_txn (&f.tx, f.p, &ctx->e) == SUCCESS);
+      test_assert_int_equal (pgr_begin_txn (&f.tx, f.p, &ctx->e), SUCCESS);
 
       // Do operation under error
       faulty_os_fail_after (ctx->faulty_os, fail_after);
@@ -154,11 +152,9 @@ TEST (pgr_commit_fail_no_wal)
   while (ret != SUCCESS);
 }
 
-//  Same as above, but fills up wal before
-//  begin txn - to ensure a wal is triggered
+// Same as above, but with a full WAL buffer so the commit record has to flush
 TEST (pgr_commit_fail_full_wal)
 {
-  // Set up with faulty os
   struct pgr_fixture f;
 
   int                fail_after = 0;
@@ -169,9 +165,10 @@ TEST (pgr_commit_fail_full_wal)
     {
       pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
 
-      // Ensure the WAL will trigger on next begin for begin record
       wal_flush_all (f.p->ww);
-      test_assert (pgr_begin_txn (&f.tx, f.p, &ctx->e) == SUCCESS);
+      test_assert_int_equal (pgr_begin_txn (&f.tx, f.p, &ctx->e), SUCCESS);
+
+      // Force the commit record to flush
       wal_ensure_flush_next (f.p->ww);
 
       // Do operation under error

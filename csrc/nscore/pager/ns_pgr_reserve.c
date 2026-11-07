@@ -20,7 +20,9 @@
 static inline u32
 pgr_spin_clock (struct pager *p)
 {
-  ASSERT (MEMORY_PAGE_LEN % 2 == 0); // For overflow and faster modulo
+  // The mask below is a modulo, which needs a power of two. It also keeps the
+  // index in range when the counter wraps.
+  ASSERT ((MEMORY_PAGE_LEN & (MEMORY_PAGE_LEN - 1)) == 0);
   return atomic_fetch_add (&p->clock, 1) & (MEMORY_PAGE_LEN - 1);
 }
 
@@ -29,13 +31,11 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
 
-  struct page_frame *mp             = NULL; // The working page frame
+  struct page_frame *mp             = NULL;
   u32                clock          = pgr_spin_clock (p);
   bool               ready_to_evict = false; // First round - don't evict any pages
 
-  /**
-   * Loop forever - this is highly concurrent
-   */
+  // Loop forever - this is highly concurrent
   for (;; clock = pgr_spin_clock (p)) {
     mp = &p->pages[clock];
 
@@ -78,7 +78,8 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
   }
 
 found_spot:
-  return clock;
+  ASSERT (clock < MEMORY_PAGE_LEN);
+  return (i32)clock;
 }
 
 #ifndef NDEBUG

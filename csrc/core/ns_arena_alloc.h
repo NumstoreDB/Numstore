@@ -16,10 +16,9 @@
  * @file
  * @brief Allocators and memory allocation patterns
  *
- * Alloc.h contains specialized allocators used in numstore
- * such as:
- * - Slab Allocator  - an allocator that allocates fixed size slabs
- * - Malloc Plan     - a two phase malloc - defining the size - then one malloc
+ * - Arena allocator - allocations come out of a chain of chunks and are all
+ *   released together by arena_alloc_free_all
+ * - Builder         - a persistent arena paired with a temporary one
  */
 
 #ifndef NS_CHUNK_ALLOC_H

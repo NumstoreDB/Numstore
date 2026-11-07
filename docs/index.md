@@ -174,14 +174,14 @@ From Python, a query is just a string. Which method you hand it to depends on
 what the query needs to move across the boundary - nothing, metadata, data in,
 or data out:
 
-| Method               | Queries it accepts        | Returns                         |
-|----------------------|---------------------------|---------------------------------|
-| `db.execute(q)`      | `CREATE` `DELETE` `REMOVE`| `None`                          |
-| `db.get(q)`          | Anything with a variable  | a `Var` (metadata)              |
-| `db.get_all()`       | takes no query            | `list[Var]`, one per variable   |
-| `db.write(q, data)`  | `INSERT` `WRITE`          | `int` - elements written        |
-| `db.read(q)`         | `READ` `REMOVE`           | a fresh `numpy` array           |
-| `db.read_into(q, o)` | `READ` `REMOVE`           | `int` - elements read into `o`  |
+| Method               | Queries it accepts         | Returns                        |
+| -------------------- | -------------------------- | ------------------------------ |
+| `db.execute(q)`      | `CREATE` `DELETE` `REMOVE` | `None`                         |
+| `db.get(q)`          | Anything with a variable   | a `Var` (metadata)             |
+| `db.get_all()`       | takes no query             | `list[Var]`, one per variable  |
+| `db.write(q, data)`  | `INSERT` `WRITE`           | `int` - elements written       |
+| `db.read(q)`         | `READ` `REMOVE`            | a fresh `numpy` array          |
+| `db.read_into(q, o)` | `READ` `REMOVE`            | `int` - elements read into `o` |
 
 Hand a query to the wrong method and you get an error rather than a surprise:
 
@@ -1081,32 +1081,32 @@ built from: `cf64` is two `f32`s, so `64 / 8 = 8` bytes.
 
 Here's the full key:
 
-| Type    | Bits | Bytes | Notes                         |
-|---------|------|-------|-------------------------------|
-| `i8`    | 8    | 1     | signed integer                |
-| `i16`   | 16   | 2     | signed integer                |
-| `i32`   | 32   | 4     | signed integer                |
-| `i64`   | 64   | 8     | signed integer                |
-| `u8`    | 8    | 1     | unsigned integer              |
-| `u16`   | 16   | 2     | unsigned integer              |
-| `u32`   | 32   | 4     | unsigned integer              |
-| `u64`   | 64   | 8     | unsigned integer              |
-| `f16`   | 16   | 2     | float                         |
-| `f32`   | 32   | 4     | float                         |
-| `f64`   | 64   | 8     | float                         |
-| `f128`  | 128  | 16    | float                         |
-| `ci16`  | 16   | 2     | complex `i8`  (2 x `i8`)      |
-| `ci32`  | 32   | 4     | complex `i16` (2 x `i16`)     |
-| `ci64`  | 64   | 8     | complex `i32` (2 x `i32`)     |
-| `ci128` | 128  | 16    | complex `i64` (2 x `i64`)     |
-| `cu16`  | 16   | 2     | complex `u8`  (2 x `u8`)      |
-| `cu32`  | 32   | 4     | complex `u16` (2 x `u16`)     |
-| `cu64`  | 64   | 8     | complex `u32` (2 x `u32`)     |
-| `cu128` | 128  | 16    | complex `u64` (2 x `u64`)     |
-| `cf32`  | 32   | 4     | complex `f16` (2 x `f16`)     |
-| `cf64`  | 64   | 8     | complex `f32` (2 x `f32`)     |
-| `cf128` | 128  | 16    | complex `f64` (2 x `f64`)     |
-| `cf256` | 256  | 32    | complex `f128` (2 x `f128`)   |
+| Type    | Bits | Bytes | Notes                       |
+| ------- | ---- | ----- | --------------------------- |
+| `i8`    | 8    | 1     | signed integer              |
+| `i16`   | 16   | 2     | signed integer              |
+| `i32`   | 32   | 4     | signed integer              |
+| `i64`   | 64   | 8     | signed integer              |
+| `u8`    | 8    | 1     | unsigned integer            |
+| `u16`   | 16   | 2     | unsigned integer            |
+| `u32`   | 32   | 4     | unsigned integer            |
+| `u64`   | 64   | 8     | unsigned integer            |
+| `f16`   | 16   | 2     | float                       |
+| `f32`   | 32   | 4     | float                       |
+| `f64`   | 64   | 8     | float                       |
+| `f128`  | 128  | 16    | float                       |
+| `ci16`  | 16   | 2     | complex `i8`  (2 x `i8`)    |
+| `ci32`  | 32   | 4     | complex `i16` (2 x `i16`)   |
+| `ci64`  | 64   | 8     | complex `i32` (2 x `i32`)   |
+| `ci128` | 128  | 16    | complex `i64` (2 x `i64`)   |
+| `cu16`  | 16   | 2     | complex `u8`  (2 x `u8`)    |
+| `cu32`  | 32   | 4     | complex `u16` (2 x `u16`)   |
+| `cu64`  | 64   | 8     | complex `u32` (2 x `u32`)   |
+| `cu128` | 128  | 16    | complex `u64` (2 x `u64`)   |
+| `cf32`  | 32   | 4     | complex `f16` (2 x `f16`)   |
+| `cf64`  | 64   | 8     | complex `f32` (2 x `f32`)   |
+| `cf128` | 128  | 16    | complex `f64` (2 x `f64`)   |
+| `cf256` | 256  | 32    | complex `f128` (2 x `f128`) |
 
 Numpy has a native dtype for most of these. Where it doesn't - the small complex
 integers, and `cf32` - Numstore maps the type to a two-field structured dtype
@@ -1319,12 +1319,12 @@ A struct member can be an array, an array element can be a struct, a union can
 hold an array, and so on - as deep as you like. The sizing rules compose, so you
 never need a new rule, you just apply the same 4 recursively:
 
-| Type          | Size                                             |
-|---------------|--------------------------------------------------|
-| `Primitive`   | `bits / 8`                                       |
-| `Struct`      | sum of member sizes                              |
-| `Union`       | max of member sizes                              |
-| `Strict Array`| product of dimensions x element size             |
+| Type           | Size                                 |
+| -------------- | ------------------------------------ |
+| `Primitive`    | `bits / 8`                           |
+| `Struct`       | sum of member sizes                  |
+| `Union`        | max of member sizes                  |
+| `Strict Array` | product of dimensions x element size |
 
 An **array of structs** - say a buffer of 3D points. The struct is
 `4 + 4 + 4 = 12` bytes, and there are 1000 of them:

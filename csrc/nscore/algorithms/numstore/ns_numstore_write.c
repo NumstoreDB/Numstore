@@ -40,9 +40,12 @@ numstore_write (
 
   // Resolve length based on the stride
   struct stride stride;
-  if (stride_resolve (&stride, ustr, len, e)) {
+  if (stride_resolve (&stride, ustr, len, e) < 0) {
     return error_trace (e);
   }
+
+  // The step started as a positive i64, so it fits in sb_size
+  ASSERT (stride.stride <= (u64)I64_MAX);
 
   return ns_rope_write (
       (struct ns_write_params){
@@ -52,7 +55,7 @@ numstore_write (
           .root   = var->rpt_root,
           .size   = tsize,
           .bofst  = tsize * stride.start,
-          .stride = stride.stride,
+          .stride = (sb_size)stride.stride,
           .nelem  = stride.nelems,
       },
       e

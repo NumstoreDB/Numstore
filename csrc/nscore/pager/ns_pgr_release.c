@@ -31,7 +31,8 @@ pgr_release_with_log (
     error                   *e
 )
 {
-  (void)flags; // Unused in release
+  (void)flags; // Only read by the assert below, which compiles away in release
+  DBG_ASSERT (pager, p);
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 
@@ -39,11 +40,10 @@ pgr_release_with_log (
     lsn page_lsn = 0;
 
     // Can only save valid pages
-    ASSERT (!page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e));
+    ASSERT (page_validate_for_db (&h->pgw->page, flags | PG_SKIP_CHECKSUM, e) == SUCCESS);
 
-    // Append WAL information
-    if (h->tx) // If you pass tx == NULL - there's no WAL logging - used mid ARIES
-    {
+    // A NULL tx means no WAL logging. ARIES redo and undo release this way.
+    if (h->tx != NULL) {
       // If no record was supplied, append a physical record
       if (record == NULL) {
         page_lsn = wal_append_update_log (
@@ -63,8 +63,7 @@ pgr_release_with_log (
         page_lsn = wal_append_update_log (p->ww, *record);
       }
 
-      // Update the page lsn
-      page_set_page_lsn (page_h_w (h), (lsn)page_lsn);
+      page_set_page_lsn (page_h_w (h), page_lsn);
 
       h->tx->data.last_lsn      = page_lsn;
       h->tx->data.undo_next_lsn = page_lsn;
@@ -72,14 +71,14 @@ pgr_release_with_log (
 
     if (!dpgt_exists (p->dpt, page_h_pgno (h))) {
       // This is the first update (RecLSN = LSN of the first update)
-      if (dpgt_add (p->dpt, page_h_pgno (h), (lsn)page_lsn, e)) {
+      if (dpgt_add (p->dpt, page_h_pgno (h), page_lsn, e) < 0) {
         return error_trace (e);
       }
     }
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);
 
-    // Update pgw
+    // Hand the write frame back to the pool
     latch_lock (&h->pgw->ctrl);
     h->pgw->flags = 0;
     h->pgw->pin   = 0;
@@ -87,7 +86,6 @@ pgr_release_with_log (
 
     h->pgw = NULL;
 
-    // Update pgr
     latch_lock (&h->pgr->ctrl);
     h->pgr->pin--;
     h->pgr->wsibling = -1;
@@ -97,12 +95,10 @@ pgr_release_with_log (
 
     spx_unlock_x (&h->pgr->data);
   } else {
-    // Update pgr
     latch_lock (&h->pgr->ctrl);
     h->pgr->pin--;
     latch_unlock (&h->pgr->ctrl);
 
-    // Unlock from s mode
     spx_unlock_s (&h->pgr->data);
   }
 

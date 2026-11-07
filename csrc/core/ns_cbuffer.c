@@ -28,10 +28,10 @@ cbuffer_create (void *data, const u32 cap)
   ASSERT (data);
   ASSERT (cap > 0);
   const struct cbuffer ret = (struct cbuffer){
+      .data   = data,
+      .cap    = cap,
       .head   = 0,
       .tail   = 0,
-      .cap    = cap,
-      .data   = data,
       .isfull = false,
   };
   return ret;
@@ -415,7 +415,7 @@ cbuffer_read (void *dest, const u32 size, const u32 n, struct cbuffer *b)
   u32       bread   = 0;
 
   u8       *output  = NULL;
-  if (dest) {
+  if (dest != NULL) {
     output = (u8 *)dest;
   }
 
@@ -428,7 +428,7 @@ cbuffer_read (void *dest, const u32 size, const u32 n, struct cbuffer *b)
       next = MIN (b->cap - b->tail, btoread - bread);
     }
 
-    if (output) {
+    if (output != NULL) {
       memcpy (output + bread, b->data + b->tail, next);
     }
     b->tail = (b->tail + next) % b->cap;
@@ -476,13 +476,12 @@ cbuffer_copy (void *dest, const u32 size, const u32 n, const struct cbuffer *b)
   u32       bread   = 0;
 
   u8       *output  = NULL;
-  if (dest) {
+  if (dest != NULL) {
     output = (u8 *)dest;
   }
 
-  // Literally the exact same as read but
-  // use these temp variables instead
-  // I was lazy
+  // Same walk as cbuffer_read, on local copies of tail and isfull so [b] is
+  // left untouched
   u32  tail   = b->tail;
   bool isfull = b->isfull;
 
@@ -495,7 +494,7 @@ cbuffer_copy (void *dest, const u32 size, const u32 n, const struct cbuffer *b)
       next = MIN (b->cap - tail, btoread - bread);
     }
 
-    if (output) {
+    if (output != NULL) {
       memcpy (output + bread, b->data + tail, next);
     }
     tail = (tail + next) % b->cap;
@@ -557,7 +556,7 @@ cbuffer_write (const void *src, const u32 size, const u32 n, struct cbuffer *b)
   const u32 btowrite = ntowrite * size;
   u32       bwrite   = 0;
 
-  const u8 *input    = (u8 *)src;
+  const u8 *input    = (const u8 *)src;
 
   while (bwrite < btowrite) {
     u32 next;
@@ -622,7 +621,6 @@ cbuffer_cbuffer_move (struct cbuffer *dest, const u32 sz, const u32 cnt, struct 
   DBG_ASSERT (cbuffer, src);
   ASSERT (sz > 0 && cnt > 0);
 
-  // calculate number of elements to move
   const u32 src_elems = cbuffer_len (src) / sz;
   const u32 dst_space = cbuffer_avail (dest) / sz;
   u32       n;
@@ -638,7 +636,6 @@ cbuffer_cbuffer_move (struct cbuffer *dest, const u32 sz, const u32 cnt, struct 
     return 0;
   }
 
-  // total nbytes to transfer
   u32 nbytes = n * sz;
 
   // first chunk: from tail up to end of buffer
@@ -652,10 +649,8 @@ cbuffer_cbuffer_move (struct cbuffer *dest, const u32 sz, const u32 cnt, struct 
     first = nbytes;
   }
 
-  // write first chunk into dest
   cbuffer_write (src->data + src->tail, 1, first, dest);
 
-  // advance tail and clear full flag
   src->tail   = (src->tail + first) % src->cap;
   src->isfull = false;
   nbytes -= first;
@@ -715,7 +710,6 @@ cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const s
   DBG_ASSERT (cbuffer, src);
   ASSERT (sz > 0 && cnt > 0);
 
-  // calculate number of elements to copy
   const u32 src_elems = cbuffer_len (src) / sz;
   const u32 dst_space = cbuffer_avail (dest) / sz;
   u32       n;
@@ -731,10 +725,9 @@ cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const s
     return 0;
   }
 
-  // total nbytes to copy
   u32  nbytes = n * sz;
 
-  // local cursor and copy of full flag
+  // Local cursor, so [src] is left untouched
   u32  pos    = src->tail;
   bool full   = src->isfull;
 
@@ -749,10 +742,8 @@ cbuffer_cbuffer_copy (struct cbuffer *dest, const u32 sz, const u32 cnt, const s
     first = nbytes;
   }
 
-  // write first chunk into dest
   cbuffer_write (src->data + pos, 1, first, dest);
 
-  // advance local cursor
   pos = (pos + first) % src->cap;
   nbytes -= first;
 
@@ -809,7 +800,7 @@ i32
 cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, error *e)
 {
   ASSERT (dest);
-  ASSERT (b);
+  DBG_ASSERT (cbuffer, b);
 
   const u32    btoread = MIN (cbuffer_len (b), len);
   u32          bread   = 0;
@@ -838,12 +829,13 @@ cbuffer_write_to_file_1 (i_file *dest, const struct cbuffer *b, const u32 len, e
     return 0;
   }
 
-  const err_t err = (*dest).table->writev_all ((*dest).self, iov, iovcnt, e);
-  if (err != SUCCESS) {
+  if (dest->table->writev_all (dest->self, iov, iovcnt, e) < 0) {
     return error_trace (e);
   }
 
-  return btoread;
+  // btoread <= cap, and a cbuffer never comes close to 2 GiB
+  ASSERT (btoread <= INT32_MAX);
+  return (i32)btoread;
 }
 
 err_t
@@ -851,7 +843,7 @@ cbuffer_write_to_file_1_expect (i_file *dest, const struct cbuffer *b, const u32
 {
   const i32 written = cbuffer_write_to_file_1 (dest, b, len, e);
   if (written < 0) {
-    return written;
+    return error_trace (e);
   }
   ASSERT ((u32)written == len);
   return SUCCESS;
@@ -870,6 +862,98 @@ cbuffer_write_to_file_2 (struct cbuffer *b, const u32 nwritten)
   }
 }
 
+#ifndef NDEBUG
+TEST (cbuffer_write_to_file)
+{
+  const char    *fname = "cbuffer_write_to_file.bin";
+
+  // Setup - a full buffer whose data wraps around the end: tail sits at 6, so
+  // the data is mem[6..8) followed by mem[0..6)
+  u8             mem[8];
+  struct cbuffer b      = cbuffer_create_from (mem);
+  const u8       pad[6] = {0};
+  cbuffer_write_expect (pad, 1, 6, &b);
+  cbuffer_fakeread (&b, 6);
+  const u8 data[8] = {10, 11, 12, 13, 14, 15, 16, 17};
+  cbuffer_write_expect (data, 1, 8, &b);
+  test_assert (b.isfull);
+
+  i_file f;
+  test_err_t_check (
+      ctx->os.table->open_file_rw (ctx->os.self, &f, fname, &ctx->e),
+      SUCCESS,
+      &ctx->e
+  );
+
+  TEST_CASE ("an empty request writes nothing")
+  {
+    test_assert_int_equal (cbuffer_write_to_file_1 (&f, &b, 0, &ctx->e), 0);
+  }
+
+  TEST_CASE ("wrapped data is written in order and then consumed")
+  {
+    test_err_t_check (cbuffer_write_to_file_1_expect (&f, &b, 8, &ctx->e), SUCCESS, &ctx->e);
+    cbuffer_write_to_file_2 (&b, 8);
+    test_assert (cbuffer_isempty (&b));
+
+    u8 got[8];
+    test_assert_type_equal (
+        f.table->pread_all (f.self, got, sizeof got, 0, &ctx->e),
+        (i64)sizeof got,
+        i64,
+        PRId64
+    );
+    test_assert_memequal (got, data, sizeof data);
+  }
+
+  // Teardown
+  ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e);
+  ctx->os.table->remove_quiet (ctx->os.self, fname, &ctx->e);
+}
+
+TEST (cbuffer_write_to_file_fail_io)
+{
+  const char    *fname   = "cbuffer_write_to_file_fail_io.bin";
+  u8             mem[4]  = {0};
+  const u8       data[4] = {1, 2, 3, 4};
+  struct cbuffer b       = cbuffer_create_from (mem);
+  cbuffer_write_expect (data, 1, 4, &b);
+
+  i_file f;
+  test_err_t_check (
+      ctx->faulty_os.table->open_file_rw (ctx->faulty_os.self, &f, fname, &ctx->e),
+      SUCCESS,
+      &ctx->e
+  );
+
+  int   fail_after = 0;
+  err_t ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = cbuffer_write_to_file_1_expect (&f, &b, 4, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      // A failed write leaves the buffer alone
+      test_assert_type_equal (cbuffer_len (&b), 4, u32, PRIu32);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert (fail_after > 1);
+
+  error_reset (&ctx->e);
+  ctx->faulty_os.table->close_file (ctx->faulty_os.self, f.self, &ctx->e);
+  ctx->os.table->remove_quiet (ctx->os.self, fname, &ctx->e);
+}
+#endif
+
 ////////////////////////////////////////////////////////////
 // WORKING WITH SINGLE ELEMENTS
 static u8
@@ -883,7 +967,7 @@ cbuffer_get_no_check (void *dest, const u32 size, const u32 idx, const struct cb
   (void)len;
   ASSERT (idx < len);
 
-  if (dest) {
+  if (dest != NULL) {
     const u32 offset = (b->tail + (idx * size)) % b->cap;
 
     if (offset + size <= b->cap) {
@@ -986,7 +1070,10 @@ cbuffer_get (void *dest, const u32 size, const u32 idx, const struct cbuffer *b)
   DBG_ASSERT (cbuffer, b);
   ASSERT (dest);
 
-  if (!b->isfull && (u32)idx >= (b->head + b->cap - b->tail) % b->cap) {
+  // TODO: [idx] counts elements but is compared with a length in bytes, so for
+  // size > 1 an out of range index gets past here and trips the assert in
+  // cbuffer_get_no_check instead of returning false.
+  if (!b->isfull && idx >= (b->head + b->cap - b->tail) % b->cap) {
     return false;
   }
 
@@ -1186,7 +1273,6 @@ cbuffer_push_front (const void *src, const u32 size, struct cbuffer *b)
     return false;
   }
 
-  // Compute new tail position before wrapping
   const u32 new_tail = (b->tail + b->cap - size) % b->cap;
 
   if (new_tail + size <= b->cap) {

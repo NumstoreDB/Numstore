@@ -178,7 +178,8 @@ nupd_init (const pgno pg, const b_size size, struct i_mem mem, error *e)
   return ret;
 }
 
-struct node_updates *
+#ifndef NDEBUG
+static struct node_updates *
 nupd_create_from (
     struct in_pair *left,
     u32             llen,
@@ -213,6 +214,7 @@ failed:
   error_trace (e);
   return NULL;
 }
+#endif
 
 struct node_updates *
 nupd_random_from (
@@ -282,6 +284,8 @@ nupd_free (struct node_updates *n)
 pgno
 nupd_pivot_pg (const struct node_updates *n)
 {
+  DBG_ASSERT (node_updates, n);
+
   return n->pivot.pg;
 }
 
@@ -873,6 +877,8 @@ TEST (nupd_append_2nd_left)
 err_t
 nupd_append_tip_right (struct node_updates *s, const struct three_in_pair output, error *e)
 {
+  DBG_ASSERT (node_updates, s);
+
   const err_t rc = nupd_commit_1st_right (s, output.cur.pg, output.cur.key, e);
   if (rc != SUCCESS) {
     return rc;
@@ -1057,6 +1063,8 @@ TEST (nupd_append_tip_right)
 err_t
 nupd_append_tip_left (struct node_updates *s, const struct three_in_pair output, error *e)
 {
+  DBG_ASSERT (node_updates, s);
+
   const err_t rc = nupd_commit_1st_left (s, output.cur.pg, output.cur.key, e);
   if (rc != SUCCESS) {
     return rc;
@@ -1279,10 +1287,10 @@ nupd_observe_pivot (struct node_updates *s, page_h *pg, const p_size lidx, error
   ASSERT (s->lcons == 0);
   ASSERT (page_h_type (pg) == PG_INNER_NODE);
 
-  if (nupd_observe_right_from (s, pg, lidx, e)) {
+  if (nupd_observe_right_from (s, pg, lidx, e) < 0) {
     return error_trace (e);
   }
-  if ((lidx > 0) && nupd_observe_left_from (s, pg, lidx, e)) {
+  if ((lidx > 0) && nupd_observe_left_from (s, pg, lidx, e) < 0) {
     return error_trace (e);
   }
 
@@ -1532,6 +1540,8 @@ TEST (nupd_consume_left)
 bool
 nupd_done_observing_left (const struct node_updates *s)
 {
+  DBG_ASSERT (node_updates, s);
+
   return s->lobs >= s->llen;
 }
 
@@ -1586,6 +1596,8 @@ TEST (nupd_done_observing_left)
 bool
 nupd_done_observing_right (const struct node_updates *s)
 {
+  DBG_ASSERT (node_updates, s);
+
   return s->robs >= s->rlen;
 }
 
@@ -1628,6 +1640,8 @@ TEST (nupd_done_observing_right)
 bool
 nupd_done_consuming_left (const struct node_updates *s)
 {
+  DBG_ASSERT (node_updates, s);
+
   return s->lcons == s->lobs;
 }
 
@@ -1671,6 +1685,8 @@ TEST (nupd_done_consuming_left)
 bool
 nupd_done_consuming_right (const struct node_updates *s)
 {
+  DBG_ASSERT (node_updates, s);
+
   return s->rcons == s->robs;
 }
 
@@ -1714,6 +1730,8 @@ TEST (nupd_done_consuming_right)
 bool
 nupd_done_left (struct node_updates *s)
 {
+  DBG_ASSERT (node_updates, s);
+
   return (nupd_done_observing_left (s) && nupd_done_consuming_left (s)) != 0;
 }
 
@@ -1767,6 +1785,8 @@ TEST (nupd_done_left)
 bool
 nupd_done_right (struct node_updates *s)
 {
+  DBG_ASSERT (node_updates, s);
+
   return (nupd_done_observing_right (s) && nupd_done_consuming_right (s)) != 0;
 }
 

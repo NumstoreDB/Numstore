@@ -19,13 +19,13 @@ periodic_task_init (struct periodic_task *t, const struct i_os os, error *e)
   t->done           = false;
   t->running        = false;
 
-  if (t->os.table->mutex_create (t->os.self, &t->mutex, e)) {
+  if (t->os.table->mutex_create (t->os.self, &t->mutex, e) < 0) {
     goto theend;
   }
-  if (t->os.table->cond_create (t->os.self, &t->wake_cond, e)) {
+  if (t->os.table->cond_create (t->os.self, &t->wake_cond, e) < 0) {
     goto fail_mutex;
   }
-  if (t->os.table->cond_create (t->os.self, &t->done_cond, e)) {
+  if (t->os.table->cond_create (t->os.self, &t->done_cond, e) < 0) {
     goto fail_wake_cond;
   }
 
@@ -78,7 +78,7 @@ periodic_task_start (struct periodic_task *t, u64 msec, periodic_task_fn fn, voi
   t->fn   = fn;
   t->ctx  = ctx;
 
-  if (t->os.table->thread_create (t->os.self, &t->thread, periodic_task_thread, t, e)) {
+  if (t->os.table->thread_create (t->os.self, &t->thread, periodic_task_thread, t, e) < 0) {
     return error_trace (e);
   }
 

@@ -123,7 +123,7 @@ err_t error_trace_at (error *e, const char *file, int line, const char *func);
           ERR_UNHANDLED,              \
           "Unhandled error: %d %.*s", \
           (e)->cause_code,            \
-          (e)->cmlen,                 \
+          (int)(e)->cmlen,            \
           (e)->cause_msg              \
       );                              \
     }                                 \

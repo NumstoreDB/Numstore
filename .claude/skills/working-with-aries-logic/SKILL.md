@@ -8,7 +8,8 @@ Working with ARIES logic
 
 Numstore's recovery follows ARIES (Mohan et al., 1992). The full paper is at
 <https://web.stanford.edu/class/cs345d-01/rl/aries.pdf>. This file is the
-working summary: the rules, the invariants, and where they live in the code.
+working summary
+
 When the summary isn't enough, open the paper at the section named.
 
 Summary
@@ -166,5 +167,4 @@ When changing recovery code
    `testing/regressions/`, fail_after sweeps (see
    [writing-c-unit-tests](../writing-c-unit-tests/SKILL.md) and
    [error-tests.md](../writing-c-unit-tests/references/error-tests.md)), and
-   `make test-simtest`. Real examples are in
-   [good-tests.md](../shared/good-tests.md).
+   `make test-simtest`. 

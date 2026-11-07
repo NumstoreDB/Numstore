@@ -20,9 +20,11 @@
 err_t
 pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   struct page_frame *pgr = NULL; // Read frame
-  hdata_idx          data;       // The data to retrieve
-  i32                clock;      // Location of the new page
+  hdata_idx          data;
+  i32                clock; // Frame index for a page read from disk
   hta_res            res;
 
   latch_lock (&p->htable_lock);
@@ -64,29 +66,26 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
         return error_trace (e);
       }
 
-      // Might remove this
       if (page_validate_for_db (&pgr->page, flags, e) < 0) {
         latch_unlock (&pgr->ctrl);
         return error_trace (e);
       }
 
-      pgr->pin      = 1;                      // Singular owner
-      pgr->flags    = PW_ACCESS | PW_PRESENT; // Accessed and present
-      pgr->wsibling = -1;                     // No sibling
-      pgr->page.pg  = pg;                     // Set the page number
+      pgr->pin      = 1;
+      pgr->flags    = PW_ACCESS | PW_PRESENT;
+      pgr->wsibling = -1;
+      pgr->page.pg  = pg;
 
-      // Insert this entry into the hash table
       ht_insert_expect_idx (
           &p->pgno_to_value,
           (hdata_idx){
               .key   = pg,
-              .value = clock,
+              .value = (u32)clock,
           }
       );
 
       latch_unlock (&pgr->ctrl);
 
-      // Set the page data
       dest->pgr  = pgr;
       dest->pgw  = NULL;
       dest->mode = PHM_S;
@@ -101,8 +100,10 @@ pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
 }
 
 #ifndef NDEBUG
+// A page whose stored checksum doesn't match its contents is corruption
 TEST (pgr_get_invalid_checksum)
 {
+  // Setup - one committed data page on disk
   page_h             pg = page_h_create ();
   struct pgr_fixture pf;
   pgr_fixture_create (&pf, &ctx->e);
@@ -119,12 +120,14 @@ TEST (pgr_get_invalid_checksum)
   pgr_commit (pf.p, &tx, &ctx->e);
 
   pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &ctx->e);
-  test_assert_int_equal (
+  test_assert_type_equal (
       page_get_checksum (page_h_ro (&pg)),
-      page_compute_checksum (page_h_ro (&pg))
+      page_compute_checksum (page_h_ro (&pg)),
+      u32,
+      PRIu32
   );
 
-  // Force checksum to be different
+  // Write a copy with a wrong checksum straight to the file
   page fake_page;
   memcpy (fake_page.raw, page_h_ro (&pg)->raw, NS_PAGE_SIZE);
   fake_page.pg = page_h_pgno (&pg);
@@ -132,10 +135,9 @@ TEST (pgr_get_invalid_checksum)
 
   pgr_release_with_evict (pf.p, &pg, PG_DATA_LIST, &ctx->e);
 
-  // Force a invalid write
   fpgr_write (pf.p->fp, fake_page.raw, fake_page.pg, &ctx->e);
 
-  // This one will fail
+  // Run - read it back from disk
   test_err_t_check (pgr_get (&pg, PG_DATA_LIST, _pg, pf.p, &ctx->e), ERR_CORRUPT, &ctx->e);
 
   pgr_fixture_teardown (&pf, &ctx->e);
@@ -191,10 +193,12 @@ TEST (pgr_get_fail_os)
   while (ret != SUCCESS);
 
   // The page read back is the page that was written
-  test_assert_type_equal (page_h_pgno (&h), pg, pgno, PRIu64);
-  test_assert_int_equal (
+  test_assert_type_equal (page_h_pgno (&h), pg, pgno, PRpgno);
+  test_assert_type_equal (
       page_get_checksum (page_h_ro (&h)),
-      page_compute_checksum (page_h_ro (&h))
+      page_compute_checksum (page_h_ro (&h)),
+      u32,
+      PRIu32
   );
   test_err_t_check (pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
 

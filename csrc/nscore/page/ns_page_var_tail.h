@@ -38,6 +38,7 @@
 HEADER_FUNC void
 vt_set_next (page *p, const pgno pg)
 {
+  DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_SET_IMPL (p, pg, VT_NEXT_OFST);
 }
 
@@ -45,12 +46,14 @@ vt_set_next (page *p, const pgno pg)
 HEADER_FUNC pgno
 vt_get_next (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   PAGE_SIMPLE_GET_IMPL (p, pgno, VT_NEXT_OFST);
 }
 
 HEADER_FUNC void
 vt_init_empty (page *p)
 {
+  DBG_ASSERT (page_base, p);
   ASSERT (page_get_type (p) == PG_VAR_TAIL);
   vt_set_next (p, PGNO_NULL);
 }
@@ -58,6 +61,7 @@ vt_init_empty (page *p)
 HEADER_FUNC struct bytes
 vt_get_bytes (page *p)
 {
+  DBG_ASSERT (page_base, p);
   return (struct bytes){
       .head = (void *)&p->raw[VT_DATA_OFST],
       .len  = NS_PAGE_SIZE - VT_DATA_OFST,
@@ -67,6 +71,7 @@ vt_get_bytes (page *p)
 HEADER_FUNC struct cbytes
 vt_get_bytes_imut (const page *p)
 {
+  DBG_ASSERT (page_base, p);
   return (struct cbytes){
       .head = (void *)&p->raw[VT_DATA_OFST],
       .len  = NS_PAGE_SIZE - VT_DATA_OFST,

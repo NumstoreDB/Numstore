@@ -155,7 +155,7 @@ void
 arena_alloc_assert (const struct arena_alloc *ca)
 {
   ASSERT (ca);
-  ASSERT (ca->settings.target_chunk_mult >= 1.0f);
+  ASSERT (ca->settings.target_chunk_mult >= 1.0F);
   ASSERT (ca->settings.min_chunk_size > 0);
   ASSERT (
       ca->settings.max_chunk_size == 0 || ca->settings.max_chunk_size >= ca->settings.min_chunk_size
@@ -189,7 +189,13 @@ arena_alloc_assert (const struct arena_alloc *ca)
 static struct chunk *
 chunk_create (const u32 size, struct i_mem mem, error *e)
 {
-  struct chunk *ret = mem.table->malloc (mem.self, sizeof (struct chunk) + size, 1, e);
+  u32 total;
+  if (!safe_add_u32 (&total, (u32)sizeof (struct chunk), size)) {
+    error_causef (e, ERR_NOMEM, "chunk of %" PRIu32 " bytes: overflow", size);
+    return NULL;
+  }
+
+  struct chunk *ret = mem.table->malloc (mem.self, total, 1, e);
   if (ret == NULL) {
     return NULL;
   }
@@ -202,7 +208,7 @@ chunk_create (const u32 size, struct i_mem mem, error *e)
 void
 arena_alloc_create (struct arena_alloc *dest, const struct arena_alloc_settings settings)
 {
-  ASSERT (settings.target_chunk_mult >= 1.0f);
+  ASSERT (settings.target_chunk_mult >= 1.0F);
   ASSERT (settings.min_chunk_size > 0);
   ASSERT (settings.max_chunk_size == 0 || settings.max_chunk_size >= settings.min_chunk_size);
 
@@ -227,7 +233,7 @@ arena_alloc_create_default_with (struct arena_alloc *dest, struct i_mem mem)
       (struct arena_alloc_settings){
           .max_alloc_size    = 0,
           .max_total_size    = 0,
-          .target_chunk_mult = 10,
+          .target_chunk_mult = 10.0F,
           .min_chunk_size    = 10,
           .max_chunk_size    = 0,
           .max_chunks        = 0,
@@ -244,7 +250,7 @@ arena_alloc_create_default (struct arena_alloc *dest)
       (struct arena_alloc_settings){
           .max_alloc_size    = 0,
           .max_total_size    = 0,
-          .target_chunk_mult = 10,
+          .target_chunk_mult = 10.0F,
           .min_chunk_size    = 10,
           .max_chunk_size    = 0,
           .max_chunks        = 0,
@@ -258,7 +264,9 @@ compute_new_chunk_size (const struct arena_alloc *ca, const u32 alloc_size)
 {
   DBG_ASSERT (arena_alloc, ca);
 
-  u32 new_chunk_size = (u32)(alloc_size * ca->settings.target_chunk_mult);
+  // TODO: the float to u32 conversion is undefined once the product passes
+  // UINT32_MAX (alloc_size near 4 GiB / target_chunk_mult). Clamp it first.
+  u32 new_chunk_size = (u32)((float)alloc_size * ca->settings.target_chunk_mult);
 
   if (new_chunk_size < ca->settings.min_chunk_size) {
     new_chunk_size = ca->settings.min_chunk_size;
@@ -304,6 +312,9 @@ arena_alloc_free_all (struct arena_alloc *ca)
 void *
 arena_alloc_copy (struct arena_alloc *alloc, const void *ptr, u32 size, error *e)
 {
+  DBG_ASSERT (arena_alloc, alloc);
+  ASSERT (ptr);
+
   void *dest = arena_malloc (alloc, size, 1, e);
 
   if (dest == NULL) {
@@ -418,6 +429,9 @@ arena_malloc (struct arena_alloc *ca, const u32 req, const u32 size, error *e)
 void
 builder_init (struct builder *b, struct arena_alloc *alloc)
 {
+  ASSERT (b);
+  DBG_ASSERT (arena_alloc, alloc);
+
   b->persistent = alloc;
   arena_alloc_create_default (&b->temp);
 }
@@ -425,18 +439,21 @@ builder_init (struct builder *b, struct arena_alloc *alloc)
 void *
 builder_malloc_temp (struct builder *b, u32 nelem, u32 size, error *e)
 {
+  ASSERT (b);
   return arena_malloc (&b->temp, nelem, size, e);
 }
 
 void *
 builder_malloc_persist (struct builder *b, u32 nelem, u32 size, error *e)
 {
+  ASSERT (b);
   return arena_malloc (b->persistent, nelem, size, e);
 }
 
 void
 builder_free (struct builder *b)
 {
+  ASSERT (b);
   arena_alloc_free_all (&b->temp);
 }
 
@@ -452,7 +469,7 @@ test_settings (struct i_mem mem)
   return (struct arena_alloc_settings){
       .max_alloc_size    = 0,
       .max_total_size    = 0,
-      .target_chunk_mult = 10,
+      .target_chunk_mult = 10.0F,
       .min_chunk_size    = 10,
       .max_chunk_size    = 0,
       .max_chunks        = 0,
@@ -501,11 +518,11 @@ TEST (arena_malloc_refuses_past_its_limits)
 
     void *exact = arena_malloc (&a, 32, 1, &ctx->e);
     test_assert (exact != NULL);
-    test_assert_int_equal (a.total_allocated, 32);
+    test_assert_type_equal (a.total_allocated, 32, u32, PRIu32);
 
     // And the chunk really is full now, so the next byte needs a second chunk.
     test_assert (arena_malloc (&a, 1, 1, &ctx->e) != NULL);
-    test_assert_int_equal (a.num_chunks, 2);
+    test_assert_type_equal (a.num_chunks, 2, u32, PRIu32);
 
     arena_alloc_free_all (&a);
   }
@@ -521,14 +538,14 @@ TEST (arena_malloc_refuses_past_its_limits)
     arena_alloc_create (&a, st);
 
     test_assert (arena_malloc (&a, 8, 1, &ctx->e) != NULL);
-    test_assert_int_equal (a.total_allocated, 32);
+    test_assert_type_equal (a.total_allocated, 32, u32, PRIu32);
 
     test_assert_ptr_equal (arena_malloc (&a, 32, 1, &ctx->e), NULL);
     test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
     error_reset (&ctx->e);
 
-    test_assert_int_equal (a.num_chunks, 1);
-    test_assert_int_equal (a.total_allocated, 32);
+    test_assert_type_equal (a.num_chunks, 1, u32, PRIu32);
+    test_assert_type_equal (a.total_allocated, 32, u32, PRIu32);
     arena_alloc_free_all (&a);
   }
 
@@ -544,11 +561,11 @@ TEST (arena_malloc_refuses_past_its_limits)
     test_assert_ptr_equal (arena_malloc (&a, 1, 8, &ctx->e), NULL);
     test_assert (ctx->e.cause_code < 0);
     error_reset (&ctx->e);
-    test_assert_int_equal (a.num_chunks, 0);
+    test_assert_type_equal (a.num_chunks, 0, u32, PRIu32);
 
     // The budget is spent, so the retry has to succeed.
     test_assert (arena_malloc (&a, 1, 8, &ctx->e) != NULL);
-    test_assert_int_equal (a.num_chunks, 1);
+    test_assert_type_equal (a.num_chunks, 1, u32, PRIu32);
 
     arena_alloc_free_all (&a);
     faulty_mem_reset (ctx->faulty_mem);
@@ -567,13 +584,13 @@ TEST (arena_malloc_respects_max_chunks)
 
   test_assert (arena_malloc (&a, 15, 1, &ctx->e) != NULL);
   test_assert (arena_malloc (&a, 15, 1, &ctx->e) != NULL);
-  test_assert_int_equal (a.num_chunks, 2);
+  test_assert_type_equal (a.num_chunks, 2, u32, PRIu32);
 
   test_assert_ptr_equal (arena_malloc (&a, 15, 1, &ctx->e), NULL);
   test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
   error_reset (&ctx->e);
 
-  test_assert_int_equal (a.num_chunks, 2);
+  test_assert_type_equal (a.num_chunks, 2, u32, PRIu32);
   arena_alloc_free_all (&a);
 }
 
@@ -584,20 +601,20 @@ TEST (compute_new_chunk_size_clamps)
 
   TEST_CASE ("clamped up to min_chunk_size")
   {
-    st.target_chunk_mult = 1;
+    st.target_chunk_mult = 1.0F;
     st.min_chunk_size    = 4096;
     arena_alloc_create (&a, st);
-    test_assert_int_equal (compute_new_chunk_size (&a, 8), 4096);
+    test_assert_type_equal (compute_new_chunk_size (&a, 8), 4096, u32, PRIu32);
     arena_alloc_free_all (&a);
   }
 
   TEST_CASE ("clamped down to max_chunk_size")
   {
-    st.target_chunk_mult = 10;
+    st.target_chunk_mult = 10.0F;
     st.min_chunk_size    = 8;
     st.max_chunk_size    = 64;
     arena_alloc_create (&a, st);
-    test_assert_int_equal (compute_new_chunk_size (&a, 32), 64);
+    test_assert_type_equal (compute_new_chunk_size (&a, 32), 64, u32, PRIu32);
     arena_alloc_free_all (&a);
   }
 
@@ -605,23 +622,23 @@ TEST (compute_new_chunk_size_clamps)
   {
     // target_chunk_mult is a float, so for an alloc_size past 2^24 the
     // product rounds *down* and the target no longer fits the request.
-    st.target_chunk_mult = 1;
+    st.target_chunk_mult = 1.0F;
     st.min_chunk_size    = 8;
     st.max_chunk_size    = 0;
     arena_alloc_create (&a, st);
 
-    const u32 big = (1u << 24) + 1;
-    test_assert ((u32)(big * st.target_chunk_mult) < big);
-    test_assert_int_equal (compute_new_chunk_size (&a, big), big);
+    const u32 big = (1U << 24) + 1;
+    test_assert ((u32)((float)big * st.target_chunk_mult) < big);
+    test_assert_type_equal (compute_new_chunk_size (&a, big), big, u32, PRIu32);
     arena_alloc_free_all (&a);
   }
 
   TEST_CASE ("random settings never undercut the request or the minimum")
   {
     for (u32 i = 0; i < 500; ++i) {
-      st.target_chunk_mult = 1.0f + (float)randu32r (0, 20);
+      st.target_chunk_mult = 1.0F + (float)randu32r (0, 20);
       st.min_chunk_size    = randu32r (1, 4096);
-      st.max_chunk_size    = randu32r (0, 1) ? 0 : randu32r (st.min_chunk_size, 8192);
+      st.max_chunk_size    = randu32r (0, 1) != 0 ? 0 : randu32r (st.min_chunk_size, 8192);
       arena_alloc_create (&a, st);
 
       const u32 alloc_size = randu32r (1, 10000);
@@ -680,9 +697,9 @@ TEST (arena_alloc_free_all_resets_accounting)
   arena_alloc_free_all (&a);
 
   test_assert_ptr_equal (a.head, NULL);
-  test_assert_int_equal (a.num_chunks, 0);
-  test_assert_int_equal (a.total_allocated, 0);
-  test_assert_int_equal (a.total_used, 0);
+  test_assert_type_equal (a.num_chunks, 0, u32, PRIu32);
+  test_assert_type_equal (a.total_allocated, 0, u32, PRIu32);
+  test_assert_type_equal (a.total_used, 0, u32, PRIu32);
 
   test_assert (arena_malloc (&a, 1, 8, &ctx->e) != NULL);
   arena_alloc_free_all (&a);

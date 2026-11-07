@@ -34,21 +34,21 @@ ns_get_number_of_layers (struct pager *p, pgno root, error *e)
   pgno   next = root;
 
   while (true) {
-    if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e)) {
+    if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e) < 0) {
       goto failed;
     }
 
     ret++;
 
     if (page_h_type (&cur) == PG_DATA_LIST) {
-      if (pgr_release (p, &cur, PG_DATA_LIST, e)) {
+      if (pgr_release (p, &cur, PG_DATA_LIST, e) < 0) {
         goto failed;
       }
       return ret;
     }
     if (page_h_type (&cur) == PG_INNER_NODE) {
       next = in_get_leaf (page_h_ro (&cur), 0);
-      if (pgr_release (p, &cur, PG_DATA_LIST, e)) {
+      if (pgr_release (p, &cur, PG_DATA_LIST, e) < 0) {
         goto failed;
       }
     }
@@ -77,7 +77,7 @@ ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e)
   page_h cur = page_h_create ();
   i32    ret = 1;
 
-  if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, pg, p, e))
+  if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, pg, p, e) < 0)
   {
     goto failed;
   }
@@ -86,7 +86,7 @@ ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e)
   while (true)
   {
     pgno next = dlgt_get_next (page_h_ro (&cur));
-    if (pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e))
+    if (pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e) < 0)
     {
       goto failed;
     }
@@ -99,7 +99,7 @@ ns_get_length_to_the_right_of (struct pager *p, pgno pg, error *e)
     {
       ret++;
 
-      if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e))
+      if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e) < 0)
       {
         goto failed;
       }
@@ -123,7 +123,7 @@ ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e)
   page_h cur = page_h_create ();
   i32    ret = 1;
 
-  if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, pg, p, e))
+  if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, pg, p, e) < 0)
   {
     goto failed;
   }
@@ -132,7 +132,7 @@ ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e)
   while (true)
   {
     pgno next = dlgt_get_prev (page_h_ro (&cur));
-    if (pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e))
+    if (pgr_release (p, &cur, PG_INNER_NODE | PG_DATA_LIST, e) < 0)
     {
       goto failed;
     }
@@ -145,7 +145,7 @@ ns_get_length_to_the_left_of (struct pager *p, pgno pg, error *e)
     {
       ret++;
 
-      if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e))
+      if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, next, p, e) < 0)
       {
         goto failed;
       }

@@ -84,7 +84,9 @@ TEST (numstore_insert_multithreaded)
     numstore_create (f.p, &f.tx, strfcstr ("foo"), TU8, &ctx->alloc, NULL, &ctx->e);
     pgr_commit (f.p, &f.tx, &ctx->e);
 
-    _Atomic int          ready = NTHREADS, go = 0, idx = 0;
+    _Atomic int          ready = NTHREADS;
+    _Atomic int          go    = 0;
+    _Atomic int          idx   = 0;
     struct insert_mt_ctx targs = {.p = &f, .ready = &ready, .go = &go, .idx = &idx};
 
     for (int i = 0; i < NTHREADS; ++i) {
@@ -125,15 +127,16 @@ TEST (numstore_insert_multithreaded)
     pgr_commit (f.p, &rtx, &ctx->e);
     u8 *actual = _a;
 
-    test_assert_int_equal (dlen, NTHREADS * SIZE_EACH_INSERT);
+    test_assert_type_equal (dlen, NTHREADS * SIZE_EACH_INSERT, b_size, PRb_size);
 
     // Any serial order is valid; each chunk must appear intact exactly once
-    bool used[NTHREADS] = {0};
+    bool used[NTHREADS] = {false};
     for (int slot = 0; slot < NTHREADS; ++slot) {
       int match = -1;
       for (int i = 0; i < NTHREADS; ++i) {
         if (!used[i]
-            && memcmp (actual + slot * SIZE_EACH_INSERT, targs.data[i], SIZE_EACH_INSERT) == 0) {
+            && memcmp (actual + ((size_t)slot * SIZE_EACH_INSERT), targs.data[i], SIZE_EACH_INSERT)
+                   == 0) {
           match = i;
           break;
         }

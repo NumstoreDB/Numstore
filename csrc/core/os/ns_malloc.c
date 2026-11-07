@@ -18,7 +18,7 @@
 #include "core/ns_csx_assert.h"
 
 #ifndef NDEBUG
-#  include "core/ns_testing.h" // TEST
+#  include "core/ns_testing.h"
 #endif
 
 #include <errno.h>
@@ -132,8 +132,8 @@ struct i_mem
 default_mem (void)
 {
   return (struct i_mem){
-      .self  = NULL,
       .table = &default_mem_vtable,
+      .self  = NULL,
   };
 }
 
@@ -177,10 +177,10 @@ default_mem (void)
 
 TEST (default_mem_overflow_guards)
 {
-  OVERFLOW_GUARD_CASE (0x10000u, 0x10000u); // exactly 2^32
-  OVERFLOW_GUARD_CASE (0x10000u, 0x10001u);
-  OVERFLOW_GUARD_CASE (UINT32_MAX, 2u);
-  OVERFLOW_GUARD_CASE (2u, UINT32_MAX);
+  OVERFLOW_GUARD_CASE (0x10000U, 0x10000U); // exactly 2^32
+  OVERFLOW_GUARD_CASE (0x10000U, 0x10001U);
+  OVERFLOW_GUARD_CASE (UINT32_MAX, 2U);
+  OVERFLOW_GUARD_CASE (2U, UINT32_MAX);
   OVERFLOW_GUARD_CASE (UINT32_MAX, UINT32_MAX);
 }
 
@@ -194,7 +194,7 @@ TEST (default_mem_allocates)
   {
     u8 *p = m.table->malloc (m.self, 16, 4, &ctx->e);
     test_assert (p != NULL);
-    memset (p, 0xab, 16 * 4);
+    memset (p, 0xab, (size_t)16 * 4);
     test_assert_int_equal (p[0], 0xab);
     test_assert_int_equal (p[63], 0xab);
     test_assert_int_equal (ctx->e.cause_code, SUCCESS);
@@ -284,7 +284,7 @@ TEST (faulty_mem_set_fail)
   TEST_CASE ("1.0 fails every call")
   {
     faulty_mem_reset (f);
-    faulty_mem_set_fail (f, 1.0f);
+    faulty_mem_set_fail (f, 1.0F);
 
     test_assert_ptr_equal (f.table->malloc (f.self, 1, 8, &ctx->e), NULL);
     test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
@@ -295,17 +295,17 @@ TEST (faulty_mem_set_fail)
     error_reset (&ctx->e);
 
     // Nothing reached the delegate, so nothing was counted
-    test_assert_int_equal (faulty_num_mallocs (f), 0);
+    test_assert_type_equal (faulty_num_mallocs (f), 0U, u32, PRIu32);
   }
 
   TEST_CASE ("0.0 lets every call through again")
   {
     // The rate is a dial, not a latch: lowering it re-arms the delegate
-    faulty_mem_set_fail (f, 0.0f);
+    faulty_mem_set_fail (f, 0.0F);
 
     void *p = f.table->malloc (f.self, 1, 8, &ctx->e);
     test_assert (p != NULL);
-    test_assert_int_equal (faulty_num_mallocs (f), 1);
+    test_assert_type_equal (faulty_num_mallocs (f), 1U, u32, PRIu32);
     f.table->free (f.self, p);
   }
 
@@ -331,7 +331,7 @@ TEST (faulty_mem_realloc)
     }
 
     // malloc + realloc both reached the delegate
-    test_assert_int_equal (faulty_num_mallocs (f), 2);
+    test_assert_type_equal (faulty_num_mallocs (f), 2U, u32, PRIu32);
 
     f.table->free (f.self, grown);
   }
@@ -350,7 +350,7 @@ TEST (faulty_mem_realloc)
     error_reset (&ctx->e);
 
     // A refused realloc never reached the delegate, so [p] is still ours
-    test_assert_int_equal (faulty_num_mallocs (f), 1);
+    test_assert_type_equal (faulty_num_mallocs (f), 1U, u32, PRIu32);
     for (u32 i = 0; i < 8; ++i) {
       test_assert_int_equal (p[i], 0x5a);
     }
@@ -364,12 +364,12 @@ TEST (faulty_mem_realloc)
     u8 *p = f.table->malloc (f.self, 8, 1, &ctx->e);
     test_assert (p != NULL);
 
-    faulty_mem_set_fail (f, 1.0f);
+    faulty_mem_set_fail (f, 1.0F);
     test_assert_ptr_equal (f.table->realloc (f.self, p, 64, 1, &ctx->e), NULL);
     test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
     error_reset (&ctx->e);
 
-    faulty_mem_set_fail (f, 0.0f);
+    faulty_mem_set_fail (f, 0.0F);
     f.table->free (f.self, p);
   }
 

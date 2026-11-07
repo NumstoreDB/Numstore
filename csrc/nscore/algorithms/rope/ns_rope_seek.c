@@ -66,7 +66,8 @@ ns_seek (struct ns_seek_params *a, error *e)
           a->p,
           a->save_stack,
           e
-      )) {
+      )
+      < 0) {
     goto failed;
   }
 
@@ -95,7 +96,8 @@ ns_seek (struct ns_seek_params *a, error *e)
                 a->p,
                 a->save_stack,
                 e
-            )) {
+            )
+            < 0) {
           goto failed;
         }
 
@@ -106,7 +108,7 @@ ns_seek (struct ns_seek_params *a, error *e)
               .lidx = a->lidx,
           };
         } else {
-          if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e)) {
+          if (pgr_release (a->p, &a->pg, PG_INNER_NODE, e) < 0) {
             goto failed;
           }
         }
@@ -118,7 +120,7 @@ ns_seek (struct ns_seek_params *a, error *e)
 
       case PG_DATA_LIST: {
         const p_size used = dl_used (page_h_ro (&a->pg));
-        a->lidx           = MIN (a->bofst, used);
+        a->lidx           = (p_size)MIN (a->bofst, used);
         return SUCCESS;
       }
 

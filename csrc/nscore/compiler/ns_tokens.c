@@ -34,6 +34,8 @@ token_equal (const struct token *left, const struct token *right)
       // Other
     case TT_STRING:
     case TT_IDENTIFIER: {
+      // TODO: the right side is measured with left's length, so "ab" equals
+      // "abc". Compare right->str.len too.
       return string_equal (
           (struct string){left->str.len, (char *)left->str.data},
           (struct string){left->str.len, (char *)right->str.data}
@@ -66,8 +68,44 @@ TEST (tt_tostr)
 {
 #  define TC_TTTOSTR(x)                 \
     const char *x##_str = tt_tostr (x); \
-    (void)x##_str; /* Unused */         \
+    (void)x##_str;                      \
     i_log_info ("%s\n", x##_str);
   TT_FOREACH (TC_TTTOSTR);
+}
+
+TEST (token_equal)
+{
+  TEST_CASE ("different types are never equal")
+  {
+    struct token left  = tt_integer (1);
+    struct token right = tt_float (1.0F);
+    test_fail_if (token_equal (&left, &right));
+  }
+
+  TEST_CASE ("identifiers compare by text")
+  {
+    struct token left  = tt_ident ("abc", 3);
+    struct token same  = tt_ident ("abc", 3);
+    struct token other = tt_ident ("abd", 3);
+    test_assert (token_equal (&left, &same));
+    test_fail_if (token_equal (&left, &other));
+  }
+
+  TEST_CASE ("numbers compare by value")
+  {
+    struct token one   = tt_integer (1);
+    struct token two   = tt_integer (2);
+    struct token half  = tt_float (0.5F);
+    struct token half2 = tt_float (0.5F);
+    test_fail_if (token_equal (&one, &two));
+    test_assert (token_equal (&half, &half2));
+  }
+
+  TEST_CASE ("other tokens compare by type alone")
+  {
+    struct token left  = quick_tok (TT_COMMA);
+    struct token right = quick_tok (TT_COMMA);
+    test_assert (token_equal (&left, &right));
+  }
 }
 #endif

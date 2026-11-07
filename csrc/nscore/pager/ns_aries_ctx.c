@@ -35,7 +35,7 @@ aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e)
     goto txt_failed;
   }
 
-  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct txn *), 100, e)) {
+  if (dblb_create (&dest->txn_ptrs, &dest->backing_alloc, sizeof (struct txn *), 100, e) < 0) {
     goto dpt_failed;
   }
 
@@ -69,7 +69,7 @@ aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
     return NULL;
   }
 
-  if (dblb_append (&ctx->txn_ptrs, &tx, 1, e)) {
+  if (dblb_append (&ctx->txn_ptrs, (const void *)&tx, 1, e) < 0) {
     slab_alloc_free (&ctx->alloc, tx);
     return NULL;
   }

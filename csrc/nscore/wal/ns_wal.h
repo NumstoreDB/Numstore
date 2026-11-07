@@ -27,12 +27,12 @@
 
 #include <stdbool.h>
 
-#define WAL_RECORDS_POS   sizeof (lsn)
+#define WAL_RECORDS_POS   (sizeof (lsn))
 #define WAL_START_LSN_POS 0
 
 enum wal_flags
 {
-  WAL_ISNEW = (1 << 0),
+  WAL_ISNEW = (1U << 0),
 };
 
 struct wal
@@ -56,8 +56,8 @@ struct wal
 
 DEFINE_DBG_ASSERT (struct wal, wal, w, {
   ASSERT (w);
-  // ostream can be null
-  ASSERT (w->istream);
+  // Both streams can be null: wal_delete_and_reopen destroys them before
+  // reopening, and leaves them null if the reopen itself fails.
 })
 
 // Lifecycle
@@ -89,7 +89,6 @@ struct wal_rec_hdr_read *wal_read_entry (
 lsn wal_append_begin_log (struct wal *w, txid tid);
 lsn wal_append_commit_log (struct wal *w, txid tid, lsn prev);
 lsn wal_append_end_log (struct wal *w, txid tid, lsn prev);
-lsn wal_append_ckpt_begin (struct wal *w);
 lsn wal_append_update_log (struct wal *w, struct wal_update_write update);
 lsn wal_append_clr_log (struct wal *w, struct wal_clr_write clr);
 

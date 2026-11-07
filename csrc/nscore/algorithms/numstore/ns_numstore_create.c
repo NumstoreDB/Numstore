@@ -41,11 +41,11 @@ numstore_create (
       .type  = &type,
       .alloc = valloc,
   };
-  if (ns_var_get_or_create (&gparams, e)) {
+  if (ns_var_get_or_create (&gparams, e) < 0) {
     goto theend;
   }
 
-  if (var) {
+  if (var != NULL) {
     *var = gparams.dest;
   }
 

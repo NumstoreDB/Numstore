@@ -18,12 +18,14 @@
 err_t
 numstore_init_pager (struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   if (!pgr_isnew (p)) {
     return SUCCESS;
   }
 
   // Initialize the upfront hash page
-  if (ns_init_var_hash_map (p, e)) {
+  if (ns_init_var_hash_map (p, e) < 0) {
     return error_trace (e);
   }
 

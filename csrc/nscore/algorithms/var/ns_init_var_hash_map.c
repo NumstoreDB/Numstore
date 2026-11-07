@@ -26,6 +26,8 @@
 err_t
 ns_init_var_hash_map (struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   page_h hp = page_h_create ();
 
   if (!pgr_isnew (p)) {
@@ -34,7 +36,7 @@ ns_init_var_hash_map (struct pager *p, error *e)
 
   // BEGIN TXN
   struct txn tx;
-  if (pgr_begin_txn (&tx, p, e)) {
+  if (pgr_begin_txn (&tx, p, e) < 0) {
     return error_trace (e);
   }
 
@@ -45,7 +47,7 @@ ns_init_var_hash_map (struct pager *p, error *e)
 
   bool valid = page_h_pgno (&hp) == VHASH_PGNO;
 
-  if (pgr_release (p, &hp, PG_VAR_HASH_PAGE, e)) {
+  if (pgr_release (p, &hp, PG_VAR_HASH_PAGE, e) < 0) {
     goto failed;
   }
 
@@ -58,14 +60,15 @@ ns_init_var_hash_map (struct pager *p, error *e)
   }
 
   // COMMIT
-  if (pgr_commit (p, &tx, e)) {
+  if (pgr_commit (p, &tx, e) < 0) {
     goto failed;
   }
 
   return error_trace (e);
 
 failed:
-  pgr_rollback (p, &tx, 0, e);
+  // Already failing; the first error is the one reported
+  (void)pgr_rollback (p, &tx, 0, e);
   return error_trace (e);
 }
 

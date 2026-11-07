@@ -53,8 +53,7 @@ if (fpgr_extend (p->fp, npages, e) < 0) {
 Check the callee returns `err_t` first. Some look alike but return `bool`
 (`faulty_mem_roll`).
 
-To turn a value that isn't already an `err_t` into one, use `err_t_cast (i)`.
-It asserts that `i` is `SUCCESS` or a valid error code, then casts.
+For values held in a wider type, see item 14.
 
 3. Add assertions
 -----------------
@@ -64,6 +63,9 @@ invariants (`DEFINE_DBG_ASSERT` / `DBG_ASSERT`), and the result of a
 calculation. A public function that takes a struct with an invariant and
 doesn't `DBG_ASSERT` it is an easy find. See
 [assertions.md](../writing-code/references/assertions.md).
+
+If a struct is missing a DEFINE_DBG_ASSERT, add it, and add that DBG_ASSERT 
+to other places in the function. You can make the DBG_ASSERT body fleshed out 
 
 4. Format with PRI macros
 -------------------------
@@ -105,9 +107,7 @@ a comment.
 
 Delete comments that restate the code, are wrong, or are stale. Where the
 line needs one, write a comment that says why. Rules are in
-[comments.md](../writing-code/references/comments.md). Examples of comments
-to keep and comments to delete are in
-[good-comments.md](../shared/good-comments.md).
+[comments.md](../writing-code/references/comments.md). 
 
 7. Narrate tests
 ----------------
@@ -127,8 +127,7 @@ Break up very long assertion expressions into named locals.
 ```
 
 The Setup comment should describe the state, and the Run comment the behavior
-under test. See the narrated test in
-[good-tests.md](../shared/good-tests.md#a-narrated-unit-test).
+under test. See the test rules in [writing-good-tests](../writing-c-unit-tests)
 
 8. Initialize structs in declaration order
 ------------------------------------------
@@ -175,8 +174,7 @@ to catch any you got wrong.
 
 Pick a function that can fail on the OS or the allocator and has no fail_after
 test, and add one, following
-[error-tests.md](../writing-c-unit-tests/references/error-tests.md) and the
-sweep in [good-tests.md](../shared/good-tests.md#a-fail_after-sweep). Check
+[error-tests.md](../writing-c-unit-tests/references/error-tests.md). Check
 the output shows at least one `Fail after: N` case actually failing. A sweep
 that succeeds at `N = 0` tests nothing.
 
@@ -218,6 +216,186 @@ These are usually worth fixing:
 
 Skip `readability-identifier-naming` and `misc-use-internal-linkage` on the
 generated `__test__*` functions.
+
+14. Cast error codes with `err_t_cast`
+-------------------------------------
+
+An `i64`, `sb_size` or `int` that holds an error code gets converted to `err_t`
+with `err_t_cast (x)`, not a plain `(err_t)` cast or an implicit conversion.
+`err_t_cast` asserts the value is `SUCCESS` or a valid error code:
+
+```c
+// Before
+err_t ret = nsdb_plan_execute (plan, db->tx, e);
+
+// After
+err_t ret = err_t_cast (nsdb_plan_execute (plan, db->tx, e));
+```
+
+To find them, compile with `-Wshorten-64-to-32` and look for warnings that
+mention `err_t`.
+
+Only cast values that really are `SUCCESS` or an error. If the value can be a
+positive count (bytes read, elements inserted), `err_t_cast` will assert, and
+the real problem is the type: the variable or a static function's return type
+should be `i64` / `sb_size`. Fixing that type is fine. Changing a public API's
+return type isn't; leave a `TODO` instead.
+
+15. Keep function coverage at 100%
+----------------------------------
+
+Every function must be called by at least one unit test. That's a hard rule;
+line coverage is best effort. Look for functions marked "not called" in the
+coverage report's function list (`build/coverage/html/index.functions.html`
+after `make coverage`), and write a test that calls each one. Don't delete an
+uncalled function just to raise the number. A print function can be tested
+by printing to the log.
+
+Most of the rules below have a clang-tidy check configured in `.clang-tidy`.
+Run it on a file and work through what it reports.
+
+16. Signed/unsigned comparisons
+-------------------------------
+
+C converts the signed side of a mixed comparison to unsigned, so `-1 < 10U`
+is false. Never compare signed and unsigned implicitly. Since `< 0` is how we
+check errors, a signed value that has passed that check (or that an invariant
+says can't be negative) gets an `ASSERT (x >= 0)`, then an explicit cast:
+
+```c
+// Before
+if (n < len) ...                 // n is i64, len is u64
+
+// After
+ASSERT (n >= 0);
+if ((u64)n < len) ...
+```
+
+If it can really be negative there, check it: `n >= 0 && (u64)n < len`.
+`-Wsign-compare` finds these.
+
+17. No silent narrowing
+-----------------------
+
+Every conversion that can lose bits (`u64` → `u32`, `i64` → `int`, signed ↔
+unsigned) is explicit. For each one:
+
+- If it's a mistake (the destination type is just wrong), fix the type.
+- If the value provably fits, `ASSERT` that it fits, then cast.
+- If it might not fit and the function already returns errors, check with
+  the `core/ns_bounds.h` helpers and return `ERR_ARITH`. If the function
+  doesn't return errors, assert and leave a `TODO` (don't add an error path).
+
+`bugprone-narrowing-conversions` and `-Wshorten-64-to-32` find these.
+
+18. Check every fallible call (outside tests)
+---------------------------------------------
+
+In implementation code, every call that returns `err_t` has its result
+checked, or is cast to `(void)` with a comment saying why it can't fail or
+doesn't matter. Tests may ignore results so they stay readable.
+`bugprone-unused-return-value` (configured for `err_t`) finds these.
+
+19. Uppercase literal suffixes
+------------------------------
+
+`10U`, `0x7CU`, `1.0F`, `5ULL`, never `10u`. Run
+`readability-uppercase-literal-suffix` with `-fix`.
+
+20. Braces on every body
+------------------------
+
+Every `if`, `else`, `for` and `while` body has braces, even one line.
+`readability-braces-around-statements` finds these.
+
+21. Widen before multiplying, `sizeof *ptr`
+-------------------------------------------
+
+Cast an operand before the multiply, not the product: `(u64)a * b`, never
+`(u64)(a * b)`. `bugprone-implicit-widening-of-multiplication-result` and
+`bugprone-misplaced-widening-cast` find these.
+
+In allocations and copies, size from the pointer, not the type, so the size
+follows the pointer if its type changes:
+
+```c
+// Before
+struct foo *f = malloc (sizeof (struct foo));
+
+// After
+struct foo *f = malloc (sizeof *f);
+```
+
+22. TODOs and test assertions
+-----------------------------
+
+- Every `TODO` says what and why. Rewrite vague ones (`// TODO - fix`) or
+  delete them if they're done.
+- Tests use typed assertions so failures print both values:
+  `test_assert_int_equal (a, b)` or `test_assert_type_equal (a, b, u64,
+  PRIu64)`, not `test_assert (a == b)`.
+
+24. Static internal linkage
+---------------------------
+
+- If the function is only ever used inside the file, (e.g. it's a helper)
+  make it static 
+
+25. Safe string operations
+---------------------------
+
+- Replace all occurences of strlen with strnlen and bound by a sensible number 
+  (like MAX_FILE_SIZE or something)
+- Replace all 
+
+26. Strict aliasing compliance
+
+Avoid violating C strict aliasing rules through illegal pointer type-punning.
+When deserializing binary page headers or raw log records from byte arrays, use
+memcpy or access through char * pointers rather than casting incompatible
+pointer types directly:
+
+```
+// Before (Undefined Behavior under strict aliasing)
+struct ns_page_header *hdr = (struct ns_page_header *)raw_bytes;
+
+// After (Compliant and portable)
+struct ns_page_header hdr;
+memcpy (&hdr, raw_bytes, sizeof (hdr));
+```
+
+27. Explicit loop bounds and corruption checks 
+
+```
+u32 offset = 0;
+while (offset < page_payload_len) {
+  if (safe_add_u32 (&offset, offset, record_size)) {
+    return error_causef (e, ERR_CORRUPT, "record offset overflow");
+  }
+}
+```
+
+Every loop iterating over variable-length disk records, transaction logs, or
+B-tree slots must include explicit upper-bound safety checks against remaining
+buffer lengths. Never trust that on-disk length headers are uncorrupted: If a
+loop doesn't have a defined upper bound, define a macro above like
+MAX_RETRY_LOOPS and loop to that upper bound - return errors for over 
+
+36. Stack-preserving error tracing (error_trace)
+Never return a raw error code up the call stack if it discards context. Wrap or trace errors at every architectural layer boundary using the project's error-handling mechanisms so that diagnostic logs retain the complete call path down to the root failure:
+
+```
+err_t ret = ns_pager_flush_page (pager, page, e);
+if (ret < 0) {
+  return error_trace (e); // Preserves file and line context across stack frames
+}
+```
+
+38. Documented lifetime contracts for pinned page pointers
+When returning pointers to cached database pages or pinned slots, document the
+precise lifetime contract: the pointer remains valid only while the underlying
+page latch or buffer pool pin is held. Ensure the pin is explicitly released as
+soon as the transaction or search operation completes:
 
 Before finishing
 ----------------

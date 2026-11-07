@@ -235,6 +235,7 @@ page_h_pgno (const page_h *h)
 HEADER_FUNC pgno
 page_h_pgno_or_null (const page_h *h)
 {
+  DBG_ASSERT (page_h, h);
   if (h->mode == PHM_NONE) {
     return PGNO_NULL;
   }
@@ -260,6 +261,7 @@ page_h_type (const page_h *h)
 HEADER_FUNC struct in_pair
 in_pair_from_pgh (const page_h *pg)
 {
+  DBG_ASSERT (page_h, pg);
   if (pg->mode == PHM_NONE) {
     return in_pair_empty;
   }

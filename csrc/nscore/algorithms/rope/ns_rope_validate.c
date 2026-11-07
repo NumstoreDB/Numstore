@@ -24,6 +24,8 @@
 err_t
 ns_rope_validate (struct pager *p, pgno root, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   if (root == PGNO_NULL) {
     return SUCCESS;
   }

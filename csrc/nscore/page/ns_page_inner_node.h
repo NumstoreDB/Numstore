@@ -83,7 +83,7 @@ err_t in_validate_for_db (const page *in, error *e);
 p_size in_page_memcpy_right (pgno *dest, const page *src, p_size ofst);
 p_size in_key_memcpy_right (b_size *dest, const page *src, p_size ofst);
 void in_push_left (page *in, p_size len);
-void in_push_left_permissive (page *in, p_size len);
+void in_push_left_permissive (page *in, p_size amnt);
 void in_cut_left (page *in, p_size end);
 void in_set_data (page *p, struct in_data data);
 void in_move_left (page *dest, page *src, p_size len);
@@ -98,14 +98,16 @@ void in_make_valid (page *in);
 HEADER_FUNC p_size
 in_get_len (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   PAGE_SIMPLE_GET_IMPL (in, p_size, IN_NLEN_OFST);
 }
 
 HEADER_FUNC const void *
 in_get_backwards_keys_imut (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   const p_size n      = in_get_len (in);
-  const p_size nbytes = n * sizeof (b_size);
+  const p_size nbytes = n * (p_size)sizeof (b_size);
   ASSERT (nbytes <= NS_PAGE_SIZE);
   if (nbytes > NS_PAGE_SIZE) {
     UNREACHABLE_HINT (); // invariant: callers guarantee nbytes fits in page
@@ -121,12 +123,13 @@ in_get_backwards_keys_imut (const page *in)
 HEADER_FUNC b_size
 in_get_key (const page *in, const p_size idx)
 {
+  DBG_ASSERT (inner_node, in);
   const p_size n = in_get_len (in);
   ASSERT (idx < n);
 
   const u8    *base         = in_get_backwards_keys_imut (in);
   const p_size offset_elems = n - 1 - idx;
-  const p_size offset_bytes = offset_elems * sizeof (b_size);
+  const p_size offset_bytes = offset_elems * (p_size)sizeof (b_size);
 
   b_size       ret;
   memcpy (&ret, base + offset_bytes, sizeof ret);
@@ -137,8 +140,11 @@ in_get_key (const page *in, const p_size idx)
 HEADER_FUNC b_size
 in_get_size (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   b_size ret = 0;
-  // TODO - (17) this could be cached
+
+  // TODO: cache the subtree size in the page - this sums every key on each
+  // call
 
   for (p_size i = 0; i < in_get_len (in); ++i) {
     ret += in_get_key (in, i);
@@ -150,14 +156,16 @@ in_get_size (const page *in)
 HEADER_FUNC p_size
 in_get_avail (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   return IN_MAX_KEYS - in_get_len (in);
 }
 
 HEADER_FUNC void *
 in_get_backwards_keys_mut (page *in)
 {
+  DBG_ASSERT (inner_node, in);
   const p_size n      = in_get_len (in);
-  const p_size nbytes = n * sizeof (b_size);
+  const p_size nbytes = n * (p_size)sizeof (b_size);
   ASSERT (nbytes <= NS_PAGE_SIZE);
 
   return &in->raw[NS_PAGE_SIZE - nbytes];
@@ -166,7 +174,8 @@ in_get_backwards_keys_mut (page *in)
 HEADER_FUNC void *
 in_get_backwards_keys_mut_limit (page *in)
 {
-  const p_size nbytes = IN_MAX_KEYS * sizeof (b_size);
+  DBG_ASSERT (inner_node, in);
+  const p_size nbytes = IN_MAX_KEYS * (p_size)sizeof (b_size);
   ASSERT (nbytes <= NS_PAGE_SIZE);
   return &in->raw[NS_PAGE_SIZE - nbytes];
 }
@@ -174,20 +183,21 @@ in_get_backwards_keys_mut_limit (page *in)
 HEADER_FUNC void *
 in_get_leafs_mut (page *in)
 {
+  DBG_ASSERT (inner_node, in);
   return &in->raw[IN_LEAF_OFST];
 }
 
 HEADER_FUNC const void *
 in_get_leafs_imut (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   return &in->raw[IN_LEAF_OFST];
 }
-
-#define in_get_right_most_key(in) in_get_key (in, in_get_len (in) - 1)
 
 HEADER_FUNC pgno
 in_get_leaf (const page *in, const p_size idx)
 {
+  DBG_ASSERT (inner_node, in);
   const p_size n = in_get_len (in);
   (void)n; // Unused in release
   ASSERT (idx < n);
@@ -203,12 +213,14 @@ in_get_leaf (const page *in, const p_size idx)
 HEADER_FUNC pgno
 in_get_next (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   PAGE_SIMPLE_GET_IMPL (in, pgno, IN_NEXT_OFST);
 }
 
 HEADER_FUNC pgno
 in_get_prev (const page *in)
 {
+  DBG_ASSERT (inner_node, in);
   PAGE_SIMPLE_GET_IMPL (in, pgno, IN_PREV_OFST);
 }
 
@@ -241,6 +253,9 @@ struct inner_node
 HEADER_FUNC void
 in_get (struct inner_node *dest, const page *p)
 {
+  ASSERT (dest);
+  DBG_ASSERT (inner_node, p);
+
   dest->plen    = in_get_len (p);
   dest->avail   = in_get_avail (p);
   dest->full    = in_full (p);
@@ -260,25 +275,28 @@ in_get (struct inner_node *dest, const page *p)
 HEADER_FUNC void
 in_set_len (page *in, const p_size len)
 {
+  DBG_ASSERT (inner_node, in);
   PAGE_SIMPLE_SET_IMPL (in, len, IN_NLEN_OFST);
 }
 
 HEADER_FUNC void
 in_set_leaf (page *in, const p_size idx, const pgno pg)
 {
+  DBG_ASSERT (inner_node, in);
   ASSERT (idx < in_get_len (in) + 1);
-  PAGE_SIMPLE_SET_IMPL (in, pg, IN_LEAF_OFST + idx * sizeof (pgno));
+  PAGE_SIMPLE_SET_IMPL (in, pg, IN_LEAF_OFST + (idx * sizeof (pgno)));
 }
 
 HEADER_FUNC void
 in_set_key (page *in, const p_size idx, const b_size key)
 {
+  DBG_ASSERT (inner_node, in);
   const p_size n = in_get_len (in);
   ASSERT (idx < n);
 
   u8          *base         = in_get_backwards_keys_mut (in);
   const p_size offset_elems = n - 1 - idx;
-  const p_size offset_bytes = offset_elems * sizeof (b_size);
+  const p_size offset_bytes = offset_elems * (p_size)sizeof (b_size);
 
   memcpy (base + offset_bytes, &key, sizeof key);
 }
@@ -286,6 +304,7 @@ in_set_key (page *in, const p_size idx, const b_size key)
 HEADER_FUNC void
 in_set_key_leaf (page *in, const p_size idx, const b_size key, const pgno pg)
 {
+  DBG_ASSERT (inner_node, in);
   in_set_key (in, idx, key);
   in_set_leaf (in, idx, pg);
 }
@@ -293,6 +312,7 @@ in_set_key_leaf (page *in, const p_size idx, const b_size key, const pgno pg)
 HEADER_FUNC void
 in_push_end (page *dest, const b_size key, const pgno pg)
 {
+  DBG_ASSERT (inner_node, dest);
   ASSERT (!in_full (dest));
   in_set_len (dest, in_get_len (dest) + 1);
   in_set_key_leaf (dest, in_get_len (dest) - 1, key, pg);
@@ -301,18 +321,20 @@ in_push_end (page *dest, const b_size key, const pgno pg)
 HEADER_FUNC void
 in_set_leaf_ignore_len (page *in, const p_size idx, const pgno pg)
 {
+  DBG_ASSERT (inner_node, in);
   ASSERT (idx < IN_MAX_KEYS);
-  PAGE_SIMPLE_SET_IMPL (in, pg, IN_LEAF_OFST + idx * sizeof (pgno));
+  PAGE_SIMPLE_SET_IMPL (in, pg, IN_LEAF_OFST + (idx * sizeof (pgno)));
 }
 
 HEADER_FUNC void
 in_set_key_ignore_len (page *in, const p_size idx, const b_size key)
 {
+  DBG_ASSERT (inner_node, in);
   ASSERT (idx < IN_MAX_KEYS);
 
   u8          *base         = in_get_backwards_keys_mut (in);
   const p_size offset_elems = IN_MAX_KEYS - 1 - idx;
-  const p_size offset_bytes = offset_elems * sizeof (b_size);
+  const p_size offset_bytes = offset_elems * (p_size)sizeof (b_size);
 
   memcpy (base + offset_bytes, &key, sizeof key);
 }
@@ -320,6 +342,7 @@ in_set_key_ignore_len (page *in, const p_size idx, const b_size key)
 HEADER_FUNC void
 in_set_key_leaf_ignore_len (page *in, const p_size idx, const b_size key, const pgno pg)
 {
+  DBG_ASSERT (inner_node, in);
   in_set_key_ignore_len (in, idx, key);
   in_set_leaf_ignore_len (in, idx, pg);
 }
@@ -327,24 +350,27 @@ in_set_key_leaf_ignore_len (page *in, const p_size idx, const b_size key, const 
 HEADER_FUNC void
 in_set_prev (page *in, const pgno prev)
 {
+  DBG_ASSERT (inner_node, in);
   PAGE_SIMPLE_SET_IMPL (in, prev, IN_PREV_OFST);
 }
 
 HEADER_FUNC void
 in_set_next (page *in, const pgno next)
 {
+  DBG_ASSERT (inner_node, in);
   PAGE_SIMPLE_SET_IMPL (in, next, IN_NEXT_OFST);
 }
 
 HEADER_FUNC void
 in_link (page *left, page *right)
 {
-  const pgno lpg = left ? left->pg : PGNO_NULL;
-  const pgno rpg = right ? right->pg : PGNO_NULL;
-  if (left) {
+  DBG_ASSERT (inner_node, left);
+  const pgno lpg = left != NULL ? left->pg : PGNO_NULL;
+  const pgno rpg = right != NULL ? right->pg : PGNO_NULL;
+  if (left != NULL) {
     in_set_next (left, rpg);
   }
-  if (right) {
+  if (right != NULL) {
     in_set_prev (right, lpg);
   }
 }

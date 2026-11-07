@@ -142,7 +142,7 @@ struct kvt_ref_list_builder
 
 struct kvt_ref_list_builder kvrlb_create (struct builder *b);
 err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
-err_t kvrlb_accept_type (struct kvt_ref_list_builder *eb, struct type_ref t, error *e);
-err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *eb, error *e);
+err_t kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e);
+err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *e);
 
 #endif

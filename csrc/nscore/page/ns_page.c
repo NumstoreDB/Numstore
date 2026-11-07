@@ -30,8 +30,10 @@
 void
 page_init_empty (page *p, const enum page_type type)
 {
+  DBG_ASSERT (page_base, p);
+
   page_set_type (p, type);
-  page_set_page_lsn (p, PGNO_NULL);
+  page_set_page_lsn (p, LSN_NULL);
   page_set_checksum (p, 0);
 
   switch (type) {
@@ -66,7 +68,7 @@ page_init_empty (page *p, const enum page_type type)
 err_t
 page_validate_for_db (const page *p, const int flags, error *e)
 {
-  ASSERT (p);
+  DBG_ASSERT (page_base, p);
 
   if (flags & PG_PERMISSIVE) {
     return SUCCESS;
@@ -93,7 +95,7 @@ page_validate_for_db (const page *p, const int flags, error *e)
           e,
           ERR_CORRUPT,
           "Corrupt page. Expected checksum: "
-          "%d Actual Checksum: %d",
+          "%" PRIu32 " Actual Checksum: %" PRIu32,
           expected_checksum,
           actual_checksum
       );
@@ -128,13 +130,11 @@ page_validate_for_db (const page *p, const int flags, error *e)
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
-////////////////////////////////////////////////////////////
-// SETTERS
-
 #ifndef NDEBUG
 TEST (page_set_get_simple)
 {
-  page p, q;
+  page p;
+  page q;
   rand_bytes (p.raw, NS_PAGE_SIZE);
   rand_bytes (q.raw, NS_PAGE_SIZE);
 
@@ -155,10 +155,10 @@ TEST (page_set_get_simple)
     page_init_empty (&p, PG_DATA_LIST);
 
     page_set_checksum (&p, 0xDEADBEEF);
-    test_assert_int_equal (page_get_checksum (&p), 0xDEADBEEF);
+    test_assert_type_equal (page_get_checksum (&p), 0xDEADBEEFU, u32, PRIu32);
 
     page_set_page_lsn (&p, 1234);
-    test_assert_int_equal (page_get_page_lsn (&p), 1234);
+    test_assert_type_equal (page_get_page_lsn (&p), 1234, lsn, PRlsn);
 
     page_set_type (&p, PG_INNER_NODE);
     test_assert_int_equal (page_get_type (&p), PG_INNER_NODE);
@@ -173,9 +173,62 @@ TEST (page_set_get_simple)
 }
 #endif
 
+#ifndef NDEBUG
+TEST (page_validate_for_db_flags)
+{
+  page p;
+  rand_bytes (p.raw, NS_PAGE_SIZE);
+
+  TEST_CASE ("A valid page with a matching checksum passes")
+  {
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    page_set_checksum (&p, page_compute_checksum (&p));
+    test_err_t_check (page_validate_for_db (&p, PG_FREE_SPACE_MAP, &ctx->e), SUCCESS, &ctx->e);
+  }
+
+  TEST_CASE ("The wrong page type is corrupt")
+  {
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    page_set_checksum (&p, page_compute_checksum (&p));
+    test_err_t_check (page_validate_for_db (&p, PG_INNER_NODE, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  TEST_CASE ("A bad checksum is corrupt unless skipped")
+  {
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    page_set_checksum (&p, page_compute_checksum (&p) + 1);
+    test_err_t_check (page_validate_for_db (&p, PG_FREE_SPACE_MAP, &ctx->e), ERR_CORRUPT, &ctx->e);
+    test_err_t_check (
+        page_validate_for_db (&p, PG_FREE_SPACE_MAP | PG_SKIP_CHECKSUM, &ctx->e),
+        SUCCESS,
+        &ctx->e
+    );
+  }
+
+  TEST_CASE ("PG_PERMISSIVE accepts anything")
+  {
+    rand_bytes (p.raw, NS_PAGE_SIZE);
+    test_err_t_check (page_validate_for_db (&p, PG_PERMISSIVE, &ctx->e), SUCCESS, &ctx->e);
+  }
+
+  TEST_CASE ("A PG_TRASH frame matches every type and skips the type check")
+  {
+    pgh trash = PG_TRASH;
+    memcpy (&p.raw[PG_HEDR_OFST], &trash, sizeof trash);
+    test_err_t_check (
+        page_validate_for_db (&p, PG_INNER_NODE | PG_SKIP_CHECKSUM, &ctx->e),
+        SUCCESS,
+        &ctx->e
+    );
+  }
+}
+#endif
+
 void
 i_log_page (const int log_level, const page *p)
 {
+  DBG_ASSERT (page_base, p);
+
   switch ((enum page_type)page_get_type (p)) {
     case PG_DATA_LIST: {
       i_log_dl (log_level, p);

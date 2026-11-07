@@ -192,7 +192,7 @@ txn_newlock_test (void *_tx)
   (void)_tx; // Unused
 #  define MAYBE_ADD_LOCK(type, r)                                            \
     lock = r;                                                                \
-    if (txn_newlock (tx, lock, LM_X, &e)) {                                  \
+    if (txn_newlock (tx, lock, LM_X, &e) < 0) {                              \
       goto failed;                                                           \
     }                                                                        \
     if (!txn_haslock (tx, lock)) {                                           \
@@ -431,7 +431,7 @@ merge_txn (struct txn *tx, void *vctx)
   ASSERT (ctx->txn_dest == NULL || ctx->txn_dest->size == sizeof (struct txn));
 
   // Fail fast on an error
-  if (ctx->e->cause_code) {
+  if (ctx->e->cause_code < 0) {
     return;
   }
 
@@ -451,7 +451,7 @@ merge_txn (struct txn *tx, void *vctx)
     if (target_txn == NULL) {
       goto theend;
     }
-    if (dblb_append (ctx->txn_dest, &target_txn, 1, ctx->e)) {
+    if (dblb_append (ctx->txn_dest, &target_txn, 1, ctx->e) < 0) {
       goto theend;
     }
     txn_init (target_txn, tx->tid, tx->data, ctx->mem);
@@ -514,9 +514,9 @@ TEST (txnt_merge_into)
           &dest_txns[i],
           i + 1,
           (struct txn_data){
+              .state         = TX_RUNNING,
               .last_lsn      = (i + 1) * 10,
               .undo_next_lsn = (i + 1) * 10 - 1,
-              .state         = TX_RUNNING,
           },
           ctx->mem
       );
@@ -530,9 +530,9 @@ TEST (txnt_merge_into)
           &src_txns[i],
           i + 6,
           (struct txn_data){
+              .state         = TX_CANDIDATE_FOR_UNDO,
               .last_lsn      = (i + 6) * 10,
               .undo_next_lsn = (i + 6) * 10 - 1,
-              .state         = TX_CANDIDATE_FOR_UNDO,
           },
           ctx->mem
       );
@@ -561,9 +561,9 @@ TEST (txnt_merge_into)
         &dest_tx,
         42,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -574,9 +574,9 @@ TEST (txnt_merge_into)
         &src_tx,
         42,
         (struct txn_data){
+            .state         = TX_COMMITTED,
             .last_lsn      = 200,
             .undo_next_lsn = 190,
-            .state         = TX_COMMITTED,
         },
         ctx->mem
     );
@@ -644,7 +644,7 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx1,
         1,
-        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 100, .state = TX_RUNNING},
+        (struct txn_data){.state = TX_RUNNING, .last_lsn = 100, .undo_next_lsn = 100},
         ctx->mem
     );
 
@@ -652,19 +652,19 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx2,
         2,
-        (struct txn_data){.last_lsn = 50, .undo_next_lsn = 40, .state = TX_CANDIDATE_FOR_UNDO},
+        (struct txn_data){.state = TX_CANDIDATE_FOR_UNDO, .last_lsn = 50, .undo_next_lsn = 40},
         ctx->mem
     );
     txn_init (
         &tx3,
         3,
-        (struct txn_data){.last_lsn = 80, .undo_next_lsn = 75, .state = TX_CANDIDATE_FOR_UNDO},
+        (struct txn_data){.state = TX_CANDIDATE_FOR_UNDO, .last_lsn = 80, .undo_next_lsn = 75},
         ctx->mem
     );
     txn_init (
         &tx4,
         4,
-        (struct txn_data){.last_lsn = 60, .undo_next_lsn = 55, .state = TX_CANDIDATE_FOR_UNDO},
+        (struct txn_data){.state = TX_CANDIDATE_FOR_UNDO, .last_lsn = 60, .undo_next_lsn = 55},
         ctx->mem
     );
 
@@ -686,19 +686,19 @@ TEST (txnt_max_u_undo_lsn)
     txn_init (
         &tx1,
         1,
-        (struct txn_data){.last_lsn = 100, .undo_next_lsn = 90, .state = TX_RUNNING},
+        (struct txn_data){.state = TX_RUNNING, .last_lsn = 100, .undo_next_lsn = 90},
         ctx->mem
     );
     txn_init (
         &tx2,
         2,
-        (struct txn_data){.last_lsn = 200, .undo_next_lsn = 190, .state = TX_RUNNING},
+        (struct txn_data){.state = TX_RUNNING, .last_lsn = 200, .undo_next_lsn = 190},
         ctx->mem
     );
     txn_init (
         &tx3,
         3,
-        (struct txn_data){.last_lsn = 300, .undo_next_lsn = 290, .state = TX_COMMITTED},
+        (struct txn_data){.state = TX_COMMITTED, .last_lsn = 300, .undo_next_lsn = 290},
         ctx->mem
     );
 
@@ -852,9 +852,9 @@ TEST (txnt_exists)
         &tx,
         1100,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -906,9 +906,9 @@ TEST (txnt_insert)
         &tx,
         900,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -931,9 +931,9 @@ TEST (txnt_insert)
         &tx1,
         1000,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -945,9 +945,9 @@ TEST (txnt_insert)
         &tx2,
         1000,
         (struct txn_data){
+            .state         = TX_COMMITTED,
             .last_lsn      = 200,
             .undo_next_lsn = 180,
-            .state         = TX_COMMITTED,
         },
         ctx->mem
     );
@@ -971,19 +971,19 @@ TEST (txnt_insert)
     txn_init (
         &tx1,
         1,
-        (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING},
+        (struct txn_data){.state = TX_RUNNING, .last_lsn = 10, .undo_next_lsn = 9},
         ctx->mem
     );
     txn_init (
         &tx2,
         2,
-        (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_CANDIDATE_FOR_UNDO},
+        (struct txn_data){.state = TX_CANDIDATE_FOR_UNDO, .last_lsn = 20, .undo_next_lsn = 19},
         ctx->mem
     );
     txn_init (
         &tx3,
         3,
-        (struct txn_data){.last_lsn = 30, .undo_next_lsn = 29, .state = TX_COMMITTED},
+        (struct txn_data){.state = TX_COMMITTED, .last_lsn = 30, .undo_next_lsn = 29},
         ctx->mem
     );
 
@@ -1065,9 +1065,9 @@ TEST (txnt_get)
         &tx,
         100,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 50,
             .undo_next_lsn = 40,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1090,9 +1090,9 @@ TEST (txnt_get)
         &tx,
         200,
         (struct txn_data){
+            .state         = TX_CANDIDATE_FOR_UNDO,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_CANDIDATE_FOR_UNDO,
         },
         ctx->mem
     );
@@ -1118,9 +1118,9 @@ TEST (txnt_get)
         &tx,
         600,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1152,9 +1152,9 @@ TEST (txnt_get)
         &tx,
         2000,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 99,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1237,9 +1237,9 @@ TEST (txnt_remove)
         &tx,
         400,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1278,9 +1278,9 @@ TEST (txnt_remove)
         &tx,
         100,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 50,
             .undo_next_lsn = 49,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1305,9 +1305,9 @@ TEST (txnt_remove)
         &tx,
         200,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 50,
             .undo_next_lsn = 49,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1424,9 +1424,9 @@ TEST (txnt_equal_ignore_state)
           &t1_txns[i],
           i + 1,
           (struct txn_data){
+              .state         = TX_RUNNING,
               .last_lsn      = (i + 1) * 10,
               .undo_next_lsn = (i + 1) * 10 - 1,
-              .state         = TX_RUNNING,
           },
           ctx->mem
       );
@@ -1434,9 +1434,9 @@ TEST (txnt_equal_ignore_state)
           &t2_txns[i],
           i + 1,
           (struct txn_data){
+              .state         = TX_RUNNING,
               .last_lsn      = (i + 1) * 10,
               .undo_next_lsn = (i + 1) * 10 - 1,
-              .state         = TX_RUNNING,
           },
           ctx->mem
       );
@@ -1458,13 +1458,13 @@ TEST (txnt_equal_ignore_state)
     txn_init (
         &tx1,
         1,
-        (struct txn_data){.last_lsn = 10, .undo_next_lsn = 9, .state = TX_RUNNING},
+        (struct txn_data){.state = TX_RUNNING, .last_lsn = 10, .undo_next_lsn = 9},
         ctx->mem
     );
     txn_init (
         &tx2,
         1,
-        (struct txn_data){.last_lsn = 20, .undo_next_lsn = 19, .state = TX_RUNNING},
+        (struct txn_data){.state = TX_RUNNING, .last_lsn = 20, .undo_next_lsn = 19},
         ctx->mem
     );
 
@@ -1511,9 +1511,9 @@ txnt_insert_thread (void *arg)
         &ctx->txn_bank[i],
         ctx->start_tid + i,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = ctx->start_tid + i,
             .undo_next_lsn = ctx->start_tid + i - 1,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1594,25 +1594,25 @@ TEST (txnt_concurrent)
     struct txnt_thread_ctx ctx1 = {
         .table     = t,
         .txn_bank  = txn_bank1,
+        .counter   = 0,
         .start_tid = 0,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
         .txn_bank  = txn_bank2,
+        .counter   = 0,
         .start_tid = 100,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
         .txn_bank  = txn_bank3,
+        .counter   = 0,
         .start_tid = 200,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
 
@@ -1654,9 +1654,9 @@ TEST (txnt_concurrent)
           &txns[i],
           i,
           (struct txn_data){
+              .state         = TX_RUNNING,
               .last_lsn      = i,
               .undo_next_lsn = i - 1,
-              .state         = TX_RUNNING,
           },
           ctx->mem
       );
@@ -1665,23 +1665,23 @@ TEST (txnt_concurrent)
 
     struct txnt_thread_ctx ctx1 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 0,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 50,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 100,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
 
@@ -1717,9 +1717,9 @@ TEST (txnt_concurrent)
         &tx,
         700,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 80,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1749,9 +1749,9 @@ TEST (txnt_concurrent)
         &tx,
         800,
         (struct txn_data){
+            .state         = TX_RUNNING,
             .last_lsn      = 100,
             .undo_next_lsn = 90,
-            .state         = TX_RUNNING,
         },
         ctx->mem
     );
@@ -1783,9 +1783,9 @@ TEST (txnt_concurrent)
           &txns[i],
           i,
           (struct txn_data){
+              .state         = TX_RUNNING,
               .last_lsn      = i,
               .undo_next_lsn = i - 1,
-              .state         = TX_RUNNING,
           },
           ctx->mem
       );
@@ -1794,23 +1794,23 @@ TEST (txnt_concurrent)
 
     struct txnt_thread_ctx ctx1 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 0,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 100,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 200,
         .count     = 100,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
 
@@ -1855,9 +1855,9 @@ TEST (txnt_concurrent)
           &txns[i],
           i,
           (struct txn_data){
+              .state         = TX_RUNNING,
               .last_lsn      = i,
               .undo_next_lsn = i - 1,
-              .state         = TX_RUNNING,
           },
           ctx->mem
       );
@@ -1866,23 +1866,23 @@ TEST (txnt_concurrent)
 
     struct txnt_thread_ctx ctx1 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 0,
         .count     = 50,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx2 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 50,
         .count     = 50,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
     struct txnt_thread_ctx ctx3 = {
         .table     = t,
+        .counter   = 0,
         .start_tid = 100,
         .count     = 50,
-        .counter   = 0,
         .mem       = ctx->mem,
     };
 

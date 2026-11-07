@@ -50,8 +50,12 @@
  * displaced tail, re-links the chain, then balances the leaf and propagates
  * size changes up the inner-node tree via ns_rebalance().
  *
- * When nelem is 0, bytes are consumed from src until it is exhausted.
+ * When params->bytes is 0, bytes are consumed from src until it is exhausted.
  * params->root is updated in place if the root changes.
+ *
+ * TODO: the return value is total_written, a b_size byte count, typed as
+ * err_t. Change the return type to sb_size: an insert of 2 GiB or more
+ * truncates to a negative int and callers read it as an error code.
  */
 err_t
 ns_insert (struct ns_insert_params *params, error *e)
@@ -88,7 +92,7 @@ ns_insert (struct ns_insert_params *params, error *e)
 
     params->root = page_h_pgno (&cur);
   } else {
-    if (ns_seek (&seek, e)) {
+    if (ns_seek (&seek, e) < 0) {
       goto failed;
     }
 
@@ -116,11 +120,11 @@ ns_insert (struct ns_insert_params *params, error *e)
       dl_set_next (page_h_w (&cur), page_h_pgno (&next));
       dl_set_prev (page_h_w (&next), page_h_pgno (&cur));
 
-      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e)) {
+      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e) < 0) {
         goto failed;
       }
 
-      if (pgr_release (params->p, &cur, PG_DATA_LIST, e)) {
+      if (pgr_release (params->p, &cur, PG_DATA_LIST, e) < 0) {
         goto failed;
       }
 
@@ -167,11 +171,11 @@ ns_insert (struct ns_insert_params *params, error *e)
       dl_set_next (page_h_w (&cur), page_h_pgno (&next));
       dl_set_prev (page_h_w (&next), page_h_pgno (&cur));
 
-      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e)) {
+      if (nupd_commit_1st_right (output, pgh_unravel (&cur), e) < 0) {
         goto failed;
       }
 
-      if (pgr_release (params->p, &cur, PG_DATA_LIST, e)) {
+      if (pgr_release (params->p, &cur, PG_DATA_LIST, e) < 0) {
         goto failed;
       }
 
@@ -181,7 +185,7 @@ ns_insert (struct ns_insert_params *params, error *e)
   }
 
   if (last != PGNO_NULL && last != dl_get_next (page_h_ro (&cur))) {
-    if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e)) {
+    if (pgr_get_writable (&next, params->tx, PG_DATA_LIST, last, params->p, e) < 0) {
       goto failed;
     }
 
@@ -198,11 +202,11 @@ ns_insert (struct ns_insert_params *params, error *e)
       .next   = &next,
   };
 
-  if (ns_balance_and_release (bparams, e)) {
+  if (ns_balance_and_release (bparams, e) < 0) {
     goto failed;
   }
 
-  if (nupd_append_tip_right (output, tip_out, e)) {
+  if (nupd_append_tip_right (output, tip_out, e) < 0) {
     goto failed;
   }
 
@@ -229,23 +233,24 @@ ns_insert (struct ns_insert_params *params, error *e)
     nupd_free (rebalance.input);
   }
 
-  if (ret) {
+  if (ret < 0) {
     goto failed;
   }
 
   params->root = rebalance.root;
 
-  return total_written;
+  ASSERT (total_written <= INT32_MAX);
+  return (err_t)total_written;
 
 failed:
   pgr_cancel_if_exists (&prev);
   pgr_cancel_if_exists (&cur);
   pgr_cancel_if_exists (&next);
 
-  if (output) {
+  if (output != NULL) {
     nupd_free (output);
   }
-  if (rb_nupd2) {
+  if (rb_nupd2 != NULL) {
     nupd_free (rb_nupd2);
   }
 
@@ -330,13 +335,13 @@ TEST (ns_insert)
             .tx    = &f.tx,                                                      \
             .root  = PGNO_NULL,                                                  \
             .bofst = 0,                                                          \
-            .bytes = byte_size,                                                  \
+            .bytes = (byte_size),                                                \
         };                                                                       \
                                                                                  \
         err_t ret = ns_insert (&params, &ctx->e);                                \
                                                                                  \
         test_assert_int_equal (ret, expected);                                   \
-        if (expected > 0) {                                                      \
+        if ((expected) > 0) {                                                    \
           test_assert (params.root != PGNO_NULL);                                \
         } else {                                                                 \
           test_assert (params.root == PGNO_NULL);                                \
@@ -354,49 +359,49 @@ TEST (ns_insert)
   pgr_fixture_teardown (&f, &ctx->e);
 }
 
-#  define DO_INSERT(f, _root, _bofst, data, params)        \
-    do {                                                   \
-      u32_arr_rand (data);                                 \
-      struct stream          src;                          \
-      struct stream_ibuf_ctx ibuf;                         \
-      stream_ibuf_init (&src, &ibuf, data, sizeof (data)); \
-                                                           \
-      pgr_begin_txn (&f.tx, f.p, &ctx->e);                 \
-                                                           \
-      params = (struct ns_insert_params){                  \
-          .p     = f.p,                                    \
-          .src   = &src,                                   \
-          .tx    = &f.tx,                                  \
-          .root  = _root,                                  \
-          .bofst = _bofst,                                 \
-          .bytes = sizeof (data),                          \
-      };                                                   \
-                                                           \
-      ns_insert (&params, &ctx->e);                        \
-                                                           \
-      pgr_commit (f.p, &f.tx, &ctx->e);                    \
-                                                           \
-      test_assert (params.root != PGNO_NULL);              \
-    }                                                      \
+#  define DO_INSERT(f, _root, _bofst, data, params)          \
+    do {                                                     \
+      u32_arr_rand ((data));                                 \
+      struct stream          src;                            \
+      struct stream_ibuf_ctx ibuf;                           \
+      stream_ibuf_init (&src, &ibuf, (data), sizeof (data)); \
+                                                             \
+      pgr_begin_txn (&(f).tx, (f).p, &ctx->e);               \
+                                                             \
+      (params) = (struct ns_insert_params){                  \
+          .p     = (f).p,                                    \
+          .src   = &src,                                     \
+          .tx    = &(f).tx,                                  \
+          .root  = (_root),                                  \
+          .bofst = (_bofst),                                 \
+          .bytes = sizeof (data),                            \
+      };                                                     \
+                                                             \
+      ns_insert (&(params), &ctx->e);                        \
+                                                             \
+      pgr_commit ((f).p, &(f).tx, &ctx->e);                  \
+                                                             \
+      test_assert ((params).root != PGNO_NULL);              \
+    }                                                        \
     while (0)
 
 #  define DO_REMOVE(f, _root, _bofst, _size, params) \
     do {                                             \
-      pgr_begin_txn (&f.tx, f.p, &ctx->e);           \
+      pgr_begin_txn (&(f).tx, (f).p, &ctx->e);       \
                                                      \
-      params = (struct ns_remove_params){            \
-          .p      = f.p,                             \
+      (params) = (struct ns_remove_params){          \
+          .p      = (f).p,                           \
           .dest   = NULL,                            \
-          .tx     = &f.tx,                           \
-          .root   = _root,                           \
-          .bofst  = _bofst,                          \
+          .tx     = &(f).tx,                         \
+          .root   = (_root),                         \
+          .bofst  = (_bofst),                        \
           .stride = 1,                               \
-          .nelem  = _size,                           \
+          .nelem  = (_size),                         \
       };                                             \
                                                      \
-      ns_remove (&params, &ctx->e);                  \
+      ns_remove (&(params), &ctx->e);                \
                                                      \
-      pgr_commit (f.p, &f.tx, &ctx->e);              \
+      pgr_commit ((f).p, &(f).tx, &ctx->e);          \
     }                                                \
     while (0)
 

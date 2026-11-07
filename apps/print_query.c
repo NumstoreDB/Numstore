@@ -109,7 +109,7 @@ main (int argc, char **argv)
   error        e  = error_create ();
   int          rc = EXIT_SUCCESS;
 
-  if (compile_query (&q, query_str, &alloc, &e)) {
+  if (compile_query (&q, query_str, &alloc, &e) < 0) {
     error_log_consume (&e);
     fprintf (stderr, "error: failed to compile query: %s\n", query_str);
     rc = EXIT_FAILURE;
@@ -119,7 +119,7 @@ main (int argc, char **argv)
   printf ("%s", query_type_name (q.type));
 
   struct string vname;
-  if (!query_vname_of_interest (&vname, &q, &e)) {
+  if (query_vname_of_interest (&vname, &q, &e) == SUCCESS) {
     printf (" %.*s", vname.len, vname.data);
   } else {
     error_log_consume (&e);

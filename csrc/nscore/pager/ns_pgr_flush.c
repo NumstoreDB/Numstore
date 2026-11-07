@@ -23,6 +23,7 @@
 err_t
 pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e)
 {
+  DBG_ASSERT (pager, p);
   ASSERT (mp->flags & PW_PRESENT);
   ASSERT (!(mp->flags & PW_X));
 
@@ -77,7 +78,7 @@ TEST (pgr_flush_unsafe)
     // case is about flush ordering, not page contents.
     test_assert_int_equal (pgr_release_with_flush (f.p, &ph, PG_PERMISSIVE, &ctx->e), SUCCESS);
     test_assert (f.p->ww->ostream->flushed_lsn > before);
-    test_assert_int_equal ((i32)cbuffer_len (&f.p->ww->ostream->buffer), 0);
+    test_assert_type_equal (cbuffer_len (&f.p->ww->ostream->buffer), 0U, u32, PRIu32);
 
     f.p->flags &= ~PGR_ISRESTARTING;
     pgr_fixture_teardown (&f, &ctx->e);

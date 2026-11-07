@@ -28,6 +28,9 @@
 sb_size
 smartfiles_size (struct pager *p, struct txn *tx, struct arena_alloc *alloc, error *e)
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+
   ASSERT (tx != NULL);
 
   struct ns_var_get_params gparams = {
@@ -36,11 +39,12 @@ smartfiles_size (struct pager *p, struct txn *tx, struct arena_alloc *alloc, err
       .vname = strfcstr (DEFAULT_VARIABLE),
       .alloc = alloc,
   };
-  if (ns_var_get (&gparams, e)) {
+  if (ns_var_get (&gparams, e) < 0) {
     return error_trace (e);
   }
 
-  return gparams.dest.nbytes;
+  ASSERT (gparams.dest.nbytes <= (b_size)I64_MAX);
+  return (sb_size)gparams.dest.nbytes;
 }
 
 #ifndef NDEBUG

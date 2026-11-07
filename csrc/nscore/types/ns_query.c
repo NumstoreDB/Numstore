@@ -148,7 +148,7 @@ ns_query_fcompile (
 
   // Allocate buffer for the query
   char *buf = arena_malloc (alloc, (size_t)qlen + 1, 1, e);
-  if (!buf) {
+  if (buf == NULL) {
     va_end (ap2);
     return error_trace (e);
   }
@@ -159,7 +159,7 @@ ns_query_fcompile (
   va_end (ap2);
 
   // Compile the query
-  if (compile_query (q, buf, alloc, e)) {
+  if (compile_query (q, buf, alloc, e) < 0) {
     return error_trace (e);
   }
 

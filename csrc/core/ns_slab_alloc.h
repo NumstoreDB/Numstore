@@ -14,12 +14,7 @@
 
 /**
  * @file
- * @brief Allocators and memory allocation patterns
- *
- * Alloc.h contains specialized allocators used in numstore
- * such as:
- * - Slab Allocator  - an allocator that allocates fixed size slabs
- * - Malloc Plan     - a two phase malloc - defining the size - then one malloc
+ * @brief Slab allocator - fixed size blocks carved out of malloc'd slabs
  */
 
 #ifndef LALLOC_H

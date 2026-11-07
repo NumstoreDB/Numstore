@@ -167,7 +167,7 @@ sys_close_file (void *os_self, void *file, error *e)
 
   posix_fd_free (os, slot);
 
-  if (unlikely (ret)) {
+  if (unlikely (ret != 0)) {
     return error_causef (e, ERR_IO, "close: %s", strerror (err));
   }
 
@@ -180,7 +180,7 @@ sys_remove_quiet (void *os_self, const char *fname, error *e)
   (void)os_self;
   ASSERT (fname);
 
-  if (unlikely (remove (fname) && errno != ENOENT)) {
+  if (unlikely (remove (fname) != 0 && errno != ENOENT)) {
     return error_causef (e, ERR_IO, "remove %s: %s", fname, strerror (errno));
   }
 
@@ -193,7 +193,7 @@ sys_unlink (void *os_self, const char *fname, error *e)
   (void)os_self;
   ASSERT (fname);
 
-  if (unlikely (unlink (fname))) {
+  if (unlikely (unlink (fname) == -1)) {
     return error_causef (e, ERR_IO, "unlink %s: %s", fname, strerror (errno));
   }
 
@@ -229,16 +229,12 @@ sys_fsync (void *self, error *e)
   const int fd = fd_of (self);
 
 #  ifdef __APPLE__
-  // Run a full fsync - fallback to regular fsync
-  // Darwin fsync ensures durability on kill / kernel panics,
-  // but not a power outage
+  // Darwin fsync survives a kill or a kernel panic but not a power outage, so
+  // try F_FULLFSYNC first and fall back to fsync where it isn't supported.
   //
-  // TODO - adding some configuration here,
-  // I think making F_FULLFSYNC default, and
-  // erroring always no failure is a good idea.
-  //
-  // I don't like the idea of falling back to
-  // a weaker fsync without the user knowning
+  // TODO: make the fallback configurable, and fail by default when
+  // F_FULLFSYNC is unsupported. Falling back silently gives the user weaker
+  // durability than they think they have.
   if (fcntl (fd, F_FULLFSYNC, 0) != -1) {
     return SUCCESS;
   }
@@ -248,7 +244,7 @@ sys_fsync (void *self, error *e)
   }
 #  endif
 
-  if (unlikely (fsync (fd))) {
+  if (unlikely (fsync (fd) == -1)) {
     return error_causef (e, ERR_IO, "fsync: %s", strerror (errno));
   }
 
@@ -572,11 +568,6 @@ sys_thread_create (void *os_self, i_thread *dest, void *(*func) (void *), void *
   int            r1 = pthread_attr_init (&attr);
   ASSERT (!r1);
 
-  // Examples:
-  // pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-  // pthread_attr_setstacksize(&attr, 1 << 20);
-  // pthread_attr_setguardsize(&attr, 4096);
-
   r  = pthread_create (thread, &attr, func, context);
 
   r1 = pthread_attr_destroy (&attr);
@@ -586,7 +577,7 @@ sys_thread_create (void *os_self, i_thread *dest, void *(*func) (void *), void *
   r = pthread_create (thread, NULL, func, context);
 #  endif
 
-  if (r) {
+  if (r != 0) {
     posix_pthread_free (os, thread);
 
     switch (r) {
@@ -667,7 +658,7 @@ sys_mutex_create (void *os_self, i_mutex *dest, error *e)
 #  ifndef NDEBUG
   pthread_mutexattr_t attr;
 
-  // I just don't want to handle errors for debug code
+  // The debug-only attributes assert rather than handle their own failures
   int                 r1 = pthread_mutexattr_init (&attr);
   ASSERT (!r1);
 
@@ -683,7 +674,7 @@ sys_mutex_create (void *os_self, i_mutex *dest, error *e)
   r = pthread_mutex_init (mutex, NULL);
 #  endif
 
-  if (r) {
+  if (r != 0) {
     posix_pthread_mutex_free (os, mutex);
 
     switch (r) {
@@ -719,7 +710,7 @@ sys_mutex_free (void *os_self, void *mutex)
   DBG_ASSERT (mutex, m);
 
   const int r = pthread_mutex_destroy (m);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EBUSY: {
         i_log_error ("mutex_destroy: still locked: %s\n", strerror (r));
@@ -746,7 +737,7 @@ sys_mutex_lock (void *mutex)
   DBG_ASSERT (mutex, m);
 
   const int r = pthread_mutex_lock (m);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EINVAL: {
         i_log_error ("mutex_lock: invalid: %s\n", strerror (r));
@@ -775,7 +766,7 @@ sys_mutex_unlock (void *mutex)
   DBG_ASSERT (mutex, m);
 
   const int r = pthread_mutex_unlock (m);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EINVAL: {
         i_log_error ("mutex_unlock: invalid: %s\n", strerror (r));
@@ -816,7 +807,7 @@ sys_cond_create (void *os_self, i_cond *dest, error *e)
 #  ifndef NDEBUG
   pthread_condattr_t attr;
 
-  // I just don't want to handle errors for debug code
+  // The debug-only attributes assert rather than handle their own failures
   int                r1 = pthread_condattr_init (&attr);
   ASSERT (r1 == 0);
 
@@ -829,7 +820,7 @@ sys_cond_create (void *os_self, i_cond *dest, error *e)
   r = pthread_cond_init (cond, NULL);
 #  endif
 
-  if (r) {
+  if (r != 0) {
     posix_pthread_cond_free (os, cond);
 
     switch (r) {
@@ -869,7 +860,7 @@ sys_cond_free (void *os_self, void *cond)
   DBG_ASSERT (cond, c);
 
   const int r = pthread_cond_destroy (c);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EBUSY: {
         i_log_error ("cond_free: cond has active waiters: %s\n", strerror (r));
@@ -898,7 +889,7 @@ sys_cond_wait (void *cond, void *mutex)
   DBG_ASSERT (mutex, m);
 
   const int r = pthread_cond_wait (c, m);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EINVAL: {
         i_log_error ("cond_wait: invalid cond or mutex: %s\n", strerror (r));
@@ -937,7 +928,7 @@ sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
   }
 
   const int r = pthread_cond_timedwait (c, m, &ts);
-  if (r && r != ETIMEDOUT) {
+  if (r != 0 && r != ETIMEDOUT) {
     switch (r) {
       case EINVAL: {
         i_log_error ("cond_timed_wait: invalid cond, mutex, or abstime: %s\n", strerror (r));
@@ -962,7 +953,7 @@ sys_cond_signal (void *cond)
   DBG_ASSERT (cond, c);
 
   const int r = pthread_cond_signal (c);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EINVAL: {
         i_log_error ("cond_signal: invalid or uninitialized cond: %s\n", strerror (r));
@@ -983,7 +974,7 @@ sys_cond_broadcast (void *cond)
   DBG_ASSERT (cond, c);
 
   const int r = pthread_cond_broadcast (c);
-  if (r) {
+  if (r != 0) {
     switch (r) {
       case EINVAL: {
         i_log_error ("cond_broadcast: invalid or uninitialized cond: %s\n", strerror (r));
@@ -1145,8 +1136,8 @@ system_os_create (struct i_mem mem, struct i_os *dest, error *e)
     return error_trace (e);
   }
 
-  dest->self  = os;
   dest->table = &default_os_vtable;
+  dest->self  = os;
   return SUCCESS;
 }
 
@@ -1524,7 +1515,7 @@ TEST (sys_timer)
     test_assert (after > before);
 
     // At least most of the 2ms nap should show up
-    test_assert (after - before >= 1000000u);
+    test_assert (after - before >= 1000000U);
   }
 
   ctx->os.table->timer_free (ctx->os.self, t.self);
@@ -1548,6 +1539,169 @@ TEST (sys_os_create_and_free)
   test_assert_int_equal (f.table->write_all (f.self, &byte, 1, &ctx->e), SUCCESS);
   test_assert_int_equal (os.table->close_file (os.self, f.self, &ctx->e), SUCCESS);
   test_assert_int_equal (os.table->unlink (os.self, SYS_T_FILE2, &ctx->e), SUCCESS);
+
+  system_os_free (os);
+}
+
+// Each of these handles is opened the wrong way round for the call made on
+// it, so the syscall itself fails and the error has to come back as ERR_IO
+TEST (sys_file_syscall_failures)
+{
+  // Setup - an 8 byte regular file, which also can't be used as a directory
+  test_assert_int_equal (ctx->os.table->remove_quiet (ctx->os.self, SYS_T_FILE, &ctx->e), SUCCESS);
+
+  i_file f;
+  test_assert_int_equal (
+      ctx->os.table->open_file_rw (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+      SUCCESS
+  );
+  const u8 payload[8] = {0};
+  test_assert_int_equal (f.table->write_all (f.self, payload, sizeof payload, &ctx->e), SUCCESS);
+  test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+
+  TEST_CASE ("A path through a regular file fails stat and remove")
+  {
+    bool exists = false;
+    test_err_t_check (
+        ctx->os.table->file_exists (ctx->os.self, SYS_T_FILE "/x", &exists, &ctx->e),
+        ERR_IO,
+        &ctx->e
+    );
+    test_err_t_check (
+        ctx->os.table->remove_quiet (ctx->os.self, SYS_T_FILE "/x", &ctx->e),
+        ERR_IO,
+        &ctx->e
+    );
+  }
+
+  TEST_CASE ("Writes on a read only handle fail")
+  {
+    test_assert_int_equal (
+        ctx->os.table->open_file_r (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+        SUCCESS
+    );
+
+    u8           a[2]    = {1, 2};
+    struct bytes arrs[1] = {{.head = a, .len = sizeof a}};
+
+    test_err_t_check (f.table->write_all (f.self, a, sizeof a, &ctx->e), ERR_IO, &ctx->e);
+    test_err_t_check (f.table->pwrite_all (f.self, a, sizeof a, 0, &ctx->e), ERR_IO, &ctx->e);
+    test_err_t_check (f.table->writev_all (f.self, arrs, 1, &ctx->e), ERR_IO, &ctx->e);
+    test_err_t_check (f.table->truncate (f.self, 4, &ctx->e), ERR_IO, &ctx->e);
+
+    // Bigger than the file, so prealloc gets as far as growing it
+    test_err_t_check (f.table->prealloc (f.self, 4096, &ctx->e), ERR_IO, &ctx->e);
+
+    test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+  }
+
+  TEST_CASE ("Reads on a write only handle fail")
+  {
+    test_assert_int_equal (
+        ctx->os.table->open_file_w (ctx->os.self, &f, SYS_T_FILE, &ctx->e),
+        SUCCESS
+    );
+
+    u8 got[4];
+    test_err_t_check (f.table->read_all (f.self, got, sizeof got, &ctx->e), ERR_IO, &ctx->e);
+    test_err_t_check (f.table->pread_all (f.self, got, sizeof got, 0, &ctx->e), ERR_IO, &ctx->e);
+
+    test_assert_int_equal (ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e), SUCCESS);
+  }
+
+  // Teardown
+  test_assert_int_equal (ctx->os.table->unlink (ctx->os.self, SYS_T_FILE, &ctx->e), SUCCESS);
+}
+
+// The fd and thread tables are fixed size. Filling every slot by hand stands
+// in for MAX_OPEN_FILES open files and MAX_THREADS live threads.
+TEST (sys_os_table_exhaustion)
+{
+  struct i_os os;
+  test_assert_int_equal (system_os_create (ctx->mem, &os, &ctx->e), SUCCESS);
+  struct posix_os *pos = os.self;
+
+  TEST_CASE ("Opening a file with every fd slot taken is ERR_TOO_MANY_FILES")
+  {
+    _Atomic int *slots[MAX_OPEN_FILES];
+    for (u32 i = 0; i < MAX_OPEN_FILES; ++i) {
+      slots[i] = posix_fd_reserve (pos, &ctx->e);
+      test_assert (slots[i] != NULL);
+    }
+
+    i_file f;
+    test_err_t_check (
+        os.table->open_file_rw (os.self, &f, SYS_T_FILE2, &ctx->e),
+        ERR_TOO_MANY_FILES,
+        &ctx->e
+    );
+
+    for (u32 i = 0; i < MAX_OPEN_FILES; ++i) {
+      posix_fd_free (pos, slots[i]);
+    }
+  }
+
+  TEST_CASE ("Creating a thread with every frame taken is ERR_TOO_MANY_THREADS")
+  {
+    pthread_t *frames[MAX_THREADS];
+    for (u32 i = 0; i < MAX_THREADS; ++i) {
+      frames[i] = posix_pthread_alloc (pos, &ctx->e);
+      test_assert (frames[i] != NULL);
+    }
+
+    i_thread t;
+    test_err_t_check (
+        os.table->thread_create (os.self, &t, sys_signal_thread, NULL, &ctx->e),
+        ERR_TOO_MANY_THREADS,
+        &ctx->e
+    );
+
+    for (u32 i = 0; i < MAX_THREADS; ++i) {
+      posix_pthread_free (pos, frames[i]);
+    }
+  }
+
+  system_os_free (os);
+}
+
+// Mutexes, conds and timers come from slabs, so the first of each has to
+// allocate and a failed allocation must come back as an error
+TEST (sys_os_allocation_failures)
+{
+  TEST_CASE ("system_os_create surfaces a failed allocation")
+  {
+    struct i_os os;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (system_os_create (ctx->faulty_mem, &os, &ctx->e), ERR_NOMEM, &ctx->e);
+    faulty_mem_reset (ctx->faulty_mem);
+  }
+
+  struct i_os os;
+  test_assert_int_equal (system_os_create (ctx->faulty_mem, &os, &ctx->e), SUCCESS);
+
+  TEST_CASE ("mutex_create surfaces a failed allocation")
+  {
+    i_mutex m;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (os.table->mutex_create (os.self, &m, &ctx->e), ERR_NOMEM, &ctx->e);
+    faulty_mem_reset (ctx->faulty_mem);
+  }
+
+  TEST_CASE ("cond_create surfaces a failed allocation")
+  {
+    i_cond c;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (os.table->cond_create (os.self, &c, &ctx->e), ERR_NOMEM, &ctx->e);
+    faulty_mem_reset (ctx->faulty_mem);
+  }
+
+  TEST_CASE ("timer_create surfaces a failed allocation")
+  {
+    i_timer t;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (os.table->timer_create (os.self, &t, &ctx->e), ERR_NOMEM, &ctx->e);
+    faulty_mem_reset (ctx->faulty_mem);
+  }
 
   system_os_free (os);
 }

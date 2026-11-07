@@ -142,7 +142,7 @@ tr_construct_inner (struct type *reftype, struct type_ref *tr, struct builder *b
 
         for (u16 i = 0; i < len; ++i) {
           // The field name
-          if (kvlb_accept_key (&builder, keys[i], e)) {
+          if (kvlb_accept_key (&builder, keys[i], e) < 0) {
             return NULL;
           }
 
@@ -153,17 +153,17 @@ tr_construct_inner (struct type *reftype, struct type_ref *tr, struct builder *b
             return NULL;
           }
 
-          if (kvlb_accept_type (&builder, subtype, e)) {
+          if (kvlb_accept_type (&builder, subtype, e) < 0) {
             return NULL;
           }
         }
 
         struct kvt_list kvl;
-        if (kvlb_build (&kvl, &builder, e)) {
+        if (kvlb_build (&kvl, &builder, e) < 0) {
           return NULL;
         }
 
-        if (struct_t_create (&ret->st, kvl, b->persistent, e)) {
+        if (struct_t_create (&ret->st, kvl, b->persistent, e) < 0) {
           return NULL;
         }
         ret->type = T_STRUCT;

@@ -50,11 +50,11 @@ pgr_redo_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, error 
         }
 
         page_h ph = page_h_create ();
-        if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e)) {
+        if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e) < 0) {
           return error_trace (e);
         }
 
-        pgno page_lsn = page_get_page_lsn (page_h_ro (&ph));
+        lsn page_lsn = page_get_page_lsn (page_h_ro (&ph));
         if (page_lsn < read_lsn) {
           wrh_redo (log_rec, &ph);
           r_ctx->nredone++;
@@ -68,7 +68,6 @@ pgr_redo_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, error 
       break;
     }
     default: {
-      // Do nothing
       break;
     }
   }
@@ -93,7 +92,7 @@ pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e)
     return error_trace (e);
   }
 
-  i_log_info ("Redo phase done. Total redos: %d\n", r_ctx.nredone);
+  i_log_info ("Redo phase done. Total redos: %" PRIu32 "\n", r_ctx.nredone);
 
   return SUCCESS;
 }

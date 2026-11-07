@@ -55,6 +55,8 @@ advance (struct lexer *lex)
   return lex->src[lex->current++];
 }
 
+// TODO: callers reach this with a trailing '!', '>', '<', '|', '&' or '='
+// as the last character of the source, which trips the assert below.
 static bool
 match (struct lexer *lex, char expected)
 {
@@ -211,7 +213,7 @@ scan_string (struct lexer *lex, error *e)
   }
 
   if (is_at_end (lex)) {
-    return error_causef (e, ERR_SYNTAX, "Unterminated string at position %u", lex->start);
+    return error_causef (e, ERR_SYNTAX, "Unterminated string at position %" PRIu32, lex->start);
   }
 
   advance (lex); // Closing quote
@@ -233,6 +235,8 @@ scan_number (struct lexer *lex, error *e)
   }
 
   bool is_float = false;
+  // TODO: peek_next asserts there is a character after the '.', so a source
+  // that ends in "1." trips that assert (and reads past src in release).
   if (peek (lex) == '.' && is_num (peek_next (lex))) {
     is_float = true;
     advance (lex);
@@ -249,13 +253,11 @@ scan_number (struct lexer *lex, error *e)
     f32 value;
     WRAP (parse_f32_expect (&value, text, len, e));
     return add_token_float (lex, value, e);
-  } else {
-    i32 value;
-    WRAP (parse_i32_expect (&value, text, len, e));
-    return add_token_int (lex, value, e);
   }
 
-  return SUCCESS;
+  i32 value;
+  WRAP (parse_i32_expect (&value, text, len, e));
+  return add_token_int (lex, value, e);
 }
 
 static err_t
@@ -268,13 +270,12 @@ scan_identifier (struct lexer *lex, error *e)
   const char *text = &lex->src[lex->start];
   u32         len  = lex->current - lex->start;
 
-  // Check for primitive types first
+  // Primitive types take precedence over keywords and identifiers
   enum prim_t prim = strtoprim (text, len);
   if (prim != (enum prim_t) - 1) {
     return add_token_prim (lex, prim, e);
   }
 
-  // Check for keywords
   enum token_t type = check_keyword (text, len);
 
   if (type == TT_IDENTIFIER) {
@@ -347,7 +348,9 @@ scan_token (struct lexer *lex, error *e)
       return add_token (lex, TT_DOT, e);
     }
     case '!': {
-      add_token (lex, match (lex, '=') ? TT_BANG_EQUAL : TT_BANG, e);
+      // TODO: return this result like the other arms do. An append failure
+      // is dropped here, so lex_tokens succeeds with a token missing.
+      (void)add_token (lex, match (lex, '=') ? TT_BANG_EQUAL : TT_BANG, e);
       return SUCCESS;
     }
     case '=': {
@@ -356,7 +359,8 @@ scan_token (struct lexer *lex, error *e)
             e,
             ERR_SYNTAX,
             "Unexpected '=' at "
-            "position %u (use '==' "
+            "position %" PRIu32
+            " (use '==' "
             "for equality)",
             lex->start
         );
@@ -391,7 +395,7 @@ scan_token (struct lexer *lex, error *e)
       return error_causef (
           e,
           ERR_SYNTAX,
-          "Unexpected character '%c' at position %u",
+          "Unexpected character '%c' at position %" PRIu32,
           c,
           lex->start
       );
@@ -402,7 +406,7 @@ scan_token (struct lexer *lex, error *e)
 err_t
 lex_tokens (const char *src, struct arena_alloc *alloc, u32 src_len, struct lexer *lex, error *e)
 {
-  memset (lex, 0, sizeof (*lex));
+  memset (lex, 0, sizeof *lex);
   lex->src     = src;
   lex->src_len = src_len;
   lex->start   = 0;
@@ -411,17 +415,17 @@ lex_tokens (const char *src, struct arena_alloc *alloc, u32 src_len, struct lexe
 
   while (!is_at_end (lex)) {
     lex->start = lex->current;
-    if (scan_token (lex, e)) {
+    if (scan_token (lex, e) < 0) {
       goto failed;
     }
   }
 
-  if (add_token (lex, TT_EOF, e)) {
+  if (add_token (lex, TT_EOF, e) < 0) {
     goto failed;
   }
 
-  lex->ntokens = lex->_tokens.nelem;
   lex->tokens  = lex->_tokens.data;
+  lex->ntokens = lex->_tokens.nelem;
 
   return SUCCESS;
 
@@ -437,9 +441,9 @@ test_lexer_case (const char *input, const struct token *expected, u32 nexpected)
   ALLOC_INIT (alloc);
 
   struct lexer lex;
-  error        e      = error_create ();
+  error        e = error_create ();
 
-  err_t        result = lex_tokens (input, &alloc, strlen (input), &lex, &e);
+  err_t result   = lex_tokens (input, &alloc, (u32)strnlen (input, MAX_COMPILE_TEXT_LEN), &lex, &e);
 
   // Check for expected errors
   if (nexpected == 0) {
@@ -554,9 +558,9 @@ TEST (lexer_numbers)
       tt_integer (0),
       tt_integer (123),
       tt_integer (456),
-      tt_float (1.0f),
-      tt_float (3.14f),
-      tt_float (0.5f),
+      tt_float (1.0F),
+      tt_float (3.14F),
+      tt_float (0.5F),
   };
 
   test_lexer_case (src, expected, arrlen (expected));
@@ -717,13 +721,54 @@ TEST (lexer_empty_string)
   test_lexer_case (src, expected, arrlen (expected));
 }
 
+// The token buffer starts with room for 256 tokens, so a source of exactly
+// 256 tokens makes the EOF append the one that has to grow it
+TEST (lexer_fail_malloc)
+{
+  // Setup - 256 '+' tokens, and an arena that takes every chunk straight
+  // from the faulty allocator so each buffer growth is a fallible malloc
+  char src[512];
+  for (u32 i = 0; i < 256; i++) {
+    src[2 * i]     = '+';
+    src[2 * i + 1] = ' ';
+  }
+
+  struct arena_alloc a;
+  type_test_arena_create (&a, ctx->faulty_mem);
+
+  struct lexer lex;
+  int          fail_after = 0;
+  err_t        ret;
+
+  // Run
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+      arena_alloc_free_all (&a);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = lex_tokens (src, &a, sizeof src, &lex, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+
+  test_assert_type_equal (lex.ntokens, 257, u32, PRIu32);
+
+  // Teardown
+  arena_alloc_free_all (&a);
+}
+
 TEST (lexer_numbers_in_sequence)
 {
   const char  *src        = "123 456.78 9";
 
   struct token expected[] = {
       tt_integer (123),
-      tt_float (456.78f),
+      tt_float (456.78F),
       tt_integer (9),
   };
 

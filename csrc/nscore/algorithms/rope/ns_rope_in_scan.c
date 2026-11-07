@@ -42,7 +42,7 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
   // Fetch next page
   page_h iter = page_h_create ();
   if (in.npg != PGNO_NULL) {
-    if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e)) {
+    if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e) < 0) {
       return error_trace (e);
     }
   }
@@ -58,18 +58,18 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
 
     // Execute consumer
     if (consume (&in, ctx, e) < 0) {
-      pgr_release (p, &iter, PG_INNER_NODE, e);
+      // Already failing; the first error is the one reported
+      (void)pgr_release (p, &iter, PG_INNER_NODE, e);
       return error_trace (e);
     }
 
-    // Release current
-    if (pgr_release (p, &iter, PG_INNER_NODE, e)) {
+    if (pgr_release (p, &iter, PG_INNER_NODE, e) < 0) {
       return error_trace (e);
     }
 
     // Fetch next
     if (in.npg != PGNO_NULL) {
-      if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e)) {
+      if (pgr_get (&iter, PG_INNER_NODE, in.npg, p, e) < 0) {
         return error_trace (e);
       }
     }
@@ -79,13 +79,16 @@ ns_rope_in_scan (struct pager *p, const page_h *cur, in_page_consumer consume, v
 err_t
 ns_rope_in_scan_pgno (struct pager *p, pgno pg, in_page_consumer consume, void *ctx, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   page_h cur = page_h_create ();
   if (pgr_get (&cur, PG_INNER_NODE, pg, p, e) < 0) {
     return error_trace (e);
   }
 
   if (ns_rope_in_scan (p, &cur, consume, ctx, e) < 0) {
-    pgr_release (p, &cur, PG_INNER_NODE, e);
+    // Already failing; the first error is the one reported
+    (void)pgr_release (p, &cur, PG_INNER_NODE, e);
     return error_trace (e);
   }
 
@@ -124,6 +127,8 @@ in_validate_consumer (struct inner_node *in, void *p, error *e)
 err_t
 ns_rope_in_validate_pgno (struct pager *p, pgno pg, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   return ns_rope_in_scan_pgno (p, pg, in_validate_consumer, p, e);
 }
 
@@ -142,7 +147,7 @@ in_scan_count (struct inner_node *in, void *vctx, error *e)
   struct in_scan_count_ctx *c = vctx;
   c->seen++;
   if (c->fail_on != 0 && c->seen == c->fail_on) {
-    return error_causef (e, ERR_CORRUPT, "consumer asked to stop at %u", c->seen);
+    return error_causef (e, ERR_CORRUPT, "consumer asked to stop at %" PRIu32, c->seen);
   }
   return SUCCESS;
 }
@@ -206,7 +211,7 @@ TEST (ns_rope_in_scan)
     // Fail on the second page
     struct in_scan_count_ctx c   = {.seen = 0, .fail_on = 2};
     err_t                    ret = ns_rope_in_scan_pgno (f.p, pg[0], in_scan_count, &c, &ctx->e);
-    test_assert (ret == ERR_CORRUPT);
+    test_assert_int_equal (ret, ERR_CORRUPT);
     error_reset (&ctx->e);
     test_assert_int_equal ((i32)c.seen, 2);
 

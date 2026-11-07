@@ -56,18 +56,18 @@ ns_write_next_amount (
   p_size next_amount = dl_used (curp) - lidx;
 
   // Available in this write state
-  next_amount        = MIN (next_amount, bnext);
+  next_amount        = (p_size)MIN (next_amount, bnext);
 
   // Available globally to write
   if (max_bwrite > 0 && state == ACTIVE) {
-    next_amount = MIN (next_amount, max_bwrite - total_bwrite);
+    next_amount = (p_size)MIN (next_amount, max_bwrite - total_bwrite);
   }
 
   return next_amount;
 }
 
-// TODO - (4) tighten up the while loop to loop inside a page - rather than one
-// read per loop
+// TODO: loop inside a page instead of doing one copy per outer loop
+// iteration, which reloads the per-iteration state for every chunk
 /*
  * Overwrite elements in the R+Tree with an optional stride, scanning forward.
  *
@@ -88,6 +88,7 @@ static sb_size
 ns_write_forward (const struct ns_write_params params, error *e)
 {
   ASSERT (params.stride > 0);
+  ASSERT (params.size > 0);
 
   page_h                cur          = page_h_create ();
   page_h                next         = page_h_create ();
@@ -114,7 +115,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
   // Otherwise seek
 
-  if (ns_seek (&seek, e)) {
+  if (ns_seek (&seek, e) < 0) {
     goto failed;
   }
 
@@ -123,7 +124,7 @@ ns_write_forward (const struct ns_write_params params, error *e)
   lidx = seek.lidx;
 
   // Upgrade to X lock
-  if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e)) {
+  if (pgr_upgrade (&cur, params.tx, PG_DATA_LIST, params.p, e) < 0) {
     goto failed;
   }
 
@@ -197,9 +198,9 @@ ns_write_forward (const struct ns_write_params params, error *e)
           bnext = (params.stride - 1) * params.size;
           state = SKIPPING;
 
-          // TODO - (5)
-          // Optimize
           // stride = 1: skip window is zero, stay ACTIVE
+          // TODO: special-case stride 1 before the loop so it doesn't pass
+          // through SKIPPING after every element
           if (bnext == 0) {
             bnext = params.size;
             state = ACTIVE;
@@ -240,7 +241,6 @@ ns_write_forward (const struct ns_write_params params, error *e)
 
 done:
 
-  // Release current page
   WRAP (pgr_release (params.p, &cur, PG_DATA_LIST, e));
 
   // Validate we write complete elements
@@ -257,7 +257,8 @@ done:
     goto failed;
   }
 
-  return total_bwrite / params.size;
+  ASSERT (total_bwrite / params.size <= (b_size)I64_MAX);
+  return (sb_size)(total_bwrite / params.size);
 
 failed:
   pgr_cancel_if_exists (&cur);

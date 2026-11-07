@@ -81,9 +81,12 @@ numstore_remove (
 
   // Resolve length based on the stride
   struct stride stride;
-  if (stride_resolve (&stride, ustr, len, e)) {
+  if (stride_resolve (&stride, ustr, len, e) < 0) {
     return error_trace (e);
   }
+
+  // The step started as a positive i64, so it fits in sb_size
+  ASSERT (stride.stride <= (u64)I64_MAX);
 
   struct ns_remove_params rparams = {
       .p      = p,
@@ -92,7 +95,7 @@ numstore_remove (
       .root   = var->rpt_root,
       .size   = tsize,
       .bofst  = tsize * stride.start,
-      .stride = stride.stride,
+      .stride = (sb_size)stride.stride,
       .nelem  = stride.nelems,
   };
   sb_size ret = ns_remove (&rparams, e);
@@ -171,7 +174,7 @@ TEST (numstore_remove_from_name)
         &ctx->e
     );
 
-    test_assert_int_equal (ret, 3);
+    test_assert_type_equal (ret, 3, sb_size, PRsb_size);
 
     // The removed elements come out on [dest]
     const u32 expect_removed[3] = {2, 3, 4};
@@ -195,7 +198,7 @@ TEST (numstore_remove_from_name)
     sb_size   read        = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &rest, &ctx->e);
 
     const u32 expected[7] = {0, 1, 5, 6, 7, 8, 9};
-    test_assert_int_equal (read, 7);
+    test_assert_type_equal (read, 7, sb_size, PRsb_size);
     test_assert_memequal (out_data, expected, sizeof (expected));
 
     pgr_commit (f.p, &f.tx, &ctx->e);
@@ -225,7 +228,7 @@ TEST (numstore_remove_from_name)
         &ctx->e
     );
 
-    test_assert_int_equal (ret, 4);
+    test_assert_type_equal (ret, 4, sb_size, PRsb_size);
 
     struct variable var_test;
     test_assert_int_equal (
@@ -249,7 +252,7 @@ TEST (numstore_remove_from_name)
     sb_size   read        = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &rest, &ctx->e);
 
     const u32 expected[6] = {4, 5, 6, 7, 8, 9};
-    test_assert_int_equal (read, 6);
+    test_assert_type_equal (read, 6, sb_size, PRsb_size);
     test_assert_memequal (out_data, expected, sizeof (expected));
 
     pgr_commit (f.p, &f.tx, &ctx->e);
@@ -281,7 +284,7 @@ TEST (numstore_remove_from_name)
         &ctx->e
     );
 
-    test_assert_int_equal (ret, 5);
+    test_assert_type_equal (ret, 5, sb_size, PRsb_size);
 
     const u32 expect_removed[5] = {0, 2, 4, 6, 8};
     test_assert_memequal (removed, expect_removed, sizeof (expect_removed));
@@ -292,7 +295,7 @@ TEST (numstore_remove_from_name)
     sb_size   read        = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &rest, &ctx->e);
 
     const u32 expected[5] = {1, 3, 5, 7, 9};
-    test_assert_int_equal (read, 5);
+    test_assert_type_equal (read, 5, sb_size, PRsb_size);
     test_assert_memequal (out_data, expected, sizeof (expected));
 
     pgr_commit (f.p, &f.tx, &ctx->e);

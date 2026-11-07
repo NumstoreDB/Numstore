@@ -34,7 +34,6 @@ ns_rope_get_layers (struct pager *p, pgno dest[20], pgno root, error *e)
   page_h next = page_h_create ();
   page_h cur  = page_h_create ();
 
-  // Get the first page
   if (pgr_get (&cur, PG_INNER_NODE | PG_DATA_LIST, root, p, e) < 0) {
     return error_trace (e);
   }
@@ -58,7 +57,6 @@ ns_rope_get_layers (struct pager *p, pgno dest[20], pgno root, error *e)
           goto failed;
         }
 
-        // Release current
         if (pgr_release (p, &cur, PG_INNER_NODE, e) < 0) {
           goto failed;
         }
@@ -73,7 +71,7 @@ ns_rope_get_layers (struct pager *p, pgno dest[20], pgno root, error *e)
         if (pgr_release (p, &cur, PG_INNER_NODE, e) < 0) {
           goto failed;
         }
-        return sp;
+        return (i32)sp;
       }
 
       default: {

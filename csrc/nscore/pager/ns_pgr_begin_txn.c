@@ -28,30 +28,30 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
   DBG_ASSERT (pager, p);
   slsn l   = 0;
 
-  // Get the next transaction id
   txid tid = atomic_fetch_add (&p->next_tid, 1);
 
-  // Initialize transaction object with empty data
   txn_init (
       tx,
       tid,
       (struct txn_data){
+          .state         = TX_RUNNING,
           .min_lsn       = 0,
           .last_lsn      = 0,
           .undo_next_lsn = 0,
-          .state         = TX_RUNNING,
       },
       p->mem
   );
 
   // Lock the database before doing any changes to the log or page table
-  if (lockt_lock (p->lt, lock_db (), LM_X, tx, e)) {
+  if (lockt_lock (p->lt, lock_db (), LM_X, tx, e) < 0) {
     // Failing here is fine - just couldn't acquire a lock
     return error_trace (e);
   }
 
-  // Append a begin log record
-  l = wal_append_begin_log (p->ww, tid);
+  // TODO: wal_append_begin_log crashes instead of failing and returns an
+  // unsigned lsn, so this branch is dead. Decide whether appends should
+  // return errors before removing it.
+  l = (slsn)wal_append_begin_log (p->ww, tid);
 
   if (l < 0) {
     lockt_unlock (p->lt, lock_db (), LM_X);
@@ -59,18 +59,16 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
     return error_trace (e);
   }
 
-  // Update transaction meta data
   txn_update_data (
       tx,
       (struct txn_data){
-          .min_lsn       = l,
-          .last_lsn      = l,
-          .undo_next_lsn = 0,
           .state         = TX_RUNNING,
+          .min_lsn       = (lsn)l,
+          .last_lsn      = (lsn)l,
+          .undo_next_lsn = 0,
       }
   );
 
-  // Insert txn into the txn table
   txnt_insert_txn (p->tnxt, tx);
 
   return SUCCESS;
@@ -79,7 +77,6 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
 #ifndef NDEBUG
 TEST (pgr_begin_txn_fail_no_wal)
 {
-  // Set up with faulty os
   struct pgr_fixture f;
   pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
 
@@ -92,9 +89,7 @@ TEST (pgr_begin_txn_fail_no_wal)
     {
       error_reset (&ctx->e);
 
-      // Ensure the WAL is flushed (This does assume WAL buffer
-      // size is > sizeof(BEGIN))
-      // That's pretty much a given
+      // An empty buffer so the begin record fits without a flush
       wal_flush_all (f.p->ww);
 
       // Do operation under error
@@ -112,11 +107,9 @@ TEST (pgr_begin_txn_fail_no_wal)
   pgr_fixture_teardown_with (&f, &ctx->e);
 }
 
-//  Same as above, but fills up wal before
-//  begin txn - to ensure a wal is triggered
+// Same as above, but with a full WAL buffer so the begin record has to flush
 TEST (pgr_begin_txn_fail_full_wal)
 {
-  // Set up with faulty os
   struct pgr_fixture f;
 
   int                fail_after = 0;
@@ -127,8 +120,7 @@ TEST (pgr_begin_txn_fail_full_wal)
     {
       pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
 
-      // Ensure the WAL will trigger on next begin for begin record
-      // (remember that the WAL doesn't need to flush on a begin txn)
+      // Force the begin record to flush
       wal_ensure_flush_next (f.p->ww);
 
       // Do operation under error
@@ -139,7 +131,7 @@ TEST (pgr_begin_txn_fail_full_wal)
       }
       faulty_os_reset (ctx->faulty_os);
 
-      // Commit if success to avoid locking
+      // Commit on success to release the database lock
       if (ret == SUCCESS) {
         pgr_commit (f.p, &f.tx, &ctx->e);
       }

@@ -56,12 +56,11 @@ posix_create (struct i_mem mem, error *e)
     return NULL;
   }
 
-  // All are unoccupied
+  // Every fd slot and thread frame starts out unoccupied
   for (int i = 0; i < MAX_OPEN_FILES; ++i) {
     atomic_init (&ret->fds[i], -1);
   }
 
-  // All are unoccupied
   for (int i = 0; i < MAX_THREADS; ++i) {
     atomic_init (&ret->threads[i].occupied, 0);
   }
@@ -104,8 +103,8 @@ posix_fd_reserve (struct posix_os *os, error *e)
   DBG_ASSERT (posix_os, os);
 
   for (int i = 0; i < MAX_OPEN_FILES; ++i) {
-    // clock = (clock + 1) % MAX_OPEN_FILES
-    u32 clock      = (u32)atomic_fetch_add (&os->fd_clock, 1) & (MAX_OPEN_FILES - 1);
+    // MAX_OPEN_FILES is a power of 2, so the mask is the modulo
+    u32 clock      = (u32)atomic_fetch_add (&os->fd_clock, 1) & (u32)(MAX_OPEN_FILES - 1);
 
     int unoccupied = -1;
     if (atomic_compare_exchange_strong (&os->fds[clock], &unoccupied, -2)) {
@@ -140,7 +139,7 @@ posix_pthread_alloc (struct posix_os *os, error *e)
   DBG_ASSERT (posix_os, os);
 
   for (int i = 0; i < MAX_THREADS; ++i) {
-    u32 clock      = (u32)atomic_fetch_add (&os->pthread_clock, 1) & (MAX_THREADS - 1);
+    u32 clock      = (u32)atomic_fetch_add (&os->pthread_clock, 1) & (u32)(MAX_THREADS - 1);
 
     int unoccupied = 0;
     if (atomic_compare_exchange_strong (&os->threads[clock].occupied, &unoccupied, 1)) {

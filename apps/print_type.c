@@ -80,7 +80,7 @@ main (int argc, char **argv)
   error       e  = error_create ();
   int         rc = EXIT_SUCCESS;
 
-  if (compile_type (&q, type_str, &alloc, &e)) {
+  if (compile_type (&q, type_str, &alloc, &e) < 0) {
     fprintf (stderr, "error: failed to compile type: %s\n", type_str);
     rc = EXIT_FAILURE;
     goto theend;
@@ -95,7 +95,7 @@ main (int argc, char **argv)
   }
 
   fprintf (stdout, "%s\n", str);
-  fprintf (stdout, "size: %u bytes\n", type_byte_size (&q));
+  fprintf (stdout, "size: %" PRIu32 " bytes\n", type_byte_size (&q));
 
 theend:
   ALLOC_CLOSE (alloc);

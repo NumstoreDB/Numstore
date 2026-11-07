@@ -55,7 +55,7 @@ ns_read_var_page_advance (struct ns_read_var_page_params *params, error *e)
 
   WRAP (pgr_get_writable (&next, params->tx, PG_VAR_TAIL, npg, params->p, e));
 
-  if (pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e)) {
+  if (pgr_release (params->p, params->vp, PG_VAR_PAGE | PG_VAR_TAIL, e) < 0) {
     goto failed;
   }
 
@@ -95,7 +95,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
 
   // Quick check on the length
-  if ((params->check) && (vlen != params->check->len)) {
+  if (params->check != NULL && vlen != params->check->len) {
     params->matches = false;
     goto theend;
   }
@@ -107,9 +107,8 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   // will live on the passed memory, but it'd be a tiny
   // bit faster, but not worth the speed up
   //
-  // TODO - in the future, an arena_malloc_commit
-  // would be good for this - allowing the arena allocator
-  // have a rollback
+  // TODO: an arena_malloc_commit that lets the arena roll back would remove
+  // this extra copy
   char *vstr = arena_malloc (&temp, 1, vlen, e);
   if (vstr == NULL) {
     goto failed;
@@ -133,7 +132,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   while (total_read < vlen) {
     // We exhausted this page - move forward one
     if (local_read == head.len) {
-      if (ns_read_var_page_advance (params, e)) {
+      if (ns_read_var_page_advance (params, e) < 0) {
         goto failed;
       }
 
@@ -152,7 +151,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
   }
 
   // Quick termination on string data
-  if (params->check && (memcmp (params->check->data, vstr, vlen) != 0)) {
+  if (params->check != NULL && (memcmp (params->check->data, vstr, vlen) != 0)) {
     params->matches = false;
     goto theend;
   }
@@ -166,7 +165,7 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
       // We exhausted this page - move forward one
       if (local_read == head.len) {
         // Advance forward one node and reset local and head
-        if (ns_read_var_page_advance (params, e)) {
+        if (ns_read_var_page_advance (params, e) < 0) {
           goto failed;
         }
         local_read = 0;
@@ -224,18 +223,11 @@ ns_read_var_page (struct ns_read_var_page_params *params, error *e)
 theend:
   // Reset back to head page
   if (page_h_pgno (params->vp) != start) {
-    if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e)) {
+    if (pgr_release (params->p, params->vp, PG_VAR_TAIL, e) < 0) {
       goto failed;
     }
-    if (pgr_get_maybe_writable (
-            params->vp,
-            params->tx,
-            PG_VAR_PAGE,
-            start,
-            params->p,
-            writable,
-            e
-        )) {
+    if (pgr_get_maybe_writable (params->vp, params->tx, PG_VAR_PAGE, start, params->p, writable, e)
+        < 0) {
       goto failed;
     }
   }
@@ -252,7 +244,7 @@ failed:
 
 // Must be big enough that the name spills past the first PG_VAR_PAGE
 // into at least one PG_VAR_TAIL (and must fit in a u16)
-#  define LONG_VNAME_LEN (3 * NS_PAGE_SIZE)
+#  define LONG_VNAME_LEN ((size_t)3 * NS_PAGE_SIZE)
 _Static_assert (LONG_VNAME_LEN == (u32)(3 * NS_PAGE_SIZE), "u16 overflow");
 
 static inline void
@@ -359,7 +351,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_X); // IMPORTANT
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true);
@@ -367,7 +359,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -406,7 +398,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S); // IMPORTANT
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true);
@@ -414,7 +406,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -453,7 +445,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_X); // IMPORTANT
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true);
@@ -462,7 +454,7 @@ TEST (ns_read_var_page)
     test_assert (memcmp (var.vname.data, "mode_x_saves", strlen ("mode_x_saves")) == 0);
     test_assert (var.dtype != NULL); // save_type == true, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -502,7 +494,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_X); // IMPORTANT
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false);
@@ -510,7 +502,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -541,7 +533,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -549,7 +541,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -581,7 +573,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -589,7 +581,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -621,7 +613,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -629,7 +621,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -661,7 +653,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -669,7 +661,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -701,7 +693,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -709,7 +701,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -740,7 +732,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -749,7 +741,7 @@ TEST (ns_read_var_page)
     test_assert (memcmp (var.vname.data, "sv_null", strlen ("sv_null")) == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -781,7 +773,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -790,7 +782,7 @@ TEST (ns_read_var_page)
     test_assert (memcmp (var.vname.data, "sv_eq", strlen ("sv_eq")) == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -822,7 +814,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -830,7 +822,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -862,7 +854,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -870,7 +862,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -901,7 +893,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -909,7 +901,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -941,7 +933,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -949,7 +941,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -981,7 +973,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -989,7 +981,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1021,7 +1013,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -1029,7 +1021,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1060,7 +1052,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -1069,7 +1061,7 @@ TEST (ns_read_var_page)
     test_assert (memcmp (var.vname.data, "both_null", strlen ("both_null")) == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1101,7 +1093,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -1110,7 +1102,7 @@ TEST (ns_read_var_page)
     test_assert (memcmp (var.vname.data, "both_eq", strlen ("both_eq")) == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1142,7 +1134,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -1150,7 +1142,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1182,7 +1174,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -1190,7 +1182,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1221,7 +1213,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur));
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno);
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true);
@@ -1229,7 +1221,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1260,16 +1252,16 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno); // IMPORTANT
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true);
     test_assert (var.vname.data != NULL); // IMPORTANT (save_vname == true, matches == true)
-    test_assert_int_equal (var.vname.len, strlen (long_b));
+    test_assert_type_equal (var.vname.len, strlen (long_b), size_t, "zu");
     test_assert (memcmp (var.vname.data, long_b, strlen (long_b)) == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1308,16 +1300,16 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_X); // IMPORTANT
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno); // IMPORTANT
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true);
     test_assert (var.vname.data != NULL); // IMPORTANT (save_vname == true, matches == true)
-    test_assert_int_equal (var.vname.len, strlen (long_c));
+    test_assert_type_equal (var.vname.len, strlen (long_c), size_t, "zu");
     test_assert (memcmp (var.vname.data, long_c, strlen (long_c)) == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1349,7 +1341,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno); // IMPORTANT
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
@@ -1357,7 +1349,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1389,7 +1381,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno); // IMPORTANT
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -1397,7 +1389,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == false
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1429,7 +1421,7 @@ TEST (ns_read_var_page)
     test_assert (cur.mode == PHM_S);
 
     // Handle is back on the root var page
-    test_assert_int_equal (var.var_root, page_h_pgno (&cur)); // IMPORTANT
+    test_assert_type_equal (var.var_root, page_h_pgno (&cur), pgno, PRpgno); // IMPORTANT
     test_assert (page_h_type (&cur) == PG_VAR_PAGE);
 
     test_assert_int_equal (params.matches, false); // IMPORTANT
@@ -1437,7 +1429,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (save_type == true, matches == false)
     test_assert (var.rpt_root == PGNO_NULL);
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1484,7 +1476,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1531,7 +1523,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1571,7 +1563,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1611,7 +1603,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1651,7 +1643,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1691,7 +1683,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);
@@ -1731,7 +1723,7 @@ TEST (ns_read_var_page)
     test_assert (var.vname.len == 0);
     test_assert (var.dtype == NULL); // IMPORTANT (dest == NULL, untouched)
     test_assert (var.rpt_root == 0); // IMPORTANT (dest == NULL, untouched)
-    test_assert_int_equal (var.nbytes, 0);
+    test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
 
     pgr_release (db->p, &cur, PG_VAR_PAGE, &ctx->e);
     arena_alloc_free_all (&ctx->alloc);

@@ -82,7 +82,7 @@ print_usage (FILE *out, const char *prog)
   );
 
   for (int a = 0; a < NSS_AT_LEN; ++a) {
-    fprintf (out, "  NSS_%s\n", action_names[a] ? action_names[a] : "?");
+    fprintf (out, "  NSS_%s\n", action_names[a] != NULL ? action_names[a] : "?");
   }
 }
 
@@ -295,21 +295,21 @@ main (int argc, char **argv)
   const struct i_mem reliable_mem = default_mem ();
 
   struct i_os        reliable_os;
-  if (system_os_create (reliable_mem, &reliable_os, &e)) {
+  if (system_os_create (reliable_mem, &reliable_os, &e) < 0) {
     error_log_consume (&e);
     return EXIT_FAILURE;
   }
 
   // The layer under test - wraps the reliable one and injects faults
   struct i_os test_os;
-  if (faulty_os_create (reliable_mem, reliable_os, fail_pct, &test_os, &e)) {
+  if (faulty_os_create (reliable_mem, reliable_os, fail_pct, &test_os, &e) < 0) {
     error_log_consume (&e);
     system_os_free (reliable_os);
     return EXIT_FAILURE;
   }
 
   struct i_mem test_mem;
-  if (faulty_mem_create (reliable_mem, fail_pct, &test_mem, &e)) {
+  if (faulty_mem_create (reliable_mem, fail_pct, &test_mem, &e) < 0) {
     error_log_consume (&e);
     faulty_os_free (test_os);
     system_os_free (reliable_os);
@@ -338,7 +338,7 @@ main (int argc, char **argv)
   }
 
   i_timer timer;
-  if (reliable_os.table->timer_create (reliable_os.self, &timer, &e)) {
+  if (reliable_os.table->timer_create (reliable_os.self, &timer, &e) < 0) {
     error_log_consume (&e);
     ns_simul_close (simul, &e);
     faulty_mem_free (test_mem);

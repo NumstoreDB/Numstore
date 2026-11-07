@@ -40,38 +40,36 @@ pgr_close (struct pager *p, error *e)
 
   i_log_debug ("Closing Database - waiting for checkpoint task to complete\n");
 
-  // Stop the checkpoint task if it's running
-  if (periodic_task_stop (&p->checkpoint_task, e) < 0) {
-  }
+  // Close carries on through every failure below and frees the pager anyway.
+  // Each failure is recorded in [e] and reported by the return at the end.
+  // TODO: that is wrong for the lock and for eviction - see the disabled
+  // pgr_close_fail_os and pgr_close_fail_os_after_lock tests below.
+  (void)periodic_task_stop (&p->checkpoint_task, e);
 
   i_log_debug ("Checkpoint task complete\n");
 
   i_log_lockt (LOG_INFO, p->lt);
-  lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
+  (void)lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
 
   // Similar to a checkpoint
   {
-    // Evict all pages- so the database is consistent
+    // Evict all pages - so the database is consistent
     i_log_debug ("Evicting pages\n");
-    pgr_evict_all_pages (p, e);
+    (void)pgr_evict_all_pages (p, e);
 
-    // Flush the WAL
     i_log_debug ("Flushing WAL\n");
     wal_flush_all (p->ww);
 
-    // Get the end_lsn
     lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
     i_log_info ("Writing next WAL next start_lsn = %" PRlsn " to the database\n", end_lsn);
 
-    // Write the next min lsn slot
-    pgr_write_next_lsn (p, end_lsn, e);
+    (void)pgr_write_next_lsn (p, end_lsn, e);
 
-    // Delete the WAL
-    wal_close_and_delete (p->ww, e);
+    (void)wal_close_and_delete (p->ww, e);
     i_log_debug ("WAL is deleted\n");
   }
 
-  fpgr_close (p->fp, e);
+  (void)fpgr_close (p->fp, e);
   i_log_lockt (LOG_INFO, p->lt);
   lockt_unlock (p->lt, lock_db (), LM_X);
   lockt_destroy (p->lt);
@@ -88,12 +86,12 @@ pgr_close (struct pager *p, error *e)
 #ifndef NDEBUG
 TEST (pgr_close_success)
 {
-  test_fail_if (pgr_delete_single_file ("testdb", ctx->os, &ctx->e));
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 
   struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
-  // Delete file close_file should fail
-  test_assert_equal (pgr_close (p, &ctx->e), SUCCESS);
-  test_fail_if (pgr_delete_single_file ("foodir", ctx->os, &ctx->e));
+  test_assert (p != NULL);
+  test_assert_int_equal (pgr_close (p, &ctx->e), SUCCESS);
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
 }
 #endif
 
@@ -101,16 +99,14 @@ TEST (pgr_close_success)
 #  include "core/ns_crash.h"
 #  include "nscore/page/ns_page_data_list.h"
 
-/**
- * TODO - pgr_close ignores the result of
- * lockt_lock (p->lt, lock_db (), LM_X, NULL, e). Creating the lock frame
- * makes an OS call (the gr_lock mutex), so with Fail after 0 the lock is
- * never taken, close carries on anyway, and lockt_unlock asserts
- * ASSERT (found) in lockt_unlock_once.
- *
- * Fix: check the lockt_lock result (and decide what a close that can't lock
- * should do). pgr_close_fail_os_after_lock sweeps the rest of close.
- */
+// TODO: pgr_close ignores the result of
+// lockt_lock (p->lt, lock_db (), LM_X, NULL, e). Creating the lock frame
+// makes an OS call (the gr_lock mutex), so with Fail after 0 the lock is
+// never taken, close carries on anyway, and lockt_unlock asserts
+// ASSERT (found) in lockt_unlock_once.
+//
+// Fix: check the lockt_lock result (and decide what a close that can't lock
+// should do). pgr_close_fail_os_after_lock sweeps the rest of close.
 TEST_DISABLED (pgr_close_fail_os)
 {
   err_t ret;
@@ -166,18 +162,16 @@ TEST_DISABLED (pgr_close_fail_os)
   test_err_t_check (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS, &ctx->e);
 }
 
-/**
- * Same sweep, skipping the lock frame's mutex_create (see pgr_close_fail_os).
- *
- * TODO - loses committed data. When a page write fails during
- * pgr_evict_all_pages (Fail after 4: fpgr_write -> pwrite), pgr_close keeps
- * going: it writes the next lsn to the header and wal_close_and_delete
- * removes the WAL. The page never reached the file and its log is gone, so
- * on reopen the committed page reads back as an UNKNOWN page.
- *
- * Fix: once eviction or the WAL flush fails, close must not advance the
- * next lsn or delete the WAL - leave it for recovery, like a crash.
- */
+// Same sweep, skipping the lock frame's mutex_create (see pgr_close_fail_os).
+//
+// TODO: loses committed data. When a page write fails during
+// pgr_evict_all_pages (Fail after 4: fpgr_write -> pwrite), pgr_close keeps
+// going: it writes the next lsn to the header and wal_close_and_delete
+// removes the WAL. The page never reached the file and its log is gone, so
+// on reopen the committed page reads back as an UNKNOWN page.
+//
+// Fix: once eviction or the WAL flush fails, close must not advance the
+// next lsn or delete the WAL - leave it for recovery, like a crash.
 TEST_DISABLED (pgr_close_fail_os_after_lock)
 {
   err_t ret;

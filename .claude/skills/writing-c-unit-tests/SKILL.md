@@ -8,8 +8,7 @@ Writing C tests in Numstore
 
 General principles (grouping, parameterization, simulation, regressions)
 are in [what-makes-a-good-test.md](references/what-makes-a-good-test.md).
-This file is how they map onto this codebase. Real tests worth copying are in
-[good-tests.md](../shared/good-tests.md).
+This file is how they map onto this codebase. 
 
 For functions that can fail on OS or memory errors, also read
 [error-tests.md](references/error-tests.md). Style for the test code itself
@@ -273,5 +272,7 @@ Before finishing
 3. Do assertions use typed forms that print values?
 4. Is every file closed, thread joined, fixture torn down?
 5. Does a function that touches the OS or allocator have a fail_after test?
+   Is every function, including new helpers, called by some test? Function
+   coverage must stay at 100%.
 6. Does a fixed bug have a numbered regression test with a `CAUSE:` comment?
 7. Does `make test-unit` pass, and the memcheck build still compile?

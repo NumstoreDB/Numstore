@@ -40,25 +40,25 @@ static const struct
   u32         expected_f32_bits;
 } f16_f32_cases[] = {
     // Positive zero: sign=0, exp=0, mant=0
-    {"positive zero", 0x0000u, 0x00000000u},
+    {"positive zero", 0x0000U, 0x00000000U},
     // Negative zero: sign=1, exp=0, mant=0
-    {"negative zero", 0x8000u, 0x80000000u},
+    {"negative zero", 0x8000U, 0x80000000U},
     // 1.0:  sign=0, exp=15, mant=0  → f32 exp = 15+112 = 127
-    {"1.0", 0x3C00u, 0x3F800000u},
+    {"1.0", 0x3C00U, 0x3F800000U},
     // -1.0: sign=1, exp=15, mant=0
-    {"-1.0", 0xBC00u, 0xBF800000u},
+    {"-1.0", 0xBC00U, 0xBF800000U},
     // 2.0:  sign=0, exp=16, mant=0  → f32 exp = 128
-    {"2.0", 0x4000u, 0x40000000u},
+    {"2.0", 0x4000U, 0x40000000U},
     // +infinity: sign=0, exp=31, mant=0
-    {"+infinity", 0x7C00u, 0x7F800000u},
+    {"+infinity", 0x7C00U, 0x7F800000U},
     // -infinity: sign=1, exp=31, mant=0
-    {"-infinity", 0xFC00u, 0xFF800000u},
+    {"-infinity", 0xFC00U, 0xFF800000U},
     // Largest normal F16 (65504): exp=30, mant=0x3FF
     //   f32 exp = 30+112 = 142,  mant_f32 = 0x3FF<<13 = 0x7FE000
-    {"largest normal (65504)", 0x7BFFu, 0x477FE000u},
+    {"largest normal (65504)", 0x7BFFU, 0x477FE000U},
     // Smallest normal F16 (2^-14): exp=1, mant=0
     //   f32 exp = 1+112 = 113
-    {"smallest normal (2^-14)", 0x0400u, 0x38800000u},
+    {"smallest normal (2^-14)", 0x0400U, 0x38800000U},
 };
 
 TEST (f16_to_f32_normals_and_specials)
@@ -77,14 +77,14 @@ TEST (f16_to_f32_normals_and_specials)
 TEST (f16_to_f32_nan_is_nan)
 {
   // sign=0, exp=31, mant=0x200 - arbitrary non-zero mantissa → NaN
-  const float result = f16_to_f32 (0x7E00u);
+  const float result = f16_to_f32 (0x7E00U);
   test_assert (isnan (result));
 }
 
 TEST (f16_to_f32_smallest_subnormal_correct_value)
 {
-  const float result        = f16_to_f32 (0x0001u);
-  const u32   expected_bits = 0x33800000u;
+  const float result        = f16_to_f32 (0x0001U);
+  const u32   expected_bits = 0x33800000U;
   u32         result_bits;
   memcpy (&result_bits, &result, sizeof result_bits);
   test_assert_type_equal (result_bits, expected_bits, u32, PRIu32);
@@ -304,7 +304,7 @@ TEST (checksum_known_crc32c_vector)
   const u8 data[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
   u32      state  = checksum_init ();
   checksum_execute (&state, data, sizeof data);
-  test_assert_type_equal (state, 0xE3069283u, u32, PRIu32);
+  test_assert_type_equal (state, 0xE3069283U, u32, PRIu32);
 }
 
 // Two distinct single-byte inputs must produce different checksums.
@@ -366,57 +366,57 @@ TEST (stride_constructors_resolve_correctly)
   TEST_CASE ("ustride() = [::] - all elements")
   {
     stride_resolve (&r, ustride (), 10, &ctx->e);
-    test_assert_int_equal (r.start, 0);
-    test_assert_int_equal (r.stride, 1);
-    test_assert_int_equal (r.nelems, 10);
+    test_assert_type_equal (r.start, 0, u64, PRIu64);
+    test_assert_type_equal (r.stride, 1, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 10, u64, PRIu64);
   }
 
   TEST_CASE ("ustride0(3) = [3:] - from index 3 to end")
   {
     stride_resolve (&r, ustride0 (3), 10, &ctx->e);
-    test_assert_int_equal (r.start, 3);
-    test_assert_int_equal (r.stride, 1);
-    test_assert_int_equal (r.nelems, 7);
+    test_assert_type_equal (r.start, 3, u64, PRIu64);
+    test_assert_type_equal (r.stride, 1, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 7, u64, PRIu64);
   }
 
   TEST_CASE ("ustride2(6) = [:6] - first 6 elements")
   {
     stride_resolve (&r, ustride1 (6), 10, &ctx->e);
-    test_assert_int_equal (r.start, 0);
-    test_assert_int_equal (r.stride, 1);
-    test_assert_int_equal (r.nelems, 6);
+    test_assert_type_equal (r.start, 0, u64, PRIu64);
+    test_assert_type_equal (r.stride, 1, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 6, u64, PRIu64);
   }
 
   TEST_CASE ("ustride1(3) = [::3] - every 3rd, indices 0,3,6,9")
   {
     stride_resolve (&r, ustride2 (3), 10, &ctx->e);
-    test_assert_int_equal (r.start, 0);
-    test_assert_int_equal (r.stride, 3);
-    test_assert_int_equal (r.nelems, 4);
+    test_assert_type_equal (r.start, 0, u64, PRIu64);
+    test_assert_type_equal (r.stride, 3, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 4, u64, PRIu64);
   }
 
   TEST_CASE ("ustride01(2,3) = [2::3] - from 2, step 3, indices 2,5,8")
   {
     stride_resolve (&r, ustride02 (2, 3), 10, &ctx->e);
-    test_assert_int_equal (r.start, 2);
-    test_assert_int_equal (r.stride, 3);
-    test_assert_int_equal (r.nelems, 3);
+    test_assert_type_equal (r.start, 2, u64, PRIu64);
+    test_assert_type_equal (r.stride, 3, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 3, u64, PRIu64);
   }
 
   TEST_CASE ("ustride12(2,8) = [:2:8] stop 8 - indices 0,2,4,6")
   {
     stride_resolve (&r, ustride12 (8, 2), 10, &ctx->e);
-    test_assert_int_equal (r.start, 0);
-    test_assert_int_equal (r.stride, 2);
-    test_assert_int_equal (r.nelems, 4);
+    test_assert_type_equal (r.start, 0, u64, PRIu64);
+    test_assert_type_equal (r.stride, 2, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 4, u64, PRIu64);
   }
 
   TEST_CASE ("ustride012(1,2,7) = [1:7:2] - indices 1,3,5")
   {
     stride_resolve (&r, ustride012 (1, 7, 2), 10, &ctx->e);
-    test_assert_int_equal (r.start, 1);
-    test_assert_int_equal (r.stride, 2);
-    test_assert_int_equal (r.nelems, 3);
+    test_assert_type_equal (r.start, 1, u64, PRIu64);
+    test_assert_type_equal (r.stride, 2, u64, PRIu64);
+    test_assert_type_equal (r.nelems, 3, u64, PRIu64);
   }
 
   TEST_CASE ("usfrms round-trip: stride -> user_stride -> stride is identity")
@@ -428,7 +428,7 @@ TEST (stride_constructors_resolve_correctly)
     stride_resolve (&got, us, 10, &ctx->e);
 
     test_assert_type_equal (got.start, orig.start, u64, PRIu64);
-    test_assert_type_equal (got.stride, orig.stride, u32, PRIu32);
+    test_assert_type_equal (got.stride, orig.stride, u64, PRIu64);
     test_assert_type_equal (got.nelems, orig.nelems, u64, PRIu64);
   }
 }
@@ -717,7 +717,8 @@ TEST (cbuffer_cbuffer_move_transfers_bytes)
 {
   TEST_CASE ("move all bytes from src to dst")
   {
-    u8             sbuf[4], dbuf[8];
+    u8             sbuf[4];
+    u8             dbuf[8];
     struct cbuffer src     = cbuffer_create (sbuf, 4);
     struct cbuffer dst     = cbuffer_create (dbuf, 8);
 
@@ -736,7 +737,8 @@ TEST (cbuffer_cbuffer_move_transfers_bytes)
 
   TEST_CASE ("move is limited by available src bytes")
   {
-    u8             sbuf[4], dbuf[8];
+    u8             sbuf[4];
+    u8             dbuf[8];
     struct cbuffer src     = cbuffer_create (sbuf, 4);
     struct cbuffer dst     = cbuffer_create (dbuf, 8);
 

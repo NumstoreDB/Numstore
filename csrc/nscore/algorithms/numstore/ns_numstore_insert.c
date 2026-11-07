@@ -82,9 +82,11 @@ numstore_insert (
     return SUCCESS;
   }
 
-  // Resolve sizes
+  // TODO: ofst is unsigned but var_resolve_index reads its argument as signed
+  // (negative counts from the end). The cast keeps today's wrap-around
+  // behavior; ofst should be sb_size so the intent is in the type.
   t_size                  tsize   = type_byte_size (var->dtype);
-  b_size                  bofst   = var_resolve_index (var, tsize * ofst);
+  b_size                  bofst   = var_resolve_index (var, (sb_size)(tsize * ofst));
 
   // Do insert
   struct ns_insert_params iparams = {
@@ -139,7 +141,7 @@ TEST (numstore_insert_from_var)
     istream_create_from_array (stream, data);
 
     // Do insert
-    err_t ret = numstore_insert_from_name (
+    sb_size ret = numstore_insert_from_name (
         f.p,
         &f.tx,
         strfcstr ("var"),
@@ -152,7 +154,7 @@ TEST (numstore_insert_from_var)
     );
 
     // Check results
-    test_assert_int_equal (ret, 10);
+    test_assert_type_equal (ret, 10, sb_size, PRsb_size);
     test_assert (variable_equal (
         &(struct variable){
             .nbytes   = 10 * sizeof (u32),
@@ -182,7 +184,7 @@ TEST (numstore_insert_from_var)
     istream_create_from_array (stream, data);
 
     // Do insert
-    err_t ret = numstore_insert_from_name (
+    sb_size ret = numstore_insert_from_name (
         f.p,
         &f.tx,
         strfcstr ("var"),
@@ -198,7 +200,7 @@ TEST (numstore_insert_from_var)
     ret = numstore_get (f.p, &f.tx, false, strfcstr ("var"), &ctx->alloc, &var_test, &ctx->e);
 
     // Check results
-    test_assert_int_equal (ret, SUCCESS);
+    test_assert_type_equal (ret, SUCCESS, sb_size, PRsb_size);
     test_assert (variable_equal (
         &(struct variable){
             .nbytes   = 20 * sizeof (u32),

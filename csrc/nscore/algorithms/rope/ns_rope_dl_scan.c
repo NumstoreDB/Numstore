@@ -43,7 +43,7 @@ ns_rope_dl_scan (struct pager *p, const page_h *cur, page_consumer consume, void
   // Fetch next page
   page_h iter = page_h_create ();
   if (dl.npg != PGNO_NULL) {
-    if (pgr_get (&iter, PG_DATA_LIST, dl.npg, p, e)) {
+    if (pgr_get (&iter, PG_DATA_LIST, dl.npg, p, e) < 0) {
       return error_trace (e);
     }
   }
@@ -59,18 +59,18 @@ ns_rope_dl_scan (struct pager *p, const page_h *cur, page_consumer consume, void
 
     // Execute consumer
     if (consume (dl, ctx, e) < 0) {
-      pgr_release (p, &iter, PG_DATA_LIST, e);
+      // Already failing; the first error is the one reported
+      (void)pgr_release (p, &iter, PG_DATA_LIST, e);
       return error_trace (e);
     }
 
-    // Release current
-    if (pgr_release (p, &iter, PG_DATA_LIST, e)) {
+    if (pgr_release (p, &iter, PG_DATA_LIST, e) < 0) {
       return error_trace (e);
     }
 
     // Fetch next
     if (dl.npg != PGNO_NULL) {
-      if (pgr_get (&iter, PG_DATA_LIST, dl.npg, p, e)) {
+      if (pgr_get (&iter, PG_DATA_LIST, dl.npg, p, e) < 0) {
         return error_trace (e);
       }
     }
@@ -80,13 +80,16 @@ ns_rope_dl_scan (struct pager *p, const page_h *cur, page_consumer consume, void
 err_t
 ns_rope_dl_scan_pgno (struct pager *p, pgno pg, page_consumer consume, void *ctx, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   page_h cur = page_h_create ();
   if (pgr_get (&cur, PG_DATA_LIST, pg, p, e) < 0) {
     return error_trace (e);
   }
 
   if (ns_rope_dl_scan (p, &cur, consume, ctx, e) < 0) {
-    pgr_release (p, &cur, PG_DATA_LIST, e);
+    // Already failing; the first error is the one reported
+    (void)pgr_release (p, &cur, PG_DATA_LIST, e);
     return error_trace (e);
   }
 
@@ -111,6 +114,8 @@ ns_rope_dl_blen_consumer (struct data_list dl, void *_ctx, MAYBE_UNUSED error *e
 sb_size
 ns_rope_dl_scan_blen (struct pager *p, page_h *cur, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   struct blen_ctx ctx = {
       .running_total = 0,
   };
@@ -119,12 +124,15 @@ ns_rope_dl_scan_blen (struct pager *p, page_h *cur, error *e)
     return error_trace (e);
   }
 
-  return ctx.running_total;
+  ASSERT (ctx.running_total <= (b_size)I64_MAX);
+  return (sb_size)ctx.running_total;
 }
 
 sb_size
 ns_rope_dl_scan_blen_pgno (struct pager *p, pgno pg, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   page_h cur = page_h_create ();
   if (pgr_get (&cur, PG_DATA_LIST, pg, p, e) < 0) {
     return error_trace (e);
@@ -132,7 +140,8 @@ ns_rope_dl_scan_blen_pgno (struct pager *p, pgno pg, error *e)
 
   sb_size len = ns_rope_dl_scan_blen (p, &cur, e);
   if (len < 0) {
-    pgr_release (p, &cur, PG_DATA_LIST, e);
+    // Already failing; the first error is the one reported
+    (void)pgr_release (p, &cur, PG_DATA_LIST, e);
     return error_trace (e);
   }
 
@@ -161,6 +170,8 @@ ns_rope_dl_npages_consumer (MAYBE_UNUSED struct data_list dl, void *_ctx, MAYBE_
 sb_size
 ns_rope_dl_scan_npages (struct pager *p, page_h *cur, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   struct npages_ctx ctx = {
       .running_total = 0,
   };
@@ -169,7 +180,8 @@ ns_rope_dl_scan_npages (struct pager *p, page_h *cur, error *e)
     return error_trace (e);
   }
 
-  return ctx.running_total;
+  ASSERT (ctx.running_total <= (b_size)I64_MAX);
+  return (sb_size)ctx.running_total;
 }
 
 #ifndef NDEBUG
@@ -220,7 +232,7 @@ static pgno
 dl_build_chain (struct pgr_fixture *f, const u32 npages, u32 *blen_out, error *e)
 {
   // Full pages, except a tail at exactly half so the page count is exact.
-  const u32          blen = (npages - 1) * DL_DATA_SIZE + (npages == 1 ? 1 : DL_DATA_SIZE / 2);
+  const u32          blen = ((npages - 1) * DL_DATA_SIZE) + (npages == 1 ? 1 : DL_DATA_SIZE / 2);
 
   struct dl_fill_ctx c    = {.remaining = blen, .npages = 0};
 
@@ -279,7 +291,7 @@ TEST (ns_rope_dl_scan_pgno)
   const u32 lengths[] = {1, 2, 6};
 
   for (u32 k = 0; k < 3; ++k) {
-    TEST_CASE ("chain of %u page(s)", lengths[k])
+    TEST_CASE ("chain of %" PRIu32 " page(s)", lengths[k])
     {
       struct pgr_fixture f;
       pgr_fixture_create (&f, &ctx->e);
@@ -326,19 +338,29 @@ TEST (ns_rope_dl_scan_blen_and_npages)
   const u32 lengths[] = {1, 3};
 
   for (u32 k = 0; k < 2; ++k) {
-    TEST_CASE ("chain of %u page(s)", lengths[k])
+    TEST_CASE ("chain of %" PRIu32 " page(s)", lengths[k])
     {
       u32        blen = 0;
       const pgno root = dl_build_chain (&f, lengths[k], &blen, &ctx->e);
 
       // The pgno entry point.
-      test_assert_int_equal (ns_rope_dl_scan_blen_pgno (f.p, root, &ctx->e), blen);
+      test_assert_type_equal (
+          ns_rope_dl_scan_blen_pgno (f.p, root, &ctx->e),
+          blen,
+          sb_size,
+          PRsb_size
+      );
 
       // The page_h entry point has to give the same answer.
       page_h h = page_h_create ();
       test_assert (pgr_get (&h, PG_DATA_LIST, root, f.p, &ctx->e) >= 0);
-      test_assert_int_equal (ns_rope_dl_scan_blen (f.p, &h, &ctx->e), blen);
-      test_assert_int_equal (ns_rope_dl_scan_npages (f.p, &h, &ctx->e), lengths[k]);
+      test_assert_type_equal (ns_rope_dl_scan_blen (f.p, &h, &ctx->e), blen, sb_size, PRsb_size);
+      test_assert_type_equal (
+          ns_rope_dl_scan_npages (f.p, &h, &ctx->e),
+          lengths[k],
+          sb_size,
+          PRsb_size
+      );
       test_assert (pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e) >= 0);
     }
   }
@@ -360,7 +382,7 @@ TEST (ns_rope_dl_scan_consumer_failure)
   const i32 fail_visits[] = {0, 1, 3};
 
   for (u32 k = 0; k < 3; ++k) {
-    TEST_CASE ("consumer fails on visit %d", fail_visits[k])
+    TEST_CASE ("consumer fails on visit %" PRId32, fail_visits[k])
     {
       struct pgr_fixture f;
       pgr_fixture_create (&f, &ctx->e);
@@ -377,7 +399,12 @@ TEST (ns_rope_dl_scan_consumer_failure)
       test_assert_int_equal (c.nvisited, (u32)fail_visits[k]);
 
       // The pager is still usable, so nothing was left fixed.
-      test_assert_int_equal (ns_rope_dl_scan_blen_pgno (f.p, root, &ctx->e), blen);
+      test_assert_type_equal (
+          ns_rope_dl_scan_blen_pgno (f.p, root, &ctx->e),
+          blen,
+          sb_size,
+          PRsb_size
+      );
 
       pgr_fixture_teardown (&f, &ctx->e);
     }

@@ -125,16 +125,16 @@ TEST (spx_lock_s_and_x_states)
   TEST_CASE ("Shared holders accumulate and release one at a time")
   {
     spx_lock_s (&l);
-    test_assert_type_equal (SLOCKED (l), 1u, u32, PRIu32);
+    test_assert_type_equal (SLOCKED (l), 1U, u32, PRIu32);
     test_assert (!XLOCKED (l));
 
     spx_lock_s (&l);
-    test_assert_type_equal (SLOCKED (l), 2u, u32, PRIu32);
+    test_assert_type_equal (SLOCKED (l), 2U, u32, PRIu32);
 
     spx_unlock_s (&l);
-    test_assert_type_equal (SLOCKED (l), 1u, u32, PRIu32);
+    test_assert_type_equal (SLOCKED (l), 1U, u32, PRIu32);
     spx_unlock_s (&l);
-    test_assert_type_equal (SLOCKED (l), 0u, u32, PRIu32);
+    test_assert_type_equal (SLOCKED (l), 0U, u32, PRIu32);
   }
 
   TEST_CASE ("An exclusive try fails while a reader holds the latch")
@@ -155,13 +155,13 @@ TEST (spx_lock_s_and_x_states)
     test_assert (!spx_trylock_x (&l));
 
     spx_unlock_x (&l);
-    test_assert_type_equal ((u32)l, 0u, u32, PRIu32);
+    test_assert_type_equal ((u32)l, 0U, u32, PRIu32);
   }
 
   TEST_CASE ("A shared try succeeds on a free latch")
   {
     test_assert (spx_trylock_s (&l));
-    test_assert_type_equal (SLOCKED (l), 1u, u32, PRIu32);
+    test_assert_type_equal (SLOCKED (l), 1U, u32, PRIu32);
     spx_unlock_s (&l);
   }
 }
@@ -184,7 +184,7 @@ TEST (spx_lock_x_serialises_writers)
   }
 
   test_assert_int_equal (d.value, (int)(arrlen (threads) * 1000));
-  test_assert_type_equal ((u32)d.l, 0u, u32, PRIu32);
+  test_assert_type_equal ((u32)d.l, 0U, u32, PRIu32);
 }
 
 TEST (spx_lock_s_admits_readers_concurrently)
@@ -205,9 +205,9 @@ TEST (spx_lock_s_admits_readers_concurrently)
     ctx->os.table->thread_join (ctx->os.self, threads[i].self);
   }
 
-  test_assert_type_equal (atomic_load (&d.all_in), 1u, u32, PRIu32);
-  test_assert_type_equal (atomic_load (&d.arrived), 8u, u32, PRIu32);
-  test_assert_type_equal ((u32)d.l, 0u, u32, PRIu32);
+  test_assert_type_equal (atomic_load (&d.all_in), 1U, u32, PRIu32);
+  test_assert_type_equal (atomic_load (&d.arrived), 8U, u32, PRIu32);
+  test_assert_type_equal ((u32)d.l, 0U, u32, PRIu32);
 }
 
 TEST (spx_lock_x_waits_for_readers_to_drain)
@@ -228,12 +228,12 @@ TEST (spx_lock_x_waits_for_readers_to_drain)
       break;
     }
   }
-  test_assert_type_equal (atomic_load (&d.x_taken), 0u, u32, PRIu32);
+  test_assert_type_equal (atomic_load (&d.x_taken), 0U, u32, PRIu32);
 
   spx_unlock_s (&d.l);
   ctx->os.table->thread_join (ctx->os.self, writer.self);
 
-  test_assert_type_equal (atomic_load (&d.x_taken), 1u, u32, PRIu32);
-  test_assert_type_equal ((u32)d.l, 0u, u32, PRIu32);
+  test_assert_type_equal (atomic_load (&d.x_taken), 1U, u32, PRIu32);
+  test_assert_type_equal ((u32)d.l, 0U, u32, PRIu32);
 }
 #endif

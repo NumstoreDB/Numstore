@@ -89,7 +89,7 @@ list_append (struct llnode **head, struct llnode *n)
     *head = n;
   } else {
     struct llnode *cur = *head;
-    while (cur->next) {
+    while (cur->next != NULL) {
       cur = cur->next;
     }
     cur->next = n;

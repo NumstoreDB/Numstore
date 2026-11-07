@@ -27,25 +27,23 @@ ns_var_get (struct ns_var_get_params *params, error *e)
 {
   page_h                         cur     = page_h_create ();
 
-  // Find variable first
   struct ns_find_var_page_params fparams = {
       .p     = params->p,
       .tx    = params->tx,
       .alloc = params->alloc,
 
       .vname = params->vname,
-      .dvar  = &params->dest, // Dest
+      .dvar  = &params->dest,
       .mode  = FP_FIND,
 
       .prev  = NULL,
       .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e)) {
+  if (ns_find_var_page (&fparams, e) < 0) {
     goto theend;
   }
 
-  // Read the variable here
   struct ns_read_var_page_params rparams = {
       .p          = params->p,
       .tx         = params->tx,
@@ -61,13 +59,14 @@ ns_var_get (struct ns_var_get_params *params, error *e)
       .save_vname = false,
       .save_type  = true,
   };
-  if (ns_read_var_page (&rparams, e)) {
+  if (ns_read_var_page (&rparams, e) < 0) {
     goto theend;
   }
 
-  // TODO - validate variable here
+  // TODO: validate the variable read from disk (type and size) so a corrupt
+  // var page is reported instead of returned
 
-  if (pgr_release (params->p, &cur, PG_VAR_PAGE, e)) {
+  if (pgr_release (params->p, &cur, PG_VAR_PAGE, e) < 0) {
     goto theend;
   }
 

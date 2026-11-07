@@ -61,8 +61,8 @@ main (int argc, char **argv)
   const char *failed_names[%TEST_COUNT%];
   %CALLS%
   printf (
-      "Time: %llu ms\n",
-      (unsigned long long)(timer.table->timer_now_ns (timer.self) / 1000000ULL)
+      "Time: %" PRIu64 " ms\n",
+      (u64)(timer.table->timer_now_ns (timer.self) / 1000000ULL)
   );
   harness_os.table->timer_free (harness_os.self, timer.self);
   system_os_free (harness_os);

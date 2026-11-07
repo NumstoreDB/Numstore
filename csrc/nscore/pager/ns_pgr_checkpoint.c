@@ -21,19 +21,21 @@ static err_t
 pgr_refresh_wal (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
-  wal_delete_and_reopen (p->ww, e);
-  return error_trace (e);
+  if (wal_delete_and_reopen (p->ww, e) < 0) {
+    return error_trace (e);
+  }
+  return SUCCESS;
 }
 
 static err_t
 pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 {
-  ASSERT (p->ww);
+  DBG_ASSERT (pager, p);
 
   i_log_debug ("Starting Checkpoint - locking the database\n");
 
   // First, lock the entire database
-  if (lockt_lock (p->lt, lock_db (), LM_X, NULL, e)) {
+  if (lockt_lock (p->lt, lock_db (), LM_X, NULL, e) < 0) {
     return error_trace (e);
   }
 
@@ -47,12 +49,11 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
   // Flush the WAL
   wal_flush_all (p->ww);
 
-  // Get the end_lsn
   lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
   i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
 
   // Write the next min lsn slot
-  if (pgr_write_next_lsn (p, end_lsn, e)) {
+  if (pgr_write_next_lsn (p, end_lsn, e) < 0) {
     goto theend;
   }
 
@@ -64,14 +65,11 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
   ASSERT (wal_isnew (p->ww));
 
   // Write the next start lsn for the WAL
-  if (wal_write_start_lsn (p->ww, end_lsn, e)) {
+  if (wal_write_start_lsn (p->ww, end_lsn, e) < 0) {
     goto theend;
   }
 
 theend:
-
-  // Unlock the database lock
-  // i_log_debug ("Checkpoint Done - unlocking the database\n");
   lockt_unlock (p->lt, lock_db (), LM_X);
 
   // Every goto above is a failure path - a checkpoint that could not flush,
@@ -84,7 +82,7 @@ pgr_do_checkpoint (void *ctx)
 {
   struct pager *p = ctx;
   error         e = error_create ();
-  if (pgr_deletion_blocking_checkpoint (p, &e)) {
+  if (pgr_deletion_blocking_checkpoint (p, &e) < 0) {
     error_log_consume (&e);
   }
 }
@@ -92,6 +90,7 @@ pgr_do_checkpoint (void *ctx)
 err_t
 pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
 {
+  DBG_ASSERT (pager, p);
   return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e);
 }
 
@@ -132,8 +131,8 @@ TEST (pgr_checkpoint)
     pgr_launch_checkpoint_thread (f.p, 100, &ctx->e);
 
     struct args args = {
-        .done = 0,
         .p    = f.p,
+        .done = 0,
     };
 
     i_thread producer;
@@ -148,29 +147,14 @@ TEST (pgr_checkpoint)
   }
 }
 
-/**
- * TODO - a deleted / reopened wal - if it fails
- * can sometimes lead to ostream being NULL.
- *
- * I don't want to just do if(ostream == NULL),
- * I want to consider other options:
- *
- * Two options I've thought of so far:
- *
- * 1. make delete_and_reopen return a wal, so that
- *    pager->ww is NULL after it failed, but then
- *    you need to do if(pager->ww != NULL) { ... }
- * 2. make a pager never lose track of a valid WAL
- *    - Delete and reopen becomes:
- *      1. Open new (empty) WAL
- *      2. Delete old WAL
- *      3. Swap new WAL
- *    - But 2 and 3 need to be atomic
- *    - You technically never need to run 3
- *
- * Either way - I think wal delete and reopen api
- * needs to be re worked
- */
+// TODO: rework the wal_delete_and_reopen API, then enable this test. When
+// the reopen fails the wal is left with a NULL ostream, and the next append
+// dereferences it. Checking for NULL everywhere isn't the fix. Options:
+//
+// 1. Make delete_and_reopen return a wal, so pager->ww is NULL after a
+//    failure. Callers then need pager->ww != NULL checks.
+// 2. Never lose track of a valid WAL: open the new (empty) WAL first, then
+//    delete the old one and swap. The delete and swap need to be atomic.
 TEST_DISABLED (pgr_checkpoint_failure)
 {
   err_t ret        = SUCCESS;

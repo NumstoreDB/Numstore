@@ -91,7 +91,7 @@ DEFINE_DBG_ASSERT (struct faulty_ctx, faulty_ctx, c, {
   ASSERT (c);
   ASSERT (c->delegate.table);
   ASSERT (c->mem.table);
-  ASSERT (c->fail_percent >= 0.0f && c->fail_percent <= 1.0f);
+  ASSERT (c->fail_percent >= 0.0F && c->fail_percent <= 1.0F);
 })
 
 DEFINE_DBG_ASSERT (struct faulty_file, faulty_file, f, {
@@ -134,9 +134,7 @@ faulty_roll (struct faulty_ctx *ctx, error *e, err_t type)
 
   ctx->ncalls += 1;
 
-  /**
-   * Check fail after if >= 0
-   */
+  // A negative budget means no budget
   if (ctx->fail_after >= 0) {
     if (ctx->fail_after == 0) {
       ctx->fail_after = -1;
@@ -145,16 +143,12 @@ faulty_roll (struct faulty_ctx *ctx, error *e, err_t type)
     ctx->fail_after -= 1;
   }
 
-  /**
-   * Check fail percent
-   *
-   * The draw is skipped entirely at 0 rather than drawn and discarded. Fault
-   * injection shares the RNG with action selection, so drawing here would
-   * make the stream depend on how many fallible calls the harness happens to
-   * make - and then any change in I/O volume, a read-only validation pass
-   * included, would replay every seed as a different run.
-   */
-  if (ctx->fail_percent > 0 && randf () < ctx->fail_percent) {
+  // The draw is skipped entirely at 0 rather than drawn and discarded. Fault
+  // injection shares the RNG with action selection, so drawing here would
+  // make the stream depend on how many fallible calls the harness happens to
+  // make - and then any change in I/O volume, a read-only validation pass
+  // included, would replay every seed as a different run.
+  if (ctx->fail_percent > 0.0F && randf () < ctx->fail_percent) {
     return error_causef (e, type, "Injected fault");
   }
 
@@ -174,7 +168,7 @@ faulty_open_file (struct faulty_ctx *ctx, open_fn open, i_file *dest, const char
   ASSERT (dest);
   ASSERT (fname);
 
-  if (faulty_roll (ctx, e, ERR_IO)) {
+  if (faulty_roll (ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -236,11 +230,11 @@ faulty_close_file (void *os_self, void *file, error *e)
   const err_t ret = f->d.table->close_file (ctx->delegate.self, f->d.self, e);
   slab_alloc_free (&ctx->file_alloc, f);
 
-  if (ret) {
+  if (ret < 0) {
     return error_trace (e);
   }
 
-  if (faulty_roll (ctx, e, ERR_IO)) {
+  if (faulty_roll (ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -253,7 +247,7 @@ faulty_remove_quiet (void *os_self, const char *fname, error *e)
   struct faulty_ctx *ctx = os_self;
   DBG_ASSERT (faulty_ctx, ctx);
 
-  if (faulty_roll (ctx, e, ERR_IO)) {
+  if (faulty_roll (ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -269,7 +263,7 @@ faulty_fsync (void *self, error *e)
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -282,7 +276,7 @@ faulty_file_size (void *self, error *e)
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -295,7 +289,7 @@ faulty_read_all (void *self, void *dest, const u64 nbytes, error *e)
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -308,7 +302,7 @@ faulty_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -321,7 +315,7 @@ faulty_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, e
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -334,7 +328,7 @@ faulty_writev_all (void *self, struct bytes *iov, const int iovcnt, error *e)
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -347,7 +341,7 @@ faulty_truncate (void *self, const u64 bytes, error *e)
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -360,7 +354,7 @@ faulty_seek (void *self, const u64 offset, const seek_t whence, error *e)
   struct faulty_file *f = self;
   DBG_ASSERT (faulty_file, f);
 
-  if (faulty_roll (f->ctx, e, ERR_IO)) {
+  if (faulty_roll (f->ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -384,7 +378,7 @@ faulty_thread_create (
   ASSERT (dest);
   ASSERT (func);
 
-  if (faulty_roll (ctx, e, ERR_IO)) {
+  if (faulty_roll (ctx, e, ERR_IO) < 0) {
     return error_trace (e);
   }
 
@@ -393,7 +387,7 @@ faulty_thread_create (
     return error_trace (e);
   }
 
-  if (ctx->delegate.table->thread_create (ctx->delegate.self, &t->d, func, context, e)) {
+  if (ctx->delegate.table->thread_create (ctx->delegate.self, &t->d, func, context, e) < 0) {
     slab_alloc_free (&ctx->thread_alloc, t);
     return error_trace (e);
   }
@@ -431,7 +425,7 @@ faulty_mutex_create (void *os_self, i_mutex *dest, error *e)
   DBG_ASSERT (faulty_ctx, ctx);
   ASSERT (dest);
 
-  if (faulty_roll (ctx, e, ERR_NOMEM)) {
+  if (faulty_roll (ctx, e, ERR_NOMEM) < 0) {
     return error_trace (e);
   }
 
@@ -440,7 +434,7 @@ faulty_mutex_create (void *os_self, i_mutex *dest, error *e)
     return error_trace (e);
   }
 
-  if (ctx->delegate.table->mutex_create (ctx->delegate.self, &m->d, e)) {
+  if (ctx->delegate.table->mutex_create (ctx->delegate.self, &m->d, e) < 0) {
     slab_alloc_free (&ctx->mutex_alloc, m);
     return error_trace (e);
   }
@@ -495,7 +489,7 @@ faulty_cond_create (void *os_self, i_cond *dest, error *e)
   DBG_ASSERT (faulty_ctx, ctx);
   ASSERT (dest);
 
-  if (faulty_roll (ctx, e, ERR_NOMEM)) {
+  if (faulty_roll (ctx, e, ERR_NOMEM) < 0) {
     return error_trace (e);
   }
 
@@ -504,7 +498,7 @@ faulty_cond_create (void *os_self, i_cond *dest, error *e)
     return error_trace (e);
   }
 
-  if (ctx->delegate.table->cond_create (ctx->delegate.self, &c->d, e)) {
+  if (ctx->delegate.table->cond_create (ctx->delegate.self, &c->d, e) < 0) {
     slab_alloc_free (&ctx->cond_alloc, c);
     return error_trace (e);
   }
@@ -632,7 +626,7 @@ faulty_os_create (
   ASSERT (dest);
   ASSERT (mem.table);
   ASSERT (delegate.table);
-  ASSERT (fail_percent >= 0.0f && fail_percent <= 1.0f);
+  ASSERT (fail_percent >= 0.0F && fail_percent <= 1.0F);
 
   struct faulty_ctx *ctx = mem.table->calloc (mem.self, 1, sizeof *ctx, e);
   if (ctx == NULL) {
@@ -661,33 +655,44 @@ faulty_os_create (
 void
 faulty_os_set_fail (struct i_os os, float fail_percent)
 {
-  ASSERT (fail_percent >= 0.0f && fail_percent <= 1.0f);
+  ASSERT (os.table == &faulty_os_vtable);
+  ASSERT (fail_percent >= 0.0F && fail_percent <= 1.0F);
 
   struct faulty_ctx *ctx = os.self;
-  ctx->fail_percent      = fail_percent;
+  DBG_ASSERT (faulty_ctx, ctx);
+  ctx->fail_percent = fail_percent;
 }
 
 void
 faulty_os_fail_after (struct i_os os, int count)
 {
+  ASSERT (os.table == &faulty_os_vtable);
+
   struct faulty_ctx *ctx = os.self;
-  ctx->fail_after        = count;
+  DBG_ASSERT (faulty_ctx, ctx);
+  ctx->fail_after = count;
 }
 
 u32
 faulty_num_os_calls (struct i_os os)
 {
+  ASSERT (os.table == &faulty_os_vtable);
+
   struct faulty_ctx *ctx = os.self;
+  DBG_ASSERT (faulty_ctx, ctx);
   return ctx->ncalls;
 }
 
 void
-faulty_os_reset (struct i_os mem)
+faulty_os_reset (struct i_os os)
 {
-  struct faulty_ctx *ctx = mem.self;
-  ctx->fail_percent      = 0.0f;
-  ctx->fail_after        = -1;
-  ctx->ncalls            = 0;
+  ASSERT (os.table == &faulty_os_vtable);
+
+  struct faulty_ctx *ctx = os.self;
+  DBG_ASSERT (faulty_ctx, ctx);
+  ctx->fail_percent = 0.0F;
+  ctx->fail_after   = -1;
+  ctx->ncalls       = 0;
 }
 
 /// Frees the faulty layer - the delegate OS is borrowed and stays alive.
@@ -729,7 +734,7 @@ static const struct i_mem_vtable faulty_mem_vtable;
 DEFINE_DBG_ASSERT (struct faulty_mem_ctx, faulty_mem_ctx, c, {
   ASSERT (c);
   ASSERT (c->delegate.table);
-  ASSERT (c->fail_percent >= 0.0f && c->fail_percent <= 1.0f);
+  ASSERT (c->fail_percent >= 0.0F && c->fail_percent <= 1.0F);
 })
 
 /// NULL (with [e] set) instead of an allocation, with probability fail_percent
@@ -738,9 +743,7 @@ faulty_mem_roll (struct faulty_mem_ctx *ctx, const char *what, error *e)
 {
   DBG_ASSERT (faulty_mem_ctx, ctx);
 
-  /**
-   * Check fail after if >= 0
-   */
+  // A negative budget means no budget
   if (ctx->fail_after >= 0) {
     if (ctx->fail_after == 0) {
       ctx->fail_after = -1;
@@ -750,10 +753,8 @@ faulty_mem_roll (struct faulty_mem_ctx *ctx, const char *what, error *e)
     ctx->fail_after -= 1;
   }
 
-  /**
-   * Check fail percent -- skipped at 0, see the note in the OS path above
-   */
-  if (ctx->fail_percent > 0 && randf () < ctx->fail_percent) {
+  // Skipped at 0, see the note in faulty_roll
+  if (ctx->fail_percent > 0.0F && randf () < ctx->fail_percent) {
     error_causef (e, ERR_NOMEM, "%s: injected fault", what);
     return true;
   }
@@ -835,7 +836,7 @@ faulty_mem_create (struct i_mem delegate, const float fail_percent, struct i_mem
 {
   ASSERT (dest);
   ASSERT (delegate.table);
-  ASSERT (fail_percent >= 0.0f && fail_percent <= 1.0f);
+  ASSERT (fail_percent >= 0.0F && fail_percent <= 1.0F);
 
   // The ctx itself comes from the delegate and is never subject to the roll
   struct faulty_mem_ctx *ctx = delegate.table->calloc (delegate.self, 1, sizeof *ctx, e);
@@ -859,30 +860,43 @@ faulty_mem_create (struct i_mem delegate, const float fail_percent, struct i_mem
 void
 faulty_mem_set_fail (struct i_mem mem, float fail_percent)
 {
+  ASSERT (mem.table == &faulty_mem_vtable);
+  ASSERT (fail_percent >= 0.0F && fail_percent <= 1.0F);
+
   struct faulty_mem_ctx *ctx = mem.self;
-  ctx->fail_percent          = fail_percent;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+  ctx->fail_percent = fail_percent;
 }
 
 void
 faulty_mem_fail_after (struct i_mem mem, int count)
 {
+  ASSERT (mem.table == &faulty_mem_vtable);
+
   struct faulty_mem_ctx *ctx = mem.self;
-  ctx->fail_after            = count;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+  ctx->fail_after = count;
 }
 
 void
 faulty_mem_reset (struct i_mem mem)
 {
+  ASSERT (mem.table == &faulty_mem_vtable);
+
   struct faulty_mem_ctx *ctx = mem.self;
-  ctx->fail_percent          = 0.0f;
-  ctx->fail_after            = -1;
-  ctx->nmallocs              = 0;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
+  ctx->fail_percent = 0.0F;
+  ctx->fail_after   = -1;
+  ctx->nmallocs     = 0;
 }
 
 u32
 faulty_num_mallocs (struct i_mem mem)
 {
+  ASSERT (mem.table == &faulty_mem_vtable);
+
   struct faulty_mem_ctx *ctx = mem.self;
+  DBG_ASSERT (faulty_mem_ctx, ctx);
   return ctx->nmallocs;
 }
 
@@ -899,3 +913,153 @@ faulty_mem_free (struct i_mem mem)
   struct i_mem delegate = ctx->delegate;
   delegate.table->free (delegate.self, ctx);
 }
+
+#ifndef NDEBUG
+#  include "core/ns_testing.h"
+
+#  define FAULTY_T_FILE "ns_faulty_os_test.bin"
+
+static void *
+faulty_t_noop_thread (void *arg)
+{
+  return arg;
+}
+
+TEST (faulty_os_fail_percent)
+{
+  struct i_os f = ctx->faulty_os;
+
+  TEST_CASE ("A rate of 1.0 fails every call")
+  {
+    faulty_os_set_fail (f, 1.0F);
+
+    i_mutex m;
+    test_err_t_check (f.table->mutex_create (f.self, &m, &ctx->e), ERR_NOMEM, &ctx->e);
+    test_err_t_check (f.table->remove_quiet (f.self, FAULTY_T_FILE, &ctx->e), ERR_IO, &ctx->e);
+  }
+
+  faulty_os_reset (f);
+}
+
+// The decorator allocates a wrapper from its own allocator before it asks
+// the delegate for anything, so an out of memory there must fail the call
+// without touching the delegate
+TEST (faulty_os_wrapper_allocation_failures)
+{
+  TEST_CASE ("faulty_os_create and faulty_mem_create surface a failed allocation")
+  {
+    struct i_os os;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (
+        faulty_os_create (ctx->faulty_mem, ctx->os, 0.0F, &os, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
+
+    struct i_mem mem;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (faulty_mem_create (ctx->faulty_mem, 0.0F, &mem, &ctx->e), ERR_NOMEM, &ctx->e);
+    faulty_mem_reset (ctx->faulty_mem);
+  }
+
+  // Setup - a faulty OS whose wrappers come from the faulty allocator
+  struct i_os os;
+  test_assert_int_equal (faulty_os_create (ctx->faulty_mem, ctx->os, 0.0F, &os, &ctx->e), SUCCESS);
+
+  TEST_CASE ("Every constructor surfaces a failed wrapper allocation")
+  {
+    i_file f;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (
+        os.table->open_file_rw (os.self, &f, FAULTY_T_FILE, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
+
+    i_thread t;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (
+        os.table->thread_create (os.self, &t, faulty_t_noop_thread, NULL, &ctx->e),
+        ERR_NOMEM,
+        &ctx->e
+    );
+
+    i_mutex m;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (os.table->mutex_create (os.self, &m, &ctx->e), ERR_NOMEM, &ctx->e);
+
+    i_cond c;
+    faulty_mem_fail_after (ctx->faulty_mem, 0);
+    test_err_t_check (os.table->cond_create (os.self, &c, &ctx->e), ERR_NOMEM, &ctx->e);
+
+    faulty_mem_reset (ctx->faulty_mem);
+  }
+
+  // Teardown
+  faulty_os_free (os);
+}
+
+// Stacking a faulty OS on top of another one lets the inner layer play a
+// delegate that fails after the outer layer already took its wrapper
+TEST (faulty_os_delegate_failures)
+{
+  // Setup - outer decorator over the test's faulty OS
+  struct i_os inner = ctx->faulty_os;
+  struct i_os outer;
+  test_assert_int_equal (faulty_os_create (ctx->mem, inner, 0.0F, &outer, &ctx->e), SUCCESS);
+  test_assert_int_equal (
+      ctx->os.table->remove_quiet (ctx->os.self, FAULTY_T_FILE, &ctx->e),
+      SUCCESS
+  );
+
+  TEST_CASE ("A failed delegate constructor releases the wrapper")
+  {
+    i_file f;
+    faulty_os_fail_after (inner, 0);
+    test_err_t_check (
+        outer.table->open_file_rw (outer.self, &f, FAULTY_T_FILE, &ctx->e),
+        ERR_IO,
+        &ctx->e
+    );
+
+    i_thread t;
+    faulty_os_fail_after (inner, 0);
+    test_err_t_check (
+        outer.table->thread_create (outer.self, &t, faulty_t_noop_thread, NULL, &ctx->e),
+        ERR_IO,
+        &ctx->e
+    );
+
+    i_mutex m;
+    faulty_os_fail_after (inner, 0);
+    test_err_t_check (outer.table->mutex_create (outer.self, &m, &ctx->e), ERR_NOMEM, &ctx->e);
+
+    i_cond c;
+    faulty_os_fail_after (inner, 0);
+    test_err_t_check (outer.table->cond_create (outer.self, &c, &ctx->e), ERR_NOMEM, &ctx->e);
+
+    faulty_os_reset (inner);
+  }
+
+  TEST_CASE ("A failed delegate close still releases the file")
+  {
+    i_file f;
+    test_assert_int_equal (
+        outer.table->open_file_rw (outer.self, &f, FAULTY_T_FILE, &ctx->e),
+        SUCCESS
+    );
+
+    // The inner close releases the real file and then rolls its fault
+    faulty_os_fail_after (inner, 0);
+    test_err_t_check (outer.table->close_file (outer.self, f.self, &ctx->e), ERR_IO, &ctx->e);
+    faulty_os_reset (inner);
+  }
+
+  // Teardown
+  faulty_os_free (outer);
+  test_assert_int_equal (
+      ctx->os.table->remove_quiet (ctx->os.self, FAULTY_T_FILE, &ctx->e),
+      SUCCESS
+  );
+}
+#endif // NDEBUG

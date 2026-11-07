@@ -35,6 +35,9 @@
 spgno
 ns_var_create (struct pager *p, struct txn *tx, struct string vname, struct type *type, error *e)
 {
+  DBG_ASSERT (pager, p);
+  DBG_ASSERT (ns_txn, tx);
+
   page_h                         cur     = page_h_create ();
 
   struct ns_find_var_page_params fparams = {
@@ -46,12 +49,12 @@ ns_var_create (struct pager *p, struct txn *tx, struct string vname, struct type
       .dvar  = NULL,
       .mode  = FP_CREATE,
 
-      .hpos  = PGNO_NULL,
+      .hpos  = 0,
       .prev  = NULL,
       .cur   = &cur,
   };
 
-  if (ns_find_var_page (&fparams, e)) {
+  if (ns_find_var_page (&fparams, e) < 0) {
     goto failed;
   }
 
@@ -70,11 +73,11 @@ ns_var_create (struct pager *p, struct txn *tx, struct string vname, struct type
       .var = &var,
   };
 
-  if (ns_write_var_page (&write_params, e)) {
+  if (ns_write_var_page (&write_params, e) < 0) {
     goto failed;
   }
 
-  if (pgr_release (p, &cur, PG_VAR_PAGE, e)) {
+  if (pgr_release (p, &cur, PG_VAR_PAGE, e) < 0) {
     goto failed;
   }
 

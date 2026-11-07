@@ -75,13 +75,12 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
 {
   struct user_stride s = {0};
 
-  // Optional start integer
   i32                num;
   if (parser_maybe_parse_integer (parser->base, &num)) {
     s.start = num;
     s.present |= START_PRESENT;
 
-    // Bare number with no colon â†’ single index
+    // Bare number with no colon -> single index
     if (!parser_match (parser->base, TT_COLON)) {
       return musb_accept_key (&parser->builder, s, e);
     }
@@ -92,7 +91,7 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     return musb_accept_key (&parser->builder, s, e);
   }
 
-  // No leading number â€” must be ':'
+  // No leading number - must be ':'
   if (parser_match (parser->base, TT_COLON)) {
     s.present |= COLON_PRESENT;
     parser_advance (parser->base);
@@ -100,7 +99,12 @@ parse_entry (struct multi_user_stride_parser *parser, error *e)
     return musb_accept_key (&parser->builder, s, e);
   }
 
-  return error_causef (e, ERR_SYNTAX, "Expected number or ':' at position %u", parser->base->pos);
+  return error_causef (
+      e,
+      ERR_SYNTAX,
+      "Expected number or ':' at position %" PRIu32,
+      parser->base->pos
+  );
 }
 
 static err_t
@@ -157,13 +161,13 @@ compile_multi_user_stride (
   BUILDER_INIT (b, dalloc);
 
   struct lexer lex;
-  if (lex_tokens (text, &b.temp, strlen (text), &lex, e) < 0) {
+  if (lex_tokens (text, &b.temp, (u32)strnlen (text, MAX_COMPILE_TEXT_LEN), &lex, e) < 0) {
     goto theend;
   }
 
   struct parser parser = parser_init (lex.tokens, &b, lex.ntokens);
 
-  if (parse_multi_user_stride (&parser, dest, e)) {
+  if (parse_multi_user_stride (&parser, dest, e) < 0) {
     goto theend;
   }
 
@@ -183,17 +187,17 @@ TEST (compile_multi_user_stride)
   TEST_CASE ("[ ]")
   {
     compile_multi_user_stride (&stride, "[]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 0);
-    test_assert_equal (stride.strides, NULL);
+    test_assert_type_equal (stride.len, 0, u32, PRIu32);
+    test_assert_ptr_equal (stride.strides, NULL);
     compile_multi_user_stride (&stride, "[ ]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 0);
-    test_assert_equal (stride.strides, NULL);
+    test_assert_type_equal (stride.len, 0, u32, PRIu32);
+    test_assert_ptr_equal (stride.strides, NULL);
     compile_multi_user_stride (&stride, " [ ]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 0);
-    test_assert_equal (stride.strides, NULL);
+    test_assert_type_equal (stride.len, 0, u32, PRIu32);
+    test_assert_ptr_equal (stride.strides, NULL);
     compile_multi_user_stride (&stride, " [] ", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 0);
-    test_assert_equal (stride.strides, NULL);
+    test_assert_type_equal (stride.len, 0, u32, PRIu32);
+    test_assert_ptr_equal (stride.strides, NULL);
   }
 
   // -------------------------------------------------------------------------
@@ -202,10 +206,10 @@ TEST (compile_multi_user_stride)
   TEST_CASE ("[ 0 ]")
   {
     compile_multi_user_stride (&stride, "[0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 1);
+    test_assert_type_equal (stride.len, 1, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
@@ -214,26 +218,26 @@ TEST (compile_multi_user_stride)
   TEST_CASE ("[ 0, 0 ]")
   {
     compile_multi_user_stride (&stride, "[0, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     // first
     test_assert_int_equal (stride.strides[0].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
     // second
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // start + colon, no stop, no step  â†’  "0:"
+  // start + colon, no stop, no step  ->  "0:"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0: ]")
   {
     compile_multi_user_stride (&stride, "[0:]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 1);
+    test_assert_type_equal (stride.len, 1, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
-    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
@@ -242,58 +246,58 @@ TEST (compile_multi_user_stride)
   TEST_CASE ("[ 0:, 0 ]")
   {
     compile_multi_user_stride (&stride, "[0:, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
-    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Colon only  â†’  ":"
+  // Colon only  ->  ":"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :, 0 ]")
   {
     compile_multi_user_stride (&stride, "[:, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop  â†’  ":0"
+  // Colon + stop  ->  ":0"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0, 0 ]")
   {
     compile_multi_user_stride (&stride, "[:0, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT);
-    test_assert_int_equal (stride.strides[0].stop, 0);
+    test_assert_type_equal (stride.strides[0].stop, 0, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Double colon, no numbers  â†’  "::"
+  // Double colon, no numbers  ->  "::"
   // parse_entry sets COLON_PRESENT, parse_step also matches ':' and sets it
-  // again (no-op), no integers â†’ only COLON_PRESENT in present
+  // again (no-op), no integers -> only COLON_PRESENT in present
   // -------------------------------------------------------------------------
   TEST_CASE ("[ ::, 0 ]")
   {
     compile_multi_user_stride (&stride, "[::, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Double colon + step  â†’  "::2"
+  // Double colon + step  ->  "::2"
   // COLON_PRESENT (from first ':') | STEP_PRESENT (from "::2")
   // Note: no START_PRESENT, no STOP_PRESENT
   // A step of 0 is rejected (see the zero-step error cases), so these shape
@@ -302,94 +306,102 @@ TEST (compile_multi_user_stride)
   TEST_CASE ("[ ::2, 0 ]")
   {
     compile_multi_user_stride (&stride, "[::2, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STEP_PRESENT);
-    test_assert_int_equal (stride.strides[0].step, 2);
+    test_assert_type_equal (stride.strides[0].step, 2, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop + colon, no step  â†’  ":0:"
+  // Colon + stop + colon, no step  ->  ":0:"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0:, 0 ]")
   {
     compile_multi_user_stride (&stride, "[:0:, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT);
-    test_assert_int_equal (stride.strides[0].stop, 0);
+    test_assert_type_equal (stride.strides[0].stop, 0, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Colon + stop + colon + step  â†’  ":0:2"
+  // Colon + stop + colon + step  ->  ":0:2"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ :0:2, 0 ]")
   {
     compile_multi_user_stride (&stride, "[:0:2, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, COLON_PRESENT | STOP_PRESENT | STEP_PRESENT);
-    test_assert_int_equal (stride.strides[0].stop, 0);
-    test_assert_int_equal (stride.strides[0].step, 2);
+    test_assert_type_equal (stride.strides[0].stop, 0, i64, PRId64);
+    test_assert_type_equal (stride.strides[0].step, 2, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Start + double colon, no stop/step  â†’  "0::"
+  // Start + double colon, no stop/step  ->  "0::"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0::, 0 ]")
   {
     compile_multi_user_stride (&stride, "[0::, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT);
-    test_assert_int_equal (stride.strides[0].start, 0);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Start + double colon + step  â†’  "0::2"
+  // Start + double colon + step  ->  "0::2"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0::2, 0 ]")
   {
     compile_multi_user_stride (&stride, "[0::2, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (stride.strides[0].present, START_PRESENT | COLON_PRESENT | STEP_PRESENT);
-    test_assert_int_equal (stride.strides[0].start, 0);
-    test_assert_int_equal (stride.strides[0].step, 2);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
+    test_assert_type_equal (stride.strides[0].step, 2, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // -------------------------------------------------------------------------
-  // Full slice  â†’  "0:0:2"
+  // Full slice  ->  "0:0:2"
   // -------------------------------------------------------------------------
   TEST_CASE ("[ 0:0:2, 0 ]")
   {
     compile_multi_user_stride (&stride, "[0:0:2, 0]", &ctx->alloc, &ctx->e);
-    test_assert_int_equal (stride.len, 2);
+    test_assert_type_equal (stride.len, 2, u32, PRIu32);
     test_assert (stride.strides != NULL);
     test_assert_int_equal (
         stride.strides[0].present,
         START_PRESENT | COLON_PRESENT | STOP_PRESENT | STEP_PRESENT
     );
-    test_assert_int_equal (stride.strides[0].start, 0);
-    test_assert_int_equal (stride.strides[0].stop, 0);
-    test_assert_int_equal (stride.strides[0].step, 2);
+    test_assert_type_equal (stride.strides[0].start, 0, i64, PRId64);
+    test_assert_type_equal (stride.strides[0].stop, 0, i64, PRId64);
+    test_assert_type_equal (stride.strides[0].step, 2, i64, PRId64);
     test_assert_int_equal (stride.strides[1].present, START_PRESENT);
-    test_assert_int_equal (stride.strides[1].start, 0);
+    test_assert_type_equal (stride.strides[1].start, 0, i64, PRId64);
   }
 
   // =========================================================================
   // Error conditions
   // =========================================================================
+
+  TEST_CASE ("error: lexer rejects '[@]'")
+  {
+    err_t err = compile_multi_user_stride (&stride, "[@]", &ctx->alloc, &ctx->e);
+    test_assert (err < SUCCESS);
+    test_assert_int_equal (ctx->e.cause_code, ERR_SYNTAX);
+    error_reset (&ctx->e);
+  }
 
   // Missing opening bracket
   TEST_CASE ("error: no leading '['")
@@ -418,7 +430,7 @@ TEST (compile_multi_user_stride)
     error_reset (&ctx->e);
   }
 
-  // Trailing comma with no entry after it  â†’  parse_entry gets ']', not a
+  // Trailing comma with no entry after it  ->  parse_entry gets ']', not a
   // number or ':', so it returns ERR_SYNTAX
   TEST_CASE ("error: trailing comma '[0,]'")
   {

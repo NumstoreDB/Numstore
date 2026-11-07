@@ -129,7 +129,7 @@ latch_unlock (latch *l)
 
 typedef _Atomic (unsigned int) sx_latch;
 
-#define S_MASK 0x0000FFFFu // [15:0]
+#define S_MASK 0x0000FFFFU // [15:0]
 #define X      0x00010000U // [16]
 
 #define SLOCKED(val) ((val) & S_MASK)

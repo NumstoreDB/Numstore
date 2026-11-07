@@ -82,7 +82,7 @@ dl_contents (MAYBE_UNUSED FILE *out, const char *fname, MAYBE_UNUSED const pgno 
   error       e = error_create ();
 
   struct i_os os;
-  if (system_os_create (default_mem (), &os, &e)) {
+  if (system_os_create (default_mem (), &os, &e) < 0) {
     error_log_consume (&e);
     return;
   }
@@ -96,7 +96,7 @@ dl_contents (MAYBE_UNUSED FILE *out, const char *fname, MAYBE_UNUSED const pgno 
 
   // TODO: walk the chain from [pg] and print it to [out] with
   // dl_contents_one_page.
-  if (pgr_close (p, &e)) {
+  if (pgr_close (p, &e) < 0) {
     error_log_consume (&e);
   }
   system_os_free (os);

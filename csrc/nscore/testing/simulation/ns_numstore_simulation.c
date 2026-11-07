@@ -260,7 +260,7 @@ nss_validate_variables (struct ns_simulation *meta, error *e)
     return error_causef (
         e,
         ERR_CORRUPT,
-        "Database holds %u variables, reference holds %u",
+        "Database holds %" PRIu32 " variables, reference holds %" PRIu32,
         chk.ndb,
         nref
     );
@@ -517,7 +517,7 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
   // Max type size
   {
     char buf[32];
-    snprintf (buf, sizeof (buf), "%d", meta->max_tsize);
+    snprintf (buf, sizeof (buf), "%" PRt_size, meta->max_tsize);
     print_entry ("max_tsize", buf);
   }
 
@@ -647,7 +647,7 @@ nss_log_operation (struct ns_simulation *meta, struct operation *op, bool comple
       {
         char        buf[256];
         const char *val = "null";
-        if (op->op_delete.next) {
+        if (op->op_delete.next != NULL) {
           format_quoted_str (buf, sizeof (buf), op->op_delete.next);
           val = buf;
         }
@@ -879,7 +879,7 @@ ns_simul_open (struct ns_simulation_params params, error *e)
 
   // Metrics run off the reliable OS - a faulty timer would only make the
   // numbers lie
-  if (params.reliable_os.table->timer_create (params.reliable_os.self, &ret->timer, e)) {
+  if (params.reliable_os.table->timer_create (params.reliable_os.self, &ret->timer, e) < 0) {
     ns_db_close (db, e);
     ns_ref_free (ref);
     params.reliable_mem.table->free (params.reliable_mem.self, ret);

@@ -151,11 +151,13 @@ htable_random (struct htable *t)
 void
 htable_foreach (const struct htable *t, void (*action) (struct hnode *v, void *ctx), void *ctx)
 {
+  DBG_ASSERT (htable, t);
+
   latch_lock (&((struct htable *)t)->latch);
 
   for (u32 i = 0; i < t->cap; ++i) {
     struct hnode *cur = t->table[i];
-    while (cur) {
+    while (cur != NULL) {
       struct hnode *next = cur->next;
       action (cur, ctx);
       cur = next;
@@ -258,7 +260,7 @@ TEST (fnv1a_hash_empty)
   const struct string empty = {.data = "", .len = 0};
   const u32           hash  = fnv1a_hash (empty);
   // Empty string should return FNV offset basis
-  test_assert_equal (hash, 2166136261u);
+  test_assert_equal (hash, 2166136261U);
 }
 
 TEST (fnv1a_hash_single_char)
@@ -266,7 +268,7 @@ TEST (fnv1a_hash_single_char)
   const struct string s        = {.data = "a", .len = 1};
   const u32           hash     = fnv1a_hash (s);
   // "a" should hash to (2166136261 ^ 'a') * 16777619
-  const u32           expected = (2166136261u ^ 'a') * 16777619u;
+  const u32           expected = (2166136261U ^ 'a') * 16777619U;
   test_assert_equal (hash, expected);
 }
 
@@ -275,7 +277,7 @@ TEST (fnv1a_hash_known_value)
   const struct string s    = {.data = "hello", .len = 5};
   const u32           hash = fnv1a_hash (s);
   // Known FNV-1a hash for "hello"
-  test_assert_equal (hash, 1335831723u);
+  test_assert_equal (hash, 1335831723U);
 }
 
 TEST (fnv1a_hash_deterministic)

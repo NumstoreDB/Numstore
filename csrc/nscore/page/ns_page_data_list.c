@@ -27,15 +27,15 @@ dl_validate_for_db (const page *d, error *e)
 {
   DBG_ASSERT (data_list, d);
 
-  const enum page_type type = page_get_type (d);
+  const pgh type = page_get_type (d);
 
-  if (type != (u8)PG_DATA_LIST) {
+  if (type != (pgh)PG_DATA_LIST) {
     return error_causef (
         e,
         ERR_CORRUPT,
         "expected header: %" PRpgh " but got: %" PRpgh,
         (pgh)PG_DATA_LIST,
-        (pgh)type
+        type
     );
   }
 
@@ -81,14 +81,12 @@ TEST (dl_validate)
 {
   page sut;
 
-  // Initialized page is base valid
-  TEST_CASE ("Initialized page base - no changes is valid")
+  TEST_CASE ("An empty root page is corrupt")
   {
     page_init_empty (&sut, PG_DATA_LIST);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 
-  // Corrupt page header
   TEST_CASE ("Corrupt page header")
   {
     page_init_empty (&sut, PG_DATA_LIST);
@@ -100,27 +98,23 @@ TEST (dl_validate)
   {
     page_init_empty (&sut, PG_DATA_LIST);
 
-    // Hack the page size
-    // Can't do this b/c of ASSERT - but it's still possible on
-    // corruption dl_set_used(&sut, DL_DATA_SIZE + 1);
+    // dl_set_used asserts the size fits, but a corrupt page on disk can still
+    // hold one that doesn't, so write the field directly
     p_size size = DL_DATA_SIZE + 1;
     PAGE_SIMPLE_SET_IMPL (&sut, size, DL_BLEN_OFST);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-    // Max size is valid
     dl_set_used (&sut, DL_DATA_SIZE);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
-    // 0 size is invalid
     dl_set_used (&sut, 0);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-    // in between size is valid
     dl_set_used (&sut, DL_DATA_SIZE / 2);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
-    // in between size is valid for root
-    dl_set_used (&sut, DL_DATA_SIZE / 2 - 1);
+    // A root has no minimum fill
+    dl_set_used (&sut, (DL_DATA_SIZE / 2) - 1);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
   }
 
@@ -129,27 +123,21 @@ TEST (dl_validate)
     page_init_empty (&sut, PG_DATA_LIST);
     dl_set_next (&sut, 5);
 
-    // Hack the page size
-    // Can't do this b/c of ASSERT - but it's still possible on
-    // corruption dl_set_used(&sut, DL_DATA_SIZE + 1);
     p_size size = DL_DATA_SIZE + 1;
     PAGE_SIMPLE_SET_IMPL (&sut, size, DL_BLEN_OFST);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-    // Max size is valid
     dl_set_used (&sut, DL_DATA_SIZE);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
-    // 0 size is invalid
     dl_set_used (&sut, 0);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
 
-    // in between size is valid
     dl_set_used (&sut, DL_DATA_SIZE / 2);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), SUCCESS, &ctx->e);
 
-    // in between size is valid for root
-    dl_set_used (&sut, DL_DATA_SIZE / 2 - 1);
+    // A non-root must stay at least half full
+    dl_set_used (&sut, (DL_DATA_SIZE / 2) - 1);
     test_err_t_check (dl_validate_for_db (&sut, &ctx->e), ERR_CORRUPT, &ctx->e);
   }
 }
@@ -163,9 +151,6 @@ TEST (dl_set_get)
   page p;
   rand_bytes (p.raw, NS_PAGE_SIZE);
 
-  // Randomize array to pretend random
-
-  // Start
   TEST_CASE ("Initial page values")
   {
     page_init_empty (&p, PG_DATA_LIST);
@@ -175,7 +160,6 @@ TEST (dl_set_get)
     test_assert_int_equal (dl_avail (&p), DL_DATA_SIZE);
   }
 
-  // Set / Get
   TEST_CASE ("Getters / Setters work")
   {
     page_init_empty (&p, PG_DATA_LIST);
@@ -211,7 +195,7 @@ dl_read (const page *d, u8 *dest, const p_size offset, const p_size nbytes)
   const p_size avail  = dlen - offset;
   const p_size toread = MIN (avail, nbytes);
 
-  if (toread > 0 && dest) {
+  if (toread > 0 && dest != NULL) {
     memcpy (dest, base + offset, toread);
   }
 
@@ -352,10 +336,10 @@ TEST (dl_read_out_from)
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, 1);
-    test_assert_int_equal (ret, DL_DATA_SIZE / 2 - 1);
+    test_assert_int_equal (ret, (DL_DATA_SIZE / 2) - 1);
     test_assert_int_equal (dl_used (&dl), 1);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2 - 1; ++i) {
+    for (p_size i = 0; i < (DL_DATA_SIZE / 2) - 1; ++i) {
       test_assert_int_equal (dest[i], somedata[i + 1]);
     }
     for (p_size i = 0; i < 1; ++i) {
@@ -370,10 +354,10 @@ TEST (dl_read_out_from)
 
     dl_append (&dl, somedata, DL_DATA_SIZE / 2);
     p_size ret = dl_read_out_from (&dl, dest, 10);
-    test_assert_int_equal (ret, DL_DATA_SIZE / 2 - 10);
+    test_assert_int_equal (ret, (DL_DATA_SIZE / 2) - 10);
     test_assert_int_equal (dl_used (&dl), 10);
 
-    for (p_size i = 0; i < DL_DATA_SIZE / 2 - 10; ++i) {
+    for (p_size i = 0; i < (DL_DATA_SIZE / 2) - 10; ++i) {
       test_assert_int_equal (dest[i], somedata[i + 10]);
     }
     for (p_size i = 0; i < 10; ++i) {
@@ -555,7 +539,7 @@ dl_write (const page *d, const u8 *src, const p_size offset, const p_size nbytes
   const p_size avail  = dlen - offset;
   const p_size toread = MIN (avail, nbytes);
 
-  if (toread > 0 && src) {
+  if (toread > 0 && src != NULL) {
     memcpy (base + offset, src, toread);
   }
 
@@ -691,11 +675,11 @@ TEST (dl_memset)
 void
 dl_set_data (page *p, const struct dl_data d)
 {
+  DBG_ASSERT (data_list, p);
   ASSERT (d.blen <= DL_DATA_SIZE);
   dl_memset (p, d.data, d.blen);
 }
 
-// Data Movement
 void
 dl_move_left (page *dest, page *src, const p_size len)
 {
@@ -718,7 +702,8 @@ dl_move_left (page *dest, page *src, const p_size len)
 #ifndef NDEBUG
 TEST (dl_move_left)
 {
-  page src, dest;
+  page src;
+  page dest;
   u8   srcbuf[64];
   u8   destbuf[64];
 
@@ -788,10 +773,7 @@ dl_shift_right (page *d, const p_size len)
 
   const p_size used = dl_used (d);
 
-  // Shift existing bytes to the right
   memmove ((u8 *)dl_get_data (d) + len, dl_get_data (d), used);
-
-  // Account for the new space
   dl_set_used (d, used + len);
 }
 
@@ -810,13 +792,9 @@ TEST (dl_shift_right)
     rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
-    // load 32 bytes
     dl_memset (&p, src, sizeof src);
-
-    // shift right by 4
     dl_shift_right (&p, 4);
 
-    // used should increase
     test_assert_int_equal (dl_used (&p), sizeof src + 4);
 
     // original data should now be at offset 4
@@ -846,7 +824,6 @@ TEST (dl_shift_right)
     rand_bytes (p.raw, NS_PAGE_SIZE);
     page_init_empty (&p, PG_DATA_LIST);
 
-    // fill small data
     dl_memset (&p, src, 8);
 
     const p_size avail = dl_avail (&p);
@@ -874,20 +851,19 @@ dl_move_right (page *src, page *dest, const p_size len)
 
   const p_size ofst = dl_used (src) - actual;
 
-  // Make space in dest
   dl_shift_right (dest, actual);
 
   // Copy the chunk from the *end* of src into the new space in dest
   memcpy (dl_get_data (dest), (u8 *)dl_get_data (src) + ofst, actual);
 
-  // Shrink src
   dl_set_used (src, dl_used (src) - actual);
 }
 
 #ifndef NDEBUG
 TEST (dl_move_right)
 {
-  page src, dest;
+  page src;
+  page dest;
   u8   srcbuf[64];
   u8   destbuf[32];
 
@@ -910,7 +886,6 @@ TEST (dl_move_right)
 
     dl_move_right (&src, &dest, 16);
 
-    // src shrinks, dest grows
     test_assert_int_equal (dl_used (&src), src_before - 16);
     test_assert_int_equal (dl_used (&dest), dest_before + 16);
 
@@ -937,7 +912,7 @@ TEST (dl_move_right)
     test_assert_int_equal (dl_used (&src), 0);
     test_assert_int_equal (dl_used (&dest), dest_before + src_before);
 
-    // check last 20 of srcbuf landed at start of dest
+    // src held exactly 20 bytes, so all of them land at the start of dest
     test_assert_memequal (dl_get_data (&dest), srcbuf, src_before);
   }
 
@@ -963,9 +938,46 @@ TEST (dl_move_right)
 }
 #endif
 
+#ifndef NDEBUG
+TEST (dl_dl_memmove_permissive)
+{
+  page a;
+  page b;
+  u8   buf[32];
+  arr_range (buf);
+
+  page_init_empty (&a, PG_DATA_LIST);
+  page_init_empty (&b, PG_DATA_LIST);
+  a.pg = 1;
+  b.pg = 2;
+  dl_memset (&a, buf, sizeof buf);
+
+  TEST_CASE ("Same page, same index is a no-op")
+  {
+    dl_dl_memmove_permissive (&a, &a, 4, 4, 8);
+    test_assert_memequal (dl_get_data (&a), buf, sizeof buf);
+  }
+
+  TEST_CASE ("Same page shifts left")
+  {
+    dl_dl_memmove_permissive (&a, &a, 0, 4, 8);
+    test_assert_memequal (dl_get_data (&a), buf + 4, 8);
+  }
+
+  TEST_CASE ("Across pages")
+  {
+    dl_memset (&b, buf, sizeof buf);
+    dl_dl_memmove_permissive (&a, &b, 16, 0, 16);
+    test_assert_memequal ((u8 *)dl_get_data (&a) + 16, buf, 16);
+  }
+}
+#endif
+
 void
 i_log_dl (const int level, const page *d)
 {
+  DBG_ASSERT (data_list, d);
+
   i_log (level, "=== DATA LIST PAGE START ===\n");
 
   i_log_printf (level, "PGNO: %" PRpgno "\n", d->pg);
@@ -979,7 +991,7 @@ i_log_dl (const int level, const page *d)
   } else {
     i_log_printf (level, "PREV: %" PRpgno "\n", dl_get_prev (d));
   }
-  i_log_printf (level, "BLEN: %u\n", dl_used (d));
+  i_log_printf (level, "BLEN: %" PRp_size "\n", dl_used (d));
 
   i_log (level, "=== DATA LIST PAGE END ===\n");
 }
@@ -1014,6 +1026,7 @@ TEST (i_log_dl)
 void
 dl_make_valid (page *d)
 {
+  DBG_ASSERT (data_list, d);
   dl_set_used (d, DL_DATA_SIZE);
 }
 
@@ -1027,6 +1040,6 @@ TEST (dl_make_valid)
   page_init_empty (&dl, PG_DATA_LIST);
   dl_make_valid (&dl);
   page_set_checksum (&dl, page_compute_checksum (&dl));
-  test_assert_equal (page_validate_for_db (&dl, PG_DATA_LIST, NULL), SUCCESS);
+  test_err_t_check (page_validate_for_db (&dl, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
 }
 #endif

@@ -15,6 +15,7 @@
 #ifndef LOCK_TABLE_H
 #define LOCK_TABLE_H
 
+#include "core/ns_csx_assert.h"
 #include "core/ns_error.h"
 #include "core/ns_gr_lock.h"
 #include "core/ns_htable.h"
@@ -49,9 +50,13 @@ struct lockt
   latch             l;          // Latch for modifications
 };
 
+DEFINE_DBG_ASSERT (struct lockt, lockt, t, {
+  ASSERT (t);
+  ASSERT (t->table);
+})
+
 err_t lockt_init (struct lockt *t, struct i_mem mem, struct i_os os, error *e);
 void lockt_destroy (struct lockt *t);
-void lockt_crash (struct lockt *t);
 err_t lockt_lock (
     struct lockt  *t,
     struct lt_lock lock,

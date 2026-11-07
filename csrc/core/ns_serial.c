@@ -364,7 +364,9 @@ TEST (srlizr_write_concurrent)
   test_assert (buf != NULL);
 
   struct serializer    s     = srlizr_create (buf, cap);
-  _Atomic int          ready = SRLIZR_MT_NTHREADS, go = 0, idx = 0;
+  _Atomic int          ready = SRLIZR_MT_NTHREADS;
+  _Atomic int          go    = 0;
+  _Atomic int          idx   = 0;
   struct srlizr_mt_ctx targs = {
       .s        = &s,
       .ready    = &ready,

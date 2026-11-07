@@ -20,6 +20,8 @@
 err_t
 pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   p->header.lsn0    = lsn0;
   p->header.lsn0csm = checksum_init ();
   checksum_execute (&p->header.lsn0csm, (void *)&lsn0, sizeof (lsn));
@@ -33,6 +35,8 @@ pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e)
 err_t
 pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   p->header.lsn1    = lsn1;
   p->header.lsn1csm = checksum_init ();
   checksum_execute (&p->header.lsn1csm, (void *)&lsn1, sizeof (lsn));
@@ -52,6 +56,8 @@ pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e)
 err_t
 pgr_write_next_lsn (struct pager *p, lsn l, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   if (p->header.lsn0 > p->header.lsn1) {
     return pgr_write_lsn1 (p, l, e);
   }
@@ -61,6 +67,8 @@ pgr_write_next_lsn (struct pager *p, lsn l, error *e)
 err_t
 pgr_write_header (struct pager *p, error *e)
 {
+  DBG_ASSERT (pager, p);
+
   p->header.lsn0csm = checksum_init ();
   p->header.lsn1csm = checksum_init ();
 

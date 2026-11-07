@@ -17,10 +17,6 @@
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
 
-err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
-
 /*
  * Entry point for ARIES crash recovery.
  *
@@ -32,30 +28,33 @@ err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
 static err_t
 pgr_restart (struct pager *p, struct aries_ctx *ctx, error *e)
 {
+  DBG_ASSERT (pager, p);
   p->flags |= PGR_ISRESTARTING;
 
   // ANALYSIS
-  if (pgr_restart_analysis (p, ctx, e)) {
+  if (pgr_restart_analysis (p, ctx, e) < 0) {
     goto theend;
   }
 
   if (ctx->redo_lsn != LSN_NULL) {
     // REDO
-    if (pgr_restart_redo (p, ctx, e)) {
+    if (pgr_restart_redo (p, ctx, e) < 0) {
       goto theend;
     }
 
     // UNDO
-    if (pgr_restart_undo (p, ctx, e)) {
+    if (pgr_restart_undo (p, ctx, e) < 0) {
       goto theend;
     }
   }
 
-  // This is a good time to do a checkpoint
-  // pgr_deletion_blocking_checkpoint (p, e);
+  // TODO: ARIES takes a checkpoint right after restart (section 6). Recovery
+  // leaves that to the periodic checkpoint thread for now, because
+  // pgr_deletion_blocking_checkpoint is static to ns_pgr_checkpoint.c.
 
 theend:
-  dpgt_merge_into (p->dpt, ctx->dpt, e);
+  // Runs on failure too. A merge failure is recorded in [e] and returned below.
+  (void)dpgt_merge_into (p->dpt, ctx->dpt, e);
   aries_ctx_free (ctx);
   p->flags &= ~PGR_ISRESTARTING;
 
@@ -65,13 +64,14 @@ theend:
 err_t
 pgr_recover (struct pager *p, error *e)
 {
-  // Run ARIES recovery
+  DBG_ASSERT (pager, p);
+
   struct aries_ctx ctx;
-  if (aries_ctx_create (&ctx, p->mem, e)) {
+  if (aries_ctx_create (&ctx, p->mem, e) < 0) {
     return error_trace (e);
   }
 
-  if (pgr_restart (p, &ctx, e)) {
+  if (pgr_restart (p, &ctx, e) < 0) {
     return error_trace (e);
   }
 

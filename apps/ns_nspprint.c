@@ -65,7 +65,7 @@ _page_print (struct pager *p, const pgno pg, const pp_params params, error *e)
 {
   page_h cur = page_h_create ();
 
-  if (pgr_get (&cur, PG_PERMISSIVE, pg, p, e)) {
+  if (pgr_get (&cur, PG_PERMISSIVE, pg, p, e) < 0) {
     error_log_consume (e);
     return;
   }
@@ -74,7 +74,7 @@ _page_print (struct pager *p, const pgno pg, const pp_params params, error *e)
     i_log_page (LOG_INFO, page_h_ro (&cur));
   }
 
-  if (pgr_release (p, &cur, PG_PERMISSIVE, e)) {
+  if (pgr_release (p, &cur, PG_PERMISSIVE, e) < 0) {
     error_log_consume (e);
     abort ();
   }
@@ -86,7 +86,7 @@ page_print (const char *fname, const pp_params params)
   error       e = error_create ();
 
   struct i_os os;
-  if (system_os_create (default_mem (), &os, &e)) {
+  if (system_os_create (default_mem (), &os, &e) < 0) {
     error_log_consume (&e);
     return;
   }
@@ -147,7 +147,7 @@ parse_params (const int argc, char *argv[], pp_params *params)
       if (params->pglen >= capacity) {
         capacity       = capacity == 0 ? 4 : capacity * 2;
         u32 *new_pgnos = realloc (params->pgnos, capacity * sizeof (u32));
-        if (!new_pgnos) {
+        if (new_pgnos == NULL) {
           free (params->pgnos);
           return -1;
         }

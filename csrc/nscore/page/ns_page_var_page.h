@@ -33,8 +33,7 @@
  * VLEN     [2 bytes]   - Length of the name string in bytes
  * TLEN     [2 bytes]   - Length of the type in bytes
  * ROOT     [pgno]      - Root page of the rptree chain
- * NBYTES   [b_size]    - Root page of the rptree chain
- * NBYTES   [b_size]    - Root page of the rptree chain
+ * NBYTES   [b_size]    - Number of bytes stored in the variable
  * VNAME
  * VNAME
  * VNAME
