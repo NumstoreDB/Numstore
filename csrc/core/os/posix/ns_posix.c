@@ -144,7 +144,7 @@ sys_open_file_rw (void *os_self, i_file *dest, const char *fname, error *e)
 static err_t
 sys_open_file_r (void *os_self, i_file *dest, const char *fname, error *e)
 {
-  return sys_open_file (os_self, dest, fname, O_RDONLY, "open_file_r", e);
+  return sys_open_file (os_self, dest, fname, O_RDONLY | O_CREAT, "open_file_r", e);
 }
 
 static err_t
@@ -228,11 +228,24 @@ sys_fsync (void *self, error *e)
 {
   const int fd = fd_of (self);
 
+#  ifdef __APPLE__
+  if (fcntl (fd, F_FULLFSYNC, 0) == -1) {
+    return error_causef (e, ERR_IO, "fcntl F_FULLFSYNC: %s", strerror (errno));
+  }
+
+  return SUCCESS;
+
+  if (errno != ENOTSUP && errno != ENOTTY && errno != EINVAL) {
+    return error_causef (e, ERR_IO, "F_FULLFSYNC: %s", strerror (errno));
+  }
+#  else
+
   if (unlikely (fsync (fd))) {
     return error_causef (e, ERR_IO, "fsync: %s", strerror (errno));
   }
 
   return SUCCESS;
+#  endif
 }
 
 static i64
@@ -1296,40 +1309,39 @@ TEST (sys_file_offsets_and_sizing)
 
 TEST (sys_file_error_paths)
 {
-  TEST_CASE ("Opening a missing file for read fails")
+  TEST_CASE ("Opening a missing file for read succeeds")
   {
+    ctx->os.table->remove_quiet (ctx->os.self, "absent", &ctx->e);
     i_file f;
-    test_assert (
-        ctx->os.table->open_file_r (ctx->os.self, &f, "ns_posix_definitely_absent.bin", &ctx->e)
-        != SUCCESS
-    );
+    err_t  ret = ctx->os.table->open_file_r (ctx->os.self, &f, "absent", &ctx->e);
+    test_assert (ret == SUCCESS);
     error_reset (&ctx->e);
+    ctx->os.table->close_file (ctx->os.self, f.self, &ctx->e);
   }
 
   TEST_CASE ("unlink of a missing file fails")
   {
-    test_assert (
-        ctx->os.table->unlink (ctx->os.self, "ns_posix_definitely_absent.bin", &ctx->e) != SUCCESS
-    );
+    ctx->os.table->remove_quiet (ctx->os.self, "absent", &ctx->e);
+    err_t ret = ctx->os.table->unlink (ctx->os.self, "absent", &ctx->e);
+    test_assert (ret != SUCCESS);
     error_reset (&ctx->e);
   }
 
-  TEST_CASE ("remove_quiet of a missing file succeeds, which is the point of it")
+  TEST_CASE ("remove_quiet of a missing file succeeds")
   {
-    test_assert_int_equal (
-        ctx->os.table->remove_quiet (ctx->os.self, "ns_posix_definitely_absent.bin", &ctx->e),
-        SUCCESS
-    );
+    err_t ret = ctx->os.table->remove_quiet (ctx->os.self, "absent", &ctx->e);
+    test_assert (ret == SUCCESS);
+    ret = ctx->os.table->remove_quiet (ctx->os.self, "absent", &ctx->e);
+    test_assert (ret == SUCCESS);
   }
 
   TEST_CASE ("file_exists reports false for a missing file without erroring")
   {
-    bool exists = true;
-    test_assert_int_equal (
-        ctx->os.table
-            ->file_exists (ctx->os.self, "ns_posix_definitely_absent.bin", &exists, &ctx->e),
-        SUCCESS
-    );
+    bool  exists = true;
+    err_t ret    = ctx->os.table->remove_quiet (ctx->os.self, "absent", &ctx->e);
+    test_assert (ret == SUCCESS);
+    ret = ctx->os.table->file_exists (ctx->os.self, "absent", &exists, &ctx->e);
+    test_assert (ret == SUCCESS);
     test_assert (!exists);
   }
 }

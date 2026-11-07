@@ -9,6 +9,7 @@ list(
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_commit.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_crash.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_delete.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_detect_wal_and_recover.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_evict.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_flush.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_get.c

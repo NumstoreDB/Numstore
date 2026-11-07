@@ -77,7 +77,7 @@ PPIndentWidth: 2
 
 # Whitespace cleanup
 MaxEmptyLinesToKeep: 1                              
-KeepEmptyLinesAtTheStartOfBlocks: false            
+KeepEmptyLinesAtTheStartOfBlocks: true
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpacesInCStyleCastParentheses: false

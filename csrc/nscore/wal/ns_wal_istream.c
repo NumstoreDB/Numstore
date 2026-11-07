@@ -505,12 +505,14 @@ TEST (walis_seek)
 lsn
 walis_mark (struct wal_istream *w)
 {
-  lsn curlsn = 0;
   latch_lock (&w->l);
-  curlsn = w->curlsn;
+
   w->curlsn += w->lsnidx;
-  w->lsnidx = 0;
+  w->lsnidx  = 0;
+  lsn curlsn = w->curlsn;
+
   latch_unlock (&w->l);
+
   return curlsn;
 }
 
@@ -531,15 +533,21 @@ TEST (walis_mark)
 
     // mark returns the start of the record just consumed and commits its end
     test_assert_int_equal (walis_read_all (wis, NULL, buf, sizeof buf, &ctx->e), SUCCESS);
-    test_assert_int_equal ((i32)walis_mark (wis), 0);
+    test_assert_int_equal ((i32)walis_mark (wis), 4);
     test_assert_int_equal ((i32)wis->curlsn, 4);
 
     test_assert_int_equal (walis_read_all (wis, NULL, buf, sizeof buf, &ctx->e), SUCCESS);
-    test_assert_int_equal ((i32)walis_mark (wis), 4);
+    test_assert_int_equal ((i32)walis_mark (wis), 8);
     test_assert_int_equal ((i32)wis->curlsn, 8);
 
     // Marking again with nothing consumed returns the committed position
     test_assert_int_equal ((i32)walis_mark (wis), 8);
+
+    // A half read record does not move the mark: the read rewinds to it
+    test_assert_int_equal (walis_seek (wis, 4, &ctx->e), SUCCESS);
+    u8 big[8] = {0};
+    test_assert_int_equal (walis_read_all (wis, NULL, big, sizeof big, &ctx->e), WAL_EOF);
+    test_assert_int_equal ((i32)walis_mark (wis), 4);
 
     walis_close (wis, &ctx->e);
     ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);

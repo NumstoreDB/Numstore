@@ -25,7 +25,6 @@
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
-#include "nscore/wal/ns_wal.h"
 
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
@@ -36,8 +35,8 @@
 DEFINE_DBG_ASSERT (struct wal_ostream, wal_ostream, w, {
   ASSERT (w);
   DBG_ASSERT (cbuffer, &w->buffer);
-  DBG_ASSERT (clean_error, &w->e);
   DBG_ASSERT (i_mem, &w->mem);
+  ASSERT (w->file_size >= w->flushed_lsn);
 })
 
 struct wal_ostream *
@@ -54,7 +53,23 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
     return NULL;
   }
 
-  // Seek to the end of the file
+  const i64 size = ret->fd.table->file_size (ret->fd.self, e);
+  if (size < 0) {
+    goto err_close;
+  }
+
+  if ((u64)size < seek_to) {
+    error_causef (
+        e,
+        ERR_INVALID_ARGUMENT,
+        "WAL Ostream opened to seek position: %" PRlsn " past the end of a %" PRId64 " byte log",
+        seek_to,
+        size
+    );
+    goto err_close;
+  }
+
+  // Seek to where the log is to continue
   i64 pos = ret->fd.table->seek (ret->fd.self, seek_to, I_SEEK_SET, e);
 
   // Failed to seek
@@ -63,7 +78,7 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
   }
 
   // Failed to seek to desired spot (invalid seek_to)
-  if (pos != seek_to) {
+  if ((u64)pos != seek_to) {
     error_causef (
         e,
         ERR_INVALID_ARGUMENT,
@@ -75,11 +90,13 @@ walos_open (const char *fname, struct i_mem mem, struct i_os os, lsn seek_to, er
   }
 
   // Initialize stuff
+  ret->mem = mem;
+  ret->os  = os;
   latch_init (&ret->l);
-  ret->buffer      = cbuffer_create (ret->_buffer, sizeof (ret->_buffer));
   ret->flushed_lsn = pos;
-  ret->mem         = mem;
-  ret->os          = os;
+  ret->file_size   = (lsn)size;
+  ret->e           = error_create ();
+  ret->buffer      = cbuffer_create (ret->_buffer, sizeof (ret->_buffer));
 
   DBG_ASSERT (wal_ostream, ret);
   return ret;
@@ -165,19 +182,18 @@ TEST (walos_open)
 }
 #endif
 
-static void
-walos_flush_impl (struct wal_ostream *w)
+static err_t
+walos_flush_impl (struct wal_ostream *w, error *e)
 {
   // Number of bytes to write
   const u32 towrite = cbuffer_len (&w->buffer);
   if (towrite == 0) {
-    return;
+    return SUCCESS;
   }
 
   // Just write the data to the file (don't update the buffer at all)
   if (cbuffer_write_to_file_1_expect (&w->fd, &w->buffer, towrite, &w->e)) {
-    error_log_consume (&w->e);
-    intentionally_crash ();
+    return error_trace (e);
   }
 
   // Update the buffer
@@ -185,12 +201,27 @@ walos_flush_impl (struct wal_ostream *w)
 
   // Run an fsync
   if (w->fd.table->fsync (w->fd.self, &w->e)) {
-    error_log_consume (&w->e);
-    intentionally_crash ();
+    return error_trace (e);
   }
 
   // Update flushed lsn
   w->flushed_lsn += towrite;
+
+  /**
+   * Sometimes, a flushed lsn happens before the file size.
+   *
+   * Imagine
+   *  write(partial update log)
+   *  crash
+   *  open
+   *  write(begin log)
+   *
+   * A fully flushed begin log is smaller than a partially written
+   * update log, so the file size stays the same, but flushed lsn grows
+   */
+  w->file_size = MAX (w->file_size, w->flushed_lsn);
+
+  return SUCCESS;
 }
 
 #ifndef NDEBUG
@@ -207,7 +238,7 @@ TEST (walos_flush_impl)
     u8 data[10] = {0};
     walos_write_all (wos, NULL, data, 10);
     test_assert (wos->flushed_lsn == 0);
-    walos_flush_impl (wos);
+    walos_flush_impl (wos, &ctx->e);
 
     // Check that flushed lsn is 10
     test_assert (wos->flushed_lsn == 10);
@@ -235,10 +266,7 @@ TEST (walos_flush_impl)
 
         // Do test
         faulty_os_fail_after (ctx->faulty_os, fail_after);
-        capture_intentional_crash (&ret, &ctx->e)
-        {
-          walos_flush_impl (wos);
-        }
+        walos_flush_impl (wos, &ctx->e);
 
         // Clean up
         faulty_os_reset (ctx->faulty_os);
@@ -262,7 +290,7 @@ walos_close (struct wal_ostream *w, error *e)
   latch_lock (&w->l);
 
   DBG_ASSERT (wal_ostream, w);
-  walos_flush_impl (w);
+  walos_flush_impl (w, &w->e);
   w->os.table->close_file (w->os.self, w->fd.self, e);
   w->mem.table->free (w->mem.self, w);
 
@@ -438,7 +466,7 @@ walos_flush_all (struct wal_ostream *w)
 {
   DBG_ASSERT (wal_ostream, w);
   latch_lock (&w->l);
-  walos_flush_impl (w);
+  walos_flush_impl (w, &w->e);
   latch_unlock (&w->l);
 }
 
@@ -533,7 +561,10 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len
   while (written < len) {
     // Flush on full
     if (cbuffer_avail (&w->buffer) == 0) {
-      walos_flush_impl (w);
+      if (walos_flush_impl (w, &w->e) < 0) {
+        latch_unlock (&w->l);
+        intentionally_crash ();
+      }
     }
 
     // Write maximally to the buffer
@@ -631,6 +662,56 @@ TEST (walos_write_all)
 }
 #endif
 
+err_t
+walos_zero_tail (struct wal_ostream *w, const void *zeros, u32 len, error *e)
+{
+  DBG_ASSERT (wal_ostream, w);
+  ASSERT (zeros);
+
+  latch_lock (&w->l);
+
+  // This only ever happens on initial start up
+  ASSERT (cbuffer_len (&w->buffer) == 0);
+
+  ASSERT (w->file_size >= w->flushed_lsn); // From DBG_ASSERT
+  lsn n = w->file_size - w->flushed_lsn;
+  if (n == 0) {
+    goto theend;
+  }
+
+  /**
+   * The caller passes in a buffer, we assume the caller know's what they
+   * are doing and passes a buffer big enough. WAL passes in a buffer of
+   * maximum size wal log size, but we don't know that. If the remainder
+   * is too much to write, we fail.
+   *
+   * An invariant of the ostream is that we never have to do "infinite" writes
+   * where we loop until the end of the file. We just have to do one write
+   */
+  if (n > len) {
+    error_causef (
+        e,
+        ERR_CORRUPT,
+        "WAL has %" PRlsn " bytes past its last intact log at %" PRlsn
+        " - more than one log (%" PRlsn "), so this is not a torn tail",
+        n,
+        w->flushed_lsn,
+        (lsn)len
+    );
+    goto theend;
+  }
+
+  // Write it all and fsync
+  if (w->fd.table->pwrite_all (w->fd.self, zeros, n, w->flushed_lsn, e)) {
+    goto theend;
+  }
+  w->fd.table->fsync (w->fd.self, e);
+
+theend:
+  latch_unlock (&w->l);
+  return error_trace (e);
+}
+
 lsn
 walos_get_lsn (struct wal_ostream *w)
 {
@@ -681,6 +762,7 @@ walos_truncate (struct wal_ostream *w, error *e)
   }
 
   w->flushed_lsn = 0;
+  w->file_size   = 0;
   w->buffer      = cbuffer_create (w->_buffer, sizeof (w->_buffer));
 
 theend:

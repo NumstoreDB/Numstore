@@ -37,6 +37,7 @@ err_t walis_crash (struct wal_istream *w, error *e);
 
 #define WAL_NOT_EOF 0
 #define WAL_EOF     1
+#define WAL_TERM    2
 int walis_read_all (struct wal_istream *w, u32 *checksum, void *dest, u32 len, error *e);
 err_t walis_seek (struct wal_istream *w, lsn pos, error *e);
 lsn walis_mark (struct wal_istream *w); // Get start lsn

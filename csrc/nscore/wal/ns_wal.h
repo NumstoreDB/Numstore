@@ -27,6 +27,9 @@
 
 #include <stdbool.h>
 
+#define WAL_RECORDS_POS   sizeof (lsn)
+#define WAL_START_LSN_POS 0
+
 enum wal_flags
 {
   WAL_ISNEW = (1 << 0),
@@ -70,6 +73,7 @@ err_t wal_write_start_lsn (struct wal *w, lsn start_lsn, error *e);
 #define wal_start_lsn(w) ((w)->start_lsn)
 #define wal_size(w)      (walos_get_lsn ((w)->ostream))
 #define wal_flush_all(w) (walos_flush_all ((w)->ostream))
+slsn wal_get_end_lsn (struct wal *w, error *e);
 
 // Reading
 typedef err_t (*wal_log_func) (struct wal_rec_hdr_read *log, lsn l, void *ctx, error *e);

@@ -30,6 +30,11 @@ struct wal_ostream
   latch          l;
   lsn            flushed_lsn;
 
+  /// Length of the file on disk. Read once at open and kept up to date from
+  /// there - a wal never shrinks except through [walos_truncate], so this only
+  /// moves when a flush pushes the writer past the old end.
+  lsn            file_size;
+
   error          e;
 
   struct cbuffer buffer;
@@ -51,6 +56,7 @@ err_t walos_crash (struct wal_ostream *w, error *e);
 void walos_flush_all (struct wal_ostream *w);
 void walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len);
 lsn walos_get_lsn (struct wal_ostream *w);
+err_t walos_zero_tail (struct wal_ostream *w, const void *zeros, u32 len, error *e);
 slsn walos_truncate (struct wal_ostream *w, error *e);
 
 #endif

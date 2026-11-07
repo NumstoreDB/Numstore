@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/ns_logging.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
@@ -46,42 +47,6 @@ pgr_delete_single_file (const char *dbname, const struct i_os os, error *e)
   os.table->remove_quiet (os.self, walname, e);
 
   return error_trace (e);
-}
-
-static err_t
-pgr_read_header (struct pager *p, error *e)
-{
-  if (fpgr_read_header (p->fp, p->_header, 0, PAGE_HEADER_LEN, e)) {
-    return error_trace (e);
-  }
-
-  lsn lsn0;
-  u32 lsn0csm;
-  u32 lsn0csm_actual = checksum_init ();
-
-  lsn lsn1;
-  u32 lsn1csm;
-  u32 lsn1csm_actual = checksum_init ();
-
-  memcpy (&lsn0, p->_header + LSN0_OFST, sizeof (lsn));
-  memcpy (&lsn0csm, p->_header + LSN0_CSM_OFST, sizeof (u32));
-
-  memcpy (&lsn1, p->_header + LSN1_OFST, sizeof (lsn));
-  memcpy (&lsn1csm, p->_header + LSN1_CSM_OFST, sizeof (u32));
-
-  checksum_execute (&lsn0csm_actual, (void *)&lsn0, sizeof (lsn));
-  checksum_execute (&lsn1csm_actual, (void *)&lsn1, sizeof (lsn));
-
-  p->header = (struct pager_header){
-      .lsn0      = lsn0,
-      .lsn0csm   = lsn0csm,
-      .lsn0valid = lsn0csm == lsn0csm_actual,
-      .lsn1      = lsn1,
-      .lsn1csm   = lsn1csm,
-      .lsn1valid = lsn1csm == lsn1csm_actual,
-  };
-
-  return SUCCESS;
 }
 
 /******************************************************************************
@@ -210,56 +175,8 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
       goto failed;
     }
   } else {
-    if (pgr_read_header (ret, e)) {
+    if (pgr_detect_wal_and_recover (ret, e) < 0) {
       goto failed;
-    }
-
-    if (!ret->header.lsn0valid && !ret->header.lsn1valid) {
-      error_causef (e, ERR_CORRUPT, "Invalid wal headers");
-      goto failed;
-    }
-
-    if (wal_isnew (ww)) {
-      if (wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e)) {
-        goto failed;
-      }
-    } else {
-      lsn start_lsn      = wal_start_lsn (ret->ww);
-      lsn next_start_lsn = start_lsn + wal_size (ret->ww);
-
-      if (ret->header.lsn0valid && ret->header.lsn1valid) {
-        if (start_lsn == MAX (ret->header.lsn0, ret->header.lsn1)) {
-          WRAP_GOTO (pgr_recover (ret, e), failed);
-        } else if (start_lsn == MIN (ret->header.lsn0, ret->header.lsn1)) {
-          WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
-          WRAP_GOTO (
-              wal_write_start_lsn (ret->ww, MAX (ret->header.lsn0, ret->header.lsn1), e),
-              failed
-          );
-        } else {
-          error_causef (e, ERR_CORRUPT, "Existing WAL doesn't match database");
-          goto failed;
-        }
-      } else {
-        if (ret->header.lsn0valid) {
-          if (ret->header.lsn0 != wal_start_lsn (ret->ww)) {
-            error_causef (e, ERR_CORRUPT, "Invalid header lsn");
-            goto failed;
-          }
-          WRAP_GOTO (pgr_write_lsn1 (ret, start_lsn, e), failed);
-        } else if (ret->header.lsn1valid) {
-          if (ret->header.lsn1 != wal_start_lsn (ret->ww)) {
-            error_causef (e, ERR_CORRUPT, "Invalid header lsn");
-            goto failed;
-          }
-          WRAP_GOTO (pgr_write_lsn0 (ret, start_lsn, e), failed);
-        } else {
-          UNREACHABLE (); // LCOV_EXCL_LINE
-        }
-
-        WRAP_GOTO (wal_delete_and_reopen (ret->ww, e), failed);
-        WRAP_GOTO (wal_write_start_lsn (ret->ww, next_start_lsn, e), failed);
-      }
     }
   }
 

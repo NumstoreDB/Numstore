@@ -30,12 +30,12 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 {
   ASSERT (p->ww);
 
-  // i_log_debug ("Starting Checkpoint - locking the database\n");
+  i_log_debug ("Starting Checkpoint - locking the database\n");
 
   // This is what makes the checkpoint blocking
   // it will wait for all open transactions to complete
   lockt_lock (p->lt, lock_db (), LM_X, NULL, e);
-  // i_log_debug ("Checkpoint - lock acquired\n");
+  i_log_debug ("Checkpoint - lock acquired\n");
 
   // Flush all pages - so the database is consistent
   if (pgr_flush_all_pages (p, e) < 0) {
@@ -47,7 +47,7 @@ pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
 
   // Get the end_lsn
   lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
-  // i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
+  i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
 
   // Write the next min lsn slot
   if (pgr_write_next_lsn (p, end_lsn, e)) {

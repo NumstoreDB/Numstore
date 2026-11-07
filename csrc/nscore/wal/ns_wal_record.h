@@ -18,6 +18,7 @@
 #include "core/ns_csx_assert.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
+#include "core/ns_utils.h"
 #include "nscore/page/ns_page_fsm.h"
 #include "nscore/page/ns_page_h.h"
 #include "nscore/txn_table/ns_txn_table.h"
@@ -33,6 +34,13 @@ enum wal_update_type
   WUP_PHYSICAL = 1,
   WUP_FSM      = 2,
   WUP_FEXT     = 3,
+};
+
+enum wal_clr_type
+{
+  WCLR_PHYSICAL = 1,
+  WCLR_FSM      = 2,
+  WCLR_DUMMY    = 3,
 };
 
 struct wal_update_read
@@ -105,12 +113,7 @@ struct wal_end
 
 struct wal_clr_read
 {
-  enum wal_clr_type
-  {
-    WCLR_PHYSICAL = 1,
-    WCLR_FSM      = 2,
-    WCLR_DUMMY    = 3,
-  } type;
+  wlh  type;
 
   txid tid;
   lsn  prev;
@@ -151,6 +154,8 @@ struct wal_clr_write
     struct fsm_clr fsm;
   };
 };
+
+#define WL_TERM ((wlh)0)
 
 enum wal_rec_hdr_type
 {
@@ -272,6 +277,30 @@ struct wal_rec_hdr_write wrhw_from_wrhr (struct wal_rec_hdr_read *src);
 // Size of DUMMY_CLR entry
 #define WL_DUMMY_CLR_LEN \
   (2 * sizeof (wlh) + sizeof (txid) + sizeof (lsn) + sizeof (lsn) + sizeof (u32))
+
+/// The largest a single log can be on disk. A torn tail is one log that did not
+/// finish, so it is never longer than this - which is what lets the scan retire
+/// one with a single write out of a single fixed buffer.
+#define MAX_LOG_SIZE                                                               \
+  MAX (                                                                            \
+      WL_BEGIN_LEN,                                                                \
+      MAX (                                                                        \
+          WL_COMMIT_LEN,                                                           \
+          MAX (                                                                    \
+              WL_END_LEN,                                                          \
+              MAX (                                                                \
+                  WL_UPDATE_LEN,                                                   \
+                  MAX (                                                            \
+                      WL_FSM_UPDATE_LEN,                                           \
+                      MAX (                                                        \
+                          WL_FILE_EXT_LEN,                                         \
+                          MAX (WL_CLR_LEN, MAX (WL_FSM_CLR_LEN, WL_DUMMY_CLR_LEN)) \
+                      )                                                            \
+                  )                                                                \
+              )                                                                    \
+          )                                                                        \
+      )                                                                            \
+  )
 
 // Utils
 txid wrh_get_tid (const struct wal_rec_hdr_read *h);

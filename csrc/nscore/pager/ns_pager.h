@@ -268,4 +268,6 @@ err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e);
 err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
 err_t pgr_recover (struct pager *p, error *e);
 
+err_t pgr_detect_wal_and_recover (struct pager *p, error *e);
+
 #endif // PAGER_H
