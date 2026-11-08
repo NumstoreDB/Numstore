@@ -610,8 +610,10 @@ TEST (walos_write_all)
     struct wal_ostream *wos = walos_open ("foo", ctx->mem, ctx->os, 0, &ctx->e);
     test_assert (wos != NULL);
 
-    u32 checksum             = checksum_init ();
-    u8  data[WAL_BUFFER_CAP] = {0};
+    u32 checksum = checksum_init ();
+    // WAL_BUFFER_CAP is the whole default Windows stack, so heap it
+    u8 *data     = ctx->mem.table->calloc (ctx->mem.self, 1, WAL_BUFFER_CAP, &ctx->e);
+    test_assert (data != NULL);
     rand_bytes (data, WAL_BUFFER_CAP);
 
     // Under buffer size, flushed lsn should be unchanged
@@ -640,6 +642,7 @@ TEST (walos_write_all)
     test_assert_int_equal (checksum, actual_checksum);
 
     // Clean up
+    ctx->mem.table->free (ctx->mem.self, data);
     walos_close (wos, &ctx->e);
     ctx->os.table->remove_quiet (ctx->os.self, "foo", &ctx->e);
   }
@@ -659,7 +662,8 @@ TEST (walos_write_all)
         faulty_os_fail_after (ctx->faulty_os, fail_after);
 
         // Fill up the buffer
-        u8 data[WAL_BUFFER_CAP] = {0};
+        u8 *data = ctx->mem.table->calloc (ctx->mem.self, 1, WAL_BUFFER_CAP, &ctx->e);
+        test_assert (data != NULL);
         rand_bytes (data, WAL_BUFFER_CAP);
         walos_write_all (wos, NULL, data, WAL_BUFFER_CAP);
 
@@ -672,6 +676,7 @@ TEST (walos_write_all)
         // Clean up
         faulty_os_reset (ctx->faulty_os);
         error_reset (&ctx->e);
+        ctx->mem.table->free (ctx->mem.self, data);
         walos_close (wos, &ctx->e);
         fail_after++;
       }

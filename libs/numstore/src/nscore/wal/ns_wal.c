@@ -1697,6 +1697,10 @@ TEST (wal_forward_scan)
   struct wal_rec_hdr_read want[16];
   lsn                     at[16];
 
+  // Too big for the 1 MiB default Windows stack
+  struct wal_test_scan   *seen = ctx->mem.table->calloc (ctx->mem.self, 1, sizeof *seen, &ctx->e);
+  test_assert (seen != NULL);
+
   TEST_CASE ("every record shape round trips, in order and at its own lsn")
   {
     struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 4096);
@@ -1709,20 +1713,20 @@ TEST (wal_forward_scan)
     }
     wal_flush_all (w);
 
-    struct wal_test_scan seen = {0};
+    memset (seen, 0, sizeof *seen);
     test_assert_int_equal (
-        wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e),
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, seen, &ctx->e),
         SUCCESS
     );
 
-    test_assert_int_equal ((i32)seen.n, (i32)n);
+    test_assert_int_equal ((i32)seen->n, (i32)n);
     for (u32 i = 0; i < n; ++i) {
-      test_assert (wal_rec_hdr_read_equal (&seen.recs[i], &want[i]));
-      test_assert_int_equal ((i32)seen.lsns[i], (i32)at[i]);
+      test_assert (wal_rec_hdr_read_equal (&seen->recs[i], &want[i]));
+      test_assert_int_equal ((i32)seen->lsns[i], (i32)at[i]);
     }
 
     // The first record sits right after the header, in this log's lsn space
-    test_assert_int_equal ((i32)seen.lsns[0], (i32)(4096 + WAL_RECORDS_START));
+    test_assert_int_equal ((i32)seen->lsns[0], (i32)(4096 + WAL_RECORDS_START));
 
     test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
     ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
@@ -1739,15 +1743,15 @@ TEST (wal_forward_scan)
     }
     wal_flush_all (w);
 
-    struct wal_test_scan seen = {0};
+    memset (seen, 0, sizeof *seen);
     test_assert_int_equal (
-        wal_forward_scan (w, at[n - 2], wal_test_collect, &seen, &ctx->e),
+        wal_forward_scan (w, at[n - 2], wal_test_collect, seen, &ctx->e),
         SUCCESS
     );
 
-    test_assert_int_equal ((i32)seen.n, 2);
-    test_assert (wal_rec_hdr_read_equal (&seen.recs[0], &want[n - 2]));
-    test_assert (wal_rec_hdr_read_equal (&seen.recs[1], &want[n - 1]));
+    test_assert_int_equal ((i32)seen->n, 2);
+    test_assert (wal_rec_hdr_read_equal (&seen->recs[0], &want[n - 2]));
+    test_assert (wal_rec_hdr_read_equal (&seen->recs[1], &want[n - 1]));
 
     test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
     ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
@@ -1758,12 +1762,12 @@ TEST (wal_forward_scan)
     struct wal *w = wal_test_fresh (ctx, ctx->mem, ctx->os, 0);
     test_assert (w != NULL);
 
-    struct wal_test_scan seen = {0};
+    memset (seen, 0, sizeof *seen);
     test_assert_int_equal (
-        wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e),
+        wal_forward_scan (w, LSN_NULL, wal_test_collect, seen, &ctx->e),
         SUCCESS
     );
-    test_assert_int_equal ((i32)seen.n, 0);
+    test_assert_int_equal ((i32)seen->n, 0);
 
     test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
     ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
@@ -1780,9 +1784,10 @@ TEST (wal_forward_scan)
     }
     wal_flush_all (w);
 
-    struct wal_test_scan seen = {.stop_after = 3};
-    test_assert (wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e) != SUCCESS);
-    test_assert_int_equal ((i32)seen.n, 2);
+    memset (seen, 0, sizeof *seen);
+    seen->stop_after = 3;
+    test_assert (wal_forward_scan (w, LSN_NULL, wal_test_collect, seen, &ctx->e) != SUCCESS);
+    test_assert_int_equal ((i32)seen->n, 2);
     error_reset (&ctx->e);
 
     test_assert_int_equal (wal_close (w, &ctx->e), SUCCESS);
@@ -1820,13 +1825,13 @@ TEST (wal_forward_scan)
     test_assert (w->ostream == NULL);
 
     // Do a forward scan
-    struct wal_test_scan seen = {0};
-    err_t                ret  = wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e);
+    memset (seen, 0, sizeof *seen);
+    err_t ret = wal_forward_scan (w, LSN_NULL, wal_test_collect, seen, &ctx->e);
     test_assert_int_equal (ret, SUCCESS);
 
     // The stump is not a record
-    test_assert_int_equal ((i32)seen.n, 2);
-    test_assert_int_equal ((i32)seen.lsns[1], (i32)second);
+    test_assert_int_equal ((i32)seen->n, 2);
+    test_assert_int_equal ((i32)seen->lsns[1], (i32)second);
 
     // The ostream is opened at the end of a full log scan
     test_assert (w->ostream != NULL);
@@ -1876,8 +1881,8 @@ TEST (wal_forward_scan)
     w = wal_open (WAL_T_FILE, ctx->mem, ctx->os, &ctx->e);
     test_assert (w != NULL);
 
-    struct wal_test_scan seen = {0};
-    const err_t          ret  = wal_forward_scan (w, LSN_NULL, wal_test_collect, &seen, &ctx->e);
+    memset (seen, 0, sizeof *seen);
+    const err_t ret = wal_forward_scan (w, LSN_NULL, wal_test_collect, seen, &ctx->e);
 
     // The scan hands back the error it is carrying, traced through this frame -
     // not a raw int off the read path
@@ -1886,11 +1891,13 @@ TEST (wal_forward_scan)
     test_err_t_check (ctx->e.cause_code, ERR_CORRUPT, &ctx->e);
 
     // The good record ahead of it still came back
-    test_assert_int_equal ((i32)seen.n, 1);
+    test_assert_int_equal ((i32)seen->n, 1);
 
     wal_crash (w, &ctx->e);
     ctx->os.table->remove_quiet (ctx->os.self, WAL_T_FILE, &ctx->e);
   }
+
+  ctx->mem.table->free (ctx->mem.self, seen);
 }
 #endif
 
