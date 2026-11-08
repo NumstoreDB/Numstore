@@ -302,26 +302,6 @@ hr {
     padding: 0 1.5rem;
 }
 
-/* One column on narrow screens: the nav sits above the page. */
-@media (max-width: 800px) {
-    .page {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0;
-    }
-    .docs-nav {
-        position: static;
-        max-height: none;
-        padding: 1rem 0;
-        border-right: 0;
-        border-bottom: 1px solid var(--border);
-    }
-    main { margin-top: 1.5rem; }
-    .docs-nav > ul {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-    }
-}
 
 main {
     max-width: 46rem;
@@ -475,3 +455,31 @@ main > :first-child { margin-top: 0; }
 .docs-nav .subsection[data-product="numstore"]   > details > ul { border-left-color: var(--product-numstore); }
 .docs-nav .subsection[data-product="smartfiles"] > details > ul { border-left-color: var(--product-smartfiles); }
 .docs-nav .subsection[data-product="enterprise"] > details > ul { border-left-color: var(--product-enterprise); }
+
+/* Wide tables scroll sideways inside themselves instead of widening the page. */
+table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* One column on narrow screens: the nav sits above the page. */
+@media (max-width: 800px) {
+    .page {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+    .docs-nav {
+        position: static;
+        max-height: none;
+        padding: 1rem 0;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+    main { margin-top: 1.5rem; overflow-wrap: anywhere; }
+    .docs-nav > ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+}
