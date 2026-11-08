@@ -10,14 +10,14 @@ pub fn rs_ns_open(fname: &str) -> *mut nsdb_t {
     let c_fname = CString::new(fname).expect("Error");
 
     unsafe {
-        return ns_open(c_fname.as_ptr() as *const i8);
+        return ns_open(c_fname.as_ptr());
     };
 }
 
 impl Database {
     pub fn new(fname: &str) -> Database {
-        assert!(fname.ends_with('\0'));
-
+        // rs_ns_open adds the NUL terminator; CString::new rejects a name
+        // that already contains one.
         Database {
             handle: rs_ns_open(fname),
         }
