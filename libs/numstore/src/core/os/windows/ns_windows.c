@@ -346,12 +346,11 @@ sys_file_size (void *self, error *e)
   return (i64)size.QuadPart;
 }
 
-/// Note: on a synchronous handle, ReadFile/WriteFile with an OVERLAPPED
-/// offset ALSO move the file pointer (unlike pread/pwrite). Don't mix
-/// positional and stream I/O on the same file and expect the stream
-/// position to be untouched.
+/// On a synchronous handle, ReadFile/WriteFile with an OVERLAPPED offset also
+/// move the file pointer. pread/pwrite must not, so sys_pread_all and
+/// sys_pwrite_all below save the pointer and put it back around these.
 static i64
-sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
+sys_pread_all_moving (void *self, void *dest, const u64 n, const u64 offset, error *e)
 {
   const HANDLE h = handle_of (self);
 
@@ -389,7 +388,7 @@ sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
 }
 
 static err_t
-sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, error *e)
+sys_pwrite_all_moving (void *self, const void *src, const u64 n, const u64 offset, error *e)
 {
   const HANDLE h = handle_of (self);
 
@@ -420,6 +419,72 @@ sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, erro
 
   ASSERT (nwritten == n);
   return SUCCESS;
+}
+
+/// Reads the file pointer without moving it
+static err_t
+win_tell (const HANDLE h, LARGE_INTEGER *pos, error *e)
+{
+  const LARGE_INTEGER zero = {0};
+  if (unlikely (!SetFilePointerEx (h, zero, pos, FILE_CURRENT))) {
+    return win_fail (e, ERR_IO, "tell", NULL, GetLastError ());
+  }
+  return SUCCESS;
+}
+
+static err_t
+win_untell (const HANDLE h, const LARGE_INTEGER pos, error *e)
+{
+  if (unlikely (!SetFilePointerEx (h, pos, NULL, FILE_BEGIN))) {
+    return win_fail (e, ERR_IO, "restore file pointer", NULL, GetLastError ());
+  }
+  return SUCCESS;
+}
+
+/// Like pread: the file pointer is left where it was
+static i64
+sys_pread_all (void *self, void *dest, const u64 n, const u64 offset, error *e)
+{
+  const HANDLE  h = handle_of (self);
+  LARGE_INTEGER saved;
+
+  if (win_tell (h, &saved, e) < 0) {
+    return error_trace (e);
+  }
+
+  const i64 ret = sys_pread_all_moving (self, dest, n, offset, e);
+
+  // A read error is already in [e] - don't let the restore replace it
+  if (ret < 0) {
+    (void)SetFilePointerEx (h, saved, NULL, FILE_BEGIN);
+    return ret;
+  }
+
+  if (win_untell (h, saved, e) < 0) {
+    return error_trace (e);
+  }
+  return ret;
+}
+
+/// Like pwrite: the file pointer is left where it was
+static err_t
+sys_pwrite_all (void *self, const void *src, const u64 n, const u64 offset, error *e)
+{
+  const HANDLE  h = handle_of (self);
+  LARGE_INTEGER saved;
+
+  if (win_tell (h, &saved, e) < 0) {
+    return error_trace (e);
+  }
+
+  const err_t ret = sys_pwrite_all_moving (self, src, n, offset, e);
+
+  if (ret < 0) {
+    (void)SetFilePointerEx (h, saved, NULL, FILE_BEGIN);
+    return ret;
+  }
+
+  return win_untell (h, saved, e);
 }
 
 /// No scatter-gather for regular files on Win32 (WriteFileGather needs
