@@ -13,6 +13,14 @@ project(numstore VERSION ${NUMSTORE_CMAKE_VERSION} LANGUAGES C)
 
 include(GNUInstallDirs)
 
+# Rust always links the release CRT (/defaultlib:msvcrt), even in debug builds.
+# A Debug C library built with /MDd references the debug CRT (_CrtDbgReport,
+# _invalid_parameter) and fails to link into the Rust test binary, so use the
+# release DLL CRT in every configuration.
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
