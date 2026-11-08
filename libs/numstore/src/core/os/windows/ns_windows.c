@@ -233,8 +233,9 @@ sys_open_file_rw (void *os_self, i_file *dest, const char *fname, error *e)
 static err_t
 sys_open_file_r (void *os_self, i_file *dest, const char *fname, error *e)
 {
-  // OPEN_EXISTING: a read-only open fails on a missing file, like O_RDONLY
-  return sys_open_file (os_self, dest, fname, GENERIC_READ, OPEN_EXISTING, "open_file_r", e);
+  // OPEN_ALWAYS: a read-only open creates a missing file, like POSIX's
+  // O_RDONLY | O_CREAT. The WAL is opened this way before it exists.
+  return sys_open_file (os_self, dest, fname, GENERIC_READ, OPEN_ALWAYS, "open_file_r", e);
 }
 
 static err_t

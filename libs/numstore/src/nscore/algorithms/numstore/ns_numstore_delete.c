@@ -50,8 +50,8 @@ TEST (numstore_delete)
   {
     // Setup - a pager with one variable
     struct pgr_fixture f;
-    pgr_fixture_create (&f, &ctx->e);
-    numstore_init_pager (f.p, &ctx->e);
+    test_err_t_check (pgr_fixture_create (&f, &ctx->e), SUCCESS, &ctx->e);
+    test_err_t_check (numstore_init_pager (f.p, &ctx->e), SUCCESS, &ctx->e);
     pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
     struct variable var;
@@ -78,8 +78,8 @@ TEST (numstore_delete)
   {
     // Setup
     struct pgr_fixture f;
-    pgr_fixture_create (&f, &ctx->e);
-    numstore_init_pager (f.p, &ctx->e);
+    test_err_t_check (pgr_fixture_create (&f, &ctx->e), SUCCESS, &ctx->e);
+    test_err_t_check (numstore_init_pager (f.p, &ctx->e), SUCCESS, &ctx->e);
     pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
     // Run

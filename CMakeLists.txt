@@ -38,7 +38,12 @@ if(SKBUILD)
         COMPONENTS Interpreter Development.Module NumPy
     )
 
-    python_add_library(_pynumstore MODULE WITH_SOABI libs/pynumstore/ns_pynumstore.c)
+    python_add_library(
+        _pynumstore
+        MODULE
+        WITH_SOABI
+        libs/pynumstore/ns_pynumstore.c
+    )
     target_link_libraries(_pynumstore PRIVATE numstore Python::NumPy)
     set_target_properties(_pynumstore PROPERTIES C_VISIBILITY_PRESET hidden)
 
