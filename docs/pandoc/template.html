@@ -61,14 +61,12 @@ $endfor$
   }
   var here = stripIndex(location.pathname);
   document.querySelectorAll('.docs-nav a').forEach(function (a) {
-    if (stripIndex(a.getAttribute('href')) === here) {
+    if (stripIndex(a.pathname) === here) {
       a.classList.add('active');
     }
   });
 })();
 </script>
-</body>
-</main>
 $for(include-after)$
 $include-after$
 $endfor$

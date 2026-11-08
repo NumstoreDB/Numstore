@@ -302,6 +302,14 @@ hr {
     padding: 0 1.5rem;
 }
 
+/* One column on narrow screens: the nav sits above the page. */
+@media (max-width: 800px) {
+    .page {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
 main {
     max-width: 44rem;
     margin: 2.5rem auto;
