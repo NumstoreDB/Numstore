@@ -54,6 +54,7 @@ nsdb_open (const char *path, struct i_mem mem, struct i_os os, error *e)
   ret->e                   = NULL;
   ret->auto_tx.allow       = false; // Auto transactions are opt in
   ret->auto_tx.in_auto_txn = false;
+  ret->auto_tx.tx          = (struct txn){0};
 
   ret->path.len            = strnlen (path, NS_PATH_MAX);
   // TODO: a failure here reaches failed: with path.data still NULL, and the

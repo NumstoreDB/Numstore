@@ -67,7 +67,8 @@ pgr_fixture_create_with (struct pgr_fixture *dest, struct i_os os, struct i_mem 
     return error_trace (e);
   }
 
-  dest->p = p;
+  dest->p  = p;
+  dest->tx = (struct txn){0};
 
   DBG_ASSERT (pgr_fixture, dest);
 
